@@ -1,0 +1,132 @@
+//go:build darwin || linux
+
+package terminal
+
+import (
+	"context"
+	"errors"
+	"io"
+	"os"
+	"os/exec"
+	"sync"
+
+	"github.com/creack/pty/v2"
+)
+
+type PTYLauncher struct{}
+
+type ptyProcess struct {
+	cmd       *exec.Cmd
+	ptmx      *os.File
+	outputCh  chan []byte
+	closeOnce sync.Once
+}
+
+func DefaultLauncher() Launcher {
+	return PTYLauncher{}
+}
+
+func DefaultShell() string {
+	if shell := os.Getenv("SHELL"); shell != "" {
+		return shell
+	}
+	for _, candidate := range []string{"/bin/zsh", "/bin/bash", "/bin/sh"} {
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate
+		}
+	}
+	return "/bin/sh"
+}
+
+func (PTYLauncher) Launch(ctx context.Context, opts LaunchOptions) (Process, error) {
+	shell := opts.Shell
+	if shell == "" {
+		shell = DefaultShell()
+	}
+	if _, err := os.Stat(shell); err != nil {
+		return nil, err
+	}
+
+	cmd := exec.CommandContext(ctx, shell, "-l")
+	if opts.WorkingDir != "" {
+		cmd.Dir = opts.WorkingDir
+	}
+	cmd.Env = append(os.Environ(), "TERM=xterm-256color", "COLORTERM=truecolor")
+
+	ptmx, err := pty.StartWithSize(cmd, &pty.Winsize{Rows: 30, Cols: 120})
+	if err != nil {
+		return nil, err
+	}
+
+	process := &ptyProcess{
+		cmd:      cmd,
+		ptmx:     ptmx,
+		outputCh: make(chan []byte, 64),
+	}
+	go process.readLoop()
+	return process, nil
+}
+
+func (p *ptyProcess) readLoop() {
+	defer close(p.outputCh)
+
+	buffer := make([]byte, 4096)
+	for {
+		n, err := p.ptmx.Read(buffer)
+		if n > 0 {
+			chunk := make([]byte, n)
+			copy(chunk, buffer[:n])
+			p.outputCh <- chunk
+		}
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				return
+			}
+			return
+		}
+	}
+}
+
+func (p *ptyProcess) PID() int {
+	if p.cmd.Process == nil {
+		return 0
+	}
+	return p.cmd.Process.Pid
+}
+
+func (p *ptyProcess) Write(data []byte) (int, error) {
+	return p.ptmx.Write(data)
+}
+
+func (p *ptyProcess) Output() <-chan []byte {
+	return p.outputCh
+}
+
+func (p *ptyProcess) Wait() (int, error) {
+	err := p.cmd.Wait()
+	if p.cmd.ProcessState != nil {
+		return p.cmd.ProcessState.ExitCode(), nil
+	}
+	if err != nil {
+		return 1, err
+	}
+	return 0, nil
+}
+
+func (p *ptyProcess) Signal(sig os.Signal) error {
+	if p.cmd.Process == nil {
+		return errors.New("process not started")
+	}
+	return p.cmd.Process.Signal(sig)
+}
+
+func (p *ptyProcess) Close() error {
+	var closeErr error
+	p.closeOnce.Do(func() {
+		closeErr = p.ptmx.Close()
+		if p.cmd.Process != nil {
+			_ = p.cmd.Process.Kill()
+		}
+	})
+	return closeErr
+}

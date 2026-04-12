@@ -1,0 +1,11 @@
+node_modules/
+frontend/node_modules/
+frontend/dist/
+apps/desktop/src-tauri/target/
+apps/desktop/bin/
+bin/
+.DS_Store
+coverage/
+tmp/
+state/
+

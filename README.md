@@ -1,0 +1,257 @@
+# RunaTerminal
+
+`RunaTerminal` is a clean-room rewrite of TideTerm with a new architectural center:
+
+- `Tauri` as the desktop shell and packaging layer
+- `Go` as the primary runtime, backend and orchestration core
+- `React + TypeScript` as the frontend workspace UI
+- `Rust` only for the Tauri shell boundary
+
+The rewrite is intentionally not a fork-shaped refactor. It preserves the product ideas that matter, but not the transport and state-model mistakes that made the old stack hard to evolve.
+
+## Origins
+
+RunaTerminal exists because two things are true at the same time:
+
+1. **Wave Terminal** introduced genuinely strong product ideas:
+   - terminal + workspace composition
+   - block-oriented workflows
+   - local and remote session integration
+   - AI as a first-class direction, not an afterthought
+2. **TideTerm** explored those ideas further in a real fork and made the trade-offs much more visible in practice.
+
+RunaTerminal should be understood with respect for that lineage.
+It is not a denial of the previous projects. It is a deliberate next step built from their lessons.
+
+Relevant upstream and historical repositories:
+
+- Wave Terminal: `https://github.com/wavetermdev/waveterm`
+- TideTerm: `https://github.com/sanshao85/tideterm`
+
+## Why RunaTerminal was born
+
+RunaTerminal was born to keep the good ideas while breaking with the parts that were becoming too expensive to evolve.
+
+The rewrite is motivated by a few hard lessons:
+
+- product semantics should not be trapped inside transport plumbing
+- terminal runtime, workspace state, tool execution and policy need clear boundaries
+- AI features need a stable platform, not an ever-growing command bucket
+- security, approvals, trusted allowlists, ignore rules and audit cannot be bolted on later
+- a modern desktop shell should be lighter and cleaner than the previous Electron-based stack
+
+In short:
+
+- **Wave Terminal** supplied the original product spark
+- **TideTerm** validated and extended that direction in a meaningful fork
+- **RunaTerminal** exists to turn those lessons into a cleaner long-lived platform focused on maintainability, security and AI-native workflows
+
+## Why not just continue TideTerm?
+
+TideTerm remains an important predecessor and source of insight, but continuing it indefinitely would keep too much accidental architecture in the critical path.
+
+The decision to start RunaTerminal is based on the belief that some problems are better solved by a clean platform reset than by endless incremental patching.
+
+The most important reasons are:
+
+- too much product meaning was coupled to transport and orchestration details
+- too many subsystems were growing around large central files and broad integration surfaces
+- policy, trust, secret protection and audit deserved to become first-class platform modules
+- the next generation of AI-native tooling needs a cleaner runtime contract than the previous stack could easily provide
+- moving from an Electron-centered shell to a Tauri-centered shell is easier to do well in a fresh architecture than as a partial retrofit
+
+This rewrite is not about rejecting TideTerm.
+It is about giving the ideas behind it a codebase that can carry them further with less drag.
+
+## What RunaTerminal is for
+
+RunaTerminal is being built as a terminal-centered workspace platform with:
+
+- long-lived terminal and workspace primitives
+- local-first runtime semantics
+- room for future local and remote session models
+- policy-aware AI tooling from day one
+- explicit trust and secret-protection controls
+- a codebase that can evolve without collapsing into monolithic transport and handler layers
+
+## Project status
+
+RunaTerminal is currently in the **foundational rewrite phase**.
+
+What exists today:
+- architectural docs and ADR discipline
+- Tauri desktop shell bootstrap
+- Go runtime bootstrap
+- early foundation modules for tool runtime, policy, audit, workspace and terminal services
+- initial tests around core behavior
+
+What does **not** exist yet:
+- full TideTerm feature parity
+- mature remote session support
+- polished workspace UI
+- production-hardening across all workflows
+- stable plugin or extension ecosystem
+
+The current goal is not feature volume. The current goal is to make the core architecture correct enough that future features do not recreate the old problems.
+
+## Current priorities
+
+- stabilize the Go core foundation
+- harden policy, trust, ignore and audit behavior
+- finish the initial tool runtime contracts and transport surface
+- replace remaining template UI with an intentional shell
+- expand validation and tests around the core runtime
+
+## Non-goals for v0
+
+The first iterations of RunaTerminal are intentionally narrow. These are **not** immediate goals:
+
+- full parity with TideTerm or Wave Terminal
+- Windows-first support
+- broad plugin architecture before the core runtime stabilizes
+- premature UI complexity
+- large feature buckets such as every builder/proxy/MCP capability from the old stack
+- unrestricted automation without policy, trust and audit controls
+
+If a feature threatens architectural clarity in the early phase, the default answer should be to postpone it.
+
+## Design principles
+
+RunaTerminal should stay anchored to a small set of explicit design rules:
+
+1. **Core truth lives in the backend**
+   - terminal, workspace, policy and tool execution semantics belong in the Go core
+2. **Transport is an adapter, not the product model**
+   - HTTP, SSE and Tauri integration should expose the platform, not define it
+3. **Security is part of the foundation**
+   - capabilities, approvals, trusted rules, ignore rules and audit are baseline features
+4. **Small modules beat central buckets**
+   - avoid giant files, giant registries and giant handler surfaces
+5. **AI consumes the platform, it does not own it**
+   - tools, policy and runtime contracts must be stable outside of any single AI integration
+6. **Local-first, remote-ready**
+   - start with clean local semantics, then extend to SSH and other runtime targets without changing the model
+7. **Architecture decisions must be explicit**
+   - important trade-offs belong in ADRs, not in unspoken code drift
+
+## Goals
+
+- terminal + workspace model built as long-lived platform primitives
+- typed tool runtime with schemas, metadata and execution pipeline
+- capability-first security model
+- approvals, trusted allowlists and ignore rules from day 1
+- role presets, work modes and system prompt profiles that project into policy
+- auditable mutating operations
+- architecture that can absorb future AI features without collapsing into a giant RPC bucket
+
+## Repository Layout
+
+- `apps/desktop`
+  Tauri shell and native app host.
+- `frontend`
+  React + TypeScript UI.
+- `cmd/rterm-core`
+  Go entrypoint for the runtime process.
+- `core`
+  Domain/runtime modules: workspace, terminal, tool runtime, policy, audit and transport.
+- `docs`
+  Architecture docs, migration notes and ADRs.
+
+## Input Material From TideTerm
+
+The rewrite uses the following files as source material, not as immutable truth:
+
+- `AI_TOOL_WISHLIST.md`
+- `AI_TOOL_ROADMAP.md`
+- `AI_TOOL_SCHEMA.md`
+- `AI_TOOL_CODEMAP.md`
+- `AI_TOOL_POLICY.md`
+- `AI_TOOL_BACKLOG.md`
+- `aiprompts/waveai-architecture.md`
+- `aiprompts/usechat-backend-design.md`
+- `aiprompts/conn-arch.md`
+- `aiprompts/fe-conn-arch.md`
+- `aiprompts/view-prompt.md`
+- `aiprompts/aimodesconfig.md`
+
+The resulting architecture intentionally diverges where those documents would otherwise keep transport, runtime and product semantics entangled.
+
+## Current MVP target
+
+The initial working slice is being built around:
+
+- `workspace.list_widgets`
+- `workspace.get_active_widget`
+- `workspace.focus_widget`
+- `term.get_state`
+- `term.send_input`
+- `safety.confirm`
+- trusted rule add/list/remove
+- ignore rule add/list/remove
+
+## Toolchain
+
+Currently targeted toolchain:
+
+- Go `1.26+`
+- Node `24+`
+- npm `11+`
+- Rust stable
+
+`scripts/go.sh` resolves the Go binary without assuming a specific PATH.
+
+## Development
+
+Install JavaScript dependencies:
+
+```bash
+npm install
+npm --prefix frontend install
+```
+
+Build the Go core binary used by the Tauri shell:
+
+```bash
+npm run build:core
+```
+
+Run the frontend dev server:
+
+```bash
+npm run dev:frontend
+```
+
+In a second shell, run the Tauri app:
+
+```bash
+npm run tauri:dev
+```
+
+## Validation
+
+Run the full validation suite:
+
+```bash
+npm run validate
+```
+
+If you only need to rebuild the Go runtime binary used by the desktop shell before launching Tauri, run:
+
+```bash
+npm run build:core
+```
+
+Actual results are recorded in [docs/validation.md](docs/validation.md).
+
+## Key Documents
+
+- [Architecture Overview](docs/architecture.md)
+- [Domain Model](docs/domain-model.md)
+- [Tool Runtime](docs/tool-runtime.md)
+- [Policy Model](docs/policy-model.md)
+- [Terminal Architecture](docs/terminal-architecture.md)
+- [Workspace Model](docs/workspace-model.md)
+- [Migration Notes](docs/migration-notes.md)
+- [Agent Modes](docs/agent-modes.md)
+- [System Prompts](docs/system-prompts.md)
+- [ADRs](docs/adr)

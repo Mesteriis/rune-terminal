@@ -1,0 +1,153 @@
+package agent
+
+import (
+	"encoding/json"
+	"errors"
+	"os"
+	"path/filepath"
+	"slices"
+	"sync"
+	"time"
+
+	"github.com/avm/rterm/core/policy"
+)
+
+type Store struct {
+	mu   sync.RWMutex
+	path string
+	data State
+}
+
+func NewStore(path string) (*Store, error) {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return nil, err
+	}
+	store := &Store{path: path}
+	if err := store.load(); err != nil {
+		return nil, err
+	}
+	return store, nil
+}
+
+func (s *Store) load() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	payload, err := os.ReadFile(s.path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			s.data = defaultState()
+			return s.saveLocked()
+		}
+		return err
+	}
+	if err := json.Unmarshal(payload, &s.data); err != nil {
+		return err
+	}
+	if s.data.Version == "" {
+		s.data.Version = ConfigVersion
+	}
+	return nil
+}
+
+func (s *Store) Snapshot() State {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return cloneState(s.data)
+}
+
+func (s *Store) Selection() (Selection, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return selectionFromState(s.data)
+}
+
+func (s *Store) PolicyProfile() policy.EvaluationProfile {
+	selection, err := s.Selection()
+	if err != nil {
+		return policy.EvaluationProfile{}
+	}
+	return selection.EffectivePolicyProfile()
+}
+
+func (s *Store) SetActiveProfile(id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, ok := findByID(s.data.Profiles, id); !ok {
+		return errors.New("prompt profile not found")
+	}
+	s.data.ActiveProfileID = id
+	s.data.UpdatedAt = time.Now().UTC()
+	return s.saveLocked()
+}
+
+func (s *Store) SetActiveRole(id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, ok := findByID(s.data.Roles, id); !ok {
+		return errors.New("role preset not found")
+	}
+	s.data.ActiveRoleID = id
+	s.data.UpdatedAt = time.Now().UTC()
+	return s.saveLocked()
+}
+
+func (s *Store) SetActiveMode(id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, ok := findByID(s.data.Modes, id); !ok {
+		return errors.New("work mode not found")
+	}
+	s.data.ActiveModeID = id
+	s.data.UpdatedAt = time.Now().UTC()
+	return s.saveLocked()
+}
+
+func (s *Store) saveLocked() error {
+	payload, err := json.MarshalIndent(s.data, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(s.path, payload, 0o600)
+}
+
+func selectionFromState(state State) (Selection, error) {
+	profile, ok := findByID(state.Profiles, state.ActiveProfileID)
+	if !ok {
+		return Selection{}, errors.New("active prompt profile not found")
+	}
+	role, ok := findByID(state.Roles, state.ActiveRoleID)
+	if !ok {
+		return Selection{}, errors.New("active role preset not found")
+	}
+	mode, ok := findByID(state.Modes, state.ActiveModeID)
+	if !ok {
+		return Selection{}, errors.New("active work mode not found")
+	}
+	return Selection{Profile: profile, Role: role, Mode: mode}, nil
+}
+
+type withID interface {
+	GetID() string
+}
+
+func (p PromptProfile) GetID() string { return p.ID }
+func (r RolePreset) GetID() string    { return r.ID }
+func (m WorkMode) GetID() string      { return m.ID }
+
+func findByID[T withID](items []T, id string) (T, bool) {
+	for _, item := range items {
+		if item.GetID() == id {
+			return item, true
+		}
+	}
+	var zero T
+	return zero, false
+}
+
+func cloneState(state State) State {
+	state.Profiles = slices.Clone(state.Profiles)
+	state.Roles = slices.Clone(state.Roles)
+	state.Modes = slices.Clone(state.Modes)
+	return state
+}

@@ -1,0 +1,22 @@
+{
+  "name": "rterm",
+  "private": true,
+  "version": "0.1.0",
+  "productName": "RunaTerminal",
+  "type": "module",
+  "scripts": {
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build:frontend": "npm --prefix frontend run build",
+    "lint:frontend": "npm --prefix frontend run lint",
+    "build:core": "./scripts/build-core.sh",
+    "test:go": "./scripts/go.sh test ./cmd/... ./core/... ./internal/...",
+    "build:go": "./scripts/go.sh build ./cmd/... ./core/... ./internal/...",
+    "tauri:dev": "cargo tauri dev --manifest-path apps/desktop/src-tauri/Cargo.toml",
+    "tauri:build": "cargo tauri build --manifest-path apps/desktop/src-tauri/Cargo.toml",
+    "tauri:check": "cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml",
+    "validate": "npm run lint:frontend && npm run build:frontend && npm run test:go && npm run build:go && npm run tauri:check"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.10.1"
+  }
+}
