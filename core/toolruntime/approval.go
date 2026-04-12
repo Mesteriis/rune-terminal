@@ -52,6 +52,7 @@ func (s *approvalStore) Confirm(id string) (ApprovalGrant, error) {
 	}
 	if time.Now().UTC().After(approval.ExpiresAt) {
 		delete(s.pending, id)
+		delete(s.tools, id)
 		return ApprovalGrant{}, fmt.Errorf("%w: %s", ErrPendingApprovalExpired, id)
 	}
 	grant := ApprovalGrant{
@@ -59,6 +60,8 @@ func (s *approvalStore) Confirm(id string) (ApprovalGrant, error) {
 		Token:      ids.Token(16),
 		ExpiresAt:  time.Now().UTC().Add(10 * time.Minute),
 	}
+	delete(s.pending, id)
+	delete(s.tools, id)
 	s.grants[grant.Token] = grant
 	s.tools[grant.Token] = approval.ToolName
 	return grant, nil
@@ -80,5 +83,7 @@ func (s *approvalStore) Verify(toolName string, token string) bool {
 		delete(s.tools, token)
 		return false
 	}
+	delete(s.grants, token)
+	delete(s.tools, token)
 	return true
 }

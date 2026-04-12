@@ -13,6 +13,7 @@ type fakeProcess struct {
 	waitCh    chan struct{}
 	writes    [][]byte
 	signalled bool
+	closeOnce sync.Once
 }
 
 func (p *fakeProcess) PID() int { return 42 }
@@ -41,7 +42,9 @@ func (p *fakeProcess) Signal(sig os.Signal) error {
 }
 
 func (p *fakeProcess) Close() error {
-	close(p.waitCh)
+	p.closeOnce.Do(func() {
+		close(p.waitCh)
+	})
 	return nil
 }
 

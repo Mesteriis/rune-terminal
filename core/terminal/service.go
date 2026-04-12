@@ -16,19 +16,21 @@ type session struct {
 	state       State
 	process     Process
 	chunks      []OutputChunk
-	subscribers map[chan OutputChunk]struct{}
+	subscribers map[*subscriber]struct{}
 }
 
 type Service struct {
 	mu       sync.RWMutex
 	launcher Launcher
 	sessions map[string]*session
+	starting map[string]*startCall
 }
 
 func NewService(launcher Launcher) *Service {
 	return &Service{
 		launcher: launcher,
 		sessions: make(map[string]*session),
+		starting: make(map[string]*startCall),
 	}
 }
 
@@ -46,10 +48,20 @@ func (s *Service) StartSession(ctx context.Context, opts LaunchOptions) (State, 
 		s.mu.Unlock()
 		return state, nil
 	}
+	if pending, ok := s.starting[opts.WidgetID]; ok {
+		s.mu.Unlock()
+		return pending.wait(ctx)
+	}
+	pending := newStartCall()
+	s.starting[opts.WidgetID] = pending
 	s.mu.Unlock()
 
 	process, err := s.launcher.Launch(ctx, opts)
 	if err != nil {
+		s.mu.Lock()
+		delete(s.starting, opts.WidgetID)
+		pending.finish(State{}, err)
+		s.mu.Unlock()
 		return State{}, err
 	}
 
@@ -68,11 +80,13 @@ func (s *Service) StartSession(ctx context.Context, opts LaunchOptions) (State, 
 	sess := &session{
 		state:       state,
 		process:     process,
-		subscribers: make(map[chan OutputChunk]struct{}),
+		subscribers: make(map[*subscriber]struct{}),
 	}
 
 	s.mu.Lock()
 	s.sessions[opts.WidgetID] = sess
+	delete(s.starting, opts.WidgetID)
+	pending.finish(state, nil)
 	s.mu.Unlock()
 
 	go s.consumeOutput(opts.WidgetID, sess)
@@ -158,29 +172,35 @@ func (s *Service) Snapshot(widgetID string, from uint64) (Snapshot, error) {
 
 func (s *Service) Subscribe(widgetID string) (<-chan OutputChunk, func(), error) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	sess, ok := s.sessions[widgetID]
 	if !ok {
+		s.mu.Unlock()
 		return nil, nil, fmt.Errorf("%w: %s", ErrWidgetNotFound, widgetID)
 	}
 
-	ch := make(chan OutputChunk, 32)
-	sess.subscribers[ch] = struct{}{}
-	return ch, func() {
+	sub := newSubscriber()
+	sess.subscribers[sub] = struct{}{}
+	s.mu.Unlock()
+
+	return sub.channel(), func() {
 		s.mu.Lock()
-		defer s.mu.Unlock()
 		if sess, ok := s.sessions[widgetID]; ok {
-			delete(sess.subscribers, ch)
+			delete(sess.subscribers, sub)
 		}
-		close(ch)
+		s.mu.Unlock()
+		sub.close()
 	}, nil
 }
 
 func (s *Service) Close() {
 	s.mu.Lock()
-	defer s.mu.Unlock()
-	for _, sess := range s.sessions {
+	sessions := s.snapshotSessionsLocked()
+	s.sessions = make(map[string]*session)
+	s.starting = make(map[string]*startCall)
+	s.mu.Unlock()
+
+	for _, sess := range sessions {
+		s.closeSubscribers(sess)
 		_ = sess.process.Close()
 	}
 }
@@ -208,18 +228,10 @@ func (s *Service) consumeOutput(widgetID string, sess *session) {
 			sess.chunks = slices.Clone(sess.chunks[len(sess.chunks)-maxBufferedChunks:])
 		}
 		sess.state.LastOutputAt = &now
-		subscribers := make([]chan OutputChunk, 0, len(sess.subscribers))
-		for subscriber := range sess.subscribers {
-			subscribers = append(subscribers, subscriber)
-		}
+		subscribers := s.snapshotSubscribersLocked(sess)
 		s.mu.Unlock()
 
-		for _, subscriber := range subscribers {
-			select {
-			case subscriber <- chunk:
-			default:
-			}
-		}
+		s.deliverChunk(subscribers, chunk)
 	}
 }
 
@@ -228,9 +240,9 @@ func (s *Service) waitForExit(widgetID string, sess *session) {
 	now := time.Now().UTC()
 
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	current, ok := s.sessions[widgetID]
 	if !ok || current != sess {
+		s.mu.Unlock()
 		return
 	}
 	sess.state.ExitCode = &exitCode
@@ -239,7 +251,47 @@ func (s *Service) waitForExit(widgetID string, sess *session) {
 	sess.state.CanInterrupt = false
 	if err != nil {
 		sess.state.Status = StatusFailed
-		return
+	} else {
+		sess.state.Status = StatusExited
 	}
-	sess.state.Status = StatusExited
+	subscribers := s.snapshotSubscribersLocked(sess)
+	clear(sess.subscribers)
+	s.mu.Unlock()
+
+	for _, sub := range subscribers {
+		sub.close()
+	}
+}
+
+func (s *Service) snapshotSubscribersLocked(sess *session) []*subscriber {
+	subscribers := make([]*subscriber, 0, len(sess.subscribers))
+	for sub := range sess.subscribers {
+		subscribers = append(subscribers, sub)
+	}
+	return subscribers
+}
+
+func (s *Service) deliverChunk(subscribers []*subscriber, chunk OutputChunk) {
+	for _, sub := range subscribers {
+		sub.deliver(chunk)
+	}
+}
+
+func (s *Service) snapshotSessionsLocked() []*session {
+	sessions := make([]*session, 0, len(s.sessions))
+	for _, sess := range s.sessions {
+		sessions = append(sessions, sess)
+	}
+	return sessions
+}
+
+func (s *Service) closeSubscribers(sess *session) {
+	s.mu.Lock()
+	subscribers := s.snapshotSubscribersLocked(sess)
+	clear(sess.subscribers)
+	s.mu.Unlock()
+
+	for _, sub := range subscribers {
+		sub.close()
+	}
 }

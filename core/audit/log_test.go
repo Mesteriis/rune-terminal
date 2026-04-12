@@ -30,3 +30,23 @@ func TestLogAppendAndList(t *testing.T) {
 		t.Fatalf("expected populated audit metadata, got %#v", events)
 	}
 }
+
+func TestListReturnsEmptySliceWhenLogDoesNotExist(t *testing.T) {
+	t.Parallel()
+
+	log, err := NewLog(filepath.Join(t.TempDir(), "audit.jsonl"))
+	if err != nil {
+		t.Fatalf("NewLog error: %v", err)
+	}
+
+	events, err := log.List(10)
+	if err != nil {
+		t.Fatalf("List error: %v", err)
+	}
+	if events == nil {
+		t.Fatalf("expected empty slice, got nil")
+	}
+	if len(events) != 0 {
+		t.Fatalf("expected empty slice, got %d events", len(events))
+	}
+}

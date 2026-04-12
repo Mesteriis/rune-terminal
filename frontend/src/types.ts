@@ -127,26 +127,28 @@ export type AgentCatalog = {
   profiles: PromptProfile[]
   roles: RolePreset[]
   modes: WorkMode[]
-  active: {
-    profile: PromptProfile
-    role: RolePreset
-    mode: WorkMode
-    effective_prompt: string
-    effective_policy_profile: {
-      prompt_profile_id?: string
-      role_id?: string
-      mode_id?: string
-      security_posture?: string
-      capability_overlay?: {
-        additions?: string[]
-        removals?: string[]
-      }
-      approval_overlay?: {
-        escalate_by?: number
-        minimum_mutation_tier?: string
-      }
-      disable_trusted_auto_approve?: boolean
+  active: AgentSelectionView
+}
+
+export type AgentSelectionView = {
+  profile: PromptProfile
+  role: RolePreset
+  mode: WorkMode
+  effective_prompt: string
+  effective_policy_profile: {
+    prompt_profile_id?: string
+    role_id?: string
+    mode_id?: string
+    security_posture?: string
+    capability_overlay?: {
+      additions?: string[]
+      removals?: string[]
     }
+    approval_overlay?: {
+      escalate_by?: number
+      minimum_mutation_tier?: string
+    }
+    disable_trusted_auto_approve?: boolean
   }
 }
 

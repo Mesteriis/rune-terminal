@@ -33,6 +33,7 @@ Examples:
 - `destructive`
 
 `dangerous` and `destructive` actions require confirmation unless a trusted rule can safely reduce friction. `destructive` operations never become silent.
+Approval grants are single-use: confirming an approval consumes the pending approval record, and the returned approval token is consumed by the first successful verification attempt.
 
 Role presets, work modes and system prompt profiles can raise the effective approval tier for a mutation or disable trusted auto-approval entirely.
 
@@ -86,6 +87,13 @@ The policy engine is intentionally decomposed into explicit stages:
 5. approval stage
 
 This keeps decisions explainable and lets role/mode overlays slot into the pipeline without turning policy into a giant branching function.
+
+Operational precedence matters:
+
+- capability failures are hard denials
+- outside-root access is confirmable
+- `deny` ignore rules win before trusted-rule auto-approval
+- trusted rules can reduce approval friction only after the earlier boundary checks pass
 
 ## Audit
 

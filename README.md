@@ -189,39 +189,92 @@ The initial working slice is being built around:
 - trusted rule add/list/remove
 - ignore rule add/list/remove
 
-## Toolchain
+## Prerequisites
 
-Currently targeted toolchain:
+Required toolchain:
 
 - Go `1.26+`
 - Node `24+`
 - npm `11+`
-- Rust stable
+- Rust stable with `cargo`
+
+Desktop runtime requirements:
+
+- macOS: Xcode Command Line Tools (`xcode-select --install`)
+- Linux: the normal Tauri/WebKitGTK desktop prerequisites for your distro
+
+Important launch note:
+
+- This project uses the local npm Tauri CLI from `@tauri-apps/cli`
+- `cargo tauri` is not required and is not the supported dev entrypoint for this repository
+- the supported command is `npm run tauri:dev`
 
 `scripts/go.sh` resolves the Go binary without assuming a specific PATH.
 
 ## Development
 
-Install JavaScript dependencies:
+Install dependencies and build the Go sidecar used by the Tauri shell:
 
 ```bash
 npm install
 npm --prefix frontend install
+npm run build:core
 ```
 
-Build the Go core binary used by the Tauri shell:
+Launch the app:
+
+```bash
+npm run tauri:dev
+```
+
+What `npm run tauri:dev` does:
+
+- fail-fast checks for `npm`, `cargo`, `curl`, macOS CLT, local Tauri CLI, frontend deps, and the built Go core binary
+- starts the frontend Vite dev server on `127.0.0.1:5173` if it is not already running
+- launches the Tauri shell against `apps/desktop/src-tauri/tauri.conf.json`
+
+## Launch Troubleshooting
+
+If `npm run tauri:dev` fails:
+
+1. Missing Go core binary:
 
 ```bash
 npm run build:core
 ```
 
-Run the frontend dev server:
+2. Missing local Tauri CLI or root dependencies:
 
 ```bash
-npm run dev:frontend
+npm install
 ```
 
-In a second shell, run the Tauri app:
+3. Missing frontend dependencies:
+
+```bash
+npm --prefix frontend install
+```
+
+4. Missing Rust toolchain:
+
+```bash
+rustup toolchain install stable
+```
+
+5. Missing macOS Command Line Tools:
+
+```bash
+xcode-select --install
+```
+
+Sanity checks:
+
+```bash
+npm exec tauri -- --version
+cargo --version
+```
+
+If you were trying `cargo tauri dev` directly, switch to:
 
 ```bash
 npm run tauri:dev
@@ -252,6 +305,7 @@ Actual results are recorded in [docs/validation.md](docs/validation.md).
 - [Terminal Architecture](docs/terminal-architecture.md)
 - [Workspace Model](docs/workspace-model.md)
 - [Migration Notes](docs/migration-notes.md)
+- [Current Behavior](docs/current-behavior.md)
 - [Agent Modes](docs/agent-modes.md)
 - [System Prompts](docs/system-prompts.md)
 - [ADRs](docs/adr)

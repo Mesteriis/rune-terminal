@@ -2,7 +2,7 @@ import '@xterm/xterm/css/xterm.css'
 
 import { FitAddon } from '@xterm/addon-fit'
 import { Terminal } from '@xterm/xterm'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { RtermClient } from '../lib/api'
 import type { OutputChunk, TerminalState } from '../types'
@@ -17,14 +17,16 @@ type TerminalSurfaceProps = {
 export function TerminalSurface({ client, widgetId, state, onTerminalAction }: TerminalSurfaceProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const terminalRef = useRef<Terminal | null>(null)
+  const fitFrameRef = useRef<number | null>(null)
   const [input, setInput] = useState('')
-  const fitAddon = useMemo(() => new FitAddon(), [])
 
   useEffect(() => {
     const container = containerRef.current
     if (!container) {
       return
     }
+    let disposed = false
+    const fitAddon = new FitAddon()
 
     const terminal = new Terminal({
       cursorBlink: true,
@@ -40,18 +42,45 @@ export function TerminalSurface({ client, widgetId, state, onTerminalAction }: T
     })
     terminal.loadAddon(fitAddon)
     terminal.open(container)
-    fitAddon.fit()
     terminalRef.current = terminal
 
-    const observer = new ResizeObserver(() => fitAddon.fit())
+    const scheduleFit = () => {
+      if (disposed || fitFrameRef.current !== null) {
+        return
+      }
+      fitFrameRef.current = window.requestAnimationFrame(() => {
+        fitFrameRef.current = null
+        if (disposed || terminalRef.current !== terminal || !container.isConnected) {
+          return
+        }
+        try {
+          fitAddon.fit()
+        } catch {
+          // xterm may emit resize callbacks while the renderer is tearing down.
+        }
+      })
+    }
+
+    scheduleFit()
+
+    const observer = new ResizeObserver(() => {
+      scheduleFit()
+    })
     observer.observe(container)
+    window.addEventListener('resize', scheduleFit)
 
     return () => {
+      disposed = true
       observer.disconnect()
-      terminal.dispose()
+      window.removeEventListener('resize', scheduleFit)
+      if (fitFrameRef.current !== null) {
+        window.cancelAnimationFrame(fitFrameRef.current)
+        fitFrameRef.current = null
+      }
       terminalRef.current = null
+      terminal.dispose()
     }
-  }, [fitAddon])
+  }, [])
 
   useEffect(() => {
     const terminal = terminalRef.current
@@ -120,4 +149,3 @@ export function TerminalSurface({ client, widgetId, state, onTerminalAction }: T
     </section>
   )
 }
-

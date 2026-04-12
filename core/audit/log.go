@@ -80,14 +80,14 @@ func (l *Log) List(limit int) ([]Event, error) {
 	fd, err := os.Open(l.path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return nil, nil
+			return []Event{}, nil
 		}
 		return nil, err
 	}
 	defer fd.Close()
 
 	scanner := bufio.NewScanner(fd)
-	var events []Event
+	events := make([]Event, 0)
 	for scanner.Scan() {
 		var event Event
 		if err := json.Unmarshal(scanner.Bytes(), &event); err != nil {

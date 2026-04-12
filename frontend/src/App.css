@@ -275,6 +275,30 @@ button:disabled {
   gap: 0.65rem;
 }
 
+.agent-summary {
+  margin: 0;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.agent-summary div {
+  padding: 0.8rem 0.9rem;
+  border-radius: 1rem;
+  background: rgba(9, 17, 27, 0.05);
+}
+
+.agent-summary dt {
+  font-size: 0.74rem;
+  color: #5a6a75;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.agent-summary dd {
+  margin: 0.25rem 0 0;
+  font-family: 'JetBrains Mono', monospace;
+}
+
 .rule-list li,
 .audit-list li {
   display: grid;

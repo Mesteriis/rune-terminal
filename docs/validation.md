@@ -2,16 +2,17 @@
 
 Validation date: `2026-04-13`
 
-All commands below were run against the repository in its current state.
+All commands below were run against the repository in its current state on macOS arm64.
 
-## Tooling Baseline
+## Tooling baseline
 
 - Go: `go1.26.2 darwin/arm64`
 - Node: `v24.14.1`
 - npm: `11.11.0`
-- Rust: stable toolchain present
+- Rust: stable toolchain with `cargo`
+- Tauri CLI: local npm package `@tauri-apps/cli` `2.10.1`
 
-## Build And Test Runs
+## Build and test validation
 
 The following commands completed successfully:
 
@@ -34,14 +35,46 @@ npm run tauri:check
 
 Observed results:
 
-- `lint:frontend`: passed
-- `build:frontend`: passed, production bundle emitted to `frontend/dist`
-- `test:go`: passed for `./cmd/... ./core/... ./internal/...`, including new `core/transport/httpapi` coverage for HTTP status semantics and agent selection endpoints
-- `build:go`: passed
-- `build:core`: passed, binary emitted to `apps/desktop/bin/rterm-core`
-- `tauri:check`: passed
+- frontend lint passed
+- frontend production build passed
+- Go tests passed for `./cmd/... ./core/... ./internal/...`
+- Go package build passed
+- `build:core` emitted `apps/desktop/bin/rterm-core`
+- `cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml` passed
 
-## Runtime Smoke Test
+Notable correctness coverage now exercised by Go tests:
+
+- concurrent `terminal.StartSession` coalesces to one launch
+- unsubscribe/output delivery does not panic under concurrent delivery and channel close
+- pending approvals are consumed by `safety.confirm`
+- approval grants are one-time and cannot be replayed
+- policy table tests cover ignore precedence, trusted matching, allowed roots, approval escalation, destructive handling, and capability overlays
+
+## Launch validation
+
+The documented launch path was exercised directly:
+
+```bash
+npm run build:core
+npm run tauri:dev
+```
+
+Observed launch behavior:
+
+- `npm run tauri:dev` used `./scripts/tauri-dev.sh`
+- the wrapper performed fail-fast checks for `npm`, `cargo`, `curl`, macOS CLT, frontend dependencies, local npm Tauri CLI, and the built Go core binary
+- the Tauri development build completed successfully
+- the desktop binary was started successfully:
+
+```text
+Finished `dev` profile [unoptimized + debuginfo] target(s) in 37.11s
+Running `target/debug/rterm-desktop`
+{"base_url":"http://127.0.0.1:51312","pid":12665}
+```
+
+The launch was then interrupted manually after confirming that the desktop shell and Go sidecar reached the running state.
+
+## Runtime smoke validation
 
 The built Go runtime was started directly and exercised over the real HTTP API with auth enabled:
 
@@ -56,40 +89,25 @@ RTERM_AUTH_TOKEN=test-token ./apps/desktop/bin/rterm-core serve \
 Validated slice:
 
 - `GET /api/v1/agent`
-- `PUT /api/v1/agent/selection/profile`
-- `PUT /api/v1/agent/selection/role`
 - `PUT /api/v1/agent/selection/mode`
-- `workspace.list_widgets`
-- `workspace.focus_widget`
 - `term.get_state`
-- `term.send_input`
-- `safety.add_trusted_rule`
-- `safety.confirm` for dangerous policy mutations
-- `safety.list_trusted_rules`
-- `safety.remove_trusted_rule`
-- `safety.add_ignore_rule`
-- `safety.list_ignore_rules`
-- `safety.remove_ignore_rule`
-- audit tail fetch via `/api/v1/audit`
+- dangerous policy mutation returning `428 approval_required`
+- `safety.confirm`
+- one-time approval token consumption
 
-Smoke-test observations:
+Observed runtime results:
 
-- workspace booted with 2 terminal widgets
-- `GET /api/v1/agent` returned active `balanced / developer / implement` selection and the effective merged policy profile
-- agent role and mode updates succeeded through the new management endpoints
-- `POST /api/v1/tools/execute` returned `428` with `error_code: "approval_required"` for dangerous policy mutation without approval
-- `POST /api/v1/tools/execute` returned `403` with `error_code: "policy_denied"` after switching to restrictive agent posture
-- `/api/v1/agent?token=...` returned `401`, confirming query-string auth is rejected on standard JSON endpoints
-- `/api/v1/terminal/term-main/stream?token=...` returned `200`, confirming query-token auth is still accepted for SSE only
-- `workspace.focus_widget` returned an `operation` payload with `affected_widgets: ["term-side"]`
-- terminal state reported `running`
-- terminal input completed successfully
-- trusted rule add/list/remove succeeded
-- ignore rule add/list/remove succeeded
-- audit feed recorded the exercised operations
-- audit events included role/mode fields from the new agent profile subsystem
+- agent catalog endpoint responded successfully
+- mode updates via the management API succeeded
+- `term.get_state` succeeded for `term-main`
+- dangerous `safety.add_ignore_rule` returned `428`
+- `safety.confirm` returned an approval token
+- the approved mutation succeeded once with `200`
+- replaying the same approval token returned `428`, confirming single-use approval grants
 
-## Notes
+## What was not validated
 
-- `cargo fmt` was not run because the local Rust toolchain does not currently include `rustfmt`
-- a full packaged `tauri build` was not run; the validated desktop boundary is `cargo check` plus the built `rterm-core` runtime smoke test
+- no full packaged `tauri build` was run
+- no Linux launch path was exercised in this pass
+- no fully manual in-window UI walkthrough was recorded beyond successful app startup; terminal and agent flows were validated at the runtime/API layer and the app now exposes those controls in the shell UI for manual checking
+- `cargo fmt` was not run because `rustfmt` is not installed in the local Rust toolchain
