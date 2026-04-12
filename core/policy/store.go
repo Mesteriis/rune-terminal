@@ -3,6 +3,7 @@ package policy
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -99,7 +100,7 @@ func (s *Store) AddTrustedRule(rule TrustedRule) (TrustedRule, error) {
 		rule.Enabled = true
 	}
 	if err := validateTrustedRule(rule); err != nil {
-		return TrustedRule{}, err
+		return TrustedRule{}, fmt.Errorf("%w: %v", ErrInvalidTrustedRule, err)
 	}
 	s.cfg.TrustedRules = append(s.cfg.TrustedRules, rule)
 	return rule, s.saveLocked()
@@ -145,7 +146,7 @@ func (s *Store) AddIgnoreRule(rule IgnoreRule) (IgnoreRule, error) {
 		rule.Enabled = true
 	}
 	if err := validateIgnoreRule(rule); err != nil {
-		return IgnoreRule{}, err
+		return IgnoreRule{}, fmt.Errorf("%w: %v", ErrInvalidIgnoreRule, err)
 	}
 	s.cfg.IgnoreRules = append(s.cfg.IgnoreRules, rule)
 	return rule, s.saveLocked()

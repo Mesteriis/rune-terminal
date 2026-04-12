@@ -17,17 +17,17 @@ type preparedExecution struct {
 func (e *Executor) prepare(request ExecuteRequest) (*preparedExecution, *ExecuteResponse) {
 	definition, ok := e.registry.Get(request.ToolName)
 	if !ok {
-		return nil, &ExecuteResponse{Status: "error", Error: "tool not found"}
+		return nil, &ExecuteResponse{Status: "error", Error: "tool not found", ErrorCode: ErrorCodeNotFound}
 	}
 
 	input, err := definition.Decode(request.Input)
 	if err != nil {
-		return nil, &ExecuteResponse{Status: "error", Error: err.Error(), Tool: toolInfo(definition)}
+		return nil, &ExecuteResponse{Status: "error", Error: err.Error(), ErrorCode: ErrorCodeInvalidInput, Tool: toolInfo(definition)}
 	}
 
 	plan, err := definition.Plan(input, request.Context)
 	if err != nil {
-		return nil, &ExecuteResponse{Status: "error", Error: err.Error(), Tool: toolInfo(definition)}
+		return nil, &ExecuteResponse{Status: "error", Error: err.Error(), ErrorCode: ErrorCodeInvalidInput, Tool: toolInfo(definition)}
 	}
 	plan.RequiredCapabilities = append(plan.RequiredCapabilities, definition.Metadata.Capabilities...)
 	plan.RequiredCapabilities = uniqueStrings(plan.RequiredCapabilities)

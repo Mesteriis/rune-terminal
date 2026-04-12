@@ -1,7 +1,7 @@
 package workspace
 
 import (
-	"errors"
+	"fmt"
 	"slices"
 	"sync"
 )
@@ -75,7 +75,7 @@ func (s *Service) findWidgetLocked(widgetID string) (Widget, error) {
 			return widget, nil
 		}
 	}
-	return Widget{}, errors.New("widget not found")
+	return Widget{}, fmt.Errorf("%w: %s", ErrWidgetNotFound, widgetID)
 }
 
 func cloneSnapshot(snapshot Snapshot) Snapshot {

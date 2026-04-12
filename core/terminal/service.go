@@ -3,6 +3,7 @@ package terminal
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"slices"
 	"sync"
@@ -86,7 +87,7 @@ func (s *Service) GetState(widgetID string) (State, error) {
 
 	sess, ok := s.sessions[widgetID]
 	if !ok {
-		return State{}, errors.New("terminal widget not found")
+		return State{}, fmt.Errorf("%w: %s", ErrWidgetNotFound, widgetID)
 	}
 	return sess.state, nil
 }
@@ -96,10 +97,10 @@ func (s *Service) SendInput(widgetID string, text string, appendNewline bool) (I
 	sess, ok := s.sessions[widgetID]
 	s.mu.RUnlock()
 	if !ok {
-		return InputResult{}, errors.New("terminal widget not found")
+		return InputResult{}, fmt.Errorf("%w: %s", ErrWidgetNotFound, widgetID)
 	}
 	if !sess.state.CanSendInput {
-		return InputResult{}, errors.New("terminal cannot accept input")
+		return InputResult{}, fmt.Errorf("%w: %s", ErrCannotSendInput, widgetID)
 	}
 
 	if appendNewline {
@@ -121,10 +122,10 @@ func (s *Service) Interrupt(widgetID string) error {
 	sess, ok := s.sessions[widgetID]
 	s.mu.RUnlock()
 	if !ok {
-		return errors.New("terminal widget not found")
+		return fmt.Errorf("%w: %s", ErrWidgetNotFound, widgetID)
 	}
 	if !sess.state.CanInterrupt {
-		return errors.New("terminal cannot be interrupted")
+		return fmt.Errorf("%w: %s", ErrCannotInterrupt, widgetID)
 	}
 	return sess.process.Signal(os.Interrupt)
 }
@@ -135,7 +136,7 @@ func (s *Service) Snapshot(widgetID string, from uint64) (Snapshot, error) {
 
 	sess, ok := s.sessions[widgetID]
 	if !ok {
-		return Snapshot{}, errors.New("terminal widget not found")
+		return Snapshot{}, fmt.Errorf("%w: %s", ErrWidgetNotFound, widgetID)
 	}
 
 	var chunks []OutputChunk
@@ -161,7 +162,7 @@ func (s *Service) Subscribe(widgetID string) (<-chan OutputChunk, func(), error)
 
 	sess, ok := s.sessions[widgetID]
 	if !ok {
-		return nil, nil, errors.New("terminal widget not found")
+		return nil, nil, fmt.Errorf("%w: %s", ErrWidgetNotFound, widgetID)
 	}
 
 	ch := make(chan OutputChunk, 32)

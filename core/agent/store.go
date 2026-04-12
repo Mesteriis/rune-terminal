@@ -3,6 +3,7 @@ package agent
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -62,6 +63,20 @@ func (s *Store) Selection() (Selection, error) {
 	return selectionFromState(s.data)
 }
 
+func (s *Store) Catalog() (Catalog, error) {
+	snapshot := s.Snapshot()
+	selection, err := selectionFromState(snapshot)
+	if err != nil {
+		return Catalog{}, err
+	}
+	return Catalog{
+		Profiles: snapshot.Profiles,
+		Roles:    snapshot.Roles,
+		Modes:    snapshot.Modes,
+		Active:   selection.View(),
+	}, nil
+}
+
 func (s *Store) PolicyProfile() policy.EvaluationProfile {
 	selection, err := s.Selection()
 	if err != nil {
@@ -74,7 +89,7 @@ func (s *Store) SetActiveProfile(id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, ok := findByID(s.data.Profiles, id); !ok {
-		return errors.New("prompt profile not found")
+		return fmt.Errorf("%w: %s", ErrPromptProfileNotFound, id)
 	}
 	s.data.ActiveProfileID = id
 	s.data.UpdatedAt = time.Now().UTC()
@@ -85,7 +100,7 @@ func (s *Store) SetActiveRole(id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, ok := findByID(s.data.Roles, id); !ok {
-		return errors.New("role preset not found")
+		return fmt.Errorf("%w: %s", ErrRolePresetNotFound, id)
 	}
 	s.data.ActiveRoleID = id
 	s.data.UpdatedAt = time.Now().UTC()
@@ -96,7 +111,7 @@ func (s *Store) SetActiveMode(id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, ok := findByID(s.data.Modes, id); !ok {
-		return errors.New("work mode not found")
+		return fmt.Errorf("%w: %s", ErrWorkModeNotFound, id)
 	}
 	s.data.ActiveModeID = id
 	s.data.UpdatedAt = time.Now().UTC()
@@ -114,15 +129,15 @@ func (s *Store) saveLocked() error {
 func selectionFromState(state State) (Selection, error) {
 	profile, ok := findByID(state.Profiles, state.ActiveProfileID)
 	if !ok {
-		return Selection{}, errors.New("active prompt profile not found")
+		return Selection{}, fmt.Errorf("%w: %s", ErrPromptProfileNotFound, state.ActiveProfileID)
 	}
 	role, ok := findByID(state.Roles, state.ActiveRoleID)
 	if !ok {
-		return Selection{}, errors.New("active role preset not found")
+		return Selection{}, fmt.Errorf("%w: %s", ErrRolePresetNotFound, state.ActiveRoleID)
 	}
 	mode, ok := findByID(state.Modes, state.ActiveModeID)
 	if !ok {
-		return Selection{}, errors.New("active work mode not found")
+		return Selection{}, fmt.Errorf("%w: %s", ErrWorkModeNotFound, state.ActiveModeID)
 	}
 	return Selection{Profile: profile, Role: role, Mode: mode}, nil
 }

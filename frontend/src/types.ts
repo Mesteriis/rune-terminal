@@ -84,9 +84,70 @@ export type ExecuteToolResponse = {
   status: 'ok' | 'error' | 'requires_confirmation'
   output?: unknown
   error?: string
+  error_code?: string
   tool?: ToolInfo
   operation?: Operation
   pending_approval?: PendingApproval
+}
+
+export type PolicyOverlay = {
+  capability_additions?: string[]
+  capability_removals?: string[]
+  minimum_mutation_tier?: string
+  escalate_approval_by?: number
+  disable_trusted_auto_approve?: boolean
+  security_posture?: string
+}
+
+export type PromptProfile = {
+  id: string
+  name: string
+  description: string
+  system_prompt: string
+  overlay: PolicyOverlay
+}
+
+export type RolePreset = {
+  id: string
+  name: string
+  description: string
+  prompt: string
+  overlay: PolicyOverlay
+}
+
+export type WorkMode = {
+  id: string
+  name: string
+  description: string
+  prompt: string
+  overlay: PolicyOverlay
+}
+
+export type AgentCatalog = {
+  profiles: PromptProfile[]
+  roles: RolePreset[]
+  modes: WorkMode[]
+  active: {
+    profile: PromptProfile
+    role: RolePreset
+    mode: WorkMode
+    effective_prompt: string
+    effective_policy_profile: {
+      prompt_profile_id?: string
+      role_id?: string
+      mode_id?: string
+      security_posture?: string
+      capability_overlay?: {
+        additions?: string[]
+        removals?: string[]
+      }
+      approval_overlay?: {
+        escalate_by?: number
+        minimum_mutation_tier?: string
+      }
+      disable_trusted_auto_approve?: boolean
+    }
+  }
 }
 
 export type TrustedRule = {

@@ -66,8 +66,18 @@ Go Core
 - Go listens on loopback only and emits a ready file with the final port.
 - Tauri exposes `runtime_info` so the frontend can discover the Go base URL and auth token.
 - Frontend talks directly to the Go core over local HTTP and SSE.
+- transport keeps HTTP semantics explicit:
+  - `401` for missing or invalid auth
+  - `400` for malformed requests or invalid tool input
+  - `403` for policy denial
+  - `428` for approval-required tool executions
+  - `500` for internal failures
 
 This keeps Rust out of the main backend path while preserving a secure desktop boundary.
+
+## SSE Authentication Note
+
+Browser `EventSource` does not allow custom authorization headers. The current MVP therefore accepts the loopback auth token in the query string for terminal SSE routes only. Standard JSON endpoints do not accept query-string auth. This is a temporary tradeoff that will be replaced by scoped stream tickets.
 
 ## Security Model
 

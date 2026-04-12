@@ -71,6 +71,16 @@ type ExecuteRequest struct {
 	ApprovalToken string           `json:"approval_token,omitempty"`
 }
 
+type ErrorCode string
+
+const (
+	ErrorCodeInvalidInput     ErrorCode = "invalid_input"
+	ErrorCodeNotFound         ErrorCode = "not_found"
+	ErrorCodePolicyDenied     ErrorCode = "policy_denied"
+	ErrorCodeApprovalRequired ErrorCode = "approval_required"
+	ErrorCodeInternalError    ErrorCode = "internal_error"
+)
+
 type PendingApproval struct {
 	ID           string              `json:"id"`
 	ToolName     string              `json:"tool_name"`
@@ -90,6 +100,7 @@ type ExecuteResponse struct {
 	Status          string           `json:"status"`
 	Output          any              `json:"output,omitempty"`
 	Error           string           `json:"error,omitempty"`
+	ErrorCode       ErrorCode        `json:"error_code,omitempty"`
 	Tool            *ToolInfo        `json:"tool,omitempty"`
 	Operation       *Operation       `json:"operation,omitempty"`
 	PendingApproval *PendingApproval `json:"pending_approval,omitempty"`

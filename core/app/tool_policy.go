@@ -45,7 +45,11 @@ func (r *Runtime) safetyConfirmTool() toolruntime.Definition {
 			}, nil
 		},
 		Execute: func(ctx context.Context, execCtx toolruntime.ExecutionContext, input any) (any, error) {
-			return r.Executor.Confirm(input.(confirmInput).ApprovalID)
+			grant, err := r.Executor.Confirm(input.(confirmInput).ApprovalID)
+			if err != nil {
+				return nil, normalizeToolError(err)
+			}
+			return grant, nil
 		},
 	}
 }
@@ -77,7 +81,7 @@ func (r *Runtime) addTrustedRuleTool() toolruntime.Definition {
 		},
 		Execute: func(ctx context.Context, execCtx toolruntime.ExecutionContext, input any) (any, error) {
 			payload := input.(addTrustedRuleInput)
-			return r.Policy.AddTrustedRule(policy.TrustedRule{
+			rule, err := r.Policy.AddTrustedRule(policy.TrustedRule{
 				Scope:       payload.Scope,
 				ScopeRef:    r.normalizeScopeRef(payload.Scope, payload.ScopeRef, execCtx),
 				SubjectType: payload.SubjectType,
@@ -86,6 +90,10 @@ func (r *Runtime) addTrustedRuleTool() toolruntime.Definition {
 				Structured:  payload.Structured,
 				Note:        payload.Note,
 			})
+			if err != nil {
+				return nil, normalizeToolError(err)
+			}
+			return rule, nil
 		},
 	}
 }
@@ -145,7 +153,7 @@ func (r *Runtime) removeTrustedRuleTool() toolruntime.Definition {
 			payload := input.(removeRuleInput)
 			removed, err := r.Policy.RemoveTrustedRule(payload.RuleID)
 			if err != nil {
-				return nil, err
+				return nil, normalizeToolError(err)
 			}
 			return map[string]any{"removed": removed, "rule_id": payload.RuleID}, nil
 		},
@@ -179,7 +187,7 @@ func (r *Runtime) addIgnoreRuleTool() toolruntime.Definition {
 		},
 		Execute: func(ctx context.Context, execCtx toolruntime.ExecutionContext, input any) (any, error) {
 			payload := input.(addIgnoreRuleInput)
-			return r.Policy.AddIgnoreRule(policy.IgnoreRule{
+			rule, err := r.Policy.AddIgnoreRule(policy.IgnoreRule{
 				Scope:       payload.Scope,
 				ScopeRef:    r.normalizeScopeRef(payload.Scope, payload.ScopeRef, execCtx),
 				MatcherType: payload.MatcherType,
@@ -187,6 +195,10 @@ func (r *Runtime) addIgnoreRuleTool() toolruntime.Definition {
 				Mode:        payload.Mode,
 				Note:        payload.Note,
 			})
+			if err != nil {
+				return nil, normalizeToolError(err)
+			}
+			return rule, nil
 		},
 	}
 }
@@ -246,7 +258,7 @@ func (r *Runtime) removeIgnoreRuleTool() toolruntime.Definition {
 			payload := input.(removeRuleInput)
 			removed, err := r.Policy.RemoveIgnoreRule(payload.RuleID)
 			if err != nil {
-				return nil, err
+				return nil, normalizeToolError(err)
 			}
 			return map[string]any{"removed": removed, "rule_id": payload.RuleID}, nil
 		},

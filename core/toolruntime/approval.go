@@ -1,7 +1,7 @@
 package toolruntime
 
 import (
-	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -48,11 +48,11 @@ func (s *approvalStore) Confirm(id string) (ApprovalGrant, error) {
 
 	approval, ok := s.pending[id]
 	if !ok {
-		return ApprovalGrant{}, errors.New("pending approval not found")
+		return ApprovalGrant{}, fmt.Errorf("%w: %s", ErrPendingApprovalNotFound, id)
 	}
 	if time.Now().UTC().After(approval.ExpiresAt) {
 		delete(s.pending, id)
-		return ApprovalGrant{}, errors.New("pending approval expired")
+		return ApprovalGrant{}, fmt.Errorf("%w: %s", ErrPendingApprovalExpired, id)
 	}
 	grant := ApprovalGrant{
 		ApprovalID: approval.ID,

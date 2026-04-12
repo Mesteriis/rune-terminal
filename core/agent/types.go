@@ -28,6 +28,9 @@ type PolicyOverlay struct {
 	SecurityPosture           SecurityPosture     `json:"security_posture,omitempty"`
 }
 
+// PromptProfile defines the baseline system contract for a session. It owns the
+// base system prompt and the default security posture before role or mode
+// overlays are applied.
 type PromptProfile struct {
 	ID           string        `json:"id"`
 	Name         string        `json:"name"`
@@ -36,6 +39,8 @@ type PromptProfile struct {
 	Overlay      PolicyOverlay `json:"overlay"`
 }
 
+// RolePreset defines the durable professional lens the agent should apply
+// across a session, such as developer, reviewer, or secops.
 type RolePreset struct {
 	ID          string        `json:"id"`
 	Name        string        `json:"name"`
@@ -44,6 +49,8 @@ type RolePreset struct {
 	Overlay     PolicyOverlay `json:"overlay"`
 }
 
+// WorkMode defines the current execution posture. Modes are intentionally more
+// transient than roles and can tighten or relax approvals for the active task.
 type WorkMode struct {
 	ID          string        `json:"id"`
 	Name        string        `json:"name"`

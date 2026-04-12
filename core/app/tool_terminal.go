@@ -47,9 +47,13 @@ func (r *Runtime) termGetStateTool() toolruntime.Definition {
 		Execute: func(ctx context.Context, execCtx toolruntime.ExecutionContext, input any) (any, error) {
 			widgetID, err := r.resolveWidgetID(input.(widgetToolInput).WidgetID)
 			if err != nil {
-				return nil, err
+				return nil, normalizeToolError(err)
 			}
-			return r.Terminals.GetState(widgetID)
+			state, err := r.Terminals.GetState(widgetID)
+			if err != nil {
+				return nil, normalizeToolError(err)
+			}
+			return state, nil
 		},
 	}
 }
@@ -97,9 +101,13 @@ func (r *Runtime) termSendInputTool() toolruntime.Definition {
 			payload := input.(sendInputToolInput)
 			widgetID, err := r.resolveWidgetID(payload.WidgetID)
 			if err != nil {
-				return nil, err
+				return nil, normalizeToolError(err)
 			}
-			return r.Terminals.SendInput(widgetID, payload.Text, payload.AppendNewline)
+			result, err := r.Terminals.SendInput(widgetID, payload.Text, payload.AppendNewline)
+			if err != nil {
+				return nil, normalizeToolError(err)
+			}
+			return result, nil
 		},
 	}
 }

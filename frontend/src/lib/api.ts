@@ -1,4 +1,5 @@
 import type {
+  AgentCatalog,
   AuditEvent,
   BootstrapPayload,
   ExecuteToolRequest,
@@ -27,11 +28,47 @@ export class RtermClient {
     return this.request<{ tools: ToolInfo[] }>('/api/v1/tools')
   }
 
+  async agentCatalog(): Promise<AgentCatalog> {
+    return this.request<AgentCatalog>('/api/v1/agent')
+  }
+
+  async setActiveProfile(id: string): Promise<AgentCatalog> {
+    return this.request<AgentCatalog>('/api/v1/agent/selection/profile', {
+      method: 'PUT',
+      body: JSON.stringify({ id }),
+    })
+  }
+
+  async setActiveRole(id: string): Promise<AgentCatalog> {
+    return this.request<AgentCatalog>('/api/v1/agent/selection/role', {
+      method: 'PUT',
+      body: JSON.stringify({ id }),
+    })
+  }
+
+  async setActiveMode(id: string): Promise<AgentCatalog> {
+    return this.request<AgentCatalog>('/api/v1/agent/selection/mode', {
+      method: 'PUT',
+      body: JSON.stringify({ id }),
+    })
+  }
+
   async executeTool(request: ExecuteToolRequest): Promise<ExecuteToolResponse> {
-    return this.request<ExecuteToolResponse>('/api/v1/tools/execute', {
+    const response = await this.fetch('/api/v1/tools/execute', {
       method: 'POST',
       body: JSON.stringify(request),
     })
+    const payload = (await response.json().catch(() => null)) as
+      | ExecuteToolResponse
+      | { error?: { message?: string } }
+      | null
+    if (this.isExecuteToolResponse(payload)) {
+      return payload
+    }
+    if (!response.ok) {
+      throw new Error(payload?.error?.message || `Request failed with ${response.status}`)
+    }
+    throw new Error('tool response payload is malformed')
   }
 
   async sendTerminalInput(widgetId: string, text: string, appendNewline = false) {
@@ -48,23 +85,34 @@ export class RtermClient {
   terminalStreamUrl(widgetId: string, from = 0): string {
     const url = new URL(`/api/v1/terminal/${widgetId}/stream`, this.runtime.base_url)
     url.searchParams.set('from', String(from))
+    // EventSource cannot attach Authorization headers, so the loopback stream
+    // currently uses a scoped MVP query token until dedicated stream tickets land.
     url.searchParams.set('token', this.runtime.auth_token)
     return url.toString()
   }
 
   private async request<T>(path: string, init?: RequestInit): Promise<T> {
+    const response = await this.fetch(path, init)
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => null)) as { error?: { message?: string } } | null
+      throw new Error(payload?.error?.message || `Request failed with ${response.status}`)
+    }
+    return response.json() as Promise<T>
+  }
+
+  private async fetch(path: string, init?: RequestInit): Promise<Response> {
     const headers = new Headers(init?.headers ?? {})
     headers.set('Authorization', `Bearer ${this.runtime.auth_token}`)
     if (init?.body && !headers.has('Content-Type')) {
       headers.set('Content-Type', 'application/json')
     }
-    const response = await fetch(new URL(path, this.runtime.base_url), {
+    return fetch(new URL(path, this.runtime.base_url), {
       ...init,
       headers,
     })
-    if (!response.ok) {
-      throw new Error((await response.text()) || `Request failed with ${response.status}`)
-    }
-    return response.json() as Promise<T>
+  }
+
+  private isExecuteToolResponse(payload: unknown): payload is ExecuteToolResponse {
+    return typeof payload === 'object' && payload !== null && 'status' in payload
   }
 }

@@ -70,7 +70,11 @@ func (r *Runtime) workspaceGetActiveWidgetTool() toolruntime.Definition {
 			}, nil
 		},
 		Execute: func(ctx context.Context, execCtx toolruntime.ExecutionContext, input any) (any, error) {
-			return r.Workspace.ActiveWidget()
+			widget, err := r.Workspace.ActiveWidget()
+			if err != nil {
+				return nil, normalizeToolError(err)
+			}
+			return widget, nil
 		},
 	}
 }
@@ -102,7 +106,11 @@ func (r *Runtime) workspaceFocusWidgetTool() toolruntime.Definition {
 			}, nil
 		},
 		Execute: func(ctx context.Context, execCtx toolruntime.ExecutionContext, input any) (any, error) {
-			return r.Workspace.FocusWidget(input.(focusWidgetInput).WidgetID)
+			widget, err := r.Workspace.FocusWidget(input.(focusWidgetInput).WidgetID)
+			if err != nil {
+				return nil, normalizeToolError(err)
+			}
+			return widget, nil
 		},
 	}
 }

@@ -44,6 +44,7 @@ func (e *Executor) Execute(ctx context.Context, request ExecuteRequest) ExecuteR
 		e.appendAudit(prepared, request, false, prepared.decision.Reason)
 		return ExecuteResponse{
 			Status:          "requires_confirmation",
+			ErrorCode:       ErrorCodeApprovalRequired,
 			Tool:            toolInfo(prepared.definition),
 			Operation:       &prepared.plan.Operation,
 			PendingApproval: &pending,
@@ -55,6 +56,7 @@ func (e *Executor) Execute(ctx context.Context, request ExecuteRequest) ExecuteR
 		return ExecuteResponse{
 			Status:    "error",
 			Error:     prepared.decision.Reason,
+			ErrorCode: ErrorCodePolicyDenied,
 			Tool:      toolInfo(prepared.definition),
 			Operation: &prepared.plan.Operation,
 		}
@@ -62,10 +64,13 @@ func (e *Executor) Execute(ctx context.Context, request ExecuteRequest) ExecuteR
 
 	output, err := prepared.definition.Execute(ctx, request.Context, prepared.input)
 	if err != nil {
+		code := ErrorCodeOf(err)
+		message := ErrorMessageOf(err)
 		e.appendAudit(prepared, request, false, err.Error())
 		return ExecuteResponse{
 			Status:    "error",
-			Error:     err.Error(),
+			Error:     message,
+			ErrorCode: code,
 			Tool:      toolInfo(prepared.definition),
 			Operation: &prepared.plan.Operation,
 		}

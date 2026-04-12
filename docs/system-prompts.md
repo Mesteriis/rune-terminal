@@ -14,6 +14,8 @@ The effective prompt is the ordered composition of those layers. The effective p
 
 ## Prompt Profiles
 
+- semantic role:
+  baseline system contract and default security posture for the session
 - `balanced`
   General-purpose engineering baseline.
 - `hardened`
@@ -25,6 +27,8 @@ The effective prompt is the ordered composition of those layers. The effective p
 
 ## Role Presets
 
+- semantic role:
+  durable professional responsibility lens such as developer, reviewer, or secops
 Required built-ins:
 
 - `developer`
@@ -37,6 +41,13 @@ Required built-ins:
 
 Each role adds domain framing and may remove or add capabilities. Example: `reviewer` removes `terminal:input` and `policy:write`, while `secops` also disables trusted auto-approval.
 
+## Work Modes
+
+- semantic role:
+  current execution posture for the active task, such as explore, implement, or release
+- modes are more transient than roles
+- modes may harden or relax approvals even when the role stays the same
+
 ## Policy Integration
 
 The effective selection projects into the policy engine as:
@@ -48,3 +59,15 @@ The effective selection projects into the policy engine as:
 - named security posture
 
 This makes prompt selection observable, testable and audit-friendly.
+
+## Management API
+
+Minimal management is exposed over HTTP:
+
+- `GET /api/v1/agent`
+  Returns all available prompt profiles, role presets, work modes, and the active selection.
+- `PUT /api/v1/agent/selection/profile`
+- `PUT /api/v1/agent/selection/role`
+- `PUT /api/v1/agent/selection/mode`
+
+Each `PUT` request takes `{"id":"<selection-id>"}` and returns the updated catalog with the effective prompt and effective policy overlay.

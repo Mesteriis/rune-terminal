@@ -36,7 +36,7 @@ Observed results:
 
 - `lint:frontend`: passed
 - `build:frontend`: passed, production bundle emitted to `frontend/dist`
-- `test:go`: passed for `./cmd/... ./core/... ./internal/...`, including new `core/agent` and stricter `core/policy` coverage
+- `test:go`: passed for `./cmd/... ./core/... ./internal/...`, including new `core/transport/httpapi` coverage for HTTP status semantics and agent selection endpoints
 - `build:go`: passed
 - `build:core`: passed, binary emitted to `apps/desktop/bin/rterm-core`
 - `tauri:check`: passed
@@ -55,6 +55,10 @@ RTERM_AUTH_TOKEN=test-token ./apps/desktop/bin/rterm-core serve \
 
 Validated slice:
 
+- `GET /api/v1/agent`
+- `PUT /api/v1/agent/selection/profile`
+- `PUT /api/v1/agent/selection/role`
+- `PUT /api/v1/agent/selection/mode`
 - `workspace.list_widgets`
 - `workspace.focus_widget`
 - `term.get_state`
@@ -71,6 +75,12 @@ Validated slice:
 Smoke-test observations:
 
 - workspace booted with 2 terminal widgets
+- `GET /api/v1/agent` returned active `balanced / developer / implement` selection and the effective merged policy profile
+- agent role and mode updates succeeded through the new management endpoints
+- `POST /api/v1/tools/execute` returned `428` with `error_code: "approval_required"` for dangerous policy mutation without approval
+- `POST /api/v1/tools/execute` returned `403` with `error_code: "policy_denied"` after switching to restrictive agent posture
+- `/api/v1/agent?token=...` returned `401`, confirming query-string auth is rejected on standard JSON endpoints
+- `/api/v1/terminal/term-main/stream?token=...` returned `200`, confirming query-token auth is still accepted for SSE only
 - `workspace.focus_widget` returned an `operation` payload with `affected_widgets: ["term-side"]`
 - terminal state reported `running`
 - terminal input completed successfully

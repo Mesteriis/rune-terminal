@@ -1,10 +1,12 @@
 package httpapi
 
 import (
-	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/avm/rterm/core/terminal"
 )
 
 func (api *API) handleTerminalInput(w http.ResponseWriter, r *http.Request) {
@@ -12,13 +14,13 @@ func (api *API) handleTerminalInput(w http.ResponseWriter, r *http.Request) {
 		Text          string `json:"text"`
 		AppendNewline bool   `json:"append_newline,omitempty"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]any{"error": err.Error()})
+	if err := decodeJSON(r, &payload); err != nil {
+		writeBadRequest(w, "invalid_request", err)
 		return
 	}
 	result, err := api.runtime.Terminals.SendInput(r.PathValue("widgetID"), payload.Text, payload.AppendNewline)
 	if err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]any{"error": err.Error()})
+		writeTerminalError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, result)
@@ -29,19 +31,19 @@ func (api *API) handleTerminalStream(w http.ResponseWriter, r *http.Request) {
 	from := uint64(parseInt(r.URL.Query().Get("from"), 0))
 	snapshot, err := api.runtime.Terminals.Snapshot(widgetID, from)
 	if err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]any{"error": err.Error()})
+		writeTerminalError(w, err)
 		return
 	}
 	subscription, unsubscribe, err := api.runtime.Terminals.Subscribe(widgetID)
 	if err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]any{"error": err.Error()})
+		writeTerminalError(w, err)
 		return
 	}
 	defer unsubscribe()
 
 	flusher, ok := w.(http.Flusher)
 	if !ok {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": "streaming unsupported"})
+		writeError(w, http.StatusInternalServerError, "streaming_unsupported", "streaming unsupported")
 		return
 	}
 
@@ -70,5 +72,16 @@ func (api *API) handleTerminalStream(w http.ResponseWriter, r *http.Request) {
 			writeEvent(w, "output", chunk)
 			flusher.Flush()
 		}
+	}
+}
+
+func writeTerminalError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, terminal.ErrWidgetNotFound):
+		writeNotFound(w, "widget_not_found", err.Error())
+	case errors.Is(err, terminal.ErrCannotSendInput), errors.Is(err, terminal.ErrCannotInterrupt):
+		writeBadRequest(w, "invalid_terminal_state", err)
+	default:
+		writeInternalError(w, err)
 	}
 }
