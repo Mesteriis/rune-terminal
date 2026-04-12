@@ -2,7 +2,7 @@ import '@xterm/xterm/css/xterm.css'
 
 import { FitAddon } from '@xterm/addon-fit'
 import { Terminal } from '@xterm/xterm'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import { RtermClient } from '../lib/api'
 import type { OutputChunk, TerminalState } from '../types'
@@ -18,15 +18,21 @@ export function TerminalSurface({ client, widgetId, state, onTerminalAction }: T
   const containerRef = useRef<HTMLDivElement | null>(null)
   const terminalRef = useRef<Terminal | null>(null)
   const fitFrameRef = useRef<number | null>(null)
+  const canSendInputRef = useRef(false)
   const [input, setInput] = useState('')
 
   useEffect(() => {
+    canSendInputRef.current = Boolean(state?.can_send_input)
+  }, [state?.can_send_input])
+
+  useLayoutEffect(() => {
     const container = containerRef.current
-    if (!container) {
+    if (!container || !widgetId) {
       return
     }
     let disposed = false
     const fitAddon = new FitAddon()
+    container.replaceChildren()
 
     const terminal = new Terminal({
       cursorBlink: true,
@@ -43,6 +49,16 @@ export function TerminalSurface({ client, widgetId, state, onTerminalAction }: T
     terminal.loadAddon(fitAddon)
     terminal.open(container)
     terminalRef.current = terminal
+
+    const focusTerminal = () => {
+      if (disposed || terminalRef.current !== terminal || !container.isConnected) {
+        return
+      }
+      const textarea = container.querySelector('.xterm-helper-textarea')
+      if (textarea instanceof HTMLTextAreaElement) {
+        textarea.focus()
+      }
+    }
 
     const scheduleFit = () => {
       if (disposed || fitFrameRef.current !== null) {
@@ -68,10 +84,38 @@ export function TerminalSurface({ client, widgetId, state, onTerminalAction }: T
     })
     observer.observe(container)
     window.addEventListener('resize', scheduleFit)
+    window.requestAnimationFrame(focusTerminal)
+
+    const source = new EventSource(client.terminalStreamUrl(widgetId, 0))
+    const onInput = terminal.onData((data) => {
+      if (disposed || !canSendInputRef.current) {
+        return
+      }
+      void client.sendTerminalInput(widgetId, data, false).catch(() => {
+        // Input errors are surfaced by the terminal status and audit path; keep the UI interactive.
+      })
+    })
+    const onOutput = (event: Event) => {
+      if (disposed || terminalRef.current !== terminal) {
+        return
+      }
+      const chunk = JSON.parse((event as MessageEvent).data) as OutputChunk
+      try {
+        terminal.write(chunk.data)
+      } catch {
+        // xterm can throw while the renderer is being replaced during dev-mode remounts.
+      }
+    }
+    source.addEventListener('output', onOutput)
+    container.addEventListener('mousedown', focusTerminal)
 
     return () => {
       disposed = true
+      onInput.dispose()
+      source.removeEventListener('output', onOutput)
+      source.close()
       observer.disconnect()
+      container.removeEventListener('mousedown', focusTerminal)
       window.removeEventListener('resize', scheduleFit)
       if (fitFrameRef.current !== null) {
         window.cancelAnimationFrame(fitFrameRef.current)
@@ -79,25 +123,6 @@ export function TerminalSurface({ client, widgetId, state, onTerminalAction }: T
       }
       terminalRef.current = null
       terminal.dispose()
-    }
-  }, [])
-
-  useEffect(() => {
-    const terminal = terminalRef.current
-    if (!terminal || !widgetId) {
-      return
-    }
-
-    terminal.reset()
-    const source = new EventSource(client.terminalStreamUrl(widgetId, 0))
-    const onOutput = (event: Event) => {
-      const chunk = JSON.parse((event as MessageEvent).data) as OutputChunk
-      terminal.write(chunk.data)
-    }
-    source.addEventListener('output', onOutput)
-    return () => {
-      source.removeEventListener('output', onOutput)
-      source.close()
     }
   }, [client, widgetId])
 
