@@ -80,6 +80,40 @@ What was not revalidated in this slice:
 - `npm run tauri:dev` was not re-run after this specific AI panel refactor
 - no fresh manual UI smoke or screenshot diff was executed after this specific panel pass
 
+## Latest widget rail parity slice
+
+The following shell pass restored the TideTerm hierarchy on the right side of the workspace:
+
+- the right rail is widget-first again
+- widget focus actions moved back into the main rail stack
+- tools / settings / audit were demoted to footer utilities instead of acting like the primary right-side content model
+
+Validation executed for this slice:
+
+```bash
+npm --prefix frontend run lint
+npm --prefix frontend run build
+```
+
+Observed result:
+
+- frontend lint passed
+- frontend build passed
+
+Additional follow-up validation:
+
+```bash
+npm run validate
+```
+
+Observed result:
+
+- full repository validation passed after the rail adjustment as well
+
+What was not revalidated in this slice:
+
+- no fresh UI automation or manual Tauri launch was performed for this rail-only shell adjustment
+
 ## Tooling baseline
 
 - Go: `go1.26.2 darwin/arm64`

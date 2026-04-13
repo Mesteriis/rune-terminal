@@ -102,6 +102,7 @@ function App() {
               <WidgetDock
                 workspace={shell.workspace}
                 activeWidget={shell.activeWidget}
+                onFocusWidget={shell.focusWidget}
                 section={layout.section}
                 onSelectSection={layout.selectSection}
               />

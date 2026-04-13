@@ -363,6 +363,28 @@
   text-align: center;
 }
 
+.widget-dock-footer-actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.35rem;
+  margin-bottom: 0.2rem;
+}
+
+.widget-dock-mini {
+  min-width: 2rem;
+  padding: 0.38rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #c0ccd7;
+  font-size: 0.66rem;
+}
+
+.widget-dock-mini.active {
+  background: rgba(242, 179, 95, 0.18);
+  color: #ffd8a6;
+  border-color: rgba(242, 179, 95, 0.24);
+}
+
 .widget-dock-footer strong {
   font-size: 0.88rem;
 }
