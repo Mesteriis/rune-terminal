@@ -76,8 +76,6 @@ export function useRuntimeShell() {
 
   const { trustedRules, ignoreRules, refreshPolicyLists } = usePolicyLists({
     client: bootstrap.client,
-    workspace: bootstrap.workspace,
-    executionContext,
   })
 
   async function refreshWorkspace() {

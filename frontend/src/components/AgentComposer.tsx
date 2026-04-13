@@ -5,8 +5,6 @@ type AgentComposerProps = {
   onAttachClick: () => void | Promise<void>
 }
 
-const PROMPT_CHIPS = ['Inspect terminal', 'List tabs', 'List widgets', 'Show active tab']
-
 export function AgentComposer({ onSubmitPrompt, onAttachClick }: AgentComposerProps) {
   const [draft, setDraft] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
@@ -31,41 +29,41 @@ export function AgentComposer({ onSubmitPrompt, onAttachClick }: AgentComposerPr
 
   return (
     <div className="agent-composer-shell">
-      <textarea
-        ref={textareaRef}
-        value={draft}
-        onChange={(event) => setDraft(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter' && !event.shiftKey) {
-            event.preventDefault()
-            handleSubmit()
-          }
-        }}
-        placeholder="Ask RunaTerminal AI about the active terminal..."
-        rows={2}
-      />
-      <div className="agent-composer-toolbar">
-        <button className="ghost-button compact-button" onClick={() => void onAttachClick()} type="button">
-          Attach
+      <div className="agent-composer-input-wrap">
+        <textarea
+          ref={textareaRef}
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+              event.preventDefault()
+              handleSubmit()
+            }
+          }}
+          placeholder="Ask RunaTerminal AI anything..."
+          rows={2}
+        />
+        <button
+          className="agent-composer-icon agent-composer-attach"
+          onClick={() => void onAttachClick()}
+          type="button"
+          title="Attach files"
+        >
+          <i className="fa fa-paperclip" />
         </button>
-        <div className="agent-composer-chip-row">
-          {PROMPT_CHIPS.map((chip) => (
-            <button
-              key={chip}
-              className="agent-composer-chip"
-              type="button"
-              onClick={() => void onSubmitPrompt(chip)}
-            >
-              {chip}
-            </button>
-          ))}
-        </div>
+        <button
+          className="agent-composer-icon agent-composer-send"
+          onClick={handleSubmit}
+          disabled={!draft.trim()}
+          type="button"
+          title="Send message"
+        >
+          <i className="fa fa-paper-plane" />
+        </button>
       </div>
       <div className="agent-composer-footer">
-        <span>Runtime-backed actions only until conversation transport lands.</span>
-        <button className="ghost-button" onClick={handleSubmit} disabled={!draft.trim()}>
-          Send
-        </button>
+        <span>Enter to send · Shift+Enter for newline</span>
+        <span>Conversation transport is still runtime-backed for now.</span>
       </div>
     </div>
   )

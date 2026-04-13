@@ -1,5 +1,6 @@
 import { AgentComposer } from './AgentComposer'
 import { AgentModeStrip } from './AgentModeStrip'
+import { AgentPanelStatus } from './AgentPanelStatus'
 import { AgentTranscript } from './AgentTranscript'
 import { AgentWelcomeMessage } from './AgentWelcomeMessage'
 import type {
@@ -69,52 +70,28 @@ export function AgentPanel({
           />
         ) : null}
 
-        {notice ? (
-          <article className={`ai-message-card ${notice.tone === 'error' ? 'ai-message-error' : 'ai-message-assistant'}`}>
-            <header>
-              <span className="ai-message-badge">{notice.tone === 'success' ? 'Completed' : 'Runtime notice'}</span>
-              <button className="ghost-button compact-button" onClick={onDismissNotice}>
-                Dismiss
-              </button>
-            </header>
-            <strong>{notice.title}</strong>
-            {notice.detail ? <p>{notice.detail}</p> : null}
-          </article>
-        ) : null}
-
-        {pendingApproval ? (
-          <article className="ai-message-card ai-message-approval">
-            <header>
-              <span className="ai-message-badge">Approval required</span>
-              <small>{pendingApproval.approval_tier}</small>
-            </header>
-            <strong>{pendingApproval.tool_name}</strong>
-            <p>{pendingApproval.summary}</p>
-            <div className="button-row">
-              <button onClick={() => void onConfirmApproval()} disabled={isConfirmingApproval}>
-                {isConfirmingApproval ? 'Confirming…' : 'Confirm and continue'}
-              </button>
-              <button className="ghost-button" onClick={() => onSelectSection('audit')}>
-                Review audit
-              </button>
-            </div>
-          </article>
-        ) : null}
+        <AgentPanelStatus
+          notice={notice}
+          pendingApproval={pendingApproval}
+          isConfirmingApproval={isConfirmingApproval}
+          onConfirmApproval={onConfirmApproval}
+          onDismissNotice={onDismissNotice}
+        />
 
         <AgentTranscript entries={agentFeed} />
       </div>
 
       <footer className="agent-composer">
         <AgentComposer onSubmitPrompt={onSubmitPrompt} onAttachClick={onAttachClick} />
-        <div className="agent-composer-actions">
-          <button className="ghost-button" onClick={() => onSelectSection('tools')}>
-            Open tools
+        <div className="agent-panel-links">
+          <button className="ghost-button compact-button" onClick={() => onSelectSection('tools')}>
+            Operator tools
           </button>
-          <button className="ghost-button" onClick={() => onSelectSection('policy')}>
-            Open settings
+          <button className="ghost-button compact-button" onClick={() => onSelectSection('policy')}>
+            Settings
           </button>
-          <button className="ghost-button" onClick={() => onSelectSection('audit')}>
-            Open audit
+          <button className="ghost-button compact-button" onClick={() => onSelectSection('audit')}>
+            Audit
           </button>
         </div>
       </footer>

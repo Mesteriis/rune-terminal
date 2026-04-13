@@ -4,7 +4,9 @@ import type {
   BootstrapPayload,
   ExecuteToolRequest,
   ExecuteToolResponse,
+  IgnoreRule,
   ToolInfo,
+  TrustedRule,
   Workspace,
 } from '../types'
 import type { RuntimeInfo } from './runtime'
@@ -31,6 +33,14 @@ export class RtermClient {
 
   async agentCatalog(): Promise<AgentCatalog> {
     return this.request<AgentCatalog>('/api/v1/agent')
+  }
+
+  async trustedRules(): Promise<{ rules: TrustedRule[] }> {
+    return this.request<{ rules: TrustedRule[] }>('/api/v1/policy/trusted-rules')
+  }
+
+  async ignoreRules(): Promise<{ rules: IgnoreRule[] }> {
+    return this.request<{ rules: IgnoreRule[] }>('/api/v1/policy/ignore-rules')
   }
 
   async setActiveProfile(id: string): Promise<AgentCatalog> {

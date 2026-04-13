@@ -2,7 +2,7 @@ import { AgentPanel } from './AgentPanel'
 import { AgentHeaderMenuButton } from './AgentHeaderMenuButton'
 import { AuditPanel } from './AuditPanel'
 import { PolicyPanel } from './PolicyPanel'
-import { SHELL_SECTION_LABELS, type ShellSection } from './ShellSections'
+import type { ShellSection } from './ShellSections'
 import { ToolConsolePanel } from './ToolConsolePanel'
 import type {
   AgentCatalog,
@@ -94,8 +94,8 @@ export function AgentSidebar({
             </div>
             <span>
               {widgetContextEnabled && workspaceContext?.active_widget_id
-                ? `Attached to ${workspaceContext.active_widget_id} · ${SHELL_SECTION_LABELS[section]}`
-                : `Agent panel is running without widget context · ${SHELL_SECTION_LABELS[section]}`}
+                ? `Attached to ${workspaceContext.active_widget_id}`
+                : 'Agent panel is running without widget context'}
             </span>
           </div>
         </header>

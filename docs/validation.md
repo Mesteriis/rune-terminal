@@ -4,6 +4,108 @@ Validation date: `2026-04-13`
 
 All commands below were run against the repository in its current state on macOS arm64.
 
+## Latest console-error hardening slice
+
+The latest fix targeted startup console noise from shell self-management requests:
+
+- startup reads for trusted rules and ignore rules no longer go through `POST /api/v1/tools/execute`
+- the shell now uses direct policy management endpoints for those read-only lists
+- this removes spurious `403 Forbidden` console errors when the active role/mode/profile strips policy capabilities from tool execution
+
+Validation executed for this slice:
+
+```bash
+./scripts/go.sh test ./core/transport/httpapi
+npm --prefix frontend run lint
+npm --prefix frontend run build
+npm run validate
+```
+
+Observed result:
+
+- transport tests passed, including the new auth + payload coverage for policy list endpoints
+- frontend lint passed
+- frontend build passed
+- full repository validation passed
+
+Additional launch/console smoke validation:
+
+```bash
+npm run build:core
+RTERM_AUTH_TOKEN=test-token apps/desktop/bin/rterm-core serve --workspace-root . --state-dir /tmp/rterm-state-console-check
+VITE_RTERM_API_BASE=http://127.0.0.1:<port> VITE_RTERM_AUTH_TOKEN=test-token npm --prefix frontend run dev -- --host 127.0.0.1 --port 4174 --strictPort
+node /tmp/.../check.mjs
+```
+
+Observed result:
+
+- a fresh `rterm-core` binary was required for the new management endpoints to be present
+- after rebuilding the sidecar and restarting the dev server, the browser-backed smoke reported:
+  - `errors: []`
+  - `badResponses: []`
+  - terminal shell present on the page
+- startup no longer emitted `403 Forbidden` requests for policy list loading in the browser console
+
+## Latest AI panel parity slice
+
+The latest parity slice focused on the TideTerm-derived AI panel only:
+
+- welcome-state grammar moved closer to TideTerm
+- transcript cards became more readable and less operator-first
+- mode/profile/role controls stayed visible but moved into a tighter top strip
+- composer moved toward TideTerm-style inline attach/send affordances
+- operator links were demoted from the primary composer surface
+
+Validation executed for this slice:
+
+```bash
+npm --prefix frontend run lint
+npm --prefix frontend run build
+npm run validate
+npm run tauri:dev
+```
+
+Observed result:
+
+- frontend lint passed
+- frontend build passed
+- full repository validation passed
+- `tauri:dev` still launched the desktop shell and fresh sidecar successfully
+
+Additional browser-backed AI panel smoke validation:
+
+```bash
+npm run build:core
+RTERM_AUTH_TOKEN=test-token apps/desktop/bin/rterm-core serve --workspace-root . --state-dir /tmp/rterm-state-ai-smoke
+VITE_RTERM_API_BASE=http://127.0.0.1:<port> VITE_RTERM_AUTH_TOKEN=test-token npm --prefix frontend run dev -- --host 127.0.0.1 --port 4176 --strictPort
+node /tmp/.../check-ai-panel.mjs
+```
+
+Smoke checklist covered:
+
+- app shell loads with the AI panel visible
+- welcome state renders
+- quick action still works
+- mode/profile/role controls still work
+- composer submits a runtime-backed prompt
+- transcript renders the resulting messages
+- approval banner becomes visible after a dangerous operator action
+
+Observed result:
+
+- `welcomeVisible: true`
+- `transcriptHasInspect: true`
+- `transcriptHasTabs: true`
+- `approvalVisible: true`
+- `panelVisible: true`
+- `composerVisible: true`
+
+Console/network note:
+
+- no unexpected console or page errors were observed during normal AI panel use
+- the browser-backed smoke still records an expected `428 Precondition Required` entry when a dangerous tool intentionally triggers the approval flow through `POST /api/v1/tools/execute`
+- this is currently an explicit transport tradeoff, not a hidden failure; the UI handled it correctly and showed the approval banner
+
 ## Frontend baseline import validation
 
 The parity-first frontend import path was exercised directly:

@@ -712,18 +712,50 @@
 
 .agent-mode-strip {
   display: grid;
-  gap: 0.55rem;
-  padding: 0.7rem 0.8rem;
+  gap: 0.6rem;
+  padding: 0.78rem 0.85rem;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.agent-mode-strip label {
+.agent-mode-strip-copy {
   display: grid;
-  gap: 0.3rem;
-  font-size: 0.75rem;
+  gap: 0.18rem;
+}
+
+.agent-mode-strip-copy strong {
+  color: #eef4fb;
+  font-size: 0.88rem;
+}
+
+.agent-mode-strip-copy span {
+  color: #90a0b0;
+  font-size: 0.74rem;
+}
+
+.agent-mode-strip-controls {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.agent-mode-strip-controls label {
+  display: grid;
+  gap: 0.28rem;
+  font-size: 0.7rem;
   color: #92a0ae;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.agent-mode-strip select {
+  width: 100%;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(17, 23, 32, 0.9);
+  color: #eef4fb;
+  padding: 0.48rem 0.6rem;
+  font: inherit;
 }
 
 .ai-message-card {
@@ -738,6 +770,11 @@
 .agent-transcript {
   display: grid;
   gap: 0.8rem;
+}
+
+.agent-panel-status {
+  display: grid;
+  gap: 0.65rem;
 }
 
 .ai-message-card header {
@@ -762,6 +799,16 @@
   line-height: 1.45;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+.ai-message-pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: #d5dfea;
 }
 
 .ai-message-badge {
@@ -873,6 +920,47 @@
   gap: 0.75rem;
 }
 
+.ai-welcome-grid {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.ai-welcome-grid > div {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.7rem;
+  align-items: start;
+}
+
+.ai-welcome-grid strong {
+  font-size: 0.84rem;
+}
+
+.ai-welcome-grid p {
+  margin-top: 0.14rem;
+  font-size: 0.8rem;
+}
+
+.ai-welcome-icon {
+  width: 1.9rem;
+  height: 1.9rem;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(242, 179, 95, 0.18);
+  color: #ffd8a6;
+}
+
+.ai-welcome-card kbd {
+  padding: 0.08rem 0.34rem;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.05);
+  color: #e9f0f7;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.71rem;
+}
+
 .agent-composer {
   display: grid;
   gap: 0.65rem;
@@ -886,31 +974,8 @@
   gap: 0.55rem;
 }
 
-.agent-composer-toolbar {
-  display: flex;
-  gap: 0.6rem;
-  align-items: flex-start;
-}
-
-.agent-composer-chip-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-}
-
-.agent-composer-chip {
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.04);
-  color: #d7e0e8;
-  border-radius: 999px;
-  padding: 0.32rem 0.62rem;
-  font-size: 0.73rem;
-  cursor: pointer;
-}
-
-.agent-composer-chip:hover {
-  border-color: rgba(120, 164, 214, 0.3);
-  background: rgba(120, 164, 214, 0.08);
+.agent-composer-input-wrap {
+  position: relative;
 }
 
 .agent-composer-shell textarea {
@@ -922,7 +987,7 @@
   border-radius: 12px;
   background: rgba(17, 23, 32, 0.92);
   color: #eef4fb;
-  padding: 0.8rem 0.9rem;
+  padding: 0.8rem 3.9rem 0.8rem 0.9rem;
   line-height: 1.45;
 }
 
@@ -941,6 +1006,7 @@
   justify-content: space-between;
   gap: 0.75rem;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .agent-composer-footer span {
@@ -949,15 +1015,46 @@
   line-height: 1.4;
 }
 
-.agent-composer-actions {
+.agent-panel-links {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.45rem;
 }
 
-.agent-composer-actions .ghost-button,
-.ai-message-approval .ghost-button {
+.agent-panel-links .ghost-button,
+.ai-message-approval .ghost-button,
+.approval-bar .ghost-button {
   background: rgba(255, 255, 255, 0.05);
+}
+
+.agent-composer-icon {
+  position: absolute;
+  right: 0.8rem;
+  width: 1.7rem;
+  height: 1.7rem;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #c4cfda;
+}
+
+.agent-composer-icon:hover:not(:disabled) {
+  background: rgba(242, 179, 95, 0.18);
+  color: #ffd8a6;
+}
+
+.agent-composer-icon:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.agent-composer-attach {
+  top: 0.82rem;
+}
+
+.agent-composer-send {
+  bottom: 0.82rem;
 }
 
 .inline-notice {

@@ -20,13 +20,36 @@ export function AgentWelcomeMessage({
     <article className="ai-message-card ai-message-assistant ai-welcome-card">
       <header>
         <span className="ai-message-badge">RunaTerminal AI</span>
-        <small>Runtime-backed assistant panel</small>
+        <small>Terminal-aware assistant</small>
       </header>
-      <strong>Terminal-first workflow stays in the center. AI stays at the side.</strong>
+      <strong>Welcome to RunaTerminal AI</strong>
       <p>
-        This panel follows the TideTerm AI shell pattern, but it is currently bound to the new Go runtime, policy
-        engine, and audit trail rather than a full conversation backend.
+        The panel follows the TideTerm AI shell pattern: terminal work stays in the center, while chat, approvals,
+        and operator surfaces stay at the side.
       </p>
+      <div className="ai-welcome-grid">
+        <div>
+          <span className="ai-welcome-icon"><i className="fa fa-plug" /></span>
+          <div>
+            <strong>Widget context</strong>
+            <p>When enabled, the assistant reads the active terminal widget and can act on it.</p>
+          </div>
+        </div>
+        <div>
+          <span className="ai-welcome-icon"><i className="fa fa-paperclip" /></span>
+          <div>
+            <strong>Composer flow</strong>
+            <p>The TideTerm-style attach control is visible here; attachment transport still needs a dedicated backend path.</p>
+          </div>
+        </div>
+        <div>
+          <span className="ai-welcome-icon"><i className="fa fa-keyboard" /></span>
+          <div>
+            <strong>Input shortcuts</strong>
+            <p><kbd>Enter</kbd> sends. <kbd>Shift</kbd> + <kbd>Enter</kbd> inserts a newline.</p>
+          </div>
+        </div>
+      </div>
       <div className="ai-message-tags">
         <span>{catalog?.active.profile.name ?? 'Loading profile…'}</span>
         <span>{catalog?.active.role.name ?? 'Loading role…'}</span>
@@ -45,8 +68,11 @@ export function AgentWelcomeMessage({
         <button className="ghost-button" onClick={() => void onRunAgentAction('List tabs', { tool_name: 'workspace.list_tabs' })}>
           List tabs
         </button>
-        <button className="ghost-button" onClick={() => onSelectSection('audit')}>
-          Open audit
+        <button className="ghost-button" onClick={() => void onRunAgentAction('List widgets', { tool_name: 'workspace.list_widgets' })}>
+          List widgets
+        </button>
+        <button className="ghost-button" onClick={() => onSelectSection('policy')}>
+          Open settings
         </button>
       </div>
     </article>

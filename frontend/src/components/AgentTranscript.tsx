@@ -42,7 +42,7 @@ export function AgentTranscript({ entries }: AgentTranscriptProps) {
             </div>
           ) : null}
           <strong>{entry.title}</strong>
-          {entry.body ? <p>{entry.body}</p> : null}
+          {entry.body ? renderBody(entry.body) : null}
           {entry.operation_summary && entry.operation_summary !== entry.title ? (
             <div className="ai-tooluse-detail">
               <span className="ai-tooluse-detail-label">Operation</span>
@@ -75,6 +75,18 @@ export function AgentTranscript({ entries }: AgentTranscriptProps) {
       <div ref={transcriptEndRef} />
     </section>
   )
+}
+
+function renderBody(body: string) {
+  if (body.includes('\n') || looksStructured(body)) {
+    return <pre className="ai-message-pre">{body}</pre>
+  }
+  return <p>{body}</p>
+}
+
+function looksStructured(body: string) {
+  const trimmed = body.trim()
+  return trimmed.startsWith('{') || trimmed.startsWith('[')
 }
 
 function resolveStatusTone(entry: AgentFeedEntry) {

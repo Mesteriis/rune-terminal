@@ -1,47 +1,36 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import { RtermClient } from '../lib/api'
-import type { IgnoreRule, TrustedRule, Workspace } from '../types'
+import type { IgnoreRule, TrustedRule } from '../types'
 
 type UsePolicyListsParams = {
   client: RtermClient | null
-  workspace: Workspace | null
-  executionContext: (workspace?: Workspace | null) => {
-    workspace_id?: string
-    repo_root?: string
-    active_widget_id?: string
-  } | undefined
 }
 
-export function usePolicyLists({ client, workspace, executionContext }: UsePolicyListsParams) {
+export function usePolicyLists({ client }: UsePolicyListsParams) {
   const [trustedRules, setTrustedRules] = useState<TrustedRule[]>([])
   const [ignoreRules, setIgnoreRules] = useState<IgnoreRule[]>([])
 
   const refreshPolicyLists = useCallback(async () => {
-    if (!client || !workspace) {
+    if (!client) {
       setTrustedRules([])
       setIgnoreRules([])
       return
     }
 
-    const [trusted, ignore] = await Promise.all([
-      client.executeTool({
-        tool_name: 'safety.list_trusted_rules',
-        context: executionContext(workspace),
-      }),
-      client.executeTool({
-        tool_name: 'safety.list_ignore_rules',
-        context: executionContext(workspace),
-      }),
-    ])
+    try {
+      const [trusted, ignore] = await Promise.all([
+        client.trustedRules(),
+        client.ignoreRules(),
+      ])
 
-    if (trusted.status === 'ok') {
-      setTrustedRules(((trusted.output as { rules?: TrustedRule[] })?.rules ?? []) as TrustedRule[])
+      setTrustedRules(trusted.rules ?? [])
+      setIgnoreRules(ignore.rules ?? [])
+    } catch {
+      setTrustedRules([])
+      setIgnoreRules([])
     }
-    if (ignore.status === 'ok') {
-      setIgnoreRules(((ignore.output as { rules?: IgnoreRule[] })?.rules ?? []) as IgnoreRule[])
-    }
-  }, [client, executionContext, workspace])
+  }, [client])
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
