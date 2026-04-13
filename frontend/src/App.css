@@ -562,13 +562,13 @@
 }
 
 .widget-dock {
-  flex: 0 0 4.5rem;
-  width: 4.5rem;
-  min-width: 4.5rem;
-  max-width: 4.5rem;
+  flex: 0 0 3rem;
+  width: 3rem;
+  min-width: 3rem;
+  max-width: 3rem;
   min-height: 0;
   display: grid;
-  grid-template-rows: 3.75rem minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr) auto;
   border-left: 1px solid rgba(255, 255, 255, 0.08);
   background: linear-gradient(180deg, #101721, #0b1118);
   overflow: hidden;
@@ -578,17 +578,17 @@
   min-height: 0;
   display: grid;
   align-content: start;
-  gap: 0.45rem;
-  padding: 0.8rem 0.5rem;
+  gap: 0.25rem;
+  padding: 0.4rem 0.25rem 0.2rem;
   overflow-y: auto;
 }
 
 .widget-dock-button {
   display: grid;
   place-items: center;
-  gap: 0.2rem;
-  padding: 0.7rem 0.35rem;
-  border-radius: 12px;
+  padding: 0.28rem 0.15rem;
+  min-height: 2rem;
+  border-radius: 8px;
   background: transparent;
   border: 1px solid transparent;
   color: #9aa7b6;
@@ -597,19 +597,13 @@
 .widget-dock-button span {
   display: inline-grid;
   place-items: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
+  width: 1.8rem;
+  height: 1.8rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.74rem;
+  font-size: 0.65rem;
   font-weight: 700;
-}
-
-.widget-dock-button small {
-  font-size: 0.58rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
 }
 
 .widget-dock-button.active {
@@ -625,17 +619,10 @@
 
 .widget-dock-footer {
   display: grid;
-  gap: 0.15rem;
-  padding: 0.8rem 0.45rem 1rem;
+  gap: 0.3rem;
+  justify-items: center;
+  padding: 0.35rem 0.2rem 0.55rem;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
-  text-align: center;
-}
-
-.widget-dock-footer-actions {
-  display: flex;
-  justify-content: center;
-  gap: 0.35rem;
-  margin-bottom: 0.25rem;
 }
 
 .widget-dock-menu-shell {
@@ -643,15 +630,15 @@
 }
 
 .widget-dock-mini {
-  min-width: 2.15rem;
-  min-height: 2.15rem;
+  min-width: 2rem;
+  min-height: 2rem;
   display: inline-grid;
   place-items: center;
-  padding: 0.42rem 0.5rem;
-  border-radius: 999px;
+  padding: 0.25rem;
+  border-radius: 8px;
   background: rgba(255, 255, 255, 0.05);
   color: #c0ccd7;
-  font-size: 0.88rem;
+  font-size: 0.78rem;
 }
 
 .widget-dock-mini.active {
@@ -665,7 +652,7 @@
   right: calc(100% + 0.45rem);
   bottom: 0;
   z-index: 30;
-  width: 15.25rem;
+  width: 14.5rem;
   max-height: min(32rem, calc(100vh - 7rem));
   display: grid;
   gap: 0.2rem;
@@ -700,16 +687,6 @@
 .widget-dock-menu button span {
   color: #8d9baa;
   font-size: 0.72rem;
-  line-height: 1.35;
-}
-
-.widget-dock-footer strong {
-  font-size: 0.88rem;
-}
-
-.widget-dock-footer span {
-  color: #7e8b99;
-  font-size: 0.64rem;
   line-height: 1.35;
 }
 

@@ -1,4 +1,4 @@
-import { SHELL_SECTION_LABELS, type ShellSection } from './ShellSections'
+import { type ShellSection } from './ShellSections'
 import { type PolicyView } from './PolicyViews'
 import type { Widget, Workspace } from '../types'
 import { WidgetDockMenuButton } from './WidgetDockMenuButton'
@@ -22,6 +22,8 @@ export function WidgetDock({
   onSelectSection,
   onSelectPolicyView,
 }: WidgetDockProps) {
+  const launcherActive = section === 'launcher' || section === 'connections' || section === 'tools'
+  const settingsActive = section === 'policy' || section === 'audit'
   const launcherItems = [
     {
       label: 'Launcher',
@@ -67,60 +69,53 @@ export function WidgetDock({
 
   return (
     <aside className="widget-dock">
-      <div className="widget-dock-brand">RT</div>
       <div className="widget-dock-stack">
         {(workspace?.widgets ?? []).map((widget) => (
           <button
             key={widget.id}
             className={widget.id === activeWidget?.id ? 'widget-dock-button active' : 'widget-dock-button'}
             title={widget.description ?? widget.title}
+            aria-label={widget.title}
             onClick={() => void onFocusWidget(widget)}
           >
             <span>{widget.title.slice(0, 2).toUpperCase()}</span>
-            <small>{widget.kind}</small>
           </button>
         ))}
       </div>
       <div className="widget-dock-footer">
-        <div className="widget-dock-footer-actions">
-          <WidgetDockMenuButton
-            label={<i className="fa fa-cube" />}
-            title="Launcher and shell utilities"
-            items={launcherItems}
-          />
-          <WidgetDockMenuButton
-            label={<i className="fa fa-gear" />}
-            title="Settings and help"
-            items={[
-              {
-                label: 'Settings overview',
-                detail: 'Open shell settings and privacy controls',
-                onSelect: () => onSelectPolicyView('overview'),
-              },
-              {
-                label: 'Trusted tools',
-                detail: 'Review tool rules that can skip repeated confirmation',
-                onSelect: () => onSelectPolicyView('trusted'),
-              },
-              {
-                label: 'Secret shield',
-                detail: 'Manage protected path rules and redaction behavior',
-                onSelect: () => onSelectPolicyView('ignore'),
-              },
-              {
-                label: 'Help',
-                detail: 'Open the shell help card and utility entry points',
-                onSelect: () => onSelectPolicyView('help'),
-              },
-            ]}
-          />
-        </div>
-        <strong>{activeWidget?.title ?? `${workspace?.widgets.length ?? 0} widgets`}</strong>
-        <span>
-          {section === 'agent'
-            ? activeWidget?.description ?? activeWidget?.kind ?? 'No active widget'
-            : `Focused shell utility: ${SHELL_SECTION_LABELS[section]}`}
-        </span>
+        <WidgetDockMenuButton
+          label={<i className="fa fa-cube" />}
+          title="Launcher and shell utilities"
+          items={launcherItems}
+          active={launcherActive}
+        />
+        <WidgetDockMenuButton
+          label={<i className="fa fa-gear" />}
+          title="Settings and help"
+          active={settingsActive}
+          items={[
+            {
+              label: 'Settings overview',
+              detail: 'Open shell settings and privacy controls',
+              onSelect: () => onSelectPolicyView('overview'),
+            },
+            {
+              label: 'Trusted tools',
+              detail: 'Review tool rules that can skip repeated confirmation',
+              onSelect: () => onSelectPolicyView('trusted'),
+            },
+            {
+              label: 'Secret shield',
+              detail: 'Manage protected path rules and redaction behavior',
+              onSelect: () => onSelectPolicyView('ignore'),
+            },
+            {
+              label: 'Help',
+              detail: 'Open the shell help card and utility entry points',
+              onSelect: () => onSelectPolicyView('help'),
+            },
+          ]}
+        />
       </div>
     </aside>
   )

@@ -11,9 +11,10 @@ type WidgetDockMenuButtonProps = {
   label: ReactNode
   title: string
   items: MenuItem[]
+  active?: boolean
 }
 
-export function WidgetDockMenuButton({ label, title, items }: WidgetDockMenuButtonProps) {
+export function WidgetDockMenuButton({ label, title, items, active = false }: WidgetDockMenuButtonProps) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement | null>(null)
 
@@ -34,7 +35,7 @@ export function WidgetDockMenuButton({ label, title, items }: WidgetDockMenuButt
     <div className="widget-dock-menu-shell" ref={rootRef}>
       <button
         type="button"
-        className={open ? 'widget-dock-mini active' : 'widget-dock-mini'}
+        className={open || active ? 'widget-dock-mini active' : 'widget-dock-mini'}
         title={title}
         onClick={() => setOpen((current) => !current)}
       >
