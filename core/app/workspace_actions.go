@@ -82,6 +82,7 @@ func (r *Runtime) CreateTerminalTabWithConnection(ctx context.Context, title str
 	}
 	connection, err := r.connectionForWidget(connectionID)
 	if err != nil {
+		_, _, _ = r.Connections.ReportLaunchResult(connectionID, err)
 		return CreateTerminalTabResult{}, err
 	}
 	if _, err := r.Terminals.StartSession(ctx, terminal.LaunchOptions{
@@ -89,8 +90,10 @@ func (r *Runtime) CreateTerminalTabWithConnection(ctx context.Context, title str
 		WorkingDir: r.RepoRoot,
 		Connection: connection,
 	}); err != nil {
+		_, _, _ = r.Connections.ReportLaunchResult(connectionID, err)
 		return CreateTerminalTabResult{}, err
 	}
+	_, _, _ = r.Connections.ReportLaunchResult(connectionID, nil)
 	snapshot := r.Workspace.AddTerminalTab(
 		workspace.Tab{
 			ID:          tabID,

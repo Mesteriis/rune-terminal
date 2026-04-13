@@ -4,6 +4,26 @@ Validation date: `2026-04-13`
 
 All commands below were run against the repository in its current state on macOS arm64.
 
+## Latest connection lifecycle status-model slice
+
+The latest remote hardening step focused only on introducing an explicit lifecycle model for connections:
+
+- saved SSH profiles now keep separate preflight-check and launch-result state
+- the runtime now distinguishes saved profile state, active default target, last check result, last launch result, and shell-visible usability
+- terminal launch paths now report SSH launch success or failure back into the connection domain instead of leaving remote usability implicit
+
+Validation executed for this step:
+
+```bash
+./scripts/go.sh test ./core/connections ./core/app ./core/terminal
+```
+
+Observed result:
+
+- connection lifecycle tests passed
+- app tests passed with the new launch-result reporting
+- terminal tests still passed after the connection-aware launch-report integration
+
 ## Latest remote / SSH foundation slice
 
 The latest parity slice focused only on the first remote / SSH foundation:

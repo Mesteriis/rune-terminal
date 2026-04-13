@@ -75,6 +75,7 @@ func (r *Runtime) bootstrapSessions(ctx context.Context) error {
 		}
 		connection, err := r.connectionForWidget(widget.ConnectionID)
 		if err != nil {
+			_, _, _ = r.Connections.ReportLaunchResult(widget.ConnectionID, err)
 			return err
 		}
 		if _, err := r.Terminals.StartSession(ctx, terminal.LaunchOptions{
@@ -82,8 +83,10 @@ func (r *Runtime) bootstrapSessions(ctx context.Context) error {
 			WorkingDir: r.RepoRoot,
 			Connection: connection,
 		}); err != nil {
+			_, _, _ = r.Connections.ReportLaunchResult(widget.ConnectionID, err)
 			return err
 		}
+		_, _, _ = r.Connections.ReportLaunchResult(widget.ConnectionID, nil)
 	}
 	return nil
 }
