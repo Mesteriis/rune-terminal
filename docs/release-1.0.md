@@ -55,7 +55,7 @@ The following are intentionally out of scope for `1.0.0`:
 | Tabs/workspace shell | `partial` | Strong enough for daily shell use, but still needs release-control tracking and bug closure. |
 | Terminal daily-driver behavior | `partial` | Good enough to move off the main parity path, but still needs final release hardening. |
 | Remote SSH | `partial` | One honest happy path exists; failure handling is clearer; still not broad remote parity. |
-| AI conversation | `partial` | Real backend conversation exists; AI command execution path is still the next release-critical gap. |
+| AI conversation | `partial` | Real backend conversation exists, and `/run <command>` now executes through the real runtime path and returns a backend summary. Remaining gap is daily-driver hardening, not missing capability. |
 | Settings/control/launcher | `partial` | Usable and shell-visible, but still needs release triage rather than more broad parity drift. |
 | Audit/trust/secret shield | `partial` | Present and usable; must remain stable through the release slices. |
 | Docs/validation discipline | `done` | Current process is truthful; must be maintained through release work. |
@@ -64,10 +64,10 @@ The following are intentionally out of scope for `1.0.0`:
 
 Current release blockers, in priority order:
 
-1. AI terminal command execution flow is not yet a complete user-facing release feature.
+1. AI terminal command execution now exists, but still needs daily-driver hardening and broader shell-visible validation.
 2. Remote SSH is honest but still needs stronger launch/retry/daily-driver confidence.
 3. Terminal and shell slices need a final release-hardening pass rather than more parity expansion.
-4. Release control documents need to become the source of truth for prioritization and completion.
+4. Release control documents must stay aligned with real validation as slices land.
 
 ## Release checklist
 
@@ -78,7 +78,7 @@ Current release blockers, in priority order:
 - [ ] Tabs/workspace flows are usable for daily work.
 - [ ] Terminal is stable enough for daily-driver use.
 - [ ] One honest remote SSH path is validated with clear shell feedback.
-- [ ] AI panel supports one real command-execute-and-explain path.
+- [ ] AI panel supports one real command-execute-and-explain path and has release-worthy user validation.
 - [ ] Approvals and policy still gate dangerous execution.
 - [ ] Settings/control/launcher surfaces remain usable.
 - [ ] Audit and secret-shield behavior remain visible.

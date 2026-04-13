@@ -166,6 +166,23 @@ Confirmable boundaries:
 - The AI panel now keeps a merged transcript:
   - backend-owned conversation messages persisted by the Go runtime
   - runtime-backed quick actions, approval decisions, and posture updates kept in the frontend activity feed
+- The AI composer now supports one explicit command execution grammar:
+  - `/run <command>`
+  - `run: <command>`
+- That grammar is intentionally narrow for `1.0.0`. Free-text prompts still use the conversation backend. Only explicit `/run` prompts trigger terminal command execution.
+- `/run` currently targets the active terminal widget only.
+- The frontend AI command flow is:
+  1. capture the current terminal `next_seq`
+  2. execute `term.send_input` through the real tool/runtime/policy path
+  3. wait for terminal output from that `next_seq`
+  4. call the backend explanation route
+  5. append a real assistant message to the persisted conversation transcript
+- The backend explanation route does not execute commands by itself. It explains the observed result of a command that already ran through the runtime.
+- Approval remains in force for AI command execution:
+  - if the active policy profile escalates `term.send_input` to `dangerous`, `/run` returns an approval requirement
+  - once approved, the same runtime/tool path is retried with the one-time approval token
+  - the resulting explanation call records `approval_used:true` in audit
+- Capability-removing modes such as `secure` can still forbid `/run` entirely. In that case the AI command path is denied rather than approval-gated.
 - The AI panel footer now includes a TideTerm-shaped composer. It still maps a small set of explicit runtime-backed intents such as terminal inspection, tab listing, widget listing, active-tab lookup, and terminal interrupt to the tool/runtime path, but all other free-text prompts now go through the real backend conversation route.
 - The conversation backend currently uses Ollama over HTTP with non-streaming chat completions. Assistant responses are real provider outputs, not local placeholders.
 - Role preset, work mode, and prompt profile selection project into the backend system prompt through the Go app layer before the request reaches the provider.

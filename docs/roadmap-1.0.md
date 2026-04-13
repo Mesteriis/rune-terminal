@@ -14,7 +14,7 @@ Each milestone should be closed with small commits, explicit validation, and tru
 - Validation:
   docs truthfulness review
 - Status:
-  `in_progress`
+  `done`
 
 ## Milestone 2 — Stable terminal daily-driver slice
 
@@ -40,7 +40,7 @@ Each milestone should be closed with small commits, explicit validation, and tru
 - Validation:
   Go tests, frontend build, launch path, real AI panel smoke with approval and result explanation
 - Status:
-  `missing`
+  `partial`
 
 ## Milestone 4 — Remote SSH daily-driver slice
 

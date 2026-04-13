@@ -4,6 +4,71 @@ Validation date: `2026-04-13`
 
 All commands below were run against the repository in its current state on macOS arm64.
 
+## Latest AI terminal command execution slice
+
+The latest AI step focused only on one release-blocking feature:
+
+- explicit `/run <command>` terminal execution from the current AI panel grammar
+- backend explanation of the resulting terminal output
+- continued use of the real tool runtime, policy model, and approval flow
+
+Validation executed for this step:
+
+```bash
+./scripts/go.sh test ./core/conversation ./core/app ./core/transport/httpapi
+npm --prefix frontend run lint
+npm --prefix frontend run build
+npm run validate
+npm run build:core
+npm run tauri:dev
+curl -sf http://127.0.0.1:<tauri-sidecar-port>/healthz
+
+# fresh standalone sidecar for API smoke
+RTERM_AUTH_TOKEN=smoketoken apps/desktop/bin/rterm-core serve --workspace-root . --state-dir <temp-state-dir>
+curl -sf -H 'Authorization: Bearer smoketoken' http://127.0.0.1:<manual-port>/api/v1/bootstrap
+curl -sf -H 'Authorization: Bearer smoketoken' http://127.0.0.1:<manual-port>/api/v1/agent
+
+# safe command path
+curl -s -H 'Authorization: Bearer smoketoken' -H 'Content-Type: application/json' http://127.0.0.1:<manual-port>/api/v1/tools/execute -d '{"tool_name":"term.send_input","input":{"widget_id":"term-main","text":"echo ai-exec-smoke","append_newline":true},"context":{"workspace_id":"ws-local","repo_root":"<repo>","active_widget_id":"term-main"}}'
+curl -sf -H 'Authorization: Bearer smoketoken' http://127.0.0.1:<manual-port>/api/v1/terminal/term-main?from=<pre-seq>
+curl -s -H 'Authorization: Bearer smoketoken' -H 'Content-Type: application/json' http://127.0.0.1:<manual-port>/api/v1/agent/terminal-commands/explain -d '{"prompt":"/run echo ai-exec-smoke","command":"echo ai-exec-smoke","widget_id":"term-main","from_seq":<pre-seq>,"approval_used":false,"context":{"workspace_id":"ws-local","repo_root":"<repo>","active_widget_id":"term-main","widget_context_enabled":true}}'
+
+# approval-gated command path under hardened profile
+curl -sf -X PUT -H 'Authorization: Bearer smoketoken' -H 'Content-Type: application/json' http://127.0.0.1:<manual-port>/api/v1/agent/selection/profile -d '{"id":"hardened"}'
+curl -sf -X PUT -H 'Authorization: Bearer smoketoken' -H 'Content-Type: application/json' http://127.0.0.1:<manual-port>/api/v1/agent/selection/mode -d '{"id":"implement"}'
+curl -s -H 'Authorization: Bearer smoketoken' -H 'Content-Type: application/json' http://127.0.0.1:<manual-port>/api/v1/tools/execute -d '{"tool_name":"term.send_input","input":{"widget_id":"term-main","text":"echo ai-approval-summary","append_newline":true},"context":{"workspace_id":"ws-local","repo_root":"<repo>","active_widget_id":"term-main"}}'
+curl -s -H 'Authorization: Bearer smoketoken' -H 'Content-Type: application/json' http://127.0.0.1:<manual-port>/api/v1/tools/execute -d '{"tool_name":"safety.confirm","input":{"approval_id":"<approval-id>"},"context":{"workspace_id":"ws-local","repo_root":"<repo>","active_widget_id":"term-main"}}'
+curl -s -H 'Authorization: Bearer smoketoken' -H 'Content-Type: application/json' http://127.0.0.1:<manual-port>/api/v1/tools/execute -d '{"tool_name":"term.send_input","input":{"widget_id":"term-main","text":"echo ai-approval-summary","append_newline":true},"approval_token":"<approval-token>","context":{"workspace_id":"ws-local","repo_root":"<repo>","active_widget_id":"term-main"}}'
+curl -s -H 'Authorization: Bearer smoketoken' -H 'Content-Type: application/json' http://127.0.0.1:<manual-port>/api/v1/agent/terminal-commands/explain -d '{"prompt":"/run echo ai-approval-summary","command":"echo ai-approval-summary","widget_id":"term-main","from_seq":<pre-seq>,"approval_used":true,"context":{"workspace_id":"ws-local","repo_root":"<repo>","active_widget_id":"term-main","widget_context_enabled":true}}'
+```
+
+Observed result:
+
+- targeted Go tests passed for the new conversation/app/HTTP path
+- frontend lint passed
+- frontend build passed
+- full `npm run validate` passed
+- `npm run tauri:dev` launched successfully and the sidecar returned `{"status":"ok"}` from `GET /healthz`
+- on a fresh standalone sidecar:
+  - `GET /api/v1/bootstrap` returned the active terminal widget `term-main`
+  - a safe `term.send_input` call with `echo ai-exec-smoke` returned `status:"ok"`
+  - the terminal snapshot showed `ai-exec-smoke` in the PTY output
+  - `POST /api/v1/agent/terminal-commands/explain` returned a real assistant message from Ollama summarizing that command output with `provider_error:""`
+  - the conversation snapshot now contained a persisted assistant message with provider/model metadata
+- under `profile:"hardened"` and `mode:"implement"`:
+  - `term.send_input` returned `status:"requires_confirmation"` and `error_code:"approval_required"`
+  - `safety.confirm` returned a one-time approval token
+  - retrying `term.send_input` with that token returned `status:"ok"`
+  - after waiting for terminal output, the explanation route returned a real assistant message summarizing the approved command output with `approval_used:true`
+- under `mode:"secure"` the same command path returned `policy_denied` because `terminal:input` is removed in that mode; this is now explicitly part of the documented semantics
+
+What was not fully validated in this step:
+
+- browser-driven click smoke for the AI panel was still unavailable because local browser automation could not connect in this environment
+- the panel wiring therefore remains validated by build plus real backend/API/runtime smoke rather than by click automation
+- streaming assistant output was not validated because streaming is not implemented in this slice
+- attachments remain a placeholder and were not validated
+
 ## Latest release planning lock
 
 The latest step focused only on release control documents:

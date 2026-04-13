@@ -24,7 +24,7 @@ The question is no longer “what can be migrated eventually?” but “what sti
 
 Current `P0` release blockers are:
 
-- AI command execution through the current panel, tool runtime, policy, and approval model
+- AI terminal command execution needs broader shell-visible validation and daily-driver confidence
 - remote SSH daily-driver confidence beyond a single validated happy path
 - final shell/terminal stability and launch hardening
 - explicit release-control tracking across parity areas
@@ -60,8 +60,8 @@ Strong enough areas for `1.0.0` progression:
 | Widgets | Slim right-side widgets/apps/settings/help surface with secondary actions | Right rail is widget-first, with runtime/settings/help/audit utility entry points | `P1 important` | `partial` | Widget catalog breadth is still reduced compared with TideTerm | Keep current widget surface stable; extend only if a concrete daily-driver gap appears | Keep dock as adapter to explicit runtime/UI state, not a global action bucket |
 | Launcher / app entry | TideTerm exposes launcher-like discovery through widget/apps/settings/help entry surfaces | Launcher flyout and searchable launcher section exist | `P1 important` | `partial` | Missing broader app catalog metadata, but current discovery may be sufficient for 1.0 | Treat current launcher as acceptable unless user testing reveals a release blocker | Do not import TideTerm launcher wholesale; port shell discoverability behavior only |
 | Terminal UX | Compact term shell, terminal-first focus, visible scrollback, toolbar/status strip, command entry, and stable viewport behavior | Terminal shell is compact, focusable, PTY-backed, and visibly hydrated with follow/jump controls | `P0 release-blocker` | `partial` | Needs final stability confidence and bug closure, not new terminal surface expansion | Triage remaining terminal regressions as release hardening; avoid new parity expansion | Terminal state stays Go-owned; the frontend uses a JSON snapshot + SSE stream adapter |
-| AI panel | Left-side AI/chat panel with header, messages, input, mode/context controls | TideTerm-shaped panel exists with merged transcript, real backend conversation path, and composer | `P0 release-blocker` | `partial` | The release AI feature is still incomplete: the panel needs one explicit command-execute-and-explain path under policy | Implement AI terminal command execution and explanation as the next slice | Keep policy/runtime explicit; do not port old AI/backend entanglement |
-| Tool invocation UX | AI-driven and app-driven flows rather than primarily internal operator tooling | Operator panel exists and remains secondary | `P1 important` | `partial` | End-user AI command execution path is not yet first-class | Route the release AI flow through current tool/runtime/policy surfaces | Keep operator console secondary; do not make it the user-facing primary path |
+| AI panel | Left-side AI/chat panel with header, messages, input, mode/context controls | TideTerm-shaped panel exists with merged transcript, real backend conversation path, composer, and explicit `/run <command>` execution/explanation flow | `P0 release-blocker` | `partial` | The release-critical flow now exists, but still needs broader shell-visible validation and final polish before the blocker can be closed | Validate the `/run` panel flow more broadly and tighten remaining user-facing rough edges | Keep policy/runtime explicit; do not port old AI/backend entanglement |
+| Tool invocation UX | AI-driven and app-driven flows rather than primarily internal operator tooling | Operator panel exists and remains secondary, and the AI composer now has an explicit `/run` command path | `P1 important` | `partial` | The release path exists, but richer validation and result polish are still needed | Keep the explicit `/run` path stable while avoiding broader AI scope drift | Keep operator console secondary; do not make it the user-facing primary path |
 | Approval UX | User-visible approvals integrated into flow surfaces | Visible approval banner exists and retries with single-use token | `P0 release-blocker` | `partial` | Approval must remain stable and visible during the AI execution release slice | Validate approval path during AI command execution implementation | Approval remains policy/runtime-owned |
 | Role/mode/profile UI | TideTerm has AI mode/config flows and user-facing AI controls | Current selectors exist in the AI panel and feed into backend system prompt | `P1 important` | `partial` | Good enough structurally; needs validation that it stays coherent during AI execution flow | Keep current controls stable and visible during the next AI slice | New role/mode system stays even where old TideTerm semantics differ |
 | Settings/config flows | Dedicated settings surfaces and config views | Shell-level settings surface exists with `Overview`, `Trusted tools`, `Secret shield`, and `Help` | `P1 important` | `partial` | Reduced breadth vs TideTerm, but currently usable | Treat as non-blocking unless a concrete 1.0 workflow gap appears | Avoid reviving a global settings blob in the frontend |
@@ -348,6 +348,44 @@ Remaining AI conversation gap after this slice:
 - no attachment transport
 - no tool-calling or richer mixed message-part rendering
 - no model selection UX in the shell
+
+## Active AI terminal command execution slice
+
+TideTerm reference surface:
+
+- `frontend/app/aipanel/aipanel.tsx`
+- `frontend/app/aipanel/aipanelmessages.tsx`
+- `frontend/app/aipanel/aipanelinput.tsx`
+
+This slice is limited to one release-oriented AI feature only. It closes:
+
+- an explicit `/run <command>` and `run: <command>` path in the current AI composer
+- execution through the real `term.send_input` tool/runtime/policy path
+- post-execution explanation through the backend conversation service instead of a frontend placeholder
+- transcript coexistence between runtime action entries and provider-backed assistant result summaries
+- approval-aware follow-up for the same command flow
+
+Exit criteria for this slice:
+
+- a user prompt can trigger one real terminal command path from the AI panel grammar
+- the command uses the existing tool runtime rather than a hidden frontend shortcut
+- dangerous execution still produces an approval requirement when the active profile demands it
+- after execution, the backend appends a real assistant explanation to the persisted conversation transcript
+- docs clearly distinguish what is real today versus what remains placeholder
+
+Current assessment after this slice:
+
+- the release-critical capability now exists
+- a safe local `/run` path is validated end to end against the real sidecar and Ollama provider
+- an approval-gated `/run` path is validated at runtime and still records approval semantics correctly
+- the blocker is now about daily-driver hardening and broader shell-visible validation, not missing core functionality
+
+Remaining AI execution gap after this slice:
+
+- broader browser-driven validation of the panel flow in this environment
+- streaming assistant output
+- richer result rendering and command/tool blocks
+- attachments and broader agent orchestration, which remain post-1.0 or later-slice work
 
 ## Active settings/control-surface parity slice
 
