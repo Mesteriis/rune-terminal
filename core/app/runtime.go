@@ -7,6 +7,7 @@ import (
 	"github.com/Mesteriis/rune-terminal/core/audit"
 	"github.com/Mesteriis/rune-terminal/core/config"
 	"github.com/Mesteriis/rune-terminal/core/connections"
+	"github.com/Mesteriis/rune-terminal/core/conversation"
 	"github.com/Mesteriis/rune-terminal/core/policy"
 	"github.com/Mesteriis/rune-terminal/core/terminal"
 	"github.com/Mesteriis/rune-terminal/core/toolruntime"
@@ -14,16 +15,17 @@ import (
 )
 
 type Runtime struct {
-	RepoRoot    string
-	Paths       config.Paths
-	Workspace   *workspace.Service
-	Terminals   *terminal.Service
-	Connections *connections.Service
-	Agent       *agent.Store
-	Policy      *policy.Store
-	Audit       *audit.Log
-	Registry    *toolruntime.Registry
-	Executor    *toolruntime.Executor
+	RepoRoot     string
+	Paths        config.Paths
+	Workspace    *workspace.Service
+	Terminals    *terminal.Service
+	Connections  *connections.Service
+	Agent        *agent.Store
+	Conversation *conversation.Service
+	Policy       *policy.Store
+	Audit        *audit.Log
+	Registry     *toolruntime.Registry
+	Executor     *toolruntime.Executor
 }
 
 func NewRuntime(repoRoot string, stateDir string) (*Runtime, error) {
@@ -45,17 +47,22 @@ func NewRuntime(repoRoot string, stateDir string) (*Runtime, error) {
 	if err != nil {
 		return nil, err
 	}
+	conversationStore, err := conversation.NewService(paths.ConversationFile, conversation.NewOllamaProvider(conversation.DefaultProviderConfig()))
+	if err != nil {
+		return nil, err
+	}
 
 	runtime := &Runtime{
-		RepoRoot:    repoRoot,
-		Paths:       paths,
-		Workspace:   workspace.NewService(workspace.BootstrapDefault()),
-		Terminals:   terminal.NewService(terminal.DefaultLauncher()),
-		Connections: connectionStore,
-		Agent:       agentStore,
-		Policy:      policyStore,
-		Audit:       auditLog,
-		Registry:    toolruntime.NewRegistry(),
+		RepoRoot:     repoRoot,
+		Paths:        paths,
+		Workspace:    workspace.NewService(workspace.BootstrapDefault()),
+		Terminals:    terminal.NewService(terminal.DefaultLauncher()),
+		Connections:  connectionStore,
+		Agent:        agentStore,
+		Conversation: conversationStore,
+		Policy:       policyStore,
+		Audit:        auditLog,
+		Registry:     toolruntime.NewRegistry(),
 	}
 	runtime.Executor = toolruntime.NewExecutor(runtime.Registry, runtime.Policy, runtime.Audit, runtime.Agent)
 

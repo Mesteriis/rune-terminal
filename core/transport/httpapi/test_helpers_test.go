@@ -13,6 +13,7 @@ import (
 	"github.com/Mesteriis/rune-terminal/core/app"
 	"github.com/Mesteriis/rune-terminal/core/audit"
 	"github.com/Mesteriis/rune-terminal/core/connections"
+	"github.com/Mesteriis/rune-terminal/core/conversation"
 	"github.com/Mesteriis/rune-terminal/core/policy"
 	"github.com/Mesteriis/rune-terminal/core/terminal"
 	"github.com/Mesteriis/rune-terminal/core/toolruntime"
@@ -41,6 +42,10 @@ func newTestHandler(t *testing.T, definitions ...toolruntime.Definition) (http.H
 	if err != nil {
 		t.Fatalf("NewService error: %v", err)
 	}
+	conversationStore, err := conversation.NewService(filepath.Join(tempDir, "conversation.json"), testConversationProvider{})
+	if err != nil {
+		t.Fatalf("NewService error: %v", err)
+	}
 	registry := toolruntime.NewRegistry()
 	for _, definition := range definitions {
 		if err := registry.Register(definition); err != nil {
@@ -48,14 +53,15 @@ func newTestHandler(t *testing.T, definitions ...toolruntime.Definition) (http.H
 		}
 	}
 	runtime := &app.Runtime{
-		RepoRoot:    "/workspace/repo",
-		Workspace:   workspace.NewService(workspace.BootstrapDefault()),
-		Terminals:   terminal.NewService(terminal.DefaultLauncher()),
-		Connections: connectionStore,
-		Agent:       agentStore,
-		Policy:      policyStore,
-		Audit:       auditLog,
-		Registry:    registry,
+		RepoRoot:     "/workspace/repo",
+		Workspace:    workspace.NewService(workspace.BootstrapDefault()),
+		Terminals:    terminal.NewService(terminal.DefaultLauncher()),
+		Connections:  connectionStore,
+		Agent:        agentStore,
+		Conversation: conversationStore,
+		Policy:       policyStore,
+		Audit:        auditLog,
+		Registry:     registry,
 	}
 	runtime.Executor = toolruntime.NewExecutor(runtime.Registry, runtime.Policy, runtime.Audit, runtime.Agent)
 	return NewHandler(runtime, testAuthToken), agentStore
@@ -100,4 +106,23 @@ func executeToolDefinition(name string, decode func(json.RawMessage) (any, error
 		},
 		Execute: execute,
 	}
+}
+
+type testConversationProvider struct{}
+
+func (testConversationProvider) Info() conversation.ProviderInfo {
+	return conversation.ProviderInfo{
+		Kind:      "stub",
+		BaseURL:   "http://stub",
+		Model:     "stub-model",
+		Streaming: false,
+	}
+}
+
+func (testConversationProvider) Complete(context.Context, conversation.CompletionRequest) (conversation.CompletionResult, conversation.ProviderInfo, error) {
+	info := testConversationProvider{}.Info()
+	return conversation.CompletionResult{
+		Content: "stub assistant response",
+		Model:   info.Model,
+	}, info, nil
 }

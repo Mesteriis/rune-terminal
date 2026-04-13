@@ -33,6 +33,8 @@ func NewHandler(runtime *app.Runtime, authToken string) http.Handler {
 	mux.HandleFunc("GET /api/v1/policy/trusted-rules", api.handleTrustedRules)
 	mux.HandleFunc("GET /api/v1/policy/ignore-rules", api.handleIgnoreRules)
 	mux.HandleFunc("GET /api/v1/agent", api.handleAgentCatalog)
+	mux.HandleFunc("GET /api/v1/agent/conversation", api.handleConversationSnapshot)
+	mux.HandleFunc("POST /api/v1/agent/conversation/messages", api.handleSubmitConversationMessage)
 	mux.HandleFunc("PUT /api/v1/agent/selection/profile", api.handleSetActiveProfile)
 	mux.HandleFunc("PUT /api/v1/agent/selection/role", api.handleSetActiveRole)
 	mux.HandleFunc("PUT /api/v1/agent/selection/mode", api.handleSetActiveMode)
