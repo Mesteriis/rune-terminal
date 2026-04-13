@@ -104,6 +104,11 @@ export function useAiCommandExecution({
 
     if (response.status === 'requires_confirmation' && response.pending_approval) {
       pendingExplanationRef.current = pending
+      setNotice({
+        tone: 'info',
+        title: `Approval required for \`${resolved.command}\``,
+        detail: response.pending_approval.summary,
+      })
       appendAgentFeed({
         role: 'assistant',
         kind: 'approval',
@@ -120,6 +125,11 @@ export function useAiCommandExecution({
 
     if (response.status !== 'ok') {
       pendingExplanationRef.current = null
+      setNotice({
+        tone: 'error',
+        title: `Failed to run \`${resolved.command}\``,
+        detail: response.error ?? response.error_code ?? 'Execution failed.',
+      })
       appendAgentFeed({
         role: 'assistant',
         kind: 'result',
@@ -147,7 +157,7 @@ export function useAiCommandExecution({
     pendingExplanationRef.current = null
     await finalizeExplanation(pending, resolved.request.approval_token != null)
     return true
-  }, [activeWidgetId, appendAgentFeed, client, executeTool, finalizeExplanation, terminalState, workspaceContext])
+  }, [activeWidgetId, appendAgentFeed, client, executeTool, finalizeExplanation, setNotice, terminalState, workspaceContext])
 
   const handleApprovedTerminalCommand = useCallback(async (request: ExecuteToolRequest, response: ExecuteToolResponse) => {
     const pending = pendingExplanationRef.current
@@ -159,8 +169,18 @@ export function useAiCommandExecution({
     }
     pendingExplanationRef.current = null
     if (response.status !== 'ok') {
+      setNotice({
+        tone: 'error',
+        title: `Approved command failed: \`${pending.command}\``,
+        detail: response.error ?? response.error_code ?? 'Execution failed after approval.',
+      })
       return
     }
+    setNotice({
+      tone: 'success',
+      title: `Approved \`${pending.command}\``,
+      detail: 'The command was sent to the terminal. Summarizing the result…',
+    })
     appendAgentFeed({
       role: 'assistant',
       kind: 'result',
@@ -173,7 +193,7 @@ export function useAiCommandExecution({
       affected_widgets: response.operation?.affected_widgets,
     })
     await finalizeExplanation(pending, true)
-  }, [appendAgentFeed, finalizeExplanation])
+  }, [appendAgentFeed, finalizeExplanation, setNotice])
 
   return {
     submitTerminalCommandPrompt,
