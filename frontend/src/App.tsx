@@ -120,6 +120,7 @@ function App() {
                 workspace={shell.workspace}
                 activeWidget={shell.activeWidget}
                 onFocusWidget={shell.focusWidget}
+                onCreateTerminalTab={() => shell.createTerminalTab()}
                 section={layout.section}
                 onSelectSection={layout.selectSection}
                 onSelectPolicyView={layout.selectPolicyView}

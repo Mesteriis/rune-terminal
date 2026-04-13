@@ -7,6 +7,7 @@ type WidgetDockProps = {
   workspace: Workspace | null
   activeWidget: Widget | null
   onFocusWidget: (widget: Widget) => void | Promise<void>
+  onCreateTerminalTab: () => void | Promise<void>
   section: ShellSection
   onSelectSection: (section: ShellSection) => void
   onSelectPolicyView: (view: PolicyView) => void
@@ -16,10 +17,44 @@ export function WidgetDock({
   workspace,
   activeWidget,
   onFocusWidget,
+  onCreateTerminalTab,
   section,
   onSelectSection,
   onSelectPolicyView,
 }: WidgetDockProps) {
+  const launcherItems = [
+    {
+      label: 'New terminal',
+      detail: 'Open a fresh terminal tab from the shell launcher',
+      onSelect: () => onCreateTerminalTab(),
+    },
+    {
+      label: SHELL_SECTION_LABELS.agent,
+      detail: 'Return to the AI panel and active workspace context',
+      onSelect: () => onSelectSection('agent'),
+    },
+    {
+      label: SHELL_SECTION_LABELS.tools,
+      detail: 'Open runtime utilities and inspect tool metadata',
+      onSelect: () => onSelectSection('tools'),
+    },
+    {
+      label: SHELL_SECTION_LABELS.audit,
+      detail: 'Inspect recent runtime operations and approvals',
+      onSelect: () => onSelectSection('audit'),
+    },
+    {
+      label: 'Help',
+      detail: 'Open the shell help and utility overview',
+      onSelect: () => onSelectPolicyView('help'),
+    },
+    ...((workspace?.widgets ?? []).slice(0, 6).map((widget) => ({
+      label: widget.title,
+      detail: `Focus ${widget.kind} widget`,
+      onSelect: () => onFocusWidget(widget),
+    })) ?? []),
+  ]
+
   return (
     <aside className="widget-dock">
       <div className="widget-dock-brand">RT</div>
@@ -40,19 +75,8 @@ export function WidgetDock({
         <div className="widget-dock-footer-actions">
           <WidgetDockMenuButton
             label={<i className="fa fa-cube" />}
-            title="Runtime utilities"
-            items={[
-              {
-                label: SHELL_SECTION_LABELS.tools,
-                detail: 'Open runtime utilities and inspect tool metadata',
-                onSelect: () => onSelectSection('tools'),
-              },
-              {
-                label: SHELL_SECTION_LABELS.audit,
-                detail: 'Inspect recent runtime operations and approvals',
-                onSelect: () => onSelectSection('audit'),
-              },
-            ]}
+            title="Launcher and shell utilities"
+            items={launcherItems}
           />
           <WidgetDockMenuButton
             label={<i className="fa fa-gear" />}

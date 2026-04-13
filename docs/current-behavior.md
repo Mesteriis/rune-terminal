@@ -15,6 +15,7 @@ It is intentionally operational, not narrative.
 - The top-left workspace switcher is now a TideTerm-shaped shell popover, but it currently exposes only the active local workspace and launch actions.
 - The right-side widget dock now uses shell-level flyout controls for runtime and settings entry points instead of acting as a primary content column.
 - The widget dock settings flyout now deep-links into a user-facing shell settings surface with `Overview`, `Trusted tools`, `Secret shield`, and `Help` views.
+- The widget dock launcher flyout now acts as the shell-level entry surface for opening a new terminal tab, returning to the AI panel, opening runtime/audit utilities, and quickly focusing known widgets.
 - Runtime utilities and audit remain secondary shell surfaces reachable from the dock and the AI-panel overflow menu.
 - New terminal tabs can be created at runtime.
 - Closing a tab tears down its terminal session and removes the associated widget from the workspace snapshot.
@@ -130,4 +131,5 @@ Confirmable boundaries:
 - The AI transcript now renders runtime tool activity with explicit tool names, operation summaries, affected widgets/paths, and approval-use markers so the feed behaves more like a working AI/tool conversation surface instead of a generic log.
 - The AI composer now exposes TideTerm-like control affordances: an attach button, prompt suggestion chips, and a send action. The attach button is currently a parity placeholder and explicitly reports that attachment transport is not wired into the new runtime yet.
 - Shell settings and audit now use more TideTerm-like utility placement: they stay secondary to the terminal and AI panel, but they are reachable from the right-side dock through dedicated utility menus instead of only raw operator sections.
+- Widget/app discoverability now uses a closest-compatible launcher flyout in the dock instead of a full TideTerm app catalog. It is intentionally limited to shell entry points and current widgets until a broader launcher/app domain exists.
 - The settings surface is still a closest-compatible equivalent, not exact parity with TideTerm’s broader waveconfig/help universe.
