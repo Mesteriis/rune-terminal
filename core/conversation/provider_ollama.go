@@ -12,6 +12,9 @@ import (
 )
 
 var preferredModels = []string{
+	"llama3.2:3b",
+	"qwen3:4b-q4_K_M",
+	"qwen3:4b",
 	"qwen3:8b",
 	"qwen3.5:9b",
 	"qwen3:14b",

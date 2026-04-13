@@ -19,6 +19,7 @@ func TestOllamaProviderResolvesPreferredModelAndCompletes(t *testing.T) {
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"models": []map[string]any{
 					{"name": "gemma2:9b"},
+					{"name": "llama3.2:3b"},
 					{"name": "qwen3:8b"},
 				},
 			})
@@ -30,7 +31,7 @@ func TestOllamaProviderResolvesPreferredModelAndCompletes(t *testing.T) {
 			seenModel = request.Model
 			seenMessages = request.Messages
 			_ = json.NewEncoder(w).Encode(map[string]any{
-				"model": "qwen3:8b",
+				"model": "llama3.2:3b",
 				"message": map[string]any{
 					"role":    "assistant",
 					"content": "assistant reply",
@@ -52,7 +53,7 @@ func TestOllamaProviderResolvesPreferredModelAndCompletes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("complete: %v", err)
 	}
-	if seenModel != "qwen3:8b" {
+	if seenModel != "llama3.2:3b" {
 		t.Fatalf("expected preferred model, got %q", seenModel)
 	}
 	if len(seenMessages) != 2 || seenMessages[0].Role != "system" || seenMessages[1].Role != "user" {
@@ -61,7 +62,7 @@ func TestOllamaProviderResolvesPreferredModelAndCompletes(t *testing.T) {
 	if result.Content != "assistant reply" {
 		t.Fatalf("unexpected content: %q", result.Content)
 	}
-	if info.Model != "qwen3:8b" {
+	if info.Model != "llama3.2:3b" {
 		t.Fatalf("expected provider info model to be cached, got %q", info.Model)
 	}
 }
