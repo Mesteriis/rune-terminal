@@ -754,6 +754,7 @@ This slice stayed intentionally narrow:
 Validation executed for this slice:
 
 ```bash
+npm run build:core
 npm --prefix frontend run lint
 npm --prefix frontend run build
 npm run validate
@@ -763,6 +764,7 @@ curl http://127.0.0.1:<runtime-port>/healthz
 
 Observed result:
 
+- `build:core` refreshed `apps/desktop/bin/rterm-core` before terminal-specific smoke
 - frontend lint passed
 - frontend build passed
 - full repository validation passed
@@ -773,10 +775,15 @@ Terminal-focused smoke validated in this slice:
 
 - app launch path still works after terminal-shell changes
 - terminal surface is present inside the shell
+- terminal focus works
+- keyboard input reaches the PTY
+- output is present in terminal snapshots after typed commands
+- snapshot hydration works against the refreshed sidecar binary
 - toolbar actions remain wired in the running app path
-- snapshot-backed runtime startup still reaches a healthy terminal sidecar
+- follow/jump behavior changes state when the viewport is scrolled off the live tail
+- no frontend console or page errors were observed in the fresh browser-backed smoke run
 
 What was not fully automated in this slice:
 
-- no browser automation was completed for the live dev shell because Browser MCP was not connected and Playwright browser binaries were unavailable in the local environment
-- because of that limitation, the terminal UI smoke for focus/input/output was launch-based and runtime-backed, not browser-driven
+- no native-window automation was run inside the Tauri shell itself
+- browser-backed smoke was run against the Vite-hosted frontend pointed at a real `rterm-core` sidecar, which is sufficient for this terminal slice because the terminal behavior lives in the shared renderer/runtime path

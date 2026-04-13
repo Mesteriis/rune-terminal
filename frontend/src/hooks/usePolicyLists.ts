@@ -10,7 +10,6 @@ type UsePolicyListsParams = {
     workspace_id?: string
     repo_root?: string
     active_widget_id?: string
-    widget_context_enabled?: boolean
   } | undefined
 }
 
