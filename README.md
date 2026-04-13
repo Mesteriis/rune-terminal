@@ -76,33 +76,35 @@ RunaTerminal is being built as a terminal-centered workspace platform with:
 
 ## Project status
 
-RunaTerminal is currently in the **foundational rewrite phase**.
+RunaTerminal is currently in the **`1.0.0-rc1` release hardening phase**.
 
 What exists today:
-- architectural docs and ADR discipline
-- Tauri desktop shell bootstrap
-- Go runtime bootstrap
-- early foundation modules for tool runtime, policy, audit, workspace and terminal services
-- initial tests around core behavior
+- launchable Tauri shell with Go sidecar runtime
+- local terminal daily-driver path
+- focused remote SSH daily-driver path (intentionally narrow)
+- AI conversation with explicit `/run <command>` command execution + explanation path
+- policy/approval, trust/ignore, and audit visibility in the shell
+- release-control docs and validation trail
 
 What does **not** exist yet:
-- full TideTerm feature parity
-- mature remote session support
-- polished workspace UI
-- production-hardening across all workflows
-- stable plugin or extension ecosystem
+- full TideTerm parity breadth
+- broad remote controller semantics
+- attachments and streaming AI output
+- advanced SSH auth and `.ssh/config` import workflows
+- plugin ecosystem work
 
-The current goal is not feature volume. The current goal is to make the core architecture correct enough that future features do not recreate the old problems.
+The current goal is not feature expansion.
+The current goal is honest RC quality for daily-driver workflows.
 
 ## Current priorities
 
-- stabilize the Go core foundation
-- harden policy, trust, ignore and audit behavior
-- finish the initial tool runtime contracts and transport surface
-- replace remaining template UI with an intentional shell
-- expand validation and tests around the core runtime
+- harden launch, local terminal, remote shell, and `/run` UX paths
+- keep approval/policy behavior explicit and stable
+- tighten release-doc truthfulness and known limitations
+- rerun full release-oriented validation (`lint/build/tests/validate/tauri + smoke`)
+- close only release blockers, not parity breadth
 
-## Non-goals for v0
+## Non-goals for `1.0.0`
 
 The first iterations of RunaTerminal are intentionally narrow. These are **not** immediate goals:
 
@@ -336,6 +338,12 @@ npm run build:core
 
 Actual results are recorded in [docs/validation.md](docs/validation.md).
 
+Release readiness for this phase is tracked in:
+
+- [Release Scope](docs/release-1.0.md)
+- [Release Checklist](docs/release-checklist-1.0.md)
+- [Known Limitations](docs/known-limitations.md)
+
 ## Key Documents
 
 - [Architecture Overview](docs/architecture.md)
@@ -346,6 +354,8 @@ Actual results are recorded in [docs/validation.md](docs/validation.md).
 - [Workspace Model](docs/workspace-model.md)
 - [Migration Notes](docs/migration-notes.md)
 - [Current Behavior](docs/current-behavior.md)
+- [Release Checklist](docs/release-checklist-1.0.md)
+- [Known Limitations](docs/known-limitations.md)
 - [Agent Modes](docs/agent-modes.md)
 - [System Prompts](docs/system-prompts.md)
 - [ADRs](docs/adr)

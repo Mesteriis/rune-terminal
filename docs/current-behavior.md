@@ -46,6 +46,10 @@ It is intentionally operational, not narrative.
 - Closing or completing the create-tab request must not terminate a running local or SSH shell.
 - The frontend now hydrates terminal content from a JSON snapshot before opening the SSE stream, so a newly mounted terminal starts with buffered scrollback instead of only new output.
 - The frontend terminal shell uses a compact TideTerm-derived header, toolbar, and command-strip layout. `Refresh`, `Focus`, `Interrupt`, `Clear view`, and `Jump to latest` are shell affordances layered over the same Go-owned session state.
+- Terminal output is written in bounded frontend batches so large output bursts do not block the UI thread as one giant write.
+- Terminal keyboard copy/paste now has explicit shell-level shortcuts:
+  - `Cmd/Ctrl+C` copies terminal selection when a selection exists
+  - `Cmd/Ctrl+V` (and `Ctrl+Shift+V`) pastes clipboard content into the active PTY input path
 - On startup, the runtime eagerly boots sessions for terminal widgets in the default workspace.
 - When a process exits, terminal state moves to `exited` or `failed`, input/interrupt are disabled, and active stream subscribers are closed.
 
@@ -170,6 +174,7 @@ Confirmable boundaries:
   - `/run <command>`
   - `run: <command>`
 - That grammar is intentionally narrow for `1.0.0`. Free-text prompts still use the conversation backend. Only explicit `/run` prompts trigger terminal command execution.
+- `/run` without a command now returns explicit format guidance instead of silently falling back to generic conversation handling.
 - `/run` currently targets the active terminal widget only.
 - The frontend AI command flow is:
   1. capture the current terminal `next_seq`
@@ -178,6 +183,7 @@ Confirmable boundaries:
   4. call the backend explanation route
   5. append a real assistant message to the persisted conversation transcript
 - The backend explanation route does not execute commands by itself. It explains the observed result of a command that already ran through the runtime.
+- If command execution succeeds but explanation fails, the shell now reports that explicitly and falls back to the captured terminal output summary instead of claiming a clean explain success.
 - Approval remains in force for AI command execution:
   - if the active policy profile escalates `term.send_input` to `dangerous`, `/run` returns an approval requirement
   - once approved, the same runtime/tool path is retried with the one-time approval token
@@ -192,6 +198,7 @@ Confirmable boundaries:
 - The AI composer now exposes TideTerm-like control affordances: an attach button, prompt suggestion chips, and a send action. The attach button is currently a parity placeholder and explicitly reports that attachment transport is not wired into the new runtime yet.
 - Streaming assistant output is not implemented yet. The current provider path waits for a complete response and then appends a complete or error assistant message to the transcript.
 - Shell settings and audit now use more TideTerm-like utility placement: they stay secondary to the terminal and AI panel, but they are reachable from the right-side dock through dedicated utility menus instead of only raw operator sections.
+- Runtime bootstrap failures now show launch-path recovery hints in the shell (rebuild core binary, use `npm run tauri:dev`, verify dependencies).
 - Widget/app discoverability now uses a closest-compatible launcher flyout in the dock instead of a full TideTerm app catalog. It is intentionally limited to shell entry points and current widgets until a broader launcher/app domain exists.
 - The new launcher section is likewise a closest-compatible equivalent: it mirrors TideTerm’s searchable discovery feel, but it currently catalogs shell surfaces and known widgets rather than a full local app registry.
 - The settings surface is still a closest-compatible equivalent, not exact parity with TideTerm’s broader waveconfig/help universe.
