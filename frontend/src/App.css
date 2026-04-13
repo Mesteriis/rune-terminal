@@ -803,6 +803,52 @@
   font-size: 0.72rem;
 }
 
+.ai-tooluse-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.ai-tooluse-status {
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 999px;
+  flex: 0 0 auto;
+}
+
+.ai-tooluse-status-success {
+  background: #79c493;
+}
+
+.ai-tooluse-status-error {
+  background: #d67d74;
+}
+
+.ai-tooluse-status-approval {
+  background: #f2b35f;
+}
+
+.ai-tooluse-status-user {
+  background: #7fb2e5;
+}
+
+.ai-tooluse-detail {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.ai-tooluse-detail span:last-child {
+  color: #c6d0da;
+  font-size: 0.84rem;
+}
+
+.ai-tooluse-detail-label {
+  color: #738394;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .ai-message-error {
   border-color: rgba(186, 87, 72, 0.35);
   background: rgba(97, 38, 33, 0.28);

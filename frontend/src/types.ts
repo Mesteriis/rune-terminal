@@ -237,5 +237,11 @@ export type AgentFeedEntry = {
   body?: string
   tone?: 'info' | 'success' | 'error' | 'approval'
   tags?: string[]
+  tool_name?: string
+  operation_summary?: string
+  approval_tier?: string
+  approval_used?: boolean
+  affected_paths?: string[]
+  affected_widgets?: string[]
   timestamp: string
 }

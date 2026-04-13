@@ -284,6 +284,8 @@ export function useRuntimeShell() {
         title: `Approve ${pendingApproval.tool_name}`,
         body: pendingApproval.summary,
         tags: [pendingApproval.approval_tier],
+        tool_name: pendingApproval.tool_name,
+        approval_tier: pendingApproval.approval_tier,
       })
       const confirmation = await client.executeTool({
         tool_name: 'safety.confirm',
@@ -308,6 +310,8 @@ export function useRuntimeShell() {
         title: 'Approval granted',
         body: 'Retrying the requested action with a single-use approval token.',
         tags: [pendingApproval.tool_name],
+        tool_name: pendingApproval.tool_name,
+        approval_tier: pendingApproval.approval_tier,
       })
       setNotice({
         tone: 'info',
@@ -389,6 +393,7 @@ export function useRuntimeShell() {
       title: label,
       body: summarizeRequest(request),
       tags: [request.tool_name],
+      tool_name: request.tool_name,
     })
     const response = await executeTool(request)
     if (response) {
@@ -556,6 +561,11 @@ function buildAgentResponseEntry(
       title: label ? `${label} requires approval` : `${request.tool_name} requires approval`,
       body: response.pending_approval.summary,
       tags: [response.pending_approval.approval_tier],
+      tool_name: request.tool_name,
+      operation_summary: response.operation?.summary,
+      approval_tier: response.pending_approval.approval_tier,
+      affected_paths: response.operation?.affected_paths,
+      affected_widgets: response.operation?.affected_widgets,
     }
   }
   if (response.status === 'ok') {
@@ -566,6 +576,12 @@ function buildAgentResponseEntry(
       title: response.operation?.summary ?? label ?? `${request.tool_name} completed`,
       body: summarizeOutput(response.output),
       tags: [request.tool_name, 'ok'],
+      tool_name: request.tool_name,
+      operation_summary: response.operation?.summary,
+      approval_tier: response.operation?.approval_tier,
+      approval_used: request.approval_token != null,
+      affected_paths: response.operation?.affected_paths,
+      affected_widgets: response.operation?.affected_widgets,
     }
   }
   return {
@@ -575,6 +591,12 @@ function buildAgentResponseEntry(
     title: `${request.tool_name} failed`,
     body: response.error ?? response.error_code ?? 'Execution failed.',
     tags: [request.tool_name, 'error'],
+    tool_name: request.tool_name,
+    operation_summary: response.operation?.summary,
+    approval_tier: response.operation?.approval_tier,
+    approval_used: request.approval_token != null,
+    affected_paths: response.operation?.affected_paths,
+    affected_widgets: response.operation?.affected_widgets,
   }
 }
 
