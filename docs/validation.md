@@ -4,6 +4,53 @@ Validation date: `2026-04-13`
 
 All commands below were run against the repository in its current state on macOS arm64.
 
+## Frontend baseline import validation
+
+The parity-first frontend import path was exercised directly:
+
+```bash
+npm run import:tideterm-frontend
+npm --prefix frontend run lint
+npm --prefix frontend run build
+```
+
+Observed result:
+
+- the TideTerm renderer source was copied into `frontend/tideterm-src/`
+- TideTerm renderer build metadata was copied into `frontend/tideterm-src-meta/`
+- frontend lint still passed because the imported baseline is intentionally ignored by the current lint config
+- frontend build still passed, confirming the literal source import does not break the current runnable shell
+
+## Latest parity slice
+
+The latest product-parity slice focused on TideTerm-derived shell behavior:
+
+- top tab-strip shell retained as the primary navigation surface
+- AI panel moved onto a persisted left-side resizable panel model
+- terminal stage kept as the center surface
+- right side constrained to a slim dock instead of a primary control column
+
+Validation executed for this slice:
+
+```bash
+npm --prefix frontend install
+npm --prefix frontend run lint
+npm --prefix frontend run build
+npm run validate
+```
+
+Observed result:
+
+- the new frontend dependency set installed successfully
+- frontend lint passed
+- frontend build passed
+- full repository validation still passed after the shell/layout refactor
+
+What was not revalidated in this slice:
+
+- `npm run tauri:dev` was not re-run after the parity-shell refactor
+- no fresh UI automation run was performed after this specific shell/layout pass
+
 ## Tooling baseline
 
 - Go: `go1.26.2 darwin/arm64`

@@ -5,6 +5,7 @@
   "productName": "RunaTerminal",
   "type": "module",
   "scripts": {
+    "import:tideterm-frontend": "./scripts/import-tideterm-frontend.sh",
     "dev:frontend": "npm --prefix frontend run dev",
     "build:frontend": "npm --prefix frontend run build",
     "lint:frontend": "npm --prefix frontend run lint",

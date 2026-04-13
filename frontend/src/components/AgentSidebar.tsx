@@ -64,8 +64,8 @@ export function AgentSidebar({
         <header className="agent-shell-header">
           <div className="agent-shell-heading">
             <p className="eyebrow">AI panel</p>
-            <h2>Runa agent</h2>
-            <span>{SHELL_SECTION_LABELS[section]} surface for the active workspace session.</span>
+            <h2>RunaTerminal AI</h2>
+            <span>{workspaceContext?.active_widget_id ? 'Widget context on' : 'No widget context attached'}</span>
           </div>
           <nav className="agent-shell-tabs" aria-label="Agent panel sections">
             {(['agent', 'tools', 'policy', 'audit'] as ShellSection[]).map((entry) => (

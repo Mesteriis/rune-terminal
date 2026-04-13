@@ -4,10 +4,19 @@ type WorkspaceRailProps = {
   workspace: Workspace | null
   repoRoot: string
   activeWidgetId?: string
+  aiPanelVisible: boolean
+  onToggleAIPanel: () => void
   onFocusWidget: (widget: Widget) => void | Promise<void>
 }
 
-export function WorkspaceRail({ workspace, repoRoot, activeWidgetId, onFocusWidget }: WorkspaceRailProps) {
+export function WorkspaceRail({
+  workspace,
+  repoRoot,
+  activeWidgetId,
+  aiPanelVisible,
+  onToggleAIPanel,
+  onFocusWidget,
+}: WorkspaceRailProps) {
   const activeWidget = workspace?.widgets.find((widget) => widget.id === activeWidgetId)
 
   return (
@@ -39,6 +48,9 @@ export function WorkspaceRail({ workspace, repoRoot, activeWidgetId, onFocusWidg
           <span>{activeWidget?.title ?? 'No active widget'}</span>
           <code>{repoRoot || 'discovering workspace root…'}</code>
         </div>
+        <button className={aiPanelVisible ? 'workspace-ai-toggle active' : 'workspace-ai-toggle'} onClick={onToggleAIPanel}>
+          {aiPanelVisible ? 'Hide AI' : 'Show AI'}
+        </button>
       </div>
     </header>
   )

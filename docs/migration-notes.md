@@ -36,3 +36,28 @@ The rewrite used TideTerm documentation and architecture notes as input material
 
 The rewrite optimizes for a correct core, not for a maximal feature checklist.
 
+## Phase Shift: Functional Parity First
+
+The project is now in a parity-first phase.
+
+The implementation rule is:
+
+- keep the new architecture
+- copy TideTerm user-visible behavior as closely as possible
+- stop inventing replacement UX where TideTerm already has a known-good pattern
+
+That means:
+
+- frontend shell and flows should be TideTerm-derived
+- behavior parity beats speculative redesign
+- deviations from TideTerm should be documented in `docs/parity-matrix.md`
+
+## Literal frontend baseline import
+
+To enforce parity-first execution, the TideTerm renderer source is imported into this repository as a literal baseline:
+
+- `frontend/tideterm-src/`
+- `frontend/tideterm-src-meta/`
+
+This import is not the final architecture.
+It is the working baseline for refactoring TideTerm behavior onto the new runtime without continuing to redesign the frontend from scratch.
