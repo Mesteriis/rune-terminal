@@ -110,11 +110,35 @@ export function TerminalSurface({ client, widgetId, state, onTerminalAction, onI
       })
     })
     const textarea = container.querySelector('.xterm-helper-textarea')
+    const onTerminalCopy = (event: KeyboardEvent) => {
+      if (!isCopySelectionShortcut(event, terminal)) {
+        return
+      }
+      event.preventDefault()
+      const selection = terminal.getSelection()
+      void writeClipboardText(selection)
+    }
+    const onTerminalPaste = (event: KeyboardEvent) => {
+      if (!isPasteShortcut(event) || disposed || !canSendInputRef.current) {
+        return
+      }
+      event.preventDefault()
+      void readClipboardText().then((clipboardText) => {
+        if (!clipboardText || disposed || !canSendInputRef.current) {
+          return
+        }
+        void client.sendTerminalInput(widgetId, clipboardText, false).catch(() => {
+          // Preserve keyboard input path even when clipboard-driven sends fail.
+        })
+      })
+    }
     const onTerminalFocus = () => setIsFocused(true)
     const onTerminalBlur = () => setIsFocused(false)
     if (textarea instanceof HTMLTextAreaElement) {
       textarea.addEventListener('focus', onTerminalFocus)
       textarea.addEventListener('blur', onTerminalBlur)
+      textarea.addEventListener('keydown', onTerminalCopy)
+      textarea.addEventListener('keydown', onTerminalPaste)
     }
 
     const viewport = container.querySelector('.xterm-viewport')
@@ -127,17 +151,14 @@ export function TerminalSurface({ client, widgetId, state, onTerminalAction, onI
       if (disposed || terminalRef.current !== terminal) {
         return
       }
-      const chunk = JSON.parse((event as MessageEvent).data) as OutputChunk
-      const shouldFollow = followOutputRef.current
+      let chunk: OutputChunk
       try {
-        terminal.write(chunk.data, () => {
-          if (shouldFollow) {
-            terminal.scrollToBottom()
-          }
-        })
+        chunk = JSON.parse((event as MessageEvent).data) as OutputChunk
       } catch {
-        // xterm can throw while the renderer is being replaced during dev-mode remounts.
+        return
       }
+      const shouldFollow = followOutputRef.current
+      writeOutputChunk(terminal, chunk.data, shouldFollow, () => disposed || terminalRef.current !== terminal)
     }
 
     const onStreamError = () => {
@@ -192,6 +213,8 @@ export function TerminalSurface({ client, widgetId, state, onTerminalAction, onI
       if (textarea instanceof HTMLTextAreaElement) {
         textarea.removeEventListener('focus', onTerminalFocus)
         textarea.removeEventListener('blur', onTerminalBlur)
+        textarea.removeEventListener('keydown', onTerminalCopy)
+        textarea.removeEventListener('keydown', onTerminalPaste)
       }
       if (viewport instanceof HTMLDivElement) {
         viewport.removeEventListener('scroll', onViewportScroll)
@@ -331,9 +354,7 @@ function hydrateSnapshot(terminal: Terminal, snapshot: TerminalSnapshot) {
     terminal.clear()
     return
   }
-  terminal.write(snapshot.chunks.map((chunk) => chunk.data).join(''), () => {
-    terminal.scrollToBottom()
-  })
+  writeOutputChunk(terminal, snapshot.chunks.map((chunk) => chunk.data).join(''), true, () => false)
 }
 
 function focusTerminalTextarea(container: HTMLDivElement | null, terminal: Terminal | null, disposed: boolean) {
@@ -382,4 +403,87 @@ function formatTimestamp(timestamp: string) {
     return timestamp
   }
   return parsed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+}
+
+const maxTerminalWriteBatch = 16_384
+
+function writeOutputChunk(
+  terminal: Terminal,
+  data: string,
+  shouldFollow: boolean,
+  shouldStop: () => boolean,
+) {
+  if (!data) {
+    if (shouldFollow && !shouldStop()) {
+      terminal.scrollToBottom()
+    }
+    return
+  }
+
+  let offset = 0
+  const writeNext = () => {
+    if (shouldStop()) {
+      return
+    }
+    const next = data.slice(offset, offset + maxTerminalWriteBatch)
+    offset += next.length
+    try {
+      terminal.write(next, () => {
+        if (offset >= data.length) {
+          if (shouldFollow && !shouldStop()) {
+            terminal.scrollToBottom()
+          }
+          return
+        }
+        window.requestAnimationFrame(writeNext)
+      })
+    } catch {
+      // xterm can throw while the renderer is being replaced during dev-mode remounts.
+    }
+  }
+
+  writeNext()
+}
+
+function isCopySelectionShortcut(event: KeyboardEvent, terminal: Terminal) {
+  if (!hasPrimaryModifier(event) || event.altKey || event.shiftKey || event.key.toLowerCase() !== 'c') {
+    return false
+  }
+  return terminal.hasSelection()
+}
+
+function isPasteShortcut(event: KeyboardEvent) {
+  const key = event.key.toLowerCase()
+  const pasteViaPrimaryModifier = hasPrimaryModifier(event) && !event.altKey && key === 'v'
+  const pasteViaCtrlShift = event.ctrlKey && event.shiftKey && key === 'v'
+  const pasteViaShiftInsert = event.shiftKey && event.key === 'Insert'
+  return pasteViaPrimaryModifier || pasteViaCtrlShift || pasteViaShiftInsert
+}
+
+function hasPrimaryModifier(event: KeyboardEvent) {
+  const platform = typeof navigator !== 'undefined' ? navigator.platform : ''
+  const isMac = /mac/i.test(platform)
+  return isMac ? event.metaKey : event.ctrlKey
+}
+
+async function readClipboardText() {
+  if (typeof navigator === 'undefined' || !navigator.clipboard) {
+    return ''
+  }
+  try {
+    return await navigator.clipboard.readText()
+  } catch {
+    return ''
+  }
+}
+
+async function writeClipboardText(value: string) {
+  if (!value || typeof navigator === 'undefined' || !navigator.clipboard) {
+    return
+  }
+  try {
+    await navigator.clipboard.writeText(value)
+  } catch {
+    // Clipboard writes can fail on some environments; keep default terminal behavior available.
+  }
 }
