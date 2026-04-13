@@ -117,6 +117,66 @@ func (s *Service) FocusTab(tabID string) (Tab, error) {
 	return tab, nil
 }
 
+func (s *Service) AddTerminalTab(tab Tab, widget Widget) Snapshot {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.snapshot.Tabs = append(s.snapshot.Tabs, cloneTab(tab))
+	s.snapshot.Widgets = append(s.snapshot.Widgets, widget)
+	s.snapshot.ActiveTabID = tab.ID
+	s.snapshot.ActiveWidgetID = widget.ID
+	return cloneSnapshot(s.snapshot)
+}
+
+func (s *Service) CloseTab(tabID string) (Snapshot, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if len(s.snapshot.Tabs) <= 1 {
+		return Snapshot{}, ErrCannotCloseLastTab
+	}
+
+	tabIndex := -1
+	var tab Tab
+	for i, existing := range s.snapshot.Tabs {
+		if existing.ID == tabID {
+			tabIndex = i
+			tab = existing
+			break
+		}
+	}
+	if tabIndex == -1 {
+		return Snapshot{}, fmt.Errorf("%w: %s", ErrTabNotFound, tabID)
+	}
+
+	s.snapshot.Tabs = append(s.snapshot.Tabs[:tabIndex], s.snapshot.Tabs[tabIndex+1:]...)
+	if len(tab.WidgetIDs) > 0 {
+		filtered := s.snapshot.Widgets[:0]
+		for _, widget := range s.snapshot.Widgets {
+			if !slices.Contains(tab.WidgetIDs, widget.ID) {
+				filtered = append(filtered, widget)
+			}
+		}
+		s.snapshot.Widgets = filtered
+	}
+
+	if s.snapshot.ActiveTabID == tabID {
+		nextIndex := min(tabIndex, len(s.snapshot.Tabs)-1)
+		nextTab := s.snapshot.Tabs[nextIndex]
+		s.snapshot.ActiveTabID = nextTab.ID
+		if len(nextTab.WidgetIDs) > 0 {
+			s.snapshot.ActiveWidgetID = nextTab.WidgetIDs[0]
+		}
+	} else if slices.Contains(tab.WidgetIDs, s.snapshot.ActiveWidgetID) {
+		activeTab, err := s.findTabLocked(s.snapshot.ActiveTabID)
+		if err == nil && len(activeTab.WidgetIDs) > 0 {
+			s.snapshot.ActiveWidgetID = activeTab.WidgetIDs[0]
+		}
+	}
+
+	return cloneSnapshot(s.snapshot), nil
+}
+
 func (s *Service) findWidgetLocked(widgetID string) (Widget, error) {
 	for _, widget := range s.snapshot.Widgets {
 		if widget.ID == widgetID {

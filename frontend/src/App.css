@@ -67,9 +67,9 @@
 .workspace-tab {
   min-width: 12rem;
   max-width: 16rem;
-  display: grid;
-  align-content: center;
-  gap: 0.15rem;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
   padding: 0.72rem 0.85rem 0.75rem;
   border-radius: 10px 10px 0 0;
   border: 1px solid transparent;
@@ -77,6 +77,13 @@
   background: rgba(255, 255, 255, 0.04);
   color: #c7d1dc;
   text-align: left;
+}
+
+.workspace-tab-copy {
+  min-width: 0;
+  display: grid;
+  gap: 0.15rem;
+  flex: 1 1 auto;
 }
 
 .workspace-tab:hover {
@@ -99,12 +106,36 @@
   font-weight: 700;
 }
 
-.workspace-tab span {
+.workspace-tab-copy span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   color: #8392a1;
   font-size: 0.76rem;
+}
+
+.workspace-tab-close {
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  width: 1.2rem;
+  height: 1.2rem;
+  border-radius: 999px;
+  color: #8c9aa8;
+}
+
+.workspace-tab-close:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f0f6fb;
+}
+
+.workspace-tab-add {
+  min-width: 8rem;
+  justify-content: center;
+}
+
+.workspace-tab-add strong {
+  font-size: 1rem;
 }
 
 .workspace-tabs-right {

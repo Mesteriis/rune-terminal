@@ -3,9 +3,14 @@ package app
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"strings"
 
 	"github.com/avm/rterm/core/policy"
+	"github.com/avm/rterm/core/terminal"
 	"github.com/avm/rterm/core/toolruntime"
+	"github.com/avm/rterm/core/workspace"
+	"github.com/avm/rterm/internal/ids"
 )
 
 func (r *Runtime) workspaceTools() []toolruntime.Definition {
@@ -13,6 +18,8 @@ func (r *Runtime) workspaceTools() []toolruntime.Definition {
 		r.workspaceListTabsTool(),
 		r.workspaceGetActiveTabTool(),
 		r.workspaceFocusTabTool(),
+		r.workspaceCreateTerminalTabTool(),
+		r.workspaceCloseTabTool(),
 		r.workspaceListWidgetsTool(),
 		r.workspaceGetActiveWidgetTool(),
 		r.workspaceFocusWidgetTool(),
@@ -113,6 +120,133 @@ func (r *Runtime) workspaceFocusTabTool() toolruntime.Definition {
 				return nil, normalizeToolError(err)
 			}
 			return tab, nil
+		},
+	}
+}
+
+func (r *Runtime) workspaceCreateTerminalTabTool() toolruntime.Definition {
+	return toolruntime.Definition{
+		Name:         "workspace.create_terminal_tab",
+		Description:  "Create a new terminal tab and focus it.",
+		InputSchema:  json.RawMessage(`{"type":"object","properties":{"title":{"type":"string"}},"additionalProperties":false}`),
+		OutputSchema: json.RawMessage(`{"type":"object"}`),
+		Metadata: toolruntime.Metadata{
+			Capabilities: []string{"workspace:write", "terminal:spawn"},
+			ApprovalTier: policy.ApprovalTierSafe,
+			Mutating:     true,
+			TargetKind:   toolruntime.TargetWorkspace,
+		},
+		Decode: func(raw json.RawMessage) (any, error) {
+			return toolruntime.DecodeJSON[createTerminalTabInput](raw)
+		},
+		Plan: func(input any, execCtx toolruntime.ExecutionContext) (toolruntime.OperationPlan, error) {
+			payload := input.(createTerminalTabInput)
+			title := strings.TrimSpace(payload.Title)
+			if title == "" {
+				title = "New Shell"
+			}
+			return toolruntime.OperationPlan{
+				Operation: toolruntime.Operation{
+					Summary:              "create terminal tab " + title,
+					RequiredCapabilities: []string{"workspace:write", "terminal:spawn"},
+					ApprovalTier:         policy.ApprovalTierSafe,
+				},
+			}, nil
+		},
+		Execute: func(ctx context.Context, execCtx toolruntime.ExecutionContext, input any) (any, error) {
+			payload := input.(createTerminalTabInput)
+			title := strings.TrimSpace(payload.Title)
+			if title == "" {
+				title = "New Shell"
+			}
+			widgetID := ids.New("term")
+			tabID := ids.New("tab")
+			if _, err := r.Terminals.StartSession(ctx, terminal.LaunchOptions{
+				WidgetID:   widgetID,
+				WorkingDir: r.RepoRoot,
+			}); err != nil {
+				return nil, normalizeToolError(err)
+			}
+			snapshot := r.Workspace.AddTerminalTab(
+				workspace.Tab{
+					ID:          tabID,
+					Title:       title,
+					Description: "Terminal tab",
+					WidgetIDs:   []string{widgetID},
+				},
+				workspace.Widget{
+					ID:          widgetID,
+					Kind:        workspace.WidgetKindTerminal,
+					Title:       title,
+					Description: fmt.Sprintf("%s terminal session", title),
+					TerminalID:  widgetID,
+				},
+			)
+			return map[string]any{
+				"tab_id":    tabID,
+				"widget_id": widgetID,
+				"workspace": snapshot,
+			}, nil
+		},
+	}
+}
+
+func (r *Runtime) workspaceCloseTabTool() toolruntime.Definition {
+	return toolruntime.Definition{
+		Name:         "workspace.close_tab",
+		Description:  "Close a tab and its terminal session.",
+		InputSchema:  json.RawMessage(`{"type":"object","properties":{"tab_id":{"type":"string"}},"required":["tab_id"],"additionalProperties":false}`),
+		OutputSchema: json.RawMessage(`{"type":"object"}`),
+		Metadata: toolruntime.Metadata{
+			Capabilities: []string{"workspace:write", "terminal:close"},
+			ApprovalTier: policy.ApprovalTierSafe,
+			Mutating:     true,
+			TargetKind:   toolruntime.TargetWorkspace,
+		},
+		Decode: func(raw json.RawMessage) (any, error) {
+			return toolruntime.DecodeJSON[closeTabInput](raw)
+		},
+		Plan: func(input any, execCtx toolruntime.ExecutionContext) (toolruntime.OperationPlan, error) {
+			payload := input.(closeTabInput)
+			return toolruntime.OperationPlan{
+				Operation: toolruntime.Operation{
+					Summary:              "close tab " + payload.TabID,
+					RequiredCapabilities: []string{"workspace:write", "terminal:close"},
+					ApprovalTier:         policy.ApprovalTierSafe,
+				},
+			}, nil
+		},
+		Execute: func(ctx context.Context, execCtx toolruntime.ExecutionContext, input any) (any, error) {
+			payload := input.(closeTabInput)
+			snapshot := r.Workspace.Snapshot()
+			if len(snapshot.Tabs) <= 1 {
+				return nil, normalizeToolError(workspace.ErrCannotCloseLastTab)
+			}
+			var tab workspace.Tab
+			found := false
+			for _, candidate := range snapshot.Tabs {
+				if candidate.ID == payload.TabID {
+					tab = candidate
+					found = true
+					break
+				}
+			}
+			if !found {
+				return nil, normalizeToolError(fmt.Errorf("%w: %s", workspace.ErrTabNotFound, payload.TabID))
+			}
+			for _, widgetID := range tab.WidgetIDs {
+				if err := r.Terminals.CloseSession(widgetID); err != nil {
+					return nil, normalizeToolError(err)
+				}
+			}
+			snapshot, err := r.Workspace.CloseTab(payload.TabID)
+			if err != nil {
+				return nil, normalizeToolError(err)
+			}
+			return map[string]any{
+				"closed_tab_id": payload.TabID,
+				"workspace":     snapshot,
+			}, nil
 		},
 	}
 }

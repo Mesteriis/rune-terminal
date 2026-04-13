@@ -93,3 +93,23 @@ func TestTerminalServiceSnapshotAndInput(t *testing.T) {
 		t.Fatalf("expected process to be signalled")
 	}
 }
+
+func TestCloseSessionRemovesTerminal(t *testing.T) {
+	t.Parallel()
+
+	process := &fakeProcess{
+		outputCh: make(chan []byte, 4),
+		waitCh:   make(chan struct{}),
+	}
+	service := NewService(fakeLauncher{process: process})
+	if _, err := service.StartSession(context.Background(), LaunchOptions{WidgetID: "term-main", Shell: "/bin/sh"}); err != nil {
+		t.Fatalf("StartSession error: %v", err)
+	}
+
+	if err := service.CloseSession("term-main"); err != nil {
+		t.Fatalf("CloseSession error: %v", err)
+	}
+	if _, err := service.GetState("term-main"); err == nil {
+		t.Fatalf("expected closed session to be removed")
+	}
+}

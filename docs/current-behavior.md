@@ -12,6 +12,9 @@ It is intentionally operational, not narrative.
 - Focusing a widget also synchronizes the active tab if that widget belongs to a known tab.
 - Tabs are the shell-level navigation unit.
 - Widgets remain the secondary inventory used by the right-side dock and terminal/runtime binding.
+- New terminal tabs can be created at runtime.
+- Closing a tab tears down its terminal session and removes the associated widget from the workspace snapshot.
+- The last remaining tab cannot be closed in the current implementation.
 
 ## Session lifecycle contract
 

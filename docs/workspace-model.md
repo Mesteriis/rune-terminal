@@ -27,6 +27,8 @@ Operations:
 - list tabs
 - get active tab
 - focus tab
+- create terminal tab
+- close tab
 - list widgets
 - get active widget
 - focus widget

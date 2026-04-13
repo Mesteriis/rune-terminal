@@ -26,6 +26,8 @@ const QUIET_TOOLS = new Set([
   'workspace.list_tabs',
   'workspace.get_active_tab',
   'workspace.focus_tab',
+  'workspace.create_terminal_tab',
+  'workspace.close_tab',
   'workspace.list_widgets',
   'workspace.get_active_widget',
   'workspace.focus_widget',
@@ -318,6 +320,20 @@ export function useRuntimeShell() {
     })
   }
 
+  async function createTerminalTab(title?: string) {
+    await executeTool({
+      tool_name: 'workspace.create_terminal_tab',
+      input: title ? { title } : {},
+    })
+  }
+
+  async function closeTab(tabId: string) {
+    await executeTool({
+      tool_name: 'workspace.close_tab',
+      input: { tab_id: tabId },
+    })
+  }
+
   async function interruptWidget(widgetId: string) {
     await executeTool({
       tool_name: 'term.interrupt',
@@ -381,6 +397,8 @@ export function useRuntimeShell() {
     confirmPendingRequest,
     focusWidget,
     focusTab,
+    createTerminalTab,
+    closeTab,
     interruptWidget,
     refreshTerminalState,
     setActiveSelection,
@@ -424,6 +442,20 @@ function resolveTerminalTargetWidgetID(
     const tabWidgetID = output?.widget_ids?.[0]
     if (tabWidgetID) {
       return tabWidgetID
+    }
+  }
+
+  if (request.tool_name === 'workspace.create_terminal_tab') {
+    const output = response.output as { widget_id?: string } | undefined
+    if (output?.widget_id) {
+      return output.widget_id
+    }
+  }
+
+  if (request.tool_name === 'workspace.close_tab') {
+    const output = response.output as { workspace?: { active_widget_id?: string } } | undefined
+    if (output?.workspace?.active_widget_id) {
+      return output.workspace.active_widget_id
     }
   }
 

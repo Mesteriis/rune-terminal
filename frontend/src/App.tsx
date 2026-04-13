@@ -33,6 +33,8 @@ function App() {
         aiPanelVisible={layout.aiPanelVisible}
         onToggleAIPanel={layout.toggleAIPanel}
         onFocusTab={shell.focusTab}
+        onCreateTab={() => shell.createTerminalTab()}
+        onCloseTab={shell.closeTab}
       />
 
       <section className="workspace-shell">

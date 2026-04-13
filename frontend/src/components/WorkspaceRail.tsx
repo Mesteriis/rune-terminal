@@ -7,6 +7,8 @@ type WorkspaceRailProps = {
   aiPanelVisible: boolean
   onToggleAIPanel: () => void
   onFocusTab: (tabId: string) => void | Promise<void>
+  onCreateTab: () => void | Promise<void>
+  onCloseTab: (tabId: string) => void | Promise<void>
 }
 
 export function WorkspaceRail({
@@ -16,6 +18,8 @@ export function WorkspaceRail({
   aiPanelVisible,
   onToggleAIPanel,
   onFocusTab,
+  onCreateTab,
+  onCloseTab,
 }: WorkspaceRailProps) {
   const activeTab = workspace?.tabs.find((tab) => tab.id === activeTabId)
 
@@ -35,10 +39,34 @@ export function WorkspaceRail({
             className={tab.id === activeTabId ? 'workspace-tab active' : 'workspace-tab'}
             onClick={() => void onFocusTab(tab.id)}
           >
-            <strong>{tab.title}</strong>
-            <span>{tab.description ?? tab.widget_ids.join(', ')}</span>
+            <div className="workspace-tab-copy">
+              <strong>{tab.title}</strong>
+              <span>{tab.description ?? tab.widget_ids.join(', ')}</span>
+            </div>
+            <span
+              className="workspace-tab-close"
+              role="button"
+              tabIndex={0}
+              onClick={(event) => {
+                event.stopPropagation()
+                void onCloseTab(tab.id)
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  void onCloseTab(tab.id)
+                }
+              }}
+            >
+              ×
+            </span>
           </button>
         ))}
+        <button className="workspace-tab workspace-tab-add" onClick={() => void onCreateTab()}>
+          <strong>+</strong>
+          <span>New tab</span>
+        </button>
         {workspace?.tabs.length ? null : <div className="workspace-tab placeholder">Booting workspace…</div>}
       </div>
 

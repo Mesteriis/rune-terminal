@@ -185,6 +185,43 @@ What was not revalidated in this slice:
 
 - no fresh UI automation or manual Tauri launch was performed after this specific tab-domain pass
 
+## Latest tab-controls parity slice
+
+The next workspace parity pass added basic TideTerm-style tab controls:
+
+- top shell can create a new terminal tab
+- top shell can close an existing tab
+- closing a tab tears down the associated terminal session
+- the runtime prevents closing the last remaining tab
+
+Validation executed for this slice:
+
+```bash
+./scripts/go.sh test ./core/workspace ./core/terminal ./core/app
+npm --prefix frontend run lint
+npm --prefix frontend run build
+```
+
+Observed result:
+
+- workspace, terminal, and app-layer tests passed
+- frontend lint passed
+- frontend build passed
+
+Additional follow-up validation:
+
+```bash
+npm run validate
+```
+
+Observed result:
+
+- full repository validation passed after the tab-controls slice
+
+What was not revalidated in this slice:
+
+- no fresh UI automation or manual Tauri launch was performed after this specific create/close-tab pass
+
 ## Tooling baseline
 
 - Go: `go1.26.2 darwin/arm64`

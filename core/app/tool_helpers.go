@@ -19,6 +19,14 @@ type focusTabInput struct {
 	TabID string `json:"tab_id"`
 }
 
+type createTerminalTabInput struct {
+	Title string `json:"title,omitempty"`
+}
+
+type closeTabInput struct {
+	TabID string `json:"tab_id"`
+}
+
 type sendInputToolInput struct {
 	WidgetID      string `json:"widget_id,omitempty"`
 	Text          string `json:"text"`

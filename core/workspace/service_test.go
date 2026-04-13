@@ -40,3 +40,40 @@ func TestFocusTab(t *testing.T) {
 		t.Fatalf("active widget not synchronized with tab")
 	}
 }
+
+func TestAddAndCloseTab(t *testing.T) {
+	t.Parallel()
+
+	service := NewService(BootstrapDefault())
+	snapshot := service.AddTerminalTab(
+		Tab{
+			ID:          "tab-new",
+			Title:       "New Shell",
+			Description: "Terminal tab",
+			WidgetIDs:   []string{"term-new"},
+		},
+		Widget{
+			ID:          "term-new",
+			Kind:        WidgetKindTerminal,
+			Title:       "New Shell",
+			Description: "New terminal session",
+			TerminalID:  "term-new",
+		},
+	)
+	if snapshot.ActiveTabID != "tab-new" || snapshot.ActiveWidgetID != "term-new" {
+		t.Fatalf("new tab was not focused: %#v", snapshot)
+	}
+
+	next, err := service.CloseTab("tab-new")
+	if err != nil {
+		t.Fatalf("CloseTab error: %v", err)
+	}
+	if next.ActiveTabID != "tab-ops" {
+		t.Fatalf("unexpected fallback tab: %#v", next)
+	}
+	for _, widget := range next.Widgets {
+		if widget.ID == "term-new" {
+			t.Fatalf("closed widget still present")
+		}
+	}
+}

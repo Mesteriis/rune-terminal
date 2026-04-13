@@ -144,6 +144,20 @@ func (s *Service) Interrupt(widgetID string) error {
 	return sess.process.Signal(os.Interrupt)
 }
 
+func (s *Service) CloseSession(widgetID string) error {
+	s.mu.Lock()
+	sess, ok := s.sessions[widgetID]
+	if !ok {
+		s.mu.Unlock()
+		return fmt.Errorf("%w: %s", ErrWidgetNotFound, widgetID)
+	}
+	delete(s.sessions, widgetID)
+	s.mu.Unlock()
+
+	s.closeSubscribers(sess)
+	return sess.process.Close()
+}
+
 func (s *Service) Snapshot(widgetID string, from uint64) (Snapshot, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

@@ -26,6 +26,7 @@ func normalizeToolError(err error) error {
 		return toolruntime.NotFoundError(err.Error())
 	case errors.Is(err, terminal.ErrCannotSendInput),
 		errors.Is(err, terminal.ErrCannotInterrupt),
+		errors.Is(err, workspace.ErrCannotCloseLastTab),
 		errors.Is(err, policy.ErrInvalidTrustedRule),
 		errors.Is(err, policy.ErrInvalidIgnoreRule),
 		errors.Is(err, toolruntime.ErrPendingApprovalExpired):
