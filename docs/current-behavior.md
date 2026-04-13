@@ -18,6 +18,8 @@ It is intentionally operational, not narrative.
 - Tabs can be renamed inline from the top strip.
 - Tabs can be pinned and unpinned from the top strip.
 - Pinned tabs render before regular tabs while preserving creation order inside each group.
+- Tabs can be reordered by dragging within their current pinned or regular group.
+- Cross-group drag between pinned and regular tabs is rejected in the current implementation.
 
 ## Session lifecycle contract
 

@@ -27,6 +27,7 @@ Operations:
 - list tabs
 - get active tab
 - focus tab
+- move tab inside its current group
 - rename tab
 - pin or unpin tab
 - create terminal tab
@@ -41,6 +42,7 @@ The old stack mixed layout state, transport identifiers, block metadata and UI v
 
 - tab inventory
 - tab title and pinned state
+- tab order inside pinned and regular groups
 - inventory
 - focus
 - typed widget descriptors

@@ -118,3 +118,44 @@ func TestSetTabPinned(t *testing.T) {
 		t.Fatalf("snapshot pinned state not updated")
 	}
 }
+
+func TestMoveTab(t *testing.T) {
+	t.Parallel()
+
+	service := NewService(BootstrapDefault())
+	service.SetTabPinned("tab-main", true)
+	service.SetTabPinned("tab-ops", true)
+	service.AddTerminalTab(
+		Tab{
+			ID:          "tab-third",
+			Title:       "Third Shell",
+			Description: "Terminal tab",
+			WidgetIDs:   []string{"term-third"},
+		},
+		Widget{
+			ID:          "term-third",
+			Kind:        WidgetKindTerminal,
+			Title:       "Third Shell",
+			Description: "Third terminal session",
+			TerminalID:  "term-third",
+		},
+	)
+
+	snapshot, err := service.MoveTab("tab-ops", "tab-main")
+	if err != nil {
+		t.Fatalf("MoveTab error: %v", err)
+	}
+	if snapshot.Tabs[0].ID != "tab-ops" || snapshot.Tabs[1].ID != "tab-main" {
+		t.Fatalf("unexpected tab order: %#v", snapshot.Tabs)
+	}
+}
+
+func TestMoveTabRejectsCrossGroupMove(t *testing.T) {
+	t.Parallel()
+
+	service := NewService(BootstrapDefault())
+	service.SetTabPinned("tab-main", true)
+	if _, err := service.MoveTab("tab-main", "tab-ops"); err != ErrInvalidTabMove {
+		t.Fatalf("expected ErrInvalidTabMove, got %v", err)
+	}
+}

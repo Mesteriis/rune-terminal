@@ -9,9 +9,28 @@ type WorkspaceTabProps = {
   onClose: () => void | Promise<void>
   onRename: (title: string) => void | Promise<void>
   onTogglePinned: () => void | Promise<void>
+  dragging: boolean
+  dropTarget: boolean
+  onDragStart: () => void
+  onDragEnter: () => void
+  onDragEnd: () => void
+  onDropTab: () => void
 }
 
-export function WorkspaceTab({ tab, active, onSelect, onClose, onRename, onTogglePinned }: WorkspaceTabProps) {
+export function WorkspaceTab({
+  tab,
+  active,
+  onSelect,
+  onClose,
+  onRename,
+  onTogglePinned,
+  dragging,
+  dropTarget,
+  onDragStart,
+  onDragEnter,
+  onDragEnd,
+  onDropTab,
+}: WorkspaceTabProps) {
   const [editing, setEditing] = useState(false)
   const [draftTitle, setDraftTitle] = useState(tab.title)
   const inputRef = useRef<HTMLInputElement | null>(null)
@@ -36,9 +55,31 @@ export function WorkspaceTab({ tab, active, onSelect, onClose, onRename, onToggl
 
   return (
     <div
-      className={['workspace-tab', active ? 'active' : '', tab.pinned ? 'pinned' : ''].filter(Boolean).join(' ')}
+      className={['workspace-tab', active ? 'active' : '', tab.pinned ? 'pinned' : '', dragging ? 'dragging' : '', dropTarget ? 'drop-target' : '']
+        .filter(Boolean)
+        .join(' ')}
       role="button"
       tabIndex={0}
+      draggable={!editing}
+      onDragStart={(event) => {
+        event.dataTransfer.effectAllowed = 'move'
+        event.dataTransfer.setData('text/plain', tab.id)
+        onDragStart()
+      }}
+      onDragEnd={onDragEnd}
+      onDragOver={(event) => {
+        event.preventDefault()
+        event.dataTransfer.dropEffect = 'move'
+      }}
+      onDragEnter={(event) => {
+        event.preventDefault()
+        onDragEnter()
+      }}
+      onDrop={(event) => {
+        event.preventDefault()
+        event.stopPropagation()
+        onDropTab()
+      }}
       onClick={() => void onSelect()}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {
@@ -65,6 +106,7 @@ export function WorkspaceTab({ tab, active, onSelect, onClose, onRename, onToggl
             className="workspace-tab-editor"
             value={draftTitle}
             aria-label="Rename tab"
+            draggable={false}
             onChange={(event) => setDraftTitle(event.target.value)}
             onBlur={commitRename}
             onClick={(event) => event.stopPropagation()}

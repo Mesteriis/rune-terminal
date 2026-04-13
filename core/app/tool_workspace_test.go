@@ -141,3 +141,34 @@ func TestWorkspaceSetTabPinnedTool(t *testing.T) {
 		t.Fatalf("expected pinned tab: %#v", tab)
 	}
 }
+
+func TestWorkspaceMoveTabTool(t *testing.T) {
+	t.Parallel()
+
+	runtime := &Runtime{
+		Workspace: workspace.NewService(workspace.BootstrapDefault()),
+	}
+	runtime.Workspace.SetTabPinned("tab-main", true)
+	runtime.Workspace.SetTabPinned("tab-ops", true)
+
+	tool := runtime.workspaceMoveTabTool()
+	output, err := tool.Execute(context.Background(), toolruntime.ExecutionContext{}, moveTabInput{
+		TabID:       "tab-ops",
+		BeforeTabID: "tab-main",
+	})
+	if err != nil {
+		t.Fatalf("Execute error: %v", err)
+	}
+
+	payload, ok := output.(map[string]any)
+	if !ok {
+		t.Fatalf("unexpected output type: %#v", output)
+	}
+	workspacePayload, ok := payload["workspace"].(workspace.Snapshot)
+	if !ok {
+		t.Fatalf("unexpected workspace payload: %#v", payload["workspace"])
+	}
+	if workspacePayload.Tabs[0].ID != "tab-ops" {
+		t.Fatalf("expected moved tab first: %#v", workspacePayload.Tabs)
+	}
+}

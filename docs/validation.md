@@ -253,6 +253,36 @@ What was not revalidated in this slice:
 - no fresh UI automation was run after the inline rename/pin change
 - no fresh manual Tauri launch was performed after this specific top-strip interaction pass
 
+## Latest tab-reorder parity slice
+
+The next workspace parity pass extended the tabbar toward TideTerm reorder behavior:
+
+- the runtime now exposes `workspace.move_tab`
+- tabs can be drag-reordered inside their current pinned or regular group
+- cross-group drag between pinned and regular tabs is rejected by the workspace domain
+- workspace and app-layer tests now cover tab move flows
+
+Validation executed for this slice:
+
+```bash
+./scripts/go.sh test ./core/workspace ./core/app
+npm --prefix frontend run lint
+npm --prefix frontend run build
+npm run validate
+```
+
+Observed result:
+
+- targeted workspace and app-layer tests passed
+- frontend lint passed
+- frontend build passed
+- full repository validation passed after the tab reorder slice
+
+What was not revalidated in this slice:
+
+- no fresh UI automation was run after the drag-reorder change
+- no fresh manual Tauri launch was performed after this specific tabbar interaction pass
+
 ## Tooling baseline
 
 - Go: `go1.26.2 darwin/arm64`

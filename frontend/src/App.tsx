@@ -35,6 +35,7 @@ function App() {
         onFocusTab={shell.focusTab}
         onCreateTab={() => shell.createTerminalTab()}
         onCloseTab={shell.closeTab}
+        onMoveTab={shell.moveTab}
         onRenameTab={shell.renameTab}
         onToggleTabPinned={shell.setTabPinned}
       />

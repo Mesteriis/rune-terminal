@@ -19,6 +19,11 @@ type focusTabInput struct {
 	TabID string `json:"tab_id"`
 }
 
+type moveTabInput struct {
+	TabID       string `json:"tab_id"`
+	BeforeTabID string `json:"before_tab_id"`
+}
+
 type createTerminalTabInput struct {
 	Title string `json:"title,omitempty"`
 }

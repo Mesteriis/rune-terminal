@@ -28,6 +28,7 @@ func normalizeToolError(err error) error {
 		errors.Is(err, terminal.ErrCannotInterrupt),
 		errors.Is(err, workspace.ErrCannotCloseLastTab),
 		errors.Is(err, workspace.ErrInvalidTabName),
+		errors.Is(err, workspace.ErrInvalidTabMove),
 		errors.Is(err, policy.ErrInvalidTrustedRule),
 		errors.Is(err, policy.ErrInvalidIgnoreRule),
 		errors.Is(err, toolruntime.ErrPendingApprovalExpired):

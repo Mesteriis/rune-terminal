@@ -18,6 +18,7 @@ func (r *Runtime) workspaceTools() []toolruntime.Definition {
 		r.workspaceListTabsTool(),
 		r.workspaceGetActiveTabTool(),
 		r.workspaceFocusTabTool(),
+		r.workspaceMoveTabTool(),
 		r.workspaceRenameTabTool(),
 		r.workspaceSetTabPinnedTool(),
 		r.workspaceCreateTerminalTabTool(),
@@ -25,6 +26,41 @@ func (r *Runtime) workspaceTools() []toolruntime.Definition {
 		r.workspaceListWidgetsTool(),
 		r.workspaceGetActiveWidgetTool(),
 		r.workspaceFocusWidgetTool(),
+	}
+}
+
+func (r *Runtime) workspaceMoveTabTool() toolruntime.Definition {
+	return toolruntime.Definition{
+		Name:         "workspace.move_tab",
+		Description:  "Move a tab before another tab in the current workspace.",
+		InputSchema:  json.RawMessage(`{"type":"object","properties":{"tab_id":{"type":"string"},"before_tab_id":{"type":"string"}},"required":["tab_id","before_tab_id"],"additionalProperties":false}`),
+		OutputSchema: json.RawMessage(`{"type":"object"}`),
+		Metadata: toolruntime.Metadata{
+			Capabilities: []string{"workspace:write"},
+			ApprovalTier: policy.ApprovalTierSafe,
+			Mutating:     true,
+			TargetKind:   toolruntime.TargetWorkspace,
+		},
+		Decode: func(raw json.RawMessage) (any, error) {
+			return toolruntime.DecodeJSON[moveTabInput](raw)
+		},
+		Plan: func(input any, execCtx toolruntime.ExecutionContext) (toolruntime.OperationPlan, error) {
+			payload := input.(moveTabInput)
+			return toolruntime.OperationPlan{
+				Operation: toolruntime.Operation{
+					Summary:              fmt.Sprintf("move tab %s before %s", payload.TabID, payload.BeforeTabID),
+					RequiredCapabilities: []string{"workspace:write"},
+					ApprovalTier:         policy.ApprovalTierSafe,
+				},
+			}, nil
+		},
+		Execute: func(ctx context.Context, execCtx toolruntime.ExecutionContext, input any) (any, error) {
+			snapshot, err := r.Workspace.MoveTab(input.(moveTabInput).TabID, input.(moveTabInput).BeforeTabID)
+			if err != nil {
+				return nil, normalizeToolError(err)
+			}
+			return map[string]any{"workspace": snapshot}, nil
+		},
 	}
 }
 

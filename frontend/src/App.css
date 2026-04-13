@@ -102,6 +102,15 @@
   box-shadow: inset 0 2px 0 rgba(242, 179, 95, 0.45);
 }
 
+.workspace-tab.dragging {
+  opacity: 0.5;
+}
+
+.workspace-tab.drop-target {
+  border-color: rgba(242, 179, 95, 0.4);
+  box-shadow: inset 3px 0 0 #f2b35f;
+}
+
 .workspace-tab-divider {
   flex: 0 0 1px;
   align-self: stretch;

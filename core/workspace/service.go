@@ -210,6 +210,43 @@ func (s *Service) SetTabPinned(tabID string, pinned bool) (Tab, error) {
 	return Tab{}, fmt.Errorf("%w: %s", ErrTabNotFound, tabID)
 }
 
+func (s *Service) MoveTab(tabID string, beforeTabID string) (Snapshot, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if tabID == beforeTabID {
+		return cloneSnapshot(s.snapshot), nil
+	}
+
+	fromIndex := -1
+	toIndex := -1
+	for i, tab := range s.snapshot.Tabs {
+		switch tab.ID {
+		case tabID:
+			fromIndex = i
+		case beforeTabID:
+			toIndex = i
+		}
+	}
+	if fromIndex == -1 {
+		return Snapshot{}, fmt.Errorf("%w: %s", ErrTabNotFound, tabID)
+	}
+	if toIndex == -1 {
+		return Snapshot{}, fmt.Errorf("%w: %s", ErrTabNotFound, beforeTabID)
+	}
+	if s.snapshot.Tabs[fromIndex].Pinned != s.snapshot.Tabs[toIndex].Pinned {
+		return Snapshot{}, ErrInvalidTabMove
+	}
+
+	tab := s.snapshot.Tabs[fromIndex]
+	s.snapshot.Tabs = append(s.snapshot.Tabs[:fromIndex], s.snapshot.Tabs[fromIndex+1:]...)
+	if fromIndex < toIndex {
+		toIndex--
+	}
+	s.snapshot.Tabs = append(s.snapshot.Tabs[:toIndex], append([]Tab{tab}, s.snapshot.Tabs[toIndex:]...)...)
+	return cloneSnapshot(s.snapshot), nil
+}
+
 func (s *Service) findWidgetLocked(widgetID string) (Widget, error) {
 	for _, widget := range s.snapshot.Widgets {
 		if widget.ID == widgetID {
