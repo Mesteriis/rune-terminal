@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/avm/rterm/core/connections"
-	"github.com/avm/rterm/core/terminal"
-	"github.com/avm/rterm/core/workspace"
-	"github.com/avm/rterm/internal/ids"
+	"github.com/Mesteriis/rune-terminal/core/connections"
+	"github.com/Mesteriis/rune-terminal/core/terminal"
+	"github.com/Mesteriis/rune-terminal/core/workspace"
+	"github.com/Mesteriis/rune-terminal/internal/ids"
 )
 
 type WorkspaceTabResult struct {

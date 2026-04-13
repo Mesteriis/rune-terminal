@@ -1,6 +1,6 @@
 package toolruntime
 
-import "github.com/avm/rterm/core/audit"
+import "github.com/Mesteriis/rune-terminal/core/audit"
 
 func (e *Executor) appendAudit(prepared *preparedExecution, request ExecuteRequest, success bool, errorText string) {
 	_ = e.audit.Append(audit.Event{

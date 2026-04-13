@@ -3,7 +3,7 @@ package agent
 import (
 	"time"
 
-	"github.com/avm/rterm/core/policy"
+	"github.com/Mesteriis/rune-terminal/core/policy"
 )
 
 func defaultState() State {

@@ -3,7 +3,7 @@ package httpapi
 import (
 	"net/http"
 
-	"github.com/avm/rterm/core/app"
+	"github.com/Mesteriis/rune-terminal/core/app"
 )
 
 func (api *API) handleFocusWidget(w http.ResponseWriter, r *http.Request) {

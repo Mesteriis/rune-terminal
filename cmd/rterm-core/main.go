@@ -13,8 +13,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/avm/rterm/core/app"
-	"github.com/avm/rterm/core/transport/httpapi"
+	"github.com/Mesteriis/rune-terminal/core/app"
+	"github.com/Mesteriis/rune-terminal/core/transport/httpapi"
 )
 
 func main() {

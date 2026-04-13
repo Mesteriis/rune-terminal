@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/avm/rterm/core/agent"
+	"github.com/Mesteriis/rune-terminal/core/agent"
 )
 
 func TestAgentCatalogReturnsActiveSelection(t *testing.T) {

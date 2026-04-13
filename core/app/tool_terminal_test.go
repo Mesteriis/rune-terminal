@@ -6,9 +6,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/avm/rterm/core/terminal"
-	"github.com/avm/rterm/core/toolruntime"
-	"github.com/avm/rterm/core/workspace"
+	"github.com/Mesteriis/rune-terminal/core/terminal"
+	"github.com/Mesteriis/rune-terminal/core/toolruntime"
+	"github.com/Mesteriis/rune-terminal/core/workspace"
 )
 
 type interruptFakeProcess struct {

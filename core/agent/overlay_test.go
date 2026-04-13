@@ -3,7 +3,7 @@ package agent
 import (
 	"testing"
 
-	"github.com/avm/rterm/core/policy"
+	"github.com/Mesteriis/rune-terminal/core/policy"
 )
 
 func TestSelectionMapsToPolicyProfile(t *testing.T) {

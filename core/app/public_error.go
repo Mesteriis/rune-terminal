@@ -1,6 +1,6 @@
 package app
 
-import "github.com/avm/rterm/core/toolruntime"
+import "github.com/Mesteriis/rune-terminal/core/toolruntime"
 
 type PublicError struct {
 	Code    string

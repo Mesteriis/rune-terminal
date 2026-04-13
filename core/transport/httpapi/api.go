@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/avm/rterm/core/app"
+	"github.com/Mesteriis/rune-terminal/core/app"
 )
 
 type API struct {

@@ -3,8 +3,8 @@ package httpapi
 import (
 	"net/http"
 
-	"github.com/avm/rterm/core/app"
-	"github.com/avm/rterm/core/connections"
+	"github.com/Mesteriis/rune-terminal/core/app"
+	"github.com/Mesteriis/rune-terminal/core/connections"
 )
 
 func (api *API) handleConnections(w http.ResponseWriter, r *http.Request) {

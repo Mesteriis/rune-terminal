@@ -7,7 +7,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/avm/rterm/core/policy"
+	"github.com/Mesteriis/rune-terminal/core/policy"
 )
 
 type TargetKind string

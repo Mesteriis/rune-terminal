@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/avm/rterm/core/policy"
+	"github.com/Mesteriis/rune-terminal/core/policy"
 )
 
 func TestPolicyListEndpointsReturnConfiguredRules(t *testing.T) {

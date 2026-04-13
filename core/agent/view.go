@@ -1,6 +1,6 @@
 package agent
 
-import "github.com/avm/rterm/core/policy"
+import "github.com/Mesteriis/rune-terminal/core/policy"
 
 type Catalog struct {
 	Profiles []PromptProfile `json:"profiles"`

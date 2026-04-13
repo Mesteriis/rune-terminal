@@ -3,7 +3,7 @@ package httpapi
 import (
 	"net/http"
 
-	"github.com/avm/rterm/core/policy"
+	"github.com/Mesteriis/rune-terminal/core/policy"
 )
 
 func (api *API) handleTrustedRules(w http.ResponseWriter, r *http.Request) {

@@ -1,4 +1,4 @@
-module github.com/avm/rterm
+module github.com/Mesteriis/rune-terminal
 
 go 1.26.0
 

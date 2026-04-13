@@ -10,12 +10,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/avm/rterm/core/agent"
-	"github.com/avm/rterm/core/app"
-	"github.com/avm/rterm/core/audit"
-	"github.com/avm/rterm/core/policy"
-	"github.com/avm/rterm/core/terminal"
-	"github.com/avm/rterm/core/toolruntime"
+	"github.com/Mesteriis/rune-terminal/core/agent"
+	"github.com/Mesteriis/rune-terminal/core/app"
+	"github.com/Mesteriis/rune-terminal/core/audit"
+	"github.com/Mesteriis/rune-terminal/core/policy"
+	"github.com/Mesteriis/rune-terminal/core/terminal"
+	"github.com/Mesteriis/rune-terminal/core/toolruntime"
 )
 
 func TestTerminalSnapshotReturnsBufferedChunks(t *testing.T) {

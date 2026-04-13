@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/avm/rterm/internal/ids"
+	"github.com/Mesteriis/rune-terminal/internal/ids"
 )
 
 type Event struct {

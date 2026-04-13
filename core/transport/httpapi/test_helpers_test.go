@@ -9,14 +9,14 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/avm/rterm/core/agent"
-	"github.com/avm/rterm/core/app"
-	"github.com/avm/rterm/core/audit"
-	"github.com/avm/rterm/core/connections"
-	"github.com/avm/rterm/core/policy"
-	"github.com/avm/rterm/core/terminal"
-	"github.com/avm/rterm/core/toolruntime"
-	"github.com/avm/rterm/core/workspace"
+	"github.com/Mesteriis/rune-terminal/core/agent"
+	"github.com/Mesteriis/rune-terminal/core/app"
+	"github.com/Mesteriis/rune-terminal/core/audit"
+	"github.com/Mesteriis/rune-terminal/core/connections"
+	"github.com/Mesteriis/rune-terminal/core/policy"
+	"github.com/Mesteriis/rune-terminal/core/terminal"
+	"github.com/Mesteriis/rune-terminal/core/toolruntime"
+	"github.com/Mesteriis/rune-terminal/core/workspace"
 )
 
 const testAuthToken = "test-token"

@@ -3,7 +3,7 @@ package httpapi
 import (
 	"net/http"
 
-	"github.com/avm/rterm/core/toolruntime"
+	"github.com/Mesteriis/rune-terminal/core/toolruntime"
 )
 
 type apiError struct {

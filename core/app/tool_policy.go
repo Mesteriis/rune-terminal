@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/avm/rterm/core/policy"
-	"github.com/avm/rterm/core/toolruntime"
+	"github.com/Mesteriis/rune-terminal/core/policy"
+	"github.com/Mesteriis/rune-terminal/core/toolruntime"
 )
 
 func (r *Runtime) policyTools() []toolruntime.Definition {

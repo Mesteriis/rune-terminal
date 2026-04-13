@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/avm/rterm/core/policy"
+	"github.com/Mesteriis/rune-terminal/core/policy"
 )
 
 type Store struct {

@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/avm/rterm/core/terminal"
+	"github.com/Mesteriis/rune-terminal/core/terminal"
 )
 
 func (api *API) handleTerminalInput(w http.ResponseWriter, r *http.Request) {

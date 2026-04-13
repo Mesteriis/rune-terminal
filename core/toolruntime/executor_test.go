@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/avm/rterm/core/audit"
-	"github.com/avm/rterm/core/policy"
+	"github.com/Mesteriis/rune-terminal/core/audit"
+	"github.com/Mesteriis/rune-terminal/core/policy"
 )
 
 func TestExecutorConfirmationFlow(t *testing.T) {

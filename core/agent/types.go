@@ -4,7 +4,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/avm/rterm/core/policy"
+	"github.com/Mesteriis/rune-terminal/core/policy"
 )
 
 const ConfigVersion = "v1alpha1"

@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/avm/rterm/core/connections"
+	"github.com/Mesteriis/rune-terminal/core/connections"
 )
 
 func TestConnectionsEndpointsListSelectAndSave(t *testing.T) {

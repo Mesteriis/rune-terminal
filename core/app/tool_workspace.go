@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/avm/rterm/core/policy"
-	"github.com/avm/rterm/core/toolruntime"
+	"github.com/Mesteriis/rune-terminal/core/policy"
+	"github.com/Mesteriis/rune-terminal/core/toolruntime"
 )
 
 func (r *Runtime) workspaceTools() []toolruntime.Definition {

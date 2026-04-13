@@ -3,12 +3,12 @@ package app
 import (
 	"errors"
 
-	agentcore "github.com/avm/rterm/core/agent"
-	"github.com/avm/rterm/core/connections"
-	"github.com/avm/rterm/core/policy"
-	"github.com/avm/rterm/core/terminal"
-	"github.com/avm/rterm/core/toolruntime"
-	"github.com/avm/rterm/core/workspace"
+	agentcore "github.com/Mesteriis/rune-terminal/core/agent"
+	"github.com/Mesteriis/rune-terminal/core/connections"
+	"github.com/Mesteriis/rune-terminal/core/policy"
+	"github.com/Mesteriis/rune-terminal/core/terminal"
+	"github.com/Mesteriis/rune-terminal/core/toolruntime"
+	"github.com/Mesteriis/rune-terminal/core/workspace"
 )
 
 func normalizeToolError(err error) error {

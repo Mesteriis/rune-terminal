@@ -8,8 +8,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/avm/rterm/core/policy"
-	"github.com/avm/rterm/core/toolruntime"
+	"github.com/Mesteriis/rune-terminal/core/policy"
+	"github.com/Mesteriis/rune-terminal/core/toolruntime"
 )
 
 func TestExecuteToolReturnsPreconditionRequiredForApprovalFlow(t *testing.T) {
