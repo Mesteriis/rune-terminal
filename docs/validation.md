@@ -393,6 +393,33 @@ What was not revalidated in this slice:
 - no fresh UI automation was run after the AI header/menu change
 - no fresh manual Tauri launch was performed after this specific AI-panel shell pass
 
+## Latest AI-mode-strip parity slice
+
+The next AI-panel parity pass moved posture controls closer to TideTerm message flow:
+
+- prompt profile, role preset, and work mode selectors now render in a top mode strip above the message feed
+- the footer is now reserved for shell-level actions instead of carrying the full posture form
+- this keeps the current runtime-backed controls while aligning panel composition with TideTerm
+
+Validation executed for this slice:
+
+```bash
+npm --prefix frontend run lint
+npm --prefix frontend run build
+npm run validate
+```
+
+Observed result:
+
+- frontend lint passed
+- frontend build passed
+- full repository validation passed after the AI mode-strip slice
+
+What was not revalidated in this slice:
+
+- no fresh UI automation was run after moving the posture controls
+- no fresh manual Tauri launch was performed after this specific AI-panel layout pass
+
 ## Tooling baseline
 
 - Go: `go1.26.2 darwin/arm64`

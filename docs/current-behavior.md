@@ -113,3 +113,4 @@ Confirmable boundaries:
 - Session IDs currently equal widget IDs instead of using a separate durable session identity layer.
 - The desktop shell launches the Go core as a sidecar process and discovers it via a ready file; a richer process supervisor does not exist yet.
 - The AI panel now uses a TideTerm-shaped header with widget context toggle and overflow menu, but it still operates on runtime, audit, and policy surfaces rather than a full conversation backend.
+- Prompt profile, role preset, and work mode controls now live in an AI mode strip near the top of the message feed instead of in the footer.

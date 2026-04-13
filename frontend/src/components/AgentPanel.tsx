@@ -1,3 +1,4 @@
+import { AgentModeStrip } from './AgentModeStrip'
 import type {
   AgentCatalog,
   ExecuteToolResponse,
@@ -41,6 +42,13 @@ export function AgentPanel({
   return (
     <section className="agent-panel">
       <div className="agent-feed">
+        <AgentModeStrip
+          catalog={catalog}
+          onSelectProfile={onSelectProfile}
+          onSelectRole={onSelectRole}
+          onSelectMode={onSelectMode}
+        />
+
         <article className="ai-message-card ai-message-assistant">
           <header>
             <span className="ai-message-badge">RunaTerminal AI</span>
@@ -150,42 +158,6 @@ export function AgentPanel({
       </div>
 
       <footer className="agent-composer">
-        <div className="agent-composer-fields">
-          <label>
-            Prompt profile
-            <select
-              value={catalog?.active.profile.id ?? ''}
-              onChange={(event) => void onSelectProfile(event.target.value)}
-              disabled={!catalog}
-            >
-              {(catalog?.profiles ?? []).map((profile) => (
-                <option key={profile.id} value={profile.id}>
-                  {profile.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Role preset
-            <select value={catalog?.active.role.id ?? ''} onChange={(event) => void onSelectRole(event.target.value)} disabled={!catalog}>
-              {(catalog?.roles ?? []).map((role) => (
-                <option key={role.id} value={role.id}>
-                  {role.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Work mode
-            <select value={catalog?.active.mode.id ?? ''} onChange={(event) => void onSelectMode(event.target.value)} disabled={!catalog}>
-              {(catalog?.modes ?? []).map((mode) => (
-                <option key={mode.id} value={mode.id}>
-                  {mode.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
         <div className="agent-composer-actions">
           <button className="ghost-button" onClick={() => onSelectSection('tools')}>
             Open tools
