@@ -1,10 +1,13 @@
 import { useMemo, useState } from 'react'
 
+import { ConnectionCard } from './ConnectionCard'
+import { connectionCheckSummary, connectionLaunchSummary, connectionUsabilityCopy } from '../lib/connections'
 import type { ConnectionCatalog } from '../types'
 
 type ConnectionsPanelProps = {
   catalog: ConnectionCatalog | null
   onSelectConnection: (connectionId: string) => void | Promise<void>
+  onCheckConnection: (connectionId: string) => void | Promise<void>
   onCreateTerminalTabWithConnection: (connectionId: string, title?: string) => void | Promise<void>
   onSaveSSHConnection: (input: {
     name?: string
@@ -18,6 +21,7 @@ type ConnectionsPanelProps = {
 export function ConnectionsPanel({
   catalog,
   onSelectConnection,
+  onCheckConnection,
   onCreateTerminalTabWithConnection,
   onSaveSSHConnection,
 }: ConnectionsPanelProps) {
@@ -46,33 +50,26 @@ export function ConnectionsPanel({
         <span>Active target</span>
         <strong>{activeConnection?.name ?? 'Local Machine'}</strong>
         <small>{activeConnection?.description ?? 'Local shell sessions launched through the Go runtime'}</small>
+        {activeConnection ? (
+          <div className="connections-active-meta">
+            <span className={`status-pill usability-pill usability-${activeConnection.usability}`}>
+              {connectionUsabilityCopy(activeConnection)}
+            </span>
+            <span>{connectionCheckSummary(activeConnection)}</span>
+            <span>{connectionLaunchSummary(activeConnection)}</span>
+          </div>
+        ) : null}
       </div>
 
       <div className="connections-list">
         {(catalog?.connections ?? []).map((connection) => (
-          <div key={connection.id} className={`connections-card ${connection.active ? 'active' : ''}`}>
-            <div className="connections-card-main">
-              <strong>{connection.name}</strong>
-              <span>{connection.description || (connection.kind === 'local' ? 'Local machine' : 'SSH connection')}</span>
-            </div>
-            <div className="connections-card-meta">
-              <span className={`status-pill status-${connection.status}`}>{connection.status}</span>
-              <span className="status-pill">{connection.kind}</span>
-            </div>
-            <div className="connections-card-actions">
-              <button
-                type="button"
-                className="ghost-button"
-                onClick={() => void onSelectConnection(connection.id)}
-                disabled={connection.active}
-              >
-                {connection.active ? 'Selected' : 'Use for new tabs'}
-              </button>
-              <button type="button" onClick={() => void onCreateTerminalTabWithConnection(connection.id, connection.name)}>
-                Open shell
-              </button>
-            </div>
-          </div>
+          <ConnectionCard
+            key={connection.id}
+            connection={connection}
+            onSelectConnection={onSelectConnection}
+            onCheckConnection={onCheckConnection}
+            onCreateTerminalTabWithConnection={onCreateTerminalTabWithConnection}
+          />
         ))}
       </div>
 

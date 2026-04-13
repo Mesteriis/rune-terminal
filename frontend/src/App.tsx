@@ -85,6 +85,7 @@ function App() {
                   onCreateTerminalTab={() => shell.createTerminalTab()}
                   onCreateTerminalTabWithConnection={shell.createTerminalTabWithConnection}
                   onSelectConnection={shell.selectConnection}
+                  onCheckConnection={shell.checkConnection}
                   onSaveSSHConnection={shell.saveSSHConnection}
                   onExecuteTool={shell.executeTool}
                   onAddTrustedRule={shell.addTrustedRule}

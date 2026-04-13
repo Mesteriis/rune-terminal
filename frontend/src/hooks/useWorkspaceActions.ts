@@ -1,13 +1,14 @@
 import { useCallback } from 'react'
 
 import { RtermClient } from '../lib/api'
-import type { RuntimeNotice, Widget, Workspace } from '../types'
+import type { ConnectionCatalog, RuntimeNotice, Widget, Workspace } from '../types'
 
 type RefreshTerminalState = (widgetId?: string) => Promise<unknown>
 
 type WorkspaceActionsOptions = {
   client: RtermClient | null
   setWorkspace: (workspace: Workspace) => void
+  setConnections?: (connections: ConnectionCatalog) => void
   refreshTerminalState: RefreshTerminalState
   setNotice: (notice: RuntimeNotice | null) => void
 }
@@ -15,6 +16,7 @@ type WorkspaceActionsOptions = {
 export function useWorkspaceActions({
   client,
   setWorkspace,
+  setConnections,
   refreshTerminalState,
   setNotice,
 }: WorkspaceActionsOptions) {
@@ -61,6 +63,10 @@ export function useWorkspaceActions({
         ? await client.createTerminalTabWithConnection(connectionId, title)
         : await client.createTerminalTab(title)
       setWorkspace(response.workspace)
+      if (setConnections) {
+        const nextConnections = await client.connections()
+        setConnections(nextConnections)
+      }
       await refreshTerminalState(response.widget_id)
     } catch (error) {
       setNotice({
@@ -69,7 +75,7 @@ export function useWorkspaceActions({
         detail: formatError(error),
       })
     }
-  }, [client, refreshTerminalState, setNotice, setWorkspace])
+  }, [client, refreshTerminalState, setConnections, setNotice, setWorkspace])
 
   const createTerminalTabWithConnection = useCallback(async (connectionId: string, title?: string) => {
     await createTerminalTab(title, connectionId)

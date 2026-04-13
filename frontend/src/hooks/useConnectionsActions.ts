@@ -10,6 +10,28 @@ type UseConnectionsActionsOptions = {
 }
 
 export function useConnectionsActions({ client, setConnections, setNotice }: UseConnectionsActionsOptions) {
+  const checkConnection = useCallback(async (connectionId: string) => {
+    if (!client) {
+      return
+    }
+    try {
+      const result = await client.checkConnection(connectionId)
+      setConnections(result.connections)
+      const connection = result.connections.connections.find((candidate) => candidate.id === connectionId)
+      setNotice({
+        tone: connection?.usability === 'attention' ? 'error' : 'success',
+        title: connection?.usability === 'attention' ? 'Connection needs attention' : 'Connection check passed',
+        detail: connection?.runtime.check_error || connection?.name || connectionId,
+      })
+    } catch (error) {
+      setNotice({
+        tone: 'error',
+        title: 'Failed to check connection',
+        detail: formatError(error),
+      })
+    }
+  }, [client, setConnections, setNotice])
+
   const selectConnection = useCallback(async (connectionId: string) => {
     if (!client) {
       return
@@ -54,6 +76,7 @@ export function useConnectionsActions({ client, setConnections, setNotice }: Use
   }, [client, setConnections, setNotice])
 
   return {
+    checkConnection,
     selectConnection,
     saveSSHConnection,
   }

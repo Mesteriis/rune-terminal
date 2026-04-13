@@ -183,6 +183,7 @@ export function useRuntimeShell() {
   const workspaceActions = useWorkspaceActions({
     client: bootstrap.client,
     setWorkspace: bootstrap.setWorkspace,
+    setConnections: bootstrap.setConnections,
     refreshTerminalState,
     setNotice,
   })
@@ -245,6 +246,7 @@ export function useRuntimeShell() {
     setTabPinned: workspaceActions.setTabPinned,
     closeTab: workspaceActions.closeTab,
     interruptWidget: workspaceActions.interruptWidget,
+    checkConnection: connectionActions.checkConnection,
     selectConnection: connectionActions.selectConnection,
     saveSSHConnection: connectionActions.saveSSHConnection,
     refreshTerminalState,

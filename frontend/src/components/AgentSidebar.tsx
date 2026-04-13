@@ -48,6 +48,7 @@ type AgentSidebarProps = {
   onCreateTerminalTab: () => void | Promise<void>
   onCreateTerminalTabWithConnection: (connectionId: string, title?: string) => void | Promise<void>
   onSelectConnection: (connectionId: string) => void | Promise<void>
+  onCheckConnection: (connectionId: string) => void | Promise<void>
   onSaveSSHConnection: (input: {
     name?: string
     host: string
@@ -94,6 +95,7 @@ export function AgentSidebar({
   onCreateTerminalTab,
   onCreateTerminalTabWithConnection,
   onSelectConnection,
+  onCheckConnection,
   onSaveSSHConnection,
   onExecuteTool,
   onAddTrustedRule,
@@ -203,6 +205,7 @@ export function AgentSidebar({
             <ConnectionsPanel
               catalog={connections}
               onSelectConnection={onSelectConnection}
+              onCheckConnection={onCheckConnection}
               onCreateTerminalTabWithConnection={onCreateTerminalTabWithConnection}
               onSaveSSHConnection={onSaveSSHConnection}
             />
