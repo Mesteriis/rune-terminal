@@ -80,7 +80,7 @@ export function useWorkspaceActions({
       setNotice({
         tone: 'error',
         title: connectionId ? 'Failed to open remote shell' : 'Failed to create tab',
-        detail: formatError(error),
+        detail: connectionId ? formatRemoteLaunchError(error) : formatError(error),
       })
     }
   }, [client, refreshTerminalState, setConnections, setNotice, setWorkspace])
@@ -188,4 +188,51 @@ export function useWorkspaceActions({
 
 function formatError(error: unknown) {
   return error instanceof Error ? error.message : String(error)
+}
+
+function formatRemoteLaunchError(error: unknown) {
+  const detail = formatError(error)
+  const normalized = detail.toLowerCase()
+
+  if (normalized.includes('permission denied')) {
+    return [
+      'SSH authentication failed (permission denied).',
+      'Verify user, identity file, and host access.',
+      `Raw error: ${detail}`,
+    ].join('\n')
+  }
+  if (normalized.includes('connection refused')) {
+    return [
+      'SSH connection was refused by the target host.',
+      'Verify host, port, and SSH daemon availability.',
+      `Raw error: ${detail}`,
+    ].join('\n')
+  }
+  if (normalized.includes('could not resolve hostname') || normalized.includes('name resolution')) {
+    return [
+      'SSH host name could not be resolved.',
+      'Verify DNS/host value in the saved connection profile.',
+      `Raw error: ${detail}`,
+    ].join('\n')
+  }
+  if (normalized.includes('operation timed out') || normalized.includes('connection timed out')) {
+    return [
+      'SSH connection timed out before a usable shell started.',
+      'Verify network reachability and firewall rules.',
+      `Raw error: ${detail}`,
+    ].join('\n')
+  }
+  if (normalized.includes('identity file')) {
+    return [
+      'SSH identity file is not usable.',
+      'Check the identity-file path in Connections and run "Check" again.',
+      `Raw error: ${detail}`,
+    ].join('\n')
+  }
+
+  return [
+    'Remote shell failed to launch.',
+    'Use Connections → Check to inspect profile/preflight state, then retry.',
+    `Raw error: ${detail}`,
+  ].join('\n')
 }

@@ -11,7 +11,7 @@ export function ExecutionNotice({ notice, onDismiss }: ExecutionNoticeProps) {
       <div>
         <p className="eyebrow">Runtime notice</p>
         <strong>{notice.title}</strong>
-        {notice.detail ? <span>{notice.detail}</span> : null}
+        {notice.detail ? <span className="notice-detail">{notice.detail}</span> : null}
       </div>
       <button className="ghost-button" onClick={onDismiss}>
         Dismiss

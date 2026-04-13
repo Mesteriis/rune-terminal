@@ -2037,6 +2037,11 @@ button:disabled {
   display: block;
 }
 
+.notice-banner .notice-detail {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .notice-info,
 .approval-bar {
   background: rgba(120, 93, 37, 0.28);
@@ -2056,6 +2061,15 @@ button:disabled {
   display: grid;
   place-items: center;
   padding: 2rem;
+}
+
+.error-hints {
+  margin: 1rem 0 0;
+  padding-left: 1.2rem;
+  display: grid;
+  gap: 0.35rem;
+  color: #c9d4df;
+  font-size: 0.82rem;
 }
 
 .error-shell {

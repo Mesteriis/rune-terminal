@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 
 import { buildAgentResponseEntry, resolveAgentPromptAction, summarizeRequest } from '../lib/agentFeed'
+import { resolveAgentTerminalCommandPrompt } from '../lib/aiTerminalCommand'
 import type { AgentCatalog, ExecuteToolRequest, ExecuteToolResponse, RuntimeNotice, Workspace } from '../types'
 
 type ToolExecutor = (request: ExecuteToolRequest) => Promise<ExecuteToolResponse | null>
@@ -53,11 +54,45 @@ export function useAgentActions({
   }, [appendAgentFeed, executeTool])
 
   const submitAgentPrompt = useCallback(async (prompt: string) => {
-    if (await submitTerminalCommandPrompt(prompt)) {
+    const activeWidgetID = workspace?.active_widget_id
+    const terminalPrompt = resolveAgentTerminalCommandPrompt(prompt, activeWidgetID)
+    if (terminalPrompt.kind === 'missing_command') {
+      setNotice({
+        tone: 'info',
+        title: 'Command format: /run <command>',
+        detail: 'Example: /run ls -la',
+      })
+      appendAgentFeed({
+        role: 'assistant',
+        kind: 'system',
+        tone: 'info',
+        title: 'Run command format',
+        body: 'Use `/run <command>` to execute in the active terminal tab.',
+        tags: ['terminal command', '/run'],
+      })
+      return
+    }
+    if (terminalPrompt.kind === 'missing_terminal') {
+      setNotice({
+        tone: 'error',
+        title: 'No active terminal tab',
+        detail: `Open or focus a terminal tab, then retry \`${terminalPrompt.command}\`.`,
+      })
+      appendAgentFeed({
+        role: 'assistant',
+        kind: 'system',
+        tone: 'error',
+        title: 'Cannot run command yet',
+        body: 'No active terminal widget is available. Open a terminal tab and retry the command.',
+        tags: ['terminal command', '/run', 'error'],
+      })
       return
     }
 
-    const activeWidgetID = workspace?.active_widget_id
+    if (terminalPrompt.kind === 'resolved' && await submitTerminalCommandPrompt(prompt)) {
+      return
+    }
+
     const action = resolveAgentPromptAction(prompt, activeWidgetID)
     if (!action) {
       await submitConversationPrompt(prompt)
@@ -74,7 +109,7 @@ export function useAgentActions({
     if (response) {
       appendAgentFeed(buildAgentResponseEntry(action.request, response, action.label))
     }
-  }, [appendAgentFeed, executeTool, submitConversationPrompt, submitTerminalCommandPrompt, workspace?.active_widget_id])
+  }, [appendAgentFeed, executeTool, setNotice, submitConversationPrompt, submitTerminalCommandPrompt, workspace?.active_widget_id])
 
   const reportAgentAttachmentUnavailable = useCallback(async () => {
     appendAgentFeed({

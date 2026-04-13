@@ -19,6 +19,11 @@ function App() {
           <p className="eyebrow">Runtime bootstrap failed</p>
           <h1>RunaTerminal cannot discover the Go core.</h1>
           <pre>{shell.runtimeError}</pre>
+          <ul className="error-hints">
+            <li>Run `npm run build:core` to refresh `apps/desktop/bin/rterm-core`.</li>
+            <li>Run `npm run tauri:dev` (not `cargo tauri dev`) for the supported launch path.</li>
+            <li>If dependencies changed, run `npm install` and `npm --prefix frontend install`.</li>
+          </ul>
         </section>
       </main>
     )

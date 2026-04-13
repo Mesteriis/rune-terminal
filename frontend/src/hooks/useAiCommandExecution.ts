@@ -52,10 +52,17 @@ export function useAiCommandExecution({
     if (!client) {
       return
     }
-    const waited = await waitForTerminalOutput(
-      (fromSeq) => client.terminalSnapshot(pending.widgetId, fromSeq, terminalState),
-      pending.fromSeq,
-    )
+    let observedOutput = ''
+    try {
+      const waited = await waitForTerminalOutput(
+        (fromSeq) => client.terminalSnapshot(pending.widgetId, fromSeq, terminalState),
+        pending.fromSeq,
+      )
+      observedOutput = waited.output
+    } catch {
+      // Keep the UX resilient: command execution can succeed even if output polling fails.
+    }
+
     const explanation = await explainTerminalCommand({
       prompt: pending.prompt,
       command: pending.command,
@@ -63,16 +70,40 @@ export function useAiCommandExecution({
       from_seq: pending.fromSeq,
       approval_used: approvalUsed,
     })
+
+    if (!explanation) {
+      const detail = summarizeTerminalResult(
+        pending.command,
+        observedOutput,
+        terminalState,
+      )
+      setNotice({
+        tone: 'error',
+        title: 'Command ran, but AI explanation failed',
+        detail,
+      })
+      appendAgentFeed({
+        role: 'assistant',
+        kind: 'result',
+        tone: 'error',
+        title: `Explanation failed for \`${pending.command}\``,
+        body: detail,
+        tags: ['terminal command', 'error'],
+        tool_name: 'agent.terminal_command',
+      })
+      return
+    }
+
     setNotice({
-      tone: explanation?.provider_error ? 'error' : 'success',
-      title: explanation?.provider_error ? 'Command explanation failed' : 'AI summarized command result',
+      tone: explanation.provider_error ? 'error' : 'success',
+      title: explanation.provider_error ? 'Command explanation failed' : 'AI summarized command result',
       detail: summarizeTerminalResult(
         pending.command,
-        explanation?.output_excerpt ?? waited.output,
+        explanation.output_excerpt ?? observedOutput,
         terminalState,
       ),
     })
-  }, [client, explainTerminalCommand, setNotice, terminalState])
+  }, [appendAgentFeed, client, explainTerminalCommand, setNotice, terminalState])
 
   const submitTerminalCommandPrompt = useCallback(async (prompt: string) => {
     const resolved = resolveAgentTerminalCommand(prompt, activeWidgetId)

@@ -7,34 +7,56 @@ export type AgentTerminalCommand = {
   request: ExecuteToolRequest
 }
 
-const explicitPrefixes = ['/run ', 'run: ']
+type AgentTerminalCommandPromptResolution =
+  | { kind: 'none' }
+  | { kind: 'missing_command' }
+  | { kind: 'missing_terminal'; command: string }
+  | { kind: 'resolved'; value: AgentTerminalCommand }
 
-export function resolveAgentTerminalCommand(prompt: string, activeWidgetId?: string): AgentTerminalCommand | null {
+export function resolveAgentTerminalCommandPrompt(prompt: string, activeWidgetId?: string): AgentTerminalCommandPromptResolution {
   const trimmed = prompt.trim()
-  if (!activeWidgetId) {
-    return null
+  if (!trimmed) {
+    return { kind: 'none' }
   }
-  const prefix = explicitPrefixes.find((candidate) => trimmed.toLowerCase().startsWith(candidate))
-  if (!prefix) {
-    return null
+
+  let command = ''
+  if (/^\/run\b/i.test(trimmed)) {
+    command = trimmed.replace(/^\/run\b/i, '').trim()
+  } else if (/^run:/i.test(trimmed)) {
+    const separatorIndex = trimmed.indexOf(':')
+    command = trimmed.slice(separatorIndex + 1).trim()
+  } else {
+    return { kind: 'none' }
   }
-  const command = trimmed.slice(prefix.length).trim()
+
   if (!command) {
-    return null
+    return { kind: 'missing_command' }
   }
+  if (!activeWidgetId) {
+    return { kind: 'missing_terminal', command }
+  }
+
   return {
-    prompt: trimmed,
-    command,
-    widgetId: activeWidgetId,
-    request: {
-      tool_name: 'term.send_input',
-      input: {
-        widget_id: activeWidgetId,
-        text: command,
-        append_newline: true,
+    kind: 'resolved',
+    value: {
+      prompt: trimmed,
+      command,
+      widgetId: activeWidgetId,
+      request: {
+        tool_name: 'term.send_input',
+        input: {
+          widget_id: activeWidgetId,
+          text: command,
+          append_newline: true,
+        },
       },
     },
   }
+}
+
+export function resolveAgentTerminalCommand(prompt: string, activeWidgetId?: string): AgentTerminalCommand | null {
+  const resolved = resolveAgentTerminalCommandPrompt(prompt, activeWidgetId)
+  return resolved.kind === 'resolved' ? resolved.value : null
 }
 
 export async function waitForTerminalOutput(
