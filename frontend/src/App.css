@@ -167,25 +167,32 @@
   min-height: 0;
   overflow: hidden;
   border-right: 1px solid rgba(255, 255, 255, 0.08);
-  background: linear-gradient(180deg, #0f1620, #0b1118);
+  background: linear-gradient(180deg, #101722, #0b1119 20%, #0a1017);
 }
 
 .agent-shell-inner {
   min-height: 100%;
   display: grid;
-  grid-template-rows: auto auto auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
 }
 
 .agent-shell-header {
   display: grid;
-  gap: 0.8rem;
-  padding: 1rem 1rem 0.9rem;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem 0.85rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .agent-shell-heading {
   display: grid;
-  gap: 0.15rem;
+  gap: 0.25rem;
+}
+
+.agent-shell-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
 }
 
 .agent-shell-heading h2 {
@@ -196,6 +203,40 @@
 .agent-shell-heading span {
   color: #8e9baa;
   font-size: 0.82rem;
+}
+
+.agent-context-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.42rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.73rem;
+  font-weight: 600;
+}
+
+.agent-context-label {
+  color: #b9c6d2;
+}
+
+.agent-context-pill {
+  display: inline-flex;
+  align-items: center;
+  min-width: 2.5rem;
+  justify-content: center;
+  padding: 0.25rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #dce6ee;
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+}
+
+.agent-context-toggle.active .agent-context-pill {
+  background: rgba(242, 179, 95, 0.22);
+  color: #ffd9a8;
 }
 
 .agent-shell-tabs {
@@ -223,7 +264,16 @@
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  padding: 0;
+}
+
+.agent-shell-scroll > .panel {
   padding: 1rem;
+}
+
+.agent-shell-footer {
+  padding: 0.85rem 1rem 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .workspace-stage {
@@ -336,6 +386,159 @@
   border-radius: 0;
   padding: 0;
   box-shadow: none;
+}
+
+.agent-panel {
+  min-height: 100%;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+.agent-feed {
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  align-content: start;
+  gap: 0.8rem;
+  padding: 0.9rem 1rem 1rem;
+}
+
+.ai-message-card {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.95rem 1rem;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ai-message-card header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.ai-message-card header small {
+  color: #7f8d9a;
+  font-size: 0.73rem;
+}
+
+.ai-message-card strong {
+  color: #eef4fb;
+}
+
+.ai-message-card p {
+  margin: 0;
+  color: #a3b0bd;
+  line-height: 1.45;
+}
+
+.ai-message-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 0.28rem 0.52rem;
+  border-radius: 999px;
+  background: rgba(242, 179, 95, 0.18);
+  color: #ffd8a6;
+  font-size: 0.69rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ai-message-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.ai-message-tags span,
+.inline-notice span,
+.inline-notice strong {
+  display: inline-flex;
+}
+
+.ai-message-tags span {
+  padding: 0.3rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #c8d4df;
+  font-size: 0.72rem;
+}
+
+.ai-message-error {
+  border-color: rgba(186, 87, 72, 0.35);
+  background: rgba(97, 38, 33, 0.28);
+}
+
+.ai-message-approval {
+  border-color: rgba(242, 179, 95, 0.24);
+  background: rgba(120, 93, 37, 0.2);
+}
+
+.agent-composer {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.95rem 1rem 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(7, 11, 16, 0.65);
+}
+
+.agent-composer-fields {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.agent-composer-fields label {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.79rem;
+  color: #90a0b0;
+}
+
+.agent-composer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.agent-composer-actions .ghost-button,
+.ai-message-approval .ghost-button {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.inline-notice {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.85rem 0.95rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.inline-notice strong {
+  color: #eef4fb;
+}
+
+.inline-notice span {
+  color: #a7b5c2;
+  font-size: 0.82rem;
+}
+
+.inline-notice button {
+  width: fit-content;
+}
+
+.inline-notice-info {
+  background: rgba(120, 93, 37, 0.18);
+}
+
+.inline-notice-success {
+  background: rgba(38, 92, 63, 0.18);
+}
+
+.inline-notice-error {
+  background: rgba(104, 47, 40, 0.2);
 }
 
 .terminal-card {
@@ -591,6 +794,11 @@ button:disabled {
 
 .ghost-button:hover {
   background: rgba(255, 255, 255, 0.1);
+}
+
+.compact-button {
+  padding: 0.35rem 0.55rem;
+  font-size: 0.72rem;
 }
 
 .workspace-tab:hover {

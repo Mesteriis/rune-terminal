@@ -30,6 +30,7 @@ const QUIET_TOOLS = new Set([
 ])
 
 export function useRuntimeShell() {
+  const [widgetContextEnabled, setWidgetContextEnabled] = useState(() => readWidgetContextPreference())
   const [client, setClient] = useState<RtermClient | null>(null)
   const [workspace, setWorkspace] = useState<Workspace | null>(null)
   const [repoRoot, setRepoRoot] = useState('')
@@ -57,9 +58,10 @@ export function useRuntimeShell() {
     return {
       workspace_id: workspace.id,
       repo_root: repoRoot,
-      active_widget_id: workspace.active_widget_id,
+      active_widget_id: widgetContextEnabled ? workspace.active_widget_id : undefined,
+      widget_context_enabled: widgetContextEnabled,
     }
-  }, [repoRoot, workspace])
+  }, [repoRoot, widgetContextEnabled, workspace])
 
   useEffect(() => {
     async function boot() {
@@ -89,6 +91,10 @@ export function useRuntimeShell() {
     void syncActiveView(client, workspace, repoRoot)
   }, [client, repoRoot, workspace])
 
+  useEffect(() => {
+    writeWidgetContextPreference(widgetContextEnabled)
+  }, [widgetContextEnabled])
+
   function applyBootstrap(payload: BootstrapPayload) {
     setWorkspace(payload.workspace)
     setRepoRoot(payload.repo_root)
@@ -102,7 +108,8 @@ export function useRuntimeShell() {
     return {
       workspace_id: nextWorkspace.id,
       repo_root: repoRoot,
-      active_widget_id: nextWorkspace.active_widget_id,
+      active_widget_id: widgetContextEnabled ? nextWorkspace.active_widget_id : undefined,
+      widget_context_enabled: widgetContextEnabled,
     }
   }
 
@@ -354,6 +361,7 @@ export function useRuntimeShell() {
     isConfirmingApproval,
     agentCatalog,
     activeWidget,
+    widgetContextEnabled,
     clearNotice: () => setNotice(null),
     executeTool,
     confirmPendingRequest,
@@ -361,6 +369,7 @@ export function useRuntimeShell() {
     interruptWidget,
     refreshTerminalState,
     setActiveSelection,
+    toggleWidgetContext: () => setWidgetContextEnabled((current) => !current),
   }
 }
 
@@ -383,4 +392,22 @@ function summarizeOutput(output: unknown) {
 
 function capitalize(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1)
+}
+
+function readWidgetContextPreference() {
+  if (typeof window === 'undefined') {
+    return true
+  }
+  const stored = window.localStorage.getItem('rterm.widget-context-enabled')
+  if (stored == null) {
+    return true
+  }
+  return stored !== 'false'
+}
+
+function writeWidgetContextPreference(value: boolean) {
+  if (typeof window === 'undefined') {
+    return
+  }
+  window.localStorage.setItem('rterm.widget-context-enabled', value ? 'true' : 'false')
 }

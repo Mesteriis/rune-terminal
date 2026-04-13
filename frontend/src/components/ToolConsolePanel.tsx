@@ -60,6 +60,10 @@ export function ToolConsolePanel({
             <span>Focused widget</span>
             <strong>{workspaceContext?.active_widget_id ?? 'n/a'}</strong>
           </div>
+          <div>
+            <span>Widget context</span>
+            <strong>{workspaceContext?.widget_context_enabled === false ? 'detached' : 'attached'}</strong>
+          </div>
         </div>
         <div className="tool-layout">
           <div className="tool-catalog">

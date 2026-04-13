@@ -64,9 +64,11 @@ function App() {
                   trustedRules={shell.trustedRules}
                   ignoreRules={shell.ignoreRules}
                   auditEvents={shell.auditEvents}
+                  widgetContextEnabled={shell.widgetContextEnabled}
                   onSelectProfile={(id) => shell.setActiveSelection('profile', id)}
                   onSelectRole={(id) => shell.setActiveSelection('role', id)}
                   onSelectMode={(id) => shell.setActiveSelection('mode', id)}
+                  onToggleWidgetContext={shell.toggleWidgetContext}
                   onExecuteTool={shell.executeTool}
                   onConfirmApproval={shell.confirmPendingRequest}
                   onDismissNotice={shell.clearNotice}

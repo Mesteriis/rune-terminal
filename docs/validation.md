@@ -51,6 +51,35 @@ What was not revalidated in this slice:
 - `npm run tauri:dev` was not re-run after the parity-shell refactor
 - no fresh UI automation run was performed after this specific shell/layout pass
 
+## Latest AI panel parity slice
+
+The next frontend parity slice focused on bringing the left AI panel back toward the TideTerm interaction grammar:
+
+- TideTerm-shaped AI panel header retained as the primary panel chrome
+- widget-context toggle restored as a first-class control
+- primary `agent` view moved from settings-first forms to a message-like panel surface
+- profile / role / mode controls moved into a bottom dock instead of dominating the panel body
+- tools / settings / audit remained available as secondary views inside the same shell
+
+Validation executed for this slice:
+
+```bash
+npm --prefix frontend run lint
+npm --prefix frontend run build
+npm run validate
+```
+
+Observed result:
+
+- frontend lint passed
+- frontend build passed
+- full repository validation still passed after the AI panel refactor
+
+What was not revalidated in this slice:
+
+- `npm run tauri:dev` was not re-run after this specific AI panel refactor
+- no fresh manual UI smoke or screenshot diff was executed after this specific panel pass
+
 ## Tooling baseline
 
 - Go: `go1.26.2 darwin/arm64`

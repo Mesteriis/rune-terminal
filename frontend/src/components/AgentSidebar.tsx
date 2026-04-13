@@ -1,7 +1,5 @@
 import { AgentPanel } from './AgentPanel'
-import { ApprovalBar } from './ApprovalBar'
 import { AuditPanel } from './AuditPanel'
-import { ExecutionNotice } from './ExecutionNotice'
 import { PolicyPanel } from './PolicyPanel'
 import { SHELL_SECTION_LABELS, type ShellSection } from './ShellSections'
 import { ToolConsolePanel } from './ToolConsolePanel'
@@ -30,9 +28,11 @@ type AgentSidebarProps = {
   trustedRules: TrustedRule[]
   ignoreRules: IgnoreRule[]
   auditEvents: AuditEvent[]
+  widgetContextEnabled: boolean
   onSelectProfile: (id: string) => void | Promise<void>
   onSelectRole: (id: string) => void | Promise<void>
   onSelectMode: (id: string) => void | Promise<void>
+  onToggleWidgetContext: () => void
   onExecuteTool: (request: { tool_name: string; input?: Record<string, unknown> }) => void | Promise<unknown>
   onConfirmApproval: () => void | Promise<void>
   onDismissNotice: () => void
@@ -51,9 +51,11 @@ export function AgentSidebar({
   trustedRules,
   ignoreRules,
   auditEvents,
+  widgetContextEnabled,
   onSelectProfile,
   onSelectRole,
   onSelectMode,
+  onToggleWidgetContext,
   onExecuteTool,
   onConfirmApproval,
   onDismissNotice,
@@ -63,9 +65,25 @@ export function AgentSidebar({
       <div className="agent-shell-inner">
         <header className="agent-shell-header">
           <div className="agent-shell-heading">
-            <p className="eyebrow">AI panel</p>
-            <h2>RunaTerminal AI</h2>
-            <span>{workspaceContext?.active_widget_id ? 'Widget context on' : 'No widget context attached'}</span>
+            <div className="agent-shell-title">
+              <div>
+                <p className="eyebrow">AI panel</p>
+                <h2>RunaTerminal AI</h2>
+              </div>
+              <button
+                className={widgetContextEnabled ? 'agent-context-toggle active' : 'agent-context-toggle'}
+                onClick={onToggleWidgetContext}
+                title={`Widget context ${widgetContextEnabled ? 'ON' : 'OFF'}`}
+              >
+                <span className="agent-context-label">Widget Context</span>
+                <span className="agent-context-pill">{widgetContextEnabled ? 'ON' : 'OFF'}</span>
+              </button>
+            </div>
+            <span>
+              {widgetContextEnabled && workspaceContext?.active_widget_id
+                ? `Attached to ${workspaceContext.active_widget_id}`
+                : 'Agent panel is running without widget context'}
+            </span>
           </div>
           <nav className="agent-shell-tabs" aria-label="Agent panel sections">
             {(['agent', 'tools', 'policy', 'audit'] as ShellSection[]).map((entry) => (
@@ -80,23 +98,21 @@ export function AgentSidebar({
           </nav>
         </header>
 
-        {notice ? <ExecutionNotice notice={notice} onDismiss={onDismissNotice} /> : null}
-        {pendingApproval ? (
-          <ApprovalBar
-            pendingApproval={pendingApproval}
-            isConfirming={isConfirmingApproval}
-            onConfirm={onConfirmApproval}
-          />
-        ) : null}
-
         <div className="agent-shell-scroll">
           {section === 'agent' ? (
             <AgentPanel
               catalog={catalog}
               workspaceContext={workspaceContext}
+              lastResponse={lastResponse}
+              notice={notice}
+              pendingApproval={pendingApproval}
+              isConfirmingApproval={isConfirmingApproval}
+              onConfirmApproval={onConfirmApproval}
+              onDismissNotice={onDismissNotice}
               onSelectProfile={onSelectProfile}
               onSelectRole={onSelectRole}
               onSelectMode={onSelectMode}
+              onSelectSection={onSelectSection}
             />
           ) : null}
           {section === 'tools' ? (
@@ -112,6 +128,18 @@ export function AgentSidebar({
           ) : null}
           {section === 'audit' ? <AuditPanel auditEvents={auditEvents} /> : null}
         </div>
+
+        {section !== 'agent' && notice ? (
+          <footer className="agent-shell-footer">
+            <div className={`inline-notice inline-notice-${notice.tone}`}>
+              <strong>{notice.title}</strong>
+              {notice.detail ? <span>{notice.detail}</span> : null}
+              <button className="ghost-button" onClick={onDismissNotice}>
+                Dismiss
+              </button>
+            </div>
+          </footer>
+        ) : null}
       </div>
     </aside>
   )
