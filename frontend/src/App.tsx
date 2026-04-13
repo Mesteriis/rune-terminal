@@ -59,7 +59,7 @@ function App() {
                 id="ai-panel"
                 defaultSize={layout.aiPanelSize}
                 minSize={20}
-                maxSize={42}
+                maxSize={45}
                 collapsible
                 className="workspace-panel"
               >
@@ -112,7 +112,7 @@ function App() {
           <Panel
             id="main-panel"
             defaultSize={layout.aiPanelVisible ? 100 - layout.aiPanelSize : 100}
-            minSize={58}
+            minSize={55}
             className="workspace-panel"
           >
             <section className="workspace-main">

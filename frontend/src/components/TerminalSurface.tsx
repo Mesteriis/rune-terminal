@@ -22,7 +22,6 @@ export function TerminalSurface({ client, widgetId, state, onTerminalAction, onI
   const fitFrameRef = useRef<number | null>(null)
   const canSendInputRef = useRef(false)
   const fallbackStateRef = useRef<TerminalState | null>(state)
-  const [commandDraft, setCommandDraft] = useState('')
   const [isFocused, setIsFocused] = useState(false)
   const [isHydrating, setIsHydrating] = useState(true)
   const [isFollowingOutput, setIsFollowingOutput] = useState(true)
@@ -228,16 +227,6 @@ export function TerminalSurface({ client, widgetId, state, onTerminalAction, onI
     }
   }, [client, widgetId])
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (!commandDraft.trim()) {
-      return
-    }
-    await client.sendTerminalInput(widgetId, commandDraft, true)
-    setCommandDraft('')
-    await onTerminalAction?.()
-  }
-
   function handleScrollToLatest() {
     const terminal = terminalRef.current
     if (!terminal) {
@@ -317,34 +306,6 @@ export function TerminalSurface({ client, widgetId, state, onTerminalAction, onI
       </section>
 
       <div className="terminal-shell" ref={containerRef} />
-
-      <form className="terminal-input-row" onSubmit={handleSubmit}>
-        <label className="terminal-input-label">
-          Paste command
-          <input
-            value={commandDraft}
-            onChange={(event) => setCommandDraft(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Escape') {
-                setCommandDraft('')
-                focusTerminalTextarea(containerRef.current, terminalRef.current, false)
-              }
-            }}
-            placeholder="Paste or type a command for the active PTY"
-            disabled={!state?.can_send_input}
-          />
-        </label>
-        <button
-          type="button"
-          className="ghost-button"
-          onClick={() => focusTerminalTextarea(containerRef.current, terminalRef.current, false)}
-        >
-          Focus terminal
-        </button>
-        <button type="submit" disabled={!state?.can_send_input}>
-          Send
-        </button>
-      </form>
     </section>
   )
 }

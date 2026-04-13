@@ -14,7 +14,7 @@ type LayoutState = {
 
 const DEFAULT_STATE: LayoutState = {
   aiPanelVisible: true,
-  aiPanelSize: 28,
+  aiPanelSize: 33,
   section: 'agent',
   policyView: 'overview',
 }
@@ -89,7 +89,7 @@ function loadState(): LayoutState {
 
 function clampPanelSize(value: unknown) {
   const numeric = typeof value === 'number' && Number.isFinite(value) ? value : DEFAULT_STATE.aiPanelSize
-  return Math.min(42, Math.max(20, numeric))
+  return Math.min(45, Math.max(20, numeric))
 }
 
 function isShellSection(value: unknown): value is ShellSection {
