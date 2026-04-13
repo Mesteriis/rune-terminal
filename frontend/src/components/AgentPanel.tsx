@@ -1,7 +1,9 @@
 import { AgentModeStrip } from './AgentModeStrip'
+import { AgentTranscript } from './AgentTranscript'
+import { AgentWelcomeMessage } from './AgentWelcomeMessage'
 import type {
   AgentCatalog,
-  ExecuteToolResponse,
+  AgentFeedEntry,
   PendingApproval,
   RuntimeNotice,
   WorkspaceContextSummary,
@@ -11,9 +13,9 @@ import type { ShellSection } from './ShellSections'
 type AgentPanelProps = {
   catalog: AgentCatalog | null
   workspaceContext: WorkspaceContextSummary | null
-  lastResponse: ExecuteToolResponse | null
   notice: RuntimeNotice | null
   pendingApproval: PendingApproval | null
+  agentFeed: AgentFeedEntry[]
   isConfirmingApproval: boolean
   onConfirmApproval: () => void | Promise<void>
   onDismissNotice: () => void
@@ -21,15 +23,15 @@ type AgentPanelProps = {
   onSelectRole: (id: string) => void | Promise<void>
   onSelectMode: (id: string) => void | Promise<void>
   onSelectSection: (section: ShellSection) => void
-  onExecuteTool: (request: { tool_name: string; input?: Record<string, unknown> }) => void | Promise<unknown>
+  onRunAgentAction: (label: string, request: { tool_name: string; input?: Record<string, unknown> }) => void | Promise<unknown>
 }
 
 export function AgentPanel({
   catalog,
   workspaceContext,
-  lastResponse,
   notice,
   pendingApproval,
+  agentFeed,
   isConfirmingApproval,
   onConfirmApproval,
   onDismissNotice,
@@ -37,9 +39,10 @@ export function AgentPanel({
   onSelectRole,
   onSelectMode,
   onSelectSection,
-  onExecuteTool,
+  onRunAgentAction,
 }: AgentPanelProps) {
   const contextStatus = workspaceContext?.widget_context_enabled ? 'Widget context attached' : 'Widget context detached'
+  const hasFeed = agentFeed.length > 0
 
   return (
     <section className="agent-panel">
@@ -51,72 +54,15 @@ export function AgentPanel({
           onSelectMode={onSelectMode}
         />
 
-        <article className="ai-message-card ai-message-assistant">
-          <header>
-            <span className="ai-message-badge">RunaTerminal AI</span>
-            <small>Panel shell derived from TideTerm</small>
-          </header>
-          <strong>Terminal-first workflow stays in the center. AI stays at the side.</strong>
-          <p>
-            This panel keeps the familiar TideTerm placement: active workspace in the main stage, AI and control flows
-            in the side panel, runtime actions bound to the new Go core.
-          </p>
-          <div className="agent-quick-actions">
-            <button className="ghost-button" onClick={() => void onExecuteTool({ tool_name: 'term.get_state' })}>
-              Inspect terminal
-            </button>
-            <button className="ghost-button" onClick={() => void onExecuteTool({ tool_name: 'workspace.list_tabs' })}>
-              List tabs
-            </button>
-            <button className="ghost-button" onClick={() => onSelectSection('audit')}>
-              Open audit
-            </button>
-          </div>
-        </article>
-
-        <article className="ai-message-card ai-message-assistant">
-          <header>
-            <span className="ai-message-badge">Current posture</span>
-            <small>{catalog ? catalog.active.mode.name : 'Loading mode…'}</small>
-          </header>
-          {catalog ? (
-            <>
-              <strong>
-                {catalog.active.profile.name} / {catalog.active.role.name} / {catalog.active.mode.name}
-              </strong>
-              <p>
-                Security posture: {catalog.active.effective_policy_profile.security_posture ?? 'balanced'}.
-                Minimum mutation tier:{' '}
-                {catalog.active.effective_policy_profile.approval_overlay?.minimum_mutation_tier ?? 'safe'}.
-              </p>
-              <div className="ai-message-tags">
-                <span>{catalog.active.profile.id}</span>
-                <span>{catalog.active.role.id}</span>
-                <span>{catalog.active.mode.id}</span>
-                <span>
-                  {catalog.active.effective_policy_profile.disable_trusted_auto_approve
-                    ? 'trusted auto-approve off'
-                    : 'trusted auto-approve on'}
-                </span>
-              </div>
-            </>
-          ) : (
-            <p>Loading agent catalog…</p>
-          )}
-        </article>
-
-        <article className="ai-message-card ai-message-context">
-          <header>
-            <span className="ai-message-badge">Workspace context</span>
-            <small>{contextStatus}</small>
-          </header>
-          <strong>{workspaceContext?.workspace_id ?? 'Loading workspace…'}</strong>
-          <p>{workspaceContext?.repo_root ?? 'Discovering repository root…'}</p>
-          <div className="ai-message-tags">
-            <span>{workspaceContext?.active_widget_id ?? 'No active widget'}</span>
-            <span>{contextStatus}</span>
-          </div>
-        </article>
+        {!hasFeed ? (
+          <AgentWelcomeMessage
+            catalog={catalog}
+            workspaceContext={workspaceContext}
+            contextStatus={contextStatus}
+            onRunAgentAction={onRunAgentAction}
+            onSelectSection={onSelectSection}
+          />
+        ) : null}
 
         {notice ? (
           <article className={`ai-message-card ${notice.tone === 'error' ? 'ai-message-error' : 'ai-message-assistant'}`}>
@@ -150,24 +96,7 @@ export function AgentPanel({
           </article>
         ) : null}
 
-        {lastResponse ? (
-          <article className="ai-message-card ai-message-assistant">
-            <header>
-              <span className="ai-message-badge">Latest runtime action</span>
-              <small>{lastResponse.status}</small>
-            </header>
-            <strong>{lastResponse.operation?.summary ?? 'Runtime response captured'}</strong>
-            <p>
-              {lastResponse.tool?.name
-                ? `Tool: ${lastResponse.tool.name}`
-                : lastResponse.error ?? 'The runtime returned a payload.'}
-            </p>
-            <details className="panel-details">
-              <summary>Inspect payload</summary>
-              <pre>{JSON.stringify(lastResponse, null, 2)}</pre>
-            </details>
-          </article>
-        ) : null}
+        <AgentTranscript entries={agentFeed} />
       </div>
 
       <footer className="agent-composer">

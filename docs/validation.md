@@ -447,6 +447,34 @@ What was not revalidated in this slice:
 - no fresh UI automation was run after adding the quick actions
 - no fresh manual Tauri launch was performed after this specific AI-panel action pass
 
+## Latest AI-transcript parity slice
+
+The next AI-panel parity pass moved the panel closer to TideTerm's message flow:
+
+- the welcome state is now a single TideTerm-shaped AI message instead of multiple static status cards
+- runtime-backed quick actions, approval confirmations, and profile/role/mode updates now append into a persistent AI activity transcript
+- the transcript auto-scrolls like a message feed and distinguishes user-side versus assistant-side entries
+- this remains a closest-compatible equivalent until a real conversation backend is wired in
+
+Validation executed for this slice:
+
+```bash
+npm --prefix frontend run lint
+npm --prefix frontend run build
+npm run validate
+```
+
+Observed result:
+
+- frontend lint passed
+- frontend build passed
+- full repository validation passed after the AI transcript slice
+
+What was not revalidated in this slice:
+
+- no fresh UI automation was run after introducing the transcript behavior
+- no fresh manual Tauri launch was performed after this specific AI-panel transcript pass
+
 ## Tooling baseline
 
 - Go: `go1.26.2 darwin/arm64`

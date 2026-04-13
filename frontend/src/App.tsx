@@ -65,6 +65,7 @@ function App() {
                   lastResponse={shell.lastResponse}
                   notice={shell.notice}
                   pendingApproval={shell.pendingApproval}
+                  agentFeed={shell.agentFeed}
                   isConfirmingApproval={shell.isConfirmingApproval}
                   trustedRules={shell.trustedRules}
                   ignoreRules={shell.ignoreRules}
@@ -75,6 +76,7 @@ function App() {
                   onSelectMode={(id) => shell.setActiveSelection('mode', id)}
                   onToggleWidgetContext={shell.toggleWidgetContext}
                   onExecuteTool={shell.executeTool}
+                  onRunAgentAction={shell.runAgentAction}
                   onConfirmApproval={shell.confirmPendingRequest}
                   onDismissNotice={shell.clearNotice}
                 />

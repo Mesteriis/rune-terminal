@@ -4,6 +4,7 @@ import { RtermClient } from '../lib/api'
 import { resolveRuntimeInfo } from '../lib/runtime'
 import type {
   AgentCatalog,
+  AgentFeedEntry,
   ApprovalGrant,
   AuditEvent,
   BootstrapPayload,
@@ -54,6 +55,7 @@ export function useRuntimeShell() {
   const [pendingRequest, setPendingRequest] = useState<ExecuteToolRequest | null>(null)
   const [isConfirmingApproval, setIsConfirmingApproval] = useState(false)
   const [agentCatalog, setAgentCatalog] = useState<AgentCatalog | null>(null)
+  const [agentFeed, setAgentFeed] = useState<AgentFeedEntry[]>([])
 
   const activeWidget = useMemo(() => {
     return workspace?.widgets.find((widget) => widget.id === workspace.active_widget_id) ?? null
@@ -276,6 +278,13 @@ export function useRuntimeShell() {
     }
     setIsConfirmingApproval(true)
     try {
+      appendAgentFeed({
+        role: 'user',
+        kind: 'approval',
+        title: `Approve ${pendingApproval.tool_name}`,
+        body: pendingApproval.summary,
+        tags: [pendingApproval.approval_tier],
+      })
       const confirmation = await client.executeTool({
         tool_name: 'safety.confirm',
         input: { approval_id: pendingApproval.id },
@@ -292,6 +301,14 @@ export function useRuntimeShell() {
         return
       }
       const grant = confirmation.output as ApprovalGrant
+      appendAgentFeed({
+        role: 'assistant',
+        kind: 'approval',
+        tone: 'approval',
+        title: 'Approval granted',
+        body: 'Retrying the requested action with a single-use approval token.',
+        tags: [pendingApproval.tool_name],
+      })
       setNotice({
         tone: 'info',
         title: 'Approval granted',
@@ -365,6 +382,21 @@ export function useRuntimeShell() {
     })
   }
 
+  async function runAgentAction(label: string, request: ExecuteToolRequest) {
+    appendAgentFeed({
+      role: 'user',
+      kind: 'action',
+      title: label,
+      body: summarizeRequest(request),
+      tags: [request.tool_name],
+    })
+    const response = await executeTool(request)
+    if (response) {
+      appendAgentFeed(buildAgentResponseEntry(request, response))
+    }
+    return response
+  }
+
   async function setActiveSelection(target: SelectionTarget, id: string) {
     if (!client) {
       return
@@ -387,6 +419,19 @@ export function useRuntimeShell() {
             : target === 'role'
               ? nextCatalog.active.role.name
               : nextCatalog.active.mode.name,
+      })
+      appendAgentFeed({
+        role: 'assistant',
+        kind: 'system',
+        tone: 'success',
+        title: `${capitalize(target)} updated`,
+        body:
+          target === 'profile'
+            ? nextCatalog.active.profile.name
+            : target === 'role'
+              ? nextCatalog.active.role.name
+              : nextCatalog.active.mode.name,
+        tags: [target],
       })
     } catch (error) {
       setNotice({
@@ -411,6 +456,7 @@ export function useRuntimeShell() {
     runtimeError,
     notice,
     pendingApproval,
+    agentFeed,
     isConfirmingApproval,
     agentCatalog,
     activeWidget,
@@ -418,6 +464,7 @@ export function useRuntimeShell() {
     widgetContextEnabled,
     clearNotice: () => setNotice(null),
     executeTool,
+    runAgentAction,
     confirmPendingRequest,
     focusWidget,
     focusTab,
@@ -430,6 +477,17 @@ export function useRuntimeShell() {
     refreshTerminalState,
     setActiveSelection,
     toggleWidgetContext: () => setWidgetContextEnabled((current) => !current),
+  }
+
+  function appendAgentFeed(entry: Omit<AgentFeedEntry, 'id' | 'timestamp'>) {
+    setAgentFeed((current) => [
+      ...current,
+      {
+        id: createClientID(),
+        timestamp: new Date().toISOString(),
+        ...entry,
+      },
+    ])
   }
 }
 
@@ -448,6 +506,48 @@ function summarizeOutput(output: unknown) {
     return JSON.stringify(output)
   }
   return String(output)
+}
+
+function summarizeRequest(request: ExecuteToolRequest) {
+  if (!request.input || Object.keys(request.input).length === 0) {
+    return request.tool_name
+  }
+  return `${request.tool_name} ${JSON.stringify(request.input)}`
+}
+
+function buildAgentResponseEntry(request: ExecuteToolRequest, response: ExecuteToolResponse): Omit<AgentFeedEntry, 'id' | 'timestamp'> {
+  if (response.status === 'requires_confirmation' && response.pending_approval) {
+    return {
+      role: 'assistant',
+      kind: 'approval',
+      tone: 'approval',
+      title: `${request.tool_name} requires approval`,
+      body: response.pending_approval.summary,
+      tags: [response.pending_approval.approval_tier],
+    }
+  }
+  if (response.status === 'ok') {
+    return {
+      role: 'assistant',
+      kind: 'result',
+      tone: 'success',
+      title: response.operation?.summary ?? `${request.tool_name} completed`,
+      body: summarizeOutput(response.output),
+      tags: [request.tool_name, 'ok'],
+    }
+  }
+  return {
+    role: 'assistant',
+    kind: 'result',
+    tone: 'error',
+    title: `${request.tool_name} failed`,
+    body: response.error ?? response.error_code ?? 'Execution failed.',
+    tags: [request.tool_name, 'error'],
+  }
+}
+
+function createClientID() {
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
 
 function capitalize(value: string) {

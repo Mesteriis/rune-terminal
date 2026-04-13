@@ -115,3 +115,4 @@ Confirmable boundaries:
 - The AI panel now uses a TideTerm-shaped header with widget context toggle and overflow menu, but it still operates on runtime, audit, and policy surfaces rather than a full conversation backend.
 - Prompt profile, role preset, and work mode controls now live in an AI mode strip near the top of the message feed instead of in the footer.
 - The AI panel welcome card now exposes runtime-backed quick actions for terminal inspection, tab listing, and audit navigation as the current closest-compatible equivalent to deeper TideTerm AI flows.
+- The AI panel now keeps a runtime-backed transcript of quick actions, approval decisions, and posture updates in a TideTerm-like message feed. This is not yet a real chat transport, but it makes the panel behave like a persistent AI activity surface instead of a static settings pane.

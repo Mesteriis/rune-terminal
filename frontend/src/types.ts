@@ -228,3 +228,14 @@ export type RuntimeNotice = {
   title: string
   detail?: string
 }
+
+export type AgentFeedEntry = {
+  id: string
+  role: 'user' | 'assistant'
+  kind: 'action' | 'result' | 'approval' | 'system'
+  title: string
+  body?: string
+  tone?: 'info' | 'success' | 'error' | 'approval'
+  tags?: string[]
+  timestamp: string
+}

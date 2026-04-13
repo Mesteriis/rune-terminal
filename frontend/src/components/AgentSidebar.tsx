@@ -6,6 +6,7 @@ import { SHELL_SECTION_LABELS, type ShellSection } from './ShellSections'
 import { ToolConsolePanel } from './ToolConsolePanel'
 import type {
   AgentCatalog,
+  AgentFeedEntry,
   AuditEvent,
   ExecuteToolResponse,
   IgnoreRule,
@@ -25,6 +26,7 @@ type AgentSidebarProps = {
   lastResponse: ExecuteToolResponse | null
   notice: RuntimeNotice | null
   pendingApproval: PendingApproval | null
+  agentFeed: AgentFeedEntry[]
   isConfirmingApproval: boolean
   trustedRules: TrustedRule[]
   ignoreRules: IgnoreRule[]
@@ -35,6 +37,7 @@ type AgentSidebarProps = {
   onSelectMode: (id: string) => void | Promise<void>
   onToggleWidgetContext: () => void
   onExecuteTool: (request: { tool_name: string; input?: Record<string, unknown> }) => void | Promise<unknown>
+  onRunAgentAction: (label: string, request: { tool_name: string; input?: Record<string, unknown> }) => void | Promise<unknown>
   onConfirmApproval: () => void | Promise<void>
   onDismissNotice: () => void
 }
@@ -48,6 +51,7 @@ export function AgentSidebar({
   lastResponse,
   notice,
   pendingApproval,
+  agentFeed,
   isConfirmingApproval,
   trustedRules,
   ignoreRules,
@@ -58,6 +62,7 @@ export function AgentSidebar({
   onSelectMode,
   onToggleWidgetContext,
   onExecuteTool,
+  onRunAgentAction,
   onConfirmApproval,
   onDismissNotice,
 }: AgentSidebarProps) {
@@ -93,12 +98,12 @@ export function AgentSidebar({
 
         <div className="agent-shell-scroll">
           {section === 'agent' ? (
-            <AgentPanel
-              catalog={catalog}
-              workspaceContext={workspaceContext}
-              lastResponse={lastResponse}
-              notice={notice}
-              pendingApproval={pendingApproval}
+              <AgentPanel
+                catalog={catalog}
+                workspaceContext={workspaceContext}
+                notice={notice}
+                pendingApproval={pendingApproval}
+                agentFeed={agentFeed}
               isConfirmingApproval={isConfirmingApproval}
               onConfirmApproval={onConfirmApproval}
               onDismissNotice={onDismissNotice}
@@ -106,7 +111,7 @@ export function AgentSidebar({
               onSelectRole={onSelectRole}
               onSelectMode={onSelectMode}
               onSelectSection={onSelectSection}
-              onExecuteTool={onExecuteTool}
+              onRunAgentAction={onRunAgentAction}
             />
           ) : null}
           {section === 'tools' ? (
