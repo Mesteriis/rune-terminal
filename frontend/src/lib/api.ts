@@ -101,6 +101,16 @@ export class RtermClient {
     return normalizeConnectionCatalog(await this.request<ConnectionCatalog>('/api/v1/connections'))
   }
 
+  async checkConnection(connectionId: string): Promise<{ connection: unknown; connections: ConnectionCatalog }> {
+    const result = await this.request<{ connection: unknown; connections: ConnectionCatalog }>(`/api/v1/connections/${connectionId}/check`, {
+      method: 'POST',
+    })
+    return {
+      ...result,
+      connections: normalizeConnectionCatalog(result.connections),
+    }
+  }
+
   async selectActiveConnection(connectionId: string): Promise<ConnectionCatalog> {
     return normalizeConnectionCatalog(await this.request<ConnectionCatalog>('/api/v1/connections/active', {
       method: 'PUT',

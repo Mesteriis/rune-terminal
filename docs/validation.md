@@ -24,6 +24,28 @@ Observed result:
 - app tests passed with the new launch-result reporting
 - terminal tests still passed after the connection-aware launch-report integration
 
+## Latest connection transport/status API slice
+
+The latest remote hardening step focused only on exposing the new connection lifecycle state over transport:
+
+- the connection catalog now surfaces lifecycle fields needed by the shell
+- the runtime now exposes a dedicated connection preflight-check route
+- connection actions were split out of the workspace action bucket in the Go app layer
+
+Validation executed for this step:
+
+```bash
+./scripts/go.sh test ./core/connections ./core/app ./core/transport/httpapi
+npm --prefix frontend run build
+npm run validate
+```
+
+Observed result:
+
+- connection, app, and HTTP transport tests passed
+- frontend build still passed after the expanded connection payload shape
+- full repository validation passed after the transport/API additions
+
 ## Latest remote / SSH foundation slice
 
 The latest parity slice focused only on the first remote / SSH foundation:

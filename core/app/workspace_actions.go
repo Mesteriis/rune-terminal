@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Mesteriis/rune-terminal/core/connections"
 	"github.com/Mesteriis/rune-terminal/core/terminal"
 	"github.com/Mesteriis/rune-terminal/core/workspace"
 	"github.com/Mesteriis/rune-terminal/internal/ids"
@@ -115,18 +114,6 @@ func (r *Runtime) CreateTerminalTabWithConnection(ctx context.Context, title str
 		WidgetID:  widgetID,
 		Workspace: snapshot,
 	}, nil
-}
-
-func (r *Runtime) ConnectionsSnapshot() connections.Snapshot {
-	return r.Connections.Snapshot()
-}
-
-func (r *Runtime) SelectActiveConnection(connectionID string) (connections.Snapshot, error) {
-	return r.Connections.Select(connectionID)
-}
-
-func (r *Runtime) SaveSSHConnection(input connections.SaveSSHInput) (connections.Connection, connections.Snapshot, error) {
-	return r.Connections.SaveSSH(input)
 }
 
 func (r *Runtime) CloseTab(tabID string) (CloseTabResult, error) {

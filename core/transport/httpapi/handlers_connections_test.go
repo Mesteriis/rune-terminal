@@ -48,6 +48,9 @@ func TestConnectionsEndpointsListSelectAndSave(t *testing.T) {
 	if saved.Connection.Kind != connections.KindSSH {
 		t.Fatalf("expected ssh connection kind, got %q", saved.Connection.Kind)
 	}
+	if saved.Connection.Runtime.CheckStatus != connections.CheckStatusPassed {
+		t.Fatalf("expected save to include preflight status, got %q", saved.Connection.Runtime.CheckStatus)
+	}
 
 	selectRecorder := httptest.NewRecorder()
 	handler.ServeHTTP(selectRecorder, authedJSONRequest(t, http.MethodPut, "/api/v1/connections/active", map[string]string{
@@ -63,6 +66,23 @@ func TestConnectionsEndpointsListSelectAndSave(t *testing.T) {
 	}
 	if selected.ActiveConnectionID != saved.Connection.ID {
 		t.Fatalf("expected selected active connection %q, got %q", saved.Connection.ID, selected.ActiveConnectionID)
+	}
+
+	checkRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(checkRecorder, authedJSONRequest(t, http.MethodPost, "/api/v1/connections/"+saved.Connection.ID+"/check", nil))
+	if checkRecorder.Code != http.StatusOK {
+		t.Fatalf("expected 200 check, got %d", checkRecorder.Code)
+	}
+
+	var checked struct {
+		Connection  connections.Connection `json:"connection"`
+		Connections connections.Snapshot   `json:"connections"`
+	}
+	if err := json.Unmarshal(checkRecorder.Body.Bytes(), &checked); err != nil {
+		t.Fatalf("unmarshal check: %v", err)
+	}
+	if checked.Connection.ID != saved.Connection.ID {
+		t.Fatalf("expected checked connection %q, got %q", saved.Connection.ID, checked.Connection.ID)
 	}
 }
 

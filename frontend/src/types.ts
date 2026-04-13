@@ -51,6 +51,9 @@ export type TerminalState = {
 export type ConnectionKind = 'local' | 'ssh'
 
 export type ConnectionStatus = 'ready' | 'configured'
+export type ConnectionCheckStatus = 'unchecked' | 'passed' | 'failed'
+export type ConnectionLaunchStatus = 'idle' | 'succeeded' | 'failed'
+export type ConnectionUsability = 'available' | 'attention' | 'unknown'
 
 export type SSHConnectionConfig = {
   host: string
@@ -67,6 +70,15 @@ export type Connection = {
   status: ConnectionStatus
   active: boolean
   builtin?: boolean
+  usability: ConnectionUsability
+  runtime: {
+    check_status: ConnectionCheckStatus
+    check_error?: string
+    last_checked_at?: string
+    launch_status: ConnectionLaunchStatus
+    launch_error?: string
+    last_launched_at?: string
+  }
   ssh?: SSHConnectionConfig
 }
 

@@ -11,6 +11,19 @@ func (api *API) handleConnections(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, api.runtime.ConnectionsSnapshot())
 }
 
+func (api *API) handleCheckConnection(w http.ResponseWriter, r *http.Request) {
+	connectionID := r.PathValue("connectionID")
+	connection, snapshot, err := api.runtime.CheckConnection(r.Context(), connectionID)
+	if err != nil {
+		writeConnectionError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"connection":  connection,
+		"connections": snapshot,
+	})
+}
+
 func (api *API) handleSelectConnection(w http.ResponseWriter, r *http.Request) {
 	var payload struct {
 		ConnectionID string `json:"connection_id"`

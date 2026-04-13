@@ -14,6 +14,10 @@ type selectConnectionInput struct {
 	ConnectionID string `json:"connection_id"`
 }
 
+type checkConnectionInput struct {
+	ConnectionID string `json:"connection_id"`
+}
+
 type saveSSHConnectionInput struct {
 	ID           string `json:"id,omitempty"`
 	Name         string `json:"name,omitempty"`
@@ -26,6 +30,7 @@ type saveSSHConnectionInput struct {
 func (r *Runtime) connectionTools() []toolruntime.Definition {
 	return []toolruntime.Definition{
 		r.connectionsListTool(),
+		r.connectionsCheckTool(),
 		r.connectionsSelectTool(),
 		r.connectionsSaveSSHTool(),
 	}
@@ -89,6 +94,44 @@ func (r *Runtime) connectionsSelectTool() toolruntime.Definition {
 				return nil, normalizeToolError(err)
 			}
 			return snapshot, nil
+		},
+	}
+}
+
+func (r *Runtime) connectionsCheckTool() toolruntime.Definition {
+	return toolruntime.Definition{
+		Name:         "connections.check",
+		Description:  "Run a local preflight check for a configured connection target.",
+		InputSchema:  json.RawMessage(`{"type":"object","properties":{"connection_id":{"type":"string"}},"required":["connection_id"],"additionalProperties":false}`),
+		OutputSchema: json.RawMessage(`{"type":"object"}`),
+		Metadata: toolruntime.Metadata{
+			Capabilities: []string{"connections:read"},
+			ApprovalTier: policy.ApprovalTierSafe,
+			TargetKind:   toolruntime.TargetWorkspace,
+		},
+		Decode: func(raw json.RawMessage) (any, error) {
+			return toolruntime.DecodeJSON[checkConnectionInput](raw)
+		},
+		Plan: func(input any, execCtx toolruntime.ExecutionContext) (toolruntime.OperationPlan, error) {
+			payload := input.(checkConnectionInput)
+			return toolruntime.OperationPlan{
+				Operation: toolruntime.Operation{
+					Summary:              "check connection " + payload.ConnectionID,
+					RequiredCapabilities: []string{"connections:read"},
+					ApprovalTier:         policy.ApprovalTierSafe,
+				},
+			}, nil
+		},
+		Execute: func(ctx context.Context, execCtx toolruntime.ExecutionContext, input any) (any, error) {
+			payload := input.(checkConnectionInput)
+			connection, snapshot, err := r.CheckConnection(ctx, payload.ConnectionID)
+			if err != nil {
+				return nil, normalizeToolError(err)
+			}
+			return map[string]any{
+				"connection":  connection,
+				"connections": snapshot,
+			}, nil
 		},
 	}
 }

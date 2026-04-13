@@ -101,5 +101,29 @@ function normalizeConnection(connection: Connection): Connection {
     name: typeof connection.name === 'string' && connection.name.length > 0 ? connection.name : 'Connection',
     description: typeof connection.description === 'string' ? connection.description : '',
     active: Boolean(connection.active),
+    usability:
+      connection.usability === 'available' || connection.usability === 'attention' || connection.usability === 'unknown'
+        ? connection.usability
+        : connection.kind === 'local'
+          ? 'available'
+          : 'unknown',
+    runtime: {
+      check_status:
+        connection.runtime?.check_status === 'passed' || connection.runtime?.check_status === 'failed'
+          ? connection.runtime.check_status
+          : connection.kind === 'local'
+            ? 'passed'
+            : 'unchecked',
+      check_error: typeof connection.runtime?.check_error === 'string' ? connection.runtime.check_error : '',
+      last_checked_at:
+        typeof connection.runtime?.last_checked_at === 'string' ? connection.runtime.last_checked_at : undefined,
+      launch_status:
+        connection.runtime?.launch_status === 'succeeded' || connection.runtime?.launch_status === 'failed'
+          ? connection.runtime.launch_status
+          : 'idle',
+      launch_error: typeof connection.runtime?.launch_error === 'string' ? connection.runtime.launch_error : '',
+      last_launched_at:
+        typeof connection.runtime?.last_launched_at === 'string' ? connection.runtime.last_launched_at : undefined,
+    },
   }
 }
