@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { summarizeOutput } from '../lib/agentFeed'
 import { useAgentActions } from './useAgentActions'
+import { useAiCommandExecution } from './useAiCommandExecution'
 import { useApprovalFlow } from './useApprovalFlow'
 import { useConversation } from './useConversation'
 import { useConnectionsActions } from './useConnectionsActions'
@@ -48,6 +49,16 @@ export function useRuntimeShell() {
   const conversation = useConversation({
     client: bootstrap.client,
     workspaceContext,
+    setNotice,
+  })
+  const aiCommandExecution = useAiCommandExecution({
+    client: bootstrap.client,
+    workspaceContext,
+    activeWidgetId: bootstrap.workspace?.active_widget_id,
+    terminalState,
+    executeTool,
+    appendAgentFeed: appendRuntimeFeed,
+    explainTerminalCommand: conversation.explainTerminalCommand,
     setNotice,
   })
 
@@ -129,6 +140,7 @@ export function useRuntimeShell() {
     executeTool: async (request) => executeTool(request),
     refreshAudit,
     appendAgentFeed: appendRuntimeFeed,
+    onApprovedExecution: aiCommandExecution.handleApprovedTerminalCommand,
     setLastResponse,
     setNotice,
   })
@@ -203,6 +215,7 @@ export function useRuntimeShell() {
     workspace: bootstrap.workspace,
     executeTool,
     appendAgentFeed: appendRuntimeFeed,
+    submitTerminalCommandPrompt: aiCommandExecution.submitTerminalCommandPrompt,
     submitConversationPrompt: conversation.submitConversationPrompt,
     refreshAudit,
     setAgentCatalog: bootstrap.setAgentCatalog,

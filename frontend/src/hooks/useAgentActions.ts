@@ -16,6 +16,7 @@ type UseAgentActionsParams = {
   workspace: Workspace | null
   executeTool: ToolExecutor
   appendAgentFeed: (entry: Omit<import('../types').AgentFeedEntry, 'id' | 'timestamp'>) => void
+  submitTerminalCommandPrompt: (prompt: string) => Promise<boolean>
   submitConversationPrompt: (prompt: string) => Promise<void>
   refreshAudit: () => Promise<void>
   setAgentCatalog: (catalog: AgentCatalog) => void
@@ -29,6 +30,7 @@ export function useAgentActions({
   workspace,
   executeTool,
   appendAgentFeed,
+  submitTerminalCommandPrompt,
   submitConversationPrompt,
   refreshAudit,
   setAgentCatalog,
@@ -51,6 +53,10 @@ export function useAgentActions({
   }, [appendAgentFeed, executeTool])
 
   const submitAgentPrompt = useCallback(async (prompt: string) => {
+    if (await submitTerminalCommandPrompt(prompt)) {
+      return
+    }
+
     const activeWidgetID = workspace?.active_widget_id
     const action = resolveAgentPromptAction(prompt, activeWidgetID)
     if (!action) {
@@ -68,7 +74,7 @@ export function useAgentActions({
     if (response) {
       appendAgentFeed(buildAgentResponseEntry(action.request, response, action.label))
     }
-  }, [appendAgentFeed, executeTool, submitConversationPrompt, workspace?.active_widget_id])
+  }, [appendAgentFeed, executeTool, submitConversationPrompt, submitTerminalCommandPrompt, workspace?.active_widget_id])
 
   const reportAgentAttachmentUnavailable = useCallback(async () => {
     appendAgentFeed({

@@ -43,7 +43,13 @@ export function AgentComposer({ hasTranscript, isSubmitting = false, onSubmitPro
               handleSubmit()
             }
           }}
-          placeholder={isSubmitting ? 'Waiting for assistant…' : hasTranscript ? 'Continue the conversation…' : 'Ask RunaTerminal AI anything…'}
+          placeholder={
+            isSubmitting
+              ? 'Waiting for assistant…'
+              : hasTranscript
+                ? 'Continue the conversation or use /run <command>…'
+                : 'Ask RunaTerminal AI anything or use /run <command>…'
+          }
           rows={2}
         />
         <button
@@ -65,7 +71,7 @@ export function AgentComposer({ hasTranscript, isSubmitting = false, onSubmitPro
         </button>
       </div>
       <div className="agent-composer-footer">
-        <span>Enter to send · Shift+Enter for newline</span>
+        <span>Enter to send · Shift+Enter for newline · /run &lt;command&gt; to execute in the active terminal</span>
       </div>
     </div>
   )

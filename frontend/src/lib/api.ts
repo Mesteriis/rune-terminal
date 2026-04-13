@@ -1,6 +1,7 @@
 import type {
   AgentCatalog,
   AgentConversationSnapshot,
+  AgentTerminalCommandExplanationResult,
   AuditEvent,
   BootstrapPayload,
   Connection,
@@ -121,6 +122,29 @@ export class RtermClient {
         body: JSON.stringify(input),
       },
     )
+    return {
+      ...payload,
+      conversation: normalizeConversationSnapshot(payload.conversation),
+    }
+  }
+
+  async explainTerminalCommand(input: {
+    prompt: string
+    command: string
+    widget_id?: string
+    from_seq?: number
+    approval_used?: boolean
+    context?: {
+      workspace_id?: string
+      repo_root?: string
+      active_widget_id?: string
+      widget_context_enabled?: boolean
+    }
+  }): Promise<AgentTerminalCommandExplanationResult> {
+    const payload = await this.request<AgentTerminalCommandExplanationResult>('/api/v1/agent/terminal-commands/explain', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    })
     return {
       ...payload,
       conversation: normalizeConversationSnapshot(payload.conversation),

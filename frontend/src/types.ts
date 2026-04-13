@@ -302,6 +302,12 @@ export type AgentConversationSnapshot = {
   updated_at: string
 }
 
+export type AgentTerminalCommandExplanationResult = {
+  conversation: AgentConversationSnapshot
+  provider_error?: string
+  output_excerpt?: string
+}
+
 export type AgentFeedEntry = {
   id: string
   role: 'user' | 'assistant'

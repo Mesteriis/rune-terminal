@@ -2,7 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 
 import { mapConversationToFeedEntries } from '../lib/agentConversation'
-import type { AgentConversationSnapshot, AgentFeedEntry, RuntimeNotice, WorkspaceContextSummary } from '../types'
+import type {
+  AgentConversationSnapshot,
+  AgentFeedEntry,
+  AgentTerminalCommandExplanationResult,
+  RuntimeNotice,
+  WorkspaceContextSummary,
+} from '../types'
 
 type ConversationClient = {
   conversation: () => Promise<AgentConversationSnapshot>
@@ -15,6 +21,19 @@ type ConversationClient = {
       widget_context_enabled?: boolean
     }
   }) => Promise<{ conversation: AgentConversationSnapshot; provider_error?: string }>
+  explainTerminalCommand: (input: {
+    prompt: string
+    command: string
+    widget_id?: string
+    from_seq?: number
+    approval_used?: boolean
+    context?: {
+      workspace_id?: string
+      repo_root?: string
+      active_widget_id?: string
+      widget_context_enabled?: boolean
+    }
+  }) => Promise<AgentTerminalCommandExplanationResult>
 }
 
 type NoticeSetter = Dispatch<SetStateAction<RuntimeNotice | null>>
@@ -93,6 +112,48 @@ export function useConversation({ client, workspaceContext, setNotice }: UseConv
     }
   }, [client, setNotice, workspaceContext])
 
+  const explainTerminalCommand = useCallback(async (input: {
+    prompt: string
+    command: string
+    widget_id?: string
+    from_seq?: number
+    approval_used?: boolean
+  }) => {
+    if (!client) {
+      return null
+    }
+    setIsSubmittingConversation(true)
+    try {
+      const result = await client.explainTerminalCommand({
+        ...input,
+        context: workspaceContext ? {
+          workspace_id: workspaceContext.workspace_id,
+          repo_root: workspaceContext.repo_root,
+          active_widget_id: workspaceContext.active_widget_id,
+          widget_context_enabled: workspaceContext.widget_context_enabled,
+        } : undefined,
+      })
+      setConversation(result.conversation)
+      if (result.provider_error) {
+        setNotice({
+          tone: 'error',
+          title: 'Assistant explanation failed',
+          detail: result.provider_error,
+        })
+      }
+      return result
+    } catch (error) {
+      setNotice({
+        tone: 'error',
+        title: 'Failed to explain terminal result',
+        detail: formatError(error),
+      })
+      return null
+    } finally {
+      setIsSubmittingConversation(false)
+    }
+  }, [client, setNotice, workspaceContext])
+
   const conversationFeed = useMemo<AgentFeedEntry[]>(
     () => mapConversationToFeedEntries(conversation.messages),
     [conversation.messages],
@@ -104,6 +165,7 @@ export function useConversation({ client, workspaceContext, setNotice }: UseConv
     isSubmittingConversation,
     refreshConversation,
     submitConversationPrompt,
+    explainTerminalCommand,
   }
 }
 

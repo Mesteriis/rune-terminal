@@ -45,7 +45,7 @@ export function AgentWelcomeMessage({
           <span className="ai-welcome-icon"><i className="fa fa-keyboard" /></span>
           <div>
             <strong>Message flow</strong>
-            <p><kbd>Enter</kbd> sends. <kbd>Shift</kbd> + <kbd>Enter</kbd> inserts a newline. Transcript results stay in the panel until you clear context by starting a new thread later.</p>
+            <p><kbd>Enter</kbd> sends. <kbd>Shift</kbd> + <kbd>Enter</kbd> inserts a newline. Use <code>/run &lt;command&gt;</code> to execute in the active terminal and get a concise result summary back in the transcript.</p>
           </div>
         </div>
       </div>

@@ -29,6 +29,7 @@ type UseApprovalFlowParams = {
     tool_name?: string
     approval_tier?: string
   }) => void
+  onApprovedExecution?: (request: ExecuteToolRequest, response: ExecuteToolResponse) => void | Promise<void>
   setLastResponse: ResponseSetter
   setNotice: NoticeSetter
 }
@@ -40,6 +41,7 @@ export function useApprovalFlow({
   executeTool,
   refreshAudit,
   appendAgentFeed,
+  onApprovedExecution,
   setLastResponse,
   setNotice,
 }: UseApprovalFlowParams) {
@@ -115,7 +117,10 @@ export function useApprovalFlow({
         title: 'Approval granted',
         detail: 'Retrying the requested action with a single-use approval token.',
       })
-      await executeTool({ ...pendingRequest, approval_token: grant.approval_token })
+      const retried = await executeTool({ ...pendingRequest, approval_token: grant.approval_token })
+      if (retried && onApprovedExecution) {
+        await onApprovedExecution(pendingRequest, retried)
+      }
     } catch (error) {
       setNotice({
         tone: 'error',
@@ -130,6 +135,7 @@ export function useApprovalFlow({
     client,
     executeTool,
     executionContext,
+    onApprovedExecution,
     pendingApproval,
     pendingRequest,
     refreshAudit,
