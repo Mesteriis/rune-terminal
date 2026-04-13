@@ -33,7 +33,10 @@ export function WorkspaceTab({
 }: WorkspaceTabProps) {
   const [editing, setEditing] = useState(false)
   const [draftTitle, setDraftTitle] = useState(tab.title)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 })
   const inputRef = useRef<HTMLInputElement | null>(null)
+  const tabRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (!editing) {
@@ -42,6 +45,19 @@ export function WorkspaceTab({
     inputRef.current?.focus()
     inputRef.current?.select()
   }, [editing])
+
+  useEffect(() => {
+    if (!menuOpen) {
+      return
+    }
+    function handlePointerDown(event: MouseEvent) {
+      if (!tabRef.current?.contains(event.target as Node)) {
+        setMenuOpen(false)
+      }
+    }
+    window.addEventListener('pointerdown', handlePointerDown)
+    return () => window.removeEventListener('pointerdown', handlePointerDown)
+  }, [menuOpen])
 
   function commitRename() {
     const nextTitle = draftTitle.trim()
@@ -55,6 +71,7 @@ export function WorkspaceTab({
 
   return (
     <div
+      ref={tabRef}
       className={['workspace-tab', active ? 'active' : '', tab.pinned ? 'pinned' : '', dragging ? 'dragging' : '', dropTarget ? 'drop-target' : '']
         .filter(Boolean)
         .join(' ')}
@@ -81,6 +98,12 @@ export function WorkspaceTab({
         onDropTab()
       }}
       onClick={() => void onSelect()}
+      onContextMenu={(event) => {
+        event.preventDefault()
+        event.stopPropagation()
+        setMenuPosition({ x: event.clientX, y: event.clientY })
+        setMenuOpen(true)
+      }}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault()
@@ -145,6 +168,42 @@ export function WorkspaceTab({
       >
         ×
       </button>
+      {menuOpen ? (
+        <div
+          className="workspace-tab-menu"
+          style={{ left: menuPosition.x, top: menuPosition.y }}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              setMenuOpen(false)
+              void onTogglePinned()
+            }}
+          >
+            {tab.pinned ? 'Unpin tab' : 'Pin tab'}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setMenuOpen(false)
+              setDraftTitle(tab.title)
+              setEditing(true)
+            }}
+          >
+            Rename tab
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setMenuOpen(false)
+              void onClose()
+            }}
+          >
+            Close tab
+          </button>
+        </div>
+      ) : null}
     </div>
   )
 }

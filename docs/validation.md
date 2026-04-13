@@ -283,6 +283,33 @@ What was not revalidated in this slice:
 - no fresh UI automation was run after the drag-reorder change
 - no fresh manual Tauri launch was performed after this specific tabbar interaction pass
 
+## Latest tab-context-menu parity slice
+
+The next tabbar parity pass added a TideTerm-style context menu to each tab:
+
+- right-click on a tab now opens a context menu
+- the context menu exposes pin/unpin, rename, and close actions
+- the menu is wired to the existing runtime-backed tab actions instead of introducing frontend-only state
+
+Validation executed for this slice:
+
+```bash
+npm --prefix frontend run lint
+npm --prefix frontend run build
+npm run validate
+```
+
+Observed result:
+
+- frontend lint passed
+- frontend build passed
+- full repository validation passed after the tab context-menu slice
+
+What was not revalidated in this slice:
+
+- no fresh UI automation was run after adding the context menu
+- no fresh manual Tauri launch was performed after this specific tab menu pass
+
 ## Tooling baseline
 
 - Go: `go1.26.2 darwin/arm64`

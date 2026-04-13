@@ -20,6 +20,7 @@ It is intentionally operational, not narrative.
 - Pinned tabs render before regular tabs while preserving creation order inside each group.
 - Tabs can be reordered by dragging within their current pinned or regular group.
 - Cross-group drag between pinned and regular tabs is rejected in the current implementation.
+- Tabs expose a context menu with pin/unpin, rename, and close actions.
 
 ## Session lifecycle contract
 

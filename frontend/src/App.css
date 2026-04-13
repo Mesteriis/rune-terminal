@@ -183,6 +183,33 @@
   font: inherit;
 }
 
+.workspace-tab-menu {
+  position: fixed;
+  z-index: 40;
+  display: grid;
+  gap: 0.1rem;
+  min-width: 10rem;
+  padding: 0.3rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(10, 14, 20, 0.98);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.35);
+}
+
+.workspace-tab-menu button {
+  justify-content: flex-start;
+  padding: 0.5rem 0.65rem;
+  border-radius: 7px;
+  background: transparent;
+  color: #dbe4ed;
+  text-align: left;
+  font-size: 0.78rem;
+}
+
+.workspace-tab-menu button:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
 .workspace-tab-add {
   min-width: 8rem;
   justify-content: center;
