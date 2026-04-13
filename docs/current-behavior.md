@@ -32,6 +32,7 @@ It is intentionally operational, not narrative.
 - A second `StartSession` must not spawn a second process for the same widget.
 - Session IDs are currently equal to widget IDs in the MVP.
 - The frontend now hydrates terminal content from a JSON snapshot before opening the SSE stream, so a newly mounted terminal starts with buffered scrollback instead of only new output.
+- The frontend terminal shell uses a compact TideTerm-derived header, toolbar, and command-strip layout. `Refresh`, `Focus`, `Interrupt`, `Clear view`, and `Jump to latest` are shell affordances layered over the same Go-owned session state.
 - On startup, the runtime eagerly boots sessions for terminal widgets in the default workspace.
 - When a process exits, terminal state moves to `exited` or `failed`, input/interrupt are disabled, and active stream subscribers are closed.
 

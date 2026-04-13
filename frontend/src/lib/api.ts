@@ -8,6 +8,7 @@ import type {
   Workspace,
 } from '../types'
 import type { RuntimeInfo } from './runtime'
+import { normalizeBootstrapPayload, normalizeWorkspace } from './workspace'
 
 export class RtermClient {
   private readonly runtime: RuntimeInfo
@@ -17,11 +18,11 @@ export class RtermClient {
   }
 
   async bootstrap(): Promise<BootstrapPayload> {
-    return this.request<BootstrapPayload>('/api/v1/bootstrap')
+    return normalizeBootstrapPayload(await this.request<BootstrapPayload>('/api/v1/bootstrap'))
   }
 
   async workspace(): Promise<Workspace> {
-    return this.request<Workspace>('/api/v1/workspace')
+    return normalizeWorkspace(await this.request<Workspace>('/api/v1/workspace'))
   }
 
   async tools(): Promise<{ tools: ToolInfo[] }> {

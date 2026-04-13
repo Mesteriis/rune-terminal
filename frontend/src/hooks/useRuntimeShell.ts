@@ -1,16 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
+import { buildAgentResponseEntry, resolveAgentPromptAction, summarizeOutput, summarizeRequest } from '../lib/agentFeed'
 import { useRuntimeBootstrap } from './useRuntimeBootstrap'
+import { useAgentFeed } from './useAgentFeed'
+import { usePolicyLists } from './usePolicyLists'
 import { useTerminalState } from './useTerminalState'
 import type {
-  AgentFeedEntry,
   ApprovalGrant,
   ExecuteToolRequest,
   ExecuteToolResponse,
-  IgnoreRule,
   PendingApproval,
   RuntimeNotice,
-  TrustedRule,
   Widget,
 } from '../types'
 
@@ -34,14 +34,12 @@ const QUIET_TOOLS = new Set([
 export function useRuntimeShell() {
   const [widgetContextEnabled, setWidgetContextEnabled] = useState(() => readWidgetContextPreference())
   const bootstrap = useRuntimeBootstrap()
-  const [trustedRules, setTrustedRules] = useState<TrustedRule[]>([])
-  const [ignoreRules, setIgnoreRules] = useState<IgnoreRule[]>([])
   const [lastResponse, setLastResponse] = useState<ExecuteToolResponse | null>(null)
   const [notice, setNotice] = useState<RuntimeNotice | null>(null)
   const [pendingApproval, setPendingApproval] = useState<PendingApproval | null>(null)
   const [pendingRequest, setPendingRequest] = useState<ExecuteToolRequest | null>(null)
   const [isConfirmingApproval, setIsConfirmingApproval] = useState(false)
-  const [agentFeed, setAgentFeed] = useState<AgentFeedEntry[]>([])
+  const { agentFeed, appendAgentFeed } = useAgentFeed()
 
   const { terminalState, workspaceContext, refreshTerminalState } = useTerminalState({
     client: bootstrap.client,
@@ -82,6 +80,12 @@ export function useRuntimeShell() {
     }
   }, [bootstrap.repoRoot, bootstrap.workspace, widgetContextEnabled])
 
+  const { trustedRules, ignoreRules, refreshPolicyLists } = usePolicyLists({
+    client: bootstrap.client,
+    workspace: bootstrap.workspace,
+    executionContext,
+  })
+
   async function refreshWorkspace() {
     if (!bootstrap.client) {
       return
@@ -97,35 +101,6 @@ export function useRuntimeShell() {
     const audit = await bootstrap.client.audit()
     bootstrap.setAuditEvents(audit.events ?? [])
   }
-
-  const refreshPolicyLists = useCallback(async () => {
-    if (!bootstrap.client || !bootstrap.workspace) {
-      return
-    }
-    const [trusted, ignore] = await Promise.all([
-      bootstrap.client.executeTool({
-        tool_name: 'safety.list_trusted_rules',
-        context: executionContext(bootstrap.workspace),
-      }),
-      bootstrap.client.executeTool({
-        tool_name: 'safety.list_ignore_rules',
-        context: executionContext(bootstrap.workspace),
-      }),
-    ])
-    if (trusted.status === 'ok') {
-      setTrustedRules(((trusted.output as { rules?: TrustedRule[] })?.rules ?? []) as TrustedRule[])
-    }
-    if (ignore.status === 'ok') {
-      setIgnoreRules(((ignore.output as { rules?: IgnoreRule[] })?.rules ?? []) as IgnoreRule[])
-    }
-  }, [bootstrap.client, bootstrap.workspace, executionContext])
-
-  useEffect(() => {
-    if (!bootstrap.client || !bootstrap.workspace) {
-      return
-    }
-    void refreshPolicyLists()
-  }, [bootstrap.client, bootstrap.workspace, refreshPolicyLists])
 
   async function executeTool(request: ExecuteToolRequest) {
     if (!bootstrap.client || !bootstrap.workspace) {
@@ -453,150 +428,14 @@ export function useRuntimeShell() {
     setActiveSelection,
     toggleWidgetContext: () => setWidgetContextEnabled((current) => !current),
   }
-
-  function appendAgentFeed(entry: Omit<AgentFeedEntry, 'id' | 'timestamp'>) {
-    setAgentFeed((current) => [
-      ...current,
-      {
-        id: createClientID(),
-        timestamp: new Date().toISOString(),
-        ...entry,
-      },
-    ])
-  }
 }
 
 function formatError(error: unknown) {
   return error instanceof Error ? error.message : String(error)
 }
 
-function summarizeOutput(output: unknown) {
-  if (!output) {
-    return 'No output payload.'
-  }
-  if (typeof output === 'string') {
-    return output
-  }
-  if (typeof output === 'object') {
-    return JSON.stringify(output)
-  }
-  return String(output)
-}
-
-function summarizeRequest(request: ExecuteToolRequest) {
-  if (!request.input || Object.keys(request.input).length === 0) {
-    return request.tool_name
-  }
-  return `${request.tool_name} ${JSON.stringify(request.input)}`
-}
-
-function buildAgentResponseEntry(
-  request: ExecuteToolRequest,
-  response: ExecuteToolResponse,
-  label?: string,
-): Omit<AgentFeedEntry, 'id' | 'timestamp'> {
-  if (response.status === 'requires_confirmation' && response.pending_approval) {
-    return {
-      role: 'assistant',
-      kind: 'approval',
-      tone: 'approval',
-      title: label ? `${label} requires approval` : `${request.tool_name} requires approval`,
-      body: response.pending_approval.summary,
-      tags: [response.pending_approval.approval_tier],
-      tool_name: request.tool_name,
-      operation_summary: response.operation?.summary,
-      approval_tier: response.pending_approval.approval_tier,
-      affected_paths: response.operation?.affected_paths,
-      affected_widgets: response.operation?.affected_widgets,
-    }
-  }
-  if (response.status === 'ok') {
-    return {
-      role: 'assistant',
-      kind: 'result',
-      tone: 'success',
-      title: response.operation?.summary ?? label ?? `${request.tool_name} completed`,
-      body: summarizeOutput(response.output),
-      tags: [request.tool_name, 'ok'],
-      tool_name: request.tool_name,
-      operation_summary: response.operation?.summary,
-      approval_tier: response.operation?.approval_tier,
-      approval_used: request.approval_token != null,
-      affected_paths: response.operation?.affected_paths,
-      affected_widgets: response.operation?.affected_widgets,
-    }
-  }
-  return {
-    role: 'assistant',
-    kind: 'result',
-    tone: 'error',
-    title: `${request.tool_name} failed`,
-    body: response.error ?? response.error_code ?? 'Execution failed.',
-    tags: [request.tool_name, 'error'],
-    tool_name: request.tool_name,
-    operation_summary: response.operation?.summary,
-    approval_tier: response.operation?.approval_tier,
-    approval_used: request.approval_token != null,
-    affected_paths: response.operation?.affected_paths,
-    affected_widgets: response.operation?.affected_widgets,
-  }
-}
-
-function createClientID() {
-  return `${Date.now()}-${Math.random().toString(16).slice(2)}`
-}
-
 function capitalize(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1)
-}
-
-function resolveAgentPromptAction(prompt: string, activeWidgetID?: string): { label: string; request: ExecuteToolRequest } | null {
-  const normalized = prompt.trim().toLowerCase()
-
-  if (
-    normalized.includes('inspect terminal') ||
-    normalized.includes('terminal state') ||
-    normalized.includes('terminal status') ||
-    normalized.includes('inspect session')
-  ) {
-    return {
-      label: 'Inspect terminal',
-      request: { tool_name: 'term.get_state' },
-    }
-  }
-
-  if (
-    normalized.includes('list tabs') ||
-    normalized.includes('show tabs') ||
-    normalized.includes('tab list') ||
-    normalized.includes('show active tab')
-  ) {
-    return normalized.includes('active tab')
-      ? {
-          label: 'Show active tab',
-          request: { tool_name: 'workspace.get_active_tab' },
-        }
-      : {
-          label: 'List tabs',
-          request: { tool_name: 'workspace.list_tabs' },
-        }
-  }
-
-  if (normalized.includes('list widgets') || normalized.includes('show widgets') || normalized.includes('widget list')) {
-    return {
-      label: 'List widgets',
-      request: { tool_name: 'workspace.list_widgets' },
-    }
-  }
-
-  if ((normalized.includes('interrupt') || normalized.includes('stop terminal') || normalized.includes('stop command')) && activeWidgetID) {
-    return {
-      label: 'Interrupt terminal',
-      request: { tool_name: 'term.interrupt', input: { widget_id: activeWidgetID } },
-    }
-  }
-
-  return null
 }
 
 function resolveTerminalTargetWidgetID(

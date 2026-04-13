@@ -1000,7 +1000,7 @@
   max-width: 100%;
   min-height: 0;
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
   overflow: hidden;
   border-radius: 0;
   border: none;
@@ -1046,6 +1046,53 @@
   align-items: center;
 }
 
+.terminal-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  min-height: 1.45rem;
+  padding: 0.24rem 0.7rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.terminal-toolbar-button {
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #9fb0bf;
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.terminal-toolbar-button:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #eef4fb;
+}
+
+.terminal-toolbar-button.active {
+  background: rgba(242, 179, 95, 0.16);
+  border-color: rgba(242, 179, 95, 0.18);
+  color: #ffd7a5;
+}
+
+.terminal-toolbar-spacer {
+  flex: 1 1 auto;
+}
+
+.terminal-toolbar-text {
+  min-width: 0;
+  color: #7f8d9b;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .agent-summary div,
 .operator-context div,
 .rule-list li,
@@ -1075,7 +1122,6 @@
 
 .terminal-command-bar {
   display: flex;
-  flex-wrap: wrap;
   gap: 0.45rem;
   align-items: center;
   min-width: 0;
@@ -1114,6 +1160,17 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.terminal-command-text {
+  min-width: 0;
+  margin-left: auto;
+  color: #8c9aa9;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.74rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .terminal-actions {
@@ -1209,6 +1266,7 @@
 }
 
 .terminal-surface-focused .terminal-header,
+.terminal-surface-focused .terminal-toolbar,
 .terminal-surface-focused .terminal-command-bar,
 .terminal-surface-focused .terminal-input-row {
   border-color: rgba(242, 179, 95, 0.22);

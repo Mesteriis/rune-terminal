@@ -23,6 +23,7 @@ export function TerminalSurface({ client, widgetId, state, onTerminalAction, onI
   const [commandDraft, setCommandDraft] = useState('')
   const [isFocused, setIsFocused] = useState(false)
   const [isHydrating, setIsHydrating] = useState(true)
+  const [isFollowingOutput, setIsFollowingOutput] = useState(true)
   const followOutputRef = useRef(true)
 
   useEffect(() => {
@@ -63,7 +64,9 @@ export function TerminalSurface({ client, widgetId, state, onTerminalAction, onI
 
     const refreshFollowState = () => {
       const buffer = terminal.buffer.active
-      followOutputRef.current = buffer.viewportY >= buffer.baseY
+      const nextFollowState = buffer.viewportY >= buffer.baseY
+      followOutputRef.current = nextFollowState
+      setIsFollowingOutput(nextFollowState)
     }
 
     const scheduleFit = () => {
@@ -188,6 +191,29 @@ export function TerminalSurface({ client, widgetId, state, onTerminalAction, onI
     await onTerminalAction?.()
   }
 
+  function handleScrollToLatest() {
+    const terminal = terminalRef.current
+    if (!terminal) {
+      return
+    }
+    terminal.scrollToBottom()
+    followOutputRef.current = true
+    setIsFollowingOutput(true)
+    focusTerminalTextarea(containerRef.current, terminalRef.current, false)
+  }
+
+  function handleClearViewport() {
+    const terminal = terminalRef.current
+    if (!terminal) {
+      return
+    }
+    terminal.clear()
+    focusTerminalTextarea(containerRef.current, terminalRef.current, false)
+  }
+
+  const sessionStatusLine = buildSessionStatusLine(state, isHydrating, isFocused, isFollowingOutput)
+  const commandStripText = buildCommandStripText(state)
+
   return (
     <section className={`terminal-card terminal-surface ${isFocused ? 'terminal-surface-focused' : ''}`}>
       <header className="terminal-header">
@@ -213,14 +239,29 @@ export function TerminalSurface({ client, widgetId, state, onTerminalAction, onI
         </div>
       </header>
 
+      <section className="terminal-toolbar">
+        <button
+          className={`terminal-toolbar-button ${isFollowingOutput ? 'active' : ''}`}
+          type="button"
+          onClick={handleScrollToLatest}
+        >
+          {isFollowingOutput ? 'Following output' : 'Jump to latest'}
+        </button>
+        <button className="terminal-toolbar-button" type="button" onClick={handleClearViewport}>
+          Clear view
+        </button>
+        <div className="terminal-toolbar-spacer" />
+        <span className="terminal-toolbar-text">{sessionStatusLine}</span>
+      </section>
+
       <section className="terminal-command-bar">
         <span className={`status-pill status-${state?.status ?? 'unknown'}`}>{state?.status ?? 'unknown'}</span>
         <span className="status-pill">Widget {state?.widget_id ?? widgetId}</span>
         <span className="status-pill">Session {state?.session_id ?? widgetId}</span>
         <span className="status-pill">PID {state?.pid ?? 'n/a'}</span>
         <span className="status-pill">{isFocused ? 'Focused' : 'Click to focus'}</span>
-        {isHydrating ? <span className="status-pill">Loading scrollback…</span> : null}
-        <span className="status-pill status-path">{state?.working_dir ?? 'working dir unavailable'}</span>
+        <span className="status-pill">{isFollowingOutput ? 'Live tail' : 'Scrolled back'}</span>
+        <span className="terminal-command-text">{commandStripText}</span>
       </section>
 
       <div className="terminal-shell" ref={containerRef} />
@@ -272,6 +313,44 @@ function focusTerminalTextarea(container: HTMLDivElement | null, terminal: Termi
   }
   const textarea = container.querySelector('.xterm-helper-textarea')
   if (textarea instanceof HTMLTextAreaElement) {
-    textarea.focus()
+    textarea.focus({ preventScroll: true })
   }
+}
+
+function buildSessionStatusLine(
+  state: TerminalState | null,
+  isHydrating: boolean,
+  isFocused: boolean,
+  isFollowingOutput: boolean,
+) {
+  const segments = [
+    isHydrating ? 'loading scrollback' : 'scrollback ready',
+    isFollowingOutput ? 'following output' : 'manual scroll',
+    isFocused ? 'focused' : 'click to focus',
+  ]
+
+  if (state?.last_output_at) {
+    segments.push(`last output ${formatTimestamp(state.last_output_at)}`)
+  }
+
+  return segments.join(' · ')
+}
+
+function buildCommandStripText(state: TerminalState | null) {
+  if (!state) {
+    return 'Connecting to runtime shell'
+  }
+
+  const shell = state.shell || 'shell'
+  const cwd = state.working_dir || 'working dir unavailable'
+  const exitCode = state.exit_code != null ? ` · exit ${state.exit_code}` : ''
+  return `${shell} · ${cwd}${exitCode}`
+}
+
+function formatTimestamp(timestamp: string) {
+  const parsed = new Date(timestamp)
+  if (Number.isNaN(parsed.getTime())) {
+    return timestamp
+  }
+  return parsed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 }
