@@ -4,6 +4,53 @@ Validation date: `2026-04-13`
 
 All commands below were run against the repository in its current state on macOS arm64.
 
+## Latest real SSH launch slice
+
+The latest remote step focused only on one honest end-to-end SSH launch path and truthful failure reporting:
+
+- SSH shells no longer inherit the lifetime of the HTTP request that created the tab
+- remote tab creation now waits for the SSH shell to become usable before reporting success
+- the connection catalog records real launch success and failure against an actually reachable host
+- the shell now distinguishes preflight warnings from launch success/failure in the connections panel
+
+Validation executed for this step:
+
+```bash
+./scripts/go.sh test ./core/terminal ./core/app ./core/connections ./core/transport/httpapi
+npm --prefix frontend run lint
+npm --prefix frontend run build
+npm run build:core
+RTERM_AUTH_TOKEN=test-token apps/desktop/bin/rterm-core serve --workspace-root . --state-dir /tmp/rterm-real-ssh-state.XXXXXX
+curl -sf -H 'Authorization: Bearer test-token' http://127.0.0.1:<manual-port>/api/v1/connections
+curl -sf -X POST -H 'Authorization: Bearer test-token' -H 'Content-Type: application/json' http://127.0.0.1:<manual-port>/api/v1/connections/ssh -d '{"name":"LAN Root","host":"192.168.1.2","user":"root","port":22}'
+curl -sf -X POST -H 'Authorization: Bearer test-token' http://127.0.0.1:<manual-port>/api/v1/connections/<connection-id>/check
+curl -sf -X PUT -H 'Authorization: Bearer test-token' -H 'Content-Type: application/json' http://127.0.0.1:<manual-port>/api/v1/connections/active -d '{"connection_id":"<connection-id>"}'
+curl -sf -X POST -H 'Authorization: Bearer test-token' -H 'Content-Type: application/json' http://127.0.0.1:<manual-port>/api/v1/workspace/tabs -d '{"title":"Remote Root","connection_id":"<connection-id>"}'
+curl -sf -H 'Authorization: Bearer test-token' http://127.0.0.1:<manual-port>/api/v1/terminal/<widget-id>
+curl -sf -X POST -H 'Authorization: Bearer test-token' -H 'Content-Type: application/json' http://127.0.0.1:<manual-port>/api/v1/terminal/<widget-id>/input -d '{"text":"echo remote-e2e-ok","append_newline":true}'
+npm run validate
+```
+
+Observed result:
+
+- targeted Go tests passed for terminal, app, connections, and HTTP transport
+- frontend lint passed
+- frontend build passed
+- the rebuilt `rterm-core` was started from a fresh state directory for manual API smoke
+- a real SSH profile for `root@192.168.1.2:22` was saved, checked, selected as the default target, and used to open a remote tab
+- the remote tab returned `200 OK`, produced a visible shell prompt, stayed in `status:"running"`, and accepted input
+- sending `echo remote-e2e-ok` through the terminal input route succeeded and the output appeared in the buffered terminal chunks
+- a saved profile with `host:"does-not-exist.invalid"` failed honestly with `500` and recorded `launch_status:"failed"` plus the hostname-resolution error
+- a saved profile with `user:"definitely-no-such-user"` against `192.168.1.2` failed honestly with `500` and recorded `launch_status:"failed"` plus the SSH permission-denied error
+- a saved profile with an inaccessible `identity_file` still showed `check_status:"failed"` but could still launch successfully on this machine because the local SSH environment provided other usable credentials; the shell now presents that as a warning plus a successful last-launch result, not as a fake “clean” state
+- full `npm run validate` passed after the code and UI updates
+
+What was not fully validated in this step:
+
+- the shell connections panel was validated through live API state and compiled UI, not through browser-driven click automation
+- no long-lived remote controller model was validated because the runtime still launches the local system `ssh` binary per terminal
+- password-based SSH auth was not exercised because key-based auth to the reachable host already worked
+
 ## Latest connection lifecycle status-model slice
 
 The latest remote hardening step focused only on introducing an explicit lifecycle model for connections:

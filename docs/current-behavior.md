@@ -42,6 +42,8 @@ It is intentionally operational, not narrative.
 - Sessions are now connection-aware.
 - Local sessions use the local shell launcher.
 - SSH sessions launch the system `ssh` binary inside the PTY using the saved connection profile.
+- The terminal process lifetime is detached from the HTTP request that triggered the launch.
+- Closing or completing the create-tab request must not terminate a running local or SSH shell.
 - The frontend now hydrates terminal content from a JSON snapshot before opening the SSE stream, so a newly mounted terminal starts with buffered scrollback instead of only new output.
 - The frontend terminal shell uses a compact TideTerm-derived header, toolbar, and command-strip layout. `Refresh`, `Focus`, `Interrupt`, `Clear view`, and `Jump to latest` are shell affordances layered over the same Go-owned session state.
 - On startup, the runtime eagerly boots sessions for terminal widgets in the default workspace.
@@ -65,6 +67,8 @@ It is intentionally operational, not narrative.
   - `usability`: shell-facing summary (`available`, `attention`, `unknown`)
 - `runtime.check_status` reflects the last explicit or save-time preflight check. It is not a live remote reachability probe.
 - `runtime.launch_status` reflects only the last shell/runtime launch attempt that reported back into the connection service.
+- A connection can keep `runtime.check_status:"failed"` and still record `runtime.launch_status:"succeeded"` if the saved profile has a local validation issue but the system SSH environment still allows a shell to start.
+- The shell must present preflight warnings and launch results separately instead of collapsing them into one “connected” flag.
 - Current SSH status is intentionally narrow: a saved SSH profile is not treated as a long-lived connected controller.
 - There is no persistent live remote connection object in the runtime yet.
 - The shell connections panel is lifecycle-oriented:
@@ -72,6 +76,7 @@ It is intentionally operational, not narrative.
   - it shows whether the profile is the default target for new tabs
   - it shows the last preflight outcome
   - it shows the last launch outcome
+  - it shows whether a launch succeeded despite a preflight warning
   - it allows `Check`, `Use for new tabs`, and `Open shell`
 
 ## Output subscription contract
@@ -169,3 +174,4 @@ Confirmable boundaries:
 - The settings surface is still a closest-compatible equivalent, not exact parity with TideTerm’s broader waveconfig/help universe.
 - The remote foundation is now real but intentionally narrow: SSH uses the local system `ssh` binary instead of TideTerm's older remote controller stack.
 - SSH profile management currently supports only direct saved host/user/port/identity-file fields. It does not import `~/.ssh/config`, negotiate richer auth flows, or provide long-lived remote status tracking.
+- A real SSH happy path is now validated against one reachable host, but that does not mean the runtime has a persistent remote controller or full TideTerm remote parity.
