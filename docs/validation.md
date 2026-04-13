@@ -4,6 +4,53 @@ Validation date: `2026-04-13`
 
 All commands below were run against the repository in its current state on macOS arm64.
 
+## Latest `1.0.0-rc1` hardening pass
+
+This pass focused on release hardening and docs truthfulness only:
+
+- terminal copy/paste sanity and long-output resilience in the shell
+- `/run` UX clarity and explain-result fallback handling
+- remote launch failure message clarity
+- launch-path clarity in runtime bootstrap errors
+- release checklist + known limitations + docs alignment
+
+Validation executed for this step:
+
+```bash
+npm --prefix frontend run lint
+npm --prefix frontend run build
+./scripts/go.sh test ./cmd/... ./core/... ./internal/...
+./scripts/go.sh build ./cmd/... ./core/... ./internal/...
+npm run validate
+npm run build:core
+npm run tauri:dev
+curl -sf http://127.0.0.1:52732/healthz
+curl -sf http://127.0.0.1:5173
+```
+
+Observed result:
+
+- frontend lint passed
+- frontend build passed
+- full Go test suite passed for `./cmd/... ./core/... ./internal/...`
+- Go build passed for `./cmd/... ./core/... ./internal/...`
+- full `npm run validate` passed
+- `npm run build:core` rebuilt the sidecar binary
+- `npm run tauri:dev` launched successfully and printed `{"base_url":"http://127.0.0.1:52732","pid":6726}`
+- `GET /healthz` on the tauri-launched sidecar returned `{"status":"ok"}`
+- Vite dev entry responded at `http://127.0.0.1:5173`
+
+Release smoke notes for this pass:
+
+- shell notices now preserve multiline actionable details for remote launch failures
+- `/run` now gives explicit guidance for empty command and no-active-terminal cases
+- explain-result path now reports failed explanation honestly and falls back to observed terminal output summary
+
+What was not fully validated in this step:
+
+- no browser-driven click automation was run for copy/paste or long-output behavior; those paths were validated by lint/build/runtime launch and code-path inspection
+- a fresh reachable-host remote SSH smoke was not rerun in this pass (latest reachable-host evidence remains in prior validation sections)
+
 ## Latest AI terminal command execution slice
 
 The latest AI step focused only on one release-blocking feature:
