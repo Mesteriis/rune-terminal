@@ -776,6 +776,12 @@
   gap: 0.4rem;
 }
 
+.agent-quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
 .ai-message-tags span,
 .inline-notice span,
 .inline-notice strong {

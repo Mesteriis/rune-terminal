@@ -106,6 +106,7 @@ export function AgentSidebar({
               onSelectRole={onSelectRole}
               onSelectMode={onSelectMode}
               onSelectSection={onSelectSection}
+              onExecuteTool={onExecuteTool}
             />
           ) : null}
           {section === 'tools' ? (

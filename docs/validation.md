@@ -420,6 +420,33 @@ What was not revalidated in this slice:
 - no fresh UI automation was run after moving the posture controls
 - no fresh manual Tauri launch was performed after this specific AI-panel layout pass
 
+## Latest AI-quick-actions parity slice
+
+The next AI-panel parity pass added working quick actions inside the AI feed:
+
+- the AI welcome card now exposes `Inspect terminal`, `List tabs`, and `Open audit`
+- these actions call the current runtime and section surfaces instead of introducing frontend-only behavior
+- this is the current closest-compatible interaction layer until a real conversation backend lands
+
+Validation executed for this slice:
+
+```bash
+npm --prefix frontend run lint
+npm --prefix frontend run build
+npm run validate
+```
+
+Observed result:
+
+- frontend lint passed
+- frontend build passed
+- full repository validation passed after the AI quick-actions slice
+
+What was not revalidated in this slice:
+
+- no fresh UI automation was run after adding the quick actions
+- no fresh manual Tauri launch was performed after this specific AI-panel action pass
+
 ## Tooling baseline
 
 - Go: `go1.26.2 darwin/arm64`

@@ -21,6 +21,7 @@ type AgentPanelProps = {
   onSelectRole: (id: string) => void | Promise<void>
   onSelectMode: (id: string) => void | Promise<void>
   onSelectSection: (section: ShellSection) => void
+  onExecuteTool: (request: { tool_name: string; input?: Record<string, unknown> }) => void | Promise<unknown>
 }
 
 export function AgentPanel({
@@ -36,6 +37,7 @@ export function AgentPanel({
   onSelectRole,
   onSelectMode,
   onSelectSection,
+  onExecuteTool,
 }: AgentPanelProps) {
   const contextStatus = workspaceContext?.widget_context_enabled ? 'Widget context attached' : 'Widget context detached'
 
@@ -59,6 +61,17 @@ export function AgentPanel({
             This panel keeps the familiar TideTerm placement: active workspace in the main stage, AI and control flows
             in the side panel, runtime actions bound to the new Go core.
           </p>
+          <div className="agent-quick-actions">
+            <button className="ghost-button" onClick={() => void onExecuteTool({ tool_name: 'term.get_state' })}>
+              Inspect terminal
+            </button>
+            <button className="ghost-button" onClick={() => void onExecuteTool({ tool_name: 'workspace.list_tabs' })}>
+              List tabs
+            </button>
+            <button className="ghost-button" onClick={() => onSelectSection('audit')}>
+              Open audit
+            </button>
+          </div>
         </article>
 
         <article className="ai-message-card ai-message-assistant">
