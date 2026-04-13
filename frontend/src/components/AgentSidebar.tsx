@@ -1,4 +1,5 @@
 import { AgentPanel } from './AgentPanel'
+import { AgentHeaderMenuButton } from './AgentHeaderMenuButton'
 import { AuditPanel } from './AuditPanel'
 import { PolicyPanel } from './PolicyPanel'
 import { SHELL_SECTION_LABELS, type ShellSection } from './ShellSections'
@@ -70,32 +71,24 @@ export function AgentSidebar({
                 <p className="eyebrow">AI panel</p>
                 <h2>RunaTerminal AI</h2>
               </div>
-              <button
-                className={widgetContextEnabled ? 'agent-context-toggle active' : 'agent-context-toggle'}
-                onClick={onToggleWidgetContext}
-                title={`Widget context ${widgetContextEnabled ? 'ON' : 'OFF'}`}
-              >
-                <span className="agent-context-label">Widget Context</span>
-                <span className="agent-context-pill">{widgetContextEnabled ? 'ON' : 'OFF'}</span>
-              </button>
+              <div className="agent-shell-controls">
+                <button
+                  className={widgetContextEnabled ? 'agent-context-toggle active' : 'agent-context-toggle'}
+                  onClick={onToggleWidgetContext}
+                  title={`Widget context ${widgetContextEnabled ? 'ON' : 'OFF'}`}
+                >
+                  <span className="agent-context-label">Widget Context</span>
+                  <span className="agent-context-pill">{widgetContextEnabled ? 'ON' : 'OFF'}</span>
+                </button>
+                <AgentHeaderMenuButton section={section} onSelectSection={onSelectSection} />
+              </div>
             </div>
             <span>
               {widgetContextEnabled && workspaceContext?.active_widget_id
-                ? `Attached to ${workspaceContext.active_widget_id}`
-                : 'Agent panel is running without widget context'}
+                ? `Attached to ${workspaceContext.active_widget_id} · ${SHELL_SECTION_LABELS[section]}`
+                : `Agent panel is running without widget context · ${SHELL_SECTION_LABELS[section]}`}
             </span>
           </div>
-          <nav className="agent-shell-tabs" aria-label="Agent panel sections">
-            {(['agent', 'tools', 'policy', 'audit'] as ShellSection[]).map((entry) => (
-              <button
-                key={entry}
-                className={entry === section ? 'agent-shell-tab active' : 'agent-shell-tab'}
-                onClick={() => onSelectSection(entry)}
-              >
-                {SHELL_SECTION_LABELS[entry]}
-              </button>
-            ))}
-          </nav>
         </header>
 
         <div className="agent-shell-scroll">

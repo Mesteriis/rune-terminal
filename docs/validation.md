@@ -365,6 +365,34 @@ What was not revalidated in this slice:
 - no fresh UI automation was run after the dock flyout change
 - no fresh manual Tauri launch was performed after this specific widget-dock pass
 
+## Latest AI-header parity slice
+
+The next AI-panel parity pass restored TideTerm header grammar:
+
+- the AI panel header now uses a TideTerm-shaped title row
+- widget context toggle stays in the header
+- section switching moved into a kebab overflow menu instead of a custom pill strip
+- AI section routing still targets the current runtime, policy, and audit surfaces
+
+Validation executed for this slice:
+
+```bash
+npm --prefix frontend run lint
+npm --prefix frontend run build
+npm run validate
+```
+
+Observed result:
+
+- frontend lint passed
+- frontend build passed
+- full repository validation passed after the AI-header slice
+
+What was not revalidated in this slice:
+
+- no fresh UI automation was run after the AI header/menu change
+- no fresh manual Tauri launch was performed after this specific AI-panel shell pass
+
 ## Tooling baseline
 
 - Go: `go1.26.2 darwin/arm64`
