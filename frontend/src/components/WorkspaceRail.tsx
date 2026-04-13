@@ -97,21 +97,27 @@ export function WorkspaceRail({
             onDropTab={() => handleDrop(tab)}
           />
         ))}
-        <button className="workspace-tab workspace-tab-add" onClick={() => void onCreateTab()}>
-          <strong>+</strong>
-          <span>New tab</span>
-        </button>
         {workspace?.tabs.length ? null : <div className="workspace-tab placeholder">Booting workspace…</div>}
       </div>
 
       <div className="workspace-tabs-right">
-        <div className="workspace-tabs-meta">
-          <span>{activeTab?.title ?? 'No active tab'}</span>
-          <code>{repoRoot || 'discovering workspace root…'}</code>
-        </div>
-        <button className={aiPanelVisible ? 'workspace-ai-toggle active' : 'workspace-ai-toggle'} onClick={onToggleAIPanel}>
+        <button
+          type="button"
+          className={aiPanelVisible ? 'workspace-ai-toggle active' : 'workspace-ai-toggle'}
+          onClick={onToggleAIPanel}
+          title={aiPanelVisible ? 'Hide AI panel' : 'Show AI panel'}
+        >
           <span className="workspace-ai-icon">✦</span>
           <span>AI</span>
+        </button>
+        <button
+          type="button"
+          className="workspace-tab-action"
+          onClick={() => void onCreateTab()}
+          title="New terminal tab"
+          aria-label="New terminal tab"
+        >
+          <strong>+</strong>
         </button>
       </div>
     </header>

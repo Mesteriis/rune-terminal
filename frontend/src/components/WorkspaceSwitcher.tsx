@@ -42,9 +42,9 @@ export function WorkspaceSwitcher({
         title={workspaceName}
         onClick={() => setOpen((current) => !current)}
         type="button"
+        aria-label={`Workspace switcher: ${workspaceName}`}
       >
-        <span className="workspace-switcher-badge">WS</span>
-        <strong>{workspaceName}</strong>
+        <span className="workspace-switcher-badge workspace-switcher-icon">WS</span>
       </button>
       {open ? (
         <div className="workspace-switcher-menu">
