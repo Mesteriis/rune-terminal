@@ -69,9 +69,17 @@ export function useWorkspaceActions({
       }
       await refreshTerminalState(response.widget_id)
     } catch (error) {
+      if (connectionId && setConnections) {
+        try {
+          const nextConnections = await client.connections()
+          setConnections(nextConnections)
+        } catch {
+          // Ignore secondary refresh failures. The primary launch error is more important.
+        }
+      }
       setNotice({
         tone: 'error',
-        title: 'Failed to create tab',
+        title: connectionId ? 'Failed to open remote shell' : 'Failed to create tab',
         detail: formatError(error),
       })
     }

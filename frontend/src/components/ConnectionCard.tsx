@@ -1,8 +1,10 @@
 import type { Connection } from '../types'
 import {
+  connectionAuthSummary,
   connectionCheckSummary,
-  connectionError,
+  connectionLifecycleNote,
   connectionLaunchSummary,
+  connectionTargetSummary,
   connectionUsabilityCopy,
 } from '../lib/connections'
 
@@ -19,7 +21,7 @@ export function ConnectionCard({
   onCreateTerminalTabWithConnection,
   onCheckConnection,
 }: ConnectionCardProps) {
-  const error = connectionError(connection)
+  const note = connectionLifecycleNote(connection)
 
   return (
     <div className={`connections-card ${connection.active ? 'active' : ''} usability-${connection.usability}`}>
@@ -38,6 +40,14 @@ export function ConnectionCard({
 
       <div className="connections-status-grid">
         <div>
+          <span>Target</span>
+          <strong>{connectionTargetSummary(connection)}</strong>
+        </div>
+        <div>
+          <span>Auth</span>
+          <strong>{connectionAuthSummary(connection)}</strong>
+        </div>
+        <div>
           <span>Check</span>
           <strong>{connectionCheckSummary(connection)}</strong>
         </div>
@@ -47,7 +57,7 @@ export function ConnectionCard({
         </div>
       </div>
 
-      {error ? <div className="connections-error-banner">{error}</div> : null}
+      {note ? <div className={`connections-note connections-note-${note.tone}`}>{note.text}</div> : null}
 
       <div className="connections-card-actions">
         <button

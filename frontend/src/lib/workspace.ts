@@ -95,35 +95,39 @@ export function normalizeConnectionCatalog(catalog: ConnectionCatalog | null | u
   }
 }
 
-function normalizeConnection(connection: Connection): Connection {
+export function normalizeConnection(connection: Connection | null | undefined): Connection {
   return {
     ...connection,
-    name: typeof connection.name === 'string' && connection.name.length > 0 ? connection.name : 'Connection',
-    description: typeof connection.description === 'string' ? connection.description : '',
-    active: Boolean(connection.active),
+    id: typeof connection?.id === 'string' ? connection.id : '',
+    kind: connection?.kind === 'ssh' ? 'ssh' : 'local',
+    name: typeof connection?.name === 'string' && connection.name.length > 0 ? connection.name : 'Connection',
+    description: typeof connection?.description === 'string' ? connection.description : '',
+    status: connection?.status === 'configured' ? 'configured' : 'ready',
+    active: Boolean(connection?.active),
     usability:
-      connection.usability === 'available' || connection.usability === 'attention' || connection.usability === 'unknown'
+      connection?.usability === 'available' || connection?.usability === 'attention' || connection?.usability === 'unknown'
         ? connection.usability
-        : connection.kind === 'local'
+        : connection?.kind === 'local'
           ? 'available'
           : 'unknown',
     runtime: {
       check_status:
-        connection.runtime?.check_status === 'passed' || connection.runtime?.check_status === 'failed'
+        connection?.runtime?.check_status === 'passed' || connection?.runtime?.check_status === 'failed'
           ? connection.runtime.check_status
-          : connection.kind === 'local'
+          : connection?.kind === 'local'
             ? 'passed'
             : 'unchecked',
-      check_error: typeof connection.runtime?.check_error === 'string' ? connection.runtime.check_error : '',
+      check_error: typeof connection?.runtime?.check_error === 'string' ? connection.runtime.check_error : '',
       last_checked_at:
-        typeof connection.runtime?.last_checked_at === 'string' ? connection.runtime.last_checked_at : undefined,
+        typeof connection?.runtime?.last_checked_at === 'string' ? connection.runtime.last_checked_at : undefined,
       launch_status:
-        connection.runtime?.launch_status === 'succeeded' || connection.runtime?.launch_status === 'failed'
+        connection?.runtime?.launch_status === 'succeeded' || connection?.runtime?.launch_status === 'failed'
           ? connection.runtime.launch_status
           : 'idle',
-      launch_error: typeof connection.runtime?.launch_error === 'string' ? connection.runtime.launch_error : '',
+      launch_error: typeof connection?.runtime?.launch_error === 'string' ? connection.runtime.launch_error : '',
       last_launched_at:
-        typeof connection.runtime?.last_launched_at === 'string' ? connection.runtime.last_launched_at : undefined,
+        typeof connection?.runtime?.last_launched_at === 'string' ? connection.runtime.last_launched_at : undefined,
     },
+    ssh: connection?.ssh,
   }
 }

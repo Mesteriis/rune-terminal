@@ -39,6 +39,12 @@ export function useConnectionsActions({ client, setConnections, setNotice }: Use
     try {
       const snapshot = await client.selectActiveConnection(connectionId)
       setConnections(snapshot)
+      const connection = snapshot.connections.find((candidate) => candidate.id === connectionId)
+      setNotice({
+        tone: connection?.usability === 'attention' ? 'error' : 'info',
+        title: connection?.usability === 'attention' ? 'Default target needs attention' : 'Default target updated',
+        detail: connection?.runtime.check_error || connection?.name || connectionId,
+      })
     } catch (error) {
       setNotice({
         tone: 'error',
@@ -62,9 +68,9 @@ export function useConnectionsActions({ client, setConnections, setNotice }: Use
       const result = await client.saveSSHConnection(input)
       setConnections(result.connections)
       setNotice({
-        tone: 'success',
-        title: 'SSH connection saved',
-        detail: input.name || input.host,
+        tone: result.connection.usability === 'attention' ? 'error' : 'success',
+        title: result.connection.usability === 'attention' ? 'SSH profile saved with issues' : 'SSH connection saved',
+        detail: result.connection.runtime.check_error || input.name || input.host,
       })
     } catch (error) {
       setNotice({

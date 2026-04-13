@@ -1011,14 +1011,29 @@
   color: #dce5ee;
 }
 
-.connections-error-banner {
+.connections-note {
   padding: 0.68rem 0.78rem;
   border-radius: 10px;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.connections-note-error {
   border: 1px solid rgba(255, 121, 121, 0.16);
   background: rgba(255, 121, 121, 0.08);
   color: #ffc4c4;
-  font-size: 0.78rem;
-  line-height: 1.45;
+}
+
+.connections-note-warning {
+  border: 1px solid rgba(255, 214, 143, 0.16);
+  background: rgba(255, 214, 143, 0.08);
+  color: #ffd8a6;
+}
+
+.connections-note-success {
+  border: 1px solid rgba(144, 236, 176, 0.16);
+  background: rgba(144, 236, 176, 0.08);
+  color: #b4e7c5;
 }
 
 .connections-form {

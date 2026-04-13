@@ -2,6 +2,7 @@ import type {
   AgentCatalog,
   AuditEvent,
   BootstrapPayload,
+  Connection,
   ConnectionCatalog,
   ExecuteToolRequest,
   ExecuteToolResponse,
@@ -14,7 +15,7 @@ import type {
 } from '../types'
 import type { RuntimeInfo } from './runtime'
 import { normalizeTerminalSnapshot } from './terminal'
-import { normalizeBootstrapPayload, normalizeConnectionCatalog, normalizeWorkspace } from './workspace'
+import { normalizeBootstrapPayload, normalizeConnection, normalizeConnectionCatalog, normalizeWorkspace } from './workspace'
 
 export class RtermClient {
   private readonly runtime: RuntimeInfo
@@ -101,12 +102,13 @@ export class RtermClient {
     return normalizeConnectionCatalog(await this.request<ConnectionCatalog>('/api/v1/connections'))
   }
 
-  async checkConnection(connectionId: string): Promise<{ connection: unknown; connections: ConnectionCatalog }> {
-    const result = await this.request<{ connection: unknown; connections: ConnectionCatalog }>(`/api/v1/connections/${connectionId}/check`, {
+  async checkConnection(connectionId: string): Promise<{ connection: Connection; connections: ConnectionCatalog }> {
+    const result = await this.request<{ connection: Connection; connections: ConnectionCatalog }>(`/api/v1/connections/${connectionId}/check`, {
       method: 'POST',
     })
     return {
       ...result,
+      connection: normalizeConnection(result.connection),
       connections: normalizeConnectionCatalog(result.connections),
     }
   }
@@ -125,13 +127,14 @@ export class RtermClient {
     user?: string
     port?: number
     identity_file?: string
-  }): Promise<{ connection: unknown; connections: ConnectionCatalog }> {
-    const result = await this.request<{ connection: unknown; connections: ConnectionCatalog }>('/api/v1/connections/ssh', {
+  }): Promise<{ connection: Connection; connections: ConnectionCatalog }> {
+    const result = await this.request<{ connection: Connection; connections: ConnectionCatalog }>('/api/v1/connections/ssh', {
       method: 'POST',
       body: JSON.stringify(input),
     })
     return {
       ...result,
+      connection: normalizeConnection(result.connection),
       connections: normalizeConnectionCatalog(result.connections),
     }
   }
