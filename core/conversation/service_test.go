@@ -90,6 +90,45 @@ func TestServiceSubmitRejectsBlankPrompt(t *testing.T) {
 	}
 }
 
+func TestAppendAssistantPromptAppendsOnlyAssistantMessage(t *testing.T) {
+	t.Parallel()
+
+	service, err := NewService(filepath.Join(t.TempDir(), "conversation.json"), stubProvider{
+		info: ProviderInfo{Kind: "stub", BaseURL: "http://stub", Model: "stub-model"},
+		result: CompletionResult{
+			Content: "summary reply",
+			Model:   "stub-model",
+		},
+	})
+	if err != nil {
+		t.Fatalf("new service: %v", err)
+	}
+
+	if _, err := service.Submit(context.Background(), SubmitRequest{
+		SystemPrompt: "system prompt",
+		Prompt:       "hello",
+	}); err != nil {
+		t.Fatalf("submit: %v", err)
+	}
+
+	result, err := service.AppendAssistantPrompt(context.Background(), AssistantPromptRequest{
+		SystemPrompt: "system prompt",
+		Prompt:       "Summarize the last command result.",
+	})
+	if err != nil {
+		t.Fatalf("append assistant prompt: %v", err)
+	}
+	if len(result.Snapshot.Messages) != 3 {
+		t.Fatalf("expected 3 persisted messages, got %d", len(result.Snapshot.Messages))
+	}
+	if result.Snapshot.Messages[2].Role != RoleAssistant {
+		t.Fatalf("expected appended assistant role, got %s", result.Snapshot.Messages[2].Role)
+	}
+	if result.Snapshot.Messages[2].Content != "summary reply" {
+		t.Fatalf("unexpected appended assistant content: %q", result.Snapshot.Messages[2].Content)
+	}
+}
+
 type stubProvider struct {
 	info   ProviderInfo
 	result CompletionResult

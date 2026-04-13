@@ -65,13 +65,7 @@ func (s *Service) Submit(ctx context.Context, request SubmitRequest) (SubmitResu
 		return SubmitResult{}, ErrInvalidPrompt
 	}
 
-	userMessage := Message{
-		ID:        ids.New("msg"),
-		Role:      RoleUser,
-		Content:   prompt,
-		Status:    StatusComplete,
-		CreatedAt: time.Now().UTC(),
-	}
+	userMessage := newMessage(RoleUser, prompt, StatusComplete, "", "")
 
 	s.mu.Lock()
 	s.state.Messages = append(s.state.Messages, userMessage)
@@ -84,18 +78,34 @@ func (s *Service) Submit(ctx context.Context, request SubmitRequest) (SubmitResu
 	s.mu.Unlock()
 
 	result, info, providerErr := s.complete(ctx, systemPrompt, history)
-	assistant := Message{
-		ID:        ids.New("msg"),
-		Role:      RoleAssistant,
-		Provider:  info.Kind,
-		Model:     info.Model,
-		CreatedAt: time.Now().UTC(),
+	return s.appendAssistantResult(result, info, providerErr)
+}
+
+func (s *Service) AppendAssistantPrompt(ctx context.Context, request AssistantPromptRequest) (SubmitResult, error) {
+	prompt := strings.TrimSpace(request.Prompt)
+	systemPrompt := strings.TrimSpace(request.SystemPrompt)
+	if prompt == "" {
+		return SubmitResult{}, ErrInvalidPrompt
 	}
+	if systemPrompt == "" {
+		return SubmitResult{}, ErrInvalidPrompt
+	}
+
+	s.mu.RLock()
+	history := append([]Message(nil), s.state.Messages...)
+	s.mu.RUnlock()
+
+	history = append(history, newMessage(RoleUser, prompt, StatusComplete, "", ""))
+	result, info, providerErr := s.complete(ctx, systemPrompt, history)
+	return s.appendAssistantResult(result, info, providerErr)
+}
+
+func (s *Service) appendAssistantResult(result CompletionResult, info ProviderInfo, providerErr error) (SubmitResult, error) {
+	assistant := newMessage(RoleAssistant, "", StatusComplete, info.Kind, info.Model)
 	if providerErr != nil {
 		assistant.Status = StatusError
 		assistant.Content = strings.TrimSpace(providerErr.Error())
 	} else {
-		assistant.Status = StatusComplete
 		assistant.Content = strings.TrimSpace(result.Content)
 	}
 	if assistant.Content == "" {
@@ -125,6 +135,18 @@ func (s *Service) Submit(ctx context.Context, request SubmitRequest) (SubmitResu
 		ProviderInfo:  info,
 		ProviderError: errorString(providerErr),
 	}, nil
+}
+
+func newMessage(role MessageRole, content string, status MessageStatus, provider string, model string) Message {
+	return Message{
+		ID:        ids.New("msg"),
+		Role:      role,
+		Content:   content,
+		Status:    status,
+		Provider:  provider,
+		Model:     model,
+		CreatedAt: time.Now().UTC(),
+	}
 }
 
 func (s *Service) complete(ctx context.Context, systemPrompt string, history []Message) (CompletionResult, ProviderInfo, error) {

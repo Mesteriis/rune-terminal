@@ -45,6 +45,11 @@ type SubmitRequest struct {
 	Prompt       string
 }
 
+type AssistantPromptRequest struct {
+	SystemPrompt string
+	Prompt       string
+}
+
 type SubmitResult struct {
 	Snapshot      Snapshot
 	Assistant     Message
