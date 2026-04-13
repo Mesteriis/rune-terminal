@@ -114,6 +114,40 @@ What was not revalidated in this slice:
 
 - no fresh UI automation or manual Tauri launch was performed for this rail-only shell adjustment
 
+## Latest tab-shell parity slice
+
+The next shell pass moved the top workspace header closer to TideTerm's tabbar composition:
+
+- workspace switcher-style control restored on the left
+- tabs remained in the center strip
+- AI control was moved into the right-side cluster instead of staying in a separate summary block
+
+Validation executed for this slice:
+
+```bash
+npm --prefix frontend run lint
+npm --prefix frontend run build
+```
+
+Observed result:
+
+- frontend lint passed
+- frontend build passed
+
+Additional follow-up validation:
+
+```bash
+npm run validate
+```
+
+Observed result:
+
+- full repository validation passed after the top-bar shell adjustment as well
+
+What was not revalidated in this slice:
+
+- no fresh UI automation or manual Tauri launch was performed for this top-bar-only shell adjustment
+
 ## Tooling baseline
 
 - Go: `go1.26.2 darwin/arm64`

@@ -21,8 +21,11 @@ export function WorkspaceRail({
 
   return (
     <header className="workspace-tabs">
-      <div className="workspace-tabs-brand">
-        <span>RT</span>
+      <div className="workspace-tabs-left">
+        <button className="workspace-switcher" title={workspace?.name ?? 'Loading workspace'}>
+          <span className="workspace-switcher-badge">WS</span>
+          <strong>{workspace?.name ?? 'Loading workspace'}</strong>
+        </button>
       </div>
 
       <div className="workspace-tabs-strip">
@@ -39,17 +42,14 @@ export function WorkspaceRail({
         {workspace?.widgets.length ? null : <div className="workspace-tab placeholder">Booting workspace…</div>}
       </div>
 
-      <div className="workspace-tabs-context">
-        <div className="workspace-tabs-workspace">
-          <p className="eyebrow">Workspace</p>
-          <strong>{workspace?.name ?? 'Loading workspace'}</strong>
-        </div>
+      <div className="workspace-tabs-right">
         <div className="workspace-tabs-meta">
           <span>{activeWidget?.title ?? 'No active widget'}</span>
           <code>{repoRoot || 'discovering workspace root…'}</code>
         </div>
         <button className={aiPanelVisible ? 'workspace-ai-toggle active' : 'workspace-ai-toggle'} onClick={onToggleAIPanel}>
-          {aiPanelVisible ? 'Hide AI' : 'Show AI'}
+          <span className="workspace-ai-icon">✦</span>
+          <span>AI</span>
         </button>
       </div>
     </header>
