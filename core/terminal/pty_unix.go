@@ -82,6 +82,12 @@ func buildCommand(ctx context.Context, opts LaunchOptions) (*exec.Cmd, error) {
 			return nil, errors.New("ssh connection host is required")
 		}
 		args := make([]string, 0, 8)
+		args = append(
+			args,
+			"-o", "BatchMode=yes",
+			"-o", "ConnectTimeout=5",
+			"-o", "StrictHostKeyChecking=accept-new",
+		)
 		if opts.Connection.SSH.Port > 0 {
 			args = append(args, "-p", strconv.Itoa(opts.Connection.SSH.Port))
 		}

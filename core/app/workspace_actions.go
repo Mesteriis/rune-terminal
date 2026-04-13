@@ -92,6 +92,11 @@ func (r *Runtime) CreateTerminalTabWithConnection(ctx context.Context, title str
 		_, _, _ = r.Connections.ReportLaunchResult(connectionID, err)
 		return CreateTerminalTabResult{}, err
 	}
+	if err := r.observeConnectionLaunch(ctx, widgetID, connection); err != nil {
+		_, _, _ = r.Connections.ReportLaunchResult(connectionID, err)
+		_ = r.Terminals.CloseSession(widgetID)
+		return CreateTerminalTabResult{}, err
+	}
 	_, _, _ = r.Connections.ReportLaunchResult(connectionID, nil)
 	snapshot := r.Workspace.AddTerminalTab(
 		workspace.Tab{

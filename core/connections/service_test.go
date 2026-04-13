@@ -194,3 +194,45 @@ func TestCheckAndLaunchLifecycleIsRecorded(t *testing.T) {
 		t.Fatalf("expected available usability after launch success, got %q", connection.Usability)
 	}
 }
+
+func TestLaunchSuccessDoesNotErasePreflightAttention(t *testing.T) {
+	t.Parallel()
+
+	connectionID := "conn-preflight-warning"
+	svc, err := NewServiceWithChecker(filepath.Join(t.TempDir(), "connections.json"), stubChecker{
+		results: map[string]CheckResult{
+			connectionID: {
+				Status:    CheckStatusFailed,
+				Error:     "identity file is not accessible",
+				CheckedAt: time.Unix(400, 0).UTC(),
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("new service: %v", err)
+	}
+
+	connection, _, err := svc.SaveSSH(SaveSSHInput{
+		ID:           connectionID,
+		Name:         "Prod",
+		Host:         "prod.example.com",
+		IdentityFile: "~/missing-key",
+	})
+	if err != nil {
+		t.Fatalf("save ssh: %v", err)
+	}
+	if connection.Runtime.CheckStatus != CheckStatusFailed {
+		t.Fatalf("expected failed preflight check, got %q", connection.Runtime.CheckStatus)
+	}
+
+	connection, _, err = svc.ReportLaunchResult(connectionID, nil)
+	if err != nil {
+		t.Fatalf("report launch success: %v", err)
+	}
+	if connection.Runtime.LaunchStatus != LaunchStatusSucceeded {
+		t.Fatalf("expected successful launch, got %q", connection.Runtime.LaunchStatus)
+	}
+	if connection.Usability != UsabilityAttention {
+		t.Fatalf("expected usability to stay attention when preflight is still failing, got %q", connection.Usability)
+	}
+}

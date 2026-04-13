@@ -17,6 +17,8 @@ type session struct {
 	process     Process
 	chunks      []OutputChunk
 	subscribers map[*subscriber]struct{}
+	exited      chan struct{}
+	cancel      context.CancelFunc
 }
 
 type Service struct {
@@ -56,8 +58,10 @@ func (s *Service) StartSession(ctx context.Context, opts LaunchOptions) (State, 
 	s.starting[opts.WidgetID] = pending
 	s.mu.Unlock()
 
-	process, err := s.launcher.Launch(ctx, opts)
+	processCtx, cancel := context.WithCancel(context.Background())
+	process, err := s.launcher.Launch(processCtx, opts)
 	if err != nil {
+		cancel()
 		s.mu.Lock()
 		delete(s.starting, opts.WidgetID)
 		pending.finish(State{}, err)
@@ -84,6 +88,8 @@ func (s *Service) StartSession(ctx context.Context, opts LaunchOptions) (State, 
 		state:       state,
 		process:     process,
 		subscribers: make(map[*subscriber]struct{}),
+		exited:      make(chan struct{}),
+		cancel:      cancel,
 	}
 
 	s.mu.Lock()
@@ -175,6 +181,9 @@ func (s *Service) CloseSession(widgetID string) error {
 	s.mu.Unlock()
 
 	s.closeSubscribers(sess)
+	if sess.cancel != nil {
+		sess.cancel()
+	}
 	return sess.process.Close()
 }
 
@@ -235,6 +244,9 @@ func (s *Service) Close() {
 
 	for _, sess := range sessions {
 		s.closeSubscribers(sess)
+		if sess.cancel != nil {
+			sess.cancel()
+		}
 		_ = sess.process.Close()
 	}
 }
@@ -283,12 +295,13 @@ func (s *Service) waitForExit(widgetID string, sess *session) {
 	sess.state.LastOutputAt = &now
 	sess.state.CanSendInput = false
 	sess.state.CanInterrupt = false
-	if err != nil {
+	if err != nil || exitCode != 0 {
 		sess.state.Status = StatusFailed
 	} else {
 		sess.state.Status = StatusExited
 	}
 	s.mu.Unlock()
+	close(sess.exited)
 }
 
 func (s *Service) snapshotSubscribersLocked(sess *session) []*subscriber {
