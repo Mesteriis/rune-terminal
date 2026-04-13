@@ -529,6 +529,33 @@ What was not revalidated in this slice:
 - no fresh UI automation was run after enriching transcript rendering
 - no fresh manual Tauri launch was performed after this specific AI-panel rendering pass
 
+## Latest AI composer-controls parity slice
+
+The next AI-panel parity pass moved the composer closer to TideTerm's input surface:
+
+- the composer now exposes attach, send, and prompt-chip affordances instead of a bare textarea
+- prompt chips route into the same runtime-backed action path as typed prompts
+- the attach button is present for parity but reports an explicit MVP gap because file attachment transport is not implemented yet
+
+Validation executed for this slice:
+
+```bash
+npm --prefix frontend run lint
+npm --prefix frontend run build
+npm run validate
+```
+
+Observed result:
+
+- frontend lint passed
+- frontend build passed
+- full repository validation passed after the composer-controls slice
+
+What was not revalidated in this slice:
+
+- no fresh UI automation was run after adding the attach/prompt-chip affordances
+- no fresh manual Tauri launch was performed after this specific AI-panel input-control pass
+
 ## Tooling baseline
 
 - Go: `go1.26.2 darwin/arm64`

@@ -26,6 +26,7 @@ type AgentPanelProps = {
   onSelectSection: (section: ShellSection) => void
   onRunAgentAction: (label: string, request: { tool_name: string; input?: Record<string, unknown> }) => void | Promise<unknown>
   onSubmitPrompt: (prompt: string) => void | Promise<void>
+  onAttachClick: () => void | Promise<void>
 }
 
 export function AgentPanel({
@@ -43,6 +44,7 @@ export function AgentPanel({
   onSelectSection,
   onRunAgentAction,
   onSubmitPrompt,
+  onAttachClick,
 }: AgentPanelProps) {
   const contextStatus = workspaceContext?.widget_context_enabled ? 'Widget context attached' : 'Widget context detached'
   const hasFeed = agentFeed.length > 0
@@ -103,7 +105,7 @@ export function AgentPanel({
       </div>
 
       <footer className="agent-composer">
-        <AgentComposer onSubmitPrompt={onSubmitPrompt} />
+        <AgentComposer onSubmitPrompt={onSubmitPrompt} onAttachClick={onAttachClick} />
         <div className="agent-composer-actions">
           <button className="ghost-button" onClick={() => onSelectSection('tools')}>
             Open tools

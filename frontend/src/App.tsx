@@ -78,6 +78,7 @@ function App() {
                   onExecuteTool={shell.executeTool}
                   onRunAgentAction={shell.runAgentAction}
                   onSubmitPrompt={shell.submitAgentPrompt}
+                  onAttachClick={shell.reportAgentAttachmentUnavailable}
                   onConfirmApproval={shell.confirmPendingRequest}
                   onDismissNotice={shell.clearNotice}
                 />

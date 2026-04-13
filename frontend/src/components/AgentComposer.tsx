@@ -2,9 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 
 type AgentComposerProps = {
   onSubmitPrompt: (prompt: string) => void | Promise<void>
+  onAttachClick: () => void | Promise<void>
 }
 
-export function AgentComposer({ onSubmitPrompt }: AgentComposerProps) {
+const PROMPT_CHIPS = ['Inspect terminal', 'List tabs', 'List widgets', 'Show active tab']
+
+export function AgentComposer({ onSubmitPrompt, onAttachClick }: AgentComposerProps) {
   const [draft, setDraft] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
 
@@ -41,6 +44,23 @@ export function AgentComposer({ onSubmitPrompt }: AgentComposerProps) {
         placeholder="Ask RunaTerminal AI about the active terminal..."
         rows={2}
       />
+      <div className="agent-composer-toolbar">
+        <button className="ghost-button compact-button" onClick={() => void onAttachClick()} type="button">
+          Attach
+        </button>
+        <div className="agent-composer-chip-row">
+          {PROMPT_CHIPS.map((chip) => (
+            <button
+              key={chip}
+              className="agent-composer-chip"
+              type="button"
+              onClick={() => void onSubmitPrompt(chip)}
+            >
+              {chip}
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="agent-composer-footer">
         <span>Runtime-backed actions only until conversation transport lands.</span>
         <button className="ghost-button" onClick={handleSubmit} disabled={!draft.trim()}>

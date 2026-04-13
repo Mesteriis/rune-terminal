@@ -429,6 +429,29 @@ export function useRuntimeShell() {
     }
   }
 
+  async function reportAgentAttachmentUnavailable() {
+    appendAgentFeed({
+      role: 'user',
+      kind: 'action',
+      title: 'Attach files',
+      body: 'Requested file attachment from the AI composer.',
+      tags: ['attachment'],
+    })
+    appendAgentFeed({
+      role: 'assistant',
+      kind: 'system',
+      tone: 'info',
+      title: 'File attachments are not wired into the new runtime yet',
+      body: 'The TideTerm-shaped attach control is present for parity, but file upload and attachment-to-agent transport still need a dedicated backend path.',
+      tags: ['mvp compromise', 'attachment'],
+    })
+    setNotice({
+      tone: 'info',
+      title: 'Attachment flow not available yet',
+      detail: 'AI file upload still needs a dedicated transport path in RunaTerminal.',
+    })
+  }
+
   async function setActiveSelection(target: SelectionTarget, id: string) {
     if (!client) {
       return
@@ -498,6 +521,7 @@ export function useRuntimeShell() {
     executeTool,
     runAgentAction,
     submitAgentPrompt,
+    reportAgentAttachmentUnavailable,
     confirmPendingRequest,
     focusWidget,
     focusTab,
