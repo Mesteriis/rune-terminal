@@ -17,6 +17,7 @@ func normalizeToolError(err error) error {
 
 	switch {
 	case errors.Is(err, workspace.ErrWidgetNotFound),
+		errors.Is(err, workspace.ErrTabNotFound),
 		errors.Is(err, terminal.ErrWidgetNotFound),
 		errors.Is(err, toolruntime.ErrPendingApprovalNotFound),
 		errors.Is(err, agentcore.ErrPromptProfileNotFound),

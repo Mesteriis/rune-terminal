@@ -29,10 +29,10 @@ function App() {
       <WorkspaceRail
         workspace={shell.workspace}
         repoRoot={shell.repoRoot}
-        activeWidgetId={shell.workspace?.active_widget_id}
+        activeTabId={shell.workspace?.active_tab_id}
         aiPanelVisible={layout.aiPanelVisible}
         onToggleAIPanel={layout.toggleAIPanel}
-        onFocusWidget={shell.focusWidget}
+        onFocusTab={shell.focusTab}
       />
 
       <section className="workspace-shell">

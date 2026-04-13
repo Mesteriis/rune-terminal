@@ -15,6 +15,10 @@ type focusWidgetInput struct {
 	WidgetID string `json:"widget_id"`
 }
 
+type focusTabInput struct {
+	TabID string `json:"tab_id"`
+}
+
 type sendInputToolInput struct {
 	WidgetID      string `json:"widget_id,omitempty"`
 	Text          string `json:"text"`

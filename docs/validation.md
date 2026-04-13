@@ -148,6 +148,43 @@ What was not revalidated in this slice:
 
 - no fresh UI automation or manual Tauri launch was performed for this top-bar-only shell adjustment
 
+## Latest workspace tab-model parity slice
+
+The next parity pass introduced a real tab domain into the new workspace model:
+
+- workspace snapshots now include `tabs` and `active_tab_id`
+- the runtime exposes `workspace.list_tabs`, `workspace.get_active_tab`, and `workspace.focus_tab`
+- focusing a tab synchronizes the active widget
+- the top shell now renders runtime tabs instead of reusing widgets as fake tabs
+
+Validation executed for this slice:
+
+```bash
+./scripts/go.sh test ./core/workspace ./core/app
+npm --prefix frontend run lint
+npm --prefix frontend run build
+```
+
+Observed result:
+
+- workspace and app-layer tab tests passed
+- frontend lint passed
+- frontend build passed
+
+Additional follow-up validation:
+
+```bash
+npm run validate
+```
+
+Observed result:
+
+- full repository validation passed after introducing the tab model
+
+What was not revalidated in this slice:
+
+- no fresh UI automation or manual Tauri launch was performed after this specific tab-domain pass
+
 ## Tooling baseline
 
 - Go: `go1.26.2 darwin/arm64`

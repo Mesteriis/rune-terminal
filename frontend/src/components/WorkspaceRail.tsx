@@ -1,23 +1,23 @@
-import type { Widget, Workspace } from '../types'
+import type { Workspace } from '../types'
 
 type WorkspaceRailProps = {
   workspace: Workspace | null
   repoRoot: string
-  activeWidgetId?: string
+  activeTabId?: string
   aiPanelVisible: boolean
   onToggleAIPanel: () => void
-  onFocusWidget: (widget: Widget) => void | Promise<void>
+  onFocusTab: (tabId: string) => void | Promise<void>
 }
 
 export function WorkspaceRail({
   workspace,
   repoRoot,
-  activeWidgetId,
+  activeTabId,
   aiPanelVisible,
   onToggleAIPanel,
-  onFocusWidget,
+  onFocusTab,
 }: WorkspaceRailProps) {
-  const activeWidget = workspace?.widgets.find((widget) => widget.id === activeWidgetId)
+  const activeTab = workspace?.tabs.find((tab) => tab.id === activeTabId)
 
   return (
     <header className="workspace-tabs">
@@ -29,22 +29,22 @@ export function WorkspaceRail({
       </div>
 
       <div className="workspace-tabs-strip">
-        {workspace?.widgets.map((widget) => (
+        {workspace?.tabs.map((tab) => (
           <button
-            key={widget.id}
-            className={widget.id === activeWidgetId ? 'workspace-tab active' : 'workspace-tab'}
-            onClick={() => void onFocusWidget(widget)}
+            key={tab.id}
+            className={tab.id === activeTabId ? 'workspace-tab active' : 'workspace-tab'}
+            onClick={() => void onFocusTab(tab.id)}
           >
-            <strong>{widget.title}</strong>
-            <span>{widget.description ?? widget.kind}</span>
+            <strong>{tab.title}</strong>
+            <span>{tab.description ?? tab.widget_ids.join(', ')}</span>
           </button>
         ))}
-        {workspace?.widgets.length ? null : <div className="workspace-tab placeholder">Booting workspace…</div>}
+        {workspace?.tabs.length ? null : <div className="workspace-tab placeholder">Booting workspace…</div>}
       </div>
 
       <div className="workspace-tabs-right">
         <div className="workspace-tabs-meta">
-          <span>{activeWidget?.title ?? 'No active widget'}</span>
+          <span>{activeTab?.title ?? 'No active tab'}</span>
           <code>{repoRoot || 'discovering workspace root…'}</code>
         </div>
         <button className={aiPanelVisible ? 'workspace-ai-toggle active' : 'workspace-ai-toggle'} onClick={onToggleAIPanel}>

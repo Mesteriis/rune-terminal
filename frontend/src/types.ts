@@ -6,9 +6,18 @@ export type Widget = {
   terminal_id?: string
 }
 
+export type Tab = {
+  id: string
+  title: string
+  description?: string
+  widget_ids: string[]
+}
+
 export type Workspace = {
   id: string
   name: string
+  tabs: Tab[]
+  active_tab_id: string
   widgets: Widget[]
   active_widget_id: string
 }

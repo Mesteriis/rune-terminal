@@ -3,6 +3,16 @@
 This document records the runtime invariants that are true in the repository today.
 It is intentionally operational, not narrative.
 
+## Workspace and tab contract
+
+- The workspace now owns both `tabs` and `widgets`.
+- There is exactly one active tab and one active widget.
+- In the current parity slice, each tab references one primary widget.
+- Focusing a tab synchronizes the active widget to that tab's primary widget.
+- Focusing a widget also synchronizes the active tab if that widget belongs to a known tab.
+- Tabs are the shell-level navigation unit.
+- Widgets remain the secondary inventory used by the right-side dock and terminal/runtime binding.
+
 ## Session lifecycle contract
 
 - Each terminal widget owns at most one active session.

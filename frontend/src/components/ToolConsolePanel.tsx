@@ -139,6 +139,8 @@ function defaultToolPayload(toolName: string, context: WorkspaceContextSummary |
       return widgetID ? { widget_id: widgetID, text: 'pwd', append_newline: true } : { text: 'pwd', append_newline: true }
     case 'workspace.focus_widget':
       return widgetID ? { widget_id: widgetID } : {}
+    case 'workspace.focus_tab':
+      return context?.workspace_id ? { tab_id: 'tab-main' } : { tab_id: '' }
     case 'safety.confirm':
       return { approval_id: '' }
     default:

@@ -23,6 +23,9 @@ import type {
 type SelectionTarget = 'profile' | 'role' | 'mode'
 
 const QUIET_TOOLS = new Set([
+  'workspace.list_tabs',
+  'workspace.get_active_tab',
+  'workspace.focus_tab',
   'workspace.list_widgets',
   'workspace.get_active_widget',
   'workspace.focus_widget',
@@ -49,6 +52,10 @@ export function useRuntimeShell() {
 
   const activeWidget = useMemo(() => {
     return workspace?.widgets.find((widget) => widget.id === workspace.active_widget_id) ?? null
+  }, [workspace])
+
+  const activeTab = useMemo(() => {
+    return workspace?.tabs.find((tab) => tab.id === workspace.active_tab_id) ?? null
   }, [workspace])
 
   const workspaceContext = useMemo<WorkspaceContextSummary | null>(() => {
@@ -229,8 +236,7 @@ export function useRuntimeShell() {
       if (response.status === 'ok') {
         await Promise.all([refreshWorkspace(), refreshPolicyLists()])
         if (request.tool_name.startsWith('term.') || request.tool_name.startsWith('workspace.')) {
-          const targetWidgetID =
-            (request.input as { widget_id?: string } | undefined)?.widget_id ?? workspace.active_widget_id
+          const targetWidgetID = resolveTerminalTargetWidgetID(request, response, workspace.active_widget_id)
           await refreshTerminalState(targetWidgetID)
         }
         if (!QUIET_TOOLS.has(request.tool_name)) {
@@ -305,6 +311,13 @@ export function useRuntimeShell() {
     })
   }
 
+  async function focusTab(tabId: string) {
+    await executeTool({
+      tool_name: 'workspace.focus_tab',
+      input: { tab_id: tabId },
+    })
+  }
+
   async function interruptWidget(widgetId: string) {
     await executeTool({
       tool_name: 'term.interrupt',
@@ -361,11 +374,13 @@ export function useRuntimeShell() {
     isConfirmingApproval,
     agentCatalog,
     activeWidget,
+    activeTab,
     widgetContextEnabled,
     clearNotice: () => setNotice(null),
     executeTool,
     confirmPendingRequest,
     focusWidget,
+    focusTab,
     interruptWidget,
     refreshTerminalState,
     setActiveSelection,
@@ -392,6 +407,34 @@ function summarizeOutput(output: unknown) {
 
 function capitalize(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1)
+}
+
+function resolveTerminalTargetWidgetID(
+  request: ExecuteToolRequest,
+  response: ExecuteToolResponse,
+  fallbackWidgetID: string,
+) {
+  const directWidgetID = (request.input as { widget_id?: string } | undefined)?.widget_id
+  if (directWidgetID) {
+    return directWidgetID
+  }
+
+  if (request.tool_name === 'workspace.focus_tab') {
+    const output = response.output as { widget_ids?: string[] } | undefined
+    const tabWidgetID = output?.widget_ids?.[0]
+    if (tabWidgetID) {
+      return tabWidgetID
+    }
+  }
+
+  if (request.tool_name === 'workspace.focus_widget') {
+    const output = response.output as { id?: string } | undefined
+    if (output?.id) {
+      return output.id
+    }
+  }
+
+  return fallbackWidgetID
 }
 
 function readWidgetContextPreference() {
