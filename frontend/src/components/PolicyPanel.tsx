@@ -5,7 +5,7 @@ import type { IgnoreRule, TrustedRule } from '../types'
 type PolicyPanelProps = {
   trustedRules: TrustedRule[]
   ignoreRules: IgnoreRule[]
-  onExecuteTool: (request: { tool_name: string; input?: Record<string, unknown> }) => void | Promise<void>
+  onExecuteTool: (request: { tool_name: string; input?: Record<string, unknown> }) => void | Promise<unknown>
 }
 
 export function PolicyPanel({ trustedRules, ignoreRules, onExecuteTool }: PolicyPanelProps) {

@@ -1,13 +1,20 @@
-import type { AgentCatalog } from '../types'
+import type { AgentCatalog, WorkspaceContextSummary } from '../types'
 
 type AgentPanelProps = {
   catalog: AgentCatalog | null
+  workspaceContext: WorkspaceContextSummary | null
   onSelectProfile: (id: string) => void | Promise<void>
   onSelectRole: (id: string) => void | Promise<void>
   onSelectMode: (id: string) => void | Promise<void>
 }
 
-export function AgentPanel({ catalog, onSelectProfile, onSelectRole, onSelectMode }: AgentPanelProps) {
+export function AgentPanel({
+  catalog,
+  workspaceContext,
+  onSelectProfile,
+  onSelectRole,
+  onSelectMode,
+}: AgentPanelProps) {
   return (
     <section className="panel">
       <p className="eyebrow">Agent posture</p>
@@ -46,6 +53,11 @@ export function AgentPanel({ catalog, onSelectProfile, onSelectRole, onSelectMod
               </select>
             </label>
           </div>
+          <div className="agent-current-strip">
+            <span>{catalog.active.profile.name}</span>
+            <span>{catalog.active.role.name}</span>
+            <span>{catalog.active.mode.name}</span>
+          </div>
           <dl className="agent-summary">
             <div>
               <dt>Security posture</dt>
@@ -59,7 +71,19 @@ export function AgentPanel({ catalog, onSelectProfile, onSelectRole, onSelectMod
               <dt>Trusted auto-approve</dt>
               <dd>{catalog.active.effective_policy_profile.disable_trusted_auto_approve ? 'disabled' : 'enabled'}</dd>
             </div>
+            <div>
+              <dt>Workspace context</dt>
+              <dd>{workspaceContext?.workspace_id ?? 'loading'}</dd>
+            </div>
+            <div>
+              <dt>Focused widget</dt>
+              <dd>{workspaceContext?.active_widget_id ?? 'n/a'}</dd>
+            </div>
           </dl>
+          <details className="panel-details">
+            <summary>Effective system prompt</summary>
+            <pre>{catalog.active.effective_prompt}</pre>
+          </details>
         </>
       ) : (
         <p>Loading agent catalog…</p>

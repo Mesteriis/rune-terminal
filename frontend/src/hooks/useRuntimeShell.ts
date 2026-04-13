@@ -11,31 +11,55 @@ import type {
   ExecuteToolResponse,
   IgnoreRule,
   PendingApproval,
+  RuntimeNotice,
   TerminalState,
+  ToolInfo,
   TrustedRule,
   Widget,
   Workspace,
+  WorkspaceContextSummary,
 } from '../types'
 
 type SelectionTarget = 'profile' | 'role' | 'mode'
+
+const QUIET_TOOLS = new Set([
+  'workspace.list_widgets',
+  'workspace.get_active_widget',
+  'workspace.focus_widget',
+  'term.get_state',
+])
 
 export function useRuntimeShell() {
   const [client, setClient] = useState<RtermClient | null>(null)
   const [workspace, setWorkspace] = useState<Workspace | null>(null)
   const [repoRoot, setRepoRoot] = useState('')
+  const [tools, setTools] = useState<ToolInfo[]>([])
   const [terminalState, setTerminalState] = useState<TerminalState | null>(null)
   const [trustedRules, setTrustedRules] = useState<TrustedRule[]>([])
   const [ignoreRules, setIgnoreRules] = useState<IgnoreRule[]>([])
   const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([])
   const [lastResponse, setLastResponse] = useState<ExecuteToolResponse | null>(null)
   const [runtimeError, setRuntimeError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<RuntimeNotice | null>(null)
   const [pendingApproval, setPendingApproval] = useState<PendingApproval | null>(null)
   const [pendingRequest, setPendingRequest] = useState<ExecuteToolRequest | null>(null)
+  const [isConfirmingApproval, setIsConfirmingApproval] = useState(false)
   const [agentCatalog, setAgentCatalog] = useState<AgentCatalog | null>(null)
 
   const activeWidget = useMemo(() => {
     return workspace?.widgets.find((widget) => widget.id === workspace.active_widget_id) ?? null
   }, [workspace])
+
+  const workspaceContext = useMemo<WorkspaceContextSummary | null>(() => {
+    if (!workspace) {
+      return null
+    }
+    return {
+      workspace_id: workspace.id,
+      repo_root: repoRoot,
+      active_widget_id: workspace.active_widget_id,
+    }
+  }, [repoRoot, workspace])
 
   useEffect(() => {
     async function boot() {
@@ -52,7 +76,7 @@ export function useRuntimeShell() {
         setAuditEvents(audit.events ?? [])
         setAgentCatalog(agent)
       } catch (error) {
-        setRuntimeError(error instanceof Error ? error.message : String(error))
+        setRuntimeError(formatError(error))
       }
     }
     void boot()
@@ -63,14 +87,15 @@ export function useRuntimeShell() {
       return
     }
     void syncActiveView(client, workspace, repoRoot)
-  }, [client, workspace, repoRoot])
+  }, [client, repoRoot, workspace])
 
   function applyBootstrap(payload: BootstrapPayload) {
     setWorkspace(payload.workspace)
     setRepoRoot(payload.repo_root)
+    setTools(payload.tools ?? [])
   }
 
-  function executionContext(nextWorkspace = workspace) {
+  function executionContext(nextWorkspace = workspace): WorkspaceContextSummary | undefined {
     if (!nextWorkspace) {
       return undefined
     }
@@ -130,13 +155,6 @@ export function useRuntimeShell() {
     setAuditEvents(audit.events ?? [])
   }
 
-  async function refreshAgentCatalog() {
-    if (!client) {
-      return
-    }
-    setAgentCatalog(await client.agentCatalog())
-  }
-
   async function refreshTerminalState(widgetId = workspace?.active_widget_id) {
     if (!client || !workspace || !widgetId) {
       return
@@ -176,26 +194,61 @@ export function useRuntimeShell() {
 
   async function executeTool(request: ExecuteToolRequest) {
     if (!client || !workspace) {
-      return
-    }
-    const response = await client.executeTool({
-      ...request,
-      context: executionContext(workspace),
-    })
-    setLastResponse(response)
-
-    if (response.status === 'requires_confirmation' && response.pending_approval) {
-      setPendingApproval(response.pending_approval)
-      setPendingRequest(request)
-      return
+      return null
     }
 
-    setPendingApproval(null)
-    setPendingRequest(null)
-    await Promise.all([refreshWorkspace(), refreshAudit(), refreshPolicyLists()])
-    if (request.tool_name.startsWith('term.') || request.tool_name.startsWith('workspace.')) {
-      const targetWidgetID = (request.input as { widget_id?: string } | undefined)?.widget_id ?? workspace.active_widget_id
-      await refreshTerminalState(targetWidgetID)
+    try {
+      const response = await client.executeTool({
+        ...request,
+        context: executionContext(workspace),
+      })
+      setLastResponse(response)
+      await refreshAudit()
+
+      if (response.status === 'requires_confirmation' && response.pending_approval) {
+        setPendingApproval(response.pending_approval)
+        setPendingRequest(request)
+        setNotice({
+          tone: 'info',
+          title: `${request.tool_name} needs approval`,
+          detail: response.pending_approval.summary,
+        })
+        return response
+      }
+
+      setPendingApproval(null)
+      setPendingRequest(null)
+
+      if (response.status === 'ok') {
+        await Promise.all([refreshWorkspace(), refreshPolicyLists()])
+        if (request.tool_name.startsWith('term.') || request.tool_name.startsWith('workspace.')) {
+          const targetWidgetID =
+            (request.input as { widget_id?: string } | undefined)?.widget_id ?? workspace.active_widget_id
+          await refreshTerminalState(targetWidgetID)
+        }
+        if (!QUIET_TOOLS.has(request.tool_name)) {
+          setNotice({
+            tone: 'success',
+            title: `${request.tool_name} completed`,
+            detail: response.operation?.summary ?? summarizeOutput(response.output),
+          })
+        }
+        return response
+      }
+
+      setNotice({
+        tone: 'error',
+        title: `${request.tool_name} failed`,
+        detail: response.error ?? response.error_code ?? 'Execution failed.',
+      })
+      return response
+    } catch (error) {
+      setNotice({
+        tone: 'error',
+        title: `${request.tool_name} request failed`,
+        detail: formatError(error),
+      })
+      return null
     }
   }
 
@@ -203,17 +256,39 @@ export function useRuntimeShell() {
     if (!client || !workspace || !pendingApproval || !pendingRequest) {
       return
     }
-    const confirmation = await client.executeTool({
-      tool_name: 'safety.confirm',
-      input: { approval_id: pendingApproval.id },
-      context: executionContext(workspace),
-    })
-    setLastResponse(confirmation)
-    if (confirmation.status !== 'ok') {
-      return
+    setIsConfirmingApproval(true)
+    try {
+      const confirmation = await client.executeTool({
+        tool_name: 'safety.confirm',
+        input: { approval_id: pendingApproval.id },
+        context: executionContext(workspace),
+      })
+      setLastResponse(confirmation)
+      await refreshAudit()
+      if (confirmation.status !== 'ok') {
+        setNotice({
+          tone: 'error',
+          title: 'Approval confirmation failed',
+          detail: confirmation.error ?? 'The runtime rejected the approval request.',
+        })
+        return
+      }
+      const grant = confirmation.output as ApprovalGrant
+      setNotice({
+        tone: 'info',
+        title: 'Approval granted',
+        detail: 'Retrying the requested action with a single-use approval token.',
+      })
+      await executeTool({ ...pendingRequest, approval_token: grant.approval_token })
+    } catch (error) {
+      setNotice({
+        tone: 'error',
+        title: 'Approval confirmation request failed',
+        detail: formatError(error),
+      })
+    } finally {
+      setIsConfirmingApproval(false)
     }
-    const grant = confirmation.output as ApprovalGrant
-    await executeTool({ ...pendingRequest, approval_token: grant.approval_token })
   }
 
   async function focusWidget(widget: Widget) {
@@ -223,38 +298,89 @@ export function useRuntimeShell() {
     })
   }
 
+  async function interruptWidget(widgetId: string) {
+    await executeTool({
+      tool_name: 'term.interrupt',
+      input: { widget_id: widgetId },
+    })
+  }
+
   async function setActiveSelection(target: SelectionTarget, id: string) {
     if (!client) {
       return
     }
-    const nextCatalog =
-      target === 'profile'
-        ? await client.setActiveProfile(id)
-        : target === 'role'
-          ? await client.setActiveRole(id)
-          : await client.setActiveMode(id)
-    setAgentCatalog(nextCatalog)
-    await refreshAudit()
+    try {
+      const nextCatalog =
+        target === 'profile'
+          ? await client.setActiveProfile(id)
+          : target === 'role'
+            ? await client.setActiveRole(id)
+            : await client.setActiveMode(id)
+      setAgentCatalog(nextCatalog)
+      await refreshAudit()
+      setNotice({
+        tone: 'success',
+        title: `${capitalize(target)} updated`,
+        detail:
+          target === 'profile'
+            ? nextCatalog.active.profile.name
+            : target === 'role'
+              ? nextCatalog.active.role.name
+              : nextCatalog.active.mode.name,
+      })
+    } catch (error) {
+      setNotice({
+        tone: 'error',
+        title: `Failed to update ${target}`,
+        detail: formatError(error),
+      })
+    }
   }
 
   return {
     client,
     workspace,
+    workspaceContext,
     repoRoot,
+    tools,
     terminalState,
     trustedRules,
     ignoreRules,
     auditEvents,
     lastResponse,
     runtimeError,
+    notice,
     pendingApproval,
+    isConfirmingApproval,
     agentCatalog,
     activeWidget,
+    clearNotice: () => setNotice(null),
     executeTool,
     confirmPendingRequest,
     focusWidget,
+    interruptWidget,
     refreshTerminalState,
-    refreshAgentCatalog,
     setActiveSelection,
   }
+}
+
+function formatError(error: unknown) {
+  return error instanceof Error ? error.message : String(error)
+}
+
+function summarizeOutput(output: unknown) {
+  if (!output) {
+    return 'No output payload.'
+  }
+  if (typeof output === 'string') {
+    return output
+  }
+  if (typeof output === 'object') {
+    return JSON.stringify(output)
+  }
+  return String(output)
+}
+
+function capitalize(value: string) {
+  return value.charAt(0).toUpperCase() + value.slice(1)
 }

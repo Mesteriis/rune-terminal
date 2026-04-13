@@ -21,6 +21,10 @@ type sendInputToolInput struct {
 	AppendNewline bool   `json:"append_newline,omitempty"`
 }
 
+type interruptToolInput struct {
+	WidgetID string `json:"widget_id,omitempty"`
+}
+
 type confirmInput struct {
 	ApprovalID string `json:"approval_id"`
 }

@@ -2,11 +2,8 @@
   font-family: 'Space Grotesk', sans-serif;
   line-height: 1.5;
   font-weight: 500;
-  color: #10202f;
-  background:
-    radial-gradient(circle at top left, rgba(246, 208, 146, 0.45), transparent 28%),
-    radial-gradient(circle at 85% 15%, rgba(123, 164, 196, 0.25), transparent 24%),
-    linear-gradient(180deg, #f7f3ee, #eef3f6);
+  color: #d6e0ea;
+  background: #0c1118;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -20,12 +17,16 @@
 html,
 body,
 #root {
-  min-height: 100vh;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
 }
 
 body {
   margin: 0;
   min-width: 320px;
+  background: #0c1118;
+  overflow: hidden;
 }
 
 button,

@@ -185,9 +185,27 @@ The initial working slice is being built around:
 - `workspace.focus_widget`
 - `term.get_state`
 - `term.send_input`
+- `term.interrupt`
 - `safety.confirm`
 - trusted rule add/list/remove
 - ignore rule add/list/remove
+
+## Current UI surface
+
+The desktop shell is now intentionally usable as a minimal operator console, not just a foundation scaffold.
+
+What the current shell exposes:
+
+- a live terminal surface for the active widget
+- keyboard input directly into the PTY plus a direct-input fallback row
+- terminal interrupt, status, PID and working-directory visibility
+- agent posture selectors for prompt profile, role preset and work mode
+- a tool operator panel with catalog, metadata, manual JSON payload execution and last response inspection
+- visible approval bar for dangerous actions with confirm-and-retry behavior
+- policy management forms for trusted and ignore rules
+- audit tail with tool outcome, role/mode context and approval usage
+
+This is still a minimal internal shell, but it is now meant to be launched and exercised directly during development.
 
 ## Prerequisites
 

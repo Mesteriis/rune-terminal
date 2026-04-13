@@ -71,3 +71,5 @@ Minimal management is exposed over HTTP:
 - `PUT /api/v1/agent/selection/mode`
 
 Each `PUT` request takes `{"id":"<selection-id>"}` and returns the updated catalog with the effective prompt and effective policy overlay.
+
+The same catalog is surfaced in the desktop UI so the visible selection state, effective prompt preview, and policy posture stay aligned with the backend source of truth.

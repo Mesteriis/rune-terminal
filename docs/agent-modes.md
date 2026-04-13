@@ -49,3 +49,5 @@ Modes are transport-accessible through:
   Sets the active mode using `{"id":"<mode-id>"}`.
 
 The same catalog response includes the effective merged policy profile so transport and UI can observe the actual posture instead of guessing from labels.
+
+In the current desktop shell these controls are exposed directly in the right-hand `Agent posture` panel so operators can switch profile, role, and mode without dropping to raw API calls.

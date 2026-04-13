@@ -12,9 +12,10 @@ type TerminalSurfaceProps = {
   widgetId: string
   state: TerminalState | null
   onTerminalAction?: () => Promise<void> | void
+  onInterrupt?: (widgetId: string) => Promise<void> | void
 }
 
-export function TerminalSurface({ client, widgetId, state, onTerminalAction }: TerminalSurfaceProps) {
+export function TerminalSurface({ client, widgetId, state, onTerminalAction, onInterrupt }: TerminalSurfaceProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const terminalRef = useRef<Terminal | null>(null)
   const fitFrameRef = useRef<number | null>(null)
@@ -139,9 +140,12 @@ export function TerminalSurface({ client, widgetId, state, onTerminalAction }: T
   return (
     <section className="terminal-card">
       <header className="terminal-header">
-        <div>
+        <div className="terminal-heading">
           <p className="eyebrow">Live terminal</p>
           <h2>{state?.widget_id ?? widgetId}</h2>
+          <p className="terminal-subtitle">
+            Focused widget shell. Keyboard input streams directly into the active PTY session.
+          </p>
         </div>
         <dl className="terminal-meta">
           <div>
@@ -152,8 +156,27 @@ export function TerminalSurface({ client, widgetId, state, onTerminalAction }: T
             <dt>PID</dt>
             <dd>{state?.pid ?? 'n/a'}</dd>
           </div>
+          <div>
+            <dt>Shell</dt>
+            <dd>{state?.shell ?? 'n/a'}</dd>
+          </div>
         </dl>
       </header>
+
+      <section className="terminal-status-bar">
+        <span className={`status-pill status-${state?.status ?? 'unknown'}`}>{state?.status ?? 'unknown'}</span>
+        <span className="status-pill">Widget {state?.widget_id ?? widgetId}</span>
+        <span className="status-pill status-path">{state?.working_dir ?? 'working dir unavailable'}</span>
+        <div className="terminal-actions">
+          <button
+            className="ghost-button"
+            onClick={() => (onInterrupt ? void onInterrupt(widgetId) : undefined)}
+            disabled={!state?.can_interrupt}
+          >
+            Interrupt
+          </button>
+        </div>
+      </section>
 
       <div className="terminal-shell" ref={containerRef} />
 

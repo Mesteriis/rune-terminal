@@ -48,6 +48,7 @@ Notable correctness coverage now exercised by Go tests:
 - unsubscribe/output delivery does not panic under concurrent delivery and channel close
 - pending approvals are consumed by `safety.confirm`
 - approval grants are one-time and cannot be replayed
+- `term.interrupt` executes against the active terminal widget and returns a structured result
 - policy table tests cover ignore precedence, trusted matching, allowed roots, approval escalation, destructive handling, and capability overlays
 
 ## Launch validation
@@ -105,9 +106,53 @@ Observed runtime results:
 - the approved mutation succeeded once with `200`
 - replaying the same approval token returned `428`, confirming single-use approval grants
 
+## UI smoke validation
+
+The browser-hosted frontend was exercised against a real loopback `rterm-core` instance using explicit runtime environment variables:
+
+```bash
+RTERM_AUTH_TOKEN=test-token ./apps/desktop/bin/rterm-core serve \
+  --listen 127.0.0.1:0 \
+  --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal \
+  --state-dir <tmp>/state \
+  --ready-file <tmp>/ready.json
+
+VITE_RTERM_API_BASE=http://127.0.0.1:<port> \
+VITE_RTERM_AUTH_TOKEN=test-token \
+  npm --prefix frontend run dev -- --host 127.0.0.1 --port 4173 --strictPort
+```
+
+The UI itself was then driven by a local temporary Playwright install outside the repository so project dependencies were not modified.
+
+Validated interaction slice:
+
+- load the shell UI and bootstrap the live terminal surface
+- switch prompt profile, role preset, and work mode through the visible selectors
+- send terminal input through the xterm keyboard path and observe echoed output
+- execute `safety.add_ignore_rule` from the operator panel with a manual JSON payload
+- observe `approval required`, confirm the action, and see the success path complete
+- verify the audit tail shows the tool event and `approval used`
+- interrupt the active terminal session from the visible interrupt action
+
+Observed result:
+
+```json
+{
+  "ok": true,
+  "steps": [
+    "load app",
+    "switch profile/role/mode",
+    "send terminal input through xterm keyboard path",
+    "trigger approval through operator panel",
+    "return profile to balanced for operator actions",
+    "interrupt active terminal"
+  ]
+}
+```
+
 ## What was not validated
 
 - no full packaged `tauri build` was run
 - no Linux launch path was exercised in this pass
-- no fully manual in-window UI walkthrough was recorded beyond successful app startup; terminal and agent flows were validated at the runtime/API layer and the app now exposes those controls in the shell UI for manual checking
+- no native-window automation was run inside the Tauri shell; launch readiness was validated with `npm run tauri:dev`, and UI interactions were validated against the browser-hosted frontend connected to the same Go runtime
 - `cargo fmt` was not run because `rustfmt` is not installed in the local Rust toolchain

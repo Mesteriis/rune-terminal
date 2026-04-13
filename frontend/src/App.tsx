@@ -1,15 +1,16 @@
 import './App.css'
-import { AgentPanel } from './components/AgentPanel'
-import { ApprovalBar } from './components/ApprovalBar'
-import { AuditPanel } from './components/AuditPanel'
-import { PolicyPanel } from './components/PolicyPanel'
+import { useState } from 'react'
+
+import { AgentSidebar } from './components/AgentSidebar'
+import { type ShellSection } from './components/ShellSections'
 import { TerminalSurface } from './components/TerminalSurface'
-import { ToolConsolePanel } from './components/ToolConsolePanel'
+import { WidgetDock } from './components/WidgetDock'
 import { WorkspaceRail } from './components/WorkspaceRail'
 import { useRuntimeShell } from './hooks/useRuntimeShell'
 
 function App() {
   const shell = useRuntimeShell()
+  const [section, setSection] = useState<ShellSection>('agent')
 
   if (shell.runtimeError) {
     return (
@@ -25,40 +26,42 @@ function App() {
 
   return (
     <main className="shell">
-      <section className="hero-band">
-        <div>
-          <p className="eyebrow">RunaTerminal</p>
-          <h1>Terminal workspace core with policy-first AI tooling.</h1>
-          <p className="hero-copy">
-            Tauri hosts the shell. Go owns the runtime. React stays thin. The tool console below
-            executes against the same policy and audit pipeline the future AI layer will use.
-          </p>
-        </div>
-        <dl className="hero-facts">
-          <div>
-            <dt>Repo root</dt>
-            <dd>{shell.repoRoot || 'booting…'}</dd>
-          </div>
-          <div>
-            <dt>Active widget</dt>
-            <dd>{shell.activeWidget?.title ?? 'n/a'}</dd>
-          </div>
-        </dl>
-      </section>
+      <WorkspaceRail
+        workspace={shell.workspace}
+        repoRoot={shell.repoRoot}
+        activeWidgetId={shell.workspace?.active_widget_id}
+        onFocusWidget={shell.focusWidget}
+      />
 
-      <section className="board">
-        <WorkspaceRail
-          workspace={shell.workspace}
-          activeWidgetId={shell.workspace?.active_widget_id}
-          onFocusWidget={shell.focusWidget}
+      <section className="workspace-shell">
+        <AgentSidebar
+          section={section}
+          onSelectSection={setSection}
+          catalog={shell.agentCatalog}
+          workspaceContext={shell.workspaceContext}
+          tools={shell.tools}
+          lastResponse={shell.lastResponse}
+          notice={shell.notice}
+          pendingApproval={shell.pendingApproval}
+          isConfirmingApproval={shell.isConfirmingApproval}
+          trustedRules={shell.trustedRules}
+          ignoreRules={shell.ignoreRules}
+          auditEvents={shell.auditEvents}
+          onSelectProfile={(id) => shell.setActiveSelection('profile', id)}
+          onSelectRole={(id) => shell.setActiveSelection('role', id)}
+          onSelectMode={(id) => shell.setActiveSelection('mode', id)}
+          onExecuteTool={shell.executeTool}
+          onConfirmApproval={shell.confirmPendingRequest}
+          onDismissNotice={shell.clearNotice}
         />
 
-        <section className="workspace-pane">
+        <section className="workspace-stage">
           {shell.client && shell.activeWidget ? (
             <TerminalSurface
               client={shell.client}
               widgetId={shell.activeWidget.id}
               state={shell.terminalState}
+              onInterrupt={shell.interruptWidget}
               onTerminalAction={() => shell.refreshTerminalState(shell.activeWidget?.id)}
             />
           ) : (
@@ -66,26 +69,13 @@ function App() {
           )}
         </section>
 
-        <aside className="control-pane">
-          <AgentPanel
-            catalog={shell.agentCatalog}
-            onSelectProfile={(id) => shell.setActiveSelection('profile', id)}
-            onSelectRole={(id) => shell.setActiveSelection('role', id)}
-            onSelectMode={(id) => shell.setActiveSelection('mode', id)}
-          />
-          <ToolConsolePanel activeWidgetId={shell.workspace?.active_widget_id} onExecuteTool={shell.executeTool} />
-          <PolicyPanel
-            trustedRules={shell.trustedRules}
-            ignoreRules={shell.ignoreRules}
-            onExecuteTool={shell.executeTool}
-          />
-          <AuditPanel auditEvents={shell.auditEvents} lastResponse={shell.lastResponse} />
-        </aside>
+        <WidgetDock
+          workspace={shell.workspace}
+          activeWidget={shell.activeWidget}
+          section={section}
+          onSelectSection={setSection}
+        />
       </section>
-
-      {shell.pendingApproval ? (
-        <ApprovalBar pendingApproval={shell.pendingApproval} onConfirm={shell.confirmPendingRequest} />
-      ) : null}
     </main>
   )
 }

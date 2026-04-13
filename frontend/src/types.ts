@@ -13,6 +13,12 @@ export type Workspace = {
   active_widget_id: string
 }
 
+export type WorkspaceContextSummary = {
+  workspace_id?: string
+  repo_root?: string
+  active_widget_id?: string
+}
+
 export type TerminalState = {
   widget_id: string
   session_id: string
@@ -204,4 +210,10 @@ export type BootstrapPayload = {
   workspace: Workspace
   tools: ToolInfo[]
   repo_root: string
+}
+
+export type RuntimeNotice = {
+  tone: 'info' | 'success' | 'error'
+  title: string
+  detail?: string
 }

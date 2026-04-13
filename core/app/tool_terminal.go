@@ -13,6 +13,7 @@ func (r *Runtime) terminalTools() []toolruntime.Definition {
 	return []toolruntime.Definition{
 		r.termGetStateTool(),
 		r.termSendInputTool(),
+		r.termInterruptTool(),
 	}
 }
 
@@ -108,6 +109,56 @@ func (r *Runtime) termSendInputTool() toolruntime.Definition {
 				return nil, normalizeToolError(err)
 			}
 			return result, nil
+		},
+	}
+}
+
+func (r *Runtime) termInterruptTool() toolruntime.Definition {
+	return toolruntime.Definition{
+		Name:         "term.interrupt",
+		Description:  "Send an interrupt signal to a terminal session.",
+		InputSchema:  json.RawMessage(`{"type":"object","properties":{"widget_id":{"type":"string"}},"additionalProperties":false}`),
+		OutputSchema: json.RawMessage(`{"type":"object"}`),
+		Metadata: toolruntime.Metadata{
+			Capabilities: []string{"terminal:input"},
+			ApprovalTier: policy.ApprovalTierModerate,
+			Mutating:     true,
+			TargetKind:   toolruntime.TargetWidget,
+		},
+		Decode: func(raw json.RawMessage) (any, error) {
+			return toolruntime.DecodeJSON[interruptToolInput](raw)
+		},
+		Plan: func(input any, execCtx toolruntime.ExecutionContext) (toolruntime.OperationPlan, error) {
+			widgetID, err := r.resolveWidgetID(input.(interruptToolInput).WidgetID)
+			if err != nil {
+				return toolruntime.OperationPlan{}, err
+			}
+			return toolruntime.OperationPlan{
+				Operation: toolruntime.Operation{
+					Summary:              "interrupt terminal session for " + widgetID,
+					AffectedWidgets:      []string{widgetID},
+					RequiredCapabilities: []string{"terminal:input"},
+					ApprovalTier:         policy.ApprovalTierModerate,
+				},
+			}, nil
+		},
+		Execute: func(ctx context.Context, execCtx toolruntime.ExecutionContext, input any) (any, error) {
+			widgetID, err := r.resolveWidgetID(input.(interruptToolInput).WidgetID)
+			if err != nil {
+				return nil, normalizeToolError(err)
+			}
+			if err := r.Terminals.Interrupt(widgetID); err != nil {
+				return nil, normalizeToolError(err)
+			}
+			state, err := r.Terminals.GetState(widgetID)
+			if err != nil {
+				return nil, normalizeToolError(err)
+			}
+			return map[string]any{
+				"widget_id":   widgetID,
+				"interrupted": true,
+				"status":      state.Status,
+			}, nil
 		},
 	}
 }
