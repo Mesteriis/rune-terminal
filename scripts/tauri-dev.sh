@@ -40,8 +40,13 @@ if [[ "$(uname -s)" == "Darwin" ]] && ! xcode-select -p >/dev/null 2>&1; then
 fi
 
 if [[ ! -x "${CORE_BIN}" ]]; then
-  fail "Go core binary not found at ${CORE_BIN}. Run: npm run build:core"
+  echo "info: Go core binary not found; building it now"
 fi
+
+(
+  cd "${ROOT_DIR}"
+  npm run build:core >/dev/null
+) || fail "failed to build the Go core binary. Run: npm run build:core"
 
 if [[ ! -d "${ROOT_DIR}/node_modules" ]]; then
   fail "root dependencies are missing. Run: npm install"
