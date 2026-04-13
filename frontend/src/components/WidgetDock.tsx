@@ -1,5 +1,6 @@
 import { SHELL_SECTION_LABELS, type ShellSection } from './ShellSections'
 import type { Widget, Workspace } from '../types'
+import { WidgetDockMenuButton } from './WidgetDockMenuButton'
 
 type WidgetDockProps = {
   workspace: Workspace | null
@@ -7,12 +8,6 @@ type WidgetDockProps = {
   onFocusWidget: (widget: Widget) => void | Promise<void>
   section: ShellSection
   onSelectSection: (section: ShellSection) => void
-}
-
-const AUXILIARY_BADGES: Record<Exclude<ShellSection, 'agent'>, string> = {
-  tools: 'TL',
-  policy: 'SG',
-  audit: 'AU',
 }
 
 export function WidgetDock({ workspace, activeWidget, onFocusWidget, section, onSelectSection }: WidgetDockProps) {
@@ -34,19 +29,40 @@ export function WidgetDock({ workspace, activeWidget, onFocusWidget, section, on
       </div>
       <div className="widget-dock-footer">
         <div className="widget-dock-footer-actions">
-          {(['tools', 'policy', 'audit'] as const).map((entry) => (
-            <button
-              key={entry}
-              className={entry === section ? 'widget-dock-mini active' : 'widget-dock-mini'}
-              title={SHELL_SECTION_LABELS[entry]}
-              onClick={() => onSelectSection(entry)}
-            >
-              {AUXILIARY_BADGES[entry]}
-            </button>
-          ))}
+          <WidgetDockMenuButton
+            label="RT"
+            title="Runtime tools"
+            items={[
+              {
+                label: SHELL_SECTION_LABELS.tools,
+                detail: 'Open the internal tool runtime console',
+                onSelect: () => onSelectSection('tools'),
+              },
+              {
+                label: SHELL_SECTION_LABELS.audit,
+                detail: 'Inspect recent runtime and approval events',
+                onSelect: () => onSelectSection('audit'),
+              },
+            ]}
+          />
+          <WidgetDockMenuButton
+            label="SG"
+            title="Settings and policy"
+            items={[
+              {
+                label: SHELL_SECTION_LABELS.policy,
+                detail: 'Open trusted and ignore rule controls',
+                onSelect: () => onSelectSection('policy'),
+              },
+            ]}
+          />
         </div>
         <strong>{activeWidget?.title ?? `${workspace?.widgets.length ?? 0} widgets`}</strong>
-        <span>{activeWidget?.description ?? activeWidget?.kind ?? 'No active widget'}</span>
+        <span>
+          {section === 'agent'
+            ? activeWidget?.description ?? activeWidget?.kind ?? 'No active widget'
+            : `Focused shell section: ${SHELL_SECTION_LABELS[section]}`}
+        </span>
       </div>
     </aside>
   )

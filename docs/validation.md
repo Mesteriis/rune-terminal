@@ -338,6 +338,33 @@ What was not revalidated in this slice:
 - no fresh UI automation was run after the workspace-switcher popover change
 - no fresh manual Tauri launch was performed after this specific shell-control pass
 
+## Latest widget-dock control parity slice
+
+The next shell parity pass moved the right-side dock closer to TideTerm control behavior:
+
+- widget dock footer actions now open flyout menus instead of acting like raw section toggles
+- runtime and settings entry points stay shell-level and route into existing operator/policy surfaces
+- the dock remains a secondary control surface instead of becoming another primary content column
+
+Validation executed for this slice:
+
+```bash
+npm --prefix frontend run lint
+npm --prefix frontend run build
+npm run validate
+```
+
+Observed result:
+
+- frontend lint passed
+- frontend build passed
+- full repository validation passed after the widget-dock control slice
+
+What was not revalidated in this slice:
+
+- no fresh UI automation was run after the dock flyout change
+- no fresh manual Tauri launch was performed after this specific widget-dock pass
+
 ## Tooling baseline
 
 - Go: `go1.26.2 darwin/arm64`

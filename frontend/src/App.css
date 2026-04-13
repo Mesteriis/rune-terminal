@@ -563,6 +563,10 @@
   margin-bottom: 0.2rem;
 }
 
+.widget-dock-menu-shell {
+  position: relative;
+}
+
 .widget-dock-mini {
   min-width: 2rem;
   padding: 0.38rem 0.45rem;
@@ -576,6 +580,46 @@
   background: rgba(242, 179, 95, 0.18);
   color: #ffd8a6;
   border-color: rgba(242, 179, 95, 0.24);
+}
+
+.widget-dock-menu {
+  position: absolute;
+  right: calc(100% + 0.45rem);
+  bottom: 0;
+  z-index: 30;
+  width: 14rem;
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.35rem;
+  border-radius: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(10, 14, 20, 0.98);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.34);
+}
+
+.widget-dock-menu button {
+  display: grid;
+  gap: 0.18rem;
+  justify-items: start;
+  padding: 0.55rem 0.65rem;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+}
+
+.widget-dock-menu button:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.widget-dock-menu button strong {
+  color: #edf4fb;
+  font-size: 0.78rem;
+}
+
+.widget-dock-menu button span {
+  color: #8d9baa;
+  font-size: 0.72rem;
+  line-height: 1.35;
 }
 
 .widget-dock-footer strong {

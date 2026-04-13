@@ -13,6 +13,7 @@ It is intentionally operational, not narrative.
 - Tabs are the shell-level navigation unit.
 - Widgets remain the secondary inventory used by the right-side dock and terminal/runtime binding.
 - The top-left workspace switcher is now a TideTerm-shaped shell popover, but it currently exposes only the active local workspace and launch actions.
+- The right-side widget dock now uses shell-level flyout controls for runtime and settings entry points instead of acting as a primary content column.
 - New terminal tabs can be created at runtime.
 - Closing a tab tears down its terminal session and removes the associated widget from the workspace snapshot.
 - The last remaining tab cannot be closed in the current implementation.
