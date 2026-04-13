@@ -54,13 +54,13 @@ Strong enough areas for `1.0.0` progression:
 
 | Feature area | TideTerm current behavior | Current RunaTerminal status | Release priority | Current status | Exact release gap | Next concrete step | Architectural notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| App shell behavior | App-shaped shell with top tab bar, left AI panel, center content, right slim widgets/settings rail | TideTerm-derived shell is present with left AI panel, center terminal stage, widget-first dock, and workspace switcher | `P1 important` | `partial` | Needs final release-hardening review for launch/startup rough edges, not new shell concepts | Run a shell hardening pass only if it blocks daily-driver use during later milestones | Preserve React + local loopback transport; do not reintroduce old global shell state |
-| Workspace/layout | Workspace is the primary container and owns tab/content/widget layout | Single-workspace shell exists with tab/widget synchronization | `P1 important` | `partial` | True multi-workspace parity is missing, but not currently blocking 1.0 daily-driver claims | Keep current single-workspace path stable; revisit only if it blocks release usage | Keep workspace state explicit in Go core rather than frontend-owned layout truth |
-| Tabs | Real tab bar with active tab, pinned tabs, add tab flows, rename, context menu, AI toggle, drag behavior | Tabs support create, close, rename, pin, unpin, context menu, and drag reorder | `P0 release-blocker` | `partial` | Needs bug closure and daily-driver confidence, not more feature breadth | Fold remaining tab issues into shell/control hardening milestone | Do not port TideTerm's full frontend store graph; port behavior only |
-| Widgets | Slim right-side widgets/apps/settings/help surface with secondary actions | Right rail is widget-first, with runtime/settings/help/audit utility entry points | `P1 important` | `partial` | Widget catalog breadth is still reduced compared with TideTerm | Keep current widget surface stable; extend only if a concrete daily-driver gap appears | Keep dock as adapter to explicit runtime/UI state, not a global action bucket |
-| Launcher / app entry | TideTerm exposes launcher-like discovery through widget/apps/settings/help entry surfaces | Launcher flyout and searchable launcher section exist | `P1 important` | `partial` | Missing broader app catalog metadata, but current discovery may be sufficient for 1.0 | Treat current launcher as acceptable unless user testing reveals a release blocker | Do not import TideTerm launcher wholesale; port shell discoverability behavior only |
-| Terminal UX | Compact term shell, terminal-first focus, visible scrollback, toolbar/status strip, command entry, and stable viewport behavior | Terminal shell is compact, focusable, PTY-backed, hydrated, and now includes explicit copy/paste shortcut sanity plus batched long-output writes | `P0 release-blocker` | `partial` | Remaining gap is final regression confidence and release smoke, not missing core interaction paths | Run final terminal-focused release smoke and close only verified regressions | Terminal state stays Go-owned; the frontend uses a JSON snapshot + SSE stream adapter |
-| AI panel | Left-side AI/chat panel with header, messages, input, mode/context controls | TideTerm-shaped panel exists with merged transcript, real backend conversation path, explicit `/run <command>` execution/explanation flow, and clearer `/run` error UX | `P0 release-blocker` | `partial` | Remaining gap is final release smoke and policy-path validation confidence, not missing `/run` capability | Re-run `/run` safe/error/approval scenarios and record them in validation | Keep policy/runtime explicit; do not port old AI/backend entanglement |
+| App shell behavior | App-shaped shell with compact top tab bar, left AI panel, center content, and a slim right utility rail | Core shell pieces exist, but the current top rail is taller/heavier than TideTerm and still reads as custom Runa chrome | `P0 release-blocker` | `partial` | Top shell hierarchy, control placement, and visual weight still drift from TideTerm enough to break familiar mental-model parity | Run a focused top-shell correction pass that compacts the rail, repositions actions, and removes non-baseline shell weight | Preserve React + local loopback transport; do not reintroduce old global shell state |
+| Workspace/layout | Workspace is the primary container and owns the left-AI / center-content / right-utility balance | Single-workspace shell exists, but stage padding and side-rail weight still skew the TideTerm panel balance | `P0 release-blocker` | `partial` | Main-shell proportions and secondary-surface weight still feel re-laid-out instead of TideTerm-derived | Rebalance AI, center stage, and right utility rail without changing Go-owned runtime truth | Keep workspace state explicit in Go core rather than frontend-owned layout truth |
+| Tabs | Real tab bar with compact active tabs, pinned tabs, add tab flows, rename, context menu, AI toggle, and drag behavior | Tabs support create, close, rename, pin, unpin, context menu, and drag reorder, but chrome density and action placement still drift | `P0 release-blocker` | `partial` | Tab strip is too tall/card-like and add-tab / AI controls are not placed like TideTerm's right-side shell actions | Fold tab interaction hardening into the shell chrome correction milestone | Do not port TideTerm's full frontend store graph; port behavior only |
+| Widgets | Slim right-side widgets/apps/settings/help surface with clearly secondary actions | Right rail exists, but it is wider and more talkative than TideTerm's slim utility column | `P0 release-blocker` | `partial` | Dock branding, footer copy, and button weight overstate a secondary surface and pull attention from terminal + AI | Correct the dock to a TideTerm-like narrow utility rail before expanding any catalog breadth | Keep dock as adapter to explicit runtime/UI state, not a global action bucket |
+| Launcher / app entry | TideTerm exposes launcher-like discovery through widget/apps/settings/help entry surfaces in the utility grammar | Launcher flyout and searchable launcher section exist, but their shell placement still reflects the over-weighted dock | `P0 release-blocker` | `partial` | Launcher/settings/help are present, but not yet anchored in a recognizably TideTerm right-utility hierarchy | Re-seat launcher/settings/help inside the slim right-side utility grammar and leave catalog breadth reduced | Do not import TideTerm launcher wholesale; port shell discoverability behavior only |
+| Terminal UX | Compact term shell, terminal-first focus, visible scrollback, toolbar/status strip, and stable viewport behavior | Terminal shell is focusable, PTY-backed, hydrated, and stable, but still keeps invented outer framing and a bottom command row | `P0 release-blocker` | `partial` | Extra stage padding and the non-baseline `Paste command` row drift from TideTerm's terminal mental model | Remove invented footer UX, tighten chrome, and rerun terminal-focused release smoke | Terminal state stays Go-owned; the frontend uses a JSON snapshot + SSE stream adapter |
+| AI panel | Left-side AI/chat panel with header, messages, input, mode/context controls, and TideTerm-like panel weight | TideTerm-shaped panel exists with merged transcript, real backend conversation path, explicit `/run <command>` execution/explanation flow, and clearer `/run` error UX | `P0 release-blocker` | `partial` | The AI panel itself is functional, but surrounding shell balance still prevents it from reading as TideTerm's primary left column | Rebalance shell weight and keep the AI panel visible/compact without inventing new UX grammar | Keep policy/runtime explicit; do not port old AI/backend entanglement |
 | Tool invocation UX | AI-driven and app-driven flows rather than primarily internal operator tooling | Operator panel exists and remains secondary, and the AI composer now has an explicit `/run` command path | `P1 important` | `partial` | The release path exists, but richer validation and result polish are still needed | Keep the explicit `/run` path stable while avoiding broader AI scope drift | Keep operator console secondary; do not make it the user-facing primary path |
 | Approval UX | User-visible approvals integrated into flow surfaces | Visible approval banner exists and retries with single-use token | `P0 release-blocker` | `partial` | Approval must remain stable and visible during the AI execution release slice | Validate approval path during AI command execution implementation | Approval remains policy/runtime-owned |
 | Role/mode/profile UI | TideTerm has AI mode/config flows and user-facing AI controls | Current selectors exist in the AI panel and feed into backend system prompt | `P1 important` | `partial` | Good enough structurally; needs validation that it stays coherent during AI execution flow | Keep current controls stable and visible during the next AI slice | New role/mode system stays even where old TideTerm semantics differ |
@@ -116,6 +116,40 @@ Until parity is materially closer:
 - do not invent new AI UX concepts
 - do not replace familiar TideTerm flows with abstract operator tooling
 - do not claim parity for areas still listed as `partial`, `missing`, or `blocked`
+
+## Active frontend parity correction pass
+
+Reference surface for this pass:
+
+- `frontend/app/workspace/workspace.tsx`
+- `frontend/app/workspace/workspace-layout-model.ts`
+- `frontend/app/workspace/widgets.tsx`
+- `frontend/app/tab/tabbar.tsx`
+- `frontend/app/tab/tabbar.scss`
+- `frontend/app/tab/workspaceswitcher.tsx`
+- `frontend/app/view/term/term.tsx`
+- `frontend/app/view/term/term.scss`
+- `frontend/app/view/waveai/waveai.tsx`
+- `frontend/app/view/waveai/waveai.scss`
+- `frontend/app/aipanel/*`
+- `frontend/layout/*`
+- `frontend/wave.ts`
+
+This correction pass is limited to shell/layout parity only. It closes:
+
+- top-shell height, density, and control-placement drift
+- left AI / center terminal / right utility-rail balance drift
+- over-weighted right-dock branding and footer copy
+- invented terminal-stage padding and bottom command-row UX
+- launcher/settings/help placement drift relative to TideTerm's utility grammar
+
+Exit criteria for this pass:
+
+- top shell reads as compact TideTerm-derived tab chrome
+- center terminal stage regains primary visual attention
+- left AI panel and right utility rail regain TideTerm-like balance
+- no new feature surfaces or backend ownership drift are introduced
+- residual non-parity areas are documented honestly in `docs/frontend-parity-baseline.md`
 
 ## Active terminal hardening slice
 
