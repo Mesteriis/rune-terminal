@@ -7,9 +7,11 @@ import { WorkspaceSwitcher } from './WorkspaceSwitcher'
 type WorkspaceRailProps = {
   workspace: Workspace | null
   repoRoot: string
+  activeConnectionName: string
   activeTabId?: string
   aiPanelVisible: boolean
   onToggleAIPanel: () => void
+  onOpenConnections: () => void
   onFocusTab: (tabId: string) => void | Promise<void>
   onCreateTab: () => void | Promise<void>
   onCloseTab: (tabId: string) => void | Promise<void>
@@ -21,9 +23,11 @@ type WorkspaceRailProps = {
 export function WorkspaceRail({
   workspace,
   repoRoot,
+  activeConnectionName,
   activeTabId,
   aiPanelVisible,
   onToggleAIPanel,
+  onOpenConnections,
   onFocusTab,
   onCreateTab,
   onCloseTab,
@@ -45,7 +49,9 @@ export function WorkspaceRail({
           repoRoot={repoRoot}
           activeTabTitle={activeTab?.title ?? 'No active tab'}
           activeWidgetTitle={activeWidget?.title ?? activeWidget?.id ?? 'No active widget'}
+          activeConnectionName={activeConnectionName}
           onCreateTab={onCreateTab}
+          onOpenConnections={onOpenConnections}
         />
       </div>
 

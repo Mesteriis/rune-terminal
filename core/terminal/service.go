@@ -66,15 +66,18 @@ func (s *Service) StartSession(ctx context.Context, opts LaunchOptions) (State, 
 	}
 
 	state := State{
-		WidgetID:     opts.WidgetID,
-		SessionID:    opts.WidgetID,
-		Shell:        opts.Shell,
-		PID:          process.PID(),
-		Status:       StatusRunning,
-		StartedAt:    time.Now().UTC(),
-		CanSendInput: true,
-		CanInterrupt: true,
-		WorkingDir:   opts.WorkingDir,
+		WidgetID:       opts.WidgetID,
+		SessionID:      opts.WidgetID,
+		Shell:          resolveShellName(opts),
+		ConnectionID:   opts.Connection.ID,
+		ConnectionName: opts.Connection.Name,
+		ConnectionKind: opts.Connection.Kind,
+		PID:            process.PID(),
+		Status:         StatusRunning,
+		StartedAt:      time.Now().UTC(),
+		CanSendInput:   true,
+		CanInterrupt:   true,
+		WorkingDir:     resolveWorkingDir(opts),
 	}
 
 	sess := &session{
@@ -93,6 +96,23 @@ func (s *Service) StartSession(ctx context.Context, opts LaunchOptions) (State, 
 	go s.waitForExit(opts.WidgetID, sess)
 
 	return state, nil
+}
+
+func resolveShellName(opts LaunchOptions) string {
+	if opts.Connection.Kind == "ssh" {
+		return "ssh"
+	}
+	if opts.Shell != "" {
+		return opts.Shell
+	}
+	return DefaultShell()
+}
+
+func resolveWorkingDir(opts LaunchOptions) string {
+	if opts.Connection.Kind == "ssh" {
+		return ""
+	}
+	return opts.WorkingDir
 }
 
 func (s *Service) GetState(widgetID string) (State, error) {

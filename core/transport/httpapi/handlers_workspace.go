@@ -40,13 +40,14 @@ func (api *API) handleFocusTab(w http.ResponseWriter, r *http.Request) {
 
 func (api *API) handleCreateTerminalTab(w http.ResponseWriter, r *http.Request) {
 	var payload struct {
-		Title string `json:"title,omitempty"`
+		Title        string `json:"title,omitempty"`
+		ConnectionID string `json:"connection_id,omitempty"`
 	}
 	if err := decodeJSON(r, &payload); err != nil {
 		writeBadRequest(w, "invalid_request", err)
 		return
 	}
-	result, err := api.runtime.CreateTerminalTab(r.Context(), payload.Title)
+	result, err := api.runtime.CreateTerminalTabWithConnection(r.Context(), payload.Title, payload.ConnectionID)
 	if err != nil {
 		writeWorkspaceError(w, err)
 		return
@@ -88,7 +89,7 @@ func (api *API) handleSetTabPinned(w http.ResponseWriter, r *http.Request) {
 
 func (api *API) handleMoveTab(w http.ResponseWriter, r *http.Request) {
 	var payload struct {
-		TabID      string `json:"tab_id"`
+		TabID       string `json:"tab_id"`
 		BeforeTabID string `json:"before_tab_id"`
 	}
 	if err := decodeJSON(r, &payload); err != nil {

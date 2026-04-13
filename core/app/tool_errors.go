@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	agentcore "github.com/avm/rterm/core/agent"
+	"github.com/avm/rterm/core/connections"
 	"github.com/avm/rterm/core/policy"
 	"github.com/avm/rterm/core/terminal"
 	"github.com/avm/rterm/core/toolruntime"
@@ -20,6 +21,7 @@ func normalizeToolError(err error) error {
 		errors.Is(err, workspace.ErrTabNotFound),
 		errors.Is(err, terminal.ErrWidgetNotFound),
 		errors.Is(err, toolruntime.ErrPendingApprovalNotFound),
+		errors.Is(err, connections.ErrConnectionNotFound),
 		errors.Is(err, agentcore.ErrPromptProfileNotFound),
 		errors.Is(err, agentcore.ErrRolePresetNotFound),
 		errors.Is(err, agentcore.ErrWorkModeNotFound):
@@ -31,6 +33,7 @@ func normalizeToolError(err error) error {
 		errors.Is(err, workspace.ErrInvalidTabMove),
 		errors.Is(err, policy.ErrInvalidTrustedRule),
 		errors.Is(err, policy.ErrInvalidIgnoreRule),
+		errors.Is(err, connections.ErrInvalidConnection),
 		errors.Is(err, toolruntime.ErrPendingApprovalExpired):
 		return toolruntime.InvalidInputError(err.Error())
 	default:

@@ -35,6 +35,14 @@ export function buildLauncherEntries(workspace: Workspace | null): LauncherEntry
       action: { type: 'open-section', section: 'agent' },
     },
     {
+      id: 'open-connections',
+      title: 'Connections',
+      description: 'Manage local and SSH shell targets.',
+      category: 'utility',
+      icon: 'fa-plug',
+      action: { type: 'open-section', section: 'connections' },
+    },
+    {
       id: 'open-runtime',
       title: 'Runtime tools',
       description: 'Inspect tool metadata and execute runtime calls.',

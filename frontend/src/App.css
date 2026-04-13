@@ -918,6 +918,83 @@
   border: 1px dashed rgba(255, 255, 255, 0.12);
 }
 
+.connections-panel {
+  gap: 0.9rem;
+  padding: 0.95rem 1rem 1rem;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.connections-active-card,
+.connections-card,
+.connections-form {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.9rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.connections-active-card span,
+.connections-form-header span,
+.connections-card-main span {
+  color: #92a0ae;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.connections-list {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.connections-card.active {
+  border-color: rgba(242, 179, 95, 0.2);
+  background: rgba(242, 179, 95, 0.08);
+}
+
+.connections-card-main {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.connections-card-meta,
+.connections-card-actions,
+.connections-form-actions {
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.connections-form {
+  gap: 0.8rem;
+}
+
+.connections-form-header {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.connections-form-grid {
+  display: grid;
+  gap: 0.7rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.connections-form-grid label {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.74rem;
+  color: #92a0ae;
+}
+
+.connections-form-wide {
+  grid-column: 1 / -1;
+}
+
 .panel,
 .terminal-card {
   background: rgba(15, 22, 32, 0.92);

@@ -16,17 +16,20 @@ const (
 )
 
 type State struct {
-	WidgetID     string     `json:"widget_id"`
-	SessionID    string     `json:"session_id"`
-	Shell        string     `json:"shell"`
-	PID          int        `json:"pid"`
-	Status       Status     `json:"status"`
-	StartedAt    time.Time  `json:"started_at"`
-	LastOutputAt *time.Time `json:"last_output_at,omitempty"`
-	ExitCode     *int       `json:"exit_code,omitempty"`
-	CanSendInput bool       `json:"can_send_input"`
-	CanInterrupt bool       `json:"can_interrupt"`
-	WorkingDir   string     `json:"working_dir,omitempty"`
+	WidgetID       string     `json:"widget_id"`
+	SessionID      string     `json:"session_id"`
+	Shell          string     `json:"shell"`
+	ConnectionID   string     `json:"connection_id,omitempty"`
+	ConnectionName string     `json:"connection_name,omitempty"`
+	ConnectionKind string     `json:"connection_kind,omitempty"`
+	PID            int        `json:"pid"`
+	Status         Status     `json:"status"`
+	StartedAt      time.Time  `json:"started_at"`
+	LastOutputAt   *time.Time `json:"last_output_at,omitempty"`
+	ExitCode       *int       `json:"exit_code,omitempty"`
+	CanSendInput   bool       `json:"can_send_input"`
+	CanInterrupt   bool       `json:"can_interrupt"`
+	WorkingDir     string     `json:"working_dir,omitempty"`
 }
 
 type OutputChunk struct {
@@ -45,6 +48,21 @@ type LaunchOptions struct {
 	WidgetID   string
 	Shell      string
 	WorkingDir string
+	Connection ConnectionSpec
+}
+
+type ConnectionSpec struct {
+	ID   string
+	Name string
+	Kind string
+	SSH  *SSHConfig
+}
+
+type SSHConfig struct {
+	Host         string
+	User         string
+	Port         int
+	IdentityFile string
 }
 
 type InputResult struct {

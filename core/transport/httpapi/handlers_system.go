@@ -10,6 +10,7 @@ func (api *API) handleBootstrap(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"product_name": "RunaTerminal",
 		"workspace":    api.runtime.Workspace.Snapshot(),
+		"connections":  api.runtime.ConnectionsSnapshot(),
 		"tools":        api.runtime.Registry.List(),
 		"repo_root":    api.runtime.RepoRoot,
 	})

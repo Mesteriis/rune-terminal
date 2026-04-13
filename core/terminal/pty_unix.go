@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strconv"
 	"sync"
 
 	"github.com/creack/pty/v2"
@@ -39,19 +40,10 @@ func DefaultShell() string {
 }
 
 func (PTYLauncher) Launch(ctx context.Context, opts LaunchOptions) (Process, error) {
-	shell := opts.Shell
-	if shell == "" {
-		shell = DefaultShell()
-	}
-	if _, err := os.Stat(shell); err != nil {
+	cmd, err := buildCommand(ctx, opts)
+	if err != nil {
 		return nil, err
 	}
-
-	cmd := exec.CommandContext(ctx, shell, "-l")
-	if opts.WorkingDir != "" {
-		cmd.Dir = opts.WorkingDir
-	}
-	cmd.Env = append(os.Environ(), "TERM=xterm-256color", "COLORTERM=truecolor")
 
 	ptmx, err := pty.StartWithSize(cmd, &pty.Winsize{Rows: 30, Cols: 120})
 	if err != nil {
@@ -65,6 +57,49 @@ func (PTYLauncher) Launch(ctx context.Context, opts LaunchOptions) (Process, err
 	}
 	go process.readLoop()
 	return process, nil
+}
+
+func buildCommand(ctx context.Context, opts LaunchOptions) (*exec.Cmd, error) {
+	var cmd *exec.Cmd
+	switch opts.Connection.Kind {
+	case "", "local":
+		shell := opts.Shell
+		if shell == "" {
+			shell = DefaultShell()
+		}
+		if _, err := os.Stat(shell); err != nil {
+			return nil, err
+		}
+		cmd = exec.CommandContext(ctx, shell, "-l")
+		if opts.WorkingDir != "" {
+			cmd.Dir = opts.WorkingDir
+		}
+	case "ssh":
+		if opts.Connection.SSH == nil {
+			return nil, errors.New("ssh connection is missing config")
+		}
+		if opts.Connection.SSH.Host == "" {
+			return nil, errors.New("ssh connection host is required")
+		}
+		args := make([]string, 0, 8)
+		if opts.Connection.SSH.Port > 0 {
+			args = append(args, "-p", strconv.Itoa(opts.Connection.SSH.Port))
+		}
+		if opts.Connection.SSH.IdentityFile != "" {
+			args = append(args, "-i", opts.Connection.SSH.IdentityFile)
+		}
+		target := opts.Connection.SSH.Host
+		if opts.Connection.SSH.User != "" {
+			target = opts.Connection.SSH.User + "@" + target
+		}
+		args = append(args, target)
+		cmd = exec.CommandContext(ctx, "ssh", args...)
+	default:
+		return nil, errors.New("unsupported connection kind")
+	}
+
+	cmd.Env = append(os.Environ(), "TERM=xterm-256color", "COLORTERM=truecolor")
+	return cmd, nil
 }
 
 func (p *ptyProcess) readLoop() {

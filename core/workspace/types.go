@@ -5,11 +5,12 @@ type WidgetKind string
 const WidgetKindTerminal WidgetKind = "terminal"
 
 type Widget struct {
-	ID          string     `json:"id"`
-	Kind        WidgetKind `json:"kind"`
-	Title       string     `json:"title"`
-	Description string     `json:"description,omitempty"`
-	TerminalID  string     `json:"terminal_id,omitempty"`
+	ID           string     `json:"id"`
+	Kind         WidgetKind `json:"kind"`
+	Title        string     `json:"title"`
+	Description  string     `json:"description,omitempty"`
+	TerminalID   string     `json:"terminal_id,omitempty"`
+	ConnectionID string     `json:"connection_id,omitempty"`
 }
 
 type Tab struct {

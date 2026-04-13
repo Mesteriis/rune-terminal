@@ -2,6 +2,7 @@ import type {
   AgentCatalog,
   AuditEvent,
   BootstrapPayload,
+  ConnectionCatalog,
   ExecuteToolRequest,
   ExecuteToolResponse,
   IgnoreRule,
@@ -13,7 +14,7 @@ import type {
 } from '../types'
 import type { RuntimeInfo } from './runtime'
 import { normalizeTerminalSnapshot } from './terminal'
-import { normalizeBootstrapPayload, normalizeWorkspace } from './workspace'
+import { normalizeBootstrapPayload, normalizeConnectionCatalog, normalizeWorkspace } from './workspace'
 
 export class RtermClient {
   private readonly runtime: RuntimeInfo
@@ -51,6 +52,16 @@ export class RtermClient {
     })
   }
 
+  async createTerminalTabWithConnection(
+    connectionId: string,
+    title?: string,
+  ): Promise<{ tab_id: string; widget_id: string; workspace: Workspace }> {
+    return this.workspaceRequest('/api/v1/workspace/tabs', {
+      method: 'POST',
+      body: JSON.stringify({ ...(title ? { title } : {}), connection_id: connectionId }),
+    })
+  }
+
   async renameTab(tabId: string, title: string): Promise<{ tab: unknown; workspace: Workspace }> {
     return this.workspaceRequest(`/api/v1/workspace/tabs/${tabId}/rename`, {
       method: 'PATCH',
@@ -84,6 +95,35 @@ export class RtermClient {
 
   async agentCatalog(): Promise<AgentCatalog> {
     return this.request<AgentCatalog>('/api/v1/agent')
+  }
+
+  async connections(): Promise<ConnectionCatalog> {
+    return normalizeConnectionCatalog(await this.request<ConnectionCatalog>('/api/v1/connections'))
+  }
+
+  async selectActiveConnection(connectionId: string): Promise<ConnectionCatalog> {
+    return normalizeConnectionCatalog(await this.request<ConnectionCatalog>('/api/v1/connections/active', {
+      method: 'PUT',
+      body: JSON.stringify({ connection_id: connectionId }),
+    }))
+  }
+
+  async saveSSHConnection(input: {
+    id?: string
+    name?: string
+    host: string
+    user?: string
+    port?: number
+    identity_file?: string
+  }): Promise<{ connection: unknown; connections: ConnectionCatalog }> {
+    const result = await this.request<{ connection: unknown; connections: ConnectionCatalog }>('/api/v1/connections/ssh', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    })
+    return {
+      ...result,
+      connections: normalizeConnectionCatalog(result.connections),
+    }
   }
 
   async trustedRules(): Promise<{ rules: TrustedRule[] }> {

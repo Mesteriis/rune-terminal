@@ -237,7 +237,7 @@ func (r *Runtime) workspaceCreateTerminalTabTool() toolruntime.Definition {
 	return toolruntime.Definition{
 		Name:         "workspace.create_terminal_tab",
 		Description:  "Create a new terminal tab and focus it.",
-		InputSchema:  json.RawMessage(`{"type":"object","properties":{"title":{"type":"string"}},"additionalProperties":false}`),
+		InputSchema:  json.RawMessage(`{"type":"object","properties":{"title":{"type":"string"},"connection_id":{"type":"string"}},"additionalProperties":false}`),
 		OutputSchema: json.RawMessage(`{"type":"object"}`),
 		Metadata: toolruntime.Metadata{
 			Capabilities: []string{"workspace:write", "terminal:spawn"},
@@ -254,16 +254,21 @@ func (r *Runtime) workspaceCreateTerminalTabTool() toolruntime.Definition {
 			if title == "" {
 				title = "New Shell"
 			}
+			target := title
+			if payload.ConnectionID != "" {
+				target += " on " + payload.ConnectionID
+			}
 			return toolruntime.OperationPlan{
 				Operation: toolruntime.Operation{
-					Summary:              "create terminal tab " + title,
+					Summary:              "create terminal tab " + target,
 					RequiredCapabilities: []string{"workspace:write", "terminal:spawn"},
 					ApprovalTier:         policy.ApprovalTierSafe,
 				},
 			}, nil
 		},
 		Execute: func(ctx context.Context, execCtx toolruntime.ExecutionContext, input any) (any, error) {
-			result, err := r.CreateTerminalTab(ctx, input.(createTerminalTabInput).Title)
+			payload := input.(createTerminalTabInput)
+			result, err := r.CreateTerminalTabWithConnection(ctx, payload.Title, payload.ConnectionID)
 			if err != nil {
 				return nil, normalizeToolError(err)
 			}

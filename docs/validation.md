@@ -4,6 +4,51 @@ Validation date: `2026-04-13`
 
 All commands below were run against the repository in its current state on macOS arm64.
 
+## Latest remote / SSH foundation slice
+
+The latest parity slice focused only on the first remote / SSH foundation:
+
+- the runtime now owns a connection catalog with explicit `local` and `ssh` entries
+- SSH connection profiles can be saved and selected through dedicated transport routes
+- new terminal tabs can be launched with a specific connection target
+- the shell now exposes a dedicated connections surface and uses the active connection as the default target for new tabs
+
+Validation executed for this slice:
+
+```bash
+./scripts/go.sh test ./core/connections ./core/terminal ./core/app ./core/transport/httpapi
+npm --prefix frontend run lint
+npm --prefix frontend run build
+npm run validate
+npm run build:core
+npm run tauri:dev
+RTERM_AUTH_TOKEN=test-token ./apps/desktop/bin/rterm-core serve
+curl -sf http://127.0.0.1:<sidecar-port>/healthz
+curl -sf -H 'Authorization: Bearer test-token' http://127.0.0.1:<manual-port>/api/v1/connections
+curl -sf -X POST -H 'Content-Type: application/json' -H 'Authorization: Bearer test-token' http://127.0.0.1:<manual-port>/api/v1/connections/ssh -d '{"name":"Parity SSH","host":"example.com","user":"dev","port":22}'
+curl -sf -X PUT -H 'Content-Type: application/json' -H 'Authorization: Bearer test-token' http://127.0.0.1:<manual-port>/api/v1/connections/active -d '{"connection_id":"local"}'
+curl -sf -X POST -H 'Content-Type: application/json' -H 'Authorization: Bearer test-token' http://127.0.0.1:<manual-port>/api/v1/workspace/tabs -d '{"title":"SSH Test","connection_id":"local"}'
+```
+
+Observed result:
+
+- targeted Go tests passed for connections, terminal, app, and HTTP transport
+- frontend lint passed
+- frontend build passed
+- full repository validation passed
+- `tauri:dev` still launched the desktop shell successfully after the remote foundation changes
+- `GET /healthz` on both the Tauri-launched sidecar and the manually started sidecar returned `{"status":"ok"}`
+- `GET /api/v1/connections` returned the built-in local connection
+- `POST /api/v1/connections/ssh` returned a persisted SSH profile in the connection catalog
+- `PUT /api/v1/connections/active` updated the active connection selection
+- `POST /api/v1/workspace/tabs` returned a new tab/widget snapshot using the requested connection target
+
+What was not fully validated in this slice:
+
+- a full live SSH shell was not claimed as validated
+- the saved SSH profile was exercised as a real catalog and launch target foundation, but not as a full end-to-end remote parity flow against a reachable SSH host
+- browser-driven click smoke for the new connections panel was not available in this environment
+
 ## Latest widget/app discovery parity slice
 
 The latest parity slice focused only on richer widget/app discovery behavior derived from TideTerm:

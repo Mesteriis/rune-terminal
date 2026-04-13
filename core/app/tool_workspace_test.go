@@ -2,8 +2,10 @@ package app
 
 import (
 	"context"
+	"path/filepath"
 	"testing"
 
+	"github.com/avm/rterm/core/connections"
 	"github.com/avm/rterm/core/terminal"
 	"github.com/avm/rterm/core/toolruntime"
 	"github.com/avm/rterm/core/workspace"
@@ -62,6 +64,7 @@ func TestWorkspaceCreateAndCloseTerminalTabTools(t *testing.T) {
 		RepoRoot:  "/tmp/rterm",
 		Workspace: workspace.NewService(workspace.BootstrapDefault()),
 		Terminals: service,
+		Connections: mustNewConnectionsService(t),
 	}
 
 	createTool := runtime.workspaceCreateTerminalTabTool()
@@ -90,6 +93,15 @@ func TestWorkspaceCreateAndCloseTerminalTabTools(t *testing.T) {
 	if _, err := runtime.Terminals.GetState(widgetID); err == nil {
 		t.Fatalf("expected closed tab session to be removed")
 	}
+}
+
+func mustNewConnectionsService(t *testing.T) *connections.Service {
+	t.Helper()
+	service, err := connections.NewService(filepath.Join(t.TempDir(), "connections.json"))
+	if err != nil {
+		t.Fatalf("new connections service: %v", err)
+	}
+	return service
 }
 
 func TestWorkspaceRenameTabTool(t *testing.T) {

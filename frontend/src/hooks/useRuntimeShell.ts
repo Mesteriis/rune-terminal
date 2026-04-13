@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { summarizeOutput } from '../lib/agentFeed'
 import { useAgentActions } from './useAgentActions'
 import { useApprovalFlow } from './useApprovalFlow'
+import { useConnectionsActions } from './useConnectionsActions'
 import { useRuntimeBootstrap } from './useRuntimeBootstrap'
 import { useAgentFeed } from './useAgentFeed'
 import { usePolicyLists } from './usePolicyLists'
@@ -60,6 +61,18 @@ export function useRuntimeShell() {
     return workspace.tabs.find((tab) => tab.id === workspace.active_tab_id) ?? null
   }, [bootstrap.workspace])
 
+  const activeConnection = useMemo(() => {
+    const connections = bootstrap.connections
+    if (!connections) {
+      return null
+    }
+    return (
+      connections.connections.find((connection) => connection.id === connections.active_connection_id) ??
+      connections.connections.find((connection) => connection.active) ??
+      null
+    )
+  }, [bootstrap.connections])
+
   useEffect(() => {
     writeWidgetContextPreference(widgetContextEnabled)
   }, [widgetContextEnabled])
@@ -85,6 +98,14 @@ export function useRuntimeShell() {
     }
     const nextWorkspace = await bootstrap.client.workspace()
     bootstrap.setWorkspace(nextWorkspace)
+  }
+
+  async function refreshConnections() {
+    if (!bootstrap.client) {
+      return
+    }
+    const nextConnections = await bootstrap.client.connections()
+    bootstrap.setConnections(nextConnections)
   }
 
   async function refreshAudit() {
@@ -126,7 +147,7 @@ export function useRuntimeShell() {
       approvalFlow.clearPendingApproval()
 
       if (response.status === 'ok') {
-        await Promise.all([refreshWorkspace(), refreshPolicyLists()])
+        await Promise.all([refreshWorkspace(), refreshPolicyLists(), refreshConnections()])
         if (request.tool_name.startsWith('term.') || request.tool_name.startsWith('workspace.')) {
           const targetWidgetID = resolveTerminalTargetWidgetID(request, response, bootstrap.workspace.active_widget_id)
           const terminalResponse = await refreshTerminalState(targetWidgetID)
@@ -165,6 +186,11 @@ export function useRuntimeShell() {
     refreshTerminalState,
     setNotice,
   })
+  const connectionActions = useConnectionsActions({
+    client: bootstrap.client,
+    setConnections: bootstrap.setConnections,
+    setNotice,
+  })
   const agentActions = useAgentActions({
     client: bootstrap.client,
     workspace: bootstrap.workspace,
@@ -183,6 +209,7 @@ export function useRuntimeShell() {
     workspace: bootstrap.workspace,
     workspaceContext,
     repoRoot: bootstrap.repoRoot,
+    connections: bootstrap.connections,
     tools: bootstrap.tools,
     terminalState,
     trustedRules,
@@ -197,6 +224,7 @@ export function useRuntimeShell() {
     agentCatalog: bootstrap.agentCatalog,
     activeWidget,
     activeTab,
+    activeConnection,
     widgetContextEnabled,
     clearNotice: () => setNotice(null),
     executeTool,
@@ -211,11 +239,14 @@ export function useRuntimeShell() {
     focusWidget: workspaceActions.focusWidget,
     focusTab: workspaceActions.focusTab,
     createTerminalTab: workspaceActions.createTerminalTab,
+    createTerminalTabWithConnection: workspaceActions.createTerminalTabWithConnection,
     moveTab: workspaceActions.moveTab,
     renameTab: workspaceActions.renameTab,
     setTabPinned: workspaceActions.setTabPinned,
     closeTab: workspaceActions.closeTab,
     interruptWidget: workspaceActions.interruptWidget,
+    selectConnection: connectionActions.selectConnection,
+    saveSSHConnection: connectionActions.saveSSHConnection,
     refreshTerminalState,
     setActiveSelection: agentActions.setActiveSelection,
     toggleWidgetContext: () => setWidgetContextEnabled((current) => !current),

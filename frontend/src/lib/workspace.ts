@@ -1,9 +1,10 @@
-import type { BootstrapPayload, Tab, Widget, Workspace } from '../types'
+import type { BootstrapPayload, Connection, ConnectionCatalog, Tab, Widget, Workspace } from '../types'
 
 export function normalizeBootstrapPayload(payload: BootstrapPayload): BootstrapPayload {
   return {
     ...payload,
     workspace: normalizeWorkspace(payload.workspace),
+    connections: normalizeConnectionCatalog(payload.connections),
     tools: Array.isArray(payload.tools) ? payload.tools : [],
     repo_root: typeof payload.repo_root === 'string' ? payload.repo_root : '',
   }
@@ -80,4 +81,25 @@ function resolveActiveTabID(
   }
 
   return tabs[0]?.id ?? ''
+}
+
+export function normalizeConnectionCatalog(catalog: ConnectionCatalog | null | undefined): ConnectionCatalog {
+  const connections = Array.isArray(catalog?.connections) ? catalog.connections.map(normalizeConnection) : []
+  const activeConnectionID =
+    typeof catalog?.active_connection_id === 'string' && connections.some((connection) => connection.id === catalog.active_connection_id)
+      ? catalog.active_connection_id
+      : connections.find((connection) => connection.active)?.id ?? connections[0]?.id ?? 'local'
+  return {
+    connections,
+    active_connection_id: activeConnectionID,
+  }
+}
+
+function normalizeConnection(connection: Connection): Connection {
+  return {
+    ...connection,
+    name: typeof connection.name === 'string' && connection.name.length > 0 ? connection.name : 'Connection',
+    description: typeof connection.description === 'string' ? connection.description : '',
+    active: Boolean(connection.active),
+  }
 }

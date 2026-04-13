@@ -17,6 +17,8 @@ It is intentionally operational, not narrative.
 - The widget dock settings flyout now deep-links into a user-facing shell settings surface with `Overview`, `Trusted tools`, `Secret shield`, and `Help` views.
 - The widget dock launcher flyout now acts as the shell-level entry surface for opening a new terminal tab, returning to the AI panel, opening runtime/audit utilities, and quickly focusing known widgets.
 - The shell now also exposes a dedicated `Launcher` section with searchable discovery for terminal, widget, settings, help, runtime, and audit surfaces.
+- Widgets can now be bound to a specific connection ID.
+- New terminal tabs default to the currently selected connection unless a specific connection is supplied at creation time.
 - Runtime utilities and audit remain secondary shell surfaces reachable from the dock and the AI-panel overflow menu.
 - New terminal tabs can be created at runtime.
 - Closing a tab tears down its terminal session and removes the associated widget from the workspace snapshot.
@@ -37,10 +39,24 @@ It is intentionally operational, not narrative.
 - Concurrent `StartSession` calls for the same widget coalesce onto a single launch attempt.
 - A second `StartSession` must not spawn a second process for the same widget.
 - Session IDs are currently equal to widget IDs in the MVP.
+- Sessions are now connection-aware.
+- Local sessions use the local shell launcher.
+- SSH sessions launch the system `ssh` binary inside the PTY using the saved connection profile.
 - The frontend now hydrates terminal content from a JSON snapshot before opening the SSE stream, so a newly mounted terminal starts with buffered scrollback instead of only new output.
 - The frontend terminal shell uses a compact TideTerm-derived header, toolbar, and command-strip layout. `Refresh`, `Focus`, `Interrupt`, `Clear view`, and `Jump to latest` are shell affordances layered over the same Go-owned session state.
 - On startup, the runtime eagerly boots sessions for terminal widgets in the default workspace.
 - When a process exits, terminal state moves to `exited` or `failed`, input/interrupt are disabled, and active stream subscribers are closed.
+
+## Connection catalog contract
+
+- The runtime owns a connection catalog separate from the workspace snapshot.
+- The catalog always includes a built-in `local` connection.
+- Saved SSH profiles are persisted in the runtime state directory and surfaced alongside the built-in local target.
+- The catalog also stores one active connection ID that acts as the default target for new terminal tabs.
+- Selecting an active connection changes the default target for future tabs. It does not migrate already-running sessions.
+- Widgets keep their own `connection_id`, so tabs and sessions remain explicitly bound after creation.
+- Connection selection and profile creation are exposed through dedicated management routes and mirrored in the shell connections panel.
+- Current SSH status is shallow: a saved SSH profile is `configured`; it is not treated as a long-lived connected controller.
 
 ## Output subscription contract
 
@@ -135,3 +151,5 @@ Confirmable boundaries:
 - Widget/app discoverability now uses a closest-compatible launcher flyout in the dock instead of a full TideTerm app catalog. It is intentionally limited to shell entry points and current widgets until a broader launcher/app domain exists.
 - The new launcher section is likewise a closest-compatible equivalent: it mirrors TideTerm’s searchable discovery feel, but it currently catalogs shell surfaces and known widgets rather than a full local app registry.
 - The settings surface is still a closest-compatible equivalent, not exact parity with TideTerm’s broader waveconfig/help universe.
+- The remote foundation is now real but intentionally narrow: SSH uses the local system `ssh` binary instead of TideTerm's older remote controller stack.
+- SSH profile management currently supports only direct saved host/user/port/identity-file fields. It does not import `~/.ssh/config`, negotiate richer auth flows, or provide long-lived remote status tracking.

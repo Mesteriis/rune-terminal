@@ -1,6 +1,7 @@
 import { AgentPanel } from './AgentPanel'
 import { AgentHeaderMenuButton } from './AgentHeaderMenuButton'
 import { AuditPanel } from './AuditPanel'
+import { ConnectionsPanel } from './ConnectionsPanel'
 import { LauncherPanel } from './LauncherPanel'
 import { PolicyPanel } from './PolicyPanel'
 import type { PolicyView } from './PolicyViews'
@@ -10,6 +11,7 @@ import type {
   AgentCatalog,
   AgentFeedEntry,
   AuditEvent,
+  ConnectionCatalog,
   ExecuteToolResponse,
   IgnoreRule,
   PendingApproval,
@@ -27,6 +29,7 @@ type AgentSidebarProps = {
   catalog: AgentCatalog | null
   workspaceContext: WorkspaceContextSummary | null
   workspace: import('../types').Workspace | null
+  connections: ConnectionCatalog | null
   tools: ToolInfo[]
   lastResponse: ExecuteToolResponse | null
   notice: RuntimeNotice | null
@@ -43,6 +46,15 @@ type AgentSidebarProps = {
   onToggleWidgetContext: () => void
   onFocusWidget: (widget: import('../types').Widget) => void | Promise<void>
   onCreateTerminalTab: () => void | Promise<void>
+  onCreateTerminalTabWithConnection: (connectionId: string, title?: string) => void | Promise<void>
+  onSelectConnection: (connectionId: string) => void | Promise<void>
+  onSaveSSHConnection: (input: {
+    name?: string
+    host: string
+    user?: string
+    port?: number
+    identity_file?: string
+  }) => void | Promise<void>
   onExecuteTool: (request: { tool_name: string; input?: Record<string, unknown> }) => void | Promise<unknown>
   onAddTrustedRule: (input: { scope: string; matcher: string; note?: string }) => void | Promise<unknown>
   onRemoveTrustedRule: (ruleId: string) => void | Promise<unknown>
@@ -63,6 +75,7 @@ export function AgentSidebar({
   catalog,
   workspace,
   workspaceContext,
+  connections,
   tools,
   lastResponse,
   notice,
@@ -79,6 +92,9 @@ export function AgentSidebar({
   onToggleWidgetContext,
   onFocusWidget,
   onCreateTerminalTab,
+  onCreateTerminalTabWithConnection,
+  onSelectConnection,
+  onSaveSSHConnection,
   onExecuteTool,
   onAddTrustedRule,
   onRemoveTrustedRule,
@@ -105,6 +121,12 @@ export function AgentSidebar({
             title: 'Open something',
             subtitle: 'Discover widgets, shell utilities, and help surfaces from one searchable catalog.',
           }
+        : section === 'connections'
+          ? {
+              eyebrow: 'Connections',
+              title: 'Connection targets',
+              subtitle: 'Choose the default shell target or store a minimal SSH profile for new tabs.',
+            }
         : section === 'tools'
           ? {
               eyebrow: 'Runtime',
@@ -175,6 +197,14 @@ export function AgentSidebar({
               onCreateTerminalTab={onCreateTerminalTab}
               onFocusWidget={onFocusWidget}
               onSelectSection={onSelectSection}
+            />
+          ) : null}
+          {section === 'connections' ? (
+            <ConnectionsPanel
+              catalog={connections}
+              onSelectConnection={onSelectConnection}
+              onCreateTerminalTabWithConnection={onCreateTerminalTabWithConnection}
+              onSaveSSHConnection={onSaveSSHConnection}
             />
           ) : null}
           {section === 'tools' ? (

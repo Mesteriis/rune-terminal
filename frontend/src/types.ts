@@ -4,6 +4,7 @@ export type Widget = {
   title: string
   description?: string
   terminal_id?: string
+  connection_id?: string
 }
 
 export type Tab = {
@@ -34,6 +35,9 @@ export type TerminalState = {
   widget_id: string
   session_id: string
   shell: string
+  connection_id?: string
+  connection_name?: string
+  connection_kind?: string
   pid: number
   status: string
   started_at: string
@@ -42,6 +46,33 @@ export type TerminalState = {
   can_send_input: boolean
   can_interrupt: boolean
   working_dir?: string
+}
+
+export type ConnectionKind = 'local' | 'ssh'
+
+export type ConnectionStatus = 'ready' | 'configured'
+
+export type SSHConnectionConfig = {
+  host: string
+  user?: string
+  port?: number
+  identity_file?: string
+}
+
+export type Connection = {
+  id: string
+  kind: ConnectionKind
+  name: string
+  description?: string
+  status: ConnectionStatus
+  active: boolean
+  builtin?: boolean
+  ssh?: SSHConnectionConfig
+}
+
+export type ConnectionCatalog = {
+  connections: Connection[]
+  active_connection_id: string
 }
 
 export type OutputChunk = {
@@ -225,6 +256,7 @@ export type AuditEvent = {
 export type BootstrapPayload = {
   product_name: string
   workspace: Workspace
+  connections: ConnectionCatalog
   tools: ToolInfo[]
   repo_root: string
 }

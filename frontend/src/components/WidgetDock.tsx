@@ -34,6 +34,11 @@ export function WidgetDock({
       onSelect: () => onCreateTerminalTab(),
     },
     {
+      label: SHELL_SECTION_LABELS.connections,
+      detail: 'Choose the default shell target and manage SSH profiles',
+      onSelect: () => onSelectSection('connections'),
+    },
+    {
       label: SHELL_SECTION_LABELS.agent,
       detail: 'Return to the AI panel and active workspace context',
       onSelect: () => onSelectSection('agent'),

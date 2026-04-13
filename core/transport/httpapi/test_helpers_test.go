@@ -12,6 +12,7 @@ import (
 	"github.com/avm/rterm/core/agent"
 	"github.com/avm/rterm/core/app"
 	"github.com/avm/rterm/core/audit"
+	"github.com/avm/rterm/core/connections"
 	"github.com/avm/rterm/core/policy"
 	"github.com/avm/rterm/core/terminal"
 	"github.com/avm/rterm/core/toolruntime"
@@ -36,6 +37,10 @@ func newTestHandler(t *testing.T, definitions ...toolruntime.Definition) (http.H
 	if err != nil {
 		t.Fatalf("NewStore error: %v", err)
 	}
+	connectionStore, err := connections.NewService(filepath.Join(tempDir, "connections.json"))
+	if err != nil {
+		t.Fatalf("NewService error: %v", err)
+	}
 	registry := toolruntime.NewRegistry()
 	for _, definition := range definitions {
 		if err := registry.Register(definition); err != nil {
@@ -43,13 +48,14 @@ func newTestHandler(t *testing.T, definitions ...toolruntime.Definition) (http.H
 		}
 	}
 	runtime := &app.Runtime{
-		RepoRoot:  "/workspace/repo",
-		Workspace: workspace.NewService(workspace.BootstrapDefault()),
-		Terminals: terminal.NewService(terminal.DefaultLauncher()),
-		Agent:     agentStore,
-		Policy:    policyStore,
-		Audit:     auditLog,
-		Registry:  registry,
+		RepoRoot:    "/workspace/repo",
+		Workspace:   workspace.NewService(workspace.BootstrapDefault()),
+		Terminals:   terminal.NewService(terminal.DefaultLauncher()),
+		Connections: connectionStore,
+		Agent:       agentStore,
+		Policy:      policyStore,
+		Audit:       auditLog,
+		Registry:    registry,
 	}
 	runtime.Executor = toolruntime.NewExecutor(runtime.Registry, runtime.Policy, runtime.Audit, runtime.Agent)
 	return NewHandler(runtime, testAuthToken), agentStore

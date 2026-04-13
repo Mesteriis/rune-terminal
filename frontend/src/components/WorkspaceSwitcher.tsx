@@ -5,7 +5,9 @@ type WorkspaceSwitcherProps = {
   repoRoot: string
   activeTabTitle: string
   activeWidgetTitle: string
+  activeConnectionName: string
   onCreateTab: () => void | Promise<void>
+  onOpenConnections: () => void
 }
 
 export function WorkspaceSwitcher({
@@ -13,7 +15,9 @@ export function WorkspaceSwitcher({
   repoRoot,
   activeTabTitle,
   activeWidgetTitle,
+  activeConnectionName,
   onCreateTab,
+  onOpenConnections,
 }: WorkspaceSwitcherProps) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement | null>(null)
@@ -62,6 +66,10 @@ export function WorkspaceSwitcher({
               <span>Active widget</span>
               <strong>{activeWidgetTitle}</strong>
             </div>
+            <div>
+              <span>New tabs target</span>
+              <strong>{activeConnectionName}</strong>
+            </div>
           </div>
           <div className="workspace-switcher-actions">
             <button
@@ -72,6 +80,16 @@ export function WorkspaceSwitcher({
               }}
             >
               New terminal tab
+            </button>
+            <button
+              type="button"
+              className="ghost-button"
+              onClick={() => {
+                setOpen(false)
+                onOpenConnections()
+              }}
+            >
+              Connections
             </button>
           </div>
           <p className="workspace-switcher-note">

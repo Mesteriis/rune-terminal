@@ -25,7 +25,8 @@ type moveTabInput struct {
 }
 
 type createTerminalTabInput struct {
-	Title string `json:"title,omitempty"`
+	Title        string `json:"title,omitempty"`
+	ConnectionID string `json:"connection_id,omitempty"`
 }
 
 type closeTabInput struct {
@@ -83,6 +84,7 @@ func (r *Runtime) registerTools() error {
 	for _, register := range []func() []toolruntime.Definition{
 		r.workspaceTools,
 		r.terminalTools,
+		r.connectionTools,
 		r.policyTools,
 	} {
 		for _, tool := range register() {

@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react'
 
 import { RtermClient } from '../lib/api'
 import { resolveRuntimeInfo } from '../lib/runtime'
-import type { AgentCatalog, AuditEvent, BootstrapPayload, ToolInfo, Workspace } from '../types'
+import type { AgentCatalog, AuditEvent, BootstrapPayload, ConnectionCatalog, ToolInfo, Workspace } from '../types'
 
 export function useRuntimeBootstrap() {
   const [client, setClient] = useState<RtermClient | null>(null)
   const [workspace, setWorkspace] = useState<Workspace | null>(null)
+  const [connections, setConnections] = useState<ConnectionCatalog | null>(null)
   const [repoRoot, setRepoRoot] = useState('')
   const [tools, setTools] = useState<ToolInfo[]>([])
   const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([])
@@ -15,6 +16,7 @@ export function useRuntimeBootstrap() {
 
   function applyBootstrap(payload: BootstrapPayload) {
     setWorkspace(payload.workspace)
+    setConnections(payload.connections)
     setRepoRoot(payload.repo_root)
     setTools(payload.tools ?? [])
   }
@@ -43,12 +45,14 @@ export function useRuntimeBootstrap() {
   return {
     client,
     workspace,
+    connections,
     repoRoot,
     tools,
     auditEvents,
     agentCatalog,
     runtimeError,
     setWorkspace,
+    setConnections,
     setRepoRoot,
     setTools,
     setAuditEvents,

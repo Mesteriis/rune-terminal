@@ -35,6 +35,7 @@ Tauri Desktop Shell (Rust)
 
 Go Core
   -> workspace service
+  -> connection service
   -> terminal service
   -> tool runtime
   -> agent profile and work-mode store
@@ -47,8 +48,11 @@ Go Core
 
 - `core/workspace`
   Manages workspace snapshots, widget inventory and active widget focus.
+- `core/connections`
+  Manages the persisted connection catalog, active connection selection, and local versus SSH connection metadata.
 - `core/terminal`
   Manages terminal sessions, PTY processes, output buffering and subscriptions.
+  Terminal launches are connection-aware: local sessions use the current shell, while SSH sessions launch the system `ssh` binary inside the PTY.
 - `core/toolruntime`
   Hosts tool registry, operation planning, approval handling, execution results and audit emission.
 - `core/agent`
@@ -66,6 +70,7 @@ Go Core
 - Go listens on loopback only and emits a ready file with the final port.
 - Tauri exposes `runtime_info` so the frontend can discover the Go base URL and auth token.
 - Frontend talks directly to the Go core over local HTTP and SSE.
+- Shell-level management routes now include connection catalog reads and writes in addition to workspace, policy, agent, and terminal adapters.
 - transport keeps HTTP semantics explicit:
   - `401` for missing or invalid auth
   - `400` for malformed requests or invalid tool input
@@ -105,5 +110,6 @@ Role presets, work modes and system prompt profiles are not UI-only metadata. Th
 - UI state is intentionally thin; the backend owns the durable model.
 - transport is an adapter, not a product boundary
 - tool runtime is generic and policy-aware from day one
+- connection state is explicit and backend-owned instead of being inferred from frontend shell heuristics
 - terminal orchestration is isolated from workspace orchestration
 - future AI features can integrate through the tool runtime instead of growing a second orchestration stack

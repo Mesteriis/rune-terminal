@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/avm/rterm/core/connections"
 	"github.com/avm/rterm/core/terminal"
 	"github.com/avm/rterm/core/workspace"
 	"github.com/avm/rterm/internal/ids"
@@ -62,15 +63,31 @@ func (r *Runtime) MoveTab(tabID string, beforeTabID string) (workspace.Snapshot,
 }
 
 func (r *Runtime) CreateTerminalTab(ctx context.Context, title string) (CreateTerminalTabResult, error) {
+	return r.CreateTerminalTabWithConnection(ctx, title, "")
+}
+
+func (r *Runtime) CreateTerminalTabWithConnection(ctx context.Context, title string, connectionID string) (CreateTerminalTabResult, error) {
 	title = strings.TrimSpace(title)
 	if title == "" {
 		title = "New Shell"
 	}
 	widgetID := ids.New("term")
 	tabID := ids.New("tab")
+	if connectionID == "" {
+		activeConnection, err := r.Connections.Active()
+		if err != nil {
+			return CreateTerminalTabResult{}, err
+		}
+		connectionID = activeConnection.ID
+	}
+	connection, err := r.connectionForWidget(connectionID)
+	if err != nil {
+		return CreateTerminalTabResult{}, err
+	}
 	if _, err := r.Terminals.StartSession(ctx, terminal.LaunchOptions{
 		WidgetID:   widgetID,
 		WorkingDir: r.RepoRoot,
+		Connection: connection,
 	}); err != nil {
 		return CreateTerminalTabResult{}, err
 	}
@@ -82,11 +99,12 @@ func (r *Runtime) CreateTerminalTab(ctx context.Context, title string) (CreateTe
 			WidgetIDs:   []string{widgetID},
 		},
 		workspace.Widget{
-			ID:          widgetID,
-			Kind:        workspace.WidgetKindTerminal,
-			Title:       title,
-			Description: fmt.Sprintf("%s terminal session", title),
-			TerminalID:  widgetID,
+			ID:           widgetID,
+			Kind:         workspace.WidgetKindTerminal,
+			Title:        title,
+			Description:  fmt.Sprintf("%s terminal session", title),
+			TerminalID:   widgetID,
+			ConnectionID: connectionID,
 		},
 	)
 	return CreateTerminalTabResult{
@@ -94,6 +112,18 @@ func (r *Runtime) CreateTerminalTab(ctx context.Context, title string) (CreateTe
 		WidgetID:  widgetID,
 		Workspace: snapshot,
 	}, nil
+}
+
+func (r *Runtime) ConnectionsSnapshot() connections.Snapshot {
+	return r.Connections.Snapshot()
+}
+
+func (r *Runtime) SelectActiveConnection(connectionID string) (connections.Snapshot, error) {
+	return r.Connections.Select(connectionID)
+}
+
+func (r *Runtime) SaveSSHConnection(input connections.SaveSSHInput) (connections.Connection, connections.Snapshot, error) {
+	return r.Connections.SaveSSH(input)
 }
 
 func (r *Runtime) CloseTab(tabID string) (CloseTabResult, error) {

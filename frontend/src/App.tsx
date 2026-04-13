@@ -29,9 +29,11 @@ function App() {
       <WorkspaceRail
         workspace={shell.workspace}
         repoRoot={shell.repoRoot}
+        activeConnectionName={shell.activeConnection?.name ?? 'Local Machine'}
         activeTabId={shell.workspace?.active_tab_id}
         aiPanelVisible={layout.aiPanelVisible}
         onToggleAIPanel={layout.toggleAIPanel}
+        onOpenConnections={() => layout.selectSection('connections')}
         onFocusTab={shell.focusTab}
         onCreateTab={() => shell.createTerminalTab()}
         onCloseTab={shell.closeTab}
@@ -63,6 +65,7 @@ function App() {
                   onSelectPolicyView={layout.selectPolicyView}
                   catalog={shell.agentCatalog}
                   workspace={shell.workspace}
+                  connections={shell.connections}
                   workspaceContext={shell.workspaceContext}
                   tools={shell.tools}
                   lastResponse={shell.lastResponse}
@@ -80,6 +83,9 @@ function App() {
                   onToggleWidgetContext={shell.toggleWidgetContext}
                   onFocusWidget={shell.focusWidget}
                   onCreateTerminalTab={() => shell.createTerminalTab()}
+                  onCreateTerminalTabWithConnection={shell.createTerminalTabWithConnection}
+                  onSelectConnection={shell.selectConnection}
+                  onSaveSSHConnection={shell.saveSSHConnection}
                   onExecuteTool={shell.executeTool}
                   onAddTrustedRule={shell.addTrustedRule}
                   onRemoveTrustedRule={shell.removeTrustedRule}
@@ -110,6 +116,7 @@ function App() {
                     widgetId={shell.activeWidget.id}
                     state={shell.terminalState}
                     onInterrupt={shell.interruptWidget}
+                    onOpenConnections={() => layout.selectSection('connections')}
                     onTerminalAction={async () => {
                       await shell.refreshTerminalState(shell.activeWidget?.id)
                     }}

@@ -93,7 +93,7 @@ function clampPanelSize(value: unknown) {
 }
 
 function isShellSection(value: unknown): value is ShellSection {
-  return value === 'agent' || value === 'launcher' || value === 'tools' || value === 'policy' || value === 'audit'
+  return value === 'agent' || value === 'launcher' || value === 'connections' || value === 'tools' || value === 'policy' || value === 'audit'
 }
 
 function isPolicyView(value: unknown): value is PolicyView {

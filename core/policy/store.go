@@ -38,6 +38,8 @@ func defaultConfig(repoRoot string) Config {
 			filepath.Clean(repoRoot),
 		},
 		DefaultCapabilities: []string{
+			"connections:read",
+			"connections:write",
 			"workspace:read",
 			"widget:focus",
 			"terminal:read",

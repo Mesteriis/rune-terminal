@@ -52,12 +52,14 @@ export function useWorkspaceActions({
     }
   }, [client, refreshTerminalState, setNotice, setWorkspace])
 
-  const createTerminalTab = useCallback(async (title?: string) => {
+  const createTerminalTab = useCallback(async (title?: string, connectionId?: string) => {
     if (!client) {
       return
     }
     try {
-      const response = await client.createTerminalTab(title)
+      const response = connectionId
+        ? await client.createTerminalTabWithConnection(connectionId, title)
+        : await client.createTerminalTab(title)
       setWorkspace(response.workspace)
       await refreshTerminalState(response.widget_id)
     } catch (error) {
@@ -68,6 +70,10 @@ export function useWorkspaceActions({
       })
     }
   }, [client, refreshTerminalState, setNotice, setWorkspace])
+
+  const createTerminalTabWithConnection = useCallback(async (connectionId: string, title?: string) => {
+    await createTerminalTab(title, connectionId)
+  }, [createTerminalTab])
 
   const renameTab = useCallback(async (tabId: string, title: string) => {
     if (!client) {
@@ -157,6 +163,7 @@ export function useWorkspaceActions({
     focusWidget,
     focusTab,
     createTerminalTab,
+    createTerminalTabWithConnection,
     renameTab,
     setTabPinned,
     moveTab,

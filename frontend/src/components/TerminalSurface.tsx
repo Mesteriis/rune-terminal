@@ -13,9 +13,10 @@ type TerminalSurfaceProps = {
   state: TerminalState | null
   onTerminalAction?: () => Promise<void> | void
   onInterrupt?: (widgetId: string) => Promise<void> | void
+  onOpenConnections?: () => void
 }
 
-export function TerminalSurface({ client, widgetId, state, onTerminalAction, onInterrupt }: TerminalSurfaceProps) {
+export function TerminalSurface({ client, widgetId, state, onTerminalAction, onInterrupt, onOpenConnections }: TerminalSurfaceProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const terminalRef = useRef<Terminal | null>(null)
   const fitFrameRef = useRef<number | null>(null)
@@ -246,13 +247,17 @@ export function TerminalSurface({ client, widgetId, state, onTerminalAction, onI
           <p className="terminal-subtitle">{state?.working_dir ?? 'Working directory unavailable'}</p>
         </div>
         <div className="terminal-toolbar-actions">
-          <button className="ghost-button compact-button" onClick={() => void onTerminalAction?.()}>
+          <button type="button" className="ghost-button compact-button" onClick={onOpenConnections}>
+            {state?.connection_name ?? 'Local Machine'}
+          </button>
+          <button type="button" className="ghost-button compact-button" onClick={() => void onTerminalAction?.()}>
             Refresh
           </button>
-          <button className="ghost-button compact-button" onClick={() => focusTerminalTextarea(containerRef.current, terminalRef.current, false)}>
+          <button type="button" className="ghost-button compact-button" onClick={() => focusTerminalTextarea(containerRef.current, terminalRef.current, false)}>
             Focus
           </button>
           <button
+            type="button"
             className="ghost-button compact-button"
             onClick={() => (onInterrupt ? void onInterrupt(widgetId) : undefined)}
             disabled={!state?.can_interrupt}
@@ -279,6 +284,7 @@ export function TerminalSurface({ client, widgetId, state, onTerminalAction, onI
 
       <section className="terminal-command-bar">
         <span className={`status-pill status-${state?.status ?? 'unknown'}`}>{state?.status ?? 'unknown'}</span>
+        <span className="status-pill">{state?.connection_name ?? 'Local Machine'}</span>
         <span className="status-pill">Widget {state?.widget_id ?? widgetId}</span>
         <span className="status-pill">Session {state?.session_id ?? widgetId}</span>
         <span className="status-pill">PID {state?.pid ?? 'n/a'}</span>
