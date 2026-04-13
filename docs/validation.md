@@ -4,6 +4,32 @@ Validation date: `2026-04-13`
 
 All commands below were run against the repository in its current state on macOS arm64.
 
+## Latest release planning lock
+
+The latest step focused only on release control documents:
+
+- `docs/release-1.0.md`
+- `docs/roadmap-1.0.md`
+- `docs/parity-matrix.md`
+
+This step changed scope tracking and prioritization only.
+It did not change runtime semantics, transport behavior, frontend behavior, or build inputs.
+
+Validation executed for this step:
+
+- docs review only
+
+Observed result:
+
+- `1.0.0` scope, blockers, non-goals, and milestone ladder are now explicit
+- parity tracking now includes release priority, exact release gap, and next concrete step per area
+- the next implementation slice is clearly locked as `AI terminal command execution`
+
+What was not re-validated in this step:
+
+- frontend build and runtime launch were not re-run because no executable files changed
+- earlier code-validation results remain the latest executable validation state
+
 ## Latest AI conversation backend foundation slice
 
 The latest AI step focused only on replacing the fake free-text fallback with a real backend conversation path:
