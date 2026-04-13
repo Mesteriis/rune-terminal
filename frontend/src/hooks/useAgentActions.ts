@@ -16,6 +16,7 @@ type UseAgentActionsParams = {
   workspace: Workspace | null
   executeTool: ToolExecutor
   appendAgentFeed: (entry: Omit<import('../types').AgentFeedEntry, 'id' | 'timestamp'>) => void
+  submitConversationPrompt: (prompt: string) => Promise<void>
   refreshAudit: () => Promise<void>
   setAgentCatalog: (catalog: AgentCatalog) => void
   setNotice: NoticeSetter
@@ -28,6 +29,7 @@ export function useAgentActions({
   workspace,
   executeTool,
   appendAgentFeed,
+  submitConversationPrompt,
   refreshAudit,
   setAgentCatalog,
   setNotice,
@@ -49,32 +51,24 @@ export function useAgentActions({
   }, [appendAgentFeed, executeTool])
 
   const submitAgentPrompt = useCallback(async (prompt: string) => {
+    const activeWidgetID = workspace?.active_widget_id
+    const action = resolveAgentPromptAction(prompt, activeWidgetID)
+    if (!action) {
+      await submitConversationPrompt(prompt)
+      return
+    }
+
     appendAgentFeed({
       role: 'user',
       kind: 'action',
       title: prompt,
       tags: ['composer'],
     })
-
-    const activeWidgetID = workspace?.active_widget_id
-    const action = resolveAgentPromptAction(prompt, activeWidgetID)
-    if (!action) {
-      appendAgentFeed({
-        role: 'assistant',
-        kind: 'system',
-        tone: 'info',
-        title: 'Conversation backend is not available yet',
-        body: 'Use prompts like "inspect terminal", "list tabs", "list widgets", "show active tab", or "interrupt terminal", or open the tool console for arbitrary runtime calls.',
-        tags: ['mvp compromise', 'composer'],
-      })
-      return
-    }
-
     const response = await executeTool(action.request)
     if (response) {
       appendAgentFeed(buildAgentResponseEntry(action.request, response, action.label))
     }
-  }, [appendAgentFeed, executeTool, workspace?.active_widget_id])
+  }, [appendAgentFeed, executeTool, submitConversationPrompt, workspace?.active_widget_id])
 
   const reportAgentAttachmentUnavailable = useCallback(async () => {
     appendAgentFeed({

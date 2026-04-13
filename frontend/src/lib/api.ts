@@ -1,5 +1,6 @@
 import type {
   AgentCatalog,
+  AgentConversationSnapshot,
   AuditEvent,
   BootstrapPayload,
   Connection,
@@ -14,6 +15,7 @@ import type {
   Workspace,
 } from '../types'
 import type { RuntimeInfo } from './runtime'
+import { normalizeConversationSnapshot } from './agentConversation'
 import { normalizeTerminalSnapshot } from './terminal'
 import { normalizeBootstrapPayload, normalizeConnection, normalizeConnectionCatalog, normalizeWorkspace } from './workspace'
 
@@ -96,6 +98,33 @@ export class RtermClient {
 
   async agentCatalog(): Promise<AgentCatalog> {
     return this.request<AgentCatalog>('/api/v1/agent')
+  }
+
+  async conversation(): Promise<AgentConversationSnapshot> {
+    const payload = await this.request<{ conversation: AgentConversationSnapshot }>('/api/v1/agent/conversation')
+    return normalizeConversationSnapshot(payload.conversation)
+  }
+
+  async submitConversationMessage(input: {
+    prompt: string
+    context?: {
+      workspace_id?: string
+      repo_root?: string
+      active_widget_id?: string
+      widget_context_enabled?: boolean
+    }
+  }): Promise<{ conversation: AgentConversationSnapshot; provider_error?: string }> {
+    const payload = await this.request<{ conversation: AgentConversationSnapshot; provider_error?: string }>(
+      '/api/v1/agent/conversation/messages',
+      {
+        method: 'POST',
+        body: JSON.stringify(input),
+      },
+    )
+    return {
+      ...payload,
+      conversation: normalizeConversationSnapshot(payload.conversation),
+    }
   }
 
   async connections(): Promise<ConnectionCatalog> {

@@ -3,10 +3,10 @@ import { useCallback, useState } from 'react'
 import type { AgentFeedEntry } from '../types'
 
 export function useAgentFeed() {
-  const [agentFeed, setAgentFeed] = useState<AgentFeedEntry[]>([])
+  const [runtimeFeed, setRuntimeFeed] = useState<AgentFeedEntry[]>([])
 
-  const appendAgentFeed = useCallback((entry: Omit<AgentFeedEntry, 'id' | 'timestamp'>) => {
-    setAgentFeed((current) => [
+  const appendRuntimeFeed = useCallback((entry: Omit<AgentFeedEntry, 'id' | 'timestamp'>) => {
+    setRuntimeFeed((current) => [
       ...current,
       {
         id: createClientID(),
@@ -17,8 +17,8 @@ export function useAgentFeed() {
   }, [])
 
   return {
-    agentFeed,
-    appendAgentFeed,
+    runtimeFeed,
+    appendRuntimeFeed,
   }
 }
 

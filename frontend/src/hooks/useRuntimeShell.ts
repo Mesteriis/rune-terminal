@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { summarizeOutput } from '../lib/agentFeed'
 import { useAgentActions } from './useAgentActions'
 import { useApprovalFlow } from './useApprovalFlow'
+import { useConversation } from './useConversation'
 import { useConnectionsActions } from './useConnectionsActions'
 import { useRuntimeBootstrap } from './useRuntimeBootstrap'
 import { useAgentFeed } from './useAgentFeed'
@@ -36,13 +37,18 @@ export function useRuntimeShell() {
   const bootstrap = useRuntimeBootstrap()
   const [lastResponse, setLastResponse] = useState<ExecuteToolResponse | null>(null)
   const [notice, setNotice] = useState<RuntimeNotice | null>(null)
-  const { agentFeed, appendAgentFeed } = useAgentFeed()
+  const { runtimeFeed, appendRuntimeFeed } = useAgentFeed()
 
   const { terminalState, workspaceContext, refreshTerminalState } = useTerminalState({
     client: bootstrap.client,
     workspace: bootstrap.workspace,
     repoRoot: bootstrap.repoRoot,
     widgetContextEnabled,
+  })
+  const conversation = useConversation({
+    client: bootstrap.client,
+    workspaceContext,
+    setNotice,
   })
 
   const activeWidget = useMemo(() => {
@@ -122,7 +128,7 @@ export function useRuntimeShell() {
     executionContext,
     executeTool: async (request) => executeTool(request),
     refreshAudit,
-    appendAgentFeed,
+    appendAgentFeed: appendRuntimeFeed,
     setLastResponse,
     setNotice,
   })
@@ -196,7 +202,8 @@ export function useRuntimeShell() {
     client: bootstrap.client,
     workspace: bootstrap.workspace,
     executeTool,
-    appendAgentFeed,
+    appendAgentFeed: appendRuntimeFeed,
+    submitConversationPrompt: conversation.submitConversationPrompt,
     refreshAudit,
     setAgentCatalog: bootstrap.setAgentCatalog,
     setNotice,
@@ -204,6 +211,13 @@ export function useRuntimeShell() {
   const policyActions = usePolicyActions({
     executeTool,
   })
+
+  const agentFeed = useMemo(
+    () => [...conversation.conversationFeed, ...runtimeFeed].sort((left, right) => {
+      return new Date(left.timestamp).getTime() - new Date(right.timestamp).getTime()
+    }),
+    [conversation.conversationFeed, runtimeFeed],
+  )
 
   return {
     client: bootstrap.client,
@@ -221,6 +235,8 @@ export function useRuntimeShell() {
     notice,
     pendingApproval: approvalFlow.pendingApproval,
     agentFeed,
+    conversation: conversation.conversation,
+    isSubmittingConversation: conversation.isSubmittingConversation,
     isConfirmingApproval: approvalFlow.isConfirmingApproval,
     agentCatalog: bootstrap.agentCatalog,
     activeWidget,

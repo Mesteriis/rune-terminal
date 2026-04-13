@@ -18,6 +18,7 @@ type AgentPanelProps = {
   notice: RuntimeNotice | null
   pendingApproval: PendingApproval | null
   agentFeed: AgentFeedEntry[]
+  isSubmittingConversation: boolean
   isConfirmingApproval: boolean
   onConfirmApproval: () => void | Promise<void>
   onDismissNotice: () => void
@@ -36,6 +37,7 @@ export function AgentPanel({
   notice,
   pendingApproval,
   agentFeed,
+  isSubmittingConversation,
   isConfirmingApproval,
   onConfirmApproval,
   onDismissNotice,
@@ -82,7 +84,12 @@ export function AgentPanel({
       </div>
 
       <footer className="agent-composer">
-        <AgentComposer hasTranscript={hasFeed} onSubmitPrompt={onSubmitPrompt} onAttachClick={onAttachClick} />
+        <AgentComposer
+          hasTranscript={hasFeed}
+          isSubmitting={isSubmittingConversation}
+          onSubmitPrompt={onSubmitPrompt}
+          onAttachClick={onAttachClick}
+        />
         <div className="agent-panel-footer-hint">
           <span>Use the panel menu for operator tools, settings, and audit.</span>
         </div>

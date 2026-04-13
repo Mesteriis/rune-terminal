@@ -26,8 +26,8 @@ export function AgentTranscriptMessage({ entry }: AgentTranscriptMessageProps) {
           <strong>{entry.tool_name}</strong>
         </div>
       ) : null}
-      <strong>{entry.title}</strong>
-      {entry.body ? renderBody(entry.body) : null}
+      {entry.title ? <strong>{entry.title}</strong> : null}
+      {entry.body ? renderBody(entry.body, entry.kind === 'message') : null}
       {entry.operation_summary && entry.operation_summary !== entry.title ? (
         <div className="ai-tooluse-detail">
           <span className="ai-tooluse-detail-label">Operation</span>
@@ -59,11 +59,11 @@ export function AgentTranscriptMessage({ entry }: AgentTranscriptMessageProps) {
   )
 }
 
-function renderBody(body: string) {
+function renderBody(body: string, compact = false) {
   if (body.includes('\n') || looksStructured(body)) {
     return <pre className="ai-message-pre">{body}</pre>
   }
-  return <p>{body}</p>
+  return compact ? <div className="ai-message-body">{body}</div> : <p>{body}</p>
 }
 
 function looksStructured(body: string) {

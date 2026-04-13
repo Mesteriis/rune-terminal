@@ -72,6 +72,7 @@ function App() {
                   notice={shell.notice}
                   pendingApproval={shell.pendingApproval}
                   agentFeed={shell.agentFeed}
+                  isSubmittingConversation={shell.isSubmittingConversation}
                   isConfirmingApproval={shell.isConfirmingApproval}
                   trustedRules={shell.trustedRules}
                   ignoreRules={shell.ignoreRules}

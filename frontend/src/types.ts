@@ -279,11 +279,34 @@ export type RuntimeNotice = {
   detail?: string
 }
 
+export type AgentConversationProvider = {
+  kind: string
+  base_url: string
+  model?: string
+  streaming: boolean
+}
+
+export type AgentConversationMessage = {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  status: 'complete' | 'error'
+  provider?: string
+  model?: string
+  created_at: string
+}
+
+export type AgentConversationSnapshot = {
+  messages: AgentConversationMessage[]
+  provider: AgentConversationProvider
+  updated_at: string
+}
+
 export type AgentFeedEntry = {
   id: string
   role: 'user' | 'assistant'
-  kind: 'action' | 'result' | 'approval' | 'system'
-  title: string
+  kind: 'action' | 'result' | 'approval' | 'system' | 'message'
+  title?: string
   body?: string
   tone?: 'info' | 'success' | 'error' | 'approval'
   tags?: string[]
@@ -293,5 +316,7 @@ export type AgentFeedEntry = {
   approval_used?: boolean
   affected_paths?: string[]
   affected_widgets?: string[]
+  provider?: string
+  model?: string
   timestamp: string
 }

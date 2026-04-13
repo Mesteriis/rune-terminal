@@ -2,11 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 
 type AgentComposerProps = {
   hasTranscript: boolean
+  isSubmitting?: boolean
   onSubmitPrompt: (prompt: string) => void | Promise<void>
   onAttachClick: () => void | Promise<void>
 }
 
-export function AgentComposer({ hasTranscript, onSubmitPrompt, onAttachClick }: AgentComposerProps) {
+export function AgentComposer({ hasTranscript, isSubmitting = false, onSubmitPrompt, onAttachClick }: AgentComposerProps) {
   const [draft, setDraft] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
 
@@ -21,7 +22,7 @@ export function AgentComposer({ hasTranscript, onSubmitPrompt, onAttachClick }: 
 
   function handleSubmit() {
     const prompt = draft.trim()
-    if (!prompt) {
+    if (!prompt || isSubmitting) {
       return
     }
     setDraft('')
@@ -35,13 +36,14 @@ export function AgentComposer({ hasTranscript, onSubmitPrompt, onAttachClick }: 
           ref={textareaRef}
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
+          disabled={isSubmitting}
           onKeyDown={(event) => {
             if (event.key === 'Enter' && !event.shiftKey) {
               event.preventDefault()
               handleSubmit()
             }
           }}
-          placeholder={hasTranscript ? 'Continue the conversation…' : 'Ask RunaTerminal AI anything…'}
+          placeholder={isSubmitting ? 'Waiting for assistant…' : hasTranscript ? 'Continue the conversation…' : 'Ask RunaTerminal AI anything…'}
           rows={2}
         />
         <button
@@ -55,7 +57,7 @@ export function AgentComposer({ hasTranscript, onSubmitPrompt, onAttachClick }: 
         <button
           className="agent-composer-icon agent-composer-send"
           onClick={handleSubmit}
-          disabled={!draft.trim()}
+          disabled={!draft.trim() || isSubmitting}
           type="button"
           title="Send message"
         >

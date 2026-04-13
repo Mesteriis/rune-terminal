@@ -35,6 +35,7 @@ type AgentSidebarProps = {
   notice: RuntimeNotice | null
   pendingApproval: PendingApproval | null
   agentFeed: AgentFeedEntry[]
+  isSubmittingConversation: boolean
   isConfirmingApproval: boolean
   trustedRules: TrustedRule[]
   ignoreRules: IgnoreRule[]
@@ -82,6 +83,7 @@ export function AgentSidebar({
   notice,
   pendingApproval,
   agentFeed,
+  isSubmittingConversation,
   isConfirmingApproval,
   trustedRules,
   ignoreRules,
@@ -181,6 +183,7 @@ export function AgentSidebar({
                 notice={notice}
                 pendingApproval={pendingApproval}
                 agentFeed={agentFeed}
+                isSubmittingConversation={isSubmittingConversation}
               isConfirmingApproval={isConfirmingApproval}
               onConfirmApproval={onConfirmApproval}
               onDismissNotice={onDismissNotice}
