@@ -78,6 +78,10 @@ export class RtermClient {
     })
   }
 
+  async terminalSnapshot(widgetId: string, from = 0) {
+    return this.request<import('../types').TerminalSnapshot>(`/api/v1/terminal/${widgetId}?from=${from}`)
+  }
+
   async audit(limit = 20): Promise<{ events: AuditEvent[] }> {
     return this.request<{ events: AuditEvent[] }>(`/api/v1/audit?limit=${limit}`)
   }

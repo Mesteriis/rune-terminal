@@ -50,6 +50,12 @@ export type OutputChunk = {
   timestamp: string
 }
 
+export type TerminalSnapshot = {
+  state: TerminalState
+  chunks: OutputChunk[]
+  next_seq: number
+}
+
 export type ToolInfo = {
   name: string
   description: string

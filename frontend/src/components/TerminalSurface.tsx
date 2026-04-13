@@ -5,7 +5,7 @@ import { Terminal } from '@xterm/xterm'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import { RtermClient } from '../lib/api'
-import type { OutputChunk, TerminalState } from '../types'
+import type { OutputChunk, TerminalSnapshot, TerminalState } from '../types'
 
 type TerminalSurfaceProps = {
   client: RtermClient
@@ -20,7 +20,10 @@ export function TerminalSurface({ client, widgetId, state, onTerminalAction, onI
   const terminalRef = useRef<Terminal | null>(null)
   const fitFrameRef = useRef<number | null>(null)
   const canSendInputRef = useRef(false)
-  const [input, setInput] = useState('')
+  const [commandDraft, setCommandDraft] = useState('')
+  const [isFocused, setIsFocused] = useState(false)
+  const [isHydrating, setIsHydrating] = useState(true)
+  const followOutputRef = useRef(true)
 
   useEffect(() => {
     canSendInputRef.current = Boolean(state?.can_send_input)
@@ -32,6 +35,7 @@ export function TerminalSurface({ client, widgetId, state, onTerminalAction, onI
       return
     }
     let disposed = false
+    let source: EventSource | null = null
     const fitAddon = new FitAddon()
     container.replaceChildren()
 
@@ -39,9 +43,11 @@ export function TerminalSurface({ client, widgetId, state, onTerminalAction, onI
       cursorBlink: true,
       fontFamily: '"JetBrains Mono", monospace',
       fontSize: 13,
-      lineHeight: 1.2,
+      lineHeight: 1.18,
+      scrollback: 5000,
+      allowTransparency: true,
       theme: {
-        background: '#09111b',
+        background: '#06090d',
         foreground: '#e3eef7',
         cursor: '#f7c56f',
         selectionBackground: '#274863',
@@ -52,13 +58,12 @@ export function TerminalSurface({ client, widgetId, state, onTerminalAction, onI
     terminalRef.current = terminal
 
     const focusTerminal = () => {
-      if (disposed || terminalRef.current !== terminal || !container.isConnected) {
-        return
-      }
-      const textarea = container.querySelector('.xterm-helper-textarea')
-      if (textarea instanceof HTMLTextAreaElement) {
-        textarea.focus()
-      }
+      focusTerminalTextarea(container, terminal, disposed)
+    }
+
+    const refreshFollowState = () => {
+      const buffer = terminal.buffer.active
+      followOutputRef.current = buffer.viewportY >= buffer.baseY
     }
 
     const scheduleFit = () => {
@@ -87,7 +92,6 @@ export function TerminalSurface({ client, widgetId, state, onTerminalAction, onI
     window.addEventListener('resize', scheduleFit)
     window.requestAnimationFrame(focusTerminal)
 
-    const source = new EventSource(client.terminalStreamUrl(widgetId, 0))
     const onInput = terminal.onData((data) => {
       if (disposed || !canSendInputRef.current) {
         return
@@ -96,28 +100,75 @@ export function TerminalSurface({ client, widgetId, state, onTerminalAction, onI
         // Input errors are surfaced by the terminal status and audit path; keep the UI interactive.
       })
     })
+    const textarea = container.querySelector('.xterm-helper-textarea')
+    const onTerminalFocus = () => setIsFocused(true)
+    const onTerminalBlur = () => setIsFocused(false)
+    if (textarea instanceof HTMLTextAreaElement) {
+      textarea.addEventListener('focus', onTerminalFocus)
+      textarea.addEventListener('blur', onTerminalBlur)
+    }
+
+    const viewport = container.querySelector('.xterm-viewport')
+    const onViewportScroll = () => refreshFollowState()
+    if (viewport instanceof HTMLDivElement) {
+      viewport.addEventListener('scroll', onViewportScroll, { passive: true })
+    }
+
     const onOutput = (event: Event) => {
       if (disposed || terminalRef.current !== terminal) {
         return
       }
       const chunk = JSON.parse((event as MessageEvent).data) as OutputChunk
+      const shouldFollow = followOutputRef.current
       try {
-        terminal.write(chunk.data)
+        terminal.write(chunk.data, () => {
+          if (shouldFollow) {
+            terminal.scrollToBottom()
+          }
+        })
       } catch {
         // xterm can throw while the renderer is being replaced during dev-mode remounts.
       }
     }
-    source.addEventListener('output', onOutput)
+
+    async function bootstrapSnapshot() {
+      try {
+        const snapshot = await client.terminalSnapshot(widgetId, 0)
+        if (disposed || terminalRef.current !== terminal) {
+          return
+        }
+        hydrateSnapshot(terminal, snapshot)
+        refreshFollowState()
+        source = new EventSource(client.terminalStreamUrl(widgetId, snapshot.next_seq))
+        source.addEventListener('output', onOutput)
+      } finally {
+        if (!disposed) {
+          setIsHydrating(false)
+        }
+      }
+    }
+
+    void bootstrapSnapshot()
+
     container.addEventListener('mousedown', focusTerminal)
 
     return () => {
       disposed = true
       onInput.dispose()
-      source.removeEventListener('output', onOutput)
-      source.close()
+      if (source) {
+        source.removeEventListener('output', onOutput)
+        source.close()
+      }
       observer.disconnect()
       container.removeEventListener('mousedown', focusTerminal)
       window.removeEventListener('resize', scheduleFit)
+      if (textarea instanceof HTMLTextAreaElement) {
+        textarea.removeEventListener('focus', onTerminalFocus)
+        textarea.removeEventListener('blur', onTerminalBlur)
+      }
+      if (viewport instanceof HTMLDivElement) {
+        viewport.removeEventListener('scroll', onViewportScroll)
+      }
       if (fitFrameRef.current !== null) {
         window.cancelAnimationFrame(fitFrameRef.current)
         fitFrameRef.current = null
@@ -129,71 +180,98 @@ export function TerminalSurface({ client, widgetId, state, onTerminalAction, onI
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!input.trim()) {
+    if (!commandDraft.trim()) {
       return
     }
-    await client.sendTerminalInput(widgetId, input, true)
-    setInput('')
+    await client.sendTerminalInput(widgetId, commandDraft, true)
+    setCommandDraft('')
     await onTerminalAction?.()
   }
 
   return (
-    <section className="terminal-card">
+    <section className={`terminal-card terminal-surface ${isFocused ? 'terminal-surface-focused' : ''}`}>
       <header className="terminal-header">
         <div className="terminal-heading">
-          <p className="eyebrow">Live terminal</p>
-          <h2>{state?.widget_id ?? widgetId}</h2>
-          <p className="terminal-subtitle">
-            Focused widget shell. Keyboard input streams directly into the active PTY session.
-          </p>
+          <p className="eyebrow">Terminal</p>
+          <h2>{state?.shell ?? 'Shell session'}</h2>
+          <p className="terminal-subtitle">{state?.working_dir ?? 'Working directory unavailable'}</p>
         </div>
-        <dl className="terminal-meta">
-          <div>
-            <dt>Status</dt>
-            <dd>{state?.status ?? 'unknown'}</dd>
-          </div>
-          <div>
-            <dt>PID</dt>
-            <dd>{state?.pid ?? 'n/a'}</dd>
-          </div>
-          <div>
-            <dt>Shell</dt>
-            <dd>{state?.shell ?? 'n/a'}</dd>
-          </div>
-        </dl>
-      </header>
-
-      <section className="terminal-status-bar">
-        <span className={`status-pill status-${state?.status ?? 'unknown'}`}>{state?.status ?? 'unknown'}</span>
-        <span className="status-pill">Widget {state?.widget_id ?? widgetId}</span>
-        <span className="status-pill status-path">{state?.working_dir ?? 'working dir unavailable'}</span>
-        <div className="terminal-actions">
+        <div className="terminal-toolbar-actions">
+          <button className="ghost-button compact-button" onClick={() => void onTerminalAction?.()}>
+            Refresh
+          </button>
+          <button className="ghost-button compact-button" onClick={() => focusTerminalTextarea(containerRef.current, terminalRef.current, false)}>
+            Focus
+          </button>
           <button
-            className="ghost-button"
+            className="ghost-button compact-button"
             onClick={() => (onInterrupt ? void onInterrupt(widgetId) : undefined)}
             disabled={!state?.can_interrupt}
           >
             Interrupt
           </button>
         </div>
+      </header>
+
+      <section className="terminal-command-bar">
+        <span className={`status-pill status-${state?.status ?? 'unknown'}`}>{state?.status ?? 'unknown'}</span>
+        <span className="status-pill">Widget {state?.widget_id ?? widgetId}</span>
+        <span className="status-pill">Session {state?.session_id ?? widgetId}</span>
+        <span className="status-pill">PID {state?.pid ?? 'n/a'}</span>
+        <span className="status-pill">{isFocused ? 'Focused' : 'Click to focus'}</span>
+        {isHydrating ? <span className="status-pill">Loading scrollback…</span> : null}
+        <span className="status-pill status-path">{state?.working_dir ?? 'working dir unavailable'}</span>
       </section>
 
       <div className="terminal-shell" ref={containerRef} />
 
       <form className="terminal-input-row" onSubmit={handleSubmit}>
         <label className="terminal-input-label">
-          Direct terminal input
+          Paste command
           <input
-            value={input}
-            onChange={(event) => setInput(event.target.value)}
-            placeholder="Type a command for the active terminal"
+            value={commandDraft}
+            onChange={(event) => setCommandDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') {
+                setCommandDraft('')
+                focusTerminalTextarea(containerRef.current, terminalRef.current, false)
+              }
+            }}
+            placeholder="Paste or type a command for the active PTY"
             disabled={!state?.can_send_input}
           />
         </label>
+        <button
+          type="button"
+          className="ghost-button"
+          onClick={() => focusTerminalTextarea(containerRef.current, terminalRef.current, false)}
+        >
+          Focus terminal
+        </button>
         <button type="submit" disabled={!state?.can_send_input}>
           Send
         </button>
       </form>
     </section>
   )
+}
+
+function hydrateSnapshot(terminal: Terminal, snapshot: TerminalSnapshot) {
+  if (snapshot.chunks.length === 0) {
+    terminal.clear()
+    return
+  }
+  terminal.write(snapshot.chunks.map((chunk) => chunk.data).join(''), () => {
+    terminal.scrollToBottom()
+  })
+}
+
+function focusTerminalTextarea(container: HTMLDivElement | null, terminal: Terminal | null, disposed: boolean) {
+  if (!container || !terminal || disposed || !container.isConnected) {
+    return
+  }
+  const textarea = container.querySelector('.xterm-helper-textarea')
+  if (textarea instanceof HTMLTextAreaElement) {
+    textarea.focus()
+  }
 }

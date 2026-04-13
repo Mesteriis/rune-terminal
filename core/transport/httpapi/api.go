@@ -24,6 +24,7 @@ func NewHandler(runtime *app.Runtime, authToken string) http.Handler {
 	mux.HandleFunc("PUT /api/v1/agent/selection/role", api.handleSetActiveRole)
 	mux.HandleFunc("PUT /api/v1/agent/selection/mode", api.handleSetActiveMode)
 	mux.HandleFunc("POST /api/v1/tools/execute", api.handleExecuteTool)
+	mux.HandleFunc("GET /api/v1/terminal/{widgetID}", api.handleTerminalSnapshot)
 	mux.HandleFunc("POST /api/v1/terminal/{widgetID}/input", api.handleTerminalInput)
 	mux.HandleFunc("GET /api/v1/terminal/{widgetID}/stream", api.handleTerminalStream)
 	mux.HandleFunc("GET /api/v1/audit", api.handleAudit)

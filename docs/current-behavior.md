@@ -31,6 +31,7 @@ It is intentionally operational, not narrative.
 - Concurrent `StartSession` calls for the same widget coalesce onto a single launch attempt.
 - A second `StartSession` must not spawn a second process for the same widget.
 - Session IDs are currently equal to widget IDs in the MVP.
+- The frontend now hydrates terminal content from a JSON snapshot before opening the SSE stream, so a newly mounted terminal starts with buffered scrollback instead of only new output.
 - On startup, the runtime eagerly boots sessions for terminal widgets in the default workspace.
 - When a process exits, terminal state moves to `exited` or `failed`, input/interrupt are disabled, and active stream subscribers are closed.
 
@@ -112,6 +113,7 @@ Confirmable boundaries:
 - SSE terminal streams accept the auth token via query string because browser `EventSource` cannot send `Authorization` headers. This is limited to the stream endpoint and will be replaced by a scoped stream-ticket mechanism.
 - Session IDs currently equal widget IDs instead of using a separate durable session identity layer.
 - The desktop shell launches the Go core as a sidecar process and discovers it via a ready file; a richer process supervisor does not exist yet.
+- The terminal shell is now much closer to TideTerm's compact term surface, but it still lacks TideTerm's multi-session sidebar, search UI, and shell-integration toolbar details.
 - The AI panel now uses a TideTerm-shaped header with widget context toggle and overflow menu, but it still operates on runtime, audit, and policy surfaces rather than a full conversation backend.
 - Prompt profile, role preset, and work mode controls now live in an AI mode strip near the top of the message feed instead of in the footer.
 - The AI panel welcome card now exposes runtime-backed quick actions for terminal inspection, tab listing, and audit navigation as the current closest-compatible equivalent to deeper TideTerm AI flows.

@@ -101,7 +101,9 @@ function App() {
                     widgetId={shell.activeWidget.id}
                     state={shell.terminalState}
                     onInterrupt={shell.interruptWidget}
-                    onTerminalAction={() => shell.refreshTerminalState(shell.activeWidget?.id)}
+                    onTerminalAction={async () => {
+                      await shell.refreshTerminalState(shell.activeWidget?.id)
+                    }}
                   />
                 ) : (
                   <section className="terminal-card loading-panel">Connecting to runtime…</section>

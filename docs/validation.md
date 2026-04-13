@@ -556,6 +556,39 @@ What was not revalidated in this slice:
 - no fresh UI automation was run after adding the attach/prompt-chip affordances
 - no fresh manual Tauri launch was performed after this specific AI-panel input-control pass
 
+## Latest terminal-parity slice
+
+The next controlled parity slice focused only on terminal UX behavior derived from TideTerm:
+
+- the terminal surface moved from a large custom card toward a compact term shell with a tighter header and toolbar/status strip
+- the frontend now hydrates terminal scrollback from a JSON snapshot before opening the SSE stream, so remounting the terminal no longer starts from an empty live tail
+- terminal focus, refresh, interrupt, visible scrollback, and compact paste/send fallback controls were reworked as a single TideTerm-derived shell slice
+- `useRuntimeShell.ts` was cut back by moving bootstrap and terminal-state concerns into focused hooks instead of letting the shell orchestrator keep growing
+
+Validation executed for this slice:
+
+```bash
+npm --prefix frontend run lint
+./scripts/go.sh test ./core/transport/httpapi ./core/terminal ./core/app
+npm run validate
+npm run tauri:dev
+curl http://127.0.0.1:<runtime-port>/healthz
+```
+
+Observed result:
+
+- frontend lint passed
+- targeted Go tests passed, including the new terminal snapshot transport test
+- full repository validation passed
+- `npm run tauri:dev` launched the desktop shell successfully and the Go sidecar reported a live loopback base URL
+- the sidecar health endpoint returned `{"status":"ok"}`
+
+What was not fully validated in this slice:
+
+- no browser automation was completed against the live terminal shell because Browser MCP was unavailable and the local Playwright browser bundle was not installed in this environment
+- no packaged `tauri build` was run
+- no Linux terminal shell validation was performed
+
 ## Tooling baseline
 
 - Go: `go1.26.2 darwin/arm64`

@@ -1,24 +1,17 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import { RtermClient } from '../lib/api'
-import { resolveRuntimeInfo } from '../lib/runtime'
+import { useRuntimeBootstrap } from './useRuntimeBootstrap'
+import { useTerminalState } from './useTerminalState'
 import type {
-  AgentCatalog,
   AgentFeedEntry,
   ApprovalGrant,
-  AuditEvent,
-  BootstrapPayload,
   ExecuteToolRequest,
   ExecuteToolResponse,
   IgnoreRule,
   PendingApproval,
   RuntimeNotice,
-  TerminalState,
-  ToolInfo,
   TrustedRule,
   Widget,
-  Workspace,
-  WorkspaceContextSummary,
 } from '../types'
 
 type SelectionTarget = 'profile' | 'role' | 'mode'
@@ -40,169 +33,83 @@ const QUIET_TOOLS = new Set([
 
 export function useRuntimeShell() {
   const [widgetContextEnabled, setWidgetContextEnabled] = useState(() => readWidgetContextPreference())
-  const [client, setClient] = useState<RtermClient | null>(null)
-  const [workspace, setWorkspace] = useState<Workspace | null>(null)
-  const [repoRoot, setRepoRoot] = useState('')
-  const [tools, setTools] = useState<ToolInfo[]>([])
-  const [terminalState, setTerminalState] = useState<TerminalState | null>(null)
+  const bootstrap = useRuntimeBootstrap()
   const [trustedRules, setTrustedRules] = useState<TrustedRule[]>([])
   const [ignoreRules, setIgnoreRules] = useState<IgnoreRule[]>([])
-  const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([])
   const [lastResponse, setLastResponse] = useState<ExecuteToolResponse | null>(null)
-  const [runtimeError, setRuntimeError] = useState<string | null>(null)
   const [notice, setNotice] = useState<RuntimeNotice | null>(null)
   const [pendingApproval, setPendingApproval] = useState<PendingApproval | null>(null)
   const [pendingRequest, setPendingRequest] = useState<ExecuteToolRequest | null>(null)
   const [isConfirmingApproval, setIsConfirmingApproval] = useState(false)
-  const [agentCatalog, setAgentCatalog] = useState<AgentCatalog | null>(null)
   const [agentFeed, setAgentFeed] = useState<AgentFeedEntry[]>([])
 
+  const { terminalState, workspaceContext, refreshTerminalState } = useTerminalState({
+    client: bootstrap.client,
+    workspace: bootstrap.workspace,
+    repoRoot: bootstrap.repoRoot,
+    widgetContextEnabled,
+  })
+
   const activeWidget = useMemo(() => {
-    return workspace?.widgets.find((widget) => widget.id === workspace.active_widget_id) ?? null
-  }, [workspace])
-
-  const activeTab = useMemo(() => {
-    return workspace?.tabs.find((tab) => tab.id === workspace.active_tab_id) ?? null
-  }, [workspace])
-
-  const workspaceContext = useMemo<WorkspaceContextSummary | null>(() => {
+    const workspace = bootstrap.workspace
     if (!workspace) {
       return null
     }
-    return {
-      workspace_id: workspace.id,
-      repo_root: repoRoot,
-      active_widget_id: widgetContextEnabled ? workspace.active_widget_id : undefined,
-      widget_context_enabled: widgetContextEnabled,
-    }
-  }, [repoRoot, widgetContextEnabled, workspace])
+    return workspace.widgets.find((widget) => widget.id === workspace.active_widget_id) ?? null
+  }, [bootstrap.workspace])
 
-  useEffect(() => {
-    async function boot() {
-      try {
-        const runtime = await resolveRuntimeInfo()
-        const nextClient = new RtermClient(runtime)
-        setClient(nextClient)
-        const [bootstrap, audit, agent] = await Promise.all([
-          nextClient.bootstrap(),
-          nextClient.audit(),
-          nextClient.agentCatalog(),
-        ])
-        applyBootstrap(bootstrap)
-        setAuditEvents(audit.events ?? [])
-        setAgentCatalog(agent)
-      } catch (error) {
-        setRuntimeError(formatError(error))
-      }
+  const activeTab = useMemo(() => {
+    const workspace = bootstrap.workspace
+    if (!workspace) {
+      return null
     }
-    void boot()
-  }, [])
-
-  useEffect(() => {
-    if (!client || !workspace) {
-      return
-    }
-    void syncActiveView(client, workspace, repoRoot)
-  }, [client, repoRoot, workspace])
+    return workspace.tabs.find((tab) => tab.id === workspace.active_tab_id) ?? null
+  }, [bootstrap.workspace])
 
   useEffect(() => {
     writeWidgetContextPreference(widgetContextEnabled)
   }, [widgetContextEnabled])
 
-  function applyBootstrap(payload: BootstrapPayload) {
-    setWorkspace(payload.workspace)
-    setRepoRoot(payload.repo_root)
-    setTools(payload.tools ?? [])
-  }
-
-  function executionContext(nextWorkspace = workspace): WorkspaceContextSummary | undefined {
+  const executionContext = useCallback((nextWorkspace = bootstrap.workspace) => {
     if (!nextWorkspace) {
       return undefined
     }
     return {
       workspace_id: nextWorkspace.id,
-      repo_root: repoRoot,
+      repo_root: bootstrap.repoRoot,
       active_widget_id: widgetContextEnabled ? nextWorkspace.active_widget_id : undefined,
       widget_context_enabled: widgetContextEnabled,
     }
-  }
-
-  async function syncActiveView(nextClient: RtermClient, nextWorkspace: Workspace, nextRepoRoot: string) {
-    const context = {
-      workspace_id: nextWorkspace.id,
-      repo_root: nextRepoRoot,
-      active_widget_id: nextWorkspace.active_widget_id,
-    }
-    const [terminal, trusted, ignore] = await Promise.all([
-      nextClient.executeTool({
-        tool_name: 'term.get_state',
-        input: { widget_id: nextWorkspace.active_widget_id },
-        context,
-      }),
-      nextClient.executeTool({
-        tool_name: 'safety.list_trusted_rules',
-        context,
-      }),
-      nextClient.executeTool({
-        tool_name: 'safety.list_ignore_rules',
-        context,
-      }),
-    ])
-    setLastResponse(terminal)
-    if (terminal.status === 'ok') {
-      setTerminalState(terminal.output as TerminalState)
-    }
-    if (trusted.status === 'ok') {
-      setTrustedRules(((trusted.output as { rules?: TrustedRule[] })?.rules ?? []) as TrustedRule[])
-    }
-    if (ignore.status === 'ok') {
-      setIgnoreRules(((ignore.output as { rules?: IgnoreRule[] })?.rules ?? []) as IgnoreRule[])
-    }
-  }
+  }, [bootstrap.repoRoot, bootstrap.workspace, widgetContextEnabled])
 
   async function refreshWorkspace() {
-    if (!client) {
+    if (!bootstrap.client) {
       return
     }
-    const nextWorkspace = await client.workspace()
-    setWorkspace(nextWorkspace)
+    const nextWorkspace = await bootstrap.client.workspace()
+    bootstrap.setWorkspace(nextWorkspace)
   }
 
   async function refreshAudit() {
-    if (!client) {
+    if (!bootstrap.client) {
       return
     }
-    const audit = await client.audit()
-    setAuditEvents(audit.events ?? [])
+    const audit = await bootstrap.client.audit()
+    bootstrap.setAuditEvents(audit.events ?? [])
   }
 
-  async function refreshTerminalState(widgetId = workspace?.active_widget_id) {
-    if (!client || !workspace || !widgetId) {
-      return
-    }
-    const response = await client.executeTool({
-      tool_name: 'term.get_state',
-      input: { widget_id: widgetId },
-      context: executionContext(workspace),
-    })
-    setLastResponse(response)
-    if (response.status === 'ok') {
-      setTerminalState(response.output as TerminalState)
-    }
-  }
-
-  async function refreshPolicyLists() {
-    if (!client || !workspace) {
+  const refreshPolicyLists = useCallback(async () => {
+    if (!bootstrap.client || !bootstrap.workspace) {
       return
     }
     const [trusted, ignore] = await Promise.all([
-      client.executeTool({
+      bootstrap.client.executeTool({
         tool_name: 'safety.list_trusted_rules',
-        context: executionContext(workspace),
+        context: executionContext(bootstrap.workspace),
       }),
-      client.executeTool({
+      bootstrap.client.executeTool({
         tool_name: 'safety.list_ignore_rules',
-        context: executionContext(workspace),
+        context: executionContext(bootstrap.workspace),
       }),
     ])
     if (trusted.status === 'ok') {
@@ -211,17 +118,24 @@ export function useRuntimeShell() {
     if (ignore.status === 'ok') {
       setIgnoreRules(((ignore.output as { rules?: IgnoreRule[] })?.rules ?? []) as IgnoreRule[])
     }
-  }
+  }, [bootstrap.client, bootstrap.workspace, executionContext])
+
+  useEffect(() => {
+    if (!bootstrap.client || !bootstrap.workspace) {
+      return
+    }
+    void refreshPolicyLists()
+  }, [bootstrap.client, bootstrap.workspace, refreshPolicyLists])
 
   async function executeTool(request: ExecuteToolRequest) {
-    if (!client || !workspace) {
+    if (!bootstrap.client || !bootstrap.workspace) {
       return null
     }
 
     try {
-      const response = await client.executeTool({
+      const response = await bootstrap.client.executeTool({
         ...request,
-        context: executionContext(workspace),
+        context: executionContext(bootstrap.workspace),
       })
       setLastResponse(response)
       await refreshAudit()
@@ -243,8 +157,11 @@ export function useRuntimeShell() {
       if (response.status === 'ok') {
         await Promise.all([refreshWorkspace(), refreshPolicyLists()])
         if (request.tool_name.startsWith('term.') || request.tool_name.startsWith('workspace.')) {
-          const targetWidgetID = resolveTerminalTargetWidgetID(request, response, workspace.active_widget_id)
-          await refreshTerminalState(targetWidgetID)
+          const targetWidgetID = resolveTerminalTargetWidgetID(request, response, bootstrap.workspace.active_widget_id)
+          const terminalResponse = await refreshTerminalState(targetWidgetID)
+          if (terminalResponse) {
+            setLastResponse(terminalResponse)
+          }
         }
         if (!QUIET_TOOLS.has(request.tool_name)) {
           setNotice({
@@ -273,7 +190,7 @@ export function useRuntimeShell() {
   }
 
   async function confirmPendingRequest() {
-    if (!client || !workspace || !pendingApproval || !pendingRequest) {
+    if (!bootstrap.client || !bootstrap.workspace || !pendingApproval || !pendingRequest) {
       return
     }
     setIsConfirmingApproval(true)
@@ -287,10 +204,10 @@ export function useRuntimeShell() {
         tool_name: pendingApproval.tool_name,
         approval_tier: pendingApproval.approval_tier,
       })
-      const confirmation = await client.executeTool({
+      const confirmation = await bootstrap.client.executeTool({
         tool_name: 'safety.confirm',
         input: { approval_id: pendingApproval.id },
-        context: executionContext(workspace),
+        context: executionContext(bootstrap.workspace),
       })
       setLastResponse(confirmation)
       await refreshAudit()
@@ -410,7 +327,8 @@ export function useRuntimeShell() {
       tags: ['composer'],
     })
 
-    const action = resolveAgentPromptAction(prompt, workspace?.active_widget_id)
+    const activeWidgetID = bootstrap.workspace?.active_widget_id
+    const action = resolveAgentPromptAction(prompt, activeWidgetID)
     if (!action) {
       appendAgentFeed({
         role: 'assistant',
@@ -453,17 +371,17 @@ export function useRuntimeShell() {
   }
 
   async function setActiveSelection(target: SelectionTarget, id: string) {
-    if (!client) {
+    if (!bootstrap.client) {
       return
     }
     try {
       const nextCatalog =
         target === 'profile'
-          ? await client.setActiveProfile(id)
+          ? await bootstrap.client.setActiveProfile(id)
           : target === 'role'
-            ? await client.setActiveRole(id)
-            : await client.setActiveMode(id)
-      setAgentCatalog(nextCatalog)
+            ? await bootstrap.client.setActiveRole(id)
+            : await bootstrap.client.setActiveMode(id)
+      bootstrap.setAgentCatalog(nextCatalog)
       await refreshAudit()
       setNotice({
         tone: 'success',
@@ -498,22 +416,22 @@ export function useRuntimeShell() {
   }
 
   return {
-    client,
-    workspace,
+    client: bootstrap.client,
+    workspace: bootstrap.workspace,
     workspaceContext,
-    repoRoot,
-    tools,
+    repoRoot: bootstrap.repoRoot,
+    tools: bootstrap.tools,
     terminalState,
     trustedRules,
     ignoreRules,
-    auditEvents,
+    auditEvents: bootstrap.auditEvents,
     lastResponse,
-    runtimeError,
+    runtimeError: bootstrap.runtimeError,
     notice,
     pendingApproval,
     agentFeed,
     isConfirmingApproval,
-    agentCatalog,
+    agentCatalog: bootstrap.agentCatalog,
     activeWidget,
     activeTab,
     widgetContextEnabled,
