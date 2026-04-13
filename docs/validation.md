@@ -46,6 +46,51 @@ Observed result:
 - frontend build still passed after the expanded connection payload shape
 - full repository validation passed after the transport/API additions
 
+## Latest remote shell lifecycle UX slice
+
+The latest remote shell step focused only on making connection lifecycle visible and honest in the shell:
+
+- the connections panel now renders lifecycle-oriented cards instead of plain catalog rows
+- the shell now exposes the difference between “saved profile”, “default target”, “last check result”, “last launch result”, and shell-facing usability
+- the frontend refreshes the connection catalog after new tab launches so launch feedback can flow back into the shell
+
+Validation executed for this step:
+
+```bash
+./scripts/go.sh test ./core/connections ./core/app ./core/transport/httpapi
+npm --prefix frontend run lint
+npm --prefix frontend run build
+npm run build:core
+npm run validate
+npm run tauri:dev
+RTERM_AUTH_TOKEN=test-token apps/desktop/bin/rterm-core serve --workspace-root . --state-dir /tmp/rterm-remote-ui-smoke-clean
+curl -sf -H 'Authorization: Bearer test-token' http://127.0.0.1:<manual-port>/api/v1/connections
+curl -sf -X POST -H 'Authorization: Bearer test-token' -H 'Content-Type: application/json' http://127.0.0.1:<manual-port>/api/v1/connections/ssh -d '{"name":"Docs SSH","host":"example.com","user":"deploy","identity_file":"~/missing-rterm-key"}'
+curl -sf -X POST -H 'Authorization: Bearer test-token' http://127.0.0.1:<manual-port>/api/v1/connections/<connection-id>/check
+curl -sf -X PUT -H 'Authorization: Bearer test-token' -H 'Content-Type: application/json' http://127.0.0.1:<manual-port>/api/v1/connections/active -d '{"connection_id":"<connection-id>"}'
+curl -sf http://127.0.0.1:<tauri-sidecar-port>/healthz
+curl -sf http://127.0.0.1:5173
+```
+
+Observed result:
+
+- connection, app, and transport tests passed
+- frontend lint passed
+- frontend build passed
+- `build:core` rebuilt the sidecar binary before manual API smoke; this mattered because stale binaries can hide newly added routes
+- full repository validation passed
+- `tauri:dev` still launched successfully and produced a healthy loopback sidecar
+- the manually started fresh sidecar returned the built-in local connection with `usability:"available"` and `runtime.check_status:"passed"`
+- saving an SSH profile with a missing identity file returned `usability:"attention"` and `runtime.check_error:"identity file is not accessible"`
+- explicit `POST /api/v1/connections/{id}/check` returned the same failed preflight state on the fresh binary
+- selecting that SSH profile as the active connection updated only the default target; it did not imply a live SSH session
+
+What was not fully validated in this step:
+
+- browser-driven click smoke for the connections panel was not available because local browser automation was unavailable in this environment
+- a live SSH shell against a reachable host was still not claimed as validated
+- launch-result behavior beyond unit coverage was not exercised against a real SSH target
+
 ## Latest remote / SSH foundation slice
 
 The latest parity slice focused only on the first remote / SSH foundation:

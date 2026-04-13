@@ -55,7 +55,7 @@ The critical path to recognizable parity is:
 | Role/mode/profile UI | TideTerm has AI mode/config flows and user-facing AI controls | Current selectors exist in the AI panel | Missing closer parity with TideTerm AI mode UX and model selection flows | Rebind existing role/mode/profile model into a TideTerm-derived AI control surface | New role/mode system stays, even where old TideTerm semantics differ | `partial` |
 | Settings/config flows | Dedicated settings surfaces and config views | Shell-level settings entry now opens a TideTerm-derived settings surface with `Overview`, `Trusted tools`, `Secret shield`, and `Help` views inside the AI sidebar shell | Missing richer product settings navigation, dedicated config views, and broader help/config parity | Recreate settings entry points in the dock and bind them to explicit config endpoints | Avoid reviving a global settings blob in the frontend | `partial` |
 | Local runtime | Local shell/runtime startup and terminal interaction | Working and launchable | Minor parity gap only | Keep tightening startup polish and shell integration | Sidecar Go runtime + Tauri stays | `done` |
-| Remote/SSH | TideTerm treats local vs remote shells as explicit user-visible workflow and exposes connection entry/access patterns in the shell | RunaTerminal now has an explicit connection catalog, persisted SSH profiles, active connection selection, connection-aware terminal launch options, and shell-level connection entry surfaces | Still missing richer remote lifecycle, SSH status tracking, remote workspace/controller behavior, and broader remote product flows | Continue from the new connection domain until remote becomes more than “saved SSH profiles launching system ssh” | Keep connection state backend-owned in Go; do not port TideTerm's legacy connection controller and transport complexity wholesale | `partial` |
+| Remote/SSH | TideTerm treats local vs remote shells as explicit user-visible workflow and exposes connection entry/access patterns in the shell | RunaTerminal now has an explicit connection catalog, persisted SSH profiles, active default-target selection, connection-aware terminal launch options, explicit preflight-check and last-launch feedback, and a lifecycle-oriented shell connections panel | Still missing richer remote lifecycle, live controller state, durable remote workspace behavior, `~/.ssh/config` import, and broader remote product flows | Continue from the new connection domain until remote becomes more than “saved SSH profiles launching system ssh,” but keep lifecycle semantics explicit in backend and shell | Keep connection state backend-owned in Go; do not port TideTerm's legacy connection controller and transport complexity wholesale | `partial` |
 | Audit visibility | Product has visible traces of operations and system state | Audit now reads as a shell utility surface with runtime-trail copy, recent operation cards, and approval/role/mode context | Missing broader integration into deeper user flows and richer filtering | Keep current audit surface and reposition it as parity UI matures | Audit remains first-class and explicit | `partial` |
 | Trust/ignore management | Sensitive operations and protected files are governed implicitly or via product flows | Explicit trust/ignore management now appears as user-facing settings cards instead of only raw operator forms | Behavior exceeds old TideTerm structurally, but richer config/help integration is still missing | Keep the new policy model and integrate it into TideTerm-derived settings surfaces | This is an intentional architectural divergence in implementation, not behavior goals | `partial` |
 | Startup/bootstrap UX | App opens into a familiar working shell with known flows | Launch path is now documented and working | Missing richer startup states and TideTerm-style bootstrap polish | Keep launch path deterministic first, then mirror TideTerm startup cues | Tauri + Go sidecar boot stays | `partial` |
@@ -185,6 +185,41 @@ Remaining remote parity gap after this slice:
 - `~/.ssh/config` import and richer auth flows
 - remote workspace and non-terminal remote surfaces
 - full recognizable TideTerm remote workflow parity
+
+## Active remote lifecycle / shell semantics slice
+
+TideTerm reference surface:
+
+- `aiprompts/conn-arch.md`
+- `aiprompts/fe-conn-arch.md`
+- connection entry and selection patterns in `frontend/app/workspace/widgets.tsx`
+
+This slice is limited to remote lifecycle clarity only. It closes:
+
+- an explicit distinction between saved SSH profile, active default target, last preflight result, last launch result, and shell-visible usability
+- dedicated transport for explicit connection preflight checks
+- shell-visible connection cards that show lifecycle state instead of only catalog metadata
+- connection shell actions that expose `Check`, `Use for new tabs`, and `Open shell` without turning the shell into the owner of connection state
+
+Exit criteria for this slice:
+
+- the shell can show whether a saved connection is usable or needs attention
+- the runtime can report the difference between a failed profile check and a failed launch attempt
+- active connection semantics are documented as “default target for future tabs,” not “live connected controller”
+- validation covers connection save/list/select/check flows on a freshly built runtime binary
+
+Current assessment after this slice:
+
+- remote is now lifecycle-oriented enough to be user-visible and honest
+- the shell can explain why an SSH profile needs attention without pretending that a live remote session exists
+- this is enough to make the remote slice usable as a foundation for future parity work, but not enough to claim TideTerm-equivalent remote workflows
+
+Remaining remote lifecycle gap after this slice:
+
+- live remote/session reachability distinct from local preflight
+- richer launch-result reporting for real SSH failures against reachable hosts
+- controller-oriented remote semantics instead of process-oriented shell launches
+- broader remote shell UX and workflow parity
 
 ## Active AI panel parity slice
 

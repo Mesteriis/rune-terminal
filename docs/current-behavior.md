@@ -52,11 +52,27 @@ It is intentionally operational, not narrative.
 - The runtime owns a connection catalog separate from the workspace snapshot.
 - The catalog always includes a built-in `local` connection.
 - Saved SSH profiles are persisted in the runtime state directory and surfaced alongside the built-in local target.
-- The catalog also stores one active connection ID that acts as the default target for new terminal tabs.
+- A saved connection profile is not the same thing as an active default target.
+- The catalog stores one active connection ID that acts as the default target for new terminal tabs.
 - Selecting an active connection changes the default target for future tabs. It does not migrate already-running sessions.
+- Selecting an active connection does not imply that the target has passed preflight checks or that any remote session is live.
 - Widgets keep their own `connection_id`, so tabs and sessions remain explicitly bound after creation.
 - Connection selection and profile creation are exposed through dedicated management routes and mirrored in the shell connections panel.
-- Current SSH status is shallow: a saved SSH profile is `configured`; it is not treated as a long-lived connected controller.
+- Each connection snapshot now includes:
+  - `status`: catalog-level profile state such as `ready` or `configured`
+  - `runtime.check_status`: last preflight result (`unchecked`, `passed`, `failed`)
+  - `runtime.launch_status`: last launch attempt result (`idle`, `succeeded`, `failed`)
+  - `usability`: shell-facing summary (`available`, `attention`, `unknown`)
+- `runtime.check_status` reflects the last explicit or save-time preflight check. It is not a live remote reachability probe.
+- `runtime.launch_status` reflects only the last shell/runtime launch attempt that reported back into the connection service.
+- Current SSH status is intentionally narrow: a saved SSH profile is not treated as a long-lived connected controller.
+- There is no persistent live remote connection object in the runtime yet.
+- The shell connections panel is lifecycle-oriented:
+  - it shows the saved profile
+  - it shows whether the profile is the default target for new tabs
+  - it shows the last preflight outcome
+  - it shows the last launch outcome
+  - it allows `Check`, `Use for new tabs`, and `Open shell`
 
 ## Output subscription contract
 

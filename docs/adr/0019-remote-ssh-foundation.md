@@ -19,6 +19,7 @@ This slice implements:
 - an explicit connection catalog with `local` and `ssh` connection kinds
 - persisted SSH connection profiles
 - active connection selection
+- explicit connection lifecycle fields for last preflight-check result and last launch-result feedback
 - connection-aware terminal launch options
 - shell-level connection entry points and catalog views
 - typed HTTP adapter routes for connection catalog reads and writes
@@ -29,7 +30,7 @@ The shell uses the connection catalog as a backend-owned source of truth:
 
 - the workspace switcher shows the active connection target
 - terminal chrome shows the current connection
-- the connections panel can add/select SSH profiles and open a new tab bound to a specific connection
+- the connections panel can add/select SSH profiles, run an explicit preflight check, inspect lifecycle-oriented status, and open a new tab bound to a specific connection
 
 ## Consequences
 
@@ -45,7 +46,9 @@ Negative:
 
 - this is not full TideTerm remote parity
 - SSH sessions currently rely on the local `ssh` binary and do not implement a richer remote agent/controller layer
-- connection status remains shallow (`ready` / `configured`) until richer remote lifecycle management exists
+- the active connection is only the default target for future tabs, not a live remote session
+- preflight checks are local validation plus binary/path checks, not a full network reachability guarantee
+- there is still no long-lived remote controller state in the runtime
 
 ## Alternatives considered
 

@@ -49,7 +49,7 @@ Go Core
 - `core/workspace`
   Manages workspace snapshots, widget inventory and active widget focus.
 - `core/connections`
-  Manages the persisted connection catalog, active connection selection, and local versus SSH connection metadata.
+  Manages the persisted connection catalog, active connection selection, local versus SSH connection metadata, last preflight-check result, and last launch-result feedback.
 - `core/terminal`
   Manages terminal sessions, PTY processes, output buffering and subscriptions.
   Terminal launches are connection-aware: local sessions use the current shell, while SSH sessions launch the system `ssh` binary inside the PTY.
@@ -71,6 +71,7 @@ Go Core
 - Tauri exposes `runtime_info` so the frontend can discover the Go base URL and auth token.
 - Frontend talks directly to the Go core over local HTTP and SSE.
 - Shell-level management routes now include connection catalog reads and writes in addition to workspace, policy, agent, and terminal adapters.
+- Connection routes expose catalog state, active default-target selection, SSH profile save, and explicit preflight checks.
 - transport keeps HTTP semantics explicit:
   - `401` for missing or invalid auth
   - `400` for malformed requests or invalid tool input
@@ -113,3 +114,4 @@ Role presets, work modes and system prompt profiles are not UI-only metadata. Th
 - connection state is explicit and backend-owned instead of being inferred from frontend shell heuristics
 - terminal orchestration is isolated from workspace orchestration
 - future AI features can integrate through the tool runtime instead of growing a second orchestration stack
+- remote state is explicit and backend-owned, but it is still profile-oriented rather than a long-lived remote controller model
