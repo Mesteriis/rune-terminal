@@ -38,6 +38,7 @@ type AgentSidebarProps = {
   onToggleWidgetContext: () => void
   onExecuteTool: (request: { tool_name: string; input?: Record<string, unknown> }) => void | Promise<unknown>
   onRunAgentAction: (label: string, request: { tool_name: string; input?: Record<string, unknown> }) => void | Promise<unknown>
+  onSubmitPrompt: (prompt: string) => void | Promise<void>
   onConfirmApproval: () => void | Promise<void>
   onDismissNotice: () => void
 }
@@ -63,6 +64,7 @@ export function AgentSidebar({
   onToggleWidgetContext,
   onExecuteTool,
   onRunAgentAction,
+  onSubmitPrompt,
   onConfirmApproval,
   onDismissNotice,
 }: AgentSidebarProps) {
@@ -112,6 +114,7 @@ export function AgentSidebar({
               onSelectMode={onSelectMode}
               onSelectSection={onSelectSection}
               onRunAgentAction={onRunAgentAction}
+              onSubmitPrompt={onSubmitPrompt}
             />
           ) : null}
           {section === 'tools' ? (

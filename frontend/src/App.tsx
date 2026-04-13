@@ -77,6 +77,7 @@ function App() {
                   onToggleWidgetContext={shell.toggleWidgetContext}
                   onExecuteTool={shell.executeTool}
                   onRunAgentAction={shell.runAgentAction}
+                  onSubmitPrompt={shell.submitAgentPrompt}
                   onConfirmApproval={shell.confirmPendingRequest}
                   onDismissNotice={shell.clearNotice}
                 />

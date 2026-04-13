@@ -475,6 +475,33 @@ What was not revalidated in this slice:
 - no fresh UI automation was run after introducing the transcript behavior
 - no fresh manual Tauri launch was performed after this specific AI-panel transcript pass
 
+## Latest AI-composer parity slice
+
+The next AI-panel parity pass added a TideTerm-shaped footer composer with explicit MVP semantics:
+
+- the AI panel now accepts prompt input through a textarea composer instead of only quick-action buttons
+- supported prompts map onto real runtime actions such as terminal inspection, tab listing, widget listing, active-tab lookup, and terminal interrupt
+- unsupported prompts produce an explicit assistant-side fallback instead of pretending a full conversation backend exists
+
+Validation executed for this slice:
+
+```bash
+npm --prefix frontend run lint
+npm --prefix frontend run build
+npm run validate
+```
+
+Observed result:
+
+- frontend lint passed
+- frontend build passed
+- full repository validation passed after the AI composer slice
+
+What was not revalidated in this slice:
+
+- no fresh UI automation was run after adding the composer behavior
+- no fresh manual Tauri launch was performed after this specific AI-panel composer pass
+
 ## Tooling baseline
 
 - Go: `go1.26.2 darwin/arm64`
