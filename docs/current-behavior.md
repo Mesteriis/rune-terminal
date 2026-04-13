@@ -160,14 +160,20 @@ Confirmable boundaries:
 - Session IDs currently equal widget IDs instead of using a separate durable session identity layer.
 - The desktop shell launches the Go core as a sidecar process and discovers it via a ready file; a richer process supervisor does not exist yet.
 - The terminal shell is now much closer to TideTerm's compact term surface, but it still lacks TideTerm's multi-session sidebar, search UI, and shell-integration toolbar details.
-- The AI panel now uses a TideTerm-shaped header with widget context toggle and overflow menu, but it still operates on runtime, audit, and policy surfaces rather than a full conversation backend.
+- The AI panel now uses a TideTerm-shaped header with widget context toggle and overflow menu, and it now has a real backend-owned conversation path in addition to the existing runtime, audit, and policy surfaces.
 - Prompt profile, role preset, and work mode controls now live in an AI mode strip near the top of the message feed instead of in the footer.
 - The AI panel welcome card now exposes runtime-backed quick actions for terminal inspection, tab listing, and audit navigation as the current closest-compatible equivalent to deeper TideTerm AI flows.
-- The AI panel now keeps a runtime-backed transcript of quick actions, approval decisions, and posture updates in a TideTerm-like message feed. This is not yet a real chat transport, but it makes the panel behave like a persistent AI activity surface instead of a static settings pane.
-- The AI panel footer now includes a TideTerm-shaped composer. It accepts a small set of runtime-backed intents such as terminal inspection, tab listing, widget listing, active-tab lookup, and terminal interrupt. Unsupported prompts return an explicit assistant-side fallback explaining that the conversation backend is not available yet.
+- The AI panel now keeps a merged transcript:
+  - backend-owned conversation messages persisted by the Go runtime
+  - runtime-backed quick actions, approval decisions, and posture updates kept in the frontend activity feed
+- The AI panel footer now includes a TideTerm-shaped composer. It still maps a small set of explicit runtime-backed intents such as terminal inspection, tab listing, widget listing, active-tab lookup, and terminal interrupt to the tool/runtime path, but all other free-text prompts now go through the real backend conversation route.
+- The conversation backend currently uses Ollama over HTTP with non-streaming chat completions. Assistant responses are real provider outputs, not local placeholders.
+- Role preset, work mode, and prompt profile selection project into the backend system prompt through the Go app layer before the request reaches the provider.
+- Provider failures are recorded as assistant error messages in the transcript and as audit events. They are not silently swallowed by the frontend.
 - Operator, settings, and audit navigation are now secondary header-menu controls rather than part of the primary composer surface.
 - The AI transcript now renders runtime tool activity with explicit tool names, operation summaries, affected widgets/paths, and approval-use markers so the feed behaves more like a working AI/tool conversation surface instead of a generic log.
 - The AI composer now exposes TideTerm-like control affordances: an attach button, prompt suggestion chips, and a send action. The attach button is currently a parity placeholder and explicitly reports that attachment transport is not wired into the new runtime yet.
+- Streaming assistant output is not implemented yet. The current provider path waits for a complete response and then appends a complete or error assistant message to the transcript.
 - Shell settings and audit now use more TideTerm-like utility placement: they stay secondary to the terminal and AI panel, but they are reachable from the right-side dock through dedicated utility menus instead of only raw operator sections.
 - Widget/app discoverability now uses a closest-compatible launcher flyout in the dock instead of a full TideTerm app catalog. It is intentionally limited to shell entry points and current widgets until a broader launcher/app domain exists.
 - The new launcher section is likewise a closest-compatible equivalent: it mirrors TideTerm’s searchable discovery feel, but it currently catalogs shell surfaces and known widgets rather than a full local app registry.

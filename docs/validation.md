@@ -4,6 +4,52 @@ Validation date: `2026-04-13`
 
 All commands below were run against the repository in its current state on macOS arm64.
 
+## Latest AI conversation backend foundation slice
+
+The latest AI step focused only on replacing the fake free-text fallback with a real backend conversation path:
+
+- the Go runtime now owns a persisted conversation transcript
+- free-text prompts now travel through `/api/v1/agent/conversation/messages`
+- assistant replies now come from Ollama instead of a local placeholder
+- runtime/action/approval feed entries still coexist with the new conversation transcript
+- `tauri:dev` now rebuilds the Go sidecar before launch so new backend routes are not hidden behind a stale binary
+
+Validation executed for this step:
+
+```bash
+./scripts/go.sh test ./core/conversation ./core/app ./core/transport/httpapi
+npm --prefix frontend run lint
+npm --prefix frontend run build
+npm run validate
+npm run build:core
+RTERM_AUTH_TOKEN=smoke-token apps/desktop/bin/rterm-core serve --workspace-root . --state-dir /tmp/rterm-conv-smoke
+curl -sf -H 'Authorization: Bearer smoke-token' http://127.0.0.1:<manual-port>/api/v1/agent/conversation
+curl -sf -H 'Authorization: Bearer smoke-token' -H 'Content-Type: application/json' http://127.0.0.1:<manual-port>/api/v1/agent/conversation/messages -d '{"prompt":"Reply with exactly: smoke-conversation-ok","context":{"workspace_id":"ws-default","repo_root":"<repo>","active_widget_id":"term_boot","widget_context_enabled":true}}'
+curl -sf -H 'Authorization: Bearer smoke-token' http://127.0.0.1:<manual-port>/api/v1/audit?limit=5
+npm run tauri:dev
+curl -sf http://127.0.0.1:<tauri-sidecar-port>/healthz
+```
+
+Observed result:
+
+- targeted Go tests passed for conversation, app, and HTTP transport
+- frontend lint passed
+- frontend build passed
+- full `npm run validate` passed
+- a freshly rebuilt standalone `rterm-core` returned:
+  - a valid empty conversation snapshot with provider metadata
+  - a real assistant reply from Ollama for the prompt `Reply with exactly: smoke-conversation-ok`
+  - `provider_error:""` and an assistant transcript entry with `content:"smoke-conversation-ok"`
+  - an audit event with `tool_name:"agent.conversation"`, `prompt_profile_id:"balanced"`, `role_id:"developer"`, and `mode_id:"implement"`
+- one earlier honest failure path was also observed during this step: when the provider defaulted to a heavier model, the transcript recorded the timeout as an assistant error message and the audit log recorded the provider failure; the provider preference was then tightened toward responsive local models
+- a fresh `npm run tauri:dev` launch succeeded after the new backend/API work, and `GET /healthz` on the Tauri-launched sidecar returned `{"status":"ok"}`
+
+What was not fully validated in this step:
+
+- browser-driven click smoke for the AI panel was still unavailable because local browser automation was not connected in this environment
+- streaming assistant output was not validated because streaming is not implemented in this slice
+- file attachment transport was not validated because it remains a placeholder affordance
+
 ## Latest real SSH launch slice
 
 The latest remote step focused only on one honest end-to-end SSH launch path and truthful failure reporting:

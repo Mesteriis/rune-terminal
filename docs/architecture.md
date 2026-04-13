@@ -37,6 +37,7 @@ Go Core
   -> workspace service
   -> connection service
   -> terminal service
+  -> conversation service
   -> tool runtime
   -> agent profile and work-mode store
   -> policy engine and rule store
@@ -53,6 +54,9 @@ Go Core
 - `core/terminal`
   Manages terminal sessions, PTY processes, output buffering and subscriptions.
   Terminal launches are connection-aware: local sessions use the current shell, while SSH sessions launch the system `ssh` binary inside the PTY.
+- `core/conversation`
+  Manages the persisted AI transcript and the narrow provider adapter for real assistant responses.
+  The current provider path uses Ollama over local-network HTTP with non-streaming chat completions.
 - `core/toolruntime`
   Hosts tool registry, operation planning, approval handling, execution results and audit emission.
 - `core/agent`
@@ -72,6 +76,9 @@ Go Core
 - Frontend talks directly to the Go core over local HTTP and SSE.
 - Shell-level management routes now include connection catalog reads and writes in addition to workspace, policy, agent, and terminal adapters.
 - Connection routes expose catalog state, active default-target selection, SSH profile save, and explicit preflight checks.
+- Agent routes now expose both the role/mode/profile catalog and a dedicated conversation transport:
+  - `GET /api/v1/agent/conversation`
+  - `POST /api/v1/agent/conversation/messages`
 - transport keeps HTTP semantics explicit:
   - `401` for missing or invalid auth
   - `400` for malformed requests or invalid tool input

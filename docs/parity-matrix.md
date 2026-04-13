@@ -49,7 +49,7 @@ The critical path to recognizable parity is:
 | Widgets | Slim right-side widgets/apps/settings/help surface with secondary actions | Right rail is widget-first, and the footer now exposes TideTerm-shaped runtime/settings flyouts with direct entry points for settings, trust/privacy, help, and audit surfaces | Still missing richer widget catalog, add-widget flows, and dedicated app/help surfaces | Continue replacing temporary controls with TideTerm-derived widget/app flows as features land | Keep dock as adapter to explicit runtime/UI state, not a global action bucket | `partial` |
 | Launcher / app entry | TideTerm exposes launcher-like discovery through widget/apps/settings/help entry surfaces | The dock now exposes a launcher-like flyout and the shell now has a dedicated searchable `Launcher` section for new terminal tabs, AI panel, runtime utilities, audit, settings/help, and quick widget focus | Still missing a real app catalog, dedicated app metadata, and broader app/help surfaces | Keep the new launcher as the closest-compatible equivalent until a dedicated launcher/app domain exists in the new runtime | Do not import TideTerm launcher wholesale; port shell discoverability behavior only | `partial` |
 | Terminal UX | Compact term shell, terminal-first focus, visible scrollback, toolbar/status strip, command entry, and stable viewport behavior | The terminal surface now behaves close enough to TideTerm for shell-first work: compact header, dedicated toolbar row, command/status strip, visible scrollback, direct keyboard-to-PTY flow, compact paste/send row, focus action, interrupt, snapshot hydration, and explicit follow/jump viewport affordances | Remaining gap is now narrower and no longer the main shell blocker: multi-session sidebar parity, shell-integration command metadata, richer search/find affordances, and deeper block/vdom term modes | Freeze the current terminal shell as the baseline and treat further terminal work as targeted follow-up slices instead of ongoing shell redesign | Terminal state stays Go-owned; the frontend now uses a JSON snapshot + SSE stream adapter instead of old RPC-bound term plumbing | `partial` |
-| AI panel | Left-side AI/chat panel with header, messages, input, mode/context controls | Left panel now follows the TideTerm panel grammar more closely: TideTerm-shaped header with widget-context toggle and overflow menu, compact mode strip, TideTerm-derived welcome card, runtime-backed transcript with message-like cards, visible approval/notice banners, and a composer with inline attach/send affordances. Operator/settings/audit entry points are now secondary header-menu flows instead of primary composer controls | Still missing real AI conversation transport, working file attach flows, richer assistant streaming/message parts, and full natural-language chat behavior | Continue porting the imported TideTerm AI panel structure while rebinding actions to the new runtime and policy surfaces; keep operator tooling secondary and out of the primary composer surface | Keep policy/runtime explicit; do not port old AI/backend entanglement | `partial` |
+| AI panel | Left-side AI/chat panel with header, messages, input, mode/context controls | Left panel now follows the TideTerm panel grammar more closely: TideTerm-shaped header with widget-context toggle and overflow menu, compact mode strip, TideTerm-derived welcome card, a merged transcript with real backend conversation messages plus runtime/action entries, visible approval/notice banners, and a composer with inline attach/send affordances. Operator/settings/audit entry points are now secondary header-menu flows instead of primary composer controls | Still missing working file attach flows, richer assistant streaming/message parts, model selection UX, and deeper natural-language/tool orchestration parity | Continue porting the imported TideTerm AI panel structure while rebinding actions to the new conversation runtime and policy surfaces; keep operator tooling secondary and out of the primary composer surface | Keep policy/runtime explicit; do not port old AI/backend entanglement | `partial` |
 | Tool invocation UX | AI-driven and app-driven flows rather than primarily internal operator tooling | Manual operator panel exists and is useful for development | Operator console is not a TideTerm user-facing equivalent | Keep operator panel as an internal dev surface, but move end-user flows into TideTerm-shaped panels | This surface is useful, but should remain secondary once parity grows | `partial` |
 | Approval UX | User-visible approvals integrated into flow surfaces | Visible approval banner exists and retries with single-use token | Approval is usable, but not yet embedded in final TideTerm-equivalent AI/settings flows | Keep current approval mechanics and relocate them into parity UI surfaces as those land | Approval remains policy/runtime-owned | `partial` |
 | Role/mode/profile UI | TideTerm has AI mode/config flows and user-facing AI controls | Current selectors exist in the AI panel | Missing closer parity with TideTerm AI mode UX and model selection flows | Rebind existing role/mode/profile model into a TideTerm-derived AI control surface | New role/mode system stays, even where old TideTerm semantics differ | `partial` |
@@ -293,10 +293,50 @@ Current assessment after this slice:
 
 Remaining AI panel gap after this slice:
 
-- real conversation backend and richer assistant streaming behavior
+- richer assistant streaming behavior
 - working file attachment transport
 - richer message-part rendering and tool-use blocks
 - deeper model-selection and AI settings flows
+
+## Active AI conversation backend foundation slice
+
+TideTerm reference surface:
+
+- `frontend/app/aipanel/aipanel.tsx`
+- `frontend/app/aipanel/aipanelmessages.tsx`
+- `frontend/app/aipanel/aipanelinput.tsx`
+- `frontend/app/aipanel/aimessage.tsx`
+
+This slice is limited to making the existing TideTerm-derived AI panel real. It closes:
+
+- a backend-owned persisted conversation transcript
+- a real prompt submission path from the composer to the Go core
+- a real assistant response path through Ollama instead of a local placeholder fallback
+- transcript coexistence between true conversation messages and runtime/action/approval feed entries
+- explicit projection of prompt profile, role preset, and work mode into the backend system prompt
+- honest audit events for conversation success and provider failure
+
+Exit criteria for this slice:
+
+- free-text prompts no longer terminate in a fake placeholder response
+- the backend records user and assistant messages in a persisted transcript
+- the AI panel transcript shows true assistant responses
+- role/mode/profile context is projected into the backend request path
+- docs explicitly describe what remains placeholder and what is now real
+
+Current assessment after this slice:
+
+- the AI panel is no longer only a runtime-backed activity surface
+- one real Ollama-backed conversation happy path is validated
+- assistant/provider failures are shown as assistant error messages in the transcript instead of disappearing behind transport-only failures
+- this is enough to move “real conversation transport” off the main AI gap list, but not enough to claim full TideTerm-equivalent AI behavior
+
+Remaining AI conversation gap after this slice:
+
+- no streaming assistant output yet
+- no attachment transport
+- no tool-calling or richer mixed message-part rendering
+- no model selection UX in the shell
 
 ## Active settings/control-surface parity slice
 
