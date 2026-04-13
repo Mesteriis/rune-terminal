@@ -82,17 +82,9 @@ export function AgentPanel({
       </div>
 
       <footer className="agent-composer">
-        <AgentComposer onSubmitPrompt={onSubmitPrompt} onAttachClick={onAttachClick} />
-        <div className="agent-panel-links">
-          <button className="ghost-button compact-button" onClick={() => onSelectSection('tools')}>
-            Operator tools
-          </button>
-          <button className="ghost-button compact-button" onClick={() => onSelectSection('policy')}>
-            Settings
-          </button>
-          <button className="ghost-button compact-button" onClick={() => onSelectSection('audit')}>
-            Audit
-          </button>
+        <AgentComposer hasTranscript={hasFeed} onSubmitPrompt={onSubmitPrompt} onAttachClick={onAttachClick} />
+        <div className="agent-panel-footer-hint">
+          <span>Use the panel menu for operator tools, settings, and audit.</span>
         </div>
       </footer>
     </section>

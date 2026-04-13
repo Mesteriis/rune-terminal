@@ -268,13 +268,7 @@ func (s *Service) waitForExit(widgetID string, sess *session) {
 	} else {
 		sess.state.Status = StatusExited
 	}
-	subscribers := s.snapshotSubscribersLocked(sess)
-	clear(sess.subscribers)
 	s.mu.Unlock()
-
-	for _, sub := range subscribers {
-		sub.close()
-	}
 }
 
 func (s *Service) snapshotSubscribersLocked(sess *session) []*subscriber {

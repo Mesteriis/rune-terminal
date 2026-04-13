@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 
 type AgentComposerProps = {
+  hasTranscript: boolean
   onSubmitPrompt: (prompt: string) => void | Promise<void>
   onAttachClick: () => void | Promise<void>
 }
 
-export function AgentComposer({ onSubmitPrompt, onAttachClick }: AgentComposerProps) {
+export function AgentComposer({ hasTranscript, onSubmitPrompt, onAttachClick }: AgentComposerProps) {
   const [draft, setDraft] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
 
@@ -40,7 +41,7 @@ export function AgentComposer({ onSubmitPrompt, onAttachClick }: AgentComposerPr
               handleSubmit()
             }
           }}
-          placeholder="Ask RunaTerminal AI anything..."
+          placeholder={hasTranscript ? 'Continue the conversation…' : 'Ask RunaTerminal AI anything…'}
           rows={2}
         />
         <button
@@ -63,7 +64,6 @@ export function AgentComposer({ onSubmitPrompt, onAttachClick }: AgentComposerPr
       </div>
       <div className="agent-composer-footer">
         <span>Enter to send · Shift+Enter for newline</span>
-        <span>Conversation transport is still runtime-backed for now.</span>
       </div>
     </div>
   )

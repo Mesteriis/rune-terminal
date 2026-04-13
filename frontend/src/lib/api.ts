@@ -5,11 +5,14 @@ import type {
   ExecuteToolRequest,
   ExecuteToolResponse,
   IgnoreRule,
+  TerminalSnapshot,
+  TerminalState,
   ToolInfo,
   TrustedRule,
   Workspace,
 } from '../types'
 import type { RuntimeInfo } from './runtime'
+import { normalizeTerminalSnapshot } from './terminal'
 import { normalizeBootstrapPayload, normalizeWorkspace } from './workspace'
 
 export class RtermClient {
@@ -25,6 +28,54 @@ export class RtermClient {
 
   async workspace(): Promise<Workspace> {
     return normalizeWorkspace(await this.request<Workspace>('/api/v1/workspace'))
+  }
+
+  async focusWidget(widgetId: string): Promise<{ workspace: Workspace }> {
+    return this.workspaceRequest('/api/v1/workspace/focus-widget', {
+      method: 'POST',
+      body: JSON.stringify({ widget_id: widgetId }),
+    })
+  }
+
+  async focusTab(tabId: string): Promise<{ workspace: Workspace }> {
+    return this.workspaceRequest('/api/v1/workspace/focus-tab', {
+      method: 'POST',
+      body: JSON.stringify({ tab_id: tabId }),
+    })
+  }
+
+  async createTerminalTab(title?: string): Promise<{ tab_id: string; widget_id: string; workspace: Workspace }> {
+    return this.workspaceRequest('/api/v1/workspace/tabs', {
+      method: 'POST',
+      body: JSON.stringify(title ? { title } : {}),
+    })
+  }
+
+  async renameTab(tabId: string, title: string): Promise<{ tab: unknown; workspace: Workspace }> {
+    return this.workspaceRequest(`/api/v1/workspace/tabs/${tabId}/rename`, {
+      method: 'PATCH',
+      body: JSON.stringify({ title }),
+    })
+  }
+
+  async setTabPinned(tabId: string, pinned: boolean): Promise<{ tab: unknown; workspace: Workspace }> {
+    return this.workspaceRequest(`/api/v1/workspace/tabs/${tabId}/pinned`, {
+      method: 'PATCH',
+      body: JSON.stringify({ pinned }),
+    })
+  }
+
+  async moveTab(tabId: string, beforeTabId: string): Promise<{ workspace: Workspace }> {
+    return this.workspaceRequest('/api/v1/workspace/tabs/move', {
+      method: 'POST',
+      body: JSON.stringify({ tab_id: tabId, before_tab_id: beforeTabId }),
+    })
+  }
+
+  async closeTab(tabId: string): Promise<{ closed_tab_id: string; workspace: Workspace }> {
+    return this.workspaceRequest(`/api/v1/workspace/tabs/${tabId}`, {
+      method: 'DELETE',
+    })
   }
 
   async tools(): Promise<{ tools: ToolInfo[] }> {
@@ -89,8 +140,13 @@ export class RtermClient {
     })
   }
 
-  async terminalSnapshot(widgetId: string, from = 0) {
-    return this.request<import('../types').TerminalSnapshot>(`/api/v1/terminal/${widgetId}?from=${from}`)
+  async terminalSnapshot(widgetId: string, from = 0, fallbackState?: TerminalState | null): Promise<TerminalSnapshot> {
+    return normalizeTerminalSnapshot(
+      await this.request<TerminalSnapshot | null>(`/api/v1/terminal/${widgetId}?from=${from}`),
+      widgetId,
+      fallbackState,
+      from,
+    )
   }
 
   async audit(limit = 20): Promise<{ events: AuditEvent[] }> {
@@ -113,6 +169,14 @@ export class RtermClient {
       throw new Error(payload?.error?.message || `Request failed with ${response.status}`)
     }
     return response.json() as Promise<T>
+  }
+
+  private async workspaceRequest<T extends { workspace: Workspace }>(path: string, init?: RequestInit): Promise<T> {
+    const payload = await this.request<T>(path, init)
+    return {
+      ...payload,
+      workspace: normalizeWorkspace(payload.workspace),
+    }
   }
 
   private async fetch(path: string, init?: RequestInit): Promise<Response> {

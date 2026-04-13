@@ -554,6 +554,7 @@
   align-content: start;
   gap: 0.45rem;
   padding: 0.8rem 0.5rem;
+  overflow-y: auto;
 }
 
 .widget-dock-button {
@@ -608,7 +609,7 @@
   display: flex;
   justify-content: center;
   gap: 0.35rem;
-  margin-bottom: 0.2rem;
+  margin-bottom: 0.25rem;
 }
 
 .widget-dock-menu-shell {
@@ -616,12 +617,15 @@
 }
 
 .widget-dock-mini {
-  min-width: 2rem;
-  padding: 0.38rem 0.45rem;
+  min-width: 2.15rem;
+  min-height: 2.15rem;
+  display: inline-grid;
+  place-items: center;
+  padding: 0.42rem 0.5rem;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.05);
   color: #c0ccd7;
-  font-size: 0.66rem;
+  font-size: 0.88rem;
 }
 
 .widget-dock-mini.active {
@@ -635,7 +639,7 @@
   right: calc(100% + 0.45rem);
   bottom: 0;
   z-index: 30;
-  width: 14rem;
+  width: 15.25rem;
   display: grid;
   gap: 0.2rem;
   padding: 0.35rem;
@@ -646,8 +650,9 @@
 }
 
 .widget-dock-menu button {
-  display: grid;
-  gap: 0.18rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
   justify-items: start;
   padding: 0.55rem 0.65rem;
   border-radius: 8px;
@@ -678,6 +683,137 @@
   color: #7e8b99;
   font-size: 0.64rem;
   line-height: 1.35;
+}
+
+.policy-panel,
+.audit-panel {
+  gap: 0.8rem;
+  padding: 0.95rem 1rem 1rem;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.policy-panel-header,
+.audit-panel-header {
+  display: grid;
+  gap: 0.32rem;
+}
+
+.policy-panel-header span,
+.audit-panel-header span,
+.policy-overview-copy p,
+.policy-surface-copy p,
+.policy-help-note span {
+  color: #92a0ae;
+  font-size: 0.79rem;
+  line-height: 1.45;
+}
+
+.policy-tab-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.policy-tab {
+  padding: 0.45rem 0.72rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #c7d1dc;
+  font-size: 0.74rem;
+}
+
+.policy-tab.active {
+  background: rgba(242, 179, 95, 0.18);
+  border-color: rgba(242, 179, 95, 0.22);
+  color: #ffd9a8;
+}
+
+.policy-panel-body {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.policy-overview-card,
+.policy-surface-card {
+  display: grid;
+  gap: 0.9rem;
+  padding: 0.85rem 0.9rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.policy-overview-copy,
+.policy-surface-copy {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.policy-overview-grid,
+.policy-help-grid {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.policy-overview-stat,
+.policy-help-card {
+  display: grid;
+  gap: 0.2rem;
+  justify-items: start;
+  padding: 0.78rem 0.85rem;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  text-align: left;
+}
+
+.policy-overview-stat strong {
+  color: #ffd9a8;
+  font-size: 1.15rem;
+}
+
+.policy-overview-stat span,
+.policy-help-card strong,
+.rule-copy strong,
+.audit-secondary-list strong {
+  color: #eef5fb;
+}
+
+.policy-overview-stat small,
+.policy-help-card span,
+.rule-copy span,
+.rule-copy small,
+.audit-secondary-list span {
+  color: #90a0ae;
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
+.policy-overview-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.rule-copy,
+.audit-secondary-list {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.rule-empty {
+  color: #91a0ae;
+}
+
+.policy-help-note {
+  display: grid;
+  gap: 0.22rem;
+  padding: 0.75rem 0.8rem;
+  border-radius: 10px;
+  background: rgba(242, 179, 95, 0.08);
+  border: 1px solid rgba(242, 179, 95, 0.14);
 }
 
 .panel,
@@ -712,16 +848,19 @@
 
 .agent-mode-strip {
   display: grid;
-  gap: 0.6rem;
-  padding: 0.78rem 0.85rem;
+  gap: 0.5rem;
+  padding: 0.72rem 0.78rem;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .agent-mode-strip-copy {
-  display: grid;
-  gap: 0.18rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: baseline;
+  flex-wrap: wrap;
 }
 
 .agent-mode-strip-copy strong {
@@ -736,7 +875,8 @@
 
 .agent-mode-strip-controls {
   display: grid;
-  gap: 0.55rem;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.45rem;
 }
 
 .agent-mode-strip-controls label {
@@ -746,6 +886,10 @@
   color: #92a0ae;
   text-transform: uppercase;
   letter-spacing: 0.08em;
+}
+
+.agent-mode-select.mode {
+  grid-column: span 1;
 }
 
 .agent-mode-strip select {
@@ -770,6 +914,7 @@
 .agent-transcript {
   display: grid;
   gap: 0.8rem;
+  align-content: start;
 }
 
 .agent-panel-status {
@@ -781,7 +926,7 @@
   display: flex;
   justify-content: space-between;
   gap: 0.75rem;
-  align-items: center;
+  align-items: flex-start;
 }
 
 .ai-message-card header small {
@@ -791,6 +936,10 @@
 
 .ai-message-card strong {
   color: #eef4fb;
+}
+
+.ai-message-card > strong {
+  line-height: 1.35;
 }
 
 .ai-message-card p {
@@ -909,6 +1058,7 @@
 .ai-message-user {
   background: rgba(52, 79, 109, 0.28);
   border-color: rgba(111, 160, 214, 0.22);
+  margin-left: 1.35rem;
 }
 
 .ai-message-user .ai-message-badge {
@@ -963,7 +1113,7 @@
 
 .agent-composer {
   display: grid;
-  gap: 0.65rem;
+  gap: 0.55rem;
   padding: 0.95rem 1rem 1rem;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   background: rgba(7, 11, 16, 0.65);
@@ -1003,7 +1153,7 @@
 
 .agent-composer-footer {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 0.75rem;
   align-items: center;
   flex-wrap: wrap;
@@ -1015,16 +1165,21 @@
   line-height: 1.4;
 }
 
-.agent-panel-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-}
-
-.agent-panel-links .ghost-button,
 .ai-message-approval .ghost-button,
 .approval-bar .ghost-button {
   background: rgba(255, 255, 255, 0.05);
+}
+
+.agent-panel-footer-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.agent-panel-footer-hint span {
+  color: #6f7d8b;
+  font-size: 0.72rem;
+  line-height: 1.35;
 }
 
 .agent-composer-icon {

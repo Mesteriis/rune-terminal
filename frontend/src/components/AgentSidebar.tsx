@@ -2,6 +2,7 @@ import { AgentPanel } from './AgentPanel'
 import { AgentHeaderMenuButton } from './AgentHeaderMenuButton'
 import { AuditPanel } from './AuditPanel'
 import { PolicyPanel } from './PolicyPanel'
+import type { PolicyView } from './PolicyViews'
 import type { ShellSection } from './ShellSections'
 import { ToolConsolePanel } from './ToolConsolePanel'
 import type {
@@ -20,6 +21,8 @@ import type {
 type AgentSidebarProps = {
   section: ShellSection
   onSelectSection: (section: ShellSection) => void
+  policyView: PolicyView
+  onSelectPolicyView: (view: PolicyView) => void
   catalog: AgentCatalog | null
   workspaceContext: WorkspaceContextSummary | null
   tools: ToolInfo[]
@@ -37,6 +40,10 @@ type AgentSidebarProps = {
   onSelectMode: (id: string) => void | Promise<void>
   onToggleWidgetContext: () => void
   onExecuteTool: (request: { tool_name: string; input?: Record<string, unknown> }) => void | Promise<unknown>
+  onAddTrustedRule: (input: { scope: string; matcher: string; note?: string }) => void | Promise<unknown>
+  onRemoveTrustedRule: (ruleId: string) => void | Promise<unknown>
+  onAddIgnoreRule: (input: { pattern: string; mode: string; note?: string }) => void | Promise<unknown>
+  onRemoveIgnoreRule: (ruleId: string) => void | Promise<unknown>
   onRunAgentAction: (label: string, request: { tool_name: string; input?: Record<string, unknown> }) => void | Promise<unknown>
   onSubmitPrompt: (prompt: string) => void | Promise<void>
   onAttachClick: () => void | Promise<void>
@@ -47,6 +54,8 @@ type AgentSidebarProps = {
 export function AgentSidebar({
   section,
   onSelectSection,
+  policyView,
+  onSelectPolicyView,
   catalog,
   workspaceContext,
   tools,
@@ -64,6 +73,10 @@ export function AgentSidebar({
   onSelectMode,
   onToggleWidgetContext,
   onExecuteTool,
+  onAddTrustedRule,
+  onRemoveTrustedRule,
+  onAddIgnoreRule,
+  onRemoveIgnoreRule,
   onRunAgentAction,
   onSubmitPrompt,
   onAttachClick,
@@ -129,7 +142,17 @@ export function AgentSidebar({
             />
           ) : null}
           {section === 'policy' ? (
-            <PolicyPanel trustedRules={trustedRules} ignoreRules={ignoreRules} onExecuteTool={onExecuteTool} />
+            <PolicyPanel
+              trustedRules={trustedRules}
+              ignoreRules={ignoreRules}
+              view={policyView}
+              onSelectView={onSelectPolicyView}
+              onSelectSection={onSelectSection}
+              onAddTrustedRule={onAddTrustedRule}
+              onRemoveTrustedRule={onRemoveTrustedRule}
+              onAddIgnoreRule={onAddIgnoreRule}
+              onRemoveIgnoreRule={onRemoveIgnoreRule}
+            />
           ) : null}
           {section === 'audit' ? <AuditPanel auditEvents={auditEvents} /> : null}
         </div>

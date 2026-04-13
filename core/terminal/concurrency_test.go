@@ -128,3 +128,63 @@ func TestUnsubscribeIsSafeDuringConcurrentDelivery(t *testing.T) {
 		}
 	}
 }
+
+func TestSubscriberStaysOpenAfterProcessExit(t *testing.T) {
+	t.Parallel()
+
+	process := &fakeProcess{
+		outputCh: make(chan []byte, 1),
+		waitCh:   make(chan struct{}),
+	}
+	service := NewService(fakeLauncher{process: process})
+	if _, err := service.StartSession(context.Background(), LaunchOptions{WidgetID: "term-main", Shell: "/bin/sh"}); err != nil {
+		t.Fatalf("StartSession error: %v", err)
+	}
+
+	ch, unsubscribe, err := service.Subscribe("term-main")
+	if err != nil {
+		t.Fatalf("Subscribe error: %v", err)
+	}
+	defer unsubscribe()
+
+	if err := process.Close(); err != nil {
+		t.Fatalf("Close error: %v", err)
+	}
+
+	deadline := time.Now().Add(500 * time.Millisecond)
+	for {
+		state, stateErr := service.GetState("term-main")
+		if stateErr != nil {
+			t.Fatalf("GetState error: %v", stateErr)
+		}
+		if state.Status == StatusExited {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("timed out waiting for session to exit")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	select {
+	case _, ok := <-ch:
+		if !ok {
+			t.Fatal("expected subscriber channel to stay open after normal process exit")
+		}
+	case <-time.After(100 * time.Millisecond):
+		// Channel staying idle and open is the expected state.
+	}
+
+	if err := service.CloseSession("term-main"); err != nil {
+		t.Fatalf("CloseSession error: %v", err)
+	}
+
+	select {
+	case _, ok := <-ch:
+		if ok {
+			t.Fatal("expected subscriber channel to close after session close")
+		}
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("subscriber channel did not close after session close")
+	}
+}

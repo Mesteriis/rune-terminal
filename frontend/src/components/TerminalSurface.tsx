@@ -20,6 +20,7 @@ export function TerminalSurface({ client, widgetId, state, onTerminalAction, onI
   const terminalRef = useRef<Terminal | null>(null)
   const fitFrameRef = useRef<number | null>(null)
   const canSendInputRef = useRef(false)
+  const fallbackStateRef = useRef<TerminalState | null>(state)
   const [commandDraft, setCommandDraft] = useState('')
   const [isFocused, setIsFocused] = useState(false)
   const [isHydrating, setIsHydrating] = useState(true)
@@ -29,6 +30,10 @@ export function TerminalSurface({ client, widgetId, state, onTerminalAction, onI
   useEffect(() => {
     canSendInputRef.current = Boolean(state?.can_send_input)
   }, [state?.can_send_input])
+
+  useEffect(() => {
+    fallbackStateRef.current = state
+  }, [state])
 
   useLayoutEffect(() => {
     const container = containerRef.current
@@ -134,9 +139,20 @@ export function TerminalSurface({ client, widgetId, state, onTerminalAction, onI
       }
     }
 
+    const onStreamError = () => {
+      if (disposed) {
+        return
+      }
+      if (source) {
+        source.removeEventListener('output', onOutput)
+        source.close()
+        source = null
+      }
+    }
+
     async function bootstrapSnapshot() {
       try {
-        const snapshot = await client.terminalSnapshot(widgetId, 0)
+        const snapshot = await client.terminalSnapshot(widgetId, 0, fallbackStateRef.current)
         if (disposed || terminalRef.current !== terminal) {
           return
         }
@@ -144,6 +160,12 @@ export function TerminalSurface({ client, widgetId, state, onTerminalAction, onI
         refreshFollowState()
         source = new EventSource(client.terminalStreamUrl(widgetId, snapshot.next_seq))
         source.addEventListener('output', onOutput)
+        source.addEventListener('error', onStreamError)
+      } catch {
+        if (!disposed && terminalRef.current === terminal) {
+          terminal.clear()
+          refreshFollowState()
+        }
       } finally {
         if (!disposed) {
           setIsHydrating(false)
@@ -160,6 +182,7 @@ export function TerminalSurface({ client, widgetId, state, onTerminalAction, onI
       onInput.dispose()
       if (source) {
         source.removeEventListener('output', onOutput)
+        source.removeEventListener('error', onStreamError)
         source.close()
       }
       observer.disconnect()

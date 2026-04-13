@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 
 type MenuItem = {
   label: string
@@ -7,7 +8,7 @@ type MenuItem = {
 }
 
 type WidgetDockMenuButtonProps = {
-  label: string
+  label: ReactNode
   title: string
   items: MenuItem[]
 }

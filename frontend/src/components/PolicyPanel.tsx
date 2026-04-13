@@ -1,126 +1,75 @@
-import { useState } from 'react'
-
+import { IgnoreRulesManager } from './IgnoreRulesManager'
+import { POLICY_VIEW_LABELS, type PolicyView } from './PolicyViews'
+import { PolicyOverviewCard } from './PolicyOverviewCard'
+import { SettingsHelpPanel } from './SettingsHelpPanel'
+import type { ShellSection } from './ShellSections'
+import { TrustedRulesManager } from './TrustedRulesManager'
 import type { IgnoreRule, TrustedRule } from '../types'
 
 type PolicyPanelProps = {
   trustedRules: TrustedRule[]
   ignoreRules: IgnoreRule[]
-  onExecuteTool: (request: { tool_name: string; input?: Record<string, unknown> }) => void | Promise<unknown>
+  view: PolicyView
+  onSelectView: (view: PolicyView) => void
+  onSelectSection: (section: ShellSection) => void
+  onAddTrustedRule: (input: { scope: string; matcher: string; note?: string }) => void | Promise<unknown>
+  onRemoveTrustedRule: (ruleId: string) => void | Promise<unknown>
+  onAddIgnoreRule: (input: { pattern: string; mode: string; note?: string }) => void | Promise<unknown>
+  onRemoveIgnoreRule: (ruleId: string) => void | Promise<unknown>
 }
 
-export function PolicyPanel({ trustedRules, ignoreRules, onExecuteTool }: PolicyPanelProps) {
-  const [trustedMatcher, setTrustedMatcher] = useState('term.send_input')
-  const [trustedScope, setTrustedScope] = useState('repo')
-  const [ignorePattern, setIgnorePattern] = useState('.env*')
-  const [ignoreMode, setIgnoreMode] = useState('metadata-only')
+const POLICY_VIEWS: PolicyView[] = ['overview', 'trusted', 'ignore', 'help']
 
+export function PolicyPanel({
+  trustedRules,
+  ignoreRules,
+  view,
+  onSelectView,
+  onSelectSection,
+  onAddTrustedRule,
+  onRemoveTrustedRule,
+  onAddIgnoreRule,
+  onRemoveIgnoreRule,
+}: PolicyPanelProps) {
   return (
-    <>
-      <section className="panel">
-        <p className="eyebrow">Trusted rules</p>
-        <form
-          className="stack-form"
-          onSubmit={(event) => {
-            event.preventDefault()
-            void onExecuteTool({
-              tool_name: 'safety.add_trusted_rule',
-              input: {
-                scope: trustedScope,
-                subject_type: 'tool',
-                matcher_type: 'exact',
-                matcher: trustedMatcher,
-                note: 'MVP policy console',
-              },
-            })
-          }}
-        >
-          <label>
-            Scope
-            <select value={trustedScope} onChange={(event) => setTrustedScope(event.target.value)}>
-              <option value="global">global</option>
-              <option value="workspace">workspace</option>
-              <option value="repo">repo</option>
-            </select>
-          </label>
-          <label>
-            Tool matcher
-            <input value={trustedMatcher} onChange={(event) => setTrustedMatcher(event.target.value)} />
-          </label>
-          <button type="submit">Add trusted rule</button>
-        </form>
+    <section className="panel policy-panel">
+      <div className="policy-panel-header">
+        <p className="eyebrow">Settings and controls</p>
+        <h2>Shell settings</h2>
+        <span>Trust, privacy, and shell utility surfaces stay reachable from the widget dock.</span>
+      </div>
 
-        <ul className="rule-list">
-          {trustedRules.map((rule) => (
-            <li key={rule.id}>
-              <code>{rule.matcher ?? 'structured'}</code>
-              <span>{rule.scope}</span>
-              <button
-                onClick={() =>
-                  void onExecuteTool({
-                    tool_name: 'safety.remove_trusted_rule',
-                    input: { rule_id: rule.id },
-                  })
-                }
-              >
-                Revoke
-              </button>
-            </li>
-          ))}
-        </ul>
-      </section>
+      <div className="policy-tab-strip">
+        {POLICY_VIEWS.map((entry) => (
+          <button
+            key={entry}
+            type="button"
+            className={entry === view ? 'policy-tab active' : 'policy-tab'}
+            onClick={() => onSelectView(entry)}
+          >
+            {POLICY_VIEW_LABELS[entry]}
+          </button>
+        ))}
+      </div>
 
-      <section className="panel">
-        <p className="eyebrow">Ignore rules</p>
-        <form
-          className="stack-form"
-          onSubmit={(event) => {
-            event.preventDefault()
-            void onExecuteTool({
-              tool_name: 'safety.add_ignore_rule',
-              input: {
-                scope: 'repo',
-                matcher_type: 'glob',
-                pattern: ignorePattern,
-                mode: ignoreMode,
-                note: 'MVP secret shield',
-              },
-            })
-          }}
-        >
-          <label>
-            Pattern
-            <input value={ignorePattern} onChange={(event) => setIgnorePattern(event.target.value)} />
-          </label>
-          <label>
-            Mode
-            <select value={ignoreMode} onChange={(event) => setIgnoreMode(event.target.value)}>
-              <option value="deny">deny</option>
-              <option value="metadata-only">metadata-only</option>
-              <option value="redact">redact</option>
-            </select>
-          </label>
-          <button type="submit">Add ignore rule</button>
-        </form>
-
-        <ul className="rule-list">
-          {ignoreRules.map((rule) => (
-            <li key={rule.id}>
-              <code>{rule.pattern}</code>
-              <span>{rule.mode}</span>
-              <button
-                onClick={() =>
-                  void onExecuteTool({
-                    tool_name: 'safety.remove_ignore_rule',
-                    input: { rule_id: rule.id },
-                  })
-                }
-              >
-                Remove
-              </button>
-            </li>
-          ))}
-        </ul>
-      </section>
-    </>
+      <div className="policy-panel-body">
+        {view === 'overview' ? (
+          <PolicyOverviewCard trustedRules={trustedRules} ignoreRules={ignoreRules} onSelectView={onSelectView} />
+        ) : null}
+        {view === 'trusted' ? (
+          <TrustedRulesManager
+            trustedRules={trustedRules}
+            onAddRule={onAddTrustedRule}
+            onRemoveRule={onRemoveTrustedRule}
+          />
+        ) : null}
+        {view === 'ignore' ? (
+          <IgnoreRulesManager ignoreRules={ignoreRules} onAddRule={onAddIgnoreRule} onRemoveRule={onRemoveIgnoreRule} />
+        ) : null}
+        {view === 'help' ? (
+          <SettingsHelpPanel onSelectView={onSelectView} onSelectSection={onSelectSection} />
+        ) : null}
+      </div>
+    </section>
   )
 }

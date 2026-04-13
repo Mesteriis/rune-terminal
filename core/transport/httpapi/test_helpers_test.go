@@ -15,6 +15,7 @@ import (
 	"github.com/avm/rterm/core/policy"
 	"github.com/avm/rterm/core/terminal"
 	"github.com/avm/rterm/core/toolruntime"
+	"github.com/avm/rterm/core/workspace"
 )
 
 const testAuthToken = "test-token"
@@ -43,6 +44,7 @@ func newTestHandler(t *testing.T, definitions ...toolruntime.Definition) (http.H
 	}
 	runtime := &app.Runtime{
 		RepoRoot:  "/workspace/repo",
+		Workspace: workspace.NewService(workspace.BootstrapDefault()),
 		Terminals: terminal.NewService(terminal.DefaultLauncher()),
 		Agent:     agentStore,
 		Policy:    policyStore,

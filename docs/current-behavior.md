@@ -14,6 +14,8 @@ It is intentionally operational, not narrative.
 - Widgets remain the secondary inventory used by the right-side dock and terminal/runtime binding.
 - The top-left workspace switcher is now a TideTerm-shaped shell popover, but it currently exposes only the active local workspace and launch actions.
 - The right-side widget dock now uses shell-level flyout controls for runtime and settings entry points instead of acting as a primary content column.
+- The widget dock settings flyout now deep-links into a user-facing shell settings surface with `Overview`, `Trusted tools`, `Secret shield`, and `Help` views.
+- Runtime utilities and audit remain secondary shell surfaces reachable from the dock and the AI-panel overflow menu.
 - New terminal tabs can be created at runtime.
 - Closing a tab tears down its terminal session and removes the associated widget from the workspace snapshot.
 - The last remaining tab cannot be closed in the current implementation.
@@ -23,6 +25,8 @@ It is intentionally operational, not narrative.
 - Tabs can be reordered by dragging within their current pinned or regular group.
 - Cross-group drag between pinned and regular tabs is rejected in the current implementation.
 - Tabs expose a context menu with pin/unpin, rename, and close actions.
+- Shell-primary tab actions now use direct workspace management endpoints instead of `POST /api/v1/tools/execute`.
+- Operator and debug surfaces can still call the workspace tools through the tool runtime, where policy and audit remain visible.
 
 ## Session lifecycle contract
 
@@ -60,6 +64,7 @@ It is intentionally operational, not narrative.
 - Trusted rules do not auto-approve destructive operations.
 - Trusted auto-approve can be disabled by the active role/mode/profile overlay.
 - Trusted rules do not override hard denials caused by missing capabilities.
+- The shell settings surface presents trusted rules as a user-facing list of repeat-approved tools rather than only a raw operator form.
 
 ## Ignore rule behavior
 
@@ -70,6 +75,7 @@ It is intentionally operational, not narrative.
 - `metadata-only` marks the match in the decision but does not block execution.
 - `redact` is reserved for paths that may be referenced but must have contents masked by higher-level tooling.
 - `deny` is a hard sensitive-path boundary unless explicit approval is supplied.
+- The shell settings surface presents ignore rules as a “secret shield” list with `deny`, `metadata-only`, and `redact` modes exposed directly in the UI.
 
 ## Allowed roots semantics
 
@@ -120,5 +126,8 @@ Confirmable boundaries:
 - The AI panel welcome card now exposes runtime-backed quick actions for terminal inspection, tab listing, and audit navigation as the current closest-compatible equivalent to deeper TideTerm AI flows.
 - The AI panel now keeps a runtime-backed transcript of quick actions, approval decisions, and posture updates in a TideTerm-like message feed. This is not yet a real chat transport, but it makes the panel behave like a persistent AI activity surface instead of a static settings pane.
 - The AI panel footer now includes a TideTerm-shaped composer. It accepts a small set of runtime-backed intents such as terminal inspection, tab listing, widget listing, active-tab lookup, and terminal interrupt. Unsupported prompts return an explicit assistant-side fallback explaining that the conversation backend is not available yet.
+- Operator, settings, and audit navigation are now secondary header-menu controls rather than part of the primary composer surface.
 - The AI transcript now renders runtime tool activity with explicit tool names, operation summaries, affected widgets/paths, and approval-use markers so the feed behaves more like a working AI/tool conversation surface instead of a generic log.
 - The AI composer now exposes TideTerm-like control affordances: an attach button, prompt suggestion chips, and a send action. The attach button is currently a parity placeholder and explicitly reports that attachment transport is not wired into the new runtime yet.
+- Shell settings and audit now use more TideTerm-like utility placement: they stay secondary to the terminal and AI panel, but they are reachable from the right-side dock through dedicated utility menus instead of only raw operator sections.
+- The settings surface is still a closest-compatible equivalent, not exact parity with TideTerm’s broader waveconfig/help universe.

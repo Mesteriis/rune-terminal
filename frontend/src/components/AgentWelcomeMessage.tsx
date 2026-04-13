@@ -24,29 +24,28 @@ export function AgentWelcomeMessage({
       </header>
       <strong>Welcome to RunaTerminal AI</strong>
       <p>
-        The panel follows the TideTerm AI shell pattern: terminal work stays in the center, while chat, approvals,
-        and operator surfaces stay at the side.
+        Ask about the active terminal, inspect your workspace, and keep the conversation beside your shell just like TideTerm’s AI panel flow.
       </p>
       <div className="ai-welcome-grid">
         <div>
           <span className="ai-welcome-icon"><i className="fa fa-plug" /></span>
           <div>
             <strong>Widget context</strong>
-            <p>When enabled, the assistant reads the active terminal widget and can act on it.</p>
+            <p>Turn it on to read the active terminal widget and use shell-aware quick actions.</p>
           </div>
         </div>
         <div>
           <span className="ai-welcome-icon"><i className="fa fa-paperclip" /></span>
           <div>
             <strong>Composer flow</strong>
-            <p>The TideTerm-style attach control is visible here; attachment transport still needs a dedicated backend path.</p>
+            <p>The attach control follows TideTerm placement. File transport is still pending, so the control currently explains that gap.</p>
           </div>
         </div>
         <div>
           <span className="ai-welcome-icon"><i className="fa fa-keyboard" /></span>
           <div>
-            <strong>Input shortcuts</strong>
-            <p><kbd>Enter</kbd> sends. <kbd>Shift</kbd> + <kbd>Enter</kbd> inserts a newline.</p>
+            <strong>Message flow</strong>
+            <p><kbd>Enter</kbd> sends. <kbd>Shift</kbd> + <kbd>Enter</kbd> inserts a newline. Transcript results stay in the panel until you clear context by starting a new thread later.</p>
           </div>
         </div>
       </div>
@@ -71,8 +70,8 @@ export function AgentWelcomeMessage({
         <button className="ghost-button" onClick={() => void onRunAgentAction('List widgets', { tool_name: 'workspace.list_widgets' })}>
           List widgets
         </button>
-        <button className="ghost-button" onClick={() => onSelectSection('policy')}>
-          Open settings
+        <button className="ghost-button" onClick={() => onSelectSection('audit')}>
+          Open audit
         </button>
       </div>
     </article>

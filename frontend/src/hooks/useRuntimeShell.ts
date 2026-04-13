@@ -6,6 +6,7 @@ import { useApprovalFlow } from './useApprovalFlow'
 import { useRuntimeBootstrap } from './useRuntimeBootstrap'
 import { useAgentFeed } from './useAgentFeed'
 import { usePolicyLists } from './usePolicyLists'
+import { usePolicyActions } from './usePolicyActions'
 import { useTerminalState } from './useTerminalState'
 import { useWorkspaceActions } from './useWorkspaceActions'
 import type {
@@ -158,7 +159,12 @@ export function useRuntimeShell() {
       return null
     }
   }
-  const workspaceActions = useWorkspaceActions(executeTool)
+  const workspaceActions = useWorkspaceActions({
+    client: bootstrap.client,
+    setWorkspace: bootstrap.setWorkspace,
+    refreshTerminalState,
+    setNotice,
+  })
   const agentActions = useAgentActions({
     client: bootstrap.client,
     workspace: bootstrap.workspace,
@@ -167,6 +173,9 @@ export function useRuntimeShell() {
     refreshAudit,
     setAgentCatalog: bootstrap.setAgentCatalog,
     setNotice,
+  })
+  const policyActions = usePolicyActions({
+    executeTool,
   })
 
   return {
@@ -194,6 +203,10 @@ export function useRuntimeShell() {
     runAgentAction: agentActions.runAgentAction,
     submitAgentPrompt: agentActions.submitAgentPrompt,
     reportAgentAttachmentUnavailable: agentActions.reportAgentAttachmentUnavailable,
+    addTrustedRule: policyActions.addTrustedRule,
+    removeTrustedRule: policyActions.removeTrustedRule,
+    addIgnoreRule: policyActions.addIgnoreRule,
+    removeIgnoreRule: policyActions.removeIgnoreRule,
     confirmPendingRequest: approvalFlow.confirmPendingRequest,
     focusWidget: workspaceActions.focusWidget,
     focusTab: workspaceActions.focusTab,

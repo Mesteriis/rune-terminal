@@ -4,6 +4,130 @@ Validation date: `2026-04-13`
 
 All commands below were run against the repository in its current state on macOS arm64.
 
+## Latest settings/control-surface parity slice
+
+The latest parity slice focused only on shell-level settings and utility surfaces derived from TideTerm:
+
+- the right-side dock now exposes TideTerm-shaped runtime and settings flyouts instead of generic utility chips
+- the settings surface now presents `Overview`, `Trusted tools`, `Secret shield`, and `Help` views
+- trust and ignore management were moved closer to user-facing settings cards instead of raw operator forms
+- the audit surface now reads as a runtime trail instead of a bare event list
+- policy actions were wrapped in a focused frontend hook so the root shell orchestration did not absorb more settings logic
+
+Validation executed for this slice:
+
+```bash
+npm --prefix frontend run lint
+npm --prefix frontend run build
+npm run validate
+npm run tauri:dev
+curl -sf http://127.0.0.1:<sidecar-port>/healthz
+curl -sf http://127.0.0.1:5173
+```
+
+Observed result:
+
+- frontend lint passed
+- frontend build passed
+- full repository validation passed
+- `tauri:dev` launched successfully and reached a running desktop binary with a fresh sidecar loopback base URL
+- `GET /healthz` returned `{"status":"ok"}`
+- the Vite shell entry responded successfully while the desktop shell was running
+
+What was not fully validated in this slice:
+
+- a browser-driven click smoke over the dock/settings/audit controls was attempted but browser automation was unavailable in this environment
+- because of that, the settings/control checklist was validated through launch readiness, compiled shell integrity, and live sidecar availability rather than automated UI interaction
+
+## Latest AI panel parity slice
+
+The latest parity slice focused only on the TideTerm-derived AI panel surface:
+
+- welcome-state copy and layout were moved closer to TideTerm's user-facing getting-started panel
+- transcript rendering was split into a dedicated message component and made more message-like
+- composer copy and footer were simplified to keep the primary panel surface user-facing
+- operator/settings/audit entry points were removed from the primary composer footer and left in the header menu as secondary controls
+
+Validation executed for this slice:
+
+```bash
+npm --prefix frontend run lint
+npm --prefix frontend run build
+npm run validate
+npm run tauri:dev
+```
+
+Observed result:
+
+- frontend lint passed
+- frontend build passed
+- full repository validation passed
+- `tauri:dev` launched successfully and reached a running desktop binary with a fresh sidecar loopback base URL
+
+What was not fully validated in this slice:
+
+- a browser-driven or extension-driven manual AI panel smoke was not available in this environment
+- because of that, the AI panel checklist items were validated indirectly through the compiled shell, transport/runtime integration, and existing runtime-backed panel actions, but not through automated UI interaction
+
+## Latest workspace shell action transport hardening
+
+The latest fix targeted `403 Forbidden` console noise when closing tabs from the shell UI:
+
+- shell-primary workspace tab actions now use direct workspace management endpoints instead of `POST /api/v1/tools/execute`
+- operator and debug tooling still uses the tool runtime path
+- this preserves policy enforcement for operator actions while preventing routine shell tab interactions from failing through the tool-execution transport
+
+Validation executed for this slice:
+
+```bash
+./scripts/go.sh test ./core/transport/httpapi ./core/app
+npm --prefix frontend run lint
+npm --prefix frontend run build
+npm run validate
+```
+
+Additional live transport smoke:
+
+```bash
+npm run build:core
+RTERM_AUTH_TOKEN=test-token apps/desktop/bin/rterm-core serve --workspace-root . --state-dir /tmp/rterm-state-tab-close-smoke
+curl -X PUT /api/v1/agent/selection/mode {"id":"explore"}
+curl -X DELETE /api/v1/workspace/tabs/tab-ops
+curl -X POST /api/v1/tools/execute {"tool_name":"workspace.close_tab","input":{"tab_id":"tab-main"}}
+```
+
+Observed result:
+
+- transport and app tests passed
+- frontend lint passed
+- frontend build passed
+- full repository validation passed
+- in restrictive `explore` mode, direct shell tab close returned `200 OK`
+- the equivalent tool-runtime request still returned `403 Forbidden`, confirming the shell now uses the intended management path instead of the noisy operator path
+
+## Latest terminal snapshot bootstrap hardening
+
+The latest frontend fix targeted a terminal bootstrap crash caused by malformed or null snapshot payloads:
+
+- terminal snapshot responses are now normalized on the client boundary before the shell consumes them
+- terminal bootstrap no longer assumes `snapshot.chunks` is always present
+- the terminal surface now degrades to an empty viewport on snapshot bootstrap failure instead of throwing an unhandled rejection
+
+Validation executed for this slice:
+
+```bash
+npm --prefix frontend run lint
+npm --prefix frontend run build
+npm run validate
+```
+
+Observed result:
+
+- frontend lint passed
+- frontend build passed
+- full repository validation passed
+- the terminal bootstrap path no longer depends on `snapshot.chunks` being present in the payload contract
+
 ## Latest console-error hardening slice
 
 The latest fix targeted startup console noise from shell self-management requests:
@@ -105,6 +229,44 @@ Console/network note:
 - no unexpected console or page errors were observed during normal AI panel use
 - the browser-backed smoke still records an expected `428 Precondition Required` entry when a dangerous tool intentionally triggers the approval flow through `POST /api/v1/tools/execute`
 - this is currently an explicit transport tradeoff, not a hidden failure; the UI handled it correctly and showed the approval banner
+
+## Latest terminal stream lifecycle hardening
+
+The latest runtime fix targeted noisy terminal stream reconnect errors:
+
+- terminal subscribers now stay open after normal process exit instead of being closed as if the widget disappeared
+- the frontend `EventSource` now stops automatic retry on stream failure instead of retrying indefinitely and spamming the console
+
+Validation executed for this slice:
+
+```bash
+./scripts/go.sh test ./core/terminal
+npm --prefix frontend run lint
+npm --prefix frontend run build
+npm run validate
+```
+
+Observed result:
+
+- terminal tests passed, including the new subscriber-lifecycle coverage
+- frontend lint passed
+- frontend build passed
+- full repository validation passed
+
+Additional browser-backed stream smoke:
+
+```bash
+npm run build:core
+RTERM_AUTH_TOKEN=test-token apps/desktop/bin/rterm-core serve --workspace-root . --state-dir /tmp/rterm-state-stream-smoke
+VITE_RTERM_API_BASE=http://127.0.0.1:<port> VITE_RTERM_AUTH_TOKEN=test-token npm --prefix frontend run dev -- --host 127.0.0.1 --port 4177 --strictPort
+node /tmp/.../check-terminal-stream-exit.mjs
+```
+
+Observed result:
+
+- terminal shell loaded successfully
+- no `Could not connect to the server` console errors were observed
+- no failing `/stream` responses were observed during the smoke run
 
 ## Frontend baseline import validation
 

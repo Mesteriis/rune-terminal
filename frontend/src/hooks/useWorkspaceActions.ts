@@ -1,65 +1,157 @@
 import { useCallback } from 'react'
 
-import type { ExecuteToolRequest, ExecuteToolResponse, Widget } from '../types'
+import { RtermClient } from '../lib/api'
+import type { RuntimeNotice, Widget, Workspace } from '../types'
 
-type ToolExecutor = (request: ExecuteToolRequest) => Promise<ExecuteToolResponse | null>
+type RefreshTerminalState = (widgetId?: string) => Promise<unknown>
 
-export function useWorkspaceActions(executeTool: ToolExecutor) {
+type WorkspaceActionsOptions = {
+  client: RtermClient | null
+  setWorkspace: (workspace: Workspace) => void
+  refreshTerminalState: RefreshTerminalState
+  setNotice: (notice: RuntimeNotice | null) => void
+}
+
+export function useWorkspaceActions({
+  client,
+  setWorkspace,
+  refreshTerminalState,
+  setNotice,
+}: WorkspaceActionsOptions) {
   const focusWidget = useCallback(async (widget: Widget) => {
-    await executeTool({
-      tool_name: 'workspace.focus_widget',
-      input: { widget_id: widget.id },
-    })
-  }, [executeTool])
+    if (!client) {
+      return
+    }
+    try {
+      const response = await client.focusWidget(widget.id)
+      setWorkspace(response.workspace)
+      await refreshTerminalState(response.workspace.active_widget_id)
+    } catch (error) {
+      setNotice({
+        tone: 'error',
+        title: 'Failed to focus widget',
+        detail: formatError(error),
+      })
+    }
+  }, [client, refreshTerminalState, setNotice, setWorkspace])
 
   const focusTab = useCallback(async (tabId: string) => {
-    await executeTool({
-      tool_name: 'workspace.focus_tab',
-      input: { tab_id: tabId },
-    })
-  }, [executeTool])
+    if (!client) {
+      return
+    }
+    try {
+      const response = await client.focusTab(tabId)
+      setWorkspace(response.workspace)
+      await refreshTerminalState(response.workspace.active_widget_id)
+    } catch (error) {
+      setNotice({
+        tone: 'error',
+        title: 'Failed to focus tab',
+        detail: formatError(error),
+      })
+    }
+  }, [client, refreshTerminalState, setNotice, setWorkspace])
 
   const createTerminalTab = useCallback(async (title?: string) => {
-    await executeTool({
-      tool_name: 'workspace.create_terminal_tab',
-      input: title ? { title } : {},
-    })
-  }, [executeTool])
+    if (!client) {
+      return
+    }
+    try {
+      const response = await client.createTerminalTab(title)
+      setWorkspace(response.workspace)
+      await refreshTerminalState(response.widget_id)
+    } catch (error) {
+      setNotice({
+        tone: 'error',
+        title: 'Failed to create tab',
+        detail: formatError(error),
+      })
+    }
+  }, [client, refreshTerminalState, setNotice, setWorkspace])
 
   const renameTab = useCallback(async (tabId: string, title: string) => {
-    await executeTool({
-      tool_name: 'workspace.rename_tab',
-      input: { tab_id: tabId, title },
-    })
-  }, [executeTool])
+    if (!client) {
+      return
+    }
+    try {
+      const response = await client.renameTab(tabId, title)
+      setWorkspace(response.workspace)
+    } catch (error) {
+      setNotice({
+        tone: 'error',
+        title: 'Failed to rename tab',
+        detail: formatError(error),
+      })
+    }
+  }, [client, setNotice, setWorkspace])
 
   const setTabPinned = useCallback(async (tabId: string, pinned: boolean) => {
-    await executeTool({
-      tool_name: 'workspace.set_tab_pinned',
-      input: { tab_id: tabId, pinned },
-    })
-  }, [executeTool])
+    if (!client) {
+      return
+    }
+    try {
+      const response = await client.setTabPinned(tabId, pinned)
+      setWorkspace(response.workspace)
+    } catch (error) {
+      setNotice({
+        tone: 'error',
+        title: 'Failed to update tab pin',
+        detail: formatError(error),
+      })
+    }
+  }, [client, setNotice, setWorkspace])
 
   const moveTab = useCallback(async (tabId: string, beforeTabId: string) => {
-    await executeTool({
-      tool_name: 'workspace.move_tab',
-      input: { tab_id: tabId, before_tab_id: beforeTabId },
-    })
-  }, [executeTool])
+    if (!client) {
+      return
+    }
+    try {
+      const response = await client.moveTab(tabId, beforeTabId)
+      setWorkspace(response.workspace)
+    } catch (error) {
+      setNotice({
+        tone: 'error',
+        title: 'Failed to move tab',
+        detail: formatError(error),
+      })
+    }
+  }, [client, setNotice, setWorkspace])
 
   const closeTab = useCallback(async (tabId: string) => {
-    await executeTool({
-      tool_name: 'workspace.close_tab',
-      input: { tab_id: tabId },
-    })
-  }, [executeTool])
+    if (!client) {
+      return
+    }
+    try {
+      const response = await client.closeTab(tabId)
+      setWorkspace(response.workspace)
+      await refreshTerminalState(response.workspace.active_widget_id)
+    } catch (error) {
+      setNotice({
+        tone: 'error',
+        title: 'Failed to close tab',
+        detail: formatError(error),
+      })
+    }
+  }, [client, refreshTerminalState, setNotice, setWorkspace])
 
   const interruptWidget = useCallback(async (widgetId: string) => {
-    await executeTool({
-      tool_name: 'term.interrupt',
-      input: { widget_id: widgetId },
-    })
-  }, [executeTool])
+    if (!client) {
+      return
+    }
+    try {
+      await client.executeTool({
+        tool_name: 'term.interrupt',
+        input: { widget_id: widgetId },
+      })
+      await refreshTerminalState(widgetId)
+    } catch (error) {
+      setNotice({
+        tone: 'error',
+        title: 'Failed to interrupt terminal',
+        detail: formatError(error),
+      })
+    }
+  }, [client, refreshTerminalState, setNotice])
 
   return {
     focusWidget,
@@ -71,4 +163,8 @@ export function useWorkspaceActions(executeTool: ToolExecutor) {
     closeTab,
     interruptWidget,
   }
+}
+
+function formatError(error: unknown) {
+  return error instanceof Error ? error.message : String(error)
 }

@@ -51,9 +51,9 @@ export function AgentHeaderMenuButton({ section, onSelectSection }: AgentHeaderM
                 {entry === 'agent'
                   ? 'Open the AI chat and posture surface'
                   : entry === 'tools'
-                    ? 'Open the internal runtime operator panel'
+                    ? 'Open runtime utilities and tool inspection'
                     : entry === 'policy'
-                      ? 'Open trust and ignore controls'
+                      ? 'Open settings, trust, and secret shield controls'
                       : 'Inspect recent runtime and approval events'}
               </span>
             </button>

@@ -59,6 +59,8 @@ function App() {
                 <AgentSidebar
                   section={layout.section}
                   onSelectSection={layout.selectSection}
+                  policyView={layout.policyView}
+                  onSelectPolicyView={layout.selectPolicyView}
                   catalog={shell.agentCatalog}
                   workspaceContext={shell.workspaceContext}
                   tools={shell.tools}
@@ -76,6 +78,10 @@ function App() {
                   onSelectMode={(id) => shell.setActiveSelection('mode', id)}
                   onToggleWidgetContext={shell.toggleWidgetContext}
                   onExecuteTool={shell.executeTool}
+                  onAddTrustedRule={shell.addTrustedRule}
+                  onRemoveTrustedRule={shell.removeTrustedRule}
+                  onAddIgnoreRule={shell.addIgnoreRule}
+                  onRemoveIgnoreRule={shell.removeIgnoreRule}
                   onRunAgentAction={shell.runAgentAction}
                   onSubmitPrompt={shell.submitAgentPrompt}
                   onAttachClick={shell.reportAgentAttachmentUnavailable}
@@ -116,6 +122,7 @@ function App() {
                 onFocusWidget={shell.focusWidget}
                 section={layout.section}
                 onSelectSection={layout.selectSection}
+                onSelectPolicyView={layout.selectPolicyView}
               />
             </section>
           </Panel>

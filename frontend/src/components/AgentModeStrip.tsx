@@ -15,7 +15,7 @@ export function AgentModeStrip({ catalog, onSelectProfile, onSelectRole, onSelec
         <span>{catalog?.active.profile.name ?? 'Profile'} · {catalog?.active.role.name ?? 'Role'}</span>
       </div>
       <div className="agent-mode-strip-controls">
-        <label>
+        <label className="agent-mode-select mode">
           <span>Mode</span>
           <select value={catalog?.active.mode.id ?? ''} onChange={(event) => void onSelectMode(event.target.value)} disabled={!catalog}>
             {(catalog?.modes ?? []).map((mode) => (
@@ -25,7 +25,7 @@ export function AgentModeStrip({ catalog, onSelectProfile, onSelectRole, onSelec
             ))}
           </select>
         </label>
-        <label>
+        <label className="agent-mode-select">
           <span>Profile</span>
           <select value={catalog?.active.profile.id ?? ''} onChange={(event) => void onSelectProfile(event.target.value)} disabled={!catalog}>
             {(catalog?.profiles ?? []).map((profile) => (
@@ -35,7 +35,7 @@ export function AgentModeStrip({ catalog, onSelectProfile, onSelectRole, onSelec
             ))}
           </select>
         </label>
-        <label>
+        <label className="agent-mode-select">
           <span>Role</span>
           <select value={catalog?.active.role.id ?? ''} onChange={(event) => void onSelectRole(event.target.value)} disabled={!catalog}>
             {(catalog?.roles ?? []).map((role) => (
