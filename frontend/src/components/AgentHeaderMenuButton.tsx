@@ -36,7 +36,7 @@ export function AgentHeaderMenuButton({ section, onSelectSection }: AgentHeaderM
       </button>
       {open ? (
         <div className="agent-header-menu">
-          {(['agent', 'tools', 'policy', 'audit'] as ShellSection[]).map((entry) => (
+          {(['agent', 'launcher', 'tools', 'policy', 'audit'] as ShellSection[]).map((entry) => (
             <button
               key={entry}
               type="button"
@@ -50,6 +50,8 @@ export function AgentHeaderMenuButton({ section, onSelectSection }: AgentHeaderM
               <span>
                 {entry === 'agent'
                   ? 'Open the AI chat and posture surface'
+                  : entry === 'launcher'
+                    ? 'Open the shell launcher and widget catalog'
                   : entry === 'tools'
                     ? 'Open runtime utilities and tool inspection'
                     : entry === 'policy'

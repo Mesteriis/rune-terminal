@@ -62,6 +62,7 @@ function App() {
                   policyView={layout.policyView}
                   onSelectPolicyView={layout.selectPolicyView}
                   catalog={shell.agentCatalog}
+                  workspace={shell.workspace}
                   workspaceContext={shell.workspaceContext}
                   tools={shell.tools}
                   lastResponse={shell.lastResponse}
@@ -77,6 +78,8 @@ function App() {
                   onSelectRole={(id) => shell.setActiveSelection('role', id)}
                   onSelectMode={(id) => shell.setActiveSelection('mode', id)}
                   onToggleWidgetContext={shell.toggleWidgetContext}
+                  onFocusWidget={shell.focusWidget}
+                  onCreateTerminalTab={() => shell.createTerminalTab()}
                   onExecuteTool={shell.executeTool}
                   onAddTrustedRule={shell.addTrustedRule}
                   onRemoveTrustedRule={shell.removeTrustedRule}

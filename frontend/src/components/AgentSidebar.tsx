@@ -1,6 +1,7 @@
 import { AgentPanel } from './AgentPanel'
 import { AgentHeaderMenuButton } from './AgentHeaderMenuButton'
 import { AuditPanel } from './AuditPanel'
+import { LauncherPanel } from './LauncherPanel'
 import { PolicyPanel } from './PolicyPanel'
 import type { PolicyView } from './PolicyViews'
 import type { ShellSection } from './ShellSections'
@@ -25,6 +26,7 @@ type AgentSidebarProps = {
   onSelectPolicyView: (view: PolicyView) => void
   catalog: AgentCatalog | null
   workspaceContext: WorkspaceContextSummary | null
+  workspace: import('../types').Workspace | null
   tools: ToolInfo[]
   lastResponse: ExecuteToolResponse | null
   notice: RuntimeNotice | null
@@ -39,6 +41,8 @@ type AgentSidebarProps = {
   onSelectRole: (id: string) => void | Promise<void>
   onSelectMode: (id: string) => void | Promise<void>
   onToggleWidgetContext: () => void
+  onFocusWidget: (widget: import('../types').Widget) => void | Promise<void>
+  onCreateTerminalTab: () => void | Promise<void>
   onExecuteTool: (request: { tool_name: string; input?: Record<string, unknown> }) => void | Promise<unknown>
   onAddTrustedRule: (input: { scope: string; matcher: string; note?: string }) => void | Promise<unknown>
   onRemoveTrustedRule: (ruleId: string) => void | Promise<unknown>
@@ -57,6 +61,7 @@ export function AgentSidebar({
   policyView,
   onSelectPolicyView,
   catalog,
+  workspace,
   workspaceContext,
   tools,
   lastResponse,
@@ -72,6 +77,8 @@ export function AgentSidebar({
   onSelectRole,
   onSelectMode,
   onToggleWidgetContext,
+  onFocusWidget,
+  onCreateTerminalTab,
   onExecuteTool,
   onAddTrustedRule,
   onRemoveTrustedRule,
@@ -83,6 +90,39 @@ export function AgentSidebar({
   onConfirmApproval,
   onDismissNotice,
 }: AgentSidebarProps) {
+  const shellHeading =
+    section === 'agent'
+      ? {
+          eyebrow: 'AI panel',
+          title: 'RunaTerminal AI',
+          subtitle: widgetContextEnabled && workspaceContext?.active_widget_id
+            ? `Attached to ${workspaceContext.active_widget_id}`
+            : 'Agent panel is running without widget context',
+        }
+      : section === 'launcher'
+        ? {
+            eyebrow: 'Launcher',
+            title: 'Open something',
+            subtitle: 'Discover widgets, shell utilities, and help surfaces from one searchable catalog.',
+          }
+        : section === 'tools'
+          ? {
+              eyebrow: 'Runtime',
+              title: 'Runtime utilities',
+              subtitle: 'Inspect tool metadata and execute internal runtime calls.',
+            }
+          : section === 'policy'
+            ? {
+                eyebrow: 'Settings',
+                title: 'Shell settings',
+                subtitle: 'Manage privacy, trust, and help surfaces without leaving the shell.',
+              }
+            : {
+                eyebrow: 'Audit',
+                title: 'Runtime trail',
+                subtitle: 'Review recent operations, approvals, and policy outcomes.',
+              }
+
   return (
     <aside className="agent-shell">
       <div className="agent-shell-inner">
@@ -90,8 +130,8 @@ export function AgentSidebar({
           <div className="agent-shell-heading">
             <div className="agent-shell-title">
               <div>
-                <p className="eyebrow">AI panel</p>
-                <h2>RunaTerminal AI</h2>
+                <p className="eyebrow">{shellHeading.eyebrow}</p>
+                <h2>{shellHeading.title}</h2>
               </div>
               <div className="agent-shell-controls">
                 <button
@@ -105,17 +145,13 @@ export function AgentSidebar({
                 <AgentHeaderMenuButton section={section} onSelectSection={onSelectSection} />
               </div>
             </div>
-            <span>
-              {widgetContextEnabled && workspaceContext?.active_widget_id
-                ? `Attached to ${workspaceContext.active_widget_id}`
-                : 'Agent panel is running without widget context'}
-            </span>
+            <span>{shellHeading.subtitle}</span>
           </div>
         </header>
 
         <div className="agent-shell-scroll">
           {section === 'agent' ? (
-              <AgentPanel
+            <AgentPanel
                 catalog={catalog}
                 workspaceContext={workspaceContext}
                 notice={notice}
@@ -131,6 +167,14 @@ export function AgentSidebar({
               onRunAgentAction={onRunAgentAction}
               onSubmitPrompt={onSubmitPrompt}
               onAttachClick={onAttachClick}
+            />
+          ) : null}
+          {section === 'launcher' ? (
+            <LauncherPanel
+              workspace={workspace}
+              onCreateTerminalTab={onCreateTerminalTab}
+              onFocusWidget={onFocusWidget}
+              onSelectSection={onSelectSection}
             />
           ) : null}
           {section === 'tools' ? (

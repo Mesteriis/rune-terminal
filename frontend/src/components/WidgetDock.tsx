@@ -24,6 +24,11 @@ export function WidgetDock({
 }: WidgetDockProps) {
   const launcherItems = [
     {
+      label: 'Launcher',
+      detail: 'Open the searchable shell launcher and widget catalog',
+      onSelect: () => onSelectSection('launcher'),
+    },
+    {
       label: 'New terminal',
       detail: 'Open a fresh terminal tab from the shell launcher',
       onSelect: () => onCreateTerminalTab(),

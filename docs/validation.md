@@ -4,6 +4,39 @@ Validation date: `2026-04-13`
 
 All commands below were run against the repository in its current state on macOS arm64.
 
+## Latest widget/app discovery parity slice
+
+The latest parity slice focused only on richer widget/app discovery behavior derived from TideTerm:
+
+- the shell now exposes a dedicated searchable `Launcher` section instead of relying only on the dock flyout
+- launcher entries now cover new terminal tabs, AI, runtime, audit, settings/help, trust/privacy, and current widgets
+- this keeps TideTerm-like “what can I open from here?” discoverability without importing the old launcher or app catalog wholesale
+
+Validation executed for this slice:
+
+```bash
+npm --prefix frontend run lint
+npm --prefix frontend run build
+npm run validate
+npm run tauri:dev
+curl -sf http://127.0.0.1:<sidecar-port>/healthz
+curl -sf http://127.0.0.1:5173
+```
+
+Observed result:
+
+- frontend lint passed
+- frontend build passed
+- full repository validation passed
+- `tauri:dev` launched successfully and reached a running desktop binary with a fresh sidecar loopback base URL
+- `GET /healthz` returned `{"status":"ok"}`
+- the Vite shell entry responded successfully while the desktop shell was running
+
+What was not fully validated in this slice:
+
+- a browser-driven click smoke over the launcher search/cards was not available in this environment
+- because of that, launcher discoverability was validated through the updated compiled shell, fresh launch path, and live sidecar readiness rather than automated UI interaction
+
 ## Latest widget/launcher parity slice
 
 The latest parity slice focused only on widget/app/help entry behavior derived from TideTerm:

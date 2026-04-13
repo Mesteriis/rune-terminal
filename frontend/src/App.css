@@ -818,6 +818,106 @@
   border: 1px solid rgba(242, 179, 95, 0.14);
 }
 
+.launcher-panel {
+  gap: 0.85rem;
+  padding: 0.95rem 1rem 1rem;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.launcher-panel-header,
+.launcher-section,
+.launcher-search {
+  display: grid;
+  gap: 0.32rem;
+}
+
+.launcher-panel-header span,
+.launcher-section-header span,
+.launcher-card small,
+.launcher-empty span,
+.launcher-search span {
+  color: #92a0ae;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.launcher-search input {
+  width: 100%;
+  min-height: 2.45rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(6, 10, 16, 0.9);
+  color: #dbe4ed;
+  padding: 0.68rem 0.8rem;
+  font: inherit;
+}
+
+.launcher-search input:focus {
+  outline: none;
+  border-color: rgba(120, 164, 214, 0.42);
+  box-shadow: 0 0 0 1px rgba(120, 164, 214, 0.2);
+}
+
+.launcher-panel-body {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.launcher-section-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: baseline;
+}
+
+.launcher-grid {
+  display: grid;
+  gap: 0.7rem;
+  grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+}
+
+.launcher-card {
+  display: grid;
+  justify-items: start;
+  gap: 0.35rem;
+  padding: 0.85rem 0.9rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  text-align: left;
+}
+
+.launcher-card:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.launcher-card-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 999px;
+  background: rgba(242, 179, 95, 0.14);
+  color: #ffd9a8;
+  font-size: 0.95rem;
+}
+
+.launcher-card strong,
+.launcher-empty strong {
+  color: #eef5fb;
+}
+
+.launcher-empty {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.9rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+}
+
 .panel,
 .terminal-card {
   background: rgba(15, 22, 32, 0.92);
