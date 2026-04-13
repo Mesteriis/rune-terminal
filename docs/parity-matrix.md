@@ -1,6 +1,6 @@
 # Parity Matrix
 
-This document tracks product parity between TideTerm and RunaTerminal.
+This document is now both a parity tracker and a `1.0.0` release-control document.
 Parity means user-visible behavior, interaction model, and workflow familiarity.
 It does not mean copying TideTerm internals or legacy coupling.
 
@@ -11,54 +11,65 @@ Status values:
 - `missing`
 - `blocked`
 
-## Top-level assessment
+Release priorities:
 
-RunaTerminal has crossed the foundation threshold but is still materially behind TideTerm in user-visible product parity.
+- `P0 release-blocker`
+- `P1 important`
+- `P2 post-1.0`
 
-The largest gaps today are:
+## Top-level release assessment
 
-- multi-tab and multi-workspace behavior
-- full TideTerm AI/chat interaction behavior
-- widget/block catalog parity
-- settings/config flows
-- deeper remote/SSH workflows beyond the new connection foundation
-- startup/bootstrap flows beyond the local runtime happy path
+RunaTerminal has crossed the foundation threshold and is now in `1.0.0` release-drive mode.
+The question is no longer “what can be migrated eventually?” but “what still blocks a TideTerm-compatible daily-driver release?”
 
-The closest parity area today is:
+Current `P0` release blockers are:
+
+- AI command execution through the current panel, tool runtime, policy, and approval model
+- remote SSH daily-driver confidence beyond a single validated happy path
+- final shell/terminal stability and launch hardening
+- explicit release-control tracking across parity areas
+
+Strong enough areas for `1.0.0` progression:
 
 - local terminal runtime foundation
-- policy, audit, trusted rules, ignore rules
+- launchable shell with recognisable TideTerm-derived structure
+- settings/control/launcher surfaces
 - role/mode/profile backing model
+- audit, trust, and secret-shield foundation
 
-The critical path to recognizable parity is:
+`P2 post-1.0` areas are intentionally not on the current release critical path:
 
-1. app shell behavior
-2. workspace/layout behavior
-3. terminal UX behavior
-4. AI panel behavior
-5. settings/control surfaces
-6. remote/local connection parity
+- builder parity
+- proxy parity
+- preview zoo
+- code editor parity
+- broad settings universe parity
+- `.ssh/config` import
+- advanced SSH auth strategies
+- full remote workspace/controller parity
+- file attachments
+- perfect multi-session terminal parity
 
-## Matrix
+## Release control matrix
 
-| Feature area | TideTerm current behavior | Current RunaTerminal status | Parity gap | Migration strategy | Architectural notes | Status |
-| --- | --- | --- | --- | --- | --- | --- |
-| App shell behavior | App-shaped shell with top tab bar, left AI panel, center content, right slim widgets/settings rail | TideTerm-derived shell is now present with left AI panel, center terminal stage, widget-first dock, a tabbar-shaped header, and a TideTerm-shaped workspace switcher popover | Shell framing is close, but there is still no true multi-workspace switch behavior or richer shell chrome parity | Keep copying TideTerm shell placement and panel behavior before adding any new visual concepts | Preserve React + local loopback transport; do not reintroduce old global shell state | `partial` |
-| Workspace/layout | Workspace is the primary container and owns tab/content/widget layout | Single-workspace shell exists, and the top-left workspace control now follows TideTerm shell behavior more closely | Missing true multi-workspace behavior and block-aware layout persistence | Recreate TideTerm workspace behavior against new workspace domain APIs | Keep workspace state explicit in Go core rather than frontend-owned layout truth | `partial` |
-| Tabs | Real tab bar with active tab, pinned tabs, add tab flows, rename, context menu, AI toggle, drag behavior | Workspace now exposes a real tab model, the top strip binds to `tabs` and `active_tab_id`, and the shell can create, close, rename, pin, unpin, right-click, and drag-reorder terminal tabs inside their current group | Missing richer drag polish, cross-group drag behavior, manual ordering affordances beyond drag, and richer tab content ownership | Continue expanding the new tab model until the top shell no longer relies on reduced controls | Do not port TideTerm's full frontend store graph; port behavior only | `partial` |
-| Widgets | Slim right-side widgets/apps/settings/help surface with secondary actions | Right rail is widget-first, and the footer now exposes TideTerm-shaped runtime/settings flyouts with direct entry points for settings, trust/privacy, help, and audit surfaces | Still missing richer widget catalog, add-widget flows, and dedicated app/help surfaces | Continue replacing temporary controls with TideTerm-derived widget/app flows as features land | Keep dock as adapter to explicit runtime/UI state, not a global action bucket | `partial` |
-| Launcher / app entry | TideTerm exposes launcher-like discovery through widget/apps/settings/help entry surfaces | The dock now exposes a launcher-like flyout and the shell now has a dedicated searchable `Launcher` section for new terminal tabs, AI panel, runtime utilities, audit, settings/help, and quick widget focus | Still missing a real app catalog, dedicated app metadata, and broader app/help surfaces | Keep the new launcher as the closest-compatible equivalent until a dedicated launcher/app domain exists in the new runtime | Do not import TideTerm launcher wholesale; port shell discoverability behavior only | `partial` |
-| Terminal UX | Compact term shell, terminal-first focus, visible scrollback, toolbar/status strip, command entry, and stable viewport behavior | The terminal surface now behaves close enough to TideTerm for shell-first work: compact header, dedicated toolbar row, command/status strip, visible scrollback, direct keyboard-to-PTY flow, compact paste/send row, focus action, interrupt, snapshot hydration, and explicit follow/jump viewport affordances | Remaining gap is now narrower and no longer the main shell blocker: multi-session sidebar parity, shell-integration command metadata, richer search/find affordances, and deeper block/vdom term modes | Freeze the current terminal shell as the baseline and treat further terminal work as targeted follow-up slices instead of ongoing shell redesign | Terminal state stays Go-owned; the frontend now uses a JSON snapshot + SSE stream adapter instead of old RPC-bound term plumbing | `partial` |
-| AI panel | Left-side AI/chat panel with header, messages, input, mode/context controls | Left panel now follows the TideTerm panel grammar more closely: TideTerm-shaped header with widget-context toggle and overflow menu, compact mode strip, TideTerm-derived welcome card, a merged transcript with real backend conversation messages plus runtime/action entries, visible approval/notice banners, and a composer with inline attach/send affordances. Operator/settings/audit entry points are now secondary header-menu flows instead of primary composer controls | Still missing working file attach flows, richer assistant streaming/message parts, model selection UX, and deeper natural-language/tool orchestration parity | Continue porting the imported TideTerm AI panel structure while rebinding actions to the new conversation runtime and policy surfaces; keep operator tooling secondary and out of the primary composer surface | Keep policy/runtime explicit; do not port old AI/backend entanglement | `partial` |
-| Tool invocation UX | AI-driven and app-driven flows rather than primarily internal operator tooling | Manual operator panel exists and is useful for development | Operator console is not a TideTerm user-facing equivalent | Keep operator panel as an internal dev surface, but move end-user flows into TideTerm-shaped panels | This surface is useful, but should remain secondary once parity grows | `partial` |
-| Approval UX | User-visible approvals integrated into flow surfaces | Visible approval banner exists and retries with single-use token | Approval is usable, but not yet embedded in final TideTerm-equivalent AI/settings flows | Keep current approval mechanics and relocate them into parity UI surfaces as those land | Approval remains policy/runtime-owned | `partial` |
-| Role/mode/profile UI | TideTerm has AI mode/config flows and user-facing AI controls | Current selectors exist in the AI panel | Missing closer parity with TideTerm AI mode UX and model selection flows | Rebind existing role/mode/profile model into a TideTerm-derived AI control surface | New role/mode system stays, even where old TideTerm semantics differ | `partial` |
-| Settings/config flows | Dedicated settings surfaces and config views | Shell-level settings entry now opens a TideTerm-derived settings surface with `Overview`, `Trusted tools`, `Secret shield`, and `Help` views inside the AI sidebar shell | Missing richer product settings navigation, dedicated config views, and broader help/config parity | Recreate settings entry points in the dock and bind them to explicit config endpoints | Avoid reviving a global settings blob in the frontend | `partial` |
-| Local runtime | Local shell/runtime startup and terminal interaction | Working and launchable | Minor parity gap only | Keep tightening startup polish and shell integration | Sidecar Go runtime + Tauri stays | `done` |
-| Remote/SSH | TideTerm treats local vs remote shells as explicit user-visible workflow and exposes connection entry/access patterns in the shell | RunaTerminal now has an explicit connection catalog, persisted SSH profiles, active default-target selection, connection-aware terminal launch options, explicit preflight-check and last-launch feedback, a lifecycle-oriented shell connections panel, and one honestly validated end-to-end SSH shell launch against a reachable host | Still missing richer remote lifecycle, live controller state, durable remote workspace behavior, `~/.ssh/config` import, and broader remote product flows | Continue from the new connection domain until remote becomes more than “saved SSH profiles launching system ssh,” but keep lifecycle semantics explicit in backend and shell | Keep connection state backend-owned in Go; do not port TideTerm's legacy connection controller and transport complexity wholesale | `partial` |
-| Audit visibility | Product has visible traces of operations and system state | Audit now reads as a shell utility surface with runtime-trail copy, recent operation cards, and approval/role/mode context | Missing broader integration into deeper user flows and richer filtering | Keep current audit surface and reposition it as parity UI matures | Audit remains first-class and explicit | `partial` |
-| Trust/ignore management | Sensitive operations and protected files are governed implicitly or via product flows | Explicit trust/ignore management now appears as user-facing settings cards instead of only raw operator forms | Behavior exceeds old TideTerm structurally, but richer config/help integration is still missing | Keep the new policy model and integrate it into TideTerm-derived settings surfaces | This is an intentional architectural divergence in implementation, not behavior goals | `partial` |
-| Startup/bootstrap UX | App opens into a familiar working shell with known flows | Launch path is now documented and working | Missing richer startup states and TideTerm-style bootstrap polish | Keep launch path deterministic first, then mirror TideTerm startup cues | Tauri + Go sidecar boot stays | `partial` |
+| Feature area | TideTerm current behavior | Current RunaTerminal status | Release priority | Current status | Exact release gap | Next concrete step | Architectural notes |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| App shell behavior | App-shaped shell with top tab bar, left AI panel, center content, right slim widgets/settings rail | TideTerm-derived shell is present with left AI panel, center terminal stage, widget-first dock, and workspace switcher | `P1 important` | `partial` | Needs final release-hardening review for launch/startup rough edges, not new shell concepts | Run a shell hardening pass only if it blocks daily-driver use during later milestones | Preserve React + local loopback transport; do not reintroduce old global shell state |
+| Workspace/layout | Workspace is the primary container and owns tab/content/widget layout | Single-workspace shell exists with tab/widget synchronization | `P1 important` | `partial` | True multi-workspace parity is missing, but not currently blocking 1.0 daily-driver claims | Keep current single-workspace path stable; revisit only if it blocks release usage | Keep workspace state explicit in Go core rather than frontend-owned layout truth |
+| Tabs | Real tab bar with active tab, pinned tabs, add tab flows, rename, context menu, AI toggle, drag behavior | Tabs support create, close, rename, pin, unpin, context menu, and drag reorder | `P0 release-blocker` | `partial` | Needs bug closure and daily-driver confidence, not more feature breadth | Fold remaining tab issues into shell/control hardening milestone | Do not port TideTerm's full frontend store graph; port behavior only |
+| Widgets | Slim right-side widgets/apps/settings/help surface with secondary actions | Right rail is widget-first, with runtime/settings/help/audit utility entry points | `P1 important` | `partial` | Widget catalog breadth is still reduced compared with TideTerm | Keep current widget surface stable; extend only if a concrete daily-driver gap appears | Keep dock as adapter to explicit runtime/UI state, not a global action bucket |
+| Launcher / app entry | TideTerm exposes launcher-like discovery through widget/apps/settings/help entry surfaces | Launcher flyout and searchable launcher section exist | `P1 important` | `partial` | Missing broader app catalog metadata, but current discovery may be sufficient for 1.0 | Treat current launcher as acceptable unless user testing reveals a release blocker | Do not import TideTerm launcher wholesale; port shell discoverability behavior only |
+| Terminal UX | Compact term shell, terminal-first focus, visible scrollback, toolbar/status strip, command entry, and stable viewport behavior | Terminal shell is compact, focusable, PTY-backed, and visibly hydrated with follow/jump controls | `P0 release-blocker` | `partial` | Needs final stability confidence and bug closure, not new terminal surface expansion | Triage remaining terminal regressions as release hardening; avoid new parity expansion | Terminal state stays Go-owned; the frontend uses a JSON snapshot + SSE stream adapter |
+| AI panel | Left-side AI/chat panel with header, messages, input, mode/context controls | TideTerm-shaped panel exists with merged transcript, real backend conversation path, and composer | `P0 release-blocker` | `partial` | The release AI feature is still incomplete: the panel needs one explicit command-execute-and-explain path under policy | Implement AI terminal command execution and explanation as the next slice | Keep policy/runtime explicit; do not port old AI/backend entanglement |
+| Tool invocation UX | AI-driven and app-driven flows rather than primarily internal operator tooling | Operator panel exists and remains secondary | `P1 important` | `partial` | End-user AI command execution path is not yet first-class | Route the release AI flow through current tool/runtime/policy surfaces | Keep operator console secondary; do not make it the user-facing primary path |
+| Approval UX | User-visible approvals integrated into flow surfaces | Visible approval banner exists and retries with single-use token | `P0 release-blocker` | `partial` | Approval must remain stable and visible during the AI execution release slice | Validate approval path during AI command execution implementation | Approval remains policy/runtime-owned |
+| Role/mode/profile UI | TideTerm has AI mode/config flows and user-facing AI controls | Current selectors exist in the AI panel and feed into backend system prompt | `P1 important` | `partial` | Good enough structurally; needs validation that it stays coherent during AI execution flow | Keep current controls stable and visible during the next AI slice | New role/mode system stays even where old TideTerm semantics differ |
+| Settings/config flows | Dedicated settings surfaces and config views | Shell-level settings surface exists with `Overview`, `Trusted tools`, `Secret shield`, and `Help` | `P1 important` | `partial` | Reduced breadth vs TideTerm, but currently usable | Treat as non-blocking unless a concrete 1.0 workflow gap appears | Avoid reviving a global settings blob in the frontend |
+| Local runtime | Local shell/runtime startup and terminal interaction | Working and launchable | `P0 release-blocker` | `done` | Main gap is regression risk rather than missing capability | Keep validating it while other slices land | Sidecar Go runtime + Tauri stays |
+| Remote/SSH | TideTerm treats local vs remote shells as explicit user-visible workflow and exposes connection entry/access patterns in the shell | Explicit connection catalog, persisted SSH profiles, active default target, lifecycle feedback, and one validated happy path exist | `P0 release-blocker` | `partial` | Needs stronger launch/retry/daily-driver confidence, but not full TideTerm remote parity | Next remote slice should focus on daily-driver launch/retry/failure recovery semantics | Keep connection state backend-owned in Go; do not port TideTerm's legacy controller stack |
+| Audit visibility | Product has visible traces of operations and system state | Audit reads as a shell utility surface with recent operation cards and approval/role/mode context | `P1 important` | `partial` | Good enough structurally; needs regression protection more than more breadth | Keep stable and ensure AI/remote flows continue to write honest audit entries | Audit remains first-class and explicit |
+| Trust/ignore management | Sensitive operations and protected files are governed implicitly or via product flows | Explicit trust/ignore management appears as user-facing settings cards | `P1 important` | `partial` | Good enough for 1.0 if it stays stable and truthful | Validate it against the AI execution slice and release hardening | This is an intentional implementation divergence, not a release gap in spirit |
+| Startup/bootstrap UX | App opens into a familiar working shell with known flows | Launch path is documented and working | `P0 release-blocker` | `partial` | Needs final release hardening and crisp blocker accounting | Keep `tauri:dev` and startup validation real while release blockers close | Tauri + Go sidecar boot stays |
 
 ## First parity slice
 
