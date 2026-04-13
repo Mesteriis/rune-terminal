@@ -1,4 +1,5 @@
-import type { Workspace } from '../types'
+import type { Tab, Workspace } from '../types'
+import { WorkspaceTab } from './WorkspaceTab'
 
 type WorkspaceRailProps = {
   workspace: Workspace | null
@@ -9,6 +10,8 @@ type WorkspaceRailProps = {
   onFocusTab: (tabId: string) => void | Promise<void>
   onCreateTab: () => void | Promise<void>
   onCloseTab: (tabId: string) => void | Promise<void>
+  onRenameTab: (tabId: string, title: string) => void | Promise<void>
+  onToggleTabPinned: (tabId: string, pinned: boolean) => void | Promise<void>
 }
 
 export function WorkspaceRail({
@@ -20,8 +23,11 @@ export function WorkspaceRail({
   onFocusTab,
   onCreateTab,
   onCloseTab,
+  onRenameTab,
+  onToggleTabPinned,
 }: WorkspaceRailProps) {
   const activeTab = workspace?.tabs.find((tab) => tab.id === activeTabId)
+  const { pinnedTabs, regularTabs } = partitionTabs(workspace?.tabs ?? [])
 
   return (
     <header className="workspace-tabs">
@@ -33,35 +39,28 @@ export function WorkspaceRail({
       </div>
 
       <div className="workspace-tabs-strip">
-        {workspace?.tabs.map((tab) => (
-          <button
+        {pinnedTabs.map((tab) => (
+          <WorkspaceTab
             key={tab.id}
-            className={tab.id === activeTabId ? 'workspace-tab active' : 'workspace-tab'}
-            onClick={() => void onFocusTab(tab.id)}
-          >
-            <div className="workspace-tab-copy">
-              <strong>{tab.title}</strong>
-              <span>{tab.description ?? tab.widget_ids.join(', ')}</span>
-            </div>
-            <span
-              className="workspace-tab-close"
-              role="button"
-              tabIndex={0}
-              onClick={(event) => {
-                event.stopPropagation()
-                void onCloseTab(tab.id)
-              }}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                  event.preventDefault()
-                  event.stopPropagation()
-                  void onCloseTab(tab.id)
-                }
-              }}
-            >
-              ×
-            </span>
-          </button>
+            tab={tab}
+            active={tab.id === activeTabId}
+            onSelect={() => onFocusTab(tab.id)}
+            onClose={() => onCloseTab(tab.id)}
+            onRename={(title) => onRenameTab(tab.id, title)}
+            onTogglePinned={() => onToggleTabPinned(tab.id, !tab.pinned)}
+          />
+        ))}
+        {pinnedTabs.length > 0 && regularTabs.length > 0 ? <div className="workspace-tab-divider" /> : null}
+        {regularTabs.map((tab) => (
+          <WorkspaceTab
+            key={tab.id}
+            tab={tab}
+            active={tab.id === activeTabId}
+            onSelect={() => onFocusTab(tab.id)}
+            onClose={() => onCloseTab(tab.id)}
+            onRename={(title) => onRenameTab(tab.id, title)}
+            onTogglePinned={() => onToggleTabPinned(tab.id, !tab.pinned)}
+          />
         ))}
         <button className="workspace-tab workspace-tab-add" onClick={() => void onCreateTab()}>
           <strong>+</strong>
@@ -81,5 +80,19 @@ export function WorkspaceRail({
         </button>
       </div>
     </header>
+  )
+}
+
+function partitionTabs(tabs: Tab[]) {
+  return tabs.reduce(
+    (groups, tab) => {
+      if (tab.pinned) {
+        groups.pinnedTabs.push(tab)
+      } else {
+        groups.regularTabs.push(tab)
+      }
+      return groups
+    },
+    { pinnedTabs: [] as Tab[], regularTabs: [] as Tab[] },
   )
 }

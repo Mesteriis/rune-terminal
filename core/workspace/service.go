@@ -3,6 +3,7 @@ package workspace
 import (
 	"fmt"
 	"slices"
+	"strings"
 	"sync"
 )
 
@@ -175,6 +176,38 @@ func (s *Service) CloseTab(tabID string) (Snapshot, error) {
 	}
 
 	return cloneSnapshot(s.snapshot), nil
+}
+
+func (s *Service) RenameTab(tabID string, title string) (Tab, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	title = strings.TrimSpace(title)
+	if title == "" {
+		return Tab{}, ErrInvalidTabName
+	}
+	for i, tab := range s.snapshot.Tabs {
+		if tab.ID == tabID {
+			s.snapshot.Tabs[i].Title = title
+			return cloneTab(s.snapshot.Tabs[i]), nil
+		}
+	}
+	return Tab{}, fmt.Errorf("%w: %s", ErrTabNotFound, tabID)
+}
+
+func (s *Service) SetTabPinned(tabID string, pinned bool) (Tab, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for i, tab := range s.snapshot.Tabs {
+		if tab.ID != tabID {
+			continue
+		}
+		s.snapshot.Tabs[i].Pinned = pinned
+		updated := cloneTab(s.snapshot.Tabs[i])
+		return updated, nil
+	}
+	return Tab{}, fmt.Errorf("%w: %s", ErrTabNotFound, tabID)
 }
 
 func (s *Service) findWidgetLocked(widgetID string) (Widget, error) {

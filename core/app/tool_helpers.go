@@ -27,6 +27,16 @@ type closeTabInput struct {
 	TabID string `json:"tab_id"`
 }
 
+type renameTabInput struct {
+	TabID string `json:"tab_id"`
+	Title string `json:"title"`
+}
+
+type setTabPinnedInput struct {
+	TabID  string `json:"tab_id"`
+	Pinned bool   `json:"pinned"`
+}
+
 type sendInputToolInput struct {
 	WidgetID      string `json:"widget_id,omitempty"`
 	Text          string `json:"text"`

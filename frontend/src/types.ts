@@ -10,6 +10,7 @@ export type Tab = {
   id: string
   title: string
   description?: string
+  pinned: boolean
   widget_ids: string[]
 }
 

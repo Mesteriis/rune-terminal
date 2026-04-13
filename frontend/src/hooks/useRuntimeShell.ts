@@ -26,6 +26,8 @@ const QUIET_TOOLS = new Set([
   'workspace.list_tabs',
   'workspace.get_active_tab',
   'workspace.focus_tab',
+  'workspace.rename_tab',
+  'workspace.set_tab_pinned',
   'workspace.create_terminal_tab',
   'workspace.close_tab',
   'workspace.list_widgets',
@@ -327,6 +329,20 @@ export function useRuntimeShell() {
     })
   }
 
+  async function renameTab(tabId: string, title: string) {
+    await executeTool({
+      tool_name: 'workspace.rename_tab',
+      input: { tab_id: tabId, title },
+    })
+  }
+
+  async function setTabPinned(tabId: string, pinned: boolean) {
+    await executeTool({
+      tool_name: 'workspace.set_tab_pinned',
+      input: { tab_id: tabId, pinned },
+    })
+  }
+
   async function closeTab(tabId: string) {
     await executeTool({
       tool_name: 'workspace.close_tab',
@@ -398,6 +414,8 @@ export function useRuntimeShell() {
     focusWidget,
     focusTab,
     createTerminalTab,
+    renameTab,
+    setTabPinned,
     closeTab,
     interruptWidget,
     refreshTerminalState,

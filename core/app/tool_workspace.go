@@ -18,11 +18,87 @@ func (r *Runtime) workspaceTools() []toolruntime.Definition {
 		r.workspaceListTabsTool(),
 		r.workspaceGetActiveTabTool(),
 		r.workspaceFocusTabTool(),
+		r.workspaceRenameTabTool(),
+		r.workspaceSetTabPinnedTool(),
 		r.workspaceCreateTerminalTabTool(),
 		r.workspaceCloseTabTool(),
 		r.workspaceListWidgetsTool(),
 		r.workspaceGetActiveWidgetTool(),
 		r.workspaceFocusWidgetTool(),
+	}
+}
+
+func (r *Runtime) workspaceRenameTabTool() toolruntime.Definition {
+	return toolruntime.Definition{
+		Name:         "workspace.rename_tab",
+		Description:  "Rename a tab in the current workspace.",
+		InputSchema:  json.RawMessage(`{"type":"object","properties":{"tab_id":{"type":"string"},"title":{"type":"string"}},"required":["tab_id","title"],"additionalProperties":false}`),
+		OutputSchema: json.RawMessage(`{"type":"object"}`),
+		Metadata: toolruntime.Metadata{
+			Capabilities: []string{"workspace:write"},
+			ApprovalTier: policy.ApprovalTierSafe,
+			Mutating:     true,
+			TargetKind:   toolruntime.TargetWorkspace,
+		},
+		Decode: func(raw json.RawMessage) (any, error) {
+			return toolruntime.DecodeJSON[renameTabInput](raw)
+		},
+		Plan: func(input any, execCtx toolruntime.ExecutionContext) (toolruntime.OperationPlan, error) {
+			payload := input.(renameTabInput)
+			return toolruntime.OperationPlan{
+				Operation: toolruntime.Operation{
+					Summary:              fmt.Sprintf("rename tab %s to %s", payload.TabID, trimSummary(payload.Title)),
+					RequiredCapabilities: []string{"workspace:write"},
+					ApprovalTier:         policy.ApprovalTierSafe,
+				},
+			}, nil
+		},
+		Execute: func(ctx context.Context, execCtx toolruntime.ExecutionContext, input any) (any, error) {
+			tab, err := r.Workspace.RenameTab(input.(renameTabInput).TabID, input.(renameTabInput).Title)
+			if err != nil {
+				return nil, normalizeToolError(err)
+			}
+			return tab, nil
+		},
+	}
+}
+
+func (r *Runtime) workspaceSetTabPinnedTool() toolruntime.Definition {
+	return toolruntime.Definition{
+		Name:         "workspace.set_tab_pinned",
+		Description:  "Pin or unpin a tab in the current workspace.",
+		InputSchema:  json.RawMessage(`{"type":"object","properties":{"tab_id":{"type":"string"},"pinned":{"type":"boolean"}},"required":["tab_id","pinned"],"additionalProperties":false}`),
+		OutputSchema: json.RawMessage(`{"type":"object"}`),
+		Metadata: toolruntime.Metadata{
+			Capabilities: []string{"workspace:write"},
+			ApprovalTier: policy.ApprovalTierSafe,
+			Mutating:     true,
+			TargetKind:   toolruntime.TargetWorkspace,
+		},
+		Decode: func(raw json.RawMessage) (any, error) {
+			return toolruntime.DecodeJSON[setTabPinnedInput](raw)
+		},
+		Plan: func(input any, execCtx toolruntime.ExecutionContext) (toolruntime.OperationPlan, error) {
+			payload := input.(setTabPinnedInput)
+			verb := "unpin"
+			if payload.Pinned {
+				verb = "pin"
+			}
+			return toolruntime.OperationPlan{
+				Operation: toolruntime.Operation{
+					Summary:              fmt.Sprintf("%s tab %s", verb, payload.TabID),
+					RequiredCapabilities: []string{"workspace:write"},
+					ApprovalTier:         policy.ApprovalTierSafe,
+				},
+			}, nil
+		},
+		Execute: func(ctx context.Context, execCtx toolruntime.ExecutionContext, input any) (any, error) {
+			tab, err := r.Workspace.SetTabPinned(input.(setTabPinnedInput).TabID, input.(setTabPinnedInput).Pinned)
+			if err != nil {
+				return nil, normalizeToolError(err)
+			}
+			return tab, nil
+		},
 	}
 }
 

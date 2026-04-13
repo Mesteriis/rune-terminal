@@ -91,3 +91,53 @@ func TestWorkspaceCreateAndCloseTerminalTabTools(t *testing.T) {
 		t.Fatalf("expected closed tab session to be removed")
 	}
 }
+
+func TestWorkspaceRenameTabTool(t *testing.T) {
+	t.Parallel()
+
+	runtime := &Runtime{
+		Workspace: workspace.NewService(workspace.BootstrapDefault()),
+	}
+
+	tool := runtime.workspaceRenameTabTool()
+	output, err := tool.Execute(context.Background(), toolruntime.ExecutionContext{}, renameTabInput{
+		TabID: "tab-main",
+		Title: "Project Shell",
+	})
+	if err != nil {
+		t.Fatalf("Execute error: %v", err)
+	}
+
+	tab, ok := output.(workspace.Tab)
+	if !ok {
+		t.Fatalf("unexpected output type: %#v", output)
+	}
+	if tab.Title != "Project Shell" {
+		t.Fatalf("unexpected title: %#v", tab)
+	}
+}
+
+func TestWorkspaceSetTabPinnedTool(t *testing.T) {
+	t.Parallel()
+
+	runtime := &Runtime{
+		Workspace: workspace.NewService(workspace.BootstrapDefault()),
+	}
+
+	tool := runtime.workspaceSetTabPinnedTool()
+	output, err := tool.Execute(context.Background(), toolruntime.ExecutionContext{}, setTabPinnedInput{
+		TabID:  "tab-ops",
+		Pinned: true,
+	})
+	if err != nil {
+		t.Fatalf("Execute error: %v", err)
+	}
+
+	tab, ok := output.(workspace.Tab)
+	if !ok {
+		t.Fatalf("unexpected output type: %#v", output)
+	}
+	if !tab.Pinned {
+		t.Fatalf("expected pinned tab: %#v", tab)
+	}
+}

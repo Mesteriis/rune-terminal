@@ -77,6 +77,8 @@
   background: rgba(255, 255, 255, 0.04);
   color: #c7d1dc;
   text-align: left;
+  cursor: default;
+  user-select: none;
 }
 
 .workspace-tab-copy {
@@ -94,6 +96,17 @@
   background: #0c1118;
   border-color: rgba(255, 255, 255, 0.08);
   box-shadow: inset 0 2px 0 #f2b35f;
+}
+
+.workspace-tab.pinned {
+  box-shadow: inset 0 2px 0 rgba(242, 179, 95, 0.45);
+}
+
+.workspace-tab-divider {
+  flex: 0 0 1px;
+  align-self: stretch;
+  margin: 0.55rem 0.35rem 0.35rem;
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .workspace-tab.placeholder {
@@ -122,11 +135,43 @@
   height: 1.2rem;
   border-radius: 999px;
   color: #8c9aa8;
+  cursor: pointer;
 }
 
 .workspace-tab-close:hover {
   background: rgba(255, 255, 255, 0.08);
   color: #f0f6fb;
+}
+
+.workspace-tab-pin {
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  width: 1.45rem;
+  height: 1.45rem;
+  padding: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #6e7c8a;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.workspace-tab-pin:hover,
+.workspace-tab-pin.active {
+  background: rgba(242, 179, 95, 0.16);
+  color: #f2b35f;
+}
+
+.workspace-tab-editor {
+  width: 100%;
+  min-width: 0;
+  border-radius: 6px;
+  border: 1px solid rgba(242, 179, 95, 0.35);
+  background: rgba(7, 10, 14, 0.9);
+  color: #eef4fb;
+  padding: 0.18rem 0.42rem;
+  font: inherit;
 }
 
 .workspace-tab-add {

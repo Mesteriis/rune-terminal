@@ -141,6 +141,10 @@ function defaultToolPayload(toolName: string, context: WorkspaceContextSummary |
       return widgetID ? { widget_id: widgetID } : {}
     case 'workspace.focus_tab':
       return context?.workspace_id ? { tab_id: 'tab-main' } : { tab_id: '' }
+    case 'workspace.rename_tab':
+      return { tab_id: 'tab-main', title: 'Renamed Shell' }
+    case 'workspace.set_tab_pinned':
+      return { tab_id: 'tab-main', pinned: true }
     case 'workspace.create_terminal_tab':
       return { title: 'Scratch' }
     case 'workspace.close_tab':

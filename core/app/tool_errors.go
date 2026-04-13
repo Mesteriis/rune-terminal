@@ -27,6 +27,7 @@ func normalizeToolError(err error) error {
 	case errors.Is(err, terminal.ErrCannotSendInput),
 		errors.Is(err, terminal.ErrCannotInterrupt),
 		errors.Is(err, workspace.ErrCannotCloseLastTab),
+		errors.Is(err, workspace.ErrInvalidTabName),
 		errors.Is(err, policy.ErrInvalidTrustedRule),
 		errors.Is(err, policy.ErrInvalidIgnoreRule),
 		errors.Is(err, toolruntime.ErrPendingApprovalExpired):

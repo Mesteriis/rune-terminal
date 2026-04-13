@@ -35,6 +35,8 @@ function App() {
         onFocusTab={shell.focusTab}
         onCreateTab={() => shell.createTerminalTab()}
         onCloseTab={shell.closeTab}
+        onRenameTab={shell.renameTab}
+        onToggleTabPinned={shell.setTabPinned}
       />
 
       <section className="workspace-shell">

@@ -77,3 +77,44 @@ func TestAddAndCloseTab(t *testing.T) {
 		}
 	}
 }
+
+func TestRenameTab(t *testing.T) {
+	t.Parallel()
+
+	service := NewService(BootstrapDefault())
+	tab, err := service.RenameTab("tab-main", "Project Shell")
+	if err != nil {
+		t.Fatalf("RenameTab error: %v", err)
+	}
+	if tab.Title != "Project Shell" {
+		t.Fatalf("unexpected title: %#v", tab)
+	}
+	if service.Snapshot().Tabs[0].Title != "Project Shell" {
+		t.Fatalf("snapshot title not updated")
+	}
+}
+
+func TestRenameTabRejectsBlankTitles(t *testing.T) {
+	t.Parallel()
+
+	service := NewService(BootstrapDefault())
+	if _, err := service.RenameTab("tab-main", "   "); err != ErrInvalidTabName {
+		t.Fatalf("expected ErrInvalidTabName, got %v", err)
+	}
+}
+
+func TestSetTabPinned(t *testing.T) {
+	t.Parallel()
+
+	service := NewService(BootstrapDefault())
+	tab, err := service.SetTabPinned("tab-ops", true)
+	if err != nil {
+		t.Fatalf("SetTabPinned error: %v", err)
+	}
+	if !tab.Pinned {
+		t.Fatalf("expected pinned tab: %#v", tab)
+	}
+	if !service.Snapshot().Tabs[1].Pinned {
+		t.Fatalf("snapshot pinned state not updated")
+	}
+}

@@ -27,6 +27,8 @@ Operations:
 - list tabs
 - get active tab
 - focus tab
+- rename tab
+- pin or unpin tab
 - create terminal tab
 - close tab
 - list widgets
@@ -38,6 +40,7 @@ Operations:
 The old stack mixed layout state, transport identifiers, block metadata and UI view-model state. RunaTerminal deliberately starts with the thinner invariant set needed for long-lived maintainability:
 
 - tab inventory
+- tab title and pinned state
 - inventory
 - focus
 - typed widget descriptors

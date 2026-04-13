@@ -222,6 +222,37 @@ What was not revalidated in this slice:
 
 - no fresh UI automation or manual Tauri launch was performed after this specific create/close-tab pass
 
+## Latest tab-rename-and-pin parity slice
+
+The next workspace parity pass extended the top strip toward real TideTerm tab behavior:
+
+- tabs can now be renamed inline in the top strip
+- tabs can now be pinned and unpinned from the top strip
+- pinned tabs render before regular tabs
+- the runtime exposes `workspace.rename_tab` and `workspace.set_tab_pinned`
+- workspace and app-layer tests now cover rename and pin flows
+
+Validation executed for this slice:
+
+```bash
+./scripts/go.sh test ./core/workspace ./core/app
+npm --prefix frontend run lint
+npm --prefix frontend run build
+npm run validate
+```
+
+Observed result:
+
+- targeted workspace and app-layer tests passed
+- frontend lint passed
+- frontend build passed
+- full repository validation passed after the tab rename/pin slice
+
+What was not revalidated in this slice:
+
+- no fresh UI automation was run after the inline rename/pin change
+- no fresh manual Tauri launch was performed after this specific top-strip interaction pass
+
 ## Tooling baseline
 
 - Go: `go1.26.2 darwin/arm64`

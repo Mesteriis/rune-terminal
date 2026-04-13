@@ -15,6 +15,9 @@ It is intentionally operational, not narrative.
 - New terminal tabs can be created at runtime.
 - Closing a tab tears down its terminal session and removes the associated widget from the workspace snapshot.
 - The last remaining tab cannot be closed in the current implementation.
+- Tabs can be renamed inline from the top strip.
+- Tabs can be pinned and unpinned from the top strip.
+- Pinned tabs render before regular tabs while preserving creation order inside each group.
 
 ## Session lifecycle contract
 
