@@ -2,6 +2,7 @@ import { useState } from 'react'
 
 import type { Tab, Workspace } from '../types'
 import { WorkspaceTab } from './WorkspaceTab'
+import { WorkspaceSwitcher } from './WorkspaceSwitcher'
 
 type WorkspaceRailProps = {
   workspace: Workspace | null
@@ -31,6 +32,7 @@ export function WorkspaceRail({
   onToggleTabPinned,
 }: WorkspaceRailProps) {
   const activeTab = workspace?.tabs.find((tab) => tab.id === activeTabId)
+  const activeWidget = workspace?.widgets.find((widget) => widget.id === workspace?.active_widget_id)
   const { pinnedTabs, regularTabs } = partitionTabs(workspace?.tabs ?? [])
   const [draggingTabId, setDraggingTabId] = useState<string | null>(null)
   const [hoverTabId, setHoverTabId] = useState<string | null>(null)
@@ -38,10 +40,13 @@ export function WorkspaceRail({
   return (
     <header className="workspace-tabs">
       <div className="workspace-tabs-left">
-        <button className="workspace-switcher" title={workspace?.name ?? 'Loading workspace'}>
-          <span className="workspace-switcher-badge">WS</span>
-          <strong>{workspace?.name ?? 'Loading workspace'}</strong>
-        </button>
+        <WorkspaceSwitcher
+          workspaceName={workspace?.name ?? 'Loading workspace'}
+          repoRoot={repoRoot}
+          activeTabTitle={activeTab?.title ?? 'No active tab'}
+          activeWidgetTitle={activeWidget?.title ?? activeWidget?.id ?? 'No active widget'}
+          onCreateTab={onCreateTab}
+        />
       </div>
 
       <div className="workspace-tabs-strip">

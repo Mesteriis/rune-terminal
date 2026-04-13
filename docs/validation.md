@@ -310,6 +310,34 @@ What was not revalidated in this slice:
 - no fresh UI automation was run after adding the context menu
 - no fresh manual Tauri launch was performed after this specific tab menu pass
 
+## Latest workspace-switcher parity slice
+
+The next shell parity pass restored a TideTerm-shaped workspace-switcher entry point:
+
+- the top-left workspace button now opens a workspace popover
+- the popover shows the active workspace, repository root, active tab, and active widget
+- the popover provides a shell-level `New terminal tab` action
+- multi-workspace switching is still explicitly pending and is not faked in the frontend
+
+Validation executed for this slice:
+
+```bash
+npm --prefix frontend run lint
+npm --prefix frontend run build
+npm run validate
+```
+
+Observed result:
+
+- frontend lint passed
+- frontend build passed
+- full repository validation passed after the workspace-switcher slice
+
+What was not revalidated in this slice:
+
+- no fresh UI automation was run after the workspace-switcher popover change
+- no fresh manual Tauri launch was performed after this specific shell-control pass
+
 ## Tooling baseline
 
 - Go: `go1.26.2 darwin/arm64`

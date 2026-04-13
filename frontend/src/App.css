@@ -28,6 +28,10 @@
   padding: 0 0.35rem 0.35rem;
 }
 
+.workspace-switcher-shell {
+  position: relative;
+}
+
 .workspace-switcher,
 .widget-dock-brand {
   display: inline-flex;
@@ -40,6 +44,68 @@
   font-size: 0.82rem;
   font-weight: 700;
   text-align: left;
+}
+
+.workspace-switcher-menu {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 0.45rem);
+  z-index: 35;
+  width: 20rem;
+  display: grid;
+  gap: 0.7rem;
+  padding: 0.85rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(9, 13, 18, 0.98);
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.32);
+}
+
+.workspace-switcher-card,
+.workspace-switcher-meta div {
+  display: grid;
+  gap: 0.28rem;
+  padding: 0.75rem 0.8rem;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.workspace-switcher-card strong,
+.workspace-switcher-meta strong {
+  color: #eff5fb;
+}
+
+.workspace-switcher-subtitle,
+.workspace-switcher-note,
+.workspace-switcher-meta span,
+.workspace-switcher-meta code {
+  color: #8b99a7;
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
+.workspace-switcher-meta {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.workspace-switcher-actions {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.workspace-switcher-actions button {
+  padding: 0.55rem 0.8rem;
+  border-radius: 9px;
+  background: rgba(242, 179, 95, 0.18);
+  color: #ffd9a8;
+  font-size: 0.79rem;
+  font-weight: 700;
+}
+
+.workspace-switcher-actions button:hover {
+  background: rgba(242, 179, 95, 0.26);
 }
 
 .workspace-switcher-badge {
