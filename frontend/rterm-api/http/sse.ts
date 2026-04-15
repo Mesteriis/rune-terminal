@@ -6,6 +6,7 @@ export interface TerminalStreamPayload {
   from?: number;
   authToken?: string;
   useQueryToken?: boolean;
+  signal?: AbortSignal;
 }
 
 export interface TerminalStreamEvents {
@@ -33,7 +34,12 @@ export function buildTerminalStreamUrl(baseUrl: string, widgetId: string, option
 export async function consumeTerminalStream(
   response: Response,
   handlers: TerminalStreamEvents,
+  signal?: AbortSignal,
 ): Promise<void> {
+  if (signal?.aborted) {
+    return;
+  }
+
   if (!response.body) {
     throw new ApiError({
       status: 0,
@@ -48,6 +54,9 @@ export async function consumeTerminalStream(
   let eventName = "output";
   let eventData = "";
   while (true) {
+    if (signal?.aborted) {
+      return;
+    }
     const { done, value } = await reader.read();
     if (done) {
       if (eventData) {
@@ -122,6 +131,7 @@ export async function consumeTerminalStreamViaClient(
       Connection: "keep-alive",
     },
     includeAuth: !options.useQueryToken,
+    signal: options.signal,
   });
-  await consumeTerminalStream(response, handlers);
+  await consumeTerminalStream(response, handlers, options.signal);
 }

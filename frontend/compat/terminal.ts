@@ -4,6 +4,8 @@ import type { RuntimeConfig } from "@/runtime/types";
 import type { SendInputRequest, SendInputResponse, TerminalSnapshot } from "@/rterm-api/terminal/types";
 import type { TerminalStreamEvents } from "@/rterm-api/http/sse";
 import type { StreamAuthMode } from "@/runtime/types";
+import type { CompatApiOptions } from "./types";
+import { createCompatApiFacade } from "./api";
 
 export interface TerminalFacade {
   getSnapshot: (widgetId: string, from?: number) => Promise<TerminalSnapshot>;
@@ -12,12 +14,35 @@ export interface TerminalFacade {
   consumeStream: (
     widgetId: string,
     handlers: TerminalStreamEvents,
-    options?: { from?: number },
+    options?: {
+      from?: number;
+      signal?: AbortSignal;
+    },
   ) => Promise<void>;
 }
 
 export interface TerminalStreamFacadeOptions {
   from?: number;
+  signal?: AbortSignal;
+}
+
+let terminalFacadePromise: Promise<TerminalFacade> | null = null;
+
+function buildTerminalFacade(fetchImpl?: CompatApiOptions["fetchImpl"]): Promise<TerminalFacade> {
+  const facadePromise = createCompatApiFacade({ fetchImpl }).then(({ runtime, clients }) => {
+    return createTerminalFacade(clients.terminal, runtime);
+  });
+  facadePromise.catch(() => {
+    terminalFacadePromise = null;
+  });
+  return facadePromise;
+}
+
+export function getTerminalFacade(fetchImpl?: CompatApiOptions["fetchImpl"]): Promise<TerminalFacade> {
+  if (terminalFacadePromise == null) {
+    terminalFacadePromise = buildTerminalFacade(fetchImpl);
+  }
+  return terminalFacadePromise;
 }
 
 export function getTerminalStreamMode(runtime: RuntimeConfig): StreamAuthMode {
@@ -43,6 +68,7 @@ export function createTerminalFacade(client: TerminalClient, runtime: RuntimeCon
       return client.consumeStream(widgetId, handlers, {
         from: options.from,
         useQueryToken: shouldUseQueryTokenForStream(runtime),
+        signal: options.signal,
       });
     },
   };

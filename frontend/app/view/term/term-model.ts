@@ -14,6 +14,7 @@ import { TerminalView } from "@/app/view/term/term";
 import { TermWshClient } from "@/app/view/term/term-wsh";
 import { VDomModel } from "@/app/view/vdom/vdom-model";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
+import { getTerminalFacade } from "@/compat";
 import {
     atoms,
     getAllBlockComponentModels,
@@ -32,7 +33,7 @@ import {
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
 import { isMacOS, isWindows } from "@/util/platformutil";
-import { boundNumber, stringToBase64 } from "@/util/util";
+import { boundNumber } from "@/util/util";
 import * as jotai from "jotai";
 import * as React from "react";
 import { getBlockingCommand } from "./shellblocking";
@@ -471,8 +472,11 @@ export class TermViewModel implements ViewModel {
     }
 
     sendDataToController(data: string) {
-        const b64data = stringToBase64(data);
-        RpcApi.ControllerInputCommand(TabRpcClient, { blockid: this.blockId, inputdata64: b64data });
+        void getTerminalFacade()
+            .then((facade) => facade.sendInput(this.blockId, { text: data }))
+            .catch((err) => {
+                console.log("error sending terminal input", this.blockId, err);
+            });
     }
 
     setTermMode(mode: "term" | "vdom") {

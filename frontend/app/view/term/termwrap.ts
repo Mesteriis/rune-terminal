@@ -1,14 +1,13 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { getFileSubject } from "@/app/store/wps";
+import { getTerminalFacade } from "@/compat";
 import { sendWSCommand } from "@/app/store/ws";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import {
     WOS,
     atoms,
-    fetchWaveFile,
     getApi,
     getSettingsKeyAtom,
     globalStore,
@@ -16,8 +15,9 @@ import {
     recordTEvent,
 } from "@/store/global";
 import * as services from "@/store/services";
+import type { TerminalOutputChunk, TerminalSnapshot } from "@/rterm-api/terminal/types";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
-import { base64ToArray, base64ToString, fireAndForget } from "@/util/util";
+import { base64ToString, fireAndForget } from "@/util/util";
 import { SearchAddon } from "@xterm/addon-search";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { WebLinksAddon } from "@xterm/addon-web-links";
@@ -32,8 +32,10 @@ import { createTempFileFromBlob, extractAllClipboardData } from "./termutil";
 
 const dlog = debug("wave:termwrap");
 
-const TermFileName = "term";
-const TermCacheFileName = "cache:term:full";
+function isAbortError(error: unknown): error is DOMException {
+    return error instanceof DOMException && error.name === "AbortError";
+}
+
 const MinDataProcessedForCache = 100 * 1024;
 export const SupportsImageInput = true;
 
@@ -505,9 +507,7 @@ export class TermWrap {
     fitAddon: FitAddon;
     searchAddon: SearchAddon;
     serializeAddon: SerializeAddon;
-    mainFileSubject: SubjectWithRef<WSFileEventData>;
     loaded: boolean;
-    heldData: Uint8Array[];
     handleResize_debounced: () => void;
     hasResized: boolean;
     multiInputCallback: (data: string) => void;
@@ -519,6 +519,9 @@ export class TermWrap {
     promptMarkers: TermTypes.IMarker[] = [];
     shellIntegrationStatusAtom: jotai.PrimitiveAtom<"ready" | "running-command" | null>;
     lastCommandAtom: jotai.PrimitiveAtom<string | null>;
+    private streamAbortController: AbortController | null;
+    private streamNextSeq: number;
+    private activeSessionId: string | null;
 
     // IME composition state tracking
     // Prevents duplicate input when switching input methods during composition (e.g., using Capslock)
@@ -671,11 +674,11 @@ export class TermWrap {
                     webglAddon.dispose();
                 })
             );
-            this.terminal.loadAddon(webglAddon);
-            if (!loggedWebGL) {
-                console.log("loaded webgl!");
-                loggedWebGL = true;
-            }
+        this.terminal.loadAddon(webglAddon);
+        if (!loggedWebGL) {
+            console.log("loaded webgl!");
+            loggedWebGL = true;
+        }
         }
         // Register OSC 9283 handler
         this.terminal.parser.registerOscHandler(9283, (data: string) => {
@@ -711,8 +714,9 @@ export class TermWrap {
             return false;
         });
         this.connectElem = connectElem;
-        this.mainFileSubject = null;
-        this.heldData = [];
+        this.streamAbortController = null;
+        this.streamNextSeq = 0;
+        this.activeSessionId = null;
         this.handleResize_debounced = debounce(50, this.handleResize.bind(this));
         this.terminal.open(this.connectElem);
         this.handleResize();
@@ -800,9 +804,6 @@ export class TermWrap {
             });
         }
 
-        this.mainFileSubject = getFileSubject(this.blockId, TermFileName);
-        this.mainFileSubject.subscribe(this.handleNewFileSubjectData.bind(this));
-
         try {
             const rtInfo = await RpcApi.GetRTInfoCommand(TabRpcClient, {
                 oref: WOS.makeORef("block", this.blockId),
@@ -822,7 +823,13 @@ export class TermWrap {
         }
 
         try {
-            await this.loadInitialTerminalData();
+            const snapshot = await this.loadInitialTerminalData();
+            void this.startTerminalStreamFromSnapshot(snapshot?.next_seq ?? this.streamNextSeq).catch((err: unknown) => {
+                if (isAbortError(err)) {
+                    return;
+                }
+                console.log("error starting terminal stream", this.blockId, err);
+            });
         } finally {
             this.loaded = true;
         }
@@ -853,7 +860,10 @@ export class TermWrap {
                 d.dispose();
             } catch (_) {}
         });
-        this.mainFileSubject.release();
+        if (this.streamAbortController != null) {
+            this.streamAbortController.abort();
+            this.streamAbortController = null;
+        }
     }
 
     handleTermData(data: string) {
@@ -906,45 +916,6 @@ export class TermWrap {
 
     addFocusListener(focusFn: () => void) {
         this.terminal.textarea.addEventListener("focus", focusFn);
-    }
-
-    handleNewFileSubjectData(msg: WSFileEventData) {
-        if (msg.fileop == "truncate") {
-            // Clear any pending buffered output
-            this.flushOutputBuffer();
-            this.terminal.clear();
-            this.heldData = [];
-        } else if (msg.fileop == "append") {
-            const decodedData = base64ToArray(msg.data64);
-            if (this.loaded) {
-                // Buffer the data and schedule a flush
-                this.outputBuffer.push(decodedData);
-                this.outputBufferedBytes += decodedData.byteLength;
-                if (this.outputBatchStartTs == null) {
-                    this.outputBatchStartTs = performance.now();
-                }
-                // Track quick heuristics to decide how much to coalesce.
-                for (let i = 0; i < decodedData.length; i++) {
-                    const b = decodedData[i];
-                    if (b === 0x0a) {
-                        this.outputBufferHasNewline = true;
-                    } else if (b === 0x1b) {
-                        this.outputBufferHasEscape = true;
-                    } else if (b === 0x0d) {
-                        this.outputBufferHasCarriageReturn = true;
-                    }
-                    if (this.outputBufferHasNewline && this.outputBufferHasEscape && this.outputBufferHasCarriageReturn) {
-                        break;
-                    }
-                }
-                this.scheduleOutputFlush();
-            } else {
-                this.heldData.push(decodedData);
-            }
-        } else {
-            console.log("bad fileop for terminal", msg);
-            return;
-        }
     }
 
     private scheduleOutputFlush() {
@@ -1034,37 +1005,97 @@ export class TermWrap {
         return prtn;
     }
 
-    async loadInitialTerminalData(): Promise<void> {
-        let startTs = Date.now();
-        const { data: cacheData, fileInfo: cacheFile } = await fetchWaveFile(this.blockId, TermCacheFileName);
-        let ptyOffset = 0;
-        if (cacheFile != null) {
-            ptyOffset = cacheFile.meta["ptyoffset"] ?? 0;
-            if (cacheData.byteLength > 0) {
-                const curTermSize: TermSize = { rows: this.terminal.rows, cols: this.terminal.cols };
-                const fileTermSize: TermSize = cacheFile.meta["termsize"];
-                let didResize = false;
-                if (
-                    fileTermSize != null &&
-                    (fileTermSize.rows != curTermSize.rows || fileTermSize.cols != curTermSize.cols)
-                ) {
-                    console.log("terminal restore size mismatch, temp resize", fileTermSize, curTermSize);
-                    this.terminal.resize(fileTermSize.cols, fileTermSize.rows);
-                    didResize = true;
-                }
-                this.doTerminalWrite(cacheData, ptyOffset);
-                if (didResize) {
-                    this.terminal.resize(curTermSize.cols, curTermSize.rows);
-                }
+    async loadInitialTerminalData(): Promise<TerminalSnapshot | null> {
+        const startTs = Date.now();
+        const facade = await getTerminalFacade();
+        const snapshot = await facade.getSnapshot(this.blockId);
+        if (snapshot == null) {
+            return null;
+        }
+
+        if (this.activeSessionId != null && this.activeSessionId != snapshot.state.session_id) {
+            this.flushOutputBuffer();
+            this.terminal.clear();
+            this.ptyOffset = 0;
+            this.dataBytesProcessed = 0;
+            this.outputBuffer = [];
+            this.outputBatchStartTs = null;
+            this.outputBufferedBytes = 0;
+            this.outputBufferHasNewline = false;
+            this.outputBufferHasEscape = false;
+            this.outputBufferHasCarriageReturn = false;
+        }
+
+        this.activeSessionId = snapshot.state.session_id;
+        this.streamNextSeq = snapshot.next_seq;
+        for (const chunk of snapshot.chunks) {
+            await this.handleTerminalChunk(chunk);
+        }
+        console.log(`terminal loaded ${snapshot.chunks.length} chunks, ${Date.now() - startTs}ms`);
+
+        return snapshot;
+    }
+
+    private async startTerminalStreamFromSnapshot(startingSeq: number = 0): Promise<void> {
+        const facade = await getTerminalFacade();
+        if (this.streamAbortController != null) {
+            this.streamAbortController.abort();
+        }
+        const controller = new AbortController();
+        this.streamAbortController = controller;
+
+        await facade.consumeStream(
+            this.blockId,
+            {
+                onOutput: (chunk: TerminalOutputChunk) => {
+                    return this.handleTerminalChunk(chunk);
+                },
+                onKeepAlive: () => {
+                    return;
+                },
+                onUnknownEvent: (event: string, data: string) => {
+                    void data;
+                    dlog("unknown terminal stream event", this.blockId, event);
+                },
+            },
+            {
+                from: startingSeq,
+                signal: controller.signal,
+            },
+        );
+    }
+
+    private async handleTerminalChunk(chunk: TerminalOutputChunk): Promise<void> {
+        const encoded = new TextEncoder().encode(chunk.data);
+        await this.writeChunkBuffered(encoded);
+        this.streamNextSeq = chunk.seq + 1;
+    }
+
+    private writeChunkBuffered(data: Uint8Array): Promise<void> {
+        return this.queueBufferedWrite(data);
+    }
+
+    private queueBufferedWrite(data: Uint8Array): Promise<void> {
+        this.outputBuffer.push(data);
+        this.outputBufferedBytes += data.byteLength;
+        if (this.outputBatchStartTs == null) {
+            this.outputBatchStartTs = performance.now();
+        }
+        for (let i = 0; i < data.length; i++) {
+            const b = data[i];
+            if (b === 0x0a) {
+                this.outputBufferHasNewline = true;
+            } else if (b === 0x1b) {
+                this.outputBufferHasEscape = true;
+            } else if (b === 0x0d) {
+                this.outputBufferHasCarriageReturn = true;
+            }
+            if (this.outputBufferHasNewline && this.outputBufferHasEscape && this.outputBufferHasCarriageReturn) {
+                break;
             }
         }
-        const { data: mainData, fileInfo: mainFile } = await fetchWaveFile(this.blockId, TermFileName, ptyOffset);
-        console.log(
-            `terminal loaded cachefile:${cacheData?.byteLength ?? 0} main:${mainData?.byteLength ?? 0} bytes, ${Date.now() - startTs}ms`
-        );
-        if (mainFile != null) {
-            await this.doTerminalWrite(mainData, null);
-        }
+        this.scheduleOutputFlush();
+        return Promise.resolve();
     }
 
     async resyncController(reason: string) {

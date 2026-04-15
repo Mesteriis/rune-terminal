@@ -6,6 +6,7 @@ import type { TerminalStreamEvents } from "../http/sse";
 export interface TerminalStreamRequestOptions {
   from?: number;
   useQueryToken?: boolean;
+  signal?: AbortSignal;
 }
 
 export class TerminalClient {
@@ -36,6 +37,7 @@ export class TerminalClient {
       from: options.from,
       authToken: this.http.authToken,
       useQueryToken: options.useQueryToken ?? false,
+      signal: options.signal,
     });
   }
 }
