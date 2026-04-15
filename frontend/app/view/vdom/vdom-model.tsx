@@ -106,7 +106,7 @@ class VDomWshClient extends WshClient {
 export class VDomModel {
     blockId: string;
     nodeModel: BlockNodeModel;
-    tabModel: TabModel;
+    tabModel?: TabModel;
     viewType: string;
     viewIcon: jotai.Atom<string>;
     viewName: jotai.Atom<string>;
@@ -140,7 +140,7 @@ export class VDomModel {
     hasBackendWork: boolean = false;
     noPadding: jotai.PrimitiveAtom<boolean>;
 
-    constructor(blockId: string, nodeModel: BlockNodeModel, tabModel: TabModel) {
+    constructor(blockId: string, nodeModel: BlockNodeModel, tabModel?: TabModel) {
         this.viewType = "vdom";
         this.blockId = blockId;
         this.nodeModel = nodeModel;

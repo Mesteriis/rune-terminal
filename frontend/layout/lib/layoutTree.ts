@@ -79,7 +79,8 @@ export function computeMoveNode(layoutState: LayoutTreeState, computeInsertActio
 
     switch (direction) {
         case DropDirection.OuterTop:
-            if (node.flexDirection === FlexDirection.Column) {
+        case DropDirection.Top: {
+            if (direction === DropDirection.OuterTop && node.flexDirection === FlexDirection.Column) {
                 const grandparentNode = grandparent();
                 if (grandparentNode) {
                     const index = indexInGrandparent();
@@ -91,7 +92,6 @@ export function computeMoveNode(layoutState: LayoutTreeState, computeInsertActio
                     break;
                 }
             }
-        case DropDirection.Top:
             if (node.flexDirection === FlexDirection.Column) {
                 newMoveOperation = { parentId: nodeId, index: 0, node: nodeToMove };
             } else {
@@ -111,8 +111,10 @@ export function computeMoveNode(layoutState: LayoutTreeState, computeInsertActio
                     };
             }
             break;
+        }
         case DropDirection.OuterBottom:
-            if (node.flexDirection === FlexDirection.Column) {
+        case DropDirection.Bottom: {
+            if (direction === DropDirection.OuterBottom && node.flexDirection === FlexDirection.Column) {
                 const grandparentNode = grandparent();
                 if (grandparentNode) {
                     const index = indexInGrandparent() + 1;
@@ -124,7 +126,6 @@ export function computeMoveNode(layoutState: LayoutTreeState, computeInsertActio
                     break;
                 }
             }
-        case DropDirection.Bottom:
             if (node.flexDirection === FlexDirection.Column) {
                 newMoveOperation = { parentId: nodeId, index: 1, node: nodeToMove };
             } else {
@@ -144,8 +145,10 @@ export function computeMoveNode(layoutState: LayoutTreeState, computeInsertActio
                     };
             }
             break;
+        }
         case DropDirection.OuterLeft:
-            if (node.flexDirection === FlexDirection.Row) {
+        case DropDirection.Left: {
+            if (direction === DropDirection.OuterLeft && node.flexDirection === FlexDirection.Row) {
                 const grandparentNode = grandparent();
                 if (grandparentNode) {
                     const index = indexInGrandparent();
@@ -157,7 +160,6 @@ export function computeMoveNode(layoutState: LayoutTreeState, computeInsertActio
                     break;
                 }
             }
-        case DropDirection.Left:
             if (node.flexDirection === FlexDirection.Row) {
                 newMoveOperation = { parentId: nodeId, index: 0, node: nodeToMove };
             } else {
@@ -170,8 +172,10 @@ export function computeMoveNode(layoutState: LayoutTreeState, computeInsertActio
                     };
             }
             break;
+        }
         case DropDirection.OuterRight:
-            if (node.flexDirection === FlexDirection.Row) {
+        case DropDirection.Right: {
+            if (direction === DropDirection.OuterRight && node.flexDirection === FlexDirection.Row) {
                 const grandparentNode = grandparent();
                 if (grandparentNode) {
                     const index = indexInGrandparent() + 1;
@@ -183,7 +187,6 @@ export function computeMoveNode(layoutState: LayoutTreeState, computeInsertActio
                     break;
                 }
             }
-        case DropDirection.Right:
             if (node.flexDirection === FlexDirection.Row) {
                 newMoveOperation = { parentId: nodeId, index: 1, node: nodeToMove };
             } else {
@@ -196,6 +199,7 @@ export function computeMoveNode(layoutState: LayoutTreeState, computeInsertActio
                     };
             }
             break;
+        }
         case DropDirection.Center:
             if (nodeId !== rootNode.id && nodeToMoveId !== rootNode.id) {
                 const swapAction: LayoutTreeSwapNodeAction = {

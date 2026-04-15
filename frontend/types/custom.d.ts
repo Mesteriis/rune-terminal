@@ -287,8 +287,8 @@ declare global {
 
     declare type ViewComponentProps<T extends ViewModel> = {
         blockId: string;
-        blockRef: React.RefObject<HTMLDivElement>;
-        contentRef: React.RefObject<HTMLDivElement>;
+        blockRef?: React.RefObject<HTMLDivElement>;
+        contentRef?: React.RefObject<HTMLDivElement>;
         model: T;
     };
 

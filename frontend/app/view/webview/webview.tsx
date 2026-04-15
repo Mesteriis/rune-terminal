@@ -735,7 +735,10 @@ export class WebViewModel implements ViewModel {
 }
 
 const BookmarkTypeahead = memo(
-    ({ model, blockRef }: { model: WebViewModel; blockRef: React.RefObject<HTMLDivElement> }) => {
+    ({ model, blockRef }: { model: WebViewModel; blockRef?: React.RefObject<HTMLDivElement> }) => {
+        if (blockRef == null) {
+            return null;
+        }
         const openBookmarksJson = () => {
             fireAndForget(async () => {
                 const path = `${getApi().getConfigDir()}/presets/bookmarks.json`;
@@ -799,8 +802,8 @@ interface WebViewProps {
     blockId: string;
     model: WebViewModel;
     onFailLoad?: (url: string) => void;
-    blockRef: React.RefObject<HTMLDivElement>;
-    contentRef: React.RefObject<HTMLDivElement>;
+    blockRef?: React.RefObject<HTMLDivElement>;
+    contentRef?: React.RefObject<HTMLDivElement>;
     initialSrc?: string;
 }
 

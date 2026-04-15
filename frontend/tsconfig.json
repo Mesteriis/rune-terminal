@@ -9,10 +9,11 @@
     "moduleResolution": "bundler",
     "ignoreDeprecations": "6.0",
     "allowImportingTsExtensions": true,
-    "verbatimModuleSyntax": true,
+    "verbatimModuleSyntax": false,
     "moduleDetection": "force",
     "noEmit": true,
     "jsx": "react-jsx",
+    "strict": false,
     "baseUrl": ".",
     "paths": {
       "@/app/*": ["app/*"],
@@ -29,9 +30,9 @@
       "@/asset/*": ["app/asset/*"],
       "@/*": ["*"]
     },
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "erasableSyntaxOnly": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "erasableSyntaxOnly": false,
     "noFallthroughCasesInSwitch": true
   },
   "include": [

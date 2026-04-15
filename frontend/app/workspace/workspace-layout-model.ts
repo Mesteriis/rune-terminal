@@ -11,9 +11,11 @@ import { atoms, getApi, getOrefMetaKeyAtom, recordTEvent, refocusNode } from "@/
 import debug from "debug";
 import * as jotai from "jotai";
 import { debounce } from "lodash-es";
-import { ImperativePanelGroupHandle, ImperativePanelHandle } from "react-resizable-panels";
+import type { GroupImperativeHandle, Layout as PanelLayout, PanelImperativeHandle } from "react-resizable-panels";
 
 const dlog = debug("wave:workspace");
+const WorkspaceAIPanelId = "workspace-ai-panel";
+const WorkspaceMainPanelId = "workspace-main-panel";
 
 const AIPANEL_DEFAULTWIDTH = 300;
 const AIPANEL_DEFAULTWIDTHRATIO = 0.33;
@@ -23,8 +25,8 @@ const AIPANEL_MAXWIDTHRATIO = 0.66;
 class WorkspaceLayoutModel {
     private static instance: WorkspaceLayoutModel | null = null;
 
-    aiPanelRef: ImperativePanelHandle | null;
-    panelGroupRef: ImperativePanelGroupHandle | null;
+    aiPanelRef: PanelImperativeHandle | null;
+    panelGroupRef: GroupImperativeHandle | null;
     panelContainerRef: HTMLDivElement | null;
     aiPanelWrapperRef: HTMLDivElement | null;
     inResize: boolean; // prevents recursive setLayout calls (setLayout triggers onLayout which calls setLayout)
@@ -92,19 +94,19 @@ class WorkspaceLayoutModel {
         return globalStore.get(atoms.staticTabId);
     }
 
-    private getPanelOpenAtom(): jotai.Atom<boolean> {
+    private getPanelOpenAtom(): jotai.Atom<boolean | undefined> {
         const tabORef = WOS.makeORef("tab", this.getTabId());
         return getOrefMetaKeyAtom(tabORef, "waveai:panelopen");
     }
 
-    private getPanelWidthAtom(): jotai.Atom<number> {
+    private getPanelWidthAtom(): jotai.Atom<number | undefined> {
         const tabORef = WOS.makeORef("tab", this.getTabId());
         return getOrefMetaKeyAtom(tabORef, "waveai:panelwidth");
     }
 
     registerRefs(
-        aiPanelRef: ImperativePanelHandle,
-        panelGroupRef: ImperativePanelGroupHandle,
+        aiPanelRef: PanelImperativeHandle,
+        panelGroupRef: GroupImperativeHandle,
         panelContainerRef: HTMLDivElement,
         aiPanelWrapperRef: HTMLDivElement
     ): void {
@@ -130,8 +132,10 @@ class WorkspaceLayoutModel {
             return;
         }
         const panels = this.panelContainerRef.querySelectorAll("[data-panel]");
-        panels.forEach((panel: HTMLElement) => {
-            panel.style.transition = "flex 0.2s ease-in-out";
+        panels.forEach((panel) => {
+            if (panel instanceof HTMLElement) {
+                panel.style.transition = "flex 0.2s ease-in-out";
+            }
         });
 
         if (this.transitionTimeoutRef) {
@@ -142,10 +146,19 @@ class WorkspaceLayoutModel {
                 return;
             }
             const panels = this.panelContainerRef.querySelectorAll("[data-panel]");
-            panels.forEach((panel: HTMLElement) => {
-                panel.style.transition = "none";
+            panels.forEach((panel) => {
+                if (panel instanceof HTMLElement) {
+                    panel.style.transition = "none";
+                }
             });
         }, duration);
+    }
+
+    private makePanelLayout(windowWidth: number): PanelLayout {
+        return {
+            [WorkspaceAIPanelId]: this.getAIPanelPercentage(windowWidth),
+            [WorkspaceMainPanelId]: this.getMainContentPercentage(windowWidth),
+        };
     }
 
     handleWindowResize(): void {
@@ -153,16 +166,13 @@ class WorkspaceLayoutModel {
             return;
         }
         const newWindowWidth = window.innerWidth;
-        const aiPanelPercentage = this.getAIPanelPercentage(newWindowWidth);
-        const mainContentPercentage = this.getMainContentPercentage(newWindowWidth);
         this.inResize = true;
-        const layout = [aiPanelPercentage, mainContentPercentage];
-        this.panelGroupRef.setLayout(layout);
+        this.panelGroupRef.setLayout(this.makePanelLayout(newWindowWidth));
         this.inResize = false;
         this.updateWrapperWidth();
     }
 
-    handlePanelLayout(sizes: number[]): void {
+    handlePanelLayout(layout: PanelLayout): void {
         // dlog("handlePanelLayout", "inResize:", this.inResize, "sizes:", sizes);
         if (this.inResize) {
             return;
@@ -172,13 +182,11 @@ class WorkspaceLayoutModel {
         }
 
         const currentWindowWidth = window.innerWidth;
-        const aiPanelPixelWidth = (sizes[0] / 100) * currentWindowWidth;
+        const aiPanelSize = layout[WorkspaceAIPanelId] ?? 0;
+        const aiPanelPixelWidth = (aiPanelSize / 100) * currentWindowWidth;
         this.handleAIPanelResize(aiPanelPixelWidth, currentWindowWidth);
-        const newPercentage = this.getAIPanelPercentage(currentWindowWidth);
-        const mainContentPercentage = 100 - newPercentage;
         this.inResize = true;
-        const layout = [newPercentage, mainContentPercentage];
-        this.panelGroupRef.setLayout(layout);
+        this.panelGroupRef.setLayout(this.makePanelLayout(currentWindowWidth));
         this.inResize = false;
     }
 
@@ -188,9 +196,6 @@ class WorkspaceLayoutModel {
         }
 
         const currentWindowWidth = window.innerWidth;
-        const aiPanelPercentage = this.getAIPanelPercentage(currentWindowWidth);
-        const mainContentPercentage = this.getMainContentPercentage(currentWindowWidth);
-
         if (this.getAIPanelVisible()) {
             this.aiPanelRef.expand();
         } else {
@@ -198,8 +203,7 @@ class WorkspaceLayoutModel {
         }
 
         this.inResize = true;
-        const layout = [aiPanelPercentage, mainContentPercentage];
-        this.panelGroupRef.setLayout(layout);
+        this.panelGroupRef.setLayout(this.makePanelLayout(currentWindowWidth));
         this.inResize = false;
     }
 
@@ -299,4 +303,4 @@ class WorkspaceLayoutModel {
     }
 }
 
-export { WorkspaceLayoutModel };
+export { WorkspaceAIPanelId, WorkspaceLayoutModel, WorkspaceMainPanelId };

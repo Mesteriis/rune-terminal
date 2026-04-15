@@ -6,6 +6,7 @@ import { getWorkspaceFacade } from "@/compat/workspace";
 import { useT } from "@/app/i18n/i18n";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { ObjectService } from "@/app/store/services";
 import { Button } from "@/element/button";
 import { ContextMenuModel } from "@/store/contextmenu";
 import { fireAndForget } from "@/util/util";

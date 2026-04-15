@@ -640,6 +640,7 @@ declare global {
     type CommandWaveAIToolApproveData = {
         toolcallid: string;
         approval?: string;
+        keepalive?: boolean;
     };
 
     // wshrpc.CommandWebSelectorData
@@ -1062,10 +1063,13 @@ declare global {
         "term:activesessionid"?: string;
         "term:sessionlistopen"?: boolean;
         "term:sessionlistwidth"?: number;
+        "term:hideparentsession"?: boolean;
         "web:zoom"?: number;
         "web:hidenav"?: boolean;
         "web:partition"?: string;
         "web:useragenttype"?: string;
+        "window:titlemode"?: string;
+        "window:fixedtitle"?: string;
         "markdown:fontsize"?: number;
         "markdown:fixedfontsize"?: number;
         "tsunami:*"?: boolean;

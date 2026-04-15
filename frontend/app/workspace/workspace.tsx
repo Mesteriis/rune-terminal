@@ -12,21 +12,20 @@ import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { atoms, getApi } from "@/store/global";
 import { useAtomValue } from "jotai";
 import { memo, useEffect, useRef } from "react";
-import {
-    ImperativePanelGroupHandle,
-    ImperativePanelHandle,
-    Panel,
-    PanelGroup,
-    PanelResizeHandle,
-} from "react-resizable-panels";
+import { Group, Panel, Separator, type GroupImperativeHandle, type Layout as PanelLayout, type PanelImperativeHandle } from "react-resizable-panels";
+import { WorkspaceAIPanelId, WorkspaceMainPanelId } from "./workspace-layout-model";
 
 const WorkspaceElem = memo(() => {
     const workspaceLayoutModel = WorkspaceLayoutModel.getInstance();
     const tabId = useAtomValue(atoms.staticTabId);
     const ws = useAtomValue(atoms.workspace);
     const initialAiPanelPercentage = workspaceLayoutModel.getAIPanelPercentage(window.innerWidth);
-    const panelGroupRef = useRef<ImperativePanelGroupHandle>(null);
-    const aiPanelRef = useRef<ImperativePanelHandle>(null);
+    const initialLayout: PanelLayout = {
+        [WorkspaceAIPanelId]: initialAiPanelPercentage,
+        [WorkspaceMainPanelId]: 100 - initialAiPanelPercentage,
+    };
+    const panelGroupRef = useRef<GroupImperativeHandle>(null);
+    const aiPanelRef = useRef<PanelImperativeHandle>(null);
     const panelContainerRef = useRef<HTMLDivElement>(null);
     const aiPanelWrapperRef = useRef<HTMLDivElement>(null);
 
@@ -56,24 +55,25 @@ const WorkspaceElem = memo(() => {
             <TabBar key={ws.oid} workspace={ws} />
             <div ref={panelContainerRef} className="flex flex-row flex-grow overflow-hidden">
                 <ErrorBoundary key={tabId}>
-                    <PanelGroup
-                        direction="horizontal"
-                        onLayout={workspaceLayoutModel.handlePanelLayout}
-                        ref={panelGroupRef}
+                    <Group
+                        orientation="horizontal"
+                        defaultLayout={initialLayout}
+                        onLayoutChanged={workspaceLayoutModel.handlePanelLayout}
+                        groupRef={panelGroupRef}
                     >
                         <Panel
-                            ref={aiPanelRef}
+                            id={WorkspaceAIPanelId}
+                            panelRef={aiPanelRef}
                             collapsible
                             defaultSize={initialAiPanelPercentage}
-                            order={1}
                             className="overflow-hidden"
                         >
                             <div ref={aiPanelWrapperRef} className="w-full h-full">
                                 {tabId !== "" && <AIPanel />}
                             </div>
                         </Panel>
-                        <PanelResizeHandle className="w-0.5 bg-transparent hover:bg-zinc-500/20 transition-colors" />
-                        <Panel order={2} defaultSize={100 - initialAiPanelPercentage}>
+                        <Separator className="w-0.5 bg-transparent hover:bg-zinc-500/20 transition-colors" />
+                        <Panel id={WorkspaceMainPanelId} defaultSize={100 - initialAiPanelPercentage}>
                             {tabId === "" ? (
                                 <CenteredDiv>No Active Tab</CenteredDiv>
                             ) : (
@@ -83,7 +83,7 @@ const WorkspaceElem = memo(() => {
                                 </div>
                             )}
                         </Panel>
-                    </PanelGroup>
+                    </Group>
                     <ModalsRenderer />
                 </ErrorBoundary>
             </div>

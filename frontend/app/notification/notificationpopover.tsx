@@ -6,7 +6,7 @@ import { Popover, PopoverButton, PopoverContent } from "@/element/popover";
 import { atoms } from "@/store/global";
 import { makeIconClass } from "@/util/util";
 import clsx from "clsx";
-import { useAtom } from "jotai";
+import { type PrimitiveAtom, useAtomValue, useSetAtom } from "jotai";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { Fragment, useCallback } from "react";
 import { NotificationItem } from "./notificationitem";
@@ -26,14 +26,16 @@ const NotificationPopover = () => {
         hoveredId,
         setHoveredId,
     } = useNotification();
-    const [notificationPopoverMode, setNotificationPopoverMode] = useAtom(atoms.notificationPopoverMode);
+    const notificationPopoverModeAtom = atoms.notificationPopoverMode as PrimitiveAtom<boolean>;
+    const notificationPopoverMode = useAtomValue(notificationPopoverModeAtom);
+    const setNotificationPopoverMode = useSetAtom(notificationPopoverModeAtom);
 
     const handleTogglePopover = useCallback(() => {
         if (notificationPopoverMode) {
             hideAllNotifications();
         }
         setNotificationPopoverMode(!notificationPopoverMode);
-    }, [notificationPopoverMode]);
+    }, [hideAllNotifications, notificationPopoverMode, setNotificationPopoverMode]);
 
     const hasErrors = notifications.some((n) => n.type === "error");
     const hasUpdate = notifications.some((n) => n.type === "update");

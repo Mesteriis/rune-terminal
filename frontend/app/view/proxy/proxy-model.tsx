@@ -146,15 +146,15 @@ export class ProxyViewModel implements ViewModel {
         });
 
         // Initialize atoms
-        this.proxyStatusAtom = jotai.atom<ProxyStatus | null>(null);
+        this.proxyStatusAtom = jotai.atom<ProxyStatus | null>(null) as jotai.PrimitiveAtom<ProxyStatus | null>;
         this.channelsAtom = jotai.atom<ChannelConfig[]>([]);
         this.responseChannelsAtom = jotai.atom<ChannelConfig[]>([]);
         this.geminiChannelsAtom = jotai.atom<ChannelConfig[]>([]);
         this.metricsAtom = jotai.atom<{ [key: string]: ChannelMetrics }>({});
-        this.globalStatsAtom = jotai.atom<GlobalStats | null>(null);
+        this.globalStatsAtom = jotai.atom<GlobalStats | null>(null) as jotai.PrimitiveAtom<GlobalStats | null>;
         this.loadingAtom = jotai.atom<boolean>(true);
         this.selectedTabAtom = jotai.atom<ChannelType>("messages");
-        this.editingChannelAtom = jotai.atom<EditingChannel | null>(null);
+        this.editingChannelAtom = jotai.atom<EditingChannel | null>(null) as jotai.PrimitiveAtom<EditingChannel | null>;
         this.isFormOpenAtom = jotai.atom<boolean>(false);
 
         // Initialize history atoms

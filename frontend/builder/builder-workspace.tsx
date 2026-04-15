@@ -11,7 +11,7 @@ import { atoms } from "@/store/global";
 import { cn } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { memo, useCallback, useEffect, useState } from "react";
-import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
+import { Group, Panel, Separator, type Layout as PanelLayout } from "react-resizable-panels";
 import { debounce } from "throttle-debounce";
 
 const DefaultLayoutPercentages = {
@@ -19,6 +19,10 @@ const DefaultLayoutPercentages = {
     app: 80,
     build: 20,
 };
+const BuilderChatPanelId = "builder-chat-panel";
+const BuilderMainPanelId = "builder-main-panel";
+const BuilderAppPanelId = "builder-app-panel";
+const BuilderBuildPanelId = "builder-build-panel";
 
 const BuilderWorkspace = memo(() => {
     const builderId = useAtomValue(atoms.builderId);
@@ -72,8 +76,8 @@ const BuilderWorkspace = memo(() => {
     );
 
     const handleHorizontalLayout = useCallback(
-        (sizes: number[]) => {
-            const newLayout = { ...layout, chat: sizes[0] };
+        (sizes: PanelLayout) => {
+            const newLayout = { ...layout, chat: sizes[BuilderChatPanelId] ?? layout.chat };
             setLayout(newLayout);
             saveLayout(newLayout);
         },
@@ -81,8 +85,12 @@ const BuilderWorkspace = memo(() => {
     );
 
     const handleVerticalLayout = useCallback(
-        (sizes: number[]) => {
-            const newLayout = { ...layout, app: sizes[0], build: sizes[1] };
+        (sizes: PanelLayout) => {
+            const newLayout = {
+                ...layout,
+                app: sizes[BuilderAppPanelId] ?? layout.app,
+                build: sizes[BuilderBuildPanelId] ?? layout.build,
+            };
             setLayout(newLayout);
             saveLayout(newLayout);
         },
@@ -95,12 +103,19 @@ const BuilderWorkspace = memo(() => {
 
     return (
         <div className="flex-1 overflow-hidden">
-            <PanelGroup direction="horizontal" onLayout={handleHorizontalLayout}>
-                <Panel defaultSize={layout.chat} minSize={20}>
+            <Group
+                orientation="horizontal"
+                defaultLayout={{
+                    [BuilderChatPanelId]: layout.chat,
+                    [BuilderMainPanelId]: 100 - layout.chat,
+                }}
+                onLayoutChanged={handleHorizontalLayout}
+            >
+                <Panel id={BuilderChatPanelId} defaultSize={layout.chat} minSize={20}>
                     <AIPanel />
                 </Panel>
-                <PanelResizeHandle className="w-0.5 bg-transparent hover:bg-gray-500/20 transition-colors" />
-                <Panel defaultSize={100 - layout.chat} minSize={20}>
+                <Separator className="w-0.5 bg-transparent hover:bg-gray-500/20 transition-colors" />
+                <Panel id={BuilderMainPanelId} defaultSize={100 - layout.chat} minSize={20}>
                     <div
                         className={cn(
                             "flex flex-col relative h-full",
@@ -110,12 +125,20 @@ const BuilderWorkspace = memo(() => {
                             borderBottomRightRadius: 8,
                         }}
                     >
-                        <PanelGroup direction="vertical" onLayout={handleVerticalLayout}>
-                            <Panel defaultSize={layout.app} minSize={20}>
+                        <Group
+                            orientation="vertical"
+                            defaultLayout={{
+                                [BuilderAppPanelId]: layout.app,
+                                [BuilderBuildPanelId]: layout.build,
+                            }}
+                            onLayoutChanged={handleVerticalLayout}
+                        >
+                            <Panel id={BuilderAppPanelId} defaultSize={layout.app} minSize={20}>
                                 <BuilderAppPanel />
                             </Panel>
-                            <PanelResizeHandle className="h-0.5 bg-transparent hover:bg-gray-500/20 transition-colors" />
+                            <Separator className="h-0.5 bg-transparent hover:bg-gray-500/20 transition-colors" />
                             <Panel
+                                id={BuilderBuildPanelId}
                                 defaultSize={layout.build}
                                 minSize={20}
                                 maxSize={50}
@@ -123,10 +146,10 @@ const BuilderWorkspace = memo(() => {
                             >
                                 <BuilderBuildPanel />
                             </Panel>
-                        </PanelGroup>
+                        </Group>
                     </div>
                 </Panel>
-            </PanelGroup>
+            </Group>
         </div>
     );
 });

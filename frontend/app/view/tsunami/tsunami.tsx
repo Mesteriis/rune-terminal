@@ -19,7 +19,7 @@ class TsunamiViewModel extends WebViewModel {
     appMeta: jotai.PrimitiveAtom<AppMeta>;
     appMetaUnsubFn: () => void;
     isRestarting: jotai.PrimitiveAtom<boolean>;
-    viewName: jotai.Atom<string>;
+    declare viewName: jotai.Atom<string>;
     viewIconColor: jotai.Atom<string>;
 
     constructor(blockId: string, nodeModel: BlockNodeModel, tabModel: TabModel) {
