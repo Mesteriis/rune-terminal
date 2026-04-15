@@ -6,7 +6,7 @@ import { Tooltip } from "@/app/element/tooltip";
 import { useT } from "@/app/i18n/i18n";
 import { workspaceStore } from "@/app/state/workspace.store";
 import { ContextMenuModel } from "@/app/store/contextmenu";
-import type { ToolExecutionRequest, ToolExecutionResponse, ToolInfo } from "@/rterm-api/tools/types";
+import type { PendingApproval, ToolExecutionRequest, ToolExecutionResponse, ToolInfo } from "@/rterm-api/tools/types";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { atoms, createBlock, isDev } from "@/store/global";
@@ -110,6 +110,15 @@ function buildToolExecutionContext(repoRoot: string) {
         active_widget_id: workspace.activewidgetid || undefined,
         repo_root: repoRoot || undefined,
     };
+}
+
+function getApprovalToken(response: ToolExecutionResponse): string | null {
+    const output = response.output;
+    if (output == null || typeof output !== "object") {
+        return null;
+    }
+    const token = (output as Record<string, unknown>).approval_token;
+    return typeof token === "string" ? token : null;
 }
 
 const AppsFloatingWindow = memo(
@@ -351,6 +360,10 @@ const ToolsFloatingWindow = memo(
         onClose: () => void;
         referenceElement: HTMLElement;
     }) => {
+        const [pendingApproval, setPendingApproval] = useState<{
+            approval: PendingApproval;
+            request: ToolExecutionRequest;
+        } | null>(null);
         const [tools, setTools] = useState<ToolInfo[]>([]);
         const [selectedToolName, setSelectedToolName] = useState("");
         const [repoRoot, setRepoRoot] = useState("");
@@ -360,6 +373,7 @@ const ToolsFloatingWindow = memo(
         const [loading, setLoading] = useState(true);
         const [loadError, setLoadError] = useState<string | null>(null);
         const [isExecuting, setIsExecuting] = useState(false);
+        const [isConfirming, setIsConfirming] = useState(false);
 
         const { refs, floatingStyles, context } = useFloating({
             open: isOpen,
@@ -425,6 +439,7 @@ const ToolsFloatingWindow = memo(
             setInputValue("{}");
             setResponseValue(null);
             setExecuteError(null);
+            setPendingApproval(null);
         };
 
         const handleExecute = async () => {
@@ -456,11 +471,61 @@ const ToolsFloatingWindow = memo(
                 };
                 const response = await facade.executeTool(request);
                 setResponseValue(response);
+                if (response.status === "requires_confirmation" && response.pending_approval != null) {
+                    setPendingApproval({
+                        approval: response.pending_approval,
+                        request,
+                    });
+                } else {
+                    setPendingApproval(null);
+                }
             } catch (error) {
                 setExecuteError(error instanceof Error ? error.message : String(error));
                 setResponseValue(null);
+                setPendingApproval(null);
             } finally {
                 setIsExecuting(false);
+            }
+        };
+
+        const handleConfirm = async () => {
+            if (pendingApproval == null) {
+                return;
+            }
+
+            setIsConfirming(true);
+            setExecuteError(null);
+
+            try {
+                const facade = await getToolsFacade();
+                const confirmResponse = await facade.confirmApproval(
+                    pendingApproval.approval.id,
+                    pendingApproval.request.context,
+                );
+                const approvalToken = getApprovalToken(confirmResponse);
+                if (!approvalToken) {
+                    setResponseValue(confirmResponse);
+                    setExecuteError("Approval token was missing from confirmation response");
+                    return;
+                }
+
+                const retryResponse = await facade.executeTool({
+                    ...pendingApproval.request,
+                    approval_token: approvalToken,
+                });
+                setResponseValue(retryResponse);
+                if (retryResponse.status === "requires_confirmation" && retryResponse.pending_approval != null) {
+                    setPendingApproval({
+                        approval: retryResponse.pending_approval,
+                        request: pendingApproval.request,
+                    });
+                } else {
+                    setPendingApproval(null);
+                }
+            } catch (error) {
+                setExecuteError(error instanceof Error ? error.message : String(error));
+            } finally {
+                setIsConfirming(false);
             }
         };
 
@@ -544,6 +609,24 @@ const ToolsFloatingWindow = memo(
                                                 {isExecuting ? "Running..." : "Execute"}
                                             </button>
                                         </div>
+                                        {pendingApproval ? (
+                                            <div className="rounded border border-border p-2 bg-black/20 space-y-2">
+                                                <div className="text-xs text-secondary">
+                                                    approval required: {pendingApproval.approval.summary}
+                                                </div>
+                                                <div className="text-xs text-secondary">
+                                                    tier: {pendingApproval.approval.approval_tier}
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    className="px-3 py-1.5 rounded bg-accent text-black text-xs font-medium disabled:opacity-50"
+                                                    disabled={isConfirming}
+                                                    onClick={() => void handleConfirm()}
+                                                >
+                                                    {isConfirming ? "Confirming..." : "Confirm and retry"}
+                                                </button>
+                                            </div>
+                                        ) : null}
                                         <div>
                                             <div className="text-xs text-secondary mb-1">response:</div>
                                             <pre className="min-h-28 max-h-64 overflow-auto rounded bg-black/20 p-2 text-[11px] text-secondary whitespace-pre-wrap break-words">
