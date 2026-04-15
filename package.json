@@ -18,6 +18,7 @@
     "validate": "npm run lint:frontend && npm run build:frontend && npm run test:go && npm run build:go && npm run tauri:check"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.10.1"
+    "@tauri-apps/cli": "^2.10.1",
+    "typescript": "^6.0.2"
   }
 }

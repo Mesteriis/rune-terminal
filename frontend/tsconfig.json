@@ -15,6 +15,18 @@
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
+      "@/app/*": ["app/*"],
+      "@/builder/*": ["builder/*"],
+      "@/element/*": ["app/element/*"],
+      "@/layout/*": ["layout/*"],
+      "@/runtime/*": ["runtime/*"],
+      "@/store/*": ["app/store/*"],
+      "@/shadcn/*": ["app/shadcn/*"],
+      "@/compat/*": ["compat/*"],
+      "@/view/*": ["app/view/*"],
+      "@/util/*": ["util/*"],
+      "@/rterm-api/*": ["rterm-api/*"],
+      "@/asset/*": ["app/asset/*"],
       "@/*": ["*"]
     },
     "noUnusedLocals": true,
