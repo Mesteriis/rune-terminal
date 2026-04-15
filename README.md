@@ -151,11 +151,7 @@ RunaTerminal should stay anchored to a small set of explicit design rules:
 - `apps/desktop`
   Tauri shell and native app host.
 - `frontend`
-  React + TypeScript UI.
-- `frontend/tideterm-src`
-  Literal TideTerm renderer source snapshot used as the parity/refactor baseline.
-- `frontend/tideterm-src-meta`
-  TideTerm renderer build-context snapshot (`index.html`, `package.json`, `tsconfig.json`, `electron.vite.config.ts`).
+  React + TypeScript UI runtime source, organized by `app`, `layout`, `view`, `builder`, and `util`.
 - `cmd/rterm-core`
   Go entrypoint for the runtime process.
 - `core`
@@ -186,17 +182,18 @@ The resulting architecture intentionally diverges where those documents would ot
 
 RunaTerminal is now in a parity-first phase.
 
-The TideTerm frontend is no longer treated as an abstract visual reference only.
-It is imported literally into this repository as the renderer baseline to refactor from:
+The TideTerm frontend is used as an import source for bootstrap comparison, not as the canonical runtime tree:
 
 ```bash
-npm run import:tideterm-frontend
+npm run import:tideterm-frontend -- /path/to/tideterm/repo
 ```
 
 That command syncs:
 
 - `frontend/tideterm-src/`
 - `frontend/tideterm-src-meta/`
+
+Those paths are optional import snapshots, not the active runtime source.
 
 The goal is to refactor from the real TideTerm renderer source instead of continuing to invent replacement frontend behavior.
 
