@@ -129,6 +129,18 @@ class WorkspaceLayoutModel {
         this.updateWrapperWidth();
     }
 
+    unregisterRefs(): void {
+        this.aiPanelRef = null;
+        this.panelGroupRef = null;
+        this.panelContainerRef = null;
+        this.aiPanelWrapperRef = null;
+        this.inResize = false;
+        if (this.transitionTimeoutRef) {
+            clearTimeout(this.transitionTimeoutRef);
+            this.transitionTimeoutRef = null;
+        }
+    }
+
     updateWrapperWidth(): void {
         if (!this.aiPanelWrapperRef) {
             return;

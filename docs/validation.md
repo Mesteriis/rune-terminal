@@ -2,6 +2,55 @@
 
 Validation date: `2026-04-15`
 
+## Latest frontend workspace panel lifecycle stabilization
+
+This pass focused only on the active compat workspace panel remount path:
+
+- reproduce tab switching `Main Shell <-> Ops Shell`
+- verify the exact `react-resizable-panels` crash source
+- fix stale `Group`/`Panel`/DOM refs held by the singleton workspace layout model
+- confirm that AI toggle and terminal input still work after repeated remounts
+
+Validation executed for this step:
+
+```bash
+npx tsc -p frontend/tsconfig.json --noEmit
+npm --prefix frontend run build
+
+RTERM_AUTH_TOKEN=modal-compat-token apps/desktop/bin/rterm-core serve --listen 127.0.0.1:52760 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/runa-modal-compat-state
+VITE_RTERM_API_BASE=http://127.0.0.1:52760 VITE_RTERM_AUTH_TOKEN=modal-compat-token npm --prefix frontend run dev -- --host 127.0.0.1 --port 4190 --strictPort
+
+# browser validation against http://127.0.0.1:4190/
+# - fresh load
+# - switch Main Shell -> Ops Shell -> Main Shell three times
+# - toggle AI open/close
+# - send terminal input after switching
+# - capture fresh console errors and network activity
+```
+
+Observed result:
+
+- before the fix, tab switching reproduced:
+  - `Error: Could not find Group with id "_r_0_"`
+  - source path: `WorkspaceLayoutModel.handlePanelLayout() -> panelGroupRef.setLayout()`
+  - the crash then cascaded into xterm viewport errors because the workspace subtree was recreated by the error boundary
+- the real cause was stale imperative and DOM refs inside the singleton `WorkspaceLayoutModel`:
+  - `workspace.tsx` only registered refs once in a mount-time effect
+  - switching tabs remounted the `Group`, but the singleton still held old `GroupImperativeHandle`, `PanelImperativeHandle`, and wrapper/container elements
+  - during remount the model briefly mixed old and new refs, so `syncAIPanelRef()` could call `collapse()` on a dead panel handle
+- the fix moved ref registration to commit-time callback refs and added explicit `unregisterRefs()` cleanup in the layout model
+- after the fix:
+  - three `Main Shell -> Ops Shell -> Main Shell` loops completed without new console errors
+  - AI open/close still worked after switching
+  - terminal input remained functional; `echo group-switch-fix` appeared in output
+  - fresh console capture for the validated interaction window returned zero errors
+
+Current conclusion:
+
+- the switching crash was a real workspace panel lifecycle defect, not a styling or stacking issue
+- the active compat path now re-registers current `Group`/`Panel`/DOM refs on remount and drops stale ones
+- the earlier modal visibility fix remains valid; this slice closes the remaining tab-switch remount crash on the same active workspace path
+
 ## Latest frontend compat modal visibility and stacking stabilization
 
 This pass stayed narrow and rechecked only the active compat AI/settings visibility path:

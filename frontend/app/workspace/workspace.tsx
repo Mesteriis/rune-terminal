@@ -14,7 +14,7 @@ import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { atoms, getApi } from "@/store/global";
 import { fireAndForget } from "@/util/util";
 import { useAtomValue } from "jotai";
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { Group, Panel, Separator, type GroupImperativeHandle, type Layout as PanelLayout, type PanelImperativeHandle } from "react-resizable-panels";
 import { WorkspaceAIPanelId, WorkspaceMainPanelId } from "./workspace-layout-model";
 
@@ -29,10 +29,20 @@ const WorkspaceElem = memo(({ compatMode = false }: { compatMode?: boolean }) =>
         [WorkspaceAIPanelId]: initialAiPanelPercentage,
         [WorkspaceMainPanelId]: 100 - initialAiPanelPercentage,
     };
-    const panelGroupRef = useRef<GroupImperativeHandle>(null);
-    const aiPanelRef = useRef<PanelImperativeHandle>(null);
-    const panelContainerRef = useRef<HTMLDivElement>(null);
-    const aiPanelWrapperRef = useRef<HTMLDivElement>(null);
+    const panelGroupHandleRef = useRef<GroupImperativeHandle | null>(null);
+    const aiPanelHandleRef = useRef<PanelImperativeHandle | null>(null);
+    const panelContainerElementRef = useRef<HTMLDivElement | null>(null);
+    const aiPanelWrapperElementRef = useRef<HTMLDivElement | null>(null);
+    const refsTabIdRef = useRef<string | null>(null);
+    const latestTabIdRef = useRef(tabId);
+    latestTabIdRef.current = tabId;
+    if (refsTabIdRef.current !== tabId) {
+        refsTabIdRef.current = tabId;
+        panelGroupHandleRef.current = null;
+        aiPanelHandleRef.current = null;
+        panelContainerElementRef.current = null;
+        aiPanelWrapperElementRef.current = null;
+    }
     const compatWorkspaceStyle = compatMode
         ? ({ display: "flex", flexDirection: "column", width: "100%", flexGrow: 1, overflow: "hidden" } as const)
         : undefined;
@@ -44,21 +54,74 @@ const WorkspaceElem = memo(({ compatMode = false }: { compatMode?: boolean }) =>
         : undefined;
     const compatAIPanelWrapperStyle = compatMode ? ({ width: "100%", height: "100%", overflow: "hidden" } as const) : undefined;
 
-    useEffect(() => {
-        if (aiPanelRef.current && panelGroupRef.current && panelContainerRef.current && aiPanelWrapperRef.current) {
+    const syncLayoutModelRefs = useCallback(() => {
+        if (
+            aiPanelHandleRef.current &&
+            panelGroupHandleRef.current &&
+            panelContainerElementRef.current &&
+            aiPanelWrapperElementRef.current
+        ) {
             workspaceLayoutModel.registerRefs(
-                aiPanelRef.current,
-                panelGroupRef.current,
-                panelContainerRef.current,
-                aiPanelWrapperRef.current
+                aiPanelHandleRef.current,
+                panelGroupHandleRef.current,
+                panelContainerElementRef.current,
+                aiPanelWrapperElementRef.current
             );
+            return;
         }
+        workspaceLayoutModel.unregisterRefs();
     }, [workspaceLayoutModel]);
+
+    const setPanelGroupRef = useCallback(
+        (value: GroupImperativeHandle | null) => {
+            if (tabId !== latestTabIdRef.current) {
+                return;
+            }
+            panelGroupHandleRef.current = value;
+            syncLayoutModelRefs();
+        },
+        [syncLayoutModelRefs, tabId]
+    );
+
+    const setAIPanelRef = useCallback(
+        (value: PanelImperativeHandle | null) => {
+            if (tabId !== latestTabIdRef.current) {
+                return;
+            }
+            aiPanelHandleRef.current = value;
+            syncLayoutModelRefs();
+        },
+        [syncLayoutModelRefs, tabId]
+    );
+
+    const setPanelContainerRef = useCallback(
+        (value: HTMLDivElement | null) => {
+            if (tabId !== latestTabIdRef.current) {
+                return;
+            }
+            panelContainerElementRef.current = value;
+            syncLayoutModelRefs();
+        },
+        [syncLayoutModelRefs, tabId]
+    );
+
+    const setAIPanelWrapperRef = useCallback(
+        (value: HTMLDivElement | null) => {
+            if (tabId !== latestTabIdRef.current) {
+                return;
+            }
+            aiPanelWrapperElementRef.current = value;
+            syncLayoutModelRefs();
+        },
+        [syncLayoutModelRefs, tabId]
+    );
 
     useEffect(() => {
         const isVisible = workspaceLayoutModel.getAIPanelVisible();
         getApi().setWaveAIOpen(isVisible);
     }, [workspaceLayoutModel]);
+
+    useEffect(() => () => workspaceLayoutModel.unregisterRefs(), [workspaceLayoutModel]);
 
     useEffect(() => {
         window.addEventListener("resize", workspaceLayoutModel.handleWindowResize);
@@ -84,22 +147,22 @@ const WorkspaceElem = memo(({ compatMode = false }: { compatMode?: boolean }) =>
     return (
         <div className="flex flex-col w-full flex-grow overflow-hidden" style={compatWorkspaceStyle}>
             <TabBar key={workspace.oid} workspace={workspace} compatMode={compatMode} />
-            <div ref={panelContainerRef} className="flex flex-row flex-grow overflow-hidden" style={compatPanelContainerStyle}>
+            <div ref={setPanelContainerRef} className="flex flex-row flex-grow overflow-hidden" style={compatPanelContainerStyle}>
                 <ErrorBoundary key={tabId}>
                     <Group
                         orientation="horizontal"
                         defaultLayout={initialLayout}
                         onLayoutChanged={workspaceLayoutModel.handlePanelLayout}
-                        groupRef={panelGroupRef}
+                        groupRef={setPanelGroupRef}
                     >
                         <Panel
                             id={WorkspaceAIPanelId}
-                            panelRef={aiPanelRef}
+                            panelRef={setAIPanelRef}
                             collapsible
                             defaultSize={initialAiPanelPercentage}
                             className="overflow-hidden"
                         >
-                            <div ref={aiPanelWrapperRef} className="w-full h-full" style={compatAIPanelWrapperStyle}>
+                            <div ref={setAIPanelWrapperRef} className="w-full h-full" style={compatAIPanelWrapperStyle}>
                                 {tabId !== "" && <AIPanel />}
                             </div>
                         </Panel>
