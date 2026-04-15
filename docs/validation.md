@@ -5,6 +5,21 @@
 - отсутствие проверки фиксируется как `NOT RUN`, а не маскируется под успешный результат
 - записи ниже основаны только на audit trail из `docs/tideterm-feature-inventory.md`, `docs/feature-parity-audit.md` и `docs/feature-gap-summary.md`
 
+## Tool execution
+
+- Date: `2026-04-15`
+- Status: `VERIFIED`
+- Commits:
+  - `b29d308a31d499ee3f4058c398364492d47d37db`
+  - `a3ffc447f888bd47d3c11f75a5f08eb5f6a4df1d`
+  - `b710490beea31aca5eac345c8bc39db9f03cb80f`
+  - `2d0b4d689d22e7ae82a3e92dcf7a05385a58b1b7`
+- Tested tool list: `VERIFIED` — active compat UI opened a visible `Tools` floating panel from the right utility rail and rendered `25` tool entries loaded from `GET /api/v1/tools`.
+- Tested execution: `VERIFIED` — `workspace.list_widgets` executed through the UI with request body `{"tool_name":"workspace.list_widgets","input":{},"context":{"workspace_id":"ws-local","active_widget_id":"term-main","repo_root":"/Users/avm/projects/Personal/tideterm/runa-terminal"}}` and returned `status: "ok"` with the two terminal widgets in `output.widgets`.
+- Tested approval: `VERIFIED` — `safety.add_ignore_rule` executed through the UI with repo-scoped input, returned `status: "requires_confirmation"`, `error_code: "approval_required"` and a visible `pending_approval` block with summary `add ignore rule tool-ui-validation.* (metadata-only)`.
+- Tested retry: `VERIFIED` — clicking `Confirm and retry` issued `safety.confirm`, extracted `approval_token`, retried the original `safety.add_ignore_rule` request with that token and produced final `status: "ok"` with a created ignore rule in `output`.
+- Notes: `POST /api/v1/tools/execute` for the initial approval challenge still appears in browser console as `Failed to load resource: the server responded with a status of 428 (Precondition Required)`. UI flow continued correctly because the frontend now treats the structured 428 execute body as a tool response rather than a transport crash.
+
 <a id="feature-terminal-input"></a>
 ## Ввод в терминал
 
@@ -248,12 +263,12 @@
 <a id="feature-ux-runtime-tools-audit-panels"></a>
 ## Runtime tools / audit utility panels
 
-- Date: `—`
-- Status: `NOT RUN`
-- Commit: `—`
-- Validation steps: Отдельный feature-specific validation run ещё не зафиксирован; использовать критерии из `docs/roadmap.md` и текущий path из audit.
-- Result: Подтверждённого validation result нет; текущий ориентир только parity status из audit.
-- Notes: Placeholder-секция для будущих проверок. Текущее audit-наблюдение: Backend tools/audit APIs есть, но активной compat UI surface для них не найдено. 
+- Date: `2026-04-15`
+- Status: `PARTIAL`
+- Commit: `2d0b4d689d22e7ae82a3e92dcf7a05385a58b1b7`
+- Validation steps: Через active compat `Tools` panel проверены list, execute, approval и retry поверх `/api/v1/tools/execute`. Audit utility panel отдельно не проверялся в этом slice.
+- Result: UI для tool runtime подтверждён по list/execute/approval/retry. Audit utility panel на active path в этом slice не валидировалась.
+- Notes: Эта запись заменяет старое audit-наблюдение только для tool-runtime части. Полная parity для combined `tools / audit` surface ещё не доказана, потому что audit panel в рамках этого slice не подключалась и не проверялась.
 
 <a id="feature-ai-persistent-conversation-transcript"></a>
 ## Persistent conversation transcript
@@ -544,4 +559,3 @@
 - Validation steps: Отдельный feature-specific validation run ещё не зафиксирован; использовать критерии из `docs/roadmap.md` и текущий path из audit.
 - Result: Подтверждённого validation result нет; текущий ориентир только parity status из audit.
 - Notes: Placeholder-секция для будущих проверок. Текущее audit-наблюдение: Legacy proxy UI присутствует, но current core/runtime path для TideTerm WaveProxy отсутствует. 
-
