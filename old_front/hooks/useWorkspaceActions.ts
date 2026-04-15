@@ -154,25 +154,6 @@ export function useWorkspaceActions({
     }
   }, [client, refreshTerminalState, setNotice, setWorkspace])
 
-  const interruptWidget = useCallback(async (widgetId: string) => {
-    if (!client) {
-      return
-    }
-    try {
-      await client.executeTool({
-        tool_name: 'term.interrupt',
-        input: { widget_id: widgetId },
-      })
-      await refreshTerminalState(widgetId)
-    } catch (error) {
-      setNotice({
-        tone: 'error',
-        title: 'Failed to interrupt terminal',
-        detail: formatError(error),
-      })
-    }
-  }, [client, refreshTerminalState, setNotice])
-
   return {
     focusWidget,
     focusTab,
@@ -182,7 +163,6 @@ export function useWorkspaceActions({
     setTabPinned,
     moveTab,
     closeTab,
-    interruptWidget,
   }
 }
 

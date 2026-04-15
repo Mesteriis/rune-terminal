@@ -11,12 +11,21 @@ type TerminalSurfaceProps = {
   client: RtermClient
   widgetId: string
   state: TerminalState | null
+  onSubmitInput?: (widgetId: string, text: string, appendNewline?: boolean) => Promise<boolean | void> | boolean | void
   onTerminalAction?: () => Promise<void> | void
   onInterrupt?: (widgetId: string) => Promise<void> | void
   onOpenConnections?: () => void
 }
 
-export function TerminalSurface({ client, widgetId, state, onTerminalAction, onInterrupt, onOpenConnections }: TerminalSurfaceProps) {
+export function TerminalSurface({
+  client,
+  widgetId,
+  state,
+  onSubmitInput,
+  onTerminalAction,
+  onInterrupt,
+  onOpenConnections,
+}: TerminalSurfaceProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const terminalRef = useRef<Terminal | null>(null)
   const fitFrameRef = useRef<number | null>(null)
@@ -104,7 +113,7 @@ export function TerminalSurface({ client, widgetId, state, onTerminalAction, onI
       if (disposed || !canSendInputRef.current) {
         return
       }
-      void client.sendTerminalInput(widgetId, data, false).catch(() => {
+      void submitInput(data, false).catch(() => {
         // Input errors are surfaced by the terminal status and audit path; keep the UI interactive.
       })
     })
@@ -126,7 +135,7 @@ export function TerminalSurface({ client, widgetId, state, onTerminalAction, onI
         if (!clipboardText || disposed || !canSendInputRef.current) {
           return
         }
-        void client.sendTerminalInput(widgetId, clipboardText, false).catch(() => {
+        void submitInput(clipboardText, false).catch(() => {
           // Preserve keyboard input path even when clipboard-driven sends fail.
         })
       })
@@ -196,6 +205,13 @@ export function TerminalSurface({ client, widgetId, state, onTerminalAction, onI
 
     void bootstrapSnapshot()
 
+    function submitInput(text: string, appendNewline = false) {
+      if (onSubmitInput) {
+        return Promise.resolve(onSubmitInput(widgetId, text, appendNewline)).then(() => undefined)
+      }
+      return client.sendTerminalInput(widgetId, text, appendNewline).then(() => undefined)
+    }
+
     container.addEventListener('mousedown', focusTerminal)
 
     return () => {
@@ -225,7 +241,7 @@ export function TerminalSurface({ client, widgetId, state, onTerminalAction, onI
       terminalRef.current = null
       terminal.dispose()
     }
-  }, [client, widgetId])
+  }, [client, onSubmitInput, widgetId])
 
   function handleScrollToLatest() {
     const terminal = terminalRef.current

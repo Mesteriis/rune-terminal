@@ -10,6 +10,7 @@ import { useRuntimeBootstrap } from './useRuntimeBootstrap'
 import { useAgentFeed } from './useAgentFeed'
 import { usePolicyLists } from './usePolicyLists'
 import { usePolicyActions } from './usePolicyActions'
+import { useTerminalActions } from './useTerminalActions'
 import { useTerminalState } from './useTerminalState'
 import { useWorkspaceActions } from './useWorkspaceActions'
 import type {
@@ -205,6 +206,11 @@ export function useRuntimeShell() {
     refreshTerminalState,
     setNotice,
   })
+  const terminalActions = useTerminalActions({
+    client: bootstrap.client,
+    executeTool,
+    setNotice,
+  })
   const connectionActions = useConnectionsActions({
     client: bootstrap.client,
     setConnections: bootstrap.setConnections,
@@ -274,7 +280,8 @@ export function useRuntimeShell() {
     renameTab: workspaceActions.renameTab,
     setTabPinned: workspaceActions.setTabPinned,
     closeTab: workspaceActions.closeTab,
-    interruptWidget: workspaceActions.interruptWidget,
+    submitTerminalInput: terminalActions.submitTerminalInput,
+    interruptWidget: terminalActions.interruptWidget,
     checkConnection: connectionActions.checkConnection,
     selectConnection: connectionActions.selectConnection,
     saveSSHConnection: connectionActions.saveSSHConnection,

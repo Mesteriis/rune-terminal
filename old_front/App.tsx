@@ -407,6 +407,7 @@ function App() {
                     client={shell.client}
                     widgetId={shell.activeWidget.id}
                     state={shell.terminalState}
+                    onSubmitInput={shell.submitTerminalInput}
                     onInterrupt={shell.interruptWidget}
                     onOpenConnections={() => handleSelectSection('connections')}
                     onTerminalAction={async () => {
