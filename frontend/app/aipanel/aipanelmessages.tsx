@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { useAtomValue } from "jotai";
-import { memo, useEffect, useRef } from "react";
+import { memo, type ReactNode, useEffect, useRef } from "react";
 import { AIMessage } from "./aimessage";
 import { AIModeDropdown } from "./aimode";
 import { type WaveUIMessage } from "./aitypes";
@@ -12,9 +12,10 @@ interface AIPanelMessagesProps {
     messages: WaveUIMessage[];
     status: string;
     onContextMenu?: (e: React.MouseEvent) => void;
+    selectorSlot?: ReactNode;
 }
 
-export const AIPanelMessages = memo(({ messages, status, onContextMenu }: AIPanelMessagesProps) => {
+export const AIPanelMessages = memo(({ messages, status, onContextMenu, selectorSlot }: AIPanelMessagesProps) => {
     const model = WaveAIModel.getInstance();
     const isPanelOpen = useAtomValue(model.getPanelVisibleAtom());
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -63,7 +64,7 @@ export const AIPanelMessages = memo(({ messages, status, onContextMenu }: AIPane
             onContextMenu={onContextMenu}
         >
             <div className="mb-2">
-                <AIModeDropdown compatibilityMode={true} />
+                {selectorSlot ?? <AIModeDropdown compatibilityMode={true} />}
             </div>
             {messages.map((message, index) => {
                 const isLastMessage = index === messages.length - 1;

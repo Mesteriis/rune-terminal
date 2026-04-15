@@ -23,6 +23,7 @@ import { AIPanelHeader } from "./aipanelheader";
 import { AIPanelInput } from "./aipanelinput";
 import { AIPanelMessages } from "./aipanelmessages";
 import { AIRateLimitStrip } from "./airatelimitstrip";
+import { AIPanelCompat } from "./aipanel-compat";
 import { WaveUIMessage } from "./aitypes";
 import { BYOKAnnouncement } from "./byokannouncement";
 import { TelemetryRequiredMessage } from "./telemetryrequired";
@@ -600,7 +601,7 @@ AIPanelComponentInner.displayName = "AIPanelInner";
 const AIPanelComponent = () => {
     return (
         <ErrorBoundary>
-            <AIPanelComponentInner />
+            {isWaveAICompatRuntime() ? <AIPanelCompat /> : <AIPanelComponentInner />}
         </ErrorBoundary>
     );
 };
