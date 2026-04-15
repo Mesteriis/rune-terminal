@@ -28,6 +28,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Ввод в терминал` против TideTerm baseline из поля `Source`.
 
+#### Validation log:
+- [Validation Log](validation.md#feature-terminal-input)
+
 #### Notes:
 - Разница с текущим состоянием: `VERIFIED`: активный compat terminal посылает input через `terminalStore -> compat facade -> /api/v1/terminal/{widget}/input`; live runtime smoke вернул `bytes_sent` и terminal output.
 
@@ -46,6 +49,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 #### Validation:
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Потоковый вывод терминала` против TideTerm baseline из поля `Source`.
+
+#### Validation log:
+- [Validation Log](validation.md#feature-terminal-stream-output)
 
 #### Notes:
 - Разница с текущим состоянием: `VERIFIED`: активный terminal читает snapshot и live chunks из нового HTTP/SSE path; live snapshot вернул `audit-input` и корректный `next_seq`.
@@ -66,6 +72,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Scrollback / snapshot hydration` против TideTerm baseline из поля `Source`.
 
+#### Validation log:
+- [Validation Log](validation.md#feature-terminal-scrollback-snapshot-hydration)
+
 #### Notes:
 - Разница с текущим состоянием: Store сначала refresh snapshot, затем поднимает stream от `next_seq`.
 
@@ -84,6 +93,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 #### Validation:
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Interrupt активной terminal session` против TideTerm baseline из поля `Source`.
+
+#### Validation log:
+- [Validation Log](validation.md#feature-terminal-interrupt-active-session)
 
 #### Notes:
 - Разница с текущим состоянием: `VERIFIED`: runtime path и structured interrupt response реализованы в новом backend; live API smoke вернул `interrupted:true`, хотя мгновенная отмена long-running команды остаётся ограничением.
@@ -104,6 +116,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Клавиатурные copy/paste shortcuts` против TideTerm baseline из поля `Source`.
 
+#### Validation log:
+- [Validation Log](validation.md#feature-terminal-copy-paste-shortcuts)
+
 #### Notes:
 - Разница с текущим состоянием: Compat terminal всё ещё использует legacy clipboard handlers поверх активного terminal runtime.
 
@@ -122,6 +137,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 #### Validation:
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Follow output / jump to latest` против TideTerm baseline из поля `Source`.
+
+#### Validation log:
+- [Validation Log](validation.md#feature-terminal-follow-output-jump-latest)
 
 #### Notes:
 - Разница с текущим состоянием: Автоскролл и scrollback есть, но активный compat shell не даёт доказанной TideTerm-like visible `Jump to latest` control surface.
@@ -142,6 +160,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Drag & drop путей в терминал` против TideTerm baseline из поля `Source`.
 
+#### Validation log:
+- [Validation Log](validation.md#feature-terminal-drag-drop-paths)
+
 #### Notes:
 - Разница с текущим состоянием: Local drop-handling есть, но полный TideTerm flow с remote files blocks на active path не подтверждён.
 
@@ -160,6 +181,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 #### Validation:
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Открытие текущей директории терминала в новом block` против TideTerm baseline из поля `Source`.
+
+#### Validation log:
+- [Validation Log](validation.md#feature-terminal-open-current-directory-new-block)
 
 #### Notes:
 - Разница с текущим состоянием: Есть только legacy `AppInner` context-menu path; `CompatAppInner` его не подключает.
@@ -180,6 +204,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Multi-session terminals в одном terminal block` против TideTerm baseline из поля `Source`.
 
+#### Validation log:
+- [Validation Log](validation.md#feature-terminal-multi-session-block)
+
 #### Notes:
 - Разница с текущим состоянием: Compat tab renderer держит один terminal widget; session sidebar/session list не подключены.
 
@@ -198,6 +225,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 #### Validation:
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Remote tmux resume и tmux session manager` против TideTerm baseline из поля `Source`.
+
+#### Validation log:
+- [Validation Log](validation.md#feature-terminal-remote-tmux-resume-manager)
 
 #### Notes:
 - Разница с текущим состоянием: В репозитории остался legacy UI/RPC слой, но активный compat path работает на new core HTTP API без этого runtime wiring.
@@ -220,6 +250,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Block-based workspace с terminal/files/preview/web/editor/AI` против TideTerm baseline из поля `Source`.
 
+#### Validation log:
+- [Validation Log](validation.md#feature-workspace-block-based-surface)
+
 #### Notes:
 - Разница с текущим состоянием: Legacy non-terminal views лежат в repo, но compat tab content в active path рендерит только terminal widget и иначе показывает `Unsupported Widget`.
 
@@ -238,6 +271,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 #### Validation:
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Создание block через sidebar / launcher surface` против TideTerm baseline из поля `Source`.
+
+#### Validation log:
+- [Validation Log](validation.md#feature-workspace-create-block-sidebar-launcher)
 
 #### Notes:
 - Разница с текущим состоянием: Entry points `createBlock(...)` сохранились, но active compat workspace snapshot backend-owned и не даёт доказанной parity для non-terminal blocks.
@@ -258,6 +294,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Drag/rearrange blocks внутри workspace` против TideTerm baseline из поля `Source`.
 
+#### Validation log:
+- [Validation Log](validation.md#feature-workspace-drag-rearrange-blocks)
+
 #### Notes:
 - Разница с текущим состоянием: Активный compat path не использует legacy `TileLayout`; block layout DnD отсутствует.
 
@@ -276,6 +315,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 #### Validation:
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Tab switching / focus` против TideTerm baseline из поля `Source`.
+
+#### Validation log:
+- [Validation Log](validation.md#feature-workspace-tab-switching-focus)
 
 #### Notes:
 - Разница с текущим состоянием: `VERIFIED`: active compat tabbar использует new workspace snapshot/actions; live `focus-tab` smoke переключал `tab-main -> tab-ops -> tab-main` и синхронно менял `active_widget_id`.
@@ -296,6 +338,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Создание terminal tab` против TideTerm baseline из поля `Source`.
 
+#### Validation log:
+- [Validation Log](validation.md#feature-workspace-create-terminal-tab)
+
 #### Notes:
 - Разница с текущим состоянием: Новые terminal tabs создаются через dedicated workspace endpoints.
 
@@ -314,6 +359,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 #### Validation:
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Rename / pin / close tab` против TideTerm baseline из поля `Source`.
+
+#### Validation log:
+- [Validation Log](validation.md#feature-workspace-rename-pin-close-tab)
 
 #### Notes:
 - Разница с текущим состоянием: Эти tab mutations wired к новому workspace API.
@@ -334,6 +382,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Drag reorder tabs` против TideTerm baseline из поля `Source`.
 
+#### Validation log:
+- [Validation Log](validation.md#feature-workspace-drag-reorder-tabs)
+
 #### Notes:
 - Разница с текущим состоянием: Reorder работает, но текущий workspace contract уже и проще TideTerm block/tab grammar.
 
@@ -352,6 +403,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 #### Validation:
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Focus widget / quick widget access` против TideTerm baseline из поля `Source`.
+
+#### Validation log:
+- [Validation Log](validation.md#feature-workspace-focus-widget-quick-access)
 
 #### Notes:
 - Разница с текущим состоянием: Compat workspace по-прежнему показывает widget rail и умеет фокусировать известные widgets из snapshot.
@@ -374,6 +428,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Persistent conversation transcript` против TideTerm baseline из поля `Source`.
 
+#### Validation log:
+- [Validation Log](validation.md#feature-ai-persistent-conversation-transcript)
+
 #### Notes:
 - Разница с текущим состоянием: Новый backend conversation storage есть, но active compat AIPanel всё ещё использует legacy WaveAI transport, а не `/api/v1/agent/conversation`.
 
@@ -392,6 +449,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 #### Validation:
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Prompt profile selection` против TideTerm baseline из поля `Source`.
+
+#### Validation log:
+- [Validation Log](validation.md#feature-ai-prompt-profile-selection)
 
 #### Notes:
 - Разница с текущим состоянием: В core есть prompt profiles, но active compat AI UI завязан на legacy `waveai` mode config, не на new agent catalog.
@@ -412,6 +472,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Role preset selection` против TideTerm baseline из поля `Source`.
 
+#### Validation log:
+- [Validation Log](validation.md#feature-ai-role-preset-selection)
+
 #### Notes:
 - Разница с текущим состоянием: Backend role presets есть, но active compat UI не использует новый `agent` catalog path.
 
@@ -430,6 +493,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 #### Validation:
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Work mode selection` против TideTerm baseline из поля `Source`.
+
+#### Validation log:
+- [Validation Log](validation.md#feature-ai-work-mode-selection)
 
 #### Notes:
 - Разница с текущим состоянием: Runtime path существует, однако активная UI wiring остаётся legacy-mode driven.
@@ -450,6 +516,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Free-text AI conversation` против TideTerm baseline из поля `Source`.
 
+#### Validation log:
+- [Validation Log](validation.md#feature-ai-free-text-conversation)
+
 #### Notes:
 - Разница с текущим состоянием: `NOT VERIFIED` для active UI: free-text conversation реализован в new core, но active compat AIPanel по коду продолжает ждать `/api/post-chat-message`, которого в current core нет.
 
@@ -468,6 +537,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 #### Validation:
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Явный `/run <command>` execution path` против TideTerm baseline из поля `Source`.
+
+#### Validation log:
+- [Validation Log](validation.md#feature-ai-run-command-execution-path)
 
 #### Notes:
 - Разница с текущим состоянием: `NOT VERIFIED` для active UI: `/run` path реализован в backend/docs, но active compat AI panel не использует этот path.
@@ -488,6 +560,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Объяснение результата terminal command` против TideTerm baseline из поля `Source`.
 
+#### Validation log:
+- [Validation Log](validation.md#feature-ai-terminal-command-explanation)
+
 #### Notes:
 - Разница с текущим состоянием: `NOT VERIFIED` для active UI: explanation route существует, но active compat AI panel на него не переключён.
 
@@ -507,6 +582,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Approval внутри AI/tool flow` против TideTerm baseline из поля `Source`.
 
+#### Validation log:
+- [Validation Log](validation.md#feature-ai-approval-flow)
+
 #### Notes:
 - Разница с текущим состоянием: Смешанный статус: backend approval flow `VERIFIED`, но active AI surface `NOT VERIFIED` для нового `safety.confirm` UI wiring и всё ещё живёт на legacy tool-use approval semantics.
 
@@ -525,6 +603,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 #### Validation:
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Manual tool catalog и JSON execution` против TideTerm baseline из поля `Source`.
+
+#### Validation log:
+- [Validation Log](validation.md#feature-ai-manual-tool-catalog-json-execution)
 
 #### Notes:
 - Разница с текущим состоянием: Active operator/tool console surface не найдена; при этом backend `POST /api/v1/tools/execute` path отдельно `VERIFIED` через live runtime smoke.
@@ -547,6 +628,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Local PTY sessions` против TideTerm baseline из поля `Source`.
 
+#### Validation log:
+- [Validation Log](validation.md#feature-runtime-local-pty-sessions)
+
 #### Notes:
 - Разница с текущим состоянием: Активный terminal runtime локально работает на new PTY service.
 
@@ -565,6 +649,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 #### Validation:
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Saved SSH profiles` против TideTerm baseline из поля `Source`.
+
+#### Validation log:
+- [Validation Log](validation.md#feature-runtime-saved-ssh-profiles)
 
 #### Notes:
 - Разница с текущим состоянием: Saved SSH profiles backend-owned и типизированы.
@@ -585,6 +672,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Выбор default connection для новых shell launches` против TideTerm baseline из поля `Source`.
 
+#### Validation log:
+- [Validation Log](validation.md#feature-runtime-default-connection-selection)
+
 #### Notes:
 - Разница с текущим состоянием: Active connection selection для future tabs реализован.
 
@@ -603,6 +693,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 #### Validation:
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Preflight connection check` против TideTerm baseline из поля `Source`.
+
+#### Validation log:
+- [Validation Log](validation.md#feature-runtime-preflight-connection-check)
 
 #### Notes:
 - Разница с текущим состоянием: Dedicated check flow есть в runtime/API.
@@ -623,6 +716,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Open shell against selected connection` против TideTerm baseline из поля `Source`.
 
+#### Validation log:
+- [Validation Log](validation.md#feature-runtime-open-shell-selected-connection)
+
 #### Notes:
 - Разница с текущим состоянием: New terminal tab может стартовать с `connection_id`.
 
@@ -641,6 +737,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 #### Validation:
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Remote file browsing` против TideTerm baseline из поля `Source`.
+
+#### Validation log:
+- [Validation Log](validation.md#feature-runtime-remote-file-browsing)
 
 #### Notes:
 - Разница с текущим состоянием: Активный compat workspace не поддерживает non-terminal remote file widgets, а new core не содержит TideTerm fileshare parity.
@@ -661,6 +760,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Remote file preview/edit` против TideTerm baseline из поля `Source`.
 
+#### Validation log:
+- [Validation Log](validation.md#feature-runtime-remote-file-preview-edit)
+
 #### Notes:
 - Разница с текущим состоянием: Остались legacy views, но active compat render path и new runtime contract их не подтверждают.
 
@@ -679,6 +781,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 #### Validation:
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `WSL connections` против TideTerm baseline из поля `Source`.
+
+#### Validation log:
+- [Validation Log](validation.md#feature-runtime-wsl-connections)
 
 #### Notes:
 - Разница с текущим состоянием: В current `core/connections` есть только `local | ssh`; отдельного WSL runtime/domain path нет.
@@ -699,6 +804,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить ``wsh` remote helper workflow` против TideTerm baseline из поля `Source`.
 
+#### Validation log:
+- [Validation Log](validation.md#feature-runtime-wsh-remote-helper-workflow)
+
 #### Notes:
 - Разница с текущим состоянием: New core remote model намеренно не использует TideTerm `wsh` remote helper stack.
 
@@ -717,6 +825,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 #### Validation:
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить ``wsh` CLI для workspace/runtime control` против TideTerm baseline из поля `Source`.
+
+#### Validation log:
+- [Validation Log](validation.md#feature-runtime-wsh-cli-control)
 
 #### Notes:
 - Разница с текущим состоянием: В current repo нет аналога TideTerm `cmd/wsh/*`.
@@ -739,6 +850,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Trusted rules management` против TideTerm baseline из поля `Source`.
 
+#### Validation log:
+- [Validation Log](validation.md#feature-policy-trusted-rules-management)
+
 #### Notes:
 - Разница с текущим состоянием: Backend policy rules есть, но active compat shell не даёт доказанной full settings parity surface.
 
@@ -757,6 +871,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 #### Validation:
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Ignore / secret rules management` против TideTerm baseline из поля `Source`.
+
+#### Validation log:
+- [Validation Log](validation.md#feature-policy-ignore-secret-rules-management)
 
 #### Notes:
 - Разница с текущим состоянием: Ignore rules поддерживаются runtime, но user-facing compat settings surface остаётся неполной и legacy-driven.
@@ -777,6 +894,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Allowed roots / capability enforcement` против TideTerm baseline из поля `Source`.
 
+#### Validation log:
+- [Validation Log](validation.md#feature-policy-allowed-roots-capability-enforcement)
+
 #### Notes:
 - Разница с текущим состоянием: Enforcement реализован в backend execution pipeline.
 
@@ -795,6 +915,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 #### Validation:
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Approval token confirm flow` против TideTerm baseline из поля `Source`.
+
+#### Validation log:
+- [Validation Log](validation.md#feature-policy-approval-token-confirm-flow)
 
 #### Notes:
 - Разница с текущим состоянием: `VERIFIED`: `safety.confirm` и one-time approval token path реализованы в runtime/API; live smoke дал `428 approval_required`, затем `approval_token`, затем успешный retry и повторный `requires_confirmation` при replay.
@@ -815,6 +938,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Audit trail` против TideTerm baseline из поля `Source`.
 
+#### Validation log:
+- [Validation Log](validation.md#feature-policy-audit-trail)
+
 #### Notes:
 - Разница с текущим состоянием: Audit log backend-owned и доступен по API, но active compat audit panel surface не найдена.
 
@@ -833,6 +959,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 #### Validation:
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Profile/role/mode policy overlay` против TideTerm baseline из поля `Source`.
+
+#### Validation log:
+- [Validation Log](validation.md#feature-policy-profile-role-mode-overlay)
 
 #### Notes:
 - Разница с текущим состоянием: Overlay logic существует в backend, но active compat AI UI не wired to new agent selection API.
@@ -855,6 +984,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `AI sidebar / AI panel` против TideTerm baseline из поля `Source`.
 
+#### Validation log:
+- [Validation Log](validation.md#feature-ux-ai-sidebar-panel)
+
 #### Notes:
 - Разница с текущим состоянием: Левая AI surface реально монтируется в active compat shell.
 
@@ -873,6 +1005,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 #### Validation:
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Workspace switcher` против TideTerm baseline из поля `Source`.
+
+#### Validation log:
+- [Validation Log](validation.md#feature-ux-workspace-switcher)
 
 #### Notes:
 - Разница с текущим состоянием: Workspace switcher surface есть, но полноценная multi-workspace semantics на current runtime не подтверждена.
@@ -893,6 +1028,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Searchable launcher / app entry` против TideTerm baseline из поля `Source`.
 
+#### Validation log:
+- [Validation Log](validation.md#feature-ux-searchable-launcher)
+
 #### Notes:
 - Разница с текущим состоянием: Launcher-related legacy surfaces существуют, но active compat path не даёт доказанной non-terminal parity.
 
@@ -911,6 +1049,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 #### Validation:
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Right utility / widget dock` против TideTerm baseline из поля `Source`.
+
+#### Validation log:
+- [Validation Log](validation.md#feature-ux-right-utility-widget-dock)
 
 #### Notes:
 - Разница с текущим состоянием: Правая utility rail активна и видима в compat shell.
@@ -931,6 +1072,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Settings / help surfaces` против TideTerm baseline из поля `Source`.
 
+#### Validation log:
+- [Validation Log](validation.md#feature-ux-settings-help-surfaces)
+
 #### Notes:
 - Разница с текущим состоянием: Gear/help entrypoints есть, но они опираются на legacy `createBlock` views вне доказанного compat render path.
 
@@ -949,6 +1093,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 #### Validation:
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Connections panel` против TideTerm baseline из поля `Source`.
+
+#### Validation log:
+- [Validation Log](validation.md#feature-ux-connections-panel)
 
 #### Notes:
 - Разница с текущим состоянием: Backend connection domain реальный, но TideTerm-like dedicated connections panel в active compat shell не подтверждён.
@@ -969,6 +1116,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Runtime tools / audit utility panels` против TideTerm baseline из поля `Source`.
 
+#### Validation log:
+- [Validation Log](validation.md#feature-ux-runtime-tools-audit-panels)
+
 #### Notes:
 - Разница с текущим состоянием: Backend tools/audit APIs есть, но активной compat UI surface для них не найдено.
 
@@ -987,6 +1137,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 #### Validation:
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Мгновенное переключение языка English / 中文` против TideTerm baseline из поля `Source`.
+
+#### Validation log:
+- [Validation Log](validation.md#feature-ux-language-switch)
 
 #### Notes:
 - Разница с текущим состоянием: Legacy i18n UI осталась, но active compat shell не даёт доказанного settings route до рабочего language switch.
@@ -1007,6 +1160,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `Window title auto / rename` против TideTerm baseline из поля `Source`.
 
+#### Validation log:
+- [Validation Log](validation.md#feature-ux-window-title-auto-rename)
+
 #### Notes:
 - Разница с текущим состоянием: `WindowTitleManager` подключён только в `AppInner`; `CompatAppInner` его не монтирует.
 
@@ -1026,6 +1182,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `MCP server manager` против TideTerm baseline из поля `Source`.
 
+#### Validation log:
+- [Validation Log](validation.md#feature-ux-mcp-server-manager)
+
 #### Notes:
 - Разница с текущим состоянием: Legacy UI/RPC residue есть, но в current `core/` нет подтверждённого MCP runtime/API parity.
 
@@ -1044,6 +1203,9 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 #### Validation:
 - Код: проверить текущий path из поля `Location`.
 - Поведение: проверить `API Proxy / WaveProxy` против TideTerm baseline из поля `Source`.
+
+#### Validation log:
+- [Validation Log](validation.md#feature-ux-api-proxy-waveproxy)
 
 #### Notes:
 - Разница с текущим состоянием: Legacy proxy UI присутствует, но current core/runtime path для TideTerm WaveProxy отсутствует.
