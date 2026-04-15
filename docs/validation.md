@@ -2,6 +2,92 @@
 
 Validation date: `2026-04-15`
 
+## Latest frontend compat style surface stabilization
+
+This pass focused only on stabilizing the active compat style surface:
+
+- restore the missing Tailwind utility layer on the active compat DOM
+- connect the copied icon/font assets that the active shell already references
+- verify the same asset path in both `dev` and production `preview`
+- classify residual issues as style defects vs non-style defects
+
+Validation executed for this step:
+
+```bash
+npx tsc -p frontend/tsconfig.json --noEmit
+npm --prefix frontend run build
+
+RTERM_AUTH_TOKEN=modal-compat-token apps/desktop/bin/rterm-core serve --listen 127.0.0.1:52760 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/runa-modal-compat-state
+VITE_RTERM_API_BASE=http://127.0.0.1:52760 VITE_RTERM_AUTH_TOKEN=modal-compat-token npm --prefix frontend run dev -- --host 127.0.0.1 --port 4190 --strictPort
+VITE_RTERM_API_BASE=http://127.0.0.1:52760 VITE_RTERM_AUTH_TOKEN=modal-compat-token npm --prefix frontend run build
+npm --prefix frontend run preview -- --host 127.0.0.1 --port 4191 --strictPort
+
+# live browser validation against:
+# - dev:     http://127.0.0.1:4190/
+# - preview: http://127.0.0.1:4191/
+# checks:
+# - CSS requests and asset requests
+# - computed styles for AI trigger, headings, terminal shell, settings menu
+# - AI panel open/close visibility
+# - settings floating menu open/close visibility
+# - document.fonts and font resource requests
+# - console errors and failed requests
+```
+
+Observed result:
+
+- `npx tsc -p frontend/tsconfig.json --noEmit` passed
+- `npm --prefix frontend run build` passed
+- env-aware preview build passed and was used for the final `preview` runtime check
+- root cause on the active style path was not a dead stylesheet bundle
+- the real regressions were:
+  - `frontend/tailwindsetup.css` was imported but not compiled because `frontend/vite.config.ts` lacked `@tailwindcss/vite`
+  - copied Font Awesome CSS/webfonts existed under `frontend/assets`, but no active app entrypoint imported them
+  - copied Font Awesome vendor CSS still referenced `.ttf` fallbacks that do not exist in this repo
+- before the fix, utility selectors such as `.text-2xl`, `.h-\[26px\]`, `.px-1\.5`, `.items-center`, `.justify-end`, `.bg-hover` were absent from the served CSS
+- after the fix, active computed styles showed the utility layer was really back:
+  - AI trigger size changed from about `13.4px x 17px` to about `42.4px x 26px`
+  - AI trigger padding became `6px` on both sides
+  - AI trigger background resolved to `rgba(255, 255, 255, 0.1)`
+  - `TideTerm AI` heading computed `font-size` became `18px`
+  - `AI` heading computed `font-size` became `24px`
+- dev asset requests now include the expected active style assets with `200 OK`:
+  - `/app/app.scss`
+  - `/tailwindsetup.css`
+  - `/app/fontawesome.css`
+  - `/assets/fontawesome/webfonts/fa-solid-900.woff2`
+  - `/assets/fontawesome/webfonts/fa-brands-400.woff2`
+  - `/assets/fonts/Inter-Variable-Latin.woff2`
+  - `/assets/fonts/JetBrainsMono-Regular.woff2`
+  - `/assets/fonts/JetBrainsMono-Bold.woff2`
+- production preview now loads a real bundled CSS path and real font assets from `dist/assets`:
+  - `/assets/index-BEwtfeU0.css` -> `200`
+  - `/assets/Inter-Variable-Latin-8kRkwJBP.woff2` -> `200`
+  - `/assets/JetBrainsMono-Regular-V6pRDFza.woff2` -> `200`
+  - `/assets/JetBrainsMono-Bold-BYuf6tUa.woff2` -> `200`
+  - `/assets/fa-solid-900-BoIGJYu2.woff2` -> `200`
+- `document.fonts` in preview contained loaded faces for:
+  - `Inter`
+  - `Hack`
+  - `Font Awesome 6 Pro`
+- AI panel rendered correctly in both `dev` and `preview` after the asset fix
+- settings floating menu rendered and dismissed correctly in both `dev` and `preview`
+- preview console capture returned zero console errors for the validated style flow
+- an additional dev-only console defect was still observed during extra interactions:
+  - `Failed to fetch apps: TypeError: Cannot read properties of null (reading 'filter')`
+  - source: `frontend/app/workspace/widgets.tsx`
+  - this is a non-style runtime/data defect and remains out of scope for the style slice
+
+Current conclusion:
+
+- active required styles are now connected to the real compat runtime path
+- the broken part of the pipeline was:
+  - missing Tailwind Vite processing
+  - missing active Font Awesome stylesheet entrypoint
+  - stale vendor references to non-shipped `.ttf` assets
+- the active compat shell now resolves CSS, fonts, and icon assets correctly in both `dev` and validated `preview`
+- the previous `frontend asset pipeline validation` section below is now historical baseline evidence and is superseded by this slice
+
 ## Latest frontend compat modal parity validation
 
 This pass focused only on the active compat AI/settings modal-like interactions:
@@ -67,7 +153,7 @@ Current conclusion:
 - the active compat AI/settings path no longer requires legacy WOS object fetches during the validated clean run
 - residual terminal stream `network error` logs remained informational `console.log` output from terminal stream lifecycle and did not surface as console errors in the final clean run for this slice
 
-## Latest frontend asset pipeline validation (css + fonts)
+## Historical frontend asset pipeline validation baseline (css + fonts)
 
 This pass stayed validation-only and focused on the active compat asset path:
 

@@ -1,4 +1,5 @@
 import { fileURLToPath } from "node:url";
+import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
@@ -7,6 +8,7 @@ const legacyFontutilPath = fileURLToPath(new URL("./util/fontutil.ts", import.me
 
 export default defineConfig({
   plugins: [
+    tailwindcss(),
     react(),
     {
       name: "legacy-fontutil-runtime-stub",

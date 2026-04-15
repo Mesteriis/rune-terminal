@@ -2,6 +2,15 @@
 
 Date: `2026-04-15`
 
+Status: historical baseline.
+
+This document captures the pre-fix audit that proved the old compat asset path was not loading custom fonts and that legacy `/fonts/*` URLs were broken.
+
+Current post-fix state is documented in:
+
+- `docs/frontend-compat-style-surface-slice.md`
+- `docs/validation.md` under `Latest frontend compat style surface stabilization`
+
 ## Scope
 
 This pass stayed validation-only and focused on the active compat asset path for:

@@ -28,6 +28,7 @@ import { WindowTitleManager } from "./window/windowtitle";
 import { ProxyDock } from "./view/proxy/proxy-dock";
 
 import "./app.scss";
+import "./fontawesome.css";
 
 // tailwindsetup.css should come *after* app.scss (don't remove the newline above otherwise prettier will reorder these imports)
 import "../tailwindsetup.css";
