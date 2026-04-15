@@ -34,16 +34,20 @@ import "../tailwindsetup.css";
 
 const focusLog = debug("wave:focus");
 
-const App = ({ onFirstRender }: { onFirstRender: () => void }) => {
+const App = ({ onFirstRender, compatMode = false }: { onFirstRender: () => void; compatMode?: boolean }) => {
     const tabId = useAtomValue(atoms.staticTabId);
     useEffect(() => {
         onFirstRender();
     }, [onFirstRender]);
     return (
         <Provider store={globalStore}>
-            <TabModelContext.Provider value={getTabModelByTabId(tabId)}>
-                <AppInner />
-            </TabModelContext.Provider>
+            {compatMode ? (
+                <CompatAppInner />
+            ) : (
+                <TabModelContext.Provider value={getTabModelByTabId(tabId)}>
+                    <AppInner />
+                </TabModelContext.Provider>
+            )}
         </Provider>
     );
 };
@@ -363,6 +367,30 @@ const AppInner = () => {
                 <Workspace />
             </DndProvider>
             <ProxyDock />
+            <FlashError />
+            {isDev() ? <NotificationBubbles></NotificationBubbles> : null}
+        </div>
+    );
+};
+
+const CompatAppInner = () => {
+    const prefersReducedMotion = useAtomValue(atoms.prefersReducedMotionAtom);
+    const isFullScreen = useAtomValue(atoms.isFullScreen);
+
+    return (
+        <div
+            className={clsx("flex flex-col w-full h-full", PLATFORM, {
+                fullscreen: isFullScreen,
+                "prefers-reduced-motion": prefersReducedMotion,
+            })}
+            onContextMenu={handleContextMenu}
+        >
+            <AppBackground compatMode />
+            <AppFocusHandler />
+            <AppSettingsUpdater />
+            <DndProvider backend={HTML5Backend}>
+                <Workspace compatMode />
+            </DndProvider>
             <FlashError />
             {isDev() ? <NotificationBubbles></NotificationBubbles> : null}
         </div>

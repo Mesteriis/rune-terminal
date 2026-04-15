@@ -10,11 +10,27 @@ import { debounce } from "throttle-debounce";
 import { atoms, getApi, WOS } from "./store/global";
 import { useWaveObjectValue } from "./store/wos";
 
-export function AppBackground() {
+export function AppBackground({ compatMode = false }: { compatMode?: boolean }) {
+    if (compatMode) {
+        return <AppBackgroundCompat />;
+    }
+    return <AppBackgroundLegacy />;
+}
+
+function AppBackgroundLegacy() {
     const bgRef = useRef<HTMLDivElement>(null);
     const tabId = useAtomValue(atoms.staticTabId);
     const [tabData] = useWaveObjectValue<Tab>(WOS.makeORef("tab", tabId));
     const style: CSSProperties = computeBgStyleFromMeta(tabData?.meta, 0.5) ?? {};
+    return <AppBackgroundBase bgRef={bgRef} style={style} />;
+}
+
+function AppBackgroundCompat() {
+    const bgRef = useRef<HTMLDivElement>(null);
+    return <AppBackgroundBase bgRef={bgRef} style={{}} />;
+}
+
+function AppBackgroundBase({ bgRef, style }: { bgRef: React.RefObject<HTMLDivElement>; style: CSSProperties }) {
     const debouncedGetAvgColor = useMemo(() => {
         return debounce(
             30,

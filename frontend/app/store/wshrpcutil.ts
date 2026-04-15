@@ -27,6 +27,21 @@ function initWshrpc(routeId: string): WSControl {
     return globalWS;
 }
 
+class CompatTabClient extends TabClient {
+    override wshRpcCall(_command: string, _data: any, _opts?: RpcOpts): Promise<any> {
+        return Promise.resolve(null);
+    }
+
+    override async *wshRpcStream(_command: string, _data: any, _opts?: RpcOpts): AsyncGenerator<any, void, boolean> {
+        return;
+    }
+}
+
+function initCompatWshrpc(routeId: string): TabClient {
+    TabRpcClient = new CompatTabClient(routeId);
+    return TabRpcClient;
+}
+
 class UpstreamWshRpcProxy implements AbstractWshClient {
     recvRpcMessage(msg: RpcMessage): void {
         const wsMsg: WSRpcCommand = { wscommand: "rpc", message: msg };
@@ -34,5 +49,5 @@ class UpstreamWshRpcProxy implements AbstractWshClient {
     }
 }
 
-export { DefaultRouter, initWshrpc, TabRpcClient };
+export { DefaultRouter, initCompatWshrpc, initWshrpc, TabRpcClient };
 export { initElectronWshrpc, sendRpcCommand, sendRpcResponse, shutdownWshrpc } from "./wshrpcutil-base";

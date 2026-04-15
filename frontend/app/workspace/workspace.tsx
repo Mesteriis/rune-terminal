@@ -17,11 +17,12 @@ import { memo, useEffect, useRef, useState } from "react";
 import { Group, Panel, Separator, type GroupImperativeHandle, type Layout as PanelLayout, type PanelImperativeHandle } from "react-resizable-panels";
 import { WorkspaceAIPanelId, WorkspaceMainPanelId } from "./workspace-layout-model";
 
-const WorkspaceElem = memo(() => {
+const WorkspaceElem = memo(({ compatMode = false }: { compatMode?: boolean }) => {
     const workspaceLayoutModel = WorkspaceLayoutModel.getInstance();
-    const tabId = useAtomValue(atoms.staticTabId);
+    const staticTabId = useAtomValue(atoms.staticTabId);
     const [workspace, setWorkspace] = useState<WorkspaceStoreSnapshot["active"]>(workspaceStore.getSnapshot().active);
-    const initialAiPanelPercentage = workspaceLayoutModel.getAIPanelPercentage(window.innerWidth);
+    const tabId = compatMode ? workspace.activetabid : staticTabId;
+    const initialAiPanelPercentage = compatMode ? 0 : workspaceLayoutModel.getAIPanelPercentage(window.innerWidth);
     const initialLayout: PanelLayout = {
         [WorkspaceAIPanelId]: initialAiPanelPercentage,
         [WorkspaceMainPanelId]: 100 - initialAiPanelPercentage,
@@ -32,6 +33,9 @@ const WorkspaceElem = memo(() => {
     const aiPanelWrapperRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
+        if (compatMode) {
+            return;
+        }
         if (aiPanelRef.current && panelGroupRef.current && panelContainerRef.current && aiPanelWrapperRef.current) {
             workspaceLayoutModel.registerRefs(
                 aiPanelRef.current,
@@ -43,27 +47,32 @@ const WorkspaceElem = memo(() => {
     }, []);
 
     useEffect(() => {
-        const isVisible = workspaceLayoutModel.getAIPanelVisible();
+        const isVisible = compatMode ? false : workspaceLayoutModel.getAIPanelVisible();
         getApi().setWaveAIOpen(isVisible);
-    }, []);
+    }, [compatMode, workspaceLayoutModel]);
 
     useEffect(() => {
+        if (compatMode) {
+            return;
+        }
         window.addEventListener("resize", workspaceLayoutModel.handleWindowResize);
         return () => window.removeEventListener("resize", workspaceLayoutModel.handleWindowResize);
-    }, []);
+    }, [compatMode, workspaceLayoutModel]);
 
     useEffect(() => {
         fireAndForget(() => workspaceStore.refresh());
-        fireAndForget(() => workspaceStore.refreshWorkspaceList());
+        if (!compatMode) {
+            fireAndForget(() => workspaceStore.refreshWorkspaceList());
+        }
         setWorkspace(workspaceStore.getSnapshot().active);
         return workspaceStore.subscribe((snapshot) => {
             setWorkspace(snapshot.active);
         });
-    }, []);
+    }, [compatMode]);
 
     return (
         <div className="flex flex-col w-full flex-grow overflow-hidden">
-            <TabBar key={workspace.oid} workspace={workspace} />
+            <TabBar key={workspace.oid} workspace={workspace} compatMode={compatMode} />
             <div ref={panelContainerRef} className="flex flex-row flex-grow overflow-hidden">
                 <ErrorBoundary key={tabId}>
                     <Group
@@ -80,7 +89,7 @@ const WorkspaceElem = memo(() => {
                             className="overflow-hidden"
                         >
                             <div ref={aiPanelWrapperRef} className="w-full h-full">
-                                {tabId !== "" && <AIPanel />}
+                                {!compatMode && tabId !== "" && <AIPanel />}
                             </div>
                         </Panel>
                         <Separator className="w-0.5 bg-transparent hover:bg-zinc-500/20 transition-colors" />
@@ -89,13 +98,13 @@ const WorkspaceElem = memo(() => {
                                 <CenteredDiv>No Active Tab</CenteredDiv>
                             ) : (
                                 <div className="flex flex-row h-full">
-                                    <TabContent key={tabId} tabId={tabId} />
+                                    <TabContent key={`${tabId}:${workspace.activewidgetid}`} tabId={tabId} compatWorkspace={compatMode ? workspace : undefined} />
                                     <Widgets />
                                 </div>
                             )}
                         </Panel>
                     </Group>
-                    <ModalsRenderer />
+                    {!compatMode && <ModalsRenderer />}
                 </ErrorBoundary>
             </div>
         </div>

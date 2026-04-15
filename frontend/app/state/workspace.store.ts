@@ -5,6 +5,7 @@ import { waveEventSubscribe } from "@/app/store/wps";
 import { getWorkspaceFacade } from "@/compat/workspace";
 import { fireAndForget } from "@/util/util";
 type LegacyWorkspace = Workspace;
+type WorkspaceFallback = Pick<WorkspaceSummary, "oid" | "name" | "icon" | "color"> & { activetabid?: string };
 
 export type WorkspaceStoreListener = (snapshot: WorkspaceStoreSnapshot) => void;
 
@@ -20,11 +21,31 @@ export interface WorkspaceListEntry {
     workspace: WorkspaceSummary;
 }
 
+export interface WorkspaceStoreTab {
+    id: string;
+    title: string;
+    description?: string;
+    pinned: boolean;
+    widgetIds: string[];
+}
+
+export interface WorkspaceStoreWidget {
+    id: string;
+    kind: string;
+    title: string;
+    description?: string;
+    terminalId?: string;
+    connectionId?: string;
+}
+
 export interface WorkspaceStoreSnapshot {
     active: WorkspaceSummary & {
         tabids: string[];
         pinnedtabids: string[];
         activetabid: string;
+        activewidgetid: string;
+        tabs: Record<string, WorkspaceStoreTab>;
+        widgets: Record<string, WorkspaceStoreWidget>;
         oid: string;
     };
     list: WorkspaceListEntry[];
@@ -66,11 +87,37 @@ function getLegacyWorkspaceFromAtoms(): LegacyWorkspace | null {
     return (workspace as LegacyWorkspace | null) ?? null;
 }
 
-function adaptWorkspaceFromApi(apiWorkspace: ApiWorkspace, fallback?: LegacyWorkspace | null): WorkspaceStoreSnapshot["active"] {
+function adaptWorkspaceFromApi(apiWorkspace: ApiWorkspace, fallback?: WorkspaceFallback | null): WorkspaceStoreSnapshot["active"] {
     const legacyWorkspace = fallback ?? null;
     const tabs: WorkspaceTab[] = apiWorkspace?.tabs ?? [];
+    const widgets = apiWorkspace?.widgets ?? [];
     const pinnedtabids = tabs.filter((tab) => tab.pinned).map((tab) => tab.id);
     const tabids = tabs.filter((tab) => !tab.pinned).map((tab) => tab.id);
+    const tabsById = Object.fromEntries(
+        tabs.map((tab) => [
+            tab.id,
+            {
+                id: tab.id,
+                title: tab.title ?? "",
+                description: tab.description,
+                pinned: tab.pinned,
+                widgetIds: [...(tab.widget_ids ?? [])],
+            } satisfies WorkspaceStoreTab,
+        ])
+    );
+    const widgetsById = Object.fromEntries(
+        widgets.map((widget) => [
+            widget.id,
+            {
+                id: widget.id,
+                kind: widget.kind,
+                title: widget.title ?? "",
+                description: widget.description,
+                terminalId: widget.terminal_id,
+                connectionId: widget.connection_id,
+            } satisfies WorkspaceStoreWidget,
+        ])
+    );
     return {
         oid: apiWorkspace?.id ?? legacyWorkspace?.oid ?? "",
         name: apiWorkspace?.name ?? legacyWorkspace?.name ?? "",
@@ -79,6 +126,9 @@ function adaptWorkspaceFromApi(apiWorkspace: ApiWorkspace, fallback?: LegacyWork
         tabids,
         pinnedtabids,
         activetabid: apiWorkspace?.active_tab_id ?? legacyWorkspace?.activetabid ?? "",
+        activewidgetid: apiWorkspace?.active_widget_id ?? "",
+        tabs: tabsById,
+        widgets: widgetsById,
     };
 }
 
@@ -128,6 +178,9 @@ class WorkspaceStore {
                 tabids: Array.isArray(initialWorkspace?.tabids) ? [...initialWorkspace.tabids] : [],
                 pinnedtabids: Array.isArray(initialWorkspace?.pinnedtabids) ? [...initialWorkspace.pinnedtabids] : [],
                 activetabid: initialWorkspace?.activetabid ?? "",
+                activewidgetid: "",
+                tabs: {},
+                widgets: {},
             },
             list: [],
             colors: [],
@@ -198,6 +251,9 @@ class WorkspaceStore {
             ...this.state,
             active: nextActive,
         };
+        if (atoms?.staticTabId != null && nextActive.activetabid) {
+            (globalStore as any).set(atoms.staticTabId, nextActive.activetabid);
+        }
         this.notify();
     }
 
@@ -220,7 +276,11 @@ class WorkspaceStore {
 
     getSnapshot(): WorkspaceStoreSnapshot {
         return {
-            active: { ...this.state.active },
+            active: {
+                ...this.state.active,
+                tabs: { ...this.state.active.tabs },
+                widgets: { ...this.state.active.widgets },
+            },
             list: [...this.state.list],
             colors: [...this.state.colors],
             icons: [...this.state.icons],
@@ -248,13 +308,17 @@ class WorkspaceStore {
             try {
                 const facade = await getWorkspaceFacade();
                 const apiWorkspace = await facade.getWorkspace();
-                this.setState(adaptWorkspaceFromApi(apiWorkspace, this.getActiveLegacyWorkspace()));
+                this.setState(adaptWorkspaceFromApi(apiWorkspace, this.state.active));
             } catch (err) {
                 console.warn("failed to refresh workspace from API", err);
             }
         })();
         await this.refreshPromise;
         this.refreshPromise = null;
+    }
+
+    hydrate(apiWorkspace: ApiWorkspace): void {
+        this.setState(adaptWorkspaceFromApi(apiWorkspace, this.state.active));
     }
 
     async refreshWorkspaceList(): Promise<void> {
@@ -286,10 +350,16 @@ class WorkspaceStore {
             return;
         }
         this.themeRefreshPromise = (async () => {
-            const colors = await WorkspaceService.GetColors();
-            const icons = await WorkspaceService.GetIcons();
-            this.setThemeState(colors ?? [], icons ?? []);
-            return { colors, icons };
+            try {
+                const colors = await WorkspaceService.GetColors();
+                const icons = await WorkspaceService.GetIcons();
+                this.setThemeState(colors ?? [], icons ?? []);
+                return { colors, icons };
+            } catch (err) {
+                console.warn("failed to refresh workspace themes", err);
+                this.setThemeState([], []);
+                return { colors: [], icons: [] };
+            }
         })();
         await this.themeRefreshPromise;
         this.themeRefreshPromise = null;
@@ -309,7 +379,7 @@ class WorkspaceStore {
         const facade = await getWorkspaceFacade();
         const response = await facade.focusTab({ tab_id: tabId });
         if (response?.workspace) {
-            this.setState(adaptWorkspaceFromApi(response.workspace, this.getActiveLegacyWorkspace()));
+            this.setState(adaptWorkspaceFromApi(response.workspace, this.state.active));
             return;
         }
         await this.refresh();
@@ -319,7 +389,7 @@ class WorkspaceStore {
         const facade = await getWorkspaceFacade();
         const response = await facade.createTerminalTab();
         if (response?.workspace) {
-            this.setState(adaptWorkspaceFromApi(response.workspace, this.getActiveLegacyWorkspace()));
+            this.setState(adaptWorkspaceFromApi(response.workspace, this.state.active));
         }
         await this.refreshWorkspaceList();
         return response?.widget_id;
@@ -329,7 +399,7 @@ class WorkspaceStore {
         const facade = await getWorkspaceFacade();
         const response: WorkspaceTabMutation = await facade.renameTab(tabId, { title });
         if (response?.workspace) {
-            this.setState(adaptWorkspaceFromApi(response.workspace, this.getActiveLegacyWorkspace()));
+            this.setState(adaptWorkspaceFromApi(response.workspace, this.state.active));
             return;
         }
         await this.refresh();
@@ -339,7 +409,7 @@ class WorkspaceStore {
         const facade = await getWorkspaceFacade();
         const response: WorkspaceTabMutation = await facade.setTabPinned(tabId, { pinned });
         if (response?.workspace) {
-            this.setState(adaptWorkspaceFromApi(response.workspace, this.getActiveLegacyWorkspace()));
+            this.setState(adaptWorkspaceFromApi(response.workspace, this.state.active));
             return;
         }
         await this.refresh();
@@ -349,7 +419,7 @@ class WorkspaceStore {
         const facade = await getWorkspaceFacade();
         const response = await facade.moveTab({ tab_id: tabId, before_tab_id: beforeTabId ?? "" });
         if (response?.workspace) {
-            this.setState(adaptWorkspaceFromApi(response.workspace, this.getActiveLegacyWorkspace()));
+            this.setState(adaptWorkspaceFromApi(response.workspace, this.state.active));
             return;
         }
         await this.refresh();
@@ -359,7 +429,7 @@ class WorkspaceStore {
         const facade = await getWorkspaceFacade();
         const response = await facade.closeTab(tabId);
         if (response?.workspace) {
-            this.setState(adaptWorkspaceFromApi(response.workspace, this.getActiveLegacyWorkspace()));
+            this.setState(adaptWorkspaceFromApi(response.workspace, this.state.active));
             return;
         }
         await this.refresh();

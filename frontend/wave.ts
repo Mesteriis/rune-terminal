@@ -11,9 +11,10 @@ import {
     registerGlobalKeys,
 } from "@/app/store/keymodel";
 import { modalsModel } from "@/app/store/modalmodel";
+import { workspaceStore } from "@/app/state/workspace.store";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { makeBuilderRouteId, makeTabRouteId } from "@/app/store/wshrouter";
-import { initWshrpc, TabRpcClient } from "@/app/store/wshrpcutil";
+import { initCompatWshrpc, initWshrpc, TabRpcClient } from "@/app/store/wshrpcutil";
 import { loadMonaco } from "@/app/view/codeeditor/codeeditor";
 import { BuilderApp } from "@/builder/builder-app";
 import { getLayoutModelForStaticTab } from "@/layout/index";
@@ -204,6 +205,44 @@ function setDocumentVisible() {
     document.body.classList.remove("is-transparent");
 }
 
+async function initBrowserCompatApp(activeTabId: string, workspace: import("@/rterm-api/workspace/types").WorkspaceSnapshot) {
+    const api = ensureBootstrapApi();
+    const globalInitOpts: GlobalInitOptions = {
+        tabId: activeTabId,
+        clientId: "browser-client",
+        windowId: "browser-window",
+        platform,
+        environment: "renderer",
+    };
+
+    initGlobal(globalInitOpts);
+    bootstrapWindow.globalAtoms = atoms;
+    bootstrapWindow.TabRpcClient = initCompatWshrpc(makeTabRouteId(activeTabId));
+    globalStore.set(activeTabIdAtom, activeTabId);
+    (globalStore as any).set(atoms.staticTabId, activeTabId);
+    workspaceStore.hydrate(workspace);
+
+    setKeyUtilPlatform(platform);
+    loadFonts();
+    updateZoomFactor(api.getZoomFactor());
+    api.onZoomFactorChange((zoomFactor) => {
+        updateZoomFactor(zoomFactor);
+    });
+
+    let firstRenderResolveFn: (() => void) | null = null;
+    const firstRenderPromise = new Promise<void>((resolve) => {
+        firstRenderResolveFn = resolve;
+    });
+    const reactElem = createElement(App, { onFirstRender: firstRenderResolveFn ?? (() => {}), compatMode: true }, null);
+    const elem = document.getElementById("main");
+    if (elem == null) {
+        throw new Error("Could not find #main element");
+    }
+    const root = createRoot(elem);
+    root.render(reactElem);
+    await firstRenderPromise;
+}
+
 async function initBrowserCompatRuntime() {
     const api = ensureBootstrapApi();
     api.sendLog("Init Browser Compat Runtime");
@@ -236,6 +275,7 @@ async function initBrowserCompatRuntime() {
                     ? "skipped"
                     : `ok next_seq=${terminalSnapshot.next_seq} status=${terminalSnapshot.state.status}`,
         });
+        await initBrowserCompatApp(workspace.active_tab_id, workspace);
         api.setWindowInitStatus("ready");
     } catch (e) {
         api.sendLog("Error in browser compat runtime " + describeError(e));

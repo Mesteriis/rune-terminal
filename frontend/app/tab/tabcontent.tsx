@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Block } from "@/app/block/block";
+import { WorkspaceStoreSnapshot } from "@/app/state/workspace.store";
+import { CompatTerminalView } from "@/app/view/term/compat-terminal";
 import { CenteredDiv } from "@/element/quickelems";
 import { ContentRenderer, NodeModel, PreviewRenderer, TileLayout } from "@/layout/index";
 import { TileLayoutContents } from "@/layout/lib/types";
@@ -17,7 +19,43 @@ const tileGapSizeAtom = atom((get) => {
     return settings["window:tilegapsize"];
 });
 
-const TabContent = React.memo(({ tabId }: { tabId: string }) => {
+interface TabContentProps {
+    tabId: string;
+    compatWorkspace?: WorkspaceStoreSnapshot["active"];
+}
+
+const TabContent = React.memo(({ tabId, compatWorkspace }: TabContentProps) => {
+    if (compatWorkspace != null) {
+        return <CompatTabContent tabId={tabId} compatWorkspace={compatWorkspace} />;
+    }
+    return <LegacyTabContent tabId={tabId} />;
+});
+
+const CompatTabContent = React.memo(({ tabId, compatWorkspace }: TabContentProps) => {
+    const compatTab = compatWorkspace?.tabs[tabId];
+    const widgetIds = compatTab?.widgetIds ?? [];
+    const activeWidgetId = compatWorkspace?.activewidgetid;
+    const widgetId =
+        (activeWidgetId && widgetIds.includes(activeWidgetId) ? activeWidgetId : widgetIds[0]) ?? activeWidgetId;
+    const widget = widgetId ? compatWorkspace?.widgets[widgetId] : null;
+
+    let innerContent;
+    if (widgetId == null) {
+        innerContent = <CenteredDiv>No Terminal Widget</CenteredDiv>;
+    } else if (widget?.kind !== "terminal") {
+        innerContent = <CenteredDiv>Unsupported Widget</CenteredDiv>;
+    } else {
+        innerContent = <CompatTerminalView key={widgetId} widgetId={widgetId} connectionId={widget.connectionId} />;
+    }
+
+    return (
+        <div className="flex flex-row flex-grow min-h-0 w-full items-center justify-center overflow-hidden relative pt-[3px] pr-[3px]">
+            {innerContent}
+        </div>
+    );
+});
+
+const LegacyTabContent = React.memo(({ tabId }: { tabId: string }) => {
     const oref = useMemo(() => WOS.makeORef("tab", tabId), [tabId]);
     const loadingAtom = useMemo(() => WOS.getWaveObjectLoadingAtom(oref), [oref]);
     const tabLoading = useAtomValue(loadingAtom);
@@ -48,7 +86,6 @@ const TabContent = React.memo(({ tabId }: { tabId: string }) => {
     }, [tabId, tileGapSize]);
 
     let innerContent;
-
     if (tabLoading) {
         innerContent = <CenteredDiv>Tab Loading</CenteredDiv>;
     } else if (!tabData) {

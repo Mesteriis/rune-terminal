@@ -13,12 +13,13 @@ import { fireAndForget } from "@/util/util";
 import clsx from "clsx";
 import { useAtomValue } from "jotai";
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
-import { makeORef, useWaveObjectValue } from "../store/wos";
+import { makeORef } from "../store/wos";
 import "./tab.scss";
 import { TabBarModel } from "./tabbar-model";
 
 interface TabProps {
     id: string;
+    title?: string;
     active: boolean;
     isFirst: boolean;
     isBeforeActive: boolean;
@@ -38,6 +39,7 @@ const Tab = memo(
         (
             {
                 id,
+                title,
                 active,
                 isPinned,
                 isBeforeActive,
@@ -52,7 +54,6 @@ const Tab = memo(
             },
             ref
         ) => {
-            const [tabData, _] = useWaveObjectValue<Tab>(makeORef("tab", id));
             const [originalName, setOriginalName] = useState("");
             const [isEditable, setIsEditable] = useState(false);
             const [isJiggling, setIsJiggling] = useState(false);
@@ -68,10 +69,10 @@ const Tab = memo(
             useImperativeHandle(ref, () => tabRef.current as HTMLDivElement);
 
             useEffect(() => {
-                if (tabData?.name) {
-                    setOriginalName(tabData.name);
+                if (title) {
+                    setOriginalName(title);
                 }
-            }, [tabData]);
+            }, [title]);
 
             useEffect(() => {
                 return () => {
@@ -242,7 +243,7 @@ const Tab = memo(
                             onKeyDown={handleKeyDown}
                             suppressContentEditableWarning={true}
                         >
-                            {tabData?.name}
+                            {title ?? id}
                         </div>
                         {isPinned ? (
                             <Button

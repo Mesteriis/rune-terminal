@@ -40,6 +40,7 @@ const OSOptions = {
 
 interface TabBarProps {
     workspace: WorkspaceStoreSnapshot["active"];
+    compatMode?: boolean;
 }
 
 type TabMoveAction = {
@@ -221,7 +222,7 @@ function setIsEqual(a: Set<string> | null, b: Set<string> | null): boolean {
     return true;
 }
 
-const TabBar = memo(({ workspace }: TabBarProps) => {
+const TabBar = memo(({ workspace, compatMode = false }: TabBarProps) => {
     const [tabIds, setTabIds] = useState<string[]>([]);
     const [pinnedTabIds, setPinnedTabIds] = useState<Set<string>>(new Set());
     const [dragStartPositions, setDragStartPositions] = useState<number[]>([]);
@@ -257,10 +258,10 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const updateStatusBannerRef = useRef<HTMLButtonElement>(null);
     const configErrorButtonRef = useRef<HTMLElement>(null);
     const prevAllLoadedRef = useRef<boolean>(false);
-    const activeTabId = useAtomValue(atoms.staticTabId);
     const isFullScreen = useAtomValue(atoms.isFullScreen);
     const zoomFactor = useAtomValue(atoms.zoomFactorAtom);
     const settings = useAtomValue(atoms.settingsAtom);
+    const activeTabId = workspace?.activetabid ?? "";
 
     let prevDelta: number;
     let prevDragDirection: string;
@@ -779,7 +780,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                 </div>
             )}
             <WaveAIButton />
-            <WorkspaceSwitcher ref={workspaceSwitcherRef} />
+            <WorkspaceSwitcher ref={workspaceSwitcherRef} compatMode={compatMode} />
             <div className="tab-bar" ref={tabBarRef} data-overlayscrollbars-initialize>
                 <div className="tabs-wrapper" ref={tabsWrapperRef} style={{ width: `${tabsWrapperWidth}px` }}>
                     {tabIds.map((tabId, index) => {
@@ -789,6 +790,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                                 key={tabId}
                                 ref={tabRefs.current[index]}
                                 id={tabId}
+                                title={workspace.tabs?.[tabId]?.title ?? tabId}
                                 isFirst={index === 0}
                                 isPinned={isPinned}
                                 onSelect={() => handleSelectTab(tabId)}

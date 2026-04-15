@@ -13,7 +13,7 @@ import { Popover, PopoverButton, PopoverContent } from "@/element/popover";
 import { fireAndForget, makeIconClass } from "@/util/util";
 import clsx from "clsx";
 import { forwardRef, useCallback, useEffect, useState } from "react";
-import WorkspaceSVG from "../asset/workspace.svg";
+import workspaceSvgUrl from "../asset/workspace.svg?url";
 import { IconButton } from "../element/iconbutton";
 import { WorkspaceStoreSnapshot, workspaceStore, type WorkspaceListEntry } from "../state/workspace.store";
 import { WorkspaceEditor } from "./workspaceeditor";
@@ -111,21 +111,23 @@ const WorkspaceSwitcherItem = ({
     );
 };
 
-const WorkspaceSwitcher = forwardRef<HTMLDivElement>((_, ref) => {
+const WorkspaceSwitcher = forwardRef<HTMLDivElement, { compatMode?: boolean }>(({ compatMode = false }, ref) => {
     const [workspaceState, setWorkspaceState] = useState(workspaceStore.getSnapshot());
     const [editingWorkspaceId, setEditingWorkspaceId] = useState<string | null>(null);
 
     useEffect(() => {
-        fireAndForget(() => workspaceStore.refreshWorkspaceList());
-        fireAndForget(() => workspaceStore.refreshThemes());
-        fireAndForget(() => workspaceStore.refresh());
+        if (!compatMode) {
+            fireAndForget(() => workspaceStore.refreshWorkspaceList());
+            fireAndForget(() => workspaceStore.refreshThemes());
+            fireAndForget(() => workspaceStore.refresh());
+        }
         const unsubscribe = workspaceStore.subscribe((snapshot) => {
             setWorkspaceState(snapshot);
         });
         return () => {
             unsubscribe();
         };
-    }, []);
+    }, [compatMode]);
 
     const onDeleteWorkspace = useCallback((workspaceId: string) => {
         fireAndForget(() => workspaceStore.deleteWorkspace(workspaceId));
@@ -152,7 +154,7 @@ const WorkspaceSwitcher = forwardRef<HTMLDivElement>((_, ref) => {
     const workspaceIcon = isActiveWorkspaceSaved ? (
         <i className={makeIconClass(workspaceState.active.icon, false)} style={{ color: workspaceState.active.color }} />
     ) : (
-        <WorkspaceSVG />
+        <img src={workspaceSvgUrl} alt="" />
     );
 
     return (
