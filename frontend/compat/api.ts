@@ -10,7 +10,7 @@ import { TerminalClient } from "@/rterm-api/terminal/client";
 import { WorkspaceClient } from "@/rterm-api/workspace/client";
 import { resolveRuntimeConfig } from "@/runtime";
 import type { RuntimeConfig } from "@/runtime/types";
-import type { CompatApiFacade, CompatApiClients, CompatApiOptions } from "./types";
+import type { CompatApiFacade, CompatApiOptions } from "./types";
 
 function buildTypedClients(fetchImpl: CompatApiOptions["fetchImpl"], baseUrl: string, authToken: string | undefined) {
   const http = new HttpClient(
@@ -71,4 +71,5 @@ export function createCompatApiFacadeFromRuntime(
   };
 }
 
-export type { CompatApiClients, CompatApiFacade, CompatApiOptions } from "./types";
+export type { CompatApiClients } from "./types";
+export { type CompatApiFacade, type CompatApiOptions } from "./types";

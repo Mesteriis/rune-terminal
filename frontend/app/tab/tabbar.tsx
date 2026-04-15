@@ -2,11 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Button } from "@/app/element/button";
+import { WorkspaceStoreSnapshot, workspaceStore } from "@/app/state/workspace.store";
 import { modalsModel } from "@/app/store/modalmodel";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { deleteLayoutModelForTab } from "@/layout/index";
 import { atoms, getApi, globalStore } from "@/store/global";
-import { getWorkspaceFacade } from "@/compat/workspace";
 import { isMacOS, isWindows } from "@/util/platformutil";
 import { fireAndForget } from "@/util/util";
 import { useAtomValue } from "jotai";
@@ -39,7 +39,7 @@ const OSOptions = {
 };
 
 interface TabBarProps {
-    workspace: Workspace;
+    workspace: WorkspaceStoreSnapshot["active"];
 }
 
 type TabMoveAction = {
@@ -585,10 +585,8 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             const initialPinnedForMove = draggedTabId ? new Set(initialPinnedTabIds) : new Set<string>();
 
             fireAndForget(async () => {
-                const workspaceFacade = await getWorkspaceFacade();
-
                 if (movedIntoPinned) {
-                    await workspaceFacade.setTabPinned(draggedTabId, { pinned: pinnedTabIds.has(draggedTabId) });
+                    await workspaceStore.setTabPinned(draggedTabId, pinnedTabIds.has(draggedTabId));
                 }
 
                 const moveActions = buildWorkspaceMoveActions(
@@ -599,10 +597,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                     draggedTabId
                 );
                 for (const action of moveActions) {
-                    await workspaceFacade.moveTab({
-                        tab_id: action.tabId,
-                        before_tab_id: action.beforeTabId,
-                    });
+                    await workspaceStore.moveTab(action.tabId, action.beforeTabId);
                 }
             });
 
@@ -673,7 +668,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
 
     const handleSelectTab = (tabId: string) => {
         if (!draggingTabDataRef.current.dragged) {
-            fireAndForget(() => getWorkspaceFacade().then((ws) => ws.focusTab({ tab_id: tabId })));
+            fireAndForget(() => workspaceStore.focusTab(tabId));
         }
     };
 
@@ -695,7 +690,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     );
 
     const handleAddTab = () => {
-        fireAndForget(() => getWorkspaceFacade().then((ws) => ws.createTerminalTab()));
+        fireAndForget(() => workspaceStore.createTerminalTab());
         tabsWrapperRef.current.style.transition;
         tabsWrapperRef.current.style.setProperty("--tabs-wrapper-transition", "width 0.1s ease");
 
@@ -706,7 +701,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
 
     const handleCloseTab = (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null, tabId: string) => {
         event?.stopPropagation();
-        fireAndForget(() => getWorkspaceFacade().then((ws) => ws.closeTab(tabId)));
+        fireAndForget(() => workspaceStore.closeTab(tabId));
         tabsWrapperRef.current.style.setProperty("--tabs-wrapper-transition", "width 0.3s ease");
         deleteLayoutModelForTab(tabId);
     };
@@ -714,7 +709,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const handlePinChange = useCallback(
         (tabId: string, pinned: boolean) => {
             console.log("handlePinChange", tabId, pinned);
-            fireAndForget(() => getWorkspaceFacade().then((ws) => ws.setTabPinned(tabId, { pinned })));
+            fireAndForget(() => workspaceStore.setTabPinned(tabId, pinned));
         },
         []
     );

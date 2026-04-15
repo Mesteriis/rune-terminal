@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { getTerminalFacade } from "@/compat";
+import { terminalStore } from "@/app/state/terminal.store";
 import { sendWSCommand } from "@/app/store/ws";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
@@ -31,10 +31,6 @@ import { FitAddon } from "./fitaddon";
 import { createTempFileFromBlob, extractAllClipboardData } from "./termutil";
 
 const dlog = debug("wave:termwrap");
-
-function isAbortError(error: unknown): error is DOMException {
-    return error instanceof DOMException && error.name === "AbortError";
-}
 
 const MinDataProcessedForCache = 100 * 1024;
 export const SupportsImageInput = true;
@@ -519,9 +515,9 @@ export class TermWrap {
     promptMarkers: TermTypes.IMarker[] = [];
     shellIntegrationStatusAtom: jotai.PrimitiveAtom<"ready" | "running-command" | null>;
     lastCommandAtom: jotai.PrimitiveAtom<string | null>;
-    private streamAbortController: AbortController | null;
-    private streamNextSeq: number;
     private activeSessionId: string | null;
+    private lastAppliedSnapshotSeq: number;
+    private terminalStoreUnsubscribe: (() => void) | null;
 
     // IME composition state tracking
     // Prevents duplicate input when switching input methods during composition (e.g., using Capslock)
@@ -714,9 +710,9 @@ export class TermWrap {
             return false;
         });
         this.connectElem = connectElem;
-        this.streamAbortController = null;
-        this.streamNextSeq = 0;
         this.activeSessionId = null;
+        this.lastAppliedSnapshotSeq = 0;
+        this.terminalStoreUnsubscribe = null;
         this.handleResize_debounced = debounce(50, this.handleResize.bind(this));
         this.terminal.open(this.connectElem);
         this.handleResize();
@@ -824,12 +820,34 @@ export class TermWrap {
 
         try {
             const snapshot = await this.loadInitialTerminalData();
-            void this.startTerminalStreamFromSnapshot(snapshot?.next_seq ?? this.streamNextSeq).catch((err: unknown) => {
-                if (isAbortError(err)) {
+            const startingSeq = snapshot?.next_seq ?? 0;
+            this.terminalStoreUnsubscribe = terminalStore.subscribe((state, event) => {
+                const widgetState = state.widgets[this.blockId];
+                if (!widgetState) {
                     return;
                 }
-                console.log("error starting terminal stream", this.blockId, err);
+                if (event.widgetId !== "" && event.widgetId !== this.blockId) {
+                    return;
+                }
+
+                if (event.type === "snapshot") {
+                    void this.applyTerminalSnapshot(widgetState.snapshot);
+                    return;
+                }
+
+                if (event.type === "chunk" && event.chunk != null) {
+                    void this.handleTerminalChunk(event.chunk);
+                    return;
+                }
+                if (event.type === "error") {
+                    console.log("terminal stream error", this.blockId, event.error?.message ?? "stream error");
+                    return;
+                }
+                if (event.type === "end") {
+                    dlog("terminal stream ended", this.blockId);
+                }
             });
+            terminalStore.startStream(this.blockId, startingSeq);
         } finally {
             this.loaded = true;
         }
@@ -860,10 +878,11 @@ export class TermWrap {
                 d.dispose();
             } catch (_) {}
         });
-        if (this.streamAbortController != null) {
-            this.streamAbortController.abort();
-            this.streamAbortController = null;
+        if (this.terminalStoreUnsubscribe != null) {
+            this.terminalStoreUnsubscribe();
+            this.terminalStoreUnsubscribe = null;
         }
+        terminalStore.stop(this.blockId);
     }
 
     handleTermData(data: string) {
@@ -1007,8 +1026,7 @@ export class TermWrap {
 
     async loadInitialTerminalData(): Promise<TerminalSnapshot | null> {
         const startTs = Date.now();
-        const facade = await getTerminalFacade();
-        const snapshot = await facade.getSnapshot(this.blockId);
+        const snapshot = await terminalStore.refresh(this.blockId);
         if (snapshot == null) {
             return null;
         }
@@ -1027,7 +1045,7 @@ export class TermWrap {
         }
 
         this.activeSessionId = snapshot.state.session_id;
-        this.streamNextSeq = snapshot.next_seq;
+        this.lastAppliedSnapshotSeq = snapshot.next_seq;
         for (const chunk of snapshot.chunks) {
             await this.handleTerminalChunk(chunk);
         }
@@ -1036,39 +1054,39 @@ export class TermWrap {
         return snapshot;
     }
 
-    private async startTerminalStreamFromSnapshot(startingSeq: number = 0): Promise<void> {
-        const facade = await getTerminalFacade();
-        if (this.streamAbortController != null) {
-            this.streamAbortController.abort();
+    private async applyTerminalSnapshot(snapshot: TerminalSnapshot | null): Promise<void> {
+        if (snapshot == null) {
+            return;
         }
-        const controller = new AbortController();
-        this.streamAbortController = controller;
+        const snapshotSessionId = snapshot.state?.session_id ?? null;
+        if (snapshotSessionId != null && this.activeSessionId != null && this.activeSessionId !== snapshotSessionId) {
+            this.flushOutputBuffer();
+            this.terminal.clear();
+            this.ptyOffset = 0;
+            this.dataBytesProcessed = 0;
+            this.outputBuffer = [];
+            this.outputBatchStartTs = null;
+            this.outputBufferedBytes = 0;
+            this.outputBufferHasNewline = false;
+            this.outputBufferHasEscape = false;
+            this.outputBufferHasCarriageReturn = false;
+            this.lastAppliedSnapshotSeq = 0;
+        }
 
-        await facade.consumeStream(
-            this.blockId,
-            {
-                onOutput: (chunk: TerminalOutputChunk) => {
-                    return this.handleTerminalChunk(chunk);
-                },
-                onKeepAlive: () => {
-                    return;
-                },
-                onUnknownEvent: (event: string, data: string) => {
-                    void data;
-                    dlog("unknown terminal stream event", this.blockId, event);
-                },
-            },
-            {
-                from: startingSeq,
-                signal: controller.signal,
-            },
-        );
+        this.activeSessionId = snapshotSessionId;
+        this.lastAppliedSnapshotSeq = snapshot.next_seq;
+        for (const chunk of snapshot.chunks) {
+            await this.handleTerminalChunk(chunk);
+        }
     }
 
     private async handleTerminalChunk(chunk: TerminalOutputChunk): Promise<void> {
+        if (chunk.seq < this.lastAppliedSnapshotSeq) {
+            return;
+        }
         const encoded = new TextEncoder().encode(chunk.data);
         await this.writeChunkBuffered(encoded);
-        this.streamNextSeq = chunk.seq + 1;
+        this.lastAppliedSnapshotSeq = chunk.seq + 1;
     }
 
     private writeChunkBuffered(data: Uint8Array): Promise<void> {

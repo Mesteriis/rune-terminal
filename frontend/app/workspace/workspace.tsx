@@ -5,20 +5,22 @@ import { AIPanel } from "@/app/aipanel/aipanel";
 import { ErrorBoundary } from "@/app/element/errorboundary";
 import { CenteredDiv } from "@/app/element/quickelems";
 import { ModalsRenderer } from "@/app/modals/modalsrenderer";
+import { WorkspaceStoreSnapshot, workspaceStore } from "@/app/state/workspace.store";
 import { TabBar } from "@/app/tab/tabbar";
 import { TabContent } from "@/app/tab/tabcontent";
 import { Widgets } from "@/app/workspace/widgets";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { atoms, getApi } from "@/store/global";
+import { fireAndForget } from "@/util/util";
 import { useAtomValue } from "jotai";
-import { memo, useEffect, useRef } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { Group, Panel, Separator, type GroupImperativeHandle, type Layout as PanelLayout, type PanelImperativeHandle } from "react-resizable-panels";
 import { WorkspaceAIPanelId, WorkspaceMainPanelId } from "./workspace-layout-model";
 
 const WorkspaceElem = memo(() => {
     const workspaceLayoutModel = WorkspaceLayoutModel.getInstance();
     const tabId = useAtomValue(atoms.staticTabId);
-    const ws = useAtomValue(atoms.workspace);
+    const [workspace, setWorkspace] = useState<WorkspaceStoreSnapshot["active"]>(workspaceStore.getSnapshot().active);
     const initialAiPanelPercentage = workspaceLayoutModel.getAIPanelPercentage(window.innerWidth);
     const initialLayout: PanelLayout = {
         [WorkspaceAIPanelId]: initialAiPanelPercentage,
@@ -50,9 +52,18 @@ const WorkspaceElem = memo(() => {
         return () => window.removeEventListener("resize", workspaceLayoutModel.handleWindowResize);
     }, []);
 
+    useEffect(() => {
+        fireAndForget(() => workspaceStore.refresh());
+        fireAndForget(() => workspaceStore.refreshWorkspaceList());
+        setWorkspace(workspaceStore.getSnapshot().active);
+        return workspaceStore.subscribe((snapshot) => {
+            setWorkspace(snapshot.active);
+        });
+    }, []);
+
     return (
         <div className="flex flex-col w-full flex-grow overflow-hidden">
-            <TabBar key={ws.oid} workspace={ws} />
+            <TabBar key={workspace.oid} workspace={workspace} />
             <div ref={panelContainerRef} className="flex flex-row flex-grow overflow-hidden">
                 <ErrorBoundary key={tabId}>
                     <Group
