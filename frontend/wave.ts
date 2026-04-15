@@ -33,6 +33,7 @@ import {
 } from "@/store/global";
 import { activeTabIdAtom } from "@/store/tab-model";
 import * as WOS from "@/store/wos";
+import { logRuntimeValidation } from "@/runtime/debug";
 import { loadFonts } from "@/util/fontutil";
 import { setKeyUtilPlatform } from "@/util/keyutil";
 import { createElement } from "react";
@@ -201,17 +202,6 @@ function setDocumentVisible() {
     document.body.classList.remove("is-transparent");
 }
 
-function renderBrowserRuntimeStatus(lines: string[]) {
-    const elem = document.getElementById("main");
-    if (elem == null) {
-        throw new Error("Could not find #main element");
-    }
-    elem.replaceChildren();
-    const pre = document.createElement("pre");
-    pre.textContent = lines.join("\n");
-    elem.appendChild(pre);
-}
-
 async function initBrowserCompatRuntime() {
     const api = ensureBootstrapApi();
     api.sendLog("Init Browser Compat Runtime");
@@ -229,28 +219,29 @@ async function initBrowserCompatRuntime() {
         const terminalSnapshot =
             terminalWidget == null ? null : await facade.clients.terminal.getSnapshot(terminalWidget.id, 0);
 
-        renderBrowserRuntimeStatus([
-            "Browser dev validation mode",
-            `runtime.source=${facade.runtime.source}`,
-            `runtime.baseUrl=${facade.runtime.baseUrl}`,
-            `runtime.authToken=${facade.runtime.authToken ? "present" : "missing"}`,
-            `health.status=${health.status}`,
-            `bootstrap.product=${bootstrap.product_name}`,
-            `workspace.id=${workspace.id}`,
-            `workspace.active_tab_id=${workspace.active_tab_id}`,
-            `workspace.active_widget_id=${workspace.active_widget_id}`,
-            `terminal.widget_id=${terminalWidget?.id ?? "none"}`,
-            `terminal.snapshot=${terminalSnapshot == null ? "skipped" : `ok next_seq=${terminalSnapshot.next_seq} status=${terminalSnapshot.state.status}`}`,
-        ]);
+        logRuntimeValidation({
+            "runtime.source": facade.runtime.source,
+            "runtime.baseUrl": facade.runtime.baseUrl,
+            "runtime.authToken": facade.runtime.authToken ? "present" : "missing",
+            "health.status": health.status,
+            "bootstrap.product": bootstrap.product_name,
+            "workspace.id": workspace.id,
+            "workspace.active_tab_id": workspace.active_tab_id,
+            "workspace.active_widget_id": workspace.active_widget_id,
+            "terminal.widget_id": terminalWidget?.id ?? "none",
+            "terminal.snapshot":
+                terminalSnapshot == null
+                    ? "skipped"
+                    : `ok next_seq=${terminalSnapshot.next_seq} status=${terminalSnapshot.state.status}`,
+        });
         api.setWindowInitStatus("ready");
     } catch (e) {
         api.sendLog("Error in browser compat runtime " + describeError(e));
         console.error("Error in browser compat runtime", e);
-        renderBrowserRuntimeStatus([
-            "Browser dev validation mode",
-            "status=error",
-            describeError(e),
-        ]);
+        logRuntimeValidation({
+            status: "error",
+            error: describeError(e),
+        });
     } finally {
         setDocumentVisible();
     }
