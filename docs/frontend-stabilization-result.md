@@ -7,8 +7,12 @@ Date: 2026-04-15
 - `npm --prefix frontend run build`: **fails** (`EXIT=1`).
 - `npx tsc -p frontend/tsconfig.json --noEmit`: **fails** (`EXIT=2`).
 - `npm --prefix frontend run lint`: **fails** (`EXIT=1`).
+- `npm --prefix frontend run dev -- --host 127.0.0.1 --port 5175 --strictPort`: **starts** (holds server); non-interactive check with `timeout` exits with `124`.
 - `npm run tauri:dev`: **launches** core runtime paths and `rterm-desktop` successfully for non-interactive startup verification.
 - `timeout 20 npm run tauri:dev`: starts successfully and exits with timeout (`EXIT=124`), confirming runtime launch remains reachable.
+- Backend command check:
+  - `go run ./cmd/rterm-core`: **fails** with `exit status 2` when subcommand omitted (expected usage behavior).
+  - `go run ./cmd/rterm-core serve -listen 127.0.0.1:57721 ...`: **starts** on demand and responds to `/healthz`, `/api/v1/bootstrap`, `/api/v1/workspace`, `/api/v1/terminal/term-main`.
 
 ## Fixed Categories
 
@@ -36,6 +40,9 @@ Date: 2026-04-15
 - Cross-cutting `@ai-sdk` / `ai` stream typing incompatibilities in AI model integration.
 - Broad `no-explicit-any`, `no-unused-vars`, and hook-lifecycle lint remediation outside startup-critical files.
 - Visual/style/UX redesigns or plugin-system implementation.
+- Runtime validation blockers outside this slice:
+  - Browser-runtime startup validation requires a browser session (or MCP tooling) to confirm console/network behavior; available checks only confirm server reachability and env resolution.
+  - Frontend-initiated terminal/workspace request traces beyond module loading were not exhaustively captured in this environment.
 
 ## Architecture Integrity Note
 

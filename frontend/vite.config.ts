@@ -6,7 +6,6 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      "@": fileURLToPath(new URL("./", import.meta.url)),
       "@/app": fileURLToPath(new URL("./app", import.meta.url)),
       "@/builder": fileURLToPath(new URL("./builder", import.meta.url)),
       "@/element": fileURLToPath(new URL("./app/element", import.meta.url)),
@@ -19,6 +18,7 @@ export default defineConfig({
       "@/util": fileURLToPath(new URL("./util", import.meta.url)),
       "@/rterm-api": fileURLToPath(new URL("./rterm-api", import.meta.url)),
       "@/asset": fileURLToPath(new URL("./app/asset", import.meta.url)),
+      "@": fileURLToPath(new URL("./", import.meta.url)),
     },
   },
 });
