@@ -14,7 +14,7 @@ import { TerminalView } from "@/app/view/term/term";
 import { TermWshClient } from "@/app/view/term/term-wsh";
 import { VDomModel } from "@/app/view/vdom/vdom-model";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
-import { getTerminalFacade } from "@/compat";
+import { terminalStore } from "@/app/state/terminal.store";
 import {
     atoms,
     getAllBlockComponentModels,
@@ -472,8 +472,7 @@ export class TermViewModel implements ViewModel {
     }
 
     sendDataToController(data: string) {
-        void getTerminalFacade()
-            .then((facade) => facade.sendInput(this.blockId, { text: data }))
+        void terminalStore.sendInput(this.blockId, data)
             .catch((err) => {
                 console.log("error sending terminal input", this.blockId, err);
             });

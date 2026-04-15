@@ -15,7 +15,8 @@
     "tauri:dev": "./scripts/tauri-dev.sh",
     "tauri:build": "npm exec tauri -- build --config apps/desktop/src-tauri/tauri.conf.json",
     "tauri:check": "cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml",
-    "validate": "npm run lint:frontend && npm run build:frontend && npm run test:go && npm run build:go && npm run tauri:check"
+    "validate": "npm run lint:frontend && npm run build:frontend && npm run test:go && npm run build:go && npm run tauri:check",
+    "check:active-path-api": "scripts/check-active-path-api-imports.sh"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.10.1",

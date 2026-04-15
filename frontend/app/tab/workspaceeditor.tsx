@@ -1,9 +1,8 @@
-import { fireAndForget, makeIconClass } from "@/util/util";
+import { makeIconClass } from "@/util/util";
 import clsx from "clsx";
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef } from "react";
 import { Button } from "../element/button";
 import { Input } from "../element/input";
-import { WorkspaceService } from "../store/services";
 import "./workspaceeditor.scss";
 
 interface ColorSelectorProps {
@@ -65,6 +64,8 @@ interface WorkspaceEditorProps {
     icon: string;
     color: string;
     focusInput: boolean;
+    colors: string[];
+    icons: string[];
     onTitleChange: (newTitle: string) => void;
     onColorChange: (newColor: string) => void;
     onIconChange: (newIcon: string) => void;
@@ -75,24 +76,14 @@ const WorkspaceEditorComponent = ({
     icon,
     color,
     focusInput,
+    colors,
+    icons,
     onTitleChange,
     onColorChange,
     onIconChange,
     onDeleteWorkspace,
 }: WorkspaceEditorProps) => {
     const inputRef = useRef<HTMLInputElement>(null);
-
-    const [colors, setColors] = useState<string[]>([]);
-    const [icons, setIcons] = useState<string[]>([]);
-
-    useEffect(() => {
-        fireAndForget(async () => {
-            const colors = await WorkspaceService.GetColors();
-            const icons = await WorkspaceService.GetIcons();
-            setColors(colors);
-            setIcons(icons);
-        });
-    }, []);
 
     useEffect(() => {
         if (focusInput && inputRef.current) {

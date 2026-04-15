@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { atoms, globalStore, recordTEvent, refocusNode } from "@/app/store/global";
-import { getWorkspaceFacade } from "@/compat/workspace";
+import { workspaceStore } from "@/app/state/workspace.store";
 import { useT } from "@/app/i18n/i18n";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
@@ -107,8 +107,7 @@ const Tab = memo(
                 editableRef.current.innerText = newText;
                 setIsEditable(false);
                 fireAndForget(async () => {
-                    const workspaceFacade = await getWorkspaceFacade();
-                    await workspaceFacade.renameTab(id, { title: newText });
+                    await workspaceStore.renameTab(id, newText);
                 });
                 setTimeout(() => refocusNode(null), 10);
             };

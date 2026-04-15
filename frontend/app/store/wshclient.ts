@@ -47,7 +47,7 @@ class WshClient {
         this.routeId = routeId;
     }
 
-    wshRpcCall(command: string, data: any, opts: RpcOpts): Promise<any> {
+    wshRpcCall(command: string, data: any, opts?: RpcOpts): Promise<any> {
         const msg: RpcMessage = {
             command: command,
             data: data,
@@ -64,7 +64,7 @@ class WshClient {
         }
         const rpcGen = sendRpcCommand(this.openRpcs, msg);
         if (rpcGen == null) {
-            return null;
+            return Promise.resolve(null);
         }
         const respMsgPromise = rpcGen.next(true); // pass true to force termination of rpc after 1 response (not streaming)
         return respMsgPromise.then((msg: IteratorResult<any, void>) => {
@@ -72,7 +72,7 @@ class WshClient {
         });
     }
 
-    wshRpcStream(command: string, data: any, opts: RpcOpts): AsyncGenerator<any, void, boolean> {
+    wshRpcStream(command: string, data: any, opts?: RpcOpts): AsyncGenerator<any, void, boolean> {
         if (opts?.noresponse) {
             throw new Error("noresponse not supported for responsestream calls");
         }

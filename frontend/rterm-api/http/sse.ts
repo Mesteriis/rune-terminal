@@ -2,6 +2,16 @@ import type { TerminalOutputChunk } from "../terminal/types";
 import { ApiError } from "./errors";
 import { HttpClient } from "./client";
 
+export interface TerminalStreamEnd {
+  code?: string;
+  message?: string;
+}
+
+export interface TerminalStreamError {
+  code: string;
+  message: string;
+}
+
 export interface TerminalStreamPayload {
   from?: number;
   authToken?: string;
@@ -11,6 +21,9 @@ export interface TerminalStreamPayload {
 
 export interface TerminalStreamEvents {
   onOutput: (chunk: TerminalOutputChunk) => void | Promise<void>;
+  onChunk?: (chunk: TerminalOutputChunk) => void | Promise<void>;
+  onEnd?: (details?: TerminalStreamEnd) => void | Promise<void>;
+  onError?: (error: TerminalStreamError) => void | Promise<void>;
   onKeepAlive?: () => void;
   onUnknownEvent?: (event: string, data: string) => void;
 }
@@ -105,9 +118,20 @@ export async function consumeTerminalStream(
 }
 
 async function flushEvent(eventName: string, eventData: string, handlers: TerminalStreamEvents): Promise<void> {
-  if (eventName === "output") {
+  if (eventName === "output" || eventName === "chunk") {
     const parsed = JSON.parse(eventData) as TerminalOutputChunk;
     await handlers.onOutput(parsed);
+    await handlers.onChunk?.(parsed);
+    return;
+  }
+  if (eventName === "end") {
+    const parsed = eventData ? (JSON.parse(eventData) as TerminalStreamEnd) : {};
+    await handlers.onEnd?.(parsed);
+    return;
+  }
+  if (eventName === "error") {
+    const parsed = eventData ? (JSON.parse(eventData) as TerminalStreamError) : { code: "stream", message: "stream error" };
+    await handlers.onError?.(parsed);
     return;
   }
   handlers.onUnknownEvent?.(eventName, eventData);
@@ -127,8 +151,6 @@ export async function consumeTerminalStreamViaClient(
     },
     headers: {
       Accept: "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
     },
     includeAuth: !options.useQueryToken,
     signal: options.signal,
