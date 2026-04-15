@@ -12,6 +12,8 @@ import type {
   WorkspaceSnapshot,
   WorkspaceTabMutation,
 } from "@/rterm-api/workspace/types";
+import type { CompatApiOptions } from "./types";
+import { createCompatApiFacade } from "./api";
 
 export interface WorkspaceFacade {
   focusWidget: (payload: FocusWidgetRequest) => Promise<WorkspaceActionResponse>;
@@ -22,6 +24,25 @@ export interface WorkspaceFacade {
   moveTab: (payload: MoveTabRequest) => Promise<WorkspaceActionResponse>;
   closeTab: (tabId: string) => Promise<CloseTabResponse>;
   getWorkspace: () => Promise<WorkspaceSnapshot>;
+}
+
+let workspaceFacadePromise: Promise<WorkspaceFacade> | null = null;
+
+function buildWorkspaceFacade(fetchImpl?: CompatApiOptions["fetchImpl"]): Promise<WorkspaceFacade> {
+  const facadePromise = createCompatApiFacade({ fetchImpl }).then(({ clients }) => {
+    return createWorkspaceFacade(clients.workspace);
+  });
+  facadePromise.catch(() => {
+    workspaceFacadePromise = null;
+  });
+  return facadePromise;
+}
+
+export function getWorkspaceFacade(fetchImpl?: CompatApiOptions["fetchImpl"]): Promise<WorkspaceFacade> {
+  if (workspaceFacadePromise == null) {
+    workspaceFacadePromise = buildWorkspaceFacade(fetchImpl);
+  }
+  return workspaceFacadePromise;
 }
 
 export function createWorkspaceFacade(client: WorkspaceClient): WorkspaceFacade {

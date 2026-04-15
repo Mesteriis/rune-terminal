@@ -2,13 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { WaveAIModel } from "@/app/aipanel/waveai-model";
+import { getWorkspaceFacade } from "@/compat/workspace";
 import { FocusManager } from "@/app/store/focusManager";
 import {
     atoms,
     createBlock,
     createBlockSplitHorizontally,
     createBlockSplitVertically,
-    createTab,
     getAllBlockComponentModels,
     getApi,
     getBlockComponentModel,
@@ -132,9 +132,8 @@ function isStaticTabPinned(): boolean {
 }
 
 function simpleCloseStaticTab() {
-    const ws = globalStore.get(atoms.workspace);
     const tabId = globalStore.get(atoms.staticTabId);
-    getApi().closeTab(ws.oid, tabId);
+    fireAndForget(() => getWorkspaceFacade().then((workspaceFacade) => workspaceFacade.closeTab(tabId)));
     deleteLayoutModelForTab(tabId);
 }
 
@@ -278,7 +277,7 @@ function switchTabAbs(index: number) {
         return;
     }
     const newActiveTabId = tabids[newTabIdx];
-    getApi().setActiveTab(newActiveTabId);
+    fireAndForget(() => getWorkspaceFacade().then((workspaceFacade) => workspaceFacade.focusTab({ tab_id: newActiveTabId })));
 }
 
 function switchTab(offset: number) {
@@ -298,7 +297,7 @@ function switchTab(offset: number) {
     }
     const newTabIdx = (tabIdx + offset + tabids.length) % tabids.length;
     const newActiveTabId = tabids[newTabIdx];
-    getApi().setActiveTab(newActiveTabId);
+    fireAndForget(() => getWorkspaceFacade().then((workspaceFacade) => workspaceFacade.focusTab({ tab_id: newActiveTabId })));
 }
 
 function handleCmdI() {
@@ -533,7 +532,7 @@ function registerGlobalKeys() {
         return true;
     });
     globalKeyMap.set("Cmd:t", () => {
-        createTab();
+        fireAndForget(() => getWorkspaceFacade().then((workspaceFacade) => workspaceFacade.createTerminalTab()));
         return true;
     });
     globalKeyMap.set("Cmd:w", () => {

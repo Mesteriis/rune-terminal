@@ -5,7 +5,8 @@ import { Button } from "@/app/element/button";
 import { modalsModel } from "@/app/store/modalmodel";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { deleteLayoutModelForTab } from "@/layout/index";
-import { atoms, createTab, getApi, globalStore, setActiveTab } from "@/store/global";
+import { atoms, getApi, globalStore } from "@/store/global";
+import { getWorkspaceFacade } from "@/compat/workspace";
 import { isMacOS, isWindows } from "@/util/platformutil";
 import { fireAndForget } from "@/util/util";
 import { useAtomValue } from "jotai";
@@ -13,7 +14,6 @@ import { OverlayScrollbars } from "overlayscrollbars";
 import { createRef, memo, useCallback, useEffect, useRef, useState } from "react";
 import { debounce } from "throttle-debounce";
 import { IconButton } from "../element/iconbutton";
-import { WorkspaceService } from "../store/services";
 import { Tab } from "./tab";
 import "./tabbar.scss";
 import { UpdateStatusBanner } from "./updatebanner";
@@ -40,6 +40,69 @@ const OSOptions = {
 
 interface TabBarProps {
     workspace: Workspace;
+}
+
+type TabMoveAction = {
+    tabId: string;
+    beforeTabId: string;
+};
+
+function buildMoveActions(initialOrder: string[], targetOrder: string[]): TabMoveAction[] {
+    const moves: TabMoveAction[] = [];
+    const currentOrder = [...initialOrder];
+
+    for (let index = 0; index < targetOrder.length; index++) {
+        const targetTabId = targetOrder[index];
+        if (currentOrder[index] === targetTabId) {
+            continue;
+        }
+        const beforeTabId = currentOrder[index];
+        if (!beforeTabId) {
+            continue;
+        }
+
+        const moveIndex = currentOrder.indexOf(targetTabId);
+        if (moveIndex === -1) {
+            continue;
+        }
+
+        moves.push({ tabId: targetTabId, beforeTabId });
+        currentOrder.splice(moveIndex, 1);
+
+        const insertionIndex = currentOrder.indexOf(beforeTabId);
+        if (insertionIndex === -1) {
+            currentOrder.unshift(targetTabId);
+            continue;
+        }
+        currentOrder.splice(insertionIndex, 0, targetTabId);
+    }
+
+    return moves;
+}
+
+function buildWorkspaceMoveActions(
+    initialOrder: string[],
+    targetOrder: string[],
+    initialPinnedTabIds: Set<string>,
+    targetPinnedTabIds: Set<string>,
+    movedTabId: string,
+): TabMoveAction[] {
+    const initialPinned = new Set(initialPinnedTabIds);
+    if (targetPinnedTabIds.has(movedTabId)) {
+        initialPinned.add(movedTabId);
+    } else {
+        initialPinned.delete(movedTabId);
+    }
+
+    const initialPinnedOrder = initialOrder.filter((tabId) => initialPinned.has(tabId));
+    const initialUnpinnedOrder = initialOrder.filter((tabId) => !initialPinned.has(tabId));
+    const targetPinnedOrder = targetOrder.filter((tabId) => targetPinnedTabIds.has(tabId));
+    const targetUnpinnedOrder = targetOrder.filter((tabId) => !targetPinnedTabIds.has(tabId));
+
+    return [
+        ...buildMoveActions(initialPinnedOrder, targetPinnedOrder),
+        ...buildMoveActions(initialUnpinnedOrder, targetUnpinnedOrder),
+    ];
 }
 
 const WaveAIButton = memo(() => {
@@ -180,6 +243,8 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         tabIndex: 0,
         initialOffsetX: null,
         totalScrollOffset: null,
+        initialTabIds: [] as string[],
+        initialPinnedTabIds: new Set<string>(),
         dragged: false,
     });
     const osInstanceRef = useRef<OverlayScrollbars>(null);
@@ -502,6 +567,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             let pinnedTabCount = pinnedTabIds.size;
             const draggedTabId = draggingTabDataRef.current.tabId;
             const isPinned = pinnedTabIds.has(draggedTabId);
+            const initialPinnedTabIds = draggingTabDataRef.current.initialPinnedTabIds;
             const nextTabId = tabIds[tabIndex + 1];
             const prevTabId = tabIds[tabIndex - 1];
             if (!isPinned && nextTabId && pinnedTabIds.has(nextTabId)) {
@@ -514,16 +580,34 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                 setPinnedTabIds(pinnedTabIds);
                 pinnedTabCount = pinnedTabIds.size;
             }
+
+            const movedIntoPinned = pinnedTabIds.has(draggedTabId) !== initialPinnedTabIds.has(draggedTabId);
+            const initialPinnedForMove = draggedTabId ? new Set(initialPinnedTabIds) : new Set<string>();
+
+            fireAndForget(async () => {
+                const workspaceFacade = await getWorkspaceFacade();
+
+                if (movedIntoPinned) {
+                    await workspaceFacade.setTabPinned(draggedTabId, { pinned: pinnedTabIds.has(draggedTabId) });
+                }
+
+                const moveActions = buildWorkspaceMoveActions(
+                    draggingTabDataRef.current.initialTabIds,
+                    tabIds,
+                    initialPinnedForMove,
+                    pinnedTabIds,
+                    draggedTabId
+                );
+                for (const action of moveActions) {
+                    await workspaceFacade.moveTab({
+                        tab_id: action.tabId,
+                        before_tab_id: action.beforeTabId,
+                    });
+                }
+            });
+
             // Reset dragging state
             setDraggingTab(null);
-            // Update workspace tab ids
-            fireAndForget(() =>
-                WorkspaceService.UpdateTabIds(
-                    workspace.oid,
-                    tabIds.slice(pinnedTabCount),
-                    tabIds.slice(0, pinnedTabCount)
-                )
-            );
         }),
         []
     );
@@ -575,6 +659,8 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                     tabStartIndex: tabIndex,
                     initialOffsetX: null,
                     totalScrollOffset: 0,
+                    initialTabIds: [...tabIds],
+                    initialPinnedTabIds: new Set(pinnedTabIds),
                     dragged: false,
                 };
 
@@ -587,7 +673,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
 
     const handleSelectTab = (tabId: string) => {
         if (!draggingTabDataRef.current.dragged) {
-            setActiveTab(tabId);
+            fireAndForget(() => getWorkspaceFacade().then((ws) => ws.focusTab({ tab_id: tabId })));
         }
     };
 
@@ -609,7 +695,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     );
 
     const handleAddTab = () => {
-        createTab();
+        fireAndForget(() => getWorkspaceFacade().then((ws) => ws.createTerminalTab()));
         tabsWrapperRef.current.style.transition;
         tabsWrapperRef.current.style.setProperty("--tabs-wrapper-transition", "width 0.1s ease");
 
@@ -620,8 +706,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
 
     const handleCloseTab = (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null, tabId: string) => {
         event?.stopPropagation();
-        const ws = globalStore.get(atoms.workspace);
-        getApi().closeTab(ws.oid, tabId);
+        fireAndForget(() => getWorkspaceFacade().then((ws) => ws.closeTab(tabId)));
         tabsWrapperRef.current.style.setProperty("--tabs-wrapper-transition", "width 0.3s ease");
         deleteLayoutModelForTab(tabId);
     };
@@ -629,9 +714,9 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const handlePinChange = useCallback(
         (tabId: string, pinned: boolean) => {
             console.log("handlePinChange", tabId, pinned);
-            fireAndForget(() => WorkspaceService.ChangeTabPinning(workspace.oid, tabId, pinned));
+            fireAndForget(() => getWorkspaceFacade().then((ws) => ws.setTabPinned(tabId, { pinned })));
         },
-        [workspace]
+        []
     );
 
     const handleTabLoaded = useCallback((tabId: string) => {

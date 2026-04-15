@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { atoms, globalStore, recordTEvent, refocusNode } from "@/app/store/global";
+import { getWorkspaceFacade } from "@/compat/workspace";
 import { useT } from "@/app/i18n/i18n";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
@@ -11,7 +12,6 @@ import { fireAndForget } from "@/util/util";
 import clsx from "clsx";
 import { useAtomValue } from "jotai";
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
-import { ObjectService } from "../store/services";
 import { makeORef, useWaveObjectValue } from "../store/wos";
 import "./tab.scss";
 import { TabBarModel } from "./tabbar-model";
@@ -105,7 +105,10 @@ const Tab = memo(
                 newText = newText || originalName;
                 editableRef.current.innerText = newText;
                 setIsEditable(false);
-                fireAndForget(() => ObjectService.UpdateTabName(id, newText));
+                fireAndForget(async () => {
+                    const workspaceFacade = await getWorkspaceFacade();
+                    await workspaceFacade.renameTab(id, { title: newText });
+                });
                 setTimeout(() => refocusNode(null), 10);
             };
 
