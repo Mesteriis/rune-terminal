@@ -133,6 +133,10 @@ class WorkspaceLayoutModel {
         if (!this.aiPanelWrapperRef) {
             return;
         }
+        if (!this.getAIPanelVisible()) {
+            this.aiPanelWrapperRef.style.width = "0px";
+            return;
+        }
         const width = this.getAIPanelWidth();
         const clampedWidth = this.getClampedAIPanelWidth(width, window.innerWidth);
         this.aiPanelWrapperRef.style.width = `${clampedWidth}px`;
@@ -199,6 +203,7 @@ class WorkspaceLayoutModel {
         this.inResize = true;
         this.panelGroupRef.setLayout(this.makePanelLayout(currentWindowWidth));
         this.inResize = false;
+        this.updateWrapperWidth();
     }
 
     syncAIPanelRef(): void {
@@ -216,6 +221,7 @@ class WorkspaceLayoutModel {
         this.inResize = true;
         this.panelGroupRef.setLayout(this.makePanelLayout(currentWindowWidth));
         this.inResize = false;
+        this.updateWrapperWidth();
     }
 
     getMaxAIPanelWidth(windowWidth: number): number {

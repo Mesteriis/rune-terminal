@@ -2,6 +2,65 @@
 
 Validation date: `2026-04-15`
 
+## Latest frontend compat modal visibility and stacking stabilization
+
+This pass stayed narrow and rechecked only the active compat AI/settings visibility path:
+
+- confirm whether AI/settings were missing from the DOM or merely hidden
+- distinguish portal/stacking behavior from layout-width collapse behavior
+- fix only the confirmed AI collapse sync defect
+- revalidate that terminal input still works after repeated AI/settings toggles
+
+Validation executed for this step:
+
+```bash
+npx tsc -p frontend/tsconfig.json --noEmit
+npm --prefix frontend run build
+
+RTERM_AUTH_TOKEN=modal-compat-token apps/desktop/bin/rterm-core serve --listen 127.0.0.1:52760 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/runa-modal-compat-state
+VITE_RTERM_API_BASE=http://127.0.0.1:52760 VITE_RTERM_AUTH_TOKEN=modal-compat-token npm --prefix frontend run dev -- --host 127.0.0.1 --port 4190 --strictPort
+
+# clean browser validation against http://127.0.0.1:4190/
+# - inspect AI DOM/render/geometry in closed and open states
+# - inspect settings popup DOM/container/computed styles/stacking chain
+# - repeat AI open/close and settings open/close
+# - send terminal input after modal interactions
+# - capture fresh console errors since the validation checkpoint
+```
+
+Observed result:
+
+- `npx tsc -p frontend/tsconfig.json --noEmit` passed
+- `npm --prefix frontend run build` passed
+- the settings surface was not blocked by stacking:
+  - it rendered through `FloatingPortal`
+  - the popup root was attached under `document.body`
+  - the visible popup container had `position:absolute`, `z-index:50`, and a valid transform anchor beside the sidebar trigger
+  - repeated open/close did not leave duplicate popup roots behind
+- the AI surface was not missing from the DOM and did not use a portal:
+  - it stayed inside the normal workspace panel tree
+  - the root cause lived in the collapse layout path, not in `z-index`
+- the confirmed defect was wrapper-width desynchronization on AI panel collapse:
+  - `frontend/app/workspace/workspace-layout-model.ts` previously recalculated wrapper width as if the panel were still open
+  - collapse/open sync depended on downstream layout timing instead of explicitly syncing the wrapper width in the toggle path
+- after the fix:
+  - closed AI state kept the tab-bar trigger in `text-secondary`
+  - the AI wrapper inline width was explicitly `0px`
+  - open AI state expanded back to about `300px` and remained visible
+  - repeated AI open/close kept the panel visible when open and hidden when closed
+- terminal interaction remained available after the modal checks:
+  - a live `echo modal-stacking-check` command was entered through the visible xterm surface after AI/settings toggles
+  - the echoed text appeared in the terminal output
+- fresh console capture for the validated interaction window returned zero new console errors
+- historical browser-session logs from earlier diagnostic attempts still contain legacy `/wave/service` `401 Unauthorized` errors, but they were not reproduced as new visibility/stacking errors in this slice
+
+Current conclusion:
+
+- settings visibility parity was already correct; no settings stacking fix was required
+- the real visibility defect was the AI wrapper width remaining out of sync with the collapsed panel state
+- explicit wrapper-width synchronization on AI panel collapse/open is sufficient for the active compat path
+- this section supersedes the older generic modal parity interpretation below for visibility/stacking root cause
+
 ## Latest frontend compat style surface stabilization
 
 This pass focused only on stabilizing the active compat style surface:
