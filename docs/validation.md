@@ -2,6 +2,57 @@
 
 Validation date: `2026-04-15`
 
+## Latest frontend compat terminal runtime stabilization slice
+
+This pass focused only on the active compat terminal path:
+
+- initial terminal mount
+- new tab -> terminal mount
+- tab switching as needed to re-enter terminal mount
+- terminal input
+
+Validation executed for this step:
+
+```bash
+npx tsc -p frontend/tsconfig.json --noEmit
+npm --prefix frontend run build
+
+RTERM_AUTH_TOKEN=compat-term-token apps/desktop/bin/rterm-core serve --listen 127.0.0.1:52747 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/runa-compat-term-runtime-state
+VITE_RTERM_API_BASE=http://127.0.0.1:52747 VITE_RTERM_AUTH_TOKEN=compat-term-token npm --prefix frontend run dev -- --host 127.0.0.1 --port 4180 --strictPort
+
+# fresh browser verification against http://127.0.0.1:4180/
+# - initial load
+# - Add Tab -> terminal mount
+# - switch back to Ops Shell
+# - type `echo compat-term-slice`
+# - switch to the new shell again
+# - inspect page errors, console errors, failed requests, terminal snapshot responses, and input posts
+```
+
+Observed result:
+
+- TypeScript compile passed
+- frontend production build passed
+- initial compat terminal mount completed without page or console runtime errors
+- `Add Tab` mounted a new terminal without reproducing `TypeError: snapshot.chunks is not iterable`
+- tab switching completed without page or console runtime errors
+- typing in the visible terminal produced successful `POST /api/v1/terminal/term-side/input` requests
+- the first snapshot response for the new terminal still returned malformed data with `chunks:null`
+- the active compat terminal path remained stable because `terminalStore.refresh()` now normalizes that malformed payload to `chunks: []` before storing or replaying it
+- later snapshot responses for the same terminal returned normal chunk arrays and continued rendering correctly
+
+Per-issue status for this slice:
+
+- `TypeError: snapshot.chunks is not iterable`: `fixed`
+  - crash source remained `frontend/app/view/term/termwrap.ts`
+  - root cause was a malformed compat snapshot payload with `chunks:null` on first new-tab mount
+  - active-path fix was applied at the snapshot ingress boundary in `frontend/app/state/terminal.store.ts`
+
+Additional observation:
+
+- browser network inspection still showed `net::ERR_ABORTED` for replaced terminal SSE stream requests during tab switches
+- those aborts did not surface as page errors or console errors in the verified compat terminal flow
+
 ## Latest frontend compat console/runtime stabilization slice
 
 This pass focused only on the active visible compat shell path:

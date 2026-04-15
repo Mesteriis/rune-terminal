@@ -37,6 +37,13 @@ interface StreamState {
     fromSeq: number;
 }
 
+function normalizeTerminalSnapshot(snapshot: TerminalSnapshot): TerminalSnapshot {
+    return {
+        ...snapshot,
+        chunks: Array.isArray(snapshot?.chunks) ? snapshot.chunks : [],
+    };
+}
+
 class TerminalStore {
     private state: TerminalStoreState;
     private listeners = new Set<TerminalStoreListener>();
@@ -117,7 +124,7 @@ class TerminalStore {
 
         const refreshTask = (async () => {
             const facade = await getTerminalFacade();
-            const snapshot = await facade.getSnapshot(widgetId);
+            const snapshot = normalizeTerminalSnapshot(await facade.getSnapshot(widgetId));
             const widgetState = this.getOrCreateWidgetState(widgetId);
             const prevSessionId = widgetState.sessionId;
 
