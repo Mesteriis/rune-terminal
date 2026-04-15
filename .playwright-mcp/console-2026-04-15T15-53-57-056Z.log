@@ -1,0 +1,69 @@
+[    2197ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://127.0.0.1:4181/node_modules/.vite/deps/react-dom_client.js?v=5c69ea68:14337
+[    2204ms] [LOG] [browser-dev] Init Bare @ http://127.0.0.1:4181/wave.ts:96
+[    2204ms] [LOG] [browser-dev] Init Browser Compat Runtime @ http://127.0.0.1:4181/wave.ts:96
+[    2302ms] [LOG] runtime.source=vite-env @ http://127.0.0.1:4181/runtime/debug.ts:3
+[    2302ms] [LOG] runtime.baseUrl=http://127.0.0.1:49576 @ http://127.0.0.1:4181/runtime/debug.ts:3
+[    2302ms] [LOG] runtime.authToken=present @ http://127.0.0.1:4181/runtime/debug.ts:3
+[    2302ms] [LOG] health.status=ok @ http://127.0.0.1:4181/runtime/debug.ts:3
+[    2302ms] [LOG] bootstrap.product=RunaTerminal @ http://127.0.0.1:4181/runtime/debug.ts:3
+[    2302ms] [LOG] workspace.id=ws-local @ http://127.0.0.1:4181/runtime/debug.ts:3
+[    2302ms] [LOG] workspace.active_tab_id=tab-main @ http://127.0.0.1:4181/runtime/debug.ts:3
+[    2302ms] [LOG] workspace.active_widget_id=term-main @ http://127.0.0.1:4181/runtime/debug.ts:3
+[    2302ms] [LOG] terminal.widget_id=term-main @ http://127.0.0.1:4181/runtime/debug.ts:3
+[    2302ms] [LOG] terminal.snapshot=ok next_seq=5 status=running @ http://127.0.0.1:4181/runtime/debug.ts:3
+[    2302ms] [LOG] [browser-dev] window init status: ready @ http://127.0.0.1:4181/wave.ts:91
+[   33187ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://127.0.0.1:4181/node_modules/.vite/deps/react-dom_client.js?v=5c69ea68:14337
+[   33195ms] [LOG] update zoomfactor 1 @ http://127.0.0.1:4181/wave.ts:145
+[   33272ms] [WARNING] Failed to decode downloaded font: http://127.0.0.1:4181/fonts/inter-variable.woff2 @ http://127.0.0.1:4181/:0
+[   33272ms] [WARNING] OTS parsing error: invalid sfntVersion: 1008821359 @ http://127.0.0.1:4181/:0
+[   33272ms] [WARNING] Failed to decode downloaded font: http://127.0.0.1:4181/fonts/jetbrains-mono-v13-latin-regular.woff2 @ http://127.0.0.1:4181/:0
+[   33272ms] [WARNING] OTS parsing error: invalid sfntVersion: 1008821359 @ http://127.0.0.1:4181/:0
+[   33272ms] [WARNING] Failed to decode downloaded font: http://127.0.0.1:4181/fonts/jetbrains-mono-v13-latin-200.woff2 @ http://127.0.0.1:4181/:0
+[   33272ms] [WARNING] OTS parsing error: invalid sfntVersion: 1008821359 @ http://127.0.0.1:4181/:0
+[   33273ms] [WARNING] Failed to decode downloaded font: http://127.0.0.1:4181/fonts/jetbrains-mono-v13-latin-700.woff2 @ http://127.0.0.1:4181/:0
+[   33273ms] [WARNING] OTS parsing error: invalid sfntVersion: 1008821359 @ http://127.0.0.1:4181/:0
+[   33274ms] [WARNING] Failed to decode downloaded font: http://127.0.0.1:4181/fonts/hacknerdmono-regular.ttf @ http://127.0.0.1:4181/:0
+[   33274ms] [WARNING] OTS parsing error: invalid sfntVersion: 1008821359 @ http://127.0.0.1:4181/:0
+[   33282ms] A network error occurred.
+[   33283ms] A network error occurred.
+[   33274ms] [WARNING] Failed to decode downloaded font: http://127.0.0.1:4181/fonts/hacknerdmono-bold.ttf @ http://127.0.0.1:4181/:0
+[   33275ms] [WARNING] OTS parsing error: invalid sfntVersion: 1008821359 @ http://127.0.0.1:4181/:0
+[   33288ms] A network error occurred.
+[   33295ms] A network error occurred.
+[   33297ms] A network error occurred.
+[   33299ms] A network error occurred.
+[   33288ms] [WARNING] Failed to decode downloaded font: http://127.0.0.1:4181/fonts/hacknerdmono-italic.ttf @ http://127.0.0.1:4181/:0
+[   33288ms] [WARNING] OTS parsing error: invalid sfntVersion: 1008821359 @ http://127.0.0.1:4181/:0
+[   33288ms] [WARNING] Failed to decode downloaded font: http://127.0.0.1:4181/fonts/hacknerdmono-bolditalic.ttf @ http://127.0.0.1:4181/:0
+[   33288ms] [WARNING] OTS parsing error: invalid sfntVersion: 1008821359 @ http://127.0.0.1:4181/:0
+[   33344ms] A network error occurred.
+[   33351ms] A network error occurred.
+[   33289ms] [LOG] Init Bare Done @ http://127.0.0.1:4181/wave.ts:212
+[   61786ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://127.0.0.1:4181/node_modules/.vite/deps/react-dom_client.js?v=5c69ea68:14337
+[   61798ms] [LOG] update zoomfactor 1 @ http://127.0.0.1:4181/wave.ts:145
+[   61805ms] [WARNING] Failed to decode downloaded font: http://127.0.0.1:4181/fonts/inter-variable.woff2 @ http://127.0.0.1:4181/:0
+[   61805ms] [WARNING] OTS parsing error: invalid sfntVersion: 1008821359 @ http://127.0.0.1:4181/:0
+[   61848ms] A network error occurred.
+[   61808ms] [WARNING] Failed to decode downloaded font: http://127.0.0.1:4181/fonts/jetbrains-mono-v13-latin-regular.woff2 @ http://127.0.0.1:4181/:0
+[   61808ms] [WARNING] OTS parsing error: invalid sfntVersion: 1008821359 @ http://127.0.0.1:4181/:0
+[   61848ms] A network error occurred.
+[   61809ms] [WARNING] Failed to decode downloaded font: http://127.0.0.1:4181/fonts/jetbrains-mono-v13-latin-200.woff2 @ http://127.0.0.1:4181/:0
+[   61809ms] [WARNING] OTS parsing error: invalid sfntVersion: 1008821359 @ http://127.0.0.1:4181/:0
+[   61849ms] A network error occurred.
+[   61810ms] [WARNING] Failed to decode downloaded font: http://127.0.0.1:4181/fonts/hacknerdmono-bold.ttf @ http://127.0.0.1:4181/:0
+[   61810ms] [WARNING] OTS parsing error: invalid sfntVersion: 1008821359 @ http://127.0.0.1:4181/:0
+[   61850ms] A network error occurred.
+[   61810ms] [WARNING] Failed to decode downloaded font: http://127.0.0.1:4181/fonts/jetbrains-mono-v13-latin-700.woff2 @ http://127.0.0.1:4181/:0
+[   61811ms] [WARNING] OTS parsing error: invalid sfntVersion: 1008821359 @ http://127.0.0.1:4181/:0
+[   61850ms] A network error occurred.
+[   61811ms] [WARNING] Failed to decode downloaded font: http://127.0.0.1:4181/fonts/hacknerdmono-italic.ttf @ http://127.0.0.1:4181/:0
+[   61811ms] [WARNING] OTS parsing error: invalid sfntVersion: 1008821359 @ http://127.0.0.1:4181/:0
+[   61850ms] A network error occurred.
+[   61813ms] [WARNING] Failed to decode downloaded font: http://127.0.0.1:4181/fonts/hacknerdmono-regular.ttf @ http://127.0.0.1:4181/:0
+[   61813ms] [WARNING] OTS parsing error: invalid sfntVersion: 1008821359 @ http://127.0.0.1:4181/:0
+[   61851ms] A network error occurred.
+[   61814ms] [WARNING] Failed to decode downloaded font: http://127.0.0.1:4181/fonts/hacknerdmono-bolditalic.ttf @ http://127.0.0.1:4181/:0
+[   61814ms] [WARNING] OTS parsing error: invalid sfntVersion: 1008821359 @ http://127.0.0.1:4181/:0
+[   61852ms] A network error occurred.
+[   61814ms] [LOG] Init Bare Done @ http://127.0.0.1:4181/wave.ts:212
+[   72828ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:4181/@vite/client:968

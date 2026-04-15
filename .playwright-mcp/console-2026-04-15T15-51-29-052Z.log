@@ -1,0 +1,79 @@
+[    1601ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://127.0.0.1:4180/node_modules/.vite/deps/react-dom_client.js?v=5c69ea68:14337
+[    1603ms] [LOG] [browser-dev] Init Bare @ http://127.0.0.1:4180/wave.ts:96
+[    1603ms] [LOG] [browser-dev] Init Browser Compat Runtime @ http://127.0.0.1:4180/wave.ts:96
+[    1675ms] [LOG] runtime.source=vite-env @ http://127.0.0.1:4180/runtime/debug.ts:3
+[    1675ms] [LOG] runtime.baseUrl=http://127.0.0.1:65230 @ http://127.0.0.1:4180/runtime/debug.ts:3
+[    1675ms] [LOG] runtime.authToken=present @ http://127.0.0.1:4180/runtime/debug.ts:3
+[    1675ms] [LOG] health.status=ok @ http://127.0.0.1:4180/runtime/debug.ts:3
+[    1675ms] [LOG] bootstrap.product=RunaTerminal @ http://127.0.0.1:4180/runtime/debug.ts:3
+[    1675ms] [LOG] workspace.id=ws-local @ http://127.0.0.1:4180/runtime/debug.ts:3
+[    1675ms] [LOG] workspace.active_tab_id=tab-main @ http://127.0.0.1:4180/runtime/debug.ts:3
+[    1675ms] [LOG] workspace.active_widget_id=term-main @ http://127.0.0.1:4180/runtime/debug.ts:3
+[    1675ms] [LOG] terminal.widget_id=term-main @ http://127.0.0.1:4180/runtime/debug.ts:3
+[    1675ms] [LOG] terminal.snapshot=ok next_seq=5 status=running @ http://127.0.0.1:4180/runtime/debug.ts:3
+[    1675ms] [LOG] [browser-dev] window init status: ready @ http://127.0.0.1:4180/wave.ts:91
+[    1676ms] [LOG] [browser-dev] Init TideTerm {"tabId":"tab-main","clientId":"client-main","windowId":"window-main","activate":true,"primaryTabStartup":true} @ http://127.0.0.1:4180/wave.ts:96
+[    1676ms] [LOG] TideTerm Init {tabId: tab-main, clientId: client-main, windowId: window-main, platform: darwin, environment: renderer} @ http://127.0.0.1:4180/wave.ts:298
+[    1679ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:65230/ws?routeid=tab:tab-main' failed: HTTP Authentication failed; no valid credentials available @ http://127.0.0.1:4180/util/wsutil.ts:13
+[    1680ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://127.0.0.1:65230/wave/service?service=client&method=GetAllConnStatus:0
+[    1680ms] [LOG] [browser-dev] Error in initWave call client.GetAllConnStatus failed: 401 Unauthorized
+Error: call client.GetAllConnStatus failed: 401 Unauthorized
+    at http://127.0.0.1:4180/app/store/wos.ts:92:10
+    at async loadConnStatus (http://127.0.0.1:4180/app/store/global.ts:606:24)
+    at async initWave (http://127.0.0.1:4180/wave.ts:308:2)
+    at async initWaveWrap (http://127.0.0.1:4180/wave.ts:234:3)
+    at async HTMLDocument.initBare (http://127.0.0.1:4180/wave.ts:209:4) @ http://127.0.0.1:4180/wave.ts:96
+[    1680ms] [ERROR] Error in initWave Error: call client.GetAllConnStatus failed: 401 Unauthorized
+    at http://127.0.0.1:4180/app/store/wos.ts:92:10
+    at async loadConnStatus (http://127.0.0.1:4180/app/store/global.ts:606:24)
+    at async initWave (http://127.0.0.1:4180/wave.ts:308:2)
+    at async initWaveWrap (http://127.0.0.1:4180/wave.ts:234:3)
+    at async HTMLDocument.initBare (http://127.0.0.1:4180/wave.ts:209:4) @ http://127.0.0.1:4180/@vite/client:509
+[    2689ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:65230/ws?routeid=tab:tab-main' failed: HTTP Authentication failed; no valid credentials available @ http://127.0.0.1:4180/util/wsutil.ts:13
+[    3692ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:65230/ws?routeid=tab:tab-main' failed: HTTP Authentication failed; no valid credentials available @ http://127.0.0.1:4180/util/wsutil.ts:13
+[    4694ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:65230/ws?routeid=tab:tab-main' failed: HTTP Authentication failed; no valid credentials available @ http://127.0.0.1:4180/util/wsutil.ts:13
+[    5697ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:65230/ws?routeid=tab:tab-main' failed: HTTP Authentication failed; no valid credentials available @ http://127.0.0.1:4180/util/wsutil.ts:13
+[    7077ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:65230/ws?routeid=tab:tab-main' failed: HTTP Authentication failed; no valid credentials available @ http://127.0.0.1:4180/util/wsutil.ts:13
+[    8080ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:65230/ws?routeid=tab:tab-main' failed: HTTP Authentication failed; no valid credentials available @ http://127.0.0.1:4180/util/wsutil.ts:13
+[    9085ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:65230/ws?routeid=tab:tab-main' failed: HTTP Authentication failed; no valid credentials available @ http://127.0.0.1:4180/util/wsutil.ts:13
+[   10089ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:65230/ws?routeid=tab:tab-main' failed: HTTP Authentication failed; no valid credentials available @ http://127.0.0.1:4180/util/wsutil.ts:13
+[   11093ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:65230/ws?routeid=tab:tab-main' failed: HTTP Authentication failed; no valid credentials available @ http://127.0.0.1:4180/util/wsutil.ts:13
+[   12097ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:65230/ws?routeid=tab:tab-main' failed: HTTP Authentication failed; no valid credentials available @ http://127.0.0.1:4180/util/wsutil.ts:13
+[   13102ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:65230/ws?routeid=tab:tab-main' failed: HTTP Authentication failed; no valid credentials available @ http://127.0.0.1:4180/util/wsutil.ts:13
+[   14111ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:65230/ws?routeid=tab:tab-main' failed: HTTP Authentication failed; no valid credentials available @ http://127.0.0.1:4180/util/wsutil.ts:13
+[   15120ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:65230/ws?routeid=tab:tab-main' failed: HTTP Authentication failed; no valid credentials available @ http://127.0.0.1:4180/util/wsutil.ts:13
+[   16132ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:65230/ws?routeid=tab:tab-main' failed: HTTP Authentication failed; no valid credentials available @ http://127.0.0.1:4180/util/wsutil.ts:13
+[   17144ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:65230/ws?routeid=tab:tab-main' failed: HTTP Authentication failed; no valid credentials available @ http://127.0.0.1:4180/util/wsutil.ts:13
+[   18158ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:65230/ws?routeid=tab:tab-main' failed: HTTP Authentication failed; no valid credentials available @ http://127.0.0.1:4180/util/wsutil.ts:13
+[   19194ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:65230/ws?routeid=tab:tab-main' failed: HTTP Authentication failed; no valid credentials available @ http://127.0.0.1:4180/util/wsutil.ts:13
+[   20256ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:65230/ws?routeid=tab:tab-main' failed: HTTP Authentication failed; no valid credentials available @ http://127.0.0.1:4180/util/wsutil.ts:13
+[   21331ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:65230/ws?routeid=tab:tab-main' failed: HTTP Authentication failed; no valid credentials available @ http://127.0.0.1:4180/util/wsutil.ts:13
+[   22432ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:65230/ws?routeid=tab:tab-main' failed: HTTP Authentication failed; no valid credentials available @ http://127.0.0.1:4180/util/wsutil.ts:13
+[  106012ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://127.0.0.1:4180/node_modules/.vite/deps/react-dom_client.js?v=5c69ea68:14337
+[  106019ms] [LOG] [browser-dev] Init Bare @ http://127.0.0.1:4180/wave.ts?t=1776268394327:96
+[  106019ms] [LOG] [browser-dev] Init Browser Compat Runtime @ http://127.0.0.1:4180/wave.ts?t=1776268394327:96
+[  106118ms] [LOG] runtime.source=vite-env @ http://127.0.0.1:4180/runtime/debug.ts:3
+[  106118ms] [LOG] runtime.baseUrl=http://127.0.0.1:65230 @ http://127.0.0.1:4180/runtime/debug.ts:3
+[  106118ms] [LOG] runtime.authToken=present @ http://127.0.0.1:4180/runtime/debug.ts:3
+[  106118ms] [LOG] health.status=ok @ http://127.0.0.1:4180/runtime/debug.ts:3
+[  106118ms] [LOG] bootstrap.product=RunaTerminal @ http://127.0.0.1:4180/runtime/debug.ts:3
+[  106118ms] [LOG] workspace.id=ws-local @ http://127.0.0.1:4180/runtime/debug.ts:3
+[  106118ms] [LOG] workspace.active_tab_id=tab-main @ http://127.0.0.1:4180/runtime/debug.ts:3
+[  106118ms] [LOG] workspace.active_widget_id=term-main @ http://127.0.0.1:4180/runtime/debug.ts:3
+[  106118ms] [LOG] terminal.widget_id=term-main @ http://127.0.0.1:4180/runtime/debug.ts:3
+[  106118ms] [LOG] terminal.snapshot=ok next_seq=5 status=running @ http://127.0.0.1:4180/runtime/debug.ts:3
+[  106118ms] [LOG] [browser-dev] window init status: ready @ http://127.0.0.1:4180/wave.ts?t=1776268394327:91
+[  145012ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://127.0.0.1:4180/node_modules/.vite/deps/react-dom_client.js?v=5c69ea68:14337
+[  145019ms] [LOG] [browser-dev] Init Bare @ http://127.0.0.1:4180/wave.ts?t=1776268394327:96
+[  145019ms] [LOG] [browser-dev] Init Browser Compat Runtime @ http://127.0.0.1:4180/wave.ts?t=1776268394327:96
+[  145086ms] [LOG] runtime.source=vite-env @ http://127.0.0.1:4180/runtime/debug.ts:3
+[  145086ms] [LOG] runtime.baseUrl=http://127.0.0.1:65230 @ http://127.0.0.1:4180/runtime/debug.ts:3
+[  145086ms] [LOG] runtime.authToken=present @ http://127.0.0.1:4180/runtime/debug.ts:3
+[  145086ms] [LOG] health.status=ok @ http://127.0.0.1:4180/runtime/debug.ts:3
+[  145086ms] [LOG] bootstrap.product=RunaTerminal @ http://127.0.0.1:4180/runtime/debug.ts:3
+[  145086ms] [LOG] workspace.id=ws-local @ http://127.0.0.1:4180/runtime/debug.ts:3
+[  145086ms] [LOG] workspace.active_tab_id=tab-main @ http://127.0.0.1:4180/runtime/debug.ts:3
+[  145086ms] [LOG] workspace.active_widget_id=term-main @ http://127.0.0.1:4180/runtime/debug.ts:3
+[  145086ms] [LOG] terminal.widget_id=term-main @ http://127.0.0.1:4180/runtime/debug.ts:3
+[  145086ms] [LOG] terminal.snapshot=ok next_seq=5 status=running @ http://127.0.0.1:4180/runtime/debug.ts:3
+[  145086ms] [LOG] [browser-dev] window init status: ready @ http://127.0.0.1:4180/wave.ts?t=1776268394327:91
