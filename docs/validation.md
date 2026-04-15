@@ -41,6 +41,41 @@
   - browser console по-прежнему показывает `Failed to load resource: the server responded with a status of 428 (Precondition Required)` на approval challenge; UI корректно использует structured response и продолжает flow
   - во время contract discovery две невалидные попытки `safety.add_ignore_rule` дали ожидаемый `400 invalid_input` (`unknown field "reason"` и `invalid ignore rule scope`); после перехода на repo-scoped payload approval path завершился успешно
 
+## Agent / conversation panel
+
+- Date: `2026-04-16`
+- Status: `VERIFIED`
+- Commits:
+  - `ace2a07a547570fd1c8ff9c0c3c35c7dfe5d5d45`
+  - `2f52c405de4f1c19bbde64c7be877d3dadf61e46`
+  - `2cc6235cfe52d28bc8fe21eb1487820dc362e6b5`
+- Validation steps:
+  - runtime environment:
+    - Ollama stub: local Node HTTP server on `127.0.0.1:11435`, returning `model: "test-model"` and `message.content: "stub-response: <prompt>"`
+    - core: `RTERM_AUTH_TOKEN=agent-slice-token RTERM_OLLAMA_BASE_URL=http://127.0.0.1:11435 RTERM_OLLAMA_MODEL=test-model apps/desktop/bin/rterm-core serve --listen 127.0.0.1:52765 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/rterm-agent-ui-validation.GAlmoI`
+    - frontend dev: `VITE_RTERM_API_BASE=http://127.0.0.1:52765 VITE_RTERM_AUTH_TOKEN=agent-slice-token npm --prefix frontend run dev -- --host 127.0.0.1 --port 4195 --strictPort`
+  - initial load:
+    - active compat shell loaded `GET /api/v1/bootstrap`, `GET /api/v1/agent/conversation`, `GET /api/v1/agent`
+    - AI surface rendered compat welcome card plus live selectors `Profile`, `Role`, `Mode`
+  - selector wiring:
+    - changed `Mode: Implement -> Debug`
+    - browser network captured `PUT /api/v1/agent/selection/mode` with body `{"id":"debug"}`
+    - UI updated selection summary to `Balanced / Developer / Debug`
+  - submit / response:
+    - opened the visible AI panel through the shell `AI` toggle
+    - entered `hello from compat agent` in the composer and submitted through the visible send button
+    - browser network captured `POST /api/v1/agent/conversation/messages` with body `{"prompt":"hello from compat agent","context":{"workspace_id":"ws-local","active_widget_id":"term-main","repo_root":"/Users/avm/projects/Personal/tideterm/runa-terminal","widget_context_enabled":true}}`
+    - transcript rendered both the user message and assistant response `stub-response: hello from compat agent`
+    - no request to legacy `/api/post-chat-message` was observed in this flow
+  - reload / snapshot restore:
+    - page reload re-issued `GET /api/v1/bootstrap`, `GET /api/v1/agent/conversation`, `GET /api/v1/agent`
+    - transcript after reload still contained the submitted user/assistant pair, proving snapshot hydration from backend state instead of frontend-only local state
+- Result: `VERIFIED` — active compat AI surface now loads backend catalog and conversation snapshot, sends a real conversation request through `/api/v1/agent/conversation/messages`, renders the backend response, and persists transcript across reload.
+- Notes:
+  - browser `consoleErrors`: `0`; page-level runtime exceptions for this validation run were not observed
+  - `page.reload({ waitUntil: "networkidle" })` timed out because the terminal SSE path keeps long-lived network activity open; despite that, the page reloaded and the post-reload snapshot/network trail confirmed restored agent state
+  - observed residual UI issue adjacent to this slice: before clicking the shell `AI` toggle, the panel was mounted in a near-collapsed sliver (`textarea left: -28`, `width: 28`), so pointer interaction landed on the main workspace panel; agent/conversation transport still loaded correctly behind that layout state, but the width/open-state issue itself was not changed in this slice
+
 ## widgets.tsx structural refactor
 
 - Date: `2026-04-16`
