@@ -6,7 +6,7 @@
 - `DONE`
 - `BLOCKED`
 
-Phase 1 создаёт единый feature registry из `docs/tideterm-feature-inventory.md`, `docs/feature-parity-audit.md` и `docs/feature-gap-summary.md`. Инициализация прогресса выполняется отдельно в phase 4.
+Progress инициализирован из audit trail: `MISSING -> TODO`, `PARTIAL -> IN_PROGRESS`, `FULL -> DONE` только для явно verified features; остальные `FULL -> IN_PROGRESS` до отдельной проверки.
 
 ## Domains
 
@@ -14,7 +14,7 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 
 ### Feature: Ввод в терминал
 
-- Status: TODO
+- Status: DONE
 - Parity: FULL
 - Source: `frontend/src/components/TerminalSurface.tsx`; `frontend/src/lib/api.ts`
 - Location: `frontend/app/view/term/compat-terminal.tsx`; `frontend/app/state/terminal.store.ts`; `core/transport/httpapi/handlers_terminal.go`
@@ -36,7 +36,7 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 
 ### Feature: Потоковый вывод терминала
 
-- Status: TODO
+- Status: DONE
 - Parity: FULL
 - Source: `frontend/src/components/TerminalSurface.tsx`; `frontend/src/lib/api.ts`
 - Location: `frontend/app/state/terminal.store.ts`; `frontend/rterm-api/http/sse.ts`; `core/transport/httpapi/handlers_terminal.go`
@@ -58,7 +58,7 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 
 ### Feature: Scrollback / snapshot hydration
 
-- Status: TODO
+- Status: IN_PROGRESS
 - Parity: FULL
 - Source: `frontend/src/components/TerminalSurface.tsx`; `frontend/src/lib/terminal.ts`
 - Location: `frontend/app/state/terminal.store.ts`; `core/transport/httpapi/handlers_terminal.go`
@@ -80,7 +80,7 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 
 ### Feature: Interrupt активной terminal session
 
-- Status: TODO
+- Status: DONE
 - Parity: FULL
 - Source: `frontend/src/components/TerminalSurface.tsx`; `frontend/src/hooks/useWorkspaceActions.ts`
 - Location: `core/app/tool_terminal.go`; `docs/frontend-terminal-interrupt-validation.md`
@@ -102,7 +102,7 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 
 ### Feature: Клавиатурные copy/paste shortcuts
 
-- Status: TODO
+- Status: IN_PROGRESS
 - Parity: FULL
 - Source: `frontend/src/components/TerminalSurface.tsx`
 - Location: `frontend/app/view/term/termwrap.ts`
@@ -124,7 +124,7 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 
 ### Feature: Follow output / jump to latest
 
-- Status: TODO
+- Status: IN_PROGRESS
 - Parity: PARTIAL
 - Source: `frontend/src/components/TerminalSurface.tsx`
 - Location: `frontend/app/view/term/termwrap.ts`; `frontend/app/view/term/compat-terminal.tsx`
@@ -146,7 +146,7 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 
 ### Feature: Drag & drop путей в терминал
 
-- Status: TODO
+- Status: IN_PROGRESS
 - Parity: PARTIAL
 - Source: `README.md` раздел `Drag & Drop Paths into Terminal`
 - Location: `frontend/app/view/term/termwrap.ts`
@@ -236,7 +236,7 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 
 ### Feature: Block-based workspace с terminal/files/preview/web/editor/AI
 
-- Status: TODO
+- Status: IN_PROGRESS
 - Parity: PARTIAL
 - Source: `README.md` раздел `Highlights`; `README.md` раздел `Create blocks`
 - Location: `frontend/app/tab/tabcontent.tsx`; `frontend/app/view/preview/*`; `frontend/app/view/webview/*`; `frontend/app/view/codeeditor/*`
@@ -258,7 +258,7 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 
 ### Feature: Создание block через sidebar / launcher surface
 
-- Status: TODO
+- Status: IN_PROGRESS
 - Parity: PARTIAL
 - Source: `README.md` раздел `Create blocks`; `frontend/src/lib/launcherCatalog.ts`
 - Location: `frontend/app/workspace/widgets.tsx`; `frontend/app/store/global.ts`
@@ -302,7 +302,7 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 
 ### Feature: Tab switching / focus
 
-- Status: TODO
+- Status: DONE
 - Parity: FULL
 - Source: `frontend/src/hooks/useWorkspaceActions.ts`; `frontend/src/components/WorkspaceTab.tsx`; `frontend/src/types.ts`
 - Location: `frontend/app/tab/tabbar.tsx`; `frontend/app/state/workspace.store.ts`; `frontend/rterm-api/workspace/client.ts`
@@ -324,7 +324,7 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 
 ### Feature: Создание terminal tab
 
-- Status: TODO
+- Status: IN_PROGRESS
 - Parity: FULL
 - Source: `frontend/src/hooks/useWorkspaceActions.ts`; `frontend/src/lib/api.ts`
 - Location: `frontend/app/tab/tabbar.tsx`; `frontend/app/state/workspace.store.ts`; `frontend/rterm-api/workspace/client.ts`; `core/transport/httpapi/api.go`
@@ -346,7 +346,7 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 
 ### Feature: Rename / pin / close tab
 
-- Status: TODO
+- Status: IN_PROGRESS
 - Parity: FULL
 - Source: `frontend/src/hooks/useWorkspaceActions.ts`; `frontend/src/lib/api.ts`
 - Location: `frontend/app/tab/tabbar.tsx`; `frontend/app/state/workspace.store.ts`; `frontend/rterm-api/workspace/client.ts`
@@ -368,7 +368,7 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 
 ### Feature: Drag reorder tabs
 
-- Status: TODO
+- Status: IN_PROGRESS
 - Parity: PARTIAL
 - Source: `frontend/src/components/WorkspaceTab.tsx`; `frontend/src/hooks/useWorkspaceLayout.ts`; `frontend/src/hooks/useWorkspaceActions.ts`
 - Location: `frontend/app/tab/tabbar.tsx`; `frontend/app/state/workspace.store.ts`
@@ -390,7 +390,7 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 
 ### Feature: Focus widget / quick widget access
 
-- Status: TODO
+- Status: IN_PROGRESS
 - Parity: FULL
 - Source: `frontend/src/hooks/useWorkspaceActions.ts`; `frontend/src/components/WidgetDock.tsx`
 - Location: `frontend/app/workspace/widgets.tsx`; `frontend/app/state/workspace.store.ts`
@@ -414,7 +414,7 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 
 ### Feature: Persistent conversation transcript
 
-- Status: TODO
+- Status: IN_PROGRESS
 - Parity: PARTIAL
 - Source: `frontend/src/hooks/useConversation.ts`; `frontend/src/components/AgentTranscript.tsx`
 - Location: `core/conversation/*`; `core/transport/httpapi/handlers_agent_conversation.go`; `frontend/app/aipanel/waveai-model.tsx`
@@ -436,7 +436,7 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 
 ### Feature: Prompt profile selection
 
-- Status: TODO
+- Status: IN_PROGRESS
 - Parity: PARTIAL
 - Source: `frontend/src/components/AgentModeStrip.tsx`; `frontend/src/types.ts`
 - Location: `core/agent/*`; `core/transport/httpapi/handlers_agent.go`; `frontend/app/aipanel/aimode.tsx`
@@ -458,7 +458,7 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 
 ### Feature: Role preset selection
 
-- Status: TODO
+- Status: IN_PROGRESS
 - Parity: PARTIAL
 - Source: `frontend/src/components/AgentModeStrip.tsx`; `frontend/src/types.ts`
 - Location: `core/agent/*`; `core/transport/httpapi/handlers_agent.go`
@@ -480,7 +480,7 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 
 ### Feature: Work mode selection
 
-- Status: TODO
+- Status: IN_PROGRESS
 - Parity: PARTIAL
 - Source: `frontend/src/components/AgentModeStrip.tsx`; `frontend/src/types.ts`
 - Location: `core/agent/*`; `core/transport/httpapi/handlers_agent.go`
@@ -502,7 +502,7 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 
 ### Feature: Free-text AI conversation
 
-- Status: TODO
+- Status: IN_PROGRESS
 - Parity: PARTIAL
 - Source: `frontend/src/hooks/useConversation.ts`; `frontend/src/lib/api.ts`
 - Location: `core/transport/httpapi/handlers_agent_conversation.go`; `frontend/app/aipanel/waveai-model.tsx`
@@ -524,7 +524,7 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 
 ### Feature: Явный `/run <command>` execution path
 
-- Status: TODO
+- Status: IN_PROGRESS
 - Parity: PARTIAL
 - Source: `frontend/src/hooks/useAiCommandExecution.ts`; `frontend/src/lib/aiTerminalCommand.ts`
 - Location: `core/app/ai_terminal_command.go`; `core/transport/httpapi/handlers_agent_conversation.go`
@@ -546,7 +546,7 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 
 ### Feature: Объяснение результата terminal command
 
-- Status: TODO
+- Status: IN_PROGRESS
 - Parity: PARTIAL
 - Source: `frontend/src/hooks/useAiCommandExecution.ts`; `frontend/src/hooks/useConversation.ts`
 - Location: `core/app/ai_terminal_command.go`; `core/transport/httpapi/handlers_agent_conversation.go`
@@ -568,7 +568,7 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 
 ### Feature: Approval внутри AI/tool flow
 
-- Status: TODO
+- Status: IN_PROGRESS
 - Parity: PARTIAL
 - Source: `frontend/src/hooks/useApprovalFlow.ts`; `frontend/src/hooks/useAiCommandExecution.ts`
 - Location: `core/app/tool_policy.go`; `core/toolruntime/*`; `frontend/app/aipanel/aitooluse.tsx`
@@ -614,7 +614,7 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 
 ### Feature: Local PTY sessions
 
-- Status: TODO
+- Status: IN_PROGRESS
 - Parity: FULL
 - Source: `frontend/src/components/TerminalSurface.tsx`; `pkg/shellexec/shellexec.go`
 - Location: `core/terminal/service.go`; `core/terminal/pty_unix.go`; `frontend/app/view/term/compat-terminal.tsx`
@@ -636,7 +636,7 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 
 ### Feature: Saved SSH profiles
 
-- Status: TODO
+- Status: IN_PROGRESS
 - Parity: FULL
 - Source: `README.md` раздел `Remote Connections (SSH / WSL)`; `frontend/src/components/ConnectionsPanel.tsx`; `pkg/remote/conncontroller/conncontroller.go`
 - Location: `core/connections/service.go`; `frontend/rterm-api/connections/*`; `core/transport/httpapi/handlers_connections.go`
@@ -658,7 +658,7 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 
 ### Feature: Выбор default connection для новых shell launches
 
-- Status: TODO
+- Status: IN_PROGRESS
 - Parity: FULL
 - Source: `frontend/src/components/ConnectionsPanel.tsx`; `frontend/src/hooks/useConnectionsActions.ts`; `frontend/src/types.ts`
 - Location: `core/app/tool_connections.go`; `frontend/rterm-api/connections/client.ts`
@@ -680,7 +680,7 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 
 ### Feature: Preflight connection check
 
-- Status: TODO
+- Status: IN_PROGRESS
 - Parity: FULL
 - Source: `frontend/src/components/ConnectionsPanel.tsx`; `frontend/src/hooks/useConnectionsActions.ts`
 - Location: `core/connections/checker.go`; `core/app/tool_connections.go`; `frontend/rterm-api/connections/client.ts`
@@ -702,7 +702,7 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 
 ### Feature: Open shell against selected connection
 
-- Status: TODO
+- Status: IN_PROGRESS
 - Parity: FULL
 - Source: `frontend/src/components/ConnectionsPanel.tsx`; `frontend/src/hooks/useWorkspaceActions.ts`
 - Location: `core/app/workspace_actions.go`; `core/app/connection_launch.go`; `frontend/rterm-api/workspace/client.ts`
@@ -836,7 +836,7 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 
 ### Feature: Trusted rules management
 
-- Status: TODO
+- Status: IN_PROGRESS
 - Parity: PARTIAL
 - Source: `frontend/src/components/TrustedRulesManager.tsx`; `frontend/src/lib/api.ts`; `frontend/src/types.ts`
 - Location: `core/policy/*`; `core/app/tool_policy.go`; `frontend/rterm-api/policy/*`; `frontend/app/view/waveconfig/*`
@@ -858,7 +858,7 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 
 ### Feature: Ignore / secret rules management
 
-- Status: TODO
+- Status: IN_PROGRESS
 - Parity: PARTIAL
 - Source: `frontend/src/components/IgnoreRulesManager.tsx`; `frontend/src/lib/api.ts`; `frontend/src/types.ts`
 - Location: `core/policy/*`; `core/app/tool_policy.go`; `frontend/rterm-api/policy/*`; `frontend/app/view/waveconfig/*`
@@ -880,7 +880,7 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 
 ### Feature: Allowed roots / capability enforcement
 
-- Status: TODO
+- Status: IN_PROGRESS
 - Parity: FULL
 - Source: `frontend/src/types.ts`; `pkg/aitoolpolicy/*`; `pkg/aiusechat/policy_runtime.go`
 - Location: `core/policy/pipeline.go`; `core/policy/store.go`; `core/toolruntime/*`
@@ -902,7 +902,7 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 
 ### Feature: Approval token confirm flow
 
-- Status: TODO
+- Status: DONE
 - Parity: FULL
 - Source: `frontend/src/hooks/useApprovalFlow.ts`; `frontend/src/lib/api.ts`
 - Location: `core/app/tool_policy.go`; `core/toolruntime/approval.go`; `core/transport/httpapi/handlers_tools.go`; `docs/frontend-approval-action-validation.md`
@@ -924,7 +924,7 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 
 ### Feature: Audit trail
 
-- Status: TODO
+- Status: IN_PROGRESS
 - Parity: PARTIAL
 - Source: `frontend/src/components/AuditPanel.tsx`; `frontend/src/lib/api.ts`; `frontend/src/types.ts`
 - Location: `core/audit/*`; `core/transport/httpapi/handlers_system.go`
@@ -946,7 +946,7 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 
 ### Feature: Profile/role/mode policy overlay
 
-- Status: TODO
+- Status: IN_PROGRESS
 - Parity: PARTIAL
 - Source: `frontend/src/types.ts`; `frontend/src/components/AgentModeStrip.tsx`
 - Location: `core/agent/*`; `core/policy/*`; `core/app/conversation_actions.go`
@@ -970,7 +970,7 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 
 ### Feature: AI sidebar / AI panel
 
-- Status: TODO
+- Status: IN_PROGRESS
 - Parity: FULL
 - Source: `frontend/src/App.tsx`; `frontend/src/components/AgentPanel.tsx`
 - Location: `frontend/app/workspace/workspace.tsx`; `frontend/app/aipanel/aipanel.tsx`
@@ -992,7 +992,7 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 
 ### Feature: Workspace switcher
 
-- Status: TODO
+- Status: IN_PROGRESS
 - Parity: PARTIAL
 - Source: `frontend/src/components/WorkspaceSwitcher.tsx`
 - Location: `frontend/app/tab/tabbar.tsx`; `frontend/app/tab/workspaceswitcher.tsx`; `frontend/app/state/workspace.store.ts`
@@ -1014,7 +1014,7 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 
 ### Feature: Searchable launcher / app entry
 
-- Status: TODO
+- Status: IN_PROGRESS
 - Parity: PARTIAL
 - Source: `frontend/src/lib/launcherCatalog.ts`; `frontend/src/components/LauncherPanel.tsx`
 - Location: `frontend/app/workspace/widgets.tsx`; `frontend/app/view/launcher/launcher.tsx`
@@ -1036,7 +1036,7 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 
 ### Feature: Right utility / widget dock
 
-- Status: TODO
+- Status: IN_PROGRESS
 - Parity: FULL
 - Source: `frontend/src/components/WidgetDock.tsx`
 - Location: `frontend/app/workspace/widgets.tsx`
@@ -1058,7 +1058,7 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 
 ### Feature: Settings / help surfaces
 
-- Status: TODO
+- Status: IN_PROGRESS
 - Parity: PARTIAL
 - Source: `frontend/src/components/SettingsHelpPanel.tsx`; `frontend/src/components/PolicyPanel.tsx`
 - Location: `frontend/app/workspace/widgets.tsx`; `frontend/app/view/waveconfig/*`; `frontend/app/view/helpview/helpview.tsx`
@@ -1080,7 +1080,7 @@ Phase 1 создаёт единый feature registry из `docs/tideterm-feature
 
 ### Feature: Connections panel
 
-- Status: TODO
+- Status: IN_PROGRESS
 - Parity: PARTIAL
 - Source: `frontend/src/components/ConnectionsPanel.tsx`
 - Location: `core/app/tool_connections.go`; `frontend/rterm-api/connections/*`; `frontend/app/modals/conntypeahead.tsx`
