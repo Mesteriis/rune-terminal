@@ -41,6 +41,33 @@
   - browser console по-прежнему показывает `Failed to load resource: the server responded with a status of 428 (Precondition Required)` на approval challenge; UI корректно использует structured response и продолжает flow
   - во время contract discovery две невалидные попытки `safety.add_ignore_rule` дали ожидаемый `400 invalid_input` (`unknown field "reason"` и `invalid ignore rule scope`); после перехода на repo-scoped payload approval path завершился успешно
 
+## widgets.tsx structural refactor
+
+- Date: `2026-04-16`
+- Status: `VERIFIED`
+- Commits:
+  - `c79a071795dd9d602de8f9ba6c73b106f0acdbe9`
+  - `7eb627212263f2f33084ed3baa4f73975dc5482c`
+  - `476ccf6f2cea0273762e07db33dc578a6bcab61b`
+  - `2badc26f4c1978ef30e590be81cd98c1c031de0f`
+- Validation steps:
+  - `npx tsc -p frontend/tsconfig.json --noEmit`
+  - `npm --prefix frontend run build`
+  - runtime environment:
+    - `apps/desktop/bin/rterm-core serve --listen 127.0.0.1:52763 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/rterm-widgets-slice` with `RTERM_AUTH_TOKEN=widgets-slice-token`
+    - `VITE_RTERM_API_BASE=http://127.0.0.1:52763 VITE_RTERM_AUTH_TOKEN=widgets-slice-token npm --prefix frontend run dev -- --host 127.0.0.1 --port 4193 --strictPort`
+  - fresh load показал active compat workspace с tab bar (`Main Shell`, `Ops Shell`), terminal area и utility rail
+  - terminal input проверен через реальный UI click на `.xterm-screen` и команды `echo widgets-structural-slice`, затем `echo post-switch-check`; DOM `.xterm-rows` отобразил обе команды и их output
+  - tools panel открывается из utility rail, загружает tool list (`GET /api/v1/tools`) и показывает active contract surface (`connections.check`, `workspace.list_widgets`, `term.send_input`, ...)
+  - audit panel открывается из utility rail, загружает `GET /api/v1/audit?limit=50` и корректно рендерит empty-state `No audit events available`
+  - tab switching выполнен через последовательность `Main Shell -> Ops Shell -> Main Shell -> Ops Shell -> Main Shell`; network trail подтвердил `POST /api/v1/workspace/focus-tab`, snapshot refresh для `term-main`/`term-side` и stream remount на обоих widget ids
+  - backend snapshot после switch: `GET /api/v1/terminal/term-main?from=0` вернул `next_seq: 75`, `chunk_count: 74`, `has_widgets_slice: true`, `has_post_switch: true`
+- Result: `VERIFIED` — structural split не сломал active compat runtime path: workspace рендерится, terminal принимает input и отдаёт output, tools/audit floating windows открываются, tab switching продолжает работать через текущий workspace/terminal contract.
+- Notes:
+  - browser console messages во время validation: `28`, `Errors: 0`, `Warnings: 0`
+  - observed network requests для проверенного flow завершились `200 OK`; request failures в этом run не наблюдались
+  - immediate DOM probe сразу после rapid tab switching не доказал видимость прежнего output в текущем viewport, но backend snapshot подтвердил сохранность и `widgets-structural-slice`, и `post-switch-check`; в рамках structural slice это отмечено как observation, а не как regression proof
+
 <a id="feature-terminal-input"></a>
 ## Ввод в терминал
 
