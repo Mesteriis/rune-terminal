@@ -1,13 +1,14 @@
 import type { BootstrapClient } from "@/rterm-api/bootstrap/client";
 import type { BootstrapResponse } from "@/rterm-api/bootstrap/types";
 import type { ToolsClient } from "@/rterm-api/tools/client";
-import type { ToolsListResponse } from "@/rterm-api/tools/types";
+import type { ToolExecutionRequest, ToolExecutionResponse, ToolsListResponse } from "@/rterm-api/tools/types";
 import type { CompatApiOptions } from "./types";
 import { createCompatApiFacade } from "./api";
 
 export interface ToolsFacade {
   listTools: () => Promise<ToolsListResponse>;
   getBootstrap: () => Promise<BootstrapResponse>;
+  executeTool: (payload: ToolExecutionRequest) => Promise<ToolExecutionResponse>;
 }
 
 let toolsFacadePromise: Promise<ToolsFacade> | null = null;
@@ -36,6 +37,9 @@ export function createToolsFacade(client: ToolsClient, bootstrapClient: Bootstra
     },
     getBootstrap(): Promise<BootstrapResponse> {
       return bootstrapClient.getBootstrap();
+    },
+    executeTool(payload: ToolExecutionRequest): Promise<ToolExecutionResponse> {
+      return client.executeTool(payload);
     },
   };
 }

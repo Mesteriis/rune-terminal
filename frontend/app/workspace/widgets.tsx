@@ -4,10 +4,11 @@
 import { getToolsFacade } from "@/compat";
 import { Tooltip } from "@/app/element/tooltip";
 import { useT } from "@/app/i18n/i18n";
+import { workspaceStore } from "@/app/state/workspace.store";
 import { ContextMenuModel } from "@/app/store/contextmenu";
+import type { ToolExecutionRequest, ToolExecutionResponse, ToolInfo } from "@/rterm-api/tools/types";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import type { ToolInfo } from "@/rterm-api/tools/types";
 import { atoms, createBlock, isDev } from "@/store/global";
 import { fireAndForget, isBlank, makeIconClass } from "@/util/util";
 import {
@@ -89,6 +90,26 @@ function calculateGridSize(appCount: number): number {
 
 function normalizeAppList(apps: AppInfo[] | null | undefined): AppInfo[] {
     return Array.isArray(apps) ? apps : [];
+}
+
+function formatJson(value: unknown): string {
+    if (value == null) {
+        return "{}";
+    }
+    try {
+        return JSON.stringify(value, null, 2);
+    } catch {
+        return "{}";
+    }
+}
+
+function buildToolExecutionContext(repoRoot: string) {
+    const workspace = workspaceStore.getSnapshot().active;
+    return {
+        workspace_id: workspace.oid || undefined,
+        active_widget_id: workspace.activewidgetid || undefined,
+        repo_root: repoRoot || undefined,
+    };
 }
 
 const AppsFloatingWindow = memo(
@@ -332,8 +353,13 @@ const ToolsFloatingWindow = memo(
     }) => {
         const [tools, setTools] = useState<ToolInfo[]>([]);
         const [selectedToolName, setSelectedToolName] = useState("");
+        const [repoRoot, setRepoRoot] = useState("");
+        const [inputValue, setInputValue] = useState("{}");
+        const [responseValue, setResponseValue] = useState<ToolExecutionResponse | null>(null);
+        const [executeError, setExecuteError] = useState<string | null>(null);
         const [loading, setLoading] = useState(true);
         const [loadError, setLoadError] = useState<string | null>(null);
+        const [isExecuting, setIsExecuting] = useState(false);
 
         const { refs, floatingStyles, context } = useFloating({
             open: isOpen,
@@ -359,11 +385,12 @@ const ToolsFloatingWindow = memo(
             void (async () => {
                 try {
                     const facade = await getToolsFacade();
-                    const response = await facade.listTools();
+                    const [response, bootstrap] = await Promise.all([facade.listTools(), facade.getBootstrap()]);
                     if (cancelled) {
                         return;
                     }
                     const nextTools = response.tools ?? [];
+                    setRepoRoot(bootstrap.repo_root ?? "");
                     setTools(nextTools);
                     setSelectedToolName((current) => {
                         if (current && nextTools.some((tool) => tool.name === current)) {
@@ -392,6 +419,50 @@ const ToolsFloatingWindow = memo(
         if (!isOpen) return null;
 
         const selectedTool = tools.find((tool) => tool.name === selectedToolName) ?? null;
+
+        const handleToolSelect = (toolName: string) => {
+            setSelectedToolName(toolName);
+            setInputValue("{}");
+            setResponseValue(null);
+            setExecuteError(null);
+        };
+
+        const handleExecute = async () => {
+            if (selectedTool == null) {
+                return;
+            }
+
+            let parsedInput: unknown = {};
+            const trimmedInput = inputValue.trim();
+            if (trimmedInput !== "") {
+                try {
+                    parsedInput = JSON.parse(trimmedInput);
+                } catch (error) {
+                    setExecuteError(error instanceof Error ? error.message : String(error));
+                    setResponseValue(null);
+                    return;
+                }
+            }
+
+            setIsExecuting(true);
+            setExecuteError(null);
+
+            try {
+                const facade = await getToolsFacade();
+                const request: ToolExecutionRequest = {
+                    tool_name: selectedTool.name,
+                    input: parsedInput,
+                    context: buildToolExecutionContext(repoRoot),
+                };
+                const response = await facade.executeTool(request);
+                setResponseValue(response);
+            } catch (error) {
+                setExecuteError(error instanceof Error ? error.message : String(error));
+                setResponseValue(null);
+            } finally {
+                setIsExecuting(false);
+            }
+        };
 
         return (
             <FloatingPortal>
@@ -424,7 +495,7 @@ const ToolsFloatingWindow = memo(
                                                     "w-full text-left px-3 py-2 border-b border-border last:border-b-0 transition-colors",
                                                     selected ? "bg-hoverbg text-white" : "text-secondary hover:bg-hoverbg hover:text-white"
                                                 )}
-                                                onClick={() => setSelectedToolName(tool.name)}
+                                                onClick={() => handleToolSelect(tool.name)}
                                             >
                                                 <div className="text-sm leading-tight">{tool.name}</div>
                                                 <div className="text-xs opacity-70 mt-1">
@@ -451,6 +522,32 @@ const ToolsFloatingWindow = memo(
                                             input schema:
                                             <pre className="mt-1 p-2 rounded bg-black/20 overflow-auto text-[11px] text-secondary">
                                                 {JSON.stringify(selectedTool.input_schema, null, 2)}
+                                            </pre>
+                                        </div>
+                                        <div>
+                                            <div className="text-xs text-secondary mb-1">input json:</div>
+                                            <textarea
+                                                className="w-full min-h-32 rounded border border-border bg-black/20 p-2 text-xs text-white resize-y"
+                                                value={inputValue}
+                                                onChange={(e) => setInputValue(e.target.value)}
+                                                spellCheck={false}
+                                            />
+                                        </div>
+                                        <div className="flex items-center justify-between gap-3">
+                                            <div className="text-xs text-secondary break-all">repo root: {repoRoot || "unknown"}</div>
+                                            <button
+                                                type="button"
+                                                className="px-3 py-1.5 rounded bg-accent text-black text-xs font-medium disabled:opacity-50"
+                                                disabled={isExecuting}
+                                                onClick={() => void handleExecute()}
+                                            >
+                                                {isExecuting ? "Running..." : "Execute"}
+                                            </button>
+                                        </div>
+                                        <div>
+                                            <div className="text-xs text-secondary mb-1">response:</div>
+                                            <pre className="min-h-28 max-h-64 overflow-auto rounded bg-black/20 p-2 text-[11px] text-secondary whitespace-pre-wrap break-words">
+                                                {executeError ?? (responseValue ? formatJson(responseValue) : "No response yet")}
                                             </pre>
                                         </div>
                                     </div>
