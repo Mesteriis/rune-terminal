@@ -1,0 +1,38 @@
+{
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.tsbuildinfo",
+    "target": "es2023",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "esnext",
+    "types": ["vite/client"],
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "ignoreDeprecations": "6.0",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["*"]
+    },
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": [
+    "app/**/*.ts",
+    "app/**/*.tsx",
+    "builder/**/*.ts",
+    "builder/**/*.tsx",
+    "layout/**/*.ts",
+    "layout/**/*.tsx",
+    "util/**/*.ts",
+    "types/**/*.d.ts",
+    "wave.ts",
+    "index.html"
+  ],
+  "exclude": ["node_modules", "dist", "dist-ssr", "old_front", "frontend/tideterm-src-meta", "frontend/tideterm-src"]
+}

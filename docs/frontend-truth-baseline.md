@@ -49,13 +49,15 @@ This tree is the current canonical frontend source under `frontend/` and is used
 - `build:go`: `./scripts/go.sh build ./cmd/... ./core/... ./internal/...`
 - `tauri:dev`: `./scripts/tauri-dev.sh`
 - `tauri:build`: `npm exec tauri -- build --config apps/desktop/src-tauri/tauri.conf.json`
-- `tauri:check`: `cargo check --manifest-dir apps/desktop/src-tauri/Cargo.toml`
+- `tauri:check`: `cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml`
 - `validate`: `npm run lint:frontend && npm run build:frontend && npm run test:go && npm run build:go && npm run tauri:check`
 
 ### Frontend scripts / configs under `frontend/`
 
-- `frontend` currently has no `package.json`, no `vite.config.ts`, and no `tsconfig.json`.
-- No frontend-local npm scripts are currently runnable without adding the required frontend toolchain files.
+- `frontend` has local toolchain files now:
+  - `package.json` (`dev`, `build`, `lint`, `preview`)
+  - `tsconfig.json`
+  - `vite.config.ts`
 
 ### Tauri integration
 
@@ -65,10 +67,8 @@ This tree is the current canonical frontend source under `frontend/` and is used
 
 ## 3) MISMATCHES
 
-1. Root frontend scripts point at `npm --prefix frontend run ...`, but `frontend/` lacks required toolchain entry files.
-2. README still documents `frontend/tideterm-src` and `frontend/tideterm-src-meta` as active repository layout items, but they are not present in the checked-out tree.
-3. The frontend tree contains files moved into `frontend/app`, `frontend/layout`, `frontend/util`, `frontend/builder`, `frontend/types`, `frontend/wave.ts`, but there is no documented package entry matching this layout.
-4. Current bootstrap command (`scripts/tauri-dev.sh`) expects frontend dependencies installed in `frontend/node_modules`, but that directory is not buildable from current frontend files because the npm project file is missing.
+1. `README` and several docs still describe `frontend/tideterm-src` and `frontend/tideterm-src-meta` as active repository structure items, but those snapshot directories are optional import outputs, not always present.
+2. `scripts/import-tideterm-frontend.sh` points to snapshot targets under `frontend/tideterm-src` and `frontend/tideterm-src-meta`, which are optional and not the active runtime source.
 
 ## 4) FROZEN ZONES
 
