@@ -44,6 +44,21 @@ function normalizeTerminalSnapshot(snapshot: TerminalSnapshot): TerminalSnapshot
     };
 }
 
+function isIntentionalStreamAbort(error: unknown, signal?: AbortSignal | null): boolean {
+    if (signal?.aborted) {
+        return true;
+    }
+    if (typeof error === "string") {
+        return error.toLowerCase().includes("aborted");
+    }
+    if (error != null && typeof error === "object") {
+        const name = "name" in error ? String(error.name ?? "") : "";
+        const message = "message" in error ? String(error.message ?? "") : "";
+        return name === "AbortError" || message.toLowerCase().includes("aborted");
+    }
+    return false;
+}
+
 class TerminalStore {
     private state: TerminalStoreState;
     private listeners = new Set<TerminalStoreListener>();
@@ -236,15 +251,20 @@ class TerminalStore {
                         }
                     );
                 } catch (err) {
+                    if (isIntentionalStreamAbort(err, streamState.abortController.signal)) {
+                        return;
+                    }
                     const error = err instanceof Error ? { message: err.message, code: "stream" } : { message: String(err), code: "stream" };
-                    this.setWidgetState(widgetId, { streamActive: false, streamError: error.message });
-                    this.notify(widgetId, "error", { error });
+                    if (this.streamStates.get(widgetId) === streamState) {
+                        this.setWidgetState(widgetId, { streamActive: false, streamError: error.message });
+                        this.notify(widgetId, "error", { error });
+                    }
                 } finally {
                     const current = this.streamStates.get(widgetId);
                     if (current === streamState) {
                         this.streamStates.delete(widgetId);
+                        this.setWidgetState(widgetId, { streamActive: false });
                     }
-                    this.setWidgetState(widgetId, { streamActive: false });
                 }
             })()
         );
