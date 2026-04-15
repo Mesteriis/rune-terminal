@@ -158,7 +158,7 @@ function createBrowserElectronApi(): ElectronApi {
 }
 
 function hasElectronPreloadApi(): boolean {
-    return nativeElectronPreloadAvailable;
+    return bootstrapWindow.api != null;
 }
 
 function ensureBootstrapApi(): ElectronApi {
@@ -168,8 +168,10 @@ function ensureBootstrapApi(): ElectronApi {
     return bootstrapWindow.api;
 }
 
-const nativeElectronPreloadAvailable = bootstrapWindow.api != null;
-const platform = nativeElectronPreloadAvailable ? getApi().getPlatform() : resolveBrowserPlatform();
+let platform: NodeJS.Platform = resolveBrowserPlatform();
+if (bootstrapWindow.api != null) {
+    platform = bootstrapWindow.api.getPlatform();
+}
 document.title = `TideTerm`;
 let savedInitOpts: WaveInitOpts | null = null;
 
@@ -248,12 +250,16 @@ async function initBrowserCompatRuntime() {
 }
 
 async function initBare() {
-    const api = ensureBootstrapApi();
+    const hasNativePreloadApi = hasElectronPreloadApi();
+    const api = hasNativePreloadApi ? bootstrapWindow.api! : ensureBootstrapApi();
+    if (hasNativePreloadApi) {
+        platform = api.getPlatform();
+    }
     api.sendLog("Init Bare");
     document.body.style.visibility = "hidden";
     document.body.style.opacity = "0";
     document.body.classList.add("is-transparent");
-    if (!hasElectronPreloadApi()) {
+    if (!hasNativePreloadApi) {
         await initBrowserCompatRuntime();
         return;
     }
