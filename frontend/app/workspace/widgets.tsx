@@ -1,11 +1,12 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { getToolsFacade } from "@/compat";
+import { getAuditFacade, getToolsFacade } from "@/compat";
 import { Tooltip } from "@/app/element/tooltip";
 import { useT } from "@/app/i18n/i18n";
 import { workspaceStore } from "@/app/state/workspace.store";
 import { ContextMenuModel } from "@/app/store/contextmenu";
+import type { AuditEvent } from "@/rterm-api/audit/types";
 import type { PendingApproval, ToolExecutionRequest, ToolExecutionResponse, ToolInfo } from "@/rterm-api/tools/types";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
@@ -101,6 +102,14 @@ function formatJson(value: unknown): string {
     } catch {
         return "{}";
     }
+}
+
+function formatAuditTimestamp(timestamp: string): string {
+    const date = new Date(timestamp);
+    if (Number.isNaN(date.getTime())) {
+        return timestamp;
+    }
+    return date.toLocaleString();
 }
 
 function buildToolExecutionContext(repoRoot: string) {
@@ -355,10 +364,12 @@ const ToolsFloatingWindow = memo(
         isOpen,
         onClose,
         referenceElement,
+        onAuditChanged,
     }: {
         isOpen: boolean;
         onClose: () => void;
         referenceElement: HTMLElement;
+        onAuditChanged?: () => void;
     }) => {
         const [pendingApproval, setPendingApproval] = useState<{
             approval: PendingApproval;
@@ -471,6 +482,7 @@ const ToolsFloatingWindow = memo(
                 };
                 const response = await facade.executeTool(request);
                 setResponseValue(response);
+                onAuditChanged?.();
                 if (response.status === "requires_confirmation" && response.pending_approval != null) {
                     setPendingApproval({
                         approval: response.pending_approval,
@@ -502,6 +514,7 @@ const ToolsFloatingWindow = memo(
                     pendingApproval.approval.id,
                     pendingApproval.request.context,
                 );
+                onAuditChanged?.();
                 const approvalToken = getApprovalToken(confirmResponse);
                 if (!approvalToken) {
                     setResponseValue(confirmResponse);
@@ -514,6 +527,7 @@ const ToolsFloatingWindow = memo(
                     approval_token: approvalToken,
                 });
                 setResponseValue(retryResponse);
+                onAuditChanged?.();
                 if (retryResponse.status === "requires_confirmation" && retryResponse.pending_approval != null) {
                     setPendingApproval({
                         approval: retryResponse.pending_approval,
@@ -648,6 +662,139 @@ const ToolsFloatingWindow = memo(
 
 ToolsFloatingWindow.displayName = "ToolsFloatingWindow";
 
+const AuditFloatingWindow = memo(
+    ({
+        isOpen,
+        onClose,
+        referenceElement,
+        refreshNonce,
+    }: {
+        isOpen: boolean;
+        onClose: () => void;
+        referenceElement: HTMLElement;
+        refreshNonce: number;
+    }) => {
+        const [events, setEvents] = useState<AuditEvent[]>([]);
+        const [loading, setLoading] = useState(true);
+        const [loadError, setLoadError] = useState<string | null>(null);
+
+        const { refs, floatingStyles, context } = useFloating({
+            open: isOpen,
+            onOpenChange: onClose,
+            placement: "left-start",
+            middleware: [offset(-2), shift({ padding: 12 })],
+            whileElementsMounted: autoUpdate,
+            elements: {
+                reference: referenceElement,
+            },
+        });
+
+        const dismiss = useDismiss(context);
+        const { getFloatingProps } = useInteractions([dismiss]);
+
+        useEffect(() => {
+            if (!isOpen) return;
+
+            let cancelled = false;
+            setLoading(true);
+            setLoadError(null);
+
+            void (async () => {
+                try {
+                    const facade = await getAuditFacade();
+                    const response = await facade.getEvents(50);
+                    if (cancelled) {
+                        return;
+                    }
+                    const nextEvents = Array.isArray(response.events) ? [...response.events].reverse() : [];
+                    setEvents(nextEvents);
+                } catch (error) {
+                    if (!cancelled) {
+                        setLoadError(error instanceof Error ? error.message : String(error));
+                        setEvents([]);
+                    }
+                } finally {
+                    if (!cancelled) {
+                        setLoading(false);
+                    }
+                }
+            })();
+
+            return () => {
+                cancelled = true;
+            };
+        }, [isOpen, refreshNonce]);
+
+        if (!isOpen) return null;
+
+        return (
+            <FloatingPortal>
+                <div
+                    ref={refs.setFloating}
+                    style={floatingStyles}
+                    {...getFloatingProps()}
+                    className="bg-modalbg border border-border rounded-lg shadow-xl p-3 z-50 w-[30rem]"
+                >
+                    <div className="text-sm font-medium text-white mb-3">Audit</div>
+                    {loading ? (
+                        <div className="flex items-center justify-center p-8">
+                            <i className="fa fa-solid fa-spinner fa-spin text-2xl text-muted"></i>
+                        </div>
+                    ) : loadError ? (
+                        <div className="text-sm text-red-400 whitespace-pre-wrap">{loadError}</div>
+                    ) : events.length === 0 ? (
+                        <div className="text-sm text-muted">No audit events available</div>
+                    ) : (
+                        <div className="max-h-[28rem] overflow-y-auto space-y-2 pr-1">
+                            {events.map((event) => (
+                                <div key={event.id} className="rounded border border-border bg-black/20 p-2 space-y-1.5">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <div className="text-sm text-white break-words">{event.tool_name || "unknown tool"}</div>
+                                            <div className="text-[11px] text-secondary">{formatAuditTimestamp(event.timestamp)}</div>
+                                        </div>
+                                        <div
+                                            className={clsx(
+                                                "text-[11px] font-medium uppercase tracking-wide shrink-0",
+                                                event.success ? "text-emerald-300" : "text-red-300"
+                                            )}
+                                        >
+                                            {event.success ? "success" : "error"}
+                                        </div>
+                                    </div>
+                                    {event.summary ? (
+                                        <div className="text-xs text-secondary whitespace-pre-wrap break-words">{event.summary}</div>
+                                    ) : null}
+                                    <div className="text-[11px] text-secondary space-y-1">
+                                        {event.effective_approval_tier ? (
+                                            <div>approval tier: {event.effective_approval_tier}</div>
+                                        ) : event.approval_tier ? (
+                                            <div>approval tier: {event.approval_tier}</div>
+                                        ) : null}
+                                        {event.approval_used ? <div>approval used: yes</div> : null}
+                                        {event.workspace_id ? <div>workspace: {event.workspace_id}</div> : null}
+                                        {event.affected_paths && event.affected_paths.length > 0 ? (
+                                            <div className="break-words">paths: {event.affected_paths.join(", ")}</div>
+                                        ) : null}
+                                        {event.affected_widgets && event.affected_widgets.length > 0 ? (
+                                            <div className="break-words">widgets: {event.affected_widgets.join(", ")}</div>
+                                        ) : null}
+                                    </div>
+                                    {event.error ? (
+                                        <div className="text-xs text-red-300 whitespace-pre-wrap break-words">{event.error}</div>
+                                    ) : null}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </FloatingPortal>
+        );
+    }
+);
+
+AuditFloatingWindow.displayName = "AuditFloatingWindow";
+
 const Widgets = memo(({ compatMode = false }: { compatMode?: boolean }) => {
     const t = useT();
     const fullConfig = useAtomValue(atoms.fullConfigAtom);
@@ -657,6 +804,7 @@ const Widgets = memo(({ compatMode = false }: { compatMode?: boolean }) => {
     const measurementRef = useRef<HTMLDivElement>(null);
 
     const featureWaveAppBuilder = fullConfig?.settings?.["feature:waveappbuilder"] ?? false;
+    const showAppsButton = isDev() || featureWaveAppBuilder;
     const widgetsMap = fullConfig?.widgets ?? {};
     const filteredWidgets = hasCustomAIPresets
         ? widgetsMap
@@ -667,8 +815,11 @@ const Widgets = memo(({ compatMode = false }: { compatMode?: boolean }) => {
     const appsButtonRef = useRef<HTMLDivElement>(null);
     const [isToolsOpen, setIsToolsOpen] = useState(false);
     const toolsButtonRef = useRef<HTMLDivElement>(null);
+    const [isAuditOpen, setIsAuditOpen] = useState(false);
+    const auditButtonRef = useRef<HTMLDivElement>(null);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const settingsButtonRef = useRef<HTMLDivElement>(null);
+    const [auditRefreshNonce, setAuditRefreshNonce] = useState(0);
     const compatWidgetsStyle = compatMode
         ? ({
               display: "flex",
@@ -713,8 +864,8 @@ const Widgets = memo(({ compatMode = false }: { compatMode?: boolean }) => {
         if (normalHeight > containerHeight - gracePeriod) {
             newMode = "compact";
 
-            // Calculate total widget count for supercompact check
-            const totalWidgets = (widgets?.length || 0) + 1;
+            const actionCount = 3 + (showAppsButton ? 1 : 0);
+            const totalWidgets = (widgets?.length || 0) + actionCount;
             const minHeightPerWidget = 32;
             const requiredHeight = totalWidgets * minHeightPerWidget;
 
@@ -725,7 +876,7 @@ const Widgets = memo(({ compatMode = false }: { compatMode?: boolean }) => {
 
         // Use functional update to avoid depending on mode
         setMode((prevMode) => (newMode !== prevMode ? newMode : prevMode));
-    }, [widgets]);
+    }, [showAppsButton, widgets]);
 
     // Use ref to hold the latest checkModeNeeded without re-creating ResizeObserver
     const checkModeNeededRef = useRef(checkModeNeeded);
@@ -747,7 +898,7 @@ const Widgets = memo(({ compatMode = false }: { compatMode?: boolean }) => {
 
     useEffect(() => {
         checkModeNeeded();
-    }, [widgets]);
+    }, [checkModeNeeded]);
 
     const handleWidgetsBarContextMenu = (e: React.MouseEvent) => {
         e.preventDefault();
@@ -799,7 +950,19 @@ const Widgets = memo(({ compatMode = false }: { compatMode?: boolean }) => {
                                     </div>
                                 </Tooltip>
                             </div>
-                            {isDev() || featureWaveAppBuilder ? (
+                            <div
+                                ref={auditButtonRef}
+                                className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-sm overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
+                                style={compatActionStyle}
+                                onClick={() => setIsAuditOpen(!isAuditOpen)}
+                            >
+                                <Tooltip content="Audit" placement="left" disable={isAuditOpen}>
+                                    <div>
+                                        <i className={makeIconClass("clipboard-list", true, { defaultIcon: "list-check" })}></i>
+                                    </div>
+                                </Tooltip>
+                            </div>
+                            {showAppsButton ? (
                                 <div
                                     ref={appsButtonRef}
                                     className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-sm overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
@@ -852,7 +1015,26 @@ const Widgets = memo(({ compatMode = false }: { compatMode?: boolean }) => {
                                 </div>
                             </Tooltip>
                         </div>
-                        {isDev() || featureWaveAppBuilder ? (
+                        <div
+                            ref={auditButtonRef}
+                            className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-lg overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
+                            style={compatActionStyle}
+                            onClick={() => setIsAuditOpen(!isAuditOpen)}
+                        >
+                            <Tooltip content="Audit" placement="left" disable={isAuditOpen}>
+                                <div className="flex flex-col items-center w-full">
+                                    <div>
+                                        <i className={makeIconClass("clipboard-list", true, { defaultIcon: "list-check" })}></i>
+                                    </div>
+                                    {mode === "normal" && (
+                                        <div className="text-xxs mt-0.5 w-full px-0.5 text-center whitespace-nowrap overflow-hidden text-ellipsis">
+                                            Audit
+                                        </div>
+                                    )}
+                                </div>
+                            </Tooltip>
+                        </div>
+                        {showAppsButton ? (
                             <div
                                 ref={appsButtonRef}
                                 className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-lg overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
@@ -896,7 +1078,7 @@ const Widgets = memo(({ compatMode = false }: { compatMode?: boolean }) => {
                     </div>
                 ) : null}
             </div>
-            {(isDev() || featureWaveAppBuilder) && appsButtonRef.current && (
+            {showAppsButton && appsButtonRef.current && (
                 <AppsFloatingWindow
                     isOpen={isAppsOpen}
                     onClose={() => setIsAppsOpen(false)}
@@ -908,6 +1090,15 @@ const Widgets = memo(({ compatMode = false }: { compatMode?: boolean }) => {
                     isOpen={isToolsOpen}
                     onClose={() => setIsToolsOpen(false)}
                     referenceElement={toolsButtonRef.current}
+                    onAuditChanged={() => setAuditRefreshNonce((current) => current + 1)}
+                />
+            )}
+            {auditButtonRef.current && (
+                <AuditFloatingWindow
+                    isOpen={isAuditOpen}
+                    onClose={() => setIsAuditOpen(false)}
+                    referenceElement={auditButtonRef.current}
+                    refreshNonce={auditRefreshNonce}
                 />
             )}
             {settingsButtonRef.current && (
@@ -935,11 +1126,17 @@ const Widgets = memo(({ compatMode = false }: { compatMode?: boolean }) => {
                 </div>
                 <div className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-lg">
                     <div>
+                        <i className={makeIconClass("clipboard-list", true, { defaultIcon: "list-check" })}></i>
+                    </div>
+                    <div className="text-xxs mt-0.5 w-full px-0.5 text-center">Audit</div>
+                </div>
+                <div className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-lg">
+                    <div>
                         <i className={makeIconClass("gear", true)}></i>
                     </div>
                     <div className="text-xxs mt-0.5 w-full px-0.5 text-center">{t("workspace.settingsLabel")}</div>
                 </div>
-                {isDev() ? (
+                {showAppsButton ? (
                     <div className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-lg">
                         <div>
                             <i className={makeIconClass("cube", true)}></i>
