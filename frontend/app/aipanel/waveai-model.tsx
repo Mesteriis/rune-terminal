@@ -30,6 +30,7 @@ import {
     validateFileSizeFromInfo,
 } from "./ai-utils";
 import type { AIPanelInputRef } from "./aipanelinput";
+import { getWaveAICompatActiveTabId, isWaveAICompatRuntime } from "./compat-context";
 
 export interface DroppedFile {
     id: string;
@@ -88,6 +89,9 @@ export class WaveAIModel {
 
         this.widgetAccessAtom = jotai.atom((get) => {
             if (this.inBuilder) {
+                return true;
+            }
+            if (isWaveAICompatRuntime()) {
                 return true;
             }
             const widgetAccessMetaAtom = getOrefMetaKeyAtom(this.orefContext, "waveai:widgetcontext");
@@ -157,7 +161,8 @@ export class WaveAIModel {
                 const builderId = globalStore.get(atoms.builderId);
                 orefContext = WOS.makeORef("builder", builderId);
             } else {
-                const tabId = globalStore.get(atoms.staticTabId);
+                const compatTabId = getWaveAICompatActiveTabId();
+                const tabId = isWaveAICompatRuntime() ? compatTabId : globalStore.get(atoms.staticTabId);
                 orefContext = WOS.makeORef("tab", tabId);
             }
             WaveAIModel.instance = new WaveAIModel(orefContext, inBuilder);

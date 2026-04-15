@@ -314,7 +314,7 @@ const SettingsFloatingWindow = memo(
 
 SettingsFloatingWindow.displayName = "SettingsFloatingWindow";
 
-const Widgets = memo(() => {
+const Widgets = memo(({ compatMode = false }: { compatMode?: boolean }) => {
     const t = useT();
     const fullConfig = useAtomValue(atoms.fullConfigAtom);
     const hasCustomAIPresets = useAtomValue(atoms.hasCustomAIPresetsAtom);
@@ -333,6 +333,37 @@ const Widgets = memo(() => {
     const appsButtonRef = useRef<HTMLDivElement>(null);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const settingsButtonRef = useRef<HTMLDivElement>(null);
+    const compatWidgetsStyle = compatMode
+        ? ({
+              display: "flex",
+              flexDirection: "column",
+              width: "3rem",
+              minWidth: "3rem",
+              overflow: "hidden",
+              paddingTop: "0.25rem",
+              paddingBottom: "0.25rem",
+              marginLeft: "-0.25rem",
+              userSelect: "none",
+              flexShrink: 0,
+          } as const)
+        : undefined;
+    const compatMeasurementStyle = compatMode
+        ? ({
+              display: "flex",
+              flexDirection: "column",
+              width: "3rem",
+              minWidth: "3rem",
+              paddingTop: "0.25rem",
+              paddingBottom: "0.25rem",
+              marginLeft: "-0.25rem",
+              userSelect: "none",
+              position: "absolute",
+              zIndex: -10,
+              opacity: 0,
+              pointerEvents: "none",
+          } as const)
+        : undefined;
+    const compatActionStyle = compatMode ? ({ minHeight: "32px", flexShrink: 0 } as const) : undefined;
 
     const checkModeNeeded = useCallback(() => {
         if (!containerRef.current || !measurementRef.current) return;
@@ -408,6 +439,7 @@ const Widgets = memo(() => {
             <div
                 ref={containerRef}
                 className="flex flex-col w-12 overflow-hidden py-1 -ml-1 select-none"
+                style={compatWidgetsStyle}
                 onContextMenu={handleWidgetsBarContextMenu}
             >
                 {mode === "supercompact" ? (
@@ -423,6 +455,7 @@ const Widgets = memo(() => {
                                 <div
                                     ref={appsButtonRef}
                                     className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-sm overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
+                                    style={compatActionStyle}
                                     onClick={() => setIsAppsOpen(!isAppsOpen)}
                                 >
                                     <Tooltip content={t("workspace.localWaveApps")} placement="left" disable={isAppsOpen}>
@@ -435,6 +468,7 @@ const Widgets = memo(() => {
                             <div
                                 ref={settingsButtonRef}
                                 className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-sm overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
+                                style={compatActionStyle}
                                 onClick={() => setIsSettingsOpen(!isSettingsOpen)}
                             >
                                 <Tooltip content={t("workspace.settingsAndHelp")} placement="left" disable={isSettingsOpen}>
@@ -455,6 +489,7 @@ const Widgets = memo(() => {
                             <div
                                 ref={appsButtonRef}
                                 className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-lg overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
+                                style={compatActionStyle}
                                 onClick={() => setIsAppsOpen(!isAppsOpen)}
                             >
                                 <Tooltip content={t("workspace.localWaveApps")} placement="left" disable={isAppsOpen}>
@@ -474,6 +509,7 @@ const Widgets = memo(() => {
                         <div
                             ref={settingsButtonRef}
                             className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-lg overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
+                            style={compatActionStyle}
                             onClick={() => setIsSettingsOpen(!isSettingsOpen)}
                         >
                             <Tooltip content={t("workspace.settingsAndHelp")} placement="left" disable={isSettingsOpen}>
@@ -511,6 +547,7 @@ const Widgets = memo(() => {
             <div
                 ref={measurementRef}
                 className="flex flex-col w-12 py-1 -ml-1 select-none absolute -z-10 opacity-0 pointer-events-none"
+                style={compatMeasurementStyle}
             >
                 {widgets?.map((data, idx) => (
                     <Widget key={`measurement-widget-${idx}`} widget={data} mode="normal" />

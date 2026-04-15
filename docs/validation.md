@@ -2,6 +2,71 @@
 
 Validation date: `2026-04-15`
 
+## Latest frontend compat modal parity validation
+
+This pass focused only on the active compat AI/settings modal-like interactions:
+
+- AI trigger open/close through the visible tab-bar `AI` control
+- settings floating menu open/close through the visible compat sidebar trigger
+- isolation of legacy `object.GetObject` reads from the active compat AI open path
+- confirmation that final behavior was rechecked in a fresh browser session rather than relying on historical failed attempts
+
+Validation executed for this step:
+
+```bash
+npx tsc -p frontend/tsconfig.json --noEmit
+
+RTERM_AUTH_TOKEN=modal-compat-token apps/desktop/bin/rterm-core serve --listen 127.0.0.1:52760 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/runa-modal-compat-state
+VITE_RTERM_API_BASE=http://127.0.0.1:52760 VITE_RTERM_AUTH_TOKEN=modal-compat-token npm --prefix frontend run dev -- --host 127.0.0.1 --port 4188 --strictPort
+
+npm --prefix frontend run build
+
+# clean browser-session verification against http://127.0.0.1:4188/
+# - fresh load
+# - capture AI closed baseline (button inactive, first panel width 0px)
+# - click AI, verify button active and panel width ~300px
+# - click AI again, verify button inactive and first panel width 0px
+# - click settings trigger, verify Settings/Tips/Secrets/Help appear
+# - click terminal area, verify settings menu dismisses
+# - capture consoleErrors and network requests from a fresh browser session only
+```
+
+Observed result:
+
+- `npx tsc -p frontend/tsconfig.json --noEmit` passed
+- `npm --prefix frontend run build` passed
+- production build still emits existing `lightningcss` warnings for Tailwind at-rules and the usual Vite large-chunk warning; this slice did not change that behavior
+- clean browser-session evidence after the final fix showed:
+  - AI baseline closed:
+    - button class ended in `text-secondary`
+    - first panel width was `0px`
+  - AI open:
+    - button class ended in `text-accent`
+    - first panel width expanded to about `300px`
+  - AI close:
+    - button class returned to `text-secondary`
+    - first panel width returned to `0px`
+  - settings open:
+    - menu items `Settings`, `Tips`, `Secrets`, `Help` became present in the DOM
+    - their rects were anchored beside the visible sidebar trigger instead of collapsing to an invalid off-screen anchor
+  - settings close:
+    - clicking the terminal area removed all four menu items from the DOM again
+- clean post-fix console capture returned zero console errors
+- clean post-fix network capture contained only successful `200 OK` requests:
+  - `/healthz`
+  - `/api/v1/bootstrap`
+  - `/api/v1/workspace`
+  - `/api/v1/terminal/term-main`
+  - `/api/v1/terminal/term-main/stream`
+- the earlier `object.GetObject` `401 Unauthorized` failures observed during intermediate broken attempts are now historical and superseded by the final clean browser-session run for this slice
+
+Current conclusion:
+
+- AI trigger -> state -> render -> visible open/close now works on the active compat path
+- settings trigger -> local state -> floating render -> visible dismiss now works on the active compat path
+- the active compat AI/settings path no longer requires legacy WOS object fetches during the validated clean run
+- residual terminal stream `network error` logs remained informational `console.log` output from terminal stream lifecycle and did not surface as console errors in the final clean run for this slice
+
 ## Latest frontend asset pipeline validation (css + fonts)
 
 This pass stayed validation-only and focused on the active compat asset path:

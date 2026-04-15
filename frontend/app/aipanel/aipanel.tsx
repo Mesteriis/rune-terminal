@@ -18,6 +18,7 @@ import { useDrop } from "react-dnd";
 import { formatFileSizeError, isAcceptableFile, validateFileSize } from "./ai-utils";
 import { AIDroppedFiles } from "./aidroppedfiles";
 import { AIModeDropdown } from "./aimode";
+import { getWaveAICompatActiveTabId, isWaveAICompatRuntime } from "./compat-context";
 import { AIPanelHeader } from "./aipanelheader";
 import { AIPanelInput } from "./aipanelinput";
 import { AIPanelMessages } from "./aipanelmessages";
@@ -85,7 +86,7 @@ KeyCap.displayName = "KeyCap";
 
 const AIWelcomeMessage = memo(() => {
     const modKey = isMacOS() ? "⌘" : "Alt";
-    const aiModeConfigs = jotai.useAtomValue(atoms.waveaiModeConfigAtom);
+    const aiModeConfigs = jotai.useAtomValue(atoms.waveaiModeConfigAtom) ?? {};
     const hasCustomModes = Object.keys(aiModeConfigs).some((key) => !key.startsWith("waveai@"));
     return (
         <div className="text-secondary py-8">
@@ -257,7 +258,8 @@ const AIPanelComponentInner = memo(() => {
     const isPanelVisible = jotai.useAtomValue(model.getPanelVisibleAtom());
     const tabModel = maybeUseTabModel();
     const defaultMode = jotai.useAtomValue(getSettingsKeyAtom("waveai:defaultmode")) ?? "waveai@balanced";
-    const aiModeConfigs = jotai.useAtomValue(model.aiModeConfigs);
+    const aiModeConfigs = jotai.useAtomValue(model.aiModeConfigs) ?? {};
+    const compatTabId = getWaveAICompatActiveTabId();
 
     const hasCustomModes = Object.keys(aiModeConfigs).some((key) => !key.startsWith("waveai@"));
     const isUsingCustomMode = !defaultMode.startsWith("waveai@");
@@ -279,7 +281,7 @@ const AIPanelComponentInner = memo(() => {
                     body.builderid = globalStore.get(atoms.builderId);
                     body.builderappid = globalStore.get(atoms.builderAppId);
                 } else {
-                    body.tabid = tabModel.tabId;
+                    body.tabid = isWaveAICompatRuntime() ? compatTabId : tabModel?.tabId;
                 }
                 return { body };
             },

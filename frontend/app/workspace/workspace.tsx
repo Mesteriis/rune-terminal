@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { AIPanel } from "@/app/aipanel/aipanel";
+import { setWaveAICompatContext } from "@/app/aipanel/compat-context";
 import { ErrorBoundary } from "@/app/element/errorboundary";
 import { CenteredDiv } from "@/app/element/quickelems";
 import { ModalsRenderer } from "@/app/modals/modalsrenderer";
@@ -21,8 +22,9 @@ const WorkspaceElem = memo(({ compatMode = false }: { compatMode?: boolean }) =>
     const workspaceLayoutModel = WorkspaceLayoutModel.getInstance();
     const staticTabId = useAtomValue(atoms.staticTabId);
     const [workspace, setWorkspace] = useState<WorkspaceStoreSnapshot["active"]>(workspaceStore.getSnapshot().active);
+    setWaveAICompatContext(compatMode, workspace.activetabid ?? "");
     const tabId = compatMode ? workspace.activetabid : staticTabId;
-    const initialAiPanelPercentage = compatMode ? 0 : workspaceLayoutModel.getAIPanelPercentage(window.innerWidth);
+    const initialAiPanelPercentage = workspaceLayoutModel.getAIPanelPercentage(window.innerWidth);
     const initialLayout: PanelLayout = {
         [WorkspaceAIPanelId]: initialAiPanelPercentage,
         [WorkspaceMainPanelId]: 100 - initialAiPanelPercentage,
@@ -31,11 +33,18 @@ const WorkspaceElem = memo(({ compatMode = false }: { compatMode?: boolean }) =>
     const aiPanelRef = useRef<PanelImperativeHandle>(null);
     const panelContainerRef = useRef<HTMLDivElement>(null);
     const aiPanelWrapperRef = useRef<HTMLDivElement>(null);
+    const compatWorkspaceStyle = compatMode
+        ? ({ display: "flex", flexDirection: "column", width: "100%", flexGrow: 1, overflow: "hidden" } as const)
+        : undefined;
+    const compatPanelContainerStyle = compatMode
+        ? ({ display: "flex", flexDirection: "row", flexGrow: 1, overflow: "hidden" } as const)
+        : undefined;
+    const compatMainContentStyle = compatMode
+        ? ({ display: "flex", flexDirection: "row", height: "100%", overflow: "hidden" } as const)
+        : undefined;
+    const compatAIPanelWrapperStyle = compatMode ? ({ width: "100%", height: "100%", overflow: "hidden" } as const) : undefined;
 
     useEffect(() => {
-        if (compatMode) {
-            return;
-        }
         if (aiPanelRef.current && panelGroupRef.current && panelContainerRef.current && aiPanelWrapperRef.current) {
             workspaceLayoutModel.registerRefs(
                 aiPanelRef.current,
@@ -44,20 +53,17 @@ const WorkspaceElem = memo(({ compatMode = false }: { compatMode?: boolean }) =>
                 aiPanelWrapperRef.current
             );
         }
-    }, []);
+    }, [workspaceLayoutModel]);
 
     useEffect(() => {
-        const isVisible = compatMode ? false : workspaceLayoutModel.getAIPanelVisible();
+        const isVisible = workspaceLayoutModel.getAIPanelVisible();
         getApi().setWaveAIOpen(isVisible);
-    }, [compatMode, workspaceLayoutModel]);
+    }, [workspaceLayoutModel]);
 
     useEffect(() => {
-        if (compatMode) {
-            return;
-        }
         window.addEventListener("resize", workspaceLayoutModel.handleWindowResize);
         return () => window.removeEventListener("resize", workspaceLayoutModel.handleWindowResize);
-    }, [compatMode, workspaceLayoutModel]);
+    }, [workspaceLayoutModel]);
 
     useEffect(() => {
         workspaceStore.setCompatMode(compatMode);
@@ -76,9 +82,9 @@ const WorkspaceElem = memo(({ compatMode = false }: { compatMode?: boolean }) =>
     }, [compatMode]);
 
     return (
-        <div className="flex flex-col w-full flex-grow overflow-hidden">
+        <div className="flex flex-col w-full flex-grow overflow-hidden" style={compatWorkspaceStyle}>
             <TabBar key={workspace.oid} workspace={workspace} compatMode={compatMode} />
-            <div ref={panelContainerRef} className="flex flex-row flex-grow overflow-hidden">
+            <div ref={panelContainerRef} className="flex flex-row flex-grow overflow-hidden" style={compatPanelContainerStyle}>
                 <ErrorBoundary key={tabId}>
                     <Group
                         orientation="horizontal"
@@ -93,8 +99,8 @@ const WorkspaceElem = memo(({ compatMode = false }: { compatMode?: boolean }) =>
                             defaultSize={initialAiPanelPercentage}
                             className="overflow-hidden"
                         >
-                            <div ref={aiPanelWrapperRef} className="w-full h-full">
-                                {!compatMode && tabId !== "" && <AIPanel />}
+                            <div ref={aiPanelWrapperRef} className="w-full h-full" style={compatAIPanelWrapperStyle}>
+                                {tabId !== "" && <AIPanel />}
                             </div>
                         </Panel>
                         <Separator className="w-0.5 bg-transparent hover:bg-zinc-500/20 transition-colors" />
@@ -102,9 +108,9 @@ const WorkspaceElem = memo(({ compatMode = false }: { compatMode?: boolean }) =>
                             {tabId === "" ? (
                                 <CenteredDiv>No Active Tab</CenteredDiv>
                             ) : (
-                                <div className="flex flex-row h-full">
+                                <div className="flex flex-row h-full" style={compatMainContentStyle}>
                                     <TabContent key={`${tabId}:${workspace.activewidgetid}`} tabId={tabId} compatWorkspace={compatMode ? workspace : undefined} />
-                                    <Widgets />
+                                    <Widgets compatMode={compatMode} />
                                 </div>
                             )}
                         </Panel>

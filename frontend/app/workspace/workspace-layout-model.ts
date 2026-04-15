@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { WaveAIModel } from "@/app/aipanel/waveai-model";
+import { isWaveAICompatRuntime } from "@/app/aipanel/compat-context";
 import { globalStore } from "@/app/store/jotaiStore";
 import * as WOS from "@/app/store/wos";
 import { RpcApi } from "@/app/store/wshclientapi";
@@ -21,6 +22,10 @@ const AIPANEL_DEFAULTWIDTH = 300;
 const AIPANEL_DEFAULTWIDTHRATIO = 0.33;
 const AIPANEL_MINWIDTH = 300;
 const AIPANEL_MAXWIDTHRATIO = 0.66;
+
+function isCompatRuntime(): boolean {
+    return isWaveAICompatRuntime();
+}
 
 class WorkspaceLayoutModel {
     private static instance: WorkspaceLayoutModel | null = null;
@@ -52,6 +57,9 @@ class WorkspaceLayoutModel {
         this.handlePanelLayout = this.handlePanelLayout.bind(this);
 
         this.debouncedPersistWidth = debounce((width: number) => {
+            if (isCompatRuntime()) {
+                return;
+            }
             try {
                 RpcApi.SetMetaCommand(TabRpcClient, {
                     oref: WOS.makeORef("tab", this.getTabId()),
@@ -72,6 +80,9 @@ class WorkspaceLayoutModel {
 
     private initializeFromTabMeta(): void {
         if (this.initialized) return;
+        if (isCompatRuntime()) {
+            return;
+        }
         this.initialized = true;
 
         try {
@@ -236,10 +247,12 @@ class WorkspaceLayoutModel {
         }
         globalStore.set(this.panelVisibleAtom, visible);
         getApi().setWaveAIOpen(visible);
-        RpcApi.SetMetaCommand(TabRpcClient, {
-            oref: WOS.makeORef("tab", this.getTabId()),
-            meta: { "waveai:panelopen": visible },
-        });
+        if (!isCompatRuntime()) {
+            RpcApi.SetMetaCommand(TabRpcClient, {
+                oref: WOS.makeORef("tab", this.getTabId()),
+                meta: { "waveai:panelopen": visible },
+            });
+        }
         this.enableTransitions(250);
         this.syncAIPanelRef();
 
@@ -251,6 +264,9 @@ class WorkspaceLayoutModel {
                 }, 350);
             }
         } else {
+            if (isCompatRuntime()) {
+                return;
+            }
             const layoutModel = getLayoutModelForStaticTab();
             const focusedNode = globalStore.get(layoutModel.focusedNode);
             if (focusedNode == null) {
