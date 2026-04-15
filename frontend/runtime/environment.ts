@@ -2,11 +2,11 @@ import type { RuntimeEnvironment, RuntimePlatform } from "./types";
 
 const TAURI_RUNTIME_MARKERS = ["__TAURI__", "__TAURI_INTERNALS__"];
 
-function getWindowGlobal(): Record<string, unknown> | null {
+function getWindowGlobal(): { [key: string]: unknown } | null {
   if (typeof window === "undefined") {
     return null;
   }
-  return window as Record<string, unknown>;
+  return window as unknown as { [key: string]: unknown };
 }
 
 export function hasBrowserWindow(): boolean {
@@ -23,19 +23,19 @@ export function isTauriRuntime(): boolean {
 
 function resolveViteMode(): string {
   if (typeof import.meta === "undefined" || import.meta.env == null) {
-    return null;
+    return "";
   }
   if (import.meta.env.MODE) {
     return String(import.meta.env.MODE);
   }
-  return null;
+  return "";
 }
 
 function resolveNodeMode(): string {
   if (typeof process === "undefined" || process.env == null) {
-    return null;
+    return "";
   }
-  return process.env.NODE_ENV;
+  return process.env.NODE_ENV ?? "";
 }
 
 function resolveBrowserHostHint(): boolean {

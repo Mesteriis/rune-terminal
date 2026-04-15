@@ -5,14 +5,14 @@ import { getWebServerEndpoint } from "@/util/endpoints";
 import { boundNumber, isBlank } from "@/util/util";
 import { generate as generateCSS, parse as parseCSS, walk as walkCSS } from "css-tree";
 
-function encodeFileURL(file: string) {
+function encodeFileURL(file: string): string {
     const webEndpoint = getWebServerEndpoint();
     const fileUri = formatRemoteUri(file, "local");
     const rtn = webEndpoint + `/wave/stream-file?path=${encodeURIComponent(fileUri)}&no404=1`;
     return rtn;
 }
 
-export function processBackgroundUrls(cssText: string): string {
+export function processBackgroundUrls(cssText: string): string | null {
     if (isBlank(cssText)) {
         return null;
     }
@@ -29,7 +29,11 @@ export function processBackgroundUrls(cssText: string): string {
     walkCSS(ast, {
         visit: "Url",
         enter(node) {
-            const originalUrl = node.value.trim();
+            const originalUrl = node.value?.trim();
+            if (originalUrl == null) {
+                hasUnsafeUrl = true;
+                return;
+            }
             if (
                 originalUrl.startsWith("http:") ||
                 originalUrl.startsWith("https:") ||
@@ -69,17 +73,33 @@ export function processBackgroundUrls(cssText: string): string {
     return rtnStyle.replace(/^background:\s*/, "");
 }
 
-export function computeBgStyleFromMeta(meta: MetaType, defaultOpacity: number = null): React.CSSProperties {
+export function computeBgStyleFromMeta(
+    meta: MetaType,
+    defaultOpacity: number | null = null,
+): React.CSSProperties | null {
     const bgAttr = meta?.["bg"];
-    if (isBlank(bgAttr)) {
+    if (typeof bgAttr !== "string" || isBlank(bgAttr)) {
+        return null;
+    }
+    const trimmedBg = bgAttr.trim();
+    if (isBlank(trimmedBg)) {
         return null;
     }
     try {
-        const processedBg = processBackgroundUrls(bgAttr);
+        const processedBg = processBackgroundUrls(trimmedBg);
         const rtn: React.CSSProperties = {};
+        if (processedBg == null) {
+            return null;
+        }
         rtn.background = processedBg;
-        rtn.opacity = boundNumber(meta["bg:opacity"], 0, 1) ?? defaultOpacity;
-        if (!isBlank(meta?.["bg:blendmode"])) {
+        const rawBgOpacity = meta["bg:opacity"];
+        const computedOpacity = typeof rawBgOpacity === "number" ? boundNumber(rawBgOpacity, 0, 1) : null;
+        if (computedOpacity == null) {
+            rtn.opacity = defaultOpacity == null ? undefined : defaultOpacity;
+        } else {
+            rtn.opacity = computedOpacity;
+        }
+        if (typeof meta["bg:blendmode"] === "string" && !isBlank(meta["bg:blendmode"])) {
             rtn.backgroundBlendMode = meta["bg:blendmode"];
         }
         return rtn;
@@ -90,13 +110,13 @@ export function computeBgStyleFromMeta(meta: MetaType, defaultOpacity: number = 
 }
 
 export function formatRemoteUri(path: string, connection: string): string {
-    connection = connection ?? "local";
+    const effectiveConnection = connection || "local";
     // TODO: We need a better way to handle s3 paths
     let retVal: string;
-    if (connection.startsWith("aws:")) {
-        retVal = `${connection}:s3://${path ?? ""}`;
+    if (effectiveConnection.startsWith("aws:")) {
+        retVal = `${effectiveConnection}:s3://${path}`;
     } else {
-        retVal = `wsh://${connection}/${path}`;
+        retVal = `wsh://${effectiveConnection}/${path}`;
     }
     return retVal;
 }

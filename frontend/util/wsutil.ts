@@ -3,12 +3,12 @@
 
 import type { WebSocket as NodeWebSocketType } from "ws";
 
-let NodeWebSocket: typeof NodeWebSocketType = null;
+let NodeWebSocket: typeof NodeWebSocketType | null = null;
 
 if (typeof window === "undefined") {
     // Necessary to avoid issues with Rollup: https://github.com/websockets/ws/issues/2057
     import("ws")
-        .then((ws) => (NodeWebSocket = ws.default))
+        .then((ws) => (NodeWebSocket = ws.default ?? ws))
         .catch((e) => {
             console.log("Error importing 'ws':", e);
         });

@@ -4,7 +4,7 @@
 import * as util from "./util";
 
 export function findBlockId(element: HTMLElement): string | null {
-    let current: HTMLElement = element;
+    let current: HTMLElement | null = element;
     while (current) {
         if (current.hasAttribute("data-blockid")) {
             return current.getAttribute("data-blockid");
@@ -14,13 +14,17 @@ export function findBlockId(element: HTMLElement): string | null {
     return null;
 }
 
-export function getElemAsStr(elem: EventTarget) {
+export function getElemAsStr(elem: EventTarget | null | undefined) {
     if (elem == null) {
         return "null";
     }
     if (!(elem instanceof HTMLElement)) {
         if (elem instanceof Text) {
-            elem = elem.parentElement;
+            const parent = elem.parentElement;
+            if (parent == null) {
+                return "unknown";
+            }
+            elem = parent;
         }
         if (!(elem instanceof HTMLElement)) {
             return "unknown";
@@ -45,7 +49,7 @@ export function hasSelection() {
     return sel && sel.rangeCount > 0 && !sel.isCollapsed;
 }
 
-export function focusedBlockId(): string {
+export function focusedBlockId(): string | null {
     const focused = document.activeElement;
     if (focused instanceof HTMLElement) {
         const blockId = findBlockId(focused);
@@ -57,7 +61,11 @@ export function focusedBlockId(): string {
     if (sel && sel.anchorNode && sel.rangeCount > 0 && !sel.isCollapsed) {
         let anchor = sel.anchorNode;
         if (anchor instanceof Text) {
-            anchor = anchor.parentElement;
+            const parent = anchor.parentElement;
+            if (parent == null) {
+                return null;
+            }
+            anchor = parent;
         }
         if (anchor instanceof HTMLElement) {
             const blockId = findBlockId(anchor);

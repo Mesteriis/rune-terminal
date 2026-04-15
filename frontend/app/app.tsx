@@ -32,14 +32,13 @@ import "./app.scss";
 // tailwindsetup.css should come *after* app.scss (don't remove the newline above otherwise prettier will reorder these imports)
 import "../tailwindsetup.css";
 
-const dlog = debug("wave:app");
 const focusLog = debug("wave:focus");
 
 const App = ({ onFirstRender }: { onFirstRender: () => void }) => {
     const tabId = useAtomValue(atoms.staticTabId);
     useEffect(() => {
         onFirstRender();
-    }, []);
+    }, [onFirstRender]);
     return (
         <Provider store={globalStore}>
             <TabModelContext.Provider value={getTabModelByTabId(tabId)}>
@@ -51,8 +50,10 @@ const App = ({ onFirstRender }: { onFirstRender: () => void }) => {
 
 function isContentEditableBeingEdited(): boolean {
     const activeElement = document.activeElement;
+    if (!(activeElement instanceof HTMLElement)) {
+        return false;
+    }
     return (
-        activeElement &&
         activeElement.getAttribute("contenteditable") !== null &&
         activeElement.getAttribute("contenteditable") !== "false"
     );
@@ -60,12 +61,16 @@ function isContentEditableBeingEdited(): boolean {
 
 function canEnablePaste(): boolean {
     const activeElement = document.activeElement;
-    return activeElement.tagName === "INPUT" || activeElement.tagName === "TEXTAREA" || isContentEditableBeingEdited();
+    return (
+        activeElement instanceof HTMLInputElement ||
+        activeElement instanceof HTMLTextAreaElement ||
+        isContentEditableBeingEdited()
+    );
 }
 
 function canEnableCopy(): boolean {
     const sel = window.getSelection();
-    return !util.isBlank(sel?.toString());
+    return !util.isBlank(sel?.toString() ?? "");
 }
 
 function canEnableCut(): boolean {
@@ -73,10 +78,10 @@ function canEnableCut(): boolean {
     if (document.activeElement?.classList.contains("xterm-helper-textarea")) {
         return false;
     }
-    return !util.isBlank(sel?.toString()) && canEnablePaste();
+    return !util.isBlank(sel?.toString() ?? "") && canEnablePaste();
 }
 
-async function getClipboardURL(): Promise<URL> {
+async function getClipboardURL(): Promise<URL | null> {
     try {
         const clipboardText = await navigator.clipboard.readText();
         if (clipboardText == null) {
@@ -87,21 +92,21 @@ async function getClipboardURL(): Promise<URL> {
             return null;
         }
         return url;
-    } catch (e) {
+    } catch {
         return null;
     }
 }
 
 async function handleContextMenu(e: React.MouseEvent<HTMLDivElement>) {
     e.preventDefault();
-    const target = e.target as HTMLElement | null;
+    const target = e.target instanceof HTMLElement ? e.target : null;
     const blockElem = target?.closest?.("[data-blockid]") as HTMLElement | null;
     const blockId = blockElem?.getAttribute("data-blockid");
     const blockAtom = blockId ? WOS.getWaveObjectAtom<Block>(WOS.makeORef("block", blockId)) : null;
     const blockData = blockAtom ? globalStore.get(blockAtom) : null;
     const isTermBlock = blockData?.meta?.view === "term";
-    let termCwd = isTermBlock ? (blockData?.meta?.["cmd:cwd"] as string) : null;
-    let termConnection = isTermBlock ? (blockData?.meta?.connection as string) : null;
+    let termCwd: string | null = isTermBlock ? (blockData?.meta?.["cmd:cwd"] as string) : null;
+    let termConnection: string | null = isTermBlock ? (blockData?.meta?.connection as string) : null;
     if (isTermBlock && blockId) {
         const activeSessionId = blockData?.meta?.["term:activesessionid"] as string;
         if (activeSessionId && activeSessionId !== blockId) {
@@ -116,12 +121,14 @@ async function handleContextMenu(e: React.MouseEvent<HTMLDivElement>) {
     const canCopy = canEnableCopy();
     const canCut = canEnableCut();
     const clipboardURL = await getClipboardURL();
-    if (!canPaste && !canCopy && !canCut && !clipboardURL && util.isBlank(termCwd)) {
+    const safeTermCwd = termCwd ?? "";
+    const safeTermConnection = termConnection ?? "";
+    if (!canPaste && !canCopy && !canCut && !clipboardURL && util.isBlank(safeTermCwd)) {
         return;
     }
     const lang = getAppLanguageFromSettings(globalStore.get(atoms.settingsAtom));
     const t = (key: Parameters<typeof tCore>[1], vars?: Record<string, string | number>) => tCore(lang, key, vars);
-    let menu: ContextMenuItem[] = [];
+    const menu: ContextMenuItem[] = [];
     if (canCut) {
         menu.push({ label: t("menu.cut"), role: "cut" });
     }
@@ -131,7 +138,7 @@ async function handleContextMenu(e: React.MouseEvent<HTMLDivElement>) {
     if (canPaste) {
         menu.push({ label: t("menu.paste"), role: "paste" });
     }
-    if (!util.isBlank(termCwd)) {
+    if (!util.isBlank(safeTermCwd)) {
         if (menu.length > 0) {
             menu.push({ type: "separator" });
         }
@@ -139,14 +146,14 @@ async function handleContextMenu(e: React.MouseEvent<HTMLDivElement>) {
                     label: t("contextmenu.openCurrentDirectoryInNewBlock"),
                     click: () => {
                         createBlock({
-                            meta: {
-                                view: "preview",
-                                file: termCwd,
-                                connection: termConnection,
-                            },
-                        });
-                    },
-                });
+                                meta: {
+                                    view: "preview",
+                                    file: safeTermCwd,
+                                    connection: safeTermConnection,
+                                },
+                            });
+                        },
+                    });
     }
     if (clipboardURL) {
         if (menu.length > 0) {
@@ -176,6 +183,9 @@ function AppSettingsUpdater() {
         const opacity = util.boundNumber(windowSettings?.["window:opacity"] ?? 0.8, 0, 1);
         const baseBgColor = windowSettings?.["window:bgcolor"];
         const mainDiv = document.getElementById("main");
+        if (mainDiv == null) {
+            return;
+        }
         // console.log("window settings", windowSettings, isTransparentOrBlur, opacity, baseBgColor, mainDiv);
         if (isTransparentOrBlur) {
             mainDiv.classList.add("is-transparent");
@@ -205,14 +215,15 @@ function appFocusOut(e: FocusEvent) {
     focusLog("focusout", getElemAsStr(e.target), "=>", getElemAsStr(e.relatedTarget));
 }
 
-function appSelectionChange(e: Event) {
+function appSelectionChange() {
     const selection = document.getSelection();
+    if (selection == null) {
+        return;
+    }
     focusLog("selectionchange", getElemAsStr(selection.anchorNode));
 }
 
 function AppFocusHandler() {
-    return null;
-
     // for debugging
     useEffect(() => {
         document.addEventListener("focusin", appFocusIn);
@@ -250,7 +261,7 @@ const AppKeyHandlers = () => {
 
 const FlashError = () => {
     const flashErrors = useAtomValue(atoms.flashErrors);
-    const [hoveredId, setHoveredId] = useState<string>(null);
+    const [hoveredId, setHoveredId] = useState<string | null>(null);
     const [ticker, setTicker] = useState<number>(0);
 
     useEffect(() => {
@@ -258,7 +269,7 @@ const FlashError = () => {
             return;
         }
         const now = Date.now();
-        for (let ferr of flashErrors) {
+        for (const ferr of flashErrors) {
             if (ferr.expiration == null || ferr.expiration < now) {
                 removeFlashError(ferr.id);
             }
@@ -288,7 +299,7 @@ const FlashError = () => {
         navigator.clipboard.writeText(text);
     }
 
-    function convertNewlinesToBreaks(text) {
+    function convertNewlinesToBreaks(text: string) {
         return text.split("\n").map((part, index) => (
             <Fragment key={index}>
                 {part}

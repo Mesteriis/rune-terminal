@@ -38,22 +38,45 @@ import { setKeyUtilPlatform } from "@/util/keyutil";
 import { createElement } from "react";
 import { createRoot } from "react-dom/client";
 
+type WaveBootstrapWindow = Window & {
+    WOS: typeof WOS;
+    globalStore: typeof globalStore;
+    globalAtoms: typeof atoms;
+    RpcApi: typeof RpcApi;
+    isFullScreen: boolean;
+    countersPrint: typeof countersPrint;
+    countersClear: typeof countersClear;
+    getLayoutModelForStaticTab: typeof getLayoutModelForStaticTab;
+    pushFlashError: typeof pushFlashError;
+    pushNotification: typeof pushNotification;
+    removeNotificationById: typeof removeNotificationById;
+    modalsModel: typeof modalsModel;
+    globalWS: ReturnType<typeof initWshrpc>;
+    TabRpcClient: typeof TabRpcClient;
+};
+
+const bootstrapWindow = window as unknown as WaveBootstrapWindow;
+
 const platform = getApi().getPlatform();
 document.title = `TideTerm`;
-let savedInitOpts: WaveInitOpts = null;
+let savedInitOpts: WaveInitOpts | null = null;
 
-(window as any).WOS = WOS;
-(window as any).globalStore = globalStore;
-(window as any).globalAtoms = atoms;
-(window as any).RpcApi = RpcApi;
-(window as any).isFullScreen = false;
-(window as any).countersPrint = countersPrint;
-(window as any).countersClear = countersClear;
-(window as any).getLayoutModelForStaticTab = getLayoutModelForStaticTab;
-(window as any).pushFlashError = pushFlashError;
-(window as any).pushNotification = pushNotification;
-(window as any).removeNotificationById = removeNotificationById;
-(window as any).modalsModel = modalsModel;
+function describeError(error: unknown): string {
+    return error instanceof Error ? `${error.message}\n${error.stack ?? ""}` : String(error);
+}
+
+bootstrapWindow.WOS = WOS;
+bootstrapWindow.globalStore = globalStore;
+bootstrapWindow.globalAtoms = atoms;
+bootstrapWindow.RpcApi = RpcApi;
+bootstrapWindow.isFullScreen = false;
+bootstrapWindow.countersPrint = countersPrint;
+bootstrapWindow.countersClear = countersClear;
+bootstrapWindow.getLayoutModelForStaticTab = getLayoutModelForStaticTab;
+bootstrapWindow.pushFlashError = pushFlashError;
+bootstrapWindow.pushNotification = pushNotification;
+bootstrapWindow.removeNotificationById = removeNotificationById;
+bootstrapWindow.modalsModel = modalsModel;
 
 function updateZoomFactor(zoomFactor: number) {
     console.log("update zoomfactor", zoomFactor);
@@ -91,11 +114,11 @@ async function initWaveWrap(initOpts: WaveInitOpts) {
         savedInitOpts = initOpts;
         await initWave(initOpts);
     } catch (e) {
-        getApi().sendLog("Error in initWave " + e.message + "\n" + e.stack);
+        getApi().sendLog("Error in initWave " + describeError(e));
         console.error("Error in initWave", e);
     } finally {
-        document.body.style.visibility = null;
-        document.body.style.opacity = null;
+        document.body.style.visibility = "";
+        document.body.style.opacity = "";
         document.body.classList.remove("is-transparent");
     }
 }
@@ -111,6 +134,10 @@ async function reinitWave() {
             document.body.classList.remove("nohover");
         }, 100)
     );
+
+    if (savedInitOpts == null) {
+        return;
+    }
 
     await WOS.reloadWaveObject<Client>(WOS.makeORef("client", savedInitOpts.clientId));
     const waveWindow = await WOS.reloadWaveObject<WaveWindow>(WOS.makeORef("window", savedInitOpts.windowId));
@@ -165,12 +192,12 @@ async function initWave(initOpts: WaveInitOpts) {
     globalStore.set(activeTabIdAtom, initOpts.tabId);
     await GlobalModel.getInstance().initialize(globalInitOpts);
     initGlobal(globalInitOpts);
-    (window as any).globalAtoms = atoms;
+    bootstrapWindow.globalAtoms = atoms;
 
     // Init WPS event handlers
     const globalWS = initWshrpc(makeTabRouteId(initOpts.tabId));
-    (window as any).globalWS = globalWS;
-    (window as any).TabRpcClient = TabRpcClient;
+    bootstrapWindow.globalWS = globalWS;
+    bootstrapWindow.TabRpcClient = TabRpcClient;
     await loadConnStatus();
     initGlobalWaveEventSubs(initOpts);
     subscribeToConnEvents();
@@ -182,16 +209,19 @@ async function initWave(initOpts: WaveInitOpts) {
             WOS.loadAndPinWaveObject<WaveWindow>(WOS.makeORef("window", initOpts.windowId)),
             WOS.loadAndPinWaveObject<Tab>(WOS.makeORef("tab", initOpts.tabId)),
         ]);
-        const [ws, layoutState] = await Promise.all([
+        const [ws] = await Promise.all([
             WOS.loadAndPinWaveObject<Workspace>(WOS.makeORef("workspace", waveWindow.workspaceid)),
             WOS.reloadWaveObject<LayoutState>(WOS.makeORef("layout", initialTab.layoutstate)),
         ]);
+        void client;
+        void waveWindow;
+        void initialTab;
         loadAllWorkspaceTabs(ws);
         WOS.wpsSubscribeToObject(WOS.makeORef("workspace", waveWindow.workspaceid));
         document.title = `TideTerm - ${initialTab.name}`; // TODO update with tab name change
     } catch (e) {
         console.error("Failed initialization error", e);
-        getApi().sendLog("Error in initialization (wave.ts, loading required objects) " + e.message + "\n" + e.stack);
+        getApi().sendLog("Error in initialization (wave.ts, loading required objects) " + describeError(e));
     }
     registerGlobalKeys();
     registerElectronReinjectKeyHandler();
@@ -203,12 +233,15 @@ async function initWave(initOpts: WaveInitOpts) {
     const waveaiModeConfig = await RpcApi.GetWaveAIModeConfigCommand(TabRpcClient);
     globalStore.set(atoms.waveaiModeConfigAtom, waveaiModeConfig.configs);
     console.log("TideTerm First Render");
-    let firstRenderResolveFn: () => void = null;
-    let firstRenderPromise = new Promise<void>((resolve) => {
+    let firstRenderResolveFn: (() => void) | null = null;
+    const firstRenderPromise = new Promise<void>((resolve) => {
         firstRenderResolveFn = resolve;
     });
-    const reactElem = createElement(App, { onFirstRender: firstRenderResolveFn }, null);
+    const reactElem = createElement(App, { onFirstRender: firstRenderResolveFn ?? (() => {}) }, null);
     const elem = document.getElementById("main");
+    if (elem == null) {
+        throw new Error("Could not find #main element");
+    }
     const root = createRoot(elem);
     root.render(reactElem);
     await firstRenderPromise;
@@ -220,11 +253,11 @@ async function initBuilderWrap(initOpts: BuilderInitOpts) {
     try {
         await initBuilder(initOpts);
     } catch (e) {
-        getApi().sendLog("Error in initBuilder " + e.message + "\n" + e.stack);
+        getApi().sendLog("Error in initBuilder " + describeError(e));
         console.error("Error in initBuilder", e);
     } finally {
-        document.body.style.visibility = null;
-        document.body.style.opacity = null;
+        document.body.style.visibility = "";
+        document.body.style.opacity = "";
         document.body.classList.remove("is-transparent");
     }
 }
@@ -241,14 +274,14 @@ async function initBuilder(initOpts: BuilderInitOpts) {
     console.log("Tsunami Builder Init", globalInitOpts);
     await GlobalModel.getInstance().initialize(globalInitOpts);
     initGlobal(globalInitOpts);
-    (window as any).globalAtoms = atoms;
+    bootstrapWindow.globalAtoms = atoms;
 
     const globalWS = initWshrpc(makeBuilderRouteId(initOpts.builderId));
-    (window as any).globalWS = globalWS;
-    (window as any).TabRpcClient = TabRpcClient;
+    bootstrapWindow.globalWS = globalWS;
+    bootstrapWindow.TabRpcClient = TabRpcClient;
     await loadConnStatus();
 
-    let appIdToUse: string = null;
+    let appIdToUse: string | null = null;
     try {
         const oref = WOS.makeORef("builder", initOpts.builderId);
         const rtInfo = await RpcApi.GetRTInfoCommand(TabRpcClient, { oref });
@@ -261,9 +294,9 @@ async function initBuilder(initOpts: BuilderInitOpts) {
 
     document.title = appIdToUse ? `WaveApp Builder (${appIdToUse})` : "WaveApp Builder";
 
-    globalStore.set(atoms.builderAppId, appIdToUse);
+    globalStore.set(atoms.builderAppId, appIdToUse ?? "");
 
-    const client = await WOS.loadAndPinWaveObject<Client>(WOS.makeORef("client", initOpts.clientId));
+    await WOS.loadAndPinWaveObject<Client>(WOS.makeORef("client", initOpts.clientId));
 
     registerBuilderGlobalKeys();
     registerElectronReinjectKeyHandler();
@@ -275,12 +308,15 @@ async function initBuilder(initOpts: BuilderInitOpts) {
     globalStore.set(atoms.waveaiModeConfigAtom, waveaiModeConfig.configs);
 
     console.log("Tsunami Builder First Render");
-    let firstRenderResolveFn: () => void = null;
-    let firstRenderPromise = new Promise<void>((resolve) => {
+    let firstRenderResolveFn: (() => void) | null = null;
+    const firstRenderPromise = new Promise<void>((resolve) => {
         firstRenderResolveFn = resolve;
     });
-    const reactElem = createElement(BuilderApp, { initOpts, onFirstRender: firstRenderResolveFn }, null);
+    const reactElem = createElement(BuilderApp, { initOpts, onFirstRender: firstRenderResolveFn ?? (() => {}) }, null);
     const elem = document.getElementById("main");
+    if (elem == null) {
+        throw new Error("Could not find #main element");
+    }
     const root = createRoot(elem);
     root.render(reactElem);
     await firstRenderPromise;

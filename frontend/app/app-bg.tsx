@@ -5,7 +5,7 @@ import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
 import { computeBgStyleFromMeta } from "@/util/waveutil";
 import useResizeObserver from "@react-hook/resize-observer";
 import { useAtomValue } from "jotai";
-import { CSSProperties, useCallback, useLayoutEffect, useRef } from "react";
+import { type CSSProperties, useMemo, useLayoutEffect, useRef } from "react";
 import { debounce } from "throttle-debounce";
 import { atoms, getApi, WOS } from "./store/global";
 import { useWaveObjectValue } from "./store/wos";
@@ -15,16 +15,23 @@ export function AppBackground() {
     const tabId = useAtomValue(atoms.staticTabId);
     const [tabData] = useWaveObjectValue<Tab>(WOS.makeORef("tab", tabId));
     const style: CSSProperties = computeBgStyleFromMeta(tabData?.meta, 0.5) ?? {};
-    const getAvgColor = useCallback(
-        debounce(30, () => {
-            if (
-                bgRef.current &&
-                PLATFORM !== PlatformMacOS &&
-                bgRef.current &&
-                "windowControlsOverlay" in window.navigator
-            ) {
-                const titlebarRect: Dimensions = (window.navigator.windowControlsOverlay as any).getTitlebarAreaRect();
-                const bgRect = bgRef.current.getBoundingClientRect();
+    const debouncedGetAvgColor = useMemo(() => {
+        return debounce(
+            30,
+            (entryTarget: HTMLElement) => {
+                if (PLATFORM === PlatformMacOS || !("windowControlsOverlay" in window.navigator)) {
+                    return;
+                }
+                const windowControlsOverlay = window.navigator.windowControlsOverlay as
+                    | {
+                          getTitlebarAreaRect(): Dimensions;
+                      }
+                    | undefined;
+                if (windowControlsOverlay == null) {
+                    return;
+                }
+                const titlebarRect = windowControlsOverlay.getTitlebarAreaRect();
+                const bgRect = entryTarget.getBoundingClientRect();
                 if (titlebarRect && bgRect) {
                     const windowControlsLeft = titlebarRect.width - titlebarRect.height;
                     const windowControlsRect: Dimensions = {
@@ -36,11 +43,26 @@ export function AppBackground() {
                     getApi().updateWindowControlsOverlay(windowControlsRect);
                 }
             }
-        }),
-        [bgRef, style]
+        );
+    }, []);
+    const handleBgResize = useMemo(
+        () =>
+            debounce(30, (entry: ResizeObserverEntry) => {
+                if (!(entry.target instanceof HTMLElement)) {
+                    return;
+                }
+                debouncedGetAvgColor(entry.target);
+            }),
+        [debouncedGetAvgColor]
     );
-    useLayoutEffect(getAvgColor, [getAvgColor]);
-    useResizeObserver(bgRef, getAvgColor);
+
+    useLayoutEffect(() => {
+        if (bgRef.current == null) {
+            return;
+        }
+        debouncedGetAvgColor(bgRef.current);
+    }, [bgRef, debouncedGetAvgColor]);
+    useResizeObserver(bgRef, handleBgResize);
 
     return <div ref={bgRef} className="pointer-events-none absolute top-0 left-0 w-full h-full z-[var(--zindex-app-background)]" style={style} />;
 }
