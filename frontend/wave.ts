@@ -223,7 +223,6 @@ async function initBrowserCompatApp(activeTabId: string, workspace: import("@/rt
     workspaceStore.hydrate(workspace);
 
     setKeyUtilPlatform(platform);
-    loadFonts();
     updateZoomFactor(api.getZoomFactor());
     api.onZoomFactorChange((zoomFactor) => {
         updateZoomFactor(zoomFactor);

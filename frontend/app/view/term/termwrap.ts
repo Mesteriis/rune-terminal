@@ -1164,8 +1164,11 @@ export class TermWrap {
     }
 
     runProcessIdleTimeout() {
+        const ric =
+            window.requestIdleCallback ??
+            ((cb: IdleRequestCallback) => window.setTimeout(cb as unknown as TimerHandler, 1));
         setTimeout(() => {
-            window.requestIdleCallback(() => {
+            ric(() => {
                 this.processAndCacheData();
                 this.runProcessIdleTimeout();
             });

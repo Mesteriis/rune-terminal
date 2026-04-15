@@ -383,7 +383,6 @@ const CompatAppInner = () => {
                 fullscreen: isFullScreen,
                 "prefers-reduced-motion": prefersReducedMotion,
             })}
-            onContextMenu={handleContextMenu}
         >
             <AppBackground compatMode />
             <AppFocusHandler />

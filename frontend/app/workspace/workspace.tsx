@@ -60,14 +60,19 @@ const WorkspaceElem = memo(({ compatMode = false }: { compatMode?: boolean }) =>
     }, [compatMode, workspaceLayoutModel]);
 
     useEffect(() => {
+        workspaceStore.setCompatMode(compatMode);
         fireAndForget(() => workspaceStore.refresh());
         if (!compatMode) {
             fireAndForget(() => workspaceStore.refreshWorkspaceList());
         }
         setWorkspace(workspaceStore.getSnapshot().active);
-        return workspaceStore.subscribe((snapshot) => {
+        const unsubscribe = workspaceStore.subscribe((snapshot) => {
             setWorkspace(snapshot.active);
         });
+        return () => {
+            unsubscribe();
+            workspaceStore.setCompatMode(false);
+        };
     }, [compatMode]);
 
     return (

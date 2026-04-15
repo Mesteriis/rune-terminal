@@ -168,6 +168,7 @@ class WorkspaceStore {
     private themeRefreshPromise: Promise<{ colors: string[]; icons: string[] }> | null = null;
     private workspaceUpdateUnsub: (() => void) | null = null;
     private globalWorkspaceUnsub: (() => void) | null = null;
+    private compatModeActive = false;
 
     constructor() {
         const initialWorkspace = getLegacyWorkspaceFromAtoms();
@@ -295,6 +296,10 @@ class WorkspaceStore {
         };
     }
 
+    setCompatMode(active: boolean): void {
+        this.compatModeActive = active;
+    }
+
     private getActiveLegacyWorkspace(): LegacyWorkspace | null {
         return getLegacyWorkspaceFromAtoms();
     }
@@ -391,7 +396,9 @@ class WorkspaceStore {
         if (response?.workspace) {
             this.setState(adaptWorkspaceFromApi(response.workspace, this.state.active));
         }
-        await this.refreshWorkspaceList();
+        if (!this.compatModeActive) {
+            await this.refreshWorkspaceList();
+        }
         return response?.widget_id;
     }
 

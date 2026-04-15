@@ -263,6 +263,13 @@ const TabBar = memo(({ workspace, compatMode = false }: TabBarProps) => {
     const settings = useAtomValue(atoms.settingsAtom);
     const activeTabId = workspace?.activetabid ?? "";
 
+    const handleCompatContextMenuCapture = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+        if (!compatMode) {
+            return;
+        }
+        event.stopPropagation();
+    }, [compatMode]);
+
     let prevDelta: number;
     let prevDragDirection: string;
 
@@ -763,7 +770,7 @@ const TabBar = memo(({ workspace, compatMode = false }: TabBarProps) => {
         title: "Add Tab",
     };
     return (
-        <div ref={tabbarWrapperRef} className="tab-bar-wrapper">
+        <div ref={tabbarWrapperRef} className="tab-bar-wrapper" onContextMenuCapture={handleCompatContextMenuCapture}>
             <div
                 ref={draggerLeftRef}
                 className="h-full shrink-0 z-window-drag"
@@ -780,7 +787,7 @@ const TabBar = memo(({ workspace, compatMode = false }: TabBarProps) => {
                 </div>
             )}
             <WaveAIButton />
-            <WorkspaceSwitcher ref={workspaceSwitcherRef} compatMode={compatMode} />
+            {!compatMode && <WorkspaceSwitcher ref={workspaceSwitcherRef} compatMode={compatMode} />}
             <div className="tab-bar" ref={tabBarRef} data-overlayscrollbars-initialize>
                 <div className="tabs-wrapper" ref={tabsWrapperRef} style={{ width: `${tabsWrapperWidth}px` }}>
                     {tabIds.map((tabId, index) => {

@@ -2,6 +2,75 @@
 
 Validation date: `2026-04-15`
 
+## Latest frontend compat console/runtime stabilization slice
+
+This pass focused only on the active visible compat shell path:
+
+- compat startup in the browser/dev path
+- active tab render
+- tab switching
+- terminal input
+- isolation of legacy `/wave/service` and WOS calls from those visible compat flows
+
+Validation executed for this step:
+
+```bash
+npx tsc -p frontend/tsconfig.json --noEmit
+npm --prefix frontend run build
+
+RTERM_AUTH_TOKEN=compat-slice-token apps/desktop/bin/rterm-core serve --listen 127.0.0.1:52746 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/runa-compat-console-slice-state-fresh
+VITE_RTERM_API_BASE=http://127.0.0.1:52746 VITE_RTERM_AUTH_TOKEN=compat-slice-token npm --prefix frontend run dev -- --host 127.0.0.1 --port 4179 --strictPort
+
+# fresh browser verification against http://127.0.0.1:4179/
+# - hard load
+# - inspect console + request failures
+# - switch Main Shell <-> Ops Shell
+# - type `echo compat-slice-smoke` in the visible terminal
+# - confirm typed input reached /api/v1/terminal/<widget>/input
+# - targeted right-click tab check for legacy WOS leakage
+```
+
+Observed result:
+
+- TypeScript compile passed
+- frontend production build passed
+- fresh compat load produced no page errors, no console errors, and no failed network requests
+- workspace shell, tabs, and terminal were visible on first load
+- switching between `Main Shell` and `Ops Shell` used `POST /api/v1/workspace/focus-tab` with `200 OK`
+- typing in the visible compat terminal produced `POST /api/v1/terminal/term-side/input` with `200 OK`
+- `GET /api/v1/terminal/term-side?from=0` showed the echoed output `compat-slice-smoke`
+- targeted right-click on a visible tab produced no `/wave/service` requests and no `object.GetObject` failure after the compat context-menu isolation
+- the compat tab bar no longer rendered the legacy workspace switcher control
+
+Per-issue status for this slice:
+
+- `A network error occurred.`: `fixed`
+  - root cause was unhandled `FontFace.load()` rejection on missing compat font assets
+  - no `NetworkError` page errors remained on fresh compat load after custom font loading was removed from compat startup
+- `/wave/service` 404: `fixed` on the verified compat flow
+  - no `/wave/service` requests were observed during fresh load, tab switching, terminal input, or targeted tab right-click verification
+  - the compat add-tab path also no longer issued `/wave/service`; it stayed on typed workspace routes
+- `call object.GetObject failed: 404 Not Found`: `fixed` on the verified compat flow
+  - targeted tab right-click verification no longer triggered `object.GetObject` or any `/wave/service` request
+- `window.requestIdleCallback is not a function`: `fixed`
+  - the exact compat terminal call site now uses a guarded fallback in `frontend/app/view/term/termwrap.ts`
+  - the error was not reproducible after the patch in the verified browser run
+- font decode / missing styles issues: `fixed` for compat startup
+  - the missing legacy `/fonts/*` requests and decode warnings did not appear on the fresh compat load
+
+Additional out-of-scope observation:
+
+- clicking `Add Tab` no longer issued `/wave/service`, but a separate compat new-tab mount error was still observed:
+  - `TypeError: snapshot.chunks is not iterable`
+  - source reported by the browser: `frontend/app/view/term/termwrap.ts`
+  - this was not part of the requested initial-load / active-render / tab-switch / terminal-input stabilization slice and was not addressed here
+
+What was not expanded in this step:
+
+- AI panel behavior was not reworked
+- workspace editing flows were not reworked
+- unrelated legacy/frontend cleanup was not attempted
+
 ## Latest UI recovery slice
 
 This pass focused only on the release-blocking visible workspace and terminal recovery:
