@@ -20,6 +20,27 @@
 - Tested retry: `VERIFIED` — clicking `Confirm and retry` issued `safety.confirm`, extracted `approval_token`, retried the original `safety.add_ignore_rule` request with that token and produced final `status: "ok"` with a created ignore rule in `output`.
 - Notes: `POST /api/v1/tools/execute` for the initial approval challenge still appears in browser console as `Failed to load resource: the server responded with a status of 428 (Precondition Required)`. UI flow continued correctly because the frontend now treats the structured 428 execute body as a tool response rather than a transport crash.
 
+## Audit utility panel
+
+- Date: `2026-04-15`
+- Status: `VERIFIED`
+- Commits:
+  - `32bf420eca4d6d7ddf3987d0dce85fd78e2a132f`
+  - `ece14a3293435fbca14c0a0d540253d716a0efb5`
+  - `ab9dced527816f87ec14ffd549c51cf0aa09eafe`
+- Validation steps:
+  - runtime environment: `apps/desktop/bin/rterm-core serve --listen 127.0.0.1:52763 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/rterm-audit-ui` with `RTERM_AUTH_TOKEN=audit-ui-token`
+  - frontend dev: `VITE_RTERM_API_BASE=http://127.0.0.1:52763 VITE_RTERM_AUTH_TOKEN=audit-ui-token npm --prefix frontend run dev -- --host 127.0.0.1 --port 4193 --strictPort`
+  - в active compat UI открыт `Audit` button в правом utility rail; panel загрузила `GET /api/v1/audit?limit=50`
+  - через `Tools` panel выполнен safe path `workspace.list_widgets`; затем audit panel reopened и показала entry `workspace.list_widgets` со статусом `success`, summary `list workspace widgets`, `approval tier: safe`, `workspace: ws-local`
+  - через `Tools` panel выполнен approval-required path `safety.add_ignore_rule` с валидным input `{"scope":"repo","matcher_type":"glob","pattern":"audit-ui-validation-*","mode":"metadata-only","note":"audit panel validation"}`; UI показал `pending_approval`, затем `Confirm and retry` выполнил `safety.confirm` и повторный `safety.add_ignore_rule`
+  - после reopen audit panel показала связанную цепочку entries: `safety.add_ignore_rule` -> `approval_required`, `safety.confirm` -> `success`, финальный `safety.add_ignore_rule` -> `success` с `approval used: yes`
+- Result: `VERIFIED` — active audit utility surface открывается из существующего rail, читает реальные backend events и позволяет увидеть tool -> audit linkage в текущем UI без отдельного API debug surface.
+- Notes:
+  - page-level runtime exceptions от audit panel wiring не наблюдались
+  - browser console по-прежнему показывает `Failed to load resource: the server responded with a status of 428 (Precondition Required)` на approval challenge; UI корректно использует structured response и продолжает flow
+  - во время contract discovery две невалидные попытки `safety.add_ignore_rule` дали ожидаемый `400 invalid_input` (`unknown field "reason"` и `invalid ignore rule scope`); после перехода на repo-scoped payload approval path завершился успешно
+
 <a id="feature-terminal-input"></a>
 ## Ввод в терминал
 
@@ -264,11 +285,11 @@
 ## Runtime tools / audit utility panels
 
 - Date: `2026-04-15`
-- Status: `PARTIAL`
-- Commit: `2d0b4d689d22e7ae82a3e92dcf7a05385a58b1b7`
-- Validation steps: Через active compat `Tools` panel проверены list, execute, approval и retry поверх `/api/v1/tools/execute`. Audit utility panel отдельно не проверялся в этом slice.
-- Result: UI для tool runtime подтверждён по list/execute/approval/retry. Audit utility panel на active path в этом slice не валидировалась.
-- Notes: Эта запись заменяет старое audit-наблюдение только для tool-runtime части. Полная parity для combined `tools / audit` surface ещё не доказана, потому что audit panel в рамках этого slice не подключалась и не проверялась.
+- Status: `VERIFIED`
+- Commit: `ab9dced527816f87ec14ffd549c51cf0aa09eafe`
+- Validation steps: Через active compat right rail проверены оба surface: `Tools` panel прошёл list/execute/approval/retry поверх `/api/v1/tools/execute`, а `Audit` panel загрузил `/api/v1/audit` и отобразил реальные entries после safe tool и approval flow.
+- Result: Combined `tools / audit` utility surface подтверждён на active compat path: user может открыть оба panel, выполнить tool и увидеть его audit trail в текущем UI.
+- Notes: Browser console всё ещё фиксирует `428 Precondition Required` на approval challenge как сетевой ресурсный error, но это не ломает active tools/audit flow; подробности run записаны в секции `Audit utility panel`.
 
 <a id="feature-ai-persistent-conversation-transcript"></a>
 ## Persistent conversation transcript
