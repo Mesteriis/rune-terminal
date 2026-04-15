@@ -2,6 +2,97 @@
 
 Validation date: `2026-04-15`
 
+## Latest frontend asset pipeline validation (css + fonts)
+
+This pass stayed validation-only and focused on the active compat asset path:
+
+- identify which CSS actually loads on startup
+- verify whether CSS is applied or merely requested
+- identify which fonts actually load
+- classify whether the visual drift comes from CSS failure, font absence, path breakage, or load order
+
+Validation executed for this step:
+
+```bash
+npx tsc -p frontend/tsconfig.json --noEmit
+
+RTERM_AUTH_TOKEN=asset-pipeline-token apps/desktop/bin/rterm-core serve --listen 127.0.0.1:52750 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/runa-asset-pipeline-state
+VITE_RTERM_API_BASE=http://127.0.0.1:52750 VITE_RTERM_AUTH_TOKEN=asset-pipeline-token npm --prefix frontend run dev -- --host 127.0.0.1 --port 4183 --strictPort
+
+VITE_RTERM_API_BASE=http://127.0.0.1:52750 VITE_RTERM_AUTH_TOKEN=asset-pipeline-token npm --prefix frontend run build
+npm --prefix frontend run preview -- --host 127.0.0.1 --port 4184 --strictPort
+
+# live browser validation against:
+# - dev:     http://127.0.0.1:4183/
+# - preview: http://127.0.0.1:4184/
+# checks:
+# - stylesheet requests and order
+# - computed styles for body, #main, and terminal nodes
+# - font resource requests
+# - document.fonts state
+# - synthetic replay of fontutil.ts /fonts/* URLs in preview
+```
+
+Observed result:
+
+- TypeScript compile passed
+- the active compat CSS pipeline is alive in both dev and production preview
+- source `frontend/index.html` does not link CSS directly; it loads `frontend/wave.ts`, and the active compat CSS chain enters through `frontend/app/app.tsx`
+- observed active CSS import order stayed:
+  - `overlayscrollbars.css`
+  - `app.scss`
+  - `tailwindsetup.css`
+- dev load showed successful `200 OK` requests for:
+  - `/node_modules/overlayscrollbars/styles/overlayscrollbars.css`
+  - `/app/app.scss`
+  - `/tailwindsetup.css`
+  - `/app/view/term/xterm.css`
+  - transitive SCSS modules used by the rendered shell
+- production preview showed a single linked stylesheet bundle:
+  - `/assets/index-DtSIslWN.css`
+- no CSS `404` requests were observed in dev or preview
+- computed styles confirmed CSS application in both modes:
+  - `body.margin = 0px`
+  - `body.backgroundColor = rgb(34, 34, 34)`
+  - `#main.display = flex`
+  - root variables such as `--base-font`, `--fixed-font`, and `--main-bg-color` resolved
+- the active compat shell made no font network requests during normal startup in dev or preview
+- `document.fonts` contained no custom `FontFace` entries during the active compat load
+- this matches the runtime path in `frontend/wave.ts`:
+  - browser compat startup returns from `initBare()` before `loadFonts()`
+  - custom fonts are intentionally disabled on the active compat path
+- `frontend/util/fontutil.ts` still references relative legacy paths under `fonts/*`
+- the frontend tree does not ship those assets:
+  - no `frontend/fonts`
+  - no `frontend/public/fonts`
+  - no `frontend/dist/fonts`
+- `frontend/dist/assets` contains KaTeX fonts but not the `Inter`, `Hack`, or `JetBrains Mono` files referenced by `fontutil.ts`
+- synthetic replay of the same `fontutil.ts` URLs in production preview produced:
+  - `A network error occurred.`
+  - `Failed to decode downloaded font`
+  - `OTS parsing error: invalid sfntVersion: 1008821359`
+- direct fetch verification showed why:
+  - `/fonts/inter-variable.woff2` returned `200` with `content-type: text/html`
+  - the response body was SPA fallback HTML, not a font binary
+
+Per-classification result for this slice:
+
+- CSS not loading: `not supported by evidence`
+- CSS loading but not applying: `not supported by evidence`
+- fonts not loading on the active compat path: `confirmed`
+- fonts intentionally disabled on the active compat path: `confirmed`
+- legacy custom font path broken under `/fonts/*`: `confirmed`
+- CSS order broken: `not observed`
+- Vite base path as the validated root cause of the current visible drift: `not supported by evidence`
+
+Current conclusion:
+
+- the current visible styling drift is not explained by a dead CSS pipeline
+- the active compat shell loads and applies CSS in both dev and production preview
+- the strongest validated cause of the remaining design mismatch is missing custom fonts:
+  - active compat path does not load them
+  - legacy `fontutil.ts` paths point at non-shipped `/fonts/*` assets
+
 ## Latest frontend compat terminal stream race-safety validation
 
 This pass stayed validation-only and focused on rapid tab switching in the active compat terminal path:
