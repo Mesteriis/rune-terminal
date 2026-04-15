@@ -1,6 +1,56 @@
 # Validation Report
 
-Validation date: `2026-04-13`
+Validation date: `2026-04-15`
+
+## Latest UI recovery slice
+
+This pass focused only on the release-blocking visible workspace and terminal recovery:
+
+- browser/Tauri compat bootstrap mounts the existing app shell again
+- typed workspace state now reaches visible tabs and active-widget selection
+- terminal widget mounts from the typed terminal store path
+- compat-only legacy render blockers were removed without redesigning the UI
+
+Validation executed for this step:
+
+```bash
+RTERM_AUTH_TOKEN=ui-recovery-token ./apps/desktop/bin/rterm-core serve --listen 127.0.0.1:52745 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/runa-ui-recovery-state
+VITE_RTERM_API_BASE=http://127.0.0.1:52745 VITE_RTERM_AUTH_TOKEN=ui-recovery-token npm --prefix frontend run dev -- --host 127.0.0.1 --port 4178 --strictPort
+npx tsc -p frontend/tsconfig.json --noEmit
+npm --prefix frontend run build
+curl -sf -H 'Authorization: Bearer ui-recovery-token' http://127.0.0.1:52745/healthz
+curl -sf -H 'Authorization: Bearer ui-recovery-token' http://127.0.0.1:52745/api/v1/workspace
+curl -sf -H 'Authorization: Bearer ui-recovery-token' http://127.0.0.1:52745/api/v1/terminal/term-main?from=0
+curl -s -X POST -H 'Authorization: Bearer ui-recovery-token' -H 'Content-Type: application/json' -d '{}' http://127.0.0.1:52745/api/v1/workspace/tabs
+
+# live MCP browser verification against http://127.0.0.1:4178/
+# - page load
+# - visible workspace shell and tabs
+# - terminal input click/type
+# - tab switch click
+# - console/network inspection
+```
+
+Observed result:
+
+- TypeScript compile passed
+- frontend production build passed
+- `GET /healthz` returned `{"status":"ok"}`
+- `GET /api/v1/workspace` returned live typed workspace state including `active_tab_id`, `active_widget_id`, tabs, and widgets
+- `GET /api/v1/terminal/term-main?from=0` returned a running terminal snapshot with buffered chunks
+- MCP browser showed a visible workspace shell with rendered tabs and terminal surface
+- typing in the terminal produced `POST /api/v1/terminal/<widget>/input` requests with `200 OK`
+- typed text appeared in the visible terminal output
+- tab switching produced `POST /api/v1/workspace/focus-tab` with `200 OK`
+- after the switch, `GET /api/v1/workspace` reflected the clicked tab as `active_tab_id`
+- no fatal render-path console errors remained in the recovered compat path
+
+What was not fully resolved in this step:
+
+- the dev console still reports bundled-font decode warnings in the current dev environment
+- the dev console still shows generic `A network error occurred.` messages from existing terminal/browser integrations
+- workspace switcher editing flows and broader legacy shell surfaces were intentionally not reworked in this slice
+- validation used a temporary local state directory; one extra tab used for tab-switch smoke was recreated through the workspace API inside that temp state
 
 All commands below were run against the repository in its current state on macOS arm64.
 
