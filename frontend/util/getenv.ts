@@ -9,8 +9,8 @@ function getProcess(): NodeJS.Process | null {
     return (globalThis as typeof globalThis & { process?: NodeJS.Process | undefined }).process ?? null;
 }
 
-function getApi(): ElectronApi {
-    return (window as Window & { api?: ElectronApi }).api as ElectronApi;
+function getApi(): ElectronApi | undefined {
+    return (window as Window & { api?: ElectronApi }).api;
 }
 
 /**
@@ -21,7 +21,14 @@ function getApi(): ElectronApi {
 export function getEnv(paramName: string): string | undefined {
     const win = getWindow();
     if (win != null) {
-        return getApi().getEnv(paramName);
+        const apiValue = getApi()?.getEnv?.(paramName);
+        if (apiValue != null) {
+            return apiValue;
+        }
+        const viteValue = (import.meta.env as Record<string, string | undefined> | undefined)?.[paramName];
+        if (viteValue != null) {
+            return viteValue;
+        }
     }
     const proc = getProcess();
     if (proc != null) {

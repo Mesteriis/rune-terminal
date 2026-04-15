@@ -15,7 +15,7 @@ export class HttpClient {
   constructor(options: HttpClientOptions, fetchImpl?: typeof fetch) {
     this.#baseUrl = this.normalizeBaseUrl(options.baseUrl);
     this.#authToken = options.authToken;
-    this.#fetch = fetchImpl ?? fetch;
+    this.#fetch = fetchImpl ?? ((input: RequestInfo | URL, init?: RequestInit) => globalThis.fetch(input, init));
   }
 
   get baseUrl(): string {

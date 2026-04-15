@@ -39,6 +39,7 @@ import { createElement } from "react";
 import { createRoot } from "react-dom/client";
 
 type WaveBootstrapWindow = Window & {
+    api?: ElectronApi;
     WOS: typeof WOS;
     globalStore: typeof globalStore;
     globalAtoms: typeof atoms;
@@ -57,7 +58,117 @@ type WaveBootstrapWindow = Window & {
 
 const bootstrapWindow = window as unknown as WaveBootstrapWindow;
 
-const platform = getApi().getPlatform();
+function noopCleanup() {
+    return () => {};
+}
+
+function resolveBrowserPlatform(): NodeJS.Platform {
+    const navigatorWithUserAgentData = navigator as Navigator & {
+        userAgentData?: {
+            platform?: string;
+        };
+    };
+    const rawPlatform = (
+        navigatorWithUserAgentData.userAgentData?.platform ??
+        navigator.platform ??
+        ""
+    ).toLowerCase();
+    if (rawPlatform.includes("mac")) {
+        return "darwin";
+    }
+    if (rawPlatform.includes("win")) {
+        return "win32";
+    }
+    if (rawPlatform.includes("linux")) {
+        return "linux";
+    }
+    return "linux";
+}
+
+function createBrowserElectronApi(): ElectronApi {
+    return {
+        getAuthKey: () => (import.meta.env.VITE_RTERM_AUTH_TOKEN as string | undefined) ?? "",
+        getIsDev: () => Boolean(import.meta.env.DEV),
+        getCursorPoint: () => ({ x: 0, y: 0 }),
+        getPlatform: () => resolveBrowserPlatform(),
+        getEnv: (varName: string) => ((import.meta.env as Record<string, string | undefined>)[varName] ?? ""),
+        getUserName: () => "browser",
+        getHostName: () => "localhost",
+        getDataDir: () => "",
+        getConfigDir: () => "",
+        getHomeDir: () => "",
+        getPathForFile: (file: File) => file.name,
+        getWebviewPreload: () => "",
+        getAboutModalDetails: () => ({ version: "browser-dev", buildTime: Date.now() }),
+        getZoomFactor: () => window.devicePixelRatio || 1,
+        showWorkspaceAppMenu: () => {},
+        showBuilderAppMenu: () => {},
+        showContextMenu: () => {},
+        onContextMenuClick: () => {},
+        onNavigate: () => {},
+        onIframeNavigate: () => {},
+        downloadFile: () => {},
+        openExternal: (url: string) => {
+            window.open(url, "_blank", "noopener,noreferrer");
+        },
+        onFullScreenChange: () => {},
+        onZoomFactorChange: () => {},
+        onUpdaterStatusChange: () => {},
+        getUpdaterStatus: () => "up-to-date",
+        getUpdaterChannel: () => "dev",
+        installAppUpdate: () => {},
+        onMenuItemAbout: () => {},
+        onWindowTitleRename: noopCleanup,
+        onWindowTitleRestoreAuto: noopCleanup,
+        updateWindowControlsOverlay: () => {},
+        onReinjectKey: () => {},
+        setWebviewFocus: () => {},
+        registerGlobalWebviewKeys: () => {},
+        onControlShiftStateUpdate: () => {},
+        createWorkspace: () => {},
+        switchWorkspace: () => {},
+        deleteWorkspace: () => {},
+        setActiveTab: () => {},
+        createTab: () => {},
+        closeTab: () => {},
+        setWindowInitStatus: (status) => {
+            console.log("[browser-dev] window init status:", status);
+        },
+        onWaveInit: () => {},
+        onBuilderInit: () => {},
+        sendLog: (log: string) => {
+            console.log("[browser-dev]", log);
+        },
+        onQuicklook: () => {},
+        openNativePath: () => {},
+        captureScreenshot: async () => "",
+        setKeyboardChordMode: () => {},
+        clearWebviewStorage: async () => {},
+        setWaveAIOpen: () => {},
+        closeBuilderWindow: () => {},
+        incrementTermCommands: () => {},
+        nativePaste: () => {},
+        openBuilder: () => {},
+        setBuilderWindowAppId: () => {},
+        doRefresh: () => {
+            window.location.reload();
+        },
+    };
+}
+
+function hasElectronPreloadApi(): boolean {
+    return nativeElectronPreloadAvailable;
+}
+
+function ensureBootstrapApi(): ElectronApi {
+    if (bootstrapWindow.api == null) {
+        bootstrapWindow.api = createBrowserElectronApi();
+    }
+    return bootstrapWindow.api;
+}
+
+const nativeElectronPreloadAvailable = bootstrapWindow.api != null;
+const platform = nativeElectronPreloadAvailable ? getApi().getPlatform() : resolveBrowserPlatform();
 document.title = `TideTerm`;
 let savedInitOpts: WaveInitOpts | null = null;
 
@@ -84,22 +195,88 @@ function updateZoomFactor(zoomFactor: number) {
     document.documentElement.style.setProperty("--zoomfactor-inv", String(1 / zoomFactor));
 }
 
+function setDocumentVisible() {
+    document.body.style.visibility = "";
+    document.body.style.opacity = "";
+    document.body.classList.remove("is-transparent");
+}
+
+function renderBrowserRuntimeStatus(lines: string[]) {
+    const elem = document.getElementById("main");
+    if (elem == null) {
+        throw new Error("Could not find #main element");
+    }
+    elem.replaceChildren();
+    const pre = document.createElement("pre");
+    pre.textContent = lines.join("\n");
+    elem.appendChild(pre);
+}
+
+async function initBrowserCompatRuntime() {
+    const api = ensureBootstrapApi();
+    api.sendLog("Init Browser Compat Runtime");
+    try {
+        const [{ createCompatApiFacade }] = await Promise.all([import("@/compat")]);
+        const facade = await createCompatApiFacade({
+            noAuthForHealth: true,
+        });
+        const health = await facade.clients.bootstrap.getHealth();
+        const bootstrap = await facade.clients.bootstrap.getBootstrap();
+        const workspace = await facade.clients.workspace.getWorkspace();
+        const terminalWidget =
+            workspace.widgets.find((widget) => widget.id === workspace.active_widget_id && widget.kind === "terminal") ??
+            workspace.widgets.find((widget) => widget.kind === "terminal");
+        const terminalSnapshot =
+            terminalWidget == null ? null : await facade.clients.terminal.getSnapshot(terminalWidget.id, 0);
+
+        renderBrowserRuntimeStatus([
+            "Browser dev validation mode",
+            `runtime.source=${facade.runtime.source}`,
+            `runtime.baseUrl=${facade.runtime.baseUrl}`,
+            `runtime.authToken=${facade.runtime.authToken ? "present" : "missing"}`,
+            `health.status=${health.status}`,
+            `bootstrap.product=${bootstrap.product_name}`,
+            `workspace.id=${workspace.id}`,
+            `workspace.active_tab_id=${workspace.active_tab_id}`,
+            `workspace.active_widget_id=${workspace.active_widget_id}`,
+            `terminal.widget_id=${terminalWidget?.id ?? "none"}`,
+            `terminal.snapshot=${terminalSnapshot == null ? "skipped" : `ok next_seq=${terminalSnapshot.next_seq} status=${terminalSnapshot.state.status}`}`,
+        ]);
+        api.setWindowInitStatus("ready");
+    } catch (e) {
+        api.sendLog("Error in browser compat runtime " + describeError(e));
+        console.error("Error in browser compat runtime", e);
+        renderBrowserRuntimeStatus([
+            "Browser dev validation mode",
+            "status=error",
+            describeError(e),
+        ]);
+    } finally {
+        setDocumentVisible();
+    }
+}
+
 async function initBare() {
-    getApi().sendLog("Init Bare");
+    const api = ensureBootstrapApi();
+    api.sendLog("Init Bare");
     document.body.style.visibility = "hidden";
     document.body.style.opacity = "0";
     document.body.classList.add("is-transparent");
-    getApi().onWaveInit(initWaveWrap);
-    getApi().onBuilderInit(initBuilderWrap);
+    if (!hasElectronPreloadApi()) {
+        await initBrowserCompatRuntime();
+        return;
+    }
+    api.onWaveInit(initWaveWrap);
+    api.onBuilderInit(initBuilderWrap);
     setKeyUtilPlatform(platform);
     loadFonts();
-    updateZoomFactor(getApi().getZoomFactor());
-    getApi().onZoomFactorChange((zoomFactor) => {
+    updateZoomFactor(api.getZoomFactor());
+    api.onZoomFactorChange((zoomFactor) => {
         updateZoomFactor(zoomFactor);
     });
     document.fonts.ready.then(() => {
         console.log("Init Bare Done");
-        getApi().setWindowInitStatus("ready");
+        api.setWindowInitStatus("ready");
     });
 }
 
@@ -117,9 +294,7 @@ async function initWaveWrap(initOpts: WaveInitOpts) {
         getApi().sendLog("Error in initWave " + describeError(e));
         console.error("Error in initWave", e);
     } finally {
-        document.body.style.visibility = "";
-        document.body.style.opacity = "";
-        document.body.classList.remove("is-transparent");
+        setDocumentVisible();
     }
 }
 
@@ -256,9 +431,7 @@ async function initBuilderWrap(initOpts: BuilderInitOpts) {
         getApi().sendLog("Error in initBuilder " + describeError(e));
         console.error("Error in initBuilder", e);
     } finally {
-        document.body.style.visibility = "";
-        document.body.style.opacity = "";
-        document.body.classList.remove("is-transparent");
+        setDocumentVisible();
     }
 }
 

@@ -7,7 +7,7 @@ class ContextMenuModelType {
     handlers: Map<string, () => void> = new Map(); // id -> handler
 
     constructor() {
-        getApi().onContextMenuClick(this.handleContextMenuClick.bind(this));
+        getApi()?.onContextMenuClick?.(this.handleContextMenuClick.bind(this));
     }
 
     handleContextMenuClick(id: string): void {
@@ -59,7 +59,7 @@ class ContextMenuModelType {
             oid = globalStore.get(atoms.builderId);
         }
         
-        getApi().showContextMenu(oid, electronMenuItems);
+        getApi()?.showContextMenu?.(oid, electronMenuItems);
     }
 }
 
