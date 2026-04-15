@@ -19,6 +19,7 @@
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.10.1",
+    "highlight.js": "^11.11.0",
     "typescript": "^6.0.2"
   }
 }

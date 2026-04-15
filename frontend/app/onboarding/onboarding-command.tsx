@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import runaLogo from "@/asset/logo.svg";
 import { FakeBlock } from "./onboarding-layout";
-import tidetermLogo from "/logos/tideterm-logo-256.png";
 
 export type CommandRevealProps = {
     command: string;
@@ -108,7 +108,7 @@ Use Ctrl-Shift + Number (1-9) to focus a specific block by its position.`;
 export const ViewLogoCommand = ({ onComplete }: { onComplete?: () => void }) => {
     return (
         <FakeCommand command="wsh view public/logos/tideterm-logo-256.png" onComplete={onComplete}>
-            <FakeBlock icon="image" name="tideterm-logo-256.png" imgsrc={tidetermLogo} />
+            <FakeBlock icon="image" name="tideterm-logo-256.png" imgsrc={runaLogo} />
         </FakeCommand>
     );
 };
