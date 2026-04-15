@@ -1,11 +1,13 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { getToolsFacade } from "@/compat";
 import { Tooltip } from "@/app/element/tooltip";
 import { useT } from "@/app/i18n/i18n";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
+import type { ToolInfo } from "@/rterm-api/tools/types";
 import { atoms, createBlock, isDev } from "@/store/global";
 import { fireAndForget, isBlank, makeIconClass } from "@/util/util";
 import {
@@ -318,6 +320,154 @@ const SettingsFloatingWindow = memo(
 
 SettingsFloatingWindow.displayName = "SettingsFloatingWindow";
 
+const ToolsFloatingWindow = memo(
+    ({
+        isOpen,
+        onClose,
+        referenceElement,
+    }: {
+        isOpen: boolean;
+        onClose: () => void;
+        referenceElement: HTMLElement;
+    }) => {
+        const [tools, setTools] = useState<ToolInfo[]>([]);
+        const [selectedToolName, setSelectedToolName] = useState("");
+        const [loading, setLoading] = useState(true);
+        const [loadError, setLoadError] = useState<string | null>(null);
+
+        const { refs, floatingStyles, context } = useFloating({
+            open: isOpen,
+            onOpenChange: onClose,
+            placement: "left-start",
+            middleware: [offset(-2), shift({ padding: 12 })],
+            whileElementsMounted: autoUpdate,
+            elements: {
+                reference: referenceElement,
+            },
+        });
+
+        const dismiss = useDismiss(context);
+        const { getFloatingProps } = useInteractions([dismiss]);
+
+        useEffect(() => {
+            if (!isOpen) return;
+
+            let cancelled = false;
+            setLoading(true);
+            setLoadError(null);
+
+            void (async () => {
+                try {
+                    const facade = await getToolsFacade();
+                    const response = await facade.listTools();
+                    if (cancelled) {
+                        return;
+                    }
+                    const nextTools = response.tools ?? [];
+                    setTools(nextTools);
+                    setSelectedToolName((current) => {
+                        if (current && nextTools.some((tool) => tool.name === current)) {
+                            return current;
+                        }
+                        return nextTools[0]?.name ?? "";
+                    });
+                } catch (error) {
+                    if (!cancelled) {
+                        setLoadError(error instanceof Error ? error.message : String(error));
+                        setTools([]);
+                        setSelectedToolName("");
+                    }
+                } finally {
+                    if (!cancelled) {
+                        setLoading(false);
+                    }
+                }
+            })();
+
+            return () => {
+                cancelled = true;
+            };
+        }, [isOpen]);
+
+        if (!isOpen) return null;
+
+        const selectedTool = tools.find((tool) => tool.name === selectedToolName) ?? null;
+
+        return (
+            <FloatingPortal>
+                <div
+                    ref={refs.setFloating}
+                    style={floatingStyles}
+                    {...getFloatingProps()}
+                    className="bg-modalbg border border-border rounded-lg shadow-xl p-3 z-50 w-[32rem]"
+                >
+                    <div className="text-sm font-medium text-white mb-3">Tools</div>
+                    {loading ? (
+                        <div className="flex items-center justify-center p-8">
+                            <i className="fa fa-solid fa-spinner fa-spin text-2xl text-muted"></i>
+                        </div>
+                    ) : loadError ? (
+                        <div className="text-sm text-red-400 whitespace-pre-wrap">{loadError}</div>
+                    ) : tools.length === 0 ? (
+                        <div className="text-sm text-muted">No tools available</div>
+                    ) : (
+                        <div className="flex gap-3 min-h-64">
+                            <div className="w-52 shrink-0 border border-border rounded overflow-hidden">
+                                <div className="max-h-72 overflow-y-auto">
+                                    {tools.map((tool) => {
+                                        const selected = tool.name === selectedToolName;
+                                        return (
+                                            <button
+                                                key={tool.name}
+                                                type="button"
+                                                className={clsx(
+                                                    "w-full text-left px-3 py-2 border-b border-border last:border-b-0 transition-colors",
+                                                    selected ? "bg-hoverbg text-white" : "text-secondary hover:bg-hoverbg hover:text-white"
+                                                )}
+                                                onClick={() => setSelectedToolName(tool.name)}
+                                            >
+                                                <div className="text-sm leading-tight">{tool.name}</div>
+                                                <div className="text-xs opacity-70 mt-1">
+                                                    {tool.metadata.approval_tier} / {tool.metadata.target_kind}
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                {selectedTool ? (
+                                    <div className="space-y-3">
+                                        <div>
+                                            <div className="text-sm text-white">{selectedTool.name}</div>
+                                            <div className="text-xs text-secondary mt-1 whitespace-pre-wrap">
+                                                {selectedTool.description}
+                                            </div>
+                                        </div>
+                                        <div className="text-xs text-secondary whitespace-pre-wrap break-words">
+                                            capabilities: {selectedTool.metadata.capabilities.join(", ") || "none"}
+                                        </div>
+                                        <div className="text-xs text-secondary whitespace-pre-wrap break-words">
+                                            input schema:
+                                            <pre className="mt-1 p-2 rounded bg-black/20 overflow-auto text-[11px] text-secondary">
+                                                {JSON.stringify(selectedTool.input_schema, null, 2)}
+                                            </pre>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="text-sm text-muted">Select a tool to inspect its contract</div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </FloatingPortal>
+        );
+    }
+);
+
+ToolsFloatingWindow.displayName = "ToolsFloatingWindow";
+
 const Widgets = memo(({ compatMode = false }: { compatMode?: boolean }) => {
     const t = useT();
     const fullConfig = useAtomValue(atoms.fullConfigAtom);
@@ -335,6 +485,8 @@ const Widgets = memo(({ compatMode = false }: { compatMode?: boolean }) => {
 
     const [isAppsOpen, setIsAppsOpen] = useState(false);
     const appsButtonRef = useRef<HTMLDivElement>(null);
+    const [isToolsOpen, setIsToolsOpen] = useState(false);
+    const toolsButtonRef = useRef<HTMLDivElement>(null);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const settingsButtonRef = useRef<HTMLDivElement>(null);
     const compatWidgetsStyle = compatMode
@@ -455,6 +607,18 @@ const Widgets = memo(({ compatMode = false }: { compatMode?: boolean }) => {
                         </div>
                         <div className="flex-grow" />
                         <div className="grid grid-cols-2 gap-0 w-full">
+                            <div
+                                ref={toolsButtonRef}
+                                className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-sm overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
+                                style={compatActionStyle}
+                                onClick={() => setIsToolsOpen(!isToolsOpen)}
+                            >
+                                <Tooltip content="Tools" placement="left" disable={isToolsOpen}>
+                                    <div>
+                                        <i className={makeIconClass("screwdriver-wrench", true, { defaultIcon: "toolbox" })}></i>
+                                    </div>
+                                </Tooltip>
+                            </div>
                             {isDev() || featureWaveAppBuilder ? (
                                 <div
                                     ref={appsButtonRef}
@@ -489,6 +653,25 @@ const Widgets = memo(({ compatMode = false }: { compatMode?: boolean }) => {
                             <Widget key={`widget-${idx}`} widget={data} mode={mode} />
                         ))}
                         <div className="flex-grow" />
+                        <div
+                            ref={toolsButtonRef}
+                            className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-lg overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
+                            style={compatActionStyle}
+                            onClick={() => setIsToolsOpen(!isToolsOpen)}
+                        >
+                            <Tooltip content="Tools" placement="left" disable={isToolsOpen}>
+                                <div className="flex flex-col items-center w-full">
+                                    <div>
+                                        <i className={makeIconClass("screwdriver-wrench", true, { defaultIcon: "toolbox" })}></i>
+                                    </div>
+                                    {mode === "normal" && (
+                                        <div className="text-xxs mt-0.5 w-full px-0.5 text-center whitespace-nowrap overflow-hidden text-ellipsis">
+                                            Tools
+                                        </div>
+                                    )}
+                                </div>
+                            </Tooltip>
+                        </div>
                         {isDev() || featureWaveAppBuilder ? (
                             <div
                                 ref={appsButtonRef}
@@ -540,6 +723,13 @@ const Widgets = memo(({ compatMode = false }: { compatMode?: boolean }) => {
                     referenceElement={appsButtonRef.current}
                 />
             )}
+            {toolsButtonRef.current && (
+                <ToolsFloatingWindow
+                    isOpen={isToolsOpen}
+                    onClose={() => setIsToolsOpen(false)}
+                    referenceElement={toolsButtonRef.current}
+                />
+            )}
             {settingsButtonRef.current && (
                 <SettingsFloatingWindow
                     isOpen={isSettingsOpen}
@@ -557,6 +747,12 @@ const Widgets = memo(({ compatMode = false }: { compatMode?: boolean }) => {
                     <Widget key={`measurement-widget-${idx}`} widget={data} mode="normal" />
                 ))}
                 <div className="flex-grow" />
+                <div className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-lg">
+                    <div>
+                        <i className={makeIconClass("screwdriver-wrench", true, { defaultIcon: "toolbox" })}></i>
+                    </div>
+                    <div className="text-xxs mt-0.5 w-full px-0.5 text-center">Tools</div>
+                </div>
                 <div className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-lg">
                     <div>
                         <i className={makeIconClass("gear", true)}></i>
