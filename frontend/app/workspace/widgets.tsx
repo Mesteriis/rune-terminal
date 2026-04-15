@@ -85,6 +85,10 @@ function calculateGridSize(appCount: number): number {
     return 6;
 }
 
+function normalizeAppList(apps: AppInfo[] | null | undefined): AppInfo[] {
+    return Array.isArray(apps) ? apps : [];
+}
+
 const AppsFloatingWindow = memo(
     ({
         isOpen,
@@ -118,7 +122,7 @@ const AppsFloatingWindow = memo(
             const fetchApps = async () => {
                 setLoading(true);
                 try {
-                    const allApps = await RpcApi.ListAllAppsCommand(TabRpcClient);
+                    const allApps = normalizeAppList(await RpcApi.ListAllAppsCommand(TabRpcClient));
                     const localApps = allApps
                         .filter((app) => !app.appid.startsWith("draft/"))
                         .sort((a, b) => {
