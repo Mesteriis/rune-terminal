@@ -797,14 +797,6 @@ function removeNotification(id: string) {
     });
 }
 
-function createTab() {
-    getApi().createTab();
-}
-
-function setActiveTab(tabId: string) {
-    getApi().setActiveTab(tabId);
-}
-
 function recordTEvent(event: string, props?: TEventProps) {
     if (props == null) {
         props = {};
@@ -820,7 +812,6 @@ export {
     createBlock,
     createBlockSplitHorizontally,
     createBlockSplitVertically,
-    createTab,
     fetchWaveFile,
     getAllBlockComponentModels,
     getApi,
@@ -852,7 +843,6 @@ export {
     removeNotification,
     removeNotificationById,
     replaceBlock,
-    setActiveTab,
     setNodeFocus,
     setPlatform,
     subscribeToConnEvents,

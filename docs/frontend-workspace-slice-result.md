@@ -20,6 +20,7 @@
 - Workspace list/switch/update flows in `frontend/app/tab/workspaceswitcher.tsx` and metadata editing in `frontend/app/tab/workspaceeditor.tsx` still use legacy workspace service calls.
 - Base active workspace bootstrap and layout shell wiring still comes from legacy store/WOS paths (`frontend/app/store/global.ts`, `frontend/wave.ts`).
 - Non-tab workspace interactions that are not in direct active terminal-tab operations were intentionally not migrated in this slice.
+- Legacy workspace/tab forwarding helpers in `frontend/app/store/global.ts` (`createTab`, `setActiveTab`) were removed because they are dead and not on the active runtime path after slice 6 migration.
 
 ## Temporary shims introduced
 
