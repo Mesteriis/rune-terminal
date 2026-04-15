@@ -1480,3 +1480,45 @@ What was not fully automated in this slice:
 
 - no native-window automation was run inside the Tauri shell itself
 - browser-backed smoke was run against the Vite-hosted frontend pointed at a real `rterm-core` sidecar, which is sufficient for this terminal slice because the terminal behavior lives in the shared renderer/runtime path
+
+## Latest frontend stabilization slice 2 validation
+
+This slice stayed intentionally narrow:
+
+- TypeScript/build convergence on active frontend paths
+- runtime/bootstrap truthfulness for browser-hosted Vite validation
+- no CSS or visual refactor work
+
+Validation executed for this slice:
+
+```bash
+npx tsc -p frontend/tsconfig.json --noEmit
+npm --prefix frontend run build
+npm --prefix frontend run lint
+RTERM_AUTH_TOKEN=test-token go run ./cmd/rterm-core serve -listen 127.0.0.1:52732 -state-dir /tmp/runa-slice2-state -workspace-root . -ready-file /tmp/runa-slice2-ready.json
+VITE_RTERM_API_BASE=http://127.0.0.1:52732 VITE_RTERM_AUTH_TOKEN=test-token npm --prefix frontend run dev -- --host 127.0.0.1 --port 5173 --strictPort
+curl -sf http://127.0.0.1:52732/healthz
+curl -sf -H 'Authorization: Bearer test-token' http://127.0.0.1:52732/api/v1/bootstrap
+curl -sf -H 'Authorization: Bearer test-token' http://127.0.0.1:52732/api/v1/workspace
+curl -sf -H 'Authorization: Bearer test-token' http://127.0.0.1:52732/api/v1/terminal/term-main?from=0
+curl -sf -X POST -H 'Authorization: Bearer test-token' -H 'Content-Type: application/json' http://127.0.0.1:52732/api/v1/terminal/term-main/input -d '{"text":"echo slice2-runtime-ok","append_newline":true}'
+```
+
+Observed result:
+
+- `tsc` passes.
+- frontend production build passes; warnings remain for Tailwind v4 at-rules in Lightning CSS, browser-externalized electron modules, and large chunks.
+- frontend lint still fails with a large legacy backlog concentrated in AI/block/layout/util/type zones.
+- backend serve path starts and responds on `127.0.0.1:52732`.
+- browser-hosted frontend now loads without console errors and issues real typed API requests to:
+  - `GET /healthz`
+  - `GET /api/v1/bootstrap`
+  - `GET /api/v1/workspace`
+  - `GET /api/v1/terminal/term-main?from=0`
+- the browser requests include `Authorization: Bearer test-token` on authenticated endpoints.
+- sending `echo slice2-runtime-ok` through `POST /api/v1/terminal/term-main/input` succeeded, and the subsequent terminal snapshot contained `slice2-runtime-ok`.
+
+What was not validated in this slice:
+
+- no full Electron/Tauri interactive UI automation was run
+- the legacy Wave/WOS renderer path was not revived in plain browser mode; browser dev now uses a narrow typed-runtime validation fallback instead
