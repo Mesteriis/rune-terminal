@@ -4,7 +4,6 @@
 import { getAuditFacade, getToolsFacade } from "@/compat";
 import { Tooltip } from "@/app/element/tooltip";
 import { useT } from "@/app/i18n/i18n";
-import { workspaceStore } from "@/app/state/workspace.store";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import type { AuditEvent } from "@/rterm-api/audit/types";
 import type { PendingApproval, ToolExecutionRequest, ToolExecutionResponse, ToolInfo } from "@/rterm-api/tools/types";
@@ -24,24 +23,25 @@ import {
 import clsx from "clsx";
 import { useAtomValue } from "jotai";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
-
-function sortByDisplayOrder(wmap: { [key: string]: WidgetConfigType }): WidgetConfigType[] {
-    if (wmap == null) {
-        return [];
-    }
-    const wlist = Object.values(wmap);
-    wlist.sort((a, b) => {
-        return (a["display:order"] ?? 0) - (b["display:order"] ?? 0);
-    });
-    return wlist;
-}
-
-async function handleWidgetSelect(widget: WidgetConfigType) {
-    const blockDef = widget.blockdef;
-    createBlock(blockDef, widget.magnified);
-}
-
-const Widget = memo(({ widget, mode }: { widget: WidgetConfigType; mode: "normal" | "compact" | "supercompact" }) => {
+import {
+    buildToolExecutionContext,
+    calculateGridSize,
+    formatAuditTimestamp,
+    formatJson,
+    getApprovalToken,
+    handleWidgetSelect,
+    normalizeAppList,
+    sortByDisplayOrder,
+} from "./widget-helpers";
+import type {
+    AuditFloatingWindowProps,
+    FloatingWindowProps,
+    PendingToolApproval,
+    ToolsFloatingWindowProps,
+    WidgetDisplayMode,
+    WidgetItemProps,
+} from "./widget-types";
+const Widget = memo(({ widget, mode }: WidgetItemProps) => {
     const [isTruncated, setIsTruncated] = useState(false);
     const labelRef = useRef<HTMLDivElement>(null);
 
@@ -81,65 +81,8 @@ const Widget = memo(({ widget, mode }: { widget: WidgetConfigType; mode: "normal
     );
 });
 
-function calculateGridSize(appCount: number): number {
-    if (appCount <= 4) return 2;
-    if (appCount <= 9) return 3;
-    if (appCount <= 16) return 4;
-    if (appCount <= 25) return 5;
-    return 6;
-}
-
-function normalizeAppList(apps: AppInfo[] | null | undefined): AppInfo[] {
-    return Array.isArray(apps) ? apps : [];
-}
-
-function formatJson(value: unknown): string {
-    if (value == null) {
-        return "{}";
-    }
-    try {
-        return JSON.stringify(value, null, 2);
-    } catch {
-        return "{}";
-    }
-}
-
-function formatAuditTimestamp(timestamp: string): string {
-    const date = new Date(timestamp);
-    if (Number.isNaN(date.getTime())) {
-        return timestamp;
-    }
-    return date.toLocaleString();
-}
-
-function buildToolExecutionContext(repoRoot: string) {
-    const workspace = workspaceStore.getSnapshot().active;
-    return {
-        workspace_id: workspace.oid || undefined,
-        active_widget_id: workspace.activewidgetid || undefined,
-        repo_root: repoRoot || undefined,
-    };
-}
-
-function getApprovalToken(response: ToolExecutionResponse): string | null {
-    const output = response.output;
-    if (output == null || typeof output !== "object") {
-        return null;
-    }
-    const token = (output as Record<string, unknown>).approval_token;
-    return typeof token === "string" ? token : null;
-}
-
 const AppsFloatingWindow = memo(
-    ({
-        isOpen,
-        onClose,
-        referenceElement,
-    }: {
-        isOpen: boolean;
-        onClose: () => void;
-        referenceElement: HTMLElement;
-    }) => {
+    ({ isOpen, onClose, referenceElement }: FloatingWindowProps) => {
         const [apps, setApps] = useState<AppInfo[]>([]);
         const [loading, setLoading] = useState(true);
 
@@ -249,15 +192,7 @@ const AppsFloatingWindow = memo(
 );
 
 const SettingsFloatingWindow = memo(
-    ({
-        isOpen,
-        onClose,
-        referenceElement,
-    }: {
-        isOpen: boolean;
-        onClose: () => void;
-        referenceElement: HTMLElement;
-    }) => {
+    ({ isOpen, onClose, referenceElement }: FloatingWindowProps) => {
         const t = useT();
         const { refs, floatingStyles, context } = useFloating({
             open: isOpen,
@@ -360,21 +295,8 @@ const SettingsFloatingWindow = memo(
 SettingsFloatingWindow.displayName = "SettingsFloatingWindow";
 
 const ToolsFloatingWindow = memo(
-    ({
-        isOpen,
-        onClose,
-        referenceElement,
-        onAuditChanged,
-    }: {
-        isOpen: boolean;
-        onClose: () => void;
-        referenceElement: HTMLElement;
-        onAuditChanged?: () => void;
-    }) => {
-        const [pendingApproval, setPendingApproval] = useState<{
-            approval: PendingApproval;
-            request: ToolExecutionRequest;
-        } | null>(null);
+    ({ isOpen, onClose, referenceElement, onAuditChanged }: ToolsFloatingWindowProps) => {
+        const [pendingApproval, setPendingApproval] = useState<PendingToolApproval | null>(null);
         const [tools, setTools] = useState<ToolInfo[]>([]);
         const [selectedToolName, setSelectedToolName] = useState("");
         const [repoRoot, setRepoRoot] = useState("");
@@ -663,17 +585,7 @@ const ToolsFloatingWindow = memo(
 ToolsFloatingWindow.displayName = "ToolsFloatingWindow";
 
 const AuditFloatingWindow = memo(
-    ({
-        isOpen,
-        onClose,
-        referenceElement,
-        refreshNonce,
-    }: {
-        isOpen: boolean;
-        onClose: () => void;
-        referenceElement: HTMLElement;
-        refreshNonce: number;
-    }) => {
+    ({ isOpen, onClose, referenceElement, refreshNonce }: AuditFloatingWindowProps) => {
         const [events, setEvents] = useState<AuditEvent[]>([]);
         const [loading, setLoading] = useState(true);
         const [loadError, setLoadError] = useState<string | null>(null);
@@ -799,7 +711,7 @@ const Widgets = memo(({ compatMode = false }: { compatMode?: boolean }) => {
     const t = useT();
     const fullConfig = useAtomValue(atoms.fullConfigAtom);
     const hasCustomAIPresets = useAtomValue(atoms.hasCustomAIPresetsAtom);
-    const [mode, setMode] = useState<"normal" | "compact" | "supercompact">("normal");
+    const [mode, setMode] = useState<WidgetDisplayMode>("normal");
     const containerRef = useRef<HTMLDivElement>(null);
     const measurementRef = useRef<HTMLDivElement>(null);
 
@@ -859,7 +771,7 @@ const Widgets = memo(({ compatMode = false }: { compatMode?: boolean }) => {
         const normalHeight = measurementRef.current.scrollHeight;
         const gracePeriod = 10;
 
-        let newMode: "normal" | "compact" | "supercompact" = "normal";
+        let newMode: WidgetDisplayMode = "normal";
 
         if (normalHeight > containerHeight - gracePeriod) {
             newMode = "compact";
