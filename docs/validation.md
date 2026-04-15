@@ -2,6 +2,108 @@
 
 Validation date: `2026-04-15`
 
+## Latest frontend compat terminal stream race-safety validation
+
+This pass stayed validation-only and focused on rapid tab switching in the active compat terminal path:
+
+- rapid `Main Shell <-> Ops Shell` switching
+- switch immediately after terminal input
+- repeated switching on a warmed runtime
+- new terminal tab stream lifecycle under rapid switching
+
+Validation executed for this step:
+
+```bash
+RTERM_AUTH_TOKEN=compat-race-token apps/desktop/bin/rterm-core serve --listen 127.0.0.1:52749 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/runa-compat-race-safety-state
+VITE_RTERM_API_BASE=http://127.0.0.1:52749 VITE_RTERM_AUTH_TOKEN=compat-race-token npm --prefix frontend run dev -- --host 127.0.0.1 --port 4182 --strictPort
+
+# fresh browser verification against http://127.0.0.1:4182/
+# - scenario A: fresh load, then Main Shell <-> Ops Shell rapid switching 5 round-trips
+# - scenario B: type `echo race-b-1776276587916`, switch away almost immediately, return, inspect next_seq and output continuity
+# - scenario C: warmed runtime, then Main Shell <-> Ops Shell rapid switching 8 round-trips
+# - scenario D: Add Tab, then rapid switching between Main Shell and the new terminal tab
+# - inspect page errors, console errors, active stream counts, abort source, store stream state, and terminal snapshots
+```
+
+Observed result:
+
+- no page errors were raised during the validated rapid-switching scenarios
+- no console errors or warnings were raised during the validated rapid-switching scenarios
+- Playwright network inspection showed successful `200 OK` requests for:
+  - `POST /api/v1/workspace/focus-tab`
+  - `POST /api/v1/workspace/tabs`
+  - `GET /api/v1/terminal/<widget>?from=0`
+  - `GET /api/v1/terminal/<widget>/stream?...`
+  - `POST /api/v1/terminal/term-main/input`
+- aborted stream replacements were confirmed by runtime instrumentation rather than by Playwright failed-request output
+
+Scenario A observations:
+
+- initial load established the compat terminal for `term-main`
+- during 5 rapid `Main Shell <-> Ops Shell` round-trips, the instrumented stream lifecycle showed:
+  - 10 newly observed stream opens
+  - 9 observed aborts for replaced streams
+  - 1 final open stream for the active tab
+- maximum concurrently open tracked terminal streams during the rapid-switch window was `1`
+- no evidence of double subscription or dangling old stream was observed in this scenario
+
+Scenario B observations:
+
+- active input was sent to `term-main`, then the UI switched away almost immediately and back again
+- the old `term-main` stream was aborted by the normal cleanup path, and the resumed `term-main` stream reopened from `from=41`
+- while `term-main` was inactive, no late `chunk` events were observed for the inactive terminal path after `stream-stop`
+- on return, the refreshed snapshot advanced from `next_seq=38` to `next_seq=41`
+- server-side terminal snapshot verification showed:
+  - `markerCount: 1` for `race-b-1776276587916`
+  - no duplicate chunk sequences
+  - no sequence gaps
+- observed interpretation:
+  - output generated while the tab was inactive was recovered through snapshot refresh on remount
+  - no lost output or duplicated output was observed for this scenario
+
+Scenario C observations:
+
+- on a warmed runtime, 8 additional rapid round-trips produced:
+  - 16 newly observed stream opens
+  - 15 observed aborts for replaced streams
+  - 1 final open stream for the active tab
+- maximum concurrently open tracked terminal streams during the warmed rapid-switch window was again `1`
+- no accumulation of old open streams was observed after the scenario
+
+Scenario D observations:
+
+- `Add Tab` created a new terminal widget `term_06c436c8147d987d`
+- the new terminal stream lifecycle under rapid switching showed:
+  - first open from `from=1`
+  - later reopen from `from=3`
+  - later reopen from `from=4`
+- server-side snapshot verification for `term_06c436c8147d987d` showed:
+  - `next_seq: 4`
+  - chunk sequences `[1, 2, 3]`
+  - no duplicate chunk sequences
+  - no sequence gaps
+- maximum concurrently open tracked terminal streams during the new-tab rapid-switch window was `1`
+- no evidence of a duplicated live stream for the new terminal was observed
+
+Per-observation classification for this slice:
+
+- active stream replacement via `AbortController.abort()` during unmount/remount: `expected`
+- `net::ERR_ABORTED` / canceled SSE stream requests for replaced subscriptions: `harmless but noisy`
+- maximum tracked concurrent open stream count staying at `1` during scenarios A, C, and D: `expected`
+- no observed dangling old streams after rapid switching: `expected`
+- no observed late writes into the inactive terminal path after `stream-stop`: `expected`
+- no observed duplicated chunk sequences in the validated server snapshots: `expected`
+- no observed lost output for the validated input-and-switch scenario: `expected`
+- transient `terminalStore` abort classification as `streamError: "BodyStreamBuffer was aborted"` after intentional cleanup: `suspicious but not proven`
+  - this was observed in store events only
+  - it did not surface as page errors, console errors, or visible terminal breakage in the validated compat path
+
+Current conclusion:
+
+- no proven race defect was reproduced in the active compat terminal stream lifecycle during the validated rapid-switching scenarios
+- the remaining observed effects are canceled replaced streams and transient internal abort-as-error bookkeeping
+- no code change was applied in this validation slice
+
 ## Latest frontend compat terminal runtime stabilization slice
 
 This pass focused only on the active compat terminal path:

@@ -153,3 +153,35 @@ Classification:
 - `harmless but noisy`
 - this is expected client-side cancellation for a replaced long-lived SSE subscription
 - browser network tooling may still display the canceled request as `net::ERR_ABORTED`
+
+## Rapid Stream Race-Safety Validation
+
+Follow-up validation checked rapid tab switching and stream lifecycle safety without changing terminal runtime code.
+
+Validated scenarios:
+
+1. fresh load, then `Main Shell <-> Ops Shell` rapid switching for 5 round-trips
+2. terminal input followed by an almost immediate tab switch away and back
+3. additional rapid switching on a warmed runtime
+4. `Add Tab`, then rapid switching between `Main Shell` and the new terminal tab
+
+Observed runtime facts:
+
+- tracked stream replacement remained single-open at any point in the validated switching windows
+- the cleanup source stayed the same:
+  - `CompatTerminalView` unmount cleanup
+  - `TermWrap.dispose()`
+  - `terminalStore.stop(widgetId)`
+  - `TerminalStore.stopStream()`
+  - `AbortController.abort()`
+- no dangling old open stream was observed after the validated rapid-switch sequences
+- no late `chunk` delivery into the inactive terminal path was observed after `stream-stop`
+- in the input-and-switch scenario, the resumed terminal reopened from the advanced `from` sequence and the server snapshot contained the marker output exactly once, without duplicate or missing chunk sequences
+- for the new tab, the stream restarted from `from=1`, then later from `from=3`, then `from=4`, while the validated server snapshot remained sequence-consistent
+
+Residual note:
+
+- intentional stream aborts still pass through store-level `error` bookkeeping as `BodyStreamBuffer was aborted`
+- this did not surface as page or console errors in the validated compat path
+- classification: `suspicious but not proven`
+- no code fix was justified by this validation slice alone
