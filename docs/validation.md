@@ -51,7 +51,17 @@ Per-issue status for this slice:
 Additional observation:
 
 - browser network inspection still showed `net::ERR_ABORTED` for replaced terminal SSE stream requests during tab switches
+- runtime instrumentation showed the abort source was the active compat terminal cleanup path:
+  - `frontend/app/view/term/compat-terminal.tsx` unmount cleanup
+  - `TermWrap.dispose()`
+  - `terminalStore.stop()`
+  - `TerminalStore.stopStream()`
+  - `AbortController.abort()` on the previous `/api/v1/terminal/<widget>/stream` request
 - those aborts did not surface as page errors or console errors in the verified compat terminal flow
+- terminal input remained functional, and the post-switch stream resumed from the updated sequence without observed data loss
+- classification: `harmless but noisy`
+  - this is expected client-side cancellation when replacing the active terminal SSE subscription
+  - the browser may still show the canceled stream as `net::ERR_ABORTED` in network tooling even though the UI flow remains stable
 
 ## Latest frontend compat console/runtime stabilization slice
 
@@ -109,12 +119,13 @@ Per-issue status for this slice:
 - font decode / missing styles issues: `fixed` for compat startup
   - the missing legacy `/fonts/*` requests and decode warnings did not appear on the fresh compat load
 
-Additional out-of-scope observation:
+Historical out-of-scope observation at the time, now superseded by `c025cd0`:
 
 - clicking `Add Tab` no longer issued `/wave/service`, but a separate compat new-tab mount error was still observed:
   - `TypeError: snapshot.chunks is not iterable`
   - source reported by the browser: `frontend/app/view/term/termwrap.ts`
-  - this was not part of the requested initial-load / active-render / tab-switch / terminal-input stabilization slice and was not addressed here
+  - this was not part of the requested initial-load / active-render / tab-switch / terminal-input stabilization slice at that time
+  - this is no longer an active validation outcome: it was fixed later by `c025cd0` in the dedicated compat terminal runtime stabilization slice documented above
 
 What was not expanded in this step:
 

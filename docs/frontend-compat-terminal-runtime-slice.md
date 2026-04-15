@@ -117,3 +117,39 @@ The compat terminal path now remains stable for:
 - terminal input
 
 without the runtime crash caused by `snapshot.chunks` being `null` on first mount.
+
+## Historical Reconciliation
+
+The earlier compat console/runtime validation entry recorded `TypeError: snapshot.chunks is not iterable` as an out-of-scope observation for that older slice.
+
+That older note is now historical only:
+
+- it accurately described the state before `c025cd0`
+- it is superseded by the terminal runtime stabilization fix in `c025cd0`
+- it should not be read as an active unresolved result after this slice
+
+## Terminal SSE Abort Classification
+
+Follow-up runtime verification checked the `net::ERR_ABORTED` entries seen for terminal SSE during tab switching.
+
+Observed runtime path:
+
+1. active tab changes
+2. `frontend/app/view/term/compat-terminal.tsx` unmount cleanup runs
+3. `TermWrap.dispose()` calls `terminalStore.stop(widgetId)`
+4. `frontend/app/state/terminal.store.ts:stopStream()` calls `abortController.abort()`
+5. the previous `/api/v1/terminal/<widget>/stream` request is canceled
+6. the newly active terminal mounts and starts a replacement stream
+
+Observed impact:
+
+- the abort did not surface in `pageErrors`
+- the abort did not surface in `consoleErrors`
+- terminal input continued to work
+- post-switch terminal state resumed from the updated sequence without observed output loss
+
+Classification:
+
+- `harmless but noisy`
+- this is expected client-side cancellation for a replaced long-lived SSE subscription
+- browser network tooling may still display the canceled request as `net::ERR_ABORTED`
