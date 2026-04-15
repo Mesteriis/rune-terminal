@@ -1,19 +1,20 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { Tooltip } from "@/app/element/tooltip";
 import { useT } from "@/app/i18n/i18n";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { atoms, createBlock, isDev } from "@/store/global";
-import { fireAndForget, makeIconClass } from "@/util/util";
+import { fireAndForget } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { AppsFloatingWindow } from "./apps-floating-window";
 import { AuditFloatingWindow } from "./audit-floating-window";
 import { SettingsFloatingWindow } from "./settings-floating-window";
 import { ToolsFloatingWindow } from "./tools-floating-window";
+import { WidgetActionButton } from "./widget-action-button";
 import { sortByDisplayOrder } from "./widget-helpers";
 import { WidgetItem } from "./widget-item";
+import { WidgetsMeasurement } from "./widgets-measurement";
 import type { WidgetDisplayMode } from "./widget-types";
 
 const Widgets = memo(({ compatMode = false }: { compatMode?: boolean }) => {
@@ -157,56 +158,46 @@ const Widgets = memo(({ compatMode = false }: { compatMode?: boolean }) => {
                         </div>
                         <div className="flex-grow" />
                         <div className="grid grid-cols-2 gap-0 w-full">
-                            <div
-                                ref={toolsButtonRef}
-                                className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-sm overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
-                                style={compatActionStyle}
+                            <WidgetActionButton
+                                buttonRef={toolsButtonRef}
+                                icon="screwdriver-wrench"
+                                tooltip="Tools"
+                                isOpen={isToolsOpen}
                                 onClick={() => setIsToolsOpen(!isToolsOpen)}
-                            >
-                                <Tooltip content="Tools" placement="left" disable={isToolsOpen}>
-                                    <div>
-                                        <i className={makeIconClass("screwdriver-wrench", true, { defaultIcon: "toolbox" })}></i>
-                                    </div>
-                                </Tooltip>
-                            </div>
-                            <div
-                                ref={auditButtonRef}
-                                className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-sm overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
+                                mode={mode}
+                                defaultIcon="toolbox"
                                 style={compatActionStyle}
+                            />
+                            <WidgetActionButton
+                                buttonRef={auditButtonRef}
+                                icon="clipboard-list"
+                                tooltip="Audit"
+                                isOpen={isAuditOpen}
                                 onClick={() => setIsAuditOpen(!isAuditOpen)}
-                            >
-                                <Tooltip content="Audit" placement="left" disable={isAuditOpen}>
-                                    <div>
-                                        <i className={makeIconClass("clipboard-list", true, { defaultIcon: "list-check" })}></i>
-                                    </div>
-                                </Tooltip>
-                            </div>
-                            {showAppsButton ? (
-                                <div
-                                    ref={appsButtonRef}
-                                    className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-sm overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
-                                    style={compatActionStyle}
-                                    onClick={() => setIsAppsOpen(!isAppsOpen)}
-                                >
-                                    <Tooltip content={t("workspace.localWaveApps")} placement="left" disable={isAppsOpen}>
-                                        <div>
-                                            <i className={makeIconClass("cube", true)}></i>
-                                        </div>
-                                    </Tooltip>
-                                </div>
-                            ) : null}
-                            <div
-                                ref={settingsButtonRef}
-                                className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-sm overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
+                                mode={mode}
+                                defaultIcon="list-check"
                                 style={compatActionStyle}
+                            />
+                            {showAppsButton ? (
+                                <WidgetActionButton
+                                    buttonRef={appsButtonRef}
+                                    icon="cube"
+                                    tooltip={t("workspace.localWaveApps")}
+                                    isOpen={isAppsOpen}
+                                    onClick={() => setIsAppsOpen(!isAppsOpen)}
+                                    mode={mode}
+                                    style={compatActionStyle}
+                                />
+                            ) : null}
+                            <WidgetActionButton
+                                buttonRef={settingsButtonRef}
+                                icon="gear"
+                                tooltip={t("workspace.settingsAndHelp")}
+                                isOpen={isSettingsOpen}
                                 onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-                            >
-                                <Tooltip content={t("workspace.settingsAndHelp")} placement="left" disable={isSettingsOpen}>
-                                    <div>
-                                        <i className={makeIconClass("gear", true)}></i>
-                                    </div>
-                                </Tooltip>
-                            </div>
+                                mode={mode}
+                                style={compatActionStyle}
+                            />
                         </div>
                     </>
                 ) : (
@@ -215,77 +206,49 @@ const Widgets = memo(({ compatMode = false }: { compatMode?: boolean }) => {
                             <WidgetItem key={`widget-${idx}`} widget={data} mode={mode} />
                         ))}
                         <div className="flex-grow" />
-                        <div
-                            ref={toolsButtonRef}
-                            className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-lg overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
-                            style={compatActionStyle}
+                        <WidgetActionButton
+                            buttonRef={toolsButtonRef}
+                            icon="screwdriver-wrench"
+                            tooltip="Tools"
+                            isOpen={isToolsOpen}
                             onClick={() => setIsToolsOpen(!isToolsOpen)}
-                        >
-                            <Tooltip content="Tools" placement="left" disable={isToolsOpen}>
-                                <div className="flex flex-col items-center w-full">
-                                    <div>
-                                        <i className={makeIconClass("screwdriver-wrench", true, { defaultIcon: "toolbox" })}></i>
-                                    </div>
-                                    {mode === "normal" && (
-                                        <div className="text-xxs mt-0.5 w-full px-0.5 text-center whitespace-nowrap overflow-hidden text-ellipsis">
-                                            Tools
-                                        </div>
-                                    )}
-                                </div>
-                            </Tooltip>
-                        </div>
-                        <div
-                            ref={auditButtonRef}
-                            className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-lg overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
+                            mode={mode}
+                            label="Tools"
+                            defaultIcon="toolbox"
                             style={compatActionStyle}
+                        />
+                        <WidgetActionButton
+                            buttonRef={auditButtonRef}
+                            icon="clipboard-list"
+                            tooltip="Audit"
+                            isOpen={isAuditOpen}
                             onClick={() => setIsAuditOpen(!isAuditOpen)}
-                        >
-                            <Tooltip content="Audit" placement="left" disable={isAuditOpen}>
-                                <div className="flex flex-col items-center w-full">
-                                    <div>
-                                        <i className={makeIconClass("clipboard-list", true, { defaultIcon: "list-check" })}></i>
-                                    </div>
-                                    {mode === "normal" && (
-                                        <div className="text-xxs mt-0.5 w-full px-0.5 text-center whitespace-nowrap overflow-hidden text-ellipsis">
-                                            Audit
-                                        </div>
-                                    )}
-                                </div>
-                            </Tooltip>
-                        </div>
-                        {showAppsButton ? (
-                            <div
-                                ref={appsButtonRef}
-                                className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-lg overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
-                                style={compatActionStyle}
-                                onClick={() => setIsAppsOpen(!isAppsOpen)}
-                            >
-                                <Tooltip content={t("workspace.localWaveApps")} placement="left" disable={isAppsOpen}>
-                                    <div className="flex flex-col items-center w-full">
-                                        <div>
-                                            <i className={makeIconClass("cube", true)}></i>
-                                        </div>
-                                        {mode === "normal" && (
-                                            <div className="text-xxs mt-0.5 w-full px-0.5 text-center whitespace-nowrap overflow-hidden text-ellipsis">
-                                                {t("workspace.appsLabel")}
-                                            </div>
-                                        )}
-                                    </div>
-                                </Tooltip>
-                            </div>
-                        ) : null}
-                        <div
-                            ref={settingsButtonRef}
-                            className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-lg overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
+                            mode={mode}
+                            label="Audit"
+                            defaultIcon="list-check"
                             style={compatActionStyle}
+                        />
+                        {showAppsButton ? (
+                            <WidgetActionButton
+                                buttonRef={appsButtonRef}
+                                icon="cube"
+                                tooltip={t("workspace.localWaveApps")}
+                                isOpen={isAppsOpen}
+                                onClick={() => setIsAppsOpen(!isAppsOpen)}
+                                mode={mode}
+                                label={t("workspace.appsLabel")}
+                                style={compatActionStyle}
+                            />
+                        ) : null}
+                        <WidgetActionButton
+                            buttonRef={settingsButtonRef}
+                            icon="gear"
+                            tooltip={t("workspace.settingsAndHelp")}
+                            isOpen={isSettingsOpen}
                             onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-                        >
-                            <Tooltip content={t("workspace.settingsAndHelp")} placement="left" disable={isSettingsOpen}>
-                                <div>
-                                    <i className={makeIconClass("gear", true)}></i>
-                                </div>
-                            </Tooltip>
-                        </div>
+                            mode={mode}
+                            style={compatActionStyle}
+                        />
                     </>
                 )}
                 {isDev() ? (
@@ -328,50 +291,15 @@ const Widgets = memo(({ compatMode = false }: { compatMode?: boolean }) => {
                 />
             )}
 
-            <div
-                ref={measurementRef}
-                className="flex flex-col w-12 py-1 -ml-1 select-none absolute -z-10 opacity-0 pointer-events-none"
+            <WidgetsMeasurement
+                measurementRef={measurementRef}
+                widgets={widgets}
+                showAppsButton={showAppsButton}
+                showDevBadge={isDev()}
+                appsLabel={t("workspace.appsLabel")}
+                settingsLabel={t("workspace.settingsLabel")}
                 style={compatMeasurementStyle}
-            >
-                {widgets?.map((data, idx) => (
-                    <WidgetItem key={`measurement-widget-${idx}`} widget={data} mode="normal" />
-                ))}
-                <div className="flex-grow" />
-                <div className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-lg">
-                    <div>
-                        <i className={makeIconClass("screwdriver-wrench", true, { defaultIcon: "toolbox" })}></i>
-                    </div>
-                    <div className="text-xxs mt-0.5 w-full px-0.5 text-center">Tools</div>
-                </div>
-                <div className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-lg">
-                    <div>
-                        <i className={makeIconClass("clipboard-list", true, { defaultIcon: "list-check" })}></i>
-                    </div>
-                    <div className="text-xxs mt-0.5 w-full px-0.5 text-center">Audit</div>
-                </div>
-                <div className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-lg">
-                    <div>
-                        <i className={makeIconClass("gear", true)}></i>
-                    </div>
-                    <div className="text-xxs mt-0.5 w-full px-0.5 text-center">{t("workspace.settingsLabel")}</div>
-                </div>
-                {showAppsButton ? (
-                    <div className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-lg">
-                        <div>
-                            <i className={makeIconClass("cube", true)}></i>
-                        </div>
-                        <div className="text-xxs mt-0.5 w-full px-0.5 text-center">{t("workspace.appsLabel")}</div>
-                    </div>
-                ) : null}
-                {isDev() ? (
-                    <div
-                        className="flex justify-center items-center w-full py-1 text-accent text-[30px]"
-                        title="Running TideTerm Dev Build"
-                    >
-                        <i className="fa fa-brands fa-dev fa-fw" />
-                    </div>
-                ) : null}
-            </div>
+            />
         </>
     );
 });
