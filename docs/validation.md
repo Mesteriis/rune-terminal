@@ -1522,3 +1522,73 @@ What was not validated in this slice:
 
 - no full Electron/Tauri interactive UI automation was run
 - the legacy Wave/WOS renderer path was not revived in plain browser mode; browser dev now uses a narrow typed-runtime validation fallback instead
+
+## Latest terminal action pipeline stabilization (Slice 4)
+
+This slice stayed intentionally narrow:
+
+- explicit active-path terminal action model documentation
+- centralized active terminal action entrypoints in `old_front` (`submit input`, `interrupt`, approval confirm/retry)
+- honest interrupt/approval/audit validation evidence without scope expansion
+
+Validation executed for this slice:
+
+```bash
+npm run check:active-path-api
+npx tsc -p frontend/tsconfig.json --noEmit
+npm --prefix frontend run build
+
+RTERM_AUTH_TOKEN=test-token ./apps/desktop/bin/rterm-core serve \
+  --listen 127.0.0.1:0 \
+  --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal \
+  --state-dir /tmp/rterm-slice4-yEFjTa/state \
+  --ready-file /tmp/rterm-slice4-yEFjTa/ready.json
+
+curl -sS http://127.0.0.1:61384/healthz
+curl -sS -H 'Authorization: Bearer test-token' http://127.0.0.1:61384/api/v1/bootstrap
+curl -sS -H 'Authorization: Bearer test-token' http://127.0.0.1:61384/api/v1/workspace
+
+# terminal input path
+curl -sS -H 'Authorization: Bearer test-token' -H 'Content-Type: application/json' \
+  -X POST http://127.0.0.1:61384/api/v1/terminal/term-main/input \
+  -d '{"text":"echo slice4-input-http","append_newline":true}'
+curl -sS -H 'Authorization: Bearer test-token' \
+  'http://127.0.0.1:61384/api/v1/terminal/term-main?from=4'
+
+# interrupt path
+curl -sS -H 'Authorization: Bearer test-token' -H 'Content-Type: application/json' \
+  -X POST http://127.0.0.1:61384/api/v1/tools/execute \
+  -d '{"tool_name":"term.send_input","input":{"widget_id":"term-main","text":"sleep 15","append_newline":true},"context":{"workspace_id":"ws-local","repo_root":"/Users/avm/projects/Personal/tideterm/runa-terminal","active_widget_id":"term-main"}}'
+curl -sS -H 'Authorization: Bearer test-token' -H 'Content-Type: application/json' \
+  -X POST http://127.0.0.1:61384/api/v1/tools/execute \
+  -d '{"tool_name":"term.interrupt","input":{"widget_id":"term-main"},"context":{"workspace_id":"ws-local","repo_root":"/Users/avm/projects/Personal/tideterm/runa-terminal","active_widget_id":"term-main"}}'
+curl -sS -H 'Authorization: Bearer test-token' -H 'Content-Type: application/json' \
+  -X POST http://127.0.0.1:61384/api/v1/tools/execute \
+  -d '{"tool_name":"term.get_state","input":{"widget_id":"term-main"},"context":{"workspace_id":"ws-local","repo_root":"/Users/avm/projects/Personal/tideterm/runa-terminal","active_widget_id":"term-main"}}'
+
+# approval path
+curl -sS -H 'Authorization: Bearer test-token' -H 'Content-Type: application/json' \
+  -X POST http://127.0.0.1:61384/api/v1/tools/execute \
+  -d '{"tool_name":"safety.add_ignore_rule","input":{"scope":"repo","matcher_type":"glob","pattern":"slice4-approval-*","mode":"metadata-only","note":"slice4 validation"},"context":{"workspace_id":"ws-local","repo_root":"/Users/avm/projects/Personal/tideterm/runa-terminal","active_widget_id":"term-main"}}'
+curl -sS -H 'Authorization: Bearer test-token' -H 'Content-Type: application/json' \
+  -X POST http://127.0.0.1:61384/api/v1/tools/execute \
+  -d '{"tool_name":"safety.confirm","input":{"approval_id":"approval_9ae9da7f5019c00c"},"context":{"workspace_id":"ws-local","repo_root":"/Users/avm/projects/Personal/tideterm/runa-terminal","active_widget_id":"term-main"}}'
+curl -sS -H 'Authorization: Bearer test-token' -H 'Content-Type: application/json' \
+  -X POST http://127.0.0.1:61384/api/v1/tools/execute \
+  -d '{"tool_name":"safety.add_ignore_rule","input":{"scope":"repo","matcher_type":"glob","pattern":"slice4-approval-*","mode":"metadata-only","note":"slice4 validation"},"approval_token":"d0d38151cf81593d35ddb32bec6d0213","context":{"workspace_id":"ws-local","repo_root":"/Users/avm/projects/Personal/tideterm/runa-terminal","active_widget_id":"term-main"}}'
+```
+
+Observed result:
+
+- `check:active-path-api` passed.
+- `tsc` passed.
+- frontend build passed (warnings remained for Lightning CSS/Tailwind at-rules and chunk size).
+- `/healthz`, `/api/v1/bootstrap`, and `/api/v1/workspace` responded successfully from live runtime.
+- terminal input endpoint accepted input and snapshot output contained `slice4-input-http`.
+- `term.interrupt` returned structured `status:"ok"` with `interrupted:true`, and interrupt events were visible in audit.
+- immediate cancellation of a long-running `sleep 15` command was not consistently observable in this run; interrupt effectiveness remains a known limitation.
+- dangerous `safety.add_ignore_rule` produced `requires_confirmation`; `safety.confirm` returned a one-time approval token; retry with token succeeded; replaying the consumed token returned `requires_confirmation` again.
+- audit stream included:
+  - failed dangerous call with `error:"approval_required"`
+  - successful `safety.confirm`
+  - approved retry with `approval_used:true`
