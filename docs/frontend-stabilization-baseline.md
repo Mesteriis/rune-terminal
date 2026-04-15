@@ -7,45 +7,47 @@ Date: 2026-04-15
 - `npm --prefix frontend run build`
 - `npx tsc -p frontend/tsconfig.json --noEmit`
 - `npm --prefix frontend run lint`
-- `npm run tauri:dev` (attempted with non-interactive launch check)
+- `npm run tauri:dev` (non-interactive smoke check)
+- `timeout 20 npm run tauri:dev` (non-interactive smoke check with forced stop)
 
 ## Command Outcomes
 
-- `npm --prefix frontend run build` failed with TypeScript and build-blocking type errors (1,599 output lines; 2,658 log lines including duplicates and repeated context).
-- `npx tsc -p frontend/tsconfig.json --noEmit` failed immediately in this workspace because `typescript` is not installed at repo root (`npx` could not resolve `tsc`).
-- `npm --prefix frontend run lint` failed with ESLint flat-config shape error before any file linting.
-- `npm run tauri:dev` launched the front-end server and Tauri runtime process, and printed a running backend process id, but was not used as a long-running human-verified smoke test in this slice.
+- `npm --prefix frontend run build` failed (`EXIT=1`). Log captured at `/tmp/runa_frontend_build.log` (2,427 lines). Failures are type/build blockers in app/panel/block/layout surfaces and are pre-existing beyond bootstrap.
+- `npx tsc -p frontend/tsconfig.json --noEmit` failed (`EXIT=2`). Log captured at `/tmp/runa_frontend_tsc.log` (2,423 lines). Remaining failures are strict typing and nullability blockers in legacy seams.
+- `npm --prefix frontend run lint` failed (`EXIT=1`). Log captured at `/tmp/runa_frontend_lint.log` (3,142 lines). Remaining failures are high-volume lint issues outside the startup seam set (aipanel, block, layout, util, global typing files).
+- `npm run tauri:dev` compiled and launched backend successfully (`target/debug/rterm-desktop`), then exited with normal runtime handoff behavior.
+- `timeout 20 npm run tauri:dev` emitted successful compile/start messages and terminated with `EXIT=124` after timeout, confirming launchability for non-interactive verification.
 
 ## Failure Categories
 
-- Tooling/configuration failures
-  - ESLint config object format mismatch for flat config (`plugins` array form), preventing lint from starting.
-  - Frontend tsconfig path aliases resolve old imports in a way that breaks many `@/...` module imports.
-  - `npx tsc` command path/tooling is currently a root-layer command-line mismatch (TypeScript not available via `npx` at repo root).
-
-- Missing types / module resolution failures
-  - Missing dependency/module: `@ai-sdk/react`.
-  - Missing type declarations for `ws`, `css-tree`, and `throttle-debounce` in current dependency graph.
-  - `@/store`, `@/element`, `@/view`, etc import paths failing because of alias config shape.
-
-- Type-system strictness blockers
-  - Broad strictness and config-driven type rules currently emit many errors across migrated and legacy slices (`verbatimModuleSyntax`, `erasableSyntaxOnly`, `noUnusedLocals`, `noUnusedParameters`, etc.).
-  - Multiple nullability/null-check and null-to-non-null mismatches in bootstrap-adjacent paths (e.g. `wave.ts`, layout state wiring, modal/workspace models).
-
+- Tooling/config failures
+  - Completed in earlier pass: ESLint flat-config shape and runtime bootstrap wiring.
+  - Remaining failures are from source-level type/lint debt, not command bootstrap blocking.
+- Missing/strict typing blockers
+  - `verbatimModuleSyntax`, `erasableSyntaxOnly`, strict nullability, and `@-only` import separation errors across migrated and legacy surfaces.
+  - AI panel and block/layout files now produce the majority of unresolved TS/Lint errors.
 - Migration seam fallout
-  - Layout/workspace/panel modules and AI bootstrap files show additional type and API drift (including `react-resizable-panels` import/type assumptions) that are adjacent to migrated seams.
+  - Significant legacy typing drift is present in AI panel and layout/block seams.
+- Configuration dependency debt
+  - Some type-contract conflicts remain in plugin/AI typing stacks (`@ai-sdk/react` / `ai` boundary), not yet fixed.
 
-## In Scope for Slice 1
+## In-Scope for Slice 1
 
-- Stabilize command bootstrap for frontend lint/build/typecheck verification.
-- Fix ESLint flat-config shape issue.
-- Fix resolver/path config blockers for migrated import aliases.
-- Address missing dependency/type declaration blockers where they are hard failures.
-- Triage and prioritize highest-value TypeScript failures in app bootstrap and active runtime/workspace flow.
+- Make build/lint/typecheck command execution truthful and actionable.
+- Fix configuration blockers required for command bootstrapping.
+- Fix highest-value startup/path blockers in migrated seams:
+  - `frontend/app/app.tsx`
+  - `frontend/app/app-bg.tsx`
+  - `frontend/wave.ts`
+  - `frontend/runtime/environment.ts`
+  - `frontend/util/waveutil.ts`
+  - `frontend/util/getenv.ts`
+  - `frontend/util/focusutil.ts`
+  - `frontend/util/wsutil.ts`
 
 ## Deferred (Out of Scope)
 
-- Full legacy typing cleanup across all old terminal/layout/term/model surfaces.
-- Broad UI/feature refactors unrelated to compilation correctness.
-- Plugin runtime implementation work (explicitly deferred by scope).
-- Deep architectural cleanup to remove all pre-existing hidden strictness debt in non-bootstrap surfaces.
+- Full legacy cleanup for AI panel, block/layout, and other pre-existing strictness debt.
+- Plugin runtime implementation and side-process execution model (deferred by this slice).
+- Feature work and architectural refactors.
+- Additional deep compatibility fixes not affecting startup bootstrap or active runtime paths.
