@@ -1,0 +1,41 @@
+package httpapi
+
+import (
+	"net/http"
+
+	"github.com/Mesteriis/rune-terminal/core/connections"
+)
+
+func (api *API) handleListRemoteProfiles(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{
+		"profiles": api.runtime.ListRemoteProfiles(),
+	})
+}
+
+func (api *API) handleSaveRemoteProfile(w http.ResponseWriter, r *http.Request) {
+	var payload connections.SaveRemoteProfileInput
+	if err := decodeJSON(r, &payload); err != nil {
+		writeBadRequest(w, "invalid_request", err)
+		return
+	}
+	profile, profiles, err := api.runtime.SaveRemoteProfile(payload)
+	if err != nil {
+		writeConnectionError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"profile":  profile,
+		"profiles": profiles,
+	})
+}
+
+func (api *API) handleDeleteRemoteProfile(w http.ResponseWriter, r *http.Request) {
+	profiles, err := api.runtime.DeleteRemoteProfile(r.PathValue("profileID"))
+	if err != nil {
+		writeConnectionError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"profiles": profiles,
+	})
+}
