@@ -1515,3 +1515,48 @@
 - Notes:
   - expected `404 attachment_not_found` occurred during stale-case validation by design
   - unsupported binary files are still not attachable through normal picker path; no preview/gallery was introduced
+
+## Plugin runtime
+
+- Date: `2026-04-16`
+- Status: `VERIFIED` (with one known repo-wide validation limitation)
+- Commits:
+  - `4a33aea`
+  - `8a3163a`
+  - `dd207ee`
+  - `18a7e16`
+  - `b331367`
+  - `f21f956`
+  - `43b3827`
+  - `6cc9f7e`
+  - `46988f8`
+  - `626dc74`
+- Validation steps:
+  - automated checks:
+    - `go test ./...` -> `PASS`
+  - protocol process smoke:
+    - `printf ... | go run ./cmd/rterm-core plugin-example`
+    - observed handshake response and `status:"ok"` plugin response on stdout
+  - runtime/API smoke:
+    - core: `RTERM_AUTH_TOKEN=plugin-batch-token go run ./cmd/rterm-core serve --listen 127.0.0.1:52863 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/rterm-plugin-runtime.*`
+    - `GET /api/v1/tools` included `plugin.example_echo`
+    - `POST /api/v1/tools/execute` for `plugin.example_echo` returned `status:"ok"` with deterministic payload (`text`, `length`, `workspace_id`, `repo_root`)
+  - approval flow regression:
+    - `POST /api/v1/tools/execute` for `safety.add_ignore_rule` returned `428 requires_confirmation`
+    - `safety.confirm` returned `approval_token`
+    - retry with `approval_token` succeeded (`status:"ok"`)
+  - audit flow checks:
+    - plugin execution produced `plugin.example_echo` audit event with `success:true`
+    - approval chain remained backend-authored and ordered:
+      - blocked `safety.add_ignore_rule` (`success:false`, `error:"approval_required"`)
+      - successful `safety.confirm`
+      - approved retry `safety.add_ignore_rule` (`success:true`, `approval_used:true`)
+  - in-process regression:
+    - `workspace.list_widgets` still executed via tool runtime with `status:"ok"`
+  - UI smoke:
+    - `npm --prefix frontend run dev -- --host 127.0.0.1 --port 4215 --strictPort`
+    - Playwright check opened `http://127.0.0.1:4215/`, opened existing `Tools` panel, and confirmed `plugin.example_echo` appears in current tool list
+    - `npm run tauri:dev` reached desktop startup (`Running target/debug/rterm-desktop` + runtime ready JSON), then interrupted intentionally
+  - release sweep:
+    - `npm run validate` -> `NOT VERIFIED` for this slice because repo-wide pre-existing frontend lint issues fail at `lint:frontend` before downstream validate steps
+- Result: `VERIFIED` — minimal side-process plugin runtime is functional end-to-end through the existing tool runtime path, with approval and audit contracts preserved.

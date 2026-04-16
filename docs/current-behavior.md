@@ -31,6 +31,7 @@ It is intentionally operational, not narrative.
 - Tabs expose a context menu with pin/unpin, rename, and close actions.
 - Shell-primary tab actions now use direct workspace management endpoints instead of `POST /api/v1/tools/execute`.
 - Operator and debug surfaces can still call the workspace tools through the tool runtime, where policy and audit remain visible.
+- The tool catalog now includes one plugin-backed sample tool (`plugin.example_echo`) executed through a side-process protocol while preserving core-owned approval and audit flow.
 
 ## Session lifecycle contract
 

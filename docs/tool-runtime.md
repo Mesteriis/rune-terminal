@@ -90,7 +90,9 @@ The runtime may still back the adapter in-process today, but the handler contrac
 4. Evaluate the plan through the policy engine.
 5. If policy requires confirmation, emit a `pending_approval`.
 6. If an approval token is supplied, verify it against the approved execution intent.
-7. Execute the tool handler.
+7. Execute the tool handler:
+   - in-process handler for regular tools
+   - plugin runtime invocation for plugin-backed tools
 8. Write an audit event.
 9. Return normalized output.
 
@@ -117,6 +119,7 @@ The transport response now carries the same `Operation` shape used inside planni
 - `safety.add_ignore_rule`
 - `safety.list_ignore_rules`
 - `safety.remove_ignore_rule`
+- `plugin.example_echo` (plugin-backed example)
 
 ## Why Not Attach Tools Directly To Chat
 
