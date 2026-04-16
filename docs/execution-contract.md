@@ -82,3 +82,148 @@ User input:
      - backend conversation assistant message from the explain response
    - If `/run` hits approval, the panel stores the pending request in local component state and renders the approval card through `RunCommandApprovalList`.
    - If explanation fails after execution succeeds, the panel renders a local fallback explanation message instead of a persisted backend assistant message.
+
+## 2. Execution Contract
+
+### 2.1 Input contract
+
+- `/run` is an explicit shell-command grammar, not a generic tool DSL.
+- Accepted forms are:
+  - `/run <command>`
+  - `run: <command>`
+- The derived command must be non-empty after trimming the prefix.
+- The active compat AI panel must preserve both:
+  - the original user prompt string
+  - the derived command string
+- The active `/run` path is scoped to the current terminal widget. The current UI must not issue `/run` without an active terminal widget.
+- The `/run` tool context is the current execution context:
+  - `workspace_id`
+  - `active_widget_id`
+  - `repo_root`
+- The explain request uses the corresponding conversation context:
+  - the same execution fields
+  - `widget_context_enabled`
+- Backend transport types allow omitted context fields, but the active compat `/run` path is expected to send explicit context from frontend state rather than inventing it server-side.
+
+### 2.2 Tool execution contract
+
+- Tool execution uses `POST /api/v1/tools/execute`.
+- Request body shape:
+  - `tool_name: string`
+  - `input?: object`
+  - `context?: { workspace_id?, repo_root?, active_widget_id? }`
+  - `approval_token?: string`
+- `/run` execution must use:
+  - `tool_name: "term.send_input"`
+  - `input.text = <derived command>`
+  - `input.append_newline = true`
+- Response body shape is the runtime `ExecuteResponse`:
+  - `status`
+  - `output?`
+  - `error?`
+  - `error_code?`
+  - `tool?`
+  - `operation?`
+  - `pending_approval?`
+- Transport status mapping is part of the contract:
+  - `200` for `status:"ok"`
+  - `428` for `status:"requires_confirmation"`
+  - `400`, `403`, `404`, `500` for `status:"error"` depending on `error_code`
+- Frontend clients must treat structured non-2xx tool-execute bodies as tool responses when they match the runtime shape. Approval and policy-denial handling must not depend on transport exceptions alone.
+
+### 2.3 Approval contract
+
+- Approval is triggered by backend policy evaluation, not by UI heuristics.
+- `dangerous` and `destructive` effective approval tiers require confirmation unless policy already allows the action through a valid approval or auto-approval path.
+- A confirmation challenge returns:
+  - HTTP `428`
+  - `status: "requires_confirmation"`
+  - `error_code: "approval_required"`
+  - `tool`
+  - `operation`
+  - `pending_approval`
+- `pending_approval` carries:
+  - `id`
+  - `tool_name`
+  - `summary`
+  - `approval_tier`
+  - `created_at`
+  - `expires_at`
+- Confirmation is performed through the existing tool contract, not a separate approval endpoint:
+  - `POST /api/v1/tools/execute`
+  - `tool_name: "safety.confirm"`
+  - `input: { "approval_id": "<pending approval id>" }`
+- A successful confirm returns an approval grant in `output`:
+  - `approval_id`
+  - `approval_token`
+  - `expires_at`
+- Pending approvals are single-use and expire. The current implementation issues them with a 10-minute lifetime.
+
+### 2.4 Retry contract
+
+- Retry happens only after a successful `safety.confirm`.
+- Retry must reuse the original execution intent:
+  - same `tool_name`
+  - same tool `input`
+  - same execution `context`
+- Retry adds exactly one new field:
+  - `approval_token`
+- Retry must not silently change:
+  - command text
+  - target widget
+  - workspace context
+  - repo-root context
+- Approval tokens are single-use and expire. The current implementation issues them with a 10-minute lifetime.
+- A consumed or expired token must not yield ambient approval. The request falls back to normal policy evaluation, which may return a fresh `requires_confirmation`.
+
+### 2.5 Audit contract
+
+- Tool-runtime executions append audit events in the backend, not in the frontend.
+- For the `/run` approval chain, the expected event order is:
+  1. blocked `term.send_input`
+  2. successful `safety.confirm`
+  3. successful retried `term.send_input`
+  4. `agent.terminal_command` if explanation is requested after execution
+- Tool audit entries carry:
+  - `tool_name`
+  - `summary`
+  - `workspace_id`
+  - prompt profile / role / mode / security posture fields
+  - approval tier fields
+  - success/error
+  - affected widgets/paths
+  - `approval_used`
+- `approval_used:true` means the execution consumed a valid approval token during policy evaluation of that request.
+- `approval_used` is meaningful on the approved retry and on the follow-up explain audit event when the UI passes `approval_used:true`.
+
+### 2.6 Agent contract
+
+- The agent does not execute `/run` commands directly.
+- Command execution truth remains in the tool/runtime path.
+- The active agent selection participates indirectly in execution by supplying the policy overlay used during tool policy evaluation.
+- The explicit agent call in the `/run` flow is `POST /api/v1/agent/terminal-commands/explain`, and it happens only after successful execution.
+- The explain route adds:
+  - terminal-output summarization from `from_seq`
+  - a persisted assistant message in conversation storage
+  - an `agent.terminal_command` audit event
+- The agent must not:
+  - bypass tool policy
+  - invent approval state
+  - mark a command executed when `term.send_input` did not succeed
+  - replace backend audit truth with frontend-only state
+
+### 2.7 UI contract
+
+- The frontend is not the source of truth for tool execution, approval, or audit.
+- The frontend must render backend truth from:
+  - `ExecuteResponse`
+  - approval-grant `output`
+  - explain response conversation snapshot
+  - audit API results when audit is viewed
+- The frontend may keep local transient state only for active UI flow control, including:
+  - pending `/run` approvals waiting for user action
+  - local `/run` prompt echo
+  - local execution-result message
+  - local explanation-fallback message
+- Persisted conversation messages come from the backend conversation service.
+- In the current `/run` flow, the persisted message is the assistant explanation; the local `/run` prompt and the local execution-result message are not written into conversation storage.
