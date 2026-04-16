@@ -3,7 +3,8 @@
 
 import { Button } from "@/app/element/button";
 import { WorkspaceStoreSnapshot, workspaceStore } from "@/app/state/workspace.store";
-import { isLocalConnectionID } from "@/app/workspace/session-target";
+import { pickPreferredRemoteConnectionID } from "@/app/tab/remote-preference";
+import { getConnectionsFacade } from "@/compat/connections";
 import { modalsModel } from "@/app/store/modalmodel";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { deleteLayoutModelForTab } from "@/layout/index";
@@ -709,16 +710,30 @@ const TabBar = memo(({ workspace, compatMode = false }: TabBarProps) => {
     };
 
     const handleAddRemoteTab = () => {
-        const activeWidget = workspace?.widgets?.[workspace?.activewidgetid ?? ""];
-        const preferredConnectionID =
-            activeWidget?.connectionId != null && !isLocalConnectionID(activeWidget.connectionId)
-                ? activeWidget.connectionId
-                : undefined;
-        fireAndForget(() =>
-            workspaceStore.createRemoteTerminalTab(preferredConnectionID).catch((error) => {
+        fireAndForget(async () => {
+            const activeWidget = workspace?.widgets?.[workspace?.activewidgetid ?? ""];
+            let preferredConnectionID = pickPreferredRemoteConnectionID(activeWidget?.connectionId, []);
+            if (!preferredConnectionID) {
+                try {
+                    const facade = await getConnectionsFacade();
+                    const response = await facade.listRemoteProfiles();
+                    preferredConnectionID = pickPreferredRemoteConnectionID(
+                        undefined,
+                        (response.profiles ?? []).map((profile) => profile.id),
+                    );
+                } catch (error) {
+                    console.warn("failed to load remote profiles for direct remote tab", error);
+                }
+            }
+            try {
+                await workspaceStore.createRemoteTerminalTab(preferredConnectionID);
+            } catch (error) {
                 console.warn("failed to create remote terminal tab", error);
-            })
-        );
+                if (!preferredConnectionID) {
+                    modalsModel.pushModal("RemoteProfilesModal");
+                }
+            }
+        });
         tabsWrapperRef.current.style.setProperty("--tabs-wrapper-transition", "width 0.1s ease");
         updateScrollDebounced();
         setNewTabIdDebounced(null);

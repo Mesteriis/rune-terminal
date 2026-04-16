@@ -1,7 +1,7 @@
 import { Button } from "@/app/element/button";
 import { Modal } from "@/app/modals/modal";
 import { workspaceStore } from "@/app/state/workspace.store";
-import { getConnectionsFacade } from "@/compat";
+import { getConnectionsFacade } from "@/compat/connections";
 import { modalsModel } from "@/store/modalmodel";
 import type { RemoteProfile } from "@/rterm-api/connections/types";
 import { useEffect, useMemo, useState } from "react";
