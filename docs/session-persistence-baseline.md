@@ -13,7 +13,6 @@ Phase: `1.0.0-rc1` hardening
 
 ## 2. What is currently runtime-only
 
-- workspace tabs/widgets shape (`workspace.Service` is bootstrapped from in-memory defaults).
 - terminal live session objects, PTY process identity, in-memory output chunk ring buffers.
 - remote shell process liveness (SSH process lifetime is runtime-only).
 - MCP registry/runtime process map (including user-registered remote MCP entries in current implementation).
@@ -23,13 +22,13 @@ Phase: `1.0.0-rc1` hardening
 ## 3. What is restored today
 
 - backend policy store, agent catalog selection, connection/remote profile catalog, conversation transcript, and audit log are loaded from persisted files.
-- workspace shape is restored only as the static bootstrap default (`tab-main` / `tab-ops` with local widgets), not from previous runtime mutations.
+- workspace shape (tabs/widgets order and active IDs) is restored from backend `workspace.json` snapshot.
 - terminal sessions are started fresh for the current workspace widget set at runtime startup; no prior PTY process memory is restored.
 
 ## 4. What becomes stale/dead after restart
 
 - all previous live terminal process instances (local and remote) are dead after runtime shutdown.
-- any tab/widget mutations made during runtime are lost on restart in current behavior (workspace is not persisted yet).
+- previous PTY output ring buffers and process-local command state are stale/dead after restart.
 - MCP runtime processes and dynamically registered MCP servers are lost on restart in current behavior.
 - tools-panel pending approval continuity and other in-memory frontend-only transient state do not survive reload/restart.
 
@@ -38,3 +37,10 @@ Phase: `1.0.0-rc1` hardening
 - no shell process memory checkpoint/restore.
 - no hidden SSH connection resurrection magic.
 - no frontend-only fake restore that claims live runtime state without backend truth.
+
+## Local session restore contract
+
+- persisted truth: local terminal tab/widget metadata restores from backend workspace snapshot.
+- non-persisted truth: the old local PTY process does not survive restart.
+- restore behavior: runtime creates a new local process for restored local widgets and marks it as restored-from-snapshot state.
+- operator control: user can explicitly restart/recreate the session from the terminal surface; no hidden process resurrection is attempted.
