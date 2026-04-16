@@ -3,6 +3,7 @@ export interface TerminalState {
   session_id: string;
   shell: string;
   restored?: boolean;
+  status_detail?: string;
   connection_id?: string;
   connection_name?: string;
   connection_kind?: string;

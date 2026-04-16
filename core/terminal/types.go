@@ -9,10 +9,11 @@ import (
 type Status string
 
 const (
-	StatusStarting Status = "starting"
-	StatusRunning  Status = "running"
-	StatusExited   Status = "exited"
-	StatusFailed   Status = "failed"
+	StatusStarting     Status = "starting"
+	StatusRunning      Status = "running"
+	StatusExited       Status = "exited"
+	StatusFailed       Status = "failed"
+	StatusDisconnected Status = "disconnected"
 )
 
 type State struct {
@@ -20,6 +21,7 @@ type State struct {
 	SessionID      string     `json:"session_id"`
 	Shell          string     `json:"shell"`
 	Restored       bool       `json:"restored,omitempty"`
+	StatusDetail   string     `json:"status_detail,omitempty"`
 	ConnectionID   string     `json:"connection_id,omitempty"`
 	ConnectionName string     `json:"connection_name,omitempty"`
 	ConnectionKind string     `json:"connection_kind,omitempty"`

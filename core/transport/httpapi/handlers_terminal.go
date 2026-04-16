@@ -29,7 +29,7 @@ func (api *API) handleTerminalInput(w http.ResponseWriter, r *http.Request) {
 func (api *API) handleTerminalSnapshot(w http.ResponseWriter, r *http.Request) {
 	widgetID := r.PathValue("widgetID")
 	from := uint64(parseInt(r.URL.Query().Get("from"), 0))
-	snapshot, err := api.runtime.Terminals.Snapshot(widgetID, from)
+	snapshot, err := api.runtime.TerminalSnapshot(widgetID, from)
 	if err != nil {
 		writeTerminalError(w, err)
 		return

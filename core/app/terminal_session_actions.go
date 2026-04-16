@@ -21,6 +21,7 @@ func (r *Runtime) RestartTerminalSession(ctx context.Context, widgetID string) (
 	connection, err := r.connectionForWidget(widget.ConnectionID)
 	if err != nil {
 		_, _, _ = r.Connections.ReportLaunchResult(widget.ConnectionID, err)
+		r.setRestoredTerminalState(r.disconnectedState(widget, terminal.ConnectionSpec{}, err))
 		return terminal.State{}, err
 	}
 	if err := r.Terminals.CloseSession(widgetID); err != nil && !errors.Is(err, terminal.ErrWidgetNotFound) {
@@ -33,18 +34,24 @@ func (r *Runtime) RestartTerminalSession(ctx context.Context, widgetID string) (
 	})
 	if err != nil {
 		_, _, _ = r.Connections.ReportLaunchResult(widget.ConnectionID, err)
+		r.setRestoredTerminalState(r.disconnectedState(widget, connection, err))
 		return terminal.State{}, err
 	}
 	if err := r.observeConnectionLaunch(ctx, widget.ID, connection); err != nil {
 		_, _, _ = r.Connections.ReportLaunchResult(widget.ConnectionID, err)
 		_ = r.Terminals.CloseSession(widget.ID)
+		r.setRestoredTerminalState(r.disconnectedState(widget, connection, err))
 		return terminal.State{}, err
 	}
 	_, _, _ = r.Connections.ReportLaunchResult(widget.ConnectionID, nil)
+	r.clearRestoredTerminalState(widget.ID)
 	return state, nil
 }
 
 func (r *Runtime) findWorkspaceWidget(widgetID string) (workspace.Widget, error) {
+	if r.Workspace == nil {
+		return workspace.Widget{}, fmt.Errorf("%w: %s", terminal.ErrWidgetNotFound, widgetID)
+	}
 	for _, widget := range r.Workspace.Snapshot().Widgets {
 		if widget.ID == widgetID {
 			return widget, nil

@@ -128,6 +128,7 @@ export function CompatTerminalView({ widgetId, connectionId }: CompatTerminalVie
         : lifecycleStatus === "unknown" ? "status unknown" : "disconnected";
     const lifecycleColorClass = isConnected ? (restoredSession ? "text-cyan-300" : "text-emerald-300") : "text-amber-300";
     const lifecycleDetail = lifecycleError
+        ?? lifecycleSnapshot?.state.status_detail
         ?? (restoredSession ? "session was recreated from persisted tab metadata after runtime restart" : null)
         ?? (lifecycleSnapshot?.state.status === "failed"
             ? "session failed"

@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"sync"
 
 	"github.com/Mesteriis/rune-terminal/core/agent"
 	"github.com/Mesteriis/rune-terminal/core/audit"
@@ -29,6 +30,8 @@ type Runtime struct {
 	MCP          *plugins.MCPRuntime
 	Registry     *toolruntime.Registry
 	Executor     *toolruntime.Executor
+	restoredMu   sync.RWMutex
+	restored     map[string]terminal.State
 }
 
 func NewRuntime(repoRoot string, stateDir string) (*Runtime, error) {
@@ -71,6 +74,7 @@ func NewRuntime(repoRoot string, stateDir string) (*Runtime, error) {
 		Audit:        auditLog,
 		Plugins:      plugins.NewRuntime(nil, 0),
 		Registry:     toolruntime.NewRegistry(),
+		restored:     make(map[string]terminal.State),
 	}
 	runtime.MCP = plugins.NewMCPRuntime(nil, nil, newExternalMCPInvoker(runtime.Plugins, repoRoot))
 	runtime.Executor = toolruntime.NewExecutor(
@@ -103,17 +107,21 @@ func (r *Runtime) bootstrapSessions(ctx context.Context) error {
 		connection, err := r.connectionForWidget(widget.ConnectionID)
 		if err != nil {
 			_, _, _ = r.Connections.ReportLaunchResult(widget.ConnectionID, err)
-			return err
+			r.setRestoredTerminalState(r.disconnectedState(widget, terminal.ConnectionSpec{}, err))
+			continue
 		}
-		if _, err := r.Terminals.StartSession(ctx, terminal.LaunchOptions{
+		_, err = r.Terminals.StartSession(ctx, terminal.LaunchOptions{
 			WidgetID:   widget.ID,
 			WorkingDir: r.RepoRoot,
 			Connection: connection,
 			Restored:   true,
-		}); err != nil {
+		})
+		if err != nil {
 			_, _, _ = r.Connections.ReportLaunchResult(widget.ConnectionID, err)
-			return err
+			r.setRestoredTerminalState(r.disconnectedState(widget, connection, err))
+			continue
 		}
+		r.clearRestoredTerminalState(widget.ID)
 		_, _, _ = r.Connections.ReportLaunchResult(widget.ConnectionID, nil)
 	}
 	return nil

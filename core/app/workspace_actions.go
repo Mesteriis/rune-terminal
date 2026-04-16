@@ -271,6 +271,7 @@ func (r *Runtime) CloseTab(tabID string) (CloseTabResult, error) {
 		if err := r.Terminals.CloseSession(widgetID); err != nil && !errors.Is(err, terminal.ErrWidgetNotFound) {
 			return CloseTabResult{}, err
 		}
+		r.clearRestoredTerminalState(widgetID)
 	}
 	nextSnapshot, err := r.Workspace.CloseTab(tabID)
 	if err != nil {
