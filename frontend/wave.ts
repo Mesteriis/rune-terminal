@@ -87,7 +87,7 @@ function resolveBrowserPlatform(): NodeJS.Platform {
     return "linux";
 }
 
-function createBrowserElectronApi(): ElectronApi {
+function createLegacyBrowserFallbackApi(): ElectronApi {
     return {
         getAuthKey: () => (import.meta.env.VITE_RTERM_AUTH_TOKEN as string | undefined) ?? "",
         getIsDev: () => Boolean(import.meta.env.DEV),
@@ -164,7 +164,7 @@ function hasElectronPreloadApi(): boolean {
 
 function ensureBootstrapApi(): ElectronApi {
     if (bootstrapWindow.api == null) {
-        bootstrapWindow.api = createBrowserElectronApi();
+        bootstrapWindow.api = createLegacyBrowserFallbackApi();
     }
     return bootstrapWindow.api;
 }
@@ -205,7 +205,10 @@ function setDocumentVisible() {
     document.body.classList.remove("is-transparent");
 }
 
-async function initBrowserCompatApp(activeTabId: string, workspace: import("@/rterm-api/workspace/types").WorkspaceSnapshot) {
+async function initLegacyBrowserCompatApp(
+    activeTabId: string,
+    workspace: import("@/rterm-api/workspace/types").WorkspaceSnapshot
+) {
     const api = ensureBootstrapApi();
     const globalInitOpts: GlobalInitOptions = {
         tabId: activeTabId,
@@ -242,7 +245,7 @@ async function initBrowserCompatApp(activeTabId: string, workspace: import("@/rt
     await firstRenderPromise;
 }
 
-async function initBrowserCompatRuntime() {
+async function initLegacyBrowserCompatRuntime() {
     const api = ensureBootstrapApi();
     api.sendLog("Init Browser Compat Runtime");
     try {
@@ -274,7 +277,7 @@ async function initBrowserCompatRuntime() {
                     ? "skipped"
                     : `ok next_seq=${terminalSnapshot.next_seq} status=${terminalSnapshot.state.status}`,
         });
-        await initBrowserCompatApp(workspace.active_tab_id, workspace);
+        await initLegacyBrowserCompatApp(workspace.active_tab_id, workspace);
         api.setWindowInitStatus("ready");
     } catch (e) {
         api.sendLog("Error in browser compat runtime " + describeError(e));
@@ -299,7 +302,8 @@ async function initBare() {
     document.body.style.opacity = "0";
     document.body.classList.add("is-transparent");
     if (!hasNativePreloadApi) {
-        await initBrowserCompatRuntime();
+        // No host preload bridge: run the legacy browser-compat fallback explicitly.
+        await initLegacyBrowserCompatRuntime();
         return;
     }
     api.onWaveInit(initWaveWrap);

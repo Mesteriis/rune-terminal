@@ -18,3 +18,13 @@
 - No broad frontend cleanup
 - No redesign
 - No feature work
+
+## Active path vs fallback path
+
+- Active Tauri path:
+  - `frontend/wave.ts` now treats preload-backed startup as the primary branch.
+  - `frontend/util/fetchutil.ts` now uses standard `globalThis.fetch` by default.
+  - `frontend/app/view/webview/webview.tsx` keeps Electron typing as `import type`, avoiding a runtime `electron` import in the normal bundle path.
+- Legacy fallback path:
+  - `frontend/wave.ts` keeps an explicit legacy browser-compat branch (`initLegacyBrowserCompatRuntime` / `createLegacyBrowserFallbackApi`) for no-preload environments.
+  - `frontend/util/fetchutil.ts` keeps legacy Electron net only behind explicit `RTERM_ENABLE_LEGACY_ELECTRON_NET=1` in non-browser contexts.
