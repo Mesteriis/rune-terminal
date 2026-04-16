@@ -57,6 +57,14 @@ type SubmitResult struct {
 	ProviderError string
 }
 
+type AppendMessageRequest struct {
+	Role     MessageRole
+	Content  string
+	Status   MessageStatus
+	Provider string
+	Model    string
+}
+
 type ChatMessage struct {
 	Role    MessageRole
 	Content string

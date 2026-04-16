@@ -130,6 +130,64 @@ func TestAppendAssistantPromptAppendsOnlyAssistantMessage(t *testing.T) {
 	}
 }
 
+func TestAppendMessagesPersistsRunChainWithoutProviderCall(t *testing.T) {
+	t.Parallel()
+
+	provider := &recordingProvider{
+		info: ProviderInfo{Kind: "stub", BaseURL: "http://stub", Model: "stub-model"},
+		result: CompletionResult{
+			Content: "unused",
+			Model:   "stub-model",
+		},
+	}
+	service, err := NewService(filepath.Join(t.TempDir(), "conversation.json"), provider)
+	if err != nil {
+		t.Fatalf("new service: %v", err)
+	}
+
+	snapshot, err := service.AppendMessages([]AppendMessageRequest{
+		{
+			Role:    RoleUser,
+			Content: "/run echo hello",
+		},
+		{
+			Role:    RoleAssistant,
+			Content: "Executed `echo hello`.\n\n```text\nhello\n```",
+		},
+	})
+	if err != nil {
+		t.Fatalf("append messages: %v", err)
+	}
+
+	if len(snapshot.Messages) != 2 {
+		t.Fatalf("expected 2 persisted messages, got %d", len(snapshot.Messages))
+	}
+	if snapshot.Messages[0].Role != RoleUser || snapshot.Messages[1].Role != RoleAssistant {
+		t.Fatalf("unexpected roles: %#v", snapshot.Messages)
+	}
+	if provider.request.Messages != nil {
+		t.Fatalf("expected no provider call, got %#v", provider.request.Messages)
+	}
+}
+
+func TestAppendMessagesRejectsBlankContent(t *testing.T) {
+	t.Parallel()
+
+	service, err := NewService(filepath.Join(t.TempDir(), "conversation.json"), stubProvider{})
+	if err != nil {
+		t.Fatalf("new service: %v", err)
+	}
+
+	if _, err := service.AppendMessages([]AppendMessageRequest{
+		{
+			Role:    RoleUser,
+			Content: "   ",
+		},
+	}); !errors.Is(err, ErrInvalidMessage) {
+		t.Fatalf("expected invalid message error, got %v", err)
+	}
+}
+
 func TestServiceSubmitPrunesProviderHistoryByMessageCount(t *testing.T) {
 	t.Parallel()
 

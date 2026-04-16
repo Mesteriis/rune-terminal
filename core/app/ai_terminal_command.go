@@ -27,6 +27,7 @@ type ExplainTerminalCommandResult struct {
 var ansiCSIPattern = regexp.MustCompile(`\x1b\[[0-?]*[ -/]*[@-~]`)
 
 const explainAuditScanLimit = 64
+const runCommandOutputEmptyMessage = "No terminal output was captured yet."
 
 func (r *Runtime) ExplainTerminalCommand(
 	ctx context.Context,
@@ -49,6 +50,10 @@ func (r *Runtime) ExplainTerminalCommand(
 	}
 	outputExcerpt := summarizeTerminalOutput(command, snapshot.Chunks)
 	approvalUsed := r.deriveExplainApprovalUsed(widgetID, command, conversationContext.WorkspaceID)
+
+	if err := r.persistRunTranscriptActivity(prompt, command, outputExcerpt); err != nil {
+		return ExplainTerminalCommandResult{}, err
+	}
 
 	selection, err := r.Agent.Selection()
 	if err != nil {
@@ -87,6 +92,58 @@ func (r *Runtime) ExplainTerminalCommand(
 		ProviderError: result.ProviderError,
 		OutputExcerpt: outputExcerpt,
 	}, nil
+}
+
+func (r *Runtime) persistRunTranscriptActivity(prompt string, command string, outputExcerpt string) error {
+	resultMessage := buildRunExecutionResultMessage(command, outputExcerpt)
+	if shouldSkipRunTranscriptAppend(r.Conversation.Snapshot().Messages, prompt, resultMessage) {
+		return nil
+	}
+	_, err := r.Conversation.AppendMessages([]conversation.AppendMessageRequest{
+		{
+			Role:    conversation.RoleUser,
+			Content: prompt,
+			Status:  conversation.StatusComplete,
+		},
+		{
+			Role:    conversation.RoleAssistant,
+			Content: resultMessage,
+			Status:  conversation.StatusComplete,
+		},
+	})
+	return err
+}
+
+func shouldSkipRunTranscriptAppend(messages []conversation.Message, prompt string, resultMessage string) bool {
+	if len(messages) < 2 {
+		return false
+	}
+	if messageMatchesRunActivity(messages[len(messages)-2], conversation.RoleUser, prompt) &&
+		messageMatchesRunActivity(messages[len(messages)-1], conversation.RoleAssistant, resultMessage) {
+		return true
+	}
+	if len(messages) >= 3 &&
+		messageMatchesRunActivity(messages[len(messages)-3], conversation.RoleUser, prompt) &&
+		messageMatchesRunActivity(messages[len(messages)-2], conversation.RoleAssistant, resultMessage) {
+		return true
+	}
+	return false
+}
+
+func messageMatchesRunActivity(message conversation.Message, role conversation.MessageRole, content string) bool {
+	return message.Role == role && strings.TrimSpace(message.Content) == strings.TrimSpace(content)
+}
+
+func buildRunExecutionResultMessage(command string, outputExcerpt string) string {
+	trimmedCommand := strings.TrimSpace(command)
+	if strings.TrimSpace(outputExcerpt) == "" {
+		return fmt.Sprintf("Executed `%s`.\n\n%s", trimmedCommand, runCommandOutputEmptyMessage)
+	}
+	return fmt.Sprintf("Executed `%s`.\n\n```text\n%s\n```", trimmedCommand, sanitizeCodeFenceContent(outputExcerpt))
+}
+
+func sanitizeCodeFenceContent(value string) string {
+	return strings.ReplaceAll(value, "```", "``\\`")
 }
 
 func (r *Runtime) deriveExplainApprovalUsed(widgetID string, command string, workspaceID string) bool {

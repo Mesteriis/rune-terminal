@@ -140,7 +140,12 @@ func TestExplainTerminalCommandReturnsConversationSnapshot(t *testing.T) {
 	if payload.OutputExcerpt == "" {
 		t.Fatal("expected output excerpt")
 	}
-	if len(payload.Conversation.Messages) != 1 || payload.Conversation.Messages[0].Role != "assistant" {
+	if len(payload.Conversation.Messages) != 3 {
+		t.Fatalf("expected run prompt/result/explanation chain, got %#v", payload.Conversation.Messages)
+	}
+	if payload.Conversation.Messages[0].Role != "user" ||
+		payload.Conversation.Messages[1].Role != "assistant" ||
+		payload.Conversation.Messages[2].Role != "assistant" {
 		t.Fatalf("unexpected conversation messages: %#v", payload.Conversation.Messages)
 	}
 }

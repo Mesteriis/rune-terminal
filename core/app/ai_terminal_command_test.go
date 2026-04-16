@@ -97,8 +97,17 @@ func TestExplainTerminalCommandAppendsAssistantSummary(t *testing.T) {
 	if result.ProviderError != "" {
 		t.Fatalf("unexpected provider error: %q", result.ProviderError)
 	}
-	if len(result.Snapshot.Messages) != 1 {
-		t.Fatalf("expected 1 persisted assistant message, got %d", len(result.Snapshot.Messages))
+	if len(result.Snapshot.Messages) != 3 {
+		t.Fatalf("expected 3 persisted run-chain messages, got %d", len(result.Snapshot.Messages))
+	}
+	if result.Snapshot.Messages[0].Role != conversation.RoleUser {
+		t.Fatalf("expected persisted user run prompt, got %#v", result.Snapshot.Messages[0])
+	}
+	if result.Snapshot.Messages[1].Role != conversation.RoleAssistant {
+		t.Fatalf("expected persisted execution result message, got %#v", result.Snapshot.Messages[1])
+	}
+	if result.Snapshot.Messages[2].Role != conversation.RoleAssistant {
+		t.Fatalf("expected persisted assistant explanation, got %#v", result.Snapshot.Messages[2])
 	}
 	if len(provider.request.Messages) == 0 {
 		t.Fatalf("expected provider request messages")

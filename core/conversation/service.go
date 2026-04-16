@@ -115,6 +115,49 @@ func (s *Service) AppendAssistantPrompt(ctx context.Context, request AssistantPr
 	return s.appendAssistantResult(result, info, providerErr)
 }
 
+func (s *Service) AppendMessages(requests []AppendMessageRequest) (Snapshot, error) {
+	if len(requests) == 0 {
+		return s.Snapshot(), nil
+	}
+
+	now := time.Now().UTC()
+	prepared := make([]Message, 0, len(requests))
+	for _, request := range requests {
+		role := MessageRole(strings.TrimSpace(string(request.Role)))
+		if role == "" {
+			return Snapshot{}, ErrInvalidMessage
+		}
+		content := strings.TrimSpace(request.Content)
+		if content == "" {
+			return Snapshot{}, ErrInvalidMessage
+		}
+		status := MessageStatus(strings.TrimSpace(string(request.Status)))
+		if status == "" {
+			status = StatusComplete
+		}
+		prepared = append(prepared, Message{
+			ID:        ids.New("msg"),
+			Role:      role,
+			Content:   content,
+			Status:    status,
+			Provider:  strings.TrimSpace(request.Provider),
+			Model:     strings.TrimSpace(request.Model),
+			CreatedAt: now,
+		})
+	}
+
+	s.mu.Lock()
+	s.state.Messages = append(s.state.Messages, prepared...)
+	s.state.UpdatedAt = now
+	if err := s.persistLocked(); err != nil {
+		s.mu.Unlock()
+		return Snapshot{}, err
+	}
+	snapshot := s.snapshotLocked()
+	s.mu.Unlock()
+	return snapshot, nil
+}
+
 func (s *Service) appendAssistantResult(result CompletionResult, info ProviderInfo, providerErr error) (SubmitResult, error) {
 	assistant := newMessage(RoleAssistant, "", StatusComplete, info.Kind, info.Model)
 	if providerErr != nil {
@@ -137,11 +180,8 @@ func (s *Service) appendAssistantResult(result CompletionResult, info ProviderIn
 		s.mu.Unlock()
 		return SubmitResult{}, err
 	}
-	snapshot := Snapshot{
-		Messages:  append([]Message(nil), s.state.Messages...),
-		Provider:  info,
-		UpdatedAt: s.state.UpdatedAt,
-	}
+	snapshot := s.snapshotLocked()
+	snapshot.Provider = info
 	s.mu.Unlock()
 
 	return SubmitResult{
@@ -150,6 +190,14 @@ func (s *Service) appendAssistantResult(result CompletionResult, info ProviderIn
 		ProviderInfo:  info,
 		ProviderError: errorString(providerErr),
 	}, nil
+}
+
+func (s *Service) snapshotLocked() Snapshot {
+	return Snapshot{
+		Messages:  append([]Message(nil), s.state.Messages...),
+		Provider:  s.provider.Info(),
+		UpdatedAt: s.state.UpdatedAt,
+	}
 }
 
 func newMessage(role MessageRole, content string, status MessageStatus, provider string, model string) Message {
