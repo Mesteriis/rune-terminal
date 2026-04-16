@@ -18,6 +18,7 @@ func NewHandler(runtime *app.Runtime, authToken string) http.Handler {
 	mux.HandleFunc("GET /healthz", api.handleHealth)
 	mux.HandleFunc("GET /api/v1/bootstrap", api.handleBootstrap)
 	mux.HandleFunc("GET /api/v1/workspace", api.handleWorkspace)
+	mux.HandleFunc("GET /api/v1/fs/list", api.handleListFS)
 	mux.HandleFunc("GET /api/v1/connections", api.handleConnections)
 	mux.HandleFunc("POST /api/v1/connections/{connectionID}/check", api.handleCheckConnection)
 	mux.HandleFunc("PUT /api/v1/connections/active", api.handleSelectConnection)
