@@ -19,6 +19,7 @@ type Runtime struct {
 	defaultTimeout          time.Duration
 	defaultLaunchTimeout    time.Duration
 	defaultHandshakeTimeout time.Duration
+	defaultTeardownTimeout  time.Duration
 }
 
 const maxProtocolMessageBytes = 1 << 20
@@ -35,6 +36,7 @@ func NewRuntime(spawner ProcessSpawner, defaultTimeout time.Duration) *Runtime {
 		defaultTimeout:          defaultTimeout,
 		defaultLaunchTimeout:    DefaultLaunchTimeout,
 		defaultHandshakeTimeout: DefaultHandshakeTimeout,
+		defaultTeardownTimeout:  DefaultTeardownTimeout,
 	}
 }
 
@@ -91,14 +93,9 @@ func (r *Runtime) Invoke(ctx context.Context, spec PluginSpec, request InvokeReq
 			r.killAndWait(process, waitCh)
 			return InvokeResult{}, outcome.err
 		}
-		select {
-		case waitErr := <-waitCh:
-			if waitErr != nil {
-				return InvokeResult{}, fmt.Errorf("%w: %v", ErrPluginProcessCrashed, waitErr)
-			}
-		case <-invokeCtx.Done():
-			r.killAndWait(process, waitCh)
-			return InvokeResult{}, fmt.Errorf("%w: %v", ErrPluginTimeout, invokeCtx.Err())
+
+		if err := r.waitForExit(invokeCtx, process, waitCh, r.teardownTimeout(spec)); err != nil {
+			return InvokeResult{}, err
 		}
 		return outcome.result, nil
 	}
@@ -123,6 +120,13 @@ func (r *Runtime) handshakeTimeout(spec PluginSpec) time.Duration {
 		return spec.HandshakeTimeout
 	}
 	return r.defaultHandshakeTimeout
+}
+
+func (r *Runtime) teardownTimeout(spec PluginSpec) time.Duration {
+	if spec.TeardownTimeout > 0 {
+		return spec.TeardownTimeout
+	}
+	return r.defaultTeardownTimeout
 }
 
 func validateInvocation(spec PluginSpec, request InvokeRequest) error {
@@ -317,9 +321,35 @@ func classifyProtocolReadError(err error, step string) error {
 }
 
 func (r *Runtime) killAndWait(process Process, waitCh <-chan error) {
+	_ = process.Stdin().Close()
+	_ = process.Stdout().Close()
 	_ = process.Kill()
 	select {
 	case <-waitCh:
 	case <-time.After(2 * time.Second):
+	}
+}
+
+func (r *Runtime) waitForExit(
+	invokeCtx context.Context,
+	process Process,
+	waitCh <-chan error,
+	teardownTimeout time.Duration,
+) error {
+	timer := time.NewTimer(teardownTimeout)
+	defer timer.Stop()
+
+	select {
+	case waitErr := <-waitCh:
+		if waitErr != nil {
+			return fmt.Errorf("%w: %v", ErrPluginProcessCrashed, waitErr)
+		}
+		return nil
+	case <-timer.C:
+		r.killAndWait(process, waitCh)
+		return fmt.Errorf("%w: plugin did not exit within teardown timeout", ErrPluginProcessCrashed)
+	case <-invokeCtx.Done():
+		r.killAndWait(process, waitCh)
+		return fmt.Errorf("%w: %v", ErrPluginTimeout, invokeCtx.Err())
 	}
 }

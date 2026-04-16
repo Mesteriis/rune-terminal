@@ -8,6 +8,7 @@ import (
 const DefaultInvokeTimeout = 5 * time.Second
 const DefaultLaunchTimeout = 2 * time.Second
 const DefaultHandshakeTimeout = 2 * time.Second
+const DefaultTeardownTimeout = 500 * time.Millisecond
 
 type PluginSpec struct {
 	Name             string
@@ -15,6 +16,7 @@ type PluginSpec struct {
 	Timeout          time.Duration
 	LaunchTimeout    time.Duration
 	HandshakeTimeout time.Duration
+	TeardownTimeout  time.Duration
 	Protocol         string
 	Capabilities     []string
 }

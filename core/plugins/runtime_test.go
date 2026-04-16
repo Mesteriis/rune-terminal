@@ -325,6 +325,143 @@ func TestInvokeFailsWhenHandshakeExceedsTimeout(t *testing.T) {
 	}
 }
 
+func TestInvokeFailsWhenPluginCrashesDuringExecutionAfterHandshake(t *testing.T) {
+	t.Parallel()
+
+	runtime := NewRuntime(scriptedSpawner{
+		script: func(stdin io.Reader, stdout io.Writer) error {
+			reader := bufio.NewReader(stdin)
+			var handshakeReq PluginHandshakeRequest
+			if err := scriptReadJSONLine(reader, &handshakeReq); err != nil {
+				return err
+			}
+			if err := scriptWriteJSONLine(stdout, PluginHandshakeResponse{
+				Type: MessageTypeHandshake,
+				Manifest: PluginManifest{
+					PluginID:        "example-plugin",
+					PluginVersion:   "1.0.0",
+					ProtocolVersion: ProtocolVersionV1,
+					ExposedTools:    []string{"plugin.example"},
+				},
+			}); err != nil {
+				return err
+			}
+			// Simulate plugin crash after handshake: close stdout without sending response.
+			return nil
+		},
+	}, time.Second)
+
+	_, err := runtime.Invoke(context.Background(), PluginSpec{
+		Name: "example-plugin",
+		Process: ProcessConfig{
+			Command: "scripted",
+		},
+	}, InvokeRequest{
+		ToolName: "plugin.example",
+	})
+	if !errors.Is(err, ErrPluginProcessCrashed) {
+		t.Fatalf("expected process crash error, got %v", err)
+	}
+}
+
+func TestInvokeTimesOutDuringExecutionAfterHandshake(t *testing.T) {
+	t.Parallel()
+
+	runtime := NewRuntime(scriptedSpawner{
+		script: func(stdin io.Reader, stdout io.Writer) error {
+			reader := bufio.NewReader(stdin)
+			var handshakeReq PluginHandshakeRequest
+			if err := scriptReadJSONLine(reader, &handshakeReq); err != nil {
+				return err
+			}
+			if err := scriptWriteJSONLine(stdout, PluginHandshakeResponse{
+				Type: MessageTypeHandshake,
+				Manifest: PluginManifest{
+					PluginID:        "example-plugin",
+					PluginVersion:   "1.0.0",
+					ProtocolVersion: ProtocolVersionV1,
+					ExposedTools:    []string{"plugin.example"},
+				},
+			}); err != nil {
+				return err
+			}
+			var req PluginRequest
+			if err := scriptReadJSONLine(reader, &req); err != nil {
+				return err
+			}
+			time.Sleep(120 * time.Millisecond)
+			return nil
+		},
+	}, 20*time.Millisecond)
+
+	_, err := runtime.Invoke(context.Background(), PluginSpec{
+		Name: "example-plugin",
+		Process: ProcessConfig{
+			Command: "scripted",
+		},
+	}, InvokeRequest{
+		ToolName: "plugin.example",
+	})
+	if !errors.Is(err, ErrPluginTimeout) {
+		t.Fatalf("expected execution timeout error, got %v", err)
+	}
+}
+
+func TestInvokeFailsWhenPluginDoesNotExitWithinTeardownTimeout(t *testing.T) {
+	t.Parallel()
+
+	runtime := NewRuntime(scriptedSpawner{
+		script: func(stdin io.Reader, stdout io.Writer) error {
+			reader := bufio.NewReader(stdin)
+			var handshakeReq PluginHandshakeRequest
+			if err := scriptReadJSONLine(reader, &handshakeReq); err != nil {
+				return err
+			}
+			if err := scriptWriteJSONLine(stdout, PluginHandshakeResponse{
+				Type: MessageTypeHandshake,
+				Manifest: PluginManifest{
+					PluginID:        "example-plugin",
+					PluginVersion:   "1.0.0",
+					ProtocolVersion: ProtocolVersionV1,
+					ExposedTools:    []string{"plugin.example"},
+				},
+			}); err != nil {
+				return err
+			}
+
+			var req PluginRequest
+			if err := scriptReadJSONLine(reader, &req); err != nil {
+				return err
+			}
+			if err := scriptWriteJSONLine(stdout, PluginResponse{
+				Type:      MessageTypeResponse,
+				RequestID: req.RequestID,
+				Status:    PluginResponseStatusOK,
+				Output:    json.RawMessage(`{"echo":"ok"}`),
+			}); err != nil {
+				return err
+			}
+
+			// Plugin keeps running after response; runtime must enforce teardown.
+			time.Sleep(150 * time.Millisecond)
+			return nil
+		},
+	}, time.Second)
+
+	_, err := runtime.Invoke(context.Background(), PluginSpec{
+		Name:            "example-plugin",
+		TeardownTimeout: 20 * time.Millisecond,
+		Process: ProcessConfig{
+			Command: "scripted",
+		},
+	}, InvokeRequest{
+		ToolName: "plugin.example",
+	})
+	if !errors.Is(err, ErrPluginProcessCrashed) {
+		t.Fatalf("expected teardown crash error, got %v", err)
+	}
+}
+
 type scriptedSpawner struct {
 	script func(stdin io.Reader, stdout io.Writer) error
 }
