@@ -1457,6 +1457,48 @@
 - Result: Подтверждённого validation result нет; текущий ориентир только parity status из audit.
 - Notes: Placeholder-секция для будущих проверок. Текущее audit-наблюдение: Legacy proxy UI присутствует, но current core/runtime path для TideTerm WaveProxy отсутствует. 
 
+<a id="mcp-usability"></a>
+## MCP usability
+
+- Date: `2026-04-16`
+- Status: `VERIFIED`
+- Commits:
+  - `d1ff3c1`
+  - `94d471d`
+  - `72037ba`
+  - `6f56f23`
+  - `7276787`
+- Validation steps:
+  - release sweep:
+    - `npm run validate` -> `PASS` (`lint/build/tests/tauri:check`; frontend lint warnings remain non-blocking and unchanged)
+    - `npm run tauri:dev` smoke -> desktop launched and runtime ready line observed:
+      - `{"base_url":"http://127.0.0.1:55811","pid":76276}`
+  - runtime/UI smoke:
+    - core: `RTERM_AUTH_TOKEN=mcp-ui-token go run ./cmd/rterm-core serve --listen 127.0.0.1:52993 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/rterm-mcp-ui-validation`
+    - frontend dev: `VITE_RTERM_API_BASE=http://127.0.0.1:52993 VITE_RTERM_AUTH_TOKEN=mcp-ui-token npm --prefix frontend run dev -- --host 127.0.0.1 --port 4212 --strictPort`
+    - `Tools` panel now shows MCP server list with:
+      - `id`
+      - normalized state (`active`/`idle`/`stopped`/`disabled`)
+      - `last_used` timestamp when present
+    - per-server manual lifecycle controls verified from UI:
+      - `start`, `stop`, `restart`, `enable`, `disable` each call the matching `/api/v1/mcp/servers/{id}/...` endpoint and refresh visible state
+    - minimal explicit invoke path verified from UI:
+      - server-select + JSON payload + optional `allow on-demand start`
+      - disabled-server invoke returns explicit error (`mcp server is disabled`)
+      - enabled invoke returns response rendered in the Tools panel
+    - control-model invariants confirmed:
+      - no auto-start/auto-load behavior introduced in UI wiring
+      - MCP invoke output remains local to Tools panel and is not auto-injected into agent conversation context
+  - regression smoke on existing surfaces (same runtime):
+    - terminal still executes (`echo mcp-ui-terminal`)
+    - tools execution remains functional (`workspace.list_widgets`)
+    - audit panel still shows recent events
+    - AI panel still opens with selectors/composer and no MCP auto-injection path
+- Result: `VERIFIED` — MCP runtime is now operator-usable from existing shell surfaces: servers are visible, lifecycle is manually controlled, and invoke is explicit while preserving bounded/context-safe behavior.
+- Notes:
+  - this slice intentionally does not add MCP discovery/registry UI, bulk operations, or automation
+  - observed disabled invoke conflict (`409`) appears as explicit inline error and does not break panel behavior
+
 ## Approval continuity hardening
 
 - Date: `2026-04-16`
