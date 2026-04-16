@@ -25,6 +25,7 @@ import {
 } from "./compat-conversation";
 import { handleWaveAIContextMenu } from "./aipanel-contextmenu";
 import type { WaveUIMessage } from "./aitypes";
+import { parseRunCommandPrompt, submitRunCommandPrompt } from "./run-command";
 import { WaveAIModel } from "./waveai-model";
 
 const AIBlockMask = memo(() => {
@@ -338,10 +339,23 @@ const AIPanelCompatInner = memo(() => {
 
             try {
                 const facade = await getConversationFacade();
-                const response = await facade.submitMessage({
-                    prompt: input,
-                    context: buildCompatConversationContext(repoRoot),
-                });
+                const context = buildCompatConversationContext(repoRoot);
+                const runCommand = parseRunCommandPrompt(input);
+                if (runCommand?.kind === "invalid") {
+                    model.setError(runCommand.message);
+                    return;
+                }
+                const response =
+                    runCommand?.kind === "run"
+                        ? await submitRunCommandPrompt({
+                              conversationFacade: facade,
+                              prompt: runCommand.prompt,
+                              context,
+                          })
+                        : await facade.submitMessage({
+                              prompt: input,
+                              context,
+                          });
                 setMessages(mapConversationSnapshot(response.conversation));
                 setProviderLabel(formatProviderLabel(response.conversation.provider));
                 globalStore.set(model.inputAtom, "");
