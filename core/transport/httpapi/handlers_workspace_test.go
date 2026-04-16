@@ -88,3 +88,18 @@ func TestWorkspaceCloseLastTabReturnsBadRequest(t *testing.T) {
 		t.Fatalf("expected 400, got %d (%s)", recorder.Code, recorder.Body.String())
 	}
 }
+
+func TestWorkspaceCreateRemoteTabRejectsLocalTarget(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPost, "/api/v1/workspace/tabs/remote", map[string]any{
+		"title": "Remote Shell",
+	}))
+
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d (%s)", recorder.Code, recorder.Body.String())
+	}
+}

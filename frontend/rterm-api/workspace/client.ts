@@ -1,5 +1,6 @@
 import type {
   CloseTabResponse,
+  CreateRemoteTerminalTabRequest,
   CreateTerminalTabRequest,
   CreateTerminalTabResponse,
   FocusTabRequest,
@@ -30,6 +31,12 @@ export class WorkspaceClient {
 
   createTerminalTab(payload: CreateTerminalTabRequest = {}): Promise<CreateTerminalTabResponse> {
     return this.http.post<CreateTerminalTabResponse, CreateTerminalTabRequest>("/api/v1/workspace/tabs", {
+      body: payload,
+    });
+  }
+
+  createRemoteTerminalTab(payload: CreateRemoteTerminalTabRequest = {}): Promise<CreateTerminalTabResponse> {
+    return this.http.post<CreateTerminalTabResponse, CreateRemoteTerminalTabRequest>("/api/v1/workspace/tabs/remote", {
       body: payload,
     });
   }

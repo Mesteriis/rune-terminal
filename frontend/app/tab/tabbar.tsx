@@ -707,6 +707,17 @@ const TabBar = memo(({ workspace, compatMode = false }: TabBarProps) => {
         setNewTabIdDebounced(null);
     };
 
+    const handleAddRemoteTab = () => {
+        fireAndForget(() =>
+            workspaceStore.createRemoteTerminalTab().catch((error) => {
+                console.warn("failed to create remote terminal tab", error);
+            })
+        );
+        tabsWrapperRef.current.style.setProperty("--tabs-wrapper-transition", "width 0.1s ease");
+        updateScrollDebounced();
+        setNewTabIdDebounced(null);
+    };
+
     const handleCloseTab = (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null, tabId: string) => {
         event?.stopPropagation();
         fireAndForget(() => workspaceStore.closeTab(tabId));
@@ -769,6 +780,12 @@ const TabBar = memo(({ workspace, compatMode = false }: TabBarProps) => {
         click: handleAddTab,
         title: "Add Tab",
     };
+    const addRemoteTabButtonDecl: IconButtonDecl = {
+        elemtype: "iconbutton",
+        icon: "server",
+        click: handleAddRemoteTab,
+        title: "Add Remote Tab",
+    };
     return (
         <div ref={tabbarWrapperRef} className="tab-bar-wrapper" onContextMenuCapture={handleCompatContextMenuCapture}>
             <div
@@ -816,6 +833,7 @@ const TabBar = memo(({ workspace, compatMode = false }: TabBarProps) => {
                 </div>
             </div>
             <IconButton className="add-tab" ref={addBtnRef} decl={addtabButtonDecl} />
+            <IconButton className="add-remote-tab" decl={addRemoteTabButtonDecl} />
             <div className="tab-bar-right">
                 <UpdateStatusBanner ref={updateStatusBannerRef} />
                 <ConfigErrorIcon buttonRef={configErrorButtonRef} />

@@ -417,6 +417,20 @@ class WorkspaceStore {
         return response?.widget_id;
     }
 
+    async createRemoteTerminalTab(connectionId?: string): Promise<string> {
+        const facade = await getWorkspaceFacade();
+        const response = await facade.createRemoteTerminalTab({
+            connection_id: connectionId,
+        });
+        if (response?.workspace) {
+            this.setState(adaptWorkspaceFromApi(response.workspace, this.state.active));
+        }
+        if (!this.compatModeActive) {
+            await this.refreshWorkspaceList();
+        }
+        return response?.widget_id;
+    }
+
     async renameTab(tabId: string, title: string): Promise<void> {
         const facade = await getWorkspaceFacade();
         const response: WorkspaceTabMutation = await facade.renameTab(tabId, { title });

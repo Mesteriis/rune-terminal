@@ -55,6 +55,23 @@ func (api *API) handleCreateTerminalTab(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusOK, result)
 }
 
+func (api *API) handleCreateRemoteTerminalTab(w http.ResponseWriter, r *http.Request) {
+	var payload struct {
+		Title        string `json:"title,omitempty"`
+		ConnectionID string `json:"connection_id,omitempty"`
+	}
+	if err := decodeJSON(r, &payload); err != nil {
+		writeBadRequest(w, "invalid_request", err)
+		return
+	}
+	result, err := api.runtime.CreateRemoteTerminalTab(r.Context(), payload.Title, payload.ConnectionID)
+	if err != nil {
+		writeWorkspaceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
 func (api *API) handleRenameTab(w http.ResponseWriter, r *http.Request) {
 	var payload struct {
 		Title string `json:"title"`

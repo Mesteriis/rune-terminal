@@ -49,6 +49,11 @@ export interface CreateTerminalTabRequest {
   connection_id?: string;
 }
 
+export interface CreateRemoteTerminalTabRequest {
+  title?: string;
+  connection_id?: string;
+}
+
 export interface CreateTerminalTabResponse {
   tab_id: string;
   widget_id: string;

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Mesteriis/rune-terminal/core/connections"
 	"github.com/Mesteriis/rune-terminal/core/terminal"
 	"github.com/Mesteriis/rune-terminal/core/workspace"
 	"github.com/Mesteriis/rune-terminal/internal/ids"
@@ -63,6 +64,24 @@ func (r *Runtime) MoveTab(tabID string, beforeTabID string) (workspace.Snapshot,
 
 func (r *Runtime) CreateTerminalTab(ctx context.Context, title string) (CreateTerminalTabResult, error) {
 	return r.CreateTerminalTabWithConnection(ctx, title, "")
+}
+
+func (r *Runtime) CreateRemoteTerminalTab(ctx context.Context, title string, connectionID string) (CreateTerminalTabResult, error) {
+	if connectionID == "" {
+		activeConnection, err := r.Connections.Active()
+		if err != nil {
+			return CreateTerminalTabResult{}, err
+		}
+		connectionID = activeConnection.ID
+	}
+	connection, err := r.Connections.Resolve(connectionID)
+	if err != nil {
+		return CreateTerminalTabResult{}, err
+	}
+	if connection.Kind != connections.KindSSH {
+		return CreateTerminalTabResult{}, fmt.Errorf("%w: remote terminal requires an ssh connection target", connections.ErrInvalidConnection)
+	}
+	return r.CreateTerminalTabWithConnection(ctx, title, connectionID)
 }
 
 func (r *Runtime) CreateTerminalTabWithConnection(ctx context.Context, title string, connectionID string) (CreateTerminalTabResult, error) {
