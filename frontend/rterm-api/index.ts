@@ -38,6 +38,9 @@ export type {
   SubmitConversationMessageResponse,
 } from "./conversation/types";
 
+export { FSClient } from "./fs/client";
+export type { FSListResponse, FSNode } from "./fs/types";
+
 export { AuditClient } from "./audit/client";
 export type { AuditEvent, AuditResponse } from "./audit/types";
 
@@ -138,6 +141,7 @@ import { AuditClient } from "./audit/client";
 import { BootstrapClient } from "./bootstrap/client";
 import { ConnectionsClient } from "./connections/client";
 import { ConversationClient } from "./conversation/client";
+import { FSClient } from "./fs/client";
 import { HttpClient } from "./http/client";
 import { MCPClient } from "./mcp/client";
 import { PolicyClient } from "./policy/client";
@@ -156,6 +160,7 @@ export class RtermApi {
   readonly bootstrap: BootstrapClient;
   readonly connections: ConnectionsClient;
   readonly conversation: ConversationClient;
+  readonly fs: FSClient;
   readonly mcp: MCPClient;
   readonly policy: PolicyClient;
   readonly tools: ToolsClient;
@@ -169,6 +174,7 @@ export class RtermApi {
     this.bootstrap = new BootstrapClient(http);
     this.connections = new ConnectionsClient(http);
     this.conversation = new ConversationClient(http);
+    this.fs = new FSClient(http);
     this.mcp = new MCPClient(http);
     this.policy = new PolicyClient(http);
     this.tools = new ToolsClient(http);

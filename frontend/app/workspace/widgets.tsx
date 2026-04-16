@@ -9,6 +9,7 @@ import { useAtomValue } from "jotai";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { AppsFloatingWindow } from "./apps-floating-window";
 import { AuditFloatingWindow } from "./audit-floating-window";
+import { FilesFloatingWindow } from "./files-floating-window";
 import { SettingsFloatingWindow } from "./settings-floating-window";
 import { ToolsFloatingWindow } from "./tools-floating-window";
 import { WidgetActionButton } from "./widget-action-button";
@@ -39,6 +40,8 @@ const Widgets = memo(({ compatMode = false }: { compatMode?: boolean }) => {
     const toolsButtonRef = useRef<HTMLDivElement>(null);
     const [isAuditOpen, setIsAuditOpen] = useState(false);
     const auditButtonRef = useRef<HTMLDivElement>(null);
+    const [isFilesOpen, setIsFilesOpen] = useState(false);
+    const filesButtonRef = useRef<HTMLDivElement>(null);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const settingsButtonRef = useRef<HTMLDivElement>(null);
     const [auditRefreshNonce, setAuditRefreshNonce] = useState(0);
@@ -86,7 +89,7 @@ const Widgets = memo(({ compatMode = false }: { compatMode?: boolean }) => {
         if (normalHeight > containerHeight - gracePeriod) {
             newMode = "compact";
 
-            const actionCount = 3 + (showAppsButton ? 1 : 0);
+            const actionCount = 4 + (showAppsButton ? 1 : 0);
             const totalWidgets = (widgets?.length || 0) + actionCount;
             const minHeightPerWidget = 32;
             const requiredHeight = totalWidgets * minHeightPerWidget;
@@ -178,6 +181,15 @@ const Widgets = memo(({ compatMode = false }: { compatMode?: boolean }) => {
                                 defaultIcon="list-check"
                                 style={compatActionStyle}
                             />
+                            <WidgetActionButton
+                                buttonRef={filesButtonRef}
+                                icon="folder-open"
+                                tooltip="Files"
+                                isOpen={isFilesOpen}
+                                onClick={() => setIsFilesOpen(!isFilesOpen)}
+                                mode={mode}
+                                style={compatActionStyle}
+                            />
                             {showAppsButton ? (
                                 <WidgetActionButton
                                     buttonRef={appsButtonRef}
@@ -226,6 +238,16 @@ const Widgets = memo(({ compatMode = false }: { compatMode?: boolean }) => {
                             mode={mode}
                             label="Audit"
                             defaultIcon="list-check"
+                            style={compatActionStyle}
+                        />
+                        <WidgetActionButton
+                            buttonRef={filesButtonRef}
+                            icon="folder-open"
+                            tooltip="Files"
+                            isOpen={isFilesOpen}
+                            onClick={() => setIsFilesOpen(!isFilesOpen)}
+                            mode={mode}
+                            label="Files"
                             style={compatActionStyle}
                         />
                         {showAppsButton ? (
@@ -283,6 +305,13 @@ const Widgets = memo(({ compatMode = false }: { compatMode?: boolean }) => {
                     refreshNonce={auditRefreshNonce}
                 />
             )}
+            {filesButtonRef.current && (
+                <FilesFloatingWindow
+                    isOpen={isFilesOpen}
+                    onClose={() => setIsFilesOpen(false)}
+                    referenceElement={filesButtonRef.current}
+                />
+            )}
             {settingsButtonRef.current && (
                 <SettingsFloatingWindow
                     isOpen={isSettingsOpen}
@@ -297,6 +326,7 @@ const Widgets = memo(({ compatMode = false }: { compatMode?: boolean }) => {
                 showAppsButton={showAppsButton}
                 showDevBadge={isDev()}
                 appsLabel={t("workspace.appsLabel")}
+                filesLabel="Files"
                 settingsLabel={t("workspace.settingsLabel")}
                 style={compatMeasurementStyle}
             />

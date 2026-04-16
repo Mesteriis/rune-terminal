@@ -7,6 +7,8 @@ export { createAuditFacade, getAuditFacade } from "./audit";
 export type { AuditFacade } from "./audit";
 export { createConversationFacade, getConversationFacade } from "./conversation";
 export type { ConversationFacade } from "./conversation";
+export { createFSFacade, getFSFacade } from "./fs";
+export type { FSFacade } from "./fs";
 export { createConnectionsFacade, getConnectionsFacade } from "./connections";
 export type { ConnectionsFacade } from "./connections";
 export { createMCPFacade, getMCPFacade } from "./mcp";
