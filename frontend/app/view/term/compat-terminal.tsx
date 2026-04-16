@@ -106,7 +106,8 @@ export function CompatTerminalView({ widgetId, connectionId }: CompatTerminalVie
                 );
                 return;
             }
-            const workspaceID = bootstrap.workspace?.id ?? workspaceStore.getSnapshot().active.oid || undefined;
+            const fallbackWorkspaceID = bootstrap.workspace?.id ?? workspaceStore.getSnapshot().active.oid ?? "";
+            const workspaceID = fallbackWorkspaceID.trim() || undefined;
             const repoRoot = bootstrap.repo_root?.trim() || undefined;
             const fromSeq = terminalSnapshot.next_seq > EXPLAIN_RECENT_OUTPUT_WINDOW
                 ? terminalSnapshot.next_seq - EXPLAIN_RECENT_OUTPUT_WINDOW

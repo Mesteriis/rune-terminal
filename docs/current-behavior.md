@@ -27,9 +27,17 @@ It is intentionally operational, not narrative.
   - attachment references are created through `POST /api/v1/agent/conversation/attachments/references`
   - selected file context is user-driven and explicit (`Attach Selected File To AI Context`)
   - file selection alone does not auto-inject context into conversation payloads
+- Files panel now also exposes explicit handoff helpers for selected paths:
+  - `Use Selected Path In AI Prompt`
+  - `Use Selected Path In /run Prompt`
+  - both actions are explicit operator clicks and do not auto-send or auto-execute
 - Widgets can now be bound to a specific connection ID.
 - New terminal tabs default to the currently selected connection unless a specific connection is supplied at creation time.
 - Runtime utilities and audit remain secondary shell surfaces reachable from the dock and the AI-panel overflow menu.
+- Tools panel now renders explicit active-context summary and explicit input helpers:
+  - `Use Selected File Path` when the chosen tool schema fits `path`/`paths`
+  - `Use Active Widget` when the chosen tool schema fits `widget_id`
+  - these actions only patch the visible input JSON; execution still requires explicit `Execute`
 - New terminal tabs can be created at runtime.
 - Closing a tab tears down its terminal session and removes the associated widget from the workspace snapshot.
 - The last remaining tab cannot be closed in the current implementation.
@@ -243,6 +251,10 @@ Confirmable boundaries:
   5. call the backend explanation route
   6. append a real assistant message to the persisted conversation transcript
 - The backend explanation route does not execute commands by itself. It explains the observed result of a command that already ran through the runtime.
+- The compat terminal now has an explicit `Explain Latest Output In AI` handoff action:
+  - it resolves the latest terminal command from audit truth for the active widget
+  - it calls the existing explain route with explicit widget/target context
+  - it does not execute new terminal commands
 - If command execution succeeds but explanation fails, the shell now reports that explicitly and falls back to the captured terminal output summary instead of claiming a clean explain success.
 - Approval remains in force for AI command execution:
   - if the active policy profile escalates `term.send_input` to `dangerous`, `/run` returns an approval requirement

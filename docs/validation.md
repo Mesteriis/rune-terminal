@@ -5,6 +5,29 @@
 - отсутствие проверки фиксируется как `NOT RUN`, а не маскируется под успешный результат
 - записи ниже основаны только на audit trail из `docs/tideterm-feature-inventory.md`, `docs/feature-parity-audit.md` и `docs/feature-gap-summary.md`
 
+<a id="operator-workflow"></a>
+## Operator workflow
+
+- Date: `2026-04-16`
+- Status: `VERIFIED`
+- Validation steps:
+  - canonical operator-workflow script: `python3 scripts/validate_operator_workflow.py`
+  - clean run output:
+    - `base_url`: `http://127.0.0.1:60898`
+    - `ollama_stub_url`: `http://127.0.0.1:60897`
+    - `select_file_use_in_ai`: `ok`
+    - `select_file_use_in_run_related_flow`: `ok`
+    - `terminal_output_to_explain`: `ok`
+    - `tool_execution_audit_visibility`: `ok`
+    - `mcp_invoke_explicit_only`: `ok`
+    - `remote_target_explicit_mismatch_guard`: `ok`
+  - release sweep: `npm run validate` -> `pass` (existing frontend hook warnings remain non-blocking in current RC gate)
+  - desktop startup smoke: `npm run tauri:dev` -> runtime ready `{"base_url":"http://127.0.0.1:61072","pid":12251}`
+- Result: `VERIFIED` — cross-surface operator handoffs are coherent and explicit for file/AI, file/`/run`-related execution, terminal explain, tools->audit traceability, MCP explicit invocation, and local-vs-remote target mismatch guarding.
+- Notes:
+  - remote-target validation in this run is guard-level (`target_session` mismatch rejection) on a local widget; this entry does not claim a full reachable-host SSH launch sweep.
+  - MCP invoke remained explicit and did not append automatic agent conversation messages in this run.
+
 <a id="workspace-navigation-batch"></a>
 ## Workspace navigation parity batch
 
