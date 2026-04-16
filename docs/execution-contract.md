@@ -227,3 +227,41 @@ User input:
   - local explanation-fallback message
 - Persisted conversation messages come from the backend conversation service.
 - In the current `/run` flow, the persisted message is the assistant explanation; the local `/run` prompt and the local execution-result message are not written into conversation storage.
+
+## 3. Contract vs Implementation
+
+- `2.1 Input contract` -> `MATCHES`
+  - `frontend/app/aipanel/run-command.ts` accepts only `/run <command>` and `run: <command>`.
+  - `frontend/app/aipanel/aipanel-compat.tsx` preserves both prompt and derived command for explain and retry.
+  - `executeRunCommandPrompt` rejects `/run` execution when there is no active widget.
+
+- `2.2 Tool execution contract` -> `MATCHES`
+  - `core/transport/httpapi/handlers_tools.go` and `core/toolruntime/types.go` match the documented request/response shape.
+  - `core/transport/httpapi/error_model.go` matches the documented status mapping.
+  - `frontend/rterm-api/tools/client.ts` unwraps structured non-2xx tool responses instead of flattening them into transport-only failures.
+
+- `2.3 Approval contract` -> `MATCHES`
+  - `core/policy/stage_approval.go` triggers confirmation from the effective approval tier.
+  - `core/toolruntime/executor.go` returns `status:"requires_confirmation"` with `pending_approval`.
+  - `core/app/tool_policy.go` exposes confirmation only as `safety.confirm` through the normal tool execution route.
+  - `core/toolruntime/approval.go` makes pending approvals single-use with a 10-minute expiry.
+
+- `2.4 Retry contract` -> `PARTIAL`
+  - The active compat `/run` UI preserves the original command and execution context on retry.
+  - `core/toolruntime/approval.go` verifies approval tokens against the tool name only.
+  - The runtime does not bind the approval token to the full original input or context, so the strict retry rule is enforced by the current UI path but not by the backend token contract itself.
+
+- `2.5 Audit contract` -> `MATCHES`
+  - `core/toolruntime/executor_audit.go` records tool execution attempts in the backend.
+  - `core/app/ai_terminal_command.go` records the explain step as `agent.terminal_command`.
+  - The current `/run` UI passes `approval_used:true` on the approved explain path, matching the documented audit chain.
+
+- `2.6 Agent contract` -> `MATCHES`
+  - The agent selection store is used as the executor's policy-profile provider.
+  - The explicit `/run` agent call is only the post-execution explain request in `core/transport/httpapi/handlers_agent_conversation.go`.
+  - Execution remains in `term.send_input`; explain only summarizes observed output and persists an assistant reply.
+
+- `2.7 UI contract` -> `MATCHES`
+  - The AI panel reflects backend execution and approval responses from `/api/v1/tools/execute`.
+  - Persisted conversation messages come from `core/conversation.Service`.
+  - Pending approvals and execution-result messages remain frontend-local, which matches the current documented UI responsibility boundary.
