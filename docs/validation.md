@@ -288,6 +288,36 @@
       - `GET /api/v1/terminal/term-main/stream?from=31`
     - reconnects also omitted `token=`
 - Result: `VERIFIED` — the active terminal stream path now uses header auth instead of query-token auth, tab switching still reconnects cleanly, and terminal output/replay remained intact during the live shell run.
+
+## Conversation pruning
+
+- Date: `2026-04-16`
+- Status: `VERIFIED`
+- Commits:
+  - `f743f1f083eb092d25aaaf99df74ea0f676f67ef`
+  - `797a392244908c418cfeb78ddab0dc1ed74a597d`
+- Validation steps:
+  - automated checks:
+    - `go test ./core/conversation ./core/app`
+  - runtime environment:
+    - Ollama stub on `127.0.0.1:11439` recording the last `/api/chat` request and exposing `GET /stats`
+    - core: `RTERM_AUTH_TOKEN=conv-prune-token RTERM_OLLAMA_BASE_URL=http://127.0.0.1:11439 RTERM_OLLAMA_MODEL=test-model go run ./cmd/rterm-core serve --listen 127.0.0.1:52860 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/rterm-conversation-prune-validation`
+    - frontend dev: `VITE_RTERM_API_BASE=http://127.0.0.1:52860 VITE_RTERM_AUTH_TOKEN=conv-prune-token npm --prefix frontend run dev -- --host 127.0.0.1 --port 5174 --strictPort`
+  - seeded long history:
+    - posted `15` real conversation requests through `POST /api/v1/agent/conversation/messages`
+    - stub `GET /stats` then returned `{"count":25,...,"last":"history-seed-15"}`
+    - this means the provider saw `24` chat messages plus the system prompt, not the full `29` chat-message history that existed by that point
+  - active UI path:
+    - opened `http://127.0.0.1:5174/`
+    - opened the AI panel through the visible shell `AI` toggle
+    - transcript loaded the seeded history in the current UI
+    - submitted `browser prune check` through the visible composer
+    - browser network captured `POST /api/v1/agent/conversation/messages => 200`
+    - page text contained both `browser prune check` and `stub-reply:25`
+  - bounded provider request:
+    - after the browser-submitted prompt, stub `GET /stats` returned `{"count":25,...,"last":"browser prune check"}`
+    - at that point the persisted conversation held `31` chat messages before system-prompt injection, so the provider request was still bounded instead of sending the whole transcript blindly
+- Result: `VERIFIED` — conversation still works in the active AI panel, the transcript remains usable, and provider requests are now capped to the documented recent-history budget instead of growing without bound.
 - Safe explain truth: `VERIFIED` — the backend ignored a client-supplied `approval_used:true` value and recorded the explain step as unapproved when the matching execution was unapproved.
 - Approved explain truth: `VERIFIED` — the backend ignored a client-supplied `approval_used:false` value and recorded the explain step as approved when the matching execution had consumed approval.
 - Exact observed result: `VERIFIED` — explain `approval_used` now comes from backend execution/audit truth, not from the frontend payload.
