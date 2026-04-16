@@ -168,7 +168,7 @@ class WorkspaceStore {
     private themeRefreshPromise: Promise<{ colors: string[]; icons: string[] }> | null = null;
     private workspaceUpdateUnsub: (() => void) | null = null;
     private globalWorkspaceUnsub: (() => void) | null = null;
-    private compatModeActive = false;
+    private compatModeActive = true;
 
     constructor() {
         const initialWorkspace = getLegacyWorkspaceFromAtoms();
@@ -189,11 +189,10 @@ class WorkspaceStore {
         };
 
         this.handleGlobalWorkspaceUpdate = this.handleGlobalWorkspaceUpdate.bind(this);
-        this.subscribeToSourceEvents();
     }
 
     private subscribeToSourceEvents(): void {
-        if (atoms == null) {
+        if (atoms == null || this.workspaceUpdateUnsub != null || this.globalWorkspaceUnsub != null) {
             return;
         }
         this.workspaceUpdateUnsub = waveEventSubscribe({
@@ -203,6 +202,17 @@ class WorkspaceStore {
             },
         });
         this.globalWorkspaceUnsub = globalStore.sub(atoms.workspace, this.handleGlobalWorkspaceUpdate);
+    }
+
+    private unsubscribeFromSourceEvents(): void {
+        if (this.workspaceUpdateUnsub != null) {
+            this.workspaceUpdateUnsub();
+            this.workspaceUpdateUnsub = null;
+        }
+        if (this.globalWorkspaceUnsub != null) {
+            this.globalWorkspaceUnsub();
+            this.globalWorkspaceUnsub = null;
+        }
     }
 
     private handleGlobalWorkspaceUpdate(): void {
@@ -298,6 +308,11 @@ class WorkspaceStore {
 
     setCompatMode(active: boolean): void {
         this.compatModeActive = active;
+        if (active) {
+            this.unsubscribeFromSourceEvents();
+            return;
+        }
+        this.subscribeToSourceEvents();
     }
 
     private getActiveLegacyWorkspace(): LegacyWorkspace | null {
