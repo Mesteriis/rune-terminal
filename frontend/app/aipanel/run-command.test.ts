@@ -1,6 +1,6 @@
-import { assert, test } from "vitest";
+import { assert, test, vi } from "vitest";
 import type { TerminalOutputChunk } from "@/rterm-api/terminal/types";
-import { parseRunCommandPrompt, summarizeTerminalOutput } from "./run-command";
+import { executeRunCommandPrompt, parseRunCommandPrompt, summarizeTerminalOutput } from "./run-command";
 
 test("parseRunCommandPrompt ignores free-text prompts", () => {
     assert.isNull(parseRunCommandPrompt("hello there"));
@@ -60,4 +60,153 @@ test("summarizeTerminalOutput strips prompt noise and ANSI escapes", () => {
     ];
 
     assert.equal(summarizeTerminalOutput("echo hello", chunks), "hello");
+});
+
+test("executeRunCommandPrompt surfaces approval_required without flattening it into a generic tool error", async () => {
+    const terminalFacade = {
+        getSnapshot: vi.fn(async () => ({
+            state: {
+                widget_id: "widget-1",
+                session_id: "widget-1",
+                shell: "/bin/zsh",
+                pid: 1,
+                status: "running",
+                started_at: "2026-04-16T09:33:55Z",
+                can_send_input: true,
+                can_interrupt: true,
+            },
+            chunks: [],
+            next_seq: 7,
+        })),
+    } as any;
+    const toolsFacade = {
+        executeTool: vi.fn(async () => ({
+            status: "requires_confirmation",
+            pending_approval: {
+                id: "approval-1",
+                tool_name: "term.send_input",
+                summary: "send terminal input",
+                approval_tier: "dangerous",
+                created_at: "2026-04-16T09:33:55Z",
+                expires_at: "2026-04-16T09:38:55Z",
+            },
+        })),
+    } as any;
+
+    const result = await executeRunCommandPrompt({
+        terminalFacade,
+        toolsFacade,
+        command: "rm -rf /tmp/demo",
+        context: {
+            active_widget_id: "widget-1",
+            repo_root: "/repo",
+            workspace_id: "workspace-1",
+        },
+    });
+
+    assert.deepEqual(result, {
+        kind: "approval_required",
+        pendingApproval: {
+            id: "approval-1",
+            tool_name: "term.send_input",
+            summary: "send terminal input",
+            approval_tier: "dangerous",
+            created_at: "2026-04-16T09:33:55Z",
+            expires_at: "2026-04-16T09:38:55Z",
+        },
+    });
+    assert.equal(toolsFacade.executeTool.mock.calls[0][0].approval_token, undefined);
+});
+
+test("executeRunCommandPrompt forwards approval_token on approved retry", async () => {
+    vi.useFakeTimers();
+
+    const terminalFacade = {
+        getSnapshot: vi
+            .fn()
+            .mockResolvedValueOnce({
+                state: {
+                    widget_id: "widget-1",
+                    session_id: "widget-1",
+                    shell: "/bin/zsh",
+                    pid: 1,
+                    status: "running",
+                    started_at: "2026-04-16T09:33:55Z",
+                    can_send_input: true,
+                    can_interrupt: true,
+                },
+                chunks: [],
+                next_seq: 7,
+            })
+            .mockResolvedValueOnce({
+                state: {
+                    widget_id: "widget-1",
+                    session_id: "widget-1",
+                    shell: "/bin/zsh",
+                    pid: 1,
+                    status: "running",
+                    started_at: "2026-04-16T09:33:55Z",
+                    can_send_input: true,
+                    can_interrupt: true,
+                },
+                chunks: [
+                    {
+                        seq: 7,
+                        data: "done\n",
+                        timestamp: "2026-04-16T09:33:56Z",
+                    },
+                ],
+                next_seq: 8,
+            })
+            .mockResolvedValueOnce({
+                state: {
+                    widget_id: "widget-1",
+                    session_id: "widget-1",
+                    shell: "/bin/zsh",
+                    pid: 1,
+                    status: "running",
+                    started_at: "2026-04-16T09:33:55Z",
+                    can_send_input: true,
+                    can_interrupt: true,
+                },
+                chunks: [
+                    {
+                        seq: 7,
+                        data: "done\n",
+                        timestamp: "2026-04-16T09:33:56Z",
+                    },
+                ],
+                next_seq: 8,
+            }),
+    } as any;
+    const toolsFacade = {
+        executeTool: vi.fn(async () => ({
+            status: "ok",
+            output: {
+                widget_id: "widget-1",
+                bytes_sent: 5,
+                append_newline: true,
+            },
+        })),
+    } as any;
+
+    const executionPromise = executeRunCommandPrompt({
+        terminalFacade,
+        toolsFacade,
+        command: "echo done",
+        context: {
+            active_widget_id: "widget-1",
+            repo_root: "/repo",
+            workspace_id: "workspace-1",
+        },
+        approvalToken: "token-1",
+    });
+
+    await vi.advanceTimersByTimeAsync(200);
+    const result = await executionPromise;
+
+    assert.equal(toolsFacade.executeTool.mock.calls[0][0].approval_token, "token-1");
+    assert.equal(result.kind, "executed");
+
+    vi.useRealTimers();
 });

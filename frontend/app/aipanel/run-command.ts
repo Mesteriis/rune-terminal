@@ -6,7 +6,7 @@ import type {
     ExplainTerminalCommandResponse,
 } from "@/rterm-api/conversation/types";
 import type { TerminalOutputChunk, TerminalSnapshot } from "@/rterm-api/terminal/types";
-import type { ToolExecutionContext, ToolExecutionResponse } from "@/rterm-api/tools/types";
+import type { PendingApproval, ToolExecutionContext, ToolExecutionResponse } from "@/rterm-api/tools/types";
 import type { WaveUIMessage } from "./aitypes";
 
 export interface RunCommandIntent {
@@ -99,6 +99,11 @@ export interface RunCommandToolErrorResult {
     resultMessage: WaveUIMessage;
 }
 
+export interface RunCommandApprovalRequiredResult {
+    kind: "approval_required";
+    pendingApproval: PendingApproval;
+}
+
 export interface RunCommandExecutedResult {
     kind: "executed";
     resultMessage: WaveUIMessage;
@@ -108,13 +113,17 @@ export interface RunCommandExecutedResult {
     snapshot: TerminalSnapshot;
 }
 
-export type RunCommandExecutionResult = RunCommandToolErrorResult | RunCommandExecutedResult;
+export type RunCommandExecutionResult =
+    | RunCommandApprovalRequiredResult
+    | RunCommandToolErrorResult
+    | RunCommandExecutedResult;
 
 interface ExecuteRunCommandPromptOptions {
     terminalFacade: TerminalFacade;
     toolsFacade: ToolsFacade;
     command: string;
     context: ToolExecutionContext;
+    approvalToken?: string;
 }
 
 export async function executeRunCommandPrompt(
@@ -141,7 +150,15 @@ export async function executeRunCommandPrompt(
             append_newline: true,
         },
         context: options.context,
+        approval_token: options.approvalToken,
     });
+
+    if (toolResponse.status === "requires_confirmation" && toolResponse.pending_approval != null) {
+        return {
+            kind: "approval_required",
+            pendingApproval: toolResponse.pending_approval,
+        };
+    }
 
     if (toolResponse.status !== "ok") {
         return {
@@ -169,6 +186,7 @@ interface ExplainRunCommandPromptOptions {
     command: string;
     widgetId: string;
     fromSeq: number;
+    approvalUsed?: boolean;
     context: ConversationContext;
 }
 
@@ -180,6 +198,7 @@ export function explainRunCommandPrompt(
         command: options.command,
         widget_id: options.widgetId,
         from_seq: options.fromSeq,
+        approval_used: options.approvalUsed,
         context: options.context,
     });
 }
@@ -199,12 +218,6 @@ export function buildRunCommandExplanationFallbackMessage(command: string, outpu
 }
 
 function buildToolFailureMessage(command: string, response: ToolExecutionResponse): string {
-    if (response.status === "requires_confirmation") {
-        const summary = response.pending_approval?.summary?.trim();
-        return summary
-            ? `Approval required to run \`${command}\`.\n\n${summary}`
-            : `Approval required to run \`${command}\`.`;
-    }
     const errorMessage = response.error?.trim() || "The runtime rejected the terminal command request.";
     return `Failed to run \`${command}\`.\n\n${errorMessage}`;
 }
@@ -292,6 +305,6 @@ async function waitForRunCommandOutput(
 
 function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => {
-        window.setTimeout(resolve, ms);
+        globalThis.setTimeout(resolve, ms);
     });
 }

@@ -12,6 +12,9 @@ import { cn } from "@/util/util";
 import { useAtomValue } from "jotai";
 import * as jotai from "jotai";
 import type { AgentCatalog } from "@/rterm-api/agent/types";
+import { getApprovalGrant } from "@/rterm-api/tools/client";
+import type { ConversationContext } from "@/rterm-api/conversation/types";
+import type { ToolExecutionContext, ToolExecutionResponse } from "@/rterm-api/tools/types";
 import { memo, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { useDrop } from "react-dnd";
 import { formatFileSizeError, isAcceptableFile, validateFileSize } from "./ai-utils";
@@ -35,6 +38,7 @@ import {
     explainRunCommandPrompt,
     parseRunCommandPrompt,
 } from "./run-command";
+import { type PendingRunApprovalEntry, RunCommandApprovalList } from "./run-command-approval";
 import { WaveAIModel } from "./waveai-model";
 
 const AIBlockMask = memo(() => {
@@ -177,8 +181,44 @@ const CompatAIErrorMessage = memo(() => {
 
 CompatAIErrorMessage.displayName = "CompatAIErrorMessage";
 
+function replacePendingRunApproval(
+    approvals: PendingRunApproval[],
+    currentApprovalId: string,
+    nextApproval: PendingRunApproval | null,
+): PendingRunApproval[] {
+    const remaining = approvals.filter((approval) => approval.approvalId !== currentApprovalId);
+    if (nextApproval == null) {
+        return remaining;
+    }
+    return [...remaining, nextApproval];
+}
+
+function buildConversationContextFromToolContext(context: ToolExecutionContext): ConversationContext {
+    return {
+        ...context,
+        widget_context_enabled: context.active_widget_id != null,
+    };
+}
+
+function buildApprovalConfirmErrorMessage(response: ToolExecutionResponse): string {
+    if (response.status === "error") {
+        return response.error?.trim() || "The runtime rejected the approval confirmation.";
+    }
+    if (response.status === "requires_confirmation") {
+        const summary = response.pending_approval?.summary?.trim();
+        return summary || "The runtime requested another approval step before confirmation could complete.";
+    }
+    return "Approval token was missing from the confirmation response.";
+}
+
+interface PendingRunApproval extends PendingRunApprovalEntry {
+    toolContext: ToolExecutionContext;
+    conversationContext: ConversationContext;
+}
+
 const AIPanelCompatInner = memo(() => {
     const [messages, setMessages] = useState<WaveUIMessage[]>([]);
+    const [pendingRunApprovals, setPendingRunApprovals] = useState<PendingRunApproval[]>([]);
     const [status, setStatus] = useState("ready");
     const [catalog, setCatalog] = useState<AgentCatalog | null>(null);
     const [repoRoot, setRepoRoot] = useState("");
@@ -259,6 +299,7 @@ const AIPanelCompatInner = memo(() => {
         })().catch((error) => {
             if (!cancelled) {
                 setMessages([]);
+                setPendingRunApprovals([]);
                 setCatalog(null);
                 setRepoRoot("");
                 setProviderLabel("Unavailable");
@@ -325,6 +366,149 @@ const AIPanelCompatInner = memo(() => {
         [catalog, model, status]
     );
 
+    const completeRunCommandExecution = useCallback(
+        async (options: {
+            conversationFacade: Awaited<ReturnType<typeof getConversationFacade>>;
+            prompt: string;
+            command: string;
+            context: ConversationContext;
+            approvalUsed?: boolean;
+            executionResult: Extract<Awaited<ReturnType<typeof executeRunCommandPrompt>>, { kind: "executed" }>;
+        }) => {
+            setMessages((previous) => [...previous, options.executionResult.resultMessage]);
+            try {
+                const explanationResponse = await explainRunCommandPrompt({
+                    conversationFacade: options.conversationFacade,
+                    prompt: options.prompt,
+                    command: options.command,
+                    widgetId: options.executionResult.widgetId,
+                    fromSeq: options.executionResult.fromSeq,
+                    approvalUsed: options.approvalUsed,
+                    context: options.context,
+                });
+                setProviderLabel(formatProviderLabel(explanationResponse.conversation.provider));
+                const transcriptMessages = mapConversationSnapshot(explanationResponse.conversation);
+                const explanationMessage = transcriptMessages[transcriptMessages.length - 1];
+                if (explanationMessage != null) {
+                    setMessages((previous) => [...previous, explanationMessage]);
+                }
+            } catch (error) {
+                setMessages((previous) => [
+                    ...previous,
+                    buildRunCommandExplanationFallbackMessage(
+                        options.command,
+                        options.executionResult.outputExcerpt,
+                        error instanceof Error ? error.message : String(error),
+                    ),
+                ]);
+            }
+        },
+        [],
+    );
+
+    const handleConfirmRunApproval = useCallback(
+        async (approvalId: string) => {
+            const pendingApproval = pendingRunApprovals.find((approval) => approval.approvalId === approvalId);
+            if (pendingApproval == null || status !== "ready") {
+                return;
+            }
+
+            setStatus("submitted");
+            model.clearError();
+            setPendingRunApprovals((previous) =>
+                previous.map((approval) =>
+                    approval.approvalId === approvalId
+                        ? {
+                              ...approval,
+                              confirming: true,
+                              errorMessage: undefined,
+                          }
+                        : approval,
+                ),
+            );
+
+            try {
+                const [toolsFacade, terminalFacade, conversationFacade] = await Promise.all([
+                    getToolsFacade(),
+                    getTerminalFacade(),
+                    getConversationFacade(),
+                ]);
+                const confirmResponse = await toolsFacade.confirmApproval(approvalId, pendingApproval.toolContext);
+                const approvalGrant = getApprovalGrant(confirmResponse);
+                if (approvalGrant == null) {
+                    setPendingRunApprovals((previous) =>
+                        previous.map((approval) =>
+                            approval.approvalId === approvalId
+                                ? {
+                                      ...approval,
+                                      confirming: false,
+                                      errorMessage: buildApprovalConfirmErrorMessage(confirmResponse),
+                                  }
+                                : approval,
+                        ),
+                    );
+                    return;
+                }
+
+                const executionResult = await executeRunCommandPrompt({
+                    terminalFacade,
+                    toolsFacade,
+                    command: pendingApproval.command,
+                    context: pendingApproval.toolContext,
+                    approvalToken: approvalGrant.approval_token,
+                });
+
+                if (executionResult.kind === "approval_required") {
+                    setPendingRunApprovals((previous) =>
+                        replacePendingRunApproval(previous, approvalId, {
+                            ...pendingApproval,
+                            approvalId: executionResult.pendingApproval.id,
+                            summary: executionResult.pendingApproval.summary,
+                            approvalTier: executionResult.pendingApproval.approval_tier,
+                            confirming: false,
+                            errorMessage: undefined,
+                        }),
+                    );
+                    return;
+                }
+
+                setPendingRunApprovals((previous) => replacePendingRunApproval(previous, approvalId, null));
+
+                if (executionResult.kind === "tool_error") {
+                    setMessages((previous) => [...previous, executionResult.resultMessage]);
+                    return;
+                }
+
+                await completeRunCommandExecution({
+                    conversationFacade,
+                    prompt: pendingApproval.prompt,
+                    command: pendingApproval.command,
+                    context: pendingApproval.conversationContext,
+                    approvalUsed: true,
+                    executionResult,
+                });
+            } catch (error) {
+                setPendingRunApprovals((previous) =>
+                    previous.map((approval) =>
+                        approval.approvalId === approvalId
+                            ? {
+                                  ...approval,
+                                  confirming: false,
+                                  errorMessage: error instanceof Error ? error.message : String(error),
+                              }
+                            : approval,
+                    ),
+                );
+            } finally {
+                setStatus("ready");
+                setTimeout(() => {
+                    model.focusInput();
+                }, 100);
+            }
+        },
+        [completeRunCommandExecution, model, pendingRunApprovals, status],
+    );
+
     const handleSubmit = useCallback(
         async (event: React.FormEvent) => {
             event.preventDefault();
@@ -366,34 +550,33 @@ const AIPanelCompatInner = memo(() => {
                         command: runCommand.command,
                         context: toolContext,
                     });
-                    setMessages((previous) => [...previous, executionResult.resultMessage]);
-                    if (executionResult.kind === "executed") {
-                        try {
-                            const explanationResponse = await explainRunCommandPrompt({
-                                conversationFacade: facade,
+                    if (executionResult.kind === "approval_required") {
+                        setPendingRunApprovals((previous) => [
+                            ...previous,
+                            {
+                                approvalId: executionResult.pendingApproval.id,
                                 prompt: runCommand.prompt,
                                 command: runCommand.command,
-                                widgetId: executionResult.widgetId,
-                                fromSeq: executionResult.fromSeq,
-                                context,
-                            });
-                            setProviderLabel(formatProviderLabel(explanationResponse.conversation.provider));
-                            const transcriptMessages = mapConversationSnapshot(explanationResponse.conversation);
-                            const explanationMessage = transcriptMessages[transcriptMessages.length - 1];
-                            if (explanationMessage != null) {
-                                setMessages((previous) => [...previous, explanationMessage]);
-                            }
-                        } catch (error) {
-                            setMessages((previous) => [
-                                ...previous,
-                                buildRunCommandExplanationFallbackMessage(
-                                    runCommand.command,
-                                    executionResult.outputExcerpt,
-                                    error instanceof Error ? error.message : String(error),
-                                ),
-                            ]);
-                        }
+                                summary: executionResult.pendingApproval.summary,
+                                approvalTier: executionResult.pendingApproval.approval_tier,
+                                confirming: false,
+                                toolContext,
+                                conversationContext: buildConversationContextFromToolContext(toolContext),
+                            },
+                        ]);
+                        return;
                     }
+                    if (executionResult.kind === "tool_error") {
+                        setMessages((previous) => [...previous, executionResult.resultMessage]);
+                        return;
+                    }
+                    await completeRunCommandExecution({
+                        conversationFacade: facade,
+                        prompt: runCommand.prompt,
+                        command: runCommand.command,
+                        context,
+                        executionResult,
+                    });
                     return;
                 }
                 const response = await facade.submitMessage({
@@ -413,7 +596,7 @@ const AIPanelCompatInner = memo(() => {
                 }, 100);
             }
         },
-        [model, repoRoot, status]
+        [completeRunCommandExecution, model, repoRoot, status]
     );
 
     const hasFilesDragged = (dataTransfer: DataTransfer): boolean => {
@@ -604,6 +787,11 @@ const AIPanelCompatInner = memo(() => {
                     />
                 )}
                 <CompatAIErrorMessage />
+                <RunCommandApprovalList
+                    approvals={pendingRunApprovals}
+                    busy={status !== "ready"}
+                    onConfirm={(approvalId) => void handleConfirmRunApproval(approvalId)}
+                />
                 <AIDroppedFiles model={model} />
                 <AIPanelInput onSubmit={handleSubmit} status={status} model={model} />
             </div>
