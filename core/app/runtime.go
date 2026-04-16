@@ -66,9 +66,9 @@ func NewRuntime(repoRoot string, stateDir string) (*Runtime, error) {
 		Policy:       policyStore,
 		Audit:        auditLog,
 		Plugins:      plugins.NewRuntime(nil, 0),
-		MCP:          plugins.NewMCPRuntime(nil, nil, nil),
 		Registry:     toolruntime.NewRegistry(),
 	}
+	runtime.MCP = plugins.NewMCPRuntime(nil, nil, newExternalMCPInvoker(runtime.Plugins, repoRoot))
 	runtime.Executor = toolruntime.NewExecutor(
 		runtime.Registry,
 		runtime.Policy,
