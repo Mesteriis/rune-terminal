@@ -1,12 +1,13 @@
 import { buildToolExecutionContext } from "@/app/workspace/widget-helpers";
 import type { AgentCatalog } from "@/rterm-api/agent/types";
 import type {
+    AttachmentReference,
     ConversationContext,
     ConversationMessage,
     ConversationSnapshot,
     ProviderInfo,
 } from "@/rterm-api/conversation/types";
-import type { WaveUIMessage } from "./aitypes";
+import type { WaveUIMessage, WaveUIMessagePart } from "./aitypes";
 
 function mapRole(role: string): "user" | "assistant" {
     return role === "assistant" ? "assistant" : "user";
@@ -35,8 +36,23 @@ export function mapConversationMessages(messages: ConversationMessage[] | null |
                 type: "text",
                 text: mapMessageContent(message),
             },
+            ...mapAttachmentParts(message.attachments),
         ],
     })) as WaveUIMessage[];
+}
+
+function mapAttachmentParts(attachments: AttachmentReference[] | null | undefined): WaveUIMessagePart[] {
+    if (!Array.isArray(attachments) || attachments.length === 0) {
+        return [];
+    }
+    return attachments.map((attachment) => ({
+        type: "data-userfile",
+        data: {
+            filename: attachment.name,
+            mimetype: attachment.mime_type,
+            size: attachment.size,
+        },
+    })) as WaveUIMessagePart[];
 }
 
 export function mapConversationSnapshot(snapshot: ConversationSnapshot | null | undefined): WaveUIMessage[] {
