@@ -79,6 +79,32 @@
 - Notes:
   - authenticated live-SSH remote reconnection across restart was not run in this pass; remote restore validation is grounded in explicit disconnected semantics with a missing-profile stale widget.
 
+<a id="remote-restore-missing-profile-error"></a>
+## Remote restore missing-profile error semantics
+
+- Date: `2026-04-17`
+- Status: `VERIFIED`
+- Validation steps:
+  - runtime validation with real core process and persisted stale remote widget linkage:
+    - start core with isolated persisted state dir containing `term-remote-stale` and `connection_id:"conn-missing"`
+    - `GET /api/v1/terminal/term-remote-stale?from=0` -> explicit disconnected state retained:
+      - `status:"disconnected"`
+      - `status_detail:"connection not found: conn-missing"`
+      - `can_send_input:false`
+    - `POST /api/v1/terminal/term-remote-stale/restart` -> now returns explicit not-found semantics:
+      - HTTP `404`
+      - `error.code:"connection_not_found"`
+      - `error.message:"connection not found: conn-missing"`
+    - control check for local path:
+      - `POST /api/v1/terminal/term-main/restart` -> HTTP `200`
+      - `GET /api/v1/terminal/term-main?from=0` -> `status:"running"`
+  - targeted regression test:
+    - `go test ./core/transport/httpapi -run TestWriteTerminalErrorMapsConnectionNotFoundToNotFound` -> `ok`
+- Result:
+  - missing-profile remote restart no longer reports generic `500 internal_failure`.
+  - disconnected restore semantics stay explicit and unchanged.
+  - local restart path remains unaffected.
+
 <a id="workspace-navigation-batch"></a>
 ## Workspace navigation parity batch
 
