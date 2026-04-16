@@ -1431,4 +1431,48 @@
 - Result: `VERIFIED` — local attachment references can be created, attached to messages, persisted in backend conversation truth, and restored after reload.
 - Notes:
   - this slice is reference-based only: no managed storage and no blob import pipeline
-  - missing-file references created earlier are currently persisted as metadata when submitted; submit-time revalidation of attachment path existence is intentionally not implemented in this slice
+  - superseded by later hardening: submit-time stale-reference rejection is now validated in `## Attachment consumption`
+
+## Attachment consumption
+
+- Date: `2026-04-16`
+- Status: `VERIFIED`
+- Commits:
+  - `8aa0810`
+  - `5d722b4`
+  - `67d1b3d`
+  - `d464ba9`
+- Validation steps:
+  - automated checks:
+    - `go test ./core/app ./core/conversation ./core/transport/httpapi`
+    - `npx tsc -p frontend/tsconfig.json --noEmit`
+  - runtime environment:
+    - mock provider: `python3 -u` HTTP server on `127.0.0.1:11445` (`/api/tags`, `/api/chat`) with request capture to `/tmp/rterm-attach-provider-requests.jsonl`
+    - core: `RTERM_AUTH_TOKEN=attach-batch-token RTERM_OLLAMA_BASE_URL=http://127.0.0.1:11445 RTERM_OLLAMA_MODEL=test-model go run ./cmd/rterm-core serve --listen 127.0.0.1:52931 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/rterm-attachment-consumption`
+  - small-text attachment consumption:
+    - created `/tmp/rterm-attachment-small.txt` with known line `keyword: Neptune`
+    - created reference via `POST /api/v1/agent/conversation/attachments/references`
+    - submitted message with attachment via `POST /api/v1/agent/conversation/messages`
+    - provider response contained `attachment-context-detected`
+    - captured `/api/chat` payload included:
+      - `Attachment context (local references, bounded):`
+      - attachment metadata (`path`, `mime_type`, `size_bytes`, `modified_unix`)
+      - bounded `content_excerpt` containing `Neptune`
+  - reload/snapshot truth:
+    - `GET /api/v1/agent/conversation` returned user messages with persisted attachment metadata
+    - attachment references remained present in snapshot after submit
+  - stale reference case:
+    - created reference for `/tmp/rterm-attachment-stale.txt`
+    - deleted file
+    - submitted message with stale reference
+    - backend returned `404` with `error.code=attachment_not_found`
+  - regression smoke:
+    - AI conversation submit path returned assistant reply (`attachment-context-detected`)
+    - `/run`-path primitives still work via tool runtime (`POST /api/v1/tools/execute` with `term.send_input`)
+    - explain endpoint still works (`POST /api/v1/agent/terminal-commands/explain`)
+    - tools list works (`GET /api/v1/tools`)
+    - audit list works (`GET /api/v1/audit`)
+- Result: `VERIFIED` — attachment references are now consumed by backend/provider flow through bounded local context, and stale references are rejected at submit time.
+- Notes:
+  - this remains local-reference based; no managed blob storage/import
+  - binary/unsupported and oversize files are represented with bounded metadata status; no unlimited file read path exists

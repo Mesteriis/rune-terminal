@@ -298,6 +298,6 @@ User input:
 - Streaming protocol redesign is not part of this contract.
 - Plugin system implementation or side-process execution architecture is not part of this contract.
 - AI panel or shell UI redesign is not part of this contract.
-- Attachment transport or attachment persistence is not part of this contract.
+- Managed attachment storage, remote attachment portability, and rich attachment preview UX are not part of this contract.
 - Remote execution expansion beyond the current terminal/tool runtime path is not part of this contract.
 - New execution semantics, new approval semantics, or new transport endpoints are not part of this contract.

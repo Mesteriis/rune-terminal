@@ -12,7 +12,8 @@ It defines what is incomplete by design for the first release candidate so we do
 - broad settings-universe parity
 - `.ssh/config` import
 - advanced SSH auth and topology workflows (proxy jump, richer auth negotiation)
-- file attachments for AI transport
+- managed attachment storage/import
+- rich attachment preview/gallery UX
 - streaming AI responses
 - broad model orchestration matrix
 - generalized AI provider support beyond the current Ollama-compatible HTTP path
@@ -33,7 +34,7 @@ It defines what is incomplete by design for the first release candidate so we do
 - advanced SSH credential and config workflows
 - expanded launcher/app domain breadth
 - broader shell/terminal parity slices that are currently out of release scope
-- attachment transport and streaming assistant output
+- managed attachment storage/portability and streaming assistant output
 
 ## Release stance
 

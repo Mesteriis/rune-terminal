@@ -37,9 +37,9 @@ This metadata is stored with conversation messages in backend conversation state
   - missing path at creation time -> `attachment_not_found`
   - directory path -> `invalid_attachment_reference`
 - References can become stale if files move/delete after reference creation.
-- Current behavior for stale references already attached to a message:
-  - message persistence keeps reference metadata
-  - submit-time revalidation of path existence is intentionally not implemented in this slice
+- Current behavior after follow-up hardening:
+  - stale references are rejected at message submit (`attachment_not_found`)
+  - successful submits continue to persist reference metadata only
 
 ## 5. Why this is reference-based, not managed storage
 
