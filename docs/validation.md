@@ -218,6 +218,44 @@
     - audit result:
       - matching approved `term.send_input` success event had `approval_used:true`
       - resulting `agent.terminal_command` event also had `approval_used:true`
+
+## CORS and auth hardening
+
+- Date: `2026-04-16`
+- Status: `VERIFIED`
+- Commits:
+  - `3a39d28925df4f3a2a0a57089ac9d0aa6f15930b`
+  - `d848af7e02dc0f09d50d1ebf85fe8662959505eb`
+- Validation steps:
+  - runtime environment:
+    - core: `RTERM_AUTH_TOKEN=cors-auth-token go run ./cmd/rterm-core serve --listen 127.0.0.1:52850 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/rterm-cors-auth-validation`
+    - frontend dev: `VITE_RTERM_API_BASE=http://127.0.0.1:52850 VITE_RTERM_AUTH_TOKEN=cors-auth-token npm --prefix frontend run dev -- --host 127.0.0.1 --port 5173 --strictPort`
+  - public health:
+    - `curl -si http://127.0.0.1:52850/healthz`
+    - observed `HTTP/1.1 200 OK`
+  - allowed dev origin:
+    - `curl -si -H 'Origin: http://127.0.0.1:5173' -H 'Authorization: Bearer cors-auth-token' http://127.0.0.1:52850/api/v1/bootstrap`
+    - observed `HTTP/1.1 200 OK` with `Access-Control-Allow-Origin: http://127.0.0.1:5173`
+    - allowed preflight also returned `204 No Content` with the same echoed origin
+  - disallowed origin:
+    - `curl -si -X OPTIONS -H 'Origin: https://evil.example' -H 'Access-Control-Request-Method: GET' http://127.0.0.1:52850/api/v1/bootstrap`
+    - observed `HTTP/1.1 403 Forbidden` with `{"error":{"code":"origin_not_allowed","message":"origin not allowed"}}`
+  - protected route without auth:
+    - `curl -si http://127.0.0.1:52850/api/v1/bootstrap`
+    - observed `HTTP/1.1 401 Unauthorized` with `Www-Authenticate: Bearer`
+  - transport contract tightening:
+    - `curl -si -H 'Authorization: Bearer cors-auth-token' -H 'Content-Type: application/json' -d '{"tool_name":"workspace.list_widgets","context":{"workspace_id":"ws-local","active_widget_id":"term-main","repo_root":"/Users/avm/projects/Personal/tideterm/runa-terminal","role_id":"spoofed"}}' http://127.0.0.1:52850/api/v1/tools/execute`
+    - observed `HTTP/1.1 400 Bad Request` with `json: unknown field "role_id"`
+  - active shell:
+    - opened `http://127.0.0.1:5173/` in the active compat UI
+    - shell rendered the normal top bar and active terminal surface
+    - browser network for the current run showed successful requests to:
+      - `GET /healthz`
+      - `GET /api/v1/bootstrap`
+      - `GET /api/v1/workspace`
+      - `GET /api/v1/terminal/term-main`
+      - `GET /api/v1/terminal/term-main/stream?from=5&token=cors-auth-token`
+- Result: `VERIFIED` — wildcard CORS is gone, health remains intentionally public, protected routes still require auth, disallowed origins are rejected at preflight, and the active shell still boots against the hardened local API.
 - Safe explain truth: `VERIFIED` — the backend ignored a client-supplied `approval_used:true` value and recorded the explain step as unapproved when the matching execution was unapproved.
 - Approved explain truth: `VERIFIED` — the backend ignored a client-supplied `approval_used:false` value and recorded the explain step as approved when the matching execution had consumed approval.
 - Exact observed result: `VERIFIED` — explain `approval_used` now comes from backend execution/audit truth, not from the frontend payload.
