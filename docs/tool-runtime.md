@@ -18,6 +18,58 @@ Each tool definition carries:
 - planner
 - executor
 
+## Tool Adapter Boundary
+
+Tool handlers should depend on an adapter boundary, not on `*app.Runtime` directly.
+
+Minimal adapter responsibilities:
+
+- execution-facing context helpers
+  - resolve active widget fallback
+  - resolve repo/workspace scope fallback
+- terminal operations
+  - get state
+  - send input
+  - interrupt
+- workspace operations
+  - inspect tabs/widgets
+  - focus/move/rename/pin/close tabs
+  - create terminal tabs
+- connection operations
+  - list/select/check/save connection profiles
+- policy operations
+  - confirm pending approval
+  - add/list/remove trusted rules
+  - add/list/remove ignore rules
+
+Illustrative shape:
+
+```go
+type ToolAdapter interface {
+    ResolveWidgetID(widgetID string) (string, error)
+    NormalizeScopeRef(scope policy.Scope, scopeRef string, execCtx toolruntime.ExecutionContext) string
+
+    TerminalGetState(widgetID string) (any, error)
+    TerminalSendInput(widgetID string, text string, appendNewline bool) (any, error)
+    TerminalInterrupt(widgetID string) error
+
+    WorkspaceSnapshot() any
+    WorkspaceFocusWidget(widgetID string) (any, error)
+
+    ConfirmApproval(id string) (toolruntime.ApprovalGrant, error)
+}
+```
+
+Tool handlers must not access:
+
+- the full runtime object graph
+- the audit log directly
+- the policy engine directly
+- the agent store directly
+- transport-layer concerns such as HTTP request or response state
+
+The runtime may still back the adapter in-process today, but the handler contract should be narrow enough that the execution target can later move behind a different boundary.
+
 ## Execution Pipeline
 
 1. Resolve tool definition by name.
