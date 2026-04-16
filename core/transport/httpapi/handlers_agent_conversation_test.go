@@ -92,6 +92,10 @@ func TestSubmitConversationMessagePersistsAttachmentReferences(t *testing.T) {
 	t.Parallel()
 
 	handler, _ := newTestHandler(t)
+	tempFile := filepath.Join(t.TempDir(), "notes.txt")
+	if err := os.WriteFile(tempFile, []byte("notes"), 0o600); err != nil {
+		t.Fatalf("write temp file: %v", err)
+	}
 	recorder := httptest.NewRecorder()
 
 	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPost, "/api/v1/agent/conversation/messages", map[string]any{
@@ -100,7 +104,7 @@ func TestSubmitConversationMessagePersistsAttachmentReferences(t *testing.T) {
 			{
 				"id":            "att_test_1",
 				"name":          "notes.txt",
-				"path":          "/tmp/notes.txt",
+				"path":          tempFile,
 				"mime_type":     "text/plain",
 				"size":          42,
 				"modified_time": int64(1713279000),
@@ -155,6 +159,46 @@ func TestSubmitConversationMessageRejectsBlankPrompt(t *testing.T) {
 
 	if recorder.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", recorder.Code)
+	}
+}
+
+func TestSubmitConversationMessageRejectsMissingAttachmentReference(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPost, "/api/v1/agent/conversation/messages", map[string]any{
+		"prompt": "analyze missing file",
+		"attachments": []map[string]any{
+			{
+				"id":            "att_missing",
+				"name":          "missing.txt",
+				"path":          filepath.Join(t.TempDir(), "missing.txt"),
+				"mime_type":     "text/plain",
+				"size":          1,
+				"modified_time": int64(1713279000),
+			},
+		},
+		"context": map[string]any{
+			"workspace_id": "ws-default",
+		},
+	}))
+
+	if recorder.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+
+	var payload struct {
+		Error struct {
+			Code string `json:"code"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
+	}
+	if payload.Error.Code != "attachment_not_found" {
+		t.Fatalf("unexpected error code: %q", payload.Error.Code)
 	}
 }
 

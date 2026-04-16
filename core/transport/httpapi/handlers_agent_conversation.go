@@ -95,6 +95,12 @@ func writeConversationError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, conversation.ErrInvalidPrompt):
 		writeBadRequest(w, "invalid_prompt", err)
+	case errors.Is(err, conversation.ErrInvalidAttachmentPath):
+		writeError(w, http.StatusBadRequest, "invalid_attachment_path", err.Error())
+	case errors.Is(err, conversation.ErrAttachmentNotFound):
+		writeNotFound(w, "attachment_not_found", err.Error())
+	case errors.Is(err, conversation.ErrAttachmentNotFile):
+		writeError(w, http.StatusBadRequest, "invalid_attachment_reference", err.Error())
 	default:
 		writeInternalError(w, err)
 	}

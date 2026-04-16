@@ -26,6 +26,10 @@ func (r *Runtime) SubmitConversationPrompt(
 	conversationContext ConversationContext,
 	attachments []conversation.AttachmentReference,
 ) (conversation.SubmitResult, error) {
+	if err := validateAttachmentReferences(attachments); err != nil {
+		return conversation.SubmitResult{}, err
+	}
+
 	selection, err := r.Agent.Selection()
 	if err != nil {
 		return conversation.SubmitResult{}, err
