@@ -62,6 +62,8 @@ const FilesFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floatin
     const [previewLoading, setPreviewLoading] = useState(false);
     const [previewError, setPreviewError] = useState<string | null>(null);
     const [attachStatus, setAttachStatus] = useState<string | null>(null);
+    const [attachError, setAttachError] = useState<string | null>(null);
+    const [attachBusy, setAttachBusy] = useState(false);
 
     const { refs, floatingStyles, context } = useFloating({
         open: isOpen,
@@ -86,6 +88,7 @@ const FilesFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floatin
         setPreviewTruncated(false);
         setPreviewError(null);
         setAttachStatus(null);
+        setAttachError(null);
         try {
             const facade = await getFSFacade();
             const response = await facade.list(nextPath);
@@ -102,6 +105,9 @@ const FilesFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floatin
     };
 
     const attachFileContext = async (filePath: string) => {
+        setAttachBusy(true);
+        setAttachStatus(null);
+        setAttachError(null);
         try {
             const conversationFacade = await getConversationFacade();
             const response = await conversationFacade.createAttachmentReference({ path: filePath });
@@ -114,7 +120,9 @@ const FilesFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floatin
             WorkspaceLayoutModel.getInstance().setAIPanelVisible(true);
             setAttachStatus(`Attached to AI context: ${reference.name}`);
         } catch (error) {
-            setAttachStatus(error instanceof Error ? error.message : String(error));
+            setAttachError(error instanceof Error ? error.message : String(error));
+        } finally {
+            setAttachBusy(false);
         }
     };
 
@@ -122,6 +130,7 @@ const FilesFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floatin
         setPreviewLoading(true);
         setPreviewError(null);
         setAttachStatus(null);
+        setAttachError(null);
         setSelectedFilePath(filePath);
         try {
             const facade = await getFSFacade();
@@ -130,7 +139,6 @@ const FilesFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floatin
             setPreviewText(response.preview ?? "");
             setPreviewAvailable(response.preview_available === true);
             setPreviewTruncated(response.truncated === true);
-            await attachFileContext(response.path);
         } catch (error) {
             setPreviewText("");
             setPreviewAvailable(false);
@@ -236,6 +244,13 @@ const FilesFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floatin
                         <div className="text-xs text-white/90 break-all border border-border rounded px-2 py-1.5 mt-1 min-h-[2rem]">
                             {selectedFilePath || "No file selected"}
                         </div>
+                        <button
+                            className="mt-2 text-xs px-2 py-1 rounded border border-border text-secondary disabled:opacity-50"
+                            disabled={selectedFilePath === "" || previewLoading || attachBusy}
+                            onClick={() => void attachFileContext(selectedFilePath)}
+                        >
+                            {attachBusy ? "Attaching..." : "Attach Selected File To AI Context"}
+                        </button>
                         <div className="mt-2 text-[11px] text-secondary">Preview (text, bounded)</div>
                         <div className="border border-border rounded mt-1 p-2 max-h-[9rem] overflow-auto bg-black/20">
                             {previewLoading ? (
@@ -254,6 +269,9 @@ const FilesFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floatin
                             ) : null}
                             {attachStatus ? (
                                 <div className="text-[11px] text-emerald-300 mt-2 whitespace-pre-wrap">{attachStatus}</div>
+                            ) : null}
+                            {attachError ? (
+                                <div className="text-[11px] text-red-300 mt-2 whitespace-pre-wrap">{attachError}</div>
                             ) : null}
                         </div>
                     </div>
