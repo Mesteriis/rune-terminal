@@ -256,6 +256,38 @@
       - `GET /api/v1/terminal/term-main`
       - `GET /api/v1/terminal/term-main/stream?from=5&token=cors-auth-token`
 - Result: `VERIFIED` — wildcard CORS is gone, health remains intentionally public, protected routes still require auth, disallowed origins are rejected at preflight, and the active shell still boots against the hardened local API.
+
+## SSE auth hardening
+
+- Date: `2026-04-16`
+- Status: `VERIFIED`
+- Commits:
+  - `2637af8ff278cba855f6763945effb7a0f92b7fb`
+  - `8091ac95f7597e0a3e359bc55d886c7d63e188c6`
+- Validation steps:
+  - automated checks:
+    - `npx vitest run frontend/runtime/stream.test.ts --config frontend/vite.config.ts`
+    - `npx tsc -p frontend/tsconfig.json --noEmit`
+  - runtime environment reused from the slice-1 live verification:
+    - core: `RTERM_AUTH_TOKEN=cors-auth-token go run ./cmd/rterm-core serve --listen 127.0.0.1:52850 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/rterm-cors-auth-validation`
+    - frontend dev: `VITE_RTERM_API_BASE=http://127.0.0.1:52850 VITE_RTERM_AUTH_TOKEN=cors-auth-token npm --prefix frontend run dev -- --host 127.0.0.1 --port 5173 --strictPort`
+  - normal stream path:
+    - reloaded `http://127.0.0.1:5173/` in the active compat UI
+    - browser network showed terminal stream requests as:
+      - `GET /api/v1/terminal/term-main/stream?from=5`
+      - `GET /api/v1/terminal/term-main/stream?from=31`
+    - no `token=` query parameter appeared on the active terminal stream requests
+  - terminal output path:
+    - `curl -si -H 'Authorization: Bearer cors-auth-token' -H 'Content-Type: application/json' -d '{"text":"echo sse-header-path","append_newline":true}' http://127.0.0.1:52850/api/v1/terminal/term-main/input`
+    - observed `HTTP/1.1 200 OK`
+    - follow-up snapshot `GET /api/v1/terminal/term-main?from=0` contained the resulting output chunk `sse-header-path`
+  - tab switch / replay:
+    - clicked `Ops Shell`, then clicked `Main Shell`
+    - browser network showed successful stream reconnects for both widgets:
+      - `GET /api/v1/terminal/term-side/stream?from=5`
+      - `GET /api/v1/terminal/term-main/stream?from=31`
+    - reconnects also omitted `token=`
+- Result: `VERIFIED` — the active terminal stream path now uses header auth instead of query-token auth, tab switching still reconnects cleanly, and terminal output/replay remained intact during the live shell run.
 - Safe explain truth: `VERIFIED` — the backend ignored a client-supplied `approval_used:true` value and recorded the explain step as unapproved when the matching execution was unapproved.
 - Approved explain truth: `VERIFIED` — the backend ignored a client-supplied `approval_used:false` value and recorded the explain step as approved when the matching execution had consumed approval.
 - Exact observed result: `VERIFIED` — explain `approval_used` now comes from backend execution/audit truth, not from the frontend payload.
