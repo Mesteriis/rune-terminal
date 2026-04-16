@@ -64,6 +64,30 @@
   - this run validates workspace-navigation domain truth only; it does not claim full IDE/file-manager parity.
   - remote check in this run is non-destructive endpoint regression coverage, not a full SSH session launch sweep.
 
+<a id="remote-productivity-batch"></a>
+## Remote productivity / session workflow batch
+
+- Date: `2026-04-17`
+- Status: `PARTIALLY VERIFIED`
+- Validation steps:
+  - backend workflow tests:
+    - `go test ./core/app -run 'TestCreateRemoteTerminalTabFromProfileReusesRunningSession|TestCreateRemoteTerminalTabFromProfileCreatesSSHSession|TestRemoteTerminalSessionPersistsAcrossTabSwitches|TestTermSendInputToolRejectsMismatchedSessionTarget|TestExplainTerminalCommandUsesExplicitCommandAuditEventID|TestObserveConnectionLaunchMarksLaunch(Failed|Succeeded)'` -> `ok`
+    - `go test ./core/transport/httpapi -run 'TestRemoteProfilesEndpointsListSaveAndDelete|TestRemoteProfilesCreateSessionReturnsNotFoundForMissingProfile|TestRemoteProfilesDeleteReturnsNotFoundForMissingProfile'` -> `ok`
+  - frontend runtime contract/build:
+    - `npm --prefix frontend run build` -> `pass` (existing large-chunk warnings unchanged and non-blocking)
+  - real external SSH target probe:
+    - `ssh -o BatchMode=yes -o ConnectTimeout=5 -p 22 192.168.1.2 exit`
+    - result: `Permission denied (publickey,password)` (host reachable, authentication unavailable for this run)
+- Checklist coverage:
+  1. create profile: `VERIFIED` (HTTP API save/list/delete tests)
+  2. start session: `VERIFIED` in runtime tests with SSH launch fixture; `NOT VERIFIED` against authenticated real `192.168.1.2` session
+  3. reuse session: `VERIFIED` (`TestCreateRemoteTerminalTabFromProfileReusesRunningSession`)
+  4. run commands: `VERIFIED` via terminal tool path and launch/runtime tests; real-host command execution remains blocked by missing auth
+  5. switch tabs: `VERIFIED` (`TestRemoteTerminalSessionPersistsAcrossTabSwitches`)
+  6. use `/run`: `VERIFIED` for explicit target-guard behavior (`TestTermSendInputToolRejectsMismatchedSessionTarget`) and explicit remote `/run` prompt preparation in frontend build
+  7. check audit: `VERIFIED` for explain command identity + explicit target context path (`TestExplainTerminalCommandUsesExplicitCommandAuditEventID`)
+- Result: remote workflow hardening is in place (stable session identity, per-profile reuse, explicit remote actions, lifecycle visibility), with one explicit external limitation: authenticated live-session validation on `192.168.1.2:22` was not possible in this run.
+
 <a id="remote-ssh-parity-batch"></a>
 ## Remote SSH parity batch
 
