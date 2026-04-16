@@ -115,6 +115,20 @@ func (r *MCPRegistry) Get(id string) (MCPServerSnapshot, error) {
 	}, nil
 }
 
+func (r *MCPRegistry) Spec(id string) (MCPServerSpec, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	entry, ok := r.servers[strings.TrimSpace(id)]
+	if !ok {
+		return MCPServerSpec{}, ErrMCPServerNotFound
+	}
+	return MCPServerSpec{
+		ID:      entry.spec.ID,
+		Process: entry.spec.Process,
+	}, nil
+}
+
 func (r *MCPRegistry) SetState(id string, state MCPProcessState) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
