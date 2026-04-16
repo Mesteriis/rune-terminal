@@ -44,6 +44,12 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
     const [mcpLoadError, setMCPLoadError] = useState<string | null>(null);
     const [mcpActionError, setMCPActionError] = useState<string | null>(null);
     const [mcpActionKey, setMCPActionKey] = useState<string | null>(null);
+    const [mcpInvokeServerID, setMCPInvokeServerID] = useState("");
+    const [mcpInvokePayload, setMCPInvokePayload] = useState("{}");
+    const [mcpAllowOnDemandStart, setMCPAllowOnDemandStart] = useState(false);
+    const [mcpInvokeResult, setMCPInvokeResult] = useState<unknown>(null);
+    const [mcpInvokeError, setMCPInvokeError] = useState<string | null>(null);
+    const [mcpInvoking, setMCPInvoking] = useState(false);
 
     const { refs, floatingStyles, context } = useFloating({
         open: isOpen,
@@ -107,6 +113,12 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
                     return;
                 }
                 setMCPServers(response);
+                setMCPInvokeServerID((current) => {
+                    if (current && response.some((server) => server.id === current)) {
+                        return current;
+                    }
+                    return response[0]?.id ?? "";
+                });
             } catch (error) {
                 if (!cancelled) {
                     setMCPLoadError(error instanceof Error ? error.message : String(error));
@@ -186,6 +198,49 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
             setMCPActionError(error instanceof Error ? error.message : String(error));
         } finally {
             setMCPActionKey(null);
+        }
+    };
+
+    const handleMCPInvoke = async () => {
+        if (!mcpInvokeServerID) {
+            setMCPInvokeError("Select an MCP server first.");
+            return;
+        }
+
+        let payload: Record<string, unknown> | undefined = undefined;
+        const trimmed = mcpInvokePayload.trim();
+        if (trimmed !== "") {
+            try {
+                const parsed = JSON.parse(trimmed);
+                if (parsed != null && typeof parsed === "object" && !Array.isArray(parsed)) {
+                    payload = parsed as Record<string, unknown>;
+                } else {
+                    setMCPInvokeError("Payload must be a JSON object.");
+                    return;
+                }
+            } catch (error) {
+                setMCPInvokeError(error instanceof Error ? error.message : String(error));
+                return;
+            }
+        }
+
+        setMCPInvoking(true);
+        setMCPInvokeError(null);
+        try {
+            const facade = await getMCPFacade();
+            const result = await facade.invoke({
+                server_id: mcpInvokeServerID,
+                payload,
+                allow_on_demand_start: mcpAllowOnDemandStart,
+                include_context: true,
+            });
+            setMCPInvokeResult(result);
+            await refreshMCPServers();
+        } catch (error) {
+            setMCPInvokeError(error instanceof Error ? error.message : String(error));
+            setMCPInvokeResult(null);
+        } finally {
+            setMCPInvoking(false);
         }
     };
 
@@ -462,6 +517,56 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
                     {mcpActionError ? (
                         <div className="mt-2 text-xs text-red-400 whitespace-pre-wrap">{mcpActionError}</div>
                     ) : null}
+                    <div className="mt-3 pt-3 border-t border-border space-y-2">
+                        <div className="text-xs text-white">Invoke MCP</div>
+                        <div className="flex items-center gap-2">
+                            <label className="text-[11px] text-secondary">server:</label>
+                            <select
+                                className="min-w-0 flex-1 rounded border border-border bg-black/20 p-1 text-[11px] text-white"
+                                value={mcpInvokeServerID}
+                                onChange={(e) => setMCPInvokeServerID(e.target.value)}
+                            >
+                                {mcpServers.map((server) => (
+                                    <option key={server.id} value={server.id}>
+                                        {server.id}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <div className="text-[11px] text-secondary mb-1">payload json:</div>
+                            <textarea
+                                className="w-full min-h-20 rounded border border-border bg-black/20 p-2 text-[11px] text-white resize-y"
+                                value={mcpInvokePayload}
+                                onChange={(e) => setMCPInvokePayload(e.target.value)}
+                                spellCheck={false}
+                            />
+                        </div>
+                        <label className="flex items-center gap-1.5 text-[11px] text-secondary">
+                            <input
+                                type="checkbox"
+                                checked={mcpAllowOnDemandStart}
+                                onChange={(e) => setMCPAllowOnDemandStart(e.target.checked)}
+                            />
+                            allow on-demand start
+                        </label>
+                        <div className="flex items-center justify-end">
+                            <button
+                                type="button"
+                                className="px-3 py-1 rounded bg-accent text-black text-[11px] font-medium disabled:opacity-50"
+                                disabled={mcpInvoking || mcpServers.length === 0}
+                                onClick={() => void handleMCPInvoke()}
+                            >
+                                {mcpInvoking ? "Invoking..." : "Invoke MCP"}
+                            </button>
+                        </div>
+                        <div>
+                            <div className="text-[11px] text-secondary mb-1">invoke result:</div>
+                            <pre className="max-h-36 overflow-auto rounded bg-black/20 p-2 text-[11px] text-secondary whitespace-pre-wrap break-words">
+                                {mcpInvokeError ?? (mcpInvokeResult ? formatJson(mcpInvokeResult) : "No MCP invoke yet")}
+                            </pre>
+                        </div>
+                    </div>
                 </div>
             </div>
         </FloatingPortal>

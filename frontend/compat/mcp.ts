@@ -1,5 +1,5 @@
 import type { MCPClient } from "@/rterm-api/mcp/client";
-import type { MCPServerRuntime } from "@/rterm-api/mcp/types";
+import type { MCPInvokeRequest, MCPInvokeResponse, MCPServerRuntime } from "@/rterm-api/mcp/types";
 import type { CompatApiOptions } from "./types";
 import { createCompatApiFacade } from "./api";
 
@@ -10,6 +10,7 @@ export interface MCPFacade {
   restartServer: (serverID: string) => Promise<MCPServerRuntime>;
   enableServer: (serverID: string) => Promise<MCPServerRuntime>;
   disableServer: (serverID: string) => Promise<MCPServerRuntime>;
+  invoke: (payload: MCPInvokeRequest) => Promise<MCPInvokeResponse>;
 }
 
 let mcpFacadePromise: Promise<MCPFacade> | null = null;
@@ -56,6 +57,9 @@ export function createMCPFacade(client: MCPClient): MCPFacade {
     async disableServer(serverID: string): Promise<MCPServerRuntime> {
       const response = await client.disableServer(serverID);
       return response.server;
+    },
+    invoke(payload: MCPInvokeRequest): Promise<MCPInvokeResponse> {
+      return client.invoke(payload);
     },
   };
 }
