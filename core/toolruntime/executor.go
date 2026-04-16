@@ -95,7 +95,11 @@ func (e *Executor) Execute(ctx context.Context, request ExecuteRequest, profile 
 	if err != nil {
 		code := ErrorCodeOf(err)
 		message := ErrorMessageOf(err)
-		e.appendAudit(prepared, false, err.Error())
+		auditError := err.Error()
+		if code == ErrorCodePluginFailure {
+			auditError = "plugin_failure: " + message
+		}
+		e.appendAudit(prepared, false, auditError)
 		return ExecuteResponse{
 			Status:    "error",
 			Error:     message,

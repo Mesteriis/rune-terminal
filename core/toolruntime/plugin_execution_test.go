@@ -162,7 +162,7 @@ func TestExecutorMapsPluginFailureTaxonomyToPluginFailureErrorCode(t *testing.T)
 	if response.Status != "error" || response.ErrorCode != ErrorCodePluginFailure {
 		t.Fatalf("expected plugin_failure response, got %#v", response)
 	}
-	if !strings.Contains(response.Error, "plugin timeout") {
+	if !strings.Contains(response.Error, "example-plugin timeout") {
 		t.Fatalf("expected plugin taxonomy in error message, got %q", response.Error)
 	}
 }
@@ -285,17 +285,17 @@ func TestPluginBackedExecutionAuditCapturesFailureModes(t *testing.T) {
 	cases := []struct {
 		name          string
 		invokerError  error
-		expectedAudit string
+		expectedAudit []string
 	}{
 		{
 			name:          "timeout",
 			invokerError:  fmt.Errorf("%w: deadline", plugins.ErrPluginTimeout),
-			expectedAudit: "plugin execution timed out",
+			expectedAudit: []string{"plugin_failure:", "timeout"},
 		},
 		{
 			name:          "crash",
 			invokerError:  fmt.Errorf("%w: signal 9", plugins.ErrPluginProcessCrashed),
-			expectedAudit: "plugin process crashed",
+			expectedAudit: []string{"plugin_failure:", "crashed"},
 		},
 	}
 
@@ -311,8 +311,8 @@ func TestPluginBackedExecutionAuditCapturesFailureModes(t *testing.T) {
 					WorkspaceID: "ws-local",
 				},
 			}, policy.EvaluationProfile{})
-			if response.Status != "error" || response.ErrorCode != ErrorCodeInternalError {
-				t.Fatalf("expected internal error response, got %#v", response)
+			if response.Status != "error" || response.ErrorCode != ErrorCodePluginFailure {
+				t.Fatalf("expected plugin failure response, got %#v", response)
 			}
 
 			events, err := auditLog.List(10)
@@ -325,8 +325,10 @@ func TestPluginBackedExecutionAuditCapturesFailureModes(t *testing.T) {
 			if events[0].Success {
 				t.Fatalf("expected audit success=false, got %#v", events[0])
 			}
-			if !strings.Contains(events[0].Error, tc.expectedAudit) {
-				t.Fatalf("expected audit error to contain %q, got %q", tc.expectedAudit, events[0].Error)
+			for _, expected := range tc.expectedAudit {
+				if !strings.Contains(events[0].Error, expected) {
+					t.Fatalf("expected audit error to contain %q, got %q", expected, events[0].Error)
+				}
 			}
 		})
 	}

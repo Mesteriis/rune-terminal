@@ -53,6 +53,9 @@ func (e *Executor) executePrepared(ctx context.Context, prepared *preparedExecut
 func normalizePluginError(err error) error {
 	if failure, ok := plugins.AsFailure(err); ok {
 		message := "plugin " + string(failure.Code)
+		if failure.PluginID != "" {
+			message = "plugin " + failure.PluginID + " " + string(failure.Code)
+		}
 		if failure.Message != "" {
 			message += ": " + failure.Message
 		}
@@ -71,16 +74,16 @@ func normalizePluginError(err error) error {
 		}
 	}
 	if errors.Is(err, plugins.ErrPluginTimeout) {
-		return InternalError("plugin execution timed out", err)
+		return PluginFailureError("plugin timeout: plugin execution timed out", err)
 	}
 	if errors.Is(err, plugins.ErrPluginProcessCrashed) {
-		return InternalError("plugin process crashed", err)
+		return PluginFailureError("plugin crashed: plugin process crashed", err)
 	}
 	if errors.Is(err, plugins.ErrMalformedPluginOutput) {
-		return InternalError("plugin returned malformed response", err)
+		return PluginFailureError("plugin malformed_response: plugin returned malformed response", err)
 	}
 	if errors.Is(err, plugins.ErrProcessSpawnFailed) {
-		return InternalError("failed to launch plugin process", err)
+		return PluginFailureError("plugin launch_failed: failed to launch plugin process", err)
 	}
 	return InternalError("plugin execution failed", err)
 }
