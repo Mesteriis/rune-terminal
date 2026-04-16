@@ -23,6 +23,16 @@ type CreateTerminalTabResult struct {
 	Workspace workspace.Snapshot `json:"workspace"`
 }
 
+type CreateRemoteSessionResult struct {
+	TabID        string             `json:"tab_id"`
+	WidgetID     string             `json:"widget_id"`
+	SessionID    string             `json:"session_id"`
+	ProfileID    string             `json:"profile_id"`
+	ConnectionID string             `json:"connection_id"`
+	Reused       bool               `json:"reused"`
+	Workspace    workspace.Snapshot `json:"workspace"`
+}
+
 type CloseTabResult struct {
 	ClosedTabID string             `json:"closed_tab_id"`
 	Workspace   workspace.Snapshot `json:"workspace"`
@@ -84,12 +94,24 @@ func (r *Runtime) CreateRemoteTerminalTab(ctx context.Context, title string, con
 	return r.CreateTerminalTabWithConnection(ctx, title, connectionID)
 }
 
-func (r *Runtime) CreateRemoteTerminalTabFromProfile(ctx context.Context, title string, profileID string) (CreateTerminalTabResult, error) {
+func (r *Runtime) CreateRemoteTerminalTabFromProfile(ctx context.Context, title string, profileID string) (CreateRemoteSessionResult, error) {
 	profileID = strings.TrimSpace(profileID)
 	if profileID == "" {
-		return CreateTerminalTabResult{}, fmt.Errorf("%w: remote profile id is required", connections.ErrInvalidConnection)
+		return CreateRemoteSessionResult{}, fmt.Errorf("%w: remote profile id is required", connections.ErrInvalidConnection)
 	}
-	return r.CreateRemoteTerminalTab(ctx, title, profileID)
+	created, err := r.CreateRemoteTerminalTab(ctx, title, profileID)
+	if err != nil {
+		return CreateRemoteSessionResult{}, err
+	}
+	return CreateRemoteSessionResult{
+		TabID:        created.TabID,
+		WidgetID:     created.WidgetID,
+		SessionID:    created.WidgetID,
+		ProfileID:    profileID,
+		ConnectionID: profileID,
+		Reused:       false,
+		Workspace:    created.Workspace,
+	}, nil
 }
 
 func (r *Runtime) CreateTerminalTabWithConnection(ctx context.Context, title string, connectionID string) (CreateTerminalTabResult, error) {

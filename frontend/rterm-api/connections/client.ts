@@ -1,5 +1,6 @@
 import type {
   CreateRemoteSessionFromProfileRequest,
+  CreateRemoteSessionFromProfileResponse,
   DeleteRemoteProfileResponse,
   ListRemoteProfilesResponse,
   ConnectionsSnapshot,
@@ -10,7 +11,6 @@ import type {
   SaveSSHConnectionResponse,
 } from "./types";
 import { HttpClient } from "../http/client";
-import type { CreateTerminalTabResponse } from "../workspace/types";
 
 export class ConnectionsClient {
   constructor(private readonly http: HttpClient) {}
@@ -54,8 +54,8 @@ export class ConnectionsClient {
   createSessionFromRemoteProfile(
     profileID: string,
     payload: CreateRemoteSessionFromProfileRequest = {},
-  ): Promise<CreateTerminalTabResponse> {
-    return this.http.post<CreateTerminalTabResponse, CreateRemoteSessionFromProfileRequest>(
+  ): Promise<CreateRemoteSessionFromProfileResponse> {
+    return this.http.post<CreateRemoteSessionFromProfileResponse, CreateRemoteSessionFromProfileRequest>(
       `/api/v1/remote/profiles/${encodeURIComponent(profileID)}/session`,
       { body: payload },
     );

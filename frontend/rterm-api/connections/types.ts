@@ -95,3 +95,13 @@ export interface DeleteRemoteProfileResponse {
 export interface CreateRemoteSessionFromProfileRequest {
   title?: string;
 }
+
+export interface CreateRemoteSessionFromProfileResponse {
+  tab_id: string;
+  widget_id: string;
+  session_id: string;
+  profile_id: string;
+  connection_id: string;
+  reused: boolean;
+  workspace: import("../workspace/types").WorkspaceSnapshot;
+}

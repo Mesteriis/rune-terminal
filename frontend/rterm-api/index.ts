@@ -64,6 +64,7 @@ export type {
   SaveRemoteProfileResponse,
   DeleteRemoteProfileResponse,
   CreateRemoteSessionFromProfileRequest,
+  CreateRemoteSessionFromProfileResponse,
 } from "./connections/types";
 
 export { MCPClient } from "./mcp/client";

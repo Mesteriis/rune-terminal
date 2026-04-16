@@ -1,12 +1,12 @@
 import type { ConnectionsClient } from "@/rterm-api/connections/client";
 import type {
   CreateRemoteSessionFromProfileRequest,
+  CreateRemoteSessionFromProfileResponse,
   DeleteRemoteProfileResponse,
   ListRemoteProfilesResponse,
   SaveRemoteProfileRequest,
   SaveRemoteProfileResponse,
 } from "@/rterm-api/connections/types";
-import type { CreateTerminalTabResponse } from "@/rterm-api/workspace/types";
 import type { CompatApiOptions } from "./types";
 import { createCompatApiFacade } from "./api";
 
@@ -17,7 +17,7 @@ export interface ConnectionsFacade {
   createSessionFromRemoteProfile: (
     profileID: string,
     payload?: CreateRemoteSessionFromProfileRequest,
-  ) => Promise<CreateTerminalTabResponse>;
+  ) => Promise<CreateRemoteSessionFromProfileResponse>;
 }
 
 let connectionsFacadePromise: Promise<ConnectionsFacade> | null = null;
@@ -53,7 +53,7 @@ export function createConnectionsFacade(client: ConnectionsClient): ConnectionsF
     createSessionFromRemoteProfile(
       profileID: string,
       payload: CreateRemoteSessionFromProfileRequest = {},
-    ): Promise<CreateTerminalTabResponse> {
+    ): Promise<CreateRemoteSessionFromProfileResponse> {
       return client.createSessionFromRemoteProfile(profileID, payload);
     },
   };

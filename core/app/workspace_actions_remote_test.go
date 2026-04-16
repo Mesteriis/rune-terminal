@@ -168,6 +168,18 @@ func TestCreateRemoteTerminalTabFromProfileCreatesSSHSession(t *testing.T) {
 	if result.WidgetID == "" || result.TabID == "" {
 		t.Fatalf("expected created tab/widget ids, got %#v", result)
 	}
+	if result.SessionID != result.WidgetID {
+		t.Fatalf("expected session id %q to match widget id, got %q", result.WidgetID, result.SessionID)
+	}
+	if result.ProfileID != profile.ID {
+		t.Fatalf("expected profile id %q, got %q", profile.ID, result.ProfileID)
+	}
+	if result.ConnectionID != profile.ID {
+		t.Fatalf("expected connection id %q, got %q", profile.ID, result.ConnectionID)
+	}
+	if result.Reused {
+		t.Fatalf("expected newly created profile session to not be marked reused")
+	}
 	state, err := runtime.Terminals.GetState(result.WidgetID)
 	if err != nil {
 		t.Fatalf("GetState error: %v", err)
