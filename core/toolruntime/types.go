@@ -7,6 +7,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/Mesteriis/rune-terminal/core/plugins"
 	"github.com/Mesteriis/rune-terminal/core/policy"
 )
 
@@ -53,9 +54,14 @@ type Definition struct {
 	InputSchema  json.RawMessage
 	OutputSchema json.RawMessage
 	Metadata     Metadata
+	Plugin       *PluginBinding
 	Decode       func(json.RawMessage) (any, error)
 	Plan         func(any, ExecutionContext) (OperationPlan, error)
 	Execute      func(context.Context, ExecutionContext, any) (any, error)
+}
+
+type PluginBinding struct {
+	Spec plugins.PluginSpec
 }
 
 type ToolInfo struct {
