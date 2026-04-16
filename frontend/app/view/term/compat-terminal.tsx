@@ -1,7 +1,15 @@
 import { terminalStore } from "@/app/state/terminal.store";
+import { workspaceStore } from "@/app/state/workspace.store";
+import { WaveAIModel } from "@/app/aipanel/waveai-model";
+import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
+import { getAuditFacade } from "@/compat/audit";
+import { createCompatApiFacade } from "@/compat/api";
+import { getConversationFacade } from "@/compat/conversation";
+import { getTerminalFacade } from "@/compat/terminal";
 import { CenteredDiv } from "@/element/quickelems";
 import { TermWrap } from "./termwrap";
-import { useEffect, useRef } from "react";
+import { findLatestWidgetCommand } from "./explain-handoff";
+import { useEffect, useRef, useState } from "react";
 import "./term.scss";
 import "./xterm.css";
 
@@ -14,10 +22,15 @@ function isLocalConnection(connectionId?: string): boolean {
     return connectionId == null || connectionId === "" || connectionId === "local" || connectionId.startsWith("local:");
 }
 
+const EXPLAIN_RECENT_OUTPUT_WINDOW = 300;
+
 export function CompatTerminalView({ widgetId, connectionId }: CompatTerminalViewProps) {
     const rootRef = useRef<HTMLDivElement>(null);
     const connectElemRef = useRef<HTMLDivElement>(null);
     const termWrapRef = useRef<TermWrap | null>(null);
+    const [explainBusy, setExplainBusy] = useState(false);
+    const [explainStatus, setExplainStatus] = useState<string | null>(null);
+    const [explainError, setExplainError] = useState<string | null>(null);
 
     useEffect(() => {
         if (connectElemRef.current == null) {
@@ -67,6 +80,59 @@ export function CompatTerminalView({ widgetId, connectionId }: CompatTerminalVie
         return <CenteredDiv>No Terminal Widget</CenteredDiv>;
     }
 
+    const explainLatestCommandOutput = async () => {
+        if (explainBusy) {
+            return;
+        }
+        setExplainBusy(true);
+        setExplainStatus(null);
+        setExplainError(null);
+        try {
+            const [auditFacade, conversationFacade, terminalFacade, compatApi] = await Promise.all([
+                getAuditFacade(),
+                getConversationFacade(),
+                getTerminalFacade(),
+                createCompatApiFacade(),
+            ]);
+            const [auditResponse, terminalSnapshot, bootstrap] = await Promise.all([
+                auditFacade.getEvents(200),
+                terminalFacade.getSnapshot(widgetId),
+                compatApi.clients.bootstrap.getBootstrap(),
+            ]);
+            const command = findLatestWidgetCommand(auditResponse.events ?? [], widgetId);
+            if (command === "") {
+                setExplainError(
+                    "No recent command execution was found for this terminal widget. Run a command through /run or tools first.",
+                );
+                return;
+            }
+            const workspaceID = bootstrap.workspace?.id ?? workspaceStore.getSnapshot().active.oid || undefined;
+            const repoRoot = bootstrap.repo_root?.trim() || undefined;
+            const fromSeq = terminalSnapshot.next_seq > EXPLAIN_RECENT_OUTPUT_WINDOW
+                ? terminalSnapshot.next_seq - EXPLAIN_RECENT_OUTPUT_WINDOW
+                : 0;
+            await conversationFacade.explainTerminalCommand({
+                prompt: `Explain the latest observed output for command: ${command}`,
+                command,
+                widget_id: widgetId,
+                from_seq: fromSeq,
+                context: {
+                    workspace_id: workspaceID,
+                    active_widget_id: widgetId,
+                    repo_root: repoRoot,
+                    widget_context_enabled: true,
+                },
+            });
+            WorkspaceLayoutModel.getInstance().setAIPanelVisible(true);
+            WaveAIModel.getInstance().focusInput();
+            setExplainStatus(`Explained latest output for: ${command}`);
+        } catch (error) {
+            setExplainError(error instanceof Error ? error.message : String(error));
+        } finally {
+            setExplainBusy(false);
+        }
+    };
+
     return (
         <div
             ref={rootRef}
@@ -75,6 +141,21 @@ export function CompatTerminalView({ widgetId, connectionId }: CompatTerminalVie
                 termWrapRef.current?.terminal.focus();
             }}
         >
+            <div className="absolute top-2 right-2 z-20 flex flex-col items-end gap-1">
+                <button
+                    type="button"
+                    className="px-2 py-1 text-[11px] rounded border border-border bg-black/30 text-secondary hover:text-white disabled:opacity-50"
+                    disabled={explainBusy}
+                    onClick={(event) => {
+                        event.stopPropagation();
+                        void explainLatestCommandOutput();
+                    }}
+                >
+                    {explainBusy ? "Sending..." : "Explain Latest Output In AI"}
+                </button>
+                {explainStatus ? <div className="text-[10px] text-emerald-300 max-w-[24rem] text-right">{explainStatus}</div> : null}
+                {explainError ? <div className="text-[10px] text-red-300 max-w-[24rem] text-right">{explainError}</div> : null}
+            </div>
             <div key="connectElem" className="term-connectelem" ref={connectElemRef} />
         </div>
     );

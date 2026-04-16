@@ -1,6 +1,7 @@
 import { getFSFacade } from "@/compat";
 import { getConversationFacade } from "@/compat/conversation";
 import { WaveAIModel } from "@/app/aipanel/waveai-model";
+import { globalStore } from "@/app/store/jotaiStore";
 import type { FSNode } from "@/rterm-api/fs/types";
 import type { FloatingWindowProps } from "@/app/workspace/widget-types";
 import { clearActiveFilePath, setActiveFilePath } from "./active-context";
@@ -48,6 +49,10 @@ function parentPath(path: string): string | null {
         return `${parent}\\`;
     }
     return parent || "/";
+}
+
+function quotePathForShell(path: string): string {
+    return `'${path.replaceAll("'", `'\\''`)}'`;
 }
 
 const FilesFloatingWindow = memo(({ isOpen, onClose, referenceElement }: FloatingWindowProps) => {
@@ -126,6 +131,32 @@ const FilesFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floatin
         } finally {
             setAttachBusy(false);
         }
+    };
+
+    const insertSelectedPathInAIPrompt = (filePath: string) => {
+        const model = WaveAIModel.getInstance();
+        const currentInput = globalStore.get(model.inputAtom)?.trim() ?? "";
+        const nextInput = currentInput === "" ? filePath : `${currentInput} ${filePath}`;
+        globalStore.set(model.inputAtom, nextInput);
+        WorkspaceLayoutModel.getInstance().setAIPanelVisible(true);
+        model.focusInput();
+        setAttachStatus("Inserted selected path into AI composer input.");
+        setAttachError(null);
+    };
+
+    const insertSelectedPathInRunPrompt = (filePath: string) => {
+        const model = WaveAIModel.getInstance();
+        const currentInput = globalStore.get(model.inputAtom)?.trim() ?? "";
+        const quotedPath = quotePathForShell(filePath);
+        const nextInput =
+            currentInput.startsWith("/run ") || currentInput.startsWith("run:")
+                ? `${currentInput} ${quotedPath}`
+                : `/run cat ${quotedPath}`;
+        globalStore.set(model.inputAtom, nextInput);
+        WorkspaceLayoutModel.getInstance().setAIPanelVisible(true);
+        model.focusInput();
+        setAttachStatus("Prepared /run prompt with selected file path. Review before sending.");
+        setAttachError(null);
     };
 
     const loadFilePreview = async (filePath: string) => {
@@ -249,13 +280,29 @@ const FilesFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floatin
                         <div className="text-xs text-white/90 break-all border border-border rounded px-2 py-1.5 mt-1 min-h-[2rem]">
                             {selectedFilePath || "No file selected"}
                         </div>
-                        <button
-                            className="mt-2 text-xs px-2 py-1 rounded border border-border text-secondary disabled:opacity-50"
-                            disabled={selectedFilePath === "" || previewLoading || attachBusy}
-                            onClick={() => void attachFileContext(selectedFilePath)}
-                        >
-                            {attachBusy ? "Attaching..." : "Attach Selected File To AI Context"}
-                        </button>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                            <button
+                                className="text-xs px-2 py-1 rounded border border-border text-secondary disabled:opacity-50"
+                                disabled={selectedFilePath === "" || previewLoading || attachBusy}
+                                onClick={() => void attachFileContext(selectedFilePath)}
+                            >
+                                {attachBusy ? "Attaching..." : "Attach Selected File To AI Context"}
+                            </button>
+                            <button
+                                className="text-xs px-2 py-1 rounded border border-border text-secondary disabled:opacity-50"
+                                disabled={selectedFilePath === "" || previewLoading || attachBusy}
+                                onClick={() => insertSelectedPathInAIPrompt(selectedFilePath)}
+                            >
+                                Use Selected Path In AI Prompt
+                            </button>
+                            <button
+                                className="text-xs px-2 py-1 rounded border border-border text-secondary disabled:opacity-50"
+                                disabled={selectedFilePath === "" || previewLoading || attachBusy}
+                                onClick={() => insertSelectedPathInRunPrompt(selectedFilePath)}
+                            >
+                                Use Selected Path In /run Prompt
+                            </button>
+                        </div>
                         <div className="mt-2 text-[11px] text-secondary">Preview (text, bounded)</div>
                         <div className="border border-border rounded mt-1 p-2 max-h-[9rem] overflow-auto bg-black/20">
                             {previewLoading ? (

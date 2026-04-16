@@ -8,6 +8,7 @@ import {
     storePendingToolApproval,
 } from "@/app/approval/continuity";
 import { workspaceStore } from "@/app/state/workspace.store";
+import { useActiveWorkspaceContext } from "@/app/workspace/active-context";
 import { buildToolExecutionContext, formatAuditTimestamp, formatJson, getApprovalToken } from "@/app/workspace/widget-helpers";
 import type { PendingToolApproval, ToolsFloatingWindowProps } from "@/app/workspace/widget-types";
 import type { MCPServerRuntime } from "@/rterm-api/mcp/types";
@@ -24,7 +25,19 @@ import {
 import clsx from "clsx";
 import { memo, useEffect, useState } from "react";
 
+function hasObjectProperty(schema: unknown, property: string): boolean {
+    if (schema == null || typeof schema !== "object") {
+        return false;
+    }
+    const properties = (schema as { properties?: Record<string, unknown> }).properties;
+    if (properties == null || typeof properties !== "object") {
+        return false;
+    }
+    return Object.prototype.hasOwnProperty.call(properties, property);
+}
+
 const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditChanged }: ToolsFloatingWindowProps) => {
+    const activeContext = useActiveWorkspaceContext();
     const getActiveWorkspaceID = () => workspaceStore.getSnapshot().active.oid;
     const [pendingApproval, setPendingApproval] = useState<PendingToolApproval | null>(
         () => listStoredPendingToolApprovalsForWorkspace(getActiveWorkspaceID())[0] ?? null,
@@ -139,6 +152,13 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
     if (!isOpen) return null;
 
     const selectedTool = tools.find((tool) => tool.name === selectedToolName) ?? null;
+    const selectedToolSchema = selectedTool?.input_schema;
+    const canUseSelectedFileInToolInput =
+        activeContext.activeFilePath !== "" &&
+        selectedTool != null &&
+        (hasObjectProperty(selectedToolSchema, "path") || hasObjectProperty(selectedToolSchema, "paths"));
+    const canUseActiveWidgetInToolInput =
+        activeContext.activeWidgetID !== "" && selectedTool != null && hasObjectProperty(selectedToolSchema, "widget_id");
     const normalizeMCPState = (server: MCPServerRuntime): "active" | "idle" | "stopped" | "disabled" => {
         if (!server.enabled) {
             return "disabled";
@@ -252,6 +272,49 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
         setResponseValue(null);
         setExecuteError(null);
         setPendingApproval(null);
+    };
+
+    const patchToolInput = (patcher: (value: Record<string, unknown>) => void) => {
+        let parsedInput: unknown = {};
+        const trimmedInput = inputValue.trim();
+        if (trimmedInput !== "") {
+            try {
+                parsedInput = JSON.parse(trimmedInput);
+            } catch (error) {
+                setExecuteError(error instanceof Error ? error.message : String(error));
+                return;
+            }
+        }
+        if (parsedInput == null || typeof parsedInput !== "object" || Array.isArray(parsedInput)) {
+            setExecuteError("Tool input must be a JSON object.");
+            return;
+        }
+        const nextInput = { ...(parsedInput as Record<string, unknown>) };
+        patcher(nextInput);
+        setInputValue(JSON.stringify(nextInput, null, 2));
+        setExecuteError(null);
+    };
+
+    const applySelectedFileToToolInput = () => {
+        if (activeContext.activeFilePath === "") {
+            return;
+        }
+        patchToolInput((nextInput) => {
+            if (hasObjectProperty(selectedToolSchema, "path")) {
+                nextInput.path = activeContext.activeFilePath;
+            } else {
+                nextInput.paths = [activeContext.activeFilePath];
+            }
+        });
+    };
+
+    const applyActiveWidgetToToolInput = () => {
+        if (activeContext.activeWidgetID === "") {
+            return;
+        }
+        patchToolInput((nextInput) => {
+            nextInput.widget_id = activeContext.activeWidgetID;
+        });
     };
 
     const handleExecute = async () => {
@@ -417,6 +480,17 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
                                     <div className="text-xs text-secondary whitespace-pre-wrap break-words">
                                         capabilities: {selectedTool.metadata.capabilities.join(", ") || "none"}
                                     </div>
+                                    <div className="rounded border border-border bg-black/20 px-2 py-1.5 text-[11px] text-secondary space-y-1">
+                                        <div>
+                                            active widget: {activeContext.activeWidgetID || "none"}{" "}
+                                            {activeContext.activeTerminalTarget
+                                                ? `(${activeContext.activeTerminalTarget.targetSession}:${activeContext.activeTerminalTarget.targetConnectionID})`
+                                                : ""}
+                                        </div>
+                                        <div className="break-all">
+                                            selected file: {activeContext.activeFilePath || "none"}
+                                        </div>
+                                    </div>
                                     <div className="text-xs text-secondary whitespace-pre-wrap break-words">
                                         input schema:
                                         <pre className="mt-1 p-2 rounded bg-black/20 overflow-auto text-[11px] text-secondary">
@@ -425,6 +499,24 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
                                     </div>
                                     <div>
                                         <div className="text-xs text-secondary mb-1">input json:</div>
+                                        <div className="mb-2 flex flex-wrap gap-2">
+                                            <button
+                                                type="button"
+                                                className="px-2 py-1 rounded border border-border text-[11px] text-secondary disabled:opacity-50"
+                                                disabled={!canUseSelectedFileInToolInput}
+                                                onClick={applySelectedFileToToolInput}
+                                            >
+                                                Use Selected File Path
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="px-2 py-1 rounded border border-border text-[11px] text-secondary disabled:opacity-50"
+                                                disabled={!canUseActiveWidgetInToolInput}
+                                                onClick={applyActiveWidgetToToolInput}
+                                            >
+                                                Use Active Widget
+                                            </button>
+                                        </div>
                                         <textarea
                                             className="w-full min-h-32 rounded border border-border bg-black/20 p-2 text-xs text-white resize-y"
                                             value={inputValue}
