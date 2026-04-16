@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 )
@@ -40,9 +41,7 @@ func (s *Service) StartSession(ctx context.Context, opts LaunchOptions) (State, 
 	if opts.WidgetID == "" {
 		return State{}, errors.New("widget id is required")
 	}
-	if opts.Shell == "" {
-		opts.Shell = DefaultShell()
-	}
+	opts = normalizeLaunchOptions(opts)
 
 	s.mu.Lock()
 	if existing, ok := s.sessions[opts.WidgetID]; ok {
@@ -119,6 +118,31 @@ func resolveWorkingDir(opts LaunchOptions) string {
 		return ""
 	}
 	return opts.WorkingDir
+}
+
+func normalizeLaunchOptions(opts LaunchOptions) LaunchOptions {
+	if opts.Shell == "" {
+		opts.Shell = DefaultShell()
+	}
+	opts.Connection = normalizeConnectionSpec(opts.Connection)
+	return opts
+}
+
+func normalizeConnectionSpec(connection ConnectionSpec) ConnectionSpec {
+	kind := strings.TrimSpace(connection.Kind)
+	if kind == "" {
+		kind = "local"
+	}
+	connection.Kind = kind
+	if kind == "local" {
+		if connection.ID == "" {
+			connection.ID = "local"
+		}
+		if connection.Name == "" {
+			connection.Name = "Local Machine"
+		}
+	}
+	return connection
 }
 
 func (s *Service) GetState(widgetID string) (State, error) {

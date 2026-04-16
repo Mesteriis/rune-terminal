@@ -99,6 +99,15 @@ func TestTerminalServiceSnapshotAndInput(t *testing.T) {
 	if snapshot.State.Status != StatusRunning {
 		t.Fatalf("expected running status, got %s", snapshot.State.Status)
 	}
+	if snapshot.State.ConnectionKind != "local" {
+		t.Fatalf("expected local connection kind, got %q", snapshot.State.ConnectionKind)
+	}
+	if snapshot.State.ConnectionID != "local" {
+		t.Fatalf("expected local connection id, got %q", snapshot.State.ConnectionID)
+	}
+	if snapshot.State.ConnectionName != "Local Machine" {
+		t.Fatalf("expected local connection name, got %q", snapshot.State.ConnectionName)
+	}
 
 	if _, err := service.SendInput("term-main", "pwd", true); err != nil {
 		t.Fatalf("SendInput error: %v", err)
@@ -114,6 +123,60 @@ func TestTerminalServiceSnapshotAndInput(t *testing.T) {
 	}
 	if !process.signalled {
 		t.Fatalf("expected process to be signalled")
+	}
+}
+
+func TestSSHSessionUsesSharedSnapshotAndChunkSequenceModel(t *testing.T) {
+	t.Parallel()
+
+	process := &fakeProcess{
+		outputCh: make(chan []byte, 8),
+		waitCh:   make(chan struct{}),
+	}
+	service := NewService(fakeLauncher{process: process})
+	if _, err := service.StartSession(context.Background(), LaunchOptions{
+		WidgetID: "term-ssh",
+		Connection: ConnectionSpec{
+			ID:   "conn-prod",
+			Name: "Prod SSH",
+			Kind: "ssh",
+			SSH: &SSHConfig{
+				Host: "prod.example.com",
+				User: "deploy",
+			},
+		},
+	}); err != nil {
+		t.Fatalf("StartSession error: %v", err)
+	}
+
+	process.outputCh <- []byte("remote-line-1\n")
+	process.outputCh <- []byte("remote-line-2\n")
+	time.Sleep(20 * time.Millisecond)
+
+	snapshot, err := service.Snapshot("term-ssh", 0)
+	if err != nil {
+		t.Fatalf("Snapshot error: %v", err)
+	}
+	if snapshot.State.ConnectionKind != "ssh" {
+		t.Fatalf("expected ssh connection kind, got %q", snapshot.State.ConnectionKind)
+	}
+	if snapshot.State.ConnectionID != "conn-prod" {
+		t.Fatalf("expected ssh connection id, got %q", snapshot.State.ConnectionID)
+	}
+	if snapshot.State.ConnectionName != "Prod SSH" {
+		t.Fatalf("expected ssh connection name, got %q", snapshot.State.ConnectionName)
+	}
+	if snapshot.State.Shell != "ssh" {
+		t.Fatalf("expected ssh shell marker, got %q", snapshot.State.Shell)
+	}
+	if snapshot.NextSeq != 3 {
+		t.Fatalf("expected next seq=3 for two chunks, got %d", snapshot.NextSeq)
+	}
+	if len(snapshot.Chunks) != 2 {
+		t.Fatalf("expected 2 chunks, got %d", len(snapshot.Chunks))
+	}
+	if snapshot.Chunks[0].Seq != 1 || snapshot.Chunks[1].Seq != 2 {
+		t.Fatalf("unexpected chunk sequence values: %#v", snapshot.Chunks)
 	}
 }
 
