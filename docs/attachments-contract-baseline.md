@@ -34,3 +34,41 @@
 - No actual attachment feature implementation.
 - No storage subsystem work.
 - No upload UX redesign.
+
+## Minimal attachments contract
+
+### A. Minimal attachment metadata shape
+
+```json
+{
+  "id": "att_...",
+  "name": "design-notes.md",
+  "mime_type": "text/markdown",
+  "size_bytes": 12345,
+  "storage_ref": "opaque-backend-ref"
+}
+```
+
+- `id`: stable attachment reference used by conversation/audit/execution payloads.
+- `storage_ref`: backend-owned opaque pointer; frontend treats it as non-interpreted token.
+- No raw file bytes in conversation message payloads.
+
+### B. Storage truth ownership
+
+- Storage truth is backend-owned.
+- Frontend may upload/select, but cannot claim persistence without backend-issued attachment references.
+- Attachment availability on reload must come from backend snapshot/message payload, not from frontend memory.
+
+### C. Persisted conversation representation
+
+- Persisted conversation messages may include optional attachment references, while keeping text content explicit.
+- Attachment references must be durable identifiers resolvable by backend at reload time.
+- Local UI file pills without backend-issued attachment references are explicitly non-persistent.
+
+### D. Explicit first-implementation non-goals
+
+- Binary transfer protocol design.
+- File storage provider implementation.
+- OCR/indexing/search over attachments.
+- Rich attachment rendering UX redesign.
+- Attachment-driven tool execution changes outside explicit contract updates.
