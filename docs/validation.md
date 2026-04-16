@@ -49,6 +49,8 @@
   - `ace2a07a547570fd1c8ff9c0c3c35c7dfe5d5d45`
   - `2f52c405de4f1c19bbde64c7be877d3dadf61e46`
   - `2cc6235cfe52d28bc8fe21eb1487820dc362e6b5`
+  - `042c27604f65809bb6afd0a265639e40a2db97b2`
+  - `84af2d45eb8478195e948b86cb40e9fbb4f549ee`
 - Validation steps:
   - runtime environment:
     - Ollama stub: local Node HTTP server on `127.0.0.1:11435`, returning `model: "test-model"` and `message.content: "stub-response: <prompt>"`
@@ -74,7 +76,15 @@
 - Notes:
   - browser `consoleErrors`: `0`; page-level runtime exceptions for this validation run were not observed
   - `page.reload({ waitUntil: "networkidle" })` timed out because the terminal SSE path keeps long-lived network activity open; despite that, the page reloaded and the post-reload snapshot/network trail confirmed restored agent state
-  - observed residual UI issue adjacent to this slice: before clicking the shell `AI` toggle, the panel was mounted in a near-collapsed sliver (`textarea left: -28`, `width: 28`), so pointer interaction landed on the main workspace panel; agent/conversation transport still loaded correctly behind that layout state, but the width/open-state issue itself was not changed in this slice
+  - historical note superseded by `84af2d45eb8478195e948b86cb40e9fbb4f549ee`: прежний near-collapsed sliver (`textarea left: -28`, `width: 28`) относился к состоянию до corrective slice visibility/open-state recovery
+  - visible panel state restored: `VERIFIED`
+  - exact interaction: fresh load `http://127.0.0.1:4195/` -> initial check in closed state -> click shell `AI` toggle -> verify selectors/composer -> send `visibility slice ping` -> open `Tools` and `Audit`
+  - observed after visibility recovery:
+    - initial closed state: AI toggle видим, но AI composer/selectors не смонтированы (`composerPresent: false`, `selectorIds: []`), terminal/workspace остаются видимыми
+    - after open: composer `placeholder="Ask TideTerm AI anything..."`, geometry `x: 2`, `width: 296`, `height: 48`; selectors `agent-profile-select`, `agent-role-select`, `agent-mode-select` видимы
+    - transcript stayed usable: UI rendered both `visibility slice ping` and `stub-response: visibility slice ping`
+    - panel-adjacent smoke remained green: `Tools` panel still loaded `GET /api/v1/tools`, `Audit` panel still loaded `GET /api/v1/audit?limit=50`
+    - runtime noise for this corrective run: `consoleErrors: 0`, `pageErrors: 0`, `loadingFailed: 0`
 
 ## widgets.tsx structural refactor
 
