@@ -24,10 +24,12 @@ test("findLatestWidgetCommand uses the most recent matching term.send_input even
     const result = findLatestWidgetCommand(
         [
             event({
+                id: "audit_first",
                 timestamp: "2026-04-16T20:00:00Z",
                 summary: "send input to term-main: echo first",
             }),
             event({
+                id: "audit_latest",
                 timestamp: "2026-04-16T20:01:00Z",
                 summary: "send input to term-main: echo latest",
             }),
@@ -39,7 +41,10 @@ test("findLatestWidgetCommand uses the most recent matching term.send_input even
         ],
         "term-main",
     );
-    assert.equal(result, "echo latest");
+    assert.deepEqual(result, {
+        command: "echo latest",
+        commandAuditEventId: "audit_latest",
+    });
 });
 
 test("findLatestWidgetCommand returns empty when there is no matching event", () => {
@@ -56,5 +61,5 @@ test("findLatestWidgetCommand returns empty when there is no matching event", ()
         ],
         "term-main",
     );
-    assert.equal(result, "");
+    assert.isNull(result);
 });

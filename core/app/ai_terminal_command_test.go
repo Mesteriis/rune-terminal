@@ -185,6 +185,63 @@ func TestExplainTerminalCommandDerivesApprovalUsedFromMatchingToolAudit(t *testi
 	}
 }
 
+func TestExplainTerminalCommandUsesExplicitCommandAuditEventID(t *testing.T) {
+	t.Parallel()
+
+	runtime := newExplainCommandTestRuntime(t, "identity-hardened\n")
+	if err := runtime.Audit.Append(audit.Event{
+		ID:              "audit_selected",
+		ToolName:        "term.send_input",
+		Summary:         "send input to term_boot: echo identity-hardened",
+		WorkspaceID:     "ws-default",
+		AffectedWidgets: []string{"term_boot"},
+		ApprovalUsed:    true,
+		Success:         true,
+	}); err != nil {
+		t.Fatalf("append selected audit event: %v", err)
+	}
+	if err := runtime.Audit.Append(audit.Event{
+		ID:              "audit_latest",
+		ToolName:        "term.send_input",
+		Summary:         "send input to term_boot: echo identity-hardened",
+		WorkspaceID:     "ws-default",
+		AffectedWidgets: []string{"term_boot"},
+		ApprovalUsed:    false,
+		Success:         true,
+	}); err != nil {
+		t.Fatalf("append latest audit event: %v", err)
+	}
+
+	if _, err := runtime.ExplainTerminalCommand(context.Background(), ExplainTerminalCommandRequest{
+		Prompt:              "/run echo identity-hardened",
+		Command:             "echo identity-hardened",
+		WidgetID:            "term_boot",
+		FromSeq:             0,
+		CommandAuditEventID: "audit_selected",
+	}, ConversationContext{
+		WorkspaceID:          "ws-default",
+		RepoRoot:             "/repo",
+		ActiveWidgetID:       "term_boot",
+		WidgetContextEnabled: true,
+	}); err != nil {
+		t.Fatalf("explain terminal command: %v", err)
+	}
+
+	events, err := runtime.Audit.List(10)
+	if err != nil {
+		t.Fatalf("audit list: %v", err)
+	}
+	if len(events) != 3 {
+		t.Fatalf("expected 3 audit events, got %d", len(events))
+	}
+	if events[2].ToolName != "agent.terminal_command" || !events[2].Success {
+		t.Fatalf("unexpected explain audit event: %#v", events[2])
+	}
+	if !events[2].ApprovalUsed {
+		t.Fatalf("expected explain audit approval_used=true from explicit command identity, got %#v", events[2])
+	}
+}
+
 func TestSummarizeTerminalOutputSanitizesPromptNoise(t *testing.T) {
 	t.Parallel()
 

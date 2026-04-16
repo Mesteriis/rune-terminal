@@ -12,10 +12,11 @@ import (
 )
 
 type ExplainTerminalCommandRequest struct {
-	Prompt   string `json:"prompt"`
-	Command  string `json:"command"`
-	WidgetID string `json:"widget_id,omitempty"`
-	FromSeq  uint64 `json:"from_seq,omitempty"`
+	Prompt              string `json:"prompt"`
+	Command             string `json:"command"`
+	WidgetID            string `json:"widget_id,omitempty"`
+	FromSeq             uint64 `json:"from_seq,omitempty"`
+	CommandAuditEventID string `json:"command_audit_event_id,omitempty"`
 }
 
 type ExplainTerminalCommandResult struct {
@@ -49,7 +50,12 @@ func (r *Runtime) ExplainTerminalCommand(
 		return ExplainTerminalCommandResult{}, err
 	}
 	outputExcerpt := summarizeTerminalOutput(command, snapshot.Chunks)
-	approvalUsed := r.deriveExplainApprovalUsed(widgetID, command, conversationContext.WorkspaceID)
+	approvalUsed := r.deriveExplainApprovalUsed(
+		widgetID,
+		command,
+		request.CommandAuditEventID,
+		conversationContext.WorkspaceID,
+	)
 
 	if err := r.persistRunTranscriptActivity(prompt, command, outputExcerpt); err != nil {
 		return ExplainTerminalCommandResult{}, err
@@ -153,30 +159,48 @@ func sanitizeCodeFenceContent(value string) string {
 	return strings.ReplaceAll(value, "```", "``\\`")
 }
 
-func (r *Runtime) deriveExplainApprovalUsed(widgetID string, command string, workspaceID string) bool {
+func (r *Runtime) deriveExplainApprovalUsed(widgetID string, command string, commandAuditEventID string, workspaceID string) bool {
 	events, err := r.Audit.List(explainAuditScanLimit)
 	if err != nil {
 		return false
 	}
 	expectedSummary := fmt.Sprintf("send input to %s: %s", widgetID, trimSummary(command))
 	trimmedWorkspaceID := strings.TrimSpace(workspaceID)
+	trimmedEventID := strings.TrimSpace(commandAuditEventID)
+	if trimmedEventID != "" {
+		for i := len(events) - 1; i >= 0; i-- {
+			event := events[i]
+			if event.ID != trimmedEventID {
+				continue
+			}
+			if !matchesExplainCommandEvent(event, widgetID, expectedSummary, trimmedWorkspaceID) {
+				return false
+			}
+			return event.ApprovalUsed
+		}
+		return false
+	}
 	for i := len(events) - 1; i >= 0; i-- {
 		event := events[i]
-		if event.ToolName != "term.send_input" || !event.Success {
-			continue
-		}
-		if event.Summary != expectedSummary {
-			continue
-		}
-		if trimmedWorkspaceID != "" && event.WorkspaceID != trimmedWorkspaceID {
-			continue
-		}
-		if !containsString(event.AffectedWidgets, widgetID) {
+		if !matchesExplainCommandEvent(event, widgetID, expectedSummary, trimmedWorkspaceID) {
 			continue
 		}
 		return event.ApprovalUsed
 	}
 	return false
+}
+
+func matchesExplainCommandEvent(event audit.Event, widgetID string, expectedSummary string, workspaceID string) bool {
+	if event.ToolName != "term.send_input" || !event.Success {
+		return false
+	}
+	if event.Summary != expectedSummary {
+		return false
+	}
+	if workspaceID != "" && event.WorkspaceID != workspaceID {
+		return false
+	}
+	return containsString(event.AffectedWidgets, widgetID)
 }
 
 func containsString(values []string, expected string) bool {

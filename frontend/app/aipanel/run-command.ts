@@ -187,6 +187,7 @@ interface ExplainRunCommandPromptOptions {
     command: string;
     widgetId: string;
     fromSeq: number;
+    commandAuditEventId?: string;
     approvalUsed?: boolean;
     context: ConversationContext;
 }
@@ -199,6 +200,7 @@ export function explainRunCommandPrompt(
         command: options.command,
         widget_id: options.widgetId,
         from_seq: options.fromSeq,
+        command_audit_event_id: options.commandAuditEventId,
         approval_used: options.approvalUsed,
         context: options.context,
     });

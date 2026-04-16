@@ -9,8 +9,13 @@ export function parseCommandFromSendInputSummary(widgetId: string, summary: stri
     return value.slice(prefix.length).trim();
 }
 
-export function findLatestWidgetCommand(events: AuditEvent[], widgetId: string): string {
-    let latestCommand = "";
+export interface ExplainCommandIdentity {
+    command: string;
+    commandAuditEventId?: string;
+}
+
+export function findLatestWidgetCommand(events: AuditEvent[], widgetId: string): ExplainCommandIdentity | null {
+    let latestIdentity: ExplainCommandIdentity | null = null;
     let latestTimestamp = -1;
     for (const event of events) {
         if (event.tool_name !== "term.send_input" || !event.success) {
@@ -23,18 +28,21 @@ export function findLatestWidgetCommand(events: AuditEvent[], widgetId: string):
         if (command === "") {
             continue;
         }
+        const nextIdentity: ExplainCommandIdentity = {
+            command,
+            commandAuditEventId: event.id?.trim() || undefined,
+        };
         const timestamp = Date.parse(event.timestamp);
         if (Number.isNaN(timestamp)) {
-            if (latestCommand === "") {
-                latestCommand = command;
+            if (latestIdentity == null) {
+                latestIdentity = nextIdentity;
             }
             continue;
         }
         if (timestamp >= latestTimestamp) {
             latestTimestamp = timestamp;
-            latestCommand = command;
+            latestIdentity = nextIdentity;
         }
     }
-    return latestCommand;
+    return latestIdentity;
 }
-

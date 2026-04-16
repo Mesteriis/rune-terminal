@@ -99,13 +99,14 @@ export function CompatTerminalView({ widgetId, connectionId }: CompatTerminalVie
                 terminalFacade.getSnapshot(widgetId),
                 compatApi.clients.bootstrap.getBootstrap(),
             ]);
-            const command = findLatestWidgetCommand(auditResponse.events ?? [], widgetId);
-            if (command === "") {
+            const commandIdentity = findLatestWidgetCommand(auditResponse.events ?? [], widgetId);
+            if (commandIdentity == null || commandIdentity.command === "") {
                 setExplainError(
                     "No recent command execution was found for this terminal widget. Run a command through /run or tools first.",
                 );
                 return;
             }
+            const command = commandIdentity.command;
             const fallbackWorkspaceID = bootstrap.workspace?.id ?? workspaceStore.getSnapshot().active.oid ?? "";
             const workspaceID = fallbackWorkspaceID.trim() || undefined;
             const repoRoot = bootstrap.repo_root?.trim() || undefined;
@@ -120,6 +121,7 @@ export function CompatTerminalView({ widgetId, connectionId }: CompatTerminalVie
                 command,
                 widget_id: widgetId,
                 from_seq: fromSeq,
+                command_audit_event_id: commandIdentity.commandAuditEventId,
                 context: {
                     workspace_id: workspaceID,
                     active_widget_id: widgetId,

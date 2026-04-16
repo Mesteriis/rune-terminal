@@ -19,12 +19,13 @@ type attachmentReferencePayload struct {
 }
 
 type terminalCommandExplanationPayload struct {
-	Prompt       string                  `json:"prompt"`
-	Command      string                  `json:"command"`
-	WidgetID     string                  `json:"widget_id,omitempty"`
-	FromSeq      uint64                  `json:"from_seq,omitempty"`
-	ApprovalUsed bool                    `json:"approval_used,omitempty"`
-	Context      app.ConversationContext `json:"context"`
+	Prompt              string                  `json:"prompt"`
+	Command             string                  `json:"command"`
+	WidgetID            string                  `json:"widget_id,omitempty"`
+	FromSeq             uint64                  `json:"from_seq,omitempty"`
+	CommandAuditEventID string                  `json:"command_audit_event_id,omitempty"`
+	ApprovalUsed        bool                    `json:"approval_used,omitempty"`
+	Context             app.ConversationContext `json:"context"`
 }
 
 func (api *API) handleConversationSnapshot(w http.ResponseWriter, r *http.Request) {
@@ -75,10 +76,11 @@ func (api *API) handleExplainTerminalCommand(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	result, err := api.runtime.ExplainTerminalCommand(r.Context(), app.ExplainTerminalCommandRequest{
-		Prompt:   payload.Prompt,
-		Command:  payload.Command,
-		WidgetID: payload.WidgetID,
-		FromSeq:  payload.FromSeq,
+		Prompt:              payload.Prompt,
+		Command:             payload.Command,
+		WidgetID:            payload.WidgetID,
+		FromSeq:             payload.FromSeq,
+		CommandAuditEventID: payload.CommandAuditEventID,
 	}, payload.Context)
 	if err != nil {
 		writeConversationError(w, err)

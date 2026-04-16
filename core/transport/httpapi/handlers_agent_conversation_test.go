@@ -367,6 +367,69 @@ func TestExplainTerminalCommandIgnoresFrontendApprovalUsedPayload(t *testing.T) 
 	}
 }
 
+func TestExplainTerminalCommandUsesExplicitCommandAuditEventIDPayload(t *testing.T) {
+	t.Parallel()
+
+	handler, runtime := newExplainCommandHandler(t)
+	if err := runtime.Audit.Append(audit.Event{
+		ID:              "audit_selected",
+		ToolName:        "term.send_input",
+		Summary:         "send input to term_boot: echo httpapi-smoke",
+		WorkspaceID:     "ws-default",
+		AffectedWidgets: []string{"term_boot"},
+		ApprovalUsed:    true,
+		Success:         true,
+	}); err != nil {
+		t.Fatalf("append selected audit event: %v", err)
+	}
+	if err := runtime.Audit.Append(audit.Event{
+		ID:              "audit_latest",
+		ToolName:        "term.send_input",
+		Summary:         "send input to term_boot: echo httpapi-smoke",
+		WorkspaceID:     "ws-default",
+		AffectedWidgets: []string{"term_boot"},
+		ApprovalUsed:    false,
+		Success:         true,
+	}); err != nil {
+		t.Fatalf("append latest audit event: %v", err)
+	}
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPost, "/api/v1/agent/terminal-commands/explain", map[string]any{
+		"prompt":                 "/run echo httpapi-smoke",
+		"command":                "echo httpapi-smoke",
+		"widget_id":              "term_boot",
+		"from_seq":               0,
+		"command_audit_event_id": "audit_selected",
+		"context": map[string]any{
+			"workspace_id":           "ws-default",
+			"repo_root":              "/workspace/repo",
+			"active_widget_id":       "term_boot",
+			"target_session":         "local",
+			"target_connection_id":   "local",
+			"widget_context_enabled": true,
+		},
+	}))
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+
+	events, err := runtime.Audit.List(10)
+	if err != nil {
+		t.Fatalf("audit list: %v", err)
+	}
+	if len(events) != 3 {
+		t.Fatalf("expected 3 audit events, got %d", len(events))
+	}
+	if events[2].ToolName != "agent.terminal_command" {
+		t.Fatalf("unexpected explain audit event: %#v", events[2])
+	}
+	if !events[2].ApprovalUsed {
+		t.Fatalf("expected explain audit approval_used=true from explicit command audit id, got %#v", events[2])
+	}
+}
+
 func newExplainCommandHandler(t *testing.T) (http.Handler, *app.Runtime) {
 	t.Helper()
 

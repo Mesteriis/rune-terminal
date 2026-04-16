@@ -62,6 +62,7 @@ export interface ExplainTerminalCommandRequest {
   command: string;
   widget_id?: string;
   from_seq?: number;
+  command_audit_event_id?: string;
   approval_used?: boolean;
   context: ConversationContext;
 }
