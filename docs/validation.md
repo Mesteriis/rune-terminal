@@ -179,6 +179,52 @@
   - browser console recorded one expected `428 Precondition Required` resource error for the initial approval challenge; the UI flow continued correctly and no fatal runtime exceptions were observed
   - `npm run validate`: `NOT VERIFIED` for this slice because the repo currently has broad pre-existing frontend lint failures unrelated to `/run` approval wiring; the failure occurred before the validation script could reach `build:frontend`, `test:go`, `build:go`, or `tauri:check`
 
+## Explain approval truth
+
+- Date: `2026-04-16`
+- Status: `VERIFIED`
+- Commits:
+  - `c606c126d10da49411b43645ec7c615ea932ef86`
+  - `6805a4ef54f0798e1d5b9da5147782750d2432e8`
+- Validation steps:
+  - `npm run build:core`
+  - `go test ./core/app ./core/transport/httpapi`
+  - runtime environment:
+    - Ollama stub: local Node HTTP server on `127.0.0.1:11438`, returning `model: "test-model"` and `message.content: "stub-response: <prompt>"`
+    - core: `RTERM_AUTH_TOKEN=explain-truth-token RTERM_OLLAMA_BASE_URL=http://127.0.0.1:11438 RTERM_OLLAMA_MODEL=test-model apps/desktop/bin/rterm-core serve --listen 127.0.0.1:61420 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/rterm-explain-truth/state --ready-file /tmp/rterm-explain-truth/ready.json`
+    - frontend dev: `VITE_RTERM_API_BASE=http://127.0.0.1:61420 VITE_RTERM_AUTH_TOKEN=explain-truth-token npm --prefix frontend run dev -- --host 127.0.0.1 --port 4203 --strictPort`
+  - visible `/run` safe path:
+    - with `Profile: Balanced`, entered `/run echo explain-safe` in the active compat AI panel
+    - transcript rendered the execution result `explain-safe` and a follow-up explanation message
+  - visible `/run` approval path:
+    - changed `Profile: Balanced -> Hardened`
+    - entered `/run echo explain-approval`
+    - UI showed `Approval required for \`/run echo explain-approval\`` with summary `send input to term-main: echo explain-approval`
+    - clicked `Confirm and retry`
+    - transcript rendered the execution result `explain-approval` and a follow-up explanation message
+    - browser console recorded one expected `428 Precondition Required` resource error for the initial approval challenge and no fatal runtime exceptions
+  - direct API safe-truth check:
+    - executed `term.send_input` for `echo api-safe-truth-1776340188707`
+    - called `POST /api/v1/agent/terminal-commands/explain` with deliberately wrong payload `approval_used:true`
+    - audit result:
+      - matching `term.send_input` success event had no `approval_used`
+      - resulting `agent.terminal_command` event also had no `approval_used`
+  - direct API approval-truth check:
+    - with `Profile: Hardened`, executed `term.send_input` for `echo api-approval-truth-1776340188871`
+    - observed HTTP `428` approval challenge
+    - confirmed through `safety.confirm`
+    - retried with returned `approval_token`
+    - called `POST /api/v1/agent/terminal-commands/explain` with deliberately wrong payload `approval_used:false`
+    - audit result:
+      - matching approved `term.send_input` success event had `approval_used:true`
+      - resulting `agent.terminal_command` event also had `approval_used:true`
+- Safe explain truth: `VERIFIED` — the backend ignored a client-supplied `approval_used:true` value and recorded the explain step as unapproved when the matching execution was unapproved.
+- Approved explain truth: `VERIFIED` — the backend ignored a client-supplied `approval_used:false` value and recorded the explain step as approved when the matching execution had consumed approval.
+- Exact observed result: `VERIFIED` — explain `approval_used` now comes from backend execution/audit truth, not from the frontend payload.
+- Notes:
+  - the active frontend still sends the legacy `approval_used` field on approved `/run` explains; this slice hardens the backend by ignoring that input instead of depending on it
+  - validation used a stub Ollama-compatible server, so assistant text proves explain routing and context wiring rather than model quality
+
 ## Approval intent binding
 
 - Date: `2026-04-16`

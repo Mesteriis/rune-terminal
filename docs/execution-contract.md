@@ -73,9 +73,8 @@ User input:
      - `command`
      - `widget_id`
      - `from_seq`
-     - `approval_used` when the command ran on an approved retry
      - `context`
-   - The backend does not execute the command here. It snapshots terminal output from `from_seq`, builds an excerpt, asks the conversation provider for an assistant reply, persists that assistant message, and writes an `agent.terminal_command` audit event.
+   - The backend does not execute the command here. It snapshots terminal output from `from_seq`, builds an excerpt, derives `approval_used` from the matching `term.send_input` audit event, asks the conversation provider for an assistant reply, persists that assistant message, and writes an `agent.terminal_command` audit event.
 
 11. UI rendering
    - The active compat AI panel renders a mixed transcript:
@@ -205,7 +204,7 @@ User input:
   - affected widgets/paths
   - `approval_used`
 - `approval_used:true` means the execution consumed a valid approval token during policy evaluation of that request.
-- `approval_used` is meaningful on the approved retry and on the follow-up explain audit event when the UI passes `approval_used:true`.
+- `approval_used` is meaningful on the approved retry and on the follow-up explain audit event when the backend derives the matching execution as approved.
 
 ### 2.6 Agent contract
 
@@ -265,7 +264,7 @@ User input:
 - `2.5 Audit contract` -> `MATCHES`
   - `core/toolruntime/executor_audit.go` records tool execution attempts in the backend.
   - `core/app/ai_terminal_command.go` records the explain step as `agent.terminal_command`.
-  - The current `/run` UI passes `approval_used:true` on the approved explain path, matching the documented audit chain.
+  - `core/app/ai_terminal_command.go` derives explain `approval_used` from the matching `term.send_input` audit event instead of trusting client input.
 
 - `2.6 Agent contract` -> `MATCHES`
   - The agent selection store is used as the executor's policy-profile provider.
@@ -288,10 +287,6 @@ User input:
   - The local `/run` prompt echo and the local execution-result message are not written into `core/conversation.Service`.
   - Conversation persistence keeps the assistant explanation message only.
   - Reconstructing the full `/run` exchange requires frontend local state, terminal state, and/or audit records.
-
-- Explain-step approval audit depends on frontend input.
-  - `core/app/ai_terminal_command.go` writes `approval_used` from the explain request payload.
-  - The explain handler does not derive `approval_used` from the tool-runtime audit chain on its own.
 
 ## 5. Non-goals
 
