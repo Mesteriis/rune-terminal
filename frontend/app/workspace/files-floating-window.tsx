@@ -55,6 +55,15 @@ function quotePathForShell(path: string): string {
     return `'${path.replaceAll("'", `'\\''`)}'`;
 }
 
+function buildRunPromptFromSelection(currentInput: string, filePath: string): string {
+    const trimmedInput = currentInput.trim();
+    const quotedPath = quotePathForShell(filePath);
+    if (trimmedInput.startsWith("/run ") || trimmedInput.startsWith("run:")) {
+        return `${trimmedInput} ${quotedPath}`;
+    }
+    return `/run cat ${quotedPath}`;
+}
+
 const FilesFloatingWindow = memo(({ isOpen, onClose, referenceElement }: FloatingWindowProps) => {
     const [path, setPath] = useState("");
     const [directories, setDirectories] = useState<FSNode[]>([]);
@@ -70,6 +79,7 @@ const FilesFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floatin
     const [attachStatus, setAttachStatus] = useState<string | null>(null);
     const [attachError, setAttachError] = useState<string | null>(null);
     const [attachBusy, setAttachBusy] = useState(false);
+    const [runPromptPreview, setRunPromptPreview] = useState<string | null>(null);
 
     const { refs, floatingStyles, context } = useFloating({
         open: isOpen,
@@ -96,6 +106,7 @@ const FilesFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floatin
         setPreviewError(null);
         setAttachStatus(null);
         setAttachError(null);
+        setRunPromptPreview(null);
         try {
             const facade = await getFSFacade();
             const response = await facade.list(nextPath);
@@ -126,6 +137,7 @@ const FilesFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floatin
             await model.addReferencedFile(attachmentFile, reference, reference.path);
             WorkspaceLayoutModel.getInstance().setAIPanelVisible(true);
             setAttachStatus(`Attached to AI context: ${reference.name}`);
+            setRunPromptPreview(null);
         } catch (error) {
             setAttachError(error instanceof Error ? error.message : String(error));
         } finally {
@@ -142,21 +154,19 @@ const FilesFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floatin
         model.focusInput();
         setAttachStatus("Inserted selected path into AI composer input.");
         setAttachError(null);
+        setRunPromptPreview(null);
     };
 
     const insertSelectedPathInRunPrompt = (filePath: string) => {
         const model = WaveAIModel.getInstance();
-        const currentInput = globalStore.get(model.inputAtom)?.trim() ?? "";
-        const quotedPath = quotePathForShell(filePath);
-        const nextInput =
-            currentInput.startsWith("/run ") || currentInput.startsWith("run:")
-                ? `${currentInput} ${quotedPath}`
-                : `/run cat ${quotedPath}`;
+        const currentInput = globalStore.get(model.inputAtom) ?? "";
+        const nextInput = buildRunPromptFromSelection(currentInput, filePath);
         globalStore.set(model.inputAtom, nextInput);
         WorkspaceLayoutModel.getInstance().setAIPanelVisible(true);
         model.focusInput();
-        setAttachStatus("Prepared /run prompt with selected file path. Review before sending.");
+        setAttachStatus("Prepared /run prompt with selected file path. Nothing was executed automatically.");
         setAttachError(null);
+        setRunPromptPreview(nextInput);
     };
 
     const loadFilePreview = async (filePath: string) => {
@@ -176,13 +186,14 @@ const FilesFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floatin
             setPreviewTruncated(response.truncated === true);
         } catch (error) {
             setPreviewText("");
-            setPreviewAvailable(false);
-            setPreviewTruncated(false);
-            setPreviewError(error instanceof Error ? error.message : String(error));
-            clearActiveFilePath();
-        } finally {
-            setPreviewLoading(false);
-        }
+        setPreviewAvailable(false);
+        setPreviewTruncated(false);
+        setPreviewError(error instanceof Error ? error.message : String(error));
+        clearActiveFilePath();
+        setRunPromptPreview(null);
+    } finally {
+        setPreviewLoading(false);
+    }
     };
 
     useEffect(() => {
@@ -303,6 +314,14 @@ const FilesFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floatin
                                 Use Selected Path In /run Prompt
                             </button>
                         </div>
+                        {runPromptPreview ? (
+                            <>
+                                <div className="mt-2 text-[11px] text-secondary">Prepared /run prompt (not sent)</div>
+                                <pre className="text-xs whitespace-pre-wrap break-words text-white/90 border border-border rounded px-2 py-1.5 mt-1 bg-black/20">
+                                    {runPromptPreview}
+                                </pre>
+                            </>
+                        ) : null}
                         <div className="mt-2 text-[11px] text-secondary">Preview (text, bounded)</div>
                         <div className="border border-border rounded mt-1 p-2 max-h-[9rem] overflow-auto bg-black/20">
                             {previewLoading ? (
