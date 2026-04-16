@@ -158,6 +158,7 @@ def wait_for_terminal_output(
     widget_id: str,
     from_seq: int,
     expected_substring: str,
+    min_occurrences: int = 1,
     timeout_seconds: int = 10,
 ) -> dict[str, Any]:
     deadline = time.time() + timeout_seconds
@@ -171,7 +172,7 @@ def wait_for_terminal_output(
         if response.status == 200:
             chunks = response.body.get("chunks") or []
             output = "".join(str(chunk.get("data") or "") for chunk in chunks)
-            if expected_substring in output:
+            if output.count(expected_substring) >= min_occurrences:
                 return response.body
         time.sleep(0.25)
     raise AssertionError(f"terminal output did not contain {expected_substring!r} in time")
@@ -304,6 +305,7 @@ def run_validation() -> dict[str, Any]:
             widget_id="term-main",
             from_seq=from_seq,
             expected_substring="workspace-nav-file-ok",
+            min_occurrences=2,
         )
         assert isinstance(terminal_after.get("state"), dict), terminal_after
         assert isinstance(terminal_after.get("chunks"), list), terminal_after
