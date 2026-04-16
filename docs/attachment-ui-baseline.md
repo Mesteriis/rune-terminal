@@ -44,6 +44,20 @@ UI flow:
 - If selected file is not resolvable against `repo_root`, attach step fails with backend error (`attachment not found`) even though user performed a valid file pick action.
 - Error is visible, but cause is not explicit in UI (path-resolution/runtime constraint is implicit).
 
+## Render truth gaps
+
+1. Stale/missing attachment state is only shown as a top-level error banner.
+   - The selected attachment chip itself remains visually normal (no stale marker).
+   - The send action remains available with the stale chip still present, which can lead to repeated failed submits.
+
+2. Unsupported/binary selection through file picker is not rendered as an in-panel user message.
+   - In observed browser-dev path, unsupported files are rejected by file input constraints.
+   - No explicit AI panel status element is shown for that rejection; only console warning noise was observed.
+
+3. Transcript attachment chip rendering is generic for all attachment kinds.
+   - It does not currently communicate that some file types may be metadata-only in provider context (no text excerpt ingestion).
+   - It does not currently communicate local-reference constraints directly on the chip.
+
 ## Slice boundary
 
 - No preview system.
