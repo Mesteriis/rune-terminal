@@ -1031,24 +1031,7 @@ export class TermWrap {
             return null;
         }
 
-        if (this.activeSessionId != null && this.activeSessionId != snapshot.state.session_id) {
-            this.flushOutputBuffer();
-            this.terminal.clear();
-            this.ptyOffset = 0;
-            this.dataBytesProcessed = 0;
-            this.outputBuffer = [];
-            this.outputBatchStartTs = null;
-            this.outputBufferedBytes = 0;
-            this.outputBufferHasNewline = false;
-            this.outputBufferHasEscape = false;
-            this.outputBufferHasCarriageReturn = false;
-        }
-
-        this.activeSessionId = snapshot.state.session_id;
-        this.lastAppliedSnapshotSeq = snapshot.next_seq;
-        for (const chunk of snapshot.chunks) {
-            await this.handleTerminalChunk(chunk);
-        }
+        await this.replayTerminalSnapshot(snapshot, true);
         console.log(`terminal loaded ${snapshot.chunks.length} chunks, ${Date.now() - startTs}ms`);
 
         return snapshot;
@@ -1058,26 +1041,7 @@ export class TermWrap {
         if (snapshot == null) {
             return;
         }
-        const snapshotSessionId = snapshot.state?.session_id ?? null;
-        if (snapshotSessionId != null && this.activeSessionId != null && this.activeSessionId !== snapshotSessionId) {
-            this.flushOutputBuffer();
-            this.terminal.clear();
-            this.ptyOffset = 0;
-            this.dataBytesProcessed = 0;
-            this.outputBuffer = [];
-            this.outputBatchStartTs = null;
-            this.outputBufferedBytes = 0;
-            this.outputBufferHasNewline = false;
-            this.outputBufferHasEscape = false;
-            this.outputBufferHasCarriageReturn = false;
-            this.lastAppliedSnapshotSeq = 0;
-        }
-
-        this.activeSessionId = snapshotSessionId;
-        this.lastAppliedSnapshotSeq = snapshot.next_seq;
-        for (const chunk of snapshot.chunks) {
-            await this.handleTerminalChunk(chunk);
-        }
+        await this.replayTerminalSnapshot(snapshot, false);
     }
 
     private async handleTerminalChunk(chunk: TerminalOutputChunk): Promise<void> {
@@ -1091,6 +1055,43 @@ export class TermWrap {
 
     private writeChunkBuffered(data: Uint8Array): Promise<void> {
         return this.queueBufferedWrite(data);
+    }
+
+    private async replayTerminalSnapshot(snapshot: TerminalSnapshot, resetForInitialLoad: boolean): Promise<void> {
+        const snapshotSessionId = snapshot.state?.session_id ?? null;
+        const sessionChanged = snapshotSessionId != null && this.activeSessionId != null && this.activeSessionId !== snapshotSessionId;
+        if (sessionChanged) {
+            this.resetTerminalReplayState();
+        }
+
+        const replayFromSeq = resetForInitialLoad || sessionChanged ? 0 : this.lastAppliedSnapshotSeq;
+        if (!resetForInitialLoad && !sessionChanged && snapshot.next_seq <= this.lastAppliedSnapshotSeq) {
+            this.activeSessionId = snapshotSessionId;
+            return;
+        }
+
+        this.activeSessionId = snapshotSessionId;
+        for (const chunk of snapshot.chunks) {
+            if (chunk.seq < replayFromSeq) {
+                continue;
+            }
+            await this.handleTerminalChunk(chunk);
+        }
+        this.lastAppliedSnapshotSeq = Math.max(this.lastAppliedSnapshotSeq, snapshot.next_seq);
+    }
+
+    private resetTerminalReplayState(): void {
+        this.flushOutputBuffer();
+        this.terminal.clear();
+        this.ptyOffset = 0;
+        this.dataBytesProcessed = 0;
+        this.outputBuffer = [];
+        this.outputBatchStartTs = null;
+        this.outputBufferedBytes = 0;
+        this.outputBufferHasNewline = false;
+        this.outputBufferHasEscape = false;
+        this.outputBufferHasCarriageReturn = false;
+        this.lastAppliedSnapshotSeq = 0;
     }
 
     private queueBufferedWrite(data: Uint8Array): Promise<void> {
