@@ -40,8 +40,6 @@ import {
 import { handleWaveAIContextMenu } from "./aipanel-contextmenu";
 import type { WaveUIMessage } from "./aitypes";
 import {
-    buildRunCommandExplanationFallbackMessage,
-    createTranscriptTextMessage,
     executeRunCommandPrompt,
     explainRunCommandPrompt,
     parseRunCommandPrompt,
@@ -392,7 +390,6 @@ const AIPanelCompatInner = memo(() => {
             approvalUsed?: boolean;
             executionResult: Extract<Awaited<ReturnType<typeof executeRunCommandPrompt>>, { kind: "executed" }>;
         }) => {
-            setMessages((previous) => [...previous, options.executionResult.resultMessage]);
             try {
                 const explanationResponse = await explainRunCommandPrompt({
                     conversationFacade: options.conversationFacade,
@@ -406,17 +403,18 @@ const AIPanelCompatInner = memo(() => {
                 setProviderLabel(formatProviderLabel(explanationResponse.conversation.provider));
                 setMessages(mapConversationSnapshot(explanationResponse.conversation));
             } catch (error) {
-                setMessages((previous) => [
-                    ...previous,
-                    buildRunCommandExplanationFallbackMessage(
-                        options.command,
-                        options.executionResult.outputExcerpt,
-                        error instanceof Error ? error.message : String(error),
-                    ),
-                ]);
+                try {
+                    const snapshotResponse = await options.conversationFacade.getSnapshot();
+                    setProviderLabel(formatProviderLabel(snapshotResponse.conversation.provider));
+                    setMessages(mapConversationSnapshot(snapshotResponse.conversation));
+                } catch {
+                    // Keep the latest rendered transcript if snapshot refresh also fails.
+                }
+                const details = error instanceof Error ? error.message : String(error);
+                model.setError(`Explanation unavailable for \`${options.command}\`: ${details}`);
             }
         },
-        [],
+        [model],
     );
 
     const handleConfirmRunApproval = useCallback(
@@ -564,7 +562,6 @@ const AIPanelCompatInner = memo(() => {
                 }
                 if (runCommand?.kind === "run") {
                     const [toolsFacade, terminalFacade] = await Promise.all([getToolsFacade(), getTerminalFacade()]);
-                    setMessages((previous) => [...previous, createTranscriptTextMessage("user", runCommand.prompt)]);
                     globalStore.set(model.inputAtom, "");
                     model.clearFiles();
                     const executionResult = await executeRunCommandPrompt({
