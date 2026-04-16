@@ -54,11 +54,15 @@ func NewRuntime(repoRoot string, stateDir string) (*Runtime, error) {
 	if err != nil {
 		return nil, err
 	}
+	workspaceSnapshot, err := workspace.LoadSnapshot(paths.WorkspaceFile, workspace.BootstrapDefault())
+	if err != nil {
+		return nil, err
+	}
 
 	runtime := &Runtime{
 		RepoRoot:     repoRoot,
 		Paths:        paths,
-		Workspace:    workspace.NewService(workspace.BootstrapDefault()),
+		Workspace:    workspace.NewService(workspaceSnapshot),
 		Terminals:    terminal.NewService(terminal.DefaultLauncher()),
 		Connections:  connectionStore,
 		Agent:        agentStore,
@@ -75,6 +79,9 @@ func NewRuntime(repoRoot string, stateDir string) (*Runtime, error) {
 		runtime.Audit,
 		toolruntime.WithPluginInvoker(runtime.Plugins),
 	)
+	if err := runtime.persistWorkspaceSnapshot(runtime.Workspace.Snapshot()); err != nil {
+		return nil, err
+	}
 
 	if err := runtime.bootstrapSessions(context.Background()); err != nil {
 		return nil, err

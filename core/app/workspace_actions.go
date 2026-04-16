@@ -48,14 +48,22 @@ func (r *Runtime) FocusWidget(widgetID string) (workspace.Snapshot, error) {
 	if _, err := r.Workspace.FocusWidget(widgetID); err != nil {
 		return workspace.Snapshot{}, err
 	}
-	return r.Workspace.Snapshot(), nil
+	snapshot := r.Workspace.Snapshot()
+	if err := r.persistWorkspaceSnapshot(snapshot); err != nil {
+		return workspace.Snapshot{}, err
+	}
+	return snapshot, nil
 }
 
 func (r *Runtime) FocusTab(tabID string) (workspace.Snapshot, error) {
 	if _, err := r.Workspace.FocusTab(tabID); err != nil {
 		return workspace.Snapshot{}, err
 	}
-	return r.Workspace.Snapshot(), nil
+	snapshot := r.Workspace.Snapshot()
+	if err := r.persistWorkspaceSnapshot(snapshot); err != nil {
+		return workspace.Snapshot{}, err
+	}
+	return snapshot, nil
 }
 
 func (r *Runtime) RenameTab(tabID string, title string) (WorkspaceTabResult, error) {
@@ -63,7 +71,11 @@ func (r *Runtime) RenameTab(tabID string, title string) (WorkspaceTabResult, err
 	if err != nil {
 		return WorkspaceTabResult{}, err
 	}
-	return WorkspaceTabResult{Tab: tab, Workspace: r.Workspace.Snapshot()}, nil
+	snapshot := r.Workspace.Snapshot()
+	if err := r.persistWorkspaceSnapshot(snapshot); err != nil {
+		return WorkspaceTabResult{}, err
+	}
+	return WorkspaceTabResult{Tab: tab, Workspace: snapshot}, nil
 }
 
 func (r *Runtime) SetTabPinned(tabID string, pinned bool) (WorkspaceTabResult, error) {
@@ -71,11 +83,22 @@ func (r *Runtime) SetTabPinned(tabID string, pinned bool) (WorkspaceTabResult, e
 	if err != nil {
 		return WorkspaceTabResult{}, err
 	}
-	return WorkspaceTabResult{Tab: tab, Workspace: r.Workspace.Snapshot()}, nil
+	snapshot := r.Workspace.Snapshot()
+	if err := r.persistWorkspaceSnapshot(snapshot); err != nil {
+		return WorkspaceTabResult{}, err
+	}
+	return WorkspaceTabResult{Tab: tab, Workspace: snapshot}, nil
 }
 
 func (r *Runtime) MoveTab(tabID string, beforeTabID string) (workspace.Snapshot, error) {
-	return r.Workspace.MoveTab(tabID, beforeTabID)
+	snapshot, err := r.Workspace.MoveTab(tabID, beforeTabID)
+	if err != nil {
+		return workspace.Snapshot{}, err
+	}
+	if err := r.persistWorkspaceSnapshot(snapshot); err != nil {
+		return workspace.Snapshot{}, err
+	}
+	return snapshot, nil
 }
 
 func (r *Runtime) CreateTerminalTab(ctx context.Context, title string) (CreateTerminalTabResult, error) {
@@ -215,6 +238,11 @@ func (r *Runtime) CreateTerminalTabWithConnection(ctx context.Context, title str
 			ConnectionID: connectionID,
 		},
 	)
+	if err := r.persistWorkspaceSnapshot(snapshot); err != nil {
+		_ = r.Terminals.CloseSession(widgetID)
+		_, _ = r.Workspace.CloseTab(tabID)
+		return CreateTerminalTabResult{}, err
+	}
 	return CreateTerminalTabResult{
 		TabID:     tabID,
 		WidgetID:  widgetID,
@@ -246,6 +274,9 @@ func (r *Runtime) CloseTab(tabID string) (CloseTabResult, error) {
 	}
 	nextSnapshot, err := r.Workspace.CloseTab(tabID)
 	if err != nil {
+		return CloseTabResult{}, err
+	}
+	if err := r.persistWorkspaceSnapshot(nextSnapshot); err != nil {
 		return CloseTabResult{}, err
 	}
 	return CloseTabResult{
