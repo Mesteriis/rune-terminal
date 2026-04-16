@@ -77,3 +77,21 @@ Date: `2026-04-16`
 - No feature work.
 - No broad cleanup.
 - No architecture changes.
+
+## After lint reduction
+
+- Commands re-run:
+  - `npm --prefix frontend run lint -- --format json -o /tmp/runa-eslint-after-phase2.json`
+  - `cd frontend && npx eslint app/workspace app/tab app/aipanel compat rterm-api app/window app/app.tsx wave.ts app/view/term/compat-terminal.tsx --format json -o /tmp/runa-eslint-release-scope-after-phase2.json`
+  - `npm run validate`
+- Full frontend lint status after Slice 2.1 changes:
+  - `errors`: `630` (was `849`, delta `-219`)
+  - `warnings`: `151` (was `152`, delta `-1`)
+- Active release-scope lint status:
+  - `errors`: `0`
+  - `warnings`: `15`
+- `npm run validate` status after reduction:
+  - `FAILED` (still stops at `lint:frontend`, now with `781 problems (630 errors, 151 warnings)`).
+- Material improvement achieved:
+  - high-value active paths moved to `0` lint errors
+  - repo-wide lint debt remains the only red surface preventing green `validate`.
