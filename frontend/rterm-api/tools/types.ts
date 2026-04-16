@@ -3,6 +3,7 @@ export type ToolErrorCode =
   | "not_found"
   | "policy_denied"
   | "approval_required"
+  | "approval_mismatch"
   | "internal_error"
   | (string & {});
 
