@@ -87,6 +87,7 @@ const (
 	ErrorCodePolicyDenied     ErrorCode = "policy_denied"
 	ErrorCodeApprovalRequired ErrorCode = "approval_required"
 	ErrorCodeApprovalMismatch ErrorCode = "approval_mismatch"
+	ErrorCodePluginFailure    ErrorCode = "plugin_failure"
 	ErrorCodeInternalError    ErrorCode = "internal_error"
 )
 

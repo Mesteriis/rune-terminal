@@ -42,3 +42,20 @@ Date: `2026-04-16`
 - Plugin exit before a valid response is treated as execution failure.
 - Malformed handshake or response payload is treated as execution failure.
 - Core does not silently fallback to success when protocol exchange is invalid.
+
+## Plugin error taxonomy
+
+Core classifies plugin-runtime failures with explicit codes:
+
+- `launch_failed`
+- `handshake_failed`
+- `timeout`
+- `crashed`
+- `malformed_response`
+- `tool_not_exposed`
+- `protocol_version_mismatch`
+
+Additional contract checks tied to this taxonomy:
+
+- handshake `manifest.protocol_version` must match requested protocol
+- requested runtime tool must exist in `manifest.exposed_tools`

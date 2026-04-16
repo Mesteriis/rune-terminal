@@ -28,6 +28,10 @@ func InternalError(message string, err error) error {
 	return &codedError{code: ErrorCodeInternalError, message: message, err: err}
 }
 
+func PluginFailureError(message string, err error) error {
+	return &codedError{code: ErrorCodePluginFailure, message: message, err: err}
+}
+
 func ErrorCodeOf(err error) ErrorCode {
 	var coded *codedError
 	if errors.As(err, &coded) {

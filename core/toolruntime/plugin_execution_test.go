@@ -143,6 +143,30 @@ func TestExecutorMapsPluginExecutionErrorCodes(t *testing.T) {
 	}
 }
 
+func TestExecutorMapsPluginFailureTaxonomyToPluginFailureErrorCode(t *testing.T) {
+	t.Parallel()
+
+	executor := newPluginBackedExecutor(t, &capturingPluginInvoker{
+		err: &plugins.FailureError{
+			Code:     plugins.FailureCodeTimeout,
+			PluginID: "example-plugin",
+			Message:  "plugin handshake timed out",
+			Cause:    plugins.ErrPluginTimeout,
+		},
+	})
+	response := executor.Execute(context.Background(), ExecuteRequest{
+		ToolName: "plugin.example_echo",
+		Input:    json.RawMessage(`{"text":"hello"}`),
+	}, policy.EvaluationProfile{})
+
+	if response.Status != "error" || response.ErrorCode != ErrorCodePluginFailure {
+		t.Fatalf("expected plugin_failure response, got %#v", response)
+	}
+	if !strings.Contains(response.Error, "plugin timeout") {
+		t.Fatalf("expected plugin taxonomy in error message, got %q", response.Error)
+	}
+}
+
 func TestPluginBackedExecutionRequiresApprovalBeforePluginInvoke(t *testing.T) {
 	t.Parallel()
 

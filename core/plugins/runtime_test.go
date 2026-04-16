@@ -462,6 +462,85 @@ func TestInvokeFailsWhenPluginDoesNotExitWithinTeardownTimeout(t *testing.T) {
 	}
 }
 
+func TestInvokeReturnsProtocolVersionMismatchFailureCode(t *testing.T) {
+	t.Parallel()
+
+	runtime := NewRuntime(scriptedSpawner{
+		script: func(stdin io.Reader, stdout io.Writer) error {
+			reader := bufio.NewReader(stdin)
+			var handshakeReq PluginHandshakeRequest
+			if err := scriptReadJSONLine(reader, &handshakeReq); err != nil {
+				return err
+			}
+			return scriptWriteJSONLine(stdout, PluginHandshakeResponse{
+				Type: MessageTypeHandshake,
+				Manifest: PluginManifest{
+					PluginID:        "example-plugin",
+					PluginVersion:   "1.0.0",
+					ProtocolVersion: "rterm.plugin.v0",
+					ExposedTools:    []string{"plugin.example"},
+				},
+			})
+		},
+	}, time.Second)
+
+	_, err := runtime.Invoke(context.Background(), PluginSpec{
+		Name: "example-plugin",
+		Process: ProcessConfig{
+			Command: "scripted",
+		},
+		Protocol: ProtocolVersionV1,
+	}, InvokeRequest{
+		ToolName: "plugin.example",
+	})
+	failure, ok := AsFailure(err)
+	if !ok {
+		t.Fatalf("expected FailureError, got %T (%v)", err, err)
+	}
+	if failure.Code != FailureCodeProtocolVersionMismatch {
+		t.Fatalf("expected protocol_version_mismatch, got %s", failure.Code)
+	}
+}
+
+func TestInvokeReturnsToolNotExposedFailureCode(t *testing.T) {
+	t.Parallel()
+
+	runtime := NewRuntime(scriptedSpawner{
+		script: func(stdin io.Reader, stdout io.Writer) error {
+			reader := bufio.NewReader(stdin)
+			var handshakeReq PluginHandshakeRequest
+			if err := scriptReadJSONLine(reader, &handshakeReq); err != nil {
+				return err
+			}
+			return scriptWriteJSONLine(stdout, PluginHandshakeResponse{
+				Type: MessageTypeHandshake,
+				Manifest: PluginManifest{
+					PluginID:        "example-plugin",
+					PluginVersion:   "1.0.0",
+					ProtocolVersion: ProtocolVersionV1,
+					ExposedTools:    []string{"plugin.other_tool"},
+				},
+			})
+		},
+	}, time.Second)
+
+	_, err := runtime.Invoke(context.Background(), PluginSpec{
+		Name: "example-plugin",
+		Process: ProcessConfig{
+			Command: "scripted",
+		},
+	}, InvokeRequest{
+		ToolName: "plugin.example",
+	})
+	failure, ok := AsFailure(err)
+	if !ok {
+		t.Fatalf("expected FailureError, got %T (%v)", err, err)
+	}
+	if failure.Code != FailureCodeToolNotExposed {
+		t.Fatalf("expected tool_not_exposed, got %s", failure.Code)
+	}
+}
+
 type scriptedSpawner struct {
 	script func(stdin io.Reader, stdout io.Writer) error
 }

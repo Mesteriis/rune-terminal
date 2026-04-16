@@ -73,6 +73,8 @@ func statusForExecuteError(code toolruntime.ErrorCode) int {
 		return http.StatusForbidden
 	case toolruntime.ErrorCodeNotFound:
 		return http.StatusNotFound
+	case toolruntime.ErrorCodePluginFailure:
+		return http.StatusBadGateway
 	default:
 		return http.StatusInternalServerError
 	}

@@ -202,3 +202,11 @@ func TestStatusForExecuteErrorReturnsForbiddenForApprovalMismatch(t *testing.T) 
 		t.Fatalf("expected 403, got %d", got)
 	}
 }
+
+func TestStatusForExecuteErrorReturnsBadGatewayForPluginFailure(t *testing.T) {
+	t.Parallel()
+
+	if got := statusForExecuteError(toolruntime.ErrorCodePluginFailure); got != http.StatusBadGateway {
+		t.Fatalf("expected 502, got %d", got)
+	}
+}

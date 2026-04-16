@@ -51,6 +51,14 @@ func (e *Executor) executePrepared(ctx context.Context, prepared *preparedExecut
 }
 
 func normalizePluginError(err error) error {
+	if failure, ok := plugins.AsFailure(err); ok {
+		message := "plugin " + string(failure.Code)
+		if failure.Message != "" {
+			message += ": " + failure.Message
+		}
+		return PluginFailureError(message, err)
+	}
+
 	var executionErr *plugins.ExecutionError
 	if errors.As(err, &executionErr) {
 		switch executionErr.Code {

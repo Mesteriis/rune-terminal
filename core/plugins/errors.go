@@ -10,6 +10,59 @@ var (
 	ErrMalformedPluginOutput = errors.New("plugin returned malformed output")
 )
 
+type FailureCode string
+
+const (
+	FailureCodeLaunchFailed            FailureCode = "launch_failed"
+	FailureCodeHandshakeFailed         FailureCode = "handshake_failed"
+	FailureCodeTimeout                 FailureCode = "timeout"
+	FailureCodeCrashed                 FailureCode = "crashed"
+	FailureCodeMalformedResponse       FailureCode = "malformed_response"
+	FailureCodeToolNotExposed          FailureCode = "tool_not_exposed"
+	FailureCodeProtocolVersionMismatch FailureCode = "protocol_version_mismatch"
+)
+
+type FailureError struct {
+	Code     FailureCode
+	PluginID string
+	Message  string
+	Cause    error
+}
+
+func (e *FailureError) Error() string {
+	if e == nil {
+		return ""
+	}
+	if e.Message == "" {
+		return string(e.Code)
+	}
+	return string(e.Code) + ": " + e.Message
+}
+
+func (e *FailureError) Unwrap() error {
+	if e == nil {
+		return nil
+	}
+	return e.Cause
+}
+
+func AsFailure(err error) (*FailureError, bool) {
+	var failure *FailureError
+	if !errors.As(err, &failure) {
+		return nil, false
+	}
+	return failure, true
+}
+
+func newFailure(code FailureCode, pluginID string, message string, cause error) error {
+	return &FailureError{
+		Code:     code,
+		PluginID: pluginID,
+		Message:  message,
+		Cause:    cause,
+	}
+}
+
 type ExecutionError struct {
 	PluginName string
 	Code       string

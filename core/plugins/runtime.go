@@ -55,10 +55,12 @@ func (r *Runtime) Invoke(ctx context.Context, spec PluginSpec, request InvokeReq
 	spawnStartedAt := time.Now()
 	process, err := r.spawner.Spawn(invokeCtx, spec.Process)
 	if err != nil {
-		if errors.Is(err, ErrProcessSpawnFailed) {
-			return InvokeResult{}, err
-		}
-		return InvokeResult{}, fmt.Errorf("%w: %v", ErrProcessSpawnFailed, err)
+		return InvokeResult{}, newFailure(
+			FailureCodeLaunchFailed,
+			spec.Name,
+			"failed to start plugin process",
+			fmt.Errorf("%w: %v", ErrProcessSpawnFailed, err),
+		)
 	}
 	if startupDuration := time.Since(spawnStartedAt); startupDuration > r.launchTimeout(spec) {
 		waitCh := make(chan error, 1)
@@ -66,10 +68,11 @@ func (r *Runtime) Invoke(ctx context.Context, spec PluginSpec, request InvokeReq
 			waitCh <- process.Wait()
 		}()
 		r.killAndWait(process, waitCh)
-		return InvokeResult{}, fmt.Errorf(
-			"%w: process startup exceeded %s",
+		return InvokeResult{}, newFailure(
+			FailureCodeLaunchFailed,
+			spec.Name,
+			fmt.Sprintf("process startup exceeded %s", r.launchTimeout(spec)),
 			ErrProcessSpawnFailed,
-			r.launchTimeout(spec),
 		)
 	}
 
@@ -87,7 +90,12 @@ func (r *Runtime) Invoke(ctx context.Context, spec PluginSpec, request InvokeReq
 	select {
 	case <-invokeCtx.Done():
 		r.killAndWait(process, waitCh)
-		return InvokeResult{}, fmt.Errorf("%w: %v", ErrPluginTimeout, invokeCtx.Err())
+		return InvokeResult{}, newFailure(
+			FailureCodeTimeout,
+			spec.Name,
+			"plugin invocation timed out",
+			fmt.Errorf("%w: %v", ErrPluginTimeout, invokeCtx.Err()),
+		)
 	case outcome := <-exchangeCh:
 		if outcome.err != nil {
 			r.killAndWait(process, waitCh)
@@ -161,17 +169,27 @@ func (r *Runtime) exchangeProtocol(process Process, spec PluginSpec, request Inv
 		Type:            MessageTypeHandshake,
 		ProtocolVersion: protocolVersion,
 	}); err != nil {
-		return InvokeResult{}, fmt.Errorf("%w: failed to write handshake: %v", ErrPluginProcessCrashed, err)
+		return InvokeResult{}, newFailure(
+			FailureCodeHandshakeFailed,
+			spec.Name,
+			"failed to write handshake request to plugin",
+			fmt.Errorf("%w: failed to write handshake: %v", ErrPluginProcessCrashed, err),
+		)
 	}
 
 	var handshake PluginHandshakeResponse
 	if err := readJSONLineWithTimeout(reader, &handshake, r.handshakeTimeout(spec)); err != nil {
 		if errors.Is(err, ErrPluginTimeout) {
-			return InvokeResult{}, err
+			return InvokeResult{}, newFailure(
+				FailureCodeTimeout,
+				spec.Name,
+				"plugin handshake timed out",
+				err,
+			)
 		}
-		return InvokeResult{}, classifyProtocolReadError(err, "handshake")
+		return InvokeResult{}, classifyProtocolReadError(err, spec.Name, "handshake")
 	}
-	if err := validateHandshakeResponse(handshake, spec, protocolVersion); err != nil {
+	if err := validateHandshakeResponse(handshake, spec, protocolVersion, request.ToolName); err != nil {
 		return InvokeResult{}, err
 	}
 
@@ -187,14 +205,19 @@ func (r *Runtime) exchangeProtocol(process Process, spec PluginSpec, request Inv
 		Context:   request.Context,
 		Input:     input,
 	}); err != nil {
-		return InvokeResult{}, fmt.Errorf("%w: failed to write execute request: %v", ErrPluginProcessCrashed, err)
+		return InvokeResult{}, newFailure(
+			FailureCodeCrashed,
+			handshake.Manifest.PluginID,
+			"failed to write execute request to plugin",
+			fmt.Errorf("%w: %v", ErrPluginProcessCrashed, err),
+		)
 	}
 
 	var response PluginResponse
 	if err := readJSONLine(reader, &response); err != nil {
-		return InvokeResult{}, classifyProtocolReadError(err, "response")
+		return InvokeResult{}, classifyProtocolReadError(err, handshake.Manifest.PluginID, "response")
 	}
-	if err := validatePluginResponse(response, requestID); err != nil {
+	if err := validatePluginResponse(response, requestID, handshake.Manifest.PluginID); err != nil {
 		return InvokeResult{}, err
 	}
 
@@ -212,47 +235,115 @@ func (r *Runtime) exchangeProtocol(process Process, spec PluginSpec, request Inv
 	}, nil
 }
 
-func validateHandshakeResponse(response PluginHandshakeResponse, spec PluginSpec, expectedVersion string) error {
+func validateHandshakeResponse(
+	response PluginHandshakeResponse,
+	spec PluginSpec,
+	expectedVersion string,
+	requestedToolName string,
+) error {
 	if response.Type != MessageTypeHandshake {
-		return fmt.Errorf("%w: expected handshake message type", ErrMalformedPluginOutput)
+		return newFailure(
+			FailureCodeHandshakeFailed,
+			spec.Name,
+			"expected handshake message type",
+			ErrMalformedPluginOutput,
+		)
 	}
 	manifest := response.Manifest
 	if strings.TrimSpace(manifest.ProtocolVersion) != expectedVersion {
-		return fmt.Errorf("%w: protocol version mismatch", ErrMalformedPluginOutput)
+		return newFailure(
+			FailureCodeProtocolVersionMismatch,
+			manifest.PluginID,
+			fmt.Sprintf("expected protocol_version %q, got %q", expectedVersion, manifest.ProtocolVersion),
+			ErrMalformedPluginOutput,
+		)
 	}
 	if strings.TrimSpace(manifest.PluginID) == "" {
-		return fmt.Errorf("%w: plugin_id is required in handshake manifest", ErrMalformedPluginOutput)
+		return newFailure(
+			FailureCodeHandshakeFailed,
+			spec.Name,
+			"plugin_id is required in handshake manifest",
+			ErrMalformedPluginOutput,
+		)
 	}
 	if strings.TrimSpace(manifest.PluginVersion) == "" {
-		return fmt.Errorf("%w: plugin_version is required in handshake manifest", ErrMalformedPluginOutput)
+		return newFailure(
+			FailureCodeHandshakeFailed,
+			manifest.PluginID,
+			"plugin_version is required in handshake manifest",
+			ErrMalformedPluginOutput,
+		)
 	}
 	if len(manifest.ExposedTools) == 0 {
-		return fmt.Errorf("%w: exposed_tools is required in handshake manifest", ErrMalformedPluginOutput)
+		return newFailure(
+			FailureCodeHandshakeFailed,
+			manifest.PluginID,
+			"exposed_tools is required in handshake manifest",
+			ErrMalformedPluginOutput,
+		)
 	}
 	if strings.TrimSpace(spec.Name) != "" && manifest.PluginID != spec.Name {
-		return fmt.Errorf("%w: plugin_id does not match bound plugin spec", ErrMalformedPluginOutput)
+		return newFailure(
+			FailureCodeHandshakeFailed,
+			manifest.PluginID,
+			"plugin_id does not match bound plugin spec",
+			ErrMalformedPluginOutput,
+		)
+	}
+	if !containsString(manifest.ExposedTools, requestedToolName) {
+		return newFailure(
+			FailureCodeToolNotExposed,
+			manifest.PluginID,
+			"requested tool is not exposed by plugin manifest",
+			ErrMalformedPluginOutput,
+		)
 	}
 	return nil
 }
 
-func validatePluginResponse(response PluginResponse, expectedRequestID string) error {
+func validatePluginResponse(response PluginResponse, expectedRequestID string, pluginID string) error {
 	if response.Type != MessageTypeResponse {
-		return fmt.Errorf("%w: expected response message type", ErrMalformedPluginOutput)
+		return newFailure(
+			FailureCodeMalformedResponse,
+			pluginID,
+			"expected response message type",
+			ErrMalformedPluginOutput,
+		)
 	}
 	if response.RequestID != expectedRequestID {
-		return fmt.Errorf("%w: response request_id mismatch", ErrMalformedPluginOutput)
+		return newFailure(
+			FailureCodeMalformedResponse,
+			pluginID,
+			"response request_id mismatch",
+			ErrMalformedPluginOutput,
+		)
 	}
 	switch response.Status {
 	case PluginResponseStatusOK:
 		if response.Error != nil {
-			return fmt.Errorf("%w: success response must not include error payload", ErrMalformedPluginOutput)
+			return newFailure(
+				FailureCodeMalformedResponse,
+				pluginID,
+				"success response must not include error payload",
+				ErrMalformedPluginOutput,
+			)
 		}
 	case PluginResponseStatusError:
 		if response.Error == nil || strings.TrimSpace(response.Error.Message) == "" {
-			return fmt.Errorf("%w: error response requires error payload", ErrMalformedPluginOutput)
+			return newFailure(
+				FailureCodeMalformedResponse,
+				pluginID,
+				"error response requires error payload",
+				ErrMalformedPluginOutput,
+			)
 		}
 	default:
-		return fmt.Errorf("%w: unknown response status", ErrMalformedPluginOutput)
+		return newFailure(
+			FailureCodeMalformedResponse,
+			pluginID,
+			"unknown response status",
+			ErrMalformedPluginOutput,
+		)
 	}
 	return nil
 }
@@ -310,14 +401,40 @@ func writeJSONLine(writer io.Writer, value any) error {
 	return nil
 }
 
-func classifyProtocolReadError(err error, step string) error {
+func classifyProtocolReadError(err error, pluginID string, step string) error {
+	if failure, ok := AsFailure(err); ok {
+		return failure
+	}
 	if errors.Is(err, ErrMalformedPluginOutput) {
-		return err
+		return newFailure(
+			FailureCodeMalformedResponse,
+			pluginID,
+			fmt.Sprintf("plugin returned malformed %s payload", step),
+			err,
+		)
+	}
+	if errors.Is(err, ErrPluginTimeout) {
+		return newFailure(
+			FailureCodeTimeout,
+			pluginID,
+			fmt.Sprintf("plugin %s timed out", step),
+			err,
+		)
 	}
 	if errors.Is(err, io.EOF) {
-		return fmt.Errorf("%w: plugin closed stdout during %s", ErrPluginProcessCrashed, step)
+		return newFailure(
+			FailureCodeCrashed,
+			pluginID,
+			fmt.Sprintf("plugin closed stdout during %s", step),
+			fmt.Errorf("%w: plugin closed stdout during %s", ErrPluginProcessCrashed, step),
+		)
 	}
-	return fmt.Errorf("%w: failed to read %s: %v", ErrPluginProcessCrashed, step, err)
+	return newFailure(
+		FailureCodeCrashed,
+		pluginID,
+		fmt.Sprintf("failed to read %s from plugin", step),
+		fmt.Errorf("%w: failed to read %s: %v", ErrPluginProcessCrashed, step, err),
+	)
 }
 
 func (r *Runtime) killAndWait(process Process, waitCh <-chan error) {
@@ -342,14 +459,38 @@ func (r *Runtime) waitForExit(
 	select {
 	case waitErr := <-waitCh:
 		if waitErr != nil {
-			return fmt.Errorf("%w: %v", ErrPluginProcessCrashed, waitErr)
+			return newFailure(
+				FailureCodeCrashed,
+				"",
+				"plugin process exited with error",
+				fmt.Errorf("%w: %v", ErrPluginProcessCrashed, waitErr),
+			)
 		}
 		return nil
 	case <-timer.C:
 		r.killAndWait(process, waitCh)
-		return fmt.Errorf("%w: plugin did not exit within teardown timeout", ErrPluginProcessCrashed)
+		return newFailure(
+			FailureCodeCrashed,
+			"",
+			"plugin did not exit within teardown timeout",
+			ErrPluginProcessCrashed,
+		)
 	case <-invokeCtx.Done():
 		r.killAndWait(process, waitCh)
-		return fmt.Errorf("%w: %v", ErrPluginTimeout, invokeCtx.Err())
+		return newFailure(
+			FailureCodeTimeout,
+			"",
+			"plugin invocation timed out while waiting for process exit",
+			fmt.Errorf("%w: %v", ErrPluginTimeout, invokeCtx.Err()),
+		)
 	}
+}
+
+func containsString(values []string, expected string) bool {
+	for _, value := range values {
+		if value == expected {
+			return true
+		}
+	}
+	return false
 }
