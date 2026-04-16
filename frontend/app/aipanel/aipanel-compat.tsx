@@ -637,6 +637,7 @@ const AIPanelCompatInner = memo(() => {
                     widgetId: widgetID,
                     fromSeq: block.result.from_seq ?? 0,
                     commandAuditEventId: block.provenance.command_audit_event_id,
+                    executionBlockId: block.id,
                     context: {
                         workspace_id: workspaceScope || undefined,
                         active_widget_id: widgetID,

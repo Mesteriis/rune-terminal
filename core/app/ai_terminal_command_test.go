@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -109,6 +110,9 @@ func TestExplainTerminalCommandAppendsAssistantSummary(t *testing.T) {
 	}
 	if result.ExecutionBlockID == "" {
 		t.Fatal("expected execution block id")
+	}
+	if result.ExplainAuditEventID == "" {
+		t.Fatal("expected explain audit event id")
 	}
 	if result.Snapshot.Messages[0].Role != conversation.RoleUser {
 		t.Fatalf("expected persisted user run prompt, got %#v", result.Snapshot.Messages[0])
@@ -256,6 +260,127 @@ func TestExplainTerminalCommandUsesExplicitCommandAuditEventID(t *testing.T) {
 	}
 	if !events[2].ApprovalUsed {
 		t.Fatalf("expected explain audit approval_used=true from explicit command identity, got %#v", events[2])
+	}
+}
+
+func TestExplainTerminalCommandUpdatesExistingExecutionBlockByIdentity(t *testing.T) {
+	t.Parallel()
+
+	runtime := newExplainCommandTestRuntime(t, "identity-update\n")
+	if err := runtime.Audit.Append(audit.Event{
+		ID:              "audit_cmd",
+		ToolName:        "term.send_input",
+		Summary:         "send input to term_boot: echo identity-update",
+		WorkspaceID:     "ws-default",
+		AffectedWidgets: []string{"term_boot"},
+		Success:         true,
+	}); err != nil {
+		t.Fatalf("append command audit event: %v", err)
+	}
+
+	firstResult, err := runtime.ExplainTerminalCommand(context.Background(), ExplainTerminalCommandRequest{
+		Prompt:   "/run echo identity-update",
+		Command:  "echo identity-update",
+		WidgetID: "term_boot",
+		FromSeq:  0,
+	}, ConversationContext{
+		WorkspaceID:          "ws-default",
+		RepoRoot:             "/repo",
+		ActiveWidgetID:       "term_boot",
+		WidgetContextEnabled: true,
+	})
+	if err != nil {
+		t.Fatalf("first explain terminal command: %v", err)
+	}
+	if firstResult.ExecutionBlockID == "" {
+		t.Fatal("expected first execution block id")
+	}
+
+	secondResult, err := runtime.ExplainTerminalCommand(context.Background(), ExplainTerminalCommandRequest{
+		Prompt:              "Explain execution block command: echo identity-update",
+		Command:             "echo identity-update",
+		WidgetID:            "term_boot",
+		FromSeq:             0,
+		CommandAuditEventID: "audit_cmd",
+		ExecutionBlockID:    firstResult.ExecutionBlockID,
+	}, ConversationContext{
+		WorkspaceID:          "ws-default",
+		RepoRoot:             "/repo",
+		ActiveWidgetID:       "term_boot",
+		WidgetContextEnabled: true,
+	})
+	if err != nil {
+		t.Fatalf("second explain terminal command: %v", err)
+	}
+	if secondResult.ExecutionBlockID != firstResult.ExecutionBlockID {
+		t.Fatalf("expected same execution block id, first=%q second=%q", firstResult.ExecutionBlockID, secondResult.ExecutionBlockID)
+	}
+	if secondResult.CommandAuditEventID != "audit_cmd" {
+		t.Fatalf("expected explicit command audit identity, got %q", secondResult.CommandAuditEventID)
+	}
+	if secondResult.ExplainAuditEventID == "" {
+		t.Fatal("expected explain audit event id")
+	}
+
+	blocks := runtime.ListExecutionBlocks("ws-default", 10)
+	if len(blocks) != 1 {
+		t.Fatalf("expected one execution block after identity update, got %#v", blocks)
+	}
+	if blocks[0].ID != firstResult.ExecutionBlockID {
+		t.Fatalf("unexpected block id after update: %#v", blocks[0])
+	}
+	if blocks[0].Explain.MessageID == "" {
+		t.Fatalf("expected updated explain linkage, got %#v", blocks[0].Explain)
+	}
+	if blocks[0].Provenance.CommandAuditEventID != "audit_cmd" {
+		t.Fatalf("unexpected command provenance after update: %#v", blocks[0].Provenance)
+	}
+	if blocks[0].Provenance.ExplainAuditEventID != secondResult.ExplainAuditEventID {
+		t.Fatalf("unexpected explain provenance after update: %#v", blocks[0].Provenance)
+	}
+}
+
+func TestExplainTerminalCommandRejectsExecutionBlockIdentityMismatch(t *testing.T) {
+	t.Parallel()
+
+	runtime := newExplainCommandTestRuntime(t, "identity-mismatch\n")
+	block, err := runtime.Execution.Append(execution.Block{
+		Intent: execution.BlockIntent{
+			Prompt:  "/run echo different",
+			Command: "echo different",
+		},
+		Target: execution.BlockTarget{
+			WorkspaceID: "ws-default",
+			WidgetID:    "term_boot",
+		},
+		Result: execution.BlockResult{
+			State: execution.BlockStateExecuted,
+		},
+		Explain: execution.BlockExplain{
+			State: execution.ExplainStateFailed,
+		},
+	})
+	if err != nil {
+		t.Fatalf("append execution block: %v", err)
+	}
+
+	_, err = runtime.ExplainTerminalCommand(context.Background(), ExplainTerminalCommandRequest{
+		Prompt:           "Explain execution block command: echo identity-mismatch",
+		Command:          "echo identity-mismatch",
+		WidgetID:         "term_boot",
+		FromSeq:          0,
+		ExecutionBlockID: block.ID,
+	}, ConversationContext{
+		WorkspaceID:          "ws-default",
+		RepoRoot:             "/repo",
+		ActiveWidgetID:       "term_boot",
+		WidgetContextEnabled: true,
+	})
+	if err == nil {
+		t.Fatal("expected execution block identity mismatch error")
+	}
+	if !errors.Is(err, ErrExecutionBlockIdentityMismatch) {
+		t.Fatalf("expected ErrExecutionBlockIdentityMismatch, got %v", err)
 	}
 }
 

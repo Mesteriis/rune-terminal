@@ -79,6 +79,25 @@
 - Notes:
   - authenticated live-SSH remote reconnection across restart was not run in this pass; remote restore validation is grounded in explicit disconnected semantics with a missing-profile stale widget.
 
+<a id="structured-execution-action-truth"></a>
+## Structured execution action truth
+
+- Date: `2026-04-17`
+- Status: `VERIFIED (targeted)`
+- Validation steps:
+  - backend execution/explain/audit path:
+    - `./scripts/go.sh test ./core/app ./core/transport/httpapi ./core/execution -count=1` -> `ok`
+  - frontend compat path:
+    - `npm --prefix frontend run lint:active` -> `pass` (existing hook warnings unchanged)
+    - `npm --prefix frontend run build` -> `pass`
+    - `npm exec vitest run app/aipanel/run-command.test.ts --config vite.config.ts` (from `frontend/`) -> `pass`
+- Result:
+  - explain now supports explicit block identity (`execution_block_id`) and keeps one block identity when re-explaining from block actions.
+  - explain responses and block snapshots now carry `explain_audit_event_id` for coherent provenance.
+  - block explain identity mismatches are rejected explicitly (`execution_block_identity_mismatch`) instead of silently drifting provenance.
+- Notes:
+  - this run is targeted to execution-block action truth and does not claim headed browser validation; that is tracked separately in the browser validation slice.
+
 <a id="remote-restore-missing-profile-error"></a>
 ## Remote restore missing-profile error semantics
 

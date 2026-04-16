@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -19,6 +20,7 @@ type ExplainTerminalCommandRequest struct {
 	WidgetID            string `json:"widget_id,omitempty"`
 	FromSeq             uint64 `json:"from_seq,omitempty"`
 	CommandAuditEventID string `json:"command_audit_event_id,omitempty"`
+	ExecutionBlockID    string `json:"execution_block_id,omitempty"`
 }
 
 type ExplainTerminalCommandResult struct {
@@ -26,6 +28,7 @@ type ExplainTerminalCommandResult struct {
 	ProviderError       string                `json:"provider_error,omitempty"`
 	OutputExcerpt       string                `json:"output_excerpt,omitempty"`
 	CommandAuditEventID string                `json:"command_audit_event_id,omitempty"`
+	ExplainAuditEventID string                `json:"explain_audit_event_id,omitempty"`
 	ExecutionBlockID    string                `json:"execution_block_id,omitempty"`
 }
 
@@ -33,6 +36,11 @@ var ansiCSIPattern = regexp.MustCompile(`\x1b\[[0-?]*[ -/]*[@-~]`)
 
 const explainAuditScanLimit = 64
 const runCommandOutputEmptyMessage = "No terminal output was captured yet."
+
+var (
+	ErrExecutionBlockNotFound         = errors.New("execution block not found")
+	ErrExecutionBlockIdentityMismatch = errors.New("execution block identity mismatch")
+)
 
 func (r *Runtime) ExplainTerminalCommand(
 	ctx context.Context,
@@ -49,6 +57,31 @@ func (r *Runtime) ExplainTerminalCommand(
 	if err != nil {
 		return ExplainTerminalCommandResult{}, err
 	}
+	requestedBlockID := strings.TrimSpace(request.ExecutionBlockID)
+	if requestedBlockID != "" && r.Execution == nil {
+		return ExplainTerminalCommandResult{}, ErrExecutionBlockNotFound
+	}
+	var existingBlock execution.Block
+	hasExistingBlock := false
+	if requestedBlockID != "" {
+		existingBlock, hasExistingBlock = r.Execution.Get(requestedBlockID)
+		if !hasExistingBlock {
+			return ExplainTerminalCommandResult{}, ErrExecutionBlockNotFound
+		}
+		if strings.TrimSpace(existingBlock.Intent.Command) != command {
+			return ExplainTerminalCommandResult{}, ErrExecutionBlockIdentityMismatch
+		}
+		if strings.TrimSpace(existingBlock.Target.WidgetID) != "" &&
+			strings.TrimSpace(existingBlock.Target.WidgetID) != widgetID {
+			return ExplainTerminalCommandResult{}, ErrExecutionBlockIdentityMismatch
+		}
+		workspaceID := strings.TrimSpace(conversationContext.WorkspaceID)
+		if workspaceID != "" &&
+			strings.TrimSpace(existingBlock.Target.WorkspaceID) != "" &&
+			strings.TrimSpace(existingBlock.Target.WorkspaceID) != workspaceID {
+			return ExplainTerminalCommandResult{}, ErrExecutionBlockIdentityMismatch
+		}
+	}
 	snapshot, err := r.Terminals.Snapshot(widgetID, request.FromSeq)
 	if err != nil {
 		return ExplainTerminalCommandResult{}, err
@@ -61,6 +94,10 @@ func (r *Runtime) ExplainTerminalCommand(
 		conversationContext.WorkspaceID,
 	)
 	approvalUsed := auditMatch.ApprovalUsed
+	commandAuditEventID := auditMatch.EventID
+	if commandAuditEventID == "" && hasExistingBlock {
+		commandAuditEventID = strings.TrimSpace(existingBlock.Provenance.CommandAuditEventID)
+	}
 
 	if err := r.persistRunTranscriptActivity(prompt, command, outputExcerpt); err != nil {
 		return ExplainTerminalCommandResult{}, err
@@ -117,7 +154,7 @@ func (r *Runtime) ExplainTerminalCommand(
 			explainError = result.ProviderError
 		}
 		summary := strings.TrimSpace(result.Assistant.Content)
-		block, appendErr := r.Execution.Append(execution.Block{
+		executionBlock := execution.Block{
 			Intent: execution.BlockIntent{
 				Prompt:  prompt,
 				Command: command,
@@ -141,20 +178,38 @@ func (r *Runtime) ExplainTerminalCommand(
 				Error:     explainError,
 			},
 			Provenance: execution.BlockProvenance{
-				CommandAuditEventID: auditMatch.EventID,
+				CommandAuditEventID: commandAuditEventID,
+				ExplainAuditEventID: explainAuditEventID,
 			},
-		})
-		if appendErr != nil {
-			return ExplainTerminalCommandResult{}, appendErr
 		}
-		executionBlockID = block.ID
+		if hasExistingBlock {
+			executionBlock.ID = existingBlock.ID
+			executionBlock.Intent = existingBlock.Intent
+			executionBlock.Target = existingBlock.Target
+			executionBlock.Result = existingBlock.Result
+			block, replaced, replaceErr := r.Execution.Replace(executionBlock)
+			if replaceErr != nil {
+				return ExplainTerminalCommandResult{}, replaceErr
+			}
+			if !replaced {
+				return ExplainTerminalCommandResult{}, ErrExecutionBlockNotFound
+			}
+			executionBlockID = block.ID
+		} else {
+			block, appendErr := r.Execution.Append(executionBlock)
+			if appendErr != nil {
+				return ExplainTerminalCommandResult{}, appendErr
+			}
+			executionBlockID = block.ID
+		}
 	}
 
 	return ExplainTerminalCommandResult{
 		Snapshot:            result.Snapshot,
 		ProviderError:       result.ProviderError,
 		OutputExcerpt:       outputExcerpt,
-		CommandAuditEventID: auditMatch.EventID,
+		CommandAuditEventID: commandAuditEventID,
+		ExplainAuditEventID: explainAuditEventID,
 		ExecutionBlockID:    executionBlockID,
 	}, nil
 }

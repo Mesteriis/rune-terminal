@@ -32,13 +32,17 @@ func TestExecutionBlocksListAndGet(t *testing.T) {
 	}
 
 	var explainPayload struct {
-		ExecutionBlockID string `json:"execution_block_id"`
+		ExecutionBlockID    string `json:"execution_block_id"`
+		ExplainAuditEventID string `json:"explain_audit_event_id"`
 	}
 	if err := json.Unmarshal(explainRecorder.Body.Bytes(), &explainPayload); err != nil {
 		t.Fatalf("unmarshal explain payload: %v", err)
 	}
 	if explainPayload.ExecutionBlockID == "" {
 		t.Fatal("expected execution_block_id")
+	}
+	if explainPayload.ExplainAuditEventID == "" {
+		t.Fatal("expected explain_audit_event_id")
 	}
 
 	listRecorder := httptest.NewRecorder()
@@ -58,6 +62,9 @@ func TestExecutionBlocksListAndGet(t *testing.T) {
 			Result struct {
 				State string `json:"state"`
 			} `json:"result"`
+			Provenance struct {
+				ExplainAuditEventID string `json:"explain_audit_event_id"`
+			} `json:"provenance"`
 		} `json:"blocks"`
 	}
 	if err := json.Unmarshal(listRecorder.Body.Bytes(), &listPayload); err != nil {
@@ -74,6 +81,9 @@ func TestExecutionBlocksListAndGet(t *testing.T) {
 	}
 	if listPayload.Blocks[0].Result.State != "executed" {
 		t.Fatalf("unexpected block state: %#v", listPayload.Blocks[0].Result)
+	}
+	if listPayload.Blocks[0].Provenance.ExplainAuditEventID == "" {
+		t.Fatalf("expected explain provenance id in list payload: %#v", listPayload.Blocks[0].Provenance)
 	}
 
 	getRecorder := httptest.NewRecorder()

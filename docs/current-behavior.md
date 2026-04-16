@@ -259,7 +259,8 @@ Confirmable boundaries:
   5. call the backend explanation route
   6. append a real assistant message to the persisted conversation transcript
 - Structured execution blocks are now backend-owned snapshots appended during terminal explain for `/run` flow:
-  - explain response now includes `execution_block_id` and resolved `command_audit_event_id`
+  - explain response now includes `execution_block_id`, resolved `command_audit_event_id`, and `explain_audit_event_id`
+  - explain requests can include `execution_block_id` to update the existing block identity instead of appending a duplicate record
   - block snapshots are available via:
     - `GET /api/v1/execution/blocks`
     - `GET /api/v1/execution/blocks/{blockID}`

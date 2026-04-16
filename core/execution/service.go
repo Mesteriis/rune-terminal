@@ -89,6 +89,37 @@ func (s *Service) Get(id string) (Block, bool) {
 	return Block{}, false
 }
 
+func (s *Service) Replace(block Block) (Block, bool, error) {
+	if block.ID == "" {
+		return Block{}, false, errors.New("block id is required")
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	index := -1
+	for i := range s.state.Blocks {
+		if s.state.Blocks[i].ID == block.ID {
+			index = i
+			break
+		}
+	}
+	if index == -1 {
+		return Block{}, false, nil
+	}
+
+	now := time.Now().UTC()
+	block.CreatedAt = s.state.Blocks[index].CreatedAt
+	block.UpdatedAt = now
+
+	s.state.Blocks[index] = block
+	s.state.UpdatedAt = now
+	if err := s.persistLocked(); err != nil {
+		return Block{}, false, err
+	}
+	return block, true, nil
+}
+
 func (s *Service) load() error {
 	raw, err := os.ReadFile(s.path)
 	if err != nil {

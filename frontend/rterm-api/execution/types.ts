@@ -27,6 +27,7 @@ export interface ExecutionBlock {
   };
   provenance: {
     command_audit_event_id?: string;
+    explain_audit_event_id?: string;
   };
   created_at: string;
   updated_at: string;
@@ -39,4 +40,3 @@ export interface ExecutionBlocksListResponse {
 export interface ExecutionBlockResponse {
   block: ExecutionBlock;
 }
-

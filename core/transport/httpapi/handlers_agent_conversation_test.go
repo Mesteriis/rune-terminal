@@ -297,6 +297,7 @@ func TestExplainTerminalCommandReturnsConversationSnapshot(t *testing.T) {
 		OutputExcerpt       string `json:"output_excerpt"`
 		ExecutionBlockID    string `json:"execution_block_id"`
 		CommandAuditEventID string `json:"command_audit_event_id"`
+		ExplainAuditEventID string `json:"explain_audit_event_id"`
 		Conversation        struct {
 			Messages []struct {
 				Role string `json:"role"`
@@ -311,6 +312,9 @@ func TestExplainTerminalCommandReturnsConversationSnapshot(t *testing.T) {
 	}
 	if payload.ExecutionBlockID == "" {
 		t.Fatal("expected execution_block_id in explain response")
+	}
+	if payload.ExplainAuditEventID == "" {
+		t.Fatal("expected explain_audit_event_id in explain response")
 	}
 	if len(payload.Conversation.Messages) != 3 {
 		t.Fatalf("expected run prompt/result/explanation chain, got %#v", payload.Conversation.Messages)
@@ -359,6 +363,7 @@ func TestExplainTerminalCommandIgnoresFrontendApprovalUsedPayload(t *testing.T) 
 	}
 	var payload struct {
 		CommandAuditEventID string `json:"command_audit_event_id"`
+		ExplainAuditEventID string `json:"explain_audit_event_id"`
 		ExecutionBlockID    string `json:"execution_block_id"`
 	}
 	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
@@ -369,6 +374,9 @@ func TestExplainTerminalCommandIgnoresFrontendApprovalUsedPayload(t *testing.T) 
 	}
 	if payload.ExecutionBlockID == "" {
 		t.Fatal("expected execution_block_id")
+	}
+	if payload.ExplainAuditEventID == "" {
+		t.Fatal("expected explain_audit_event_id")
 	}
 
 	events, err := runtime.Audit.List(10)
@@ -435,6 +443,7 @@ func TestExplainTerminalCommandUsesExplicitCommandAuditEventIDPayload(t *testing
 	}
 	var payload struct {
 		CommandAuditEventID string `json:"command_audit_event_id"`
+		ExplainAuditEventID string `json:"explain_audit_event_id"`
 		ExecutionBlockID    string `json:"execution_block_id"`
 	}
 	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
@@ -445,6 +454,9 @@ func TestExplainTerminalCommandUsesExplicitCommandAuditEventIDPayload(t *testing
 	}
 	if payload.ExecutionBlockID == "" {
 		t.Fatal("expected execution_block_id")
+	}
+	if payload.ExplainAuditEventID == "" {
+		t.Fatal("expected explain_audit_event_id")
 	}
 
 	events, err := runtime.Audit.List(10)
@@ -459,6 +471,112 @@ func TestExplainTerminalCommandUsesExplicitCommandAuditEventIDPayload(t *testing
 	}
 	if !events[2].ApprovalUsed {
 		t.Fatalf("expected explain audit approval_used=true from explicit command audit id, got %#v", events[2])
+	}
+}
+
+func TestExplainTerminalCommandReturnsNotFoundForUnknownExecutionBlock(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newExplainCommandHandler(t)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPost, "/api/v1/agent/terminal-commands/explain", map[string]any{
+		"prompt":                 "Explain execution block command: echo httpapi-smoke",
+		"command":                "echo httpapi-smoke",
+		"widget_id":              "term_boot",
+		"from_seq":               0,
+		"execution_block_id":     "execblk_missing",
+		"command_audit_event_id": "",
+		"context": map[string]any{
+			"workspace_id":           "ws-default",
+			"repo_root":              "/workspace/repo",
+			"active_widget_id":       "term_boot",
+			"target_session":         "local",
+			"target_connection_id":   "local",
+			"widget_context_enabled": true,
+		},
+	}))
+
+	if recorder.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+	var payload struct {
+		Error struct {
+			Code string `json:"code"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
+	}
+	if payload.Error.Code != "execution_block_not_found" {
+		t.Fatalf("unexpected error code: %q", payload.Error.Code)
+	}
+}
+
+func TestExplainTerminalCommandRejectsExecutionBlockIdentityMismatch(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newExplainCommandHandler(t)
+
+	firstExplainRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(firstExplainRecorder, authedJSONRequest(t, http.MethodPost, "/api/v1/agent/terminal-commands/explain", map[string]any{
+		"prompt":    "/run echo httpapi-smoke",
+		"command":   "echo httpapi-smoke",
+		"widget_id": "term_boot",
+		"from_seq":  0,
+		"context": map[string]any{
+			"workspace_id":           "ws-default",
+			"repo_root":              "/workspace/repo",
+			"active_widget_id":       "term_boot",
+			"target_session":         "local",
+			"target_connection_id":   "local",
+			"widget_context_enabled": true,
+		},
+	}))
+	if firstExplainRecorder.Code != http.StatusOK {
+		t.Fatalf("expected first explain 200, got %d body=%s", firstExplainRecorder.Code, firstExplainRecorder.Body.String())
+	}
+	var firstPayload struct {
+		ExecutionBlockID string `json:"execution_block_id"`
+	}
+	if err := json.Unmarshal(firstExplainRecorder.Body.Bytes(), &firstPayload); err != nil {
+		t.Fatalf("unmarshal first payload: %v", err)
+	}
+	if firstPayload.ExecutionBlockID == "" {
+		t.Fatal("expected first execution block id")
+	}
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPost, "/api/v1/agent/terminal-commands/explain", map[string]any{
+		"prompt":                 "Explain execution block command: echo mismatch",
+		"command":                "echo mismatch",
+		"widget_id":              "term_boot",
+		"from_seq":               0,
+		"execution_block_id":     firstPayload.ExecutionBlockID,
+		"command_audit_event_id": "",
+		"context": map[string]any{
+			"workspace_id":           "ws-default",
+			"repo_root":              "/workspace/repo",
+			"active_widget_id":       "term_boot",
+			"target_session":         "local",
+			"target_connection_id":   "local",
+			"widget_context_enabled": true,
+		},
+	}))
+
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+	var payload struct {
+		Error struct {
+			Code string `json:"code"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
+	}
+	if payload.Error.Code != "execution_block_identity_mismatch" {
+		t.Fatalf("unexpected error code: %q", payload.Error.Code)
 	}
 }
 

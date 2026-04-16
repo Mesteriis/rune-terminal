@@ -108,8 +108,9 @@ export const ExecutionBlockList = memo(({ blocks, busyBlockID, onExplain, onReru
                             </div>
                             {isRevealed ? (
                                 <div className="mt-1 text-[10px] text-muted">
-                                    explain {block.explain.message_id || "n/a"} · audit{" "}
-                                    {block.provenance.command_audit_event_id || "n/a"}
+                                    explain message {block.explain.message_id || "n/a"} · command audit{" "}
+                                    {block.provenance.command_audit_event_id || "n/a"} · explain audit{" "}
+                                    {block.provenance.explain_audit_event_id || "n/a"}
                                 </div>
                             ) : null}
                         </article>

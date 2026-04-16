@@ -26,6 +26,7 @@ type terminalCommandExplanationPayload struct {
 	WidgetID            string                  `json:"widget_id,omitempty"`
 	FromSeq             uint64                  `json:"from_seq,omitempty"`
 	CommandAuditEventID string                  `json:"command_audit_event_id,omitempty"`
+	ExecutionBlockID    string                  `json:"execution_block_id,omitempty"`
 	ApprovalUsed        bool                    `json:"approval_used,omitempty"`
 	Context             app.ConversationContext `json:"context"`
 }
@@ -85,9 +86,17 @@ func (api *API) handleExplainTerminalCommand(w http.ResponseWriter, r *http.Requ
 		WidgetID:            payload.WidgetID,
 		FromSeq:             payload.FromSeq,
 		CommandAuditEventID: payload.CommandAuditEventID,
+		ExecutionBlockID:    payload.ExecutionBlockID,
 	}, payload.Context)
 	if err != nil {
-		writeConversationError(w, err)
+		switch {
+		case errors.Is(err, app.ErrExecutionBlockNotFound):
+			writeNotFound(w, "execution_block_not_found", err.Error())
+		case errors.Is(err, app.ErrExecutionBlockIdentityMismatch):
+			writeError(w, http.StatusBadRequest, "execution_block_identity_mismatch", err.Error())
+		default:
+			writeConversationError(w, err)
+		}
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -95,6 +104,7 @@ func (api *API) handleExplainTerminalCommand(w http.ResponseWriter, r *http.Requ
 		"provider_error":         result.ProviderError,
 		"output_excerpt":         result.OutputExcerpt,
 		"command_audit_event_id": result.CommandAuditEventID,
+		"explain_audit_event_id": result.ExplainAuditEventID,
 		"execution_block_id":     result.ExecutionBlockID,
 	})
 }

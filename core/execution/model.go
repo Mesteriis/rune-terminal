@@ -55,4 +55,5 @@ type BlockExplain struct {
 
 type BlockProvenance struct {
 	CommandAuditEventID string `json:"command_audit_event_id,omitempty"`
+	ExplainAuditEventID string `json:"explain_audit_event_id,omitempty"`
 }

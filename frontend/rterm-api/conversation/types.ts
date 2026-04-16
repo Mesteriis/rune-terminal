@@ -64,6 +64,7 @@ export interface ExplainTerminalCommandRequest {
   widget_id?: string;
   from_seq?: number;
   command_audit_event_id?: string;
+  execution_block_id?: string;
   approval_used?: boolean;
   context: ConversationContext;
 }
@@ -73,6 +74,7 @@ export interface ExplainTerminalCommandResponse {
   provider_error: string;
   output_excerpt: string;
   command_audit_event_id?: string;
+  explain_audit_event_id?: string;
   execution_block_id?: string;
 }
 

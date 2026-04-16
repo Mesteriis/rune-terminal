@@ -60,6 +60,7 @@ Minimal backend-owned block shape for this batch:
   - `error`
 - `provenance`:
   - `command_audit_event_id`
+  - `explain_audit_event_id`
 
 Model constraints:
 
@@ -71,8 +72,9 @@ Model constraints:
 
 - `POST /api/v1/agent/terminal-commands/explain`
   - continues existing explain behavior
-  - now also appends one execution block for this `/run` explain flow
-  - returns `execution_block_id` and resolved `command_audit_event_id` linkage
+  - appends one execution block for this `/run` explain flow when no `execution_block_id` is supplied
+  - updates the existing block when `execution_block_id` is supplied and identity matches
+  - returns `execution_block_id`, resolved `command_audit_event_id`, and `explain_audit_event_id`
 - `GET /api/v1/execution/blocks?workspace_id=<id>&limit=<n>`
   - returns backend block snapshot list
 - `GET /api/v1/execution/blocks/{blockID}`
