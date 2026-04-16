@@ -1,8 +1,12 @@
 import type { ExecutionBlock } from "@/compat/execution";
-import { memo } from "react";
+import { memo, useState } from "react";
 
 interface ExecutionBlockListProps {
     blocks: ExecutionBlock[];
+    busyBlockID?: string;
+    onExplain: (block: ExecutionBlock) => void;
+    onRerun: (block: ExecutionBlock) => void;
+    onCopyCommand: (block: ExecutionBlock) => void;
 }
 
 function formatTime(value: string): string {
@@ -25,7 +29,8 @@ function summarizeExplain(block: ExecutionBlock): string {
     return "Explain data not available.";
 }
 
-export const ExecutionBlockList = memo(({ blocks }: ExecutionBlockListProps) => {
+export const ExecutionBlockList = memo(({ blocks, busyBlockID, onExplain, onRerun, onCopyCommand }: ExecutionBlockListProps) => {
+    const [revealed, setRevealed] = useState<Record<string, boolean>>({});
     if (blocks.length === 0) {
         return null;
     }
@@ -39,6 +44,8 @@ export const ExecutionBlockList = memo(({ blocks }: ExecutionBlockListProps) => 
             <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                 {blocks.map((block) => {
                     const stateClass = block.result.state === "executed" ? "text-emerald-300" : "text-amber-300";
+                    const isBusy = busyBlockID === block.id;
+                    const isRevealed = revealed[block.id] === true;
                     return (
                         <article
                             key={block.id}
@@ -61,9 +68,50 @@ export const ExecutionBlockList = memo(({ blocks }: ExecutionBlockListProps) => 
                                 </pre>
                             ) : null}
                             <div className="mt-1 text-[10px] text-zinc-300">{summarizeExplain(block)}</div>
-                            <div className="mt-1 text-[10px] text-muted">
-                                explain {block.explain.message_id || "n/a"} · audit {block.provenance.command_audit_event_id || "n/a"}
+                            <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[10px]">
+                                <button
+                                    type="button"
+                                    disabled={isBusy}
+                                    className="px-1.5 py-0.5 rounded border border-border/70 text-secondary hover:text-white disabled:opacity-50"
+                                    onClick={() => onExplain(block)}
+                                >
+                                    Explain
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={isBusy}
+                                    className="px-1.5 py-0.5 rounded border border-border/70 text-secondary hover:text-white disabled:opacity-50"
+                                    onClick={() => onRerun(block)}
+                                >
+                                    Re-run
+                                </button>
+                                <button
+                                    type="button"
+                                    className="px-1.5 py-0.5 rounded border border-border/70 text-secondary hover:text-white"
+                                    onClick={() => onCopyCommand(block)}
+                                >
+                                    Copy
+                                </button>
+                                <button
+                                    type="button"
+                                    className="px-1.5 py-0.5 rounded border border-border/70 text-secondary hover:text-white"
+                                    onClick={() => {
+                                        setRevealed((previous) => ({
+                                            ...previous,
+                                            [block.id]: !previous[block.id],
+                                        }));
+                                    }}
+                                >
+                                    {isRevealed ? "Hide Provenance" : "Reveal Provenance"}
+                                </button>
+                                {isBusy ? <span className="text-muted">processing…</span> : null}
                             </div>
+                            {isRevealed ? (
+                                <div className="mt-1 text-[10px] text-muted">
+                                    explain {block.explain.message_id || "n/a"} · audit{" "}
+                                    {block.provenance.command_audit_event_id || "n/a"}
+                                </div>
+                            ) : null}
                         </article>
                     );
                 })}
@@ -73,4 +121,3 @@ export const ExecutionBlockList = memo(({ blocks }: ExecutionBlockListProps) => 
 });
 
 ExecutionBlockList.displayName = "ExecutionBlockList";
-

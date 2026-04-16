@@ -263,6 +263,20 @@ function parseMissingAttachmentPath(message: string): string {
     return normalized.slice(markerIndex + marker.length).trim();
 }
 
+function targetSessionFromConnectionKind(connectionKind: string | undefined): "local" | "remote" {
+    return connectionKind === "ssh" ? "remote" : "local";
+}
+
+function normalizeBlockTargetSession(value: string | undefined, fallback: "local" | "remote"): "local" | "remote" {
+    if (value === "remote") {
+        return "remote";
+    }
+    if (value === "local") {
+        return "local";
+    }
+    return fallback;
+}
+
 interface PendingRunApproval extends PendingRunApprovalEntry {
     toolContext: ToolExecutionContext;
     conversationContext: ConversationContext;
@@ -276,6 +290,7 @@ const AIPanelCompatInner = memo(() => {
     const [status, setStatus] = useState("ready");
     const [catalog, setCatalog] = useState<AgentCatalog | null>(null);
     const [executionBlocks, setExecutionBlocks] = useState<ExecutionBlock[]>([]);
+    const [executionAction, setExecutionAction] = useState<{ blockID: string; kind: "explain" | "rerun" } | null>(null);
     const [repoRoot, setRepoRoot] = useState("");
     const [workspaceId, setWorkspaceId] = useState(() => workspaceStore.getSnapshot().active.oid || "");
     const [isDragOver, setIsDragOver] = useState(false);
@@ -516,6 +531,37 @@ const AIPanelCompatInner = memo(() => {
         [addAttachmentReferenceByPath, model],
     );
 
+    const applyExplainResponse = useCallback(
+        async (
+            explanationResponse: Awaited<ReturnType<typeof explainRunCommandPrompt>>,
+            workspaceIDForRefresh?: string,
+        ) => {
+            setProviderLabel(formatProviderLabel(explanationResponse.conversation.provider));
+            setMessages(mapConversationSnapshot(explanationResponse.conversation));
+            const executionBlockID = explanationResponse.execution_block_id?.trim();
+            if (executionBlockID) {
+                try {
+                    const executionFacade = await getExecutionFacade();
+                    const blockResponse = await executionFacade.getBlock(executionBlockID);
+                    setExecutionBlocks((previous) => {
+                        const next = [
+                            blockResponse.block,
+                            ...previous.filter((block) => block.id !== blockResponse.block.id),
+                        ];
+                        return next.slice(0, 20);
+                    });
+                    return;
+                } catch {
+                    // Fall through to list refresh.
+                }
+            }
+            void refreshExecutionBlocks(workspaceIDForRefresh ?? workspaceId).catch(() => {
+                // Block refresh is non-blocking for existing transcript/explain workflow.
+            });
+        },
+        [refreshExecutionBlocks, workspaceId],
+    );
+
     const completeRunCommandExecution = useCallback(
         async (options: {
             conversationFacade: Awaited<ReturnType<typeof getConversationFacade>>;
@@ -535,30 +581,7 @@ const AIPanelCompatInner = memo(() => {
                     approvalUsed: options.approvalUsed,
                     context: options.context,
                 });
-                setProviderLabel(formatProviderLabel(explanationResponse.conversation.provider));
-                setMessages(mapConversationSnapshot(explanationResponse.conversation));
-                const executionBlockID = explanationResponse.execution_block_id?.trim();
-                if (executionBlockID) {
-                    try {
-                        const executionFacade = await getExecutionFacade();
-                        const blockResponse = await executionFacade.getBlock(executionBlockID);
-                        setExecutionBlocks((previous) => {
-                            const next = [
-                                blockResponse.block,
-                                ...previous.filter((block) => block.id !== blockResponse.block.id),
-                            ];
-                            return next.slice(0, 20);
-                        });
-                    } catch {
-                        void refreshExecutionBlocks(options.context.workspace_id ?? workspaceId).catch(() => {
-                            // Block refresh is non-blocking for existing transcript/explain workflow.
-                        });
-                    }
-                } else {
-                    void refreshExecutionBlocks(options.context.workspace_id ?? workspaceId).catch(() => {
-                        // Block refresh is non-blocking for existing transcript/explain workflow.
-                    });
-                }
+                await applyExplainResponse(explanationResponse, options.context.workspace_id ?? workspaceId);
             } catch (error) {
                 try {
                     const snapshotResponse = await options.conversationFacade.getSnapshot();
@@ -571,7 +594,177 @@ const AIPanelCompatInner = memo(() => {
                 model.setError(`Explanation unavailable for \`${options.command}\`: ${details}`);
             }
         },
-        [model, refreshExecutionBlocks, workspaceId],
+        [applyExplainResponse, model, workspaceId],
+    );
+
+    const handleCopyExecutionBlockCommand = useCallback(
+        async (block: ExecutionBlock) => {
+            try {
+                await navigator.clipboard.writeText(block.intent.command);
+            } catch (error) {
+                model.setError(error instanceof Error ? error.message : String(error));
+            }
+        },
+        [model],
+    );
+
+    const handleExplainExecutionBlock = useCallback(
+        async (block: ExecutionBlock) => {
+            if (status !== "ready") {
+                return;
+            }
+            const widgetID = block.target.widget_id?.trim();
+            if (!widgetID) {
+                model.setError("Execution block cannot be explained because widget context is missing.");
+                return;
+            }
+            const workspaceScope = block.target.workspace_id?.trim() || workspaceId;
+            if (workspaceId && workspaceScope && workspaceScope !== workspaceId) {
+                model.setError("Switch to the matching workspace before explaining this execution block.");
+                return;
+            }
+
+            setStatus("submitted");
+            setExecutionAction({ blockID: block.id, kind: "explain" });
+            model.clearError();
+
+            try {
+                const conversationFacade = await getConversationFacade();
+                const explainResponse = await explainRunCommandPrompt({
+                    conversationFacade,
+                    prompt: `Explain execution block command: ${block.intent.command}`,
+                    command: block.intent.command,
+                    widgetId: widgetID,
+                    fromSeq: block.result.from_seq ?? 0,
+                    commandAuditEventId: block.provenance.command_audit_event_id,
+                    context: {
+                        workspace_id: workspaceScope || undefined,
+                        active_widget_id: widgetID,
+                        repo_root: block.target.repo_root?.trim() || repoRoot || undefined,
+                        action_source: "ai.panel.execution_block.explain",
+                        target_session: block.target.target_session?.trim() || undefined,
+                        target_connection_id: block.target.target_connection_id?.trim() || undefined,
+                        widget_context_enabled: true,
+                    },
+                });
+                await applyExplainResponse(explainResponse, workspaceScope);
+            } catch (error) {
+                model.setError(error instanceof Error ? error.message : String(error));
+            } finally {
+                setExecutionAction(null);
+                setStatus("ready");
+                setTimeout(() => {
+                    model.focusInput();
+                }, 100);
+            }
+        },
+        [applyExplainResponse, model, repoRoot, status, workspaceId],
+    );
+
+    const handleRerunExecutionBlock = useCallback(
+        async (block: ExecutionBlock) => {
+            if (status !== "ready") {
+                return;
+            }
+            const widgetID = block.target.widget_id?.trim();
+            if (!widgetID) {
+                model.setError("Execution block cannot be re-run because widget context is missing.");
+                return;
+            }
+            const workspaceScope = block.target.workspace_id?.trim() || workspaceId;
+            if (workspaceId && workspaceScope && workspaceScope !== workspaceId) {
+                model.setError("Switch to the matching workspace before re-running this execution block.");
+                return;
+            }
+
+            setStatus("submitted");
+            setExecutionAction({ blockID: block.id, kind: "rerun" });
+            model.clearError();
+
+            try {
+                const [toolsFacade, terminalFacade, conversationFacade] = await Promise.all([
+                    getToolsFacade(),
+                    getTerminalFacade(),
+                    getConversationFacade(),
+                ]);
+                const targetSnapshot = await terminalFacade.getSnapshot(widgetID);
+                const liveTargetSession = targetSessionFromConnectionKind(targetSnapshot.state.connection_kind);
+                const liveTargetConnectionID =
+                    targetSnapshot.state.connection_id?.trim() || (liveTargetSession === "local" ? "local" : "");
+                const blockTargetSession = block.target.target_session?.trim();
+                if (blockTargetSession && blockTargetSession !== liveTargetSession) {
+                    model.setError(
+                        `Execution target mismatch: block expects ${blockTargetSession}, but widget currently reports ${liveTargetSession}.`,
+                    );
+                    return;
+                }
+                const blockTargetConnectionID = block.target.target_connection_id?.trim();
+                if (
+                    blockTargetConnectionID &&
+                    liveTargetConnectionID &&
+                    blockTargetConnectionID !== liveTargetConnectionID
+                ) {
+                    model.setError(
+                        `Execution target mismatch: block expects connection ${blockTargetConnectionID}, but widget currently reports ${liveTargetConnectionID}.`,
+                    );
+                    return;
+                }
+                const normalizedTargetSession = normalizeBlockTargetSession(blockTargetSession, liveTargetSession);
+                const normalizedTargetConnectionID = blockTargetConnectionID || liveTargetConnectionID || undefined;
+                const toolContext: ToolExecutionContext = {
+                    workspace_id: workspaceScope || undefined,
+                    active_widget_id: widgetID,
+                    repo_root: block.target.repo_root?.trim() || repoRoot || undefined,
+                    action_source: "ai.panel.execution_block.rerun",
+                    target_session: normalizedTargetSession,
+                    target_connection_id: normalizedTargetConnectionID,
+                };
+                const conversationContext = buildConversationContextFromToolContext(
+                    toolContext,
+                    "ai.panel.execution_block.rerun.explain",
+                );
+                const executionResult = await executeRunCommandPrompt({
+                    terminalFacade,
+                    toolsFacade,
+                    command: block.intent.command,
+                    context: toolContext,
+                });
+                if (executionResult.kind === "approval_required") {
+                    const pendingApproval: StoredPendingRunApproval = {
+                        approvalId: executionResult.pendingApproval.id,
+                        prompt: `/run ${block.intent.command}`,
+                        command: block.intent.command,
+                        summary: executionResult.pendingApproval.summary,
+                        approvalTier: executionResult.pendingApproval.approval_tier,
+                        toolContext,
+                        conversationContext,
+                    };
+                    storePendingRunApproval(pendingApproval);
+                    setPendingRunApprovals((previous) => [...previous, toPendingRunApprovalEntry(pendingApproval)]);
+                    return;
+                }
+                if (executionResult.kind === "tool_error") {
+                    setMessages((previous) => [...previous, executionResult.resultMessage]);
+                    return;
+                }
+                await completeRunCommandExecution({
+                    conversationFacade,
+                    prompt: `/run ${block.intent.command}`,
+                    command: block.intent.command,
+                    context: conversationContext,
+                    executionResult,
+                });
+            } catch (error) {
+                model.setError(error instanceof Error ? error.message : String(error));
+            } finally {
+                setExecutionAction(null);
+                setStatus("ready");
+                setTimeout(() => {
+                    model.focusInput();
+                }, 100);
+            }
+        },
+        [completeRunCommandExecution, model, repoRoot, status, workspaceId],
     );
 
     const handleConfirmRunApproval = useCallback(
@@ -1014,7 +1207,13 @@ const AIPanelCompatInner = memo(() => {
                     />
                 )}
                 <CompatAIErrorMessage />
-                <ExecutionBlockList blocks={executionBlocks} />
+                <ExecutionBlockList
+                    blocks={executionBlocks}
+                    busyBlockID={executionAction?.blockID}
+                    onExplain={(block) => void handleExplainExecutionBlock(block)}
+                    onRerun={(block) => void handleRerunExecutionBlock(block)}
+                    onCopyCommand={(block) => void handleCopyExecutionBlockCommand(block)}
+                />
                 <RunCommandApprovalList
                     approvals={pendingRunApprovals}
                     busy={status !== "ready"}

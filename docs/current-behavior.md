@@ -268,6 +268,10 @@ Confirmable boundaries:
   - each item shows command intent, execution state, output excerpt, explain summary/error, and provenance IDs
   - rendering is additive and keeps existing transcript/approval flow intact
   - block-fetch failures are non-blocking and do not stop `/run`, explain, or normal conversation flows
+  - each item now exposes explicit actions:
+    - `Explain` (explicit explain call with block identity/context)
+    - `Re-run` (explicit command re-execution through existing `/run` tool path)
+    - `Copy` and `Reveal Provenance` (operator-visible command/provenance access)
 - The backend explanation route does not execute commands by itself. It explains the observed result of a command that already ran through the runtime.
 - The compat terminal now has an explicit `Explain Latest Output In AI` handoff action:
   - it resolves the latest terminal command from audit truth for the active widget
