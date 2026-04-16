@@ -198,6 +198,9 @@ Confirmable boundaries:
   - attach flow creates backend-issued references from local filesystem paths
   - conversation messages persist attachment reference metadata (`id`, `name`, `path`, `mime_type`, `size`, `modified_time`)
   - reload restores attachment references from backend conversation snapshot truth
+  - user-visible chips now label attachment references explicitly as `local ref`
+  - stale local references are rendered as `missing` in the composer after backend rejection (`attachment_not_found`)
+  - non-text/binary references rendered from backend truth are marked `metadata only` in transcript chips
   - submit-time message handling revalidates references; missing/invalid paths are rejected explicitly instead of being accepted as normal input
   - conversation provider requests now include bounded attachment context when attachments are present (metadata plus bounded text excerpt for supported text-like files)
   - attachment context limits are backend-owned and deterministic: max file size `256 KiB`, max read `32 KiB`, max excerpt `8000` chars, max context items `4`

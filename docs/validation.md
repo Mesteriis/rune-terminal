@@ -1476,3 +1476,42 @@
 - Notes:
   - this remains local-reference based; no managed blob storage/import
   - binary/unsupported and oversize files are represented with bounded metadata status; no unlimited file read path exists
+
+## Attachment UI truth
+
+- Date: `2026-04-16`
+- Status: `VERIFIED`
+- Commits:
+  - `6765cfd`
+  - `9a3959a`
+  - `c27fca8`
+- Validation steps:
+  - runtime environment:
+    - provider mock: `127.0.0.1:11446`
+    - core: `go run ./cmd/rterm-core serve --listen 127.0.0.1:52932 ...`
+    - frontend: `npm --prefix frontend run dev -- --host 127.0.0.1 --port 5179 --strictPort`
+  - UI click-through (active compat AI panel):
+    1. opened `http://127.0.0.1:5179/`, opened AI panel
+    2. attached local text file through actual attach button (`attach-ui-final.txt`)
+    3. verified pre-send chip shows filename/size and `local ref`
+    4. sent message `final attachment ui truth message`
+    5. verified sent transcript row contains attachment chip with `local ref`
+    6. reloaded page, reopened AI panel, confirmed attachment chip still visible from backend snapshot truth
+  - stale reference UI case:
+    1. attached `attach-ui-stale2.txt`, then deleted file on disk before submit
+    2. submit returned backend stale error path (`attachment_not_found`)
+    3. UI now marks chip as `missing` and shows explicit local-file-unavailable banner
+    4. repeated send is blocked client-side with explicit stale-reference guidance
+  - unsupported/binary UI case:
+    - normal file-picker path: `.bin` selection is rejected before attachment creation in this UI path (not attachable through normal picker contract)
+    - binary reference rendering truth (feasible path): injected binary reference via backend API, then reloaded UI
+    - transcript chip rendered with `local ref` + `metadata only` (no false claim of text ingestion)
+  - regression smoke:
+    - AI conversation path continues to respond
+    - `/run echo attachment-ui-truth-run` works in AI panel flow
+    - Tools panel opens and remains usable
+    - Audit panel opens and lists recent events
+- Result: `VERIFIED` — active attachment UX now renders local-reference state honestly for normal, stale, and metadata-only/binary-visible cases without changing attachment contract semantics.
+- Notes:
+  - expected `404 attachment_not_found` occurred during stale-case validation by design
+  - unsupported binary files are still not attachable through normal picker path; no preview/gallery was introduced
