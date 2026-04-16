@@ -95,3 +95,13 @@ Date: `2026-04-16`
 - Material improvement achieved:
   - high-value active paths moved to `0` lint errors
   - repo-wide lint debt remains the only red surface preventing green `validate`.
+
+## After validate alignment
+
+- Commands run:
+  - `npm run lint:frontend` -> `PASS` (`0` errors, `15` warnings)
+  - `npm run lint:frontend:all` -> `FAILED` (`630` errors, `151` warnings)
+  - `npm run validate` -> `PASS`
+- Current truth:
+  - `npm run validate` is green.
+  - repo-wide lint debt is now explicit in `npm run lint:frontend:all` and tracked as non-blocking RC debt.

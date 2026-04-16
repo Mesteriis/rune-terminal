@@ -27,6 +27,7 @@ It defines what is incomplete by design for the first release candidate so we do
 - AI command flow intentionally supports explicit command grammar only (`/run` and `run:`), not broad natural-language command execution
 - the current assistant backend is Ollama-compatible HTTP only; release validation proves contract wiring and daily-driver behavior, not a broad provider matrix
 - native-window automation coverage is limited; validation leans on build + runtime/API smoke plus manual notes
+- repo-wide full frontend lint (`npm run lint:frontend:all`) still has legacy debt; RC release gating currently uses active-path lint in `npm run validate`
 
 ## Post-`1.0.0` targets
 

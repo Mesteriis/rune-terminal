@@ -1606,3 +1606,31 @@
   - release sweep:
     - `npm run validate` -> `NOT VERIFIED` for this slice because repo-wide pre-existing frontend lint errors fail at `lint:frontend` before downstream validate steps
 - Result: `VERIFIED` — plugin runtime hardening keeps existing plugin-backed and in-process execution working, enforces explicit manifest/tool exposure contract, and surfaces typed plugin-runtime failures coherently.
+
+## Repo validation hardening
+
+- Date: `2026-04-16`
+- Status: `VERIFIED`
+- Commits:
+  - `c5f44b3`
+  - `070638b`
+  - `a820e55`
+  - `fc92908`
+- Validation steps:
+  - baseline/failure audit:
+    - `npm run validate` (baseline run before hardening) -> `FAILED` at frontend lint
+    - `npm run build:frontend` -> `PASS`
+    - `npm run test:go` -> `PASS`
+    - `npm run build:go` -> `PASS`
+    - `npm run tauri:check` -> `PASS`
+  - lint debt checkpoints:
+    - `npm --prefix frontend run lint -- --format json -o /tmp/runa-eslint.json` -> `849 errors`, `152 warnings` (baseline)
+    - `npm --prefix frontend run lint -- --format json -o /tmp/runa-eslint-after-phase2.json` -> `630 errors`, `151 warnings` (after reduction)
+    - `npm --prefix frontend run lint:active` -> `0 errors`, `15 warnings`
+    - `npm run lint:frontend:all` -> expected red debt path remains (`630 errors`, `151 warnings`)
+  - release-validate truth after script alignment:
+    - `npm run validate` -> `PASS`
+    - includes: `lint:frontend` (active scope), `build:frontend`, `test:go`, `build:go`, `tauri:check`
+  - shell launch smoke:
+    - `npm run tauri:dev` -> reached desktop startup (`Running target/debug/rterm-desktop`) and runtime ready JSON (`{"base_url":"http://127.0.0.1:64656","pid":93106}`)
+- Result: `VERIFIED` — repo validation is now truthful and green on current RC release path, with full-frontend lint debt still explicit via a separate command.

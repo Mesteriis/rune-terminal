@@ -102,7 +102,7 @@ The current goal is honest RC quality for daily-driver workflows.
 - harden launch, local terminal, remote shell, and `/run` UX paths
 - keep approval/policy behavior explicit and stable
 - tighten release-doc truthfulness and known limitations
-- rerun full release-oriented validation (`lint/build/tests/validate/tauri + smoke`)
+- rerun full release-oriented validation (`active-path lint` + `build/tests/validate/tauri + smoke`) while tracking full-frontend lint debt explicitly
 - close only release blockers, not parity breadth
 
 ## Non-goals for `1.0.0`
