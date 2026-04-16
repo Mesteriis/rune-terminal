@@ -6,6 +6,7 @@ import { getAuditFacade } from "@/compat/audit";
 import { createCompatApiFacade } from "@/compat/api";
 import { getConversationFacade } from "@/compat/conversation";
 import { getTerminalFacade } from "@/compat/terminal";
+import type { TerminalSnapshot } from "@/rterm-api/terminal/types";
 import { CenteredDiv } from "@/element/quickelems";
 import { TermWrap } from "./termwrap";
 import { findLatestWidgetCommand } from "./explain-handoff";
@@ -31,6 +32,8 @@ export function CompatTerminalView({ widgetId, connectionId }: CompatTerminalVie
     const [explainBusy, setExplainBusy] = useState(false);
     const [explainStatus, setExplainStatus] = useState<string | null>(null);
     const [explainError, setExplainError] = useState<string | null>(null);
+    const [lifecycleSnapshot, setLifecycleSnapshot] = useState<TerminalSnapshot | null>(null);
+    const [lifecycleError, setLifecycleError] = useState<string | null>(null);
     const isRemoteTerminal = !isLocalConnection(connectionId);
 
     useEffect(() => {
@@ -77,9 +80,51 @@ export function CompatTerminalView({ widgetId, connectionId }: CompatTerminalVie
         };
     }, [connectionId, widgetId]);
 
+    useEffect(() => {
+        if (!widgetId) {
+            return;
+        }
+        let cancelled = false;
+        const refreshLifecycle = async () => {
+            try {
+                const facade = await getTerminalFacade();
+                const snapshot = await facade.getSnapshot(widgetId);
+                if (cancelled) {
+                    return;
+                }
+                setLifecycleSnapshot(snapshot);
+                setLifecycleError(null);
+            } catch (error) {
+                if (cancelled) {
+                    return;
+                }
+                setLifecycleError(error instanceof Error ? error.message : String(error));
+            }
+        };
+        void refreshLifecycle();
+        const intervalID = window.setInterval(() => {
+            void refreshLifecycle();
+        }, 4000);
+        return () => {
+            cancelled = true;
+            window.clearInterval(intervalID);
+        };
+    }, [widgetId]);
+
     if (!widgetId) {
         return <CenteredDiv>No Terminal Widget</CenteredDiv>;
     }
+
+    const lifecycleStatus = lifecycleSnapshot?.state.status ?? "unknown";
+    const isConnected = lifecycleStatus === "running";
+    const lifecycleLabel = isConnected ? "connected" : lifecycleStatus === "unknown" ? "status unknown" : "disconnected";
+    const lifecycleColorClass = isConnected ? "text-emerald-300" : "text-amber-300";
+    const lifecycleDetail = lifecycleError
+        ?? (lifecycleSnapshot?.state.status === "failed"
+            ? "session failed"
+            : lifecycleSnapshot?.state.status === "exited"
+                ? `session exited${lifecycleSnapshot.state.exit_code != null ? ` (code ${lifecycleSnapshot.state.exit_code})` : ""}`
+                : null);
 
     const explainLatestCommandOutput = async () => {
         if (explainBusy) {
@@ -152,6 +197,12 @@ export function CompatTerminalView({ widgetId, connectionId }: CompatTerminalVie
                 termWrapRef.current?.terminal.focus();
             }}
         >
+            <div className="absolute top-2 left-2 z-20 flex flex-col items-start gap-1">
+                <div className={`text-[10px] uppercase tracking-wide ${lifecycleColorClass}`}>
+                    {isRemoteTerminal ? "remote" : "local"} session {lifecycleLabel}
+                </div>
+                {lifecycleDetail ? <div className="text-[10px] text-red-300 max-w-[24rem]">{lifecycleDetail}</div> : null}
+            </div>
             <div className="absolute top-2 right-2 z-20 flex flex-col items-end gap-1">
                 <button
                     type="button"
