@@ -18,6 +18,13 @@ Each tool definition carries:
 - planner
 - executor
 
+Dangerous policy-mutation tools must publish explicit input schemas that match their decode/runtime contract. In the current runtime this applies at minimum to:
+
+- `safety.add_trusted_rule`
+- `safety.add_ignore_rule`
+
+Those schemas now expose the real enum fields (`scope`, `subject_type`, `matcher_type`, `mode`) and the structured matcher payload shape instead of a generic object placeholder.
+
 ## Tool Adapter Boundary
 
 Tool handlers should depend on an adapter boundary, not on `*app.Runtime` directly.

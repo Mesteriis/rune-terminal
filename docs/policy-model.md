@@ -46,6 +46,12 @@ Trusted rules support:
 - revocation through explicit deletion
 - audit trail on both mutation and use
 
+The tool contract for trusted-rule mutation is explicit:
+
+- `safety.add_trusted_rule` requires `scope`, `subject_type`, and `matcher_type`
+- non-`structured` matcher types require `matcher`
+- `structured` matcher types require `structured`
+
 ## Ignore Rules
 
 Ignore rules protect secret-bearing or restricted paths.
@@ -71,6 +77,12 @@ Default mappings:
 
 - `.env`, `.env.*`, `secrets.*` -> `metadata-only`
 - `*.pem`, `*.key`, `*.p12`, `id_rsa`, `id_ed25519` -> `deny`
+
+The tool contract for ignore-rule mutation is explicit:
+
+- `safety.add_ignore_rule` requires `scope`, `matcher_type`, `pattern`, and `mode`
+- `matcher_type` is limited to `exact`, `glob`, or `regex`
+- `mode` is limited to `deny`, `metadata-only`, or `redact`
 
 ## Allowed Roots
 

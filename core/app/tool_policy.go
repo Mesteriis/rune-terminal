@@ -9,6 +9,97 @@ import (
 	"github.com/Mesteriis/rune-terminal/core/toolruntime"
 )
 
+var trustedRuleInputSchema = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "scope": {
+      "type": "string",
+      "enum": ["global", "workspace", "repo"]
+    },
+    "scope_ref": {
+      "type": "string"
+    },
+    "subject_type": {
+      "type": "string",
+      "enum": ["tool", "command", "path"]
+    },
+    "matcher_type": {
+      "type": "string",
+      "enum": ["exact", "glob", "regex", "structured"]
+    },
+    "matcher": {
+      "type": "string"
+    },
+    "structured": {
+      "type": "object",
+      "properties": {
+        "tool_names": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "widget_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "summary_contains": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "note": {
+      "type": "string"
+    }
+  },
+  "required": ["scope", "subject_type", "matcher_type"],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "matcher_type": { "const": "structured" }
+        }
+      },
+      "then": {
+        "required": ["structured"]
+      },
+      "else": {
+        "required": ["matcher"]
+      }
+    }
+  ],
+  "additionalProperties": false
+}`)
+
+var ignoreRuleInputSchema = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "scope": {
+      "type": "string",
+      "enum": ["global", "workspace", "repo"]
+    },
+    "scope_ref": {
+      "type": "string"
+    },
+    "matcher_type": {
+      "type": "string",
+      "enum": ["exact", "glob", "regex"]
+    },
+    "pattern": {
+      "type": "string"
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["deny", "metadata-only", "redact"]
+    },
+    "note": {
+      "type": "string"
+    }
+  },
+  "required": ["scope", "matcher_type", "pattern", "mode"],
+  "additionalProperties": false
+}`)
+
 func (r *Runtime) policyTools() []toolruntime.Definition {
 	adapter := newRuntimeToolAdapter(r)
 	return []toolruntime.Definition{
@@ -67,7 +158,7 @@ func (a *runtimeToolAdapter) addTrustedRuleTool() toolruntime.Definition {
 	return toolruntime.Definition{
 		Name:         "safety.add_trusted_rule",
 		Description:  "Add a trusted allowlist rule.",
-		InputSchema:  json.RawMessage(`{"type":"object"}`),
+		InputSchema:  trustedRuleInputSchema,
 		OutputSchema: json.RawMessage(`{"type":"object"}`),
 		Metadata: toolruntime.Metadata{
 			Capabilities: []string{"policy:write"},
@@ -75,9 +166,7 @@ func (a *runtimeToolAdapter) addTrustedRuleTool() toolruntime.Definition {
 			Mutating:     true,
 			TargetKind:   toolruntime.TargetPolicy,
 		},
-		Decode: func(raw json.RawMessage) (any, error) {
-			return toolruntime.DecodeJSON[addTrustedRuleInput](raw)
-		},
+		Decode: decodeAddTrustedRuleInput,
 		Plan: func(input any, execCtx toolruntime.ExecutionContext) (toolruntime.OperationPlan, error) {
 			payload := input.(addTrustedRuleInput)
 			return toolruntime.OperationPlan{
@@ -185,7 +274,7 @@ func (a *runtimeToolAdapter) addIgnoreRuleTool() toolruntime.Definition {
 	return toolruntime.Definition{
 		Name:         "safety.add_ignore_rule",
 		Description:  "Add an ignore rule for secrets or restricted paths.",
-		InputSchema:  json.RawMessage(`{"type":"object"}`),
+		InputSchema:  ignoreRuleInputSchema,
 		OutputSchema: json.RawMessage(`{"type":"object"}`),
 		Metadata: toolruntime.Metadata{
 			Capabilities: []string{"policy:write"},
@@ -193,9 +282,7 @@ func (a *runtimeToolAdapter) addIgnoreRuleTool() toolruntime.Definition {
 			Mutating:     true,
 			TargetKind:   toolruntime.TargetPolicy,
 		},
-		Decode: func(raw json.RawMessage) (any, error) {
-			return toolruntime.DecodeJSON[addIgnoreRuleInput](raw)
-		},
+		Decode: decodeAddIgnoreRuleInput,
 		Plan: func(input any, execCtx toolruntime.ExecutionContext) (toolruntime.OperationPlan, error) {
 			payload := input.(addIgnoreRuleInput)
 			return toolruntime.OperationPlan{

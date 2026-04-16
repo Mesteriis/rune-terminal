@@ -1,6 +1,7 @@
 package app
 
 import (
+	"encoding/json"
 	"strings"
 
 	"github.com/Mesteriis/rune-terminal/core/policy"
@@ -78,6 +79,72 @@ type addIgnoreRuleInput struct {
 	Pattern     string             `json:"pattern"`
 	Mode        policy.IgnoreMode  `json:"mode"`
 	Note        string             `json:"note,omitempty"`
+}
+
+func decodeAddTrustedRuleInput(raw json.RawMessage) (any, error) {
+	input, err := toolruntime.DecodeJSON[addTrustedRuleInput](raw)
+	if err != nil {
+		return nil, err
+	}
+	if err := validateAddTrustedRuleInput(input); err != nil {
+		return nil, err
+	}
+	return input, nil
+}
+
+func validateAddTrustedRuleInput(input addTrustedRuleInput) error {
+	if input.Scope != policy.ScopeGlobal && input.Scope != policy.ScopeWorkspace && input.Scope != policy.ScopeRepo {
+		return toolruntime.InvalidInputError("trusted rule scope is required")
+	}
+	switch input.SubjectType {
+	case policy.SubjectTool, policy.SubjectCommand, policy.SubjectPath:
+	default:
+		return toolruntime.InvalidInputError("trusted rule subject_type is required")
+	}
+	switch input.MatcherType {
+	case policy.MatcherExact, policy.MatcherGlob, policy.MatcherRegex:
+		if strings.TrimSpace(input.Matcher) == "" {
+			return toolruntime.InvalidInputError("trusted rule matcher is required")
+		}
+	case policy.MatcherStructured:
+		if input.Structured == nil {
+			return toolruntime.InvalidInputError("trusted rule structured payload is required")
+		}
+	default:
+		return toolruntime.InvalidInputError("trusted rule matcher_type is required")
+	}
+	return nil
+}
+
+func decodeAddIgnoreRuleInput(raw json.RawMessage) (any, error) {
+	input, err := toolruntime.DecodeJSON[addIgnoreRuleInput](raw)
+	if err != nil {
+		return nil, err
+	}
+	if err := validateAddIgnoreRuleInput(input); err != nil {
+		return nil, err
+	}
+	return input, nil
+}
+
+func validateAddIgnoreRuleInput(input addIgnoreRuleInput) error {
+	if input.Scope != policy.ScopeGlobal && input.Scope != policy.ScopeWorkspace && input.Scope != policy.ScopeRepo {
+		return toolruntime.InvalidInputError("ignore rule scope is required")
+	}
+	switch input.MatcherType {
+	case policy.MatcherExact, policy.MatcherGlob, policy.MatcherRegex:
+	default:
+		return toolruntime.InvalidInputError("ignore rule matcher_type is required")
+	}
+	if strings.TrimSpace(input.Pattern) == "" {
+		return toolruntime.InvalidInputError("ignore rule pattern is required")
+	}
+	switch input.Mode {
+	case policy.IgnoreModeDeny, policy.IgnoreModeMetadataOnly, policy.IgnoreModeRedact:
+	default:
+		return toolruntime.InvalidInputError("ignore rule mode is required")
+	}
+	return nil
 }
 
 func (r *Runtime) registerTools() error {
