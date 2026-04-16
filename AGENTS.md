@@ -7,8 +7,9 @@ Repository-local source of truth always wins over generic skills or generic habi
 
 Primary source of truth in this repository:
 - `README.md`
-- `docs/release-1.0.md`
-- `docs/roadmap-1.0.md`
+- `docs/release-checklist-1.0.md`
+- `docs/known-limitations.md`
+- `docs/roadmap.md`
 - `docs/parity-matrix.md`
 - `docs/current-behavior.md`
 - `docs/validation.md`
@@ -20,7 +21,7 @@ If a generic skill conflicts with repository-local docs or the current release p
 follow the repository-local docs and treat the skill as secondary workflow guidance.
 
 ## Current project phase
-RunaTerminal is in a **release-driven 1.0.0 phase**.
+RunaTerminal is in a **`1.0.0-rc1` release hardening phase**.
 This is not an open-ended architecture experiment.
 This is not a broad speculative redesign effort.
 
@@ -31,8 +32,8 @@ Current framing:
 
 ## Release-first rule
 Before starting new work, check:
-- is this a `P0 release-blocker` in `docs/parity-matrix.md` or `docs/release-1.0.md`?
-- is this on the current step ladder in `docs/roadmap-1.0.md`?
+- is this a `P0 release-blocker` in `docs/parity-matrix.md` or `docs/release-checklist-1.0.md`?
+- is this on the current step ladder in `docs/roadmap.md`?
 - does this help reach 1.0.0 directly?
 
 If the answer is no, do not expand scope unless the user explicitly asks for it.
@@ -80,11 +81,11 @@ Disallowed pattern:
 ## Shell and hook discipline
 Do not allow new frontend blobs to grow silently.
 Watch especially:
-- `frontend/src/hooks/useRuntimeShell.ts`
-- `frontend/src/components/AgentSidebar.tsx`
-- `frontend/src/components/ConnectionsPanel.tsx`
-- `frontend/src/components/WidgetDock.tsx`
-- `frontend/src/App.tsx`
+- `frontend/app/workspace/workspace.tsx`
+- `frontend/app/workspace/widgets.tsx`
+- `frontend/app/tab/tabbar.tsx`
+- `frontend/app/aipanel/aipanel.tsx`
+- `frontend/app/app.tsx`
 
 If logic grows, split it into focused hooks/components/services.
 
@@ -103,6 +104,8 @@ Do not reintroduce TideTerm-style giant handler buckets or hidden cross-layer co
 Do not claim behavior unless it was really validated.
 Build-only is not enough for UX-heavy slices.
 If you changed shell/UI materially, prefer fresh launch validation.
+For release-facing claims, run the documented release sweep (`npm run validate`) plus a real shell launch smoke (`npm run tauri:dev`).
+Use the npm Tauri entrypoint for this repo; do not switch to `cargo tauri dev` as the primary launch path.
 If you could not validate something, say so explicitly in `docs/validation.md`.
 
 ## Skills policy

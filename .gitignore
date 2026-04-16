@@ -10,3 +10,5 @@ tmp/
 state/
 
 tideterm/
+.playwright-mcp
+*.png
