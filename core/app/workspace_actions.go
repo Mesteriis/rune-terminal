@@ -33,6 +33,12 @@ type CreateRemoteSessionResult struct {
 	Workspace    workspace.Snapshot `json:"workspace"`
 }
 
+type remoteSessionIdentity struct {
+	TabID     string
+	WidgetID  string
+	SessionID string
+}
+
 type CloseTabResult struct {
 	ClosedTabID string             `json:"closed_tab_id"`
 	Workspace   workspace.Snapshot `json:"workspace"`
@@ -99,6 +105,20 @@ func (r *Runtime) CreateRemoteTerminalTabFromProfile(ctx context.Context, title 
 	if profileID == "" {
 		return CreateRemoteSessionResult{}, fmt.Errorf("%w: remote profile id is required", connections.ErrInvalidConnection)
 	}
+	if identity, ok := r.findReusableRemoteSession(profileID); ok {
+		if _, err := r.FocusWidget(identity.WidgetID); err != nil {
+			return CreateRemoteSessionResult{}, err
+		}
+		return CreateRemoteSessionResult{
+			TabID:        identity.TabID,
+			WidgetID:     identity.WidgetID,
+			SessionID:    identity.SessionID,
+			ProfileID:    profileID,
+			ConnectionID: profileID,
+			Reused:       true,
+			Workspace:    r.Workspace.Snapshot(),
+		}, nil
+	}
 	created, err := r.CreateRemoteTerminalTab(ctx, title, profileID)
 	if err != nil {
 		return CreateRemoteSessionResult{}, err
@@ -112,6 +132,38 @@ func (r *Runtime) CreateRemoteTerminalTabFromProfile(ctx context.Context, title 
 		Reused:       false,
 		Workspace:    created.Workspace,
 	}, nil
+}
+
+func (r *Runtime) findReusableRemoteSession(profileID string) (remoteSessionIdentity, bool) {
+	snapshot := r.Workspace.Snapshot()
+	widgetTabIndex := make(map[string]string, len(snapshot.Widgets))
+	for _, tab := range snapshot.Tabs {
+		for _, widgetID := range tab.WidgetIDs {
+			widgetTabIndex[widgetID] = tab.ID
+		}
+	}
+	for _, widget := range snapshot.Widgets {
+		if widget.Kind != workspace.WidgetKindTerminal || widget.ConnectionID != profileID {
+			continue
+		}
+		state, err := r.Terminals.GetState(widget.ID)
+		if err != nil {
+			continue
+		}
+		if state.ConnectionKind != string(connections.KindSSH) || state.Status != terminal.StatusRunning {
+			continue
+		}
+		tabID := widgetTabIndex[widget.ID]
+		if tabID == "" {
+			continue
+		}
+		return remoteSessionIdentity{
+			TabID:     tabID,
+			WidgetID:  widget.ID,
+			SessionID: state.SessionID,
+		}, true
+	}
+	return remoteSessionIdentity{}, false
 }
 
 func (r *Runtime) CreateTerminalTabWithConnection(ctx context.Context, title string, connectionID string) (CreateTerminalTabResult, error) {

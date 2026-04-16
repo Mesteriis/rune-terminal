@@ -208,6 +208,52 @@ func TestCreateRemoteTerminalTabFromProfileRequiresProfileID(t *testing.T) {
 	}
 }
 
+func TestCreateRemoteTerminalTabFromProfileReusesRunningSession(t *testing.T) {
+	t.Parallel()
+
+	process := &launchTestProcess{
+		pid:      106,
+		outputCh: make(chan []byte, 1),
+		waitCh:   make(chan struct{}),
+		exitCode: 0,
+	}
+	process.outputCh <- []byte("remote@fixture:~$ ")
+	runtime := newLaunchRuntime(t, process)
+
+	profile, _, err := runtime.Connections.SaveRemoteProfile(connections.SaveRemoteProfileInput{
+		Name: "Reuse SSH",
+		Host: "reuse.example.com",
+		User: "deploy",
+	})
+	if err != nil {
+		t.Fatalf("save remote profile: %v", err)
+	}
+
+	first, err := runtime.CreateRemoteTerminalTabFromProfile(context.Background(), "Reuse Shell", profile.ID)
+	if err != nil {
+		t.Fatalf("first CreateRemoteTerminalTabFromProfile error: %v", err)
+	}
+	if first.Reused {
+		t.Fatalf("expected first profile open to create a new session")
+	}
+
+	second, err := runtime.CreateRemoteTerminalTabFromProfile(context.Background(), "Reuse Shell", profile.ID)
+	if err != nil {
+		t.Fatalf("second CreateRemoteTerminalTabFromProfile error: %v", err)
+	}
+	if !second.Reused {
+		t.Fatalf("expected second profile open to reuse running session")
+	}
+	if first.TabID != second.TabID || first.WidgetID != second.WidgetID || first.SessionID != second.SessionID {
+		t.Fatalf("expected same session identity on reuse, first=%#v second=%#v", first, second)
+	}
+
+	snapshot := runtime.Workspace.Snapshot()
+	if got := len(snapshot.Tabs); got != 3 {
+		t.Fatalf("expected no duplicate tab creation during reuse, got %d tabs", got)
+	}
+}
+
 func waitForTerminalChunks(t *testing.T, runtime *Runtime, widgetID string, expected int) {
 	t.Helper()
 	deadline := time.Now().Add(300 * time.Millisecond)
