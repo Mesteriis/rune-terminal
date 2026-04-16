@@ -22,6 +22,7 @@ type MCPRuntime struct {
 	invoker  MCPInvoker
 	nowFn    func() time.Time
 	idleTTL  time.Duration
+	adapter  MCPContextAdapter
 
 	mu         sync.Mutex
 	process    map[string]*mcpProcess
@@ -37,17 +38,20 @@ type MCPRuntimeOptions struct {
 	NowFn             func() time.Time
 	IdleTimeout       time.Duration
 	IdleCheckInterval time.Duration
+	ContextAdapter    MCPContextAdapter
 }
 
 type MCPInvokeRequest struct {
 	ServerID           string          `json:"server_id"`
 	Payload            json.RawMessage `json:"payload,omitempty"`
 	AllowOnDemandStart bool            `json:"allow_on_demand_start,omitempty"`
+	IncludeContext     bool            `json:"include_context,omitempty"`
 }
 
 type MCPInvokeResult struct {
-	ServerID string          `json:"server_id"`
-	Output   json.RawMessage `json:"output,omitempty"`
+	ServerID string             `json:"server_id"`
+	Output   json.RawMessage    `json:"output,omitempty"`
+	Context  *MCPContextPayload `json:"context,omitempty"`
 }
 
 type mcpProcess struct {
@@ -85,6 +89,7 @@ func NewMCPRuntimeWithOptions(
 	if idleCheckInterval == 0 {
 		idleCheckInterval = time.Minute
 	}
+	adapter := options.ContextAdapter.withDefaults()
 
 	runtime := &MCPRuntime{
 		registry:   registry,
@@ -92,6 +97,7 @@ func NewMCPRuntimeWithOptions(
 		invoker:    invoker,
 		nowFn:      nowFn,
 		idleTTL:    idleTimeout,
+		adapter:    adapter,
 		process:    make(map[string]*mcpProcess),
 		stopIdleCh: make(chan struct{}),
 	}
@@ -254,9 +260,19 @@ func (r *MCPRuntime) Invoke(ctx context.Context, request MCPInvokeRequest) (MCPI
 			return MCPInvokeResult{}, err
 		}
 	}
+
+	var contextPayload *MCPContextPayload
+	if request.IncludeContext {
+		adapted, err := r.adapter.Adapt(output)
+		if err != nil {
+			return MCPInvokeResult{}, err
+		}
+		contextPayload = &adapted
+	}
 	return MCPInvokeResult{
 		ServerID: id,
 		Output:   output,
+		Context:  contextPayload,
 	}, nil
 }
 
