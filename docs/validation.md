@@ -179,6 +179,35 @@
   - browser console recorded one expected `428 Precondition Required` resource error for the initial approval challenge; the UI flow continued correctly and no fatal runtime exceptions were observed
   - `npm run validate`: `NOT VERIFIED` for this slice because the repo currently has broad pre-existing frontend lint failures unrelated to `/run` approval wiring; the failure occurred before the validation script could reach `build:frontend`, `test:go`, `build:go`, or `tauri:check`
 
+## /run transcript persistence
+
+- Date: `2026-04-16`
+- Status: `VERIFIED`
+- Commits:
+  - `c98e69702d0e9a212127aa715f267489d8f5cce4`
+  - `bec9799eb0c09553c0f984cb6f5d7f6ba9e5f0c7`
+- Validation steps:
+  - automated backend checks:
+    - `go test ./core/conversation ./core/app ./core/transport/httpapi`
+  - runtime environment:
+    - Ollama-compatible stub provider on `127.0.0.1:11441`
+    - core: `RTERM_AUTH_TOKEN=run-transcript-token RTERM_OLLAMA_BASE_URL=http://127.0.0.1:11441 RTERM_OLLAMA_MODEL=test-model go run ./cmd/rterm-core serve --listen 127.0.0.1:52920 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/rterm-run-transcript`
+    - frontend dev: `VITE_RTERM_API_BASE=http://127.0.0.1:52920 VITE_RTERM_AUTH_TOKEN=run-transcript-token npm --prefix frontend run dev -- --host 127.0.0.1 --port 5177 --strictPort`
+  - `/run` execution and explain:
+    - submitted `/run echo hello-phase13-ui` from the active compat AI panel
+    - execution completed and explanation message rendered
+  - backend transcript truth check:
+    - `GET /api/v1/agent/conversation` after execution contained exactly one persisted chain for this command:
+      - user message: `/run echo hello-phase13-ui`
+      - assistant execution-result message: `Executed \`echo hello-phase13-ui\`...`
+      - assistant explanation message containing `Original request: /run echo hello-phase13-ui`
+  - reload check:
+    - reloaded `http://127.0.0.1:5177/`
+    - reopened AI panel
+    - transcript still showed prompt/result/explanation for `/run echo hello-phase13-ui`
+    - repeated `GET /api/v1/agent/conversation` still reported counts `1/1/1` for prompt/result/explanation entries (no duplicate persistence from reload)
+- Result: `VERIFIED` — `/run` prompt and execution-result messages are now backend-persisted alongside explanation, and reload restores the full `/run` activity chain from backend conversation snapshot truth.
+
 ## Explain approval truth
 
 - Date: `2026-04-16`
