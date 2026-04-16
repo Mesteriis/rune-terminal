@@ -1953,7 +1953,7 @@
 ## MCP playground validation
 
 - Date: `2026-04-16`
-- Status: `PARTIAL` (setup blocked, lifecycle endpoints verified)
+- Status: `PARTIAL` (setup blocked, lifecycle and invocation endpoints verified)
 - Runtime environment:
   - real model endpoint: `http://192.168.1.2:11434` (no stub)
   - core launch: `RTERM_AUTH_TOKEN=mcp-playground-token RTERM_OLLAMA_BASE_URL=http://192.168.1.2:11434 RTERM_OLLAMA_MODEL=qwen3:8b go run ./cmd/rterm-core serve --listen 127.0.0.1:53131 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/rterm-mcp-playground-real.CEAElR/state`
@@ -1972,4 +1972,11 @@
   - basic stability observation:
     - core RSS: `12528 KB -> 13008 KB` during lifecycle cycle
     - no crash observed; `GET /healthz` stayed `{"status":"ok"}`
-- Result: `PARTIAL` — lifecycle controls work for already-registered MCP server entries, but real external MCP lifecycle is blocked because current runtime surface does not expose external server registration.
+- Invocation validation steps:
+  - external target invoke:
+    - `POST /api/v1/mcp/invoke` with `server_id:"mcp.context7"` and real query payload -> HTTP `404`, `mcp_server_not_found`
+  - control invoke on registered server:
+    - `POST /api/v1/mcp/invoke` with `server_id:"mcp.example"` and `payload.text:"Context7 API usage examples"`
+    - normalized response: `format:"mcp.normalized.v1"`, `payload_type:"object"`, `truncated:false`, `original_bytes:134`
+    - output shape remained structured (`object_fields`) and did not expose raw unbounded MCP dump
+- Result: `PARTIAL` — invocation and lifecycle paths work for registered MCP server entries with normalization/bounding, but real external MCP setup/invoke remains blocked because current runtime surface does not expose external server registration.

@@ -69,3 +69,28 @@ Basic stability observation during this cycle:
 
 - External MCP lifecycle validation: **FAILED** (server not registered in runtime)
 - Lifecycle API behavior on existing registered server: **WORKS**
+
+## Slice 3 — Invocation validation
+
+### External MCP invocation (target: `mcp.context7`)
+
+- `POST /api/v1/mcp/invoke` with real query payload (`react useeffect`) and `server_id: "mcp.context7"` -> `404 mcp_server_not_found`
+
+Because external MCP registration is not available in current runtime surface, direct invocation of `Context7` was not reachable.
+
+### Invocation control check (registered MCP path)
+
+To validate invocation pipeline behavior itself, invoke was tested on registered `mcp.example`:
+
+- request: `POST /api/v1/mcp/invoke` with payload `{"text":"Context7 API usage examples"}`
+- observed output:
+  - `format: "mcp.normalized.v1"`
+  - `payload_type: "object"`
+  - `truncated: false`
+  - `original_bytes: 134`
+- response contained normalized structured fields (`object_fields`), not a raw unbounded dump.
+
+### Result
+
+- External MCP invocation: **FAILED** (server not registered)
+- Invocation pipeline normalization/bounding on registered path: **WORKS**
