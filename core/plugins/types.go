@@ -30,5 +30,6 @@ type RequestContext struct {
 }
 
 type InvokeResult struct {
+	Plugin PluginMetadata
 	Output json.RawMessage
 }
