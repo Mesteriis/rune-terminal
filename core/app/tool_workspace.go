@@ -11,22 +11,27 @@ import (
 )
 
 func (r *Runtime) workspaceTools() []toolruntime.Definition {
+	adapter := newRuntimeToolAdapter(r)
 	return []toolruntime.Definition{
-		r.workspaceListTabsTool(),
-		r.workspaceGetActiveTabTool(),
-		r.workspaceFocusTabTool(),
-		r.workspaceMoveTabTool(),
-		r.workspaceRenameTabTool(),
-		r.workspaceSetTabPinnedTool(),
-		r.workspaceCreateTerminalTabTool(),
-		r.workspaceCloseTabTool(),
-		r.workspaceListWidgetsTool(),
-		r.workspaceGetActiveWidgetTool(),
-		r.workspaceFocusWidgetTool(),
+		adapter.workspaceListTabsTool(),
+		adapter.workspaceGetActiveTabTool(),
+		adapter.workspaceFocusTabTool(),
+		adapter.workspaceMoveTabTool(),
+		adapter.workspaceRenameTabTool(),
+		adapter.workspaceSetTabPinnedTool(),
+		adapter.workspaceCreateTerminalTabTool(),
+		adapter.workspaceCloseTabTool(),
+		adapter.workspaceListWidgetsTool(),
+		adapter.workspaceGetActiveWidgetTool(),
+		adapter.workspaceFocusWidgetTool(),
 	}
 }
 
 func (r *Runtime) workspaceMoveTabTool() toolruntime.Definition {
+	return newRuntimeToolAdapter(r).workspaceMoveTabTool()
+}
+
+func (a *runtimeToolAdapter) workspaceMoveTabTool() toolruntime.Definition {
 	return toolruntime.Definition{
 		Name:         "workspace.move_tab",
 		Description:  "Move a tab before another tab in the current workspace.",
@@ -52,7 +57,7 @@ func (r *Runtime) workspaceMoveTabTool() toolruntime.Definition {
 			}, nil
 		},
 		Execute: func(ctx context.Context, execCtx toolruntime.ExecutionContext, input any) (any, error) {
-			snapshot, err := r.MoveTab(input.(moveTabInput).TabID, input.(moveTabInput).BeforeTabID)
+			snapshot, err := a.moveTab(input.(moveTabInput).TabID, input.(moveTabInput).BeforeTabID)
 			if err != nil {
 				return nil, normalizeToolError(err)
 			}
@@ -62,6 +67,10 @@ func (r *Runtime) workspaceMoveTabTool() toolruntime.Definition {
 }
 
 func (r *Runtime) workspaceRenameTabTool() toolruntime.Definition {
+	return newRuntimeToolAdapter(r).workspaceRenameTabTool()
+}
+
+func (a *runtimeToolAdapter) workspaceRenameTabTool() toolruntime.Definition {
 	return toolruntime.Definition{
 		Name:         "workspace.rename_tab",
 		Description:  "Rename a tab in the current workspace.",
@@ -87,7 +96,7 @@ func (r *Runtime) workspaceRenameTabTool() toolruntime.Definition {
 			}, nil
 		},
 		Execute: func(ctx context.Context, execCtx toolruntime.ExecutionContext, input any) (any, error) {
-			result, err := r.RenameTab(input.(renameTabInput).TabID, input.(renameTabInput).Title)
+			result, err := a.renameTab(input.(renameTabInput).TabID, input.(renameTabInput).Title)
 			if err != nil {
 				return nil, normalizeToolError(err)
 			}
@@ -97,6 +106,10 @@ func (r *Runtime) workspaceRenameTabTool() toolruntime.Definition {
 }
 
 func (r *Runtime) workspaceSetTabPinnedTool() toolruntime.Definition {
+	return newRuntimeToolAdapter(r).workspaceSetTabPinnedTool()
+}
+
+func (a *runtimeToolAdapter) workspaceSetTabPinnedTool() toolruntime.Definition {
 	return toolruntime.Definition{
 		Name:         "workspace.set_tab_pinned",
 		Description:  "Pin or unpin a tab in the current workspace.",
@@ -126,7 +139,7 @@ func (r *Runtime) workspaceSetTabPinnedTool() toolruntime.Definition {
 			}, nil
 		},
 		Execute: func(ctx context.Context, execCtx toolruntime.ExecutionContext, input any) (any, error) {
-			result, err := r.SetTabPinned(input.(setTabPinnedInput).TabID, input.(setTabPinnedInput).Pinned)
+			result, err := a.setTabPinned(input.(setTabPinnedInput).TabID, input.(setTabPinnedInput).Pinned)
 			if err != nil {
 				return nil, normalizeToolError(err)
 			}
@@ -136,6 +149,10 @@ func (r *Runtime) workspaceSetTabPinnedTool() toolruntime.Definition {
 }
 
 func (r *Runtime) workspaceListTabsTool() toolruntime.Definition {
+	return newRuntimeToolAdapter(r).workspaceListTabsTool()
+}
+
+func (a *runtimeToolAdapter) workspaceListTabsTool() toolruntime.Definition {
 	return toolruntime.Definition{
 		Name:        "workspace.list_tabs",
 		Description: "List tabs in the current workspace.",
@@ -162,12 +179,16 @@ func (r *Runtime) workspaceListTabsTool() toolruntime.Definition {
 			}, nil
 		},
 		Execute: func(ctx context.Context, execCtx toolruntime.ExecutionContext, input any) (any, error) {
-			return map[string]any{"tabs": r.Workspace.ListTabs()}, nil
+			return map[string]any{"tabs": a.listTabs()}, nil
 		},
 	}
 }
 
 func (r *Runtime) workspaceGetActiveTabTool() toolruntime.Definition {
+	return newRuntimeToolAdapter(r).workspaceGetActiveTabTool()
+}
+
+func (a *runtimeToolAdapter) workspaceGetActiveTabTool() toolruntime.Definition {
 	return toolruntime.Definition{
 		Name:         "workspace.get_active_tab",
 		Description:  "Get the currently active tab.",
@@ -189,7 +210,7 @@ func (r *Runtime) workspaceGetActiveTabTool() toolruntime.Definition {
 			}, nil
 		},
 		Execute: func(ctx context.Context, execCtx toolruntime.ExecutionContext, input any) (any, error) {
-			tab, err := r.Workspace.ActiveTab()
+			tab, err := a.activeTab()
 			if err != nil {
 				return nil, normalizeToolError(err)
 			}
@@ -199,6 +220,10 @@ func (r *Runtime) workspaceGetActiveTabTool() toolruntime.Definition {
 }
 
 func (r *Runtime) workspaceFocusTabTool() toolruntime.Definition {
+	return newRuntimeToolAdapter(r).workspaceFocusTabTool()
+}
+
+func (a *runtimeToolAdapter) workspaceFocusTabTool() toolruntime.Definition {
 	return toolruntime.Definition{
 		Name:         "workspace.focus_tab",
 		Description:  "Focus a tab in the current workspace.",
@@ -224,7 +249,7 @@ func (r *Runtime) workspaceFocusTabTool() toolruntime.Definition {
 			}, nil
 		},
 		Execute: func(ctx context.Context, execCtx toolruntime.ExecutionContext, input any) (any, error) {
-			tab, err := r.Workspace.FocusTab(input.(focusTabInput).TabID)
+			tab, err := a.focusTab(input.(focusTabInput).TabID)
 			if err != nil {
 				return nil, normalizeToolError(err)
 			}
@@ -234,6 +259,10 @@ func (r *Runtime) workspaceFocusTabTool() toolruntime.Definition {
 }
 
 func (r *Runtime) workspaceCreateTerminalTabTool() toolruntime.Definition {
+	return newRuntimeToolAdapter(r).workspaceCreateTerminalTabTool()
+}
+
+func (a *runtimeToolAdapter) workspaceCreateTerminalTabTool() toolruntime.Definition {
 	return toolruntime.Definition{
 		Name:         "workspace.create_terminal_tab",
 		Description:  "Create a new terminal tab and focus it.",
@@ -268,7 +297,7 @@ func (r *Runtime) workspaceCreateTerminalTabTool() toolruntime.Definition {
 		},
 		Execute: func(ctx context.Context, execCtx toolruntime.ExecutionContext, input any) (any, error) {
 			payload := input.(createTerminalTabInput)
-			result, err := r.CreateTerminalTabWithConnection(ctx, payload.Title, payload.ConnectionID)
+			result, err := a.createTerminalTabWithConnection(ctx, payload.Title, payload.ConnectionID)
 			if err != nil {
 				return nil, normalizeToolError(err)
 			}
@@ -282,6 +311,10 @@ func (r *Runtime) workspaceCreateTerminalTabTool() toolruntime.Definition {
 }
 
 func (r *Runtime) workspaceCloseTabTool() toolruntime.Definition {
+	return newRuntimeToolAdapter(r).workspaceCloseTabTool()
+}
+
+func (a *runtimeToolAdapter) workspaceCloseTabTool() toolruntime.Definition {
 	return toolruntime.Definition{
 		Name:         "workspace.close_tab",
 		Description:  "Close a tab and its terminal session.",
@@ -307,7 +340,7 @@ func (r *Runtime) workspaceCloseTabTool() toolruntime.Definition {
 			}, nil
 		},
 		Execute: func(ctx context.Context, execCtx toolruntime.ExecutionContext, input any) (any, error) {
-			result, err := r.CloseTab(input.(closeTabInput).TabID)
+			result, err := a.closeTab(input.(closeTabInput).TabID)
 			if err != nil {
 				return nil, normalizeToolError(err)
 			}
@@ -320,6 +353,10 @@ func (r *Runtime) workspaceCloseTabTool() toolruntime.Definition {
 }
 
 func (r *Runtime) workspaceListWidgetsTool() toolruntime.Definition {
+	return newRuntimeToolAdapter(r).workspaceListWidgetsTool()
+}
+
+func (a *runtimeToolAdapter) workspaceListWidgetsTool() toolruntime.Definition {
 	return toolruntime.Definition{
 		Name:        "workspace.list_widgets",
 		Description: "List widgets in the current workspace.",
@@ -346,12 +383,16 @@ func (r *Runtime) workspaceListWidgetsTool() toolruntime.Definition {
 			}, nil
 		},
 		Execute: func(ctx context.Context, execCtx toolruntime.ExecutionContext, input any) (any, error) {
-			return map[string]any{"widgets": r.Workspace.ListWidgets()}, nil
+			return map[string]any{"widgets": a.listWidgets()}, nil
 		},
 	}
 }
 
 func (r *Runtime) workspaceGetActiveWidgetTool() toolruntime.Definition {
+	return newRuntimeToolAdapter(r).workspaceGetActiveWidgetTool()
+}
+
+func (a *runtimeToolAdapter) workspaceGetActiveWidgetTool() toolruntime.Definition {
 	return toolruntime.Definition{
 		Name:         "workspace.get_active_widget",
 		Description:  "Get the currently focused widget.",
@@ -373,7 +414,7 @@ func (r *Runtime) workspaceGetActiveWidgetTool() toolruntime.Definition {
 			}, nil
 		},
 		Execute: func(ctx context.Context, execCtx toolruntime.ExecutionContext, input any) (any, error) {
-			widget, err := r.Workspace.ActiveWidget()
+			widget, err := a.activeWidget()
 			if err != nil {
 				return nil, normalizeToolError(err)
 			}
@@ -383,6 +424,10 @@ func (r *Runtime) workspaceGetActiveWidgetTool() toolruntime.Definition {
 }
 
 func (r *Runtime) workspaceFocusWidgetTool() toolruntime.Definition {
+	return newRuntimeToolAdapter(r).workspaceFocusWidgetTool()
+}
+
+func (a *runtimeToolAdapter) workspaceFocusWidgetTool() toolruntime.Definition {
 	return toolruntime.Definition{
 		Name:         "workspace.focus_widget",
 		Description:  "Focus a widget in the current workspace.",
@@ -409,7 +454,7 @@ func (r *Runtime) workspaceFocusWidgetTool() toolruntime.Definition {
 			}, nil
 		},
 		Execute: func(ctx context.Context, execCtx toolruntime.ExecutionContext, input any) (any, error) {
-			widget, err := r.Workspace.FocusWidget(input.(focusWidgetInput).WidgetID)
+			widget, err := a.focusWidget(input.(focusWidgetInput).WidgetID)
 			if err != nil {
 				return nil, normalizeToolError(err)
 			}

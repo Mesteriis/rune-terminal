@@ -28,15 +28,20 @@ type saveSSHConnectionInput struct {
 }
 
 func (r *Runtime) connectionTools() []toolruntime.Definition {
+	adapter := newRuntimeToolAdapter(r)
 	return []toolruntime.Definition{
-		r.connectionsListTool(),
-		r.connectionsCheckTool(),
-		r.connectionsSelectTool(),
-		r.connectionsSaveSSHTool(),
+		adapter.connectionsListTool(),
+		adapter.connectionsCheckTool(),
+		adapter.connectionsSelectTool(),
+		adapter.connectionsSaveSSHTool(),
 	}
 }
 
 func (r *Runtime) connectionsListTool() toolruntime.Definition {
+	return newRuntimeToolAdapter(r).connectionsListTool()
+}
+
+func (a *runtimeToolAdapter) connectionsListTool() toolruntime.Definition {
 	return toolruntime.Definition{
 		Name:         "connections.list",
 		Description:  "List local and configured SSH connections.",
@@ -58,12 +63,16 @@ func (r *Runtime) connectionsListTool() toolruntime.Definition {
 			}, nil
 		},
 		Execute: func(ctx context.Context, execCtx toolruntime.ExecutionContext, input any) (any, error) {
-			return r.ConnectionsSnapshot(), nil
+			return a.connectionsSnapshot(), nil
 		},
 	}
 }
 
 func (r *Runtime) connectionsSelectTool() toolruntime.Definition {
+	return newRuntimeToolAdapter(r).connectionsSelectTool()
+}
+
+func (a *runtimeToolAdapter) connectionsSelectTool() toolruntime.Definition {
 	return toolruntime.Definition{
 		Name:         "connections.select",
 		Description:  "Select the active connection for new shell launches.",
@@ -89,7 +98,7 @@ func (r *Runtime) connectionsSelectTool() toolruntime.Definition {
 			}, nil
 		},
 		Execute: func(ctx context.Context, execCtx toolruntime.ExecutionContext, input any) (any, error) {
-			snapshot, err := r.SelectActiveConnection(input.(selectConnectionInput).ConnectionID)
+			snapshot, err := a.selectActiveConnection(input.(selectConnectionInput).ConnectionID)
 			if err != nil {
 				return nil, normalizeToolError(err)
 			}
@@ -99,6 +108,10 @@ func (r *Runtime) connectionsSelectTool() toolruntime.Definition {
 }
 
 func (r *Runtime) connectionsCheckTool() toolruntime.Definition {
+	return newRuntimeToolAdapter(r).connectionsCheckTool()
+}
+
+func (a *runtimeToolAdapter) connectionsCheckTool() toolruntime.Definition {
 	return toolruntime.Definition{
 		Name:         "connections.check",
 		Description:  "Run a local preflight check for a configured connection target.",
@@ -124,7 +137,7 @@ func (r *Runtime) connectionsCheckTool() toolruntime.Definition {
 		},
 		Execute: func(ctx context.Context, execCtx toolruntime.ExecutionContext, input any) (any, error) {
 			payload := input.(checkConnectionInput)
-			connection, snapshot, err := r.CheckConnection(ctx, payload.ConnectionID)
+			connection, snapshot, err := a.checkConnection(ctx, payload.ConnectionID)
 			if err != nil {
 				return nil, normalizeToolError(err)
 			}
@@ -137,6 +150,10 @@ func (r *Runtime) connectionsCheckTool() toolruntime.Definition {
 }
 
 func (r *Runtime) connectionsSaveSSHTool() toolruntime.Definition {
+	return newRuntimeToolAdapter(r).connectionsSaveSSHTool()
+}
+
+func (a *runtimeToolAdapter) connectionsSaveSSHTool() toolruntime.Definition {
 	return toolruntime.Definition{
 		Name:         "connections.save_ssh",
 		Description:  "Create or update an SSH connection profile.",
@@ -167,7 +184,7 @@ func (r *Runtime) connectionsSaveSSHTool() toolruntime.Definition {
 		},
 		Execute: func(ctx context.Context, execCtx toolruntime.ExecutionContext, input any) (any, error) {
 			payload := input.(saveSSHConnectionInput)
-			connection, snapshot, err := r.SaveSSHConnection(connections.SaveSSHInput{
+			connection, snapshot, err := a.saveSSHConnection(connections.SaveSSHInput{
 				ID:           payload.ID,
 				Name:         payload.Name,
 				Host:         payload.Host,

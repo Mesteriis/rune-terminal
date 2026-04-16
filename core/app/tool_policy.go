@@ -10,18 +10,23 @@ import (
 )
 
 func (r *Runtime) policyTools() []toolruntime.Definition {
+	adapter := newRuntimeToolAdapter(r)
 	return []toolruntime.Definition{
-		r.safetyConfirmTool(),
-		r.addTrustedRuleTool(),
-		r.listTrustedRulesTool(),
-		r.removeTrustedRuleTool(),
-		r.addIgnoreRuleTool(),
-		r.listIgnoreRulesTool(),
-		r.removeIgnoreRuleTool(),
+		adapter.safetyConfirmTool(),
+		adapter.addTrustedRuleTool(),
+		adapter.listTrustedRulesTool(),
+		adapter.removeTrustedRuleTool(),
+		adapter.addIgnoreRuleTool(),
+		adapter.listIgnoreRulesTool(),
+		adapter.removeIgnoreRuleTool(),
 	}
 }
 
 func (r *Runtime) safetyConfirmTool() toolruntime.Definition {
+	return newRuntimeToolAdapter(r).safetyConfirmTool()
+}
+
+func (a *runtimeToolAdapter) safetyConfirmTool() toolruntime.Definition {
 	return toolruntime.Definition{
 		Name:         "safety.confirm",
 		Description:  "Confirm a pending approval and return a short-lived approval token.",
@@ -45,7 +50,7 @@ func (r *Runtime) safetyConfirmTool() toolruntime.Definition {
 			}, nil
 		},
 		Execute: func(ctx context.Context, execCtx toolruntime.ExecutionContext, input any) (any, error) {
-			grant, err := r.Executor.Confirm(input.(confirmInput).ApprovalID)
+			grant, err := a.confirmApproval(input.(confirmInput).ApprovalID)
 			if err != nil {
 				return nil, normalizeToolError(err)
 			}
@@ -55,6 +60,10 @@ func (r *Runtime) safetyConfirmTool() toolruntime.Definition {
 }
 
 func (r *Runtime) addTrustedRuleTool() toolruntime.Definition {
+	return newRuntimeToolAdapter(r).addTrustedRuleTool()
+}
+
+func (a *runtimeToolAdapter) addTrustedRuleTool() toolruntime.Definition {
 	return toolruntime.Definition{
 		Name:         "safety.add_trusted_rule",
 		Description:  "Add a trusted allowlist rule.",
@@ -81,9 +90,9 @@ func (r *Runtime) addTrustedRuleTool() toolruntime.Definition {
 		},
 		Execute: func(ctx context.Context, execCtx toolruntime.ExecutionContext, input any) (any, error) {
 			payload := input.(addTrustedRuleInput)
-			rule, err := r.Policy.AddTrustedRule(policy.TrustedRule{
+			rule, err := a.addTrustedRule(policy.TrustedRule{
 				Scope:       payload.Scope,
-				ScopeRef:    r.normalizeScopeRef(payload.Scope, payload.ScopeRef, execCtx),
+				ScopeRef:    a.normalizeScopeRef(payload.Scope, payload.ScopeRef, execCtx),
 				SubjectType: payload.SubjectType,
 				MatcherType: payload.MatcherType,
 				Matcher:     payload.Matcher,
@@ -99,6 +108,10 @@ func (r *Runtime) addTrustedRuleTool() toolruntime.Definition {
 }
 
 func (r *Runtime) listTrustedRulesTool() toolruntime.Definition {
+	return newRuntimeToolAdapter(r).listTrustedRulesTool()
+}
+
+func (a *runtimeToolAdapter) listTrustedRulesTool() toolruntime.Definition {
 	return toolruntime.Definition{
 		Name:         "safety.list_trusted_rules",
 		Description:  "List trusted allowlist rules.",
@@ -120,12 +133,16 @@ func (r *Runtime) listTrustedRulesTool() toolruntime.Definition {
 			}, nil
 		},
 		Execute: func(ctx context.Context, execCtx toolruntime.ExecutionContext, input any) (any, error) {
-			return map[string]any{"rules": r.Policy.ListTrustedRules()}, nil
+			return map[string]any{"rules": a.listTrustedRules()}, nil
 		},
 	}
 }
 
 func (r *Runtime) removeTrustedRuleTool() toolruntime.Definition {
+	return newRuntimeToolAdapter(r).removeTrustedRuleTool()
+}
+
+func (a *runtimeToolAdapter) removeTrustedRuleTool() toolruntime.Definition {
 	return toolruntime.Definition{
 		Name:         "safety.remove_trusted_rule",
 		Description:  "Remove a trusted allowlist rule.",
@@ -151,7 +168,7 @@ func (r *Runtime) removeTrustedRuleTool() toolruntime.Definition {
 		},
 		Execute: func(ctx context.Context, execCtx toolruntime.ExecutionContext, input any) (any, error) {
 			payload := input.(removeRuleInput)
-			removed, err := r.Policy.RemoveTrustedRule(payload.RuleID)
+			removed, err := a.removeTrustedRule(payload.RuleID)
 			if err != nil {
 				return nil, normalizeToolError(err)
 			}
@@ -161,6 +178,10 @@ func (r *Runtime) removeTrustedRuleTool() toolruntime.Definition {
 }
 
 func (r *Runtime) addIgnoreRuleTool() toolruntime.Definition {
+	return newRuntimeToolAdapter(r).addIgnoreRuleTool()
+}
+
+func (a *runtimeToolAdapter) addIgnoreRuleTool() toolruntime.Definition {
 	return toolruntime.Definition{
 		Name:         "safety.add_ignore_rule",
 		Description:  "Add an ignore rule for secrets or restricted paths.",
@@ -187,9 +208,9 @@ func (r *Runtime) addIgnoreRuleTool() toolruntime.Definition {
 		},
 		Execute: func(ctx context.Context, execCtx toolruntime.ExecutionContext, input any) (any, error) {
 			payload := input.(addIgnoreRuleInput)
-			rule, err := r.Policy.AddIgnoreRule(policy.IgnoreRule{
+			rule, err := a.addIgnoreRule(policy.IgnoreRule{
 				Scope:       payload.Scope,
-				ScopeRef:    r.normalizeScopeRef(payload.Scope, payload.ScopeRef, execCtx),
+				ScopeRef:    a.normalizeScopeRef(payload.Scope, payload.ScopeRef, execCtx),
 				MatcherType: payload.MatcherType,
 				Pattern:     payload.Pattern,
 				Mode:        payload.Mode,
@@ -204,6 +225,10 @@ func (r *Runtime) addIgnoreRuleTool() toolruntime.Definition {
 }
 
 func (r *Runtime) listIgnoreRulesTool() toolruntime.Definition {
+	return newRuntimeToolAdapter(r).listIgnoreRulesTool()
+}
+
+func (a *runtimeToolAdapter) listIgnoreRulesTool() toolruntime.Definition {
 	return toolruntime.Definition{
 		Name:         "safety.list_ignore_rules",
 		Description:  "List ignore and secret protection rules.",
@@ -225,12 +250,16 @@ func (r *Runtime) listIgnoreRulesTool() toolruntime.Definition {
 			}, nil
 		},
 		Execute: func(ctx context.Context, execCtx toolruntime.ExecutionContext, input any) (any, error) {
-			return map[string]any{"rules": r.Policy.ListIgnoreRules()}, nil
+			return map[string]any{"rules": a.listIgnoreRules()}, nil
 		},
 	}
 }
 
 func (r *Runtime) removeIgnoreRuleTool() toolruntime.Definition {
+	return newRuntimeToolAdapter(r).removeIgnoreRuleTool()
+}
+
+func (a *runtimeToolAdapter) removeIgnoreRuleTool() toolruntime.Definition {
 	return toolruntime.Definition{
 		Name:         "safety.remove_ignore_rule",
 		Description:  "Remove an ignore rule.",
@@ -256,7 +285,7 @@ func (r *Runtime) removeIgnoreRuleTool() toolruntime.Definition {
 		},
 		Execute: func(ctx context.Context, execCtx toolruntime.ExecutionContext, input any) (any, error) {
 			payload := input.(removeRuleInput)
-			removed, err := r.Policy.RemoveIgnoreRule(payload.RuleID)
+			removed, err := a.removeIgnoreRule(payload.RuleID)
 			if err != nil {
 				return nil, normalizeToolError(err)
 			}
