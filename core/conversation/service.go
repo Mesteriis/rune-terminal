@@ -80,7 +80,7 @@ func (s *Service) Submit(ctx context.Context, request SubmitRequest) (SubmitResu
 		return SubmitResult{}, ErrInvalidPrompt
 	}
 
-	userMessage := newMessage(RoleUser, prompt, StatusComplete, "", "")
+	userMessage := newMessage(RoleUser, prompt, request.Attachments, StatusComplete, "", "")
 
 	s.mu.Lock()
 	s.state.Messages = append(s.state.Messages, userMessage)
@@ -110,7 +110,7 @@ func (s *Service) AppendAssistantPrompt(ctx context.Context, request AssistantPr
 	history := append([]Message(nil), s.state.Messages...)
 	s.mu.RUnlock()
 
-	history = append(history, newMessage(RoleUser, prompt, StatusComplete, "", ""))
+	history = append(history, newMessage(RoleUser, prompt, nil, StatusComplete, "", ""))
 	result, info, providerErr := s.complete(ctx, systemPrompt, history)
 	return s.appendAssistantResult(result, info, providerErr)
 }
@@ -136,13 +136,14 @@ func (s *Service) AppendMessages(requests []AppendMessageRequest) (Snapshot, err
 			status = StatusComplete
 		}
 		prepared = append(prepared, Message{
-			ID:        ids.New("msg"),
-			Role:      role,
-			Content:   content,
-			Status:    status,
-			Provider:  strings.TrimSpace(request.Provider),
-			Model:     strings.TrimSpace(request.Model),
-			CreatedAt: now,
+			ID:          ids.New("msg"),
+			Role:        role,
+			Content:     content,
+			Attachments: cloneAttachmentReferences(request.Attachments),
+			Status:      status,
+			Provider:    strings.TrimSpace(request.Provider),
+			Model:       strings.TrimSpace(request.Model),
+			CreatedAt:   now,
 		})
 	}
 
@@ -159,7 +160,7 @@ func (s *Service) AppendMessages(requests []AppendMessageRequest) (Snapshot, err
 }
 
 func (s *Service) appendAssistantResult(result CompletionResult, info ProviderInfo, providerErr error) (SubmitResult, error) {
-	assistant := newMessage(RoleAssistant, "", StatusComplete, info.Kind, info.Model)
+	assistant := newMessage(RoleAssistant, "", nil, StatusComplete, info.Kind, info.Model)
 	if providerErr != nil {
 		assistant.Status = StatusError
 		assistant.Content = strings.TrimSpace(providerErr.Error())
@@ -200,16 +201,31 @@ func (s *Service) snapshotLocked() Snapshot {
 	}
 }
 
-func newMessage(role MessageRole, content string, status MessageStatus, provider string, model string) Message {
+func newMessage(
+	role MessageRole,
+	content string,
+	attachments []AttachmentReference,
+	status MessageStatus,
+	provider string,
+	model string,
+) Message {
 	return Message{
-		ID:        ids.New("msg"),
-		Role:      role,
-		Content:   content,
-		Status:    status,
-		Provider:  provider,
-		Model:     model,
-		CreatedAt: time.Now().UTC(),
+		ID:          ids.New("msg"),
+		Role:        role,
+		Content:     content,
+		Attachments: cloneAttachmentReferences(attachments),
+		Status:      status,
+		Provider:    provider,
+		Model:       model,
+		CreatedAt:   time.Now().UTC(),
 	}
+}
+
+func cloneAttachmentReferences(attachments []AttachmentReference) []AttachmentReference {
+	if len(attachments) == 0 {
+		return nil
+	}
+	return append([]AttachmentReference(nil), attachments...)
 }
 
 func (s *Service) complete(ctx context.Context, systemPrompt string, history []Message) (CompletionResult, ProviderInfo, error) {

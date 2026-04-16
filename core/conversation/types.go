@@ -25,13 +25,14 @@ type ProviderInfo struct {
 }
 
 type Message struct {
-	ID        string        `json:"id"`
-	Role      MessageRole   `json:"role"`
-	Content   string        `json:"content"`
-	Status    MessageStatus `json:"status"`
-	Provider  string        `json:"provider,omitempty"`
-	Model     string        `json:"model,omitempty"`
-	CreatedAt time.Time     `json:"created_at"`
+	ID          string                `json:"id"`
+	Role        MessageRole           `json:"role"`
+	Content     string                `json:"content"`
+	Attachments []AttachmentReference `json:"attachments,omitempty"`
+	Status      MessageStatus         `json:"status"`
+	Provider    string                `json:"provider,omitempty"`
+	Model       string                `json:"model,omitempty"`
+	CreatedAt   time.Time             `json:"created_at"`
 }
 
 type Snapshot struct {
@@ -43,6 +44,7 @@ type Snapshot struct {
 type SubmitRequest struct {
 	SystemPrompt string
 	Prompt       string
+	Attachments  []AttachmentReference
 }
 
 type AssistantPromptRequest struct {
@@ -58,11 +60,12 @@ type SubmitResult struct {
 }
 
 type AppendMessageRequest struct {
-	Role     MessageRole
-	Content  string
-	Status   MessageStatus
-	Provider string
-	Model    string
+	Role        MessageRole
+	Content     string
+	Attachments []AttachmentReference
+	Status      MessageStatus
+	Provider    string
+	Model       string
 }
 
 type ChatMessage struct {
