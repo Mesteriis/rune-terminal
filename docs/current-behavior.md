@@ -194,6 +194,11 @@ Confirmable boundaries:
 - The AI panel now keeps a merged transcript:
   - backend-owned conversation messages persisted by the Go runtime
   - runtime-backed quick actions, approval decisions, and posture updates kept in the frontend activity feed
+- The active compat AI panel now supports local attachment references:
+  - attach flow creates backend-issued references from local filesystem paths
+  - conversation messages persist attachment reference metadata (`id`, `name`, `path`, `mime_type`, `size`, `modified_time`)
+  - reload restores attachment references from backend conversation snapshot truth
+  - files are not imported into managed app storage; references can become stale if files move or are deleted
 - The AI composer now supports one explicit command execution grammar:
   - `/run <command>`
   - `run: <command>`

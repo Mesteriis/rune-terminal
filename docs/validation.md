@@ -1379,3 +1379,56 @@
 - Result: `VERIFIED` — active runtime path remains operational after contract tightening and does not reintroduce legacy `/wave/service` request noise.
 - Notes:
   - runtime config no longer silently falls through legacy/browser-origin API base resolution in the normal path; legacy fallback now requires explicit opt-in flag `VITE_RTERM_ENABLE_LEGACY_RUNTIME_FALLBACK=1`
+
+## Local attachment references
+
+- Date: `2026-04-16`
+- Status: `VERIFIED`
+- Commits:
+  - `55e6598`
+  - `ac3ee08`
+  - `6f03663`
+  - `8e16be5`
+  - `7ff064d`
+  - `6860e57`
+  - `e386e50`
+  - `61dae76`
+  - `ba569cb`
+- Validation steps:
+  - automated checks:
+    - `go test ./core/conversation ./core/app ./core/transport/httpapi`
+    - `npx tsc -p frontend/tsconfig.json --noEmit`
+    - `npx vitest run frontend/app/aipanel/run-command.test.ts frontend/app/approval/continuity.test.ts --config frontend/vite.config.ts`
+  - runtime environment:
+    - core: `RTERM_AUTH_TOKEN=exec-model-token RTERM_OLLAMA_BASE_URL=http://127.0.0.1:11442 RTERM_OLLAMA_MODEL=test-model go run ./cmd/rterm-core serve --listen 127.0.0.1:52930 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/rterm-attachments-batch`
+    - frontend dev: `VITE_RTERM_API_BASE=http://127.0.0.1:52930 VITE_RTERM_AUTH_TOKEN=exec-model-token npm --prefix frontend run dev -- --host 127.0.0.1 --port 5178 --strictPort`
+  - attachment reference flow (active compat AI panel):
+    - opened `http://127.0.0.1:5178/` and AI panel
+    - selected local file `README.md` through AI panel attach control (`input[type=file]`)
+    - observed reference creation request:
+      - `POST /api/v1/agent/conversation/attachments/references`
+      - body: `{"path":"/Users/avm/projects/Personal/tideterm/runa-terminal/README.md"}`
+      - response: `200 OK`
+    - sent message `attachment smoke 2026-04-16`
+    - observed conversation submit request with attachment metadata:
+      - `POST /api/v1/agent/conversation/messages`
+      - body contained `attachments:[{id,name,path,mime_type,size,modified_time}]`
+    - verified backend truth:
+      - `curl -sS -H 'Authorization: Bearer exec-model-token' http://127.0.0.1:52930/api/v1/agent/conversation | jq '.conversation.messages[] | select(.content=="attachment smoke 2026-04-16") | {role, content, attachments}'`
+      - result contained persisted user message attachment reference for `README.md`
+    - reloaded page and reopened AI panel
+    - confirmed transcript still shows `attachment smoke 2026-04-16` and `README.md` from backend snapshot
+  - edge case (missing file after reference creation):
+    - created reference for `/tmp/rterm-attachment-edge.txt`, then deleted the file
+    - submitted conversation message with that previously-created attachment reference via API payload
+    - observed `200 OK`; reference metadata remained in persisted transcript
+    - observed behavior is currently metadata-persistent, not submit-time file revalidation
+  - regression smoke:
+    - `/run echo attachments-batch-run` in AI panel rendered explanation (`Original request: /run echo attachments-batch-run`)
+    - Tools panel opens and executes (surface reachable, execute controls visible)
+    - Audit panel opens and shows events
+    - browser console errors in validation run: `0`
+- Result: `VERIFIED` — local attachment references can be created, attached to messages, persisted in backend conversation truth, and restored after reload.
+- Notes:
+  - this slice is reference-based only: no managed storage and no blob import pipeline
+  - missing-file references created earlier are currently persisted as metadata when submitted; submit-time revalidation of attachment path existence is intentionally not implemented in this slice
