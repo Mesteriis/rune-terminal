@@ -153,6 +153,46 @@
   - observed network requests для проверенного flow завершились `200 OK`; request failures в этом run не наблюдались
   - immediate DOM probe сразу после rapid tab switching не доказал видимость прежнего output в текущем viewport, но backend snapshot подтвердил сохранность и `widgets-structural-slice`, и `post-switch-check`; в рамках structural slice это отмечено как observation, а не как regression proof
 
+## Terminal output persistence across tab switch
+
+- Date: `2026-04-16`
+- Status: `VERIFIED`
+- Commits:
+  - `79c05855af26a73d0e602809f7a0fd8e723eb03f`
+  - `76aa0104649197383464e57a55587984198a9f3f`
+- Validation steps:
+  - runtime environment:
+    - core: `RTERM_AUTH_TOKEN=terminal-persist-token apps/desktop/bin/rterm-core serve --listen 127.0.0.1:52769 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/rterm-terminal-persistence-validation`
+    - frontend dev: `VITE_RTERM_API_BASE=http://127.0.0.1:52769 VITE_RTERM_AUTH_TOKEN=terminal-persist-token npm --prefix frontend run dev -- --host 127.0.0.1 --port 4199 --strictPort`
+  - commands entered in `Main Shell`:
+    - `echo PERSIST_HOTFIX_A1`
+    - `pwd`
+    - `echo PERSIST_HOTFIX_AFTER_RETURN`
+  - switch sequence:
+    - `Main Shell -> Ops Shell -> Main Shell`
+    - `Main Shell -> Ops Shell -> Main Shell` repeated once more
+  - observed in the visible terminal renderer:
+    - before the first switch, `.view-term` contained `echo PERSIST_HOTFIX_A1`, `PERSIST_HOTFIX_A1`, `pwd`, and `/Users/avm/projects/Personal/tideterm/runa-terminal`
+    - after switching back, `.view-term` still contained the same output with unchanged counts: `PERSIST_HOTFIX_A1 = 2`, `/Users/avm/projects/Personal/tideterm/runa-terminal = 1`
+    - after running `echo PERSIST_HOTFIX_AFTER_RETURN`, the terminal rendered the new command and output without reset
+    - after the second switch-back, counts remained stable: `PERSIST_HOTFIX_A1 = 2`, `/Users/avm/projects/Personal/tideterm/runa-terminal = 1`, `PERSIST_HOTFIX_AFTER_RETURN = 2`
+  - backend consistency check:
+    - `GET /api/v1/terminal/term-main?from=0` returned `state.widget_id: "term-main"`, `next_seq: 79`, `chunk_count: 78`
+    - snapshot tail still contained `PERSIST_HOTFIX_AFTER_RETURN`
+  - adjacent smoke checks:
+    - AI panel opened through the existing `AI` toggle
+    - `Tools` panel opened and rendered the tool catalog
+    - `Audit` panel opened and rendered its empty state
+    - browser console errors for the final validation window: `0`
+- Tested commands:
+  - `echo PERSIST_HOTFIX_A1`: `VERIFIED`
+  - `pwd`: `VERIFIED`
+  - `echo PERSIST_HOTFIX_AFTER_RETURN`: `VERIFIED`
+- Result: `VERIFIED` — switching away from a terminal tab and back now restores the prior visible output from backend snapshot state, does not duplicate restored lines across repeated remounts, and continues to accept new commands with live output.
+- Notes:
+  - validation covered repeated remount replay with short command output; a separate mid-stream long-running command switch test was `NOT RUN`
+  - terminal persistence remained backend-sourced: snapshot replay plus resumed stream, not a keep-alive-only workaround
+
 <a id="feature-terminal-input"></a>
 ## Ввод в терминал
 
