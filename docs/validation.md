@@ -102,30 +102,42 @@
 ## Structured execution headed browser validation
 
 - Date: `2026-04-17`
-- Status: `PARTIALLY VERIFIED`
+- Status: `VERIFIED (after corrective rerun)`
 - Validation steps:
-  - live runtime stack:
+  - initial headed run on live runtime stack:
     - Ollama-compatible stub: `http://127.0.0.1:11458`
     - core API: `http://127.0.0.1:61123`
     - frontend dev: `http://127.0.0.1:4179`
-  - headed Playwright browser flow (visible UI window, not headless):
+  - initial headed Playwright browser flow (visible UI window, not headless):
     1. open app and AI panel
     2. execute `/run echo structured-browser-flow-01`
     3. confirm structured block renders with command/result
     4. trigger `Explain` from block
     5. confirm block remains one record (`1 recent`) and provenance IDs render via `Reveal Provenance`
-  - backend truth cross-check:
+    6. open `Tools` and `Audit` utility panels
+    7. observed runtime loop crash (`Maximum update depth exceeded`)
+  - corrective fix applied:
+    - stabilized `useSyncExternalStore` snapshot identity in `frontend/app/workspace/active-context.ts`
+  - corrective headed rerun:
+    1. open app and AI panel
+    2. execute `/run echo regression-fix-flow-01`
+    3. confirm structured block renders and explain action succeeds
+    4. open `Tools` panel successfully
+    5. open `Audit` panel successfully
+    6. verify browser console reports no errors
+    7. verify terminal baseline path via `echo terminal-still-ok`
+  - backend truth cross-check on corrective rerun:
+    - `GET /api/v1/execution/blocks?limit=10` showed one block with command/explain audit IDs
+    - block remained identity-stable after explain action
+  - previous backend truth cross-check from initial run:
     - `GET /api/v1/execution/blocks?limit=10` showed one block with both command/explain audit IDs
     - `GET /api/v1/audit?limit=20` showed `term.send_input` + explain audit chain with matching IDs
-  - shell basics check from utility rail:
-    - opening `Tools` produced frontend runtime error `Maximum update depth exceeded`
-    - opening `Audit` produced the same frontend runtime error
 - Result:
   - structured `/run` -> block render -> block explain flow is validated in a real headed browser against live runtime truth.
-  - terminal and AI transcript/block behavior remained coherent.
-  - tools/audit utility panel basics were **not** healthy in this run due a runtime loop crash.
+  - tools/audit panels now open without triggering the update-depth loop.
+  - terminal and shell baseline behavior remained intact.
 - Notes:
-  - discrepancy details are documented in `docs/structured-execution-browser-validation.md`.
+  - initial discrepancy and corrective rerun details are documented in `docs/structured-execution-browser-validation.md`.
 
 <a id="structured-execution-ui-tests"></a>
 ## Structured execution UI test coverage

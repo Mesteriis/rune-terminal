@@ -43,3 +43,18 @@ Root cause details:
 - no tools/audit redesign
 - no structured execution behavior rollback
 - only remove the real update-loop regression cause and re-validate affected flows
+
+## Fix applied
+
+- File: `frontend/app/workspace/active-context.ts`
+- Change: `getActiveWorkspaceContext()` now returns a cached snapshot object when workspace context fields are unchanged.
+- Effect: `useSyncExternalStore` receives stable snapshot identity instead of a newly allocated object on every render.
+
+## Re-validation outcome
+
+- After the fix, headed browser validation confirmed:
+  - `Tools` panel opens normally.
+  - `Audit` panel opens normally.
+  - no `Maximum update depth exceeded` error.
+  - no `getSnapshot should be cached` console error.
+  - structured execution block flow (`/run` -> block render -> block explain) remains functional.
