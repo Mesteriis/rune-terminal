@@ -130,7 +130,7 @@ test("executeRunCommandPrompt forwards approval_token on approved retry", async 
                     session_id: "widget-1",
                     shell: "/bin/zsh",
                     pid: 1,
-                    status: "running",
+                    status: "exited",
                     started_at: "2026-04-16T09:33:55Z",
                     can_send_input: true,
                     can_interrupt: true,
@@ -144,7 +144,7 @@ test("executeRunCommandPrompt forwards approval_token on approved retry", async 
                     session_id: "widget-1",
                     shell: "/bin/zsh",
                     pid: 1,
-                    status: "running",
+                    status: "exited",
                     started_at: "2026-04-16T09:33:55Z",
                     can_send_input: true,
                     can_interrupt: true,
@@ -207,6 +207,88 @@ test("executeRunCommandPrompt forwards approval_token on approved retry", async 
 
     assert.equal(toolsFacade.executeTool.mock.calls[0][0].approval_token, "token-1");
     assert.equal(result.kind, "executed");
+
+    vi.useRealTimers();
+});
+
+test("executeRunCommandPrompt tolerates null snapshot chunks from terminal API", async () => {
+    vi.useFakeTimers();
+
+    const terminalFacade = {
+        getSnapshot: vi
+            .fn()
+            .mockResolvedValueOnce({
+                state: {
+                    widget_id: "widget-1",
+                    session_id: "widget-1",
+                    shell: "/bin/zsh",
+                    pid: 1,
+                    status: "running",
+                    started_at: "2026-04-16T09:33:55Z",
+                    can_send_input: true,
+                    can_interrupt: true,
+                },
+                chunks: [],
+                next_seq: 7,
+            })
+            .mockResolvedValueOnce({
+                state: {
+                    widget_id: "widget-1",
+                    session_id: "widget-1",
+                    shell: "/bin/zsh",
+                    pid: 1,
+                    status: "exited",
+                    started_at: "2026-04-16T09:33:55Z",
+                    can_send_input: true,
+                    can_interrupt: true,
+                },
+                chunks: null,
+                next_seq: 7,
+            })
+            .mockResolvedValueOnce({
+                state: {
+                    widget_id: "widget-1",
+                    session_id: "widget-1",
+                    shell: "/bin/zsh",
+                    pid: 1,
+                    status: "exited",
+                    started_at: "2026-04-16T09:33:55Z",
+                    can_send_input: true,
+                    can_interrupt: true,
+                },
+                chunks: null,
+                next_seq: 7,
+            }),
+    } as any;
+    const toolsFacade = {
+        executeTool: vi.fn(async () => ({
+            status: "ok",
+            output: {
+                widget_id: "widget-1",
+                bytes_sent: 5,
+                append_newline: true,
+            },
+        })),
+    } as any;
+
+    const executionPromise = executeRunCommandPrompt({
+        terminalFacade,
+        toolsFacade,
+        command: "echo done",
+        context: {
+            active_widget_id: "widget-1",
+            repo_root: "/repo",
+            workspace_id: "workspace-1",
+        },
+        approvalToken: "token-1",
+    });
+
+    await vi.advanceTimersByTimeAsync(200);
+    const result = await executionPromise;
+    assert.equal(result.kind, "executed");
+    if (result.kind === "executed") {
+        assert.equal(result.outputExcerpt, "");
+    }
 
     vi.useRealTimers();
 });

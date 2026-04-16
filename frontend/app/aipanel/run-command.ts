@@ -168,7 +168,7 @@ export async function executeRunCommandPrompt(
     }
 
     const snapshot = await waitForRunCommandOutput(options.terminalFacade, widgetId, fromSeq);
-    const outputExcerpt = summarizeTerminalOutput(options.command, snapshot.chunks);
+    const outputExcerpt = summarizeTerminalOutput(options.command, getSnapshotChunks(snapshot));
 
     return {
         kind: "executed",
@@ -286,13 +286,13 @@ async function waitForRunCommandOutput(
 ): Promise<TerminalSnapshot> {
     let snapshot = await terminalFacade.getSnapshot(widgetId, fromSeq);
     let previousNextSeq = snapshot.next_seq;
-    let sawOutput = snapshot.chunks.length > 0 || snapshot.state.status !== "running";
+    let sawOutput = getSnapshotChunks(snapshot).length > 0 || snapshot.state.status !== "running";
 
     for (let attempt = 0; attempt < RUN_COMMAND_POLL_ATTEMPTS; attempt += 1) {
         await sleep(RUN_COMMAND_POLL_INTERVAL_MS);
         snapshot = await terminalFacade.getSnapshot(widgetId, fromSeq);
         const nextSeqChanged = snapshot.next_seq !== previousNextSeq;
-        if (snapshot.chunks.length > 0 || snapshot.state.status !== "running") {
+        if (getSnapshotChunks(snapshot).length > 0 || snapshot.state.status !== "running") {
             sawOutput = true;
         }
         if (sawOutput && !nextSeqChanged) {
@@ -307,4 +307,8 @@ function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => {
         globalThis.setTimeout(resolve, ms);
     });
+}
+
+function getSnapshotChunks(snapshot: TerminalSnapshot): TerminalOutputChunk[] {
+    return Array.isArray(snapshot.chunks) ? snapshot.chunks : [];
 }
