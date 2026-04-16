@@ -2003,3 +2003,49 @@
     - conversation count after submit: `2` (user + assistant)
     - assistant status in response: `complete`
 - Result: `PARTIAL` — explicit invocation, bounded output, failure handling, and explicit MCP->AI handoff behavior are working, but real external MCP setup/invoke remains blocked because current runtime surface does not expose external server registration.
+
+## MCP registration fix
+
+- Date: `2026-04-16`
+- Status: `VERIFIED`
+- Validation steps:
+  - backend test coverage:
+    - `./scripts/go.sh test ./core/plugins ./core/app ./core/transport/httpapi -count=1` -> `PASS`
+  - frontend wiring checks:
+    - `npm exec eslint app/workspace/tools-floating-window.tsx compat/mcp.ts rterm-api/mcp/client.ts rterm-api/mcp/types.ts` (run in `frontend/`) -> `PASS`
+  - live runtime validation with real external MCP (`Context7`) and real model provider:
+    - core launch:
+      - `RTERM_AUTH_TOKEN=mcp-reg-token`
+      - `RTERM_OLLAMA_BASE_URL=http://192.168.1.2:11434`
+      - `RTERM_OLLAMA_MODEL=llama3.2:3b`
+      - `go run ./cmd/rterm-core serve --listen 127.0.0.1:53151 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/rterm-mcp-registration.YZbOfF/state`
+    - setup and registration:
+      - initial list: `GET /api/v1/mcp/servers` -> only `mcp.example` (`type:"process"`, `state:"stopped"`)
+      - register: `POST /api/v1/mcp/servers` with payload `{"id":"mcp.context7","type":"remote","endpoint":"https://mcp.context7.com/mcp"}` -> HTTP `201`
+      - list after register includes `mcp.context7` with:
+        - `type:"remote"`
+        - `state:"stopped"`
+        - `active:false`
+    - lifecycle control:
+      - `POST /api/v1/mcp/servers/mcp.context7/start` -> `state:"idle"`, `active:true`
+      - `POST /api/v1/mcp/servers/mcp.context7/stop` -> `state:"stopped"`, `active:false`
+      - `POST /api/v1/mcp/servers/mcp.context7/restart` -> `state:"idle"`, `active:true`
+    - real invoke:
+      - `POST /api/v1/mcp/invoke` with `server_id:"mcp.context7"` and payload:
+        - `{"method":"tools/call","params":{"name":"resolve-library-id","arguments":{"query":"Find React docs","libraryName":"react"}}}`
+      - response:
+        - `format:"mcp.normalized.v1"`
+        - `payload_type:"object"`
+        - `truncated:true` (bounded output kept)
+        - `original_bytes:1741`
+      - audit truth:
+        - `GET /api/v1/audit?limit=20` contains `tool_name:"mcp.invoke"` with `action_source:"workspace.tools.mcp_invoke"` and `workspace_id:"ws-local"`
+    - workflow integration (explicit MCP -> AI usage):
+      - conversation count before MCP invoke: `0`
+      - conversation count after MCP invoke: `0` (no auto-injection)
+      - explicit AI submit with MCP-derived prompt (`POST /api/v1/agent/conversation/messages`) -> HTTP `200`
+      - conversation count after submit: `2` (user + assistant)
+      - assistant status: `complete`
+    - stability:
+      - `GET /healthz` remained `{"status":"ok"}` after registration, lifecycle actions, invoke, and AI handoff
+- Result: `VERIFIED` — user can now add a real external MCP server through explicit API/UI flow, control lifecycle state, invoke it through bounded normalization, and explicitly hand off result to AI without hidden auto-context behavior.
