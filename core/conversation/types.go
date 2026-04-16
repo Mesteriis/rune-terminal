@@ -42,9 +42,10 @@ type Snapshot struct {
 }
 
 type SubmitRequest struct {
-	SystemPrompt string
-	Prompt       string
-	Attachments  []AttachmentReference
+	SystemPrompt   string
+	Prompt         string
+	ProviderPrompt string
+	Attachments    []AttachmentReference
 }
 
 type AssistantPromptRequest struct {

@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -84,6 +85,82 @@ func TestSubmitConversationPromptUsesSelectionPromptAndContext(t *testing.T) {
 	}
 	if events[0].ToolName != "agent.conversation" || !events[0].Success {
 		t.Fatalf("unexpected audit event: %#v", events[0])
+	}
+}
+
+func TestSubmitConversationPromptIncludesAttachmentContextInProviderRequest(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	attachmentPath := filepath.Join(tempDir, "notes.txt")
+	if err := os.WriteFile(attachmentPath, []byte("attachment content line"), 0o600); err != nil {
+		t.Fatalf("write attachment: %v", err)
+	}
+
+	agentStore, err := agent.NewStore(filepath.Join(tempDir, "agent.json"))
+	if err != nil {
+		t.Fatalf("agent store: %v", err)
+	}
+	auditLog, err := audit.NewLog(filepath.Join(tempDir, "audit.jsonl"))
+	if err != nil {
+		t.Fatalf("audit log: %v", err)
+	}
+	policyStore, err := policy.NewStore(filepath.Join(tempDir, "policy.json"), "/repo")
+	if err != nil {
+		t.Fatalf("policy store: %v", err)
+	}
+	connectionStore, err := connections.NewService(filepath.Join(tempDir, "connections.json"))
+	if err != nil {
+		t.Fatalf("connections: %v", err)
+	}
+
+	provider := &recordingConversationProvider{}
+	conversationStore, err := conversation.NewService(filepath.Join(tempDir, "conversation.json"), provider)
+	if err != nil {
+		t.Fatalf("conversation service: %v", err)
+	}
+
+	runtime := &Runtime{
+		RepoRoot:     "/repo",
+		Workspace:    workspace.NewService(workspace.BootstrapDefault()),
+		Terminals:    terminal.NewService(terminal.DefaultLauncher()),
+		Connections:  connectionStore,
+		Agent:        agentStore,
+		Conversation: conversationStore,
+		Policy:       policyStore,
+		Audit:        auditLog,
+	}
+
+	result, err := runtime.SubmitConversationPrompt(context.Background(), "summarize attachment", ConversationContext{
+		WorkspaceID: "ws-default",
+		RepoRoot:    "/repo",
+	}, []conversation.AttachmentReference{
+		{
+			ID:       "att_test",
+			Name:     "notes.txt",
+			Path:     attachmentPath,
+			MimeType: "text/plain",
+		},
+	})
+	if err != nil {
+		t.Fatalf("submit prompt: %v", err)
+	}
+
+	if len(provider.request.Messages) == 0 {
+		t.Fatalf("expected provider request messages, got %#v", provider.request.Messages)
+	}
+	lastMessage := provider.request.Messages[len(provider.request.Messages)-1]
+	if !strings.Contains(lastMessage.Content, "Attachment context (local references, bounded):") {
+		t.Fatalf("expected attachment context in provider prompt, got %q", lastMessage.Content)
+	}
+	if !strings.Contains(lastMessage.Content, "attachment content line") {
+		t.Fatalf("expected attachment excerpt in provider prompt, got %q", lastMessage.Content)
+	}
+	if !strings.Contains(lastMessage.Content, attachmentPath) {
+		t.Fatalf("expected attachment path in provider prompt, got %q", lastMessage.Content)
+	}
+	if len(result.Snapshot.Messages) == 0 || result.Snapshot.Messages[0].Content != "summarize attachment" {
+		t.Fatalf("expected persisted user prompt without synthetic attachment block, got %#v", result.Snapshot.Messages)
 	}
 }
 

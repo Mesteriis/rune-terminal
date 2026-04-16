@@ -26,9 +26,11 @@ func (r *Runtime) SubmitConversationPrompt(
 	conversationContext ConversationContext,
 	attachments []conversation.AttachmentReference,
 ) (conversation.SubmitResult, error) {
-	if err := validateAttachmentReferences(attachments); err != nil {
+	resolvedAttachments, err := resolveConversationAttachments(attachments)
+	if err != nil {
 		return conversation.SubmitResult{}, err
 	}
+	providerPrompt := buildPromptWithAttachmentContext(prompt, resolvedAttachments)
 
 	selection, err := r.Agent.Selection()
 	if err != nil {
@@ -42,9 +44,10 @@ func (r *Runtime) SubmitConversationPrompt(
 	}
 
 	result, err := r.Conversation.Submit(ctx, conversation.SubmitRequest{
-		SystemPrompt: systemPrompt,
-		Prompt:       prompt,
-		Attachments:  attachments,
+		SystemPrompt:   systemPrompt,
+		Prompt:         prompt,
+		ProviderPrompt: providerPrompt,
+		Attachments:    attachments,
 	})
 	if err != nil {
 		return conversation.SubmitResult{}, err

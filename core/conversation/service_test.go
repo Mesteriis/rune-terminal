@@ -265,6 +265,41 @@ func TestServiceSubmitPrunesProviderHistoryByCharacterBudget(t *testing.T) {
 	}
 }
 
+func TestServiceSubmitUsesProviderPromptOverrideWithoutChangingPersistedUserMessage(t *testing.T) {
+	t.Parallel()
+
+	provider := &recordingProvider{
+		info: ProviderInfo{Kind: "stub", BaseURL: "http://stub", Model: "stub-model"},
+		result: CompletionResult{
+			Content: "bounded reply",
+			Model:   "stub-model",
+		},
+	}
+	service, err := NewService(filepath.Join(t.TempDir(), "conversation.json"), provider)
+	if err != nil {
+		t.Fatalf("new service: %v", err)
+	}
+
+	result, err := service.Submit(context.Background(), SubmitRequest{
+		SystemPrompt:   "system prompt",
+		Prompt:         "original prompt",
+		ProviderPrompt: "original prompt\n\nAttachment context block",
+	})
+	if err != nil {
+		t.Fatalf("submit: %v", err)
+	}
+	if len(provider.request.Messages) == 0 {
+		t.Fatalf("expected provider request messages, got %#v", provider.request.Messages)
+	}
+	last := provider.request.Messages[len(provider.request.Messages)-1]
+	if last.Content != "original prompt\n\nAttachment context block" {
+		t.Fatalf("unexpected provider prompt: %q", last.Content)
+	}
+	if len(result.Snapshot.Messages) == 0 || result.Snapshot.Messages[0].Content != "original prompt" {
+		t.Fatalf("unexpected persisted user content: %#v", result.Snapshot.Messages)
+	}
+}
+
 type stubProvider struct {
 	info   ProviderInfo
 	result CompletionResult

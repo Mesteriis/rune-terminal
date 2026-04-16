@@ -16,6 +16,7 @@ const (
 	defaultAttachmentMaxFileBytes = 256 * 1024
 	defaultAttachmentMaxReadBytes = 32 * 1024
 	defaultAttachmentMaxChars     = 8000
+	defaultAttachmentMaxContext   = 4
 )
 
 type resolvedAttachment struct {
@@ -199,6 +200,71 @@ func isTextLikeAttachment(path string, mimeType string) bool {
 	default:
 		return false
 	}
+}
+
+func buildPromptWithAttachmentContext(prompt string, attachments []resolvedAttachment) string {
+	basePrompt := strings.TrimSpace(prompt)
+	contextBlock := buildAttachmentContextBlock(attachments)
+	if contextBlock == "" {
+		return basePrompt
+	}
+	if basePrompt == "" {
+		return contextBlock
+	}
+	return basePrompt + "\n\n" + contextBlock
+}
+
+func buildAttachmentContextBlock(attachments []resolvedAttachment) string {
+	if len(attachments) == 0 {
+		return ""
+	}
+
+	limit := defaultAttachmentMaxContext
+	if limit < 1 {
+		limit = 1
+	}
+	visibleCount := len(attachments)
+	if visibleCount > limit {
+		visibleCount = limit
+	}
+
+	lines := []string{
+		"Attachment context (local references, bounded):",
+	}
+	for index := 0; index < visibleCount; index++ {
+		attachment := attachments[index]
+		lines = append(lines,
+			fmt.Sprintf("[%d] %s", index+1, attachment.Reference.Name),
+			fmt.Sprintf("- path: %s", attachment.Reference.Path),
+			fmt.Sprintf("- mime_type: %s", attachment.Reference.MimeType),
+			fmt.Sprintf("- size_bytes: %d", attachment.Reference.Size),
+			fmt.Sprintf("- modified_unix: %d", attachment.Reference.ModifiedTime),
+		)
+
+		switch {
+		case attachment.Skipped:
+			lines = append(lines, fmt.Sprintf("- status: skipped (%s)", attachment.SkipReason))
+		case attachment.ContentRead:
+			truncationFlag := "false"
+			if attachment.Truncated {
+				truncationFlag = "true"
+			}
+			lines = append(lines,
+				fmt.Sprintf("- status: included (truncated=%s)", truncationFlag),
+				"- content_excerpt:",
+				"```text",
+				attachment.Content,
+				"```",
+			)
+		default:
+			lines = append(lines, "- status: included (no_text_content)")
+		}
+	}
+
+	if len(attachments) > visibleCount {
+		lines = append(lines, fmt.Sprintf("- additional_attachments_omitted: %d", len(attachments)-visibleCount))
+	}
+	return strings.TrimSpace(strings.Join(lines, "\n"))
 }
 
 func firstNonEmptyValue(values ...string) string {

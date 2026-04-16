@@ -72,9 +72,13 @@ func (s *Service) Snapshot() Snapshot {
 
 func (s *Service) Submit(ctx context.Context, request SubmitRequest) (SubmitResult, error) {
 	prompt := strings.TrimSpace(request.Prompt)
+	providerPrompt := strings.TrimSpace(request.ProviderPrompt)
 	systemPrompt := strings.TrimSpace(request.SystemPrompt)
 	if prompt == "" {
 		return SubmitResult{}, ErrInvalidPrompt
+	}
+	if providerPrompt == "" {
+		providerPrompt = prompt
 	}
 	if systemPrompt == "" {
 		return SubmitResult{}, ErrInvalidPrompt
@@ -92,7 +96,12 @@ func (s *Service) Submit(ctx context.Context, request SubmitRequest) (SubmitResu
 	history := append([]Message(nil), s.state.Messages...)
 	s.mu.Unlock()
 
-	result, info, providerErr := s.complete(ctx, systemPrompt, history)
+	historyForCompletion := append([]Message(nil), history...)
+	if len(historyForCompletion) > 0 {
+		historyForCompletion[len(historyForCompletion)-1].Content = providerPrompt
+	}
+
+	result, info, providerErr := s.complete(ctx, systemPrompt, historyForCompletion)
 	return s.appendAssistantResult(result, info, providerErr)
 }
 
