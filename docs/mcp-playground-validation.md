@@ -94,3 +94,41 @@ To validate invocation pipeline behavior itself, invoke was tested on registered
 
 - External MCP invocation: **FAILED** (server not registered)
 - Invocation pipeline normalization/bounding on registered path: **WORKS**
+
+## Slice 4 — Failure path validation
+
+### Invalid endpoint / missing key (external add path)
+
+Because external add API is not exposed in current runtime:
+
+- `POST /api/v1/mcp/servers` with invalid endpoint payload -> `405 Method Not Allowed`
+- `POST /api/v1/mcp/servers` with missing auth payload -> `405 Method Not Allowed`
+
+The system returns explicit method-level failure and does not crash.
+
+### Large response scenario
+
+To validate response bounding on real invoke path:
+
+- request: `POST /api/v1/mcp/invoke` with `server_id:"mcp.example"` and `payload.text` size `20000`
+- observed bounded output:
+  - `format: "mcp.normalized.v1"`
+  - `payload_type: "non_json"`
+  - `truncated: true`
+  - `original_bytes: 20110`
+  - notes include: `payload clipped to max bytes`
+- size observation:
+  - full invoke response: `516` bytes
+  - `.output` block: `480` bytes
+
+### Stability observation
+
+- `GET /healthz` stayed `{"status":"ok"}`
+- core process remained running (`state: S`) after failure-path checks
+- no `context7-mcp` background process remained running after validation calls
+
+### Result
+
+- invalid endpoint / missing key: explicit error behavior present (`405`)
+- large response: bounded/truncated safely
+- crash/hang path in this run: **NOT OBSERVED**

@@ -1979,4 +1979,17 @@
     - `POST /api/v1/mcp/invoke` with `server_id:"mcp.example"` and `payload.text:"Context7 API usage examples"`
     - normalized response: `format:"mcp.normalized.v1"`, `payload_type:"object"`, `truncated:false`, `original_bytes:134`
     - output shape remained structured (`object_fields`) and did not expose raw unbounded MCP dump
-- Result: `PARTIAL` — invocation and lifecycle paths work for registered MCP server entries with normalization/bounding, but real external MCP setup/invoke remains blocked because current runtime surface does not expose external server registration.
+- Failure-path validation steps:
+  - invalid endpoint add probe:
+    - `POST /api/v1/mcp/servers` with invalid `endpoint_url` -> HTTP `405 Method Not Allowed`
+  - missing key add probe:
+    - `POST /api/v1/mcp/servers` without auth block -> HTTP `405 Method Not Allowed`
+  - large-response invoke probe:
+    - `POST /api/v1/mcp/invoke` (`server_id:"mcp.example"`) with `payload.text` length `20000`
+    - bounded response: `format:"mcp.normalized.v1"`, `payload_type:"non_json"`, `truncated:true`, `original_bytes:20110`
+    - size stayed bounded: full response `516` bytes, normalized output block `480` bytes
+  - stability checks:
+    - `GET /healthz` stayed `{"status":"ok"}`
+    - core process remained alive after failure checks
+    - no leftover `context7-mcp` process observed
+- Result: `PARTIAL` — invocation/lifecycle/failure handling is stable and bounded for registered MCP entries, but real external MCP setup/invoke remains blocked because current runtime surface does not expose external server registration.
