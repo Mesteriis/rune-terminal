@@ -9,8 +9,9 @@ import (
 )
 
 type conversationMessagePayload struct {
-	Prompt  string                  `json:"prompt"`
-	Context app.ConversationContext `json:"context"`
+	Prompt      string                             `json:"prompt"`
+	Attachments []conversation.AttachmentReference `json:"attachments,omitempty"`
+	Context     app.ConversationContext            `json:"context"`
 }
 
 type attachmentReferencePayload struct {
@@ -38,7 +39,7 @@ func (api *API) handleSubmitConversationMessage(w http.ResponseWriter, r *http.R
 		writeBadRequest(w, "invalid_request", err)
 		return
 	}
-	result, err := api.runtime.SubmitConversationPrompt(r.Context(), payload.Prompt, payload.Context)
+	result, err := api.runtime.SubmitConversationPrompt(r.Context(), payload.Prompt, payload.Context, payload.Attachments)
 	if err != nil {
 		writeConversationError(w, err)
 		return

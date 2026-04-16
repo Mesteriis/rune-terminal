@@ -20,7 +20,12 @@ func (r *Runtime) ConversationSnapshot() conversation.Snapshot {
 	return r.Conversation.Snapshot()
 }
 
-func (r *Runtime) SubmitConversationPrompt(ctx context.Context, prompt string, conversationContext ConversationContext) (conversation.SubmitResult, error) {
+func (r *Runtime) SubmitConversationPrompt(
+	ctx context.Context,
+	prompt string,
+	conversationContext ConversationContext,
+	attachments []conversation.AttachmentReference,
+) (conversation.SubmitResult, error) {
 	selection, err := r.Agent.Selection()
 	if err != nil {
 		return conversation.SubmitResult{}, err
@@ -35,6 +40,7 @@ func (r *Runtime) SubmitConversationPrompt(ctx context.Context, prompt string, c
 	result, err := r.Conversation.Submit(ctx, conversation.SubmitRequest{
 		SystemPrompt: systemPrompt,
 		Prompt:       prompt,
+		Attachments:  attachments,
 	})
 	if err != nil {
 		return conversation.SubmitResult{}, err

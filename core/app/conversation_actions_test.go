@@ -63,7 +63,7 @@ func TestSubmitConversationPromptUsesSelectionPromptAndContext(t *testing.T) {
 		RepoRoot:             "/repo",
 		ActiveWidgetID:       "term_boot",
 		WidgetContextEnabled: true,
-	})
+	}, nil)
 	if err != nil {
 		t.Fatalf("submit prompt: %v", err)
 	}

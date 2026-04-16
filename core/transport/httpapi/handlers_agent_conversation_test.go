@@ -88,6 +88,61 @@ func TestSubmitConversationMessagePersistsTranscript(t *testing.T) {
 	}
 }
 
+func TestSubmitConversationMessagePersistsAttachmentReferences(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPost, "/api/v1/agent/conversation/messages", map[string]any{
+		"prompt": "please inspect file",
+		"attachments": []map[string]any{
+			{
+				"id":            "att_test_1",
+				"name":          "notes.txt",
+				"path":          "/tmp/notes.txt",
+				"mime_type":     "text/plain",
+				"size":          42,
+				"modified_time": int64(1713279000),
+			},
+		},
+		"context": map[string]any{
+			"workspace_id": "ws-default",
+		},
+	}))
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+
+	var payload struct {
+		Conversation struct {
+			Messages []struct {
+				Role        string `json:"role"`
+				Attachments []struct {
+					ID   string `json:"id"`
+					Path string `json:"path"`
+				} `json:"attachments"`
+			} `json:"messages"`
+		} `json:"conversation"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
+	}
+	if len(payload.Conversation.Messages) < 1 {
+		t.Fatalf("expected persisted messages, got %#v", payload.Conversation.Messages)
+	}
+	if payload.Conversation.Messages[0].Role != "user" {
+		t.Fatalf("unexpected first role: %#v", payload.Conversation.Messages)
+	}
+	if len(payload.Conversation.Messages[0].Attachments) != 1 {
+		t.Fatalf("expected one attachment reference, got %#v", payload.Conversation.Messages[0].Attachments)
+	}
+	if payload.Conversation.Messages[0].Attachments[0].ID != "att_test_1" {
+		t.Fatalf("unexpected attachment id: %#v", payload.Conversation.Messages[0].Attachments[0])
+	}
+}
+
 func TestSubmitConversationMessageRejectsBlankPrompt(t *testing.T) {
 	t.Parallel()
 
