@@ -1949,3 +1949,27 @@
 - Result: `VERIFIED` — external MCP output is now normalized and bounded before reuse, explicit invocation remains required, and runtime remained stable under large-response inputs.
 - Notes:
   - this slice intentionally keeps explicit user action for MCP-to-AI handoff (`Use Normalized MCP Result In AI`) and does not auto-inject MCP output into agent context.
+
+## MCP playground validation
+
+- Date: `2026-04-16`
+- Status: `PARTIAL` (setup blocked, lifecycle endpoints verified)
+- Runtime environment:
+  - real model endpoint: `http://192.168.1.2:11434` (no stub)
+  - core launch: `RTERM_AUTH_TOKEN=mcp-playground-token RTERM_OLLAMA_BASE_URL=http://192.168.1.2:11434 RTERM_OLLAMA_MODEL=qwen3:8b go run ./cmd/rterm-core serve --listen 127.0.0.1:53131 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/rterm-mcp-playground-real.CEAElR/state`
+- Lifecycle validation steps:
+  - setup precondition check:
+    - `timeout 6s npx -y @upstash/context7-mcp@latest` -> `Context7 Documentation MCP Server v2.1.8 running on stdio`
+    - `POST /api/v1/mcp/servers` (manual add `mcp.context7`) -> HTTP `405 Method Not Allowed`
+  - external target lifecycle (expected id `mcp.context7`):
+    - `start|stop|restart|enable|disable` -> HTTP `404`, `mcp_server_not_found`
+  - control lifecycle check on registered server:
+    - `mcp.example/start` -> `state:"idle", active:true`
+    - `mcp.example/stop` -> `state:"stopped", active:false`
+    - `mcp.example/restart` -> `state:"idle", active:true`
+    - `mcp.example/disable` -> `enabled:false`
+    - `mcp.example/enable` -> `enabled:true`
+  - basic stability observation:
+    - core RSS: `12528 KB -> 13008 KB` during lifecycle cycle
+    - no crash observed; `GET /healthz` stayed `{"status":"ok"}`
+- Result: `PARTIAL` — lifecycle controls work for already-registered MCP server entries, but real external MCP lifecycle is blocked because current runtime surface does not expose external server registration.

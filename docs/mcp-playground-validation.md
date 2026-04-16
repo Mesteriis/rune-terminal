@@ -35,3 +35,37 @@ Phase: `1.0.0-rc1` hardening
 - Requirement check:
   - appears in MCP list: **FAILED**
   - initially stopped: only true for existing built-in `mcp.example`, not for added `Context7` (because add failed).
+
+## Slice 2 — Lifecycle validation
+
+### External MCP lifecycle (target: `mcp.context7`)
+
+Manual lifecycle calls were executed against the target external ID:
+
+- `POST /api/v1/mcp/servers/mcp.context7/start` -> `404 mcp_server_not_found`
+- `POST /api/v1/mcp/servers/mcp.context7/stop` -> `404 mcp_server_not_found`
+- `POST /api/v1/mcp/servers/mcp.context7/restart` -> `404 mcp_server_not_found`
+- `POST /api/v1/mcp/servers/mcp.context7/enable` -> `404 mcp_server_not_found`
+- `POST /api/v1/mcp/servers/mcp.context7/disable` -> `404 mcp_server_not_found`
+
+Because external setup failed in Slice 1, lifecycle transitions for real external MCP were not reachable.
+
+### Runtime control check (built-in control only)
+
+To confirm lifecycle endpoints themselves still work on existing registered server:
+
+- `mcp.example/start` -> `idle + active:true`
+- `mcp.example/stop` -> `stopped + active:false`
+- `mcp.example/restart` -> `idle + active:true`
+- `mcp.example/disable` -> `enabled:false`
+- `mcp.example/enable` -> `enabled:true`
+
+Basic stability observation during this cycle:
+
+- `rterm-core` RSS before/after cycle: `12528 KB -> 13008 KB`
+- no crash observed
+
+### Result
+
+- External MCP lifecycle validation: **FAILED** (server not registered in runtime)
+- Lifecycle API behavior on existing registered server: **WORKS**
