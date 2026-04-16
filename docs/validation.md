@@ -9,7 +9,7 @@
 ## Workspace navigation parity batch
 
 - Date: `2026-04-16`
-- Status: `VERIFIED`
+- Status: `VERIFIED (corrected canonical run)`
 - Commits:
   - `1da3eeb`
   - `22ec4bb`
@@ -18,31 +18,28 @@
   - `927115e`
   - `ed8e9cc`
   - `30a540a`
+  - `ab97539`
+  - `31374eb`
+  - `3254402`
+  - `6bf2c6d`
 - Validation steps:
-  - release sweep:
-    - `npm run validate` -> passed (`lint:frontend` reported existing non-blocking warnings only)
-    - `npm run tauri:dev` smoke -> desktop launch reached ready state and printed `{"base_url":"http://127.0.0.1:57631","pid":90845}`
-  - workspace/file navigation runtime smoke (backend truth):
-    - Ollama-compatible stub provider: `127.0.0.1:11448`
-    - core: `RTERM_AUTH_TOKEN=workspace-nav-token RTERM_OLLAMA_BASE_URL=http://127.0.0.1:11448 RTERM_OLLAMA_MODEL=test-model go run ./cmd/rterm-core serve --listen 127.0.0.1:52971 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/rterm-workspace-nav-validation`
-    - `GET /api/v1/fs/list` returned workspace-root path and directory/file entries
-    - `GET /api/v1/fs/read` for `docs/workspace-model.md` returned bounded text preview (`preview_available: true`)
-  - file -> AI context bridge:
-    - `POST /api/v1/agent/conversation/attachments/references` created attachment id `att_e6f6e1f20580cdf4` for `docs/workspace-model.md`
-    - `POST /api/v1/agent/conversation/messages` with that attachment succeeded and conversation transcript updated
-  - `/run`-equivalent file path execution flow:
-    - `POST /api/v1/tools/execute` (`term.send_input`) sent `ls -l "/Users/avm/projects/Personal/tideterm/runa-terminal/docs/workspace-model.md"`
-    - `GET /api/v1/terminal/term-main` output (from captured `next_seq`) contained `workspace-model.md`
-    - `POST /api/v1/agent/terminal-commands/explain` succeeded and returned non-empty `output_excerpt`
-  - no-regression checks:
-    - terminal: `GET /api/v1/terminal/term-main` reported `state.status: "running"`
-    - tools: `GET /api/v1/tools` returned `26` tools; `workspace.list_widgets` tool execute returned `status: "ok"`
-    - MCP: `GET /api/v1/mcp/servers` returned one server entry (no runtime crash/regression)
-    - remote: `GET /api/v1/remote/profiles` returned a valid response (`profiles: []`)
-- Result: `VERIFIED` — minimal workspace-bounded file navigation, bounded file preview, open/reveal behavior, and explicit file-to-AI attachment bridging work on active runtime paths, while terminal/tools/MCP/remote API surfaces remain functional.
+  - canonical script (single source): `python3 scripts/validate_workspace_navigation.py`
+  - clean run output:
+    - `base_url`: `http://127.0.0.1:58812`
+    - `ollama_stub_url`: `http://127.0.0.1:58811`
+    - `fs_list`: `ok`
+    - `fs_read`: `ok`
+    - `attachment_reference`: `ok`
+    - `conversation_with_attachment`: `ok`
+    - `run_equivalent_file_path_flow`: `ok`
+    - `mcp_servers_regression_shape`: `ok`
+    - `remote_profiles_regression_shape`: `ok`
+- Result: `VERIFIED` — workspace navigation/runtime checks now pass on one canonical script with corrected API-shape assertions.
 - Notes:
-  - this run validates runtime/API truth and active shell build paths; it does not claim full IDE/file-manager parity
-  - remote check in this batch is non-destructive endpoint regression coverage, not a full SSH session launch sweep
+  - previous contradiction was real: an earlier script variant failed with `AssertionError` on a stale MCP expectation (`assert isinstance(mcp_servers, list)`).
+  - this corrected entry supersedes that contradictory report.
+  - this run validates workspace-navigation domain truth only; it does not claim full IDE/file-manager parity.
+  - remote check in this run is non-destructive endpoint regression coverage, not a full SSH session launch sweep.
 
 <a id="remote-ssh-parity-batch"></a>
 ## Remote SSH parity batch
