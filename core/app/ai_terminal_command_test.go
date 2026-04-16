@@ -133,6 +133,9 @@ func TestExplainTerminalCommandAppendsAssistantSummary(t *testing.T) {
 	if events[0].ApprovalUsed {
 		t.Fatalf("expected approval_used=false without approved execution, got %#v", events[0])
 	}
+	if events[0].TargetSession != "local" || events[0].TargetConnectionID != "local" {
+		t.Fatalf("expected local target session audit fields, got %#v", events[0])
+	}
 }
 
 func TestExplainTerminalCommandDerivesApprovalUsedFromMatchingToolAudit(t *testing.T) {
@@ -176,6 +179,9 @@ func TestExplainTerminalCommandDerivesApprovalUsedFromMatchingToolAudit(t *testi
 	}
 	if !events[1].ApprovalUsed {
 		t.Fatalf("expected explain audit to derive approval_used=true, got %#v", events[1])
+	}
+	if events[1].TargetSession != "local" || events[1].TargetConnectionID != "local" {
+		t.Fatalf("expected local target session audit fields, got %#v", events[1])
 	}
 }
 

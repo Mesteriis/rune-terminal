@@ -1,6 +1,7 @@
 import { workspaceStore } from "@/app/state/workspace.store";
 import type { ToolExecutionResponse } from "@/rterm-api/tools/types";
 import { createBlock } from "@/store/global";
+import { deriveSessionTarget } from "./session-target";
 
 export function sortByDisplayOrder(wmap: { [key: string]: WidgetConfigType }): WidgetConfigType[] {
     if (wmap == null) {
@@ -51,10 +52,16 @@ export function formatAuditTimestamp(timestamp: string): string {
 
 export function buildToolExecutionContext(repoRoot: string) {
     const workspace = workspaceStore.getSnapshot().active;
+    const activeWidget = workspace.activewidgetid ? workspace.widgets[workspace.activewidgetid] : undefined;
+    const sessionTarget = activeWidget
+        ? deriveSessionTarget(activeWidget.connectionId)
+        : null;
     return {
         workspace_id: workspace.oid || undefined,
         active_widget_id: workspace.activewidgetid || undefined,
         repo_root: repoRoot || undefined,
+        target_session: sessionTarget?.targetSession,
+        target_connection_id: sessionTarget?.targetConnectionID,
     };
 }
 

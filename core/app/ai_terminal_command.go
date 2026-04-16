@@ -71,18 +71,25 @@ func (r *Runtime) ExplainTerminalCommand(
 
 	profile := selection.EffectivePolicyProfile()
 	providerFailed := result.ProviderError != ""
+	targetSession := terminalSessionTarget(snapshot.State.ConnectionKind)
+	targetConnectionID := snapshot.State.ConnectionID
+	if targetConnectionID == "" && targetSession == "local" {
+		targetConnectionID = "local"
+	}
 	if appendErr := r.Audit.Append(audit.Event{
-		ToolName:        "agent.terminal_command",
-		Summary:         fmt.Sprintf("explain terminal command: %s", trimSummary(command)),
-		WorkspaceID:     conversationContext.WorkspaceID,
-		PromptProfileID: profile.PromptProfileID,
-		RoleID:          profile.RoleID,
-		ModeID:          profile.ModeID,
-		SecurityPosture: profile.SecurityPosture,
-		AffectedWidgets: affectedWidgets(widgetID),
-		ApprovalUsed:    approvalUsed,
-		Success:         !providerFailed,
-		Error:           result.ProviderError,
+		ToolName:           "agent.terminal_command",
+		Summary:            fmt.Sprintf("explain terminal command: %s", trimSummary(command)),
+		WorkspaceID:        conversationContext.WorkspaceID,
+		PromptProfileID:    profile.PromptProfileID,
+		RoleID:             profile.RoleID,
+		ModeID:             profile.ModeID,
+		SecurityPosture:    profile.SecurityPosture,
+		AffectedWidgets:    affectedWidgets(widgetID),
+		ApprovalUsed:       approvalUsed,
+		TargetSession:      targetSession,
+		TargetConnectionID: targetConnectionID,
+		Success:            !providerFailed,
+		Error:              result.ProviderError,
 	}); appendErr != nil {
 		return ExplainTerminalCommandResult{}, appendErr
 	}
@@ -179,6 +186,13 @@ func containsString(values []string, expected string) bool {
 		}
 	}
 	return false
+}
+
+func terminalSessionTarget(connectionKind string) string {
+	if connectionKind == "ssh" {
+		return "remote"
+	}
+	return "local"
 }
 
 func buildTerminalExplanationPrompt(prompt string, command string, outputExcerpt string) string {

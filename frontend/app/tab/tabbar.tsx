@@ -3,6 +3,7 @@
 
 import { Button } from "@/app/element/button";
 import { WorkspaceStoreSnapshot, workspaceStore } from "@/app/state/workspace.store";
+import { isLocalConnectionID } from "@/app/workspace/session-target";
 import { modalsModel } from "@/app/store/modalmodel";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { deleteLayoutModelForTab } from "@/layout/index";
@@ -221,15 +222,6 @@ function setIsEqual(a: Set<string> | null, b: Set<string> | null): boolean {
         }
     }
     return true;
-}
-
-function isLocalConnectionID(connectionId: string | undefined): boolean {
-    return (
-        connectionId == null ||
-        connectionId === "" ||
-        connectionId === "local" ||
-        connectionId.startsWith("local:")
-    );
 }
 
 const TabBar = memo(({ workspace, compatMode = false }: TabBarProps) => {

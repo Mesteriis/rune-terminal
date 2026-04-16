@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
+	"github.com/Mesteriis/rune-terminal/core/connections"
 	"github.com/Mesteriis/rune-terminal/core/policy"
 	"github.com/Mesteriis/rune-terminal/core/toolruntime"
 )
@@ -113,6 +115,9 @@ func (a *runtimeToolAdapter) termSendInputTool() toolruntime.Definition {
 			if err != nil {
 				return nil, normalizeToolError(err)
 			}
+			if err := a.ensureExecutionTargetsWidget(execCtx, widgetID); err != nil {
+				return nil, normalizeToolError(err)
+			}
 			result, err := a.terminalSendInput(widgetID, payload.Text, payload.AppendNewline)
 			if err != nil {
 				return nil, normalizeToolError(err)
@@ -160,6 +165,9 @@ func (a *runtimeToolAdapter) termInterruptTool() toolruntime.Definition {
 			if err != nil {
 				return nil, normalizeToolError(err)
 			}
+			if err := a.ensureExecutionTargetsWidget(execCtx, widgetID); err != nil {
+				return nil, normalizeToolError(err)
+			}
 			if err := a.terminalInterrupt(widgetID); err != nil {
 				return nil, normalizeToolError(err)
 			}
@@ -174,4 +182,40 @@ func (a *runtimeToolAdapter) termInterruptTool() toolruntime.Definition {
 			}, nil
 		},
 	}
+}
+
+func (a *runtimeToolAdapter) ensureExecutionTargetsWidget(execCtx toolruntime.ExecutionContext, widgetID string) error {
+	expectedSession := strings.TrimSpace(execCtx.TargetSession)
+	expectedConnectionID := strings.TrimSpace(execCtx.TargetConnectionID)
+	if expectedSession == "" && expectedConnectionID == "" {
+		return nil
+	}
+
+	state, err := a.terminalGetState(widgetID)
+	if err != nil {
+		return err
+	}
+	actualSession := "local"
+	if state.ConnectionKind == "ssh" {
+		actualSession = "remote"
+	}
+	if expectedSession != "" && expectedSession != actualSession {
+		return fmt.Errorf(
+			"%w: requested %s session but widget %s is %s",
+			connections.ErrInvalidConnection,
+			expectedSession,
+			widgetID,
+			actualSession,
+		)
+	}
+	if expectedConnectionID != "" && state.ConnectionID != "" && expectedConnectionID != state.ConnectionID {
+		return fmt.Errorf(
+			"%w: requested connection %s but widget %s is bound to %s",
+			connections.ErrInvalidConnection,
+			expectedConnectionID,
+			widgetID,
+			state.ConnectionID,
+		)
+	}
+	return nil
 }

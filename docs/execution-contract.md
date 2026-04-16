@@ -15,6 +15,8 @@ User input:
      - `workspace_id`
      - `active_widget_id`
      - `repo_root`
+     - `target_session`
+     - `target_connection_id`
    - It also builds a conversation context with the same fields plus `widget_context_enabled`.
 
 3. Tool execution request
@@ -22,7 +24,7 @@ User input:
    - It then sends `POST /api/v1/tools/execute` with:
      - `tool_name: "term.send_input"`
      - `input: { "widget_id": "<active widget>", "text": "<command>", "append_newline": true }`
-     - `context: { "workspace_id": "...", "active_widget_id": "...", "repo_root": "..." }`
+     - `context: { "workspace_id": "...", "active_widget_id": "...", "repo_root": "...", "target_session": "...", "target_connection_id": "..." }`
      - `approval_token` only on an approved retry
 
 4. Backend processing
@@ -103,6 +105,9 @@ User input:
   - `workspace_id`
   - `active_widget_id`
   - `repo_root`
+  - `target_session`
+  - `target_connection_id`
+- `target_session` and `target_connection_id` are derived from the active widget connection binding (`local` vs a concrete SSH connection).
 - The backend normalizes that request into an internal execution envelope that also carries explicit `role` and `mode` from the resolved backend policy profile for the active agent selection.
 - `role` and `mode` are backend-derived execution context, not client-owned request fields for `/api/v1/tools/execute`.
 - The explain request uses the corresponding conversation context:
@@ -116,7 +121,7 @@ User input:
 - Request body shape:
   - `tool_name: string`
   - `input?: object`
-  - `context?: { workspace_id?, repo_root?, active_widget_id? }`
+  - `context?: { workspace_id?, repo_root?, active_widget_id?, target_session?, target_connection_id? }`
   - `approval_token?: string`
 - `/run` execution must use:
   - `tool_name: "term.send_input"`
@@ -182,6 +187,7 @@ User input:
   - target widget
   - workspace context
   - repo-root context
+  - session target (`target_session`, `target_connection_id`)
 - A retry whose tool name, normalized input, or normalized context does not match the approved intent must fail explicitly with:
   - HTTP `403`
   - `status: "error"`
@@ -207,6 +213,8 @@ User input:
   - success/error
   - affected widgets/paths
   - `approval_used`
+  - `target_session`
+  - `target_connection_id`
 - `approval_used:true` means the execution consumed a valid approval token during policy evaluation of that request.
 - `approval_used` is meaningful on the approved retry and on the follow-up explain audit event when the backend derives the matching execution as approved.
 

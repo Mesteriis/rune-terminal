@@ -263,8 +263,10 @@ func TestExecutorCarriesExplicitRoleAndModeInExecutionContextAndAudit(t *testing
 		},
 		Execute: func(ctx context.Context, execCtx ExecutionContext, input any) (any, error) {
 			return map[string]any{
-				"role_id": execCtx.RoleID,
-				"mode_id": execCtx.ModeID,
+				"role_id":              execCtx.RoleID,
+				"mode_id":              execCtx.ModeID,
+				"target_session":       execCtx.TargetSession,
+				"target_connection_id": execCtx.TargetConnectionID,
 			}, nil
 		},
 	}); err != nil {
@@ -282,9 +284,11 @@ func TestExecutorCarriesExplicitRoleAndModeInExecutionContextAndAudit(t *testing
 	response := executor.Execute(context.Background(), ExecuteRequest{
 		ToolName: "term.echo_role_mode",
 		Context: ExecutionContext{
-			WorkspaceID: "workspace-1",
-			RoleID:      "frontend-spoofed-role",
-			ModeID:      "frontend-spoofed-mode",
+			WorkspaceID:        "workspace-1",
+			RoleID:             "frontend-spoofed-role",
+			ModeID:             "frontend-spoofed-mode",
+			TargetSession:      "remote",
+			TargetConnectionID: "conn-ssh",
 		},
 	}, profile)
 	if response.Status != "ok" {
@@ -300,6 +304,9 @@ func TestExecutorCarriesExplicitRoleAndModeInExecutionContextAndAudit(t *testing
 	if output["role_id"] != "reviewer" || output["mode_id"] != "review" {
 		t.Fatalf("expected backend profile role/mode in exec context, got %#v", output)
 	}
+	if output["target_session"] != "remote" || output["target_connection_id"] != "conn-ssh" {
+		t.Fatalf("expected target session context in tool execution, got %#v", output)
+	}
 
 	events, err := auditLog.List(10)
 	if err != nil {
@@ -313,6 +320,9 @@ func TestExecutorCarriesExplicitRoleAndModeInExecutionContextAndAudit(t *testing
 	}
 	if events[0].PromptProfileID != "balanced" || events[0].SecurityPosture != "hardened" {
 		t.Fatalf("expected explicit profile context in audit, got %#v", events[0])
+	}
+	if events[0].TargetSession != "remote" || events[0].TargetConnectionID != "conn-ssh" {
+		t.Fatalf("expected target session in audit, got %#v", events[0])
 	}
 }
 

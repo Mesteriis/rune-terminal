@@ -214,6 +214,9 @@ Confirmable boundaries:
 - That grammar is intentionally narrow for `1.0.0`. Free-text prompts still use the conversation backend. Only explicit `/run` prompts trigger terminal command execution.
 - `/run` without a command now returns explicit format guidance instead of silently falling back to generic conversation handling.
 - `/run` currently targets the active terminal widget only.
+- `/run` tool execution now includes explicit session targeting derived from the active widget binding:
+  - `target_session` (`local` or `remote`)
+  - `target_connection_id` (`local` or concrete SSH connection ID)
 - The frontend AI command flow is:
   1. capture the current terminal `next_seq`
   2. execute `term.send_input` through the real tool/runtime/policy path
@@ -228,7 +231,9 @@ Confirmable boundaries:
   - the active compat panel now keeps the pending `/run` request in an explicit in-memory retry context and rehydrates it when the panel remounts in the same frontend session
   - confirm uses the existing `safety.confirm` tool contract and retries the original `term.send_input` request with the returned one-time `approval_token`
   - the backend now enforces that the approved retry matches the original execution intent instead of trusting `tool_name` alone
+  - the backend rejects `/run` tool execution if the explicit target session does not match the destination widget session (`local` vs `remote`)
   - the resulting explanation call derives `approval_used` from the matching `term.send_input` audit truth; the backend no longer trusts a frontend-supplied explain flag
+  - audit events for both `term.send_input` and `agent.terminal_command` now include explicit session target fields (`target_session`, `target_connection_id`)
   - a full frontend reload still loses pending retry context because this slice does not add persistence
 - Capability-removing modes such as `secure` can still forbid `/run` entirely. In that case the AI command path is denied rather than approval-gated.
 - The AI panel footer now includes a TideTerm-shaped composer. It still maps a small set of explicit runtime-backed intents such as terminal inspection, tab listing, widget listing, active-tab lookup, and terminal interrupt to the tool/runtime path, but all other free-text prompts now go through the real backend conversation route.

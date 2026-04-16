@@ -103,3 +103,42 @@ func TestTermInterruptToolInterruptsActiveWidget(t *testing.T) {
 		t.Fatalf("expected process to receive interrupt signal")
 	}
 }
+
+func TestTermSendInputToolRejectsMismatchedSessionTarget(t *testing.T) {
+	t.Parallel()
+
+	process := &interruptFakeProcess{
+		outputCh: make(chan []byte, 1),
+		waitCh:   make(chan struct{}),
+	}
+	service := terminal.NewService(interruptFakeLauncher{process: process})
+	if _, err := service.StartSession(context.Background(), terminal.LaunchOptions{
+		WidgetID: "term-main",
+		Shell:    "/bin/sh",
+	}); err != nil {
+		t.Fatalf("StartSession error: %v", err)
+	}
+	t.Cleanup(service.Close)
+
+	runtime := &Runtime{
+		Workspace: workspace.NewService(workspace.BootstrapDefault()),
+		Terminals: service,
+	}
+	tool := runtime.termSendInputTool()
+	_, err := tool.Execute(
+		context.Background(),
+		toolruntime.ExecutionContext{
+			TargetSession:      "remote",
+			TargetConnectionID: "conn-ssh",
+		},
+		sendInputToolInput{
+			Text: "pwd",
+		},
+	)
+	if err == nil {
+		t.Fatalf("expected session target mismatch error")
+	}
+	if got := toolruntime.ErrorCodeOf(err); got != toolruntime.ErrorCodeInvalidInput {
+		t.Fatalf("expected invalid input error code, got %q (%v)", got, err)
+	}
+}
