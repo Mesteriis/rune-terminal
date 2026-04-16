@@ -82,7 +82,7 @@ What exists today:
 - launchable Tauri shell with Go sidecar runtime
 - local terminal daily-driver path
 - focused remote SSH daily-driver path (intentionally narrow)
-- AI conversation with explicit `/run <command>` command execution + explanation path
+- AI conversation through an Ollama-compatible HTTP backend, plus explicit `/run <command>` command execution + explanation
 - policy/approval, trust/ignore, and audit visibility in the shell
 - release-control docs and validation trail
 
@@ -90,6 +90,7 @@ What does **not** exist yet:
 - full TideTerm parity breadth
 - broad remote controller semantics
 - attachments and streaming AI output
+- broad provider orchestration beyond the current Ollama-compatible path
 - advanced SSH auth and `.ssh/config` import workflows
 - plugin ecosystem work
 

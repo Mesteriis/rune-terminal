@@ -15,6 +15,7 @@ It defines what is incomplete by design for the first release candidate so we do
 - file attachments for AI transport
 - streaming AI responses
 - broad model orchestration matrix
+- generalized AI provider support beyond the current Ollama-compatible HTTP path
 - plugin ecosystem work
 
 ## Partial and still rough
@@ -23,6 +24,7 @@ It defines what is incomplete by design for the first release candidate so we do
 - connection lifecycle is explicit but still narrow (`saved profile` vs `last check` vs `last launch`)
 - terminal parity remains practical, but advanced TideTerm surfaces are still missing (multi-session sidebar, deep search/find affordances)
 - AI command flow intentionally supports explicit command grammar only (`/run` and `run:`), not broad natural-language command execution
+- the current assistant backend is Ollama-compatible HTTP only; release validation proves contract wiring and daily-driver behavior, not a broad provider matrix
 - native-window automation coverage is limited; validation leans on build + runtime/API smoke plus manual notes
 
 ## Post-`1.0.0` targets
