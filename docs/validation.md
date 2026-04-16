@@ -86,6 +86,46 @@
     - panel-adjacent smoke remained green: `Tools` panel still loaded `GET /api/v1/tools`, `Audit` panel still loaded `GET /api/v1/audit?limit=50`
     - runtime noise for this corrective run: `consoleErrors: 0`, `pageErrors: 0`, `loadingFailed: 0`
 
+## /run command
+
+- Date: `2026-04-16`
+- Status: `VERIFIED`
+- Commits:
+  - `9539c9bc01c8b23ca974f05898977e4f53b78083`
+  - `a412cdb93632ab71affbe4b8406e12b045d46725`
+  - `6cf8556c8f3e0a3cf9fe11ac96e84d4e49ce2694`
+  - `d7f980a0c2abef66cd98dee494f2d5fb7918c19d`
+  - `def095c564dddd185a22adb9ba94923bd562846a`
+  - `666179240ba270adaf96882d10f58917524fd565`
+- Validation steps:
+  - runtime environment:
+    - Ollama stub: local Node HTTP server on `127.0.0.1:11436`, returning `model: "test-model"` and `message.content: "stub-response: <prompt>"`
+    - core: `RTERM_AUTH_TOKEN=run-command-token-3 RTERM_OLLAMA_BASE_URL=http://127.0.0.1:11436 RTERM_OLLAMA_MODEL=test-model apps/desktop/bin/rterm-core serve --listen 127.0.0.1:52768 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/rterm-run-command-validation-3`
+    - frontend dev: `VITE_RTERM_API_BASE=http://127.0.0.1:52768 VITE_RTERM_AUTH_TOKEN=run-command-token-3 npm --prefix frontend run dev -- --host 127.0.0.1 --port 4198 --strictPort`
+  - open AI panel through the visible shell `AI` toggle in the active compat workspace
+  - `/run echo hello`:
+    - browser network captured `POST /api/v1/tools/execute` with `tool_name:"term.send_input"` and repo-scoped tool context
+    - browser network captured `POST /api/v1/agent/terminal-commands/explain` with `prompt:"/run echo hello"`, `command:"echo hello"`, `widget_id:"term-main"`, `from_seq:4`
+    - transcript rendered the user command, a local execution-result message with sanitized output `hello`, and a follow-up assistant explanation message in the existing transcript UI
+  - `/run pwd`:
+    - browser network captured `POST /api/v1/tools/execute` and `POST /api/v1/agent/terminal-commands/explain` with `command:"pwd"` and `from_seq:18`
+    - transcript rendered sanitized command output `/Users/avm/projects/Personal/tideterm/runa-terminal`
+  - invalid command:
+    - entered `/run definitely-not-a-real-command`
+    - browser network captured `POST /api/v1/tools/execute` and `POST /api/v1/agent/terminal-commands/explain` with `command:"definitely-not-a-real-command"` and `from_seq:26`
+    - transcript rendered sanitized shell error `zsh: command not found: definitely-not-a-real-command`
+- Tested commands:
+  - `/run echo hello`: `VERIFIED`
+  - `/run pwd`: `VERIFIED`
+  - `/run definitely-not-a-real-command`: `VERIFIED`
+- Explanation behavior: `VERIFIED` — every tested `/run` request issued `POST /api/v1/agent/terminal-commands/explain`, and the returned assistant message rendered inside the existing AI transcript immediately after the execution-result message.
+- Result: `VERIFIED` — the active compat AI panel now detects `/run`, executes the command through the backend tool/runtime path, renders the observed terminal result in the current transcript, and appends the backend explanation response in the same panel without new UI surfaces.
+- Notes:
+  - validation used a stub Ollama-compatible server, so the assistant text proves explain-route wiring and prompt content rather than final model quality
+  - sanitized result rendering now strips ANSI prompt redraw noise and command echo from the local execution-result message and from the backend explanation prompt
+  - browser `consoleErrors` for the final `4198` validation run: `0`
+  - approval-required `/run` confirm-and-retry path: `NOT RUN`
+
 ## widgets.tsx structural refactor
 
 - Date: `2026-04-16`
@@ -416,22 +456,29 @@
 <a id="feature-ai-run-command-execution-path"></a>
 ## Явный `/run <command>` execution path
 
-- Date: `—`
-- Status: `NOT RUN`
-- Commit: `—`
-- Validation steps: Отдельный feature-specific validation run ещё не зафиксирован; использовать критерии из `docs/roadmap.md` и текущий path из audit.
-- Result: Подтверждённого validation result нет; текущий ориентир только parity status из audit.
-- Notes: Placeholder-секция для будущих проверок. Текущее audit-наблюдение: `NOT VERIFIED` для active UI: `/run` path реализован в backend/docs, но active compat AI panel не использует этот path. 
+- Date: `2026-04-16`
+- Status: `VERIFIED`
+- Commits:
+  - `9539c9bc01c8b23ca974f05898977e4f53b78083`
+  - `a412cdb93632ab71affbe4b8406e12b045d46725`
+  - `d7f980a0c2abef66cd98dee494f2d5fb7918c19d`
+  - `def095c564dddd185a22adb9ba94923bd562846a`
+  - `666179240ba270adaf96882d10f58917524fd565`
+- Validation steps: See [`/run command`](#run-command).
+- Result: `VERIFIED` — active compat AI panel now detects `/run`, sends `term.send_input` through `POST /api/v1/tools/execute`, waits for terminal output from the captured `next_seq`, and renders the observed result in the existing transcript.
+- Notes: Validation confirmed real `/run` UI wiring on `http://127.0.0.1:4198/`; the pre-slice audit note about plain-text fallback is no longer true for the active compat path.
 
 <a id="feature-ai-terminal-command-explanation"></a>
 ## Объяснение результата terminal command
 
-- Date: `—`
-- Status: `NOT RUN`
-- Commit: `—`
-- Validation steps: Отдельный feature-specific validation run ещё не зафиксирован; использовать критерии из `docs/roadmap.md` и текущий path из audit.
-- Result: Подтверждённого validation result нет; текущий ориентир только parity status из audit.
-- Notes: Placeholder-секция для будущих проверок. Текущее audit-наблюдение: `NOT VERIFIED` для active UI: explanation route существует, но active compat AI panel на него не переключён. 
+- Date: `2026-04-16`
+- Status: `VERIFIED`
+- Commits:
+  - `6cf8556c8f3e0a3cf9fe11ac96e84d4e49ce2694`
+  - `666179240ba270adaf96882d10f58917524fd565`
+- Validation steps: See [`/run command`](#run-command).
+- Result: `VERIFIED` — active compat AI panel now calls `POST /api/v1/agent/terminal-commands/explain` after command execution and renders the returned assistant response in the existing transcript UI.
+- Notes: Final validation used a deterministic stub provider, so the assistant text echoed the explain prompt content; this still verified the explain-route request shape, ordering, and transcript rendering.
 
 <a id="feature-ai-approval-flow"></a>
 ## Approval внутри AI/tool flow
