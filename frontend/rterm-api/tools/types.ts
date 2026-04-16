@@ -32,6 +32,8 @@ export interface ToolExecutionContext {
   workspace_id?: string;
   repo_root?: string;
   active_widget_id?: string;
+  target_session?: string;
+  target_connection_id?: string;
 }
 
 export interface ToolExecutionRequest {

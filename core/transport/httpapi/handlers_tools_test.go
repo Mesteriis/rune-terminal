@@ -195,6 +195,42 @@ func TestExecuteToolReturnsInternalErrorForUnhandledFailures(t *testing.T) {
 	}
 }
 
+func TestExecuteToolAcceptsSessionTargetFieldsAtTransportBoundary(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t, executeToolDefinition(
+		"term.echo",
+		toolruntime.EmptyDecode,
+		func(ctx context.Context, execCtx toolruntime.ExecutionContext, input any) (any, error) {
+			return map[string]any{
+				"target_session":       execCtx.TargetSession,
+				"target_connection_id": execCtx.TargetConnectionID,
+			}, nil
+		},
+		toolruntime.Metadata{
+			Capabilities: []string{"terminal:read"},
+			ApprovalTier: policy.ApprovalTierSafe,
+			TargetKind:   toolruntime.TargetWidget,
+		},
+	))
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPost, "/api/v1/tools/execute", map[string]any{
+		"tool_name": "term.echo",
+		"context": map[string]any{
+			"workspace_id":         "ws-local",
+			"active_widget_id":     "term-main",
+			"repo_root":            "/workspace/repo",
+			"target_session":       "remote",
+			"target_connection_id": "conn-ssh",
+		},
+	}))
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d (%s)", recorder.Code, recorder.Body.String())
+	}
+}
+
 func TestStatusForExecuteErrorReturnsForbiddenForApprovalMismatch(t *testing.T) {
 	t.Parallel()
 

@@ -188,6 +188,47 @@ func TestExecutorApprovalGrantRejectsMismatchedContextIntent(t *testing.T) {
 	}
 }
 
+func TestExecutorApprovalGrantRejectsMismatchedSessionTargetIntent(t *testing.T) {
+	t.Parallel()
+
+	executor := newDangerousExecutorWithInput(t)
+	initial := executor.Execute(context.Background(), ExecuteRequest{
+		ToolName: "safety.add_ignore_rule",
+		Input:    json.RawMessage(`{"pattern":"alpha"}`),
+		Context: ExecutionContext{
+			WorkspaceID:        "workspace-1",
+			ActiveWidgetID:     "widget-1",
+			RepoRoot:           "/workspace/repo",
+			TargetSession:      "local",
+			TargetConnectionID: "local",
+		},
+	}, policy.EvaluationProfile{})
+	if initial.PendingApproval == nil {
+		t.Fatalf("expected pending approval, got %#v", initial)
+	}
+
+	grant, err := executor.Confirm(initial.PendingApproval.ID)
+	if err != nil {
+		t.Fatalf("Confirm error: %v", err)
+	}
+
+	mismatch := executor.Execute(context.Background(), ExecuteRequest{
+		ToolName:      "safety.add_ignore_rule",
+		Input:         json.RawMessage(`{"pattern":"alpha"}`),
+		ApprovalToken: grant.Token,
+		Context: ExecutionContext{
+			WorkspaceID:        "workspace-1",
+			ActiveWidgetID:     "widget-1",
+			RepoRoot:           "/workspace/repo",
+			TargetSession:      "remote",
+			TargetConnectionID: "conn-ssh",
+		},
+	}, policy.EvaluationProfile{})
+	if mismatch.Status != "error" || mismatch.ErrorCode != ErrorCodeApprovalMismatch {
+		t.Fatalf("expected session target mismatch error, got %#v", mismatch)
+	}
+}
+
 func TestExecutorCarriesExplicitRoleAndModeInExecutionContextAndAudit(t *testing.T) {
 	t.Parallel()
 

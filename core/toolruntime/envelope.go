@@ -7,11 +7,13 @@ import (
 )
 
 type ExecutionEnvelopeContext struct {
-	WorkspaceID string `json:"workspace_id,omitempty"`
-	WidgetID    string `json:"widget_id,omitempty"`
-	RepoRoot    string `json:"repo_root,omitempty"`
-	Role        string `json:"role,omitempty"`
-	Mode        string `json:"mode,omitempty"`
+	WorkspaceID        string `json:"workspace_id,omitempty"`
+	WidgetID           string `json:"widget_id,omitempty"`
+	RepoRoot           string `json:"repo_root,omitempty"`
+	TargetSession      string `json:"target_session,omitempty"`
+	TargetConnectionID string `json:"target_connection_id,omitempty"`
+	Role               string `json:"role,omitempty"`
+	Mode               string `json:"mode,omitempty"`
 }
 
 type ExecutionEnvelope struct {
@@ -25,21 +27,25 @@ func executionEnvelopeFromRequest(request ExecuteRequest, profile policy.Evaluat
 		ToolName: request.ToolName,
 		Input:    request.Input,
 		Context: ExecutionEnvelopeContext{
-			WorkspaceID: request.Context.WorkspaceID,
-			WidgetID:    request.Context.ActiveWidgetID,
-			RepoRoot:    request.Context.RepoRoot,
-			Role:        profile.RoleID,
-			Mode:        profile.ModeID,
+			WorkspaceID:        request.Context.WorkspaceID,
+			WidgetID:           request.Context.ActiveWidgetID,
+			RepoRoot:           request.Context.RepoRoot,
+			TargetSession:      request.Context.TargetSession,
+			TargetConnectionID: request.Context.TargetConnectionID,
+			Role:               profile.RoleID,
+			Mode:               profile.ModeID,
 		},
 	}
 }
 
 func (e ExecutionEnvelope) executionContext() ExecutionContext {
 	return ExecutionContext{
-		WorkspaceID:    e.Context.WorkspaceID,
-		RepoRoot:       e.Context.RepoRoot,
-		ActiveWidgetID: e.Context.WidgetID,
-		RoleID:         e.Context.Role,
-		ModeID:         e.Context.Mode,
+		WorkspaceID:        e.Context.WorkspaceID,
+		RepoRoot:           e.Context.RepoRoot,
+		ActiveWidgetID:     e.Context.WidgetID,
+		TargetSession:      e.Context.TargetSession,
+		TargetConnectionID: e.Context.TargetConnectionID,
+		RoleID:             e.Context.Role,
+		ModeID:             e.Context.Mode,
 	}
 }
