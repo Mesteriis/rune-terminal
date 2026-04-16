@@ -10,12 +10,14 @@ Phase: `1.0.0-rc1` hardening
 - `core/config/agent-state.json`: prompt profile / role / mode selection.
 - `core/config/connections.json`: active connection target, saved SSH connections, saved remote profiles, check/launch runtime markers.
 - `core/config/conversation.json`: backend conversation transcript and provider metadata.
+- `core/config/workspace.json`: workspace/tab/widget snapshot metadata.
+- `core/config/mcp-registry.json`: persisted remote MCP registry config (id/endpoint/headers/enabled).
 
 ## 2. What is currently runtime-only
 
 - terminal live session objects, PTY process identity, in-memory output chunk ring buffers.
 - remote shell process liveness (SSH process lifetime is runtime-only).
-- MCP registry/runtime process map (including user-registered remote MCP entries in current implementation).
+- MCP runtime process map/liveness.
 - plugin process runtime state.
 - frontend transient panel/form state (tools input JSON, pending approval UI continuity maps, open/close widget flyout states).
 
@@ -29,7 +31,7 @@ Phase: `1.0.0-rc1` hardening
 
 - all previous live terminal process instances (local and remote) are dead after runtime shutdown.
 - previous PTY output ring buffers and process-local command state are stale/dead after restart.
-- MCP runtime processes and dynamically registered MCP servers are lost on restart in current behavior.
+- MCP runtime processes are stopped after restart (config persists; process liveness does not).
 - tools-panel pending approval continuity and other in-memory frontend-only transient state do not survive reload/restart.
 
 ## 5. Explicit non-goals for this batch

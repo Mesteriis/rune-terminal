@@ -28,6 +28,57 @@
   - remote-target validation in this run is guard-level (`target_session` mismatch rejection) on a local widget; this entry does not claim a full reachable-host SSH launch sweep.
   - MCP invoke remained explicit and did not append automatic agent conversation messages in this run.
 
+<a id="session-persistence-restore"></a>
+## Session persistence and restore
+
+- Date: `2026-04-17`
+- Status: `VERIFIED (remote auth path: NOT RUN, disconnected semantics VERIFIED)`
+- Validation steps:
+  - runtime restart-boundary API sweep using real core runtime:
+    - start #1:
+      - `RTERM_AUTH_TOKEN=test-token go run ./cmd/rterm-core serve --listen 127.0.0.1:38111 --state-dir /tmp/runa-session-restore-VaTWtb --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal`
+    - local terminal usage:
+      - `GET /api/v1/terminal/term-main?from=0` -> `status:"running"`, `restored:true`
+      - `POST /api/v1/terminal/term-main/input` with `echo session-restore-local`
+      - follow-up snapshot contained `session-restore-local` output
+    - workspace/tab snapshot persistence:
+      - `POST /api/v1/workspace/tabs` with title `Persisted Local Tab`
+      - created `tab_4418579f11152b2c` + `term_5fc1b678e6c77999`
+    - AI conversation persistence source-of-truth:
+      - `POST /api/v1/agent/conversation/messages` (prompt: `Summarize restore semantics in one sentence.`) -> assistant response persisted
+      - `GET /api/v1/agent/conversation` showed persisted user+assistant messages
+    - tools/audit path:
+      - `POST /api/v1/tools/execute` (`workspace.list_tabs`) -> `status:"ok"`
+      - `GET /api/v1/audit?limit=20` included `agent.conversation` and `workspace.list_tabs` events
+    - MCP lifecycle/persistence boundary:
+      - `POST /api/v1/mcp/servers` registered `mcp.context7` (`remote`, endpoint `http://127.0.0.1:8123/mcp`)
+      - `POST /api/v1/mcp/servers/mcp.context7/start` -> `state:"idle", active:true`
+      - `POST /api/v1/mcp/servers/mcp.example/start` -> `state:"idle", active:true`
+    - stop #1 and inject stale remote restore case:
+      - edited persisted `/tmp/runa-session-restore-VaTWtb/workspace.json` to include widget `term-remote-stale` with `connection_id:"conn-missing"`
+    - start #2 (same state dir):
+      - `RTERM_AUTH_TOKEN=test-token go run ./cmd/rterm-core serve ... --state-dir /tmp/runa-session-restore-VaTWtb`
+      - `GET /api/v1/workspace` restored persisted local tab and stale remote tab shape
+      - `GET /api/v1/terminal/term-main?from=0` -> fresh running local session with `restored:true`
+      - `GET /api/v1/terminal/term-remote-stale?from=0` -> `status:"disconnected"`, `status_detail:"connection not found: conn-missing"`, `can_send_input:false`
+      - explicit reconnect attempt `POST /api/v1/terminal/term-remote-stale/restart` returned explicit failure (`500 internal_failure`, message `connection not found: conn-missing`)
+      - `GET /api/v1/agent/conversation` after restart still contained prior transcript
+      - `GET /api/v1/mcp/servers` after restart:
+        - `mcp.context7` restored from registry config with `state:"stopped", active:false`
+        - `mcp.example` restored as `state:"stopped", active:false`
+  - release sweep:
+    - `npm run validate` -> `pass` (lint warnings unchanged; no new errors)
+  - desktop runtime smoke:
+    - `npm run tauri:dev` -> ready payload observed: `{"base_url":"http://127.0.0.1:57692","pid":98056}`
+- Result:
+  - workspace/tab metadata now restores from backend snapshot truth.
+  - local sessions restore as fresh processes and are marked `restored:true`.
+  - stale remote widgets restore as explicit `disconnected` state without fake liveness.
+  - AI transcript, audit log, and MCP registry config survive restart.
+  - MCP runtime processes do not survive restart and return to stopped state until explicit start.
+- Notes:
+  - authenticated live-SSH remote reconnection across restart was not run in this pass; remote restore validation is grounded in explicit disconnected semantics with a missing-profile stale widget.
+
 <a id="workspace-navigation-batch"></a>
 ## Workspace navigation parity batch
 
