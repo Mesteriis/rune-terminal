@@ -15,17 +15,33 @@ import (
 
 	"github.com/Mesteriis/rune-terminal/core/app"
 	"github.com/Mesteriis/rune-terminal/core/transport/httpapi"
+	pluginexample "github.com/Mesteriis/rune-terminal/plugins/example"
 )
 
 func main() {
-	if len(os.Args) < 2 || os.Args[1] != "serve" {
-		fmt.Fprintf(os.Stderr, "usage: %s serve [flags]\n", filepath.Base(os.Args[0]))
+	if len(os.Args) < 2 {
+		fmt.Fprintf(os.Stderr, "usage: %s <serve|plugin-example> [flags]\n", filepath.Base(os.Args[0]))
 		os.Exit(2)
 	}
-	if err := serve(os.Args[2:]); err != nil {
+
+	var err error
+	switch os.Args[1] {
+	case "serve":
+		err = serve(os.Args[2:])
+	case "plugin-example":
+		err = runExamplePlugin()
+	default:
+		fmt.Fprintf(os.Stderr, "usage: %s <serve|plugin-example> [flags]\n", filepath.Base(os.Args[0]))
+		os.Exit(2)
+	}
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "rterm-core error: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+func runExamplePlugin() error {
+	return pluginexample.Run(os.Stdin, os.Stdout)
 }
 
 func serve(args []string) error {

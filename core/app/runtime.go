@@ -8,6 +8,7 @@ import (
 	"github.com/Mesteriis/rune-terminal/core/config"
 	"github.com/Mesteriis/rune-terminal/core/connections"
 	"github.com/Mesteriis/rune-terminal/core/conversation"
+	"github.com/Mesteriis/rune-terminal/core/plugins"
 	"github.com/Mesteriis/rune-terminal/core/policy"
 	"github.com/Mesteriis/rune-terminal/core/terminal"
 	"github.com/Mesteriis/rune-terminal/core/toolruntime"
@@ -24,6 +25,7 @@ type Runtime struct {
 	Conversation *conversation.Service
 	Policy       *policy.Store
 	Audit        *audit.Log
+	Plugins      *plugins.Runtime
 	Registry     *toolruntime.Registry
 	Executor     *toolruntime.Executor
 }
@@ -62,9 +64,15 @@ func NewRuntime(repoRoot string, stateDir string) (*Runtime, error) {
 		Conversation: conversationStore,
 		Policy:       policyStore,
 		Audit:        auditLog,
+		Plugins:      plugins.NewRuntime(nil, 0),
 		Registry:     toolruntime.NewRegistry(),
 	}
-	runtime.Executor = toolruntime.NewExecutor(runtime.Registry, runtime.Policy, runtime.Audit)
+	runtime.Executor = toolruntime.NewExecutor(
+		runtime.Registry,
+		runtime.Policy,
+		runtime.Audit,
+		toolruntime.WithPluginInvoker(runtime.Plugins),
+	)
 
 	if err := runtime.bootstrapSessions(context.Background()); err != nil {
 		return nil, err

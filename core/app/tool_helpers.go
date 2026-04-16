@@ -153,6 +153,7 @@ func (r *Runtime) registerTools() error {
 		r.terminalTools,
 		r.connectionTools,
 		r.policyTools,
+		r.pluginTools,
 	} {
 		for _, tool := range register() {
 			if err := r.Registry.Register(tool); err != nil {
