@@ -13,6 +13,7 @@ const VITE_API_BASE = "VITE_RTERM_API_BASE";
 const VITE_API_TOKEN = "VITE_RTERM_AUTH_TOKEN";
 const LEGACY_API_BASE = "WAVE_SERVER_WEB_ENDPOINT";
 const LEGACY_AUTH_TOKEN = "RTERM_AUTH_TOKEN";
+const LEGACY_RUNTIME_FALLBACK_FLAG = "VITE_RTERM_ENABLE_LEGACY_RUNTIME_FALLBACK";
 
 export function detectStreamAuthMode(authToken: string | undefined): StreamAuthMode {
   return authToken ? "authorization-header" : "none";
@@ -34,6 +35,15 @@ export function readEnvValue(key: string): EnvConfigValue {
   }
 
   return {};
+}
+
+function readBooleanEnvFlag(key: string): boolean {
+  const raw = readEnvValue(key).value;
+  if (raw == null) {
+    return false;
+  }
+  const normalized = raw.trim().toLowerCase();
+  return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
 }
 
 function normalizeBaseUrl(rawBaseUrl: string): string {
@@ -156,14 +166,26 @@ export async function resolveRuntimeConfig(): Promise<RuntimeConfig> {
       return fromVite;
     }
 
-    const fromLegacy = resolveFromLegacyWaveEnv(attempts);
-    if (fromLegacy != null) {
-      return fromLegacy;
-    }
+    const allowLegacyFallback = readBooleanEnvFlag(LEGACY_RUNTIME_FALLBACK_FLAG);
+    if (allowLegacyFallback) {
+      const fromLegacy = resolveFromLegacyWaveEnv(attempts);
+      if (fromLegacy != null) {
+        return fromLegacy;
+      }
 
-    const fromLocation = resolveFromLocationOrigin(attempts);
-    if (fromLocation != null) {
-      return fromLocation;
+      const fromLocation = resolveFromLocationOrigin(attempts);
+      if (fromLocation != null) {
+        return fromLocation;
+      }
+    } else {
+      attempts.push({
+        source: "legacy-wave-env",
+        message: `legacy fallback disabled (set ${LEGACY_RUNTIME_FALLBACK_FLAG}=1 to enable)`,
+      });
+      attempts.push({
+        source: "location-origin",
+        message: `location-origin fallback disabled (set ${LEGACY_RUNTIME_FALLBACK_FLAG}=1 to enable)`,
+      });
     }
   }
 
