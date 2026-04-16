@@ -308,12 +308,30 @@ const AIPanelCompatInner = memo(() => {
             const response = await executionFacade.listBlocks(workspaceID || undefined, 20);
             const blocks = Array.isArray(response.blocks) ? response.blocks : [];
             blocks.sort((left, right) => {
-                return Date.parse(right.created_at) - Date.parse(left.created_at);
+                const rightTimestamp = Date.parse(right.created_at);
+                const leftTimestamp = Date.parse(left.created_at);
+                return (Number.isNaN(rightTimestamp) ? 0 : rightTimestamp) - (Number.isNaN(leftTimestamp) ? 0 : leftTimestamp);
             });
             setExecutionBlocks(blocks);
         },
         [],
     );
+
+    useEffect(() => {
+        const unsubscribe = workspaceStore.subscribe(() => {
+            const nextWorkspaceID = workspaceStore.getSnapshot().active.oid || "";
+            setWorkspaceId((previous) => {
+                if (previous === nextWorkspaceID) {
+                    return previous;
+                }
+                void refreshExecutionBlocks(nextWorkspaceID).catch(() => {
+                    setExecutionBlocks([]);
+                });
+                return nextWorkspaceID;
+            });
+        });
+        return unsubscribe;
+    }, [refreshExecutionBlocks]);
 
     useEffect(() => {
         let cancelled = false;
@@ -362,8 +380,7 @@ const AIPanelCompatInner = memo(() => {
                 );
                 try {
                     await refreshExecutionBlocks(nextWorkspaceID);
-                } catch (error) {
-                    errors.push(error instanceof Error ? error.message : String(error));
+                } catch {
                     setExecutionBlocks([]);
                 }
             } else {
@@ -533,10 +550,14 @@ const AIPanelCompatInner = memo(() => {
                             return next.slice(0, 20);
                         });
                     } catch {
-                        await refreshExecutionBlocks(options.context.workspace_id ?? workspaceId);
+                        void refreshExecutionBlocks(options.context.workspace_id ?? workspaceId).catch(() => {
+                            // Block refresh is non-blocking for existing transcript/explain workflow.
+                        });
                     }
                 } else {
-                    await refreshExecutionBlocks(options.context.workspace_id ?? workspaceId);
+                    void refreshExecutionBlocks(options.context.workspace_id ?? workspaceId).catch(() => {
+                        // Block refresh is non-blocking for existing transcript/explain workflow.
+                    });
                 }
             } catch (error) {
                 try {
