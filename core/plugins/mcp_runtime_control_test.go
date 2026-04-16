@@ -79,8 +79,15 @@ func TestMCPRuntimeSupportsExplicitStartAndStop(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Invoke error: %v", err)
 	}
-	if string(result.Output) != `{"ok":true}` {
-		t.Fatalf("unexpected invoke output: %s", string(result.Output))
+	normalized, ok := result.Output.(MCPNormalizedOutput)
+	if !ok {
+		t.Fatalf("expected normalized output shape, got %#v", result.Output)
+	}
+	if normalized.Format != mcpNormalizedOutputFormat || normalized.PayloadType != "object" {
+		t.Fatalf("unexpected normalized output metadata: %#v", normalized)
+	}
+	if len(normalized.ObjectFields) == 0 || normalized.ObjectFields[0].Key != "ok" {
+		t.Fatalf("unexpected normalized object fields: %#v", normalized.ObjectFields)
 	}
 	if invoker.calls != 1 {
 		t.Fatalf("expected one invoke call, got %d", invoker.calls)

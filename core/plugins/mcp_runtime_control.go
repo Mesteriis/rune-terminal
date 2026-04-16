@@ -18,12 +18,13 @@ var (
 )
 
 type MCPRuntime struct {
-	registry *MCPRegistry
-	spawner  ProcessSpawner
-	invoker  MCPInvoker
-	nowFn    func() time.Time
-	idleTTL  time.Duration
-	adapter  MCPContextAdapter
+	registry   *MCPRegistry
+	spawner    ProcessSpawner
+	invoker    MCPInvoker
+	nowFn      func() time.Time
+	idleTTL    time.Duration
+	adapter    MCPContextAdapter
+	normalizer MCPOutputNormalizer
 
 	mu         sync.Mutex
 	process    map[string]*mcpProcess
@@ -40,6 +41,7 @@ type MCPRuntimeOptions struct {
 	IdleTimeout       time.Duration
 	IdleCheckInterval time.Duration
 	ContextAdapter    MCPContextAdapter
+	OutputNormalizer  MCPOutputNormalizer
 }
 
 type MCPInvokeRequest struct {
@@ -53,7 +55,7 @@ type MCPInvokeRequest struct {
 
 type MCPInvokeResult struct {
 	ServerID string             `json:"server_id"`
-	Output   json.RawMessage    `json:"output,omitempty"`
+	Output   any                `json:"output,omitempty"`
 	Context  *MCPContextPayload `json:"context,omitempty"`
 }
 
@@ -93,6 +95,10 @@ func NewMCPRuntimeWithOptions(
 		idleCheckInterval = time.Minute
 	}
 	adapter := options.ContextAdapter.withDefaults()
+	normalizer := options.OutputNormalizer
+	if normalizer == (MCPOutputNormalizer{}) {
+		normalizer = DefaultMCPOutputNormalizer()
+	}
 
 	runtime := &MCPRuntime{
 		registry:   registry,
@@ -101,6 +107,7 @@ func NewMCPRuntimeWithOptions(
 		nowFn:      nowFn,
 		idleTTL:    idleTimeout,
 		adapter:    adapter,
+		normalizer: normalizer,
 		process:    make(map[string]*mcpProcess),
 		stopIdleCh: make(chan struct{}),
 	}
@@ -315,6 +322,10 @@ func (r *MCPRuntime) Invoke(ctx context.Context, request MCPInvokeRequest) (MCPI
 			return MCPInvokeResult{}, err
 		}
 	}
+	normalizedOutput, err := r.normalizer.Normalize(output)
+	if err != nil {
+		return MCPInvokeResult{}, err
+	}
 
 	var contextPayload *MCPContextPayload
 	if request.IncludeContext {
@@ -326,7 +337,7 @@ func (r *MCPRuntime) Invoke(ctx context.Context, request MCPInvokeRequest) (MCPI
 	}
 	return MCPInvokeResult{
 		ServerID: id,
-		Output:   output,
+		Output:   normalizedOutput,
 		Context:  contextPayload,
 	}, nil
 }
