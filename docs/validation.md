@@ -361,6 +361,36 @@
   - the active frontend still sends the legacy `approval_used` field on approved `/run` explains; this slice hardens the backend by ignoring that input instead of depending on it
   - validation used a stub Ollama-compatible server, so assistant text proves explain routing and context wiring rather than model quality
 
+## Dependency and limitation hygiene
+
+- Date: `2026-04-16`
+- Status: `VERIFIED`
+- Commits:
+  - `5714644ed341ae819dcf2220dd769eb4d92935eb`
+  - `a02a385d75b1f5f0e1c0c19e369f14af7429eff5`
+- Validation steps:
+  - frontend build:
+    - `npm run build:frontend`
+    - observed successful `tsc -b && vite build`
+    - build still emitted the existing browser-compatibility warning that `electron/index.js` externalizes `fs` and `path`, which matches the documented reason `electron` was not removed in this slice
+  - active shell:
+    - reused the current-code runtime from the dangerous-schema validation:
+      - core: `RTERM_AUTH_TOKEN=tool-schema-token go run ./cmd/rterm-core serve --listen 127.0.0.1:52870 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/rterm-tool-schema-validation`
+      - frontend dev: `VITE_RTERM_API_BASE=http://127.0.0.1:52870 VITE_RTERM_AUTH_TOKEN=tool-schema-token npm --prefix frontend run dev -- --host 127.0.0.1 --port 5175 --strictPort`
+    - opened `http://127.0.0.1:5175/`
+    - terminal prompt rendered normally in the active shell
+    - entered `echo deps-hygiene-shell-check`
+    - terminal rendered the echoed output `deps-hygiene-shell-check` and returned to the prompt
+  - Tauri launch smoke:
+    - `npm run tauri:dev`
+    - observed `Running target/debug/rterm-desktop`
+    - the spawned core reported ready state `{"base_url":"http://127.0.0.1:63418","pid":54009}`
+    - the smoke was then interrupted intentionally after ready-state confirmation
+  - docs truthfulness:
+    - `README.md` now states AI conversation is through an Ollama-compatible HTTP backend and no longer implies a broader provider matrix
+    - `docs/known-limitations.md` now explicitly states generalized provider support beyond the current Ollama-compatible path is not part of the current release
+- Result: `VERIFIED` — the narrowed dependency cleanup kept frontend build and shell launch behavior intact, `tauri:dev` still reaches desktop/core ready state, and the public limitation docs now match the actual Ollama-first runtime contract.
+
 ## Approval continuity
 
 - Date: `2026-04-16`
