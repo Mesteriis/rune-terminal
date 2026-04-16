@@ -391,6 +391,37 @@
     - `docs/known-limitations.md` now explicitly states generalized provider support beyond the current Ollama-compatible path is not part of the current release
 - Result: `VERIFIED` — the narrowed dependency cleanup kept frontend build and shell launch behavior intact, `tauri:dev` still reaches desktop/core ready state, and the public limitation docs now match the actual Ollama-first runtime contract.
 
+## Electron / legacy frontend cleanup
+
+- Date: `2026-04-16`
+- Status: `VERIFIED`
+- Commits:
+  - `f563ce1f680a0ca8e4a12379efe7acd11e01044a`
+  - `532a99204b7bce7c96c57da11c9d444f16bc9e00`
+  - `6adbd176df2f75f6f9f1ef6ec6221f4f6fdde45d`
+- Validation steps:
+  - typecheck:
+    - `npx tsc -p frontend/tsconfig.json --noEmit`
+  - frontend build:
+    - `npm run build:frontend`
+    - observed successful `tsc -b && vite build`
+    - previous warning about `electron/index.js` browser-compat externalization did not appear in this run
+    - remaining build warnings were unrelated chunk-size/dynamic-import warnings (`compat/index.ts` chunking), not Electron import warnings
+  - active runtime sanity:
+    - core: `RTERM_AUTH_TOKEN=electron-cleanup-token go run ./cmd/rterm-core serve --listen 127.0.0.1:52910 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/rterm-electron-cleanup`
+    - frontend dev: `VITE_RTERM_API_BASE=http://127.0.0.1:52910 VITE_RTERM_AUTH_TOKEN=electron-cleanup-token npm --prefix frontend run dev -- --host 127.0.0.1 --port 5176 --strictPort`
+    - opened `http://127.0.0.1:5176/`
+    - terminal prompt was visible
+    - opened `Tools` panel and observed live tool list content
+    - opened `Audit` panel and observed panel content (`No audit events available`)
+    - opened AI panel via `AI` toggle and observed header/composer/selectors
+  - tauri launch smoke:
+    - `npm run tauri:dev`
+    - observed `Running target/debug/rterm-desktop`
+    - spawned core ready-state printed `{"base_url":"http://127.0.0.1:64464","pid":61928}`
+    - run stopped intentionally after ready-state confirmation
+- Result: `VERIFIED` — active compat shell remains working, Tauri launch path remains healthy, and the previous Electron runtime import warning in frontend build is no longer present.
+
 ## Approval continuity
 
 - Date: `2026-04-16`

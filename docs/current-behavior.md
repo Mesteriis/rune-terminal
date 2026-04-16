@@ -181,6 +181,10 @@ Confirmable boundaries:
 - Terminal stream query-token auth remains only as a constrained fallback for consumers that cannot send auth headers; it is no longer the normal active shell path.
 - Session IDs currently equal widget IDs instead of using a separate durable session identity layer.
 - The desktop shell launches the Go core as a sidecar process and discovers it via a ready file; a richer process supervisor does not exist yet.
+- Frontend runtime is now explicitly Tauri-first:
+  - active shell runtime uses preload bridge + standard browser fetch path
+  - legacy no-preload browser compat bootstrap remains explicit in `wave.ts`
+  - legacy Electron net fetch fallback is opt-in only via `RTERM_ENABLE_LEGACY_ELECTRON_NET=1`
 - The terminal shell is now much closer to TideTerm's compact term surface, but it still lacks TideTerm's multi-session sidebar, search UI, and shell-integration toolbar details.
 - The AI panel now uses a TideTerm-shaped header with widget context toggle and overflow menu, and it now has a real backend-owned conversation path in addition to the existing runtime, audit, and policy surfaces.
 - Prompt profile, role preset, and work mode controls now live in an AI mode strip near the top of the message feed instead of in the footer.
