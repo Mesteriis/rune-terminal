@@ -17,6 +17,16 @@ It is intentionally operational, not narrative.
 - The widget dock settings flyout now deep-links into a user-facing shell settings surface with `Overview`, `Trusted tools`, `Secret shield`, and `Help` views.
 - The widget dock launcher flyout now acts as the shell-level entry surface for opening a new terminal tab, returning to the AI panel, opening runtime/audit utilities, and quickly focusing known widgets.
 - The shell now also exposes a dedicated `Launcher` section with searchable discovery for terminal, widget, settings, help, runtime, and audit surfaces.
+- The right-side utility rail now includes a minimal `Files` panel for workspace-root-bounded navigation:
+  - backend path source of truth: `GET /api/v1/fs/list?path=...`
+  - directory traversal is explicit (click folder), with no recursive indexing/caching
+  - file selection reveals the absolute path and can request bounded text preview from backend truth (`GET /api/v1/fs/read?path=...`)
+  - text preview is bounded (`max_bytes`, clamped server-side) and non-text/binary content is exposed as metadata-only preview-unavailable state
+  - filesystem routes enforce workspace-root boundaries and reject outside-root traversal attempts
+- File-to-AI context bridging now reuses the existing attachment reference contract from the files panel:
+  - attachment references are created through `POST /api/v1/agent/conversation/attachments/references`
+  - selected file context is user-driven and explicit (`Attach Selected File To AI Context`)
+  - file selection alone does not auto-inject context into conversation payloads
 - Widgets can now be bound to a specific connection ID.
 - New terminal tabs default to the currently selected connection unless a specific connection is supplied at creation time.
 - Runtime utilities and audit remain secondary shell surfaces reachable from the dock and the AI-panel overflow menu.

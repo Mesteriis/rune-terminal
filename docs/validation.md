@@ -5,6 +5,45 @@
 - отсутствие проверки фиксируется как `NOT RUN`, а не маскируется под успешный результат
 - записи ниже основаны только на audit trail из `docs/tideterm-feature-inventory.md`, `docs/feature-parity-audit.md` и `docs/feature-gap-summary.md`
 
+<a id="workspace-navigation-batch"></a>
+## Workspace navigation parity batch
+
+- Date: `2026-04-16`
+- Status: `VERIFIED`
+- Commits:
+  - `1da3eeb`
+  - `22ec4bb`
+  - `82c8a4f`
+  - `f2ba88b`
+  - `927115e`
+  - `ed8e9cc`
+  - `30a540a`
+- Validation steps:
+  - release sweep:
+    - `npm run validate` -> passed (`lint:frontend` reported existing non-blocking warnings only)
+    - `npm run tauri:dev` smoke -> desktop launch reached ready state and printed `{"base_url":"http://127.0.0.1:57631","pid":90845}`
+  - workspace/file navigation runtime smoke (backend truth):
+    - Ollama-compatible stub provider: `127.0.0.1:11448`
+    - core: `RTERM_AUTH_TOKEN=workspace-nav-token RTERM_OLLAMA_BASE_URL=http://127.0.0.1:11448 RTERM_OLLAMA_MODEL=test-model go run ./cmd/rterm-core serve --listen 127.0.0.1:52971 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/rterm-workspace-nav-validation`
+    - `GET /api/v1/fs/list` returned workspace-root path and directory/file entries
+    - `GET /api/v1/fs/read` for `docs/workspace-model.md` returned bounded text preview (`preview_available: true`)
+  - file -> AI context bridge:
+    - `POST /api/v1/agent/conversation/attachments/references` created attachment id `att_e6f6e1f20580cdf4` for `docs/workspace-model.md`
+    - `POST /api/v1/agent/conversation/messages` with that attachment succeeded and conversation transcript updated
+  - `/run`-equivalent file path execution flow:
+    - `POST /api/v1/tools/execute` (`term.send_input`) sent `ls -l "/Users/avm/projects/Personal/tideterm/runa-terminal/docs/workspace-model.md"`
+    - `GET /api/v1/terminal/term-main` output (from captured `next_seq`) contained `workspace-model.md`
+    - `POST /api/v1/agent/terminal-commands/explain` succeeded and returned non-empty `output_excerpt`
+  - no-regression checks:
+    - terminal: `GET /api/v1/terminal/term-main` reported `state.status: "running"`
+    - tools: `GET /api/v1/tools` returned `26` tools; `workspace.list_widgets` tool execute returned `status: "ok"`
+    - MCP: `GET /api/v1/mcp/servers` returned one server entry (no runtime crash/regression)
+    - remote: `GET /api/v1/remote/profiles` returned a valid response (`profiles: []`)
+- Result: `VERIFIED` — minimal workspace-bounded file navigation, bounded file preview, open/reveal behavior, and explicit file-to-AI attachment bridging work on active runtime paths, while terminal/tools/MCP/remote API surfaces remain functional.
+- Notes:
+  - this run validates runtime/API truth and active shell build paths; it does not claim full IDE/file-manager parity
+  - remote check in this batch is non-destructive endpoint regression coverage, not a full SSH session launch sweep
+
 <a id="remote-ssh-parity-batch"></a>
 ## Remote SSH parity batch
 
