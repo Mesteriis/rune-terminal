@@ -21,6 +21,7 @@ import { WorkspaceAIPanelId, WorkspaceMainPanelId } from "./workspace-layout-mod
 const WorkspaceElem = memo(({ compatMode = false }: { compatMode?: boolean }) => {
     const workspaceLayoutModel = WorkspaceLayoutModel.getInstance();
     const staticTabId = useAtomValue(atoms.staticTabId);
+    const aiPanelVisible = useAtomValue(workspaceLayoutModel.panelVisibleAtom);
     const [workspace, setWorkspace] = useState<WorkspaceStoreSnapshot["active"]>(workspaceStore.getSnapshot().active);
     setWaveAICompatContext(compatMode, workspace.activetabid ?? "");
     const tabId = compatMode ? workspace.activetabid : staticTabId;
@@ -163,7 +164,7 @@ const WorkspaceElem = memo(({ compatMode = false }: { compatMode?: boolean }) =>
                             className="overflow-hidden"
                         >
                             <div ref={setAIPanelWrapperRef} className="w-full h-full" style={compatAIPanelWrapperStyle}>
-                                {tabId !== "" && <AIPanel />}
+                                {tabId !== "" && aiPanelVisible && <AIPanel />}
                             </div>
                         </Panel>
                         <Separator className="w-0.5 bg-transparent hover:bg-zinc-500/20 transition-colors" />
