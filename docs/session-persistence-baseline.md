@@ -44,3 +44,10 @@ Phase: `1.0.0-rc1` hardening
 - non-persisted truth: the old local PTY process does not survive restart.
 - restore behavior: runtime creates a new local process for restored local widgets and marks it as restored-from-snapshot state.
 - operator control: user can explicitly restart/recreate the session from the terminal surface; no hidden process resurrection is attempted.
+
+## Remote session restore contract
+
+- persisted truth: remote tab/widget metadata and profile linkage (`connection_id`/profile id) restore from backend snapshot.
+- non-persisted truth: old SSH process/session lifetime does not survive restart boundaries.
+- restore behavior: runtime attempts to start restored remote widgets; failures are surfaced as explicit disconnected terminal state rather than fake running state.
+- operator control: reconnect/restart remains explicit (user action), with no hidden SSH reconnect loops.
