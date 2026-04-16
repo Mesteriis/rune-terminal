@@ -1353,3 +1353,29 @@
 - Notes:
   - full page reload and core restart still do not persist pending approvals across process/session boundaries; this remains intentionally non-persistent in this slice
   - browser console still shows expected approval challenge noise (`428`) during dangerous requests; no fatal runtime exceptions were observed
+
+## Transport and runtime truth cleanup
+
+- Date: `2026-04-16`
+- Status: `VERIFIED`
+- Commits:
+  - `daaba6a9f3ef5b6f5cd36a4fd20548e34c7dd2c2`
+  - `f38898007ad5cd18caa6c77f789f163ea7729fd3`
+- Validation steps:
+  - automated checks:
+    - `npx tsc -p frontend/tsconfig.json --noEmit`
+  - runtime environment:
+    - core: `RTERM_AUTH_TOKEN=exec-model-token apps/desktop/bin/rterm-core serve --listen 127.0.0.1:52930 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/rterm-exec-model`
+    - frontend dev: `VITE_RTERM_API_BASE=http://127.0.0.1:52930 VITE_RTERM_AUTH_TOKEN=exec-model-token npm --prefix frontend run dev -- --host 127.0.0.1 --port 5178 --strictPort`
+  - active shell smoke:
+    - loaded `http://127.0.0.1:5178/`
+    - opened AI panel
+    - opened Tools panel
+    - opened Audit panel
+    - sent terminal command `echo runtime-s3-20260416` and observed output in terminal view
+  - runtime noise check:
+    - browser console errors for this run: `0`
+    - network requests filtered by `wave/service`: none observed in active path
+- Result: `VERIFIED` — active runtime path remains operational after contract tightening and does not reintroduce legacy `/wave/service` request noise.
+- Notes:
+  - runtime config no longer silently falls through legacy/browser-origin API base resolution in the normal path; legacy fallback now requires explicit opt-in flag `VITE_RTERM_ENABLE_LEGACY_RUNTIME_FALLBACK=1`

@@ -183,7 +183,9 @@ Confirmable boundaries:
 - The desktop shell launches the Go core as a sidecar process and discovers it via a ready file; a richer process supervisor does not exist yet.
 - Frontend runtime is now explicitly Tauri-first:
   - active shell runtime uses preload bridge + standard browser fetch path
+  - non-Tauri runtime expects `VITE_RTERM_API_BASE` as the explicit API base contract
   - legacy no-preload browser compat bootstrap remains explicit in `wave.ts`
+  - legacy runtime base fallbacks (`WAVE_SERVER_WEB_ENDPOINT` / `window.location.origin`) are disabled by default and require explicit opt-in `VITE_RTERM_ENABLE_LEGACY_RUNTIME_FALLBACK=1`
   - legacy Electron net fetch fallback is opt-in only via `RTERM_ENABLE_LEGACY_ELECTRON_NET=1`
 - The terminal shell is now much closer to TideTerm's compact term surface, but it still lacks TideTerm's multi-session sidebar, search UI, and shell-integration toolbar details.
 - The AI panel now uses a TideTerm-shaped header with widget context toggle and overflow menu, and it now has a real backend-owned conversation path in addition to the existing runtime, audit, and policy surfaces.
