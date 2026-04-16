@@ -90,7 +90,7 @@ const UserMessageFiles = memo(({ fileParts }: UserMessageFilesProps) => {
                             </div>
                             <div
                                 className="text-[10px] text-gray-200 truncate w-full max-w-16"
-                                title={file.data?.filename || "File"}
+                                title={file.data?.filepath || file.data?.filename || "File"}
                             >
                                 {file.data?.filename || "File"}
                             </div>

@@ -51,6 +51,7 @@ function mapAttachmentParts(attachments: AttachmentReference[] | null | undefine
             filename: attachment.name,
             mimetype: attachment.mime_type,
             size: attachment.size,
+            filepath: attachment.path,
         },
     })) as WaveUIMessagePart[];
 }

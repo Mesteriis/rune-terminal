@@ -628,6 +628,9 @@ const AIPanelCompatInner = memo(() => {
 
             const input = globalStore.get(model.inputAtom)?.trim() ?? "";
             const droppedFiles = globalStore.get(model.droppedFiles);
+            const attachmentReferences = droppedFiles
+                .map((file) => file.attachmentReference)
+                .filter((reference): reference is AttachmentReference => reference != null);
 
             if (input === "") {
                 return;
@@ -635,8 +638,10 @@ const AIPanelCompatInner = memo(() => {
             if (status !== "ready") {
                 return;
             }
-            if (droppedFiles.length > 0) {
-                model.setError("Attachment transport is not wired into the active compat conversation path yet.");
+            if (droppedFiles.length > attachmentReferences.length) {
+                model.setError(
+                    "Some selected files do not have a local attachment reference yet. Re-attach them from local files and retry.",
+                );
                 return;
             }
 
@@ -695,6 +700,7 @@ const AIPanelCompatInner = memo(() => {
                 const response = await facade.submitMessage({
                     prompt: input,
                     context,
+                    attachments: attachmentReferences,
                 });
                 setMessages(mapConversationSnapshot(response.conversation));
                 setProviderLabel(formatProviderLabel(response.conversation.provider));

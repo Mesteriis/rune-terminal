@@ -47,7 +47,10 @@ export const AIDroppedFiles = memo(({ model }: AIDroppedFilesProps) => {
                                 </div>
                             )}
 
-                            <div className="text-[10px] text-gray-200 truncate w-full max-w-16" title={file.name}>
+                            <div
+                                className="text-[10px] text-gray-200 truncate w-full max-w-16"
+                                title={file.localPath || file.name}
+                            >
                                 {file.name}
                             </div>
                             <div className="text-[9px] text-gray-400">{formatFileSize(file.size)}</div>

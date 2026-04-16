@@ -9,6 +9,7 @@ type WaveUIDataTypes = {
         filename: string;
         size: number;
         mimetype: string;
+        filepath?: string;
         previewurl?: string;
     };
     // pkg/aiusechat/uctypes/uctypes.go UIMessageDataToolUse
