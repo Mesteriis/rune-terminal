@@ -72,6 +72,8 @@ export interface ExplainTerminalCommandResponse {
   conversation: ConversationSnapshot;
   provider_error: string;
   output_excerpt: string;
+  command_audit_event_id?: string;
+  execution_block_id?: string;
 }
 
 export interface CreateAttachmentReferenceRequest {

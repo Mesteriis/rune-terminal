@@ -258,6 +258,12 @@ Confirmable boundaries:
   4. render a local assistant message with the sanitized observed command output
   5. call the backend explanation route
   6. append a real assistant message to the persisted conversation transcript
+- Structured execution blocks are now backend-owned snapshots appended during terminal explain for `/run` flow:
+  - explain response now includes `execution_block_id` and resolved `command_audit_event_id`
+  - block snapshots are available via:
+    - `GET /api/v1/execution/blocks`
+    - `GET /api/v1/execution/blocks/{blockID}`
+  - block snapshots are additive workflow records and do not replace terminal/audit source-of-truth paths
 - The backend explanation route does not execute commands by itself. It explains the observed result of a command that already ran through the runtime.
 - The compat terminal now has an explicit `Explain Latest Output In AI` handoff action:
   - it resolves the latest terminal command from audit truth for the active widget

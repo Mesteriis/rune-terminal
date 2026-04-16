@@ -5,6 +5,7 @@ import type { AuditClient } from "@/rterm-api/audit/client";
 import type { BootstrapClient } from "@/rterm-api/bootstrap/client";
 import type { ConnectionsClient } from "@/rterm-api/connections/client";
 import type { ConversationClient } from "@/rterm-api/conversation/client";
+import type { ExecutionClient } from "@/rterm-api/execution/client";
 import type { FSClient } from "@/rterm-api/fs/client";
 import type { MCPClient } from "@/rterm-api/mcp/client";
 import type { PolicyClient } from "@/rterm-api/policy/client";
@@ -26,6 +27,7 @@ export interface CompatApiClients {
   bootstrap: BootstrapClient;
   connections: ConnectionsClient;
   conversation: ConversationClient;
+  execution: ExecutionClient;
   fs: FSClient;
   mcp: MCPClient;
   policy: PolicyClient;

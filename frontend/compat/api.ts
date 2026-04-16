@@ -4,6 +4,7 @@ import { AuditClient } from "@/rterm-api/audit/client";
 import { BootstrapClient } from "@/rterm-api/bootstrap/client";
 import { ConnectionsClient } from "@/rterm-api/connections/client";
 import { ConversationClient } from "@/rterm-api/conversation/client";
+import { ExecutionClient } from "@/rterm-api/execution/client";
 import { FSClient } from "@/rterm-api/fs/client";
 import { MCPClient } from "@/rterm-api/mcp/client";
 import { PolicyClient } from "@/rterm-api/policy/client";
@@ -31,6 +32,7 @@ function buildTypedClients(fetchImpl: CompatApiOptions["fetchImpl"], baseUrl: st
       bootstrap: new BootstrapClient(http),
       connections: new ConnectionsClient(http),
       conversation: new ConversationClient(http),
+      execution: new ExecutionClient(http),
       fs: new FSClient(http),
       mcp: new MCPClient(http),
       policy: new PolicyClient(http),

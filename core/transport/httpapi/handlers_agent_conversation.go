@@ -91,9 +91,11 @@ func (api *API) handleExplainTerminalCommand(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"conversation":   result.Snapshot,
-		"provider_error": result.ProviderError,
-		"output_excerpt": result.OutputExcerpt,
+		"conversation":           result.Snapshot,
+		"provider_error":         result.ProviderError,
+		"output_excerpt":         result.OutputExcerpt,
+		"command_audit_event_id": result.CommandAuditEventID,
+		"execution_block_id":     result.ExecutionBlockID,
 	})
 }
 

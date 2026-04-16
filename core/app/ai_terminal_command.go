@@ -8,7 +8,9 @@ import (
 
 	"github.com/Mesteriis/rune-terminal/core/audit"
 	"github.com/Mesteriis/rune-terminal/core/conversation"
+	"github.com/Mesteriis/rune-terminal/core/execution"
 	"github.com/Mesteriis/rune-terminal/core/terminal"
+	"github.com/Mesteriis/rune-terminal/internal/ids"
 )
 
 type ExplainTerminalCommandRequest struct {
@@ -20,9 +22,11 @@ type ExplainTerminalCommandRequest struct {
 }
 
 type ExplainTerminalCommandResult struct {
-	Snapshot      conversation.Snapshot `json:"snapshot"`
-	ProviderError string                `json:"provider_error,omitempty"`
-	OutputExcerpt string                `json:"output_excerpt,omitempty"`
+	Snapshot            conversation.Snapshot `json:"snapshot"`
+	ProviderError       string                `json:"provider_error,omitempty"`
+	OutputExcerpt       string                `json:"output_excerpt,omitempty"`
+	CommandAuditEventID string                `json:"command_audit_event_id,omitempty"`
+	ExecutionBlockID    string                `json:"execution_block_id,omitempty"`
 }
 
 var ansiCSIPattern = regexp.MustCompile(`\x1b\[[0-?]*[ -/]*[@-~]`)
@@ -50,12 +54,13 @@ func (r *Runtime) ExplainTerminalCommand(
 		return ExplainTerminalCommandResult{}, err
 	}
 	outputExcerpt := summarizeTerminalOutput(command, snapshot.Chunks)
-	approvalUsed := r.deriveExplainApprovalUsed(
+	auditMatch := r.resolveExplainCommandAudit(
 		widgetID,
 		command,
 		request.CommandAuditEventID,
 		conversationContext.WorkspaceID,
 	)
+	approvalUsed := auditMatch.ApprovalUsed
 
 	if err := r.persistRunTranscriptActivity(prompt, command, outputExcerpt); err != nil {
 		return ExplainTerminalCommandResult{}, err
@@ -82,7 +87,9 @@ func (r *Runtime) ExplainTerminalCommand(
 	if targetConnectionID == "" && targetSession == "local" {
 		targetConnectionID = "local"
 	}
+	explainAuditEventID := ids.New("audit")
 	if appendErr := r.Audit.Append(audit.Event{
+		ID:                 explainAuditEventID,
 		ToolName:           "agent.terminal_command",
 		Summary:            fmt.Sprintf("explain terminal command: %s", trimSummary(command)),
 		WorkspaceID:        conversationContext.WorkspaceID,
@@ -101,10 +108,54 @@ func (r *Runtime) ExplainTerminalCommand(
 		return ExplainTerminalCommandResult{}, appendErr
 	}
 
+	executionBlockID := ""
+	if r.Execution != nil {
+		explainState := execution.ExplainStateAvailable
+		explainError := ""
+		if providerFailed {
+			explainState = execution.ExplainStateFailed
+			explainError = result.ProviderError
+		}
+		summary := strings.TrimSpace(result.Assistant.Content)
+		block, appendErr := r.Execution.Append(execution.Block{
+			Intent: execution.BlockIntent{
+				Prompt:  prompt,
+				Command: command,
+			},
+			Target: execution.BlockTarget{
+				WorkspaceID:        conversationContext.WorkspaceID,
+				WidgetID:           widgetID,
+				RepoRoot:           conversationContext.RepoRoot,
+				TargetSession:      targetSession,
+				TargetConnectionID: targetConnectionID,
+			},
+			Result: execution.BlockResult{
+				State:         execution.BlockStateExecuted,
+				OutputExcerpt: outputExcerpt,
+				FromSeq:       request.FromSeq,
+			},
+			Explain: execution.BlockExplain{
+				State:     explainState,
+				MessageID: result.Assistant.ID,
+				Summary:   summary,
+				Error:     explainError,
+			},
+			Provenance: execution.BlockProvenance{
+				CommandAuditEventID: auditMatch.EventID,
+			},
+		})
+		if appendErr != nil {
+			return ExplainTerminalCommandResult{}, appendErr
+		}
+		executionBlockID = block.ID
+	}
+
 	return ExplainTerminalCommandResult{
-		Snapshot:      result.Snapshot,
-		ProviderError: result.ProviderError,
-		OutputExcerpt: outputExcerpt,
+		Snapshot:            result.Snapshot,
+		ProviderError:       result.ProviderError,
+		OutputExcerpt:       outputExcerpt,
+		CommandAuditEventID: auditMatch.EventID,
+		ExecutionBlockID:    executionBlockID,
 	}, nil
 }
 
@@ -160,10 +211,20 @@ func sanitizeCodeFenceContent(value string) string {
 	return strings.ReplaceAll(value, "```", "``\\`")
 }
 
-func (r *Runtime) deriveExplainApprovalUsed(widgetID string, command string, commandAuditEventID string, workspaceID string) bool {
+type explainCommandAuditMatch struct {
+	ApprovalUsed bool
+	EventID      string
+}
+
+func (r *Runtime) resolveExplainCommandAudit(
+	widgetID string,
+	command string,
+	commandAuditEventID string,
+	workspaceID string,
+) explainCommandAuditMatch {
 	events, err := r.Audit.List(explainAuditScanLimit)
 	if err != nil {
-		return false
+		return explainCommandAuditMatch{}
 	}
 	expectedSummary := fmt.Sprintf("send input to %s: %s", widgetID, trimSummary(command))
 	trimmedWorkspaceID := strings.TrimSpace(workspaceID)
@@ -175,20 +236,26 @@ func (r *Runtime) deriveExplainApprovalUsed(widgetID string, command string, com
 				continue
 			}
 			if !matchesExplainCommandEvent(event, widgetID, expectedSummary, trimmedWorkspaceID) {
-				return false
+				return explainCommandAuditMatch{}
 			}
-			return event.ApprovalUsed
+			return explainCommandAuditMatch{
+				ApprovalUsed: event.ApprovalUsed,
+				EventID:      event.ID,
+			}
 		}
-		return false
+		return explainCommandAuditMatch{}
 	}
 	for i := len(events) - 1; i >= 0; i-- {
 		event := events[i]
 		if !matchesExplainCommandEvent(event, widgetID, expectedSummary, trimmedWorkspaceID) {
 			continue
 		}
-		return event.ApprovalUsed
+		return explainCommandAuditMatch{
+			ApprovalUsed: event.ApprovalUsed,
+			EventID:      event.ID,
+		}
 	}
-	return false
+	return explainCommandAuditMatch{}
 }
 
 func matchesExplainCommandEvent(event audit.Event, widgetID string, expectedSummary string, workspaceID string) bool {

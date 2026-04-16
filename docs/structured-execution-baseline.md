@@ -66,3 +66,14 @@ Model constraints:
 - backend snapshot/store is the source of truth for block records
 - block records link to existing execution/explain/audit truth; they do not replace it
 - block records are a bounded workflow layer, not a full terminal history/event store
+
+### API surface in this batch
+
+- `POST /api/v1/agent/terminal-commands/explain`
+  - continues existing explain behavior
+  - now also appends one execution block for this `/run` explain flow
+  - returns `execution_block_id` and resolved `command_audit_event_id` linkage
+- `GET /api/v1/execution/blocks?workspace_id=<id>&limit=<n>`
+  - returns backend block snapshot list
+- `GET /api/v1/execution/blocks/{blockID}`
+  - returns one backend block snapshot entry

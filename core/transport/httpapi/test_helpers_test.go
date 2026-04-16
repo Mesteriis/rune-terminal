@@ -15,6 +15,7 @@ import (
 	"github.com/Mesteriis/rune-terminal/core/audit"
 	"github.com/Mesteriis/rune-terminal/core/connections"
 	"github.com/Mesteriis/rune-terminal/core/conversation"
+	"github.com/Mesteriis/rune-terminal/core/execution"
 	"github.com/Mesteriis/rune-terminal/core/plugins"
 	"github.com/Mesteriis/rune-terminal/core/policy"
 	"github.com/Mesteriis/rune-terminal/core/terminal"
@@ -52,6 +53,10 @@ func newTestHandlerWithToken(t *testing.T, authToken string, definitions ...tool
 	if err != nil {
 		t.Fatalf("NewService error: %v", err)
 	}
+	executionStore, err := execution.NewService(filepath.Join(tempDir, "execution-blocks.json"))
+	if err != nil {
+		t.Fatalf("NewService error: %v", err)
+	}
 	registry := toolruntime.NewRegistry()
 	for _, definition := range definitions {
 		if err := registry.Register(definition); err != nil {
@@ -65,6 +70,7 @@ func newTestHandlerWithToken(t *testing.T, authToken string, definitions ...tool
 		Connections:  connectionStore,
 		Agent:        agentStore,
 		Conversation: conversationStore,
+		Execution:    executionStore,
 		Policy:       policyStore,
 		Audit:        auditLog,
 		Registry:     registry,

@@ -15,6 +15,7 @@ import (
 	"github.com/Mesteriis/rune-terminal/core/audit"
 	"github.com/Mesteriis/rune-terminal/core/connections"
 	"github.com/Mesteriis/rune-terminal/core/conversation"
+	"github.com/Mesteriis/rune-terminal/core/execution"
 	"github.com/Mesteriis/rune-terminal/core/policy"
 	"github.com/Mesteriis/rune-terminal/core/terminal"
 	"github.com/Mesteriis/rune-terminal/core/toolruntime"
@@ -293,8 +294,10 @@ func TestExplainTerminalCommandReturnsConversationSnapshot(t *testing.T) {
 	}
 
 	var payload struct {
-		OutputExcerpt string `json:"output_excerpt"`
-		Conversation  struct {
+		OutputExcerpt       string `json:"output_excerpt"`
+		ExecutionBlockID    string `json:"execution_block_id"`
+		CommandAuditEventID string `json:"command_audit_event_id"`
+		Conversation        struct {
 			Messages []struct {
 				Role string `json:"role"`
 			} `json:"messages"`
@@ -305,6 +308,9 @@ func TestExplainTerminalCommandReturnsConversationSnapshot(t *testing.T) {
 	}
 	if payload.OutputExcerpt == "" {
 		t.Fatal("expected output excerpt")
+	}
+	if payload.ExecutionBlockID == "" {
+		t.Fatal("expected execution_block_id in explain response")
 	}
 	if len(payload.Conversation.Messages) != 3 {
 		t.Fatalf("expected run prompt/result/explanation chain, got %#v", payload.Conversation.Messages)
@@ -350,6 +356,19 @@ func TestExplainTerminalCommandIgnoresFrontendApprovalUsedPayload(t *testing.T) 
 
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+	var payload struct {
+		CommandAuditEventID string `json:"command_audit_event_id"`
+		ExecutionBlockID    string `json:"execution_block_id"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
+	}
+	if payload.CommandAuditEventID == "" {
+		t.Fatal("expected command_audit_event_id")
+	}
+	if payload.ExecutionBlockID == "" {
+		t.Fatal("expected execution_block_id")
 	}
 
 	events, err := runtime.Audit.List(10)
@@ -414,6 +433,19 @@ func TestExplainTerminalCommandUsesExplicitCommandAuditEventIDPayload(t *testing
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d body=%s", recorder.Code, recorder.Body.String())
 	}
+	var payload struct {
+		CommandAuditEventID string `json:"command_audit_event_id"`
+		ExecutionBlockID    string `json:"execution_block_id"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
+	}
+	if payload.CommandAuditEventID != "audit_selected" {
+		t.Fatalf("expected command_audit_event_id=audit_selected, got %q", payload.CommandAuditEventID)
+	}
+	if payload.ExecutionBlockID == "" {
+		t.Fatal("expected execution_block_id")
+	}
 
 	events, err := runtime.Audit.List(10)
 	if err != nil {
@@ -454,6 +486,10 @@ func newExplainCommandHandler(t *testing.T) (http.Handler, *app.Runtime) {
 	if err != nil {
 		t.Fatalf("NewService error: %v", err)
 	}
+	executionStore, err := execution.NewService(filepath.Join(tempDir, "execution-blocks.json"))
+	if err != nil {
+		t.Fatalf("NewService error: %v", err)
+	}
 	process := &handlerTestProcess{
 		outputCh: make(chan []byte, 1),
 		waitCh:   make(chan struct{}),
@@ -486,6 +522,7 @@ func newExplainCommandHandler(t *testing.T) (http.Handler, *app.Runtime) {
 		Connections:  connectionStore,
 		Agent:        agentStore,
 		Conversation: conversationStore,
+		Execution:    executionStore,
 		Policy:       policyStore,
 		Audit:        auditLog,
 		Registry:     toolruntime.NewRegistry(),

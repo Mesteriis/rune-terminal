@@ -12,6 +12,7 @@ import (
 	"github.com/Mesteriis/rune-terminal/core/audit"
 	"github.com/Mesteriis/rune-terminal/core/connections"
 	"github.com/Mesteriis/rune-terminal/core/conversation"
+	"github.com/Mesteriis/rune-terminal/core/execution"
 	"github.com/Mesteriis/rune-terminal/core/policy"
 	"github.com/Mesteriis/rune-terminal/core/terminal"
 	"github.com/Mesteriis/rune-terminal/core/workspace"
@@ -42,6 +43,10 @@ func TestExplainTerminalCommandAppendsAssistantSummary(t *testing.T) {
 	conversationStore, err := conversation.NewService(filepath.Join(tempDir, "conversation.json"), provider)
 	if err != nil {
 		t.Fatalf("conversation service: %v", err)
+	}
+	executionStore, err := execution.NewService(filepath.Join(tempDir, "execution-blocks.json"))
+	if err != nil {
+		t.Fatalf("execution service: %v", err)
 	}
 
 	process := &stubTerminalProcess{
@@ -76,6 +81,7 @@ func TestExplainTerminalCommandAppendsAssistantSummary(t *testing.T) {
 		Connections:  connectionStore,
 		Agent:        agentStore,
 		Conversation: conversationStore,
+		Execution:    executionStore,
 		Policy:       policyStore,
 		Audit:        auditLog,
 	}
@@ -100,6 +106,9 @@ func TestExplainTerminalCommandAppendsAssistantSummary(t *testing.T) {
 	}
 	if len(result.Snapshot.Messages) != 3 {
 		t.Fatalf("expected 3 persisted run-chain messages, got %d", len(result.Snapshot.Messages))
+	}
+	if result.ExecutionBlockID == "" {
+		t.Fatal("expected execution block id")
 	}
 	if result.Snapshot.Messages[0].Role != conversation.RoleUser {
 		t.Fatalf("expected persisted user run prompt, got %#v", result.Snapshot.Messages[0])
@@ -216,7 +225,7 @@ func TestExplainTerminalCommandUsesExplicitCommandAuditEventID(t *testing.T) {
 		t.Fatalf("append latest audit event: %v", err)
 	}
 
-	if _, err := runtime.ExplainTerminalCommand(context.Background(), ExplainTerminalCommandRequest{
+	result, err := runtime.ExplainTerminalCommand(context.Background(), ExplainTerminalCommandRequest{
 		Prompt:              "/run echo identity-hardened",
 		Command:             "echo identity-hardened",
 		WidgetID:            "term_boot",
@@ -227,8 +236,12 @@ func TestExplainTerminalCommandUsesExplicitCommandAuditEventID(t *testing.T) {
 		RepoRoot:             "/repo",
 		ActiveWidgetID:       "term_boot",
 		WidgetContextEnabled: true,
-	}); err != nil {
+	})
+	if err != nil {
 		t.Fatalf("explain terminal command: %v", err)
+	}
+	if result.CommandAuditEventID != "audit_selected" {
+		t.Fatalf("expected explicit command audit id, got %q", result.CommandAuditEventID)
 	}
 
 	events, err := runtime.Audit.List(10)
@@ -308,6 +321,10 @@ func newExplainCommandTestRuntime(t *testing.T, terminalOutput string) *Runtime 
 	if err != nil {
 		t.Fatalf("conversation service: %v", err)
 	}
+	executionStore, err := execution.NewService(filepath.Join(tempDir, "execution-blocks.json"))
+	if err != nil {
+		t.Fatalf("execution service: %v", err)
+	}
 
 	process := &stubTerminalProcess{
 		outputCh: make(chan []byte, 1),
@@ -341,6 +358,7 @@ func newExplainCommandTestRuntime(t *testing.T, terminalOutput string) *Runtime 
 		Connections:  connectionStore,
 		Agent:        agentStore,
 		Conversation: conversationStore,
+		Execution:    executionStore,
 		Policy:       policyStore,
 		Audit:        auditLog,
 	}

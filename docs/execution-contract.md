@@ -78,6 +78,9 @@ User input:
      - `from_seq`
      - `context`
    - The backend does not execute the command here. It snapshots terminal output from `from_seq`, builds an excerpt, derives `approval_used` from the matching `term.send_input` audit event, asks the conversation provider for an assistant reply, persists that assistant message, and writes an `agent.terminal_command` audit event.
+   - The same explain call also appends a backend execution-block snapshot for the `/run` workflow layer and returns:
+     - `execution_block_id`
+     - resolved `command_audit_event_id` when available
 
 11. UI rendering
    - The active compat AI panel renders a mixed transcript:
@@ -229,6 +232,7 @@ User input:
   - terminal-output summarization from `from_seq`
   - a persisted assistant message in conversation storage
   - an `agent.terminal_command` audit event
+  - one execution-block snapshot entry linked to the explain/audit chain
 - The agent must not:
   - bypass tool policy
   - invent approval state
@@ -250,6 +254,9 @@ User input:
   - local explanation-fallback message
 - Persisted conversation messages come from the backend conversation service.
 - In the current `/run` flow, the persisted message is the assistant explanation; the local `/run` prompt and the local execution-result message are not written into conversation storage.
+- Structured execution block retrieval API:
+  - `GET /api/v1/execution/blocks?workspace_id=<id>&limit=<n>`
+  - `GET /api/v1/execution/blocks/{blockID}`
 
 ## 3. Contract vs Implementation
 

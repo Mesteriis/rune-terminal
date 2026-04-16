@@ -41,6 +41,15 @@ export type {
 export { FSClient } from "./fs/client";
 export type { FSListResponse, FSNode, FSReadResponse } from "./fs/types";
 
+export { ExecutionClient } from "./execution/client";
+export type {
+  ExecutionBlock,
+  ExecutionBlockState,
+  ExecutionBlockExplainState,
+  ExecutionBlocksListResponse,
+  ExecutionBlockResponse,
+} from "./execution/types";
+
 export { AuditClient } from "./audit/client";
 export type { AuditEvent, AuditResponse } from "./audit/types";
 
@@ -142,6 +151,7 @@ import { AuditClient } from "./audit/client";
 import { BootstrapClient } from "./bootstrap/client";
 import { ConnectionsClient } from "./connections/client";
 import { ConversationClient } from "./conversation/client";
+import { ExecutionClient } from "./execution/client";
 import { FSClient } from "./fs/client";
 import { HttpClient } from "./http/client";
 import { MCPClient } from "./mcp/client";
@@ -161,6 +171,7 @@ export class RtermApi {
   readonly bootstrap: BootstrapClient;
   readonly connections: ConnectionsClient;
   readonly conversation: ConversationClient;
+  readonly execution: ExecutionClient;
   readonly fs: FSClient;
   readonly mcp: MCPClient;
   readonly policy: PolicyClient;
@@ -175,6 +186,7 @@ export class RtermApi {
     this.bootstrap = new BootstrapClient(http);
     this.connections = new ConnectionsClient(http);
     this.conversation = new ConversationClient(http);
+    this.execution = new ExecutionClient(http);
     this.fs = new FSClient(http);
     this.mcp = new MCPClient(http);
     this.policy = new PolicyClient(http);
