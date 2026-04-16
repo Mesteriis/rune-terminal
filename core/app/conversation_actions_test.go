@@ -63,6 +63,8 @@ func TestSubmitConversationPromptUsesSelectionPromptAndContext(t *testing.T) {
 		WorkspaceID:          "ws-default",
 		RepoRoot:             "/repo",
 		ActiveWidgetID:       "term_boot",
+		TargetSession:        "remote",
+		TargetConnectionID:   "conn-ssh-prod",
 		WidgetContextEnabled: true,
 	}, nil)
 	if err != nil {
@@ -74,6 +76,9 @@ func TestSubmitConversationPromptUsesSelectionPromptAndContext(t *testing.T) {
 	}
 	if !strings.Contains(provider.request.SystemPrompt, "Active widget: term_boot") {
 		t.Fatalf("expected context block in system prompt, got %q", provider.request.SystemPrompt)
+	}
+	if !strings.Contains(provider.request.SystemPrompt, "Active terminal target: conn-ssh-prod (remote)") {
+		t.Fatalf("expected explicit terminal target context in system prompt, got %q", provider.request.SystemPrompt)
 	}
 
 	events, err := runtime.Audit.List(10)

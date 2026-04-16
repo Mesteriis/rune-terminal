@@ -111,6 +111,9 @@ export function CompatTerminalView({ widgetId, connectionId }: CompatTerminalVie
             const fromSeq = terminalSnapshot.next_seq > EXPLAIN_RECENT_OUTPUT_WINDOW
                 ? terminalSnapshot.next_seq - EXPLAIN_RECENT_OUTPUT_WINDOW
                 : 0;
+            const targetSession = terminalSnapshot.state.connection_kind === "ssh" ? "remote" : "local";
+            const targetConnectionID =
+                terminalSnapshot.state.connection_id || (targetSession === "local" ? "local" : undefined);
             await conversationFacade.explainTerminalCommand({
                 prompt: `Explain the latest observed output for command: ${command}`,
                 command,
@@ -120,6 +123,8 @@ export function CompatTerminalView({ widgetId, connectionId }: CompatTerminalVie
                     workspace_id: workspaceID,
                     active_widget_id: widgetId,
                     repo_root: repoRoot,
+                    target_session: targetSession,
+                    target_connection_id: targetConnectionID,
                     widget_context_enabled: true,
                 },
             });

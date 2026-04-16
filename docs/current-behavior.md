@@ -231,6 +231,10 @@ Confirmable boundaries:
 - `/run` tool execution now includes explicit session targeting derived from the active widget binding:
   - `target_session` (`local` or `remote`)
   - `target_connection_id` (`local` or concrete SSH connection ID)
+- Conversation/explain context now also accepts explicit target fields for cross-surface handoffs:
+  - `target_session`
+  - `target_connection_id`
+  - these fields provide context truth only and do not execute or reroute commands by themselves
 - The frontend AI command flow is:
   1. capture the current terminal `next_seq`
   2. execute `term.send_input` through the real tool/runtime/policy path

@@ -57,7 +57,9 @@ func TestSubmitConversationMessagePersistsTranscript(t *testing.T) {
 	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPost, "/api/v1/agent/conversation/messages", map[string]any{
 		"prompt": "hello there",
 		"context": map[string]any{
-			"workspace_id": "ws-default",
+			"workspace_id":         "ws-default",
+			"target_session":       "remote",
+			"target_connection_id": "conn-httpapi",
 		},
 	}))
 
@@ -280,6 +282,8 @@ func TestExplainTerminalCommandReturnsConversationSnapshot(t *testing.T) {
 			"workspace_id":           "ws-default",
 			"repo_root":              "/workspace/repo",
 			"active_widget_id":       "term_boot",
+			"target_session":         "local",
+			"target_connection_id":   "local",
 			"widget_context_enabled": true,
 		},
 	}))
@@ -338,6 +342,8 @@ func TestExplainTerminalCommandIgnoresFrontendApprovalUsedPayload(t *testing.T) 
 			"workspace_id":           "ws-default",
 			"repo_root":              "/workspace/repo",
 			"active_widget_id":       "term_boot",
+			"target_session":         "local",
+			"target_connection_id":   "local",
 			"widget_context_enabled": true,
 		},
 	}))

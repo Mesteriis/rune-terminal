@@ -13,6 +13,8 @@ type ConversationContext struct {
 	WorkspaceID          string `json:"workspace_id,omitempty"`
 	RepoRoot             string `json:"repo_root,omitempty"`
 	ActiveWidgetID       string `json:"active_widget_id,omitempty"`
+	TargetSession        string `json:"target_session,omitempty"`
+	TargetConnectionID   string `json:"target_connection_id,omitempty"`
 	WidgetContextEnabled bool   `json:"widget_context_enabled,omitempty"`
 }
 
@@ -82,6 +84,11 @@ func buildConversationContextBlock(runtime *Runtime, conversationContext Convers
 		lines = append(lines, fmt.Sprintf("- Active widget: %s", conversationContext.ActiveWidgetID))
 	} else {
 		lines = append(lines, "- Active widget context: detached")
+	}
+	if conversationContext.TargetSession != "" || conversationContext.TargetConnectionID != "" {
+		targetSession := firstNonEmpty(conversationContext.TargetSession, "local")
+		targetConnectionID := firstNonEmpty(conversationContext.TargetConnectionID, targetSession)
+		lines = append(lines, fmt.Sprintf("- Active terminal target: %s (%s)", targetConnectionID, targetSession))
 	}
 	if activeConnection, err := runtime.Connections.Active(); err == nil {
 		target := activeConnection.Name
