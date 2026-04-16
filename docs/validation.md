@@ -208,6 +208,44 @@
     - repeated `GET /api/v1/agent/conversation` still reported counts `1/1/1` for prompt/result/explanation entries (no duplicate persistence from reload)
 - Result: `VERIFIED` — `/run` prompt and execution-result messages are now backend-persisted alongside explanation, and reload restores the full `/run` activity chain from backend conversation snapshot truth.
 
+## Execution result message model
+
+- Date: `2026-04-16`
+- Status: `VERIFIED`
+- Commits:
+  - `bfb22a4e42875b908a042efcf6efbfe7394e8f7a`
+  - `ed9c6d0f0af4ce9ba0f427f4c534f878e44d9fc4`
+  - `db37a71800e16a4a7f2ae27b5b0c6c633f7697b2`
+- Validation steps:
+  - automated checks:
+    - `npx vitest run frontend/app/aipanel/run-command.test.ts --config frontend/vite.config.ts`
+    - `npx tsc -p frontend/tsconfig.json --noEmit`
+  - runtime environment:
+    - Ollama-compatible stub provider: Node HTTP server on `127.0.0.1:11442`
+    - core: `RTERM_AUTH_TOKEN=exec-model-token RTERM_OLLAMA_BASE_URL=http://127.0.0.1:11442 RTERM_OLLAMA_MODEL=test-model go run ./cmd/rterm-core serve --listen 127.0.0.1:52930 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/rterm-exec-model`
+    - frontend dev: `VITE_RTERM_API_BASE=http://127.0.0.1:52930 VITE_RTERM_AUTH_TOKEN=exec-model-token npm --prefix frontend run dev -- --host 127.0.0.1 --port 5178 --strictPort`
+  - command coverage in active compat AI panel:
+    - with `Profile: Balanced`, ran `/run echo model-normal-phase23b` and observed persisted execution-result plus explanation
+    - with `Profile: Balanced`, ran `/run definitely-not-a-real-command-phase23b` and observed persisted invalid-command execution-result plus explanation
+    - with `Profile: Hardened`, ran `/run echo model-approval-phase23b`, observed inline approval card, clicked `Confirm and retry`, and observed approved execution-result plus explanation
+  - backend truth checks:
+    - `GET /api/v1/agent/conversation` showed exactly one persisted chain (`prompt/result/explain`) for each of:
+      - `/run echo model-normal-phase23b`
+      - `/run definitely-not-a-real-command-phase23b`
+      - `/run echo model-approval-phase23b`
+    - `GET /api/v1/audit?limit=15` showed approval chain for `model-approval-phase23b`:
+      - `term.send_input` -> `approval_required`
+      - `safety.confirm` -> `success`
+      - retried `term.send_input` -> `success` with `approval_used:true`
+      - `agent.terminal_command` -> `success` with `approval_used:true`
+  - reload consistency:
+    - reloaded `http://127.0.0.1:5178/`, reopened AI panel, confirmed transcript still contains `/run echo model-approval-phase23b` and explanation line `Original request: /run echo model-approval-phase23b`
+    - repeated `GET /api/v1/agent/conversation` still reported `1/1/1` counts for all three tested commands (no duplicates after reload)
+- Result: `VERIFIED` — execution-result persistence now remains consistent across normal, invalid, and approval-required `/run` flows; reload is backed by backend snapshot truth without duplicate entries.
+- Notes:
+  - during this validation, approval retry initially exposed a runtime mismatch where terminal snapshots sometimes returned `chunks: null`; `db37a71` normalized snapshot chunk handling to keep the flow deterministic
+  - browser console recorded expected `428 Precondition Required` on approval challenge and a pre-existing unrelated `401` from `/wave/service?service=object&method=GetObject`; no fatal runtime exceptions were observed in the `/run` path
+
 ## Explain approval truth
 
 - Date: `2026-04-16`
