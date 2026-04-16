@@ -9,6 +9,7 @@ type Paths struct {
 	AgentStateFile   string
 	ConnectionsFile  string
 	ConversationFile string
+	WorkspaceFile    string
 }
 
 func Resolve(stateDir string) Paths {
@@ -19,5 +20,6 @@ func Resolve(stateDir string) Paths {
 		AgentStateFile:   filepath.Join(stateDir, "agent-state.json"),
 		ConnectionsFile:  filepath.Join(stateDir, "connections.json"),
 		ConversationFile: filepath.Join(stateDir, "conversation.json"),
+		WorkspaceFile:    filepath.Join(stateDir, "workspace.json"),
 	}
 }

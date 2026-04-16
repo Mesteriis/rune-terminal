@@ -36,6 +36,22 @@ Operations:
 - get active widget
 - focus widget
 
+## Persistent Snapshot Model
+
+Workspace persistence is file-backed by backend state (`state/workspace.json`) and uses an explicit snapshot envelope:
+
+- `version`: schema version for snapshot format
+- `workspace`: normalized workspace snapshot
+
+Persisted fields are intentionally limited to restore-critical metadata:
+
+- workspace id/name
+- tab ordering, pinned state, title, tab-widget linkage
+- widget inventory and terminal/connection linkage
+- active tab and active widget ids
+
+Live PTY runtime state is not persisted in the workspace snapshot.
+
 ## Why This Is Simpler Than TideTerm
 
 The old stack mixed layout state, transport identifiers, block metadata and UI view-model state. RunaTerminal deliberately starts with the thinner invariant set needed for long-lived maintainability:
