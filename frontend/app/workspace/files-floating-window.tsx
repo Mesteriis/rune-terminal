@@ -65,6 +65,19 @@ function buildRunPromptFromSelection(currentInput: string, filePath: string): st
     return `/run cat ${quotedPath}`;
 }
 
+function activeRemoteConnectionID(): string | null {
+    const workspaceSnapshot = workspaceStore.getSnapshot();
+    const activeWidget = workspaceSnapshot.active.widgets[workspaceSnapshot.active.activewidgetid];
+    if (!activeWidget || activeWidget.kind !== "terminal") {
+        return null;
+    }
+    const connectionID = activeWidget.connectionId?.trim();
+    if (!connectionID || connectionID === "" || connectionID === "local" || connectionID.startsWith("local:")) {
+        return null;
+    }
+    return connectionID;
+}
+
 const FilesFloatingWindow = memo(({ isOpen, onClose, referenceElement }: FloatingWindowProps) => {
     const [path, setPath] = useState("");
     const [directories, setDirectories] = useState<FSNode[]>([]);
@@ -175,6 +188,26 @@ const FilesFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floatin
         setRunPromptPreview(nextInput);
     };
 
+    const insertSelectedPathInRemoteRunPrompt = (filePath: string) => {
+        const remoteConnectionID = activeRemoteConnectionID();
+        if (remoteConnectionID == null) {
+            setAttachStatus(null);
+            setAttachError("Remote /run path helper requires an active remote terminal tab.");
+            return;
+        }
+        const model = WaveAIModel.getInstance();
+        const currentInput = globalStore.get(model.inputAtom) ?? "";
+        const nextInput = buildRunPromptFromSelection(currentInput, filePath);
+        globalStore.set(model.inputAtom, nextInput);
+        WorkspaceLayoutModel.getInstance().setAIPanelVisible(true);
+        model.focusInput();
+        setAttachStatus(
+            `Prepared /run prompt for remote target ${remoteConnectionID}. Nothing was executed automatically.`,
+        );
+        setAttachError(null);
+        setRunPromptPreview(nextInput);
+    };
+
     const loadFilePreview = async (filePath: string) => {
         setPreviewLoading(true);
         setPreviewError(null);
@@ -212,6 +245,7 @@ const FilesFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floatin
     if (!isOpen) return null;
 
     const canGoUp = parentPath(path) != null;
+    const remoteConnectionID = activeRemoteConnectionID();
 
     return (
         <FloatingPortal>
@@ -297,6 +331,9 @@ const FilesFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floatin
                         <div className="text-xs text-white/90 break-all border border-border rounded px-2 py-1.5 mt-1 min-h-[2rem]">
                             {selectedFilePath || "No file selected"}
                         </div>
+                        <div className="text-[11px] text-secondary mt-2">
+                            Active terminal target: {remoteConnectionID ? `remote (${remoteConnectionID})` : "local"}
+                        </div>
                         <div className="mt-2 flex flex-wrap gap-2">
                             <button
                                 className="text-xs px-2 py-1 rounded border border-border text-secondary disabled:opacity-50"
@@ -318,6 +355,13 @@ const FilesFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floatin
                                 onClick={() => insertSelectedPathInRunPrompt(selectedFilePath)}
                             >
                                 Use Selected Path In /run Prompt
+                            </button>
+                            <button
+                                className="text-xs px-2 py-1 rounded border border-border text-secondary disabled:opacity-50"
+                                disabled={selectedFilePath === "" || previewLoading || attachBusy || remoteConnectionID == null}
+                                onClick={() => insertSelectedPathInRemoteRunPrompt(selectedFilePath)}
+                            >
+                                Use Selected Path In Remote /run Prompt
                             </button>
                         </div>
                         {runPromptPreview ? (

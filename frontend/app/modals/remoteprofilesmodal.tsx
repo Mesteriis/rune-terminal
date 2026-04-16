@@ -1,6 +1,9 @@
+import { WaveAIModel } from "@/app/aipanel/waveai-model";
 import { Button } from "@/app/element/button";
 import { Modal } from "@/app/modals/modal";
 import { workspaceStore } from "@/app/state/workspace.store";
+import { globalStore } from "@/app/store/jotaiStore";
+import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { getConnectionsFacade } from "@/compat/connections";
 import { modalsModel } from "@/store/modalmodel";
 import type { RemoteProfile } from "@/rterm-api/connections/types";
@@ -31,6 +34,7 @@ const RemoteProfilesModal = () => {
     const [launchingProfileID, setLaunchingProfileID] = useState<string | null>(null);
     const [deletingProfileID, setDeletingProfileID] = useState<string | null>(null);
     const [lastOpenedSession, setLastOpenedSession] = useState<{ profileID: string; reused: boolean } | null>(null);
+    const [statusMessage, setStatusMessage] = useState<string | null>(null);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     const normalizedHost = useMemo(() => form.host.trim(), [form.host]);
@@ -46,8 +50,10 @@ const RemoteProfilesModal = () => {
             const facade = await getConnectionsFacade();
             const response = await facade.listRemoteProfiles();
             setProfiles(response.profiles ?? []);
+            setStatusMessage(null);
             setErrorMessage(null);
         } catch (error) {
+            setStatusMessage(null);
             setErrorMessage(error instanceof Error ? error.message : String(error));
         } finally {
             setLoading(false);
@@ -96,30 +102,68 @@ const RemoteProfilesModal = () => {
             });
             setProfiles(response.profiles ?? []);
             setForm(emptyForm);
+            setStatusMessage("Profile saved.");
             setErrorMessage(null);
         } catch (error) {
+            setStatusMessage(null);
             setErrorMessage(error instanceof Error ? error.message : String(error));
         } finally {
             setSaving(false);
         }
     };
 
+    const openProfileSession = async (profile: RemoteProfile) => {
+        const facade = await getConnectionsFacade();
+        const response = await facade.createSessionFromRemoteProfile(profile.id, {
+            title: profile.name ? `${profile.name} Shell` : "Remote Shell",
+        });
+        if (response.workspace) {
+            workspaceStore.hydrate(response.workspace);
+        } else {
+            await workspaceStore.refresh();
+        }
+        setLastOpenedSession({ profileID: profile.id, reused: response.reused });
+        return response;
+    };
+
     const handleLaunch = async (profile: RemoteProfile) => {
         setLaunchingProfileID(profile.id);
         try {
-            const facade = await getConnectionsFacade();
-            const response = await facade.createSessionFromRemoteProfile(profile.id, {
-                title: profile.name ? `${profile.name} Shell` : "Remote Shell",
-            });
-            if (response.workspace) {
-                workspaceStore.hydrate(response.workspace);
-            } else {
-                await workspaceStore.refresh();
-            }
-            setLastOpenedSession({ profileID: profile.id, reused: response.reused });
+            const response = await openProfileSession(profile);
+            setStatusMessage(
+                response.reused
+                    ? `Reused running session for ${profile.name || profile.host}.`
+                    : `Opened new session for ${profile.name || profile.host}.`,
+            );
             setErrorMessage(null);
             closeModal();
         } catch (error) {
+            setStatusMessage(null);
+            setErrorMessage(error instanceof Error ? error.message : String(error));
+        } finally {
+            setLaunchingProfileID(null);
+        }
+    };
+
+    const handlePrepareRun = async (profile: RemoteProfile) => {
+        setLaunchingProfileID(profile.id);
+        try {
+            const response = await openProfileSession(profile);
+            const model = WaveAIModel.getInstance();
+            const currentInput = globalStore.get(model.inputAtom) ?? "";
+            const trimmedInput = currentInput.trim();
+            const nextInput = trimmedInput.startsWith("/run ") || trimmedInput.startsWith("run:")
+                ? currentInput
+                : "/run ";
+            globalStore.set(model.inputAtom, nextInput);
+            WorkspaceLayoutModel.getInstance().setAIPanelVisible(true);
+            model.focusInput();
+            setStatusMessage(
+                `Remote target ${response.connection_id} is active. /run prompt prepared; review command before sending.`,
+            );
+            setErrorMessage(null);
+        } catch (error) {
+            setStatusMessage(null);
             setErrorMessage(error instanceof Error ? error.message : String(error));
         } finally {
             setLaunchingProfileID(null);
@@ -132,8 +176,10 @@ const RemoteProfilesModal = () => {
             const facade = await getConnectionsFacade();
             const response = await facade.deleteRemoteProfile(profileID);
             setProfiles(response.profiles ?? []);
+            setStatusMessage("Profile deleted.");
             setErrorMessage(null);
         } catch (error) {
+            setStatusMessage(null);
             setErrorMessage(error instanceof Error ? error.message : String(error));
         } finally {
             setDeletingProfileID(null);
@@ -183,6 +229,13 @@ const RemoteProfilesModal = () => {
                                             onClick={() => void handleLaunch(profile)}
                                         >
                                             {launchingProfileID === profile.id ? "Opening..." : "Open shell"}
+                                        </Button>
+                                        <Button
+                                            className="grey ghost"
+                                            disabled={launchingProfileID === profile.id}
+                                            onClick={() => void handlePrepareRun(profile)}
+                                        >
+                                            {launchingProfileID === profile.id ? "Preparing..." : "Prepare /run"}
                                         </Button>
                                         <Button
                                             className="grey ghost"
@@ -241,6 +294,7 @@ const RemoteProfilesModal = () => {
                     </div>
                 </div>
             </div>
+            {statusMessage ? <div className="text-sm text-emerald-300 mt-3 whitespace-pre-wrap">{statusMessage}</div> : null}
             {errorMessage ? <div className="text-sm text-red-400 mt-3 whitespace-pre-wrap">{errorMessage}</div> : null}
         </Modal>
     );

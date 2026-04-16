@@ -31,6 +31,7 @@ export function CompatTerminalView({ widgetId, connectionId }: CompatTerminalVie
     const [explainBusy, setExplainBusy] = useState(false);
     const [explainStatus, setExplainStatus] = useState<string | null>(null);
     const [explainError, setExplainError] = useState<string | null>(null);
+    const isRemoteTerminal = !isLocalConnection(connectionId);
 
     useEffect(() => {
         if (connectElemRef.current == null) {
@@ -161,7 +162,7 @@ export function CompatTerminalView({ widgetId, connectionId }: CompatTerminalVie
                         void explainLatestCommandOutput();
                     }}
                 >
-                    {explainBusy ? "Sending..." : "Explain Latest Output In AI"}
+                    {explainBusy ? "Sending..." : isRemoteTerminal ? "Explain Remote Command In AI" : "Explain Latest Output In AI"}
                 </button>
                 {explainStatus ? <div className="text-[10px] text-emerald-300 max-w-[24rem] text-right">{explainStatus}</div> : null}
                 {explainError ? <div className="text-[10px] text-red-300 max-w-[24rem] text-right">{explainError}</div> : null}
