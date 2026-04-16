@@ -321,6 +321,33 @@
   - browser console still records the expected `428 Precondition Required` resource error for the initial approval challenge in matched UI flows; no fatal runtime exceptions were observed
   - `npm run validate`: `NOT VERIFIED` for this slice because the repo still has broad pre-existing frontend lint failures unrelated to approval intent binding
 
+## ANSI terminal behavior
+
+- Date: `2026-04-16`
+- Status: `VERIFIED`
+- Validation steps:
+  - runtime environment:
+    - reused the live batch stack from slices 1 and 2
+    - core: `RTERM_AUTH_TOKEN=explain-truth-token RTERM_OLLAMA_BASE_URL=http://127.0.0.1:11438 RTERM_OLLAMA_MODEL=test-model apps/desktop/bin/rterm-core serve --listen 127.0.0.1:61420 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/rterm-explain-truth/state --ready-file /tmp/rterm-explain-truth/ready.json`
+    - frontend dev: `VITE_RTERM_API_BASE=http://127.0.0.1:61420 VITE_RTERM_AUTH_TOKEN=explain-truth-token npm --prefix frontend run dev -- --host 127.0.0.1 --port 4203 --strictPort`
+  - active-tab ANSI baseline in `Main Shell` using `POST /api/v1/terminal/term-main/input` with `append_newline:true`:
+    - `printf '\033[31mANSI_BATCH_RED\033[0m\n'`
+    - `python3 -c 'import sys,time; [sys.stdout.write(f"\rANSI_BASE_PROGRESS_{i}/5") or sys.stdout.flush() or time.sleep(0.05) for i in range(1,6)]; print()'`
+    - `python3 -c 'import sys; print("ansi-row-a"); print("ansi-row-b"); sys.stdout.write("\x1b[2A"); sys.stdout.write("\rANSI_ROW_A\nANSI_ROW_B\n"); sys.stdout.flush()'`
+  - replay/remount check:
+    - sent `python3 -u -c 'import sys,time; [sys.stdout.write(f"\r\033[36mANSI_SWITCH_1776341431_{i:02d}/12\033[0m") or sys.stdout.flush() or time.sleep(0.12) for i in range(1,13)]; print()'`
+    - switched tabs `Main Shell -> Ops Shell -> Main Shell` while the loop was still running
+    - after returning, sent `python3 -c 'import sys; print("switch-row-a"); print("switch-row-b"); sys.stdout.write("\x1b[2A"); sys.stdout.write("\rANSI_SWITCH_ROW_A\nANSI_SWITCH_ROW_B\n"); sys.stdout.flush()'`
+- Observed result:
+  - the active terminal rendered `ANSI_BATCH_RED`, final progress `ANSI_BASE_PROGRESS_5/5`, and the cursor-up replacement lines `ANSI_ROW_A` / `ANSI_ROW_B`
+  - after switching away mid-loop and returning, the terminal showed only the final colored progress state `ANSI_SWITCH_1776341431_12/12` in the visible viewport
+  - the post-return redraw command left `ANSI_SWITCH_ROW_A` and `ANSI_SWITCH_ROW_B` visible without duplicated escape sequences or cursor-position corruption
+  - backend snapshot tails still contained the raw control stream (`\u001b[36m...`, repeated `\r...`, `\u001b[2A`) while the viewport reflected the expected final terminal state
+- Result: `VERIFIED` — the current snapshot-plus-stream replay path handled ANSI color, carriage-return progress, and cursor-up redraw correctly, including a tab switch during active ANSI output.
+- Notes:
+  - no terminal code change was needed in this slice because the live runtime behavior already matched the expected replay semantics
+  - earlier `.view-term` text probing was not used as the source of truth for this validation because it includes shell command echo/accessibility text in addition to the visible terminal screen
+
 ## widgets.tsx structural refactor
 
 - Date: `2026-04-16`
