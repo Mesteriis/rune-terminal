@@ -25,13 +25,18 @@ const emptyForm: RemoteProfileForm = {
 const RemoteProfilesModal = () => {
     const [profiles, setProfiles] = useState<RemoteProfile[]>([]);
     const [form, setForm] = useState<RemoteProfileForm>(emptyForm);
+    const [workspaceSnapshot, setWorkspaceSnapshot] = useState(workspaceStore.getSnapshot());
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [launchingProfileID, setLaunchingProfileID] = useState<string | null>(null);
     const [deletingProfileID, setDeletingProfileID] = useState<string | null>(null);
+    const [lastOpenedSession, setLastOpenedSession] = useState<{ profileID: string; reused: boolean } | null>(null);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     const normalizedHost = useMemo(() => form.host.trim(), [form.host]);
+    const activeWidget = workspaceSnapshot.active.widgets[workspaceSnapshot.active.activewidgetid];
+    const activeProfileID =
+        activeWidget && activeWidget.connectionId && activeWidget.connectionId !== "local" ? activeWidget.connectionId : null;
 
     const closeModal = () => modalsModel.popModal();
 
@@ -51,6 +56,15 @@ const RemoteProfilesModal = () => {
 
     useEffect(() => {
         void refreshProfiles();
+    }, []);
+
+    useEffect(() => {
+        const unsubscribe = workspaceStore.subscribe((snapshot) => {
+            setWorkspaceSnapshot(snapshot);
+        });
+        return () => {
+            unsubscribe();
+        };
     }, []);
 
     const handleSaveProfile = async () => {
@@ -94,10 +108,15 @@ const RemoteProfilesModal = () => {
         setLaunchingProfileID(profile.id);
         try {
             const facade = await getConnectionsFacade();
-            await facade.createSessionFromRemoteProfile(profile.id, {
+            const response = await facade.createSessionFromRemoteProfile(profile.id, {
                 title: profile.name ? `${profile.name} Shell` : "Remote Shell",
             });
-            await workspaceStore.refresh();
+            if (response.workspace) {
+                workspaceStore.hydrate(response.workspace);
+            } else {
+                await workspaceStore.refresh();
+            }
+            setLastOpenedSession({ profileID: profile.id, reused: response.reused });
             setErrorMessage(null);
             closeModal();
         } catch (error) {
@@ -144,6 +163,14 @@ const RemoteProfilesModal = () => {
                                         {profile.description || profile.host}
                                         {profile.port ? `:${profile.port}` : ""}
                                     </div>
+                                    {activeProfileID === profile.id ? (
+                                        <div className="text-xs text-green-400 mt-1">Active session</div>
+                                    ) : null}
+                                    {lastOpenedSession?.profileID === profile.id ? (
+                                        <div className="text-xs text-secondary mt-1">
+                                            {lastOpenedSession.reused ? "Reused existing session" : "Opened new session"}
+                                        </div>
+                                    ) : null}
                                     {profile.identity_file ? (
                                         <div className="text-xs text-secondary mt-1 break-all">
                                             key: {profile.identity_file}
