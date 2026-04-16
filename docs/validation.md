@@ -1907,3 +1907,45 @@
     - `npm exec eslint app/aipanel/aipanel-compat.tsx app/aipanel/compat-conversation.ts app/view/term/compat-terminal.tsx app/workspace/files-floating-window.tsx app/workspace/tools-floating-window.tsx app/workspace/widget-helpers.ts rterm-api/conversation/types.ts rterm-api/tools/types.ts rterm-api/mcp/types.ts rterm-api/audit/types.ts` (run in `frontend/`) -> `PASS`
     - `npm exec vitest run app/view/term/explain-handoff.test.ts app/aipanel/run-command.test.ts` (run in `frontend/`) -> `PASS`
 - Result: `VERIFIED` — workflow identity hardening now carries explicit explain command identity and explicit cross-surface provenance metadata while preserving existing operator workflow behavior.
+
+## External MCP integration
+
+- Date: `2026-04-16`
+- Status: `VERIFIED`
+- Commits:
+  - `74f7b58`
+  - `02cf774`
+  - `07d78ba`
+  - `c06c27a`
+- Validation steps:
+  - backend/API tests:
+    - `./scripts/go.sh test ./core/app ./core/plugins ./core/transport/httpapi` -> `PASS`
+  - frontend wiring checks:
+    - `npm exec eslint app/workspace/tools-floating-window.tsx` (run in `frontend/`) -> `PASS`
+    - `npm exec vitest run app/view/term/explain-handoff.test.ts app/aipanel/run-command.test.ts` (run in `frontend/`) -> `PASS`
+  - live runtime validation with one real external MCP process:
+    - core launch: `RTERM_AUTH_TOKEN=mcp-external-token go run ./cmd/rterm-core serve --listen 127.0.0.1:53111 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/rterm-mcp-external.*`
+    - `GET /api/v1/mcp/servers` showed `mcp.example` in `stopped` state
+    - `POST /api/v1/mcp/servers/mcp.example/start` returned `state:"idle", active:true`
+    - small invoke:
+      - `POST /api/v1/mcp/invoke` with `payload:{"text":"external-mcp-small"}` returned normalized output:
+        - `format:"mcp.normalized.v1"`
+        - `payload_type:"object"`
+        - `truncated:false`
+        - `original_bytes:125`
+    - large invoke (bounding check):
+      - `POST /api/v1/mcp/invoke` with `payload.text` length `20000` returned bounded normalized output:
+        - `payload_type:"non_json"`
+        - `truncated:true`
+        - `original_bytes:20110`
+        - notes include `payload clipped to max bytes`
+      - response size stayed bounded:
+        - full invoke response: `965` bytes
+        - normalized output block: `480` bytes
+    - stability check after large invoke:
+      - `GET /healthz` -> `200`
+      - `POST /api/v1/tools/execute` (`term.send_input`) still returned `status:"ok"`
+      - terminal snapshot after run contained `echo mcp-external-stable` output
+- Result: `VERIFIED` — external MCP output is now normalized and bounded before reuse, explicit invocation remains required, and runtime remained stable under large-response inputs.
+- Notes:
+  - this slice intentionally keeps explicit user action for MCP-to-AI handoff (`Use Normalized MCP Result In AI`) and does not auto-inject MCP output into agent context.

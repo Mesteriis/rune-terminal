@@ -38,6 +38,7 @@ It is intentionally operational, not narrative.
   - `Use Selected File Path` when the chosen tool schema fits `path`/`paths`
   - `Use Active Widget` when the chosen tool schema fits `widget_id`
   - these actions only patch the visible input JSON; execution still requires explicit `Execute`
+  - MCP invoke now also has an explicit `Use Normalized MCP Result In AI` action; this inserts bounded MCP context into AI input only on explicit user click
 - New terminal tabs can be created at runtime.
 - Closing a tab tears down its terminal session and removes the associated widget from the workspace snapshot.
 - The last remaining tab cannot be closed in the current implementation.
@@ -55,7 +56,10 @@ It is intentionally operational, not narrative.
 - MCP servers are now modeled as managed runtime processes with explicit lifecycle states (`stopped`, `starting`, `active`, `idle`, `stopped_auto`) tracked by an in-memory runtime registry.
 - MCP runtime activation is controlled only through explicit API actions (`start`, `stop`, `restart`, `enable`, `disable`) or explicit on-demand invoke requests; core startup does not auto-load or auto-spawn MCP servers.
 - MCP idle servers are auto-stopped after runtime-owned timeout checks, and in-flight MCP invocations are protected from stop/restart interruption.
-- MCP invoke responses do not enter agent context automatically. Context payloads are only produced when explicitly requested and are passed through a bounded adapter (size/depth/item/string limits).
+- MCP invoke responses do not enter agent context automatically.
+- MCP invoke output is normalized to a fixed internal schema (`mcp.normalized.v1`) before leaving backend runtime paths.
+- normalization enforces bounded structure and size (max payload bytes, max fields/items, max string length, max depth).
+- context payloads are only produced when explicitly requested and remain bounded.
 
 ## Session lifecycle contract
 
