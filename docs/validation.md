@@ -5,6 +5,53 @@
 - отсутствие проверки фиксируется как `NOT RUN`, а не маскируется под успешный результат
 - записи ниже основаны только на audit trail из `docs/tideterm-feature-inventory.md`, `docs/feature-parity-audit.md` и `docs/feature-gap-summary.md`
 
+<a id="remote-ssh-parity-batch"></a>
+## Remote SSH parity batch
+
+- Date: `2026-04-16`
+- Status: `VERIFIED`
+- Commits:
+  - `3833bac`
+  - `6458209`
+  - `1683212`
+  - `d16199f`
+  - `8703410`
+  - `75513ed`
+- Validation steps:
+  - isolated SSH target setup:
+    - generated temp client/host keys under `/tmp/rterm-ssh-smoke.39C5GS`
+    - launched isolated localhost `sshd` on `127.0.0.1:6222` with temp config and authorized key
+    - direct probe passed: `ssh -i /tmp/rterm-ssh-smoke.39C5GS/client_key -p 6222 avm@127.0.0.1 'echo remote-ok && pwd'` -> `remote-ok` and `/Users/avm`
+  - runtime environment:
+    - Ollama-compatible stub: `python3 -u /tmp/rterm-ssh-smoke.39C5GS/ollama_stub.py` on `127.0.0.1:11446`
+    - core: `RTERM_AUTH_TOKEN=remote-batch-token RTERM_OLLAMA_BASE_URL=http://127.0.0.1:11446 RTERM_OLLAMA_MODEL=test-model go run ./cmd/rterm-core serve --listen 127.0.0.1:52951 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/rterm-ssh-smoke.39C5GS/state`
+  - local baseline:
+    - `GET /api/v1/bootstrap` returned default local tabs/widgets (`tab-main`/`term-main`, `tab-ops`/`term-side`)
+  - remote session creation:
+    - `POST /api/v1/connections/ssh` saved profile `Local SSHD Smoke` with `host=127.0.0.1`, `user=avm`, `port=6222`, temp `identity_file`
+    - `POST /api/v1/workspace/tabs/remote` created and focused remote tab/widget (`tab_74a87b83a055dc8a` / `term_dd9042127249e2dd`)
+    - `GET /api/v1/terminal/term_dd9042127249e2dd` reported `connection_kind:"ssh"`, `connection_id:"conn_5625bf9226e84326"`, `status:"running"`
+  - remote terminal command and tab switching:
+    - `POST /api/v1/terminal/term_dd9042127249e2dd/input` with `echo remote-terminal-smoke`
+    - remote snapshot output contained `remote-terminal-smoke` and remote prompt marker `avm@mbw`
+    - switched to local tab via `POST /api/v1/workspace/focus-tab {"tab_id":"tab-main"}`; local snapshot stayed `connection_kind:"local"`
+    - switched back to remote tab via `POST /api/v1/workspace/focus-tab {"tab_id":"tab_74a87b83a055dc8a"}`; remote snapshot stayed `connection_kind:"ssh"`
+  - `/run` backend path on remote session:
+    - `POST /api/v1/tools/execute` (`term.send_input`) with context `target_session:"remote"` and `target_connection_id:"conn_5625bf9226e84326"` executed `echo remote-run-smoke` on remote widget
+    - remote snapshot from captured `next_seq` contained `remote-run-smoke`
+    - `POST /api/v1/agent/terminal-commands/explain` returned `output_excerpt:"remote-run-smoke"` and assistant message from stub provider
+  - audit and mixup guard:
+    - `GET /api/v1/audit?limit=20` showed both `term.send_input` and `agent.terminal_command` with `target_session:"remote"` and `target_connection_id:"conn_5625bf9226e84326"`
+    - local tool execution (`term-main`) wrote separate audit entry with `target_session:"local"` and `target_connection_id:"local"`
+    - mismatch probe (`term_dd...` with `target_session:"local"`) returned HTTP `400`, `error_code:"invalid_input"`, proving no silent local/remote mixup
+  - release sweep:
+    - `npm run validate` -> passed (frontend lint warnings remain non-blocking)
+    - `npm run tauri:dev` smoke -> desktop launched, reported ready `{"base_url":"http://127.0.0.1:50142","pid":17105}`
+- Result: `VERIFIED` — local and remote terminal sessions run concurrently, remote tab/session binding survives focus switches, `/run` tool+explain path works on remote widgets, and audit trail now records explicit session target truth without local/remote cross-target leakage.
+- Notes:
+  - validation used an isolated localhost SSH daemon and a stub provider to keep runtime behavior deterministic
+  - out of scope and still not implemented in this slice: SSH config UI, `~/.ssh/config` import, credential manager, connection pooling
+
 ## Tool execution
 
 - Date: `2026-04-15`
@@ -1119,22 +1166,27 @@
 <a id="feature-runtime-local-pty-sessions"></a>
 ## Local PTY sessions
 
-- Date: `—`
-- Status: `NOT RUN`
-- Commit: `—`
-- Validation steps: Отдельный feature-specific validation run ещё не зафиксирован; использовать критерии из `docs/roadmap.md` и текущий path из audit.
-- Result: Подтверждённого validation result нет; текущий ориентир только parity status из audit.
-- Notes: Placeholder-секция для будущих проверок. Текущее audit-наблюдение: Активный terminal runtime локально работает на new PTY service. 
+- Date: `2026-04-16`
+- Status: `VERIFIED`
+- Commits:
+  - `6458209`
+  - `1683212`
+  - `d16199f`
+- Validation steps: See [`Remote SSH parity batch`](#remote-ssh-parity-batch).
+- Result: `VERIFIED` — default local sessions stayed running while remote sessions were created/used, and local `term.send_input` remained bound to `target_session:"local"` without cross-target leakage.
+- Notes: This run validated coexistence of local + remote PTY sessions in one workspace/runtime process.
 
 <a id="feature-runtime-saved-ssh-profiles"></a>
 ## Saved SSH profiles
 
-- Date: `—`
-- Status: `NOT RUN`
-- Commit: `—`
-- Validation steps: Отдельный feature-specific validation run ещё не зафиксирован; использовать критерии из `docs/roadmap.md` и текущий path из audit.
-- Result: Подтверждённого validation result нет; текущий ориентир только parity status из audit.
-- Notes: Placeholder-секция для будущих проверок. Текущее audit-наблюдение: Saved SSH profiles backend-owned и типизированы. 
+- Date: `2026-04-16`
+- Status: `VERIFIED`
+- Commits:
+  - `6458209`
+  - `d16199f`
+- Validation steps: See [`Remote SSH parity batch`](#remote-ssh-parity-batch).
+- Result: `VERIFIED` — `POST /api/v1/connections/ssh` persisted a real SSH profile with explicit host/user/port/identity-file and returned backend-owned connection metadata used by remote tab launch.
+- Notes: This run intentionally used direct profile fields only; `.ssh/config` import remains out of scope.
 
 <a id="feature-runtime-default-connection-selection"></a>
 ## Выбор default connection для новых shell launches
@@ -1159,12 +1211,15 @@
 <a id="feature-runtime-open-shell-selected-connection"></a>
 ## Open shell against selected connection
 
-- Date: `—`
-- Status: `NOT RUN`
-- Commit: `—`
-- Validation steps: Отдельный feature-specific validation run ещё не зафиксирован; использовать критерии из `docs/roadmap.md` и текущий path из audit.
-- Result: Подтверждённого validation result нет; текущий ориентир только parity status из audit.
-- Notes: Placeholder-секция для будущих проверок. Текущее audit-наблюдение: New terminal tab может стартовать с `connection_id`. 
+- Date: `2026-04-16`
+- Status: `VERIFIED`
+- Commits:
+  - `d16199f`
+  - `8703410`
+  - `75513ed`
+- Validation steps: See [`Remote SSH parity batch`](#remote-ssh-parity-batch).
+- Result: `VERIFIED` — remote tab creation against explicit SSH connection launched a running SSH PTY session; command execution and `/run` explain path completed on that remote widget.
+- Notes: Session-target mismatch probe now fails explicitly (`400 invalid_input`) when local target metadata is sent to a remote widget.
 
 <a id="feature-runtime-remote-file-browsing"></a>
 ## Remote file browsing
