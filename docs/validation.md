@@ -1315,3 +1315,41 @@
 - Validation steps: Отдельный feature-specific validation run ещё не зафиксирован; использовать критерии из `docs/roadmap.md` и текущий path из audit.
 - Result: Подтверждённого validation result нет; текущий ориентир только parity status из audit.
 - Notes: Placeholder-секция для будущих проверок. Текущее audit-наблюдение: Legacy proxy UI присутствует, но current core/runtime path для TideTerm WaveProxy отсутствует. 
+
+## Approval continuity hardening
+
+- Date: `2026-04-16`
+- Status: `VERIFIED`
+- Commits:
+  - `f559da5f468a4c3ff95a9b9f7ed8012a2148e484`
+  - `f84e04d656720ed9f1961585cf2f3fd54cd2a13a`
+  - `4728c2e08af34cbec3f6f3974c9b1e06c82e33a2`
+- Validation steps:
+  - automated checks:
+    - `npx vitest run frontend/app/approval/continuity.test.ts frontend/compat/tools.test.ts frontend/app/aipanel/run-command.test.ts --config frontend/vite.config.ts`
+    - `npx tsc -p frontend/tsconfig.json --noEmit`
+  - runtime environment:
+    - core: `RTERM_AUTH_TOKEN=exec-model-token apps/desktop/bin/rterm-core serve --listen 127.0.0.1:52930 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/rterm-exec-model`
+    - frontend dev: `VITE_RTERM_API_BASE=http://127.0.0.1:52930 VITE_RTERM_AUTH_TOKEN=exec-model-token npm --prefix frontend run dev -- --host 127.0.0.1 --port 5178 --strictPort`
+  - `/run` continuity checks in active AI panel:
+    - with `Profile: Hardened`, ran `/run echo continuity-s23-panel-tab-20260416` and observed approval card
+    - closed/reopened AI panel and switched `Main Shell -> Ops Shell -> Main Shell`: approval card remained available
+    - clicked `Confirm and retry`: pending card cleared and explanation rendered for the same command
+  - Tools continuity checks:
+    - executed `safety.add_ignore_rule` with payload pattern `continuity-s23-tool-*` and observed pending approval block
+    - closed/reopened Tools panel: pending approval block remained available
+    - `Confirm and retry` completed with response `status: "ok"`
+  - full reload truth check:
+    - created pending `/run echo continuity-s23-reload-20260416`
+    - reloaded `http://127.0.0.1:5178/` and reopened AI panel
+    - pending approval entry was absent (non-persistent behavior remains explicit)
+  - core restart stale check:
+    - created pending `/run echo continuity-s23-stale-postfix-20260416`
+    - restarted core process (same API base and auth token)
+    - clicked `Confirm and retry` on stale card
+    - observed stale rejection banner `Pending approval is no longer available. Re-run the command to request approval again.` and stale pending card removal
+    - repeated the same stale pattern in Tools panel (`continuity-s23-tool-stale-*`) and observed stale message `Pending approval is no longer available. Execute the tool again to request approval.` with pending block removed
+- Result: `VERIFIED` — shallow UI lifecycle transitions (panel close/open, tab switch, remount-level behavior) retain pending approval context; stale approvals after core restart are rejected explicitly and cleaned up instead of remaining stuck.
+- Notes:
+  - full page reload and core restart still do not persist pending approvals across process/session boundaries; this remains intentionally non-persistent in this slice
+  - browser console still shows expected approval challenge noise (`428`) during dangerous requests; no fatal runtime exceptions were observed
