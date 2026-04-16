@@ -15,6 +15,7 @@ import { buildToolExecutionContext } from "@/app/workspace/widget-helpers";
 import { createCompatApiFacade } from "@/compat/api";
 import { getAgentFacade } from "@/compat/agent";
 import { getConversationFacade } from "@/compat/conversation";
+import { getExecutionFacade, type ExecutionBlock } from "@/compat/execution";
 import { getTerminalFacade } from "@/compat/terminal";
 import { getToolsFacade } from "@/compat/tools";
 import { isMacOS, isWindows } from "@/util/platformutil";
@@ -31,6 +32,7 @@ import { useDrop } from "react-dnd";
 import { formatFileSizeError, isAcceptableFile, validateFileSize } from "./ai-utils";
 import { AgentSelectionStrip } from "./agent-selection-strip";
 import { AIDroppedFiles } from "./aidroppedfiles";
+import { ExecutionBlockList } from "./execution-block-list";
 import { AIPanelHeader } from "./aipanelheader";
 import { AIPanelInput } from "./aipanelinput";
 import { AIPanelMessages } from "./aipanelmessages";
@@ -273,6 +275,7 @@ const AIPanelCompatInner = memo(() => {
     );
     const [status, setStatus] = useState("ready");
     const [catalog, setCatalog] = useState<AgentCatalog | null>(null);
+    const [executionBlocks, setExecutionBlocks] = useState<ExecutionBlock[]>([]);
     const [repoRoot, setRepoRoot] = useState("");
     const [workspaceId, setWorkspaceId] = useState(() => workspaceStore.getSnapshot().active.oid || "");
     const [isDragOver, setIsDragOver] = useState(false);
@@ -298,6 +301,19 @@ const AIPanelCompatInner = memo(() => {
     useEffect(() => {
         globalStore.set(model.isChatEmptyAtom, messages.length === 0);
     }, [messages, model]);
+
+    const refreshExecutionBlocks = useCallback(
+        async (workspaceID: string) => {
+            const executionFacade = await getExecutionFacade();
+            const response = await executionFacade.listBlocks(workspaceID || undefined, 20);
+            const blocks = Array.isArray(response.blocks) ? response.blocks : [];
+            blocks.sort((left, right) => {
+                return Date.parse(right.created_at) - Date.parse(left.created_at);
+            });
+            setExecutionBlocks(blocks);
+        },
+        [],
+    );
 
     useEffect(() => {
         let cancelled = false;
@@ -344,10 +360,17 @@ const AIPanelCompatInner = memo(() => {
                 setPendingRunApprovals(
                     listStoredPendingRunApprovalsForWorkspace(nextWorkspaceID).map(toPendingRunApprovalEntry),
                 );
+                try {
+                    await refreshExecutionBlocks(nextWorkspaceID);
+                } catch (error) {
+                    errors.push(error instanceof Error ? error.message : String(error));
+                    setExecutionBlocks([]);
+                }
             } else {
                 setRepoRoot("");
                 setWorkspaceId("");
                 setPendingRunApprovals([]);
+                setExecutionBlocks([]);
             }
 
             if (errors.length > 0) {
@@ -371,7 +394,7 @@ const AIPanelCompatInner = memo(() => {
         return () => {
             cancelled = true;
         };
-    }, [model]);
+    }, [model, refreshExecutionBlocks]);
 
     useEffect(() => {
         const updateWidth = () => {
@@ -497,6 +520,24 @@ const AIPanelCompatInner = memo(() => {
                 });
                 setProviderLabel(formatProviderLabel(explanationResponse.conversation.provider));
                 setMessages(mapConversationSnapshot(explanationResponse.conversation));
+                const executionBlockID = explanationResponse.execution_block_id?.trim();
+                if (executionBlockID) {
+                    try {
+                        const executionFacade = await getExecutionFacade();
+                        const blockResponse = await executionFacade.getBlock(executionBlockID);
+                        setExecutionBlocks((previous) => {
+                            const next = [
+                                blockResponse.block,
+                                ...previous.filter((block) => block.id !== blockResponse.block.id),
+                            ];
+                            return next.slice(0, 20);
+                        });
+                    } catch {
+                        await refreshExecutionBlocks(options.context.workspace_id ?? workspaceId);
+                    }
+                } else {
+                    await refreshExecutionBlocks(options.context.workspace_id ?? workspaceId);
+                }
             } catch (error) {
                 try {
                     const snapshotResponse = await options.conversationFacade.getSnapshot();
@@ -509,7 +550,7 @@ const AIPanelCompatInner = memo(() => {
                 model.setError(`Explanation unavailable for \`${options.command}\`: ${details}`);
             }
         },
-        [model],
+        [model, refreshExecutionBlocks, workspaceId],
     );
 
     const handleConfirmRunApproval = useCallback(
@@ -952,6 +993,7 @@ const AIPanelCompatInner = memo(() => {
                     />
                 )}
                 <CompatAIErrorMessage />
+                <ExecutionBlockList blocks={executionBlocks} />
                 <RunCommandApprovalList
                     approvals={pendingRunApprovals}
                     busy={status !== "ready"}

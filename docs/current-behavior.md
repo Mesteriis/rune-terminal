@@ -264,6 +264,9 @@ Confirmable boundaries:
     - `GET /api/v1/execution/blocks`
     - `GET /api/v1/execution/blocks/{blockID}`
   - block snapshots are additive workflow records and do not replace terminal/audit source-of-truth paths
+- The AI panel now renders a compact structured-execution strip from backend block snapshots:
+  - each item shows command intent, execution state, output excerpt, explain summary/error, and provenance IDs
+  - rendering is additive and keeps existing transcript/approval flow intact
 - The backend explanation route does not execute commands by itself. It explains the observed result of a command that already ran through the runtime.
 - The compat terminal now has an explicit `Explain Latest Output In AI` handoff action:
   - it resolves the latest terminal command from audit truth for the active widget
