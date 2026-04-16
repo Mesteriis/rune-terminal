@@ -126,6 +126,7 @@ export function CompatTerminalView({ widgetId, connectionId }: CompatTerminalVie
                     workspace_id: workspaceID,
                     active_widget_id: widgetId,
                     repo_root: repoRoot,
+                    action_source: "terminal.widget.explain_latest_output",
                     target_session: targetSession,
                     target_connection_id: targetConnectionID,
                     widget_context_enabled: true,
@@ -133,7 +134,8 @@ export function CompatTerminalView({ widgetId, connectionId }: CompatTerminalVie
             });
             WorkspaceLayoutModel.getInstance().setAIPanelVisible(true);
             WaveAIModel.getInstance().focusInput();
-            setExplainStatus(`Explained latest output for: ${command}`);
+            const commandIdentitySuffix = commandIdentity.commandAuditEventId ? ` (event ${commandIdentity.commandAuditEventId})` : "";
+            setExplainStatus(`Explained latest output for: ${command}${commandIdentitySuffix}`);
         } catch (error) {
             setExplainError(error instanceof Error ? error.message : String(error));
         } finally {

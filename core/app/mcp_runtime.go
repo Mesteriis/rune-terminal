@@ -3,7 +3,10 @@ package app
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 
+	"github.com/Mesteriis/rune-terminal/core/audit"
 	"github.com/Mesteriis/rune-terminal/core/plugins"
 )
 
@@ -80,5 +83,20 @@ func (r *Runtime) InvokeMCP(ctx context.Context, request plugins.MCPInvokeReques
 	if r.MCP == nil {
 		return plugins.MCPInvokeResult{}, ErrMCPRuntimeNotConfigured
 	}
-	return r.MCP.Invoke(ctx, request)
+	result, err := r.MCP.Invoke(ctx, request)
+	auditEvent := audit.Event{
+		ToolName:     "mcp.invoke",
+		Summary:      fmt.Sprintf("invoke MCP server: %s", strings.TrimSpace(request.ServerID)),
+		WorkspaceID:  strings.TrimSpace(request.WorkspaceID),
+		ActionSource: strings.TrimSpace(request.ActionSource),
+		Success:      err == nil,
+	}
+	if err != nil {
+		auditEvent.Error = err.Error()
+	}
+	_ = r.Audit.Append(auditEvent)
+	if err != nil {
+		return plugins.MCPInvokeResult{}, err
+	}
+	return result, nil
 }

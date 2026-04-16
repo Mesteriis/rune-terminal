@@ -15,7 +15,9 @@ type conversationMessagePayload struct {
 }
 
 type attachmentReferencePayload struct {
-	Path string `json:"path"`
+	Path         string `json:"path"`
+	WorkspaceID  string `json:"workspace_id,omitempty"`
+	ActionSource string `json:"action_source,omitempty"`
 }
 
 type terminalCommandExplanationPayload struct {
@@ -58,7 +60,9 @@ func (api *API) handleCreateAttachmentReference(w http.ResponseWriter, r *http.R
 		return
 	}
 	attachment, err := api.runtime.CreateAttachmentReference(app.CreateAttachmentReferenceRequest{
-		Path: payload.Path,
+		Path:         payload.Path,
+		WorkspaceID:  payload.WorkspaceID,
+		ActionSource: payload.ActionSource,
 	})
 	if err != nil {
 		writeAttachmentError(w, err)

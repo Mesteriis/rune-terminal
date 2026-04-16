@@ -209,9 +209,13 @@ function toPendingRunApprovalEntry(approval: StoredPendingRunApproval): PendingR
     };
 }
 
-function buildConversationContextFromToolContext(context: ToolExecutionContext): ConversationContext {
+function buildConversationContextFromToolContext(
+    context: ToolExecutionContext,
+    actionSource?: string,
+): ConversationContext {
     return {
         ...context,
+        action_source: actionSource?.trim() || context.action_source,
         widget_context_enabled: context.active_widget_id != null,
     };
 }
@@ -437,7 +441,11 @@ const AIPanelCompatInner = memo(() => {
             }
 
             const conversationFacade = await getConversationFacade();
-            const response = await conversationFacade.createAttachmentReference({ path: normalizedPath });
+            const response = await conversationFacade.createAttachmentReference({
+                path: normalizedPath,
+                workspace_id: workspaceId || undefined,
+                action_source: "ai.panel.attach_local_file",
+            });
             const reference = response.attachment;
             const referenceFile =
                 file ??
@@ -447,7 +455,7 @@ const AIPanelCompatInner = memo(() => {
             await model.addReferencedFile(referenceFile, reference, reference.path);
             return reference;
         },
-        [model, repoRoot],
+        [model, repoRoot, workspaceId],
     );
 
     const attachLocalFiles = useCallback(
@@ -605,7 +613,10 @@ const AIPanelCompatInner = memo(() => {
                     conversationFacade,
                     prompt: pendingApproval.prompt,
                     command: pendingApproval.command,
-                    context: pendingApproval.conversationContext,
+                    context: {
+                        ...pendingApproval.conversationContext,
+                        action_source: "ai.panel.run_command.explain",
+                    },
                     approvalUsed: true,
                     executionResult,
                 });
@@ -671,8 +682,8 @@ const AIPanelCompatInner = memo(() => {
 
             try {
                 const facade = await getConversationFacade();
-                const context = buildCompatConversationContext(repoRoot);
-                const toolContext = buildToolExecutionContext(repoRoot);
+                const context = buildCompatConversationContext(repoRoot, "ai.panel.submit_message");
+                const toolContext = buildToolExecutionContext(repoRoot, "ai.panel.run_command");
                 const runCommand = parseRunCommandPrompt(input);
                 if (runCommand?.kind === "invalid") {
                     model.setError(runCommand.message);
@@ -696,7 +707,10 @@ const AIPanelCompatInner = memo(() => {
                             summary: executionResult.pendingApproval.summary,
                             approvalTier: executionResult.pendingApproval.approval_tier,
                             toolContext,
-                            conversationContext: buildConversationContextFromToolContext(toolContext),
+                            conversationContext: buildConversationContextFromToolContext(
+                                toolContext,
+                                "ai.panel.run_command.explain",
+                            ),
                         };
                         storePendingRunApproval(pendingApproval);
                         setPendingRunApprovals((previous) => [
@@ -713,7 +727,7 @@ const AIPanelCompatInner = memo(() => {
                         conversationFacade: facade,
                         prompt: runCommand.prompt,
                         command: runCommand.command,
-                        context,
+                        context: buildConversationContextFromToolContext(toolContext, "ai.panel.run_command.explain"),
                         executionResult,
                     });
                     return;

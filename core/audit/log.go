@@ -30,6 +30,7 @@ type Event struct {
 	Error                 string    `json:"error,omitempty"`
 	Timestamp             time.Time `json:"timestamp"`
 	ApprovalUsed          bool      `json:"approval_used,omitempty"`
+	ActionSource          string    `json:"action_source,omitempty"`
 	TargetSession         string    `json:"target_session,omitempty"`
 	TargetConnectionID    string    `json:"target_connection_id,omitempty"`
 	AffectedPaths         []string  `json:"affected_paths,omitempty"`

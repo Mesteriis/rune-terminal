@@ -19,6 +19,7 @@ func (e *Executor) appendAudit(prepared *preparedExecution, success bool, errorT
 		Success:               success,
 		Error:                 errorText,
 		ApprovalUsed:          prepared.hasApproval,
+		ActionSource:          prepared.envelope.Context.ActionSource,
 		TargetSession:         prepared.envelope.Context.TargetSession,
 		TargetConnectionID:    prepared.envelope.Context.TargetConnectionID,
 		AffectedPaths:         prepared.plan.AffectedPaths,

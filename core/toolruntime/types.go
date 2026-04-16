@@ -30,6 +30,7 @@ type ExecutionContext struct {
 	WorkspaceID        string `json:"workspace_id,omitempty"`
 	RepoRoot           string `json:"repo_root,omitempty"`
 	ActiveWidgetID     string `json:"active_widget_id,omitempty"`
+	ActionSource       string `json:"action_source,omitempty"`
 	TargetSession      string `json:"target_session,omitempty"`
 	TargetConnectionID string `json:"target_connection_id,omitempty"`
 	RoleID             string `json:"role_id,omitempty"`

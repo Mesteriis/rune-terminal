@@ -63,6 +63,7 @@ func TestSubmitConversationPromptUsesSelectionPromptAndContext(t *testing.T) {
 		WorkspaceID:          "ws-default",
 		RepoRoot:             "/repo",
 		ActiveWidgetID:       "term_boot",
+		ActionSource:         "test.ai.submit",
 		TargetSession:        "remote",
 		TargetConnectionID:   "conn-ssh-prod",
 		WidgetContextEnabled: true,
@@ -90,6 +91,9 @@ func TestSubmitConversationPromptUsesSelectionPromptAndContext(t *testing.T) {
 	}
 	if events[0].ToolName != "agent.conversation" || !events[0].Success {
 		t.Fatalf("unexpected audit event: %#v", events[0])
+	}
+	if events[0].ActionSource != "test.ai.submit" {
+		t.Fatalf("expected action source in audit, got %#v", events[0])
 	}
 }
 

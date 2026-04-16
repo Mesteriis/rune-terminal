@@ -49,12 +49,13 @@ export function formatAuditTimestamp(timestamp: string): string {
     return date.toLocaleString();
 }
 
-export function buildToolExecutionContext(repoRoot: string) {
+export function buildToolExecutionContext(repoRoot: string, actionSource?: string) {
     const activeContext = getActiveWorkspaceContext();
     return {
         workspace_id: activeContext.workspaceID || undefined,
         active_widget_id: activeContext.activeWidgetID || undefined,
         repo_root: repoRoot || undefined,
+        action_source: actionSource?.trim() || undefined,
         target_session: activeContext.activeTerminalTarget?.targetSession,
         target_connection_id: activeContext.activeTerminalTarget?.targetConnectionID,
     };

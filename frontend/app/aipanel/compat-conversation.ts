@@ -65,8 +65,8 @@ export function mapConversationSnapshot(snapshot: ConversationSnapshot | null | 
     return mapConversationMessages(snapshot?.messages);
 }
 
-export function buildCompatConversationContext(repoRoot: string): ConversationContext {
-    const context = buildToolExecutionContext(repoRoot);
+export function buildCompatConversationContext(repoRoot: string, actionSource?: string): ConversationContext {
+    const context = buildToolExecutionContext(repoRoot, actionSource);
     return {
         ...context,
         widget_context_enabled: context.active_widget_id != null,

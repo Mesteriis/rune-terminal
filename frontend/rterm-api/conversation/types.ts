@@ -41,6 +41,7 @@ export interface ConversationContext {
   workspace_id?: string;
   repo_root?: string;
   active_widget_id?: string;
+  action_source?: string;
   target_session?: string;
   target_connection_id?: string;
   widget_context_enabled?: boolean;
@@ -75,6 +76,8 @@ export interface ExplainTerminalCommandResponse {
 
 export interface CreateAttachmentReferenceRequest {
   path: string;
+  workspace_id?: string;
+  action_source?: string;
 }
 
 export interface CreateAttachmentReferenceResponse {

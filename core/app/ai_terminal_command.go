@@ -92,6 +92,7 @@ func (r *Runtime) ExplainTerminalCommand(
 		SecurityPosture:    profile.SecurityPosture,
 		AffectedWidgets:    affectedWidgets(widgetID),
 		ApprovalUsed:       approvalUsed,
+		ActionSource:       conversationContext.ActionSource,
 		TargetSession:      targetSession,
 		TargetConnectionID: targetConnectionID,
 		Success:            !providerFailed,

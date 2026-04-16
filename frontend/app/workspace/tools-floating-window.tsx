@@ -252,6 +252,8 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
                 server_id: mcpInvokeServerID,
                 payload,
                 allow_on_demand_start: mcpAllowOnDemandStart,
+                action_source: "workspace.tools.mcp_invoke",
+                workspace_id: activeContext.workspaceID || undefined,
             });
             setMCPInvokeResult(result);
             await refreshMCPServers();
@@ -342,7 +344,7 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
             const request: ToolExecutionRequest = {
                 tool_name: selectedTool.name,
                 input: parsedInput,
-                context: buildToolExecutionContext(repoRoot),
+                context: buildToolExecutionContext(repoRoot, "workspace.tools.execute"),
             };
             const response = await facade.executeTool(request);
             setResponseValue(response);

@@ -16,6 +16,7 @@ export interface AuditEvent {
   error?: string;
   timestamp: string;
   approval_used?: boolean;
+  action_source?: string;
   target_session?: string;
   target_connection_id?: string;
   affected_paths?: string[];

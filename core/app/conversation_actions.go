@@ -13,6 +13,7 @@ type ConversationContext struct {
 	WorkspaceID          string `json:"workspace_id,omitempty"`
 	RepoRoot             string `json:"repo_root,omitempty"`
 	ActiveWidgetID       string `json:"active_widget_id,omitempty"`
+	ActionSource         string `json:"action_source,omitempty"`
 	TargetSession        string `json:"target_session,omitempty"`
 	TargetConnectionID   string `json:"target_connection_id,omitempty"`
 	WidgetContextEnabled bool   `json:"widget_context_enabled,omitempty"`
@@ -66,6 +67,7 @@ func (r *Runtime) SubmitConversationPrompt(
 		SecurityPosture: profile.SecurityPosture,
 		Success:         result.ProviderError == "",
 		Error:           result.ProviderError,
+		ActionSource:    conversationContext.ActionSource,
 		AffectedWidgets: affectedWidgets(conversationContext.ActiveWidgetID),
 	})
 

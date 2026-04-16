@@ -287,6 +287,7 @@ func TestExecutorCarriesExplicitRoleAndModeInExecutionContextAndAudit(t *testing
 			WorkspaceID:        "workspace-1",
 			RoleID:             "frontend-spoofed-role",
 			ModeID:             "frontend-spoofed-mode",
+			ActionSource:       "test.tools.execute",
 			TargetSession:      "remote",
 			TargetConnectionID: "conn-ssh",
 		},
@@ -323,6 +324,9 @@ func TestExecutorCarriesExplicitRoleAndModeInExecutionContextAndAudit(t *testing
 	}
 	if events[0].TargetSession != "remote" || events[0].TargetConnectionID != "conn-ssh" {
 		t.Fatalf("expected target session in audit, got %#v", events[0])
+	}
+	if events[0].ActionSource != "test.tools.execute" {
+		t.Fatalf("expected action source in audit, got %#v", events[0])
 	}
 }
 

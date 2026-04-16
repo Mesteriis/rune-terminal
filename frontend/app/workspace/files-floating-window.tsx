@@ -1,6 +1,7 @@
 import { getFSFacade } from "@/compat";
 import { getConversationFacade } from "@/compat/conversation";
 import { WaveAIModel } from "@/app/aipanel/waveai-model";
+import { workspaceStore } from "@/app/state/workspace.store";
 import { globalStore } from "@/app/store/jotaiStore";
 import type { FSNode } from "@/rterm-api/fs/types";
 import type { FloatingWindowProps } from "@/app/workspace/widget-types";
@@ -128,7 +129,12 @@ const FilesFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floatin
         setAttachError(null);
         try {
             const conversationFacade = await getConversationFacade();
-            const response = await conversationFacade.createAttachmentReference({ path: filePath });
+            const workspaceID = workspaceStore.getSnapshot().active.oid?.trim() || undefined;
+            const response = await conversationFacade.createAttachmentReference({
+                path: filePath,
+                workspace_id: workspaceID,
+                action_source: "workspace.files.attach_to_ai",
+            });
             const reference = response.attachment;
             const model = WaveAIModel.getInstance();
             const attachmentFile = new File([], reference.name, {

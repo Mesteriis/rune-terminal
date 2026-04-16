@@ -47,6 +47,8 @@ type MCPInvokeRequest struct {
 	Payload            json.RawMessage `json:"payload,omitempty"`
 	AllowOnDemandStart bool            `json:"allow_on_demand_start,omitempty"`
 	IncludeContext     bool            `json:"include_context,omitempty"`
+	ActionSource       string          `json:"action_source,omitempty"`
+	WorkspaceID        string          `json:"workspace_id,omitempty"`
 }
 
 type MCPInvokeResult struct {

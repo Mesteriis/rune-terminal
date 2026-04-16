@@ -1,17 +1,21 @@
 package app
 
 import (
+	"fmt"
 	"mime"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/Mesteriis/rune-terminal/core/audit"
 	"github.com/Mesteriis/rune-terminal/core/conversation"
 	"github.com/Mesteriis/rune-terminal/internal/ids"
 )
 
 type CreateAttachmentReferenceRequest struct {
-	Path string `json:"path"`
+	Path         string `json:"path"`
+	WorkspaceID  string `json:"workspace_id,omitempty"`
+	ActionSource string `json:"action_source,omitempty"`
 }
 
 func (r *Runtime) CreateAttachmentReference(
@@ -44,12 +48,23 @@ func (r *Runtime) CreateAttachmentReference(
 		mimeType = "application/octet-stream"
 	}
 
-	return conversation.AttachmentReference{
+	reference := conversation.AttachmentReference{
 		ID:           ids.New("att"),
 		Name:         name,
 		Path:         normalizedPath,
 		MimeType:     mimeType,
 		Size:         info.Size(),
 		ModifiedTime: info.ModTime().UTC().Unix(),
-	}, nil
+	}
+
+	_ = r.Audit.Append(audit.Event{
+		ToolName:      "agent.attachment_reference",
+		Summary:       fmt.Sprintf("create attachment reference: %s", trimSummary(name)),
+		WorkspaceID:   strings.TrimSpace(request.WorkspaceID),
+		ActionSource:  strings.TrimSpace(request.ActionSource),
+		Success:       true,
+		AffectedPaths: []string{normalizedPath},
+	})
+
+	return reference, nil
 }

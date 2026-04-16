@@ -21,6 +21,8 @@ export interface MCPInvokeRequest {
   payload?: Record<string, unknown>;
   allow_on_demand_start?: boolean;
   include_context?: boolean;
+  action_source?: string;
+  workspace_id?: string;
 }
 
 export interface MCPContextPayload {

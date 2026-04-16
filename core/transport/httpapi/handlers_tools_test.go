@@ -203,6 +203,7 @@ func TestExecuteToolAcceptsSessionTargetFieldsAtTransportBoundary(t *testing.T) 
 		toolruntime.EmptyDecode,
 		func(ctx context.Context, execCtx toolruntime.ExecutionContext, input any) (any, error) {
 			return map[string]any{
+				"action_source":        execCtx.ActionSource,
 				"target_session":       execCtx.TargetSession,
 				"target_connection_id": execCtx.TargetConnectionID,
 			}, nil
@@ -221,6 +222,7 @@ func TestExecuteToolAcceptsSessionTargetFieldsAtTransportBoundary(t *testing.T) 
 			"workspace_id":         "ws-local",
 			"active_widget_id":     "term-main",
 			"repo_root":            "/workspace/repo",
+			"action_source":        "test.tools.execute",
 			"target_session":       "remote",
 			"target_connection_id": "conn-ssh",
 		},
@@ -228,6 +230,18 @@ func TestExecuteToolAcceptsSessionTargetFieldsAtTransportBoundary(t *testing.T) 
 
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d (%s)", recorder.Code, recorder.Body.String())
+	}
+
+	var response toolruntime.ExecuteResponse
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	output, ok := response.Output.(map[string]any)
+	if !ok {
+		t.Fatalf("expected response output object, got %#v", response.Output)
+	}
+	if output["action_source"] != "test.tools.execute" {
+		t.Fatalf("expected action_source to propagate into execution context, got %#v", output)
 	}
 }
 

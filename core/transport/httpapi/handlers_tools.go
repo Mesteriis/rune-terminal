@@ -18,6 +18,7 @@ type executeToolRequestContext struct {
 	WorkspaceID        string `json:"workspace_id,omitempty"`
 	RepoRoot           string `json:"repo_root,omitempty"`
 	ActiveWidgetID     string `json:"active_widget_id,omitempty"`
+	ActionSource       string `json:"action_source,omitempty"`
 	TargetSession      string `json:"target_session,omitempty"`
 	TargetConnectionID string `json:"target_connection_id,omitempty"`
 }
@@ -42,6 +43,7 @@ func (c executeToolRequestContext) executionContext() toolruntime.ExecutionConte
 		WorkspaceID:        c.WorkspaceID,
 		RepoRoot:           c.RepoRoot,
 		ActiveWidgetID:     c.ActiveWidgetID,
+		ActionSource:       c.ActionSource,
 		TargetSession:      c.TargetSession,
 		TargetConnectionID: c.TargetConnectionID,
 	}

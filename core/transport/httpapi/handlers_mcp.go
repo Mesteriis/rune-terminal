@@ -80,6 +80,8 @@ type invokeMCPRequest struct {
 	Payload            json.RawMessage `json:"payload,omitempty"`
 	AllowOnDemandStart bool            `json:"allow_on_demand_start,omitempty"`
 	IncludeContext     bool            `json:"include_context,omitempty"`
+	ActionSource       string          `json:"action_source,omitempty"`
+	WorkspaceID        string          `json:"workspace_id,omitempty"`
 }
 
 func (api *API) handleInvokeMCP(w http.ResponseWriter, r *http.Request) {
@@ -93,6 +95,8 @@ func (api *API) handleInvokeMCP(w http.ResponseWriter, r *http.Request) {
 		Payload:            payload.Payload,
 		AllowOnDemandStart: payload.AllowOnDemandStart,
 		IncludeContext:     payload.IncludeContext,
+		ActionSource:       payload.ActionSource,
+		WorkspaceID:        payload.WorkspaceID,
 	})
 	if err != nil {
 		writeMCPError(w, err)

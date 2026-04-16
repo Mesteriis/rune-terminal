@@ -109,3 +109,54 @@ func TestInvokeMCPRespectsLifecycleControls(t *testing.T) {
 		t.Fatalf("expected explicit bounded context, got %#v", invokeResponse.Context)
 	}
 }
+
+func TestInvokeMCPAppendsAuditWithExplicitProvenance(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+
+	invokeRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(invokeRecorder, authedJSONRequest(t, http.MethodPost, "/api/v1/mcp/invoke", map[string]any{
+		"server_id":             "mcp.test",
+		"allow_on_demand_start": true,
+		"action_source":         "test.mcp.invoke",
+		"workspace_id":          "ws-default",
+	}))
+	if invokeRecorder.Code != http.StatusOK {
+		t.Fatalf("expected invoke=200, got %d (%s)", invokeRecorder.Code, invokeRecorder.Body.String())
+	}
+
+	auditRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(auditRecorder, authedJSONRequest(t, http.MethodGet, "/api/v1/audit?limit=10", nil))
+	if auditRecorder.Code != http.StatusOK {
+		t.Fatalf("expected audit=200, got %d (%s)", auditRecorder.Code, auditRecorder.Body.String())
+	}
+
+	var auditResponse struct {
+		Events []struct {
+			ToolName     string `json:"tool_name"`
+			ActionSource string `json:"action_source"`
+			WorkspaceID  string `json:"workspace_id"`
+		} `json:"events"`
+	}
+	if err := json.Unmarshal(auditRecorder.Body.Bytes(), &auditResponse); err != nil {
+		t.Fatalf("unmarshal audit response: %v", err)
+	}
+
+	var invokeAudit *struct {
+		ToolName     string `json:"tool_name"`
+		ActionSource string `json:"action_source"`
+		WorkspaceID  string `json:"workspace_id"`
+	}
+	for i := range auditResponse.Events {
+		if auditResponse.Events[i].ToolName == "mcp.invoke" {
+			invokeAudit = &auditResponse.Events[i]
+		}
+	}
+	if invokeAudit == nil {
+		t.Fatalf("expected mcp.invoke audit event, got %#v", auditResponse.Events)
+	}
+	if invokeAudit.ActionSource != "test.mcp.invoke" || invokeAudit.WorkspaceID != "ws-default" {
+		t.Fatalf("expected explicit mcp provenance fields, got %#v", *invokeAudit)
+	}
+}

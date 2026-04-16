@@ -89,6 +89,7 @@ func TestExplainTerminalCommandAppendsAssistantSummary(t *testing.T) {
 		WorkspaceID:          "ws-default",
 		RepoRoot:             "/repo",
 		ActiveWidgetID:       "term_boot",
+		ActionSource:         "test.terminal.explain",
 		WidgetContextEnabled: true,
 	})
 	if err != nil {
@@ -135,6 +136,9 @@ func TestExplainTerminalCommandAppendsAssistantSummary(t *testing.T) {
 	}
 	if events[0].TargetSession != "local" || events[0].TargetConnectionID != "local" {
 		t.Fatalf("expected local target session audit fields, got %#v", events[0])
+	}
+	if events[0].ActionSource != "test.terminal.explain" {
+		t.Fatalf("expected action source in explain audit, got %#v", events[0])
 	}
 }
 
