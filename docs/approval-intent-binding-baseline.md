@@ -49,3 +49,30 @@
 - no UI redesign or approval UX rewrite
 - no broader policy-model rewrite
 - no remote-execution or plugin-contract expansion
+
+## Minimal execution intent binding
+
+The minimal approval binding for the current runtime is:
+
+- `tool_name`
+- normalized decoded tool `input`
+- normalized execution `context`
+  - `workspace_id`
+  - `repo_root`
+  - `active_widget_id`
+
+Why this is the minimal safe shape:
+
+- `tool_name` alone is insufficient because the same tool can execute materially different actions.
+- decoded `input` is part of execution identity because it determines what the tool actually does.
+- execution `context` is part of execution identity because current tools and planners can resolve behavior from workspace/widget/repo scope.
+
+What is intentionally not included:
+
+- prompt profile / role / mode
+  - they still affect live policy evaluation on retry
+  - they are not required to distinguish one execution request from another in the current transport contract
+- audit metadata
+  - it is derived from execution and policy evaluation, not the execution intent itself
+- terminal output or explain payloads
+  - they happen after execution and are outside approval identity
