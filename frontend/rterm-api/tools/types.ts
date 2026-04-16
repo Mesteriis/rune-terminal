@@ -44,6 +44,12 @@ export interface ToolExecutionOutput {
   [key: string]: unknown;
 }
 
+export interface ApprovalGrant {
+  approval_id: string;
+  approval_token: string;
+  expires_at: string;
+}
+
 export interface PendingApproval {
   id: string;
   tool_name: string;

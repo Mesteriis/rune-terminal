@@ -48,11 +48,7 @@ export function createToolsFacade(client: ToolsClient, bootstrapClient: Bootstra
       return client.executeTool(payload);
     },
     confirmApproval(approvalId: string, context?: ToolExecutionContext): Promise<ToolExecutionResponse> {
-      return client.executeTool({
-        tool_name: "safety.confirm",
-        input: { approval_id: approvalId },
-        context,
-      });
+      return client.confirmApproval(approvalId, context);
     },
   };
 }

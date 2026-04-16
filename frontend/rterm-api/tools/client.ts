@@ -1,4 +1,10 @@
-import type { ToolExecutionRequest, ToolExecutionResponse, ToolsListResponse } from "./types";
+import type {
+  ApprovalGrant,
+  ToolExecutionContext,
+  ToolExecutionRequest,
+  ToolExecutionResponse,
+  ToolsListResponse,
+} from "./types";
 import { ApiError } from "../http/errors";
 import { HttpClient } from "../http/client";
 
@@ -8,6 +14,24 @@ function isObject(value: unknown): value is Record<string, unknown> {
 
 function isToolExecutionResponse(value: unknown): value is ToolExecutionResponse {
   return isObject(value) && typeof value.status === "string";
+}
+
+export function getApprovalGrant(response: ToolExecutionResponse): ApprovalGrant | null {
+  const output = response.output;
+  if (!isObject(output)) {
+    return null;
+  }
+  const approvalID = output.approval_id;
+  const approvalToken = output.approval_token;
+  const expiresAt = output.expires_at;
+  if (typeof approvalID !== "string" || typeof approvalToken !== "string" || typeof expiresAt !== "string") {
+    return null;
+  }
+  return {
+    approval_id: approvalID,
+    approval_token: approvalToken,
+    expires_at: expiresAt,
+  };
 }
 
 export class ToolsClient {
@@ -28,5 +52,13 @@ export class ToolsClient {
       }
       throw error;
     }
+  }
+
+  confirmApproval(approvalId: string, context?: ToolExecutionContext): Promise<ToolExecutionResponse> {
+    return this.executeTool({
+      tool_name: "safety.confirm",
+      input: { approval_id: approvalId },
+      context,
+    });
   }
 }
