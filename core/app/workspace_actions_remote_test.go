@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/Mesteriis/rune-terminal/core/connections"
 )
@@ -82,5 +83,74 @@ func TestCreateRemoteTerminalTabCreatesSSHBoundWidget(t *testing.T) {
 	}
 	if state.ConnectionID != connection.ID {
 		t.Fatalf("expected ssh connection id %q, got %q", connection.ID, state.ConnectionID)
+	}
+}
+
+func TestRemoteTerminalSessionPersistsAcrossTabSwitches(t *testing.T) {
+	t.Parallel()
+
+	process := &launchTestProcess{
+		pid:      103,
+		outputCh: make(chan []byte, 2),
+		waitCh:   make(chan struct{}),
+		exitCode: 0,
+	}
+	process.outputCh <- []byte("remote@fixture:~$ ")
+	runtime := newLaunchRuntime(t, process)
+
+	connection, _, err := runtime.Connections.SaveSSH(connections.SaveSSHInput{
+		Name: "Switch Test SSH",
+		Host: "switch.example.com",
+		User: "deploy",
+	})
+	if err != nil {
+		t.Fatalf("save ssh connection: %v", err)
+	}
+
+	result, err := runtime.CreateRemoteTerminalTab(context.Background(), "Remote Persist", connection.ID)
+	if err != nil {
+		t.Fatalf("CreateRemoteTerminalTab error: %v", err)
+	}
+	waitForTerminalChunks(t, runtime, result.WidgetID, 1)
+
+	beforeSwitch, err := runtime.Terminals.Snapshot(result.WidgetID, 0)
+	if err != nil {
+		t.Fatalf("snapshot before switch: %v", err)
+	}
+	if len(beforeSwitch.Chunks) == 0 {
+		t.Fatalf("expected remote chunks before switch")
+	}
+
+	if _, err := runtime.FocusTab("tab-main"); err != nil {
+		t.Fatalf("focus local tab: %v", err)
+	}
+	if _, err := runtime.FocusTab(result.TabID); err != nil {
+		t.Fatalf("focus remote tab: %v", err)
+	}
+
+	afterSwitch, err := runtime.Terminals.Snapshot(result.WidgetID, 0)
+	if err != nil {
+		t.Fatalf("snapshot after switch: %v", err)
+	}
+	if afterSwitch.State.ConnectionKind != "ssh" {
+		t.Fatalf("expected ssh connection kind after switch, got %q", afterSwitch.State.ConnectionKind)
+	}
+	if len(afterSwitch.Chunks) < len(beforeSwitch.Chunks) {
+		t.Fatalf("expected remote chunk persistence across tab switch, before=%d after=%d", len(beforeSwitch.Chunks), len(afterSwitch.Chunks))
+	}
+}
+
+func waitForTerminalChunks(t *testing.T, runtime *Runtime, widgetID string, expected int) {
+	t.Helper()
+	deadline := time.Now().Add(300 * time.Millisecond)
+	for {
+		snapshot, err := runtime.Terminals.Snapshot(widgetID, 0)
+		if err == nil && len(snapshot.Chunks) >= expected {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("timed out waiting for terminal chunks on %s", widgetID)
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
 }

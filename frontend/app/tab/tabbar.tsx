@@ -223,6 +223,15 @@ function setIsEqual(a: Set<string> | null, b: Set<string> | null): boolean {
     return true;
 }
 
+function isLocalConnectionID(connectionId: string | undefined): boolean {
+    return (
+        connectionId == null ||
+        connectionId === "" ||
+        connectionId === "local" ||
+        connectionId.startsWith("local:")
+    );
+}
+
 const TabBar = memo(({ workspace, compatMode = false }: TabBarProps) => {
     const [tabIds, setTabIds] = useState<string[]>([]);
     const [pinnedTabIds, setPinnedTabIds] = useState<Set<string>>(new Set());
@@ -708,8 +717,13 @@ const TabBar = memo(({ workspace, compatMode = false }: TabBarProps) => {
     };
 
     const handleAddRemoteTab = () => {
+        const activeWidget = workspace?.widgets?.[workspace?.activewidgetid ?? ""];
+        const preferredConnectionID =
+            activeWidget?.connectionId != null && !isLocalConnectionID(activeWidget.connectionId)
+                ? activeWidget.connectionId
+                : undefined;
         fireAndForget(() =>
-            workspaceStore.createRemoteTerminalTab().catch((error) => {
+            workspaceStore.createRemoteTerminalTab(preferredConnectionID).catch((error) => {
                 console.warn("failed to create remote terminal tab", error);
             })
         );
