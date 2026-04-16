@@ -1,4 +1,4 @@
-import type { SendInputRequest, SendInputResponse, TerminalSnapshot } from "./types";
+import type { RestartSessionResponse, SendInputRequest, SendInputResponse, TerminalSnapshot } from "./types";
 import { HttpClient } from "../http/client";
 import { consumeTerminalStreamViaClient, buildTerminalStreamUrl } from "../http/sse";
 import type { TerminalStreamEvents } from "../http/sse";
@@ -23,6 +23,10 @@ export class TerminalClient {
       `/api/v1/terminal/${encodeURIComponent(widgetId)}/input`,
       { body: payload },
     );
+  }
+
+  restartSession(widgetId: string): Promise<RestartSessionResponse> {
+    return this.http.post<RestartSessionResponse>(`/api/v1/terminal/${encodeURIComponent(widgetId)}/restart`);
   }
 
   getStreamUrl(widgetId: string, options: TerminalStreamRequestOptions = {}): string {

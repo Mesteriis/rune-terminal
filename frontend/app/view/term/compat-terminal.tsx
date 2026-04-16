@@ -29,12 +29,33 @@ export function CompatTerminalView({ widgetId, connectionId }: CompatTerminalVie
     const rootRef = useRef<HTMLDivElement>(null);
     const connectElemRef = useRef<HTMLDivElement>(null);
     const termWrapRef = useRef<TermWrap | null>(null);
+    const lifecyclePollingActiveRef = useRef(false);
     const [explainBusy, setExplainBusy] = useState(false);
     const [explainStatus, setExplainStatus] = useState<string | null>(null);
     const [explainError, setExplainError] = useState<string | null>(null);
+    const [restartBusy, setRestartBusy] = useState(false);
+    const [restartStatus, setRestartStatus] = useState<string | null>(null);
+    const [restartError, setRestartError] = useState<string | null>(null);
     const [lifecycleSnapshot, setLifecycleSnapshot] = useState<TerminalSnapshot | null>(null);
     const [lifecycleError, setLifecycleError] = useState<string | null>(null);
     const isRemoteTerminal = !isLocalConnection(connectionId);
+
+    const refreshLifecycle = async () => {
+        try {
+            const facade = await getTerminalFacade();
+            const snapshot = await facade.getSnapshot(widgetId);
+            if (!lifecyclePollingActiveRef.current) {
+                return;
+            }
+            setLifecycleSnapshot(snapshot);
+            setLifecycleError(null);
+        } catch (error) {
+            if (!lifecyclePollingActiveRef.current) {
+                return;
+            }
+            setLifecycleError(error instanceof Error ? error.message : String(error));
+        }
+    };
 
     useEffect(() => {
         if (connectElemRef.current == null) {
@@ -84,29 +105,13 @@ export function CompatTerminalView({ widgetId, connectionId }: CompatTerminalVie
         if (!widgetId) {
             return;
         }
-        let cancelled = false;
-        const refreshLifecycle = async () => {
-            try {
-                const facade = await getTerminalFacade();
-                const snapshot = await facade.getSnapshot(widgetId);
-                if (cancelled) {
-                    return;
-                }
-                setLifecycleSnapshot(snapshot);
-                setLifecycleError(null);
-            } catch (error) {
-                if (cancelled) {
-                    return;
-                }
-                setLifecycleError(error instanceof Error ? error.message : String(error));
-            }
-        };
+        lifecyclePollingActiveRef.current = true;
         void refreshLifecycle();
         const intervalID = window.setInterval(() => {
             void refreshLifecycle();
         }, 4000);
         return () => {
-            cancelled = true;
+            lifecyclePollingActiveRef.current = false;
             window.clearInterval(intervalID);
         };
     }, [widgetId]);
@@ -116,15 +121,40 @@ export function CompatTerminalView({ widgetId, connectionId }: CompatTerminalVie
     }
 
     const lifecycleStatus = lifecycleSnapshot?.state.status ?? "unknown";
+    const restoredSession = lifecycleSnapshot?.state.restored === true;
     const isConnected = lifecycleStatus === "running";
-    const lifecycleLabel = isConnected ? "connected" : lifecycleStatus === "unknown" ? "status unknown" : "disconnected";
-    const lifecycleColorClass = isConnected ? "text-emerald-300" : "text-amber-300";
+    const lifecycleLabel = isConnected
+        ? (restoredSession ? "restored" : "connected")
+        : lifecycleStatus === "unknown" ? "status unknown" : "disconnected";
+    const lifecycleColorClass = isConnected ? (restoredSession ? "text-cyan-300" : "text-emerald-300") : "text-amber-300";
     const lifecycleDetail = lifecycleError
+        ?? (restoredSession ? "session was recreated from persisted tab metadata after runtime restart" : null)
         ?? (lifecycleSnapshot?.state.status === "failed"
             ? "session failed"
             : lifecycleSnapshot?.state.status === "exited"
                 ? `session exited${lifecycleSnapshot.state.exit_code != null ? ` (code ${lifecycleSnapshot.state.exit_code})` : ""}`
                 : null);
+
+    const restartSession = async () => {
+        if (restartBusy) {
+            return;
+        }
+        setRestartBusy(true);
+        setRestartStatus(null);
+        setRestartError(null);
+        try {
+            const facade = await getTerminalFacade();
+            await facade.restartSession(widgetId);
+            await terminalStore.refresh(widgetId);
+            terminalStore.startStream(widgetId, 0);
+            await refreshLifecycle();
+            setRestartStatus("Session restarted explicitly.");
+        } catch (error) {
+            setRestartError(error instanceof Error ? error.message : String(error));
+        } finally {
+            setRestartBusy(false);
+        }
+    };
 
     const explainLatestCommandOutput = async () => {
         if (explainBusy) {
@@ -207,6 +237,17 @@ export function CompatTerminalView({ widgetId, connectionId }: CompatTerminalVie
                 <button
                     type="button"
                     className="px-2 py-1 text-[11px] rounded border border-border bg-black/30 text-secondary hover:text-white disabled:opacity-50"
+                    disabled={restartBusy}
+                    onClick={(event) => {
+                        event.stopPropagation();
+                        void restartSession();
+                    }}
+                >
+                    {restartBusy ? "Restarting..." : isRemoteTerminal ? "Reconnect Session" : "Restart Session"}
+                </button>
+                <button
+                    type="button"
+                    className="px-2 py-1 text-[11px] rounded border border-border bg-black/30 text-secondary hover:text-white disabled:opacity-50"
                     disabled={explainBusy}
                     onClick={(event) => {
                         event.stopPropagation();
@@ -215,6 +256,8 @@ export function CompatTerminalView({ widgetId, connectionId }: CompatTerminalVie
                 >
                     {explainBusy ? "Sending..." : isRemoteTerminal ? "Explain Remote Command In AI" : "Explain Latest Output In AI"}
                 </button>
+                {restartStatus ? <div className="text-[10px] text-emerald-300 max-w-[24rem] text-right">{restartStatus}</div> : null}
+                {restartError ? <div className="text-[10px] text-red-300 max-w-[24rem] text-right">{restartError}</div> : null}
                 {explainStatus ? <div className="text-[10px] text-emerald-300 max-w-[24rem] text-right">{explainStatus}</div> : null}
                 {explainError ? <div className="text-[10px] text-red-300 max-w-[24rem] text-right">{explainError}</div> : null}
             </div>

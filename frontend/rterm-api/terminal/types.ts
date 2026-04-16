@@ -2,6 +2,7 @@ export interface TerminalState {
   widget_id: string;
   session_id: string;
   shell: string;
+  restored?: boolean;
   connection_id?: string;
   connection_name?: string;
   connection_kind?: string;
@@ -36,4 +37,8 @@ export interface SendInputResponse {
   widget_id: string;
   bytes_sent: number;
   append_newline: boolean;
+}
+
+export interface RestartSessionResponse {
+  state: TerminalState;
 }

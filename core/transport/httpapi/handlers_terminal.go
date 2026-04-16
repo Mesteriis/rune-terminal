@@ -37,6 +37,15 @@ func (api *API) handleTerminalSnapshot(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, snapshot)
 }
 
+func (api *API) handleTerminalRestart(w http.ResponseWriter, r *http.Request) {
+	state, err := api.runtime.RestartTerminalSession(r.Context(), r.PathValue("widgetID"))
+	if err != nil {
+		writeTerminalError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"state": state})
+}
+
 func (api *API) handleTerminalStream(w http.ResponseWriter, r *http.Request) {
 	widgetID := r.PathValue("widgetID")
 	from := uint64(parseInt(r.URL.Query().Get("from"), 0))

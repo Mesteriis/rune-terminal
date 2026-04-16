@@ -109,6 +109,7 @@ func (r *Runtime) bootstrapSessions(ctx context.Context) error {
 			WidgetID:   widget.ID,
 			WorkingDir: r.RepoRoot,
 			Connection: connection,
+			Restored:   true,
 		}); err != nil {
 			_, _, _ = r.Connections.ReportLaunchResult(widget.ConnectionID, err)
 			return err

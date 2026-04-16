@@ -19,6 +19,7 @@ type State struct {
 	WidgetID       string     `json:"widget_id"`
 	SessionID      string     `json:"session_id"`
 	Shell          string     `json:"shell"`
+	Restored       bool       `json:"restored,omitempty"`
 	ConnectionID   string     `json:"connection_id,omitempty"`
 	ConnectionName string     `json:"connection_name,omitempty"`
 	ConnectionKind string     `json:"connection_kind,omitempty"`
@@ -49,6 +50,7 @@ type LaunchOptions struct {
 	Shell      string
 	WorkingDir string
 	Connection ConnectionSpec
+	Restored   bool
 }
 
 type ConnectionSpec struct {
