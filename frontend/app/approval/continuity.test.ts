@@ -5,6 +5,9 @@ import {
     clearStoredPendingToolApproval,
     getStoredPendingRunApproval,
     getStoredPendingToolApproval,
+    isStalePendingApprovalError,
+    listStoredPendingRunApprovalsForWorkspace,
+    listStoredPendingToolApprovalsForWorkspace,
     replaceStoredPendingRunApproval,
     replaceStoredPendingToolApproval,
     resetApprovalContinuityState,
@@ -112,4 +115,99 @@ test("tool approval continuity binds approval token to the stored execution inte
     assert.isNull(getStoredPendingToolApproval("approval-tool-1"));
 
     clearStoredPendingToolApproval("approval-tool-1");
+});
+
+test("approval continuity filtering is scoped by workspace id", () => {
+    resetApprovalContinuityState();
+
+    storePendingRunApproval({
+        approvalId: "approval-run-ws-a",
+        prompt: "/run echo a",
+        command: "echo a",
+        summary: "send input a",
+        approvalTier: "dangerous",
+        toolContext: {
+            workspace_id: "ws-a",
+            active_widget_id: "term-main",
+            repo_root: "/repo-a",
+        },
+        conversationContext: {
+            workspace_id: "ws-a",
+            active_widget_id: "term-main",
+            repo_root: "/repo-a",
+            widget_context_enabled: true,
+        },
+    });
+    storePendingRunApproval({
+        approvalId: "approval-run-ws-b",
+        prompt: "/run echo b",
+        command: "echo b",
+        summary: "send input b",
+        approvalTier: "dangerous",
+        toolContext: {
+            workspace_id: "ws-b",
+            active_widget_id: "term-main",
+            repo_root: "/repo-b",
+        },
+        conversationContext: {
+            workspace_id: "ws-b",
+            active_widget_id: "term-main",
+            repo_root: "/repo-b",
+            widget_context_enabled: true,
+        },
+    });
+
+    storePendingToolApproval({
+        approval: {
+            id: "approval-tool-ws-a",
+            tool_name: "safety.add_ignore_rule",
+            summary: "a",
+            approval_tier: "dangerous",
+            created_at: "2026-04-16T00:00:00Z",
+            expires_at: "2026-04-16T00:10:00Z",
+        },
+        request: {
+            tool_name: "safety.add_ignore_rule",
+            input: { pattern: "a" },
+            context: {
+                workspace_id: "ws-a",
+                active_widget_id: "term-main",
+                repo_root: "/repo-a",
+            },
+        },
+    });
+    storePendingToolApproval({
+        approval: {
+            id: "approval-tool-ws-b",
+            tool_name: "safety.add_ignore_rule",
+            summary: "b",
+            approval_tier: "dangerous",
+            created_at: "2026-04-16T00:00:00Z",
+            expires_at: "2026-04-16T00:10:00Z",
+        },
+        request: {
+            tool_name: "safety.add_ignore_rule",
+            input: { pattern: "b" },
+            context: {
+                workspace_id: "ws-b",
+                active_widget_id: "term-main",
+                repo_root: "/repo-b",
+            },
+        },
+    });
+
+    assert.deepEqual(
+        listStoredPendingRunApprovalsForWorkspace("ws-a").map((entry) => entry.approvalId),
+        ["approval-run-ws-a"],
+    );
+    assert.deepEqual(
+        listStoredPendingToolApprovalsForWorkspace("ws-b").map((entry) => entry.approval.id),
+        ["approval-tool-ws-b"],
+    );
+});
+
+test("stale pending approval errors are recognized explicitly", () => {
+    assert.isTrue(isStalePendingApprovalError(new Error("pending approval not found: approval_123")));
+    assert.isTrue(isStalePendingApprovalError(new Error("pending approval expired: approval_456")));
+    assert.isFalse(isStalePendingApprovalError(new Error("approval token mismatch")));
 });

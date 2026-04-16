@@ -2,10 +2,12 @@ import { getToolsFacade } from "@/compat";
 import {
     bindApprovalRetryRequest,
     clearStoredPendingToolApproval,
-    listStoredPendingToolApprovals,
+    isStalePendingApprovalError,
+    listStoredPendingToolApprovalsForWorkspace,
     replaceStoredPendingToolApproval,
     storePendingToolApproval,
 } from "@/app/approval/continuity";
+import { workspaceStore } from "@/app/state/workspace.store";
 import { buildToolExecutionContext, formatJson, getApprovalToken } from "@/app/workspace/widget-helpers";
 import type { PendingToolApproval, ToolsFloatingWindowProps } from "@/app/workspace/widget-types";
 import type { ToolExecutionRequest, ToolExecutionResponse, ToolInfo } from "@/rterm-api/tools/types";
@@ -22,7 +24,10 @@ import clsx from "clsx";
 import { memo, useEffect, useState } from "react";
 
 const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditChanged }: ToolsFloatingWindowProps) => {
-    const [pendingApproval, setPendingApproval] = useState<PendingToolApproval | null>(() => listStoredPendingToolApprovals()[0] ?? null);
+    const getActiveWorkspaceID = () => workspaceStore.getSnapshot().active.oid;
+    const [pendingApproval, setPendingApproval] = useState<PendingToolApproval | null>(
+        () => listStoredPendingToolApprovalsForWorkspace(getActiveWorkspaceID())[0] ?? null,
+    );
     const [tools, setTools] = useState<ToolInfo[]>([]);
     const [selectedToolName, setSelectedToolName] = useState("");
     const [repoRoot, setRepoRoot] = useState("");
@@ -54,7 +59,7 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
         let cancelled = false;
         setLoading(true);
         setLoadError(null);
-        setPendingApproval(listStoredPendingToolApprovals()[0] ?? null);
+        setPendingApproval(listStoredPendingToolApprovalsForWorkspace(getActiveWorkspaceID())[0] ?? null);
 
         void (async () => {
             try {
@@ -161,7 +166,7 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
     };
 
     const handleConfirm = async () => {
-        const approvalContext = pendingApproval ?? listStoredPendingToolApprovals()[0] ?? null;
+        const approvalContext = pendingApproval ?? listStoredPendingToolApprovalsForWorkspace(getActiveWorkspaceID())[0] ?? null;
         if (approvalContext == null) {
             return;
         }
@@ -195,6 +200,12 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
                 setPendingApproval(null);
             }
         } catch (error) {
+            if (isStalePendingApprovalError(error)) {
+                clearStoredPendingToolApproval(approvalContext.approval.id);
+                setPendingApproval(null);
+                setExecuteError("Pending approval is no longer available. Execute the tool again to request approval.");
+                return;
+            }
             setExecuteError(error instanceof Error ? error.message : String(error));
         } finally {
             setIsConfirming(false);

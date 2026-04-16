@@ -2,11 +2,13 @@ import { waveAIHasSelection } from "@/app/aipanel/waveai-focus-utils";
 import {
     clearStoredPendingRunApproval,
     getStoredPendingRunApproval,
-    listStoredPendingRunApprovals,
+    isStalePendingApprovalError,
+    listStoredPendingRunApprovalsForWorkspace,
     replaceStoredPendingRunApproval,
     storePendingRunApproval,
     type StoredPendingRunApproval,
 } from "@/app/approval/continuity";
+import { workspaceStore } from "@/app/state/workspace.store";
 import { atoms, getSettingsKeyAtom } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import { buildToolExecutionContext } from "@/app/workspace/widget-helpers";
@@ -232,11 +234,12 @@ interface PendingRunApproval extends PendingRunApprovalEntry {
 const AIPanelCompatInner = memo(() => {
     const [messages, setMessages] = useState<WaveUIMessage[]>([]);
     const [pendingRunApprovals, setPendingRunApprovals] = useState<PendingRunApproval[]>(() =>
-        listStoredPendingRunApprovals().map(toPendingRunApprovalEntry),
+        listStoredPendingRunApprovalsForWorkspace(workspaceStore.getSnapshot().active.oid).map(toPendingRunApprovalEntry),
     );
     const [status, setStatus] = useState("ready");
     const [catalog, setCatalog] = useState<AgentCatalog | null>(null);
     const [repoRoot, setRepoRoot] = useState("");
+    const [workspaceId, setWorkspaceId] = useState(() => workspaceStore.getSnapshot().active.oid || "");
     const [isDragOver, setIsDragOver] = useState(false);
     const [isReactDndDragOver, setIsReactDndDragOver] = useState(false);
     const [initialLoadDone, setInitialLoadDone] = useState(false);
@@ -301,8 +304,15 @@ const AIPanelCompatInner = memo(() => {
 
             if (bootstrapResult.status === "fulfilled") {
                 setRepoRoot(bootstrapResult.value.repo_root ?? "");
+                const nextWorkspaceID = bootstrapResult.value.workspace?.id ?? workspaceStore.getSnapshot().active.oid ?? "";
+                setWorkspaceId(nextWorkspaceID);
+                setPendingRunApprovals(
+                    listStoredPendingRunApprovalsForWorkspace(nextWorkspaceID).map(toPendingRunApprovalEntry),
+                );
             } else {
                 setRepoRoot("");
+                setWorkspaceId("");
+                setPendingRunApprovals([]);
             }
 
             if (errors.length > 0) {
@@ -423,7 +433,13 @@ const AIPanelCompatInner = memo(() => {
                 pendingRunApprovals.find((approval) => approval.approvalId === approvalId) ??
                 (() => {
                     const storedApproval = getStoredPendingRunApproval(approvalId);
-                    return storedApproval == null ? null : toPendingRunApprovalEntry(storedApproval);
+                    if (storedApproval == null) {
+                        return null;
+                    }
+                    if (workspaceId && storedApproval.toolContext.workspace_id !== workspaceId) {
+                        return null;
+                    }
+                    return toPendingRunApprovalEntry(storedApproval);
                 })();
             if (pendingApproval == null || status !== "ready") {
                 return;
@@ -509,6 +525,12 @@ const AIPanelCompatInner = memo(() => {
                     executionResult,
                 });
             } catch (error) {
+                if (isStalePendingApprovalError(error)) {
+                    clearStoredPendingRunApproval(approvalId);
+                    setPendingRunApprovals((previous) => replacePendingRunApproval(previous, approvalId, null));
+                    model.setError("Pending approval is no longer available. Re-run the command to request approval again.");
+                    return;
+                }
                 setPendingRunApprovals((previous) =>
                     previous.map((approval) =>
                         approval.approvalId === approvalId
@@ -527,7 +549,7 @@ const AIPanelCompatInner = memo(() => {
                 }, 100);
             }
         },
-        [completeRunCommandExecution, model, pendingRunApprovals, status],
+        [completeRunCommandExecution, model, pendingRunApprovals, status, workspaceId],
     );
 
     const handleSubmit = useCallback(

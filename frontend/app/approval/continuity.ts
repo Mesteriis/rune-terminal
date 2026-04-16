@@ -19,8 +19,26 @@ export interface StoredPendingToolApproval {
 const pendingRunApprovals = new Map<string, StoredPendingRunApproval>();
 const pendingToolApprovals = new Map<string, StoredPendingToolApproval>();
 
+function normalizeWorkspaceID(workspaceID: string | null | undefined): string {
+    return workspaceID?.trim() ?? "";
+}
+
+function matchesWorkspaceScope(entryWorkspaceID: string | null | undefined, workspaceID: string | null | undefined): boolean {
+    const targetWorkspaceID = normalizeWorkspaceID(workspaceID);
+    if (targetWorkspaceID === "") {
+        return true;
+    }
+    return normalizeWorkspaceID(entryWorkspaceID) === targetWorkspaceID;
+}
+
 export function listStoredPendingRunApprovals(): StoredPendingRunApproval[] {
     return Array.from(pendingRunApprovals.values());
+}
+
+export function listStoredPendingRunApprovalsForWorkspace(workspaceID: string | null | undefined): StoredPendingRunApproval[] {
+    return listStoredPendingRunApprovals().filter((approval) =>
+        matchesWorkspaceScope(approval.toolContext.workspace_id, workspaceID),
+    );
 }
 
 export function getStoredPendingRunApproval(approvalId: string): StoredPendingRunApproval | null {
@@ -47,6 +65,12 @@ export function clearStoredPendingRunApproval(approvalId: string): void {
 
 export function listStoredPendingToolApprovals(): StoredPendingToolApproval[] {
     return Array.from(pendingToolApprovals.values());
+}
+
+export function listStoredPendingToolApprovalsForWorkspace(workspaceID: string | null | undefined): StoredPendingToolApproval[] {
+    return listStoredPendingToolApprovals().filter((approval) =>
+        matchesWorkspaceScope(approval.request.context?.workspace_id, workspaceID),
+    );
 }
 
 export function getStoredPendingToolApproval(approvalId: string): StoredPendingToolApproval | null {
@@ -81,4 +105,10 @@ export function bindApprovalRetryRequest(request: ToolExecutionRequest, approval
 export function resetApprovalContinuityState(): void {
     pendingRunApprovals.clear();
     pendingToolApprovals.clear();
+}
+
+export function isStalePendingApprovalError(error: unknown): boolean {
+    const message = error instanceof Error ? error.message : typeof error === "string" ? error : "";
+    const normalizedMessage = message.toLowerCase();
+    return normalizedMessage.includes("pending approval not found") || normalizedMessage.includes("pending approval expired");
 }
