@@ -8,19 +8,37 @@ import (
 )
 
 type Executor struct {
-	registry  *Registry
-	policy    *policy.Store
-	audit     *audit.Log
-	approvals *approvalStore
+	registry      *Registry
+	policy        *policy.Store
+	audit         *audit.Log
+	approvals     *approvalStore
+	pluginInvoker PluginInvoker
 }
 
-func NewExecutor(registry *Registry, policyStore *policy.Store, auditLog *audit.Log) *Executor {
-	return &Executor{
+type ExecutorOption func(*Executor)
+
+func WithPluginInvoker(invoker PluginInvoker) ExecutorOption {
+	return func(executor *Executor) {
+		executor.pluginInvoker = invoker
+	}
+}
+
+func NewExecutor(
+	registry *Registry,
+	policyStore *policy.Store,
+	auditLog *audit.Log,
+	options ...ExecutorOption,
+) *Executor {
+	executor := &Executor{
 		registry:  registry,
 		policy:    policyStore,
 		audit:     auditLog,
 		approvals: newApprovalStore(),
 	}
+	for _, option := range options {
+		option(executor)
+	}
+	return executor
 }
 
 func (e *Executor) Confirm(id string) (ApprovalGrant, error) {
@@ -73,7 +91,7 @@ func (e *Executor) Execute(ctx context.Context, request ExecuteRequest, profile 
 		}
 	}
 
-	output, err := prepared.definition.Execute(ctx, prepared.execContext, prepared.input)
+	output, err := e.executePrepared(ctx, prepared)
 	if err != nil {
 		code := ErrorCodeOf(err)
 		message := ErrorMessageOf(err)
