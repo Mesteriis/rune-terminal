@@ -58,3 +58,62 @@ func TestMCPOutputNormalizerHandlesNonJSONPayload(t *testing.T) {
 		t.Fatalf("expected scalar preview for non-json payload, got %#v", output)
 	}
 }
+
+func TestMCPOutputNormalizerEnforcesFieldItemAndStringLimits(t *testing.T) {
+	t.Parallel()
+
+	normalizer := MCPOutputNormalizer{
+		MaxPayloadBytes: 4096,
+		MaxFields:       2,
+		MaxItems:        2,
+		MaxDepth:        2,
+		MaxStringLength: 6,
+	}
+	output, err := normalizer.Normalize(json.RawMessage(`{
+		"one":"123456789",
+		"two":[{"nested":{"too":"deep"}},"abcdefghi","tail"],
+		"three":true
+	}`))
+	if err != nil {
+		t.Fatalf("Normalize error: %v", err)
+	}
+	if !output.Truncated {
+		t.Fatalf("expected truncation markers, got %#v", output)
+	}
+	if len(output.ObjectFields) != 3 {
+		t.Fatalf("expected capped fields plus summary marker, got %#v", output.ObjectFields)
+	}
+	if output.ObjectFields[0].Key != "one" {
+		t.Fatalf("expected sorted fields, got %#v", output.ObjectFields)
+	}
+	firstValue := output.ObjectFields[0].Value.Scalar
+	firstText, ok := firstValue.(string)
+	if !ok || firstText != "123456..." {
+		t.Fatalf("expected truncated string scalar, got %#v", firstValue)
+	}
+}
+
+func TestMCPOutputNormalizerEnforcesPayloadByteLimit(t *testing.T) {
+	t.Parallel()
+
+	normalizer := MCPOutputNormalizer{
+		MaxPayloadBytes: 8,
+		MaxFields:       4,
+		MaxItems:        4,
+		MaxDepth:        2,
+		MaxStringLength: 32,
+	}
+	output, err := normalizer.Normalize(json.RawMessage(`{"value":"abcdefghijklmnopqrstuvwxyz"}`))
+	if err != nil {
+		t.Fatalf("Normalize error: %v", err)
+	}
+	if !output.Truncated {
+		t.Fatalf("expected truncated output when payload exceeds max bytes, got %#v", output)
+	}
+	if output.PayloadType != "non_json" {
+		t.Fatalf("expected clipped payload to fall back to non_json preview, got %#v", output)
+	}
+	if len(output.Notes) == 0 {
+		t.Fatalf("expected truncation notes, got %#v", output)
+	}
+}
