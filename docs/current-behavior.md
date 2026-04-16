@@ -193,10 +193,11 @@ Confirmable boundaries:
 - If command execution succeeds but explanation fails, the shell now reports that explicitly and falls back to the captured terminal output summary instead of claiming a clean explain success.
 - Approval remains in force for AI command execution:
   - if the active policy profile escalates `term.send_input` to `dangerous`, `/run` returns an approval requirement
-  - the active compat panel now keeps the pending `/run` request in local UI state and renders a confirm-and-retry action in the current AI panel flow
+  - the active compat panel now keeps the pending `/run` request in an explicit in-memory retry context and rehydrates it when the panel remounts in the same frontend session
   - confirm uses the existing `safety.confirm` tool contract and retries the original `term.send_input` request with the returned one-time `approval_token`
   - the backend now enforces that the approved retry matches the original execution intent instead of trusting `tool_name` alone
   - the resulting explanation call derives `approval_used` from the matching `term.send_input` audit truth; the backend no longer trusts a frontend-supplied explain flag
+  - a full frontend reload still loses pending retry context because this slice does not add persistence
 - Capability-removing modes such as `secure` can still forbid `/run` entirely. In that case the AI command path is denied rather than approval-gated.
 - The AI panel footer now includes a TideTerm-shaped composer. It still maps a small set of explicit runtime-backed intents such as terminal inspection, tab listing, widget listing, active-tab lookup, and terminal interrupt to the tool/runtime path, but all other free-text prompts now go through the real backend conversation route.
 - The conversation backend currently uses Ollama over HTTP with non-streaming chat completions. Assistant responses are real provider outputs, not local placeholders.

@@ -81,7 +81,8 @@ User input:
      - local user `/run` prompt message
      - local execution-result message built from terminal output
      - backend conversation assistant message from the explain response
-   - If `/run` hits approval, the panel stores the pending request in local component state and renders the approval card through `RunCommandApprovalList`.
+   - If `/run` hits approval, the frontend stores the pending retry intent in an explicit in-memory retry context and renders the approval card through `RunCommandApprovalList`.
+   - The current tools floating window uses the same in-memory continuity approach for tool approvals.
    - If explanation fails after execution succeeds, the panel renders a local fallback explanation message instead of a persisted backend assistant message.
 
 ## 2. Execution Contract
@@ -274,14 +275,14 @@ User input:
 - `2.7 UI contract` -> `MATCHES`
   - The AI panel reflects backend execution and approval responses from `/api/v1/tools/execute`.
   - Persisted conversation messages come from `core/conversation.Service`.
-  - Pending approvals and execution-result messages remain frontend-local, which matches the current documented UI responsibility boundary.
+  - Pending approvals remain frontend-local but now use explicit in-memory continuity state so panel/window remount can recover the retry intent within the same frontend session.
 
 ## 4. Risks
 
 - Approval continuity is transient.
-  - The active AI panel keeps the pending `/run` request only in component state.
+  - Pending retry context is frontend-memory only.
   - `core/toolruntime/approval.go` stores pending approvals and grants only in in-memory maps.
-  - Reloading the panel or restarting the core loses the confirm-and-retry chain.
+  - Closing and reopening the current panel/window can now recover the pending retry in the same page session, but a full frontend reload or core restart still loses the confirm-and-retry chain.
 
 - `/run` transcript persistence is incomplete by design.
   - The local `/run` prompt echo and the local execution-result message are not written into `core/conversation.Service`.

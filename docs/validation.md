@@ -225,6 +225,48 @@
   - the active frontend still sends the legacy `approval_used` field on approved `/run` explains; this slice hardens the backend by ignoring that input instead of depending on it
   - validation used a stub Ollama-compatible server, so assistant text proves explain routing and context wiring rather than model quality
 
+## Approval continuity
+
+- Date: `2026-04-16`
+- Status: `VERIFIED`
+- Commits:
+  - `6bcf5ad744e1027da5f4049f7c4d7559aa63cc69`
+  - `fe4c0bb866e160508df81dff26f423d40416d7d2`
+- Validation steps:
+  - `npx vitest run frontend/app/approval/continuity.test.ts frontend/app/aipanel/run-command.test.ts frontend/compat/tools.test.ts --config frontend/vite.config.ts`
+  - `npx tsc -p frontend/tsconfig.json --noEmit`
+  - runtime environment reused the live continuity slice frontend and backend:
+    - core: `RTERM_AUTH_TOKEN=explain-truth-token RTERM_OLLAMA_BASE_URL=http://127.0.0.1:11438 RTERM_OLLAMA_MODEL=test-model apps/desktop/bin/rterm-core serve --listen 127.0.0.1:61420 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/rterm-explain-truth/state --ready-file /tmp/rterm-explain-truth/ready.json`
+    - frontend dev: `VITE_RTERM_API_BASE=http://127.0.0.1:61420 VITE_RTERM_AUTH_TOKEN=explain-truth-token npm --prefix frontend run dev -- --host 127.0.0.1 --port 4203 --strictPort`
+  - `/run` panel-remount continuity:
+    - with `Profile: Hardened`, entered `/run echo continuity-run`
+    - UI showed `Approval required for \`/run echo continuity-run\``
+    - closed the AI panel and reopened it through the shell `AI` toggle
+    - the same approval card was still visible
+    - clicked `Confirm and retry`
+    - transcript rendered the final execution result `continuity-run` and the follow-up explanation message
+  - tools-window remount continuity:
+    - opened `Tools`
+    - selected `safety.add_ignore_rule`
+    - executed `{"scope":"repo","matcher_type":"glob","pattern":"continuity-tool-*","mode":"metadata-only","note":"continuity validation"}`
+    - UI showed `approval required: add ignore rule continuity-tool-* (metadata-only)`
+    - dismissed the tools window and reopened it from the same `Tools` control
+    - the same approval block was still visible
+    - clicked `Confirm and retry`
+    - response rendered `"status": "ok"`
+  - full-reload limitation check:
+    - with `Profile: Hardened`, entered `/run echo continuity-reload`
+    - UI showed `Approval required for \`/run echo continuity-reload\``
+    - reloaded `http://127.0.0.1:4203/`
+    - reopened the AI panel
+    - the pending approval card was no longer present
+- Panel/window remount continuity: `VERIFIED` — pending `/run` and tools approvals now survive close/reopen remounts inside the same live frontend session and still confirm-and-retry successfully.
+- Full reload continuity: `VERIFIED` — a hard page reload still drops the pending retry context, which matches the in-memory-only boundary of this slice.
+- Exact observed result: `VERIFIED` — retry no longer depends on component state only, but it still intentionally does not persist across a full frontend reload.
+- Notes:
+  - browser console showed the expected `428 Precondition Required` resource errors for the initial approval challenges and no fatal runtime exceptions
+  - this slice does not change backend persistence: restarting the core still loses pending approvals and grants
+
 ## Approval intent binding
 
 - Date: `2026-04-16`
