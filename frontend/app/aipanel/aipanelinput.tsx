@@ -13,6 +13,7 @@ interface AIPanelInputProps {
     onSubmit: (e: React.FormEvent) => void;
     status: string;
     model: WaveAIModel;
+    onAttachFiles?: (files: File[]) => Promise<void>;
 }
 
 export interface AIPanelInputRef {
@@ -21,7 +22,7 @@ export interface AIPanelInputRef {
     scrollToBottom: () => void;
 }
 
-export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps) => {
+export const AIPanelInput = memo(({ onSubmit, status, model, onAttachFiles }: AIPanelInputProps) => {
     const [input, setInput] = useAtom(model.inputAtom);
     const isFocused = useAtomValue(model.isWaveAIFocusedAtom);
     const isChatEmpty = useAtomValue(model.isChatEmptyAtom);
@@ -120,7 +121,18 @@ export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps
                 }
                 return;
             }
-            await model.addFile(file);
+        }
+
+        try {
+            if (onAttachFiles) {
+                await onAttachFiles(acceptableFiles);
+            } else {
+                for (const file of acceptableFiles) {
+                    await model.addFile(file);
+                }
+            }
+        } catch (error) {
+            model.setError(error instanceof Error ? error.message : String(error));
         }
 
         if (acceptableFiles.length < files.length) {

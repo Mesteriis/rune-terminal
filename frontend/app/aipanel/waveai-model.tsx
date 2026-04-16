@@ -20,6 +20,7 @@ import { base64ToArrayBuffer } from "@/util/util";
 import { ChatStatus } from "ai";
 import * as jotai from "jotai";
 import type React from "react";
+import type { AttachmentReference } from "@/rterm-api/conversation/types";
 import {
     createDataUrl,
     createImagePreview,
@@ -38,6 +39,8 @@ export interface DroppedFile {
     name: string;
     type: string;
     size: number;
+    localPath?: string;
+    attachmentReference?: AttachmentReference;
     previewUrl?: string;
 }
 
@@ -179,7 +182,7 @@ export class WaveAIModel {
         return `${getWebServerEndpoint()}/api/post-chat-message`;
     }
 
-    async addFile(file: File): Promise<DroppedFile> {
+    private async buildDroppedFile(file: File): Promise<DroppedFile> {
         // Resize images before storing
         const processedFile = await resizeImage(file);
 
@@ -198,10 +201,28 @@ export class WaveAIModel {
                 droppedFile.previewUrl = previewDataUrl;
             }
         }
+        return droppedFile;
+    }
+
+    async addFile(file: File): Promise<DroppedFile> {
+        const droppedFile = await this.buildDroppedFile(file);
 
         const currentFiles = globalStore.get(this.droppedFiles);
         globalStore.set(this.droppedFiles, [...currentFiles, droppedFile]);
 
+        return droppedFile;
+    }
+
+    async addReferencedFile(file: File, attachmentReference: AttachmentReference, localPath: string): Promise<DroppedFile> {
+        const droppedFile = await this.buildDroppedFile(file);
+        droppedFile.name = attachmentReference.name || droppedFile.name;
+        droppedFile.type = attachmentReference.mime_type || droppedFile.type;
+        droppedFile.size = attachmentReference.size ?? droppedFile.size;
+        droppedFile.localPath = localPath;
+        droppedFile.attachmentReference = attachmentReference;
+
+        const currentFiles = globalStore.get(this.droppedFiles);
+        globalStore.set(this.droppedFiles, [...currentFiles, droppedFile]);
         return droppedFile;
     }
 

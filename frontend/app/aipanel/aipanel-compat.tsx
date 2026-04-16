@@ -9,7 +9,7 @@ import {
     type StoredPendingRunApproval,
 } from "@/app/approval/continuity";
 import { workspaceStore } from "@/app/state/workspace.store";
-import { atoms, getSettingsKeyAtom } from "@/app/store/global";
+import { atoms, getApi, getSettingsKeyAtom } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import { buildToolExecutionContext } from "@/app/workspace/widget-helpers";
 import { createCompatApiFacade } from "@/compat/api";
@@ -23,7 +23,7 @@ import { useAtomValue } from "jotai";
 import * as jotai from "jotai";
 import type { AgentCatalog } from "@/rterm-api/agent/types";
 import { getApprovalGrant } from "@/rterm-api/tools/client";
-import type { ConversationContext } from "@/rterm-api/conversation/types";
+import type { AttachmentReference, ConversationContext } from "@/rterm-api/conversation/types";
 import type { ToolExecutionContext, ToolExecutionResponse } from "@/rterm-api/tools/types";
 import { memo, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { useDrop } from "react-dnd";
@@ -226,6 +226,26 @@ function buildApprovalConfirmErrorMessage(response: ToolExecutionResponse): stri
     return "Approval token was missing from the confirmation response.";
 }
 
+function looksLikeAbsolutePath(path: string): boolean {
+    return /^([A-Za-z]:[\\/]|\/)/.test(path);
+}
+
+function resolveNativeFilePath(file: File): string {
+    const fromFile = (file as File & { path?: string }).path;
+    if (typeof fromFile === "string" && fromFile.trim() !== "") {
+        return fromFile.trim();
+    }
+    try {
+        const fromApi = getApi()?.getPathForFile?.(file);
+        if (typeof fromApi === "string" && fromApi.trim() !== "") {
+            return fromApi.trim();
+        }
+    } catch {
+        // Fall through to empty path.
+    }
+    return "";
+}
+
 interface PendingRunApproval extends PendingRunApprovalEntry {
     toolContext: ToolExecutionContext;
     conversationContext: ConversationContext;
@@ -389,6 +409,48 @@ const AIPanelCompatInner = memo(() => {
             }
         },
         [catalog, model, status]
+    );
+
+    const addAttachmentReferenceByPath = useCallback(
+        async (path: string, file: File | null): Promise<AttachmentReference | null> => {
+            const normalizedPath = path.trim();
+            if (normalizedPath === "" || !looksLikeAbsolutePath(normalizedPath)) {
+                model.setError(
+                    "Local attachment path is unavailable in this runtime. Select a local file path exposed by the desktop host.",
+                );
+                return null;
+            }
+
+            const conversationFacade = await getConversationFacade();
+            const response = await conversationFacade.createAttachmentReference({ path: normalizedPath });
+            const reference = response.attachment;
+            const referenceFile =
+                file ??
+                new File([], reference.name, {
+                    type: reference.mime_type || "application/octet-stream",
+                });
+            await model.addReferencedFile(referenceFile, reference, reference.path);
+            return reference;
+        },
+        [model],
+    );
+
+    const attachLocalFiles = useCallback(
+        async (files: File[]) => {
+            try {
+                for (const file of files) {
+                    const nativePath = resolveNativeFilePath(file);
+                    const attached = await addAttachmentReferenceByPath(nativePath, file);
+                    if (attached == null) {
+                        return;
+                    }
+                }
+                model.clearError();
+            } catch (error) {
+                model.setError(error instanceof Error ? error.message : String(error));
+            }
+        },
+        [addAttachmentReferenceByPath, model],
     );
 
     const completeRunCommandExecution = useCallback(
@@ -711,8 +773,9 @@ const AIPanelCompatInner = memo(() => {
                 model.setError(formatFileSizeError(sizeError));
                 return;
             }
-            await model.addFile(file);
         }
+
+        await attachLocalFiles(acceptableFiles);
 
         if (acceptableFiles.length < files.length) {
             const rejectedCount = files.length - acceptableFiles.length;
@@ -726,9 +789,9 @@ const AIPanelCompatInner = memo(() => {
 
     const handleFileItemDrop = useCallback(
         (draggedFile: DraggedFile) => {
-            model.addFileFromRemoteUri(draggedFile);
+            void addAttachmentReferenceByPath(draggedFile.uri, null);
         },
-        [model]
+        [addAttachmentReferenceByPath]
     );
 
     const [{ isOver, canDrop }, drop] = useDrop(
@@ -844,7 +907,7 @@ const AIPanelCompatInner = memo(() => {
                     onConfirm={(approvalId) => void handleConfirmRunApproval(approvalId)}
                 />
                 <AIDroppedFiles model={model} />
-                <AIPanelInput onSubmit={handleSubmit} status={status} model={model} />
+                <AIPanelInput onSubmit={handleSubmit} status={status} model={model} onAttachFiles={attachLocalFiles} />
             </div>
         </div>
     );
