@@ -33,6 +33,7 @@ type MCPServerSnapshot struct {
 	State    MCPProcessState `json:"state"`
 	LastUsed time.Time       `json:"last_used,omitempty"`
 	Active   bool            `json:"active"`
+	Enabled  bool            `json:"enabled"`
 }
 
 type MCPRegistry struct {
@@ -45,6 +46,7 @@ type mcpRegistryEntry struct {
 	state    MCPProcessState
 	lastUsed time.Time
 	active   bool
+	enabled  bool
 }
 
 func NewMCPRegistry() *MCPRegistry {
@@ -70,8 +72,9 @@ func (r *MCPRegistry) Register(spec MCPServerSpec) error {
 			ID:      id,
 			Process: spec.Process,
 		},
-		state:  MCPStateStopped,
-		active: false,
+		state:   MCPStateStopped,
+		active:  false,
+		enabled: true,
 	}
 	return nil
 }
@@ -94,6 +97,7 @@ func (r *MCPRegistry) List() []MCPServerSnapshot {
 			State:    entry.state,
 			LastUsed: entry.lastUsed,
 			Active:   entry.active,
+			Enabled:  entry.enabled,
 		})
 	}
 	return servers
@@ -112,6 +116,7 @@ func (r *MCPRegistry) Get(id string) (MCPServerSnapshot, error) {
 		State:    entry.state,
 		LastUsed: entry.lastUsed,
 		Active:   entry.active,
+		Enabled:  entry.enabled,
 	}, nil
 }
 
@@ -162,5 +167,17 @@ func (r *MCPRegistry) Touch(id string, at time.Time) error {
 		return ErrMCPServerNotFound
 	}
 	entry.lastUsed = at.UTC()
+	return nil
+}
+
+func (r *MCPRegistry) SetEnabled(id string, enabled bool) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	entry, ok := r.servers[strings.TrimSpace(id)]
+	if !ok {
+		return ErrMCPServerNotFound
+	}
+	entry.enabled = enabled
 	return nil
 }

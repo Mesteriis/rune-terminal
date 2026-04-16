@@ -220,6 +220,63 @@ func TestMCPRuntimeDoesNotStopInFlightServer(t *testing.T) {
 	}
 }
 
+func TestMCPRuntimeEnableDisableAndRestart(t *testing.T) {
+	t.Parallel()
+
+	registry := NewMCPRegistry()
+	if err := registry.Register(MCPServerSpec{
+		ID: "mcp.docs",
+		Process: ProcessConfig{
+			Command: "mcp-docs",
+		},
+	}); err != nil {
+		t.Fatalf("Register error: %v", err)
+	}
+
+	runtime := NewMCPRuntimeWithOptions(registry, &testMCPSpawner{}, &capturingMCPInvoker{
+		output: json.RawMessage(`{"ok":true}`),
+	}, MCPRuntimeOptions{
+		IdleCheckInterval: -1,
+	})
+	defer runtime.Close()
+
+	if err := runtime.Start(context.Background(), "mcp.docs"); err != nil {
+		t.Fatalf("Start error: %v", err)
+	}
+	if err := runtime.SetEnabled("mcp.docs", false); err != nil {
+		t.Fatalf("SetEnabled(false) error: %v", err)
+	}
+	disabled, err := registry.Get("mcp.docs")
+	if err != nil {
+		t.Fatalf("Get disabled snapshot error: %v", err)
+	}
+	if disabled.Enabled || disabled.Active {
+		t.Fatalf("expected disabled+inactive snapshot, got %#v", disabled)
+	}
+
+	_, err = runtime.Invoke(context.Background(), MCPInvokeRequest{
+		ServerID:           "mcp.docs",
+		AllowOnDemandStart: true,
+	})
+	if !errors.Is(err, ErrMCPServerDisabled) {
+		t.Fatalf("expected disabled invoke error, got %v", err)
+	}
+
+	if err := runtime.SetEnabled("mcp.docs", true); err != nil {
+		t.Fatalf("SetEnabled(true) error: %v", err)
+	}
+	if err := runtime.Restart(context.Background(), "mcp.docs"); err != nil {
+		t.Fatalf("Restart error: %v", err)
+	}
+	enabled, err := registry.Get("mcp.docs")
+	if err != nil {
+		t.Fatalf("Get enabled snapshot error: %v", err)
+	}
+	if !enabled.Enabled || !enabled.Active || enabled.State != MCPStateIdle {
+		t.Fatalf("expected enabled idle running snapshot, got %#v", enabled)
+	}
+}
+
 type MCPInvokerFunc func(context.Context, MCPServerSpec, json.RawMessage) (json.RawMessage, error)
 
 func (fn MCPInvokerFunc) Invoke(ctx context.Context, spec MCPServerSpec, payload json.RawMessage) (json.RawMessage, error) {

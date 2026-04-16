@@ -64,7 +64,15 @@ export type {
 } from "./connections/types";
 
 export { MCPClient } from "./mcp/client";
-export type { MCPServerRuntime, MCPServersResponse, MCPServerState } from "./mcp/types";
+export type {
+  MCPServerRuntime,
+  MCPServersResponse,
+  MCPServerState,
+  MCPServerMutationResponse,
+  MCPInvokeRequest,
+  MCPInvokeResponse,
+  MCPContextPayload,
+} from "./mcp/types";
 
 export { PolicyClient } from "./policy/client";
 export type {

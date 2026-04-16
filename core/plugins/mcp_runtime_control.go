@@ -14,6 +14,7 @@ import (
 var (
 	ErrMCPExplicitStartRequired = errors.New("mcp server is stopped; explicit start required")
 	ErrMCPServerBusy            = errors.New("mcp server has in-flight calls")
+	ErrMCPServerDisabled        = errors.New("mcp server is disabled")
 )
 
 type MCPRuntime struct {
@@ -120,6 +121,13 @@ func (r *MCPRuntime) Start(ctx context.Context, serverID string) error {
 	if id == "" {
 		return ErrInvalidPluginSpec
 	}
+	server, err := r.registry.Get(id)
+	if err != nil {
+		return err
+	}
+	if !server.Enabled {
+		return ErrMCPServerDisabled
+	}
 
 	r.mu.Lock()
 	if process, running := r.process[id]; running {
@@ -221,10 +229,55 @@ func (r *MCPRuntime) Stop(serverID string, auto bool) error {
 	return r.registry.Touch(id, r.nowFn())
 }
 
+func (r *MCPRuntime) SetEnabled(serverID string, enabled bool) error {
+	id := strings.TrimSpace(serverID)
+	if id == "" {
+		return ErrInvalidPluginSpec
+	}
+
+	if !enabled {
+		if err := r.Stop(id, false); err != nil && !errors.Is(err, ErrMCPServerNotFound) {
+			return err
+		}
+	}
+	if err := r.registry.SetEnabled(id, enabled); err != nil {
+		return err
+	}
+	if !enabled {
+		_ = r.registry.SetActive(id, false)
+	}
+	return nil
+}
+
+func (r *MCPRuntime) Restart(ctx context.Context, serverID string) error {
+	id := strings.TrimSpace(serverID)
+	if id == "" {
+		return ErrInvalidPluginSpec
+	}
+	server, err := r.registry.Get(id)
+	if err != nil {
+		return err
+	}
+	if !server.Enabled {
+		return ErrMCPServerDisabled
+	}
+	if err := r.Stop(id, false); err != nil && !errors.Is(err, ErrMCPServerNotFound) {
+		return err
+	}
+	return r.Start(ctx, id)
+}
+
 func (r *MCPRuntime) Invoke(ctx context.Context, request MCPInvokeRequest) (MCPInvokeResult, error) {
 	id := strings.TrimSpace(request.ServerID)
 	if id == "" {
 		return MCPInvokeResult{}, ErrInvalidPluginSpec
+	}
+	server, err := r.registry.Get(id)
+	if err != nil {
+		return MCPInvokeResult{}, err
+	}
+	if !server.Enabled {
+		return MCPInvokeResult{}, ErrMCPServerDisabled
 	}
 
 	if !r.isRunning(id) {

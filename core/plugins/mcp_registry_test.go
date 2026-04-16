@@ -29,6 +29,9 @@ func TestMCPRegistryTracksServerLifecycleFields(t *testing.T) {
 	if registered.Active {
 		t.Fatalf("expected active=false by default")
 	}
+	if !registered.Enabled {
+		t.Fatalf("expected enabled=true by default")
+	}
 	if !registered.LastUsed.IsZero() {
 		t.Fatalf("expected zero last_used by default, got %s", registered.LastUsed)
 	}
@@ -53,6 +56,9 @@ func TestMCPRegistryTracksServerLifecycleFields(t *testing.T) {
 	}
 	if !updated.Active {
 		t.Fatalf("expected active=true")
+	}
+	if !updated.Enabled {
+		t.Fatalf("expected enabled=true")
 	}
 	if !updated.LastUsed.Equal(usedAt) {
 		t.Fatalf("expected last_used %s, got %s", usedAt, updated.LastUsed)
@@ -99,5 +105,30 @@ func TestMCPRegistryListIsSorted(t *testing.T) {
 	}
 	if list[0].ID != "mcp.alpha" || list[1].ID != "mcp.zulu" {
 		t.Fatalf("expected sorted IDs, got %#v", list)
+	}
+}
+
+func TestMCPRegistrySetEnabled(t *testing.T) {
+	t.Parallel()
+
+	registry := NewMCPRegistry()
+	if err := registry.Register(MCPServerSpec{
+		ID: "mcp.example",
+		Process: ProcessConfig{
+			Command: "/tmp/mcp-example",
+		},
+	}); err != nil {
+		t.Fatalf("Register error: %v", err)
+	}
+
+	if err := registry.SetEnabled("mcp.example", false); err != nil {
+		t.Fatalf("SetEnabled error: %v", err)
+	}
+	snapshot, err := registry.Get("mcp.example")
+	if err != nil {
+		t.Fatalf("Get error: %v", err)
+	}
+	if snapshot.Enabled {
+		t.Fatalf("expected enabled=false, got %#v", snapshot)
 	}
 }
