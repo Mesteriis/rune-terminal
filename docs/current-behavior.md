@@ -34,6 +34,10 @@ It is intentionally operational, not narrative.
 - The tool catalog now includes one plugin-backed sample tool (`plugin.example_echo`) executed through a side-process protocol while preserving core-owned approval and audit flow.
 - Plugin handshake now carries an explicit manifest contract (`plugin_id`, `plugin_version`, `protocol_version`, `exposed_tools`) and core rejects runtime execution if the requested tool is not declared in `exposed_tools`.
 - Plugin runtime failures are normalized by core into explicit taxonomy (`launch_failed`, `handshake_failed`, `timeout`, `crashed`, `malformed_response`, `tool_not_exposed`, `protocol_version_mismatch`) and surfaced through tool execution with runtime error code `plugin_failure`.
+- MCP servers are now modeled as managed runtime processes with explicit lifecycle states (`stopped`, `starting`, `active`, `idle`, `stopped_auto`) tracked by an in-memory runtime registry.
+- MCP runtime activation is controlled only through explicit API actions (`start`, `stop`, `restart`, `enable`, `disable`) or explicit on-demand invoke requests; core startup does not auto-load or auto-spawn MCP servers.
+- MCP idle servers are auto-stopped after runtime-owned timeout checks, and in-flight MCP invocations are protected from stop/restart interruption.
+- MCP invoke responses do not enter agent context automatically. Context payloads are only produced when explicitly requested and are passed through a bounded adapter (size/depth/item/string limits).
 
 ## Session lifecycle contract
 

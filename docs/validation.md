@@ -1414,12 +1414,38 @@
 <a id="feature-ux-mcp-server-manager"></a>
 ## MCP server manager
 
-- Date: `—`
-- Status: `NOT RUN`
-- Commit: `—`
-- Validation steps: Отдельный feature-specific validation run ещё не зафиксирован; использовать критерии из `docs/roadmap.md` и текущий path из audit.
-- Result: Подтверждённого validation result нет; текущий ориентир только parity status из audit.
-- Notes: Placeholder-секция для будущих проверок. Текущее audit-наблюдение: Legacy UI/RPC residue есть, но в current `core/` нет подтверждённого MCP runtime/API parity. 
+- Date: `2026-04-16`
+- Status: `VERIFIED`
+- Commits:
+  - `d7bdb7d`
+  - `17d9153`
+  - `85fd6e7`
+  - `f7c4c38`
+  - `9d8c8cf`
+  - `21910b0`
+  - `7634fdf`
+- Validation steps:
+  - automated checks:
+    - `go test ./core/plugins -run 'TestMCPContext|TestMCPInvokeContext|TestMCPRuntime|TestMCPRegistry' -count=1` -> `PASS`
+    - `go test ./core/transport/httpapi -run 'TestListMCPServers|TestMCPServerControlEndpoints|TestInvokeMCPRespectsLifecycleControls' -count=1` -> `PASS`
+  - runtime/API smoke:
+    - core: `RTERM_AUTH_TOKEN=mcp-batch-token go run ./cmd/rterm-core serve --listen 127.0.0.1:52991 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/rterm-mcp-batch-validation`
+    - `GET /api/v1/mcp/servers` initial snapshot:
+      - `{"id":"mcp.example","state":"stopped","active":false,"enabled":true}`
+    - explicit lifecycle controls:
+      - `POST /api/v1/mcp/servers/mcp.example/start` -> `state:"idle", active:true`
+      - `POST /api/v1/mcp/invoke {"server_id":"mcp.example","include_context":true}` -> `output:{}` and bounded explicit context payload
+      - `POST /api/v1/mcp/servers/mcp.example/disable` -> `enabled:false, active:false`
+      - `POST /api/v1/mcp/invoke {"server_id":"mcp.example","allow_on_demand_start":true}` -> HTTP `409`, code `mcp_server_disabled`
+      - `POST /api/v1/mcp/servers/mcp.example/enable` + `POST /api/v1/mcp/servers/mcp.example/restart` -> `state:"idle", active:true, enabled:true`
+  - release sweep:
+    - `npm run validate` -> `PASS` (`lint/build/tests/tauri:check`)
+    - `npm run tauri:dev` smoke -> desktop launched and runtime ready line observed:
+      - `{"base_url":"http://127.0.0.1:54569","pid":66724}`
+- Result: `VERIFIED` — core now has managed MCP runtime lifecycle with explicit activation and manual controls, idle auto-stop, explicit bounded context adapter behavior, and observable runtime state over API.
+- Notes:
+  - this slice is backend/API-first for controlled runtime behavior; it does not introduce a broad MCP dashboard redesign
+  - legacy TideTerm MCP UI residue still exists in frontend code, but current release slice now has real core/runtime/API MCP semantics instead of placeholder-only parity claims
 
 <a id="feature-ux-api-proxy-waveproxy"></a>
 ## API Proxy / WaveProxy
