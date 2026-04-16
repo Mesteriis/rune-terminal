@@ -239,16 +239,20 @@ async function waitForRunCommandOutput(
     fromSeq: number,
 ): Promise<TerminalSnapshot> {
     let snapshot = await terminalFacade.getSnapshot(widgetId, fromSeq);
-    if (snapshot.chunks.length > 0 || snapshot.state.status !== "running") {
-        return snapshot;
-    }
+    let previousNextSeq = snapshot.next_seq;
+    let sawOutput = snapshot.chunks.length > 0 || snapshot.state.status !== "running";
 
     for (let attempt = 0; attempt < RUN_COMMAND_POLL_ATTEMPTS; attempt += 1) {
         await sleep(RUN_COMMAND_POLL_INTERVAL_MS);
         snapshot = await terminalFacade.getSnapshot(widgetId, fromSeq);
+        const nextSeqChanged = snapshot.next_seq !== previousNextSeq;
         if (snapshot.chunks.length > 0 || snapshot.state.status !== "running") {
+            sawOutput = true;
+        }
+        if (sawOutput && !nextSeqChanged) {
             return snapshot;
         }
+        previousNextSeq = snapshot.next_seq;
     }
     return snapshot;
 }
