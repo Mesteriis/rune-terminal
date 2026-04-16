@@ -404,11 +404,7 @@ const AIPanelCompatInner = memo(() => {
                     context: options.context,
                 });
                 setProviderLabel(formatProviderLabel(explanationResponse.conversation.provider));
-                const transcriptMessages = mapConversationSnapshot(explanationResponse.conversation);
-                const explanationMessage = transcriptMessages[transcriptMessages.length - 1];
-                if (explanationMessage != null) {
-                    setMessages((previous) => [...previous, explanationMessage]);
-                }
+                setMessages(mapConversationSnapshot(explanationResponse.conversation));
             } catch (error) {
                 setMessages((previous) => [
                     ...previous,
