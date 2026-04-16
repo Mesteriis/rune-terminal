@@ -180,14 +180,15 @@ Confirmable boundaries:
   1. capture the current terminal `next_seq`
   2. execute `term.send_input` through the real tool/runtime/policy path
   3. wait for terminal output from that `next_seq`
-  4. call the backend explanation route
-  5. append a real assistant message to the persisted conversation transcript
+  4. render a local assistant message with the sanitized observed command output
+  5. call the backend explanation route
+  6. append a real assistant message to the persisted conversation transcript
 - The backend explanation route does not execute commands by itself. It explains the observed result of a command that already ran through the runtime.
 - If command execution succeeds but explanation fails, the shell now reports that explicitly and falls back to the captured terminal output summary instead of claiming a clean explain success.
 - Approval remains in force for AI command execution:
   - if the active policy profile escalates `term.send_input` to `dangerous`, `/run` returns an approval requirement
-  - once approved, the same runtime/tool path is retried with the one-time approval token
-  - the resulting explanation call records `approval_used:true` in audit
+  - the current compat panel reports that approval requirement in the transcript, but confirm-and-retry from the `/run` flow is not wired yet
+  - the resulting explanation call records `approval_used:true` in audit only when an approved retry path is added later
 - Capability-removing modes such as `secure` can still forbid `/run` entirely. In that case the AI command path is denied rather than approval-gated.
 - The AI panel footer now includes a TideTerm-shaped composer. It still maps a small set of explicit runtime-backed intents such as terminal inspection, tab listing, widget listing, active-tab lookup, and terminal interrupt to the tool/runtime path, but all other free-text prompts now go through the real backend conversation route.
 - The conversation backend currently uses Ollama over HTTP with non-streaming chat completions. Assistant responses are real provider outputs, not local placeholders.
