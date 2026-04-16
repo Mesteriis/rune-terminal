@@ -413,7 +413,11 @@ const AIPanelCompatInner = memo(() => {
 
     const addAttachmentReferenceByPath = useCallback(
         async (path: string, file: File | null): Promise<AttachmentReference | null> => {
-            const normalizedPath = path.trim();
+            let normalizedPath = path.trim();
+            if (!looksLikeAbsolutePath(normalizedPath) && file != null && repoRoot.trim() !== "") {
+                const repoBase = repoRoot.replace(/[\\/]+$/, "");
+                normalizedPath = `${repoBase}/${file.name}`;
+            }
             if (normalizedPath === "" || !looksLikeAbsolutePath(normalizedPath)) {
                 model.setError(
                     "Local attachment path is unavailable in this runtime. Select a local file path exposed by the desktop host.",
@@ -432,7 +436,7 @@ const AIPanelCompatInner = memo(() => {
             await model.addReferencedFile(referenceFile, reference, reference.path);
             return reference;
         },
-        [model],
+        [model, repoRoot],
     );
 
     const attachLocalFiles = useCallback(
