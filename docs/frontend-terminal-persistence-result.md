@@ -20,7 +20,8 @@ Date: `2026-04-16`
 - Remount replay now restores prior visible output after `Main Shell -> Ops Shell -> Main Shell`.
 - Repeating the tab switch does not duplicate the restored lines.
 - New commands entered after restore continue to stream into the same renderer state.
+- Mid-stream tab switching was validated separately in `docs/frontend-terminal-midstream-validation.md`; the renderer restored hidden-tab output and continued live output after return without duplicate markers.
 
 ## Remaining limitation
 
-- This hotfix validation covered short command output and repeated remount replay. It did not run a separate long-running command while switching tabs mid-stream.
+- The mid-stream validation used line-oriented stdout markers. A separate ANSI-heavy redraw workload has not been validated in this slice.

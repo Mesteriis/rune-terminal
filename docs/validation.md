@@ -193,6 +193,42 @@
   - validation covered repeated remount replay with short command output; a separate mid-stream long-running command switch test was `NOT RUN`
   - terminal persistence remained backend-sourced: snapshot replay plus resumed stream, not a keep-alive-only workaround
 
+## Terminal mid-stream persistence
+
+- Date: `2026-04-16`
+- Status: `VERIFIED`
+- Commits:
+  - `0b1602b7cc87822414dd27b82dc8ea03e6db02e2`
+  - `5f8fd7ecb87cecb3871441570caebbc1f85499e2`
+- Validation steps:
+  - runtime environment:
+    - core: `RTERM_AUTH_TOKEN=terminal-midstream-token apps/desktop/bin/rterm-core serve --listen 127.0.0.1:52770 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/rterm-terminal-midstream-validation`
+    - frontend dev: `VITE_RTERM_API_BASE=http://127.0.0.1:52770 VITE_RTERM_AUTH_TOKEN=terminal-midstream-token npm --prefix frontend run dev -- --host 127.0.0.1 --port 4200 --strictPort`
+  - tested command:
+    - `python3 -u -c "import time; [print(f'MIDSTREAM_AUTO_{i:02d}', flush=True) or time.sleep(0.3) for i in range(1, 31)]"`
+  - switch sequence:
+    - run in `Main Shell`
+    - wait `700ms`
+    - switch to `Ops Shell`
+    - wait `2500ms`
+    - switch back to `Main Shell`
+  - observed marker progression in the visible renderer:
+    - before switch: `MIDSTREAM_AUTO_01`
+    - `600ms` after return: `MIDSTREAM_AUTO_01..12`
+    - `1500ms` later on the returned tab: `MIDSTREAM_AUTO_01..17`
+    - final state after completion: `MIDSTREAM_AUTO_01..30`
+  - duplication / gap check:
+    - final renderer state contained all `30` markers exactly once each
+    - no missing markers
+    - no duplicate markers
+  - backend / runtime checks:
+    - `GET /api/v1/terminal/term-main?from=0` returned `auto_markers: 30` with the terminal session still `running`
+    - browser console errors for the validation window: `0`
+- Result: `VERIFIED` — switching away during active terminal output and returning preserves already-emitted lines, restores lines produced while the tab is hidden, and continues live output on the remounted renderer without duplicate replay.
+- Notes:
+  - this run used line-oriented stdout markers; a separate ANSI-heavy long-running redraw scenario was `NOT RUN`
+  - no code fix was needed in this slice because the current snapshot-plus-stream replay path behaved correctly under the tested mid-stream switch
+
 <a id="feature-terminal-input"></a>
 ## Ввод в терминал
 
