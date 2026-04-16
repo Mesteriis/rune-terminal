@@ -318,6 +318,42 @@
     - after the browser-submitted prompt, stub `GET /stats` returned `{"count":25,...,"last":"browser prune check"}`
     - at that point the persisted conversation held `31` chat messages before system-prompt injection, so the provider request was still bounded instead of sending the whole transcript blindly
 - Result: `VERIFIED` — conversation still works in the active AI panel, the transcript remains usable, and provider requests are now capped to the documented recent-history budget instead of growing without bound.
+
+## Dangerous tool schema hardening
+
+- Date: `2026-04-16`
+- Status: `VERIFIED`
+- Commits:
+  - `fb3055d0272e12557ef49d0a425950841fd765fb`
+  - `33dda2a008c71c1785dc1be5ae6b343cabf157e0`
+- Validation steps:
+  - automated checks:
+    - `go test ./core/app ./core/transport/httpapi`
+  - runtime environment:
+    - core: `RTERM_AUTH_TOKEN=tool-schema-token go run ./cmd/rterm-core serve --listen 127.0.0.1:52870 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/rterm-tool-schema-validation`
+    - frontend dev: `VITE_RTERM_API_BASE=http://127.0.0.1:52870 VITE_RTERM_AUTH_TOKEN=tool-schema-token npm --prefix frontend run dev -- --host 127.0.0.1 --port 5175 --strictPort`
+  - schema listing:
+    - `GET /api/v1/tools` returned explicit `input_schema` objects for:
+      - `safety.add_ignore_rule` with `scope`, `matcher_type`, `pattern`, `mode`, enum constraints, and required fields
+      - `safety.add_trusted_rule` with `scope`, `subject_type`, `matcher_type`, `matcher` / `structured`, enum constraints, and required fields
+  - safe tool path:
+    - `POST /api/v1/tools/execute` for `workspace.list_widgets` returned `status:"ok"` with the current widget list
+  - invalid dangerous payload:
+    - `POST /api/v1/tools/execute` for `safety.add_ignore_rule` without `pattern`
+    - observed `HTTP 400` with `error_code:"invalid_input"` and `error:"ignore rule pattern is required"`
+    - this now fails before approval instead of surfacing as a generic approval challenge
+  - approval-required dangerous path:
+    - valid `safety.add_ignore_rule` payload returned `status:"requires_confirmation"`
+    - `safety.confirm` returned an `approval_token`
+    - retry with the same payload plus `approval_token` returned `status:"ok"` and the created ignore rule
+  - tools panel UI:
+    - opened `http://127.0.0.1:5175/`
+    - clicked the visible `Tools` button in the shell
+    - panel loaded `GET /api/v1/tools => 200`
+    - selected `workspace.list_widgets` and clicked `Execute`
+    - browser network captured `POST /api/v1/tools/execute => 200` with the expected tool request body
+    - the panel response area rendered the tool result
+- Result: `VERIFIED` — dangerous policy-mutation tools now publish meaningful schemas, malformed payloads fail with the right input error before approval, approval-required valid payloads still complete normally, and the current Tools panel remains usable against the hardened contract.
 - Safe explain truth: `VERIFIED` — the backend ignored a client-supplied `approval_used:true` value and recorded the explain step as unapproved when the matching execution was unapproved.
 - Approved explain truth: `VERIFIED` — the backend ignored a client-supplied `approval_used:false` value and recorded the explain step as approved when the matching execution had consumed approval.
 - Exact observed result: `VERIFIED` — explain `approval_used` now comes from backend execution/audit truth, not from the frontend payload.
