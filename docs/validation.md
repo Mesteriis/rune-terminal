@@ -1876,3 +1876,34 @@
   - shell launch smoke:
     - `npm run tauri:dev` -> reached desktop startup (`Running target/debug/rterm-desktop`) and runtime ready JSON (`{"base_url":"http://127.0.0.1:64656","pid":93106}`)
 - Result: `VERIFIED` — repo validation is now truthful and green on current RC release path, with full-frontend lint debt still explicit via a separate command.
+
+## Workflow identity hardening
+
+- Date: `2026-04-16`
+- Status: `VERIFIED` (mixed runtime + targeted integration validation)
+- Commits:
+  - `985cf88`
+  - `0d6eb9c`
+  - `14d336f`
+  - `aba2235`
+- Validation steps:
+  - runtime cross-surface sweep:
+    - `python3 scripts/validate_operator_workflow.py` -> `PASS`
+    - validated:
+      - file -> AI reference + submit path works
+      - file -> `/run`-related execution path works
+      - terminal output -> explain path works
+      - tool execution remains visible in audit
+      - MCP invoke remains explicit and non-auto-injected into conversation
+      - remote/local mismatch guard remains enforced
+  - explicit terminal explain command targeting (identity hardening):
+    - `./scripts/go.sh test ./core/transport/httpapi -run 'TestExplainTerminalCommandUsesExplicitCommandAuditEventIDPayload'` -> `PASS`
+    - confirms explain audit uses explicit `command_audit_event_id` targeting instead of only latest-matching lineage
+  - provenance/audit clarity checks:
+    - `./scripts/go.sh test ./core/app -run 'TestCreateAttachmentReferenceAppendsAuditEventWithProvenance|TestExplainTerminalCommandUsesExplicitCommandAuditEventID'` -> `PASS`
+    - `./scripts/go.sh test ./core/transport/httpapi -run 'TestInvokeMCPAppendsAuditWithExplicitProvenance|TestExecuteToolAcceptsSessionTargetFieldsAtTransportBoundary'` -> `PASS`
+    - `./scripts/go.sh test ./core/app ./core/toolruntime ./core/transport/httpapi` -> `PASS`
+  - frontend wiring checks for explicit handoff/provenance payloads:
+    - `npm exec eslint app/aipanel/aipanel-compat.tsx app/aipanel/compat-conversation.ts app/view/term/compat-terminal.tsx app/workspace/files-floating-window.tsx app/workspace/tools-floating-window.tsx app/workspace/widget-helpers.ts rterm-api/conversation/types.ts rterm-api/tools/types.ts rterm-api/mcp/types.ts rterm-api/audit/types.ts` (run in `frontend/`) -> `PASS`
+    - `npm exec vitest run app/view/term/explain-handoff.test.ts app/aipanel/run-command.test.ts` (run in `frontend/`) -> `PASS`
+- Result: `VERIFIED` — workflow identity hardening now carries explicit explain command identity and explicit cross-surface provenance metadata while preserving existing operator workflow behavior.
