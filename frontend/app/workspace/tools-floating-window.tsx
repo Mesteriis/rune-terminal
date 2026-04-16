@@ -232,7 +232,6 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
                 server_id: mcpInvokeServerID,
                 payload,
                 allow_on_demand_start: mcpAllowOnDemandStart,
-                include_context: true,
             });
             setMCPInvokeResult(result);
             await refreshMCPServers();
@@ -565,6 +564,9 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
                             <pre className="max-h-36 overflow-auto rounded bg-black/20 p-2 text-[11px] text-secondary whitespace-pre-wrap break-words">
                                 {mcpInvokeError ?? (mcpInvokeResult ? formatJson(mcpInvokeResult) : "No MCP invoke yet")}
                             </pre>
+                        </div>
+                        <div className="text-[10px] text-secondary">
+                            MCP invoke output stays in this panel only. It is not auto-injected into agent context.
                         </div>
                     </div>
                 </div>

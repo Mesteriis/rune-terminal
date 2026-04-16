@@ -59,7 +59,10 @@ export function createMCPFacade(client: MCPClient): MCPFacade {
       return response.server;
     },
     invoke(payload: MCPInvokeRequest): Promise<MCPInvokeResponse> {
-      return client.invoke(payload);
+      return client.invoke({
+        ...payload,
+        include_context: true,
+      });
     },
   };
 }
