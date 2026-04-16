@@ -3,7 +3,9 @@ package toolruntime
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/Mesteriis/rune-terminal/core/audit"
@@ -220,6 +222,92 @@ func TestPluginBackedExecutionRejectsApprovalIntentMismatchBeforePluginInvoke(t 
 	}
 }
 
+func TestPluginBackedExecutionAuditUsesCoreExecutionTruthOnSuccess(t *testing.T) {
+	t.Parallel()
+
+	executor, auditLog := newPluginBackedExecutorWithAudit(t, &capturingPluginInvoker{
+		output: json.RawMessage(`{"success":false,"approval_used":false}`),
+	})
+
+	response := executor.Execute(context.Background(), ExecuteRequest{
+		ToolName: "plugin.example_echo",
+		Input:    json.RawMessage(`{"text":"hello"}`),
+		Context: ExecutionContext{
+			WorkspaceID: "ws-local",
+		},
+	}, policy.EvaluationProfile{})
+	if response.Status != "ok" {
+		t.Fatalf("expected success response, got %#v", response)
+	}
+
+	events, err := auditLog.List(10)
+	if err != nil {
+		t.Fatalf("List error: %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("expected single audit event, got %d", len(events))
+	}
+	if !events[0].Success {
+		t.Fatalf("expected audit success=true, got %#v", events[0])
+	}
+	if events[0].ApprovalUsed {
+		t.Fatalf("expected approval_used=false for safe plugin path, got %#v", events[0])
+	}
+}
+
+func TestPluginBackedExecutionAuditCapturesFailureModes(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name          string
+		invokerError  error
+		expectedAudit string
+	}{
+		{
+			name:          "timeout",
+			invokerError:  fmt.Errorf("%w: deadline", plugins.ErrPluginTimeout),
+			expectedAudit: "plugin execution timed out",
+		},
+		{
+			name:          "crash",
+			invokerError:  fmt.Errorf("%w: signal 9", plugins.ErrPluginProcessCrashed),
+			expectedAudit: "plugin process crashed",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			executor, auditLog := newPluginBackedExecutorWithAudit(t, &capturingPluginInvoker{
+				err: tc.invokerError,
+			})
+			response := executor.Execute(context.Background(), ExecuteRequest{
+				ToolName: "plugin.example_echo",
+				Input:    json.RawMessage(`{"text":"hello"}`),
+				Context: ExecutionContext{
+					WorkspaceID: "ws-local",
+				},
+			}, policy.EvaluationProfile{})
+			if response.Status != "error" || response.ErrorCode != ErrorCodeInternalError {
+				t.Fatalf("expected internal error response, got %#v", response)
+			}
+
+			events, err := auditLog.List(10)
+			if err != nil {
+				t.Fatalf("List error: %v", err)
+			}
+			if len(events) != 1 {
+				t.Fatalf("expected single audit event, got %d", len(events))
+			}
+			if events[0].Success {
+				t.Fatalf("expected audit success=false, got %#v", events[0])
+			}
+			if !strings.Contains(events[0].Error, tc.expectedAudit) {
+				t.Fatalf("expected audit error to contain %q, got %q", tc.expectedAudit, events[0].Error)
+			}
+		})
+	}
+}
+
 func newPluginBackedExecutor(t *testing.T, invoker PluginInvoker) *Executor {
 	t.Helper()
 
@@ -240,6 +328,28 @@ func newPluginBackedExecutor(t *testing.T, invoker PluginInvoker) *Executor {
 		return NewExecutor(registry, policyStore, auditLog)
 	}
 	return NewExecutor(registry, policyStore, auditLog, WithPluginInvoker(invoker))
+}
+
+func newPluginBackedExecutorWithAudit(t *testing.T, invoker PluginInvoker) (*Executor, *audit.Log) {
+	t.Helper()
+
+	policyStore, err := policy.NewStore(filepath.Join(t.TempDir(), "policy.json"), "/workspace/repo")
+	if err != nil {
+		t.Fatalf("NewStore error: %v", err)
+	}
+	auditLog, err := audit.NewLog(filepath.Join(t.TempDir(), "audit.jsonl"))
+	if err != nil {
+		t.Fatalf("NewLog error: %v", err)
+	}
+	registry := NewRegistry()
+	if err := registry.Register(pluginTestDefinition()); err != nil {
+		t.Fatalf("Register error: %v", err)
+	}
+
+	if invoker == nil {
+		return NewExecutor(registry, policyStore, auditLog), auditLog
+	}
+	return NewExecutor(registry, policyStore, auditLog, WithPluginInvoker(invoker)), auditLog
 }
 
 func pluginTestDefinition() Definition {
