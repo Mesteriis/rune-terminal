@@ -1,6 +1,9 @@
 import { getFSFacade } from "@/compat";
+import { getConversationFacade } from "@/compat/conversation";
+import { WaveAIModel } from "@/app/aipanel/waveai-model";
 import type { FSNode } from "@/rterm-api/fs/types";
 import type { FloatingWindowProps } from "@/app/workspace/widget-types";
+import { WorkspaceLayoutModel } from "./workspace-layout-model";
 import {
     FloatingPortal,
     autoUpdate,
@@ -58,6 +61,7 @@ const FilesFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floatin
     const [previewTruncated, setPreviewTruncated] = useState(false);
     const [previewLoading, setPreviewLoading] = useState(false);
     const [previewError, setPreviewError] = useState<string | null>(null);
+    const [attachStatus, setAttachStatus] = useState<string | null>(null);
 
     const { refs, floatingStyles, context } = useFloating({
         open: isOpen,
@@ -81,6 +85,7 @@ const FilesFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floatin
         setPreviewAvailable(false);
         setPreviewTruncated(false);
         setPreviewError(null);
+        setAttachStatus(null);
         try {
             const facade = await getFSFacade();
             const response = await facade.list(nextPath);
@@ -96,9 +101,27 @@ const FilesFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floatin
         }
     };
 
+    const attachFileContext = async (filePath: string) => {
+        try {
+            const conversationFacade = await getConversationFacade();
+            const response = await conversationFacade.createAttachmentReference({ path: filePath });
+            const reference = response.attachment;
+            const model = WaveAIModel.getInstance();
+            const attachmentFile = new File([], reference.name, {
+                type: reference.mime_type || "application/octet-stream",
+            });
+            await model.addReferencedFile(attachmentFile, reference, reference.path);
+            WorkspaceLayoutModel.getInstance().setAIPanelVisible(true);
+            setAttachStatus(`Attached to AI context: ${reference.name}`);
+        } catch (error) {
+            setAttachStatus(error instanceof Error ? error.message : String(error));
+        }
+    };
+
     const loadFilePreview = async (filePath: string) => {
         setPreviewLoading(true);
         setPreviewError(null);
+        setAttachStatus(null);
         setSelectedFilePath(filePath);
         try {
             const facade = await getFSFacade();
@@ -107,6 +130,7 @@ const FilesFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floatin
             setPreviewText(response.preview ?? "");
             setPreviewAvailable(response.preview_available === true);
             setPreviewTruncated(response.truncated === true);
+            await attachFileContext(response.path);
         } catch (error) {
             setPreviewText("");
             setPreviewAvailable(false);
@@ -227,6 +251,9 @@ const FilesFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floatin
                             )}
                             {previewAvailable && previewTruncated ? (
                                 <div className="text-[11px] text-amber-300 mt-2">Preview truncated to 8192 bytes.</div>
+                            ) : null}
+                            {attachStatus ? (
+                                <div className="text-[11px] text-emerald-300 mt-2 whitespace-pre-wrap">{attachStatus}</div>
                             ) : null}
                         </div>
                     </div>
