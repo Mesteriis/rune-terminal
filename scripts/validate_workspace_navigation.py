@@ -276,7 +276,7 @@ def run_validation() -> dict[str, Any]:
         assert terminal_before.status == 200, terminal_before.body
         from_seq = int(terminal_before.body.get("next_seq") or 0)
 
-        command = f'ls -l "{target_file}"'
+        command = f'test -f "{target_file}" && echo workspace-nav-file-ok'
         execute = request_json(
             method="POST",
             url=f"{base_url}/api/v1/tools/execute",
@@ -303,7 +303,7 @@ def run_validation() -> dict[str, Any]:
             token=AUTH_TOKEN,
             widget_id="term-main",
             from_seq=from_seq,
-            expected_substring=target_file.name,
+            expected_substring="workspace-nav-file-ok",
         )
         assert isinstance(terminal_after.get("state"), dict), terminal_after
         assert isinstance(terminal_after.get("chunks"), list), terminal_after
