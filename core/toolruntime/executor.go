@@ -41,7 +41,7 @@ func (e *Executor) Execute(ctx context.Context, request ExecuteRequest) ExecuteR
 
 	if prepared.approvalVerification == approvalVerificationMismatch {
 		errorText := "approval token does not match the requested execution intent"
-		e.appendAudit(prepared, request, false, errorText)
+		e.appendAudit(prepared, false, errorText)
 		return ExecuteResponse{
 			Status:    "error",
 			Error:     errorText,
@@ -58,7 +58,7 @@ func (e *Executor) Execute(ctx context.Context, request ExecuteRequest) ExecuteR
 			prepared.decision.EffectiveApprovalTier,
 			prepared.intentKey,
 		)
-		e.appendAudit(prepared, request, false, prepared.decision.Reason)
+		e.appendAudit(prepared, false, prepared.decision.Reason)
 		return ExecuteResponse{
 			Status:          "requires_confirmation",
 			ErrorCode:       ErrorCodeApprovalRequired,
@@ -69,7 +69,7 @@ func (e *Executor) Execute(ctx context.Context, request ExecuteRequest) ExecuteR
 	}
 
 	if !prepared.decision.Allowed {
-		e.appendAudit(prepared, request, false, prepared.decision.Reason)
+		e.appendAudit(prepared, false, prepared.decision.Reason)
 		return ExecuteResponse{
 			Status:    "error",
 			Error:     prepared.decision.Reason,
@@ -79,11 +79,11 @@ func (e *Executor) Execute(ctx context.Context, request ExecuteRequest) ExecuteR
 		}
 	}
 
-	output, err := prepared.definition.Execute(ctx, request.Context, prepared.input)
+	output, err := prepared.definition.Execute(ctx, prepared.execContext, prepared.input)
 	if err != nil {
 		code := ErrorCodeOf(err)
 		message := ErrorMessageOf(err)
-		e.appendAudit(prepared, request, false, err.Error())
+		e.appendAudit(prepared, false, err.Error())
 		return ExecuteResponse{
 			Status:    "error",
 			Error:     message,
@@ -93,7 +93,7 @@ func (e *Executor) Execute(ctx context.Context, request ExecuteRequest) ExecuteR
 		}
 	}
 
-	e.appendAudit(prepared, request, true, "")
+	e.appendAudit(prepared, true, "")
 	return ExecuteResponse{
 		Status:    "ok",
 		Output:    output,

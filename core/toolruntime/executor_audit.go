@@ -2,11 +2,11 @@ package toolruntime
 
 import "github.com/Mesteriis/rune-terminal/core/audit"
 
-func (e *Executor) appendAudit(prepared *preparedExecution, request ExecuteRequest, success bool, errorText string) {
+func (e *Executor) appendAudit(prepared *preparedExecution, success bool, errorText string) {
 	_ = e.audit.Append(audit.Event{
 		ToolName:              prepared.definition.Name,
 		Summary:               prepared.plan.Summary,
-		WorkspaceID:           request.Context.WorkspaceID,
+		WorkspaceID:           prepared.envelope.Context.WorkspaceID,
 		PromptProfileID:       prepared.decision.PromptProfileID,
 		RoleID:                prepared.decision.RoleID,
 		ModeID:                prepared.decision.ModeID,

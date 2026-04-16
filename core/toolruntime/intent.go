@@ -7,16 +7,16 @@ import (
 )
 
 type executionIntent struct {
-	ToolName string           `json:"tool_name"`
-	Input    any              `json:"input"`
-	Context  ExecutionContext `json:"context,omitempty"`
+	ToolName string                   `json:"tool_name"`
+	Input    any                      `json:"input"`
+	Context  ExecutionEnvelopeContext `json:"context,omitempty"`
 }
 
-func executionIntentHash(toolName string, input any, context ExecutionContext) (string, error) {
+func executionIntentHash(envelope ExecutionEnvelope, input any) (string, error) {
 	intent := executionIntent{
-		ToolName: toolName,
+		ToolName: envelope.ToolName,
 		Input:    normalizeExecutionIntentInput(input),
-		Context:  context,
+		Context:  envelope.Context,
 	}
 	payload, err := json.Marshal(intent)
 	if err != nil {

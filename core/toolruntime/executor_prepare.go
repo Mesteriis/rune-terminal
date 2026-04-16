@@ -7,6 +7,8 @@ import (
 )
 
 type preparedExecution struct {
+	envelope             ExecutionEnvelope
+	execContext          ExecutionContext
 	definition           Definition
 	input                any
 	plan                 OperationPlan
@@ -17,17 +19,20 @@ type preparedExecution struct {
 }
 
 func (e *Executor) prepare(request ExecuteRequest) (*preparedExecution, *ExecuteResponse) {
-	definition, ok := e.registry.Get(request.ToolName)
+	envelope := executionEnvelopeFromRequest(request)
+	execContext := envelope.executionContext()
+
+	definition, ok := e.registry.Get(envelope.ToolName)
 	if !ok {
 		return nil, &ExecuteResponse{Status: "error", Error: "tool not found", ErrorCode: ErrorCodeNotFound}
 	}
 
-	input, err := definition.Decode(request.Input)
+	input, err := definition.Decode(envelope.Input)
 	if err != nil {
 		return nil, &ExecuteResponse{Status: "error", Error: err.Error(), ErrorCode: ErrorCodeInvalidInput, Tool: toolInfo(definition)}
 	}
 
-	plan, err := definition.Plan(input, request.Context)
+	plan, err := definition.Plan(input, execContext)
 	if err != nil {
 		return nil, &ExecuteResponse{Status: "error", Error: err.Error(), ErrorCode: ErrorCodeInvalidInput, Tool: toolInfo(definition)}
 	}
@@ -37,7 +42,7 @@ func (e *Executor) prepare(request ExecuteRequest) (*preparedExecution, *Execute
 		plan.ApprovalTier = definition.Metadata.ApprovalTier
 	}
 
-	intentKey, err := executionIntentHash(definition.Name, input, request.Context)
+	intentKey, err := executionIntentHash(envelope, input)
 	if err != nil {
 		return nil, &ExecuteResponse{
 			Status:    "error",
@@ -57,8 +62,8 @@ func (e *Executor) prepare(request ExecuteRequest) (*preparedExecution, *Execute
 	decision := policy.Evaluate(e.policy.Snapshot(), policy.Context{
 		ToolName:             definition.Name,
 		Summary:              plan.Summary,
-		WorkspaceID:          request.Context.WorkspaceID,
-		RepoRoot:             request.Context.RepoRoot,
+		WorkspaceID:          envelope.Context.WorkspaceID,
+		RepoRoot:             envelope.Context.RepoRoot,
 		AffectedPaths:        plan.AffectedPaths,
 		AffectedWidgets:      plan.AffectedWidgets,
 		RequiredCapabilities: plan.RequiredCapabilities,
@@ -71,6 +76,8 @@ func (e *Executor) prepare(request ExecuteRequest) (*preparedExecution, *Execute
 	})
 	plan.ApprovalTier = decision.EffectiveApprovalTier
 	return &preparedExecution{
+		envelope:             envelope,
+		execContext:          execContext,
 		definition:           definition,
 		input:                input,
 		plan:                 plan,
