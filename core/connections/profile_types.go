@@ -24,6 +24,17 @@ type SaveRemoteProfileInput struct {
 	IdentityFile string `json:"identity_file,omitempty"`
 }
 
+func (input SaveRemoteProfileInput) toSaveSSHInput() SaveSSHInput {
+	return SaveSSHInput{
+		ID:           input.ID,
+		Name:         input.Name,
+		Host:         input.Host,
+		User:         input.User,
+		Port:         input.Port,
+		IdentityFile: input.IdentityFile,
+	}
+}
+
 func (s savedSSH) toRemoteProfile() RemoteProfile {
 	return RemoteProfile{
 		ID:           s.ID,

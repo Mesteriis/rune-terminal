@@ -236,3 +236,65 @@ func TestLaunchSuccessDoesNotErasePreflightAttention(t *testing.T) {
 		t.Fatalf("expected usability to stay attention when preflight is still failing, got %q", connection.Usability)
 	}
 }
+
+func TestRemoteProfilesCanBeSavedListedAndDeleted(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(t.TempDir(), "connections.json")
+	svc, err := NewServiceWithChecker(path, stubChecker{
+		results: map[string]CheckResult{},
+	})
+	if err != nil {
+		t.Fatalf("new service: %v", err)
+	}
+
+	saved, profiles, err := svc.SaveRemoteProfile(SaveRemoteProfileInput{
+		Name:         "Prod",
+		Host:         "prod.example.com",
+		User:         "deploy",
+		Port:         2222,
+		IdentityFile: "~/.ssh/id_prod",
+	})
+	if err != nil {
+		t.Fatalf("save remote profile: %v", err)
+	}
+	if saved.ID == "" {
+		t.Fatalf("expected non-empty remote profile id")
+	}
+	if len(profiles) != 1 {
+		t.Fatalf("expected one remote profile, got %d", len(profiles))
+	}
+	if profiles[0].Host != "prod.example.com" {
+		t.Fatalf("expected host to be persisted, got %q", profiles[0].Host)
+	}
+
+	if _, err := svc.Select(saved.ID); err != nil {
+		t.Fatalf("select saved profile as active connection: %v", err)
+	}
+
+	remaining, err := svc.DeleteRemoteProfile(saved.ID)
+	if err != nil {
+		t.Fatalf("delete remote profile: %v", err)
+	}
+	if len(remaining) != 0 {
+		t.Fatalf("expected no remote profiles after delete, got %d", len(remaining))
+	}
+	active, err := svc.Active()
+	if err != nil {
+		t.Fatalf("active after delete: %v", err)
+	}
+	if active.ID != "local" {
+		t.Fatalf("expected active connection to fall back to local after delete, got %q", active.ID)
+	}
+
+	reloaded, err := NewServiceWithChecker(path, stubChecker{
+		results: map[string]CheckResult{},
+	})
+	if err != nil {
+		t.Fatalf("reload service: %v", err)
+	}
+	profiles = reloaded.ListRemoteProfiles()
+	if len(profiles) != 0 {
+		t.Fatalf("expected no remote profiles after reload, got %d", len(profiles))
+	}
+}

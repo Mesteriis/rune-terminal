@@ -93,6 +93,58 @@ func (s *Service) Resolve(id string) (Connection, error) {
 	return s.resolveLocked(id)
 }
 
+func (s *Service) ListRemoteProfiles() []RemoteProfile {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.listRemoteProfilesLocked()
+}
+
+func (s *Service) SaveRemoteProfile(input SaveRemoteProfileInput) (RemoteProfile, []RemoteProfile, error) {
+	connection, _, err := s.SaveSSH(input.toSaveSSHInput())
+	if err != nil {
+		return RemoteProfile{}, nil, err
+	}
+	profile := RemoteProfile{
+		ID:           connection.ID,
+		Name:         connection.Name,
+		Host:         connection.SSH.Host,
+		User:         connection.SSH.User,
+		Port:         connection.SSH.Port,
+		IdentityFile: connection.SSH.IdentityFile,
+		Description:  describeRemoteProfile(connection.SSH.User, connection.SSH.Host),
+	}
+	return profile, s.ListRemoteProfiles(), nil
+}
+
+func (s *Service) DeleteRemoteProfile(id string) ([]RemoteProfile, error) {
+	id = strings.TrimSpace(id)
+	if id == "" || id == localConnection().ID {
+		return nil, fmt.Errorf("%w: invalid remote profile id", ErrInvalidConnection)
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	index := -1
+	for i, conn := range s.state.SSHConnections {
+		if conn.ID == id {
+			index = i
+			break
+		}
+	}
+	if index == -1 {
+		return nil, fmt.Errorf("%w: %s", ErrConnectionNotFound, id)
+	}
+	s.state.SSHConnections = append(s.state.SSHConnections[:index], s.state.SSHConnections[index+1:]...)
+	if s.state.ActiveConnectionID == id {
+		s.state.ActiveConnectionID = localConnection().ID
+	}
+	if err := s.persistLocked(); err != nil {
+		return nil, err
+	}
+	return s.listRemoteProfilesLocked(), nil
+}
+
 func (s *Service) Select(id string) (Snapshot, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -196,6 +248,14 @@ func (s *Service) snapshotLocked() Snapshot {
 		Connections:        slices.Clone(connections),
 		ActiveConnectionID: s.state.ActiveConnectionID,
 	}
+}
+
+func (s *Service) listRemoteProfilesLocked() []RemoteProfile {
+	profiles := make([]RemoteProfile, 0, len(s.state.SSHConnections))
+	for _, saved := range s.state.SSHConnections {
+		profiles = append(profiles, saved.toRemoteProfile())
+	}
+	return profiles
 }
 
 func (s *Service) resolveLocked(id string) (Connection, error) {
