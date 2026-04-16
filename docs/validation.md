@@ -98,6 +98,35 @@
 - Notes:
   - this run is targeted to execution-block action truth and does not claim headed browser validation; that is tracked separately in the browser validation slice.
 
+<a id="structured-execution-headed-browser"></a>
+## Structured execution headed browser validation
+
+- Date: `2026-04-17`
+- Status: `PARTIALLY VERIFIED`
+- Validation steps:
+  - live runtime stack:
+    - Ollama-compatible stub: `http://127.0.0.1:11458`
+    - core API: `http://127.0.0.1:61123`
+    - frontend dev: `http://127.0.0.1:4179`
+  - headed Playwright browser flow (visible UI window, not headless):
+    1. open app and AI panel
+    2. execute `/run echo structured-browser-flow-01`
+    3. confirm structured block renders with command/result
+    4. trigger `Explain` from block
+    5. confirm block remains one record (`1 recent`) and provenance IDs render via `Reveal Provenance`
+  - backend truth cross-check:
+    - `GET /api/v1/execution/blocks?limit=10` showed one block with both command/explain audit IDs
+    - `GET /api/v1/audit?limit=20` showed `term.send_input` + explain audit chain with matching IDs
+  - shell basics check from utility rail:
+    - opening `Tools` produced frontend runtime error `Maximum update depth exceeded`
+    - opening `Audit` produced the same frontend runtime error
+- Result:
+  - structured `/run` -> block render -> block explain flow is validated in a real headed browser against live runtime truth.
+  - terminal and AI transcript/block behavior remained coherent.
+  - tools/audit utility panel basics were **not** healthy in this run due a runtime loop crash.
+- Notes:
+  - discrepancy details are documented in `docs/structured-execution-browser-validation.md`.
+
 <a id="remote-restore-missing-profile-error"></a>
 ## Remote restore missing-profile error semantics
 
