@@ -13,6 +13,10 @@ type conversationMessagePayload struct {
 	Context app.ConversationContext `json:"context"`
 }
 
+type attachmentReferencePayload struct {
+	Path string `json:"path"`
+}
+
 type terminalCommandExplanationPayload struct {
 	Prompt       string                  `json:"prompt"`
 	Command      string                  `json:"command"`
@@ -45,6 +49,24 @@ func (api *API) handleSubmitConversationMessage(w http.ResponseWriter, r *http.R
 	})
 }
 
+func (api *API) handleCreateAttachmentReference(w http.ResponseWriter, r *http.Request) {
+	var payload attachmentReferencePayload
+	if err := decodeJSON(r, &payload); err != nil {
+		writeBadRequest(w, "invalid_request", err)
+		return
+	}
+	attachment, err := api.runtime.CreateAttachmentReference(app.CreateAttachmentReferenceRequest{
+		Path: payload.Path,
+	})
+	if err != nil {
+		writeAttachmentError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"attachment": attachment,
+	})
+}
+
 func (api *API) handleExplainTerminalCommand(w http.ResponseWriter, r *http.Request) {
 	var payload terminalCommandExplanationPayload
 	if err := decodeJSON(r, &payload); err != nil {
@@ -72,6 +94,19 @@ func writeConversationError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, conversation.ErrInvalidPrompt):
 		writeBadRequest(w, "invalid_prompt", err)
+	default:
+		writeInternalError(w, err)
+	}
+}
+
+func writeAttachmentError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, conversation.ErrInvalidAttachmentPath):
+		writeError(w, http.StatusBadRequest, "invalid_attachment_path", err.Error())
+	case errors.Is(err, conversation.ErrAttachmentNotFound):
+		writeNotFound(w, "attachment_not_found", err.Error())
+	case errors.Is(err, conversation.ErrAttachmentNotFile):
+		writeError(w, http.StatusBadRequest, "invalid_attachment_reference", err.Error())
 	default:
 		writeInternalError(w, err)
 	}

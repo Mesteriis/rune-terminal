@@ -1,5 +1,7 @@
 import type { ConversationClient } from "@/rterm-api/conversation/client";
 import type {
+  CreateAttachmentReferenceRequest,
+  CreateAttachmentReferenceResponse,
   ConversationSnapshotResponse,
   ExplainTerminalCommandRequest,
   ExplainTerminalCommandResponse,
@@ -13,6 +15,7 @@ export interface ConversationFacade {
   getSnapshot: () => Promise<ConversationSnapshotResponse>;
   submitMessage: (payload: SubmitConversationMessageRequest) => Promise<SubmitConversationMessageResponse>;
   explainTerminalCommand: (payload: ExplainTerminalCommandRequest) => Promise<ExplainTerminalCommandResponse>;
+  createAttachmentReference: (payload: CreateAttachmentReferenceRequest) => Promise<CreateAttachmentReferenceResponse>;
 }
 
 let conversationFacadePromise: Promise<ConversationFacade> | null = null;
@@ -44,6 +47,9 @@ export function createConversationFacade(client: ConversationClient): Conversati
     },
     explainTerminalCommand(payload: ExplainTerminalCommandRequest): Promise<ExplainTerminalCommandResponse> {
       return client.explainTerminalCommand(payload);
+    },
+    createAttachmentReference(payload: CreateAttachmentReferenceRequest): Promise<CreateAttachmentReferenceResponse> {
+      return client.createAttachmentReference(payload);
     },
   };
 }

@@ -11,10 +11,20 @@ export interface ConversationMessage {
   id: string;
   role: MessageRole;
   content: string;
+  attachments?: AttachmentReference[];
   status: "complete" | "error" | (string & {});
   provider?: string;
   model?: string;
   created_at: string;
+}
+
+export interface AttachmentReference {
+  id: string;
+  name: string;
+  path: string;
+  mime_type: string;
+  size: number;
+  modified_time: number;
 }
 
 export interface ConversationSnapshot {
@@ -37,6 +47,7 @@ export interface ConversationContext {
 export interface SubmitConversationMessageRequest {
   prompt: string;
   context?: ConversationContext;
+  attachments?: AttachmentReference[];
 }
 
 export interface SubmitConversationMessageResponse {
@@ -57,4 +68,12 @@ export interface ExplainTerminalCommandResponse {
   conversation: ConversationSnapshot;
   provider_error: string;
   output_excerpt: string;
+}
+
+export interface CreateAttachmentReferenceRequest {
+  path: string;
+}
+
+export interface CreateAttachmentReferenceResponse {
+  attachment: AttachmentReference;
 }

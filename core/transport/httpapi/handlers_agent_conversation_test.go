@@ -103,6 +103,69 @@ func TestSubmitConversationMessageRejectsBlankPrompt(t *testing.T) {
 	}
 }
 
+func TestCreateAttachmentReferenceReturnsMetadata(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+	tempFile := filepath.Join(t.TempDir(), "notes.txt")
+	if err := os.WriteFile(tempFile, []byte("hello"), 0o600); err != nil {
+		t.Fatalf("write temp file: %v", err)
+	}
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPost, "/api/v1/agent/conversation/attachments/references", map[string]any{
+		"path": tempFile,
+	}))
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+
+	var payload struct {
+		Attachment struct {
+			ID           string `json:"id"`
+			Name         string `json:"name"`
+			Path         string `json:"path"`
+			MimeType     string `json:"mime_type"`
+			Size         int64  `json:"size"`
+			ModifiedTime int64  `json:"modified_time"`
+		} `json:"attachment"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
+	}
+	if payload.Attachment.ID == "" {
+		t.Fatal("expected attachment id")
+	}
+	if payload.Attachment.Name != "notes.txt" {
+		t.Fatalf("unexpected attachment name: %q", payload.Attachment.Name)
+	}
+	if payload.Attachment.Path != filepath.Clean(tempFile) {
+		t.Fatalf("unexpected attachment path: %q", payload.Attachment.Path)
+	}
+	if payload.Attachment.Size != 5 {
+		t.Fatalf("unexpected attachment size: %d", payload.Attachment.Size)
+	}
+	if payload.Attachment.ModifiedTime == 0 {
+		t.Fatal("expected attachment modified_time")
+	}
+}
+
+func TestCreateAttachmentReferenceRejectsInvalidPath(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPost, "/api/v1/agent/conversation/attachments/references", map[string]any{
+		"path": "relative/path.txt",
+	}))
+
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+}
+
 func TestExplainTerminalCommandReturnsConversationSnapshot(t *testing.T) {
 	t.Parallel()
 

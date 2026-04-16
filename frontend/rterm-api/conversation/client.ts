@@ -1,4 +1,6 @@
 import type {
+  CreateAttachmentReferenceRequest,
+  CreateAttachmentReferenceResponse,
   ConversationSnapshotResponse,
   ExplainTerminalCommandRequest,
   ExplainTerminalCommandResponse,
@@ -26,6 +28,15 @@ export class ConversationClient {
   explainTerminalCommand(payload: ExplainTerminalCommandRequest): Promise<ExplainTerminalCommandResponse> {
     return this.http.post<ExplainTerminalCommandResponse, ExplainTerminalCommandRequest>(
       "/api/v1/agent/terminal-commands/explain",
+      {
+        body: payload,
+      },
+    );
+  }
+
+  createAttachmentReference(payload: CreateAttachmentReferenceRequest): Promise<CreateAttachmentReferenceResponse> {
+    return this.http.post<CreateAttachmentReferenceResponse, CreateAttachmentReferenceRequest>(
+      "/api/v1/agent/conversation/attachments/references",
       {
         body: payload,
       },
