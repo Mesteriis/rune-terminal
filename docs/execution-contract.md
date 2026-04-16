@@ -285,3 +285,12 @@ User input:
 - Explain-step approval audit depends on frontend input.
   - `core/app/ai_terminal_command.go` writes `approval_used` from the explain request payload.
   - The explain handler does not derive `approval_used` from the tool-runtime audit chain on its own.
+
+## 5. Non-goals
+
+- Streaming protocol redesign is not part of this contract.
+- Plugin system implementation or side-process execution architecture is not part of this contract.
+- AI panel or shell UI redesign is not part of this contract.
+- Attachment transport or attachment persistence is not part of this contract.
+- Remote execution expansion beyond the current terminal/tool runtime path is not part of this contract.
+- New execution semantics, new approval semantics, or new transport endpoints are not part of this contract.
