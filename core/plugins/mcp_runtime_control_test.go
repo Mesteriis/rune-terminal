@@ -7,6 +7,7 @@ import (
 	"io"
 	"sync"
 	"testing"
+	"time"
 )
 
 func TestMCPRuntimeRequiresExplicitStartByDefault(t *testing.T) {
@@ -26,6 +27,7 @@ func TestMCPRuntimeRequiresExplicitStartByDefault(t *testing.T) {
 		output: json.RawMessage(`{"ok":true}`),
 	}
 	runtime := NewMCPRuntime(registry, &testMCPSpawner{}, invoker)
+	defer runtime.Close()
 
 	_, err := runtime.Invoke(context.Background(), MCPInvokeRequest{
 		ServerID: "mcp.docs",
@@ -57,6 +59,7 @@ func TestMCPRuntimeSupportsExplicitStartAndStop(t *testing.T) {
 		output: json.RawMessage(`{"ok":true}`),
 	}
 	runtime := NewMCPRuntime(registry, spawner, invoker)
+	defer runtime.Close()
 
 	if err := runtime.Start(context.Background(), "mcp.docs"); err != nil {
 		t.Fatalf("Start error: %v", err)
@@ -116,6 +119,7 @@ func TestMCPRuntimeAllowsExplicitOnDemandStart(t *testing.T) {
 		output: json.RawMessage(`{"ok":true}`),
 	}
 	runtime := NewMCPRuntime(registry, spawner, invoker)
+	defer runtime.Close()
 
 	_, err := runtime.Invoke(context.Background(), MCPInvokeRequest{
 		ServerID:           "mcp.docs",
@@ -128,6 +132,98 @@ func TestMCPRuntimeAllowsExplicitOnDemandStart(t *testing.T) {
 	if spawner.spawns != 1 {
 		t.Fatalf("expected on-demand spawn, got %d", spawner.spawns)
 	}
+}
+
+func TestMCPRuntimeAutoStopsIdleServers(t *testing.T) {
+	t.Parallel()
+
+	registry := NewMCPRegistry()
+	if err := registry.Register(MCPServerSpec{
+		ID: "mcp.docs",
+		Process: ProcessConfig{
+			Command: "mcp-docs",
+		},
+	}); err != nil {
+		t.Fatalf("Register error: %v", err)
+	}
+
+	current := time.Date(2026, 4, 16, 11, 30, 0, 0, time.UTC)
+	runtime := NewMCPRuntimeWithOptions(registry, &testMCPSpawner{}, &capturingMCPInvoker{
+		output: json.RawMessage(`{"ok":true}`),
+	}, MCPRuntimeOptions{
+		NowFn:             func() time.Time { return current },
+		IdleTimeout:       5 * time.Minute,
+		IdleCheckInterval: -1,
+	})
+	defer runtime.Close()
+
+	if err := runtime.Start(context.Background(), "mcp.docs"); err != nil {
+		t.Fatalf("Start error: %v", err)
+	}
+
+	current = current.Add(6 * time.Minute)
+	runtime.SweepIdle(current)
+
+	snapshot, err := registry.Get("mcp.docs")
+	if err != nil {
+		t.Fatalf("Get error: %v", err)
+	}
+	if snapshot.State != MCPStateStoppedAuto || snapshot.Active {
+		t.Fatalf("expected auto-stopped snapshot, got %#v", snapshot)
+	}
+}
+
+func TestMCPRuntimeDoesNotStopInFlightServer(t *testing.T) {
+	t.Parallel()
+
+	registry := NewMCPRegistry()
+	if err := registry.Register(MCPServerSpec{
+		ID: "mcp.docs",
+		Process: ProcessConfig{
+			Command: "mcp-docs",
+		},
+	}); err != nil {
+		t.Fatalf("Register error: %v", err)
+	}
+
+	blocked := make(chan struct{})
+	enter := make(chan struct{})
+	runtime := NewMCPRuntimeWithOptions(registry, &testMCPSpawner{}, MCPInvokerFunc(
+		func(context.Context, MCPServerSpec, json.RawMessage) (json.RawMessage, error) {
+			close(enter)
+			<-blocked
+			return json.RawMessage(`{"ok":true}`), nil
+		},
+	), MCPRuntimeOptions{
+		IdleCheckInterval: -1,
+	})
+	defer runtime.Close()
+
+	done := make(chan error, 1)
+	go func() {
+		_, err := runtime.Invoke(context.Background(), MCPInvokeRequest{
+			ServerID:           "mcp.docs",
+			Payload:            json.RawMessage(`{"query":"hello"}`),
+			AllowOnDemandStart: true,
+		})
+		done <- err
+	}()
+	<-enter
+
+	if err := runtime.Stop("mcp.docs", true); !errors.Is(err, ErrMCPServerBusy) {
+		t.Fatalf("expected busy stop error, got %v", err)
+	}
+
+	close(blocked)
+	if err := <-done; err != nil {
+		t.Fatalf("Invoke error: %v", err)
+	}
+}
+
+type MCPInvokerFunc func(context.Context, MCPServerSpec, json.RawMessage) (json.RawMessage, error)
+
+func (fn MCPInvokerFunc) Invoke(ctx context.Context, spec MCPServerSpec, payload json.RawMessage) (json.RawMessage, error) {
+	return fn(ctx, spec, payload)
 }
 
 type capturingMCPInvoker struct {

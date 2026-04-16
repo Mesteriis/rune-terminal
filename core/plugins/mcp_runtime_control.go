@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log"
 	"strings"
 	"sync"
 	"time"
@@ -12,6 +13,7 @@ import (
 
 var (
 	ErrMCPExplicitStartRequired = errors.New("mcp server is stopped; explicit start required")
+	ErrMCPServerBusy            = errors.New("mcp server has in-flight calls")
 )
 
 type MCPRuntime struct {
@@ -19,13 +21,22 @@ type MCPRuntime struct {
 	spawner  ProcessSpawner
 	invoker  MCPInvoker
 	nowFn    func() time.Time
+	idleTTL  time.Duration
 
-	mu      sync.Mutex
-	process map[string]*mcpProcess
+	mu         sync.Mutex
+	process    map[string]*mcpProcess
+	stopIdleCh chan struct{}
+	stopOnce   sync.Once
 }
 
 type MCPInvoker interface {
 	Invoke(context.Context, MCPServerSpec, json.RawMessage) (json.RawMessage, error)
+}
+
+type MCPRuntimeOptions struct {
+	NowFn             func() time.Time
+	IdleTimeout       time.Duration
+	IdleCheckInterval time.Duration
 }
 
 type MCPInvokeRequest struct {
@@ -43,26 +54,59 @@ type mcpProcess struct {
 	process Process
 	cancel  context.CancelFunc
 	waitCh  chan error
+	inUse   int
 }
 
 func NewMCPRuntime(registry *MCPRegistry, spawner ProcessSpawner, invoker MCPInvoker) *MCPRuntime {
+	return NewMCPRuntimeWithOptions(registry, spawner, invoker, MCPRuntimeOptions{})
+}
+
+func NewMCPRuntimeWithOptions(
+	registry *MCPRegistry,
+	spawner ProcessSpawner,
+	invoker MCPInvoker,
+	options MCPRuntimeOptions,
+) *MCPRuntime {
 	if registry == nil {
 		registry = NewMCPRegistry()
 	}
 	if spawner == nil {
 		spawner = OSProcessSpawner{}
 	}
-	return &MCPRuntime{
-		registry: registry,
-		spawner:  spawner,
-		invoker:  invoker,
-		nowFn:    time.Now,
-		process:  make(map[string]*mcpProcess),
+	nowFn := options.NowFn
+	if nowFn == nil {
+		nowFn = time.Now
 	}
+	idleTimeout := options.IdleTimeout
+	if idleTimeout == 0 {
+		idleTimeout = 7 * time.Minute
+	}
+	idleCheckInterval := options.IdleCheckInterval
+	if idleCheckInterval == 0 {
+		idleCheckInterval = time.Minute
+	}
+
+	runtime := &MCPRuntime{
+		registry:   registry,
+		spawner:    spawner,
+		invoker:    invoker,
+		nowFn:      nowFn,
+		idleTTL:    idleTimeout,
+		process:    make(map[string]*mcpProcess),
+		stopIdleCh: make(chan struct{}),
+	}
+	go runtime.runIdleSweepLoop(idleCheckInterval)
+	return runtime
 }
 
 func (r *MCPRuntime) Registry() *MCPRegistry {
 	return r.registry
+}
+
+func (r *MCPRuntime) Close() {
+	r.stopOnce.Do(func() {
+		close(r.stopIdleCh)
+	})
 }
 
 func (r *MCPRuntime) Start(ctx context.Context, serverID string) error {
@@ -72,9 +116,13 @@ func (r *MCPRuntime) Start(ctx context.Context, serverID string) error {
 	}
 
 	r.mu.Lock()
-	if _, running := r.process[id]; running {
+	if process, running := r.process[id]; running {
 		r.mu.Unlock()
-		_ = r.registry.SetState(id, MCPStateIdle)
+		if process.inUse > 0 {
+			_ = r.registry.SetState(id, MCPStateActive)
+		} else {
+			_ = r.registry.SetState(id, MCPStateIdle)
+		}
 		_ = r.registry.SetActive(id, true)
 		_ = r.registry.Touch(id, r.nowFn())
 		return nil
@@ -132,6 +180,10 @@ func (r *MCPRuntime) Stop(serverID string, auto bool) error {
 
 	r.mu.Lock()
 	running := r.process[id]
+	if running != nil && running.inUse > 0 {
+		r.mu.Unlock()
+		return ErrMCPServerBusy
+	}
 	delete(r.process, id)
 	r.mu.Unlock()
 
@@ -178,6 +230,12 @@ func (r *MCPRuntime) Invoke(ctx context.Context, request MCPInvokeRequest) (MCPI
 		}
 	}
 
+	process := r.acquireProcess(id)
+	if process == nil {
+		return MCPInvokeResult{}, ErrMCPExplicitStartRequired
+	}
+	defer r.releaseProcess(id, process)
+
 	if err := r.registry.SetState(id, MCPStateActive); err != nil {
 		return MCPInvokeResult{}, err
 	}
@@ -196,13 +254,68 @@ func (r *MCPRuntime) Invoke(ctx context.Context, request MCPInvokeRequest) (MCPI
 			return MCPInvokeResult{}, err
 		}
 	}
-
-	_ = r.registry.SetState(id, MCPStateIdle)
-	_ = r.registry.Touch(id, r.nowFn())
 	return MCPInvokeResult{
 		ServerID: id,
 		Output:   output,
 	}, nil
+}
+
+func (r *MCPRuntime) SweepIdle(now time.Time) {
+	if r.idleTTL <= 0 {
+		return
+	}
+	for _, server := range r.registry.List() {
+		if server.State != MCPStateIdle || server.LastUsed.IsZero() {
+			continue
+		}
+		if now.Sub(server.LastUsed) < r.idleTTL {
+			continue
+		}
+		if err := r.Stop(server.ID, true); err == nil {
+			log.Printf("mcp runtime auto-stop: id=%s idle_for=%s", server.ID, now.Sub(server.LastUsed).Round(time.Second))
+		}
+	}
+}
+
+func (r *MCPRuntime) runIdleSweepLoop(interval time.Duration) {
+	if interval <= 0 {
+		return
+	}
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			r.SweepIdle(r.nowFn())
+		case <-r.stopIdleCh:
+			return
+		}
+	}
+}
+
+func (r *MCPRuntime) acquireProcess(serverID string) *mcpProcess {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	process := r.process[serverID]
+	if process == nil {
+		return nil
+	}
+	process.inUse++
+	return process
+}
+
+func (r *MCPRuntime) releaseProcess(serverID string, process *mcpProcess) {
+	r.mu.Lock()
+	if process.inUse > 0 {
+		process.inUse--
+	}
+	inUse := process.inUse
+	r.mu.Unlock()
+
+	if inUse == 0 {
+		_ = r.registry.SetState(serverID, MCPStateIdle)
+		_ = r.registry.Touch(serverID, r.nowFn())
+	}
 }
 
 func (r *MCPRuntime) isRunning(serverID string) bool {
