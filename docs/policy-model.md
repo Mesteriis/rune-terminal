@@ -33,7 +33,7 @@ Examples:
 - `destructive`
 
 `dangerous` and `destructive` actions require confirmation unless a trusted rule can safely reduce friction. `destructive` operations never become silent.
-Approval grants are single-use: confirming an approval consumes the pending approval record, and the returned approval token is consumed by the first successful verification attempt.
+Approval grants are single-use and intent-bound: confirming an approval consumes the pending approval record, and the returned approval token can approve only the matching execution intent on its first successful verification attempt.
 
 Role presets, work modes and system prompt profiles can raise the effective approval tier for a mutation or disable trusted auto-approval entirely.
 

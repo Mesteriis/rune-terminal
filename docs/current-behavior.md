@@ -97,7 +97,13 @@ It is intentionally operational, not narrative.
 - `safety.confirm` consumes the pending approval ID and returns a short-lived approval token.
 - Pending approval IDs are single-use.
 - Approval tokens are single-use.
+- Approval tokens are bound to the approved execution intent:
+  - `tool_name`
+  - normalized decoded tool input
+  - normalized execution context (`workspace_id`, `repo_root`, `active_widget_id`)
 - A consumed approval token cannot be replayed for a second execution.
+- Retrying with a changed input or execution context is rejected explicitly with `approval_mismatch`.
+- A mismatched retry does not consume the token for the original approved intent.
 - Reusing a consumed approval token causes the execution to fall back to normal policy evaluation, which may produce a new approval requirement.
 
 ## Trusted rule behavior
@@ -189,6 +195,7 @@ Confirmable boundaries:
   - if the active policy profile escalates `term.send_input` to `dangerous`, `/run` returns an approval requirement
   - the active compat panel now keeps the pending `/run` request in local UI state and renders a confirm-and-retry action in the current AI panel flow
   - confirm uses the existing `safety.confirm` tool contract and retries the original `term.send_input` request with the returned one-time `approval_token`
+  - the backend now enforces that the approved retry matches the original execution intent instead of trusting `tool_name` alone
   - the resulting explanation call records `approval_used:true` in audit when execution reached the approved retry path
 - Capability-removing modes such as `secure` can still forbid `/run` entirely. In that case the AI command path is denied rather than approval-gated.
 - The AI panel footer now includes a TideTerm-shaped composer. It still maps a small set of explicit runtime-backed intents such as terminal inspection, tab listing, widget listing, active-tab lookup, and terminal interrupt to the tool/runtime path, but all other free-text prompts now go through the real backend conversation route.

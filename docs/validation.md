@@ -179,6 +179,60 @@
   - browser console recorded one expected `428 Precondition Required` resource error for the initial approval challenge; the UI flow continued correctly and no fatal runtime exceptions were observed
   - `npm run validate`: `NOT VERIFIED` for this slice because the repo currently has broad pre-existing frontend lint failures unrelated to `/run` approval wiring; the failure occurred before the validation script could reach `build:frontend`, `test:go`, `build:go`, or `tauri:check`
 
+## Approval intent binding
+
+- Date: `2026-04-16`
+- Status: `VERIFIED`
+- Commits:
+  - `beced21dd86353ff9037e40134095f6c032b7796`
+  - `e8c8a811a244ee5eee9ec7fbfeff593f543aeb33`
+  - `16174b0f1f78c51dd69a7501690134ff8eb2f2d2`
+  - `5eb02e8803f06ebe428ae197802e967f8c3022a6`
+- Validation steps:
+  - `npm run build:core`
+  - `go test ./core/toolruntime ./core/transport/httpapi`
+  - `npx vitest run frontend/rterm-api/tools/client.test.ts frontend/compat/tools.test.ts frontend/app/aipanel/run-command.test.ts --config frontend/vite.config.ts`
+  - `npm run build:frontend`
+  - `npm run tauri:dev`
+  - runtime environment:
+    - core: `RTERM_AUTH_TOKEN=approval-bind-token apps/desktop/bin/rterm-core serve --listen 127.0.0.1:61410 --state-dir /tmp/rterm-approval-binding-v2/state --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --ready-file /tmp/rterm-approval-binding-v2/ready.json`
+    - frontend dev: `VITE_RTERM_API_BASE=http://127.0.0.1:61410 VITE_RTERM_AUTH_TOKEN=approval-bind-token npm --prefix frontend run dev -- --host 127.0.0.1 --port 4202 --strictPort`
+  - matched `/run` approval path:
+    - switched `Profile` to `Hardened`
+    - entered `/run echo intent-ui-match-v2`
+    - UI showed `Approval required for \`/run echo intent-ui-match-v2\`` with summary `send input to term-main: echo intent-ui-match-v2`
+    - clicked `Confirm and retry`
+    - transcript rendered the execution result `intent-ui-match-v2` and the follow-up assistant explanation
+  - matched tools-panel approval path:
+    - opened `safety.add_ignore_rule`
+    - used payload `{"scope":"repo","matcher_type":"glob","pattern":"approval-intent-ui-v2-*","mode":"metadata-only","note":"approval intent binding ui v2"}`
+    - UI showed `approval required: add ignore rule approval-intent-ui-v2-* (metadata-only)`
+    - clicked `Confirm and retry`
+    - final response rendered `status:"ok"` with the created ignore rule for `approval-intent-ui-v2-*`
+  - mismatched retry path:
+    - obtained an approval challenge for `safety.add_ignore_rule` with pattern `approval-intent-api-source-1776339013975-*`
+    - confirmed it through `safety.confirm` and received token `fce1c27ed6b579f2720ce170a511e546`
+    - retried with changed input pattern `approval-intent-api-changed-1776339013975-*`
+    - observed HTTP `403` with `status:"error"` and `error_code:"approval_mismatch"`
+    - retried again with the original approved request and observed HTTP `200` with `status:"ok"`
+  - audit coherence:
+    - `/run` success path produced `approval_required` -> `safety.confirm` -> approved `term.send_input` with `approval_used:true` -> `agent.terminal_command` with `approval_used:true`
+    - tools-panel success path produced `approval_required` -> `safety.confirm` -> approved `safety.add_ignore_rule` with `approval_used:true`
+    - mismatch path produced blocked original request -> `safety.confirm` -> changed request failure with `approval token does not match the requested execution intent` -> original request success with `approval_used:true`
+  - shell launch smoke:
+    - `npm run tauri:dev`
+    - reached `Running target/debug/rterm-desktop`
+    - the spawned core reported ready state `{"base_url":"http://127.0.0.1:56288","pid":88753}`
+    - the smoke was interrupted intentionally after ready-state confirmation
+- Matched approval path: `VERIFIED` — both the active `/run` flow and the current tools-panel flow still complete confirm-and-retry successfully against the hardened backend contract.
+- Mismatched retry path: `VERIFIED` — changing the approved request input caused an explicit backend rejection with `approval_mismatch`, and the same token still worked for the original approved request.
+- Exact observed result: `VERIFIED` — approval is now bound to the full execution intent for retry verification rather than to `tool_name` alone.
+- Notes:
+  - the final recorded results are from the rebuilt core binary after `npm run build:core`; an earlier stale-core run was discarded once it was clear the old binary was still serving requests
+  - the current UI intentionally replays the original request, so mismatched retry was validated through a direct API probe rather than through a visible panel control
+  - browser console still records the expected `428 Precondition Required` resource error for the initial approval challenge in matched UI flows; no fatal runtime exceptions were observed
+  - `npm run validate`: `NOT VERIFIED` for this slice because the repo still has broad pre-existing frontend lint failures unrelated to approval intent binding
+
 ## widgets.tsx structural refactor
 
 - Date: `2026-04-16`

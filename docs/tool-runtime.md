@@ -30,7 +30,7 @@ Each tool definition carries:
    - approval tier
 4. Evaluate the plan through the policy engine.
 5. If policy requires confirmation, emit a `pending_approval`.
-6. If an approval token is supplied, verify it against the pending approval.
+6. If an approval token is supplied, verify it against the approved execution intent.
 7. Execute the tool handler.
 8. Write an audit event.
 9. Return normalized output.

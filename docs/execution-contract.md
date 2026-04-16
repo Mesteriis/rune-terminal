@@ -51,7 +51,9 @@ User input:
 7. Retry
    - After a successful confirm, the UI retries the original `term.send_input` request.
    - The retried payload keeps the same tool name, input, and context, and adds the returned `approval_token`.
-   - Token verification is one-time and tool-name scoped inside `core/toolruntime/approval.go`.
+   - `core/toolruntime/approval.go` binds the approval grant to a stable execution-intent hash derived from the tool name, normalized decoded input, and normalized execution context.
+   - A mismatched retry is rejected explicitly with HTTP `403`, `status:"error"`, and `error_code:"approval_mismatch"`.
+   - A mismatched retry does not consume the token for the original approved intent.
 
 8. Final execution
    - When the retry is accepted, `term.send_input` executes through the normal terminal service path.
@@ -157,6 +159,10 @@ User input:
   - `approval_id`
   - `approval_token`
   - `expires_at`
+- The approval grant is bound internally to the original execution intent:
+  - `tool_name`
+  - normalized decoded tool `input`
+  - normalized execution `context`
 - Pending approvals are single-use and expire. The current implementation issues them with a 10-minute lifetime.
 
 ### 2.4 Retry contract
@@ -173,7 +179,12 @@ User input:
   - target widget
   - workspace context
   - repo-root context
+- A retry whose tool name, normalized input, or normalized context does not match the approved intent must fail explicitly with:
+  - HTTP `403`
+  - `status: "error"`
+  - `error_code: "approval_mismatch"`
 - Approval tokens are single-use and expire. The current implementation issues them with a 10-minute lifetime.
+- A mismatched retry must not consume the token for the original approved intent.
 - A consumed or expired token must not yield ambient approval. The request falls back to normal policy evaluation, which may return a fresh `requires_confirmation`.
 
 ### 2.5 Audit contract
@@ -246,10 +257,10 @@ User input:
   - `core/app/tool_policy.go` exposes confirmation only as `safety.confirm` through the normal tool execution route.
   - `core/toolruntime/approval.go` makes pending approvals single-use with a 10-minute expiry.
 
-- `2.4 Retry contract` -> `PARTIAL`
-  - The active compat `/run` UI preserves the original command and execution context on retry.
-  - `core/toolruntime/approval.go` verifies approval tokens against the tool name only.
-  - The runtime does not bind the approval token to the full original input or context, so the strict retry rule is enforced by the current UI path but not by the backend token contract itself.
+- `2.4 Retry contract` -> `MATCHES`
+  - `core/toolruntime/intent.go` computes a stable execution-intent hash from the tool name, normalized decoded input, and normalized execution context.
+  - `core/toolruntime/approval.go` stores that intent binding with both the pending approval and the approval grant, and rejects mismatched retries with `approval_mismatch` without consuming the original matching token.
+  - The active compat UI already replays the original request for both tools-panel and `/run` approval flows, so the hardened backend contract matches the existing frontend behavior.
 
 - `2.5 Audit contract` -> `MATCHES`
   - `core/toolruntime/executor_audit.go` records tool execution attempts in the backend.
@@ -267,10 +278,6 @@ User input:
   - Pending approvals and execution-result messages remain frontend-local, which matches the current documented UI responsibility boundary.
 
 ## 4. Risks
-
-- Approval retry binding is weaker than the strict contract.
-  - `core/toolruntime/approval.go` binds the approval token to the tool name only.
-  - The current active `/run` UI preserves the original request, but the backend approval token itself is not tied to the original input or execution context.
 
 - Approval continuity is transient.
   - The active AI panel keeps the pending `/run` request only in component state.
