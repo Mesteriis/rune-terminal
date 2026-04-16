@@ -23,7 +23,7 @@ func (r *Runtime) registerMCPServers() error {
 	if r.MCP == nil {
 		return nil
 	}
-	for _, spec := range []plugins.MCPServerSpec{
+	defaultSpecs := []plugins.MCPServerSpec{
 		{
 			ID: "mcp.example",
 			Process: plugins.ProcessConfig{
@@ -31,12 +31,18 @@ func (r *Runtime) registerMCPServers() error {
 				Args:    []string{"plugin-example"},
 			},
 		},
-	} {
+	}
+	for _, spec := range defaultSpecs {
 		if err := r.MCP.Registry().Register(spec); err != nil {
-			return err
+			if !errors.Is(err, plugins.ErrMCPServerRegistered) {
+				return err
+			}
 		}
 	}
-	return nil
+	if err := r.loadPersistedMCPRegistry(); err != nil {
+		return err
+	}
+	return r.persistMCPRegistry()
 }
 
 func (r *Runtime) RegisterMCPServer(request MCPRegistrationRequest) (plugins.MCPServerSnapshot, error) {
@@ -70,6 +76,9 @@ func (r *Runtime) RegisterMCPServer(request MCPRegistrationRequest) (plugins.MCP
 	}
 
 	if err := r.MCP.Registry().Register(spec); err != nil {
+		return plugins.MCPServerSnapshot{}, err
+	}
+	if err := r.persistMCPRegistry(); err != nil {
 		return plugins.MCPServerSnapshot{}, err
 	}
 	return r.MCP.Registry().Get(spec.ID)
@@ -117,6 +126,9 @@ func (r *Runtime) SetMCPServerEnabled(serverID string, enabled bool) (plugins.MC
 		return plugins.MCPServerSnapshot{}, ErrMCPRuntimeNotConfigured
 	}
 	if err := r.MCP.SetEnabled(serverID, enabled); err != nil {
+		return plugins.MCPServerSnapshot{}, err
+	}
+	if err := r.persistMCPRegistry(); err != nil {
 		return plugins.MCPServerSnapshot{}, err
 	}
 	return r.MCP.Registry().Get(serverID)

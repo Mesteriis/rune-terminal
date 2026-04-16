@@ -94,9 +94,16 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
         let cancelled = false;
         setLoading(true);
         setLoadError(null);
+        setInputValue("{}");
+        setResponseValue(null);
+        setExecuteError(null);
         setMCPLoading(true);
         setMCPLoadError(null);
         setMCPActionError(null);
+        setMCPInvokePayload("{}");
+        setMCPInvokeResult(null);
+        setMCPInvokeError(null);
+        setMCPUseInAIStatus(null);
         setMCPRegisterError(null);
         setMCPRegisterStatus(null);
         setPendingApproval(listStoredPendingToolApprovalsForWorkspace(getActiveWorkspaceID())[0] ?? null);
@@ -668,6 +675,9 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
                 )}
                 <div className="mt-3 pt-3 border-t border-border">
                     <div className="text-xs font-medium text-white mb-2">MCP Servers</div>
+                    <div className="text-[10px] text-secondary mb-2">
+                        MCP server config persists, but runtime processes do not survive app restart. Start servers explicitly after restore.
+                    </div>
                     <div className="mb-3 rounded border border-border bg-black/20 p-2 space-y-2">
                         <div className="text-[11px] text-white">Add MCP Server</div>
                         <div className="grid grid-cols-[56px_1fr] gap-2 items-center">

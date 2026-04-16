@@ -51,3 +51,12 @@ Phase: `1.0.0-rc1` hardening
 - non-persisted truth: old SSH process/session lifetime does not survive restart boundaries.
 - restore behavior: runtime attempts to start restored remote widgets; failures are surfaced as explicit disconnected terminal state rather than fake running state.
 - operator control: reconnect/restart remains explicit (user action), with no hidden SSH reconnect loops.
+
+## Surface restore boundaries
+
+- AI panel transcript: backend conversation snapshot persists and is restored from `conversation.json`.
+- AI composer draft and panel-local transient UI state: intentionally non-persistent.
+- tools panel form JSON/input/response panes: explicitly reset on reopen; no persistence claim.
+- audit panel list view state: explicitly refreshed on open and reset when closed; persisted source-of-truth remains `audit.jsonl`.
+- MCP registry/config: persisted as backend config (`mcp-registry.json`) for registered remote servers and enabled flags.
+- MCP runtime process state: intentionally runtime-only; after restart servers restore as stopped and require explicit start/invoke actions.

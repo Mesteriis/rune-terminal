@@ -34,6 +34,15 @@ const AuditFloatingWindow = memo(({ isOpen, onClose, referenceElement, refreshNo
     const { getFloatingProps } = useInteractions([dismiss]);
 
     useEffect(() => {
+        if (isOpen) {
+            return;
+        }
+        setEvents([]);
+        setLoadError(null);
+        setLoading(true);
+    }, [isOpen]);
+
+    useEffect(() => {
         if (!isOpen) return;
 
         let cancelled = false;
