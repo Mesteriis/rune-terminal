@@ -16,6 +16,8 @@ import (
 
 type PTYLauncher struct{}
 
+var resolveExecutable = exec.LookPath
+
 type ptyProcess struct {
 	cmd       *exec.Cmd
 	ptmx      *os.File
@@ -75,37 +77,50 @@ func buildCommand(ctx context.Context, opts LaunchOptions) (*exec.Cmd, error) {
 			cmd.Dir = opts.WorkingDir
 		}
 	case "ssh":
-		if opts.Connection.SSH == nil {
-			return nil, errors.New("ssh connection is missing config")
+		sshPath, args, err := buildSSHCommandArgs(opts.Connection.SSH)
+		if err != nil {
+			return nil, err
 		}
-		if opts.Connection.SSH.Host == "" {
-			return nil, errors.New("ssh connection host is required")
-		}
-		args := make([]string, 0, 8)
-		args = append(
-			args,
-			"-o", "BatchMode=yes",
-			"-o", "ConnectTimeout=5",
-			"-o", "StrictHostKeyChecking=accept-new",
-		)
-		if opts.Connection.SSH.Port > 0 {
-			args = append(args, "-p", strconv.Itoa(opts.Connection.SSH.Port))
-		}
-		if opts.Connection.SSH.IdentityFile != "" {
-			args = append(args, "-i", opts.Connection.SSH.IdentityFile)
-		}
-		target := opts.Connection.SSH.Host
-		if opts.Connection.SSH.User != "" {
-			target = opts.Connection.SSH.User + "@" + target
-		}
-		args = append(args, target)
-		cmd = exec.CommandContext(ctx, "ssh", args...)
+		cmd = exec.CommandContext(ctx, sshPath, args...)
 	default:
 		return nil, errors.New("unsupported connection kind")
 	}
 
 	cmd.Env = append(os.Environ(), "TERM=xterm-256color", "COLORTERM=truecolor")
 	return cmd, nil
+}
+
+func buildSSHCommandArgs(config *SSHConfig) (string, []string, error) {
+	if config == nil {
+		return "", nil, errors.New("ssh connection is missing config")
+	}
+	if config.Host == "" {
+		return "", nil, errors.New("ssh connection host is required")
+	}
+	sshPath, err := resolveExecutable("ssh")
+	if err != nil {
+		return "", nil, errors.New("ssh binary is not available on this machine")
+	}
+
+	args := make([]string, 0, 8)
+	args = append(
+		args,
+		"-o", "BatchMode=yes",
+		"-o", "ConnectTimeout=5",
+		"-o", "StrictHostKeyChecking=accept-new",
+	)
+	if config.Port > 0 {
+		args = append(args, "-p", strconv.Itoa(config.Port))
+	}
+	if config.IdentityFile != "" {
+		args = append(args, "-i", config.IdentityFile)
+	}
+	target := config.Host
+	if config.User != "" {
+		target = config.User + "@" + target
+	}
+	args = append(args, target)
+	return sshPath, args, nil
 }
 
 func (p *ptyProcess) readLoop() {
