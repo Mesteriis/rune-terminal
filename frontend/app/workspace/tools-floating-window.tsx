@@ -1,4 +1,4 @@
-import { getToolsFacade } from "@/compat";
+import { getMCPFacade, getToolsFacade } from "@/compat";
 import {
     bindApprovalRetryRequest,
     clearStoredPendingToolApproval,
@@ -8,8 +8,9 @@ import {
     storePendingToolApproval,
 } from "@/app/approval/continuity";
 import { workspaceStore } from "@/app/state/workspace.store";
-import { buildToolExecutionContext, formatJson, getApprovalToken } from "@/app/workspace/widget-helpers";
+import { buildToolExecutionContext, formatAuditTimestamp, formatJson, getApprovalToken } from "@/app/workspace/widget-helpers";
 import type { PendingToolApproval, ToolsFloatingWindowProps } from "@/app/workspace/widget-types";
+import type { MCPServerRuntime } from "@/rterm-api/mcp/types";
 import type { ToolExecutionRequest, ToolExecutionResponse, ToolInfo } from "@/rterm-api/tools/types";
 import {
     FloatingPortal,
@@ -38,6 +39,9 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
     const [loadError, setLoadError] = useState<string | null>(null);
     const [isExecuting, setIsExecuting] = useState(false);
     const [isConfirming, setIsConfirming] = useState(false);
+    const [mcpServers, setMCPServers] = useState<MCPServerRuntime[]>([]);
+    const [mcpLoading, setMCPLoading] = useState(true);
+    const [mcpLoadError, setMCPLoadError] = useState<string | null>(null);
 
     const { refs, floatingStyles, context } = useFloating({
         open: isOpen,
@@ -59,6 +63,8 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
         let cancelled = false;
         setLoading(true);
         setLoadError(null);
+        setMCPLoading(true);
+        setMCPLoadError(null);
         setPendingApproval(listStoredPendingToolApprovalsForWorkspace(getActiveWorkspaceID())[0] ?? null);
 
         void (async () => {
@@ -90,6 +96,26 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
             }
         })();
 
+        void (async () => {
+            try {
+                const facade = await getMCPFacade();
+                const response = await facade.listServers();
+                if (cancelled) {
+                    return;
+                }
+                setMCPServers(response);
+            } catch (error) {
+                if (!cancelled) {
+                    setMCPLoadError(error instanceof Error ? error.message : String(error));
+                    setMCPServers([]);
+                }
+            } finally {
+                if (!cancelled) {
+                    setMCPLoading(false);
+                }
+            }
+        })();
+
         return () => {
             cancelled = true;
         };
@@ -98,6 +124,18 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
     if (!isOpen) return null;
 
     const selectedTool = tools.find((tool) => tool.name === selectedToolName) ?? null;
+    const normalizeMCPState = (server: MCPServerRuntime): "active" | "idle" | "stopped" | "disabled" => {
+        if (!server.enabled) {
+            return "disabled";
+        }
+        if (server.state === "idle") {
+            return "idle";
+        }
+        if (server.state === "active" || server.state === "starting") {
+            return "active";
+        }
+        return "stopped";
+    };
 
     const handleToolSelect = (toolName: string) => {
         if (pendingApproval != null) {
@@ -330,6 +368,33 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
                         </div>
                     </div>
                 )}
+                <div className="mt-3 pt-3 border-t border-border">
+                    <div className="text-xs font-medium text-white mb-2">MCP Servers</div>
+                    {mcpLoading ? (
+                        <div className="text-xs text-secondary">Loading MCP servers...</div>
+                    ) : mcpLoadError ? (
+                        <div className="text-xs text-red-400 whitespace-pre-wrap">{mcpLoadError}</div>
+                    ) : mcpServers.length === 0 ? (
+                        <div className="text-xs text-secondary">No MCP servers configured</div>
+                    ) : (
+                        <div className="max-h-40 overflow-y-auto space-y-1">
+                            {mcpServers.map((server) => (
+                                <div
+                                    key={server.id}
+                                    className="rounded border border-border bg-black/20 px-2 py-1.5 text-[11px] text-secondary"
+                                >
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span className="text-white">{server.id}</span>
+                                        <span>{normalizeMCPState(server)}</span>
+                                    </div>
+                                    <div className="mt-1 break-all">
+                                        last used: {server.last_used ? formatAuditTimestamp(server.last_used) : "never"}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
             </div>
         </FloatingPortal>
     );

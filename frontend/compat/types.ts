@@ -5,6 +5,7 @@ import type { AuditClient } from "@/rterm-api/audit/client";
 import type { BootstrapClient } from "@/rterm-api/bootstrap/client";
 import type { ConnectionsClient } from "@/rterm-api/connections/client";
 import type { ConversationClient } from "@/rterm-api/conversation/client";
+import type { MCPClient } from "@/rterm-api/mcp/client";
 import type { PolicyClient } from "@/rterm-api/policy/client";
 import type { ToolsClient } from "@/rterm-api/tools/client";
 import type { TerminalClient } from "@/rterm-api/terminal/client";
@@ -24,6 +25,7 @@ export interface CompatApiClients {
   bootstrap: BootstrapClient;
   connections: ConnectionsClient;
   conversation: ConversationClient;
+  mcp: MCPClient;
   policy: PolicyClient;
   tools: ToolsClient;
   terminal: TerminalClient;
