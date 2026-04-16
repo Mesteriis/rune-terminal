@@ -9,8 +9,9 @@ import (
 )
 
 var (
-	ErrInvalidFSPath  = errors.New("invalid fs path")
-	ErrFSPathNotFound = errors.New("fs path not found")
+	ErrInvalidFSPath          = errors.New("invalid fs path")
+	ErrFSPathNotFound         = errors.New("fs path not found")
+	ErrFSPathOutsideWorkspace = errors.New("fs path is outside workspace root")
 )
 
 type FSNode struct {
@@ -27,14 +28,9 @@ type FSListResult struct {
 }
 
 func (r *Runtime) ListFS(path string) (FSListResult, error) {
-	targetPath := strings.TrimSpace(path)
-	if targetPath == "" {
-		targetPath = r.RepoRoot
-	}
-
-	normalizedPath := filepath.Clean(targetPath)
-	if normalizedPath == "." || normalizedPath == "" {
-		return FSListResult{}, ErrInvalidFSPath
+	normalizedPath, err := r.resolveFSPath(path)
+	if err != nil {
+		return FSListResult{}, err
 	}
 
 	entries, err := os.ReadDir(normalizedPath)
@@ -81,4 +77,38 @@ func (r *Runtime) ListFS(path string) (FSListResult, error) {
 	})
 
 	return result, nil
+}
+
+func (r *Runtime) resolveFSPath(path string) (string, error) {
+	root := strings.TrimSpace(r.RepoRoot)
+	if root == "" {
+		return "", ErrInvalidFSPath
+	}
+	rootAbs, err := filepath.Abs(filepath.Clean(root))
+	if err != nil {
+		return "", ErrInvalidFSPath
+	}
+
+	targetPath := strings.TrimSpace(path)
+	if targetPath == "" {
+		targetPath = rootAbs
+	}
+	if !filepath.IsAbs(targetPath) {
+		targetPath = filepath.Join(rootAbs, targetPath)
+	}
+
+	targetAbs, err := filepath.Abs(filepath.Clean(targetPath))
+	if err != nil || targetAbs == "." || targetAbs == "" {
+		return "", ErrInvalidFSPath
+	}
+
+	relativeToRoot, err := filepath.Rel(rootAbs, targetAbs)
+	if err != nil {
+		return "", ErrInvalidFSPath
+	}
+	if relativeToRoot == ".." || strings.HasPrefix(relativeToRoot, ".."+string(os.PathSeparator)) {
+		return "", ErrFSPathOutsideWorkspace
+	}
+
+	return targetAbs, nil
 }

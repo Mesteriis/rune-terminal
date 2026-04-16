@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"testing"
@@ -31,7 +32,7 @@ func TestListFSReturnsDirectoriesAndFiles(t *testing.T) {
 	handler := NewHandler(&app.Runtime{RepoRoot: repoRoot}, testAuthToken)
 	recorder := httptest.NewRecorder()
 
-	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodGet, "/api/v1/fs/list?path="+repoRoot, nil))
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodGet, "/api/v1/fs/list", nil))
 
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d body=%s", recorder.Code, recorder.Body.String())
@@ -83,9 +84,38 @@ func TestListFSReturnsNotFoundForMissingPath(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	missingPath := filepath.Join(repoRoot, "missing")
 
-	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodGet, "/api/v1/fs/list?path="+missingPath, nil))
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodGet, "/api/v1/fs/list?path="+url.QueryEscape(missingPath), nil))
 
 	if recorder.Code != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+}
+
+func TestListFSRejectsTraversalOutsideWorkspace(t *testing.T) {
+	t.Parallel()
+
+	repoRoot := t.TempDir()
+	handler := NewHandler(&app.Runtime{RepoRoot: repoRoot}, testAuthToken)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodGet, "/api/v1/fs/list?path=../", nil))
+
+	if recorder.Code != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+}
+
+func TestListFSRejectsAbsolutePathOutsideWorkspace(t *testing.T) {
+	t.Parallel()
+
+	repoRoot := t.TempDir()
+	outsideRoot := t.TempDir()
+	handler := NewHandler(&app.Runtime{RepoRoot: repoRoot}, testAuthToken)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodGet, "/api/v1/fs/list?path="+url.QueryEscape(outsideRoot), nil))
+
+	if recorder.Code != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d body=%s", recorder.Code, recorder.Body.String())
 	}
 }

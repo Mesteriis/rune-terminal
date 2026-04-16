@@ -21,6 +21,8 @@ func writeFSError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, app.ErrInvalidFSPath):
 		writeBadRequest(w, "invalid_fs_path", err)
+	case errors.Is(err, app.ErrFSPathOutsideWorkspace):
+		writeForbidden(w, "fs_path_outside_workspace", err.Error())
 	case errors.Is(err, app.ErrFSPathNotFound):
 		writeNotFound(w, "fs_path_not_found", err.Error())
 	default:
