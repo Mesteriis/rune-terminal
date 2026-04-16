@@ -2,16 +2,19 @@ package app
 
 import (
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+	"unicode/utf8"
 )
 
 var (
 	ErrInvalidFSPath          = errors.New("invalid fs path")
 	ErrFSPathNotFound         = errors.New("fs path not found")
 	ErrFSPathOutsideWorkspace = errors.New("fs path is outside workspace root")
+	ErrFSPathNotFile          = errors.New("fs path is not a file")
 )
 
 type FSNode struct {
@@ -25,6 +28,13 @@ type FSListResult struct {
 	Path        string   `json:"path"`
 	Directories []FSNode `json:"directories"`
 	Files       []FSNode `json:"files"`
+}
+
+type FSReadResult struct {
+	Path             string `json:"path"`
+	Preview          string `json:"preview"`
+	PreviewAvailable bool   `json:"preview_available"`
+	Truncated        bool   `json:"truncated"`
 }
 
 func (r *Runtime) ListFS(path string) (FSListResult, error) {
@@ -111,4 +121,67 @@ func (r *Runtime) resolveFSPath(path string) (string, error) {
 	}
 
 	return targetAbs, nil
+}
+
+func (r *Runtime) ReadFSPreview(path string, maxBytes int) (FSReadResult, error) {
+	targetPath, err := r.resolveFSPath(path)
+	if err != nil {
+		return FSReadResult{}, err
+	}
+
+	info, err := os.Stat(targetPath)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return FSReadResult{}, ErrFSPathNotFound
+		}
+		return FSReadResult{}, err
+	}
+	if info.IsDir() {
+		return FSReadResult{}, ErrFSPathNotFile
+	}
+
+	limit := int64(maxBytes)
+	if limit <= 0 {
+		limit = 8192
+	}
+
+	file, err := os.Open(targetPath)
+	if err != nil {
+		return FSReadResult{}, err
+	}
+	defer file.Close()
+
+	previewBytes, err := io.ReadAll(io.LimitReader(file, limit+1))
+	if err != nil {
+		return FSReadResult{}, err
+	}
+
+	truncated := int64(len(previewBytes)) > limit
+	if truncated {
+		previewBytes = previewBytes[:limit]
+	}
+
+	if hasNULByte(previewBytes) || !utf8.Valid(previewBytes) {
+		return FSReadResult{
+			Path:             targetPath,
+			PreviewAvailable: false,
+			Truncated:        truncated,
+		}, nil
+	}
+
+	return FSReadResult{
+		Path:             targetPath,
+		Preview:          string(previewBytes),
+		PreviewAvailable: true,
+		Truncated:        truncated,
+	}, nil
+}
+
+func hasNULByte(payload []byte) bool {
+	for _, b := range payload {
+		if b == 0 {
+			return true
+		}
+	}
+	return false
 }

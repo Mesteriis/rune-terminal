@@ -119,3 +119,107 @@ func TestListFSRejectsAbsolutePathOutsideWorkspace(t *testing.T) {
 		t.Fatalf("expected 403, got %d body=%s", recorder.Code, recorder.Body.String())
 	}
 }
+
+func TestReadFSPreviewReturnsBoundedText(t *testing.T) {
+	t.Parallel()
+
+	repoRoot := t.TempDir()
+	filePath := filepath.Join(repoRoot, "notes.txt")
+	if err := os.WriteFile(filePath, []byte("hello world"), 0o600); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+	handler := NewHandler(&app.Runtime{RepoRoot: repoRoot}, testAuthToken)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(
+		recorder,
+		authedJSONRequest(t, http.MethodGet, "/api/v1/fs/read?path="+url.QueryEscape(filePath)+"&max_bytes=5", nil),
+	)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+
+	var payload struct {
+		Path             string `json:"path"`
+		Preview          string `json:"preview"`
+		PreviewAvailable bool   `json:"preview_available"`
+		Truncated        bool   `json:"truncated"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	if payload.Path != filepath.Clean(filePath) {
+		t.Fatalf("unexpected path %q", payload.Path)
+	}
+	if payload.Preview != "hello" {
+		t.Fatalf("unexpected preview %q", payload.Preview)
+	}
+	if !payload.PreviewAvailable {
+		t.Fatalf("expected preview_available=true, got %#v", payload)
+	}
+	if !payload.Truncated {
+		t.Fatalf("expected truncated=true, got %#v", payload)
+	}
+}
+
+func TestReadFSPreviewReturnsMetadataOnlyForBinary(t *testing.T) {
+	t.Parallel()
+
+	repoRoot := t.TempDir()
+	filePath := filepath.Join(repoRoot, "binary.dat")
+	if err := os.WriteFile(filePath, []byte{0, 1, 2, 3}, 0o600); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+	handler := NewHandler(&app.Runtime{RepoRoot: repoRoot}, testAuthToken)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodGet, "/api/v1/fs/read?path="+url.QueryEscape(filePath), nil))
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+
+	var payload struct {
+		Preview          string `json:"preview"`
+		PreviewAvailable bool   `json:"preview_available"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	if payload.Preview != "" {
+		t.Fatalf("expected empty preview for binary file, got %q", payload.Preview)
+	}
+	if payload.PreviewAvailable {
+		t.Fatalf("expected preview_available=false, got %#v", payload)
+	}
+}
+
+func TestReadFSPreviewRejectsDirectoryPath(t *testing.T) {
+	t.Parallel()
+
+	repoRoot := t.TempDir()
+	handler := NewHandler(&app.Runtime{RepoRoot: repoRoot}, testAuthToken)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodGet, "/api/v1/fs/read?path="+url.QueryEscape(repoRoot), nil))
+
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+}
+
+func TestReadFSPreviewRejectsPathOutsideWorkspace(t *testing.T) {
+	t.Parallel()
+
+	repoRoot := t.TempDir()
+	outsideRoot := t.TempDir()
+	handler := NewHandler(&app.Runtime{RepoRoot: repoRoot}, testAuthToken)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodGet, "/api/v1/fs/read?path="+url.QueryEscape(outsideRoot), nil))
+
+	if recorder.Code != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+}

@@ -10,3 +10,10 @@ export interface FSListResponse {
   directories: FSNode[];
   files: FSNode[];
 }
+
+export interface FSReadResponse {
+  path: string;
+  preview: string;
+  preview_available: boolean;
+  truncated: boolean;
+}

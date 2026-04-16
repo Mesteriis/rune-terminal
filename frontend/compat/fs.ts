@@ -1,10 +1,11 @@
 import type { FSClient } from "@/rterm-api/fs/client";
-import type { FSListResponse } from "@/rterm-api/fs/types";
+import type { FSListResponse, FSReadResponse } from "@/rterm-api/fs/types";
 import type { CompatApiOptions } from "./types";
 import { createCompatApiFacade } from "./api";
 
 export interface FSFacade {
   list: (path?: string) => Promise<FSListResponse>;
+  read: (path: string, maxBytes?: number) => Promise<FSReadResponse>;
 }
 
 let fsFacadePromise: Promise<FSFacade> | null = null;
@@ -30,6 +31,9 @@ export function createFSFacade(client: FSClient): FSFacade {
   return {
     list(path?: string): Promise<FSListResponse> {
       return client.list(path);
+    },
+    read(path: string, maxBytes?: number): Promise<FSReadResponse> {
+      return client.read(path, maxBytes);
     },
   };
 }

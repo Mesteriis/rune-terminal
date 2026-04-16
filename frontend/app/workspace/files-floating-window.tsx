@@ -52,6 +52,12 @@ const FilesFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floatin
     const [files, setFiles] = useState<FSNode[]>([]);
     const [loading, setLoading] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
+    const [selectedFilePath, setSelectedFilePath] = useState("");
+    const [previewText, setPreviewText] = useState("");
+    const [previewAvailable, setPreviewAvailable] = useState(false);
+    const [previewTruncated, setPreviewTruncated] = useState(false);
+    const [previewLoading, setPreviewLoading] = useState(false);
+    const [previewError, setPreviewError] = useState<string | null>(null);
 
     const { refs, floatingStyles, context } = useFloating({
         open: isOpen,
@@ -70,6 +76,11 @@ const FilesFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floatin
     const loadPath = async (nextPath?: string) => {
         setLoading(true);
         setLoadError(null);
+        setSelectedFilePath("");
+        setPreviewText("");
+        setPreviewAvailable(false);
+        setPreviewTruncated(false);
+        setPreviewError(null);
         try {
             const facade = await getFSFacade();
             const response = await facade.list(nextPath);
@@ -82,6 +93,27 @@ const FilesFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floatin
             setFiles([]);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const loadFilePreview = async (filePath: string) => {
+        setPreviewLoading(true);
+        setPreviewError(null);
+        setSelectedFilePath(filePath);
+        try {
+            const facade = await getFSFacade();
+            const response = await facade.read(filePath, 8192);
+            setSelectedFilePath(response.path);
+            setPreviewText(response.preview ?? "");
+            setPreviewAvailable(response.preview_available === true);
+            setPreviewTruncated(response.truncated === true);
+        } catch (error) {
+            setPreviewText("");
+            setPreviewAvailable(false);
+            setPreviewTruncated(false);
+            setPreviewError(error instanceof Error ? error.message : String(error));
+        } finally {
+            setPreviewLoading(false);
         }
     };
 
@@ -137,33 +169,66 @@ const FilesFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floatin
                 ) : loadError ? (
                     <div className="text-sm text-red-400 whitespace-pre-wrap">{loadError}</div>
                 ) : (
-                    <div className="max-h-[26rem] overflow-y-auto border border-border rounded">
-                        <div className="px-3 py-2 text-[11px] text-secondary border-b border-border">Directories</div>
-                        {directories.length === 0 ? (
-                            <div className="px-3 py-2 text-xs text-muted border-b border-border">No directories</div>
-                        ) : (
-                            directories.map((directory) => (
-                                <button
-                                    key={`dir:${directory.name}`}
-                                    className="w-full text-left px-3 py-2 text-sm text-white hover:bg-hoverbg border-b border-border last:border-b-0"
-                                    onClick={() => void loadPath(joinPath(path, directory.name))}
-                                >
-                                    <i className="fa fa-folder mr-2 text-amber-300"></i>
-                                    {directory.name}
-                                </button>
-                            ))
-                        )}
-                        <div className="px-3 py-2 text-[11px] text-secondary border-y border-border">Files</div>
-                        {files.length === 0 ? (
-                            <div className="px-3 py-2 text-xs text-muted">No files</div>
-                        ) : (
-                            files.map((file) => (
-                                <div key={`file:${file.name}`} className="px-3 py-2 text-sm text-secondary border-b border-border last:border-b-0">
-                                    <i className="fa fa-file mr-2"></i>
-                                    {file.name}
-                                </div>
-                            ))
-                        )}
+                    <div>
+                        <div className="max-h-[18rem] overflow-y-auto border border-border rounded">
+                            <div className="px-3 py-2 text-[11px] text-secondary border-b border-border">Directories</div>
+                            {directories.length === 0 ? (
+                                <div className="px-3 py-2 text-xs text-muted border-b border-border">No directories</div>
+                            ) : (
+                                directories.map((directory) => (
+                                    <button
+                                        key={`dir:${directory.name}`}
+                                        className="w-full text-left px-3 py-2 text-sm text-white hover:bg-hoverbg border-b border-border last:border-b-0"
+                                        onClick={() => void loadPath(joinPath(path, directory.name))}
+                                    >
+                                        <i className="fa fa-folder mr-2 text-amber-300"></i>
+                                        {directory.name}
+                                    </button>
+                                ))
+                            )}
+                            <div className="px-3 py-2 text-[11px] text-secondary border-y border-border">Files</div>
+                            {files.length === 0 ? (
+                                <div className="px-3 py-2 text-xs text-muted">No files</div>
+                            ) : (
+                                files.map((file) => {
+                                    const filePath = joinPath(path, file.name);
+                                    const isSelected = selectedFilePath === filePath;
+                                    return (
+                                        <button
+                                            key={`file:${file.name}`}
+                                            className={`w-full text-left px-3 py-2 text-sm border-b border-border last:border-b-0 ${
+                                                isSelected ? "bg-hoverbg text-white" : "text-secondary hover:bg-hoverbg"
+                                            }`}
+                                            onClick={() => void loadFilePreview(filePath)}
+                                        >
+                                            <i className="fa fa-file mr-2"></i>
+                                            {file.name}
+                                        </button>
+                                    );
+                                })
+                            )}
+                        </div>
+                        <div className="mt-3 text-[11px] text-secondary">Selected path</div>
+                        <div className="text-xs text-white/90 break-all border border-border rounded px-2 py-1.5 mt-1 min-h-[2rem]">
+                            {selectedFilePath || "No file selected"}
+                        </div>
+                        <div className="mt-2 text-[11px] text-secondary">Preview (text, bounded)</div>
+                        <div className="border border-border rounded mt-1 p-2 max-h-[9rem] overflow-auto bg-black/20">
+                            {previewLoading ? (
+                                <div className="text-xs text-muted">Loading preview...</div>
+                            ) : previewError ? (
+                                <div className="text-xs text-red-400 whitespace-pre-wrap">{previewError}</div>
+                            ) : selectedFilePath === "" ? (
+                                <div className="text-xs text-muted">Select a file to reveal path and preview.</div>
+                            ) : !previewAvailable ? (
+                                <div className="text-xs text-muted">Preview unavailable for this file type.</div>
+                            ) : (
+                                <pre className="text-xs whitespace-pre-wrap break-words text-white/90">{previewText}</pre>
+                            )}
+                            {previewAvailable && previewTruncated ? (
+                                <div className="text-[11px] text-amber-300 mt-2">Preview truncated to 8192 bytes.</div>
+                            ) : null}
+                        </div>
                     </div>
                 )}
             </div>

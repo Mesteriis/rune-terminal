@@ -39,7 +39,7 @@ export type {
 } from "./conversation/types";
 
 export { FSClient } from "./fs/client";
-export type { FSListResponse, FSNode } from "./fs/types";
+export type { FSListResponse, FSNode, FSReadResponse } from "./fs/types";
 
 export { AuditClient } from "./audit/client";
 export type { AuditEvent, AuditResponse } from "./audit/types";
