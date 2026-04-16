@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -44,22 +43,29 @@ func (r *Runtime) RegisterMCPServer(request MCPRegistrationRequest) (plugins.MCP
 	if r.MCP == nil {
 		return plugins.MCPServerSnapshot{}, ErrMCPRuntimeNotConfigured
 	}
+	id := strings.TrimSpace(request.ID)
+	if id == "" {
+		return plugins.MCPServerSnapshot{}, fmt.Errorf("%w: id is required", plugins.ErrInvalidPluginSpec)
+	}
+	if strings.TrimSpace(request.Type) != string(plugins.MCPServerTypeRemote) {
+		return plugins.MCPServerSnapshot{}, fmt.Errorf("%w: unsupported mcp registration type", plugins.ErrInvalidPluginSpec)
+	}
+	endpoint := strings.TrimSpace(request.Endpoint)
+	if endpoint == "" {
+		return plugins.MCPServerSnapshot{}, fmt.Errorf("%w: endpoint is required", plugins.ErrInvalidPluginSpec)
+	}
 
-	headersJSON, err := json.Marshal(request.Headers)
-	if err != nil {
-		return plugins.MCPServerSnapshot{}, fmt.Errorf("%w: invalid headers", plugins.ErrInvalidPluginSpec)
+	headers := make(map[string]string, len(request.Headers))
+	for key, value := range request.Headers {
+		headers[key] = value
 	}
 
 	spec := plugins.MCPServerSpec{
-		ID: strings.TrimSpace(request.ID),
-		Process: plugins.ProcessConfig{
-			Command: pluginExecutable(),
-			Args:    []string{"plugin-example"},
-			Env: []string{
-				"RTERM_MCP_SERVER_TYPE=" + strings.TrimSpace(request.Type),
-				"RTERM_MCP_SERVER_ENDPOINT=" + strings.TrimSpace(request.Endpoint),
-				"RTERM_MCP_SERVER_HEADERS=" + string(headersJSON),
-			},
+		ID:   id,
+		Type: plugins.MCPServerTypeRemote,
+		Remote: &plugins.MCPRemoteConfig{
+			Endpoint: endpoint,
+			Headers:  headers,
 		},
 	}
 

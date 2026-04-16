@@ -132,3 +132,43 @@ func TestMCPRegistrySetEnabled(t *testing.T) {
 		t.Fatalf("expected enabled=false, got %#v", snapshot)
 	}
 }
+
+func TestMCPRegistryRegisterRemoteServer(t *testing.T) {
+	t.Parallel()
+
+	registry := NewMCPRegistry()
+	if err := registry.Register(MCPServerSpec{
+		ID:   "mcp.context7",
+		Type: MCPServerTypeRemote,
+		Remote: &MCPRemoteConfig{
+			Endpoint: "https://mcp.context7.com/mcp",
+			Headers: map[string]string{
+				"X-Context7-API-Key": "token",
+			},
+		},
+	}); err != nil {
+		t.Fatalf("Register(remote) error: %v", err)
+	}
+
+	snapshot, err := registry.Get("mcp.context7")
+	if err != nil {
+		t.Fatalf("Get error: %v", err)
+	}
+	if snapshot.Type != MCPServerTypeRemote {
+		t.Fatalf("expected remote type, got %#v", snapshot)
+	}
+	if snapshot.Endpoint != "https://mcp.context7.com/mcp" {
+		t.Fatalf("unexpected endpoint in snapshot: %#v", snapshot)
+	}
+
+	spec, err := registry.Spec("mcp.context7")
+	if err != nil {
+		t.Fatalf("Spec error: %v", err)
+	}
+	if spec.Remote == nil || spec.Remote.Endpoint != "https://mcp.context7.com/mcp" {
+		t.Fatalf("unexpected remote spec: %#v", spec)
+	}
+	if spec.Remote.Headers["X-Context7-API-Key"] != "token" {
+		t.Fatalf("expected copied headers, got %#v", spec.Remote.Headers)
+	}
+}

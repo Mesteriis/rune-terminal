@@ -23,13 +23,29 @@ const (
 	MCPStateStoppedAuto MCPProcessState = "stopped_auto"
 )
 
+type MCPServerType string
+
+const (
+	MCPServerTypeProcess MCPServerType = "process"
+	MCPServerTypeRemote  MCPServerType = "remote"
+)
+
+type MCPRemoteConfig struct {
+	Endpoint string
+	Headers  map[string]string
+}
+
 type MCPServerSpec struct {
 	ID      string
+	Type    MCPServerType
 	Process ProcessConfig
+	Remote  *MCPRemoteConfig
 }
 
 type MCPServerSnapshot struct {
 	ID       string          `json:"id"`
+	Type     MCPServerType   `json:"type"`
+	Endpoint string          `json:"endpoint,omitempty"`
 	State    MCPProcessState `json:"state"`
 	LastUsed time.Time       `json:"last_used,omitempty"`
 	Active   bool            `json:"active"`
@@ -60,6 +76,37 @@ func (r *MCPRegistry) Register(spec MCPServerSpec) error {
 	if id == "" {
 		return ErrInvalidPluginSpec
 	}
+	serverType := spec.Type
+	if serverType == "" {
+		serverType = MCPServerTypeProcess
+	}
+	if serverType != MCPServerTypeProcess && serverType != MCPServerTypeRemote {
+		return ErrInvalidPluginSpec
+	}
+
+	normalized := MCPServerSpec{
+		ID:   id,
+		Type: serverType,
+	}
+	switch serverType {
+	case MCPServerTypeProcess:
+		if strings.TrimSpace(spec.Process.Command) == "" {
+			return ErrInvalidPluginSpec
+		}
+		normalized.Process = spec.Process
+	case MCPServerTypeRemote:
+		if spec.Remote == nil || strings.TrimSpace(spec.Remote.Endpoint) == "" {
+			return ErrInvalidPluginSpec
+		}
+		remoteHeaders := make(map[string]string, len(spec.Remote.Headers))
+		for key, value := range spec.Remote.Headers {
+			remoteHeaders[key] = value
+		}
+		normalized.Remote = &MCPRemoteConfig{
+			Endpoint: strings.TrimSpace(spec.Remote.Endpoint),
+			Headers:  remoteHeaders,
+		}
+	}
 
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -68,10 +115,7 @@ func (r *MCPRegistry) Register(spec MCPServerSpec) error {
 		return ErrMCPServerRegistered
 	}
 	r.servers[id] = &mcpRegistryEntry{
-		spec: MCPServerSpec{
-			ID:      id,
-			Process: spec.Process,
-		},
+		spec:    normalized,
 		state:   MCPStateStopped,
 		active:  false,
 		enabled: true,
@@ -94,6 +138,8 @@ func (r *MCPRegistry) List() []MCPServerSnapshot {
 		entry := r.servers[id]
 		servers = append(servers, MCPServerSnapshot{
 			ID:       entry.spec.ID,
+			Type:     entry.spec.Type,
+			Endpoint: snapshotEndpoint(entry.spec),
 			State:    entry.state,
 			LastUsed: entry.lastUsed,
 			Active:   entry.active,
@@ -113,6 +159,8 @@ func (r *MCPRegistry) Get(id string) (MCPServerSnapshot, error) {
 	}
 	return MCPServerSnapshot{
 		ID:       entry.spec.ID,
+		Type:     entry.spec.Type,
+		Endpoint: snapshotEndpoint(entry.spec),
 		State:    entry.state,
 		LastUsed: entry.lastUsed,
 		Active:   entry.active,
@@ -130,7 +178,9 @@ func (r *MCPRegistry) Spec(id string) (MCPServerSpec, error) {
 	}
 	return MCPServerSpec{
 		ID:      entry.spec.ID,
+		Type:    entry.spec.Type,
 		Process: entry.spec.Process,
+		Remote:  cloneRemoteConfig(entry.spec.Remote),
 	}, nil
 }
 
@@ -180,4 +230,25 @@ func (r *MCPRegistry) SetEnabled(id string, enabled bool) error {
 	}
 	entry.enabled = enabled
 	return nil
+}
+
+func snapshotEndpoint(spec MCPServerSpec) string {
+	if spec.Remote == nil {
+		return ""
+	}
+	return strings.TrimSpace(spec.Remote.Endpoint)
+}
+
+func cloneRemoteConfig(remote *MCPRemoteConfig) *MCPRemoteConfig {
+	if remote == nil {
+		return nil
+	}
+	headers := make(map[string]string, len(remote.Headers))
+	for key, value := range remote.Headers {
+		headers[key] = value
+	}
+	return &MCPRemoteConfig{
+		Endpoint: strings.TrimSpace(remote.Endpoint),
+		Headers:  headers,
+	}
 }

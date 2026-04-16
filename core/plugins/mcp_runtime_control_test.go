@@ -284,6 +284,62 @@ func TestMCPRuntimeEnableDisableAndRestart(t *testing.T) {
 	}
 }
 
+func TestMCPRuntimeRemoteServerStartAndInvoke(t *testing.T) {
+	t.Parallel()
+
+	registry := NewMCPRegistry()
+	if err := registry.Register(MCPServerSpec{
+		ID:   "mcp.context7",
+		Type: MCPServerTypeRemote,
+		Remote: &MCPRemoteConfig{
+			Endpoint: "https://mcp.context7.com/mcp",
+		},
+	}); err != nil {
+		t.Fatalf("Register error: %v", err)
+	}
+
+	spawner := &testMCPSpawner{}
+	invoker := &capturingMCPInvoker{
+		output: json.RawMessage(`{"ok":true}`),
+	}
+	runtime := NewMCPRuntimeWithOptions(registry, spawner, invoker, MCPRuntimeOptions{
+		IdleCheckInterval: -1,
+	})
+	defer runtime.Close()
+
+	if err := runtime.Start(context.Background(), "mcp.context7"); err != nil {
+		t.Fatalf("Start error: %v", err)
+	}
+	if spawner.spawns != 0 {
+		t.Fatalf("remote start should not spawn local process, got %d", spawner.spawns)
+	}
+
+	result, err := runtime.Invoke(context.Background(), MCPInvokeRequest{
+		ServerID: "mcp.context7",
+		Payload:  json.RawMessage(`{"method":"tools/list","params":{}}`),
+	})
+	if err != nil {
+		t.Fatalf("Invoke error: %v", err)
+	}
+	normalized, ok := result.Output.(MCPNormalizedOutput)
+	if !ok {
+		t.Fatalf("expected normalized output, got %#v", result.Output)
+	}
+	if normalized.Format != mcpNormalizedOutputFormat {
+		t.Fatalf("unexpected normalized format: %#v", normalized)
+	}
+	if invoker.calls != 1 {
+		t.Fatalf("expected one remote invocation, got %d", invoker.calls)
+	}
+	snapshot, err := registry.Get("mcp.context7")
+	if err != nil {
+		t.Fatalf("Get snapshot error: %v", err)
+	}
+	if snapshot.State != MCPStateIdle || !snapshot.Active {
+		t.Fatalf("expected idle active remote snapshot after invoke, got %#v", snapshot)
+	}
+}
+
 type MCPInvokerFunc func(context.Context, MCPServerSpec, json.RawMessage) (json.RawMessage, error)
 
 func (fn MCPInvokerFunc) Invoke(ctx context.Context, spec MCPServerSpec, payload json.RawMessage) (json.RawMessage, error) {

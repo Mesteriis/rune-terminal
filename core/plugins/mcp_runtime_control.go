@@ -138,6 +138,20 @@ func (r *MCPRuntime) Start(ctx context.Context, serverID string) error {
 		return ErrMCPServerDisabled
 	}
 
+	spec, err := r.registry.Spec(id)
+	if err != nil {
+		return err
+	}
+	if spec.Type == MCPServerTypeRemote {
+		if err := r.registry.SetState(id, MCPStateIdle); err != nil {
+			return err
+		}
+		if err := r.registry.SetActive(id, true); err != nil {
+			return err
+		}
+		return r.registry.Touch(id, r.nowFn())
+	}
+
 	r.mu.Lock()
 	if process, running := r.process[id]; running {
 		r.mu.Unlock()
@@ -151,11 +165,6 @@ func (r *MCPRuntime) Start(ctx context.Context, serverID string) error {
 		return nil
 	}
 	r.mu.Unlock()
-
-	spec, err := r.registry.Spec(id)
-	if err != nil {
-		return err
-	}
 
 	if err := r.registry.SetState(id, MCPStateStarting); err != nil {
 		return err
@@ -288,6 +297,10 @@ func (r *MCPRuntime) Invoke(ctx context.Context, request MCPInvokeRequest) (MCPI
 	if !server.Enabled {
 		return MCPInvokeResult{}, ErrMCPServerDisabled
 	}
+	spec, err := r.registry.Spec(id)
+	if err != nil {
+		return MCPInvokeResult{}, err
+	}
 
 	if !r.isRunning(id) {
 		if !request.AllowOnDemandStart {
@@ -298,23 +311,25 @@ func (r *MCPRuntime) Invoke(ctx context.Context, request MCPInvokeRequest) (MCPI
 		}
 	}
 
-	process := r.acquireProcess(id)
-	if process == nil {
-		return MCPInvokeResult{}, ErrMCPExplicitStartRequired
-	}
-	defer r.releaseProcess(id, process)
-
 	if err := r.registry.SetState(id, MCPStateActive); err != nil {
 		return MCPInvokeResult{}, err
 	}
 	if err := r.registry.Touch(id, r.nowFn()); err != nil {
 		return MCPInvokeResult{}, err
 	}
-
-	spec, err := r.registry.Spec(id)
-	if err != nil {
-		return MCPInvokeResult{}, err
+	if spec.Type == MCPServerTypeProcess {
+		process := r.acquireProcess(id)
+		if process == nil {
+			return MCPInvokeResult{}, ErrMCPExplicitStartRequired
+		}
+		defer r.releaseProcess(id, process)
+	} else {
+		defer func() {
+			_ = r.registry.SetState(id, MCPStateIdle)
+			_ = r.registry.Touch(id, r.nowFn())
+		}()
 	}
+
 	output := json.RawMessage(`{}`)
 	if r.invoker != nil {
 		output, err = r.invoker.Invoke(ctx, spec, request.Payload)
@@ -402,7 +417,21 @@ func (r *MCPRuntime) releaseProcess(serverID string, process *mcpProcess) {
 
 func (r *MCPRuntime) isRunning(serverID string) bool {
 	r.mu.Lock()
-	defer r.mu.Unlock()
 	_, ok := r.process[serverID]
-	return ok
+	r.mu.Unlock()
+	if ok {
+		return true
+	}
+
+	snapshot, err := r.registry.Get(serverID)
+	if err != nil {
+		return false
+	}
+	if snapshot.Type != MCPServerTypeRemote {
+		return false
+	}
+	if !snapshot.Active || !snapshot.Enabled {
+		return false
+	}
+	return snapshot.State == MCPStateIdle || snapshot.State == MCPStateActive || snapshot.State == MCPStateStarting
 }

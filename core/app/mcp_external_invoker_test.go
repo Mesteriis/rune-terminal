@@ -16,6 +16,40 @@ func TestMCPPluginBindingUsesKnownExampleDefaults(t *testing.T) {
 	}
 }
 
+func TestParseRemoteMCPPayloadDefaultsToToolsList(t *testing.T) {
+	t.Parallel()
+
+	request, err := parseRemoteMCPPayload(nil)
+	if err != nil {
+		t.Fatalf("parseRemoteMCPPayload error: %v", err)
+	}
+	if request.Method != "tools/list" {
+		t.Fatalf("expected tools/list default method, got %q", request.Method)
+	}
+	if string(request.Params) != "{}" {
+		t.Fatalf("unexpected default params: %s", string(request.Params))
+	}
+}
+
+func TestParseRemoteMCPPayloadFromToolEnvelope(t *testing.T) {
+	t.Parallel()
+
+	request, err := parseRemoteMCPPayload(json.RawMessage(`{"tool_name":"resolve-library-id","input":{"query":"react","libraryName":"react"}}`))
+	if err != nil {
+		t.Fatalf("parseRemoteMCPPayload error: %v", err)
+	}
+	if request.Method != "tools/call" {
+		t.Fatalf("expected tools/call, got %q", request.Method)
+	}
+	var params map[string]any
+	if err := json.Unmarshal(request.Params, &params); err != nil {
+		t.Fatalf("unmarshal params: %v", err)
+	}
+	if params["name"] != "resolve-library-id" {
+		t.Fatalf("unexpected tool name in params: %#v", params)
+	}
+}
+
 func TestParseExternalMCPPayloadUsesEnvelopeToolAndInput(t *testing.T) {
 	t.Parallel()
 
