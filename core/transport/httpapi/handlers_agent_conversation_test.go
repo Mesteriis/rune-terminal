@@ -106,7 +106,7 @@ func TestSubmitConversationMessageRejectsBlankPrompt(t *testing.T) {
 func TestExplainTerminalCommandReturnsConversationSnapshot(t *testing.T) {
 	t.Parallel()
 
-	handler := newExplainCommandHandler(t)
+	handler, _ := newExplainCommandHandler(t)
 	recorder := httptest.NewRecorder()
 
 	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPost, "/api/v1/agent/terminal-commands/explain", map[string]any{
@@ -145,7 +145,56 @@ func TestExplainTerminalCommandReturnsConversationSnapshot(t *testing.T) {
 	}
 }
 
-func newExplainCommandHandler(t *testing.T) http.Handler {
+func TestExplainTerminalCommandIgnoresFrontendApprovalUsedPayload(t *testing.T) {
+	t.Parallel()
+
+	handler, runtime := newExplainCommandHandler(t)
+	if err := runtime.Audit.Append(audit.Event{
+		ToolName:        "term.send_input",
+		Summary:         "send input to term_boot: echo httpapi-smoke",
+		WorkspaceID:     "ws-default",
+		AffectedWidgets: []string{"term_boot"},
+		ApprovalUsed:    false,
+		Success:         true,
+	}); err != nil {
+		t.Fatalf("append audit event: %v", err)
+	}
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPost, "/api/v1/agent/terminal-commands/explain", map[string]any{
+		"prompt":        "/run echo httpapi-smoke",
+		"command":       "echo httpapi-smoke",
+		"widget_id":     "term_boot",
+		"from_seq":      0,
+		"approval_used": true,
+		"context": map[string]any{
+			"workspace_id":           "ws-default",
+			"repo_root":              "/workspace/repo",
+			"active_widget_id":       "term_boot",
+			"widget_context_enabled": true,
+		},
+	}))
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+
+	events, err := runtime.Audit.List(10)
+	if err != nil {
+		t.Fatalf("audit list: %v", err)
+	}
+	if len(events) != 2 {
+		t.Fatalf("expected 2 audit events, got %d", len(events))
+	}
+	if events[1].ToolName != "agent.terminal_command" {
+		t.Fatalf("unexpected explain audit event: %#v", events[1])
+	}
+	if events[1].ApprovalUsed {
+		t.Fatalf("expected explain audit approval_used=false from backend truth, got %#v", events[1])
+	}
+}
+
+func newExplainCommandHandler(t *testing.T) (http.Handler, *app.Runtime) {
 	t.Helper()
 
 	tempDir := t.TempDir()
@@ -206,7 +255,7 @@ func newExplainCommandHandler(t *testing.T) http.Handler {
 		Registry:     toolruntime.NewRegistry(),
 	}
 	runtime.Executor = toolruntime.NewExecutor(runtime.Registry, runtime.Policy, runtime.Audit, runtime.Agent)
-	return NewHandler(runtime, testAuthToken)
+	return NewHandler(runtime, testAuthToken), runtime
 }
 
 type handlerTestProcess struct {

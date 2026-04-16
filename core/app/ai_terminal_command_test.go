@@ -121,6 +121,53 @@ func TestExplainTerminalCommandAppendsAssistantSummary(t *testing.T) {
 	if events[0].ToolName != "agent.terminal_command" || !events[0].Success {
 		t.Fatalf("unexpected audit event: %#v", events[0])
 	}
+	if events[0].ApprovalUsed {
+		t.Fatalf("expected approval_used=false without approved execution, got %#v", events[0])
+	}
+}
+
+func TestExplainTerminalCommandDerivesApprovalUsedFromMatchingToolAudit(t *testing.T) {
+	t.Parallel()
+
+	runtime := newExplainCommandTestRuntime(t, "approval-derived\n")
+	if err := runtime.Audit.Append(audit.Event{
+		ToolName:        "term.send_input",
+		Summary:         "send input to term_boot: echo approval-derived",
+		WorkspaceID:     "ws-default",
+		AffectedWidgets: []string{"term_boot"},
+		ApprovalUsed:    true,
+		Success:         true,
+	}); err != nil {
+		t.Fatalf("append audit event: %v", err)
+	}
+
+	if _, err := runtime.ExplainTerminalCommand(context.Background(), ExplainTerminalCommandRequest{
+		Prompt:   "/run echo approval-derived",
+		Command:  "echo approval-derived",
+		WidgetID: "term_boot",
+		FromSeq:  0,
+	}, ConversationContext{
+		WorkspaceID:          "ws-default",
+		RepoRoot:             "/repo",
+		ActiveWidgetID:       "term_boot",
+		WidgetContextEnabled: true,
+	}); err != nil {
+		t.Fatalf("explain terminal command: %v", err)
+	}
+
+	events, err := runtime.Audit.List(10)
+	if err != nil {
+		t.Fatalf("audit list: %v", err)
+	}
+	if len(events) != 2 {
+		t.Fatalf("expected 2 audit events, got %d", len(events))
+	}
+	if events[1].ToolName != "agent.terminal_command" || !events[1].Success {
+		t.Fatalf("unexpected explain audit event: %#v", events[1])
+	}
+	if !events[1].ApprovalUsed {
+		t.Fatalf("expected explain audit to derive approval_used=true, got %#v", events[1])
+	}
 }
 
 func TestSummarizeTerminalOutputSanitizesPromptNoise(t *testing.T) {
@@ -157,4 +204,68 @@ type stubTerminalLauncher struct {
 
 func (l stubTerminalLauncher) Launch(context.Context, terminal.LaunchOptions) (terminal.Process, error) {
 	return l.process, nil
+}
+
+func newExplainCommandTestRuntime(t *testing.T, terminalOutput string) *Runtime {
+	t.Helper()
+
+	tempDir := t.TempDir()
+	agentStore, err := agent.NewStore(filepath.Join(tempDir, "agent.json"))
+	if err != nil {
+		t.Fatalf("agent store: %v", err)
+	}
+	auditLog, err := audit.NewLog(filepath.Join(tempDir, "audit.jsonl"))
+	if err != nil {
+		t.Fatalf("audit log: %v", err)
+	}
+	policyStore, err := policy.NewStore(filepath.Join(tempDir, "policy.json"), "/repo")
+	if err != nil {
+		t.Fatalf("policy store: %v", err)
+	}
+	connectionStore, err := connections.NewService(filepath.Join(tempDir, "connections.json"))
+	if err != nil {
+		t.Fatalf("connections: %v", err)
+	}
+
+	provider := &recordingConversationProvider{}
+	conversationStore, err := conversation.NewService(filepath.Join(tempDir, "conversation.json"), provider)
+	if err != nil {
+		t.Fatalf("conversation service: %v", err)
+	}
+
+	process := &stubTerminalProcess{
+		outputCh: make(chan []byte, 1),
+		waitCh:   make(chan struct{}),
+	}
+	terminalService := terminal.NewService(stubTerminalLauncher{process: process})
+	if _, err := terminalService.StartSession(context.Background(), terminal.LaunchOptions{
+		WidgetID:   "term_boot",
+		WorkingDir: "/repo",
+		Connection: terminal.ConnectionSpec{ID: "local", Name: "Local Machine", Kind: "local"},
+	}); err != nil {
+		t.Fatalf("start session: %v", err)
+	}
+	process.outputCh <- []byte(terminalOutput)
+	deadline := time.Now().Add(250 * time.Millisecond)
+	for {
+		snapshot, snapErr := terminalService.Snapshot("term_boot", 0)
+		if snapErr == nil && len(snapshot.Chunks) > 0 {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("timed out waiting for terminal snapshot chunk")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	return &Runtime{
+		RepoRoot:     "/repo",
+		Workspace:    workspace.NewService(workspace.BootstrapDefault()),
+		Terminals:    terminalService,
+		Connections:  connectionStore,
+		Agent:        agentStore,
+		Conversation: conversationStore,
+		Policy:       policyStore,
+		Audit:        auditLog,
+	}
 }

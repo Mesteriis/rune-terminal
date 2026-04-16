@@ -12,11 +12,10 @@ import (
 )
 
 type ExplainTerminalCommandRequest struct {
-	Prompt       string `json:"prompt"`
-	Command      string `json:"command"`
-	WidgetID     string `json:"widget_id,omitempty"`
-	FromSeq      uint64 `json:"from_seq,omitempty"`
-	ApprovalUsed bool   `json:"approval_used,omitempty"`
+	Prompt   string `json:"prompt"`
+	Command  string `json:"command"`
+	WidgetID string `json:"widget_id,omitempty"`
+	FromSeq  uint64 `json:"from_seq,omitempty"`
 }
 
 type ExplainTerminalCommandResult struct {
@@ -26,6 +25,8 @@ type ExplainTerminalCommandResult struct {
 }
 
 var ansiCSIPattern = regexp.MustCompile(`\x1b\[[0-?]*[ -/]*[@-~]`)
+
+const explainAuditScanLimit = 64
 
 func (r *Runtime) ExplainTerminalCommand(
 	ctx context.Context,
@@ -47,6 +48,7 @@ func (r *Runtime) ExplainTerminalCommand(
 		return ExplainTerminalCommandResult{}, err
 	}
 	outputExcerpt := summarizeTerminalOutput(command, snapshot.Chunks)
+	approvalUsed := r.deriveExplainApprovalUsed(widgetID, command, conversationContext.WorkspaceID)
 
 	selection, err := r.Agent.Selection()
 	if err != nil {
@@ -73,7 +75,7 @@ func (r *Runtime) ExplainTerminalCommand(
 		ModeID:          profile.ModeID,
 		SecurityPosture: profile.SecurityPosture,
 		AffectedWidgets: affectedWidgets(widgetID),
-		ApprovalUsed:    request.ApprovalUsed,
+		ApprovalUsed:    approvalUsed,
 		Success:         !providerFailed,
 		Error:           result.ProviderError,
 	}); appendErr != nil {
@@ -85,6 +87,41 @@ func (r *Runtime) ExplainTerminalCommand(
 		ProviderError: result.ProviderError,
 		OutputExcerpt: outputExcerpt,
 	}, nil
+}
+
+func (r *Runtime) deriveExplainApprovalUsed(widgetID string, command string, workspaceID string) bool {
+	events, err := r.Audit.List(explainAuditScanLimit)
+	if err != nil {
+		return false
+	}
+	expectedSummary := fmt.Sprintf("send input to %s: %s", widgetID, trimSummary(command))
+	trimmedWorkspaceID := strings.TrimSpace(workspaceID)
+	for i := len(events) - 1; i >= 0; i-- {
+		event := events[i]
+		if event.ToolName != "term.send_input" || !event.Success {
+			continue
+		}
+		if event.Summary != expectedSummary {
+			continue
+		}
+		if trimmedWorkspaceID != "" && event.WorkspaceID != trimmedWorkspaceID {
+			continue
+		}
+		if !containsString(event.AffectedWidgets, widgetID) {
+			continue
+		}
+		return event.ApprovalUsed
+	}
+	return false
+}
+
+func containsString(values []string, expected string) bool {
+	for _, value := range values {
+		if value == expected {
+			return true
+		}
+	}
+	return false
 }
 
 func buildTerminalExplanationPrompt(prompt string, command string, outputExcerpt string) string {

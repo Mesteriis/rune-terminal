@@ -52,11 +52,10 @@ func (api *API) handleExplainTerminalCommand(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	result, err := api.runtime.ExplainTerminalCommand(r.Context(), app.ExplainTerminalCommandRequest{
-		Prompt:       payload.Prompt,
-		Command:      payload.Command,
-		WidgetID:     payload.WidgetID,
-		FromSeq:      payload.FromSeq,
-		ApprovalUsed: payload.ApprovalUsed,
+		Prompt:   payload.Prompt,
+		Command:  payload.Command,
+		WidgetID: payload.WidgetID,
+		FromSeq:  payload.FromSeq,
 	}, payload.Context)
 	if err != nil {
 		writeConversationError(w, err)
