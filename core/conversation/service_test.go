@@ -5,6 +5,7 @@ import (
 	"errors"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestServiceSubmitPersistsConversation(t *testing.T) {
@@ -129,6 +130,83 @@ func TestAppendAssistantPromptAppendsOnlyAssistantMessage(t *testing.T) {
 	}
 }
 
+func TestServiceSubmitPrunesProviderHistoryByMessageCount(t *testing.T) {
+	t.Parallel()
+
+	provider := &recordingProvider{
+		info: ProviderInfo{Kind: "stub", BaseURL: "http://stub", Model: "stub-model"},
+		result: CompletionResult{
+			Content: "bounded reply",
+			Model:   "stub-model",
+		},
+	}
+	service, err := NewService(filepath.Join(t.TempDir(), "conversation.json"), provider)
+	if err != nil {
+		t.Fatalf("new service: %v", err)
+	}
+	service.budget = historyBudget{MaxMessages: 3, MaxChars: 1024}
+	service.state.Messages = seededMessages(
+		ChatMessage{Role: RoleUser, Content: "old-1"},
+		ChatMessage{Role: RoleAssistant, Content: "old-2"},
+		ChatMessage{Role: RoleUser, Content: "old-3"},
+		ChatMessage{Role: RoleAssistant, Content: "old-4"},
+	)
+
+	result, err := service.Submit(context.Background(), SubmitRequest{
+		SystemPrompt: "system prompt",
+		Prompt:       "latest",
+	})
+	if err != nil {
+		t.Fatalf("submit: %v", err)
+	}
+
+	if len(provider.request.Messages) != 3 {
+		t.Fatalf("expected 3 provider messages, got %d", len(provider.request.Messages))
+	}
+	if provider.request.Messages[0].Content != "old-3" || provider.request.Messages[1].Content != "old-4" || provider.request.Messages[2].Content != "latest" {
+		t.Fatalf("unexpected provider messages: %#v", provider.request.Messages)
+	}
+	if len(result.Snapshot.Messages) != 6 {
+		t.Fatalf("expected full transcript to persist, got %d messages", len(result.Snapshot.Messages))
+	}
+}
+
+func TestServiceSubmitPrunesProviderHistoryByCharacterBudget(t *testing.T) {
+	t.Parallel()
+
+	provider := &recordingProvider{
+		info: ProviderInfo{Kind: "stub", BaseURL: "http://stub", Model: "stub-model"},
+		result: CompletionResult{
+			Content: "bounded reply",
+			Model:   "stub-model",
+		},
+	}
+	service, err := NewService(filepath.Join(t.TempDir(), "conversation.json"), provider)
+	if err != nil {
+		t.Fatalf("new service: %v", err)
+	}
+	service.budget = historyBudget{MaxMessages: 10, MaxChars: 12}
+	service.state.Messages = seededMessages(
+		ChatMessage{Role: RoleUser, Content: "1234"},
+		ChatMessage{Role: RoleAssistant, Content: "5678"},
+		ChatMessage{Role: RoleUser, Content: "9012"},
+	)
+
+	if _, err := service.Submit(context.Background(), SubmitRequest{
+		SystemPrompt: "system prompt",
+		Prompt:       "abcd",
+	}); err != nil {
+		t.Fatalf("submit: %v", err)
+	}
+
+	if len(provider.request.Messages) != 3 {
+		t.Fatalf("expected 3 provider messages, got %d", len(provider.request.Messages))
+	}
+	if provider.request.Messages[0].Content != "5678" || provider.request.Messages[1].Content != "9012" || provider.request.Messages[2].Content != "abcd" {
+		t.Fatalf("unexpected provider messages: %#v", provider.request.Messages)
+	}
+}
+
 type stubProvider struct {
 	info   ProviderInfo
 	result CompletionResult
@@ -141,4 +219,35 @@ func (p stubProvider) Info() ProviderInfo {
 
 func (p stubProvider) Complete(context.Context, CompletionRequest) (CompletionResult, ProviderInfo, error) {
 	return p.result, p.info, p.err
+}
+
+type recordingProvider struct {
+	info    ProviderInfo
+	result  CompletionResult
+	err     error
+	request CompletionRequest
+}
+
+func (p *recordingProvider) Info() ProviderInfo {
+	return p.info
+}
+
+func (p *recordingProvider) Complete(_ context.Context, request CompletionRequest) (CompletionResult, ProviderInfo, error) {
+	p.request = request
+	return p.result, p.info, p.err
+}
+
+func seededMessages(messages ...ChatMessage) []Message {
+	seeded := make([]Message, 0, len(messages))
+	now := time.Now().UTC()
+	for index, message := range messages {
+		seeded = append(seeded, Message{
+			ID:        "seeded",
+			Role:      message.Role,
+			Content:   message.Content,
+			Status:    StatusComplete,
+			CreatedAt: now.Add(time.Duration(index) * time.Second),
+		})
+	}
+	return seeded
 }

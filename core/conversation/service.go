@@ -6,9 +6,12 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/Mesteriis/rune-terminal/internal/ids"
 )
@@ -22,8 +25,19 @@ type Service struct {
 	mu       sync.RWMutex
 	path     string
 	provider Provider
+	budget   historyBudget
 	state    persistedState
 }
+
+type historyBudget struct {
+	MaxMessages int
+	MaxChars    int
+}
+
+const (
+	defaultConversationMaxMessages = 24
+	defaultConversationMaxChars    = 12000
+)
 
 func NewService(path string, provider Provider) (*Service, error) {
 	if provider == nil {
@@ -35,6 +49,7 @@ func NewService(path string, provider Provider) (*Service, error) {
 	svc := &Service{
 		path:     path,
 		provider: provider,
+		budget:   defaultHistoryBudget(),
 		state: persistedState{
 			Messages: []Message{},
 		},
@@ -152,21 +167,72 @@ func newMessage(role MessageRole, content string, status MessageStatus, provider
 func (s *Service) complete(ctx context.Context, systemPrompt string, history []Message) (CompletionResult, ProviderInfo, error) {
 	request := CompletionRequest{
 		SystemPrompt: systemPrompt,
-		Messages:     make([]ChatMessage, 0, len(history)),
+		Messages:     pruneCompletionHistory(history, s.budget),
 	}
+	return s.provider.Complete(ctx, request)
+}
+
+func defaultHistoryBudget() historyBudget {
+	return historyBudget{
+		MaxMessages: parsePositiveIntEnv("RTERM_CONVERSATION_MAX_MESSAGES", defaultConversationMaxMessages),
+		MaxChars:    parsePositiveIntEnv("RTERM_CONVERSATION_MAX_CHARS", defaultConversationMaxChars),
+	}
+}
+
+func parsePositiveIntEnv(key string, fallback int) int {
+	value := strings.TrimSpace(defaultString(key, ""))
+	if value == "" {
+		return fallback
+	}
+	parsed, err := strconv.Atoi(value)
+	if err != nil || parsed < 1 {
+		return fallback
+	}
+	return parsed
+}
+
+func pruneCompletionHistory(history []Message, budget historyBudget) []ChatMessage {
+	compact := make([]ChatMessage, 0, len(history))
 	for _, message := range history {
-		if strings.TrimSpace(message.Content) == "" {
+		content := strings.TrimSpace(message.Content)
+		if content == "" {
 			continue
 		}
 		switch message.Role {
 		case RoleUser, RoleAssistant:
-			request.Messages = append(request.Messages, ChatMessage{
+			compact = append(compact, ChatMessage{
 				Role:    message.Role,
-				Content: message.Content,
+				Content: content,
 			})
 		}
 	}
-	return s.provider.Complete(ctx, request)
+	if len(compact) == 0 {
+		return nil
+	}
+
+	maxMessages := budget.MaxMessages
+	if maxMessages < 1 {
+		maxMessages = len(compact)
+	}
+	maxChars := budget.MaxChars
+
+	tail := make([]ChatMessage, 0, min(len(compact), maxMessages))
+	totalChars := 0
+	for index := len(compact) - 1; index >= 0; index-- {
+		message := compact[index]
+		messageChars := utf8.RuneCountInString(message.Content)
+		if len(tail) >= maxMessages {
+			break
+		}
+		if len(tail) > 0 && maxChars > 0 && totalChars+messageChars > maxChars {
+			break
+		}
+		tail = append(tail, message)
+		totalChars += messageChars
+	}
+
+	slices.Reverse(tail)
+	return tail
 }
 
 func (s *Service) load() error {
