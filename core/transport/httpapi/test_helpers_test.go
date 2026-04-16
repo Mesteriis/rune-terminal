@@ -23,6 +23,10 @@ import (
 const testAuthToken = "test-token"
 
 func newTestHandler(t *testing.T, definitions ...toolruntime.Definition) (http.Handler, *agent.Store) {
+	return newTestHandlerWithToken(t, testAuthToken, definitions...)
+}
+
+func newTestHandlerWithToken(t *testing.T, authToken string, definitions ...toolruntime.Definition) (http.Handler, *agent.Store) {
 	t.Helper()
 
 	tempDir := t.TempDir()
@@ -64,7 +68,7 @@ func newTestHandler(t *testing.T, definitions ...toolruntime.Definition) (http.H
 		Registry:     registry,
 	}
 	runtime.Executor = toolruntime.NewExecutor(runtime.Registry, runtime.Policy, runtime.Audit)
-	return NewHandler(runtime, testAuthToken), agentStore
+	return NewHandler(runtime, authToken), agentStore
 }
 
 func authedJSONRequest(t *testing.T, method string, path string, payload any) *http.Request {

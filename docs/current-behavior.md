@@ -91,6 +91,17 @@ It is intentionally operational, not narrative.
 - Output delivery uses subscriber objects with internal close/deliver synchronization to avoid `send on closed channel`.
 - A closed subscriber may still appear in an old snapshot of the subscriber list, but delivery to it is a no-op.
 
+## Transport auth and origin contract
+
+- `GET /healthz` is intentionally public.
+- All other HTTP API routes require bearer-token auth unless a route explicitly opts into a narrower alternative.
+- If the Go core starts without `RTERM_AUTH_TOKEN`, protected routes fail explicitly with `503 auth_not_configured`; auth does not silently become optional.
+- Query-token auth is currently limited to terminal SSE stream routes only.
+- CORS is not wildcard:
+  - loopback browser origins (`localhost`, `127.0.0.1`, `::1`) are allowed for the dev/browser path
+  - Tauri runtime origins (`tauri://localhost`, `http://tauri.localhost`, `https://tauri.localhost`) are allowed for the desktop path
+  - other origins do not receive cross-origin access
+
 ## Approval lifecycle contract
 
 - Approval requests are created only when policy evaluation requires confirmation.

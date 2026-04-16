@@ -41,14 +41,17 @@ Source: `core/transport/httpapi/api.go`.
 Source: `core/transport/httpapi/middleware.go`.
 
 - `Authorization` is expected on all non-`/healthz` endpoints as `Authorization: Bearer <token>`.
+- If the server was started without `RTERM_AUTH_TOKEN`, protected routes fail explicitly with `503 auth_not_configured`.
 - If a request has an empty/invalid `Authorization` header, middleware checks a query token only when `allowsQueryToken(path)` is true.
 - `allowsQueryToken` is true only for paths with prefix `/api/v1/terminal/` and suffix `/stream`.
 - `/healthz` bypasses auth checks entirely.
 - CORS middleware sets:
-  - `Access-Control-Allow-Origin: *`
+  - `Access-Control-Allow-Origin: <request origin>` only for allowed origins
   - `Access-Control-Allow-Headers: Authorization, Content-Type`
   - `Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS`
-  - `OPTIONS` requests return `204`.
+  - allowed origins are limited to loopback browser origins and the Tauri runtime origins
+  - disallowed preflight requests return `403 origin_not_allowed`
+  - `OPTIONS` requests return `204` only after origin validation when an `Origin` header is present.
 
 ## Response Model
 

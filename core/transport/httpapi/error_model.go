@@ -32,6 +32,10 @@ func writeUnauthorized(w http.ResponseWriter) {
 	writeError(w, http.StatusUnauthorized, "unauthorized", "unauthorized")
 }
 
+func writeServiceUnavailable(w http.ResponseWriter, code string, message string) {
+	writeError(w, http.StatusServiceUnavailable, code, message)
+}
+
 func writeForbidden(w http.ResponseWriter, code string, message string) {
 	writeError(w, http.StatusForbidden, code, message)
 }

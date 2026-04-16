@@ -128,6 +128,38 @@ func TestExecuteToolReturnsBadRequestForToolInputErrors(t *testing.T) {
 	}
 }
 
+func TestExecuteToolRejectsRoleAndModeFieldsAtTransportBoundary(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t, executeToolDefinition(
+		"term.echo",
+		toolruntime.EmptyDecode,
+		func(ctx context.Context, execCtx toolruntime.ExecutionContext, input any) (any, error) {
+			return map[string]any{"ok": true}, nil
+		},
+		toolruntime.Metadata{
+			Capabilities: []string{"terminal:read"},
+			ApprovalTier: policy.ApprovalTierSafe,
+			TargetKind:   toolruntime.TargetWidget,
+		},
+	))
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPost, "/api/v1/tools/execute", map[string]any{
+		"tool_name": "term.echo",
+		"context": map[string]any{
+			"workspace_id":     "ws-local",
+			"active_widget_id": "term-main",
+			"repo_root":        "/workspace/repo",
+			"role_id":          "spoofed-role",
+		},
+	}))
+
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", recorder.Code)
+	}
+}
+
 func TestExecuteToolReturnsInternalErrorForUnhandledFailures(t *testing.T) {
 	t.Parallel()
 
