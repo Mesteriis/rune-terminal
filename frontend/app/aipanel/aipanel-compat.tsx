@@ -27,7 +27,13 @@ import {
 } from "./compat-conversation";
 import { handleWaveAIContextMenu } from "./aipanel-contextmenu";
 import type { WaveUIMessage } from "./aitypes";
-import { createTranscriptTextMessage, executeRunCommandPrompt, parseRunCommandPrompt } from "./run-command";
+import {
+    buildRunCommandExplanationFallbackMessage,
+    createTranscriptTextMessage,
+    executeRunCommandPrompt,
+    explainRunCommandPrompt,
+    parseRunCommandPrompt,
+} from "./run-command";
 import { WaveAIModel } from "./waveai-model";
 
 const AIBlockMask = memo(() => {
@@ -359,6 +365,33 @@ const AIPanelCompatInner = memo(() => {
                         context,
                     });
                     setMessages((previous) => [...previous, executionResult.resultMessage]);
+                    if (executionResult.kind === "executed") {
+                        try {
+                            const explanationResponse = await explainRunCommandPrompt({
+                                conversationFacade: facade,
+                                prompt: runCommand.prompt,
+                                command: runCommand.command,
+                                widgetId: executionResult.widgetId,
+                                fromSeq: executionResult.fromSeq,
+                                context,
+                            });
+                            setProviderLabel(formatProviderLabel(explanationResponse.conversation.provider));
+                            const transcriptMessages = mapConversationSnapshot(explanationResponse.conversation);
+                            const explanationMessage = transcriptMessages[transcriptMessages.length - 1];
+                            if (explanationMessage != null) {
+                                setMessages((previous) => [...previous, explanationMessage]);
+                            }
+                        } catch (error) {
+                            setMessages((previous) => [
+                                ...previous,
+                                buildRunCommandExplanationFallbackMessage(
+                                    runCommand.command,
+                                    executionResult.outputExcerpt,
+                                    error instanceof Error ? error.message : String(error),
+                                ),
+                            ]);
+                        }
+                    }
                     return;
                 }
                 const response = await facade.submitMessage({

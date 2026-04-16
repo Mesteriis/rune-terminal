@@ -1,7 +1,9 @@
+import type { ConversationFacade } from "@/compat/conversation";
 import type { TerminalFacade } from "@/compat/terminal";
 import type { ToolsFacade } from "@/compat/tools";
 import type {
     ConversationContext,
+    ExplainTerminalCommandResponse,
 } from "@/rterm-api/conversation/types";
 import type { TerminalOutputChunk, TerminalSnapshot } from "@/rterm-api/terminal/types";
 import type { ToolExecutionResponse } from "@/rterm-api/tools/types";
@@ -158,6 +160,41 @@ export async function executeRunCommandPrompt(
         outputExcerpt,
         snapshot,
     };
+}
+
+interface ExplainRunCommandPromptOptions {
+    conversationFacade: ConversationFacade;
+    prompt: string;
+    command: string;
+    widgetId: string;
+    fromSeq: number;
+    context: ConversationContext;
+}
+
+export function explainRunCommandPrompt(
+    options: ExplainRunCommandPromptOptions,
+): Promise<ExplainTerminalCommandResponse> {
+    return options.conversationFacade.explainTerminalCommand({
+        prompt: options.prompt,
+        command: options.command,
+        widget_id: options.widgetId,
+        from_seq: options.fromSeq,
+        context: options.context,
+    });
+}
+
+export function buildRunCommandExplanationFallbackMessage(command: string, outputExcerpt: string, error: string): WaveUIMessage {
+    const details = error.trim() || "The backend explanation request failed.";
+    if (outputExcerpt === "") {
+        return createTranscriptTextMessage(
+            "assistant",
+            `Explanation unavailable for \`${command}\`.\n\n${details}\n\n${RUN_COMMAND_OUTPUT_EMPTY_MESSAGE}`,
+        );
+    }
+    return createTranscriptTextMessage(
+        "assistant",
+        `Explanation unavailable for \`${command}\`.\n\n${details}\n\nObserved output:\n\n\`\`\`text\n${sanitizeCodeFenceContent(outputExcerpt)}\n\`\`\``,
+    );
 }
 
 function buildToolFailureMessage(command: string, response: ToolExecutionResponse): string {
