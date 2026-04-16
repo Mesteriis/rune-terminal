@@ -22,20 +22,22 @@
 - `/run` transcript truth is persisted as standard conversation messages (user prompt + assistant execution result + explanation).
 - Reload/snapshot truth comes from backend `conversation.messages`; frontend-only dropped files are not part of persisted transcript truth.
 
-## 4. Relationship to conversation persistence, /run, audit, execution contract
+## 4. Contract validation for local reference model
 
-- Conversation persistence: attachment claims must be backed by backend-stored references, not frontend-only file state.
-- `/run`: attach placeholder must not alter current `/run` execution semantics or approval flow.
-- Audit: any future attachment-related execution must remain backend-auditable; frontend cannot author audit truth.
-- Execution contract: attachment references must be explicit input/context data, not implicit UI memory.
+- Conversation persistence: attachment claims must be backed by backend-persisted attachment references, not frontend-only file state.
+- Execution envelope: attachment references must be explicit message input data and remain typed; no hidden UI-only path assumptions.
+- `/run`: attachment support must not alter current `/run` execution semantics, approval flow, or retry behavior.
+- Audit model: when attachment-backed execution is performed by backend flows, audit truth remains backend-owned; frontend cannot author audit history.
+- Local-program constraints: the first implementation is local-reference only and inherits normal local filesystem volatility.
 
 ## 5. Strict slice boundary
 
-- No actual attachment feature implementation.
-- No storage subsystem work.
+- No managed blob/storage subsystem.
+- No implicit file copy into app state-dir.
+- No remote/cloud attachment portability.
 - No upload UX redesign.
 
-## Minimal attachments contract
+## Minimal local attachment contract
 
 ### A. Minimal attachment metadata shape
 
@@ -43,32 +45,39 @@
 {
   "id": "att_...",
   "name": "design-notes.md",
+  "path": "/absolute/local/path/design-notes.md",
   "mime_type": "text/markdown",
-  "size_bytes": 12345,
-  "storage_ref": "opaque-backend-ref"
+  "size": 12345,
+  "modified_time": 1713279000
 }
 ```
 
-- `id`: stable attachment reference used by conversation/audit/execution payloads.
-- `storage_ref`: backend-owned opaque pointer; frontend treats it as non-interpreted token.
-- No raw file bytes in conversation message payloads.
+- `id`: stable attachment reference id used in conversation payloads/snapshots.
+- `path`: normalized local filesystem pointer; this is reference truth, not managed storage.
+- `mime_type`, `size`, `modified_time`: lightweight metadata for validation and transcript rendering.
+- No content/blob fields; no raw file bytes in conversation message payloads.
 
-### B. Storage truth ownership
+### B. Persistence truth ownership
 
-- Storage truth is backend-owned.
-- Frontend may upload/select, but cannot claim persistence without backend-issued attachment references.
-- Attachment availability on reload must come from backend snapshot/message payload, not from frontend memory.
+- Backend owns persisted conversation truth, including attachment references attached to messages.
+- Frontend may select local files and request reference creation, but cannot claim persistence without backend-backed references.
+- Reload must reflect references from backend snapshot, not from frontend memory cache.
 
 ### C. Persisted conversation representation
 
-- Persisted conversation messages may include optional attachment references, while keeping text content explicit.
-- Attachment references must be durable identifiers resolvable by backend at reload time.
-- Local UI file pills without backend-issued attachment references are explicitly non-persistent.
+- Persisted conversation messages may include optional `attachments` with local references (`id + path + metadata`).
+- This does not imply file content persistence.
+- Local UI file pills without backend-persisted references are explicitly non-persistent.
 
 ### D. Explicit first-implementation non-goals
 
-- Binary transfer protocol design.
-- File storage provider implementation.
+- Managed file storage/import pipeline.
+- Binary upload/content transfer protocol.
 - OCR/indexing/search over attachments.
 - Rich attachment rendering UX redesign.
-- Attachment-driven tool execution changes outside explicit contract updates.
+
+### E. Local reference failure semantics
+
+- Local references may become invalid if the original file is moved, deleted, or permissions change.
+- Invalid references remain part of persisted transcript metadata but can fail at read/resolve time.
+- This behavior is expected for local reference mode and is not treated as managed-storage corruption.
