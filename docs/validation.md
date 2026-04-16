@@ -275,6 +275,28 @@
 - Notes:
   - browser console still showed expected `428` on approval challenge paths and a pre-existing unrelated `401` from legacy `/wave/service` object call
 
+## Legacy /wave/service noise cleanup
+
+- Date: `2026-04-16`
+- Status: `VERIFIED`
+- Commits:
+  - `4aaa3df7d0c27f9974ea4968fb109a15ec4ac4c9`
+  - `2100472e8d9f76c8d6ea362a950f0c60c362bacf`
+- Validation steps:
+  - runtime environment:
+    - core: `RTERM_AUTH_TOKEN=exec-model-token RTERM_OLLAMA_BASE_URL=http://127.0.0.1:11442 RTERM_OLLAMA_MODEL=test-model go run ./cmd/rterm-core serve --listen 127.0.0.1:52930 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/rterm-exec-model`
+    - frontend dev: `VITE_RTERM_API_BASE=http://127.0.0.1:52930 VITE_RTERM_AUTH_TOKEN=exec-model-token npm --prefix frontend run dev -- --host 127.0.0.1 --port 5178 --strictPort`
+  - opened active compat shell `http://127.0.0.1:5178/`
+  - opened and checked active surfaces:
+    - terminal view loaded (`GET /api/v1/terminal/...`)
+    - tools panel opened (`GET /api/v1/tools`)
+    - audit panel opened (`GET /api/v1/audit?limit=50`)
+    - AI panel opened (`GET /api/v1/agent/conversation`)
+  - checked runtime noise:
+    - browser console errors in this run: `0`
+    - network requests filtered by `wave/service`: none observed
+- Result: `VERIFIED` — active compat path no longer triggers legacy `/wave/service` 401 noise while terminal/tools/audit/AI paths remain operational.
+
 ## Explain approval truth
 
 - Date: `2026-04-16`
