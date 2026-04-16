@@ -35,11 +35,12 @@ func TestInvokeReturnsOutputFromPluginResponse(t *testing.T) {
 				return errors.New("unexpected handshake request")
 			}
 			if err := scriptWriteJSONLine(stdout, PluginHandshakeResponse{
-				Type:            MessageTypeHandshake,
-				ProtocolVersion: ProtocolVersionV1,
-				Plugin: PluginMetadata{
-					Name:    "example-plugin",
-					Version: "1.0.0",
+				Type: MessageTypeHandshake,
+				Manifest: PluginManifest{
+					PluginID:        "example-plugin",
+					PluginVersion:   "1.0.0",
+					ProtocolVersion: ProtocolVersionV1,
+					ExposedTools:    []string{"plugin.example"},
 				},
 			}); err != nil {
 				return err
@@ -71,8 +72,8 @@ func TestInvokeReturnsOutputFromPluginResponse(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Invoke error: %v", err)
 	}
-	if result.Plugin.Name != "example-plugin" {
-		t.Fatalf("unexpected plugin metadata: %#v", result.Plugin)
+	if result.Manifest.PluginID != "example-plugin" {
+		t.Fatalf("unexpected plugin manifest: %#v", result.Manifest)
 	}
 	if string(result.Output) != `{"echo":"ok"}` {
 		t.Fatalf("unexpected output: %s", string(result.Output))
@@ -100,11 +101,12 @@ func TestInvokeReturnsExecutionErrorWhenPluginRespondsWithError(t *testing.T) {
 				return err
 			}
 			if err := scriptWriteJSONLine(stdout, PluginHandshakeResponse{
-				Type:            MessageTypeHandshake,
-				ProtocolVersion: ProtocolVersionV1,
-				Plugin: PluginMetadata{
-					Name:    "example-plugin",
-					Version: "1.0.0",
+				Type: MessageTypeHandshake,
+				Manifest: PluginManifest{
+					PluginID:        "example-plugin",
+					PluginVersion:   "1.0.0",
+					ProtocolVersion: ProtocolVersionV1,
+					ExposedTools:    []string{"plugin.example"},
 				},
 			}); err != nil {
 				return err
@@ -157,11 +159,12 @@ func TestInvokeRejectsMalformedPluginResponse(t *testing.T) {
 				return err
 			}
 			if err := scriptWriteJSONLine(stdout, PluginHandshakeResponse{
-				Type:            MessageTypeHandshake,
-				ProtocolVersion: ProtocolVersionV1,
-				Plugin: PluginMetadata{
-					Name:    "example-plugin",
-					Version: "1.0.0",
+				Type: MessageTypeHandshake,
+				Manifest: PluginManifest{
+					PluginID:        "example-plugin",
+					PluginVersion:   "1.0.0",
+					ProtocolVersion: ProtocolVersionV1,
+					ExposedTools:    []string{"plugin.example"},
 				},
 			}); err != nil {
 				return err

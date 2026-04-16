@@ -31,12 +31,13 @@ func Run(stdin io.Reader, stdout io.Writer) error {
 	}
 
 	if err := writeJSONLine(writer, pluginruntime.PluginHandshakeResponse{
-		Type:            pluginruntime.MessageTypeHandshake,
-		ProtocolVersion: pluginruntime.ProtocolVersionV1,
-		Plugin: pluginruntime.PluginMetadata{
-			Name:         "example.side_process",
-			Version:      "1.0.0",
-			Capabilities: []string{"tool.execute"},
+		Type: pluginruntime.MessageTypeHandshake,
+		Manifest: pluginruntime.PluginManifest{
+			PluginID:        "example.side_process",
+			PluginVersion:   "1.0.0",
+			ProtocolVersion: pluginruntime.ProtocolVersionV1,
+			ExposedTools:    []string{"plugin.example_echo"},
+			Capabilities:    []string{"tool.execute"},
 		},
 	}); err != nil {
 		return err

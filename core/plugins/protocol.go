@@ -17,16 +17,17 @@ type PluginHandshakeRequest struct {
 	ProtocolVersion string            `json:"protocol_version"`
 }
 
-type PluginMetadata struct {
-	Name         string   `json:"name"`
-	Version      string   `json:"version"`
-	Capabilities []string `json:"capabilities,omitempty"`
+type PluginManifest struct {
+	PluginID        string   `json:"plugin_id"`
+	PluginVersion   string   `json:"plugin_version"`
+	ProtocolVersion string   `json:"protocol_version"`
+	ExposedTools    []string `json:"exposed_tools"`
+	Capabilities    []string `json:"capabilities,omitempty"`
 }
 
 type PluginHandshakeResponse struct {
-	Type            PluginMessageType `json:"type"`
-	ProtocolVersion string            `json:"protocol_version"`
-	Plugin          PluginMetadata    `json:"plugin"`
+	Type     PluginMessageType `json:"type"`
+	Manifest PluginManifest    `json:"manifest"`
 }
 
 type PluginRequest struct {

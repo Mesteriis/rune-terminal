@@ -42,8 +42,8 @@ func TestRunHandlesHandshakeAndRequest(t *testing.T) {
 	if err := readTestLine(reader, &handshake); err != nil {
 		t.Fatalf("read handshake response: %v", err)
 	}
-	if handshake.Plugin.Name != "example.side_process" {
-		t.Fatalf("unexpected plugin metadata: %#v", handshake.Plugin)
+	if handshake.Manifest.PluginID != "example.side_process" {
+		t.Fatalf("unexpected plugin manifest: %#v", handshake.Manifest)
 	}
 
 	var response pluginruntime.PluginResponse

@@ -19,7 +19,14 @@ Date: `2026-04-16`
 ## Message contract
 
 - Handshake request: `PluginHandshakeRequest`
-- Handshake response: `PluginHandshakeResponse` including plugin metadata/capabilities
+- Handshake response: `PluginHandshakeResponse` including explicit `manifest`
+  - required manifest fields:
+    - `plugin_id`
+    - `plugin_version`
+    - `protocol_version`
+    - `exposed_tools`
+  - optional manifest field:
+    - `capabilities`
 - Execute request: `PluginRequest`
 - Execute response: `PluginResponse`
 - Error payload: `PluginError`

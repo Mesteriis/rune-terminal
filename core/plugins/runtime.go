@@ -133,7 +133,7 @@ func (r *Runtime) exchangeProtocol(process Process, spec PluginSpec, request Inv
 	if err := readJSONLine(reader, &handshake); err != nil {
 		return InvokeResult{}, classifyProtocolReadError(err, "handshake")
 	}
-	if err := validateHandshakeResponse(handshake, protocolVersion); err != nil {
+	if err := validateHandshakeResponse(handshake, spec, protocolVersion); err != nil {
 		return InvokeResult{}, err
 	}
 
@@ -162,27 +162,37 @@ func (r *Runtime) exchangeProtocol(process Process, spec PluginSpec, request Inv
 
 	if response.Status == PluginResponseStatusError {
 		return InvokeResult{}, &ExecutionError{
-			PluginName: handshake.Plugin.Name,
+			PluginName: handshake.Manifest.PluginID,
 			Code:       response.Error.Code,
 			Message:    response.Error.Message,
 		}
 	}
 
 	return InvokeResult{
-		Plugin: handshake.Plugin,
-		Output: response.Output,
+		Manifest: handshake.Manifest,
+		Output:   response.Output,
 	}, nil
 }
 
-func validateHandshakeResponse(response PluginHandshakeResponse, expectedVersion string) error {
+func validateHandshakeResponse(response PluginHandshakeResponse, spec PluginSpec, expectedVersion string) error {
 	if response.Type != MessageTypeHandshake {
 		return fmt.Errorf("%w: expected handshake message type", ErrMalformedPluginOutput)
 	}
-	if strings.TrimSpace(response.ProtocolVersion) != expectedVersion {
+	manifest := response.Manifest
+	if strings.TrimSpace(manifest.ProtocolVersion) != expectedVersion {
 		return fmt.Errorf("%w: protocol version mismatch", ErrMalformedPluginOutput)
 	}
-	if strings.TrimSpace(response.Plugin.Name) == "" {
-		return fmt.Errorf("%w: plugin name is required in handshake", ErrMalformedPluginOutput)
+	if strings.TrimSpace(manifest.PluginID) == "" {
+		return fmt.Errorf("%w: plugin_id is required in handshake manifest", ErrMalformedPluginOutput)
+	}
+	if strings.TrimSpace(manifest.PluginVersion) == "" {
+		return fmt.Errorf("%w: plugin_version is required in handshake manifest", ErrMalformedPluginOutput)
+	}
+	if len(manifest.ExposedTools) == 0 {
+		return fmt.Errorf("%w: exposed_tools is required in handshake manifest", ErrMalformedPluginOutput)
+	}
+	if strings.TrimSpace(spec.Name) != "" && manifest.PluginID != spec.Name {
+		return fmt.Errorf("%w: plugin_id does not match bound plugin spec", ErrMalformedPluginOutput)
 	}
 	return nil
 }
