@@ -10,6 +10,7 @@ type Paths struct {
 	ConnectionsFile  string
 	ConversationFile string
 	WorkspaceFile    string
+	ExecutionFile    string
 	MCPRegistryFile  string
 }
 
@@ -22,6 +23,7 @@ func Resolve(stateDir string) Paths {
 		ConnectionsFile:  filepath.Join(stateDir, "connections.json"),
 		ConversationFile: filepath.Join(stateDir, "conversation.json"),
 		WorkspaceFile:    filepath.Join(stateDir, "workspace.json"),
+		ExecutionFile:    filepath.Join(stateDir, "execution-blocks.json"),
 		MCPRegistryFile:  filepath.Join(stateDir, "mcp-registry.json"),
 	}
 }

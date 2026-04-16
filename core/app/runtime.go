@@ -9,6 +9,7 @@ import (
 	"github.com/Mesteriis/rune-terminal/core/config"
 	"github.com/Mesteriis/rune-terminal/core/connections"
 	"github.com/Mesteriis/rune-terminal/core/conversation"
+	"github.com/Mesteriis/rune-terminal/core/execution"
 	"github.com/Mesteriis/rune-terminal/core/plugins"
 	"github.com/Mesteriis/rune-terminal/core/policy"
 	"github.com/Mesteriis/rune-terminal/core/terminal"
@@ -24,6 +25,7 @@ type Runtime struct {
 	Connections  *connections.Service
 	Agent        *agent.Store
 	Conversation *conversation.Service
+	Execution    *execution.Service
 	Policy       *policy.Store
 	Audit        *audit.Log
 	Plugins      *plugins.Runtime
@@ -57,6 +59,10 @@ func NewRuntime(repoRoot string, stateDir string) (*Runtime, error) {
 	if err != nil {
 		return nil, err
 	}
+	executionStore, err := execution.NewService(paths.ExecutionFile)
+	if err != nil {
+		return nil, err
+	}
 	workspaceSnapshot, err := workspace.LoadSnapshot(paths.WorkspaceFile, workspace.BootstrapDefault())
 	if err != nil {
 		return nil, err
@@ -70,6 +76,7 @@ func NewRuntime(repoRoot string, stateDir string) (*Runtime, error) {
 		Connections:  connectionStore,
 		Agent:        agentStore,
 		Conversation: conversationStore,
+		Execution:    executionStore,
 		Policy:       policyStore,
 		Audit:        auditLog,
 		Plugins:      plugins.NewRuntime(nil, 0),

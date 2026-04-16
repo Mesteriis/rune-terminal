@@ -34,3 +34,35 @@ A structured execution block is a bounded operator-facing record layered on top 
 - full notebook/block editor
 - terminal replacement
 - massive UI redesign
+
+## Execution block model
+
+Minimal backend-owned block shape for this batch:
+
+- `id`, `created_at`, `updated_at`
+- `intent`:
+  - `prompt`
+  - `command`
+- `target`:
+  - `workspace_id`
+  - `widget_id`
+  - `repo_root`
+  - `target_session`
+  - `target_connection_id`
+- `result`:
+  - `state` (`executed` or `failed`)
+  - `output_excerpt`
+  - `from_seq`
+- `explain`:
+  - `state` (`available` or `failed`)
+  - `message_id`
+  - `summary`
+  - `error`
+- `provenance`:
+  - `command_audit_event_id`
+
+Model constraints:
+
+- backend snapshot/store is the source of truth for block records
+- block records link to existing execution/explain/audit truth; they do not replace it
+- block records are a bounded workflow layer, not a full terminal history/event store
