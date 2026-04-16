@@ -42,6 +42,8 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
     const [mcpServers, setMCPServers] = useState<MCPServerRuntime[]>([]);
     const [mcpLoading, setMCPLoading] = useState(true);
     const [mcpLoadError, setMCPLoadError] = useState<string | null>(null);
+    const [mcpActionError, setMCPActionError] = useState<string | null>(null);
+    const [mcpActionKey, setMCPActionKey] = useState<string | null>(null);
 
     const { refs, floatingStyles, context } = useFloating({
         open: isOpen,
@@ -65,6 +67,7 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
         setLoadError(null);
         setMCPLoading(true);
         setMCPLoadError(null);
+        setMCPActionError(null);
         setPendingApproval(listStoredPendingToolApprovalsForWorkspace(getActiveWorkspaceID())[0] ?? null);
 
         void (async () => {
@@ -135,6 +138,55 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
             return "active";
         }
         return "stopped";
+    };
+
+    const refreshMCPServers = async () => {
+        setMCPLoading(true);
+        setMCPLoadError(null);
+        try {
+            const facade = await getMCPFacade();
+            const response = await facade.listServers();
+            setMCPServers(response);
+        } catch (error) {
+            setMCPLoadError(error instanceof Error ? error.message : String(error));
+            setMCPServers([]);
+        } finally {
+            setMCPLoading(false);
+        }
+    };
+
+    const handleMCPAction = async (
+        serverID: string,
+        action: "start" | "stop" | "restart" | "enable" | "disable",
+    ) => {
+        setMCPActionError(null);
+        const key = `${serverID}:${action}`;
+        setMCPActionKey(key);
+        try {
+            const facade = await getMCPFacade();
+            switch (action) {
+                case "start":
+                    await facade.startServer(serverID);
+                    break;
+                case "stop":
+                    await facade.stopServer(serverID);
+                    break;
+                case "restart":
+                    await facade.restartServer(serverID);
+                    break;
+                case "enable":
+                    await facade.enableServer(serverID);
+                    break;
+                case "disable":
+                    await facade.disableServer(serverID);
+                    break;
+            }
+            await refreshMCPServers();
+        } catch (error) {
+            setMCPActionError(error instanceof Error ? error.message : String(error));
+        } finally {
+            setMCPActionKey(null);
+        }
     };
 
     const handleToolSelect = (toolName: string) => {
@@ -390,10 +442,26 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
                                     <div className="mt-1 break-all">
                                         last used: {server.last_used ? formatAuditTimestamp(server.last_used) : "never"}
                                     </div>
+                                    <div className="mt-1.5 flex flex-wrap gap-1">
+                                        {(["start", "stop", "restart", "enable", "disable"] as const).map((action) => (
+                                            <button
+                                                key={action}
+                                                type="button"
+                                                className="px-2 py-0.5 rounded border border-border text-[10px] text-secondary hover:text-white disabled:opacity-50"
+                                                disabled={mcpActionKey != null}
+                                                onClick={() => void handleMCPAction(server.id, action)}
+                                            >
+                                                {mcpActionKey === `${server.id}:${action}` ? `${action}...` : action}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
                             ))}
                         </div>
                     )}
+                    {mcpActionError ? (
+                        <div className="mt-2 text-xs text-red-400 whitespace-pre-wrap">{mcpActionError}</div>
+                    ) : null}
                 </div>
             </div>
         </FloatingPortal>

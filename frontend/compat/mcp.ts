@@ -5,6 +5,11 @@ import { createCompatApiFacade } from "./api";
 
 export interface MCPFacade {
   listServers: () => Promise<MCPServerRuntime[]>;
+  startServer: (serverID: string) => Promise<MCPServerRuntime>;
+  stopServer: (serverID: string) => Promise<MCPServerRuntime>;
+  restartServer: (serverID: string) => Promise<MCPServerRuntime>;
+  enableServer: (serverID: string) => Promise<MCPServerRuntime>;
+  disableServer: (serverID: string) => Promise<MCPServerRuntime>;
 }
 
 let mcpFacadePromise: Promise<MCPFacade> | null = null;
@@ -31,6 +36,26 @@ export function createMCPFacade(client: MCPClient): MCPFacade {
     async listServers(): Promise<MCPServerRuntime[]> {
       const response = await client.listServers();
       return response.servers ?? [];
+    },
+    async startServer(serverID: string): Promise<MCPServerRuntime> {
+      const response = await client.startServer(serverID);
+      return response.server;
+    },
+    async stopServer(serverID: string): Promise<MCPServerRuntime> {
+      const response = await client.stopServer(serverID);
+      return response.server;
+    },
+    async restartServer(serverID: string): Promise<MCPServerRuntime> {
+      const response = await client.restartServer(serverID);
+      return response.server;
+    },
+    async enableServer(serverID: string): Promise<MCPServerRuntime> {
+      const response = await client.enableServer(serverID);
+      return response.server;
+    },
+    async disableServer(serverID: string): Promise<MCPServerRuntime> {
+      const response = await client.disableServer(serverID);
+      return response.server;
     },
   };
 }
