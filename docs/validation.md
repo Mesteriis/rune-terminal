@@ -1560,3 +1560,49 @@
   - release sweep:
     - `npm run validate` -> `NOT VERIFIED` for this slice because repo-wide pre-existing frontend lint issues fail at `lint:frontend` before downstream validate steps
 - Result: `VERIFIED` — minimal side-process plugin runtime is functional end-to-end through the existing tool runtime path, with approval and audit contracts preserved.
+
+## Plugin runtime hardening
+
+- Date: `2026-04-16`
+- Status: `VERIFIED` (with one known repo-wide validation limitation)
+- Commits:
+  - `44dddf8`
+  - `f110a3c`
+  - `c3cf44e`
+  - `ed95313`
+  - `e3f6f96`
+  - `143ec34`
+- Validation steps:
+  - automated checks:
+    - `go test ./...` -> `PASS`
+    - targeted failure taxonomy checks:
+      - `go test ./core/plugins -run 'TestInvokeFailsWhenPluginCommandPathIsMissing|TestInvokeFailsWhenHandshakeExceedsTimeout|TestInvokeRejectsMalformedPluginResponse|TestInvokeFailsWhenPluginCrashesDuringExecutionAfterHandshake' -count=1` -> `PASS`
+      - `go test ./core/transport/httpapi -run TestStatusForExecuteErrorReturnsBadGatewayForPluginFailure -count=1` -> `PASS`
+  - handshake/manifest protocol check:
+    - `printf ... | go run ./cmd/rterm-core plugin-example`
+    - observed handshake response with explicit manifest fields:
+      - `plugin_id: "example.side_process"`
+      - `plugin_version: "1.0.0"`
+      - `protocol_version: "rterm.plugin.v1"`
+      - `exposed_tools: ["plugin.example_echo"]`
+  - runtime/API smoke:
+    - core: `RTERM_AUTH_TOKEN=plugin-hardening-token go run ./cmd/rterm-core serve --listen 127.0.0.1:52980 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/rterm-plugin-hardening.*`
+    - `GET /api/v1/tools` includes `plugin.example_echo`
+    - `POST /api/v1/tools/execute` for `plugin.example_echo` returns `status:"ok"` with deterministic output
+    - `POST /api/v1/tools/execute` for in-process `workspace.list_widgets` returns `status:"ok"`
+  - approval/audit regression:
+    - `safety.add_ignore_rule` still returns `428` challenge
+    - `safety.confirm` returns `status:"ok"` and approval token
+    - approved retry returns `status:"ok"`
+    - `GET /api/v1/audit` still shows backend-owned chain:
+      - blocked `safety.add_ignore_rule`
+      - successful `safety.confirm`
+      - approved retry `safety.add_ignore_rule` with `approval_used:true`
+    - plugin execution still appears in audit as `tool_name:"plugin.example_echo"` with `success:true`
+  - shell/tools-panel usability smoke:
+    - frontend dev: `VITE_RTERM_API_BASE=http://127.0.0.1:52981 VITE_RTERM_AUTH_TOKEN=plugin-hardening-ui-token npm --prefix frontend run dev -- --host 127.0.0.1 --port 4216 --strictPort`
+    - Playwright opened `http://127.0.0.1:4216/`, opened existing `Tools` panel, and confirmed `plugin.example_echo` is present and selectable
+    - `npm run tauri:dev` reached desktop startup (`Running target/debug/rterm-desktop` plus ready JSON), then intentionally interrupted
+  - release sweep:
+    - `npm run validate` -> `NOT VERIFIED` for this slice because repo-wide pre-existing frontend lint errors fail at `lint:frontend` before downstream validate steps
+- Result: `VERIFIED` — plugin runtime hardening keeps existing plugin-backed and in-process execution working, enforces explicit manifest/tool exposure contract, and surfaces typed plugin-runtime failures coherently.
