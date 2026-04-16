@@ -1,10 +1,16 @@
 import type { MCPClient } from "@/rterm-api/mcp/client";
-import type { MCPInvokeRequest, MCPInvokeResponse, MCPServerRuntime } from "@/rterm-api/mcp/types";
+import type {
+  MCPInvokeRequest,
+  MCPInvokeResponse,
+  MCPRegisterServerRequest,
+  MCPServerRuntime,
+} from "@/rterm-api/mcp/types";
 import type { CompatApiOptions } from "./types";
 import { createCompatApiFacade } from "./api";
 
 export interface MCPFacade {
   listServers: () => Promise<MCPServerRuntime[]>;
+  registerServer: (payload: MCPRegisterServerRequest) => Promise<MCPServerRuntime>;
   startServer: (serverID: string) => Promise<MCPServerRuntime>;
   stopServer: (serverID: string) => Promise<MCPServerRuntime>;
   restartServer: (serverID: string) => Promise<MCPServerRuntime>;
@@ -37,6 +43,10 @@ export function createMCPFacade(client: MCPClient): MCPFacade {
     async listServers(): Promise<MCPServerRuntime[]> {
       const response = await client.listServers();
       return response.servers ?? [];
+    },
+    async registerServer(payload: MCPRegisterServerRequest): Promise<MCPServerRuntime> {
+      const response = await client.registerServer(payload);
+      return response.server;
     },
     async startServer(serverID: string): Promise<MCPServerRuntime> {
       const response = await client.startServer(serverID);

@@ -67,6 +67,12 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
     const [mcpInvokeError, setMCPInvokeError] = useState<string | null>(null);
     const [mcpInvoking, setMCPInvoking] = useState(false);
     const [mcpUseInAIStatus, setMCPUseInAIStatus] = useState<string | null>(null);
+    const [mcpRegisterID, setMCPRegisterID] = useState("");
+    const [mcpRegisterEndpoint, setMCPRegisterEndpoint] = useState("");
+    const [mcpRegisterHeaders, setMCPRegisterHeaders] = useState("{}");
+    const [mcpRegisterError, setMCPRegisterError] = useState<string | null>(null);
+    const [mcpRegisterStatus, setMCPRegisterStatus] = useState<string | null>(null);
+    const [mcpRegistering, setMCPRegistering] = useState(false);
 
     const { refs, floatingStyles, context } = useFloating({
         open: isOpen,
@@ -91,6 +97,8 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
         setMCPLoading(true);
         setMCPLoadError(null);
         setMCPActionError(null);
+        setMCPRegisterError(null);
+        setMCPRegisterStatus(null);
         setPendingApproval(listStoredPendingToolApprovalsForWorkspace(getActiveWorkspaceID())[0] ?? null);
 
         void (async () => {
@@ -222,6 +230,69 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
             setMCPActionError(error instanceof Error ? error.message : String(error));
         } finally {
             setMCPActionKey(null);
+        }
+    };
+
+    const handleMCPRegister = async () => {
+        const id = mcpRegisterID.trim();
+        const endpoint = mcpRegisterEndpoint.trim();
+        if (id === "") {
+            setMCPRegisterError("MCP id is required.");
+            return;
+        }
+        if (endpoint === "") {
+            setMCPRegisterError("MCP endpoint is required.");
+            return;
+        }
+
+        let headers: Record<string, string> | undefined = undefined;
+        const trimmedHeaders = mcpRegisterHeaders.trim();
+        if (trimmedHeaders !== "") {
+            try {
+                const parsed = JSON.parse(trimmedHeaders) as unknown;
+                if (parsed != null && typeof parsed === "object" && !Array.isArray(parsed)) {
+                    const nextHeaders: Record<string, string> = {};
+                    for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
+                        if (typeof value !== "string") {
+                            setMCPRegisterError("Headers must be a JSON object with string values.");
+                            return;
+                        }
+                        nextHeaders[key] = value;
+                    }
+                    if (Object.keys(nextHeaders).length > 0) {
+                        headers = nextHeaders;
+                    }
+                } else {
+                    setMCPRegisterError("Headers must be a JSON object.");
+                    return;
+                }
+            } catch (error) {
+                setMCPRegisterError(error instanceof Error ? error.message : String(error));
+                return;
+            }
+        }
+
+        setMCPRegisterError(null);
+        setMCPRegisterStatus(null);
+        setMCPRegistering(true);
+        try {
+            const facade = await getMCPFacade();
+            const server = await facade.registerServer({
+                id,
+                type: "remote",
+                endpoint,
+                headers,
+            });
+            await refreshMCPServers();
+            setMCPInvokeServerID(server.id);
+            setMCPRegisterStatus(`Registered MCP server: ${server.id} (state: ${server.state}).`);
+            setMCPRegisterID("");
+            setMCPRegisterEndpoint("");
+            setMCPRegisterHeaders("{}");
+        } catch (error) {
+            setMCPRegisterError(error instanceof Error ? error.message : String(error));
+        } finally {
+            setMCPRegistering(false);
         }
     };
 
@@ -597,6 +668,50 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
                 )}
                 <div className="mt-3 pt-3 border-t border-border">
                     <div className="text-xs font-medium text-white mb-2">MCP Servers</div>
+                    <div className="mb-3 rounded border border-border bg-black/20 p-2 space-y-2">
+                        <div className="text-[11px] text-white">Add MCP Server</div>
+                        <div className="grid grid-cols-[56px_1fr] gap-2 items-center">
+                            <label className="text-[11px] text-secondary">id</label>
+                            <input
+                                className="w-full rounded border border-border bg-black/20 p-1 text-[11px] text-white"
+                                value={mcpRegisterID}
+                                onChange={(e) => setMCPRegisterID(e.target.value)}
+                                placeholder="mcp.context7"
+                            />
+                            <label className="text-[11px] text-secondary">endpoint</label>
+                            <input
+                                className="w-full rounded border border-border bg-black/20 p-1 text-[11px] text-white"
+                                value={mcpRegisterEndpoint}
+                                onChange={(e) => setMCPRegisterEndpoint(e.target.value)}
+                                placeholder="https://mcp.context7.com/mcp"
+                            />
+                        </div>
+                        <div>
+                            <div className="text-[11px] text-secondary mb-1">headers json (optional):</div>
+                            <textarea
+                                className="w-full min-h-14 rounded border border-border bg-black/20 p-2 text-[11px] text-white resize-y"
+                                value={mcpRegisterHeaders}
+                                onChange={(e) => setMCPRegisterHeaders(e.target.value)}
+                                spellCheck={false}
+                            />
+                        </div>
+                        <div className="flex items-center justify-end">
+                            <button
+                                type="button"
+                                className="px-3 py-1 rounded bg-accent text-black text-[11px] font-medium disabled:opacity-50"
+                                disabled={mcpRegistering}
+                                onClick={() => void handleMCPRegister()}
+                            >
+                                {mcpRegistering ? "Adding..." : "Add MCP"}
+                            </button>
+                        </div>
+                        {mcpRegisterError ? (
+                            <div className="text-[11px] text-red-400 whitespace-pre-wrap">{mcpRegisterError}</div>
+                        ) : null}
+                        {mcpRegisterStatus ? (
+                            <div className="text-[11px] text-emerald-300 whitespace-pre-wrap">{mcpRegisterStatus}</div>
+                        ) : null}
+                    </div>
                     {mcpLoading ? (
                         <div className="text-xs text-secondary">Loading MCP servers...</div>
                     ) : mcpLoadError ? (
@@ -616,6 +731,10 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
                                     </div>
                                     <div className="mt-1 break-all">
                                         last used: {server.last_used ? formatAuditTimestamp(server.last_used) : "never"}
+                                    </div>
+                                    <div className="mt-1 break-all">
+                                        type: {server.type}
+                                        {server.endpoint ? ` | endpoint: ${server.endpoint}` : ""}
                                     </div>
                                     <div className="mt-1.5 flex flex-wrap gap-1">
                                         {(["start", "stop", "restart", "enable", "disable"] as const).map((action) => (

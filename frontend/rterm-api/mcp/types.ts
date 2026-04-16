@@ -1,7 +1,10 @@
 export type MCPServerState = "stopped" | "starting" | "active" | "idle" | "stopped_auto";
+export type MCPServerType = "process" | "remote";
 
 export interface MCPServerRuntime {
   id: string;
+  type: MCPServerType;
+  endpoint?: string;
   state: MCPServerState;
   last_used?: string;
   active: boolean;
@@ -14,6 +17,13 @@ export interface MCPServersResponse {
 
 export interface MCPServerMutationResponse {
   server: MCPServerRuntime;
+}
+
+export interface MCPRegisterServerRequest {
+  id: string;
+  type: "remote";
+  endpoint: string;
+  headers?: Record<string, string>;
 }
 
 export interface MCPInvokeRequest {

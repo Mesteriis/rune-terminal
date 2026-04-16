@@ -1,6 +1,7 @@
 import type {
   MCPInvokeRequest,
   MCPInvokeResponse,
+  MCPRegisterServerRequest,
   MCPServerMutationResponse,
   MCPServersResponse,
 } from "./types";
@@ -11,6 +12,12 @@ export class MCPClient {
 
   listServers(): Promise<MCPServersResponse> {
     return this.http.get<MCPServersResponse>("/api/v1/mcp/servers");
+  }
+
+  registerServer(payload: MCPRegisterServerRequest): Promise<MCPServerMutationResponse> {
+    return this.http.post<MCPServerMutationResponse, MCPRegisterServerRequest>("/api/v1/mcp/servers", {
+      body: payload,
+    });
   }
 
   startServer(serverID: string): Promise<MCPServerMutationResponse> {
