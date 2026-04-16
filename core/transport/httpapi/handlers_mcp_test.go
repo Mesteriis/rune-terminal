@@ -34,6 +34,91 @@ func TestListMCPServersReturnsRuntimeState(t *testing.T) {
 	}
 }
 
+func TestRegisterMCPServer(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPost, "/api/v1/mcp/servers", map[string]any{
+		"id":       "mcp.context7",
+		"type":     "remote",
+		"endpoint": "https://mcp.context7.com/mcp",
+		"headers": map[string]any{
+			"X-Context7-API-Key": "placeholder",
+		},
+	}))
+	if recorder.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d (%s)", recorder.Code, recorder.Body.String())
+	}
+
+	var response struct {
+		Server plugins.MCPServerSnapshot `json:"server"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatalf("Unmarshal error: %v", err)
+	}
+	if response.Server.ID != "mcp.context7" {
+		t.Fatalf("expected mcp.context7, got %#v", response.Server)
+	}
+	if response.Server.State != plugins.MCPStateStopped || response.Server.Active {
+		t.Fatalf("expected newly registered server to be stopped and inactive, got %#v", response.Server)
+	}
+}
+
+func TestRegisterMCPServerValidation(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+	cases := []map[string]any{
+		{
+			"id":       "",
+			"type":     "remote",
+			"endpoint": "https://mcp.context7.com/mcp",
+		},
+		{
+			"id":       "mcp.context7",
+			"type":     "process",
+			"endpoint": "https://mcp.context7.com/mcp",
+		},
+		{
+			"id":       "mcp.context7",
+			"type":     "remote",
+			"endpoint": "/not-absolute",
+		},
+	}
+	for _, payload := range cases {
+		recorder := httptest.NewRecorder()
+		handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPost, "/api/v1/mcp/servers", payload))
+		if recorder.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400 for payload %#v, got %d (%s)", payload, recorder.Code, recorder.Body.String())
+		}
+	}
+}
+
+func TestRegisterMCPServerDuplicate(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+	payload := map[string]any{
+		"id":       "mcp.context7",
+		"type":     "remote",
+		"endpoint": "https://mcp.context7.com/mcp",
+	}
+
+	first := httptest.NewRecorder()
+	handler.ServeHTTP(first, authedJSONRequest(t, http.MethodPost, "/api/v1/mcp/servers", payload))
+	if first.Code != http.StatusCreated {
+		t.Fatalf("expected first register=201, got %d (%s)", first.Code, first.Body.String())
+	}
+
+	second := httptest.NewRecorder()
+	handler.ServeHTTP(second, authedJSONRequest(t, http.MethodPost, "/api/v1/mcp/servers", payload))
+	if second.Code != http.StatusConflict {
+		t.Fatalf("expected duplicate register=409, got %d (%s)", second.Code, second.Body.String())
+	}
+}
+
 func TestMCPServerControlEndpoints(t *testing.T) {
 	t.Parallel()
 

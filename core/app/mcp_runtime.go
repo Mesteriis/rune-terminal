@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -11,6 +12,13 @@ import (
 )
 
 var ErrMCPRuntimeNotConfigured = errors.New("mcp runtime is not configured")
+
+type MCPRegistrationRequest struct {
+	ID       string
+	Type     string
+	Endpoint string
+	Headers  map[string]string
+}
 
 func (r *Runtime) registerMCPServers() error {
 	if r.MCP == nil {
@@ -30,6 +38,35 @@ func (r *Runtime) registerMCPServers() error {
 		}
 	}
 	return nil
+}
+
+func (r *Runtime) RegisterMCPServer(request MCPRegistrationRequest) (plugins.MCPServerSnapshot, error) {
+	if r.MCP == nil {
+		return plugins.MCPServerSnapshot{}, ErrMCPRuntimeNotConfigured
+	}
+
+	headersJSON, err := json.Marshal(request.Headers)
+	if err != nil {
+		return plugins.MCPServerSnapshot{}, fmt.Errorf("%w: invalid headers", plugins.ErrInvalidPluginSpec)
+	}
+
+	spec := plugins.MCPServerSpec{
+		ID: strings.TrimSpace(request.ID),
+		Process: plugins.ProcessConfig{
+			Command: pluginExecutable(),
+			Args:    []string{"plugin-example"},
+			Env: []string{
+				"RTERM_MCP_SERVER_TYPE=" + strings.TrimSpace(request.Type),
+				"RTERM_MCP_SERVER_ENDPOINT=" + strings.TrimSpace(request.Endpoint),
+				"RTERM_MCP_SERVER_HEADERS=" + string(headersJSON),
+			},
+		},
+	}
+
+	if err := r.MCP.Registry().Register(spec); err != nil {
+		return plugins.MCPServerSnapshot{}, err
+	}
+	return r.MCP.Registry().Get(spec.ID)
 }
 
 func (r *Runtime) ListMCPServers() []plugins.MCPServerSnapshot {
