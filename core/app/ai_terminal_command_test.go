@@ -123,6 +123,22 @@ func TestExplainTerminalCommandAppendsAssistantSummary(t *testing.T) {
 	}
 }
 
+func TestSummarizeTerminalOutputSanitizesPromptNoise(t *testing.T) {
+	t.Parallel()
+
+	chunks := []terminal.OutputChunk{
+		{Seq: 15, Data: "\u001b[10D\u001b[32me\u001b[32mc\u001b[32mh\u001b[32mo\u001b[39m\u001b[6C"},
+		{Seq: 16, Data: "\u001b[?2004l\r\r\n"},
+		{Seq: 17, Data: "hello\r\n"},
+		{Seq: 18, Data: "\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                                                                                       \r \r"},
+		{Seq: 19, Data: "\r\u001b[0m\u001b[27m\u001b[24m\u001b[J\r\n\u001b[1;36m╭─\u001b[34mruna-terminal\u001b[0m on \u001b[1;35m main\u001b[0m\r\n\u001b[1;36m╰─\u001b[32m➜\u001b[0m \u001b[K\u001b[?2004h"},
+	}
+
+	if got := summarizeTerminalOutput("echo hello", chunks); got != "hello" {
+		t.Fatalf("unexpected sanitized output: %q", got)
+	}
+}
+
 type stubTerminalProcess struct {
 	outputCh chan []byte
 	waitCh   chan struct{}

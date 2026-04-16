@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/Mesteriis/rune-terminal/core/audit"
@@ -24,6 +25,8 @@ type ExplainTerminalCommandResult struct {
 	OutputExcerpt string                `json:"output_excerpt,omitempty"`
 }
 
+var ansiCSIPattern = regexp.MustCompile(`\x1b\[[0-?]*[ -/]*[@-~]`)
+
 func (r *Runtime) ExplainTerminalCommand(
 	ctx context.Context,
 	request ExplainTerminalCommandRequest,
@@ -43,7 +46,7 @@ func (r *Runtime) ExplainTerminalCommand(
 	if err != nil {
 		return ExplainTerminalCommandResult{}, err
 	}
-	outputExcerpt := summarizeTerminalOutput(snapshot.Chunks)
+	outputExcerpt := summarizeTerminalOutput(command, snapshot.Chunks)
 
 	selection, err := r.Agent.Selection()
 	if err != nil {
@@ -106,7 +109,7 @@ Write a concise assistant reply that:
 - stays brief and practical`, prompt, command, outputExcerpt))
 }
 
-func summarizeTerminalOutput(chunks []terminal.OutputChunk) string {
+func summarizeTerminalOutput(command string, chunks []terminal.OutputChunk) string {
 	if len(chunks) == 0 {
 		return ""
 	}
@@ -117,9 +120,50 @@ func summarizeTerminalOutput(chunks []terminal.OutputChunk) string {
 			break
 		}
 	}
-	output := strings.TrimSpace(builder.String())
+	output := normalizeTerminalOutput(command, builder.String())
 	if len(output) > 4000 {
 		output = output[len(output)-4000:]
 	}
 	return output
+}
+
+func normalizeTerminalOutput(command string, output string) string {
+	normalized := strings.ReplaceAll(applyTerminalBackspaces(output), "\r\n", "\n")
+	normalized = strings.ReplaceAll(normalized, "\r", "\n")
+	normalized = ansiCSIPattern.ReplaceAllString(normalized, "")
+	normalized = strings.ReplaceAll(normalized, "\x1b", "")
+	lines := strings.Split(normalized, "\n")
+	cleaned := make([]string, 0, len(lines))
+	trimmedCommand := strings.TrimSpace(command)
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		if line == "%" || strings.HasPrefix(line, "╭") || strings.HasPrefix(line, "╰") {
+			continue
+		}
+		if line == trimmedCommand {
+			continue
+		}
+		if trimmedCommand != "" && (strings.HasPrefix(trimmedCommand, line) || strings.HasPrefix(line, trimmedCommand)) {
+			continue
+		}
+		cleaned = append(cleaned, line)
+	}
+	return strings.TrimSpace(strings.Join(cleaned, "\n"))
+}
+
+func applyTerminalBackspaces(value string) string {
+	runes := make([]rune, 0, len(value))
+	for _, r := range value {
+		if r == '\b' {
+			if len(runes) > 0 {
+				runes = runes[:len(runes)-1]
+			}
+			continue
+		}
+		runes = append(runes, r)
+	}
+	return string(runes)
 }

@@ -29,6 +29,7 @@ const RUN_COMMAND_OUTPUT_EMPTY_MESSAGE = "No terminal output was captured yet.";
 const RUN_COMMAND_OUTPUT_LIMIT = 4000;
 const RUN_COMMAND_POLL_INTERVAL_MS = 200;
 const RUN_COMMAND_POLL_ATTEMPTS = 8;
+const ANSI_CSI_PATTERN = /\u001b\[[0-?]*[ -/]*[@-~]/g;
 
 export function parseRunCommandPrompt(prompt: string): RunCommandParseResult {
     const trimmed = prompt.trim();
@@ -150,7 +151,7 @@ export async function executeRunCommandPrompt(
     }
 
     const snapshot = await waitForRunCommandOutput(options.terminalFacade, widgetId, fromSeq);
-    const outputExcerpt = summarizeTerminalOutput(snapshot.chunks);
+    const outputExcerpt = summarizeTerminalOutput(options.command, snapshot.chunks);
 
     return {
         kind: "executed",
@@ -219,18 +220,50 @@ function sanitizeCodeFenceContent(value: string): string {
     return value.replaceAll("```", "``\\`");
 }
 
-function summarizeTerminalOutput(chunks: TerminalOutputChunk[]): string {
+export function summarizeTerminalOutput(command: string, chunks: TerminalOutputChunk[]): string {
     if (chunks.length === 0) {
         return "";
     }
     const output = chunks
         .map((chunk) => chunk.data)
-        .join("")
-        .trim();
-    if (output.length <= RUN_COMMAND_OUTPUT_LIMIT) {
-        return output;
+        .join("");
+    const cleanedOutput = normalizeTerminalOutput(command, output);
+    if (cleanedOutput.length <= RUN_COMMAND_OUTPUT_LIMIT) {
+        return cleanedOutput;
     }
-    return output.slice(output.length - RUN_COMMAND_OUTPUT_LIMIT);
+    return cleanedOutput.slice(cleanedOutput.length - RUN_COMMAND_OUTPUT_LIMIT);
+}
+
+function normalizeTerminalOutput(command: string, output: string): string {
+    const withoutAnsi = applyTerminalBackspaces(output)
+        .replace(/\r\n/g, "\n")
+        .replace(/\r/g, "\n")
+        .replace(ANSI_CSI_PATTERN, "")
+        .replaceAll("\u001b", "");
+    const trimmedCommand = command.trim();
+    const lines = withoutAnsi
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line !== "")
+        .filter((line) => line !== "%" && !line.startsWith("╭") && !line.startsWith("╰"))
+        .filter(
+            (line) =>
+                line !== trimmedCommand &&
+                !(trimmedCommand !== "" && (trimmedCommand.startsWith(line) || line.startsWith(trimmedCommand))),
+        );
+    return lines.join("\n").trim();
+}
+
+function applyTerminalBackspaces(value: string): string {
+    const chars: string[] = [];
+    for (const char of value) {
+        if (char === "\b") {
+            chars.pop();
+            continue;
+        }
+        chars.push(char);
+    }
+    return chars.join("");
 }
 
 async function waitForRunCommandOutput(
