@@ -127,6 +127,27 @@
 - Notes:
   - discrepancy details are documented in `docs/structured-execution-browser-validation.md`.
 
+<a id="structured-execution-ui-tests"></a>
+## Structured execution UI test coverage
+
+- Date: `2026-04-17`
+- Status: `VERIFIED`
+- Validation steps:
+  - installed Playwright UI harness dependencies for this repo root:
+    - `@playwright/test` dev dependency
+    - Chromium browser runtime via `npm exec playwright install chromium`
+  - executed focused UI workflow test against live spawned runtime stack:
+    - `npm run test:ui`
+    - spec: `e2e/structured-execution-block.spec.ts`
+  - covered assertions:
+    - block appears after `/run`
+    - block shows command + `executed` state + local target cues
+    - block `Explain` action succeeds and keeps one block identity
+    - block provenance reveal shows command and explain audit IDs
+    - backend block target remains `local/local` (no local-vs-remote confusion)
+- Result:
+  - structured execution block workflow now has truthful end-to-end UI automation coverage without mock-only shortcuts.
+
 <a id="remote-restore-missing-profile-error"></a>
 ## Remote restore missing-profile error semantics
 
