@@ -1,4 +1,11 @@
 import { getToolsFacade } from "@/compat";
+import {
+    bindApprovalRetryRequest,
+    clearStoredPendingToolApproval,
+    listStoredPendingToolApprovals,
+    replaceStoredPendingToolApproval,
+    storePendingToolApproval,
+} from "@/app/approval/continuity";
 import { buildToolExecutionContext, formatJson, getApprovalToken } from "@/app/workspace/widget-helpers";
 import type { PendingToolApproval, ToolsFloatingWindowProps } from "@/app/workspace/widget-types";
 import type { ToolExecutionRequest, ToolExecutionResponse, ToolInfo } from "@/rterm-api/tools/types";
@@ -15,7 +22,7 @@ import clsx from "clsx";
 import { memo, useEffect, useState } from "react";
 
 const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditChanged }: ToolsFloatingWindowProps) => {
-    const [pendingApproval, setPendingApproval] = useState<PendingToolApproval | null>(null);
+    const [pendingApproval, setPendingApproval] = useState<PendingToolApproval | null>(() => listStoredPendingToolApprovals()[0] ?? null);
     const [tools, setTools] = useState<ToolInfo[]>([]);
     const [selectedToolName, setSelectedToolName] = useState("");
     const [repoRoot, setRepoRoot] = useState("");
@@ -47,6 +54,7 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
         let cancelled = false;
         setLoading(true);
         setLoadError(null);
+        setPendingApproval(listStoredPendingToolApprovals()[0] ?? null);
 
         void (async () => {
             try {
@@ -87,6 +95,9 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
     const selectedTool = tools.find((tool) => tool.name === selectedToolName) ?? null;
 
     const handleToolSelect = (toolName: string) => {
+        if (pendingApproval != null) {
+            clearStoredPendingToolApproval(pendingApproval.approval.id);
+        }
         setSelectedToolName(toolName);
         setInputValue("{}");
         setResponseValue(null);
@@ -125,16 +136,24 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
             setResponseValue(response);
             onAuditChanged?.();
             if (response.status === "requires_confirmation" && response.pending_approval != null) {
-                setPendingApproval({
+                const nextPendingApproval = {
                     approval: response.pending_approval,
                     request,
-                });
+                };
+                storePendingToolApproval(nextPendingApproval);
+                setPendingApproval(nextPendingApproval);
             } else {
+                if (pendingApproval != null) {
+                    clearStoredPendingToolApproval(pendingApproval.approval.id);
+                }
                 setPendingApproval(null);
             }
         } catch (error) {
             setExecuteError(error instanceof Error ? error.message : String(error));
             setResponseValue(null);
+            if (pendingApproval != null) {
+                clearStoredPendingToolApproval(pendingApproval.approval.id);
+            }
             setPendingApproval(null);
         } finally {
             setIsExecuting(false);
@@ -142,7 +161,8 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
     };
 
     const handleConfirm = async () => {
-        if (pendingApproval == null) {
+        const approvalContext = pendingApproval ?? listStoredPendingToolApprovals()[0] ?? null;
+        if (approvalContext == null) {
             return;
         }
 
@@ -151,7 +171,7 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
 
         try {
             const facade = await getToolsFacade();
-            const confirmResponse = await facade.confirmApproval(pendingApproval.approval.id, pendingApproval.request.context);
+            const confirmResponse = await facade.confirmApproval(approvalContext.approval.id, approvalContext.request.context);
             onAuditChanged?.();
             const approvalToken = getApprovalToken(confirmResponse);
             if (!approvalToken) {
@@ -160,18 +180,18 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
                 return;
             }
 
-            const retryResponse = await facade.executeTool({
-                ...pendingApproval.request,
-                approval_token: approvalToken,
-            });
+            const retryResponse = await facade.executeTool(bindApprovalRetryRequest(approvalContext.request, approvalToken));
             setResponseValue(retryResponse);
             onAuditChanged?.();
             if (retryResponse.status === "requires_confirmation" && retryResponse.pending_approval != null) {
-                setPendingApproval({
+                const nextPendingApproval = {
                     approval: retryResponse.pending_approval,
-                    request: pendingApproval.request,
-                });
+                    request: approvalContext.request,
+                };
+                replaceStoredPendingToolApproval(approvalContext.approval.id, nextPendingApproval);
+                setPendingApproval(nextPendingApproval);
             } else {
+                clearStoredPendingToolApproval(approvalContext.approval.id);
                 setPendingApproval(null);
             }
         } catch (error) {

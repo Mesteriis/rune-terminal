@@ -1,4 +1,12 @@
 import { waveAIHasSelection } from "@/app/aipanel/waveai-focus-utils";
+import {
+    clearStoredPendingRunApproval,
+    getStoredPendingRunApproval,
+    listStoredPendingRunApprovals,
+    replaceStoredPendingRunApproval,
+    storePendingRunApproval,
+    type StoredPendingRunApproval,
+} from "@/app/approval/continuity";
 import { atoms, getSettingsKeyAtom } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import { buildToolExecutionContext } from "@/app/workspace/widget-helpers";
@@ -193,6 +201,13 @@ function replacePendingRunApproval(
     return [...remaining, nextApproval];
 }
 
+function toPendingRunApprovalEntry(approval: StoredPendingRunApproval): PendingRunApproval {
+    return {
+        ...approval,
+        confirming: false,
+    };
+}
+
 function buildConversationContextFromToolContext(context: ToolExecutionContext): ConversationContext {
     return {
         ...context,
@@ -218,7 +233,9 @@ interface PendingRunApproval extends PendingRunApprovalEntry {
 
 const AIPanelCompatInner = memo(() => {
     const [messages, setMessages] = useState<WaveUIMessage[]>([]);
-    const [pendingRunApprovals, setPendingRunApprovals] = useState<PendingRunApproval[]>([]);
+    const [pendingRunApprovals, setPendingRunApprovals] = useState<PendingRunApproval[]>(() =>
+        listStoredPendingRunApprovals().map(toPendingRunApprovalEntry),
+    );
     const [status, setStatus] = useState("ready");
     const [catalog, setCatalog] = useState<AgentCatalog | null>(null);
     const [repoRoot, setRepoRoot] = useState("");
@@ -408,7 +425,12 @@ const AIPanelCompatInner = memo(() => {
 
     const handleConfirmRunApproval = useCallback(
         async (approvalId: string) => {
-            const pendingApproval = pendingRunApprovals.find((approval) => approval.approvalId === approvalId);
+            const pendingApproval =
+                pendingRunApprovals.find((approval) => approval.approvalId === approvalId) ??
+                (() => {
+                    const storedApproval = getStoredPendingRunApproval(approvalId);
+                    return storedApproval == null ? null : toPendingRunApprovalEntry(storedApproval);
+                })();
             if (pendingApproval == null || status !== "ready") {
                 return;
             }
@@ -459,12 +481,16 @@ const AIPanelCompatInner = memo(() => {
                 });
 
                 if (executionResult.kind === "approval_required") {
+                    const nextApproval: StoredPendingRunApproval = {
+                        ...pendingApproval,
+                        approvalId: executionResult.pendingApproval.id,
+                        summary: executionResult.pendingApproval.summary,
+                        approvalTier: executionResult.pendingApproval.approval_tier,
+                    };
+                    replaceStoredPendingRunApproval(approvalId, nextApproval);
                     setPendingRunApprovals((previous) =>
                         replacePendingRunApproval(previous, approvalId, {
-                            ...pendingApproval,
-                            approvalId: executionResult.pendingApproval.id,
-                            summary: executionResult.pendingApproval.summary,
-                            approvalTier: executionResult.pendingApproval.approval_tier,
+                            ...toPendingRunApprovalEntry(nextApproval),
                             confirming: false,
                             errorMessage: undefined,
                         }),
@@ -472,6 +498,7 @@ const AIPanelCompatInner = memo(() => {
                     return;
                 }
 
+                clearStoredPendingRunApproval(approvalId);
                 setPendingRunApprovals((previous) => replacePendingRunApproval(previous, approvalId, null));
 
                 if (executionResult.kind === "tool_error") {
@@ -551,18 +578,19 @@ const AIPanelCompatInner = memo(() => {
                         context: toolContext,
                     });
                     if (executionResult.kind === "approval_required") {
+                        const pendingApproval: StoredPendingRunApproval = {
+                            approvalId: executionResult.pendingApproval.id,
+                            prompt: runCommand.prompt,
+                            command: runCommand.command,
+                            summary: executionResult.pendingApproval.summary,
+                            approvalTier: executionResult.pendingApproval.approval_tier,
+                            toolContext,
+                            conversationContext: buildConversationContextFromToolContext(toolContext),
+                        };
+                        storePendingRunApproval(pendingApproval);
                         setPendingRunApprovals((previous) => [
                             ...previous,
-                            {
-                                approvalId: executionResult.pendingApproval.id,
-                                prompt: runCommand.prompt,
-                                command: runCommand.command,
-                                summary: executionResult.pendingApproval.summary,
-                                approvalTier: executionResult.pendingApproval.approval_tier,
-                                confirming: false,
-                                toolContext,
-                                conversationContext: buildConversationContextFromToolContext(toolContext),
-                            },
+                            toPendingRunApprovalEntry(pendingApproval),
                         ]);
                         return;
                     }
