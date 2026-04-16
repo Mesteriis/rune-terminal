@@ -84,6 +84,14 @@ func (r *Runtime) CreateRemoteTerminalTab(ctx context.Context, title string, con
 	return r.CreateTerminalTabWithConnection(ctx, title, connectionID)
 }
 
+func (r *Runtime) CreateRemoteTerminalTabFromProfile(ctx context.Context, title string, profileID string) (CreateTerminalTabResult, error) {
+	profileID = strings.TrimSpace(profileID)
+	if profileID == "" {
+		return CreateTerminalTabResult{}, fmt.Errorf("%w: remote profile id is required", connections.ErrInvalidConnection)
+	}
+	return r.CreateRemoteTerminalTab(ctx, title, profileID)
+}
+
 func (r *Runtime) CreateTerminalTabWithConnection(ctx context.Context, title string, connectionID string) (CreateTerminalTabResult, error) {
 	title = strings.TrimSpace(title)
 	if title == "" {

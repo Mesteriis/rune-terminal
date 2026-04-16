@@ -25,6 +25,7 @@ func NewHandler(runtime *app.Runtime, authToken string) http.Handler {
 	mux.HandleFunc("GET /api/v1/remote/profiles", api.handleListRemoteProfiles)
 	mux.HandleFunc("POST /api/v1/remote/profiles", api.handleSaveRemoteProfile)
 	mux.HandleFunc("DELETE /api/v1/remote/profiles/{profileID}", api.handleDeleteRemoteProfile)
+	mux.HandleFunc("POST /api/v1/remote/profiles/{profileID}/session", api.handleCreateRemoteSessionFromProfile)
 	mux.HandleFunc("POST /api/v1/workspace/focus-widget", api.handleFocusWidget)
 	mux.HandleFunc("POST /api/v1/workspace/focus-tab", api.handleFocusTab)
 	mux.HandleFunc("POST /api/v1/workspace/tabs", api.handleCreateTerminalTab)

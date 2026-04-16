@@ -39,3 +39,19 @@ func (api *API) handleDeleteRemoteProfile(w http.ResponseWriter, r *http.Request
 		"profiles": profiles,
 	})
 }
+
+func (api *API) handleCreateRemoteSessionFromProfile(w http.ResponseWriter, r *http.Request) {
+	var payload struct {
+		Title string `json:"title,omitempty"`
+	}
+	if err := decodeJSON(r, &payload); err != nil {
+		writeBadRequest(w, "invalid_request", err)
+		return
+	}
+	result, err := api.runtime.CreateRemoteTerminalTabFromProfile(r.Context(), payload.Title, r.PathValue("profileID"))
+	if err != nil {
+		writeWorkspaceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
+}

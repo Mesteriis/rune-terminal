@@ -89,3 +89,20 @@ func TestRemoteProfilesDeleteReturnsNotFoundForMissingProfile(t *testing.T) {
 		t.Fatalf("expected 404, got %d", recorder.Code)
 	}
 }
+
+func TestRemoteProfilesCreateSessionReturnsNotFoundForMissingProfile(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(
+		recorder,
+		authedJSONRequest(t, http.MethodPost, "/api/v1/remote/profiles/missing-profile/session", map[string]any{
+			"title": "Remote From Profile",
+		}),
+	)
+
+	if recorder.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d (%s)", recorder.Code, recorder.Body.String())
+	}
+}

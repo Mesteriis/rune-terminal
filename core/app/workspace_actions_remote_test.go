@@ -140,6 +140,62 @@ func TestRemoteTerminalSessionPersistsAcrossTabSwitches(t *testing.T) {
 	}
 }
 
+func TestCreateRemoteTerminalTabFromProfileCreatesSSHSession(t *testing.T) {
+	t.Parallel()
+
+	process := &launchTestProcess{
+		pid:      104,
+		outputCh: make(chan []byte, 1),
+		waitCh:   make(chan struct{}),
+		exitCode: 0,
+	}
+	process.outputCh <- []byte("remote@fixture:~$ ")
+	runtime := newLaunchRuntime(t, process)
+
+	profile, _, err := runtime.Connections.SaveRemoteProfile(connections.SaveRemoteProfileInput{
+		Name: "Profile SSH",
+		Host: "profile.example.com",
+		User: "deploy",
+	})
+	if err != nil {
+		t.Fatalf("save remote profile: %v", err)
+	}
+
+	result, err := runtime.CreateRemoteTerminalTabFromProfile(context.Background(), "Profile Shell", profile.ID)
+	if err != nil {
+		t.Fatalf("CreateRemoteTerminalTabFromProfile error: %v", err)
+	}
+	if result.WidgetID == "" || result.TabID == "" {
+		t.Fatalf("expected created tab/widget ids, got %#v", result)
+	}
+	state, err := runtime.Terminals.GetState(result.WidgetID)
+	if err != nil {
+		t.Fatalf("GetState error: %v", err)
+	}
+	if state.ConnectionKind != "ssh" {
+		t.Fatalf("expected ssh connection kind, got %q", state.ConnectionKind)
+	}
+	if state.ConnectionID != profile.ID {
+		t.Fatalf("expected profile-backed connection id %q, got %q", profile.ID, state.ConnectionID)
+	}
+}
+
+func TestCreateRemoteTerminalTabFromProfileRequiresProfileID(t *testing.T) {
+	t.Parallel()
+
+	process := &launchTestProcess{
+		pid:      105,
+		outputCh: make(chan []byte, 1),
+		waitCh:   make(chan struct{}),
+		exitCode: 0,
+	}
+	runtime := newLaunchRuntime(t, process)
+
+	if _, err := runtime.CreateRemoteTerminalTabFromProfile(context.Background(), "Remote Shell", ""); !errors.Is(err, connections.ErrInvalidConnection) {
+		t.Fatalf("expected invalid connection for empty profile id, got %v", err)
+	}
+}
+
 func waitForTerminalChunks(t *testing.T, runtime *Runtime, widgetID string, expected int) {
 	t.Helper()
 	deadline := time.Now().Add(300 * time.Millisecond)
