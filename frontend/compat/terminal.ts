@@ -1,5 +1,5 @@
 import type { TerminalClient } from "@/rterm-api/terminal/client";
-import { buildRuntimeTerminalStreamUrl, shouldUseQueryTokenForStream } from "@/runtime/stream";
+import { buildRuntimeTerminalStreamUrl, resolveStreamMode, shouldUseQueryTokenForStream } from "@/runtime/stream";
 import type { RuntimeConfig } from "@/runtime/types";
 import type { SendInputRequest, SendInputResponse, TerminalSnapshot } from "@/rterm-api/terminal/types";
 import type { TerminalStreamEvents } from "@/rterm-api/http/sse";
@@ -46,7 +46,7 @@ export function getTerminalFacade(fetchImpl?: CompatApiOptions["fetchImpl"]): Pr
 }
 
 export function getTerminalStreamMode(runtime: RuntimeConfig): StreamAuthMode {
-  return shouldUseQueryTokenForStream(runtime) ? "query-token" : "none";
+  return resolveStreamMode(runtime);
 }
 
 export function buildTerminalStreamUrl(runtime: RuntimeConfig, widgetId: string, options: TerminalStreamFacadeOptions = {}): string {

@@ -90,7 +90,7 @@ This keeps Rust out of the main backend path while preserving a secure desktop b
 
 ## SSE Authentication Note
 
-Browser `EventSource` does not allow custom authorization headers. The current MVP therefore accepts the loopback auth token in the query string for terminal SSE routes only. Standard JSON endpoints do not accept query-string auth. This is a temporary tradeoff that will be replaced by scoped stream tickets.
+The active terminal stream path uses `fetch` streaming with bearer-token auth, so the normal shell path no longer relies on query-string auth. A constrained query-token fallback is still accepted for terminal stream consumers that cannot send authorization headers. Standard JSON endpoints do not accept query-string auth.
 
 ## Security Model
 

@@ -38,7 +38,7 @@ export function buildRuntimeTerminalStreamUrl(
   const url = new URL(path, `${baseUrl}/`);
 
   applyFromQueryParam(url, options.from);
-  if (config.streamAuthMode === "query-token") {
+  if (shouldUseQueryTokenForStream(config)) {
     applyTokenQueryParam(url, config.authToken, options.includeQueryToken !== false);
   }
   return url.toString();
@@ -51,6 +51,9 @@ export function shouldUseQueryTokenForStream(config: RuntimeConfig): boolean {
 export function resolveStreamMode(config: RuntimeConfig): StreamAuthMode {
   if (shouldUseQueryTokenForStream(config)) {
     return "query-token";
+  }
+  if (config.streamAuthMode === "authorization-header" && config.authToken) {
+    return "authorization-header";
   }
   return "none";
 }

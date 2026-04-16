@@ -44,6 +44,7 @@ Source: `core/transport/httpapi/middleware.go`.
 - If the server was started without `RTERM_AUTH_TOKEN`, protected routes fail explicitly with `503 auth_not_configured`.
 - If a request has an empty/invalid `Authorization` header, middleware checks a query token only when `allowsQueryToken(path)` is true.
 - `allowsQueryToken` is true only for paths with prefix `/api/v1/terminal/` and suffix `/stream`.
+- The active terminal client now uses the header-auth path for streaming; query-token auth is a constrained fallback, not the normal path.
 - `/healthz` bypasses auth checks entirely.
 - CORS middleware sets:
   - `Access-Control-Allow-Origin: <request origin>` only for allowed origins

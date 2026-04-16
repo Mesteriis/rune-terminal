@@ -15,7 +15,7 @@ const LEGACY_API_BASE = "WAVE_SERVER_WEB_ENDPOINT";
 const LEGACY_AUTH_TOKEN = "RTERM_AUTH_TOKEN";
 
 export function detectStreamAuthMode(authToken: string | undefined): StreamAuthMode {
-  return authToken ? "query-token" : "none";
+  return authToken ? "authorization-header" : "none";
 }
 
 export function readEnvValue(key: string): EnvConfigValue {

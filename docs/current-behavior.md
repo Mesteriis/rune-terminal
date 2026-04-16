@@ -177,7 +177,8 @@ Confirmable boundaries:
 
 ## Temporary MVP compromises
 
-- SSE terminal streams accept the auth token via query string because browser `EventSource` cannot send `Authorization` headers. This is limited to the stream endpoint and will be replaced by a scoped stream-ticket mechanism.
+- The active terminal stream path now uses `fetch` streaming with `Authorization: Bearer <token>`.
+- Terminal stream query-token auth remains only as a constrained fallback for consumers that cannot send auth headers; it is no longer the normal active shell path.
 - Session IDs currently equal widget IDs instead of using a separate durable session identity layer.
 - The desktop shell launches the Go core as a sidecar process and discovers it via a ready file; a richer process supervisor does not exist yet.
 - The terminal shell is now much closer to TideTerm's compact term surface, but it still lacks TideTerm's multi-session sidebar, search UI, and shell-integration toolbar details.
