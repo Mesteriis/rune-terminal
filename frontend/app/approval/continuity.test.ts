@@ -209,5 +209,6 @@ test("approval continuity filtering is scoped by workspace id", () => {
 test("stale pending approval errors are recognized explicitly", () => {
     assert.isTrue(isStalePendingApprovalError(new Error("pending approval not found: approval_123")));
     assert.isTrue(isStalePendingApprovalError(new Error("pending approval expired: approval_456")));
+    assert.isTrue(isStalePendingApprovalError("pending approval not found: approval_789"));
     assert.isFalse(isStalePendingApprovalError(new Error("approval token mismatch")));
 });

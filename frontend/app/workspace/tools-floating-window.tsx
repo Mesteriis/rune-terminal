@@ -180,6 +180,13 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
             onAuditChanged?.();
             const approvalToken = getApprovalToken(confirmResponse);
             if (!approvalToken) {
+                if (confirmResponse.status === "error" && isStalePendingApprovalError(confirmResponse.error)) {
+                    clearStoredPendingToolApproval(approvalContext.approval.id);
+                    setPendingApproval(null);
+                    setExecuteError("Pending approval is no longer available. Execute the tool again to request approval.");
+                    setResponseValue(confirmResponse);
+                    return;
+                }
                 setResponseValue(confirmResponse);
                 setExecuteError("Approval token was missing from confirmation response");
                 return;

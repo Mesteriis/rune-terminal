@@ -468,6 +468,14 @@ const AIPanelCompatInner = memo(() => {
                 const confirmResponse = await toolsFacade.confirmApproval(approvalId, pendingApproval.toolContext);
                 const approvalGrant = getApprovalGrant(confirmResponse);
                 if (approvalGrant == null) {
+                    if (confirmResponse.status === "error" && isStalePendingApprovalError(confirmResponse.error)) {
+                        clearStoredPendingRunApproval(approvalId);
+                        setPendingRunApprovals((previous) => replacePendingRunApproval(previous, approvalId, null));
+                        model.setError(
+                            "Pending approval is no longer available. Re-run the command to request approval again.",
+                        );
+                        return;
+                    }
                     setPendingRunApprovals((previous) =>
                         previous.map((approval) =>
                             approval.approvalId === approvalId
