@@ -265,3 +265,23 @@ User input:
   - The AI panel reflects backend execution and approval responses from `/api/v1/tools/execute`.
   - Persisted conversation messages come from `core/conversation.Service`.
   - Pending approvals and execution-result messages remain frontend-local, which matches the current documented UI responsibility boundary.
+
+## 4. Risks
+
+- Approval retry binding is weaker than the strict contract.
+  - `core/toolruntime/approval.go` binds the approval token to the tool name only.
+  - The current active `/run` UI preserves the original request, but the backend approval token itself is not tied to the original input or execution context.
+
+- Approval continuity is transient.
+  - The active AI panel keeps the pending `/run` request only in component state.
+  - `core/toolruntime/approval.go` stores pending approvals and grants only in in-memory maps.
+  - Reloading the panel or restarting the core loses the confirm-and-retry chain.
+
+- `/run` transcript persistence is incomplete by design.
+  - The local `/run` prompt echo and the local execution-result message are not written into `core/conversation.Service`.
+  - Conversation persistence keeps the assistant explanation message only.
+  - Reconstructing the full `/run` exchange requires frontend local state, terminal state, and/or audit records.
+
+- Explain-step approval audit depends on frontend input.
+  - `core/app/ai_terminal_command.go` writes `approval_used` from the explain request payload.
+  - The explain handler does not derive `approval_used` from the tool-runtime audit chain on its own.
