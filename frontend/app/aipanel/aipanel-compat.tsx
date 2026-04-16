@@ -1,6 +1,7 @@
 import { waveAIHasSelection } from "@/app/aipanel/waveai-focus-utils";
 import { atoms, getSettingsKeyAtom } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
+import { buildToolExecutionContext } from "@/app/workspace/widget-helpers";
 import { createCompatApiFacade } from "@/compat/api";
 import { getAgentFacade } from "@/compat/agent";
 import { getConversationFacade } from "@/compat/conversation";
@@ -348,6 +349,7 @@ const AIPanelCompatInner = memo(() => {
             try {
                 const facade = await getConversationFacade();
                 const context = buildCompatConversationContext(repoRoot);
+                const toolContext = buildToolExecutionContext(repoRoot);
                 const runCommand = parseRunCommandPrompt(input);
                 if (runCommand?.kind === "invalid") {
                     model.setError(runCommand.message);
@@ -362,7 +364,7 @@ const AIPanelCompatInner = memo(() => {
                         terminalFacade,
                         toolsFacade,
                         command: runCommand.command,
-                        context,
+                        context: toolContext,
                     });
                     setMessages((previous) => [...previous, executionResult.resultMessage]);
                     if (executionResult.kind === "executed") {

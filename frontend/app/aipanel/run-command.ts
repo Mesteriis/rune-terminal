@@ -6,7 +6,7 @@ import type {
     ExplainTerminalCommandResponse,
 } from "@/rterm-api/conversation/types";
 import type { TerminalOutputChunk, TerminalSnapshot } from "@/rterm-api/terminal/types";
-import type { ToolExecutionResponse } from "@/rterm-api/tools/types";
+import type { ToolExecutionContext, ToolExecutionResponse } from "@/rterm-api/tools/types";
 import type { WaveUIMessage } from "./aitypes";
 
 export interface RunCommandIntent {
@@ -113,7 +113,7 @@ interface ExecuteRunCommandPromptOptions {
     terminalFacade: TerminalFacade;
     toolsFacade: ToolsFacade;
     command: string;
-    context: ConversationContext;
+    context: ToolExecutionContext;
 }
 
 export async function executeRunCommandPrompt(
