@@ -3,6 +3,7 @@ package httpapi
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -13,6 +14,7 @@ import (
 	"github.com/Mesteriis/rune-terminal/core/agent"
 	"github.com/Mesteriis/rune-terminal/core/app"
 	"github.com/Mesteriis/rune-terminal/core/audit"
+	"github.com/Mesteriis/rune-terminal/core/connections"
 	"github.com/Mesteriis/rune-terminal/core/policy"
 	"github.com/Mesteriis/rune-terminal/core/terminal"
 	"github.com/Mesteriis/rune-terminal/core/toolruntime"
@@ -94,6 +96,29 @@ func TestTerminalSnapshotReturnsBufferedChunks(t *testing.T) {
 	}
 	if snapshot.NextSeq != 3 {
 		t.Fatalf("expected next seq 3, got %d", snapshot.NextSeq)
+	}
+}
+
+func TestWriteTerminalErrorMapsConnectionNotFoundToNotFound(t *testing.T) {
+	t.Parallel()
+
+	recorder := httptest.NewRecorder()
+	writeTerminalError(recorder, fmt.Errorf("%w: conn-missing", connections.ErrConnectionNotFound))
+
+	if recorder.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d (%s)", recorder.Code, recorder.Body.String())
+	}
+
+	var payload struct {
+		Error struct {
+			Code string `json:"code"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("Unmarshal error: %v", err)
+	}
+	if payload.Error.Code != "connection_not_found" {
+		t.Fatalf("expected error code connection_not_found, got %q", payload.Error.Code)
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Mesteriis/rune-terminal/core/connections"
 	"github.com/Mesteriis/rune-terminal/core/terminal"
 )
 
@@ -99,6 +100,8 @@ func writeTerminalError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, terminal.ErrWidgetNotFound):
 		writeNotFound(w, "widget_not_found", err.Error())
+	case errors.Is(err, connections.ErrConnectionNotFound):
+		writeNotFound(w, "connection_not_found", err.Error())
 	case errors.Is(err, terminal.ErrCannotSendInput), errors.Is(err, terminal.ErrCannotInterrupt):
 		writeBadRequest(w, "invalid_terminal_state", err)
 	default:
