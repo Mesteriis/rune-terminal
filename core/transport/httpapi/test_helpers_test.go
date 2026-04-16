@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -14,6 +15,7 @@ import (
 	"github.com/Mesteriis/rune-terminal/core/audit"
 	"github.com/Mesteriis/rune-terminal/core/connections"
 	"github.com/Mesteriis/rune-terminal/core/conversation"
+	"github.com/Mesteriis/rune-terminal/core/plugins"
 	"github.com/Mesteriis/rune-terminal/core/policy"
 	"github.com/Mesteriis/rune-terminal/core/terminal"
 	"github.com/Mesteriis/rune-terminal/core/toolruntime"
@@ -67,6 +69,15 @@ func newTestHandlerWithToken(t *testing.T, authToken string, definitions ...tool
 		Audit:        auditLog,
 		Registry:     registry,
 	}
+	runtime.MCP = plugins.NewMCPRuntimeWithOptions(nil, &testProcessSpawner{}, nil, plugins.MCPRuntimeOptions{
+		IdleCheckInterval: -1,
+	})
+	_ = runtime.MCP.Registry().Register(plugins.MCPServerSpec{
+		ID: "mcp.test",
+		Process: plugins.ProcessConfig{
+			Command: "mcp-test",
+		},
+	})
 	runtime.Executor = toolruntime.NewExecutor(runtime.Registry, runtime.Policy, runtime.Audit)
 	return NewHandler(runtime, authToken), agentStore
 }
@@ -113,6 +124,40 @@ func executeToolDefinition(name string, decode func(json.RawMessage) (any, error
 }
 
 type testConversationProvider struct{}
+
+type testProcessSpawner struct{}
+
+func (testProcessSpawner) Spawn(context.Context, plugins.ProcessConfig) (plugins.Process, error) {
+	return &testProcess{}, nil
+}
+
+type testProcess struct{}
+
+func (testProcess) Stdin() io.WriteCloser {
+	return nopWriteCloser{}
+}
+
+func (testProcess) Stdout() io.ReadCloser {
+	return io.NopCloser(bytes.NewReader(nil))
+}
+
+func (testProcess) Wait() error {
+	return nil
+}
+
+func (testProcess) Kill() error {
+	return nil
+}
+
+type nopWriteCloser struct{}
+
+func (nopWriteCloser) Write(p []byte) (int, error) {
+	return len(p), nil
+}
+
+func (nopWriteCloser) Close() error {
+	return nil
+}
 
 func (testConversationProvider) Info() conversation.ProviderInfo {
 	return conversation.ProviderInfo{

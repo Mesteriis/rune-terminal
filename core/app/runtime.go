@@ -26,6 +26,7 @@ type Runtime struct {
 	Policy       *policy.Store
 	Audit        *audit.Log
 	Plugins      *plugins.Runtime
+	MCP          *plugins.MCPRuntime
 	Registry     *toolruntime.Registry
 	Executor     *toolruntime.Executor
 }
@@ -65,6 +66,7 @@ func NewRuntime(repoRoot string, stateDir string) (*Runtime, error) {
 		Policy:       policyStore,
 		Audit:        auditLog,
 		Plugins:      plugins.NewRuntime(nil, 0),
+		MCP:          plugins.NewMCPRuntime(nil, nil, nil),
 		Registry:     toolruntime.NewRegistry(),
 	}
 	runtime.Executor = toolruntime.NewExecutor(
@@ -78,6 +80,9 @@ func NewRuntime(repoRoot string, stateDir string) (*Runtime, error) {
 		return nil, err
 	}
 	if err := runtime.registerTools(); err != nil {
+		return nil, err
+	}
+	if err := runtime.registerMCPServers(); err != nil {
 		return nil, err
 	}
 	return runtime, nil

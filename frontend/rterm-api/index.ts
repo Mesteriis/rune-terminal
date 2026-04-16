@@ -63,6 +63,9 @@ export type {
   CreateRemoteSessionFromProfileRequest,
 } from "./connections/types";
 
+export { MCPClient } from "./mcp/client";
+export type { MCPServerRuntime, MCPServersResponse, MCPServerState } from "./mcp/types";
+
 export { PolicyClient } from "./policy/client";
 export type {
   IgnoreRule,
@@ -128,6 +131,7 @@ import { BootstrapClient } from "./bootstrap/client";
 import { ConnectionsClient } from "./connections/client";
 import { ConversationClient } from "./conversation/client";
 import { HttpClient } from "./http/client";
+import { MCPClient } from "./mcp/client";
 import { PolicyClient } from "./policy/client";
 import { ToolsClient } from "./tools/client";
 import { TerminalClient } from "./terminal/client";
@@ -144,6 +148,7 @@ export class RtermApi {
   readonly bootstrap: BootstrapClient;
   readonly connections: ConnectionsClient;
   readonly conversation: ConversationClient;
+  readonly mcp: MCPClient;
   readonly policy: PolicyClient;
   readonly tools: ToolsClient;
   readonly terminal: TerminalClient;
@@ -156,6 +161,7 @@ export class RtermApi {
     this.bootstrap = new BootstrapClient(http);
     this.connections = new ConnectionsClient(http);
     this.conversation = new ConversationClient(http);
+    this.mcp = new MCPClient(http);
     this.policy = new PolicyClient(http);
     this.tools = new ToolsClient(http);
     this.terminal = new TerminalClient(http);
