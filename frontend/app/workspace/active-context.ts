@@ -16,6 +16,7 @@ export interface ActiveWorkspaceContext {
 }
 
 let activeFilePath = "";
+let cachedContext: ActiveWorkspaceContext | null = null;
 let workspaceUnsubscribe: (() => void) | null = null;
 const listeners = new Set<() => void>();
 
@@ -66,7 +67,12 @@ export function deriveActiveWorkspaceContext(
 
 export function getActiveWorkspaceContext(): ActiveWorkspaceContext {
     const workspace = workspaceStore.getSnapshot().active;
-    return deriveActiveWorkspaceContext(workspace, activeFilePath);
+    const nextContext = deriveActiveWorkspaceContext(workspace, activeFilePath);
+    if (cachedContext != null && contextEquals(cachedContext, nextContext)) {
+        return cachedContext;
+    }
+    cachedContext = nextContext;
+    return nextContext;
 }
 
 export function setActiveFilePath(path: string): void {
@@ -98,3 +104,27 @@ export function useActiveWorkspaceContext(): ActiveWorkspaceContext {
     return useSyncExternalStore(subscribeActiveWorkspaceContext, getActiveWorkspaceContext, getActiveWorkspaceContext);
 }
 
+function contextEquals(left: ActiveWorkspaceContext, right: ActiveWorkspaceContext): boolean {
+    return (
+        left.workspaceID === right.workspaceID &&
+        left.activeWidgetID === right.activeWidgetID &&
+        left.activeWidgetKind === right.activeWidgetKind &&
+        left.activeFilePath === right.activeFilePath &&
+        sessionTargetEquals(left.activeTerminalTarget, right.activeTerminalTarget) &&
+        activeRemoteTargetEquals(left.activeRemoteTarget, right.activeRemoteTarget)
+    );
+}
+
+function sessionTargetEquals(left: SessionTarget | null, right: SessionTarget | null): boolean {
+    if (left == null || right == null) {
+        return left === right;
+    }
+    return left.targetSession === right.targetSession && left.targetConnectionID === right.targetConnectionID;
+}
+
+function activeRemoteTargetEquals(left: ActiveRemoteTarget | null, right: ActiveRemoteTarget | null): boolean {
+    if (left == null || right == null) {
+        return left === right;
+    }
+    return left.connectionID === right.connectionID;
+}
