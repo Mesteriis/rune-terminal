@@ -3,6 +3,7 @@ import { getConversationFacade } from "@/compat/conversation";
 import { WaveAIModel } from "@/app/aipanel/waveai-model";
 import type { FSNode } from "@/rterm-api/fs/types";
 import type { FloatingWindowProps } from "@/app/workspace/widget-types";
+import { clearActiveFilePath, setActiveFilePath } from "./active-context";
 import { WorkspaceLayoutModel } from "./workspace-layout-model";
 import {
     FloatingPortal,
@@ -83,6 +84,7 @@ const FilesFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floatin
         setLoading(true);
         setLoadError(null);
         setSelectedFilePath("");
+        clearActiveFilePath();
         setPreviewText("");
         setPreviewAvailable(false);
         setPreviewTruncated(false);
@@ -132,10 +134,12 @@ const FilesFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floatin
         setAttachStatus(null);
         setAttachError(null);
         setSelectedFilePath(filePath);
+        setActiveFilePath(filePath);
         try {
             const facade = await getFSFacade();
             const response = await facade.read(filePath, 8192);
             setSelectedFilePath(response.path);
+            setActiveFilePath(response.path);
             setPreviewText(response.preview ?? "");
             setPreviewAvailable(response.preview_available === true);
             setPreviewTruncated(response.truncated === true);
@@ -144,6 +148,7 @@ const FilesFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floatin
             setPreviewAvailable(false);
             setPreviewTruncated(false);
             setPreviewError(error instanceof Error ? error.message : String(error));
+            clearActiveFilePath();
         } finally {
             setPreviewLoading(false);
         }
