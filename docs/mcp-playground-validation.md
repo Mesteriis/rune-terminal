@@ -132,3 +132,30 @@ To validate response bounding on real invoke path:
 - invalid endpoint / missing key: explicit error behavior present (`405`)
 - large response: bounded/truncated safely
 - crash/hang path in this run: **NOT OBSERVED**
+
+## Slice 5 — Workflow integration
+
+### MCP result usage in AI (explicit only)
+
+This slice was run with real model endpoint `http://192.168.1.2:11434` using `RTERM_OLLAMA_MODEL=llama3.2:3b`.
+
+Steps and observations:
+
+1. conversation message count before invoke:
+   - `GET /api/v1/agent/conversation` -> `0`
+2. explicit MCP invoke:
+   - `POST /api/v1/mcp/invoke` (`server_id:"mcp.example"`, payload text `workflow explicit handoff check`)
+3. conversation message count after invoke:
+   - `GET /api/v1/agent/conversation` -> `0`
+   - no auto-injection from MCP invoke into conversation
+4. explicit manual handoff to AI:
+   - `POST /api/v1/agent/conversation/messages` with prompt containing MCP result text -> HTTP `200`
+5. conversation message count after manual AI submit:
+   - `GET /api/v1/agent/conversation` -> `2` (user + assistant)
+   - assistant status: `complete`
+
+### Result
+
+- explicit usage only: **WORKS**
+- no automatic MCP context injection: **WORKS**
+- bounded MCP output remained explicit/manual for AI usage: **WORKS**

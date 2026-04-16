@@ -1957,6 +1957,7 @@
 - Runtime environment:
   - real model endpoint: `http://192.168.1.2:11434` (no stub)
   - core launch: `RTERM_AUTH_TOKEN=mcp-playground-token RTERM_OLLAMA_BASE_URL=http://192.168.1.2:11434 RTERM_OLLAMA_MODEL=qwen3:8b go run ./cmd/rterm-core serve --listen 127.0.0.1:53131 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/rterm-mcp-playground-real.CEAElR/state`
+  - workflow integration launch: `RTERM_AUTH_TOKEN=mcp-playground-token RTERM_OLLAMA_BASE_URL=http://192.168.1.2:11434 RTERM_OLLAMA_MODEL=llama3.2:3b go run ./cmd/rterm-core serve --listen 127.0.0.1:53131 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/rterm-mcp-playground-real.CEAElR/state-llama`
 - Lifecycle validation steps:
   - setup precondition check:
     - `timeout 6s npx -y @upstash/context7-mcp@latest` -> `Context7 Documentation MCP Server v2.1.8 running on stdio`
@@ -1992,4 +1993,13 @@
     - `GET /healthz` stayed `{"status":"ok"}`
     - core process remained alive after failure checks
     - no leftover `context7-mcp` process observed
-- Result: `PARTIAL` — invocation/lifecycle/failure handling is stable and bounded for registered MCP entries, but real external MCP setup/invoke remains blocked because current runtime surface does not expose external server registration.
+- Workflow integration steps:
+  - explicit-only check:
+    - conversation count before invoke (`GET /api/v1/agent/conversation`): `0`
+    - explicit MCP invoke (`POST /api/v1/mcp/invoke`, `server_id:"mcp.example"`): `200` with normalized bounded output
+    - conversation count after invoke: `0` (no auto-injection)
+  - manual MCP -> AI handoff:
+    - `POST /api/v1/agent/conversation/messages` with MCP-derived text prompt -> HTTP `200`
+    - conversation count after submit: `2` (user + assistant)
+    - assistant status in response: `complete`
+- Result: `PARTIAL` — explicit invocation, bounded output, failure handling, and explicit MCP->AI handoff behavior are working, but real external MCP setup/invoke remains blocked because current runtime surface does not expose external server registration.
