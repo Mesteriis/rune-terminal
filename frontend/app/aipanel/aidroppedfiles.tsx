@@ -54,6 +54,16 @@ export const AIDroppedFiles = memo(({ model }: AIDroppedFilesProps) => {
                                 {file.name}
                             </div>
                             <div className="text-[9px] text-gray-400">{formatFileSize(file.size)}</div>
+                            {file.attachmentReference && (
+                                <div className="text-[9px] text-gray-400 leading-3 mt-0.5">
+                                    <div>local ref</div>
+                                    {file.attachmentState === "missing" ? (
+                                        <div className="text-red-300">missing</div>
+                                    ) : file.consumptionHint === "metadata_only" ? (
+                                        <div className="text-amber-300">metadata only</div>
+                                    ) : null}
+                                </div>
+                            )}
                         </div>
                     </div>
                 ))}

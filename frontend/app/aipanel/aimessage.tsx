@@ -94,6 +94,12 @@ const UserMessageFiles = memo(({ fileParts }: UserMessageFilesProps) => {
                             >
                                 {file.data?.filename || "File"}
                             </div>
+                            <div className="text-[9px] text-gray-400 leading-3 mt-0.5">
+                                {file.data?.referencekind === "local" ? <div>local ref</div> : null}
+                                {file.data?.consumptionhint === "metadata_only" ? (
+                                    <div className="text-amber-300">metadata only</div>
+                                ) : null}
+                            </div>
                         </div>
                     </div>
                 ))}

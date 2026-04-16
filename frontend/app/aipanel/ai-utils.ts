@@ -257,6 +257,57 @@ export const formatFileSize = (bytes: number): string => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
 };
 
+export const isTextLikeAttachmentType = (mimeType: string, fileName: string): boolean => {
+    const normalizedMime = (mimeType || "").trim().toLowerCase();
+    if (normalizedMime.startsWith("text/")) {
+        return true;
+    }
+    if (
+        normalizedMime === "application/json" ||
+        normalizedMime === "application/xml" ||
+        normalizedMime === "application/yaml" ||
+        normalizedMime === "application/x-yaml" ||
+        normalizedMime === "application/javascript" ||
+        normalizedMime === "application/typescript"
+    ) {
+        return true;
+    }
+
+    const extension = fileName.split(".").pop()?.toLowerCase() || "";
+    return [
+        "txt",
+        "md",
+        "markdown",
+        "log",
+        "json",
+        "jsonl",
+        "yaml",
+        "yml",
+        "xml",
+        "csv",
+        "toml",
+        "ini",
+        "go",
+        "js",
+        "mjs",
+        "cjs",
+        "jsx",
+        "ts",
+        "tsx",
+        "py",
+        "java",
+        "c",
+        "cpp",
+        "h",
+        "hpp",
+        "rs",
+        "sh",
+        "zsh",
+        "fish",
+        "sql",
+    ].includes(extension);
+};
+
 // Normalize MIME type for AI processing
 export const normalizeMimeType = (file: File): string => {
     const fileType = file.type;

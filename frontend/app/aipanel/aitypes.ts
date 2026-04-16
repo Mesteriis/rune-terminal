@@ -11,6 +11,8 @@ type WaveUIDataTypes = {
         mimetype: string;
         filepath?: string;
         previewurl?: string;
+        referencekind?: "local";
+        consumptionhint?: "text" | "metadata_only";
     };
     // pkg/aiusechat/uctypes/uctypes.go UIMessageDataToolUse
     tooluse: {

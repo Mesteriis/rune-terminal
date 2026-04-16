@@ -26,6 +26,7 @@ import {
     createImagePreview,
     formatFileSizeError,
     isAcceptableFile,
+    isTextLikeAttachmentType,
     normalizeMimeType,
     resizeImage,
     validateFileSizeFromInfo,
@@ -41,6 +42,8 @@ export interface DroppedFile {
     size: number;
     localPath?: string;
     attachmentReference?: AttachmentReference;
+    attachmentState?: "ready" | "missing";
+    consumptionHint?: "text" | "metadata_only";
     previewUrl?: string;
 }
 
@@ -220,10 +223,36 @@ export class WaveAIModel {
         droppedFile.size = attachmentReference.size ?? droppedFile.size;
         droppedFile.localPath = localPath;
         droppedFile.attachmentReference = attachmentReference;
+        droppedFile.attachmentState = "ready";
+        droppedFile.consumptionHint = isTextLikeAttachmentType(droppedFile.type, droppedFile.name)
+            ? "text"
+            : "metadata_only";
 
         const currentFiles = globalStore.get(this.droppedFiles);
         globalStore.set(this.droppedFiles, [...currentFiles, droppedFile]);
         return droppedFile;
+    }
+
+    markAttachmentReferenceMissing(path: string) {
+        const normalized = path.trim();
+        if (!normalized) {
+            return;
+        }
+        const currentFiles = globalStore.get(this.droppedFiles);
+        if (currentFiles.length === 0) {
+            return;
+        }
+        const nextFiles = currentFiles.map((file) => {
+            const filePath = (file.attachmentReference?.path || file.localPath || "").trim();
+            if (filePath !== normalized) {
+                return file;
+            }
+            return {
+                ...file,
+                attachmentState: "missing" as const,
+            };
+        });
+        globalStore.set(this.droppedFiles, nextFiles);
     }
 
     async addFileFromRemoteUri(draggedFile: DraggedFile): Promise<void> {

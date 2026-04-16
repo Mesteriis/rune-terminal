@@ -25,6 +25,7 @@ import type { AgentCatalog } from "@/rterm-api/agent/types";
 import { getApprovalGrant } from "@/rterm-api/tools/client";
 import type { AttachmentReference, ConversationContext } from "@/rterm-api/conversation/types";
 import type { ToolExecutionContext, ToolExecutionResponse } from "@/rterm-api/tools/types";
+import { ApiError } from "@/rterm-api/http/errors";
 import { memo, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { useDrop } from "react-dnd";
 import { formatFileSizeError, isAcceptableFile, validateFileSize } from "./ai-utils";
@@ -244,6 +245,16 @@ function resolveNativeFilePath(file: File): string {
         // Fall through to empty path.
     }
     return "";
+}
+
+function parseMissingAttachmentPath(message: string): string {
+    const marker = "attachment not found:";
+    const normalized = message.trim();
+    const markerIndex = normalized.toLowerCase().indexOf(marker);
+    if (markerIndex === -1) {
+        return "";
+    }
+    return normalized.slice(markerIndex + marker.length).trim();
 }
 
 interface PendingRunApproval extends PendingRunApprovalEntry {
@@ -648,6 +659,12 @@ const AIPanelCompatInner = memo(() => {
                 );
                 return;
             }
+            if (droppedFiles.some((file) => file.attachmentState === "missing")) {
+                model.setError(
+                    "One or more local attachment references are missing on disk. Remove or re-attach those files before sending.",
+                );
+                return;
+            }
 
             setStatus("submitted");
             model.clearError();
@@ -711,6 +728,16 @@ const AIPanelCompatInner = memo(() => {
                 globalStore.set(model.inputAtom, "");
                 model.clearFiles();
             } catch (error) {
+                if (error instanceof ApiError && error.code === "attachment_not_found") {
+                    const missingPath = parseMissingAttachmentPath(error.message);
+                    if (missingPath !== "") {
+                        model.markAttachmentReferenceMissing(missingPath);
+                    }
+                    model.setError(
+                        "A local attachment file is no longer available on disk. Re-attach the file and retry.",
+                    );
+                    return;
+                }
                 model.setError(error instanceof Error ? error.message : String(error));
             } finally {
                 setStatus("ready");

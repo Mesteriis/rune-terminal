@@ -7,6 +7,7 @@ import type {
     ConversationSnapshot,
     ProviderInfo,
 } from "@/rterm-api/conversation/types";
+import { isTextLikeAttachmentType } from "./ai-utils";
 import type { WaveUIMessage, WaveUIMessagePart } from "./aitypes";
 
 function mapRole(role: string): "user" | "assistant" {
@@ -52,6 +53,10 @@ function mapAttachmentParts(attachments: AttachmentReference[] | null | undefine
             mimetype: attachment.mime_type,
             size: attachment.size,
             filepath: attachment.path,
+            referencekind: "local",
+            consumptionhint: isTextLikeAttachmentType(attachment.mime_type || "", attachment.name || "")
+                ? "text"
+                : "metadata_only",
         },
     })) as WaveUIMessagePart[];
 }
