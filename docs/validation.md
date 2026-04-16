@@ -246,6 +246,35 @@
   - during this validation, approval retry initially exposed a runtime mismatch where terminal snapshots sometimes returned `chunks: null`; `db37a71` normalized snapshot chunk handling to keep the flow deterministic
   - browser console recorded expected `428 Precondition Required` on approval challenge and a pre-existing unrelated `401` from `/wave/service?service=object&method=GetObject`; no fatal runtime exceptions were observed in the `/run` path
 
+## Conversation snapshot and reload truth
+
+- Date: `2026-04-16`
+- Status: `VERIFIED`
+- Commits:
+  - `ecc4bdce8e84780bb8ca91e52eeb35048cc7ce88`
+  - `e9dc157e43f0ddca4172edcc2b76446922732ef6`
+- Validation steps:
+  - runtime environment:
+    - Ollama-compatible stub provider: Node HTTP server on `127.0.0.1:11442`
+    - core: `RTERM_AUTH_TOKEN=exec-model-token RTERM_OLLAMA_BASE_URL=http://127.0.0.1:11442 RTERM_OLLAMA_MODEL=test-model go run ./cmd/rterm-core serve --listen 127.0.0.1:52930 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/rterm-exec-model`
+    - frontend dev: `VITE_RTERM_API_BASE=http://127.0.0.1:52930 VITE_RTERM_AUTH_TOKEN=exec-model-token npm --prefix frontend run dev -- --host 127.0.0.1 --port 5178 --strictPort`
+  - pre-reload actions in active compat AI panel:
+    - with `Profile: Balanced`, sent normal prompt `slice3-normal-reload-20260416-1` and observed assistant response `stub-response: slice3-normal-reload-20260416-1`
+    - with `Profile: Balanced`, sent `/run echo slice3-run-reload-20260416-1` and observed execution-result plus explanation line `Original request: /run echo slice3-run-reload-20260416-1`
+  - backend snapshot truth before reload:
+    - `GET /api/v1/agent/conversation` showed exactly one persisted entry for each expected item:
+      - normal prompt + assistant response
+      - `/run` prompt + execution-result + explanation
+  - reload check:
+    - reloaded `http://127.0.0.1:5178/`
+    - reopened AI panel and confirmed both `slice3-normal-reload-20260416-1` and `Original request: /run echo slice3-run-reload-20260416-1` are present
+    - repeated `GET /api/v1/agent/conversation` still reported `1/1/1` counts for the `/run` chain and `1/1` for the normal prompt/response pair
+  - stale-local check:
+    - backend snapshot contained `local_fallback: 0` for `Explanation unavailable for \`echo slice3-run-reload-20260416-1\``, confirming no frontend-only fallback entry was being mistaken for persisted truth
+- Result: `VERIFIED` — post-reload transcript behavior now follows backend snapshot truth, and local supplementation is no longer presented as durable persisted conversation state.
+- Notes:
+  - browser console still showed expected `428` on approval challenge paths and a pre-existing unrelated `401` from legacy `/wave/service` object call
+
 ## Explain approval truth
 
 - Date: `2026-04-16`
