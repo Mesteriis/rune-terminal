@@ -7,6 +7,7 @@ import { UpgradeOnboardingModal } from "@/app/onboarding/onboarding-upgrade";
 import { DeleteFileModal, PublishAppModal, RenameFileModal } from "@/builder/builder-apppanel";
 import { SetSecretDialog } from "@/builder/tabs/builder-secrettab";
 import { AboutModal } from "./about";
+import { RemoteProfilesModal } from "./remoteprofilesmodal";
 import { RenameWindowModal } from "./renamewindowmodal";
 import { TmuxSessionsModal } from "./tmuxsessions";
 import { UserInputModal } from "./userinputmodal";
@@ -23,6 +24,7 @@ const modalRegistry: { [key: string]: React.ComponentType<any> } = {
     [SetSecretDialog.displayName || "SetSecretDialog"]: SetSecretDialog,
     [RenameWindowModal.displayName || "RenameWindowModal"]: RenameWindowModal,
     [TmuxSessionsModal.displayName || "TmuxSessionsModal"]: TmuxSessionsModal,
+    [RemoteProfilesModal.displayName || "RemoteProfilesModal"]: RemoteProfilesModal,
 };
 
 export const getModalComponent = (key: string): React.ComponentType<any> | undefined => {

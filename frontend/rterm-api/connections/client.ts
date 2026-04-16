@@ -1,10 +1,16 @@
 import type {
+  CreateRemoteSessionFromProfileRequest,
+  DeleteRemoteProfileResponse,
+  ListRemoteProfilesResponse,
   ConnectionsSnapshot,
+  SaveRemoteProfileRequest,
+  SaveRemoteProfileResponse,
   SelectConnectionRequest,
   SaveSSHConnectionRequest,
   SaveSSHConnectionResponse,
 } from "./types";
 import { HttpClient } from "../http/client";
+import type { CreateTerminalTabResponse } from "../workspace/types";
 
 export class ConnectionsClient {
   constructor(private readonly http: HttpClient) {}
@@ -29,5 +35,29 @@ export class ConnectionsClient {
     return this.http.post<SaveSSHConnectionResponse, SaveSSHConnectionRequest>("/api/v1/connections/ssh", {
       body: payload,
     });
+  }
+
+  listRemoteProfiles(): Promise<ListRemoteProfilesResponse> {
+    return this.http.get<ListRemoteProfilesResponse>("/api/v1/remote/profiles");
+  }
+
+  saveRemoteProfile(payload: SaveRemoteProfileRequest): Promise<SaveRemoteProfileResponse> {
+    return this.http.post<SaveRemoteProfileResponse, SaveRemoteProfileRequest>("/api/v1/remote/profiles", {
+      body: payload,
+    });
+  }
+
+  deleteRemoteProfile(profileID: string): Promise<DeleteRemoteProfileResponse> {
+    return this.http.delete<DeleteRemoteProfileResponse>(`/api/v1/remote/profiles/${encodeURIComponent(profileID)}`);
+  }
+
+  createSessionFromRemoteProfile(
+    profileID: string,
+    payload: CreateRemoteSessionFromProfileRequest = {},
+  ): Promise<CreateTerminalTabResponse> {
+    return this.http.post<CreateTerminalTabResponse, CreateRemoteSessionFromProfileRequest>(
+      `/api/v1/remote/profiles/${encodeURIComponent(profileID)}/session`,
+      { body: payload },
+    );
   }
 }

@@ -724,6 +724,10 @@ const TabBar = memo(({ workspace, compatMode = false }: TabBarProps) => {
         setNewTabIdDebounced(null);
     };
 
+    const handleOpenRemoteProfiles = () => {
+        modalsModel.pushModal("RemoteProfilesModal");
+    };
+
     const handleCloseTab = (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null, tabId: string) => {
         event?.stopPropagation();
         fireAndForget(() => workspaceStore.closeTab(tabId));
@@ -792,6 +796,12 @@ const TabBar = memo(({ workspace, compatMode = false }: TabBarProps) => {
         click: handleAddRemoteTab,
         title: "Add Remote Tab",
     };
+    const remoteProfilesButtonDecl: IconButtonDecl = {
+        elemtype: "iconbutton",
+        icon: "bookmark",
+        click: handleOpenRemoteProfiles,
+        title: "Remote Profiles",
+    };
     return (
         <div ref={tabbarWrapperRef} className="tab-bar-wrapper" onContextMenuCapture={handleCompatContextMenuCapture}>
             <div
@@ -840,6 +850,7 @@ const TabBar = memo(({ workspace, compatMode = false }: TabBarProps) => {
             </div>
             <IconButton className="add-tab" ref={addBtnRef} decl={addtabButtonDecl} />
             <IconButton className="add-remote-tab" decl={addRemoteTabButtonDecl} />
+            <IconButton className="add-remote-profiles" decl={remoteProfilesButtonDecl} />
             <div className="tab-bar-right">
                 <UpdateStatusBanner ref={updateStatusBannerRef} />
                 <ConfigErrorIcon buttonRef={configErrorButtonRef} />

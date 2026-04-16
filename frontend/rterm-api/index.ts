@@ -55,6 +55,12 @@ export type {
   SelectConnectionRequest,
   SaveSSHConnectionRequest,
   SaveSSHConnectionResponse,
+  RemoteProfile,
+  ListRemoteProfilesResponse,
+  SaveRemoteProfileRequest,
+  SaveRemoteProfileResponse,
+  DeleteRemoteProfileResponse,
+  CreateRemoteSessionFromProfileRequest,
 } from "./connections/types";
 
 export { PolicyClient } from "./policy/client";

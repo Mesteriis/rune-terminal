@@ -59,3 +59,39 @@ export interface SaveSSHConnectionResponse {
   connection: Connection;
   connections: ConnectionsSnapshot;
 }
+
+export interface RemoteProfile {
+  id: string;
+  name: string;
+  host: string;
+  user?: string;
+  port?: number;
+  identity_file?: string;
+  description?: string;
+}
+
+export interface ListRemoteProfilesResponse {
+  profiles: RemoteProfile[];
+}
+
+export interface SaveRemoteProfileRequest {
+  id?: string;
+  name?: string;
+  host: string;
+  user?: string;
+  port?: number;
+  identity_file?: string;
+}
+
+export interface SaveRemoteProfileResponse {
+  profile: RemoteProfile;
+  profiles: RemoteProfile[];
+}
+
+export interface DeleteRemoteProfileResponse {
+  profiles: RemoteProfile[];
+}
+
+export interface CreateRemoteSessionFromProfileRequest {
+  title?: string;
+}
