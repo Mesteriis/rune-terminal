@@ -162,3 +162,11 @@ func TestExecuteToolReturnsInternalErrorForUnhandledFailures(t *testing.T) {
 		t.Fatalf("unexpected response: %#v", response)
 	}
 }
+
+func TestStatusForExecuteErrorReturnsForbiddenForApprovalMismatch(t *testing.T) {
+	t.Parallel()
+
+	if got := statusForExecuteError(toolruntime.ErrorCodeApprovalMismatch); got != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d", got)
+	}
+}

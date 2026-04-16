@@ -7,11 +7,13 @@ import (
 )
 
 type preparedExecution struct {
-	definition  Definition
-	input       any
-	plan        OperationPlan
-	decision    policy.Decision
-	hasApproval bool
+	definition           Definition
+	input                any
+	plan                 OperationPlan
+	decision             policy.Decision
+	hasApproval          bool
+	intentKey            string
+	approvalVerification approvalVerificationResult
 }
 
 func (e *Executor) prepare(request ExecuteRequest) (*preparedExecution, *ExecuteResponse) {
@@ -35,7 +37,18 @@ func (e *Executor) prepare(request ExecuteRequest) (*preparedExecution, *Execute
 		plan.ApprovalTier = definition.Metadata.ApprovalTier
 	}
 
-	hasApproval := e.approvals.Verify(definition.Name, request.ApprovalToken)
+	intentKey, err := executionIntentHash(definition.Name, input, request.Context)
+	if err != nil {
+		return nil, &ExecuteResponse{
+			Status:    "error",
+			Error:     "failed to normalize execution intent",
+			ErrorCode: ErrorCodeInternalError,
+			Tool:      toolInfo(definition),
+		}
+	}
+
+	approvalVerification := e.approvals.Verify(request.ApprovalToken, intentKey)
+	hasApproval := approvalVerification == approvalVerificationGranted
 	profile := policy.EvaluationProfile{}
 	if e.profiles != nil {
 		profile = e.profiles.PolicyProfile()
@@ -58,11 +71,13 @@ func (e *Executor) prepare(request ExecuteRequest) (*preparedExecution, *Execute
 	})
 	plan.ApprovalTier = decision.EffectiveApprovalTier
 	return &preparedExecution{
-		definition:  definition,
-		input:       input,
-		plan:        plan,
-		decision:    decision,
-		hasApproval: hasApproval,
+		definition:           definition,
+		input:                input,
+		plan:                 plan,
+		decision:             decision,
+		hasApproval:          hasApproval,
+		intentKey:            intentKey,
+		approvalVerification: approvalVerification,
 	}, nil
 }
 

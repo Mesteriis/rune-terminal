@@ -65,6 +65,8 @@ func statusForExecuteError(code toolruntime.ErrorCode) int {
 		return http.StatusForbidden
 	case toolruntime.ErrorCodeApprovalRequired:
 		return http.StatusPreconditionRequired
+	case toolruntime.ErrorCodeApprovalMismatch:
+		return http.StatusForbidden
 	case toolruntime.ErrorCodeNotFound:
 		return http.StatusNotFound
 	default:

@@ -39,8 +39,25 @@ func (e *Executor) Execute(ctx context.Context, request ExecuteRequest) ExecuteR
 		return *response
 	}
 
+	if prepared.approvalVerification == approvalVerificationMismatch {
+		errorText := "approval token does not match the requested execution intent"
+		e.appendAudit(prepared, request, false, errorText)
+		return ExecuteResponse{
+			Status:    "error",
+			Error:     errorText,
+			ErrorCode: ErrorCodeApprovalMismatch,
+			Tool:      toolInfo(prepared.definition),
+			Operation: &prepared.plan.Operation,
+		}
+	}
+
 	if prepared.decision.RequiresConfirmation {
-		pending := e.approvals.Create(prepared.definition.Name, prepared.plan.Summary, prepared.decision.EffectiveApprovalTier)
+		pending := e.approvals.Create(
+			prepared.definition.Name,
+			prepared.plan.Summary,
+			prepared.decision.EffectiveApprovalTier,
+			prepared.intentKey,
+		)
 		e.appendAudit(prepared, request, false, prepared.decision.Reason)
 		return ExecuteResponse{
 			Status:          "requires_confirmation",

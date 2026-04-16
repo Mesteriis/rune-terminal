@@ -78,6 +78,7 @@ const (
 	ErrorCodeNotFound         ErrorCode = "not_found"
 	ErrorCodePolicyDenied     ErrorCode = "policy_denied"
 	ErrorCodeApprovalRequired ErrorCode = "approval_required"
+	ErrorCodeApprovalMismatch ErrorCode = "approval_mismatch"
 	ErrorCodeInternalError    ErrorCode = "internal_error"
 )
 
