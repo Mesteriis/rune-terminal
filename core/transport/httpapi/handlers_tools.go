@@ -12,6 +12,6 @@ func (api *API) handleExecuteTool(w http.ResponseWriter, r *http.Request) {
 		writeBadRequest(w, "invalid_request", err)
 		return
 	}
-	response := api.runtime.Executor.Execute(r.Context(), request)
+	response := api.runtime.ExecuteTool(r.Context(), request)
 	writeExecuteResponse(w, response)
 }

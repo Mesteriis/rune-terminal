@@ -1,6 +1,10 @@
 package toolruntime
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"github.com/Mesteriis/rune-terminal/core/policy"
+)
 
 type ExecutionEnvelopeContext struct {
 	WorkspaceID string `json:"workspace_id,omitempty"`
@@ -16,7 +20,7 @@ type ExecutionEnvelope struct {
 	Context  ExecutionEnvelopeContext `json:"context,omitempty"`
 }
 
-func executionEnvelopeFromRequest(request ExecuteRequest) ExecutionEnvelope {
+func executionEnvelopeFromRequest(request ExecuteRequest, profile policy.EvaluationProfile) ExecutionEnvelope {
 	return ExecutionEnvelope{
 		ToolName: request.ToolName,
 		Input:    request.Input,
@@ -24,6 +28,8 @@ func executionEnvelopeFromRequest(request ExecuteRequest) ExecutionEnvelope {
 			WorkspaceID: request.Context.WorkspaceID,
 			WidgetID:    request.Context.ActiveWidgetID,
 			RepoRoot:    request.Context.RepoRoot,
+			Role:        profile.RoleID,
+			Mode:        profile.ModeID,
 		},
 	}
 }
@@ -33,5 +39,7 @@ func (e ExecutionEnvelope) executionContext() ExecutionContext {
 		WorkspaceID:    e.Context.WorkspaceID,
 		RepoRoot:       e.Context.RepoRoot,
 		ActiveWidgetID: e.Context.WidgetID,
+		RoleID:         e.Context.Role,
+		ModeID:         e.Context.Mode,
 	}
 }

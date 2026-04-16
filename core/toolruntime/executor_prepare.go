@@ -9,6 +9,7 @@ import (
 type preparedExecution struct {
 	envelope             ExecutionEnvelope
 	execContext          ExecutionContext
+	profile              policy.EvaluationProfile
 	definition           Definition
 	input                any
 	plan                 OperationPlan
@@ -18,8 +19,8 @@ type preparedExecution struct {
 	approvalVerification approvalVerificationResult
 }
 
-func (e *Executor) prepare(request ExecuteRequest) (*preparedExecution, *ExecuteResponse) {
-	envelope := executionEnvelopeFromRequest(request)
+func (e *Executor) prepare(request ExecuteRequest, profile policy.EvaluationProfile) (*preparedExecution, *ExecuteResponse) {
+	envelope := executionEnvelopeFromRequest(request, profile)
 	execContext := envelope.executionContext()
 
 	definition, ok := e.registry.Get(envelope.ToolName)
@@ -54,10 +55,6 @@ func (e *Executor) prepare(request ExecuteRequest) (*preparedExecution, *Execute
 
 	approvalVerification := e.approvals.Verify(request.ApprovalToken, intentKey)
 	hasApproval := approvalVerification == approvalVerificationGranted
-	profile := policy.EvaluationProfile{}
-	if e.profiles != nil {
-		profile = e.profiles.PolicyProfile()
-	}
 
 	decision := policy.Evaluate(e.policy.Snapshot(), policy.Context{
 		ToolName:             definition.Name,
@@ -78,6 +75,7 @@ func (e *Executor) prepare(request ExecuteRequest) (*preparedExecution, *Execute
 	return &preparedExecution{
 		envelope:             envelope,
 		execContext:          execContext,
+		profile:              profile,
 		definition:           definition,
 		input:                input,
 		plan:                 plan,

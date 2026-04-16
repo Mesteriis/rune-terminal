@@ -63,7 +63,7 @@ func newTestHandler(t *testing.T, definitions ...toolruntime.Definition) (http.H
 		Audit:        auditLog,
 		Registry:     registry,
 	}
-	runtime.Executor = toolruntime.NewExecutor(runtime.Registry, runtime.Policy, runtime.Audit, runtime.Agent)
+	runtime.Executor = toolruntime.NewExecutor(runtime.Registry, runtime.Policy, runtime.Audit)
 	return NewHandler(runtime, testAuthToken), agentStore
 }
 

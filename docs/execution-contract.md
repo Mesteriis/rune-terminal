@@ -27,7 +27,8 @@ User input:
 
 4. Backend processing
    - `core/transport/httpapi/handlers_tools.go` decodes the request into `toolruntime.ExecuteRequest`.
-   - `core/toolruntime.Executor` resolves the tool definition, decodes input, builds an operation plan, verifies any supplied `approval_token`, and runs policy evaluation.
+   - `core/app/tool_execution.go` resolves the active backend policy profile first and passes it explicitly into the tool runtime.
+   - `core/toolruntime.Executor` resolves the tool definition, builds a normalized execution envelope, decodes input, builds an operation plan, verifies any supplied `approval_token`, and runs policy evaluation.
    - For `term.send_input`, the base tool metadata is mutating `terminal:input` with approval tier `moderate`.
 
 5. Approval requirement
@@ -102,6 +103,8 @@ User input:
   - `workspace_id`
   - `active_widget_id`
   - `repo_root`
+- The backend normalizes that request into an internal execution envelope that also carries explicit `role` and `mode` from the resolved backend policy profile for the active agent selection.
+- `role` and `mode` are backend-derived execution context, not client-owned request fields for `/api/v1/tools/execute`.
 - The explain request uses the corresponding conversation context:
   - the same execution fields
   - `widget_context_enabled`
@@ -212,6 +215,7 @@ User input:
 - The agent does not execute `/run` commands directly.
 - Command execution truth remains in the tool/runtime path.
 - The active agent selection participates indirectly in execution by supplying the policy overlay used during tool policy evaluation.
+- The app layer resolves that selection into an explicit policy profile before invoking the executor; the executor no longer reads agent selection state implicitly.
 - The explicit agent call in the `/run` flow is `POST /api/v1/agent/terminal-commands/explain`, and it happens only after successful execution.
 - The explain route adds:
   - terminal-output summarization from `from_seq`

@@ -64,7 +64,7 @@ func NewRuntime(repoRoot string, stateDir string) (*Runtime, error) {
 		Audit:        auditLog,
 		Registry:     toolruntime.NewRegistry(),
 	}
-	runtime.Executor = toolruntime.NewExecutor(runtime.Registry, runtime.Policy, runtime.Audit, runtime.Agent)
+	runtime.Executor = toolruntime.NewExecutor(runtime.Registry, runtime.Policy, runtime.Audit)
 
 	if err := runtime.bootstrapSessions(context.Background()); err != nil {
 		return nil, err

@@ -48,7 +48,7 @@ func TestTerminalSnapshotReturnsBufferedChunks(t *testing.T) {
 		Audit:     auditLog,
 		Registry:  registry,
 	}
-	runtime.Executor = toolruntime.NewExecutor(runtime.Registry, runtime.Policy, runtime.Audit, runtime.Agent)
+	runtime.Executor = toolruntime.NewExecutor(runtime.Registry, runtime.Policy, runtime.Audit)
 
 	if _, err := runtime.Terminals.StartSession(context.Background(), terminal.LaunchOptions{
 		WidgetID:   "widget-1",

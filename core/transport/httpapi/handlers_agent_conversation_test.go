@@ -254,7 +254,7 @@ func newExplainCommandHandler(t *testing.T) (http.Handler, *app.Runtime) {
 		Audit:        auditLog,
 		Registry:     toolruntime.NewRegistry(),
 	}
-	runtime.Executor = toolruntime.NewExecutor(runtime.Registry, runtime.Policy, runtime.Audit, runtime.Agent)
+	runtime.Executor = toolruntime.NewExecutor(runtime.Registry, runtime.Policy, runtime.Audit)
 	return NewHandler(runtime, testAuthToken), runtime
 }
 

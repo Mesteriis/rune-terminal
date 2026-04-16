@@ -7,25 +7,19 @@ import (
 	"github.com/Mesteriis/rune-terminal/core/policy"
 )
 
-type PolicyProfileProvider interface {
-	PolicyProfile() policy.EvaluationProfile
-}
-
 type Executor struct {
 	registry  *Registry
 	policy    *policy.Store
 	audit     *audit.Log
 	approvals *approvalStore
-	profiles  PolicyProfileProvider
 }
 
-func NewExecutor(registry *Registry, policyStore *policy.Store, auditLog *audit.Log, profiles PolicyProfileProvider) *Executor {
+func NewExecutor(registry *Registry, policyStore *policy.Store, auditLog *audit.Log) *Executor {
 	return &Executor{
 		registry:  registry,
 		policy:    policyStore,
 		audit:     auditLog,
 		approvals: newApprovalStore(),
-		profiles:  profiles,
 	}
 }
 
@@ -33,8 +27,8 @@ func (e *Executor) Confirm(id string) (ApprovalGrant, error) {
 	return e.approvals.Confirm(id)
 }
 
-func (e *Executor) Execute(ctx context.Context, request ExecuteRequest) ExecuteResponse {
-	prepared, response := e.prepare(request)
+func (e *Executor) Execute(ctx context.Context, request ExecuteRequest, profile policy.EvaluationProfile) ExecuteResponse {
+	prepared, response := e.prepare(request, profile)
 	if response != nil {
 		return *response
 	}
