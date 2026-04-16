@@ -29,7 +29,8 @@ const RUN_COMMAND_OUTPUT_EMPTY_MESSAGE = "No terminal output was captured yet.";
 const RUN_COMMAND_OUTPUT_LIMIT = 4000;
 const RUN_COMMAND_POLL_INTERVAL_MS = 200;
 const RUN_COMMAND_POLL_ATTEMPTS = 8;
-const ANSI_CSI_PATTERN = /\u001b\[[0-?]*[ -/]*[@-~]/g;
+// eslint-disable-next-line no-control-regex -- ANSI CSI parser for terminal escape cleanup.
+const ANSI_CSI_PATTERN = /\x1b\[[0-?]*[ -/]*[@-~]/g;
 
 export function parseRunCommandPrompt(prompt: string): RunCommandParseResult {
     const trimmed = prompt.trim();

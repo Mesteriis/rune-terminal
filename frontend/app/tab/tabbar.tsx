@@ -6,7 +6,7 @@ import { WorkspaceStoreSnapshot, workspaceStore } from "@/app/state/workspace.st
 import { modalsModel } from "@/app/store/modalmodel";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { deleteLayoutModelForTab } from "@/layout/index";
-import { atoms, getApi, globalStore } from "@/store/global";
+import { atoms, getApi } from "@/store/global";
 import { isMacOS, isWindows } from "@/util/platformutil";
 import { fireAndForget } from "@/util/util";
 import { useAtomValue } from "jotai";
@@ -21,6 +21,7 @@ import { WorkspaceSwitcher } from "./workspaceswitcher";
 
 const TabDefaultWidth = 130;
 const TabMinWidth = 100;
+type OverlayScrollbarsOptions = NonNullable<Parameters<typeof OverlayScrollbars>[1]>;
 const OSOptions = {
     overflow: {
         x: "scroll",
@@ -371,7 +372,7 @@ const TabBar = memo(({ workspace, compatMode = false }: TabBarProps) => {
 
         // Initialize/destroy overlay scrollbars
         if (newScrollable) {
-            osInstanceRef.current = OverlayScrollbars(tabBarRef.current, { ...(OSOptions as any) });
+            osInstanceRef.current = OverlayScrollbars(tabBarRef.current, { ...(OSOptions as OverlayScrollbarsOptions) });
         } else {
             if (osInstanceRef.current) {
                 osInstanceRef.current.destroy();
@@ -615,7 +616,7 @@ const TabBar = memo(({ workspace, compatMode = false }: TabBarProps) => {
         []
     );
 
-    const handleMouseUp = (event: MouseEvent) => {
+    const handleMouseUp = () => {
         const { tabIndex, dragged } = draggingTabDataRef.current;
 
         // Update the final position of the dragged tab
@@ -699,7 +700,6 @@ const TabBar = memo(({ workspace, compatMode = false }: TabBarProps) => {
 
     const handleAddTab = () => {
         fireAndForget(() => workspaceStore.createTerminalTab());
-        tabsWrapperRef.current.style.transition;
         tabsWrapperRef.current.style.setProperty("--tabs-wrapper-transition", "width 0.1s ease");
 
         updateScrollDebounced();
@@ -774,7 +774,7 @@ const TabBar = memo(({ workspace, compatMode = false }: TabBarProps) => {
             <div
                 ref={draggerLeftRef}
                 className="h-full shrink-0 z-window-drag"
-                style={{ width: windowDragLeftWidth, WebkitAppRegion: "drag" } as any}
+                style={{ width: windowDragLeftWidth, WebkitAppRegion: "drag" } as React.CSSProperties}
             />
             {showAppMenuButton && (
                 <div
@@ -822,7 +822,7 @@ const TabBar = memo(({ workspace, compatMode = false }: TabBarProps) => {
                 <div
                     ref={draggerRightRef}
                     className="h-full shrink-0 z-window-drag"
-                    style={{ width: windowDragRightWidth, WebkitAppRegion: "drag" } as any}
+                    style={{ width: windowDragRightWidth, WebkitAppRegion: "drag" } as React.CSSProperties}
                 />
             </div>
         </div>

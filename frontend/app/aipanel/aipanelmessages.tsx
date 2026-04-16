@@ -76,7 +76,7 @@ export const AIPanelMessages = memo(({ messages, status, onContextMenu, selector
                 (messages.length === 0 || messages[messages.length - 1].role !== "assistant") && (
                     <AIMessage
                         key="last-message"
-                        message={{ role: "assistant", parts: [], id: "last-message" } as any}
+                        message={{ role: "assistant", parts: [], id: "last-message" } satisfies WaveUIMessage}
                         isStreaming={true}
                     />
                 )}

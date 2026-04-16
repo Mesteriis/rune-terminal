@@ -49,7 +49,11 @@ export function CompatTerminalView({ widgetId, connectionId }: CompatTerminalVie
                 },
             }
         );
-        (termWrap as any).isLocalConnection = () => isLocalConnection(connectionId);
+        (
+            termWrap as unknown as {
+                isLocalConnection?: () => boolean;
+            }
+        ).isLocalConnection = () => isLocalConnection(connectionId);
         termWrapRef.current = termWrap;
         void termWrap.initTerminal();
 

@@ -9,12 +9,9 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { getLayoutModelForStaticTab } from "@/layout/lib/layoutModelHooks";
 import { atoms, getApi, getOrefMetaKeyAtom, recordTEvent, refocusNode } from "@/store/global";
-import debug from "debug";
 import * as jotai from "jotai";
 import { debounce } from "lodash-es";
 import type { GroupImperativeHandle, Layout as PanelLayout, PanelImperativeHandle } from "react-resizable-panels";
-
-const dlog = debug("wave:workspace");
 const WorkspaceAIPanelId = "workspace-ai-panel";
 const WorkspaceMainPanelId = "workspace-main-panel";
 

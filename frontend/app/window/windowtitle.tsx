@@ -88,11 +88,14 @@ export const WindowTitleManager = () => {
             modalsModel.pushModal("RenameWindowModal", { windowid: windowId });
         });
         const cleanupRestoreAuto = getApi().onWindowTitleRestoreAuto(() => {
+            const nextMeta: Record<string, unknown> = {
+                "window:titlemode": "auto",
+                "window:fixedtitle": null,
+            };
             fireAndForget(() =>
                 services.ObjectService.UpdateObjectMeta(WOS.makeORef("window", windowId), {
-                    "window:titlemode": "auto",
-                    "window:fixedtitle": null,
-                } as any)
+                    ...nextMeta,
+                })
             );
         });
         return () => {

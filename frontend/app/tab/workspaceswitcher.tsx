@@ -15,7 +15,7 @@ import clsx from "clsx";
 import { forwardRef, useCallback, useEffect, useState } from "react";
 import workspaceSvgUrl from "../asset/workspace.svg?url";
 import { IconButton } from "../element/iconbutton";
-import { WorkspaceStoreSnapshot, workspaceStore, type WorkspaceListEntry } from "../state/workspace.store";
+import { workspaceStore, type WorkspaceListEntry } from "../state/workspace.store";
 import { WorkspaceEditor } from "./workspaceeditor";
 import "./workspaceswitcher.scss";
 

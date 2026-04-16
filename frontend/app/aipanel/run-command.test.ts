@@ -1,4 +1,6 @@
 import { assert, test, vi } from "vitest";
+import type { TerminalFacade } from "@/compat/terminal";
+import type { ToolsFacade } from "@/compat/tools";
 import type { TerminalOutputChunk } from "@/rterm-api/terminal/types";
 import { executeRunCommandPrompt, parseRunCommandPrompt, summarizeTerminalOutput } from "./run-command";
 
@@ -78,20 +80,21 @@ test("executeRunCommandPrompt surfaces approval_required without flattening it i
             chunks: [],
             next_seq: 7,
         })),
-    } as any;
+    } as unknown as TerminalFacade;
+    const executeToolMock = vi.fn(async () => ({
+        status: "requires_confirmation",
+        pending_approval: {
+            id: "approval-1",
+            tool_name: "term.send_input",
+            summary: "send terminal input",
+            approval_tier: "dangerous",
+            created_at: "2026-04-16T09:33:55Z",
+            expires_at: "2026-04-16T09:38:55Z",
+        },
+    }));
     const toolsFacade = {
-        executeTool: vi.fn(async () => ({
-            status: "requires_confirmation",
-            pending_approval: {
-                id: "approval-1",
-                tool_name: "term.send_input",
-                summary: "send terminal input",
-                approval_tier: "dangerous",
-                created_at: "2026-04-16T09:33:55Z",
-                expires_at: "2026-04-16T09:38:55Z",
-            },
-        })),
-    } as any;
+        executeTool: executeToolMock,
+    } as unknown as ToolsFacade;
 
     const result = await executeRunCommandPrompt({
         terminalFacade,
@@ -115,7 +118,13 @@ test("executeRunCommandPrompt surfaces approval_required without flattening it i
             expires_at: "2026-04-16T09:38:55Z",
         },
     });
-    assert.equal(toolsFacade.executeTool.mock.calls[0][0].approval_token, undefined);
+    assert.equal(executeToolMock.mock.calls.length, 1);
+    const approvalCallPayload = (
+        executeToolMock as unknown as {
+            mock: { calls: Array<[ { approval_token?: string } ]> };
+        }
+    ).mock.calls.at(0)?.[0];
+    assert.equal(approvalCallPayload?.approval_token, undefined);
 });
 
 test("executeRunCommandPrompt forwards approval_token on approved retry", async () => {
@@ -178,17 +187,18 @@ test("executeRunCommandPrompt forwards approval_token on approved retry", async 
                 ],
                 next_seq: 8,
             }),
-    } as any;
+    } as unknown as TerminalFacade;
+    const executeToolMock = vi.fn(async () => ({
+        status: "ok",
+        output: {
+            widget_id: "widget-1",
+            bytes_sent: 5,
+            append_newline: true,
+        },
+    }));
     const toolsFacade = {
-        executeTool: vi.fn(async () => ({
-            status: "ok",
-            output: {
-                widget_id: "widget-1",
-                bytes_sent: 5,
-                append_newline: true,
-            },
-        })),
-    } as any;
+        executeTool: executeToolMock,
+    } as unknown as ToolsFacade;
 
     const executionPromise = executeRunCommandPrompt({
         terminalFacade,
@@ -205,7 +215,13 @@ test("executeRunCommandPrompt forwards approval_token on approved retry", async 
     await vi.advanceTimersByTimeAsync(200);
     const result = await executionPromise;
 
-    assert.equal(toolsFacade.executeTool.mock.calls[0][0].approval_token, "token-1");
+    assert.equal(executeToolMock.mock.calls.length, 1);
+    const retryPayload = (
+        executeToolMock as unknown as {
+            mock: { calls: Array<[ { approval_token?: string } ]> };
+        }
+    ).mock.calls.at(0)?.[0];
+    assert.equal(retryPayload?.approval_token, "token-1");
     assert.equal(result.kind, "executed");
 
     vi.useRealTimers();
@@ -259,7 +275,7 @@ test("executeRunCommandPrompt tolerates null snapshot chunks from terminal API",
                 chunks: null,
                 next_seq: 7,
             }),
-    } as any;
+    } as unknown as TerminalFacade;
     const toolsFacade = {
         executeTool: vi.fn(async () => ({
             status: "ok",
@@ -269,7 +285,7 @@ test("executeRunCommandPrompt tolerates null snapshot chunks from terminal API",
                 append_newline: true,
             },
         })),
-    } as any;
+    } as unknown as ToolsFacade;
 
     const executionPromise = executeRunCommandPrompt({
         terminalFacade,

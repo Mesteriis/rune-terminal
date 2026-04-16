@@ -172,7 +172,7 @@ const Tab = memo(
             const handleContextMenu = useCallback(
                 (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
                     e.preventDefault();
-                    let menu: ContextMenuItem[] = [
+                    const menu: ContextMenuItem[] = [
                         { label: isPinned ? t("tabmenu.unpinTab") : t("tabmenu.pinTab"), click: () => onPinChange() },
                         { label: t("tabmenu.renameTab"), click: () => handleRenameTab(null) },
                         {

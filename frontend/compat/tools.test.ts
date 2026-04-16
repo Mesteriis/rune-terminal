@@ -1,5 +1,7 @@
 import { assert, test, vi } from "vitest";
+import type { BootstrapClient } from "@/rterm-api/bootstrap/client";
 import type { ToolExecutionResponse, ToolsListResponse } from "@/rterm-api/tools/types";
+import type { ToolsClient } from "@/rterm-api/tools/client";
 import { getApprovalGrant } from "@/rterm-api/tools/client";
 import { createToolsFacade } from "./tools";
 
@@ -7,17 +9,17 @@ test("createToolsFacade confirmApproval uses the typed safety.confirm client hel
     const confirmApproval = vi.fn(async () => ({ status: "ok" } satisfies ToolExecutionResponse));
     const listTools = vi.fn(async () => ({ tools: [] } satisfies ToolsListResponse));
     const executeTool = vi.fn(async () => ({ status: "ok" } satisfies ToolExecutionResponse));
-    const getBootstrap = vi.fn(async () => ({ repo_root: "/repo" } as any));
+    const getBootstrap = vi.fn(async () => ({ repo_root: "/repo" }));
 
     const facade = createToolsFacade(
         {
             confirmApproval,
             executeTool,
             listTools,
-        } as any,
+        } as unknown as ToolsClient,
         {
             getBootstrap,
-        } as any,
+        } as unknown as BootstrapClient,
     );
 
     const context = {

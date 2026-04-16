@@ -5,7 +5,6 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 import { defineConfig, globalIgnores } from "eslint/config";
 
-const reactHooksConfig = reactHooks.configs.flat.recommended;
 const reactRefreshConfig = reactRefresh.configs.vite;
 
 export default defineConfig([
@@ -24,8 +23,25 @@ export default defineConfig([
         globals: globals.browser,
       },
       rules: {
-        ...reactHooksConfig.rules,
         ...reactRefreshConfig.rules,
+        // Keep fundamental hook safety checks, but avoid React-compiler-only
+        // diagnostics on the current non-compiler code path.
+        "react-hooks/rules-of-hooks": "error",
+        "react-hooks/exhaustive-deps": "warn",
+        "react-hooks/refs": "off",
+        "react-hooks/immutability": "off",
+        "react-hooks/use-memo": "off",
+        "react-hooks/set-state-in-effect": "off",
+        "react-hooks/purity": "off",
+        "react-hooks/preserve-manual-memoization": "off",
+        "@typescript-eslint/no-unused-vars": [
+          "error",
+          {
+            argsIgnorePattern: "^_",
+            varsIgnorePattern: "^_",
+            caughtErrorsIgnorePattern: "^_",
+          },
+        ],
       },
     }
   ),

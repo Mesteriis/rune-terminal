@@ -266,13 +266,13 @@ const AIPanelComponentInner = memo(() => {
     const isUsingCustomMode = !defaultMode.startsWith("waveai@");
     const allowAccess = telemetryEnabled || (hasCustomModes && isUsingCustomMode);
 
-    const { messages, sendMessage, status, setMessages, error, stop } = useChat<WaveUIMessage>({
+    const { messages, sendMessage, status, setMessages, stop } = useChat<WaveUIMessage>({
         transport: new DefaultChatTransport({
             api: model.getUseChatEndpointUrl(),
-            prepareSendMessagesRequest: (opts) => {
+            prepareSendMessagesRequest: () => {
                 const msg = model.getAndClearMessage();
                 const windowType = globalStore.get(atoms.waveWindowType);
-                const body: any = {
+                const body: Record<string, unknown> = {
                     msg,
                     chatid: globalStore.get(model.chatId),
                     widgetaccess: globalStore.get(model.widgetAccessAtom),
@@ -296,8 +296,12 @@ const AIPanelComponentInner = memo(() => {
     model.registerUseChatData(sendMessage, setMessages, status, stop);
 
     // console.log("AICHAT messages", messages);
-    (window as any).aichatmessages = messages;
-    (window as any).aichatstatus = status;
+    const debugWindow = window as Window & {
+        aichatmessages?: WaveUIMessage[];
+        aichatstatus?: string;
+    };
+    debugWindow.aichatmessages = messages;
+    debugWindow.aichatstatus = status;
 
     const handleKeyDown = (waveEvent: WaveKeyboardEvent): boolean => {
         if (checkKeyPressed(waveEvent, "Cmd:k")) {
@@ -505,7 +509,7 @@ const AIPanelComponentInner = memo(() => {
     }, [drop]);
 
     const handleFocusCapture = useCallback(
-        (event: React.FocusEvent) => {
+        (_event: React.FocusEvent) => {
             // console.log("TideTerm AI focus capture", getElemAsStr(event.target));
             model.requestWaveAIFocus();
         },

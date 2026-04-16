@@ -5,6 +5,8 @@ import { atoms } from "@/app/store/global";
 import * as jotai from "jotai";
 import { memo, useEffect, useState } from "react";
 
+const RATE_LIMIT_STRIP_ENABLED = false;
+
 const GetMoreButton = memo(({ variant, showClose = true }: { variant: "yellow" | "red"; showClose?: boolean }) => {
     const isYellow = variant === "yellow";
     const bgColor = isYellow ? "bg-yellow-900/30" : "bg-red-900/30";
@@ -19,7 +21,7 @@ const GetMoreButton = memo(({ variant, showClose = true }: { variant: "yellow" |
               ? "hover:has-[.close:hover]:bg-red-900/30"
               : "";
 
-    if (true) {
+    if (!RATE_LIMIT_STRIP_ENABLED) {
         // disable now until we have modal
         return null;
     }
@@ -59,7 +61,7 @@ function formatTimeRemaining(expirationEpoch: number): string {
 }
 
 const AIRateLimitStripComponent = memo(() => {
-    let rateLimitInfo = jotai.useAtomValue(atoms.waveAIRateLimitInfoAtom);
+    const rateLimitInfo = jotai.useAtomValue(atoms.waveAIRateLimitInfoAtom);
     // rateLimitInfo = { req: 0, reqlimit: 200, preq: 0, preqlimit: 50, resetepoch: 1759374575 + 45 * 60 }; // testing
     const [, forceUpdate] = useState({});
 

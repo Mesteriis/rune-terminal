@@ -222,7 +222,7 @@ async function initLegacyBrowserCompatApp(
     bootstrapWindow.globalAtoms = atoms;
     bootstrapWindow.TabRpcClient = initCompatWshrpc(makeTabRouteId(activeTabId));
     globalStore.set(activeTabIdAtom, activeTabId);
-    (globalStore as any).set(atoms.staticTabId, activeTabId);
+    (globalStore as unknown as { set: (atom: unknown, value: string) => void }).set(atoms.staticTabId, activeTabId);
     workspaceStore.hydrate(workspace);
 
     setKeyUtilPlatform(platform);

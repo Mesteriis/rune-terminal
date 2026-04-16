@@ -4,12 +4,12 @@ import { useAtomValue } from "jotai";
 import { forwardRef, memo, useEffect, useState } from "react";
 
 const UpdateStatusBannerComponent = forwardRef<HTMLButtonElement>((_, ref) => {
-    let appUpdateStatus = useAtomValue(atoms.updaterStatusAtom);
-    let [updateStatusMessage, setUpdateStatusMessage] = useState<string>();
+    const appUpdateStatus = useAtomValue(atoms.updaterStatusAtom);
+    const [updateStatusMessage, setUpdateStatusMessage] = useState<string>();
     const [dismissBannerTimeout, setDismissBannerTimeout] = useState<NodeJS.Timeout>();
 
     useEffect(() => {
-        let message: string;
+        let message: string | undefined;
         let dismissBanner = false;
         switch (appUpdateStatus) {
             case "ready":

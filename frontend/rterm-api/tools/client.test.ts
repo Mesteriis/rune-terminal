@@ -1,5 +1,6 @@
 import { assert, test, vi } from "vitest";
 import { ApiError } from "@/rterm-api/http/errors";
+import type { HttpClient } from "@/rterm-api/http/client";
 import { ToolsClient } from "./client";
 
 test("ToolsClient.executeTool preserves structured approval_mismatch responses", async () => {
@@ -17,7 +18,7 @@ test("ToolsClient.executeTool preserves structured approval_mismatch responses",
                 },
             });
         }),
-    } as any;
+    } as unknown as HttpClient;
 
     const client = new ToolsClient(http);
     const response = await client.executeTool({

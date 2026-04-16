@@ -71,7 +71,7 @@ export const AIPanelInput = memo(({ onSubmit, status, model, onAttachFiles }: AI
         const isComposing = e.nativeEvent?.isComposing || e.keyCode == 229;
         if (e.key === "Enter" && !e.shiftKey && !isComposing) {
             e.preventDefault();
-            onSubmit(e as any);
+            onSubmit(e as unknown as React.FormEvent);
         }
     };
 

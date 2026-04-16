@@ -34,6 +34,10 @@ import {
 import type { AIPanelInputRef } from "./aipanelinput";
 import { getWaveAICompatActiveTabId, isWaveAICompatRuntime } from "./compat-context";
 
+type DebugWindow = Window & {
+    WaveAIModel?: WaveAIModel;
+};
+
 export interface DroppedFile {
     id: string;
     file: File;
@@ -131,7 +135,7 @@ export class WaveAIModel {
             }
             const aiModeConfigs = get(this.aiModeConfigs);
             if (!telemetryEnabled) {
-                let mode = get(getSettingsKeyAtom("waveai:defaultmode"));
+                const mode = get(getSettingsKeyAtom("waveai:defaultmode"));
                 if (mode == null || mode.startsWith("waveai@")) {
                     return "unknown";
                 }
@@ -172,7 +176,7 @@ export class WaveAIModel {
                 orefContext = WOS.makeORef("tab", tabId);
             }
             WaveAIModel.instance = new WaveAIModel(orefContext, inBuilder);
-            (window as any).WaveAIModel = WaveAIModel.instance;
+            (window as DebugWindow).WaveAIModel = WaveAIModel.instance;
         }
         return WaveAIModel.instance;
     }
@@ -494,7 +498,7 @@ export class WaveAIModel {
         }
     }
 
-    async getRTInfo(): Promise<Record<string, any>> {
+    async getRTInfo(): Promise<Record<string, unknown>> {
         const rtInfo = await RpcApi.GetRTInfoCommand(TabRpcClient, {
             oref: this.orefContext,
         });
