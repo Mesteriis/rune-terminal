@@ -524,15 +524,15 @@ Progress инициализирован из audit trail: `MISSING -> TODO`, `PA
 
 ### Feature: Явный `/run <command>` execution path
 
-- Status: IN_PROGRESS
-- Parity: PARTIAL
+- Status: DONE
+- Parity: FULL
 - Source: `frontend/src/hooks/useAiCommandExecution.ts`; `frontend/src/lib/aiTerminalCommand.ts`
 - Location: `core/app/ai_terminal_command.go`; `core/transport/httpapi/handlers_agent_conversation.go`
 - Description: Отдельный AI-triggered terminal command path подтверждён по коду.
 
 #### Required for DONE:
 - `Явный `/run <command>` execution path` подтверждена на active runtime/UI path RunaTerminal.
-- Ограничение из audit снято: `NOT VERIFIED` для active UI: `/run` path реализован в backend/docs, но active compat AI panel не использует этот path.
+- Ограничение из audit снято: `VERIFIED`: active compat AI panel detects `/run`, executes `term.send_input` through the tool/runtime path, and renders the observed result in the current transcript.
 
 #### Validation:
 - Код: проверить текущий path из поля `Location`.
@@ -542,19 +542,19 @@ Progress инициализирован из audit trail: `MISSING -> TODO`, `PA
 - [Validation Log](validation.md#feature-ai-run-command-execution-path)
 
 #### Notes:
-- Разница с текущим состоянием: `NOT VERIFIED` для active UI: `/run` path реализован в backend/docs, но active compat AI panel не использует этот path.
+- Разница с текущим состоянием: `VERIFIED`: active compat AI panel detects `/run`, executes `term.send_input` through the tool/runtime path, and renders the observed result in the current transcript.
 
 ### Feature: Объяснение результата terminal command
 
-- Status: IN_PROGRESS
-- Parity: PARTIAL
+- Status: DONE
+- Parity: FULL
 - Source: `frontend/src/hooks/useAiCommandExecution.ts`; `frontend/src/hooks/useConversation.ts`
 - Location: `core/app/ai_terminal_command.go`; `core/transport/httpapi/handlers_agent_conversation.go`
 - Description: После выполнения команды вызывается explanation route.
 
 #### Required for DONE:
 - `Объяснение результата terminal command` подтверждена на active runtime/UI path RunaTerminal.
-- Ограничение из audit снято: `NOT VERIFIED` для active UI: explanation route существует, но active compat AI panel на него не переключён.
+- Ограничение из audit снято: `VERIFIED`: active compat AI panel calls the explanation route after `/run` execution and appends the backend assistant reply in the same transcript.
 
 #### Validation:
 - Код: проверить текущий path из поля `Location`.
@@ -564,19 +564,19 @@ Progress инициализирован из audit trail: `MISSING -> TODO`, `PA
 - [Validation Log](validation.md#feature-ai-terminal-command-explanation)
 
 #### Notes:
-- Разница с текущим состоянием: `NOT VERIFIED` для active UI: explanation route существует, но active compat AI panel на него не переключён.
+- Разница с текущим состоянием: `VERIFIED`: active compat AI panel calls the explanation route after `/run` execution and appends the backend assistant reply in the same transcript.
 
 ### Feature: Approval внутри AI/tool flow
 
-- Status: IN_PROGRESS
-- Parity: PARTIAL
+- Status: DONE
+- Parity: FULL
 - Source: `frontend/src/hooks/useApprovalFlow.ts`; `frontend/src/hooks/useAiCommandExecution.ts`
 - Location: `core/app/tool_policy.go`; `core/toolruntime/*`; `frontend/app/aipanel/aitooluse.tsx`
 - Description: Approval tokens и confirm-and-retry интегрированы в AI/tool path.
 
 #### Required for DONE:
 - `Approval внутри AI/tool flow` подтверждена на active runtime/UI path RunaTerminal.
-- Ограничение из audit снято: Смешанный статус: backend approval flow `VERIFIED`, но active AI surface `NOT VERIFIED` для нового `safety.confirm` UI wiring и всё ещё живёт на legacy tool-use approval semantics.
+- Ограничение из audit снято: `VERIFIED`: active compat AI panel surfaces approval-required `/run`, confirms via `safety.confirm`, retries with `approval_token`, and preserves audit visibility.
 
 #### Validation:
 - Код: проверить текущий path из поля `Location`.
@@ -586,7 +586,7 @@ Progress инициализирован из audit trail: `MISSING -> TODO`, `PA
 - [Validation Log](validation.md#feature-ai-approval-flow)
 
 #### Notes:
-- Разница с текущим состоянием: Смешанный статус: backend approval flow `VERIFIED`, но active AI surface `NOT VERIFIED` для нового `safety.confirm` UI wiring и всё ещё живёт на legacy tool-use approval semantics.
+- Разница с текущим состоянием: `VERIFIED`: active compat AI panel surfaces approval-required `/run`, confirms via `safety.confirm`, retries with `approval_token`, and preserves audit visibility.
 
 ### Feature: Manual tool catalog и JSON execution
 
@@ -1209,4 +1209,3 @@ Progress инициализирован из audit trail: `MISSING -> TODO`, `PA
 
 #### Notes:
 - Разница с текущим состоянием: Legacy proxy UI присутствует, но current core/runtime path для TideTerm WaveProxy отсутствует.
-

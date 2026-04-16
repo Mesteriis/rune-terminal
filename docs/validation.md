@@ -124,7 +124,60 @@
   - validation used a stub Ollama-compatible server, so the assistant text proves explain-route wiring and prompt content rather than final model quality
   - sanitized result rendering now strips ANSI prompt redraw noise and command echo from the local execution-result message and from the backend explanation prompt
   - browser `consoleErrors` for the final `4198` validation run: `0`
-  - approval-required `/run` confirm-and-retry path: `NOT RUN`
+  - approval-required `/run` confirm-and-retry path is now covered by [`/run approval confirm-and-retry`](#run-approval-confirm-and-retry)
+
+<a id="run-approval-confirm-and-retry"></a>
+## /run approval confirm-and-retry
+
+- Date: `2026-04-16`
+- Status: `VERIFIED`
+- Commits:
+  - `0e6220d0db7bfc76e0f8d4ecfffb0e30c3f37e32`
+  - `c99c1cb0261dc93be89d73487900cf7fe0c46615`
+  - `9aadc9864b1f7b314a3a25d45db7d4ae468ddc7b`
+- Validation steps:
+  - runtime environment:
+    - Ollama stub: local Node HTTP server on `127.0.0.1:11437`, returning `model: "test-model"` and `message.content: "stub-response: <prompt>"`
+    - core: `RTERM_AUTH_TOKEN=run-approval-token RTERM_OLLAMA_BASE_URL=http://127.0.0.1:11437 RTERM_OLLAMA_MODEL=test-model apps/desktop/bin/rterm-core serve --listen 127.0.0.1:52779 --workspace-root /Users/avm/projects/Personal/tideterm/runa-terminal --state-dir /tmp/rterm-run-approval-validation.7v55Ci`
+    - frontend dev: `VITE_RTERM_API_BASE=http://127.0.0.1:52779 VITE_RTERM_AUTH_TOKEN=run-approval-token npm --prefix frontend run dev -- --host 127.0.0.1 --port 4201 --strictPort`
+  - open AI panel through the visible shell `AI` toggle in the active compat workspace
+  - safe `/run` command:
+    - with `Profile: Balanced`, entered `/run echo slice-safe`
+    - transcript rendered the user command, a local execution-result message with sanitized output `slice-safe`, and a follow-up assistant explanation message in the existing transcript
+  - approval-required `/run` command:
+    - changed `Profile: Balanced -> Hardened`
+    - entered `/run echo needs-approval`
+    - UI showed an inline approval card in the current AI panel flow:
+      - title: `Approval required for \`/run echo needs-approval\``
+      - summary: `send input to term-main: echo needs-approval`
+      - tier: `dangerous`
+    - clicked `Confirm and retry`
+    - browser network captured:
+      - `POST /api/v1/tools/execute` -> `428 Precondition Required` for the initial `term.send_input`
+      - `POST /api/v1/tools/execute` with `tool_name:"safety.confirm"` and `approval_id:"approval_291817ec8ab8d4fd"`
+      - retry `POST /api/v1/tools/execute` for `term.send_input` with `approval_token:"befff02daffe86bc582feaccf69c0b79"`
+      - `POST /api/v1/agent/terminal-commands/explain` with `approval_used:true`
+    - transcript rendered the final execution-result message with sanitized output `needs-approval` and a follow-up assistant explanation message
+  - audit coherence:
+    - `GET /api/v1/audit?limit=12` returned the linked sequence:
+      - `term.send_input` -> `success:false`, `error:"approval_required"`
+      - `safety.confirm` -> `success:true`
+      - retried `term.send_input` -> `success:true`, `approval_used:true`
+      - `agent.terminal_command` -> `success:true`, `approval_used:true`
+  - shell launch smoke:
+    - `RTERM_OLLAMA_BASE_URL=http://127.0.0.1:11437 RTERM_OLLAMA_MODEL=test-model npm run tauri:dev`
+    - Tauri reached desktop runtime startup and printed `Running target/debug/rterm-desktop`
+    - the spawned core reported ready state `{\"base_url\":\"http://127.0.0.1:52300\",\"pid\":69465}`
+    - the smoke was then interrupted intentionally after ready-state confirmation
+- Tested commands:
+  - `/run echo slice-safe`: `VERIFIED`
+  - `/run echo needs-approval`: `VERIFIED`
+- Approval state: `VERIFIED` — the active compat AI panel now surfaces approval-required `/run` requests with an inline `Confirm and retry` action instead of dropping the pending approval metadata.
+- Confirm action: `VERIFIED` — clicking `Confirm and retry` used the existing `safety.confirm` contract and retried the original `term.send_input` request with the returned one-time `approval_token`.
+- Final result: `VERIFIED` — after approval, the AI transcript showed both the local execution result and the backend explanation response for the original `/run` request.
+- Notes:
+  - browser console recorded one expected `428 Precondition Required` resource error for the initial approval challenge; the UI flow continued correctly and no fatal runtime exceptions were observed
+  - `npm run validate`: `NOT VERIFIED` for this slice because the repo currently has broad pre-existing frontend lint failures unrelated to `/run` approval wiring; the failure occurred before the validation script could reach `build:frontend`, `test:go`, `build:go`, or `tauri:check`
 
 ## widgets.tsx structural refactor
 
@@ -559,12 +612,15 @@
 <a id="feature-ai-approval-flow"></a>
 ## Approval внутри AI/tool flow
 
-- Date: `—`
-- Status: `NOT RUN`
-- Commit: `—`
-- Validation steps: Отдельный feature-specific validation run ещё не зафиксирован; использовать критерии из `docs/roadmap.md` и текущий path из audit.
-- Result: Подтверждённого validation result нет; текущий ориентир только parity status из audit.
-- Notes: Placeholder-секция для будущих проверок. Текущее audit-наблюдение: Смешанный статус: backend approval flow `VERIFIED`, но active AI surface `NOT VERIFIED` для нового `safety.confirm` UI wiring и всё ещё живёт на legacy tool-use approval semantics. 
+- Date: `2026-04-16`
+- Status: `VERIFIED`
+- Commits:
+  - `0e6220d0db7bfc76e0f8d4ecfffb0e30c3f37e32`
+  - `c99c1cb0261dc93be89d73487900cf7fe0c46615`
+  - `9aadc9864b1f7b314a3a25d45db7d4ae468ddc7b`
+- Validation steps: See [`/run approval confirm-and-retry`](#run-approval-confirm-and-retry).
+- Result: `VERIFIED` — backend approval flow and the active compat AI panel now complete the full `requires_confirmation -> safety.confirm -> retry with approval_token` path for `/run`.
+- Notes: Validation confirmed visible approval state in the active AI panel, successful confirm-and-retry, and coherent audit events with `approval_used:true` on the approved retry path.
 
 <a id="feature-ai-manual-tool-catalog-json-execution"></a>
 ## Manual tool catalog и JSON execution
