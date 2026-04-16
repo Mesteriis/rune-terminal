@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"path/filepath"
 	"sync"
 	"testing"
 	"time"
@@ -219,6 +220,111 @@ func TestInvokeTimesOutWhenPluginDoesNotRespond(t *testing.T) {
 	}
 }
 
+func TestInvokeFailsWhenPluginCommandPathIsMissing(t *testing.T) {
+	t.Parallel()
+
+	runtime := NewRuntime(OSProcessSpawner{}, time.Second)
+	_, err := runtime.Invoke(context.Background(), PluginSpec{
+		Name: "example-plugin",
+		Process: ProcessConfig{
+			Command: filepath.Join(t.TempDir(), "missing-plugin-binary"),
+		},
+	}, InvokeRequest{
+		ToolName: "plugin.example",
+	})
+	if !errors.Is(err, ErrProcessSpawnFailed) {
+		t.Fatalf("expected spawn error, got %v", err)
+	}
+}
+
+func TestInvokeFailsWhenStartupExceedsLaunchTimeout(t *testing.T) {
+	t.Parallel()
+
+	runtime := NewRuntime(delayedSpawner{
+		delay: 80 * time.Millisecond,
+		inner: scriptedSpawner{
+			script: func(stdin io.Reader, stdout io.Writer) error {
+				reader := bufio.NewReader(stdin)
+				var handshakeReq PluginHandshakeRequest
+				if err := scriptReadJSONLine(reader, &handshakeReq); err != nil {
+					return err
+				}
+				if err := scriptWriteJSONLine(stdout, PluginHandshakeResponse{
+					Type: MessageTypeHandshake,
+					Manifest: PluginManifest{
+						PluginID:        "example-plugin",
+						PluginVersion:   "1.0.0",
+						ProtocolVersion: ProtocolVersionV1,
+						ExposedTools:    []string{"plugin.example"},
+					},
+				}); err != nil {
+					return err
+				}
+				var executeReq PluginRequest
+				if err := scriptReadJSONLine(reader, &executeReq); err != nil {
+					return err
+				}
+				return scriptWriteJSONLine(stdout, PluginResponse{
+					Type:      MessageTypeResponse,
+					RequestID: executeReq.RequestID,
+					Status:    PluginResponseStatusOK,
+					Output:    json.RawMessage(`{"echo":"ok"}`),
+				})
+			},
+		},
+	}, time.Second)
+
+	_, err := runtime.Invoke(context.Background(), PluginSpec{
+		Name:          "example-plugin",
+		LaunchTimeout: 20 * time.Millisecond,
+		Process: ProcessConfig{
+			Command: "scripted",
+		},
+	}, InvokeRequest{
+		ToolName: "plugin.example",
+	})
+	if !errors.Is(err, ErrProcessSpawnFailed) {
+		t.Fatalf("expected startup timeout to return spawn error, got %v", err)
+	}
+}
+
+func TestInvokeFailsWhenHandshakeExceedsTimeout(t *testing.T) {
+	t.Parallel()
+
+	runtime := NewRuntime(scriptedSpawner{
+		script: func(stdin io.Reader, stdout io.Writer) error {
+			reader := bufio.NewReader(stdin)
+			var handshakeReq PluginHandshakeRequest
+			if err := scriptReadJSONLine(reader, &handshakeReq); err != nil {
+				return err
+			}
+			time.Sleep(120 * time.Millisecond)
+			return scriptWriteJSONLine(stdout, PluginHandshakeResponse{
+				Type: MessageTypeHandshake,
+				Manifest: PluginManifest{
+					PluginID:        "example-plugin",
+					PluginVersion:   "1.0.0",
+					ProtocolVersion: ProtocolVersionV1,
+					ExposedTools:    []string{"plugin.example"},
+				},
+			})
+		},
+	}, time.Second)
+
+	_, err := runtime.Invoke(context.Background(), PluginSpec{
+		Name:             "example-plugin",
+		HandshakeTimeout: 20 * time.Millisecond,
+		Process: ProcessConfig{
+			Command: "scripted",
+		},
+	}, InvokeRequest{
+		ToolName: "plugin.example",
+	})
+	if !errors.Is(err, ErrPluginTimeout) {
+		t.Fatalf("expected handshake timeout error, got %v", err)
+	}
+}
+
 type scriptedSpawner struct {
 	script func(stdin io.Reader, stdout io.Writer) error
 }
@@ -257,6 +363,16 @@ func (s scriptedSpawner) Spawn(context.Context, ProcessConfig) (Process, error) 
 			return nil
 		},
 	}, nil
+}
+
+type delayedSpawner struct {
+	delay time.Duration
+	inner ProcessSpawner
+}
+
+func (s delayedSpawner) Spawn(ctx context.Context, config ProcessConfig) (Process, error) {
+	time.Sleep(s.delay)
+	return s.inner.Spawn(ctx, config)
 }
 
 type scriptedProcess struct {

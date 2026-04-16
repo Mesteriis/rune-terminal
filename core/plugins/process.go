@@ -6,6 +6,8 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strings"
 )
 
 type ProcessConfig struct {
@@ -29,11 +31,26 @@ type ProcessSpawner interface {
 type OSProcessSpawner struct{}
 
 func (s OSProcessSpawner) Spawn(ctx context.Context, config ProcessConfig) (Process, error) {
-	if config.Command == "" {
+	command := strings.TrimSpace(config.Command)
+	if command == "" {
 		return nil, fmt.Errorf("%w: command is required", ErrInvalidPluginSpec)
 	}
+	resolvedCommand, err := resolvePluginCommand(command)
+	if err != nil {
+		return nil, err
+	}
 
-	cmd := exec.CommandContext(ctx, config.Command, config.Args...)
+	if strings.TrimSpace(config.Dir) != "" {
+		info, err := os.Stat(config.Dir)
+		if err != nil {
+			return nil, fmt.Errorf("%w: plugin working directory is invalid: %v", ErrProcessSpawnFailed, err)
+		}
+		if !info.IsDir() {
+			return nil, fmt.Errorf("%w: plugin working directory is not a directory", ErrProcessSpawnFailed)
+		}
+	}
+
+	cmd := exec.CommandContext(ctx, resolvedCommand, config.Args...)
 	cmd.Dir = config.Dir
 	if len(config.Env) > 0 {
 		cmd.Env = append(os.Environ(), config.Env...)
@@ -57,6 +74,31 @@ func (s OSProcessSpawner) Spawn(ctx context.Context, config ProcessConfig) (Proc
 		stdin:  stdin,
 		stdout: stdout,
 	}, nil
+}
+
+func resolvePluginCommand(command string) (string, error) {
+	if strings.ContainsRune(command, filepath.Separator) {
+		info, err := os.Stat(command)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return "", fmt.Errorf("%w: plugin command path does not exist: %s", ErrProcessSpawnFailed, command)
+			}
+			return "", fmt.Errorf("%w: plugin command path is invalid: %v", ErrProcessSpawnFailed, err)
+		}
+		if info.IsDir() {
+			return "", fmt.Errorf("%w: plugin command path is a directory: %s", ErrProcessSpawnFailed, command)
+		}
+		if info.Mode()&0o111 == 0 {
+			return "", fmt.Errorf("%w: plugin command path is not executable: %s", ErrProcessSpawnFailed, command)
+		}
+		return command, nil
+	}
+
+	resolved, err := exec.LookPath(command)
+	if err != nil {
+		return "", fmt.Errorf("%w: plugin command not found in PATH: %s", ErrProcessSpawnFailed, command)
+	}
+	return resolved, nil
 }
 
 type execProcess struct {

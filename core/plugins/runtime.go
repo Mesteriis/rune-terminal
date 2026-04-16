@@ -15,8 +15,10 @@ import (
 )
 
 type Runtime struct {
-	spawner        ProcessSpawner
-	defaultTimeout time.Duration
+	spawner                 ProcessSpawner
+	defaultTimeout          time.Duration
+	defaultLaunchTimeout    time.Duration
+	defaultHandshakeTimeout time.Duration
 }
 
 const maxProtocolMessageBytes = 1 << 20
@@ -29,8 +31,10 @@ func NewRuntime(spawner ProcessSpawner, defaultTimeout time.Duration) *Runtime {
 		defaultTimeout = DefaultInvokeTimeout
 	}
 	return &Runtime{
-		spawner:        spawner,
-		defaultTimeout: defaultTimeout,
+		spawner:                 spawner,
+		defaultTimeout:          defaultTimeout,
+		defaultLaunchTimeout:    DefaultLaunchTimeout,
+		defaultHandshakeTimeout: DefaultHandshakeTimeout,
 	}
 }
 
@@ -46,12 +50,25 @@ func (r *Runtime) Invoke(ctx context.Context, spec PluginSpec, request InvokeReq
 	invokeCtx, cancel := context.WithTimeout(ctx, r.invocationTimeout(spec))
 	defer cancel()
 
+	spawnStartedAt := time.Now()
 	process, err := r.spawner.Spawn(invokeCtx, spec.Process)
 	if err != nil {
 		if errors.Is(err, ErrProcessSpawnFailed) {
 			return InvokeResult{}, err
 		}
 		return InvokeResult{}, fmt.Errorf("%w: %v", ErrProcessSpawnFailed, err)
+	}
+	if startupDuration := time.Since(spawnStartedAt); startupDuration > r.launchTimeout(spec) {
+		waitCh := make(chan error, 1)
+		go func() {
+			waitCh <- process.Wait()
+		}()
+		r.killAndWait(process, waitCh)
+		return InvokeResult{}, fmt.Errorf(
+			"%w: process startup exceeded %s",
+			ErrProcessSpawnFailed,
+			r.launchTimeout(spec),
+		)
 	}
 
 	waitCh := make(chan error, 1)
@@ -94,6 +111,20 @@ func (r *Runtime) invocationTimeout(spec PluginSpec) time.Duration {
 	return r.defaultTimeout
 }
 
+func (r *Runtime) launchTimeout(spec PluginSpec) time.Duration {
+	if spec.LaunchTimeout > 0 {
+		return spec.LaunchTimeout
+	}
+	return r.defaultLaunchTimeout
+}
+
+func (r *Runtime) handshakeTimeout(spec PluginSpec) time.Duration {
+	if spec.HandshakeTimeout > 0 {
+		return spec.HandshakeTimeout
+	}
+	return r.defaultHandshakeTimeout
+}
+
 func validateInvocation(spec PluginSpec, request InvokeRequest) error {
 	if strings.TrimSpace(spec.Name) == "" {
 		return fmt.Errorf("%w: plugin name is required", ErrInvalidPluginSpec)
@@ -130,7 +161,10 @@ func (r *Runtime) exchangeProtocol(process Process, spec PluginSpec, request Inv
 	}
 
 	var handshake PluginHandshakeResponse
-	if err := readJSONLine(reader, &handshake); err != nil {
+	if err := readJSONLineWithTimeout(reader, &handshake, r.handshakeTimeout(spec)); err != nil {
+		if errors.Is(err, ErrPluginTimeout) {
+			return InvokeResult{}, err
+		}
 		return InvokeResult{}, classifyProtocolReadError(err, "handshake")
 	}
 	if err := validateHandshakeResponse(handshake, spec, protocolVersion); err != nil {
@@ -238,6 +272,26 @@ func readJSONLine(reader *bufio.Reader, target any) error {
 		return fmt.Errorf("%w: %v", ErrMalformedPluginOutput, unmarshalErr)
 	}
 	return nil
+}
+
+func readJSONLineWithTimeout(reader *bufio.Reader, target any, timeout time.Duration) error {
+	if timeout <= 0 {
+		return readJSONLine(reader, target)
+	}
+	resultCh := make(chan error, 1)
+	go func() {
+		resultCh <- readJSONLine(reader, target)
+	}()
+
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+
+	select {
+	case err := <-resultCh:
+		return err
+	case <-timer.C:
+		return fmt.Errorf("%w: timed out waiting for plugin protocol message", ErrPluginTimeout)
+	}
 }
 
 func writeJSONLine(writer io.Writer, value any) error {

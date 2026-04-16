@@ -6,13 +6,17 @@ import (
 )
 
 const DefaultInvokeTimeout = 5 * time.Second
+const DefaultLaunchTimeout = 2 * time.Second
+const DefaultHandshakeTimeout = 2 * time.Second
 
 type PluginSpec struct {
-	Name         string
-	Process      ProcessConfig
-	Timeout      time.Duration
-	Protocol     string
-	Capabilities []string
+	Name             string
+	Process          ProcessConfig
+	Timeout          time.Duration
+	LaunchTimeout    time.Duration
+	HandshakeTimeout time.Duration
+	Protocol         string
+	Capabilities     []string
 }
 
 type InvokeRequest struct {
