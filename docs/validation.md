@@ -52,6 +52,66 @@
   - validation used an isolated localhost SSH daemon and a stub provider to keep runtime behavior deterministic
   - out of scope and still not implemented in this slice: SSH config UI, `~/.ssh/config` import, credential manager, connection pooling
 
+<a id="remote-connection-profiles"></a>
+## Remote connection profiles
+
+- Date: `2026-04-16`
+- Status: `VERIFIED`
+- Commits:
+  - `ae2710f`
+  - `76c7df9`
+  - `6e42f26`
+  - `4274444`
+  - `f128720`
+  - `77c2f2d`
+  - `f53da48`
+  - `91ddd3c`
+- Validation steps:
+  - isolated runtime setup:
+    - localhost SSH daemon: `127.0.0.1:6223` with temp keys under `/tmp/rterm-remote-profiles.SM0DWr`
+    - direct SSH probe passed before API checks (`avm@127.0.0.1`, temp identity file)
+    - Ollama-compatible stub: `127.0.0.1:11447`
+    - core: `RTERM_AUTH_TOKEN=remote-profiles-token ... serve --listen 127.0.0.1:52961 --state-dir /tmp/rterm-remote-profiles.SM0DWr/state`
+  - saved profile create + list:
+    - `GET /api/v1/remote/profiles` initially returned one saved profile
+    - create payload with explicit contract fields succeeded:
+      - `POST /api/v1/remote/profiles` with `name`, `host`, `user`, `port`, `identity_file`
+      - saved profile id: `conn_dc829456bf03c9e0`
+    - `GET /api/v1/remote/profiles` then returned two profiles (expected growth by one)
+    - contract check: payload containing `description` is rejected with `400 invalid_request` (`unknown field "description"`), matching backend model (description is derived)
+  - profile -> remote session:
+    - `POST /api/v1/remote/profiles/conn_dc829456bf03c9e0/session` created tab `tab_2e32850f04a953f2` and widget `term_553269d07dbe5ece`
+    - `GET /api/v1/terminal/term_553269d07dbe5ece` reported `connection_kind:"ssh"`, `connection_id:"conn_dc829456bf03c9e0"`, `status:"running"`
+  - remote terminal execution:
+    - `POST /api/v1/terminal/term_553269d07dbe5ece/input` with `echo remote-profile-terminal-ok && pwd`
+    - snapshot from captured `next_seq` contained `remote-profile-terminal-ok` and `/Users/avm`
+  - `/run` contract on profile-backed remote session:
+    - `POST /api/v1/tools/execute` (`term.send_input`) with context:
+      - `target_session:"remote"`
+      - `target_connection_id:"conn_dc829456bf03c9e0"`
+    - command `echo remote-profile-run-ok` executed successfully; remote snapshot contained `remote-profile-run-ok`
+    - `POST /api/v1/agent/terminal-commands/explain` for `/run echo remote-profile-run-ok` returned `output_excerpt:"remote-profile-run-ok"` with stub provider response
+  - local behavior and tab switching:
+    - local command path still works: `POST /api/v1/terminal/term-main/input` with `echo local-profile-still-works` produced expected output on local widget
+    - tab switching remained correct:
+      - `focus-tab tab-main` -> active widget `term-main`
+      - `focus-tab tab_2e32850f04a953f2` -> active widget `term_553269d07dbe5ece`
+    - post-switch snapshots remained consistent:
+      - `term-main` => `connection_kind:"local"`
+      - `term_553269d07dbe5ece` => `connection_kind:"ssh"`
+  - audit truth and no local/remote mixup:
+    - audit entries captured explicit target context:
+      - remote `term.send_input` + `agent.terminal_command` => `target_session:"remote"`, `target_connection_id:"conn_dc829456bf03c9e0"`
+      - local `term.send_input` (`echo local-tool-audit-ok`) => `target_session:"local"`, `target_connection_id:"local"`
+    - mismatch guard probe (`remote widget` + `target_session:"local"`) returned HTTP `400` with `error_code:"invalid_input"` and message `requested local session but widget ... is remote`
+  - SSH config import status:
+    - no `~/.ssh/config` import path implemented in this batch
+    - scope is documented as a non-goal in `docs/remote-ssh-config-import.md`
+- Result: `VERIFIED` — saved remote profiles are persisted and reusable, profile-backed session creation works, remote `/run` keeps explicit target semantics, local behavior remains intact, and audit records session truth without local/remote leakage.
+- Notes:
+  - this validation run was API/runtime-level; no additional UI redesign/testing was introduced in this slice
+  - release sweep commands were not re-run in this docs-only validation commit
+
 ## Tool execution
 
 - Date: `2026-04-15`
