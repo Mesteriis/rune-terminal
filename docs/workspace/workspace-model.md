@@ -1,79 +1,45 @@
-# RunaTerminal Workspace Model
+# Workspace Model
 
-## Principles
+Date: `2026-04-17`
+Phase: `1.0.0-rc1` hardening
 
-- workspace structure is backend-owned
-- frontend receives normalized snapshots
-- tabs and widgets are separate domain entities
-- widget focus is explicit and auditable
-- widget type does not determine transport
+## What this document is
 
-## MVP Semantics
+This is the canonical workspace entrypoint for tab/widget/layout behavior.
 
-A workspace contains:
+## Core model
 
-- a stable set of tabs
-- a stable set of widgets
-- exactly one active tab
-- exactly one active widget
-- exactly one active layout
+- Workspace state is backend-owned and persisted (`state/workspace.json`).
+- Tabs are primary navigation units.
+- Widgets are runtime binding units (terminal/session/connection context).
+- Active tab and active widget are explicit and synchronized.
+- Tab layout is backend-owned (`window_layout` tree with `leaf` and `split` nodes).
 
-Tabs are the primary shell-navigation unit.
-Widgets are the workspace-side secondary inventory.
+## Active capabilities
 
-Each tab owns:
-- `widget_ids` inventory
-- `window_layout` tree (`leaf` / binary `split` with `horizontal`/`vertical` axis)
+- Create/close/rename/pin/unpin/reorder tabs.
+- Create split widgets with explicit side placement.
+- Move widgets by explicit split direction (`left`, `right`, `top`, `bottom`, outer zones, `center` swap).
+- Persist and restore layout composition presets (`split`/`focus`, active surfaces, focus surface).
+- Keep widget `connection_id` binding stable across tab/layout operations.
 
-Switching tabs synchronizes active widget to the first visible leaf in the target tab layout.
+## Contract rules
 
-Operations:
+- Focusing a tab resolves active widget from visible layout leaves.
+- Focusing a widget can update active tab when needed.
+- Layout changes do not mutate terminal session identity.
+- Closing a tab tears down its associated terminal/widget session mapping.
 
-- list tabs
-- get active tab
-- focus tab
-- move tab inside its current group
-- rename tab
-- pin or unpin tab
-- create terminal tab
-- create split terminal widget in active/target tab area
-- move existing widget by explicit split side (`left/right/top/bottom`)
-- close tab
-- list widgets
-- get active widget
-- focus widget
-- update active layout composition
-- save current layout as a reusable preset
-- switch active layout preset
+## Current release limits
 
-## Persistent Snapshot Model
+- Last remaining tab cannot be closed.
+- Cross-group drag between pinned and regular tabs is rejected.
+- Multi-session-in-one-terminal-block parity remains out of current release scope.
 
-Workspace persistence is file-backed by backend state (`state/workspace.json`) and uses an explicit snapshot envelope:
+## Deep links
 
-- `version`: schema version for snapshot format
-- `workspace`: normalized workspace snapshot
-
-Persisted fields are intentionally limited to restore-critical metadata:
-
-- workspace id/name
-- tab ordering, pinned state, title, tab-widget linkage
-- tab window layout tree
-- widget inventory and terminal/connection linkage
-- active tab and active widget ids
-- layout composition metadata (layout id, mode, active surfaces/regions, active focus surface)
-- saved layout preset list and active layout preset id
-
-Live PTY runtime state is not persisted in the workspace snapshot.
-
-## Why This Is Simpler Than TideTerm
-
-The old stack mixed layout state, transport identifiers, block metadata and UI view-model state. RunaTerminal deliberately starts with the thinner invariant set needed for long-lived maintainability:
-
-- tab inventory
-- tab title and pinned state
-- tab order inside pinned and regular groups
-- inventory
-- focus
-- typed widget descriptors
-
-The model now includes a minimal backend-owned split tree while still avoiding renderer-owned semantics in the backend.
+- Window behavior reference: [window-behavior-reference.md](./window-behavior-reference.md)
+- Window gap map: [window-behavior-gap.md](./window-behavior-gap.md)
+- Window validation notes: [window-behavior-validation.md](./window-behavior-validation.md)
+- Prior workspace baseline history: [history/workspace-navigation-baseline.md](./history/workspace-navigation-baseline.md)
+- Layout baseline history: [history/layout-composition-baseline.md](./history/layout-composition-baseline.md)
