@@ -21,6 +21,9 @@ This document records only the shell-layer issues that materially affected navig
    - opening `Files` after `Launcher` closed the launcher surface instead of stacking it
    - the workspace switcher stayed anchored to the top-left shell button without clipping
    - the right utility rail stretched to the same `967px` content height as the compat main row
+5. The same layer expectations held in the final headed validation sweep:
+   - `npx playwright test e2e/navigation-parity.spec.ts e2e/quick-actions.spec.ts e2e/structured-execution-block.spec.ts e2e/window-behavior.spec.ts e2e/terminal-parity.spec.ts -c e2e/playwright.config.ts --headed`
+   - result: `11 passed (35.1s)`
 
 ## Intentionally outside scope
 

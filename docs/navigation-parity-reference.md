@@ -27,6 +27,12 @@ This document uses the repo-root Tide sources as the primary reference for navig
   - primary reference for overlay container layering inside the shell layout
 - `tideterm/frontend/layout/lib/tilelayout.scss`
   - primary reference for absolute overlay/display/placeholder stacking and full-size stretch behavior
+- `tideterm/pkg/wcore/workspace.go`
+  - primary reference for workspace create/update defaults, workspace icon/color catalogs, and save/create lifecycle semantics
+- `tideterm/pkg/wcore/window.go`
+  - primary reference for workspace switching semantics at the window layer, including current-window reassignment and existing-window focus behavior
+- `tideterm/pkg/service/workspaceservice/workspaceservice.go`
+  - primary reference for switcher-facing list/create/update/delete/colors/icons service contracts used by Tide's workspace switcher flow
 
 ## Feature mapping
 
@@ -37,11 +43,20 @@ Primary files:
 - `tideterm/frontend/app/tab/workspaceswitcher.scss`
 - `tideterm/frontend/app/element/popover.tsx`
 - `tideterm/frontend/app/element/popover.scss`
+- `tideterm/pkg/wcore/workspace.go`
+- `tideterm/pkg/wcore/window.go`
+- `tideterm/pkg/service/workspaceservice/workspaceservice.go`
 
 Extracted behavior:
 - The switcher is a compact top-shell popover opened from a small button, not a full-width header surface.
 - The button shows the active workspace icon when the workspace is saved; otherwise it shows the default workspace SVG.
 - Opening the switcher refreshes the workspace list from backend workspace services.
+- Workspace save/create flows are backend-backed, not local-only UI state:
+  - `Save workspace` applies default name/icon/color when the active workspace is still unnamed
+  - `Create new workspace` creates a new unsaved workspace and activates it immediately
+- Tide's workspace service also exposes the switcher theme catalogs directly:
+  - workspace colors
+  - workspace icons
 - The switcher title is stateful:
   - `Open workspace` for an unsaved/current temporary workspace
   - `Switch workspace` for a saved workspace
@@ -51,6 +66,9 @@ Extracted behavior:
   - open-in-window state
   - inline edit affordance on hover
 - Selecting a row switches workspace immediately and dismisses the popover.
+- Tide's window-layer switch semantics are window-aware:
+  - if the target workspace is already claimed by another window, Tide focuses that window instead of reassigning the current one
+  - otherwise the current window is reassigned to the selected workspace
 - The bottom action is conditional:
   - `Save workspace` when the current workspace is unsaved
   - `Create new workspace` when the current workspace is already saved
@@ -122,6 +140,7 @@ Extracted behavior:
 
 - The inspected Tide source clearly shows launcher keyboard entry and the launcher block itself, but it does not show a separate dedicated visible launcher button in the inspected shell files.
 - The inspected Tide utility rail files show discoverability for apps/settings/help flyouts, but not a distinct launcher-specific flyout. For this batch, any visible compat-shell launcher entry must therefore be justified as an adaptation of Tide’s existing launcher plus utility-grammar behavior, not as an invented new navigation model.
+- Tide's workspace switcher is multi-window aware because the backend window/workspace layer can focus an existing workspace window instead of switching the current one. The compat browser runtime in this repository remains a single-window shell, so parity for this batch is judged on the user-visible switch/save/create/edit behavior rather than cross-window focus transfer.
 
 ## Reference note
 
