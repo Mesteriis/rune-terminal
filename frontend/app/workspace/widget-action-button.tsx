@@ -27,8 +27,8 @@ const WidgetActionButton = memo(
                 data-testid={testID}
                 className={
                     mode === "supercompact"
-                        ? "flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-sm overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
-                        : "flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-lg overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
+                        ? "flex flex-col justify-center items-center w-full py-1 pr-0.5 text-secondary text-[13px] overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
+                        : "flex flex-col justify-center items-center w-full py-1 pr-0.5 text-secondary text-[15px] overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
                 }
                 style={style}
                 onClick={onClick}
@@ -44,7 +44,7 @@ const WidgetActionButton = memo(
                                 <i className={makeIconClass(icon, true, iconOptions)}></i>
                             </div>
                             {mode === "normal" && label ? (
-                                <div className="text-xxs mt-0.5 w-full px-0.5 text-center whitespace-nowrap overflow-hidden text-ellipsis">
+                                <div className="mt-0.5 w-full px-0.5 text-center text-[9px] leading-tight whitespace-nowrap overflow-hidden text-ellipsis">
                                     {label}
                                 </div>
                             ) : null}

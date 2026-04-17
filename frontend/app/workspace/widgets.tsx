@@ -91,12 +91,12 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
         ? ({
               display: "flex",
               flexDirection: "column",
-              width: "3rem",
-              minWidth: "3rem",
+              width: "2.75rem",
+              minWidth: "2.75rem",
               overflow: "hidden",
-              paddingTop: "0.25rem",
-              paddingBottom: "0.25rem",
-              marginLeft: "-0.25rem",
+              paddingTop: "0.125rem",
+              paddingBottom: "0.125rem",
+              marginLeft: "-0.125rem",
               userSelect: "none",
               flexShrink: 0,
           } as const)
@@ -105,11 +105,11 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
         ? ({
               display: "flex",
               flexDirection: "column",
-              width: "3rem",
-              minWidth: "3rem",
-              paddingTop: "0.25rem",
-              paddingBottom: "0.25rem",
-              marginLeft: "-0.25rem",
+              width: "2.75rem",
+              minWidth: "2.75rem",
+              paddingTop: "0.125rem",
+              paddingBottom: "0.125rem",
+              marginLeft: "-0.125rem",
               userSelect: "none",
               position: "absolute",
               zIndex: -10,
@@ -117,7 +117,7 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
               pointerEvents: "none",
           } as const)
         : undefined;
-    const compatActionStyle = compatMode ? ({ minHeight: "32px", flexShrink: 0 } as const) : undefined;
+    const compatActionStyle = compatMode ? ({ minHeight: "28px", flexShrink: 0 } as const) : undefined;
 
     const setOpenUtilityFlyout = useCallback((target: UtilityFlyout | null) => {
         setIsAppsOpen(target === "apps");
@@ -167,7 +167,7 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
 
             const actionCount = (toolsEnabled ? 1 : 0) + (auditEnabled ? 1 : 0) + 3 + (showAppsButton ? 1 : 0);
             const totalWidgets = (widgets?.length || 0) + actionCount;
-            const minHeightPerWidget = 32;
+            const minHeightPerWidget = 28;
             const requiredHeight = totalWidgets * minHeightPerWidget;
 
             if (requiredHeight > containerHeight) {
@@ -444,7 +444,7 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
         <>
             <div
                 ref={containerRef}
-                className="flex flex-col w-12 overflow-hidden py-1 -ml-1 select-none"
+                className="flex flex-col w-11 overflow-hidden py-0.5 -ml-0.5 select-none"
                 style={compatWidgetsStyle}
                 onContextMenu={handleWidgetsBarContextMenu}
             >
@@ -608,7 +608,7 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
                 )}
                 {isDev() ? (
                     <div
-                        className="flex justify-center items-center w-full py-1 text-accent text-[30px]"
+                        className="flex justify-center items-center w-full py-1 text-accent text-[24px]"
                         title="Running TideTerm Dev Build"
                     >
                         <i className="fa fa-brands fa-dev fa-fw" />

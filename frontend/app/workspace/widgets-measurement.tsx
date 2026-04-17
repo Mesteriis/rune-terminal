@@ -35,7 +35,7 @@ const WidgetsMeasurement = memo(
     }: WidgetsMeasurementProps) => (
         <div
             ref={measurementRef}
-            className="flex flex-col w-12 py-1 -ml-1 select-none absolute -z-10 opacity-0 pointer-events-none"
+            className="flex flex-col w-11 py-0.5 -ml-0.5 select-none absolute -z-10 opacity-0 pointer-events-none"
             style={style}
         >
             {widgets.map((data, idx) => (
@@ -43,51 +43,51 @@ const WidgetsMeasurement = memo(
             ))}
             <div className="flex-grow" />
             {showToolsButton ? (
-                <div className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-lg">
+                <div className="flex flex-col justify-center items-center w-full py-1 pr-0.5 text-[15px]">
                     <div>
                         <i className={makeIconClass("screwdriver-wrench", true, { defaultIcon: "toolbox" })}></i>
                     </div>
-                    <div className="text-xxs mt-0.5 w-full px-0.5 text-center">Tools</div>
+                    <div className="mt-0.5 w-full px-0.5 text-center text-[9px] leading-tight">Tools</div>
                 </div>
             ) : null}
             {showAuditButton ? (
-                <div className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-lg">
+                <div className="flex flex-col justify-center items-center w-full py-1 pr-0.5 text-[15px]">
                     <div>
                         <i className={makeIconClass("clipboard-list", true, { defaultIcon: "list-check" })}></i>
                     </div>
-                    <div className="text-xxs mt-0.5 w-full px-0.5 text-center">Audit</div>
+                    <div className="mt-0.5 w-full px-0.5 text-center text-[9px] leading-tight">Audit</div>
                 </div>
             ) : null}
-            <div className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-lg">
+            <div className="flex flex-col justify-center items-center w-full py-1 pr-0.5 text-[15px]">
                 <div>
                     <i className={makeIconClass("folder-open", true)}></i>
                 </div>
-                <div className="text-xxs mt-0.5 w-full px-0.5 text-center">{filesLabel}</div>
+                <div className="mt-0.5 w-full px-0.5 text-center text-[9px] leading-tight">{filesLabel}</div>
             </div>
             {showQuickActionsButton ? (
-                <div className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-lg">
+                <div className="flex flex-col justify-center items-center w-full py-1 pr-0.5 text-[15px]">
                     <div>
                         <i className={makeIconClass("bolt", true)}></i>
                     </div>
-                    <div className="text-xxs mt-0.5 w-full px-0.5 text-center">{quickActionsLabel}</div>
+                    <div className="mt-0.5 w-full px-0.5 text-center text-[9px] leading-tight">{quickActionsLabel}</div>
                 </div>
             ) : null}
             {showAppsButton ? (
-                <div className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-lg">
+                <div className="flex flex-col justify-center items-center w-full py-1 pr-0.5 text-[15px]">
                     <div>
                         <i className={makeIconClass("cube", true)}></i>
                     </div>
-                    <div className="text-xxs mt-0.5 w-full px-0.5 text-center">{appsLabel}</div>
+                    <div className="mt-0.5 w-full px-0.5 text-center text-[9px] leading-tight">{appsLabel}</div>
                 </div>
             ) : null}
-            <div className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-lg">
+            <div className="flex flex-col justify-center items-center w-full py-1 pr-0.5 text-[15px]">
                 <div>
                     <i className={makeIconClass("gear", true)}></i>
                 </div>
-                <div className="text-xxs mt-0.5 w-full px-0.5 text-center">{settingsLabel}</div>
+                <div className="mt-0.5 w-full px-0.5 text-center text-[9px] leading-tight">{settingsLabel}</div>
             </div>
             {showDevBadge ? (
-                <div className="flex justify-center items-center w-full py-1 text-accent text-[30px]" title="Running TideTerm Dev Build">
+                <div className="flex justify-center items-center w-full py-1 text-accent text-[24px]" title="Running TideTerm Dev Build">
                     <i className="fa fa-brands fa-dev fa-fw" />
                 </div>
             ) : null}

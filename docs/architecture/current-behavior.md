@@ -31,6 +31,9 @@ It is intentionally operational, not narrative.
   - returning to the AI panel
   - opening files, runtime, audit, MCP, apps, and settings/help surfaces
   - quickly focusing known widgets in the current workspace
+- The compat shell utility rail now uses a narrower chrome rhythm:
+  - the rail is reduced to a slimmer fixed width with smaller icon/label sizing
+  - compat tab content uses a tighter outer frame and smaller inter-pane split gaps
 - Launcher discoverability in the active compat shell now lives inside that right-utility flyout rather than a separate top-level panel.
 - The compat shell right-utility rail now enforces a single active flyout:
   - opening launcher/files/tools/audit/apps/settings replaces the previous flyout instead of stacking overlays

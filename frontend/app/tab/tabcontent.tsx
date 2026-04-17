@@ -43,7 +43,7 @@ const CompatTabContent = React.memo(({ tabId, compatWorkspace }: TabContentProps
         );
 
     return (
-        <div className="relative flex w-full flex-grow min-h-0 overflow-hidden p-[3px]">
+        <div className="relative flex w-full flex-grow min-h-0 overflow-hidden p-[2px]">
             {innerContent}
         </div>
     );

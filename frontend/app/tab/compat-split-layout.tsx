@@ -392,7 +392,7 @@ const CompatSplitLayout = memo(({ tabId, tab, widgets, activeWidgetId }: CompatS
         const axis = node.axis === "vertical" ? "vertical" : "horizontal";
         return (
             <div
-                className={clsx("flex flex-1 min-h-0 min-w-0 gap-[3px]", axis === "vertical" ? "flex-col" : "flex-row")}
+                className={clsx("flex flex-1 min-h-0 min-w-0 gap-[2px]", axis === "vertical" ? "flex-col" : "flex-row")}
                 data-testid={`compat-split-${axis}`}
             >
                 <div className="flex flex-1 min-h-0 min-w-0">{renderNode(node.first)}</div>

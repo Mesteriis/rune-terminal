@@ -24,8 +24,8 @@ const WidgetItem = memo(({ widget, mode }: WidgetItemProps) => {
             placement="left"
             disable={shouldDisableTooltip}
             divClassName={clsx(
-                "flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer",
-                mode === "supercompact" ? "text-sm" : "text-lg",
+                "flex flex-col justify-center items-center w-full py-1 pr-0.5 text-secondary overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer",
+                mode === "supercompact" ? "text-[13px]" : "text-[15px]",
                 widget["display:hidden"] && "hidden"
             )}
             divOnClick={() => handleWidgetSelect(widget)}
@@ -36,7 +36,7 @@ const WidgetItem = memo(({ widget, mode }: WidgetItemProps) => {
             {mode === "normal" && !isBlank(widget.label) ? (
                 <div
                     ref={labelRef}
-                    className="text-xxs mt-0.5 w-full px-0.5 text-center whitespace-nowrap overflow-hidden text-ellipsis"
+                    className="mt-0.5 w-full px-0.5 text-center text-[9px] leading-tight whitespace-nowrap overflow-hidden text-ellipsis"
                 >
                     {widget.label}
                 </div>
