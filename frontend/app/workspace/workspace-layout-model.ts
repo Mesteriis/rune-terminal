@@ -3,6 +3,7 @@
 
 import { WaveAIModel } from "@/app/aipanel/waveai-model";
 import { isWaveAICompatRuntime } from "@/app/aipanel/compat-context";
+import { workspaceStore } from "@/app/state/workspace.store";
 import type { WorkspaceStoreLayout } from "@/app/state/workspace.store";
 import { globalStore } from "@/app/store/jotaiStore";
 import * as WOS from "@/app/store/wos";
@@ -10,6 +11,7 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { getLayoutModelForStaticTab } from "@/layout/lib/layoutModelHooks";
 import { atoms, getApi, getOrefMetaKeyAtom, recordTEvent, refocusNode } from "@/store/global";
+import { fireAndForget } from "@/util/util";
 import * as jotai from "jotai";
 import { debounce } from "lodash-es";
 import type { GroupImperativeHandle, Layout as PanelLayout, PanelImperativeHandle } from "react-resizable-panels";
@@ -266,6 +268,40 @@ class WorkspaceLayoutModel {
         this.syncAIPanelRef();
     }
 
+    private buildCompatLayoutForAIPanelVisibility(visible: boolean): WorkspaceStoreLayout | null {
+        const currentLayout = workspaceStore.getSnapshot().active.layout;
+        const hasAI = currentLayout.surfaces.some((surface) => surface.id === "ai");
+        let nextSurfaces = currentLayout.surfaces;
+        let nextActiveSurfaceId = currentLayout.activeSurfaceId;
+        let changed = false;
+
+        if (visible && !hasAI) {
+            nextSurfaces = [...currentLayout.surfaces, { id: "ai", region: "sidebar" }];
+            changed = true;
+        } else if (!visible && hasAI) {
+            nextSurfaces = currentLayout.surfaces.filter((surface) => surface.id !== "ai");
+            changed = true;
+        }
+
+        if (visible && currentLayout.mode === "focus" && nextActiveSurfaceId !== "ai") {
+            nextActiveSurfaceId = "ai";
+            changed = true;
+        } else if (!visible && nextActiveSurfaceId === "ai") {
+            nextActiveSurfaceId = nextSurfaces.find((surface) => surface.id !== "ai")?.id ?? "terminal";
+            changed = true;
+        }
+
+        if (!changed) {
+            return null;
+        }
+
+        return {
+            ...currentLayout,
+            surfaces: nextSurfaces,
+            activeSurfaceId: nextActiveSurfaceId,
+        };
+    }
+
     setAIPanelVisible(visible: boolean, opts?: { nofocus?: boolean }): void {
         if (this.focusTimeoutRef != null) {
             clearTimeout(this.focusTimeoutRef);
@@ -278,6 +314,12 @@ class WorkspaceLayoutModel {
         }
         globalStore.set(this.panelVisibleAtom, visible);
         getApi().setWaveAIOpen(visible);
+        if (isCompatRuntime()) {
+            const nextLayout = this.buildCompatLayoutForAIPanelVisibility(visible);
+            if (nextLayout != null) {
+                fireAndForget(() => workspaceStore.updateLayout(nextLayout));
+            }
+        }
         if (!isCompatRuntime()) {
             RpcApi.SetMetaCommand(TabRpcClient, {
                 oref: WOS.makeORef("tab", this.getTabId()),

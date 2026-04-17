@@ -238,6 +238,8 @@ const TabBar = memo(({ workspace, compatMode = false }: TabBarProps) => {
     const tabsWrapperRef = useRef<HTMLDivElement>(null);
     const tabRefs = useRef<React.RefObject<HTMLDivElement>[]>([]);
     const addBtnRef = useRef<HTMLButtonElement>(null);
+    const addRemoteBtnRef = useRef<HTMLButtonElement>(null);
+    const remoteProfilesBtnRef = useRef<HTMLButtonElement>(null);
     const draggingRemovedRef = useRef(false);
     const draggingTabDataRef = useRef({
         tabId: "",
@@ -322,6 +324,8 @@ const TabBar = memo(({ workspace, compatMode = false }: TabBarProps) => {
         const windowDragLeftWidth = draggerLeftRef.current.getBoundingClientRect().width;
         const windowDragRightWidth = draggerRightRef.current?.getBoundingClientRect().width ?? 0;
         const addBtnWidth = addBtnRef.current.getBoundingClientRect().width;
+        const addRemoteBtnWidth = addRemoteBtnRef.current?.getBoundingClientRect().width ?? 0;
+        const remoteProfilesBtnWidth = remoteProfilesBtnRef.current?.getBoundingClientRect().width ?? 0;
         const updateStatusLabelWidth = updateStatusBannerRef.current?.getBoundingClientRect().width ?? 0;
         const configErrorWidth = configErrorButtonRef.current?.getBoundingClientRect().width ?? 0;
         const appMenuButtonWidth = appMenuButtonRef.current?.getBoundingClientRect().width ?? 0;
@@ -331,6 +335,8 @@ const TabBar = memo(({ workspace, compatMode = false }: TabBarProps) => {
             windowDragLeftWidth +
             windowDragRightWidth +
             addBtnWidth +
+            addRemoteBtnWidth +
+            remoteProfilesBtnWidth +
             updateStatusLabelWidth +
             configErrorWidth +
             appMenuButtonWidth +
@@ -818,7 +824,12 @@ const TabBar = memo(({ workspace, compatMode = false }: TabBarProps) => {
         title: "Remote Profiles",
     };
     return (
-        <div ref={tabbarWrapperRef} className="tab-bar-wrapper" onContextMenuCapture={handleCompatContextMenuCapture}>
+        <div
+            ref={tabbarWrapperRef}
+            className="tab-bar-wrapper"
+            onContextMenuCapture={handleCompatContextMenuCapture}
+            data-testid="workspace-tab-bar"
+        >
             <div
                 ref={draggerLeftRef}
                 className="h-full shrink-0 z-window-drag"
@@ -836,7 +847,7 @@ const TabBar = memo(({ workspace, compatMode = false }: TabBarProps) => {
             )}
             <WaveAIButton />
             <WorkspaceSwitcher ref={workspaceSwitcherRef} compatMode={compatMode} />
-            <div className="tab-bar" ref={tabBarRef} data-overlayscrollbars-initialize>
+            <div className="tab-bar" ref={tabBarRef} data-overlayscrollbars-initialize data-testid="workspace-tab-strip">
                 <div className="tabs-wrapper" ref={tabsWrapperRef} style={{ width: `${tabsWrapperWidth}px` }}>
                     {tabIds.map((tabId, index) => {
                         const isPinned = pinnedTabIds.has(tabId);
@@ -864,8 +875,8 @@ const TabBar = memo(({ workspace, compatMode = false }: TabBarProps) => {
                 </div>
             </div>
             <IconButton className="add-tab" ref={addBtnRef} decl={addtabButtonDecl} />
-            {!compatMode ? <IconButton className="add-remote-tab" decl={addRemoteTabButtonDecl} /> : null}
-            {!compatMode ? <IconButton className="add-remote-profiles" decl={remoteProfilesButtonDecl} /> : null}
+            {!compatMode ? <IconButton className="add-remote-tab" ref={addRemoteBtnRef} decl={addRemoteTabButtonDecl} /> : null}
+            {!compatMode ? <IconButton className="add-remote-profiles" ref={remoteProfilesBtnRef} decl={remoteProfilesButtonDecl} /> : null}
             <div className="tab-bar-right">
                 <UpdateStatusBanner ref={updateStatusBannerRef} />
                 <ConfigErrorIcon buttonRef={configErrorButtonRef} />
