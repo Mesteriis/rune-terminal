@@ -75,3 +75,38 @@ That proved the upstream workspace shell was already receiving the full height, 
 ## Root cause note
 
 This was not a backend/layout-state bug and not a general shell-tree collapse from `html`/`body`/`#main`. The broken contract was local to the compat active-content root inside the already-correct workspace shell region.
+
+## Fix applied
+
+- Updated [`frontend/app/tab/compat-split-layout.tsx`](/Users/avm/projects/Personal/tideterm/runa-terminal/frontend/app/tab/compat-split-layout.tsx:393) so the compat split root now declares the same effective full-size contract that Tide's `TileLayout` relies on:
+  - added `h-full`
+  - added `w-full`
+  - added `self-stretch`
+- This keeps the existing shell composition intact and only restores the missing stretch/fill propagation from the centered tab-content wrapper into the compat layout root.
+
+## Re-validation after fix
+
+### Real desktop validation
+
+- Relaunched the live desktop app with:
+  - `npm run tauri:dev`
+- Confirmed the visible desktop window was the active `rterm-desktop` window:
+  - window id: `12825`
+  - title: `RunaTerminal`
+- Captured the live post-fix window directly from the desktop compositor:
+  - `screencapture -x -l 12825 /tmp/rterm-window-after-2.png`
+- Visible result:
+  - the main shell content now fills the center region from the top tab row down to the bottom edge
+  - the active terminal surface stretches to the full available pane height
+  - the earlier empty dead band above and below the active content is no longer present
+
+### Headed browser validation
+
+- Re-ran the visible regression sweep:
+  - `npx playwright test e2e/navigation-parity.spec.ts e2e/quick-actions.spec.ts e2e/structured-execution-block.spec.ts e2e/window-behavior.spec.ts e2e/terminal-parity.spec.ts -c e2e/playwright.config.ts --headed`
+  - result: `11 passed`
+- Re-checked the exact fill contract in a visible Playwright session and measured:
+  - tab-content wrapper height: `867px`
+  - `compat-window-layout` height: `864px`
+  - active widget pane height: `864px`
+- That post-fix measurement confirms the compat layout now stretches to the full available shell region instead of collapsing to intrinsic content height.

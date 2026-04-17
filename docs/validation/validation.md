@@ -24,6 +24,7 @@ Do not append new free-form log blocks in this file. Update the relevant domain 
 ## Focused parity validations
 
 - [../navigation-parity-validation.md](../navigation-parity-validation.md)
+- [../shell-stretch-baseline.md](../shell-stretch-baseline.md)
 - [../terminal-parity-validation.md](../terminal-parity-validation.md)
 
 ## Legacy archive

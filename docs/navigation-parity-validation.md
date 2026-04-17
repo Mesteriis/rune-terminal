@@ -3,7 +3,7 @@
 ## Last verified state
 
 - Date: `2026-04-17`
-- State: `VERIFIED` for the navigation / launcher parity batch in a live runtime and a headed, visible browser session
+- State: `VERIFIED` for the navigation / launcher parity batch after re-checking the live desktop window and the headed, visible browser session for the shell stretch/fill correction slice
 - Scope:
   - workspace switcher behavior
   - launcher discoverability and action entry
@@ -12,19 +12,38 @@
   - shell fill/stretch behavior affecting those surfaces
   - adjacent shell regressions: terminal, quick actions, structured execution, tools, audit, MCP, remote-context basics, and window behavior parity
 
-## Exact headed browser flow used
+## Exact validation flow used
 
-- Desktop startup smoke:
+### Real desktop validation
+
+- Desktop runtime:
   - `npm run tauri:dev`
   - observed desktop process launch:
-    - `{"base_url":"http://127.0.0.1:56181","pid":26701}`
+    - `{"base_url":"http://127.0.0.1:60917","pid":39052}`
+- Live desktop window check:
+  - confirmed visible `rterm-desktop` window:
+    - window id: `12825`
+    - title: `RunaTerminal`
+  - captured the post-fix app window directly:
+    - `screencapture -x -l 12825 /tmp/rterm-window-after-2.png`
+- Visible desktop result:
+  - the main compat shell content filled the center region correctly
+  - the active terminal/content surface stretched to the bottom edge of the pane
+  - launcher, files, tools, and switcher surfaces still opened above the corrected shell body without clipping
+
+### Headed browser validation
+
 - Live headed parity and regression sweep:
   - `npx playwright test e2e/navigation-parity.spec.ts e2e/quick-actions.spec.ts e2e/structured-execution-block.spec.ts e2e/window-behavior.spec.ts e2e/terminal-parity.spec.ts -c e2e/playwright.config.ts --headed`
-  - result: `11 passed (35.1s)`
+  - result: `11 passed (36.0s)`
+- Post-fix shell fill measurement in a visible Playwright browser:
+  - wrapper height: `867px`
+  - `compat-window-layout` height: `864px`
+  - active widget pane height: `864px`
 - Release gate sweep used alongside the headed proof:
   - `npm run validate`
   - result: passed
-- The browser run above was headed and visible, not hidden.
+- The browser run above was headed and visible, not hidden, and the desktop window check above was performed against the real visible Tauri window.
 
 ## What was visibly verified
 
@@ -43,6 +62,8 @@
   - opening `Files` after `Launcher` dismissed the launcher instead of stacking overlapping flyouts
   - the workspace switcher stayed anchored in the top-left shell area without clipping
   - the right utility rail stretched to the same height as the main compat content row
+  - the main compat content region filled the available shell body instead of collapsing into a centered band
+  - the active terminal/content pane stretched to the full available layout height in both the headed browser and the real desktop app window
 - No-break regressions:
   - terminal parity behaviors still passed in the same headed sweep
   - quick actions still opened files and MCP controls
