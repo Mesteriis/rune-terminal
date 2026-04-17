@@ -5,6 +5,7 @@ import { getTerminalFacade } from "@/compat/terminal";
 import type { TerminalSnapshot } from "@/rterm-api/terminal/types";
 import { CenteredDiv } from "@/element/quickelems";
 import { explainLatestTerminalOutputInAI } from "./explain-latest-output";
+import { handleCompatTerminalClipboardKeydown } from "./compat-terminal-keydown";
 import { TermWrap } from "./termwrap";
 import { useEffect, useRef, useState } from "react";
 import "./term.scss";
@@ -72,7 +73,7 @@ export function CompatTerminalView({ widgetId, connectionId }: CompatTerminalVie
                 ignoreBracketedPasteMode: false,
             },
             {
-                keydownHandler: () => true,
+                keydownHandler: (event: KeyboardEvent) => handleCompatTerminalClipboardKeydown(event, termWrapRef.current),
                 useWebGl: false,
                 sendDataHandler: (data: string) => {
                     void terminalStore.sendInput(widgetId, data).catch((err) => {

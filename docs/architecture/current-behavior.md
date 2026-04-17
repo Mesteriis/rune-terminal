@@ -103,9 +103,10 @@ It is intentionally operational, not narrative.
 - Terminal SSE attach now snapshots and subscribes atomically in the backend stream path, so buffered replay and live follow do not drop chunks in the handoff gap.
 - The frontend terminal shell uses a compact TideTerm-derived header, toolbar, and command-strip layout. `Refresh`, `Focus`, `Interrupt`, `Clear view`, and `Jump to latest` are shell affordances layered over the same Go-owned session state.
 - Terminal output is written in bounded frontend batches so large output bursts do not block the UI thread as one giant write.
-- Terminal keyboard copy/paste now has explicit shell-level shortcuts:
-  - `Cmd/Ctrl+C` copies terminal selection when a selection exists
-  - `Cmd/Ctrl+V` (and `Ctrl+Shift+V`) pastes clipboard content into the active PTY input path
+- Terminal keyboard copy/paste now follows TideTerm shortcut semantics on the active compat path:
+  - `Ctrl+Shift+C` copies the terminal selection when a selection exists
+  - `Ctrl+Shift+V` pastes clipboard content into the active PTY input path
+  - `Ctrl+V` also pastes when `app:ctrlvpaste` is enabled; default remains Windows-only
 - On startup, the runtime eagerly boots sessions for terminal widgets in the default workspace.
 - When a process exits, terminal state moves to `exited` or `failed`, input/interrupt are disabled, and active stream subscribers are closed.
 
