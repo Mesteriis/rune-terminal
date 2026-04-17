@@ -81,7 +81,13 @@ const AuditFloatingWindow = memo(({ isOpen, onClose, referenceElement, refreshNo
     return (
         <FloatingPortal>
             <div ref={refs.setFloating} style={floatingStyles} {...getFloatingProps()} className="z-50">
-                <UtilitySurfaceFrame title="Audit" icon="clipboard-list" onClose={onClose} widthClassName="w-[min(92vw,30rem)] max-w-[30rem]">
+                <UtilitySurfaceFrame
+                    title="Audit"
+                    icon="clipboard-list"
+                    onClose={onClose}
+                    widthClassName="w-[min(92vw,30rem)] max-w-[30rem]"
+                    testID="audit-surface"
+                >
                     <div className="min-h-0 overflow-y-auto p-3">
                         {loading ? (
                             <div className="flex items-center justify-center p-8">

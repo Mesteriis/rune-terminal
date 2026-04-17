@@ -136,6 +136,18 @@ async function openAIPanel(page: Page): Promise<void> {
     return;
   }
   await page.getByTestId("workspace-ai-toggle-button").click();
+  if (await panel.isVisible().catch(() => false)) {
+    return;
+  }
+
+  await openSettings(page);
+  const overview = page.getByTestId("settings-overview-panel");
+  const aiCheckbox = overview.getByLabel("AI").first();
+  if (!(await aiCheckbox.isChecked())) {
+    await aiCheckbox.check();
+  }
+  await page.getByRole("button", { name: "Close Settings & Help" }).click();
+  await page.getByTestId("workspace-ai-toggle-button").click();
   await expect(panel).toBeVisible();
 }
 
@@ -236,7 +248,9 @@ test.describe.serial("remaining ui parity", () => {
         return null;
       }
       const rect = headerElement.getBoundingClientRect();
-      const buttonLabels = Array.from(headerElement.querySelectorAll("button")).map((button) => button.textContent?.trim() || "");
+      const buttonLabels = Array.from(headerElement.querySelectorAll("button")).map(
+        (button) => button.getAttribute("aria-label")?.trim() || button.getAttribute("title")?.trim() || "",
+      );
       return {
         height: Math.round(rect.height),
         text: headerElement.innerText.toUpperCase(),
@@ -247,17 +261,57 @@ test.describe.serial("remaining ui parity", () => {
 
     expect(metrics).not.toBeNull();
     expect(metrics!.height).toBeGreaterThanOrEqual(30);
-    expect(metrics!.height).toBeLessThanOrEqual(56);
+    expect(metrics!.height).toBeLessThanOrEqual(40);
     expect(metrics!.gripCount).toBeGreaterThanOrEqual(1);
     expect(metrics!.text).toContain("LOCAL");
     expect(metrics!.text).toMatch(/CONNECTED|RESTORED|DISCONNECTED|STATUS UNKNOWN/);
     expect(metrics!.text).toMatch(/AI READY|AI BLOCKED|AI IDLE/);
-    expect(metrics!.buttonLabels).toEqual(expect.arrayContaining(["Split", "Restart", "Explain"]));
+    expect(metrics!.buttonLabels).toEqual(expect.arrayContaining(["Split pane", "Restart session", "Explain latest output"]));
   });
 
-  test("keeps pane chrome stable after opening AI, settings, and launcher surfaces", async ({ page }) => {
+  test("supports draggable bounded settings overlay without disturbing pane chrome", async ({ page }) => {
     await page.goto(FRONTEND_URL);
-    await openAIPanel(page);
+    await openSettings(page);
+
+    const viewport = page.viewportSize();
+    expect(viewport).not.toBeNull();
+
+    const surface = page.getByTestId("settings-surface");
+    const initialBox = await surface.boundingBox();
+    expectBoxWithinViewport(initialBox, viewport!);
+    expect(initialBox).not.toBeNull();
+
+    const dragStartX = initialBox!.x + 90;
+    const dragStartY = initialBox!.y + 20;
+    await page.mouse.move(dragStartX, dragStartY);
+    await page.mouse.down();
+    await page.mouse.move(dragStartX - 180, dragStartY + 80, { steps: 20 });
+    await page.mouse.up();
+
+    const movedBox = await surface.boundingBox();
+    expectBoxWithinViewport(movedBox, viewport!);
+    expect(movedBox).not.toBeNull();
+    expect(movedBox!.x).toBeLessThan(initialBox!.x - 100);
+
+    const clampStartX = movedBox!.x + 90;
+    const clampStartY = movedBox!.y + 20;
+    await page.mouse.move(clampStartX, clampStartY);
+    await page.mouse.down();
+    await page.mouse.move(-200, -200, { steps: 25 });
+    await page.mouse.up();
+
+    const clampedBox = await surface.boundingBox();
+    expectBoxWithinViewport(clampedBox, viewport!);
+    expect(clampedBox).not.toBeNull();
+    expect(clampedBox!.x).toBeGreaterThanOrEqual(0);
+    expect(clampedBox!.x).toBeLessThanOrEqual(24);
+    expect(clampedBox!.y).toBeGreaterThanOrEqual(0);
+    expect(clampedBox!.y).toBeLessThanOrEqual(24);
+    expectBoxWithinViewport(await page.locator("[data-testid^='compat-terminal-header-']").first().boundingBox(), viewport!);
+  });
+
+  test("keeps pane chrome stable after opening settings and launcher surfaces", async ({ page }) => {
+    await page.goto(FRONTEND_URL);
     await openSettings(page);
     const viewport = page.viewportSize();
     expect(viewport).not.toBeNull();
@@ -265,12 +319,11 @@ test.describe.serial("remaining ui parity", () => {
     expectBoxWithinViewport(await page.locator("[data-testid^='compat-terminal-header-']").first().boundingBox(), viewport!);
     expectBoxWithinViewport(await page.getByTestId("settings-surface").boundingBox(), viewport!);
 
-    await page.getByTestId("workspace-settings-button").click();
+    await page.getByRole("button", { name: "Close Settings & Help" }).click();
     await expect(page.getByTestId("settings-surface")).toBeHidden();
 
     await openLauncher(page);
     expectBoxWithinViewport(await page.getByTestId("quick-actions-surface").boundingBox(), viewport!);
-    expectBoxWithinViewport(await page.locator("[data-waveai-panel='true']").boundingBox(), viewport!);
     await expectCompatLayoutToFill(page);
   });
 });

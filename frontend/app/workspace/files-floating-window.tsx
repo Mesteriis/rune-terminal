@@ -306,6 +306,7 @@ const FilesFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floatin
                     icon="folder-open"
                     onClose={onClose}
                     widthClassName="w-[min(92vw,29rem)] max-w-[29rem]"
+                    testID="files-surface"
                     headerActions={
                         <div className="flex items-center gap-1">
                             <button

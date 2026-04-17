@@ -195,6 +195,11 @@ test.describe.serial("shell chrome parity", () => {
 
   test("renders compact top chrome with Tide-like header hierarchy and bounded shell surfaces", async ({ page }) => {
     await page.goto(FRONTEND_URL);
+    await expect(page.getByTestId("workspace-tab-bar")).toBeVisible();
+    await expect(page.getByTestId("workspace-ai-toggle-button")).toBeVisible();
+    await expect(page.getByTestId("workspace-switcher-button")).toBeVisible();
+    await expect(page.getByTestId("workspace-quick-actions-button")).toBeVisible();
+    await expect(page.getByTestId("workspace-settings-button")).toBeVisible();
 
     const chromeMetrics = await page.evaluate(() => {
       const topBar = document.querySelector<HTMLElement>("[data-testid='workspace-tab-bar']");
@@ -232,6 +237,8 @@ test.describe.serial("shell chrome parity", () => {
         tabStrip: toBox(tabStrip),
         quickActionsButton: toBox(quickActionsButton),
         settingsButton: toBox(settingsButton),
+        quickActionsWidth: Math.round(quickActionsButton.getBoundingClientRect().width),
+        settingsWidth: Math.round(settingsButton.getBoundingClientRect().width),
         addRemoteCount: document.querySelectorAll(".add-remote-tab, .add-remote-profiles").length,
       };
     });
@@ -246,6 +253,8 @@ test.describe.serial("shell chrome parity", () => {
     expect(chromeMetrics!.tabStrip.width).toBeGreaterThan(chromeMetrics!.switcherButton.width * 3);
     expect(chromeMetrics!.quickActionsButton.y).toBeGreaterThan(chromeMetrics!.topBar.y + chromeMetrics!.topBar.height);
     expect(chromeMetrics!.settingsButton.y).toBeGreaterThan(chromeMetrics!.topBar.y + chromeMetrics!.topBar.height);
+    expect(chromeMetrics!.quickActionsWidth).toBeLessThanOrEqual(44);
+    expect(chromeMetrics!.settingsWidth).toBeLessThanOrEqual(44);
     expect(chromeMetrics!.addRemoteCount).toBe(0);
 
     const viewport = page.viewportSize();
@@ -262,7 +271,7 @@ test.describe.serial("shell chrome parity", () => {
 
     await expect(page.getByTestId("workspace-tab-bar")).toBeVisible();
     await expect(page.getByTestId("workspace-tab-strip")).toBeVisible();
-    await page.getByLabel("Close settings").click();
+    await page.getByRole("button", { name: "Close Settings & Help" }).click();
     await expect(page.getByTestId("settings-surface")).toBeHidden();
   });
 
@@ -281,7 +290,7 @@ test.describe.serial("shell chrome parity", () => {
     await expect(aiPanel).toBeHidden();
 
     await overview.getByRole("button", { name: "Focus" }).click();
-    await page.getByLabel("Close settings").click();
+    await page.getByRole("button", { name: "Close Settings & Help" }).click();
     await expect(page.getByTestId("settings-surface")).toBeHidden();
 
     await page.getByTestId("workspace-ai-toggle-button").click();

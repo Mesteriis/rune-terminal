@@ -545,7 +545,13 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
     return (
         <FloatingPortal>
             <div ref={refs.setFloating} style={floatingStyles} {...getFloatingProps()} className="z-50">
-                <UtilitySurfaceFrame title="Tools" icon="screwdriver-wrench" onClose={onClose} widthClassName="w-[min(92vw,32rem)] max-w-[32rem]">
+                <UtilitySurfaceFrame
+                    title="Tools"
+                    icon="screwdriver-wrench"
+                    onClose={onClose}
+                    widthClassName="w-[min(92vw,32rem)] max-w-[32rem]"
+                    testID="tools-surface"
+                >
                     <div className="min-h-0 overflow-y-auto p-3">
                         {loading ? (
                             <div className="flex items-center justify-center p-8">

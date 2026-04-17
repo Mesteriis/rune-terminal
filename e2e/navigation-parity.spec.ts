@@ -284,17 +284,19 @@ test.describe.serial("navigation parity", () => {
 
     await page.getByTestId("quick-actions-filter").fill("files");
     await page.getByTestId("quick-action-item-ui.open_files_panel").click();
-    const filesPanelAction = page.getByRole("button", { name: "Attach Selected File To AI Context" });
-    await expect(filesPanelAction).toBeVisible();
+    const filesSurface = page.getByTestId("files-surface");
+    await expect(filesSurface).toBeVisible();
     await expect(page.getByTestId("quick-actions-surface")).toBeHidden();
-    const filesBox = await filesPanelAction.locator("xpath=ancestor::div[contains(@class,'shadow-xl')][1]").boundingBox();
+    const filesBox = await filesSurface.boundingBox();
     expectBoxWithinViewport(filesBox, viewport!);
 
     await page.getByTestId("workspace-tools-button").click();
+    await expect(page.getByTestId("tools-surface")).toBeVisible();
     await expect(page.getByText("MCP Servers")).toBeVisible();
-    await expect(filesPanelAction).toBeHidden();
+    await expect(filesSurface).toBeHidden();
 
     await page.getByTestId("workspace-audit-button").click();
+    await expect(page.getByTestId("audit-surface")).toBeVisible();
     await expect(page.getByText("Audit").last()).toBeVisible();
     await expect(page.getByText("MCP Servers")).toBeHidden();
 
