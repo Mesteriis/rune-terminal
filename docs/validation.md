@@ -200,6 +200,33 @@
 - Result:
   - structured execution block workflow now has truthful end-to-end UI automation coverage without mock-only shortcuts.
 
+<a id="quick-actions-headed-browser"></a>
+## Quick actions headed browser validation
+
+- Date: `2026-04-17`
+- Status: `VERIFIED`
+- Validation steps:
+  - live headed browser run (visible Playwright session, not headless) against:
+    - frontend: `http://127.0.0.1:4195`
+    - core: `http://127.0.0.1:61321`
+  - quick-actions browser flow:
+    1. open utility rail `Quick Actions`
+    2. trigger UI-only action `Open Files Panel`
+    3. trigger execution-bearing action `Create Local Terminal Tab`
+    4. trigger MCP-related explicit action `Open MCP Controls`
+    5. send terminal input `echo quick-actions-shell-still-works`
+  - API truth cross-check:
+    - `curl -H 'Authorization: Bearer quick-actions-headed-token' http://127.0.0.1:61321/api/v1/workflow/quick-actions`
+    - verified `15` actions with expected IDs and metadata fields (`target_kind`, `execution_kind`, explicit context requirements)
+  - console sanity:
+    - headed run console contained startup/info logs only and no runtime errors
+- Result:
+  - quick-actions surface is operational in visible browser use.
+  - UI-only, execution-bearing, and MCP-related explicit action paths are all wired and usable.
+  - shell baseline remained intact (terminal input/output, AI surface, tools/MCP visibility).
+- Notes:
+  - detailed step-by-step flow and observations are recorded in `docs/quick-actions-browser-validation.md`.
+
 <a id="remote-restore-missing-profile-error"></a>
 ## Remote restore missing-profile error semantics
 
