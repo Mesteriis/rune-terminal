@@ -42,6 +42,40 @@ func TestSaveAndLoadSnapshotRoundTrip(t *testing.T) {
 	}
 }
 
+func TestSaveAndLoadSnapshotPreservesEmptyWorkspace(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(t.TempDir(), "workspace.json")
+	snapshot := BootstrapDefault()
+	snapshot.Tabs = nil
+	snapshot.Widgets = nil
+	snapshot.ActiveTabID = ""
+	snapshot.ActiveWidgetID = ""
+
+	if err := SaveSnapshot(path, snapshot); err != nil {
+		t.Fatalf("SaveSnapshot error: %v", err)
+	}
+	loaded, err := LoadSnapshot(path, BootstrapDefault())
+	if err != nil {
+		t.Fatalf("LoadSnapshot error: %v", err)
+	}
+	if len(loaded.Tabs) != 0 {
+		t.Fatalf("expected zero tabs, got %#v", loaded.Tabs)
+	}
+	if len(loaded.Widgets) != 0 {
+		t.Fatalf("expected zero widgets, got %#v", loaded.Widgets)
+	}
+	if loaded.ActiveTabID != "" {
+		t.Fatalf("expected empty active tab id, got %q", loaded.ActiveTabID)
+	}
+	if loaded.ActiveWidgetID != "" {
+		t.Fatalf("expected empty active widget id, got %q", loaded.ActiveWidgetID)
+	}
+	if loaded.ID != snapshot.ID || loaded.Name != snapshot.Name {
+		t.Fatalf("expected workspace identity preserved, got %#v", loaded)
+	}
+}
+
 func TestLoadSnapshotNormalizesInvalidSnapshot(t *testing.T) {
 	t.Parallel()
 

@@ -68,6 +68,7 @@ func normalizeSnapshot(candidate Snapshot, fallback Snapshot) Snapshot {
 	if normalized.Name == "" {
 		normalized.Name = fallback.Name
 	}
+	candidateHasNoTabs := len(candidate.Tabs) == 0
 
 	widgetsByID := make(map[string]Widget, len(candidate.Widgets))
 	for _, widget := range candidate.Widgets {
@@ -109,6 +110,25 @@ func normalizeSnapshot(candidate Snapshot, fallback Snapshot) Snapshot {
 	}
 
 	if len(normalized.Tabs) == 0 {
+		if candidateHasNoTabs {
+			normalized.Tabs = nil
+			normalized.Widgets = nil
+			normalized.ActiveTabID = ""
+			normalized.ActiveWidgetID = ""
+			normalized.Layout = normalizeLayout(candidate.Layout, fallback.Layout)
+			normalized.Layouts = normalizeLayouts(candidate.Layouts, normalized.Layout, fallback.Layouts, fallback.Layout)
+			activeLayoutID := strings.TrimSpace(candidate.ActiveLayoutID)
+			if activeLayoutID == "" || !layoutExists(normalized.Layouts, activeLayoutID) {
+				activeLayoutID = normalized.Layout.ID
+			}
+			normalized.ActiveLayoutID = activeLayoutID
+			if activeLayout, ok := findLayout(normalized.Layouts, activeLayoutID); ok {
+				normalized.Layout = activeLayout
+			} else {
+				normalized.ActiveLayoutID = normalized.Layout.ID
+			}
+			return normalized
+		}
 		return cloneSnapshot(fallback)
 	}
 
