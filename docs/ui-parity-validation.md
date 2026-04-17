@@ -41,20 +41,15 @@ This validation used the repo-root Tide sources as the primary reference for the
 
 ## Exact headed browser flow
 
-1. Ran the focused headed parity sweep:
-   - `npx playwright test e2e/terminal-parity.spec.ts e2e/panels-parity.spec.ts e2e/shell-chrome-parity.spec.ts -c e2e/playwright.config.ts --headed`
-   - result: `9 passed`
-2. Ran the broader headed regression sweep for adjacent shell workflows:
-   - `npx playwright test e2e/panels-parity.spec.ts e2e/shell-chrome-parity.spec.ts e2e/terminal-parity.spec.ts e2e/navigation-parity.spec.ts e2e/quick-actions.spec.ts e2e/structured-execution-block.spec.ts e2e/window-behavior.spec.ts -c e2e/playwright.config.ts --headed`
-   - result: `13 passed`, `1 failed`, `1 skipped`
-3. Failure details from the broader sweep:
-   - failing test: `e2e/navigation-parity.spec.ts`
-   - assertion: compat layout fill tolerance after the intentional shell-frame padding change
-   - measured values: `layoutHeight=1041`, `wrapperHeight=1047`
-   - previous assertion expected `layoutHeight >= wrapperHeight - 4`
-4. Rechecked the failing assertion against the new UI state:
-   - the mismatch is a `2px` automation tolerance miss, not a visible clipping or fill failure
-   - the visible shell still filled correctly in both the headed browser and the desktop screenshot
+1. Ran the focused headed UI parity coverage added in this batch:
+   - `npx playwright test e2e/ui-parity.spec.ts e2e/navigation-parity.spec.ts -c e2e/playwright.config.ts --headed`
+   - result: `4 passed`
+2. Ran the final headed regression sweep for adjacent shell workflows:
+   - `npx playwright test e2e/ui-parity.spec.ts e2e/panels-parity.spec.ts e2e/shell-chrome-parity.spec.ts e2e/terminal-parity.spec.ts e2e/navigation-parity.spec.ts e2e/quick-actions.spec.ts e2e/structured-execution-block.spec.ts e2e/window-behavior.spec.ts -c e2e/playwright.config.ts --headed`
+   - result: `17 passed`
+3. Ran the release gate sweep on the same final code state:
+   - `npm run validate`
+   - result: passed with the existing frontend hook warnings only
 
 ## What was visibly verified
 
@@ -68,6 +63,7 @@ This validation used the repo-root Tide sources as the primary reference for the
 - Settings / utility / popover behavior:
   - settings remained bounded and switched across `Overview`, `Trusted tools`, `Secret shield`, and `Help`
   - launcher, settings, and other utility surfaces stayed compact and anchored to the shell edges instead of clipping or stacking behind each other
+  - the new focused UI parity spec kept pane chrome visible while opening AI, settings, and launcher surfaces in sequence
 - Spacing / density / hierarchy:
   - compat panes now read as Tide-like blocks inside the shell, with compact outer framing, tighter inter-pane gaps, and consistent header-to-content rhythm
   - the files pane content uses the same `5px` frame-to-content step as the terminal host instead of a looser dashboard-like padding
@@ -78,15 +74,14 @@ This validation used the repo-root Tide sources as the primary reference for the
 - No regression observed in adjacent flows during the headed run:
   - terminal parity behaviors
   - panel flows
+  - navigation / launcher flows
   - quick actions
   - structured execution blocks
   - window split / drag / restore behavior
 
 ## Remaining mismatch
 
-- One automated navigation assertion still reflects the old compat-layout fill tolerance:
-  - after the intentional compact shell-frame padding change, the headed navigation test measured a valid `6px` wrapper-to-layout difference where the older assertion only allowed `4px`
-  - no visible fill/clipping defect was observed; this is a coverage update item for the next slice, not a confirmed runtime UI mismatch
+- none
 
 ## Validation note
 

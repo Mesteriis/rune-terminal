@@ -211,3 +211,7 @@ Settings, secrets, help, and utility surfaces:
 ## Reference note
 
 The repo-root Tide source files listed above were inspected directly and used as the primary reference for this batch.
+
+## Status note
+
+The reference behaviors captured here were implemented and validated in [ui-parity-validation.md](./ui-parity-validation.md) and the focused UI coverage added in [e2e/ui-parity.spec.ts](../e2e/ui-parity.spec.ts).

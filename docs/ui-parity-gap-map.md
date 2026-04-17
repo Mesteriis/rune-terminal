@@ -9,7 +9,7 @@ The gaps below are limited to remaining release-relevant UI parity issues. They 
 
 ## Current UI baseline
 
-The active compat shell already matches Tide closely in:
+At batch start, the active compat shell already matched Tide closely in:
 
 - top-shell tab bar density and workspace-switcher/launcher integration
 - AI panel baseline placement and controls
@@ -17,9 +17,9 @@ The active compat shell already matches Tide closely in:
 - shell-level utility flyout anchoring and non-stacking behavior
 - shell stretch/fill contract in the active layout
 
-The remaining visible parity misses are concentrated inside the compat content panes and the right-side utility surface styling/structure.
+The remaining visible parity misses at batch start were concentrated inside the compat content panes and the right-side utility surface styling/structure. They are retained below as the pre-fix gap map for traceability.
 
-## Remaining parity gaps
+## Gaps identified at batch start
 
 ### 1. Compat split panes do not use Tide-like block header chrome
 
@@ -210,4 +210,8 @@ Release-blocking:
   - reducing compat split gaps to the same compact rhythm instead of wider ad hoc spacing
   - switching compat pane corners to the Tide block-radius token
   - aligning files-pane content padding to the same `5px` frame-to-content step already used by the terminal host
-- Remaining work after these code changes is validation and focused regression coverage, handled in the later slices of this batch.
+- Slice 6 validated the result in the visible Tauri desktop app plus headed browser runs captured in [ui-parity-validation.md](./ui-parity-validation.md).
+- Slice 7 added focused UI coverage in [e2e/ui-parity.spec.ts](../e2e/ui-parity.spec.ts) and updated the broader navigation fill assertions to the final compact-frame contract.
+- Final state:
+  - all release-blocking UI parity gaps listed above are closed on the active compat shell
+  - no remaining UI-domain release mismatch was observed in the final desktop capture, headed 17-test sweep, or `npm run validate`

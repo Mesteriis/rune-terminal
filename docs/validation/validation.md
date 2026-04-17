@@ -29,6 +29,7 @@ Do not append new free-form log blocks in this file. Update the relevant domain 
 - [../shell-stretch-baseline.md](../shell-stretch-baseline.md)
 - [../tab-closure-validation.md](../tab-closure-validation.md)
 - [../terminal-parity-validation.md](../terminal-parity-validation.md)
+- [../ui-parity-validation.md](../ui-parity-validation.md)
 
 ## Legacy archive
 
