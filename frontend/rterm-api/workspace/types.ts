@@ -5,9 +5,25 @@ export interface Workspace {
   active_tab_id: string;
   widgets: WorkspaceWidget[];
   active_widget_id: string;
+  layout: WorkspaceLayout;
 }
 
 export type WorkspaceWidgetKind = "terminal";
+export type WorkspaceLayoutMode = "split" | "focus" | "stacked" | (string & {});
+export type WorkspaceLayoutSurfaceID = "terminal" | "ai" | "tools" | "audit" | "mcp" | (string & {});
+export type WorkspaceLayoutRegion = "main" | "sidebar" | "utility" | (string & {});
+
+export interface WorkspaceLayoutSurface {
+  id: WorkspaceLayoutSurfaceID;
+  region: WorkspaceLayoutRegion;
+}
+
+export interface WorkspaceLayout {
+  id: string;
+  mode: WorkspaceLayoutMode;
+  surfaces: WorkspaceLayoutSurface[];
+  active_surface_id: WorkspaceLayoutSurfaceID;
+}
 
 export interface WorkspaceWidget {
   id: string;
@@ -33,6 +49,7 @@ export interface WorkspaceSnapshot {
   active_tab_id: string;
   widgets: WorkspaceWidget[];
   active_widget_id: string;
+  layout: WorkspaceLayout;
 }
 
 export type WorkspaceActionResponse = {

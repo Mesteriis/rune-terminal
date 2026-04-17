@@ -15,6 +15,7 @@ export interface FloatingWindowProps {
 
 export interface ToolsFloatingWindowProps extends FloatingWindowProps {
     onAuditChanged?: () => void;
+    showMCP?: boolean;
 }
 
 export interface AuditFloatingWindowProps extends FloatingWindowProps {

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { useT } from "@/app/i18n/i18n";
+import type { WorkspaceStoreLayout } from "@/app/state/workspace.store";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { atoms, createBlock, isDev } from "@/store/global";
 import { fireAndForget } from "@/util/util";
@@ -18,7 +19,11 @@ import { WidgetItem } from "./widget-item";
 import { WidgetsMeasurement } from "./widgets-measurement";
 import type { WidgetDisplayMode } from "./widget-types";
 
-const Widgets = memo(({ compatMode = false }: { compatMode?: boolean }) => {
+function hasSurface(layout: WorkspaceStoreLayout, surfaceID: string): boolean {
+    return layout.surfaces.some((surface) => surface.id === surfaceID);
+}
+
+const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; layout: WorkspaceStoreLayout }) => {
     const t = useT();
     const fullConfig = useAtomValue(atoms.fullConfigAtom);
     const hasCustomAIPresets = useAtomValue(atoms.hasCustomAIPresetsAtom);
@@ -45,6 +50,9 @@ const Widgets = memo(({ compatMode = false }: { compatMode?: boolean }) => {
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const settingsButtonRef = useRef<HTMLDivElement>(null);
     const [auditRefreshNonce, setAuditRefreshNonce] = useState(0);
+    const toolsEnabled = hasSurface(layout, "tools");
+    const auditEnabled = hasSurface(layout, "audit");
+    const mcpEnabled = hasSurface(layout, "mcp");
     const compatWidgetsStyle = compatMode
         ? ({
               display: "flex",
@@ -89,7 +97,7 @@ const Widgets = memo(({ compatMode = false }: { compatMode?: boolean }) => {
         if (normalHeight > containerHeight - gracePeriod) {
             newMode = "compact";
 
-            const actionCount = 4 + (showAppsButton ? 1 : 0);
+            const actionCount = (toolsEnabled ? 1 : 0) + (auditEnabled ? 1 : 0) + 2 + (showAppsButton ? 1 : 0);
             const totalWidgets = (widgets?.length || 0) + actionCount;
             const minHeightPerWidget = 32;
             const requiredHeight = totalWidgets * minHeightPerWidget;
@@ -100,7 +108,7 @@ const Widgets = memo(({ compatMode = false }: { compatMode?: boolean }) => {
         }
 
         setMode((prevMode) => (newMode !== prevMode ? newMode : prevMode));
-    }, [showAppsButton, widgets]);
+    }, [auditEnabled, showAppsButton, toolsEnabled, widgets]);
 
     const checkModeNeededRef = useRef(checkModeNeeded);
     checkModeNeededRef.current = checkModeNeeded;
@@ -122,6 +130,18 @@ const Widgets = memo(({ compatMode = false }: { compatMode?: boolean }) => {
     useEffect(() => {
         checkModeNeeded();
     }, [checkModeNeeded]);
+
+    useEffect(() => {
+        if (!toolsEnabled) {
+            setIsToolsOpen(false);
+        }
+    }, [toolsEnabled]);
+
+    useEffect(() => {
+        if (!auditEnabled) {
+            setIsAuditOpen(false);
+        }
+    }, [auditEnabled]);
 
     const handleWidgetsBarContextMenu = (e: React.MouseEvent) => {
         e.preventDefault();
@@ -161,26 +181,30 @@ const Widgets = memo(({ compatMode = false }: { compatMode?: boolean }) => {
                         </div>
                         <div className="flex-grow" />
                         <div className="grid grid-cols-2 gap-0 w-full">
-                            <WidgetActionButton
-                                buttonRef={toolsButtonRef}
-                                icon="screwdriver-wrench"
-                                tooltip="Tools"
-                                isOpen={isToolsOpen}
-                                onClick={() => setIsToolsOpen(!isToolsOpen)}
-                                mode={mode}
-                                defaultIcon="toolbox"
-                                style={compatActionStyle}
-                            />
-                            <WidgetActionButton
-                                buttonRef={auditButtonRef}
-                                icon="clipboard-list"
-                                tooltip="Audit"
-                                isOpen={isAuditOpen}
-                                onClick={() => setIsAuditOpen(!isAuditOpen)}
-                                mode={mode}
-                                defaultIcon="list-check"
-                                style={compatActionStyle}
-                            />
+                            {toolsEnabled ? (
+                                <WidgetActionButton
+                                    buttonRef={toolsButtonRef}
+                                    icon="screwdriver-wrench"
+                                    tooltip="Tools"
+                                    isOpen={isToolsOpen}
+                                    onClick={() => setIsToolsOpen(!isToolsOpen)}
+                                    mode={mode}
+                                    defaultIcon="toolbox"
+                                    style={compatActionStyle}
+                                />
+                            ) : null}
+                            {auditEnabled ? (
+                                <WidgetActionButton
+                                    buttonRef={auditButtonRef}
+                                    icon="clipboard-list"
+                                    tooltip="Audit"
+                                    isOpen={isAuditOpen}
+                                    onClick={() => setIsAuditOpen(!isAuditOpen)}
+                                    mode={mode}
+                                    defaultIcon="list-check"
+                                    style={compatActionStyle}
+                                />
+                            ) : null}
                             <WidgetActionButton
                                 buttonRef={filesButtonRef}
                                 icon="folder-open"
@@ -218,28 +242,32 @@ const Widgets = memo(({ compatMode = false }: { compatMode?: boolean }) => {
                             <WidgetItem key={`widget-${idx}`} widget={data} mode={mode} />
                         ))}
                         <div className="flex-grow" />
-                        <WidgetActionButton
-                            buttonRef={toolsButtonRef}
-                            icon="screwdriver-wrench"
-                            tooltip="Tools"
-                            isOpen={isToolsOpen}
-                            onClick={() => setIsToolsOpen(!isToolsOpen)}
-                            mode={mode}
-                            label="Tools"
-                            defaultIcon="toolbox"
-                            style={compatActionStyle}
-                        />
-                        <WidgetActionButton
-                            buttonRef={auditButtonRef}
-                            icon="clipboard-list"
-                            tooltip="Audit"
-                            isOpen={isAuditOpen}
-                            onClick={() => setIsAuditOpen(!isAuditOpen)}
-                            mode={mode}
-                            label="Audit"
-                            defaultIcon="list-check"
-                            style={compatActionStyle}
-                        />
+                        {toolsEnabled ? (
+                            <WidgetActionButton
+                                buttonRef={toolsButtonRef}
+                                icon="screwdriver-wrench"
+                                tooltip="Tools"
+                                isOpen={isToolsOpen}
+                                onClick={() => setIsToolsOpen(!isToolsOpen)}
+                                mode={mode}
+                                label="Tools"
+                                defaultIcon="toolbox"
+                                style={compatActionStyle}
+                            />
+                        ) : null}
+                        {auditEnabled ? (
+                            <WidgetActionButton
+                                buttonRef={auditButtonRef}
+                                icon="clipboard-list"
+                                tooltip="Audit"
+                                isOpen={isAuditOpen}
+                                onClick={() => setIsAuditOpen(!isAuditOpen)}
+                                mode={mode}
+                                label="Audit"
+                                defaultIcon="list-check"
+                                style={compatActionStyle}
+                            />
+                        ) : null}
                         <WidgetActionButton
                             buttonRef={filesButtonRef}
                             icon="folder-open"
@@ -289,15 +317,16 @@ const Widgets = memo(({ compatMode = false }: { compatMode?: boolean }) => {
                     referenceElement={appsButtonRef.current}
                 />
             )}
-            {toolsButtonRef.current && (
+            {toolsEnabled && toolsButtonRef.current && (
                 <ToolsFloatingWindow
                     isOpen={isToolsOpen}
                     onClose={() => setIsToolsOpen(false)}
                     referenceElement={toolsButtonRef.current}
                     onAuditChanged={() => setAuditRefreshNonce((current) => current + 1)}
+                    showMCP={mcpEnabled}
                 />
             )}
-            {auditButtonRef.current && (
+            {auditEnabled && auditButtonRef.current && (
                 <AuditFloatingWindow
                     isOpen={isAuditOpen}
                     onClose={() => setIsAuditOpen(false)}
@@ -323,6 +352,8 @@ const Widgets = memo(({ compatMode = false }: { compatMode?: boolean }) => {
             <WidgetsMeasurement
                 measurementRef={measurementRef}
                 widgets={widgets}
+                showToolsButton={toolsEnabled}
+                showAuditButton={auditEnabled}
                 showAppsButton={showAppsButton}
                 showDevBadge={isDev()}
                 appsLabel={t("workspace.appsLabel")}

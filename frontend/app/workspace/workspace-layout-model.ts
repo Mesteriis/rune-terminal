@@ -3,6 +3,7 @@
 
 import { WaveAIModel } from "@/app/aipanel/waveai-model";
 import { isWaveAICompatRuntime } from "@/app/aipanel/compat-context";
+import type { WorkspaceStoreLayout } from "@/app/state/workspace.store";
 import { globalStore } from "@/app/store/jotaiStore";
 import * as WOS from "@/app/store/wos";
 import { RpcApi } from "@/app/store/wshclientapi";
@@ -248,6 +249,20 @@ class WorkspaceLayoutModel {
     getAIPanelVisible(): boolean {
         this.initializeFromTabMeta();
         return this.aiPanelVisible;
+    }
+
+    applyWorkspaceLayout(layout: WorkspaceStoreLayout | null | undefined): void {
+        if (layout == null) {
+            return;
+        }
+        const aiVisible = layout.surfaces.some((surface) => surface.id === "ai");
+        if (this.aiPanelVisible === aiVisible) {
+            return;
+        }
+        this.aiPanelVisible = aiVisible;
+        globalStore.set(this.panelVisibleAtom, aiVisible);
+        getApi().setWaveAIOpen(aiVisible);
+        this.syncAIPanelRef();
     }
 
     setAIPanelVisible(visible: boolean, opts?: { nofocus?: boolean }): void {

@@ -6,6 +6,8 @@ import { WidgetItem } from "./widget-item";
 interface WidgetsMeasurementProps {
     measurementRef: RefObject<HTMLDivElement | null>;
     widgets: WidgetConfigType[];
+    showToolsButton: boolean;
+    showAuditButton: boolean;
     showAppsButton: boolean;
     showDevBadge: boolean;
     appsLabel: string;
@@ -15,7 +17,18 @@ interface WidgetsMeasurementProps {
 }
 
 const WidgetsMeasurement = memo(
-    ({ measurementRef, widgets, showAppsButton, showDevBadge, appsLabel, filesLabel, settingsLabel, style }: WidgetsMeasurementProps) => (
+    ({
+        measurementRef,
+        widgets,
+        showToolsButton,
+        showAuditButton,
+        showAppsButton,
+        showDevBadge,
+        appsLabel,
+        filesLabel,
+        settingsLabel,
+        style,
+    }: WidgetsMeasurementProps) => (
         <div
             ref={measurementRef}
             className="flex flex-col w-12 py-1 -ml-1 select-none absolute -z-10 opacity-0 pointer-events-none"
@@ -25,18 +38,22 @@ const WidgetsMeasurement = memo(
                 <WidgetItem key={`measurement-widget-${idx}`} widget={data} mode="normal" />
             ))}
             <div className="flex-grow" />
-            <div className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-lg">
-                <div>
-                    <i className={makeIconClass("screwdriver-wrench", true, { defaultIcon: "toolbox" })}></i>
+            {showToolsButton ? (
+                <div className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-lg">
+                    <div>
+                        <i className={makeIconClass("screwdriver-wrench", true, { defaultIcon: "toolbox" })}></i>
+                    </div>
+                    <div className="text-xxs mt-0.5 w-full px-0.5 text-center">Tools</div>
                 </div>
-                <div className="text-xxs mt-0.5 w-full px-0.5 text-center">Tools</div>
-            </div>
-            <div className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-lg">
-                <div>
-                    <i className={makeIconClass("clipboard-list", true, { defaultIcon: "list-check" })}></i>
+            ) : null}
+            {showAuditButton ? (
+                <div className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-lg">
+                    <div>
+                        <i className={makeIconClass("clipboard-list", true, { defaultIcon: "list-check" })}></i>
+                    </div>
+                    <div className="text-xxs mt-0.5 w-full px-0.5 text-center">Audit</div>
                 </div>
-                <div className="text-xxs mt-0.5 w-full px-0.5 text-center">Audit</div>
-            </div>
+            ) : null}
             <div className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-lg">
                 <div>
                     <i className={makeIconClass("folder-open", true)}></i>

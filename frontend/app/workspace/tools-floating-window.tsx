@@ -39,7 +39,7 @@ function hasObjectProperty(schema: unknown, property: string): boolean {
     return Object.prototype.hasOwnProperty.call(properties, property);
 }
 
-const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditChanged }: ToolsFloatingWindowProps) => {
+const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditChanged, showMCP = true }: ToolsFloatingWindowProps) => {
     const activeContext = useActiveWorkspaceContext();
     const getActiveWorkspaceID = () => workspaceStore.getSnapshot().active.oid;
     const [pendingApproval, setPendingApproval] = useState<PendingToolApproval | null>(
@@ -97,7 +97,7 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
         setInputValue("{}");
         setResponseValue(null);
         setExecuteError(null);
-        setMCPLoading(true);
+        setMCPLoading(showMCP);
         setMCPLoadError(null);
         setMCPActionError(null);
         setMCPInvokePayload("{}");
@@ -137,36 +137,41 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
             }
         })();
 
-        void (async () => {
-            try {
-                const facade = await getMCPFacade();
-                const response = await facade.listServers();
-                if (cancelled) {
-                    return;
-                }
-                setMCPServers(response);
-                setMCPInvokeServerID((current) => {
-                    if (current && response.some((server) => server.id === current)) {
-                        return current;
+        if (!showMCP) {
+            setMCPLoading(false);
+            setMCPServers([]);
+        } else {
+            void (async () => {
+                try {
+                    const facade = await getMCPFacade();
+                    const response = await facade.listServers();
+                    if (cancelled) {
+                        return;
                     }
-                    return response[0]?.id ?? "";
-                });
-            } catch (error) {
-                if (!cancelled) {
-                    setMCPLoadError(error instanceof Error ? error.message : String(error));
-                    setMCPServers([]);
+                    setMCPServers(response);
+                    setMCPInvokeServerID((current) => {
+                        if (current && response.some((server) => server.id === current)) {
+                            return current;
+                        }
+                        return response[0]?.id ?? "";
+                    });
+                } catch (error) {
+                    if (!cancelled) {
+                        setMCPLoadError(error instanceof Error ? error.message : String(error));
+                        setMCPServers([]);
+                    }
+                } finally {
+                    if (!cancelled) {
+                        setMCPLoading(false);
+                    }
                 }
-            } finally {
-                if (!cancelled) {
-                    setMCPLoading(false);
-                }
-            }
-        })();
+            })();
+        }
 
         return () => {
             cancelled = true;
         };
-    }, [isOpen]);
+    }, [isOpen, showMCP]);
 
     if (!isOpen) return null;
 
@@ -674,164 +679,170 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
                     </div>
                 )}
                 <div className="mt-3 pt-3 border-t border-border">
-                    <div className="text-xs font-medium text-white mb-2">MCP Servers</div>
-                    <div className="text-[10px] text-secondary mb-2">
-                        MCP server config persists, but runtime processes do not survive app restart. Start servers explicitly after restore.
-                    </div>
-                    <div className="mb-3 rounded border border-border bg-black/20 p-2 space-y-2">
-                        <div className="text-[11px] text-white">Add MCP Server</div>
-                        <div className="grid grid-cols-[56px_1fr] gap-2 items-center">
-                            <label className="text-[11px] text-secondary">id</label>
-                            <input
-                                className="w-full rounded border border-border bg-black/20 p-1 text-[11px] text-white"
-                                value={mcpRegisterID}
-                                onChange={(e) => setMCPRegisterID(e.target.value)}
-                                placeholder="mcp.context7"
-                            />
-                            <label className="text-[11px] text-secondary">endpoint</label>
-                            <input
-                                className="w-full rounded border border-border bg-black/20 p-1 text-[11px] text-white"
-                                value={mcpRegisterEndpoint}
-                                onChange={(e) => setMCPRegisterEndpoint(e.target.value)}
-                                placeholder="https://mcp.context7.com/mcp"
-                            />
-                        </div>
-                        <div>
-                            <div className="text-[11px] text-secondary mb-1">headers json (optional):</div>
-                            <textarea
-                                className="w-full min-h-14 rounded border border-border bg-black/20 p-2 text-[11px] text-white resize-y"
-                                value={mcpRegisterHeaders}
-                                onChange={(e) => setMCPRegisterHeaders(e.target.value)}
-                                spellCheck={false}
-                            />
-                        </div>
-                        <div className="flex items-center justify-end">
-                            <button
-                                type="button"
-                                className="px-3 py-1 rounded bg-accent text-black text-[11px] font-medium disabled:opacity-50"
-                                disabled={mcpRegistering}
-                                onClick={() => void handleMCPRegister()}
-                            >
-                                {mcpRegistering ? "Adding..." : "Add MCP"}
-                            </button>
-                        </div>
-                        {mcpRegisterError ? (
-                            <div className="text-[11px] text-red-400 whitespace-pre-wrap">{mcpRegisterError}</div>
-                        ) : null}
-                        {mcpRegisterStatus ? (
-                            <div className="text-[11px] text-emerald-300 whitespace-pre-wrap">{mcpRegisterStatus}</div>
-                        ) : null}
-                    </div>
-                    {mcpLoading ? (
-                        <div className="text-xs text-secondary">Loading MCP servers...</div>
-                    ) : mcpLoadError ? (
-                        <div className="text-xs text-red-400 whitespace-pre-wrap">{mcpLoadError}</div>
-                    ) : mcpServers.length === 0 ? (
-                        <div className="text-xs text-secondary">No MCP servers configured</div>
-                    ) : (
-                        <div className="max-h-40 overflow-y-auto space-y-1">
-                            {mcpServers.map((server) => (
-                                <div
-                                    key={server.id}
-                                    className="rounded border border-border bg-black/20 px-2 py-1.5 text-[11px] text-secondary"
-                                >
-                                    <div className="flex items-center justify-between gap-2">
-                                        <span className="text-white">{server.id}</span>
-                                        <span>{normalizeMCPState(server)}</span>
-                                    </div>
-                                    <div className="mt-1 break-all">
-                                        last used: {server.last_used ? formatAuditTimestamp(server.last_used) : "never"}
-                                    </div>
-                                    <div className="mt-1 break-all">
-                                        type: {server.type}
-                                        {server.endpoint ? ` | endpoint: ${server.endpoint}` : ""}
-                                    </div>
-                                    <div className="mt-1.5 flex flex-wrap gap-1">
-                                        {(["start", "stop", "restart", "enable", "disable"] as const).map((action) => (
-                                            <button
-                                                key={action}
-                                                type="button"
-                                                className="px-2 py-0.5 rounded border border-border text-[10px] text-secondary hover:text-white disabled:opacity-50"
-                                                disabled={mcpActionKey != null}
-                                                onClick={() => void handleMCPAction(server.id, action)}
-                                            >
-                                                {mcpActionKey === `${server.id}:${action}` ? `${action}...` : action}
-                                            </button>
-                                        ))}
-                                    </div>
+                    {showMCP ? (
+                        <>
+                            <div className="text-xs font-medium text-white mb-2">MCP Servers</div>
+                            <div className="text-[10px] text-secondary mb-2">
+                                MCP server config persists, but runtime processes do not survive app restart. Start servers explicitly after restore.
+                            </div>
+                            <div className="mb-3 rounded border border-border bg-black/20 p-2 space-y-2">
+                                <div className="text-[11px] text-white">Add MCP Server</div>
+                                <div className="grid grid-cols-[56px_1fr] gap-2 items-center">
+                                    <label className="text-[11px] text-secondary">id</label>
+                                    <input
+                                        className="w-full rounded border border-border bg-black/20 p-1 text-[11px] text-white"
+                                        value={mcpRegisterID}
+                                        onChange={(e) => setMCPRegisterID(e.target.value)}
+                                        placeholder="mcp.context7"
+                                    />
+                                    <label className="text-[11px] text-secondary">endpoint</label>
+                                    <input
+                                        className="w-full rounded border border-border bg-black/20 p-1 text-[11px] text-white"
+                                        value={mcpRegisterEndpoint}
+                                        onChange={(e) => setMCPRegisterEndpoint(e.target.value)}
+                                        placeholder="https://mcp.context7.com/mcp"
+                                    />
                                 </div>
-                            ))}
-                        </div>
+                                <div>
+                                    <div className="text-[11px] text-secondary mb-1">headers json (optional):</div>
+                                    <textarea
+                                        className="w-full min-h-14 rounded border border-border bg-black/20 p-2 text-[11px] text-white resize-y"
+                                        value={mcpRegisterHeaders}
+                                        onChange={(e) => setMCPRegisterHeaders(e.target.value)}
+                                        spellCheck={false}
+                                    />
+                                </div>
+                                <div className="flex items-center justify-end">
+                                    <button
+                                        type="button"
+                                        className="px-3 py-1 rounded bg-accent text-black text-[11px] font-medium disabled:opacity-50"
+                                        disabled={mcpRegistering}
+                                        onClick={() => void handleMCPRegister()}
+                                    >
+                                        {mcpRegistering ? "Adding..." : "Add MCP"}
+                                    </button>
+                                </div>
+                                {mcpRegisterError ? (
+                                    <div className="text-[11px] text-red-400 whitespace-pre-wrap">{mcpRegisterError}</div>
+                                ) : null}
+                                {mcpRegisterStatus ? (
+                                    <div className="text-[11px] text-emerald-300 whitespace-pre-wrap">{mcpRegisterStatus}</div>
+                                ) : null}
+                            </div>
+                            {mcpLoading ? (
+                                <div className="text-xs text-secondary">Loading MCP servers...</div>
+                            ) : mcpLoadError ? (
+                                <div className="text-xs text-red-400 whitespace-pre-wrap">{mcpLoadError}</div>
+                            ) : mcpServers.length === 0 ? (
+                                <div className="text-xs text-secondary">No MCP servers configured</div>
+                            ) : (
+                                <div className="max-h-40 overflow-y-auto space-y-1">
+                                    {mcpServers.map((server) => (
+                                        <div
+                                            key={server.id}
+                                            className="rounded border border-border bg-black/20 px-2 py-1.5 text-[11px] text-secondary"
+                                        >
+                                            <div className="flex items-center justify-between gap-2">
+                                                <span className="text-white">{server.id}</span>
+                                                <span>{normalizeMCPState(server)}</span>
+                                            </div>
+                                            <div className="mt-1 break-all">
+                                                last used: {server.last_used ? formatAuditTimestamp(server.last_used) : "never"}
+                                            </div>
+                                            <div className="mt-1 break-all">
+                                                type: {server.type}
+                                                {server.endpoint ? ` | endpoint: ${server.endpoint}` : ""}
+                                            </div>
+                                            <div className="mt-1.5 flex flex-wrap gap-1">
+                                                {(["start", "stop", "restart", "enable", "disable"] as const).map((action) => (
+                                                    <button
+                                                        key={action}
+                                                        type="button"
+                                                        className="px-2 py-0.5 rounded border border-border text-[10px] text-secondary hover:text-white disabled:opacity-50"
+                                                        disabled={mcpActionKey != null}
+                                                        onClick={() => void handleMCPAction(server.id, action)}
+                                                    >
+                                                        {mcpActionKey === `${server.id}:${action}` ? `${action}...` : action}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            {mcpActionError ? (
+                                <div className="mt-2 text-xs text-red-400 whitespace-pre-wrap">{mcpActionError}</div>
+                            ) : null}
+                            <div className="mt-3 pt-3 border-t border-border space-y-2">
+                                <div className="text-xs text-white">Invoke MCP</div>
+                                <div className="flex items-center gap-2">
+                                    <label className="text-[11px] text-secondary">server:</label>
+                                    <select
+                                        className="min-w-0 flex-1 rounded border border-border bg-black/20 p-1 text-[11px] text-white"
+                                        value={mcpInvokeServerID}
+                                        onChange={(e) => setMCPInvokeServerID(e.target.value)}
+                                    >
+                                        {mcpServers.map((server) => (
+                                            <option key={server.id} value={server.id}>
+                                                {server.id}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <div className="text-[11px] text-secondary mb-1">payload json:</div>
+                                    <textarea
+                                        className="w-full min-h-20 rounded border border-border bg-black/20 p-2 text-[11px] text-white resize-y"
+                                        value={mcpInvokePayload}
+                                        onChange={(e) => setMCPInvokePayload(e.target.value)}
+                                        spellCheck={false}
+                                    />
+                                </div>
+                                <label className="flex items-center gap-1.5 text-[11px] text-secondary">
+                                    <input
+                                        type="checkbox"
+                                        checked={mcpAllowOnDemandStart}
+                                        onChange={(e) => setMCPAllowOnDemandStart(e.target.checked)}
+                                    />
+                                    allow on-demand start
+                                </label>
+                                <div className="flex items-center justify-end">
+                                    <button
+                                        type="button"
+                                        className="px-3 py-1 rounded bg-accent text-black text-[11px] font-medium disabled:opacity-50"
+                                        disabled={mcpInvoking || mcpServers.length === 0}
+                                        onClick={() => void handleMCPInvoke()}
+                                    >
+                                        {mcpInvoking ? "Invoking..." : "Invoke MCP"}
+                                    </button>
+                                </div>
+                                <div className="flex items-center justify-end">
+                                    <button
+                                        type="button"
+                                        className="px-3 py-1 rounded border border-border text-[11px] text-secondary hover:text-white disabled:opacity-50"
+                                        disabled={mcpInvokeResult == null}
+                                        onClick={useMCPResultInAI}
+                                    >
+                                        Use Normalized MCP Result In AI
+                                    </button>
+                                </div>
+                                <div>
+                                    <div className="text-[11px] text-secondary mb-1">invoke result:</div>
+                                    <pre className="max-h-36 overflow-auto rounded bg-black/20 p-2 text-[11px] text-secondary whitespace-pre-wrap break-words">
+                                        {mcpInvokeError ?? (mcpInvokeResult ? formatJson(mcpInvokeResult) : "No MCP invoke yet")}
+                                    </pre>
+                                </div>
+                                {mcpUseInAIStatus ? (
+                                    <div className="text-[11px] text-emerald-300 whitespace-pre-wrap">{mcpUseInAIStatus}</div>
+                                ) : null}
+                                <div className="text-[10px] text-secondary">
+                                    MCP invoke output is never auto-injected. Use the explicit action above to move normalized MCP context into AI input.
+                                </div>
+                            </div>
+                        </>
+                    ) : (
+                        <div className="text-xs text-secondary">MCP surface is hidden by current workspace layout.</div>
                     )}
-                    {mcpActionError ? (
-                        <div className="mt-2 text-xs text-red-400 whitespace-pre-wrap">{mcpActionError}</div>
-                    ) : null}
-                    <div className="mt-3 pt-3 border-t border-border space-y-2">
-                        <div className="text-xs text-white">Invoke MCP</div>
-                        <div className="flex items-center gap-2">
-                            <label className="text-[11px] text-secondary">server:</label>
-                            <select
-                                className="min-w-0 flex-1 rounded border border-border bg-black/20 p-1 text-[11px] text-white"
-                                value={mcpInvokeServerID}
-                                onChange={(e) => setMCPInvokeServerID(e.target.value)}
-                            >
-                                {mcpServers.map((server) => (
-                                    <option key={server.id} value={server.id}>
-                                        {server.id}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                        <div>
-                            <div className="text-[11px] text-secondary mb-1">payload json:</div>
-                            <textarea
-                                className="w-full min-h-20 rounded border border-border bg-black/20 p-2 text-[11px] text-white resize-y"
-                                value={mcpInvokePayload}
-                                onChange={(e) => setMCPInvokePayload(e.target.value)}
-                                spellCheck={false}
-                            />
-                        </div>
-                        <label className="flex items-center gap-1.5 text-[11px] text-secondary">
-                            <input
-                                type="checkbox"
-                                checked={mcpAllowOnDemandStart}
-                                onChange={(e) => setMCPAllowOnDemandStart(e.target.checked)}
-                            />
-                            allow on-demand start
-                        </label>
-                        <div className="flex items-center justify-end">
-                            <button
-                                type="button"
-                                className="px-3 py-1 rounded bg-accent text-black text-[11px] font-medium disabled:opacity-50"
-                                disabled={mcpInvoking || mcpServers.length === 0}
-                                onClick={() => void handleMCPInvoke()}
-                            >
-                                {mcpInvoking ? "Invoking..." : "Invoke MCP"}
-                            </button>
-                        </div>
-                        <div className="flex items-center justify-end">
-                            <button
-                                type="button"
-                                className="px-3 py-1 rounded border border-border text-[11px] text-secondary hover:text-white disabled:opacity-50"
-                                disabled={mcpInvokeResult == null}
-                                onClick={useMCPResultInAI}
-                            >
-                                Use Normalized MCP Result In AI
-                            </button>
-                        </div>
-                        <div>
-                            <div className="text-[11px] text-secondary mb-1">invoke result:</div>
-                            <pre className="max-h-36 overflow-auto rounded bg-black/20 p-2 text-[11px] text-secondary whitespace-pre-wrap break-words">
-                                {mcpInvokeError ?? (mcpInvokeResult ? formatJson(mcpInvokeResult) : "No MCP invoke yet")}
-                            </pre>
-                        </div>
-                        {mcpUseInAIStatus ? (
-                            <div className="text-[11px] text-emerald-300 whitespace-pre-wrap">{mcpUseInAIStatus}</div>
-                        ) : null}
-                        <div className="text-[10px] text-secondary">
-                            MCP invoke output is never auto-injected. Use the explicit action above to move normalized MCP context into AI input.
-                        </div>
-                    </div>
                 </div>
             </div>
         </FloatingPortal>

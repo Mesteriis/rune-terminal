@@ -130,6 +130,10 @@ const WorkspaceElem = memo(({ compatMode = false }: { compatMode?: boolean }) =>
     }, [workspaceLayoutModel]);
 
     useEffect(() => {
+        workspaceLayoutModel.applyWorkspaceLayout(workspace.layout);
+    }, [workspace.layout, workspaceLayoutModel]);
+
+    useEffect(() => {
         workspaceStore.setCompatMode(compatMode);
         fireAndForget(() => workspaceStore.refresh());
         if (!compatMode) {
@@ -174,7 +178,7 @@ const WorkspaceElem = memo(({ compatMode = false }: { compatMode?: boolean }) =>
                             ) : (
                                 <div className="flex flex-row h-full" style={compatMainContentStyle}>
                                     <TabContent key={`${tabId}:${workspace.activewidgetid}`} tabId={tabId} compatWorkspace={compatMode ? workspace : undefined} />
-                                    <Widgets compatMode={compatMode} />
+                                    <Widgets compatMode={compatMode} layout={workspace.layout} />
                                 </div>
                             )}
                         </Panel>

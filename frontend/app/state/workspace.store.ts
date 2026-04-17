@@ -1,4 +1,10 @@
-import type { WorkspaceTabMutation, WorkspaceSnapshot, WorkspaceTab } from "@/rterm-api/workspace/types";
+import type {
+    WorkspaceLayout,
+    WorkspaceLayoutSurface,
+    WorkspaceTabMutation,
+    WorkspaceSnapshot,
+    WorkspaceTab,
+} from "@/rterm-api/workspace/types";
 import { atoms, getApi, globalStore } from "@/store/global";
 import { WorkspaceService } from "@/app/store/services";
 import { waveEventSubscribe } from "@/app/store/wps";
@@ -38,6 +44,18 @@ export interface WorkspaceStoreWidget {
     connectionId?: string;
 }
 
+export interface WorkspaceStoreLayoutSurface {
+    id: string;
+    region: string;
+}
+
+export interface WorkspaceStoreLayout {
+    id: string;
+    mode: string;
+    surfaces: WorkspaceStoreLayoutSurface[];
+    activeSurfaceId: string;
+}
+
 export interface WorkspaceStoreSnapshot {
     active: WorkspaceSummary & {
         tabids: string[];
@@ -46,6 +64,7 @@ export interface WorkspaceStoreSnapshot {
         activewidgetid: string;
         tabs: Record<string, WorkspaceStoreTab>;
         widgets: Record<string, WorkspaceStoreWidget>;
+        layout: WorkspaceStoreLayout;
         oid: string;
     };
     list: WorkspaceListEntry[];
@@ -85,6 +104,57 @@ function getLegacyWorkspaceFromAtoms(): LegacyWorkspace | null {
     }
     const workspace = globalStore.get(atoms.workspace);
     return (workspace as LegacyWorkspace | null) ?? null;
+}
+
+const defaultWorkspaceLayout: WorkspaceStoreLayout = {
+    id: "layout-default",
+    mode: "split",
+    surfaces: [
+        { id: "terminal", region: "main" },
+        { id: "ai", region: "sidebar" },
+        { id: "tools", region: "utility" },
+        { id: "audit", region: "utility" },
+        { id: "mcp", region: "utility" },
+    ],
+    activeSurfaceId: "terminal",
+};
+
+function normalizeLayoutSurfaces(surfaces: WorkspaceLayoutSurface[] | undefined): WorkspaceStoreLayoutSurface[] {
+    if (!Array.isArray(surfaces) || surfaces.length === 0) {
+        return defaultWorkspaceLayout.surfaces.map((surface) => ({ ...surface }));
+    }
+    const seen = new Set<string>();
+    const next: WorkspaceStoreLayoutSurface[] = [];
+    for (const surface of surfaces) {
+        const id = (surface?.id ?? "").trim();
+        const region = (surface?.region ?? "").trim();
+        if (id === "" || region === "" || seen.has(id)) {
+            continue;
+        }
+        seen.add(id);
+        next.push({ id, region });
+    }
+    if (next.length === 0) {
+        return defaultWorkspaceLayout.surfaces.map((surface) => ({ ...surface }));
+    }
+    return next;
+}
+
+function adaptLayoutFromApi(layout: WorkspaceLayout | undefined): WorkspaceStoreLayout {
+    const fallback = defaultWorkspaceLayout;
+    const normalizedSurfaces = normalizeLayoutSurfaces(layout?.surfaces);
+    const id = (layout?.id ?? "").trim() || fallback.id;
+    const mode = (layout?.mode ?? "").trim() || fallback.mode;
+    const activeSurfaceIdRaw = (layout?.active_surface_id ?? "").trim();
+    const activeSurfaceId = normalizedSurfaces.some((surface) => surface.id === activeSurfaceIdRaw)
+        ? activeSurfaceIdRaw
+        : normalizedSurfaces[0]?.id ?? fallback.activeSurfaceId;
+    return {
+        id,
+        mode,
+        surfaces: normalizedSurfaces,
+        activeSurfaceId,
+    };
 }
 
 function adaptWorkspaceFromApi(apiWorkspace: ApiWorkspace, fallback?: WorkspaceFallback | null): WorkspaceStoreSnapshot["active"] {
@@ -127,6 +197,7 @@ function adaptWorkspaceFromApi(apiWorkspace: ApiWorkspace, fallback?: WorkspaceF
         pinnedtabids,
         activetabid: apiWorkspace?.active_tab_id ?? legacyWorkspace?.activetabid ?? "",
         activewidgetid: apiWorkspace?.active_widget_id ?? "",
+        layout: adaptLayoutFromApi(apiWorkspace?.layout),
         tabs: tabsById,
         widgets: widgetsById,
     };
@@ -180,6 +251,7 @@ class WorkspaceStore {
                 pinnedtabids: Array.isArray(initialWorkspace?.pinnedtabids) ? [...initialWorkspace.pinnedtabids] : [],
                 activetabid: initialWorkspace?.activetabid ?? "",
                 activewidgetid: "",
+                layout: { ...defaultWorkspaceLayout, surfaces: [...defaultWorkspaceLayout.surfaces] },
                 tabs: {},
                 widgets: {},
             },
@@ -226,11 +298,12 @@ class WorkspaceStore {
         const nextActive = this.state.active;
         const merged = {
             ...nextActive,
-            ...toWorkspaceSummary(legacyWorkspace),
-            tabids: legacyWorkspace.tabids ? [...legacyWorkspace.tabids] : nextActive.tabids,
-            pinnedtabids: legacyWorkspace.pinnedtabids ? [...legacyWorkspace.pinnedtabids] : nextActive.pinnedtabids,
-            activetabid: legacyWorkspace.activetabid ?? nextActive.activetabid,
-        };
+                ...toWorkspaceSummary(legacyWorkspace),
+                tabids: legacyWorkspace.tabids ? [...legacyWorkspace.tabids] : nextActive.tabids,
+                pinnedtabids: legacyWorkspace.pinnedtabids ? [...legacyWorkspace.pinnedtabids] : nextActive.pinnedtabids,
+                activetabid: legacyWorkspace.activetabid ?? nextActive.activetabid,
+                layout: nextActive.layout,
+            };
         if (
             merged.oid === nextActive.oid &&
             merged.name === nextActive.name &&
@@ -291,6 +364,10 @@ class WorkspaceStore {
                 ...this.state.active,
                 tabs: { ...this.state.active.tabs },
                 widgets: { ...this.state.active.widgets },
+                layout: {
+                    ...this.state.active.layout,
+                    surfaces: [...this.state.active.layout.surfaces],
+                },
             },
             list: [...this.state.list],
             colors: [...this.state.colors],
