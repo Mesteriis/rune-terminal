@@ -3,7 +3,7 @@ import type { IgnoreRule, TrustedRule } from "@/rterm-api/policy/types";
 import { workspaceStore, type WorkspaceStoreLayout } from "@/app/state/workspace.store";
 import { createBlock } from "@/store/global";
 import { fireAndForget, makeIconClass } from "@/util/util";
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { UtilitySurfaceFrame } from "./utility-surface-frame";
 
 type SettingsView = "overview" | "trusted-tools" | "secret-shield" | "help";
@@ -137,7 +137,17 @@ const SettingsNavButton = memo(
 SettingsNavButton.displayName = "SettingsNavButton";
 
 export const SettingsUtilitySurface = memo(
-    ({ onClose, onOpenTools }: { onClose: () => void; onOpenTools?: () => void }) => {
+    ({
+        onClose,
+        onOpenTools,
+        onHeaderPointerDown,
+        dragging = false,
+    }: {
+        onClose: () => void;
+        onOpenTools?: () => void;
+        onHeaderPointerDown?: (event: ReactPointerEvent<HTMLDivElement>) => void;
+        dragging?: boolean;
+    }) => {
         const [activeView, setActiveView] = useState<SettingsView>("overview");
         const [layout, setLayout] = useState<WorkspaceStoreLayout>(() => workspaceStore.getSnapshot().active.layout);
         const [layouts, setLayouts] = useState<WorkspaceStoreLayout[]>(() => workspaceStore.getSnapshot().active.layouts);
@@ -315,6 +325,19 @@ export const SettingsUtilitySurface = memo(
                 onClose={onClose}
                 widthClassName="w-[min(92vw,34rem)] max-w-[34rem]"
                 testID="settings-surface"
+                headerTestID="settings-surface-header"
+                headerClassName="select-none"
+                headerLeading={
+                    <span
+                        className="flex h-5 w-5 items-center justify-center rounded text-[11px] text-secondary transition-colors hover:bg-[rgba(255,255,255,0.08)] hover:text-white"
+                        aria-hidden="true"
+                        title="Drag settings overlay"
+                    >
+                        <i className={makeIconClass("grip-vertical", false)} />
+                    </span>
+                }
+                onHeaderPointerDown={onHeaderPointerDown}
+                headerCursor={dragging ? "grabbing" : onHeaderPointerDown ? "grab" : undefined}
             >
                 <div className="flex min-h-0 flex-1 overflow-hidden">
                     <div className="flex w-40 shrink-0 flex-col gap-1 border-r border-border bg-black/10 p-2">

@@ -1,6 +1,6 @@
 import { makeIconClass } from "@/util/util";
 import clsx from "clsx";
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode } from "react";
 
 interface UtilitySurfaceFrameProps {
     title: string;
@@ -8,10 +8,15 @@ interface UtilitySurfaceFrameProps {
     children: ReactNode;
     onClose?: () => void;
     headerActions?: ReactNode;
+    headerLeading?: ReactNode;
     widthClassName?: string;
     bodyClassName?: string;
     className?: string;
     testID?: string;
+    headerTestID?: string;
+    headerClassName?: string;
+    onHeaderPointerDown?: (event: ReactPointerEvent<HTMLDivElement>) => void;
+    headerCursor?: CSSProperties["cursor"];
 }
 
 export function UtilitySurfaceFrame({
@@ -20,10 +25,15 @@ export function UtilitySurfaceFrame({
     children,
     onClose,
     headerActions,
+    headerLeading,
     widthClassName = "w-[min(90vw,30rem)] max-w-[30rem]",
     bodyClassName,
     className,
     testID,
+    headerTestID,
+    headerClassName,
+    onHeaderPointerDown,
+    headerCursor,
 }: UtilitySurfaceFrameProps) {
     const frameStyle: CSSProperties = {
         border: "0.5px solid var(--modal-border-color)",
@@ -44,8 +54,14 @@ export function UtilitySurfaceFrame({
             style={frameStyle}
             data-testid={testID}
         >
-            <div className="flex min-h-[35px] items-center justify-between gap-2 px-4 py-2" style={headerStyle}>
+            <div
+                className={clsx("flex min-h-[35px] items-center justify-between gap-2 px-4 py-2", headerClassName)}
+                style={{ ...headerStyle, cursor: headerCursor }}
+                data-testid={headerTestID}
+                onPointerDown={onHeaderPointerDown}
+            >
                 <div className="flex min-w-0 items-center gap-2">
+                    {headerLeading}
                     <i className={clsx(makeIconClass(icon, false), "shrink-0 text-[12px] text-secondary")} />
                     <div className="truncate text-[12px] font-semibold text-white">{title}</div>
                 </div>

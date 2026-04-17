@@ -18,6 +18,10 @@ It is intentionally operational, not narrative.
   - it supports inline workspace editing with theme metadata from the workspace services
 - The right-side widget dock now uses shell-level flyout controls for runtime and settings entry points instead of acting as a primary content column.
 - The widget dock settings flyout now deep-links into a user-facing shell settings surface with `Overview`, `Trusted tools`, `Secret shield`, and `Help` views.
+- The shell settings surface now opens as a bounded draggable overlay above the compat shell:
+  - it is mounted independently of the split layout tree
+  - it opens near the right utility rail instead of as a centered modal
+  - dragging is limited to the header chrome and clamped to the desktop window bounds
 - The widget dock launcher flyout now acts as the searchable shell-level entry surface for:
   - opening a new terminal tab
   - returning to the AI panel
