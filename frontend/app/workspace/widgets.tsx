@@ -466,6 +466,7 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
                                     onClick={() => toggleUtilityFlyout("tools")}
                                     mode={mode}
                                     defaultIcon="toolbox"
+                                    testID="workspace-tools-button"
                                     style={compatActionStyle}
                                 />
                             ) : null}
@@ -478,6 +479,7 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
                                     onClick={() => toggleUtilityFlyout("audit")}
                                     mode={mode}
                                     defaultIcon="list-check"
+                                    testID="workspace-audit-button"
                                     style={compatActionStyle}
                                 />
                             ) : null}
@@ -539,6 +541,7 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
                                 mode={mode}
                                 label="Tools"
                                 defaultIcon="toolbox"
+                                testID="workspace-tools-button"
                                 style={compatActionStyle}
                             />
                         ) : null}
@@ -552,6 +555,7 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
                                 mode={mode}
                                 label="Audit"
                                 defaultIcon="list-check"
+                                testID="workspace-audit-button"
                                 style={compatActionStyle}
                             />
                         ) : null}

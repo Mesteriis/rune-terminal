@@ -165,7 +165,7 @@ test.describe.serial("quick actions workflow", () => {
     await openQuickActions(page);
 
     const quickActionsSurface = page.getByTestId("quick-actions-surface");
-    await expect(quickActionsSurface).toContainText("Quick Actions");
+    await expect(quickActionsSurface).toContainText("Launcher");
     await expect(page.getByTestId("quick-action-item-ui.open_files_panel")).toBeVisible();
     await expect(page.getByTestId("quick-action-item-workspace.create_local_terminal_tab")).toBeVisible();
 

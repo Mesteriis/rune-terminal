@@ -430,7 +430,8 @@ test.describe.serial("window behavior parity", () => {
 
     await openQuickActions(page);
     await page.getByTestId("quick-action-item-ui.open_ai_panel").click();
-    await expect(page.getByTestId("quick-actions-surface")).toContainText("AI panel opened.");
+    await expect(page.getByTestId("quick-actions-surface")).toBeHidden();
+    await expect(page.locator("[data-waveai-panel='true']")).toBeVisible();
 
     await openQuickActions(page);
     await page.getByTestId("quick-action-item-ui.open_audit_panel").click();

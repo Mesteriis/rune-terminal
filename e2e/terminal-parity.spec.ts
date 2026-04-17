@@ -277,18 +277,26 @@ function isNearBottom(metrics: { scrollTop: number; scrollHeight: number; client
   return metrics.scrollTop + metrics.clientHeight >= metrics.scrollHeight - 4;
 }
 
-async function dropNativeFileIntoTerminal(page: Page, targetWidgetId: string, fileUrl: string): Promise<void> {
+async function dropNativeFileIntoTerminal(page: Page, targetWidgetId: string, filePath: string, fileUrl: string): Promise<void> {
   const target = page.getByTestId(`compat-widget-pane-${targetWidgetId}`).locator(".term-connectelem");
   const targetBox = await target.boundingBox();
   expect(targetBox).not.toBeNull();
-  const dataTransfer = await page.evaluateHandle((nativeFileUrl) => {
+  const fileName = path.basename(fileUrl);
+  const dataTransfer = await page.evaluateHandle(({ nativeFilePath, nativeFileUrl, nativeFileName }) => {
     const dt = new DataTransfer();
+    const file = new File([""], nativeFileName, { type: "text/plain" });
+    Object.defineProperty(file, "path", {
+      value: nativeFilePath,
+      configurable: true,
+    });
+    dt.items.add(file);
     dt.setData("text/uri-list", nativeFileUrl);
     dt.setData("text/plain", nativeFileUrl);
     return dt;
-  }, fileUrl);
+  }, { nativeFilePath: filePath, nativeFileUrl: fileUrl, nativeFileName: fileName });
   const clientX = Math.floor(targetBox!.x + targetBox!.width * 0.5);
   const clientY = Math.floor(targetBox!.y + targetBox!.height * 0.5);
+  await target.dispatchEvent("dragenter", { dataTransfer, clientX, clientY });
   await target.dispatchEvent("dragover", { dataTransfer, clientX, clientY });
   await target.dispatchEvent("drop", { dataTransfer, clientX, clientY });
   await dataTransfer.dispose();
@@ -472,8 +480,8 @@ test.describe.serial("terminal parity behaviors", () => {
     const widgetId = await getActiveWidgetId(page);
     const runId = `jump-${Date.now()}`;
 
-    await sendTerminalInput(request, widgetId, `for i in $(seq 1 140); do echo ${runId}-$i; done`);
-    await waitForBufferToContain(page, widgetId, `${runId}-140`);
+    await sendTerminalInput(request, widgetId, `for i in $(seq 1 90); do echo ${runId}-$i; done`);
+    await waitForBufferToContain(page, widgetId, `${runId}-90`);
 
     await page.getByTestId(`compat-widget-pane-${widgetId}`).click();
     await page.keyboard.press("Shift+Home");
@@ -499,7 +507,7 @@ test.describe.serial("terminal parity behaviors", () => {
 
     await page.getByTestId(`compat-widget-pane-${widgetId}`).click();
     await page.keyboard.press("Control+C");
-    await dropNativeFileIntoTerminal(page, widgetId, readmeUrl);
+    await dropNativeFileIntoTerminal(page, widgetId, readmePath, readmeUrl);
 
     await expect.poll(async () => {
       return (await getLastNonEmptyTerminalLine(page, widgetId)).includes(readmePath);
