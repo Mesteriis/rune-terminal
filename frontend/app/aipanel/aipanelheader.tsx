@@ -4,7 +4,6 @@
 import { handleWaveAIContextMenu } from "@/app/aipanel/aipanel-contextmenu";
 import { useAtomValue } from "jotai";
 import { memo } from "react";
-import { isWaveAICompatRuntime } from "./compat-context";
 import { WaveAIModel } from "./waveai-model";
 
 const AIPanelHeaderContent = memo(
@@ -73,13 +72,7 @@ const AIPanelHeaderContent = memo(
 
 AIPanelHeaderContent.displayName = "AIPanelHeaderContent";
 
-const AIPanelHeaderCompat = memo(() => {
-    return <AIPanelHeaderContent widgetAccess={true} />;
-});
-
-AIPanelHeaderCompat.displayName = "AIPanelHeaderCompat";
-
-const AIPanelHeaderLegacy = memo(() => {
+const AIPanelHeaderInner = memo(() => {
     const model = WaveAIModel.getInstance();
     const widgetAccess = useAtomValue(model.widgetAccessAtom);
 
@@ -96,13 +89,8 @@ const AIPanelHeaderLegacy = memo(() => {
     );
 });
 
-AIPanelHeaderLegacy.displayName = "AIPanelHeaderLegacy";
+AIPanelHeaderInner.displayName = "AIPanelHeaderInner";
 
-export const AIPanelHeader = memo(() => {
-    if (isWaveAICompatRuntime()) {
-        return <AIPanelHeaderCompat />;
-    }
-    return <AIPanelHeaderLegacy />;
-});
+export const AIPanelHeader = memo(() => <AIPanelHeaderInner />);
 
 AIPanelHeader.displayName = "AIPanelHeader";

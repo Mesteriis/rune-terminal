@@ -85,6 +85,7 @@ export class WaveAIModel {
     >;
     restoreBackupStatus: jotai.PrimitiveAtom<"idle" | "processing" | "success" | "error"> = jotai.atom("idle");
     restoreBackupError: jotai.PrimitiveAtom<string> = jotai.atom(null) as jotai.PrimitiveAtom<string>;
+    compatWidgetAccessAtom: jotai.PrimitiveAtom<boolean> = jotai.atom(true);
 
     private constructor(orefContext: ORef, inBuilder: boolean) {
         this.orefContext = orefContext;
@@ -102,7 +103,7 @@ export class WaveAIModel {
                 return true;
             }
             if (isWaveAICompatRuntime()) {
-                return true;
+                return get(this.compatWidgetAccessAtom);
             }
             const widgetAccessMetaAtom = getOrefMetaKeyAtom(this.orefContext, "waveai:widgetcontext");
             const value = get(widgetAccessMetaAtom);
@@ -447,6 +448,10 @@ export class WaveAIModel {
     }
 
     setWidgetAccess(enabled: boolean) {
+        if (isWaveAICompatRuntime()) {
+            globalStore.set(this.compatWidgetAccessAtom, enabled);
+            return;
+        }
         RpcApi.SetMetaCommand(TabRpcClient, {
             oref: this.orefContext,
             meta: { "waveai:widgetcontext": enabled },

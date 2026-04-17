@@ -32,6 +32,7 @@ import { useDrop } from "react-dnd";
 import { formatFileSizeError, isAcceptableFile, validateFileSize } from "./ai-utils";
 import { AgentSelectionStrip } from "./agent-selection-strip";
 import { AIDroppedFiles } from "./aidroppedfiles";
+import { AIRateLimitStrip } from "./airatelimitstrip";
 import { ExecutionBlockList } from "./execution-block-list";
 import { AIPanelHeader } from "./aipanelheader";
 import { AIPanelInput } from "./aipanelinput";
@@ -109,55 +110,77 @@ const KeyCap = memo(({ children, className }: { children: ReactNode; className?:
 KeyCap.displayName = "KeyCap";
 
 const CompatConversationWelcome = memo(
-    ({ providerLabel, selectionSummary }: { providerLabel: string; selectionSummary: string }) => {
+    ({
+        providerLabel,
+        selectionSummary,
+        widgetAccessEnabled,
+    }: {
+        providerLabel: string;
+        selectionSummary: string;
+        widgetAccessEnabled: boolean;
+    }) => {
         const modKey = isMacOS() ? "⌘" : "Alt";
 
         return (
             <div className="text-secondary py-8">
                 <div className="text-center">
                     <i className="fa fa-sparkles text-4xl text-accent mb-2 block"></i>
-                    <p className="text-lg font-bold text-primary">TideTerm AI</p>
+                    <p className="text-lg font-bold text-primary">Welcome to TideTerm AI</p>
                 </div>
                 <div className="mt-4 text-left max-w-md mx-auto">
-                    <p className="text-sm mb-4">
-                        The active compat panel is now backed by the RunaTerminal agent catalog and conversation API.
+                    <p className="text-sm mb-6">
+                        TideTerm AI is your terminal assistant with context. I can read your terminal output, analyze widgets,
+                        access files, and help you solve problems faster.
                     </p>
                     <div className="bg-accent/10 border border-accent/30 rounded-lg p-4">
-                        <div className="text-sm font-semibold mb-3 text-accent">Current backend context</div>
-                        <div className="space-y-2 text-sm">
+                        <div className="text-sm font-semibold mb-3 text-accent">Getting Started:</div>
+                        <div className="space-y-3 text-sm">
                             <div>
-                                <span className="font-bold">Provider:</span> {providerLabel}
+                                <span className="font-bold">Widget Context</span>
+                                <div>When ON, I can read your terminal and analyze widgets.</div>
+                                <div>When OFF, I stay in prompt-only mode with no active-widget context.</div>
                             </div>
                             <div>
-                                <span className="font-bold">Selection:</span> {selectionSummary}
+                                Drag &amp; drop local files or attach them explicitly for analysis.
                             </div>
-                            <div className="text-muted">
-                                Responses are currently non-streaming and arrive after the backend provider finishes.
+                            <div className="space-y-1">
+                                <div>
+                                    <KeyCap>{modKey}</KeyCap>
+                                    <KeyCap className="ml-1">Shift</KeyCap>
+                                    <KeyCap className="ml-1">A</KeyCap>
+                                    <span className="ml-1.5">to toggle the panel</span>
+                                </div>
+                                <div>
+                                    {isWindows() ? (
+                                        <>
+                                            <KeyCap>Alt</KeyCap>
+                                            <KeyCap className="ml-1">0</KeyCap>
+                                            <span className="ml-1.5">to focus the composer</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <KeyCap>Ctrl</KeyCap>
+                                            <KeyCap className="ml-1">Shift</KeyCap>
+                                            <KeyCap className="ml-1">0</KeyCap>
+                                            <span className="ml-1.5">to focus the composer</span>
+                                        </>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <div className="mt-4 space-y-2 text-sm">
-                        <div>
-                            <KeyCap>{modKey}</KeyCap>
-                            <KeyCap className="ml-1">Shift</KeyCap>
-                            <KeyCap className="ml-1">A</KeyCap>
-                            <span className="ml-1.5">to toggle the panel</span>
-                        </div>
-                        <div>
-                            {isWindows() ? (
-                                <>
-                                    <KeyCap>Alt</KeyCap>
-                                    <KeyCap className="ml-1">0</KeyCap>
-                                    <span className="ml-1.5">to focus the composer</span>
-                                </>
-                            ) : (
-                                <>
-                                    <KeyCap>Ctrl</KeyCap>
-                                    <KeyCap className="ml-1">Shift</KeyCap>
-                                    <KeyCap className="ml-1">0</KeyCap>
-                                    <span className="ml-1.5">to focus the composer</span>
-                                </>
-                            )}
+                    <div className="mt-4 rounded border border-gray-700/70 bg-zinc-900/40 p-3 text-sm">
+                        <div className="font-semibold text-white">Active backend context</div>
+                        <div className="mt-2 space-y-1 text-muted">
+                            <div>
+                                <span className="font-bold text-white">Provider:</span> {providerLabel}
+                            </div>
+                            <div>
+                                <span className="font-bold text-white">Selection:</span> {selectionSummary}
+                            </div>
+                            <div>
+                                <span className="font-bold text-white">Widget Context:</span> {widgetAccessEnabled ? "ON" : "OFF"}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -304,6 +327,7 @@ const AIPanelCompatInner = memo(() => {
     const showOverlayBlockNums = useAtomValue(getSettingsKeyAtom("app:showoverlayblocknums")) ?? true;
     const isFocused = useAtomValue(model.isWaveAIFocusedAtom);
     const isPanelVisible = useAtomValue(model.getPanelVisibleAtom());
+    const widgetAccessEnabled = useAtomValue(model.widgetAccessAtom);
     const showBlockMask = isLayoutMode && showOverlayBlockNums;
 
     useEffect(() => {
@@ -1154,6 +1178,7 @@ const AIPanelCompatInner = memo(() => {
         <AgentSelectionStrip
             catalog={catalog}
             disabled={selectionBusy || status !== "ready"}
+            compact={true}
             onSelectProfile={(id) => void handleSelectionChange("profile", id)}
             onSelectRole={(id) => void handleSelectionChange("role", id)}
             onSelectMode={(id) => void handleSelectionChange("mode", id)}
@@ -1186,6 +1211,7 @@ const AIPanelCompatInner = memo(() => {
             {(isDragOver || isReactDndDragOver) && <AIDragOverlay />}
             {showBlockMask && <AIBlockMask />}
             <AIPanelHeader />
+            <AIRateLimitStrip />
 
             <div key="main-content" className="flex-1 flex flex-col min-h-0">
                 {messages.length === 0 && initialLoadDone ? (
@@ -1198,6 +1224,7 @@ const AIPanelCompatInner = memo(() => {
                             <CompatConversationWelcome
                                 providerLabel={providerLabel}
                                 selectionSummary={formatSelectionSummary(catalog)}
+                                widgetAccessEnabled={widgetAccessEnabled}
                             />
                         </div>
                     </div>
