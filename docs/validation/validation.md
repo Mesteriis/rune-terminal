@@ -1,6 +1,6 @@
 # Validation System
 
-Date: `2026-04-17`
+Date: `2026-04-18`
 
 Validation is now organized by domain and each domain file uses the same structure:
 
@@ -29,8 +29,9 @@ Do not append new free-form log blocks in this file. Update the relevant domain 
 - [../shell-stretch-baseline.md](../shell-stretch-baseline.md)
 - [../tab-closure-validation.md](../tab-closure-validation.md)
 - [../terminal-parity-validation.md](../terminal-parity-validation.md)
-- [../ui-parity-validation.md](../ui-parity-validation.md)
-- [../ui-system-validation.md](../ui-system-validation.md)
+- [../ui-system-parity-validation.md](../ui-system-parity-validation.md) - current UI-system source of truth
+- [../ui-parity-validation.md](../ui-parity-validation.md) - historical snapshot, superseded for current UI-system truth
+- [../ui-system-validation.md](../ui-system-validation.md) - historical snapshot, superseded for current UI-system truth
 
 ## Legacy archive
 

@@ -1,6 +1,6 @@
 # Parity Matrix
 
-Date: `2026-04-17`
+Date: `2026-04-18`
 Phase: `1.0.0-rc1` hardening
 
 This is the canonical parity source of truth for release tracking.
@@ -39,7 +39,7 @@ Status values:
 | AI panel baseline surface | panels | Left panel chat surface with mode/context controls | TideTerm-shaped AI panel now includes the real widget-context toggle, compact mode strip, compat transcript flow, and explicit `/run` + explain handoff | FULL | Headed validation covered layout, mode/context toggles, plain message flow, structured explain, and final UI hardening kept pane/surface chrome stable while AI stayed operator-driven |
 | Tools panel execution helpers | panels | Explicit tool execution inputs and run controls | `Use Selected File Path` and `Use Active Widget` helpers exist | FULL | Execute remains explicit click |
 | Audit panel traceability | panels | Visible operation history with execution provenance | Audit surface shows execution/approval/explain events | FULL | Backend audit is source of truth |
-| Settings utility surfaces | panels | Utility settings/help/trust/secret shield surfaces | Right-rail settings utility surface now provides overview, trusted tools, secret shield, and help with explicit open-settings/help actions | FULL | Headed validation covered bounded positioning, view switching, compact utility framing, and stable surface behavior while adjacent shell surfaces opened |
+| Settings utility surfaces | panels | Utility settings/help/trust/secret shield surfaces | Right-rail settings utility surface now provides overview, trusted tools, secret shield, and help with explicit open-settings/help actions | PARTIAL | Overlay model, dragging, and bounded utility framing are validated, but [ui-system-parity-validation.md](../ui-system-parity-validation.md) still shows remaining visual mismatch in overlay weight/form density vs Tide |
 | Connection catalog model | remote | Explicit local + SSH connection inventory | Local + saved SSH profiles + active default target exist | FULL | Backend-owned catalog model is active |
 | SSH profile workflow | remote | Save/check/select/open-shell profile actions | Profile save/list/select/check/open-shell actions exist | PARTIAL | Daily-driver narrow path validated; breadth limited |
 | Connection lifecycle signals | remote | Distinct profile/preflight/launch usability semantics | `check_status`, `launch_status`, `usability` are surfaced | FULL | Explicitly split to avoid fake connected state |
@@ -57,7 +57,7 @@ Status values:
 | Quick actions metadata workflow | workflow | Explicit action catalog with context requirements | Quick actions API/UI metadata and gating are present | FULL | Headed browser validation exists |
 | Operator cross-surface chain | workflow | Files -> AI/`/run`, tools, audit, explain chain | Chain is implemented with explicit handoffs | FULL | Operator workflow validation exists |
 | Release validation gates | workflow | Executable release gates with truthful pass/fail state | `npm run validate` + `npm run tauri:dev` smoke are documented gates | FULL | Full-lint debt is tracked separately |
-| Shell chrome parity | UX | Compact TideTerm-recognizable top shell density and hierarchy | Compact Tide-aligned shell chrome with validated AI/switcher/tab framing plus Tide-like compat pane headers, drag/status chrome, and compact surface rhythm | FULL | Desktop + headed validation, focused UI coverage, and full UI parity hardening validation exist |
+| Shell chrome parity | UX | Compact TideTerm-recognizable top shell density and hierarchy | Compact Tide-aligned shell chrome with validated AI/switcher/tab framing plus Tide-like compat pane headers, drag/status chrome, and compact surface rhythm | PARTIAL | Desktop + headed validation confirm the corrected compact chrome, but remaining visual mismatch persists in status-badge weight and whole-window composition vs the Tide screenshot family |
 | Terminal advanced affordances | UX | Multi-session sidebar + deep find/search UI | Not present on active compat path | MISSING | Explicitly out of current release scope |
 | Attachment management UX breadth | UX | Managed attachment storage/import/gallery-style UX | Basic local references exist, broad UX not present | PARTIAL | Expanded attachment UX remains post-1.0 |
 | Streaming AI responses | UX | Streamed assistant responses in panel | Not implemented in current release path | MISSING | Listed in known limitations |

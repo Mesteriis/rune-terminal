@@ -2,7 +2,7 @@
 
 Date: `2026-04-18`
 Phase: `1.0.0-rc1` hardening
-Status: `pre-fix baseline`
+Status: `baseline plus post-fix closure check`
 
 This document records the release-blocking UI-system gaps using:
 
@@ -11,7 +11,29 @@ This document records the release-blocking UI-system gaps using:
 - Tide screenshots in the repository
 - current RunaTerminal screenshots captured from the live compat shell
 
-This is not a redesign brief. It is the pre-fix parity baseline for the UI-system correction batch.
+This is not a redesign brief. It records the pre-fix parity baseline and the final post-fix closure check for the UI-system correction batch.
+
+## Post-fix closure check
+
+Resolved in this batch:
+
+- overlay model corrected to a true floating, draggable, bounded utility overlay
+- font/icon path unified to the reference-consistent Font Awesome + `Inter` / `Hack` stack
+- terminal/files pane chrome compacted into one compat header grammar
+- shell chrome density reduced in the right rail and content-stage spacing
+- static/token drift reduced by moving affected surfaces onto shared chrome variables
+
+Still visibly mismatched after final desktop + headed validation:
+
+- terminal status badges remain heavier and more detached than Tide’s quieter inline header treatment
+- the settings overlay remains darker and more form-heavy than the Tide screenshot family
+- the whole-window composition still differs from the Tide screenshot family because the compat shell keeps the left AI panel and a different pane mix
+
+Current truth:
+
+- improved enough to remove the original release-blocking implementation gaps
+- not visually identical enough to claim `FULL` UI-system closure against the screenshot reference
+- use [docs/ui-system-parity-validation.md](./ui-system-parity-validation.md) as the current screenshot-backed validation source of truth
 
 ## Tide source files inspected
 
@@ -236,13 +258,16 @@ Required correction:
 - reduce broad green fills
 - align borders, shadows, and background weights with Tide’s lighter chrome
 
-## Current docs that overstate completion
+## Doc correction note
 
-These documents currently over-claim `FULL` or “none remaining” for UI-system parity despite the visible mismatches above:
+At slice 1, these documents over-claimed `FULL` or “none remaining” for UI-system parity despite the visible mismatches above:
 
 - `docs/parity/parity-matrix.md`
 - `docs/ui-parity-gap-map.md`
 - `docs/ui-parity-validation.md`
 - `docs/ui-system-validation.md`
 
-Those documents need correction after the implementation and final screenshot-backed validation.
+Slice 7.2 corrects those documents. For current UI-system truth, use:
+
+- `docs/ui-system-parity-gap-map.md`
+- `docs/ui-system-parity-validation.md`

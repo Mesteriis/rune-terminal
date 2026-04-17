@@ -1,5 +1,7 @@
 # Full UI Parity Gap Map
 
+Status: historical snapshot. Do not treat this file as current UI-system closure. Current screenshot-backed truth lives in [ui-system-parity-gap-map.md](./ui-system-parity-gap-map.md) and [ui-system-parity-validation.md](./ui-system-parity-validation.md), which still record remaining visible mismatch in terminal badge weight, overlay heaviness, and whole-window composition vs Tide.
+
 Date: `2026-04-17`
 Phase: `1.0.0-rc1` hardening
 

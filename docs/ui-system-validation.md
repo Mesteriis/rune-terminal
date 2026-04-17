@@ -1,5 +1,7 @@
 # UI System Alignment Validation
 
+Status: historical snapshot. Do not treat this file as current UI-system closure. Current screenshot-backed truth lives in [ui-system-parity-validation.md](./ui-system-parity-validation.md), which records remaining visible mismatch in terminal badge weight, overlay heaviness, and whole-window composition vs Tide.
+
 Date: `2026-04-17`
 Validation mode: `real desktop runtime`
 

@@ -49,14 +49,10 @@ This validation used all three reference inputs for the UI-system batch:
 8. Ran the repo release sweep on the corrected code state:
    - `npm run validate`
    - result: passed, with the existing frontend hook warnings only
-9. Ran the existing headed UI/browser regression pack:
+9. Ran the final headed UI/browser regression pack after slice 7.1 test corrections:
    - `npx playwright test e2e/ui-parity.spec.ts e2e/panels-parity.spec.ts e2e/shell-chrome-parity.spec.ts e2e/navigation-parity.spec.ts e2e/quick-actions.spec.ts e2e/structured-execution-block.spec.ts e2e/window-behavior.spec.ts -c e2e/playwright.config.ts --headed`
-   - result: `7 passed`, `3 failed`, `2 did not run`
-   - the passing cases covered quick actions, MCP controls, structured execution, and remote-profile quick-action context
-   - the failing cases were stale UI parity assertions/selectors, not new runtime behavior failures:
-     - `e2e/navigation-parity.spec.ts`
-     - `e2e/shell-chrome-parity.spec.ts`
-     - `e2e/ui-parity.spec.ts`
+   - result: `13 passed`
+   - this headed pass covered settings view switching/bounds, quick actions, MCP controls, structured execution, remote-profile quick-action context, shell chrome, and window behavior
 
 ## New post-fix screenshots
 
