@@ -25,7 +25,7 @@ Status values:
 | Split layout add/move/swap | workspace/layout | Window splits, explicit drop zones, center swap | Add-split, directional move, outer zones, center swap implemented | FULL | Window parity validations are present |
 | Layout presets | workspace/layout | Save/switch layout presets without session identity drift | Layout save/switch exists with backend snapshot fields | FULL | Mode/surface/focus composition is persisted |
 | Workspace restore semantics | workspace/layout | Restore tabs/widgets/layout truth on restart | Snapshot persistence/restore is active | FULL | Session lifecycle caveats tracked separately |
-| Last-tab closure parity | workspace/layout | User can close all tabs when desired | Last tab cannot be closed | PARTIAL | Intentional current implementation guard |
+| Last-tab closure parity | workspace/layout | User can close all tabs when desired | Last tab can be closed into an explicit `No Active Tab` workspace state with explicit add-tab recovery | FULL | Headed validation and UI coverage verify empty-state persistence and explicit reopen flow |
 | Explicit `/run` grammar | structured execution | Explicit command grammar path from AI panel | `/run` and `run:` paths execute via tool runtime | FULL | Canonical execution path is in place |
 | Approval confirm/retry integrity | structured execution | Approval-required execution uses explicit confirm + intent-safe retry | `safety.confirm` + intent-bound approval token path is active | FULL | Mismatch retries rejected (`approval_mismatch`) |
 | Execution block record | structured execution | Structured command/result unit with provenance | Execution blocks and provenance IDs are available | FULL | Backend block APIs and explain linkage exist |

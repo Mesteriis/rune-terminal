@@ -32,6 +32,15 @@ This validation used the repo-root Tide sources as the primary reference for las
 7. Reloaded the app while empty and re-verified the empty state.
 8. Clicked the visible top-bar add-tab button to create a new shell again.
 9. Reloaded once more and verified the recreated tab persisted.
+10. Ran the focused UI coverage:
+   - `npx playwright test e2e/last-tab-closure.spec.ts -c e2e/playwright.config.ts --headed`
+   - result: `1 passed`
+11. Ran the broader workspace regression sweep:
+   - `npx playwright test e2e/last-tab-closure.spec.ts e2e/window-behavior.spec.ts -c e2e/playwright.config.ts --headed`
+   - result: `3 passed`
+12. Ran the release gate:
+   - `npm run validate`
+   - result: passed with existing frontend lint warnings only
 
 ## What was visibly verified
 
@@ -56,6 +65,7 @@ This validation used the repo-root Tide sources as the primary reference for las
   - the new terminal pane became visible again
   - the workspace snapshot contained one new tab and one new terminal widget
 - Reloading after explicit recovery preserved the recreated tab and its active ids.
+- No regressions were observed in the adjacent window-behavior headed sweep or the release gate run on the same code state.
 
 ## Captured evidence
 
