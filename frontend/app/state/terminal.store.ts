@@ -168,6 +168,25 @@ class TerminalStore {
         return facade.sendInput(widgetId, { text });
     }
 
+    updateWorkingDir(widgetId: string, workingDir: string): void {
+        const state = this.getOrCreateWidgetState(widgetId);
+        if (state.snapshot == null || state.snapshot.state == null) {
+            return;
+        }
+        if ((state.snapshot.state.working_dir ?? "") === workingDir) {
+            return;
+        }
+        state.snapshot = {
+            ...state.snapshot,
+            state: {
+                ...state.snapshot.state,
+                working_dir: workingDir,
+            },
+        };
+        this.state.widgets[widgetId] = state;
+        this.notify(widgetId, "snapshot");
+    }
+
     private stopStream(widgetId: string): void {
         const streamState = this.streamStates.get(widgetId);
         if (!streamState) {

@@ -3,6 +3,8 @@
 
 import { ClientModel } from "@/app/store/client-model";
 import { GlobalModel } from "@/app/store/global-model";
+import { terminalStore } from "@/app/state/terminal.store";
+import { workspaceStore } from "@/app/state/workspace.store";
 import { getAppLanguageFromSettings, t as tCore } from "@/app/i18n/i18n-core";
 import { getTabModelByTabId, TabModelContext } from "@/app/store/tab-model";
 import { Workspace } from "@/app/workspace/workspace";
@@ -105,13 +107,21 @@ async function getClipboardURL(): Promise<URL | null> {
 async function handleContextMenu(e: React.MouseEvent<HTMLDivElement>) {
     e.preventDefault();
     const target = e.target instanceof HTMLElement ? e.target : null;
+    const compatWidgetElem = target?.closest?.("[data-widgetid]") as HTMLElement | null;
+    const compatWidgetId = compatWidgetElem?.getAttribute("data-widgetid")?.trim() ?? "";
+    const compatWidget = compatWidgetId ? workspaceStore.getSnapshot().active.widgets[compatWidgetId] : null;
+    const compatIsTermWidget = compatWidget?.kind === "terminal";
     const blockElem = target?.closest?.("[data-blockid]") as HTMLElement | null;
     const blockId = blockElem?.getAttribute("data-blockid");
     const blockAtom = blockId ? WOS.getWaveObjectAtom<Block>(WOS.makeORef("block", blockId)) : null;
     const blockData = blockAtom ? globalStore.get(blockAtom) : null;
     const isTermBlock = blockData?.meta?.view === "term";
-    let termCwd: string | null = isTermBlock ? (blockData?.meta?.["cmd:cwd"] as string) : null;
-    let termConnection: string | null = isTermBlock ? (blockData?.meta?.connection as string) : null;
+    let termCwd: string | null = compatIsTermWidget
+        ? (terminalStore.getWidgetSnapshot(compatWidgetId)?.snapshot?.state?.working_dir ?? null)
+        : isTermBlock ? (blockData?.meta?.["cmd:cwd"] as string) : null;
+    let termConnection: string | null = compatIsTermWidget
+        ? (compatWidget?.connectionId ?? null)
+        : isTermBlock ? (blockData?.meta?.connection as string) : null;
     if (isTermBlock && blockId) {
         const activeSessionId = blockData?.meta?.["term:activesessionid"] as string;
         if (activeSessionId && activeSessionId !== blockId) {
@@ -150,6 +160,10 @@ async function handleContextMenu(e: React.MouseEvent<HTMLDivElement>) {
         menu.push({
                     label: t("contextmenu.openCurrentDirectoryInNewBlock"),
                     click: () => {
+                        if (compatIsTermWidget && compatWidgetId !== "") {
+                            void workspaceStore.openDirectoryInNewBlock(compatWidgetId, safeTermCwd, safeTermConnection);
+                            return;
+                        }
                         createBlock({
                                 meta: {
                                     view: "preview",
@@ -384,6 +398,7 @@ const CompatAppInner = () => {
                 fullscreen: isFullScreen,
                 "prefers-reduced-motion": prefersReducedMotion,
             })}
+            onContextMenu={handleContextMenu}
         >
             <AppBackground compatMode />
             <AppFocusHandler />

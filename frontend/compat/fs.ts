@@ -3,9 +3,13 @@ import type { FSListResponse, FSReadResponse } from "@/rterm-api/fs/types";
 import type { CompatApiOptions } from "./types";
 import { createCompatApiFacade } from "./api";
 
+export interface FSRequestOptions {
+  allowOutsideWorkspace?: boolean;
+}
+
 export interface FSFacade {
-  list: (path?: string) => Promise<FSListResponse>;
-  read: (path: string, maxBytes?: number) => Promise<FSReadResponse>;
+  list: (path?: string, options?: FSRequestOptions) => Promise<FSListResponse>;
+  read: (path: string, maxBytes?: number, options?: FSRequestOptions) => Promise<FSReadResponse>;
 }
 
 let fsFacadePromise: Promise<FSFacade> | null = null;
@@ -29,11 +33,11 @@ export function getFSFacade(fetchImpl?: CompatApiOptions["fetchImpl"]): Promise<
 
 export function createFSFacade(client: FSClient): FSFacade {
   return {
-    list(path?: string): Promise<FSListResponse> {
-      return client.list(path);
+    list(path?: string, options?: FSRequestOptions): Promise<FSListResponse> {
+      return client.list(path, options);
     },
-    read(path: string, maxBytes?: number): Promise<FSReadResponse> {
-      return client.read(path, maxBytes);
+    read(path: string, maxBytes?: number, options?: FSRequestOptions): Promise<FSReadResponse> {
+      return client.read(path, maxBytes, options);
     },
   };
 }

@@ -3,6 +3,7 @@ package workspace
 type WidgetKind string
 
 const WidgetKindTerminal WidgetKind = "terminal"
+const WidgetKindFiles WidgetKind = "files"
 
 type Widget struct {
 	ID           string     `json:"id"`
@@ -11,6 +12,7 @@ type Widget struct {
 	Description  string     `json:"description,omitempty"`
 	TerminalID   string     `json:"terminal_id,omitempty"`
 	ConnectionID string     `json:"connection_id,omitempty"`
+	Path         string     `json:"path,omitempty"`
 }
 
 type Tab struct {

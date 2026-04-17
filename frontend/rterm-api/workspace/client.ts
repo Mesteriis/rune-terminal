@@ -8,6 +8,7 @@ import type {
   FocusWidgetRequest,
   MoveWidgetBySplitRequest,
   MoveTabRequest,
+  OpenDirectoryInNewBlockRequest,
   RenameTabRequest,
   SaveLayoutRequest,
   SetTabPinnedRequest,
@@ -74,6 +75,12 @@ export class WorkspaceClient {
 
   moveWidgetBySplit(payload: MoveWidgetBySplitRequest): Promise<WorkspaceActionResponse> {
     return this.http.post<WorkspaceActionResponse, MoveWidgetBySplitRequest>("/api/v1/workspace/widgets/move-split", {
+      body: payload,
+    });
+  }
+
+  openDirectoryInNewBlock(payload: OpenDirectoryInNewBlockRequest): Promise<CreateTerminalTabResponse> {
+    return this.http.post<CreateTerminalTabResponse, OpenDirectoryInNewBlockRequest>("/api/v1/workspace/widgets/open-directory", {
       body: payload,
     });
   }

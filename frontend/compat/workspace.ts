@@ -9,6 +9,7 @@ import type {
   FocusWidgetRequest,
   MoveWidgetBySplitRequest,
   MoveTabRequest,
+  OpenDirectoryInNewBlockRequest,
   RenameTabRequest,
   SaveLayoutRequest,
   SetTabPinnedRequest,
@@ -31,6 +32,7 @@ export interface WorkspaceFacade {
   setTabPinned: (tabId: string, payload: SetTabPinnedRequest) => Promise<WorkspaceTabMutation>;
   moveTab: (payload: MoveTabRequest) => Promise<WorkspaceActionResponse>;
   moveWidgetBySplit: (payload: MoveWidgetBySplitRequest) => Promise<WorkspaceActionResponse>;
+  openDirectoryInNewBlock: (payload: OpenDirectoryInNewBlockRequest) => Promise<CreateTerminalTabResponse>;
   updateLayout: (payload: UpdateLayoutRequest) => Promise<WorkspaceActionResponse>;
   saveLayout: (payload?: SaveLayoutRequest) => Promise<WorkspaceActionResponse>;
   switchLayout: (payload: SwitchLayoutRequest) => Promise<WorkspaceActionResponse>;
@@ -85,6 +87,9 @@ export function createWorkspaceFacade(client: WorkspaceClient): WorkspaceFacade 
     },
     moveWidgetBySplit(payload: MoveWidgetBySplitRequest): Promise<WorkspaceActionResponse> {
       return client.moveWidgetBySplit(payload);
+    },
+    openDirectoryInNewBlock(payload: OpenDirectoryInNewBlockRequest): Promise<CreateTerminalTabResponse> {
+      return client.openDirectoryInNewBlock(payload);
     },
     updateLayout(payload: UpdateLayoutRequest): Promise<WorkspaceActionResponse> {
       return client.updateLayout(payload);

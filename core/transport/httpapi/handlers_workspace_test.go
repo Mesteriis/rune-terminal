@@ -120,6 +120,65 @@ func TestWorkspaceCreateSplitTerminalWidgetRejectsInvalidDirection(t *testing.T)
 	}
 }
 
+func TestWorkspaceOpenDirectoryInNewBlockCreatesFilesWidget(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPost, "/api/v1/workspace/widgets/open-directory", map[string]any{
+		"target_widget_id": "term-main",
+		"path":             "/workspace/repo/docs",
+		"connection_id":    "local",
+	}))
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d (%s)", recorder.Code, recorder.Body.String())
+	}
+
+	var response struct {
+		WidgetID  string `json:"widget_id"`
+		Workspace struct {
+			ActiveWidgetID string `json:"active_widget_id"`
+			Widgets        []struct {
+				ID           string `json:"id"`
+				Kind         string `json:"kind"`
+				Path         string `json:"path"`
+				ConnectionID string `json:"connection_id"`
+			} `json:"widgets"`
+		} `json:"workspace"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatalf("Unmarshal error: %v", err)
+	}
+	if response.WidgetID == "" {
+		t.Fatalf("expected widget id in response: %#v", response)
+	}
+	if response.Workspace.ActiveWidgetID != response.WidgetID {
+		t.Fatalf("expected new files widget to become active, got %#v", response)
+	}
+
+	found := false
+	for _, widget := range response.Workspace.Widgets {
+		if widget.ID != response.WidgetID {
+			continue
+		}
+		found = true
+		if widget.Kind != "files" {
+			t.Fatalf("expected files widget kind, got %#v", widget)
+		}
+		if widget.Path != "/workspace/repo/docs" {
+			t.Fatalf("expected files widget path to be preserved, got %#v", widget)
+		}
+		if widget.ConnectionID != "local" {
+			t.Fatalf("expected files widget connection id local, got %#v", widget)
+		}
+	}
+	if !found {
+		t.Fatalf("expected to find created widget in workspace snapshot: %#v", response)
+	}
+}
+
 func TestWorkspaceMoveWidgetBySplitRejectsInvalidDirection(t *testing.T) {
 	t.Parallel()
 

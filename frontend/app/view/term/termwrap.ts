@@ -297,6 +297,7 @@ function handleOsc7Command(data: string, blockId: string, loaded: boolean): bool
 
     setTimeout(() => {
         fireAndForget(async () => {
+            terminalStore.updateWorkingDir(blockId, pathPart);
             await services.ObjectService.UpdateObjectMeta(WOS.makeORef("block", blockId), {
                 "cmd:cwd": pathPart,
             });

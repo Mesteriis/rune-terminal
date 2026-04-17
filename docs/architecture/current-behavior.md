@@ -32,6 +32,11 @@ It is intentionally operational, not narrative.
   - `Use Selected Path In /run Prompt`
   - both actions are explicit operator clicks and do not auto-send or auto-execute
 - Files panel entries are also draggable into matching terminal widgets, where the terminal inserts the path into input without auto-running it.
+- Terminal context menus now expose `Open Current Directory in New Block` on the active compat path when shell cwd metadata is known.
+- Opening the current directory from a compat terminal creates a backend-owned `files` widget split to the right of the source terminal:
+  - local targets browse the selected directory path directly, including paths outside the workspace root
+  - remote targets preserve the connection ID and path in the new block, but the active compat files view remains read-only metadata for remote directories
+  - the action does not execute shell commands implicitly
 - Widgets can now be bound to a specific connection ID.
 - Widget creation in an active tab supports explicit split-side insertion (`left`, `right`, `top`, `bottom`) against a target widget.
 - Widget drag/drop split-move is explicit and backend-backed:
@@ -102,6 +107,7 @@ It is intentionally operational, not narrative.
 - Closing or completing the create-tab request must not terminate a running local or SSH shell.
 - The frontend now hydrates terminal content from a JSON snapshot before opening the SSE stream, so a newly mounted terminal starts with buffered scrollback instead of only new output.
 - Terminal SSE attach now snapshots and subscribes atomically in the backend stream path, so buffered replay and live follow do not drop chunks in the handoff gap.
+- Terminal cwd metadata from OSC 7 is mirrored into the compat terminal store, so terminal-scoped actions can open the current directory from the active widget state.
 - The compat terminal now follows TideTerm keyboard scroll semantics for scrollback navigation:
   - `Shift+End` jumps to the latest output
   - `Shift+Home` jumps to the start of scrollback

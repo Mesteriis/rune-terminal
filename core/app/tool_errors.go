@@ -32,6 +32,7 @@ func normalizeToolError(err error) error {
 		errors.Is(err, workspace.ErrCannotCloseLastTab),
 		errors.Is(err, workspace.ErrInvalidTabName),
 		errors.Is(err, workspace.ErrInvalidTabMove),
+		errors.Is(err, workspace.ErrInvalidWidgetPath),
 		errors.Is(err, workspace.ErrInvalidWindowSplitDirection),
 		errors.Is(err, policy.ErrInvalidTrustedRule),
 		errors.Is(err, policy.ErrInvalidIgnoreRule),

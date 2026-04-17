@@ -18,7 +18,7 @@ import {
     useInteractions,
 } from "@floating-ui/react";
 import { useDrag } from "react-dnd";
-import { memo, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 
 function joinPath(base: string, name: string): string {
     if (base.endsWith("/") || base.endsWith("\\")) {
@@ -104,6 +104,12 @@ const FilesFloatingEntry = memo(({ kind, name, fullPath, parentPath, onClick, se
         }),
         [dragItem]
     );
+    const dragRef = useCallback(
+        (node: HTMLButtonElement | null) => {
+            drag(node);
+        },
+        [drag]
+    );
 
     const baseClass =
         kind === "directory"
@@ -113,7 +119,7 @@ const FilesFloatingEntry = memo(({ kind, name, fullPath, parentPath, onClick, se
               }`;
 
     return (
-        <button ref={drag} className={baseClass} onClick={onClick} data-testid={`files-entry-${kind}-${name}`}>
+        <button ref={dragRef} className={baseClass} onClick={onClick} data-testid={`files-entry-${kind}-${name}`}>
             <i className={`fa ${kind === "directory" ? "fa-folder text-amber-300" : "fa-file"} mr-2`}></i>
             {name}
         </button>

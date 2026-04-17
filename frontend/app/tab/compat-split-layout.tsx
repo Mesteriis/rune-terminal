@@ -1,5 +1,6 @@
 import { workspaceStore, type WorkspaceStoreTab, type WorkspaceStoreWidget, type WorkspaceStoreWindowLayoutNode } from "@/app/state/workspace.store";
 import { CompatTerminalView } from "@/app/view/term/compat-terminal";
+import { CompatFilesView } from "@/app/view/files/compat-files-view";
 import { CenteredDiv } from "@/element/quickelems";
 import clsx from "clsx";
 import { memo, useMemo, useState, type DragEvent, type ReactNode } from "react";
@@ -328,6 +329,7 @@ const CompatSplitLayout = memo(({ tabId, tab, widgets, activeWidgetId }: CompatS
                     void workspaceStore.moveWidgetBySplit(tabId, sourceWidgetId, widgetId, direction);
                 }}
                 data-testid={`compat-widget-pane-${widgetId}`}
+                data-widgetid={widgetId}
             >
                 <div className="absolute right-2 top-2 z-30 flex items-center gap-1">
                     <button
@@ -348,6 +350,13 @@ const CompatSplitLayout = memo(({ tabId, tab, widgets, activeWidgetId }: CompatS
                 </div>
                 {widget?.kind === "terminal" ? (
                     <CompatTerminalView key={widgetId} widgetId={widgetId} connectionId={widget.connectionId} />
+                ) : widget?.kind === "files" ? (
+                    <CompatFilesView
+                        key={widgetId}
+                        widgetId={widgetId}
+                        path={widget.path ?? ""}
+                        connectionId={widget.connectionId}
+                    />
                 ) : (
                     <CenteredDiv>{widget == null ? "Missing Widget" : "Unsupported Widget"}</CenteredDiv>
                 )}

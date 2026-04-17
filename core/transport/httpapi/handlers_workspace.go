@@ -138,6 +138,24 @@ func (api *API) handleMoveWidgetBySplit(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusOK, map[string]any{"workspace": snapshot})
 }
 
+func (api *API) handleOpenDirectoryInNewBlock(w http.ResponseWriter, r *http.Request) {
+	var payload struct {
+		TargetWidgetID string `json:"target_widget_id"`
+		Path           string `json:"path"`
+		ConnectionID   string `json:"connection_id,omitempty"`
+	}
+	if err := decodeJSON(r, &payload); err != nil {
+		writeBadRequest(w, "invalid_request", err)
+		return
+	}
+	result, err := api.runtime.OpenDirectoryInNewBlock(payload.Path, payload.TargetWidgetID, payload.ConnectionID)
+	if err != nil {
+		writeWorkspaceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
 func (api *API) handleSaveLayout(w http.ResponseWriter, r *http.Request) {
 	var payload struct {
 		LayoutID string `json:"layout_id,omitempty"`

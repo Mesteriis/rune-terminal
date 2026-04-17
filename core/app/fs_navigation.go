@@ -38,7 +38,15 @@ type FSReadResult struct {
 }
 
 func (r *Runtime) ListFS(path string) (FSListResult, error) {
-	normalizedPath, err := r.resolveFSPath(path)
+	return r.listFS(path, false)
+}
+
+func (r *Runtime) ListFSUnbounded(path string) (FSListResult, error) {
+	return r.listFS(path, true)
+}
+
+func (r *Runtime) listFS(path string, allowOutsideWorkspace bool) (FSListResult, error) {
+	normalizedPath, err := r.resolveFSPath(path, allowOutsideWorkspace)
 	if err != nil {
 		return FSListResult{}, err
 	}
@@ -89,7 +97,7 @@ func (r *Runtime) ListFS(path string) (FSListResult, error) {
 	return result, nil
 }
 
-func (r *Runtime) resolveFSPath(path string) (string, error) {
+func (r *Runtime) resolveFSPath(path string, allowOutsideWorkspace bool) (string, error) {
 	root := strings.TrimSpace(r.RepoRoot)
 	if root == "" {
 		return "", ErrInvalidFSPath
@@ -111,6 +119,9 @@ func (r *Runtime) resolveFSPath(path string) (string, error) {
 	if err != nil || targetAbs == "." || targetAbs == "" {
 		return "", ErrInvalidFSPath
 	}
+	if allowOutsideWorkspace {
+		return targetAbs, nil
+	}
 
 	relativeToRoot, err := filepath.Rel(rootAbs, targetAbs)
 	if err != nil {
@@ -124,7 +135,15 @@ func (r *Runtime) resolveFSPath(path string) (string, error) {
 }
 
 func (r *Runtime) ReadFSPreview(path string, maxBytes int) (FSReadResult, error) {
-	targetPath, err := r.resolveFSPath(path)
+	return r.readFSPreview(path, maxBytes, false)
+}
+
+func (r *Runtime) ReadFSPreviewUnbounded(path string, maxBytes int) (FSReadResult, error) {
+	return r.readFSPreview(path, maxBytes, true)
+}
+
+func (r *Runtime) readFSPreview(path string, maxBytes int, allowOutsideWorkspace bool) (FSReadResult, error) {
+	targetPath, err := r.resolveFSPath(path, allowOutsideWorkspace)
 	if err != nil {
 		return FSReadResult{}, err
 	}

@@ -14,7 +14,16 @@ const (
 
 func (api *API) handleListFS(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Query().Get("path")
-	result, err := api.runtime.ListFS(path)
+	allowOutsideWorkspace := r.URL.Query().Get("allow_outside_workspace") == "1"
+	var (
+		result app.FSListResult
+		err    error
+	)
+	if allowOutsideWorkspace {
+		result, err = api.runtime.ListFSUnbounded(path)
+	} else {
+		result, err = api.runtime.ListFS(path)
+	}
 	if err != nil {
 		writeFSError(w, err)
 		return
@@ -25,13 +34,22 @@ func (api *API) handleListFS(w http.ResponseWriter, r *http.Request) {
 func (api *API) handleReadFS(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Query().Get("path")
 	maxBytes := parseInt(r.URL.Query().Get("max_bytes"), defaultFSPreviewBytes)
+	allowOutsideWorkspace := r.URL.Query().Get("allow_outside_workspace") == "1"
 	if maxBytes <= 0 {
 		maxBytes = defaultFSPreviewBytes
 	}
 	if maxBytes > maxFSPreviewBytes {
 		maxBytes = maxFSPreviewBytes
 	}
-	result, err := api.runtime.ReadFSPreview(path, maxBytes)
+	var (
+		result app.FSReadResult
+		err    error
+	)
+	if allowOutsideWorkspace {
+		result, err = api.runtime.ReadFSPreviewUnbounded(path, maxBytes)
+	} else {
+		result, err = api.runtime.ReadFSPreview(path, maxBytes)
+	}
 	if err != nil {
 		writeFSError(w, err)
 		return

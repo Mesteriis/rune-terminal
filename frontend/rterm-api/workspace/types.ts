@@ -10,7 +10,7 @@ export interface Workspace {
   active_layout_id: string;
 }
 
-export type WorkspaceWidgetKind = "terminal";
+export type WorkspaceWidgetKind = "terminal" | "files";
 export type WorkspaceLayoutMode = "split" | "focus" | "stacked" | (string & {});
 export type WorkspaceLayoutSurfaceID = "terminal" | "ai" | "tools" | "audit" | "mcp" | (string & {});
 export type WorkspaceLayoutRegion = "main" | "sidebar" | "utility" | (string & {});
@@ -34,6 +34,7 @@ export interface WorkspaceWidget {
   description?: string;
   terminal_id?: string;
   connection_id?: string;
+  path?: string;
 }
 
 export type WorkspaceWindowNodeKind = "leaf" | "split" | (string & {});
@@ -139,6 +140,12 @@ export interface MoveWidgetBySplitRequest {
   widget_id: string;
   target_widget_id: string;
   direction: WorkspaceWindowMoveDirection;
+}
+
+export interface OpenDirectoryInNewBlockRequest {
+  target_widget_id: string;
+  path: string;
+  connection_id?: string;
 }
 
 export interface UpdateLayoutRequest {

@@ -44,6 +44,7 @@ export interface WorkspaceStoreWidget {
     description?: string;
     terminalId?: string;
     connectionId?: string;
+    path?: string;
 }
 
 export interface WorkspaceStoreLayoutSurface {
@@ -267,6 +268,7 @@ function adaptWorkspaceFromApi(apiWorkspace: ApiWorkspace, fallback?: WorkspaceF
                 description: widget.description,
                 terminalId: widget.terminal_id,
                 connectionId: widget.connection_id,
+                path: widget.path,
             } satisfies WorkspaceStoreWidget,
         ])
     );
@@ -695,6 +697,21 @@ class WorkspaceStore {
             return;
         }
         await this.refresh();
+    }
+
+    async openDirectoryInNewBlock(targetWidgetId: string, path: string, connectionId?: string): Promise<string> {
+        const facade = await getWorkspaceFacade();
+        const response = await facade.openDirectoryInNewBlock({
+            target_widget_id: targetWidgetId,
+            path,
+            connection_id: connectionId,
+        });
+        if (response?.workspace) {
+            this.setState(adaptWorkspaceFromApi(response.workspace, this.state.active));
+        } else {
+            await this.refresh();
+        }
+        return response?.widget_id;
     }
 
     async closeTab(tabId: string): Promise<void> {
