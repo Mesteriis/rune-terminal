@@ -24,6 +24,9 @@ It is intentionally operational, not narrative.
   - opening files, runtime, audit, MCP, apps, and settings/help surfaces
   - quickly focusing known widgets in the current workspace
 - Launcher discoverability in the active compat shell now lives inside that right-utility flyout rather than a separate top-level panel.
+- The compat shell right-utility rail now enforces a single active flyout:
+  - opening launcher/files/tools/audit/apps/settings replaces the previous flyout instead of stacking overlays
+  - launcher-triggered navigation closes the previous flyout before opening the next surface
 - The right-side utility rail now includes a minimal `Files` panel for workspace-root-bounded navigation:
   - backend path source of truth: `GET /api/v1/fs/list?path=...`
   - directory traversal is explicit (click folder), with no recursive indexing/caching

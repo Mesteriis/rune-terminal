@@ -45,15 +45,17 @@ const WorkspaceElem = memo(({ compatMode = false }: { compatMode?: boolean }) =>
         aiPanelWrapperElementRef.current = null;
     }
     const compatWorkspaceStyle = compatMode
-        ? ({ display: "flex", flexDirection: "column", width: "100%", flexGrow: 1, overflow: "hidden" } as const)
+        ? ({ display: "flex", flexDirection: "column", width: "100%", flexGrow: 1, minHeight: 0, overflow: "hidden" } as const)
         : undefined;
     const compatPanelContainerStyle = compatMode
-        ? ({ display: "flex", flexDirection: "row", flexGrow: 1, overflow: "hidden" } as const)
+        ? ({ display: "flex", flexDirection: "row", flexGrow: 1, minWidth: 0, minHeight: 0, overflow: "hidden" } as const)
         : undefined;
     const compatMainContentStyle = compatMode
-        ? ({ display: "flex", flexDirection: "row", height: "100%", overflow: "hidden" } as const)
+        ? ({ display: "flex", flexDirection: "row", height: "100%", minWidth: 0, minHeight: 0, overflow: "hidden" } as const)
         : undefined;
-    const compatAIPanelWrapperStyle = compatMode ? ({ width: "100%", height: "100%", overflow: "hidden" } as const) : undefined;
+    const compatAIPanelWrapperStyle = compatMode
+        ? ({ width: "100%", height: "100%", minWidth: 0, minHeight: 0, overflow: "hidden" } as const)
+        : undefined;
 
     const syncLayoutModelRefs = useCallback(() => {
         if (
@@ -150,9 +152,13 @@ const WorkspaceElem = memo(({ compatMode = false }: { compatMode?: boolean }) =>
     }, [compatMode]);
 
     return (
-        <div className="flex flex-col w-full flex-grow overflow-hidden" style={compatWorkspaceStyle}>
+        <div className="flex flex-col w-full flex-grow min-h-0 overflow-hidden" style={compatWorkspaceStyle}>
             <TabBar key={workspace.oid} workspace={workspace} compatMode={compatMode} />
-            <div ref={setPanelContainerRef} className="flex flex-row flex-grow overflow-hidden" style={compatPanelContainerStyle}>
+            <div
+                ref={setPanelContainerRef}
+                className="flex flex-row flex-grow min-h-0 min-w-0 overflow-hidden"
+                style={compatPanelContainerStyle}
+            >
                 <ErrorBoundary key={tabId}>
                     <Group
                         orientation="horizontal"
@@ -165,18 +171,18 @@ const WorkspaceElem = memo(({ compatMode = false }: { compatMode?: boolean }) =>
                             panelRef={setAIPanelRef}
                             collapsible
                             defaultSize={initialAiPanelPercentage}
-                            className="overflow-hidden"
+                            className="min-h-0 min-w-0 overflow-hidden"
                         >
-                            <div ref={setAIPanelWrapperRef} className="w-full h-full" style={compatAIPanelWrapperStyle}>
+                            <div ref={setAIPanelWrapperRef} className="w-full h-full min-h-0 min-w-0" style={compatAIPanelWrapperStyle}>
                                 {tabId !== "" && aiPanelVisible && <AIPanel />}
                             </div>
                         </Panel>
                         <Separator className="w-0.5 bg-transparent hover:bg-zinc-500/20 transition-colors" />
-                        <Panel id={WorkspaceMainPanelId} defaultSize={100 - initialAiPanelPercentage}>
+                        <Panel id={WorkspaceMainPanelId} defaultSize={100 - initialAiPanelPercentage} className="min-h-0 min-w-0">
                             {tabId === "" ? (
                                 <CenteredDiv>No Active Tab</CenteredDiv>
                             ) : (
-                                <div className="flex flex-row h-full" style={compatMainContentStyle}>
+                                <div className="flex flex-row h-full min-h-0 min-w-0" style={compatMainContentStyle}>
                                     <TabContent key={`${tabId}:${workspace.activewidgetid}`} tabId={tabId} compatWorkspace={compatMode ? workspace : undefined} />
                                     <Widgets compatMode={compatMode} layout={workspace.layout} />
                                 </div>

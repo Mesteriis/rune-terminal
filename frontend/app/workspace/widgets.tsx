@@ -51,6 +51,8 @@ function hasSurface(layout: WorkspaceStoreLayout, surfaceID: string): boolean {
     return layout.surfaces.some((surface) => surface.id === surfaceID);
 }
 
+type UtilityFlyout = "apps" | "tools" | "audit" | "files" | "launcher" | "settings";
+
 const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; layout: WorkspaceStoreLayout }) => {
     const t = useT();
     const fullConfig = useAtomValue(atoms.fullConfigAtom);
@@ -116,6 +118,31 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
           } as const)
         : undefined;
     const compatActionStyle = compatMode ? ({ minHeight: "32px", flexShrink: 0 } as const) : undefined;
+
+    const setOpenUtilityFlyout = useCallback((target: UtilityFlyout | null) => {
+        setIsAppsOpen(target === "apps");
+        setIsToolsOpen(target === "tools");
+        setIsAuditOpen(target === "audit");
+        setIsFilesOpen(target === "files");
+        setIsQuickActionsOpen(target === "launcher");
+        setIsSettingsOpen(target === "settings");
+    }, []);
+
+    const toggleUtilityFlyout = useCallback(
+        (target: UtilityFlyout) => {
+            const nextTarget =
+                (target === "apps" && isAppsOpen) ||
+                (target === "tools" && isToolsOpen) ||
+                (target === "audit" && isAuditOpen) ||
+                (target === "files" && isFilesOpen) ||
+                (target === "launcher" && isQuickActionsOpen) ||
+                (target === "settings" && isSettingsOpen)
+                    ? null
+                    : target;
+            setOpenUtilityFlyout(nextTarget);
+        },
+        [isAppsOpen, isAuditOpen, isFilesOpen, isQuickActionsOpen, isSettingsOpen, isToolsOpen, setOpenUtilityFlyout],
+    );
 
     useEffect(() => {
         const unsubscribe = workspaceStore.subscribe((snapshot) => {
@@ -210,42 +237,48 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
             switch (action.id) {
                 case "ui.open_ai_panel":
                     WorkspaceLayoutModel.getInstance().setAIPanelVisible(true);
+                    setOpenUtilityFlyout(null);
                     return { kind: "success", message: "AI panel opened." };
                 case "ui.open_tools_panel":
                     if (!toolsEnabled) {
                         return { kind: "error", message: "Tools surface is hidden by current layout." };
                     }
-                    setIsToolsOpen(true);
+                    setOpenUtilityFlyout("tools");
                     return { kind: "success", message: "Tools panel opened." };
                 case "ui.open_audit_panel":
                     if (!auditEnabled) {
                         return { kind: "error", message: "Audit surface is hidden by current layout." };
                     }
-                    setIsAuditOpen(true);
+                    setOpenUtilityFlyout("audit");
                     return { kind: "success", message: "Audit panel opened." };
                 case "ui.open_files_panel":
-                    setIsFilesOpen(true);
+                    setOpenUtilityFlyout("files");
                     return { kind: "success", message: "Files panel opened." };
                 case "mcp.open_controls":
                     if (!toolsEnabled || !mcpEnabled) {
                         return { kind: "error", message: "MCP controls are hidden by current layout surfaces." };
                     }
-                    setIsToolsOpen(true);
+                    setOpenUtilityFlyout("tools");
                     return { kind: "success", message: "Opened Tools with MCP controls." };
                 case "remote.open_profiles":
+                    setOpenUtilityFlyout(null);
                     modalsModel.pushModal("RemoteProfilesModal");
                     return { kind: "success", message: "Remote profiles modal opened." };
                 case "workspace.create_local_terminal_tab":
                     await workspaceStore.createTerminalTab("local");
+                    setOpenUtilityFlyout(null);
                     return { kind: "success", message: "Created local terminal tab." };
                 case "workspace.layout.split":
                     await workspaceStore.updateLayout({ ...layout, mode: "split" });
+                    setOpenUtilityFlyout(null);
                     return { kind: "success", message: "Switched layout mode to split." };
                 case "workspace.layout.focus":
                     await workspaceStore.updateLayout({ ...layout, mode: "focus" });
+                    setOpenUtilityFlyout(null);
                     return { kind: "success", message: "Switched layout mode to focus." };
                 case "workspace.layout.save":
                     await workspaceStore.saveLayout();
+                    setOpenUtilityFlyout(null);
                     return { kind: "success", message: "Saved current workspace layout." };
                 case "remote.start_profile_session": {
                     const profileID = context.selectedRemoteProfileID?.trim() ?? "";
@@ -261,6 +294,7 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
                     } else {
                         await workspaceStore.refresh();
                     }
+                    setOpenUtilityFlyout(null);
                     return {
                         kind: "success",
                         message: response.reused
@@ -278,6 +312,7 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
                     });
                     WorkspaceLayoutModel.getInstance().setAIPanelVisible(true);
                     WaveAIModel.getInstance().focusInput();
+                    setOpenUtilityFlyout(null);
                     const suffix = result.commandAuditEventID ? ` (event ${result.commandAuditEventID})` : "";
                     return { kind: "success", message: `Explained latest output for: ${result.command}${suffix}` };
                 }
@@ -291,6 +326,7 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
                     globalStore.set(model.inputAtom, currentInput === "" ? selectedPath : `${currentInput} ${selectedPath}`);
                     WorkspaceLayoutModel.getInstance().setAIPanelVisible(true);
                     model.focusInput();
+                    setOpenUtilityFlyout(null);
                     return { kind: "success", message: "Inserted selected file path into AI prompt input." };
                 }
                 case "files.use_selected_path_in_run_prompt": {
@@ -304,6 +340,7 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
                     globalStore.set(model.inputAtom, nextInput);
                     WorkspaceLayoutModel.getInstance().setAIPanelVisible(true);
                     model.focusInput();
+                    setOpenUtilityFlyout(null);
                     return {
                         kind: "success",
                         message: "Prepared local /run prompt with selected file path. Nothing was executed automatically.",
@@ -323,6 +360,7 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
                     globalStore.set(model.inputAtom, nextInput);
                     WorkspaceLayoutModel.getInstance().setAIPanelVisible(true);
                     model.focusInput();
+                    setOpenUtilityFlyout(null);
                     return {
                         kind: "success",
                         message: `Prepared remote /run prompt for ${activeContext.activeRemoteTarget.connectionID}. Nothing was executed automatically.`,
@@ -335,7 +373,7 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
                     };
             }
         },
-        [activeContext, auditEnabled, layout, mcpEnabled, toolsEnabled],
+        [activeContext, auditEnabled, layout, mcpEnabled, setOpenUtilityFlyout, toolsEnabled],
     );
 
     const launcherEntries = useMemo<LauncherEntry[]>(() => {
@@ -384,21 +422,22 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
         async (entry: LauncherEntry): Promise<QuickActionRunResult> => {
             switch (entry.id) {
                 case "launcher.open_settings_help":
-                    setIsSettingsOpen(true);
+                    setOpenUtilityFlyout("settings");
                     return { kind: "success", message: "Opened Settings & Help." };
                 case "launcher.open_apps":
-                    setIsAppsOpen(true);
+                    setOpenUtilityFlyout("apps");
                     return { kind: "success", message: "Opened Apps." };
                 default:
                     if (entry.id.startsWith("launcher.focus_widget.")) {
                         const widgetID = entry.id.slice("launcher.focus_widget.".length);
                         await workspaceStore.focusWidget(widgetID);
+                        setOpenUtilityFlyout(null);
                         return { kind: "success", message: `Focused widget ${widgetID}.` };
                     }
                     return { kind: "error", message: `Launcher entry is not wired: ${entry.label}` };
             }
         },
-        [],
+        [setOpenUtilityFlyout],
     );
 
     return (
@@ -424,7 +463,7 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
                                     icon="screwdriver-wrench"
                                     tooltip="Tools"
                                     isOpen={isToolsOpen}
-                                    onClick={() => setIsToolsOpen(!isToolsOpen)}
+                                    onClick={() => toggleUtilityFlyout("tools")}
                                     mode={mode}
                                     defaultIcon="toolbox"
                                     style={compatActionStyle}
@@ -436,7 +475,7 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
                                     icon="clipboard-list"
                                     tooltip="Audit"
                                     isOpen={isAuditOpen}
-                                    onClick={() => setIsAuditOpen(!isAuditOpen)}
+                                    onClick={() => toggleUtilityFlyout("audit")}
                                     mode={mode}
                                     defaultIcon="list-check"
                                     style={compatActionStyle}
@@ -447,7 +486,7 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
                                 icon="folder-open"
                                 tooltip="Files"
                                 isOpen={isFilesOpen}
-                                onClick={() => setIsFilesOpen(!isFilesOpen)}
+                                onClick={() => toggleUtilityFlyout("files")}
                                 mode={mode}
                                 testID="workspace-files-button"
                                 style={compatActionStyle}
@@ -457,7 +496,7 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
                                 icon="shapes"
                                 tooltip="Launcher"
                                 isOpen={isQuickActionsOpen}
-                                onClick={() => setIsQuickActionsOpen(!isQuickActionsOpen)}
+                                onClick={() => toggleUtilityFlyout("launcher")}
                                 mode={mode}
                                 testID="workspace-quick-actions-button"
                                 style={compatActionStyle}
@@ -468,7 +507,7 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
                                     icon="cube"
                                     tooltip={t("workspace.localWaveApps")}
                                     isOpen={isAppsOpen}
-                                    onClick={() => setIsAppsOpen(!isAppsOpen)}
+                                    onClick={() => toggleUtilityFlyout("apps")}
                                     mode={mode}
                                     style={compatActionStyle}
                                 />
@@ -478,7 +517,7 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
                                 icon="gear"
                                 tooltip={t("workspace.settingsAndHelp")}
                                 isOpen={isSettingsOpen}
-                                onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+                                onClick={() => toggleUtilityFlyout("settings")}
                                 mode={mode}
                                 style={compatActionStyle}
                             />
@@ -496,7 +535,7 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
                                 icon="screwdriver-wrench"
                                 tooltip="Tools"
                                 isOpen={isToolsOpen}
-                                onClick={() => setIsToolsOpen(!isToolsOpen)}
+                                onClick={() => toggleUtilityFlyout("tools")}
                                 mode={mode}
                                 label="Tools"
                                 defaultIcon="toolbox"
@@ -509,7 +548,7 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
                                 icon="clipboard-list"
                                 tooltip="Audit"
                                 isOpen={isAuditOpen}
-                                onClick={() => setIsAuditOpen(!isAuditOpen)}
+                                onClick={() => toggleUtilityFlyout("audit")}
                                 mode={mode}
                                 label="Audit"
                                 defaultIcon="list-check"
@@ -521,7 +560,7 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
                             icon="folder-open"
                             tooltip="Files"
                             isOpen={isFilesOpen}
-                            onClick={() => setIsFilesOpen(!isFilesOpen)}
+                            onClick={() => toggleUtilityFlyout("files")}
                             mode={mode}
                             label="Files"
                             testID="workspace-files-button"
@@ -532,7 +571,7 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
                             icon="shapes"
                             tooltip="Launcher"
                             isOpen={isQuickActionsOpen}
-                            onClick={() => setIsQuickActionsOpen(!isQuickActionsOpen)}
+                            onClick={() => toggleUtilityFlyout("launcher")}
                             mode={mode}
                             label="Launch"
                             testID="workspace-quick-actions-button"
@@ -544,7 +583,7 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
                                 icon="cube"
                                 tooltip={t("workspace.localWaveApps")}
                                 isOpen={isAppsOpen}
-                                onClick={() => setIsAppsOpen(!isAppsOpen)}
+                                onClick={() => toggleUtilityFlyout("apps")}
                                 mode={mode}
                                 label={t("workspace.appsLabel")}
                                 style={compatActionStyle}
@@ -555,7 +594,7 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
                             icon="gear"
                             tooltip={t("workspace.settingsAndHelp")}
                             isOpen={isSettingsOpen}
-                            onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+                            onClick={() => toggleUtilityFlyout("settings")}
                             mode={mode}
                             style={compatActionStyle}
                         />
@@ -573,14 +612,14 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
             {showAppsButton && appsButtonRef.current && (
                 <AppsFloatingWindow
                     isOpen={isAppsOpen}
-                    onClose={() => setIsAppsOpen(false)}
+                    onClose={() => setOpenUtilityFlyout(null)}
                     referenceElement={appsButtonRef.current}
                 />
             )}
             {toolsEnabled && toolsButtonRef.current && (
                 <ToolsFloatingWindow
                     isOpen={isToolsOpen}
-                    onClose={() => setIsToolsOpen(false)}
+                    onClose={() => setOpenUtilityFlyout(null)}
                     referenceElement={toolsButtonRef.current}
                     onAuditChanged={() => setAuditRefreshNonce((current) => current + 1)}
                     showMCP={mcpEnabled}
@@ -589,7 +628,7 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
             {auditEnabled && auditButtonRef.current && (
                 <AuditFloatingWindow
                     isOpen={isAuditOpen}
-                    onClose={() => setIsAuditOpen(false)}
+                    onClose={() => setOpenUtilityFlyout(null)}
                     referenceElement={auditButtonRef.current}
                     refreshNonce={auditRefreshNonce}
                 />
@@ -597,14 +636,14 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
             {filesButtonRef.current && (
                 <FilesFloatingWindow
                     isOpen={isFilesOpen}
-                    onClose={() => setIsFilesOpen(false)}
+                    onClose={() => setOpenUtilityFlyout(null)}
                     referenceElement={filesButtonRef.current}
                 />
             )}
             {quickActionsButtonRef.current && (
                 <QuickActionsFloatingWindow
                     isOpen={isQuickActionsOpen}
-                    onClose={() => setIsQuickActionsOpen(false)}
+                    onClose={() => setOpenUtilityFlyout(null)}
                     referenceElement={quickActionsButtonRef.current}
                     onRunAction={runQuickAction}
                     launcherEntries={launcherEntries}
@@ -614,7 +653,7 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
             {settingsButtonRef.current && (
                 <SettingsFloatingWindow
                     isOpen={isSettingsOpen}
-                    onClose={() => setIsSettingsOpen(false)}
+                    onClose={() => setOpenUtilityFlyout(null)}
                     referenceElement={settingsButtonRef.current}
                 />
             )}
