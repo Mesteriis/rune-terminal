@@ -1,3 +1,5 @@
+OUTDATED — DO NOT USE
+
 # Frontend Migration Scope
 
 ## Migration Goal
@@ -26,4 +28,3 @@
 - Redesign
 - Plugin system
 - Visual refactor
-
