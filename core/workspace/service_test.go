@@ -306,3 +306,50 @@ func TestFocusTabUsesFirstWindowLeaf(t *testing.T) {
 		t.Fatalf("expected focus to follow first window leaf, got %q", service.Snapshot().ActiveWidgetID)
 	}
 }
+
+func TestMoveWidgetBySplit(t *testing.T) {
+	t.Parallel()
+
+	service := NewService(BootstrapDefault())
+	if _, err := service.SplitTabWithWidget(
+		"tab-main",
+		"term-main",
+		Widget{
+			ID:          "term-split",
+			Kind:        WidgetKindTerminal,
+			Title:       "Split Shell",
+			Description: "Split terminal session",
+			TerminalID:  "term-split",
+		},
+		WindowSplitRight,
+	); err != nil {
+		t.Fatalf("SplitTabWithWidget setup error: %v", err)
+	}
+
+	next, err := service.MoveWidgetBySplit("tab-main", "term-main", "term-split", WindowSplitBottom)
+	if err != nil {
+		t.Fatalf("MoveWidgetBySplit error: %v", err)
+	}
+	if next.ActiveWidgetID != "term-main" {
+		t.Fatalf("expected moved widget to become active, got %q", next.ActiveWidgetID)
+	}
+	var tab Tab
+	for _, candidate := range next.Tabs {
+		if candidate.ID == "tab-main" {
+			tab = candidate
+			break
+		}
+	}
+	if tab.WindowLayout == nil || tab.WindowLayout.Kind != WindowNodeSplit {
+		t.Fatalf("expected split layout after move, got %#v", tab.WindowLayout)
+	}
+	if tab.WindowLayout.Axis != WindowSplitVertical {
+		t.Fatalf("expected vertical split axis after moving to bottom, got %#v", tab.WindowLayout.Axis)
+	}
+	if tab.WindowLayout.First == nil || tab.WindowLayout.First.WidgetID != "term-split" {
+		t.Fatalf("expected target widget on first branch, got %#v", tab.WindowLayout.First)
+	}
+	if tab.WindowLayout.Second == nil || tab.WindowLayout.Second.WidgetID != "term-main" {
+		t.Fatalf("expected moved widget on second branch, got %#v", tab.WindowLayout.Second)
+	}
+}

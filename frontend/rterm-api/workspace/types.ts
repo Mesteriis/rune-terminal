@@ -123,6 +123,13 @@ export interface MoveTabRequest {
   before_tab_id: string;
 }
 
+export interface MoveWidgetBySplitRequest {
+  tab_id?: string;
+  widget_id: string;
+  target_widget_id: string;
+  direction: WorkspaceWindowSplitDirection;
+}
+
 export interface UpdateLayoutRequest {
   layout: WorkspaceLayout;
 }

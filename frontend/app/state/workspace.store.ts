@@ -677,6 +677,26 @@ class WorkspaceStore {
         await this.refresh();
     }
 
+    async moveWidgetBySplit(
+        tabId: string | undefined,
+        widgetId: string,
+        targetWidgetId: string,
+        direction: "left" | "right" | "top" | "bottom"
+    ): Promise<void> {
+        const facade = await getWorkspaceFacade();
+        const response = await facade.moveWidgetBySplit({
+            tab_id: tabId,
+            widget_id: widgetId,
+            target_widget_id: targetWidgetId,
+            direction,
+        });
+        if (response?.workspace) {
+            this.setState(adaptWorkspaceFromApi(response.workspace, this.state.active));
+            return;
+        }
+        await this.refresh();
+    }
+
     async closeTab(tabId: string): Promise<void> {
         const facade = await getWorkspaceFacade();
         const response = await facade.closeTab(tabId);

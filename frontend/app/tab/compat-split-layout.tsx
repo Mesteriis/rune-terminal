@@ -2,7 +2,7 @@ import { workspaceStore, type WorkspaceStoreTab, type WorkspaceStoreWidget, type
 import { CompatTerminalView } from "@/app/view/term/compat-terminal";
 import { CenteredDiv } from "@/element/quickelems";
 import clsx from "clsx";
-import { memo, useMemo, useState, type ReactNode } from "react";
+import { memo, useMemo, useState, type DragEvent, type ReactNode } from "react";
 
 type WindowSplitDirection = "left" | "right" | "top" | "bottom";
 
@@ -11,6 +11,11 @@ interface CompatSplitLayoutProps {
     tab?: WorkspaceStoreTab;
     widgets: Record<string, WorkspaceStoreWidget>;
     activeWidgetId: string;
+}
+
+interface DropIndicator {
+    targetWidgetId: string;
+    direction: WindowSplitDirection;
 }
 
 function cloneNode(node: WorkspaceStoreWindowLayoutNode | undefined): WorkspaceStoreWindowLayoutNode | undefined {
@@ -165,13 +170,61 @@ function normalizeLayout(
     return layout;
 }
 
+function determineDropDirection(event: DragEvent<HTMLDivElement>): WindowSplitDirection {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const width = Math.max(bounds.width, 1);
+    const height = Math.max(bounds.height, 1);
+    const x = (event.clientX - bounds.left) / width;
+    const y = (event.clientY - bounds.top) / height;
+    const edgeThreshold = 0.25;
+    if (x <= edgeThreshold) {
+        return "left";
+    }
+    if (x >= 1 - edgeThreshold) {
+        return "right";
+    }
+    if (y <= edgeThreshold) {
+        return "top";
+    }
+    if (y >= 1 - edgeThreshold) {
+        return "bottom";
+    }
+    if (Math.abs(x - 0.5) > Math.abs(y - 0.5)) {
+        return x < 0.5 ? "left" : "right";
+    }
+    return y < 0.5 ? "top" : "bottom";
+}
+
+function dropOverlayClass(direction: WindowSplitDirection): string {
+    switch (direction) {
+        case "left":
+            return "absolute inset-y-0 left-0 w-1/2 bg-cyan-500/20 border-l-2 border-cyan-300";
+        case "right":
+            return "absolute inset-y-0 right-0 w-1/2 bg-cyan-500/20 border-r-2 border-cyan-300";
+        case "top":
+            return "absolute inset-x-0 top-0 h-1/2 bg-cyan-500/20 border-t-2 border-cyan-300";
+        case "bottom":
+            return "absolute inset-x-0 bottom-0 h-1/2 bg-cyan-500/20 border-b-2 border-cyan-300";
+        default:
+            return "hidden";
+    }
+}
+
 const CompatSplitLayout = memo(({ tabId, tab, widgets, activeWidgetId }: CompatSplitLayoutProps) => {
     const layout = useMemo(() => normalizeLayout(tab, activeWidgetId), [tab, activeWidgetId]);
+    const [draggingWidgetId, setDraggingWidgetId] = useState("");
+    const [dropIndicator, setDropIndicator] = useState<DropIndicator | null>(null);
     const [splittingWidgetId, setSplittingWidgetId] = useState("");
+
+    const clearDragState = () => {
+        setDraggingWidgetId("");
+        setDropIndicator(null);
+    };
 
     const renderLeaf = (widgetId: string): ReactNode => {
         const widget = widgets[widgetId];
         const active = widgetId === activeWidgetId;
+        const showDrop = dropIndicator != null && dropIndicator.targetWidgetId === widgetId && draggingWidgetId !== "";
         return (
             <div
                 key={widgetId}
@@ -179,10 +232,45 @@ const CompatSplitLayout = memo(({ tabId, tab, widgets, activeWidgetId }: CompatS
                     "relative flex flex-1 min-h-0 min-w-0 overflow-hidden border rounded-md bg-black/10",
                     active ? "border-cyan-300/70" : "border-border/60",
                 )}
+                draggable
                 onMouseDown={() => {
                     if (widgetId !== activeWidgetId) {
                         void workspaceStore.focusWidget(widgetId);
                     }
+                }}
+                onDragStart={(event) => {
+                    setDraggingWidgetId(widgetId);
+                    event.dataTransfer.setData("text/plain", widgetId);
+                    event.dataTransfer.effectAllowed = "move";
+                }}
+                onDragEnd={clearDragState}
+                onDragOver={(event) => {
+                    const sourceWidgetId = draggingWidgetId || event.dataTransfer.getData("text/plain");
+                    if (sourceWidgetId === "" || sourceWidgetId === widgetId) {
+                        return;
+                    }
+                    event.preventDefault();
+                    const direction = determineDropDirection(event);
+                    setDropIndicator({ targetWidgetId: widgetId, direction });
+                }}
+                onDragLeave={() => {
+                    setDropIndicator((current) =>
+                        current != null && current.targetWidgetId === widgetId ? null : current,
+                    );
+                }}
+                onDrop={(event) => {
+                    event.preventDefault();
+                    const sourceWidgetId = draggingWidgetId || event.dataTransfer.getData("text/plain");
+                    if (sourceWidgetId === "" || sourceWidgetId === widgetId) {
+                        clearDragState();
+                        return;
+                    }
+                    const direction =
+                        dropIndicator?.targetWidgetId === widgetId
+                            ? dropIndicator.direction
+                            : determineDropDirection(event);
+                    clearDragState();
+                    void workspaceStore.moveWidgetBySplit(tabId, sourceWidgetId, widgetId, direction);
                 }}
                 data-testid={`compat-widget-pane-${widgetId}`}
             >
@@ -208,6 +296,9 @@ const CompatSplitLayout = memo(({ tabId, tab, widgets, activeWidgetId }: CompatS
                 ) : (
                     <CenteredDiv>{widget == null ? "Missing Widget" : "Unsupported Widget"}</CenteredDiv>
                 )}
+                {showDrop ? (
+                    <div className={dropOverlayClass(dropIndicator.direction)} data-testid={`compat-drop-${widgetId}-${dropIndicator.direction}`} />
+                ) : null}
             </div>
         );
     };

@@ -6,6 +6,7 @@ import type {
   CreateTerminalTabResponse,
   FocusTabRequest,
   FocusWidgetRequest,
+  MoveWidgetBySplitRequest,
   MoveTabRequest,
   RenameTabRequest,
   SaveLayoutRequest,
@@ -67,6 +68,12 @@ export class WorkspaceClient {
 
   moveTab(payload: MoveTabRequest): Promise<WorkspaceActionResponse> {
     return this.http.post<WorkspaceActionResponse, MoveTabRequest>("/api/v1/workspace/tabs/move", {
+      body: payload,
+    });
+  }
+
+  moveWidgetBySplit(payload: MoveWidgetBySplitRequest): Promise<WorkspaceActionResponse> {
+    return this.http.post<WorkspaceActionResponse, MoveWidgetBySplitRequest>("/api/v1/workspace/widgets/move-split", {
       body: payload,
     });
   }
