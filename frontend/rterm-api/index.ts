@@ -102,6 +102,14 @@ export type {
   TrustedRulesResponse,
 } from "./policy/types";
 
+export { QuickActionsClient } from "./quickactions/client";
+export type {
+  QuickAction,
+  QuickActionExecutionKind,
+  QuickActionTargetKind,
+  QuickActionsResponse,
+} from "./quickactions/types";
+
 export { ToolsClient } from "./tools/client";
 export type {
   ToolErrorCode,
@@ -156,6 +164,7 @@ import { FSClient } from "./fs/client";
 import { HttpClient } from "./http/client";
 import { MCPClient } from "./mcp/client";
 import { PolicyClient } from "./policy/client";
+import { QuickActionsClient } from "./quickactions/client";
 import { ToolsClient } from "./tools/client";
 import { TerminalClient } from "./terminal/client";
 import { WorkspaceClient } from "./workspace/client";
@@ -175,6 +184,7 @@ export class RtermApi {
   readonly fs: FSClient;
   readonly mcp: MCPClient;
   readonly policy: PolicyClient;
+  readonly quickactions: QuickActionsClient;
   readonly tools: ToolsClient;
   readonly terminal: TerminalClient;
   readonly workspace: WorkspaceClient;
@@ -190,6 +200,7 @@ export class RtermApi {
     this.fs = new FSClient(http);
     this.mcp = new MCPClient(http);
     this.policy = new PolicyClient(http);
+    this.quickactions = new QuickActionsClient(http);
     this.tools = new ToolsClient(http);
     this.terminal = new TerminalClient(http);
     this.workspace = new WorkspaceClient(http);

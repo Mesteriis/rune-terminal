@@ -19,6 +19,8 @@ export { createTerminalFacade, buildTerminalStreamUrl, getTerminalStreamMode, ge
 export type { TerminalFacade, TerminalStreamFacadeOptions } from "./terminal";
 export { createToolsFacade, getToolsFacade } from "./tools";
 export type { ToolsFacade } from "./tools";
+export { createQuickActionsFacade, getQuickActionsFacade } from "./quickactions";
+export type { QuickActionsFacade } from "./quickactions";
 export { createWorkspaceFacade, getWorkspaceFacade } from "./workspace";
 export type { WorkspaceFacade } from "./workspace";
 

@@ -17,6 +17,7 @@ func NewHandler(runtime *app.Runtime, authToken string) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", api.handleHealth)
 	mux.HandleFunc("GET /api/v1/bootstrap", api.handleBootstrap)
+	mux.HandleFunc("GET /api/v1/workflow/quick-actions", api.handleQuickActions)
 	mux.HandleFunc("GET /api/v1/workspace", api.handleWorkspace)
 	mux.HandleFunc("GET /api/v1/fs/list", api.handleListFS)
 	mux.HandleFunc("GET /api/v1/fs/read", api.handleReadFS)

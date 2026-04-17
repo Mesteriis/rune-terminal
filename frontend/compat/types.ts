@@ -10,6 +10,7 @@ import type { FSClient } from "@/rterm-api/fs/client";
 import type { MCPClient } from "@/rterm-api/mcp/client";
 import type { PolicyClient } from "@/rterm-api/policy/client";
 import type { ToolsClient } from "@/rterm-api/tools/client";
+import type { QuickActionsClient } from "@/rterm-api/quickactions/client";
 import type { TerminalClient } from "@/rterm-api/terminal/client";
 import type { WorkspaceClient } from "@/rterm-api/workspace/client";
 
@@ -31,6 +32,7 @@ export interface CompatApiClients {
   fs: FSClient;
   mcp: MCPClient;
   policy: PolicyClient;
+  quickactions: QuickActionsClient;
   tools: ToolsClient;
   terminal: TerminalClient;
   workspace: WorkspaceClient;

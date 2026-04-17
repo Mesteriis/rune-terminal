@@ -8,6 +8,7 @@ import { ExecutionClient } from "@/rterm-api/execution/client";
 import { FSClient } from "@/rterm-api/fs/client";
 import { MCPClient } from "@/rterm-api/mcp/client";
 import { PolicyClient } from "@/rterm-api/policy/client";
+import { QuickActionsClient } from "@/rterm-api/quickactions/client";
 import { ToolsClient } from "@/rterm-api/tools/client";
 import { TerminalClient } from "@/rterm-api/terminal/client";
 import { WorkspaceClient } from "@/rterm-api/workspace/client";
@@ -36,6 +37,7 @@ function buildTypedClients(fetchImpl: CompatApiOptions["fetchImpl"], baseUrl: st
       fs: new FSClient(http),
       mcp: new MCPClient(http),
       policy: new PolicyClient(http),
+      quickactions: new QuickActionsClient(http),
       tools: new ToolsClient(http),
       terminal: new TerminalClient(http),
       workspace: new WorkspaceClient(http),
