@@ -3,31 +3,13 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
-const legacyFontutilStubId = "virtual:legacy-fontutil-runtime-stub";
-const legacyFontutilPath = fileURLToPath(new URL("./util/fontutil.ts", import.meta.url));
-
 export default defineConfig({
   plugins: [
     tailwindcss(),
     react(),
-    {
-      name: "legacy-fontutil-runtime-stub",
-      enforce: "pre",
-      resolveId(source) {
-        if (source === legacyFontutilStubId || source === legacyFontutilPath) {
-          return legacyFontutilStubId;
-        }
-      },
-      load(id) {
-        if (id === legacyFontutilStubId) {
-          return "export function loadFonts() {}";
-        }
-      },
-    },
   ],
   resolve: {
     alias: [
-      { find: /^@\/util\/fontutil$/, replacement: legacyFontutilStubId },
       { find: "@/app", replacement: fileURLToPath(new URL("./app", import.meta.url)) },
       { find: "@/builder", replacement: fileURLToPath(new URL("./builder", import.meta.url)) },
       { find: "@/element", replacement: fileURLToPath(new URL("./app/element", import.meta.url)) },
