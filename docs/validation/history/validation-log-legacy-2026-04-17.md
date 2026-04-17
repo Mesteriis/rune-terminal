@@ -1,3 +1,5 @@
+OUTDATED — DO NOT USE
+
 # Validation Log
 
 Правила ведения:

@@ -1,19 +1,37 @@
 # Execution Validation
 
-Date: `2026-04-17`
-Source: migrated from [legacy validation log](./history/validation-log-legacy-2026-04-17.md)
+## Last verified state
 
-## Migrated entry set
+- Date: `2026-04-17`
+- State: `VERIFIED` (targeted + headed + UI automation coverage present)
+- Scope:
+  - explicit `/run` execution path
+  - approval confirm/retry intent binding
+  - execution block identity/provenance
+  - explain/audit linkage
 
-- [Structured execution action truth](./history/validation-log-legacy-2026-04-17.md#structured-execution-action-truth)
-- [Structured execution headed browser validation](./history/validation-log-legacy-2026-04-17.md#structured-execution-headed-browser)
-- [Structured execution UI test coverage](./history/validation-log-legacy-2026-04-17.md#structured-execution-ui-tests)
-- [/run command](./history/validation-log-legacy-2026-04-17.md#run-command)
-- [/run approval confirm-and-retry](./history/validation-log-legacy-2026-04-17.md#run-approval-confirm-and-retry)
-- [/run transcript persistence](./history/validation-log-legacy-2026-04-17.md#run-transcript-persistence)
-- [Execution result message model](./history/validation-log-legacy-2026-04-17.md#execution-result-message-model)
-- [Explain approval truth](./history/validation-log-legacy-2026-04-17.md#explain-approval-truth)
-- [Approval continuity](./history/validation-log-legacy-2026-04-17.md#approval-continuity)
-- [Approval intent binding](./history/validation-log-legacy-2026-04-17.md#approval-intent-binding)
-- [Dangerous tool schema hardening](./history/validation-log-legacy-2026-04-17.md#dangerous-tool-schema-hardening)
-- [Transport and runtime truth cleanup](./history/validation-log-legacy-2026-04-17.md#transport-and-runtime-truth-cleanup)
+## Commands/tests used
+
+- `./scripts/go.sh test ./core/app ./core/transport/httpapi ./core/execution -count=1`
+- `npm --prefix frontend run lint:active`
+- `npm --prefix frontend run build`
+- `npm exec vitest run app/aipanel/run-command.test.ts --config vite.config.ts` (from `frontend/`)
+- `npm run test:ui -- e2e/structured-execution-block.spec.ts`
+- `npm run test:ui`
+- Runtime/API checks:
+  - `POST /api/v1/tools/execute`
+  - `POST /api/v1/agent/terminal-commands/explain`
+  - `GET /api/v1/execution/blocks?limit=10`
+  - `GET /api/v1/audit?limit=20`
+
+## Known limitations
+
+- `/run` is explicit grammar only (`/run`, `run:`); no broad natural-language execution path.
+- Some earlier slices recorded `npm run validate` as not verified because of repo-wide lint debt at that time.
+- Execution target semantics are explicit but broader remote daily-driver parity is tracked under remote validation.
+
+## Evidence
+
+- [Structured execution browser validation](./structured-execution-browser-validation.md)
+- [Legacy validation log entries](./history/validation-log-legacy-2026-04-17.md#structured-execution-action-truth)
+- [Execution model](../execution/execution-model.md)
