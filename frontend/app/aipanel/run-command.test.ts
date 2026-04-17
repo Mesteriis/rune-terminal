@@ -104,6 +104,8 @@ test("executeRunCommandPrompt surfaces approval_required without flattening it i
             active_widget_id: "widget-1",
             repo_root: "/repo",
             workspace_id: "workspace-1",
+            target_session: "remote",
+            target_connection_id: "conn-ssh",
         },
     });
 
@@ -121,10 +123,21 @@ test("executeRunCommandPrompt surfaces approval_required without flattening it i
     assert.equal(executeToolMock.mock.calls.length, 1);
     const approvalCallPayload = (
         executeToolMock as unknown as {
-            mock: { calls: Array<[ { approval_token?: string } ]> };
+            mock: {
+                calls: Array<
+                    [
+                        {
+                            approval_token?: string;
+                            context?: { target_session?: string; target_connection_id?: string };
+                        },
+                    ]
+                >;
+            };
         }
     ).mock.calls.at(0)?.[0];
     assert.equal(approvalCallPayload?.approval_token, undefined);
+    assert.equal(approvalCallPayload?.context?.target_session, "remote");
+    assert.equal(approvalCallPayload?.context?.target_connection_id, "conn-ssh");
 });
 
 test("executeRunCommandPrompt forwards approval_token on approved retry", async () => {
