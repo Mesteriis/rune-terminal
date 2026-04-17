@@ -9,23 +9,28 @@
   - Tools panel execute + approval retry behavior
   - Audit panel event visibility and chain coherence
   - terminal streaming/interrupt and terminal parity closure checks
+  - structured execution local/remote target truth in a visible browser
   - asset-pipeline checks
 
 ## Commands/tests used
 
 - `npm --prefix frontend run dev -- --host 127.0.0.1 --port <port> --strictPort`
 - `go run ./cmd/rterm-core serve --listen 127.0.0.1:<port> ...`
+- headed Playwright Chromium validation with launcher -> AI panel -> local `/run` -> remote `/run`
 - Runtime/API checks:
   - `GET /api/v1/agent/conversation`
   - `POST /api/v1/agent/conversation/messages`
   - `GET /api/v1/tools`
   - `POST /api/v1/tools/execute`
   - `GET /api/v1/audit?limit=50`
+  - `POST /api/v1/remote/profiles`
+  - `POST /api/v1/remote/profiles/{profileID}/session`
 - Related validation documents:
   - [frontend-terminal-interrupt-validation.md](./frontend-terminal-interrupt-validation.md)
   - [frontend-streaming-runtime-validation.md](./frontend-streaming-runtime-validation.md)
   - [frontend-approval-action-validation.md](./frontend-approval-action-validation.md)
   - [frontend-asset-pipeline-validation.md](./frontend-asset-pipeline-validation.md)
+  - [structured-execution-browser-validation.md](./structured-execution-browser-validation.md)
   - [../terminal-parity-validation.md](../terminal-parity-validation.md)
 
 ## Known limitations

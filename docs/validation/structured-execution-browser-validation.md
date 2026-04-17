@@ -1,52 +1,78 @@
 # Structured Execution Browser Validation
 
 Date: `2026-04-17`  
-Mode: `Playwright headed (visible browser window, not headless)`
+Mode: `Playwright Chromium headed (visible browser window, not headless)`
 
-## Initial run (before corrective fix)
+## Tide source files checked against visible behavior
 
-- Structured `/run` and block flow worked.
-- Discrepancy: opening `Tools` or `Audit` triggered:
-  - `The result of getSnapshot should be cached to avoid an infinite loop`
-  - `Maximum update depth exceeded`
-  - error boundary pointed to `ToolsFloatingWindow`.
+- `tideterm/frontend/app/view/term/term-model.ts`
+- `tideterm/frontend/app/view/term/term.tsx`
+- `tideterm/frontend/app/store/keymodel.ts`
+- `tideterm/frontend/app/view/term/termwrap.ts`
+- `tideterm/pkg/blockcontroller/shellcontroller.go`
+- `tideterm/pkg/aiusechat/usechat-prompts.go`
 
-## Corrective rerun (after fix)
+These repo-root Tide sources remained the primary reference for session identity, terminal ownership, and AI command guardrail behavior. Tide does not expose a literal `/run` UI flow in the inspected sources, so the visible validation below checked the RunaTerminal `/run` path against Tide's explicit terminal-session ownership and command-safety semantics.
 
-### Browser flow used
+## Browser flow used
 
-1. Started live runtime stack:
-   - Ollama-compatible stub: `http://127.0.0.1:11458`
-   - Core API: `http://127.0.0.1:61123`
-   - Frontend dev app: `http://127.0.0.1:4179`
-2. Opened `http://127.0.0.1:4179` in headed Playwright browser.
-3. Opened AI panel and submitted `/run echo regression-fix-flow-01`.
-4. Observed structured execution block render and terminal output.
-5. Clicked block `Explain`.
-6. Opened right-rail `Tools` panel.
-7. Opened right-rail `Audit` panel.
-8. Sent terminal input `echo terminal-still-ok` to verify base shell path.
+1. Started an isolated localhost SSH target on `127.0.0.1:53808` with temporary ed25519 host/client keys.
+2. Verified that SSH target directly before any UI work:
+   - `ssh ... avm@127.0.0.1 -p 53808 'echo remote-ui-guardrail-ok && pwd'`
+   - returned `remote-ui-guardrail-ok` and `/Users/avm`
+3. Started a live runtime stack:
+   - Core API: `http://127.0.0.1:53806`
+   - Frontend dev app: `http://127.0.0.1:53807`
+   - Ollama-compatible stub provider on an ephemeral localhost port for deterministic explain replies
+4. Opened `http://127.0.0.1:53807/` in a visible Playwright Chromium window.
+5. Opened the AI panel through the visible launcher path:
+   - clicked `workspace-quick-actions-button`
+   - clicked quick action `ui.open_ai_panel`
+6. Executed local `/run echo local-guardrail-<timestamp>` in the visible AI panel.
+7. Confirmed the visible execution block render for the local run.
+8. Created a real remote profile against the localhost SSH target and opened a remote session tab in the same runtime.
+9. Reloaded the visible browser so the focused remote widget became the active shell context.
+10. Re-opened the AI panel through the same launcher path and executed remote `/run echo remote-guardrail-<timestamp>`.
+11. Confirmed the visible execution block render for the remote run.
+12. Probed invalid requests against that same live runtime:
+    - local widget with remote target context
+    - remote widget with local target context
+    - plugin tool invocation carrying terminal target context
+    - MCP invoke without `workspace_id`
 
-### What was visibly verified
+## What was visibly verified
 
-- `/run` executes and terminal output appears.
-- structured block renders with command/state/output.
-- block `Explain` action works and updates the same block identity.
-- `Tools` panel opens and renders tool catalog/controls.
-- `Audit` panel opens and renders recent events.
-- terminal input path continues to work (`terminal-still-ok` observed).
-- browser console after corrective rerun: `Errors: 0`.
+- The visible launcher entry path can still open the AI panel after the guardrail hardening.
+- Local `/run` still executes in the active local shell and renders a structured execution block in the visible panel.
+- Remote `/run` still executes in the active remote shell and renders a structured execution block in the visible panel.
+- The visible local block contained the local marker text.
+- The visible remote block contained the remote marker text.
+- Switching the active execution target from local to remote did not silently drift to the wrong widget or session.
 
-### API truth vs visible UI
+## Runtime/API truth captured during the same headed run
 
-- Matched:
-  - `GET /api/v1/execution/blocks?limit=10` returned one block for this run with:
-    - `provenance.command_audit_event_id = audit_edc2354d856bedc0`
-    - `provenance.explain_audit_event_id = audit_b559b7ff0a779b31`
-  - UI block summary/provenance remained coherent with the same command + explain chain.
-- No tools/audit crash discrepancy remained in the corrective rerun.
+- Local block target:
+  - `widget_id: term-main`
+  - `target_session: local`
+  - `target_connection_id: local`
+- Remote block target:
+  - `widget_id: term_2d2cfb8bb3231108`
+  - `target_session: remote`
+  - `target_connection_id: conn_34331faf0ad4fce5`
+- Invalid local -> remote mismatch probe returned `400 invalid_input`:
+  - `invalid connection: requested remote session but widget term-main is local`
+- Invalid remote -> local mismatch probe returned `400 invalid_input`:
+  - `invalid connection: requested local session but widget term_2d2cfb8bb3231108 is remote`
+- Plugin invocation with leaked terminal target returned `400 invalid_input`:
+  - `terminal target context is not allowed for plugin tools`
+- MCP invoke without explicit workspace target returned `400 invalid_mcp_request`:
+  - `invalid plugin specification: workspace_id is required`
+
+## Remaining mismatch
+
+- none
 
 ## Headed/visible note
 
-- Both the initial run and corrective rerun were executed in a visible headed browser session.
-- No headless-only run was used for this validation.
+- This validation used a visible headed Chromium window.
+- The result above was not taken from a headless-only run.
