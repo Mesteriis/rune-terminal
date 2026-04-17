@@ -72,8 +72,8 @@ const SettingsActionButton = memo(
     }) => {
         const toneClass =
             tone === "accent"
-                ? "border-accent/40 bg-accent/10 text-white hover:bg-accent/20"
-                : "border-border bg-black/10 text-secondary hover:text-white hover:bg-hoverbg";
+                ? "text-white border-[color:var(--modal-border-color)] bg-[rgba(88,193,66,0.12)] hover:bg-[rgba(88,193,66,0.18)]"
+                : "text-secondary border-[color:var(--modal-border-color)] bg-[rgba(255,255,255,0.04)] hover:bg-[rgba(255,255,255,0.09)] hover:text-white";
         return (
             <button
                 type="button"
@@ -94,7 +94,7 @@ const SurfaceStateCard = memo(
         const toneClass =
             tone === "error"
                 ? "border-red-500/30 bg-red-500/10 text-red-200"
-                : "border-border bg-black/10 text-secondary";
+                : "border-[color:var(--modal-border-color)] bg-[rgba(255,255,255,0.04)] text-secondary";
         return (
             <div className={`rounded border p-3 text-sm ${toneClass}`}>
                 <div className="font-medium text-white">{title}</div>
@@ -124,7 +124,7 @@ const SettingsNavButton = memo(
             type="button"
             data-testid={testID}
             className={`flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm transition-colors ${
-                active ? "bg-accent/15 text-white" : "text-secondary hover:bg-hoverbg hover:text-white"
+                active ? "bg-[rgba(255,255,255,0.1)] text-white" : "text-secondary hover:bg-[rgba(255,255,255,0.09)] hover:text-white"
             }`}
             onClick={onClick}
         >

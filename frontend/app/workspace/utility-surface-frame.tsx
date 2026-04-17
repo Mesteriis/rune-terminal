@@ -1,6 +1,6 @@
 import { makeIconClass } from "@/util/util";
 import clsx from "clsx";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 interface UtilitySurfaceFrameProps {
     title: string;
@@ -25,16 +25,26 @@ export function UtilitySurfaceFrame({
     className,
     testID,
 }: UtilitySurfaceFrameProps) {
+    const frameStyle: CSSProperties = {
+        border: "0.5px solid var(--modal-border-color)",
+        background: "var(--modal-bg-color)",
+        boxShadow: "0px 8px 32px 0px rgba(0, 0, 0, 0.25)",
+    };
+    const headerStyle: CSSProperties = {
+        borderBottom: "1px solid var(--modal-header-bottom-border-color)",
+    };
+
     return (
         <div
             className={clsx(
-                "flex max-h-[min(82vh,46rem)] min-h-[18rem] flex-col overflow-hidden rounded-lg border border-border bg-modalbg shadow-xl backdrop-blur-sm",
+                "flex max-h-[min(82vh,46rem)] min-h-[18rem] flex-col overflow-hidden rounded-[8px]",
                 widthClassName,
                 className,
             )}
+            style={frameStyle}
             data-testid={testID}
         >
-            <div className="flex min-h-[30px] items-center justify-between gap-2 border-b border-border px-3 py-2">
+            <div className="flex min-h-[35px] items-center justify-between gap-2 px-4 py-2" style={headerStyle}>
                 <div className="flex min-w-0 items-center gap-2">
                     <i className={clsx(makeIconClass(icon, false), "shrink-0 text-[12px] text-secondary")} />
                     <div className="truncate text-[12px] font-semibold text-white">{title}</div>
@@ -44,7 +54,7 @@ export function UtilitySurfaceFrame({
                     {onClose ? (
                         <button
                             type="button"
-                            className="rounded p-1 text-secondary transition-colors hover:bg-hoverbg hover:text-white"
+                            className="rounded px-2 py-1.5 text-secondary transition-colors hover:bg-[rgba(255,255,255,0.09)] hover:text-white"
                             aria-label={`Close ${title}`}
                             onClick={onClose}
                         >

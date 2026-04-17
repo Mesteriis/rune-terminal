@@ -29,10 +29,11 @@ export const SettingsFloatingWindow = memo(
         const mountNode = document.getElementById("main") ?? document.body;
 
         return ReactDOM.createPortal(
-            <div className="fixed inset-0 z-[600]">
+            <div className="fixed inset-0" style={{ zIndex: "var(--zindex-shell-overlay)" }}>
                 <button
                     type="button"
-                    className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
+                    className="absolute inset-0 backdrop-blur-[2px]"
+                    style={{ backgroundColor: "rgba(21, 23, 21, 0.7)" }}
                     aria-label="Close settings overlay"
                     onClick={onClose}
                 />
