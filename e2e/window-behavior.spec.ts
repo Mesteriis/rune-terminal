@@ -217,6 +217,19 @@ function assertSimpleSplitLayout(
   expect(layout?.second?.widget_id).toBe(sourceWidgetId);
 }
 
+function findWidgetPath(node: WindowLayoutNode | undefined, widgetId: string, path: Array<"first" | "second"> = []): Array<"first" | "second"> | null {
+  if (node == null) {
+    return null;
+  }
+  if (node.kind === "leaf") {
+    return node.widget_id === widgetId ? path : null;
+  }
+  return (
+    findWidgetPath(node.first, widgetId, [...path, "first"]) ??
+    findWidgetPath(node.second, widgetId, [...path, "second"])
+  );
+}
+
 async function listPaneWidgetIds(page: Page): Promise<string[]> {
   const panes = page.locator("[data-testid^='compat-widget-pane-']");
   const ids: string[] = [];
@@ -235,7 +248,16 @@ async function dragPaneToDirection(
   page: Page,
   sourceWidgetId: string,
   targetWidgetId: string,
-  direction: "left" | "right" | "top" | "bottom",
+  direction:
+    | "left"
+    | "right"
+    | "top"
+    | "bottom"
+    | "outer-left"
+    | "outer-right"
+    | "outer-top"
+    | "outer-bottom"
+    | "center",
 ): Promise<void> {
   const source = page.getByTestId(`compat-widget-pane-${sourceWidgetId}`);
   const target = page.getByTestId(`compat-widget-pane-${targetWidgetId}`);
@@ -243,20 +265,35 @@ async function dragPaneToDirection(
   expect(targetBox).toBeTruthy();
   const width = Math.max(targetBox!.width, 10);
   const height = Math.max(targetBox!.height, 10);
-  const edge = 6;
-  let targetPosition = { x: Math.floor(width / 2), y: Math.floor(height / 2) };
+  const outerEdge = 4;
+  let targetPosition = { x: Math.floor(width * 0.5), y: Math.floor(height * 0.5) };
   switch (direction) {
     case "left":
-      targetPosition = { x: edge, y: Math.floor(height / 2) };
+      targetPosition = { x: Math.floor(width * 0.3), y: Math.floor(height * 0.5) };
       break;
     case "right":
-      targetPosition = { x: Math.max(edge, Math.floor(width - edge)), y: Math.floor(height / 2) };
+      targetPosition = { x: Math.floor(width * 0.7), y: Math.floor(height * 0.5) };
       break;
     case "top":
-      targetPosition = { x: Math.floor(width / 2), y: edge };
+      targetPosition = { x: Math.floor(width * 0.5), y: Math.floor(height * 0.3) };
       break;
     case "bottom":
-      targetPosition = { x: Math.floor(width / 2), y: Math.max(edge, Math.floor(height - edge)) };
+      targetPosition = { x: Math.floor(width * 0.5), y: Math.floor(height * 0.7) };
+      break;
+    case "outer-left":
+      targetPosition = { x: outerEdge, y: Math.floor(height * 0.5) };
+      break;
+    case "outer-right":
+      targetPosition = { x: Math.max(outerEdge, Math.floor(width - outerEdge)), y: Math.floor(height * 0.5) };
+      break;
+    case "outer-top":
+      targetPosition = { x: Math.floor(width * 0.5), y: outerEdge };
+      break;
+    case "outer-bottom":
+      targetPosition = { x: Math.floor(width * 0.5), y: Math.max(outerEdge, Math.floor(height - outerEdge)) };
+      break;
+    case "center":
+      targetPosition = { x: Math.floor(width * 0.5), y: Math.floor(height * 0.5) };
       break;
     default:
       break;
@@ -409,5 +446,174 @@ test.describe.serial("window behavior parity", () => {
     await expect(startRemoteAction).toBeEnabled();
     await expect(startRemoteAction).toContainText("remote_profile_id");
     expect(remoteProfileID).not.toBe("");
+  });
+
+  test("supports outer-zone drops and center-swap with focus/persistence truth", async ({ page, request }) => {
+    test.setTimeout(120_000);
+
+    await page.goto(FRONTEND_URL);
+    await expect(page.locator("[data-testid^='compat-widget-pane-']").first()).toBeVisible();
+
+    const createTabResponse = await request.post(`http://127.0.0.1:${CORE_PORT}/api/v1/workspace/tabs`, {
+      headers: {
+        Authorization: `Bearer ${AUTH_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      data: {
+        title: "Parity Outer/Center",
+      },
+    });
+    expect(createTabResponse.ok()).toBeTruthy();
+    const createdTabPayload = (await createTabResponse.json()) as { tab_id?: string; widget_id?: string };
+    const tabId = createdTabPayload.tab_id ?? "";
+    const w1 = createdTabPayload.widget_id ?? "";
+    expect(tabId).not.toBe("");
+    expect(w1).not.toBe("");
+    const focusTabResponse = await request.post(`http://127.0.0.1:${CORE_PORT}/api/v1/workspace/focus-tab`, {
+      headers: {
+        Authorization: `Bearer ${AUTH_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      data: {
+        tab_id: tabId,
+      },
+    });
+    expect(focusTabResponse.ok()).toBeTruthy();
+    await page.reload();
+    await expect(page.locator("[data-testid^='compat-widget-pane-']").first()).toBeVisible();
+    await expect(page.getByTestId(`compat-widget-pane-${w1}`)).toBeVisible();
+
+    const splitFrom = async (targetWidgetId: string, knownWidgetIds: string[]): Promise<string> => {
+      const createSplitResponsePromise = page.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          response.url().includes("/api/v1/workspace/widgets/split"),
+      );
+      await page.getByTestId(`compat-split-add-${targetWidgetId}`).click();
+      const createSplitResponse = await createSplitResponsePromise;
+      expect(createSplitResponse.ok()).toBeTruthy();
+      const snapshot = await getWorkspaceSnapshot(request);
+      const widgetIds = findTab(snapshot, tabId).widget_ids ?? [];
+      const nextWidgetId = widgetIds.find((widgetId) => !knownWidgetIds.includes(widgetId));
+      expect(nextWidgetId).toBeTruthy();
+      return nextWidgetId!;
+    };
+
+    const w2 = await splitFrom(w1, [w1]);
+    const w3 = await splitFrom(w1, [w1, w2]);
+    const w4 = await splitFrom(w2, [w1, w2, w3]);
+
+    let snapshot = await getWorkspaceSnapshot(request);
+    expect(findTab(snapshot, tabId).window_layout?.kind).toBe("split");
+
+    // Outer-left semantic check.
+    let moveResponsePromise = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        response.url().includes("/api/v1/workspace/widgets/move-split"),
+    );
+    await dragPaneToDirection(page, w3, w2, "outer-left");
+    let moveResponse = await moveResponsePromise;
+    expect(moveResponse.ok()).toBeTruthy();
+    expect((moveResponse.request().postDataJSON() as { direction?: string }).direction).toBe("outer-left");
+    snapshot = await getWorkspaceSnapshot(request);
+    let layout = findTab(snapshot, tabId).window_layout;
+    expect(layout?.second?.kind).toBe("split");
+    expect(layout?.second?.axis).toBe("horizontal");
+    expect(layout?.second?.first?.widget_id).toBe(w3);
+
+    // Build vertical target branch (inner top), then verify outer-top semantic wrap.
+    moveResponsePromise = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        response.url().includes("/api/v1/workspace/widgets/move-split"),
+    );
+    await dragPaneToDirection(page, w4, w2, "top");
+    moveResponse = await moveResponsePromise;
+    expect(moveResponse.ok()).toBeTruthy();
+    expect((moveResponse.request().postDataJSON() as { direction?: string }).direction).toBe("top");
+
+    moveResponsePromise = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        response.url().includes("/api/v1/workspace/widgets/move-split"),
+    );
+    await dragPaneToDirection(page, w1, w2, "outer-top");
+    moveResponse = await moveResponsePromise;
+    expect(moveResponse.ok()).toBeTruthy();
+    expect((moveResponse.request().postDataJSON() as { direction?: string }).direction).toBe("outer-top");
+    snapshot = await getWorkspaceSnapshot(request);
+    layout = findTab(snapshot, tabId).window_layout;
+    expect(layout?.second?.kind).toBe("split");
+    expect(layout?.second?.axis).toBe("vertical");
+    expect(layout?.second?.first?.widget_id).toBe(w1);
+    expect(layout?.second?.second?.kind).toBe("split");
+
+    // Center swap must exchange source/target paths.
+    const pathW3Before = findWidgetPath(layout, w3);
+    const pathW2Before = findWidgetPath(layout, w2);
+    expect(pathW3Before).toBeTruthy();
+    expect(pathW2Before).toBeTruthy();
+
+    moveResponsePromise = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        response.url().includes("/api/v1/workspace/widgets/move-split"),
+    );
+    await dragPaneToDirection(page, w3, w2, "center");
+    moveResponse = await moveResponsePromise;
+    expect(moveResponse.ok()).toBeTruthy();
+    expect((moveResponse.request().postDataJSON() as { direction?: string }).direction).toBe("center");
+    snapshot = await getWorkspaceSnapshot(request);
+    layout = findTab(snapshot, tabId).window_layout;
+    const pathW3After = findWidgetPath(layout, w3);
+    const pathW2After = findWidgetPath(layout, w2);
+    expect(pathW3After).toEqual(pathW2Before);
+    expect(pathW2After).toEqual(pathW3Before);
+    expect(snapshot.active_widget_id).toBe(w3);
+
+    // Remaining outer directions are emitted explicitly from drop zones.
+    moveResponsePromise = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        response.url().includes("/api/v1/workspace/widgets/move-split"),
+    );
+    await dragPaneToDirection(page, w3, w2, "outer-right");
+    moveResponse = await moveResponsePromise;
+    expect(moveResponse.ok()).toBeTruthy();
+    expect((moveResponse.request().postDataJSON() as { direction?: string }).direction).toBe("outer-right");
+
+    moveResponsePromise = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        response.url().includes("/api/v1/workspace/widgets/move-split"),
+    );
+    await dragPaneToDirection(page, w3, w2, "outer-bottom");
+    moveResponse = await moveResponsePromise;
+    expect(moveResponse.ok()).toBeTruthy();
+    expect((moveResponse.request().postDataJSON() as { direction?: string }).direction).toBe("outer-bottom");
+
+    // Focus truth.
+    const focusWidgetResponsePromise = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        response.url().includes("/api/v1/workspace/focus-widget"),
+    );
+    await page.getByTestId(`compat-widget-pane-${w2}`).click();
+    const focusWidgetResponse = await focusWidgetResponsePromise;
+    expect(focusWidgetResponse.ok()).toBeTruthy();
+    snapshot = await getWorkspaceSnapshot(request);
+    expect(snapshot.active_widget_id).toBe(w2);
+
+    // Persistence truth after outer/center actions.
+    const beforeReload = await getWorkspaceSnapshot(request);
+    const beforeReloadTab = findTab(beforeReload, tabId);
+    await page.reload();
+    await expect(page.locator("[data-testid^='compat-widget-pane-']").first()).toBeVisible();
+    const afterReload = await getWorkspaceSnapshot(request);
+    const afterReloadTab = findTab(afterReload, tabId);
+    expect(afterReload.active_tab_id).toBe(beforeReload.active_tab_id);
+    expect(afterReload.active_widget_id).toBe(beforeReload.active_widget_id);
+    expect(afterReloadTab.window_layout).toEqual(beforeReloadTab.window_layout);
   });
 });
