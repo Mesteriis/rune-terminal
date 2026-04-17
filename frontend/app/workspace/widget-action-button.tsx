@@ -14,15 +14,17 @@ interface WidgetActionButtonProps {
     label?: string;
     defaultIcon?: string;
     style?: CSSProperties;
+    testID?: string;
 }
 
 const WidgetActionButton = memo(
-    ({ buttonRef, icon, tooltip, isOpen, onClick, mode, label, defaultIcon, style }: WidgetActionButtonProps) => {
+    ({ buttonRef, icon, tooltip, isOpen, onClick, mode, label, defaultIcon, style, testID }: WidgetActionButtonProps) => {
         const iconOptions = defaultIcon ? { defaultIcon } : undefined;
 
         return (
             <div
                 ref={buttonRef}
+                data-testid={testID}
                 className={
                     mode === "supercompact"
                         ? "flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-sm overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"

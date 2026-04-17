@@ -227,6 +227,27 @@
 - Notes:
   - detailed step-by-step flow and observations are recorded in `docs/quick-actions-browser-validation.md`.
 
+<a id="quick-actions-ui-tests"></a>
+## Quick actions UI test coverage
+
+- Date: `2026-04-17`
+- Status: `VERIFIED`
+- Validation steps:
+  - focused Playwright run:
+    - `npm run test:ui -- e2e/quick-actions.spec.ts`
+  - assertions covered:
+    - quick-actions surface opens from utility rail
+    - explicit quick-action list renders
+    - UI-only action path works (`Open Files Panel`)
+    - execution-bearing action routes through workspace tab creation path (`POST /api/v1/workspace/tabs`) and updates workspace truth
+    - context-sensitive remote action remains explicit and non-confusing on local context:
+      - selected file present
+      - active target remains local (`local:local`)
+      - remote `/run` quick action stays disabled with explicit reason (`Requires active remote terminal target.`)
+    - MCP-related explicit action path works (`Open MCP Controls` -> Tools MCP section visible)
+- Result:
+  - quick-actions workflow now has focused end-to-end UI coverage for open/list/render, UI-only actions, execution-bearing routing, MCP surfacing, and local-vs-remote context truth.
+
 <a id="remote-restore-missing-profile-error"></a>
 ## Remote restore missing-profile error semantics
 

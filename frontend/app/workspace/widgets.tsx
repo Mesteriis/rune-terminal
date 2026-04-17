@@ -375,6 +375,7 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
                                 isOpen={isFilesOpen}
                                 onClick={() => setIsFilesOpen(!isFilesOpen)}
                                 mode={mode}
+                                testID="workspace-files-button"
                                 style={compatActionStyle}
                             />
                             <WidgetActionButton
@@ -384,6 +385,7 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
                                 isOpen={isQuickActionsOpen}
                                 onClick={() => setIsQuickActionsOpen(!isQuickActionsOpen)}
                                 mode={mode}
+                                testID="workspace-quick-actions-button"
                                 style={compatActionStyle}
                             />
                             {showAppsButton ? (
@@ -448,6 +450,7 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
                             onClick={() => setIsFilesOpen(!isFilesOpen)}
                             mode={mode}
                             label="Files"
+                            testID="workspace-files-button"
                             style={compatActionStyle}
                         />
                         <WidgetActionButton
@@ -458,6 +461,7 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
                             onClick={() => setIsQuickActionsOpen(!isQuickActionsOpen)}
                             mode={mode}
                             label="Quick"
+                            testID="workspace-quick-actions-button"
                             style={compatActionStyle}
                         />
                         {showAppsButton ? (
