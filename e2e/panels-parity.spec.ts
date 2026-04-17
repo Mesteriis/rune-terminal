@@ -278,7 +278,7 @@ test.describe.serial("panels parity", () => {
     await expect(page.getByTestId("help-panel")).toBeVisible();
     await expect(page.getByText("Open the dedicated help view")).toBeVisible();
 
-    await page.getByLabel("Close settings").click();
+    await page.getByRole("button", { name: "Close settings overlay" }).click();
     await expect(settingsSurface).not.toBeVisible();
     await expect(aiPanel).toBeVisible();
   });
