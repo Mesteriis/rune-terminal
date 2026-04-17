@@ -54,6 +54,7 @@ func BootstrapDefault() Snapshot {
 			},
 		},
 		ActiveWidgetID: "term-main",
+		Layout:         DefaultLayout(),
 	}
 }
 
@@ -270,6 +271,7 @@ func (s *Service) findTabLocked(tabID string) (Tab, error) {
 func cloneSnapshot(snapshot Snapshot) Snapshot {
 	snapshot.Tabs = cloneTabs(snapshot.Tabs)
 	snapshot.Widgets = slices.Clone(snapshot.Widgets)
+	snapshot.Layout = cloneLayout(snapshot.Layout)
 	return snapshot
 }
 

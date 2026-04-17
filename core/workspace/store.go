@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-const snapshotSchemaVersion = 1
+const snapshotSchemaVersion = 2
 
 type persistedSnapshot struct {
 	Version   int      `json:"version"`
@@ -132,7 +132,60 @@ func normalizeSnapshot(candidate Snapshot, fallback Snapshot) Snapshot {
 		}
 	}
 	normalized.ActiveWidgetID = activeWidgetID
+	normalized.Layout = normalizeLayout(candidate.Layout, fallback.Layout)
 	return normalized
+}
+
+func normalizeLayout(candidate Layout, fallback Layout) Layout {
+	normalized := Layout{
+		ID:              strings.TrimSpace(candidate.ID),
+		Mode:            candidate.Mode,
+		ActiveSurfaceID: candidate.ActiveSurfaceID,
+	}
+	if normalized.ID == "" {
+		normalized.ID = fallback.ID
+	}
+	switch normalized.Mode {
+	case LayoutModeSplit, LayoutModeFocus, LayoutModeStacked:
+	default:
+		normalized.Mode = fallback.Mode
+	}
+
+	seenSurfaces := make(map[LayoutSurfaceID]struct{}, len(candidate.Surfaces))
+	for _, surface := range candidate.Surfaces {
+		if surface.ID == "" {
+			continue
+		}
+		switch surface.Region {
+		case LayoutRegionMain, LayoutRegionSidebar, LayoutRegionUtility:
+		default:
+			continue
+		}
+		if _, ok := seenSurfaces[surface.ID]; ok {
+			continue
+		}
+		seenSurfaces[surface.ID] = struct{}{}
+		normalized.Surfaces = append(normalized.Surfaces, LayoutSurface{
+			ID:     surface.ID,
+			Region: surface.Region,
+		})
+	}
+	if len(normalized.Surfaces) == 0 {
+		normalized.Surfaces = cloneLayout(fallback).Surfaces
+	}
+	if normalized.ActiveSurfaceID == "" || !layoutSurfaceExists(normalized.Surfaces, normalized.ActiveSurfaceID) {
+		normalized.ActiveSurfaceID = normalized.Surfaces[0].ID
+	}
+	return normalized
+}
+
+func layoutSurfaceExists(surfaces []LayoutSurface, surfaceID LayoutSurfaceID) bool {
+	for _, surface := range surfaces {
+		if surface.ID == surfaceID {
+			return true
+		}
+	}
+	return false
 }
 
 func tabExists(tabs []Tab, tabID string) bool {
