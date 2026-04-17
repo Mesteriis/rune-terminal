@@ -5,6 +5,7 @@
 - Date: `2026-04-17`
 - State: `VERIFIED` for active compat surfaces
 - Scope:
+  - UI system alignment for static assets, font/icon unification, and true modal settings overlay behavior
   - shell chrome parity coverage for compact top-shell density, tab hierarchy, and AI reopen behavior
   - panels parity coverage for AI panel + settings utility surfaces
   - final UI parity hardening for pane headers, drag/status chrome, popover boundedness, and compact shell-surface rhythm
@@ -20,6 +21,11 @@
 - `npm --prefix frontend run dev -- --host 127.0.0.1 --port <port> --strictPort`
 - `go run ./cmd/rterm-core serve --listen 127.0.0.1:<port> ...`
 - headed Playwright Chromium validation with launcher -> AI panel -> local `/run` -> remote `/run`
+- real desktop validation with:
+  - `npm run tauri:dev`
+  - `open -a TideTerm`
+  - `screencapture -x /tmp/tideterm-desktop.png`
+  - `screencapture -x /tmp/rterm-rail-attempt-1.png`
 - `npx playwright test e2e/shell-chrome-parity.spec.ts -c e2e/playwright.config.ts --headed`
 - `npx playwright test e2e/panels-parity.spec.ts -c e2e/playwright.config.ts --headed`
 - `npx playwright test e2e/ui-parity.spec.ts e2e/navigation-parity.spec.ts -c e2e/playwright.config.ts --headed`
@@ -42,6 +48,7 @@
   - [../shell-chrome-validation.md](../shell-chrome-validation.md)
   - [../terminal-parity-validation.md](../terminal-parity-validation.md)
   - [../ui-parity-validation.md](../ui-parity-validation.md)
+  - [../ui-system-validation.md](../ui-system-validation.md)
 
 ## Known limitations
 
@@ -55,4 +62,5 @@
 - [Shell chrome desktop + headed validation](../shell-chrome-validation.md)
 - [Terminal parity headed validation](../terminal-parity-validation.md)
 - [Full UI parity desktop + headed validation](../ui-parity-validation.md)
+- [UI system desktop alignment validation](../ui-system-validation.md)
 - [Legacy validation log entries](./history/validation-log-legacy-2026-04-17.md#agent--conversation-panel)
