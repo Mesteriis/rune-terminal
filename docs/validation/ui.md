@@ -5,6 +5,7 @@
 - Date: `2026-04-17`
 - State: `VERIFIED` for active compat surfaces
 - Scope:
+  - panels parity coverage for AI panel + settings utility surfaces
   - AI panel render/send/reload behavior
   - Tools panel execute + approval retry behavior
   - Audit panel event visibility and chain coherence
@@ -17,6 +18,7 @@
 - `npm --prefix frontend run dev -- --host 127.0.0.1 --port <port> --strictPort`
 - `go run ./cmd/rterm-core serve --listen 127.0.0.1:<port> ...`
 - headed Playwright Chromium validation with launcher -> AI panel -> local `/run` -> remote `/run`
+- `npx playwright test e2e/panels-parity.spec.ts -c e2e/playwright.config.ts --headed`
 - Runtime/API checks:
   - `GET /api/v1/agent/conversation`
   - `POST /api/v1/agent/conversation/messages`
@@ -31,6 +33,7 @@
   - [frontend-approval-action-validation.md](./frontend-approval-action-validation.md)
   - [frontend-asset-pipeline-validation.md](./frontend-asset-pipeline-validation.md)
   - [structured-execution-browser-validation.md](./structured-execution-browser-validation.md)
+  - [../panels-parity-validation.md](../panels-parity-validation.md)
   - [../terminal-parity-validation.md](../terminal-parity-validation.md)
 
 ## Known limitations
@@ -42,5 +45,6 @@
 ## Evidence
 
 - [UI surfaces](../ui/surfaces.md)
+- [Panels parity headed validation](../panels-parity-validation.md)
 - [Terminal parity headed validation](../terminal-parity-validation.md)
 - [Legacy validation log entries](./history/validation-log-legacy-2026-04-17.md#agent--conversation-panel)
