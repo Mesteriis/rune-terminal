@@ -4,6 +4,7 @@ import { workspaceStore, type WorkspaceStoreLayout } from "@/app/state/workspace
 import { createBlock } from "@/store/global";
 import { fireAndForget, makeIconClass } from "@/util/util";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { UtilitySurfaceFrame } from "./utility-surface-frame";
 
 type SettingsView = "overview" | "trusted-tools" | "secret-shield" | "help";
 
@@ -104,6 +105,36 @@ const SurfaceStateCard = memo(
 );
 
 SurfaceStateCard.displayName = "SurfaceStateCard";
+
+const SettingsNavButton = memo(
+    ({
+        active,
+        icon,
+        label,
+        onClick,
+        testID,
+    }: {
+        active: boolean;
+        icon: string;
+        label: string;
+        onClick: () => void;
+        testID?: string;
+    }) => (
+        <button
+            type="button"
+            data-testid={testID}
+            className={`flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm transition-colors ${
+                active ? "bg-accent/15 text-white" : "text-secondary hover:bg-hoverbg hover:text-white"
+            }`}
+            onClick={onClick}
+        >
+            <i className={makeIconClass(icon, false)} />
+            <span>{label}</span>
+        </button>
+    ),
+);
+
+SettingsNavButton.displayName = "SettingsNavButton";
 
 export const SettingsUtilitySurface = memo(
     ({ onClose, onOpenTools }: { onClose: () => void; onOpenTools?: () => void }) => {
@@ -278,271 +309,258 @@ export const SettingsUtilitySurface = memo(
         );
 
         return (
-            <div data-testid="settings-surface" className="flex h-[min(80vh,42rem)] w-[26rem] max-w-[min(90vw,26rem)] flex-col overflow-hidden">
-                <div className="flex items-center justify-between border-b border-border px-3 py-3">
-                    <div>
-                        <div className="text-sm font-semibold text-white">Settings &amp; Help</div>
-                        <div className="text-xs text-muted">Shell utility surfaces anchored to the active workspace.</div>
-                    </div>
-                    <button
-                        type="button"
-                        className="rounded p-1 text-secondary transition-colors hover:bg-hoverbg hover:text-white"
-                        aria-label="Close settings"
-                        onClick={onClose}
-                    >
-                        <i className="fa fa-xmark" />
-                    </button>
-                </div>
-
-                <div className="flex gap-1 border-b border-border px-2 py-2">
-                    {settingsViews.map((view) => (
-                        <button
-                            key={view.id}
-                            type="button"
-                            data-testid={`settings-view-${view.id}`}
-                            className={`flex items-center gap-1 rounded px-2 py-1 text-xs transition-colors ${
-                                activeView === view.id
-                                    ? "bg-accent/15 text-white"
-                                    : "text-secondary hover:bg-hoverbg hover:text-white"
-                            }`}
-                            onClick={() => setActiveView(view.id)}
-                        >
-                            <i className={makeIconClass(view.icon, false)} />
-                            <span>{view.label}</span>
-                        </button>
-                    ))}
-                </div>
-
-                <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
-                    {activeView === "overview" ? (
-                        <div className="space-y-4" data-testid="settings-overview-panel">
-                            <SurfaceStateCard
-                                title="Layout"
-                                body="Switch split/focus mode, choose the active surface, and control which shell utilities are visible."
+            <UtilitySurfaceFrame
+                title="Settings & Help"
+                icon="gear"
+                onClose={onClose}
+                widthClassName="w-[min(92vw,34rem)] max-w-[34rem]"
+                testID="settings-surface"
+            >
+                <div className="flex min-h-0 flex-1 overflow-hidden">
+                    <div className="flex w-40 shrink-0 flex-col gap-1 border-r border-border bg-black/10 p-2">
+                        {settingsViews.map((view) => (
+                            <SettingsNavButton
+                                key={view.id}
+                                active={activeView === view.id}
+                                icon={view.icon}
+                                label={view.label}
+                                onClick={() => setActiveView(view.id)}
+                                testID={`settings-view-${view.id}`}
                             />
+                        ))}
+                    </div>
 
-                            <div className="rounded border border-border bg-black/10 p-3">
-                                <div className="text-xs font-semibold uppercase tracking-wide text-muted">Mode</div>
-                                <div className="mt-2 flex items-center gap-2">
-                                    <button
-                                        type="button"
-                                        className={`rounded border px-2 py-1 text-[11px] ${
-                                            layout.mode === "split"
-                                                ? "border-accent/40 bg-accent/10 text-white"
-                                                : "border-border text-secondary hover:text-white"
-                                        }`}
-                                        onClick={() => applyLayout({ ...layout, mode: "split" })}
-                                    >
-                                        Split
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className={`rounded border px-2 py-1 text-[11px] ${
-                                            layout.mode === "focus"
-                                                ? "border-accent/40 bg-accent/10 text-white"
-                                                : "border-border text-secondary hover:text-white"
-                                        }`}
-                                        onClick={() => applyLayout({ ...layout, mode: "focus" })}
-                                    >
-                                        Focus
-                                    </button>
-                                    <select
-                                        className="min-w-0 flex-1 rounded border border-border bg-black/20 p-1 text-[11px] text-white"
-                                        value={layout.activeSurfaceId}
-                                        onChange={(event) => applyLayout({ ...layout, activeSurfaceId: event.target.value })}
-                                    >
-                                        {layout.surfaces.map((surface) => (
-                                            <option key={surface.id} value={surface.id}>
-                                                {surface.id}
-                                            </option>
-                                        ))}
-                                    </select>
+                    <div className="min-h-0 flex-1 overflow-y-auto p-3">
+                        {activeView === "overview" ? (
+                            <div className="space-y-4" data-testid="settings-overview-panel">
+                                <SurfaceStateCard
+                                    title="Layout"
+                                    body="Switch split or focus mode, choose the active surface, and control which shell utilities are visible."
+                                />
+
+                                <div className="rounded border border-border bg-black/10 p-3">
+                                    <div className="text-xs font-semibold uppercase tracking-wide text-muted">Mode</div>
+                                    <div className="mt-2 flex items-center gap-2">
+                                        <button
+                                            type="button"
+                                            className={`rounded border px-2 py-1 text-[11px] ${
+                                                layout.mode === "split"
+                                                    ? "border-accent/40 bg-accent/10 text-white"
+                                                    : "border-border text-secondary hover:text-white"
+                                            }`}
+                                            onClick={() => applyLayout({ ...layout, mode: "split" })}
+                                        >
+                                            Split
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className={`rounded border px-2 py-1 text-[11px] ${
+                                                layout.mode === "focus"
+                                                    ? "border-accent/40 bg-accent/10 text-white"
+                                                    : "border-border text-secondary hover:text-white"
+                                            }`}
+                                            onClick={() => applyLayout({ ...layout, mode: "focus" })}
+                                        >
+                                            Focus
+                                        </button>
+                                        <select
+                                            className="min-w-0 flex-1 rounded border border-border bg-black/20 p-1 text-[11px] text-white"
+                                            value={layout.activeSurfaceId}
+                                            onChange={(event) => applyLayout({ ...layout, activeSurfaceId: event.target.value })}
+                                        >
+                                            {layout.surfaces.map((surface) => (
+                                                <option key={surface.id} value={surface.id}>
+                                                    {surface.id}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="rounded border border-border bg-black/10 p-3">
+                                    <div className="text-xs font-semibold uppercase tracking-wide text-muted">Visible surfaces</div>
+                                    <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
+                                        {surfaceConfig.map((surface) => {
+                                            const enabled = hasSurface(layout, surface.id);
+                                            return (
+                                                <label key={surface.id} className="flex items-center gap-2 text-secondary">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={enabled}
+                                                        onChange={(event) => toggleSurface(surface.id, surface.region, event.target.checked)}
+                                                    />
+                                                    {surface.label}
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                <div className="rounded border border-border bg-black/10 p-3">
+                                    <div className="text-xs font-semibold uppercase tracking-wide text-muted">Saved layouts</div>
+                                    <div className="mt-2 flex items-center gap-2">
+                                        <select
+                                            className="min-w-0 flex-1 rounded border border-border bg-black/20 p-1 text-[11px] text-white"
+                                            value={activeLayoutId}
+                                            onChange={(event) => {
+                                                const nextLayoutID = event.target.value;
+                                                setActiveLayoutId(nextLayoutID);
+                                                fireAndForget(() => workspaceStore.switchLayout(nextLayoutID));
+                                            }}
+                                        >
+                                            {layouts.map((entry) => (
+                                                <option key={entry.id} value={entry.id}>
+                                                    {entry.id}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <button
+                                            type="button"
+                                            className="rounded border border-border px-2 py-1 text-[11px] text-secondary hover:text-white"
+                                            onClick={() => {
+                                                fireAndForget(() => workspaceStore.saveLayout());
+                                            }}
+                                        >
+                                            Save
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="rounded border border-border bg-black/10 p-3">
+                                    <div className="text-xs font-semibold uppercase tracking-wide text-muted">Utilities</div>
+                                    <div className="mt-2 flex flex-wrap gap-2">
+                                        <SettingsActionButton
+                                            label="Open full settings"
+                                            icon="gear"
+                                            tone="accent"
+                                            onClick={() => {
+                                                createBlock({ meta: { view: "waveconfig" } }, false, true);
+                                                onClose();
+                                            }}
+                                        />
+                                        <SettingsActionButton
+                                            label="Open secrets manager"
+                                            icon="lock"
+                                            onClick={() => {
+                                                createBlock({ meta: { view: "waveconfig", file: "secrets" } }, false, true);
+                                                onClose();
+                                            }}
+                                        />
+                                        <SettingsActionButton
+                                            label="Open help view"
+                                            icon="circle-question"
+                                            onClick={() => {
+                                                createBlock({ meta: { view: "help" } });
+                                                onClose();
+                                            }}
+                                        />
+                                    </div>
                                 </div>
                             </div>
+                        ) : null}
 
-                            <div className="rounded border border-border bg-black/10 p-3">
-                                <div className="text-xs font-semibold uppercase tracking-wide text-muted">Visible surfaces</div>
-                                <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
-                                    {surfaceConfig.map((surface) => {
-                                        const enabled = hasSurface(layout, surface.id);
-                                        return (
-                                            <label key={surface.id} className="flex items-center gap-2 text-secondary">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={enabled}
-                                                    onChange={(event) => toggleSurface(surface.id, surface.region, event.target.checked)}
-                                                />
-                                                {surface.label}
-                                            </label>
-                                        );
-                                    })}
+                        {activeView === "trusted-tools" ? (
+                            <div className="space-y-4" data-testid="trusted-tools-panel">
+                                <SurfaceStateCard
+                                    title="Trusted tools"
+                                    body="Repeatedly approved tools are surfaced from backend policy truth. This view is read-only; execution and rule changes remain explicit operator actions."
+                                />
+                                <div className="flex flex-wrap gap-2">
+                                    {onOpenTools ? (
+                                        <SettingsActionButton label="Open Tools" icon="screwdriver-wrench" onClick={onOpenTools} />
+                                    ) : (
+                                        <SurfaceStateCard
+                                            title="Tools hidden by layout"
+                                            body="Enable the Tools surface from Overview to add or update trusted rules explicitly."
+                                        />
+                                    )}
+                                    <SettingsActionButton label="Refresh" icon="rotate-right" onClick={() => void loadPolicyState()} />
                                 </div>
-                            </div>
-
-                            <div className="rounded border border-border bg-black/10 p-3">
-                                <div className="text-xs font-semibold uppercase tracking-wide text-muted">Saved layouts</div>
-                                <div className="mt-2 flex items-center gap-2">
-                                    <select
-                                        className="min-w-0 flex-1 rounded border border-border bg-black/20 p-1 text-[11px] text-white"
-                                        value={activeLayoutId}
-                                        onChange={(event) => {
-                                            const nextLayoutID = event.target.value;
-                                            setActiveLayoutId(nextLayoutID);
-                                            fireAndForget(() => workspaceStore.switchLayout(nextLayoutID));
-                                        }}
-                                    >
-                                        {layouts.map((entry) => (
-                                            <option key={entry.id} value={entry.id}>
-                                                {entry.id}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    <button
-                                        type="button"
-                                        className="rounded border border-border px-2 py-1 text-[11px] text-secondary hover:text-white"
-                                        onClick={() => {
-                                            fireAndForget(() => workspaceStore.saveLayout());
-                                        }}
-                                    >
-                                        Save
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="rounded border border-border bg-black/10 p-3">
-                                <div className="text-xs font-semibold uppercase tracking-wide text-muted">Utilities</div>
-                                <div className="mt-2 flex flex-wrap gap-2">
-                                    <SettingsActionButton
-                                        label="Open full settings"
-                                        icon="gear"
-                                        tone="accent"
-                                        onClick={() => {
-                                            createBlock({ meta: { view: "waveconfig" } }, false, true);
-                                            onClose();
-                                        }}
+                                {policyLoading ? <SurfaceStateCard title="Loading" body="Fetching trusted-rule state from the runtime." /> : null}
+                                {!policyLoading && policyError ? (
+                                    <SurfaceStateCard title="Policy load failed" body={policyError} tone="error" />
+                                ) : null}
+                                {!policyLoading && !policyError && trustedRuleRows.length === 0 ? (
+                                    <SurfaceStateCard
+                                        title="No trusted rules"
+                                        body="Dangerous tools still require approval unless a trusted rule is added explicitly."
                                     />
-                                    <SettingsActionButton
-                                        label="Open secrets manager"
-                                        icon="lock"
-                                        onClick={() => {
-                                            createBlock({ meta: { view: "waveconfig", file: "secrets" } }, false, true);
-                                            onClose();
-                                        }}
+                                ) : null}
+                                {!policyLoading && !policyError ? <div className="space-y-3">{trustedRuleRows}</div> : null}
+                            </div>
+                        ) : null}
+
+                        {activeView === "secret-shield" ? (
+                            <div className="space-y-4" data-testid="secret-shield-panel">
+                                <SurfaceStateCard
+                                    title="Secret shield"
+                                    body="Ignore-rule protection is shown directly from runtime policy state. Modes remain explicit: deny, metadata-only, and redact."
+                                />
+                                <div className="flex flex-wrap gap-2">
+                                    {onOpenTools ? (
+                                        <SettingsActionButton label="Open Tools" icon="screwdriver-wrench" onClick={onOpenTools} />
+                                    ) : (
+                                        <SurfaceStateCard
+                                            title="Tools hidden by layout"
+                                            body="Enable the Tools surface from Overview to add or update ignore rules explicitly."
+                                        />
+                                    )}
+                                    <SettingsActionButton label="Refresh" icon="rotate-right" onClick={() => void loadPolicyState()} />
+                                </div>
+                                {policyLoading ? <SurfaceStateCard title="Loading" body="Fetching ignore-rule state from the runtime." /> : null}
+                                {!policyLoading && policyError ? (
+                                    <SurfaceStateCard title="Policy load failed" body={policyError} tone="error" />
+                                ) : null}
+                                {!policyLoading && !policyError && ignoreRuleRows.length === 0 ? (
+                                    <SurfaceStateCard
+                                        title="No ignore rules"
+                                        body="The runtime will not hide or protect matching paths unless an ignore rule is added explicitly."
                                     />
+                                ) : null}
+                                {!policyLoading && !policyError ? <div className="space-y-3">{ignoreRuleRows}</div> : null}
+                            </div>
+                        ) : null}
+
+                        {activeView === "help" ? (
+                            <div className="space-y-4" data-testid="help-panel">
+                                <SurfaceStateCard
+                                    title="Help"
+                                    body="The active shell keeps help as an explicit operator surface. Open the dedicated help view or jump to the repo-level release docs from here."
+                                />
+                                <div className="flex flex-col gap-2">
                                     <SettingsActionButton
                                         label="Open help view"
                                         icon="circle-question"
+                                        tone="accent"
                                         onClick={() => {
                                             createBlock({ meta: { view: "help" } });
                                             onClose();
                                         }}
                                     />
+                                    <a
+                                        className="rounded border border-border bg-black/10 px-3 py-2 text-sm text-secondary transition-colors hover:bg-hoverbg hover:text-white"
+                                        href="https://github.com/Mesteriis/rune-terminal#readme"
+                                        target="_blank"
+                                        rel="noreferrer"
+                                    >
+                                        <i className="fa fa-book mr-2" />
+                                        Open RunaTerminal README
+                                    </a>
+                                    <a
+                                        className="rounded border border-border bg-black/10 px-3 py-2 text-sm text-secondary transition-colors hover:bg-hoverbg hover:text-white"
+                                        href="https://github.com/Mesteriis/rune-terminal/blob/main/docs/validation/validation.md"
+                                        target="_blank"
+                                        rel="noreferrer"
+                                    >
+                                        <i className="fa fa-clipboard-check mr-2" />
+                                        Open validation guide
+                                    </a>
                                 </div>
                             </div>
-                        </div>
-                    ) : null}
-
-                    {activeView === "trusted-tools" ? (
-                        <div className="space-y-4" data-testid="trusted-tools-panel">
-                            <SurfaceStateCard
-                                title="Trusted tools"
-                                body="Repeatedly approved tools are surfaced from backend policy truth. This view is read-only; execution and rule changes remain explicit operator actions."
-                            />
-                            <div className="flex flex-wrap gap-2">
-                                {onOpenTools ? (
-                                    <SettingsActionButton label="Open Tools" icon="screwdriver-wrench" onClick={onOpenTools} />
-                                ) : (
-                                    <SurfaceStateCard
-                                        title="Tools hidden by layout"
-                                        body="Enable the Tools surface from Overview to add or update trusted rules explicitly."
-                                    />
-                                )}
-                                <SettingsActionButton label="Refresh" icon="rotate-right" onClick={() => void loadPolicyState()} />
-                            </div>
-                            {policyLoading ? <SurfaceStateCard title="Loading" body="Fetching trusted-rule state from the runtime." /> : null}
-                            {!policyLoading && policyError ? (
-                                <SurfaceStateCard title="Policy load failed" body={policyError} tone="error" />
-                            ) : null}
-                            {!policyLoading && !policyError && trustedRuleRows.length === 0 ? (
-                                <SurfaceStateCard
-                                    title="No trusted rules"
-                                    body="Dangerous tools still require approval unless a trusted rule is added explicitly."
-                                />
-                            ) : null}
-                            {!policyLoading && !policyError ? <div className="space-y-3">{trustedRuleRows}</div> : null}
-                        </div>
-                    ) : null}
-
-                    {activeView === "secret-shield" ? (
-                        <div className="space-y-4" data-testid="secret-shield-panel">
-                            <SurfaceStateCard
-                                title="Secret shield"
-                                body="Ignore-rule protection is shown directly from runtime policy state. Modes remain explicit: deny, metadata-only, and redact."
-                            />
-                            <div className="flex flex-wrap gap-2">
-                                {onOpenTools ? (
-                                    <SettingsActionButton label="Open Tools" icon="screwdriver-wrench" onClick={onOpenTools} />
-                                ) : (
-                                    <SurfaceStateCard
-                                        title="Tools hidden by layout"
-                                        body="Enable the Tools surface from Overview to add or update ignore rules explicitly."
-                                    />
-                                )}
-                                <SettingsActionButton label="Refresh" icon="rotate-right" onClick={() => void loadPolicyState()} />
-                            </div>
-                            {policyLoading ? <SurfaceStateCard title="Loading" body="Fetching ignore-rule state from the runtime." /> : null}
-                            {!policyLoading && policyError ? (
-                                <SurfaceStateCard title="Policy load failed" body={policyError} tone="error" />
-                            ) : null}
-                            {!policyLoading && !policyError && ignoreRuleRows.length === 0 ? (
-                                <SurfaceStateCard
-                                    title="No ignore rules"
-                                    body="The runtime will not hide or protect matching paths unless an ignore rule is added explicitly."
-                                />
-                            ) : null}
-                            {!policyLoading && !policyError ? <div className="space-y-3">{ignoreRuleRows}</div> : null}
-                        </div>
-                    ) : null}
-
-                    {activeView === "help" ? (
-                        <div className="space-y-4" data-testid="help-panel">
-                            <SurfaceStateCard
-                                title="Help"
-                                body="The active shell keeps help as an explicit operator surface. Open the dedicated help view or jump to the repo-level release docs from here."
-                            />
-                            <div className="flex flex-col gap-2">
-                                <SettingsActionButton
-                                    label="Open help view"
-                                    icon="circle-question"
-                                    tone="accent"
-                                    onClick={() => {
-                                        createBlock({ meta: { view: "help" } });
-                                        onClose();
-                                    }}
-                                />
-                                <a
-                                    className="rounded border border-border bg-black/10 px-3 py-2 text-sm text-secondary transition-colors hover:bg-hoverbg hover:text-white"
-                                    href="https://github.com/Mesteriis/rune-terminal#readme"
-                                    target="_blank"
-                                    rel="noreferrer"
-                                >
-                                    <i className="fa fa-book mr-2" />
-                                    Open RunaTerminal README
-                                </a>
-                                <a
-                                    className="rounded border border-border bg-black/10 px-3 py-2 text-sm text-secondary transition-colors hover:bg-hoverbg hover:text-white"
-                                    href="https://github.com/Mesteriis/rune-terminal/blob/main/docs/validation/validation.md"
-                                    target="_blank"
-                                    rel="noreferrer"
-                                >
-                                    <i className="fa fa-clipboard-check mr-2" />
-                                    Open validation guide
-                                </a>
-                            </div>
-                        </div>
-                    ) : null}
+                        ) : null}
+                    </div>
                 </div>
-            </div>
+            </UtilitySurfaceFrame>
         );
     }
 );

@@ -19,6 +19,7 @@ import {
 } from "@floating-ui/react";
 import { useDrag } from "react-dnd";
 import { memo, useCallback, useEffect, useState } from "react";
+import { UtilitySurfaceFrame } from "./utility-surface-frame";
 
 function joinPath(base: string, name: string): string {
     if (base.endsWith("/") || base.endsWith("\\")) {
@@ -299,153 +300,155 @@ const FilesFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floatin
 
     return (
         <FloatingPortal>
-            <div
-                ref={refs.setFloating}
-                style={floatingStyles}
-                {...getFloatingProps()}
-                className="bg-modalbg border border-border rounded-lg shadow-xl p-3 z-50 w-[28rem]"
-            >
-                <div className="flex items-center justify-between gap-2 mb-3">
-                    <div className="text-sm font-medium text-white">Files</div>
-                    <div className="flex items-center gap-1">
-                        <button
-                            className="text-xs px-2 py-1 rounded border border-border text-secondary disabled:opacity-50"
-                            disabled={!canGoUp || loading}
-                            onClick={() => {
-                                const upPath = parentPath(path);
-                                if (upPath != null) {
-                                    void loadPath(upPath);
-                                }
-                            }}
-                        >
-                            Up
-                        </button>
-                        <button
-                            className="text-xs px-2 py-1 rounded border border-border text-secondary disabled:opacity-50"
-                            disabled={loading}
-                            onClick={() => void loadPath(path)}
-                        >
-                            Refresh
-                        </button>
+            <div ref={refs.setFloating} style={floatingStyles} {...getFloatingProps()} className="z-50">
+                <UtilitySurfaceFrame
+                    title="Files"
+                    icon="folder-open"
+                    onClose={onClose}
+                    widthClassName="w-[min(92vw,29rem)] max-w-[29rem]"
+                    headerActions={
+                        <div className="flex items-center gap-1">
+                            <button
+                                className="rounded border border-border px-2 py-1 text-xs text-secondary disabled:opacity-50"
+                                disabled={!canGoUp || loading}
+                                onClick={() => {
+                                    const upPath = parentPath(path);
+                                    if (upPath != null) {
+                                        void loadPath(upPath);
+                                    }
+                                }}
+                            >
+                                Up
+                            </button>
+                            <button
+                                className="rounded border border-border px-2 py-1 text-xs text-secondary disabled:opacity-50"
+                                disabled={loading}
+                                onClick={() => void loadPath(path)}
+                            >
+                                Refresh
+                            </button>
+                        </div>
+                    }
+                >
+                    <div className="min-h-0 overflow-y-auto p-3">
+                        <div className="mb-2 break-all text-[11px] text-secondary">{path || "Loading workspace path..."}</div>
+                        {loading ? (
+                            <div className="flex items-center justify-center p-6">
+                                <i className="fa fa-solid fa-spinner fa-spin text-xl text-muted"></i>
+                            </div>
+                        ) : loadError ? (
+                            <div className="text-sm text-red-400 whitespace-pre-wrap">{loadError}</div>
+                        ) : (
+                            <div>
+                                <div className="max-h-[18rem] overflow-y-auto rounded border border-border">
+                                    <div className="border-b border-border px-3 py-2 text-[11px] text-secondary">Directories</div>
+                                    {directories.length === 0 ? (
+                                        <div className="border-b border-border px-3 py-2 text-xs text-muted">No directories</div>
+                                    ) : (
+                                        directories.map((directory) => (
+                                            <FilesFloatingEntry
+                                                key={`dir:${directory.name}`}
+                                                kind="directory"
+                                                name={directory.name}
+                                                fullPath={joinPath(path, directory.name)}
+                                                parentPath={path}
+                                                onClick={() => void loadPath(joinPath(path, directory.name))}
+                                            />
+                                        ))
+                                    )}
+                                    <div className="border-y border-border px-3 py-2 text-[11px] text-secondary">Files</div>
+                                    {files.length === 0 ? (
+                                        <div className="px-3 py-2 text-xs text-muted">No files</div>
+                                    ) : (
+                                        files.map((file) => {
+                                            const filePath = joinPath(path, file.name);
+                                            const isSelected = selectedFilePath === filePath;
+                                            return (
+                                                <FilesFloatingEntry
+                                                    key={`file:${file.name}`}
+                                                    kind="file"
+                                                    name={file.name}
+                                                    fullPath={filePath}
+                                                    parentPath={path}
+                                                    selected={isSelected}
+                                                    onClick={() => void loadFilePreview(filePath)}
+                                                />
+                                            );
+                                        })
+                                    )}
+                                </div>
+                                <div className="mt-3 text-[11px] text-secondary">Selected path</div>
+                                <div className="mt-1 min-h-[2rem] break-all rounded border border-border px-2 py-1.5 text-xs text-white/90">
+                                    {selectedFilePath || "No file selected"}
+                                </div>
+                                <div className="mt-2 text-[11px] text-secondary">
+                                    Active terminal target: {remoteConnectionID ? `remote (${remoteConnectionID})` : "local"}
+                                </div>
+                                <div className="mt-2 flex flex-wrap gap-2">
+                                    <button
+                                        className="rounded border border-border px-2 py-1 text-xs text-secondary disabled:opacity-50"
+                                        disabled={selectedFilePath === "" || previewLoading || attachBusy}
+                                        onClick={() => void attachFileContext(selectedFilePath)}
+                                    >
+                                        {attachBusy ? "Attaching..." : "Attach Selected File To AI Context"}
+                                    </button>
+                                    <button
+                                        className="rounded border border-border px-2 py-1 text-xs text-secondary disabled:opacity-50"
+                                        disabled={selectedFilePath === "" || previewLoading || attachBusy}
+                                        onClick={() => insertSelectedPathInAIPrompt(selectedFilePath)}
+                                    >
+                                        Use Selected Path In AI Prompt
+                                    </button>
+                                    <button
+                                        className="rounded border border-border px-2 py-1 text-xs text-secondary disabled:opacity-50"
+                                        disabled={selectedFilePath === "" || previewLoading || attachBusy}
+                                        onClick={() => insertSelectedPathInRunPrompt(selectedFilePath)}
+                                    >
+                                        Use Selected Path In /run Prompt
+                                    </button>
+                                    <button
+                                        className="rounded border border-border px-2 py-1 text-xs text-secondary disabled:opacity-50"
+                                        disabled={selectedFilePath === "" || previewLoading || attachBusy || remoteConnectionID == null}
+                                        onClick={() => insertSelectedPathInRemoteRunPrompt(selectedFilePath)}
+                                    >
+                                        Use Selected Path In Remote /run Prompt
+                                    </button>
+                                </div>
+                                {runPromptPreview ? (
+                                    <>
+                                        <div className="mt-2 text-[11px] text-secondary">Prepared /run prompt (not sent)</div>
+                                        <pre className="mt-1 rounded border border-border bg-black/20 px-2 py-1.5 text-xs whitespace-pre-wrap break-words text-white/90">
+                                            {runPromptPreview}
+                                        </pre>
+                                    </>
+                                ) : null}
+                                <div className="mt-2 text-[11px] text-secondary">Preview (text, bounded)</div>
+                                <div className="mt-1 max-h-[9rem] overflow-auto rounded border border-border bg-black/20 p-2">
+                                    {previewLoading ? (
+                                        <div className="text-xs text-muted">Loading preview...</div>
+                                    ) : previewError ? (
+                                        <div className="text-xs text-red-400 whitespace-pre-wrap">{previewError}</div>
+                                    ) : selectedFilePath === "" ? (
+                                        <div className="text-xs text-muted">Select a file to reveal path and preview.</div>
+                                    ) : !previewAvailable ? (
+                                        <div className="text-xs text-muted">Preview unavailable for this file type.</div>
+                                    ) : (
+                                        <pre className="text-xs whitespace-pre-wrap break-words text-white/90">{previewText}</pre>
+                                    )}
+                                    {previewAvailable && previewTruncated ? (
+                                        <div className="mt-2 text-[11px] text-amber-300">Preview truncated to 8192 bytes.</div>
+                                    ) : null}
+                                    {attachStatus ? (
+                                        <div className="mt-2 whitespace-pre-wrap text-[11px] text-emerald-300">{attachStatus}</div>
+                                    ) : null}
+                                    {attachError ? (
+                                        <div className="mt-2 whitespace-pre-wrap text-[11px] text-red-300">{attachError}</div>
+                                    ) : null}
+                                </div>
+                            </div>
+                        )}
                     </div>
-                </div>
-                <div className="text-[11px] text-secondary mb-2 break-all">{path || "Loading workspace path..."}</div>
-
-                {loading ? (
-                    <div className="flex items-center justify-center p-6">
-                        <i className="fa fa-solid fa-spinner fa-spin text-xl text-muted"></i>
-                    </div>
-                ) : loadError ? (
-                    <div className="text-sm text-red-400 whitespace-pre-wrap">{loadError}</div>
-                ) : (
-                    <div>
-                        <div className="max-h-[18rem] overflow-y-auto border border-border rounded">
-                            <div className="px-3 py-2 text-[11px] text-secondary border-b border-border">Directories</div>
-                            {directories.length === 0 ? (
-                                <div className="px-3 py-2 text-xs text-muted border-b border-border">No directories</div>
-                            ) : (
-                                directories.map((directory) => (
-                                    <FilesFloatingEntry
-                                        key={`dir:${directory.name}`}
-                                        kind="directory"
-                                        name={directory.name}
-                                        fullPath={joinPath(path, directory.name)}
-                                        parentPath={path}
-                                        onClick={() => void loadPath(joinPath(path, directory.name))}
-                                    />
-                                ))
-                            )}
-                            <div className="px-3 py-2 text-[11px] text-secondary border-y border-border">Files</div>
-                            {files.length === 0 ? (
-                                <div className="px-3 py-2 text-xs text-muted">No files</div>
-                            ) : (
-                                files.map((file) => {
-                                    const filePath = joinPath(path, file.name);
-                                    const isSelected = selectedFilePath === filePath;
-                                    return (
-                                        <FilesFloatingEntry
-                                            key={`file:${file.name}`}
-                                            kind="file"
-                                            name={file.name}
-                                            fullPath={filePath}
-                                            parentPath={path}
-                                            selected={isSelected}
-                                            onClick={() => void loadFilePreview(filePath)}
-                                        />
-                                    );
-                                })
-                            )}
-                        </div>
-                        <div className="mt-3 text-[11px] text-secondary">Selected path</div>
-                        <div className="text-xs text-white/90 break-all border border-border rounded px-2 py-1.5 mt-1 min-h-[2rem]">
-                            {selectedFilePath || "No file selected"}
-                        </div>
-                        <div className="text-[11px] text-secondary mt-2">
-                            Active terminal target: {remoteConnectionID ? `remote (${remoteConnectionID})` : "local"}
-                        </div>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                            <button
-                                className="text-xs px-2 py-1 rounded border border-border text-secondary disabled:opacity-50"
-                                disabled={selectedFilePath === "" || previewLoading || attachBusy}
-                                onClick={() => void attachFileContext(selectedFilePath)}
-                            >
-                                {attachBusy ? "Attaching..." : "Attach Selected File To AI Context"}
-                            </button>
-                            <button
-                                className="text-xs px-2 py-1 rounded border border-border text-secondary disabled:opacity-50"
-                                disabled={selectedFilePath === "" || previewLoading || attachBusy}
-                                onClick={() => insertSelectedPathInAIPrompt(selectedFilePath)}
-                            >
-                                Use Selected Path In AI Prompt
-                            </button>
-                            <button
-                                className="text-xs px-2 py-1 rounded border border-border text-secondary disabled:opacity-50"
-                                disabled={selectedFilePath === "" || previewLoading || attachBusy}
-                                onClick={() => insertSelectedPathInRunPrompt(selectedFilePath)}
-                            >
-                                Use Selected Path In /run Prompt
-                            </button>
-                            <button
-                                className="text-xs px-2 py-1 rounded border border-border text-secondary disabled:opacity-50"
-                                disabled={selectedFilePath === "" || previewLoading || attachBusy || remoteConnectionID == null}
-                                onClick={() => insertSelectedPathInRemoteRunPrompt(selectedFilePath)}
-                            >
-                                Use Selected Path In Remote /run Prompt
-                            </button>
-                        </div>
-                        {runPromptPreview ? (
-                            <>
-                                <div className="mt-2 text-[11px] text-secondary">Prepared /run prompt (not sent)</div>
-                                <pre className="text-xs whitespace-pre-wrap break-words text-white/90 border border-border rounded px-2 py-1.5 mt-1 bg-black/20">
-                                    {runPromptPreview}
-                                </pre>
-                            </>
-                        ) : null}
-                        <div className="mt-2 text-[11px] text-secondary">Preview (text, bounded)</div>
-                        <div className="border border-border rounded mt-1 p-2 max-h-[9rem] overflow-auto bg-black/20">
-                            {previewLoading ? (
-                                <div className="text-xs text-muted">Loading preview...</div>
-                            ) : previewError ? (
-                                <div className="text-xs text-red-400 whitespace-pre-wrap">{previewError}</div>
-                            ) : selectedFilePath === "" ? (
-                                <div className="text-xs text-muted">Select a file to reveal path and preview.</div>
-                            ) : !previewAvailable ? (
-                                <div className="text-xs text-muted">Preview unavailable for this file type.</div>
-                            ) : (
-                                <pre className="text-xs whitespace-pre-wrap break-words text-white/90">{previewText}</pre>
-                            )}
-                            {previewAvailable && previewTruncated ? (
-                                <div className="text-[11px] text-amber-300 mt-2">Preview truncated to 8192 bytes.</div>
-                            ) : null}
-                            {attachStatus ? (
-                                <div className="text-[11px] text-emerald-300 mt-2 whitespace-pre-wrap">{attachStatus}</div>
-                            ) : null}
-                            {attachError ? (
-                                <div className="text-[11px] text-red-300 mt-2 whitespace-pre-wrap">{attachError}</div>
-                            ) : null}
-                        </div>
-                    </div>
-                )}
+                </UtilitySurfaceFrame>
             </div>
         </FloatingPortal>
     );

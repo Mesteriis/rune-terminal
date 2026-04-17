@@ -15,6 +15,7 @@ import {
 } from "@floating-ui/react";
 import clsx from "clsx";
 import { memo, useEffect, useState } from "react";
+import { UtilitySurfaceFrame } from "./utility-surface-frame";
 
 export interface QuickActionRunResult {
     message: string;
@@ -244,103 +245,106 @@ const QuickActionsFloatingWindow = memo(({
 
     return (
         <FloatingPortal>
-            <div
-                ref={refs.setFloating}
-                style={floatingStyles}
-                {...getFloatingProps()}
-                className="bg-modalbg border border-border rounded-lg shadow-xl p-3 z-50 w-[32rem]"
-                data-testid="quick-actions-surface"
-            >
-                <div className="text-sm font-medium text-white mb-3">Launcher</div>
-                <div className="rounded border border-border bg-black/20 px-2 py-1.5 text-[11px] text-secondary mb-2 space-y-1">
-                    <div>workspace: {activeContext.workspaceID || "none"}</div>
-                    <div>
-                        active widget: {activeContext.activeWidgetID || "none"}{" "}
-                        {activeContext.activeTerminalTarget
-                            ? `(${activeContext.activeTerminalTarget.targetSession}:${activeContext.activeTerminalTarget.targetConnectionID})`
-                            : ""}
-                    </div>
-                    <div className="break-all">selected file: {activeContext.activeFilePath || "none"}</div>
-                </div>
-                <input
-                    type="text"
-                    className="w-full rounded border border-border bg-black/20 px-2 py-1.5 text-xs text-white mb-2"
-                    placeholder="Search launcher"
-                    value={filterValue}
-                    onChange={(event) => setFilterValue(event.target.value)}
-                    data-testid="quick-actions-filter"
-                />
-                <div className="mb-2 rounded border border-border bg-black/20 px-2 py-1.5 text-[11px] text-secondary">
-                    <div className="mb-1">remote profile context</div>
-                    <select
-                        className="w-full rounded border border-border bg-black/20 p-1 text-[11px] text-white"
-                        value={selectedRemoteProfileID}
-                        onChange={(event) => setSelectedRemoteProfileID(event.target.value)}
-                        data-testid="quick-actions-remote-profile-select"
-                    >
-                        {remoteProfiles.length === 0 ? (
-                            <option value="">No remote profiles</option>
-                        ) : (
-                            remoteProfiles.map((profile) => (
-                                <option key={profile.id} value={profile.id}>
-                                    {profile.name || profile.host}
-                                </option>
-                            ))
-                        )}
-                    </select>
-                </div>
-                {loading ? (
-                    <div className="text-sm text-secondary">Loading launcher entries...</div>
-                ) : visibleActions.length === 0 ? (
-                    <div className="text-sm text-secondary">No launcher entries available.</div>
-                ) : (
-                    <div className="max-h-[24rem] overflow-y-auto border border-border rounded divide-y divide-border">
-                        {orderedGroups.map(([category, categoryEntries]) => (
-                            <div key={category}>
-                                <div className="px-3 py-1.5 text-[11px] uppercase tracking-wide text-secondary bg-black/20">
-                                    {category}
-                                </div>
-                                {categoryEntries.map((entry) => {
-                                    const action = entry.action;
-                                    const running = runningActionID === action.id;
-                                    const availability = getAvailability(entry);
-                                    return (
-                                        <button
-                                            key={action.id}
-                                            type="button"
-                                            className={clsx(
-                                                "w-full text-left px-3 py-2 border-t border-border transition-colors",
-                                                "text-secondary hover:bg-hoverbg hover:text-white disabled:opacity-50"
-                                            )}
-                                            disabled={runningActionID != null || !availability.available}
-                                            onClick={() => void runAction(entry)}
-                                            data-testid={`quick-action-item-${action.id}`}
-                                        >
-                                            <div className="text-sm text-white">{action.label}</div>
-                                            <div className="text-[11px] mt-1 opacity-80">
-                                                {action.target_kind} · {action.execution_kind}
-                                                {action.requires_explicit_context
-                                                    ? ` · needs ${action.context_requirement || "context"}`
-                                                    : ""}
-                                            </div>
-                                            <div className="text-[10px] mt-1 opacity-70 break-words">
-                                                {running ? "Running..." : action.invocation_path}
-                                            </div>
-                                            {!availability.available ? (
-                                                <div className="text-[10px] mt-1 text-amber-300 whitespace-pre-wrap">
-                                                    {availability.reason}
-                                                </div>
-                                            ) : null}
-                                        </button>
-                                    );
-                                })}
+            <div ref={refs.setFloating} style={floatingStyles} {...getFloatingProps()} className="z-50">
+                <UtilitySurfaceFrame
+                    title="Launcher"
+                    icon="shapes"
+                    onClose={onClose}
+                    widthClassName="w-[min(92vw,30rem)] max-w-[30rem]"
+                    testID="quick-actions-surface"
+                >
+                    <div className="min-h-0 overflow-y-auto p-3">
+                        <div className="mb-2 space-y-1 rounded border border-border bg-black/20 px-2 py-1.5 text-[11px] text-secondary">
+                            <div>workspace: {activeContext.workspaceID || "none"}</div>
+                            <div>
+                                active widget: {activeContext.activeWidgetID || "none"}{" "}
+                                {activeContext.activeTerminalTarget
+                                    ? `(${activeContext.activeTerminalTarget.targetSession}:${activeContext.activeTerminalTarget.targetConnectionID})`
+                                    : ""}
                             </div>
-                        ))}
+                            <div className="break-all">selected file: {activeContext.activeFilePath || "none"}</div>
+                        </div>
+                        <input
+                            type="text"
+                            className="mb-2 w-full rounded border border-border bg-black/20 px-2 py-1.5 text-xs text-white"
+                            placeholder="Search launcher"
+                            value={filterValue}
+                            onChange={(event) => setFilterValue(event.target.value)}
+                            data-testid="quick-actions-filter"
+                        />
+                        <div className="mb-2 rounded border border-border bg-black/20 px-2 py-1.5 text-[11px] text-secondary">
+                            <div className="mb-1">remote profile context</div>
+                            <select
+                                className="w-full rounded border border-border bg-black/20 p-1 text-[11px] text-white"
+                                value={selectedRemoteProfileID}
+                                onChange={(event) => setSelectedRemoteProfileID(event.target.value)}
+                                data-testid="quick-actions-remote-profile-select"
+                            >
+                                {remoteProfiles.length === 0 ? (
+                                    <option value="">No remote profiles</option>
+                                ) : (
+                                    remoteProfiles.map((profile) => (
+                                        <option key={profile.id} value={profile.id}>
+                                            {profile.name || profile.host}
+                                        </option>
+                                    ))
+                                )}
+                            </select>
+                        </div>
+                        {loading ? (
+                            <div className="text-sm text-secondary">Loading launcher entries...</div>
+                        ) : visibleActions.length === 0 ? (
+                            <div className="text-sm text-secondary">No launcher entries available.</div>
+                        ) : (
+                            <div className="max-h-[24rem] overflow-y-auto rounded border border-border divide-y divide-border">
+                                {orderedGroups.map(([category, categoryEntries]) => (
+                                    <div key={category}>
+                                        <div className="bg-black/20 px-3 py-1.5 text-[11px] uppercase tracking-wide text-secondary">
+                                            {category}
+                                        </div>
+                                        {categoryEntries.map((entry) => {
+                                            const action = entry.action;
+                                            const running = runningActionID === action.id;
+                                            const availability = getAvailability(entry);
+                                            return (
+                                                <button
+                                                    key={action.id}
+                                                    type="button"
+                                                    className={clsx(
+                                                        "w-full border-t border-border px-3 py-2 text-left transition-colors",
+                                                        "text-secondary hover:bg-hoverbg hover:text-white disabled:opacity-50",
+                                                    )}
+                                                    disabled={runningActionID != null || !availability.available}
+                                                    onClick={() => void runAction(entry)}
+                                                    data-testid={`quick-action-item-${action.id}`}
+                                                >
+                                                    <div className="text-sm text-white">{action.label}</div>
+                                                    <div className="mt-1 text-[11px] opacity-80">
+                                                        {action.target_kind} · {action.execution_kind}
+                                                        {action.requires_explicit_context
+                                                            ? ` · needs ${action.context_requirement || "context"}`
+                                                            : ""}
+                                                    </div>
+                                                    <div className="mt-1 break-words text-[10px] opacity-70">
+                                                        {running ? "Running..." : action.invocation_path}
+                                                    </div>
+                                                    {!availability.available ? (
+                                                        <div className="mt-1 whitespace-pre-wrap text-[10px] text-amber-300">
+                                                            {availability.reason}
+                                                        </div>
+                                                    ) : null}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        {loadError ? <div className="mt-2 whitespace-pre-wrap text-[11px] text-amber-300">{loadError}</div> : null}
+                        {runStatus ? <div className="mt-2 whitespace-pre-wrap text-[11px] text-emerald-300">{runStatus}</div> : null}
+                        {runError ? <div className="mt-2 whitespace-pre-wrap text-[11px] text-red-300">{runError}</div> : null}
                     </div>
-                )}
-                {loadError ? <div className="text-[11px] text-amber-300 mt-2 whitespace-pre-wrap">{loadError}</div> : null}
-                {runStatus ? <div className="text-[11px] text-emerald-300 mt-2 whitespace-pre-wrap">{runStatus}</div> : null}
-                {runError ? <div className="text-[11px] text-red-300 mt-2 whitespace-pre-wrap">{runError}</div> : null}
+                </UtilitySurfaceFrame>
             </div>
         </FloatingPortal>
     );

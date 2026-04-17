@@ -37,12 +37,7 @@ export const SettingsFloatingWindow = memo(
 
         return (
             <FloatingPortal>
-                <div
-                    ref={refs.setFloating}
-                    style={floatingStyles}
-                    {...getFloatingProps()}
-                    className="z-50 overflow-hidden rounded-lg border border-border bg-modalbg shadow-xl"
-                >
+                <div ref={refs.setFloating} style={floatingStyles} {...getFloatingProps()} className="z-50">
                     <SettingsUtilitySurface onClose={onClose} onOpenTools={onOpenTools} />
                 </div>
             </FloatingPortal>

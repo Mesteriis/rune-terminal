@@ -27,6 +27,7 @@ import {
 } from "@floating-ui/react";
 import clsx from "clsx";
 import { memo, useEffect, useState } from "react";
+import { UtilitySurfaceFrame } from "./utility-surface-frame";
 
 function hasObjectProperty(schema: unknown, property: string): boolean {
     if (schema == null || typeof schema !== "object") {
@@ -543,310 +544,306 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
 
     return (
         <FloatingPortal>
-            <div
-                ref={refs.setFloating}
-                style={floatingStyles}
-                {...getFloatingProps()}
-                className="bg-modalbg border border-border rounded-lg shadow-xl p-3 z-50 w-[32rem]"
-            >
-                <div className="text-sm font-medium text-white mb-3">Tools</div>
-                {loading ? (
-                    <div className="flex items-center justify-center p-8">
-                        <i className="fa fa-solid fa-spinner fa-spin text-2xl text-muted"></i>
-                    </div>
-                ) : loadError ? (
-                    <div className="text-sm text-red-400 whitespace-pre-wrap">{loadError}</div>
-                ) : tools.length === 0 ? (
-                    <div className="text-sm text-muted">No tools available</div>
-                ) : (
-                    <div className="flex gap-3 min-h-64">
-                        <div className="w-52 shrink-0 border border-border rounded overflow-hidden">
-                            <div className="max-h-72 overflow-y-auto">
-                                {tools.map((tool) => {
-                                    const selected = tool.name === selectedToolName;
-                                    return (
-                                        <button
-                                            key={tool.name}
-                                            type="button"
-                                            className={clsx(
-                                                "w-full text-left px-3 py-2 border-b border-border last:border-b-0 transition-colors",
-                                                selected ? "bg-hoverbg text-white" : "text-secondary hover:bg-hoverbg hover:text-white"
-                                            )}
-                                            onClick={() => handleToolSelect(tool.name)}
-                                        >
-                                            <div className="text-sm leading-tight">{tool.name}</div>
-                                            <div className="text-xs opacity-70 mt-1">
-                                                {tool.metadata.approval_tier} / {tool.metadata.target_kind}
-                                            </div>
-                                        </button>
-                                    );
-                                })}
+            <div ref={refs.setFloating} style={floatingStyles} {...getFloatingProps()} className="z-50">
+                <UtilitySurfaceFrame title="Tools" icon="screwdriver-wrench" onClose={onClose} widthClassName="w-[min(92vw,32rem)] max-w-[32rem]">
+                    <div className="min-h-0 overflow-y-auto p-3">
+                        {loading ? (
+                            <div className="flex items-center justify-center p-8">
+                                <i className="fa fa-solid fa-spinner fa-spin text-2xl text-muted"></i>
                             </div>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            {selectedTool ? (
-                                <div className="space-y-3">
-                                    <div>
-                                        <div className="text-sm text-white">{selectedTool.name}</div>
-                                        <div className="text-xs text-secondary mt-1 whitespace-pre-wrap">
-                                            {selectedTool.description}
-                                        </div>
-                                    </div>
-                                    <div className="text-xs text-secondary whitespace-pre-wrap break-words">
-                                        capabilities: {selectedTool.metadata.capabilities.join(", ") || "none"}
-                                    </div>
-                                    <div className="rounded border border-border bg-black/20 px-2 py-1.5 text-[11px] text-secondary space-y-1">
-                                        <div>
-                                            active widget: {activeContext.activeWidgetID || "none"}{" "}
-                                            {activeContext.activeTerminalTarget
-                                                ? `(${activeContext.activeTerminalTarget.targetSession}:${activeContext.activeTerminalTarget.targetConnectionID})`
-                                                : ""}
-                                        </div>
-                                        <div className="break-all">
-                                            selected file: {activeContext.activeFilePath || "none"}
-                                        </div>
-                                    </div>
-                                    <div className="text-xs text-secondary whitespace-pre-wrap break-words">
-                                        input schema:
-                                        <pre className="mt-1 p-2 rounded bg-black/20 overflow-auto text-[11px] text-secondary">
-                                            {JSON.stringify(selectedTool.input_schema, null, 2)}
-                                        </pre>
-                                    </div>
-                                    <div>
-                                        <div className="text-xs text-secondary mb-1">input json:</div>
-                                        <div className="mb-2 flex flex-wrap gap-2">
-                                            <button
-                                                type="button"
-                                                className="px-2 py-1 rounded border border-border text-[11px] text-secondary disabled:opacity-50"
-                                                disabled={!canUseSelectedFileInToolInput}
-                                                onClick={applySelectedFileToToolInput}
-                                            >
-                                                Use Selected File Path
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className="px-2 py-1 rounded border border-border text-[11px] text-secondary disabled:opacity-50"
-                                                disabled={!canUseActiveWidgetInToolInput}
-                                                onClick={applyActiveWidgetToToolInput}
-                                            >
-                                                Use Active Widget
-                                            </button>
-                                        </div>
-                                        <textarea
-                                            className="w-full min-h-32 rounded border border-border bg-black/20 p-2 text-xs text-white resize-y"
-                                            value={inputValue}
-                                            onChange={(e) => setInputValue(e.target.value)}
-                                            spellCheck={false}
-                                        />
-                                    </div>
-                                    <div className="flex items-center justify-between gap-3">
-                                        <div className="text-xs text-secondary break-all">repo root: {repoRoot || "unknown"}</div>
-                                        <button
-                                            type="button"
-                                            className="px-3 py-1.5 rounded bg-accent text-black text-xs font-medium disabled:opacity-50"
-                                            disabled={isExecuting}
-                                            onClick={() => void handleExecute()}
-                                        >
-                                            {isExecuting ? "Running..." : "Execute"}
-                                        </button>
-                                    </div>
-                                    {pendingApproval ? (
-                                        <div className="rounded border border-border p-2 bg-black/20 space-y-2">
-                                            <div className="text-xs text-secondary">
-                                                approval required: {pendingApproval.approval.summary}
-                                            </div>
-                                            <div className="text-xs text-secondary">
-                                                tier: {pendingApproval.approval.approval_tier}
-                                            </div>
-                                            <button
-                                                type="button"
-                                                className="px-3 py-1.5 rounded bg-accent text-black text-xs font-medium disabled:opacity-50"
-                                                disabled={isConfirming}
-                                                onClick={() => void handleConfirm()}
-                                            >
-                                                {isConfirming ? "Confirming..." : "Confirm and retry"}
-                                            </button>
-                                        </div>
-                                    ) : null}
-                                    <div>
-                                        <div className="text-xs text-secondary mb-1">response:</div>
-                                        <pre className="min-h-28 max-h-64 overflow-auto rounded bg-black/20 p-2 text-[11px] text-secondary whitespace-pre-wrap break-words">
-                                            {executeError ?? (responseValue ? formatJson(responseValue) : "No response yet")}
-                                        </pre>
+                        ) : loadError ? (
+                            <div className="text-sm text-red-400 whitespace-pre-wrap">{loadError}</div>
+                        ) : tools.length === 0 ? (
+                            <div className="text-sm text-muted">No tools available</div>
+                        ) : (
+                            <div className="flex gap-3 min-h-64">
+                                <div className="w-52 shrink-0 overflow-hidden rounded border border-border">
+                                    <div className="max-h-72 overflow-y-auto">
+                                        {tools.map((tool) => {
+                                            const selected = tool.name === selectedToolName;
+                                            return (
+                                                <button
+                                                    key={tool.name}
+                                                    type="button"
+                                                    className={clsx(
+                                                        "w-full border-b border-border px-3 py-2 text-left transition-colors last:border-b-0",
+                                                        selected ? "bg-hoverbg text-white" : "text-secondary hover:bg-hoverbg hover:text-white",
+                                                    )}
+                                                    onClick={() => handleToolSelect(tool.name)}
+                                                >
+                                                    <div className="text-sm leading-tight">{tool.name}</div>
+                                                    <div className="mt-1 text-xs opacity-70">
+                                                        {tool.metadata.approval_tier} / {tool.metadata.target_kind}
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
                                     </div>
                                 </div>
-                            ) : (
-                                <div className="text-sm text-muted">Select a tool to inspect its contract</div>
-                            )}
-                        </div>
-                    </div>
-                )}
-                <div className="mt-3 pt-3 border-t border-border">
-                    {showMCP ? (
-                        <>
-                            <div className="text-xs font-medium text-white mb-2">MCP Servers</div>
-                            <div className="text-[10px] text-secondary mb-2">
-                                MCP server config persists, but runtime processes do not survive app restart. Start servers explicitly after restore.
-                            </div>
-                            <div className="mb-3 rounded border border-border bg-black/20 p-2 space-y-2">
-                                <div className="text-[11px] text-white">Add MCP Server</div>
-                                <div className="grid grid-cols-[56px_1fr] gap-2 items-center">
-                                    <label className="text-[11px] text-secondary">id</label>
-                                    <input
-                                        className="w-full rounded border border-border bg-black/20 p-1 text-[11px] text-white"
-                                        value={mcpRegisterID}
-                                        onChange={(e) => setMCPRegisterID(e.target.value)}
-                                        placeholder="mcp.context7"
-                                    />
-                                    <label className="text-[11px] text-secondary">endpoint</label>
-                                    <input
-                                        className="w-full rounded border border-border bg-black/20 p-1 text-[11px] text-white"
-                                        value={mcpRegisterEndpoint}
-                                        onChange={(e) => setMCPRegisterEndpoint(e.target.value)}
-                                        placeholder="https://mcp.context7.com/mcp"
-                                    />
-                                </div>
-                                <div>
-                                    <div className="text-[11px] text-secondary mb-1">headers json (optional):</div>
-                                    <textarea
-                                        className="w-full min-h-14 rounded border border-border bg-black/20 p-2 text-[11px] text-white resize-y"
-                                        value={mcpRegisterHeaders}
-                                        onChange={(e) => setMCPRegisterHeaders(e.target.value)}
-                                        spellCheck={false}
-                                    />
-                                </div>
-                                <div className="flex items-center justify-end">
-                                    <button
-                                        type="button"
-                                        className="px-3 py-1 rounded bg-accent text-black text-[11px] font-medium disabled:opacity-50"
-                                        disabled={mcpRegistering}
-                                        onClick={() => void handleMCPRegister()}
-                                    >
-                                        {mcpRegistering ? "Adding..." : "Add MCP"}
-                                    </button>
-                                </div>
-                                {mcpRegisterError ? (
-                                    <div className="text-[11px] text-red-400 whitespace-pre-wrap">{mcpRegisterError}</div>
-                                ) : null}
-                                {mcpRegisterStatus ? (
-                                    <div className="text-[11px] text-emerald-300 whitespace-pre-wrap">{mcpRegisterStatus}</div>
-                                ) : null}
-                            </div>
-                            {mcpLoading ? (
-                                <div className="text-xs text-secondary">Loading MCP servers...</div>
-                            ) : mcpLoadError ? (
-                                <div className="text-xs text-red-400 whitespace-pre-wrap">{mcpLoadError}</div>
-                            ) : mcpServers.length === 0 ? (
-                                <div className="text-xs text-secondary">No MCP servers configured</div>
-                            ) : (
-                                <div className="max-h-40 overflow-y-auto space-y-1">
-                                    {mcpServers.map((server) => (
-                                        <div
-                                            key={server.id}
-                                            className="rounded border border-border bg-black/20 px-2 py-1.5 text-[11px] text-secondary"
-                                        >
-                                            <div className="flex items-center justify-between gap-2">
-                                                <span className="text-white">{server.id}</span>
-                                                <span>{normalizeMCPState(server)}</span>
+                                <div className="min-w-0 flex-1">
+                                    {selectedTool ? (
+                                        <div className="space-y-3">
+                                            <div>
+                                                <div className="text-sm text-white">{selectedTool.name}</div>
+                                                <div className="mt-1 whitespace-pre-wrap text-xs text-secondary">
+                                                    {selectedTool.description}
+                                                </div>
                                             </div>
-                                            <div className="mt-1 break-all">
-                                                last used: {server.last_used ? formatAuditTimestamp(server.last_used) : "never"}
+                                            <div className="break-words whitespace-pre-wrap text-xs text-secondary">
+                                                capabilities: {selectedTool.metadata.capabilities.join(", ") || "none"}
                                             </div>
-                                            <div className="mt-1 break-all">
-                                                type: {server.type}
-                                                {server.endpoint ? ` | endpoint: ${server.endpoint}` : ""}
+                                            <div className="space-y-1 rounded border border-border bg-black/20 px-2 py-1.5 text-[11px] text-secondary">
+                                                <div>
+                                                    active widget: {activeContext.activeWidgetID || "none"}{" "}
+                                                    {activeContext.activeTerminalTarget
+                                                        ? `(${activeContext.activeTerminalTarget.targetSession}:${activeContext.activeTerminalTarget.targetConnectionID})`
+                                                        : ""}
+                                                </div>
+                                                <div className="break-all">selected file: {activeContext.activeFilePath || "none"}</div>
                                             </div>
-                                            <div className="mt-1.5 flex flex-wrap gap-1">
-                                                {(["start", "stop", "restart", "enable", "disable"] as const).map((action) => (
+                                            <div className="break-words whitespace-pre-wrap text-xs text-secondary">
+                                                input schema:
+                                                <pre className="mt-1 overflow-auto rounded bg-black/20 p-2 text-[11px] text-secondary">
+                                                    {JSON.stringify(selectedTool.input_schema, null, 2)}
+                                                </pre>
+                                            </div>
+                                            <div>
+                                                <div className="mb-1 text-xs text-secondary">input json:</div>
+                                                <div className="mb-2 flex flex-wrap gap-2">
                                                     <button
-                                                        key={action}
                                                         type="button"
-                                                        className="px-2 py-0.5 rounded border border-border text-[10px] text-secondary hover:text-white disabled:opacity-50"
-                                                        disabled={mcpActionKey != null}
-                                                        onClick={() => void handleMCPAction(server.id, action)}
+                                                        className="rounded border border-border px-2 py-1 text-[11px] text-secondary disabled:opacity-50"
+                                                        disabled={!canUseSelectedFileInToolInput}
+                                                        onClick={applySelectedFileToToolInput}
                                                     >
-                                                        {mcpActionKey === `${server.id}:${action}` ? `${action}...` : action}
+                                                        Use Selected File Path
                                                     </button>
-                                                ))}
+                                                    <button
+                                                        type="button"
+                                                        className="rounded border border-border px-2 py-1 text-[11px] text-secondary disabled:opacity-50"
+                                                        disabled={!canUseActiveWidgetInToolInput}
+                                                        onClick={applyActiveWidgetToToolInput}
+                                                    >
+                                                        Use Active Widget
+                                                    </button>
+                                                </div>
+                                                <textarea
+                                                    className="min-h-32 w-full resize-y rounded border border-border bg-black/20 p-2 text-xs text-white"
+                                                    value={inputValue}
+                                                    onChange={(e) => setInputValue(e.target.value)}
+                                                    spellCheck={false}
+                                                />
+                                            </div>
+                                            <div className="flex items-center justify-between gap-3">
+                                                <div className="break-all text-xs text-secondary">repo root: {repoRoot || "unknown"}</div>
+                                                <button
+                                                    type="button"
+                                                    className="rounded bg-accent px-3 py-1.5 text-xs font-medium text-black disabled:opacity-50"
+                                                    disabled={isExecuting}
+                                                    onClick={() => void handleExecute()}
+                                                >
+                                                    {isExecuting ? "Running..." : "Execute"}
+                                                </button>
+                                            </div>
+                                            {pendingApproval ? (
+                                                <div className="space-y-2 rounded border border-border bg-black/20 p-2">
+                                                    <div className="text-xs text-secondary">
+                                                        approval required: {pendingApproval.approval.summary}
+                                                    </div>
+                                                    <div className="text-xs text-secondary">
+                                                        tier: {pendingApproval.approval.approval_tier}
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        className="rounded bg-accent px-3 py-1.5 text-xs font-medium text-black disabled:opacity-50"
+                                                        disabled={isConfirming}
+                                                        onClick={() => void handleConfirm()}
+                                                    >
+                                                        {isConfirming ? "Confirming..." : "Confirm and retry"}
+                                                    </button>
+                                                </div>
+                                            ) : null}
+                                            <div>
+                                                <div className="mb-1 text-xs text-secondary">response:</div>
+                                                <pre className="min-h-28 max-h-64 overflow-auto rounded bg-black/20 p-2 text-[11px] text-secondary whitespace-pre-wrap break-words">
+                                                    {executeError ?? (responseValue ? formatJson(responseValue) : "No response yet")}
+                                                </pre>
                                             </div>
                                         </div>
-                                    ))}
-                                </div>
-                            )}
-                            {mcpActionError ? (
-                                <div className="mt-2 text-xs text-red-400 whitespace-pre-wrap">{mcpActionError}</div>
-                            ) : null}
-                            <div className="mt-3 pt-3 border-t border-border space-y-2">
-                                <div className="text-xs text-white">Invoke MCP</div>
-                                <div className="flex items-center gap-2">
-                                    <label className="text-[11px] text-secondary">server:</label>
-                                    <select
-                                        className="min-w-0 flex-1 rounded border border-border bg-black/20 p-1 text-[11px] text-white"
-                                        value={mcpInvokeServerID}
-                                        onChange={(e) => setMCPInvokeServerID(e.target.value)}
-                                    >
-                                        {mcpServers.map((server) => (
-                                            <option key={server.id} value={server.id}>
-                                                {server.id}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div>
-                                    <div className="text-[11px] text-secondary mb-1">payload json:</div>
-                                    <textarea
-                                        className="w-full min-h-20 rounded border border-border bg-black/20 p-2 text-[11px] text-white resize-y"
-                                        value={mcpInvokePayload}
-                                        onChange={(e) => setMCPInvokePayload(e.target.value)}
-                                        spellCheck={false}
-                                    />
-                                </div>
-                                <label className="flex items-center gap-1.5 text-[11px] text-secondary">
-                                    <input
-                                        type="checkbox"
-                                        checked={mcpAllowOnDemandStart}
-                                        onChange={(e) => setMCPAllowOnDemandStart(e.target.checked)}
-                                    />
-                                    allow on-demand start
-                                </label>
-                                <div className="flex items-center justify-end">
-                                    <button
-                                        type="button"
-                                        className="px-3 py-1 rounded bg-accent text-black text-[11px] font-medium disabled:opacity-50"
-                                        disabled={mcpInvoking || mcpServers.length === 0}
-                                        onClick={() => void handleMCPInvoke()}
-                                    >
-                                        {mcpInvoking ? "Invoking..." : "Invoke MCP"}
-                                    </button>
-                                </div>
-                                <div className="flex items-center justify-end">
-                                    <button
-                                        type="button"
-                                        className="px-3 py-1 rounded border border-border text-[11px] text-secondary hover:text-white disabled:opacity-50"
-                                        disabled={mcpInvokeResult == null}
-                                        onClick={useMCPResultInAI}
-                                    >
-                                        Use Normalized MCP Result In AI
-                                    </button>
-                                </div>
-                                <div>
-                                    <div className="text-[11px] text-secondary mb-1">invoke result:</div>
-                                    <pre className="max-h-36 overflow-auto rounded bg-black/20 p-2 text-[11px] text-secondary whitespace-pre-wrap break-words">
-                                        {mcpInvokeError ?? (mcpInvokeResult ? formatJson(mcpInvokeResult) : "No MCP invoke yet")}
-                                    </pre>
-                                </div>
-                                {mcpUseInAIStatus ? (
-                                    <div className="text-[11px] text-emerald-300 whitespace-pre-wrap">{mcpUseInAIStatus}</div>
-                                ) : null}
-                                <div className="text-[10px] text-secondary">
-                                    MCP invoke output is never auto-injected. Use the explicit action above to move normalized MCP context into AI input.
+                                    ) : (
+                                        <div className="text-sm text-muted">Select a tool to inspect its contract</div>
+                                    )}
                                 </div>
                             </div>
-                        </>
-                    ) : (
-                        <div className="text-xs text-secondary">MCP surface is hidden by current workspace layout.</div>
-                    )}
-                </div>
+                        )}
+                        <div className="mt-3 border-t border-border pt-3">
+                            {showMCP ? (
+                                <>
+                                    <div className="mb-2 text-xs font-medium text-white">MCP Servers</div>
+                                    <div className="mb-2 text-[10px] text-secondary">
+                                        MCP server config persists, but runtime processes do not survive app restart. Start servers explicitly after restore.
+                                    </div>
+                                    <div className="mb-3 space-y-2 rounded border border-border bg-black/20 p-2">
+                                        <div className="text-[11px] text-white">Add MCP Server</div>
+                                        <div className="grid grid-cols-[56px_1fr] items-center gap-2">
+                                            <label className="text-[11px] text-secondary">id</label>
+                                            <input
+                                                className="w-full rounded border border-border bg-black/20 p-1 text-[11px] text-white"
+                                                value={mcpRegisterID}
+                                                onChange={(e) => setMCPRegisterID(e.target.value)}
+                                                placeholder="mcp.context7"
+                                            />
+                                            <label className="text-[11px] text-secondary">endpoint</label>
+                                            <input
+                                                className="w-full rounded border border-border bg-black/20 p-1 text-[11px] text-white"
+                                                value={mcpRegisterEndpoint}
+                                                onChange={(e) => setMCPRegisterEndpoint(e.target.value)}
+                                                placeholder="https://mcp.context7.com/mcp"
+                                            />
+                                        </div>
+                                        <div>
+                                            <div className="mb-1 text-[11px] text-secondary">headers json (optional):</div>
+                                            <textarea
+                                                className="min-h-14 w-full resize-y rounded border border-border bg-black/20 p-2 text-[11px] text-white"
+                                                value={mcpRegisterHeaders}
+                                                onChange={(e) => setMCPRegisterHeaders(e.target.value)}
+                                                spellCheck={false}
+                                            />
+                                        </div>
+                                        <div className="flex items-center justify-end">
+                                            <button
+                                                type="button"
+                                                className="rounded bg-accent px-3 py-1 text-[11px] font-medium text-black disabled:opacity-50"
+                                                disabled={mcpRegistering}
+                                                onClick={() => void handleMCPRegister()}
+                                            >
+                                                {mcpRegistering ? "Adding..." : "Add MCP"}
+                                            </button>
+                                        </div>
+                                        {mcpRegisterError ? (
+                                            <div className="whitespace-pre-wrap text-[11px] text-red-400">{mcpRegisterError}</div>
+                                        ) : null}
+                                        {mcpRegisterStatus ? (
+                                            <div className="whitespace-pre-wrap text-[11px] text-emerald-300">{mcpRegisterStatus}</div>
+                                        ) : null}
+                                    </div>
+                                    {mcpLoading ? (
+                                        <div className="text-xs text-secondary">Loading MCP servers...</div>
+                                    ) : mcpLoadError ? (
+                                        <div className="text-xs text-red-400 whitespace-pre-wrap">{mcpLoadError}</div>
+                                    ) : mcpServers.length === 0 ? (
+                                        <div className="text-xs text-secondary">No MCP servers configured</div>
+                                    ) : (
+                                        <div className="max-h-40 space-y-1 overflow-y-auto">
+                                            {mcpServers.map((server) => (
+                                                <div
+                                                    key={server.id}
+                                                    className="rounded border border-border bg-black/20 px-2 py-1.5 text-[11px] text-secondary"
+                                                >
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <span className="text-white">{server.id}</span>
+                                                        <span>{normalizeMCPState(server)}</span>
+                                                    </div>
+                                                    <div className="mt-1 break-all">
+                                                        last used: {server.last_used ? formatAuditTimestamp(server.last_used) : "never"}
+                                                    </div>
+                                                    <div className="mt-1 break-all">
+                                                        type: {server.type}
+                                                        {server.endpoint ? ` | endpoint: ${server.endpoint}` : ""}
+                                                    </div>
+                                                    <div className="mt-1.5 flex flex-wrap gap-1">
+                                                        {(["start", "stop", "restart", "enable", "disable"] as const).map((action) => (
+                                                            <button
+                                                                key={action}
+                                                                type="button"
+                                                                className="rounded border border-border px-2 py-0.5 text-[10px] text-secondary hover:text-white disabled:opacity-50"
+                                                                disabled={mcpActionKey != null}
+                                                                onClick={() => void handleMCPAction(server.id, action)}
+                                                            >
+                                                                {mcpActionKey === `${server.id}:${action}` ? `${action}...` : action}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {mcpActionError ? (
+                                        <div className="mt-2 whitespace-pre-wrap text-xs text-red-400">{mcpActionError}</div>
+                                    ) : null}
+                                    <div className="mt-3 space-y-2 border-t border-border pt-3">
+                                        <div className="text-xs text-white">Invoke MCP</div>
+                                        <div className="flex items-center gap-2">
+                                            <label className="text-[11px] text-secondary">server:</label>
+                                            <select
+                                                className="min-w-0 flex-1 rounded border border-border bg-black/20 p-1 text-[11px] text-white"
+                                                value={mcpInvokeServerID}
+                                                onChange={(e) => setMCPInvokeServerID(e.target.value)}
+                                            >
+                                                {mcpServers.map((server) => (
+                                                    <option key={server.id} value={server.id}>
+                                                        {server.id}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <div className="mb-1 text-[11px] text-secondary">payload json:</div>
+                                            <textarea
+                                                className="min-h-20 w-full resize-y rounded border border-border bg-black/20 p-2 text-[11px] text-white"
+                                                value={mcpInvokePayload}
+                                                onChange={(e) => setMCPInvokePayload(e.target.value)}
+                                                spellCheck={false}
+                                            />
+                                        </div>
+                                        <label className="flex items-center gap-1.5 text-[11px] text-secondary">
+                                            <input
+                                                type="checkbox"
+                                                checked={mcpAllowOnDemandStart}
+                                                onChange={(e) => setMCPAllowOnDemandStart(e.target.checked)}
+                                            />
+                                            allow on-demand start
+                                        </label>
+                                        <div className="flex items-center justify-end">
+                                            <button
+                                                type="button"
+                                                className="rounded bg-accent px-3 py-1 text-[11px] font-medium text-black disabled:opacity-50"
+                                                disabled={mcpInvoking || mcpServers.length === 0}
+                                                onClick={() => void handleMCPInvoke()}
+                                            >
+                                                {mcpInvoking ? "Invoking..." : "Invoke MCP"}
+                                            </button>
+                                        </div>
+                                        <div className="flex items-center justify-end">
+                                            <button
+                                                type="button"
+                                                className="rounded border border-border px-3 py-1 text-[11px] text-secondary hover:text-white disabled:opacity-50"
+                                                disabled={mcpInvokeResult == null}
+                                                onClick={useMCPResultInAI}
+                                            >
+                                                Use Normalized MCP Result In AI
+                                            </button>
+                                        </div>
+                                        <div>
+                                            <div className="mb-1 text-[11px] text-secondary">invoke result:</div>
+                                            <pre className="max-h-36 overflow-auto rounded bg-black/20 p-2 text-[11px] text-secondary whitespace-pre-wrap break-words">
+                                                {mcpInvokeError ?? (mcpInvokeResult ? formatJson(mcpInvokeResult) : "No MCP invoke yet")}
+                                            </pre>
+                                        </div>
+                                        {mcpUseInAIStatus ? (
+                                            <div className="whitespace-pre-wrap text-[11px] text-emerald-300">{mcpUseInAIStatus}</div>
+                                        ) : null}
+                                        <div className="text-[10px] text-secondary">
+                                            MCP invoke output is never auto-injected. Use the explicit action above to move normalized MCP context into AI input.
+                                        </div>
+                                            </div>
+                                </>
+                            ) : (
+                                <div className="text-xs text-secondary">MCP surface is hidden by current workspace layout.</div>
+                            )}
+                        </div>
+                    </div>
+                </UtilitySurfaceFrame>
             </div>
         </FloatingPortal>
     );
