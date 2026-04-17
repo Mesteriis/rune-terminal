@@ -50,12 +50,7 @@ func (api *API) handleTerminalRestart(w http.ResponseWriter, r *http.Request) {
 func (api *API) handleTerminalStream(w http.ResponseWriter, r *http.Request) {
 	widgetID := r.PathValue("widgetID")
 	from := uint64(parseInt(r.URL.Query().Get("from"), 0))
-	snapshot, err := api.runtime.Terminals.Snapshot(widgetID, from)
-	if err != nil {
-		writeTerminalError(w, err)
-		return
-	}
-	subscription, unsubscribe, err := api.runtime.Terminals.Subscribe(widgetID)
+	snapshot, subscription, unsubscribe, err := api.runtime.Terminals.SnapshotAndSubscribe(widgetID, from)
 	if err != nil {
 		writeTerminalError(w, err)
 		return

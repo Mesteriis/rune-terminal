@@ -100,6 +100,7 @@ It is intentionally operational, not narrative.
 - The terminal process lifetime is detached from the HTTP request that triggered the launch.
 - Closing or completing the create-tab request must not terminate a running local or SSH shell.
 - The frontend now hydrates terminal content from a JSON snapshot before opening the SSE stream, so a newly mounted terminal starts with buffered scrollback instead of only new output.
+- Terminal SSE attach now snapshots and subscribes atomically in the backend stream path, so buffered replay and live follow do not drop chunks in the handoff gap.
 - The frontend terminal shell uses a compact TideTerm-derived header, toolbar, and command-strip layout. `Refresh`, `Focus`, `Interrupt`, `Clear view`, and `Jump to latest` are shell affordances layered over the same Go-owned session state.
 - Terminal output is written in bounded frontend batches so large output bursts do not block the UI thread as one giant write.
 - Terminal keyboard copy/paste now has explicit shell-level shortcuts:

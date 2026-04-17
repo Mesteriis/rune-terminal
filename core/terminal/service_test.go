@@ -180,6 +180,63 @@ func TestSSHSessionUsesSharedSnapshotAndChunkSequenceModel(t *testing.T) {
 	}
 }
 
+func TestSnapshotAndSubscribeCoversBufferedAndLiveOutput(t *testing.T) {
+	t.Parallel()
+
+	process := &fakeProcess{
+		outputCh: make(chan []byte, 8),
+		waitCh:   make(chan struct{}),
+	}
+	service := NewService(fakeLauncher{process: process})
+	if _, err := service.StartSession(context.Background(), LaunchOptions{WidgetID: "term-main", Shell: "/bin/sh"}); err != nil {
+		t.Fatalf("StartSession error: %v", err)
+	}
+	defer service.Close()
+
+	process.outputCh <- []byte("before\n")
+	deadline := time.Now().Add(500 * time.Millisecond)
+	for {
+		snapshot, err := service.Snapshot("term-main", 0)
+		if err != nil {
+			t.Fatalf("Snapshot error: %v", err)
+		}
+		if len(snapshot.Chunks) == 1 {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("timed out waiting for buffered output, got %#v", snapshot.Chunks)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	snapshot, ch, unsubscribe, err := service.SnapshotAndSubscribe("term-main", 0)
+	if err != nil {
+		t.Fatalf("SnapshotAndSubscribe error: %v", err)
+	}
+	defer unsubscribe()
+
+	if len(snapshot.Chunks) != 1 {
+		t.Fatalf("expected 1 buffered chunk, got %d", len(snapshot.Chunks))
+	}
+	if snapshot.Chunks[0].Seq != 1 || snapshot.NextSeq != 2 {
+		t.Fatalf("unexpected snapshot sequencing: %#v", snapshot)
+	}
+
+	process.outputCh <- []byte("after\n")
+
+	select {
+	case chunk := <-ch:
+		if chunk.Seq != 2 {
+			t.Fatalf("expected live chunk seq 2, got %#v", chunk)
+		}
+		if chunk.Data != "after\n" {
+			t.Fatalf("unexpected live chunk data %#v", chunk)
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("timed out waiting for subscribed live chunk")
+	}
+}
+
 func TestCloseSessionRemovesTerminal(t *testing.T) {
 	t.Parallel()
 

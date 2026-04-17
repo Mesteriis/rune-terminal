@@ -220,22 +220,7 @@ func (s *Service) Snapshot(widgetID string, from uint64) (Snapshot, error) {
 	if !ok {
 		return Snapshot{}, fmt.Errorf("%w: %s", ErrWidgetNotFound, widgetID)
 	}
-
-	var chunks []OutputChunk
-	for _, chunk := range sess.chunks {
-		if chunk.Seq >= from {
-			chunks = append(chunks, chunk)
-		}
-	}
-	nextSeq := uint64(1)
-	if len(sess.chunks) > 0 {
-		nextSeq = sess.chunks[len(sess.chunks)-1].Seq + 1
-	}
-	return Snapshot{
-		State:   sess.state,
-		Chunks:  slices.Clone(chunks),
-		NextSeq: nextSeq,
-	}, nil
+	return snapshotFromSessionLocked(sess, from), nil
 }
 
 func (s *Service) Subscribe(widgetID string) (<-chan OutputChunk, func(), error) {
@@ -251,6 +236,29 @@ func (s *Service) Subscribe(widgetID string) (<-chan OutputChunk, func(), error)
 	s.mu.Unlock()
 
 	return sub.channel(), func() {
+		s.mu.Lock()
+		if sess, ok := s.sessions[widgetID]; ok {
+			delete(sess.subscribers, sub)
+		}
+		s.mu.Unlock()
+		sub.close()
+	}, nil
+}
+
+func (s *Service) SnapshotAndSubscribe(widgetID string, from uint64) (Snapshot, <-chan OutputChunk, func(), error) {
+	s.mu.Lock()
+	sess, ok := s.sessions[widgetID]
+	if !ok {
+		s.mu.Unlock()
+		return Snapshot{}, nil, nil, fmt.Errorf("%w: %s", ErrWidgetNotFound, widgetID)
+	}
+
+	sub := newSubscriber()
+	sess.subscribers[sub] = struct{}{}
+	snapshot := snapshotFromSessionLocked(sess, from)
+	s.mu.Unlock()
+
+	return snapshot, sub.channel(), func() {
 		s.mu.Lock()
 		if sess, ok := s.sessions[widgetID]; ok {
 			delete(sess.subscribers, sub)
@@ -359,5 +367,23 @@ func (s *Service) closeSubscribers(sess *session) {
 
 	for _, sub := range subscribers {
 		sub.close()
+	}
+}
+
+func snapshotFromSessionLocked(sess *session, from uint64) Snapshot {
+	var chunks []OutputChunk
+	for _, chunk := range sess.chunks {
+		if chunk.Seq >= from {
+			chunks = append(chunks, chunk)
+		}
+	}
+	nextSeq := uint64(1)
+	if len(sess.chunks) > 0 {
+		nextSeq = sess.chunks[len(sess.chunks)-1].Seq + 1
+	}
+	return Snapshot{
+		State:   sess.state,
+		Chunks:  slices.Clone(chunks),
+		NextSeq: nextSeq,
 	}
 }

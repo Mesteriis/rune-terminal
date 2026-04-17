@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -119,6 +121,141 @@ func TestWriteTerminalErrorMapsConnectionNotFoundToNotFound(t *testing.T) {
 	}
 	if payload.Error.Code != "connection_not_found" {
 		t.Fatalf("expected error code connection_not_found, got %q", payload.Error.Code)
+	}
+}
+
+func TestTerminalStreamReplaysBufferedChunksAndKeepsLiveSubscription(t *testing.T) {
+	t.Parallel()
+
+	process := &httpTestProcess{
+		outputCh: make(chan []byte, 4),
+	}
+	launcher := &httpTestLauncher{process: process}
+
+	tempDir := t.TempDir()
+	policyStore, err := policy.NewStore(filepath.Join(tempDir, "policy.json"), "/workspace/repo")
+	if err != nil {
+		t.Fatalf("NewStore error: %v", err)
+	}
+	auditLog, err := audit.NewLog(filepath.Join(tempDir, "audit.jsonl"))
+	if err != nil {
+		t.Fatalf("NewLog error: %v", err)
+	}
+	agentStore, err := agent.NewStore(filepath.Join(tempDir, "agent.json"))
+	if err != nil {
+		t.Fatalf("NewStore error: %v", err)
+	}
+	registry := toolruntime.NewRegistry()
+	runtime := &app.Runtime{
+		RepoRoot:  "/workspace/repo",
+		Terminals: terminal.NewService(launcher),
+		Agent:     agentStore,
+		Policy:    policyStore,
+		Audit:     auditLog,
+		Registry:  registry,
+	}
+	runtime.Executor = toolruntime.NewExecutor(runtime.Registry, runtime.Policy, runtime.Audit)
+
+	if _, err := runtime.Terminals.StartSession(context.Background(), terminal.LaunchOptions{
+		WidgetID:   "widget-1",
+		Shell:      "/bin/zsh",
+		WorkingDir: "/workspace/repo",
+	}); err != nil {
+		t.Fatalf("StartSession error: %v", err)
+	}
+
+	process.outputCh <- []byte("hello\n")
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		snapshot, err := runtime.Terminals.Snapshot("widget-1", 0)
+		if err != nil {
+			t.Fatalf("Snapshot error: %v", err)
+		}
+		if len(snapshot.Chunks) >= 1 {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("timed out waiting for buffered chunks, got %d", len(snapshot.Chunks))
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	handler := NewHandler(runtime, testAuthToken)
+	server := httptest.NewServer(handler)
+	defer server.Close()
+
+	req, err := http.NewRequest(http.MethodGet, server.URL+"/api/v1/terminal/widget-1/stream?from=0", nil)
+	if err != nil {
+		t.Fatalf("NewRequest error: %v", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+testAuthToken)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("Do error: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	}
+
+	process.outputCh <- []byte("world\n")
+
+	reader := resp.Body
+	chunks := make([]terminal.OutputChunk, 0, 2)
+	var buffer strings.Builder
+	readDeadline := time.Now().Add(2 * time.Second)
+	for len(chunks) < 2 {
+		if time.Now().After(readDeadline) {
+			t.Fatalf("timed out waiting for stream chunks, raw=%q", buffer.String())
+		}
+		data := make([]byte, 256)
+		n, readErr := reader.Read(data)
+		if n > 0 {
+			buffer.Write(data[:n])
+			text := buffer.String()
+			for strings.Contains(text, "\n\n") {
+				parts := strings.SplitN(text, "\n\n", 2)
+				eventBlock := parts[0]
+				text = parts[1]
+				if !strings.Contains(eventBlock, "event: output") || !strings.Contains(eventBlock, "data: ") {
+					continue
+				}
+				payloadLine := ""
+				for _, line := range strings.Split(eventBlock, "\n") {
+					if strings.HasPrefix(line, "data: ") {
+						payloadLine = strings.TrimPrefix(line, "data: ")
+						break
+					}
+				}
+				if payloadLine == "" {
+					continue
+				}
+				var chunk terminal.OutputChunk
+				if err := json.Unmarshal([]byte(payloadLine), &chunk); err != nil {
+					t.Fatalf("Unmarshal chunk error: %v", err)
+				}
+				chunks = append(chunks, chunk)
+			}
+			buffer.Reset()
+			buffer.WriteString(text)
+		}
+		if readErr != nil {
+			if readErr == io.EOF {
+				break
+			}
+			t.Fatalf("Read error: %v", readErr)
+		}
+	}
+
+	if len(chunks) != 2 {
+		t.Fatalf("expected 2 streamed chunks, got %#v", chunks)
+	}
+	if chunks[0].Seq != 1 || chunks[0].Data != "hello\n" {
+		t.Fatalf("unexpected buffered stream chunk %#v", chunks[0])
+	}
+	if chunks[1].Seq != 2 || chunks[1].Data != "world\n" {
+		t.Fatalf("unexpected live stream chunk %#v", chunks[1])
 	}
 }
 
