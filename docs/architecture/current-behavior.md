@@ -31,6 +31,7 @@ It is intentionally operational, not narrative.
   - `Use Selected Path In AI Prompt`
   - `Use Selected Path In /run Prompt`
   - both actions are explicit operator clicks and do not auto-send or auto-execute
+- Files panel entries are also draggable into matching terminal widgets, where the terminal inserts the path into input without auto-running it.
 - Widgets can now be bound to a specific connection ID.
 - Widget creation in an active tab supports explicit split-side insertion (`left`, `right`, `top`, `bottom`) against a target widget.
 - Widget drag/drop split-move is explicit and backend-backed:
@@ -106,6 +107,7 @@ It is intentionally operational, not narrative.
   - `Shift+Home` jumps to the start of scrollback
   - `Shift+PageDown` / `Shift+PageUp` scroll by pages
   - macOS also supports `Cmd+End` / `Cmd+Home` for bottom/top navigation
+- Terminal drag/drop path insertion now covers both native local file drops and in-app `FILE_ITEM` drops when the dragged file target matches the terminal connection.
 - Terminal output is written in bounded frontend batches so large output bursts do not block the UI thread as one giant write.
 - Terminal keyboard copy/paste now follows TideTerm shortcut semantics on the active compat path:
   - `Ctrl+Shift+C` copies the terminal selection when a selection exists

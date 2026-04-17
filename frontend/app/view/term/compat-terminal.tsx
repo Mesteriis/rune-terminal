@@ -6,8 +6,10 @@ import type { TerminalSnapshot } from "@/rterm-api/terminal/types";
 import { CenteredDiv } from "@/element/quickelems";
 import { explainLatestTerminalOutputInAI } from "./explain-latest-output";
 import { handleCompatTerminalClipboardKeydown } from "./compat-terminal-keydown";
+import { parseDraggedFileUri } from "./dragged-file-uri";
 import { TermWrap } from "./termwrap";
 import { useEffect, useRef, useState } from "react";
+import { useDrop } from "react-dnd";
 import "./term.scss";
 import "./xterm.css";
 
@@ -34,6 +36,35 @@ export function CompatTerminalView({ widgetId, connectionId }: CompatTerminalVie
     const [lifecycleSnapshot, setLifecycleSnapshot] = useState<TerminalSnapshot | null>(null);
     const [lifecycleError, setLifecycleError] = useState<string | null>(null);
     const isRemoteTerminal = !isLocalConnection(connectionId);
+    const terminalConnection = connectionId ?? "local";
+
+    const [, dropFileItemToTerm] = useDrop(
+        () => ({
+            accept: "FILE_ITEM",
+            canDrop: (item: DraggedFile) => {
+                const parsed = parseDraggedFileUri(item?.uri);
+                if (!parsed?.connection) {
+                    return false;
+                }
+                return parsed.connection === terminalConnection;
+            },
+            drop: (item: DraggedFile, monitor) => {
+                if (monitor.didDrop()) {
+                    return;
+                }
+                let pathToPaste = parseDraggedFileUri(item?.uri)?.path ?? "";
+                if (pathToPaste.startsWith("/~")) {
+                    pathToPaste = pathToPaste.slice(1);
+                }
+                if (pathToPaste === "") {
+                    return;
+                }
+                termWrapRef.current?.terminal.focus();
+                termWrapRef.current?.pasteText(pathToPaste);
+            },
+        }),
+        [terminalConnection],
+    );
 
     const refreshLifecycle = async () => {
         try {
@@ -95,6 +126,13 @@ export function CompatTerminalView({ widgetId, connectionId }: CompatTerminalVie
             termWrapRef.current = null;
         };
     }, [connectionId, widgetId]);
+
+    useEffect(() => {
+        if (rootRef.current == null) {
+            return;
+        }
+        dropFileItemToTerm(rootRef.current);
+    }, [dropFileItemToTerm]);
 
     useEffect(() => {
         if (!widgetId) {

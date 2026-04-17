@@ -5,6 +5,7 @@ import { workspaceStore } from "@/app/state/workspace.store";
 import { globalStore } from "@/app/store/jotaiStore";
 import type { FSNode } from "@/rterm-api/fs/types";
 import type { FloatingWindowProps } from "@/app/workspace/widget-types";
+import { formatRemoteUri } from "@/util/waveutil";
 import { clearActiveFilePath, setActiveFilePath } from "./active-context";
 import { WorkspaceLayoutModel } from "./workspace-layout-model";
 import {
@@ -16,6 +17,7 @@ import {
     useFloating,
     useInteractions,
 } from "@floating-ui/react";
+import { useDrag } from "react-dnd";
 import { memo, useEffect, useState } from "react";
 
 function joinPath(base: string, name: string): string {
@@ -77,6 +79,48 @@ function activeRemoteConnectionID(): string | null {
     }
     return connectionID;
 }
+
+interface FilesFloatingEntryProps {
+    kind: "directory" | "file";
+    name: string;
+    fullPath: string;
+    parentPath: string;
+    onClick: () => void;
+    selected?: boolean;
+}
+
+const FilesFloatingEntry = memo(({ kind, name, fullPath, parentPath, onClick, selected = false }: FilesFloatingEntryProps) => {
+    const dragItem: DraggedFile = {
+        relName: name,
+        absParent: parentPath,
+        uri: formatRemoteUri(fullPath, "local"),
+        isDir: kind === "directory",
+    };
+    const [_, drag] = useDrag(
+        () => ({
+            type: "FILE_ITEM",
+            canDrag: true,
+            item: () => dragItem,
+        }),
+        [dragItem]
+    );
+
+    const baseClass =
+        kind === "directory"
+            ? "w-full text-left px-3 py-2 text-sm text-white hover:bg-hoverbg border-b border-border last:border-b-0"
+            : `w-full text-left px-3 py-2 text-sm border-b border-border last:border-b-0 ${
+                  selected ? "bg-hoverbg text-white" : "text-secondary hover:bg-hoverbg"
+              }`;
+
+    return (
+        <button ref={drag} className={baseClass} onClick={onClick} data-testid={`files-entry-${kind}-${name}`}>
+            <i className={`fa ${kind === "directory" ? "fa-folder text-amber-300" : "fa-file"} mr-2`}></i>
+            {name}
+        </button>
+    );
+});
+
+FilesFloatingEntry.displayName = "FilesFloatingEntry";
 
 const FilesFloatingWindow = memo(({ isOpen, onClose, referenceElement }: FloatingWindowProps) => {
     const [path, setPath] = useState("");
@@ -295,14 +339,14 @@ const FilesFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floatin
                                 <div className="px-3 py-2 text-xs text-muted border-b border-border">No directories</div>
                             ) : (
                                 directories.map((directory) => (
-                                    <button
+                                    <FilesFloatingEntry
                                         key={`dir:${directory.name}`}
-                                        className="w-full text-left px-3 py-2 text-sm text-white hover:bg-hoverbg border-b border-border last:border-b-0"
+                                        kind="directory"
+                                        name={directory.name}
+                                        fullPath={joinPath(path, directory.name)}
+                                        parentPath={path}
                                         onClick={() => void loadPath(joinPath(path, directory.name))}
-                                    >
-                                        <i className="fa fa-folder mr-2 text-amber-300"></i>
-                                        {directory.name}
-                                    </button>
+                                    />
                                 ))
                             )}
                             <div className="px-3 py-2 text-[11px] text-secondary border-y border-border">Files</div>
@@ -313,16 +357,15 @@ const FilesFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floatin
                                     const filePath = joinPath(path, file.name);
                                     const isSelected = selectedFilePath === filePath;
                                     return (
-                                        <button
+                                        <FilesFloatingEntry
                                             key={`file:${file.name}`}
-                                            className={`w-full text-left px-3 py-2 text-sm border-b border-border last:border-b-0 ${
-                                                isSelected ? "bg-hoverbg text-white" : "text-secondary hover:bg-hoverbg"
-                                            }`}
+                                            kind="file"
+                                            name={file.name}
+                                            fullPath={filePath}
+                                            parentPath={path}
+                                            selected={isSelected}
                                             onClick={() => void loadFilePreview(filePath)}
-                                        >
-                                            <i className="fa fa-file mr-2"></i>
-                                            {file.name}
-                                        </button>
+                                        />
                                     );
                                 })
                             )}
