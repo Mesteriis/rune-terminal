@@ -849,7 +849,7 @@ const TabBar = memo(({ workspace, compatMode = false }: TabBarProps) => {
                 </div>
             )}
             <WaveAIButton />
-            {!compatMode && <WorkspaceSwitcher ref={workspaceSwitcherRef} compatMode={compatMode} />}
+            <WorkspaceSwitcher ref={workspaceSwitcherRef} compatMode={compatMode} />
             <div className="tab-bar" ref={tabBarRef} data-overlayscrollbars-initialize>
                 <div className="tabs-wrapper" ref={tabsWrapperRef} style={{ width: `${tabsWrapperWidth}px` }}>
                     {tabIds.map((tabId, index) => {

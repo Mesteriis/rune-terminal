@@ -12,6 +12,7 @@ import {
 import { Popover, PopoverButton, PopoverContent } from "@/element/popover";
 import { fireAndForget, makeIconClass } from "@/util/util";
 import clsx from "clsx";
+import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { forwardRef, useCallback, useEffect, useState } from "react";
 import workspaceSvgUrl from "../asset/workspace.svg?url";
 import { IconButton } from "../element/iconbutton";
@@ -73,7 +74,7 @@ const WorkspaceSwitcherItem = ({
         <ExpandableMenuItemGroup
             key={workspace.oid}
             isOpen={isEditing}
-            className={clsx({ "is-current": isEditing || isCurrentWorkspace })}
+            className={clsx({ "is-current": isCurrentWorkspace })}
         >
             <ExpandableMenuItemGroupTitle onClick={handleSwitch}>
                 <div className="menu-group-title-wrapper" style={{ "--workspace-color": workspace.color } as React.CSSProperties}>
@@ -99,7 +100,7 @@ const WorkspaceSwitcherItem = ({
                     focusInput={isEditing}
                     onTitleChange={(title) => fireAndForget(() => workspaceStore.updateWorkspace(workspace.oid, title, workspace.icon, workspace.color, false))}
                     onColorChange={(color) =>
-                        fireAndForget(() => workspaceStore.updateWorkspace(workspace.oid, workspace.name, color, workspace.color, false))
+                        fireAndForget(() => workspaceStore.updateWorkspace(workspace.oid, workspace.name, workspace.icon, color, false))
                     }
                     onIconChange={(icon) =>
                         fireAndForget(() => workspaceStore.updateWorkspace(workspace.oid, workspace.name, icon, workspace.color, false))
@@ -116,9 +117,9 @@ const WorkspaceSwitcher = forwardRef<HTMLDivElement, { compatMode?: boolean }>((
     const [editingWorkspaceId, setEditingWorkspaceId] = useState<string | null>(null);
 
     useEffect(() => {
+        fireAndForget(() => workspaceStore.refreshWorkspaceList());
+        fireAndForget(() => workspaceStore.refreshThemes());
         if (!compatMode) {
-            fireAndForget(() => workspaceStore.refreshWorkspaceList());
-            fireAndForget(() => workspaceStore.refreshThemes());
             fireAndForget(() => workspaceStore.refresh());
         }
         const unsubscribe = workspaceStore.subscribe((snapshot) => {
@@ -159,24 +160,31 @@ const WorkspaceSwitcher = forwardRef<HTMLDivElement, { compatMode?: boolean }>((
 
     return (
         <Popover className="workspace-switcher-popover" placement="bottom-start" onDismiss={() => setEditingWorkspaceId(null)} ref={ref}>
-            <PopoverButton className="workspace-switcher-button grey" as="div" onClick={refreshSwitcher}>
+            <PopoverButton
+                className="workspace-switcher-button grey"
+                as="div"
+                onClick={refreshSwitcher}
+                data-testid="workspace-switcher-button"
+            >
                 <span className="workspace-icon">{workspaceIcon}</span>
             </PopoverButton>
-            <PopoverContent className="workspace-switcher-content">
+            <PopoverContent className="workspace-switcher-content" data-testid="workspace-switcher-surface">
                 <div className="title">{isActiveWorkspaceSaved ? "Switch workspace" : "Open workspace"}</div>
-                <ExpandableMenu noIndent singleOpen>
-                    {workspaceState.list.map((entry) => (
-                        <WorkspaceSwitcherItem
-                            key={entry.workspace.oid}
-                            entry={entry}
-                            activeWorkspaceId={workspaceState.active.oid}
-                            editingWorkspaceId={editingWorkspaceId}
-                            workspaceThemes={{ colors: workspaceState.colors, icons: workspaceState.icons }}
-                            onDeleteWorkspace={onDeleteWorkspace}
-                            onSetEditingWorkspace={setEditingWorkspaceId}
-                        />
-                    ))}
-                </ExpandableMenu>
+                <OverlayScrollbarsComponent className="scrollable" options={{ scrollbars: { autoHide: "leave" } }}>
+                    <ExpandableMenu noIndent singleOpen>
+                        {workspaceState.list.map((entry) => (
+                            <WorkspaceSwitcherItem
+                                key={entry.workspace.oid}
+                                entry={entry}
+                                activeWorkspaceId={workspaceState.active.oid}
+                                editingWorkspaceId={editingWorkspaceId}
+                                workspaceThemes={{ colors: workspaceState.colors, icons: workspaceState.icons }}
+                                onDeleteWorkspace={onDeleteWorkspace}
+                                onSetEditingWorkspace={setEditingWorkspaceId}
+                            />
+                        ))}
+                    </ExpandableMenu>
+                </OverlayScrollbarsComponent>
                 <div className="actions">
                     {isActiveWorkspaceSaved ? (
                         <ExpandableMenuItem onClick={createWorkspace}>

@@ -12,7 +12,10 @@ It is intentionally operational, not narrative.
 - Focusing a widget also synchronizes the active tab if that widget belongs to a known tab.
 - Tabs are the shell-level navigation unit.
 - Widgets remain the secondary inventory used by the right-side dock and terminal/runtime binding.
-- The top-left workspace switcher is now a TideTerm-shaped shell popover, but it currently exposes only the active local workspace and launch actions.
+- The top-left workspace switcher is a TideTerm-shaped shell popover in the active compat shell:
+  - it renders the full workspace list
+  - it keeps the save/create action split from TideTerm
+  - it supports inline workspace editing with theme metadata from the workspace services
 - The right-side widget dock now uses shell-level flyout controls for runtime and settings entry points instead of acting as a primary content column.
 - The widget dock settings flyout now deep-links into a user-facing shell settings surface with `Overview`, `Trusted tools`, `Secret shield`, and `Help` views.
 - The widget dock launcher flyout now acts as the shell-level entry surface for opening a new terminal tab, returning to the AI panel, opening runtime/audit utilities, and quickly focusing known widgets.
