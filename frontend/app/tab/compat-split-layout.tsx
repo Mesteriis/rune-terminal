@@ -391,7 +391,7 @@ const CompatSplitLayout = memo(({ tabId, tab, widgets, activeWidgetId }: CompatS
     };
 
     return (
-        <div className="flex flex-1 min-h-0 min-w-0 overflow-hidden" data-testid="compat-window-layout">
+        <div className="flex h-full w-full flex-1 self-stretch min-h-0 min-w-0 overflow-hidden" data-testid="compat-window-layout">
             {renderNode(layout)}
         </div>
     );
