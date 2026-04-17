@@ -659,6 +659,7 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
                     isOpen={isSettingsOpen}
                     onClose={() => setOpenUtilityFlyout(null)}
                     referenceElement={settingsButtonRef.current}
+                    onOpenTools={toolsEnabled ? () => toggleUtilityFlyout("tools") : undefined}
                 />
             )}
 
