@@ -48,6 +48,7 @@ export type WorkspaceWindowMoveDirection =
   | "outer-right"
   | "outer-top"
   | "outer-bottom"
+  | "center"
   | (string & {});
 
 export interface WorkspaceWindowLayoutNode {

@@ -681,7 +681,7 @@ class WorkspaceStore {
         tabId: string | undefined,
         widgetId: string,
         targetWidgetId: string,
-        direction: "left" | "right" | "top" | "bottom" | "outer-left" | "outer-right" | "outer-top" | "outer-bottom"
+        direction: "left" | "right" | "top" | "bottom" | "outer-left" | "outer-right" | "outer-top" | "outer-bottom" | "center"
     ): Promise<void> {
         const facade = await getWorkspaceFacade();
         const response = await facade.moveWidgetBySplit({

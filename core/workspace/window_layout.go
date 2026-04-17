@@ -39,6 +39,7 @@ const (
 	WindowMoveOuterRight  WindowMoveDirection = "outer-right"
 	WindowMoveOuterTop    WindowMoveDirection = "outer-top"
 	WindowMoveOuterBottom WindowMoveDirection = "outer-bottom"
+	WindowMoveCenter      WindowMoveDirection = "center"
 )
 
 type WindowLayoutNode struct {
@@ -100,6 +101,8 @@ func ParseWindowMoveDirection(raw string) (WindowMoveDirection, error) {
 		return WindowMoveOuterTop, nil
 	case "outer-bottom":
 		return WindowMoveOuterBottom, nil
+	case "center":
+		return WindowMoveCenter, nil
 	default:
 		return "", fmt.Errorf("%w: %s", ErrInvalidWindowSplitDirection, raw)
 	}
@@ -532,6 +535,10 @@ func moveWindowLayoutByDirection(
 	targetWidgetID string,
 	direction WindowMoveDirection,
 ) (*WindowLayoutNode, bool, error) {
+	if direction == WindowMoveCenter {
+		nextLayout, changed := swapWindowLayoutWidgets(layout, widgetID, targetWidgetID)
+		return nextLayout, changed, nil
+	}
 	axis, insertBefore, err := splitSpecFromMoveDirection(direction)
 	if err != nil {
 		return nil, false, err
@@ -574,6 +581,50 @@ func moveWindowLayoutByDirection(
 		return nil, false, err
 	}
 	return nextLayout, changed, nil
+}
+
+func swapWindowLayoutWidgets(layout *WindowLayoutNode, widgetA string, widgetB string) (*WindowLayoutNode, bool) {
+	widgetA = strings.TrimSpace(widgetA)
+	widgetB = strings.TrimSpace(widgetB)
+	if layout == nil || widgetA == "" || widgetB == "" || widgetA == widgetB {
+		return cloneWindowLayout(layout), false
+	}
+
+	foundA := false
+	foundB := false
+	var swapRec func(node *WindowLayoutNode) *WindowLayoutNode
+	swapRec = func(node *WindowLayoutNode) *WindowLayoutNode {
+		if node == nil {
+			return nil
+		}
+		if node.Kind == WindowNodeLeaf {
+			nextWidgetID := node.WidgetID
+			switch node.WidgetID {
+			case widgetA:
+				nextWidgetID = widgetB
+				foundA = true
+			case widgetB:
+				nextWidgetID = widgetA
+				foundB = true
+			}
+			return &WindowLayoutNode{
+				Kind:     WindowNodeLeaf,
+				WidgetID: nextWidgetID,
+			}
+		}
+		return &WindowLayoutNode{
+			Kind:   WindowNodeSplit,
+			Axis:   node.Axis,
+			First:  swapRec(node.First),
+			Second: swapRec(node.Second),
+		}
+	}
+
+	nextLayout := swapRec(layout)
+	if !foundA || !foundB {
+		return cloneWindowLayout(layout), false
+	}
+	return nextLayout, true
 }
 
 func removeWindowLayoutWidget(layout *WindowLayoutNode, widgetID string) (*WindowLayoutNode, bool) {

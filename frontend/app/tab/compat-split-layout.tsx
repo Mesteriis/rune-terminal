@@ -12,7 +12,8 @@ type WindowMoveDirection =
     | "outer-left"
     | "outer-right"
     | "outer-top"
-    | "outer-bottom";
+    | "outer-bottom"
+    | "center";
 
 interface CompatSplitLayoutProps {
     tabId: string;
@@ -184,6 +185,13 @@ function determineDropDirection(event: DragEvent<HTMLDivElement>): WindowMoveDir
     const height = Math.max(bounds.height, 1);
     const x = event.clientX - bounds.left;
     const y = event.clientY - bounds.top;
+    const centerX1 = (2 * width) / 5;
+    const centerX2 = (3 * width) / 5;
+    const centerY1 = (2 * height) / 5;
+    const centerY2 = (3 * height) / 5;
+    if (x > centerX1 && x < centerX2 && y > centerY1 && y < centerY2) {
+        return "center";
+    }
     const diagonal1 = y * width - x * height;
     const diagonal2 = y * width + x * height - height * width;
     if (diagonal1 === 0 || diagonal2 === 0) {
@@ -250,6 +258,8 @@ function dropOverlayClass(direction: WindowMoveDirection): string {
             return "absolute inset-x-0 top-0 h-[20%] bg-cyan-500/20 border-t-2 border-cyan-300";
         case "outer-bottom":
             return "absolute inset-x-0 bottom-0 h-[20%] bg-cyan-500/20 border-b-2 border-cyan-300";
+        case "center":
+            return "absolute inset-[20%] bg-cyan-500/20 border border-cyan-300";
         default:
             return "hidden";
     }
