@@ -437,7 +437,7 @@ class WorkspaceStore {
             ...this.state,
             active: nextActive,
         };
-        if (atoms?.staticTabId != null && nextActive.activetabid) {
+        if (atoms?.staticTabId != null) {
             globalStore.set(atoms.staticTabId as PrimitiveAtom<string>, nextActive.activetabid);
         }
         this.notify();

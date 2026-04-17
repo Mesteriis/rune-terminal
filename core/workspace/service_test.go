@@ -78,6 +78,34 @@ func TestAddAndCloseTab(t *testing.T) {
 	}
 }
 
+func TestCloseLastTabLeavesEmptyWorkspace(t *testing.T) {
+	t.Parallel()
+
+	snapshot := BootstrapDefault()
+	snapshot.Tabs = snapshot.Tabs[:1]
+	snapshot.Widgets = snapshot.Widgets[:1]
+	snapshot.ActiveTabID = "tab-main"
+	snapshot.ActiveWidgetID = "term-main"
+
+	service := NewService(snapshot)
+	next, err := service.CloseTab("tab-main")
+	if err != nil {
+		t.Fatalf("CloseTab error: %v", err)
+	}
+	if len(next.Tabs) != 0 {
+		t.Fatalf("expected no tabs, got %#v", next.Tabs)
+	}
+	if len(next.Widgets) != 0 {
+		t.Fatalf("expected no widgets, got %#v", next.Widgets)
+	}
+	if next.ActiveTabID != "" {
+		t.Fatalf("expected empty active tab id, got %q", next.ActiveTabID)
+	}
+	if next.ActiveWidgetID != "" {
+		t.Fatalf("expected empty active widget id, got %q", next.ActiveWidgetID)
+	}
+}
+
 func TestRenameTab(t *testing.T) {
 	t.Parallel()
 

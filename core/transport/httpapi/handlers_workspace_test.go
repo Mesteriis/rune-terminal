@@ -71,7 +71,7 @@ func TestWorkspaceFocusTabBypassesRestrictiveMode(t *testing.T) {
 	}
 }
 
-func TestWorkspaceCloseLastTabReturnsBadRequest(t *testing.T) {
+func TestWorkspaceCloseLastTabReturnsEmptyWorkspace(t *testing.T) {
 	t.Parallel()
 
 	handler, _ := newTestHandler(t)
@@ -84,8 +84,36 @@ func TestWorkspaceCloseLastTabReturnsBadRequest(t *testing.T) {
 
 	recorder = httptest.NewRecorder()
 	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodDelete, "/api/v1/workspace/tabs/tab-main", nil))
-	if recorder.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400, got %d (%s)", recorder.Code, recorder.Body.String())
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d (%s)", recorder.Code, recorder.Body.String())
+	}
+
+	var response struct {
+		ClosedTabID string `json:"closed_tab_id"`
+		Workspace   struct {
+			Tabs           []struct{ ID string `json:"id"` } `json:"tabs"`
+			Widgets        []struct{ ID string `json:"id"` } `json:"widgets"`
+			ActiveTabID    string                          `json:"active_tab_id"`
+			ActiveWidgetID string                          `json:"active_widget_id"`
+		} `json:"workspace"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatalf("Unmarshal error: %v", err)
+	}
+	if response.ClosedTabID != "tab-main" {
+		t.Fatalf("unexpected closed tab id: %#v", response)
+	}
+	if len(response.Workspace.Tabs) != 0 {
+		t.Fatalf("expected zero tabs, got %#v", response.Workspace.Tabs)
+	}
+	if len(response.Workspace.Widgets) != 0 {
+		t.Fatalf("expected zero widgets, got %#v", response.Workspace.Widgets)
+	}
+	if response.Workspace.ActiveTabID != "" {
+		t.Fatalf("expected empty active tab id, got %q", response.Workspace.ActiveTabID)
+	}
+	if response.Workspace.ActiveWidgetID != "" {
+		t.Fatalf("expected empty active widget id, got %q", response.Workspace.ActiveWidgetID)
 	}
 }
 

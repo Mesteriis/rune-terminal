@@ -301,10 +301,6 @@ func (s *Service) CloseTab(tabID string) (Snapshot, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if len(s.snapshot.Tabs) <= 1 {
-		return Snapshot{}, ErrCannotCloseLastTab
-	}
-
 	tabIndex := -1
 	var tab Tab
 	for i, existing := range s.snapshot.Tabs {
@@ -327,6 +323,11 @@ func (s *Service) CloseTab(tabID string) (Snapshot, error) {
 			}
 		}
 		s.snapshot.Widgets = filtered
+	}
+	if len(s.snapshot.Tabs) == 0 {
+		s.snapshot.ActiveTabID = ""
+		s.snapshot.ActiveWidgetID = ""
+		return cloneSnapshot(s.snapshot), nil
 	}
 
 	if s.snapshot.ActiveTabID == tabID {

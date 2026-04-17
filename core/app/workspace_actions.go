@@ -480,9 +480,6 @@ func (r *Runtime) CreateTerminalTabWithConnection(ctx context.Context, title str
 
 func (r *Runtime) CloseTab(tabID string) (CloseTabResult, error) {
 	snapshot := r.Workspace.Snapshot()
-	if len(snapshot.Tabs) <= 1 {
-		return CloseTabResult{}, workspace.ErrCannotCloseLastTab
-	}
 	var tab workspace.Tab
 	found := false
 	for _, candidate := range snapshot.Tabs {
