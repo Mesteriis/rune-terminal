@@ -255,7 +255,8 @@ class WorkspaceLayoutModel {
         if (layout == null) {
             return;
         }
-        const aiVisible = layout.surfaces.some((surface) => surface.id === "ai");
+        const hasAI = layout.surfaces.some((surface) => surface.id === "ai");
+        const aiVisible = hasAI && (layout.mode !== "focus" || layout.activeSurfaceId === "ai");
         if (this.aiPanelVisible === aiVisible) {
             return;
         }

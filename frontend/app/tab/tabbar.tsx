@@ -113,8 +113,22 @@ const WaveAIButton = memo(() => {
     const aiPanelOpen = useAtomValue(WorkspaceLayoutModel.getInstance().panelVisibleAtom);
 
     const onClick = () => {
-        const currentVisible = WorkspaceLayoutModel.getInstance().getAIPanelVisible();
-        WorkspaceLayoutModel.getInstance().setAIPanelVisible(!currentVisible);
+        fireAndForget(async () => {
+            const active = workspaceStore.getSnapshot().active;
+            const layout = active.layout;
+            const hasAI = layout.surfaces.some((surface) => surface.id === "ai");
+            const nextSurfaces = hasAI
+                ? layout.surfaces.filter((surface) => surface.id !== "ai")
+                : [...layout.surfaces, { id: "ai", region: "sidebar" }];
+            const activeSurfaceId = hasAI && layout.activeSurfaceId === "ai"
+                ? "terminal"
+                : layout.activeSurfaceId;
+            await workspaceStore.updateLayout({
+                ...layout,
+                surfaces: nextSurfaces,
+                activeSurfaceId,
+            });
+        });
     };
 
     return (
