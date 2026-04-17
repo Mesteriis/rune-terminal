@@ -13,12 +13,13 @@ import { globalStore } from "@/app/store/jotaiStore";
 import { getConnectionsFacade } from "@/compat/connections";
 import { fireAndForget } from "@/util/util";
 import { useAtomValue } from "jotai";
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppsFloatingWindow } from "./apps-floating-window";
 import { AuditFloatingWindow } from "./audit-floating-window";
 import { FilesFloatingWindow } from "./files-floating-window";
 import { useActiveWorkspaceContext } from "./active-context";
 import {
+    type LauncherEntry,
     QuickActionsFloatingWindow,
     type QuickActionRunContext,
     type QuickActionRunResult,
@@ -55,6 +56,7 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
     const fullConfig = useAtomValue(atoms.fullConfigAtom);
     const hasCustomAIPresets = useAtomValue(atoms.hasCustomAIPresetsAtom);
     const activeContext = useActiveWorkspaceContext();
+    const [workspaceSnapshot, setWorkspaceSnapshot] = useState(() => workspaceStore.getSnapshot().active);
     const [mode, setMode] = useState<WidgetDisplayMode>("normal");
     const containerRef = useRef<HTMLDivElement>(null);
     const measurementRef = useRef<HTMLDivElement>(null);
@@ -114,6 +116,15 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
           } as const)
         : undefined;
     const compatActionStyle = compatMode ? ({ minHeight: "32px", flexShrink: 0 } as const) : undefined;
+
+    useEffect(() => {
+        const unsubscribe = workspaceStore.subscribe((snapshot) => {
+            setWorkspaceSnapshot(snapshot.active);
+        });
+        return () => {
+            unsubscribe();
+        };
+    }, []);
 
     const checkModeNeeded = useCallback(() => {
         if (!containerRef.current || !measurementRef.current) return;
@@ -327,6 +338,69 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
         [activeContext, auditEnabled, layout, mcpEnabled, toolsEnabled],
     );
 
+    const launcherEntries = useMemo<LauncherEntry[]>(() => {
+        const entries: LauncherEntry[] = [
+            {
+                id: "launcher.open_settings_help",
+                label: "Open Settings & Help",
+                category: "launcher",
+                target_kind: "ui",
+                invocation_path: "frontend.workspace.widgets.open_settings",
+                execution_kind: "ui_only",
+            },
+        ];
+        if (showAppsButton) {
+            entries.push({
+                id: "launcher.open_apps",
+                label: "Open Apps",
+                category: "launcher",
+                target_kind: "ui",
+                invocation_path: "frontend.workspace.widgets.open_apps",
+                execution_kind: "ui_only",
+            });
+        }
+        const knownWidgets = Object.values(workspaceSnapshot.widgets)
+            .slice()
+            .sort((left, right) => {
+                const leftLabel = (left.title || left.kind || left.id).toLowerCase();
+                const rightLabel = (right.title || right.kind || right.id).toLowerCase();
+                return leftLabel.localeCompare(rightLabel);
+            });
+        for (const widget of knownWidgets) {
+            const widgetLabel = widget.title?.trim() || `${widget.kind} ${widget.id}`;
+            entries.push({
+                id: `launcher.focus_widget.${widget.id}`,
+                label: `Focus ${widgetLabel}`,
+                category: "widgets",
+                target_kind: "workspace",
+                invocation_path: "POST /api/v1/workspace/focus-widget",
+                execution_kind: "execution_bearing",
+            });
+        }
+        return entries;
+    }, [showAppsButton, workspaceSnapshot.widgets]);
+
+    const runLauncherEntry = useCallback(
+        async (entry: LauncherEntry): Promise<QuickActionRunResult> => {
+            switch (entry.id) {
+                case "launcher.open_settings_help":
+                    setIsSettingsOpen(true);
+                    return { kind: "success", message: "Opened Settings & Help." };
+                case "launcher.open_apps":
+                    setIsAppsOpen(true);
+                    return { kind: "success", message: "Opened Apps." };
+                default:
+                    if (entry.id.startsWith("launcher.focus_widget.")) {
+                        const widgetID = entry.id.slice("launcher.focus_widget.".length);
+                        await workspaceStore.focusWidget(widgetID);
+                        return { kind: "success", message: `Focused widget ${widgetID}.` };
+                    }
+                    return { kind: "error", message: `Launcher entry is not wired: ${entry.label}` };
+            }
+        },
+        [],
+    );
+
     return (
         <>
             <div
@@ -380,8 +454,8 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
                             />
                             <WidgetActionButton
                                 buttonRef={quickActionsButtonRef}
-                                icon="bolt"
-                                tooltip="Quick Actions"
+                                icon="shapes"
+                                tooltip="Launcher"
                                 isOpen={isQuickActionsOpen}
                                 onClick={() => setIsQuickActionsOpen(!isQuickActionsOpen)}
                                 mode={mode}
@@ -455,12 +529,12 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
                         />
                         <WidgetActionButton
                             buttonRef={quickActionsButtonRef}
-                            icon="bolt"
-                            tooltip="Quick Actions"
+                            icon="shapes"
+                            tooltip="Launcher"
                             isOpen={isQuickActionsOpen}
                             onClick={() => setIsQuickActionsOpen(!isQuickActionsOpen)}
                             mode={mode}
-                            label="Quick"
+                            label="Launch"
                             testID="workspace-quick-actions-button"
                             style={compatActionStyle}
                         />
@@ -533,6 +607,8 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
                     onClose={() => setIsQuickActionsOpen(false)}
                     referenceElement={quickActionsButtonRef.current}
                     onRunAction={runQuickAction}
+                    launcherEntries={launcherEntries}
+                    onRunLauncherEntry={async (entry) => runLauncherEntry(entry)}
                 />
             )}
             {settingsButtonRef.current && (
@@ -553,7 +629,7 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
                 showDevBadge={isDev()}
                 appsLabel={t("workspace.appsLabel")}
                 filesLabel="Files"
-                quickActionsLabel="Quick"
+                quickActionsLabel="Launch"
                 settingsLabel={t("workspace.settingsLabel")}
                 style={compatMeasurementStyle}
             />

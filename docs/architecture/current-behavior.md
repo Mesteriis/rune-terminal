@@ -18,8 +18,12 @@ It is intentionally operational, not narrative.
   - it supports inline workspace editing with theme metadata from the workspace services
 - The right-side widget dock now uses shell-level flyout controls for runtime and settings entry points instead of acting as a primary content column.
 - The widget dock settings flyout now deep-links into a user-facing shell settings surface with `Overview`, `Trusted tools`, `Secret shield`, and `Help` views.
-- The widget dock launcher flyout now acts as the shell-level entry surface for opening a new terminal tab, returning to the AI panel, opening runtime/audit utilities, and quickly focusing known widgets.
-- The shell now also exposes a dedicated `Launcher` section with searchable discovery for terminal, widget, settings, help, runtime, and audit surfaces.
+- The widget dock launcher flyout now acts as the searchable shell-level entry surface for:
+  - opening a new terminal tab
+  - returning to the AI panel
+  - opening files, runtime, audit, MCP, apps, and settings/help surfaces
+  - quickly focusing known widgets in the current workspace
+- Launcher discoverability in the active compat shell now lives inside that right-utility flyout rather than a separate top-level panel.
 - The right-side utility rail now includes a minimal `Files` panel for workspace-root-bounded navigation:
   - backend path source of truth: `GET /api/v1/fs/list?path=...`
   - directory traversal is explicit (click folder), with no recursive indexing/caching

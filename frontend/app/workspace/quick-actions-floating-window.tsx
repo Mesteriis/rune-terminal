@@ -2,7 +2,7 @@ import { getQuickActionsFacade } from "@/compat";
 import { getConnectionsFacade } from "@/compat/connections";
 import { useActiveWorkspaceContext } from "@/app/workspace/active-context";
 import type { RemoteProfile } from "@/rterm-api/connections/types";
-import type { QuickAction } from "@/rterm-api/quickactions/types";
+import type { QuickAction, QuickActionExecutionKind, QuickActionTargetKind } from "@/rterm-api/quickactions/types";
 import type { FloatingWindowProps } from "@/app/workspace/widget-types";
 import {
     FloatingPortal,
@@ -25,11 +25,36 @@ export interface QuickActionRunContext {
     selectedRemoteProfileID?: string;
 }
 
-interface QuickActionsFloatingWindowProps extends FloatingWindowProps {
-    onRunAction: (action: QuickAction, context: QuickActionRunContext) => Promise<QuickActionRunResult>;
+export interface LauncherEntry {
+    id: string;
+    label: string;
+    category: string;
+    target_kind: QuickActionTargetKind;
+    invocation_path: string;
+    execution_kind: QuickActionExecutionKind;
+    requires_explicit_context?: boolean;
+    context_requirement?: string;
+    disabled_reason?: string;
 }
 
-const QuickActionsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onRunAction }: QuickActionsFloatingWindowProps) => {
+interface QuickActionsFloatingWindowProps extends FloatingWindowProps {
+    onRunAction: (action: QuickAction, context: QuickActionRunContext) => Promise<QuickActionRunResult>;
+    launcherEntries?: LauncherEntry[];
+    onRunLauncherEntry?: (entry: LauncherEntry, context: QuickActionRunContext) => Promise<QuickActionRunResult>;
+}
+
+type ActionEntry =
+    | { kind: "backend"; action: QuickAction }
+    | { kind: "launcher"; action: LauncherEntry };
+
+const QuickActionsFloatingWindow = memo(({
+    isOpen,
+    onClose,
+    referenceElement,
+    onRunAction,
+    launcherEntries = [],
+    onRunLauncherEntry,
+}: QuickActionsFloatingWindowProps) => {
     const [actions, setActions] = useState<QuickAction[]>([]);
     const [remoteProfiles, setRemoteProfiles] = useState<RemoteProfile[]>([]);
     const [selectedRemoteProfileID, setSelectedRemoteProfileID] = useState("");
@@ -147,42 +172,64 @@ const QuickActionsFloatingWindow = memo(({ isOpen, onClose, referenceElement, on
     };
 
     const normalizedFilter = filterValue.trim().toLowerCase();
-    const visibleActions = actions.filter((action) => {
+    const combinedActions: ActionEntry[] = [
+        ...launcherEntries.map((entry) => ({ kind: "launcher" as const, action: entry })),
+        ...actions.map((action) => ({ kind: "backend" as const, action })),
+    ];
+    const visibleActions = combinedActions.filter(({ action }) => {
         if (normalizedFilter === "") {
             return true;
         }
         const haystack = `${action.label} ${action.id} ${action.category}`.toLowerCase();
         return haystack.includes(normalizedFilter);
     });
-    const grouped = new Map<string, QuickAction[]>();
-    for (const action of visibleActions) {
+    const grouped = new Map<string, ActionEntry[]>();
+    for (const entry of visibleActions) {
+        const action = entry.action;
         const category = action.category || "other";
         const current = grouped.get(category);
         if (current == null) {
-            grouped.set(category, [action]);
+            grouped.set(category, [entry]);
             continue;
         }
-        current.push(action);
+        current.push(entry);
     }
     const orderedGroups = [...grouped.entries()].sort(([left], [right]) => left.localeCompare(right));
 
-    const runAction = async (action: QuickAction) => {
+    const getAvailability = (entry: ActionEntry): { available: boolean; reason?: string } => {
+        if (entry.kind === "launcher") {
+            if (entry.action.disabled_reason?.trim()) {
+                return { available: false, reason: entry.action.disabled_reason };
+            }
+            return { available: true };
+        }
+        return hasRequiredContext(entry.action);
+    };
+
+    const runAction = async (entry: ActionEntry) => {
         if (runningActionID != null) {
             return;
         }
-        const availability = hasRequiredContext(action);
+        const availability = getAvailability(entry);
         if (!availability.available) {
             setRunStatus(null);
             setRunError(availability.reason || "Action requires explicit context.");
             return;
         }
-        setRunningActionID(action.id);
+        setRunningActionID(entry.action.id);
         setRunError(null);
         setRunStatus(null);
         try {
-            const result = await onRunAction(action, {
+            const context = {
                 selectedRemoteProfileID: selectedRemoteProfileID || undefined,
-            });
+            };
+            const result =
+                entry.kind === "launcher"
+                    ? await onRunLauncherEntry?.(entry.action, context)
+                    : await onRunAction(entry.action, context);
+            if (result == null) {
+                throw new Error(`No handler registered for launcher entry: ${entry.action.label}`);
+            }
             if (result.kind === "error") {
                 setRunError(result.message);
                 return;
@@ -204,7 +251,7 @@ const QuickActionsFloatingWindow = memo(({ isOpen, onClose, referenceElement, on
                 className="bg-modalbg border border-border rounded-lg shadow-xl p-3 z-50 w-[32rem]"
                 data-testid="quick-actions-surface"
             >
-                <div className="text-sm font-medium text-white mb-3">Quick Actions</div>
+                <div className="text-sm font-medium text-white mb-3">Launcher</div>
                 <div className="rounded border border-border bg-black/20 px-2 py-1.5 text-[11px] text-secondary mb-2 space-y-1">
                     <div>workspace: {activeContext.workspaceID || "none"}</div>
                     <div>
@@ -218,7 +265,7 @@ const QuickActionsFloatingWindow = memo(({ isOpen, onClose, referenceElement, on
                 <input
                     type="text"
                     className="w-full rounded border border-border bg-black/20 px-2 py-1.5 text-xs text-white mb-2"
-                    placeholder="Filter actions"
+                    placeholder="Search launcher"
                     value={filterValue}
                     onChange={(event) => setFilterValue(event.target.value)}
                     data-testid="quick-actions-filter"
@@ -243,21 +290,20 @@ const QuickActionsFloatingWindow = memo(({ isOpen, onClose, referenceElement, on
                     </select>
                 </div>
                 {loading ? (
-                    <div className="text-sm text-secondary">Loading quick actions...</div>
-                ) : loadError ? (
-                    <div className="text-sm text-red-400 whitespace-pre-wrap">{loadError}</div>
+                    <div className="text-sm text-secondary">Loading launcher entries...</div>
                 ) : visibleActions.length === 0 ? (
-                    <div className="text-sm text-secondary">No quick actions available.</div>
+                    <div className="text-sm text-secondary">No launcher entries available.</div>
                 ) : (
                     <div className="max-h-[24rem] overflow-y-auto border border-border rounded divide-y divide-border">
-                        {orderedGroups.map(([category, categoryActions]) => (
+                        {orderedGroups.map(([category, categoryEntries]) => (
                             <div key={category}>
                                 <div className="px-3 py-1.5 text-[11px] uppercase tracking-wide text-secondary bg-black/20">
                                     {category}
                                 </div>
-                                {categoryActions.map((action) => {
+                                {categoryEntries.map((entry) => {
+                                    const action = entry.action;
                                     const running = runningActionID === action.id;
-                                    const availability = hasRequiredContext(action);
+                                    const availability = getAvailability(entry);
                                     return (
                                         <button
                                             key={action.id}
@@ -267,7 +313,7 @@ const QuickActionsFloatingWindow = memo(({ isOpen, onClose, referenceElement, on
                                                 "text-secondary hover:bg-hoverbg hover:text-white disabled:opacity-50"
                                             )}
                                             disabled={runningActionID != null || !availability.available}
-                                            onClick={() => void runAction(action)}
+                                            onClick={() => void runAction(entry)}
                                             data-testid={`quick-action-item-${action.id}`}
                                         >
                                             <div className="text-sm text-white">{action.label}</div>
@@ -292,6 +338,7 @@ const QuickActionsFloatingWindow = memo(({ isOpen, onClose, referenceElement, on
                         ))}
                     </div>
                 )}
+                {loadError ? <div className="text-[11px] text-amber-300 mt-2 whitespace-pre-wrap">{loadError}</div> : null}
                 {runStatus ? <div className="text-[11px] text-emerald-300 mt-2 whitespace-pre-wrap">{runStatus}</div> : null}
                 {runError ? <div className="text-[11px] text-red-300 mt-2 whitespace-pre-wrap">{runError}</div> : null}
             </div>
