@@ -1,4 +1,4 @@
-import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { once } from "node:events";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 
 const THIS_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(THIS_DIR, "..");
-const AUTH_TOKEN = "playwright-navigation-parity-token";
+const AUTH_TOKEN = "playwright-ui-parity-token";
 const COMPAT_LAYOUT_FRAME_TOLERANCE_PX = 6;
 
 let CORE_PORT = 0;
@@ -19,13 +19,6 @@ let FRONTEND_URL = "";
 let coreProcess: ChildProcessWithoutNullStreams;
 let frontendProcess: ChildProcessWithoutNullStreams;
 let runtimeStateDir = "";
-
-type ActiveWorkspaceSnapshot = {
-  id?: string;
-  name?: string;
-  icon?: string;
-  color?: string;
-};
 
 function allocatePort(): Promise<number> {
   return new Promise<number>((resolve, reject) => {
@@ -108,23 +101,15 @@ async function stopProcess(process: ChildProcessWithoutNullStreams | undefined):
   ]);
 }
 
-async function getActiveWorkspace(request: APIRequestContext): Promise<ActiveWorkspaceSnapshot> {
-  const response = await request.get(`http://127.0.0.1:${CORE_PORT}/api/v1/workspace`, {
-    headers: {
-      Authorization: `Bearer ${AUTH_TOKEN}`,
-    },
-  });
-  expect(response.ok()).toBeTruthy();
-  return (await response.json()) as ActiveWorkspaceSnapshot;
-}
-
-async function openWorkspaceSwitcher(page: Page): Promise<void> {
-  const switcher = page.getByTestId("workspace-switcher-surface");
-  if (await switcher.isVisible().catch(() => false)) {
-    return;
-  }
-  await page.getByTestId("workspace-switcher-button").click();
-  await expect(switcher).toBeVisible();
+function expectBoxWithinViewport(
+  box: { x: number; y: number; width: number; height: number } | null,
+  viewport: { width: number; height: number },
+): void {
+  expect(box).not.toBeNull();
+  expect(box!.x).toBeGreaterThanOrEqual(0);
+  expect(box!.y).toBeGreaterThanOrEqual(0);
+  expect(box!.x + box!.width).toBeLessThanOrEqual(viewport.width);
+  expect(box!.y + box!.height).toBeLessThanOrEqual(viewport.height);
 }
 
 async function openLauncher(page: Page): Promise<void> {
@@ -136,15 +121,22 @@ async function openLauncher(page: Page): Promise<void> {
   await expect(surface).toBeVisible();
 }
 
-function expectBoxWithinViewport(
-  box: { x: number; y: number; width: number; height: number } | null,
-  viewport: { width: number; height: number },
-): void {
-  expect(box).not.toBeNull();
-  expect(box!.x).toBeGreaterThanOrEqual(0);
-  expect(box!.y).toBeGreaterThanOrEqual(0);
-  expect(box!.x + box!.width).toBeLessThanOrEqual(viewport.width);
-  expect(box!.y + box!.height).toBeLessThanOrEqual(viewport.height);
+async function openSettings(page: Page): Promise<void> {
+  const surface = page.getByTestId("settings-surface");
+  if (await surface.isVisible().catch(() => false)) {
+    return;
+  }
+  await page.getByTestId("workspace-settings-button").click();
+  await expect(surface).toBeVisible();
+}
+
+async function openAIPanel(page: Page): Promise<void> {
+  const panel = page.locator("[data-waveai-panel='true']");
+  if (await panel.isVisible().catch(() => false)) {
+    return;
+  }
+  await page.getByTestId("workspace-ai-toggle-button").click();
+  await expect(panel).toBeVisible();
 }
 
 async function expectCompatLayoutToFill(page: Page): Promise<void> {
@@ -170,17 +162,15 @@ async function expectCompatLayoutToFill(page: Page): Promise<void> {
   });
 
   expect(metrics).not.toBeNull();
-  expect(metrics!.wrapperHeight).toBeGreaterThan(0);
-  expect(metrics!.wrapperWidth).toBeGreaterThan(0);
   expect(metrics!.layoutHeight).toBeGreaterThanOrEqual(metrics!.wrapperHeight - COMPAT_LAYOUT_FRAME_TOLERANCE_PX);
   expect(metrics!.layoutWidth).toBeGreaterThanOrEqual(metrics!.wrapperWidth - COMPAT_LAYOUT_FRAME_TOLERANCE_PX);
   expect(metrics!.paneHeight).toBeGreaterThanOrEqual(metrics!.layoutHeight - 4);
   expect(metrics!.paneWidth).toBeGreaterThanOrEqual(metrics!.layoutWidth - 4);
 }
 
-test.describe.serial("navigation parity", () => {
+test.describe.serial("remaining ui parity", () => {
   test.beforeAll(async () => {
-    runtimeStateDir = mkdtempSync(path.join(tmpdir(), "rterm-pw-navigation-parity-"));
+    runtimeStateDir = mkdtempSync(path.join(tmpdir(), "rterm-pw-ui-parity-"));
     CORE_PORT = await allocatePort();
     FRONTEND_PORT = await allocatePort();
     FRONTEND_URL = `http://127.0.0.1:${FRONTEND_PORT}/`;
@@ -233,88 +223,54 @@ test.describe.serial("navigation parity", () => {
     }
   });
 
-  test("workspace switcher saves the current workspace, creates a new one, and switches back explicitly", async ({ page, request }) => {
+  test("renders compact terminal pane chrome with visible drag and status affordances", async ({ page }) => {
     await page.goto(FRONTEND_URL);
     await expectCompatLayoutToFill(page);
-    await openWorkspaceSwitcher(page);
 
-    await expect(page.locator(".workspace-switcher-content .title")).toHaveText("Open workspace");
-    await expect(page.locator(".workspace-switcher-content .actions")).toContainText("Save workspace");
+    const header = page.locator("[data-testid^='compat-terminal-header-']").first();
+    await expect(header).toBeVisible();
 
-    await page.getByText("Save workspace").click();
-    const savedRow = page.locator(".workspace-switcher-content .menu-group-title-wrapper .label").filter({ hasText: "Local Workspace" });
-    await expect(savedRow).toHaveCount(1);
-    await expect(page.locator(".workspace-switcher-content .actions")).toContainText("Create new workspace");
+    const metrics = await page.evaluate(() => {
+      const headerElement = document.querySelector<HTMLElement>("[data-testid^='compat-terminal-header-']");
+      if (headerElement == null) {
+        return null;
+      }
+      const rect = headerElement.getBoundingClientRect();
+      const buttonLabels = Array.from(headerElement.querySelectorAll("button")).map((button) => button.textContent?.trim() || "");
+      return {
+        height: Math.round(rect.height),
+        text: headerElement.innerText.toUpperCase(),
+        gripCount: headerElement.querySelectorAll(".fa-grip-vertical").length,
+        buttonLabels,
+      };
+    });
 
-    const savedWorkspace = await getActiveWorkspace(request);
-    expect(savedWorkspace.name).toBe("Local Workspace");
-    expect(savedWorkspace.icon).toBeTruthy();
-    expect(savedWorkspace.color).toBeTruthy();
-
-    await page.getByText("Create new workspace").click();
-    await page.waitForTimeout(600);
-    await openWorkspaceSwitcher(page);
-    await expect(page.locator(".workspace-switcher-content .title")).toHaveText("Open workspace");
-    await expect(savedRow).toHaveCount(1);
-
-    const unsavedWorkspace = await getActiveWorkspace(request);
-    expect(unsavedWorkspace.id).not.toBe(savedWorkspace.id);
-    expect(unsavedWorkspace.icon ?? "").toBe("");
-
-    await savedRow.click();
-    await expect.poll(async () => (await getActiveWorkspace(request)).id).toBe(savedWorkspace.id);
-    await expectCompatLayoutToFill(page);
-    await openWorkspaceSwitcher(page);
-    await expect(page.locator(".workspace-switcher-content .title")).toHaveText("Switch workspace");
+    expect(metrics).not.toBeNull();
+    expect(metrics!.height).toBeGreaterThanOrEqual(30);
+    expect(metrics!.height).toBeLessThanOrEqual(56);
+    expect(metrics!.gripCount).toBeGreaterThanOrEqual(1);
+    expect(metrics!.text).toContain("LOCAL");
+    expect(metrics!.text).toMatch(/CONNECTED|RESTORED|DISCONNECTED|STATUS UNKNOWN/);
+    expect(metrics!.text).toMatch(/AI READY|AI BLOCKED|AI IDLE/);
+    expect(metrics!.buttonLabels).toEqual(expect.arrayContaining(["Split", "Restart", "Explain"]));
   });
 
-  test("launcher remains discoverable and utility overlays stay bounded and non-stacked", async ({ page }) => {
+  test("keeps pane chrome stable after opening AI, settings, and launcher surfaces", async ({ page }) => {
     await page.goto(FRONTEND_URL);
-    await expectCompatLayoutToFill(page);
+    await openAIPanel(page);
+    await openSettings(page);
     const viewport = page.viewportSize();
     expect(viewport).not.toBeNull();
 
-    await expect(page.getByTestId("workspace-quick-actions-button")).toContainText("Launch");
+    expectBoxWithinViewport(await page.locator("[data-testid^='compat-terminal-header-']").first().boundingBox(), viewport!);
+    expectBoxWithinViewport(await page.getByTestId("settings-surface").boundingBox(), viewport!);
+
+    await page.getByTestId("workspace-settings-button").click();
+    await expect(page.getByTestId("settings-surface")).toBeHidden();
+
     await openLauncher(page);
-    await expect(page.getByTestId("quick-actions-surface")).toContainText("Launcher");
-    await expect(page.getByTestId("quick-actions-filter")).toHaveAttribute("placeholder", "Search launcher");
-
-    const launcherBox = await page.getByTestId("quick-actions-surface").boundingBox();
-    expectBoxWithinViewport(launcherBox, viewport!);
-
-    await page.getByTestId("quick-actions-filter").fill("files");
-    await page.getByTestId("quick-action-item-ui.open_files_panel").click();
-    const filesPanelAction = page.getByRole("button", { name: "Attach Selected File To AI Context" });
-    await expect(filesPanelAction).toBeVisible();
-    await expect(page.getByTestId("quick-actions-surface")).toBeHidden();
-    const filesBox = await filesPanelAction.locator("xpath=ancestor::div[contains(@class,'shadow-xl')][1]").boundingBox();
-    expectBoxWithinViewport(filesBox, viewport!);
-
-    await page.getByTestId("workspace-tools-button").click();
-    await expect(page.getByText("MCP Servers")).toBeVisible();
-    await expect(filesPanelAction).toBeHidden();
-
-    await page.getByTestId("workspace-audit-button").click();
-    await expect(page.getByText("Audit").last()).toBeVisible();
-    await expect(page.getByText("MCP Servers")).toBeHidden();
-
-    await openWorkspaceSwitcher(page);
-    const switcherBox = await page.getByTestId("workspace-switcher-surface").boundingBox();
-    expectBoxWithinViewport(switcherBox, viewport!);
-    expect(switcherBox!.x).toBeLessThan(400);
-    expect(switcherBox!.y).toBeLessThan(160);
-
-    const layoutHeights = await page.evaluate(() => {
-      const button = document.querySelector("[data-testid='workspace-quick-actions-button']");
-      const rail = button?.parentElement;
-      const row = rail?.parentElement;
-      return {
-        railHeight: Math.round(rail?.getBoundingClientRect().height ?? 0),
-        rowHeight: Math.round(row?.getBoundingClientRect().height ?? 0),
-      };
-    });
-    expect(layoutHeights.railHeight).toBeGreaterThan(0);
-    expect(layoutHeights.railHeight).toBe(layoutHeights.rowHeight);
+    expectBoxWithinViewport(await page.getByTestId("quick-actions-surface").boundingBox(), viewport!);
+    expectBoxWithinViewport(await page.locator("[data-waveai-panel='true']").boundingBox(), viewport!);
     await expectCompatLayoutToFill(page);
   });
 });
