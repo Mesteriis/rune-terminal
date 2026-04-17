@@ -31,8 +31,8 @@ interface CompatPaneHeaderProps {
     icon: string;
     title: string;
     subtitle?: string;
-    badges?: CompatPaneBadge[];
-    actions?: CompatPaneAction[];
+    badges?: readonly CompatPaneBadge[];
+    actions?: readonly CompatPaneAction[];
     extraActions?: ReactNode;
     dragTitle: string;
     message?: CompatPaneMessage | null;
