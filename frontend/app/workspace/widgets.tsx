@@ -4,6 +4,7 @@
 import { useT } from "@/app/i18n/i18n";
 import type { WorkspaceStoreLayout } from "@/app/state/workspace.store";
 import { ContextMenuModel } from "@/app/store/contextmenu";
+import type { QuickAction } from "@/rterm-api/quickactions/types";
 import { atoms, createBlock, isDev } from "@/store/global";
 import { fireAndForget } from "@/util/util";
 import { useAtomValue } from "jotai";
@@ -11,6 +12,7 @@ import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { AppsFloatingWindow } from "./apps-floating-window";
 import { AuditFloatingWindow } from "./audit-floating-window";
 import { FilesFloatingWindow } from "./files-floating-window";
+import { QuickActionsFloatingWindow, type QuickActionRunResult } from "./quick-actions-floating-window";
 import { SettingsFloatingWindow } from "./settings-floating-window";
 import { ToolsFloatingWindow } from "./tools-floating-window";
 import { WidgetActionButton } from "./widget-action-button";
@@ -18,6 +20,7 @@ import { sortByDisplayOrder } from "./widget-helpers";
 import { WidgetItem } from "./widget-item";
 import { WidgetsMeasurement } from "./widgets-measurement";
 import type { WidgetDisplayMode } from "./widget-types";
+import { WorkspaceLayoutModel } from "./workspace-layout-model";
 
 function hasSurface(layout: WorkspaceStoreLayout, surfaceID: string): boolean {
     return layout.surfaces.some((surface) => surface.id === surfaceID);
@@ -47,6 +50,8 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
     const auditButtonRef = useRef<HTMLDivElement>(null);
     const [isFilesOpen, setIsFilesOpen] = useState(false);
     const filesButtonRef = useRef<HTMLDivElement>(null);
+    const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
+    const quickActionsButtonRef = useRef<HTMLDivElement>(null);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const settingsButtonRef = useRef<HTMLDivElement>(null);
     const [auditRefreshNonce, setAuditRefreshNonce] = useState(0);
@@ -97,7 +102,7 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
         if (normalHeight > containerHeight - gracePeriod) {
             newMode = "compact";
 
-            const actionCount = (toolsEnabled ? 1 : 0) + (auditEnabled ? 1 : 0) + 2 + (showAppsButton ? 1 : 0);
+            const actionCount = (toolsEnabled ? 1 : 0) + (auditEnabled ? 1 : 0) + 3 + (showAppsButton ? 1 : 0);
             const totalWidgets = (widgets?.length || 0) + actionCount;
             const minHeightPerWidget = 32;
             const requiredHeight = totalWidgets * minHeightPerWidget;
@@ -164,6 +169,43 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
         ContextMenuModel.showContextMenu(menu, e);
     };
 
+    const runQuickAction = useCallback(
+        async (action: QuickAction): Promise<QuickActionRunResult> => {
+            switch (action.id) {
+                case "ui.open_ai_panel":
+                    WorkspaceLayoutModel.getInstance().setAIPanelVisible(true);
+                    return { kind: "success", message: "AI panel opened." };
+                case "ui.open_tools_panel":
+                    if (!toolsEnabled) {
+                        return { kind: "error", message: "Tools surface is hidden by current layout." };
+                    }
+                    setIsToolsOpen(true);
+                    return { kind: "success", message: "Tools panel opened." };
+                case "ui.open_audit_panel":
+                    if (!auditEnabled) {
+                        return { kind: "error", message: "Audit surface is hidden by current layout." };
+                    }
+                    setIsAuditOpen(true);
+                    return { kind: "success", message: "Audit panel opened." };
+                case "ui.open_files_panel":
+                    setIsFilesOpen(true);
+                    return { kind: "success", message: "Files panel opened." };
+                case "mcp.open_controls":
+                    if (!toolsEnabled || !mcpEnabled) {
+                        return { kind: "error", message: "MCP controls are hidden by current layout surfaces." };
+                    }
+                    setIsToolsOpen(true);
+                    return { kind: "success", message: "Opened Tools with MCP controls." };
+                default:
+                    return {
+                        kind: "error",
+                        message: `Action is not wired in this minimal quick-actions slice: ${action.label}`,
+                    };
+            }
+        },
+        [auditEnabled, mcpEnabled, toolsEnabled],
+    );
+
     return (
         <>
             <div
@@ -211,6 +253,15 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
                                 tooltip="Files"
                                 isOpen={isFilesOpen}
                                 onClick={() => setIsFilesOpen(!isFilesOpen)}
+                                mode={mode}
+                                style={compatActionStyle}
+                            />
+                            <WidgetActionButton
+                                buttonRef={quickActionsButtonRef}
+                                icon="bolt"
+                                tooltip="Quick Actions"
+                                isOpen={isQuickActionsOpen}
+                                onClick={() => setIsQuickActionsOpen(!isQuickActionsOpen)}
                                 mode={mode}
                                 style={compatActionStyle}
                             />
@@ -278,6 +329,16 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
                             label="Files"
                             style={compatActionStyle}
                         />
+                        <WidgetActionButton
+                            buttonRef={quickActionsButtonRef}
+                            icon="bolt"
+                            tooltip="Quick Actions"
+                            isOpen={isQuickActionsOpen}
+                            onClick={() => setIsQuickActionsOpen(!isQuickActionsOpen)}
+                            mode={mode}
+                            label="Quick"
+                            style={compatActionStyle}
+                        />
                         {showAppsButton ? (
                             <WidgetActionButton
                                 buttonRef={appsButtonRef}
@@ -341,6 +402,14 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
                     referenceElement={filesButtonRef.current}
                 />
             )}
+            {quickActionsButtonRef.current && (
+                <QuickActionsFloatingWindow
+                    isOpen={isQuickActionsOpen}
+                    onClose={() => setIsQuickActionsOpen(false)}
+                    referenceElement={quickActionsButtonRef.current}
+                    onRunAction={runQuickAction}
+                />
+            )}
             {settingsButtonRef.current && (
                 <SettingsFloatingWindow
                     isOpen={isSettingsOpen}
@@ -355,9 +424,11 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
                 showToolsButton={toolsEnabled}
                 showAuditButton={auditEnabled}
                 showAppsButton={showAppsButton}
+                showQuickActionsButton={true}
                 showDevBadge={isDev()}
                 appsLabel={t("workspace.appsLabel")}
                 filesLabel="Files"
+                quickActionsLabel="Quick"
                 settingsLabel={t("workspace.settingsLabel")}
                 style={compatMeasurementStyle}
             />

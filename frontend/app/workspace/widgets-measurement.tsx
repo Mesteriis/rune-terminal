@@ -9,9 +9,11 @@ interface WidgetsMeasurementProps {
     showToolsButton: boolean;
     showAuditButton: boolean;
     showAppsButton: boolean;
+    showQuickActionsButton: boolean;
     showDevBadge: boolean;
     appsLabel: string;
     filesLabel: string;
+    quickActionsLabel: string;
     settingsLabel: string;
     style?: CSSProperties;
 }
@@ -23,9 +25,11 @@ const WidgetsMeasurement = memo(
         showToolsButton,
         showAuditButton,
         showAppsButton,
+        showQuickActionsButton,
         showDevBadge,
         appsLabel,
         filesLabel,
+        quickActionsLabel,
         settingsLabel,
         style,
     }: WidgetsMeasurementProps) => (
@@ -60,6 +64,14 @@ const WidgetsMeasurement = memo(
                 </div>
                 <div className="text-xxs mt-0.5 w-full px-0.5 text-center">{filesLabel}</div>
             </div>
+            {showQuickActionsButton ? (
+                <div className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-lg">
+                    <div>
+                        <i className={makeIconClass("bolt", true)}></i>
+                    </div>
+                    <div className="text-xxs mt-0.5 w-full px-0.5 text-center">{quickActionsLabel}</div>
+                </div>
+            ) : null}
             {showAppsButton ? (
                 <div className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-lg">
                     <div>
