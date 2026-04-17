@@ -65,6 +65,8 @@ export interface WorkspaceStoreSnapshot {
         tabs: Record<string, WorkspaceStoreTab>;
         widgets: Record<string, WorkspaceStoreWidget>;
         layout: WorkspaceStoreLayout;
+        layouts: WorkspaceStoreLayout[];
+        activeLayoutId: string;
         oid: string;
     };
     list: WorkspaceListEntry[];
@@ -157,6 +159,26 @@ function adaptLayoutFromApi(layout: WorkspaceLayout | undefined): WorkspaceStore
     };
 }
 
+function adaptLayoutsFromApi(layouts: WorkspaceLayout[] | undefined, fallbackActive: WorkspaceStoreLayout): WorkspaceStoreLayout[] {
+    if (!Array.isArray(layouts) || layouts.length === 0) {
+        return [fallbackActive];
+    }
+    const next: WorkspaceStoreLayout[] = [];
+    const seen = new Set<string>();
+    for (const layout of layouts) {
+        const normalized = adaptLayoutFromApi(layout);
+        if (seen.has(normalized.id)) {
+            continue;
+        }
+        seen.add(normalized.id);
+        next.push(normalized);
+    }
+    if (!seen.has(fallbackActive.id)) {
+        next.push(fallbackActive);
+    }
+    return next;
+}
+
 function toApiLayout(layout: WorkspaceStoreLayout): WorkspaceLayout {
     return {
         id: layout.id,
@@ -200,6 +222,10 @@ function adaptWorkspaceFromApi(apiWorkspace: ApiWorkspace, fallback?: WorkspaceF
             } satisfies WorkspaceStoreWidget,
         ])
     );
+    const activeLayout = adaptLayoutFromApi(apiWorkspace?.layout);
+    const layouts = adaptLayoutsFromApi(apiWorkspace?.layouts, activeLayout);
+    const activeLayoutIDRaw = (apiWorkspace?.active_layout_id ?? "").trim();
+    const activeLayoutID = layouts.some((layout) => layout.id === activeLayoutIDRaw) ? activeLayoutIDRaw : activeLayout.id;
     return {
         oid: apiWorkspace?.id ?? legacyWorkspace?.oid ?? "",
         name: apiWorkspace?.name ?? legacyWorkspace?.name ?? "",
@@ -209,7 +235,9 @@ function adaptWorkspaceFromApi(apiWorkspace: ApiWorkspace, fallback?: WorkspaceF
         pinnedtabids,
         activetabid: apiWorkspace?.active_tab_id ?? legacyWorkspace?.activetabid ?? "",
         activewidgetid: apiWorkspace?.active_widget_id ?? "",
-        layout: adaptLayoutFromApi(apiWorkspace?.layout),
+        layout: activeLayout,
+        layouts,
+        activeLayoutId: activeLayoutID,
         tabs: tabsById,
         widgets: widgetsById,
     };
@@ -264,6 +292,8 @@ class WorkspaceStore {
                 activetabid: initialWorkspace?.activetabid ?? "",
                 activewidgetid: "",
                 layout: { ...defaultWorkspaceLayout, surfaces: [...defaultWorkspaceLayout.surfaces] },
+                layouts: [{ ...defaultWorkspaceLayout, surfaces: [...defaultWorkspaceLayout.surfaces] }],
+                activeLayoutId: defaultWorkspaceLayout.id,
                 tabs: {},
                 widgets: {},
             },
@@ -315,6 +345,8 @@ class WorkspaceStore {
                 pinnedtabids: legacyWorkspace.pinnedtabids ? [...legacyWorkspace.pinnedtabids] : nextActive.pinnedtabids,
                 activetabid: legacyWorkspace.activetabid ?? nextActive.activetabid,
                 layout: nextActive.layout,
+                layouts: nextActive.layouts,
+                activeLayoutId: nextActive.activeLayoutId,
             };
         if (
             merged.oid === nextActive.oid &&
@@ -380,6 +412,11 @@ class WorkspaceStore {
                     ...this.state.active.layout,
                     surfaces: [...this.state.active.layout.surfaces],
                 },
+                layouts: this.state.active.layouts.map((layout) => ({
+                    ...layout,
+                    surfaces: [...layout.surfaces],
+                })),
+                activeLayoutId: this.state.active.activeLayoutId,
             },
             list: [...this.state.list],
             colors: [...this.state.colors],
@@ -564,6 +601,30 @@ class WorkspaceStore {
         const facade = await getWorkspaceFacade();
         const response = await facade.updateLayout({
             layout: toApiLayout(layout),
+        });
+        if (response?.workspace) {
+            this.setState(adaptWorkspaceFromApi(response.workspace, this.state.active));
+            return;
+        }
+        await this.refresh();
+    }
+
+    async saveLayout(layoutID?: string): Promise<void> {
+        const facade = await getWorkspaceFacade();
+        const response = await facade.saveLayout({
+            layout_id: layoutID,
+        });
+        if (response?.workspace) {
+            this.setState(adaptWorkspaceFromApi(response.workspace, this.state.active));
+            return;
+        }
+        await this.refresh();
+    }
+
+    async switchLayout(layoutID: string): Promise<void> {
+        const facade = await getWorkspaceFacade();
+        const response = await facade.switchLayout({
+            layout_id: layoutID,
         });
         if (response?.workspace) {
             this.setState(adaptWorkspaceFromApi(response.workspace, this.state.active));

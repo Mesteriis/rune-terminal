@@ -200,3 +200,26 @@ func TestUpdateLayoutKeepsTerminalSurface(t *testing.T) {
 		t.Fatalf("expected terminal surface to be restored first, got %#v", snapshot.Layout.Surfaces)
 	}
 }
+
+func TestSaveAndSwitchLayout(t *testing.T) {
+	t.Parallel()
+
+	service := NewService(BootstrapDefault())
+	saved := service.SaveLayout("layout-ops")
+	if saved.ActiveLayoutID != "layout-ops" {
+		t.Fatalf("expected active layout to be layout-ops, got %q", saved.ActiveLayoutID)
+	}
+	if len(saved.Layouts) < 2 {
+		t.Fatalf("expected saved layout to be appended, got %#v", saved.Layouts)
+	}
+	switched, err := service.SwitchLayout("layout-default")
+	if err != nil {
+		t.Fatalf("SwitchLayout error: %v", err)
+	}
+	if switched.ActiveLayoutID != "layout-default" {
+		t.Fatalf("expected active layout id layout-default, got %q", switched.ActiveLayoutID)
+	}
+	if switched.Layout.ID != "layout-default" {
+		t.Fatalf("expected active layout payload layout-default, got %#v", switched.Layout)
+	}
+}

@@ -133,6 +133,17 @@ func normalizeSnapshot(candidate Snapshot, fallback Snapshot) Snapshot {
 	}
 	normalized.ActiveWidgetID = activeWidgetID
 	normalized.Layout = normalizeLayout(candidate.Layout, fallback.Layout)
+	normalized.Layouts = normalizeLayouts(candidate.Layouts, normalized.Layout, fallback.Layouts, fallback.Layout)
+	activeLayoutID := strings.TrimSpace(candidate.ActiveLayoutID)
+	if activeLayoutID == "" || !layoutExists(normalized.Layouts, activeLayoutID) {
+		activeLayoutID = normalized.Layout.ID
+	}
+	normalized.ActiveLayoutID = activeLayoutID
+	if activeLayout, ok := findLayout(normalized.Layouts, activeLayoutID); ok {
+		normalized.Layout = activeLayout
+	} else {
+		normalized.ActiveLayoutID = normalized.Layout.ID
+	}
 	return normalized
 }
 
@@ -192,6 +203,59 @@ func preferredSurfaceRegion(layout Layout, surfaceID LayoutSurfaceID, fallbackRe
 		}
 	}
 	return fallbackRegion
+}
+
+func normalizeLayouts(candidate []Layout, active Layout, fallbackLayouts []Layout, fallback Layout) []Layout {
+	if len(candidate) == 0 {
+		layouts := []Layout{cloneLayout(active)}
+		if len(layouts) == 0 && len(fallbackLayouts) > 0 {
+			return cloneLayouts(fallbackLayouts)
+		}
+		return layouts
+	}
+	normalized := make([]Layout, 0, len(candidate)+1)
+	seen := make(map[string]struct{}, len(candidate)+1)
+	fallbackByID := make(map[string]Layout, len(fallbackLayouts))
+	for _, layout := range fallbackLayouts {
+		fallbackByID[layout.ID] = layout
+	}
+	for _, layout := range candidate {
+		fallbackLayout, ok := fallbackByID[layout.ID]
+		if !ok {
+			fallbackLayout = fallback
+		}
+		next := normalizeLayout(layout, fallbackLayout)
+		if next.ID == "" {
+			continue
+		}
+		if _, exists := seen[next.ID]; exists {
+			continue
+		}
+		seen[next.ID] = struct{}{}
+		normalized = append(normalized, next)
+	}
+	if _, exists := seen[active.ID]; !exists {
+		normalized = append(normalized, cloneLayout(active))
+	}
+	return normalized
+}
+
+func layoutExists(layouts []Layout, layoutID string) bool {
+	for _, layout := range layouts {
+		if layout.ID == layoutID {
+			return true
+		}
+	}
+	return false
+}
+
+func findLayout(layouts []Layout, layoutID string) (Layout, bool) {
+	for _, layout := range layouts {
+		if layout.ID == layoutID {
+			return cloneLayout(layout), true
+		}
+	}
+	return Layout{}, false
 }
 
 func layoutSurfaceExists(surfaces []LayoutSurface, surfaceID LayoutSurfaceID) bool {

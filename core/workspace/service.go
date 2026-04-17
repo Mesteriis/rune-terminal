@@ -17,6 +17,7 @@ func NewService(snapshot Snapshot) *Service {
 }
 
 func BootstrapDefault() Snapshot {
+	defaultLayout := DefaultLayout()
 	return Snapshot{
 		ID:   "ws-local",
 		Name: "Local Workspace",
@@ -54,7 +55,9 @@ func BootstrapDefault() Snapshot {
 			},
 		},
 		ActiveWidgetID: "term-main",
-		Layout:         DefaultLayout(),
+		Layout:         defaultLayout,
+		Layouts:        []Layout{cloneLayout(defaultLayout)},
+		ActiveLayoutID: defaultLayout.ID,
 	}
 }
 
@@ -136,8 +139,37 @@ func (s *Service) UpdateLayout(layout Layout) Snapshot {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.snapshot.Layout = normalizeLayout(layout, s.snapshot.Layout)
+	nextLayout := normalizeLayout(layout, s.snapshot.Layout)
+	s.applyLayoutLocked(nextLayout)
 	return cloneSnapshot(s.snapshot)
+}
+
+func (s *Service) SaveLayout(layoutID string) Snapshot {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	layoutID = strings.TrimSpace(layoutID)
+	if layoutID == "" {
+		layoutID = s.nextLayoutIDLocked()
+	}
+	nextLayout := cloneLayout(s.snapshot.Layout)
+	nextLayout.ID = layoutID
+	s.applyLayoutLocked(nextLayout)
+	return cloneSnapshot(s.snapshot)
+}
+
+func (s *Service) SwitchLayout(layoutID string) (Snapshot, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	layoutID = strings.TrimSpace(layoutID)
+	for _, layout := range s.snapshot.Layouts {
+		if layout.ID == layoutID {
+			s.applyLayoutLocked(layout)
+			return cloneSnapshot(s.snapshot), nil
+		}
+	}
+	return Snapshot{}, fmt.Errorf("%w: %s", ErrLayoutNotFound, layoutID)
 }
 
 func (s *Service) CloseTab(tabID string) (Snapshot, error) {
@@ -280,7 +312,16 @@ func cloneSnapshot(snapshot Snapshot) Snapshot {
 	snapshot.Tabs = cloneTabs(snapshot.Tabs)
 	snapshot.Widgets = slices.Clone(snapshot.Widgets)
 	snapshot.Layout = cloneLayout(snapshot.Layout)
+	snapshot.Layouts = cloneLayouts(snapshot.Layouts)
 	return snapshot
+}
+
+func cloneLayouts(layouts []Layout) []Layout {
+	cloned := slices.Clone(layouts)
+	for i := range cloned {
+		cloned[i] = cloneLayout(cloned[i])
+	}
+	return cloned
 }
 
 func cloneTabs(tabs []Tab) []Tab {
@@ -294,4 +335,37 @@ func cloneTabs(tabs []Tab) []Tab {
 func cloneTab(tab Tab) Tab {
 	tab.WidgetIDs = slices.Clone(tab.WidgetIDs)
 	return tab
+}
+
+func (s *Service) applyLayoutLocked(layout Layout) {
+	s.snapshot.Layout = cloneLayout(layout)
+	s.snapshot.ActiveLayoutID = layout.ID
+	replaced := false
+	for i := range s.snapshot.Layouts {
+		if s.snapshot.Layouts[i].ID == layout.ID {
+			s.snapshot.Layouts[i] = cloneLayout(layout)
+			replaced = true
+			break
+		}
+	}
+	if !replaced {
+		s.snapshot.Layouts = append(s.snapshot.Layouts, cloneLayout(layout))
+	}
+}
+
+func (s *Service) nextLayoutIDLocked() string {
+	base := "layout"
+	for index := 1; ; index++ {
+		candidate := fmt.Sprintf("%s-%d", base, index)
+		exists := false
+		for _, layout := range s.snapshot.Layouts {
+			if layout.ID == candidate {
+				exists = true
+				break
+			}
+		}
+		if !exists {
+			return candidate
+		}
+	}
 }

@@ -72,6 +72,38 @@ func (api *API) handleCreateTerminalTab(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusOK, result)
 }
 
+func (api *API) handleSaveLayout(w http.ResponseWriter, r *http.Request) {
+	var payload struct {
+		LayoutID string `json:"layout_id,omitempty"`
+	}
+	if err := decodeJSON(r, &payload); err != nil {
+		writeBadRequest(w, "invalid_request", err)
+		return
+	}
+	snapshot, err := api.runtime.SaveLayout(payload.LayoutID)
+	if err != nil {
+		writeWorkspaceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"workspace": snapshot})
+}
+
+func (api *API) handleSwitchLayout(w http.ResponseWriter, r *http.Request) {
+	var payload struct {
+		LayoutID string `json:"layout_id"`
+	}
+	if err := decodeJSON(r, &payload); err != nil {
+		writeBadRequest(w, "invalid_request", err)
+		return
+	}
+	snapshot, err := api.runtime.SwitchLayout(payload.LayoutID)
+	if err != nil {
+		writeWorkspaceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"workspace": snapshot})
+}
+
 func (api *API) handleCreateRemoteTerminalTab(w http.ResponseWriter, r *http.Request) {
 	var payload struct {
 		Title        string `json:"title,omitempty"`

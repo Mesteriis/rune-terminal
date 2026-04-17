@@ -153,3 +153,60 @@ func TestWorkspaceUpdateLayout(t *testing.T) {
 		t.Fatalf("expected two layout surfaces, got %#v", response.Workspace.Layout.Surfaces)
 	}
 }
+
+func TestWorkspaceSaveAndSwitchLayout(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPost, "/api/v1/workspace/layouts/save", map[string]any{}))
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("save layout expected 200, got %d (%s)", recorder.Code, recorder.Body.String())
+	}
+
+	var saveResponse struct {
+		Workspace struct {
+			ActiveLayoutID string `json:"active_layout_id"`
+			Layouts        []struct {
+				ID string `json:"id"`
+			} `json:"layouts"`
+		} `json:"workspace"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &saveResponse); err != nil {
+		t.Fatalf("save layout unmarshal error: %v", err)
+	}
+	if len(saveResponse.Workspace.Layouts) < 2 {
+		t.Fatalf("expected at least two layouts after save, got %#v", saveResponse.Workspace.Layouts)
+	}
+	savedLayoutID := saveResponse.Workspace.ActiveLayoutID
+	if savedLayoutID == "" {
+		t.Fatalf("expected active saved layout id")
+	}
+
+	recorder = httptest.NewRecorder()
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPost, "/api/v1/workspace/layouts/switch", map[string]any{
+		"layout_id": "layout-default",
+	}))
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("switch layout expected 200, got %d (%s)", recorder.Code, recorder.Body.String())
+	}
+
+	var switchResponse struct {
+		Workspace struct {
+			ActiveLayoutID string `json:"active_layout_id"`
+			Layout         struct {
+				ID string `json:"id"`
+			} `json:"layout"`
+		} `json:"workspace"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &switchResponse); err != nil {
+		t.Fatalf("switch layout unmarshal error: %v", err)
+	}
+	if switchResponse.Workspace.ActiveLayoutID != "layout-default" {
+		t.Fatalf("expected default active layout after switch, got %#v", switchResponse.Workspace)
+	}
+	if switchResponse.Workspace.Layout.ID != "layout-default" {
+		t.Fatalf("expected default layout payload after switch, got %#v", switchResponse.Workspace.Layout)
+	}
+}

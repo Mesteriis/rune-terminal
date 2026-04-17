@@ -8,7 +8,9 @@ import type {
   FocusWidgetRequest,
   MoveTabRequest,
   RenameTabRequest,
+  SaveLayoutRequest,
   SetTabPinnedRequest,
+  SwitchLayoutRequest,
   UpdateLayoutRequest,
   WorkspaceActionResponse,
   WorkspaceSnapshot,
@@ -26,6 +28,8 @@ export interface WorkspaceFacade {
   setTabPinned: (tabId: string, payload: SetTabPinnedRequest) => Promise<WorkspaceTabMutation>;
   moveTab: (payload: MoveTabRequest) => Promise<WorkspaceActionResponse>;
   updateLayout: (payload: UpdateLayoutRequest) => Promise<WorkspaceActionResponse>;
+  saveLayout: (payload?: SaveLayoutRequest) => Promise<WorkspaceActionResponse>;
+  switchLayout: (payload: SwitchLayoutRequest) => Promise<WorkspaceActionResponse>;
   closeTab: (tabId: string) => Promise<CloseTabResponse>;
   getWorkspace: () => Promise<WorkspaceSnapshot>;
 }
@@ -74,6 +78,12 @@ export function createWorkspaceFacade(client: WorkspaceClient): WorkspaceFacade 
     },
     updateLayout(payload: UpdateLayoutRequest): Promise<WorkspaceActionResponse> {
       return client.updateLayout(payload);
+    },
+    saveLayout(payload: SaveLayoutRequest = {}): Promise<WorkspaceActionResponse> {
+      return client.saveLayout(payload);
+    },
+    switchLayout(payload: SwitchLayoutRequest): Promise<WorkspaceActionResponse> {
+      return client.switchLayout(payload);
     },
     closeTab(tabId: string): Promise<CloseTabResponse> {
       return client.closeTab(tabId);

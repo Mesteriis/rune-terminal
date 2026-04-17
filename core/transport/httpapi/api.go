@@ -39,6 +39,8 @@ func NewHandler(runtime *app.Runtime, authToken string) http.Handler {
 	mux.HandleFunc("POST /api/v1/workspace/focus-widget", api.handleFocusWidget)
 	mux.HandleFunc("POST /api/v1/workspace/focus-tab", api.handleFocusTab)
 	mux.HandleFunc("PATCH /api/v1/workspace/layout", api.handleUpdateLayout)
+	mux.HandleFunc("POST /api/v1/workspace/layouts/save", api.handleSaveLayout)
+	mux.HandleFunc("POST /api/v1/workspace/layouts/switch", api.handleSwitchLayout)
 	mux.HandleFunc("POST /api/v1/workspace/tabs", api.handleCreateTerminalTab)
 	mux.HandleFunc("POST /api/v1/workspace/tabs/remote", api.handleCreateRemoteTerminalTab)
 	mux.HandleFunc("PATCH /api/v1/workspace/tabs/{tabID}/rename", api.handleRenameTab)

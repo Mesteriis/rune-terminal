@@ -29,4 +29,6 @@ type Snapshot struct {
 	Widgets        []Widget `json:"widgets"`
 	ActiveWidgetID string   `json:"active_widget_id"`
 	Layout         Layout   `json:"layout"`
+	Layouts        []Layout `json:"layouts"`
+	ActiveLayoutID string   `json:"active_layout_id"`
 }

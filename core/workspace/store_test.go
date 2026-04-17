@@ -106,6 +106,8 @@ func TestSaveAndLoadSnapshotPersistsLayout(t *testing.T) {
 		},
 		ActiveSurfaceID: LayoutSurfaceTools,
 	}
+	snapshot.Layouts = []Layout{cloneLayout(snapshot.Layout)}
+	snapshot.ActiveLayoutID = snapshot.Layout.ID
 
 	if err := SaveSnapshot(path, snapshot); err != nil {
 		t.Fatalf("SaveSnapshot error: %v", err)

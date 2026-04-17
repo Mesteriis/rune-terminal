@@ -7,7 +7,9 @@ import type {
   FocusWidgetRequest,
   MoveTabRequest,
   RenameTabRequest,
+  SaveLayoutRequest,
   SetTabPinnedRequest,
+  SwitchLayoutRequest,
   UpdateLayoutRequest,
   WorkspaceActionResponse,
   WorkspaceSnapshot,
@@ -68,6 +70,18 @@ export class WorkspaceClient {
 
   updateLayout(payload: UpdateLayoutRequest): Promise<WorkspaceActionResponse> {
     return this.http.patch<WorkspaceActionResponse, UpdateLayoutRequest>("/api/v1/workspace/layout", {
+      body: payload,
+    });
+  }
+
+  saveLayout(payload: SaveLayoutRequest = {}): Promise<WorkspaceActionResponse> {
+    return this.http.post<WorkspaceActionResponse, SaveLayoutRequest>("/api/v1/workspace/layouts/save", {
+      body: payload,
+    });
+  }
+
+  switchLayout(payload: SwitchLayoutRequest): Promise<WorkspaceActionResponse> {
+    return this.http.post<WorkspaceActionResponse, SwitchLayoutRequest>("/api/v1/workspace/layouts/switch", {
       body: payload,
     });
   }

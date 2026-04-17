@@ -6,6 +6,8 @@ export interface Workspace {
   widgets: WorkspaceWidget[];
   active_widget_id: string;
   layout: WorkspaceLayout;
+  layouts: WorkspaceLayout[];
+  active_layout_id: string;
 }
 
 export type WorkspaceWidgetKind = "terminal";
@@ -50,6 +52,8 @@ export interface WorkspaceSnapshot {
   widgets: WorkspaceWidget[];
   active_widget_id: string;
   layout: WorkspaceLayout;
+  layouts: WorkspaceLayout[];
+  active_layout_id: string;
 }
 
 export type WorkspaceActionResponse = {
@@ -100,6 +104,14 @@ export interface MoveTabRequest {
 
 export interface UpdateLayoutRequest {
   layout: WorkspaceLayout;
+}
+
+export interface SaveLayoutRequest {
+  layout_id?: string;
+}
+
+export interface SwitchLayoutRequest {
+  layout_id: string;
 }
 
 export interface CloseTabResponse {

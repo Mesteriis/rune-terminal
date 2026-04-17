@@ -29,6 +29,8 @@ function hasSurface(layout: WorkspaceStoreLayout, surfaceID: string): boolean {
 const SettingsFloatingWindow = memo(({ isOpen, onClose, referenceElement }: FloatingWindowProps) => {
     const t = useT();
     const [layout, setLayout] = useState<WorkspaceStoreLayout>(() => workspaceStore.getSnapshot().active.layout);
+    const [layouts, setLayouts] = useState<WorkspaceStoreLayout[]>(() => workspaceStore.getSnapshot().active.layouts);
+    const [activeLayoutId, setActiveLayoutId] = useState<string>(() => workspaceStore.getSnapshot().active.activeLayoutId);
     const { refs, floatingStyles, context } = useFloating({
         open: isOpen,
         onOpenChange: onClose,
@@ -47,9 +49,14 @@ const SettingsFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floa
         if (!isOpen) {
             return;
         }
-        setLayout(workspaceStore.getSnapshot().active.layout);
+        const current = workspaceStore.getSnapshot().active;
+        setLayout(current.layout);
+        setLayouts(current.layouts);
+        setActiveLayoutId(current.activeLayoutId);
         const unsubscribe = workspaceStore.subscribe((snapshot) => {
             setLayout(snapshot.active.layout);
+            setLayouts(snapshot.active.layouts);
+            setActiveLayoutId(snapshot.active.activeLayoutId);
         });
         return () => unsubscribe();
     }, [isOpen]);
@@ -58,6 +65,17 @@ const SettingsFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floa
 
     const applyLayout = (nextLayout: WorkspaceStoreLayout) => {
         setLayout(nextLayout);
+        setActiveLayoutId(nextLayout.id);
+        setLayouts((current) => {
+            const next = [...current];
+            const existingIndex = next.findIndex((entry) => entry.id === nextLayout.id);
+            if (existingIndex >= 0) {
+                next[existingIndex] = nextLayout;
+            } else {
+                next.push(nextLayout);
+            }
+            return next;
+        });
         fireAndForget(() => workspaceStore.updateLayout(nextLayout));
     };
 
@@ -191,6 +209,34 @@ const SettingsFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floa
                                 </label>
                             );
                         })}
+                    </div>
+                    <div className="mt-3 pt-2 border-t border-border">
+                        <div className="flex items-center gap-2">
+                            <select
+                                className="min-w-0 flex-1 rounded border border-border bg-black/20 p-1 text-[11px] text-white"
+                                value={activeLayoutId}
+                                onChange={(event) => {
+                                    const nextLayoutID = event.target.value;
+                                    setActiveLayoutId(nextLayoutID);
+                                    fireAndForget(() => workspaceStore.switchLayout(nextLayoutID));
+                                }}
+                            >
+                                {layouts.map((entry) => (
+                                    <option key={entry.id} value={entry.id}>
+                                        {entry.id}
+                                    </option>
+                                ))}
+                            </select>
+                            <button
+                                type="button"
+                                className="px-2 py-1 rounded border border-border text-[11px] text-secondary hover:text-white"
+                                onClick={() => {
+                                    fireAndForget(() => workspaceStore.saveLayout());
+                                }}
+                            >
+                                Save
+                            </button>
+                        </div>
                     </div>
                 </div>
                 {menuItems.map((item, idx) => (

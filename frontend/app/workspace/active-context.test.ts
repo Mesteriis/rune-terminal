@@ -40,6 +40,21 @@ function makeWorkspaceSnapshot(overrides?: Partial<WorkspaceStoreSnapshot["activ
             ],
             activeSurfaceId: "terminal",
         },
+        layouts: [
+            {
+                id: "layout-default",
+                mode: "split",
+                surfaces: [
+                    { id: "terminal", region: "main" },
+                    { id: "ai", region: "sidebar" },
+                    { id: "tools", region: "utility" },
+                    { id: "audit", region: "utility" },
+                    { id: "mcp", region: "utility" },
+                ],
+                activeSurfaceId: "terminal",
+            },
+        ],
+        activeLayoutId: "layout-default",
         ...overrides,
     };
 }

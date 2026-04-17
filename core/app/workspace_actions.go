@@ -109,6 +109,25 @@ func (r *Runtime) UpdateLayout(layout workspace.Layout) (workspace.Snapshot, err
 	return snapshot, nil
 }
 
+func (r *Runtime) SaveLayout(layoutID string) (workspace.Snapshot, error) {
+	snapshot := r.Workspace.SaveLayout(layoutID)
+	if err := r.persistWorkspaceSnapshot(snapshot); err != nil {
+		return workspace.Snapshot{}, err
+	}
+	return snapshot, nil
+}
+
+func (r *Runtime) SwitchLayout(layoutID string) (workspace.Snapshot, error) {
+	snapshot, err := r.Workspace.SwitchLayout(layoutID)
+	if err != nil {
+		return workspace.Snapshot{}, err
+	}
+	if err := r.persistWorkspaceSnapshot(snapshot); err != nil {
+		return workspace.Snapshot{}, err
+	}
+	return snapshot, nil
+}
+
 func (r *Runtime) CreateTerminalTab(ctx context.Context, title string) (CreateTerminalTabResult, error) {
 	return r.CreateTerminalTabWithConnection(ctx, title, "")
 }
