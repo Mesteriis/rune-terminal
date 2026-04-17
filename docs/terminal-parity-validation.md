@@ -30,6 +30,7 @@
   - frontend:
     - `VITE_RTERM_API_BASE=http://127.0.0.1:61270 VITE_RTERM_AUTH_TOKEN=terminal-parity-token npm --prefix frontend run dev -- --host 127.0.0.1 --port 4205 --strictPort`
   - headed Playwright smoke:
+    - dragged `files-entry-file-README.md` from the files panel into the active terminal and confirmed path insertion
     - opened quick actions
     - triggered `ui.open_tools_panel`
     - verified visible `Tools` surface and `Execute` button
@@ -52,6 +53,7 @@
   - `Shift+End` returned the viewport to the bottom and follow resumed for subsequent output
 - Drag/drop path insertion:
   - a native local file drop inserted the path into the prompt line
+  - a files-panel drag into the terminal also inserted the path on the active compat path
   - the path insert did not auto-execute
 - Open current directory in new block:
   - terminal context-menu logic exposed `Open Current Directory in New Block`

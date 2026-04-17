@@ -117,3 +117,24 @@ Reference behavior:
 ## Reference conclusion
 
 For this batch, the canonical reference came from the repo-root TideTerm implementation files under `tideterm/frontend/app/...`, with `tideterm/README.md` used only as a consistency check.
+
+## Validation-backed outcome
+
+- Scrollback hydration:
+  - RunaTerminal now restores buffered output through an atomic snapshot + subscribe handoff before live follow.
+  - Headed browser validation confirmed no missing or duplicate buffered markers across reload.
+- Copy/paste shortcuts:
+  - active compat terminal now matches the inspected TideTerm keyboard semantics:
+    - `Ctrl+Shift+C`
+    - `Ctrl+Shift+V`
+    - optional `Ctrl+V` under TideTerm's platform/setting rules
+- Jump to latest:
+  - the inspected TideTerm reference remained keyboard-driven rather than button-driven
+  - RunaTerminal now matches that keyboard bottom/top/page navigation behavior on the active compat path
+- Drag/drop path insertion:
+  - headed validation covered both native local file drop and files-panel drag into the terminal
+  - terminal-side connection matching and no-auto-execute behavior now align with the inspected TideTerm source
+- Open current directory in new block:
+  - active compat terminal now exposes the context-menu action and opens a new backend-owned files block with the current path and connection context
+  - local directory blocks can browse outside the workspace root
+  - remote directory blocks currently preserve path/connection metadata but remain read-only in the compat files view

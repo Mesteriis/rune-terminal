@@ -2,13 +2,14 @@
 
 ## Last verified state
 
-- Date: `2026-04-16`
+- Date: `2026-04-17`
 - State: `VERIFIED` for active compat surfaces
 - Scope:
   - AI panel render/send/reload behavior
   - Tools panel execute + approval retry behavior
   - Audit panel event visibility and chain coherence
-  - terminal streaming/interrupt and asset-pipeline checks
+  - terminal streaming/interrupt and terminal parity closure checks
+  - asset-pipeline checks
 
 ## Commands/tests used
 
@@ -25,6 +26,7 @@
   - [frontend-streaming-runtime-validation.md](./frontend-streaming-runtime-validation.md)
   - [frontend-approval-action-validation.md](./frontend-approval-action-validation.md)
   - [frontend-asset-pipeline-validation.md](./frontend-asset-pipeline-validation.md)
+  - [../terminal-parity-validation.md](../terminal-parity-validation.md)
 
 ## Known limitations
 
@@ -35,4 +37,5 @@
 ## Evidence
 
 - [UI surfaces](../ui/surfaces.md)
+- [Terminal parity headed validation](../terminal-parity-validation.md)
 - [Legacy validation log entries](./history/validation-log-legacy-2026-04-17.md#agent--conversation-panel)

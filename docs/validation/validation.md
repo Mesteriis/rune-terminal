@@ -21,6 +21,10 @@ Do not append new free-form log blocks in this file. Update the relevant domain 
 - [workflow.md](./workflow.md)
 - [ui.md](./ui.md)
 
+## Focused parity validations
+
+- [../terminal-parity-validation.md](../terminal-parity-validation.md)
+
 ## Legacy archive
 
 The old monolithic log is retained for history only:
