@@ -3,7 +3,7 @@ import type { IgnoreRule, TrustedRule } from "@/rterm-api/policy/types";
 import { workspaceStore, type WorkspaceStoreLayout } from "@/app/state/workspace.store";
 import { createBlock } from "@/store/global";
 import { fireAndForget, makeIconClass } from "@/util/util";
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 
 type SettingsView = "overview" | "trusted-tools" | "secret-shield" | "help";
 
@@ -116,6 +116,38 @@ export const SettingsUtilitySurface = memo(
         const [policyLoading, setPolicyLoading] = useState(true);
         const [policyError, setPolicyError] = useState<string | null>(null);
 
+        const loadPolicyState = useCallback(async (cancelRef?: { current: boolean }) => {
+            setPolicyLoading(true);
+            setPolicyError(null);
+            try {
+                const compatApi = await createCompatApiFacade();
+                const [trustedResponse, ignoreResponse] = await Promise.all([
+                    compatApi.clients.policy.listTrustedRules(),
+                    compatApi.clients.policy.listIgnoreRules(),
+                ]);
+                if (cancelRef?.current) {
+                    return;
+                }
+                setTrustedRules(
+                    [...(trustedResponse.rules ?? [])].sort((left, right) => Date.parse(right.created_at) - Date.parse(left.created_at)),
+                );
+                setIgnoreRules(
+                    [...(ignoreResponse.rules ?? [])].sort((left, right) => Date.parse(right.created_at) - Date.parse(left.created_at)),
+                );
+            } catch (error) {
+                if (cancelRef?.current) {
+                    return;
+                }
+                setPolicyError(error instanceof Error ? error.message : String(error));
+                setTrustedRules([]);
+                setIgnoreRules([]);
+            } finally {
+                if (!cancelRef?.current) {
+                    setPolicyLoading(false);
+                }
+            }
+        }, []);
+
         useEffect(() => {
             const current = workspaceStore.getSnapshot().active;
             setLayout(current.layout);
@@ -131,43 +163,16 @@ export const SettingsUtilitySurface = memo(
         }, []);
 
         useEffect(() => {
-            let cancelled = false;
-            setPolicyLoading(true);
-            setPolicyError(null);
+            const cancelRef = { current: false };
 
             void (async () => {
-                try {
-                    const compatApi = await createCompatApiFacade();
-                    const [trustedResponse, ignoreResponse] = await Promise.all([
-                        compatApi.clients.policy.listTrustedRules(),
-                        compatApi.clients.policy.listIgnoreRules(),
-                    ]);
-                    if (cancelled) {
-                        return;
-                    }
-                    setTrustedRules(
-                        [...(trustedResponse.rules ?? [])].sort((left, right) => Date.parse(right.created_at) - Date.parse(left.created_at)),
-                    );
-                    setIgnoreRules(
-                        [...(ignoreResponse.rules ?? [])].sort((left, right) => Date.parse(right.created_at) - Date.parse(left.created_at)),
-                    );
-                } catch (error) {
-                    if (!cancelled) {
-                        setPolicyError(error instanceof Error ? error.message : String(error));
-                        setTrustedRules([]);
-                        setIgnoreRules([]);
-                    }
-                } finally {
-                    if (!cancelled) {
-                        setPolicyLoading(false);
-                    }
-                }
+                await loadPolicyState(cancelRef);
             })();
 
             return () => {
-                cancelled = true;
+                cancelRef.current = true;
             };
-        }, []);
+        }, [loadPolicyState]);
 
         const applyLayout = (nextLayout: WorkspaceStoreLayout) => {
             setLayout(nextLayout);
@@ -443,9 +448,17 @@ export const SettingsUtilitySurface = memo(
                                 title="Trusted tools"
                                 body="Repeatedly approved tools are surfaced from backend policy truth. This view is read-only; execution and rule changes remain explicit operator actions."
                             />
-                            {onOpenTools ? (
-                                <SettingsActionButton label="Open Tools" icon="screwdriver-wrench" onClick={onOpenTools} />
-                            ) : null}
+                            <div className="flex flex-wrap gap-2">
+                                {onOpenTools ? (
+                                    <SettingsActionButton label="Open Tools" icon="screwdriver-wrench" onClick={onOpenTools} />
+                                ) : (
+                                    <SurfaceStateCard
+                                        title="Tools hidden by layout"
+                                        body="Enable the Tools surface from Overview to add or update trusted rules explicitly."
+                                    />
+                                )}
+                                <SettingsActionButton label="Refresh" icon="rotate-right" onClick={() => void loadPolicyState()} />
+                            </div>
                             {policyLoading ? <SurfaceStateCard title="Loading" body="Fetching trusted-rule state from the runtime." /> : null}
                             {!policyLoading && policyError ? (
                                 <SurfaceStateCard title="Policy load failed" body={policyError} tone="error" />
@@ -466,9 +479,17 @@ export const SettingsUtilitySurface = memo(
                                 title="Secret shield"
                                 body="Ignore-rule protection is shown directly from runtime policy state. Modes remain explicit: deny, metadata-only, and redact."
                             />
-                            {onOpenTools ? (
-                                <SettingsActionButton label="Open Tools" icon="screwdriver-wrench" onClick={onOpenTools} />
-                            ) : null}
+                            <div className="flex flex-wrap gap-2">
+                                {onOpenTools ? (
+                                    <SettingsActionButton label="Open Tools" icon="screwdriver-wrench" onClick={onOpenTools} />
+                                ) : (
+                                    <SurfaceStateCard
+                                        title="Tools hidden by layout"
+                                        body="Enable the Tools surface from Overview to add or update ignore rules explicitly."
+                                    />
+                                )}
+                                <SettingsActionButton label="Refresh" icon="rotate-right" onClick={() => void loadPolicyState()} />
+                            </div>
                             {policyLoading ? <SurfaceStateCard title="Loading" body="Fetching ignore-rule state from the runtime." /> : null}
                             {!policyLoading && policyError ? (
                                 <SurfaceStateCard title="Policy load failed" body={policyError} tone="error" />
