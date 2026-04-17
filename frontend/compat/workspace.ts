@@ -14,8 +14,11 @@ import type {
   SaveLayoutRequest,
   SetTabPinnedRequest,
   SwitchLayoutRequest,
+  UpdateWorkspaceMetadataRequest,
   UpdateLayoutRequest,
   WorkspaceActionResponse,
+  WorkspaceCatalogResponse,
+  WorkspaceThemesResponse,
   WorkspaceSnapshot,
   WorkspaceTabMutation,
 } from "@/rterm-api/workspace/types";
@@ -38,6 +41,12 @@ export interface WorkspaceFacade {
   switchLayout: (payload: SwitchLayoutRequest) => Promise<WorkspaceActionResponse>;
   closeTab: (tabId: string) => Promise<CloseTabResponse>;
   getWorkspace: () => Promise<WorkspaceSnapshot>;
+  listWorkspaces: () => Promise<WorkspaceCatalogResponse>;
+  getWorkspaceThemes: () => Promise<WorkspaceThemesResponse>;
+  createWorkspace: () => Promise<WorkspaceActionResponse>;
+  activateWorkspace: (workspaceId: string) => Promise<WorkspaceActionResponse>;
+  updateWorkspaceMetadata: (workspaceId: string, payload: UpdateWorkspaceMetadataRequest) => Promise<WorkspaceActionResponse>;
+  deleteWorkspace: (workspaceId: string) => Promise<WorkspaceActionResponse>;
 }
 
 let workspaceFacadePromise: Promise<WorkspaceFacade> | null = null;
@@ -105,6 +114,24 @@ export function createWorkspaceFacade(client: WorkspaceClient): WorkspaceFacade 
     },
     getWorkspace(): Promise<WorkspaceSnapshot> {
       return client.getWorkspace();
+    },
+    listWorkspaces(): Promise<WorkspaceCatalogResponse> {
+      return client.listWorkspaces();
+    },
+    getWorkspaceThemes(): Promise<WorkspaceThemesResponse> {
+      return client.getWorkspaceThemes();
+    },
+    createWorkspace(): Promise<WorkspaceActionResponse> {
+      return client.createWorkspace();
+    },
+    activateWorkspace(workspaceId: string): Promise<WorkspaceActionResponse> {
+      return client.activateWorkspace(workspaceId);
+    },
+    updateWorkspaceMetadata(workspaceId: string, payload: UpdateWorkspaceMetadataRequest): Promise<WorkspaceActionResponse> {
+      return client.updateWorkspaceMetadata(workspaceId, payload);
+    },
+    deleteWorkspace(workspaceId: string): Promise<WorkspaceActionResponse> {
+      return client.deleteWorkspace(workspaceId);
     },
   };
 }

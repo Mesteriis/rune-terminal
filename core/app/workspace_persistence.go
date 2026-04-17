@@ -7,6 +7,14 @@ import (
 )
 
 func (r *Runtime) persistWorkspaceSnapshot(snapshot workspace.Snapshot) error {
+	if r.WorkspaceCatalog != nil {
+		r.WorkspaceCatalog.SetActiveSnapshot(snapshot)
+		if strings.TrimSpace(r.Paths.WorkspaceCatalogFile) != "" {
+			if err := workspace.SaveCatalog(r.Paths.WorkspaceCatalogFile, r.WorkspaceCatalog.Snapshot()); err != nil {
+				return err
+			}
+		}
+	}
 	if strings.TrimSpace(r.Paths.WorkspaceFile) == "" {
 		return nil
 	}

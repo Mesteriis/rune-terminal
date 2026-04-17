@@ -69,6 +69,15 @@ func (s *Service) Snapshot() Snapshot {
 	return cloneSnapshot(s.snapshot)
 }
 
+func (s *Service) ReplaceSnapshot(snapshot Snapshot) Snapshot {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	previous := cloneSnapshot(s.snapshot)
+	s.snapshot = normalizeSnapshot(snapshot, BootstrapDefault())
+	return previous
+}
+
 func (s *Service) ListWidgets() []Widget {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

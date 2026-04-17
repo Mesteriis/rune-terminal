@@ -11,6 +11,7 @@ import { WorkspaceService } from "@/app/store/services";
 import { waveEventSubscribe } from "@/app/store/wps";
 import { getWorkspaceFacade } from "@/compat/workspace";
 import { fireAndForget } from "@/util/util";
+import type { PrimitiveAtom } from "jotai";
 type LegacyWorkspace = Workspace;
 type WorkspaceFallback = Pick<WorkspaceSummary, "oid" | "name" | "icon" | "color"> & { activetabid?: string };
 
@@ -279,8 +280,8 @@ function adaptWorkspaceFromApi(apiWorkspace: ApiWorkspace, fallback?: WorkspaceF
     return {
         oid: apiWorkspace?.id ?? legacyWorkspace?.oid ?? "",
         name: apiWorkspace?.name ?? legacyWorkspace?.name ?? "",
-        icon: legacyWorkspace?.icon ?? "",
-        color: legacyWorkspace?.color ?? "",
+        icon: apiWorkspace?.icon ?? legacyWorkspace?.icon ?? "",
+        color: apiWorkspace?.color ?? legacyWorkspace?.color ?? "",
         tabids,
         pinnedtabids,
         activetabid: apiWorkspace?.active_tab_id ?? legacyWorkspace?.activetabid ?? "",
@@ -290,6 +291,13 @@ function adaptWorkspaceFromApi(apiWorkspace: ApiWorkspace, fallback?: WorkspaceF
         activeLayoutId: activeLayoutID,
         tabs: tabsById,
         widgets: widgetsById,
+    };
+}
+
+function adaptCompatWorkspaceListEntry(entry: { window_id?: string; workspace?: Partial<WorkspaceSummary> | null }): WorkspaceListEntry {
+    return {
+        windowId: entry.window_id ?? "",
+        workspace: toWorkspaceSummary(entry.workspace),
     };
 }
 
@@ -430,7 +438,7 @@ class WorkspaceStore {
             active: nextActive,
         };
         if (atoms?.staticTabId != null && nextActive.activetabid) {
-            (globalStore as any).set(atoms.staticTabId, nextActive.activetabid);
+            globalStore.set(atoms.staticTabId as PrimitiveAtom<string>, nextActive.activetabid);
         }
         this.notify();
     }
@@ -533,6 +541,12 @@ class WorkspaceStore {
         }
         this.listRefreshPromise = (async () => {
             try {
+                if (this.compatModeActive) {
+                    const facade = await getWorkspaceFacade();
+                    const response = await facade.listWorkspaces();
+                    this.setListState((response.workspaces ?? []).map((entry) => adaptCompatWorkspaceListEntry(entry)));
+                    return;
+                }
                 const workspaceEntries = await WorkspaceService.ListWorkspaces();
                 const list: WorkspaceListEntry[] = [];
                 for (const workspaceEntry of workspaceEntries ?? []) {
@@ -556,6 +570,15 @@ class WorkspaceStore {
         }
         this.themeRefreshPromise = (async () => {
             try {
+                if (this.compatModeActive) {
+                    const facade = await getWorkspaceFacade();
+                    const response = await facade.getWorkspaceThemes();
+                    this.setThemeState(response.colors ?? [], response.icons ?? []);
+                    return {
+                        colors: response.colors ?? [],
+                        icons: response.icons ?? [],
+                    };
+                }
                 const colors = await WorkspaceService.GetColors();
                 const icons = await WorkspaceService.GetIcons();
                 this.setThemeState(colors ?? [], icons ?? []);
@@ -761,11 +784,33 @@ class WorkspaceStore {
     }
 
     async switchWorkspace(workspaceId: string): Promise<void> {
+        if (this.compatModeActive) {
+            const facade = await getWorkspaceFacade();
+            const response = await facade.activateWorkspace(workspaceId);
+            if (response?.workspace) {
+                this.setState(adaptWorkspaceFromApi(response.workspace, this.state.active));
+            } else {
+                await this.refresh();
+            }
+            await this.refreshWorkspaceList();
+            return;
+        }
         await getApi().switchWorkspace(workspaceId);
         await this.refresh();
     }
 
     async deleteWorkspace(workspaceId: string): Promise<void> {
+        if (this.compatModeActive) {
+            const facade = await getWorkspaceFacade();
+            const response = await facade.deleteWorkspace(workspaceId);
+            if (response?.workspace) {
+                this.setState(adaptWorkspaceFromApi(response.workspace, this.state.active));
+            } else {
+                await this.refresh();
+            }
+            await this.refreshWorkspaceList();
+            return;
+        }
         await WorkspaceService.DeleteWorkspace(workspaceId);
         await this.refreshWorkspaceList();
         await this.refresh();
@@ -778,12 +823,39 @@ class WorkspaceStore {
         color: string,
         applyDefaults: boolean
     ): Promise<void> {
+        if (this.compatModeActive) {
+            const facade = await getWorkspaceFacade();
+            const response = await facade.updateWorkspaceMetadata(workspaceId, {
+                name,
+                icon,
+                color,
+                apply_defaults: applyDefaults,
+            });
+            if (response?.workspace) {
+                this.setState(adaptWorkspaceFromApi(response.workspace, this.state.active));
+            } else {
+                await this.refresh();
+            }
+            await this.refreshWorkspaceList();
+            return;
+        }
         await WorkspaceService.UpdateWorkspace(workspaceId, name, icon, color, applyDefaults);
         await this.refreshWorkspaceList();
         await this.refresh();
     }
 
     async createWorkspace(): Promise<void> {
+        if (this.compatModeActive) {
+            const facade = await getWorkspaceFacade();
+            const response = await facade.createWorkspace();
+            if (response?.workspace) {
+                this.setState(adaptWorkspaceFromApi(response.workspace, this.state.active));
+            } else {
+                await this.refresh();
+            }
+            await this.refreshWorkspaceList();
+            return;
+        }
         await getApi().createWorkspace();
         await this.refreshWorkspaceList();
         await this.refresh();

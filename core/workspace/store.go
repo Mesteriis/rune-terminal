@@ -57,8 +57,10 @@ func SaveSnapshot(path string, snapshot Snapshot) error {
 
 func normalizeSnapshot(candidate Snapshot, fallback Snapshot) Snapshot {
 	normalized := Snapshot{
-		ID:   strings.TrimSpace(candidate.ID),
-		Name: strings.TrimSpace(candidate.Name),
+		ID:    strings.TrimSpace(candidate.ID),
+		Name:  strings.TrimSpace(candidate.Name),
+		Icon:  strings.TrimSpace(candidate.Icon),
+		Color: strings.TrimSpace(candidate.Color),
 	}
 	if normalized.ID == "" {
 		normalized.ID = fallback.ID

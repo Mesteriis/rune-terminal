@@ -1,6 +1,8 @@
 export interface Workspace {
   id: string;
   name: string;
+  icon?: string;
+  color?: string;
   tabs: WorkspaceTab[];
   active_tab_id: string;
   widgets: WorkspaceWidget[];
@@ -72,6 +74,8 @@ export interface WorkspaceTab {
 export interface WorkspaceSnapshot {
   id: string;
   name: string;
+  icon?: string;
+  color?: string;
   tabs: WorkspaceTab[];
   active_tab_id: string;
   widgets: WorkspaceWidget[];
@@ -84,6 +88,27 @@ export interface WorkspaceSnapshot {
 export type WorkspaceActionResponse = {
   workspace: WorkspaceSnapshot;
 };
+
+export interface WorkspaceSummary {
+  oid: string;
+  name: string;
+  icon: string;
+  color: string;
+}
+
+export interface WorkspaceCatalogEntry {
+  window_id: string;
+  workspace: WorkspaceSummary;
+}
+
+export interface WorkspaceCatalogResponse {
+  workspaces: WorkspaceCatalogEntry[];
+}
+
+export interface WorkspaceThemesResponse {
+  colors: string[];
+  icons: string[];
+}
 
 export interface WorkspaceTabMutation {
   tab: WorkspaceTab;
@@ -158,6 +183,13 @@ export interface SaveLayoutRequest {
 
 export interface SwitchLayoutRequest {
   layout_id: string;
+}
+
+export interface UpdateWorkspaceMetadataRequest {
+  name: string;
+  icon: string;
+  color: string;
+  apply_defaults: boolean;
 }
 
 export interface CloseTabResponse {

@@ -8,6 +8,71 @@ import (
 	"github.com/Mesteriis/rune-terminal/core/workspace"
 )
 
+func (api *API) handleListWorkspaces(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{
+		"workspaces": api.runtime.ListWorkspaces(),
+	})
+}
+
+func (api *API) handleWorkspaceThemes(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{
+		"colors": workspace.WorkspaceColors,
+		"icons":  workspace.WorkspaceIcons,
+	})
+}
+
+func (api *API) handleCreateWorkspace(w http.ResponseWriter, r *http.Request) {
+	snapshot, err := api.runtime.CreateWorkspace(r.Context())
+	if err != nil {
+		writeWorkspaceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"workspace": snapshot})
+}
+
+func (api *API) handleActivateWorkspace(w http.ResponseWriter, r *http.Request) {
+	snapshot, err := api.runtime.SwitchWorkspace(r.PathValue("workspaceID"))
+	if err != nil {
+		writeWorkspaceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"workspace": snapshot})
+}
+
+func (api *API) handleUpdateWorkspaceMetadata(w http.ResponseWriter, r *http.Request) {
+	var payload struct {
+		Name          string `json:"name"`
+		Icon          string `json:"icon"`
+		Color         string `json:"color"`
+		ApplyDefaults bool   `json:"apply_defaults"`
+	}
+	if err := decodeJSON(r, &payload); err != nil {
+		writeBadRequest(w, "invalid_request", err)
+		return
+	}
+	snapshot, err := api.runtime.UpdateWorkspaceMetadata(
+		r.PathValue("workspaceID"),
+		payload.Name,
+		payload.Icon,
+		payload.Color,
+		payload.ApplyDefaults,
+	)
+	if err != nil {
+		writeWorkspaceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"workspace": snapshot})
+}
+
+func (api *API) handleDeleteWorkspace(w http.ResponseWriter, r *http.Request) {
+	snapshot, err := api.runtime.DeleteWorkspace(r.PathValue("workspaceID"))
+	if err != nil {
+		writeWorkspaceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"workspace": snapshot})
+}
+
 func (api *API) handleFocusWidget(w http.ResponseWriter, r *http.Request) {
 	var payload struct {
 		WidgetID string `json:"widget_id"`

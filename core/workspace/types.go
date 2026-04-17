@@ -27,6 +27,8 @@ type Tab struct {
 type Snapshot struct {
 	ID             string   `json:"id"`
 	Name           string   `json:"name"`
+	Icon           string   `json:"icon,omitempty"`
+	Color          string   `json:"color,omitempty"`
 	Tabs           []Tab    `json:"tabs"`
 	ActiveTabID    string   `json:"active_tab_id"`
 	Widgets        []Widget `json:"widgets"`
@@ -34,4 +36,16 @@ type Snapshot struct {
 	Layout         Layout   `json:"layout"`
 	Layouts        []Layout `json:"layouts"`
 	ActiveLayoutID string   `json:"active_layout_id"`
+}
+
+type Summary struct {
+	OID   string `json:"oid"`
+	Name  string `json:"name"`
+	Icon  string `json:"icon"`
+	Color string `json:"color"`
+}
+
+type ListEntry struct {
+	WindowID  string  `json:"window_id"`
+	Workspace Summary `json:"workspace"`
 }

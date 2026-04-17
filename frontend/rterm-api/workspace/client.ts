@@ -13,8 +13,11 @@ import type {
   SaveLayoutRequest,
   SetTabPinnedRequest,
   SwitchLayoutRequest,
+  UpdateWorkspaceMetadataRequest,
   UpdateLayoutRequest,
   WorkspaceActionResponse,
+  WorkspaceCatalogResponse,
+  WorkspaceThemesResponse,
   WorkspaceSnapshot,
   WorkspaceTabMutation,
 } from "./types";
@@ -109,5 +112,32 @@ export class WorkspaceClient {
 
   getWorkspace(): Promise<WorkspaceSnapshot> {
     return this.http.get<WorkspaceSnapshot>("/api/v1/workspace");
+  }
+
+  listWorkspaces(): Promise<WorkspaceCatalogResponse> {
+    return this.http.get<WorkspaceCatalogResponse>("/api/v1/workspaces");
+  }
+
+  getWorkspaceThemes(): Promise<WorkspaceThemesResponse> {
+    return this.http.get<WorkspaceThemesResponse>("/api/v1/workspaces/themes");
+  }
+
+  createWorkspace(): Promise<WorkspaceActionResponse> {
+    return this.http.post<WorkspaceActionResponse>("/api/v1/workspaces");
+  }
+
+  activateWorkspace(workspaceID: string): Promise<WorkspaceActionResponse> {
+    return this.http.post<WorkspaceActionResponse>(`/api/v1/workspaces/${encodeURIComponent(workspaceID)}/activate`);
+  }
+
+  updateWorkspaceMetadata(workspaceID: string, payload: UpdateWorkspaceMetadataRequest): Promise<WorkspaceActionResponse> {
+    return this.http.patch<WorkspaceActionResponse, UpdateWorkspaceMetadataRequest>(
+      `/api/v1/workspaces/${encodeURIComponent(workspaceID)}`,
+      { body: payload },
+    );
+  }
+
+  deleteWorkspace(workspaceID: string): Promise<WorkspaceActionResponse> {
+    return this.http.delete<WorkspaceActionResponse>(`/api/v1/workspaces/${encodeURIComponent(workspaceID)}`);
   }
 }

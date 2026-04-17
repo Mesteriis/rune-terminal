@@ -18,22 +18,23 @@ import (
 )
 
 type Runtime struct {
-	RepoRoot     string
-	Paths        config.Paths
-	Workspace    *workspace.Service
-	Terminals    *terminal.Service
-	Connections  *connections.Service
-	Agent        *agent.Store
-	Conversation *conversation.Service
-	Execution    *execution.Service
-	Policy       *policy.Store
-	Audit        *audit.Log
-	Plugins      *plugins.Runtime
-	MCP          *plugins.MCPRuntime
-	Registry     *toolruntime.Registry
-	Executor     *toolruntime.Executor
-	restoredMu   sync.RWMutex
-	restored     map[string]terminal.State
+	RepoRoot         string
+	Paths            config.Paths
+	Workspace        *workspace.Service
+	WorkspaceCatalog *workspace.CatalogStore
+	Terminals        *terminal.Service
+	Connections      *connections.Service
+	Agent            *agent.Store
+	Conversation     *conversation.Service
+	Execution        *execution.Service
+	Policy           *policy.Store
+	Audit            *audit.Log
+	Plugins          *plugins.Runtime
+	MCP              *plugins.MCPRuntime
+	Registry         *toolruntime.Registry
+	Executor         *toolruntime.Executor
+	restoredMu       sync.RWMutex
+	restored         map[string]terminal.State
 }
 
 func NewRuntime(repoRoot string, stateDir string) (*Runtime, error) {
@@ -67,21 +68,27 @@ func NewRuntime(repoRoot string, stateDir string) (*Runtime, error) {
 	if err != nil {
 		return nil, err
 	}
+	workspaceCatalog, err := workspace.LoadCatalog(paths.WorkspaceCatalogFile, workspaceSnapshot)
+	if err != nil {
+		return nil, err
+	}
+	activeWorkspaceSnapshot := workspace.NewCatalogStore(workspaceCatalog).ActiveSnapshot()
 
 	runtime := &Runtime{
-		RepoRoot:     repoRoot,
-		Paths:        paths,
-		Workspace:    workspace.NewService(workspaceSnapshot),
-		Terminals:    terminal.NewService(terminal.DefaultLauncher()),
-		Connections:  connectionStore,
-		Agent:        agentStore,
-		Conversation: conversationStore,
-		Execution:    executionStore,
-		Policy:       policyStore,
-		Audit:        auditLog,
-		Plugins:      plugins.NewRuntime(nil, 0),
-		Registry:     toolruntime.NewRegistry(),
-		restored:     make(map[string]terminal.State),
+		RepoRoot:         repoRoot,
+		Paths:            paths,
+		Workspace:        workspace.NewService(activeWorkspaceSnapshot),
+		WorkspaceCatalog: workspace.NewCatalogStore(workspaceCatalog),
+		Terminals:        terminal.NewService(terminal.DefaultLauncher()),
+		Connections:      connectionStore,
+		Agent:            agentStore,
+		Conversation:     conversationStore,
+		Execution:        executionStore,
+		Policy:           policyStore,
+		Audit:            auditLog,
+		Plugins:          plugins.NewRuntime(nil, 0),
+		Registry:         toolruntime.NewRegistry(),
+		restored:         make(map[string]terminal.State),
 	}
 	runtime.MCP = plugins.NewMCPRuntime(nil, nil, newExternalMCPInvoker(runtime.Plugins, repoRoot))
 	runtime.Executor = toolruntime.NewExecutor(
@@ -107,30 +114,7 @@ func NewRuntime(repoRoot string, stateDir string) (*Runtime, error) {
 }
 
 func (r *Runtime) bootstrapSessions(ctx context.Context) error {
-	for _, widget := range r.Workspace.ListWidgets() {
-		if widget.Kind != workspace.WidgetKindTerminal {
-			continue
-		}
-		connection, err := r.connectionForWidget(widget.ConnectionID)
-		if err != nil {
-			_, _, _ = r.Connections.ReportLaunchResult(widget.ConnectionID, err)
-			r.setRestoredTerminalState(r.disconnectedState(widget, terminal.ConnectionSpec{}, err))
-			continue
-		}
-		_, err = r.Terminals.StartSession(ctx, terminal.LaunchOptions{
-			WidgetID:   widget.ID,
-			WorkingDir: r.RepoRoot,
-			Connection: connection,
-			Restored:   true,
-		})
-		if err != nil {
-			_, _, _ = r.Connections.ReportLaunchResult(widget.ConnectionID, err)
-			r.setRestoredTerminalState(r.disconnectedState(widget, connection, err))
-			continue
-		}
-		r.clearRestoredTerminalState(widget.ID)
-		_, _, _ = r.Connections.ReportLaunchResult(widget.ConnectionID, nil)
-	}
+	r.ensureWorkspaceSessions(ctx, r.Workspace.Snapshot(), true)
 	return nil
 }
 
