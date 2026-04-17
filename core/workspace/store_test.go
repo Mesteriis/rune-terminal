@@ -1,8 +1,11 @@
 package workspace
 
 import (
+	"encoding/json"
+	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -86,5 +89,42 @@ func TestLoadSnapshotNormalizesInvalidSnapshot(t *testing.T) {
 	}
 	if len(loaded.Widgets) != 1 || loaded.Widgets[0].ID != "term-main" {
 		t.Fatalf("expected orphan widget removed, got %#v", loaded.Widgets)
+	}
+}
+
+func TestSaveAndLoadSnapshotPersistsLayout(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(t.TempDir(), "workspace.json")
+	snapshot := BootstrapDefault()
+	snapshot.Layout = Layout{
+		ID:   "layout-ops",
+		Mode: LayoutModeFocus,
+		Surfaces: []LayoutSurface{
+			{ID: LayoutSurfaceTerminal, Region: LayoutRegionMain},
+			{ID: LayoutSurfaceTools, Region: LayoutRegionUtility},
+		},
+		ActiveSurfaceID: LayoutSurfaceTools,
+	}
+
+	if err := SaveSnapshot(path, snapshot); err != nil {
+		t.Fatalf("SaveSnapshot error: %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile error: %v", err)
+	}
+	if !strings.Contains(string(data), "\"layout\"") {
+		t.Fatalf("expected persisted payload to include layout, got %s", string(data))
+	}
+
+	loaded, err := LoadSnapshot(path, BootstrapDefault())
+	if err != nil {
+		t.Fatalf("LoadSnapshot error: %v", err)
+	}
+	if !reflect.DeepEqual(loaded.Layout, snapshot.Layout) {
+		left, _ := json.Marshal(loaded.Layout)
+		right, _ := json.Marshal(snapshot.Layout)
+		t.Fatalf("expected layout roundtrip match: got=%s want=%s", left, right)
 	}
 }

@@ -49,6 +49,7 @@ Persisted fields are intentionally limited to restore-critical metadata:
 - tab ordering, pinned state, title, tab-widget linkage
 - widget inventory and terminal/connection linkage
 - active tab and active widget ids
+- layout composition metadata (layout id, mode, active surfaces/regions, active focus surface)
 
 Live PTY runtime state is not persisted in the workspace snapshot.
 
