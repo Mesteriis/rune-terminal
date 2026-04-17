@@ -210,3 +210,49 @@ func TestWorkspaceSaveAndSwitchLayout(t *testing.T) {
 		t.Fatalf("expected default layout payload after switch, got %#v", switchResponse.Workspace.Layout)
 	}
 }
+
+func TestWorkspaceLayoutSwitchKeepsActiveTabAndWidget(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPost, "/api/v1/workspace/focus-tab", map[string]any{
+		"tab_id": "tab-ops",
+	}))
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("focus tab expected 200, got %d (%s)", recorder.Code, recorder.Body.String())
+	}
+
+	recorder = httptest.NewRecorder()
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPost, "/api/v1/workspace/layouts/save", map[string]any{
+		"layout_id": "layout-temporary",
+	}))
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("save layout expected 200, got %d (%s)", recorder.Code, recorder.Body.String())
+	}
+
+	recorder = httptest.NewRecorder()
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPost, "/api/v1/workspace/layouts/switch", map[string]any{
+		"layout_id": "layout-default",
+	}))
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("switch layout expected 200, got %d (%s)", recorder.Code, recorder.Body.String())
+	}
+
+	var response struct {
+		Workspace struct {
+			ActiveTabID    string `json:"active_tab_id"`
+			ActiveWidgetID string `json:"active_widget_id"`
+		} `json:"workspace"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatalf("switch layout unmarshal error: %v", err)
+	}
+	if response.Workspace.ActiveTabID != "tab-ops" {
+		t.Fatalf("expected active tab tab-ops after layout switch, got %q", response.Workspace.ActiveTabID)
+	}
+	if response.Workspace.ActiveWidgetID != "term-side" {
+		t.Fatalf("expected active widget term-side after layout switch, got %q", response.Workspace.ActiveWidgetID)
+	}
+}

@@ -165,7 +165,9 @@ func (s *Service) SwitchLayout(layoutID string) (Snapshot, error) {
 	layoutID = strings.TrimSpace(layoutID)
 	for _, layout := range s.snapshot.Layouts {
 		if layout.ID == layoutID {
-			s.applyLayoutLocked(layout)
+			nextLayout := normalizeLayout(layout, s.snapshot.Layout)
+			nextLayout.ID = layout.ID
+			s.applyLayoutLocked(nextLayout)
 			return cloneSnapshot(s.snapshot), nil
 		}
 	}
