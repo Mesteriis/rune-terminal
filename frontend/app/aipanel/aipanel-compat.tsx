@@ -962,7 +962,9 @@ const AIPanelCompatInner = memo(() => {
 
             try {
                 const facade = await getConversationFacade();
-                const context = buildCompatConversationContext(repoRoot, "ai.panel.submit_message");
+                const context = buildCompatConversationContext(repoRoot, "ai.panel.submit_message", {
+                    widgetAccessEnabled,
+                });
                 const toolContext = buildToolExecutionContext(repoRoot, "ai.panel.run_command", {
                     includeTerminalTarget: true,
                 });
@@ -1042,7 +1044,7 @@ const AIPanelCompatInner = memo(() => {
                 }, 100);
             }
         },
-        [completeRunCommandExecution, model, repoRoot, status]
+        [completeRunCommandExecution, model, repoRoot, status, widgetAccessEnabled]
     );
 
     const hasFilesDragged = (dataTransfer: DataTransfer): boolean => {

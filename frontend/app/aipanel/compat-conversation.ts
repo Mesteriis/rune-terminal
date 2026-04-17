@@ -65,11 +65,21 @@ export function mapConversationSnapshot(snapshot: ConversationSnapshot | null | 
     return mapConversationMessages(snapshot?.messages);
 }
 
-export function buildCompatConversationContext(repoRoot: string, actionSource?: string): ConversationContext {
+export function buildCompatConversationContext(
+    repoRoot: string,
+    actionSource?: string,
+    options?: { widgetAccessEnabled?: boolean }
+): ConversationContext {
     const context = buildToolExecutionContext(repoRoot, actionSource, { includeTerminalTarget: true });
+    const widgetAccessEnabled = options?.widgetAccessEnabled ?? context.active_widget_id != null;
     return {
-        ...context,
-        widget_context_enabled: context.active_widget_id != null,
+        workspace_id: context.workspace_id,
+        repo_root: context.repo_root,
+        action_source: context.action_source,
+        active_widget_id: widgetAccessEnabled ? context.active_widget_id : undefined,
+        target_session: widgetAccessEnabled ? context.target_session : undefined,
+        target_connection_id: widgetAccessEnabled ? context.target_connection_id : undefined,
+        widget_context_enabled: widgetAccessEnabled && context.active_widget_id != null,
     };
 }
 
