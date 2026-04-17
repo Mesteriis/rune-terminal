@@ -45,6 +45,10 @@ It is intentionally operational, not narrative.
   - attachment references are created through `POST /api/v1/agent/conversation/attachments/references`
   - selected file context is user-driven and explicit (`Attach Selected File To AI Context`)
   - file selection alone does not auto-inject context into conversation payloads
+- Compat terminal and files widgets now share a compact pane-header grammar:
+  - a `30px` header row holds the drag affordance, pane icon, title, compact badges, and end-icon actions
+  - split/restart/explain and file-navigation actions now sit in the header chrome as compact icon controls instead of larger text buttons
+  - terminal status detail stays below that header as a thin message strip only when needed
 - Files panel now also exposes explicit handoff helpers for selected paths:
   - `Use Selected Path In AI Prompt`
   - `Use Selected Path In /run Prompt`

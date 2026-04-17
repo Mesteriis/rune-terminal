@@ -2,6 +2,7 @@ import { workspaceStore, type WorkspaceStoreTab, type WorkspaceStoreWidget, type
 import { CompatTerminalView } from "@/app/view/term/compat-terminal";
 import { CompatFilesView } from "@/app/view/files/compat-files-view";
 import { CenteredDiv } from "@/element/quickelems";
+import { makeIconClass } from "@/util/util";
 import clsx from "clsx";
 import { memo, useMemo, useState, type DragEvent, type ReactNode } from "react";
 
@@ -284,7 +285,7 @@ const CompatSplitLayout = memo(({ tabId, tab, widgets, activeWidgetId }: CompatS
         const splitAction = (
             <button
                 type="button"
-                className="rounded border border-border bg-black/20 px-2 py-1 text-[11px] text-secondary hover:text-white disabled:opacity-60"
+                className="flex h-[22px] w-[22px] items-center justify-center rounded text-[10px] text-secondary transition-colors hover:bg-[rgba(255,255,255,0.08)] hover:text-white disabled:opacity-45"
                 disabled={splittingWidgetId !== ""}
                 onClick={(event) => {
                     event.stopPropagation();
@@ -293,9 +294,11 @@ const CompatSplitLayout = memo(({ tabId, tab, widgets, activeWidgetId }: CompatS
                         setSplittingWidgetId("");
                     });
                 }}
+                aria-label="Split pane"
+                title={splittingWidgetId === widgetId ? "Splitting pane" : "Split pane"}
                 data-testid={`compat-split-add-${widgetId}`}
             >
-                {splittingWidgetId === widgetId ? "Splitting..." : "Split"}
+                <i className={makeIconClass(splittingWidgetId === widgetId ? "circle-notch" : "plus", false, { spin: splittingWidgetId === widgetId })} />
             </button>
         );
         return (

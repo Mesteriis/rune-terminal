@@ -1,6 +1,7 @@
 import { terminalStore } from "@/app/state/terminal.store";
 import { WaveAIModel } from "@/app/aipanel/waveai-model";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
+import { CompatPaneHeader } from "@/app/workspace/compat-pane-header";
 import { getTerminalFacade } from "@/compat/terminal";
 import type { TerminalSnapshot } from "@/rterm-api/terminal/types";
 import { CenteredDiv } from "@/element/quickelems";
@@ -200,7 +201,6 @@ export function CompatTerminalView({ widgetId, connectionId, title, headerAction
     const lifecycleLabel = isConnected
         ? (restoredSession ? "restored" : "connected")
         : lifecycleStatus === "unknown" ? "status unknown" : "disconnected";
-    const lifecycleColorClass = isConnected ? (restoredSession ? "text-cyan-300" : "text-emerald-300") : "text-amber-300";
     const lifecycleDetail = lifecycleError
         ?? lifecycleSnapshot?.state.status_detail
         ?? (restoredSession ? "session was recreated from persisted tab metadata after runtime restart" : null)
@@ -254,17 +254,6 @@ export function CompatTerminalView({ widgetId, connectionId, title, headerAction
         }
     };
 
-    const lifecycleBadgeClass = isConnected
-        ? restoredSession
-            ? "border-cyan-400/40 bg-cyan-500/10 text-cyan-200"
-            : "border-emerald-400/40 bg-emerald-500/10 text-emerald-200"
-        : "border-amber-400/40 bg-amber-500/10 text-amber-200";
-    const shellIntegrationBadgeClass =
-        shellIntegrationStatus === "ready"
-            ? "border-cyan-400/40 bg-cyan-500/10 text-cyan-200"
-            : shellIntegrationStatus === "running-command"
-                ? "border-amber-400/40 bg-amber-500/10 text-amber-200"
-                : "border-border bg-black/20 text-secondary";
     const shellIntegrationLabel =
         shellIntegrationStatus === "ready"
             ? "AI ready"
@@ -283,12 +272,53 @@ export function CompatTerminalView({ widgetId, connectionId, title, headerAction
         ?? restartStatus
         ?? explainStatus
         ?? (lifecycleStatus !== "running" || restoredSession ? lifecycleDetail : null);
-    const headerMessageClass =
-        restartError || explainError || lifecycleStatus === "failed" || lifecycleStatus === "exited"
-            ? "text-red-300"
-            : restartStatus || explainStatus
-                ? "text-emerald-300"
-                : lifecycleColorClass;
+
+    const paneBadges = [
+        {
+            label: isRemoteTerminal ? "remote" : "local",
+        },
+        {
+            label: lifecycleLabel,
+            tone: isConnected ? (restoredSession ? "info" : "success") : "warning",
+            title: lifecycleDetail ?? undefined,
+        },
+        {
+            label: shellIntegrationLabel,
+            tone:
+                shellIntegrationStatus === "ready"
+                    ? "info"
+                    : shellIntegrationStatus === "running-command"
+                        ? "warning"
+                        : "neutral",
+            icon: "sparkles",
+            title: shellIntegrationTitle,
+        },
+    ] as const;
+
+    const paneActions = [
+        {
+            icon: "rotate-right",
+            label: isRemoteTerminal ? "Reconnect session" : "Restart session",
+            title: restartBusy ? "Restarting session" : isRemoteTerminal ? "Reconnect session" : "Restart session",
+            disabled: restartBusy,
+            spin: restartBusy,
+            onClick: () => {
+                void restartSession();
+            },
+            testID: `compat-terminal-restart-${widgetId}`,
+        },
+        {
+            icon: explainBusy ? "circle-notch" : "circle-question",
+            label: "Explain latest output",
+            title: explainBusy ? "Sending latest output to AI" : "Explain latest output",
+            disabled: explainBusy,
+            spin: explainBusy,
+            onClick: () => {
+                void explainLatestCommandOutput();
+            },
+            testID: `compat-terminal-explain-${widgetId}`,
+        },
+    ] as const;
 
     return (
         <div
@@ -298,64 +328,29 @@ export function CompatTerminalView({ widgetId, connectionId, title, headerAction
                 termWrapRef.current?.terminal.focus();
             }}
         >
-            <div className="flex min-h-[30px] items-center justify-between gap-3 border-b border-border/70 bg-black/20 px-3 py-2" data-testid={`compat-terminal-header-${widgetId}`}>
-                <div className="flex min-w-0 items-center gap-2">
-                    <div className="flex shrink-0 items-center gap-1 text-[11px] text-secondary" title="Drag to rearrange terminal block">
-                        <i className="fa fa-grip-vertical" />
-                        <i className="fa fa-terminal" />
-                    </div>
-                    <div className="min-w-0">
-                        <div className="flex min-w-0 flex-wrap items-center gap-2">
-                            <div className="truncate text-[12px] font-semibold text-white">{terminalTitle}</div>
-                            <span className="rounded-full border border-border bg-black/20 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-secondary">
-                                {isRemoteTerminal ? "remote" : "local"}
-                            </span>
-                            <span className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] uppercase tracking-wide ${lifecycleBadgeClass}`}>
-                                <i className="fa fa-circle text-[8px]" />
-                                {lifecycleLabel}
-                            </span>
-                            <span
-                                className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] uppercase tracking-wide ${shellIntegrationBadgeClass}`}
-                                title={shellIntegrationTitle}
-                            >
-                                <i className="fa fa-sparkles" />
-                                {shellIntegrationLabel}
-                            </span>
-                        </div>
-                        <div className="mt-1 truncate text-[11px] text-secondary">
-                            {isRemoteTerminal ? terminalConnection : "Local machine"}
-                        </div>
-                    </div>
-                </div>
-                <div className="flex shrink-0 items-center gap-1">
-                    {headerActions}
-                    <button
-                        type="button"
-                        className="rounded border border-border bg-black/20 px-2 py-1 text-[11px] text-secondary hover:text-white disabled:opacity-50"
-                        disabled={restartBusy}
-                        onClick={(event) => {
-                            event.stopPropagation();
-                            void restartSession();
-                        }}
-                    >
-                        {restartBusy ? "Restarting..." : isRemoteTerminal ? "Reconnect" : "Restart"}
-                    </button>
-                    <button
-                        type="button"
-                        className="rounded border border-border bg-black/20 px-2 py-1 text-[11px] text-secondary hover:text-white disabled:opacity-50"
-                        disabled={explainBusy}
-                        onClick={(event) => {
-                            event.stopPropagation();
-                            void explainLatestCommandOutput();
-                        }}
-                    >
-                        {explainBusy ? "Sending..." : "Explain"}
-                    </button>
-                </div>
-            </div>
-            {headerMessage ? (
-                <div className={`border-b border-border/60 bg-black/10 px-3 py-1.5 text-[10px] ${headerMessageClass}`}>{headerMessage}</div>
-            ) : null}
+            <CompatPaneHeader
+                icon="terminal"
+                title={terminalTitle}
+                subtitle={isRemoteTerminal ? terminalConnection : "Local machine"}
+                badges={paneBadges}
+                actions={paneActions}
+                extraActions={headerActions}
+                dragTitle="Drag to rearrange terminal block"
+                message={
+                    headerMessage
+                        ? {
+                              text: headerMessage,
+                              tone:
+                                  restartError || explainError || lifecycleStatus === "failed" || lifecycleStatus === "exited"
+                                      ? "error"
+                                      : restartStatus || explainStatus
+                                          ? "success"
+                                          : "default",
+                          }
+                        : null
+                }
+                testID={`compat-terminal-header-${widgetId}`}
+            />
             <div key="connectElem" className="term-connectelem" ref={connectElemRef} />
         </div>
     );

@@ -1,4 +1,5 @@
 import { getFSFacade } from "@/compat";
+import { CompatPaneHeader } from "@/app/workspace/compat-pane-header";
 import type { FSNode } from "@/rterm-api/fs/types";
 import { useEffect, useState, type ReactNode } from "react";
 
@@ -147,48 +148,45 @@ export function CompatFilesView({ widgetId, path, connectionId, title, headerAct
 
     const canGoUp = parentPath(currentPath) != null;
     const viewTitle = title?.trim() || "Files";
+    const paneActions = [
+        {
+            icon: "arrow-up",
+            label: "Open parent directory",
+            title: canGoUp ? "Open parent directory" : "No parent directory available",
+            disabled: !canGoUp || loading || remoteDirectory,
+            onClick: () => {
+                const upPath = parentPath(currentPath);
+                if (upPath != null) {
+                    void loadPath(upPath);
+                }
+            },
+            testID: `compat-files-up-${widgetId}`,
+        },
+        {
+            icon: "rotate-right",
+            label: "Refresh directory listing",
+            title: "Refresh directory listing",
+            disabled: loading || remoteDirectory,
+            spin: loading,
+            onClick: () => {
+                void loadPath(currentPath);
+            },
+            testID: `compat-files-refresh-${widgetId}`,
+        },
+    ] as const;
 
     return (
         <div className="flex h-full min-h-0 flex-col overflow-hidden bg-black/20" data-testid={`compat-files-widget-${widgetId}`}>
-            <div className="flex items-center justify-between gap-2 border-b border-border/70 bg-black/10 px-3 py-2">
-                <div className="min-w-0">
-                    <div className="flex min-w-0 flex-wrap items-center gap-2">
-                        <div className="flex shrink-0 items-center gap-1 text-[11px] text-secondary" title="Drag to rearrange files block">
-                            <i className="fa fa-grip-vertical" />
-                            <i className="fa fa-folder-open" />
-                        </div>
-                        <div className="truncate text-[12px] font-semibold text-white">{viewTitle}</div>
-                        <span className="rounded-full border border-border bg-black/20 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-secondary">
-                            {remoteDirectory ? "remote" : "local"}
-                        </span>
-                    </div>
-                    <div className="mt-1 break-all text-[11px] text-secondary">{currentPath || path}</div>
-                </div>
-                <div className="flex items-center gap-2">
-                    {headerActions}
-                    <button
-                        type="button"
-                        className="rounded border border-border px-2 py-1 text-[11px] text-secondary disabled:opacity-50"
-                        disabled={!canGoUp || loading || remoteDirectory}
-                        onClick={() => {
-                            const upPath = parentPath(currentPath);
-                            if (upPath != null) {
-                                void loadPath(upPath);
-                            }
-                        }}
-                    >
-                        Up
-                    </button>
-                    <button
-                        type="button"
-                        className="rounded border border-border px-2 py-1 text-[11px] text-secondary disabled:opacity-50"
-                        disabled={loading || remoteDirectory}
-                        onClick={() => void loadPath(currentPath)}
-                    >
-                        Refresh
-                    </button>
-                </div>
-            </div>
+            <CompatPaneHeader
+                icon="folder-open"
+                title={viewTitle}
+                subtitle={currentPath || path}
+                badges={[{ label: remoteDirectory ? "remote" : "local" }]}
+                actions={paneActions}
+                extraActions={headerActions}
+                dragTitle="Drag to rearrange files block"
+                testID={`compat-files-header-${widgetId}`}
+            />
 
             <div className="min-h-0 flex-1 overflow-y-auto p-[5px]">
                 {remoteDirectory ? (
