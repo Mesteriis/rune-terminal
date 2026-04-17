@@ -1,18 +1,28 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { WaveAIModel } from "@/app/aipanel/waveai-model";
 import { useT } from "@/app/i18n/i18n";
+import { workspaceStore } from "@/app/state/workspace.store";
+import { modalsModel } from "@/app/store/modalmodel";
 import type { WorkspaceStoreLayout } from "@/app/state/workspace.store";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import type { QuickAction } from "@/rterm-api/quickactions/types";
 import { atoms, createBlock, isDev } from "@/store/global";
+import { globalStore } from "@/app/store/jotaiStore";
+import { getConnectionsFacade } from "@/compat/connections";
 import { fireAndForget } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { AppsFloatingWindow } from "./apps-floating-window";
 import { AuditFloatingWindow } from "./audit-floating-window";
 import { FilesFloatingWindow } from "./files-floating-window";
-import { QuickActionsFloatingWindow, type QuickActionRunResult } from "./quick-actions-floating-window";
+import { useActiveWorkspaceContext } from "./active-context";
+import {
+    QuickActionsFloatingWindow,
+    type QuickActionRunContext,
+    type QuickActionRunResult,
+} from "./quick-actions-floating-window";
 import { SettingsFloatingWindow } from "./settings-floating-window";
 import { ToolsFloatingWindow } from "./tools-floating-window";
 import { WidgetActionButton } from "./widget-action-button";
@@ -21,6 +31,20 @@ import { WidgetItem } from "./widget-item";
 import { WidgetsMeasurement } from "./widgets-measurement";
 import type { WidgetDisplayMode } from "./widget-types";
 import { WorkspaceLayoutModel } from "./workspace-layout-model";
+import { explainLatestTerminalOutputInAI } from "@/app/view/term/explain-latest-output";
+
+function quotePathForShell(path: string): string {
+    return `'${path.replaceAll("'", `'\\''`)}'`;
+}
+
+function buildRunPromptFromSelection(currentInput: string, filePath: string): string {
+    const trimmedInput = currentInput.trim();
+    const quotedPath = quotePathForShell(filePath);
+    if (trimmedInput.startsWith("/run ") || trimmedInput.startsWith("run:")) {
+        return `${trimmedInput} ${quotedPath}`;
+    }
+    return `/run cat ${quotedPath}`;
+}
 
 function hasSurface(layout: WorkspaceStoreLayout, surfaceID: string): boolean {
     return layout.surfaces.some((surface) => surface.id === surfaceID);
@@ -30,6 +54,7 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
     const t = useT();
     const fullConfig = useAtomValue(atoms.fullConfigAtom);
     const hasCustomAIPresets = useAtomValue(atoms.hasCustomAIPresetsAtom);
+    const activeContext = useActiveWorkspaceContext();
     const [mode, setMode] = useState<WidgetDisplayMode>("normal");
     const containerRef = useRef<HTMLDivElement>(null);
     const measurementRef = useRef<HTMLDivElement>(null);
@@ -170,7 +195,7 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
     };
 
     const runQuickAction = useCallback(
-        async (action: QuickAction): Promise<QuickActionRunResult> => {
+        async (action: QuickAction, context: QuickActionRunContext): Promise<QuickActionRunResult> => {
             switch (action.id) {
                 case "ui.open_ai_panel":
                     WorkspaceLayoutModel.getInstance().setAIPanelVisible(true);
@@ -196,6 +221,102 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
                     }
                     setIsToolsOpen(true);
                     return { kind: "success", message: "Opened Tools with MCP controls." };
+                case "remote.open_profiles":
+                    modalsModel.pushModal("RemoteProfilesModal");
+                    return { kind: "success", message: "Remote profiles modal opened." };
+                case "workspace.create_local_terminal_tab":
+                    await workspaceStore.createTerminalTab();
+                    return { kind: "success", message: "Created local terminal tab." };
+                case "workspace.layout.split":
+                    await workspaceStore.updateLayout({ ...layout, mode: "split" });
+                    return { kind: "success", message: "Switched layout mode to split." };
+                case "workspace.layout.focus":
+                    await workspaceStore.updateLayout({ ...layout, mode: "focus" });
+                    return { kind: "success", message: "Switched layout mode to focus." };
+                case "workspace.layout.save":
+                    await workspaceStore.saveLayout();
+                    return { kind: "success", message: "Saved current workspace layout." };
+                case "remote.start_profile_session": {
+                    const profileID = context.selectedRemoteProfileID?.trim() ?? "";
+                    if (profileID === "") {
+                        return { kind: "error", message: "Select a remote profile first." };
+                    }
+                    const facade = await getConnectionsFacade();
+                    const response = await facade.createSessionFromRemoteProfile(profileID, {
+                        title: "Remote Shell",
+                    });
+                    if (response.workspace) {
+                        workspaceStore.hydrate(response.workspace);
+                    } else {
+                        await workspaceStore.refresh();
+                    }
+                    return {
+                        kind: "success",
+                        message: response.reused
+                            ? `Reused remote session for profile ${profileID}.`
+                            : `Opened new remote session for profile ${profileID}.`,
+                    };
+                }
+                case "terminal.explain_latest_output_in_ai": {
+                    if (activeContext.activeWidgetID === "" || activeContext.activeWidgetKind !== "terminal") {
+                        return { kind: "error", message: "No active terminal widget available for explain." };
+                    }
+                    const result = await explainLatestTerminalOutputInAI({
+                        widgetID: activeContext.activeWidgetID,
+                        actionSource: "quick_actions.terminal.explain_latest_output",
+                    });
+                    WorkspaceLayoutModel.getInstance().setAIPanelVisible(true);
+                    WaveAIModel.getInstance().focusInput();
+                    const suffix = result.commandAuditEventID ? ` (event ${result.commandAuditEventID})` : "";
+                    return { kind: "success", message: `Explained latest output for: ${result.command}${suffix}` };
+                }
+                case "files.use_selected_path_in_ai_prompt": {
+                    const selectedPath = activeContext.activeFilePath.trim();
+                    if (selectedPath === "") {
+                        return { kind: "error", message: "Select a file path in Files panel first." };
+                    }
+                    const model = WaveAIModel.getInstance();
+                    const currentInput = globalStore.get(model.inputAtom)?.trim() ?? "";
+                    globalStore.set(model.inputAtom, currentInput === "" ? selectedPath : `${currentInput} ${selectedPath}`);
+                    WorkspaceLayoutModel.getInstance().setAIPanelVisible(true);
+                    model.focusInput();
+                    return { kind: "success", message: "Inserted selected file path into AI prompt input." };
+                }
+                case "files.use_selected_path_in_run_prompt": {
+                    const selectedPath = activeContext.activeFilePath.trim();
+                    if (selectedPath === "") {
+                        return { kind: "error", message: "Select a file path in Files panel first." };
+                    }
+                    const model = WaveAIModel.getInstance();
+                    const currentInput = globalStore.get(model.inputAtom) ?? "";
+                    const nextInput = buildRunPromptFromSelection(currentInput, selectedPath);
+                    globalStore.set(model.inputAtom, nextInput);
+                    WorkspaceLayoutModel.getInstance().setAIPanelVisible(true);
+                    model.focusInput();
+                    return {
+                        kind: "success",
+                        message: "Prepared local /run prompt with selected file path. Nothing was executed automatically.",
+                    };
+                }
+                case "files.use_selected_path_in_remote_run_prompt": {
+                    const selectedPath = activeContext.activeFilePath.trim();
+                    if (selectedPath === "") {
+                        return { kind: "error", message: "Select a file path in Files panel first." };
+                    }
+                    if (activeContext.activeRemoteTarget == null) {
+                        return { kind: "error", message: "Active terminal target is local; switch to a remote terminal tab first." };
+                    }
+                    const model = WaveAIModel.getInstance();
+                    const currentInput = globalStore.get(model.inputAtom) ?? "";
+                    const nextInput = buildRunPromptFromSelection(currentInput, selectedPath);
+                    globalStore.set(model.inputAtom, nextInput);
+                    WorkspaceLayoutModel.getInstance().setAIPanelVisible(true);
+                    model.focusInput();
+                    return {
+                        kind: "success",
+                        message: `Prepared remote /run prompt for ${activeContext.activeRemoteTarget.connectionID}. Nothing was executed automatically.`,
+                    };
+                }
                 default:
                     return {
                         kind: "error",
@@ -203,7 +324,7 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
                     };
             }
         },
-        [auditEnabled, mcpEnabled, toolsEnabled],
+        [activeContext, auditEnabled, layout, mcpEnabled, toolsEnabled],
     );
 
     return (

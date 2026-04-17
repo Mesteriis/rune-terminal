@@ -1,15 +1,11 @@
 import { terminalStore } from "@/app/state/terminal.store";
-import { workspaceStore } from "@/app/state/workspace.store";
 import { WaveAIModel } from "@/app/aipanel/waveai-model";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
-import { getAuditFacade } from "@/compat/audit";
-import { createCompatApiFacade } from "@/compat/api";
-import { getConversationFacade } from "@/compat/conversation";
 import { getTerminalFacade } from "@/compat/terminal";
 import type { TerminalSnapshot } from "@/rterm-api/terminal/types";
 import { CenteredDiv } from "@/element/quickelems";
+import { explainLatestTerminalOutputInAI } from "./explain-latest-output";
 import { TermWrap } from "./termwrap";
-import { findLatestWidgetCommand } from "./explain-handoff";
 import { useEffect, useRef, useState } from "react";
 import "./term.scss";
 import "./xterm.css";
@@ -22,8 +18,6 @@ interface CompatTerminalViewProps {
 function isLocalConnection(connectionId?: string): boolean {
     return connectionId == null || connectionId === "" || connectionId === "local" || connectionId.startsWith("local:");
 }
-
-const EXPLAIN_RECENT_OUTPUT_WINDOW = 300;
 
 export function CompatTerminalView({ widgetId, connectionId }: CompatTerminalViewProps) {
     const rootRef = useRef<HTMLDivElement>(null);
@@ -165,54 +159,14 @@ export function CompatTerminalView({ widgetId, connectionId }: CompatTerminalVie
         setExplainStatus(null);
         setExplainError(null);
         try {
-            const [auditFacade, conversationFacade, terminalFacade, compatApi] = await Promise.all([
-                getAuditFacade(),
-                getConversationFacade(),
-                getTerminalFacade(),
-                createCompatApiFacade(),
-            ]);
-            const [auditResponse, terminalSnapshot, bootstrap] = await Promise.all([
-                auditFacade.getEvents(200),
-                terminalFacade.getSnapshot(widgetId),
-                compatApi.clients.bootstrap.getBootstrap(),
-            ]);
-            const commandIdentity = findLatestWidgetCommand(auditResponse.events ?? [], widgetId);
-            if (commandIdentity == null || commandIdentity.command === "") {
-                setExplainError(
-                    "No recent command execution was found for this terminal widget. Run a command through /run or tools first.",
-                );
-                return;
-            }
-            const command = commandIdentity.command;
-            const fallbackWorkspaceID = bootstrap.workspace?.id ?? workspaceStore.getSnapshot().active.oid ?? "";
-            const workspaceID = fallbackWorkspaceID.trim() || undefined;
-            const repoRoot = bootstrap.repo_root?.trim() || undefined;
-            const fromSeq = terminalSnapshot.next_seq > EXPLAIN_RECENT_OUTPUT_WINDOW
-                ? terminalSnapshot.next_seq - EXPLAIN_RECENT_OUTPUT_WINDOW
-                : 0;
-            const targetSession = terminalSnapshot.state.connection_kind === "ssh" ? "remote" : "local";
-            const targetConnectionID =
-                terminalSnapshot.state.connection_id || (targetSession === "local" ? "local" : undefined);
-            await conversationFacade.explainTerminalCommand({
-                prompt: `Explain the latest observed output for command: ${command}`,
-                command,
-                widget_id: widgetId,
-                from_seq: fromSeq,
-                command_audit_event_id: commandIdentity.commandAuditEventId,
-                context: {
-                    workspace_id: workspaceID,
-                    active_widget_id: widgetId,
-                    repo_root: repoRoot,
-                    action_source: "terminal.widget.explain_latest_output",
-                    target_session: targetSession,
-                    target_connection_id: targetConnectionID,
-                    widget_context_enabled: true,
-                },
+            const result = await explainLatestTerminalOutputInAI({
+                widgetID: widgetId,
+                actionSource: "terminal.widget.explain_latest_output",
             });
             WorkspaceLayoutModel.getInstance().setAIPanelVisible(true);
             WaveAIModel.getInstance().focusInput();
-            const commandIdentitySuffix = commandIdentity.commandAuditEventId ? ` (event ${commandIdentity.commandAuditEventId})` : "";
-            setExplainStatus(`Explained latest output for: ${command}${commandIdentitySuffix}`);
+            const commandIdentitySuffix = result.commandAuditEventID ? ` (event ${result.commandAuditEventID})` : "";
+            setExplainStatus(`Explained latest output for: ${result.command}${commandIdentitySuffix}`);
         } catch (error) {
             setExplainError(error instanceof Error ? error.message : String(error));
         } finally {

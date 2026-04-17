@@ -1,5 +1,7 @@
 import { getQuickActionsFacade } from "@/compat";
+import { getConnectionsFacade } from "@/compat/connections";
 import { useActiveWorkspaceContext } from "@/app/workspace/active-context";
+import type { RemoteProfile } from "@/rterm-api/connections/types";
 import type { QuickAction } from "@/rterm-api/quickactions/types";
 import type { FloatingWindowProps } from "@/app/workspace/widget-types";
 import {
@@ -19,12 +21,18 @@ export interface QuickActionRunResult {
     kind?: "success" | "error";
 }
 
+export interface QuickActionRunContext {
+    selectedRemoteProfileID?: string;
+}
+
 interface QuickActionsFloatingWindowProps extends FloatingWindowProps {
-    onRunAction: (action: QuickAction) => Promise<QuickActionRunResult>;
+    onRunAction: (action: QuickAction, context: QuickActionRunContext) => Promise<QuickActionRunResult>;
 }
 
 const QuickActionsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onRunAction }: QuickActionsFloatingWindowProps) => {
     const [actions, setActions] = useState<QuickAction[]>([]);
+    const [remoteProfiles, setRemoteProfiles] = useState<RemoteProfile[]>([]);
+    const [selectedRemoteProfileID, setSelectedRemoteProfileID] = useState("");
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [runError, setRunError] = useState<string | null>(null);
@@ -58,19 +66,36 @@ const QuickActionsFloatingWindow = memo(({ isOpen, onClose, referenceElement, on
         setRunStatus(null);
         setRunningActionID(null);
         setFilterValue("");
+        setSelectedRemoteProfileID("");
 
         void (async () => {
             try {
-                const facade = await getQuickActionsFacade();
-                const nextActions = await facade.listQuickActions();
+                const [quickActionsFacade, connectionsFacade] = await Promise.all([
+                    getQuickActionsFacade(),
+                    getConnectionsFacade(),
+                ]);
+                const [actionsResult, remoteProfilesResult] = await Promise.allSettled([
+                    quickActionsFacade.listQuickActions(),
+                    connectionsFacade.listRemoteProfiles(),
+                ]);
                 if (cancelled) {
                     return;
                 }
-                setActions(nextActions);
+                if (actionsResult.status !== "fulfilled") {
+                    throw actionsResult.reason;
+                }
+                setActions(actionsResult.value);
+                const profiles =
+                    remoteProfilesResult.status === "fulfilled"
+                        ? (remoteProfilesResult.value.profiles ?? [])
+                        : [];
+                setRemoteProfiles(profiles);
+                setSelectedRemoteProfileID(profiles[0]?.id ?? "");
             } catch (error) {
                 if (!cancelled) {
                     setLoadError(error instanceof Error ? error.message : String(error));
                     setActions([]);
+                    setRemoteProfiles([]);
                 }
             } finally {
                 if (!cancelled) {
@@ -112,6 +137,9 @@ const QuickActionsFloatingWindow = memo(({ isOpen, onClose, referenceElement, on
                 }
                 return { available: true };
             case "remote_profile_id":
+                if (selectedRemoteProfileID !== "") {
+                    return { available: true };
+                }
                 return { available: false, reason: "Requires explicit remote profile selection." };
             default:
                 return { available: false, reason: "Requires explicit context selection." };
@@ -152,7 +180,9 @@ const QuickActionsFloatingWindow = memo(({ isOpen, onClose, referenceElement, on
         setRunError(null);
         setRunStatus(null);
         try {
-            const result = await onRunAction(action);
+            const result = await onRunAction(action, {
+                selectedRemoteProfileID: selectedRemoteProfileID || undefined,
+            });
             if (result.kind === "error") {
                 setRunError(result.message);
                 return;
@@ -193,6 +223,25 @@ const QuickActionsFloatingWindow = memo(({ isOpen, onClose, referenceElement, on
                     onChange={(event) => setFilterValue(event.target.value)}
                     data-testid="quick-actions-filter"
                 />
+                <div className="mb-2 rounded border border-border bg-black/20 px-2 py-1.5 text-[11px] text-secondary">
+                    <div className="mb-1">remote profile context</div>
+                    <select
+                        className="w-full rounded border border-border bg-black/20 p-1 text-[11px] text-white"
+                        value={selectedRemoteProfileID}
+                        onChange={(event) => setSelectedRemoteProfileID(event.target.value)}
+                        data-testid="quick-actions-remote-profile-select"
+                    >
+                        {remoteProfiles.length === 0 ? (
+                            <option value="">No remote profiles</option>
+                        ) : (
+                            remoteProfiles.map((profile) => (
+                                <option key={profile.id} value={profile.id}>
+                                    {profile.name || profile.host}
+                                </option>
+                            ))
+                        )}
+                    </select>
+                </div>
                 {loading ? (
                     <div className="text-sm text-secondary">Loading quick actions...</div>
                 ) : loadError ? (
