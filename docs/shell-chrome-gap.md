@@ -5,6 +5,8 @@ Phase: `1.0.0-rc1` hardening
 
 This document maps the current active compat shell against the repo-root Tide shell chrome reference in [shell-chrome-reference.md](./shell-chrome-reference.md).
 
+Status: the release-blocking gaps recorded here were closed in this batch and validated in [shell-chrome-validation.md](./shell-chrome-validation.md).
+
 ## Current shell chrome behavior
 
 Visible current shell characteristics in the active compat shell:
@@ -128,4 +130,4 @@ Release-blocking:
 
 ## Summary
 
-The current compat shell is already close to Tide at the primitive level because the tab and switcher components remain Tide-derived. The remaining release-blocking shell chrome gaps are concentrated in the active top-shell action zone and in the broken AI-open behavior that makes the shell control hierarchy unreliable.
+The current compat shell was already close to Tide at the primitive level because the tab and switcher components remained Tide-derived. The release-blocking shell chrome gaps were concentrated in the active top-shell action zone and in the broken AI-open behavior that made the shell control hierarchy unreliable. Those gaps are now closed on the active compat shell.

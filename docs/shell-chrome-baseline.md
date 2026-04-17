@@ -4,6 +4,8 @@ Date: `2026-04-17`
 
 This baseline records the specific shell-chrome issues corrected in the shell parity batch.
 
+Status: all release-blocking shell-chrome issues listed here are fixed and validated in [shell-chrome-validation.md](./shell-chrome-validation.md).
+
 ## Issues fixed in this batch
 
 - The active compat top bar no longer renders the extra `Add Remote Tab` and `Remote Profiles` buttons that made the Tide-derived action zone heavier than the reference shell.

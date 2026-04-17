@@ -57,7 +57,7 @@ Status values:
 | Quick actions metadata workflow | workflow | Explicit action catalog with context requirements | Quick actions API/UI metadata and gating are present | FULL | Headed browser validation exists |
 | Operator cross-surface chain | workflow | Files -> AI/`/run`, tools, audit, explain chain | Chain is implemented with explicit handoffs | FULL | Operator workflow validation exists |
 | Release validation gates | workflow | Executable release gates with truthful pass/fail state | `npm run validate` + `npm run tauri:dev` smoke are documented gates | FULL | Full-lint debt is tracked separately |
-| Shell chrome parity | UX | Compact TideTerm-recognizable top shell density and hierarchy | Improved but still not fully matched | PARTIAL | UX parity remains active hardening area |
+| Shell chrome parity | UX | Compact TideTerm-recognizable top shell density and hierarchy | Compact Tide-aligned shell chrome with validated AI/switcher/tab framing | FULL | Desktop + headed validation and focused UI coverage exist |
 | Terminal advanced affordances | UX | Multi-session sidebar + deep find/search UI | Not present on active compat path | MISSING | Explicitly out of current release scope |
 | Attachment management UX breadth | UX | Managed attachment storage/import/gallery-style UX | Basic local references exist, broad UX not present | PARTIAL | Expanded attachment UX remains post-1.0 |
 | Streaming AI responses | UX | Streamed assistant responses in panel | Not implemented in current release path | MISSING | Listed in known limitations |

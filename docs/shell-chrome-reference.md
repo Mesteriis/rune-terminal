@@ -5,6 +5,8 @@ Phase: `1.0.0-rc1` hardening
 
 This document uses the repo-root Tide sources as the primary reference for shell chrome parity in this batch.
 
+The extracted parity requirements below are the ones validated to full parity in [shell-chrome-validation.md](./shell-chrome-validation.md).
+
 ## Exact Tide source files inspected
 
 - `tideterm/frontend/app/tab/tabbar.tsx`

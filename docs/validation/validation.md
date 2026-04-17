@@ -25,6 +25,7 @@ Do not append new free-form log blocks in this file. Update the relevant domain 
 
 - [../navigation-parity-validation.md](../navigation-parity-validation.md)
 - [../panels-parity-validation.md](../panels-parity-validation.md)
+- [../shell-chrome-validation.md](../shell-chrome-validation.md)
 - [../shell-stretch-baseline.md](../shell-stretch-baseline.md)
 - [../terminal-parity-validation.md](../terminal-parity-validation.md)
 

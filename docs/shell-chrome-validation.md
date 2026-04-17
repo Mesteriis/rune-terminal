@@ -53,7 +53,13 @@ This validation used the repo-root Tide sources as the primary reference for she
    - click the top-shell `AI` control
 6. Captured the visible browser state:
    - `/tmp/shell-chrome-validation-headed.png`
-7. Ran the release gate sweep on the same code state:
+7. Added and ran the focused shell-chrome UI coverage:
+   - `npx playwright test e2e/shell-chrome-parity.spec.ts -c e2e/playwright.config.ts --headed`
+   - result: `2 passed`
+8. Ran the headed regression sweep on the final code state:
+   - `npx playwright test e2e/shell-chrome-parity.spec.ts e2e/navigation-parity.spec.ts e2e/quick-actions.spec.ts e2e/structured-execution-block.spec.ts e2e/window-behavior.spec.ts e2e/terminal-parity.spec.ts e2e/panels-parity.spec.ts -c e2e/playwright.config.ts --headed`
+   - result: `15 passed`
+9. Ran the release gate sweep on the same code state:
    - `npm run validate`
    - result: passed with existing frontend hook warnings only
 
@@ -89,8 +95,10 @@ This validation used the repo-root Tide sources as the primary reference for she
   - the real Tauri window showed the same compact top bar, left AI column, centered tab/content framing, and slim right utility rail as the headed browser
   - no extra title band, broad padding, clipping, or oversized action cluster appeared in the real desktop shell
 - No-break regressions on the same code state:
+  - focused shell-chrome UI coverage passed in a visible browser
+  - the final headed regression sweep passed for shell chrome, terminal, panels, navigation, quick actions, structured execution, and window behavior
   - `npm run validate` passed
-  - prior headed parity sweeps on this code state continued to pass for terminal, panels, navigation, quick actions, structured execution, and window behavior
+  - an earlier combined sweep while an extra live desktop session was still open produced one transient native file-drop miss in `e2e/terminal-parity.spec.ts`; the isolated rerun and the final full sweep both passed cleanly
 
 ## Remaining mismatch
 
