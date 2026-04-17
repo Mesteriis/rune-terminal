@@ -88,6 +88,17 @@ function canEnableCut(): boolean {
     return !util.isBlank(sel?.toString() ?? "") && canEnablePaste();
 }
 
+function registerDebugContextMenu(menu: ContextMenuItem[]): void {
+    if (!import.meta.env.DEV) {
+        return;
+    }
+    (
+        window as typeof window & {
+            __RTERM_LAST_CONTEXT_MENU?: ContextMenuItem[];
+        }
+    ).__RTERM_LAST_CONTEXT_MENU = menu;
+}
+
 async function getClipboardURL(): Promise<URL | null> {
     try {
         const clipboardText = await navigator.clipboard.readText();
@@ -190,6 +201,7 @@ async function handleContextMenu(e: React.MouseEvent<HTMLDivElement>) {
             },
         });
     }
+    registerDebugContextMenu(menu);
     ContextMenuModel.showContextMenu(menu, e);
 }
 

@@ -18,6 +18,25 @@ interface CompatTerminalViewProps {
     connectionId?: string;
 }
 
+function registerCompatTerminalForDebug(widgetId: string, termWrap: TermWrap | null) {
+    if (!import.meta.env.DEV) {
+        return;
+    }
+    const debugWindow = window as typeof window & {
+        __RTERM_COMPAT_TERMS?: Record<string, TermWrap>;
+    };
+    if (termWrap == null) {
+        if (debugWindow.__RTERM_COMPAT_TERMS != null) {
+            delete debugWindow.__RTERM_COMPAT_TERMS[widgetId];
+        }
+        return;
+    }
+    if (debugWindow.__RTERM_COMPAT_TERMS == null) {
+        debugWindow.__RTERM_COMPAT_TERMS = {};
+    }
+    debugWindow.__RTERM_COMPAT_TERMS[widgetId] = termWrap;
+}
+
 function isLocalConnection(connectionId?: string): boolean {
     return connectionId == null || connectionId === "" || connectionId === "local" || connectionId.startsWith("local:");
 }
@@ -119,10 +138,12 @@ export function CompatTerminalView({ widgetId, connectionId }: CompatTerminalVie
             }
         ).isLocalConnection = () => isLocalConnection(connectionId);
         termWrapRef.current = termWrap;
+        registerCompatTerminalForDebug(widgetId, termWrap);
         void termWrap.initTerminal();
 
         return () => {
             termWrap.dispose();
+            registerCompatTerminalForDebug(widgetId, null);
             termWrapRef.current = null;
         };
     }, [connectionId, widgetId]);
