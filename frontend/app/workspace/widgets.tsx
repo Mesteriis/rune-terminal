@@ -225,7 +225,7 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
                     modalsModel.pushModal("RemoteProfilesModal");
                     return { kind: "success", message: "Remote profiles modal opened." };
                 case "workspace.create_local_terminal_tab":
-                    await workspaceStore.createTerminalTab();
+                    await workspaceStore.createTerminalTab("local");
                     return { kind: "success", message: "Created local terminal tab." };
                 case "workspace.layout.split":
                     await workspaceStore.updateLayout({ ...layout, mode: "split" });

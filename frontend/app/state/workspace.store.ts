@@ -531,9 +531,11 @@ class WorkspaceStore {
         await this.refresh();
     }
 
-    async createTerminalTab(): Promise<string> {
+    async createTerminalTab(connectionId?: string): Promise<string> {
         const facade = await getWorkspaceFacade();
-        const response = await facade.createTerminalTab();
+        const response = await facade.createTerminalTab({
+            connection_id: connectionId,
+        });
         if (response?.workspace) {
             this.setState(adaptWorkspaceFromApi(response.workspace, this.state.active));
         }
