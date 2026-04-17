@@ -7,8 +7,8 @@ It is intentionally operational, not narrative.
 
 - The workspace now owns both `tabs` and `widgets`.
 - There is exactly one active tab and one active widget.
-- In the current parity slice, each tab references one primary widget.
-- Focusing a tab synchronizes the active widget to that tab's primary widget.
+- Tabs can now contain multiple widgets via backend-owned `window_layout` trees (`leaf` / `split`).
+- Focusing a tab synchronizes the active widget to the first visible leaf in that tab's window layout.
 - Focusing a widget also synchronizes the active tab if that widget belongs to a known tab.
 - Tabs are the shell-level navigation unit.
 - Widgets remain the secondary inventory used by the right-side dock and terminal/runtime binding.
@@ -32,6 +32,12 @@ It is intentionally operational, not narrative.
   - `Use Selected Path In /run Prompt`
   - both actions are explicit operator clicks and do not auto-send or auto-execute
 - Widgets can now be bound to a specific connection ID.
+- Widget creation in an active tab supports explicit split-side insertion (`left`, `right`, `top`, `bottom`) against a target widget.
+- Widget drag/drop split-move is explicit and backend-backed:
+  - `POST /api/v1/workspace/widgets/move-split`
+  - side selection is explicit (`left`, `right`, `top`, `bottom`)
+  - empty direction is rejected (no hidden default for move path)
+- Tab window layout metadata is persisted/restored as part of workspace snapshot truth.
 - Workspace snapshot now carries explicit layout composition truth:
   - active layout (`layout`)
   - saved layout presets (`layouts`)

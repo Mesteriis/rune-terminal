@@ -5,6 +5,29 @@
 - отсутствие проверки фиксируется как `NOT RUN`, а не маскируется под успешный результат
 - записи ниже основаны только на audit trail из `docs/tideterm-feature-inventory.md`, `docs/feature-parity-audit.md` и `docs/feature-gap-summary.md`
 
+<a id="window-behavior-parity"></a>
+## Window behavior parity (split/focus/restore)
+
+- Date: `2026-04-17`
+- Status: `VERIFIED`
+- Validation steps:
+  - backend/runtime checks:
+    - `./scripts/go.sh test ./core/workspace ./core/transport/httpapi ./core/app -count=1` -> `ok`
+  - frontend build:
+    - `npm --prefix frontend run build` -> `pass`
+  - UI automation:
+    - `npm run test:ui -- e2e/window-behavior.spec.ts` -> `pass`
+    - full suite regression check: `npm run test:ui` -> `pass` (`quick-actions`, `structured-execution-block`, `window-behavior`)
+  - real visible browser run:
+    - `npx playwright test -c e2e/playwright.config.ts e2e/window-behavior.spec.ts --headed` -> `pass`
+    - headed flow covered split-on-add, directional drag/drop (`left/right/top/bottom`), focus updates, reload restore, and terminal/AI/tools/audit/MCP/remote-context surfaces.
+- Result:
+  - release-blocking window behavior parity slice is implemented on active compat path with backend-owned layout truth.
+  - split creation and drop-side moves are explicit API-backed actions and remain consistent with rendered layout.
+  - active/focus and reload restore behavior stayed coherent through the headed run.
+- Notes:
+  - detailed headed flow and parity mismatch notes are in `docs/window-behavior-validation.md`.
+
 <a id="workspace-layout-composition"></a>
 ## Workspace layout composition
 

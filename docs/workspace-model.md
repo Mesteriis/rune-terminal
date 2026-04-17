@@ -21,7 +21,11 @@ A workspace contains:
 Tabs are the primary shell-navigation unit.
 Widgets are the workspace-side secondary inventory.
 
-In the current parity slice, each tab owns one primary widget, so switching tabs also switches the active widget. This keeps the new model honest while moving toward TideTerm tabbar behavior.
+Each tab owns:
+- `widget_ids` inventory
+- `window_layout` tree (`leaf` / binary `split` with `horizontal`/`vertical` axis)
+
+Switching tabs synchronizes active widget to the first visible leaf in the target tab layout.
 
 Operations:
 
@@ -32,6 +36,8 @@ Operations:
 - rename tab
 - pin or unpin tab
 - create terminal tab
+- create split terminal widget in active/target tab area
+- move existing widget by explicit split side (`left/right/top/bottom`)
 - close tab
 - list widgets
 - get active widget
@@ -51,6 +57,7 @@ Persisted fields are intentionally limited to restore-critical metadata:
 
 - workspace id/name
 - tab ordering, pinned state, title, tab-widget linkage
+- tab window layout tree
 - widget inventory and terminal/connection linkage
 - active tab and active widget ids
 - layout composition metadata (layout id, mode, active surfaces/regions, active focus surface)
@@ -69,4 +76,4 @@ The old stack mixed layout state, transport identifiers, block metadata and UI v
 - focus
 - typed widget descriptors
 
-Once those contracts are stable, richer layout trees can be layered on top without making the workspace service aware of renderer internals.
+The model now includes a minimal backend-owned split tree while still avoiding renderer-owned semantics in the backend.
