@@ -138,6 +138,9 @@ func (r *Runtime) InvokeMCP(ctx context.Context, request plugins.MCPInvokeReques
 	if r.MCP == nil {
 		return plugins.MCPInvokeResult{}, ErrMCPRuntimeNotConfigured
 	}
+	if strings.TrimSpace(request.WorkspaceID) == "" {
+		return plugins.MCPInvokeResult{}, fmt.Errorf("%w: workspace_id is required", plugins.ErrInvalidPluginSpec)
+	}
 	result, err := r.MCP.Invoke(ctx, request)
 	auditEvent := audit.Event{
 		ToolName:     "mcp.invoke",

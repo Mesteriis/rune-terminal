@@ -176,6 +176,7 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
     if (!isOpen) return null;
 
     const selectedTool = tools.find((tool) => tool.name === selectedToolName) ?? null;
+    const includeTerminalTarget = selectedTool?.name === "term.send_input" || selectedTool?.name === "term.interrupt";
     const selectedToolSchema = selectedTool?.input_schema;
     const canUseSelectedFileInToolInput =
         activeContext.activeFilePath !== "" &&
@@ -454,7 +455,9 @@ const ToolsFloatingWindow = memo(({ isOpen, onClose, referenceElement, onAuditCh
             const request: ToolExecutionRequest = {
                 tool_name: selectedTool.name,
                 input: parsedInput,
-                context: buildToolExecutionContext(repoRoot, "workspace.tools.execute"),
+                context: buildToolExecutionContext(repoRoot, "workspace.tools.execute", {
+                    includeTerminalTarget,
+                }),
             };
             const response = await facade.executeTool(request);
             setResponseValue(response);

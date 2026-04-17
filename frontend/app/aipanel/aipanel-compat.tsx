@@ -939,7 +939,9 @@ const AIPanelCompatInner = memo(() => {
             try {
                 const facade = await getConversationFacade();
                 const context = buildCompatConversationContext(repoRoot, "ai.panel.submit_message");
-                const toolContext = buildToolExecutionContext(repoRoot, "ai.panel.run_command");
+                const toolContext = buildToolExecutionContext(repoRoot, "ai.panel.run_command", {
+                    includeTerminalTarget: true,
+                });
                 const runCommand = parseRunCommandPrompt(input);
                 if (runCommand?.kind === "invalid") {
                     model.setError(runCommand.message);

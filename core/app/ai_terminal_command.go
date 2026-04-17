@@ -40,6 +40,8 @@ const runCommandOutputEmptyMessage = "No terminal output was captured yet."
 var (
 	ErrExecutionBlockNotFound         = errors.New("execution block not found")
 	ErrExecutionBlockIdentityMismatch = errors.New("execution block identity mismatch")
+	ErrExecutionTargetRequired        = errors.New("execution target is required")
+	ErrExecutionTargetMismatch        = errors.New("execution target mismatch")
 )
 
 func (r *Runtime) ExplainTerminalCommand(
@@ -53,7 +55,7 @@ func (r *Runtime) ExplainTerminalCommand(
 		return ExplainTerminalCommandResult{}, conversation.ErrInvalidPrompt
 	}
 
-	widgetID, err := r.resolveWidgetID(firstNonEmpty(request.WidgetID, conversationContext.ActiveWidgetID))
+	widgetID, err := requireExplicitExplainExecutionTarget(request, conversationContext)
 	if err != nil {
 		return ExplainTerminalCommandResult{}, err
 	}
@@ -75,6 +77,16 @@ func (r *Runtime) ExplainTerminalCommand(
 			strings.TrimSpace(existingBlock.Target.WidgetID) != widgetID {
 			return ExplainTerminalCommandResult{}, ErrExecutionBlockIdentityMismatch
 		}
+		targetSession := strings.TrimSpace(conversationContext.TargetSession)
+		if strings.TrimSpace(existingBlock.Target.TargetSession) != "" &&
+			strings.TrimSpace(existingBlock.Target.TargetSession) != targetSession {
+			return ExplainTerminalCommandResult{}, ErrExecutionBlockIdentityMismatch
+		}
+		targetConnectionID := strings.TrimSpace(conversationContext.TargetConnectionID)
+		if strings.TrimSpace(existingBlock.Target.TargetConnectionID) != "" &&
+			strings.TrimSpace(existingBlock.Target.TargetConnectionID) != targetConnectionID {
+			return ExplainTerminalCommandResult{}, ErrExecutionBlockIdentityMismatch
+		}
 		workspaceID := strings.TrimSpace(conversationContext.WorkspaceID)
 		if workspaceID != "" &&
 			strings.TrimSpace(existingBlock.Target.WorkspaceID) != "" &&
@@ -84,6 +96,9 @@ func (r *Runtime) ExplainTerminalCommand(
 	}
 	snapshot, err := r.Terminals.Snapshot(widgetID, request.FromSeq)
 	if err != nil {
+		return ExplainTerminalCommandResult{}, err
+	}
+	if err := validateExplainSnapshotTarget(snapshot.State, conversationContext); err != nil {
 		return ExplainTerminalCommandResult{}, err
 	}
 	outputExcerpt := summarizeTerminalOutput(command, snapshot.Chunks)
@@ -333,6 +348,65 @@ func containsString(values []string, expected string) bool {
 		}
 	}
 	return false
+}
+
+func requireExplicitExplainExecutionTarget(
+	request ExplainTerminalCommandRequest,
+	conversationContext ConversationContext,
+) (string, error) {
+	widgetID := strings.TrimSpace(request.WidgetID)
+	if widgetID == "" {
+		return "", fmt.Errorf("%w: widget_id is required", ErrExecutionTargetRequired)
+	}
+	activeWidgetID := strings.TrimSpace(conversationContext.ActiveWidgetID)
+	if activeWidgetID == "" {
+		return "", fmt.Errorf("%w: context.active_widget_id is required", ErrExecutionTargetRequired)
+	}
+	if activeWidgetID != widgetID {
+		return "", fmt.Errorf(
+			"%w: context.active_widget_id %q does not match widget_id %q",
+			ErrExecutionTargetMismatch,
+			activeWidgetID,
+			widgetID,
+		)
+	}
+	if strings.TrimSpace(conversationContext.TargetSession) == "" {
+		return "", fmt.Errorf("%w: context.target_session is required", ErrExecutionTargetRequired)
+	}
+	if strings.TrimSpace(conversationContext.TargetConnectionID) == "" {
+		return "", fmt.Errorf("%w: context.target_connection_id is required", ErrExecutionTargetRequired)
+	}
+	return widgetID, nil
+}
+
+func validateExplainSnapshotTarget(state terminal.State, conversationContext ConversationContext) error {
+	expectedSession := strings.TrimSpace(conversationContext.TargetSession)
+	actualSession := terminalSessionTarget(state.ConnectionKind)
+	if expectedSession != actualSession {
+		return fmt.Errorf(
+			"%w: requested %s session but widget %s is %s",
+			ErrExecutionTargetMismatch,
+			expectedSession,
+			state.WidgetID,
+			actualSession,
+		)
+	}
+
+	expectedConnectionID := strings.TrimSpace(conversationContext.TargetConnectionID)
+	actualConnectionID := strings.TrimSpace(state.ConnectionID)
+	if actualConnectionID == "" && actualSession == "local" {
+		actualConnectionID = "local"
+	}
+	if expectedConnectionID != actualConnectionID {
+		return fmt.Errorf(
+			"%w: requested connection %s but widget %s is bound to %s",
+			ErrExecutionTargetMismatch,
+			expectedConnectionID,
+			state.WidgetID,
+			actualConnectionID,
+		)
+	}
+	return nil
 }
 
 func terminalSessionTarget(connectionKind string) string {

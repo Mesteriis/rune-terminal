@@ -165,6 +165,7 @@ func TestInvokeMCPRespectsLifecycleControls(t *testing.T) {
 	handler.ServeHTTP(invokeRecorder, authedJSONRequest(t, http.MethodPost, "/api/v1/mcp/invoke", map[string]any{
 		"server_id":             "mcp.test",
 		"allow_on_demand_start": true,
+		"workspace_id":          "ws-default",
 	}))
 	if invokeRecorder.Code != http.StatusConflict {
 		t.Fatalf("expected disabled invoke=409, got %d (%s)", invokeRecorder.Code, invokeRecorder.Body.String())
@@ -181,6 +182,7 @@ func TestInvokeMCPRespectsLifecycleControls(t *testing.T) {
 		"server_id":             "mcp.test",
 		"allow_on_demand_start": true,
 		"include_context":       true,
+		"workspace_id":          "ws-default",
 	}))
 	if invokeRecorder.Code != http.StatusOK {
 		t.Fatalf("expected invoke=200, got %d (%s)", invokeRecorder.Code, invokeRecorder.Body.String())
@@ -243,5 +245,36 @@ func TestInvokeMCPAppendsAuditWithExplicitProvenance(t *testing.T) {
 	}
 	if invokeAudit.ActionSource != "test.mcp.invoke" || invokeAudit.WorkspaceID != "ws-default" {
 		t.Fatalf("expected explicit mcp provenance fields, got %#v", *invokeAudit)
+	}
+}
+
+func TestInvokeMCPRejectsMissingWorkspaceTarget(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPost, "/api/v1/mcp/invoke", map[string]any{
+		"server_id":             "mcp.test",
+		"allow_on_demand_start": true,
+	}))
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d (%s)", recorder.Code, recorder.Body.String())
+	}
+
+	var payload struct {
+		Error struct {
+			Code    string `json:"code"`
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
+	}
+	if payload.Error.Code != "invalid_mcp_request" {
+		t.Fatalf("unexpected error code: %q", payload.Error.Code)
+	}
+	if payload.Error.Message == "" {
+		t.Fatalf("expected explicit error message, got %#v", payload)
 	}
 }

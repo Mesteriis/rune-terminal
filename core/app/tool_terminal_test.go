@@ -77,7 +77,12 @@ func TestTermInterruptToolInterruptsActiveWidget(t *testing.T) {
 	}
 	tool := runtime.termInterruptTool()
 
-	plan, err := tool.Plan(interruptToolInput{}, toolruntime.ExecutionContext{})
+	execCtx := toolruntime.ExecutionContext{
+		ActiveWidgetID:     "term-main",
+		TargetSession:      "local",
+		TargetConnectionID: "local",
+	}
+	plan, err := tool.Plan(interruptToolInput{WidgetID: "term-main"}, execCtx)
 	if err != nil {
 		t.Fatalf("Plan error: %v", err)
 	}
@@ -85,7 +90,7 @@ func TestTermInterruptToolInterruptsActiveWidget(t *testing.T) {
 		t.Fatalf("unexpected affected widgets: %#v", plan.Operation.AffectedWidgets)
 	}
 
-	output, err := tool.Execute(context.Background(), toolruntime.ExecutionContext{}, interruptToolInput{})
+	output, err := tool.Execute(context.Background(), execCtx, interruptToolInput{WidgetID: "term-main"})
 	if err != nil {
 		t.Fatalf("Execute error: %v", err)
 	}
@@ -104,7 +109,34 @@ func TestTermInterruptToolInterruptsActiveWidget(t *testing.T) {
 	}
 }
 
-func TestTermSendInputToolRejectsMismatchedSessionTarget(t *testing.T) {
+func TestTermSendInputToolRequiresExplicitTargetContext(t *testing.T) {
+	t.Parallel()
+
+	runtime := &Runtime{
+		Workspace: workspace.NewService(workspace.BootstrapDefault()),
+		Terminals: terminal.NewService(interruptFakeLauncher{process: &interruptFakeProcess{
+			outputCh: make(chan []byte, 1),
+			waitCh:   make(chan struct{}),
+		}}),
+	}
+	tool := runtime.termSendInputTool()
+	_, err := tool.Execute(
+		context.Background(),
+		toolruntime.ExecutionContext{},
+		sendInputToolInput{
+			WidgetID: "term-main",
+			Text:     "pwd",
+		},
+	)
+	if err == nil {
+		t.Fatalf("expected explicit target context error")
+	}
+	if got := toolruntime.ErrorCodeOf(err); got != toolruntime.ErrorCodeInvalidInput {
+		t.Fatalf("expected invalid input error code, got %q (%v)", got, err)
+	}
+}
+
+func TestTermSendInputToolRejectsLocalCommandSentToRemoteTarget(t *testing.T) {
 	t.Parallel()
 
 	process := &interruptFakeProcess{
@@ -128,15 +160,63 @@ func TestTermSendInputToolRejectsMismatchedSessionTarget(t *testing.T) {
 	_, err := tool.Execute(
 		context.Background(),
 		toolruntime.ExecutionContext{
+			ActiveWidgetID:     "term-main",
 			TargetSession:      "remote",
 			TargetConnectionID: "conn-ssh",
 		},
 		sendInputToolInput{
-			Text: "pwd",
+			WidgetID: "term-main",
+			Text:     "pwd",
 		},
 	)
 	if err == nil {
 		t.Fatalf("expected session target mismatch error")
+	}
+	if got := toolruntime.ErrorCodeOf(err); got != toolruntime.ErrorCodeInvalidInput {
+		t.Fatalf("expected invalid input error code, got %q (%v)", got, err)
+	}
+}
+
+func TestTermSendInputToolRejectsRemoteCommandSentToLocalTarget(t *testing.T) {
+	t.Parallel()
+
+	process := &interruptFakeProcess{
+		outputCh: make(chan []byte, 1),
+		waitCh:   make(chan struct{}),
+	}
+	service := terminal.NewService(interruptFakeLauncher{process: process})
+	if _, err := service.StartSession(context.Background(), terminal.LaunchOptions{
+		WidgetID: "term-remote",
+		Shell:    "/bin/sh",
+		Connection: terminal.ConnectionSpec{
+			ID:   "conn-ssh",
+			Name: "Remote",
+			Kind: "ssh",
+		},
+	}); err != nil {
+		t.Fatalf("StartSession error: %v", err)
+	}
+	t.Cleanup(service.Close)
+
+	runtime := &Runtime{
+		Workspace: workspace.NewService(workspace.BootstrapDefault()),
+		Terminals: service,
+	}
+	tool := runtime.termSendInputTool()
+	_, err := tool.Execute(
+		context.Background(),
+		toolruntime.ExecutionContext{
+			ActiveWidgetID:     "term-remote",
+			TargetSession:      "local",
+			TargetConnectionID: "local",
+		},
+		sendInputToolInput{
+			WidgetID: "term-remote",
+			Text:     "pwd",
+		},
+	)
+	if err == nil {
+		t.Fatalf("expected remote/local mismatch error")
 	}
 	if got := toolruntime.ErrorCodeOf(err); got != toolruntime.ErrorCodeInvalidInput {
 		t.Fatalf("expected invalid input error code, got %q (%v)", got, err)

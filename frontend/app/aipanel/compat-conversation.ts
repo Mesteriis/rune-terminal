@@ -66,7 +66,7 @@ export function mapConversationSnapshot(snapshot: ConversationSnapshot | null | 
 }
 
 export function buildCompatConversationContext(repoRoot: string, actionSource?: string): ConversationContext {
-    const context = buildToolExecutionContext(repoRoot, actionSource);
+    const context = buildToolExecutionContext(repoRoot, actionSource, { includeTerminalTarget: true });
     return {
         ...context,
         widget_context_enabled: context.active_widget_id != null,

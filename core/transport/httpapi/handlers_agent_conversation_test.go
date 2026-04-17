@@ -580,6 +580,79 @@ func TestExplainTerminalCommandRejectsExecutionBlockIdentityMismatch(t *testing.
 	}
 }
 
+func TestExplainTerminalCommandRejectsMissingExplicitWidgetTarget(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newExplainCommandHandler(t)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPost, "/api/v1/agent/terminal-commands/explain", map[string]any{
+		"prompt":   "/run echo missing-widget",
+		"command":  "echo missing-widget",
+		"from_seq": 0,
+		"context": map[string]any{
+			"workspace_id":           "ws-default",
+			"repo_root":              "/workspace/repo",
+			"active_widget_id":       "term_boot",
+			"target_session":         "local",
+			"target_connection_id":   "local",
+			"widget_context_enabled": true,
+		},
+	}))
+
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+	var payload struct {
+		Error struct {
+			Code string `json:"code"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
+	}
+	if payload.Error.Code != "execution_target_required" {
+		t.Fatalf("unexpected error code: %q", payload.Error.Code)
+	}
+}
+
+func TestExplainTerminalCommandRejectsMismatchedTargetSession(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newExplainCommandHandler(t)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPost, "/api/v1/agent/terminal-commands/explain", map[string]any{
+		"prompt":    "/run echo mismatch",
+		"command":   "echo mismatch",
+		"widget_id": "term_boot",
+		"from_seq":  0,
+		"context": map[string]any{
+			"workspace_id":           "ws-default",
+			"repo_root":              "/workspace/repo",
+			"active_widget_id":       "term_boot",
+			"target_session":         "remote",
+			"target_connection_id":   "conn-ssh",
+			"widget_context_enabled": true,
+		},
+	}))
+
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+	var payload struct {
+		Error struct {
+			Code string `json:"code"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
+	}
+	if payload.Error.Code != "execution_target_mismatch" {
+		t.Fatalf("unexpected error code: %q", payload.Error.Code)
+	}
+}
+
 func newExplainCommandHandler(t *testing.T) (http.Handler, *app.Runtime) {
 	t.Helper()
 

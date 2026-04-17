@@ -81,7 +81,7 @@ func (a *runtimeToolAdapter) termSendInputTool() toolruntime.Definition {
         "text":{"type":"string"},
         "append_newline":{"type":"boolean"}
       },
-      "required":["text"],
+      "required":["widget_id","text"],
       "additionalProperties":false
     }`),
 		OutputSchema: json.RawMessage(`{"type":"object"}`),
@@ -96,8 +96,11 @@ func (a *runtimeToolAdapter) termSendInputTool() toolruntime.Definition {
 		},
 		Plan: func(input any, execCtx toolruntime.ExecutionContext) (toolruntime.OperationPlan, error) {
 			payload := input.(sendInputToolInput)
-			widgetID, err := a.resolveWidgetID(payload.WidgetID)
+			widgetID, err := requireExplicitTerminalWidgetID(payload.WidgetID)
 			if err != nil {
+				return toolruntime.OperationPlan{}, err
+			}
+			if err := requireExplicitTerminalExecutionContext(execCtx, widgetID); err != nil {
 				return toolruntime.OperationPlan{}, err
 			}
 			return toolruntime.OperationPlan{
@@ -111,8 +114,11 @@ func (a *runtimeToolAdapter) termSendInputTool() toolruntime.Definition {
 		},
 		Execute: func(ctx context.Context, execCtx toolruntime.ExecutionContext, input any) (any, error) {
 			payload := input.(sendInputToolInput)
-			widgetID, err := a.resolveWidgetID(payload.WidgetID)
+			widgetID, err := requireExplicitTerminalWidgetID(payload.WidgetID)
 			if err != nil {
+				return nil, normalizeToolError(err)
+			}
+			if err := requireExplicitTerminalExecutionContext(execCtx, widgetID); err != nil {
 				return nil, normalizeToolError(err)
 			}
 			if err := a.ensureExecutionTargetsWidget(execCtx, widgetID); err != nil {
@@ -135,7 +141,7 @@ func (a *runtimeToolAdapter) termInterruptTool() toolruntime.Definition {
 	return toolruntime.Definition{
 		Name:         "term.interrupt",
 		Description:  "Send an interrupt signal to a terminal session.",
-		InputSchema:  json.RawMessage(`{"type":"object","properties":{"widget_id":{"type":"string"}},"additionalProperties":false}`),
+		InputSchema:  json.RawMessage(`{"type":"object","properties":{"widget_id":{"type":"string"}},"required":["widget_id"],"additionalProperties":false}`),
 		OutputSchema: json.RawMessage(`{"type":"object"}`),
 		Metadata: toolruntime.Metadata{
 			Capabilities: []string{"terminal:input"},
@@ -147,8 +153,11 @@ func (a *runtimeToolAdapter) termInterruptTool() toolruntime.Definition {
 			return toolruntime.DecodeJSON[interruptToolInput](raw)
 		},
 		Plan: func(input any, execCtx toolruntime.ExecutionContext) (toolruntime.OperationPlan, error) {
-			widgetID, err := a.resolveWidgetID(input.(interruptToolInput).WidgetID)
+			widgetID, err := requireExplicitTerminalWidgetID(input.(interruptToolInput).WidgetID)
 			if err != nil {
+				return toolruntime.OperationPlan{}, err
+			}
+			if err := requireExplicitTerminalExecutionContext(execCtx, widgetID); err != nil {
 				return toolruntime.OperationPlan{}, err
 			}
 			return toolruntime.OperationPlan{
@@ -161,8 +170,11 @@ func (a *runtimeToolAdapter) termInterruptTool() toolruntime.Definition {
 			}, nil
 		},
 		Execute: func(ctx context.Context, execCtx toolruntime.ExecutionContext, input any) (any, error) {
-			widgetID, err := a.resolveWidgetID(input.(interruptToolInput).WidgetID)
+			widgetID, err := requireExplicitTerminalWidgetID(input.(interruptToolInput).WidgetID)
 			if err != nil {
+				return nil, normalizeToolError(err)
+			}
+			if err := requireExplicitTerminalExecutionContext(execCtx, widgetID); err != nil {
 				return nil, normalizeToolError(err)
 			}
 			if err := a.ensureExecutionTargetsWidget(execCtx, widgetID); err != nil {
@@ -184,13 +196,34 @@ func (a *runtimeToolAdapter) termInterruptTool() toolruntime.Definition {
 	}
 }
 
+func requireExplicitTerminalWidgetID(widgetID string) (string, error) {
+	trimmedWidgetID := strings.TrimSpace(widgetID)
+	if trimmedWidgetID == "" {
+		return "", toolruntime.InvalidInputError("input.widget_id is required")
+	}
+	return trimmedWidgetID, nil
+}
+
+func requireExplicitTerminalExecutionContext(execCtx toolruntime.ExecutionContext, widgetID string) error {
+	activeWidgetID := strings.TrimSpace(execCtx.ActiveWidgetID)
+	if activeWidgetID == "" {
+		return toolruntime.InvalidInputError("context.active_widget_id is required")
+	}
+	if activeWidgetID != widgetID {
+		return toolruntime.InvalidInputError("context.active_widget_id must match input.widget_id")
+	}
+	if strings.TrimSpace(execCtx.TargetSession) == "" {
+		return toolruntime.InvalidInputError("context.target_session is required")
+	}
+	if strings.TrimSpace(execCtx.TargetConnectionID) == "" {
+		return toolruntime.InvalidInputError("context.target_connection_id is required")
+	}
+	return nil
+}
+
 func (a *runtimeToolAdapter) ensureExecutionTargetsWidget(execCtx toolruntime.ExecutionContext, widgetID string) error {
 	expectedSession := strings.TrimSpace(execCtx.TargetSession)
 	expectedConnectionID := strings.TrimSpace(execCtx.TargetConnectionID)
-	if expectedSession == "" && expectedConnectionID == "" {
-		return nil
-	}
-
 	state, err := a.terminalGetState(widgetID)
 	if err != nil {
 		return err

@@ -2,6 +2,7 @@ package toolruntime
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/Mesteriis/rune-terminal/core/policy"
 )
@@ -26,6 +27,9 @@ func (e *Executor) prepare(request ExecuteRequest, profile policy.EvaluationProf
 	definition, ok := e.registry.Get(envelope.ToolName)
 	if !ok {
 		return nil, &ExecuteResponse{Status: "error", Error: "tool not found", ErrorCode: ErrorCodeNotFound}
+	}
+	if err := validateDefinitionContext(definition, execContext); err != nil {
+		return nil, &ExecuteResponse{Status: "error", Error: err.Error(), ErrorCode: ErrorCodeInvalidInput, Tool: toolInfo(definition)}
 	}
 
 	input, err := definition.Decode(envelope.Input)
@@ -84,6 +88,19 @@ func (e *Executor) prepare(request ExecuteRequest, profile policy.EvaluationProf
 		intentKey:            intentKey,
 		approvalVerification: approvalVerification,
 	}, nil
+}
+
+func validateDefinitionContext(definition Definition, execContext ExecutionContext) error {
+	if !definition.IsPluginBacked() {
+		return nil
+	}
+	if strings.TrimSpace(execContext.WorkspaceID) == "" {
+		return InvalidInputError("context.workspace_id is required for plugin tools")
+	}
+	if strings.TrimSpace(execContext.TargetSession) != "" || strings.TrimSpace(execContext.TargetConnectionID) != "" {
+		return InvalidInputError("terminal target context is not allowed for plugin tools")
+	}
+	return nil
 }
 
 func RequireWidgetID(widgetID string) error {

@@ -94,6 +94,10 @@ func (api *API) handleExplainTerminalCommand(w http.ResponseWriter, r *http.Requ
 			writeNotFound(w, "execution_block_not_found", err.Error())
 		case errors.Is(err, app.ErrExecutionBlockIdentityMismatch):
 			writeError(w, http.StatusBadRequest, "execution_block_identity_mismatch", err.Error())
+		case errors.Is(err, app.ErrExecutionTargetRequired):
+			writeError(w, http.StatusBadRequest, "execution_target_required", err.Error())
+		case errors.Is(err, app.ErrExecutionTargetMismatch):
+			writeError(w, http.StatusBadRequest, "execution_target_mismatch", err.Error())
 		default:
 			writeConversationError(w, err)
 		}

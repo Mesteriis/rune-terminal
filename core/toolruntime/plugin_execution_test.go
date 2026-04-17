@@ -116,10 +116,60 @@ func TestExecutorReturnsInternalErrorWhenPluginRuntimeIsMissing(t *testing.T) {
 	response := executor.Execute(context.Background(), ExecuteRequest{
 		ToolName: "plugin.example_echo",
 		Input:    json.RawMessage(`{"text":"hello"}`),
+		Context: ExecutionContext{
+			WorkspaceID: "ws-local",
+		},
 	}, policy.EvaluationProfile{})
 
 	if response.Status != "error" || response.ErrorCode != ErrorCodeInternalError {
 		t.Fatalf("expected internal error response, got %#v", response)
+	}
+}
+
+func TestPluginBackedExecutionRejectsMissingWorkspaceTarget(t *testing.T) {
+	t.Parallel()
+
+	executor := newPluginBackedExecutor(t, &capturingPluginInvoker{
+		output: json.RawMessage(`{"ok":true}`),
+	})
+	response := executor.Execute(context.Background(), ExecuteRequest{
+		ToolName: "plugin.example_echo",
+		Input:    json.RawMessage(`{"text":"hello"}`),
+		Context: ExecutionContext{
+			ActiveWidgetID: "term-main",
+		},
+	}, policy.EvaluationProfile{})
+
+	if response.Status != "error" || response.ErrorCode != ErrorCodeInvalidInput {
+		t.Fatalf("expected invalid_input response, got %#v", response)
+	}
+	if !strings.Contains(response.Error, "context.workspace_id is required") {
+		t.Fatalf("expected explicit workspace target error, got %#v", response)
+	}
+}
+
+func TestPluginBackedExecutionRejectsTerminalTargetLeakage(t *testing.T) {
+	t.Parallel()
+
+	executor := newPluginBackedExecutor(t, &capturingPluginInvoker{
+		output: json.RawMessage(`{"ok":true}`),
+	})
+	response := executor.Execute(context.Background(), ExecuteRequest{
+		ToolName: "plugin.example_echo",
+		Input:    json.RawMessage(`{"text":"hello"}`),
+		Context: ExecutionContext{
+			WorkspaceID:        "ws-local",
+			ActiveWidgetID:     "term-main",
+			TargetSession:      "remote",
+			TargetConnectionID: "conn-ssh",
+		},
+	}, policy.EvaluationProfile{})
+
+	if response.Status != "error" || response.ErrorCode != ErrorCodeInvalidInput {
+		t.Fatalf("expected invalid_input response, got %#v", response)
+	}
+	if !strings.Contains(response.Error, "terminal target context is not allowed for plugin tools") {
+		t.Fatalf("expected plugin target leakage error, got %#v", response)
 	}
 }
 
@@ -136,6 +186,9 @@ func TestExecutorMapsPluginExecutionErrorCodes(t *testing.T) {
 	response := executor.Execute(context.Background(), ExecuteRequest{
 		ToolName: "plugin.example_echo",
 		Input:    json.RawMessage(`{"text":"hello"}`),
+		Context: ExecutionContext{
+			WorkspaceID: "ws-local",
+		},
 	}, policy.EvaluationProfile{})
 
 	if response.Status != "error" || response.ErrorCode != ErrorCodeInvalidInput {
@@ -157,6 +210,9 @@ func TestExecutorMapsPluginFailureTaxonomyToPluginFailureErrorCode(t *testing.T)
 	response := executor.Execute(context.Background(), ExecuteRequest{
 		ToolName: "plugin.example_echo",
 		Input:    json.RawMessage(`{"text":"hello"}`),
+		Context: ExecutionContext{
+			WorkspaceID: "ws-local",
+		},
 	}, policy.EvaluationProfile{})
 
 	if response.Status != "error" || response.ErrorCode != ErrorCodePluginFailure {

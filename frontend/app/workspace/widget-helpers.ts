@@ -49,15 +49,24 @@ export function formatAuditTimestamp(timestamp: string): string {
     return date.toLocaleString();
 }
 
-export function buildToolExecutionContext(repoRoot: string, actionSource?: string) {
+interface ToolExecutionContextOptions {
+    includeTerminalTarget?: boolean;
+}
+
+export function buildToolExecutionContext(
+    repoRoot: string,
+    actionSource?: string,
+    options?: ToolExecutionContextOptions,
+) {
     const activeContext = getActiveWorkspaceContext();
+    const includeTerminalTarget = options?.includeTerminalTarget === true;
     return {
         workspace_id: activeContext.workspaceID || undefined,
         active_widget_id: activeContext.activeWidgetID || undefined,
         repo_root: repoRoot || undefined,
         action_source: actionSource?.trim() || undefined,
-        target_session: activeContext.activeTerminalTarget?.targetSession,
-        target_connection_id: activeContext.activeTerminalTarget?.targetConnectionID,
+        target_session: includeTerminalTarget ? activeContext.activeTerminalTarget?.targetSession : undefined,
+        target_connection_id: includeTerminalTarget ? activeContext.activeTerminalTarget?.targetConnectionID : undefined,
     };
 }
 

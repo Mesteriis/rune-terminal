@@ -32,6 +32,11 @@ func PluginFailureError(message string, err error) error {
 	return &codedError{code: ErrorCodePluginFailure, message: message, err: err}
 }
 
+func IsCodedError(err error) bool {
+	var coded *codedError
+	return errors.As(err, &coded)
+}
+
 func ErrorCodeOf(err error) ErrorCode {
 	var coded *codedError
 	if errors.As(err, &coded) {

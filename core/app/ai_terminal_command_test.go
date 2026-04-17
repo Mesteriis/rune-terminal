@@ -96,6 +96,8 @@ func TestExplainTerminalCommandAppendsAssistantSummary(t *testing.T) {
 		WorkspaceID:          "ws-default",
 		RepoRoot:             "/repo",
 		ActiveWidgetID:       "term_boot",
+		TargetSession:        "local",
+		TargetConnectionID:   "local",
 		ActionSource:         "test.terminal.explain",
 		WidgetContextEnabled: true,
 	})
@@ -179,6 +181,8 @@ func TestExplainTerminalCommandDerivesApprovalUsedFromMatchingToolAudit(t *testi
 		WorkspaceID:          "ws-default",
 		RepoRoot:             "/repo",
 		ActiveWidgetID:       "term_boot",
+		TargetSession:        "local",
+		TargetConnectionID:   "local",
 		WidgetContextEnabled: true,
 	}); err != nil {
 		t.Fatalf("explain terminal command: %v", err)
@@ -239,6 +243,8 @@ func TestExplainTerminalCommandUsesExplicitCommandAuditEventID(t *testing.T) {
 		WorkspaceID:          "ws-default",
 		RepoRoot:             "/repo",
 		ActiveWidgetID:       "term_boot",
+		TargetSession:        "local",
+		TargetConnectionID:   "local",
 		WidgetContextEnabled: true,
 	})
 	if err != nil {
@@ -287,6 +293,8 @@ func TestExplainTerminalCommandUpdatesExistingExecutionBlockByIdentity(t *testin
 		WorkspaceID:          "ws-default",
 		RepoRoot:             "/repo",
 		ActiveWidgetID:       "term_boot",
+		TargetSession:        "local",
+		TargetConnectionID:   "local",
 		WidgetContextEnabled: true,
 	})
 	if err != nil {
@@ -307,6 +315,8 @@ func TestExplainTerminalCommandUpdatesExistingExecutionBlockByIdentity(t *testin
 		WorkspaceID:          "ws-default",
 		RepoRoot:             "/repo",
 		ActiveWidgetID:       "term_boot",
+		TargetSession:        "local",
+		TargetConnectionID:   "local",
 		WidgetContextEnabled: true,
 	})
 	if err != nil {
@@ -374,6 +384,8 @@ func TestExplainTerminalCommandRejectsExecutionBlockIdentityMismatch(t *testing.
 		WorkspaceID:          "ws-default",
 		RepoRoot:             "/repo",
 		ActiveWidgetID:       "term_boot",
+		TargetSession:        "local",
+		TargetConnectionID:   "local",
 		WidgetContextEnabled: true,
 	})
 	if err == nil {

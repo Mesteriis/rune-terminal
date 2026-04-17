@@ -15,6 +15,9 @@ func normalizeToolError(err error) error {
 	if err == nil {
 		return nil
 	}
+	if toolruntime.IsCodedError(err) {
+		return err
+	}
 
 	switch {
 	case errors.Is(err, workspace.ErrWidgetNotFound),
