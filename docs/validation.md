@@ -5,6 +5,46 @@
 - отсутствие проверки фиксируется как `NOT RUN`, а не маскируется под успешный результат
 - записи ниже основаны только на audit trail из `docs/tideterm-feature-inventory.md`, `docs/feature-parity-audit.md` и `docs/feature-gap-summary.md`
 
+<a id="workspace-layout-composition"></a>
+## Workspace layout composition
+
+- Date: `2026-04-17`
+- Status: `VERIFIED`
+- Validation steps:
+  - backend/runtime correctness:
+    - `./scripts/go.sh test ./core/workspace ./core/app ./core/transport/httpapi -count=1` -> `ok`
+  - frontend contract/build:
+    - `npm --prefix frontend run lint:active` -> `pass` (existing non-blocking hook warnings unchanged)
+    - `npm --prefix frontend run build` -> `pass`
+  - structured execution regression guard:
+    - `npm run test:ui` -> `pass` (`e2e/structured-execution-block.spec.ts`)
+  - live runtime restart persistence sweep (real core runtime, same state dir across restart):
+    - script: `/tmp/runa_layout_validate.sh`
+    - result: `layout-restore-ok /tmp/runa-layout-validate-YgrvCj`
+    - verified via API on both pre-restart and post-restart snapshots:
+      - `GET /api/v1/workspace`
+      - `PATCH /api/v1/workspace/layout`
+      - `POST /api/v1/workspace/layouts/save`
+      - `POST /api/v1/workspace/layouts/switch`
+      - `GET /api/v1/terminal/term-main`
+      - `GET /api/v1/mcp/servers`
+      - `GET /api/v1/remote/profiles`
+  - live UI composition sweep (real visible browser with Playwright MCP against running frontend/core):
+    1. opened AI panel
+    2. opened Tools panel and verified MCP section (`MCP Servers`)
+    3. opened Audit panel
+    4. opened Settings flyout layout controls
+    5. toggled Tools surface off/on
+    6. saved current layout and switched preset (`layout-default` <-> `layout-1`)
+    7. switched mode to `focus` (AI panel hidden) and back to `split` (AI panel restored)
+- Result:
+  - layout composition is backend-owned, persisted, restored, and switchable across saved presets.
+  - minimal operator controls are functional in the existing shell.
+  - layout switching preserves active tab/widget session identity.
+  - terminal baseline, structured `/run` block workflow, MCP listing, and remote profile listing remained operational.
+- Notes:
+  - remote verification in this run is endpoint/runtime-shape level (`/api/v1/remote/profiles`) and not a full authenticated SSH launch sweep.
+
 <a id="operator-workflow"></a>
 ## Operator workflow
 

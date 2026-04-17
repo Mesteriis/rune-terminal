@@ -32,6 +32,21 @@ It is intentionally operational, not narrative.
   - `Use Selected Path In /run Prompt`
   - both actions are explicit operator clicks and do not auto-send or auto-execute
 - Widgets can now be bound to a specific connection ID.
+- Workspace snapshot now carries explicit layout composition truth:
+  - active layout (`layout`)
+  - saved layout presets (`layouts`)
+  - active preset identity (`active_layout_id`)
+- Layout composition remains minimal and operator-driven:
+  - mode (`split`, `focus`)
+  - active surfaces with named regions (`main`, `sidebar`, `utility`)
+  - active focus surface
+- Layout controls are exposed in the settings flyout:
+  - toggle visible surfaces (`AI`, `Tools`, `Audit`, `MCP`)
+  - switch mode (`split` / `focus`)
+  - choose active focus surface
+  - save current layout
+  - switch between saved layouts
+- Layout updates do not mutate active tab/widget session identity.
 - New terminal tabs default to the currently selected connection unless a specific connection is supplied at creation time.
 - Runtime utilities and audit remain secondary shell surfaces reachable from the dock and the AI-panel overflow menu.
 - Tools panel now renders explicit active-context summary and explicit input helpers:

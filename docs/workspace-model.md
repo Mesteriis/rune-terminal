@@ -16,6 +16,7 @@ A workspace contains:
 - a stable set of widgets
 - exactly one active tab
 - exactly one active widget
+- exactly one active layout
 
 Tabs are the primary shell-navigation unit.
 Widgets are the workspace-side secondary inventory.
@@ -35,6 +36,9 @@ Operations:
 - list widgets
 - get active widget
 - focus widget
+- update active layout composition
+- save current layout as a reusable preset
+- switch active layout preset
 
 ## Persistent Snapshot Model
 
@@ -50,6 +54,7 @@ Persisted fields are intentionally limited to restore-critical metadata:
 - widget inventory and terminal/connection linkage
 - active tab and active widget ids
 - layout composition metadata (layout id, mode, active surfaces/regions, active focus surface)
+- saved layout preset list and active layout preset id
 
 Live PTY runtime state is not persisted in the workspace snapshot.
 

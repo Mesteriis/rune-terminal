@@ -81,8 +81,12 @@ async function stopProcess(process: ChildProcessWithoutNullStreams | undefined):
 }
 
 async function openAIPanel(page: Page): Promise<void> {
+  const promptBox = page.getByRole("textbox", { name: /Ask TideTerm AI anything/i });
+  if (await promptBox.isVisible()) {
+    return;
+  }
   await page.locator("div").filter({ hasText: /^AI$/ }).first().click();
-  await expect(page.getByRole("textbox", { name: /Ask TideTerm AI anything/i })).toBeVisible();
+  await expect(promptBox).toBeVisible();
 }
 
 test.describe.serial("structured execution block workflow", () => {
@@ -207,7 +211,7 @@ test.describe.serial("structured execution block workflow", () => {
     await expect(blockItem).toContainText(marker);
 
     await blockItem.getByRole("button", { name: "Explain" }).click();
-    await expect(page.getByText(`Explain execution block command: ${command}`)).toBeVisible();
+    await expect(page.getByText(`Explain execution block command: ${command}`).first()).toBeVisible();
     await expect(blockList).toContainText("1 recent");
 
     await blockItem.getByRole("button", { name: "Reveal Provenance" }).click();
