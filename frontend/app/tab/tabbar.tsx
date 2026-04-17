@@ -113,22 +113,7 @@ const WaveAIButton = memo(() => {
     const aiPanelOpen = useAtomValue(WorkspaceLayoutModel.getInstance().panelVisibleAtom);
 
     const onClick = () => {
-        fireAndForget(async () => {
-            const active = workspaceStore.getSnapshot().active;
-            const layout = active.layout;
-            const hasAI = layout.surfaces.some((surface) => surface.id === "ai");
-            const nextSurfaces = hasAI
-                ? layout.surfaces.filter((surface) => surface.id !== "ai")
-                : [...layout.surfaces, { id: "ai", region: "sidebar" }];
-            const activeSurfaceId = hasAI && layout.activeSurfaceId === "ai"
-                ? "terminal"
-                : layout.activeSurfaceId;
-            await workspaceStore.updateLayout({
-                ...layout,
-                surfaces: nextSurfaces,
-                activeSurfaceId,
-            });
-        });
+        WorkspaceLayoutModel.getInstance().setAIPanelVisible(!aiPanelOpen);
     };
 
     return (
@@ -136,6 +121,7 @@ const WaveAIButton = memo(() => {
             className={`flex h-[26px] px-1.5 justify-end items-center rounded-md mr-1 box-border cursor-pointer bg-hover hover:bg-hoverbg transition-colors text-[12px] ${aiPanelOpen ? "text-accent" : "text-secondary"}`}
             style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
             onClick={onClick}
+            data-testid="workspace-ai-toggle-button"
         >
             <i className="fa fa-sparkles" />
             <span className="font-bold ml-1 -top-px font-mono">AI</span>
@@ -878,8 +864,8 @@ const TabBar = memo(({ workspace, compatMode = false }: TabBarProps) => {
                 </div>
             </div>
             <IconButton className="add-tab" ref={addBtnRef} decl={addtabButtonDecl} />
-            <IconButton className="add-remote-tab" decl={addRemoteTabButtonDecl} />
-            <IconButton className="add-remote-profiles" decl={remoteProfilesButtonDecl} />
+            {!compatMode ? <IconButton className="add-remote-tab" decl={addRemoteTabButtonDecl} /> : null}
+            {!compatMode ? <IconButton className="add-remote-profiles" decl={remoteProfilesButtonDecl} /> : null}
             <div className="tab-bar-right">
                 <UpdateStatusBanner ref={updateStatusBannerRef} />
                 <ConfigErrorIcon buttonRef={configErrorButtonRef} />
