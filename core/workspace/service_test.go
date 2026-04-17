@@ -223,3 +223,86 @@ func TestSaveAndSwitchLayout(t *testing.T) {
 		t.Fatalf("expected active layout payload layout-default, got %#v", switched.Layout)
 	}
 }
+
+func TestSplitTabWithWidget(t *testing.T) {
+	t.Parallel()
+
+	service := NewService(BootstrapDefault())
+	next, err := service.SplitTabWithWidget(
+		"tab-main",
+		"term-main",
+		Widget{
+			ID:          "term-split",
+			Kind:        WidgetKindTerminal,
+			Title:       "Split Shell",
+			Description: "Split terminal session",
+			TerminalID:  "term-split",
+		},
+		WindowSplitRight,
+	)
+	if err != nil {
+		t.Fatalf("SplitTabWithWidget error: %v", err)
+	}
+	if next.ActiveTabID != "tab-main" {
+		t.Fatalf("expected active tab to remain tab-main, got %q", next.ActiveTabID)
+	}
+	if next.ActiveWidgetID != "term-split" {
+		t.Fatalf("expected split widget to become active, got %q", next.ActiveWidgetID)
+	}
+	var tab Tab
+	for _, current := range next.Tabs {
+		if current.ID == "tab-main" {
+			tab = current
+			break
+		}
+	}
+	if len(tab.WidgetIDs) != 2 || tab.WidgetIDs[0] != "term-main" || tab.WidgetIDs[1] != "term-split" {
+		t.Fatalf("unexpected tab widget ids: %#v", tab.WidgetIDs)
+	}
+	if tab.WindowLayout == nil || tab.WindowLayout.Kind != WindowNodeSplit {
+		t.Fatalf("expected split window layout, got %#v", tab.WindowLayout)
+	}
+	if tab.WindowLayout.Axis != WindowSplitHorizontal {
+		t.Fatalf("expected horizontal split axis, got %#v", tab.WindowLayout)
+	}
+	if tab.WindowLayout.First == nil || tab.WindowLayout.First.WidgetID != "term-main" {
+		t.Fatalf("expected original widget on first branch, got %#v", tab.WindowLayout.First)
+	}
+	if tab.WindowLayout.Second == nil || tab.WindowLayout.Second.WidgetID != "term-split" {
+		t.Fatalf("expected split widget on second branch, got %#v", tab.WindowLayout.Second)
+	}
+}
+
+func TestFocusTabUsesFirstWindowLeaf(t *testing.T) {
+	t.Parallel()
+
+	snapshot := BootstrapDefault()
+	snapshot.Tabs[0].WidgetIDs = []string{"term-main", "term-left"}
+	snapshot.Tabs[0].WindowLayout = &WindowLayoutNode{
+		Kind: WindowNodeSplit,
+		Axis: WindowSplitHorizontal,
+		First: &WindowLayoutNode{
+			Kind:     WindowNodeLeaf,
+			WidgetID: "term-left",
+		},
+		Second: &WindowLayoutNode{
+			Kind:     WindowNodeLeaf,
+			WidgetID: "term-main",
+		},
+	}
+	snapshot.Widgets = append(snapshot.Widgets, Widget{
+		ID:          "term-left",
+		Kind:        WidgetKindTerminal,
+		Title:       "Left",
+		Description: "Left split",
+		TerminalID:  "term-left",
+	})
+	service := NewService(snapshot)
+
+	if _, err := service.FocusTab("tab-main"); err != nil {
+		t.Fatalf("FocusTab error: %v", err)
+	}
+	if service.Snapshot().ActiveWidgetID != "term-left" {
+		t.Fatalf("expected focus to follow first window leaf, got %q", service.Snapshot().ActiveWidgetID)
+	}
+}

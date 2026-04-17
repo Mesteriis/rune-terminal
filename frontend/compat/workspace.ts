@@ -2,6 +2,7 @@ import type { WorkspaceClient } from "@/rterm-api/workspace/client";
 import type {
   CloseTabResponse,
   CreateRemoteTerminalTabRequest,
+  CreateSplitTerminalWidgetRequest,
   CreateTerminalTabRequest,
   CreateTerminalTabResponse,
   FocusTabRequest,
@@ -23,6 +24,7 @@ export interface WorkspaceFacade {
   focusWidget: (payload: FocusWidgetRequest) => Promise<WorkspaceActionResponse>;
   focusTab: (payload: FocusTabRequest) => Promise<WorkspaceActionResponse>;
   createTerminalTab: (payload?: CreateTerminalTabRequest) => Promise<CreateTerminalTabResponse>;
+  createSplitTerminalWidget: (payload?: CreateSplitTerminalWidgetRequest) => Promise<CreateTerminalTabResponse>;
   createRemoteTerminalTab: (payload?: CreateRemoteTerminalTabRequest) => Promise<CreateTerminalTabResponse>;
   renameTab: (tabId: string, payload: RenameTabRequest) => Promise<WorkspaceTabMutation>;
   setTabPinned: (tabId: string, payload: SetTabPinnedRequest) => Promise<WorkspaceTabMutation>;
@@ -63,6 +65,9 @@ export function createWorkspaceFacade(client: WorkspaceClient): WorkspaceFacade 
     },
     createTerminalTab(payload: CreateTerminalTabRequest = {}): Promise<CreateTerminalTabResponse> {
       return client.createTerminalTab(payload);
+    },
+    createSplitTerminalWidget(payload: CreateSplitTerminalWidgetRequest = {}): Promise<CreateTerminalTabResponse> {
+      return client.createSplitTerminalWidget(payload);
     },
     createRemoteTerminalTab(payload: CreateRemoteTerminalTabRequest = {}): Promise<CreateTerminalTabResponse> {
       return client.createRemoteTerminalTab(payload);

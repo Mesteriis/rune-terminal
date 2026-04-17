@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/Mesteriis/rune-terminal/core/connections"
@@ -130,6 +131,135 @@ func (r *Runtime) SwitchLayout(layoutID string) (workspace.Snapshot, error) {
 
 func (r *Runtime) CreateTerminalTab(ctx context.Context, title string) (CreateTerminalTabResult, error) {
 	return r.CreateTerminalTabWithConnection(ctx, title, "")
+}
+
+func (r *Runtime) CreateSplitTerminalWidget(
+	ctx context.Context,
+	title string,
+	tabID string,
+	targetWidgetID string,
+	direction workspace.WindowSplitDirection,
+	connectionID string,
+) (CreateTerminalTabResult, error) {
+	title = strings.TrimSpace(title)
+	if title == "" {
+		title = "New Shell"
+	}
+
+	snapshot := r.Workspace.Snapshot()
+	tabID = strings.TrimSpace(tabID)
+	if tabID == "" {
+		tabID = snapshot.ActiveTabID
+	}
+
+	var targetTab workspace.Tab
+	foundTab := false
+	for _, tab := range snapshot.Tabs {
+		if tab.ID == tabID {
+			targetTab = tab
+			foundTab = true
+			break
+		}
+	}
+	if !foundTab {
+		return CreateTerminalTabResult{}, fmt.Errorf("%w: %s", workspace.ErrTabNotFound, tabID)
+	}
+	if len(targetTab.WidgetIDs) == 0 {
+		return CreateTerminalTabResult{}, fmt.Errorf("%w: tab has no widgets: %s", workspace.ErrWidgetNotFound, tabID)
+	}
+
+	targetWidgetID = strings.TrimSpace(targetWidgetID)
+	if targetWidgetID == "" || !slices.Contains(targetTab.WidgetIDs, targetWidgetID) {
+		if snapshot.ActiveWidgetID != "" && slices.Contains(targetTab.WidgetIDs, snapshot.ActiveWidgetID) {
+			targetWidgetID = snapshot.ActiveWidgetID
+		} else {
+			targetWidgetID = targetTab.WidgetIDs[len(targetTab.WidgetIDs)-1]
+		}
+	}
+
+	widgetID := ids.New("term")
+	if connectionID == "" {
+		for _, widget := range snapshot.Widgets {
+			if widget.ID == targetWidgetID && strings.TrimSpace(widget.ConnectionID) != "" {
+				connectionID = widget.ConnectionID
+				break
+			}
+		}
+	}
+	if connectionID == "" {
+		activeConnection, err := r.Connections.Active()
+		if err != nil {
+			return CreateTerminalTabResult{}, err
+		}
+		connectionID = activeConnection.ID
+	}
+
+	connection, err := r.connectionForWidget(connectionID)
+	if err != nil {
+		_, _, _ = r.Connections.ReportLaunchResult(connectionID, err)
+		return CreateTerminalTabResult{}, err
+	}
+	if _, err := r.Terminals.StartSession(ctx, terminal.LaunchOptions{
+		WidgetID:   widgetID,
+		WorkingDir: r.RepoRoot,
+		Connection: connection,
+	}); err != nil {
+		_, _, _ = r.Connections.ReportLaunchResult(connectionID, err)
+		return CreateTerminalTabResult{}, err
+	}
+	if err := r.observeConnectionLaunch(ctx, widgetID, connection); err != nil {
+		_, _, _ = r.Connections.ReportLaunchResult(connectionID, err)
+		_ = r.Terminals.CloseSession(widgetID)
+		return CreateTerminalTabResult{}, err
+	}
+	_, _, _ = r.Connections.ReportLaunchResult(connectionID, nil)
+
+	nextSnapshot, err := r.Workspace.SplitTabWithWidget(
+		tabID,
+		targetWidgetID,
+		workspace.Widget{
+			ID:           widgetID,
+			Kind:         workspace.WidgetKindTerminal,
+			Title:        title,
+			Description:  fmt.Sprintf("%s terminal session", title),
+			TerminalID:   widgetID,
+			ConnectionID: connectionID,
+		},
+		direction,
+	)
+	if err != nil {
+		_ = r.Terminals.CloseSession(widgetID)
+		return CreateTerminalTabResult{}, err
+	}
+	if err := r.persistWorkspaceSnapshot(nextSnapshot); err != nil {
+		_ = r.Terminals.CloseSession(widgetID)
+		return CreateTerminalTabResult{}, err
+	}
+	return CreateTerminalTabResult{
+		TabID:     tabID,
+		WidgetID:  widgetID,
+		Workspace: nextSnapshot,
+	}, nil
+}
+
+func (r *Runtime) MoveWidgetBySplit(
+	tabID string,
+	widgetID string,
+	targetWidgetID string,
+	direction workspace.WindowSplitDirection,
+) (workspace.Snapshot, error) {
+	tabID = strings.TrimSpace(tabID)
+	if tabID == "" {
+		tabID = r.Workspace.Snapshot().ActiveTabID
+	}
+	nextSnapshot, err := r.Workspace.MoveWidgetBySplit(tabID, widgetID, targetWidgetID, direction)
+	if err != nil {
+		return workspace.Snapshot{}, err
+	}
+	if err := r.persistWorkspaceSnapshot(nextSnapshot); err != nil {
+		return workspace.Snapshot{}, err
+	}
+	return nextSnapshot, nil
 }
 
 func (r *Runtime) CreateRemoteTerminalTab(ctx context.Context, title string, connectionID string) (CreateTerminalTabResult, error) {

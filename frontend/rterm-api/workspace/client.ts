@@ -1,6 +1,7 @@
 import type {
   CloseTabResponse,
   CreateRemoteTerminalTabRequest,
+  CreateSplitTerminalWidgetRequest,
   CreateTerminalTabRequest,
   CreateTerminalTabResponse,
   FocusTabRequest,
@@ -34,6 +35,12 @@ export class WorkspaceClient {
 
   createTerminalTab(payload: CreateTerminalTabRequest = {}): Promise<CreateTerminalTabResponse> {
     return this.http.post<CreateTerminalTabResponse, CreateTerminalTabRequest>("/api/v1/workspace/tabs", {
+      body: payload,
+    });
+  }
+
+  createSplitTerminalWidget(payload: CreateSplitTerminalWidgetRequest = {}): Promise<CreateTerminalTabResponse> {
+    return this.http.post<CreateTerminalTabResponse, CreateSplitTerminalWidgetRequest>("/api/v1/workspace/widgets/split", {
       body: payload,
     });
   }

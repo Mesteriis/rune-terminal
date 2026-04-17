@@ -72,6 +72,38 @@ func (api *API) handleCreateTerminalTab(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusOK, result)
 }
 
+func (api *API) handleCreateSplitTerminalWidget(w http.ResponseWriter, r *http.Request) {
+	var payload struct {
+		Title          string `json:"title,omitempty"`
+		TabID          string `json:"tab_id,omitempty"`
+		TargetWidgetID string `json:"target_widget_id,omitempty"`
+		Direction      string `json:"direction,omitempty"`
+		ConnectionID   string `json:"connection_id,omitempty"`
+	}
+	if err := decodeJSON(r, &payload); err != nil {
+		writeBadRequest(w, "invalid_request", err)
+		return
+	}
+	direction, err := workspace.ParseWindowSplitDirection(payload.Direction)
+	if err != nil {
+		writeWorkspaceError(w, err)
+		return
+	}
+	result, err := api.runtime.CreateSplitTerminalWidget(
+		r.Context(),
+		payload.Title,
+		payload.TabID,
+		payload.TargetWidgetID,
+		direction,
+		payload.ConnectionID,
+	)
+	if err != nil {
+		writeWorkspaceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
 func (api *API) handleSaveLayout(w http.ResponseWriter, r *http.Request) {
 	var payload struct {
 		LayoutID string `json:"layout_id,omitempty"`

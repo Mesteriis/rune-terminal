@@ -4,6 +4,7 @@ import type {
     WorkspaceTabMutation,
     WorkspaceSnapshot,
     WorkspaceTab,
+    WorkspaceWindowLayoutNode,
 } from "@/rterm-api/workspace/types";
 import { atoms, getApi, globalStore } from "@/store/global";
 import { WorkspaceService } from "@/app/store/services";
@@ -33,6 +34,7 @@ export interface WorkspaceStoreTab {
     description?: string;
     pinned: boolean;
     widgetIds: string[];
+    windowLayout?: WorkspaceStoreWindowLayoutNode;
 }
 
 export interface WorkspaceStoreWidget {
@@ -54,6 +56,14 @@ export interface WorkspaceStoreLayout {
     mode: string;
     surfaces: WorkspaceStoreLayoutSurface[];
     activeSurfaceId: string;
+}
+
+export interface WorkspaceStoreWindowLayoutNode {
+    kind: string;
+    widgetId?: string;
+    axis?: string;
+    first?: WorkspaceStoreWindowLayoutNode;
+    second?: WorkspaceStoreWindowLayoutNode;
 }
 
 export interface WorkspaceStoreSnapshot {
@@ -191,6 +201,43 @@ function toApiLayout(layout: WorkspaceStoreLayout): WorkspaceLayout {
     };
 }
 
+function adaptWindowLayoutFromApi(node: WorkspaceWindowLayoutNode | undefined): WorkspaceStoreWindowLayoutNode | undefined {
+    if (node == null || typeof node !== "object") {
+        return undefined;
+    }
+    const kind = (node.kind ?? "").trim();
+    if (kind === "") {
+        return undefined;
+    }
+    const adapted: WorkspaceStoreWindowLayoutNode = {
+        kind,
+        widgetId: node.widget_id?.trim() || undefined,
+        axis: node.axis?.trim() || undefined,
+    };
+    const first = adaptWindowLayoutFromApi(node.first);
+    const second = adaptWindowLayoutFromApi(node.second);
+    if (first != null) {
+        adapted.first = first;
+    }
+    if (second != null) {
+        adapted.second = second;
+    }
+    return adapted;
+}
+
+function cloneWindowLayoutNode(node: WorkspaceStoreWindowLayoutNode | undefined): WorkspaceStoreWindowLayoutNode | undefined {
+    if (node == null) {
+        return undefined;
+    }
+    return {
+        kind: node.kind,
+        widgetId: node.widgetId,
+        axis: node.axis,
+        first: cloneWindowLayoutNode(node.first),
+        second: cloneWindowLayoutNode(node.second),
+    };
+}
+
 function adaptWorkspaceFromApi(apiWorkspace: ApiWorkspace, fallback?: WorkspaceFallback | null): WorkspaceStoreSnapshot["active"] {
     const legacyWorkspace = fallback ?? null;
     const tabs: WorkspaceTab[] = apiWorkspace?.tabs ?? [];
@@ -206,6 +253,7 @@ function adaptWorkspaceFromApi(apiWorkspace: ApiWorkspace, fallback?: WorkspaceF
                 description: tab.description,
                 pinned: tab.pinned,
                 widgetIds: [...(tab.widget_ids ?? [])],
+                windowLayout: adaptWindowLayoutFromApi(tab.window_layout),
             } satisfies WorkspaceStoreTab,
         ])
     );
@@ -406,7 +454,16 @@ class WorkspaceStore {
         return {
             active: {
                 ...this.state.active,
-                tabs: { ...this.state.active.tabs },
+                tabs: Object.fromEntries(
+                    Object.entries(this.state.active.tabs).map(([tabID, tab]) => [
+                        tabID,
+                        {
+                            ...tab,
+                            widgetIds: [...tab.widgetIds],
+                            windowLayout: cloneWindowLayoutNode(tab.windowLayout),
+                        },
+                    ])
+                ),
                 widgets: { ...this.state.active.widgets },
                 layout: {
                     ...this.state.active.layout,
@@ -531,6 +588,16 @@ class WorkspaceStore {
         await this.refresh();
     }
 
+    async focusWidget(widgetId: string): Promise<void> {
+        const facade = await getWorkspaceFacade();
+        const response = await facade.focusWidget({ widget_id: widgetId });
+        if (response?.workspace) {
+            this.setState(adaptWorkspaceFromApi(response.workspace, this.state.active));
+            return;
+        }
+        await this.refresh();
+    }
+
     async createTerminalTab(connectionId?: string): Promise<string> {
         const facade = await getWorkspaceFacade();
         const response = await facade.createTerminalTab({
@@ -541,6 +608,27 @@ class WorkspaceStore {
         }
         if (!this.compatModeActive) {
             await this.refreshWorkspaceList();
+        }
+        return response?.widget_id;
+    }
+
+    async createSplitTerminalWidget(
+        tabId?: string,
+        targetWidgetId?: string,
+        direction: "left" | "right" | "top" | "bottom" = "right",
+        connectionId?: string
+    ): Promise<string> {
+        const facade = await getWorkspaceFacade();
+        const response = await facade.createSplitTerminalWidget({
+            tab_id: tabId,
+            target_widget_id: targetWidgetId,
+            direction,
+            connection_id: connectionId,
+        });
+        if (response?.workspace) {
+            this.setState(adaptWorkspaceFromApi(response.workspace, this.state.active));
+        } else {
+            await this.refresh();
         }
         return response?.widget_id;
     }

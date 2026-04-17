@@ -3,7 +3,6 @@
 
 import { Block } from "@/app/block/block";
 import { WorkspaceStoreSnapshot } from "@/app/state/workspace.store";
-import { CompatTerminalView } from "@/app/view/term/compat-terminal";
 import { CenteredDiv } from "@/element/quickelems";
 import { ContentRenderer, NodeModel, PreviewRenderer, TileLayout } from "@/layout/index";
 import { TileLayoutContents } from "@/layout/lib/types";
@@ -13,6 +12,7 @@ import * as WOS from "@/store/wos";
 import { atom, useAtomValue } from "jotai";
 import * as React from "react";
 import { useMemo } from "react";
+import { CompatSplitLayout } from "./compat-split-layout";
 
 const tileGapSizeAtom = atom((get) => {
     const settings = get(atoms.settingsAtom);
@@ -33,20 +33,14 @@ const TabContent = React.memo(({ tabId, compatWorkspace }: TabContentProps) => {
 
 const CompatTabContent = React.memo(({ tabId, compatWorkspace }: TabContentProps) => {
     const compatTab = compatWorkspace?.tabs[tabId];
-    const widgetIds = compatTab?.widgetIds ?? [];
-    const activeWidgetId = compatWorkspace?.activewidgetid;
-    const widgetId =
-        (activeWidgetId && widgetIds.includes(activeWidgetId) ? activeWidgetId : widgetIds[0]) ?? activeWidgetId;
-    const widget = widgetId ? compatWorkspace?.widgets[widgetId] : null;
-
-    let innerContent;
-    if (widgetId == null) {
-        innerContent = <CenteredDiv>No Terminal Widget</CenteredDiv>;
-    } else if (widget?.kind !== "terminal") {
-        innerContent = <CenteredDiv>Unsupported Widget</CenteredDiv>;
-    } else {
-        innerContent = <CompatTerminalView key={widgetId} widgetId={widgetId} connectionId={widget.connectionId} />;
-    }
+    const activeWidgetId = compatWorkspace?.activewidgetid ?? "";
+    const widgets = compatWorkspace?.widgets ?? {};
+    const innerContent =
+        compatTab == null ? (
+            <CenteredDiv>No Terminal Widget</CenteredDiv>
+        ) : (
+            <CompatSplitLayout tabId={tabId} tab={compatTab} widgets={widgets} activeWidgetId={activeWidgetId} />
+        );
 
     return (
         <div className="flex flex-row flex-grow min-h-0 w-full items-center justify-center overflow-hidden relative pt-[3px] pr-[3px]">

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -121,12 +122,30 @@ func normalizeSnapshot(candidate Snapshot, fallback Snapshot) Snapshot {
 	}
 	normalized.ActiveTabID = activeTabID
 
+	for i := range normalized.Tabs {
+		preferredWidgetID := normalized.Tabs[i].WidgetIDs[0]
+		if normalized.Tabs[i].ID == activeTabID {
+			candidateActiveWidgetID := strings.TrimSpace(candidate.ActiveWidgetID)
+			if candidateActiveWidgetID != "" && slices.Contains(normalized.Tabs[i].WidgetIDs, candidateActiveWidgetID) {
+				preferredWidgetID = candidateActiveWidgetID
+			}
+		}
+		normalized.Tabs[i].WindowLayout = normalizeWindowLayout(
+			normalized.Tabs[i].WindowLayout,
+			normalized.Tabs[i].WidgetIDs,
+			preferredWidgetID,
+		)
+	}
+
 	activeWidgetID := strings.TrimSpace(candidate.ActiveWidgetID)
 	if activeWidgetID == "" || !widgetExists(normalized.Widgets, activeWidgetID) || !widgetInTab(normalized.Tabs, activeTabID, activeWidgetID) {
 		activeWidgetID = normalized.Tabs[0].WidgetIDs[0]
 		for _, tab := range normalized.Tabs {
 			if tab.ID == activeTabID && len(tab.WidgetIDs) > 0 {
-				activeWidgetID = tab.WidgetIDs[0]
+				activeWidgetID = firstWindowLeafID(tab.WindowLayout)
+				if activeWidgetID == "" || !slices.Contains(tab.WidgetIDs, activeWidgetID) {
+					activeWidgetID = tab.WidgetIDs[0]
+				}
 				break
 			}
 		}

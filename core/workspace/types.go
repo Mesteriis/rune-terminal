@@ -14,11 +14,12 @@ type Widget struct {
 }
 
 type Tab struct {
-	ID          string   `json:"id"`
-	Title       string   `json:"title"`
-	Description string   `json:"description,omitempty"`
-	Pinned      bool     `json:"pinned"`
-	WidgetIDs   []string `json:"widget_ids"`
+	ID           string            `json:"id"`
+	Title        string            `json:"title"`
+	Description  string            `json:"description,omitempty"`
+	Pinned       bool              `json:"pinned"`
+	WidgetIDs    []string          `json:"widget_ids"`
+	WindowLayout *WindowLayoutNode `json:"window_layout,omitempty"`
 }
 
 type Snapshot struct {

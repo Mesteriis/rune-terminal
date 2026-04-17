@@ -36,12 +36,25 @@ export interface WorkspaceWidget {
   connection_id?: string;
 }
 
+export type WorkspaceWindowNodeKind = "leaf" | "split" | (string & {});
+export type WorkspaceWindowSplitAxis = "horizontal" | "vertical" | (string & {});
+export type WorkspaceWindowSplitDirection = "left" | "right" | "top" | "bottom" | (string & {});
+
+export interface WorkspaceWindowLayoutNode {
+  kind: WorkspaceWindowNodeKind;
+  widget_id?: string;
+  axis?: WorkspaceWindowSplitAxis;
+  first?: WorkspaceWindowLayoutNode;
+  second?: WorkspaceWindowLayoutNode;
+}
+
 export interface WorkspaceTab {
   id: string;
   title: string;
   description?: string;
   pinned: boolean;
   widget_ids: string[];
+  window_layout?: WorkspaceWindowLayoutNode;
 }
 
 export interface WorkspaceSnapshot {
@@ -72,6 +85,14 @@ export interface CreateTerminalTabRequest {
 
 export interface CreateRemoteTerminalTabRequest {
   title?: string;
+  connection_id?: string;
+}
+
+export interface CreateSplitTerminalWidgetRequest {
+  title?: string;
+  tab_id?: string;
+  target_widget_id?: string;
+  direction?: WorkspaceWindowSplitDirection;
   connection_id?: string;
 }
 
