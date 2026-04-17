@@ -4,7 +4,7 @@ import { CompatFilesView } from "@/app/view/files/compat-files-view";
 import { CenteredDiv } from "@/element/quickelems";
 import { makeIconClass } from "@/util/util";
 import clsx from "clsx";
-import { memo, useMemo, useState, type DragEvent, type ReactNode } from "react";
+import { memo, useMemo, useState, type CSSProperties, type DragEvent, type ReactNode } from "react";
 
 type WindowMoveDirection =
     | "left"
@@ -242,28 +242,32 @@ function determineDropDirection(event: DragEvent<HTMLDivElement>): WindowMoveDir
     }
 }
 
-function dropOverlayClass(direction: WindowMoveDirection): string {
+function dropOverlayProps(direction: WindowMoveDirection): { className: string; style: CSSProperties } {
+    const style: CSSProperties = {
+        background: "var(--compat-drop-overlay-bg-color)",
+        borderColor: "var(--compat-drop-overlay-border-color)",
+    };
     switch (direction) {
         case "left":
-            return "absolute inset-y-0 left-0 w-1/2 bg-cyan-500/20 border-l-2 border-cyan-300";
+            return { className: "absolute inset-y-0 left-0 w-1/2 border-l-2", style };
         case "right":
-            return "absolute inset-y-0 right-0 w-1/2 bg-cyan-500/20 border-r-2 border-cyan-300";
+            return { className: "absolute inset-y-0 right-0 w-1/2 border-r-2", style };
         case "top":
-            return "absolute inset-x-0 top-0 h-1/2 bg-cyan-500/20 border-t-2 border-cyan-300";
+            return { className: "absolute inset-x-0 top-0 h-1/2 border-t-2", style };
         case "bottom":
-            return "absolute inset-x-0 bottom-0 h-1/2 bg-cyan-500/20 border-b-2 border-cyan-300";
+            return { className: "absolute inset-x-0 bottom-0 h-1/2 border-b-2", style };
         case "outer-left":
-            return "absolute inset-y-0 left-0 w-[20%] bg-cyan-500/20 border-l-2 border-cyan-300";
+            return { className: "absolute inset-y-0 left-0 w-[20%] border-l-2", style };
         case "outer-right":
-            return "absolute inset-y-0 right-0 w-[20%] bg-cyan-500/20 border-r-2 border-cyan-300";
+            return { className: "absolute inset-y-0 right-0 w-[20%] border-r-2", style };
         case "outer-top":
-            return "absolute inset-x-0 top-0 h-[20%] bg-cyan-500/20 border-t-2 border-cyan-300";
+            return { className: "absolute inset-x-0 top-0 h-[20%] border-t-2", style };
         case "outer-bottom":
-            return "absolute inset-x-0 bottom-0 h-[20%] bg-cyan-500/20 border-b-2 border-cyan-300";
+            return { className: "absolute inset-x-0 bottom-0 h-[20%] border-b-2", style };
         case "center":
-            return "absolute inset-[20%] bg-cyan-500/20 border border-cyan-300";
+            return { className: "absolute inset-[20%] border", style };
         default:
-            return "hidden";
+            return { className: "hidden", style };
     }
 }
 
@@ -282,6 +286,7 @@ const CompatSplitLayout = memo(({ tabId, tab, widgets, activeWidgetId }: CompatS
         const widget = widgets[widgetId];
         const active = widgetId === activeWidgetId;
         const showDrop = dropIndicator != null && dropIndicator.targetWidgetId === widgetId && draggingWidgetId !== "";
+        const dropOverlay = dropIndicator == null ? null : dropOverlayProps(dropIndicator.direction);
         const splitAction = (
             <button
                 type="button"
@@ -305,9 +310,12 @@ const CompatSplitLayout = memo(({ tabId, tab, widgets, activeWidgetId }: CompatS
             <div
                 key={widgetId}
                 className={clsx(
-                    "relative flex flex-1 min-h-0 min-w-0 overflow-hidden rounded-[var(--block-border-radius)] border bg-black/15",
-                    active ? "border-cyan-300/70" : "border-border/60",
+                    "relative flex flex-1 min-h-0 min-w-0 overflow-hidden rounded-[var(--block-border-radius)] border",
                 )}
+                style={{
+                    background: "var(--compat-pane-bg-color)",
+                    borderColor: active ? "var(--compat-pane-active-border-color)" : "var(--compat-pane-border-color)",
+                }}
                 draggable
                 onMouseDown={() => {
                     if (widgetId !== activeWidgetId) {
@@ -371,8 +379,12 @@ const CompatSplitLayout = memo(({ tabId, tab, widgets, activeWidgetId }: CompatS
                 ) : (
                     <CenteredDiv>{widget == null ? "Missing Widget" : "Unsupported Widget"}</CenteredDiv>
                 )}
-                {showDrop ? (
-                    <div className={dropOverlayClass(dropIndicator.direction)} data-testid={`compat-drop-${widgetId}-${dropIndicator.direction}`} />
+                {showDrop && dropOverlay != null ? (
+                    <div
+                        className={dropOverlay.className}
+                        style={dropOverlay.style}
+                        data-testid={`compat-drop-${widgetId}-${dropIndicator.direction}`}
+                    />
                 ) : null}
             </div>
         );

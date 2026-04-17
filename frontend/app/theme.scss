@@ -92,6 +92,31 @@
     --toggle-thumb-color: var(--main-text-color);
     --toggle-checked-bg-color: var(--accent-color);
 
+    --compat-pane-bg-color: rgba(10, 11, 10, 0.34);
+    --compat-pane-border-color: rgba(255, 255, 255, 0.13);
+    --compat-pane-active-border-color: rgb(from var(--accent-color) r g b / 0.32);
+    --compat-pane-header-bg-color: rgba(17, 18, 17, 0.34);
+    --compat-pane-header-border-color: rgba(255, 255, 255, 0.1);
+    --compat-drop-overlay-bg-color: rgb(from var(--accent-color) r g b / 0.08);
+    --compat-drop-overlay-border-color: rgb(from var(--accent-color) r g b / 0.24);
+
+    --utility-overlay-backdrop-color: rgba(10, 12, 10, 0.12);
+    --utility-frame-bg-color: rgba(34, 34, 34, 0.96);
+    --utility-frame-border-color: rgba(255, 255, 255, 0.11);
+    --utility-frame-shadow: 0px 16px 36px rgba(0, 0, 0, 0.34);
+    --utility-section-bg-color: rgba(255, 255, 255, 0.035);
+    --utility-section-border-color: rgba(255, 255, 255, 0.1);
+    --utility-nav-bg-color: rgba(255, 255, 255, 0.02);
+    --utility-nav-active-bg-color: rgba(255, 255, 255, 0.08);
+    --utility-nav-hover-bg-color: rgba(255, 255, 255, 0.055);
+    --utility-accent-bg-color: rgb(from var(--accent-color) r g b / 0.08);
+    --utility-accent-border-color: rgb(from var(--accent-color) r g b / 0.2);
+    --utility-accent-text-color: rgb(from var(--accent-color) r g b / 0.92);
+    --utility-field-bg-color: rgba(255, 255, 255, 0.03);
+    --utility-danger-bg-color: rgba(229, 77, 46, 0.1);
+    --utility-danger-border-color: rgba(229, 77, 46, 0.24);
+    --utility-danger-text-color: rgba(255, 214, 209, 0.92);
+
     // link color
     --link-color: #58c142;
 

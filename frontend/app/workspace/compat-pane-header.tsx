@@ -79,7 +79,13 @@ export function CompatPaneHeader({
     testID,
 }: CompatPaneHeaderProps) {
     return (
-        <div className="border-b border-border/60 bg-[rgba(17,18,17,0.34)]">
+        <div
+            className="border-b"
+            style={{
+                borderBottomColor: "var(--compat-pane-header-border-color)",
+                background: "var(--compat-pane-header-bg-color)",
+            }}
+        >
             <div
                 className="flex h-[30px] items-center gap-2 px-[10px]"
                 data-testid={testID}
@@ -134,7 +140,10 @@ export function CompatPaneHeader({
                 </div>
             </div>
             {message?.text ? (
-                <div className={clsx("border-t border-border/50 px-[10px] py-1 text-[10px]", messageToneClass(message.tone))}>
+                <div
+                    className={clsx("border-t px-[10px] py-1 text-[10px]", messageToneClass(message.tone))}
+                    style={{ borderTopColor: "var(--compat-pane-header-border-color)" }}
+                >
                     {message.text}
                 </div>
             ) : null}

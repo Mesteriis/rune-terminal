@@ -22,6 +22,12 @@ const settingsViews: Array<{ id: SettingsView; label: string; icon: string }> = 
     { id: "help", label: "Help", icon: "circle-question" },
 ];
 
+const utilitySectionClass = "rounded border border-[color:var(--utility-section-border-color)] bg-[color:var(--utility-section-bg-color)] p-3";
+const utilityFieldClass =
+    "min-w-0 flex-1 rounded border border-[color:var(--utility-section-border-color)] bg-[color:var(--utility-field-bg-color)] p-1 text-[11px] text-white";
+const utilityLinkClass =
+    "rounded border border-[color:var(--utility-section-border-color)] bg-[color:var(--utility-section-bg-color)] px-3 py-2 text-sm text-secondary transition-colors hover:bg-[color:var(--utility-nav-hover-bg-color)] hover:text-white";
+
 function hasSurface(layout: WorkspaceStoreLayout, surfaceID: string): boolean {
     return layout.surfaces.some((surface) => surface.id === surfaceID);
 }
@@ -72,8 +78,8 @@ const SettingsActionButton = memo(
     }) => {
         const toneClass =
             tone === "accent"
-                ? "text-white border-[color:var(--modal-border-color)] bg-[rgba(88,193,66,0.12)] hover:bg-[rgba(88,193,66,0.18)]"
-                : "text-secondary border-[color:var(--modal-border-color)] bg-[rgba(255,255,255,0.04)] hover:bg-[rgba(255,255,255,0.09)] hover:text-white";
+                ? "border-[color:var(--utility-accent-border-color)] bg-[color:var(--utility-accent-bg-color)] text-[color:var(--utility-accent-text-color)] hover:bg-[rgba(88,193,66,0.14)]"
+                : "border-[color:var(--utility-section-border-color)] bg-[color:var(--utility-section-bg-color)] text-secondary hover:bg-[color:var(--utility-nav-hover-bg-color)] hover:text-white";
         return (
             <button
                 type="button"
@@ -93,8 +99,8 @@ const SurfaceStateCard = memo(
     ({ title, body, tone = "default" }: { title: string; body: string; tone?: "default" | "error" }) => {
         const toneClass =
             tone === "error"
-                ? "border-red-500/30 bg-red-500/10 text-red-200"
-                : "border-[color:var(--modal-border-color)] bg-[rgba(255,255,255,0.04)] text-secondary";
+                ? "border-[color:var(--utility-danger-border-color)] bg-[color:var(--utility-danger-bg-color)] text-[color:var(--utility-danger-text-color)]"
+                : "border-[color:var(--utility-section-border-color)] bg-[color:var(--utility-section-bg-color)] text-secondary";
         return (
             <div className={`rounded border p-3 text-sm ${toneClass}`}>
                 <div className="font-medium text-white">{title}</div>
@@ -123,8 +129,10 @@ const SettingsNavButton = memo(
         <button
             type="button"
             data-testid={testID}
-            className={`flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm transition-colors ${
-                active ? "bg-[rgba(255,255,255,0.1)] text-white" : "text-secondary hover:bg-[rgba(255,255,255,0.09)] hover:text-white"
+            className={`flex w-full items-center gap-2 rounded border px-2 py-2 text-left text-sm transition-colors ${
+                active
+                    ? "border-[color:var(--utility-section-border-color)] bg-[color:var(--utility-nav-active-bg-color)] text-white"
+                    : "border-transparent text-secondary hover:bg-[color:var(--utility-nav-hover-bg-color)] hover:text-white"
             }`}
             onClick={onClick}
         >
@@ -257,11 +265,7 @@ export const SettingsUtilitySurface = memo(
         const trustedRuleRows = useMemo(
             () =>
                 trustedRules.map((rule) => (
-                    <div
-                        key={rule.id}
-                        data-testid="trusted-rule-row"
-                        className="rounded border border-border bg-black/10 p-3"
-                    >
+                    <div key={rule.id} data-testid="trusted-rule-row" className={utilitySectionClass}>
                         <div className="flex items-start gap-2">
                             <div className="min-w-0 flex-1">
                                 <div className="font-medium text-white break-words">{describeTrustedRule(rule)}</div>
@@ -287,11 +291,7 @@ export const SettingsUtilitySurface = memo(
         const ignoreRuleRows = useMemo(
             () =>
                 ignoreRules.map((rule) => (
-                    <div
-                        key={rule.id}
-                        data-testid="ignore-rule-row"
-                        className="rounded border border-border bg-black/10 p-3"
-                    >
+                    <div key={rule.id} data-testid="ignore-rule-row" className={utilitySectionClass}>
                         <div className="flex items-start gap-2">
                             <div className="min-w-0 flex-1">
                                 <div className="font-medium text-white break-words">{rule.pattern}</div>
@@ -340,7 +340,13 @@ export const SettingsUtilitySurface = memo(
                 headerCursor={dragging ? "grabbing" : onHeaderPointerDown ? "grab" : undefined}
             >
                 <div className="flex min-h-0 flex-1 overflow-hidden">
-                    <div className="flex w-40 shrink-0 flex-col gap-1 border-r border-border bg-black/10 p-2">
+                    <div
+                        className="flex w-40 shrink-0 flex-col gap-1 border-r p-2"
+                        style={{
+                            borderColor: "var(--utility-section-border-color)",
+                            background: "var(--utility-nav-bg-color)",
+                        }}
+                    >
                         {settingsViews.map((view) => (
                             <SettingsNavButton
                                 key={view.id}
@@ -361,15 +367,15 @@ export const SettingsUtilitySurface = memo(
                                     body="Switch split or focus mode, choose the active surface, and control which shell utilities are visible."
                                 />
 
-                                <div className="rounded border border-border bg-black/10 p-3">
+                                <div className={utilitySectionClass}>
                                     <div className="text-xs font-semibold uppercase tracking-wide text-muted">Mode</div>
                                     <div className="mt-2 flex items-center gap-2">
                                         <button
                                             type="button"
                                             className={`rounded border px-2 py-1 text-[11px] ${
                                                 layout.mode === "split"
-                                                    ? "border-accent/40 bg-accent/10 text-white"
-                                                    : "border-border text-secondary hover:text-white"
+                                                    ? "border-[color:var(--utility-accent-border-color)] bg-[color:var(--utility-accent-bg-color)] text-white"
+                                                    : "border-[color:var(--utility-section-border-color)] text-secondary hover:bg-[color:var(--utility-nav-hover-bg-color)] hover:text-white"
                                             }`}
                                             onClick={() => applyLayout({ ...layout, mode: "split" })}
                                         >
@@ -379,15 +385,15 @@ export const SettingsUtilitySurface = memo(
                                             type="button"
                                             className={`rounded border px-2 py-1 text-[11px] ${
                                                 layout.mode === "focus"
-                                                    ? "border-accent/40 bg-accent/10 text-white"
-                                                    : "border-border text-secondary hover:text-white"
+                                                    ? "border-[color:var(--utility-accent-border-color)] bg-[color:var(--utility-accent-bg-color)] text-white"
+                                                    : "border-[color:var(--utility-section-border-color)] text-secondary hover:bg-[color:var(--utility-nav-hover-bg-color)] hover:text-white"
                                             }`}
                                             onClick={() => applyLayout({ ...layout, mode: "focus" })}
                                         >
                                             Focus
                                         </button>
                                         <select
-                                            className="min-w-0 flex-1 rounded border border-border bg-black/20 p-1 text-[11px] text-white"
+                                            className={utilityFieldClass}
                                             value={layout.activeSurfaceId}
                                             onChange={(event) => applyLayout({ ...layout, activeSurfaceId: event.target.value })}
                                         >
@@ -400,7 +406,7 @@ export const SettingsUtilitySurface = memo(
                                     </div>
                                 </div>
 
-                                <div className="rounded border border-border bg-black/10 p-3">
+                                <div className={utilitySectionClass}>
                                     <div className="text-xs font-semibold uppercase tracking-wide text-muted">Visible surfaces</div>
                                     <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
                                         {surfaceConfig.map((surface) => {
@@ -419,11 +425,11 @@ export const SettingsUtilitySurface = memo(
                                     </div>
                                 </div>
 
-                                <div className="rounded border border-border bg-black/10 p-3">
+                                <div className={utilitySectionClass}>
                                     <div className="text-xs font-semibold uppercase tracking-wide text-muted">Saved layouts</div>
                                     <div className="mt-2 flex items-center gap-2">
                                         <select
-                                            className="min-w-0 flex-1 rounded border border-border bg-black/20 p-1 text-[11px] text-white"
+                                            className={utilityFieldClass}
                                             value={activeLayoutId}
                                             onChange={(event) => {
                                                 const nextLayoutID = event.target.value;
@@ -439,7 +445,7 @@ export const SettingsUtilitySurface = memo(
                                         </select>
                                         <button
                                             type="button"
-                                            className="rounded border border-border px-2 py-1 text-[11px] text-secondary hover:text-white"
+                                            className="rounded border border-[color:var(--utility-section-border-color)] px-2 py-1 text-[11px] text-secondary transition-colors hover:bg-[color:var(--utility-nav-hover-bg-color)] hover:text-white"
                                             onClick={() => {
                                                 fireAndForget(() => workspaceStore.saveLayout());
                                             }}
@@ -449,7 +455,7 @@ export const SettingsUtilitySurface = memo(
                                     </div>
                                 </div>
 
-                                <div className="rounded border border-border bg-black/10 p-3">
+                                <div className={utilitySectionClass}>
                                     <div className="text-xs font-semibold uppercase tracking-wide text-muted">Utilities</div>
                                     <div className="mt-2 flex flex-wrap gap-2">
                                         <SettingsActionButton
@@ -561,7 +567,7 @@ export const SettingsUtilitySurface = memo(
                                         }}
                                     />
                                     <a
-                                        className="rounded border border-border bg-black/10 px-3 py-2 text-sm text-secondary transition-colors hover:bg-hoverbg hover:text-white"
+                                        className={utilityLinkClass}
                                         href="https://github.com/Mesteriis/rune-terminal#readme"
                                         target="_blank"
                                         rel="noreferrer"
@@ -570,7 +576,7 @@ export const SettingsUtilitySurface = memo(
                                         Open RunaTerminal README
                                     </a>
                                     <a
-                                        className="rounded border border-border bg-black/10 px-3 py-2 text-sm text-secondary transition-colors hover:bg-hoverbg hover:text-white"
+                                        className={utilityLinkClass}
                                         href="https://github.com/Mesteriis/rune-terminal/blob/main/docs/validation/validation.md"
                                         target="_blank"
                                         rel="noreferrer"

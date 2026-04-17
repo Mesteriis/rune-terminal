@@ -22,6 +22,7 @@ It is intentionally operational, not narrative.
   - it is mounted independently of the split layout tree
   - it opens near the right utility rail instead of as a centered modal
   - dragging is limited to the header chrome and clamped to the desktop window bounds
+  - its frame, sections, and navigation now use the same restrained overlay token set instead of mixed ad hoc panel colors
 - The visible shell typography/icon path for the active compat UI now uses:
   - `Inter` for body/header UI text
   - `Hack` for terminal-adjacent fixed-width text
@@ -52,6 +53,7 @@ It is intentionally operational, not narrative.
   - a `30px` header row holds the drag affordance, pane icon, title, compact badges, and end-icon actions
   - split/restart/explain and file-navigation actions now sit in the header chrome as compact icon controls instead of larger text buttons
   - terminal status detail stays below that header as a thin message strip only when needed
+  - pane borders, header fills, and split-drop indicators now share one compat token set instead of separate cyan/debug styling
 - Files panel now also exposes explicit handoff helpers for selected paths:
   - `Use Selected Path In AI Prompt`
   - `Use Selected Path In /run Prompt`

@@ -36,12 +36,13 @@ export function UtilitySurfaceFrame({
     headerCursor,
 }: UtilitySurfaceFrameProps) {
     const frameStyle: CSSProperties = {
-        border: "0.5px solid var(--modal-border-color)",
-        background: "var(--modal-bg-color)",
-        boxShadow: "0px 8px 32px 0px rgba(0, 0, 0, 0.25)",
+        border: "1px solid var(--utility-frame-border-color)",
+        background: "var(--utility-frame-bg-color)",
+        boxShadow: "var(--utility-frame-shadow)",
+        font: "var(--base-font)",
     };
     const headerStyle: CSSProperties = {
-        borderBottom: "1px solid var(--modal-header-bottom-border-color)",
+        borderBottom: "1px solid var(--utility-section-border-color)",
     };
 
     return (

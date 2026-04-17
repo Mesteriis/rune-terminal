@@ -201,7 +201,7 @@ export const SettingsFloatingWindow = memo(
                 <button
                     type="button"
                     className="absolute inset-0"
-                    style={{ backgroundColor: "rgba(10, 12, 10, 0.16)" }}
+                    style={{ backgroundColor: "var(--utility-overlay-backdrop-color)" }}
                     aria-label="Close settings overlay"
                     onClick={onClose}
                 />
