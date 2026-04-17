@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/Mesteriis/rune-terminal/core/app"
 	"github.com/Mesteriis/rune-terminal/core/workspace"
@@ -113,6 +114,10 @@ func (api *API) handleMoveWidgetBySplit(w http.ResponseWriter, r *http.Request) 
 	}
 	if err := decodeJSON(r, &payload); err != nil {
 		writeBadRequest(w, "invalid_request", err)
+		return
+	}
+	if strings.TrimSpace(payload.Direction) == "" {
+		writeWorkspaceError(w, workspace.ErrInvalidWindowSplitDirection)
 		return
 	}
 	direction, err := workspace.ParseWindowSplitDirection(payload.Direction)

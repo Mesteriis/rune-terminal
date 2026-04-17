@@ -130,3 +130,127 @@ func TestSaveAndLoadSnapshotPersistsLayout(t *testing.T) {
 		t.Fatalf("expected layout roundtrip match: got=%s want=%s", left, right)
 	}
 }
+
+func TestSaveAndLoadSnapshotPersistsWindowLayoutAndActiveWidget(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(t.TempDir(), "workspace.json")
+	snapshot := BootstrapDefault()
+	snapshot.Tabs[0].WidgetIDs = []string{"term-main", "term-split"}
+	snapshot.Tabs[0].WindowLayout = &WindowLayoutNode{
+		Kind: WindowNodeSplit,
+		Axis: WindowSplitHorizontal,
+		First: &WindowLayoutNode{
+			Kind:     WindowNodeLeaf,
+			WidgetID: "term-main",
+		},
+		Second: &WindowLayoutNode{
+			Kind:     WindowNodeLeaf,
+			WidgetID: "term-split",
+		},
+	}
+	snapshot.Widgets = append(snapshot.Widgets, Widget{
+		ID:          "term-split",
+		Kind:        WidgetKindTerminal,
+		Title:       "Split",
+		Description: "Split session",
+		TerminalID:  "term-split",
+	})
+	snapshot.ActiveTabID = "tab-main"
+	snapshot.ActiveWidgetID = "term-split"
+
+	if err := SaveSnapshot(path, snapshot); err != nil {
+		t.Fatalf("SaveSnapshot error: %v", err)
+	}
+	loaded, err := LoadSnapshot(path, BootstrapDefault())
+	if err != nil {
+		t.Fatalf("LoadSnapshot error: %v", err)
+	}
+	if loaded.ActiveWidgetID != "term-split" {
+		t.Fatalf("expected active widget to persist, got %q", loaded.ActiveWidgetID)
+	}
+	var tabMain Tab
+	for _, tab := range loaded.Tabs {
+		if tab.ID == "tab-main" {
+			tabMain = tab
+			break
+		}
+	}
+	if tabMain.WindowLayout == nil || tabMain.WindowLayout.Kind != WindowNodeSplit || tabMain.WindowLayout.Axis != WindowSplitHorizontal {
+		t.Fatalf("expected persisted split window layout, got %#v", tabMain.WindowLayout)
+	}
+}
+
+func TestLoadSnapshotNormalizesWindowLayoutAgainstValidWidgets(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(t.TempDir(), "workspace.json")
+	fallback := BootstrapDefault()
+	if err := SaveSnapshot(path, Snapshot{
+		ID:             "ws-local",
+		Name:           "Local Workspace",
+		ActiveTabID:    "tab-main",
+		ActiveWidgetID: "ghost-widget",
+		Tabs: []Tab{
+			{
+				ID:        "tab-main",
+				Title:     "Main Shell",
+				WidgetIDs: []string{"term-main", "term-main", "term-split", "term-missing"},
+				WindowLayout: &WindowLayoutNode{
+					Kind: WindowNodeSplit,
+					Axis: WindowSplitHorizontal,
+					First: &WindowLayoutNode{
+						Kind:     WindowNodeLeaf,
+						WidgetID: "ghost-widget",
+					},
+					Second: &WindowLayoutNode{
+						Kind:     WindowNodeLeaf,
+						WidgetID: "term-main",
+					},
+				},
+			},
+		},
+		Widgets: []Widget{
+			{
+				ID:         "term-main",
+				Kind:       WidgetKindTerminal,
+				Title:      "Main Shell",
+				TerminalID: "term-main",
+			},
+			{
+				ID:         "term-split",
+				Kind:       WidgetKindTerminal,
+				Title:      "Split Shell",
+				TerminalID: "term-split",
+			},
+			{
+				ID:         "term-main",
+				Kind:       WidgetKindTerminal,
+				Title:      "Duplicate Main",
+				TerminalID: "term-main",
+			},
+		},
+	}); err != nil {
+		t.Fatalf("SaveSnapshot error: %v", err)
+	}
+
+	loaded, err := LoadSnapshot(path, fallback)
+	if err != nil {
+		t.Fatalf("LoadSnapshot error: %v", err)
+	}
+	if loaded.ActiveWidgetID != "term-main" {
+		t.Fatalf("expected active widget to normalize to first valid window leaf, got %q", loaded.ActiveWidgetID)
+	}
+	if len(loaded.Tabs) != 1 {
+		t.Fatalf("expected one normalized tab, got %#v", loaded.Tabs)
+	}
+	if !reflect.DeepEqual(loaded.Tabs[0].WidgetIDs, []string{"term-main", "term-split"}) {
+		t.Fatalf("expected deduplicated and filtered widget ids, got %#v", loaded.Tabs[0].WidgetIDs)
+	}
+	if len(loaded.Widgets) != 2 {
+		t.Fatalf("expected deduplicated referenced widgets, got %#v", loaded.Widgets)
+	}
+	if loaded.Tabs[0].WindowLayout == nil || loaded.Tabs[0].WindowLayout.Kind != WindowNodeSplit {
+		t.Fatalf("expected normalized split window layout, got %#v", loaded.Tabs[0].WindowLayout)
+	}
+}

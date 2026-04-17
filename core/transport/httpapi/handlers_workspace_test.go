@@ -137,6 +137,23 @@ func TestWorkspaceMoveWidgetBySplitRejectsInvalidDirection(t *testing.T) {
 	}
 }
 
+func TestWorkspaceMoveWidgetBySplitRequiresExplicitDirection(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPost, "/api/v1/workspace/widgets/move-split", map[string]any{
+		"tab_id":           "tab-main",
+		"widget_id":        "term-main",
+		"target_widget_id": "term-side",
+		"direction":        "   ",
+	}))
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d (%s)", recorder.Code, recorder.Body.String())
+	}
+}
+
 func TestWorkspaceUpdateLayout(t *testing.T) {
 	t.Parallel()
 

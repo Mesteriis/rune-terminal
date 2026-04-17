@@ -83,14 +83,19 @@ func normalizeSnapshot(candidate Snapshot, fallback Snapshot) Snapshot {
 		}
 		tab.ID = strings.TrimSpace(tab.ID)
 		filteredWidgetIDs := make([]string, 0, len(tab.WidgetIDs))
+		seenWidgetIDs := make(map[string]struct{}, len(tab.WidgetIDs))
 		for _, widgetID := range tab.WidgetIDs {
 			widgetID = strings.TrimSpace(widgetID)
 			if widgetID == "" {
 				continue
 			}
+			if _, seen := seenWidgetIDs[widgetID]; seen {
+				continue
+			}
 			if _, ok := widgetsByID[widgetID]; !ok {
 				continue
 			}
+			seenWidgetIDs[widgetID] = struct{}{}
 			filteredWidgetIDs = append(filteredWidgetIDs, widgetID)
 			referencedWidgets[widgetID] = struct{}{}
 		}
@@ -106,10 +111,15 @@ func normalizeSnapshot(candidate Snapshot, fallback Snapshot) Snapshot {
 	}
 
 	normalized.Widgets = make([]Widget, 0, len(referencedWidgets))
+	addedWidgetIDs := make(map[string]struct{}, len(referencedWidgets))
 	for _, widget := range candidate.Widgets {
 		if _, ok := referencedWidgets[widget.ID]; !ok {
 			continue
 		}
+		if _, exists := addedWidgetIDs[widget.ID]; exists {
+			continue
+		}
+		addedWidgetIDs[widget.ID] = struct{}{}
 		normalized.Widgets = append(normalized.Widgets, widget)
 	}
 	if len(normalized.Widgets) == 0 {
