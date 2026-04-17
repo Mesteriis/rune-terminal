@@ -39,6 +39,16 @@ export interface WorkspaceWidget {
 export type WorkspaceWindowNodeKind = "leaf" | "split" | (string & {});
 export type WorkspaceWindowSplitAxis = "horizontal" | "vertical" | (string & {});
 export type WorkspaceWindowSplitDirection = "left" | "right" | "top" | "bottom" | (string & {});
+export type WorkspaceWindowMoveDirection =
+  | "left"
+  | "right"
+  | "top"
+  | "bottom"
+  | "outer-left"
+  | "outer-right"
+  | "outer-top"
+  | "outer-bottom"
+  | (string & {});
 
 export interface WorkspaceWindowLayoutNode {
   kind: WorkspaceWindowNodeKind;
@@ -127,7 +137,7 @@ export interface MoveWidgetBySplitRequest {
   tab_id?: string;
   widget_id: string;
   target_widget_id: string;
-  direction: WorkspaceWindowSplitDirection;
+  direction: WorkspaceWindowMoveDirection;
 }
 
 export interface UpdateLayoutRequest {

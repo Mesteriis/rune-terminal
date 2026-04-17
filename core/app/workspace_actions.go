@@ -246,7 +246,7 @@ func (r *Runtime) MoveWidgetBySplit(
 	tabID string,
 	widgetID string,
 	targetWidgetID string,
-	direction workspace.WindowSplitDirection,
+	direction workspace.WindowMoveDirection,
 ) (workspace.Snapshot, error) {
 	tabID = strings.TrimSpace(tabID)
 	if tabID == "" {

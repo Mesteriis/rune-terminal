@@ -4,7 +4,15 @@ import { CenteredDiv } from "@/element/quickelems";
 import clsx from "clsx";
 import { memo, useMemo, useState, type DragEvent, type ReactNode } from "react";
 
-type WindowSplitDirection = "left" | "right" | "top" | "bottom";
+type WindowMoveDirection =
+    | "left"
+    | "right"
+    | "top"
+    | "bottom"
+    | "outer-left"
+    | "outer-right"
+    | "outer-top"
+    | "outer-bottom";
 
 interface CompatSplitLayoutProps {
     tabId: string;
@@ -15,7 +23,7 @@ interface CompatSplitLayoutProps {
 
 interface DropIndicator {
     targetWidgetId: string;
-    direction: WindowSplitDirection;
+    direction: WindowMoveDirection;
 }
 
 function cloneNode(node: WorkspaceStoreWindowLayoutNode | undefined): WorkspaceStoreWindowLayoutNode | undefined {
@@ -35,7 +43,7 @@ function splitNodeAtTarget(
     node: WorkspaceStoreWindowLayoutNode | undefined,
     targetWidgetId: string,
     newWidgetId: string,
-    direction: WindowSplitDirection,
+    direction: "left" | "right" | "top" | "bottom",
 ): { node: WorkspaceStoreWindowLayoutNode | undefined; changed: boolean } {
     if (node == null || targetWidgetId === "" || newWidgetId === "") {
         return { node: cloneNode(node), changed: false };
@@ -170,32 +178,61 @@ function normalizeLayout(
     return layout;
 }
 
-function determineDropDirection(event: DragEvent<HTMLDivElement>): WindowSplitDirection {
+function determineDropDirection(event: DragEvent<HTMLDivElement>): WindowMoveDirection {
     const bounds = event.currentTarget.getBoundingClientRect();
     const width = Math.max(bounds.width, 1);
     const height = Math.max(bounds.height, 1);
-    const x = (event.clientX - bounds.left) / width;
-    const y = (event.clientY - bounds.top) / height;
-    const edgeThreshold = 0.25;
-    if (x <= edgeThreshold) {
-        return "left";
+    const x = event.clientX - bounds.left;
+    const y = event.clientY - bounds.top;
+    const diagonal1 = y * width - x * height;
+    const diagonal2 = y * width + x * height - height * width;
+    if (diagonal1 === 0 || diagonal2 === 0) {
+        if (Math.abs(x - width / 2) > Math.abs(y - height / 2)) {
+            return x < width / 2 ? "left" : "right";
+        }
+        return y < height / 2 ? "top" : "bottom";
     }
-    if (x >= 1 - edgeThreshold) {
-        return "right";
+
+    let code = 0;
+    if (diagonal2 > 0) {
+        code += 1;
     }
-    if (y <= edgeThreshold) {
-        return "top";
+    if (diagonal1 > 0) {
+        code += 2;
+        code = 5 - code;
     }
-    if (y >= 1 - edgeThreshold) {
-        return "bottom";
+
+    const xOuter1 = width / 5;
+    const xOuter2 = width - width / 5;
+    const yOuter1 = height / 5;
+    const yOuter2 = height - height / 5;
+    if (y < yOuter1 || y > yOuter2 || x < xOuter1 || x > xOuter2) {
+        code += 4;
     }
-    if (Math.abs(x - 0.5) > Math.abs(y - 0.5)) {
-        return x < 0.5 ? "left" : "right";
+
+    switch (code) {
+        case 0:
+            return "top";
+        case 1:
+            return "right";
+        case 2:
+            return "bottom";
+        case 3:
+            return "left";
+        case 4:
+            return "outer-top";
+        case 5:
+            return "outer-right";
+        case 6:
+            return "outer-bottom";
+        case 7:
+            return "outer-left";
+        default:
+            return "right";
     }
-    return y < 0.5 ? "top" : "bottom";
 }
 
-function dropOverlayClass(direction: WindowSplitDirection): string {
+function dropOverlayClass(direction: WindowMoveDirection): string {
     switch (direction) {
         case "left":
             return "absolute inset-y-0 left-0 w-1/2 bg-cyan-500/20 border-l-2 border-cyan-300";
@@ -205,6 +242,14 @@ function dropOverlayClass(direction: WindowSplitDirection): string {
             return "absolute inset-x-0 top-0 h-1/2 bg-cyan-500/20 border-t-2 border-cyan-300";
         case "bottom":
             return "absolute inset-x-0 bottom-0 h-1/2 bg-cyan-500/20 border-b-2 border-cyan-300";
+        case "outer-left":
+            return "absolute inset-y-0 left-0 w-[20%] bg-cyan-500/20 border-l-2 border-cyan-300";
+        case "outer-right":
+            return "absolute inset-y-0 right-0 w-[20%] bg-cyan-500/20 border-r-2 border-cyan-300";
+        case "outer-top":
+            return "absolute inset-x-0 top-0 h-[20%] bg-cyan-500/20 border-t-2 border-cyan-300";
+        case "outer-bottom":
+            return "absolute inset-x-0 bottom-0 h-[20%] bg-cyan-500/20 border-b-2 border-cyan-300";
         default:
             return "hidden";
     }

@@ -28,6 +28,19 @@ const (
 	WindowSplitBottom WindowSplitDirection = "bottom"
 )
 
+type WindowMoveDirection string
+
+const (
+	WindowMoveLeft        WindowMoveDirection = "left"
+	WindowMoveRight       WindowMoveDirection = "right"
+	WindowMoveTop         WindowMoveDirection = "top"
+	WindowMoveBottom      WindowMoveDirection = "bottom"
+	WindowMoveOuterLeft   WindowMoveDirection = "outer-left"
+	WindowMoveOuterRight  WindowMoveDirection = "outer-right"
+	WindowMoveOuterTop    WindowMoveDirection = "outer-top"
+	WindowMoveOuterBottom WindowMoveDirection = "outer-bottom"
+)
+
 type WindowLayoutNode struct {
 	Kind     WindowNodeKind    `json:"kind"`
 	WidgetID string            `json:"widget_id,omitempty"`
@@ -68,6 +81,48 @@ func ParseWindowSplitDirection(raw string) (WindowSplitDirection, error) {
 	}
 }
 
+func ParseWindowMoveDirection(raw string) (WindowMoveDirection, error) {
+	normalized := normalizeWindowMoveDirection(raw)
+	switch normalized {
+	case "left":
+		return WindowMoveLeft, nil
+	case "right":
+		return WindowMoveRight, nil
+	case "top":
+		return WindowMoveTop, nil
+	case "bottom":
+		return WindowMoveBottom, nil
+	case "outer-left":
+		return WindowMoveOuterLeft, nil
+	case "outer-right":
+		return WindowMoveOuterRight, nil
+	case "outer-top":
+		return WindowMoveOuterTop, nil
+	case "outer-bottom":
+		return WindowMoveOuterBottom, nil
+	default:
+		return "", fmt.Errorf("%w: %s", ErrInvalidWindowSplitDirection, raw)
+	}
+}
+
+func normalizeWindowMoveDirection(raw string) string {
+	value := strings.TrimSpace(strings.ToLower(raw))
+	value = strings.ReplaceAll(value, "_", "-")
+	value = strings.ReplaceAll(value, " ", "")
+	switch value {
+	case "outerleft":
+		return "outer-left"
+	case "outerright":
+		return "outer-right"
+	case "outertop":
+		return "outer-top"
+	case "outerbottom":
+		return "outer-bottom"
+	default:
+		return value
+	}
+}
+
 func splitSpecFromDirection(direction WindowSplitDirection) (WindowSplitAxis, bool, error) {
 	switch direction {
 	case WindowSplitLeft:
@@ -80,6 +135,30 @@ func splitSpecFromDirection(direction WindowSplitDirection) (WindowSplitAxis, bo
 		return WindowSplitVertical, false, nil
 	default:
 		return "", false, fmt.Errorf("%w: %s", ErrInvalidWindowSplitDirection, direction)
+	}
+}
+
+func splitSpecFromMoveDirection(direction WindowMoveDirection) (WindowSplitAxis, bool, error) {
+	switch direction {
+	case WindowMoveLeft, WindowMoveOuterLeft:
+		return WindowSplitHorizontal, true, nil
+	case WindowMoveRight, WindowMoveOuterRight:
+		return WindowSplitHorizontal, false, nil
+	case WindowMoveTop, WindowMoveOuterTop:
+		return WindowSplitVertical, true, nil
+	case WindowMoveBottom, WindowMoveOuterBottom:
+		return WindowSplitVertical, false, nil
+	default:
+		return "", false, fmt.Errorf("%w: %s", ErrInvalidWindowSplitDirection, direction)
+	}
+}
+
+func moveDirectionIsOuter(direction WindowMoveDirection) bool {
+	switch direction {
+	case WindowMoveOuterLeft, WindowMoveOuterRight, WindowMoveOuterTop, WindowMoveOuterBottom:
+		return true
+	default:
+		return false
 	}
 }
 
@@ -320,6 +399,181 @@ func splitWindowLayoutAtWidget(
 
 	next, changed := splitRec(layout)
 	return next, changed, nil
+}
+
+func splitWindowLayoutAtPath(
+	layout *WindowLayoutNode,
+	targetPath []bool,
+	newWidgetID string,
+	axis WindowSplitAxis,
+	insertBefore bool,
+) (*WindowLayoutNode, bool) {
+	newWidgetID = strings.TrimSpace(newWidgetID)
+	if newWidgetID == "" {
+		return cloneWindowLayout(layout), false
+	}
+
+	var splitRec func(node *WindowLayoutNode, depth int) (*WindowLayoutNode, bool)
+	splitRec = func(node *WindowLayoutNode, depth int) (*WindowLayoutNode, bool) {
+		if node == nil {
+			return nil, false
+		}
+		if depth == len(targetPath) {
+			targetNode := cloneWindowLayout(node)
+			newLeaf := &WindowLayoutNode{Kind: WindowNodeLeaf, WidgetID: newWidgetID}
+			if insertBefore {
+				return &WindowLayoutNode{
+					Kind:   WindowNodeSplit,
+					Axis:   axis,
+					First:  newLeaf,
+					Second: targetNode,
+				}, true
+			}
+			return &WindowLayoutNode{
+				Kind:   WindowNodeSplit,
+				Axis:   axis,
+				First:  targetNode,
+				Second: newLeaf,
+			}, true
+		}
+		if node.Kind != WindowNodeSplit {
+			return cloneWindowLayout(node), false
+		}
+		if !targetPath[depth] {
+			first, changed := splitRec(node.First, depth+1)
+			if !changed {
+				return cloneWindowLayout(node), false
+			}
+			return &WindowLayoutNode{
+				Kind:   WindowNodeSplit,
+				Axis:   node.Axis,
+				First:  first,
+				Second: cloneWindowLayout(node.Second),
+			}, true
+		}
+		second, changed := splitRec(node.Second, depth+1)
+		if !changed {
+			return cloneWindowLayout(node), false
+		}
+		return &WindowLayoutNode{
+			Kind:   WindowNodeSplit,
+			Axis:   node.Axis,
+			First:  cloneWindowLayout(node.First),
+			Second: second,
+		}, true
+	}
+
+	return splitRec(layout, 0)
+}
+
+func findWindowLeafPath(layout *WindowLayoutNode, widgetID string) ([]bool, bool) {
+	widgetID = strings.TrimSpace(widgetID)
+	if widgetID == "" || layout == nil {
+		return nil, false
+	}
+	var path []bool
+	var findRec func(node *WindowLayoutNode, current []bool) bool
+	findRec = func(node *WindowLayoutNode, current []bool) bool {
+		if node == nil {
+			return false
+		}
+		if node.Kind == WindowNodeLeaf {
+			if node.WidgetID != widgetID {
+				return false
+			}
+			path = append([]bool(nil), current...)
+			return true
+		}
+		if findRec(node.First, append(current, false)) {
+			return true
+		}
+		return findRec(node.Second, append(current, true))
+	}
+	if !findRec(layout, nil) {
+		return nil, false
+	}
+	return path, true
+}
+
+func nodeAtWindowPath(layout *WindowLayoutNode, path []bool) *WindowLayoutNode {
+	current := layout
+	for _, step := range path {
+		if current == nil || current.Kind != WindowNodeSplit {
+			return nil
+		}
+		if step {
+			current = current.Second
+		} else {
+			current = current.First
+		}
+	}
+	return current
+}
+
+func outerInsertPathForTarget(layout *WindowLayoutNode, targetWidgetID string, axis WindowSplitAxis) ([]bool, bool) {
+	leafPath, ok := findWindowLeafPath(layout, targetWidgetID)
+	if !ok {
+		return nil, false
+	}
+	// Outer drop wraps the nearest matching-axis split group that is not root.
+	for depth := len(leafPath) - 1; depth >= 1; depth-- {
+		candidatePath := leafPath[:depth]
+		node := nodeAtWindowPath(layout, candidatePath)
+		if node != nil && node.Kind == WindowNodeSplit && node.Axis == axis {
+			return append([]bool(nil), candidatePath...), true
+		}
+	}
+	return nil, false
+}
+
+func moveWindowLayoutByDirection(
+	layout *WindowLayoutNode,
+	widgetID string,
+	targetWidgetID string,
+	direction WindowMoveDirection,
+) (*WindowLayoutNode, bool, error) {
+	axis, insertBefore, err := splitSpecFromMoveDirection(direction)
+	if err != nil {
+		return nil, false, err
+	}
+
+	layoutWithoutWidget, removed := removeWindowLayoutWidget(layout, widgetID)
+	if !removed {
+		return cloneWindowLayout(layout), false, nil
+	}
+	if layoutWithoutWidget == nil {
+		return cloneWindowLayout(layout), false, nil
+	}
+
+	if moveDirectionIsOuter(direction) {
+		insertPath, found := outerInsertPathForTarget(layoutWithoutWidget, targetWidgetID, axis)
+		if found {
+			next, changed := splitWindowLayoutAtPath(layoutWithoutWidget, insertPath, widgetID, axis, insertBefore)
+			if changed {
+				return next, true, nil
+			}
+		}
+	}
+
+	var fallbackSplitDirection WindowSplitDirection
+	switch direction {
+	case WindowMoveLeft, WindowMoveOuterLeft:
+		fallbackSplitDirection = WindowSplitLeft
+	case WindowMoveRight, WindowMoveOuterRight:
+		fallbackSplitDirection = WindowSplitRight
+	case WindowMoveTop, WindowMoveOuterTop:
+		fallbackSplitDirection = WindowSplitTop
+	case WindowMoveBottom, WindowMoveOuterBottom:
+		fallbackSplitDirection = WindowSplitBottom
+	default:
+		return nil, false, fmt.Errorf("%w: %s", ErrInvalidWindowSplitDirection, direction)
+	}
+
+	nextLayout, changed, err := splitWindowLayoutAtWidget(layoutWithoutWidget, targetWidgetID, widgetID, fallbackSplitDirection)
+	if err != nil {
+		return nil, false, err
+	}
+	return nextLayout, changed, nil
 }
 
 func removeWindowLayoutWidget(layout *WindowLayoutNode, widgetID string) (*WindowLayoutNode, bool) {

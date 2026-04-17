@@ -120,7 +120,7 @@ func (api *API) handleMoveWidgetBySplit(w http.ResponseWriter, r *http.Request) 
 		writeWorkspaceError(w, workspace.ErrInvalidWindowSplitDirection)
 		return
 	}
-	direction, err := workspace.ParseWindowSplitDirection(payload.Direction)
+	direction, err := workspace.ParseWindowMoveDirection(payload.Direction)
 	if err != nil {
 		writeWorkspaceError(w, err)
 		return

@@ -202,7 +202,7 @@ func (s *Service) MoveWidgetBySplit(
 	tabID string,
 	widgetID string,
 	targetWidgetID string,
-	direction WindowSplitDirection,
+	direction WindowMoveDirection,
 ) (Snapshot, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -234,11 +234,7 @@ func (s *Service) MoveWidgetBySplit(
 	}
 
 	layout := normalizeWindowLayout(tab.WindowLayout, tab.WidgetIDs, s.snapshot.ActiveWidgetID)
-	layoutWithoutWidget, removed := removeWindowLayoutWidget(layout, widgetID)
-	if !removed {
-		return Snapshot{}, fmt.Errorf("%w: %s", ErrWidgetNotFound, widgetID)
-	}
-	nextLayout, changed, err := splitWindowLayoutAtWidget(layoutWithoutWidget, targetWidgetID, widgetID, direction)
+	nextLayout, changed, err := moveWindowLayoutByDirection(layout, widgetID, targetWidgetID, direction)
 	if err != nil {
 		return Snapshot{}, err
 	}

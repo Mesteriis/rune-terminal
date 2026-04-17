@@ -326,7 +326,7 @@ func TestMoveWidgetBySplit(t *testing.T) {
 		t.Fatalf("SplitTabWithWidget setup error: %v", err)
 	}
 
-	next, err := service.MoveWidgetBySplit("tab-main", "term-main", "term-split", WindowSplitBottom)
+	next, err := service.MoveWidgetBySplit("tab-main", "term-main", "term-split", WindowMoveBottom)
 	if err != nil {
 		t.Fatalf("MoveWidgetBySplit error: %v", err)
 	}
