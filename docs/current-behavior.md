@@ -35,7 +35,8 @@ It is intentionally operational, not narrative.
 - Widget creation in an active tab supports explicit split-side insertion (`left`, `right`, `top`, `bottom`) against a target widget.
 - Widget drag/drop split-move is explicit and backend-backed:
   - `POST /api/v1/workspace/widgets/move-split`
-  - side selection is explicit (`left`, `right`, `top`, `bottom`)
+  - side selection is explicit (`left`, `right`, `top`, `bottom`, `outer-left`, `outer-right`, `outer-top`, `outer-bottom`)
+  - center drop is explicit swap semantics (`center`)
   - empty direction is rejected (no hidden default for move path)
 - Tab window layout metadata is persisted/restored as part of workspace snapshot truth.
 - Workspace snapshot now carries explicit layout composition truth:

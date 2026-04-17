@@ -32,3 +32,17 @@ These are distinct from inner `top/right/bottom/left` and are selected when drop
 - No shell redesign.
 - No weakening of existing working split behavior.
 - Parity completion only: implement `outer*` zones and `center` swap, then revalidate and cover with targeted UI tests.
+
+## Completion status after headed revalidation
+
+- Implemented in active path:
+  - `outer-left`, `outer-right`, `outer-top`, `outer-bottom` move-direction support
+  - `center` drop swap semantics
+- Headed revalidation confirms:
+  - base split behavior still works
+  - outer-zone behavior works in real drag/drop interaction
+  - center-swap behavior works with focus and reload persistence truth preserved
+- Boundary kept:
+  - no shell redesign
+  - no new layout domain
+  - no broad workspace refactor

@@ -5,6 +5,32 @@
 - отсутствие проверки фиксируется как `NOT RUN`, а не маскируется под успешный результат
 - записи ниже основаны только на audit trail из `docs/tideterm-feature-inventory.md`, `docs/feature-parity-audit.md` и `docs/feature-gap-summary.md`
 
+<a id="window-parity-completion"></a>
+## Window parity completion (outer zones + center swap)
+
+- Date: `2026-04-17`
+- Status: `VERIFIED`
+- Validation steps:
+  - backend/runtime checks:
+    - `./scripts/go.sh test ./core/workspace ./core/app ./core/transport/httpapi` -> `ok`
+  - frontend build/type checks:
+    - `npm --prefix frontend run build` -> `pass`
+  - real headed browser run (visible Chromium, not headless):
+    - `node --input-type=module` (Playwright script with `chromium.launch({ headless: false })`) -> `VALIDATION_OK`
+    - covered:
+      - add-widget split baseline
+      - outer-zone drag/drop behavior (`outer-left`, `outer-top`)
+      - center swap behavior
+      - focus correctness after actions
+      - reload persistence/restore correctness
+      - terminal + AI + audit + MCP + remote quick-actions surface smoke
+- Result:
+  - remaining release-blocking parity behaviors are implemented on active path (outer zones + center swap).
+  - execution-bearing window actions remain backend-truth and persistence-safe.
+  - no metadata/API/UI mismatch was observed in the headed completion run.
+- Notes:
+  - exact headed flow is documented in `docs/window-behavior-validation.md`.
+
 <a id="window-behavior-parity"></a>
 ## Window behavior parity (split/focus/restore)
 
