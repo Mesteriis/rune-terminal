@@ -22,8 +22,14 @@ interface SelectionFieldProps {
 
 const SelectionField = memo(({ id, label, value, disabled, compact, options, onChange }: SelectionFieldProps) => {
     return (
-        <label className={compact ? "flex min-w-[6.5rem] flex-col gap-1 text-[10px] text-muted" : "flex min-w-[8.5rem] flex-col gap-1 text-[11px] text-muted"}>
-            <span className={compact ? "uppercase tracking-wide text-[9px]" : undefined}>{label}</span>
+        <label
+            className={
+                compact
+                    ? "flex min-w-0 items-center gap-1.5 text-[10px] text-muted"
+                    : "flex min-w-[8.5rem] flex-col gap-1 text-[11px] text-muted"
+            }
+        >
+            <span className={compact ? "shrink-0 uppercase tracking-wide text-[9px]" : undefined}>{label}</span>
             <select
                 id={id}
                 data-testid={id}
@@ -32,7 +38,7 @@ const SelectionField = memo(({ id, label, value, disabled, compact, options, onC
                 onChange={(event) => onChange(event.target.value)}
                 className={
                     compact
-                        ? "rounded border border-gray-600/70 bg-zinc-800/70 px-2 py-1 text-[11px] text-white focus:border-accent focus:outline-none disabled:cursor-default disabled:opacity-60"
+                        ? "min-w-[5rem] rounded border border-gray-600/70 bg-zinc-800/70 px-2 py-1 text-[11px] text-white focus:border-accent focus:outline-none disabled:cursor-default disabled:opacity-60"
                         : "rounded border border-gray-600/70 bg-zinc-800/70 px-2 py-1 text-xs text-white focus:border-accent focus:outline-none disabled:cursor-default disabled:opacity-60"
                 }
             >
@@ -59,7 +65,7 @@ export const AgentSelectionStrip = memo(
                 data-testid="ai-mode-strip"
                 className={
                     compact
-                        ? "flex flex-wrap items-start gap-2 rounded border border-gray-700/70 bg-zinc-900/70 px-2 py-1.5 shadow-sm"
+                        ? "flex flex-nowrap items-center gap-2 overflow-x-auto rounded border border-gray-700/70 bg-zinc-900/70 px-2 py-1.5 shadow-sm"
                         : "flex flex-wrap items-start gap-2 rounded border border-gray-700/70 bg-zinc-900/50 px-2 py-2"
                 }
             >

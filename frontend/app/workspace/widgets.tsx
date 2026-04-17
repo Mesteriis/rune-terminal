@@ -521,6 +521,7 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
                                 isOpen={isSettingsOpen}
                                 onClick={() => toggleUtilityFlyout("settings")}
                                 mode={mode}
+                                testID="workspace-settings-button"
                                 style={compatActionStyle}
                             />
                         </div>
@@ -600,6 +601,7 @@ const Widgets = memo(({ compatMode = false, layout }: { compatMode?: boolean; la
                             isOpen={isSettingsOpen}
                             onClick={() => toggleUtilityFlyout("settings")}
                             mode={mode}
+                            testID="workspace-settings-button"
                             style={compatActionStyle}
                         />
                     </>
