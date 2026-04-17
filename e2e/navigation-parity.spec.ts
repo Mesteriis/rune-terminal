@@ -146,6 +146,36 @@ function expectBoxWithinViewport(
   expect(box!.y + box!.height).toBeLessThanOrEqual(viewport.height);
 }
 
+async function expectCompatLayoutToFill(page: Page): Promise<void> {
+  const metrics = await page.evaluate(() => {
+    const layout = document.querySelector<HTMLElement>("[data-testid='compat-window-layout']");
+    const wrapper = layout?.parentElement as HTMLElement | null;
+    const pane = document.querySelector<HTMLElement>("[data-testid^='compat-widget-pane-']");
+    if (layout == null || wrapper == null || pane == null) {
+      return null;
+    }
+    const wrapperRect = wrapper.getBoundingClientRect();
+    const layoutRect = layout.getBoundingClientRect();
+    const paneRect = pane.getBoundingClientRect();
+    return {
+      wrapperHeight: Math.round(wrapperRect.height),
+      wrapperWidth: Math.round(wrapperRect.width),
+      layoutHeight: Math.round(layoutRect.height),
+      layoutWidth: Math.round(layoutRect.width),
+      paneHeight: Math.round(paneRect.height),
+      paneWidth: Math.round(paneRect.width),
+    };
+  });
+
+  expect(metrics).not.toBeNull();
+  expect(metrics!.wrapperHeight).toBeGreaterThan(0);
+  expect(metrics!.wrapperWidth).toBeGreaterThan(0);
+  expect(metrics!.layoutHeight).toBeGreaterThanOrEqual(metrics!.wrapperHeight - 4);
+  expect(metrics!.layoutWidth).toBeGreaterThanOrEqual(metrics!.wrapperWidth - 4);
+  expect(metrics!.paneHeight).toBeGreaterThanOrEqual(metrics!.layoutHeight - 4);
+  expect(metrics!.paneWidth).toBeGreaterThanOrEqual(metrics!.layoutWidth - 4);
+}
+
 test.describe.serial("navigation parity", () => {
   test.beforeAll(async () => {
     runtimeStateDir = mkdtempSync(path.join(tmpdir(), "rterm-pw-navigation-parity-"));
@@ -203,6 +233,7 @@ test.describe.serial("navigation parity", () => {
 
   test("workspace switcher saves the current workspace, creates a new one, and switches back explicitly", async ({ page, request }) => {
     await page.goto(FRONTEND_URL);
+    await expectCompatLayoutToFill(page);
     await openWorkspaceSwitcher(page);
 
     await expect(page.locator(".workspace-switcher-content .title")).toHaveText("Open workspace");
@@ -230,12 +261,14 @@ test.describe.serial("navigation parity", () => {
 
     await savedRow.click();
     await expect.poll(async () => (await getActiveWorkspace(request)).id).toBe(savedWorkspace.id);
+    await expectCompatLayoutToFill(page);
     await openWorkspaceSwitcher(page);
     await expect(page.locator(".workspace-switcher-content .title")).toHaveText("Switch workspace");
   });
 
   test("launcher remains discoverable and utility overlays stay bounded and non-stacked", async ({ page }) => {
     await page.goto(FRONTEND_URL);
+    await expectCompatLayoutToFill(page);
     const viewport = page.viewportSize();
     expect(viewport).not.toBeNull();
 
@@ -280,5 +313,6 @@ test.describe.serial("navigation parity", () => {
     });
     expect(layoutHeights.railHeight).toBeGreaterThan(0);
     expect(layoutHeights.railHeight).toBe(layoutHeights.rowHeight);
+    await expectCompatLayoutToFill(page);
   });
 });
