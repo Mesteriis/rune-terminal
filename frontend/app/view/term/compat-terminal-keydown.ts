@@ -53,5 +53,47 @@ export function handleCompatTerminalClipboardKeydown(event: KeyboardEvent, termW
         return false;
     }
 
+    if (keyutil.checkKeyPressed(waveEvent, "Shift:End")) {
+        event.preventDefault();
+        event.stopPropagation();
+        termWrap?.terminal.scrollToBottom();
+        return false;
+    }
+
+    if (keyutil.checkKeyPressed(waveEvent, "Shift:Home")) {
+        event.preventDefault();
+        event.stopPropagation();
+        termWrap?.terminal.scrollToLine(0);
+        return false;
+    }
+
+    if (isMacOS() && keyutil.checkKeyPressed(waveEvent, "Cmd:End")) {
+        event.preventDefault();
+        event.stopPropagation();
+        termWrap?.terminal.scrollToBottom();
+        return false;
+    }
+
+    if (isMacOS() && keyutil.checkKeyPressed(waveEvent, "Cmd:Home")) {
+        event.preventDefault();
+        event.stopPropagation();
+        termWrap?.terminal.scrollToLine(0);
+        return false;
+    }
+
+    if (keyutil.checkKeyPressed(waveEvent, "Shift:PageDown")) {
+        event.preventDefault();
+        event.stopPropagation();
+        termWrap?.terminal.scrollPages(1);
+        return false;
+    }
+
+    if (keyutil.checkKeyPressed(waveEvent, "Shift:PageUp")) {
+        event.preventDefault();
+        event.stopPropagation();
+        termWrap?.terminal.scrollPages(-1);
+        return false;
+    }
+
     return true;
 }

@@ -101,7 +101,11 @@ It is intentionally operational, not narrative.
 - Closing or completing the create-tab request must not terminate a running local or SSH shell.
 - The frontend now hydrates terminal content from a JSON snapshot before opening the SSE stream, so a newly mounted terminal starts with buffered scrollback instead of only new output.
 - Terminal SSE attach now snapshots and subscribes atomically in the backend stream path, so buffered replay and live follow do not drop chunks in the handoff gap.
-- The frontend terminal shell uses a compact TideTerm-derived header, toolbar, and command-strip layout. `Refresh`, `Focus`, `Interrupt`, `Clear view`, and `Jump to latest` are shell affordances layered over the same Go-owned session state.
+- The compat terminal now follows TideTerm keyboard scroll semantics for scrollback navigation:
+  - `Shift+End` jumps to the latest output
+  - `Shift+Home` jumps to the start of scrollback
+  - `Shift+PageDown` / `Shift+PageUp` scroll by pages
+  - macOS also supports `Cmd+End` / `Cmd+Home` for bottom/top navigation
 - Terminal output is written in bounded frontend batches so large output bursts do not block the UI thread as one giant write.
 - Terminal keyboard copy/paste now follows TideTerm shortcut semantics on the active compat path:
   - `Ctrl+Shift+C` copies the terminal selection when a selection exists
