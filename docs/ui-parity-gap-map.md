@@ -203,4 +203,11 @@ Release-blocking:
 
 ## Fixed in this batch
 
-- Pending implementation and validation in later slices.
+- Slice 3 replaced the broad single-card settings/dashboard feel with a compact Tide-like utility frame, bounded popover family, and structured navigation between Overview, Trusted tools, Secret shield, and Help.
+- Slice 4 moved compat terminal actions and status out of floating body overlays into compact pane headers, added visible drag affordances, and aligned pane chrome with Tide’s block-header grammar.
+- Slice 5 tightened the remaining shell-surface rhythm by:
+  - applying symmetric `3px` shell framing around compat tab content
+  - reducing compat split gaps to the same compact rhythm instead of wider ad hoc spacing
+  - switching compat pane corners to the Tide block-radius token
+  - aligning files-pane content padding to the same `5px` frame-to-content step already used by the terminal host
+- Remaining work after these code changes is validation and focused regression coverage, handled in the later slices of this batch.

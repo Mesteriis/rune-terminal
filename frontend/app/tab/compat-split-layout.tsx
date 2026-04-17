@@ -302,7 +302,7 @@ const CompatSplitLayout = memo(({ tabId, tab, widgets, activeWidgetId }: CompatS
             <div
                 key={widgetId}
                 className={clsx(
-                    "relative flex flex-1 min-h-0 min-w-0 overflow-hidden border rounded-md bg-black/10",
+                    "relative flex flex-1 min-h-0 min-w-0 overflow-hidden rounded-[var(--block-border-radius)] border bg-black/15",
                     active ? "border-cyan-300/70" : "border-border/60",
                 )}
                 draggable
@@ -389,7 +389,7 @@ const CompatSplitLayout = memo(({ tabId, tab, widgets, activeWidgetId }: CompatS
         const axis = node.axis === "vertical" ? "vertical" : "horizontal";
         return (
             <div
-                className={clsx("flex flex-1 min-h-0 min-w-0 gap-1.5", axis === "vertical" ? "flex-col" : "flex-row")}
+                className={clsx("flex flex-1 min-h-0 min-w-0 gap-[3px]", axis === "vertical" ? "flex-col" : "flex-row")}
                 data-testid={`compat-split-${axis}`}
             >
                 <div className="flex flex-1 min-h-0 min-w-0">{renderNode(node.first)}</div>

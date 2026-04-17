@@ -190,7 +190,7 @@ export function CompatFilesView({ widgetId, path, connectionId, title, headerAct
                 </div>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto p-3">
+            <div className="min-h-0 flex-1 overflow-y-auto p-[5px]">
                 {remoteDirectory ? (
                     <div className="rounded border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
                         This block preserves the terminal's remote path and connection context, but the active compat files view does not
@@ -205,7 +205,7 @@ export function CompatFilesView({ widgetId, path, connectionId, title, headerAct
                         {loadError}
                     </div>
                 ) : (
-                    <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)] gap-3">
+                    <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)] gap-[5px]">
                         <div className="flex min-h-0 flex-col overflow-hidden rounded border border-border bg-black/20">
                             <div className="border-b border-border px-3 py-2 text-[11px] text-secondary">Directories</div>
                             <div className="max-h-[40%] overflow-y-auto border-b border-border">
