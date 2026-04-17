@@ -4,11 +4,12 @@ import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { getTerminalFacade } from "@/compat/terminal";
 import type { TerminalSnapshot } from "@/rterm-api/terminal/types";
 import { CenteredDiv } from "@/element/quickelems";
+import { globalStore } from "@/store/global";
 import { explainLatestTerminalOutputInAI } from "./explain-latest-output";
 import { handleCompatTerminalClipboardKeydown } from "./compat-terminal-keydown";
 import { parseDraggedFileUri } from "./dragged-file-uri";
 import { TermWrap } from "./termwrap";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useDrop } from "react-dnd";
 import "./term.scss";
 import "./xterm.css";
@@ -16,6 +17,8 @@ import "./xterm.css";
 interface CompatTerminalViewProps {
     widgetId: string;
     connectionId?: string;
+    title?: string;
+    headerActions?: ReactNode;
 }
 
 function registerCompatTerminalForDebug(widgetId: string, termWrap: TermWrap | null) {
@@ -41,7 +44,7 @@ function isLocalConnection(connectionId?: string): boolean {
     return connectionId == null || connectionId === "" || connectionId === "local" || connectionId.startsWith("local:");
 }
 
-export function CompatTerminalView({ widgetId, connectionId }: CompatTerminalViewProps) {
+export function CompatTerminalView({ widgetId, connectionId, title, headerActions }: CompatTerminalViewProps) {
     const rootRef = useRef<HTMLDivElement>(null);
     const connectElemRef = useRef<HTMLDivElement>(null);
     const termWrapRef = useRef<TermWrap | null>(null);
@@ -54,8 +57,11 @@ export function CompatTerminalView({ widgetId, connectionId }: CompatTerminalVie
     const [restartError, setRestartError] = useState<string | null>(null);
     const [lifecycleSnapshot, setLifecycleSnapshot] = useState<TerminalSnapshot | null>(null);
     const [lifecycleError, setLifecycleError] = useState<string | null>(null);
+    const [shellIntegrationStatus, setShellIntegrationStatus] = useState<"ready" | "running-command" | null>(null);
+    const [lastCommand, setLastCommand] = useState<string | null>(null);
     const isRemoteTerminal = !isLocalConnection(connectionId);
     const terminalConnection = connectionId ?? "local";
+    const terminalTitle = title?.trim() || (isRemoteTerminal ? "Remote terminal" : "Terminal");
 
     const [, dropFileItemToTerm] = useDrop(
         () => ({
@@ -85,7 +91,18 @@ export function CompatTerminalView({ widgetId, connectionId }: CompatTerminalVie
         [terminalConnection],
     );
 
-    const refreshLifecycle = async () => {
+    const syncShellIntegrationState = useCallback(() => {
+        const termWrap = termWrapRef.current;
+        if (termWrap == null) {
+            setShellIntegrationStatus(null);
+            setLastCommand(null);
+            return;
+        }
+        setShellIntegrationStatus(globalStore.get(termWrap.shellIntegrationStatusAtom) ?? null);
+        setLastCommand(globalStore.get(termWrap.lastCommandAtom) ?? null);
+    }, []);
+
+    const refreshLifecycle = useCallback(async () => {
         try {
             const facade = await getTerminalFacade();
             const snapshot = await facade.getSnapshot(widgetId);
@@ -94,13 +111,15 @@ export function CompatTerminalView({ widgetId, connectionId }: CompatTerminalVie
             }
             setLifecycleSnapshot(snapshot);
             setLifecycleError(null);
+            syncShellIntegrationState();
         } catch (error) {
             if (!lifecyclePollingActiveRef.current) {
                 return;
             }
             setLifecycleError(error instanceof Error ? error.message : String(error));
+            syncShellIntegrationState();
         }
-    };
+    }, [syncShellIntegrationState, widgetId]);
 
     useEffect(() => {
         if (connectElemRef.current == null) {
@@ -140,13 +159,14 @@ export function CompatTerminalView({ widgetId, connectionId }: CompatTerminalVie
         termWrapRef.current = termWrap;
         registerCompatTerminalForDebug(widgetId, termWrap);
         void termWrap.initTerminal();
+        syncShellIntegrationState();
 
         return () => {
             termWrap.dispose();
             registerCompatTerminalForDebug(widgetId, null);
             termWrapRef.current = null;
         };
-    }, [connectionId, widgetId]);
+    }, [connectionId, syncShellIntegrationState, widgetId]);
 
     useEffect(() => {
         if (rootRef.current == null) {
@@ -168,7 +188,7 @@ export function CompatTerminalView({ widgetId, connectionId }: CompatTerminalVie
             lifecyclePollingActiveRef.current = false;
             window.clearInterval(intervalID);
         };
-    }, [widgetId]);
+    }, [refreshLifecycle, widgetId]);
 
     if (!widgetId) {
         return <CenteredDiv>No Terminal Widget</CenteredDiv>;
@@ -234,48 +254,108 @@ export function CompatTerminalView({ widgetId, connectionId }: CompatTerminalVie
         }
     };
 
+    const lifecycleBadgeClass = isConnected
+        ? restoredSession
+            ? "border-cyan-400/40 bg-cyan-500/10 text-cyan-200"
+            : "border-emerald-400/40 bg-emerald-500/10 text-emerald-200"
+        : "border-amber-400/40 bg-amber-500/10 text-amber-200";
+    const shellIntegrationBadgeClass =
+        shellIntegrationStatus === "ready"
+            ? "border-cyan-400/40 bg-cyan-500/10 text-cyan-200"
+            : shellIntegrationStatus === "running-command"
+                ? "border-amber-400/40 bg-amber-500/10 text-amber-200"
+                : "border-border bg-black/20 text-secondary";
+    const shellIntegrationLabel =
+        shellIntegrationStatus === "ready"
+            ? "AI ready"
+            : shellIntegrationStatus === "running-command"
+                ? "AI blocked"
+                : "AI idle";
+    const shellIntegrationTitle =
+        shellIntegrationStatus === "ready"
+            ? "Shell integration is ready for explicit AI execution."
+            : shellIntegrationStatus === "running-command"
+                ? `Shell integration is blocked while a command is running${lastCommand ? `: ${lastCommand}` : ""}.`
+                : "Shell integration metadata is not available yet.";
+    const headerMessage =
+        restartError
+        ?? explainError
+        ?? restartStatus
+        ?? explainStatus
+        ?? (lifecycleStatus !== "running" || restoredSession ? lifecycleDetail : null);
+    const headerMessageClass =
+        restartError || explainError || lifecycleStatus === "failed" || lifecycleStatus === "exited"
+            ? "text-red-300"
+            : restartStatus || explainStatus
+                ? "text-emerald-300"
+                : lifecycleColorClass;
+
     return (
         <div
             ref={rootRef}
-            className="view-term term-mode-term"
+            className="view-term term-mode-term bg-black/10"
             onClick={() => {
                 termWrapRef.current?.terminal.focus();
             }}
         >
-            <div className="absolute top-2 left-2 z-20 flex flex-col items-start gap-1">
-                <div className={`text-[10px] uppercase tracking-wide ${lifecycleColorClass}`}>
-                    {isRemoteTerminal ? "remote" : "local"} session {lifecycleLabel}
+            <div className="flex min-h-[30px] items-center justify-between gap-3 border-b border-border/70 bg-black/20 px-3 py-2" data-testid={`compat-terminal-header-${widgetId}`}>
+                <div className="flex min-w-0 items-center gap-2">
+                    <div className="flex shrink-0 items-center gap-1 text-[11px] text-secondary" title="Drag to rearrange terminal block">
+                        <i className="fa fa-grip-vertical" />
+                        <i className="fa fa-terminal" />
+                    </div>
+                    <div className="min-w-0">
+                        <div className="flex min-w-0 flex-wrap items-center gap-2">
+                            <div className="truncate text-[12px] font-semibold text-white">{terminalTitle}</div>
+                            <span className="rounded-full border border-border bg-black/20 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-secondary">
+                                {isRemoteTerminal ? "remote" : "local"}
+                            </span>
+                            <span className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] uppercase tracking-wide ${lifecycleBadgeClass}`}>
+                                <i className="fa fa-circle text-[8px]" />
+                                {lifecycleLabel}
+                            </span>
+                            <span
+                                className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] uppercase tracking-wide ${shellIntegrationBadgeClass}`}
+                                title={shellIntegrationTitle}
+                            >
+                                <i className="fa fa-sparkles" />
+                                {shellIntegrationLabel}
+                            </span>
+                        </div>
+                        <div className="mt-1 truncate text-[11px] text-secondary">
+                            {isRemoteTerminal ? terminalConnection : "Local machine"}
+                        </div>
+                    </div>
                 </div>
-                {lifecycleDetail ? <div className="text-[10px] text-red-300 max-w-[24rem]">{lifecycleDetail}</div> : null}
+                <div className="flex shrink-0 items-center gap-1">
+                    {headerActions}
+                    <button
+                        type="button"
+                        className="rounded border border-border bg-black/20 px-2 py-1 text-[11px] text-secondary hover:text-white disabled:opacity-50"
+                        disabled={restartBusy}
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            void restartSession();
+                        }}
+                    >
+                        {restartBusy ? "Restarting..." : isRemoteTerminal ? "Reconnect" : "Restart"}
+                    </button>
+                    <button
+                        type="button"
+                        className="rounded border border-border bg-black/20 px-2 py-1 text-[11px] text-secondary hover:text-white disabled:opacity-50"
+                        disabled={explainBusy}
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            void explainLatestCommandOutput();
+                        }}
+                    >
+                        {explainBusy ? "Sending..." : "Explain"}
+                    </button>
+                </div>
             </div>
-            <div className="absolute top-2 right-2 z-20 flex flex-col items-end gap-1">
-                <button
-                    type="button"
-                    className="px-2 py-1 text-[11px] rounded border border-border bg-black/30 text-secondary hover:text-white disabled:opacity-50"
-                    disabled={restartBusy}
-                    onClick={(event) => {
-                        event.stopPropagation();
-                        void restartSession();
-                    }}
-                >
-                    {restartBusy ? "Restarting..." : isRemoteTerminal ? "Reconnect Session" : "Restart Session"}
-                </button>
-                <button
-                    type="button"
-                    className="px-2 py-1 text-[11px] rounded border border-border bg-black/30 text-secondary hover:text-white disabled:opacity-50"
-                    disabled={explainBusy}
-                    onClick={(event) => {
-                        event.stopPropagation();
-                        void explainLatestCommandOutput();
-                    }}
-                >
-                    {explainBusy ? "Sending..." : isRemoteTerminal ? "Explain Remote Command In AI" : "Explain Latest Output In AI"}
-                </button>
-                {restartStatus ? <div className="text-[10px] text-emerald-300 max-w-[24rem] text-right">{restartStatus}</div> : null}
-                {restartError ? <div className="text-[10px] text-red-300 max-w-[24rem] text-right">{restartError}</div> : null}
-                {explainStatus ? <div className="text-[10px] text-emerald-300 max-w-[24rem] text-right">{explainStatus}</div> : null}
-                {explainError ? <div className="text-[10px] text-red-300 max-w-[24rem] text-right">{explainError}</div> : null}
-            </div>
+            {headerMessage ? (
+                <div className={`border-b border-border/60 bg-black/10 px-3 py-1.5 text-[10px] ${headerMessageClass}`}>{headerMessage}</div>
+            ) : null}
             <div key="connectElem" className="term-connectelem" ref={connectElemRef} />
         </div>
     );

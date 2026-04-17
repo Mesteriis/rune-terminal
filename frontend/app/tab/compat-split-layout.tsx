@@ -281,6 +281,23 @@ const CompatSplitLayout = memo(({ tabId, tab, widgets, activeWidgetId }: CompatS
         const widget = widgets[widgetId];
         const active = widgetId === activeWidgetId;
         const showDrop = dropIndicator != null && dropIndicator.targetWidgetId === widgetId && draggingWidgetId !== "";
+        const splitAction = (
+            <button
+                type="button"
+                className="rounded border border-border bg-black/20 px-2 py-1 text-[11px] text-secondary hover:text-white disabled:opacity-60"
+                disabled={splittingWidgetId !== ""}
+                onClick={(event) => {
+                    event.stopPropagation();
+                    setSplittingWidgetId(widgetId);
+                    void workspaceStore.createSplitTerminalWidget(tabId, widgetId, "right").finally(() => {
+                        setSplittingWidgetId("");
+                    });
+                }}
+                data-testid={`compat-split-add-${widgetId}`}
+            >
+                {splittingWidgetId === widgetId ? "Splitting..." : "Split"}
+            </button>
+        );
         return (
             <div
                 key={widgetId}
@@ -331,31 +348,22 @@ const CompatSplitLayout = memo(({ tabId, tab, widgets, activeWidgetId }: CompatS
                 data-testid={`compat-widget-pane-${widgetId}`}
                 data-widgetid={widgetId}
             >
-                <div className="absolute right-2 top-2 z-30 flex items-center gap-1">
-                    <button
-                        type="button"
-                        className="rounded border border-border bg-black/40 px-2 py-1 text-[10px] uppercase tracking-wide text-secondary hover:text-white disabled:opacity-60"
-                        disabled={splittingWidgetId !== ""}
-                        onClick={(event) => {
-                            event.stopPropagation();
-                            setSplittingWidgetId(widgetId);
-                            void workspaceStore.createSplitTerminalWidget(tabId, widgetId, "right").finally(() => {
-                                setSplittingWidgetId("");
-                            });
-                        }}
-                        data-testid={`compat-split-add-${widgetId}`}
-                    >
-                        {splittingWidgetId === widgetId ? "Splitting..." : "Split Right"}
-                    </button>
-                </div>
                 {widget?.kind === "terminal" ? (
-                    <CompatTerminalView key={widgetId} widgetId={widgetId} connectionId={widget.connectionId} />
+                    <CompatTerminalView
+                        key={widgetId}
+                        widgetId={widgetId}
+                        connectionId={widget.connectionId}
+                        title={widget.title}
+                        headerActions={splitAction}
+                    />
                 ) : widget?.kind === "files" ? (
                     <CompatFilesView
                         key={widgetId}
                         widgetId={widgetId}
                         path={widget.path ?? ""}
                         connectionId={widget.connectionId}
+                        title={widget.title}
+                        headerActions={splitAction}
                     />
                 ) : (
                     <CenteredDiv>{widget == null ? "Missing Widget" : "Unsupported Widget"}</CenteredDiv>
