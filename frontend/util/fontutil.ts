@@ -1,43 +1,16 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-let isJetBrainsMonoLoaded = false;
-let isHackFontLoaded = false;
-let isHackNerdFontLoaded = false;
 let isInterFontLoaded = false;
+let isHackFontLoaded = false;
 
 function addToFontFaceSet(fontFaceSet: FontFaceSet, fontFace: FontFace) {
     // any cast to work around typing issue
     (fontFaceSet as any).add(fontFace);
 }
 
-function loadJetBrainsMonoFont() {
-    if (isJetBrainsMonoLoaded) {
-        return;
-    }
-    isJetBrainsMonoLoaded = true;
-    const jbmFontNormal = new FontFace("JetBrains Mono", "url('fonts/jetbrains-mono-v13-latin-regular.woff2')", {
-        style: "normal",
-        weight: "400",
-    });
-    const jbmFont200 = new FontFace("JetBrains Mono", "url('fonts/jetbrains-mono-v13-latin-200.woff2')", {
-        style: "normal",
-        weight: "200",
-    });
-    const jbmFont700 = new FontFace("JetBrains Mono", "url('fonts/jetbrains-mono-v13-latin-700.woff2')", {
-        style: "normal",
-        weight: "700",
-    });
-    addToFontFaceSet(document.fonts, jbmFontNormal);
-    addToFontFaceSet(document.fonts, jbmFont200);
-    addToFontFaceSet(document.fonts, jbmFont700);
-    jbmFontNormal.load();
-    jbmFont200.load();
-    jbmFont700.load();
-}
-
-function loadHackNerdFont() {
-    if (isHackNerdFontLoaded) {
+function loadHackFont() {
+    if (isHackFontLoaded) {
         return;
     }
     isHackFontLoaded = true;
@@ -82,8 +55,7 @@ function loadInterFont() {
 
 function loadFonts() {
     loadInterFont();
-    loadJetBrainsMonoFont();
-    loadHackNerdFont();
+    loadHackFont();
 }
 
 export { loadFonts };

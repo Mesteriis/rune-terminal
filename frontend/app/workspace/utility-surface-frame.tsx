@@ -74,7 +74,7 @@ export function UtilitySurfaceFrame({
                             aria-label={`Close ${title}`}
                             onClick={onClose}
                         >
-                            <i className="fa fa-xmark" />
+                            <i className={makeIconClass("xmark", false)} />
                         </button>
                     ) : null}
                 </div>

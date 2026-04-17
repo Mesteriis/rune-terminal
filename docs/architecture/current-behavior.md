@@ -22,6 +22,10 @@ It is intentionally operational, not narrative.
   - it is mounted independently of the split layout tree
   - it opens near the right utility rail instead of as a centered modal
   - dragging is limited to the header chrome and clamped to the desktop window bounds
+- The visible shell typography/icon path for the active compat UI now uses:
+  - `Inter` for body/header UI text
+  - `Hack` for terminal-adjacent fixed-width text
+  - Font Awesome assets served from `frontend/public/fontawesome/` for shell and utility icons
 - The widget dock launcher flyout now acts as the searchable shell-level entry surface for:
   - opening a new terminal tab
   - returning to the AI panel

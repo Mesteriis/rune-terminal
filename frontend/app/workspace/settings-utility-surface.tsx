@@ -566,7 +566,7 @@ export const SettingsUtilitySurface = memo(
                                         target="_blank"
                                         rel="noreferrer"
                                     >
-                                        <i className="fa fa-book mr-2" />
+                                        <i className={`${makeIconClass("book", false)} mr-2`} />
                                         Open RunaTerminal README
                                     </a>
                                     <a
@@ -575,7 +575,7 @@ export const SettingsUtilitySurface = memo(
                                         target="_blank"
                                         rel="noreferrer"
                                     >
-                                        <i className="fa fa-clipboard-check mr-2" />
+                                        <i className={`${makeIconClass("clipboard-check", false)} mr-2`} />
                                         Open validation guide
                                     </a>
                                 </div>
