@@ -9,6 +9,7 @@ import type {
   MoveTabRequest,
   RenameTabRequest,
   SetTabPinnedRequest,
+  UpdateLayoutRequest,
   WorkspaceActionResponse,
   WorkspaceSnapshot,
   WorkspaceTabMutation,
@@ -24,6 +25,7 @@ export interface WorkspaceFacade {
   renameTab: (tabId: string, payload: RenameTabRequest) => Promise<WorkspaceTabMutation>;
   setTabPinned: (tabId: string, payload: SetTabPinnedRequest) => Promise<WorkspaceTabMutation>;
   moveTab: (payload: MoveTabRequest) => Promise<WorkspaceActionResponse>;
+  updateLayout: (payload: UpdateLayoutRequest) => Promise<WorkspaceActionResponse>;
   closeTab: (tabId: string) => Promise<CloseTabResponse>;
   getWorkspace: () => Promise<WorkspaceSnapshot>;
 }
@@ -69,6 +71,9 @@ export function createWorkspaceFacade(client: WorkspaceClient): WorkspaceFacade 
     },
     moveTab(payload: MoveTabRequest): Promise<WorkspaceActionResponse> {
       return client.moveTab(payload);
+    },
+    updateLayout(payload: UpdateLayoutRequest): Promise<WorkspaceActionResponse> {
+      return client.updateLayout(payload);
     },
     closeTab(tabId: string): Promise<CloseTabResponse> {
       return client.closeTab(tabId);

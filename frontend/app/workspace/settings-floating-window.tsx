@@ -1,7 +1,9 @@
 import { useT } from "@/app/i18n/i18n";
+import { workspaceStore, type WorkspaceStoreLayout } from "@/app/state/workspace.store";
 import type { FloatingWindowProps } from "@/app/workspace/widget-types";
 import { createBlock } from "@/store/global";
 import { makeIconClass } from "@/util/util";
+import { fireAndForget } from "@/util/util";
 import {
     FloatingPortal,
     autoUpdate,
@@ -11,10 +13,22 @@ import {
     useFloating,
     useInteractions,
 } from "@floating-ui/react";
-import { memo } from "react";
+import { memo, useEffect, useState } from "react";
+
+const surfaceConfig: Array<{ id: string; label: string; region: string }> = [
+    { id: "ai", label: "AI", region: "sidebar" },
+    { id: "tools", label: "Tools", region: "utility" },
+    { id: "audit", label: "Audit", region: "utility" },
+    { id: "mcp", label: "MCP", region: "utility" },
+];
+
+function hasSurface(layout: WorkspaceStoreLayout, surfaceID: string): boolean {
+    return layout.surfaces.some((surface) => surface.id === surfaceID);
+}
 
 const SettingsFloatingWindow = memo(({ isOpen, onClose, referenceElement }: FloatingWindowProps) => {
     const t = useT();
+    const [layout, setLayout] = useState<WorkspaceStoreLayout>(() => workspaceStore.getSnapshot().active.layout);
     const { refs, floatingStyles, context } = useFloating({
         open: isOpen,
         onOpenChange: onClose,
@@ -29,7 +43,46 @@ const SettingsFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floa
     const dismiss = useDismiss(context);
     const { getFloatingProps } = useInteractions([dismiss]);
 
+    useEffect(() => {
+        if (!isOpen) {
+            return;
+        }
+        setLayout(workspaceStore.getSnapshot().active.layout);
+        const unsubscribe = workspaceStore.subscribe((snapshot) => {
+            setLayout(snapshot.active.layout);
+        });
+        return () => unsubscribe();
+    }, [isOpen]);
+
     if (!isOpen) return null;
+
+    const applyLayout = (nextLayout: WorkspaceStoreLayout) => {
+        setLayout(nextLayout);
+        fireAndForget(() => workspaceStore.updateLayout(nextLayout));
+    };
+
+    const toggleSurface = (surfaceID: string, region: string, enabled: boolean) => {
+        const nextSurfaces = enabled
+            ? [...layout.surfaces, { id: surfaceID, region }]
+            : layout.surfaces.filter((surface) => surface.id !== surfaceID);
+        const dedupedSurfaces: WorkspaceStoreLayout["surfaces"] = [];
+        const seen = new Set<string>();
+        for (const surface of nextSurfaces) {
+            if (seen.has(surface.id)) {
+                continue;
+            }
+            seen.add(surface.id);
+            dedupedSurfaces.push(surface);
+        }
+        const activeSurfaceId = dedupedSurfaces.some((surface) => surface.id === layout.activeSurfaceId)
+            ? layout.activeSurfaceId
+            : dedupedSurfaces[0]?.id ?? "terminal";
+        applyLayout({
+            ...layout,
+            surfaces: dedupedSurfaces,
+            activeSurfaceId,
+        });
+    };
 
     const menuItems = [
         {
@@ -93,8 +146,53 @@ const SettingsFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floa
                 ref={refs.setFloating}
                 style={floatingStyles}
                 {...getFloatingProps()}
-                className="bg-modalbg border border-border rounded-lg shadow-xl p-2 z-50"
+                className="bg-modalbg border border-border rounded-lg shadow-xl p-2 z-50 min-w-[18rem]"
             >
+                <div className="px-3 py-2 border-b border-border mb-1">
+                    <div className="text-xs font-medium text-white">Layout</div>
+                    <div className="mt-2 flex items-center gap-2">
+                        <button
+                            type="button"
+                            className="px-2 py-1 rounded border border-border text-[11px] text-secondary hover:text-white"
+                            onClick={() => applyLayout({ ...layout, mode: "split" })}
+                        >
+                            Split
+                        </button>
+                        <button
+                            type="button"
+                            className="px-2 py-1 rounded border border-border text-[11px] text-secondary hover:text-white"
+                            onClick={() => applyLayout({ ...layout, mode: "focus" })}
+                        >
+                            Focus
+                        </button>
+                        <select
+                            className="min-w-0 flex-1 rounded border border-border bg-black/20 p-1 text-[11px] text-white"
+                            value={layout.activeSurfaceId}
+                            onChange={(event) => applyLayout({ ...layout, activeSurfaceId: event.target.value })}
+                        >
+                            {layout.surfaces.map((surface) => (
+                                <option key={surface.id} value={surface.id}>
+                                    {surface.id}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1">
+                        {surfaceConfig.map((surface) => {
+                            const enabled = hasSurface(layout, surface.id);
+                            return (
+                                <label key={surface.id} className="flex items-center gap-1.5 text-[11px] text-secondary">
+                                    <input
+                                        type="checkbox"
+                                        checked={enabled}
+                                        onChange={(event) => toggleSurface(surface.id, surface.region, event.target.checked)}
+                                    />
+                                    {surface.label}
+                                </label>
+                            );
+                        })}
+                    </div>
+                </div>
                 {menuItems.map((item, idx) => (
                     <div
                         key={idx}

@@ -103,3 +103,53 @@ func TestWorkspaceCreateRemoteTabRejectsLocalTarget(t *testing.T) {
 		t.Fatalf("expected 400, got %d (%s)", recorder.Code, recorder.Body.String())
 	}
 }
+
+func TestWorkspaceUpdateLayout(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPatch, "/api/v1/workspace/layout", map[string]any{
+		"layout": map[string]any{
+			"id":   "layout-focused",
+			"mode": "focus",
+			"surfaces": []map[string]any{
+				{"id": "terminal", "region": "main"},
+				{"id": "ai", "region": "sidebar"},
+			},
+			"active_surface_id": "ai",
+		},
+	}))
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d (%s)", recorder.Code, recorder.Body.String())
+	}
+
+	var response struct {
+		Workspace struct {
+			Layout struct {
+				ID              string `json:"id"`
+				Mode            string `json:"mode"`
+				ActiveSurfaceID string `json:"active_surface_id"`
+				Surfaces        []struct {
+					ID string `json:"id"`
+				} `json:"surfaces"`
+			} `json:"layout"`
+		} `json:"workspace"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatalf("Unmarshal error: %v", err)
+	}
+	if response.Workspace.Layout.ID != "layout-focused" {
+		t.Fatalf("unexpected layout id: %#v", response.Workspace.Layout)
+	}
+	if response.Workspace.Layout.Mode != "focus" {
+		t.Fatalf("unexpected layout mode: %#v", response.Workspace.Layout)
+	}
+	if response.Workspace.Layout.ActiveSurfaceID != "ai" {
+		t.Fatalf("unexpected layout active surface: %#v", response.Workspace.Layout)
+	}
+	if len(response.Workspace.Layout.Surfaces) != 2 {
+		t.Fatalf("expected two layout surfaces, got %#v", response.Workspace.Layout.Surfaces)
+	}
+}

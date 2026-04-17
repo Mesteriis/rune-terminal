@@ -132,6 +132,14 @@ func (s *Service) AddTerminalTab(tab Tab, widget Widget) Snapshot {
 	return cloneSnapshot(s.snapshot)
 }
 
+func (s *Service) UpdateLayout(layout Layout) Snapshot {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.snapshot.Layout = normalizeLayout(layout, s.snapshot.Layout)
+	return cloneSnapshot(s.snapshot)
+}
+
 func (s *Service) CloseTab(tabID string) (Snapshot, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

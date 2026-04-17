@@ -157,6 +157,18 @@ function adaptLayoutFromApi(layout: WorkspaceLayout | undefined): WorkspaceStore
     };
 }
 
+function toApiLayout(layout: WorkspaceStoreLayout): WorkspaceLayout {
+    return {
+        id: layout.id,
+        mode: layout.mode,
+        surfaces: layout.surfaces.map((surface) => ({
+            id: surface.id,
+            region: surface.region,
+        })),
+        active_surface_id: layout.activeSurfaceId,
+    };
+}
+
 function adaptWorkspaceFromApi(apiWorkspace: ApiWorkspace, fallback?: WorkspaceFallback | null): WorkspaceStoreSnapshot["active"] {
     const legacyWorkspace = fallback ?? null;
     const tabs: WorkspaceTab[] = apiWorkspace?.tabs ?? [];
@@ -541,6 +553,18 @@ class WorkspaceStore {
     async closeTab(tabId: string): Promise<void> {
         const facade = await getWorkspaceFacade();
         const response = await facade.closeTab(tabId);
+        if (response?.workspace) {
+            this.setState(adaptWorkspaceFromApi(response.workspace, this.state.active));
+            return;
+        }
+        await this.refresh();
+    }
+
+    async updateLayout(layout: WorkspaceStoreLayout): Promise<void> {
+        const facade = await getWorkspaceFacade();
+        const response = await facade.updateLayout({
+            layout: toApiLayout(layout),
+        });
         if (response?.workspace) {
             this.setState(adaptWorkspaceFromApi(response.workspace, this.state.active));
             return;

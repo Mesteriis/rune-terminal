@@ -8,6 +8,7 @@ import type {
   MoveTabRequest,
   RenameTabRequest,
   SetTabPinnedRequest,
+  UpdateLayoutRequest,
   WorkspaceActionResponse,
   WorkspaceSnapshot,
   WorkspaceTabMutation,
@@ -63,6 +64,12 @@ export class WorkspaceClient {
 
   closeTab(tabID: string): Promise<CloseTabResponse> {
     return this.http.delete<CloseTabResponse>(`/api/v1/workspace/tabs/${encodeURIComponent(tabID)}`);
+  }
+
+  updateLayout(payload: UpdateLayoutRequest): Promise<WorkspaceActionResponse> {
+    return this.http.patch<WorkspaceActionResponse, UpdateLayoutRequest>("/api/v1/workspace/layout", {
+      body: payload,
+    });
   }
 
   getWorkspace(): Promise<WorkspaceSnapshot> {

@@ -101,6 +101,14 @@ func (r *Runtime) MoveTab(tabID string, beforeTabID string) (workspace.Snapshot,
 	return snapshot, nil
 }
 
+func (r *Runtime) UpdateLayout(layout workspace.Layout) (workspace.Snapshot, error) {
+	snapshot := r.Workspace.UpdateLayout(layout)
+	if err := r.persistWorkspaceSnapshot(snapshot); err != nil {
+		return workspace.Snapshot{}, err
+	}
+	return snapshot, nil
+}
+
 func (r *Runtime) CreateTerminalTab(ctx context.Context, title string) (CreateTerminalTabResult, error) {
 	return r.CreateTerminalTabWithConnection(ctx, title, "")
 }

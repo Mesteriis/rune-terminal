@@ -98,6 +98,10 @@ export interface MoveTabRequest {
   before_tab_id: string;
 }
 
+export interface UpdateLayoutRequest {
+  layout: WorkspaceLayout;
+}
+
 export interface CloseTabResponse {
   closed_tab_id: string;
   workspace: WorkspaceSnapshot;

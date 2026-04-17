@@ -159,3 +159,44 @@ func TestMoveTabRejectsCrossGroupMove(t *testing.T) {
 		t.Fatalf("expected ErrInvalidTabMove, got %v", err)
 	}
 }
+
+func TestUpdateLayout(t *testing.T) {
+	t.Parallel()
+
+	service := NewService(BootstrapDefault())
+	snapshot := service.UpdateLayout(Layout{
+		ID:   "layout-focused",
+		Mode: LayoutModeFocus,
+		Surfaces: []LayoutSurface{
+			{ID: LayoutSurfaceTerminal, Region: LayoutRegionMain},
+			{ID: LayoutSurfaceAI, Region: LayoutRegionSidebar},
+		},
+		ActiveSurfaceID: LayoutSurfaceAI,
+	})
+	if snapshot.Layout.ID != "layout-focused" {
+		t.Fatalf("unexpected layout id: %#v", snapshot.Layout)
+	}
+	if snapshot.Layout.Mode != LayoutModeFocus {
+		t.Fatalf("unexpected layout mode: %#v", snapshot.Layout)
+	}
+	if snapshot.Layout.ActiveSurfaceID != LayoutSurfaceAI {
+		t.Fatalf("unexpected active layout surface: %#v", snapshot.Layout)
+	}
+}
+
+func TestUpdateLayoutKeepsTerminalSurface(t *testing.T) {
+	t.Parallel()
+
+	service := NewService(BootstrapDefault())
+	snapshot := service.UpdateLayout(Layout{
+		ID:   "layout-no-terminal",
+		Mode: LayoutModeFocus,
+		Surfaces: []LayoutSurface{
+			{ID: LayoutSurfaceTools, Region: LayoutRegionUtility},
+		},
+		ActiveSurfaceID: LayoutSurfaceTools,
+	})
+	if len(snapshot.Layout.Surfaces) == 0 || snapshot.Layout.Surfaces[0].ID != LayoutSurfaceTerminal {
+		t.Fatalf("expected terminal surface to be restored first, got %#v", snapshot.Layout.Surfaces)
+	}
+}

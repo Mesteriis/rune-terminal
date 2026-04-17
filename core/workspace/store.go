@@ -173,10 +173,25 @@ func normalizeLayout(candidate Layout, fallback Layout) Layout {
 	if len(normalized.Surfaces) == 0 {
 		normalized.Surfaces = cloneLayout(fallback).Surfaces
 	}
+	if !layoutSurfaceExists(normalized.Surfaces, LayoutSurfaceTerminal) {
+		normalized.Surfaces = append([]LayoutSurface{{
+			ID:     LayoutSurfaceTerminal,
+			Region: preferredSurfaceRegion(fallback, LayoutSurfaceTerminal, LayoutRegionMain),
+		}}, normalized.Surfaces...)
+	}
 	if normalized.ActiveSurfaceID == "" || !layoutSurfaceExists(normalized.Surfaces, normalized.ActiveSurfaceID) {
 		normalized.ActiveSurfaceID = normalized.Surfaces[0].ID
 	}
 	return normalized
+}
+
+func preferredSurfaceRegion(layout Layout, surfaceID LayoutSurfaceID, fallbackRegion LayoutRegion) LayoutRegion {
+	for _, surface := range layout.Surfaces {
+		if surface.ID == surfaceID {
+			return surface.Region
+		}
+	}
+	return fallbackRegion
 }
 
 func layoutSurfaceExists(surfaces []LayoutSurface, surfaceID LayoutSurfaceID) bool {

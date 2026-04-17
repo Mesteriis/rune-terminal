@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/Mesteriis/rune-terminal/core/app"
+	"github.com/Mesteriis/rune-terminal/core/workspace"
 )
 
 func (api *API) handleFocusWidget(w http.ResponseWriter, r *http.Request) {
@@ -15,6 +16,22 @@ func (api *API) handleFocusWidget(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	snapshot, err := api.runtime.FocusWidget(payload.WidgetID)
+	if err != nil {
+		writeWorkspaceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"workspace": snapshot})
+}
+
+func (api *API) handleUpdateLayout(w http.ResponseWriter, r *http.Request) {
+	var payload struct {
+		Layout workspace.Layout `json:"layout"`
+	}
+	if err := decodeJSON(r, &payload); err != nil {
+		writeBadRequest(w, "invalid_request", err)
+		return
+	}
+	snapshot, err := api.runtime.UpdateLayout(payload.Layout)
 	if err != nil {
 		writeWorkspaceError(w, err)
 		return
