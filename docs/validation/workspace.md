@@ -6,8 +6,8 @@
 - State: `VERIFIED`
 - Scope:
   - the app shell now applies `body` padding `6px`, and the root shell respects that outer frame on all four sides
-  - top shell header is `40px` tall, lives only in the left main shell column, and currently renders window controls, `AI`, and the tab strip
-  - a right-side action rail is present as a separate full-height column, is `40px` wide, and contains two placeholder buttons
+  - top shell header is `40px` tall, lives only in the left main shell column, and currently renders icon-based window controls, the `AI` toggle, and the tab strip
+  - a right-side action rail is present as a separate full-height column, is `40px` wide, and its lower action now uses a settings icon
   - the widget area now keeps explicit shell-chrome spacing: `12px` below the top header and `12px` before the right action rail
   - Dockview widget groups now keep explicit internal spacing: `12px` between rows and `12px` between columns
   - Dockview group header and body now render as a single glass surface instead of a separate boxed body layer
@@ -40,6 +40,7 @@
 - The token system currently covers shared UI layers and shell scaffolding. It does not yet claim a full Dockview vendor-theme rewrite beyond the existing shell overrides.
 - The Dockview sash between the AI group and the workspace is visible, but scripted headless drag kept the AI width at `432px -> 432px`, so resize movement is not claimed as verified from this environment.
 - Browser validation was run headlessly against the Vite dev server, not through full `npm run tauri:dev`.
+- The shell icon swap was validated by type-check, build, and source inspection. A separate visual localhost smoke for the icon glyphs was attempted but is not claimed from this environment.
 
 ## Evidence
 
@@ -50,6 +51,7 @@
 - The same smoke confirmed a unified group surface: group backgrounds rendered on `.dv-groupview`, while header, content container, and panel-content child all resolved to `rgba(0, 0, 0, 0)` backgrounds, so header and body no longer render as separate boxed layers.
 - A live vendor-theme smoke on `http://127.0.0.1:4193` confirmed `bodyPadding=6px`, `.dv-dockview` root background `rgba(0, 0, 0, 0)`, and the Dockview root class stack no longer contributed a library color fill into the shell canvas.
 - A follow-up live geometry smoke on `http://127.0.0.1:4193` confirmed the shell root is now constrained by `#root` instead of `100vh`: `#root` measured `y=6`, `height=846`, `bottom=852`, while the app root matched it at `y=6`, `height=846`, `bottom=852`.
+- Static validation confirmed `lucide-react@^1.8.0` is installed and wired into the shell widgets: top header actions use `X`, `Minus`, `Maximize2`, and `Sparkles`; the AI-group header action uses `Plus`; and the lower-right rail action uses `Settings2`.
 - Dockview occupied the main viewport beside the full-height right rail with no zero-height panels.
 - Single-tab Dockview headers rendered at `24px` height with visible titles and `void/actions` areas hidden.
 - Single-tab `.dv-tab` width expanded to the full header body (`1424/1440` and `704/720` after padding), and dragging from the empty right side of the top header moved `terminal-header` into the next group.
