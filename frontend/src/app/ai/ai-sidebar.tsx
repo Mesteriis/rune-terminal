@@ -3,19 +3,25 @@ import { useUnit } from 'effector-react'
 
 import { $isAiSidebarOpen } from '../../shared/model/app'
 
-const aiSidebarStyle: CSSProperties = {
-  flex: '0 0 50%',
-  width: '50%',
-  display: 'flex',
-  alignItems: 'flex-start',
-  boxSizing: 'border-box',
-  padding: 16,
-  overflow: 'auto',
-  backgroundColor: '#ffffff',
-  borderRight: '1px solid #000000',
+type AiSidebarProps = {
+  width: number
 }
 
-export function AiSidebar() {
+function getAiSidebarStyle(width: number): CSSProperties {
+  return {
+    flex: `0 0 ${width}px`,
+    width,
+    display: 'flex',
+    alignItems: 'flex-start',
+    boxSizing: 'border-box',
+    padding: 16,
+    overflow: 'auto',
+    backgroundColor: '#ffffff',
+    borderRight: '1px solid #000000',
+  }
+}
+
+export function AiSidebar({ width }: AiSidebarProps) {
   const isAiSidebarOpen = useUnit($isAiSidebarOpen)
 
   if (!isAiSidebarOpen) {
@@ -23,7 +29,11 @@ export function AiSidebar() {
   }
 
   return (
-    <div role="complementary" aria-label="AI sidebar" style={aiSidebarStyle}>
+    <div
+      role="complementary"
+      aria-label="AI sidebar"
+      style={getAiSidebarStyle(width)}
+    >
       AI SIDEBAR
     </div>
   )

@@ -1,8 +1,14 @@
+import { useEffect, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import { DockviewReact, type DockviewReadyEvent, type IDockviewPanelProps } from 'dockview-react'
 import { useUnit } from 'effector-react'
 
 import { AiSidebar } from './ai/ai-sidebar'
 import { $isAiSidebarOpen, toggleAiSidebar } from '../shared/model/app'
+
+const AI_SIDEBAR_DEFAULT_RATIO = 0.5
+const AI_SIDEBAR_MIN_WIDTH = 320
+const AI_SIDEBAR_MAX_RATIO = 0.8
+const AI_SIDEBAR_SASH_WIDTH = 4
 
 const rootStyle = {
   position: 'relative' as const,
@@ -44,6 +50,13 @@ const dockviewContainerStyle = {
   width: '100%',
 }
 
+const aiSidebarSashStyle = {
+  flex: `0 0 ${AI_SIDEBAR_SASH_WIDTH}px`,
+  width: AI_SIDEBAR_SASH_WIDTH,
+  cursor: 'col-resize',
+  backgroundColor: '#d0d0d0',
+}
+
 function Panel(props: IDockviewPanelProps) {
   return <div>PANEL: {props.api.id}</div>
 }
@@ -52,11 +65,27 @@ const components = {
   default: Panel,
 }
 
+function getDefaultAiSidebarWidth() {
+  if (typeof window === 'undefined') {
+    return 720
+  }
+
+  return Math.round(window.innerWidth * AI_SIDEBAR_DEFAULT_RATIO)
+}
+
+function clampAiSidebarWidth(width: number, viewportWidth: number) {
+  const maxWidth = Math.max(AI_SIDEBAR_MIN_WIDTH, Math.round(viewportWidth * AI_SIDEBAR_MAX_RATIO))
+
+  return Math.min(Math.max(width, AI_SIDEBAR_MIN_WIDTH), maxWidth)
+}
+
 export function App() {
   const [isAiSidebarOpen, onToggleAiSidebar] = useUnit([
     $isAiSidebarOpen,
     toggleAiSidebar,
   ])
+  const [aiSidebarWidth, setAiSidebarWidth] = useState(getDefaultAiSidebarWidth)
+  const [isResizingAiSidebar, setIsResizingAiSidebar] = useState(false)
 
   const handleReady = (event: DockviewReadyEvent) => {
     const api = event.api
@@ -91,6 +120,47 @@ export function App() {
     })
   }
 
+  useEffect(() => {
+    if (!isResizingAiSidebar) {
+      return
+    }
+
+    const handleMouseMove = (event: MouseEvent) => {
+      setAiSidebarWidth(clampAiSidebarWidth(event.clientX, window.innerWidth))
+    }
+
+    const handleMouseUp = () => {
+      setIsResizingAiSidebar(false)
+    }
+
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isResizingAiSidebar])
+
+  useEffect(() => {
+    const handleResize = () => {
+      setAiSidebarWidth((currentWidth) =>
+        clampAiSidebarWidth(currentWidth, window.innerWidth),
+      )
+    }
+
+    window.addEventListener('resize', handleResize)
+
+    return () => {
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [])
+
+  const handleAiSidebarResizeStart = (event: ReactMouseEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    setIsResizingAiSidebar(true)
+  }
+
   return (
     <div style={rootStyle}>
       <div style={topbarStyle}>
@@ -107,7 +177,16 @@ export function App() {
         </div>
       </div>
       <div style={contentAreaStyle}>
-        <AiSidebar />
+        <AiSidebar width={aiSidebarWidth} />
+        {isAiSidebarOpen ? (
+          <div
+            role="separator"
+            aria-label="Resize AI panel"
+            aria-orientation="vertical"
+            onMouseDown={handleAiSidebarResizeStart}
+            style={aiSidebarSashStyle}
+          />
+        ) : null}
         <div style={workspaceStyle}>
           <div style={dockviewContainerStyle}>
             <DockviewReact components={components} onReady={handleReady} />

@@ -11,6 +11,7 @@
   - single-tab widget headers render as narrow title headers instead of tab-strip selectors
   - single-tab widget drag can start from the full header area, not only the title text
   - AI panel opens on the left, occupies `50%` of the window width, and pushes Dockview to the right instead of overlapping it
+  - AI panel width can be resized with a dedicated vertical separator between AI and Dockview
   - Dockview drag and sash resize work on the live Vite app
 
 ## Commands/tests used
@@ -36,5 +37,6 @@
 - Single-tab Dockview headers rendered at `24px` height with visible titles and `void/actions` areas hidden.
 - Single-tab `.dv-tab` width expanded to the full header body (`1424/1440` and `704/720` after padding), and dragging from the empty right side of the top header moved `terminal-header` into the next group.
 - Opening `AI SIDEBAR` on a `1440px` wide viewport produced a left panel at `x=0`, `y=40`, `width=720`, `height=920`, while the first Dockview group started at `x=720` with `overlap=false`.
+- Dragging the AI separator changed the AI width from `720` to `560`, and moved the first Dockview group start from `724` to `564` while increasing its width from `716` to `876`.
 - Dragging the vertical sash changed the bottom panel widths from `720/720` to `598/842`.
 - Dragging the `tool` tab into the top group merged the layout into two groups: `terminal-header + tool` on top and `terminal` below.
