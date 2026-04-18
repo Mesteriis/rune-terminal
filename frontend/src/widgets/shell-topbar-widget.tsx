@@ -26,6 +26,7 @@ const tabStripStyle = {
   display: 'flex',
   alignItems: 'center',
   gap: 'var(--gap-sm)',
+  marginLeft: '2rem',
   border: 'none',
   background: 'transparent',
   padding: 0,
