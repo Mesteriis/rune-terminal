@@ -28,7 +28,6 @@ Current primitives:
 
 - `Box`
 - `Button`
-- `Canvas`
 - `Checkbox`
 - `Input`
 - `Label`
@@ -91,7 +90,7 @@ its visible shell blocks as raw HTML inside `App.tsx`.
 - `App.tsx` owns Dockview wiring and UI state only.
 - `ShellTopbarWidget` renders the top header block.
 - `RightActionRailWidget` renders the full-height right rail.
-- `WidgetBusyOverlayWidget` renders a widget-body busy state overlay with a centered AI marker and canvas-driven particle flow.
+- `WidgetBusyOverlayWidget` renders a widget-body busy state overlay with a centered AI marker and a `tsParticles` node-edge field.
 - `DialogPopup` provides the stateless shared dialog surface, including the wide settings-dialog variant.
 - `Notify` provides the stateless shared notification surface.
 - `ModalHostWidget` renders body-scoped and widget-scoped modal layers.
@@ -115,7 +114,6 @@ its visible shell blocks as raw HTML inside `App.tsx`.
 
 - Primitives are typed with native HTML prop types.
 - Primitive coverage now includes `Label`, `Select`, `TextArea`, `Radio`, and `Checkbox` in addition to the original `Box`, `Button`, `Input`, and `Text`.
-- Primitive coverage now also includes `Canvas` for imperative widget-level rendering surfaces that still stay inside the typed primitive layer.
 - Primitives contain native elements only and use CSS variable styles.
 - The new form-control components added in this slice import primitives only.
 - Widgets import components and primitives only.
@@ -129,7 +127,7 @@ its visible shell blocks as raw HTML inside `App.tsx`.
 - `RadioControl` and `RadioGroup` cover single and grouped radio selection.
 - `SwitcherControl` and `SwitcherGroup` cover single and grouped boolean toggles.
 - `ExpandableTextArea` keeps inline behavior by default and can expand to the parent bounds or to a selector target without introducing modal semantics.
-- `WidgetBusyOverlayWidget` stays in the widget layer and uses the `Canvas` primitive plus widget-local state wiring instead of pushing imperative rendering into shared components.
+- `WidgetBusyOverlayWidget` stays in the widget layer and uses `@tsparticles/react` directly for the busy-field rendering instead of pushing imperative particle code into shared components.
 - The current shell example routes its visible shell blocks through widgets and primitives instead of raw HTML in `App.tsx`.
 - `App.tsx` remains responsible for Dockview API orchestration and Effector state wiring.
 - Modal state now lives in a dedicated `shared/model/modal.ts` store instead of being hidden inside widget-local React state.
