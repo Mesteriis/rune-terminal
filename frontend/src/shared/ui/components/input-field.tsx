@@ -1,6 +1,4 @@
-import { Box } from '../primitives/box'
-import { Input, type InputProps } from '../primitives/input'
-import { Text } from '../primitives/text'
+import { Box, Input, type InputProps, Text } from '../primitives'
 
 export type InputFieldProps = InputProps & {
   label: string
