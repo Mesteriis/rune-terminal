@@ -1,3 +1,90 @@
+# Latest post-aifeedbackbuttons widget assessment
+
+**Date:** 2026-04-18  
+**Scope:** Assessment-only decision on whether safe leaf-only `RTAIPanelWidget` work remains after five completed local sub-slices.
+
+## Completed leaf sub-slices considered
+
+- `agent-selection-strip`
+- `run-command-approval`
+- `execution-block-list`
+- `airatelimitstrip`
+- `aifeedbackbuttons`
+
+## Remaining files assessed
+
+- Remaining files (excluding the five completed sub-slice families): **21**
+- Assessed set:
+  - `ai-utils.ts`
+  - `aidroppedfiles.tsx`
+  - `aimessage.tsx`
+  - `aimode.tsx`
+  - `aipanel-compat.tsx`
+  - `aipanel-contextmenu.ts`
+  - `aipanel.tsx`
+  - `aipanelheader.tsx`
+  - `aipanelinput.tsx`
+  - `aipanelmessages.tsx`
+  - `aitooluse.tsx`
+  - `aitypes.ts`
+  - `byokannouncement.tsx`
+  - `compat-context.ts`
+  - `compat-conversation.ts`
+  - `restorebackupmodal.tsx`
+  - `run-command.test.ts`
+  - `run-command.ts`
+  - `telemetryrequired.tsx`
+  - `waveai-focus-utils.ts`
+  - `waveai-model.tsx`
+
+## Exact decision
+
+- Decision: **one safe leaf still remains**.
+- Selected remaining safe leaf-only candidate: `frontend/ui/widgets/RTAIPanelWidget/byokannouncement.tsx`.
+- Reason:
+  - Narrow local dependency shape (single local dependent: `aipanel.tsx`).
+  - No local orchestration or compat bridge responsibilities.
+  - Smaller and more isolated execution surface than other leaf-like candidates (`aidroppedfiles.tsx`, `telemetryrequired.tsx`, `restorebackupmodal.tsx`), which carry tighter runtime/model state coupling.
+
+## Future boundary and explicit deferrals
+
+- Future in-scope boundary (for execution slice): `byokannouncement.tsx` only.
+- Allowed: minimal local import rewiring inside `frontend/ui/widgets/RTAIPanelWidget` only if needed to preserve current import path.
+- Explicit out of scope:
+  - `aipanel.tsx`
+  - `aipanel-compat.tsx`
+  - `waveai-model.tsx`
+  - `run-command.ts`
+  - `compat-conversation.ts`
+  - `compat-context.ts`
+  - `aipanelmessages.tsx`
+  - `aimessage.tsx`
+  - `aipanelinput.tsx`
+  - `ai-utils.ts`
+  - `aitypes.ts`
+  - all app/layout/runtime/api files
+  - checker and manifest changes
+
+## Commands run and build result
+
+```bash
+find frontend/ui/widgets/RTAIPanelWidget -maxdepth 1 -type f | sort | rg -v 'agent-selection-strip|run-command-approval|execution-block-list|airatelimitstrip|aifeedbackbuttons'
+rg --no-heading -n "from ['\"](\\./|@/ui/widgets/RTAIPanelWidget)" frontend/ui/widgets/RTAIPanelWidget
+rg --no-heading -n "RTAIPanelWidget/(ai-utils|aidroppedfiles|aimessage|aimode|aipanel-compat|aipanel-contextmenu|aipanel|aipanelheader|aipanelinput|aipanelmessages|aitooluse|aitypes|byokannouncement|compat-context|compat-conversation|restorebackupmodal|run-command|telemetryrequired|waveai-focus-utils|waveai-model)" frontend
+npm --prefix frontend run build
+→ pass (phase 1)
+npm --prefix frontend run build
+→ pass (phase 2)
+```
+
+## Assessment-only confirmation
+
+- No widget source migration executed in this slice.
+- No manifest changes.
+- No checker changes.
+
+---
+
 # Latest aifeedbackbuttons widget sub-slice migration
 
 **Date:** 2026-04-18  
