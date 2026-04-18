@@ -4,13 +4,8 @@
 import { Button } from "@/ui/primitives/RTButton";
 import React from "react";
 
-import "./RTModal.scss";
-
-interface ModalProps {
-    id?: string;
-    children: React.ReactNode;
-    onClickOut: () => void;
-}
+import "./RTModal.style.scss";
+import type { ModalContentProps, ModalFooterProps, ModalHeaderProps, ModalProps, WaveModalProps } from "./RTModal.logic";
 
 function Modal({ children, onClickOut, id = "modal", ...otherProps }: ModalProps) {
     const handleOutsideClick = (e: React.SyntheticEvent<HTMLDivElement>) => {
@@ -28,17 +23,8 @@ function Modal({ children, onClickOut, id = "modal", ...otherProps }: ModalProps
     );
 }
 
-interface ModalContentProps {
-    children: React.ReactNode;
-}
-
 function ModalContent({ children }: ModalContentProps) {
     return <div className="modal-content">{children}</div>;
-}
-
-interface ModalHeaderProps {
-    title: React.ReactNode;
-    description?: string;
 }
 
 function ModalHeader({ title, description }: ModalHeaderProps) {
@@ -50,22 +36,8 @@ function ModalHeader({ title, description }: ModalHeaderProps) {
     );
 }
 
-interface ModalFooterProps {
-    children: React.ReactNode;
-}
-
 function ModalFooter({ children }: ModalFooterProps) {
     return <footer className="modal-footer">{children}</footer>;
-}
-
-interface WaveModalProps {
-    title: string;
-    description?: string;
-    id?: string;
-    onSubmit: () => void;
-    onCancel: () => void;
-    buttonLabel?: string;
-    children: React.ReactNode;
 }
 
 function WaveModal({ title, description, onSubmit, onCancel, buttonLabel = "Ok", children }: WaveModalProps) {
@@ -80,4 +52,4 @@ function WaveModal({ title, description, onSubmit, onCancel, buttonLabel = "Ok",
     );
 }
 
-export { WaveModal };
+export { Modal, ModalContent, ModalFooter, ModalHeader, WaveModal };
