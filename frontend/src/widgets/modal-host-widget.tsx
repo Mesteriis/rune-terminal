@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { useUnit } from 'effector-react'
 
 import { BODY_MODAL_HOST_ID, $modals, closeHostModals, closeModal } from '../shared/model/modal'
-import { ModalWindow } from '../shared/ui/components'
+import { DialogPopup } from '../shared/ui/components'
 import { Box } from '../shared/ui/primitives'
 
 type ModalHostWidgetProps = {
@@ -107,10 +107,11 @@ export function ModalHostWidget({ hostId, scope }: ModalHostWidgetProps) {
     >
       <Box onClick={(event) => event.stopPropagation()} style={modalStackStyle}>
         {hostModals.map((modal) => (
-          <ModalWindow
+          <DialogPopup
+            confirmLabel="Acknowledge"
             key={modal.id}
             description={modal.description}
-            onClose={() => onCloseModal({ id: modal.id })}
+            onDismiss={() => onCloseModal({ id: modal.id })}
             title={modal.title}
           />
         ))}

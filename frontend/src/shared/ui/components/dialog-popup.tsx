@@ -1,19 +1,22 @@
 import { Box, Button, Text } from '../primitives'
 
-type ModalWindowProps = {
+type DialogPopupProps = {
   title: string
   description: string
-  onClose: () => void
+  confirmLabel?: string
+  dismissLabel?: string
+  onConfirm?: () => void
+  onDismiss: () => void
 }
 
-const modalWindowStyle = {
+const dialogPopupStyle = {
   width: 'min(100%, var(--size-modal-width))',
   display: 'flex',
   flexDirection: 'column' as const,
   gap: 'var(--gap-sm)',
 }
 
-const modalHeaderStyle = {
+const dialogHeaderStyle = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
@@ -27,17 +30,17 @@ const modalHeaderStyle = {
   WebkitBackdropFilter: 'none',
 }
 
-const modalTitleStyle = {
+const dialogTitleStyle = {
   display: 'block',
   fontWeight: 600,
 }
 
-const modalDescriptionStyle = {
+const dialogDescriptionStyle = {
   display: 'block',
   color: 'var(--color-text-secondary)',
 }
 
-const modalActionsStyle = {
+const dialogActionsStyle = {
   display: 'flex',
   justifyContent: 'flex-end',
   gap: 'var(--gap-xs)',
@@ -50,18 +53,26 @@ const modalActionsStyle = {
   WebkitBackdropFilter: 'none',
 }
 
-export function ModalWindow({ title, description, onClose }: ModalWindowProps) {
+export function DialogPopup({
+  title,
+  description,
+  confirmLabel = 'Confirm',
+  dismissLabel = 'Dismiss',
+  onConfirm,
+  onDismiss,
+}: DialogPopupProps) {
   return (
-    <Box style={modalWindowStyle}>
-      <Box style={modalHeaderStyle}>
-        <Text style={modalTitleStyle}>{title}</Text>
-        <Button aria-label={`Close ${title}`} onClick={onClose}>
+    <Box style={dialogPopupStyle}>
+      <Box style={dialogHeaderStyle}>
+        <Text style={dialogTitleStyle}>{title}</Text>
+        <Button aria-label={`Close ${title}`} onClick={onDismiss}>
           Close
         </Button>
       </Box>
-      <Text style={modalDescriptionStyle}>{description}</Text>
-      <Box style={modalActionsStyle}>
-        <Button onClick={onClose}>Dismiss</Button>
+      <Text style={dialogDescriptionStyle}>{description}</Text>
+      <Box style={dialogActionsStyle}>
+        {onConfirm ? <Button onClick={onConfirm}>{confirmLabel}</Button> : null}
+        <Button onClick={onDismiss}>{dismissLabel}</Button>
       </Box>
     </Box>
   )
