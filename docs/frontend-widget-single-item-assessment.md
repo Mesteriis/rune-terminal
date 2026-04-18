@@ -27,6 +27,53 @@
 - Dedicated SCSS state: no dedicated `agent-selection-strip` SCSS file exists today; this execution slice must introduce a local `agent-selection-strip.style.scss` file as part of the local contract split.
 - Boundary confirmation: execution remains inside the approved leaf boundary (`agent-selection-strip` local files plus minimal local import rewiring inside `RTAIPanelWidget` only).
 
+## Leaf batch eligibility assessment
+
+### Scope filter for remaining files
+
+Excluded completed local contract sub-slices:
+- `agent-selection-strip*`
+- `run-command-approval*`
+- `execution-block-list*`
+
+Remaining files assessed in this section: **23**
+
+### Local graph commands
+
+```bash
+find frontend/ui/widgets/RTAIPanelWidget -maxdepth 1 -type f | sort
+rg --no-heading -n "from ['\"]\\./|^import ['\"]\\./" frontend/ui/widgets/RTAIPanelWidget
+rg --no-heading -n "@/ui/widgets/RTAIPanelWidget" frontend/app frontend/ui frontend/wave.ts
+```
+
+### Remaining file classification and batch participation
+
+| File | Role classification | Local dependencies / dependents | Risk level | Can participate in same-slice batch? |
+|---|---|---|---|---|
+| `ai-utils.ts` | runtime/action logic | imports: none; dependents: `aidroppedfiles.tsx`, `aimessage.tsx`, `aimode.tsx`, `aipanel-compat.tsx`, `aipanel.tsx`, `compat-conversation.ts`, `waveai-model.tsx` | High | No |
+| `aidroppedfiles.tsx` | maybe-leaf but medium-risk | imports: `ai-utils.ts`, `waveai-model.tsx`; dependents: `aipanel-compat.tsx`, `aipanel.tsx` | Medium | No |
+| `aifeedbackbuttons.tsx` | maybe-leaf but medium-risk | imports: `waveai-model.tsx`; dependents: `aimessage.tsx` | Medium | No |
+| `aimessage.tsx` | orchestration | imports: `ai-utils.ts`, `aifeedbackbuttons.tsx`, `aitooluse.tsx`, `aitypes.ts`, `waveai-model.tsx`; dependents: `aipanelmessages.tsx` | High | No |
+| `aimode.tsx` | state/model/conversation logic | imports: `ai-utils.ts`, `waveai-model.tsx`; dependents: `aipanel.tsx`, `aipanelmessages.tsx` | Medium-high | No |
+| `aipanel-compat.tsx` | orchestration | imports: multiple local modules; dependent: `aipanel.tsx` | High | No |
+| `aipanel-contextmenu.ts` | compat bridge | imports: `compat-context.ts`, `waveai-model.tsx`; dependents: `aipanel-compat.tsx`, `aipanel.tsx`, `aipanelheader.tsx` | High | No |
+| `aipanel.tsx` | orchestration | imports: multiple local modules; dependents: none (entry component) | High | No |
+| `aipanelheader.tsx` | orchestration | imports: `waveai-model.tsx` and context-menu path; dependents: `aipanel-compat.tsx`, `aipanel.tsx` | Medium-high | No |
+| `aipanelinput.tsx` | state/model/conversation logic | imports: local helpers via absolute path (`ai-utils`, `waveai-focus-utils`, `waveai-model`); dependents: `aipanel-compat.tsx`, `aipanel.tsx`, `waveai-model.tsx` | Medium-high | No |
+| `aipanelmessages.tsx` | orchestration | imports: `aimessage.tsx`, `aimode.tsx`, `aitypes.ts`, `waveai-model.tsx`; dependents: `aipanel-compat.tsx`, `aipanel.tsx` | High | No |
+| `airatelimitstrip.tsx` | safe leaf candidate | imports: none (local); dependents: `aipanel-compat.tsx`, `aipanel.tsx` | Low | Yes (candidate) |
+| `aitooluse.tsx` | runtime/action logic | imports: `aitypes.ts`, `restorebackupmodal.tsx`, `waveai-model.tsx`; dependents: `aimessage.tsx` | High | No |
+| `aitypes.ts` | state/model/conversation logic | imports: none; dependents: `aimessage.tsx`, `aipanel-compat.tsx`, `aipanel.tsx`, `aipanelmessages.tsx`, `aitooluse.tsx`, `compat-conversation.ts`, `restorebackupmodal.tsx`, `run-command.ts` | High | No |
+| `byokannouncement.tsx` | runtime/action logic | imports: `waveai-model.tsx`; dependent: `aipanel.tsx` | Medium-high | No |
+| `compat-context.ts` | compat bridge | imports: none; dependents: `aipanel-contextmenu.ts`, `aipanel.tsx`, `waveai-model.tsx` | Medium-high | No |
+| `compat-conversation.ts` | compat bridge | imports: `ai-utils.ts`, `aitypes.ts`; dependent: `aipanel-compat.tsx` | High | No |
+| `restorebackupmodal.tsx` | runtime/action logic | imports: `aitypes.ts`, `waveai-model.tsx`; dependent: `aitooluse.tsx` | High | No |
+| `run-command.test.ts` | unknown/high-risk | imports: `run-command.ts`; dependents: none | Medium | No |
+| `run-command.ts` | runtime/action logic | imports: `aitypes.ts`; dependents: `aipanel-compat.tsx`, `run-command.test.ts` | High | No |
+| `telemetryrequired.tsx` | runtime/action logic | imports: `waveai-model.tsx`; dependent: `aipanel.tsx` | Medium-high | No |
+| `waveai-focus-utils.ts` | state/model/conversation logic | imports: none; dependents include `aipanel.tsx`, `aipanel-compat.tsx`, `aipanel-contextmenu.ts`, `aipanelinput.tsx`, plus `app/store/focusManager.ts` | Medium-high | No |
+| `waveai-model.tsx` | state/model/conversation logic | imports: `ai-utils.ts`, `aipanelinput.tsx`, `compat-context.ts`; dependents: many local files plus app/layout consumers | High | No |
+
 ## Next remaining leaf candidate assessment after run-command-approval
 
 ### Scope filter for remaining candidate set
