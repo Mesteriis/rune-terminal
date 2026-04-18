@@ -10,12 +10,15 @@
     "lint:all": "tsc --noEmit"
   },
   "dependencies": {
+    "@tsparticles/engine": "^3.9.1",
+    "@tsparticles/react": "^3.0.0",
     "dockview-react": "^5.2.0",
     "effector": "^23.4.4",
     "effector-react": "^23.3.0",
     "lucide-react": "^1.8.0",
     "react": "^19.2.5",
-    "react-dom": "^19.2.5"
+    "react-dom": "^19.2.5",
+    "tsparticles": "^3.9.1"
   },
   "devDependencies": {
     "@types/react": "^19.2.14",
