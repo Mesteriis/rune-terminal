@@ -5,6 +5,7 @@
 - Date: `2026-04-18`
 - State: `VERIFIED`
 - Scope:
+  - top bar order is `AI`, then the tab strip
   - `40px` top bar above the workspace
   - Dockview fills the remaining viewport and boots three panels from `onReady`
   - AI sidebar opens as an absolute overlay and does not resize Dockview
@@ -28,6 +29,7 @@
 ## Evidence
 
 - Initial panel set rendered as `terminal-header`, `terminal`, and `tool`.
+- Top bar rendered in the requested order: `AI`, then `TAB-1`, then `TAB-2`.
 - Dockview occupied the full viewport below the `40px` top bar with no zero-height panels.
 - Opening `AI SIDEBAR` produced an absolute element at `x=1140`, `y=40`, `width=300`, `height=920`, `z-index=20`, while all Dockview panel rects stayed unchanged.
 - Dragging the vertical sash changed the bottom panel widths from `720/720` to `598/842`.

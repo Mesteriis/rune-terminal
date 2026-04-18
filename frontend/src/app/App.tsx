@@ -2,7 +2,7 @@ import { DockviewReact, type DockviewReadyEvent, type IDockviewPanelProps } from
 import { useUnit } from 'effector-react'
 
 import { AiSidebar } from './ai/ai-sidebar'
-import { toggleAiSidebar } from '../shared/model/app'
+import { $isAiSidebarOpen, toggleAiSidebar } from '../shared/model/app'
 
 const rootStyle = {
   position: 'relative' as const,
@@ -19,6 +19,12 @@ const topbarStyle = {
   gap: 8,
   padding: '0 12px',
   boxSizing: 'border-box' as const,
+}
+
+const tabStripStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
 }
 
 const workspaceStyle = {
@@ -49,7 +55,10 @@ const components = {
 }
 
 export function App() {
-  const onToggleAiSidebar = useUnit(toggleAiSidebar)
+  const [isAiSidebarOpen, onToggleAiSidebar] = useUnit([
+    $isAiSidebarOpen,
+    toggleAiSidebar,
+  ])
 
   const handleReady = (event: DockviewReadyEvent) => {
     const api = event.api
@@ -87,11 +96,17 @@ export function App() {
   return (
     <div style={rootStyle}>
       <div style={topbarStyle}>
-        <span>TAB-1</span>
-        <span>TAB-2</span>
-        <button type="button" onClick={onToggleAiSidebar}>
+        <button type="button" aria-pressed={isAiSidebarOpen} onClick={onToggleAiSidebar}>
           AI
         </button>
+        <div role="tablist" aria-label="Workspace tabs" style={tabStripStyle}>
+          <button type="button" role="tab" aria-selected="true">
+            TAB-1
+          </button>
+          <button type="button" role="tab" aria-selected="false">
+            TAB-2
+          </button>
+        </div>
       </div>
       <div style={workspaceStyle}>
         <div style={dockviewContainerStyle}>
