@@ -49,6 +49,34 @@ rg "RTAIPanelWidget/(ai-utils|aidroppedfiles|aifeedbackbuttons|aimessage|aimode|
 | `waveai-focus-utils.ts` | conversation/model/state logic | used by `aipanel.tsx`, `aipanel-compat.tsx`, `aipanel-contextmenu.ts`, `aipanelinput.tsx`, `app/store/focusManager.ts` | No | Shared focus/selection behavior utility. |
 | `waveai-model.tsx` | conversation/model/state logic | depended by many local + app/layout files | No | Highest coupling state singleton and runtime bridge. |
 
+### One Safe Leaf Still Remains
+
+- Remaining safe leaf-only candidate: `frontend/ui/widgets/RTAIPanelWidget/aifeedbackbuttons.tsx`
+- Why this remains safer than the rest:
+  - Single local dependent (`aimessage.tsx`) and narrow prop surface (`messageText`).
+  - No direct compat bridge imports and no coupling to `aipanel.tsx` / `aipanel-compat.tsx`.
+  - Behavior is self-contained to local UI feedback/copy actions; does not orchestrate conversation/runtime pipelines.
+- Exact future slice boundary:
+  - In scope: `frontend/ui/widgets/RTAIPanelWidget/aifeedbackbuttons.tsx` only.
+  - Allowed: minimal local import rewiring inside `frontend/ui/widgets/RTAIPanelWidget` only, if needed to preserve external path.
+  - Out of scope:
+    - `aipanel.tsx`
+    - `aipanel-compat.tsx`
+    - `waveai-model.tsx`
+    - `run-command.ts`
+    - `compat-conversation.ts`
+    - `compat-context.ts`
+    - `aipanelmessages.tsx`
+    - `aimessage.tsx` (except minimal import rewiring only)
+    - `ai-utils.ts`
+    - `aitypes.ts`
+    - all app/layout/runtime/api files
+    - checker and manifest changes
+- Future execution stop conditions:
+  - Stop if preserving the existing `./aifeedbackbuttons` import path requires broad edits outside minimal local rewiring.
+  - Stop if implementation forces changes in model/compat/orchestration files beyond allowed rewiring.
+  - Stop if manifest/checker changes become necessary.
+
 ## Latest Execution Boundary Check: `airatelimitstrip`
 
 - Current parent import paths in use:
