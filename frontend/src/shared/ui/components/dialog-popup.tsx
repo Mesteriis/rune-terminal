@@ -19,9 +19,11 @@ const dialogPopupStyle = {
 
 const settingsDialogPopupStyle = {
   width: '90vw',
+  minWidth: '90vw',
   maxWidth: '90vw',
-  height: '100%',
-  maxHeight: 'calc(100vh - (var(--padding-modal-layer) * 2))',
+  height: '95vh',
+  minHeight: '95vh',
+  maxHeight: '95vh',
 }
 
 const dialogHeaderStyle = {
