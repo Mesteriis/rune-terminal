@@ -1,3 +1,95 @@
+# Latest aifeedbackbuttons widget sub-slice migration
+
+**Date:** 2026-04-18  
+**Scope:** Execute local leaf-only `RTAIPanelWidget/aifeedbackbuttons` contract split (not a manifest-registered widget migration)
+
+## Exact files created/updated
+
+- Created:
+  - `frontend/ui/widgets/RTAIPanelWidget/aifeedbackbuttons.logic.ts`
+  - `frontend/ui/widgets/RTAIPanelWidget/aifeedbackbuttons.template.tsx`
+  - `frontend/ui/widgets/RTAIPanelWidget/aifeedbackbuttons.style.scss`
+  - `frontend/ui/widgets/RTAIPanelWidget/aifeedbackbuttons.story.tsx`
+- Updated:
+  - `frontend/ui/widgets/RTAIPanelWidget/aifeedbackbuttons.tsx` (local barrel export)
+- Legacy single-file implementation status:
+  - Replaced. Runtime JSX moved to `.template.tsx`; pure type/class/icon resolution moved to `.logic.ts`.
+
+## Preserved export/import path
+
+- Preserved local parent import path:
+  - `frontend/ui/widgets/RTAIPanelWidget/aimessage.tsx` imports `AIFeedbackButtons` from `./aifeedbackbuttons`.
+- No direct imports outside `RTAIPanelWidget` were found in `frontend/app`, `frontend/ui`, or `frontend/wave.ts`.
+
+## Commands run and results
+
+```bash
+rg "aifeedbackbuttons" frontend/ui/widgets/RTAIPanelWidget frontend/app frontend/ui frontend/wave.ts
+→ only local widget usage (parent import in aimessage + local contract files)
+
+npm --prefix frontend run build
+→ ✓ pass (phase 1 boundary validation)
+
+npm --prefix frontend run lint
+→ ✓ pass (15 pre-existing warnings, 0 errors)
+
+npx tsc -p frontend/tsconfig.json --noEmit
+→ ✓ pass
+
+npm --prefix frontend run build
+→ ✓ pass
+
+npm run build:core
+→ ✓ pass
+
+RTERM_AUTH_TOKEN=ui-aifeedbackbuttons-token apps/desktop/bin/rterm-core serve \
+  --listen 127.0.0.1:52772 \
+  --workspace-root "$PWD" \
+  --state-dir /tmp/runa-ui-aifeedbackbuttons-state
+→ started (base_url http://127.0.0.1:52772)
+
+VITE_RTERM_API_BASE=http://127.0.0.1:52772 \
+VITE_RTERM_AUTH_TOKEN=ui-aifeedbackbuttons-token \
+npm --prefix frontend run dev -- --host 127.0.0.1 --port 4190 --strictPort
+→ vite ready on http://127.0.0.1:4190
+
+curl -sf -H "Authorization: Bearer ui-aifeedbackbuttons-token" http://127.0.0.1:52772/healthz
+→ {"status":"ok"}
+
+curl -sf -H "Authorization: Bearer ui-aifeedbackbuttons-token" http://127.0.0.1:52772/api/v1/workspace
+→ HTTP 200, workspace payload returned
+
+curl -sf -H "Authorization: Bearer ui-aifeedbackbuttons-token" "http://127.0.0.1:52772/api/v1/terminal/term-main?from=0"
+→ HTTP 200, terminal payload returned
+
+Playwright sanity check against http://127.0.0.1:4190/
+→ app loaded, workspace shell visible, terminal widget visible, AI panel visible
+→ no failed module loads observed (network status 200 across loaded modules)
+→ no failed SCSS imports observed (`aifeedbackbuttons.style.scss` loaded with 200)
+→ console errors: 0
+→ feedback buttons rendered after sending prompt (`Good Response`: 1, `Bad Response`: 1, `Copy Message`: 1)
+```
+
+## Runtime sanity outcome
+
+- App load: pass
+- Workspace shell visible: pass
+- Terminal widget visible: pass
+- AI panel widget visible: pass
+- Feedback buttons render path: pass
+- Failed SCSS imports: none observed
+- Failed module loads: none observed
+- Fatal console errors: none observed
+
+## Scope confirmation
+
+- This is a **local widget sub-slice only**, not a manifest-registered widget migration.
+- No manifest changes.
+- No checker changes.
+- No forbidden spill edits into app/layout/runtime or restricted `RTAIPanelWidget` orchestration/compat files.
+
+---
+
 # Latest post-airatelimitstrip widget assessment
 
 **Date:** 2026-04-18  
