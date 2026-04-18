@@ -1,3 +1,80 @@
+# Latest byokannouncement widget sub-slice migration
+
+**Date:** 2026-04-18  
+**Scope:** Execute local leaf-only `RTAIPanelWidget/byokannouncement` contract split (not a manifest-registered widget migration)
+
+## Exact files created/updated
+
+- Created:
+  - `frontend/ui/widgets/RTAIPanelWidget/byokannouncement.logic.ts`
+  - `frontend/ui/widgets/RTAIPanelWidget/byokannouncement.template.tsx`
+  - `frontend/ui/widgets/RTAIPanelWidget/byokannouncement.style.scss`
+  - `frontend/ui/widgets/RTAIPanelWidget/byokannouncement.story.tsx`
+- Updated:
+  - `frontend/ui/widgets/RTAIPanelWidget/byokannouncement.tsx` (local barrel export)
+- Legacy single-file implementation status:
+  - Replaced. Runtime JSX moved to `.template.tsx`; event helpers/class resolution moved to `.logic.ts`.
+
+## Preserved export/import path
+
+- Preserved local parent import path:
+  - `frontend/ui/widgets/RTAIPanelWidget/aipanel.tsx` imports `BYOKAnnouncement` from `./byokannouncement`.
+- No direct imports outside `RTAIPanelWidget` were found in `frontend/app`, `frontend/ui`, or `frontend/wave.ts`.
+
+## Commands run and results
+
+```bash
+rg "byokannouncement" frontend/ui/widgets/RTAIPanelWidget frontend/app frontend/ui frontend/wave.ts
+→ only local widget usage (parent import in aipanel + local files)
+
+npm --prefix frontend run build
+→ ✓ pass (phase 1 boundary validation)
+
+npm --prefix frontend run lint
+→ ✓ pass (existing repo warnings only; no new errors)
+
+npx tsc -p frontend/tsconfig.json --noEmit
+→ ✓ pass
+
+npm --prefix frontend run build
+→ ✓ pass (phase 2 validation)
+
+npm run build:core
+→ ✓ pass
+
+RTERM_AUTH_TOKEN=ui-byokannouncement-token apps/desktop/bin/rterm-core serve --listen 127.0.0.1:52773 --workspace-root "$PWD" --state-dir /tmp/runa-ui-byokannouncement-state
+VITE_RTERM_API_BASE=http://127.0.0.1:52773 VITE_RTERM_AUTH_TOKEN=ui-byokannouncement-token npm --prefix frontend run dev -- --host 127.0.0.1 --port 4191 --strictPort
+
+curl -sf -H "Authorization: Bearer ui-byokannouncement-token" http://127.0.0.1:52773/healthz
+→ {"status":"ok"}
+
+curl -sf -H "Authorization: Bearer ui-byokannouncement-token" http://127.0.0.1:52773/api/v1/workspace
+→ ✓ pass (workspace payload returned)
+
+curl -sf -H "Authorization: Bearer ui-byokannouncement-token" "http://127.0.0.1:52773/api/v1/terminal/term-main?from=0"
+→ ✓ pass (terminal snapshot payload returned)
+```
+
+## Runtime sanity result
+
+- App loaded at `http://127.0.0.1:4191/`.
+- Workspace shell was visible (`Main Shell`/`Ops Shell` surface visible).
+- Terminal widget was visible (`Main Shell` terminal header and terminal input textbox present).
+- AI panel loaded and interactive.
+- `byokannouncement` module loaded successfully (`GET /ui/widgets/RTAIPanelWidget/byokannouncement.tsx` returned `200`).
+- No failed SCSS imports observed for this slice.
+- No failed module loads observed for this slice.
+- No fatal console errors observed. (One non-fatal browser issue warning about form field id/name was present and unrelated to this slice.)
+- Rendering note: BYOK announcement remains conditionally rendered in `aipanel.tsx` (`!hasCustomModes`). In this runtime profile it was not displayed, with no runtime regression from the split.
+
+## Slice scope confirmation
+
+- This is a **local widget sub-slice only**, not a manifest-registered widget migration.
+- No manifest changes.
+- No checker changes.
+
+---
+
 # Latest post-aifeedbackbuttons widget assessment
 
 **Date:** 2026-04-18  
