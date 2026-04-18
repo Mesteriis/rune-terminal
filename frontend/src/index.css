@@ -11,3 +11,49 @@ body {
 #root {
   height: 100%;
 }
+
+.dv-tabs-and-actions-container.dv-single-tab {
+  height: 24px;
+  align-items: center;
+  padding: 0 8px;
+  box-sizing: border-box;
+}
+
+.dv-tabs-and-actions-container.dv-single-tab .dv-scrollable,
+.dv-tabs-and-actions-container.dv-single-tab .dv-tabs-container {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.dv-tabs-and-actions-container.dv-single-tab .dv-tabs-container .dv-tab {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  border: 0;
+  outline: 0;
+}
+
+.dv-tabs-and-actions-container.dv-single-tab .dv-tabs-container .dv-tab::before,
+.dv-tabs-and-actions-container.dv-single-tab .dv-tabs-container .dv-tab::after {
+  display: none;
+}
+
+.dv-tabs-and-actions-container.dv-single-tab .dv-tab .dv-default-tab {
+  display: block;
+  pointer-events: none;
+}
+
+.dv-tabs-and-actions-container.dv-single-tab .dv-tab .dv-default-tab .dv-default-tab-content {
+  margin-right: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dv-tabs-and-actions-container.dv-single-tab .dv-tab .dv-default-tab .dv-default-tab-action,
+.dv-tabs-and-actions-container.dv-single-tab .dv-right-actions-container,
+.dv-tabs-and-actions-container.dv-single-tab .dv-void-container {
+  display: none;
+}
