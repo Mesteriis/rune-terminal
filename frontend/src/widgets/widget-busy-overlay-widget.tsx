@@ -13,6 +13,7 @@ type Particle = {
   age: number
   emitter: 'bottom-left' | 'top-right'
   life: number
+  noiseOffset: number
   previousX: number
   previousY: number
   size: number
@@ -25,8 +26,11 @@ type Particle = {
 }
 
 const BUSY_ICON_AREA_RATIO = 0.2
-const PARTICLE_LIMIT = 64
+const PARTICLE_LIMIT = 192
 const EMITTER_MARGIN = 18
+const COLLISION_RADIUS = 16
+const COLLISION_PUSH = 0.024
+const COLLISION_SWIRL = 0.011
 
 const overlayStyle = {
   position: 'absolute' as const,
@@ -117,6 +121,7 @@ function createParticle(
     size: 1 + Math.random() * 1.8,
     age: 0,
     life: 120 + Math.random() * 54,
+    noiseOffset: Math.random() * Math.PI * 2,
     targetIndex: 0,
     speed: 0.032 + Math.random() * 0.018,
   }
@@ -200,6 +205,8 @@ export function WidgetBusyOverlayWidget({ hostId }: WidgetBusyOverlayWidgetProps
     const particles: Particle[] = []
     const centerX = width / 2
     const centerY = height / 2
+    const attractorX = centerX
+    const attractorY = centerY + busyPlaneSize * 0.12
     const routePointsBottomLeft = getRoutePoints(centerX, centerY, busyPlaneSize, 'bottom-left')
     const routePointsTopRight = getRoutePoints(centerX, centerY, busyPlaneSize, 'top-right')
 
@@ -214,16 +221,65 @@ export function WidgetBusyOverlayWidget({ hostId }: WidgetBusyOverlayWidgetProps
         return
       }
 
-      particles.push(createParticle(centerX, centerY, busyPlaneSize, 'bottom-left'))
-      particles.push(createParticle(centerX, centerY, busyPlaneSize, 'top-right'))
+      const budget = Math.min(6, PARTICLE_LIMIT - particles.length)
+
+      for (let index = 0; index < budget; index += 1) {
+        particles.push(
+          createParticle(
+            centerX,
+            centerY,
+            busyPlaneSize,
+            index % 2 === 0 ? 'bottom-left' : 'top-right',
+          ),
+        )
+      }
     }
 
     const drawFrame = (timestamp: number) => {
       context.clearRect(0, 0, width, height)
       context.globalCompositeOperation = 'lighter'
 
-      if (particles.length < PARTICLE_LIMIT && timestamp % 2 < 1) {
+      if (particles.length < PARTICLE_LIMIT) {
         spawnParticles()
+      }
+
+      for (let sourceIndex = 0; sourceIndex < particles.length; sourceIndex += 1) {
+        const source = particles[sourceIndex]
+
+        for (let targetIndex = sourceIndex + 1; targetIndex < particles.length; targetIndex += 1) {
+          const target = particles[targetIndex]
+          const dx = target.x - source.x
+          const dy = target.y - source.y
+          const distance = Math.max(Math.hypot(dx, dy), 0.001)
+
+          if (distance > COLLISION_RADIUS) {
+            continue
+          }
+
+          const overlap = 1 - distance / COLLISION_RADIUS
+          const normalX = dx / distance
+          const normalY = dy / distance
+          const tangentX = -normalY
+          const tangentY = normalX
+          const swirlDirection =
+            source.emitter === target.emitter
+              ? source.emitter === 'bottom-left'
+                ? 1
+                : -1
+              : Math.sign(source.vx - target.vx || 1)
+          const pushForce = overlap * COLLISION_PUSH
+          const swirlForce = overlap * COLLISION_SWIRL * swirlDirection
+
+          source.vx -= normalX * pushForce
+          source.vy -= normalY * pushForce
+          target.vx += normalX * pushForce
+          target.vy += normalY * pushForce
+
+          source.vx += tangentX * swirlForce
+          source.vy += tangentY * swirlForce
+          target.vx -= tangentX * swirlForce
+          target.vy -= tangentY * swirlForce
+        }
       }
 
       for (let index = particles.length - 1; index >= 0; index -= 1) {
@@ -231,12 +287,12 @@ export function WidgetBusyOverlayWidget({ hostId }: WidgetBusyOverlayWidgetProps
         const routePoints =
           particle.emitter === 'bottom-left' ? routePointsBottomLeft : routePointsTopRight
         const targetPoint = routePoints[Math.min(particle.targetIndex, routePoints.length - 1)]
-        const dx = centerX - particle.x
-        const dy = centerY - particle.y
+        const dx = attractorX - particle.x
+        const dy = attractorY - particle.y
         const distance = Math.max(Math.hypot(dx, dy), 1)
         const directionX = dx / distance
         const directionY = dy / distance
-        const swirlStrength = particle.emitter === 'bottom-left' ? -0.055 : 0.055
+        const swirlStrength = particle.emitter === 'bottom-left' ? -0.082 : 0.082
         const targetDx = targetPoint.x - particle.x
         const targetDy = targetPoint.y - particle.y
         const targetDistance = Math.max(Math.hypot(targetDx, targetDy), 1)
@@ -244,6 +300,10 @@ export function WidgetBusyOverlayWidget({ hostId }: WidgetBusyOverlayWidgetProps
         const targetDirectionY = targetDy / targetDistance
         const orbitBand = busyPlaneSize * 0.54
         const orbitPull = Math.max(-1, Math.min(1, (distance - orbitBand) / orbitBand))
+        const attractorPull = Math.min(0.028, 280 / (distance * distance))
+        const chaosStrength =
+          0.016 +
+          Math.sin(timestamp * 0.0012 + particle.noiseOffset + particle.age * 0.03) * 0.006
 
         particle.previousX = particle.x
         particle.previousY = particle.y
@@ -252,17 +312,19 @@ export function WidgetBusyOverlayWidget({ hostId }: WidgetBusyOverlayWidgetProps
         particle.vy += targetDirectionY * particle.speed
         particle.vx += -directionY * swirlStrength
         particle.vy += directionX * swirlStrength
-        particle.vx += directionX * orbitPull * 0.012
-        particle.vy += directionY * orbitPull * 0.012
+        particle.vx += directionX * orbitPull * 0.02
+        particle.vy += directionY * orbitPull * 0.02
+        particle.vx += directionX * attractorPull
+        particle.vy += directionY * attractorPull
 
         if (targetDistance < Math.max(18, busyPlaneSize * 0.08) && particle.targetIndex < routePoints.length - 1) {
           particle.targetIndex += 1
         }
 
-        particle.vx += Math.cos(timestamp * 0.0014 + particle.y * 0.012) * 0.006
-        particle.vy += Math.sin(timestamp * 0.0014 + particle.x * 0.012) * 0.006
-        particle.vx *= 0.976
-        particle.vy *= 0.976
+        particle.vx += Math.cos(timestamp * 0.0018 + particle.y * 0.014 + particle.noiseOffset) * chaosStrength
+        particle.vy += Math.sin(timestamp * 0.0016 + particle.x * 0.014 + particle.noiseOffset) * chaosStrength
+        particle.vx *= 0.968
+        particle.vy *= 0.968
         particle.x += particle.vx
         particle.y += particle.vy
         particle.age += 1
