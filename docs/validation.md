@@ -1,3 +1,93 @@
+# Latest post-airatelimitstrip widget assessment
+
+**Date:** 2026-04-18  
+**Scope:** Assessment-only decision on whether safe leaf-only `RTAIPanelWidget` work remains after four completed local sub-slices.
+
+## Completed leaf sub-slices considered
+
+- `agent-selection-strip`
+- `run-command-approval`
+- `execution-block-list`
+- `airatelimitstrip`
+
+## Remaining files assessed
+
+- Remaining files (excluding the four completed sub-slice families): **22**
+- Assessed set:
+  - `ai-utils.ts`
+  - `aidroppedfiles.tsx`
+  - `aifeedbackbuttons.tsx`
+  - `aimessage.tsx`
+  - `aimode.tsx`
+  - `aipanel-compat.tsx`
+  - `aipanel-contextmenu.ts`
+  - `aipanel.tsx`
+  - `aipanelheader.tsx`
+  - `aipanelinput.tsx`
+  - `aipanelmessages.tsx`
+  - `aitooluse.tsx`
+  - `aitypes.ts`
+  - `byokannouncement.tsx`
+  - `compat-context.ts`
+  - `compat-conversation.ts`
+  - `restorebackupmodal.tsx`
+  - `run-command.test.ts`
+  - `run-command.ts`
+  - `telemetryrequired.tsx`
+  - `waveai-focus-utils.ts`
+  - `waveai-model.tsx`
+
+## Exact decision
+
+- Decision: **one safe leaf still remains**.
+- Selected remaining safe leaf-only candidate: `frontend/ui/widgets/RTAIPanelWidget/aifeedbackbuttons.tsx`.
+- Reason:
+  - Narrow local dependency graph (single local dependent: `aimessage.tsx`).
+  - Small UI-only surface with contained side effects.
+  - Lower migration risk than remaining files, which are mostly orchestration/compat/runtime/state-heavy.
+
+## Future boundary and explicit deferrals
+
+- Future in-scope boundary (for execution slice): `aifeedbackbuttons.tsx` only.
+- Allowed: minimal local import rewiring inside `frontend/ui/widgets/RTAIPanelWidget` only if needed to preserve current import path.
+- Explicit out of scope:
+  - `aipanel.tsx`
+  - `aipanel-compat.tsx`
+  - `waveai-model.tsx`
+  - `run-command.ts`
+  - `compat-conversation.ts`
+  - `compat-context.ts`
+  - `aipanelmessages.tsx`
+  - `aimessage.tsx` (except minimal import rewiring only)
+  - all app/layout/runtime/api files
+  - checker and manifest changes
+
+## Commands run and results
+
+```bash
+find frontend/ui/widgets/RTAIPanelWidget -maxdepth 1 -type f | sort | rg -v 'agent-selection-strip|run-command-approval|execution-block-list|airatelimitstrip'
+rg "from ['\"](\\./|@/ui/widgets/RTAIPanelWidget)" frontend/ui/widgets/RTAIPanelWidget -n
+rg "RTAIPanelWidget/(ai-utils|aidroppedfiles|aifeedbackbuttons|aimessage|aimode|aipanel-compat|aipanel-contextmenu|aipanel|aipanelheader|aipanelinput|aipanelmessages|aitooluse|aitypes|byokannouncement|compat-context|compat-conversation|restorebackupmodal|run-command|telemetryrequired|waveai-focus-utils|waveai-model)" frontend -n
+npm --prefix frontend run build
+→ pass
+npm --prefix frontend run build
+→ pass
+npm --prefix frontend run lint
+→ pass (warnings only)
+npx tsc -p frontend/tsconfig.json --noEmit
+→ pass
+npm --prefix frontend run build
+→ pass
+```
+
+## Assessment-only confirmation
+
+- No widget source migration executed in this slice.
+- No manifest changes.
+- No checker changes.
+
+---
+
 # Latest: AIRateLimitStrip Widget Sub-Slice Migration
 
 **Date:** 2026-04-18  
