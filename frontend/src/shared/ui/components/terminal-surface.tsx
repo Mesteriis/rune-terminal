@@ -1,9 +1,21 @@
+import { BrowserClipboardProvider, ClipboardAddon } from '@xterm/addon-clipboard'
 import { FitAddon } from '@xterm/addon-fit'
+import { SearchAddon } from '@xterm/addon-search'
+import { WebLinksAddon } from '@xterm/addon-web-links'
+import { WebglAddon } from '@xterm/addon-webgl'
 import { Terminal } from '@xterm/xterm'
-import { useEffect, useRef } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
 
 import { TerminalViewport } from '../primitives'
 import type { TerminalConnectionKind, TerminalSessionState } from './terminal-status-header'
+
+export type TerminalSurfaceHandle = {
+  copySelection: () => Promise<void>
+  findNext: (query: string) => boolean
+  findPrevious: (query: string) => boolean
+  focus: () => void
+  pasteFromClipboard: () => Promise<void>
+}
 
 export type TerminalSurfaceProps = {
   hostId: string
@@ -12,6 +24,8 @@ export type TerminalSurfaceProps = {
   connectionKind: TerminalConnectionKind
   sessionState: TerminalSessionState
   introLines?: string[]
+  onRendererModeChange?: (mode: 'default' | 'webgl') => void
+  onRequestSearch?: () => void
 }
 
 const viewportStyle = {
@@ -73,16 +87,109 @@ function writeCommandResult(term: Terminal, command: string, cwd: string) {
   return false
 }
 
-export function TerminalSurface({
-  hostId,
-  cwd,
-  shellLabel,
-  connectionKind,
-  sessionState,
-  introLines = [],
-}: TerminalSurfaceProps) {
+function createSafeLinkHandler() {
+  return (_event: MouseEvent, uri: string) => {
+    const openedWindow = window.open(uri, '_blank', 'noopener,noreferrer')
+
+    if (openedWindow) {
+      try {
+        openedWindow.opener = null
+      } catch {
+        // no-op
+      }
+    }
+  }
+}
+
+async function copyTerminalSelection(term: Terminal) {
+  if (!navigator.clipboard) {
+    return
+  }
+
+  const selection = term.getSelection()
+
+  if (!selection) {
+    return
+  }
+
+  await navigator.clipboard.writeText(selection)
+}
+
+async function pasteClipboardIntoTerminal(term: Terminal) {
+  if (!navigator.clipboard) {
+    return
+  }
+
+  const text = await navigator.clipboard.readText()
+
+  if (text) {
+    term.paste(text)
+  }
+}
+
+export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurfaceProps>(function TerminalSurface(
+  {
+    hostId,
+    cwd,
+    shellLabel,
+    connectionKind,
+    sessionState,
+    introLines = [],
+    onRendererModeChange,
+    onRequestSearch,
+  },
+  ref,
+) {
   const viewportRef = useRef<HTMLDivElement | null>(null)
+  const termRef = useRef<Terminal | null>(null)
+  const searchAddonRef = useRef<SearchAddon | null>(null)
   const introLinesSignature = introLines.join('\n')
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      copySelection: async () => {
+        const term = termRef.current
+
+        if (!term) {
+          return
+        }
+
+        await copyTerminalSelection(term)
+      },
+      findNext: (query) => {
+        const searchAddon = searchAddonRef.current
+
+        if (!searchAddon || query.trim() === '') {
+          return false
+        }
+
+        return searchAddon.findNext(query)
+      },
+      findPrevious: (query) => {
+        const searchAddon = searchAddonRef.current
+
+        if (!searchAddon || query.trim() === '') {
+          return false
+        }
+
+        return searchAddon.findPrevious(query)
+      },
+      focus: () => {
+        termRef.current?.focus()
+      },
+      pasteFromClipboard: async () => {
+        const term = termRef.current
+
+        if (!term) {
+          return
+        }
+
+        await pasteClipboardIntoTerminal(term)
+      },
+    }),
+    [],
+  )
 
   useEffect(() => {
     if (!viewportRef.current) {
@@ -107,12 +214,59 @@ export function TerminalSurface({
       },
     })
     const fitAddon = new FitAddon()
+    const searchAddon = new SearchAddon()
+    const webLinksAddon = new WebLinksAddon(createSafeLinkHandler())
+    const clipboardAddon = new ClipboardAddon(undefined, new BrowserClipboardProvider())
+    let webglAddon: WebglAddon | null = null
     const inputBuffer = { current: '' }
     const promptLabel = getPromptLabel(connectionKind, cwd)
     const openTarget = viewportRef.current
 
+    termRef.current = term
+    searchAddonRef.current = searchAddon
     term.loadAddon(fitAddon)
+    term.loadAddon(searchAddon)
+    term.loadAddon(webLinksAddon)
+    term.loadAddon(clipboardAddon)
     term.open(openTarget)
+    onRendererModeChange?.('default')
+
+    try {
+      webglAddon = new WebglAddon()
+      webglAddon.onContextLoss(() => {
+        webglAddon?.dispose()
+        onRendererModeChange?.('default')
+      })
+      term.loadAddon(webglAddon)
+      onRendererModeChange?.('webgl')
+    } catch {
+      webglAddon = null
+      onRendererModeChange?.('default')
+    }
+
+    term.attachCustomKeyEventHandler((event) => {
+      const isModifierPressed = event.ctrlKey || event.metaKey
+
+      if (isModifierPressed && event.key.toLowerCase() === 'f') {
+        event.preventDefault()
+        onRequestSearch?.()
+        return false
+      }
+
+      if (isModifierPressed && event.shiftKey && event.key.toLowerCase() === 'c') {
+        event.preventDefault()
+        void copyTerminalSelection(term)
+        return false
+      }
+
+      if (isModifierPressed && event.shiftKey && event.key.toLowerCase() === 'v') {
+        event.preventDefault()
+        void pasteClipboardIntoTerminal(term)
+        return false
+      }
+
+      return true
+    })
 
     const printPrompt = () => {
       term.write(promptLabel)
@@ -207,9 +361,12 @@ export function TerminalSurface({
       openTarget.removeEventListener('click', focusTerminal)
       resizeObserver?.disconnect()
       dataDisposable.dispose()
+      webglAddon?.dispose()
+      searchAddonRef.current = null
+      termRef.current = null
       term.dispose()
     }
-  }, [connectionKind, cwd, hostId, introLinesSignature, sessionState, shellLabel])
+  }, [connectionKind, cwd, hostId, introLinesSignature, onRendererModeChange, onRequestSearch, sessionState, shellLabel])
 
   return <TerminalViewport data-runa-terminal-host="" ref={viewportRef} style={viewportStyle} />
-}
+})

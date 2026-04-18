@@ -1,0 +1,153 @@
+import { ChevronDown, ChevronUp, ClipboardPaste, Copy, Cpu, Search, X } from 'lucide-react'
+
+import { Box, Button, Input, Text } from '../primitives'
+
+export type TerminalToolbarProps = {
+  isSearchOpen: boolean
+  rendererMode: 'default' | 'webgl'
+  searchQuery: string
+  onCloseSearch: () => void
+  onCopy: () => void
+  onPaste: () => void
+  onSearchNext: () => void
+  onSearchPrevious: () => void
+  onSearchQueryChange: (value: string) => void
+  onToggleSearch: () => void
+}
+
+const rootStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 'var(--gap-sm)',
+  minHeight: '32px',
+  padding: 0,
+  border: 'none',
+  borderRadius: 0,
+  background: 'transparent',
+  boxShadow: 'none',
+  backdropFilter: 'none',
+  WebkitBackdropFilter: 'none',
+}
+
+const clusterStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 'var(--gap-sm)',
+  minWidth: 0,
+  padding: 0,
+  border: 'none',
+  borderRadius: 0,
+  background: 'transparent',
+  boxShadow: 'none',
+  backdropFilter: 'none',
+  WebkitBackdropFilter: 'none',
+}
+
+const searchWrapStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 'var(--gap-xs)',
+  minWidth: 0,
+  flex: 1,
+  padding: 0,
+  border: 'none',
+  borderRadius: 0,
+  background: 'transparent',
+  boxShadow: 'none',
+  backdropFilter: 'none',
+  WebkitBackdropFilter: 'none',
+}
+
+const searchInputStyle = {
+  flex: 1,
+  minWidth: '160px',
+  padding: 'var(--space-xs) var(--space-sm)',
+}
+
+const iconButtonStyle = {
+  minWidth: '28px',
+  minHeight: '28px',
+  padding: '0 var(--space-sm)',
+}
+
+const rendererBadgeStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 'var(--gap-xs)',
+  padding: '0 var(--space-sm)',
+  minHeight: '24px',
+  border: '1px solid var(--color-border-subtle)',
+  borderRadius: 'var(--radius-sm)',
+  background: 'transparent',
+  boxShadow: 'none',
+  backdropFilter: 'none',
+  WebkitBackdropFilter: 'none',
+}
+
+const badgeTextStyle = {
+  fontSize: 'var(--font-size-sm)',
+  lineHeight: 'var(--line-height-sm)',
+  color: 'var(--color-text-muted)',
+}
+
+export function TerminalToolbar({
+  isSearchOpen,
+  rendererMode,
+  searchQuery,
+  onCloseSearch,
+  onCopy,
+  onPaste,
+  onSearchNext,
+  onSearchPrevious,
+  onSearchQueryChange,
+  onToggleSearch,
+}: TerminalToolbarProps) {
+  return (
+    <Box style={rootStyle}>
+      <Box style={clusterStyle}>
+        <Button aria-label="Copy selection" onClick={onCopy} style={iconButtonStyle}>
+          <Copy size={14} strokeWidth={1.8} />
+        </Button>
+        <Button aria-label="Paste from clipboard" onClick={onPaste} style={iconButtonStyle}>
+          <ClipboardPaste size={14} strokeWidth={1.8} />
+        </Button>
+        <Button
+          aria-expanded={isSearchOpen}
+          aria-label="Toggle terminal search"
+          onClick={onToggleSearch}
+          style={iconButtonStyle}
+        >
+          <Search size={14} strokeWidth={1.8} />
+        </Button>
+      </Box>
+      {isSearchOpen ? (
+        <Box style={searchWrapStyle}>
+          <Input
+            aria-label="Search terminal output"
+            autoFocus
+            onChange={(event) => onSearchQueryChange(event.currentTarget.value)}
+            placeholder="Search output"
+            style={searchInputStyle}
+            value={searchQuery}
+          />
+          <Button aria-label="Find previous match" onClick={onSearchPrevious} style={iconButtonStyle}>
+            <ChevronUp size={14} strokeWidth={1.8} />
+          </Button>
+          <Button aria-label="Find next match" onClick={onSearchNext} style={iconButtonStyle}>
+            <ChevronDown size={14} strokeWidth={1.8} />
+          </Button>
+          <Button aria-label="Close terminal search" onClick={onCloseSearch} style={iconButtonStyle}>
+            <X size={14} strokeWidth={1.8} />
+          </Button>
+        </Box>
+      ) : (
+        <Box style={clusterStyle} />
+      )}
+      <Box style={rendererBadgeStyle}>
+        <Cpu color="var(--color-text-muted)" size={14} strokeWidth={1.8} />
+        <Text style={badgeTextStyle}>{rendererMode === 'webgl' ? 'WebGL' : 'Default'}</Text>
+      </Box>
+    </Box>
+  )
+}

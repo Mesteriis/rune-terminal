@@ -1,7 +1,11 @@
+import { useRef, useState } from 'react'
+
 import { Box } from '../shared/ui/primitives'
 import {
   TerminalStatusHeader,
   TerminalSurface,
+  TerminalToolbar,
+  type TerminalSurfaceHandle,
   type TerminalConnectionKind,
   type TerminalSessionState,
 } from '../shared/ui/components'
@@ -42,6 +46,11 @@ export function TerminalWidget({
   sessionState,
   introLines,
 }: TerminalWidgetProps) {
+  const terminalSurfaceRef = useRef<TerminalSurfaceHandle | null>(null)
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [rendererMode, setRendererMode] = useState<'default' | 'webgl'>('default')
+
   return (
     <Box style={rootStyle}>
       <TerminalStatusHeader
@@ -51,12 +60,35 @@ export function TerminalWidget({
         shellLabel={shellLabel}
         title={title}
       />
+      <TerminalToolbar
+        isSearchOpen={isSearchOpen}
+        onCloseSearch={() => setIsSearchOpen(false)}
+        onCopy={() => {
+          void terminalSurfaceRef.current?.copySelection()
+        }}
+        onPaste={() => {
+          void terminalSurfaceRef.current?.pasteFromClipboard()
+        }}
+        onSearchNext={() => {
+          terminalSurfaceRef.current?.findNext(searchQuery)
+        }}
+        onSearchPrevious={() => {
+          terminalSurfaceRef.current?.findPrevious(searchQuery)
+        }}
+        onSearchQueryChange={setSearchQuery}
+        onToggleSearch={() => setIsSearchOpen((value) => !value)}
+        rendererMode={rendererMode}
+        searchQuery={searchQuery}
+      />
       {children ?? null}
       <TerminalSurface
         connectionKind={connectionKind}
         cwd={cwd}
         hostId={hostId}
         introLines={introLines}
+        onRendererModeChange={setRendererMode}
+        onRequestSearch={() => setIsSearchOpen(true)}
+        ref={terminalSurfaceRef}
         sessionState={sessionState}
         shellLabel={shellLabel}
       />
