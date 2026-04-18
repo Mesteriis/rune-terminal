@@ -3,6 +3,15 @@
 **Date:** 2026-04-18  
 **Scope:** Compare `RTAIPanelWidget` vs `RTTerminalWidget` to identify the safer first single-item widget contract-migration target.
 
+## Latest Execution Boundary Check: `byokannouncement`
+
+- Current parent import path in use:
+  - `frontend/ui/widgets/RTAIPanelWidget/aipanel.tsx` imports `BYOKAnnouncement` from `./byokannouncement`.
+- Current export/import path to preserve: `./byokannouncement` (relative local path used by parent remains unchanged).
+- Direct imports outside `RTAIPanelWidget`: none found in `frontend/app`, `frontend/ui`, or `frontend/wave.ts`.
+- Dedicated SCSS state: no dedicated `byokannouncement` SCSS file exists today; this execution slice must introduce `byokannouncement.style.scss`.
+- Boundary confirmation: this execution slice stays inside the approved leaf boundary (`byokannouncement` local files plus minimal local import rewiring only inside `RTAIPanelWidget`).
+
 ## Post-aifeedbackbuttons remaining RTAIPanelWidget assessment
 
 ### Scope filter for this reassessment
