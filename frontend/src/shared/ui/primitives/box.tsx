@@ -1,4 +1,4 @@
-import type * as React from 'react'
+import * as React from 'react'
 
 export type BoxProps = React.HTMLAttributes<HTMLDivElement>
 
@@ -14,6 +14,9 @@ const boxStyle: React.CSSProperties = {
   WebkitBackdropFilter: 'var(--blur-glass-md)',
 }
 
-export function Box({ style, ...props }: BoxProps) {
-  return <div {...props} style={{ ...boxStyle, ...style }} />
-}
+export const Box = React.forwardRef<HTMLDivElement, BoxProps>(function Box(
+  { style, ...props },
+  ref,
+) {
+  return <div {...props} ref={ref} style={{ ...boxStyle, ...style }} />
+})
