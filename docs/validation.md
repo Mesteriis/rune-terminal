@@ -1,4 +1,67 @@
-# Latest: Widget Layer Migration Assessment
+# Latest: Single-Widget Migration Target Assessment
+
+**Date:** 2026-04-18  
+**Scope:** Assessment-only comparison of `RTAIPanelWidget` vs `RTTerminalWidget` to define the safest first single-item widget contract sub-slice
+
+## Compared Candidates
+
+- `RTAIPanelWidget`
+- `RTTerminalWidget`
+
+## Chosen Safer First Target
+
+Chosen target: **`RTAIPanelWidget`**.
+
+Reason for choice:
+- It contains a clearly isolatable leaf UI subcomponent (`agent-selection-strip.tsx`) with bounded responsibility.
+- That leaf boundary is safer to migrate first than terminal-core files tied to block/workspace/stream behavior.
+
+## First Safe Sub-Slice Boundary
+
+- In scope:
+  - `frontend/ui/widgets/RTAIPanelWidget/agent-selection-strip.tsx`
+- Explicitly out of scope / deferred:
+  - `frontend/ui/widgets/RTAIPanelWidget/aipanel.tsx`
+  - `frontend/ui/widgets/RTAIPanelWidget/aipanel-compat.tsx`
+  - `frontend/ui/widgets/RTAIPanelWidget/waveai-model.tsx`
+  - `frontend/ui/widgets/RTAIPanelWidget/run-command.ts`
+  - `frontend/ui/widgets/RTAIPanelWidget/compat-conversation.ts`
+  - all `RTTerminalWidget` files
+  - checker/manifest changes
+  - app/layout/runtime/api edits
+
+## Commands Run and Results
+
+```bash
+find frontend/ui/widgets/RTAIPanelWidget -maxdepth 1 -type f | sort
+find frontend/ui/widgets/RTTerminalWidget -maxdepth 1 -type f | sort
+rg --no-heading -n "@/ui/widgets/RTAIPanelWidget" frontend/app frontend/ui frontend/wave.ts
+rg --no-heading -n "@/ui/widgets/RTTerminalWidget" frontend/app frontend/ui frontend/wave.ts
+npm --prefix frontend run build
+→ ✓ pass (phase 1)
+
+npm --prefix frontend run build
+→ ✓ pass (phase 2)
+
+npm --prefix frontend run lint
+→ 15 warnings (0 errors), unchanged pre-existing warnings
+
+npx tsc -p frontend/tsconfig.json --noEmit
+→ exit 0
+
+npm --prefix frontend run build
+→ ✓ pass
+```
+
+## Assessment-Only Confirmation
+
+- No widget migration performed.
+- No manifest/checker changes.
+- Docs-only output for this slice.
+
+---
+
+# Previous: Widget Layer Migration Assessment
 
 **Date:** 2026-04-18  
 **Scope:** Assessment-only pass for `ui/widgets` contract migration readiness (no migration executed)
