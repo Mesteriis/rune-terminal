@@ -65,7 +65,8 @@ its visible shell blocks as raw HTML inside `App.tsx`.
 - `App.tsx` owns Dockview wiring and UI state only.
 - `ShellTopbarWidget` renders the top header block.
 - `RightActionRailWidget` renders the full-height right rail.
-- `ModalWindow` provides the stateless shared modal surface.
+- `DialogPopup` provides the stateless shared dialog surface.
+- `Notify` provides the stateless shared notification surface.
 - `ModalHostWidget` renders body-scoped and widget-scoped modal layers.
 - `PanelModalActionsWidget` exposes a widget-level demo path for modal opening.
 - `DockviewPanelWidget` and `AiPanelWidget` render Dockview panel bodies.
@@ -98,5 +99,5 @@ its visible shell blocks as raw HTML inside `App.tsx`.
 - Modal state now lives in a dedicated `shared/model/modal.ts` store instead of being hidden inside widget-local React state.
 - Tokens now cover dark canvas, glass surfaces, accent hues, spacing, radii, shell sizes, blur, and shadow.
 - Shared primitives consume only semantic tokens instead of hardcoded `#111/#fff/#333` values.
-- Shared components now include a stateless `ModalWindow` surface that composes `Box`, `Text`, and `Button` only.
+- Shared components now include stateless `DialogPopup` and `Notify` surfaces that compose `Box`, `Text`, and `Button` only.
 - Live localhost smoke confirmed tokenized shell values in the DOM: `body/root` background `rgb(6, 17, 15)`, `AI` button backdrop `blur(10px)`, right rail width `40px`, and right rail glass background `rgba(11, 24, 22, 0.72)`.
