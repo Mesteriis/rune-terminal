@@ -65,7 +65,7 @@ its visible shell blocks as raw HTML inside `App.tsx`.
 - `App.tsx` owns Dockview wiring and UI state only.
 - `ShellTopbarWidget` renders the top header block.
 - `RightActionRailWidget` renders the full-height right rail.
-- `DialogPopup` provides the stateless shared dialog surface.
+- `DialogPopup` provides the stateless shared dialog surface, including the wide settings-dialog variant.
 - `Notify` provides the stateless shared notification surface.
 - `ModalHostWidget` renders body-scoped and widget-scoped modal layers.
 - `PanelModalActionsWidget` exposes a widget-level demo path for modal opening.

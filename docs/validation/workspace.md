@@ -11,6 +11,7 @@
   - the workspace tab strip in the top shell header now starts with a fixed `2rem` left offset after the action controls
   - a right-side action rail is present as a separate full-height column, is `40px` wide, and its lower action now uses a settings icon
   - the shell now includes a modal foundation with a body-scoped host and widget-scoped hosts mounted over individual Dockview groups
+  - the body-scoped settings dialog now uses a wide variant sized to `90vw`, leaving `5vw` free on each side
   - the shared UI layer now includes `DialogPopup` and `Notify` components as reusable popup and notification surfaces
   - the widget area now keeps tighter shell-chrome spacing: `6px` below the top header and `6px` before the right action rail
   - Dockview widget groups now keep tighter internal spacing: `6px` between rows and `6px` between columns
@@ -43,6 +44,7 @@
 - The AI surface is now a special Dockview group, but it still does not provide chat behavior or persistence semantics.
 - The token system currently covers shared UI layers and shell scaffolding. It does not yet claim a full Dockview vendor-theme rewrite beyond the existing shell overrides.
 - The modal foundation currently covers open/close behavior, host targeting, and group-level overlays. It does not yet claim focus trapping, keyboard escape handling, or persisted modal state.
+- The settings dialog sizing is currently code-validated via the `settings` variant on `DialogPopup`. A fresh browser geometry measurement for the resulting `5vw / 90vw / 5vw` layout is not claimed here.
 - `Notify` currently exists as a reusable shared component only. This slice does not yet claim toast stacking, auto-dismiss, or a notification manager/runtime queue.
 - The Dockview sash between the AI group and the workspace is visible, but scripted headless drag kept the AI width at `432px -> 432px`, so resize movement is not claimed as verified from this environment.
 - Browser validation was run headlessly against the Vite dev server, not through full `npm run tauri:dev`.
@@ -56,6 +58,7 @@
 - Top shell header rendered at `40px` height with `1400px` width on a `1440px` viewport, and the right action rail started at `x=1400` with `40px` width, `960px` height, and `2` buttons.
 - Static validation confirmed the current shell-spacing configuration now uses `6px` for `gap-shell-chrome`, `6px` for `gap-widget-surface`, and `6px` for the Dockview `theme.gap` value.
 - Static validation confirmed the modal foundation wiring: `RightActionRailWidget` opens a body modal via `openBodyModal`, panel widgets open widget-scoped modals via `openWidgetModal`, `ModalHostWidget` renders the body host in `App.tsx`, and panel hosts portal into the nearest `.dv-groupview`.
+- Static validation confirmed the settings dialog wiring: `RightActionRailWidget` now opens the body modal with `variant: 'settings'`, and `DialogPopup` maps that variant to `width/maxWidth: 90vw` and `maxHeight: calc(100vh - (var(--padding-modal-layer) * 2))`.
 - Static validation confirmed the component layer now exports `DialogPopup` and `Notify`, and `ModalHostWidget` renders `DialogPopup` instead of the previous `ModalWindow` surface.
 - The same smoke confirmed a unified group surface: group backgrounds rendered on `.dv-groupview`, while header, content container, and panel-content child all resolved to `rgba(0, 0, 0, 0)` backgrounds, so header and body no longer render as separate boxed layers.
 - A live vendor-theme smoke on `http://127.0.0.1:4193` confirmed `bodyPadding=6px`, `.dv-dockview` root background `rgba(0, 0, 0, 0)`, and the Dockview root class stack no longer contributed a library color fill into the shell canvas.
