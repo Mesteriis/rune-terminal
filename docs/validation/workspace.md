@@ -10,6 +10,7 @@
   - the top shell header no longer applies an extra left inset before the first action button
   - the workspace tab strip in the top shell header now starts with a fixed `2rem` left offset after the action controls
   - a right-side action rail is present as a separate full-height column, is `40px` wide, and its lower action now uses a settings icon
+  - the shell now includes a modal foundation with a body-scoped host and widget-scoped hosts mounted over individual Dockview groups
   - the widget area now keeps tighter shell-chrome spacing: `6px` below the top header and `6px` before the right action rail
   - Dockview widget groups now keep tighter internal spacing: `6px` between rows and `6px` between columns
   - Dockview group header and body now render as a single glass surface instead of a separate boxed body layer
@@ -40,20 +41,24 @@
 - This validation covers only the initial layout skeleton. It does not claim backend wiring, workspace persistence, or TideTerm parity breadth.
 - The AI surface is now a special Dockview group, but it still does not provide chat behavior or persistence semantics.
 - The token system currently covers shared UI layers and shell scaffolding. It does not yet claim a full Dockview vendor-theme rewrite beyond the existing shell overrides.
+- The modal foundation currently covers open/close behavior, host targeting, and group-level overlays. It does not yet claim focus trapping, keyboard escape handling, or persisted modal state.
 - The Dockview sash between the AI group and the workspace is visible, but scripted headless drag kept the AI width at `432px -> 432px`, so resize movement is not claimed as verified from this environment.
 - Browser validation was run headlessly against the Vite dev server, not through full `npm run tauri:dev`.
 - The shell icon swap was validated by type-check, build, and source inspection. A separate visual localhost smoke for the icon glyphs was attempted but is not claimed from this environment.
 - This radius-and-gap rebalance was validated by source inspection plus type-check/build. Fresh live geometry for the new `6px` values is not claimed in this entry.
+- The modal slice was validated by type-check/build and source-level host wiring. An attempted localhost Playwright smoke did not complete cleanly in this environment, so body/widget overlay runtime is not claimed as browser-verified here.
 
 ## Evidence
 
 - Initial panel set rendered as `terminal-header`, `terminal`, and `tool`.
 - Top shell header rendered at `40px` height with `1400px` width on a `1440px` viewport, and the right action rail started at `x=1400` with `40px` width, `960px` height, and `2` buttons.
 - Static validation confirmed the current shell-spacing configuration now uses `6px` for `gap-shell-chrome`, `6px` for `gap-widget-surface`, and `6px` for the Dockview `theme.gap` value.
+- Static validation confirmed the modal foundation wiring: `RightActionRailWidget` opens a body modal via `openBodyModal`, panel widgets open widget-scoped modals via `openWidgetModal`, `ModalHostWidget` renders the body host in `App.tsx`, and panel hosts portal into the nearest `.dv-groupview`.
 - The same smoke confirmed a unified group surface: group backgrounds rendered on `.dv-groupview`, while header, content container, and panel-content child all resolved to `rgba(0, 0, 0, 0)` backgrounds, so header and body no longer render as separate boxed layers.
 - A live vendor-theme smoke on `http://127.0.0.1:4193` confirmed `bodyPadding=6px`, `.dv-dockview` root background `rgba(0, 0, 0, 0)`, and the Dockview root class stack no longer contributed a library color fill into the shell canvas.
 - A follow-up live geometry smoke on `http://127.0.0.1:4193` confirmed the shell root is now constrained by `#root` instead of `100vh`: `#root` measured `y=6`, `height=846`, `bottom=852`, while the app root matched it at `y=6`, `height=846`, `bottom=852`.
 - Static validation confirmed `lucide-react@^1.8.0` is installed and wired into the shell widgets: top header actions use `X`, `Minus`, `Maximize2`, and `Sparkles`; the AI-group header action uses `Plus`; and the lower-right rail action uses `Settings2`.
+- Static validation confirmed the new modal tokens and layering primitives: `--color-overlay-body`, `--color-overlay-widget`, `--padding-modal-layer`, `--size-modal-width`, `--z-modal-widget`, and `--z-modal-body`.
 - Static validation confirmed the current radius scale is halved versus the previous shell pass: `--radius-xs=3px`, `--radius-sm=5px`, `--radius-md=7px`, and `--radius-lg=10px`.
 - Static validation confirmed `ShellTopbarWidget` now applies `marginLeft: 2rem` to the `Workspace tabs` tablist container.
 - Static validation confirmed `ShellTopbarWidget` now uses `padding: 0 var(--padding-shell-inline) 0 0`, so the first header action starts flush with the left widget line.
