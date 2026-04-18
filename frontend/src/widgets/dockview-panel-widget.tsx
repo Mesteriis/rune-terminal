@@ -1,5 +1,6 @@
 import type { IDockviewPanelProps } from 'dockview-react'
 
+import { CommanderDemoLayout } from '../layouts'
 import { Box, Text } from '../shared/ui/primitives'
 import { ModalHostWidget } from './modal-host-widget'
 import { PanelModalActionsWidget } from './panel-modal-actions-widget'
@@ -25,6 +26,10 @@ const panelContentStyle = {
 
 function isTerminalPanel(panelId: string) {
   return panelId.startsWith('terminal')
+}
+
+function isCommanderDemoPanel(panelId: string) {
+  return panelId === 'tool'
 }
 
 function getTerminalModel(panelId: string) {
@@ -57,6 +62,7 @@ function getTerminalModel(panelId: string) {
 
 export function DockviewPanelWidget(props: IDockviewPanelProps) {
   const terminalModel = isTerminalPanel(props.api.id) ? getTerminalModel(props.api.id) : null
+  const isCommanderPanel = isCommanderDemoPanel(props.api.id)
 
   return (
     <Box data-runa-modal-anchor={props.api.id} style={panelContentStyle}>
@@ -64,14 +70,16 @@ export function DockviewPanelWidget(props: IDockviewPanelProps) {
         <TerminalWidget hostId={props.api.id} {...terminalModel}>
           <PanelModalActionsWidget hostId={props.api.id} panelTitle={terminalModel.title} />
         </TerminalWidget>
+      ) : isCommanderPanel ? (
+        <CommanderDemoLayout />
       ) : (
         <>
           <Text>{`PANEL: ${props.api.id}`}</Text>
           <PanelModalActionsWidget hostId={props.api.id} panelTitle={props.api.id} />
         </>
       )}
-      <ModalHostWidget hostId={props.api.id} scope="widget" />
-      <WidgetBusyOverlayWidget hostId={props.api.id} />
+      {isCommanderPanel ? null : <ModalHostWidget hostId={props.api.id} scope="widget" />}
+      {isCommanderPanel ? null : <WidgetBusyOverlayWidget hostId={props.api.id} />}
     </Box>
   )
 }
