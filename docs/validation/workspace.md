@@ -5,6 +5,11 @@
 - Date: `2026-04-18`
 - State: `VERIFIED`
 - Scope:
+  - the frontend React runtime and types now target the latest stable React line in this repo: `react@19.2.5`, `react-dom@19.2.5`, `@types/react@19.2.14`, and `@types/react-dom@19.2.3`
+  - widget bodies now expose a local busy-state mechanism that overlays the panel content without changing Dockview group geometry
+  - the busy overlay uses a centered square AI marker plus two diagonal canvas particle streams from the lower-left and upper-right corners
+  - the busy overlay blocks panel-body interaction while it is active, but the Dockview header remains outside that body overlay
+  - each panel now exposes a local `Block widget` / `Release busy state` demo control, and the busy overlay itself exposes a release button in the upper-right corner
   - the app shell now applies `body` padding `6px`, and the root shell respects that outer frame on all four sides
   - top shell header is `40px` tall, lives only in the left main shell column, and currently renders icon-based window controls, the `AI` toggle, and the tab strip
   - the top shell header no longer applies an extra left inset before the first action button
@@ -32,7 +37,9 @@
 
 - `npm --prefix frontend run build`
 - `npm --prefix frontend run lint:active`
+- `npm --prefix frontend run dev -- --host 127.0.0.1 --port 4194 --strictPort`
 - `curl -sf http://127.0.0.1:4193`
+- `node --input-type=module -e "<headless Playwright smoke for widget busy overlay geometry, interaction blocking, and release path on http://127.0.0.1:4194>"`
 - `node --input-type=module -e "<headless Playwright localhost computed-style smoke for tokenized shell surfaces>"`
 - `node --input-type=module -e "<headless Playwright localhost geometry smoke for widget gap below header and before right rail>"`
 - `node --input-type=module -e "<headless Playwright localhost geometry smoke for Dockview row/column gaps and unified group surface>"`
@@ -43,6 +50,9 @@
 ## Known limitations
 
 - This validation covers only the initial layout skeleton. It does not claim backend wiring, workspace persistence, or TideTerm parity breadth.
+- The busy-state mechanism in this slice is widget-local UI state only. It does not yet claim backend-driven runtime busy semantics, command progress ownership, or persisted status.
+- The busy overlay currently covers the widget body only. It intentionally does not claim full-widget lockout for the Dockview header or sash chrome.
+- The particle field is a lightweight 2D canvas implementation. This entry does not claim a dedicated GPU particle engine, shader system, or physics-grade simulation.
 - The AI surface is now a special Dockview group, but it still does not provide chat behavior or persistence semantics.
 - The token system currently covers shared UI layers and shell scaffolding. It does not yet claim a full Dockview vendor-theme rewrite beyond the existing shell overrides.
 - The modal foundation currently covers open/close behavior, host targeting, and group-level overlays. It does not yet claim focus trapping, keyboard escape handling, or persisted modal state.
@@ -57,6 +67,13 @@
 ## Evidence
 
 - Initial panel set rendered as `terminal-header`, `terminal`, and `tool`.
+- Static validation confirmed the frontend dependency upgrade to `react@19.2.5`, `react-dom@19.2.5`, `@types/react@19.2.14`, and `@types/react-dom@19.2.3`, and `npm --prefix frontend run lint:active` plus `npm --prefix frontend run build` both passed on that stack.
+- Static validation confirmed the busy-state wiring: `shared/model/widget-busy.ts` owns the host-id store, `PanelModalActionsWidget` toggles it per host, `WidgetBusyOverlayWidget` renders the overlay per panel body, and the shared primitive layer now includes `Canvas`.
+- A fresh live headless smoke on `http://127.0.0.1:4194` confirmed that toggling busy for `terminal-header` did not move Dockview geometry: before and after the toggle the group rect stayed `x=6`, `y=52`, `width=1382`, `height=451`.
+- The same smoke confirmed the busy overlay rendered over the panel body at `x=7`, `y=77`, `width=1380`, `height=425`, with `aria-busy=\"true\"`, an attached `canvas`, and a visible release control.
+- The centered busy marker stayed square in the live smoke: `planeWidth=263`, `planeHeight=263`.
+- The same smoke confirmed panel-body blocking: clicking the covered body area while busy did not open the widget modal (`modalCountBefore=0`, `modalCountAfter=0`).
+- The same smoke confirmed the release path worked: clicking the overlay release control reduced the busy overlay count for `terminal-header` back to `0`.
 - Top shell header rendered at `40px` height with `1400px` width on a `1440px` viewport, and the right action rail started at `x=1400` with `40px` width, `960px` height, and `2` buttons.
 - Static validation confirmed the current shell-spacing configuration now uses `6px` for `gap-shell-chrome`, `6px` for `gap-widget-surface`, and `6px` for the Dockview `theme.gap` value.
 - Static validation confirmed the modal foundation wiring: `RightActionRailWidget` opens a body modal via `openBodyModal`, panel widgets open widget-scoped modals via `openWidgetModal`, `ModalHostWidget` renders the body host in `App.tsx`, and panel hosts portal into the nearest `.dv-groupview`.
