@@ -15,6 +15,13 @@ const rootStyle = {
   position: 'relative' as const,
   height: '100vh',
   display: 'flex',
+  overflow: 'hidden' as const,
+}
+
+const mainShellStyle = {
+  flex: 1,
+  minWidth: 0,
+  display: 'flex',
   flexDirection: 'column' as const,
 }
 
@@ -250,46 +257,48 @@ export function App() {
 
   return (
     <div style={rootStyle}>
-      <div style={topbarStyle}>
-        <button type="button" role="tab" aria-selected="false">
-          Close
-        </button>
-        <button type="button" role="tab" aria-selected="false">
-          Collapse
-        </button>
-        <button type="button" role="tab" aria-selected="false">
-          Fullscreen
-        </button>
-        <button type="button" aria-pressed={isAiSidebarOpen} onClick={onToggleAiSidebar}>
-          AI
-        </button>
-        <div role="tablist" aria-label="Workspace tabs" style={tabStripStyle}>
-          <button type="button" role="tab" aria-selected="true">
-            TAB-1
+      <div style={mainShellStyle}>
+        <div style={topbarStyle}>
+          <button type="button" role="tab" aria-selected="false">
+            Close
           </button>
           <button type="button" role="tab" aria-selected="false">
-            TAB-2
+            Collapse
           </button>
-        </div>
-      </div>
-      <div style={contentAreaStyle}>
-        <div style={workspaceStyle}>
-          <div style={dockviewContainerStyle}>
-            <DockviewReact
-              components={components}
-              onReady={handleReady}
-              rightHeaderActionsComponent={AiGroupActions}
-            />
+          <button type="button" role="tab" aria-selected="false">
+            Fullscreen
+          </button>
+          <button type="button" aria-pressed={isAiSidebarOpen} onClick={onToggleAiSidebar}>
+            AI
+          </button>
+          <div role="tablist" aria-label="Workspace tabs" style={tabStripStyle}>
+            <button type="button" role="tab" aria-selected="true">
+              TAB-1
+            </button>
+            <button type="button" role="tab" aria-selected="false">
+              TAB-2
+            </button>
           </div>
         </div>
-        <div role="complementary" aria-label="Right action rail" style={rightRailStyle}>
-          <button type="button" aria-label="Open utility panel">
-            +
-          </button>
-          <button type="button" aria-label="Open settings panel">
-            *
-          </button>
+        <div style={contentAreaStyle}>
+          <div style={workspaceStyle}>
+            <div style={dockviewContainerStyle}>
+              <DockviewReact
+                components={components}
+                onReady={handleReady}
+                rightHeaderActionsComponent={AiGroupActions}
+              />
+            </div>
+          </div>
         </div>
+      </div>
+      <div role="complementary" aria-label="Right action rail" style={rightRailStyle}>
+        <button type="button" aria-label="Open utility panel">
+          +
+        </button>
+        <button type="button" aria-label="Open settings panel">
+          *
+        </button>
       </div>
     </div>
   )

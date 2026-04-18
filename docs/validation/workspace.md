@@ -5,9 +5,9 @@
 - Date: `2026-04-18`
 - State: `VERIFIED`
 - Scope:
-  - top shell header is `40px` tall and currently renders window controls, `AI`, and the tab strip
-  - a right-side action rail is present, is `40px` wide, and contains two placeholder buttons
-  - Dockview fills the remaining center viewport and boots three base panels from `onReady`
+  - top shell header is `40px` tall, lives only in the left main shell column, and currently renders window controls, `AI`, and the tab strip
+  - a right-side action rail is present as a separate full-height column, is `40px` wide, and contains two placeholder buttons
+  - Dockview fills the remaining main viewport beside the full-height right rail and boots three base panels from `onReady`
   - single-tab widget headers render as narrow title headers instead of tab-strip selectors
   - single-tab widget drag can start from the full header area, not only the title text
   - the top `AI` button creates and removes a left Dockview AI group instead of a shell overlay
@@ -32,8 +32,8 @@
 ## Evidence
 
 - Initial panel set rendered as `terminal-header`, `terminal`, and `tool`.
-- Top shell header rendered at `40px` height and the right action rail rendered at `40px` width with `2` buttons.
-- Dockview occupied the center viewport beside the new right rail with no zero-height panels.
+- Top shell header rendered at `40px` height with `1400px` width on a `1440px` viewport, and the right action rail started at `x=1400` with `40px` width, `960px` height, and `2` buttons.
+- Dockview occupied the main viewport beside the full-height right rail with no zero-height panels.
 - Single-tab Dockview headers rendered at `24px` height with visible titles and `void/actions` areas hidden.
 - Single-tab `.dv-tab` width expanded to the full header body (`1424/1440` and `704/720` after padding), and dragging from the empty right side of the top header moved `terminal-header` into the next group.
 - Toggling the top `AI` button created a left Dockview AI group at `x=0`, `y=40`, `width=432`, `height=920`, while the right action rail stayed at `40px` width.
