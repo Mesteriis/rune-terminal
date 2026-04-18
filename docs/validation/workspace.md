@@ -7,6 +7,7 @@
 - Scope:
   - top shell header is `40px` tall, lives only in the left main shell column, and currently renders window controls, `AI`, and the tab strip
   - a right-side action rail is present as a separate full-height column, is `40px` wide, and contains two placeholder buttons
+  - the widget area now keeps explicit shell-chrome spacing: `12px` below the top header and `12px` before the right action rail
   - the shared UI layer now exposes a tokenized dark-glass surface system with dark emerald and cold-tea accents, semantic spacing/padding scales, and blur/shadow tokens
   - Dockview fills the remaining main viewport beside the full-height right rail and boots three base panels from `onReady`
   - single-tab widget headers render as narrow title headers instead of tab-strip selectors
@@ -22,6 +23,7 @@
 - `npm --prefix frontend run lint:active`
 - `curl -sf http://127.0.0.1:4193`
 - `node --input-type=module -e "<headless Playwright localhost computed-style smoke for tokenized shell surfaces>"`
+- `node --input-type=module -e "<headless Playwright localhost geometry smoke for widget gap below header and before right rail>"`
 - `curl -sf http://127.0.0.1:5173`
 - `node --input-type=module -e "<headless Playwright localhost validation for AI Dockview create/remove, AI add-tab, blocked drop into AI group, Dockview sash probe, and right-rail geometry>"`
 
@@ -37,6 +39,7 @@
 
 - Initial panel set rendered as `terminal-header`, `terminal`, and `tool`.
 - Top shell header rendered at `40px` height with `1400px` width on a `1440px` viewport, and the right action rail started at `x=1400` with `40px` width, `960px` height, and `2` buttons.
+- A live geometry smoke on `http://127.0.0.1:4193` confirmed `gapBelowHeader=12px` and `gapBeforeRail=12px`; the top group started at `y=52`, and the right-most group edge ended at `x=1388` before the rail at `x=1400`.
 - Dockview occupied the main viewport beside the full-height right rail with no zero-height panels.
 - Single-tab Dockview headers rendered at `24px` height with visible titles and `void/actions` areas hidden.
 - Single-tab `.dv-tab` width expanded to the full header body (`1424/1440` and `704/720` after padding), and dragging from the empty right side of the top header moved `terminal-header` into the next group.
