@@ -76,7 +76,7 @@ RunaTerminal is being built as a terminal-centered workspace platform with:
 
 ## Project status
 
-RunaTerminal is currently in the **`1.0.0-rc1` release hardening phase**.
+RunaTerminal is currently in active development with a focus on stability and core functionality.
 
 What exists today:
 - launchable Tauri shell with Go sidecar runtime
@@ -84,7 +84,7 @@ What exists today:
 - focused remote SSH daily-driver path (intentionally narrow)
 - AI conversation through an Ollama-compatible HTTP backend, plus explicit `/run <command>` command execution + explanation
 - policy/approval, trust/ignore, and audit visibility in the shell
-- release-control docs and validation trail
+- workflow docs and validation trail
 
 What does **not** exist yet:
 - full TideTerm parity breadth
@@ -95,15 +95,15 @@ What does **not** exist yet:
 - plugin ecosystem work
 
 The current goal is not feature expansion.
-The current goal is honest RC quality for daily-driver workflows.
+The current goal is stable daily-driver quality for the core workflows.
 
 ## Current priorities
 
 - harden launch, local terminal, remote shell, and `/run` UX paths
 - keep approval/policy behavior explicit and stable
-- tighten release-doc truthfulness and known limitations
-- rerun full release-oriented validation (`active-path lint` + `build/tests/validate/tauri + smoke`) while tracking full-frontend lint debt explicitly
-- close only release blockers, not parity breadth
+- tighten workflow/validation doc truthfulness and known limitations
+- rerun stability-oriented validation (`active-path lint` + `build/tests/validate/tauri + smoke`) while tracking full-frontend lint debt explicitly
+- prioritize stability-critical issues before broader parity work
 
 ## Non-goals for `1.0.0`
 
@@ -371,9 +371,9 @@ npm run build:core
 
 Actual results are recorded in [docs/validation.md](docs/validation.md).
 
-Release readiness for this phase is tracked in:
+Current validation and scope docs:
 
-- [Release Scope](docs/release-1.0.md)
+- [Validation Truth](docs/release-1.0.md)
 - [Release Checklist](docs/release-checklist-1.0.md)
 - [Known Limitations](docs/known-limitations.md)
 
