@@ -1,4 +1,61 @@
-# Latest: Frontend Component Batch Scope Repair
+# Latest: RTPopover Contract Tightening and Single-Item Component Layer State
+
+**Date:** 2026-04-18  
+**Scope:** Verify RTPopover contract completeness and record current component-layer governance state without expanding migration scope
+
+## Summary
+
+- Active registered `component` layer currently consists of `RTPopover` only.
+- `RTModal` remains migrated on disk, inactive, and unregistered.
+- No valid component batch exists until a second active `ui/components` candidate appears.
+- Future component-layer work must remain single-item slices until that condition changes.
+
+## RTPopover Verification Results
+
+- Import hygiene is clean: active consumers use barrel imports (`@/ui/components/RTPopover`).
+- No direct legacy file imports (`RTPopover.tsx`/`RTPopover.scss`) and no direct template/logic imports from app/ui consumers.
+- Four-file contract completeness verified:
+  - template imports `./RTPopover.style.scss`
+  - `index.ts` runtime exports come from `RTPopover.template.tsx`
+  - `index.ts` type exports come from `RTPopover.logic.ts`
+  - no legacy `RTPopover.tsx` or `RTPopover.scss` files remain
+  - public API names preserved (`Popover`, `PopoverButton`, `PopoverContent`, exported prop types)
+  - no upward dependency into `app`/`widgets`/`layout`
+
+## Commands Run and Results
+
+```bash
+rg "RTPopover/RTPopover|RTPopover\\.scss|RTPopover\\.tsx|RTPopover\\.template|RTPopover\\.logic" frontend
+→ matches only RTPopover-local files (index/story/template/logic)
+
+rg "@/ui/components/RTPopover|from [\"']@/ui/components/RTPopover" frontend/app frontend/ui frontend/wave.ts
+→ active sites use barrel import (notificationpopover.tsx, workspaceswitcher.tsx, RTEmojiPalette.tsx)
+
+rg "@/ui/components/" frontend/app frontend/ui frontend/wave.ts
+→ only RTPopover appears as active component-layer import
+
+node frontend/scripts/check-ui-component-contract.mjs
+→ ✓ RTButton, RTMagnify, RTInput, RTTooltip, RTPopover pass
+
+cd frontend && node scripts/check-ui-component-contract.mjs && cd ..
+→ ✓ pass
+
+npm --prefix frontend run lint:ui-contract
+→ ✓ pass
+
+npm --prefix frontend run lint
+→ 15 warnings (0 errors), unchanged pre-existing warnings
+
+npx tsc -p frontend/tsconfig.json --noEmit
+→ exit 0
+
+npm --prefix frontend run build
+→ ✓ build succeeded (vite warnings only: large chunks / ineffective dynamic import)
+```
+
+---
+
+# Previous: Frontend Component Batch Scope Repair
 
 **Date:** 2026-04-18  
 **Scope:** Repair component-layer batch registration scope by unregistering inactive RTModal and preserving active RTPopover only

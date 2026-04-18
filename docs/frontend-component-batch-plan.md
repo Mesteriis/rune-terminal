@@ -11,6 +11,13 @@ The initial component batch assumption was wrong.
 
 The sections below capture the original planning context and are superseded by this correction where they conflict.
 
+## Current Governance State (2026-04-18)
+
+- The active registered `component` layer currently consists of `RTPopover` only.
+- `RTModal` remains migrated on disk but is inactive and unregistered.
+- No valid multi-item component batch exists until a second active component candidate appears.
+- Until then, component-layer work must be executed as single-item slices.
+
 ## Scope
 
 Migrate the `ui/components` layer to the strict four-file UI contract convention.
