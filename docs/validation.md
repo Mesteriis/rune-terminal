@@ -1,4 +1,102 @@
-# Latest: Next-Leaf RTAIPanelWidget Assessment
+# Latest: Run-Command-Approval Widget Sub-Slice Migration
+
+**Date:** 2026-04-18  
+**Scope:** Execute local leaf-only `RTAIPanelWidget/run-command-approval` contract split (not a manifest-registered widget migration)
+
+## Files Created and Updated
+
+- Created:
+  - `frontend/ui/widgets/RTAIPanelWidget/run-command-approval.logic.ts`
+  - `frontend/ui/widgets/RTAIPanelWidget/run-command-approval.template.tsx`
+  - `frontend/ui/widgets/RTAIPanelWidget/run-command-approval.style.scss`
+  - `frontend/ui/widgets/RTAIPanelWidget/run-command-approval.story.tsx`
+- Updated:
+  - `frontend/ui/widgets/RTAIPanelWidget/run-command-approval.tsx` (now local barrel re-export)
+- Legacy single-file implementation status:
+  - Replaced. Render implementation moved into `run-command-approval.template.tsx`; types/helpers/class resolution moved into `run-command-approval.logic.ts`.
+
+## Export/Import Path Preservation
+
+- Parent import path preserved unchanged in `frontend/ui/widgets/RTAIPanelWidget/aipanel-compat.tsx`:
+  - `import { type PendingRunApprovalEntry, RunCommandApprovalList } from "./run-command-approval";`
+- No direct `run-command-approval` imports were found outside `RTAIPanelWidget` during this slice.
+
+## Commands Run and Results
+
+```bash
+rg "run-command-approval" frontend/ui/widgets/RTAIPanelWidget frontend/app frontend/ui frontend/wave.ts
+→ only local widget usage; parent wiring at aipanel-compat.tsx
+
+npm --prefix frontend run build
+→ ✓ pass (boundary doc phase)
+
+npm --prefix frontend run lint
+→ 15 warnings (0 errors), unchanged pre-existing warnings
+
+npx tsc -p frontend/tsconfig.json --noEmit
+→ exit 0
+
+npm --prefix frontend run build
+→ ✓ pass
+
+npm run build:core
+→ ✓ pass
+
+RTERM_AUTH_TOKEN=ui-run-command-approval-token apps/desktop/bin/rterm-core serve \
+  --listen 127.0.0.1:52769 \
+  --workspace-root "$PWD" \
+  --state-dir /tmp/runa-ui-run-command-approval-state
+→ started (base_url http://127.0.0.1:52769)
+
+VITE_RTERM_API_BASE=http://127.0.0.1:52769 \
+VITE_RTERM_AUTH_TOKEN=ui-run-command-approval-token \
+npm --prefix frontend run dev -- --host 127.0.0.1 --port 4187 --strictPort
+→ vite ready, app served at http://127.0.0.1:4187
+
+curl -sf -H "Authorization: Bearer ui-run-command-approval-token" http://127.0.0.1:52769/healthz
+→ {"status":"ok"}
+
+curl -sf -H "Authorization: Bearer ui-run-command-approval-token" http://127.0.0.1:52769/api/v1/workspace
+→ HTTP 200, workspace payload returned
+
+curl -sf -H "Authorization: Bearer ui-run-command-approval-token" "http://127.0.0.1:52769/api/v1/terminal/term-main?from=0"
+→ HTTP 200, terminal state/chunks returned
+
+Playwright sanity check against http://127.0.0.1:4187/
+→ app loaded, workspace shell visible, terminal widget visible, AI panel rendered
+→ run-command flow validated in panel (`/run pwd` and `/run rm -rf /tmp/runa-ui-run-command-approval-smoke` executed via AI panel)
+→ no pending approvals were emitted in this runtime profile, so approval list stayed hidden as expected for empty state
+→ module and style loads include:
+   - /ui/widgets/RTAIPanelWidget/run-command-approval.tsx (200)
+   - /ui/widgets/RTAIPanelWidget/run-command-approval.template.tsx (200)
+   - /ui/widgets/RTAIPanelWidget/run-command-approval.logic.ts (200)
+   - /ui/widgets/RTAIPanelWidget/run-command-approval.style.scss (200)
+→ current-page console errors: 0, warnings: 0
+→ network/module/SCSS loads: no failures observed (requests returned 200)
+```
+
+## Runtime Sanity Outcome
+
+- App load: pass
+- Workspace shell visible: pass
+- Terminal widget visible: pass
+- AI panel widget visible: pass
+- Run-command approval render path: pass (empty-state gate behavior observed; approval UI remains conditional and no regression in run-command flow)
+- Failed SCSS imports: none observed
+- Failed module loads: none observed
+- Fatal console errors: none observed
+
+## Scope Guardrail Confirmation
+
+- This is a **local widget sub-slice only**.
+- This is **not** a manifest-registered widget migration.
+- No component contract manifest changes.
+- No checker changes.
+- No changes to `aipanel.tsx`, `aipanel-compat.tsx`, `waveai-model.tsx`, `run-command.ts`, or `compat-conversation.ts`.
+
+---
+
+# Previous: Next-Leaf RTAIPanelWidget Assessment
 
 **Date:** 2026-04-18  
 **Scope:** Assessment-only selection of the next leaf-only `RTAIPanelWidget` sub-slice after `agent-selection-strip` (no migration executed)
