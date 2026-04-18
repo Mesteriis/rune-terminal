@@ -1,4 +1,55 @@
-# Latest: Frontend Component Layer Migration Batch
+# Latest: Frontend Component Batch Scope Repair
+
+**Date:** 2026-04-18  
+**Scope:** Repair component-layer batch registration scope by unregistering inactive RTModal and preserving active RTPopover only
+
+## Corrective Summary
+
+- Original defect: the component batch accepted `RTModal` despite no active usage in the current frontend.
+- `RTModal` remains migrated on disk, but is no longer counted as a registered contract item.
+- `RTPopover` remains the only registered `component`-layer item.
+- Checker behavior is unchanged: it applies only to manifest-registered items.
+- This repair restores compliance with the original slice rules (active candidates only; no scope expansion).
+
+## Commands Run and Results
+
+```bash
+rg "@/ui/components/RTModal|from [\"']@/ui/components/RTModal|WaveModal" frontend/app frontend/ui frontend/wave.ts
+→ no active frontend import sites outside RTModal component/story files
+
+rg "@/ui/components/RTPopover|from [\"']@/ui/components/RTPopover|Popover|PopoverButton|PopoverContent" frontend/app frontend/ui frontend/wave.ts
+→ active import sites confirmed (notificationpopover.tsx, workspaceswitcher.tsx, RTEmojiPalette.tsx)
+
+node frontend/scripts/check-ui-component-contract.mjs
+→ ✓ RTButton, RTMagnify, RTInput, RTTooltip, RTPopover pass
+
+cd frontend && node scripts/check-ui-component-contract.mjs && cd ..
+→ ✓ same pass from frontend working directory
+
+npm --prefix frontend run lint:ui-contract
+→ ✓ pass
+
+npm --prefix frontend run lint
+→ 15 warnings (0 errors), unchanged pre-existing warnings
+
+npx tsc -p frontend/tsconfig.json --noEmit
+→ exit 0
+
+npm --prefix frontend run build
+→ ✓ build succeeded (vite warnings only: large chunks / ineffective dynamic import)
+```
+
+## Superseded Record Notice
+
+The next section is retained as historical record, but its scope conclusion is superseded by this correction.  
+Specifically superseded claims:
+- a valid 2-component active batch
+- all `ui/components` items registered as compliant active batch items
+- `RTModal` as part of a compliant active batch
+
+---
+
+# Superseded (2026-04-18): Frontend Component Layer Migration Batch
 
 **Date:** 2026-04-18
 **Scope:** Migrate RTModal and RTPopover (all components in ui/components) to four-file contract; register both in manifest
