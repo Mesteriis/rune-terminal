@@ -1,3 +1,54 @@
+# Latest: Leaf Batch Mode Assessment
+
+**Date:** 2026-04-18  
+**Scope:** Assessment-only decision on whether remaining `RTAIPanelWidget` leaf work can switch from single-file slices to a 2-3 file batch.
+
+## Remaining Files Assessed
+
+- Assessed remaining files in `frontend/ui/widgets/RTAIPanelWidget`: **23** (excluding completed local sub-slices `agent-selection-strip*`, `run-command-approval*`, `execution-block-list*`).
+- Evidence source: local file graph and import/dependent inspection.
+
+## Batch Eligibility Decision
+
+- Valid batch mode exists: **No**.
+- Exact conclusion: **single-file widget governance required** for the next execution slice.
+- Why batching is unsafe:
+  - Only one low-risk safe leaf candidate remains (`airatelimitstrip.tsx`).
+  - Other leaf-like files are medium-risk due direct model/runtime side effects (`aidroppedfiles.tsx`, `aifeedbackbuttons.tsx`, `telemetryrequired.tsx`, `byokannouncement.tsx`) or are orchestration/compat/state cores.
+
+## Commands Run and Results
+
+```bash
+find frontend/ui/widgets/RTAIPanelWidget -maxdepth 1 -type f | sort
+rg --no-heading -n "from ['\"]\\./|^import ['\"]\\./" frontend/ui/widgets/RTAIPanelWidget
+rg --no-heading -n "@/ui/widgets/RTAIPanelWidget" frontend/app frontend/ui frontend/wave.ts
+→ used for remaining-file classification and local dependency/dependent mapping
+
+npm --prefix frontend run build
+→ ✓ pass (phase 1)
+
+npm --prefix frontend run build
+→ ✓ pass (phase 2)
+
+npm --prefix frontend run lint
+→ ✓ pass with 15 pre-existing warnings, 0 errors
+
+npx tsc -p frontend/tsconfig.json --noEmit
+→ ✓ pass
+
+npm --prefix frontend run build
+→ ✓ pass (phase 3)
+```
+
+## Assessment-Only Confirmation
+
+- No widget source files changed.
+- No contract manifest changes.
+- No checker changes.
+- This section records assessment only; no migration was executed in this slice.
+
+---
+
 # Latest: Execution-Block-List Widget Sub-Slice Migration
 
 **Date:** 2026-04-18  
