@@ -19,6 +19,59 @@
 - Dedicated SCSS state: no dedicated `agent-selection-strip` SCSS file exists today; this execution slice must introduce a local `agent-selection-strip.style.scss` file as part of the local contract split.
 - Boundary confirmation: execution remains inside the approved leaf boundary (`agent-selection-strip` local files plus minimal local import rewiring inside `RTAIPanelWidget` only).
 
+## Next remaining leaf candidate assessment after run-command-approval
+
+### Scope filter for remaining candidate set
+
+Excluded from this assessment candidate set:
+- `agent-selection-strip.logic.ts`
+- `agent-selection-strip.template.tsx`
+- `agent-selection-strip.style.scss`
+- `agent-selection-strip.story.tsx`
+- `agent-selection-strip.tsx`
+- `run-command-approval.logic.ts`
+- `run-command-approval.template.tsx`
+- `run-command-approval.style.scss`
+- `run-command-approval.story.tsx`
+- `run-command-approval.tsx`
+
+### Local graph commands
+
+```bash
+find frontend/ui/widgets/RTAIPanelWidget -maxdepth 1 -type f | sort
+rg --no-heading -n "from ['\"]\\./|^import ['\"]\\./" frontend/ui/widgets/RTAIPanelWidget
+rg --no-heading -n "@/ui/widgets/RTAIPanelWidget/" frontend/ui/widgets/RTAIPanelWidget frontend/app frontend/ui frontend/wave.ts
+```
+
+### Remaining file-by-file classification
+
+| File | Role classification | Direct local imports / dependents | Leaf-like or orchestration-heavy | Risk note |
+|---|---|---|---|---|
+| `ai-utils.ts` | runtime/action logic | imports: none; depended by: `aidroppedfiles.tsx`, `aimessage.tsx`, `aimode.tsx`, `aipanel-compat.tsx`, `aipanel.tsx`, `aipanelinput.tsx`, `compat-conversation.ts`, `waveai-model.tsx` | orchestration-adjacent utility core | Large shared helper spine; changes fan out broadly. |
+| `aidroppedfiles.tsx` | leaf UI candidate | imports: `ai-utils.ts`, `waveai-model.tsx`; depended by: `aipanel-compat.tsx`, `aipanel.tsx` | mostly leaf UI | Uses model mutation (`removeFile`), so not the lowest-risk leaf. |
+| `aifeedbackbuttons.tsx` | leaf UI candidate | imports: `waveai-model.tsx`; depended by: `aimessage.tsx` | leaf UI | Includes feedback side effects + clipboard interaction. |
+| `aimessage.tsx` | widget composition/orchestration | imports: `ai-utils.ts`, `aifeedbackbuttons.tsx`, `aitooluse.tsx`, `aitypes.ts`, `waveai-model.tsx`; depended by: `aipanelmessages.tsx` | orchestration-heavy | Central message renderer with multiple action paths. |
+| `aimode.tsx` | conversation/model/state logic | imports: `ai-utils.ts`, `waveai-model.tsx`; depended by: `aipanel.tsx`, `aipanelmessages.tsx` | state-heavy | Model-driven mode/config logic, not isolated leaf. |
+| `aipanel-compat.tsx` | compat bridge | imports: many local modules; depended by: `aipanel.tsx` | orchestration-heavy | Primary compat orchestrator; explicitly out of scope. |
+| `aipanel-contextmenu.ts` | compat bridge | imports: `compat-context.ts`, `waveai-focus-utils.ts`, `waveai-model.tsx`; depended by: `aipanel-compat.tsx`, `aipanel.tsx`, `aipanelheader.tsx` | orchestration-heavy | Shared control path for panel actions and focus behavior. |
+| `aipanel.tsx` | widget composition/orchestration | imports: many local modules; depended by: none (entry component) | orchestration-heavy | Top-level panel assembly and behavior orchestration. |
+| `aipanelheader.tsx` | widget composition/orchestration | imports: `aipanel-contextmenu.ts`, `waveai-model.tsx`; depended by: `aipanel-compat.tsx`, `aipanel.tsx` | mixed, not pure leaf | Header behavior tied to context-menu + model state. |
+| `aipanelinput.tsx` | conversation/model/state logic | imports: `ai-utils.ts`, `waveai-focus-utils.ts`, `waveai-model.tsx`; depended by: `aipanel-compat.tsx`, `aipanel.tsx`, `waveai-model.tsx` | state-heavy | Input/focus/attachment pathway is coupled and high-surface. |
+| `aipanelmessages.tsx` | widget composition/orchestration | imports: `aimessage.tsx`, `aimode.tsx`, `aitypes.ts`, `waveai-model.tsx`; depended by: `aipanel-compat.tsx`, `aipanel.tsx` | orchestration-heavy | Message stack orchestration with model coupling. |
+| `airatelimitstrip.tsx` | leaf UI candidate | imports: none; depended by: `aipanel-compat.tsx`, `aipanel.tsx` | leaf UI | Reads global atom + timer effect; slightly broader behavior surface. |
+| `aitooluse.tsx` | runtime/action logic | imports: `aitypes.ts`, `restorebackupmodal.tsx`, `waveai-model.tsx`; depended by: `aimessage.tsx` | action-heavy | Tool action UI with restore flow linkage. |
+| `aitypes.ts` | conversation/model/state logic | imports: none; depended by: `aimessage.tsx`, `aipanel-compat.tsx`, `aipanel.tsx`, `aipanelmessages.tsx`, `aitooluse.tsx`, `compat-conversation.ts`, `restorebackupmodal.tsx`, `run-command.ts`, `waveai-model.tsx` | model contract core | Shared type spine; high propagation risk. |
+| `byokannouncement.tsx` | runtime/action logic | imports: `waveai-model.tsx`; depended by: `aipanel.tsx` | leaf UI with actions | Includes model-driven actions and backend-facing behavior. |
+| `compat-context.ts` | compat bridge | imports: none; depended by: `aipanel-contextmenu.ts`, `aipanel.tsx`, `waveai-model.tsx` | bridge | Foundational compat runtime switch/gate. |
+| `compat-conversation.ts` | compat bridge | imports: `ai-utils.ts`, `aitypes.ts`; depended by: `aipanel-compat.tsx` | bridge logic | Conversation mapping boundary to compat APIs. |
+| `execution-block-list.tsx` | leaf UI candidate | imports: none; depended by: `aipanel-compat.tsx` | leaf UI | Callback-driven renderer with local reveal state; no model singleton access. |
+| `restorebackupmodal.tsx` | runtime/action logic | imports: `aitypes.ts`, `waveai-model.tsx`; depended by: `aitooluse.tsx` | action-heavy | Modal performs restore side effects; non-leaf risk. |
+| `run-command.test.ts` | unknown/high-risk | imports: `run-command.ts`; depended by: none | non-runtime test artifact | Not a runtime migration target. |
+| `run-command.ts` | runtime/action logic | imports: `aitypes.ts`; depended by: `aipanel-compat.tsx`, `run-command.test.ts` | action-heavy | Command execution/approval pathway; high risk. |
+| `telemetryrequired.tsx` | runtime/action logic | imports: `waveai-model.tsx`; depended by: `aipanel.tsx` | leaf UI with actions | Includes telemetry enable behavior and model side effects. |
+| `waveai-focus-utils.ts` | conversation/model/state logic | imports: none; depended by: `aipanel-compat.tsx`, `aipanel-contextmenu.ts`, `aipanel.tsx`, `aipanelinput.tsx` | state/control helper | Shared focus behavior utility across panel control surfaces. |
+| `waveai-model.tsx` | conversation/model/state logic | imports: `ai-utils.ts`, `aipanelinput.tsx`, `aitypes.ts`, `compat-context.ts`; depended by many local files | model core | Highest-coupling state singleton in widget. |
+
 ## Next leaf candidate assessment after agent-selection-strip
 
 ### Local graph commands
