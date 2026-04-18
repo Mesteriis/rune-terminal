@@ -3,6 +3,14 @@
 **Date:** 2026-04-18  
 **Scope:** Compare `RTAIPanelWidget` vs `RTTerminalWidget` to identify the safer first single-item widget contract-migration target.
 
+## Latest Execution Boundary Check: `execution-block-list`
+
+- Current parent import path in use: `frontend/ui/widgets/RTAIPanelWidget/aipanel-compat.tsx` imports `ExecutionBlockList` from `./execution-block-list`.
+- Current export path to preserve for parent wiring: `./execution-block-list` (relative import path remains unchanged for the parent widget).
+- Direct imports outside `RTAIPanelWidget`: none found in `frontend/app`, `frontend/ui/widgets`, or `frontend/wave.ts`.
+- Dedicated SCSS state: no dedicated `execution-block-list` SCSS file exists today; this execution slice must introduce a local `execution-block-list.style.scss` file as part of the local contract split.
+- Boundary confirmation: execution remains inside the approved leaf boundary (`execution-block-list` local files plus minimal local import rewiring inside `RTAIPanelWidget` only).
+
 ## Latest Execution Boundary Check: `run-command-approval`
 
 - Current parent import path in use: `frontend/ui/widgets/RTAIPanelWidget/aipanel-compat.tsx` imports `PendingRunApprovalEntry` and `RunCommandApprovalList` from `./run-command-approval`.
