@@ -1,4 +1,95 @@
-# Latest: Single-Widget Migration Target Assessment
+# Latest: Agent-Selection-Strip Widget Sub-Slice Migration
+
+**Date:** 2026-04-18  
+**Scope:** Execute the approved first local widget sub-slice for `RTAIPanelWidget/agent-selection-strip` without manifest/checker or broader widget/app/runtime scope expansion
+
+## Files Created and Updated
+
+- Created:
+  - `frontend/ui/widgets/RTAIPanelWidget/agent-selection-strip.logic.ts`
+  - `frontend/ui/widgets/RTAIPanelWidget/agent-selection-strip.template.tsx`
+  - `frontend/ui/widgets/RTAIPanelWidget/agent-selection-strip.style.scss`
+  - `frontend/ui/widgets/RTAIPanelWidget/agent-selection-strip.story.tsx`
+- Updated:
+  - `frontend/ui/widgets/RTAIPanelWidget/agent-selection-strip.tsx` (now a local barrel re-export)
+- Legacy single-file implementation status:
+  - Replaced. Render implementation moved into `agent-selection-strip.template.tsx`; logic/types/helpers moved into `agent-selection-strip.logic.ts`.
+
+## Export/Import Path Preservation
+
+- Parent import path preserved unchanged in `frontend/ui/widgets/RTAIPanelWidget/aipanel-compat.tsx`:
+  - `import { AgentSelectionStrip } from "./agent-selection-strip";`
+- No direct `agent-selection-strip` imports were found outside `RTAIPanelWidget` during this slice.
+
+## Commands Run and Results
+
+```bash
+rg "agent-selection-strip" frontend/ui/widgets/RTAIPanelWidget frontend/app frontend/ui frontend/wave.ts
+→ only local widget usage; parent wiring at aipanel-compat.tsx
+
+npm --prefix frontend run build
+→ ✓ pass (boundary doc phase)
+
+npm --prefix frontend run lint
+→ 15 warnings (0 errors), unchanged pre-existing warnings
+
+npx tsc -p frontend/tsconfig.json --noEmit
+→ exit 0
+
+npm --prefix frontend run build
+→ ✓ pass
+
+npm run build:core
+→ ✓ pass
+
+RTERM_AUTH_TOKEN=ui-agent-strip-token apps/desktop/bin/rterm-core serve \
+  --listen 127.0.0.1:52768 \
+  --workspace-root "$PWD" \
+  --state-dir /tmp/runa-ui-agent-strip-state
+→ started (base_url http://127.0.0.1:52768)
+
+VITE_RTERM_API_BASE=http://127.0.0.1:52768 \
+VITE_RTERM_AUTH_TOKEN=ui-agent-strip-token \
+npm --prefix frontend run dev -- --host 127.0.0.1 --port 4186 --strictPort
+→ vite ready, app served at http://127.0.0.1:4186
+
+curl -sf -H "Authorization: Bearer ui-agent-strip-token" http://127.0.0.1:52768/healthz
+→ {"status":"ok"}
+
+curl -sf -H "Authorization: Bearer ui-agent-strip-token" http://127.0.0.1:52768/api/v1/workspace
+→ HTTP 200, workspace payload returned
+
+curl -sf -H "Authorization: Bearer ui-agent-strip-token" "http://127.0.0.1:52768/api/v1/terminal/term-main?from=0"
+→ HTTP 200, terminal state/chunks returned
+
+Playwright sanity check against http://127.0.0.1:4186/
+→ app loaded, workspace shell visible, terminal widget visible, AI panel rendered
+→ agent selection strip rendered (Profile/Role/Mode selects present)
+→ console errors: 0, console warnings: 0
+→ network/module/SCSS loads: no failures observed (requests returned 200, including agent-selection-strip.style.scss)
+```
+
+## Runtime Sanity Outcome
+
+- App load: pass
+- Workspace shell visible: pass
+- Terminal widget visible: pass
+- AI panel widget and agent selection strip render: pass
+- Failed SCSS imports: none observed
+- Failed module loads: none observed
+- Fatal console errors: none observed
+
+## Scope Guardrail Confirmation
+
+- This is a **local widget sub-slice only**.
+- This is **not** a manifest-registered widget migration.
+- No component contract manifest changes.
+- No checker changes.
+- No changes to `aipanel.tsx`, `aipanel-compat.tsx`, `waveai-model.tsx`, `run-command.ts`, or `compat-conversation.ts`.
+
+---
+
+# Previous: Single-Widget Migration Target Assessment
 
 **Date:** 2026-04-18  
 **Scope:** Assessment-only comparison of `RTAIPanelWidget` vs `RTTerminalWidget` to define the safest first single-item widget contract sub-slice
