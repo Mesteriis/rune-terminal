@@ -3,6 +3,14 @@
 **Date:** 2026-04-18  
 **Scope:** Compare `RTAIPanelWidget` vs `RTTerminalWidget` to identify the safer first single-item widget contract-migration target.
 
+## Latest Execution Boundary Check: `agent-selection-strip`
+
+- Current parent import path in use: `frontend/ui/widgets/RTAIPanelWidget/aipanel-compat.tsx` imports `AgentSelectionStrip` from `./agent-selection-strip`.
+- Current export path to preserve for parent wiring: `./agent-selection-strip` (relative import path remains unchanged for the parent widget).
+- Direct imports outside `RTAIPanelWidget`: none found in `frontend/app`, `frontend/ui/widgets`, or `frontend/wave.ts`.
+- Dedicated SCSS state: no dedicated `agent-selection-strip` SCSS file exists today; this execution slice must introduce a local `agent-selection-strip.style.scss` file as part of the local contract split.
+- Boundary confirmation: execution remains inside the approved leaf boundary (`agent-selection-strip` local files plus minimal local import rewiring inside `RTAIPanelWidget` only).
+
 ## Evidence Collection
 
 Commands used for this assessment:
