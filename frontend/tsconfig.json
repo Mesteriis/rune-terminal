@@ -1,53 +1,8 @@
 {
-  "compilerOptions": {
-    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.tsbuildinfo",
-    "target": "es2023",
-    "lib": ["ES2023", "DOM", "DOM.Iterable"],
-    "module": "esnext",
-    "types": ["vite/client"],
-    "skipLibCheck": true,
-    "moduleResolution": "bundler",
-    "ignoreDeprecations": "6.0",
-    "allowImportingTsExtensions": true,
-    "verbatimModuleSyntax": false,
-    "moduleDetection": "force",
-    "noEmit": true,
-    "jsx": "react-jsx",
-    "strict": false,
-    "baseUrl": ".",
-    "paths": {
-      "@/ui/*": ["ui/*"],
-      "@/app/*": ["app/*"],
-      "@/builder/*": ["builder/*"],
-      "@/layout/*": ["layout/*"],
-      "@/runtime/*": ["runtime/*"],
-      "@/store/*": ["app/store/*"],
-      "@/shadcn/*": ["app/shadcn/*"],
-      "@/compat/*": ["compat/*"],
-      "@/view/*": ["app/view/*"],
-      "@/util/*": ["util/*"],
-      "@/rterm-api/*": ["rterm-api/*"],
-      "@/asset/*": ["app/asset/*"],
-      "@/*": ["*"]
-    },
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
-    "erasableSyntaxOnly": false,
-    "noFallthroughCasesInSwitch": true
-  },
-  "include": [
-    "ui/**/*.ts",
-    "ui/**/*.tsx",
-    "app/**/*.ts",
-    "app/**/*.tsx",
-    "builder/**/*.ts",
-    "builder/**/*.tsx",
-    "layout/**/*.ts",
-    "layout/**/*.tsx",
-    "util/**/*.ts",
-    "types/**/*.d.ts",
-    "wave.ts",
-    "index.html"
-  ],
-  "exclude": ["node_modules", "dist", "dist-ssr", "old_front", "frontend/tideterm-src-meta", "frontend/tideterm-src"]
+  "files": [],
+  "references": [
+    {
+      "path": "./tsconfig.app.json"
+    }
+  ]
 }

@@ -2,34 +2,42 @@
 
 ## Last verified state
 
-- Date: `2026-04-17`
+- Date: `2026-04-18`
 - State: `VERIFIED`
 - Scope:
-  - split/focus/restore window behavior
-  - outer-zone drop + center swap semantics
-  - layout composition save/switch/restore
-  - last-tab closure empty-state and explicit reopen flow
-  - workspace navigation regression script
+  - top shell header is `40px` tall, lives only in the left main shell column, and currently renders window controls, `AI`, and the tab strip
+  - a right-side action rail is present as a separate full-height column, is `40px` wide, and contains two placeholder buttons
+  - Dockview fills the remaining main viewport beside the full-height right rail and boots three base panels from `onReady`
+  - single-tab widget headers render as narrow title headers instead of tab-strip selectors
+  - single-tab widget drag can start from the full header area, not only the title text
+  - the top `AI` button creates and removes a left Dockview AI group instead of a shell overlay
+  - the AI group exposes a header `+` action that adds another AI tab into the same group
+  - non-AI tabs do not merge into the locked AI group during drag/drop attempts
+  - a Dockview sash is present between the AI group and the workspace, but headless drag did not confirm width movement in this environment
 
 ## Commands/tests used
 
-- `./scripts/go.sh test ./core/workspace ./core/app ./core/transport/httpapi -count=1`
 - `npm --prefix frontend run build`
 - `npm --prefix frontend run lint:active`
-- `npm run test:ui -- e2e/window-behavior.spec.ts`
-- `npm run test:ui`
-- `npx playwright test -c e2e/playwright.config.ts e2e/last-tab-closure.spec.ts --headed`
-- `npx playwright test -c e2e/playwright.config.ts e2e/window-behavior.spec.ts --headed`
-- `python3 scripts/validate_workspace_navigation.py`
+- `curl -sf http://127.0.0.1:5173`
+- `node --input-type=module -e "<headless Playwright localhost validation for AI Dockview create/remove, AI add-tab, blocked drop into AI group, Dockview sash probe, and right-rail geometry>"`
 
 ## Known limitations
 
-- Validation is strong for active split/layout behavior but does not claim full IDE-style workspace breadth.
-- Remote checks within workspace runs are typically shape/regression checks, not full SSH launch sweeps.
+- This validation covers only the initial layout skeleton. It does not claim backend wiring, workspace persistence, or TideTerm parity breadth.
+- The AI surface is now a special Dockview group, but it still does not provide chat behavior or persistence semantics.
+- The Dockview sash between the AI group and the workspace is visible, but scripted headless drag kept the AI width at `432px -> 432px`, so resize movement is not claimed as verified from this environment.
+- Browser validation was run headlessly against the Vite dev server, not through full `npm run tauri:dev`.
 
 ## Evidence
 
-- [Last-tab closure validation](../tab-closure-validation.md)
-- [Window behavior validation](../workspace/window-behavior-validation.md)
-- [Workspace model](../workspace/workspace-model.md)
-- [Legacy validation log entries](./history/validation-log-legacy-2026-04-17.md#window-behavior-parity)
+- Initial panel set rendered as `terminal-header`, `terminal`, and `tool`.
+- Top shell header rendered at `40px` height with `1400px` width on a `1440px` viewport, and the right action rail started at `x=1400` with `40px` width, `960px` height, and `2` buttons.
+- Dockview occupied the main viewport beside the full-height right rail with no zero-height panels.
+- Single-tab Dockview headers rendered at `24px` height with visible titles and `void/actions` areas hidden.
+- Single-tab `.dv-tab` width expanded to the full header body (`1424/1440` and `704/720` after padding), and dragging from the empty right side of the top header moved `terminal-header` into the next group.
+- Toggling the top `AI` button created a left Dockview AI group at `x=0`, `y=40`, `width=432`, `height=920`, while the right action rail stayed at `40px` width.
+- The AI group header exposed the `Add AI tab` button, and clicking it produced `AI` and `AI 2` tabs inside the same locked AI group.
+- Dragging the `tool` tab toward the AI tab header left the group inventory unchanged: AI group titles stayed `AI`, `AI 2`, and `tool` remained in its own non-AI group.
+- Toggling the top `AI` button off removed all AI panels (`remainingAiPanels=0`).
+- The Dockview sash between AI and workspace was visible at approximately `x=430`, `width=4`, `height=920`, but the scripted drag probe did not change the AI width from `432`.
