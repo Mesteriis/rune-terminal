@@ -13,6 +13,7 @@
   - the shell now includes a modal foundation with a body-scoped host and widget-scoped hosts mounted over individual Dockview groups
   - the body-scoped settings dialog now uses a wide variant sized to `90vw`, leaving `5vw` free on each side
   - the shared UI layer now includes `DialogPopup` and `Notify` components as reusable popup and notification surfaces
+  - modal overlays now blur background content instead of only darkening it
   - the widget area now keeps tighter shell-chrome spacing: `6px` below the top header and `6px` before the right action rail
   - Dockview widget groups now keep tighter internal spacing: `6px` between rows and `6px` between columns
   - Dockview group header and body now render as a single glass surface instead of a separate boxed body layer
@@ -60,6 +61,7 @@
 - Static validation confirmed the modal foundation wiring: `RightActionRailWidget` opens a body modal via `openBodyModal`, panel widgets open widget-scoped modals via `openWidgetModal`, `ModalHostWidget` renders the body host in `App.tsx`, and panel hosts portal into the nearest `.dv-groupview`.
 - Static validation confirmed the settings dialog wiring: `RightActionRailWidget` now opens the body modal with `variant: 'settings'`, and `DialogPopup` maps that variant to `width/maxWidth: 90vw` and `maxHeight: calc(100vh - (var(--padding-modal-layer) * 2))`.
 - Static validation confirmed the component layer now exports `DialogPopup` and `Notify`, and `ModalHostWidget` renders `DialogPopup` instead of the previous `ModalWindow` surface.
+- Static validation confirmed modal overlay blur wiring: the body host uses `var(--blur-glass-md)`, and the widget host uses `var(--blur-glass-sm)`.
 - The same smoke confirmed a unified group surface: group backgrounds rendered on `.dv-groupview`, while header, content container, and panel-content child all resolved to `rgba(0, 0, 0, 0)` backgrounds, so header and body no longer render as separate boxed layers.
 - A live vendor-theme smoke on `http://127.0.0.1:4193` confirmed `bodyPadding=6px`, `.dv-dockview` root background `rgba(0, 0, 0, 0)`, and the Dockview root class stack no longer contributed a library color fill into the shell canvas.
 - A follow-up live geometry smoke on `http://127.0.0.1:4193` confirmed the shell root is now constrained by `#root` instead of `100vh`: `#root` measured `y=6`, `height=846`, `bottom=852`, while the app root matched it at `y=6`, `height=846`, `bottom=852`.
