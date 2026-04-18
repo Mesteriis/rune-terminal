@@ -1,3 +1,133 @@
+# Latest: Frontend UI Contract Repair for RTTooltip
+
+**Date:** 2026-04-18  
+**Scope:** Fix RTTooltip missing style import; harden checker to prevent false-positive passes
+
+## Original Rejection Reason
+
+During primitive batch migration, RTTooltip was registered in the contract but did not import its own style file in RTTooltip.template.tsx. This violated the component contract while passing the file-existence checker (false positive).
+
+## Fix Applied
+
+### RTTooltip.template.tsx
+- **Added:** `import "./RTTooltip.style.scss";` at the top of imports
+- **Location:** Colocated with other local imports (after foreign imports, before function definitions)
+- **Behavior:** Preserved; no changes to Tooltip or TooltipInner logic
+
+## Checker Hardening
+
+**File:** frontend/scripts/check-ui-component-contract.mjs
+
+### New Content Validation Rule
+For every registered component, the checker now validates that `<Name>.template.tsx` contains:
+```javascript
+import "./<Name>.style.scss";
+```
+
+### Implementation
+- Pattern matching using regex: `import\s+["\']\./<Name>\.style\.scss["\']`
+- Fails with actionable error if import is missing
+- Only applies to manifest-registered components
+- Still works from both repo root and frontend directory
+
+### Error Message Format
+```
+[ui-contract] <ComponentName>: template file must import "./<ComponentName>.style.scss" (missing from <path>)
+```
+
+## Validation Results
+
+### Hardened Checker (All Registered Components)
+```bash
+node frontend/scripts/check-ui-component-contract.mjs
+✓ RTButton has all required files
+✓ RTMagnify has all required files
+✓ RTInput has all required files
+✓ RTTooltip has all required files
+```
+
+### Alternative Paths
+```bash
+cd frontend && node scripts/check-ui-component-contract.mjs && cd ..
+✓ Works from both repo root and frontend directory
+```
+
+### TypeScript
+```bash
+npx tsc -p frontend/tsconfig.json --noEmit
+✓ No errors
+```
+
+### ESLint (active scope)
+```bash
+npm --prefix frontend run lint
+✓ 15 pre-existing warnings (unchanged)
+```
+
+### Frontend Build
+```bash
+npm --prefix frontend run build
+✓ Built in 3.48s
+```
+
+### Backend Service
+```bash
+RTERM_AUTH_TOKEN=ui-contract-repair-token \
+  apps/desktop/bin/rterm-core serve \
+  --listen 127.0.0.1:52762 \
+  --workspace-root "$PWD" \
+  --state-dir /tmp/runa-ui-contract-repair-state
+✓ Running
+```
+
+### Frontend Dev Server
+```bash
+VITE_RTERM_API_BASE=http://127.0.0.1:52762 \
+  VITE_RTERM_AUTH_TOKEN=ui-contract-repair-token \
+  npm --prefix frontend run dev -- --host 127.0.0.1 --port 4182 --strictPort
+✓ Running in 238ms
+```
+
+### Smoke Tests
+```bash
+curl -sf http://127.0.0.1:52762/healthz
+✓ Backend healthy
+
+curl -sf http://127.0.0.1:52762/api/v1/workspace
+✓ Workspace API accessible
+
+curl -sf http://127.0.0.1:52762/api/v1/terminal/term-main?from=0
+✓ Terminal API accessible
+
+curl -s http://127.0.0.1:4182/
+✓ Frontend HTML serving correctly
+```
+
+## Key Points
+
+- **RTTooltip repair:** Style import now present in template
+- **Checker hardening:** False-positive passes no longer possible for new registrations
+- **Backward compatible:** Only checks registered components; unregistered primitives unaffected
+- **Clear errors:** Actionable messages guide developers to fix violations
+- **Works everywhere:** Supports both repo root and frontend directory execution paths
+
+## Scope Adherence
+
+- ✓ Fixed RTTooltip only (no other primitives touched)
+- ✓ Hardened checker with single focused rule
+- ✓ No new primitives registered
+- ✓ No components/widgets/layout/app touched
+- ✓ No API changes
+- ✓ No backend/runtime changes
+- ✓ No Storybook dependencies added
+- ✓ No opportunistic refactoring
+
+## Known Limitations
+
+None. All four registered primitives now pass strict validation including content checks.
+
+---
+
 # Latest: Frontend Primitive Batch Migration
 
 **Date:** 2026-04-18  
