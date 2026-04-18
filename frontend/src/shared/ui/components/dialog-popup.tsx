@@ -3,6 +3,7 @@ import { Box, Button, Text } from '../primitives'
 type DialogPopupProps = {
   title: string
   description: string
+  variant?: 'default' | 'settings'
   confirmLabel?: string
   dismissLabel?: string
   onConfirm?: () => void
@@ -14,6 +15,13 @@ const dialogPopupStyle = {
   display: 'flex',
   flexDirection: 'column' as const,
   gap: 'var(--gap-sm)',
+}
+
+const settingsDialogPopupStyle = {
+  width: '90vw',
+  maxWidth: '90vw',
+  height: '100%',
+  maxHeight: 'calc(100vh - (var(--padding-modal-layer) * 2))',
 }
 
 const dialogHeaderStyle = {
@@ -56,13 +64,20 @@ const dialogActionsStyle = {
 export function DialogPopup({
   title,
   description,
+  variant = 'default',
   confirmLabel = 'Confirm',
   dismissLabel = 'Dismiss',
   onConfirm,
   onDismiss,
 }: DialogPopupProps) {
   return (
-    <Box style={dialogPopupStyle}>
+    <Box
+      style={
+        variant === 'settings'
+          ? { ...dialogPopupStyle, ...settingsDialogPopupStyle }
+          : dialogPopupStyle
+      }
+    >
       <Box style={dialogHeaderStyle}>
         <Text style={dialogTitleStyle}>{title}</Text>
         <Button aria-label={`Close ${title}`} onClick={onDismiss}>

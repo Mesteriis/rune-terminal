@@ -47,6 +47,7 @@ export function RightActionRailWidget() {
             title: 'Settings modal',
             description:
               'This modal is mounted on the app shell body layer and stays above every widget.',
+            variant: 'settings',
           })
         }
         style={railButtonStyle}

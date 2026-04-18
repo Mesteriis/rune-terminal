@@ -7,6 +7,7 @@ export type ModalDescriptor = {
   hostId: string
   title: string
   description: string
+  variant?: 'default' | 'settings'
 }
 
 export type OpenModalPayload = Omit<ModalDescriptor, 'id'>

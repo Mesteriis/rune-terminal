@@ -113,6 +113,7 @@ export function ModalHostWidget({ hostId, scope }: ModalHostWidgetProps) {
             description={modal.description}
             onDismiss={() => onCloseModal({ id: modal.id })}
             title={modal.title}
+            variant={modal.variant}
           />
         ))}
       </Box>
