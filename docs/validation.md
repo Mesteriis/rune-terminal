@@ -1,4 +1,53 @@
-# Latest: RTPopover Contract Tightening and Single-Item Component Layer State
+# Latest: Widget Layer Migration Assessment
+
+**Date:** 2026-04-18  
+**Scope:** Assessment-only pass for `ui/widgets` contract migration readiness (no migration executed)
+
+## Assessment Summary
+
+- Assessed widget inventory count: 44 files across 2 top-level widget directories.
+- Active widget candidates found: 2 (`RTAIPanelWidget`, `RTTerminalWidget`).
+- Valid multi-item widget batch exists: no.
+
+Exact conclusion: **single-item widget governance required**.
+
+Reason:
+- Both active widget candidates are high-coupling/high-complexity.
+- Both depend upward into `app`/`layout` semantics and runtime/API pathways.
+- Neither qualifies as a low/medium-risk first widget contract slice candidate.
+
+## Commands Run and Results
+
+```bash
+find frontend/ui/widgets -maxdepth 2 -type f | sort
+→ 44 files discovered across RTAIPanelWidget and RTTerminalWidget
+
+rg "@/ui/widgets|from [\"']@/ui/widgets" frontend/app frontend/ui frontend/wave.ts
+→ active imports confirmed for both widget directories
+
+npm --prefix frontend run build
+→ ✓ pass (used for phase 1 and phase 2 docs-only validation)
+
+npm --prefix frontend run lint
+→ 15 warnings (0 errors), unchanged pre-existing warnings
+
+npx tsc -p frontend/tsconfig.json --noEmit
+→ exit 0
+
+npm --prefix frontend run build
+→ ✓ pass
+```
+
+## Scope Guardrail Confirmation
+
+- No widget migration performed.
+- No contract manifest changes.
+- No checker changes.
+- Docs-only output for this slice.
+
+---
+
+# Previous: RTPopover Contract Tightening and Single-Item Component Layer State
 
 **Date:** 2026-04-18  
 **Scope:** Verify RTPopover contract completeness and record current component-layer governance state without expanding migration scope
