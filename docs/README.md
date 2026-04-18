@@ -29,6 +29,10 @@ docs/
 - MCP: [mcp/mcp-model.md](./mcp/mcp-model.md)
 - Plugins: [plugins/plugin-runtime.md](./plugins/plugin-runtime.md)
 - UI: [ui/surfaces.md](./ui/surfaces.md)
+  - **Component Inventory**: [ui/component-inventory.md](./ui/component-inventory.md)
+  - **Active Render Path**: [ui/active-render-path.md](./ui/active-render-path.md)
+  - **Component Relationships**: [ui/component-relationships.md](./ui/component-relationships.md)
+  - **Parity-Critical Components**: [ui/parity-critical-components.md](./ui/parity-critical-components.md)
 - Workflow: [workflow/operator-workflow.md](./workflow/operator-workflow.md)
 
 ## Parity
