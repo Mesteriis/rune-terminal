@@ -7,7 +7,7 @@
 - Scope:
   - the frontend React runtime and types now target the latest stable React line in this repo: `react@19.2.5`, `react-dom@19.2.5`, `@types/react@19.2.14`, and `@types/react-dom@19.2.3`
   - widget bodies now expose a local busy-state mechanism that overlays the panel content without changing Dockview group geometry
-  - the busy overlay uses a centered square AI marker plus two diagonal canvas particle streams from the lower-left and upper-right corners
+  - the busy overlay now uses an invisible centered square AI marker container with no glass card behind it, plus two slower route-based canvas particle streams from the lower-left and upper-right corners
   - the busy overlay blocks panel-body interaction while it is active, but the Dockview header remains outside that body overlay
   - each panel now exposes a local `Block widget` / `Release busy state` demo control, and the busy overlay itself exposes a release button in the upper-right corner
   - the app shell now applies `body` padding `6px`, and the root shell respects that outer frame on all four sides
@@ -71,7 +71,7 @@
 - Static validation confirmed the busy-state wiring: `shared/model/widget-busy.ts` owns the host-id store, `PanelModalActionsWidget` toggles it per host, `WidgetBusyOverlayWidget` renders the overlay per panel body, and the shared primitive layer now includes `Canvas`.
 - A fresh live headless smoke on `http://127.0.0.1:4194` confirmed that toggling busy for `terminal-header` did not move Dockview geometry: before and after the toggle the group rect stayed `x=6`, `y=52`, `width=1382`, `height=451`.
 - The same smoke confirmed the busy overlay rendered over the panel body at `x=7`, `y=77`, `width=1380`, `height=425`, with `aria-busy=\"true\"`, an attached `canvas`, and a visible release control.
-- The centered busy marker stayed square in the live smoke: `planeWidth=263`, `planeHeight=263`.
+- The refined live smoke confirmed the centered busy marker stayed square with no visible card treatment: `planeWidth=264`, `planeHeight=264`, `planeBackground=rgba(0, 0, 0, 0)`, `planeBorderTopWidth=0px`, and `planeBoxShadow=none`.
 - The same smoke confirmed panel-body blocking: clicking the covered body area while busy did not open the widget modal (`modalCountBefore=0`, `modalCountAfter=0`).
 - The same smoke confirmed the release path worked: clicking the overlay release control reduced the busy overlay count for `terminal-header` back to `0`.
 - Top shell header rendered at `40px` height with `1400px` width on a `1440px` viewport, and the right action rail started at `x=1400` with `40px` width, `960px` height, and `2` buttons.
