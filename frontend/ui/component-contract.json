@@ -6,6 +6,21 @@
       "name": "RTButton",
       "layer": "primitive",
       "dir": "ui/primitives/RTButton"
+    },
+    {
+      "name": "RTMagnify",
+      "layer": "primitive",
+      "dir": "ui/primitives/RTMagnify"
+    },
+    {
+      "name": "RTInput",
+      "layer": "primitive",
+      "dir": "ui/primitives/RTInput"
+    },
+    {
+      "name": "RTTooltip",
+      "layer": "primitive",
+      "dir": "ui/primitives/RTTooltip"
     }
   ]
 }
