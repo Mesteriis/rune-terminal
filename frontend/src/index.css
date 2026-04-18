@@ -16,6 +16,17 @@ body {
   background: var(--color-canvas);
 }
 
+@keyframes runa-busy-icon-breathe {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  50% {
+    transform: translate3d(0, 0, 0) scale(1.04);
+  }
+}
+
 .runa-dockview-theme {
   --dv-group-view-background-color: transparent;
   --dv-tabs-and-actions-container-background-color: transparent;
