@@ -72,6 +72,42 @@ rg --no-heading -n "@/ui/widgets/RTAIPanelWidget/" frontend/ui/widgets/RTAIPanel
 | `waveai-focus-utils.ts` | conversation/model/state logic | imports: none; depended by: `aipanel-compat.tsx`, `aipanel-contextmenu.ts`, `aipanel.tsx`, `aipanelinput.tsx` | state/control helper | Shared focus behavior utility across panel control surfaces. |
 | `waveai-model.tsx` | conversation/model/state logic | imports: `ai-utils.ts`, `aipanelinput.tsx`, `aitypes.ts`, `compat-context.ts`; depended by many local files | model core | Highest-coupling state singleton in widget. |
 
+### Next safest remaining leaf-only target decision
+
+Chosen next remaining leaf candidate: **`frontend/ui/widgets/RTAIPanelWidget/execution-block-list.tsx`**.
+
+Why this is the safest remaining leaf:
+- It has no local imports and exactly one local dependent (`aipanel-compat.tsx`), which keeps blast radius narrow.
+- It is callback-driven presentational UI with local reveal state only, and does not directly call `WaveAIModel` or mutate widget-level state.
+- It is safer than other remaining leaf-like files:
+  - `airatelimitstrip.tsx` reads global atoms and runs interval-based timer updates.
+  - `aifeedbackbuttons.tsx` emits feedback side effects and uses clipboard APIs.
+  - `aidroppedfiles.tsx` directly calls model mutation (`removeFile`) and depends on model-attached dropped-file state.
+
+Exact future slice boundary:
+- In scope:
+  - `frontend/ui/widgets/RTAIPanelWidget/execution-block-list.tsx` only.
+- Allowed:
+  - Minimal local import rewiring inside `frontend/ui/widgets/RTAIPanelWidget` needed to preserve existing parent import path.
+- Out of scope:
+  - `aipanel.tsx`
+  - `aipanel-compat.tsx` (except minimal import rewiring only)
+  - `waveai-model.tsx`
+  - `run-command.ts`
+  - `compat-conversation.ts`
+  - `compat-context.ts`
+  - `aitypes.ts`
+  - `ai-utils.ts`
+  - all other `RTAIPanelWidget` files
+  - any manifest/checker changes
+  - any `app/layout/runtime/api` changes
+
+Future execution stop conditions:
+- Stop if preserving `./execution-block-list` import path requires edits beyond minimal local rewiring.
+- Stop if migration requires behavior changes in `aipanel-compat.tsx` or in any model/runtime/compat file.
+- Stop if manifest/checker scope changes become necessary.
+- Stop if build/lint/tsc failures are unrelated legacy debt.
+
 ## Next leaf candidate assessment after agent-selection-strip
 
 ### Local graph commands
