@@ -1,3 +1,102 @@
+# Latest: AIRateLimitStrip Widget Sub-Slice Migration
+
+**Date:** 2026-04-18  
+**Scope:** Execute local leaf-only `RTAIPanelWidget/airatelimitstrip` contract split (not a manifest-registered widget migration)
+
+## Files Created and Updated
+
+- Created:
+  - `frontend/ui/widgets/RTAIPanelWidget/airatelimitstrip.logic.ts`
+  - `frontend/ui/widgets/RTAIPanelWidget/airatelimitstrip.template.tsx`
+  - `frontend/ui/widgets/RTAIPanelWidget/airatelimitstrip.style.scss`
+  - `frontend/ui/widgets/RTAIPanelWidget/airatelimitstrip.story.tsx`
+- Updated:
+  - `frontend/ui/widgets/RTAIPanelWidget/airatelimitstrip.tsx` (now local barrel re-export)
+- Legacy single-file implementation status:
+  - Replaced. Render implementation moved into `airatelimitstrip.template.tsx`; pure helpers/class resolution moved into `airatelimitstrip.logic.ts`.
+
+## Export/Import Path Preservation
+
+- Parent import paths preserved unchanged:
+  - `frontend/ui/widgets/RTAIPanelWidget/aipanel.tsx` imports `AIRateLimitStrip` from `./airatelimitstrip`.
+  - `frontend/ui/widgets/RTAIPanelWidget/aipanel-compat.tsx` imports `AIRateLimitStrip` from `./airatelimitstrip`.
+- No direct `airatelimitstrip` imports were found outside `RTAIPanelWidget`.
+
+## Commands Run and Results
+
+```bash
+rg "airatelimitstrip" frontend/ui/widgets/RTAIPanelWidget frontend/app frontend/ui frontend/wave.ts
+→ only local widget usage plus new local contract files
+
+npm --prefix frontend run build
+→ ✓ pass (phase 1 boundary validation)
+
+npm --prefix frontend run lint
+→ initial run failed on one local unused var (`req`) in new template
+→ fixed locally in `airatelimitstrip.template.tsx`
+→ rerun passed with 15 pre-existing warnings, 0 errors
+
+npx tsc -p frontend/tsconfig.json --noEmit
+→ ✓ pass
+
+npm --prefix frontend run build
+→ ✓ pass
+
+npm run build:core
+→ ✓ pass
+
+RTERM_AUTH_TOKEN=ui-airatelimitstrip-token apps/desktop/bin/rterm-core serve \
+  --listen 127.0.0.1:52771 \
+  --workspace-root "$PWD" \
+  --state-dir /tmp/runa-ui-airatelimitstrip-state
+→ started (base_url http://127.0.0.1:52771)
+
+VITE_RTERM_API_BASE=http://127.0.0.1:52771 \
+VITE_RTERM_AUTH_TOKEN=ui-airatelimitstrip-token \
+npm --prefix frontend run dev -- --host 127.0.0.1 --port 4189 --strictPort
+→ vite ready, app served at http://127.0.0.1:4189
+
+curl -sf -H "Authorization: Bearer ui-airatelimitstrip-token" http://127.0.0.1:52771/healthz
+→ {"status":"ok"}
+
+curl -sf -H "Authorization: Bearer ui-airatelimitstrip-token" http://127.0.0.1:52771/api/v1/workspace
+→ HTTP 200, workspace payload returned
+
+curl -sf -H "Authorization: Bearer ui-airatelimitstrip-token" "http://127.0.0.1:52771/api/v1/terminal/term-main?from=0"
+→ HTTP 200, terminal state/chunks returned
+
+Playwright sanity check against http://127.0.0.1:4189/
+→ app loaded, workspace shell visible, terminal widget visible, AI panel rendered
+→ `airatelimitstrip` files loaded:
+   - /ui/widgets/RTAIPanelWidget/airatelimitstrip.tsx (200)
+   - /ui/widgets/RTAIPanelWidget/airatelimitstrip.template.tsx (200)
+   - /ui/widgets/RTAIPanelWidget/airatelimitstrip.logic.ts (200)
+   - /ui/widgets/RTAIPanelWidget/airatelimitstrip.style.scss (200)
+→ rate-limit strip text (`Premium Used`, `Limit Reached`) remained hidden in normal no-rate-limit runtime state (expected)
+→ current-page console error check returned 0 errors
+```
+
+## Runtime Sanity Outcome
+
+- App load: pass
+- Workspace shell visible: pass
+- Terminal widget visible: pass
+- AI panel widget visible: pass
+- AIRateLimitStrip render path: pass (module/style loaded; UI remains hidden when no rate-limit event is present, consistent with current behavior)
+- Failed SCSS imports: none observed
+- Failed module loads: none observed
+- Fatal console errors (current run): none observed
+
+## Scope Guardrail Confirmation
+
+- This is a **local widget sub-slice only**.
+- This is **not** a manifest-registered widget migration.
+- No component contract manifest changes.
+- No checker changes.
+- No changes to `aipanel.tsx`, `aipanel-compat.tsx`, `waveai-model.tsx`, `run-command.ts`, or `compat-conversation.ts`.
+
+---
+
 # Latest: Leaf Batch Mode Assessment
 
 **Date:** 2026-04-18  
