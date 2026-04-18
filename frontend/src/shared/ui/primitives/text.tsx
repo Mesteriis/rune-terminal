@@ -4,6 +4,8 @@ export type TextProps = React.HTMLAttributes<HTMLSpanElement>
 
 const textStyle: React.CSSProperties = {
   color: 'var(--color-text)',
+  fontSize: 'var(--font-size-md)',
+  lineHeight: 'var(--line-height-md)',
 }
 
 export function Text({ style, ...props }: TextProps) {

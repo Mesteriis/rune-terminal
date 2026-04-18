@@ -6,16 +6,19 @@ body {
   margin: 0;
   padding: 0;
   height: 100%;
+  background: var(--color-canvas);
+  color: var(--color-text-primary);
 }
 
 #root {
   height: 100%;
+  background: var(--color-canvas);
 }
 
 .dv-tabs-and-actions-container.dv-single-tab {
-  height: 24px;
+  height: var(--size-dockview-single-tab-header);
   align-items: center;
-  padding: 0 8px;
+  padding: 0 var(--space-sm);
   box-sizing: border-box;
 }
 

@@ -1,14 +1,14 @@
 import { Box, Button } from '../shared/ui/primitives'
 
 const rightRailStyle = {
-  flex: '0 0 40px',
-  width: 40,
+  flex: '0 0 var(--size-right-rail)',
+  width: 'var(--size-right-rail)',
   display: 'flex',
   flexDirection: 'column' as const,
   justifyContent: 'space-between',
   alignItems: 'center',
   boxSizing: 'border-box' as const,
-  padding: 4,
+  padding: 'var(--space-xs)',
   borderRadius: 0,
 }
 

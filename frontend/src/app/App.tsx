@@ -22,6 +22,13 @@ const rootStyle = {
   height: '100vh',
   display: 'flex',
   overflow: 'hidden' as const,
+  padding: 0,
+  border: 'none',
+  borderRadius: 0,
+  background: 'var(--color-canvas)',
+  boxShadow: 'none',
+  backdropFilter: 'none',
+  WebkitBackdropFilter: 'none',
 }
 
 const mainShellStyle = {
@@ -30,8 +37,12 @@ const mainShellStyle = {
   display: 'flex',
   flexDirection: 'column' as const,
   border: 'none',
+  borderRadius: 0,
   background: 'transparent',
   padding: 0,
+  boxShadow: 'none',
+  backdropFilter: 'none',
+  WebkitBackdropFilter: 'none',
 }
 
 const contentAreaStyle = {
@@ -40,8 +51,12 @@ const contentAreaStyle = {
   minHeight: 0,
   overflow: 'hidden' as const,
   border: 'none',
+  borderRadius: 0,
   background: 'transparent',
   padding: 0,
+  boxShadow: 'none',
+  backdropFilter: 'none',
+  WebkitBackdropFilter: 'none',
 }
 
 const workspaceStyle = {
@@ -49,16 +64,24 @@ const workspaceStyle = {
   minWidth: 0,
   overflow: 'hidden' as const,
   border: 'none',
+  borderRadius: 0,
   background: 'transparent',
   padding: 0,
+  boxShadow: 'none',
+  backdropFilter: 'none',
+  WebkitBackdropFilter: 'none',
 }
 
 const dockviewContainerStyle = {
   height: '100%',
   width: '100%',
   border: 'none',
+  borderRadius: 0,
   background: 'transparent',
   padding: 0,
+  boxShadow: 'none',
+  backdropFilter: 'none',
+  WebkitBackdropFilter: 'none',
 }
 
 function isAiPanel(panel: Pick<IDockviewPanel, 'id'> | undefined): boolean {

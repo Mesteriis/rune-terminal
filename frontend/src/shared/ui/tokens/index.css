@@ -1,10 +1,64 @@
 :root {
-  --color-bg: #111;
-  --color-text: #fff;
-  --color-border: #333;
+  --color-canvas: #06110f;
+  --color-canvas-elevated: #0b1816;
+  --color-surface-glass: rgba(11, 24, 22, 0.72);
+  --color-surface-glass-strong: rgba(13, 29, 27, 0.84);
+  --color-surface-glass-soft: rgba(18, 34, 31, 0.58);
+  --color-surface-emerald: rgba(18, 59, 50, 0.54);
+  --color-surface-cold-tea: rgba(87, 110, 102, 0.28);
+  --color-text-primary: #edf7f4;
+  --color-text-secondary: #bdd0ca;
+  --color-text-muted: #8ea09a;
+  --color-border-subtle: rgba(158, 188, 177, 0.16);
+  --color-border-strong: rgba(130, 188, 170, 0.32);
+  --color-accent-emerald: #2d8f76;
+  --color-accent-emerald-strong: #47c0a0;
+  --color-accent-cold-tea: #91a8a1;
+  --color-shadow: rgba(1, 7, 6, 0.46);
 
-  --space-sm: 4px;
-  --space-md: 8px;
+  --color-bg: var(--color-surface-glass);
+  --color-text: var(--color-text-primary);
+  --color-border: var(--color-border-subtle);
 
-  --radius-sm: 4px;
+  --space-2xs: 2px;
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+  --space-2xl: 32px;
+
+  --gap-xs: var(--space-xs);
+  --gap-sm: var(--space-sm);
+  --gap-md: var(--space-md);
+  --gap-lg: var(--space-lg);
+
+  --padding-control-y: var(--space-sm);
+  --padding-control-x: var(--space-md);
+  --padding-panel: var(--space-md);
+  --padding-widget: var(--space-lg);
+  --padding-shell-inline: var(--space-md);
+  --margin-block-stack: var(--space-md);
+  --margin-widget-stack: var(--space-lg);
+
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+
+  --font-size-sm: 12px;
+  --font-size-md: 14px;
+  --line-height-sm: 16px;
+  --line-height-md: 20px;
+
+  --size-shell-header: 40px;
+  --size-right-rail: 40px;
+  --size-control-min: 32px;
+  --size-dockview-single-tab-header: 24px;
+
+  --blur-glass-sm: blur(10px);
+  --blur-glass-md: blur(18px);
+
+  --shadow-glass-panel: 0 18px 48px var(--color-shadow);
+  --shadow-glass-control: 0 10px 24px rgba(1, 7, 6, 0.32);
 }

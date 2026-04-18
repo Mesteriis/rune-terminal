@@ -7,8 +7,11 @@ const boxStyle: React.CSSProperties = {
   background: 'var(--color-bg)',
   color: 'var(--color-text)',
   border: '1px solid var(--color-border)',
-  borderRadius: 'var(--radius-sm)',
-  padding: 'var(--space-md)',
+  borderRadius: 'var(--radius-md)',
+  padding: 'var(--padding-panel)',
+  boxShadow: 'var(--shadow-glass-panel)',
+  backdropFilter: 'var(--blur-glass-md)',
+  WebkitBackdropFilter: 'var(--blur-glass-md)',
 }
 
 export function Box({ style, ...props }: BoxProps) {

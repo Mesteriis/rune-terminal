@@ -6,23 +6,31 @@ type ShellTopbarWidgetProps = {
 }
 
 const topbarStyle = {
-  height: 40,
-  flex: '0 0 40px',
+  height: 'var(--size-shell-header)',
+  flex: '0 0 var(--size-shell-header)',
   display: 'flex',
   alignItems: 'center',
-  gap: 8,
-  padding: '0 12px',
+  gap: 'var(--gap-sm)',
+  padding: '0 var(--padding-shell-inline)',
   border: 'none',
   background: 'transparent',
+  borderRadius: 0,
+  boxShadow: 'none',
+  backdropFilter: 'none',
+  WebkitBackdropFilter: 'none',
 }
 
 const tabStripStyle = {
   display: 'flex',
   alignItems: 'center',
-  gap: 8,
+  gap: 'var(--gap-sm)',
   border: 'none',
   background: 'transparent',
   padding: 0,
+  borderRadius: 0,
+  boxShadow: 'none',
+  backdropFilter: 'none',
+  WebkitBackdropFilter: 'none',
 }
 
 export function ShellTopbarWidget({ isAiOpen, onToggleAi }: ShellTopbarWidgetProps) {
