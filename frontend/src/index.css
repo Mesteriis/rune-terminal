@@ -60,3 +60,12 @@ body {
 .dv-tabs-and-actions-container.dv-single-tab .dv-void-container {
   display: none;
 }
+
+[data-runa-group='ai'] .dv-tabs-and-actions-container.dv-single-tab .dv-tabs-container .dv-tab {
+  cursor: default;
+}
+
+[data-runa-group='ai'] .dv-tabs-and-actions-container.dv-single-tab .dv-right-actions-container {
+  display: flex;
+  align-items: center;
+}
