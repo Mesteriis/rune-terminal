@@ -16,6 +16,8 @@ type Particle = {
   previousX: number
   previousY: number
   size: number
+  speed: number
+  targetIndex: number
   x: number
   y: number
   vx: number
@@ -23,7 +25,7 @@ type Particle = {
 }
 
 const BUSY_ICON_AREA_RATIO = 0.2
-const PARTICLE_LIMIT = 88
+const PARTICLE_LIMIT = 64
 const EMITTER_MARGIN = 18
 
 const overlayStyle = {
@@ -51,12 +53,13 @@ const centerPlaneStyle = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  border: '1px solid var(--color-border-strong)',
-  borderRadius: 'var(--radius-md)',
-  background: 'var(--color-surface-glass-strong)',
-  boxShadow: 'var(--shadow-glass-control)',
-  backdropFilter: 'var(--blur-glass-sm)',
-  WebkitBackdropFilter: 'var(--blur-glass-sm)',
+  padding: 0,
+  border: 'none',
+  borderRadius: 0,
+  background: 'transparent',
+  boxShadow: 'none',
+  backdropFilter: 'none',
+  WebkitBackdropFilter: 'none',
   pointerEvents: 'none' as const,
   animation: 'runa-busy-icon-breathe 1.8s ease-in-out infinite',
 }
@@ -88,18 +91,20 @@ function getBusyPlaneSize(width: number, height: number) {
 }
 
 function createParticle(
-  width: number,
-  height: number,
+  centerX: number,
+  centerY: number,
+  busyPlaneSize: number,
   emitter: Particle['emitter'],
 ): Particle {
   const margin = EMITTER_MARGIN
   const fromBottomLeft = emitter === 'bottom-left'
+  const orbitRadius = busyPlaneSize * 0.44
   const x = fromBottomLeft
-    ? margin + Math.random() * width * 0.08
-    : width - margin - Math.random() * width * 0.08
+    ? centerX - orbitRadius * 1.95 - Math.random() * orbitRadius * 1.1
+    : centerX + orbitRadius * 1.95 + Math.random() * orbitRadius * 1.1
   const y = fromBottomLeft
-    ? height - margin - Math.random() * height * 0.12
-    : margin + Math.random() * height * 0.12
+    ? centerY + orbitRadius * 1.95 + Math.random() * orbitRadius * 1.1
+    : centerY - orbitRadius * 1.95 - Math.random() * orbitRadius * 1.1
 
   return {
     emitter,
@@ -107,12 +112,37 @@ function createParticle(
     y,
     previousX: x,
     previousY: y,
-    vx: fromBottomLeft ? 1.35 + Math.random() * 0.8 : -1.35 - Math.random() * 0.8,
-    vy: fromBottomLeft ? -1.45 - Math.random() * 0.9 : 1.45 + Math.random() * 0.9,
-    size: 1.25 + Math.random() * 2.2,
+    vx: fromBottomLeft ? 0.36 + Math.random() * 0.18 : -0.36 - Math.random() * 0.18,
+    vy: fromBottomLeft ? -0.42 - Math.random() * 0.18 : 0.42 + Math.random() * 0.18,
+    size: 1 + Math.random() * 1.8,
     age: 0,
-    life: 54 + Math.random() * 42,
+    life: 120 + Math.random() * 54,
+    targetIndex: 0,
+    speed: 0.032 + Math.random() * 0.018,
   }
+}
+
+function getRoutePoints(
+  centerX: number,
+  centerY: number,
+  busyPlaneSize: number,
+  emitter: Particle['emitter'],
+) {
+  const orbitRadius = busyPlaneSize * 0.44
+  const path = [
+    { x: centerX - orbitRadius * 1.55, y: centerY + orbitRadius * 1.2 },
+    { x: centerX - orbitRadius * 0.72, y: centerY + orbitRadius * 0.22 },
+    { x: centerX - orbitRadius * 0.06, y: centerY + orbitRadius * 1.18 },
+    { x: centerX + orbitRadius * 0.2, y: centerY + orbitRadius * 0.1 },
+    { x: centerX + orbitRadius * 1.1, y: centerY - orbitRadius * 0.04 },
+    { x: centerX + orbitRadius * 0.18, y: centerY - orbitRadius * 0.18 },
+    { x: centerX + orbitRadius * 0.02, y: centerY - orbitRadius * 1.18 },
+    { x: centerX - orbitRadius * 0.18, y: centerY - orbitRadius * 0.14 },
+    { x: centerX - orbitRadius * 1.05, y: centerY - orbitRadius * 0.02 },
+    { x: centerX + orbitRadius * 1.7, y: centerY - orbitRadius * 1.42 },
+  ]
+
+  return emitter === 'bottom-left' ? path : [...path].reverse()
 }
 
 export function WidgetBusyOverlayWidget({ hostId }: WidgetBusyOverlayWidgetProps) {
@@ -170,7 +200,8 @@ export function WidgetBusyOverlayWidget({ hostId }: WidgetBusyOverlayWidgetProps
     const particles: Particle[] = []
     const centerX = width / 2
     const centerY = height / 2
-    const obstacleHalfSize = busyPlaneSize * 0.38
+    const routePointsBottomLeft = getRoutePoints(centerX, centerY, busyPlaneSize, 'bottom-left')
+    const routePointsTopRight = getRoutePoints(centerX, centerY, busyPlaneSize, 'top-right')
 
     canvas.width = Math.round(width * devicePixelRatio)
     canvas.height = Math.round(height * devicePixelRatio)
@@ -183,8 +214,8 @@ export function WidgetBusyOverlayWidget({ hostId }: WidgetBusyOverlayWidgetProps
         return
       }
 
-      particles.push(createParticle(width, height, 'bottom-left'))
-      particles.push(createParticle(width, height, 'top-right'))
+      particles.push(createParticle(centerX, centerY, busyPlaneSize, 'bottom-left'))
+      particles.push(createParticle(centerX, centerY, busyPlaneSize, 'top-right'))
     }
 
     const drawFrame = (timestamp: number) => {
@@ -197,44 +228,41 @@ export function WidgetBusyOverlayWidget({ hostId }: WidgetBusyOverlayWidgetProps
 
       for (let index = particles.length - 1; index >= 0; index -= 1) {
         const particle = particles[index]
+        const routePoints =
+          particle.emitter === 'bottom-left' ? routePointsBottomLeft : routePointsTopRight
+        const targetPoint = routePoints[Math.min(particle.targetIndex, routePoints.length - 1)]
         const dx = centerX - particle.x
         const dy = centerY - particle.y
         const distance = Math.max(Math.hypot(dx, dy), 1)
         const directionX = dx / distance
         const directionY = dy / distance
-        const swirlStrength = particle.emitter === 'bottom-left' ? -0.13 : 0.13
-        const flowStrength = 0.065 + Math.min(0.16, 140 / distance / 100)
+        const swirlStrength = particle.emitter === 'bottom-left' ? -0.055 : 0.055
+        const targetDx = targetPoint.x - particle.x
+        const targetDy = targetPoint.y - particle.y
+        const targetDistance = Math.max(Math.hypot(targetDx, targetDy), 1)
+        const targetDirectionX = targetDx / targetDistance
+        const targetDirectionY = targetDy / targetDistance
+        const orbitBand = busyPlaneSize * 0.54
+        const orbitPull = Math.max(-1, Math.min(1, (distance - orbitBand) / orbitBand))
 
         particle.previousX = particle.x
         particle.previousY = particle.y
 
-        particle.vx += directionX * flowStrength + -directionY * swirlStrength
-        particle.vy += directionY * flowStrength + directionX * swirlStrength
+        particle.vx += targetDirectionX * particle.speed
+        particle.vy += targetDirectionY * particle.speed
+        particle.vx += -directionY * swirlStrength
+        particle.vy += directionX * swirlStrength
+        particle.vx += directionX * orbitPull * 0.012
+        particle.vy += directionY * orbitPull * 0.012
 
-        const localX = particle.x - centerX
-        const localY = particle.y - centerY
-        const isInsideObstacle =
-          Math.abs(localX) < obstacleHalfSize && Math.abs(localY) < obstacleHalfSize
-
-        if (isInsideObstacle) {
-          const axisXFirst =
-            obstacleHalfSize - Math.abs(localX) < obstacleHalfSize - Math.abs(localY)
-
-          if (axisXFirst) {
-            const normal = localX >= 0 ? 1 : -1
-            particle.vx += normal * 0.85
-            particle.vy += swirlStrength * 4.2
-          } else {
-            const normal = localY >= 0 ? 1 : -1
-            particle.vy += normal * 0.85
-            particle.vx -= swirlStrength * 4.2
-          }
+        if (targetDistance < Math.max(18, busyPlaneSize * 0.08) && particle.targetIndex < routePoints.length - 1) {
+          particle.targetIndex += 1
         }
 
-        particle.vx += Math.cos(timestamp * 0.002 + particle.y * 0.015) * 0.018
-        particle.vy += Math.sin(timestamp * 0.002 + particle.x * 0.015) * 0.018
-        particle.vx *= 0.985
-        particle.vy *= 0.985
+        particle.vx += Math.cos(timestamp * 0.0014 + particle.y * 0.012) * 0.006
+        particle.vy += Math.sin(timestamp * 0.0014 + particle.x * 0.012) * 0.006
+        particle.vx *= 0.976
+        particle.vy *= 0.976
         particle.x += particle.vx
         particle.y += particle.vy
         particle.age += 1
@@ -251,7 +279,7 @@ export function WidgetBusyOverlayWidget({ hostId }: WidgetBusyOverlayWidgetProps
         }
 
         const progress = 1 - particle.age / particle.life
-        const alpha = Math.max(0.06, progress * 0.7)
+        const alpha = Math.max(0.04, progress * 0.48)
 
         context.beginPath()
         context.strokeStyle =
@@ -262,6 +290,14 @@ export function WidgetBusyOverlayWidget({ hostId }: WidgetBusyOverlayWidgetProps
         context.moveTo(particle.previousX, particle.previousY)
         context.lineTo(particle.x, particle.y)
         context.stroke()
+
+        context.beginPath()
+        context.fillStyle =
+          particle.emitter === 'bottom-left'
+            ? `rgba(71, 192, 160, ${alpha * 0.7})`
+            : `rgba(145, 168, 161, ${alpha * 0.7})`
+        context.arc(particle.x, particle.y, particle.size * 0.55, 0, Math.PI * 2)
+        context.fill()
       }
 
       context.globalCompositeOperation = 'source-over'
@@ -307,6 +343,7 @@ export function WidgetBusyOverlayWidget({ hostId }: WidgetBusyOverlayWidgetProps
         <Sparkles
           color="var(--color-text-primary)"
           size={Math.max(28, Math.round(busyPlaneSize * 0.52))}
+          style={{ filter: 'drop-shadow(0 0 18px rgba(237, 247, 244, 0.16))' }}
           strokeWidth={1.75}
         />
       </Box>
