@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "description": "Manifest of UI components registered with the four-file component convention.",
+  "components": [
+    {
+      "name": "RTButton",
+      "layer": "primitive",
+      "dir": "ui/primitives/RTButton"
+    }
+  ]
+}
