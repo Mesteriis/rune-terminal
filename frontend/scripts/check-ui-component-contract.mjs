@@ -76,7 +76,8 @@ try {
     // Check for required files
     const missingFiles = [];
     for (const file of REQUIRED_FILES) {
-      const fileName = `${name}.${file}`;
+      // index.ts doesn't have component name prefix
+      const fileName = file === "index.ts" ? file : `${name}.${file}`;
       const filePath = path.join(componentDir, fileName);
       if (!fs.existsSync(filePath)) {
         missingFiles.push(fileName);

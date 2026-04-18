@@ -6,10 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "npm run lint:active",
+    "lint": "npm run lint:active && npm run lint:ui-contract",
     "lint:active": "eslint app/workspace app/tab compat rterm-api app/window app/app.tsx wave.ts ui/widgets/RTTerminalWidget/compat-terminal.tsx ui/widgets/RTAIPanelWidget",
     "lint:all": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "lint:ui-contract": "node scripts/check-ui-component-contract.mjs"
   },
   "dependencies": {
     "@ai-sdk/react": "^3.0.163",
@@ -87,10 +88,10 @@
     "@types/throttle-debounce": "^5.0.2",
     "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^6.0.1",
+    "electron": "^41.2.0",
     "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
-    "electron": "^41.2.0",
     "globals": "^17.4.0",
     "sass-embedded": "^1.99.0",
     "typescript": "~6.0.2",
