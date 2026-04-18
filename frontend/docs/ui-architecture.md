@@ -8,6 +8,15 @@
 - No React code
 - Shared visual values live in `src/shared/ui/tokens/index.css`
 
+Current token families:
+
+- dark canvas and glass surface colors
+- accent colors for dark emerald and cold-tea tones
+- text and border tiers
+- spacing, gap, padding, and margin scales
+- radii, control sizes, and shell sizes
+- glass blur and shadow values
+
 ### Primitives
 
 - Wrap native HTML elements
@@ -65,6 +74,8 @@ its visible shell blocks as raw HTML inside `App.tsx`.
 
 - `npm --prefix frontend run lint:active`
 - `npm --prefix frontend run build`
+- `curl -sf http://127.0.0.1:4193`
+- `node --input-type=module -e "<headless Playwright localhost computed-style smoke for tokenized shell surfaces>"`
 - `rg --pcre2 -n "<(?!/?(Box|Text|Input|Button|InputField)\b)[A-Za-z]" frontend/src/shared/ui/components frontend/src/widgets`
 - `rg -n "React\.(HTMLAttributes|ButtonHTMLAttributes|InputHTMLAttributes)" frontend/src/shared/ui/primitives`
 - `rg -n "from '../primitives'|from '../shared/ui/primitives'|from '../shared/ui/components'" frontend/src/shared/ui/components frontend/src/widgets`
@@ -81,3 +92,6 @@ its visible shell blocks as raw HTML inside `App.tsx`.
 - `Button` supports `onClick` through `React.ButtonHTMLAttributes<HTMLButtonElement>`.
 - The current shell example routes its visible shell blocks through widgets and primitives instead of raw HTML in `App.tsx`.
 - `App.tsx` remains responsible for Dockview API orchestration and Effector state wiring.
+- Tokens now cover dark canvas, glass surfaces, accent hues, spacing, radii, shell sizes, blur, and shadow.
+- Shared primitives consume only semantic tokens instead of hardcoded `#111/#fff/#333` values.
+- Live localhost smoke confirmed tokenized shell values in the DOM: `body/root` background `rgb(6, 17, 15)`, `AI` button backdrop `blur(10px)`, right rail width `40px`, and right rail glass background `rgba(11, 24, 22, 0.72)`.

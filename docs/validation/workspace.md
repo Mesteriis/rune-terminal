@@ -7,6 +7,7 @@
 - Scope:
   - top shell header is `40px` tall, lives only in the left main shell column, and currently renders window controls, `AI`, and the tab strip
   - a right-side action rail is present as a separate full-height column, is `40px` wide, and contains two placeholder buttons
+  - the shared UI layer now exposes a tokenized dark-glass surface system with dark emerald and cold-tea accents, semantic spacing/padding scales, and blur/shadow tokens
   - Dockview fills the remaining main viewport beside the full-height right rail and boots three base panels from `onReady`
   - single-tab widget headers render as narrow title headers instead of tab-strip selectors
   - single-tab widget drag can start from the full header area, not only the title text
@@ -19,6 +20,8 @@
 
 - `npm --prefix frontend run build`
 - `npm --prefix frontend run lint:active`
+- `curl -sf http://127.0.0.1:4193`
+- `node --input-type=module -e "<headless Playwright localhost computed-style smoke for tokenized shell surfaces>"`
 - `curl -sf http://127.0.0.1:5173`
 - `node --input-type=module -e "<headless Playwright localhost validation for AI Dockview create/remove, AI add-tab, blocked drop into AI group, Dockview sash probe, and right-rail geometry>"`
 
@@ -26,6 +29,7 @@
 
 - This validation covers only the initial layout skeleton. It does not claim backend wiring, workspace persistence, or TideTerm parity breadth.
 - The AI surface is now a special Dockview group, but it still does not provide chat behavior or persistence semantics.
+- The token system currently covers shared UI layers and shell scaffolding. It does not yet claim a full Dockview vendor-theme rewrite beyond the existing shell overrides.
 - The Dockview sash between the AI group and the workspace is visible, but scripted headless drag kept the AI width at `432px -> 432px`, so resize movement is not claimed as verified from this environment.
 - Browser validation was run headlessly against the Vite dev server, not through full `npm run tauri:dev`.
 
@@ -41,3 +45,4 @@
 - Dragging the `tool` tab toward the AI tab header left the group inventory unchanged: AI group titles stayed `AI`, `AI 2`, and `tool` remained in its own non-AI group.
 - Toggling the top `AI` button off removed all AI panels (`remainingAiPanels=0`).
 - The Dockview sash between AI and workspace was visible at approximately `x=430`, `width=4`, `height=920`, but the scripted drag probe did not change the AI width from `432`.
+- A live localhost computed-style smoke on `http://127.0.0.1:4193` confirmed the tokenized shell theme: `bodyBackground=rgb(6, 17, 15)`, `rootBackground=rgb(6, 17, 15)`, `aiButtonBackground=rgba(13, 29, 27, 0.84)`, `aiButtonBorder=rgba(130, 188, 170, 0.32)`, `aiButtonShadow=rgba(1, 7, 6, 0.32) 0px 10px 24px 0px`, `aiButtonBackdrop=blur(10px)`, `railWidth=40px`, `railBackground=rgba(11, 24, 22, 0.72)`, and `topbarHeight=40px`.
