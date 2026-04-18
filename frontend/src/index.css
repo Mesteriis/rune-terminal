@@ -15,6 +15,34 @@ body {
   background: var(--color-canvas);
 }
 
+.dv-view {
+  box-sizing: border-box;
+}
+
+.dv-view:has(> .dv-groupview) {
+  padding: calc(var(--gap-widget-surface) / 2);
+}
+
+.dv-groupview {
+  box-sizing: border-box;
+  overflow: hidden;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-glass);
+  box-shadow: var(--shadow-glass-panel);
+  backdrop-filter: var(--blur-glass-md);
+  -webkit-backdrop-filter: var(--blur-glass-md);
+}
+
+.dv-groupview .dv-tabs-and-actions-container,
+.dv-groupview .dv-content-container {
+  background: transparent;
+}
+
+.dv-groupview .dv-default-tab-content {
+  color: var(--color-text-secondary);
+}
+
 .dv-tabs-and-actions-container.dv-single-tab {
   height: var(--size-dockview-single-tab-header);
   align-items: center;
