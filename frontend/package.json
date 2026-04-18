@@ -12,6 +12,8 @@
   "dependencies": {
     "@tsparticles/engine": "^3.9.1",
     "@tsparticles/react": "^3.0.0",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
     "dockview-react": "^5.2.0",
     "effector": "^23.4.4",
     "effector-react": "^23.3.0",

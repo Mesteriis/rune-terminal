@@ -27,6 +27,16 @@ body {
   }
 }
 
+@keyframes runa-terminal-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .runa-dockview-theme {
   --dv-group-view-background-color: transparent;
   --dv-tabs-and-actions-container-background-color: transparent;
@@ -130,4 +140,22 @@ body {
 [data-runa-group='ai'] .dv-tabs-and-actions-container.dv-single-tab .dv-right-actions-container {
   display: flex;
   align-items: center;
+}
+
+[data-runa-terminal-host] {
+  display: flex;
+}
+
+[data-runa-terminal-host] .xterm {
+  flex: 1;
+  height: 100%;
+}
+
+[data-runa-terminal-host] .xterm-viewport {
+  background: transparent !important;
+}
+
+[data-runa-terminal-host] .xterm-screen,
+[data-runa-terminal-host] .xterm-screen canvas {
+  width: 100% !important;
 }
