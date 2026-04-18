@@ -47,3 +47,23 @@ Lower layers must not depend on higher layers.
 - `src/shared/ui/primitives/index.ts`
 - `src/shared/ui/components/index.ts`
 - `src/widgets/index.ts`
+
+## Validation
+
+### Commands
+
+- `npm --prefix frontend run lint:active`
+- `rg --pcre2 -n "<(?!/?(Box|Text|Input|Button|InputField)\b)[A-Za-z]" frontend/src/shared/ui/components frontend/src/widgets`
+- `rg -n "React\.(HTMLAttributes|ButtonHTMLAttributes|InputHTMLAttributes)" frontend/src/shared/ui/primitives`
+- `rg -n "from '../primitives'|from '../shared/ui/primitives'|from '../shared/ui/components'" frontend/src/shared/ui/components frontend/src/widgets`
+
+### Results
+
+- Primitives are typed with native HTML prop types.
+- Primitives contain native elements only and use CSS variable styles.
+- Components import primitives only.
+- Widgets import components and primitives only.
+- `input-field.tsx` contains no raw HTML.
+- `demo-widget.tsx` composes `InputField`, `Box`, `Text`, and `Button`.
+- Barrel imports are active in `components` and `widgets`.
+- `Button` supports `onClick` through `React.ButtonHTMLAttributes<HTMLButtonElement>`.
