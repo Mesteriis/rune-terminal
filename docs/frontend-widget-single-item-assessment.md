@@ -3,6 +3,52 @@
 **Date:** 2026-04-18  
 **Scope:** Compare `RTAIPanelWidget` vs `RTTerminalWidget` to identify the safer first single-item widget contract-migration target.
 
+## Post-airatelimitstrip remaining RTAIPanelWidget assessment
+
+### Scope filter for this reassessment
+
+- Completed local contract sub-slices excluded:
+  - `agent-selection-strip*`
+  - `run-command-approval*`
+  - `execution-block-list*`
+  - `airatelimitstrip*`
+- Remaining files assessed in this pass: **22**
+
+### Commands used
+
+```bash
+find frontend/ui/widgets/RTAIPanelWidget -maxdepth 1 -type f | sort | rg -v 'agent-selection-strip|run-command-approval|execution-block-list|airatelimitstrip'
+rg "from ['\"](\\./|@/ui/widgets/RTAIPanelWidget)" frontend/ui/widgets/RTAIPanelWidget -n
+rg "RTAIPanelWidget/(ai-utils|aidroppedfiles|aifeedbackbuttons|aimessage|aimode|aipanel-compat|aipanel-contextmenu|aipanel|aipanelheader|aipanelinput|aipanelmessages|aitooluse|aitypes|byokannouncement|compat-context|compat-conversation|restorebackupmodal|run-command|telemetryrequired|waveai-focus-utils|waveai-model)" frontend -n
+```
+
+### Remaining file classification
+
+| File | Role classification | Direct local imports/dependents (relevant) | Still leaf-like? | Brief risk note |
+|---|---|---|---|---|
+| `ai-utils.ts` | runtime/action logic | depended by many local files (`aipanel*`, `aimessage`, `aimode`, `waveai-model`, `compat-conversation`, `aidroppedfiles`) | No | Large shared helper core; broad blast radius. |
+| `aidroppedfiles.tsx` | possible leaf UI candidate | imports `ai-utils`, `waveai-model`; used by `aipanel.tsx` and `aipanel-compat.tsx` | Partially | UI leaf shape, but mutates model file state. |
+| `aifeedbackbuttons.tsx` | possible leaf UI candidate | imports `waveai-model`; used by `aimessage.tsx` | Yes | Small, isolated UI; feedback + clipboard side effects only. |
+| `aimessage.tsx` | widget composition/orchestration | imports `aifeedbackbuttons`, `aitooluse`, `aitypes`, `ai-utils`, `waveai-model`; used by `aipanelmessages.tsx` | No | Central renderer orchestrating multiple subflows. |
+| `aimode.tsx` | conversation/model/state logic | imports `ai-utils`, `waveai-model`; used by `aipanel.tsx`, `aipanelmessages.tsx` | No | Mode selection tied to settings, telemetry, and model state. |
+| `aipanel-compat.tsx` | compat bridge | imports many local modules; used by `aipanel.tsx` | No | Primary compat orchestration surface. |
+| `aipanel-contextmenu.ts` | runtime/action logic | imports `compat-context`, `waveai-model`; used by `aipanel.tsx`, `aipanelheader.tsx`, `aipanel-compat.tsx` | No | Shared action menu path with RPC writes. |
+| `aipanel.tsx` | widget composition/orchestration | imports many local modules; widget entrypoint | No | Main panel orchestrator. |
+| `aipanelheader.tsx` | widget composition/orchestration | imports `aipanel-contextmenu`, `waveai-model`; used by `aipanel.tsx`, `aipanel-compat.tsx` | No | Header actions coupled to context menu/model state. |
+| `aipanelinput.tsx` | conversation/model/state logic | imports `ai-utils`, `waveai-focus-utils`, `waveai-model`; used by `aipanel.tsx`, `aipanel-compat.tsx`, `waveai-model.tsx` | No | Input/focus/attachments pipeline; non-leaf coupling. |
+| `aipanelmessages.tsx` | widget composition/orchestration | imports `aimessage`, `aimode`, `aitypes`, `waveai-model`; used by `aipanel.tsx`, `aipanel-compat.tsx` | No | Message stack orchestration container. |
+| `aitooluse.tsx` | runtime/action logic | imports `aitypes`, `restorebackupmodal`, `waveai-model`; used by `aimessage.tsx` | No | Tool approval, restore, highlight, diff actions. |
+| `aitypes.ts` | conversation/model/state logic | depended by many local files (`waveai-model`, `aipanel*`, `aimessage`, `aitooluse`, `run-command`, `compat-conversation`) | No | Shared type contract spine. |
+| `byokannouncement.tsx` | runtime/action logic | imports `waveai-model`; used by `aipanel.tsx` | Partially | Simple UI but triggers RPC/event actions. |
+| `compat-context.ts` | compat bridge | used by `waveai-model.tsx`, `aipanel.tsx`, `aipanel-contextmenu.ts` | No | Runtime compat switch context, shared infra boundary. |
+| `compat-conversation.ts` | compat bridge | imports `ai-utils`, `aitypes`; used by `aipanel-compat.tsx` | No | Conversation mapping boundary to compat APIs. |
+| `restorebackupmodal.tsx` | runtime/action logic | imports `aitypes`, `waveai-model`; used by `aitooluse.tsx` | Partially | Modal leaf shape with restore side effects. |
+| `run-command.test.ts` | unknown/high-risk | test-only dependent on `run-command.ts` | No | Not a runtime migration target. |
+| `run-command.ts` | runtime/action logic | imports `aitypes`; used by `aipanel-compat.tsx` + tests | No | Terminal execution/approval pathway core. |
+| `telemetryrequired.tsx` | runtime/action logic | imports `waveai-model`; used by `aipanel.tsx` | Partially | UI leaf shape with telemetry enable RPC side effect. |
+| `waveai-focus-utils.ts` | conversation/model/state logic | used by `aipanel.tsx`, `aipanel-compat.tsx`, `aipanel-contextmenu.ts`, `aipanelinput.tsx`, `app/store/focusManager.ts` | No | Shared focus/selection behavior utility. |
+| `waveai-model.tsx` | conversation/model/state logic | depended by many local + app/layout files | No | Highest coupling state singleton and runtime bridge. |
+
 ## Latest Execution Boundary Check: `airatelimitstrip`
 
 - Current parent import paths in use:
