@@ -29,6 +29,8 @@ const bodyOverlayStyle = {
   zIndex: 'var(--z-modal-body)',
   borderRadius: 0,
   background: 'var(--color-overlay-body)',
+  backdropFilter: 'var(--blur-glass-md)',
+  WebkitBackdropFilter: 'var(--blur-glass-md)',
 }
 
 const widgetOverlayStyle = {
@@ -36,6 +38,8 @@ const widgetOverlayStyle = {
   zIndex: 'var(--z-modal-widget)',
   borderRadius: 'var(--radius-lg)',
   background: 'var(--color-overlay-widget)',
+  backdropFilter: 'var(--blur-glass-sm)',
+  WebkitBackdropFilter: 'var(--blur-glass-sm)',
 }
 
 const modalStackStyle = {
