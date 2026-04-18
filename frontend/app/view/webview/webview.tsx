@@ -3,7 +3,7 @@
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
 import type { TabModel } from "@/app/store/tab-model";
-import { Search, useSearch } from "@/app/element/search";
+import { Search, useSearch } from "@/ui/primitives/RTSearch";
 import { createBlock, getApi, getBlockMetaKeyAtom, getSettingsKeyAtom, openLink } from "@/app/store/global";
 import { getSimpleControlShiftAtom } from "@/app/store/keymodel";
 import { ObjectService } from "@/app/store/services";

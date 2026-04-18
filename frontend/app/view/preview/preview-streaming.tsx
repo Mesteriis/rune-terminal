@@ -1,8 +1,8 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { Button } from "@/app/element/button";
-import { CenteredDiv } from "@/app/element/quickelems";
+import { Button } from "@/ui/primitives/RTButton";
+import { CenteredDiv } from "@/ui/primitives/RTQuickElems";
 import { globalStore } from "@/store/global";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { formatRemoteUri } from "@/util/waveutil";

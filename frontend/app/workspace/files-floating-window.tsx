@@ -1,6 +1,6 @@
 import { getFSFacade } from "@/compat";
 import { getConversationFacade } from "@/compat/conversation";
-import { WaveAIModel } from "@/app/aipanel/waveai-model";
+import { WaveAIModel } from "@/ui/widgets/RTAIPanelWidget/waveai-model";
 import { workspaceStore } from "@/app/state/workspace.store";
 import { globalStore } from "@/app/store/jotaiStore";
 import type { FSNode } from "@/rterm-api/fs/types";

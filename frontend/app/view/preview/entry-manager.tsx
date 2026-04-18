@@ -1,8 +1,8 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { Button } from "@/app/element/button";
-import { Input } from "@/app/element/input";
+import { Button } from "@/ui/primitives/RTButton";
+import { Input } from "@/ui/primitives/RTInput";
 import { useT } from "@/app/i18n/i18n";
 import type { I18nKey } from "@/app/i18n/i18n-core";
 import React, { memo, useState } from "react";

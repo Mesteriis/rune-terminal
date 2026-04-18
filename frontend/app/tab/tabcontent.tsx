@@ -3,7 +3,7 @@
 
 import { Block } from "@/app/block/block";
 import { WorkspaceStoreSnapshot } from "@/app/state/workspace.store";
-import { CenteredDiv } from "@/element/quickelems";
+import { CenteredDiv } from "@/ui/primitives/RTQuickElems";
 import { ContentRenderer, NodeModel, PreviewRenderer, TileLayout } from "@/layout/index";
 import { TileLayoutContents } from "@/layout/lib/types";
 import { atoms, getApi } from "@/store/global";

@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
-import { Button } from "@/app/element/button";
-import { Markdown } from "@/app/element/markdown";
-import { TypingIndicator } from "@/app/element/typingindicator";
+import { Button } from "@/ui/primitives/RTButton";
+import { Markdown } from "@/ui/primitives/RTMarkdown";
+import { TypingIndicator } from "@/ui/primitives/RTTypingIndicator";
 import { ClientModel } from "@/app/store/client-model";
 import type { TabModel } from "@/app/store/tab-model";
 import { RpcResponseHelper, WshClient } from "@/app/store/wshclient";

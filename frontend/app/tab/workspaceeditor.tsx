@@ -1,8 +1,8 @@
 import { makeIconClass } from "@/util/util";
 import clsx from "clsx";
 import { memo, useEffect, useRef } from "react";
-import { Button } from "../element/button";
-import { Input } from "../element/input";
+import { Button } from "@/ui/primitives/RTButton";
+import { Input } from "@/ui/primitives/RTInput";
 import "./workspaceeditor.scss";
 
 interface ColorSelectorProps {

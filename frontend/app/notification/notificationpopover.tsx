@@ -1,8 +1,8 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { Button } from "@/element/button";
-import { Popover, PopoverButton, PopoverContent } from "@/element/popover";
+import { Button } from "@/ui/primitives/RTButton";
+import { Popover, PopoverButton, PopoverContent } from "@/ui/components/RTPopover";
 import { atoms } from "@/store/global";
 import { makeIconClass } from "@/util/util";
 import clsx from "clsx";

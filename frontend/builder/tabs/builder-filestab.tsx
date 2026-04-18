@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { formatFileSize } from "@/app/aipanel/ai-utils";
+import { formatFileSize } from "@/ui/widgets/RTAIPanelWidget/ai-utils";
 import { useT } from "@/app/i18n/i18n";
 import { Modal } from "@/app/modals/modal";
 import { ContextMenuModel } from "@/app/store/contextmenu";

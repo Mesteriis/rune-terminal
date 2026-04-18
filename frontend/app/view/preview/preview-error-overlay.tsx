@@ -1,8 +1,8 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { Button } from "@/app/element/button";
-import { CopyButton } from "@/app/element/copybutton";
+import { Button } from "@/ui/primitives/RTButton";
+import { CopyButton } from "@/ui/primitives/RTCopyButton";
 import clsx from "clsx";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { memo, useCallback } from "react";

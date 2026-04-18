@@ -3,7 +3,7 @@
 
 import type { BlockNodeModel } from "@/app/block/blocktypes";
 import type { TabModel } from "@/app/store/tab-model";
-import { QuickTips } from "@/app/element/quicktips";
+import { QuickTips } from "@/ui/primitives/RTQuickTips";
 import { globalStore } from "@/app/store/global";
 import { Atom, atom, PrimitiveAtom } from "jotai";
 

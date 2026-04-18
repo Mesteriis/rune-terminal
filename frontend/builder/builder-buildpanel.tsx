@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { getAppLanguageFromSettings, t } from "@/app/i18n/i18n-core";
-import { WaveAIModel } from "@/app/aipanel/waveai-model";
+import { WaveAIModel } from "@/ui/widgets/RTAIPanelWidget/waveai-model";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { atoms } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";

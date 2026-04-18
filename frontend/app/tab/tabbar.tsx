@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { Button } from "@/app/element/button";
+import { Button } from "@/ui/primitives/RTButton";
 import { WorkspaceStoreSnapshot, workspaceStore } from "@/app/state/workspace.store";
 import { pickPreferredRemoteConnectionID } from "@/app/tab/remote-preference";
 import { getConnectionsFacade } from "@/compat/connections";
@@ -15,7 +15,7 @@ import { useAtomValue } from "jotai";
 import { OverlayScrollbars } from "overlayscrollbars";
 import { createRef, memo, useCallback, useEffect, useRef, useState } from "react";
 import { debounce } from "throttle-debounce";
-import { IconButton } from "../element/iconbutton";
+import { IconButton } from "@/ui/primitives/RTIconButton";
 import { Tab } from "./tab";
 import "./tabbar.scss";
 import { UpdateStatusBanner } from "./updatebanner";

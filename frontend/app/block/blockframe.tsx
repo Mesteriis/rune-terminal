@@ -3,7 +3,7 @@
 
 import { BlockModel } from "@/app/block/block-model";
 import { blockViewToIcon, blockViewToName, ConnectionButton, getBlockHeaderIcon, Input } from "@/app/block/blockutil";
-import { Button } from "@/app/element/button";
+import { Button } from "@/ui/primitives/RTButton";
 import { useDimensionsWithCallbackRef } from "@/app/hook/useDimensions";
 import { useT } from "@/app/i18n/i18n";
 import { ChangeConnectionBlockModal } from "@/app/modals/conntypeahead";
@@ -23,10 +23,10 @@ import { uxCloseBlock } from "@/app/store/keymodel";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
-import { ErrorBoundary } from "@/element/errorboundary";
-import { IconButton, ToggleIconButton } from "@/element/iconbutton";
-import { MagnifyIcon } from "@/element/magnify";
-import { MenuButton } from "@/element/menubutton";
+import { ErrorBoundary } from "@/ui/primitives/RTErrorBoundary";
+import { IconButton, ToggleIconButton } from "@/ui/primitives/RTIconButton";
+import { MagnifyIcon } from "@/ui/primitives/RTMagnify";
+import { MenuButton } from "@/ui/primitives/RTMenuButton";
 import { NodeModel } from "@/layout/index";
 import * as util from "@/util/util";
 import { makeIconClass } from "@/util/util";
@@ -35,7 +35,7 @@ import clsx from "clsx";
 import * as jotai from "jotai";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import * as React from "react";
-import { CopyButton } from "../element/copybutton";
+import { CopyButton } from "@/ui/primitives/RTCopyButton";
 import { BlockFrameProps } from "./blocktypes";
 
 const NumActiveConnColors = 8;

@@ -1,7 +1,7 @@
 import { workspaceStore, type WorkspaceStoreTab, type WorkspaceStoreWidget, type WorkspaceStoreWindowLayoutNode } from "@/app/state/workspace.store";
-import { CompatTerminalView } from "@/app/view/term/compat-terminal";
+import { CompatTerminalView } from "@/ui/widgets/RTTerminalWidget/compat-terminal";
 import { CompatFilesView } from "@/app/view/files/compat-files-view";
-import { CenteredDiv } from "@/element/quickelems";
+import { CenteredDiv } from "@/ui/primitives/RTQuickElems";
 import { makeIconClass } from "@/util/util";
 import clsx from "clsx";
 import { memo, useMemo, useState, type CSSProperties, type DragEvent, type ReactNode } from "react";

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import Logo from "@/app/asset/logo.svg";
-import { Button } from "@/app/element/button";
+import { Button } from "@/ui/primitives/RTButton";
 import { FlexiModal } from "@/app/modals/modal";
 import { CurrentOnboardingVersion } from "@/app/onboarding/onboarding-common";
 import { ClientModel } from "@/app/store/client-model";

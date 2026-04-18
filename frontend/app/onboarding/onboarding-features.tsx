@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import Logo from "@/app/asset/logo.svg";
-import { Button } from "@/app/element/button";
-import { EmojiButton } from "@/app/element/emojibutton";
-import { MagnifyIcon } from "@/app/element/magnify";
+import { Button } from "@/ui/primitives/RTButton";
+import { EmojiButton } from "@/ui/primitives/RTEmojiButton";
+import { MagnifyIcon } from "@/ui/primitives/RTMagnify";
 import { ClientModel } from "@/app/store/client-model";
 import * as WOS from "@/app/store/wos";
 import { RpcApi } from "@/app/store/wshclientapi";

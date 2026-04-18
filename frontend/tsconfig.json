@@ -16,9 +16,9 @@
     "strict": false,
     "baseUrl": ".",
     "paths": {
+      "@/ui/*": ["ui/*"],
       "@/app/*": ["app/*"],
       "@/builder/*": ["builder/*"],
-      "@/element/*": ["app/element/*"],
       "@/layout/*": ["layout/*"],
       "@/runtime/*": ["runtime/*"],
       "@/store/*": ["app/store/*"],
@@ -36,6 +36,8 @@
     "noFallthroughCasesInSwitch": true
   },
   "include": [
+    "ui/**/*.ts",
+    "ui/**/*.tsx",
     "app/**/*.ts",
     "app/**/*.tsx",
     "builder/**/*.ts",
