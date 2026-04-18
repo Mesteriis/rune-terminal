@@ -104,6 +104,19 @@ try {
         );
       }
     }
+
+    // Check that template.tsx imports its local style file
+    const templateFilePath = path.join(componentDir, `${name}.template.tsx`);
+    if (fs.existsSync(templateFilePath)) {
+      const templateContent = fs.readFileSync(templateFilePath, "utf-8");
+      const styleImportPattern = new RegExp(`import\\s+["\']\\.\/${name}\\.style\\.scss["\']`);
+      if (!styleImportPattern.test(templateContent)) {
+        error(
+          `[ui-contract] ${name}: template file must import "./${name}.style.scss" ` +
+          `(missing from ${templateFilePath})`
+        );
+      }
+    }
   }
 
   if (hasErrors) {
