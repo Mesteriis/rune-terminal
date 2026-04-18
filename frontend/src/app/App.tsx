@@ -16,7 +16,7 @@ const AI_PANEL_ID_PREFIX = 'ai-panel-'
 const AI_GROUP_ATTRIBUTE = 'data-runa-group'
 const AI_GROUP_ATTRIBUTE_VALUE = 'ai'
 const AI_GROUP_DEFAULT_RATIO = 0.3
-const DOCKVIEW_GROUP_GAP = 12
+const DOCKVIEW_GROUP_GAP = 6
 
 const runaDockviewTheme: DockviewTheme = {
   name: 'runa',

@@ -28,12 +28,12 @@
   --space-xl: 24px;
   --space-2xl: 32px;
 
-  --gap-xs: var(--space-xs);
-  --gap-sm: var(--space-sm);
-  --gap-md: var(--space-md);
-  --gap-lg: var(--space-lg);
-  --gap-shell-chrome: var(--space-md);
-  --gap-widget-surface: var(--space-md);
+  --gap-xs: var(--space-2xs);
+  --gap-sm: var(--space-xs);
+  --gap-md: var(--space-sm);
+  --gap-lg: var(--space-md);
+  --gap-shell-chrome: 6px;
+  --gap-widget-surface: 6px;
 
   --padding-control-y: var(--space-sm);
   --padding-control-x: var(--space-md);
@@ -43,10 +43,10 @@
   --margin-block-stack: var(--space-md);
   --margin-widget-stack: var(--space-lg);
 
-  --radius-xs: 6px;
-  --radius-sm: 10px;
-  --radius-md: 14px;
-  --radius-lg: 20px;
+  --radius-xs: 3px;
+  --radius-sm: 5px;
+  --radius-md: 7px;
+  --radius-lg: 10px;
 
   --font-size-sm: 12px;
   --font-size-md: 14px;
