@@ -5,7 +5,7 @@
 - Date: `2026-04-18`
 - State: `VERIFIED`
 - Scope:
-  - the app shell now applies `body` padding `6px`, creating an outer frame around the frontend
+  - the app shell now applies `body` padding `6px`, and the root shell respects that outer frame on all four sides
   - top shell header is `40px` tall, lives only in the left main shell column, and currently renders window controls, `AI`, and the tab strip
   - a right-side action rail is present as a separate full-height column, is `40px` wide, and contains two placeholder buttons
   - the widget area now keeps explicit shell-chrome spacing: `12px` below the top header and `12px` before the right action rail
@@ -49,6 +49,7 @@
 - A live geometry smoke on `http://127.0.0.1:4193` confirmed `betweenRows=12px` and `betweenCols=12px` for Dockview groups, while keeping `gapBelowHeader=12px` and `gapBeforeRail=12px`.
 - The same smoke confirmed a unified group surface: group backgrounds rendered on `.dv-groupview`, while header, content container, and panel-content child all resolved to `rgba(0, 0, 0, 0)` backgrounds, so header and body no longer render as separate boxed layers.
 - A live vendor-theme smoke on `http://127.0.0.1:4193` confirmed `bodyPadding=6px`, `.dv-dockview` root background `rgba(0, 0, 0, 0)`, and the Dockview root class stack no longer contributed a library color fill into the shell canvas.
+- A follow-up live geometry smoke on `http://127.0.0.1:4193` confirmed the shell root is now constrained by `#root` instead of `100vh`: `#root` measured `y=6`, `height=846`, `bottom=852`, while the app root matched it at `y=6`, `height=846`, `bottom=852`.
 - Dockview occupied the main viewport beside the full-height right rail with no zero-height panels.
 - Single-tab Dockview headers rendered at `24px` height with visible titles and `void/actions` areas hidden.
 - Single-tab `.dv-tab` width expanded to the full header body (`1424/1440` and `704/720` after padding), and dragging from the empty right side of the top header moved `terminal-header` into the next group.
