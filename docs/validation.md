@@ -1,4 +1,91 @@
-# Latest: Run-Command-Approval Widget Sub-Slice Migration
+# Latest: Next-Remaining-Leaf RTAIPanelWidget Assessment
+
+**Date:** 2026-04-18  
+**Scope:** Assessment-only selection of the next remaining leaf-only `RTAIPanelWidget` sub-slice after `agent-selection-strip` and `run-command-approval` (no migration executed)
+
+## Files Inspected (`frontend/ui/widgets/RTAIPanelWidget`)
+
+- Total local files inspected: 34
+- Candidate-set exclusions (already completed local contract sets): 10 files (`agent-selection-strip.*`, `run-command-approval.*`)
+- Remaining files assessed for next target: 24
+- `ai-utils.ts`
+- `aidroppedfiles.tsx`
+- `aifeedbackbuttons.tsx`
+- `aimessage.tsx`
+- `aimode.tsx`
+- `aipanel-compat.tsx`
+- `aipanel-contextmenu.ts`
+- `aipanel.tsx`
+- `aipanelheader.tsx`
+- `aipanelinput.tsx`
+- `aipanelmessages.tsx`
+- `airatelimitstrip.tsx`
+- `aitooluse.tsx`
+- `aitypes.ts`
+- `byokannouncement.tsx`
+- `compat-context.ts`
+- `compat-conversation.ts`
+- `execution-block-list.tsx`
+- `restorebackupmodal.tsx`
+- `run-command.test.ts`
+- `run-command.ts`
+- `telemetryrequired.tsx`
+- `waveai-focus-utils.ts`
+- `waveai-model.tsx`
+
+## Chosen Next Remaining Leaf Candidate
+
+- Chosen file: **`frontend/ui/widgets/RTAIPanelWidget/execution-block-list.tsx`**
+
+Reason for choice:
+- No local imports and one local dependent (`aipanel-compat.tsx`) keep blast radius tight.
+- Pure callback-driven renderer with local reveal state; no direct `WaveAIModel` access and no direct runtime mutation.
+- Safer than other remaining leaf-like options (`airatelimitstrip.tsx`, `aifeedbackbuttons.tsx`, `aidroppedfiles.tsx`) that carry timer/atom or model-side-effect coupling.
+
+## Future Slice Boundary (Defined, Not Executed)
+
+- In scope:
+  - `frontend/ui/widgets/RTAIPanelWidget/execution-block-list.tsx` only
+- Allowed:
+  - minimal local import rewiring inside `RTAIPanelWidget` only, if needed to preserve parent path
+- Explicit deferrals:
+  - `aipanel.tsx`
+  - `aipanel-compat.tsx` (except minimal import rewiring only)
+  - `waveai-model.tsx`
+  - `run-command.ts`
+  - `compat-conversation.ts`
+  - `compat-context.ts`
+  - `aitypes.ts`
+  - `ai-utils.ts`
+  - all other `RTAIPanelWidget` files
+  - any manifest/checker changes
+  - any `app/layout/runtime/api` edits
+
+## Commands Run and Results
+
+```bash
+find frontend/ui/widgets/RTAIPanelWidget -maxdepth 1 -type f | sort
+rg --no-heading -n "from ['\"]\\./|^import ['\"]\\./" frontend/ui/widgets/RTAIPanelWidget
+rg --no-heading -n "@/ui/widgets/RTAIPanelWidget/" frontend/ui/widgets/RTAIPanelWidget frontend/app frontend/ui frontend/wave.ts
+→ used to rebuild remaining local file graph and candidate-set classification
+
+npm --prefix frontend run build
+→ ✓ pass (phase 1)
+
+npm --prefix frontend run build
+→ ✓ pass (phase 2)
+```
+
+## Assessment-Only Confirmation
+
+- No widget source migration performed in this slice.
+- No manifest changes.
+- No checker changes.
+- Docs-only output.
+
+---
+
+# Previous: Run-Command-Approval Widget Sub-Slice Migration
 
 **Date:** 2026-04-18  
 **Scope:** Execute local leaf-only `RTAIPanelWidget/run-command-approval` contract split (not a manifest-registered widget migration)
