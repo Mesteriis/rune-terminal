@@ -4,20 +4,15 @@ import { useUnit } from 'effector-react'
 import { $isAiSidebarOpen } from '../../shared/model/app'
 
 const aiSidebarStyle: CSSProperties = {
-  position: 'absolute',
-  top: 40,
-  right: 0,
-  bottom: 0,
+  flex: '0 0 50%',
   width: '50%',
-  zIndex: 20,
   display: 'flex',
   alignItems: 'flex-start',
   boxSizing: 'border-box',
   padding: 16,
   overflow: 'auto',
   backgroundColor: '#ffffff',
-  borderLeft: '1px solid #000000',
-  pointerEvents: 'auto' as const,
+  borderRight: '1px solid #000000',
 }
 
 export function AiSidebar() {

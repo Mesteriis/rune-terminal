@@ -27,23 +27,21 @@ const tabStripStyle = {
   gap: 8,
 }
 
+const contentAreaStyle = {
+  flex: 1,
+  display: 'flex',
+  overflow: 'hidden' as const,
+}
+
 const workspaceStyle = {
   flex: 1,
+  minWidth: 0,
   overflow: 'hidden' as const,
 }
 
 const dockviewContainerStyle = {
   height: '100%',
   width: '100%',
-}
-
-const overlayLayerStyle = {
-  position: 'absolute' as const,
-  top: 0,
-  right: 0,
-  bottom: 0,
-  left: 0,
-  pointerEvents: 'none' as const,
 }
 
 function Panel(props: IDockviewPanelProps) {
@@ -108,13 +106,13 @@ export function App() {
           </button>
         </div>
       </div>
-      <div style={workspaceStyle}>
-        <div style={dockviewContainerStyle}>
-          <DockviewReact components={components} onReady={handleReady} />
-        </div>
-      </div>
-      <div style={overlayLayerStyle}>
+      <div style={contentAreaStyle}>
         <AiSidebar />
+        <div style={workspaceStyle}>
+          <div style={dockviewContainerStyle}>
+            <DockviewReact components={components} onReady={handleReady} />
+          </div>
+        </div>
       </div>
     </div>
   )
