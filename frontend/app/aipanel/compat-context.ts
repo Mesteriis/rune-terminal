@@ -1,15 +1,4 @@
-let compatRuntime = false;
-let compatActiveTabId = "";
-
-export function setWaveAICompatContext(nextCompatRuntime: boolean, nextActiveTabId: string): void {
-    compatRuntime = nextCompatRuntime;
-    compatActiveTabId = nextCompatRuntime ? nextActiveTabId : "";
-}
-
-export function isWaveAICompatRuntime(): boolean {
-    return compatRuntime;
-}
-
-export function getWaveAICompatActiveTabId(): string | null {
-    return compatActiveTabId || null;
-}
+// Copyright 2025, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+// Re-export bridge — actual source is in ui/widgets/RTAIPanelWidget/
+export * from "@/ui/widgets/RTAIPanelWidget/compat-context";
