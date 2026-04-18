@@ -3,16 +3,14 @@
 
 import clsx from "clsx";
 import MagnifySVG from "@/asset/magnify.svg";
-import "./RTMagnify.scss";
 
-interface MagnifyIconProps {
-    enabled: boolean;
-}
+import "./RTMagnify.style.scss";
+import { MagnifyIconProps } from "./RTMagnify.logic";
 
 export function MagnifyIcon({ enabled }: MagnifyIconProps) {
-    return (
-        <div className={clsx("magnify-icon", { enabled })}>
-            <MagnifySVG />
-        </div>
-    );
+  return (
+    <div className={clsx("magnify-icon", { enabled })}>
+      <MagnifySVG />
+    </div>
+  );
 }
