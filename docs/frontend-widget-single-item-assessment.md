@@ -3,6 +3,14 @@
 **Date:** 2026-04-18  
 **Scope:** Compare `RTAIPanelWidget` vs `RTTerminalWidget` to identify the safer first single-item widget contract-migration target.
 
+## Latest Execution Boundary Check: `run-command-approval`
+
+- Current parent import path in use: `frontend/ui/widgets/RTAIPanelWidget/aipanel-compat.tsx` imports `PendingRunApprovalEntry` and `RunCommandApprovalList` from `./run-command-approval`.
+- Current export path to preserve for parent wiring: `./run-command-approval` (relative import path remains unchanged for the parent widget).
+- Direct imports outside `RTAIPanelWidget`: none found in `frontend/app`, `frontend/ui/widgets`, or `frontend/wave.ts`.
+- Dedicated SCSS state: no dedicated `run-command-approval` SCSS file exists today; this execution slice must introduce a local `run-command-approval.style.scss` file as part of the local contract split.
+- Boundary confirmation: execution remains inside the approved leaf boundary (`run-command-approval` local files plus minimal local import rewiring inside `RTAIPanelWidget` only).
+
 ## Latest Execution Boundary Check: `agent-selection-strip`
 
 - Current parent import path in use: `frontend/ui/widgets/RTAIPanelWidget/aipanel-compat.tsx` imports `AgentSelectionStrip` from `./agent-selection-strip`.
