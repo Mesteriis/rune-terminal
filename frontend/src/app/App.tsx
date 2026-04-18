@@ -1,4 +1,4 @@
-import { DockviewReact, type DockviewApi, type DockviewGroupPanel, type DockviewReadyEvent, type IDockviewHeaderActionsProps, type IDockviewPanel, type IDockviewPanelProps } from 'dockview-react'
+import { DockviewReact, type DockviewApi, type DockviewGroupPanel, type DockviewReadyEvent, type DockviewTheme, type IDockviewHeaderActionsProps, type IDockviewPanel, type IDockviewPanelProps } from 'dockview-react'
 import { useEffect, useState } from 'react'
 import { useUnit } from 'effector-react'
 
@@ -16,6 +16,13 @@ const AI_PANEL_ID_PREFIX = 'ai-panel-'
 const AI_GROUP_ATTRIBUTE = 'data-runa-group'
 const AI_GROUP_ATTRIBUTE_VALUE = 'ai'
 const AI_GROUP_DEFAULT_RATIO = 0.3
+const DOCKVIEW_GROUP_GAP = 12
+
+const runaDockviewTheme: DockviewTheme = {
+  name: 'runa',
+  className: 'runa-dockview-theme',
+  gap: DOCKVIEW_GROUP_GAP,
+}
 
 const rootStyle = {
   position: 'relative' as const,
@@ -53,8 +60,7 @@ const contentAreaStyle = {
   border: 'none',
   borderRadius: 0,
   background: 'transparent',
-  padding:
-    'calc(var(--gap-shell-chrome) - (var(--gap-widget-surface) / 2)) calc(var(--gap-shell-chrome) - (var(--gap-widget-surface) / 2)) 0 0',
+  padding: 'var(--gap-shell-chrome) var(--gap-shell-chrome) 0 0',
   boxShadow: 'none',
   backdropFilter: 'none',
   WebkitBackdropFilter: 'none',
@@ -269,6 +275,7 @@ export function App() {
                 components={components}
                 onReady={handleReady}
                 rightHeaderActionsComponent={AiGroupActions}
+                theme={runaDockviewTheme}
               />
             </Box>
           </Box>
