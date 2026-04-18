@@ -3,6 +3,16 @@
 **Date:** 2026-04-18  
 **Scope:** Compare `RTAIPanelWidget` vs `RTTerminalWidget` to identify the safer first single-item widget contract-migration target.
 
+## Latest Execution Boundary Check: `airatelimitstrip`
+
+- Current parent import paths in use:
+  - `frontend/ui/widgets/RTAIPanelWidget/aipanel.tsx` imports `AIRateLimitStrip` from `./airatelimitstrip`.
+  - `frontend/ui/widgets/RTAIPanelWidget/aipanel-compat.tsx` imports `AIRateLimitStrip` from `./airatelimitstrip`.
+- Current export path to preserve for parent wiring: `./airatelimitstrip` (relative import path remains unchanged for parent widget files).
+- Direct imports outside `RTAIPanelWidget`: none found in `frontend/app`, `frontend/ui`, or `frontend/wave.ts`.
+- Dedicated SCSS state: no dedicated `airatelimitstrip` SCSS file exists today; this execution slice must introduce a local `airatelimitstrip.style.scss` file as part of the local contract split.
+- Boundary confirmation: this sub-slice remains inside the approved leaf boundary (`airatelimitstrip` local files plus minimal local import rewiring inside `RTAIPanelWidget` only). Existing app-store atom coupling is preserved as-is and does not require broader refactor.
+
 ## Latest Execution Boundary Check: `execution-block-list`
 
 - Current parent import path in use: `frontend/ui/widgets/RTAIPanelWidget/aipanel-compat.tsx` imports `ExecutionBlockList` from `./execution-block-list`.
