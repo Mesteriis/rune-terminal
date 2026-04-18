@@ -17,6 +17,16 @@ Current token families:
 - radii, control sizes, and shell sizes
 - glass blur and shadow values
 
+### Styles
+
+- Style modules keep presentational constants separate from rendering logic
+- Style modules use CSS variables and plain style objects only
+- Style modules must not import app state, backend contracts, or widget runtime logic
+
+Current isolated style modules:
+
+- `CommanderWidget` local dense-surface styles in `src/widgets/commander-widget.styles.ts`
+
 ### Primitives
 
 - Wrap native HTML elements
@@ -27,12 +37,16 @@ Current token families:
 Current primitives:
 
 - `Box`
+- `Badge`
 - `Button`
 - `Checkbox`
 - `Input`
 - `Label`
 - `Radio`
+- `ScrollArea`
 - `Select`
+- `Separator`
+- `Surface`
 - `TerminalViewport`
 - `Text`
 - `TextArea`
@@ -65,26 +79,39 @@ Current reusable controls:
 - Represent UI blocks
 - Stay above shared UI layers
 
+### Layouts
+
+- Compose widgets into isolated demo or shell surfaces
+- Must not own backend semantics
+- Must stay thinner than widgets and app orchestration
+
+Current layouts:
+
+- `CommanderDemoLayout`
+
 ## Dependency Direction
 
 The dependency direction is one-way:
 
-`tokens -> primitives -> components -> widgets`
+`tokens -> styles -> primitives -> components -> widgets -> layouts -> app`
 
 Higher layers can depend on lower layers.
 Lower layers must not depend on higher layers.
 
 ## Allowed Imports
 
+- `styles -> tokens`
 - `primitives -> tokens`
 - `components -> primitives`
-- `widgets -> components + primitives`
+- `widgets -> styles + components + primitives`
+- `layouts -> widgets`
 
 ## Public API
 
 - `src/shared/ui/primitives/index.ts`
 - `src/shared/ui/components/index.ts`
 - `src/widgets/index.ts`
+- `src/layouts/index.ts`
 
 ## Current Shell Mapping
 
@@ -95,7 +122,9 @@ its visible shell blocks as raw HTML inside `App.tsx`.
 - `ShellTopbarWidget` renders the top header block.
 - `RightActionRailWidget` renders the full-height right rail.
 - `WidgetBusyOverlayWidget` renders a widget-body busy state overlay with a centered AI marker and a `tsParticles` node-edge field.
+- `CommanderWidget` renders the static Total Commander-style dual-pane demo surface from local JSON-backed mock data only.
 - `TerminalWidget` renders the terminal-specific body composition for terminal panels.
+- `CommanderDemoLayout` mounts `CommanderWidget` into the isolated `tool` panel demo surface.
 - `DialogPopup` provides the stateless shared dialog surface, including the wide settings-dialog variant.
 - `Notify` provides the stateless shared notification surface.
 - `ModalHostWidget` renders body-scoped and widget-scoped modal layers.
@@ -119,9 +148,10 @@ its visible shell blocks as raw HTML inside `App.tsx`.
 
 - Primitives are typed with native HTML prop types.
 - Primitive coverage now includes `Label`, `Select`, `TextArea`, `Radio`, and `Checkbox` in addition to the original `Box`, `Button`, `Input`, and `Text`.
+- Primitive coverage now also includes `Badge`, `ScrollArea`, `Separator`, and `Surface` for dense built-in tool surfaces.
 - Primitives contain native elements only and use CSS variable styles.
 - The new form-control components added in this slice import primitives only.
-- Widgets import components and primitives only.
+- Widgets import shared components/primitives and may consume local style modules without reaching into app orchestration.
 - `input-field.tsx` contains no raw HTML.
 - `demo-widget.tsx` composes `InputField`, `Box`, `Text`, and `Button`.
 - Barrel imports are active in `components` and `widgets`.
@@ -135,6 +165,8 @@ its visible shell blocks as raw HTML inside `App.tsx`.
 - `ExpandableTextArea` keeps inline behavior by default and can expand to the parent bounds or to a selector target without introducing modal semantics.
 - `TerminalStatusHeader` and `TerminalSurface` add the terminal renderer slice in the component layer, with `TerminalSurface` owning the frontend-only xterm mock session.
 - `TerminalToolbar` adds the terminal-local addon controls layer for search, clipboard actions, and renderer status.
+- `CommanderWidget` stays in the widget layer, renders from local JSON-backed mock state only, and does not introduce filesystem behavior, backend calls, or operation dialogs.
+- `CommanderDemoLayout` keeps the demo mount in a layout layer instead of wiring the commander surface directly into app orchestration.
 - `WidgetBusyOverlayWidget` stays in the widget layer and uses `@tsparticles/react` directly for the busy-field rendering instead of pushing imperative particle code into shared components.
 - `TerminalWidget` stays in the widget layer and composes the terminal status header plus the terminal renderer surface for terminal panels.
 - The current shell example routes its visible shell blocks through widgets and primitives instead of raw HTML in `App.tsx`.

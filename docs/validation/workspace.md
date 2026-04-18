@@ -8,6 +8,9 @@
   - the frontend React runtime and types now target the latest stable React line in this repo: `react@19.2.5`, `react-dom@19.2.5`, `@types/react@19.2.14`, and `@types/react-dom@19.2.3`
   - terminal panels now render a frontend-only terminal widget made from `TerminalViewport`, `TerminalStatusHeader`, `TerminalSurface`, and `TerminalWidget`, with xterm mounted locally and no backend session wiring in this slice
   - the renderer-only terminal slice now also mounts the first xterm addon set: `fit`, `search`, `web-links`, `clipboard`, and `webgl` with a safe fallback to the default renderer
+  - the `tool` panel now mounts a static-only Total Commander-style dual-pane demo surface through `CommanderDemoLayout -> CommanderWidget`, rendered entirely from local JSON-backed mock state
+  - the commander demo adds only four generic primitives for dense tool surfaces: `Badge`, `ScrollArea`, `Separator`, and `Surface`
+  - the commander demo surface remains frontend-only: no backend calls, no runtime execution, no filesystem access, and no real copy/move/delete behavior are implemented in this slice
   - widget bodies now expose a local busy-state mechanism that overlays the panel content without changing Dockview group geometry
   - the busy overlay now uses an invisible centered square AI marker container with no glass card behind it, plus a `tsParticles` node-edge field with linked particles moving freely across the widget body and bouncing from the boundaries
   - the busy overlay blocks panel-body interaction while it is active, but the Dockview header remains outside that body overlay
@@ -39,6 +42,7 @@
 
 - `npm --prefix frontend run build`
 - `npm --prefix frontend run lint:active`
+- `npm run dev -- --host 127.0.0.1 --port 4195 --strictPort`
 - `npm --prefix frontend run dev -- --host 127.0.0.1 --port 4194 --strictPort`
 - `curl -sf http://127.0.0.1:4193`
 - `curl -sf http://127.0.0.1:5173`
@@ -53,6 +57,8 @@
 
 - This validation covers only the initial layout skeleton. It does not claim backend wiring, workspace persistence, or TideTerm parity breadth.
 - The new terminal widget slice is renderer-only for now. It does not yet claim live backend session startup, SSE attachment, input routing, interrupt wiring, or persistent terminal state on the new frontend path.
+- The commander demo slice is static-only. It does not claim real filesystem access, keyboard navigation, copy/move/delete execution, preview panes, search panels, backend integration, or file-operation dialogs.
+- A fresh browser-level reachability claim for the commander demo is not recorded here: the local Vite process on `127.0.0.1:4195` started, but `curl` reachability did not complete from this environment.
 - The terminal addon slice was validated by type-check and production build only in this pass. A fresh localhost browser run for the new toolbar/addon behavior is not claimed here.
 - The busy-state mechanism in this slice is widget-local UI state only. It does not yet claim backend-driven runtime busy semantics, command progress ownership, or persisted status.
 - The busy overlay currently covers the widget body only. It intentionally does not claim full-widget lockout for the Dockview header or sash chrome.
@@ -76,6 +82,10 @@
 - Static validation confirmed the frontend dependency upgrade to `react@19.2.5`, `react-dom@19.2.5`, `@types/react@19.2.14`, and `@types/react-dom@19.2.3`, and `npm --prefix frontend run lint:active` plus `npm --prefix frontend run build` both passed on that stack.
 - Static validation confirmed the terminal renderer slice dependencies `@xterm/xterm@6.0.0` and `@xterm/addon-fit@0.11.0`, plus the new UI-layer chain `TerminalViewport -> TerminalStatusHeader/TerminalSurface -> TerminalWidget`.
 - Static validation confirmed the first addon wave on the terminal renderer slice: `@xterm/addon-search@0.16.0`, `@xterm/addon-web-links@0.12.0`, `@xterm/addon-clipboard@0.2.0`, and `@xterm/addon-webgl@0.19.0`, plus the new `TerminalToolbar` control strip above the surface.
+- Static validation confirmed the commander slice primitive additions are generic rather than widget-specific: `Badge`, `ScrollArea`, `Separator`, and `Surface` live under `shared/ui/primitives` and import no app or widget code.
+- Static validation confirmed the commander surface renders from local JSON-backed mock state only via `frontend/src/widgets/commander-widget.mock.json` and `frontend/src/widgets/commander-widget.mock.ts`.
+- Static validation confirmed the commander surface composition chain is `CommanderWidget -> CommanderDemoLayout -> DockviewPanelWidget(tool panel)` and that the `tool` panel no longer carries the unrelated modal/busy demo controls in this slice.
+- Static validation confirmed the commander mock includes two panes with different paths, one active pane, one focused row, one selected row, hidden entries, folders, files, and a symlink row.
 - Static validation confirmed the busy-state wiring: `shared/model/widget-busy.ts` owns the host-id store, `PanelModalActionsWidget` toggles it per host, and `WidgetBusyOverlayWidget` renders the overlay per panel body using `@tsparticles/react` plus `tsparticles`.
 - A fresh live headless smoke on `http://127.0.0.1:4194` confirmed that toggling busy for `terminal-header` did not move Dockview geometry: before and after the toggle the group rect stayed `x=6`, `y=52`, `width=1382`, `height=451`.
 - The same smoke confirmed the busy overlay rendered over the panel body at `x=7`, `y=77`, `width=1380`, `height=425`, with `aria-busy=\"true\"`, an attached `canvas`, and a visible release control.
