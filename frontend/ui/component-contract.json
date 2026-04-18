@@ -21,6 +21,16 @@
       "name": "RTTooltip",
       "layer": "primitive",
       "dir": "ui/primitives/RTTooltip"
+    },
+    {
+      "name": "RTModal",
+      "layer": "component",
+      "dir": "ui/components/RTModal"
+    },
+    {
+      "name": "RTPopover",
+      "layer": "component",
+      "dir": "ui/components/RTPopover"
     }
   ]
 }
