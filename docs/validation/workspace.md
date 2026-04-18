@@ -7,6 +7,7 @@
 - Scope:
   - the app shell now applies `body` padding `6px`, and the root shell respects that outer frame on all four sides
   - top shell header is `40px` tall, lives only in the left main shell column, and currently renders icon-based window controls, the `AI` toggle, and the tab strip
+  - the workspace tab strip in the top shell header now starts with a fixed `2rem` left offset after the action controls
   - a right-side action rail is present as a separate full-height column, is `40px` wide, and its lower action now uses a settings icon
   - the widget area now keeps tighter shell-chrome spacing: `6px` below the top header and `6px` before the right action rail
   - Dockview widget groups now keep tighter internal spacing: `6px` between rows and `6px` between columns
@@ -53,6 +54,7 @@
 - A follow-up live geometry smoke on `http://127.0.0.1:4193` confirmed the shell root is now constrained by `#root` instead of `100vh`: `#root` measured `y=6`, `height=846`, `bottom=852`, while the app root matched it at `y=6`, `height=846`, `bottom=852`.
 - Static validation confirmed `lucide-react@^1.8.0` is installed and wired into the shell widgets: top header actions use `X`, `Minus`, `Maximize2`, and `Sparkles`; the AI-group header action uses `Plus`; and the lower-right rail action uses `Settings2`.
 - Static validation confirmed the current radius scale is halved versus the previous shell pass: `--radius-xs=3px`, `--radius-sm=5px`, `--radius-md=7px`, and `--radius-lg=10px`.
+- Static validation confirmed `ShellTopbarWidget` now applies `marginLeft: 2rem` to the `Workspace tabs` tablist container.
 - Dockview occupied the main viewport beside the full-height right rail with no zero-height panels.
 - Single-tab Dockview headers rendered at `24px` height with visible titles and `void/actions` areas hidden.
 - Single-tab `.dv-tab` width expanded to the full header body (`1424/1440` and `704/720` after padding), and dragging from the empty right side of the top header moved `terminal-header` into the next group.
