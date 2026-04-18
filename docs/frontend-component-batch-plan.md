@@ -1,5 +1,16 @@
 # Frontend Component Layer Migration Batch Plan
 
+## Correction Note (2026-04-18)
+
+The initial component batch assumption was wrong.
+
+- `RTModal` is currently inactive (no active import sites outside its own component/story files).
+- `RTPopover` is the only active component candidate in `ui/components`.
+- Because fewer than 2 active candidates exist, the original component batch should have stopped.
+- This repair slice brings repository state back into alignment by unregistering `RTModal` rather than expanding scope.
+
+The sections below capture the original planning context and are superseded by this correction where they conflict.
+
 ## Scope
 
 Migrate the `ui/components` layer to the strict four-file UI contract convention.
