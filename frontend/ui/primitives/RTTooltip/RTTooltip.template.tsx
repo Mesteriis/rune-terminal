@@ -15,6 +15,8 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { TooltipProps } from "./RTTooltip.logic";
 
+import "./RTTooltip.style.scss";
+
 function TooltipInner({
   children,
   content,
