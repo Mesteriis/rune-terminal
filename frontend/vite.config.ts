@@ -10,6 +10,7 @@ export default defineConfig({
   ],
   resolve: {
     alias: [
+      { find: "@/ui", replacement: fileURLToPath(new URL("./ui", import.meta.url)) },
       { find: "@/app", replacement: fileURLToPath(new URL("./app", import.meta.url)) },
       { find: "@/builder", replacement: fileURLToPath(new URL("./builder", import.meta.url)) },
       { find: "@/element", replacement: fileURLToPath(new URL("./app/element", import.meta.url)) },
