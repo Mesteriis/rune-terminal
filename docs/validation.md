@@ -1,3 +1,90 @@
+# Latest post-byokannouncement widget assessment
+
+**Date:** 2026-04-18  
+**Scope:** Assessment-only decision on whether safe leaf-only `RTAIPanelWidget` work remains after six completed local sub-slices.
+
+## Completed leaf sub-slices considered
+
+- `agent-selection-strip`
+- `run-command-approval`
+- `execution-block-list`
+- `airatelimitstrip`
+- `aifeedbackbuttons`
+- `byokannouncement`
+
+## Remaining files assessed
+
+- Remaining files (excluding the six completed sub-slice families): **20**
+- Assessed set:
+  - `ai-utils.ts`
+  - `aidroppedfiles.tsx`
+  - `aimessage.tsx`
+  - `aimode.tsx`
+  - `aipanel-compat.tsx`
+  - `aipanel-contextmenu.ts`
+  - `aipanel.tsx`
+  - `aipanelheader.tsx`
+  - `aipanelinput.tsx`
+  - `aipanelmessages.tsx`
+  - `aitooluse.tsx`
+  - `aitypes.ts`
+  - `compat-context.ts`
+  - `compat-conversation.ts`
+  - `restorebackupmodal.tsx`
+  - `run-command.test.ts`
+  - `run-command.ts`
+  - `telemetryrequired.tsx`
+  - `waveai-focus-utils.ts`
+  - `waveai-model.tsx`
+
+## Exact decision
+
+- Decision: **one safe leaf still remains**.
+- Selected remaining safe leaf-only candidate: `frontend/ui/widgets/RTAIPanelWidget/telemetryrequired.tsx`.
+- Reason:
+  - Single parent dependency (`aipanel.tsx`) with stable local import path.
+  - Mostly isolated UI surface with one contained telemetry-enable action path.
+  - Lower orchestration coupling than other leaf-like candidates still tied to multi-surface flows or restore/model state paths.
+
+## Future boundary
+
+- Future in-scope boundary (for execution slice): `telemetryrequired.tsx` only.
+- Allowed: minimal local import rewiring inside `frontend/ui/widgets/RTAIPanelWidget` only if needed to preserve current import path.
+- Explicit out of scope:
+  - `aipanel.tsx`
+  - `aipanel-compat.tsx`
+  - `waveai-model.tsx`
+  - `run-command.ts`
+  - `compat-conversation.ts`
+  - `compat-context.ts`
+  - `aipanelmessages.tsx`
+  - `aimessage.tsx`
+  - `aipanelinput.tsx`
+  - `ai-utils.ts`
+  - `aitypes.ts`
+  - all app/layout/runtime/api files
+  - checker and manifest changes
+
+## Commands run and build result
+
+```bash
+find frontend/ui/widgets/RTAIPanelWidget -maxdepth 1 -type f | sort | rg -v 'agent-selection-strip|run-command-approval|execution-block-list|airatelimitstrip|aifeedbackbuttons|byokannouncement'
+rg --no-heading -n "from ['\"](\\./|@/ui/widgets/RTAIPanelWidget)" frontend/ui/widgets/RTAIPanelWidget
+rg --no-heading -n "RTAIPanelWidget/(ai-utils|aidroppedfiles|aimessage|aimode|aipanel-compat|aipanel-contextmenu|aipanel|aipanelheader|aipanelinput|aipanelmessages|aitooluse|aitypes|compat-context|compat-conversation|restorebackupmodal|run-command|telemetryrequired|waveai-focus-utils|waveai-model)" frontend
+npm --prefix frontend run build
+→ pass (phase 1)
+npm --prefix frontend run build
+→ pass (phase 2)
+```
+
+## Assessment-only confirmation
+
+- No widget source migration executed in this slice.
+- No manifest changes.
+- No checker changes.
+
+---
+
 # Latest byokannouncement widget sub-slice migration
 
 **Date:** 2026-04-18  
