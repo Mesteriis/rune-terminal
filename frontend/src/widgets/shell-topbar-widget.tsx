@@ -1,3 +1,5 @@
+import { Maximize2, Minus, Sparkles, X } from 'lucide-react'
+
 import { Box, Button } from '../shared/ui/primitives'
 
 type ShellTopbarWidgetProps = {
@@ -33,27 +35,43 @@ const tabStripStyle = {
   WebkitBackdropFilter: 'none',
 }
 
+const iconButtonStyle = {
+  padding: '0',
+  width: 'var(--size-control-min)',
+  minWidth: 'var(--size-control-min)',
+}
+
+const actionIconProps = {
+  size: 16,
+  strokeWidth: 1.75,
+}
+
 export function ShellTopbarWidget({ isAiOpen, onToggleAi }: ShellTopbarWidgetProps) {
   return (
     <Box style={topbarStyle}>
-      <Button role="tab" aria-selected="false">
-        Close
+      <Button aria-label="Close window" role="tab" aria-selected="false" style={iconButtonStyle}>
+        <X {...actionIconProps} />
       </Button>
-      <Button role="tab" aria-selected="false">
-        Collapse
+      <Button aria-label="Collapse window" role="tab" aria-selected="false" style={iconButtonStyle}>
+        <Minus {...actionIconProps} />
       </Button>
-      <Button role="tab" aria-selected="false">
-        Fullscreen
+      <Button aria-label="Toggle fullscreen" role="tab" aria-selected="false" style={iconButtonStyle}>
+        <Maximize2 {...actionIconProps} />
       </Button>
-      <Button aria-pressed={isAiOpen} onClick={onToggleAi}>
-        AI
+      <Button
+        aria-label="Toggle AI panel"
+        aria-pressed={isAiOpen}
+        onClick={onToggleAi}
+        style={iconButtonStyle}
+      >
+        <Sparkles {...actionIconProps} />
       </Button>
       <Box role="tablist" aria-label="Workspace tabs" style={tabStripStyle}>
         <Button role="tab" aria-selected="true">
-          TAB-1
+          Workspace-1
         </Button>
         <Button role="tab" aria-selected="false">
-          TAB-2
+          Workspace-2
         </Button>
       </Box>
     </Box>
