@@ -33,6 +33,7 @@ Current primitives:
 - `Label`
 - `Radio`
 - `Select`
+- `TerminalViewport`
 - `Text`
 - `TextArea`
 
@@ -54,6 +55,8 @@ Current reusable controls:
 - `ExpandableTextArea` with expansion to the parent bounds or to a selected DOM target
 - `DialogPopup`
 - `Notify`
+- `TerminalStatusHeader`
+- `TerminalSurface`
 
 ### Widgets
 
@@ -91,6 +94,7 @@ its visible shell blocks as raw HTML inside `App.tsx`.
 - `ShellTopbarWidget` renders the top header block.
 - `RightActionRailWidget` renders the full-height right rail.
 - `WidgetBusyOverlayWidget` renders a widget-body busy state overlay with a centered AI marker and a `tsParticles` node-edge field.
+- `TerminalWidget` renders the terminal-specific body composition for terminal panels.
 - `DialogPopup` provides the stateless shared dialog surface, including the wide settings-dialog variant.
 - `Notify` provides the stateless shared notification surface.
 - `ModalHostWidget` renders body-scoped and widget-scoped modal layers.
@@ -122,17 +126,21 @@ its visible shell blocks as raw HTML inside `App.tsx`.
 - Barrel imports are active in `components` and `widgets`.
 - `Button` supports `onClick` through `React.ButtonHTMLAttributes<HTMLButtonElement>`.
 - `Box` now forwards refs, which allows `ExpandableTextArea` to measure and stretch against its parent or a selected host element.
+- `TerminalViewport` keeps the terminal mount point as a typed primitive instead of letting widgets mount xterm into raw HTML.
 - `SearchableMultiSelect` provides a query-filtered multiselect surface on top of primitives only.
 - `Tabs` supports both horizontal and vertical layouts through a single shared component.
 - `RadioControl` and `RadioGroup` cover single and grouped radio selection.
 - `SwitcherControl` and `SwitcherGroup` cover single and grouped boolean toggles.
 - `ExpandableTextArea` keeps inline behavior by default and can expand to the parent bounds or to a selector target without introducing modal semantics.
+- `TerminalStatusHeader` and `TerminalSurface` add the terminal renderer slice in the component layer, with `TerminalSurface` owning the frontend-only xterm mock session.
 - `WidgetBusyOverlayWidget` stays in the widget layer and uses `@tsparticles/react` directly for the busy-field rendering instead of pushing imperative particle code into shared components.
+- `TerminalWidget` stays in the widget layer and composes the terminal status header plus the terminal renderer surface for terminal panels.
 - The current shell example routes its visible shell blocks through widgets and primitives instead of raw HTML in `App.tsx`.
 - `App.tsx` remains responsible for Dockview API orchestration and Effector state wiring.
 - Modal state now lives in a dedicated `shared/model/modal.ts` store instead of being hidden inside widget-local React state.
 - Tokens now cover dark canvas, glass surfaces, accent hues, spacing, radii, shell sizes, blur, and shadow.
 - Shared primitives consume only semantic tokens instead of hardcoded `#111/#fff/#333` values.
 - Shared components now include stateless `Notify` plus a reusable `DialogPopup` surface built primarily from shared primitives.
+- Shared components now also include the terminal renderer slice: a status header plus an xterm-based surface wrapped by `TerminalViewport`.
 - The new form-control components added in this slice compose shared primitives only. The existing `DialogPopup` close glyph remains the current icon exception from the earlier shell slice.
 - Live localhost smoke confirmed tokenized shell values in the DOM: `body/root` background `rgb(6, 17, 15)`, `AI` button backdrop `blur(10px)`, right rail width `40px`, and right rail glass background `rgba(11, 24, 22, 0.72)`.

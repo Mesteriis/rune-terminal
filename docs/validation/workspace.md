@@ -2,10 +2,11 @@
 
 ## Last verified state
 
-- Date: `2026-04-18`
+- Date: `2026-04-19`
 - State: `VERIFIED`
 - Scope:
   - the frontend React runtime and types now target the latest stable React line in this repo: `react@19.2.5`, `react-dom@19.2.5`, `@types/react@19.2.14`, and `@types/react-dom@19.2.3`
+  - terminal panels now render a frontend-only terminal widget made from `TerminalViewport`, `TerminalStatusHeader`, `TerminalSurface`, and `TerminalWidget`, with xterm mounted locally and no backend session wiring in this slice
   - widget bodies now expose a local busy-state mechanism that overlays the panel content without changing Dockview group geometry
   - the busy overlay now uses an invisible centered square AI marker container with no glass card behind it, plus a `tsParticles` node-edge field with linked particles moving freely across the widget body and bouncing from the boundaries
   - the busy overlay blocks panel-body interaction while it is active, but the Dockview header remains outside that body overlay
@@ -50,10 +51,12 @@
 ## Known limitations
 
 - This validation covers only the initial layout skeleton. It does not claim backend wiring, workspace persistence, or TideTerm parity breadth.
+- The new terminal widget slice is renderer-only for now. It does not yet claim live backend session startup, SSE attachment, input routing, interrupt wiring, or persistent terminal state on the new frontend path.
 - The busy-state mechanism in this slice is widget-local UI state only. It does not yet claim backend-driven runtime busy semantics, command progress ownership, or persisted status.
 - The busy overlay currently covers the widget body only. It intentionally does not claim full-widget lockout for the Dockview header or sash chrome.
 - The particle field is now driven by `tsParticles`, but this entry still does not claim physics-grade simulation, custom shaders, or a frame-by-frame quantitative motion audit.
 - The current node-edge motion pass was validated by type-check, production build, and localhost reachability. A fresh browser-level motion audit against the `tsParticles` graph field is not claimed here because the headless smoke against the active Vite session did not complete cleanly in this environment.
+- The xterm-based terminal renderer slice was validated by type-check, production build, and localhost reachability only. The attempted fresh headless browser smoke against the active Vite session did not complete cleanly in this environment, so this entry does not claim browser-verified terminal DOM/render behavior for the new slice.
 - The AI surface is now a special Dockview group, but it still does not provide chat behavior or persistence semantics.
 - The token system currently covers shared UI layers and shell scaffolding. It does not yet claim a full Dockview vendor-theme rewrite beyond the existing shell overrides.
 - The modal foundation currently covers open/close behavior, host targeting, and group-level overlays. It does not yet claim focus trapping, keyboard escape handling, or persisted modal state.
@@ -69,6 +72,7 @@
 
 - Initial panel set rendered as `terminal-header`, `terminal`, and `tool`.
 - Static validation confirmed the frontend dependency upgrade to `react@19.2.5`, `react-dom@19.2.5`, `@types/react@19.2.14`, and `@types/react-dom@19.2.3`, and `npm --prefix frontend run lint:active` plus `npm --prefix frontend run build` both passed on that stack.
+- Static validation confirmed the terminal renderer slice dependencies `@xterm/xterm@6.0.0` and `@xterm/addon-fit@0.11.0`, plus the new UI-layer chain `TerminalViewport -> TerminalStatusHeader/TerminalSurface -> TerminalWidget`.
 - Static validation confirmed the busy-state wiring: `shared/model/widget-busy.ts` owns the host-id store, `PanelModalActionsWidget` toggles it per host, and `WidgetBusyOverlayWidget` renders the overlay per panel body using `@tsparticles/react` plus `tsparticles`.
 - A fresh live headless smoke on `http://127.0.0.1:4194` confirmed that toggling busy for `terminal-header` did not move Dockview geometry: before and after the toggle the group rect stayed `x=6`, `y=52`, `width=1382`, `height=451`.
 - The same smoke confirmed the busy overlay rendered over the panel body at `x=7`, `y=77`, `width=1380`, `height=425`, with `aria-busy=\"true\"`, an attached `canvas`, and a visible release control.
