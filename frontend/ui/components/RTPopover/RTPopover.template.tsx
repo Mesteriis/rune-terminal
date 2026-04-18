@@ -5,14 +5,11 @@ import { Button } from "@/ui/primitives/RTButton";
 import {
     autoUpdate,
     FloatingPortal,
-    Middleware,
     offset as offsetMiddleware,
     useClick,
     useDismiss,
     useFloating,
     useInteractions,
-    type OffsetOptions,
-    type Placement,
 } from "@floating-ui/react";
 import clsx from "clsx";
 import {
@@ -23,20 +20,11 @@ import {
     JSXElementConstructor,
     memo,
     ReactElement,
-    ReactNode,
     useState,
 } from "react";
 
-import "./RTPopover.scss";
-
-interface PopoverProps {
-    children: ReactNode;
-    className?: string;
-    placement?: Placement;
-    offset?: OffsetOptions;
-    onDismiss?: () => void;
-    middleware?: Middleware[];
-}
+import "./RTPopover.style.scss";
+import type { PopoverButtonProps, PopoverContentProps, PopoverProps } from "./RTPopover.logic";
 
 const isPopoverButton = (
     element: ReactElement
@@ -88,7 +76,6 @@ const Popover = memo(
                             isActive: isOpen,
                             ref: refs.setReference,
                             getReferenceProps,
-                            // Do not overwrite onClick
                         });
                     }
 
@@ -116,38 +103,30 @@ const Popover = memo(
 
 Popover.displayName = "Popover";
 
-interface PopoverButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-    isActive?: boolean;
-    children: React.ReactNode;
-    getReferenceProps?: () => any;
-    as?: keyof React.JSX.IntrinsicElements | React.ComponentType<any>;
-}
-
 const PopoverButton = forwardRef<HTMLButtonElement | HTMLDivElement, PopoverButtonProps>(
     (
         {
             isActive,
             children,
-            onClick: userOnClick, // Destructured from props
+            onClick: userOnClick,
             getReferenceProps,
             className,
             as: Component = "button",
-            ...props // The rest of the props, without onClick
+            ...props
         },
         ref
     ) => {
         const referenceProps = getReferenceProps?.() || {};
         const popoverOnClick = referenceProps.onClick;
 
-        // Remove onClick from referenceProps to prevent it from overwriting our combinedOnClick
         const { onClick: refOnClick, ...restReferenceProps } = referenceProps;
 
         const combinedOnClick = (event: React.MouseEvent) => {
             if (userOnClick) {
-                userOnClick(event as any); // Our custom onClick logic
+                userOnClick(event as any);
             }
             if (popoverOnClick) {
-                popoverOnClick(event); // Popover's onClick logic
+                popoverOnClick(event);
             }
         };
 
@@ -155,20 +134,15 @@ const PopoverButton = forwardRef<HTMLButtonElement | HTMLDivElement, PopoverButt
             <Button
                 ref={ref}
                 className={clsx("popover-button", className, { "is-active": isActive })}
-                {...props} // Spread the rest of the props
-                {...restReferenceProps} // Spread referenceProps without onClick
-                onClick={combinedOnClick} // Assign combined onClick after spreading
+                {...props}
+                {...restReferenceProps}
+                onClick={combinedOnClick}
             >
                 {children}
             </Button>
         );
     }
 );
-
-interface PopoverContentProps extends React.HTMLAttributes<HTMLDivElement> {
-    children: React.ReactNode;
-    getFloatingProps?: () => any;
-}
 
 const PopoverContent = forwardRef<HTMLDivElement, PopoverContentProps>(
     ({ children, className, getFloatingProps, style, ...props }, ref) => {
@@ -188,9 +162,7 @@ const PopoverContent = forwardRef<HTMLDivElement, PopoverContentProps>(
     }
 );
 
-Popover.displayName = "Popover";
 PopoverButton.displayName = "PopoverButton";
 PopoverContent.displayName = "PopoverContent";
 
 export { Popover, PopoverButton, PopoverContent };
-export type { PopoverButtonProps, PopoverContentProps };
