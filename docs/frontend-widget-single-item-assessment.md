@@ -49,6 +49,39 @@ rg --no-heading -n "RTAIPanelWidget/(ai-utils|aidroppedfiles|aimessage|aimode|ai
 | `waveai-focus-utils.ts` | conversation/model/state logic | used by `aipanel.tsx`, `aipanel-compat.tsx`, `aipanel-contextmenu.ts`, `aipanelinput.tsx`, `app/store/focusManager.ts` | No | Shared focus utility crossing widget/app boundary. |
 | `waveai-model.tsx` | conversation/model/state logic | depended by many local + app/layout files | No | Highest-coupling state singleton/runtime bridge. |
 
+### One Safe Leaf Still Remains
+
+- Remaining safe leaf-only candidate: `frontend/ui/widgets/RTAIPanelWidget/byokannouncement.tsx`
+- Why this is safer than other remaining files:
+  - Single local dependent (`aipanel.tsx`) with a stable local import path (`./byokannouncement`).
+  - No local subcomponent orchestration and no compat bridge responsibilities.
+  - Narrow behavior surface (announcement UI + two click handlers), smaller than `aidroppedfiles.tsx`, `telemetryrequired.tsx`, or `restorebackupmodal.tsx`.
+- Why the other leaf-like files are deferred:
+  - `aidroppedfiles.tsx`: directly mutates attachment state and is shared by both `aipanel.tsx` and `aipanel-compat.tsx`.
+  - `telemetryrequired.tsx`: directly performs telemetry-enable RPC flow and error-state transitions.
+  - `restorebackupmodal.tsx`: tied to tool-use restore state machine and modal lifecycle.
+- Exact future slice boundary:
+  - In scope: `frontend/ui/widgets/RTAIPanelWidget/byokannouncement.tsx` only.
+  - Allowed: minimal local import rewiring inside `frontend/ui/widgets/RTAIPanelWidget` only, if required to preserve path.
+  - Out of scope:
+    - `aipanel.tsx`
+    - `aipanel-compat.tsx`
+    - `waveai-model.tsx`
+    - `run-command.ts`
+    - `compat-conversation.ts`
+    - `compat-context.ts`
+    - `aipanelmessages.tsx`
+    - `aimessage.tsx`
+    - `aipanelinput.tsx`
+    - `ai-utils.ts`
+    - `aitypes.ts`
+    - all app/layout/runtime/api files
+    - checker and manifest changes
+- Future execution stop conditions:
+  - Stop if preserving `./byokannouncement` import path requires broader orchestration edits.
+  - Stop if split requires changes to `waveai-model.tsx`, `aipanel.tsx`, or app-layer RPC files.
+  - Stop if checker or manifest updates become necessary.
+
 ## Latest Execution Boundary Check: `aifeedbackbuttons`
 
 - Current parent import path in use:
