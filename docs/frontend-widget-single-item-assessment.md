@@ -74,6 +74,14 @@ rg --no-heading -n "@/ui/widgets/RTAIPanelWidget" frontend/app frontend/ui front
 | `waveai-focus-utils.ts` | state/model/conversation logic | imports: none; dependents include `aipanel.tsx`, `aipanel-compat.tsx`, `aipanel-contextmenu.ts`, `aipanelinput.tsx`, plus `app/store/focusManager.ts` | Medium-high | No |
 | `waveai-model.tsx` | state/model/conversation logic | imports: `ai-utils.ts`, `aipanelinput.tsx`, `compat-context.ts`; dependents: many local files plus app/layout consumers | High | No |
 
+### No Valid Leaf Batch Yet
+
+- Result: there is no safe 2-3 file batch in the remaining `RTAIPanelWidget` files.
+- Reason: only one file currently meets the low-risk leaf profile for same-slice batching (`airatelimitstrip.tsx`).
+- Reason: other leaf-like files are medium-risk and include model/runtime side effects (`aidroppedfiles.tsx`, `aifeedbackbuttons.tsx`, `telemetryrequired.tsx`, `byokannouncement.tsx`) or are orchestration/compat/state cores.
+- Decision: single-file mode must continue for the next widget local-contract execution slice.
+- Next safest single-file candidate: `frontend/ui/widgets/RTAIPanelWidget/airatelimitstrip.tsx`.
+
 ## Next remaining leaf candidate assessment after run-command-approval
 
 ### Scope filter for remaining candidate set
