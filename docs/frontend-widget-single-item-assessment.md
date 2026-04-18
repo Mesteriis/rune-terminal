@@ -3,6 +3,15 @@
 **Date:** 2026-04-18  
 **Scope:** Compare `RTAIPanelWidget` vs `RTTerminalWidget` to identify the safer first single-item widget contract-migration target.
 
+## Latest Execution Boundary Check: `aifeedbackbuttons`
+
+- Current parent import path in use:
+  - `frontend/ui/widgets/RTAIPanelWidget/aimessage.tsx` imports `AIFeedbackButtons` from `./aifeedbackbuttons`.
+- Current export/import path to preserve: `./aifeedbackbuttons` (relative local path used by parent remains unchanged).
+- Direct imports outside `RTAIPanelWidget`: none found in `frontend/app`, `frontend/ui`, or `frontend/wave.ts`.
+- Dedicated SCSS state: no dedicated `aifeedbackbuttons` SCSS file exists today; this execution slice must introduce `aifeedbackbuttons.style.scss`.
+- Boundary confirmation: this execution slice stays inside the approved leaf boundary (`aifeedbackbuttons` local files plus minimal local import rewiring only inside `RTAIPanelWidget`).
+
 ## Post-airatelimitstrip remaining RTAIPanelWidget assessment
 
 ### Scope filter for this reassessment
