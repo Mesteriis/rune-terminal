@@ -8,6 +8,7 @@ bin/
 coverage/
 tmp/
 state/
+*.tsbuildinfo
 
 tideterm/
 .playwright-mcp

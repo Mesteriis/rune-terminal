@@ -2,34 +2,33 @@
 
 ## Last verified state
 
-- Date: `2026-04-17`
+- Date: `2026-04-18`
 - State: `VERIFIED`
 - Scope:
-  - split/focus/restore window behavior
-  - outer-zone drop + center swap semantics
-  - layout composition save/switch/restore
-  - last-tab closure empty-state and explicit reopen flow
-  - workspace navigation regression script
+  - `40px` top bar above the workspace
+  - Dockview fills the remaining viewport and boots three panels from `onReady`
+  - AI sidebar opens as an absolute overlay and does not resize Dockview
+  - Dockview drag and sash resize work on the live Vite app
 
 ## Commands/tests used
 
-- `./scripts/go.sh test ./core/workspace ./core/app ./core/transport/httpapi -count=1`
+- `npm run validate`
 - `npm --prefix frontend run build`
 - `npm --prefix frontend run lint:active`
-- `npm run test:ui -- e2e/window-behavior.spec.ts`
-- `npm run test:ui`
-- `npx playwright test -c e2e/playwright.config.ts e2e/last-tab-closure.spec.ts --headed`
-- `npx playwright test -c e2e/playwright.config.ts e2e/window-behavior.spec.ts --headed`
-- `python3 scripts/validate_workspace_navigation.py`
+- `npm --prefix frontend run dev -- --host 127.0.0.1 --port 5173 --strictPort`
+- `curl -sf http://127.0.0.1:5173`
+- `node --input-type=module -e "<headless Playwright localhost validation for panel presence, overlay bounds, sash resize, and tab drag>"`
 
 ## Known limitations
 
-- Validation is strong for active split/layout behavior but does not claim full IDE-style workspace breadth.
-- Remote checks within workspace runs are typically shape/regression checks, not full SSH launch sweeps.
+- This validation covers only the initial layout skeleton. It does not claim backend wiring, workspace persistence, or TideTerm parity breadth.
+- The AI surface is intentionally a plain overlay div. It does not yet provide chat behavior or Dockview-integrated panels.
+- Browser validation was run headlessly against the Vite dev server, not through full `npm run tauri:dev`.
 
 ## Evidence
 
-- [Last-tab closure validation](../tab-closure-validation.md)
-- [Window behavior validation](../workspace/window-behavior-validation.md)
-- [Workspace model](../workspace/workspace-model.md)
-- [Legacy validation log entries](./history/validation-log-legacy-2026-04-17.md#window-behavior-parity)
+- Initial panel set rendered as `terminal-header`, `terminal`, and `tool`.
+- Dockview occupied the full viewport below the `40px` top bar with no zero-height panels.
+- Opening `AI SIDEBAR` produced an absolute element at `x=1140`, `y=40`, `width=300`, `height=920`, `z-index=20`, while all Dockview panel rects stayed unchanged.
+- Dragging the vertical sash changed the bottom panel widths from `720/720` to `598/842`.
+- Dragging the `tool` tab into the top group merged the layout into two groups: `terminal-header + tool` on top and `terminal` below.
