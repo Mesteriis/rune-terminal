@@ -3,11 +3,11 @@
 Status: historical snapshot. Do not treat this file as current UI-system closure. Current screenshot-backed truth lives in [ui-system-parity-gap-map.md](./ui-system-parity-gap-map.md) and [ui-system-parity-validation.md](./ui-system-parity-validation.md), which still record remaining visible mismatch in terminal badge weight, overlay heaviness, and whole-window composition vs Tide.
 
 Date: `2026-04-17`
-Phase: `1.0.0-rc1` hardening
+Phase: stability hardening
 
 This document maps the active compat UI against the Tide reference extracted in [ui-parity-reference.md](./ui-parity-reference.md).
 
-The gaps below are limited to remaining release-relevant UI parity issues. They do not reopen broader non-goal domains such as multi-session terminal UX breadth, streaming AI response UX, or attachment-manager feature breadth.
+The gaps below are limited to the remaining stability-relevant UI parity issues. They do not reopen broader deferred domains such as multi-session terminal UX breadth, streaming AI response UX, or attachment-manager feature breadth.
 
 ## Current UI baseline
 
@@ -48,7 +48,7 @@ Affected parity dimensions:
 - spacing
 - shell feel
 
-Release-blocking:
+Stability-critical:
 
 - yes
 
@@ -79,7 +79,7 @@ Affected parity dimensions:
 - bounds/anchoring
 - shell feel
 
-Release-blocking:
+Stability-critical:
 
 - yes
 
@@ -108,7 +108,7 @@ Affected parity dimensions:
 - spacing
 - shell feel
 
-Release-blocking:
+Stability-critical:
 
 - yes
 
@@ -136,7 +136,7 @@ Affected parity dimensions:
 - spacing
 - hierarchy
 
-Release-blocking:
+Stability-critical:
 
 - yes
 
@@ -163,7 +163,7 @@ Affected parity dimensions:
 - spacing
 - shell feel
 
-Release-blocking:
+Stability-critical:
 
 - yes
 
@@ -192,7 +192,7 @@ Affected parity dimensions:
 - hierarchy
 - shell feel
 
-Release-blocking:
+Stability-critical:
 
 - yes
 
@@ -215,5 +215,5 @@ Release-blocking:
 - Slice 6 validated the result in the visible Tauri desktop app plus headed browser runs captured in [ui-parity-validation.md](./ui-parity-validation.md).
 - Slice 7 added focused UI coverage in [e2e/ui-parity.spec.ts](../e2e/ui-parity.spec.ts) and updated the broader navigation fill assertions to the final compact-frame contract.
 - Final state:
-  - all release-blocking UI parity gaps listed above are closed on the active compat shell
+  - all stability-critical UI parity gaps listed above are closed on the active compat shell
   - no remaining UI-domain release mismatch was observed in the final desktop capture, headed 17-test sweep, or `npm run validate`

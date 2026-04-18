@@ -1,6 +1,6 @@
 # Parity-Critical Frontend Components
 
-**Identifies components whose visual/behavioral parity with TideTerm is release-blocking.**
+**Identifies components whose visual/behavioral parity with TideTerm is stability-critical.**
 
 Last updated: 2026-04-18
 
@@ -398,7 +398,7 @@ Cross-reference:
 
 ## SUMMARY TABLE
 
-| Component | File | Parity Status | Gap Severity | Release Blocker |
+| Component | File | Parity Status | Gap Severity | Stability Critical |
 |-----------|------|-------------|-------|---------|
 | TabBar + Tab | tab/tabbar.tsx | PARTIAL | Low | No |
 | App Shell | app/app.tsx | MATCHES | — | No |
@@ -437,7 +437,7 @@ Cross-reference:
 - Connection pill in header
 - Actions (restart, explain) in header, not body overlays
 
-**Why release-blocking:**
+**Why stability-critical:**
 - Largest remaining structural mismatch in active UI
 - Shell reads as "custom compat panes" instead of "consistently Tide-like"
 - Affects parity dimensions: structure, density, spacing, shell feel

@@ -1,7 +1,7 @@
 # Panels Parity Reference
 
 Date: `2026-04-17`
-Phase: `1.0.0-rc1` hardening
+Phase: stability hardening
 
 This document uses the Tide sources in the repository root as the primary reference for panel-domain parity work. Where the active RunaTerminal shell needs a closest-compatible adaptation instead of a literal Tide import, that adaptation is called out explicitly.
 
@@ -159,13 +159,13 @@ Settings / utility surfaces:
   - `Secret shield`
   - `Help`
 - The `Trusted tools` and `Secret shield` views are a RunaTerminal compatibility adaptation, not direct Tide screens:
-  - they are required by the active parity matrix and current release docs
+  - they are required by the active parity matrix and current workflow docs
   - they must use real backend policy/help data, not placeholders
 
 ## Explicitly out of scope
 
 - Importing the whole Tide `waveconfig` product area into the compat shell
-- Broad settings breadth beyond the release-tracked utility surfaces
+- Broad settings breadth beyond the currently tracked utility surfaces
 - Builder-specific AI panel behavior
 - Reworking the execution model, tool approval model, MCP model, or remote model
 - General Tide `tips` parity

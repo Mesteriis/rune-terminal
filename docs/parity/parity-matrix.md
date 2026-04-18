@@ -1,9 +1,9 @@
 # Parity Matrix
 
 Date: `2026-04-18`
-Phase: `1.0.0-rc1` hardening
+Phase: stability hardening
 
-This is the canonical parity source of truth for release tracking.
+This is the canonical parity source of truth for stability and feature tracking.
 
 Status values:
 - `FULL`
@@ -20,7 +20,7 @@ Status values:
 | Jump-to-latest control | terminal | TideTerm source shows keyboard jump-to-latest/follow recovery (`Shift+End`, `Shift+Home`, paging keys) | Active compat terminal matches the inspected keyboard follow behavior | FULL | Direct Tide source inspection did not show a separate visible button; headed UI validation covered follow recovery |
 | Drag/drop path insertion | terminal | Native local drops and matching file-block drags paste paths into terminal input without auto-run | Active compat terminal accepts native local file drops and matching `FILE_ITEM` drags | FULL | Headed validation covered native local file drop plus files-panel drag into the terminal |
 | Open current directory in new block | terminal | Terminal context menu opens current directory into a new block with path/connection context | Active compat terminal context menu opens the current directory into a backend-owned files block | FULL | Headed validation covered the local current-directory flow; remote blocks preserve path/connection but compat files view remains read-only metadata |
-| Multi-session terminal block | terminal | Multiple sessions inside one terminal block | Active compat path remains single-session-per-widget | MISSING | Out of current release scope |
+| Multi-session terminal block | terminal | Multiple sessions inside one terminal block | Active compat path remains single-session-per-widget | MISSING | Not yet targeted on the active compat path |
 | Tab lifecycle controls | workspace/layout | Compact tab controls: create/close/rename/pin/reorder | Tab lifecycle actions exist and are backend-backed | FULL | Includes pin/unpin, rename, reorder inside group |
 | Split layout add/move/swap | workspace/layout | Window splits, explicit drop zones, center swap | Add-split, directional move, outer zones, center swap implemented | FULL | Window parity validations are present |
 | Layout presets | workspace/layout | Save/switch layout presets without session identity drift | Layout save/switch exists with backend snapshot fields | FULL | Mode/surface/focus composition is persisted |
@@ -43,8 +43,8 @@ Status values:
 | Connection catalog model | remote | Explicit local + SSH connection inventory | Local + saved SSH profiles + active default target exist | FULL | Backend-owned catalog model is active |
 | SSH profile workflow | remote | Save/check/select/open-shell profile actions | Profile save/list/select/check/open-shell actions exist | PARTIAL | Daily-driver narrow path validated; breadth limited |
 | Connection lifecycle signals | remote | Distinct profile/preflight/launch usability semantics | `check_status`, `launch_status`, `usability` are surfaced | FULL | Explicitly split to avoid fake connected state |
-| `.ssh/config` import | remote | Import host profiles from local SSH config | Not implemented | MISSING | Explicit non-goal in release scope |
-| Advanced SSH auth/topology | remote | ProxyJump/richer auth/keychain workflows | Not implemented | MISSING | Post-`1.0.0` target |
+| `.ssh/config` import | remote | Import host profiles from local SSH config | Not implemented | MISSING | Not implemented yet |
+| Advanced SSH auth/topology | remote | ProxyJump/richer auth/keychain workflows | Not implemented | MISSING | Future work after core stability gaps |
 | MCP server lifecycle controls | MCP | Register/list/start/stop/restart/enable/disable MCP servers | Lifecycle control surface exists for registered servers | PARTIAL | External onboarding still narrow |
 | MCP explicit invocation | MCP | Explicit invoke call per server/tool | Invoke API and UI controls exist | FULL | No implicit invocation path |
 | MCP output normalization | MCP | Bounded normalized MCP payload for downstream usage | `mcp.normalized.v1` bounded output path is active | FULL | Truncation and bounds behavior documented |
@@ -53,11 +53,11 @@ Status values:
 | Plugin process boundary | plugins | Separate runtime process with explicit handshake contract | Side-process protocol with manifest checks is in place | FULL | Frontend remains decoupled from plugin process |
 | Plugin failure taxonomy | plugins | Explicit classification of runtime/plugin failures | Failure codes are normalized and surfaced | FULL | Includes launch/handshake/timeout/crash/malformed cases |
 | Plugin policy/audit invariants | plugins | Plugin execution still gated by core policy and audit | Approval and audit remain core-owned | FULL | Boundary verification documents this |
-| Plugin ecosystem/discovery | plugins | Install/discover/manage broader plugin ecosystem | Not implemented | MISSING | Explicit non-goal for `1.0.0-rc1` |
+| Plugin ecosystem/discovery | plugins | Install/discover/manage broader plugin ecosystem | Not implemented | MISSING | Not implemented yet |
 | Quick actions metadata workflow | workflow | Explicit action catalog with context requirements | Quick actions API/UI metadata and gating are present | FULL | Headed browser validation exists |
 | Operator cross-surface chain | workflow | Files -> AI/`/run`, tools, audit, explain chain | Chain is implemented with explicit handoffs | FULL | Operator workflow validation exists |
 | Release validation gates | workflow | Executable release gates with truthful pass/fail state | `npm run validate` + `npm run tauri:dev` smoke are documented gates | FULL | Full-lint debt is tracked separately |
 | Shell chrome parity | UX | Compact TideTerm-recognizable top shell density and hierarchy | Compact Tide-aligned shell chrome with validated AI/switcher/tab framing plus Tide-like compat pane headers, drag/status chrome, and compact surface rhythm | PARTIAL | Desktop + headed validation confirm the corrected compact chrome, but remaining visual mismatch persists in status-badge weight and whole-window composition vs the Tide screenshot family |
-| Terminal advanced affordances | UX | Multi-session sidebar + deep find/search UI | Not present on active compat path | MISSING | Explicitly out of current release scope |
-| Attachment management UX breadth | UX | Managed attachment storage/import/gallery-style UX | Basic local references exist, broad UX not present | PARTIAL | Expanded attachment UX remains post-1.0 |
-| Streaming AI responses | UX | Streamed assistant responses in panel | Not implemented in current release path | MISSING | Listed in known limitations |
+| Terminal advanced affordances | UX | Multi-session sidebar + deep find/search UI | Not present on active compat path | MISSING | Not yet targeted on the active compat path |
+| Attachment management UX breadth | UX | Managed attachment storage/import/gallery-style UX | Basic local references exist, broad UX not present | PARTIAL | Expanded attachment UX remains future work |
+| Streaming AI responses | UX | Streamed assistant responses in panel | Not implemented on the active path | MISSING | Listed in known limitations |

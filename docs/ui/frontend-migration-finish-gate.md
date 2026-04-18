@@ -37,4 +37,4 @@ This migration cycle is considered closed after Slice 6. Further cleanup, featur
 
 1. Targeted cleanup only for legacy workspace switcher/editor seams that still call old services.
 2. Broader runtime adoption for any remaining migrated-adjacent UI surfaces (outside active tab/path flows).
-3. Focused feature work aligned to release scope only after explicitly opening a new slice.
+3. Focused feature work only after explicitly opening a new slice.

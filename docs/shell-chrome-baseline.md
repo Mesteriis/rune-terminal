@@ -4,7 +4,7 @@ Date: `2026-04-17`
 
 This baseline records the specific shell-chrome issues corrected in the shell parity batch.
 
-Status: all release-blocking shell-chrome issues listed here are fixed and validated in [shell-chrome-validation.md](./shell-chrome-validation.md).
+Status: all stability-critical shell-chrome issues listed here are fixed and validated in [shell-chrome-validation.md](./shell-chrome-validation.md).
 
 ## Issues fixed in this batch
 

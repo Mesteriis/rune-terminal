@@ -1,10 +1,10 @@
 # UI System Parity Gap Map
 
 Date: `2026-04-18`
-Phase: `1.0.0-rc1` hardening
+Phase: stability hardening
 Status: `baseline plus post-fix closure check`
 
-This document records the release-blocking UI-system gaps using:
+This document records the stability-critical UI-system gaps using:
 
 - repo-root Tide source files
 - current RunaTerminal source files
@@ -31,7 +31,7 @@ Still visibly mismatched after final desktop + headed validation:
 
 Current truth:
 
-- improved enough to remove the original release-blocking implementation gaps
+- improved enough to remove the original stability-critical implementation gaps
 - not visually identical enough to claim `FULL` UI-system closure against the screenshot reference
 - use [docs/ui-system-parity-validation.md](./ui-system-parity-validation.md) as the current screenshot-backed validation source of truth
 
@@ -191,7 +191,7 @@ Reference:
 - Tide `waveconfig` and `helpview` are structured surfaces with clearer navigation/content hierarchy
 
 Required correction:
-- keep the current release-scope content, but restyle/restructure it as a compact floating settings surface
+- keep the current active-path content, but restyle/restructure it as a compact floating settings surface
 - reduce dashboard-card feel
 - make trusted/secret/help feel like real adjacent views inside one utility overlay
 

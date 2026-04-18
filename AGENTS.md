@@ -17,24 +17,25 @@ Primary source of truth in this repository:
 - all `docs/adr/*`
 - explicit user instructions in the current session
 
-If a generic skill conflicts with repository-local docs or the current release plan,
+If a generic skill conflicts with repository-local docs or the current roadmap,
 follow the repository-local docs and treat the skill as secondary workflow guidance.
 
 ## Current project phase
-RunaTerminal is in a **`1.0.0-rc1` release hardening phase**.
+RunaTerminal is in active development with a focus on stability and core functionality.
 This is not an open-ended architecture experiment.
 This is not a broad speculative redesign effort.
 
 Current framing:
 - `v1.0.0` means: TideTerm-compatible daily-driver release on the new architecture
-- work must be judged against release value, not architectural elegance alone
-- parity work must be controlled and release-oriented
+- work must be judged against product value and architectural clarity, not speculative features
+- scope must remain focused on core platform stability
+- parity work must be controlled and intentional
 
-## Release-first rule
+## Stability-first rule
 Before starting new work, check:
-- is this a `P0 release-blocker` in `docs/parity-matrix.md` or `docs/release-checklist-1.0.md`?
-- is this on the current step ladder in `docs/roadmap.md`?
-- does this help reach 1.0.0 directly?
+- is this critical for platform stability in `docs/parity-matrix.md` or `docs/roadmap.md`?
+- is this a core architectural or runtime issue?
+- does this improve stability or reduce technical debt directly?
 
 If the answer is no, do not expand scope unless the user explicitly asks for it.
 
@@ -50,7 +51,7 @@ Prefer a readable ladder of commits.
 
 ## Scope discipline
 Do not drift into broad unrelated areas.
-Unless explicitly requested or promoted in the release plan, avoid spending time on:
+Unless explicitly requested or promoted in the roadmap, avoid spending time on:
 - builder parity
 - proxy parity
 - preview zoo
@@ -104,7 +105,7 @@ Do not reintroduce TideTerm-style giant handler buckets or hidden cross-layer co
 Do not claim behavior unless it was really validated.
 Build-only is not enough for UX-heavy slices.
 If you changed shell/UI materially, prefer fresh launch validation.
-For release-facing claims, run the documented release sweep (`npm run validate`) plus a real shell launch smoke (`npm run tauri:dev`).
+For platform-stability claims, run the documented validation sweep (`npm run validate`) plus a real shell launch smoke (`npm run tauri:dev`).
 Use the npm Tauri entrypoint for this repo; do not switch to `cargo tauri dev` as the primary launch path.
 If you could not validate something, say so explicitly in `docs/validation.md`.
 
@@ -116,12 +117,12 @@ Use a skill when:
 - it materially improves correctness/workflow for the current task.
 
 Do not invoke a skill just because a task is vaguely related.
-Do not let a generic skill override repository-local release documents.
+Do not let a generic skill override repository-local project documents.
 
 ## Operational behavior for this repo
 For every new task:
-1. identify whether it is release-blocking
-2. identify the exact parity or release slice
+1. identify whether it is critical for platform stability
+2. identify the exact parity or feature slice
 3. state what is in scope and out of scope
 4. implement narrowly
 5. validate honestly

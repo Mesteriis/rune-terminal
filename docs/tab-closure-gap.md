@@ -1,7 +1,7 @@
 # Last-Tab Closure Gap
 
 Date: `2026-04-17`
-Phase: `1.0.0-rc1` hardening
+Phase: stability hardening
 
 This document maps the current repo behavior against the repo-root Tide last-tab closure reference in [tab-closure-reference.md](./tab-closure-reference.md).
 
@@ -67,6 +67,6 @@ Current repo behavior:
 - persisted zero-tab snapshots are normalized back to `BootstrapDefault()`
 - frontend static active-tab state would remain stale if an empty snapshot were ever delivered
 
-## Release-blocking gap summary
+## Stability-critical gap summary
 
-This is a release-blocking parity gap because the active shell already contains the Tide-style `No Active Tab` rendering path, but the backend and persistence layers prevent the product from reaching it truthfully.
+This is a stability-critical parity gap because the active shell already contains the Tide-style `No Active Tab` rendering path, but the backend and persistence layers prevent the product from reaching it truthfully.

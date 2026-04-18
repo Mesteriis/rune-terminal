@@ -1,7 +1,7 @@
 # Window Behavior Gap Map (Current vs Reference)
 
 Date: `2026-04-17`  
-Phase: `1.0.0-rc1` hardening
+Phase: stability hardening
 
 ## Current behavior (this repo now)
 
@@ -36,7 +36,7 @@ Phase: `1.0.0-rc1` hardening
 5. Restore gap:
 - Missing persisted/rehydrated window tree and focused window identity.
 
-## Release-blocking parity gaps
+## Stability-critical parity gaps
 
 All five gaps above block release parity for window behavior.
 

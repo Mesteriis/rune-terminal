@@ -1,7 +1,7 @@
 # UI System Parity Validation
 
 Date: `2026-04-18`
-Phase: `1.0.0-rc1` hardening
+Phase: stability hardening
 Status: `validated with remaining visible mismatch`
 
 This validation used all three reference inputs for the UI-system batch:

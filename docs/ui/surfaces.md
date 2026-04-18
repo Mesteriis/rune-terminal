@@ -1,7 +1,7 @@
 # UI Surfaces
 
 Date: `2026-04-17`
-Phase: `1.0.0-rc1` hardening
+Phase: stability hardening
 
 ## What this document is
 

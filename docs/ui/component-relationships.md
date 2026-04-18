@@ -411,7 +411,7 @@ Interaction between layers should be tested.
 ⚠️ **Proxy system complexity**: Many sub-components
 - ProxyDock, Proxy, ChannelCard, ChannelForm, HistoryList, MetricsChart, StatusBadge
 - Well-organized but could be extracted to proxy/index.ts module
-- Not critical for current release
+- Not critical for the current stability focus
 
 ### Dependencies
 - AppInner → ProxyDock (overlay)
@@ -771,5 +771,4 @@ If scope expands beyond 1.0:
 | Layout | Medium | ⚠️ TileLayout + react-resizable-panels (different concerns) |
 | AI Components | Low | ✅ Specific to AI domain |
 | Panels | Low | ✅ Each panel unique |
-
 

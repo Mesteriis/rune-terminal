@@ -115,7 +115,7 @@ Reference mismatch:
 - The current settings/help utility surface is not a true global overlay.
 - The current HTML entrypoint uses a missing favicon path and omits Tide’s static Font Awesome links.
 
-## Release-blocking corrections required
+## Stability-critical corrections required
 
 - Restore a single Tide-consistent font system.
 - Restore a single Tide-consistent Font Awesome/static asset entry path.

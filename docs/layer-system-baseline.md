@@ -1,7 +1,7 @@
 # Layer System Baseline
 
 Date: `2026-04-17`
-Phase: `1.0.0-rc1` hardening
+Phase: stability hardening
 
 This document records only the shell-layer issues that materially affected navigation surfaces in this batch.
 

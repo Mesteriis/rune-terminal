@@ -1,7 +1,7 @@
 # MCP Playground Validation
 
 Date: `2026-04-16`  
-Phase: `1.0.0-rc1` hardening
+Phase: stability hardening
 
 ## Slice 1 — Real MCP setup (Context7)
 

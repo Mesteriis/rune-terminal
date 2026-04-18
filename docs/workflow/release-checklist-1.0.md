@@ -1,4 +1,4 @@
-# Release Checklist `1.0.0-rc1`
+# Release Checklist `1.0.0`
 
 Date: `2026-04-16`
 
@@ -8,10 +8,10 @@ Date: `2026-04-16`
 - [x] `npm run tauri:dev` startup smoke reaches desktop startup + runtime ready state
 - [ ] `npm run lint:frontend:all` is green
   - current truth: `630 errors`, `151 warnings`
-  - classification: tracked non-blocking debt for current RC phase
+  - classification: tracked non-blocking debt under the current validation policy
 
-## Release truth checks
+## Truth checks
 
-- [x] release docs explicitly separate release-blocking checks from tracked non-blocking debt
-- [x] `docs/validation.md` records concrete command evidence for this state
+- [x] current docs explicitly separate required checks from tracked non-blocking debt
+- [x] `docs/validation/validation.md` records concrete command evidence for this state
 - [x] known limitations explicitly mention remaining repo-wide lint debt

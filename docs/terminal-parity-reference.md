@@ -1,7 +1,7 @@
 # Terminal Parity Reference
 
 Date: `2026-04-17`
-Phase: `1.0.0-rc1` hardening
+Phase: stability hardening
 Scope: terminal-domain parity closure against TideTerm source checked directly from the repo-root `tideterm/` tree
 
 This document uses the repo-root TideTerm sources as the primary reference for terminal parity in this batch.

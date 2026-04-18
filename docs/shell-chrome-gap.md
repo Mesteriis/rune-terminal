@@ -1,11 +1,11 @@
 # Shell Chrome Parity Gap
 
 Date: `2026-04-17`
-Phase: `1.0.0-rc1` hardening
+Phase: stability hardening
 
 This document maps the current active compat shell against the repo-root Tide shell chrome reference in [shell-chrome-reference.md](./shell-chrome-reference.md).
 
-Status: the release-blocking gaps recorded here were closed in this batch and validated in [shell-chrome-validation.md](./shell-chrome-validation.md).
+Status: the stability-critical gaps recorded here were closed in this batch and validated in [shell-chrome-validation.md](./shell-chrome-validation.md).
 
 ## Current shell chrome behavior
 
@@ -60,7 +60,7 @@ Visible mismatch area:
 
 - top bar center-right action cluster immediately after the tab strip
 
-Release-blocking:
+Stability-critical:
 
 - yes
 
@@ -91,7 +91,7 @@ Visible mismatch area:
 
 - top-left shell control zone / AI toggle interaction
 
-Release-blocking:
+Stability-critical:
 
 - yes
 
@@ -118,11 +118,11 @@ Visible mismatch area:
 
 - relationship between tab strip and right-side header actions
 
-Release-blocking:
+Stability-critical:
 
 - yes
 
-## Gaps that are not release-blocking in this batch
+## Gaps that are not stability-critical in this batch
 
 - The workspace switcher button size and base tab metrics already align closely with the inspected Tide values and do not require redesign.
 - The right utility rail width and bounded panel anchoring already read close enough to the Tide-derived shell grammar for this batch.
@@ -130,4 +130,4 @@ Release-blocking:
 
 ## Summary
 
-The current compat shell was already close to Tide at the primitive level because the tab and switcher components remained Tide-derived. The release-blocking shell chrome gaps were concentrated in the active top-shell action zone and in the broken AI-open behavior that made the shell control hierarchy unreliable. Those gaps are now closed on the active compat shell.
+The current compat shell was already close to Tide at the primitive level because the tab and switcher components remained Tide-derived. The stability-critical shell chrome gaps were concentrated in the active top-shell action zone and in the broken AI-open behavior that made the shell control hierarchy unreliable. Those gaps are now closed on the active compat shell.

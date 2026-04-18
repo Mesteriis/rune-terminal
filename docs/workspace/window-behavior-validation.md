@@ -1,7 +1,7 @@
 # Window Behavior Validation
 
 Date: `2026-04-17`  
-Phase: `1.0.0-rc1` release hardening
+Phase: stability hardening
 
 ## Headed browser run (explicit)
 

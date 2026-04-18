@@ -4,7 +4,7 @@ Date: 2026-04-15
 
 ## Scope
 
-This document confirms the release-blocking UI recovery slice for the visible workspace and terminal:
+This document confirms the stability-critical UI recovery slice for the visible workspace and terminal:
 
 - workspace shell renders again in the active browser/Tauri compat path
 - active tab is visible and driven from typed workspace state

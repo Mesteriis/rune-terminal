@@ -1,7 +1,7 @@
-# Known Limitations for `v1.0.0-rc1`
+# Known Limitations for `v1.0.0`
 
 This document is intentionally blunt.
-It defines what is incomplete by design for the first release candidate so we do not overclaim parity.
+It defines what is incomplete by design in the current delivery phase so we do not overclaim parity.
 
 ## Intentionally incomplete in `1.0.0`
 
@@ -27,21 +27,21 @@ It defines what is incomplete by design for the first release candidate so we do
 - AI command flow intentionally supports explicit command grammar only (`/run` and `run:`), not broad natural-language command execution
 - the current assistant backend is Ollama-compatible HTTP only; release validation proves contract wiring and daily-driver behavior, not a broad provider matrix
 - native-window automation coverage is limited; validation leans on build + runtime/API smoke plus manual notes
-- repo-wide full frontend lint (`npm run lint:frontend:all`) still has legacy debt; RC release gating currently uses active-path lint in `npm run validate`
+- repo-wide full frontend lint (`npm run lint:frontend:all`) still has legacy debt; the current validation gate uses active-path lint in `npm run validate`
 
-## Post-`1.0.0` targets
+## Future targets
 
 - richer remote lifecycle and controller semantics
 - advanced SSH credential and config workflows
 - expanded launcher/app domain breadth
-- broader shell/terminal parity slices that are currently out of release scope
+- broader shell/terminal parity slices that are not yet prioritized
 - managed attachment storage/portability and streaming assistant output
 
-## Release stance
+## Current stance
 
-These limitations are acceptable for `v1.0.0-rc1` only when:
+These limitations are acceptable in the current delivery phase when:
 
-- release-critical daily-driver flows are stable
+- core daily-driver flows are stable
 - failure modes are honest and actionable
 - docs and validation clearly describe the limits
 

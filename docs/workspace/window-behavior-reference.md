@@ -1,7 +1,7 @@
-# Window Behavior Reference (Release-Blocking)
+# Window Behavior Reference (Stability-Critical)
 
-Date: `2026-04-17`  
-Phase: `1.0.0-rc1` hardening  
+Date: `2026-04-17`
+Phase: stability hardening
 Scope: window/layout behavior parity from existing TideTerm behavior, adapted to current architecture
 
 ## 1) Exact required behaviors from reference code
@@ -49,7 +49,7 @@ Required behavior:
 - explicit focus/active correctness after split and drop operations.
 - persisted and restored layout/focus truth (restart-safe).
 
-These are release-blocking parity behaviors, not optional polish.
+These are stability-critical parity behaviors, not optional polish.
 
 ## 3) Not targeted in this batch
 

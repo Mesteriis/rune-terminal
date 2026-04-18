@@ -1,7 +1,7 @@
 # Structured Execution Reference
 
 Date: `2026-04-17`
-Phase: `1.0.0-rc1` hardening
+Phase: stability hardening
 
 This document records the repo-root Tide sources inspected for structured-execution guardrails. Those Tide sources were used as the primary reference for this parity batch.
 

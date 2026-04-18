@@ -1,7 +1,7 @@
 # Remote Model
 
 Date: `2026-04-17`
-Phase: `1.0.0-rc1` hardening
+Phase: stability hardening
 
 ## What this document is
 
@@ -32,11 +32,11 @@ This is the canonical remote entrypoint for local-vs-SSH runtime behavior.
 - Existing sessions are not migrated by changing active connection.
 - Preflight result and launch result are separate truths and must not be collapsed into one fake “connected” flag.
 
-## Release-scope limits
+## Current remote limits
 
 - No persistent live remote controller object yet.
-- No `~/.ssh/config` import in current release path.
-- No advanced auth/proxy-jump/agent workflows in scope.
+- No `~/.ssh/config` import on the active path.
+- No advanced auth/proxy-jump/agent workflows implemented yet.
 
 ## Deep links
 

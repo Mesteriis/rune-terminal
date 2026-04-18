@@ -107,7 +107,7 @@ Status labels are organizational (`ACTIVE`, `DUPLICATE`, `OUTDATED`, `UNCLEAR`) 
 | `docs/frontend-ui-recovery-state-flow.md` | Frontend UI Recovery State Flow | `ACTIVE` | `ui` |
 | `docs/frontend-workspace-slice-baseline.md` | Workspace Migration Baseline (Slice 6) | `DUPLICATE` | `ui` |
 | `docs/frontend-workspace-slice-result.md` | Workspace Slice 6 Result | `DUPLICATE` | `ui` |
-| `docs/known-limitations.md` | Known Limitations for `v1.0.0-rc1` | `ACTIVE` | `workflow` |
+| `docs/known-limitations.md` | Known Limitations for `v1.0.0` | `ACTIVE` | `workflow` |
 | `docs/layout-composition-baseline.md` | Layout / Composition Baseline | `DUPLICATE` | `workspace` |
 | `docs/mcp-external-baseline.md` | MCP external baseline | `DUPLICATE` | `mcp` |
 | `docs/mcp-model-baseline.md` | MCP Runtime Model Baseline | `DUPLICATE` | `mcp` |
@@ -130,8 +130,8 @@ Status labels are organizational (`ACTIVE`, `DUPLICATE`, `OUTDATED`, `UNCLEAR`) 
 | `docs/principal-engineer-review.md` | Principal Engineer Review — RunaTerminal | `UNCLEAR` | `workflow` |
 | `docs/quick-actions-baseline.md` | Quick Actions Baseline | `DUPLICATE` | `workflow` |
 | `docs/quick-actions-browser-validation.md` | Quick Actions Browser Validation | `ACTIVE` | `workflow` |
-| `docs/release-1.0.md` | Release `1.0.0-rc1` Truth | `ACTIVE` | `workflow` |
-| `docs/release-checklist-1.0.md` | Release Checklist `1.0.0-rc1` | `ACTIVE` | `workflow` |
+| `docs/release-1.0.md` | Release `1.0.0` Truth | `ACTIVE` | `workflow` |
+| `docs/release-checklist-1.0.md` | Release Checklist `1.0.0` | `ACTIVE` | `workflow` |
 | `docs/remote-model-baseline.md` | Remote Model Baseline | `DUPLICATE` | `remote` |
 | `docs/remote-profile-baseline.md` | Remote Profile Baseline | `DUPLICATE` | `remote` |
 | `docs/remote-profile-result.md` | Remote Profile Result | `DUPLICATE` | `remote` |
@@ -164,7 +164,7 @@ Status labels are organizational (`ACTIVE`, `DUPLICATE`, `OUTDATED`, `UNCLEAR`) 
 | `docs/widgets-structural-slice-baseline.md` | widgets.tsx Structural Slice Baseline | `DUPLICATE` | `workspace` |
 | `docs/widgets-structural-slice-result.md` | widgets.tsx structural slice result | `DUPLICATE` | `workspace` |
 | `docs/window-behavior-gap.md` | Window Behavior Gap Map (Current vs Reference) | `ACTIVE` | `workspace` |
-| `docs/window-behavior-reference.md` | Window Behavior Reference (Release-Blocking) | `ACTIVE` | `workspace` |
+| `docs/window-behavior-reference.md` | Window Behavior Reference (Stability-Critical) | `ACTIVE` | `workspace` |
 | `docs/window-behavior-validation.md` | Window Behavior Validation | `ACTIVE` | `workspace` |
 | `docs/window-parity-completion-baseline.md` | Window Parity Completion Baseline | `DUPLICATE` | `workspace` |
 | `docs/workflow-identity-baseline.md` | Workflow identity baseline | `DUPLICATE` | `workflow` |

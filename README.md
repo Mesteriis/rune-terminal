@@ -267,11 +267,46 @@ Launch the app:
 npm run tauri:dev
 ```
 
+Or use the Makefile wrapper:
+
+```bash
+make run
+```
+
 What `npm run tauri:dev` does:
 
 - fail-fast checks for `npm`, `cargo`, `curl`, macOS CLT, local Tauri CLI, frontend deps, and the built Go core binary
 - starts the frontend Vite dev server on `127.0.0.1:5173` if it is not already running
 - launches the Tauri shell against `apps/desktop/src-tauri/tauri.conf.json`
+
+### Browser-only local split run
+
+If you want to run the active frontend and backend outside Tauri, use two terminals:
+
+Terminal 1:
+
+```bash
+make run-backend
+```
+
+Terminal 2:
+
+```bash
+make run-frontend
+```
+
+Default local addresses:
+
+- frontend: `http://127.0.0.1:5173`
+- backend API: `http://127.0.0.1:8090`
+- auth token shared by both targets: `runa-local-dev-token`
+
+You can override those defaults via `make` variables when needed:
+
+```bash
+make LOCAL_BACKEND_PORT=8091 LOCAL_AUTH_TOKEN=my-dev-token run-backend
+make LOCAL_BACKEND_URL=http://127.0.0.1:8091 LOCAL_AUTH_TOKEN=my-dev-token run-frontend
+```
 
 ## Launch Troubleshooting
 

@@ -1,7 +1,7 @@
 # Workspace Model
 
 Date: `2026-04-17`
-Phase: `1.0.0-rc1` hardening
+Phase: stability hardening
 
 ## What this document is
 
@@ -30,11 +30,11 @@ This is the canonical workspace entrypoint for tab/widget/layout behavior.
 - Layout changes do not mutate terminal session identity.
 - Closing a tab tears down its associated terminal/widget session mapping.
 
-## Current release limits
+## Current limits
 
 - Last remaining tab cannot be closed.
 - Cross-group drag between pinned and regular tabs is rejected.
-- Multi-session-in-one-terminal-block parity remains out of current release scope.
+- Multi-session-in-one-terminal-block parity is not implemented on the active path.
 
 ## Deep links
 

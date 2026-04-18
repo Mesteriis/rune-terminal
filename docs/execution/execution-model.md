@@ -1,7 +1,7 @@
 # Execution Model
 
 Date: `2026-04-17`
-Phase: `1.0.0-rc1` hardening
+Phase: stability hardening
 
 ## What this document is
 
@@ -30,11 +30,11 @@ This is the canonical execution entrypoint for command/tool execution behavior.
 - `GET /api/v1/execution/blocks`
 - `GET /api/v1/execution/blocks/{id}`
 
-## Release-scope limits
+## Current limits
 
 - `/run` remains explicit grammar only.
 - Execution target is active-widget/session scoped unless explicit target fields are provided.
-- No generalized autonomous execution workflow is in scope for `1.0.0-rc1`.
+- No generalized autonomous execution workflow is implemented today.
 
 ## Deep links
 

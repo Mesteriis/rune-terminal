@@ -1,7 +1,7 @@
 # Shell Stretch Baseline
 
 Date: `2026-04-17`
-Phase: `1.0.0-rc1` hardening
+Phase: stability hardening
 
 This document records the real shell stretch/fill regression that remained visible after the navigation parity batch.
 

@@ -7,7 +7,7 @@ Accepted
 ## Context
 
 `1.0.0` requires one genuinely useful AI feature, not a broad autonomous-agent platform.
-The release-critical requirement is narrow:
+The stability-critical requirement is narrow:
 
 - a user can ask the AI panel to run a terminal command
 - the command executes through the real runtime/tool/policy path

@@ -1,7 +1,7 @@
 # Last-Tab Closure Reference
 
 Date: `2026-04-17`
-Phase: `1.0.0-rc1` hardening
+Phase: stability hardening
 
 This document uses the repo-root Tide sources as the primary reference for last-tab closure parity.
 
