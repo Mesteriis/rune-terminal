@@ -1,4 +1,102 @@
-# Latest: Next-Remaining-Leaf RTAIPanelWidget Assessment
+# Latest: Execution-Block-List Widget Sub-Slice Migration
+
+**Date:** 2026-04-18  
+**Scope:** Execute local leaf-only `RTAIPanelWidget/execution-block-list` contract split (not a manifest-registered widget migration)
+
+## Files Created and Updated
+
+- Created:
+  - `frontend/ui/widgets/RTAIPanelWidget/execution-block-list.logic.ts`
+  - `frontend/ui/widgets/RTAIPanelWidget/execution-block-list.template.tsx`
+  - `frontend/ui/widgets/RTAIPanelWidget/execution-block-list.style.scss`
+  - `frontend/ui/widgets/RTAIPanelWidget/execution-block-list.story.tsx`
+- Updated:
+  - `frontend/ui/widgets/RTAIPanelWidget/execution-block-list.tsx` (now local barrel re-export)
+- Legacy single-file implementation status:
+  - Replaced. Render implementation moved into `execution-block-list.template.tsx`; types/helpers/class resolution moved into `execution-block-list.logic.ts`.
+
+## Export/Import Path Preservation
+
+- Parent import path preserved unchanged in `frontend/ui/widgets/RTAIPanelWidget/aipanel-compat.tsx`:
+  - `import { ExecutionBlockList } from "./execution-block-list";`
+- No direct `execution-block-list` imports were found outside `RTAIPanelWidget` in `frontend/app`, `frontend/ui`, or `frontend/wave.ts`.
+
+## Commands Run and Results
+
+```bash
+rg "execution-block-list" frontend/ui/widgets/RTAIPanelWidget frontend/app frontend/ui frontend/wave.ts
+→ only local widget usage; parent wiring at aipanel-compat.tsx
+
+npm --prefix frontend run build
+→ ✓ pass (boundary doc phase)
+
+npm --prefix frontend run lint
+→ 15 warnings (0 errors), unchanged pre-existing warnings
+
+npx tsc -p frontend/tsconfig.json --noEmit
+→ exit 0
+
+npm --prefix frontend run build
+→ ✓ pass
+
+npm run build:core
+→ ✓ pass
+
+RTERM_AUTH_TOKEN=ui-execution-block-list-token apps/desktop/bin/rterm-core serve \
+  --listen 127.0.0.1:52770 \
+  --workspace-root "$PWD" \
+  --state-dir /tmp/runa-ui-execution-block-list-state
+→ started (base_url http://127.0.0.1:52770)
+
+VITE_RTERM_API_BASE=http://127.0.0.1:52770 \
+VITE_RTERM_AUTH_TOKEN=ui-execution-block-list-token \
+npm --prefix frontend run dev -- --host 127.0.0.1 --port 4188 --strictPort
+→ vite ready, app served at http://127.0.0.1:4188
+
+curl -sf -H "Authorization: Bearer ui-execution-block-list-token" http://127.0.0.1:52770/healthz
+→ {"status":"ok"}
+
+curl -sf -H "Authorization: Bearer ui-execution-block-list-token" http://127.0.0.1:52770/api/v1/workspace
+→ HTTP 200, workspace payload returned
+
+curl -sf -H "Authorization: Bearer ui-execution-block-list-token" "http://127.0.0.1:52770/api/v1/terminal/term-main?from=0"
+→ HTTP 200, terminal state/chunks returned
+
+Playwright sanity check against http://127.0.0.1:4188/
+→ app loaded, workspace shell visible, terminal widget visible, AI panel rendered
+→ executed `/run echo execution-block-list-smoke` via AI panel
+→ execution block list rendered (`data-testid=execution-block-list`, item count 1)
+→ module and style loads include:
+   - /ui/widgets/RTAIPanelWidget/execution-block-list.tsx (200)
+   - /ui/widgets/RTAIPanelWidget/execution-block-list.template.tsx (200)
+   - /ui/widgets/RTAIPanelWidget/execution-block-list.logic.ts (200)
+   - /ui/widgets/RTAIPanelWidget/execution-block-list.style.scss (200)
+→ no failed module/SCSS loads observed (network requests returned 200)
+→ current run console log (`.playwright-mcp/console-2026-04-18T13-56-30-268Z.log`) contains no `[ERROR]` entries
+```
+
+## Runtime Sanity Outcome
+
+- App load: pass
+- Workspace shell visible: pass
+- Terminal widget visible: pass
+- AI panel widget visible: pass
+- Execution block list render path: pass (rendered with one block after `/run` smoke command)
+- Failed SCSS imports: none observed
+- Failed module loads: none observed
+- Fatal console errors: none observed in current run log
+
+## Scope Guardrail Confirmation
+
+- This is a **local widget sub-slice only**.
+- This is **not** a manifest-registered widget migration.
+- No component contract manifest changes.
+- No checker changes.
+- No changes to `aipanel.tsx`, `aipanel-compat.tsx`, `waveai-model.tsx`, `run-command.ts`, or `compat-conversation.ts`.
+
+---
+
+# Previous: Next-Remaining-Leaf RTAIPanelWidget Assessment
 
 **Date:** 2026-04-18  
 **Scope:** Assessment-only selection of the next remaining leaf-only `RTAIPanelWidget` sub-slice after `agent-selection-strip` and `run-command-approval` (no migration executed)
