@@ -7,6 +7,7 @@
 - Scope:
   - the frontend React runtime and types now target the latest stable React line in this repo: `react@19.2.5`, `react-dom@19.2.5`, `@types/react@19.2.14`, and `@types/react-dom@19.2.3`
   - terminal panels now render a frontend-only terminal widget made from `TerminalViewport`, `TerminalStatusHeader`, `TerminalSurface`, and `TerminalWidget`, with xterm mounted locally and no backend session wiring in this slice
+  - the renderer-only terminal slice now also mounts the first xterm addon set: `fit`, `search`, `web-links`, `clipboard`, and `webgl` with a safe fallback to the default renderer
   - widget bodies now expose a local busy-state mechanism that overlays the panel content without changing Dockview group geometry
   - the busy overlay now uses an invisible centered square AI marker container with no glass card behind it, plus a `tsParticles` node-edge field with linked particles moving freely across the widget body and bouncing from the boundaries
   - the busy overlay blocks panel-body interaction while it is active, but the Dockview header remains outside that body overlay
@@ -52,6 +53,7 @@
 
 - This validation covers only the initial layout skeleton. It does not claim backend wiring, workspace persistence, or TideTerm parity breadth.
 - The new terminal widget slice is renderer-only for now. It does not yet claim live backend session startup, SSE attachment, input routing, interrupt wiring, or persistent terminal state on the new frontend path.
+- The terminal addon slice was validated by type-check and production build only in this pass. A fresh localhost browser run for the new toolbar/addon behavior is not claimed here.
 - The busy-state mechanism in this slice is widget-local UI state only. It does not yet claim backend-driven runtime busy semantics, command progress ownership, or persisted status.
 - The busy overlay currently covers the widget body only. It intentionally does not claim full-widget lockout for the Dockview header or sash chrome.
 - The particle field is now driven by `tsParticles`, but this entry still does not claim physics-grade simulation, custom shaders, or a frame-by-frame quantitative motion audit.
@@ -73,6 +75,7 @@
 - Initial panel set rendered as `terminal-header`, `terminal`, and `tool`.
 - Static validation confirmed the frontend dependency upgrade to `react@19.2.5`, `react-dom@19.2.5`, `@types/react@19.2.14`, and `@types/react-dom@19.2.3`, and `npm --prefix frontend run lint:active` plus `npm --prefix frontend run build` both passed on that stack.
 - Static validation confirmed the terminal renderer slice dependencies `@xterm/xterm@6.0.0` and `@xterm/addon-fit@0.11.0`, plus the new UI-layer chain `TerminalViewport -> TerminalStatusHeader/TerminalSurface -> TerminalWidget`.
+- Static validation confirmed the first addon wave on the terminal renderer slice: `@xterm/addon-search@0.16.0`, `@xterm/addon-web-links@0.12.0`, `@xterm/addon-clipboard@0.2.0`, and `@xterm/addon-webgl@0.19.0`, plus the new `TerminalToolbar` control strip above the surface.
 - Static validation confirmed the busy-state wiring: `shared/model/widget-busy.ts` owns the host-id store, `PanelModalActionsWidget` toggles it per host, and `WidgetBusyOverlayWidget` renders the overlay per panel body using `@tsparticles/react` plus `tsparticles`.
 - A fresh live headless smoke on `http://127.0.0.1:4194` confirmed that toggling busy for `terminal-header` did not move Dockview geometry: before and after the toggle the group rect stayed `x=6`, `y=52`, `width=1382`, `height=451`.
 - The same smoke confirmed the busy overlay rendered over the panel body at `x=7`, `y=77`, `width=1380`, `height=425`, with `aria-busy=\"true\"`, an attached `canvas`, and a visible release control.

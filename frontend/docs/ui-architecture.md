@@ -57,6 +57,7 @@ Current reusable controls:
 - `Notify`
 - `TerminalStatusHeader`
 - `TerminalSurface`
+- `TerminalToolbar`
 
 ### Widgets
 
@@ -133,6 +134,7 @@ its visible shell blocks as raw HTML inside `App.tsx`.
 - `SwitcherControl` and `SwitcherGroup` cover single and grouped boolean toggles.
 - `ExpandableTextArea` keeps inline behavior by default and can expand to the parent bounds or to a selector target without introducing modal semantics.
 - `TerminalStatusHeader` and `TerminalSurface` add the terminal renderer slice in the component layer, with `TerminalSurface` owning the frontend-only xterm mock session.
+- `TerminalToolbar` adds the terminal-local addon controls layer for search, clipboard actions, and renderer status.
 - `WidgetBusyOverlayWidget` stays in the widget layer and uses `@tsparticles/react` directly for the busy-field rendering instead of pushing imperative particle code into shared components.
 - `TerminalWidget` stays in the widget layer and composes the terminal status header plus the terminal renderer surface for terminal panels.
 - The current shell example routes its visible shell blocks through widgets and primitives instead of raw HTML in `App.tsx`.
@@ -141,6 +143,6 @@ its visible shell blocks as raw HTML inside `App.tsx`.
 - Tokens now cover dark canvas, glass surfaces, accent hues, spacing, radii, shell sizes, blur, and shadow.
 - Shared primitives consume only semantic tokens instead of hardcoded `#111/#fff/#333` values.
 - Shared components now include stateless `Notify` plus a reusable `DialogPopup` surface built primarily from shared primitives.
-- Shared components now also include the terminal renderer slice: a status header plus an xterm-based surface wrapped by `TerminalViewport`.
+- Shared components now also include the terminal renderer slice: a status header, toolbar, and xterm-based surface wrapped by `TerminalViewport`.
 - The new form-control components added in this slice compose shared primitives only. The existing `DialogPopup` close glyph remains the current icon exception from the earlier shell slice.
 - Live localhost smoke confirmed tokenized shell values in the DOM: `body/root` background `rgb(6, 17, 15)`, `AI` button backdrop `blur(10px)`, right rail width `40px`, and right rail glass background `rgba(11, 24, 22, 0.72)`.
