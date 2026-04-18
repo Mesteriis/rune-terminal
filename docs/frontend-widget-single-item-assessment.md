@@ -49,6 +49,35 @@ rg --no-heading -n "RTAIPanelWidget/(ai-utils|aidroppedfiles|aimessage|aimode|ai
 | `waveai-focus-utils.ts` | conversation/model/state logic | used by `aipanel.tsx`, `aipanel-compat.tsx`, `aipanel-contextmenu.ts`, `aipanelinput.tsx`, `app/store/focusManager.ts` | No | Shared focus utility crossing widget/app boundary. |
 | `waveai-model.tsx` | conversation/model/state logic | depended by many local + app/layout files | No | Highest-coupling state singleton/runtime bridge. |
 
+### One Safe Leaf Still Remains
+
+- Remaining safe leaf-only candidate: `frontend/ui/widgets/RTAIPanelWidget/telemetryrequired.tsx`
+- Why this is safer than other remaining files:
+  - Single local dependent (`aipanel.tsx`) and stable local import path (`./telemetryrequired`).
+  - Leaf-level presentational surface with one contained enable action path, without local subcomponent orchestration.
+  - Lower coupling than other leaf-like candidates (`aidroppedfiles.tsx`, `restorebackupmodal.tsx`) that are attached to multi-surface flows (`aipanel` + `aipanel-compat` or tool-restore state machine).
+- Exact future slice boundary:
+  - In scope: `frontend/ui/widgets/RTAIPanelWidget/telemetryrequired.tsx` only.
+  - Allowed: minimal local import rewiring inside `frontend/ui/widgets/RTAIPanelWidget` only, if needed to preserve path.
+  - Out of scope:
+    - `aipanel.tsx`
+    - `aipanel-compat.tsx`
+    - `waveai-model.tsx`
+    - `run-command.ts`
+    - `compat-conversation.ts`
+    - `compat-context.ts`
+    - `aipanelmessages.tsx`
+    - `aimessage.tsx`
+    - `aipanelinput.tsx`
+    - `ai-utils.ts`
+    - `aitypes.ts`
+    - all app/layout/runtime/api files
+    - checker and manifest changes
+- Future execution stop conditions:
+  - Stop if preserving `./telemetryrequired` import path requires broader orchestration edits.
+  - Stop if split requires changes to `aipanel.tsx`, `aipanel-compat.tsx`, `waveai-model.tsx`, or app-layer RPC/runtime files.
+  - Stop if checker or manifest updates become necessary.
+
 ## Latest Execution Boundary Check: `byokannouncement`
 
 - Current parent import path in use:
