@@ -1,5 +1,0 @@
-// Copyright 2024, Command Line Inc.
-// SPDX-License-Identifier: Apache-2.0
-// Design tokens now live in ui/css_tokens/tokens.scss.
-// This file is kept as a bridge so existing @use "theme.scss" imports continue to work.
-@use "../ui/css_tokens/tokens";
