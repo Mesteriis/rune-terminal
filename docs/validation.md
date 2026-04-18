@@ -1,4 +1,106 @@
-# Latest: Agent-Selection-Strip Widget Sub-Slice Migration
+# Latest: Next-Leaf RTAIPanelWidget Assessment
+
+**Date:** 2026-04-18  
+**Scope:** Assessment-only selection of the next leaf-only `RTAIPanelWidget` sub-slice after `agent-selection-strip` (no migration executed)
+
+## Files Inspected (`frontend/ui/widgets/RTAIPanelWidget`)
+
+- Total files inspected: 30
+- `agent-selection-strip.logic.ts`
+- `agent-selection-strip.story.tsx`
+- `agent-selection-strip.style.scss`
+- `agent-selection-strip.template.tsx`
+- `agent-selection-strip.tsx`
+- `ai-utils.ts`
+- `aidroppedfiles.tsx`
+- `aifeedbackbuttons.tsx`
+- `aimessage.tsx`
+- `aimode.tsx`
+- `aipanel-compat.tsx`
+- `aipanel-contextmenu.ts`
+- `aipanel.tsx`
+- `aipanelheader.tsx`
+- `aipanelinput.tsx`
+- `aipanelmessages.tsx`
+- `airatelimitstrip.tsx`
+- `aitooluse.tsx`
+- `aitypes.ts`
+- `byokannouncement.tsx`
+- `compat-context.ts`
+- `compat-conversation.ts`
+- `execution-block-list.tsx`
+- `restorebackupmodal.tsx`
+- `run-command-approval.tsx`
+- `run-command.test.ts`
+- `run-command.ts`
+- `telemetryrequired.tsx`
+- `waveai-focus-utils.ts`
+- `waveai-model.tsx`
+
+## Chosen Next Leaf Candidate
+
+- Chosen file: **`frontend/ui/widgets/RTAIPanelWidget/run-command-approval.tsx`**
+
+Reason for choice:
+- No local imports and a single local dependent (`aipanel-compat.tsx`) make blast radius smallest among remaining candidates.
+- Prop-driven, render-only shape with no direct `WaveAIModel` or local orchestration dependencies.
+- Lower coupling than other leaf-like options (`execution-block-list.tsx`, `airatelimitstrip.tsx`, `aidroppedfiles.tsx`, `aifeedbackbuttons.tsx`).
+
+## Future Slice Boundary (Defined, Not Executed)
+
+- In scope:
+  - `frontend/ui/widgets/RTAIPanelWidget/run-command-approval.tsx` only
+- Allowed:
+  - minimal local import rewiring inside `RTAIPanelWidget` if required to preserve existing parent path
+- Explicit deferrals:
+  - `aipanel.tsx`
+  - `aipanel-compat.tsx` (except minimal import rewiring only)
+  - `waveai-model.tsx`
+  - `run-command.ts`
+  - `compat-conversation.ts`
+  - `compat-context.ts`
+  - `aitypes.ts`
+  - `ai-utils.ts`
+  - all other `RTAIPanelWidget` files
+  - any manifest/checker updates
+  - any `app/layout/runtime/api` edits
+
+## Commands Run and Results
+
+```bash
+find frontend/ui/widgets/RTAIPanelWidget -maxdepth 1 -type f | sort
+rg --no-heading -n "from ['\"]\\./" frontend/ui/widgets/RTAIPanelWidget
+rg --no-heading -n "^import ['\"]\\./" frontend/ui/widgets/RTAIPanelWidget
+rg --no-heading -n "@/ui/widgets/RTAIPanelWidget/" frontend/ui/widgets/RTAIPanelWidget
+wc -l frontend/ui/widgets/RTAIPanelWidget/*
+→ used to classify local file graph and leaf-vs-orchestration risk
+
+npm --prefix frontend run build
+→ ✓ pass (phase 1)
+
+npm --prefix frontend run build
+→ ✓ pass (phase 2)
+
+npm --prefix frontend run lint
+→ 15 warnings (0 errors), unchanged pre-existing warnings
+
+npx tsc -p frontend/tsconfig.json --noEmit
+→ exit 0
+
+npm --prefix frontend run build
+→ ✓ pass
+```
+
+## Assessment-Only Confirmation
+
+- No widget source migration performed in this slice.
+- No manifest changes.
+- No checker changes.
+- Docs-only output.
+
+---
+
+# Previous: Agent-Selection-Strip Widget Sub-Slice Migration
 
 **Date:** 2026-04-18  
 **Scope:** Execute the approved first local widget sub-slice for `RTAIPanelWidget/agent-selection-strip` without manifest/checker or broader widget/app/runtime scope expansion
