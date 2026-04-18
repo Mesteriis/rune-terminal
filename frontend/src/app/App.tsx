@@ -3,11 +3,13 @@ import { useEffect, useState } from 'react'
 import { useUnit } from 'effector-react'
 
 import { $isAiSidebarOpen, toggleAiSidebar } from '../shared/model/app'
+import { BODY_MODAL_HOST_ID } from '../shared/model/modal'
 import { Box } from '../shared/ui/primitives'
 import {
   AiGroupActionsWidget,
   AiPanelWidget,
   DockviewPanelWidget,
+  ModalHostWidget,
   RightActionRailWidget,
   ShellTopbarWidget,
 } from '../widgets'
@@ -282,6 +284,7 @@ export function App() {
         </Box>
       </Box>
       <RightActionRailWidget />
+      <ModalHostWidget hostId={BODY_MODAL_HOST_ID} scope="body" />
     </Box>
   )
 }

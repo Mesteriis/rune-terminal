@@ -1,5 +1,7 @@
 import { Plus, Settings2 } from 'lucide-react'
+import { useUnit } from 'effector-react'
 
+import { openBodyModal } from '../shared/model/modal'
 import { Box, Button } from '../shared/ui/primitives'
 
 const rightRailStyle = {
@@ -31,12 +33,24 @@ const railIconProps = {
 }
 
 export function RightActionRailWidget() {
+  const onOpenBodyModal = useUnit(openBodyModal)
+
   return (
     <Box role="complementary" aria-label="Right action rail" style={rightRailStyle}>
       <Button aria-label="Open utility panel" style={railButtonStyle}>
         <Plus {...railIconProps} />
       </Button>
-      <Button aria-label="Open settings panel" style={railButtonStyle}>
+      <Button
+        aria-label="Open settings panel"
+        onClick={() =>
+          onOpenBodyModal({
+            title: 'Settings modal',
+            description:
+              'This modal is mounted on the app shell body layer and stays above every widget.',
+          })
+        }
+        style={railButtonStyle}
+      >
         <Settings2 {...railIconProps} />
       </Button>
     </Box>

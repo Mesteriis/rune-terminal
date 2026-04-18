@@ -6,6 +6,8 @@
   --color-surface-glass-soft: rgba(18, 34, 31, 0.58);
   --color-surface-emerald: rgba(18, 59, 50, 0.54);
   --color-surface-cold-tea: rgba(87, 110, 102, 0.28);
+  --color-overlay-body: rgba(3, 8, 7, 0.72);
+  --color-overlay-widget: rgba(3, 8, 7, 0.58);
   --color-text-primary: #edf7f4;
   --color-text-secondary: #bdd0ca;
   --color-text-muted: #8ea09a;
@@ -57,6 +59,12 @@
   --size-right-rail: 40px;
   --size-control-min: 32px;
   --size-dockview-single-tab-header: 24px;
+  --size-modal-width: 360px;
+
+  --padding-modal-layer: var(--space-md);
+
+  --z-modal-widget: 20;
+  --z-modal-body: 40;
 
   --blur-glass-sm: blur(10px);
   --blur-glass-md: blur(18px);
