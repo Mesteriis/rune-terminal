@@ -1,4 +1,85 @@
-# Latest: Frontend UI Contract Repair for RTTooltip
+# Latest: Frontend Component Layer Migration Batch
+
+**Date:** 2026-04-18
+**Scope:** Migrate RTModal and RTPopover (all components in ui/components) to four-file contract; register both in manifest
+
+## Components Migrated
+
+### RTModal
+**Files created:**
+- `frontend/ui/components/RTModal/RTModal.logic.ts` — ModalProps, ModalContentProps, ModalHeaderProps, ModalFooterProps, WaveModalProps
+- `frontend/ui/components/RTModal/RTModal.template.tsx` — Modal, ModalContent, ModalHeader, ModalFooter, WaveModal; imports `./RTModal.style.scss`
+- `frontend/ui/components/RTModal/RTModal.style.scss` — moved from RTModal.scss
+- `frontend/ui/components/RTModal/RTModal.story.tsx` — ModalDemo, WaveModalDemo (no Storybook runtime)
+- `frontend/ui/components/RTModal/index.ts` — updated to export from new files
+
+**Files removed:**
+- `frontend/ui/components/RTModal/RTModal.tsx`
+- `frontend/ui/components/RTModal/RTModal.scss`
+
+**Note:** RTModal has no active import sites in the current frontend. Migrated to establish convention and avoid a future contract violation.
+
+### RTPopover
+**Files created:**
+- `frontend/ui/components/RTPopover/RTPopover.logic.ts` — PopoverProps, PopoverButtonProps, PopoverContentProps
+- `frontend/ui/components/RTPopover/RTPopover.template.tsx` — Popover, PopoverButton, PopoverContent (forwardRef/memo); imports `./RTPopover.style.scss`
+- `frontend/ui/components/RTPopover/RTPopover.style.scss` — moved from RTPopover.scss
+- `frontend/ui/components/RTPopover/RTPopover.story.tsx` — PopoverDemo, PopoverTopDemo (no Storybook runtime)
+- `frontend/ui/components/RTPopover/index.ts` — updated to export from new files
+
+**Files removed:**
+- `frontend/ui/components/RTPopover/RTPopover.tsx`
+- `frontend/ui/components/RTPopover/RTPopover.scss`
+
+**Active import sites:** none required updating (all 3 sites use barrel `@/ui/components/RTPopover`)
+
+## Contract Manifest Update
+
+`frontend/ui/component-contract.json` now registers 6 components:
+- RTButton (primitive)
+- RTMagnify (primitive)
+- RTInput (primitive)
+- RTTooltip (primitive)
+- RTModal (component) ← new
+- RTPopover (component) ← new
+
+## Commands Run and Results
+
+```
+node frontend/scripts/check-ui-component-contract.mjs
+→ ✓ all 6 components pass
+
+cd frontend && node scripts/check-ui-component-contract.mjs
+→ ✓ all 6 components pass
+
+npm --prefix frontend run lint
+→ 15 warnings (0 errors) — same pre-existing warnings, unchanged
+
+npx tsc -p frontend/tsconfig.json --noEmit
+→ exit 0
+
+npm --prefix frontend run build
+→ ✓ built in 3.27s
+```
+
+## Runtime and API Smoke
+
+```
+/healthz                           → {"status":"ok"}
+/api/v1/workspace                  → HTTP 200
+/api/v1/terminal/term-main?from=0  → HTTP 200
+```
+
+## Intentional Exclusions
+
+- Checker still applies only to manifest-registered components
+- widgets/layout/app layers not touched
+- Storybook runtime not added
+- Only ui/components targeted in this slice
+
+---
+
+# Previous: Frontend UI Contract Repair for RTTooltip
 
 **Date:** 2026-04-18  
 **Scope:** Fix RTTooltip missing style import; harden checker to prevent false-positive passes
