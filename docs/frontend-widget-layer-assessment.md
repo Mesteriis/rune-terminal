@@ -107,3 +107,19 @@ Complete file inventory from discovery:
 - Active widget candidates discovered: 2 (`RTAIPanelWidget`, `RTTerminalWidget`).
 - Both are real widgets and actively used.
 - Both currently exceed low/medium-risk first-slice criteria due to upward coupling and runtime/API entanglement.
+
+## No Valid Batch Yet
+
+Decision: no valid multi-item widget batch exists for the next contract migration slice.
+
+Reason:
+- Active candidates found: 2.
+- Eligible low/medium-risk candidates found: 0.
+- Both active widgets are high-coupling/high-complexity and would spill into app/layout/runtime behavior if migrated as an initial low-risk widget batch.
+
+Exclusions for this cycle:
+- `RTAIPanelWidget`: excluded due to deep coupling with app stores, compat facades, tool execution/approval flows, and high complexity.
+- `RTTerminalWidget`: excluded due to deep coupling with terminal runtime, app block/workspace/store models, compat/rterm APIs, and high complexity.
+
+Governance conclusion:
+- Future widget-layer contract work must proceed as single-item slices until at least two active low/medium-risk widget candidates exist.
