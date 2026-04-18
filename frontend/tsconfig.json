@@ -19,7 +19,6 @@
       "@/ui/*": ["ui/*"],
       "@/app/*": ["app/*"],
       "@/builder/*": ["builder/*"],
-      "@/element/*": ["app/element/*"],
       "@/layout/*": ["layout/*"],
       "@/runtime/*": ["runtime/*"],
       "@/store/*": ["app/store/*"],

@@ -1,9 +1,9 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { handleWaveAIContextMenu } from "@/app/aipanel/aipanel-contextmenu";
-import { waveAIHasSelection } from "@/app/aipanel/waveai-focus-utils";
-import { ErrorBoundary } from "@/app/element/errorboundary";
+import { handleWaveAIContextMenu } from "@/ui/widgets/RTAIPanelWidget/aipanel-contextmenu";
+import { waveAIHasSelection } from "@/ui/widgets/RTAIPanelWidget/waveai-focus-utils";
+import { ErrorBoundary } from "@/ui/primitives/RTErrorBoundary";
 import { atoms, getSettingsKeyAtom } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import { maybeUseTabModel } from "@/app/store/tab-model";

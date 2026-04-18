@@ -1,4 +1,4 @@
-import { Button } from "@/element/button";
+import { Button } from "@/ui/primitives/RTButton";
 import { atoms, getApi } from "@/store/global";
 import { useAtomValue } from "jotai";
 import { forwardRef, memo, useEffect, useState } from "react";

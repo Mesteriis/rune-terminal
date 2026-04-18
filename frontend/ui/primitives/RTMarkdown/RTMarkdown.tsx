@@ -1,15 +1,15 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { CopyButton } from "@/app/element/copybutton";
-import { createContentBlockPlugin } from "@/app/element/markdown-contentblock-plugin";
+import { CopyButton } from "@/ui/primitives/RTCopyButton";
+import { createContentBlockPlugin } from "@/ui/primitives/RTMarkdown/markdown-contentblock-plugin";
 import {
     MarkdownContentBlockType,
     resolveRemoteFile,
     resolveSrcSet,
     transformBlocks,
-} from "@/app/element/markdown-util";
-import remarkMermaidToTag from "@/app/element/remark-mermaid-to-tag";
+} from "@/ui/primitives/RTMarkdown/markdown-util";
+import remarkMermaidToTag from "@/ui/primitives/RTMarkdown/remark-mermaid-to-tag";
 import { boundNumber, useAtomValueSafe, cn } from "@/util/util";
 import clsx from "clsx";
 import { Atom } from "jotai";
@@ -23,7 +23,7 @@ import rehypeSlug from "rehype-slug";
 import RemarkFlexibleToc, { TocItem } from "remark-flexible-toc";
 import remarkGfm from "remark-gfm";
 import { openLink } from "@/store/global";
-import { IconButton } from "@/app/element/iconbutton";
+import { IconButton } from "@/ui/primitives/RTIconButton";
 import "./RTMarkdown.scss";
 
 let mermaidInitialized = false;

@@ -4,7 +4,7 @@
 import clsx from "clsx";
 import { useEffect, useRef, useState } from "react";
 import "./RTCopyButton.scss";
-import { IconButton } from "@/app/element/iconbutton";
+import { IconButton } from "@/ui/primitives/RTIconButton";
 
 type CopyButtonProps = {
     title: string;

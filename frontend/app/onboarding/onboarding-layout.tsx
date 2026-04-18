@@ -1,8 +1,8 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { MagnifyIcon } from "@/app/element/magnify";
-import { WaveStreamdown } from "@/app/element/streamdown";
+import { MagnifyIcon } from "@/ui/primitives/RTMagnify";
+import { WaveStreamdown } from "@/ui/primitives/RTStreamdown";
 import { CodeEditor } from "@/app/view/codeeditor/codeeditor";
 import { cn, makeIconClass } from "@/util/util";
 import { useLayoutEffect, useRef, useState } from "react";

@@ -8,14 +8,14 @@ import {
     ExpandableMenuItemGroupTitle,
     ExpandableMenuItemLeftElement,
     ExpandableMenuItemRightElement,
-} from "@/element/expandablemenu";
-import { Popover, PopoverButton, PopoverContent } from "@/element/popover";
+} from "@/ui/primitives/RTExpandableMenu";
+import { Popover, PopoverButton, PopoverContent } from "@/ui/components/RTPopover";
 import { fireAndForget, makeIconClass } from "@/util/util";
 import clsx from "clsx";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { forwardRef, useCallback, useEffect, useState } from "react";
 import workspaceSvgUrl from "../asset/workspace.svg?url";
-import { IconButton } from "../element/iconbutton";
+import { IconButton } from "@/ui/primitives/RTIconButton";
 import { workspaceStore, type WorkspaceListEntry } from "../state/workspace.store";
 import { WorkspaceEditor } from "./workspaceeditor";
 import "./workspaceswitcher.scss";

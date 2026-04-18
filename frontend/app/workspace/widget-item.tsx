@@ -1,4 +1,4 @@
-import { Tooltip } from "@/app/element/tooltip";
+import { Tooltip } from "@/ui/primitives/RTTooltip";
 import { handleWidgetSelect } from "@/app/workspace/widget-helpers";
 import type { WidgetItemProps } from "@/app/workspace/widget-types";
 import { isBlank, makeIconClass } from "@/util/util";

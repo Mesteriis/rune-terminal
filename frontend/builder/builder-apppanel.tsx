@@ -15,7 +15,7 @@ import { BuilderFilesTab, DeleteFileModal, RenameFileModal } from "@/builder/tab
 import { BuilderPreviewTab } from "@/builder/tabs/builder-previewtab";
 import { BuilderSecretTab } from "@/builder/tabs/builder-secrettab";
 import { builderAppHasSelection } from "@/builder/utils/builder-focus-utils";
-import { ErrorBoundary } from "@/element/errorboundary";
+import { ErrorBoundary } from "@/ui/primitives/RTErrorBoundary";
 import { atoms } from "@/store/global";
 import { cn } from "@/util/util";
 import { useAtomValue } from "jotai";

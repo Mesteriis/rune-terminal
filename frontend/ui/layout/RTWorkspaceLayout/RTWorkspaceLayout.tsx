@@ -1,10 +1,10 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { AIPanel } from "@/app/aipanel/aipanel";
-import { setWaveAICompatContext } from "@/app/aipanel/compat-context";
-import { ErrorBoundary } from "@/app/element/errorboundary";
-import { CenteredDiv } from "@/app/element/quickelems";
+import { AIPanel } from "@/ui/widgets/RTAIPanelWidget/aipanel";
+import { setWaveAICompatContext } from "@/ui/widgets/RTAIPanelWidget/compat-context";
+import { ErrorBoundary } from "@/ui/primitives/RTErrorBoundary";
+import { CenteredDiv } from "@/ui/primitives/RTQuickElems";
 import { ModalsRenderer } from "@/app/modals/modalsrenderer";
 import { WorkspaceStoreSnapshot, workspaceStore } from "@/app/state/workspace.store";
 import { TabBar } from "@/app/tab/tabbar";

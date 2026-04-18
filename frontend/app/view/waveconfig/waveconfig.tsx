@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { Tooltip } from "@/app/element/tooltip";
+import { Tooltip } from "@/ui/primitives/RTTooltip";
 import { useT } from "@/app/i18n/i18n";
 import { globalStore } from "@/app/store/jotaiStore";
 import { tryReinjectKey } from "@/app/store/keymodel";

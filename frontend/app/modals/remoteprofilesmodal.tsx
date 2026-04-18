@@ -1,5 +1,5 @@
-import { WaveAIModel } from "@/app/aipanel/waveai-model";
-import { Button } from "@/app/element/button";
+import { WaveAIModel } from "@/ui/widgets/RTAIPanelWidget/waveai-model";
+import { Button } from "@/ui/primitives/RTButton";
 import { Modal } from "@/app/modals/modal";
 import { workspaceStore } from "@/app/state/workspace.store";
 import { globalStore } from "@/app/store/jotaiStore";

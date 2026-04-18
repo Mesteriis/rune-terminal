@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { WaveAIModel } from "@/app/aipanel/waveai-model";
+import { WaveAIModel } from "@/ui/widgets/RTAIPanelWidget/waveai-model";
 import { BuilderAppPanelModel } from "@/builder/store/builder-apppanel-model";
 import { BuilderBuildPanelModel } from "@/builder/store/builder-buildpanel-model";
 import { atoms } from "@/store/global";

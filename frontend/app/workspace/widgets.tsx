@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { WaveAIModel } from "@/app/aipanel/waveai-model";
+import { WaveAIModel } from "@/ui/widgets/RTAIPanelWidget/waveai-model";
 import { useT } from "@/app/i18n/i18n";
 import { workspaceStore } from "@/app/state/workspace.store";
 import { modalsModel } from "@/app/store/modalmodel";
@@ -32,7 +32,7 @@ import { WidgetItem } from "./widget-item";
 import { WidgetsMeasurement } from "./widgets-measurement";
 import type { WidgetDisplayMode } from "./widget-types";
 import { WorkspaceLayoutModel } from "./workspace-layout-model";
-import { explainLatestTerminalOutputInAI } from "@/app/view/term/explain-latest-output";
+import { explainLatestTerminalOutputInAI } from "@/ui/widgets/RTTerminalWidget/explain-latest-output";
 
 function quotePathForShell(path: string): string {
     return `'${path.replaceAll("'", `'\\''`)}'`;

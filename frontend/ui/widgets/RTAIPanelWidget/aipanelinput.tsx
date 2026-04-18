@@ -1,10 +1,10 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { formatFileSizeError, isAcceptableFile, validateFileSize } from "@/app/aipanel/ai-utils";
-import { waveAIHasFocusWithin } from "@/app/aipanel/waveai-focus-utils";
-import { type WaveAIModel } from "@/app/aipanel/waveai-model";
-import { Tooltip } from "@/element/tooltip";
+import { formatFileSizeError, isAcceptableFile, validateFileSize } from "@/ui/widgets/RTAIPanelWidget/ai-utils";
+import { waveAIHasFocusWithin } from "@/ui/widgets/RTAIPanelWidget/waveai-focus-utils";
+import { type WaveAIModel } from "@/ui/widgets/RTAIPanelWidget/waveai-model";
+import { Tooltip } from "@/ui/primitives/RTTooltip";
 import { cn } from "@/util/util";
 import { useAtom, useAtomValue } from "jotai";
 import { memo, useCallback, useEffect, useRef } from "react";

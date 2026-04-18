@@ -1,4 +1,4 @@
-import { waveAIHasSelection } from "@/app/aipanel/waveai-focus-utils";
+import { waveAIHasSelection } from "@/ui/widgets/RTAIPanelWidget/waveai-focus-utils";
 import {
     clearStoredPendingRunApproval,
     getStoredPendingRunApproval,

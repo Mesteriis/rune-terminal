@@ -1,5 +1,5 @@
 import { getMCPFacade, getToolsFacade } from "@/compat";
-import { WaveAIModel } from "@/app/aipanel/waveai-model";
+import { WaveAIModel } from "@/ui/widgets/RTAIPanelWidget/waveai-model";
 import {
     bindApprovalRetryRequest,
     clearStoredPendingToolApproval,

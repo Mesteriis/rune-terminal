@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { handleWaveAIContextMenu } from "@/app/aipanel/aipanel-contextmenu";
+import { handleWaveAIContextMenu } from "@/ui/widgets/RTAIPanelWidget/aipanel-contextmenu";
 import { useAtomValue } from "jotai";
 import { memo } from "react";
 import { WaveAIModel } from "./waveai-model";

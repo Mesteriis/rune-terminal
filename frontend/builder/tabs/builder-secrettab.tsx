@@ -9,7 +9,7 @@ import { globalStore } from "@/app/store/jotaiStore";
 import { useAtomValue } from "jotai";
 import { memo, useState, useEffect } from "react";
 import { Check, AlertTriangle } from "lucide-react";
-import { Tooltip } from "@/app/element/tooltip";
+import { Tooltip } from "@/ui/primitives/RTTooltip";
 import { Modal } from "@/app/modals/modal";
 import { modalsModel } from "@/app/store/modalmodel";
 

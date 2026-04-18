@@ -16,8 +16,8 @@ import { ProxyViewModel } from "@/app/view/proxy/proxy";
 import { SysinfoViewModel } from "@/app/view/sysinfo/sysinfo";
 import { TsunamiViewModel } from "@/app/view/tsunami/tsunami";
 import { VDomModel } from "@/app/view/vdom/vdom-model";
-import { ErrorBoundary } from "@/element/errorboundary";
-import { CenteredDiv } from "@/element/quickelems";
+import { ErrorBoundary } from "@/ui/primitives/RTErrorBoundary";
+import { CenteredDiv } from "@/ui/primitives/RTQuickElems";
 import { useDebouncedNodeInnerRect } from "@/layout/index";
 import {
     counterInc,
@@ -31,7 +31,7 @@ import { getWaveObjectAtom, makeORef, useWaveObjectValue } from "@/store/wos";
 import { focusedBlockId, getElemAsStr } from "@/util/focusutil";
 import { isBlank, useAtomValueSafe } from "@/util/util";
 import { HelpViewModel } from "@/view/helpview/helpview";
-import { TermViewModel } from "@/view/term/term-model";
+import { TermViewModel } from "@/ui/widgets/RTTerminalWidget/term-model";
 import { WaveAiModel } from "@/view/waveai/waveai";
 import { WebViewModel } from "@/view/webview/webview";
 import clsx from "clsx";

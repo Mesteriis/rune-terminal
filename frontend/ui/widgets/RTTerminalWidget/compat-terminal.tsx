@@ -1,10 +1,10 @@
 import { terminalStore } from "@/app/state/terminal.store";
-import { WaveAIModel } from "@/app/aipanel/waveai-model";
+import { WaveAIModel } from "@/ui/widgets/RTAIPanelWidget/waveai-model";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { CompatPaneHeader } from "@/app/workspace/compat-pane-header";
 import { getTerminalFacade } from "@/compat/terminal";
 import type { TerminalSnapshot } from "@/rterm-api/terminal/types";
-import { CenteredDiv } from "@/element/quickelems";
+import { CenteredDiv } from "@/ui/primitives/RTQuickElems";
 import { globalStore } from "@/store/global";
 import { explainLatestTerminalOutputInAI } from "./explain-latest-output";
 import { handleCompatTerminalClipboardKeydown } from "./compat-terminal-keydown";

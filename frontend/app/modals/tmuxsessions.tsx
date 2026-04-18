@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Block } from "@/app/block/block";
-import { Button } from "@/app/element/button";
+import { Button } from "@/ui/primitives/RTButton";
 import { useT } from "@/app/i18n/i18n";
 import { Modal } from "@/app/modals/modal";
 import { modalsModel } from "@/app/store/modalmodel";

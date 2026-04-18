@@ -1,5 +1,5 @@
-import { waveAIHasFocusWithin } from "@/app/aipanel/waveai-focus-utils";
-import { WaveAIModel } from "@/app/aipanel/waveai-model";
+import { waveAIHasFocusWithin } from "@/ui/widgets/RTAIPanelWidget/waveai-focus-utils";
+import { WaveAIModel } from "@/ui/widgets/RTAIPanelWidget/waveai-model";
 import { atoms, getBlockComponentModel } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import { focusedBlockId } from "@/util/focusutil";

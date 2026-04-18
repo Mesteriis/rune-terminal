@@ -1,8 +1,8 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { WaveAIModel } from "@/app/aipanel/waveai-model";
-import { isWaveAICompatRuntime } from "@/app/aipanel/compat-context";
+import { WaveAIModel } from "@/ui/widgets/RTAIPanelWidget/waveai-model";
+import { isWaveAICompatRuntime } from "@/ui/widgets/RTAIPanelWidget/compat-context";
 import { workspaceStore } from "@/app/state/workspace.store";
 import type { WorkspaceStoreLayout } from "@/app/state/workspace.store";
 import { globalStore } from "@/app/store/jotaiStore";

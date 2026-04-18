@@ -5,8 +5,8 @@ import { autoUpdate, FloatingPortal, Middleware, offset, useFloating } from "@fl
 import clsx from "clsx";
 import { atom, useAtom, WritableAtom } from "jotai";
 import { memo, useCallback, useEffect, useMemo, useRef } from "react";
-import { IconButton, ToggleIconButton } from "@/app/element/iconbutton";
-import { Input } from "@/app/element/input";
+import { IconButton, ToggleIconButton } from "@/ui/primitives/RTIconButton";
+import { Input } from "@/ui/primitives/RTInput";
 import "./RTSearch.scss";
 
 type SearchProps = SearchAtoms & {

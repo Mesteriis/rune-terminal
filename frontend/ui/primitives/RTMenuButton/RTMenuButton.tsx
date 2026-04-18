@@ -1,7 +1,7 @@
 import clsx from "clsx";
 import { memo, useState } from "react";
-import { Button } from "@/app/element/button";
-import { FlyoutMenu } from "@/app/element/flyoutmenu";
+import { Button } from "@/ui/primitives/RTButton";
+import { FlyoutMenu } from "@/ui/primitives/RTFlyoutMenu";
 import "./RTMenuButton.scss";
 
 const MenuButtonComponent = ({ items, className, text, title }: MenuButtonProps) => {

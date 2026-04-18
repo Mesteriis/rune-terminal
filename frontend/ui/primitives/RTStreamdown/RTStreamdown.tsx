@@ -1,8 +1,8 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { CopyButton } from "@/app/element/copybutton";
-import { IconButton } from "@/app/element/iconbutton";
+import { CopyButton } from "@/ui/primitives/RTCopyButton";
+import { IconButton } from "@/ui/primitives/RTIconButton";
 import { cn, useAtomValueSafe } from "@/util/util";
 import type { Atom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";

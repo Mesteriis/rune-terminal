@@ -2,13 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Block, SubBlock } from "@/app/block/block";
-import { Search, useSearch } from "@/app/element/search";
+import { Search, useSearch } from "@/ui/primitives/RTSearch";
 import { useT } from "@/app/i18n/i18n";
 import { useTabModel } from "@/app/store/tab-model";
 import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import type { TermViewModel } from "@/app/view/term/term-model";
+import type { TermViewModel } from "@/ui/widgets/RTTerminalWidget/term-model";
 import { atoms, getBlockComponentModel, getOverrideConfigAtom, getSettingsPrefixAtom, globalStore, WOS } from "@/store/global";
 import { fireAndForget, useAtomValueSafe } from "@/util/util";
 import { computeBgStyleFromMeta } from "@/util/waveutil";

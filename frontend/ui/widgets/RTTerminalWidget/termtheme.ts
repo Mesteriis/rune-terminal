@@ -1,9 +1,9 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import type { TermViewModel } from "@/app/view/term/term-model";
-import { computeTheme } from "@/app/view/term/termutil";
-import { TermWrap } from "@/app/view/term/termwrap";
+import type { TermViewModel } from "@/ui/widgets/RTTerminalWidget/term-model";
+import { computeTheme } from "@/ui/widgets/RTTerminalWidget/termutil";
+import { TermWrap } from "@/ui/widgets/RTTerminalWidget/termwrap";
 import { atoms } from "@/store/global";
 import { useAtomValue } from "jotai";
 import { useEffect } from "react";

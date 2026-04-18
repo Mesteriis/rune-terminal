@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { Button } from "@/app/element/button";
+import { Button } from "@/ui/primitives/RTButton";
 import { cn } from "@/util/util";
 import clsx from "clsx";
 import { forwardRef } from "react";

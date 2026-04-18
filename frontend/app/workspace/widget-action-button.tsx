@@ -1,4 +1,4 @@
-import { Tooltip } from "@/app/element/tooltip";
+import { Tooltip } from "@/ui/primitives/RTTooltip";
 import { makeIconClass } from "@/util/util";
 import { memo } from "react";
 import type { CSSProperties, RefObject } from "react";

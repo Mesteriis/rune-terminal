@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { Markdown } from "@/app/element/markdown";
+import { Markdown } from "@/ui/primitives/RTMarkdown";
 import { VDomModel } from "@/app/view/vdom/vdom-model";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import clsx from "clsx";

@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { Markdown } from "@/element/markdown";
+import { Markdown } from "@/ui/primitives/RTMarkdown";
 import { getOverrideConfigAtom, globalStore } from "@/store/global";
 import { useAtomValue } from "jotai";
 import { useEffect, useMemo } from "react";

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BuilderAppPanelModel } from "@/builder/store/builder-apppanel-model";
-import { CopyButton } from "@/element/copybutton";
+import { CopyButton } from "@/ui/primitives/RTCopyButton";
 import { atoms } from "@/store/global";
 import { cn } from "@/util/util";
 import { useAtomValue } from "jotai";

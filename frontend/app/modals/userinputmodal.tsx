@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Modal } from "@/app/modals/modal";
-import { Markdown } from "@/element/markdown";
+import { Markdown } from "@/ui/primitives/RTMarkdown";
 import { modalsModel } from "@/store/modalmodel";
 import * as keyutil from "@/util/keyutil";
 import { fireAndForget } from "@/util/util";

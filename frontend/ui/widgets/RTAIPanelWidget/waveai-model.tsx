@@ -6,7 +6,7 @@ import {
     UseChatSetMessagesType,
     WaveUIMessage,
     WaveUIMessagePart,
-} from "@/app/aipanel/aitypes";
+} from "@/ui/widgets/RTAIPanelWidget/aitypes";
 import { FocusManager } from "@/app/store/focusManager";
 import { atoms, createBlock, getOrefMetaKeyAtom, getSettingsKeyAtom } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";

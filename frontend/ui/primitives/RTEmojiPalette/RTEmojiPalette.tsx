@@ -4,9 +4,9 @@
 import { type Placement } from "@floating-ui/react";
 import clsx from "clsx";
 import { memo, useState } from "react";
-import { Button } from "@/app/element/button";
-import { Input, InputGroup, InputLeftElement } from "@/app/element/input";
-import { Popover, PopoverButton, PopoverContent } from "@/app/element/popover";
+import { Button } from "@/ui/primitives/RTButton";
+import { Input, InputGroup, InputLeftElement } from "@/ui/primitives/RTInput";
+import { Popover, PopoverButton, PopoverContent } from "@/ui/components/RTPopover";
 
 import "./RTEmojiPalette.scss";
 

@@ -6,7 +6,7 @@ import { makeORef, splitORef } from "@/app/store/wos";
 import { RpcResponseHelper, WshClient } from "@/app/store/wshclient";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { makeFeBlockRouteId } from "@/app/store/wshrouter";
-import { TermViewModel } from "@/app/view/term/term-model";
+import { TermViewModel } from "@/ui/widgets/RTTerminalWidget/term-model";
 import { isBlank } from "@/util/util";
 import debug from "debug";
 

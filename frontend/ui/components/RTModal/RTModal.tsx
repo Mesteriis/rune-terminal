@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { Button } from "@/element/button";
+import { Button } from "@/ui/primitives/RTButton";
 import React from "react";
 
 import "./RTModal.scss";
