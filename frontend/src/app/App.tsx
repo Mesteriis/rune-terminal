@@ -26,7 +26,7 @@ const runaDockviewTheme: DockviewTheme = {
 
 const rootStyle = {
   position: 'relative' as const,
-  height: '100vh',
+  height: '100%',
   display: 'flex',
   overflow: 'hidden' as const,
   padding: 0,
