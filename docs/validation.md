@@ -1,3 +1,80 @@
+# Latest telemetryrequired widget sub-slice migration
+
+**Date:** 2026-04-18  
+**Scope:** Execute local leaf-only `RTAIPanelWidget/telemetryrequired` contract split (not a manifest-registered widget migration)
+
+## Exact files created/updated
+
+- Created:
+  - `frontend/ui/widgets/RTAIPanelWidget/telemetryrequired.logic.ts`
+  - `frontend/ui/widgets/RTAIPanelWidget/telemetryrequired.template.tsx`
+  - `frontend/ui/widgets/RTAIPanelWidget/telemetryrequired.style.scss`
+  - `frontend/ui/widgets/RTAIPanelWidget/telemetryrequired.story.tsx`
+- Updated:
+  - `frontend/ui/widgets/RTAIPanelWidget/telemetryrequired.tsx` (local barrel export)
+- Legacy single-file implementation status:
+  - Replaced. Runtime JSX moved to `.template.tsx`; types/helpers and class resolution moved to `.logic.ts`.
+
+## Preserved export/import path
+
+- Preserved local parent import path:
+  - `frontend/ui/widgets/RTAIPanelWidget/aipanel.tsx` imports from `./telemetryrequired`.
+- No direct imports outside `RTAIPanelWidget` were found in `frontend/app`, `frontend/ui`, or `frontend/wave.ts`.
+
+## Commands run and results
+
+```bash
+rg "telemetryrequired" frontend/ui/widgets/RTAIPanelWidget frontend/app frontend/ui frontend/wave.ts
+→ only local widget usage (parent import in aipanel + local files)
+
+npm --prefix frontend run build
+→ ✓ pass (phase 1 boundary validation)
+
+npm --prefix frontend run lint
+→ ✓ pass (repo has existing warnings; no new errors)
+
+npx tsc -p frontend/tsconfig.json --noEmit
+→ ✓ pass
+
+npm --prefix frontend run build
+→ ✓ pass (phase 2 validation)
+
+npm run build:core
+→ ✓ pass
+
+RTERM_AUTH_TOKEN=ui-telemetryrequired-token apps/desktop/bin/rterm-core serve --listen 127.0.0.1:52774 --workspace-root "$PWD" --state-dir /tmp/runa-ui-telemetryrequired-state
+VITE_RTERM_API_BASE=http://127.0.0.1:52774 VITE_RTERM_AUTH_TOKEN=ui-telemetryrequired-token npm --prefix frontend run dev -- --host 127.0.0.1 --port 4192 --strictPort
+
+curl -sf -H "Authorization: Bearer ui-telemetryrequired-token" http://127.0.0.1:52774/healthz
+→ {"status":"ok"}
+
+curl -sf -H "Authorization: Bearer ui-telemetryrequired-token" http://127.0.0.1:52774/api/v1/workspace
+→ ✓ pass (workspace payload returned)
+
+curl -sf -H "Authorization: Bearer ui-telemetryrequired-token" "http://127.0.0.1:52774/api/v1/terminal/term-main?from=0"
+→ ✓ pass (terminal snapshot payload returned)
+```
+
+## Runtime sanity result
+
+- App loaded at `http://127.0.0.1:4192/`.
+- Workspace shell was visible.
+- Terminal widget was visible.
+- AI panel loaded where expected.
+- `telemetryrequired` module and new local contract files loaded successfully (HTTP `200` in dev server requests).
+- No failed SCSS imports observed for this slice.
+- No failed module loads observed for this slice.
+- No fatal console errors observed (one non-fatal browser warning remained unrelated to this slice).
+- Rendering note: telemetry-required UI path is conditionally rendered by panel state; no regression from the split was observed.
+
+## Slice scope confirmation
+
+- This is a **local widget sub-slice only**, not a manifest-registered widget migration.
+- No manifest changes.
+- No checker changes.
+
+---
+
 # Latest post-byokannouncement widget assessment
 
 **Date:** 2026-04-18  
