@@ -68,3 +68,46 @@ rg --no-heading -n "from \"@/app/|@/app/|from \"@/compat/|@/compat/|from \"@/rte
 - Both are high-complexity and high-coupling at top-level.
 - `RTAIPanelWidget` currently shows a clearer path to an isolated first **internal** sub-slice via leaf presentational files.
 - `RTTerminalWidget` primary import surface is closer to runtime-critical terminal behavior and block/workspace semantics.
+
+## Decision: Safer First Target
+
+Selected safer first target: **`RTAIPanelWidget`**.
+
+Why this is safer than `RTTerminalWidget`:
+- `RTAIPanelWidget` has small leaf UI files with bounded local responsibilities (for example `agent-selection-strip.tsx`) that are consumed inside the widget orchestration layer.
+- Those leaf files are easier to isolate without touching runtime-critical terminal rendering, stream handling, or block/workspace terminal semantics.
+- `RTTerminalWidget` external API is centered on `TermViewModel` and `CompatTerminalView`, which are tightly coupled to core terminal behavior and have materially higher blast radius.
+
+Why `RTTerminalWidget` is deferred:
+- High-risk core files (`term-model.ts`, `term.tsx`, `termwrap.ts`, `term-wsh.tsx`, `compat-terminal.tsx`) are runtime-critical and directly connected to app block/workspace and terminal transport behavior.
+- A first sub-slice there is more likely to spill into app/workspace/runtime paths, increasing regression risk for the daily-driver shell path.
+
+Risks that make full-widget migration too large right now:
+- `RTAIPanelWidget` core orchestration (`waveai-model.tsx`, `aipanel-compat.tsx`, `run-command.ts`, `compat-conversation.ts`) is still broad and cross-layer.
+- `RTTerminalWidget` core model/view path is deeply cross-layer and runtime-coupled.
+- Migrating either widget in full would exceed a low-risk first widget contract slice.
+
+## First Safe Sub-Slice Boundary (Future Slice Definition)
+
+Widget target for first sub-slice: `RTAIPanelWidget`.
+
+In scope (narrow boundary):
+- `frontend/ui/widgets/RTAIPanelWidget/agent-selection-strip.tsx` only.
+
+Out of scope (explicit deferrals):
+- `frontend/ui/widgets/RTAIPanelWidget/aipanel.tsx`
+- `frontend/ui/widgets/RTAIPanelWidget/aipanel-compat.tsx`
+- `frontend/ui/widgets/RTAIPanelWidget/waveai-model.tsx`
+- `frontend/ui/widgets/RTAIPanelWidget/run-command.ts`
+- `frontend/ui/widgets/RTAIPanelWidget/compat-conversation.ts`
+- all `RTTerminalWidget` files
+- any app/layout/runtime/api/store/manifest/checker changes
+
+Expected contract outcome for that sub-slice:
+- Migrate only `agent-selection-strip` to the local contract shape used for frontend UI slices (logic/template/style/story + stable export path), while preserving existing runtime behavior and keeping parent widget orchestration unchanged.
+
+Stop conditions for that future sub-slice:
+- Stop if migration requires behavioral edits in `aipanel-compat.tsx` beyond minimal import wiring.
+- Stop if migration requires edits in `waveai-model.tsx`, `run-command.ts`, `compat-conversation.ts`, or app/layout files.
+- Stop if migration requires checker/manifest scope changes.
+- Stop if build/lint/tsc failures are unrelated legacy debt.
