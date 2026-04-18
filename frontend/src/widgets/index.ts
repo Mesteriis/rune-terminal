@@ -1,1 +1,6 @@
+export * from './ai-group-actions-widget'
+export * from './ai-panel-widget'
+export * from './dockview-panel-widget'
 export * from './demo-widget'
+export * from './right-action-rail-widget'
+export * from './shell-topbar-widget'

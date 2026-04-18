@@ -2,10 +2,16 @@ import { DockviewReact, type DockviewApi, type DockviewGroupPanel, type Dockview
 import { useEffect, useState } from 'react'
 import { useUnit } from 'effector-react'
 
-import { AiPanel } from './ai/ai-sidebar'
 import { $isAiSidebarOpen, toggleAiSidebar } from '../shared/model/app'
+import { Box } from '../shared/ui/primitives'
+import {
+  AiGroupActionsWidget,
+  AiPanelWidget,
+  DockviewPanelWidget,
+  RightActionRailWidget,
+  ShellTopbarWidget,
+} from '../widgets'
 
-const SHELL_HEADER_SIZE = 40
 const AI_PANEL_ID_PREFIX = 'ai-panel-'
 const AI_GROUP_ATTRIBUTE = 'data-runa-group'
 const AI_GROUP_ATTRIBUTE_VALUE = 'ai'
@@ -23,22 +29,9 @@ const mainShellStyle = {
   minWidth: 0,
   display: 'flex',
   flexDirection: 'column' as const,
-}
-
-const topbarStyle = {
-  height: SHELL_HEADER_SIZE,
-  flex: `0 0 ${SHELL_HEADER_SIZE}px`,
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-  padding: '0 12px',
-  boxSizing: 'border-box' as const,
-}
-
-const tabStripStyle = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
+  border: 'none',
+  background: 'transparent',
+  padding: 0,
 }
 
 const contentAreaStyle = {
@@ -46,32 +39,26 @@ const contentAreaStyle = {
   display: 'flex',
   minHeight: 0,
   overflow: 'hidden' as const,
+  border: 'none',
+  background: 'transparent',
+  padding: 0,
 }
 
 const workspaceStyle = {
   flex: 1,
   minWidth: 0,
   overflow: 'hidden' as const,
+  border: 'none',
+  background: 'transparent',
+  padding: 0,
 }
 
 const dockviewContainerStyle = {
   height: '100%',
   width: '100%',
-}
-
-const rightRailStyle = {
-  flex: `0 0 ${SHELL_HEADER_SIZE}px`,
-  width: SHELL_HEADER_SIZE,
-  display: 'flex',
-  flexDirection: 'column' as const,
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  boxSizing: 'border-box' as const,
-  padding: 4,
-}
-
-function Panel(props: IDockviewPanelProps) {
-  return <div>PANEL: {props.api.id}</div>
+  border: 'none',
+  background: 'transparent',
+  padding: 0,
 }
 
 function isAiPanel(panel: Pick<IDockviewPanel, 'id'> | undefined): boolean {
@@ -153,20 +140,12 @@ function AiGroupActions(props: IDockviewHeaderActionsProps) {
     return null
   }
 
-  return (
-    <button
-      type="button"
-      aria-label="Add AI tab"
-      onClick={() => createAiPanel(props.containerApi, props.group)}
-    >
-      +
-    </button>
-  )
+  return <AiGroupActionsWidget onAddTab={() => createAiPanel(props.containerApi, props.group)} />
 }
 
 const components = {
-  default: Panel,
-  ai: AiPanel,
+  default: DockviewPanelWidget,
+  ai: AiPanelWidget,
 }
 
 export function App() {
@@ -256,50 +235,22 @@ export function App() {
   }, [dockviewApi])
 
   return (
-    <div style={rootStyle}>
-      <div style={mainShellStyle}>
-        <div style={topbarStyle}>
-          <button type="button" role="tab" aria-selected="false">
-            Close
-          </button>
-          <button type="button" role="tab" aria-selected="false">
-            Collapse
-          </button>
-          <button type="button" role="tab" aria-selected="false">
-            Fullscreen
-          </button>
-          <button type="button" aria-pressed={isAiSidebarOpen} onClick={onToggleAiSidebar}>
-            AI
-          </button>
-          <div role="tablist" aria-label="Workspace tabs" style={tabStripStyle}>
-            <button type="button" role="tab" aria-selected="true">
-              TAB-1
-            </button>
-            <button type="button" role="tab" aria-selected="false">
-              TAB-2
-            </button>
-          </div>
-        </div>
-        <div style={contentAreaStyle}>
-          <div style={workspaceStyle}>
-            <div style={dockviewContainerStyle}>
+    <Box style={rootStyle}>
+      <Box style={mainShellStyle}>
+        <ShellTopbarWidget isAiOpen={isAiSidebarOpen} onToggleAi={onToggleAiSidebar} />
+        <Box style={contentAreaStyle}>
+          <Box style={workspaceStyle}>
+            <Box style={dockviewContainerStyle}>
               <DockviewReact
                 components={components}
                 onReady={handleReady}
                 rightHeaderActionsComponent={AiGroupActions}
               />
-            </div>
-          </div>
-        </div>
-      </div>
-      <div role="complementary" aria-label="Right action rail" style={rightRailStyle}>
-        <button type="button" aria-label="Open utility panel">
-          +
-        </button>
-        <button type="button" aria-label="Open settings panel">
-          *
-        </button>
-      </div>
-    </div>
+            </Box>
+          </Box>
+        </Box>
+      </Box>
+      <RightActionRailWidget />
+    </Box>
   )
 }
