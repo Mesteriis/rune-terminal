@@ -13,7 +13,7 @@ const topbarStyle = {
   display: 'flex',
   alignItems: 'center',
   gap: 'var(--gap-sm)',
-  padding: '0 var(--padding-shell-inline)',
+  padding: '0 var(--padding-shell-inline) 0 0',
   border: 'none',
   background: 'transparent',
   borderRadius: 0,
