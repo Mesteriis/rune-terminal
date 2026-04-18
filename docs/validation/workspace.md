@@ -8,7 +8,7 @@
   - top bar order is `AI`, then the tab strip
   - `40px` top bar above the workspace
   - Dockview fills the remaining viewport and boots three panels from `onReady`
-  - AI sidebar opens as an absolute overlay and does not resize Dockview
+  - AI sidebar opens as a visible absolute overlay, occupies `50%` of the window width, and does not resize Dockview
   - Dockview drag and sash resize work on the live Vite app
 
 ## Commands/tests used
@@ -31,6 +31,6 @@
 - Initial panel set rendered as `terminal-header`, `terminal`, and `tool`.
 - Top bar rendered in the requested order: `AI`, then `TAB-1`, then `TAB-2`.
 - Dockview occupied the full viewport below the `40px` top bar with no zero-height panels.
-- Opening `AI SIDEBAR` produced an absolute element at `x=1140`, `y=40`, `width=300`, `height=920`, `z-index=20`, while all Dockview panel rects stayed unchanged.
+- Opening `AI SIDEBAR` produced a visible absolute element at `x=720`, `y=40`, `width=720`, `height=920` on a `1440px` wide viewport, with a non-transparent background and unchanged Dockview panel rects underneath.
 - Dragging the vertical sash changed the bottom panel widths from `720/720` to `598/842`.
 - Dragging the `tool` tab into the top group merged the layout into two groups: `terminal-header + tool` on top and `terminal` below.
