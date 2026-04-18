@@ -53,7 +53,7 @@ const contentAreaStyle = {
   border: 'none',
   borderRadius: 0,
   background: 'transparent',
-  padding: 0,
+  padding: 'var(--gap-shell-chrome) var(--gap-shell-chrome) 0 0',
   boxShadow: 'none',
   backdropFilter: 'none',
   WebkitBackdropFilter: 'none',

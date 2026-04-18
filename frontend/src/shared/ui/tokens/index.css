@@ -32,6 +32,7 @@
   --gap-sm: var(--space-sm);
   --gap-md: var(--space-md);
   --gap-lg: var(--space-lg);
+  --gap-shell-chrome: var(--space-md);
 
   --padding-control-y: var(--space-sm);
   --padding-control-x: var(--space-md);
