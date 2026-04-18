@@ -58,6 +58,42 @@ wc -l frontend/ui/widgets/RTAIPanelWidget/*
 | `waveai-focus-utils.ts` | conversation/model/state logic | imports: none; depended by: `aipanel.tsx`, `aipanel-compat.tsx`, `aipanel-contextmenu.ts`, `aipanelinput.tsx` | state/control helper | Shared focus-control utility affects panel interaction behavior. |
 | `waveai-model.tsx` | conversation/model/state logic | imports: `ai-utils.ts`, `aipanelinput.tsx`, `aitypes.ts`, `compat-context.ts`; depended by: 14 local files | model core | Core state singleton (~761 LOC), highest coupling in widget. |
 
+### Next safest leaf-only target decision
+
+Chosen next leaf candidate: **`frontend/ui/widgets/RTAIPanelWidget/run-command-approval.tsx`**.
+
+Why this is the safest remaining leaf:
+- It has no local imports and exactly one local dependent (`aipanel-compat.tsx`), making blast radius smaller than other candidates.
+- It is a pure prop-driven render list with no direct model singleton access and no local orchestration wiring.
+- It is materially narrower than alternatives:
+  - `execution-block-list.tsx` is still leaf-like but carries richer reveal/provenance UI state and a larger callback surface.
+  - `airatelimitstrip.tsx` is leaf-like but includes timer/atom behavior and is wired into both `aipanel.tsx` and `aipanel-compat.tsx`.
+  - `aifeedbackbuttons.tsx` and `aidroppedfiles.tsx` are leaf-like but directly couple to `WaveAIModel`.
+
+Exact future slice boundary (for execution slice after this assessment):
+- In scope:
+  - `frontend/ui/widgets/RTAIPanelWidget/run-command-approval.tsx` only.
+- Allowed:
+  - Minimal local import rewiring inside `frontend/ui/widgets/RTAIPanelWidget` needed to preserve existing parent import path.
+- Out of scope:
+  - `aipanel.tsx`
+  - `aipanel-compat.tsx` (except minimal import rewiring only)
+  - `waveai-model.tsx`
+  - `run-command.ts`
+  - `compat-conversation.ts`
+  - `compat-context.ts`
+  - `aitypes.ts`
+  - `ai-utils.ts`
+  - all other `RTAIPanelWidget` files
+  - any manifest or checker changes
+  - any `app/layout/runtime/api` changes
+
+Future execution stop conditions:
+- Stop if preserving `./run-command-approval` import path requires edits beyond minimal local rewiring.
+- Stop if migration requires behavior changes in `aipanel-compat.tsx` or any model/runtime/compat file.
+- Stop if manifest/checker scope changes become necessary.
+- Stop if build/lint/tsc fails due unrelated legacy debt.
+
 ## Evidence Collection
 
 Commands used for this assessment:
