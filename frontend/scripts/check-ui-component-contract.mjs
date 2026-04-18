@@ -93,13 +93,15 @@ try {
       success(`${name} has all required files`);
     }
 
-    // Check for old-style files (only warn if Phase 3 migration is complete)
-    // For now, we don't fail on old files since RTButton hasn't been migrated yet
+    // Check for old-style files and fail for registered components
     for (const ext of OLD_FILES) {
       const oldFileName = `${name}.${ext}`;
       const oldFilePath = path.join(componentDir, oldFileName);
       if (fs.existsSync(oldFilePath)) {
-        warn(`${name} has old-style file: ${oldFileName} (should be removed after migration)`);
+        error(
+          `${name} has old-style file: ${oldFileName} which violates the four-file convention. ` +
+          `This file must be removed.`
+        );
       }
     }
   }
