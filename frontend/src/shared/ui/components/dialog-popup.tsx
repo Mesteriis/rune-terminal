@@ -1,3 +1,5 @@
+import { X } from 'lucide-react'
+
 import { Box, Button, Text } from '../primitives'
 
 type DialogPopupProps = {
@@ -63,6 +65,12 @@ const dialogActionsStyle = {
   WebkitBackdropFilter: 'none',
 }
 
+const settingsCloseButtonStyle = {
+  padding: '0',
+  width: 'var(--size-control-min)',
+  minWidth: 'var(--size-control-min)',
+}
+
 export function DialogPopup({
   title,
   description,
@@ -82,8 +90,12 @@ export function DialogPopup({
     >
       <Box style={dialogHeaderStyle}>
         <Text style={dialogTitleStyle}>{title}</Text>
-        <Button aria-label={`Close ${title}`} onClick={onDismiss}>
-          Close
+        <Button
+          aria-label={`Close ${title}`}
+          onClick={onDismiss}
+          style={variant === 'settings' ? settingsCloseButtonStyle : undefined}
+        >
+          {variant === 'settings' ? <X size={16} strokeWidth={1.75} /> : 'Close'}
         </Button>
       </Box>
       <Text style={dialogDescriptionStyle}>{description}</Text>
