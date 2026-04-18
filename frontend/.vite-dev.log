@@ -1,8 +1,0 @@
-
-> @rterm/frontend@0.1.0 dev
-> vite --host 127.0.0.1 --strictPort --port 5173
-
-
-  VITE v8.0.8  ready in 219 ms
-
-  ➜  Local:   http://127.0.0.1:5173/

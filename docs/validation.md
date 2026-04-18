@@ -1,3 +1,151 @@
+# Latest: Frontend Primitive Batch Migration
+
+**Date:** 2026-04-18  
+**Scope:** Migrate RTMagnify, RTInput, RTTooltip to four-file contract; register all with strict checker
+
+## Summary
+
+Three additional primitives (RTMagnify, RTInput, RTTooltip) successfully migrated to four-file convention. All four registered primitives now pass strict contract enforcement.
+
+## Migrated Primitives
+
+### RTMagnify (Very Low Complexity)
+- **Files created:**
+  - RTMagnify.logic.ts (MagnifyIconProps type)
+  - RTMagnify.template.tsx (MagnifyIcon component with clsx)
+  - RTMagnify.style.scss (SVG icon rotation animation)
+  - RTMagnify.story.tsx (enabled/disabled state demo)
+  - index.ts (barrel export)
+- **Files removed:** RTMagnify.tsx, RTMagnify.scss
+- **Dependencies:** None (pure component)
+- **Imports:** Updated 4 usage sites automatically via barrel
+
+### RTInput (Medium Complexity)
+- **Files created:**
+  - RTInput.logic.ts (InputProps, InputGroupProps, InputLeftElementProps, InputRightElementProps types)
+  - RTInput.template.tsx (Input, InputGroup, InputLeftElement, InputRightElement components)
+  - RTInput.style.scss (complete form styling with focus/disabled states)
+  - RTInput.story.tsx (multiple state and configuration demos)
+  - index.ts (barrel export)
+- **Files removed:** RTInput.tsx, RTInput.scss
+- **Dependencies:** None (pure React hooks)
+- **Imports:** Used by RTSearch, RTEmojiPalette, workspaceeditor, preview, modals (5 sites)
+
+### RTTooltip (Medium Complexity)
+- **Files created:**
+  - RTTooltip.logic.ts (TooltipProps type)
+  - RTTooltip.template.tsx (Tooltip and TooltipInner components with @floating-ui/react)
+  - RTTooltip.style.scss (placeholder; styling via tailwind classes)
+  - RTTooltip.story.tsx (placement and state demos)
+  - index.ts (barrel export)
+- **Files removed:** RTTooltip.tsx
+- **Dependencies:** @floating-ui/react library only (not app coupling)
+- **Imports:** Used by builder, workspace, waveconfig, aipanel (5 sites)
+
+## Contract Manifest Registration
+
+**File:** frontend/ui/component-contract.json
+
+All four primitives now registered:
+```json
+{
+  "components": [
+    { "name": "RTButton", "layer": "primitive", "dir": "ui/primitives/RTButton" },
+    { "name": "RTMagnify", "layer": "primitive", "dir": "ui/primitives/RTMagnify" },
+    { "name": "RTInput", "layer": "primitive", "dir": "ui/primitives/RTInput" },
+    { "name": "RTTooltip", "layer": "primitive", "dir": "ui/primitives/RTTooltip" }
+  ]
+}
+```
+
+## Validation Commands and Results
+
+### Strict Contract Checker
+```bash
+node frontend/scripts/check-ui-component-contract.mjs
+✓ RTButton has all required files
+✓ RTMagnify has all required files
+✓ RTInput has all required files
+✓ RTTooltip has all required files
+```
+
+### TypeScript
+```bash
+npx tsc -p frontend/tsconfig.json --noEmit
+✓ No errors
+```
+
+### ESLint (active scope)
+```bash
+npm --prefix frontend run lint:active
+✓ 15 pre-existing warnings (unchanged)
+```
+
+### Frontend Build
+```bash
+npm --prefix frontend run build
+✓ Built in 3.31s
+```
+
+### Backend Service
+```bash
+RTERM_AUTH_TOKEN=ui-primitive-batch-token \
+  apps/desktop/bin/rterm-core serve \
+  --listen 127.0.0.1:52761 \
+  --workspace-root "$PWD" \
+  --state-dir /tmp/runa-ui-primitive-batch-state
+✓ Running
+```
+
+### Frontend Dev Server
+```bash
+VITE_RTERM_API_BASE=http://127.0.0.1:52761 \
+  VITE_RTERM_AUTH_TOKEN=ui-primitive-batch-token \
+  npm --prefix frontend run dev -- --host 127.0.0.1 --port 4181 --strictPort
+✓ Running in 229ms
+```
+
+### Smoke Tests
+```bash
+curl -sf http://127.0.0.1:52761/healthz
+✓ Backend healthy
+
+curl -sf http://127.0.0.1:52761/api/v1/workspace
+✓ Workspace API accessible
+
+curl -sf http://127.0.0.1:52761/api/v1/terminal/term-main?from=0
+✓ Terminal API accessible
+
+curl -s http://127.0.0.1:4181/
+✓ Frontend HTML serving correctly
+```
+
+## Key Points
+
+- **No API renames:** All public exports remain as-is (MagnifyIcon, Input/InputGroup/InputLeftElement/InputRightElement, Tooltip)
+- **Strict enforcement:** Contract checker now fails on any old-style files (.tsx, .scss) for registered components
+- **Pure primitives:** All three have zero coupling to app/runtime/api layers
+- **Barrel imports working:** All existing usage sites continue to work without changes
+- **Storybook NOT added:** Static .story.tsx files created without any Storybook runtime dependency
+- **Only registered components checked:** Checker still only inspects RTButton, RTMagnify, RTInput, RTTooltip; unregistered primitives are free to keep legacy structure
+
+## Scope Adherence
+
+- ✓ Only 3 primitives migrated (not 5+)
+- ✓ No components/widgets/layout touched
+- ✓ No public API renames
+- ✓ No Storybook runtime added
+- ✓ No app/runtime coupling introduced
+- ✓ Strict checker scope unchanged (manifest-only)
+- ✓ No opportunistic cleanup
+- ✓ Backend unchanged
+
+## Known Limitations
+
+None. All four registered primitives pass strict validation.
+
+---
+
 # Frontend RTButton Contract Completion Validation
 
 **Date:** 2026-04-18  
