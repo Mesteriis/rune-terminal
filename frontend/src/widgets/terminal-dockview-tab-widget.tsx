@@ -12,13 +12,13 @@ import {
 } from './terminal-panel'
 
 const addButtonStyle = {
-  width: '20px',
-  minWidth: '20px',
-  height: '20px',
-  minHeight: '20px',
+  width: '28px',
+  minWidth: '28px',
+  height: '28px',
+  minHeight: '28px',
   padding: 0,
   border: '1px solid var(--runa-terminal-surface-border, var(--color-border-subtle))',
-  borderRadius: 'var(--radius-xs)',
+  borderRadius: 'var(--radius-sm)',
   background: 'transparent',
   boxShadow: 'none',
   backdropFilter: 'none',
@@ -83,7 +83,7 @@ export function TerminalDockviewTabWidget(props: IDockviewPanelHeaderProps) {
             size="sm"
             style={addButtonStyle}
           >
-            <Plus size={12} strokeWidth={1.8} />
+            <Plus size={14} strokeWidth={1.8} />
           </IconButton>
         ) : null}
         compact

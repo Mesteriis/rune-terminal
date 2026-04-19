@@ -45,7 +45,7 @@ const rootStyle = {
 
 const compactRootStyle = {
   ...rootStyle,
-  gap: 'var(--gap-sm)',
+  gap: 'var(--gap-md)',
   minHeight: '100%',
   width: '100%',
 }
@@ -66,7 +66,7 @@ const clusterStyle = {
 
 const compactClusterStyle = {
   ...clusterStyle,
-  gap: 'var(--gap-xs)',
+  gap: 'var(--gap-sm)',
   flex: '0 1 auto',
 }
 
@@ -89,7 +89,7 @@ const metaWrapStyle = {
 const compactMetaWrapStyle = {
   ...metaWrapStyle,
   flex: 1,
-  gap: 'var(--gap-xs)',
+  gap: 'var(--gap-sm)',
   flexWrap: 'nowrap' as const,
   overflow: 'hidden' as const,
 }
@@ -111,9 +111,9 @@ const metaItemStyle = {
 
 const compactMetaItemStyle = {
   ...metaItemStyle,
-  gap: 'var(--gap-xs)',
-  minHeight: '20px',
-  padding: '0 var(--space-xs)',
+  gap: 'var(--gap-sm)',
+  minHeight: '28px',
+  padding: '0 var(--space-sm)',
 }
 
 const titleTextStyle = {
@@ -125,8 +125,8 @@ const titleTextStyle = {
 
 const compactTitleTextStyle = {
   ...titleTextStyle,
-  fontSize: 'var(--font-size-sm)',
-  lineHeight: 'var(--line-height-sm)',
+  fontSize: 'var(--font-size-md)',
+  lineHeight: 'var(--line-height-md)',
 }
 
 const metaTextStyle = {
@@ -140,8 +140,8 @@ const metaTextStyle = {
 
 const compactMetaTextStyle = {
   ...metaTextStyle,
-  fontSize: '11px',
-  lineHeight: '14px',
+  fontSize: 'var(--font-size-sm)',
+  lineHeight: 'var(--line-height-sm)',
 }
 
 function getConnectionMeta(connectionKind: TerminalConnectionKind) {
@@ -218,8 +218,8 @@ export function TerminalStatusHeader({
 }: TerminalStatusHeaderProps) {
   const connectionMeta = getConnectionMeta(connectionKind)
   const sessionMeta = getSessionMeta(sessionState)
-  const iconSize = compact ? 13 : 14
-  const titleIconSize = compact ? 14 : 16
+  const iconSize = compact ? 14 : 14
+  const titleIconSize = compact ? 18 : 16
   const displayText = primaryText ?? (compact ? cwd : title)
 
   return (
