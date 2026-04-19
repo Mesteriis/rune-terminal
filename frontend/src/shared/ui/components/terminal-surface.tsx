@@ -26,6 +26,7 @@ export type TerminalSurfaceProps = {
   introLines?: string[]
   onRendererModeChange?: (mode: 'default' | 'webgl') => void
   onRequestSearch?: () => void
+  onActivate?: () => void
 }
 
 const viewportStyle = {
@@ -170,6 +171,7 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
     introLines = [],
     onRendererModeChange,
     onRequestSearch,
+    onActivate,
   },
   ref,
 ) {
@@ -395,10 +397,17 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
       })
     }
 
-    const focusTerminal = () => {
-      term.focus()
+    const activateTerminalPanel = () => {
+      onActivate?.()
     }
 
+    const focusTerminal = () => {
+      window.setTimeout(() => {
+        term.focus()
+      }, 0)
+    }
+
+    openTarget.addEventListener('pointerdown', activateTerminalPanel)
     openTarget.addEventListener('click', focusTerminal)
 
     requestAnimationFrame(() => {
@@ -407,6 +416,7 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
     })
 
     return () => {
+      openTarget.removeEventListener('pointerdown', activateTerminalPanel)
       openTarget.removeEventListener('click', focusTerminal)
       resizeObserver?.disconnect()
       groupClassObserver?.disconnect()
@@ -416,7 +426,7 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
       termRef.current = null
       term.dispose()
     }
-  }, [connectionKind, cwd, hostId, introLinesSignature, onRendererModeChange, onRequestSearch, sessionState, shellLabel])
+  }, [connectionKind, cwd, hostId, introLinesSignature, onActivate, onRendererModeChange, onRequestSearch, sessionState, shellLabel])
 
   return <TerminalViewport data-runa-terminal-host="" ref={viewportRef} style={viewportStyle} />
 })

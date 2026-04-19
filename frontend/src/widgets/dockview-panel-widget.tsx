@@ -24,6 +24,16 @@ const panelContentStyle = {
   WebkitBackdropFilter: 'none',
 }
 
+function shouldIgnoreActivePointerTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) {
+    return false
+  }
+
+  return target.closest(
+    'button, input, textarea, select, option, a, label, summary, [role="button"], [role="link"], [contenteditable="true"], [data-runa-terminal-root], [data-runa-terminal-host], .xterm, .xterm-helper-textarea',
+  ) !== null
+}
+
 function isTerminalPanel(panelId: string) {
   return panelId.startsWith('terminal')
 }
@@ -68,11 +78,19 @@ export function DockviewPanelWidget(props: IDockviewPanelProps) {
     <Box
       data-runa-modal-anchor={props.api.id}
       data-runa-widget-tone-root=""
-      onPointerDown={() => props.api.setActive()}
+      onPointerDown={(event) => {
+        if (shouldIgnoreActivePointerTarget(event.target)) {
+          return
+        }
+
+        window.setTimeout(() => {
+          props.api.setActive()
+        }, 0)
+      }}
       style={panelContentStyle}
     >
       {terminalModel ? (
-        <TerminalWidget hostId={props.api.id} {...terminalModel}>
+        <TerminalWidget hostId={props.api.id} onActivate={() => props.api.setActive()} {...terminalModel}>
           <PanelModalActionsWidget hostId={props.api.id} panelTitle={terminalModel.title} />
         </TerminalWidget>
       ) : isCommanderPanel ? (

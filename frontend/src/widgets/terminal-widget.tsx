@@ -19,6 +19,7 @@ export type TerminalWidgetProps = {
   connectionKind: TerminalConnectionKind
   sessionState: TerminalSessionState
   introLines?: string[]
+  onActivate?: () => void
 }
 
 const rootStyle = {
@@ -45,6 +46,7 @@ export function TerminalWidget({
   connectionKind,
   sessionState,
   introLines,
+  onActivate,
 }: TerminalWidgetProps) {
   const terminalSurfaceRef = useRef<TerminalSurfaceHandle | null>(null)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
@@ -86,6 +88,7 @@ export function TerminalWidget({
         cwd={cwd}
         hostId={hostId}
         introLines={introLines}
+        onActivate={onActivate}
         onRendererModeChange={setRendererMode}
         onRequestSearch={() => setIsSearchOpen(true)}
         ref={terminalSurfaceRef}
