@@ -42,9 +42,11 @@
   - the AI panel outer chrome is now shell-rendered but styled to match Dockview widget surfaces
   - the shell-managed AI panel now animates open and close through Motion's React renderer with a tweened width transition, so the Dockview workspace compresses and expands as the left panel grows or collapses
   - the shell-managed AI resize sash is now fully transparent with no visible divider line; only the cursor changes to `col-resize` on hover/active
-  - the shell-managed AI panel now renders a dense built-in layout instead of the old placeholder sections: `AI RUNE` header, two stacked prompt tiles, a thin `TOOL BAR` row with `Chat`, and a bottom composer with textarea plus right-side icon actions
+  - the shell-managed AI panel now renders a dense built-in layout instead of the old placeholder sections: `AI Rune Assistant` header, two stacked prompt tiles, a thin `TOOL BAR` row with `Chat`, and a bottom composer with textarea plus right-side icon actions
   - this AI layout remains frontend-only and static in this slice: no backend chat execution, no prompt transport, and no runtime agent wiring were added
   - the AI body root at `data-runa-modal-anchor=\"ai-shell-panel\"` now has zero padding, and the AI header has been rebuilt as a single instrument-like bar instead of two disconnected boxes
+  - the AI header now uses a square logo slot plus a single-line `AI Rune Assistant` title, with the old secondary `Assistant` eyebrow removed
+  - the AI shell frame now keeps a small visible gap between the polished header bar and the stacked prompt cards
 
 ## Commands/tests used
 
@@ -62,6 +64,7 @@
 - `node --input-type=module -e "<headless Playwright localhost computed-style smoke for tokenized shell surfaces>"`
 - `node --input-type=module -e "<headless Playwright localhost computed-style comparison for commander active vs inactive palette on http://127.0.0.1:5173>"`
 - `node --input-type=module -e "<headless Playwright localhost width samples for Motion-based AI shell panel on http://127.0.0.1:5173>"`
+- `node --input-type=module -e "<headless Playwright localhost smoke for AI header title, square logo slot, and header-to-prompts gap on http://127.0.0.1:5173>"`
 - `node --input-type=module -e "<headless Playwright localhost geometry smoke for widget gap below header and before right rail>"`
 - `node --input-type=module -e "<headless Playwright localhost geometry smoke for Dockview row/column gaps and unified group surface>"`
 - `node --input-type=module -e "<headless Playwright localhost smoke for body padding, transparent dv-dockview root, and vendor-theme override>"`
@@ -117,6 +120,7 @@
 - Static validation confirmed no new primitive was needed for this slice; the only shared-layer addition was `IconButton`, a generic shared component built from the existing `Button` primitive for icon-only controls.
 - A fresh headless browser smoke on `http://127.0.0.1:5173` confirmed the new AI panel layout renders `AI RUNE`, `Prompt 1`, `Prompt 2`, `TOOL BAR`, `Chat`, the `Text Area` placeholder, and the header/composer icon controls, with the shell AI frame measuring `432x902` in that run.
 - A follow-up headless browser smoke on `http://127.0.0.1:5173` confirmed the AI body anchor now resolves to `padding: 0px`, while the rebuilt AI header resolves to `46px` height with a `44px` settings action cell, which verifies that it no longer sits inside the old `24px` shell-header ceiling.
+- A fresh headless browser smoke on `http://127.0.0.1:5173` confirmed the polished AI header now resolves to `AI Rune Assistant`, the logo slot resolves square at `32x32`, and the rendered gap between the shell header and the prompt stack resolves to `4px`.
 - Static validation confirmed the terminal widget now consumes those local vars in `TerminalStatusHeader`, `TerminalToolbar`, and `TerminalViewport`, while `TerminalSurface` reapplies xterm theme colors from the widget root and refreshes them when the surrounding `.dv-groupview` class changes.
 - Static validation confirmed the Dockview focus styling now keys off the library's own `.dv-groupview.dv-active-group` / `.dv-groupview.dv-inactive-group` classes, applying a brighter active border and a stronger shadow-based lift without changing group layout sizing.
 - Static validation confirmed the busy-state wiring: `shared/model/widget-busy.ts` owns the host-id store, `PanelModalActionsWidget` toggles it per host, and `WidgetBusyOverlayWidget` renders the overlay per panel body using `@tsparticles/react` plus `tsparticles`.
