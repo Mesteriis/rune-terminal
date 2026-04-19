@@ -1,4 +1,7 @@
-import { Maximize2, Minus, Sparkles, X } from 'lucide-react'
+import { Maximize2, Minus, X } from 'lucide-react'
+
+import runaAvatar from '../../assets/img/logo.png'
+import { Avatar } from '../shared/ui/components'
 
 import { Box, Button } from '../shared/ui/primitives'
 
@@ -47,6 +50,10 @@ const actionIconProps = {
   strokeWidth: 1.75,
 }
 
+const aiToggleAvatarStyle = {
+  borderRadius: 'var(--radius-xs)',
+}
+
 export function ShellTopbarWidget({ isAiOpen, onToggleAi }: ShellTopbarWidgetProps) {
   return (
     <Box style={topbarStyle}>
@@ -65,7 +72,7 @@ export function ShellTopbarWidget({ isAiOpen, onToggleAi }: ShellTopbarWidgetPro
         onClick={onToggleAi}
         style={iconButtonStyle}
       >
-        <Sparkles {...actionIconProps} />
+        <Avatar size={18} src={runaAvatar} style={aiToggleAvatarStyle} />
       </Button>
       <Box role="tablist" aria-label="Workspace tabs" style={tabStripStyle}>
         <Button role="tab" aria-selected="true">
