@@ -11,6 +11,7 @@
   - the `tool` panel now mounts a static-only Total Commander-style dual-pane demo surface through `CommanderDemoLayout -> CommanderWidget`, rendered entirely from local JSON-backed mock state
   - the commander demo adds only four generic primitives for dense tool surfaces: `Badge`, `ScrollArea`, `Separator`, and `Surface`
   - the commander demo surface remains frontend-only: no backend calls, no runtime execution, no filesystem access, and no real copy/move/delete behavior are implemented in this slice
+  - panel body clicks now explicitly call `props.api.setActive()` in Dockview-backed widgets, so active/inactive group styling can switch from body interaction instead of only from header selection
   - when the commander demo widget sits in an inactive Dockview group, its own accent colors now switch to a muted grey palette instead of keeping the active emerald highlights
   - the active Dockview widget group now receives a slightly brighter border plus a small lifted-card effect, making the currently focused widget visually clearer without changing layout geometry
   - widget bodies now expose a local busy-state mechanism that overlays the panel content without changing Dockview group geometry
@@ -62,6 +63,7 @@
 - The commander demo slice is static-only. It does not claim real filesystem access, keyboard navigation, copy/move/delete execution, preview panes, search panels, backend integration, or file-operation dialogs.
 - A fresh browser-level reachability claim for the commander demo is not recorded here: the local Vite process on `127.0.0.1:4195` started, but `curl` reachability did not complete from this environment.
 - The inactive-commander accent rebalance in this pass is validated by source inspection plus type-check/build only. A fresh browser-level comparison of active vs inactive commander color states is not claimed here.
+- The Dockview body-activation fix in this pass is validated by source inspection plus type-check/build only. A fresh browser-level claim for body-click active-group switching is not recorded here.
 - The active-widget highlighting change in this pass is validated by source inspection plus type-check/build only. A fresh browser-level measurement of the rendered border/shadow state is not claimed here.
 - The terminal addon slice was validated by type-check and production build only in this pass. A fresh localhost browser run for the new toolbar/addon behavior is not claimed here.
 - The busy-state mechanism in this slice is widget-local UI state only. It does not yet claim backend-driven runtime busy semantics, command progress ownership, or persisted status.
@@ -90,6 +92,7 @@
 - Static validation confirmed the commander surface renders from local JSON-backed mock state only via `frontend/src/widgets/commander-widget.mock.json` and `frontend/src/widgets/commander-widget.mock.ts`.
 - Static validation confirmed the commander surface composition chain is `CommanderWidget -> CommanderDemoLayout -> DockviewPanelWidget(tool panel)` and that the `tool` panel no longer carries the unrelated modal/busy demo controls in this slice.
 - Static validation confirmed the commander mock includes two panes with different paths, one active pane, one focused row, one selected row, hidden entries, folders, files, and a symlink row.
+- Static validation confirmed `DockviewPanelWidget` and `AiPanelWidget` now call `props.api.setActive()` on body `pointerdown`, aligning Dockview active-group state with body interaction instead of relying on header clicks alone.
 - Static validation confirmed the commander widget now derives its highlight colors from local CSS variables on `[data-runa-commander-root]`, and `.dv-groupview.dv-inactive-group` remaps those variables to muted grey values instead of layering an overlay on top.
 - Static validation confirmed the Dockview focus styling now keys off the library's own `.dv-groupview.dv-active-group` / `.dv-groupview.dv-inactive-group` classes, applying a brighter active border and a stronger shadow-based lift without changing group layout sizing.
 - Static validation confirmed the busy-state wiring: `shared/model/widget-busy.ts` owns the host-id store, `PanelModalActionsWidget` toggles it per host, and `WidgetBusyOverlayWidget` renders the overlay per panel body using `@tsparticles/react` plus `tsparticles`.
