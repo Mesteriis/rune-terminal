@@ -52,7 +52,7 @@ export function TerminalWidget({
   const [rendererMode, setRendererMode] = useState<'default' | 'webgl'>('default')
 
   return (
-    <Box style={rootStyle}>
+    <Box data-runa-terminal-root="" style={rootStyle}>
       <TerminalStatusHeader
         connectionKind={connectionKind}
         cwd={cwd}

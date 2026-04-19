@@ -67,6 +67,7 @@ export function DockviewPanelWidget(props: IDockviewPanelProps) {
   return (
     <Box
       data-runa-modal-anchor={props.api.id}
+      data-runa-widget-tone-root=""
       onPointerDown={() => props.api.setActive()}
       style={panelContentStyle}
     >

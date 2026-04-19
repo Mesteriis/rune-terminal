@@ -76,7 +76,7 @@ const metaItemStyle = {
   minWidth: 0,
   padding: '0 var(--space-sm)',
   minHeight: '24px',
-  border: '1px solid var(--color-border-subtle)',
+  border: '1px solid var(--runa-terminal-surface-border, var(--color-border-subtle))',
   borderRadius: 'var(--radius-sm)',
   background: 'transparent',
   boxShadow: 'none',
@@ -88,13 +88,13 @@ const titleTextStyle = {
   fontSize: 'var(--font-size-md)',
   lineHeight: 'var(--line-height-md)',
   fontWeight: 600,
-  color: 'var(--color-text-primary)',
+  color: 'var(--runa-terminal-text-strong, var(--color-text-primary))',
 }
 
 const metaTextStyle = {
   fontSize: 'var(--font-size-sm)',
   lineHeight: 'var(--line-height-sm)',
-  color: 'var(--color-text-secondary)',
+  color: 'var(--runa-terminal-text-secondary, var(--color-text-secondary))',
   whiteSpace: 'nowrap' as const,
   overflow: 'hidden' as const,
   textOverflow: 'ellipsis' as const,
@@ -111,7 +111,7 @@ function getSessionMeta(sessionState: TerminalSessionState) {
     return {
       Icon: LoaderCircle,
       label: 'Starting',
-      color: 'var(--color-accent-cold-tea)',
+      color: 'var(--runa-terminal-status-idle, var(--color-accent-cold-tea))',
       spin: true,
     }
   }
@@ -120,7 +120,7 @@ function getSessionMeta(sessionState: TerminalSessionState) {
     return {
       Icon: Activity,
       label: 'Idle',
-      color: 'var(--color-accent-cold-tea)',
+      color: 'var(--runa-terminal-status-idle, var(--color-accent-cold-tea))',
       spin: false,
     }
   }
@@ -129,7 +129,7 @@ function getSessionMeta(sessionState: TerminalSessionState) {
     return {
       Icon: CircleSlash,
       label: 'Exited',
-      color: 'var(--color-text-muted)',
+      color: 'var(--runa-terminal-status-muted, var(--color-text-muted))',
       spin: false,
     }
   }
@@ -137,7 +137,7 @@ function getSessionMeta(sessionState: TerminalSessionState) {
   return {
     Icon: Activity,
     label: 'Running',
-    color: 'var(--color-accent-emerald-strong)',
+    color: 'var(--runa-terminal-status-running, var(--color-accent-emerald-strong))',
     spin: false,
   }
 }
@@ -163,12 +163,20 @@ export function TerminalStatusHeader({
   return (
     <Box style={rootStyle}>
       <Box style={clusterStyle}>
-        <SquareTerminal color="var(--color-accent-emerald-strong)" size={16} strokeWidth={1.8} />
+        <SquareTerminal
+          color="var(--runa-terminal-status-running, var(--color-accent-emerald-strong))"
+          size={16}
+          strokeWidth={1.8}
+        />
         <Text style={titleTextStyle}>{title}</Text>
       </Box>
       <Box style={metaWrapStyle}>
         <MetaItem>
-          <connectionMeta.Icon color="var(--color-text-secondary)" size={14} strokeWidth={1.8} />
+          <connectionMeta.Icon
+            color="var(--runa-terminal-icon-muted, var(--color-text-secondary))"
+            size={14}
+            strokeWidth={1.8}
+          />
           <Text style={metaTextStyle}>{connectionMeta.label}</Text>
         </MetaItem>
         <MetaItem>
@@ -181,11 +189,15 @@ export function TerminalStatusHeader({
           <Text style={metaTextStyle}>{sessionMeta.label}</Text>
         </MetaItem>
         <MetaItem>
-          <Command color="var(--color-text-secondary)" size={14} strokeWidth={1.8} />
+          <Command color="var(--runa-terminal-icon-muted, var(--color-text-secondary))" size={14} strokeWidth={1.8} />
           <Text style={metaTextStyle}>{shellLabel}</Text>
         </MetaItem>
         <MetaItem>
-          <FolderTree color="var(--color-text-secondary)" size={14} strokeWidth={1.8} />
+          <FolderTree
+            color="var(--runa-terminal-icon-muted, var(--color-text-secondary))"
+            size={14}
+            strokeWidth={1.8}
+          />
           <Text style={metaTextStyle}>{cwd}</Text>
         </MetaItem>
       </Box>

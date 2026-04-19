@@ -42,6 +42,39 @@ function getCssVariable(name: string) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim()
 }
 
+function getCssVariableFromElement(element: HTMLElement | null, name: string) {
+  if (!element || typeof window === 'undefined') {
+    return getCssVariable(name)
+  }
+
+  return getComputedStyle(element).getPropertyValue(name).trim()
+}
+
+function getTerminalTheme(target: HTMLElement | null) {
+  return {
+    background: 'transparent',
+    cursor:
+      getCssVariableFromElement(target, '--runa-terminal-cursor-color') ||
+      getCssVariableFromElement(target, '--runa-terminal-status-running') ||
+      getCssVariable('--color-accent-emerald-strong') ||
+      '#47c0a0',
+    cursorAccent:
+      getCssVariableFromElement(target, '--runa-terminal-cursor-accent') ||
+      getCssVariable('--color-canvas') ||
+      '#06110f',
+    foreground:
+      getCssVariableFromElement(target, '--runa-terminal-text-strong') ||
+      getCssVariable('--color-text-primary') ||
+      '#edf7f4',
+    selectionBackground:
+      getCssVariableFromElement(target, '--runa-terminal-selection-background') || 'rgba(71, 192, 160, 0.2)',
+  }
+}
+
+function applyTerminalTheme(term: Terminal, target: HTMLElement | null) {
+  term.options.theme = getTerminalTheme(target)
+}
+
 function getPromptLabel(connectionKind: TerminalConnectionKind, cwd: string) {
   const hostLabel = connectionKind === 'ssh' ? 'remote' : 'local'
 
@@ -229,6 +262,7 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
     term.loadAddon(webLinksAddon)
     term.loadAddon(clipboardAddon)
     term.open(openTarget)
+    applyTerminalTheme(term, openTarget)
     onRendererModeChange?.('default')
 
     try {
@@ -346,6 +380,21 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
 
     resizeObserver?.observe(openTarget)
 
+    const groupElement = openTarget.closest('.dv-groupview')
+    const groupClassObserver =
+      typeof MutationObserver === 'undefined' || !groupElement
+        ? null
+        : new MutationObserver(() => {
+            applyTerminalTheme(term, openTarget)
+          })
+
+    if (groupClassObserver && groupElement instanceof HTMLElement) {
+      groupClassObserver.observe(groupElement, {
+        attributes: true,
+        attributeFilter: ['class'],
+      })
+    }
+
     const focusTerminal = () => {
       term.focus()
     }
@@ -360,6 +409,7 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
     return () => {
       openTarget.removeEventListener('click', focusTerminal)
       resizeObserver?.disconnect()
+      groupClassObserver?.disconnect()
       dataDisposable.dispose()
       webglAddon?.dispose()
       searchAddonRef.current = null

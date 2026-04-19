@@ -86,6 +86,45 @@ body {
   box-shadow: var(--shadow-glass-panel);
 }
 
+[data-runa-widget-tone-root] {
+  --runa-widget-accent-primary: var(--color-accent-emerald-strong);
+  --runa-widget-accent-secondary: var(--color-accent-cold-tea);
+  --runa-widget-accent-muted: var(--color-text-secondary);
+  --runa-widget-text-strong: var(--color-text-primary);
+  --runa-widget-text-secondary: var(--color-text-secondary);
+  --runa-widget-text-muted: var(--color-text-muted);
+  --runa-widget-surface-border: var(--color-border-subtle);
+  --runa-widget-surface-bg: var(--color-surface-glass-soft);
+  --runa-widget-selection-background: rgba(71, 192, 160, 0.2);
+}
+
+.dv-groupview.dv-inactive-group:not([data-runa-group='ai']) [data-runa-widget-tone-root] {
+  --runa-widget-accent-primary: rgba(145, 168, 161, 0.82);
+  --runa-widget-accent-secondary: rgba(145, 168, 161, 0.76);
+  --runa-widget-accent-muted: rgba(145, 168, 161, 0.72);
+  --runa-widget-text-strong: var(--color-text-secondary);
+  --runa-widget-text-secondary: var(--color-text-muted);
+  --runa-widget-text-muted: rgba(145, 168, 161, 0.7);
+  --runa-widget-surface-border: rgba(145, 168, 161, 0.22);
+  --runa-widget-surface-bg: rgba(9, 14, 13, 0.92);
+  --runa-widget-selection-background: rgba(145, 168, 161, 0.14);
+}
+
+[data-runa-terminal-root] {
+  --runa-terminal-status-running: var(--runa-widget-accent-primary);
+  --runa-terminal-status-idle: var(--runa-widget-accent-secondary);
+  --runa-terminal-status-muted: var(--runa-widget-text-muted);
+  --runa-terminal-icon-muted: var(--runa-widget-accent-muted);
+  --runa-terminal-text-strong: var(--runa-widget-text-strong);
+  --runa-terminal-text-secondary: var(--runa-widget-text-secondary);
+  --runa-terminal-text-muted: var(--runa-widget-text-muted);
+  --runa-terminal-surface-border: var(--runa-widget-surface-border);
+  --runa-terminal-surface-bg: var(--runa-widget-surface-bg);
+  --runa-terminal-cursor-color: var(--runa-widget-accent-primary);
+  --runa-terminal-cursor-accent: var(--color-canvas);
+  --runa-terminal-selection-background: var(--runa-widget-selection-background);
+}
+
 [data-runa-commander-root] {
   --runa-commander-highlight-border: var(--color-accent-emerald-strong);
   --runa-commander-highlight-ring: rgba(71, 192, 160, 0.18);
