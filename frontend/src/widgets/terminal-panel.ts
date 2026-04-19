@@ -74,6 +74,14 @@ export function resolveTerminalPanelParams(panelId: string, params: unknown) {
     : getFallbackTerminalPanelParams(panelId)
 }
 
+export function isTerminalPanel(panelId: string, params: unknown) {
+  return isTerminalPanelParams(params)
+    || panelId === 'terminal'
+    || panelId === 'terminal-header'
+    || panelId.startsWith('terminal-')
+    || panelId.startsWith('terminal-header-')
+}
+
 function getTerminalPanelIdSeed(preset: TerminalPanelPreset) {
   return preset === 'main' ? 'terminal-header' : 'terminal'
 }

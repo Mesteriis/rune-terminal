@@ -9,7 +9,8 @@
   - terminal panels now render a frontend-only terminal widget made from `TerminalViewport`, `TerminalStatusHeader`, `TerminalSurface`, and `TerminalWidget`, with xterm mounted locally and no backend session wiring in this slice
   - the renderer-only terminal slice now also mounts the first xterm addon set: `fit`, `search`, `web-links`, `clipboard`, and `webgl` with a safe fallback to the default renderer
   - terminal status chrome now lives in Dockview single-tab headers through a custom `terminal-tab` renderer, so `TerminalWidget` owns only the terminal body while `TerminalStatusHeader` renders inside `dv-scrollable`
-  - terminal tabs now show `cwd` as the primary visible label; only the active terminal tab exposes status pills and the single local plus button for creating another terminal tab in the same Dockview group
+- terminal tabs now show `cwd` as the primary visible label; only the active terminal tab exposes status pills, while the single `+` button for creating another terminal tab now lives once per terminal Dockview header in the top-right actions area
+- terminal tabs are now visually separated from one another with a subtle divider, and each terminal tab shows its own close button when the group contains more than one terminal tab
   - the `tool` panel now mounts a static-only Total Commander-style dual-pane demo surface through `CommanderDemoLayout -> CommanderWidget`, rendered entirely from local JSON-backed mock state
   - the commander demo adds only four generic primitives for dense tool surfaces: `Badge`, `ScrollArea`, `Separator`, and `Surface`
   - the commander demo surface remains frontend-only: no backend calls, no runtime execution, no filesystem access, and no real copy/move/delete behavior are implemented in this slice

@@ -15,6 +15,7 @@ import {
   ModalHostWidget,
   RightActionRailWidget,
   ShellTopbarWidget,
+  TerminalDockviewHeaderActionsWidget,
   TerminalDockviewTabWidget,
 } from '../widgets'
 
@@ -403,6 +404,7 @@ export function App() {
                 <DockviewReact
                   components={components}
                   onReady={handleReady}
+                  rightHeaderActionsComponent={TerminalDockviewHeaderActionsWidget}
                   tabComponents={tabComponents}
                   theme={runaDockviewTheme}
                 />

@@ -76,10 +76,12 @@ body {
 
 .dv-groupview[data-runa-widget-focus-state='active'],
 .dv-groupview.dv-active-group:not([data-runa-widget-focus-state]) {
-  border-color: var(--color-border-strong);
+  border-color: rgba(130, 188, 170, 0.86);
   box-shadow:
-    0 20px 54px rgba(1, 7, 6, 0.52),
-    0 0 0 1px rgba(130, 188, 170, 0.14);
+    0 24px 60px rgba(1, 7, 6, 0.56),
+    0 0 0 1px rgba(130, 188, 170, 0.24),
+    0 0 0 2px rgba(71, 192, 160, 0.22),
+    0 0 22px rgba(71, 192, 160, 0.1);
 }
 
 .dv-groupview[data-runa-widget-focus-state='inactive'],
@@ -222,9 +224,18 @@ body {
 }
 
 .dv-tabs-and-actions-container.dv-single-tab .dv-tab .dv-default-tab .dv-default-tab-action,
-.dv-tabs-and-actions-container.dv-single-tab .dv-right-actions-container,
 .dv-tabs-and-actions-container.dv-single-tab .dv-void-container {
   display: none;
+}
+
+.dv-tabs-and-actions-container.dv-single-tab .dv-right-actions-container {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--gap-sm);
+  min-width: max-content;
+  margin-left: var(--gap-sm);
 }
 
 [data-runa-shell-widget-frame] {
