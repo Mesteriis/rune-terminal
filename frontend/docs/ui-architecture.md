@@ -60,6 +60,7 @@ Current primitives:
 Current reusable controls:
 
 - `InputField`
+- `IconButton`
 - `SearchableMultiSelect`
 - `Tabs` with `horizontal` and `vertical` orientations
 - `RadioControl`
@@ -131,6 +132,9 @@ its visible shell blocks as raw HTML inside `App.tsx`.
 - `PanelModalActionsWidget` exposes a widget-level demo path for modal opening.
 - `DockviewPanelWidget` renders Dockview panel bodies.
 - `AiPanelWidget` renders the shell-managed AI panel body inside the left shell pane.
+- `AiPanelHeaderWidget` renders the AI shell header strip.
+- `AiPromptCardWidget` renders the prompt tiles inside the AI panel.
+- `AiComposerWidget` renders the AI toolbar plus textarea composer block.
 - `App.tsx` now uses `motion` only at the app shell boundary to animate the shell-managed AI panel width; the AI body itself remains a normal widget.
 
 ## Validation
@@ -176,6 +180,7 @@ its visible shell blocks as raw HTML inside `App.tsx`.
 - Tokens now cover dark canvas, glass surfaces, accent hues, spacing, radii, shell sizes, blur, and shadow.
 - Shared primitives consume only semantic tokens instead of hardcoded `#111/#fff/#333` values.
 - Shared components now include stateless `Notify` plus a reusable `DialogPopup` surface built primarily from shared primitives.
+- Shared components now also include `IconButton`, a generic square icon-only control composed from the shared `Button` primitive.
 - Shared components now also include the terminal renderer slice: a status header, toolbar, and xterm-based surface wrapped by `TerminalViewport`.
 - The new form-control components added in this slice compose shared primitives only. The existing `DialogPopup` close glyph remains the current icon exception from the earlier shell slice.
 - Live localhost smoke confirmed tokenized shell values in the DOM: `body/root` background `rgb(6, 17, 15)`, `AI` button backdrop `blur(10px)`, right rail width `40px`, and right rail glass background `rgba(11, 24, 22, 0.72)`.
