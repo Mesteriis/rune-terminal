@@ -131,6 +131,7 @@ its visible shell blocks as raw HTML inside `App.tsx`.
 - `PanelModalActionsWidget` exposes a widget-level demo path for modal opening.
 - `DockviewPanelWidget` renders Dockview panel bodies.
 - `AiPanelWidget` renders the shell-managed AI panel body inside the left shell pane.
+- `App.tsx` now uses `motion` only at the app shell boundary to animate the shell-managed AI panel width; the AI body itself remains a normal widget.
 
 ## Validation
 
@@ -178,3 +179,4 @@ its visible shell blocks as raw HTML inside `App.tsx`.
 - Shared components now also include the terminal renderer slice: a status header, toolbar, and xterm-based surface wrapped by `TerminalViewport`.
 - The new form-control components added in this slice compose shared primitives only. The existing `DialogPopup` close glyph remains the current icon exception from the earlier shell slice.
 - Live localhost smoke confirmed tokenized shell values in the DOM: `body/root` background `rgb(6, 17, 15)`, `AI` button backdrop `blur(10px)`, right rail width `40px`, and right rail glass background `rgba(11, 24, 22, 0.72)`.
+- The shell-managed AI panel animation now uses `motion` at the app layer instead of CSS width transitions or manual `requestAnimationFrame`, keeping the animation concern at the shell boundary without pushing animation logic down into widgets or primitives.

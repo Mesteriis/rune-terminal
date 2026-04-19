@@ -40,11 +40,13 @@
   - the top `AI` button now mounts a shell-managed left panel instead of creating a special Dockview group
   - the AI panel width is now resized through a dedicated shell sash, while the workspace remains pure Dockview on the right
   - the AI panel outer chrome is now shell-rendered but styled to match Dockview widget surfaces
+  - the shell-managed AI panel now animates open and close through Motion's React renderer with a tweened width transition, so the Dockview workspace compresses and expands as the left panel grows or collapses
 
 ## Commands/tests used
 
 - `npm --prefix frontend run build`
 - `npm --prefix frontend run lint:active`
+- `npm install motion@^12.38.0`
 - `npm run dev -- --host 127.0.0.1 --port 4195 --strictPort`
 - `npm --prefix frontend run dev -- --host 127.0.0.1 --port 4194 --strictPort`
 - `npm --prefix frontend run dev -- --host 127.0.0.1 --port 4198 --strictPort`
@@ -52,6 +54,8 @@
 - `curl -sf http://127.0.0.1:5173`
 - `node --input-type=module -e "<headless Playwright smoke for widget busy overlay geometry, interaction blocking, and release path on http://127.0.0.1:4194>"`
 - `node --input-type=module -e "<headless Playwright localhost computed-style smoke for tokenized shell surfaces>"`
+- `node --input-type=module -e "<headless Playwright localhost computed-style comparison for commander active vs inactive palette on http://127.0.0.1:5173>"`
+- `node --input-type=module -e "<headless Playwright localhost width samples for Motion-based AI shell panel on http://127.0.0.1:5173>"`
 - `node --input-type=module -e "<headless Playwright localhost geometry smoke for widget gap below header and before right rail>"`
 - `node --input-type=module -e "<headless Playwright localhost geometry smoke for Dockview row/column gaps and unified group surface>"`
 - `node --input-type=module -e "<headless Playwright localhost smoke for body padding, transparent dv-dockview root, and vendor-theme override>"`
@@ -62,7 +66,7 @@
 - The new terminal widget slice is renderer-only for now. It does not yet claim live backend session startup, SSE attachment, input routing, interrupt wiring, or persistent terminal state on the new frontend path.
 - The commander demo slice is static-only. It does not claim real filesystem access, keyboard navigation, copy/move/delete execution, preview panes, search panels, backend integration, or file-operation dialogs.
 - A fresh browser-level reachability claim for the commander demo is not recorded here: the local Vite process on `127.0.0.1:4195` started, but `curl` reachability did not complete from this environment.
-- The inactive-commander accent rebalance is now validated by source inspection plus type-check/build only. The root cause in the previous pass was inline commander CSS variables on the widget root, which prevented the inactive Dockview override from winning. A fresh browser-level comparison of active vs inactive commander color states is still not claimed here.
+- The root cause in the previous commander-color pass was inline commander CSS variables on the widget root, which prevented the inactive Dockview override from winning. That inline override is now removed, and a fresh browser-level active vs inactive comparison is recorded in this entry.
 - The broader non-AI widget inactive-tone pass in this slice is validated by source inspection plus type-check/build only. A fresh browser-level comparison of terminal active vs inactive color states is not claimed here.
 - The Dockview body-activation fix in this pass is validated by source inspection plus type-check/build only. A fresh browser-level claim for body-click active-group switching is not recorded here.
 - The active-widget highlighting change in this pass is validated by source inspection plus type-check/build only. A fresh browser-level measurement of the rendered border/shadow state is not claimed here.
@@ -78,6 +82,7 @@
 - The settings dialog sizing is currently code-validated via the `settings` variant on `DialogPopup`. A fresh browser geometry measurement for the resulting `5vw / 90vw / 5vw` and `2.5vh / 95vh / 2.5vh` layout is not claimed here.
 - `Notify` currently exists as a reusable shared component only. This slice does not yet claim toast stacking, auto-dismiss, or a notification manager/runtime queue.
 - The shell-managed AI resize handle is implemented in this slice, but a fresh browser-level drag proof for width change is not claimed here because the ad hoc headless smoke against the `4198` dev launch did not complete cleanly in this environment.
+- The shell-managed AI enter/exit animation is now driven by `motion` instead of CSS transitions, and browser-level width samples confirm progressive open-state growth. This entry still does not claim a frame-by-frame perceptual quality audit inside full Tauri runtime.
 - Browser validation was run headlessly against the Vite dev server, not through full `npm run tauri:dev`.
 - The shell icon swap was validated by type-check, build, and source inspection. A separate visual localhost smoke for the icon glyphs was attempted but is not claimed from this environment.
 - This radius-and-gap rebalance was validated by source inspection plus type-check/build. Fresh live geometry for the new `6px` values is not claimed in this entry.
@@ -95,9 +100,12 @@
 - Static validation confirmed the commander mock includes two panes with different paths, one active pane, one focused row, one selected row, hidden entries, folders, files, and a symlink row.
 - Static validation confirmed `DockviewPanelWidget` calls `props.api.setActive()` on body `pointerdown`, aligning Dockview active-group state with body interaction instead of relying on header clicks alone.
 - Static validation confirmed the commander widget now derives its base highlight colors from CSS on `[data-runa-commander-root]` instead of inline style props, so `.dv-groupview.dv-inactive-group` can remap those variables to muted grey values instead of being blocked by inline custom-property precedence.
+- A fresh headless browser comparison on `http://127.0.0.1:5173` confirmed the commander widget now really changes visible tones between inactive and active states: inactive mode/toggle buttons and the `ACTIVE` badge resolve to greyed values like `rgba(145, 168, 161, 0.1)` backgrounds and `rgb(189, 208, 202)` text, while the active group restores emerald accents such as `rgb(71, 192, 160)` borders and `rgba(45, 143, 118, 0.16)` fills.
 - Static validation confirmed non-AI Dockview panel roots now expose shared `[data-runa-widget-tone-root]` palette variables, and `TerminalWidget` maps those into terminal-local CSS vars on `[data-runa-terminal-root]` without changing the shell-managed AI panel styling.
 - Static validation confirmed `App.tsx` now renders AI as a shell-managed left panel with host id `ai-shell-panel`, a dedicated resize handle, and a separate frame/header outside `DockviewReact`.
 - Static validation confirmed the old Dockview-specific AI tab wiring was removed from the app path: `AiGroupActionsWidget` is deleted, `DockviewReact` now mounts only the `default` component, and the AI shell panel is rendered alongside the workspace instead of through `addPanel`.
+- Static validation confirmed the shell-managed AI panel now uses `motion@12.38.0` via `AnimatePresence` plus a tweened `width` animation on the shell container instead of the previous CSS-transition and manual-timeout experiment.
+- A fresh headless browser smoke on `http://127.0.0.1:5173` sampled the Motion-driven AI shell width during open and confirmed progressive growth over time: `0px` at `t=0ms`, `185px` at `t=220ms`, `374px` at `t=480ms`, and `438px` at `t=900ms`.
 - Static validation confirmed the terminal widget now consumes those local vars in `TerminalStatusHeader`, `TerminalToolbar`, and `TerminalViewport`, while `TerminalSurface` reapplies xterm theme colors from the widget root and refreshes them when the surrounding `.dv-groupview` class changes.
 - Static validation confirmed the Dockview focus styling now keys off the library's own `.dv-groupview.dv-active-group` / `.dv-groupview.dv-inactive-group` classes, applying a brighter active border and a stronger shadow-based lift without changing group layout sizing.
 - Static validation confirmed the busy-state wiring: `shared/model/widget-busy.ts` owns the host-id store, `PanelModalActionsWidget` toggles it per host, and `WidgetBusyOverlayWidget` renders the overlay per panel body using `@tsparticles/react` plus `tsparticles`.
