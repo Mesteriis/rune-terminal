@@ -4,7 +4,6 @@ import {
   Activity,
   CircleSlash,
   Command,
-  FolderTree,
   Laptop2,
   LoaderCircle,
   Server,
@@ -25,6 +24,8 @@ export type TerminalStatusHeaderProps = {
   sessionState: TerminalSessionState
   compact?: boolean
   actionSlot?: React.ReactNode
+  primaryText?: string
+  showMeta?: boolean
 }
 
 const rootStyle = {
@@ -212,11 +213,14 @@ export function TerminalStatusHeader({
   sessionState,
   compact = false,
   actionSlot,
+  primaryText,
+  showMeta = true,
 }: TerminalStatusHeaderProps) {
   const connectionMeta = getConnectionMeta(connectionKind)
   const sessionMeta = getSessionMeta(sessionState)
   const iconSize = compact ? 13 : 14
   const titleIconSize = compact ? 14 : 16
+  const displayText = primaryText ?? (compact ? cwd : title)
 
   return (
     <RunaDomScopeProvider component="terminal-status-header">
@@ -237,64 +241,53 @@ export function TerminalStatusHeader({
             runaComponent="terminal-status-header-title"
             style={compact ? compactTitleTextStyle : titleTextStyle}
           >
-            {title}
+            {displayText}
           </Text>
         </Box>
-        <Box
-          runaComponent="terminal-status-header-meta-wrap"
-          style={compact ? compactMetaWrapStyle : metaWrapStyle}
-        >
-          <MetaItem compact={compact} runaComponent="terminal-status-header-connection">
-            <connectionMeta.Icon
-              color="var(--runa-terminal-icon-muted, var(--color-text-secondary))"
-              size={iconSize}
-              strokeWidth={1.8}
-            />
-            <Text
-              runaComponent="terminal-status-header-connection-text"
-              style={compact ? compactMetaTextStyle : metaTextStyle}
-            >
-              {connectionMeta.label}
-            </Text>
-          </MetaItem>
-          <MetaItem compact={compact} runaComponent="terminal-status-header-session">
-            <sessionMeta.Icon
-              color={sessionMeta.color}
-              size={iconSize}
-              strokeWidth={1.8}
-              style={sessionMeta.spin ? { animation: 'runa-terminal-spin 1.2s linear infinite' } : undefined}
-            />
-            <Text
-              runaComponent="terminal-status-header-session-text"
-              style={compact ? compactMetaTextStyle : metaTextStyle}
-            >
-              {sessionMeta.label}
-            </Text>
-          </MetaItem>
-          <MetaItem compact={compact} runaComponent="terminal-status-header-shell">
-            <Command color="var(--runa-terminal-icon-muted, var(--color-text-secondary))" size={iconSize} strokeWidth={1.8} />
-            <Text
-              runaComponent="terminal-status-header-shell-text"
-              style={compact ? compactMetaTextStyle : metaTextStyle}
-            >
-              {shellLabel}
-            </Text>
-          </MetaItem>
-          <MetaItem compact={compact} runaComponent="terminal-status-header-cwd">
-            <FolderTree
-              color="var(--runa-terminal-icon-muted, var(--color-text-secondary))"
-              size={iconSize}
-              strokeWidth={1.8}
-            />
-            <Text
-              runaComponent="terminal-status-header-cwd-text"
-              style={compact ? compactMetaTextStyle : metaTextStyle}
-            >
-              {cwd}
-            </Text>
-          </MetaItem>
-          {actionSlot}
-        </Box>
+        {showMeta ? (
+          <Box
+            runaComponent="terminal-status-header-meta-wrap"
+            style={compact ? compactMetaWrapStyle : metaWrapStyle}
+          >
+            <MetaItem compact={compact} runaComponent="terminal-status-header-connection">
+              <connectionMeta.Icon
+                color="var(--runa-terminal-icon-muted, var(--color-text-secondary))"
+                size={iconSize}
+                strokeWidth={1.8}
+              />
+              <Text
+                runaComponent="terminal-status-header-connection-text"
+                style={compact ? compactMetaTextStyle : metaTextStyle}
+              >
+                {connectionMeta.label}
+              </Text>
+            </MetaItem>
+            <MetaItem compact={compact} runaComponent="terminal-status-header-session">
+              <sessionMeta.Icon
+                color={sessionMeta.color}
+                size={iconSize}
+                strokeWidth={1.8}
+                style={sessionMeta.spin ? { animation: 'runa-terminal-spin 1.2s linear infinite' } : undefined}
+              />
+              <Text
+                runaComponent="terminal-status-header-session-text"
+                style={compact ? compactMetaTextStyle : metaTextStyle}
+              >
+                {sessionMeta.label}
+              </Text>
+            </MetaItem>
+            <MetaItem compact={compact} runaComponent="terminal-status-header-shell">
+              <Command color="var(--runa-terminal-icon-muted, var(--color-text-secondary))" size={iconSize} strokeWidth={1.8} />
+              <Text
+                runaComponent="terminal-status-header-shell-text"
+                style={compact ? compactMetaTextStyle : metaTextStyle}
+              >
+                {shellLabel}
+              </Text>
+            </MetaItem>
+            {actionSlot}
+          </Box>
+        ) : null}
       </Box>
     </RunaDomScopeProvider>
   )

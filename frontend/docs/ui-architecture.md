@@ -200,6 +200,7 @@ Lookup helpers exported from `src/shared/ui/dom-id.tsx`:
 - `WidgetBusyOverlayWidget` stays in the widget layer and uses `@tsparticles/react` directly for the busy-field rendering instead of pushing imperative particle code into shared components.
 - `TerminalWidget` stays in the widget layer and now owns the terminal body only: toolbar, panel actions, and renderer surface.
 - `TerminalDockviewTabWidget` keeps terminal-specific Dockview tab composition in the widget layer, reusing `TerminalStatusHeader` in a compact mode instead of duplicating terminal chrome inside the body.
+- Terminal Dockview tabs now use `cwd` as the primary visible label, while only the active terminal tab exposes connection/session/shell pills plus the local `+` action for adding another terminal tab into the same group.
 - The current shell example routes its visible shell blocks through widgets and primitives instead of raw HTML in `App.tsx`.
 - `App.tsx` remains responsible for Dockview API orchestration and Effector state wiring.
 - Modal state now lives in a dedicated `shared/model/modal.ts` store instead of being hidden inside widget-local React state.

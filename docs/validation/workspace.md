@@ -9,7 +9,7 @@
   - terminal panels now render a frontend-only terminal widget made from `TerminalViewport`, `TerminalStatusHeader`, `TerminalSurface`, and `TerminalWidget`, with xterm mounted locally and no backend session wiring in this slice
   - the renderer-only terminal slice now also mounts the first xterm addon set: `fit`, `search`, `web-links`, `clipboard`, and `webgl` with a safe fallback to the default renderer
   - terminal status chrome now lives in Dockview single-tab headers through a custom `terminal-tab` renderer, so `TerminalWidget` owns only the terminal body while `TerminalStatusHeader` renders inside `dv-scrollable`
-  - terminal headers now expose a local plus button that creates another tab with the same terminal preset inside the same Dockview group
+  - terminal tabs now show `cwd` as the primary visible label; only the active terminal tab exposes status pills and the single local plus button for creating another terminal tab in the same Dockview group
   - the `tool` panel now mounts a static-only Total Commander-style dual-pane demo surface through `CommanderDemoLayout -> CommanderWidget`, rendered entirely from local JSON-backed mock state
   - the commander demo adds only four generic primitives for dense tool surfaces: `Badge`, `ScrollArea`, `Separator`, and `Surface`
   - the commander demo surface remains frontend-only: no backend calls, no runtime execution, no filesystem access, and no real copy/move/delete behavior are implemented in this slice
@@ -120,6 +120,7 @@
 - Static validation confirmed terminal panel params now act as the local source of truth for terminal title/session metadata, so both the body widget and the custom Dockview tab renderer reuse the same terminal panel config.
 - A fresh headless smoke on `http://127.0.0.1:5173` confirmed terminal status header content now renders inside Dockview tab chrome for both terminal groups, with `terminal-status-header-*` nodes resolving from inside both `.dv-scrollable` and `.dv-tab`.
 - The same smoke confirmed the workspace terminal header plus button adds a sibling terminal tab in-place: the workspace terminal group moved from `tabs=1` to `tabs=2` while the other groups stayed unchanged.
+- A follow-up headless smoke on `http://127.0.0.1:5173` confirmed the multi-tab terminal header behavior: the workspace terminal group rendered exactly one `terminal-tab-add` control total, while the inactive terminal tab rendered `metaCount=0` and the active one rendered `metaCount=3`.
 - Static validation confirmed the first addon wave on the terminal renderer slice: `@xterm/addon-search@0.16.0`, `@xterm/addon-web-links@0.12.0`, `@xterm/addon-clipboard@0.2.0`, and `@xterm/addon-webgl@0.19.0`, plus the new `TerminalToolbar` control strip above the surface.
 - Static validation confirmed the commander slice primitive additions are generic rather than widget-specific: `Badge`, `ScrollArea`, `Separator`, and `Surface` live under `shared/ui/primitives` and import no app or widget code.
 - Static validation confirmed the commander surface renders from local JSON-backed mock state only via `frontend/src/widgets/commander-widget.mock.json` and `frontend/src/widgets/commander-widget.mock.ts`.

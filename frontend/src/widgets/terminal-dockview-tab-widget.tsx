@@ -1,6 +1,7 @@
 import type * as React from 'react'
 import type { IDockviewPanelHeaderProps } from 'dockview-react'
 import { Plus } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
 import { RunaDomScopeProvider } from '../shared/ui/dom-id'
 import { IconButton, TerminalStatusHeader } from '../shared/ui/components'
@@ -27,6 +28,23 @@ const addButtonStyle = {
 
 export function TerminalDockviewTabWidget(props: IDockviewPanelHeaderProps) {
   const terminalPanelParams = resolveTerminalPanelParams(props.api.id, props.params)
+  const [isActiveTab, setIsActiveTab] = useState(props.api.group.activePanel?.id === props.api.id)
+
+  useEffect(() => {
+    const syncActiveTab = () => {
+      setIsActiveTab(props.api.group.activePanel?.id === props.api.id)
+    }
+
+    syncActiveTab()
+
+    const activePanelChangeDisposable = props.api.group.api.onDidActivePanelChange(syncActiveTab)
+    const groupChangeDisposable = props.api.onDidGroupChange(syncActiveTab)
+
+    return () => {
+      activePanelChangeDisposable.dispose()
+      groupChangeDisposable.dispose()
+    }
+  }, [props.api])
 
   const handleAddTerminalTab = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault()
@@ -56,7 +74,7 @@ export function TerminalDockviewTabWidget(props: IDockviewPanelHeaderProps) {
   return (
     <RunaDomScopeProvider component="terminal-dockview-tab-widget" widget={props.api.id}>
       <TerminalStatusHeader
-        actionSlot={(
+        actionSlot={isActiveTab ? (
           <IconButton
             aria-label={`Add terminal tab for ${terminalPanelParams.title}`}
             onClick={handleAddTerminalTab}
@@ -67,12 +85,14 @@ export function TerminalDockviewTabWidget(props: IDockviewPanelHeaderProps) {
           >
             <Plus size={12} strokeWidth={1.8} />
           </IconButton>
-        )}
+        ) : null}
         compact
         connectionKind={terminalPanelParams.connectionKind}
         cwd={terminalPanelParams.cwd}
+        primaryText={terminalPanelParams.cwd}
         sessionState={terminalPanelParams.sessionState}
         shellLabel={terminalPanelParams.shellLabel}
+        showMeta={isActiveTab}
         title={terminalPanelParams.title}
       />
     </RunaDomScopeProvider>
