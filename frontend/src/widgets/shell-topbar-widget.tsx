@@ -1,7 +1,4 @@
-import { Maximize2, Minus, X } from 'lucide-react'
-
-import aiAgentButtonLogo from '../../assets/icon/button/ai-agent.png'
-import { Avatar } from '../shared/ui/components'
+import { Maximize2, Minus, Sparkles, X } from 'lucide-react'
 
 import { Box, Button } from '../shared/ui/primitives'
 
@@ -64,14 +61,6 @@ const actionIconProps = {
   strokeWidth: 1.75,
 }
 
-const aiToggleAvatarStyle = {
-  width: '100%',
-  minWidth: '100%',
-  height: '100%',
-  minHeight: '100%',
-  borderRadius: 'calc(var(--radius-sm) - 1px)',
-}
-
 export function ShellTopbarWidget({ isAiOpen, onToggleAi }: ShellTopbarWidgetProps) {
   return (
     <Box style={topbarStyle}>
@@ -90,7 +79,7 @@ export function ShellTopbarWidget({ isAiOpen, onToggleAi }: ShellTopbarWidgetPro
         onClick={onToggleAi}
         style={aiToggleButtonStyle}
       >
-        <Avatar size="100%" src={aiAgentButtonLogo} style={aiToggleAvatarStyle} />
+        <Sparkles {...actionIconProps} />
       </Button>
       <Box role="tablist" aria-label="Workspace tabs" style={tabStripStyle}>
         <Button role="tab" aria-selected="true">
