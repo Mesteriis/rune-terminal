@@ -160,6 +160,13 @@ export const aiPromptCardHeaderStyle: CSSProperties = {
   justifyContent: 'space-between',
   gap: 'var(--gap-sm)',
   minWidth: 0,
+  padding: 0,
+  border: 'none',
+  borderRadius: 0,
+  background: 'transparent',
+  boxShadow: 'none',
+  backdropFilter: 'none',
+  WebkitBackdropFilter: 'none',
 }
 
 export const aiPromptCardTitleClusterStyle: CSSProperties = {
@@ -168,6 +175,13 @@ export const aiPromptCardTitleClusterStyle: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: '2px',
+  padding: 0,
+  border: 'none',
+  borderRadius: 0,
+  background: 'transparent',
+  boxShadow: 'none',
+  backdropFilter: 'none',
+  WebkitBackdropFilter: 'none',
 }
 
 export const aiPromptCardActionRowStyle: CSSProperties = {
@@ -175,6 +189,13 @@ export const aiPromptCardActionRowStyle: CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   gap: 'var(--space-xs)',
+  padding: 0,
+  border: 'none',
+  borderRadius: 0,
+  background: 'transparent',
+  boxShadow: 'none',
+  backdropFilter: 'none',
+  WebkitBackdropFilter: 'none',
 }
 
 export const aiPromptCardActionStyle: CSSProperties = {
@@ -182,11 +203,14 @@ export const aiPromptCardActionStyle: CSSProperties = {
   minWidth: '26px',
   minHeight: '26px',
   height: '26px',
-  borderRadius: 'var(--radius-xs)',
-  borderColor: 'var(--color-border-subtle)',
-  background: 'rgba(255, 255, 255, 0.02)',
+  padding: 0,
+  border: 'none',
+  borderRadius: 0,
+  background: 'transparent',
   color: 'var(--color-text-muted)',
   boxShadow: 'none',
+  backdropFilter: 'none',
+  WebkitBackdropFilter: 'none',
 }
 
 export const aiPromptCardPreviewStyle: CSSProperties = {
