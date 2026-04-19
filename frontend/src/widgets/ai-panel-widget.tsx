@@ -1,4 +1,4 @@
-import { Box } from '../shared/ui/primitives'
+import { Box, ScrollArea } from '../shared/ui/primitives'
 
 import { ModalHostWidget } from './modal-host-widget'
 import { WidgetBusyOverlayWidget } from './widget-busy-overlay-widget'
@@ -23,11 +23,11 @@ export function AiPanelWidget({
   return (
     <Box data-runa-modal-anchor={hostId} style={aiPanelRootStyle}>
       <Box data-runa-ai-shell-frame="" style={aiPanelContentColumnStyle}>
-        <Box data-runa-ai-prompt-stack="" style={aiPromptStackStyle}>
+        <ScrollArea data-runa-ai-prompt-stack="" style={aiPromptStackStyle}>
           {state.prompts.map((prompt) => (
             <AiPromptCardWidget key={prompt.id} prompt={prompt} />
           ))}
-        </Box>
+        </ScrollArea>
         <AiComposerWidget
           activeTool={state.activeTool}
           placeholder={state.composerPlaceholder}

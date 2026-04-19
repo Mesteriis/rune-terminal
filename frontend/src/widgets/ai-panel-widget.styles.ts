@@ -117,8 +117,8 @@ export const aiPromptStackStyle: CSSProperties = {
   flex: 1,
   minWidth: 0,
   minHeight: 0,
-  display: 'grid',
-  gridTemplateRows: 'minmax(0, 1fr) minmax(0, 1fr)',
+  display: 'flex',
+  flexDirection: 'column',
   gap: 'var(--gap-sm)',
   padding: 'var(--gap-sm) 0 0',
   border: 'none',
@@ -129,20 +129,22 @@ export const aiPromptStackStyle: CSSProperties = {
 
 export const aiPromptCardStyle: CSSProperties = {
   minWidth: 0,
-  minHeight: 0,
+  flex: '0 0 auto',
   display: 'flex',
   flexDirection: 'column',
-  justifyContent: 'space-between',
-  padding: 'var(--space-lg) var(--space-md)',
+  gap: 'var(--space-sm)',
+  padding: 'var(--space-md)',
   background: 'var(--color-canvas-elevated)',
-  borderColor: 'var(--color-border-subtle)',
+  borderColor: 'var(--color-border-strong)',
+  cursor: 'pointer',
+  userSelect: 'none',
 }
 
 export const aiPromptTitleStyle: CSSProperties = {
   color: 'var(--color-text-primary)',
   fontFamily: 'var(--font-family-mono)',
-  fontSize: '18px',
-  lineHeight: '24px',
+  fontSize: '16px',
+  lineHeight: '22px',
 }
 
 export const aiPromptSubtitleStyle: CSSProperties = {
@@ -150,6 +152,83 @@ export const aiPromptSubtitleStyle: CSSProperties = {
   fontSize: 'var(--font-size-sm)',
   lineHeight: 'var(--line-height-sm)',
   fontFamily: 'var(--font-family-mono)',
+}
+
+export const aiPromptCardHeaderStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'flex-start',
+  justifyContent: 'space-between',
+  gap: 'var(--gap-sm)',
+  minWidth: 0,
+}
+
+export const aiPromptCardTitleClusterStyle: CSSProperties = {
+  flex: 1,
+  minWidth: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '2px',
+}
+
+export const aiPromptCardActionRowStyle: CSSProperties = {
+  flex: '0 0 auto',
+  display: 'flex',
+  alignItems: 'center',
+  gap: 'var(--space-xs)',
+}
+
+export const aiPromptCardActionStyle: CSSProperties = {
+  width: '26px',
+  minWidth: '26px',
+  minHeight: '26px',
+  height: '26px',
+  borderRadius: 'var(--radius-xs)',
+  borderColor: 'var(--color-border-subtle)',
+  background: 'rgba(255, 255, 255, 0.02)',
+  color: 'var(--color-text-muted)',
+  boxShadow: 'none',
+}
+
+export const aiPromptCardPreviewStyle: CSSProperties = {
+  color: 'var(--color-text-secondary)',
+  fontSize: 'var(--font-size-sm)',
+  lineHeight: 'var(--line-height-md)',
+  fontFamily: 'var(--font-family-mono)',
+  display: '-webkit-box',
+  WebkitBoxOrient: 'vertical',
+  WebkitLineClamp: 3,
+  overflow: 'hidden',
+}
+
+export const aiPromptCardExpandedBodyStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 'var(--space-sm)',
+  minWidth: 0,
+}
+
+export const aiPromptCardSectionStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '4px',
+  minWidth: 0,
+}
+
+export const aiPromptCardSectionLabelStyle: CSSProperties = {
+  color: 'var(--color-text-muted)',
+  fontSize: '11px',
+  lineHeight: '14px',
+  fontFamily: 'var(--font-family-mono)',
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase',
+}
+
+export const aiPromptCardSectionTextStyle: CSSProperties = {
+  color: 'var(--color-text-secondary)',
+  fontSize: 'var(--font-size-sm)',
+  lineHeight: 'var(--line-height-md)',
+  fontFamily: 'var(--font-family-mono)',
+  whiteSpace: 'pre-wrap',
 }
 
 export const aiToolbarStyle: CSSProperties = {
