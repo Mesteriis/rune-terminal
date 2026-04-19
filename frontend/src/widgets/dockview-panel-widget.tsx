@@ -1,6 +1,9 @@
+import { useUnit } from 'effector-react'
 import type { IDockviewPanelProps } from 'dockview-react'
+import { useEffect, useRef } from 'react'
 
 import { CommanderDemoLayout } from '../layouts'
+import { $activeWidgetHostId, setActiveWidgetHostId } from '../shared/model/widget-focus'
 import { Box, Text } from '../shared/ui/primitives'
 import { ModalHostWidget } from './modal-host-widget'
 import { PanelModalActionsWidget } from './panel-modal-actions-widget'
@@ -22,16 +25,6 @@ const panelContentStyle = {
   boxShadow: 'none',
   backdropFilter: 'none',
   WebkitBackdropFilter: 'none',
-}
-
-function shouldIgnoreActivePointerTarget(target: EventTarget | null) {
-  if (!(target instanceof HTMLElement)) {
-    return false
-  }
-
-  return target.closest(
-    'button, input, textarea, select, option, a, label, summary, [role="button"], [role="link"], [contenteditable="true"], [data-runa-terminal-root], [data-runa-terminal-host], .xterm, .xterm-helper-textarea',
-  ) !== null
 }
 
 function isTerminalPanel(panelId: string) {
@@ -71,26 +64,40 @@ function getTerminalModel(panelId: string) {
 }
 
 export function DockviewPanelWidget(props: IDockviewPanelProps) {
+  const rootRef = useRef<HTMLDivElement | null>(null)
+  const [activeWidgetHostId, onSetActiveWidgetHostId] = useUnit([
+    $activeWidgetHostId,
+    setActiveWidgetHostId,
+  ])
   const terminalModel = isTerminalPanel(props.api.id) ? getTerminalModel(props.api.id) : null
   const isCommanderPanel = isCommanderDemoPanel(props.api.id)
+  const isActiveWidget = activeWidgetHostId === props.api.id
+
+  useEffect(() => {
+    const groupElement = rootRef.current?.closest('.dv-groupview')
+
+    if (!(groupElement instanceof HTMLElement)) {
+      return
+    }
+
+    if (activeWidgetHostId === null) {
+      delete groupElement.dataset.runaWidgetFocusState
+      return
+    }
+
+    groupElement.dataset.runaWidgetFocusState = isActiveWidget ? 'active' : 'inactive'
+  }, [activeWidgetHostId, isActiveWidget])
 
   return (
     <Box
       data-runa-modal-anchor={props.api.id}
       data-runa-widget-tone-root=""
-      onPointerDown={(event) => {
-        if (shouldIgnoreActivePointerTarget(event.target)) {
-          return
-        }
-
-        window.setTimeout(() => {
-          props.api.setActive()
-        }, 0)
-      }}
+      onPointerDownCapture={() => onSetActiveWidgetHostId(props.api.id)}
+      ref={rootRef}
       style={panelContentStyle}
     >
       {terminalModel ? (
-        <TerminalWidget hostId={props.api.id} onActivate={() => props.api.setActive()} {...terminalModel}>
+        <TerminalWidget hostId={props.api.id} {...terminalModel}>
           <PanelModalActionsWidget hostId={props.api.id} panelTitle={terminalModel.title} />
         </TerminalWidget>
       ) : isCommanderPanel ? (

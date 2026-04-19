@@ -74,14 +74,16 @@ body {
     box-shadow 140ms ease;
 }
 
-.dv-groupview.dv-active-group {
+.dv-groupview[data-runa-widget-focus-state='active'],
+.dv-groupview.dv-active-group:not([data-runa-widget-focus-state]) {
   border-color: var(--color-border-strong);
   box-shadow:
     0 20px 54px rgba(1, 7, 6, 0.52),
     0 0 0 1px rgba(130, 188, 170, 0.14);
 }
 
-.dv-groupview.dv-inactive-group {
+.dv-groupview[data-runa-widget-focus-state='inactive'],
+.dv-groupview.dv-inactive-group:not([data-runa-widget-focus-state]) {
   border-color: var(--color-border-subtle);
   box-shadow: var(--shadow-glass-panel);
 }
@@ -98,7 +100,8 @@ body {
   --runa-widget-selection-background: rgba(71, 192, 160, 0.2);
 }
 
-.dv-groupview.dv-inactive-group [data-runa-widget-tone-root] {
+.dv-groupview[data-runa-widget-focus-state='inactive'] [data-runa-widget-tone-root],
+.dv-groupview.dv-inactive-group:not([data-runa-widget-focus-state]) [data-runa-widget-tone-root] {
   --runa-widget-accent-primary: rgba(145, 168, 161, 0.82);
   --runa-widget-accent-secondary: rgba(145, 168, 161, 0.76);
   --runa-widget-accent-muted: rgba(145, 168, 161, 0.72);
@@ -143,7 +146,8 @@ body {
   --runa-commander-file-icon-color: var(--color-text-secondary);
 }
 
-.dv-groupview.dv-inactive-group [data-runa-commander-root] {
+.dv-groupview[data-runa-widget-focus-state='inactive'] [data-runa-commander-root],
+.dv-groupview.dv-inactive-group:not([data-runa-widget-focus-state]) [data-runa-commander-root] {
   --runa-commander-highlight-border: rgba(145, 168, 161, 0.38);
   --runa-commander-highlight-ring: rgba(145, 168, 161, 0.1);
   --runa-commander-highlight-fill: rgba(145, 168, 161, 0.1);
