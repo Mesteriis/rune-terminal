@@ -38,7 +38,7 @@
   - Dockview group header and body now render as a single glass surface instead of a separate boxed body layer
   - Dockview now uses a custom `theme` override to neutralize vendor color backgrounds instead of relying on the library's built-in color themes
   - the shared UI layer now exposes a tokenized dark-glass surface system with dark emerald and cold-tea accents, semantic spacing/padding scales, blur/shadow tokens, and reduced shell radii
-  - the shell canvas now uses a softer layered gradient background with restrained light spots behind the widget field, instead of a flat `color-canvas` fill
+  - the shell canvas now uses a brighter layered gradient background with multiple restrained light spots behind the widget field, so empty workspace zones keep visible soft tonal variation instead of a flat `color-canvas` fill
   - Dockview fills the remaining main viewport beside the full-height right rail and boots three base panels from `onReady`
   - single-tab widget headers render as narrow title headers instead of tab-strip selectors
   - single-tab Dockview headers now use a `48px` height, doubling the previous `24px` terminal/header chrome

@@ -8,10 +8,15 @@ body {
   height: 100%;
   box-sizing: border-box;
   background:
-    radial-gradient(circle at 14% 16%, var(--color-canvas-glow-primary) 0, transparent 26%),
-    radial-gradient(circle at 78% 12%, var(--color-canvas-glow-secondary) 0, transparent 24%),
-    radial-gradient(circle at 52% 72%, var(--color-canvas-glow-tertiary) 0, transparent 30%),
-    linear-gradient(180deg, #0a1715 0%, var(--color-canvas) 42%, #071210 100%);
+    radial-gradient(circle at 10% 14%, var(--color-canvas-glow-primary) 0, transparent 24%),
+    radial-gradient(circle at 32% 8%, var(--color-canvas-glow-quinary) 0, transparent 18%),
+    radial-gradient(circle at 78% 12%, var(--color-canvas-glow-secondary) 0, transparent 22%),
+    radial-gradient(circle at 92% 20%, var(--color-canvas-glow-quaternary) 0, transparent 20%),
+    radial-gradient(circle at 18% 58%, var(--color-canvas-glow-tertiary) 0, transparent 26%),
+    radial-gradient(circle at 52% 44%, var(--color-canvas-glow-secondary) 0, transparent 28%),
+    radial-gradient(circle at 70% 74%, var(--color-canvas-glow-quaternary) 0, transparent 24%),
+    radial-gradient(circle at 36% 92%, var(--color-canvas-glow-quinary) 0, transparent 20%),
+    linear-gradient(180deg, #0d1d1a 0%, #091715 38%, var(--color-canvas) 68%, #081412 100%);
   color: var(--color-text-primary);
   background-attachment: fixed;
 }
