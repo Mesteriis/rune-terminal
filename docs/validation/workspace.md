@@ -37,10 +37,9 @@
   - Dockview fills the remaining main viewport beside the full-height right rail and boots three base panels from `onReady`
   - single-tab widget headers render as narrow title headers instead of tab-strip selectors
   - single-tab widget drag can start from the full header area, not only the title text
-  - the top `AI` button creates and removes a left Dockview AI group instead of a shell overlay
-  - the AI group exposes a header `+` action that adds another AI tab into the same group
-  - non-AI tabs do not merge into the locked AI group during drag/drop attempts
-  - a Dockview sash is present between the AI group and the workspace, but headless drag did not confirm width movement in this environment
+  - the top `AI` button now mounts a shell-managed left panel instead of creating a special Dockview group
+  - the AI panel width is now resized through a dedicated shell sash, while the workspace remains pure Dockview on the right
+  - the AI panel outer chrome is now shell-rendered but styled to match Dockview widget surfaces
 
 ## Commands/tests used
 
@@ -48,6 +47,7 @@
 - `npm --prefix frontend run lint:active`
 - `npm run dev -- --host 127.0.0.1 --port 4195 --strictPort`
 - `npm --prefix frontend run dev -- --host 127.0.0.1 --port 4194 --strictPort`
+- `npm --prefix frontend run dev -- --host 127.0.0.1 --port 4198 --strictPort`
 - `curl -sf http://127.0.0.1:4193`
 - `curl -sf http://127.0.0.1:5173`
 - `node --input-type=module -e "<headless Playwright smoke for widget busy overlay geometry, interaction blocking, and release path on http://127.0.0.1:4194>"`
@@ -55,7 +55,6 @@
 - `node --input-type=module -e "<headless Playwright localhost geometry smoke for widget gap below header and before right rail>"`
 - `node --input-type=module -e "<headless Playwright localhost geometry smoke for Dockview row/column gaps and unified group surface>"`
 - `node --input-type=module -e "<headless Playwright localhost smoke for body padding, transparent dv-dockview root, and vendor-theme override>"`
-- `node --input-type=module -e "<headless Playwright localhost validation for AI Dockview create/remove, AI add-tab, blocked drop into AI group, Dockview sash probe, and right-rail geometry>"`
 
 ## Known limitations
 
@@ -73,12 +72,12 @@
 - The particle field is now driven by `tsParticles`, but this entry still does not claim physics-grade simulation, custom shaders, or a frame-by-frame quantitative motion audit.
 - The current node-edge motion pass was validated by type-check, production build, and localhost reachability. A fresh browser-level motion audit against the `tsParticles` graph field is not claimed here because the headless smoke against the active Vite session did not complete cleanly in this environment.
 - The xterm-based terminal renderer slice was validated by type-check, production build, and localhost reachability only. The attempted fresh headless browser smoke against the active Vite session did not complete cleanly in this environment, so this entry does not claim browser-verified terminal DOM/render behavior for the new slice.
-- The AI surface is now a special Dockview group, but it still does not provide chat behavior or persistence semantics.
+- The AI surface is now a shell-managed left panel rather than a Dockview group, but it still does not provide chat behavior or persistence semantics.
 - The token system currently covers shared UI layers and shell scaffolding. It does not yet claim a full Dockview vendor-theme rewrite beyond the existing shell overrides.
 - The modal foundation currently covers open/close behavior, host targeting, and group-level overlays. It does not yet claim focus trapping, keyboard escape handling, or persisted modal state.
 - The settings dialog sizing is currently code-validated via the `settings` variant on `DialogPopup`. A fresh browser geometry measurement for the resulting `5vw / 90vw / 5vw` and `2.5vh / 95vh / 2.5vh` layout is not claimed here.
 - `Notify` currently exists as a reusable shared component only. This slice does not yet claim toast stacking, auto-dismiss, or a notification manager/runtime queue.
-- The Dockview sash between the AI group and the workspace is visible, but scripted headless drag kept the AI width at `432px -> 432px`, so resize movement is not claimed as verified from this environment.
+- The shell-managed AI resize handle is implemented in this slice, but a fresh browser-level drag proof for width change is not claimed here because the ad hoc headless smoke against the `4198` dev launch did not complete cleanly in this environment.
 - Browser validation was run headlessly against the Vite dev server, not through full `npm run tauri:dev`.
 - The shell icon swap was validated by type-check, build, and source inspection. A separate visual localhost smoke for the icon glyphs was attempted but is not claimed from this environment.
 - This radius-and-gap rebalance was validated by source inspection plus type-check/build. Fresh live geometry for the new `6px` values is not claimed in this entry.
@@ -94,9 +93,11 @@
 - Static validation confirmed the commander surface renders from local JSON-backed mock state only via `frontend/src/widgets/commander-widget.mock.json` and `frontend/src/widgets/commander-widget.mock.ts`.
 - Static validation confirmed the commander surface composition chain is `CommanderWidget -> CommanderDemoLayout -> DockviewPanelWidget(tool panel)` and that the `tool` panel no longer carries the unrelated modal/busy demo controls in this slice.
 - Static validation confirmed the commander mock includes two panes with different paths, one active pane, one focused row, one selected row, hidden entries, folders, files, and a symlink row.
-- Static validation confirmed `DockviewPanelWidget` and `AiPanelWidget` now call `props.api.setActive()` on body `pointerdown`, aligning Dockview active-group state with body interaction instead of relying on header clicks alone.
+- Static validation confirmed `DockviewPanelWidget` calls `props.api.setActive()` on body `pointerdown`, aligning Dockview active-group state with body interaction instead of relying on header clicks alone.
 - Static validation confirmed the commander widget now derives its base highlight colors from CSS on `[data-runa-commander-root]` instead of inline style props, so `.dv-groupview.dv-inactive-group` can remap those variables to muted grey values instead of being blocked by inline custom-property precedence.
-- Static validation confirmed non-AI Dockview panel roots now expose shared `[data-runa-widget-tone-root]` palette variables, and `TerminalWidget` maps those into terminal-local CSS vars on `[data-runa-terminal-root]` without changing AI panel styling.
+- Static validation confirmed non-AI Dockview panel roots now expose shared `[data-runa-widget-tone-root]` palette variables, and `TerminalWidget` maps those into terminal-local CSS vars on `[data-runa-terminal-root]` without changing the shell-managed AI panel styling.
+- Static validation confirmed `App.tsx` now renders AI as a shell-managed left panel with host id `ai-shell-panel`, a dedicated resize handle, and a separate frame/header outside `DockviewReact`.
+- Static validation confirmed the old Dockview-specific AI tab wiring was removed from the app path: `AiGroupActionsWidget` is deleted, `DockviewReact` now mounts only the `default` component, and the AI shell panel is rendered alongside the workspace instead of through `addPanel`.
 - Static validation confirmed the terminal widget now consumes those local vars in `TerminalStatusHeader`, `TerminalToolbar`, and `TerminalViewport`, while `TerminalSurface` reapplies xterm theme colors from the widget root and refreshes them when the surrounding `.dv-groupview` class changes.
 - Static validation confirmed the Dockview focus styling now keys off the library's own `.dv-groupview.dv-active-group` / `.dv-groupview.dv-inactive-group` classes, applying a brighter active border and a stronger shadow-based lift without changing group layout sizing.
 - Static validation confirmed the busy-state wiring: `shared/model/widget-busy.ts` owns the host-id store, `PanelModalActionsWidget` toggles it per host, and `WidgetBusyOverlayWidget` renders the overlay per panel body using `@tsparticles/react` plus `tsparticles`.
@@ -125,9 +126,6 @@
 - Dockview occupied the main viewport beside the full-height right rail with no zero-height panels.
 - Single-tab Dockview headers rendered at `24px` height with visible titles and `void/actions` areas hidden.
 - Single-tab `.dv-tab` width expanded to the full header body (`1424/1440` and `704/720` after padding), and dragging from the empty right side of the top header moved `terminal-header` into the next group.
-- Toggling the top `AI` button created a left Dockview AI group at `x=0`, `y=40`, `width=432`, `height=920`, while the right action rail stayed at `40px` width.
-- The AI group header exposed the `Add AI tab` button, and clicking it produced `AI` and `AI 2` tabs inside the same locked AI group.
-- Dragging the `tool` tab toward the AI tab header left the group inventory unchanged: AI group titles stayed `AI`, `AI 2`, and `tool` remained in its own non-AI group.
-- Toggling the top `AI` button off removed all AI panels (`remainingAiPanels=0`).
-- The Dockview sash between AI and workspace was visible at approximately `x=430`, `width=4`, `height=920`, but the scripted drag probe did not change the AI width from `432`.
+- Static validation confirmed the AI panel now uses shell-level frame styling via `[data-runa-shell-widget-frame]`, `[data-runa-shell-widget-header]`, and `[data-runa-shell-sash]` instead of Dockview group attributes or AI-specific Dockview selectors.
+- A fresh Vite dev launch on `http://127.0.0.1:4198/` started successfully for this slice, but the attempted headless geometry smoke for the shell-managed AI panel did not complete cleanly, so no browser-level width or position measurements are claimed here.
 - A live localhost computed-style smoke on `http://127.0.0.1:4193` confirmed the tokenized shell theme: `bodyBackground=rgb(6, 17, 15)`, `rootBackground=rgb(6, 17, 15)`, `aiButtonBackground=rgba(13, 29, 27, 0.84)`, `aiButtonBorder=rgba(130, 188, 170, 0.32)`, `aiButtonShadow=rgba(1, 7, 6, 0.32) 0px 10px 24px 0px`, `aiButtonBackdrop=blur(10px)`, `railWidth=40px`, `railBackground=rgba(11, 24, 22, 0.72)`, and `topbarHeight=40px`.

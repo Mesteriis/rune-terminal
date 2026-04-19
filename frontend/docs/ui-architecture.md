@@ -129,8 +129,8 @@ its visible shell blocks as raw HTML inside `App.tsx`.
 - `Notify` provides the stateless shared notification surface.
 - `ModalHostWidget` renders body-scoped and widget-scoped modal layers.
 - `PanelModalActionsWidget` exposes a widget-level demo path for modal opening.
-- `DockviewPanelWidget` and `AiPanelWidget` render Dockview panel bodies.
-- `AiGroupActionsWidget` renders the AI-group header action.
+- `DockviewPanelWidget` renders Dockview panel bodies.
+- `AiPanelWidget` renders the shell-managed AI panel body inside the left shell pane.
 
 ## Validation
 
