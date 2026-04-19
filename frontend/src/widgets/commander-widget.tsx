@@ -1,4 +1,3 @@
-import type { CSSProperties } from 'react'
 import { Folder, FileCode2, FileText, Link2 } from 'lucide-react'
 
 import { Badge, Box, Button, ScrollArea, Separator, Surface, Text } from '../shared/ui/primitives'
@@ -47,19 +46,6 @@ import {
 
 export type CommanderWidgetProps = {
   state?: CommanderWidgetMockState
-}
-
-const commanderRootToneStyle: CSSProperties & Record<string, string> = {
-  '--runa-commander-highlight-border': 'var(--color-accent-emerald-strong)',
-  '--runa-commander-highlight-ring': 'rgba(71, 192, 160, 0.18)',
-  '--runa-commander-highlight-fill': 'rgba(45, 143, 118, 0.16)',
-  '--runa-commander-highlight-fill-strong': 'rgba(20, 42, 37, 0.96)',
-  '--runa-commander-highlight-badge-border': 'var(--color-border-strong)',
-  '--runa-commander-highlight-badge-bg': 'rgba(45, 143, 118, 0.12)',
-  '--runa-commander-highlight-text': 'var(--color-text-primary)',
-  '--runa-commander-key-color': 'var(--color-accent-cold-tea)',
-  '--runa-commander-folder-icon-color': 'var(--color-accent-cold-tea)',
-  '--runa-commander-file-icon-color': 'var(--color-text-secondary)',
 }
 
 const plainClusterStyle = {
@@ -205,7 +191,7 @@ export function CommanderWidget({
   state = commanderWidgetMockState,
 }: CommanderWidgetProps) {
   return (
-    <Box data-runa-commander-root="" style={{ ...commanderRootStyle, ...commanderRootToneStyle }}>
+    <Box data-runa-commander-root="" style={commanderRootStyle}>
       <Surface style={commanderHeaderStyle}>
         <Box style={commanderHeaderClusterStyle}>
           <Badge style={modeBadgeStyle}>{state.mode}</Badge>

@@ -86,6 +86,19 @@ body {
   box-shadow: var(--shadow-glass-panel);
 }
 
+[data-runa-commander-root] {
+  --runa-commander-highlight-border: var(--color-accent-emerald-strong);
+  --runa-commander-highlight-ring: rgba(71, 192, 160, 0.18);
+  --runa-commander-highlight-fill: rgba(45, 143, 118, 0.16);
+  --runa-commander-highlight-fill-strong: rgba(20, 42, 37, 0.96);
+  --runa-commander-highlight-badge-border: var(--color-border-strong);
+  --runa-commander-highlight-badge-bg: rgba(45, 143, 118, 0.12);
+  --runa-commander-highlight-text: var(--color-text-primary);
+  --runa-commander-key-color: var(--color-accent-cold-tea);
+  --runa-commander-folder-icon-color: var(--color-accent-cold-tea);
+  --runa-commander-file-icon-color: var(--color-text-secondary);
+}
+
 .dv-groupview.dv-inactive-group [data-runa-commander-root] {
   --runa-commander-highlight-border: rgba(145, 168, 161, 0.38);
   --runa-commander-highlight-ring: rgba(145, 168, 161, 0.1);
@@ -93,10 +106,10 @@ body {
   --runa-commander-highlight-fill-strong: rgba(26, 31, 30, 0.96);
   --runa-commander-highlight-badge-border: rgba(145, 168, 161, 0.28);
   --runa-commander-highlight-badge-bg: rgba(145, 168, 161, 0.1);
-  --runa-commander-highlight-text: var(--color-text-primary);
-  --runa-commander-key-color: var(--color-text-muted);
-  --runa-commander-folder-icon-color: var(--color-text-muted);
-  --runa-commander-file-icon-color: var(--color-text-muted);
+  --runa-commander-highlight-text: var(--color-text-secondary);
+  --runa-commander-key-color: rgba(145, 168, 161, 0.82);
+  --runa-commander-folder-icon-color: rgba(145, 168, 161, 0.76);
+  --runa-commander-file-icon-color: rgba(145, 168, 161, 0.76);
 }
 
 .dv-groupview .dv-tabs-and-actions-container,
