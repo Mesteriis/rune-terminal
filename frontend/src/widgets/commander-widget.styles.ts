@@ -64,9 +64,9 @@ export const commanderModeButtonStyle: CSSProperties = {
 }
 
 export const commanderModeButtonActiveStyle: CSSProperties = {
-  color: 'var(--color-text-primary)',
-  borderColor: 'var(--color-accent-emerald-strong)',
-  background: 'rgba(45, 143, 118, 0.16)',
+  color: 'var(--runa-commander-highlight-text)',
+  borderColor: 'var(--runa-commander-highlight-border)',
+  background: 'var(--runa-commander-highlight-fill)',
 }
 
 export const commanderToggleButtonStyle: CSSProperties = {
@@ -82,9 +82,9 @@ export const commanderToggleButtonStyle: CSSProperties = {
 }
 
 export const commanderToggleActiveStyle: CSSProperties = {
-  color: 'var(--color-text-primary)',
-  borderColor: 'var(--color-border-strong)',
-  background: 'rgba(145, 168, 161, 0.12)',
+  color: 'var(--runa-commander-highlight-text)',
+  borderColor: 'var(--runa-commander-highlight-border)',
+  background: 'var(--runa-commander-highlight-fill)',
 }
 
 export const commanderMainStyle: CSSProperties = {
@@ -112,8 +112,8 @@ export const commanderPaneStyle: CSSProperties = {
 }
 
 export const commanderPaneActiveStyle: CSSProperties = {
-  borderColor: 'var(--color-accent-emerald-strong)',
-  boxShadow: 'inset 0 0 0 1px rgba(71, 192, 160, 0.18)',
+  borderColor: 'var(--runa-commander-highlight-border)',
+  boxShadow: 'inset 0 0 0 1px var(--runa-commander-highlight-ring)',
 }
 
 export const commanderPaneHeaderStyle: CSSProperties = {
@@ -128,7 +128,7 @@ export const commanderPaneHeaderStyle: CSSProperties = {
 }
 
 export const commanderPaneHeaderActiveStyle: CSSProperties = {
-  background: 'rgba(20, 42, 37, 0.96)',
+  background: 'var(--runa-commander-highlight-fill-strong)',
 }
 
 export const commanderPaneTitleStyle: CSSProperties = {
@@ -217,9 +217,9 @@ export const commanderRowSelectedStyle: CSSProperties = {
 }
 
 export const commanderRowFocusedStyle: CSSProperties = {
-  borderColor: 'var(--color-accent-emerald-strong)',
-  background: 'rgba(45, 143, 118, 0.14)',
-  color: 'var(--color-text-primary)',
+  borderColor: 'var(--runa-commander-highlight-border)',
+  background: 'var(--runa-commander-highlight-fill)',
+  color: 'var(--runa-commander-highlight-text)',
 }
 
 export const commanderRowHiddenStyle: CSSProperties = {
@@ -304,7 +304,7 @@ export const commanderHintCellStyle: CSSProperties = {
 }
 
 export const commanderHintKeyStyle: CSSProperties = {
-  color: 'var(--color-accent-cold-tea)',
+  color: 'var(--runa-commander-key-color)',
   fontFamily: 'var(--font-family-mono)',
   fontSize: 'var(--font-size-sm)',
   lineHeight: 'var(--line-height-sm)',

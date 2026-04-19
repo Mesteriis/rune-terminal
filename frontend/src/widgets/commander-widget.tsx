@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import { Folder, FileCode2, FileText, Link2 } from 'lucide-react'
 
 import { Badge, Box, Button, ScrollArea, Separator, Surface, Text } from '../shared/ui/primitives'
@@ -48,6 +49,19 @@ export type CommanderWidgetProps = {
   state?: CommanderWidgetMockState
 }
 
+const commanderRootToneStyle: CSSProperties & Record<string, string> = {
+  '--runa-commander-highlight-border': 'var(--color-accent-emerald-strong)',
+  '--runa-commander-highlight-ring': 'rgba(71, 192, 160, 0.18)',
+  '--runa-commander-highlight-fill': 'rgba(45, 143, 118, 0.16)',
+  '--runa-commander-highlight-fill-strong': 'rgba(20, 42, 37, 0.96)',
+  '--runa-commander-highlight-badge-border': 'var(--color-border-strong)',
+  '--runa-commander-highlight-badge-bg': 'rgba(45, 143, 118, 0.12)',
+  '--runa-commander-highlight-text': 'var(--color-text-primary)',
+  '--runa-commander-key-color': 'var(--color-accent-cold-tea)',
+  '--runa-commander-folder-icon-color': 'var(--color-accent-cold-tea)',
+  '--runa-commander-file-icon-color': 'var(--color-text-secondary)',
+}
+
 const plainClusterStyle = {
   display: 'flex',
   alignItems: 'center',
@@ -61,9 +75,9 @@ const plainClusterStyle = {
 }
 
 const modeBadgeStyle = {
-  borderColor: 'var(--color-border-strong)',
-  background: 'rgba(45, 143, 118, 0.12)',
-  color: 'var(--color-text-primary)',
+  borderColor: 'var(--runa-commander-highlight-badge-border)',
+  background: 'var(--runa-commander-highlight-badge-bg)',
+  color: 'var(--runa-commander-highlight-text)',
   fontFamily: 'var(--font-family-mono)',
   textTransform: 'uppercase' as const,
   letterSpacing: '0.04em',
@@ -72,9 +86,9 @@ const modeBadgeStyle = {
 const paneStateBadgeStyle = {
   minHeight: '18px',
   padding: '0 var(--space-xs)',
-  borderColor: 'var(--color-border-strong)',
-  background: 'rgba(45, 143, 118, 0.12)',
-  color: 'var(--color-text-primary)',
+  borderColor: 'var(--runa-commander-highlight-badge-border)',
+  background: 'var(--runa-commander-highlight-badge-bg)',
+  color: 'var(--runa-commander-highlight-text)',
   fontFamily: 'var(--font-family-mono)',
   fontSize: '11px',
   lineHeight: '14px',
@@ -90,18 +104,18 @@ const inactivePaneStateBadgeStyle = {
 
 function getRowIcon(row: CommanderFileRow) {
   if (row.kind === 'folder') {
-    return <Folder color="var(--color-accent-cold-tea)" size={14} strokeWidth={1.8} />
+    return <Folder color="var(--runa-commander-folder-icon-color)" size={14} strokeWidth={1.8} />
   }
 
   if (row.kind === 'symlink') {
-    return <Link2 color="var(--color-accent-cold-tea)" size={14} strokeWidth={1.8} />
+    return <Link2 color="var(--runa-commander-folder-icon-color)" size={14} strokeWidth={1.8} />
   }
 
   if (row.ext === 'tsx' || row.ext === 'ts' || row.ext === 'sh') {
-    return <FileCode2 color="var(--color-text-secondary)" size={14} strokeWidth={1.8} />
+    return <FileCode2 color="var(--runa-commander-file-icon-color)" size={14} strokeWidth={1.8} />
   }
 
-  return <FileText color="var(--color-text-secondary)" size={14} strokeWidth={1.8} />
+  return <FileText color="var(--runa-commander-file-icon-color)" size={14} strokeWidth={1.8} />
 }
 
 function getRowTypeLabel(row: CommanderFileRow) {
@@ -191,7 +205,7 @@ export function CommanderWidget({
   state = commanderWidgetMockState,
 }: CommanderWidgetProps) {
   return (
-    <Box style={commanderRootStyle}>
+    <Box data-runa-commander-root="" style={{ ...commanderRootStyle, ...commanderRootToneStyle }}>
       <Surface style={commanderHeaderStyle}>
         <Box style={commanderHeaderClusterStyle}>
           <Badge style={modeBadgeStyle}>{state.mode}</Badge>

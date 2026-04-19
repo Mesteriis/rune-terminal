@@ -86,6 +86,19 @@ body {
   box-shadow: var(--shadow-glass-panel);
 }
 
+.dv-groupview.dv-inactive-group [data-runa-commander-root] {
+  --runa-commander-highlight-border: rgba(145, 168, 161, 0.38);
+  --runa-commander-highlight-ring: rgba(145, 168, 161, 0.1);
+  --runa-commander-highlight-fill: rgba(145, 168, 161, 0.1);
+  --runa-commander-highlight-fill-strong: rgba(26, 31, 30, 0.96);
+  --runa-commander-highlight-badge-border: rgba(145, 168, 161, 0.28);
+  --runa-commander-highlight-badge-bg: rgba(145, 168, 161, 0.1);
+  --runa-commander-highlight-text: var(--color-text-primary);
+  --runa-commander-key-color: var(--color-text-muted);
+  --runa-commander-folder-icon-color: var(--color-text-muted);
+  --runa-commander-file-icon-color: var(--color-text-muted);
+}
+
 .dv-groupview .dv-tabs-and-actions-container,
 .dv-groupview .dv-content-container {
   background: transparent;
