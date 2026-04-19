@@ -166,7 +166,7 @@ const aiResizeHandleStyle = {
   borderRadius: 0,
   background: 'transparent',
   boxShadow: 'none',
-  cursor: 'col-resize',
+  cursor: 'default',
   position: 'relative' as const,
 }
 

@@ -240,24 +240,14 @@ body {
   box-sizing: border-box;
 }
 
-[data-runa-shell-sash]::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 50%;
-  width: 1px;
-  transform: translateX(-50%);
-  background: var(--color-border-subtle);
-  opacity: 0.9;
+[data-runa-shell-sash] {
+  background: transparent !important;
+  border: 0 !important;
 }
 
-[data-runa-shell-sash]:hover::before {
-  background: var(--color-border-strong);
-}
-
-[data-runa-shell-sash]:active::before {
-  background: var(--color-accent-cold-tea);
+[data-runa-shell-sash]:hover,
+[data-runa-shell-sash]:active {
+  cursor: col-resize;
 }
 
 [data-runa-terminal-host] {
