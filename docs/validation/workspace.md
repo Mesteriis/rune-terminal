@@ -47,6 +47,10 @@
   - the AI body root at `data-runa-modal-anchor=\"ai-shell-panel\"` now has zero padding, and the AI header has been rebuilt as a single instrument-like bar instead of two disconnected boxes
   - the AI header now uses a square logo slot plus a single-line `AI Rune Assistant` title, with the old secondary `Assistant` eyebrow removed
   - the AI shell frame now keeps a small visible gap between the polished header bar and the stacked prompt cards
+  - the AI prompt stack now renders as a dense scrollable column of collapsed cards instead of fixed equal-height tiles
+  - each AI prompt card now exposes three icon actions in the upper-right corner: copy prompt, rollback, and copy summary
+  - each AI prompt card now expands locally on click to reveal `Prompt`, `Reasoning`, and `Summary` sections, while collapsed state stays clamped to a short preview
+  - rollback remains static-only in this slice: it switches between the current and rollback mock snapshots inside the card and does not call backend AI/history services
 
 ## Commands/tests used
 
@@ -65,6 +69,7 @@
 - `node --input-type=module -e "<headless Playwright localhost computed-style comparison for commander active vs inactive palette on http://127.0.0.1:5173>"`
 - `node --input-type=module -e "<headless Playwright localhost width samples for Motion-based AI shell panel on http://127.0.0.1:5173>"`
 - `node --input-type=module -e "<headless Playwright localhost smoke for AI header title, square logo slot, and header-to-prompts gap on http://127.0.0.1:5173>"`
+- `node --input-type=module -e "<headless Playwright localhost smoke for AI prompt-card actions, line clamp, expand, and rollback on http://127.0.0.1:5173>"`
 - `node --input-type=module -e "<headless Playwright localhost geometry smoke for widget gap below header and before right rail>"`
 - `node --input-type=module -e "<headless Playwright localhost geometry smoke for Dockview row/column gaps and unified group surface>"`
 - `node --input-type=module -e "<headless Playwright localhost smoke for body padding, transparent dv-dockview root, and vendor-theme override>"`
@@ -121,6 +126,7 @@
 - A fresh headless browser smoke on `http://127.0.0.1:5173` confirmed the new AI panel layout renders `AI RUNE`, `Prompt 1`, `Prompt 2`, `TOOL BAR`, `Chat`, the `Text Area` placeholder, and the header/composer icon controls, with the shell AI frame measuring `432x902` in that run.
 - A follow-up headless browser smoke on `http://127.0.0.1:5173` confirmed the AI body anchor now resolves to `padding: 0px`, while the rebuilt AI header resolves to `46px` height with a `44px` settings action cell, which verifies that it no longer sits inside the old `24px` shell-header ceiling.
 - A fresh headless browser smoke on `http://127.0.0.1:5173` confirmed the polished AI header now resolves to `AI Rune Assistant`, the logo slot resolves square at `32x32`, and the rendered gap between the shell header and the prompt stack resolves to `4px`.
+- A fresh headless browser smoke on `http://127.0.0.1:5173` confirmed each prompt card now renders all three requested icon actions (`Copy prompt`, `Toggle rollback`, `Copy summary`), the collapsed preview resolves with `webkitLineClamp=3`, expanding a card reveals `Prompt`, `Reasoning`, and `Summary`, and clicking rollback switches the visible subtitle from `Current snapshot` to `Rollback snapshot`.
 - Static validation confirmed the terminal widget now consumes those local vars in `TerminalStatusHeader`, `TerminalToolbar`, and `TerminalViewport`, while `TerminalSurface` reapplies xterm theme colors from the widget root and refreshes them when the surrounding `.dv-groupview` class changes.
 - Static validation confirmed the Dockview focus styling now keys off the library's own `.dv-groupview.dv-active-group` / `.dv-groupview.dv-inactive-group` classes, applying a brighter active border and a stronger shadow-based lift without changing group layout sizing.
 - Static validation confirmed the busy-state wiring: `shared/model/widget-busy.ts` owns the host-id store, `PanelModalActionsWidget` toggles it per host, and `WidgetBusyOverlayWidget` renders the overlay per panel body using `@tsparticles/react` plus `tsparticles`.
