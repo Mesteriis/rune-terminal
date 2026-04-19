@@ -1,4 +1,3 @@
-export * from './ai-group-actions-widget'
 export * from './ai-panel-widget'
 export * from './commander-widget'
 export * from './dockview-panel-widget'

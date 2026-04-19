@@ -1,12 +1,11 @@
-import { DockviewReact, type DockviewApi, type DockviewGroupPanel, type DockviewReadyEvent, type DockviewTheme, type IDockviewHeaderActionsProps, type IDockviewPanel, type IDockviewPanelProps } from 'dockview-react'
-import { useEffect, useState } from 'react'
+import { DockviewReact, type DockviewReadyEvent, type DockviewTheme } from 'dockview-react'
+import { useEffect, useRef, useState } from 'react'
 import { useUnit } from 'effector-react'
 
 import { $isAiSidebarOpen, toggleAiSidebar } from '../shared/model/app'
 import { BODY_MODAL_HOST_ID } from '../shared/model/modal'
-import { Box } from '../shared/ui/primitives'
+import { Box, Text } from '../shared/ui/primitives'
 import {
-  AiGroupActionsWidget,
   AiPanelWidget,
   DockviewPanelWidget,
   ModalHostWidget,
@@ -14,11 +13,12 @@ import {
   ShellTopbarWidget,
 } from '../widgets'
 
-const AI_PANEL_ID_PREFIX = 'ai-panel-'
-const AI_GROUP_ATTRIBUTE = 'data-runa-group'
-const AI_GROUP_ATTRIBUTE_VALUE = 'ai'
-const AI_GROUP_DEFAULT_RATIO = 0.3
+const AI_PANEL_DEFAULT_RATIO = 0.3
+const AI_PANEL_MIN_WIDTH = 320
+const AI_PANEL_RESIZE_HANDLE_WIDTH = 6
+const AI_SHELL_PANEL_HOST_ID = 'ai-shell-panel'
 const DOCKVIEW_GROUP_GAP = 6
+const WORKSPACE_MIN_WIDTH = 420
 
 const runaDockviewTheme: DockviewTheme = {
   name: 'runa',
@@ -68,6 +68,90 @@ const contentAreaStyle = {
   WebkitBackdropFilter: 'none',
 }
 
+const aiPanelShellStyle = {
+  minWidth: 0,
+  minHeight: 0,
+  display: 'flex',
+  flexDirection: 'column' as const,
+  overflow: 'hidden' as const,
+  border: 'none',
+  borderRadius: 0,
+  background: 'transparent',
+  padding: 0,
+  boxShadow: 'none',
+  backdropFilter: 'none',
+  WebkitBackdropFilter: 'none',
+}
+
+const aiPanelFrameStyle = {
+  flex: 1,
+  minWidth: 0,
+  minHeight: 0,
+  display: 'flex',
+  flexDirection: 'column' as const,
+  overflow: 'hidden' as const,
+  padding: 0,
+  border: 'none',
+  borderRadius: 0,
+  background: 'transparent',
+  boxShadow: 'none',
+  backdropFilter: 'none',
+  WebkitBackdropFilter: 'none',
+}
+
+const aiPanelHeaderStyle = {
+  height: 'var(--size-dockview-single-tab-header)',
+  display: 'flex',
+  alignItems: 'center',
+  minWidth: 0,
+  padding: '0 var(--space-sm)',
+  border: 'none',
+  borderRadius: 0,
+  background: 'transparent',
+  boxShadow: 'none',
+  backdropFilter: 'none',
+  WebkitBackdropFilter: 'none',
+}
+
+const aiPanelTitleStyle = {
+  display: 'block',
+  minWidth: 0,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap' as const,
+  color: 'var(--color-text-secondary)',
+  fontSize: 'var(--font-size-sm)',
+  lineHeight: 'var(--line-height-sm)',
+}
+
+const aiPanelBodyStyle = {
+  flex: 1,
+  minWidth: 0,
+  minHeight: 0,
+  overflow: 'hidden' as const,
+  padding: 0,
+  border: 'none',
+  borderRadius: 0,
+  background: 'transparent',
+  boxShadow: 'none',
+  backdropFilter: 'none',
+  WebkitBackdropFilter: 'none',
+}
+
+const aiResizeHandleStyle = {
+  flex: `0 0 ${AI_PANEL_RESIZE_HANDLE_WIDTH}px`,
+  width: `${AI_PANEL_RESIZE_HANDLE_WIDTH}px`,
+  minWidth: `${AI_PANEL_RESIZE_HANDLE_WIDTH}px`,
+  minHeight: 0,
+  padding: 0,
+  border: 'none',
+  borderRadius: 0,
+  background: 'transparent',
+  boxShadow: 'none',
+  cursor: 'col-resize',
+  position: 'relative' as const,
+}
+
 const workspaceStyle = {
   flex: 1,
   minWidth: 0,
@@ -93,91 +177,29 @@ const dockviewContainerStyle = {
   WebkitBackdropFilter: 'none',
 }
 
-function isAiPanel(panel: Pick<IDockviewPanel, 'id'> | undefined): boolean {
-  return Boolean(panel?.id.startsWith(AI_PANEL_ID_PREFIX))
-}
-
-function isAiGroup(group: Pick<DockviewGroupPanel, 'panels' | 'element'> | undefined): boolean {
-  if (!group) {
-    return false
-  }
-
-  return (
-    group.element.getAttribute(AI_GROUP_ATTRIBUTE) === AI_GROUP_ATTRIBUTE_VALUE ||
-    group.panels.some((panel) => isAiPanel(panel))
-  )
-}
-
-function markAiGroup(group: DockviewGroupPanel) {
-  group.locked = 'no-drop-target'
-  group.element.setAttribute(AI_GROUP_ATTRIBUTE, AI_GROUP_ATTRIBUTE_VALUE)
-}
-
-function findAiGroup(api: DockviewApi): DockviewGroupPanel | undefined {
-  return api.groups.find((group) => isAiGroup(group))
-}
-
-function getNextAiPanelNumber(api: DockviewApi) {
-  return (
-    api.panels.reduce((max, panel) => {
-      if (!isAiPanel(panel)) {
-        return max
-      }
-
-      const panelNumber = Number.parseInt(panel.id.replace(AI_PANEL_ID_PREFIX, ''), 10)
-
-      return Number.isNaN(panelNumber) ? max : Math.max(max, panelNumber)
-    }, 0) + 1
-  )
-}
-
 function getDefaultAiPanelWidth() {
   if (typeof window === 'undefined') {
     return 450
   }
 
-  return Math.round(window.innerWidth * AI_GROUP_DEFAULT_RATIO)
+  return Math.round(window.innerWidth * AI_PANEL_DEFAULT_RATIO)
 }
 
-function createAiPanel(api: DockviewApi, group?: DockviewGroupPanel) {
-  const panelNumber = getNextAiPanelNumber(api)
-  const panelId = `${AI_PANEL_ID_PREFIX}${panelNumber}`
-  const panelTitle = panelNumber === 1 ? 'AI' : `AI ${panelNumber}`
-  const panel = group
-    ? api.addPanel({
-        id: panelId,
-        title: panelTitle,
-        component: 'ai',
-        position: {
-          referenceGroup: group,
-        },
-      })
-    : api.addPanel({
-        id: panelId,
-        title: panelTitle,
-        component: 'ai',
-        initialWidth: getDefaultAiPanelWidth(),
-        position: {
-          direction: 'left',
-        },
-      })
-
-  markAiGroup(panel.group)
-
-  return panel
-}
-
-function AiGroupActions(props: IDockviewHeaderActionsProps) {
-  if (!isAiGroup(props.group)) {
-    return null
+function clampAiPanelWidth(requestedWidth: number, contentAreaElement: HTMLDivElement | null) {
+  if (!contentAreaElement) {
+    return Math.max(AI_PANEL_MIN_WIDTH, requestedWidth)
   }
 
-  return <AiGroupActionsWidget onAddTab={() => createAiPanel(props.containerApi, props.group)} />
+  const maxWidth = Math.max(
+    AI_PANEL_MIN_WIDTH,
+    contentAreaElement.clientWidth - WORKSPACE_MIN_WIDTH - AI_PANEL_RESIZE_HANDLE_WIDTH,
+  )
+
+  return Math.min(Math.max(requestedWidth, AI_PANEL_MIN_WIDTH), maxWidth)
 }
 
 const components = {
   default: DockviewPanelWidget,
-  ai: AiPanelWidget,
 }
 
 export function App() {
@@ -185,7 +207,10 @@ export function App() {
     $isAiSidebarOpen,
     toggleAiSidebar,
   ])
-  const [dockviewApi, setDockviewApi] = useState<DockviewApi | null>(null)
+  const [aiPanelWidth, setAiPanelWidth] = useState(getDefaultAiPanelWidth())
+  const [isAiPanelResizing, setIsAiPanelResizing] = useState(false)
+  const contentAreaRef = useRef<HTMLDivElement | null>(null)
+  const aiResizeStartRef = useRef<{ startWidth: number; startX: number } | null>(null)
 
   const handleReady = (event: DockviewReadyEvent) => {
     const api = event.api
@@ -219,64 +244,107 @@ export function App() {
       },
     })
 
-    setDockviewApi(api)
   }
 
   useEffect(() => {
-    if (!dockviewApi) {
+    if (!isAiSidebarOpen) {
       return
     }
 
-    const aiGroup = findAiGroup(dockviewApi)
+    setAiPanelWidth((width) => clampAiPanelWidth(width, contentAreaRef.current))
+  }, [isAiSidebarOpen])
 
-    if (isAiSidebarOpen) {
-      if (!aiGroup) {
-        createAiPanel(dockviewApi)
+  useEffect(() => {
+    if (!isAiSidebarOpen) {
+      return
+    }
+
+    const handleWindowResize = () => {
+      setAiPanelWidth((width) => clampAiPanelWidth(width, contentAreaRef.current))
+    }
+
+    window.addEventListener('resize', handleWindowResize)
+
+    return () => {
+      window.removeEventListener('resize', handleWindowResize)
+    }
+  }, [isAiSidebarOpen])
+
+  useEffect(() => {
+    if (!isAiPanelResizing) {
+      return
+    }
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const resizeStart = aiResizeStartRef.current
+
+      if (!resizeStart) {
         return
       }
 
-      markAiGroup(aiGroup)
-      return
+      const nextWidth = resizeStart.startWidth + (event.clientX - resizeStart.startX)
+
+      setAiPanelWidth(clampAiPanelWidth(nextWidth, contentAreaRef.current))
     }
 
-    if (aiGroup) {
-      dockviewApi.removeGroup(aiGroup)
-    }
-  }, [dockviewApi, isAiSidebarOpen])
-
-  useEffect(() => {
-    if (!dockviewApi) {
-      return
+    const handlePointerUp = () => {
+      aiResizeStartRef.current = null
+      setIsAiPanelResizing(false)
     }
 
-    const panelDragDisposable = dockviewApi.onWillDragPanel((event) => {
-      if (isAiPanel(event.panel)) {
-        event.nativeEvent.preventDefault()
-      }
-    })
-    const groupDragDisposable = dockviewApi.onWillDragGroup((event) => {
-      if (isAiGroup(event.group)) {
-        event.nativeEvent.preventDefault()
-      }
-    })
+    const previousCursor = document.body.style.cursor
+    const previousUserSelect = document.body.style.userSelect
+
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+    window.addEventListener('pointermove', handlePointerMove)
+    window.addEventListener('pointerup', handlePointerUp)
 
     return () => {
-      panelDragDisposable.dispose()
-      groupDragDisposable.dispose()
+      document.body.style.cursor = previousCursor
+      document.body.style.userSelect = previousUserSelect
+      window.removeEventListener('pointermove', handlePointerMove)
+      window.removeEventListener('pointerup', handlePointerUp)
     }
-  }, [dockviewApi])
+  }, [isAiPanelResizing])
 
   return (
     <Box style={rootStyle}>
       <Box style={mainShellStyle}>
         <ShellTopbarWidget isAiOpen={isAiSidebarOpen} onToggleAi={onToggleAiSidebar} />
-        <Box style={contentAreaStyle}>
+        <Box ref={contentAreaRef} style={contentAreaStyle}>
+          {isAiSidebarOpen ? (
+            <>
+              <Box style={{ ...aiPanelShellStyle, flex: `0 0 ${aiPanelWidth}px`, width: `${aiPanelWidth}px` }}>
+                <Box data-runa-shell-widget-frame="" data-runa-shell-widget-kind="ai" style={aiPanelFrameStyle}>
+                  <Box data-runa-shell-widget-header="" style={aiPanelHeaderStyle}>
+                    <Text style={aiPanelTitleStyle}>AI</Text>
+                  </Box>
+                  <Box style={aiPanelBodyStyle}>
+                    <AiPanelWidget hostId={AI_SHELL_PANEL_HOST_ID} />
+                  </Box>
+                </Box>
+              </Box>
+              <Box
+                aria-hidden="true"
+                data-runa-shell-sash=""
+                onPointerDown={(event) => {
+                  aiResizeStartRef.current = {
+                    startWidth: aiPanelWidth,
+                    startX: event.clientX,
+                  }
+                  setIsAiPanelResizing(true)
+                  event.preventDefault()
+                }}
+                style={aiResizeHandleStyle}
+              />
+            </>
+          ) : null}
           <Box style={workspaceStyle}>
             <Box style={dockviewContainerStyle}>
               <DockviewReact
                 components={components}
                 onReady={handleReady}
-                rightHeaderActionsComponent={AiGroupActions}
                 theme={runaDockviewTheme}
               />
             </Box>
