@@ -24,7 +24,11 @@ const panelContentStyle = {
 
 export function AiPanelWidget(props: IDockviewPanelProps) {
   return (
-    <Box data-runa-modal-anchor={props.api.id} style={panelContentStyle}>
+    <Box
+      data-runa-modal-anchor={props.api.id}
+      onPointerDown={() => props.api.setActive()}
+      style={panelContentStyle}
+    >
       <Text>{`AI PANEL: ${props.api.id}`}</Text>
       <PanelModalActionsWidget hostId={props.api.id} panelTitle={props.api.id} />
       <ModalHostWidget hostId={props.api.id} scope="widget" />

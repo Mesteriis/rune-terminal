@@ -65,7 +65,11 @@ export function DockviewPanelWidget(props: IDockviewPanelProps) {
   const isCommanderPanel = isCommanderDemoPanel(props.api.id)
 
   return (
-    <Box data-runa-modal-anchor={props.api.id} style={panelContentStyle}>
+    <Box
+      data-runa-modal-anchor={props.api.id}
+      onPointerDown={() => props.api.setActive()}
+      style={panelContentStyle}
+    >
       {terminalModel ? (
         <TerminalWidget hostId={props.api.id} {...terminalModel}>
           <PanelModalActionsWidget hostId={props.api.id} panelTitle={terminalModel.title} />
