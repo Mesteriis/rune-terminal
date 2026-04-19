@@ -69,6 +69,24 @@ body {
   box-shadow: var(--shadow-glass-panel);
   backdrop-filter: var(--blur-glass-md);
   -webkit-backdrop-filter: var(--blur-glass-md);
+  transform: translate3d(0, 0, 0);
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    transform 140ms ease;
+}
+
+.dv-groupview.dv-active-group {
+  border-color: var(--color-border-strong);
+  box-shadow:
+    0 20px 54px rgba(1, 7, 6, 0.52),
+    0 0 0 1px rgba(130, 188, 170, 0.14);
+  transform: translate3d(0, -1px, 0);
+}
+
+.dv-groupview.dv-inactive-group {
+  border-color: var(--color-border-subtle);
+  box-shadow: var(--shadow-glass-panel);
 }
 
 .dv-groupview .dv-tabs-and-actions-container,
