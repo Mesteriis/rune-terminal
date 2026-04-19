@@ -42,7 +42,7 @@ const rootStyle = {
   padding: 0,
   border: 'none',
   borderRadius: 0,
-  background: 'var(--color-canvas)',
+  background: 'transparent',
   boxShadow: 'none',
   backdropFilter: 'none',
   WebkitBackdropFilter: 'none',

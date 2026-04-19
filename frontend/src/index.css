@@ -7,13 +7,18 @@ body {
   padding: 6px;
   height: 100%;
   box-sizing: border-box;
-  background: var(--color-canvas);
+  background:
+    radial-gradient(circle at 14% 16%, var(--color-canvas-glow-primary) 0, transparent 26%),
+    radial-gradient(circle at 78% 12%, var(--color-canvas-glow-secondary) 0, transparent 24%),
+    radial-gradient(circle at 52% 72%, var(--color-canvas-glow-tertiary) 0, transparent 30%),
+    linear-gradient(180deg, #0a1715 0%, var(--color-canvas) 42%, #071210 100%);
   color: var(--color-text-primary);
+  background-attachment: fixed;
 }
 
 #root {
   height: 100%;
-  background: var(--color-canvas);
+  background: transparent;
 }
 
 @keyframes runa-busy-icon-breathe {
@@ -238,6 +243,40 @@ body {
   margin-left: var(--gap-sm);
 }
 
+.runa-dockview-theme .dv-popover-anchor {
+  position: absolute !important;
+  inset: 0;
+  z-index: var(--z-modal-widget);
+  overflow: visible;
+  pointer-events: none;
+}
+
+.runa-dockview-theme .dv-popover-anchor > div {
+  z-index: var(--z-modal-widget) !important;
+  pointer-events: auto;
+}
+
+.runa-dockview-theme .dv-tabs-overflow-dropdown-root {
+  position: relative;
+  z-index: 1;
+}
+
+.runa-dockview-theme .dv-tabs-overflow-container {
+  position: relative;
+  z-index: 1;
+  min-width: 220px;
+  max-height: min(320px, 50vh);
+  overflow: auto;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: rgba(8, 19, 17, 0.96);
+  box-shadow:
+    0 24px 54px rgba(1, 7, 6, 0.52),
+    0 0 0 1px rgba(130, 188, 170, 0.12);
+  backdrop-filter: var(--blur-glass-md);
+  -webkit-backdrop-filter: var(--blur-glass-md);
+}
+
 [data-runa-shell-widget-frame] {
   position: relative;
   box-sizing: border-box;
@@ -267,18 +306,40 @@ body {
 
 [data-runa-terminal-host] {
   display: flex;
+  background: var(--runa-terminal-surface-bg, var(--color-surface-glass-soft));
+  border-radius: inherit;
 }
 
 [data-runa-terminal-host] .xterm {
   flex: 1;
   height: 100%;
+  color: var(--runa-terminal-text-strong, var(--color-text-primary));
+  background: transparent !important;
 }
 
 [data-runa-terminal-host] .xterm-viewport {
   background: transparent !important;
 }
 
+[data-runa-terminal-host] .xterm-scrollable-element,
+[data-runa-terminal-host] .xterm-screen,
+[data-runa-terminal-host] .xterm-helpers {
+  background: transparent !important;
+}
+
 [data-runa-terminal-host] .xterm-screen,
 [data-runa-terminal-host] .xterm-screen canvas {
   width: 100% !important;
+}
+
+[data-runa-terminal-host] .xterm .xterm-scrollable-element > .scrollbar > .slider {
+  background: color-mix(in srgb, var(--runa-terminal-text-strong, var(--color-text-primary)) 18%, transparent) !important;
+}
+
+[data-runa-terminal-host] .xterm .xterm-scrollable-element > .scrollbar > .slider:hover {
+  background: color-mix(in srgb, var(--runa-terminal-text-strong, var(--color-text-primary)) 34%, transparent) !important;
+}
+
+[data-runa-terminal-host] .xterm .xterm-scrollable-element > .scrollbar > .slider.active {
+  background: color-mix(in srgb, var(--runa-terminal-status-running, var(--color-accent-emerald-strong)) 54%, transparent) !important;
 }
