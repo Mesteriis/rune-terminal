@@ -11,6 +11,7 @@
   - the `tool` panel now mounts a static-only Total Commander-style dual-pane demo surface through `CommanderDemoLayout -> CommanderWidget`, rendered entirely from local JSON-backed mock state
   - the commander demo adds only four generic primitives for dense tool surfaces: `Badge`, `ScrollArea`, `Separator`, and `Surface`
   - the commander demo surface remains frontend-only: no backend calls, no runtime execution, no filesystem access, and no real copy/move/delete behavior are implemented in this slice
+  - the active Dockview widget group now receives a slightly brighter border plus a small lifted-card effect, making the currently focused widget visually clearer without changing layout geometry
   - widget bodies now expose a local busy-state mechanism that overlays the panel content without changing Dockview group geometry
   - the busy overlay now uses an invisible centered square AI marker container with no glass card behind it, plus a `tsParticles` node-edge field with linked particles moving freely across the widget body and bouncing from the boundaries
   - the busy overlay blocks panel-body interaction while it is active, but the Dockview header remains outside that body overlay
@@ -59,6 +60,7 @@
 - The new terminal widget slice is renderer-only for now. It does not yet claim live backend session startup, SSE attachment, input routing, interrupt wiring, or persistent terminal state on the new frontend path.
 - The commander demo slice is static-only. It does not claim real filesystem access, keyboard navigation, copy/move/delete execution, preview panes, search panels, backend integration, or file-operation dialogs.
 - A fresh browser-level reachability claim for the commander demo is not recorded here: the local Vite process on `127.0.0.1:4195` started, but `curl` reachability did not complete from this environment.
+- The active-widget highlighting change in this pass is validated by source inspection plus type-check/build only. A fresh browser-level measurement of the rendered border/shadow/translate state is not claimed here.
 - The terminal addon slice was validated by type-check and production build only in this pass. A fresh localhost browser run for the new toolbar/addon behavior is not claimed here.
 - The busy-state mechanism in this slice is widget-local UI state only. It does not yet claim backend-driven runtime busy semantics, command progress ownership, or persisted status.
 - The busy overlay currently covers the widget body only. It intentionally does not claim full-widget lockout for the Dockview header or sash chrome.
@@ -86,6 +88,7 @@
 - Static validation confirmed the commander surface renders from local JSON-backed mock state only via `frontend/src/widgets/commander-widget.mock.json` and `frontend/src/widgets/commander-widget.mock.ts`.
 - Static validation confirmed the commander surface composition chain is `CommanderWidget -> CommanderDemoLayout -> DockviewPanelWidget(tool panel)` and that the `tool` panel no longer carries the unrelated modal/busy demo controls in this slice.
 - Static validation confirmed the commander mock includes two panes with different paths, one active pane, one focused row, one selected row, hidden entries, folders, files, and a symlink row.
+- Static validation confirmed the Dockview focus styling now keys off the library's own `.dv-groupview.dv-active-group` / `.dv-groupview.dv-inactive-group` classes, applying a brighter active border, a stronger shadow, and a `translate3d(0, -1px, 0)` lift without changing group layout sizing.
 - Static validation confirmed the busy-state wiring: `shared/model/widget-busy.ts` owns the host-id store, `PanelModalActionsWidget` toggles it per host, and `WidgetBusyOverlayWidget` renders the overlay per panel body using `@tsparticles/react` plus `tsparticles`.
 - A fresh live headless smoke on `http://127.0.0.1:4194` confirmed that toggling busy for `terminal-header` did not move Dockview geometry: before and after the toggle the group rect stayed `x=6`, `y=52`, `width=1382`, `height=451`.
 - The same smoke confirmed the busy overlay rendered over the panel body at `x=7`, `y=77`, `width=1380`, `height=425`, with `aria-busy=\"true\"`, an attached `canvas`, and a visible release control.
