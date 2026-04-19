@@ -125,6 +125,7 @@ its visible shell blocks as raw HTML inside `App.tsx`.
 - `WidgetBusyOverlayWidget` renders a widget-body busy state overlay with a centered AI marker and a `tsParticles` node-edge field.
 - `CommanderWidget` renders the static Total Commander-style dual-pane demo surface from local JSON-backed mock data only.
 - `TerminalWidget` renders the terminal-specific body composition for terminal panels.
+- `TerminalDockviewTabWidget` renders terminal-specific Dockview tab chrome for terminal panels.
 - `CommanderDemoLayout` mounts `CommanderWidget` into the isolated `tool` panel demo surface.
 - `DialogPopup` provides the stateless shared dialog surface, including the wide settings-dialog variant.
 - `Notify` provides the stateless shared notification surface.
@@ -137,6 +138,29 @@ its visible shell blocks as raw HTML inside `App.tsx`.
 - `AiComposerWidget` renders the AI toolbar plus textarea composer block.
 - `App.tsx` now uses `motion` only at the app shell boundary to animate the shell-managed AI panel width; the AI body itself remains a normal widget.
 
+## DOM Identity
+
+The frontend now uses a shared DOM identity contract from
+`src/shared/ui/dom-id.tsx`.
+
+- Every repo-owned frontend element should resolve to a readable DOM `id`.
+- The canonical semantic locator is `data-runa-node`.
+- The identity format is:
+  - `<layout>-<widget>-<component>-<short-uid>` for `id`
+  - `<layout>-<widget>-<component>` for `data-runa-node`
+- Scope is inherited through `RunaDomScopeProvider`.
+- Native primitives generate ids and semantic attrs automatically.
+- Widget/layout roots may also opt into subtree auto-tagging so raw DOM and
+  third-party descendants inside that subtree also receive ids and
+  `data-runa-*` attrs.
+
+Lookup helpers exported from `src/shared/ui/dom-id.tsx`:
+
+- `buildRunaNodeKey`
+- `buildRunaNodeSelector`
+- `findRunaNode`
+- `findRunaNodes`
+
 ## Validation
 
 ### Commands
@@ -148,6 +172,7 @@ its visible shell blocks as raw HTML inside `App.tsx`.
 - `rg -n "React\.(HTMLAttributes|ButtonHTMLAttributes|InputHTMLAttributes|LabelHTMLAttributes|SelectHTMLAttributes|TextareaHTMLAttributes)" frontend/src/shared/ui/primitives`
 - `rg -n "from '../primitives'|from '../shared/ui/primitives'|from '../shared/ui/components'" frontend/src/shared/ui/components frontend/src/widgets`
 - `rg -n "export \* from './(expandable-textarea|radio-control|radio-group|searchable-multi-select|switcher-control|switcher-group|tabs)'" frontend/src/shared/ui/components/index.ts`
+- `node --input-type=module -e "<headless Playwright DOM identity smoke against http://127.0.0.1:5173>"`
 
 ### Results
 
@@ -173,7 +198,8 @@ its visible shell blocks as raw HTML inside `App.tsx`.
 - `CommanderWidget` stays in the widget layer, renders from local JSON-backed mock state only, and does not introduce filesystem behavior, backend calls, or operation dialogs.
 - `CommanderDemoLayout` keeps the demo mount in a layout layer instead of wiring the commander surface directly into app orchestration.
 - `WidgetBusyOverlayWidget` stays in the widget layer and uses `@tsparticles/react` directly for the busy-field rendering instead of pushing imperative particle code into shared components.
-- `TerminalWidget` stays in the widget layer and composes the terminal status header plus the terminal renderer surface for terminal panels.
+- `TerminalWidget` stays in the widget layer and now owns the terminal body only: toolbar, panel actions, and renderer surface.
+- `TerminalDockviewTabWidget` keeps terminal-specific Dockview tab composition in the widget layer, reusing `TerminalStatusHeader` in a compact mode instead of duplicating terminal chrome inside the body.
 - The current shell example routes its visible shell blocks through widgets and primitives instead of raw HTML in `App.tsx`.
 - `App.tsx` remains responsible for Dockview API orchestration and Effector state wiring.
 - Modal state now lives in a dedicated `shared/model/modal.ts` store instead of being hidden inside widget-local React state.
@@ -185,3 +211,13 @@ its visible shell blocks as raw HTML inside `App.tsx`.
 - The new form-control components added in this slice compose shared primitives only. The existing `DialogPopup` close glyph remains the current icon exception from the earlier shell slice.
 - Live localhost smoke confirmed tokenized shell values in the DOM: `body/root` background `rgb(6, 17, 15)`, `AI` button backdrop `blur(10px)`, right rail width `40px`, and right rail glass background `rgba(11, 24, 22, 0.72)`.
 - The shell-managed AI panel animation now uses `motion` at the app layer instead of CSS width transitions or manual `requestAnimationFrame`, keeping the animation concern at the shell boundary without pushing animation logic down into widgets or primitives.
+- The shared DOM identity layer now provides readable ids plus semantic
+  selectors through `data-runa-node`, backed by `RunaDomScopeProvider`,
+  primitive-level auto identity, and subtree auto-tagging at widget/layout
+  roots.
+- Terminal panels now pass `params` as the local source of truth for title and session metadata, which allows the same terminal config to be reused by both the body widget and the custom Dockview tab widget.
+- A fresh headless DOM smoke on `http://127.0.0.1:5173` confirmed `509`
+  elements resolving both `id` and `data-runa-node`, including semantic roots
+  like `shell-tool-commander-root`, `shell-terminal-header-terminal-widget-root`,
+  `shell-workspace-shell-topbar-toggle-ai-panel`, and an xterm-managed
+  descendant resolving as `shell-global-terminal-input`.

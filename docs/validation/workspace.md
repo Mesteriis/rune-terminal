@@ -8,6 +8,8 @@
   - the frontend React runtime and types now target the latest stable React line in this repo: `react@19.2.5`, `react-dom@19.2.5`, `@types/react@19.2.14`, and `@types/react-dom@19.2.3`
   - terminal panels now render a frontend-only terminal widget made from `TerminalViewport`, `TerminalStatusHeader`, `TerminalSurface`, and `TerminalWidget`, with xterm mounted locally and no backend session wiring in this slice
   - the renderer-only terminal slice now also mounts the first xterm addon set: `fit`, `search`, `web-links`, `clipboard`, and `webgl` with a safe fallback to the default renderer
+  - terminal status chrome now lives in Dockview single-tab headers through a custom `terminal-tab` renderer, so `TerminalWidget` owns only the terminal body while `TerminalStatusHeader` renders inside `dv-scrollable`
+  - terminal headers now expose a local plus button that creates another tab with the same terminal preset inside the same Dockview group
   - the `tool` panel now mounts a static-only Total Commander-style dual-pane demo surface through `CommanderDemoLayout -> CommanderWidget`, rendered entirely from local JSON-backed mock state
   - the commander demo adds only four generic primitives for dense tool surfaces: `Badge`, `ScrollArea`, `Separator`, and `Surface`
   - the commander demo surface remains frontend-only: no backend calls, no runtime execution, no filesystem access, and no real copy/move/delete behavior are implemented in this slice
@@ -23,7 +25,7 @@
   - top shell header is `40px` tall, lives only in the left main shell column, and currently renders icon-based window controls, the `AI` toggle, and the tab strip
   - the top shell header no longer applies an extra left inset before the first action button
   - the workspace tab strip in the top shell header now starts with a fixed `2rem` left offset after the action controls
-  - the top shell `AI` toggle now uses the same icon-only control shape as the other topbar actions, but with flattened button chrome so it sits without inner padding or border
+  - the top shell `AI` toggle now uses the same icon-button chrome as the other topbar actions instead of the temporary flattened icon-only treatment
   - a right-side action rail is present as a separate full-height column, is `40px` wide, and its lower action now uses a settings icon
   - the shell now includes a modal foundation with a body-scoped host and widget-scoped hosts mounted over individual Dockview groups
   - the body-scoped settings dialog now uses a fixed wide variant sized to `90vw x 95vh`, leaving `5vw` free on each side and `2.5vh` free above and below
@@ -70,6 +72,7 @@
 - `curl -sf http://127.0.0.1:4193`
 - `curl -sf http://127.0.0.1:5173`
 - `node --input-type=module -e "<headless Playwright smoke for widget busy overlay geometry, interaction blocking, and release path on http://127.0.0.1:4194>"`
+- `node --input-type=module -e "<headless Playwright smoke for terminal status header inside dv-scrollable and within-group terminal tab creation on http://127.0.0.1:5173>"`
 - `node --input-type=module -e "<headless Playwright localhost computed-style smoke for tokenized shell surfaces>"`
 - `node --input-type=module -e "<headless Playwright localhost computed-style comparison for commander active vs inactive palette on http://127.0.0.1:5173>"`
 - `node --input-type=module -e "<headless Playwright localhost width samples for Motion-based AI shell panel on http://127.0.0.1:5173>"`
@@ -102,6 +105,7 @@
 - `Notify` currently exists as a reusable shared component only. This slice does not yet claim toast stacking, auto-dismiss, or a notification manager/runtime queue.
 - The shell-managed AI resize handle is implemented in this slice, but a fresh browser-level drag proof for width change is not claimed here because the ad hoc headless smoke against the `4198` dev launch did not complete cleanly in this environment.
 - The shell-managed AI enter/exit animation is now driven by `motion` instead of CSS transitions, and browser-level width samples confirm progressive open-state growth. This entry still does not claim a frame-by-frame perceptual quality audit inside full Tauri runtime.
+- The shared DOM identity layer covers repo-owned frontend DOM and widget/layout subtree descendants. This entry does not claim ownership over arbitrary third-party portal roots outside the tagged subtrees.
 - The refreshed AI panel body is still a static shell surface. It does not claim prompt execution, chat state, message history, streaming, or settings behavior behind the new header/action controls.
 - Browser validation was run headlessly against the Vite dev server, not through full `npm run tauri:dev`.
 - The shell icon swap was validated by type-check, build, and source inspection. A separate visual localhost smoke for the icon glyphs was attempted but is not claimed from this environment.
@@ -113,6 +117,9 @@
 - Initial panel set rendered as `terminal-header`, `terminal`, and `tool`.
 - Static validation confirmed the frontend dependency upgrade to `react@19.2.5`, `react-dom@19.2.5`, `@types/react@19.2.14`, and `@types/react-dom@19.2.3`, and `npm --prefix frontend run lint:active` plus `npm --prefix frontend run build` both passed on that stack.
 - Static validation confirmed the terminal renderer slice dependencies `@xterm/xterm@6.0.0` and `@xterm/addon-fit@0.11.0`, plus the new UI-layer chain `TerminalViewport -> TerminalStatusHeader/TerminalSurface -> TerminalWidget`.
+- Static validation confirmed terminal panel params now act as the local source of truth for terminal title/session metadata, so both the body widget and the custom Dockview tab renderer reuse the same terminal panel config.
+- A fresh headless smoke on `http://127.0.0.1:5173` confirmed terminal status header content now renders inside Dockview tab chrome for both terminal groups, with `terminal-status-header-*` nodes resolving from inside both `.dv-scrollable` and `.dv-tab`.
+- The same smoke confirmed the workspace terminal header plus button adds a sibling terminal tab in-place: the workspace terminal group moved from `tabs=1` to `tabs=2` while the other groups stayed unchanged.
 - Static validation confirmed the first addon wave on the terminal renderer slice: `@xterm/addon-search@0.16.0`, `@xterm/addon-web-links@0.12.0`, `@xterm/addon-clipboard@0.2.0`, and `@xterm/addon-webgl@0.19.0`, plus the new `TerminalToolbar` control strip above the surface.
 - Static validation confirmed the commander slice primitive additions are generic rather than widget-specific: `Badge`, `ScrollArea`, `Separator`, and `Surface` live under `shared/ui/primitives` and import no app or widget code.
 - Static validation confirmed the commander surface renders from local JSON-backed mock state only via `frontend/src/widgets/commander-widget.mock.json` and `frontend/src/widgets/commander-widget.mock.ts`.
@@ -123,7 +130,7 @@
 - A fresh headless browser comparison on `http://127.0.0.1:5173` confirmed the commander widget now really changes visible tones between inactive and active states: inactive mode/toggle buttons and the `ACTIVE` badge resolve to greyed values like `rgba(145, 168, 161, 0.1)` backgrounds and `rgb(189, 208, 202)` text, while the active group restores emerald accents such as `rgb(71, 192, 160)` borders and `rgba(45, 143, 118, 0.16)` fills.
 - Static validation confirmed non-AI Dockview panel roots now expose shared `[data-runa-widget-tone-root]` palette variables, and `TerminalWidget` maps those into terminal-local CSS vars on `[data-runa-terminal-root]` without changing the shell-managed AI panel styling.
 - Static validation confirmed `App.tsx` now renders AI as a shell-managed left panel with host id `ai-shell-panel`, a dedicated resize handle, and a separate frame/header outside `DockviewReact`.
-- Static validation confirmed the top shell `Toggle AI panel` control now uses the icon path again instead of the temporary image-logo experiment, while keeping the flattened button chrome with no inner padding, border, or background.
+- Static validation confirmed the top shell `Toggle AI panel` control now uses the icon path again and the same button chrome as the neighboring topbar controls, rather than the earlier flattened icon-only variant.
 - Static validation confirmed the old Dockview-specific AI tab wiring was removed from the app path: `AiGroupActionsWidget` is deleted, `DockviewReact` now mounts only the `default` component, and the AI shell panel is rendered alongside the workspace instead of through `addPanel`.
 - Static validation confirmed the shell-managed AI panel now uses `motion@12.38.0` via `AnimatePresence` plus a tweened `width` animation on the shell container instead of the previous CSS-transition and manual-timeout experiment.
 - A fresh headless browser smoke on `http://127.0.0.1:5173` sampled the Motion-driven AI shell width during open and confirmed progressive growth over time: `0px` at `t=0ms`, `185px` at `t=220ms`, `374px` at `t=480ms`, and `438px` at `t=900ms`.
@@ -136,6 +143,10 @@
 - The avatar replacement and asset-normalization pass is validated by type-check, production build, and direct image inspection of `frontend/assets/img/logo.png`. A fresh browser-level confirmation of the new `Runa avatar` in the live header is not claimed here because the follow-up Playwright smoke against the active Vite session did not complete cleanly in this environment.
 - A fresh headless browser smoke on `http://127.0.0.1:5173` confirmed each prompt card now renders all three requested icon actions (`Copy prompt`, `Toggle rollback`, `Copy summary`), the collapsed preview resolves with `webkitLineClamp=3`, expanding a card reveals `Prompt`, `Reasoning`, and `Summary`, and clicking rollback switches the visible subtitle from `Current snapshot` to `Rollback snapshot`.
 - A follow-up headless browser smoke on `http://127.0.0.1:5173` confirmed the prompt-card header chrome is now flat: the `Copy prompt for Prompt 2` action resolves to `background=rgba(0,0,0,0)`, `borderTopWidth=0px`, `borderRadius=0px`, `boxShadow=none`, and the `Prompt 2` title cluster parent resolves to the same transparent/no-border/no-shadow state.
+- Static validation confirmed the AI prompt mock now models reasoning as an ordered list and can attach approval-required command rows to a prompt snapshot without introducing backend semantics or fake execution wiring.
+- A fresh headless browser smoke on `http://127.0.0.1:5173` confirmed the AI prompt stack now renders `3` prompt cards, keeps the newest prompt pinned open (`lastExpanded=true`), still allows older cards to expand locally (`firstExpanded=true` after click), renders the approval queue section for the current prompt (`approvalRows=1`), and exposes real scroll behavior on the stack (`scrollHeight=1471`, `clientHeight=606`, `overflowY=auto`).
+- Static validation confirmed `frontend/src/shared/ui/dom-id.tsx` now owns the frontend DOM identity contract through `RunaDomScopeProvider`, `useRunaDomIdentity`, `useRunaDomAutoTagging`, `buildRunaNodeSelector`, `findRunaNode`, and `findRunaNodes`.
+- A fresh headless browser smoke on `http://127.0.0.1:5173` confirmed `509` live DOM nodes carrying both `id` and `data-runa-node`, including `shell-tool-commander-root`, `shell-terminal-header-terminal-widget-root`, `shell-workspace-shell-topbar-toggle-ai-panel`, and an xterm-managed descendant tagged as `shell-global-terminal-input`.
 - A fresh headless browser smoke on `http://127.0.0.1:5173` confirmed Dockview widget body actions work again after the activation-order fix: clicking the main terminal surface now leaves `document.activeElement` on `TEXTAREA.xterm-helper-textarea` with `aria-label=\"Terminal input\"`, and `Block busy state for Main terminal` still flips the control into `Release busy state` (`releaseCount=1`).
 - A follow-up headless browser smoke on `http://127.0.0.1:5173` confirmed the new store-driven focus state across different widget bodies: clicking the main terminal surface marks its group `data-runa-widget-focus-state=\"active\"` while keeping focus on `TEXTAREA.xterm-helper-textarea`, and clicking the commander `Show hidden` control marks the commander group `data-runa-widget-focus-state=\"active\"` without returning focus to a Dockview-owned element.
 - Static validation confirmed the terminal widget now consumes those local vars in `TerminalStatusHeader`, `TerminalToolbar`, and `TerminalViewport`, while `TerminalSurface` reapplies xterm theme colors from the widget root and refreshes them when the surrounding `.dv-groupview` class changes.
