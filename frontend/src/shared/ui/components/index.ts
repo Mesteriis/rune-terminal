@@ -1,5 +1,6 @@
 export * from './dialog-popup'
 export * from './expandable-textarea'
+export * from './icon-button'
 export * from './input-field'
 export * from './radio-control'
 export * from './radio-group'
