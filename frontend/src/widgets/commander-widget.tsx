@@ -1,6 +1,10 @@
 import { Columns2, Columns3, Eye, EyeOff, Folder, FileCode2, FileText, Link2, SquareTerminal } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 
-import { RunaDomScopeProvider, useRunaDomAutoTagging } from '../shared/ui/dom-id'
+import { useCommanderKeyboard } from '../features/commander/model/keyboard'
+import { useCommanderWidget } from '../features/commander/model/hooks'
+import type { CommanderFileRow, CommanderPaneViewState, CommanderWidgetViewState } from '../features/commander/model/types'
+import { RunaDomScopeProvider, useRunaDomAutoTagging, useRunaDomScope } from '../shared/ui/dom-id'
 import { Badge, Box, ScrollArea, Separator, Surface, Text } from '../shared/ui/primitives'
 import { IconButton } from '../shared/ui/components'
 
@@ -38,16 +42,6 @@ import {
   commanderToggleActiveStyle,
   commanderTypeBadgeStyle,
 } from './commander-widget.styles'
-import {
-  commanderWidgetMockState,
-  type CommanderFileRow,
-  type CommanderPaneState,
-  type CommanderWidgetMockState,
-} from './commander-widget.mock'
-
-export type CommanderWidgetProps = {
-  state?: CommanderWidgetMockState
-}
 
 const plainClusterStyle = {
   display: 'flex',
@@ -121,12 +115,42 @@ function getRowTypeLabel(row: CommanderFileRow) {
 function CommanderPane({
   isActive,
   pane,
+  onActivate,
+  onFocusRoot,
+  onOpenEntry,
+  onSetCursor,
+  onToggleSelection,
 }: {
   isActive: boolean
-  pane: CommanderPaneState
+  onActivate: () => void
+  onFocusRoot: () => void
+  onOpenEntry: (entryId: string) => void
+  onSetCursor: (entryId: string) => void
+  onToggleSelection: (entryId: string) => void
+  pane: CommanderPaneViewState
 }) {
+  const rowRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const focusedRowId = useMemo(
+    () => pane.rows.find((row) => row.focused)?.id ?? null,
+    [pane.rows],
+  )
+
+  useEffect(() => {
+    if (!focusedRowId) {
+      return
+    }
+
+    rowRefs.current[focusedRowId]?.scrollIntoView({
+      block: 'nearest',
+    })
+  }, [focusedRowId])
+
   return (
     <Surface
+      onPointerDown={() => {
+        onActivate()
+        onFocusRoot()
+      }}
       runaComponent={`commander-pane-${pane.id}`}
       style={{ ...commanderPaneStyle, ...(isActive ? commanderPaneActiveStyle : null) }}
     >
@@ -159,6 +183,23 @@ function CommanderPane({
           {pane.rows.map((row) => (
             <Box
               key={row.id}
+              onClick={(event) => {
+                onActivate()
+                onSetCursor(row.id)
+                onFocusRoot()
+
+                if (event.metaKey || event.ctrlKey) {
+                  onToggleSelection(row.id)
+                }
+              }}
+              onDoubleClick={() => {
+                onActivate()
+                onOpenEntry(row.id)
+                onFocusRoot()
+              }}
+              ref={(node: HTMLDivElement | null) => {
+                rowRefs.current[row.id] = node
+              }}
               runaComponent={`commander-pane-${pane.id}-row-${row.id}`}
               style={{
                 ...commanderRowStyle,
@@ -190,14 +231,34 @@ function CommanderPane({
   )
 }
 
-export function CommanderWidget({
-  state = commanderWidgetMockState,
-}: CommanderWidgetProps) {
-  const commanderRootRef = useRunaDomAutoTagging('commander-root')
+export function CommanderWidget() {
+  const { widget: widgetId } = useRunaDomScope()
+  const { actions, state } = useCommanderWidget(widgetId)
+  const onCommanderKeyDownCapture = useCommanderKeyboard(widgetId, state.activePane)
+  const autoTagCommanderRoot = useRunaDomAutoTagging('commander-root')
+  const commanderRootRef = useRef<HTMLDivElement | null>(null)
+
+  const attachCommanderRootRef = useCallback((node: HTMLDivElement | null) => {
+    commanderRootRef.current = node
+    autoTagCommanderRoot(node)
+  }, [autoTagCommanderRoot])
+
+  const focusCommanderRoot = useCallback(() => {
+    commanderRootRef.current?.focus({
+      preventScroll: true,
+    })
+  }, [])
 
   return (
     <RunaDomScopeProvider component="commander-widget">
-      <Box data-runa-commander-root="" ref={commanderRootRef} runaComponent="commander-root" style={commanderRootStyle}>
+      <Box
+        data-runa-commander-root=""
+        onKeyDownCapture={onCommanderKeyDownCapture}
+        ref={attachCommanderRootRef}
+        runaComponent="commander-root"
+        style={commanderRootStyle}
+        tabIndex={0}
+      >
       <Surface runaComponent="commander-header" style={commanderHeaderStyle}>
         <Box runaComponent="commander-header-mode-cluster" style={commanderHeaderClusterStyle}>
           <Box role="tablist" runaComponent="commander-view-mode-list" style={commanderModeButtonRowStyle}>
@@ -206,6 +267,7 @@ export function CommanderWidget({
                 aria-label={`Set commander view mode to ${mode}`}
                 aria-pressed={state.viewMode === mode}
                 key={mode}
+                onClick={() => actions.setViewMode(mode)}
                 runaComponent={`commander-view-mode-${mode}`}
                 size="sm"
                 style={{
@@ -225,6 +287,7 @@ export function CommanderWidget({
           <IconButton
             aria-label={state.showHidden ? 'Hide hidden files' : 'Show hidden files'}
             aria-pressed={state.showHidden}
+            onClick={() => actions.toggleShowHidden()}
             runaComponent="commander-toggle-show-hidden"
             size="sm"
             style={{
@@ -237,8 +300,24 @@ export function CommanderWidget({
         </Box>
       </Surface>
       <Box runaComponent="commander-main" style={commanderMainStyle}>
-        <CommanderPane isActive={state.activePane === 'left'} pane={state.leftPane} />
-        <CommanderPane isActive={state.activePane === 'right'} pane={state.rightPane} />
+        <CommanderPane
+          isActive={state.activePane === 'left'}
+          onActivate={() => actions.setActivePane('left')}
+          onFocusRoot={focusCommanderRoot}
+          onOpenEntry={(entryId) => actions.openPaneEntry('left', entryId)}
+          onSetCursor={(entryId) => actions.setPaneCursor('left', entryId)}
+          onToggleSelection={(entryId) => actions.togglePaneSelection('left', entryId)}
+          pane={state.leftPane}
+        />
+        <CommanderPane
+          isActive={state.activePane === 'right'}
+          onActivate={() => actions.setActivePane('right')}
+          onFocusRoot={focusCommanderRoot}
+          onOpenEntry={(entryId) => actions.openPaneEntry('right', entryId)}
+          onSetCursor={(entryId) => actions.setPaneCursor('right', entryId)}
+          onToggleSelection={(entryId) => actions.togglePaneSelection('right', entryId)}
+          pane={state.rightPane}
+        />
       </Box>
       <Surface runaComponent="commander-hint-bar" style={commanderHintBarStyle}>
         {state.footerHints.map((hint) => (

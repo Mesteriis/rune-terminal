@@ -1,41 +1,14 @@
 import commanderWidgetMock from './commander-widget.mock.json'
+import type { CommanderFileRow, CommanderPaneCounters, CommanderPaneId, CommanderSortMode, CommanderViewMode } from '../features/commander/model/types'
 
-export type CommanderPaneId = 'left' | 'right'
-export type CommanderViewMode = 'commander' | 'split' | 'terminal'
-export type CommanderSortMode = 'name' | 'ext' | 'modified'
-export type CommanderRowKind = 'file' | 'folder' | 'symlink'
-
-export type CommanderFooterHint = {
-  key: string
-  label: string
-}
-
-export type CommanderPaneCounters = {
-  items: number
-  selectedItems: number
-  selectedSize: string
-}
-
-export type CommanderFileRow = {
-  id: string
-  name: string
-  ext: string
-  kind: CommanderRowKind
-  size: string
-  modified: string
-  hidden: boolean
-  selected: boolean
-  focused: boolean
-  gitStatus?: string
-  executable?: boolean
-  symlinkTarget?: string
-}
-
-export type CommanderPaneState = {
+export type CommanderPaneMockState = {
   id: CommanderPaneId
   path: string
   counters: CommanderPaneCounters
-  rows: CommanderFileRow[]
+  rows: (CommanderFileRow & {
+    focused: boolean
+    selected: boolean
+  })[]
 }
 
 export type CommanderWidgetMockState = {
@@ -45,9 +18,12 @@ export type CommanderWidgetMockState = {
   showHidden: boolean
   syncCwd: boolean
   sortMode: CommanderSortMode
-  footerHints: CommanderFooterHint[]
-  leftPane: CommanderPaneState
-  rightPane: CommanderPaneState
+  footerHints: {
+    key: string
+    label: string
+  }[]
+  leftPane: CommanderPaneMockState
+  rightPane: CommanderPaneMockState
 }
 
 export const commanderWidgetMockState =

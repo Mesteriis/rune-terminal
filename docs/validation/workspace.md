@@ -2,7 +2,7 @@
 
 ## Last verified state
 
-- Date: `2026-04-19`
+- Date: `2026-04-20`
 - State: `VERIFIED`
 - Scope:
   - the frontend React runtime and types now target the latest stable React line in this repo: `react@19.2.5`, `react-dom@19.2.5`, `@types/react@19.2.14`, and `@types/react-dom@19.2.3`
@@ -11,9 +11,9 @@
   - terminal status chrome now lives in Dockview single-tab headers through a custom `terminal-tab` renderer, so `TerminalWidget` owns only the terminal body while `TerminalStatusHeader` renders inside `dv-scrollable`
 - terminal tabs now show `cwd` as the primary visible label; only the active terminal tab exposes status pills, while the single `+` button for creating another terminal tab now lives once per terminal Dockview header in the top-right actions area
 - terminal tabs are now visually separated from one another with a subtle divider, and each terminal tab shows its own close button when the group contains more than one terminal tab
-  - the `tool` panel now mounts a static-only Total Commander-style dual-pane demo surface through `CommanderDemoLayout -> CommanderWidget`, rendered entirely from local JSON-backed mock state
+  - the `tool` panel now mounts a frontend-only Total Commander-style dual-pane surface through `CommanderDemoLayout -> CommanderWidget`, driven by a widget-scoped commander store plus a local fake filesystem client
   - the commander demo adds only four generic primitives for dense tool surfaces: `Badge`, `ScrollArea`, `Separator`, and `Surface`
-  - the commander demo surface remains frontend-only: no backend calls, no runtime execution, no filesystem access, and no real copy/move/delete behavior are implemented in this slice
+  - the commander surface now supports per-widget pane state, click navigation, keyboard navigation, hidden-file toggling, cursor movement, and local selection semantics without introducing backend calls or real filesystem access
   - Dockview-backed widget bodies now drive their own visual active/inactive state through a local `widget-focus` store plus `data-runa-widget-focus-state` on the surrounding group container, so body interaction no longer depends on calling `props.api.setActive()`
   - when the commander demo widget sits in an inactive Dockview group, its own accent colors now switch to a muted grey palette instead of keeping the active emerald highlights
   - non-AI widgets now also expose a shared inactive-tone palette, and the terminal widget consumes it so its status header, toolbar accents, viewport chrome, and xterm renderer theme mute when the Dockview group loses focus
@@ -78,6 +78,8 @@
 - `node --input-type=module -e "<headless Playwright smoke for terminal status header inside dv-scrollable and within-group terminal tab creation on http://127.0.0.1:5173>"`
 - `node --input-type=module -e "<headless Playwright localhost computed-style smoke for tokenized shell surfaces>"`
 - `node --input-type=module -e "<headless Playwright localhost computed-style comparison for commander active vs inactive palette on http://127.0.0.1:5173>"`
+- `node --input-type=module -e "<headless Playwright localhost smoke for commander show-hidden toggle, directory enter/backspace, and pane tab switching on http://127.0.0.1:5173>"`
+- `node --input-type=module -e "<headless Playwright localhost smoke for commander selection counter changes after Space/Insert on http://127.0.0.1:5173>"`
 - `node --input-type=module -e "<headless Playwright localhost width samples for Motion-based AI shell panel on http://127.0.0.1:5173>"`
 - `node --input-type=module -e "<headless Playwright localhost smoke for AI header title, square logo slot, and header-to-prompts gap on http://127.0.0.1:5173>"`
 - `node --input-type=module -e "<headless Playwright localhost smoke for AI prompt-card actions, line clamp, expand, and rollback on http://127.0.0.1:5173>"`
@@ -89,8 +91,7 @@
 
 - This validation covers only the initial layout skeleton. It does not claim backend wiring, workspace persistence, or TideTerm parity breadth.
 - The new terminal widget slice is renderer-only for now. It does not yet claim live backend session startup, SSE attachment, input routing, interrupt wiring, or persistent terminal state on the new frontend path.
-- The commander demo slice is static-only. It does not claim real filesystem access, keyboard navigation, copy/move/delete execution, preview panes, search panels, backend integration, or file-operation dialogs.
-- A fresh browser-level reachability claim for the commander demo is not recorded here: the local Vite process on `127.0.0.1:4195` started, but `curl` reachability did not complete from this environment.
+- The commander slice is still frontend-only and fake-client backed. It does not yet claim real filesystem access, backend integration, copy/move/delete execution, preview panes, search panels, approvals, or cross-widget operations.
 - The root cause in the previous commander-color pass was inline commander CSS variables on the widget root, which prevented the inactive Dockview override from winning. That inline override is now removed, and a fresh browser-level active vs inactive comparison is recorded in this entry.
 - The broader non-AI widget inactive-tone pass in this slice is validated by source inspection plus type-check/build only. A fresh browser-level comparison of terminal active vs inactive color states is not claimed here.
 - The Dockview body-activation fix in this pass is validated by source inspection plus type-check/build plus narrow browser-smoke checks for terminal focus order and widget-body control behavior. It does not claim a broader full-shell focus audit beyond those paths.
@@ -128,12 +129,14 @@
 - Static validation confirmed the compact terminal header content was scaled up to match that taller `48px` shell: the compact title now uses `font-size-md`, the compact terminal icon now renders at `18px`, compact status pills now use `min-height=28px`, and the terminal tab plus button now renders at `28x28`.
 - Static validation confirmed the first addon wave on the terminal renderer slice: `@xterm/addon-search@0.16.0`, `@xterm/addon-web-links@0.12.0`, `@xterm/addon-clipboard@0.2.0`, and `@xterm/addon-webgl@0.19.0`, plus the new `TerminalToolbar` control strip above the surface.
 - Static validation confirmed the commander slice primitive additions are generic rather than widget-specific: `Badge`, `ScrollArea`, `Separator`, and `Surface` live under `shared/ui/primitives` and import no app or widget code.
-- Static validation confirmed the commander surface renders from local JSON-backed mock state only via `frontend/src/widgets/commander-widget.mock.json` and `frontend/src/widgets/commander-widget.mock.ts`.
+- Static validation confirmed the commander surface now reads from `frontend/src/features/commander/model/*`, with widget state owned by an Effector store and the fake filesystem owned by a local fake client seeded from `frontend/src/widgets/commander-widget.mock.json`.
 - Static validation confirmed the commander surface composition chain is `CommanderWidget -> CommanderDemoLayout -> DockviewPanelWidget(tool panel)` and that the `tool` panel no longer carries the unrelated modal/busy demo controls in this slice.
-- Static validation confirmed the commander mock includes two panes with different paths, one active pane, one focused row, one selected row, hidden entries, folders, files, and a symlink row.
+- Static validation confirmed each commander widget is isolated by `widgetId`, so multiple commander widgets can coexist on the page without sharing pane state or fake filesystem mutations.
 - Static validation confirmed `shared/model/widget-focus.ts` now owns the body-focus state for Dockview-backed widgets, and `DockviewPanelWidget` mirrors that store onto the closest `.dv-groupview` via `data-runa-widget-focus-state` instead of forcing `props.api.setActive()` on body interaction.
 - Static validation confirmed the commander widget now derives its base highlight colors from CSS on `[data-runa-commander-root]` instead of inline style props, so `.dv-groupview.dv-inactive-group` can remap those variables to muted grey values instead of being blocked by inline custom-property precedence.
 - A fresh headless browser comparison on `http://127.0.0.1:5173` confirmed the commander widget now really changes visible tones between inactive and active states: inactive mode/toggle buttons and the `ACTIVE` badge resolve to greyed values like `rgba(145, 168, 161, 0.1)` backgrounds and `rgb(189, 208, 202)` text, while the active group restores emerald accents such as `rgb(71, 192, 160)` borders and `rgba(45, 143, 118, 0.16)` fills.
+- A fresh headless browser smoke on `http://127.0.0.1:5173` confirmed commander interaction is now live: toggling `Show hidden` hides `.env.local`, double-clicking `widgets` changes the left pane path to `~/projects/runa-terminal/frontend/src/widgets`, `Backspace` returns it to `~/projects/runa-terminal/frontend/src`, and `Tab` swaps the pane state badges between `ACTIVE` and `PANE`.
+- A follow-up headless browser smoke on `http://127.0.0.1:5173` confirmed core selection semantics are live as well: the left pane footer moved from `1 selected` to `2 selected` after `Space` on `app`, then back to `1 selected` after `Insert`, which matches the current frontend-only toggle-and-advance behavior.
 - Static validation confirmed non-AI Dockview panel roots now expose shared `[data-runa-widget-tone-root]` palette variables, and `TerminalWidget` maps those into terminal-local CSS vars on `[data-runa-terminal-root]` without changing the shell-managed AI panel styling.
 - Static validation confirmed `App.tsx` now renders AI as a shell-managed left panel with host id `ai-shell-panel`, a dedicated resize handle, and a separate frame/header outside `DockviewReact`.
 - Static validation confirmed the top shell `Toggle AI panel` control now uses the icon path again and the same button chrome as the neighboring topbar controls, rather than the earlier flattened icon-only variant.

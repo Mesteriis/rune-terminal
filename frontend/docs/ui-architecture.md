@@ -123,7 +123,7 @@ its visible shell blocks as raw HTML inside `App.tsx`.
 - `ShellTopbarWidget` renders the top header block.
 - `RightActionRailWidget` renders the full-height right rail.
 - `WidgetBusyOverlayWidget` renders a widget-body busy state overlay with a centered AI marker and a `tsParticles` node-edge field.
-- `CommanderWidget` renders the static Total Commander-style dual-pane demo surface from local JSON-backed mock data only.
+- `CommanderWidget` renders the frontend-only Total Commander-style dual-pane surface from a per-widget commander model backed by a local fake filesystem client.
 - `TerminalWidget` renders the terminal-specific body composition for terminal panels.
 - `TerminalDockviewTabWidget` renders terminal-specific Dockview tab chrome for terminal panels.
 - `CommanderDemoLayout` mounts `CommanderWidget` into the isolated `tool` panel demo surface.
@@ -195,7 +195,7 @@ Lookup helpers exported from `src/shared/ui/dom-id.tsx`:
 - `ExpandableTextArea` keeps inline behavior by default and can expand to the parent bounds or to a selector target without introducing modal semantics.
 - `TerminalStatusHeader` and `TerminalSurface` add the terminal renderer slice in the component layer, with `TerminalSurface` owning the frontend-only xterm mock session.
 - `TerminalToolbar` adds the terminal-local addon controls layer for search, clipboard actions, and renderer status.
-- `CommanderWidget` stays in the widget layer, renders from local JSON-backed mock state only, and does not introduce filesystem behavior, backend calls, or operation dialogs.
+- `CommanderWidget` stays in the widget layer, renders from a widget-scoped commander store plus a fake filesystem client, and still does not introduce backend calls or real filesystem behavior.
 - `CommanderDemoLayout` keeps the demo mount in a layout layer instead of wiring the commander surface directly into app orchestration.
 - `WidgetBusyOverlayWidget` stays in the widget layer and uses `@tsparticles/react` directly for the busy-field rendering instead of pushing imperative particle code into shared components.
 - `TerminalWidget` stays in the widget layer and now owns the terminal body only: toolbar, panel actions, and renderer surface.
