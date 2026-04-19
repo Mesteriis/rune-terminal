@@ -30,7 +30,7 @@ export const aiPanelContentColumnStyle: CSSProperties = {
 }
 
 export const aiShellHeaderStyle: CSSProperties = {
-  minHeight: '44px',
+  minHeight: '48px',
   display: 'flex',
   alignItems: 'stretch',
   justifyContent: 'space-between',
@@ -47,29 +47,40 @@ export const aiShellHeaderTitleLaneStyle: CSSProperties = {
   minWidth: 0,
   display: 'flex',
   alignItems: 'center',
-  padding: '0 var(--space-lg)',
+  gap: 'var(--space-md)',
+  padding: '0 var(--space-md)',
   border: 'none',
   borderRadius: 0,
   background: 'transparent',
   boxShadow: 'none',
 }
 
-export const aiShellTitleAccentStyle: CSSProperties = {
-  flex: '0 0 4px',
-  width: '4px',
-  alignSelf: 'stretch',
-  marginRight: 'var(--space-md)',
-  borderRadius: '999px',
-  background: 'linear-gradient(180deg, rgba(130, 188, 170, 0.88), rgba(76, 127, 113, 0.46))',
+export const aiShellHeaderLogoSlotStyle: CSSProperties = {
+  flex: '0 0 32px',
+  width: '32px',
+  minWidth: '32px',
+  minHeight: '32px',
+  height: '32px',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  border: '1px solid rgba(130, 188, 170, 0.34)',
+  borderRadius: 'var(--radius-sm)',
+  background:
+    'linear-gradient(180deg, rgba(36, 75, 67, 0.72), rgba(15, 29, 26, 0.94))',
+  boxShadow: 'inset 0 0 0 1px rgba(255, 255, 255, 0.03)',
+}
+
+export const aiShellHeaderLogoIconStyle: CSSProperties = {
+  color: 'rgb(193, 226, 215)',
 }
 
 export const aiShellTitleClusterStyle: CSSProperties = {
   flex: 1,
   minWidth: 0,
   display: 'flex',
-  flexDirection: 'column',
   justifyContent: 'center',
-  gap: '2px',
+  alignItems: 'center',
   padding: 0,
   border: 'none',
   borderRadius: 0,
@@ -77,28 +88,20 @@ export const aiShellTitleClusterStyle: CSSProperties = {
   boxShadow: 'none',
 }
 
-export const aiShellTitleEyebrowStyle: CSSProperties = {
-  color: 'var(--color-text-muted)',
-  fontFamily: 'var(--font-family-mono)',
-  fontSize: '11px',
-  lineHeight: '14px',
-  letterSpacing: '0.12em',
-  textTransform: 'uppercase',
-}
-
 export const aiShellTitleTextStyle: CSSProperties = {
   color: 'var(--color-text-primary)',
   fontFamily: 'var(--font-family-mono)',
-  fontSize: '24px',
-  lineHeight: '28px',
-  letterSpacing: '0.05em',
+  fontSize: '21px',
+  lineHeight: '26px',
+  letterSpacing: '0.03em',
+  whiteSpace: 'nowrap',
 }
 
 export const aiHeaderActionStyle: CSSProperties = {
   alignSelf: 'stretch',
-  width: '48px',
-  minWidth: '48px',
-  minHeight: '44px',
+  width: '44px',
+  minWidth: '44px',
+  minHeight: '48px',
   height: 'auto',
   borderRadius: 0,
   border: 'none',
@@ -117,7 +120,7 @@ export const aiPromptStackStyle: CSSProperties = {
   display: 'grid',
   gridTemplateRows: 'minmax(0, 1fr) minmax(0, 1fr)',
   gap: 'var(--gap-sm)',
-  padding: 0,
+  padding: 'var(--gap-sm) 0 0',
   border: 'none',
   borderRadius: 0,
   background: 'transparent',

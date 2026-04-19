@@ -22,8 +22,8 @@ export function AiPanelWidget({
 }: AiPanelWidgetProps) {
   return (
     <Box data-runa-modal-anchor={hostId} style={aiPanelRootStyle}>
-      <Box style={aiPanelContentColumnStyle}>
-        <Box style={aiPromptStackStyle}>
+      <Box data-runa-ai-shell-frame="" style={aiPanelContentColumnStyle}>
+        <Box data-runa-ai-prompt-stack="" style={aiPromptStackStyle}>
           {state.prompts.map((prompt) => (
             <AiPromptCardWidget key={prompt.id} prompt={prompt} />
           ))}

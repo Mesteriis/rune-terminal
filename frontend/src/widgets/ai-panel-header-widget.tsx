@@ -1,4 +1,4 @@
-import { Settings2 } from 'lucide-react'
+import { Sparkles, Settings2 } from 'lucide-react'
 
 import { IconButton } from '../shared/ui/components'
 import { Box, Surface, Text } from '../shared/ui/primitives'
@@ -6,10 +6,10 @@ import { Box, Surface, Text } from '../shared/ui/primitives'
 import {
   aiHeaderActionStyle,
   aiShellHeaderStyle,
+  aiShellHeaderLogoIconStyle,
+  aiShellHeaderLogoSlotStyle,
   aiShellHeaderTitleLaneStyle,
-  aiShellTitleAccentStyle,
   aiShellTitleClusterStyle,
-  aiShellTitleEyebrowStyle,
   aiShellTitleTextStyle,
 } from './ai-panel-widget.styles'
 
@@ -19,12 +19,13 @@ export type AiPanelHeaderWidgetProps = {
 
 export function AiPanelHeaderWidget({ title }: AiPanelHeaderWidgetProps) {
   return (
-    <Surface style={aiShellHeaderStyle}>
+    <Surface data-runa-ai-shell-header="" style={aiShellHeaderStyle}>
       <Box style={aiShellHeaderTitleLaneStyle}>
-        <Box aria-hidden="true" style={aiShellTitleAccentStyle} />
+        <Box aria-hidden="true" data-runa-ai-logo-slot="" style={aiShellHeaderLogoSlotStyle}>
+          <Sparkles size={18} strokeWidth={1.9} style={aiShellHeaderLogoIconStyle} />
+        </Box>
         <Box style={aiShellTitleClusterStyle}>
-          <Text style={aiShellTitleEyebrowStyle}>Assistant</Text>
-          <Text style={aiShellTitleTextStyle}>{title}</Text>
+          <Text style={aiShellTitleTextStyle}>{title} Assistant</Text>
         </Box>
       </Box>
       <IconButton aria-label="AI panel settings" style={aiHeaderActionStyle}>

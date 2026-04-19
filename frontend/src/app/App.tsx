@@ -108,6 +108,7 @@ const aiPanelFrameStyle = {
   minHeight: 0,
   display: 'flex',
   flexDirection: 'column' as const,
+  gap: 'var(--gap-sm)',
   overflow: 'hidden' as const,
   padding: 0,
   border: 'none',
@@ -344,9 +345,9 @@ export function App() {
                 <Box style={aiPanelShellContentStyle}>
                   <Box style={{ ...aiPanelFrameStyle, flex: `0 0 ${aiPanelWidth}px`, width: `${aiPanelWidth}px` }}>
                     <Box data-runa-shell-widget-frame="" data-runa-shell-widget-kind="ai" style={aiPanelFrameStyle}>
-                    <Box data-runa-shell-widget-header="" style={aiPanelHeaderStyle}>
-                      <AiPanelHeaderWidget title="AI RUNE" />
-                    </Box>
+                      <Box data-runa-shell-widget-header="" style={aiPanelHeaderStyle}>
+                        <AiPanelHeaderWidget title="AI Rune" />
+                      </Box>
                       <Box style={aiPanelBodyStyle}>
                         <AiPanelWidget hostId={AI_SHELL_PANEL_HOST_ID} />
                       </Box>
