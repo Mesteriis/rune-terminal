@@ -41,6 +41,7 @@
   - the AI panel width is now resized through a dedicated shell sash, while the workspace remains pure Dockview on the right
   - the AI panel outer chrome is now shell-rendered but styled to match Dockview widget surfaces
   - the shell-managed AI panel now animates open and close through Motion's React renderer with a tweened width transition, so the Dockview workspace compresses and expands as the left panel grows or collapses
+  - the shell-managed AI resize sash is now fully transparent with no visible divider line; only the cursor changes to `col-resize` on hover/active
 
 ## Commands/tests used
 
@@ -106,6 +107,7 @@
 - Static validation confirmed the old Dockview-specific AI tab wiring was removed from the app path: `AiGroupActionsWidget` is deleted, `DockviewReact` now mounts only the `default` component, and the AI shell panel is rendered alongside the workspace instead of through `addPanel`.
 - Static validation confirmed the shell-managed AI panel now uses `motion@12.38.0` via `AnimatePresence` plus a tweened `width` animation on the shell container instead of the previous CSS-transition and manual-timeout experiment.
 - A fresh headless browser smoke on `http://127.0.0.1:5173` sampled the Motion-driven AI shell width during open and confirmed progressive growth over time: `0px` at `t=0ms`, `185px` at `t=220ms`, `374px` at `t=480ms`, and `438px` at `t=900ms`.
+- Static validation confirmed the shell-managed AI resize handle no longer renders a pseudo-element line in CSS, and the inline handle style now keeps a neutral cursor until `:hover`/`:active`.
 - Static validation confirmed the terminal widget now consumes those local vars in `TerminalStatusHeader`, `TerminalToolbar`, and `TerminalViewport`, while `TerminalSurface` reapplies xterm theme colors from the widget root and refreshes them when the surrounding `.dv-groupview` class changes.
 - Static validation confirmed the Dockview focus styling now keys off the library's own `.dv-groupview.dv-active-group` / `.dv-groupview.dv-inactive-group` classes, applying a brighter active border and a stronger shadow-based lift without changing group layout sizing.
 - Static validation confirmed the busy-state wiring: `shared/model/widget-busy.ts` owns the host-id store, `PanelModalActionsWidget` toggles it per host, and `WidgetBusyOverlayWidget` renders the overlay per panel body using `@tsparticles/react` plus `tsparticles`.
