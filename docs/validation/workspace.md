@@ -51,6 +51,7 @@
   - each AI prompt card now exposes three icon actions in the upper-right corner: copy prompt, rollback, and copy summary
   - each AI prompt card now expands locally on click to reveal `Prompt`, `Reasoning`, and `Summary` sections, while collapsed state stays clamped to a short preview
   - rollback remains static-only in this slice: it switches between the current and rollback mock snapshots inside the card and does not call backend AI/history services
+  - the prompt-card header chrome is now flattened: the three icon actions no longer render their own button plates, and the title cluster no longer inherits boxed `Box` styling
 
 ## Commands/tests used
 
@@ -127,6 +128,7 @@
 - A follow-up headless browser smoke on `http://127.0.0.1:5173` confirmed the AI body anchor now resolves to `padding: 0px`, while the rebuilt AI header resolves to `46px` height with a `44px` settings action cell, which verifies that it no longer sits inside the old `24px` shell-header ceiling.
 - A fresh headless browser smoke on `http://127.0.0.1:5173` confirmed the polished AI header now resolves to `AI Rune Assistant`, the logo slot resolves square at `32x32`, and the rendered gap between the shell header and the prompt stack resolves to `4px`.
 - A fresh headless browser smoke on `http://127.0.0.1:5173` confirmed each prompt card now renders all three requested icon actions (`Copy prompt`, `Toggle rollback`, `Copy summary`), the collapsed preview resolves with `webkitLineClamp=3`, expanding a card reveals `Prompt`, `Reasoning`, and `Summary`, and clicking rollback switches the visible subtitle from `Current snapshot` to `Rollback snapshot`.
+- A follow-up headless browser smoke on `http://127.0.0.1:5173` confirmed the prompt-card header chrome is now flat: the `Copy prompt for Prompt 2` action resolves to `background=rgba(0,0,0,0)`, `borderTopWidth=0px`, `borderRadius=0px`, `boxShadow=none`, and the `Prompt 2` title cluster parent resolves to the same transparent/no-border/no-shadow state.
 - Static validation confirmed the terminal widget now consumes those local vars in `TerminalStatusHeader`, `TerminalToolbar`, and `TerminalViewport`, while `TerminalSurface` reapplies xterm theme colors from the widget root and refreshes them when the surrounding `.dv-groupview` class changes.
 - Static validation confirmed the Dockview focus styling now keys off the library's own `.dv-groupview.dv-active-group` / `.dv-groupview.dv-inactive-group` classes, applying a brighter active border and a stronger shadow-based lift without changing group layout sizing.
 - Static validation confirmed the busy-state wiring: `shared/model/widget-busy.ts` owns the host-id store, `PanelModalActionsWidget` toggles it per host, and `WidgetBusyOverlayWidget` renders the overlay per panel body using `@tsparticles/react` plus `tsparticles`.
