@@ -1,4 +1,7 @@
 export * from './ai-panel-widget'
+export * from './ai-panel-header-widget'
+export * from './ai-composer-widget'
+export * from './ai-prompt-card-widget'
 export * from './commander-widget'
 export * from './dockview-panel-widget'
 export * from './demo-widget'

@@ -5,8 +5,9 @@ import { useUnit } from 'effector-react'
 
 import { $isAiSidebarOpen, toggleAiSidebar } from '../shared/model/app'
 import { BODY_MODAL_HOST_ID } from '../shared/model/modal'
-import { Box, Text } from '../shared/ui/primitives'
+import { Box } from '../shared/ui/primitives'
 import {
+  AiPanelHeaderWidget,
   AiPanelWidget,
   DockviewPanelWidget,
   ModalHostWidget,
@@ -122,24 +123,13 @@ const aiPanelHeaderStyle = {
   display: 'flex',
   alignItems: 'center',
   minWidth: 0,
-  padding: '0 var(--space-sm)',
+  padding: 0,
   border: 'none',
   borderRadius: 0,
   background: 'transparent',
   boxShadow: 'none',
   backdropFilter: 'none',
   WebkitBackdropFilter: 'none',
-}
-
-const aiPanelTitleStyle = {
-  display: 'block',
-  minWidth: 0,
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
-  whiteSpace: 'nowrap' as const,
-  color: 'var(--color-text-secondary)',
-  fontSize: 'var(--font-size-sm)',
-  lineHeight: 'var(--line-height-sm)',
 }
 
 const aiPanelBodyStyle = {
@@ -352,9 +342,9 @@ export function App() {
                 <Box style={aiPanelShellContentStyle}>
                   <Box style={{ ...aiPanelFrameStyle, flex: `0 0 ${aiPanelWidth}px`, width: `${aiPanelWidth}px` }}>
                     <Box data-runa-shell-widget-frame="" data-runa-shell-widget-kind="ai" style={aiPanelFrameStyle}>
-                      <Box data-runa-shell-widget-header="" style={aiPanelHeaderStyle}>
-                        <Text style={aiPanelTitleStyle}>AI</Text>
-                      </Box>
+                    <Box data-runa-shell-widget-header="" style={aiPanelHeaderStyle}>
+                      <AiPanelHeaderWidget title="AI RUNE" />
+                    </Box>
                       <Box style={aiPanelBodyStyle}>
                         <AiPanelWidget hostId={AI_SHELL_PANEL_HOST_ID} />
                       </Box>
