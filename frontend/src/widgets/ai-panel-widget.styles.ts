@@ -64,15 +64,11 @@ export const aiShellHeaderLogoSlotStyle: CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
-  border: '1px solid rgba(130, 188, 170, 0.34)',
-  borderRadius: 'var(--radius-sm)',
-  background:
-    'linear-gradient(180deg, rgba(36, 75, 67, 0.72), rgba(15, 29, 26, 0.94))',
-  boxShadow: 'inset 0 0 0 1px rgba(255, 255, 255, 0.03)',
-}
-
-export const aiShellHeaderLogoIconStyle: CSSProperties = {
-  color: 'rgb(193, 226, 215)',
+  padding: 0,
+  border: 'none',
+  borderRadius: 0,
+  background: 'transparent',
+  boxShadow: 'none',
 }
 
 export const aiShellTitleClusterStyle: CSSProperties = {

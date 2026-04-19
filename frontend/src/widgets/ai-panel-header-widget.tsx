@@ -1,12 +1,12 @@
-import { Sparkles, Settings2 } from 'lucide-react'
+import { Settings2 } from 'lucide-react'
 
-import { IconButton } from '../shared/ui/components'
+import runaAvatar from '../shared/ui/assets/runa-avatar.svg'
+import { Avatar, IconButton } from '../shared/ui/components'
 import { Box, Surface, Text } from '../shared/ui/primitives'
 
 import {
   aiHeaderActionStyle,
   aiShellHeaderStyle,
-  aiShellHeaderLogoIconStyle,
   aiShellHeaderLogoSlotStyle,
   aiShellHeaderTitleLaneStyle,
   aiShellTitleClusterStyle,
@@ -22,7 +22,7 @@ export function AiPanelHeaderWidget({ title }: AiPanelHeaderWidgetProps) {
     <Surface data-runa-ai-shell-header="" style={aiShellHeaderStyle}>
       <Box style={aiShellHeaderTitleLaneStyle}>
         <Box aria-hidden="true" data-runa-ai-logo-slot="" style={aiShellHeaderLogoSlotStyle}>
-          <Sparkles size={18} strokeWidth={1.9} style={aiShellHeaderLogoIconStyle} />
+          <Avatar label="Runa avatar" size={32} src={runaAvatar} />
         </Box>
         <Box style={aiShellTitleClusterStyle}>
           <Text style={aiShellTitleTextStyle}>{title} Assistant</Text>

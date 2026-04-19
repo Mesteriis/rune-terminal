@@ -1,3 +1,4 @@
+export * from './avatar'
 export * from './dialog-popup'
 export * from './expandable-textarea'
 export * from './icon-button'
