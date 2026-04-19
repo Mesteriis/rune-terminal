@@ -1,6 +1,6 @@
 import { Settings2 } from 'lucide-react'
 
-import runaAvatar from '../shared/ui/assets/runa-avatar.svg'
+import runaAvatar from '../../assets/img/logo.png'
 import { Avatar, IconButton } from '../shared/ui/components'
 import { Box, Surface, Text } from '../shared/ui/primitives'
 

@@ -16,9 +16,6 @@ export function Avatar({
   return (
     <Box
       {...props}
-      aria-hidden={label == null ? true : undefined}
-      aria-label={label}
-      role={label == null ? undefined : 'img'}
       style={{
         width: size,
         minWidth: size,
@@ -38,6 +35,20 @@ export function Avatar({
         overflow: 'hidden',
         ...style,
       }}
-    />
+    >
+      <img
+        alt={label ?? ''}
+        aria-hidden={label == null ? true : undefined}
+        src={src}
+        style={{
+          width: '100%',
+          height: '100%',
+          display: 'block',
+          objectFit: 'contain',
+          objectPosition: 'center',
+          background: 'transparent',
+        }}
+      />
+    </Box>
   )
 }
