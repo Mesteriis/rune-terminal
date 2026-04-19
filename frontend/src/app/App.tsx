@@ -119,9 +119,11 @@ const aiPanelFrameStyle = {
 }
 
 const aiPanelHeaderStyle = {
-  height: 'var(--size-dockview-single-tab-header)',
+  flex: '0 0 auto',
+  height: 'auto',
+  minHeight: '44px',
   display: 'flex',
-  alignItems: 'center',
+  alignItems: 'stretch',
   minWidth: 0,
   padding: 0,
   border: 'none',
