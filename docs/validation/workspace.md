@@ -23,6 +23,7 @@
   - top shell header is `40px` tall, lives only in the left main shell column, and currently renders icon-based window controls, the `AI` toggle, and the tab strip
   - the top shell header no longer applies an extra left inset before the first action button
   - the workspace tab strip in the top shell header now starts with a fixed `2rem` left offset after the action controls
+  - the top shell `AI` toggle now uses the same local Runa logo asset as the AI panel header instead of the old generic sparkles glyph
   - a right-side action rail is present as a separate full-height column, is `40px` wide, and its lower action now uses a settings icon
   - the shell now includes a modal foundation with a body-scoped host and widget-scoped hosts mounted over individual Dockview groups
   - the body-scoped settings dialog now uses a fixed wide variant sized to `90vw x 95vh`, leaving `5vw` free on each side and `2.5vh` free above and below
@@ -122,6 +123,7 @@
 - A fresh headless browser comparison on `http://127.0.0.1:5173` confirmed the commander widget now really changes visible tones between inactive and active states: inactive mode/toggle buttons and the `ACTIVE` badge resolve to greyed values like `rgba(145, 168, 161, 0.1)` backgrounds and `rgb(189, 208, 202)` text, while the active group restores emerald accents such as `rgb(71, 192, 160)` borders and `rgba(45, 143, 118, 0.16)` fills.
 - Static validation confirmed non-AI Dockview panel roots now expose shared `[data-runa-widget-tone-root]` palette variables, and `TerminalWidget` maps those into terminal-local CSS vars on `[data-runa-terminal-root]` without changing the shell-managed AI panel styling.
 - Static validation confirmed `App.tsx` now renders AI as a shell-managed left panel with host id `ai-shell-panel`, a dedicated resize handle, and a separate frame/header outside `DockviewReact`.
+- Static validation confirmed the top shell `Toggle AI panel` control now renders the shared `Avatar` component with `frontend/assets/img/logo.png`, matching the AI panel header logo path instead of the old `Sparkles` icon.
 - Static validation confirmed the old Dockview-specific AI tab wiring was removed from the app path: `AiGroupActionsWidget` is deleted, `DockviewReact` now mounts only the `default` component, and the AI shell panel is rendered alongside the workspace instead of through `addPanel`.
 - Static validation confirmed the shell-managed AI panel now uses `motion@12.38.0` via `AnimatePresence` plus a tweened `width` animation on the shell container instead of the previous CSS-transition and manual-timeout experiment.
 - A fresh headless browser smoke on `http://127.0.0.1:5173` sampled the Motion-driven AI shell width during open and confirmed progressive growth over time: `0px` at `t=0ms`, `185px` at `t=220ms`, `374px` at `t=480ms`, and `438px` at `t=900ms`.
