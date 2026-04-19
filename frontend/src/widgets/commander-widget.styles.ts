@@ -57,7 +57,8 @@ export const commanderModeButtonStyle: CSSProperties = {
   padding: '0 var(--space-sm)',
   borderRadius: 'var(--radius-xs)',
   background: 'transparent',
-  border: '1px solid var(--color-border-subtle)',
+  color: 'var(--runa-commander-text-secondary)',
+  border: '1px solid var(--runa-commander-surface-border)',
   boxShadow: 'none',
   backdropFilter: 'none',
   WebkitBackdropFilter: 'none',
@@ -75,7 +76,8 @@ export const commanderToggleButtonStyle: CSSProperties = {
   padding: '0 var(--space-sm)',
   borderRadius: 'var(--radius-xs)',
   background: 'transparent',
-  border: '1px solid var(--color-border-subtle)',
+  color: 'var(--runa-commander-text-secondary)',
+  border: '1px solid var(--runa-commander-surface-border)',
   boxShadow: 'none',
   backdropFilter: 'none',
   WebkitBackdropFilter: 'none',
@@ -107,6 +109,7 @@ export const commanderPaneStyle: CSSProperties = {
   minWidth: 0,
   minHeight: 0,
   padding: 0,
+  borderColor: 'var(--runa-commander-surface-border)',
   borderRadius: 'var(--radius-sm)',
   background: 'var(--color-canvas-elevated)',
 }
@@ -150,14 +153,14 @@ export const commanderPathTextStyle: CSSProperties = {
   overflow: 'hidden',
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
-  color: 'var(--color-text-primary)',
+  color: 'var(--runa-commander-text-strong)',
   fontFamily: 'var(--font-family-mono)',
   fontSize: 'var(--font-size-sm)',
   lineHeight: 'var(--line-height-sm)',
 }
 
 export const commanderPaneMetaStyle: CSSProperties = {
-  color: 'var(--color-text-muted)',
+  color: 'var(--runa-commander-text-muted)',
   fontSize: 'var(--font-size-sm)',
   lineHeight: 'var(--line-height-sm)',
   fontFamily: 'var(--font-family-mono)',
@@ -171,7 +174,7 @@ export const commanderListHeaderStyle: CSSProperties = {
   minHeight: '24px',
   padding: '0 var(--space-sm)',
   background: 'rgba(9, 16, 15, 0.96)',
-  color: 'var(--color-text-muted)',
+  color: 'var(--runa-commander-text-muted)',
   fontSize: 'var(--font-size-sm)',
   lineHeight: 'var(--line-height-sm)',
   fontFamily: 'var(--font-family-mono)',
@@ -205,15 +208,15 @@ export const commanderRowStyle: CSSProperties = {
   borderRadius: 0,
   border: '1px solid transparent',
   background: 'transparent',
-  color: 'var(--color-text-secondary)',
+  color: 'var(--runa-commander-text-secondary)',
   fontSize: 'var(--font-size-sm)',
   lineHeight: 'var(--line-height-sm)',
   fontFamily: 'var(--font-family-mono)',
 }
 
 export const commanderRowSelectedStyle: CSSProperties = {
-  background: 'rgba(145, 168, 161, 0.12)',
-  color: 'var(--color-text-primary)',
+  background: 'var(--runa-commander-selection-fill)',
+  color: 'var(--runa-commander-text-strong)',
 }
 
 export const commanderRowFocusedStyle: CSSProperties = {
@@ -244,6 +247,7 @@ export const commanderRowNameTextStyle: CSSProperties = {
   overflow: 'hidden',
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
+  color: 'inherit',
 }
 
 export const commanderRowMetaTextStyle: CSSProperties = {
@@ -258,9 +262,9 @@ export const commanderTypeBadgeStyle: CSSProperties = {
   minHeight: '18px',
   padding: '0 var(--space-xs)',
   borderRadius: 'var(--radius-xs)',
-  borderColor: 'var(--color-border-subtle)',
+  borderColor: 'var(--runa-commander-surface-border)',
   background: 'rgba(255, 255, 255, 0.02)',
-  color: 'var(--color-text-muted)',
+  color: 'var(--runa-commander-text-muted)',
   fontSize: '11px',
   lineHeight: '14px',
   fontFamily: 'var(--font-family-mono)',
@@ -278,7 +282,7 @@ export const commanderPaneFooterStyle: CSSProperties = {
 }
 
 export const commanderFooterTextStyle: CSSProperties = {
-  color: 'var(--color-text-muted)',
+  color: 'var(--runa-commander-text-muted)',
   fontSize: 'var(--font-size-sm)',
   lineHeight: 'var(--line-height-sm)',
   fontFamily: 'var(--font-family-mono)',
@@ -298,7 +302,7 @@ export const commanderHintCellStyle: CSSProperties = {
   gap: 'var(--gap-sm)',
   minHeight: '28px',
   padding: '0 var(--space-sm)',
-  border: '1px solid var(--color-border-subtle)',
+  border: '1px solid var(--runa-commander-surface-border)',
   borderRadius: 'var(--radius-xs)',
   background: 'rgba(9, 16, 15, 0.98)',
 }
@@ -311,7 +315,7 @@ export const commanderHintKeyStyle: CSSProperties = {
 }
 
 export const commanderHintLabelStyle: CSSProperties = {
-  color: 'var(--color-text-secondary)',
+  color: 'var(--runa-commander-text-secondary)',
   fontSize: 'var(--font-size-sm)',
   lineHeight: 'var(--line-height-sm)',
 }

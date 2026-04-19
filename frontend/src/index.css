@@ -133,6 +133,11 @@ body {
   --runa-commander-highlight-badge-border: var(--color-border-strong);
   --runa-commander-highlight-badge-bg: rgba(45, 143, 118, 0.12);
   --runa-commander-highlight-text: var(--color-text-primary);
+  --runa-commander-text-strong: var(--color-text-primary);
+  --runa-commander-text-secondary: var(--color-text-secondary);
+  --runa-commander-text-muted: var(--color-text-muted);
+  --runa-commander-surface-border: var(--color-border-subtle);
+  --runa-commander-selection-fill: rgba(145, 168, 161, 0.12);
   --runa-commander-key-color: var(--color-accent-cold-tea);
   --runa-commander-folder-icon-color: var(--color-accent-cold-tea);
   --runa-commander-file-icon-color: var(--color-text-secondary);
@@ -146,6 +151,11 @@ body {
   --runa-commander-highlight-badge-border: rgba(145, 168, 161, 0.28);
   --runa-commander-highlight-badge-bg: rgba(145, 168, 161, 0.1);
   --runa-commander-highlight-text: var(--color-text-secondary);
+  --runa-commander-text-strong: #c2d3ce;
+  --runa-commander-text-secondary: #a6b7b2;
+  --runa-commander-text-muted: #8d9f9a;
+  --runa-commander-surface-border: rgba(145, 168, 161, 0.22);
+  --runa-commander-selection-fill: rgba(145, 168, 161, 0.08);
   --runa-commander-key-color: rgba(145, 168, 161, 0.82);
   --runa-commander-folder-icon-color: rgba(145, 168, 161, 0.76);
   --runa-commander-file-icon-color: rgba(145, 168, 161, 0.76);

@@ -1,4 +1,5 @@
 import { DockviewReact, type DockviewReadyEvent, type DockviewTheme } from 'dockview-react'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import { useUnit } from 'effector-react'
 
@@ -17,6 +18,8 @@ const AI_PANEL_DEFAULT_RATIO = 0.3
 const AI_PANEL_MIN_WIDTH = 320
 const AI_PANEL_RESIZE_HANDLE_WIDTH = 6
 const AI_SHELL_PANEL_HOST_ID = 'ai-shell-panel'
+const AI_PANEL_ANIMATION_SECONDS = 0.84
+const AI_PANEL_ANIMATION_EASE = [0.22, 0.61, 0.36, 1] as const
 const DOCKVIEW_GROUP_GAP = 6
 const WORKSPACE_MIN_WIDTH = 420
 
@@ -78,6 +81,21 @@ const aiPanelShellStyle = {
   borderRadius: 0,
   background: 'transparent',
   padding: 0,
+  boxShadow: 'none',
+  backdropFilter: 'none',
+  WebkitBackdropFilter: 'none',
+}
+
+const aiPanelShellContentStyle = {
+  flex: 1,
+  minWidth: 0,
+  minHeight: 0,
+  display: 'flex',
+  overflow: 'hidden' as const,
+  padding: 0,
+  border: 'none',
+  borderRadius: 0,
+  background: 'transparent',
   boxShadow: 'none',
   backdropFilter: 'none',
   WebkitBackdropFilter: 'none',
@@ -209,6 +227,7 @@ export function App() {
   ])
   const [aiPanelWidth, setAiPanelWidth] = useState(getDefaultAiPanelWidth())
   const [isAiPanelResizing, setIsAiPanelResizing] = useState(false)
+  const prefersReducedMotion = useReducedMotion()
   const contentAreaRef = useRef<HTMLDivElement | null>(null)
   const aiResizeStartRef = useRef<{ startWidth: number; startX: number } | null>(null)
 
@@ -243,7 +262,6 @@ export function App() {
         referencePanel: 'terminal',
       },
     })
-
   }
 
   useEffect(() => {
@@ -308,38 +326,57 @@ export function App() {
     }
   }, [isAiPanelResizing])
 
+  const aiShellWidth = aiPanelWidth + AI_PANEL_RESIZE_HANDLE_WIDTH
+  const aiWidthTransition = isAiPanelResizing || prefersReducedMotion
+    ? { duration: 0 }
+    : { duration: AI_PANEL_ANIMATION_SECONDS, ease: AI_PANEL_ANIMATION_EASE }
+
   return (
     <Box style={rootStyle}>
       <Box style={mainShellStyle}>
         <ShellTopbarWidget isAiOpen={isAiSidebarOpen} onToggleAi={onToggleAiSidebar} />
         <Box ref={contentAreaRef} style={contentAreaStyle}>
-          {isAiSidebarOpen ? (
-            <>
-              <Box style={{ ...aiPanelShellStyle, flex: `0 0 ${aiPanelWidth}px`, width: `${aiPanelWidth}px` }}>
-                <Box data-runa-shell-widget-frame="" data-runa-shell-widget-kind="ai" style={aiPanelFrameStyle}>
-                  <Box data-runa-shell-widget-header="" style={aiPanelHeaderStyle}>
-                    <Text style={aiPanelTitleStyle}>AI</Text>
-                  </Box>
-                  <Box style={aiPanelBodyStyle}>
-                    <AiPanelWidget hostId={AI_SHELL_PANEL_HOST_ID} />
-                  </Box>
-                </Box>
-              </Box>
-              <Box
-                aria-hidden="true"
-                data-runa-shell-sash=""
-                onPointerDown={(event) => {
-                  aiResizeStartRef.current = {
-                    startWidth: aiPanelWidth,
-                    startX: event.clientX,
-                  }
-                  setIsAiPanelResizing(true)
-                  event.preventDefault()
+          <AnimatePresence initial={false}>
+            {isAiSidebarOpen ? (
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: aiShellWidth }}
+                exit={{ width: 0 }}
+                key="ai-shell-panel"
+                style={{
+                  ...aiPanelShellStyle,
+                  flex: '0 0 auto',
                 }}
-                style={aiResizeHandleStyle}
-              />
-            </>
-          ) : null}
+                transition={{ width: aiWidthTransition }}
+              >
+                <Box style={aiPanelShellContentStyle}>
+                  <Box style={{ ...aiPanelFrameStyle, flex: `0 0 ${aiPanelWidth}px`, width: `${aiPanelWidth}px` }}>
+                    <Box data-runa-shell-widget-frame="" data-runa-shell-widget-kind="ai" style={aiPanelFrameStyle}>
+                      <Box data-runa-shell-widget-header="" style={aiPanelHeaderStyle}>
+                        <Text style={aiPanelTitleStyle}>AI</Text>
+                      </Box>
+                      <Box style={aiPanelBodyStyle}>
+                        <AiPanelWidget hostId={AI_SHELL_PANEL_HOST_ID} />
+                      </Box>
+                    </Box>
+                  </Box>
+                  <Box
+                    aria-hidden="true"
+                    data-runa-shell-sash=""
+                    onPointerDown={(event) => {
+                      aiResizeStartRef.current = {
+                        startWidth: aiPanelWidth,
+                        startX: event.clientX,
+                      }
+                      setIsAiPanelResizing(true)
+                      event.preventDefault()
+                    }}
+                    style={aiResizeHandleStyle}
+                  />
+                </Box>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
           <Box style={workspaceStyle}>
             <Box style={dockviewContainerStyle}>
               <DockviewReact

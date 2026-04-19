@@ -83,9 +83,9 @@ const paneStateBadgeStyle = {
 
 const inactivePaneStateBadgeStyle = {
   ...paneStateBadgeStyle,
-  borderColor: 'var(--color-border-subtle)',
+  borderColor: 'var(--runa-commander-surface-border)',
   background: 'rgba(145, 168, 161, 0.08)',
-  color: 'var(--color-text-muted)',
+  color: 'var(--runa-commander-text-muted)',
 }
 
 function getRowIcon(row: CommanderFileRow) {
