@@ -1,6 +1,10 @@
 import type * as React from 'react'
 
-export type CheckboxProps = React.InputHTMLAttributes<HTMLInputElement>
+import { useRunaDomIdentity, useRunaDomScope } from '../dom-id'
+
+export type CheckboxProps = React.InputHTMLAttributes<HTMLInputElement> & {
+  runaComponent?: string
+}
 
 const checkboxStyle: React.CSSProperties = {
   width: '16px',
@@ -10,6 +14,25 @@ const checkboxStyle: React.CSSProperties = {
   cursor: 'pointer',
 }
 
-export function Checkbox({ style, type = 'checkbox', ...props }: CheckboxProps) {
-  return <input {...props} type={type} style={{ ...checkboxStyle, ...style }} />
+export function Checkbox({ id, runaComponent, style, type = 'checkbox', ...props }: CheckboxProps) {
+  const scope = useRunaDomScope()
+  const semanticComponent =
+    runaComponent ??
+    (typeof props['aria-label'] === 'string' && props['aria-label'].trim() !== ''
+      ? props['aria-label']
+      : props.name ?? `${scope.component}-checkbox`)
+  const identity = useRunaDomIdentity(semanticComponent, id)
+
+  return (
+    <input
+      {...props}
+      data-runa-component={identity.scope.component}
+      data-runa-layout={identity.scope.layout}
+      data-runa-node={identity.node}
+      data-runa-widget={identity.scope.widget}
+      id={identity.id}
+      type={type}
+      style={{ ...checkboxStyle, ...style }}
+    />
+  )
 }

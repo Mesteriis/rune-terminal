@@ -1,6 +1,10 @@
 import * as React from 'react'
 
-export type SurfaceProps = React.HTMLAttributes<HTMLDivElement>
+import { useRunaDomIdentity, useRunaDomScope } from '../dom-id'
+
+export type SurfaceProps = React.HTMLAttributes<HTMLDivElement> & {
+  runaComponent?: string
+}
 
 const surfaceStyle: React.CSSProperties = {
   boxSizing: 'border-box',
@@ -13,8 +17,22 @@ const surfaceStyle: React.CSSProperties = {
 }
 
 export const Surface = React.forwardRef<HTMLDivElement, SurfaceProps>(function Surface(
-  { style, ...props },
+  { id, runaComponent, style, ...props },
   ref,
 ) {
-  return <div {...props} ref={ref} style={{ ...surfaceStyle, ...style }} />
+  const scope = useRunaDomScope()
+  const identity = useRunaDomIdentity(runaComponent ?? `${scope.component}-surface`, id)
+
+  return (
+    <div
+      {...props}
+      ref={ref}
+      data-runa-component={identity.scope.component}
+      data-runa-layout={identity.scope.layout}
+      data-runa-node={identity.node}
+      data-runa-widget={identity.scope.widget}
+      id={identity.id}
+      style={{ ...surfaceStyle, ...style }}
+    />
+  )
 })

@@ -1,5 +1,4 @@
-import { useId } from 'react'
-
+import { useRunaDomIdentity, useRunaDomScope } from '../dom-id'
 import { Box, Label, Radio, Text, type RadioProps } from '../primitives'
 
 export type RadioControlProps = Omit<RadioProps, 'type'> & {
@@ -31,15 +30,20 @@ const descriptionStyle = {
 }
 
 export function RadioControl({ id, label, description, ...radioProps }: RadioControlProps) {
-  const generatedId = useId()
-  const inputId = id ?? generatedId
+  const scope = useRunaDomScope()
+  const identity = useRunaDomIdentity(`${scope.component}-radio-input`, id)
+  const inputId = identity.id
 
   return (
-    <Label htmlFor={inputId} style={radioLabelStyle}>
-      <Radio {...radioProps} id={inputId} />
-      <Box style={radioContentStyle}>
-        <Text>{label}</Text>
-        {description ? <Text style={descriptionStyle}>{description}</Text> : null}
+    <Label htmlFor={inputId} runaComponent={`${scope.component}-radio-label`} style={radioLabelStyle}>
+      <Radio {...radioProps} id={inputId} runaComponent={`${scope.component}-radio-input`} />
+      <Box runaComponent={`${scope.component}-radio-content`} style={radioContentStyle}>
+        <Text runaComponent={`${scope.component}-radio-text`}>{label}</Text>
+        {description ? (
+          <Text runaComponent={`${scope.component}-radio-description`} style={descriptionStyle}>
+            {description}
+          </Text>
+        ) : null}
       </Box>
     </Label>
   )

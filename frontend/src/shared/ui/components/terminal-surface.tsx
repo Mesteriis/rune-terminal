@@ -51,8 +51,40 @@ function getCssVariableFromElement(element: HTMLElement | null, name: string) {
 }
 
 function getTerminalTheme(target: HTMLElement | null) {
+  const background =
+    getCssVariableFromElement(target, '--runa-terminal-surface-bg') ||
+    getCssVariable('--color-surface-glass-soft') ||
+    'rgba(9, 16, 15, 0.96)'
+
+  const foreground =
+    getCssVariableFromElement(target, '--runa-terminal-text-strong') ||
+    getCssVariable('--color-text-primary') ||
+    '#edf7f4'
+
+  const muted =
+    getCssVariableFromElement(target, '--runa-terminal-text-muted') ||
+    getCssVariable('--color-text-muted') ||
+    '#8da39d'
+
+  const secondary =
+    getCssVariableFromElement(target, '--runa-terminal-text-secondary') ||
+    getCssVariable('--color-text-secondary') ||
+    '#c5d6d1'
+
+  const accentPrimary =
+    getCssVariableFromElement(target, '--runa-terminal-status-running') ||
+    getCssVariable('--color-accent-emerald-strong') ||
+    '#47c0a0'
+
+  const accentSecondary =
+    getCssVariableFromElement(target, '--runa-terminal-status-idle') ||
+    getCssVariable('--color-accent-cold-tea') ||
+    '#82bcaa'
+
   return {
-    background: 'transparent',
+    background,
+    black: background,
+    brightBlack: muted,
     cursor:
       getCssVariableFromElement(target, '--runa-terminal-cursor-color') ||
       getCssVariableFromElement(target, '--runa-terminal-status-running') ||
@@ -62,12 +94,23 @@ function getTerminalTheme(target: HTMLElement | null) {
       getCssVariableFromElement(target, '--runa-terminal-cursor-accent') ||
       getCssVariable('--color-canvas') ||
       '#06110f',
-    foreground:
-      getCssVariableFromElement(target, '--runa-terminal-text-strong') ||
-      getCssVariable('--color-text-primary') ||
-      '#edf7f4',
+    cyan: accentSecondary,
+    foreground,
+    green: accentPrimary,
+    red: '#b17373',
     selectionBackground:
       getCssVariableFromElement(target, '--runa-terminal-selection-background') || 'rgba(71, 192, 160, 0.2)',
+    white: foreground,
+    yellow: '#c2b37f',
+    blue: secondary,
+    magenta: '#9ea7c9',
+    brightBlue: secondary,
+    brightCyan: accentSecondary,
+    brightGreen: accentPrimary,
+    brightMagenta: '#b7c0de',
+    brightRed: '#d49797',
+    brightWhite: '#f3fbf8',
+    brightYellow: '#d8c893',
   }
 }
 
@@ -238,13 +281,7 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
       fontSize: 13,
       lineHeight: 1.25,
       rightClickSelectsWord: true,
-      theme: {
-        background: 'transparent',
-        cursor: getCssVariable('--color-accent-emerald-strong') || '#47c0a0',
-        cursorAccent: getCssVariable('--color-canvas') || '#06110f',
-        foreground: getCssVariable('--color-text-primary') || '#edf7f4',
-        selectionBackground: 'rgba(71, 192, 160, 0.2)',
-      },
+      theme: getTerminalTheme(viewportRef.current),
     })
     const fitAddon = new FitAddon()
     const searchAddon = new SearchAddon()
@@ -396,10 +433,12 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
     }
 
     const focusTerminal = () => {
-      term.focus()
+      window.setTimeout(() => {
+        term.focus()
+      }, 0)
     }
 
-    openTarget.addEventListener('click', focusTerminal)
+    openTarget.addEventListener('pointerdown', focusTerminal, true)
 
     requestAnimationFrame(() => {
       fitAddon.fit()
@@ -407,7 +446,7 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
     })
 
     return () => {
-      openTarget.removeEventListener('click', focusTerminal)
+      openTarget.removeEventListener('pointerdown', focusTerminal, true)
       resizeObserver?.disconnect()
       groupClassObserver?.disconnect()
       dataDisposable.dispose()
@@ -418,5 +457,12 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
     }
   }, [connectionKind, cwd, hostId, introLinesSignature, onRendererModeChange, onRequestSearch, sessionState, shellLabel])
 
-  return <TerminalViewport data-runa-terminal-host="" ref={viewportRef} style={viewportStyle} />
+  return (
+    <TerminalViewport
+      data-runa-terminal-host=""
+      ref={viewportRef}
+      runaComponent="terminal-surface-viewport"
+      style={viewportStyle}
+    />
+  )
 })

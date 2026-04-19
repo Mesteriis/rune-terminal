@@ -1,5 +1,4 @@
-import { useId } from 'react'
-
+import { useRunaDomIdentity, useRunaDomScope } from '../dom-id'
 import { Box, Checkbox, Label, Text, type CheckboxProps } from '../primitives'
 
 export type SwitcherControlProps = Omit<CheckboxProps, 'type'> & {
@@ -65,25 +64,37 @@ export function SwitcherControl({
   checked = false,
   ...checkboxProps
 }: SwitcherControlProps) {
-  const generatedId = useId()
-  const inputId = id ?? generatedId
+  const scope = useRunaDomScope()
+  const identity = useRunaDomIdentity(`${scope.component}-switcher-input`, id)
+  const inputId = identity.id
 
   return (
-    <Label htmlFor={inputId} style={switcherLabelStyle}>
-      <Box style={switcherTextStyle}>
-        <Text>{label}</Text>
-        {description ? <Text style={switcherDescriptionStyle}>{description}</Text> : null}
+    <Label htmlFor={inputId} runaComponent={`${scope.component}-switcher-label`} style={switcherLabelStyle}>
+      <Box runaComponent={`${scope.component}-switcher-copy`} style={switcherTextStyle}>
+        <Text runaComponent={`${scope.component}-switcher-text`}>{label}</Text>
+        {description ? (
+          <Text runaComponent={`${scope.component}-switcher-description`} style={switcherDescriptionStyle}>
+            {description}
+          </Text>
+        ) : null}
       </Box>
       <Box
+        runaComponent={`${scope.component}-switcher-track`}
         style={{
           ...trackBaseStyle,
           justifyContent: checked ? 'flex-end' : 'flex-start',
           background: checked ? 'var(--color-surface-emerald)' : trackBaseStyle.background,
         }}
       >
-        <Box style={thumbBaseStyle} />
+        <Box runaComponent={`${scope.component}-switcher-thumb`} style={thumbBaseStyle} />
       </Box>
-      <Checkbox {...checkboxProps} checked={checked} id={inputId} style={hiddenCheckboxStyle} />
+      <Checkbox
+        {...checkboxProps}
+        checked={checked}
+        id={inputId}
+        runaComponent={`${scope.component}-switcher-input`}
+        style={hiddenCheckboxStyle}
+      />
     </Label>
   )
 }

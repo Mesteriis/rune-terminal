@@ -1,7 +1,7 @@
 import { useUnit } from 'effector-react'
 
+import { $aiBlockedWidgetHostIds, toggleAiBlockedWidget } from '../shared/model/ai-blocked-widgets'
 import { openWidgetModal } from '../shared/model/modal'
-import { $busyWidgetHostIds, toggleWidgetBusy } from '../shared/model/widget-busy'
 import { Box, Button } from '../shared/ui/primitives'
 
 type PanelModalActionsWidgetProps = {
@@ -27,20 +27,20 @@ export function PanelModalActionsWidget({
   hostId,
   panelTitle,
 }: PanelModalActionsWidgetProps) {
-  const [busyWidgetHostIds, onOpenWidgetModal, onToggleWidgetBusy] = useUnit([
-    $busyWidgetHostIds,
+  const [blockedWidgetHostIds, onOpenWidgetModal, onToggleAiBlockedWidget] = useUnit([
+    $aiBlockedWidgetHostIds,
     openWidgetModal,
-    toggleWidgetBusy,
+    toggleAiBlockedWidget,
   ])
-  const isBusy = busyWidgetHostIds.includes(hostId)
+  const isBlocked = blockedWidgetHostIds.includes(hostId)
 
   return (
     <Box style={actionsStyle}>
       <Button
-        aria-label={`${isBusy ? 'Release' : 'Block'} busy state for ${panelTitle}`}
-        onClick={() => onToggleWidgetBusy(hostId)}
+        aria-label={`${isBlocked ? 'Release' : 'Block'} busy state for ${panelTitle}`}
+        onClick={() => onToggleAiBlockedWidget(hostId)}
       >
-        {isBusy ? 'Release busy state' : 'Block widget'}
+        {isBlocked ? 'Release busy state' : 'Block widget'}
       </Button>
       <Button
         aria-label={`Open widget modal for ${panelTitle}`}

@@ -35,7 +35,7 @@ const panelInnerContentStyle = {
   display: 'flex',
   flexDirection: 'column' as const,
   gap: 'var(--gap-sm)',
-  padding: 'var(--padding-widget)',
+  padding: 'calc(var(--padding-widget) / 2)',
   overflow: 'hidden' as const,
   border: 'none',
   borderRadius: 0,
@@ -45,12 +45,8 @@ const panelInnerContentStyle = {
   WebkitBackdropFilter: 'none',
 }
 
-function isTerminalPanel(panelId: string) {
-  return panelId.startsWith('terminal')
-}
-
 function isCommanderDemoPanel(panelId: string) {
-  return panelId === 'tool'
+  return panelId === 'tool' || panelId.startsWith('tool-')
 }
 
 export function DockviewPanelWidget(props: IDockviewPanelProps) {
@@ -59,7 +55,7 @@ export function DockviewPanelWidget(props: IDockviewPanelProps) {
     $activeWidgetHostId,
     setActiveWidgetHostId,
   ])
-  const terminalModel = isTerminalPanel(props.api.id)
+  const terminalModel = props.api.id.startsWith('terminal')
     ? resolveTerminalPanelParams(props.api.id, props.params)
     : null
   const isCommanderPanel = isCommanderDemoPanel(props.api.id)
@@ -90,7 +86,10 @@ export function DockviewPanelWidget(props: IDockviewPanelProps) {
         runaComponent="dockview-panel-root"
         style={panelContentStyle}
       >
-        <Box runaComponent="dockview-panel-content" style={panelInnerContentStyle}>
+        <Box
+          runaComponent="dockview-panel-content"
+          style={panelInnerContentStyle}
+        >
           {terminalModel ? (
             <TerminalWidget
               connectionKind={terminalModel.connectionKind}
@@ -99,9 +98,7 @@ export function DockviewPanelWidget(props: IDockviewPanelProps) {
               introLines={terminalModel.introLines}
               sessionState={terminalModel.sessionState}
               shellLabel={terminalModel.shellLabel}
-            >
-              <PanelModalActionsWidget hostId={props.api.id} panelTitle={terminalModel.title} />
-            </TerminalWidget>
+            />
           ) : isCommanderPanel ? (
             <CommanderDemoLayout />
           ) : (

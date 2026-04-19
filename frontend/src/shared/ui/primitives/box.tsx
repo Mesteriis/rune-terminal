@@ -1,6 +1,10 @@
 import * as React from 'react'
 
-export type BoxProps = React.HTMLAttributes<HTMLDivElement>
+import { useRunaDomIdentity, useRunaDomScope } from '../dom-id'
+
+export type BoxProps = React.HTMLAttributes<HTMLDivElement> & {
+  runaComponent?: string
+}
 
 const boxStyle: React.CSSProperties = {
   boxSizing: 'border-box',
@@ -15,8 +19,22 @@ const boxStyle: React.CSSProperties = {
 }
 
 export const Box = React.forwardRef<HTMLDivElement, BoxProps>(function Box(
-  { style, ...props },
+  { id, runaComponent, style, ...props },
   ref,
 ) {
-  return <div {...props} ref={ref} style={{ ...boxStyle, ...style }} />
+  const scope = useRunaDomScope()
+  const identity = useRunaDomIdentity(runaComponent ?? `${scope.component}-box`, id)
+
+  return (
+    <div
+      {...props}
+      ref={ref}
+      data-runa-component={identity.scope.component}
+      data-runa-layout={identity.scope.layout}
+      data-runa-node={identity.node}
+      data-runa-widget={identity.scope.widget}
+      id={identity.id}
+      style={{ ...boxStyle, ...style }}
+    />
+  )
 })

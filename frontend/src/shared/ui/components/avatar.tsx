@@ -1,3 +1,4 @@
+import { useRunaDomIdentity, useRunaDomScope } from '../dom-id'
 import { Box, type BoxProps } from '../primitives'
 
 export type AvatarProps = Omit<BoxProps, 'children'> & {
@@ -8,14 +9,20 @@ export type AvatarProps = Omit<BoxProps, 'children'> & {
 
 export function Avatar({
   label,
+  runaComponent,
   size = 32,
   src,
   style,
   ...props
 }: AvatarProps) {
+  const scope = useRunaDomScope()
+  const wrapperComponent = runaComponent ?? `${scope.component}-avatar`
+  const imageIdentity = useRunaDomIdentity(`${wrapperComponent}-image`)
+
   return (
     <Box
       {...props}
+      runaComponent={wrapperComponent}
       style={{
         width: size,
         minWidth: size,
@@ -39,6 +46,11 @@ export function Avatar({
       <img
         alt={label ?? ''}
         aria-hidden={label == null ? true : undefined}
+        data-runa-component={imageIdentity.scope.component}
+        data-runa-layout={imageIdentity.scope.layout}
+        data-runa-node={imageIdentity.node}
+        data-runa-widget={imageIdentity.scope.widget}
+        id={imageIdentity.id}
         src={src}
         style={{
           width: '100%',

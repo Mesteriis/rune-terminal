@@ -1,5 +1,7 @@
-import { Maximize2, Minus, Sparkles, X } from 'lucide-react'
+import { Maximize2, Minus, Plus, Sparkles, X } from 'lucide-react'
+import { useState } from 'react'
 
+import { RunaDomScopeProvider } from '../shared/ui/dom-id'
 import { Box, Button } from '../shared/ui/primitives'
 
 type ShellTopbarWidgetProps = {
@@ -45,15 +47,9 @@ const iconButtonStyle = {
   overflow: 'hidden',
 }
 
-const aiToggleButtonStyle = {
+const addWorkspaceButtonStyle = {
   ...iconButtonStyle,
-  padding: 0,
-  border: 'none',
-  background: 'transparent',
-  borderRadius: 0,
-  boxShadow: 'none',
-  backdropFilter: 'none',
-  WebkitBackdropFilter: 'none',
+  marginLeft: 'auto',
 }
 
 const actionIconProps = {
@@ -62,33 +58,68 @@ const actionIconProps = {
 }
 
 export function ShellTopbarWidget({ isAiOpen, onToggleAi }: ShellTopbarWidgetProps) {
+  const [workspaceTabs, setWorkspaceTabs] = useState([
+    { id: 1, title: 'Workspace-1' },
+    { id: 2, title: 'Workspace-2' },
+  ])
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState(1)
+
+  const handleAddWorkspace = () => {
+    const nextWorkspaceId = workspaceTabs.length + 1
+
+    setWorkspaceTabs((tabs) => [
+      ...tabs,
+      {
+        id: nextWorkspaceId,
+        title: `Workspace-${nextWorkspaceId}`,
+      },
+    ])
+    setActiveWorkspaceId(nextWorkspaceId)
+  }
+
   return (
-    <Box style={topbarStyle}>
-      <Button aria-label="Close window" role="tab" aria-selected="false" style={iconButtonStyle}>
+    <RunaDomScopeProvider component="shell-topbar-widget">
+      <Box runaComponent="shell-topbar-root" style={topbarStyle}>
+      <Button aria-label="Close window" role="tab" aria-selected="false" runaComponent="shell-topbar-close-window" style={iconButtonStyle}>
         <X {...actionIconProps} />
       </Button>
-      <Button aria-label="Collapse window" role="tab" aria-selected="false" style={iconButtonStyle}>
+      <Button aria-label="Collapse window" role="tab" aria-selected="false" runaComponent="shell-topbar-collapse-window" style={iconButtonStyle}>
         <Minus {...actionIconProps} />
       </Button>
-      <Button aria-label="Toggle fullscreen" role="tab" aria-selected="false" style={iconButtonStyle}>
+      <Button aria-label="Toggle fullscreen" role="tab" aria-selected="false" runaComponent="shell-topbar-toggle-fullscreen" style={iconButtonStyle}>
         <Maximize2 {...actionIconProps} />
       </Button>
       <Button
         aria-label="Toggle AI panel"
         aria-pressed={isAiOpen}
         onClick={onToggleAi}
-        style={aiToggleButtonStyle}
+        runaComponent="shell-topbar-toggle-ai-panel"
+        style={iconButtonStyle}
       >
         <Sparkles {...actionIconProps} />
       </Button>
-      <Box role="tablist" aria-label="Workspace tabs" style={tabStripStyle}>
-        <Button role="tab" aria-selected="true">
-          Workspace-1
-        </Button>
-        <Button role="tab" aria-selected="false">
-          Workspace-2
-        </Button>
+      <Box role="tablist" aria-label="Workspace tabs" runaComponent="shell-topbar-workspace-tabs" style={tabStripStyle}>
+        {workspaceTabs.map((workspace) => (
+          <Button
+            aria-selected={activeWorkspaceId === workspace.id}
+            key={workspace.id}
+            onClick={() => setActiveWorkspaceId(workspace.id)}
+            role="tab"
+            runaComponent={`shell-topbar-workspace-tab-${workspace.id}`}
+          >
+            {workspace.title}
+          </Button>
+        ))}
       </Box>
+      <Button
+        aria-label="Add workspace"
+        onClick={handleAddWorkspace}
+        runaComponent="shell-topbar-add-workspace"
+        style={addWorkspaceButtonStyle}
+      >
+        <Plus {...actionIconProps} />
+      </Button>
     </Box>
+    </RunaDomScopeProvider>
   )
 }

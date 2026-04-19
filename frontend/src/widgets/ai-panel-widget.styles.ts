@@ -116,11 +116,14 @@ export const aiPromptStackStyle: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: 'var(--gap-sm)',
-  padding: 'var(--gap-sm) 0 0',
+  padding: 'var(--gap-sm) var(--space-xs) 0 0',
   border: 'none',
   borderRadius: 0,
   background: 'transparent',
   boxShadow: 'none',
+  overflowY: 'auto',
+  overscrollBehavior: 'contain',
+  scrollPaddingBottom: 'var(--space-md)',
 }
 
 export const aiPromptCardStyle: CSSProperties = {
@@ -227,11 +230,166 @@ export const aiPromptCardExpandedBodyStyle: CSSProperties = {
   minWidth: 0,
 }
 
+export const aiPromptReasoningListStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 'var(--space-xs)',
+  minWidth: 0,
+  padding: 0,
+  border: 'none',
+  borderRadius: 0,
+  background: 'transparent',
+  boxShadow: 'none',
+  backdropFilter: 'none',
+  WebkitBackdropFilter: 'none',
+}
+
+export const aiPromptReasoningItemStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'flex-start',
+  gap: 'var(--gap-sm)',
+  minWidth: 0,
+  padding: 'var(--space-xs) 0',
+  border: 'none',
+  borderRadius: 0,
+  background: 'transparent',
+  boxShadow: 'none',
+  backdropFilter: 'none',
+  WebkitBackdropFilter: 'none',
+}
+
+export const aiPromptReasoningIndexStyle: CSSProperties = {
+  minWidth: '22px',
+  minHeight: '18px',
+  alignSelf: 'flex-start',
+  borderColor: 'var(--color-border-strong)',
+  background: 'rgba(45, 143, 118, 0.12)',
+  color: 'var(--color-text-primary)',
+}
+
+export const aiPromptApprovalListStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 'var(--space-sm)',
+  minWidth: 0,
+  padding: 0,
+  border: 'none',
+  borderRadius: 0,
+  background: 'transparent',
+  boxShadow: 'none',
+  backdropFilter: 'none',
+  WebkitBackdropFilter: 'none',
+}
+
+export const aiPromptApprovalRowStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '4px',
+  minWidth: 0,
+  padding: 'var(--space-sm)',
+  border: 'none',
+  borderRadius: 0,
+  background: 'transparent',
+  boxShadow: 'none',
+  backdropFilter: 'none',
+  WebkitBackdropFilter: 'none',
+}
+
+export const aiPromptApprovalMetaStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 'var(--gap-sm)',
+  minWidth: 0,
+  padding: 0,
+  border: 'none',
+  borderRadius: 0,
+  background: 'transparent',
+  boxShadow: 'none',
+  backdropFilter: 'none',
+  WebkitBackdropFilter: 'none',
+}
+
+export const aiPromptApprovalStatusBadgeStyle: CSSProperties = {
+  minHeight: '18px',
+  borderColor: 'rgba(224, 197, 124, 0.28)',
+  background: 'rgba(224, 197, 124, 0.14)',
+  color: 'rgb(228, 211, 169)',
+}
+
+export const aiPromptApprovalCommandStyle: CSSProperties = {
+  color: 'var(--color-text-primary)',
+  fontSize: '12px',
+  lineHeight: '18px',
+  fontFamily: 'var(--font-family-mono)',
+  whiteSpace: 'pre-wrap',
+  wordBreak: 'break-word',
+}
+
 export const aiPromptCardSectionStyle: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: '4px',
   minWidth: 0,
+}
+
+export const aiPromptSectionHeaderStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 'var(--gap-sm)',
+  minWidth: 0,
+  padding: 0,
+  border: 'none',
+  borderRadius: 0,
+  background: 'transparent',
+  boxShadow: 'none',
+  backdropFilter: 'none',
+  WebkitBackdropFilter: 'none',
+}
+
+export const aiPromptPromptSectionStyle: CSSProperties = {
+  ...aiPromptCardSectionStyle,
+  padding: 0,
+  border: 'none',
+  borderRadius: 0,
+  background: 'transparent',
+  boxShadow: 'none',
+  backdropFilter: 'none',
+  WebkitBackdropFilter: 'none',
+}
+
+export const aiPromptReasoningSectionStyle: CSSProperties = {
+  ...aiPromptCardSectionStyle,
+  padding: 0,
+  border: 'none',
+  borderRadius: 0,
+  background: 'transparent',
+  boxShadow: 'none',
+  backdropFilter: 'none',
+  WebkitBackdropFilter: 'none',
+}
+
+export const aiPromptApprovalSectionStyle: CSSProperties = {
+  ...aiPromptCardSectionStyle,
+  padding: 0,
+  border: 'none',
+  borderRadius: 0,
+  background: 'transparent',
+  boxShadow: 'none',
+  backdropFilter: 'none',
+  WebkitBackdropFilter: 'none',
+}
+
+export const aiPromptSummarySectionStyle: CSSProperties = {
+  ...aiPromptCardSectionStyle,
+  padding: 0,
+  border: 'none',
+  borderRadius: 0,
+  background: 'transparent',
+  boxShadow: 'none',
+  backdropFilter: 'none',
+  WebkitBackdropFilter: 'none',
 }
 
 export const aiPromptCardSectionLabelStyle: CSSProperties = {
@@ -249,6 +407,12 @@ export const aiPromptCardSectionTextStyle: CSSProperties = {
   lineHeight: 'var(--line-height-md)',
   fontFamily: 'var(--font-family-mono)',
   whiteSpace: 'pre-wrap',
+}
+
+export const aiPromptReasoningTextStyle: CSSProperties = {
+  ...aiPromptCardSectionTextStyle,
+  flex: 1,
+  minWidth: 0,
 }
 
 export const aiToolbarStyle: CSSProperties = {

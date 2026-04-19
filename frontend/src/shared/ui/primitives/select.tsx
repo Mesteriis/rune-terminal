@@ -1,6 +1,10 @@
 import type * as React from 'react'
 
-export type SelectProps = React.SelectHTMLAttributes<HTMLSelectElement>
+import { useRunaDomIdentity, useRunaDomScope } from '../dom-id'
+
+export type SelectProps = React.SelectHTMLAttributes<HTMLSelectElement> & {
+  runaComponent?: string
+}
 
 const selectStyle: React.CSSProperties = {
   boxSizing: 'border-box',
@@ -16,6 +20,24 @@ const selectStyle: React.CSSProperties = {
   WebkitBackdropFilter: 'var(--blur-glass-sm)',
 }
 
-export function Select({ style, ...props }: SelectProps) {
-  return <select {...props} style={{ ...selectStyle, ...style }} />
+export function Select({ id, runaComponent, style, ...props }: SelectProps) {
+  const scope = useRunaDomScope()
+  const semanticComponent =
+    runaComponent ??
+    (typeof props['aria-label'] === 'string' && props['aria-label'].trim() !== ''
+      ? props['aria-label']
+      : props.name ?? `${scope.component}-select`)
+  const identity = useRunaDomIdentity(semanticComponent, id)
+
+  return (
+    <select
+      {...props}
+      data-runa-component={identity.scope.component}
+      data-runa-layout={identity.scope.layout}
+      data-runa-node={identity.node}
+      data-runa-widget={identity.scope.widget}
+      id={identity.id}
+      style={{ ...selectStyle, ...style }}
+    />
+  )
 }

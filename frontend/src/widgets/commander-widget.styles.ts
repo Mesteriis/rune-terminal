@@ -64,6 +64,21 @@ export const commanderModeButtonStyle: CSSProperties = {
   WebkitBackdropFilter: 'none',
 }
 
+export const commanderIconControlStyle: CSSProperties = {
+  width: '28px',
+  minWidth: '28px',
+  height: '28px',
+  minHeight: '28px',
+  padding: 0,
+  borderRadius: 'var(--radius-xs)',
+  background: 'transparent',
+  color: 'var(--runa-commander-text-secondary)',
+  border: '1px solid var(--runa-commander-surface-border)',
+  boxShadow: 'none',
+  backdropFilter: 'none',
+  WebkitBackdropFilter: 'none',
+}
+
 export const commanderModeButtonActiveStyle: CSSProperties = {
   color: 'var(--runa-commander-highlight-text)',
   borderColor: 'var(--runa-commander-highlight-border)',

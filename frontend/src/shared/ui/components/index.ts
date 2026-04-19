@@ -1,5 +1,7 @@
 export * from './avatar'
 export * from './dialog-popup'
+export * from './dockview-tab-chrome'
+export * from './dockview-tab-pill'
 export * from './expandable-textarea'
 export * from './icon-button'
 export * from './input-field'

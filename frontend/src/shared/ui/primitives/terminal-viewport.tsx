@@ -1,6 +1,10 @@
 import * as React from 'react'
 
-export type TerminalViewportProps = React.HTMLAttributes<HTMLDivElement>
+import { useRunaDomIdentity, useRunaDomScope } from '../dom-id'
+
+export type TerminalViewportProps = React.HTMLAttributes<HTMLDivElement> & {
+  runaComponent?: string
+}
 
 const terminalViewportStyle: React.CSSProperties = {
   boxSizing: 'border-box',
@@ -22,7 +26,21 @@ const terminalViewportStyle: React.CSSProperties = {
 }
 
 export const TerminalViewport = React.forwardRef<HTMLDivElement, TerminalViewportProps>(
-  function TerminalViewport({ style, ...props }, ref) {
-    return <div {...props} ref={ref} style={{ ...terminalViewportStyle, ...style }} />
+  function TerminalViewport({ id, runaComponent, style, ...props }, ref) {
+    const scope = useRunaDomScope()
+    const identity = useRunaDomIdentity(runaComponent ?? `${scope.component}-terminal-viewport`, id)
+
+    return (
+      <div
+        {...props}
+        ref={ref}
+        data-runa-component={identity.scope.component}
+        data-runa-layout={identity.scope.layout}
+        data-runa-node={identity.node}
+        data-runa-widget={identity.scope.widget}
+        id={identity.id}
+        style={{ ...terminalViewportStyle, ...style }}
+      />
+    )
   },
 )

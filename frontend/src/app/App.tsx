@@ -1,4 +1,4 @@
-import { DockviewReact, type DockviewReadyEvent, type DockviewTheme } from 'dockview-react'
+import { DockviewReact, type DockviewApi, type DockviewReadyEvent, type DockviewTheme } from 'dockview-react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import { useUnit } from 'effector-react'
@@ -11,6 +11,7 @@ import { createTerminalPanelParams } from '../widgets/terminal-panel'
 import {
   AiPanelHeaderWidget,
   AiPanelWidget,
+  CommanderDockviewTabWidget,
   DockviewPanelWidget,
   ModalHostWidget,
   RightActionRailWidget,
@@ -218,6 +219,7 @@ const components = {
 }
 
 const tabComponents = {
+  'commander-tab': CommanderDockviewTabWidget,
   'terminal-tab': TerminalDockviewTabWidget,
 }
 
@@ -230,12 +232,35 @@ export function App() {
   const [isAiPanelResizing, setIsAiPanelResizing] = useState(false)
   const prefersReducedMotion = useReducedMotion()
   const contentAreaRef = useRef<HTMLDivElement | null>(null)
+  const dockviewApiRef = useRef<DockviewApi | null>(null)
+  const dockviewContainerRef = useRef<HTMLDivElement | null>(null)
   const aiResizeStartRef = useRef<{ startWidth: number; startX: number } | null>(null)
+
+  const syncDockviewLayout = () => {
+    const api = dockviewApiRef.current
+    const container = dockviewContainerRef.current
+
+    if (!api || !container) {
+      return
+    }
+
+    api.layout(container.clientWidth, container.clientHeight)
+  }
+
+  const scheduleDockviewLayoutSync = () => {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        syncDockviewLayout()
+      })
+    })
+  }
 
   const handleReady = (event: DockviewReadyEvent) => {
     const api = event.api
+    dockviewApiRef.current = api
 
     if (api.getPanel('terminal-header')) {
+      scheduleDockviewLayoutSync()
       return
     }
 
@@ -262,12 +287,33 @@ export function App() {
       id: 'tool',
       title: 'tool',
       component: 'default',
+      tabComponent: 'commander-tab',
       position: {
         direction: 'right',
         referencePanel: 'terminal',
       },
     })
+
+    scheduleDockviewLayoutSync()
   }
+
+  useEffect(() => {
+    const container = dockviewContainerRef.current
+
+    if (!container || typeof ResizeObserver === 'undefined') {
+      return
+    }
+
+    const resizeObserver = new ResizeObserver(() => {
+      syncDockviewLayout()
+    })
+
+    resizeObserver.observe(container)
+
+    return () => {
+      resizeObserver.disconnect()
+    }
+  }, [])
 
   useEffect(() => {
     if (!isAiSidebarOpen) {
@@ -400,7 +446,11 @@ export function App() {
               ) : null}
             </AnimatePresence>
             <Box runaComponent="app-workspace" style={workspaceStyle}>
-              <Box runaComponent="app-dockview-container" style={dockviewContainerStyle}>
+              <Box
+                ref={dockviewContainerRef}
+                runaComponent="app-dockview-container"
+                style={dockviewContainerStyle}
+              >
                 <DockviewReact
                   components={components}
                   onReady={handleReady}
@@ -412,7 +462,7 @@ export function App() {
             </Box>
           </Box>
         </Box>
-        <RightActionRailWidget />
+        <RightActionRailWidget dockviewApiRef={dockviewApiRef} />
         <ModalHostWidget hostId={BODY_MODAL_HOST_ID} scope="body" />
       </Box>
     </RunaDomScopeProvider>

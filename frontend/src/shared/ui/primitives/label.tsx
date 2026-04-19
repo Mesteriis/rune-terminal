@@ -1,6 +1,10 @@
 import type * as React from 'react'
 
-export type LabelProps = React.LabelHTMLAttributes<HTMLLabelElement>
+import { useRunaDomIdentity, useRunaDomScope } from '../dom-id'
+
+export type LabelProps = React.LabelHTMLAttributes<HTMLLabelElement> & {
+  runaComponent?: string
+}
 
 const labelStyle: React.CSSProperties = {
   display: 'inline-flex',
@@ -11,6 +15,19 @@ const labelStyle: React.CSSProperties = {
   lineHeight: 'var(--line-height-md)',
 }
 
-export function Label({ style, ...props }: LabelProps) {
-  return <label {...props} style={{ ...labelStyle, ...style }} />
+export function Label({ id, runaComponent, style, ...props }: LabelProps) {
+  const scope = useRunaDomScope()
+  const identity = useRunaDomIdentity(runaComponent ?? `${scope.component}-label`, id)
+
+  return (
+    <label
+      {...props}
+      data-runa-component={identity.scope.component}
+      data-runa-layout={identity.scope.layout}
+      data-runa-node={identity.node}
+      data-runa-widget={identity.scope.widget}
+      id={identity.id}
+      style={{ ...labelStyle, ...style }}
+    />
+  )
 }

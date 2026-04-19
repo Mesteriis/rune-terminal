@@ -1,7 +1,8 @@
 import type * as React from 'react'
-import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
+import { useRunaDomIdentity, useRunaDomScope } from '../dom-id'
 import { Box, Button, Label, TextArea, type TextAreaProps } from '../primitives'
 
 export type ExpandableTextAreaProps = Omit<TextAreaProps, 'onChange'> & {
@@ -71,8 +72,9 @@ export function ExpandableTextArea({
   value,
   ...textAreaProps
 }: ExpandableTextAreaProps) {
-  const generatedId = useId()
-  const textAreaId = id ?? generatedId
+  const scope = useRunaDomScope()
+  const identity = useRunaDomIdentity(`${scope.component}-textarea`, id)
+  const textAreaId = identity.id
   const wrapperRef = useRef<HTMLDivElement | null>(null)
   const [isExpanded, setIsExpanded] = useState(false)
   const [draftValue, setDraftValue] = useState(String(defaultValue ?? ''))
@@ -126,6 +128,7 @@ export function ExpandableTextArea({
       {...textAreaProps}
       id={textAreaId}
       onChange={handleChange}
+      runaComponent={`${scope.component}-textarea`}
       style={{
         ...(textAreaProps.style ?? {}),
         ...(isExpanded ? { height: '100%', minHeight: '100%', maxHeight: '100%', resize: 'none' } : {}),
@@ -135,11 +138,16 @@ export function ExpandableTextArea({
   )
 
   const inlineContent = (
-    <Box style={rootStyle}>
-      <Label htmlFor={textAreaId}>{label}</Label>
+    <Box runaComponent={`${scope.component}-expandable-textarea-root`} style={rootStyle}>
+      <Label htmlFor={textAreaId} runaComponent={`${scope.component}-expandable-textarea-label`}>
+        {label}
+      </Label>
       {sharedTextArea}
-      <Box style={controlsStyle}>
-        <Button onClick={() => setIsExpanded((currentValue) => !currentValue)}>
+      <Box runaComponent={`${scope.component}-expandable-textarea-controls`} style={controlsStyle}>
+        <Button
+          onClick={() => setIsExpanded((currentValue) => !currentValue)}
+          runaComponent={`${scope.component}-expandable-textarea-toggle`}
+        >
           {isExpanded ? 'Collapse' : 'Expand'}
         </Button>
       </Box>
@@ -153,6 +161,7 @@ export function ExpandableTextArea({
 
     return createPortal(
       <Box
+        runaComponent={`${scope.component}-expandable-textarea-host`}
         style={{
           ...expandedHostBaseStyle,
           left: `${targetRect.left}px`,
@@ -161,11 +170,18 @@ export function ExpandableTextArea({
           height: `${targetRect.height}px`,
         }}
       >
-        <Box style={expandedShellStyle}>
-          <Label htmlFor={textAreaId}>{label}</Label>
+        <Box runaComponent={`${scope.component}-expandable-textarea-shell`} style={expandedShellStyle}>
+          <Label htmlFor={textAreaId} runaComponent={`${scope.component}-expandable-textarea-label`}>
+            {label}
+          </Label>
           {sharedTextArea}
-          <Box style={controlsStyle}>
-            <Button onClick={() => setIsExpanded(false)}>Collapse</Button>
+          <Box runaComponent={`${scope.component}-expandable-textarea-controls`} style={controlsStyle}>
+            <Button
+              onClick={() => setIsExpanded(false)}
+              runaComponent={`${scope.component}-expandable-textarea-collapse`}
+            >
+              Collapse
+            </Button>
           </Box>
         </Box>
       </Box>,
@@ -174,7 +190,7 @@ export function ExpandableTextArea({
   }, [isExpanded, label, sharedTextArea, targetRect, textAreaId])
 
   return (
-    <Box ref={wrapperRef}>
+    <Box ref={wrapperRef} runaComponent={`${scope.component}-expandable-textarea-wrapper`}>
       {isExpanded ? expandedContent : inlineContent}
     </Box>
   )

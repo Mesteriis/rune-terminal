@@ -12,6 +12,7 @@ import {
 
 import { RunaDomScopeProvider } from '../dom-id'
 import { Box, Text } from '../primitives'
+import { DockviewTabPill } from './dockview-tab-pill'
 
 export type TerminalConnectionKind = 'local' | 'ssh'
 export type TerminalSessionState = 'running' | 'idle' | 'starting' | 'exited'
@@ -94,28 +95,6 @@ const compactMetaWrapStyle = {
   overflow: 'hidden' as const,
 }
 
-const metaItemStyle = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 'var(--gap-sm)',
-  minWidth: 0,
-  padding: '0 var(--space-sm)',
-  minHeight: '24px',
-  border: '1px solid var(--runa-terminal-surface-border, var(--color-border-subtle))',
-  borderRadius: 'var(--radius-sm)',
-  background: 'transparent',
-  boxShadow: 'none',
-  backdropFilter: 'none',
-  WebkitBackdropFilter: 'none',
-}
-
-const compactMetaItemStyle = {
-  ...metaItemStyle,
-  gap: 'var(--gap-sm)',
-  minHeight: '28px',
-  padding: '0 var(--space-sm)',
-}
-
 const titleTextStyle = {
   fontSize: 'var(--font-size-md)',
   lineHeight: 'var(--line-height-md)',
@@ -196,12 +175,12 @@ function MetaItem({
   runaComponent: string
 }) {
   return (
-    <Box
+    <DockviewTabPill
       runaComponent={runaComponent}
-      style={compact ? compactMetaItemStyle : metaItemStyle}
+      style={compact ? undefined : { minHeight: '24px' }}
     >
       {children}
-    </Box>
+    </DockviewTabPill>
   )
 }
 

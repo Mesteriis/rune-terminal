@@ -1,12 +1,21 @@
 html {
-  height: 100%;
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
 }
 
 body {
   margin: 0;
   padding: 6px;
-  height: 100%;
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
   box-sizing: border-box;
+  overflow: hidden;
   background:
     radial-gradient(circle at 10% 14%, var(--color-canvas-glow-primary) 0, transparent 24%),
     radial-gradient(circle at 32% 8%, var(--color-canvas-glow-quinary) 0, transparent 18%),
@@ -15,6 +24,8 @@ body {
     radial-gradient(circle at 18% 58%, var(--color-canvas-glow-tertiary) 0, transparent 26%),
     radial-gradient(circle at 52% 44%, var(--color-canvas-glow-secondary) 0, transparent 28%),
     radial-gradient(circle at 70% 74%, var(--color-canvas-glow-quaternary) 0, transparent 24%),
+    radial-gradient(circle at 84% 88%, color-mix(in srgb, var(--color-canvas-glow-primary) 91%, var(--color-accent-emerald-strong) 9%) 0, transparent 26%),
+    radial-gradient(circle at 96% 96%, color-mix(in srgb, var(--color-canvas-glow-secondary) 90%, var(--color-accent-cold-tea) 10%) 0, transparent 18%),
     radial-gradient(circle at 36% 92%, var(--color-canvas-glow-quinary) 0, transparent 20%),
     linear-gradient(180deg, #0d1d1a 0%, #091715 38%, var(--color-canvas) 68%, #081412 100%);
   color: var(--color-text-primary);
@@ -22,8 +33,11 @@ body {
 }
 
 #root {
+  width: 100%;
+  min-height: 100%;
   height: 100%;
   background: transparent;
+  overflow: hidden;
 }
 
 @keyframes runa-busy-icon-breathe {

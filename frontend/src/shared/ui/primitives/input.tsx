@@ -1,6 +1,10 @@
 import type * as React from 'react'
 
-export type InputProps = React.InputHTMLAttributes<HTMLInputElement>
+import { useRunaDomIdentity, useRunaDomScope } from '../dom-id'
+
+export type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {
+  runaComponent?: string
+}
 
 const inputStyle: React.CSSProperties = {
   boxSizing: 'border-box',
@@ -16,6 +20,24 @@ const inputStyle: React.CSSProperties = {
   WebkitBackdropFilter: 'var(--blur-glass-sm)',
 }
 
-export function Input({ style, ...props }: InputProps) {
-  return <input {...props} style={{ ...inputStyle, ...style }} />
+export function Input({ id, runaComponent, style, ...props }: InputProps) {
+  const scope = useRunaDomScope()
+  const semanticComponent =
+    runaComponent ??
+    (typeof props['aria-label'] === 'string' && props['aria-label'].trim() !== ''
+      ? props['aria-label']
+      : props.name ?? props.placeholder ?? `${scope.component}-input`)
+  const identity = useRunaDomIdentity(semanticComponent, id)
+
+  return (
+    <input
+      {...props}
+      data-runa-component={identity.scope.component}
+      data-runa-layout={identity.scope.layout}
+      data-runa-node={identity.node}
+      data-runa-widget={identity.scope.widget}
+      id={identity.id}
+      style={{ ...inputStyle, ...style }}
+    />
+  )
 }

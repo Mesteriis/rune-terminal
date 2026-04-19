@@ -1,6 +1,10 @@
 import * as React from 'react'
 
-export type ScrollAreaProps = React.HTMLAttributes<HTMLDivElement>
+import { useRunaDomIdentity, useRunaDomScope } from '../dom-id'
+
+export type ScrollAreaProps = React.HTMLAttributes<HTMLDivElement> & {
+  runaComponent?: string
+}
 
 const scrollAreaStyle: React.CSSProperties = {
   boxSizing: 'border-box',
@@ -16,8 +20,22 @@ const scrollAreaStyle: React.CSSProperties = {
 }
 
 export const ScrollArea = React.forwardRef<HTMLDivElement, ScrollAreaProps>(function ScrollArea(
-  { style, ...props },
+  { id, runaComponent, style, ...props },
   ref,
 ) {
-  return <div {...props} ref={ref} style={{ ...scrollAreaStyle, ...style }} />
+  const scope = useRunaDomScope()
+  const identity = useRunaDomIdentity(runaComponent ?? `${scope.component}-scroll-area`, id)
+
+  return (
+    <div
+      {...props}
+      ref={ref}
+      data-runa-component={identity.scope.component}
+      data-runa-layout={identity.scope.layout}
+      data-runa-node={identity.node}
+      data-runa-widget={identity.scope.widget}
+      id={identity.id}
+      style={{ ...scrollAreaStyle, ...style }}
+    />
+  )
 })

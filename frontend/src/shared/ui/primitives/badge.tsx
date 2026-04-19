@@ -1,6 +1,10 @@
 import type * as React from 'react'
 
-export type BadgeProps = React.HTMLAttributes<HTMLSpanElement>
+import { useRunaDomIdentity, useRunaDomScope } from '../dom-id'
+
+export type BadgeProps = React.HTMLAttributes<HTMLSpanElement> & {
+  runaComponent?: string
+}
 
 const badgeStyle: React.CSSProperties = {
   boxSizing: 'border-box',
@@ -18,6 +22,19 @@ const badgeStyle: React.CSSProperties = {
   whiteSpace: 'nowrap',
 }
 
-export function Badge({ style, ...props }: BadgeProps) {
-  return <span {...props} style={{ ...badgeStyle, ...style }} />
+export function Badge({ id, runaComponent, style, ...props }: BadgeProps) {
+  const scope = useRunaDomScope()
+  const identity = useRunaDomIdentity(runaComponent ?? `${scope.component}-badge`, id)
+
+  return (
+    <span
+      {...props}
+      data-runa-component={identity.scope.component}
+      data-runa-layout={identity.scope.layout}
+      data-runa-node={identity.node}
+      data-runa-widget={identity.scope.widget}
+      id={identity.id}
+      style={{ ...badgeStyle, ...style }}
+    />
+  )
 }

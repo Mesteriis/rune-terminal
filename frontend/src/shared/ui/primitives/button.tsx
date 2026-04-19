@@ -1,6 +1,10 @@
 import type * as React from 'react'
 
-export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement>
+import { useRunaDomIdentity, useRunaDomScope } from '../dom-id'
+
+export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+  runaComponent?: string
+}
 
 const buttonStyle: React.CSSProperties = {
   boxSizing: 'border-box',
@@ -22,6 +26,25 @@ const buttonStyle: React.CSSProperties = {
   cursor: 'pointer',
 }
 
-export function Button({ style, type = 'button', ...props }: ButtonProps) {
-  return <button {...props} type={type} style={{ ...buttonStyle, ...style }} />
+export function Button({ id, runaComponent, style, type = 'button', ...props }: ButtonProps) {
+  const scope = useRunaDomScope()
+  const semanticComponent =
+    runaComponent ??
+    (typeof props['aria-label'] === 'string' && props['aria-label'].trim() !== ''
+      ? props['aria-label']
+      : `${scope.component}-button`)
+  const identity = useRunaDomIdentity(semanticComponent, id)
+
+  return (
+    <button
+      {...props}
+      data-runa-component={identity.scope.component}
+      data-runa-layout={identity.scope.layout}
+      data-runa-node={identity.node}
+      data-runa-widget={identity.scope.widget}
+      id={identity.id}
+      type={type}
+      style={{ ...buttonStyle, ...style }}
+    />
+  )
 }
