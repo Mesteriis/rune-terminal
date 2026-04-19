@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react'
 
+import { RunaDomScopeProvider, useRunaDomAutoTagging } from '../shared/ui/dom-id'
 import { Box } from '../shared/ui/primitives'
 import {
-  TerminalStatusHeader,
   TerminalSurface,
   TerminalToolbar,
   type TerminalSurfaceHandle,
@@ -13,7 +13,6 @@ import {
 export type TerminalWidgetProps = {
   children?: React.ReactNode
   hostId: string
-  title: string
   cwd: string
   shellLabel: string
   connectionKind: TerminalConnectionKind
@@ -39,7 +38,6 @@ const rootStyle = {
 export function TerminalWidget({
   children,
   hostId,
-  title,
   cwd,
   shellLabel,
   connectionKind,
@@ -47,51 +45,52 @@ export function TerminalWidget({
   introLines,
 }: TerminalWidgetProps) {
   const terminalSurfaceRef = useRef<TerminalSurfaceHandle | null>(null)
+  const terminalRootRef = useRunaDomAutoTagging('terminal-widget-root')
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [rendererMode, setRendererMode] = useState<'default' | 'webgl'>('default')
 
   return (
-    <Box data-runa-terminal-root="" style={rootStyle}>
-      <TerminalStatusHeader
-        connectionKind={connectionKind}
-        cwd={cwd}
-        sessionState={sessionState}
-        shellLabel={shellLabel}
-        title={title}
-      />
-      <TerminalToolbar
-        isSearchOpen={isSearchOpen}
-        onCloseSearch={() => setIsSearchOpen(false)}
-        onCopy={() => {
-          void terminalSurfaceRef.current?.copySelection()
-        }}
-        onPaste={() => {
-          void terminalSurfaceRef.current?.pasteFromClipboard()
-        }}
-        onSearchNext={() => {
-          terminalSurfaceRef.current?.findNext(searchQuery)
-        }}
-        onSearchPrevious={() => {
-          terminalSurfaceRef.current?.findPrevious(searchQuery)
-        }}
-        onSearchQueryChange={setSearchQuery}
-        onToggleSearch={() => setIsSearchOpen((value) => !value)}
-        rendererMode={rendererMode}
-        searchQuery={searchQuery}
-      />
-      {children ?? null}
-      <TerminalSurface
-        connectionKind={connectionKind}
-        cwd={cwd}
-        hostId={hostId}
-        introLines={introLines}
-        onRendererModeChange={setRendererMode}
-        onRequestSearch={() => setIsSearchOpen(true)}
-        ref={terminalSurfaceRef}
-        sessionState={sessionState}
-        shellLabel={shellLabel}
-      />
-    </Box>
+    <RunaDomScopeProvider component="terminal-widget" widget={hostId}>
+      <Box
+        data-runa-terminal-root=""
+        ref={terminalRootRef}
+        runaComponent="terminal-widget-root"
+        style={rootStyle}
+      >
+        <TerminalToolbar
+          isSearchOpen={isSearchOpen}
+          onCloseSearch={() => setIsSearchOpen(false)}
+          onCopy={() => {
+            void terminalSurfaceRef.current?.copySelection()
+          }}
+          onPaste={() => {
+            void terminalSurfaceRef.current?.pasteFromClipboard()
+          }}
+          onSearchNext={() => {
+            terminalSurfaceRef.current?.findNext(searchQuery)
+          }}
+          onSearchPrevious={() => {
+            terminalSurfaceRef.current?.findPrevious(searchQuery)
+          }}
+          onSearchQueryChange={setSearchQuery}
+          onToggleSearch={() => setIsSearchOpen((value) => !value)}
+          rendererMode={rendererMode}
+          searchQuery={searchQuery}
+        />
+        {children ?? null}
+        <TerminalSurface
+          connectionKind={connectionKind}
+          cwd={cwd}
+          hostId={hostId}
+          introLines={introLines}
+          onRendererModeChange={setRendererMode}
+          onRequestSearch={() => setIsSearchOpen(true)}
+          ref={terminalSurfaceRef}
+          sessionState={sessionState}
+          shellLabel={shellLabel}
+        />
+      </Box>
+    </RunaDomScopeProvider>
   )
 }
