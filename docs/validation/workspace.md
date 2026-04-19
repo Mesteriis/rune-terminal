@@ -39,6 +39,7 @@
   - the shared UI layer now exposes a tokenized dark-glass surface system with dark emerald and cold-tea accents, semantic spacing/padding scales, blur/shadow tokens, and reduced shell radii
   - Dockview fills the remaining main viewport beside the full-height right rail and boots three base panels from `onReady`
   - single-tab widget headers render as narrow title headers instead of tab-strip selectors
+  - single-tab Dockview headers now use a `48px` height, doubling the previous `24px` terminal/header chrome
   - single-tab widget drag can start from the full header area, not only the title text
   - the top `AI` button now mounts a shell-managed left panel instead of creating a special Dockview group
   - the AI panel width is now resized through a dedicated shell sash, while the workspace remains pure Dockview on the right
@@ -121,6 +122,7 @@
 - A fresh headless smoke on `http://127.0.0.1:5173` confirmed terminal status header content now renders inside Dockview tab chrome for both terminal groups, with `terminal-status-header-*` nodes resolving from inside both `.dv-scrollable` and `.dv-tab`.
 - The same smoke confirmed the workspace terminal header plus button adds a sibling terminal tab in-place: the workspace terminal group moved from `tabs=1` to `tabs=2` while the other groups stayed unchanged.
 - A follow-up headless smoke on `http://127.0.0.1:5173` confirmed the multi-tab terminal header behavior: the workspace terminal group rendered exactly one `terminal-tab-add` control total, while the inactive terminal tab rendered `metaCount=0` and the active one rendered `metaCount=3`.
+- A fresh headless smoke on `http://127.0.0.1:5173` confirmed all rendered `.dv-tabs-and-actions-container.dv-single-tab` headers now resolve to `height=48` and `cssHeight=48px`.
 - Static validation confirmed the first addon wave on the terminal renderer slice: `@xterm/addon-search@0.16.0`, `@xterm/addon-web-links@0.12.0`, `@xterm/addon-clipboard@0.2.0`, and `@xterm/addon-webgl@0.19.0`, plus the new `TerminalToolbar` control strip above the surface.
 - Static validation confirmed the commander slice primitive additions are generic rather than widget-specific: `Badge`, `ScrollArea`, `Separator`, and `Surface` live under `shared/ui/primitives` and import no app or widget code.
 - Static validation confirmed the commander surface renders from local JSON-backed mock state only via `frontend/src/widgets/commander-widget.mock.json` and `frontend/src/widgets/commander-widget.mock.ts`.
