@@ -4,9 +4,13 @@ import { useEffect, useMemo } from 'react'
 import { getCommanderSelectedSize, createCommanderWidgetRuntimeState } from './fake-client'
 import {
   $commanderWidgets,
+  copyCommanderActivePaneSelection,
+  deleteCommanderActivePaneSelection,
   goCommanderActivePaneParent,
   goCommanderPaneParent,
+  mkdirCommanderActivePaneDirectory,
   mountCommanderWidget,
+  moveCommanderActivePaneSelection,
   moveCommanderActivePaneCursor,
   openCommanderActivePaneEntry,
   openCommanderPaneEntry,
@@ -132,6 +136,10 @@ export function useCommanderActions(widgetId: string) {
     onMoveCommanderActivePaneCursor,
     onOpenCommanderActivePaneEntry,
     onToggleCommanderActivePaneSelection,
+    onCopyCommanderActivePaneSelection,
+    onMoveCommanderActivePaneSelection,
+    onDeleteCommanderActivePaneSelection,
+    onMkdirCommanderActivePaneDirectory,
     onGoCommanderActivePaneParent,
     onSwitchCommanderActivePane,
     onSetCommanderPaneBoundaryCursor,
@@ -140,6 +148,10 @@ export function useCommanderActions(widgetId: string) {
     moveCommanderActivePaneCursor,
     openCommanderActivePaneEntry,
     toggleCommanderActivePaneSelection,
+    copyCommanderActivePaneSelection,
+    moveCommanderActivePaneSelection,
+    deleteCommanderActivePaneSelection,
+    mkdirCommanderActivePaneDirectory,
     goCommanderActivePaneParent,
     switchCommanderActivePane,
     setCommanderPaneBoundaryCursor,
@@ -147,8 +159,12 @@ export function useCommanderActions(widgetId: string) {
   ])
 
   return {
+    copySelection: () => onCopyCommanderActivePaneSelection({ widgetId }),
+    deleteSelection: () => onDeleteCommanderActivePaneSelection({ widgetId }),
     goPaneParent: (paneId: CommanderPaneId) => onGoCommanderPaneParent({ widgetId, paneId }),
     goParent: () => onGoCommanderActivePaneParent({ widgetId }),
+    mkdir: () => onMkdirCommanderActivePaneDirectory({ widgetId }),
+    moveSelection: () => onMoveCommanderActivePaneSelection({ widgetId }),
     moveCursor: (delta: number) => onMoveCommanderActivePaneCursor({ widgetId, delta }),
     openActiveEntry: () => onOpenCommanderActivePaneEntry({ widgetId }),
     setBoundaryCursor: (paneId: CommanderPaneId, boundary: 'start' | 'end') => (

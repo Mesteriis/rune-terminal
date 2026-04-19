@@ -27,6 +27,12 @@ type CommanderClientState = {
   directories: Map<string, CommanderSeedEntry[]>
 }
 
+type CommanderMutationParams = {
+  widgetId: string
+  path: string
+  entryIds: string[]
+}
+
 const INITIAL_LEFT_PATH = commanderWidgetMockState.leftPane.path
 const INITIAL_RIGHT_PATH = commanderWidgetMockState.rightPane.path
 const clients = new Map<string, CommanderClientState>()
@@ -164,8 +170,174 @@ function joinPath(parentPath: string, segment: string) {
   return `${parentPath}/${segment}`
 }
 
+function splitEntryName(entry: CommanderSeedEntry) {
+  return entry.name
+}
+
+function ensureDirectory(client: CommanderClientState, path: string) {
+  const existingEntries = client.directories.get(path)
+
+  if (existingEntries) {
+    return existingEntries
+  }
+
+  const nextEntries: CommanderSeedEntry[] = []
+  client.directories.set(path, nextEntries)
+  return nextEntries
+}
+
+function getUniqueEntryName(
+  client: CommanderClientState,
+  directoryPath: string,
+  baseName: string,
+) {
+  const existingNames = new Set((client.directories.get(directoryPath) ?? []).map((entry) => entry.name.toLowerCase()))
+
+  if (!existingNames.has(baseName.toLowerCase())) {
+    return baseName
+  }
+
+  let index = 1
+
+  while (true) {
+    const nextName = `${baseName}-copy${index === 1 ? '' : `-${index}`}`
+
+    if (!existingNames.has(nextName.toLowerCase())) {
+      return nextName
+    }
+
+    index += 1
+  }
+}
+
+function getUniqueDirectoryName(
+  client: CommanderClientState,
+  directoryPath: string,
+  baseName: string,
+) {
+  const existingNames = new Set((client.directories.get(directoryPath) ?? []).map((entry) => entry.name.toLowerCase()))
+
+  if (!existingNames.has(baseName.toLowerCase())) {
+    return baseName
+  }
+
+  let index = 2
+
+  while (true) {
+    const nextName = `${baseName} ${index}`
+
+    if (!existingNames.has(nextName.toLowerCase())) {
+      return nextName
+    }
+
+    index += 1
+  }
+}
+
 function formatItemCountLabel(itemCount: number) {
   return `${itemCount} item${itemCount === 1 ? '' : 's'}`
+}
+
+function cloneSeedEntryForDirectory(entry: CommanderSeedEntry, directoryPath: string, name = entry.name): CommanderSeedEntry {
+  return {
+    ...structuredClone(entry),
+    id: toSeedEntryId(directoryPath, name),
+    name,
+  }
+}
+
+function syncDirectoryMetadata(client: CommanderClientState, path: string) {
+  const parentPath = getParentPath(path)
+
+  if (!parentPath) {
+    return
+  }
+
+  const parentEntries = client.directories.get(parentPath)
+
+  if (!parentEntries) {
+    return
+  }
+
+  const targetName = getBaseName(path)
+  const nextEntries = parentEntries.map((entry) => {
+    if (entry.kind !== 'folder' || entry.name !== targetName) {
+      return entry
+    }
+
+    return {
+      ...entry,
+      sizeLabel: formatItemCountLabel((client.directories.get(path) ?? []).length),
+    }
+  })
+
+  client.directories.set(parentPath, nextEntries)
+}
+
+function cloneDirectorySubtree(
+  client: CommanderClientState,
+  sourcePath: string,
+  targetPath: string,
+) {
+  const sourceSubtreePaths = Array.from(client.directories.keys())
+    .filter((candidatePath) => candidatePath === sourcePath || candidatePath.startsWith(`${sourcePath}/`))
+    .sort((leftPath, rightPath) => leftPath.length - rightPath.length)
+
+  sourceSubtreePaths.forEach((currentSourcePath) => {
+    const relativePath = currentSourcePath === sourcePath
+      ? ''
+      : currentSourcePath.slice(sourcePath.length + 1)
+    const currentTargetPath = relativePath ? `${targetPath}/${relativePath}` : targetPath
+    const sourceEntries = client.directories.get(currentSourcePath) ?? []
+    const clonedEntries = sourceEntries.map((entry) => cloneSeedEntryForDirectory(entry, currentTargetPath))
+
+    client.directories.set(currentTargetPath, clonedEntries)
+  })
+}
+
+function removeDirectorySubtree(
+  client: CommanderClientState,
+  path: string,
+) {
+  Array.from(client.directories.keys())
+    .filter((candidatePath) => candidatePath === path || candidatePath.startsWith(`${path}/`))
+    .forEach((candidatePath) => {
+      client.directories.delete(candidatePath)
+    })
+}
+
+function mutateEntryList(
+  client: CommanderClientState,
+  path: string,
+  updater: (entries: CommanderSeedEntry[]) => CommanderSeedEntry[],
+) {
+  const currentEntries = ensureDirectory(client, path)
+  const nextEntries = updater([...currentEntries])
+
+  client.directories.set(path, nextEntries)
+  syncDirectoryMetadata(client, path)
+}
+
+function copyEntryIntoDirectory(
+  client: CommanderClientState,
+  sourcePath: string,
+  targetPath: string,
+  entry: CommanderSeedEntry,
+) {
+  const nextName = getUniqueEntryName(client, targetPath, splitEntryName(entry))
+  const copiedEntry = cloneSeedEntryForDirectory(entry, targetPath, nextName)
+
+  mutateEntryList(client, targetPath, (entries) => [...entries, copiedEntry])
+
+  if (entry.kind === 'folder') {
+    const sourceDirectoryPath = joinPath(sourcePath, entry.name)
+    const targetDirectoryPath = joinPath(targetPath, copiedEntry.name)
+
+    cloneDirectorySubtree(client, sourceDirectoryPath, targetDirectoryPath)
+    syncDirectoryMetadata(client, targetDirectoryPath)
+  }
+
+  return copiedEntry
 }
 
 function buildSeedDirectories() {
@@ -480,10 +652,136 @@ export function getCommanderParentPath(path: string) {
   return getParentPath(path)
 }
 
+export function resolveCommanderExistingPath(widgetId: string, path: string) {
+  const client = getClient(widgetId)
+  let currentPath = path
+
+  while (!client.directories.has(currentPath)) {
+    const parentPath = getParentPath(currentPath)
+
+    if (!parentPath) {
+      return '~'
+    }
+
+    currentPath = parentPath
+  }
+
+  return currentPath
+}
+
 export function getCommanderSelectedSize(entries: CommanderDirectoryEntry[], selectedIds: string[]) {
   const totalBytes = entries
     .filter((entry) => selectedIds.includes(entry.id))
     .reduce((currentTotal, entry) => currentTotal + (entry.sizeBytes ?? 0), 0)
 
   return formatSelectedSize(totalBytes)
+}
+
+export function copyCommanderEntries({
+  widgetId,
+  path,
+  entryIds,
+  targetPath,
+}: CommanderMutationParams & {
+  targetPath: string
+}) {
+  const client = getClient(widgetId)
+  const sourceEntries = client.directories.get(path) ?? []
+
+  entryIds.forEach((entryId) => {
+    const entry = sourceEntries.find((candidateEntry) => createEntry(candidateEntry, path).id === entryId)
+
+    if (!entry) {
+      return
+    }
+
+    copyEntryIntoDirectory(client, path, targetPath, entry)
+  })
+}
+
+export function moveCommanderEntries({
+  widgetId,
+  path,
+  entryIds,
+  targetPath,
+}: CommanderMutationParams & {
+  targetPath: string
+}) {
+  if (path === targetPath) {
+    return
+  }
+
+  const client = getClient(widgetId)
+  const sourceEntries = client.directories.get(path) ?? []
+  const movedEntryIds = new Set(entryIds)
+
+  sourceEntries
+    .filter((entry) => movedEntryIds.has(createEntry(entry, path).id))
+    .forEach((entry) => {
+      if (entry.kind === 'folder') {
+        const sourceDirectoryPath = joinPath(path, entry.name)
+
+        if (targetPath === sourceDirectoryPath || targetPath.startsWith(`${sourceDirectoryPath}/`)) {
+          return
+        }
+      }
+
+      copyEntryIntoDirectory(client, path, targetPath, entry)
+
+      if (entry.kind === 'folder') {
+        removeDirectorySubtree(client, joinPath(path, entry.name))
+      }
+
+      mutateEntryList(client, path, (entries) => (
+        entries.filter((candidateEntry) => createEntry(candidateEntry, path).id !== createEntry(entry, path).id)
+      ))
+    })
+}
+
+export function deleteCommanderEntries({
+  widgetId,
+  path,
+  entryIds,
+}: CommanderMutationParams) {
+  const client = getClient(widgetId)
+  const sourceEntries = client.directories.get(path) ?? []
+  const deletedEntryIds = new Set(entryIds)
+
+  sourceEntries
+    .filter((entry) => deletedEntryIds.has(createEntry(entry, path).id))
+    .forEach((entry) => {
+      if (entry.kind === 'folder') {
+        removeDirectorySubtree(client, joinPath(path, entry.name))
+      }
+    })
+
+  mutateEntryList(client, path, (entries) => (
+    entries.filter((entry) => !deletedEntryIds.has(createEntry(entry, path).id))
+  ))
+}
+
+export function mkdirCommanderDirectory(widgetId: string, path: string) {
+  const client = getClient(widgetId)
+  const nextName = getUniqueDirectoryName(client, path, 'New folder')
+  const nextPath = joinPath(path, nextName)
+  const nextEntry = cloneSeedEntryForDirectory(
+    {
+      name: nextName,
+      ext: '',
+      kind: 'folder',
+      sizeLabel: '0 items',
+      modified: '2026-04-20 12:00',
+    },
+    path,
+    nextName,
+  )
+
+  ensureDirectory(client, nextPath)
+  mutateEntryList(client, path, (entries) => [...entries, nextEntry])
+  syncDirectoryMetadata(client, nextPath)
+
+  return {
+    entryId: nextEntry.id ?? toSeedEntryId(path, nextName),
+    path: nextPath,
+  }
 }

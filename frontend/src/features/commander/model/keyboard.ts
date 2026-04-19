@@ -75,6 +75,22 @@ export function useCommanderKeyboard(widgetId: string, activePane: CommanderPane
         event.preventDefault()
         commanderActions.toggleSelectionAtCursor(false)
         return
+      case 'F5':
+        event.preventDefault()
+        commanderActions.copySelection()
+        return
+      case 'F6':
+        event.preventDefault()
+        commanderActions.moveSelection()
+        return
+      case 'F7':
+        event.preventDefault()
+        commanderActions.mkdir()
+        return
+      case 'F8':
+        event.preventDefault()
+        commanderActions.deleteSelection()
+        return
       default:
         return
     }

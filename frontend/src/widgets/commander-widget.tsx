@@ -2,7 +2,7 @@ import { Columns2, Columns3, Eye, EyeOff, Folder, FileCode2, FileText, Link2, Sq
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 
 import { useCommanderKeyboard } from '../features/commander/model/keyboard'
-import { useCommanderWidget } from '../features/commander/model/hooks'
+import { useCommanderActions, useCommanderWidget } from '../features/commander/model/hooks'
 import type { CommanderFileRow, CommanderPaneViewState, CommanderWidgetViewState } from '../features/commander/model/types'
 import { RunaDomScopeProvider, useRunaDomAutoTagging, useRunaDomScope } from '../shared/ui/dom-id'
 import { Badge, Box, ScrollArea, Separator, Surface, Text } from '../shared/ui/primitives'
@@ -10,6 +10,7 @@ import { IconButton } from '../shared/ui/components'
 
 import {
   commanderFooterTextStyle,
+  commanderHintActionStyle,
   commanderHeaderClusterStyle,
   commanderHeaderStyle,
   commanderIconControlStyle,
@@ -234,6 +235,7 @@ function CommanderPane({
 export function CommanderWidget() {
   const { widget: widgetId } = useRunaDomScope()
   const { actions, state } = useCommanderWidget(widgetId)
+  const commanderActions = useCommanderActions(widgetId)
   const onCommanderKeyDownCapture = useCommanderKeyboard(widgetId, state.activePane)
   const autoTagCommanderRoot = useRunaDomAutoTagging('commander-root')
   const commanderRootRef = useRef<HTMLDivElement | null>(null)
@@ -248,6 +250,30 @@ export function CommanderWidget() {
       preventScroll: true,
     })
   }, [])
+
+  const handleHintAction = useCallback((hintKey: string) => {
+    switch (hintKey) {
+      case 'F3':
+        commanderActions.openActiveEntry()
+        break
+      case 'F5':
+        commanderActions.copySelection()
+        break
+      case 'F6':
+        commanderActions.moveSelection()
+        break
+      case 'F7':
+        commanderActions.mkdir()
+        break
+      case 'F8':
+        commanderActions.deleteSelection()
+        break
+      default:
+        break
+    }
+
+    focusCommanderRoot()
+  }, [commanderActions, focusCommanderRoot])
 
   return (
     <RunaDomScopeProvider component="commander-widget">
@@ -321,7 +347,17 @@ export function CommanderWidget() {
       </Box>
       <Surface runaComponent="commander-hint-bar" style={commanderHintBarStyle}>
         {state.footerHints.map((hint) => (
-          <Box key={hint.key} runaComponent={`commander-hint-${hint.key.toLowerCase()}`} style={commanderHintCellStyle}>
+          <Box
+            key={hint.key}
+            onClick={() => handleHintAction(hint.key)}
+            role="button"
+            runaComponent={`commander-hint-${hint.key.toLowerCase()}`}
+            style={{
+              ...commanderHintCellStyle,
+              ...commanderHintActionStyle,
+            }}
+            tabIndex={-1}
+          >
             <Text runaComponent={`commander-hint-${hint.key.toLowerCase()}-key`} style={commanderHintKeyStyle}>{hint.key}</Text>
             <Text runaComponent={`commander-hint-${hint.key.toLowerCase()}-label`} style={commanderHintLabelStyle}>{hint.label}</Text>
           </Box>

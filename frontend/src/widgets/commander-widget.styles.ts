@@ -322,6 +322,12 @@ export const commanderHintCellStyle: CSSProperties = {
   background: 'rgba(9, 16, 15, 0.98)',
 }
 
+export const commanderHintActionStyle: CSSProperties = {
+  width: '100%',
+  justifyContent: 'flex-start',
+  cursor: 'pointer',
+}
+
 export const commanderHintKeyStyle: CSSProperties = {
   color: 'var(--runa-commander-key-color)',
   fontFamily: 'var(--font-family-mono)',

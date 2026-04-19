@@ -1,10 +1,15 @@
 import { createEvent, createStore } from 'effector'
 
 import {
+  copyCommanderEntries,
   createCommanderWidgetRuntimeState,
+  deleteCommanderEntries,
   getCommanderParentPath,
+  mkdirCommanderDirectory,
+  moveCommanderEntries,
   openCommanderEntry,
   readCommanderDirectory,
+  resolveCommanderExistingPath,
 } from './fake-client'
 import type {
   CommanderPaneId,
@@ -81,21 +86,22 @@ function rebuildPaneState(
   paneState: CommanderPaneRuntimeState,
   nextPath = paneState.path,
 ) {
-  const snapshot = readCommanderDirectory(widgetState.widgetId, nextPath, {
+  const resolvedPath = resolveCommanderExistingPath(widgetState.widgetId, nextPath)
+  const snapshot = readCommanderDirectory(widgetState.widgetId, resolvedPath, {
     showHidden: widgetState.showHidden,
     sortMode: widgetState.sortMode,
   })
   const visibleEntryIds = new Set(snapshot.entries.map((entry) => entry.id))
-  const nextSelectedIds = paneState.path === nextPath
+  const nextSelectedIds = paneState.path === resolvedPath
     ? paneState.selectedIds.filter((entryId) => visibleEntryIds.has(entryId))
     : []
-  const nextCursorEntryId = paneState.path === nextPath && paneState.cursorEntryId && visibleEntryIds.has(paneState.cursorEntryId)
+  const nextCursorEntryId = paneState.path === resolvedPath && paneState.cursorEntryId && visibleEntryIds.has(paneState.cursorEntryId)
     ? paneState.cursorEntryId
     : (snapshot.entries[0]?.id ?? null)
 
   return {
     ...paneState,
-    path: nextPath,
+    path: resolvedPath,
     entries: snapshot.entries,
     selectedIds: nextSelectedIds,
     cursorEntryId: nextCursorEntryId,
@@ -179,6 +185,40 @@ function toggleEntrySelection(
   }
 }
 
+function refreshWidgetPanes(
+  widgetState: CommanderWidgetRuntimeState,
+  overrides?: {
+    leftPane?: Partial<CommanderPaneRuntimeState>
+    rightPane?: Partial<CommanderPaneRuntimeState>
+  },
+) {
+  const nextWidgetState = {
+    ...widgetState,
+    leftPane: {
+      ...widgetState.leftPane,
+      ...overrides?.leftPane,
+    },
+    rightPane: {
+      ...widgetState.rightPane,
+      ...overrides?.rightPane,
+    },
+  }
+
+  return {
+    ...nextWidgetState,
+    leftPane: rebuildPaneState(nextWidgetState, nextWidgetState.leftPane),
+    rightPane: rebuildPaneState(nextWidgetState, nextWidgetState.rightPane),
+  }
+}
+
+function getOperationEntryIds(paneState: CommanderPaneRuntimeState) {
+  if (paneState.selectedIds.length > 0) {
+    return paneState.selectedIds
+  }
+
+  return paneState.cursorEntryId ? [paneState.cursorEntryId] : []
+}
+
 export const mountCommanderWidget = createEvent<string>()
 export const setCommanderActivePane = createEvent<CommanderWidgetPanePayload>()
 export const toggleCommanderShowHidden = createEvent<CommanderWidgetPayload>()
@@ -195,6 +235,10 @@ export const goCommanderPaneParent = createEvent<CommanderWidgetPanePayload>()
 export const goCommanderActivePaneParent = createEvent<CommanderWidgetPayload>()
 export const switchCommanderActivePane = createEvent<CommanderWidgetPayload>()
 export const setCommanderPaneBoundaryCursor = createEvent<CommanderWidgetPanePayload & { boundary: 'start' | 'end' }>()
+export const copyCommanderActivePaneSelection = createEvent<CommanderWidgetPayload>()
+export const moveCommanderActivePaneSelection = createEvent<CommanderWidgetPayload>()
+export const deleteCommanderActivePaneSelection = createEvent<CommanderWidgetPayload>()
+export const mkdirCommanderActivePaneDirectory = createEvent<CommanderWidgetPayload>()
 
 export const $commanderWidgets = createStore<Record<string, CommanderWidgetRuntimeState>>({})
   .on(mountCommanderWidget, (widgets, widgetId) => {
@@ -515,5 +559,106 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
         payload.paneId,
         (paneState) => setCursorToBoundary(paneState, payload.boundary),
       ),
+    }
+  })
+  .on(copyCommanderActivePaneSelection, (widgets, payload) => {
+    const widgetState = widgets[payload.widgetId]
+
+    if (!widgetState) {
+      return widgets
+    }
+
+    const sourcePane = getPaneState(widgetState, widgetState.activePane)
+    const targetPaneId = widgetState.activePane === 'left' ? 'right' : 'left'
+    const targetPane = getPaneState(widgetState, targetPaneId)
+    const entryIds = getOperationEntryIds(sourcePane)
+
+    if (entryIds.length === 0) {
+      return widgets
+    }
+
+    copyCommanderEntries({
+      widgetId: payload.widgetId,
+      path: sourcePane.path,
+      targetPath: targetPane.path,
+      entryIds,
+    })
+
+    return {
+      ...widgets,
+      [payload.widgetId]: refreshWidgetPanes(widgetState),
+    }
+  })
+  .on(moveCommanderActivePaneSelection, (widgets, payload) => {
+    const widgetState = widgets[payload.widgetId]
+
+    if (!widgetState) {
+      return widgets
+    }
+
+    const sourcePane = getPaneState(widgetState, widgetState.activePane)
+    const targetPaneId = widgetState.activePane === 'left' ? 'right' : 'left'
+    const targetPane = getPaneState(widgetState, targetPaneId)
+    const entryIds = getOperationEntryIds(sourcePane)
+
+    if (entryIds.length === 0 || sourcePane.path === targetPane.path) {
+      return widgets
+    }
+
+    moveCommanderEntries({
+      widgetId: payload.widgetId,
+      path: sourcePane.path,
+      targetPath: targetPane.path,
+      entryIds,
+    })
+
+    return {
+      ...widgets,
+      [payload.widgetId]: refreshWidgetPanes(widgetState),
+    }
+  })
+  .on(deleteCommanderActivePaneSelection, (widgets, payload) => {
+    const widgetState = widgets[payload.widgetId]
+
+    if (!widgetState) {
+      return widgets
+    }
+
+    const activePane = getPaneState(widgetState, widgetState.activePane)
+    const entryIds = getOperationEntryIds(activePane)
+
+    if (entryIds.length === 0) {
+      return widgets
+    }
+
+    deleteCommanderEntries({
+      widgetId: payload.widgetId,
+      path: activePane.path,
+      entryIds,
+    })
+
+    return {
+      ...widgets,
+      [payload.widgetId]: refreshWidgetPanes(widgetState),
+    }
+  })
+  .on(mkdirCommanderActivePaneDirectory, (widgets, payload) => {
+    const widgetState = widgets[payload.widgetId]
+
+    if (!widgetState) {
+      return widgets
+    }
+
+    const activePane = getPaneState(widgetState, widgetState.activePane)
+    const mkdirResult = mkdirCommanderDirectory(payload.widgetId, activePane.path)
+
+    return {
+      ...widgets,
+      [payload.widgetId]: refreshWidgetPanes(widgetState, {
+        [widgetState.activePane === 'left' ? 'leftPane' : 'rightPane']: {
+          cursorEntryId: mkdirResult.entryId,
+          selectedIds: [],
+        },
+      }),
     }
   })
