@@ -48,6 +48,17 @@ const iconButtonStyle = {
   overflow: 'hidden',
 }
 
+const aiToggleButtonStyle = {
+  ...iconButtonStyle,
+  padding: 0,
+  border: 'none',
+  background: 'transparent',
+  borderRadius: 0,
+  boxShadow: 'none',
+  backdropFilter: 'none',
+  WebkitBackdropFilter: 'none',
+}
+
 const actionIconProps = {
   size: 16,
   strokeWidth: 1.75,
@@ -77,7 +88,7 @@ export function ShellTopbarWidget({ isAiOpen, onToggleAi }: ShellTopbarWidgetPro
         aria-label="Toggle AI panel"
         aria-pressed={isAiOpen}
         onClick={onToggleAi}
-        style={iconButtonStyle}
+        style={aiToggleButtonStyle}
       >
         <Avatar size="100%" src={aiAgentButtonLogo} style={aiToggleAvatarStyle} />
       </Button>
