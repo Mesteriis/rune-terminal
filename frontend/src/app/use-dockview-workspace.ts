@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { type DockviewApi, type DockviewReadyEvent } from 'dockview-react'
 
+import { addDockviewWorkspace, selectDockviewWorkspace } from './dockview-workspace.actions'
 import { dockviewWorkspaceClient, type DockviewWorkspaceClient } from './dockview-workspace.client'
 import {
   createDefaultWorkspaceTabs,
@@ -19,7 +20,6 @@ import { resolveDockviewWorkspaceReadyState } from './dockview-workspace.ready'
 import {
   applyDockviewWorkspaceSnapshot,
   captureDockviewWorkspaceSnapshot,
-  createDockviewWorkspaceTab,
   readDockviewWorkspaceSnapshot,
   writeDockviewWorkspaceSnapshot,
 } from './dockview-workspace.snapshots'
@@ -56,6 +56,11 @@ export function useDockviewWorkspace({ client = dockviewWorkspaceClient }: UseDo
     const nextTabs = updater(workspaceTabsRef.current)
     workspaceTabsRef.current = nextTabs
     setWorkspaceTabs(nextTabs)
+  }
+
+  const activateWorkspace = (workspaceId: number) => {
+    activeWorkspaceIdRef.current = workspaceId
+    setActiveWorkspaceId(workspaceId)
   }
 
   const disposeDockviewPersistenceBindings = () => {
@@ -119,32 +124,23 @@ export function useDockviewWorkspace({ client = dockviewWorkspaceClient }: UseDo
   }
 
   const handleSelectWorkspace = (workspaceId: number) => {
-    if (workspaceId === activeWorkspaceIdRef.current) {
-      return
-    }
-
-    persistCurrentWorkspaceSnapshot()
-    activeWorkspaceIdRef.current = workspaceId
-    setActiveWorkspaceId(workspaceId)
-    restoreWorkspaceSnapshot(workspaceId)
+    selectDockviewWorkspace({
+      currentActiveWorkspaceId: activeWorkspaceIdRef.current,
+      nextWorkspaceId: workspaceId,
+      persistCurrentWorkspaceSnapshot,
+      restoreWorkspaceSnapshot,
+      setActiveWorkspaceId: activateWorkspace,
+    })
   }
 
   const handleAddWorkspace = () => {
-    persistCurrentWorkspaceSnapshot()
-
-    const nextWorkspace = createDockviewWorkspaceTab(workspaceTabsRef.current)
-    const nextWorkspaceId = nextWorkspace.id
-
-    updateWorkspaceTabs((tabs) => [...tabs, nextWorkspace])
-    activeWorkspaceIdRef.current = nextWorkspaceId
-    setActiveWorkspaceId(nextWorkspaceId)
-
-    const api = dockviewApiRef.current
-
-    if (api) {
-      api.clear()
-      scheduleDockviewLayoutSync()
-    }
+    addDockviewWorkspace({
+      persistCurrentWorkspaceSnapshot,
+      restoreWorkspaceSnapshot,
+      setActiveWorkspaceId: activateWorkspace,
+      updateWorkspaceTabs,
+      workspaceTabs: workspaceTabsRef.current,
+    })
   }
 
   const handleDockviewReady = (event: DockviewReadyEvent) => {
