@@ -208,9 +208,10 @@ export function formatPendingOperationMessage(state: CommanderWidgetViewState) {
     return null
   }
 
-  const selectionLabel = pendingOperation.entryNames.length === 1
-    ? pendingOperation.entryNames[0]
-    : `${pendingOperation.entryNames.length} items`
+  const selectionLabel =
+    pendingOperation.entryNames.length === 1
+      ? pendingOperation.entryNames[0]
+      : `${pendingOperation.entryNames.length} items`
 
   switch (pendingOperation.kind) {
     case 'copy':
@@ -257,14 +258,18 @@ export function formatPendingOperationMessage(state: CommanderWidgetViewState) {
 }
 
 export function isPendingOperationBlocking(state: CommanderWidgetViewState) {
-  return Boolean(state.pendingOperation?.duplicateTargetNames?.length)
+  const pendingOperation = state.pendingOperation
+
+  return Boolean(
+    pendingOperation && pendingOperation.kind === 'rename' && pendingOperation.duplicateTargetNames.length,
+  )
 }
 
 export function isPendingOperationConflictResolution(state: CommanderWidgetViewState) {
   return Boolean(
-    state.pendingOperation
-    && (state.pendingOperation.kind === 'copy' || state.pendingOperation.kind === 'move')
-    && state.pendingOperation.conflictEntryNames?.length,
+    state.pendingOperation &&
+    (state.pendingOperation.kind === 'copy' || state.pendingOperation.kind === 'move') &&
+    state.pendingOperation.conflictEntryNames.length,
   )
 }
 
@@ -311,17 +316,20 @@ export function getRenamePreviewStatusStyle(status: CommanderRenamePreviewStatus
 }
 
 export function getRenamePreviewSummary(preview: CommanderRenamePreviewItem[]) {
-  return preview.reduce((summary, item) => {
-    summary.total += 1
-    summary[item.status] += 1
-    return summary
-  }, {
-    total: 0,
-    ok: 0,
-    duplicate: 0,
-    conflict: 0,
-    invalid: 0,
-  })
+  return preview.reduce(
+    (summary, item) => {
+      summary.total += 1
+      summary[item.status] += 1
+      return summary
+    },
+    {
+      total: 0,
+      ok: 0,
+      duplicate: 0,
+      conflict: 0,
+      invalid: 0,
+    },
+  )
 }
 
 export function getRowIcon(row: CommanderFileRow) {

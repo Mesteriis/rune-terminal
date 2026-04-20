@@ -47,22 +47,25 @@ export function CommanderWidget() {
   const pathEditInputRef = useRef<HTMLInputElement | null>(null)
   const hadPendingOperationRef = useRef(false)
   const lastPendingInputIdentityRef = useRef<string | null>(null)
-  const pendingOperationNeedsInput =
-    state.pendingOperation?.kind === 'rename' ||
-    state.pendingOperation?.kind === 'select' ||
-    state.pendingOperation?.kind === 'unselect' ||
-    state.pendingOperation?.kind === 'filter' ||
-    state.pendingOperation?.kind === 'search'
-  const pendingInputIdentity =
-    pendingOperationNeedsInput && state.pendingOperation
-      ? [
-          state.pendingOperation.kind,
-          state.pendingOperation.sourcePaneId,
-          state.pendingOperation.sourcePath,
-          state.pendingOperation.renameMode ?? '',
-          state.pendingOperation.entryIds.join(','),
-        ].join(':')
+  const pendingInputOperation =
+    state.pendingOperation &&
+    (state.pendingOperation.kind === 'rename' ||
+      state.pendingOperation.kind === 'select' ||
+      state.pendingOperation.kind === 'unselect' ||
+      state.pendingOperation.kind === 'filter' ||
+      state.pendingOperation.kind === 'search')
+      ? state.pendingOperation
       : null
+  const pendingOperationNeedsInput = Boolean(pendingInputOperation)
+  const pendingInputIdentity = pendingInputOperation
+    ? [
+        pendingInputOperation.kind,
+        pendingInputOperation.sourcePaneId,
+        pendingInputOperation.sourcePath,
+        pendingInputOperation.kind === 'rename' ? pendingInputOperation.renameMode : '',
+        pendingInputOperation.entryIds.join(','),
+      ].join(':')
+    : null
   const activeFileDialogPath = state.fileDialog
     ? joinCommanderPath(state.fileDialog.path, state.fileDialog.entryName)
     : ''

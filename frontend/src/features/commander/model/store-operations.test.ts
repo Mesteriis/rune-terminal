@@ -10,6 +10,7 @@ import {
 import type {
   CommanderPendingOperation,
   CommanderRenamePreviewItem,
+  CommanderTransferPendingOperation,
   CommanderWidgetRuntimeState,
 } from '@/features/commander/model/types'
 
@@ -112,17 +113,19 @@ function createConfirmationDeps(): ConfirmationDeps {
 function createConflictResolutionDeps(): ConflictResolutionDeps {
   return {
     getCurrentPendingConflictName: vi.fn(
-      (pendingOperation: CommanderPendingOperation) => pendingOperation.conflictEntryNames?.[0] ?? null,
+      (pendingOperation: CommanderTransferPendingOperation) => pendingOperation.conflictEntryNames[0] ?? null,
     ),
     applyPendingTransferOperation: vi.fn(),
-    removePendingTransferEntry: vi.fn((pendingOperation: CommanderPendingOperation, entryName: string) => ({
-      ...pendingOperation,
-      entryIds: pendingOperation.entryIds.slice(1),
-      entryNames: pendingOperation.entryNames.filter((candidateName) => candidateName !== entryName),
-      conflictEntryNames: (pendingOperation.conflictEntryNames ?? []).filter(
-        (candidateName) => candidateName !== entryName,
-      ),
-    })),
+    removePendingTransferEntry: vi.fn(
+      (pendingOperation: CommanderTransferPendingOperation, entryName: string) => ({
+        ...pendingOperation,
+        entryIds: pendingOperation.entryIds.slice(1),
+        entryNames: pendingOperation.entryNames.filter((candidateName) => candidateName !== entryName),
+        conflictEntryNames: pendingOperation.conflictEntryNames.filter(
+          (candidateName) => candidateName !== entryName,
+        ),
+      }),
+    ),
     refreshWidgetPanes: vi.fn((widgetState: CommanderWidgetRuntimeState, overrides) => ({
       ...widgetState,
       pendingOperation:
@@ -134,7 +137,7 @@ function createConflictResolutionDeps(): ConflictResolutionDeps {
       (
         widgetState: CommanderWidgetRuntimeState,
         _widgetId: string,
-        pendingOperation: CommanderPendingOperation,
+        pendingOperation: CommanderTransferPendingOperation,
       ) =>
         ({
           ...widgetState,
@@ -260,6 +263,8 @@ describe('updateCommanderPendingOperationInput', () => {
       entryIds: ['entry-1'],
       entryNames: ['old.txt'],
       inputValue: 'old.txt',
+      conflictEntryNames: [],
+      duplicateTargetNames: [],
       renameMode: 'single',
       renamePreview: [],
     }
@@ -286,7 +291,7 @@ describe('updateCommanderPendingOperationInput', () => {
     })
   })
 
-  it('preserves the fallback non-rename branch for unexpected input-capable operations', () => {
+  it('no-ops when input updates are requested for operations without an input contract', () => {
     const pendingOperation: CommanderPendingOperation = {
       kind: 'copy',
       sourcePaneId: 'left',
@@ -296,7 +301,6 @@ describe('updateCommanderPendingOperationInput', () => {
       entryIds: ['entry-1'],
       entryNames: ['file.txt'],
       conflictEntryNames: ['file.txt'],
-      inputValue: 'old-target',
     }
     const widgetState = createWidgetState(pendingOperation)
 
@@ -308,11 +312,7 @@ describe('updateCommanderPendingOperationInput', () => {
       previewCommanderRenameEntries: vi.fn(),
     })
 
-    expect(nextWidgetState?.pendingOperation).toMatchObject({
-      kind: 'copy',
-      inputValue: 'new-target',
-    })
-    expect(nextWidgetState?.pendingOperation?.conflictEntryNames).toBeUndefined()
+    expect(nextWidgetState).toBeNull()
   })
 })
 
@@ -330,6 +330,7 @@ describe('confirmCommanderWidgetPendingOperation', () => {
       targetPath: '~/right',
       entryIds: ['entry-1'],
       entryNames: ['file.txt'],
+      conflictEntryNames: [],
     }
     const widgetState = createWidgetState(pendingOperation)
     const deps = createConfirmationDeps()
@@ -355,6 +356,8 @@ describe('confirmCommanderWidgetPendingOperation', () => {
       entryIds: ['entry-1', 'entry-2'],
       entryNames: ['a.txt', 'b.txt'],
       inputValue: '[N]-[C:2]',
+      conflictEntryNames: [],
+      duplicateTargetNames: [],
       renameMode: 'batch',
       renamePreview: [],
     }
@@ -391,6 +394,8 @@ describe('confirmCommanderWidgetPendingOperation', () => {
       entryIds: ['entry-1'],
       entryNames: ['old.txt'],
       inputValue: 'new.txt',
+      conflictEntryNames: [],
+      duplicateTargetNames: [],
       renameMode: 'single',
       renamePreview: [],
     }
@@ -449,6 +454,8 @@ describe('requestCommanderWidgetPendingOperation', () => {
       entryIds: [],
       entryNames: [],
       inputValue: '*.ts',
+      matchCount: 0,
+      matchPreview: [],
     })
 
     const nextWidgetState = requestCommanderWidgetPendingOperation(widgetState, 'filter', deps)

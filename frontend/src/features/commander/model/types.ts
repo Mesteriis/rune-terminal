@@ -9,7 +9,16 @@ export type CommanderFooterHint = {
   label: string
 }
 
-export type CommanderPendingOperationKind = 'copy' | 'move' | 'delete' | 'mkdir' | 'rename' | 'select' | 'unselect' | 'filter' | 'search'
+export type CommanderPendingOperationKind =
+  | 'copy'
+  | 'move'
+  | 'delete'
+  | 'mkdir'
+  | 'rename'
+  | 'select'
+  | 'unselect'
+  | 'filter'
+  | 'search'
 export type CommanderRenameMode = 'single' | 'batch'
 export type CommanderRenamePreviewStatus = 'ok' | 'duplicate' | 'conflict' | 'invalid'
 export type CommanderFileDialogMode = 'view' | 'edit'
@@ -22,24 +31,63 @@ export type CommanderRenamePreviewItem = {
   conflict: boolean
 }
 
-export type CommanderPendingOperation = {
-  kind: CommanderPendingOperationKind
+type CommanderPendingOperationBase<Kind extends CommanderPendingOperationKind> = {
+  kind: Kind
   sourcePaneId: CommanderPaneId
   sourcePath: string
-  targetPaneId?: CommanderPaneId
-  targetPath?: string
   entryIds: string[]
   entryNames: string[]
-  mkdirName?: string
-  inputValue?: string
-  conflictEntryNames?: string[]
-  duplicateTargetNames?: string[]
-  renameMode?: CommanderRenameMode
-  renamePreview?: CommanderRenamePreviewItem[]
-  matchCount?: number
-  matchPreview?: string[]
-  matchIndex?: number
 }
+
+type CommanderPendingOperationWithInput<Kind extends CommanderPendingOperationKind> =
+  CommanderPendingOperationBase<Kind> & {
+    inputValue: string
+  }
+
+export type CommanderTransferPendingOperation = CommanderPendingOperationBase<'copy' | 'move'> & {
+  targetPaneId: CommanderPaneId
+  targetPath: string
+  conflictEntryNames: string[]
+}
+
+export type CommanderDeletePendingOperation = CommanderPendingOperationBase<'delete'>
+
+export type CommanderMkdirPendingOperation = CommanderPendingOperationBase<'mkdir'> & {
+  mkdirName: string
+}
+
+export type CommanderRenamePendingOperation = CommanderPendingOperationWithInput<'rename'> & {
+  conflictEntryNames: string[]
+  duplicateTargetNames: string[]
+  renameMode: CommanderRenameMode
+  renamePreview: CommanderRenamePreviewItem[]
+}
+
+export type CommanderMaskPendingOperation = CommanderPendingOperationWithInput<
+  'select' | 'unselect' | 'filter'
+> & {
+  matchCount: number
+  matchPreview: string[]
+}
+
+export type CommanderSearchPendingOperation = CommanderPendingOperationWithInput<'search'> & {
+  matchCount: number
+  matchPreview: string[]
+  matchIndex: number
+}
+
+export type CommanderPendingInputOperation =
+  | CommanderRenamePendingOperation
+  | CommanderMaskPendingOperation
+  | CommanderSearchPendingOperation
+
+export type CommanderPendingOperation =
+  | CommanderTransferPendingOperation
+  | CommanderDeletePendingOperation
+  | CommanderMkdirPendingOperation
+  | CommanderRenamePendingOperation
+  | CommanderMaskPendingOperation
+  | CommanderSearchPendingOperation
 
 export type CommanderDirectoryEntry = {
   id: string
@@ -192,17 +240,17 @@ export type CommanderDirectorySnapshot = {
 
 export type CommanderNavigationResult =
   | {
-    kind: 'directory'
-    path: string
-  }
+      kind: 'directory'
+      path: string
+    }
   | {
-    kind: 'file'
-    entry: CommanderDirectoryEntry
-  }
+      kind: 'file'
+      entry: CommanderDirectoryEntry
+    }
   | {
-    kind: 'symlink'
-    entry: CommanderDirectoryEntry
-  }
+      kind: 'symlink'
+      entry: CommanderDirectoryEntry
+    }
 
 export type CommanderFileSnapshot = {
   entryId: string

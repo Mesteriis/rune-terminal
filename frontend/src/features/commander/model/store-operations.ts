@@ -13,8 +13,10 @@ import {
 import type {
   CommanderFileDialogState,
   CommanderPendingOperation,
+  CommanderPendingOperationKind,
   CommanderPaneId,
   CommanderPaneRuntimeState,
+  CommanderTransferPendingOperation,
   CommanderWidgetRuntimeState,
 } from '@/features/commander/model/types'
 import {
@@ -131,25 +133,17 @@ export function getOperationEntryIds(paneState: CommanderPaneRuntimeState) {
   return paneState.cursorEntryId ? [paneState.cursorEntryId] : []
 }
 
-export function getCurrentPendingConflictName(pendingOperation: CommanderPendingOperation) {
-  if (pendingOperation.kind !== 'copy' && pendingOperation.kind !== 'move') {
-    return null
-  }
-
-  return pendingOperation.conflictEntryNames?.[0] ?? null
+export function getCurrentPendingConflictName(pendingOperation: CommanderTransferPendingOperation) {
+  return pendingOperation.conflictEntryNames[0] ?? null
 }
 
 export function applyPendingTransferOperation(
   widgetId: string,
-  pendingOperation: CommanderPendingOperation,
+  pendingOperation: CommanderTransferPendingOperation,
   entryIds: string[],
   overwrite: boolean,
 ) {
-  if (
-    (pendingOperation.kind !== 'copy' && pendingOperation.kind !== 'move') ||
-    !pendingOperation.targetPath ||
-    entryIds.length === 0
-  ) {
+  if (entryIds.length === 0) {
     return
   }
 
@@ -173,7 +167,10 @@ export function applyPendingTransferOperation(
   })
 }
 
-export function removePendingTransferEntry(pendingOperation: CommanderPendingOperation, entryName: string) {
+export function removePendingTransferEntry(
+  pendingOperation: CommanderTransferPendingOperation,
+  entryName: string,
+): CommanderTransferPendingOperation {
   const entryIndex = pendingOperation.entryNames.findIndex((candidateName) => candidateName === entryName)
 
   if (entryIndex === -1) {
@@ -187,7 +184,7 @@ export function removePendingTransferEntry(pendingOperation: CommanderPendingOpe
     ...pendingOperation,
     entryIds: nextEntryIds,
     entryNames: nextEntryNames,
-    conflictEntryNames: (pendingOperation.conflictEntryNames ?? []).filter(
+    conflictEntryNames: pendingOperation.conflictEntryNames.filter(
       (candidateName) => candidateName !== entryName,
     ),
   }
@@ -196,7 +193,7 @@ export function removePendingTransferEntry(pendingOperation: CommanderPendingOpe
 export function finalizePendingTransferOperation(
   widgetState: CommanderWidgetRuntimeState,
   widgetId: string,
-  pendingOperation: CommanderPendingOperation,
+  pendingOperation: CommanderTransferPendingOperation,
 ) {
   applyPendingTransferOperation(widgetId, pendingOperation, pendingOperation.entryIds, false)
 
@@ -217,86 +214,83 @@ export function updateCommanderPendingOperationInput(
     return null
   }
 
-  if (pendingOperation.kind === 'select' || pendingOperation.kind === 'unselect') {
-    const matches = deps.getCommanderMaskMatches(
-      getPaneState(widgetState, pendingOperation.sourcePaneId),
-      inputValue,
-    )
-
-    return {
-      ...widgetState,
-      pendingOperation: {
-        ...pendingOperation,
+  switch (pendingOperation.kind) {
+    case 'select':
+    case 'unselect': {
+      const matches = deps.getCommanderMaskMatches(
+        getPaneState(widgetState, pendingOperation.sourcePaneId),
         inputValue,
-        matchCount: matches.entryIds.length,
-        matchPreview: matches.entryNames.slice(0, 6),
-      },
+      )
+
+      return {
+        ...widgetState,
+        pendingOperation: {
+          ...pendingOperation,
+          inputValue,
+          matchCount: matches.entryIds.length,
+          matchPreview: matches.entryNames.slice(0, 6),
+        },
+      }
     }
-  }
+    case 'filter': {
+      const matches = deps.getCommanderFilterMatches(widgetState, pendingOperation.sourcePaneId, inputValue)
 
-  if (pendingOperation.kind === 'filter') {
-    const matches = deps.getCommanderFilterMatches(widgetState, pendingOperation.sourcePaneId, inputValue)
-
-    return {
-      ...widgetState,
-      pendingOperation: {
-        ...pendingOperation,
-        inputValue,
-        matchCount: matches.entryIds.length,
-        matchPreview: matches.entryNames.slice(0, 6),
-      },
+      return {
+        ...widgetState,
+        pendingOperation: {
+          ...pendingOperation,
+          inputValue,
+          matchCount: matches.entryIds.length,
+          matchPreview: matches.entryNames.slice(0, 6),
+        },
+      }
     }
-  }
+    case 'search': {
+      const sourcePane = getPaneState(widgetState, pendingOperation.sourcePaneId)
+      const matches = deps.getCommanderSearchMatches(sourcePane, inputValue)
 
-  if (pendingOperation.kind === 'search') {
-    const sourcePane = getPaneState(widgetState, pendingOperation.sourcePaneId)
-    const matches = deps.getCommanderSearchMatches(sourcePane, inputValue)
-
-    return {
-      ...widgetState,
-      pendingOperation: {
-        ...pendingOperation,
-        inputValue,
-        matchCount: matches.entryIds.length,
-        matchPreview: matches.entryNames.slice(0, 6),
-        matchIndex: deps.getCommanderResolvedSearchMatchIndex(matches.entryIds, sourcePane.cursorEntryId, 0),
-      },
+      return {
+        ...widgetState,
+        pendingOperation: {
+          ...pendingOperation,
+          inputValue,
+          matchCount: matches.entryIds.length,
+          matchPreview: matches.entryNames.slice(0, 6),
+          matchIndex: deps.getCommanderResolvedSearchMatchIndex(
+            matches.entryIds,
+            sourcePane.cursorEntryId,
+            0,
+          ),
+        },
+      }
     }
-  }
+    case 'rename': {
+      const renamePreview = deps.previewCommanderRenameEntries({
+        widgetId,
+        path: pendingOperation.sourcePath,
+        entryIds: pendingOperation.entryIds,
+        template: inputValue,
+      })
 
-  if (pendingOperation.kind !== 'rename') {
-    return {
-      ...widgetState,
-      pendingOperation: {
-        ...pendingOperation,
-        inputValue,
-        conflictEntryNames: undefined,
-      },
+      return {
+        ...widgetState,
+        pendingOperation: {
+          ...pendingOperation,
+          inputValue,
+          conflictEntryNames: renamePreview.conflictEntryNames,
+          duplicateTargetNames: renamePreview.duplicateTargetNames,
+          renamePreview: renamePreview.preview,
+        },
+      }
     }
-  }
-
-  const renamePreview = deps.previewCommanderRenameEntries({
-    widgetId,
-    path: pendingOperation.sourcePath,
-    entryIds: pendingOperation.entryIds,
-    template: inputValue,
-  })
-
-  return {
-    ...widgetState,
-    pendingOperation: {
-      ...pendingOperation,
-      inputValue,
-      conflictEntryNames: renamePreview.conflictEntryNames,
-      duplicateTargetNames: renamePreview.duplicateTargetNames,
-      renamePreview: renamePreview.preview,
-    },
+    default:
+      return null
   }
 }
 
 export function requestCommanderWidgetPendingOperation(
   widgetState: CommanderWidgetRuntimeState,
-  kind: CommanderPendingOperation['kind'],
+  kind: CommanderPendingOperationKind,
   deps: CommanderPendingOperationRequestDeps = defaultCommanderPendingOperationRequestDeps,
 ) {
   const pendingOperation = deps.createPendingOperation(widgetState, kind)
@@ -323,7 +317,7 @@ export function stepCommanderWidgetPendingSearchMatch(
   }
 
   const sourcePane = deps.getPaneState(widgetState, pendingOperation.sourcePaneId)
-  const matches = deps.getCommanderSearchMatches(sourcePane, pendingOperation.inputValue ?? '')
+  const matches = deps.getCommanderSearchMatches(sourcePane, pendingOperation.inputValue)
 
   if (matches.entryIds.length === 0) {
     return null
@@ -332,7 +326,7 @@ export function stepCommanderWidgetPendingSearchMatch(
   const currentIndex = deps.getCommanderResolvedSearchMatchIndex(
     matches.entryIds,
     sourcePane.cursorEntryId,
-    pendingOperation.matchIndex ?? 0,
+    pendingOperation.matchIndex,
   )
   const nextIndex = (currentIndex + delta + matches.entryIds.length) % matches.entryIds.length
   const nextCursorEntryId = matches.entryIds[nextIndex] ?? null
@@ -369,8 +363,8 @@ export function confirmCommanderWidgetPendingOperation(
     return null
   }
 
-  if (pendingOperation.kind === 'copy' && pendingOperation.targetPath) {
-    if (pendingOperation.conflictEntryNames?.length) {
+  if (pendingOperation.kind === 'copy') {
+    if (pendingOperation.conflictEntryNames.length > 0) {
       return null
     }
 
@@ -387,8 +381,8 @@ export function confirmCommanderWidgetPendingOperation(
     })
   }
 
-  if (pendingOperation.kind === 'move' && pendingOperation.targetPath) {
-    if (pendingOperation.conflictEntryNames?.length) {
+  if (pendingOperation.kind === 'move') {
+    if (pendingOperation.conflictEntryNames.length > 0) {
       return null
     }
 
@@ -430,7 +424,7 @@ export function confirmCommanderWidgetPendingOperation(
   }
 
   if (pendingOperation.kind === 'rename') {
-    const nextName = pendingOperation.inputValue?.trim() ?? ''
+    const nextName = pendingOperation.inputValue.trim()
 
     if (!nextName) {
       return null
@@ -456,7 +450,7 @@ export function confirmCommanderWidgetPendingOperation(
         }
       }
 
-      if (!pendingOperation.conflictEntryNames?.length && renamePreview.conflictEntryNames.length > 0) {
+      if (pendingOperation.conflictEntryNames.length === 0 && renamePreview.conflictEntryNames.length > 0) {
         return {
           ...widgetState,
           pendingOperation: {
@@ -473,7 +467,7 @@ export function confirmCommanderWidgetPendingOperation(
         path: pendingOperation.sourcePath,
         entryIds: pendingOperation.entryIds,
         template: nextName,
-        overwrite: Boolean(pendingOperation.conflictEntryNames?.length),
+        overwrite: pendingOperation.conflictEntryNames.length > 0,
       })
 
       if (!renameResult) {
@@ -497,7 +491,7 @@ export function confirmCommanderWidgetPendingOperation(
     }
 
     if (
-      !pendingOperation.conflictEntryNames?.length &&
+      pendingOperation.conflictEntryNames.length === 0 &&
       deps.getCommanderEntryNameConflict({
         widgetId,
         path: pendingOperation.sourcePath,
@@ -519,7 +513,7 @@ export function confirmCommanderWidgetPendingOperation(
       path: pendingOperation.sourcePath,
       entryId,
       nextName,
-      overwrite: Boolean(pendingOperation.conflictEntryNames?.length),
+      overwrite: pendingOperation.conflictEntryNames.length > 0,
     })
 
     if (!renameResult) {
@@ -537,7 +531,7 @@ export function confirmCommanderWidgetPendingOperation(
   }
 
   if (pendingOperation.kind === 'select' || pendingOperation.kind === 'unselect') {
-    const mask = pendingOperation.inputValue?.trim() ?? ''
+    const mask = pendingOperation.inputValue.trim()
     const selectionMode: 'select' | 'unselect' = pendingOperation.kind
 
     return deps.updatePaneState(
@@ -551,7 +545,7 @@ export function confirmCommanderWidgetPendingOperation(
   }
 
   if (pendingOperation.kind === 'filter') {
-    const filterQuery = pendingOperation.inputValue?.trim() ?? ''
+    const filterQuery = pendingOperation.inputValue.trim()
 
     return deps.updatePaneState(
       {
@@ -569,7 +563,7 @@ export function confirmCommanderWidgetPendingOperation(
 
   if (pendingOperation.kind === 'search') {
     const sourcePane = deps.getPaneState(widgetState, pendingOperation.sourcePaneId)
-    const matches = deps.getCommanderSearchMatches(sourcePane, pendingOperation.inputValue ?? '')
+    const matches = deps.getCommanderSearchMatches(sourcePane, pendingOperation.inputValue)
     const resolvedMatchIndex = deps.getCommanderResolvedSearchMatchIndex(
       matches.entryIds,
       sourcePane.cursorEntryId,
@@ -609,11 +603,7 @@ export function resolveCommanderWidgetPendingConflict(
 ) {
   const pendingOperation = widgetState.pendingOperation
 
-  if (
-    !pendingOperation ||
-    (pendingOperation.kind !== 'copy' && pendingOperation.kind !== 'move') ||
-    !pendingOperation.targetPath
-  ) {
+  if (!pendingOperation || (pendingOperation.kind !== 'copy' && pendingOperation.kind !== 'move')) {
     return null
   }
 
@@ -632,7 +622,7 @@ export function resolveCommanderWidgetPendingConflict(
   }
 
   if (resolution === 'skip-all') {
-    const conflictEntryNameSet = new Set(pendingOperation.conflictEntryNames ?? [])
+    const conflictEntryNameSet = new Set(pendingOperation.conflictEntryNames)
     const nonConflictingEntryIds = pendingOperation.entryIds.filter(
       (_entryId, index) => !conflictEntryNameSet.has(pendingOperation.entryNames[index] ?? ''),
     )
@@ -660,7 +650,7 @@ export function resolveCommanderWidgetPendingConflict(
 
   const nextPendingOperation = deps.removePendingTransferEntry(pendingOperation, currentConflictName)
 
-  if (nextPendingOperation.conflictEntryNames?.length) {
+  if (nextPendingOperation.conflictEntryNames.length > 0) {
     return deps.refreshWidgetPanes(widgetState, {
       pendingOperation: nextPendingOperation,
     })
@@ -671,7 +661,7 @@ export function resolveCommanderWidgetPendingConflict(
 
 export function createPendingOperation(
   widgetState: CommanderWidgetRuntimeState,
-  kind: CommanderPendingOperation['kind'],
+  kind: CommanderPendingOperationKind,
 ) {
   const sourcePane = getPaneState(widgetState, widgetState.activePane)
   const entryIds = getOperationEntryIds(sourcePane)
@@ -762,6 +752,8 @@ export function createPendingOperation(
         entryIds: [currentEntry.id],
         entryNames: [currentEntry.name],
         inputValue: currentEntry.name,
+        conflictEntryNames: [],
+        duplicateTargetNames: [],
         renameMode: 'single',
         renamePreview: [
           {
@@ -789,10 +781,10 @@ export function createPendingOperation(
       entryIds: renameEntries.map((entry) => entry.id),
       entryNames: renameEntries.map((entry) => entry.name),
       inputValue: '[N]-[C:2]',
-      renameMode: 'batch',
-      renamePreview: renamePreview.preview,
       conflictEntryNames: renamePreview.conflictEntryNames,
       duplicateTargetNames: renamePreview.duplicateTargetNames,
+      renameMode: 'batch',
+      renamePreview: renamePreview.preview,
     } satisfies CommanderPendingOperation
   }
 
