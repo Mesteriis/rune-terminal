@@ -299,7 +299,7 @@ function renderCommanderSortLabel(
   sortDirection: CommanderSortDirection,
 ) {
   return (
-    <Box runaComponent={`commander-sort-label-${label.toLowerCase()}`} style={commanderListHeaderLabelStyle}>
+    <CommanderPlainBox runaComponent={`commander-sort-label-${label.toLowerCase()}`} style={commanderListHeaderLabelStyle}>
       <Text runaComponent={`commander-sort-label-${label.toLowerCase()}-text`} style={{ color: 'inherit', fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit' }}>
         {label}
       </Text>
@@ -308,7 +308,7 @@ function renderCommanderSortLabel(
           {sortDirection === 'desc' ? '▼' : '▲'}
         </Text>
       ) : null}
-    </Box>
+    </CommanderPlainBox>
   )
 }
 
