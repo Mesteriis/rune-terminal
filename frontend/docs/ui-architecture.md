@@ -25,7 +25,7 @@ Current token families:
 
 Current isolated style modules:
 
-- `CommanderWidget` local dense-surface styles in `src/widgets/commander/commander-widget.styles.ts`
+- `CommanderWidget` local dense-surface styles are split across `src/widgets/commander/commander-*.styles.ts`, with `commander-widget.styles.ts` acting as the public barrel for widget callers
 
 ### Primitives
 
