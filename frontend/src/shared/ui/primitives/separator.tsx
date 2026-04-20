@@ -1,6 +1,6 @@
 import * as React from 'react'
 
-import { useRunaDomIdentity, useRunaDomScope } from '@/shared/ui/dom-id'
+import { useRunaDomAttributes, useRunaDomIdentity, useRunaDomScope } from '@/shared/ui/dom-id'
 
 export type SeparatorProps = React.HTMLAttributes<HTMLDivElement> & {
   orientation?: 'horizontal' | 'vertical'
@@ -29,16 +29,13 @@ export const Separator = React.forwardRef<HTMLDivElement, SeparatorProps>(functi
 ) {
   const scope = useRunaDomScope()
   const identity = useRunaDomIdentity(runaComponent ?? `${scope.component}-separator`, id)
+  const domAttributes = useRunaDomAttributes(identity)
 
   return (
     <div
       {...props}
       aria-orientation={orientation}
-      data-runa-component={identity.scope.component}
-      data-runa-layout={identity.scope.layout}
-      data-runa-node={identity.node}
-      data-runa-widget={identity.scope.widget}
-      id={identity.id}
+      {...domAttributes}
       ref={ref}
       role={role}
       style={{

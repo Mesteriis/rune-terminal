@@ -1,6 +1,6 @@
 import * as React from 'react'
 
-import { useRunaDomIdentity, useRunaDomScope } from '@/shared/ui/dom-id'
+import { useRunaDomAttributes, useRunaDomIdentity, useRunaDomScope } from '@/shared/ui/dom-id'
 
 export type SurfaceProps = React.HTMLAttributes<HTMLDivElement> & {
   runaComponent?: string
@@ -22,17 +22,7 @@ export const Surface = React.forwardRef<HTMLDivElement, SurfaceProps>(function S
 ) {
   const scope = useRunaDomScope()
   const identity = useRunaDomIdentity(runaComponent ?? `${scope.component}-surface`, id)
+  const domAttributes = useRunaDomAttributes(identity)
 
-  return (
-    <div
-      {...props}
-      ref={ref}
-      data-runa-component={identity.scope.component}
-      data-runa-layout={identity.scope.layout}
-      data-runa-node={identity.node}
-      data-runa-widget={identity.scope.widget}
-      id={identity.id}
-      style={{ ...surfaceStyle, ...style }}
-    />
-  )
+  return <div {...props} {...domAttributes} ref={ref} style={{ ...surfaceStyle, ...style }} />
 })

@@ -1,6 +1,6 @@
 import * as React from 'react'
 
-import { useRunaDomIdentity, useRunaDomScope } from '@/shared/ui/dom-id'
+import { useRunaDomAttributes, useRunaDomIdentity, useRunaDomScope } from '@/shared/ui/dom-id'
 import { resolveSemanticComponent } from '@/shared/ui/primitives/semantic-component'
 
 export type RadioProps = React.InputHTMLAttributes<HTMLInputElement> & {
@@ -27,18 +27,7 @@ export const Radio = React.forwardRef<HTMLInputElement, RadioProps>(function Rad
     fallbackComponent: `${scope.component}-radio`,
   })
   const identity = useRunaDomIdentity(semanticComponent, id)
+  const domAttributes = useRunaDomAttributes(identity)
 
-  return (
-    <input
-      {...props}
-      data-runa-component={identity.scope.component}
-      data-runa-layout={identity.scope.layout}
-      data-runa-node={identity.node}
-      data-runa-widget={identity.scope.widget}
-      id={identity.id}
-      ref={ref}
-      type={type}
-      style={{ ...radioStyle, ...style }}
-    />
-  )
+  return <input {...props} {...domAttributes} ref={ref} type={type} style={{ ...radioStyle, ...style }} />
 })

@@ -198,10 +198,14 @@ The frontend now uses a shared DOM identity contract from
   - `<layout>-<widget>-<component>-<short-uid>` for `id`
   - `<layout>-<widget>-<component>` for `data-runa-node`
 - Scope is inherited through `RunaDomScopeProvider`.
-- Native primitives generate ids and semantic attrs automatically.
+- Native primitives generate ids automatically and expose a minimal semantic
+  contract by default: `id` plus `data-runa-node`.
+- `RunaDomScopeProvider` may opt into verbose metadata with
+  `metadata="verbose"` when a subtree also needs `data-runa-layout`,
+  `data-runa-widget`, and `data-runa-component`.
 - Widget/layout roots may also opt into subtree auto-tagging so raw DOM and
-  third-party descendants inside that subtree also receive ids and
-  `data-runa-*` attrs.
+  third-party descendants inside that subtree also receive ids and the same
+  configured metadata contract.
 
 Lookup helpers exported from `src/shared/ui/dom-id.tsx`:
 
@@ -305,7 +309,9 @@ Lookup helpers exported from `src/shared/ui/dom-id.tsx`:
 - The shared DOM identity layer now provides readable ids plus semantic
   selectors through `data-runa-node`, backed by `RunaDomScopeProvider`,
   primitive-level auto identity, and subtree auto-tagging at widget/layout
-  roots.
+  roots, while the extra `data-runa-layout/widget/component` metadata stays
+  opt-in through `metadata="verbose"` instead of being emitted on every
+  repo-owned element.
 - Terminal panels now pass `params` as the local source of truth for title and session metadata, which allows the same terminal config to be reused by both the body widget and the custom Dockview tab widget.
 - A fresh headless DOM smoke on `http://127.0.0.1:5173` confirmed `509`
   elements resolving both `id` and `data-runa-node`, including semantic roots

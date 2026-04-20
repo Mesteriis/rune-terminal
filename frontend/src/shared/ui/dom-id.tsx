@@ -7,6 +7,13 @@ type RunaDomScope = {
   widget: string
 }
 
+type RunaDomMetadataMode = 'minimal' | 'verbose'
+
+type RunaDomContextValue = {
+  metadata: RunaDomMetadataMode
+  scope: RunaDomScope
+}
+
 type RunaDomQuery = Partial<RunaDomScope> & {
   component?: string
 }
@@ -17,7 +24,12 @@ const defaultScope: RunaDomScope = {
   component: 'node',
 }
 
-const RunaDomScopeContext = createContext<RunaDomScope>(defaultScope)
+const defaultContextValue: RunaDomContextValue = {
+  metadata: 'minimal',
+  scope: defaultScope,
+}
+
+const RunaDomScopeContext = createContext<RunaDomContextValue>(defaultContextValue)
 let runaAutoUidCounter = 0
 
 function slugifyRunaPart(value: string | undefined) {
@@ -47,15 +59,17 @@ function nextAutoUid() {
 }
 
 function inferComponentFromDataset(element: HTMLElement) {
-  const runaDatasetEntries = Object.entries(element.dataset).filter(([key, value]) => (
-    key.startsWith('runa')
-    && key !== 'runaLayout'
-    && key !== 'runaWidget'
-    && key !== 'runaComponent'
-    && key !== 'runaNode'
-    && typeof value === 'string'
-    && value !== ''
-  ))
+  const runaDatasetEntries = Object.entries(element.dataset).filter(
+    ([key, value]) =>
+      key.startsWith('runa') &&
+      key !== 'runaAutoUid' &&
+      key !== 'runaLayout' &&
+      key !== 'runaWidget' &&
+      key !== 'runaComponent' &&
+      key !== 'runaNode' &&
+      typeof value === 'string' &&
+      value !== '',
+  )
 
   if (runaDatasetEntries.length === 0) {
     return null
@@ -108,6 +122,7 @@ function inferComponentName(element: HTMLElement, fallbackComponent: string) {
 function applyRunaElementIdentity(
   element: HTMLElement,
   scope: RunaDomScope,
+  metadata: RunaDomMetadataMode,
   explicitComponent?: string,
 ) {
   const component = slugifyRunaPart(explicitComponent ?? inferComponentName(element, scope.component))
@@ -120,25 +135,33 @@ function applyRunaElementIdentity(
   const shortUid = existingAutoUid ?? nextAutoUid()
 
   element.setAttribute('data-runa-auto-uid', shortUid)
-  element.setAttribute('data-runa-layout', scope.layout)
-  element.setAttribute('data-runa-widget', scope.widget)
-  element.setAttribute('data-runa-component', component)
   element.setAttribute('data-runa-node', node)
+
+  if (metadata === 'verbose') {
+    element.setAttribute('data-runa-layout', scope.layout)
+    element.setAttribute('data-runa-widget', scope.widget)
+    element.setAttribute('data-runa-component', component)
+  } else {
+    element.removeAttribute('data-runa-layout')
+    element.removeAttribute('data-runa-widget')
+    element.removeAttribute('data-runa-component')
+  }
 
   if (!element.id) {
     element.id = `${node}-${shortUid}`
   }
 }
 
-function tagRunaSubtree(root: HTMLElement, scope: RunaDomScope, rootComponent?: string) {
-  applyRunaElementIdentity(root, scope, rootComponent)
+function tagRunaSubtree(
+  root: HTMLElement,
+  scope: RunaDomScope,
+  metadata: RunaDomMetadataMode,
+  rootComponent?: string,
+) {
+  applyRunaElementIdentity(root, scope, metadata, rootComponent)
 
   root.querySelectorAll<HTMLElement>('*').forEach((element) => {
-    if (element.dataset.runaNode && element.id) {
-      return
-    }
-
-    applyRunaElementIdentity(element, scope)
+    applyRunaElementIdentity(element, scope, metadata)
   })
 }
 
@@ -165,6 +188,7 @@ export function findRunaNodes(query: RunaDomQuery, root: ParentNode = document) 
 export type RunaDomScopeProviderProps = PropsWithChildren<{
   component?: string
   layout?: string
+  metadata?: RunaDomMetadataMode
   widget?: string
 }>
 
@@ -172,23 +196,46 @@ export function RunaDomScopeProvider({
   children,
   component,
   layout,
+  metadata,
   widget,
 }: RunaDomScopeProviderProps) {
-  const parentScope = useContext(RunaDomScopeContext)
-  const value = useMemo<RunaDomScope>(
+  const parentContext = useContext(RunaDomScopeContext)
+  const value = useMemo<RunaDomContextValue>(
     () => ({
-      layout: slugifyRunaPart(layout ?? parentScope.layout),
-      widget: slugifyRunaPart(widget ?? parentScope.widget),
-      component: slugifyRunaPart(component ?? parentScope.component),
+      metadata: metadata ?? parentContext.metadata,
+      scope: {
+        layout: slugifyRunaPart(layout ?? parentContext.scope.layout),
+        widget: slugifyRunaPart(widget ?? parentContext.scope.widget),
+        component: slugifyRunaPart(component ?? parentContext.scope.component),
+      },
     }),
-    [component, layout, parentScope.component, parentScope.layout, parentScope.widget, widget],
+    [
+      component,
+      layout,
+      metadata,
+      parentContext.metadata,
+      parentContext.scope.component,
+      parentContext.scope.layout,
+      parentContext.scope.widget,
+      widget,
+    ],
   )
 
   return <RunaDomScopeContext.Provider value={value}>{children}</RunaDomScopeContext.Provider>
 }
 
 export function useRunaDomScope() {
-  return useContext(RunaDomScopeContext)
+  return useContext(RunaDomScopeContext).scope
+}
+
+export function useRunaDomMetadata() {
+  return useContext(RunaDomScopeContext).metadata
+}
+
+export type RunaDomIdentity = {
+  id: string
+  node: string
+  scope: RunaDomScope
 }
 
 export function useRunaDomIdentity(componentName: string, explicitId?: string) {
@@ -212,8 +259,50 @@ export function useRunaDomIdentity(componentName: string, explicitId?: string) {
   }
 }
 
+export type RunaDomAttributes = {
+  id: string
+  'data-runa-node': string
+  'data-runa-component'?: string
+  'data-runa-layout'?: string
+  'data-runa-widget'?: string
+}
+
+function buildRunaDomAttributes(identity: RunaDomIdentity, metadata: RunaDomMetadataMode): RunaDomAttributes {
+  if (metadata === 'verbose') {
+    return {
+      id: identity.id,
+      'data-runa-component': identity.scope.component,
+      'data-runa-layout': identity.scope.layout,
+      'data-runa-node': identity.node,
+      'data-runa-widget': identity.scope.widget,
+    }
+  }
+
+  return {
+    id: identity.id,
+    'data-runa-node': identity.node,
+  }
+}
+
+export function useRunaDomAttributes(identity: RunaDomIdentity) {
+  const metadata = useRunaDomMetadata()
+
+  return useMemo(
+    () => buildRunaDomAttributes(identity, metadata),
+    [
+      identity.id,
+      identity.node,
+      identity.scope.component,
+      identity.scope.layout,
+      identity.scope.widget,
+      metadata,
+    ],
+  )
+}
+
 export function useRunaDomAutoTagging(rootComponent?: string) {
   const scope = useRunaDomScope()
+  const metadata = useRunaDomMetadata()
   const observerRef = useRef<MutationObserver | null>(null)
   const nodeRef = useRef<HTMLElement | null>(null)
 
@@ -222,37 +311,40 @@ export function useRunaDomAutoTagging(rootComponent?: string) {
     observerRef.current = null
   }, [])
 
-  const attachObserver = useCallback((node: HTMLElement | null) => {
-    disconnectObserver()
-    nodeRef.current = node
+  const attachObserver = useCallback(
+    (node: HTMLElement | null) => {
+      disconnectObserver()
+      nodeRef.current = node
 
-    if (!node || typeof MutationObserver === 'undefined') {
-      return
-    }
+      if (!node || typeof MutationObserver === 'undefined') {
+        return
+      }
 
-    tagRunaSubtree(node, scope, rootComponent)
+      tagRunaSubtree(node, scope, metadata, rootComponent)
 
-    const observer = new MutationObserver((records) => {
-      records.forEach((record) => {
-        record.addedNodes.forEach((addedNode) => {
-          if (!(addedNode instanceof HTMLElement)) {
-            return
-          }
+      const observer = new MutationObserver((records) => {
+        records.forEach((record) => {
+          record.addedNodes.forEach((addedNode) => {
+            if (!(addedNode instanceof HTMLElement)) {
+              return
+            }
 
-          tagRunaSubtree(addedNode, scope)
+            tagRunaSubtree(addedNode, scope, metadata)
+          })
         })
       })
-    })
 
-    observer.observe(node, { childList: true, subtree: true })
-    observerRef.current = observer
-  }, [disconnectObserver, rootComponent, scope])
+      observer.observe(node, { childList: true, subtree: true })
+      observerRef.current = observer
+    },
+    [disconnectObserver, metadata, rootComponent, scope],
+  )
 
   useEffect(() => {
     if (nodeRef.current) {
-      tagRunaSubtree(nodeRef.current, scope, rootComponent)
+      tagRunaSubtree(nodeRef.current, scope, metadata, rootComponent)
     }
-  }, [rootComponent, scope])
+  }, [metadata, rootComponent, scope])
 
   useEffect(() => disconnectObserver, [disconnectObserver])
 

@@ -1,6 +1,6 @@
 import * as React from 'react'
 
-import { useRunaDomIdentity, useRunaDomScope } from '@/shared/ui/dom-id'
+import { useRunaDomAttributes, useRunaDomIdentity, useRunaDomScope } from '@/shared/ui/dom-id'
 import { resolveSemanticComponent } from '@/shared/ui/primitives/semantic-component'
 
 export type TextAreaProps = React.TextareaHTMLAttributes<HTMLTextAreaElement> & {
@@ -36,17 +36,7 @@ export const TextArea = React.forwardRef<HTMLTextAreaElement, TextAreaProps>(fun
     fallbackComponent: `${scope.component}-textarea`,
   })
   const identity = useRunaDomIdentity(semanticComponent, id)
+  const domAttributes = useRunaDomAttributes(identity)
 
-  return (
-    <textarea
-      {...props}
-      ref={ref}
-      data-runa-component={identity.scope.component}
-      data-runa-layout={identity.scope.layout}
-      data-runa-node={identity.node}
-      data-runa-widget={identity.scope.widget}
-      id={identity.id}
-      style={{ ...textAreaStyle, ...style }}
-    />
-  )
+  return <textarea {...props} {...domAttributes} ref={ref} style={{ ...textAreaStyle, ...style }} />
 })

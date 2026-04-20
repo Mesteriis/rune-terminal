@@ -1,6 +1,6 @@
 import * as React from 'react'
 
-import { useRunaDomIdentity, useRunaDomScope } from '@/shared/ui/dom-id'
+import { useRunaDomAttributes, useRunaDomIdentity, useRunaDomScope } from '@/shared/ui/dom-id'
 
 export type ImageProps = React.ImgHTMLAttributes<HTMLImageElement> & {
   runaComponent?: string
@@ -19,18 +19,7 @@ export const Image = React.forwardRef<HTMLImageElement, ImageProps>(function Ima
   const semanticComponent =
     runaComponent ?? (typeof alt === 'string' && alt.trim() !== '' ? alt : `${scope.component}-image`)
   const identity = useRunaDomIdentity(semanticComponent, id)
+  const domAttributes = useRunaDomAttributes(identity)
 
-  return (
-    <img
-      {...props}
-      alt={alt}
-      data-runa-component={identity.scope.component}
-      data-runa-layout={identity.scope.layout}
-      data-runa-node={identity.node}
-      data-runa-widget={identity.scope.widget}
-      id={identity.id}
-      ref={ref}
-      style={{ ...imageStyle, ...style }}
-    />
-  )
+  return <img {...props} alt={alt} {...domAttributes} ref={ref} style={{ ...imageStyle, ...style }} />
 })
