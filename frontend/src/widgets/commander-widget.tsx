@@ -50,6 +50,8 @@ import {
   commanderRowMetaTextStyle,
   commanderRowNameCellStyle,
   commanderRowNameTextStyle,
+  commanderRowSymlinkArrowStyle,
+  commanderRowSymlinkTargetStyle,
   commanderRowSelectedStyle,
   commanderRowStyle,
   commanderRowsStyle,
@@ -174,7 +176,7 @@ function getRowTypeLabel(row: CommanderFileRow) {
   }
 
   if (row.kind === 'symlink') {
-    return 'LNK'
+    return 'LINK'
   }
 
   if (row.executable) {
@@ -286,9 +288,15 @@ function CommanderPane({
               <Box runaComponent={`commander-pane-${pane.id}-row-${row.id}-name-cell`} style={commanderRowNameCellStyle}>
                 <Text runaComponent={`commander-pane-${pane.id}-row-${row.id}-name`} style={commanderRowNameTextStyle}>{row.name}</Text>
                 <Badge runaComponent={`commander-pane-${pane.id}-row-${row.id}-type`} style={commanderTypeBadgeStyle}>{getRowTypeLabel(row)}</Badge>
+                {row.kind === 'symlink' && row.symlinkTarget ? (
+                  <>
+                    <Text runaComponent={`commander-pane-${pane.id}-row-${row.id}-symlink-arrow`} style={commanderRowSymlinkArrowStyle}>-&gt;</Text>
+                    <Text runaComponent={`commander-pane-${pane.id}-row-${row.id}-symlink-target`} style={commanderRowSymlinkTargetStyle}>{row.symlinkTarget}</Text>
+                  </>
+                ) : null}
               </Box>
               <Text runaComponent={`commander-pane-${pane.id}-row-${row.id}-git`} style={commanderRowMetaTextStyle}>{row.gitStatus ?? ''}</Text>
-              <Text runaComponent={`commander-pane-${pane.id}-row-${row.id}-size`} style={commanderRowMetaTextStyle}>{row.size}</Text>
+              <Text runaComponent={`commander-pane-${pane.id}-row-${row.id}-size`} style={commanderRowMetaTextStyle}>{row.kind === 'symlink' ? '' : row.size}</Text>
               <Text runaComponent={`commander-pane-${pane.id}-row-${row.id}-modified`} style={commanderRowMetaTextStyle}>{row.modified}</Text>
             </Box>
           ))}

@@ -261,6 +261,26 @@ export const commanderRowNameCellStyle: CSSProperties = {
   boxShadow: 'none',
 }
 
+export const commanderRowSymlinkArrowStyle: CSSProperties = {
+  flex: '0 0 auto',
+  color: 'var(--runa-commander-text-muted)',
+  fontSize: 'var(--font-size-sm)',
+  lineHeight: 'var(--line-height-sm)',
+  fontFamily: 'var(--font-family-mono)',
+}
+
+export const commanderRowSymlinkTargetStyle: CSSProperties = {
+  display: 'block',
+  minWidth: 0,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+  color: 'var(--runa-commander-text-secondary)',
+  fontSize: 'var(--font-size-sm)',
+  lineHeight: 'var(--line-height-sm)',
+  fontFamily: 'var(--font-family-mono)',
+}
+
 export const commanderRowNameTextStyle: CSSProperties = {
   display: 'block',
   minWidth: 0,
