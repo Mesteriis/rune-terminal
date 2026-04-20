@@ -82,6 +82,8 @@ export type CommanderFileRow = {
 export type CommanderPaneViewState = {
   id: CommanderPaneId
   path: string
+  canGoBack: boolean
+  canGoForward: boolean
   counters: CommanderPaneCounters
   rows: CommanderFileRow[]
 }

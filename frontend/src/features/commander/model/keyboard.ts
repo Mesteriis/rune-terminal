@@ -29,7 +29,22 @@ export function useCommanderKeyboard(
       return
     }
 
-    if (event.altKey || event.metaKey || event.ctrlKey) {
+    if (event.altKey && !event.metaKey && !event.ctrlKey) {
+      switch (event.key) {
+        case 'ArrowLeft':
+          event.preventDefault()
+          commanderActions.goBack()
+          return
+        case 'ArrowRight':
+          event.preventDefault()
+          commanderActions.goForward()
+          return
+        default:
+          return
+      }
+    }
+
+    if (event.metaKey || event.ctrlKey) {
       return
     }
 

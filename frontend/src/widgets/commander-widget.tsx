@@ -1,4 +1,4 @@
-import { Columns2, Columns3, Eye, EyeOff, Folder, FileCode2, FileText, Link2, SquareTerminal } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Columns2, Columns3, Eye, EyeOff, Folder, FileCode2, FileText, Link2, SquareTerminal } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 
 import { useCommanderKeyboard } from '../features/commander/model/keyboard'
@@ -14,6 +14,7 @@ import {
   commanderHeaderClusterStyle,
   commanderHeaderStyle,
   commanderIconControlStyle,
+  commanderIconControlDisabledStyle,
   commanderHintBarStyle,
   commanderHintCellStyle,
   commanderHintKeyStyle,
@@ -268,6 +269,8 @@ export function CommanderWidget() {
   const autoTagCommanderRoot = useRunaDomAutoTagging('commander-root')
   const commanderRootRef = useRef<HTMLDivElement | null>(null)
   const pendingOperationMessage = useMemo(() => formatPendingOperationMessage(state), [state])
+  const activePane = state.activePane === 'left' ? state.leftPane : state.rightPane
+  const disableHistoryControls = Boolean(state.pendingOperation)
 
   const attachCommanderRootRef = useCallback((node: HTMLDivElement | null) => {
     commanderRootRef.current = node
@@ -316,6 +319,38 @@ export function CommanderWidget() {
       >
       <Surface runaComponent="commander-header" style={commanderHeaderStyle}>
         <Box runaComponent="commander-header-mode-cluster" style={commanderHeaderClusterStyle}>
+          <IconButton
+            aria-label={`Go back in ${state.activePane} pane`}
+            disabled={disableHistoryControls || !activePane.canGoBack}
+            onClick={() => {
+              commanderActions.goBack()
+              focusCommanderRoot()
+            }}
+            runaComponent="commander-history-back"
+            size="sm"
+            style={{
+              ...commanderIconControlStyle,
+              ...((disableHistoryControls || !activePane.canGoBack) ? commanderIconControlDisabledStyle : null),
+            }}
+          >
+            <ChevronLeft size={14} strokeWidth={1.8} />
+          </IconButton>
+          <IconButton
+            aria-label={`Go forward in ${state.activePane} pane`}
+            disabled={disableHistoryControls || !activePane.canGoForward}
+            onClick={() => {
+              commanderActions.goForward()
+              focusCommanderRoot()
+            }}
+            runaComponent="commander-history-forward"
+            size="sm"
+            style={{
+              ...commanderIconControlStyle,
+              ...((disableHistoryControls || !activePane.canGoForward) ? commanderIconControlDisabledStyle : null),
+            }}
+          >
+            <ChevronRight size={14} strokeWidth={1.8} />
+          </IconButton>
           <Box role="tablist" runaComponent="commander-view-mode-list" style={commanderModeButtonRowStyle}>
             {(['commander', 'split', 'terminal'] as const).map((mode) => (
               <IconButton

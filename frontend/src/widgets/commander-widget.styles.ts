@@ -79,6 +79,10 @@ export const commanderIconControlStyle: CSSProperties = {
   WebkitBackdropFilter: 'none',
 }
 
+export const commanderIconControlDisabledStyle: CSSProperties = {
+  opacity: 0.4,
+}
+
 export const commanderModeButtonActiveStyle: CSSProperties = {
   color: 'var(--runa-commander-highlight-text)',
   borderColor: 'var(--runa-commander-highlight-border)',

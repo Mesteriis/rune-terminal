@@ -129,6 +129,37 @@ function navigatePaneState(
   })
 }
 
+function navigatePaneHistory(
+  widgetState: CommanderWidgetRuntimeState,
+  paneId: CommanderPaneId,
+  direction: 'back' | 'forward',
+) {
+  return updatePaneState(widgetState, paneId, (paneState) => {
+    const historyStack = direction === 'back' ? paneState.historyBack : paneState.historyForward
+    const targetPath = historyStack[historyStack.length - 1]
+
+    if (!targetPath) {
+      return paneState
+    }
+
+    const rebuiltPaneState = rebuildPaneState(widgetState, paneState, targetPath)
+
+    if (direction === 'back') {
+      return {
+        ...rebuiltPaneState,
+        historyBack: paneState.historyBack.slice(0, -1),
+        historyForward: [...paneState.historyForward, paneState.path],
+      }
+    }
+
+    return {
+      ...rebuiltPaneState,
+      historyBack: [...paneState.historyBack, paneState.path],
+      historyForward: paneState.historyForward.slice(0, -1),
+    }
+  })
+}
+
 function movePaneCursor(
   paneState: CommanderPaneRuntimeState,
   delta: number,
@@ -294,6 +325,10 @@ export const openCommanderPaneEntry = createEvent<CommanderOpenEntryPayload>()
 export const openCommanderActivePaneEntry = createEvent<CommanderWidgetPayload>()
 export const goCommanderPaneParent = createEvent<CommanderWidgetPanePayload>()
 export const goCommanderActivePaneParent = createEvent<CommanderWidgetPayload>()
+export const goCommanderPaneHistoryBack = createEvent<CommanderWidgetPanePayload>()
+export const goCommanderPaneHistoryForward = createEvent<CommanderWidgetPanePayload>()
+export const goCommanderActivePaneHistoryBack = createEvent<CommanderWidgetPayload>()
+export const goCommanderActivePaneHistoryForward = createEvent<CommanderWidgetPayload>()
 export const switchCommanderActivePane = createEvent<CommanderWidgetPayload>()
 export const setCommanderPaneBoundaryCursor = createEvent<CommanderWidgetPanePayload & { boundary: 'start' | 'end' }>()
 export const requestCommanderActivePaneCopy = createEvent<CommanderWidgetPayload>()
@@ -588,6 +623,68 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
     return {
       ...widgets,
       [payload.widgetId]: navigatePaneState(widgetState, widgetState.activePane, parentPath),
+    }
+  })
+  .on(goCommanderPaneHistoryBack, (widgets, payload) => {
+    const widgetState = widgets[payload.widgetId]
+
+    if (!widgetState) {
+      return widgets
+    }
+
+    return {
+      ...widgets,
+      [payload.widgetId]: navigatePaneHistory(
+        {
+          ...widgetState,
+          activePane: payload.paneId,
+        },
+        payload.paneId,
+        'back',
+      ),
+    }
+  })
+  .on(goCommanderPaneHistoryForward, (widgets, payload) => {
+    const widgetState = widgets[payload.widgetId]
+
+    if (!widgetState) {
+      return widgets
+    }
+
+    return {
+      ...widgets,
+      [payload.widgetId]: navigatePaneHistory(
+        {
+          ...widgetState,
+          activePane: payload.paneId,
+        },
+        payload.paneId,
+        'forward',
+      ),
+    }
+  })
+  .on(goCommanderActivePaneHistoryBack, (widgets, payload) => {
+    const widgetState = widgets[payload.widgetId]
+
+    if (!widgetState) {
+      return widgets
+    }
+
+    return {
+      ...widgets,
+      [payload.widgetId]: navigatePaneHistory(widgetState, widgetState.activePane, 'back'),
+    }
+  })
+  .on(goCommanderActivePaneHistoryForward, (widgets, payload) => {
+    const widgetState = widgets[payload.widgetId]
+
+    if (!widgetState) {
+      return widgets
+    }
+
+    return {
+      ...widgets,
+      [payload.widgetId]: navigatePaneHistory(widgetState, widgetState.activePane, 'forward'),
     }
   })
   .on(switchCommanderActivePane, (widgets, payload) => {

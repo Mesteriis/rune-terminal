@@ -126,6 +126,7 @@ its visible shell blocks as raw HTML inside `App.tsx`.
 - `CommanderWidget` renders the frontend-only Total Commander-style dual-pane surface from a per-widget commander model backed by a local fake filesystem client.
 - The fake commander client now supports widget-local `copy/move/delete/mkdir` mutations between the left and right panes of the same widget instance, without backend calls or cross-widget filesystem sharing.
 - Commander operations now pass through a widget-local pending confirm/cancel layer before mutating the fake filesystem, so the UI can expose classic operator review flows without backend approvals yet.
+- Commander pane navigation now also keeps independent per-pane history stacks, exposed through active-pane back/forward header controls and `Alt+Left` / `Alt+Right`.
 - `TerminalWidget` renders the terminal-specific body composition for terminal panels.
 - `TerminalDockviewTabWidget` renders terminal-specific Dockview tab chrome for terminal panels.
 - `CommanderDemoLayout` mounts `CommanderWidget` into the isolated `tool` panel demo surface.
@@ -200,6 +201,7 @@ Lookup helpers exported from `src/shared/ui/dom-id.tsx`:
 - `CommanderWidget` stays in the widget layer, renders from a widget-scoped commander store plus a fake filesystem client, and still does not introduce backend calls or real filesystem behavior.
 - Commander write operations remain intentionally local to one widget instance: source and target panes can mutate against the same fake client, but different commander widgets do not share mutations or copy paths.
 - Commander write operations now also expose a frontend-only pending confirmation contract: `F5/F6/F7/F8` open a pending bar first, `Enter` confirms, and `Escape` cancels without mutating the fake client.
+- Commander pane history is widget-local and pane-local: each pane keeps its own back/forward stack, and switching panes preserves the other pane's navigation state.
 - `CommanderDemoLayout` keeps the demo mount in a layout layer instead of wiring the commander surface directly into app orchestration.
 - `WidgetBusyOverlayWidget` stays in the widget layer and uses `@tsparticles/react` directly for the busy-field rendering instead of pushing imperative particle code into shared components.
 - `TerminalWidget` stays in the widget layer and now owns the terminal body only: toolbar, panel actions, and renderer surface.
