@@ -1,4 +1,4 @@
-import type * as React from 'react'
+import * as React from 'react'
 
 import { useRunaDomIdentity, useRunaDomScope } from '@/shared/ui/dom-id'
 
@@ -14,13 +14,16 @@ const radioStyle: React.CSSProperties = {
   cursor: 'pointer',
 }
 
-export function Radio({ id, runaComponent, style, type = 'radio', ...props }: RadioProps) {
+export const Radio = React.forwardRef<HTMLInputElement, RadioProps>(function Radio(
+  { id, runaComponent, style, type = 'radio', ...props },
+  ref,
+) {
   const scope = useRunaDomScope()
   const semanticComponent =
     runaComponent ??
     (typeof props['aria-label'] === 'string' && props['aria-label'].trim() !== ''
       ? props['aria-label']
-      : props.name ?? `${scope.component}-radio`)
+      : (props.name ?? `${scope.component}-radio`))
   const identity = useRunaDomIdentity(semanticComponent, id)
 
   return (
@@ -31,8 +34,9 @@ export function Radio({ id, runaComponent, style, type = 'radio', ...props }: Ra
       data-runa-node={identity.node}
       data-runa-widget={identity.scope.widget}
       id={identity.id}
+      ref={ref}
       type={type}
       style={{ ...radioStyle, ...style }}
     />
   )
-}
+})

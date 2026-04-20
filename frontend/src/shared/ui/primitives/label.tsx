@@ -1,4 +1,4 @@
-import type * as React from 'react'
+import * as React from 'react'
 
 import { useRunaDomIdentity, useRunaDomScope } from '@/shared/ui/dom-id'
 
@@ -15,7 +15,10 @@ const labelStyle: React.CSSProperties = {
   lineHeight: 'var(--line-height-md)',
 }
 
-export function Label({ id, runaComponent, style, ...props }: LabelProps) {
+export const Label = React.forwardRef<HTMLLabelElement, LabelProps>(function Label(
+  { id, runaComponent, style, ...props },
+  ref,
+) {
   const scope = useRunaDomScope()
   const identity = useRunaDomIdentity(runaComponent ?? `${scope.component}-label`, id)
 
@@ -27,7 +30,8 @@ export function Label({ id, runaComponent, style, ...props }: LabelProps) {
       data-runa-node={identity.node}
       data-runa-widget={identity.scope.widget}
       id={identity.id}
+      ref={ref}
       style={{ ...labelStyle, ...style }}
     />
   )
-}
+})

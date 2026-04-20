@@ -1,4 +1,4 @@
-import type * as React from 'react'
+import * as React from 'react'
 
 import { useRunaDomIdentity, useRunaDomScope } from '@/shared/ui/dom-id'
 
@@ -20,13 +20,16 @@ const selectStyle: React.CSSProperties = {
   WebkitBackdropFilter: 'var(--blur-glass-sm)',
 }
 
-export function Select({ id, runaComponent, style, ...props }: SelectProps) {
+export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(function Select(
+  { id, runaComponent, style, ...props },
+  ref,
+) {
   const scope = useRunaDomScope()
   const semanticComponent =
     runaComponent ??
     (typeof props['aria-label'] === 'string' && props['aria-label'].trim() !== ''
       ? props['aria-label']
-      : props.name ?? `${scope.component}-select`)
+      : (props.name ?? `${scope.component}-select`))
   const identity = useRunaDomIdentity(semanticComponent, id)
 
   return (
@@ -37,7 +40,8 @@ export function Select({ id, runaComponent, style, ...props }: SelectProps) {
       data-runa-node={identity.node}
       data-runa-widget={identity.scope.widget}
       id={identity.id}
+      ref={ref}
       style={{ ...selectStyle, ...style }}
     />
   )
-}
+})

@@ -1,4 +1,4 @@
-import type * as React from 'react'
+import * as React from 'react'
 
 import { useRunaDomIdentity, useRunaDomScope } from '@/shared/ui/dom-id'
 
@@ -12,7 +12,10 @@ const textStyle: React.CSSProperties = {
   lineHeight: 'var(--line-height-md)',
 }
 
-export function Text({ id, runaComponent, style, ...props }: TextProps) {
+export const Text = React.forwardRef<HTMLSpanElement, TextProps>(function Text(
+  { id, runaComponent, style, ...props },
+  ref,
+) {
   const scope = useRunaDomScope()
   const identity = useRunaDomIdentity(runaComponent ?? `${scope.component}-text`, id)
 
@@ -24,7 +27,8 @@ export function Text({ id, runaComponent, style, ...props }: TextProps) {
       data-runa-node={identity.node}
       data-runa-widget={identity.scope.widget}
       id={identity.id}
+      ref={ref}
       style={{ ...textStyle, ...style }}
     />
   )
-}
+})

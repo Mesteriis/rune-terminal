@@ -1,4 +1,4 @@
-import type * as React from 'react'
+import * as React from 'react'
 
 import { useRunaDomIdentity, useRunaDomScope } from '@/shared/ui/dom-id'
 
@@ -26,7 +26,10 @@ const buttonStyle: React.CSSProperties = {
   cursor: 'pointer',
 }
 
-export function Button({ id, runaComponent, style, type = 'button', ...props }: ButtonProps) {
+export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+  { id, runaComponent, style, type = 'button', ...props },
+  ref,
+) {
   const scope = useRunaDomScope()
   const semanticComponent =
     runaComponent ??
@@ -43,8 +46,9 @@ export function Button({ id, runaComponent, style, type = 'button', ...props }: 
       data-runa-node={identity.node}
       data-runa-widget={identity.scope.widget}
       id={identity.id}
+      ref={ref}
       type={type}
       style={{ ...buttonStyle, ...style }}
     />
   )
-}
+})

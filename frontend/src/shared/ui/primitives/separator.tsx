@@ -1,4 +1,4 @@
-import type * as React from 'react'
+import * as React from 'react'
 
 import { useRunaDomIdentity, useRunaDomScope } from '@/shared/ui/dom-id'
 
@@ -23,14 +23,10 @@ const verticalStyle: React.CSSProperties = {
   alignSelf: 'stretch',
 }
 
-export function Separator({
-  id,
-  orientation = 'horizontal',
-  role = 'separator',
-  runaComponent,
-  style,
-  ...props
-}: SeparatorProps) {
+export const Separator = React.forwardRef<HTMLDivElement, SeparatorProps>(function Separator(
+  { id, orientation = 'horizontal', role = 'separator', runaComponent, style, ...props },
+  ref,
+) {
   const scope = useRunaDomScope()
   const identity = useRunaDomIdentity(runaComponent ?? `${scope.component}-separator`, id)
 
@@ -43,6 +39,7 @@ export function Separator({
       data-runa-node={identity.node}
       data-runa-widget={identity.scope.widget}
       id={identity.id}
+      ref={ref}
       role={role}
       style={{
         ...baseStyle,
@@ -51,4 +48,4 @@ export function Separator({
       }}
     />
   )
-}
+})

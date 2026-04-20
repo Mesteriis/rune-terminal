@@ -1,4 +1,4 @@
-import type * as React from 'react'
+import * as React from 'react'
 
 import { useRunaDomIdentity, useRunaDomScope } from '@/shared/ui/dom-id'
 
@@ -14,13 +14,16 @@ const checkboxStyle: React.CSSProperties = {
   cursor: 'pointer',
 }
 
-export function Checkbox({ id, runaComponent, style, type = 'checkbox', ...props }: CheckboxProps) {
+export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(function Checkbox(
+  { id, runaComponent, style, type = 'checkbox', ...props },
+  ref,
+) {
   const scope = useRunaDomScope()
   const semanticComponent =
     runaComponent ??
     (typeof props['aria-label'] === 'string' && props['aria-label'].trim() !== ''
       ? props['aria-label']
-      : props.name ?? `${scope.component}-checkbox`)
+      : (props.name ?? `${scope.component}-checkbox`))
   const identity = useRunaDomIdentity(semanticComponent, id)
 
   return (
@@ -31,8 +34,9 @@ export function Checkbox({ id, runaComponent, style, type = 'checkbox', ...props
       data-runa-node={identity.node}
       data-runa-widget={identity.scope.widget}
       id={identity.id}
+      ref={ref}
       type={type}
       style={{ ...checkboxStyle, ...style }}
     />
   )
-}
+})

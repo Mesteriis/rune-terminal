@@ -34,6 +34,7 @@ Current isolated style modules:
 - Wrap native HTML elements
 - Use tokens only
 - Must be typed with native HTML props
+- Must expose `forwardRef` for the underlying native element
 - No business logic
 
 Current primitives:

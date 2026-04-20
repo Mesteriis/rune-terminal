@@ -1,4 +1,4 @@
-import type * as React from 'react'
+import * as React from 'react'
 
 import { useRunaDomIdentity, useRunaDomScope } from '@/shared/ui/dom-id'
 
@@ -22,7 +22,10 @@ const badgeStyle: React.CSSProperties = {
   whiteSpace: 'nowrap',
 }
 
-export function Badge({ id, runaComponent, style, ...props }: BadgeProps) {
+export const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(function Badge(
+  { id, runaComponent, style, ...props },
+  ref,
+) {
   const scope = useRunaDomScope()
   const identity = useRunaDomIdentity(runaComponent ?? `${scope.component}-badge`, id)
 
@@ -34,7 +37,8 @@ export function Badge({ id, runaComponent, style, ...props }: BadgeProps) {
       data-runa-node={identity.node}
       data-runa-widget={identity.scope.widget}
       id={identity.id}
+      ref={ref}
       style={{ ...badgeStyle, ...style }}
     />
   )
-}
+})
