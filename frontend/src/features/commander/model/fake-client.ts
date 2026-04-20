@@ -211,6 +211,17 @@ function formatRenameCounter(counter: number, width?: number) {
   return counterValue.padStart(width, '0')
 }
 
+function applyRenameTextTransform(value: string, modifier?: string) {
+  switch (modifier?.toLowerCase()) {
+    case 'l':
+      return value.toLocaleLowerCase()
+    case 'u':
+      return value.toLocaleUpperCase()
+    default:
+      return value
+  }
+}
+
 function applyCommanderRenameTemplate(
   entry: CommanderDirectoryEntry,
   template: string,
@@ -223,16 +234,30 @@ function applyCommanderRenameTemplate(
   }
 
   const { baseName, ext } = splitEntryBaseNameAndExt(entry)
-  const usesFullNameToken = /\[F\]/i.test(normalizedTemplate)
-  const usesExtensionToken = /\[E\]/i.test(normalizedTemplate)
+  const usesFullNameToken = /\[F(?::[a-z])?\]/i.test(normalizedTemplate)
+  const usesExtensionToken = /\[E(?::[a-z])?\]/i.test(normalizedTemplate)
   let nextName = normalizedTemplate
-    .replace(/\[C(?::(\d+))?\]/gi, (_match, widthValue: string | undefined) => {
-      const width = widthValue ? Number.parseInt(widthValue, 10) : undefined
-      return formatRenameCounter(index + 1, Number.isFinite(width) ? width : undefined)
+    .replace(/\[C(?::(\d+))?(?::(\d+))?(?::(\d+))?\]/gi, (_match, firstValue: string | undefined, secondValue: string | undefined, thirdValue: string | undefined) => {
+      const first = firstValue ? Number.parseInt(firstValue, 10) : undefined
+      const second = secondValue ? Number.parseInt(secondValue, 10) : undefined
+      const third = thirdValue ? Number.parseInt(thirdValue, 10) : undefined
+
+      const start = Number.isFinite(second) ? (first ?? 1) : 1
+      const width = Number.isFinite(second) ? second : first
+      const step = Number.isFinite(third) ? (third ?? 1) : 1
+      const counter = start + (index * step)
+
+      return formatRenameCounter(counter, Number.isFinite(width) ? width : undefined)
     })
-    .replace(/\[N\]/gi, baseName)
-    .replace(/\[E\]/gi, ext)
-    .replace(/\[F\]/gi, entry.name)
+    .replace(/\[(N|E|F)(?::([a-z]))?\]/gi, (_match, token: 'N' | 'E' | 'F', modifier: string | undefined) => {
+      const rawValue = token === 'N'
+        ? baseName
+        : token === 'E'
+          ? ext
+          : entry.name
+
+      return applyRenameTextTransform(rawValue, modifier)
+    })
     .trim()
 
   if (!nextName) {
@@ -1062,6 +1087,7 @@ export function previewCommanderRenameEntries({
       entryId: entry.id,
       currentName: entry.name,
       nextName,
+      status: 'ok',
       conflict: false,
     }
   })
@@ -1073,6 +1099,7 @@ export function previewCommanderRenameEntries({
     const normalizedNextName = normalizeEntryName(item.nextName)
 
     if (!normalizedNextName) {
+      item.status = 'invalid'
       item.conflict = true
       duplicateTargetNames.push(item.currentName)
       return
@@ -1090,6 +1117,11 @@ export function previewCommanderRenameEntries({
     })
 
     item.conflict = hasDuplicateTarget || hasDirectoryConflict
+    item.status = hasDuplicateTarget
+      ? 'duplicate'
+      : hasDirectoryConflict
+        ? 'conflict'
+        : 'ok'
 
     if (hasDuplicateTarget) {
       duplicateTargetNames.push(item.nextName)

@@ -10,11 +10,13 @@ export type CommanderFooterHint = {
 
 export type CommanderPendingOperationKind = 'copy' | 'move' | 'delete' | 'mkdir' | 'rename'
 export type CommanderRenameMode = 'single' | 'batch'
+export type CommanderRenamePreviewStatus = 'ok' | 'duplicate' | 'conflict' | 'invalid'
 
 export type CommanderRenamePreviewItem = {
   entryId: string
   currentName: string
   nextName: string
+  status: CommanderRenamePreviewStatus
   conflict: boolean
 }
 

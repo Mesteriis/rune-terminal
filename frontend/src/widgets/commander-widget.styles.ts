@@ -438,9 +438,29 @@ export const commanderPendingPreviewListStyle: CSSProperties = {
   boxShadow: 'none',
 }
 
+export const commanderPendingPreviewScrollStyle: CSSProperties = {
+  maxHeight: '168px',
+  minHeight: 0,
+  padding: 0,
+  background: 'transparent',
+}
+
+export const commanderPendingPreviewHeaderStyle: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: '24px minmax(0, 1fr) minmax(0, 1fr) auto',
+  gap: 'var(--gap-xs)',
+  alignItems: 'center',
+  minHeight: '22px',
+  padding: '0 var(--space-sm)',
+  color: 'var(--runa-commander-text-muted)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '11px',
+  lineHeight: '14px',
+}
+
 export const commanderPendingPreviewRowStyle: CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)',
+  gridTemplateColumns: '24px minmax(0, 1fr) minmax(0, 1fr) auto',
   gap: 'var(--gap-xs)',
   alignItems: 'center',
   minHeight: '22px',
@@ -456,6 +476,13 @@ export const commanderPendingPreviewConflictRowStyle: CSSProperties = {
 }
 
 export const commanderPendingPreviewArrowStyle: CSSProperties = {
+  color: 'var(--runa-commander-text-muted)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '11px',
+  lineHeight: '14px',
+}
+
+export const commanderPendingPreviewIndexStyle: CSSProperties = {
   color: 'var(--runa-commander-text-muted)',
   fontFamily: 'var(--font-family-mono)',
   fontSize: '11px',
@@ -488,6 +515,34 @@ export const commanderPendingRenameHelpStyle: CSSProperties = {
   fontFamily: 'var(--font-family-mono)',
   fontSize: '11px',
   lineHeight: '14px',
+}
+
+export const commanderPendingRenamePresetRowStyle: CSSProperties = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: 'var(--gap-xs)',
+  padding: '0 var(--space-sm)',
+}
+
+export const commanderPendingRenamePresetStyle: CSSProperties = {
+  minHeight: '22px',
+  padding: '0 var(--space-xs)',
+  borderRadius: 'var(--radius-xs)',
+  border: '1px solid rgba(100, 138, 128, 0.18)',
+  background: 'rgba(9, 16, 15, 0.82)',
+  color: 'var(--runa-commander-text-secondary)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '11px',
+  lineHeight: '14px',
+  cursor: 'pointer',
+  boxShadow: 'none',
+}
+
+export const commanderPendingRenameSummaryStyle: CSSProperties = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: 'var(--gap-xs)',
+  padding: '0 var(--space-sm)',
 }
 
 export const commanderHintKeyStyle: CSSProperties = {

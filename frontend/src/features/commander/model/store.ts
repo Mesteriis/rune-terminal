@@ -490,6 +490,7 @@ function createPendingOperation(
           entryId: currentEntry.id,
           currentName: currentEntry.name,
           nextName: currentEntry.name,
+          status: 'ok',
           conflict: false,
         }],
       } satisfies CommanderPendingOperation
