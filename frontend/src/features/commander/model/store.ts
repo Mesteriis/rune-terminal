@@ -14,15 +14,18 @@ import {
   openCommanderEntry,
   previewCommanderRenameEntries,
   readCommanderDirectory,
+  readCommanderFile,
   renameCommanderEntry,
   renameCommanderEntries,
   resolveCommanderExistingPath,
+  writeCommanderFile,
 } from './fake-client'
 import {
   serializeCommanderWidgetRuntimeState,
   writePersistedCommanderWidgets,
 } from './persistence'
 import type {
+  CommanderFileDialogState,
   CommanderPendingOperation,
   CommanderPaneId,
   CommanderPaneRuntimeState,
@@ -509,6 +512,7 @@ function refreshWidgetPanes(
   widgetState: CommanderWidgetRuntimeState,
   overrides?: {
     pendingOperation?: CommanderPendingOperation | null
+    fileDialog?: CommanderFileDialogState | null
     leftPane?: Partial<CommanderPaneRuntimeState>
     rightPane?: Partial<CommanderPaneRuntimeState>
   },
@@ -516,11 +520,17 @@ function refreshWidgetPanes(
   const hasPendingOperationOverride = Boolean(
     overrides && Object.prototype.hasOwnProperty.call(overrides, 'pendingOperation'),
   )
+  const hasFileDialogOverride = Boolean(
+    overrides && Object.prototype.hasOwnProperty.call(overrides, 'fileDialog'),
+  )
   const nextWidgetState = {
     ...widgetState,
     pendingOperation: hasPendingOperationOverride
       ? (overrides?.pendingOperation ?? null)
       : widgetState.pendingOperation,
+    fileDialog: hasFileDialogOverride
+      ? (overrides?.fileDialog ?? null)
+      : widgetState.fileDialog,
     leftPane: {
       ...widgetState.leftPane,
       ...overrides?.leftPane,
@@ -776,6 +786,35 @@ function createPendingOperation(
   } satisfies CommanderPendingOperation
 }
 
+function createCommanderFileDialog(
+  widgetState: CommanderWidgetRuntimeState,
+  paneId: CommanderPaneId,
+  mode: 'view' | 'edit',
+) {
+  const paneState = getPaneState(widgetState, paneId)
+  const entryId = paneState.cursorEntryId
+
+  if (!entryId) {
+    return null
+  }
+
+  const fileSnapshot = readCommanderFile(widgetState.widgetId, paneState.path, entryId)
+
+  if (!fileSnapshot) {
+    return null
+  }
+
+  return {
+    paneId,
+    path: paneState.path,
+    entryId: fileSnapshot.entryId,
+    entryName: fileSnapshot.entryName,
+    mode,
+    content: fileSnapshot.content,
+    draftValue: fileSnapshot.content,
+  } satisfies CommanderFileDialogState
+}
+
 export const mountCommanderWidget = createEvent<CommanderMountWidgetPayload>()
 export const setCommanderActivePane = createEvent<CommanderWidgetPanePayload>()
 export const toggleCommanderShowHidden = createEvent<CommanderWidgetPayload>()
@@ -805,10 +844,15 @@ export const requestCommanderActivePaneSelectByMask = createEvent<CommanderWidge
 export const requestCommanderActivePaneUnselectByMask = createEvent<CommanderWidgetPayload>()
 export const requestCommanderActivePaneFilter = createEvent<CommanderWidgetPayload>()
 export const requestCommanderActivePaneSearch = createEvent<CommanderWidgetPayload>()
+export const requestCommanderActivePaneView = createEvent<CommanderWidgetPayload>()
+export const requestCommanderActivePaneEdit = createEvent<CommanderWidgetPayload>()
 export const clearCommanderActivePaneFilter = createEvent<CommanderWidgetPayload>()
 export const invertCommanderActivePaneSelection = createEvent<CommanderWidgetPayload>()
 export const setCommanderPanePath = createEvent<CommanderSetPanePathPayload>()
 export const setCommanderPendingOperationInput = createEvent<CommanderSetPendingOperationInputPayload>()
+export const setCommanderFileDialogDraft = createEvent<CommanderSetPendingOperationInputPayload>()
+export const saveCommanderFileDialog = createEvent<CommanderWidgetPayload>()
+export const closeCommanderFileDialog = createEvent<CommanderWidgetPayload>()
 export const confirmCommanderPendingOperation = createEvent<CommanderWidgetPayload>()
 export const cancelCommanderPendingOperation = createEvent<CommanderWidgetPayload>()
 export const resolveCommanderPendingConflict = createEvent<CommanderResolvePendingConflictPayload>()
@@ -1017,6 +1061,107 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
     return {
       ...widgets,
       [payload.widgetId]: nextWidgetState,
+    }
+  })
+  .on(requestCommanderActivePaneView, (widgets, payload) => {
+    const widgetState = widgets[payload.widgetId]
+
+    if (!widgetState || widgetState.pendingOperation) {
+      return widgets
+    }
+
+    const fileDialog = createCommanderFileDialog(widgetState, widgetState.activePane, 'view')
+
+    if (!fileDialog) {
+      return widgets
+    }
+
+    return {
+      ...widgets,
+      [payload.widgetId]: {
+        ...widgetState,
+        fileDialog,
+      },
+    }
+  })
+  .on(requestCommanderActivePaneEdit, (widgets, payload) => {
+    const widgetState = widgets[payload.widgetId]
+
+    if (!widgetState || widgetState.pendingOperation) {
+      return widgets
+    }
+
+    const fileDialog = createCommanderFileDialog(widgetState, widgetState.activePane, 'edit')
+
+    if (!fileDialog) {
+      return widgets
+    }
+
+    return {
+      ...widgets,
+      [payload.widgetId]: {
+        ...widgetState,
+        fileDialog,
+      },
+    }
+  })
+  .on(setCommanderFileDialogDraft, (widgets, payload) => {
+    const widgetState = widgets[payload.widgetId]
+
+    if (!widgetState?.fileDialog) {
+      return widgets
+    }
+
+    return {
+      ...widgets,
+      [payload.widgetId]: {
+        ...widgetState,
+        fileDialog: {
+          ...widgetState.fileDialog,
+          draftValue: payload.inputValue,
+        },
+      },
+    }
+  })
+  .on(saveCommanderFileDialog, (widgets, payload) => {
+    const widgetState = widgets[payload.widgetId]
+    const fileDialog = widgetState?.fileDialog
+
+    if (!widgetState || !fileDialog || fileDialog.mode !== 'edit') {
+      return widgets
+    }
+
+    const didSave = writeCommanderFile({
+      widgetId: payload.widgetId,
+      path: fileDialog.path,
+      entryId: fileDialog.entryId,
+      content: fileDialog.draftValue,
+    })
+
+    if (!didSave) {
+      return widgets
+    }
+
+    return {
+      ...widgets,
+      [payload.widgetId]: refreshWidgetPanes(widgetState, {
+        fileDialog: null,
+      }),
+    }
+  })
+  .on(closeCommanderFileDialog, (widgets, payload) => {
+    const widgetState = widgets[payload.widgetId]
+
+    if (!widgetState?.fileDialog) {
+      return widgets
+    }
+
+    return {
+      ...widgets,
+      [payload.widgetId]: {
+        ...widgetState,
+        fileDialog: null,
+      },
     }
   })
   .on(openCommanderPaneEntry, (widgets, payload) => {

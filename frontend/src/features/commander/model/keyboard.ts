@@ -1,7 +1,7 @@
 import { useCallback, useRef, type KeyboardEvent } from 'react'
 
 import { useCommanderActions } from './hooks'
-import type { CommanderFileRow, CommanderPaneId, CommanderPendingOperation } from './types'
+import type { CommanderFileDialogState, CommanderFileRow, CommanderPaneId, CommanderPendingOperation } from './types'
 
 const COMMANDER_TYPEAHEAD_RESET_MS = 700
 
@@ -53,6 +53,7 @@ export function useCommanderKeyboard(
   activePane: CommanderPaneId,
   activePaneRows: CommanderFileRow[],
   pendingOperation: CommanderPendingOperation | null,
+  fileDialog: CommanderFileDialogState | null,
   options?: {
     onRequestPathEdit?: () => void
   },
@@ -68,6 +69,15 @@ export function useCommanderKeyboard(
 
   return useCallback((event: KeyboardEvent<HTMLElement>) => {
     if (isInteractiveTextTarget(event.target)) {
+      return
+    }
+
+    if (fileDialog) {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        commanderActions.closeFileDialog()
+      }
+
       return
     }
 
@@ -330,8 +340,16 @@ export function useCommanderKeyboard(
         event.preventDefault()
         commanderActions.renameSelection()
         return
+      case 'F3':
+        event.preventDefault()
+        commanderActions.viewActiveFile()
+        return
+      case 'F4':
+        event.preventDefault()
+        commanderActions.editActiveFile()
+        return
       default:
         return
     }
-  }, [activePane, activePaneRows, commanderActions, options, pendingOperation])
+  }, [activePane, activePaneRows, commanderActions, fileDialog, options, pendingOperation])
 }

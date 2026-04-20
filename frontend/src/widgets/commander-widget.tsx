@@ -11,10 +11,21 @@ import type {
   CommanderWidgetViewState,
 } from '../features/commander/model/types'
 import { RunaDomScopeProvider, useRunaDomAutoTagging, useRunaDomScope } from '../shared/ui/dom-id'
-import { Badge, Box, Input, ScrollArea, Separator, Surface, Text } from '../shared/ui/primitives'
+import { Badge, Box, Button, Input, ScrollArea, Separator, Surface, Text, TextArea } from '../shared/ui/primitives'
 import { IconButton } from '../shared/ui/components'
 
 import {
+  commanderFileDialogActionsStyle,
+  commanderFileDialogFooterStyle,
+  commanderFileDialogHeaderStyle,
+  commanderFileDialogHintStyle,
+  commanderFileDialogOverlayStyle,
+  commanderFileDialogPathStyle,
+  commanderFileDialogStyle,
+  commanderFileDialogTextAreaStyle,
+  commanderFileDialogTitleClusterStyle,
+  commanderFileDialogTitleRowStyle,
+  commanderFileDialogTitleStyle,
   commanderFooterTextStyle,
   commanderHintActionStyle,
   commanderHeaderClusterStyle,
@@ -81,6 +92,14 @@ const commanderRenameTemplatePresets = [
   '[N:u]-[C:2]',
   '[C:10:3]',
 ] as const
+
+function joinCommanderPath(path: string, name: string) {
+  if (path === '~') {
+    return `~/${name}`
+  }
+
+  return `${path}/${name}`
+}
 
 const plainClusterStyle = {
   display: 'flex',
@@ -468,6 +487,133 @@ function CommanderPane({
   )
 }
 
+function CommanderFileDialog({
+  dirty,
+  content,
+  entryName,
+  entryPath,
+  mode,
+  onChange,
+  onClose,
+  onSave,
+}: {
+  dirty: boolean
+  content: string
+  entryName: string
+  entryPath: string
+  mode: 'view' | 'edit'
+  onChange: (value: string) => void
+  onClose: () => void
+  onSave: () => void
+}) {
+  const textAreaRef = useRef<HTMLTextAreaElement | null>(null)
+  const dialogIdentityRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    const nextIdentity = `${entryPath}:${mode}`
+
+    if (dialogIdentityRef.current === nextIdentity) {
+      return
+    }
+
+    dialogIdentityRef.current = nextIdentity
+
+    if (!textAreaRef.current) {
+      return
+    }
+
+    textAreaRef.current.focus()
+
+    if (mode === 'edit') {
+      const cursorPosition = textAreaRef.current.value.length
+      textAreaRef.current.setSelectionRange(cursorPosition, cursorPosition)
+    }
+  }, [entryPath, mode])
+
+  return (
+    <Box
+      onMouseDown={onClose}
+      runaComponent="commander-file-dialog-overlay"
+      style={commanderFileDialogOverlayStyle}
+    >
+      <Surface
+        onMouseDown={(event) => event.stopPropagation()}
+        runaComponent="commander-file-dialog"
+        style={commanderFileDialogStyle}
+      >
+        <Box runaComponent="commander-file-dialog-header" style={commanderFileDialogHeaderStyle}>
+          <Box runaComponent="commander-file-dialog-title-cluster" style={commanderFileDialogTitleClusterStyle}>
+            <Box runaComponent="commander-file-dialog-title-row" style={commanderFileDialogTitleRowStyle}>
+              <Badge runaComponent="commander-file-dialog-mode" style={paneStateBadgeStyle}>
+                {mode === 'edit' ? 'EDIT' : 'VIEW'}
+              </Badge>
+              <Text runaComponent="commander-file-dialog-title" style={commanderFileDialogTitleStyle}>
+                {entryName}
+              </Text>
+              {mode === 'edit' && dirty ? (
+                <Badge runaComponent="commander-file-dialog-dirty" style={commanderTypeBadgeStyle}>
+                  DIRTY
+                </Badge>
+              ) : null}
+            </Box>
+            <Text runaComponent="commander-file-dialog-path" style={commanderFileDialogPathStyle}>
+              {entryPath}
+            </Text>
+          </Box>
+          <Box runaComponent="commander-file-dialog-actions" style={commanderFileDialogActionsStyle}>
+            {mode === 'edit' ? (
+              <Button
+                onClick={onSave}
+                runaComponent="commander-file-dialog-save"
+              >
+                Save
+              </Button>
+            ) : null}
+            <Button
+              onClick={onClose}
+              runaComponent="commander-file-dialog-close"
+            >
+              Close
+            </Button>
+          </Box>
+        </Box>
+        <TextArea
+          aria-label={mode === 'edit' ? `Edit ${entryName}` : `View ${entryName}`}
+          onChange={(event) => onChange(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') {
+              event.preventDefault()
+              event.stopPropagation()
+              onClose()
+              return
+            }
+
+            if (mode === 'edit' && (event.ctrlKey || event.metaKey) && (event.key === 's' || event.key === 'S')) {
+              event.preventDefault()
+              event.stopPropagation()
+              onSave()
+            }
+          }}
+          readOnly={mode === 'view'}
+          ref={textAreaRef}
+          runaComponent="commander-file-dialog-textarea"
+          spellCheck={false}
+          style={commanderFileDialogTextAreaStyle}
+          value={content}
+        />
+        <Box runaComponent="commander-file-dialog-footer" style={commanderFileDialogFooterStyle}>
+          <Text runaComponent="commander-file-dialog-hint-mode" style={commanderFileDialogHintStyle}>
+            {mode === 'edit' ? 'Ctrl+S save' : 'Read only preview'}
+          </Text>
+          <Text runaComponent="commander-file-dialog-hint-close" style={commanderFileDialogHintStyle}>
+            Esc close
+          </Text>
+        </Box>
+      </Surface>
+    </Box>
+  )
+}
+
 export function CommanderWidget() {
   const { widget: widgetId } = useRunaDomScope()
   const { actions, state } = useCommanderWidget(widgetId)
@@ -480,9 +626,10 @@ export function CommanderWidget() {
     state.activePane,
     activePane.rows,
     state.pendingOperation,
+    state.fileDialog,
     {
       onRequestPathEdit: () => {
-        if (state.pendingOperation) {
+        if (state.pendingOperation || state.fileDialog) {
           return
         }
 
@@ -532,6 +679,14 @@ export function CommanderWidget() {
     () => getRenamePreviewSummary(pendingRenamePreview),
     [pendingRenamePreview],
   )
+  const activeFileDialogPath = state.fileDialog
+    ? joinCommanderPath(state.fileDialog.path, state.fileDialog.entryName)
+    : ''
+  const isFileDialogDirty = Boolean(
+    state.fileDialog
+    && state.fileDialog.mode === 'edit'
+    && state.fileDialog.draftValue !== state.fileDialog.content,
+  )
 
   const attachCommanderRootRef = useCallback((node: HTMLDivElement | null) => {
     commanderRootRef.current = node
@@ -545,7 +700,7 @@ export function CommanderWidget() {
   }, [])
 
   const startPathEdit = useCallback((paneId: CommanderPaneViewState['id']) => {
-    if (state.pendingOperation) {
+    if (state.pendingOperation || state.fileDialog) {
       return
     }
 
@@ -553,7 +708,7 @@ export function CommanderWidget() {
     actions.setActivePane(paneId)
     setEditingPathPaneId(paneId)
     setEditingPathValue(pane.path)
-  }, [actions, state.leftPane, state.pendingOperation, state.rightPane])
+  }, [actions, state.fileDialog, state.leftPane, state.pendingOperation, state.rightPane])
 
   const cancelPathEdit = useCallback((options?: { focusRoot?: boolean }) => {
     setEditingPathPaneId(null)
@@ -625,13 +780,23 @@ export function CommanderWidget() {
     }
   }, [editingPathPaneId, state.pendingOperation])
 
+  useEffect(() => {
+    if (state.fileDialog && editingPathPaneId) {
+      setEditingPathPaneId(null)
+      setEditingPathValue('')
+    }
+  }, [editingPathPaneId, state.fileDialog])
+
   const handleHintAction = useCallback((hintKey: string) => {
     switch (hintKey) {
       case 'F2':
         commanderActions.renameSelection()
         break
       case 'F3':
-        commanderActions.openActiveEntry()
+        commanderActions.viewActiveFile()
+        break
+      case 'F4':
+        commanderActions.editActiveFile()
         break
       case 'F5':
         commanderActions.copySelection()
@@ -1114,6 +1279,24 @@ export function CommanderWidget() {
           ))}
         </Surface>
       )}
+      {state.fileDialog ? (
+        <CommanderFileDialog
+          content={state.fileDialog.draftValue}
+          dirty={isFileDialogDirty}
+          entryName={state.fileDialog.entryName}
+          entryPath={activeFileDialogPath}
+          mode={state.fileDialog.mode}
+          onChange={(value) => commanderActions.setFileDialogDraft(value)}
+          onClose={() => {
+            commanderActions.closeFileDialog()
+            focusCommanderRoot()
+          }}
+          onSave={() => {
+            commanderActions.saveFileDialog()
+            focusCommanderRoot()
+          }}
+        />
+      ) : null}
     </Box>
     </RunaDomScopeProvider>
   )

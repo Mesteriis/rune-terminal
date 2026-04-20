@@ -4,6 +4,7 @@ import type {
   CommanderClientSnapshot,
   CommanderDirectoryEntry,
   CommanderDirectorySnapshot,
+  CommanderFileSnapshot,
   CommanderNavigationResult,
   CommanderPaneId,
   CommanderPanePersistedState,
@@ -92,6 +93,29 @@ function formatSelectedSize(totalBytes: number) {
   return `${(totalBytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
+function formatContentSizeLabel(totalBytes: number) {
+  if (totalBytes < 1024) {
+    return `${totalBytes} B`
+  }
+
+  if (totalBytes < 1024 * 1024) {
+    return `${(totalBytes / 1024).toFixed(1)} KB`
+  }
+
+  return `${(totalBytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function formatCurrentTimestamp() {
+  const now = new Date()
+  const year = String(now.getFullYear())
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  const hours = String(now.getHours()).padStart(2, '0')
+  const minutes = String(now.getMinutes()).padStart(2, '0')
+
+  return `${year}-${month}-${day} ${hours}:${minutes}`
+}
+
 function createEntry(entry: CommanderSeedEntry, directoryPath: string): CommanderDirectoryEntry {
   return {
     id: entry.id ?? toSeedEntryId(directoryPath, entry.name),
@@ -172,6 +196,58 @@ function joinPath(parentPath: string, segment: string) {
 
 function splitEntryName(entry: CommanderSeedEntry) {
   return entry.name
+}
+
+function getDefaultFileContent(path: string, entry: CommanderSeedEntry) {
+  const fullPath = joinPath(path, entry.name)
+  const title = `${entry.name}${entry.ext ? `.${entry.ext}` : ''}`
+
+  switch (entry.ext.toLowerCase()) {
+    case 'tsx':
+    case 'ts':
+      return [
+        `// ${title}`,
+        `// Fake Commander file content for ${fullPath}`,
+        '',
+        `export const ${entry.name.replace(/[^a-zA-Z0-9]+/g, '_') || 'entry'} = '${fullPath}'`,
+        '',
+      ].join('\n')
+    case 'md':
+      return [
+        `# ${title}`,
+        '',
+        `Fake Commander markdown preview for \`${fullPath}\`.`,
+        '',
+        '- frontend-only',
+        '- fake client backed',
+        '',
+      ].join('\n')
+    case 'sh':
+      return [
+        '#!/usr/bin/env zsh',
+        `# ${title}`,
+        '',
+        `echo "fake client ${fullPath}"`,
+        '',
+      ].join('\n')
+    case 'json':
+      return JSON.stringify({
+        path: fullPath,
+        source: 'fake-client',
+      }, null, 2)
+    default:
+      return [
+        `${title}`,
+        '',
+        `Path: ${fullPath}`,
+        'Fake Commander viewer/editor content.',
+        '',
+      ].join('\n')
+  }
+}
+
+function getEntryContent(path: string, entry: CommanderSeedEntry) {
+  return entry.content ?? getDefaultFileContent(path, entry)
 }
 
 function splitEntryBaseNameAndExt(entry: CommanderDirectoryEntry) {
@@ -772,6 +848,7 @@ export function createCommanderWidgetRuntimeState(
     sortMode,
     footerHints: commanderWidgetMockState.footerHints,
     pendingOperation: null,
+    fileDialog: null,
     leftPane: persistedState?.leftPane
       ? createPaneStateFromPersisted(widgetId, 'left', persistedState.leftPane, options)
       : createInitialPaneState(
@@ -877,6 +954,61 @@ export function openCommanderEntry(
     kind: 'file',
     entry,
   }
+}
+
+export function readCommanderFile(
+  widgetId: string,
+  path: string,
+  entryId: string,
+): CommanderFileSnapshot | null {
+  const client = getClient(widgetId)
+  const directoryEntries = client.directories.get(path) ?? []
+  const currentEntry = directoryEntries.find((entry) => createEntry(entry, path).id === entryId)
+
+  if (!currentEntry || currentEntry.kind !== 'file') {
+    return null
+  }
+
+  return {
+    entryId,
+    entryName: currentEntry.name,
+    path,
+    content: getEntryContent(path, currentEntry),
+  }
+}
+
+export function writeCommanderFile({
+  widgetId,
+  path,
+  entryId,
+  content,
+}: {
+  widgetId: string
+  path: string
+  entryId: string
+  content: string
+}) {
+  const client = getClient(widgetId)
+  const encoder = new TextEncoder()
+  const contentBytes = encoder.encode(content).length
+  let saved = false
+
+  mutateEntryList(client, path, (entries) => entries.map((entry) => {
+    if (createEntry(entry, path).id !== entryId || entry.kind !== 'file') {
+      return entry
+    }
+
+    saved = true
+
+    return {
+      ...entry,
+      content,
+      sizeLabel: formatContentSizeLabel(contentBytes),
+      modified: formatCurrentTimestamp(),
+    }
+  }))
+
+  return saved
 }
 
 export function getCommanderParentPath(path: string) {

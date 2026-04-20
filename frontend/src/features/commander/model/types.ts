@@ -11,6 +11,7 @@ export type CommanderFooterHint = {
 export type CommanderPendingOperationKind = 'copy' | 'move' | 'delete' | 'mkdir' | 'rename' | 'select' | 'unselect' | 'filter' | 'search'
 export type CommanderRenameMode = 'single' | 'batch'
 export type CommanderRenamePreviewStatus = 'ok' | 'duplicate' | 'conflict' | 'invalid'
+export type CommanderFileDialogMode = 'view' | 'edit'
 
 export type CommanderRenamePreviewItem = {
   entryId: string
@@ -63,6 +64,7 @@ export type CommanderClientEntrySnapshot = {
   gitStatus?: string
   executable?: boolean
   symlinkTarget?: string
+  content?: string
 }
 
 export type CommanderClientSnapshot = {
@@ -92,6 +94,16 @@ export type CommanderPanePersistedState = {
   historyForward: string[]
 }
 
+export type CommanderFileDialogState = {
+  paneId: CommanderPaneId
+  path: string
+  entryId: string
+  entryName: string
+  mode: CommanderFileDialogMode
+  content: string
+  draftValue: string
+}
+
 export type CommanderWidgetRuntimeState = {
   widgetId: string
   mode: 'commander'
@@ -101,6 +113,7 @@ export type CommanderWidgetRuntimeState = {
   sortMode: CommanderSortMode
   footerHints: CommanderFooterHint[]
   pendingOperation: CommanderPendingOperation | null
+  fileDialog: CommanderFileDialogState | null
   leftPane: CommanderPaneRuntimeState
   rightPane: CommanderPaneRuntimeState
 }
@@ -159,6 +172,7 @@ export type CommanderWidgetViewState = {
   sortMode: CommanderSortMode
   footerHints: CommanderFooterHint[]
   pendingOperation: CommanderPendingOperation | null
+  fileDialog: CommanderFileDialogState | null
   leftPane: CommanderPaneViewState
   rightPane: CommanderPaneViewState
 }
@@ -181,3 +195,10 @@ export type CommanderNavigationResult =
     kind: 'symlink'
     entry: CommanderDirectoryEntry
   }
+
+export type CommanderFileSnapshot = {
+  entryId: string
+  entryName: string
+  path: string
+  content: string
+}
