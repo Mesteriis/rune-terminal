@@ -1,6 +1,7 @@
 export type CommanderPaneId = 'left' | 'right'
 export type CommanderViewMode = 'commander' | 'split' | 'terminal'
 export type CommanderSortMode = 'name' | 'ext' | 'size' | 'modified'
+export type CommanderSortDirection = 'asc' | 'desc'
 export type CommanderRowKind = 'file' | 'folder' | 'symlink'
 
 export type CommanderFooterHint = {
@@ -112,6 +113,8 @@ export type CommanderWidgetRuntimeState = {
   activePane: CommanderPaneId
   showHidden: boolean
   sortMode: CommanderSortMode
+  sortDirection: CommanderSortDirection
+  dirsFirst: boolean
   footerHints: CommanderFooterHint[]
   pendingOperation: CommanderPendingOperation | null
   fileDialog: CommanderFileDialogState | null
@@ -124,6 +127,8 @@ export type CommanderWidgetPersistedState = {
   viewMode: CommanderViewMode
   showHidden: boolean
   sortMode: CommanderSortMode
+  sortDirection: CommanderSortDirection
+  dirsFirst: boolean
   leftPane: CommanderPanePersistedState
   rightPane: CommanderPanePersistedState
 }
@@ -171,6 +176,8 @@ export type CommanderWidgetViewState = {
   showHidden: boolean
   syncCwd: false
   sortMode: CommanderSortMode
+  sortDirection: CommanderSortDirection
+  dirsFirst: boolean
   footerHints: CommanderFooterHint[]
   pendingOperation: CommanderPendingOperation | null
   fileDialog: CommanderFileDialogState | null

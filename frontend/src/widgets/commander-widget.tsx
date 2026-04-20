@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Columns2, Columns3, Eye, EyeOff, Folder, FileCode2, FileText, Link2, SquareTerminal } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Columns2, Columns3, Eye, EyeOff, FileCode2, FileText, FolderTree, Link2, SquareTerminal } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 
 import { listCommanderDirectoryPaths } from '../features/commander/model/fake-client'
@@ -10,6 +10,7 @@ import type {
   CommanderPaneViewState,
   CommanderRenamePreviewItem,
   CommanderRenamePreviewStatus,
+  CommanderSortDirection,
   CommanderSortMode,
   CommanderWidgetViewState,
 } from '../features/commander/model/types'
@@ -210,6 +211,7 @@ function joinCommanderPath(path: string, name: string) {
 function renderCommanderSortLabel(
   label: string,
   isActive: boolean,
+  sortDirection: CommanderSortDirection,
 ) {
   return (
     <Box runaComponent={`commander-sort-label-${label.toLowerCase()}`} style={commanderListHeaderLabelStyle}>
@@ -218,7 +220,7 @@ function renderCommanderSortLabel(
       </Text>
       {isActive ? (
         <Text runaComponent={`commander-sort-label-${label.toLowerCase()}-indicator`} style={commanderListHeaderSortIndicatorStyle}>
-          ▲
+          {sortDirection === 'desc' ? '▼' : '▲'}
         </Text>
       ) : null}
     </Box>
@@ -451,6 +453,7 @@ function CommanderPane({
   onStartPathEdit,
   onSetCursor,
   onToggleSelection,
+  sortDirection,
   sortMode,
 }: {
   isActive: boolean
@@ -472,6 +475,7 @@ function CommanderPane({
   pathInputRef: RefObject<HTMLInputElement | null>
   pathSuggestionIndex: number
   pathSuggestions: CommanderPathSuggestion[]
+  sortDirection: CommanderSortDirection
   sortMode: CommanderSortMode
 }) {
   const rowRefs = useRef<Record<string, HTMLDivElement | null>>({})
@@ -642,7 +646,7 @@ function CommanderPane({
           variant="ghost"
         >
           <Text runaComponent={`commander-pane-${pane.id}-column-type-label`} style={{ color: 'inherit', fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit' }}>
-            T
+            {sortMode === 'ext' ? (sortDirection === 'desc' ? 'T▼' : 'T▲') : 'T'}
           </Text>
         </Button>
         <Button
@@ -655,7 +659,7 @@ function CommanderPane({
           title="Sort by name"
           variant="ghost"
         >
-          {renderCommanderSortLabel('Name', sortMode === 'name')}
+          {renderCommanderSortLabel('Name', sortMode === 'name', sortDirection)}
         </Button>
         <Text runaComponent={`commander-pane-${pane.id}-column-git`} style={commanderPaneMetaStyle}>Git</Text>
         <Button
@@ -669,7 +673,7 @@ function CommanderPane({
           title="Sort by size"
           variant="ghost"
         >
-          {renderCommanderSortLabel('Size', sortMode === 'size')}
+          {renderCommanderSortLabel('Size', sortMode === 'size', sortDirection)}
         </Button>
         <Button
           onClick={() => onSetSortMode('modified')}
@@ -682,7 +686,7 @@ function CommanderPane({
           title="Sort by modified"
           variant="ghost"
         >
-          {renderCommanderSortLabel('Modified', sortMode === 'modified')}
+          {renderCommanderSortLabel('Modified', sortMode === 'modified', sortDirection)}
         </Button>
       </Box>
       <Separator runaComponent={`commander-pane-${pane.id}-list-separator`} />
@@ -1298,6 +1302,22 @@ export function CommanderWidget() {
         </Box>
         <Box runaComponent="commander-header-toggle-cluster" style={commanderHeaderClusterStyle}>
           <IconButton
+            aria-label={state.dirsFirst ? 'Disable folders first sorting' : 'Enable folders first sorting'}
+            aria-pressed={state.dirsFirst}
+            onClick={() => {
+              commanderActions.toggleDirsFirst()
+              focusCommanderRoot()
+            }}
+            runaComponent="commander-toggle-dirs-first"
+            size="sm"
+            style={{
+              ...commanderIconControlStyle,
+              ...(state.dirsFirst ? commanderToggleActiveStyle : null),
+            }}
+          >
+            <FolderTree size={14} strokeWidth={1.8} />
+          </IconButton>
+          <IconButton
             aria-label={state.showHidden ? 'Hide hidden files' : 'Show hidden files'}
             aria-pressed={state.showHidden}
             onClick={() => actions.toggleShowHidden()}
@@ -1333,6 +1353,7 @@ export function CommanderWidget() {
           pathInputRef={pathEditInputRef}
           pathSuggestionIndex={pathSuggestionIndex}
           pathSuggestions={editingPathPaneId === 'left' ? editingPathSuggestions : []}
+          sortDirection={state.sortDirection}
           sortMode={state.sortMode}
         />
         <CommanderPane
@@ -1355,6 +1376,7 @@ export function CommanderWidget() {
           pathInputRef={pathEditInputRef}
           pathSuggestionIndex={pathSuggestionIndex}
           pathSuggestions={editingPathPaneId === 'right' ? editingPathSuggestions : []}
+          sortDirection={state.sortDirection}
           sortMode={state.sortMode}
         />
       </Box>

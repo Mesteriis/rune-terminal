@@ -131,6 +131,8 @@ function rebuildPaneState(
   const snapshot = readCommanderDirectory(widgetState.widgetId, resolvedPath, {
     showHidden: widgetState.showHidden,
     sortMode: widgetState.sortMode,
+    sortDirection: widgetState.sortDirection,
+    dirsFirst: widgetState.dirsFirst,
   })
   const filteredEntries = filterEntriesByMask(snapshot.entries, paneState.filterQuery, { emptyMeansAll: true })
   const visibleEntryIds = new Set(filteredEntries.map((entry) => entry.id))
@@ -440,6 +442,8 @@ function getCommanderFilterMatches(
   const directoryEntries = readCommanderDirectory(widgetState.widgetId, paneState.path, {
     showHidden: widgetState.showHidden,
     sortMode: widgetState.sortMode,
+    sortDirection: widgetState.sortDirection,
+    dirsFirst: widgetState.dirsFirst,
   }).entries
   const matchedEntries = getCommanderMatchedEntries(directoryEntries, mask, { emptyMeansAll: true })
 
@@ -839,6 +843,7 @@ function createCommanderFileDialog(
 export const mountCommanderWidget = createEvent<CommanderMountWidgetPayload>()
 export const setCommanderActivePane = createEvent<CommanderWidgetPanePayload>()
 export const toggleCommanderShowHidden = createEvent<CommanderWidgetPayload>()
+export const toggleCommanderDirsFirst = createEvent<CommanderWidgetPayload>()
 export const setCommanderViewMode = createEvent<CommanderSetViewModePayload>()
 export const setCommanderSortMode = createEvent<CommanderSetSortModePayload>()
 export const setCommanderPaneCursor = createEvent<CommanderSetPaneCursorPayload>()
@@ -931,6 +936,27 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
       },
     }
   })
+  .on(toggleCommanderDirsFirst, (widgets, payload) => {
+    const widgetState = widgets[payload.widgetId]
+
+    if (!widgetState) {
+      return widgets
+    }
+
+    const nextWidgetState = {
+      ...widgetState,
+      dirsFirst: !widgetState.dirsFirst,
+    }
+
+    return {
+      ...widgets,
+      [payload.widgetId]: {
+        ...nextWidgetState,
+        leftPane: rebuildPaneState(nextWidgetState, widgetState.leftPane),
+        rightPane: rebuildPaneState(nextWidgetState, widgetState.rightPane),
+      },
+    }
+  })
   .on(setCommanderViewMode, (widgets, payload) => {
     const widgetState = widgets[payload.widgetId]
 
@@ -949,13 +975,16 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
   .on(setCommanderSortMode, (widgets, payload) => {
     const widgetState = widgets[payload.widgetId]
 
-    if (!widgetState || widgetState.sortMode === payload.sortMode) {
+    if (!widgetState) {
       return widgets
     }
 
     const nextWidgetState = {
       ...widgetState,
       sortMode: payload.sortMode,
+      sortDirection: widgetState.sortMode === payload.sortMode
+        ? (widgetState.sortDirection === 'asc' ? 'desc' : 'asc')
+        : 'asc',
     }
 
     return {

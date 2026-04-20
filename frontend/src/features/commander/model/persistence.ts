@@ -69,6 +69,10 @@ function normalizeWidgetState(value: unknown): CommanderWidgetPersistedSnapshot 
       && value.runtime.sortMode !== 'ext'
       && value.runtime.sortMode !== 'size'
       && value.runtime.sortMode !== 'modified')
+    || (value.runtime.sortDirection !== undefined
+      && value.runtime.sortDirection !== 'asc'
+      && value.runtime.sortDirection !== 'desc')
+    || (value.runtime.dirsFirst !== undefined && typeof value.runtime.dirsFirst !== 'boolean')
     || !isObjectRecord(value.client.directories)
   ) {
     return null
@@ -80,6 +84,8 @@ function normalizeWidgetState(value: unknown): CommanderWidgetPersistedSnapshot 
       viewMode: value.runtime.viewMode,
       showHidden: value.runtime.showHidden,
       sortMode: value.runtime.sortMode,
+      sortDirection: value.runtime.sortDirection ?? 'asc',
+      dirsFirst: value.runtime.dirsFirst ?? true,
       leftPane,
       rightPane,
     },
@@ -155,6 +161,8 @@ export function serializeCommanderWidgetRuntimeState(
     viewMode: widgetState.viewMode,
     showHidden: widgetState.showHidden,
     sortMode: widgetState.sortMode,
+    sortDirection: widgetState.sortDirection,
+    dirsFirst: widgetState.dirsFirst,
     leftPane: serializePaneState(widgetState.leftPane),
     rightPane: serializePaneState(widgetState.rightPane),
   }

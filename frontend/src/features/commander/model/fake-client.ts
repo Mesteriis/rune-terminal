@@ -10,6 +10,7 @@ import type {
   CommanderPanePersistedState,
   CommanderRenamePreviewItem,
   CommanderPaneRuntimeState,
+  CommanderSortDirection,
   CommanderWidgetPersistedState,
   CommanderSortMode,
   CommanderWidgetRuntimeState,
@@ -132,45 +133,46 @@ function createEntry(entry: CommanderSeedEntry, directoryPath: string): Commande
   }
 }
 
-function sortEntries(entries: CommanderDirectoryEntry[], sortMode: CommanderSortMode) {
+function sortEntries(
+  entries: CommanderDirectoryEntry[],
+  sortMode: CommanderSortMode,
+  sortDirection: CommanderSortDirection,
+  dirsFirst: boolean,
+) {
   const sortedEntries = [...entries]
 
   sortedEntries.sort((leftEntry, rightEntry) => {
-    if (leftEntry.kind === 'folder' && rightEntry.kind !== 'folder') {
-      return -1
+    if (dirsFirst) {
+      if (leftEntry.kind === 'folder' && rightEntry.kind !== 'folder') {
+        return -1
+      }
+
+      if (leftEntry.kind !== 'folder' && rightEntry.kind === 'folder') {
+        return 1
+      }
     }
 
-    if (leftEntry.kind !== 'folder' && rightEntry.kind === 'folder') {
-      return 1
-    }
+    let compareResult = 0
 
     if (sortMode === 'ext') {
-      const extCompare = (leftEntry.ext || leftEntry.name).localeCompare(rightEntry.ext || rightEntry.name)
-
-      if (extCompare !== 0) {
-        return extCompare
-      }
+      compareResult = (leftEntry.ext || leftEntry.name).localeCompare(rightEntry.ext || rightEntry.name)
     }
 
-    if (sortMode === 'modified') {
-      const modifiedCompare = rightEntry.modified.localeCompare(leftEntry.modified)
-
-      if (modifiedCompare !== 0) {
-        return modifiedCompare
-      }
+    if (sortMode === 'modified' && compareResult === 0) {
+      compareResult = rightEntry.modified.localeCompare(leftEntry.modified)
     }
 
-    if (sortMode === 'size') {
+    if (sortMode === 'size' && compareResult === 0) {
       const leftSize = leftEntry.sizeBytes ?? -1
       const rightSize = rightEntry.sizeBytes ?? -1
-      const sizeCompare = rightSize - leftSize
-
-      if (sizeCompare !== 0) {
-        return sizeCompare
-      }
+      compareResult = rightSize - leftSize
     }
 
-    return leftEntry.name.localeCompare(rightEntry.name)
+    if (compareResult === 0) {
+      compareResult = leftEntry.name.localeCompare(rightEntry.name)
+    }
+
+    return sortDirection === 'desc' ? compareResult * -1 : compareResult
   })
 
   return sortedEntries
@@ -737,6 +739,8 @@ function readDirectoryEntries(
   options: {
     showHidden: boolean
     sortMode: CommanderSortMode
+    sortDirection: CommanderSortDirection
+    dirsFirst: boolean
   },
 ) {
   const client = getClient(widgetId)
@@ -745,7 +749,7 @@ function readDirectoryEntries(
     .map((entry) => createEntry(entry, path))
     .filter((entry) => options.showHidden || !entry.hidden)
 
-  return sortEntries(preparedEntries, options.sortMode)
+  return sortEntries(preparedEntries, options.sortMode, options.sortDirection, options.dirsFirst)
 }
 
 function resolveEntry(widgetId: string, path: string, entryId: string) {
@@ -785,6 +789,8 @@ function createInitialPaneState(
   options: {
     showHidden: boolean
     sortMode: CommanderSortMode
+    sortDirection: CommanderSortDirection
+    dirsFirst: boolean
   },
   history?: {
     back: string[]
@@ -822,6 +828,8 @@ function createPaneStateFromPersisted(
   options: {
     showHidden: boolean
     sortMode: CommanderSortMode
+    sortDirection: CommanderSortDirection
+    dirsFirst: boolean
   },
 ) {
   return createInitialPaneState(
@@ -847,7 +855,9 @@ export function createCommanderWidgetRuntimeState(
 ): CommanderWidgetRuntimeState {
   const showHidden = persistedState?.showHidden ?? commanderWidgetMockState.showHidden
   const sortMode = persistedState?.sortMode ?? commanderWidgetMockState.sortMode
-  const options = { showHidden, sortMode }
+  const sortDirection = persistedState?.sortDirection ?? 'asc'
+  const dirsFirst = persistedState?.dirsFirst ?? true
+  const options = { showHidden, sortMode, sortDirection, dirsFirst }
 
   return {
     widgetId,
@@ -856,6 +866,8 @@ export function createCommanderWidgetRuntimeState(
     activePane: persistedState?.activePane ?? commanderWidgetMockState.activePane,
     showHidden,
     sortMode,
+    sortDirection,
+    dirsFirst,
     footerHints: commanderWidgetMockState.footerHints,
     pendingOperation: null,
     fileDialog: null,
@@ -927,6 +939,8 @@ export function readCommanderDirectory(
   options: {
     showHidden: boolean
     sortMode: CommanderSortMode
+    sortDirection: CommanderSortDirection
+    dirsFirst: boolean
   },
 ): CommanderDirectorySnapshot {
   return {
