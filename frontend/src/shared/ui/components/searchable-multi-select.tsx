@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
 
 import { Box, Button, Input, Text } from '@/shared/ui/primitives'
 
@@ -52,6 +52,8 @@ export function SearchableMultiSelect({
   onChange,
   searchPlaceholder = 'Search options',
 }: SearchableMultiSelectProps) {
+  const labelId = useId()
+  const listboxId = useId()
   const [query, setQuery] = useState('')
 
   const filteredOptions = useMemo(() => {
@@ -74,21 +76,29 @@ export function SearchableMultiSelect({
 
   return (
     <Box style={rootStyle}>
-      <Text>{label}</Text>
+      <Text id={labelId}>{label}</Text>
       <Input
+        aria-controls={listboxId}
         onChange={(event) => setQuery(event.target.value)}
         placeholder={searchPlaceholder}
         value={query}
       />
-      <Box aria-multiselectable="true" role="listbox" style={optionsStyle}>
+      <Box
+        aria-labelledby={labelId}
+        aria-multiselectable="true"
+        id={listboxId}
+        role="listbox"
+        style={optionsStyle}
+      >
         {filteredOptions.map((option) => {
           const isSelected = value.includes(option.value)
 
           return (
             <Button
-              aria-pressed={isSelected}
+              aria-selected={isSelected}
               key={option.value}
               onClick={() => toggleOption(option.value)}
+              role="option"
               style={optionButtonStyle}
             >
               <Text>{option.label}</Text>

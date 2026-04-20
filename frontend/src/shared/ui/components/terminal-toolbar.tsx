@@ -1,3 +1,5 @@
+import { useEffect, useRef } from 'react'
+
 import { ChevronDown, ChevronUp, ClipboardPaste, Copy, Cpu, Search, X } from 'lucide-react'
 
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
@@ -91,6 +93,14 @@ export function TerminalToolbar({
   onSearchQueryChange,
   onToggleSearch,
 }: TerminalToolbarProps) {
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (isSearchOpen) {
+      searchInputRef.current?.focus()
+    }
+  }, [isSearchOpen])
+
   return (
     <RunaDomScopeProvider component="terminal-toolbar">
       <Box runaComponent="terminal-toolbar-root" style={rootStyle}>
@@ -125,9 +135,9 @@ export function TerminalToolbar({
           <Box runaComponent="terminal-toolbar-search-wrap" style={searchWrapStyle}>
             <Input
               aria-label="Search terminal output"
-              autoFocus
               onChange={(event) => onSearchQueryChange(event.currentTarget.value)}
               placeholder="Search output"
+              ref={searchInputRef}
               runaComponent="terminal-toolbar-search-input"
               style={searchInputStyle}
               value={searchQuery}

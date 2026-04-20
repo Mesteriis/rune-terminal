@@ -318,6 +318,39 @@ body {
   border: 0 !important;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .dv-groupview {
+    transition: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --color-surface-glass: rgba(8, 17, 15, 0.92);
+    --color-surface-glass-soft: rgba(10, 20, 18, 0.96);
+    --color-text-secondary: #d5e3df;
+    --color-text-muted: #bfd0ca;
+    --color-border-subtle: rgba(206, 230, 222, 0.42);
+    --color-border-strong: rgba(206, 230, 222, 0.66);
+  }
+
+  .dv-groupview,
+  [data-runa-shell-widget-frame] {
+    box-shadow:
+      0 0 0 1px var(--color-border-strong),
+      var(--shadow-glass-panel);
+  }
+}
+
 [data-runa-shell-sash]:hover,
 [data-runa-shell-sash]:active {
   cursor: col-resize;

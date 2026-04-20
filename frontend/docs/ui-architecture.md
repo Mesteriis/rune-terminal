@@ -62,6 +62,7 @@ Current primitives:
 - Must not use raw HTML elements
 - Provide reusable UI combinations
 - Repeated component-layer presentational resets should be centralized in shared component-local helpers instead of copied across files
+- Interactive shared components must preserve browser accessibility baselines: do not suppress page zoom globally, wire explicit ARIA naming/ownership for composite controls, and move focus intentionally instead of relying on uncontrolled `autoFocus`
 
 Current reusable controls:
 
@@ -79,6 +80,9 @@ Current reusable controls:
 - `TerminalStatusHeader`
 - `TerminalSurface`
 - `TerminalToolbar`
+- `SearchableMultiSelect` exposes a labelled `listbox` / `option` contract with `aria-selected` instead of toggle-button semantics
+- `RadioGroup` exposes a named `radiogroup` contract through an explicit label id
+- `TerminalToolbar` moves focus into the search field explicitly when the search row opens
 
 ### Widgets
 
@@ -218,6 +222,7 @@ Lookup helpers exported from `src/shared/ui/dom-id.tsx`:
 
 - Primitives are typed with native HTML prop types.
 - Primitive coverage now includes `Label`, `Select`, `TextArea`, `Radio`, and `Checkbox` in addition to the original `Box`, `Button`, `Input`, and `Text`.
+- Shared accessibility contracts now also cover browser zoom, labelled composite controls, and explicit focus handoff: `main.tsx` no longer suppresses zoom gestures, `SearchableMultiSelect` and `RadioGroup` expose named ARIA containers, `TerminalToolbar` focuses its search field on open without raw `autoFocus`, and `index.css` provides `prefers-reduced-motion` plus `prefers-contrast: more` fallbacks.
 - Primitive coverage now also includes `Badge`, `ScrollArea`, `Separator`, and `Surface` for dense built-in tool surfaces.
 - Primitives contain native elements only and use CSS variable styles.
 - The new form-control components added in this slice import primitives only.

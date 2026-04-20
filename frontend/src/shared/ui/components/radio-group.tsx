@@ -1,3 +1,5 @@
+import { useId } from 'react'
+
 import { Box, Label, Radio, Text } from '@/shared/ui/primitives'
 import { resetBoxStyle } from '@/shared/ui/components/reset-box-style'
 
@@ -62,10 +64,14 @@ export function RadioGroup({
   onChange,
   orientation = 'vertical',
 }: RadioGroupProps) {
+  const groupLabelId = useId()
+
   return (
     <Box style={rootStyle}>
-      {label ? <Text>{label}</Text> : null}
+      {label ? <Text id={groupLabelId}>{label}</Text> : null}
       <Box
+        aria-label={label ? undefined : name}
+        aria-labelledby={label ? groupLabelId : undefined}
         role="radiogroup"
         style={{ ...optionsBaseStyle, ...(orientation === 'horizontal' ? horizontalStyle : verticalStyle) }}
       >
