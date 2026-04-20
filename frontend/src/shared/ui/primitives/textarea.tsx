@@ -1,4 +1,4 @@
-import type * as React from 'react'
+import * as React from 'react'
 
 import { useRunaDomIdentity, useRunaDomScope } from '@/shared/ui/dom-id'
 
@@ -23,7 +23,10 @@ const textAreaStyle: React.CSSProperties = {
   WebkitBackdropFilter: 'var(--blur-glass-sm)',
 }
 
-export function TextArea({ id, runaComponent, style, ...props }: TextAreaProps) {
+export const TextArea = React.forwardRef<HTMLTextAreaElement, TextAreaProps>(function TextArea(
+  { id, runaComponent, style, ...props },
+  ref,
+) {
   const scope = useRunaDomScope()
   const semanticComponent =
     runaComponent ??
@@ -35,6 +38,7 @@ export function TextArea({ id, runaComponent, style, ...props }: TextAreaProps) 
   return (
     <textarea
       {...props}
+      ref={ref}
       data-runa-component={identity.scope.component}
       data-runa-layout={identity.scope.layout}
       data-runa-node={identity.node}
@@ -43,4 +47,4 @@ export function TextArea({ id, runaComponent, style, ...props }: TextAreaProps) 
       style={{ ...textAreaStyle, ...style }}
     />
   )
-}
+})
