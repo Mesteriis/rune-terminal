@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { type DockviewApi, type DockviewReadyEvent } from 'dockview-react'
 
-import { hasDockviewWorkspaceBootstrap, seedDockviewWorkspaceBootstrap } from './dockview-workspace.bootstrap'
 import {
   createDefaultWorkspaceTabs,
   DEFAULT_ACTIVE_WORKSPACE_ID,
@@ -17,6 +16,7 @@ import {
   syncDockviewWorkspaceLayout,
   type DockviewWorkspaceBinding,
 } from './dockview-workspace.runtime'
+import { resolveDockviewWorkspaceReadyState } from './dockview-workspace.ready'
 
 const DOCKVIEW_PERSIST_DEBOUNCE_MS = 120
 
@@ -157,36 +157,22 @@ export function useDockviewWorkspace() {
     dockviewApiRef.current = api
     bindDockviewPersistence(api)
 
-    if (hasDockviewWorkspaceBootstrap(api)) {
-      scheduleDockviewLayoutSync()
-      return
+    const readyState = resolveDockviewWorkspaceReadyState({
+      activeWorkspaceId: activeWorkspaceIdRef.current,
+      api,
+      hasPersistedWorkspaceState: Boolean(initialWorkspaceStateRef.current),
+      workspaceTabs: workspaceTabsRef.current,
+    })
+
+    if (readyState.type === 'seeded-default') {
+      updateWorkspaceTabs((tabs) =>
+        tabs.map((workspace) =>
+          workspace.id === DEFAULT_ACTIVE_WORKSPACE_ID
+            ? { ...workspace, snapshot: readyState.snapshot }
+            : workspace,
+        ),
+      )
     }
-
-    const initialWorkspace = workspaceTabsRef.current.find(
-      (workspace) => workspace.id === activeWorkspaceIdRef.current,
-    )
-
-    if (initialWorkspace?.snapshot) {
-      api.fromJSON(initialWorkspace.snapshot)
-      scheduleDockviewLayoutSync()
-      return
-    }
-
-    if (initialWorkspaceStateRef.current) {
-      api.clear()
-      scheduleDockviewLayoutSync()
-      return
-    }
-
-    const initialWorkspaceSnapshot = seedDockviewWorkspaceBootstrap(api)
-
-    updateWorkspaceTabs((tabs) =>
-      tabs.map((workspace) =>
-        workspace.id === DEFAULT_ACTIVE_WORKSPACE_ID
-          ? { ...workspace, snapshot: initialWorkspaceSnapshot }
-          : workspace,
-      ),
-    )
 
     scheduleDockviewLayoutSync()
   }

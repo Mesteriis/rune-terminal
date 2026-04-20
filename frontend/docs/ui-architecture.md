@@ -266,6 +266,7 @@ Lookup helpers exported from `src/shared/ui/dom-id.tsx`:
 - The app-local Dockview workspace persistence contract now lives in `src/app/dockview-workspace.persistence.ts`, so `use-dockview-workspace.ts` can stay focused on runtime coordination instead of owning the raw `localStorage` schema inline.
 - The default Dockview panel seed now also lives in `src/app/dockview-workspace.bootstrap.ts`, so the initial shell topology is expressed once outside the React lifecycle hook.
 - Dockview layout sync and persistence subscription wiring now also live in `src/app/dockview-workspace.runtime.ts`, keeping the hook focused on workspace lifecycle and state transitions instead of repeating event plumbing.
+- The Dockview ready-path decision tree now also lives in `src/app/dockview-workspace.ready.ts`, so the hook no longer mixes `onReady` lifecycle with the branching restore/bootstrap policy inline.
 - Modal state now lives in a dedicated `shared/model/modal.ts` store instead of being hidden inside widget-local React state.
 - Tokens now cover dark canvas, glass surfaces, accent hues, spacing, radii, shell sizes, blur, and shadow.
 - Shared primitives consume only semantic tokens instead of hardcoded `#111/#fff/#333` values.
