@@ -12,6 +12,7 @@ import {
   resolveCommanderExistingPath,
 } from './fake-client'
 import type {
+  CommanderPendingOperation,
   CommanderPaneId,
   CommanderPaneRuntimeState,
   CommanderSortMode,
@@ -188,12 +189,19 @@ function toggleEntrySelection(
 function refreshWidgetPanes(
   widgetState: CommanderWidgetRuntimeState,
   overrides?: {
+    pendingOperation?: CommanderPendingOperation | null
     leftPane?: Partial<CommanderPaneRuntimeState>
     rightPane?: Partial<CommanderPaneRuntimeState>
   },
 ) {
+  const hasPendingOperationOverride = Boolean(
+    overrides && Object.prototype.hasOwnProperty.call(overrides, 'pendingOperation'),
+  )
   const nextWidgetState = {
     ...widgetState,
+    pendingOperation: hasPendingOperationOverride
+      ? (overrides?.pendingOperation ?? null)
+      : widgetState.pendingOperation,
     leftPane: {
       ...widgetState.leftPane,
       ...overrides?.leftPane,
@@ -219,6 +227,59 @@ function getOperationEntryIds(paneState: CommanderPaneRuntimeState) {
   return paneState.cursorEntryId ? [paneState.cursorEntryId] : []
 }
 
+function createPendingOperation(
+  widgetState: CommanderWidgetRuntimeState,
+  kind: CommanderPendingOperation['kind'],
+) {
+  const sourcePane = getPaneState(widgetState, widgetState.activePane)
+  const entryIds = getOperationEntryIds(sourcePane)
+
+  if (kind !== 'mkdir' && entryIds.length === 0) {
+    return null
+  }
+
+  if (kind === 'mkdir') {
+    return {
+      kind,
+      sourcePaneId: widgetState.activePane,
+      sourcePath: sourcePane.path,
+      entryIds: [],
+      entryNames: [],
+      mkdirName: 'New folder',
+    } satisfies CommanderPendingOperation
+  }
+
+  if (kind === 'delete') {
+    const entryNames = sourcePane.entries
+      .filter((entry) => entryIds.includes(entry.id))
+      .map((entry) => entry.name)
+
+    return {
+      kind,
+      sourcePaneId: widgetState.activePane,
+      sourcePath: sourcePane.path,
+      entryIds,
+      entryNames,
+    } satisfies CommanderPendingOperation
+  }
+
+  const targetPaneId = widgetState.activePane === 'left' ? 'right' : 'left'
+  const targetPane = getPaneState(widgetState, targetPaneId)
+  const entryNames = sourcePane.entries
+    .filter((entry) => entryIds.includes(entry.id))
+    .map((entry) => entry.name)
+
+  return {
+    kind,
+    sourcePaneId: widgetState.activePane,
+    sourcePath: sourcePane.path,
+    targetPaneId,
+    targetPath: targetPane.path,
+    entryIds,
+    entryNames,
+  } satisfies CommanderPendingOperation
+}
+
 export const mountCommanderWidget = createEvent<string>()
 export const setCommanderActivePane = createEvent<CommanderWidgetPanePayload>()
 export const toggleCommanderShowHidden = createEvent<CommanderWidgetPayload>()
@@ -235,10 +296,12 @@ export const goCommanderPaneParent = createEvent<CommanderWidgetPanePayload>()
 export const goCommanderActivePaneParent = createEvent<CommanderWidgetPayload>()
 export const switchCommanderActivePane = createEvent<CommanderWidgetPayload>()
 export const setCommanderPaneBoundaryCursor = createEvent<CommanderWidgetPanePayload & { boundary: 'start' | 'end' }>()
-export const copyCommanderActivePaneSelection = createEvent<CommanderWidgetPayload>()
-export const moveCommanderActivePaneSelection = createEvent<CommanderWidgetPayload>()
-export const deleteCommanderActivePaneSelection = createEvent<CommanderWidgetPayload>()
-export const mkdirCommanderActivePaneDirectory = createEvent<CommanderWidgetPayload>()
+export const requestCommanderActivePaneCopy = createEvent<CommanderWidgetPayload>()
+export const requestCommanderActivePaneMove = createEvent<CommanderWidgetPayload>()
+export const requestCommanderActivePaneDelete = createEvent<CommanderWidgetPayload>()
+export const requestCommanderActivePaneMkdir = createEvent<CommanderWidgetPayload>()
+export const confirmCommanderPendingOperation = createEvent<CommanderWidgetPayload>()
+export const cancelCommanderPendingOperation = createEvent<CommanderWidgetPayload>()
 
 export const $commanderWidgets = createStore<Record<string, CommanderWidgetRuntimeState>>({})
   .on(mountCommanderWidget, (widgets, widgetId) => {
@@ -561,104 +624,169 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
       ),
     }
   })
-  .on(copyCommanderActivePaneSelection, (widgets, payload) => {
+  .on(requestCommanderActivePaneCopy, (widgets, payload) => {
     const widgetState = widgets[payload.widgetId]
 
     if (!widgetState) {
       return widgets
     }
-
-    const sourcePane = getPaneState(widgetState, widgetState.activePane)
-    const targetPaneId = widgetState.activePane === 'left' ? 'right' : 'left'
-    const targetPane = getPaneState(widgetState, targetPaneId)
-    const entryIds = getOperationEntryIds(sourcePane)
-
-    if (entryIds.length === 0) {
-      return widgets
-    }
-
-    copyCommanderEntries({
-      widgetId: payload.widgetId,
-      path: sourcePane.path,
-      targetPath: targetPane.path,
-      entryIds,
-    })
+    const pendingOperation = createPendingOperation(widgetState, 'copy')
 
     return {
       ...widgets,
-      [payload.widgetId]: refreshWidgetPanes(widgetState),
+      [payload.widgetId]: pendingOperation
+        ? {
+          ...widgetState,
+          pendingOperation,
+        }
+        : widgetState,
     }
   })
-  .on(moveCommanderActivePaneSelection, (widgets, payload) => {
+  .on(requestCommanderActivePaneMove, (widgets, payload) => {
     const widgetState = widgets[payload.widgetId]
 
     if (!widgetState) {
       return widgets
     }
-
-    const sourcePane = getPaneState(widgetState, widgetState.activePane)
-    const targetPaneId = widgetState.activePane === 'left' ? 'right' : 'left'
-    const targetPane = getPaneState(widgetState, targetPaneId)
-    const entryIds = getOperationEntryIds(sourcePane)
-
-    if (entryIds.length === 0 || sourcePane.path === targetPane.path) {
-      return widgets
-    }
-
-    moveCommanderEntries({
-      widgetId: payload.widgetId,
-      path: sourcePane.path,
-      targetPath: targetPane.path,
-      entryIds,
-    })
+    const pendingOperation = createPendingOperation(widgetState, 'move')
 
     return {
       ...widgets,
-      [payload.widgetId]: refreshWidgetPanes(widgetState),
+      [payload.widgetId]: pendingOperation
+        ? {
+          ...widgetState,
+          pendingOperation,
+        }
+        : widgetState,
     }
   })
-  .on(deleteCommanderActivePaneSelection, (widgets, payload) => {
+  .on(requestCommanderActivePaneDelete, (widgets, payload) => {
     const widgetState = widgets[payload.widgetId]
 
     if (!widgetState) {
       return widgets
     }
-
-    const activePane = getPaneState(widgetState, widgetState.activePane)
-    const entryIds = getOperationEntryIds(activePane)
-
-    if (entryIds.length === 0) {
-      return widgets
-    }
-
-    deleteCommanderEntries({
-      widgetId: payload.widgetId,
-      path: activePane.path,
-      entryIds,
-    })
+    const pendingOperation = createPendingOperation(widgetState, 'delete')
 
     return {
       ...widgets,
-      [payload.widgetId]: refreshWidgetPanes(widgetState),
+      [payload.widgetId]: pendingOperation
+        ? {
+          ...widgetState,
+          pendingOperation,
+        }
+        : widgetState,
     }
   })
-  .on(mkdirCommanderActivePaneDirectory, (widgets, payload) => {
+  .on(requestCommanderActivePaneMkdir, (widgets, payload) => {
     const widgetState = widgets[payload.widgetId]
 
     if (!widgetState) {
       return widgets
     }
-
-    const activePane = getPaneState(widgetState, widgetState.activePane)
-    const mkdirResult = mkdirCommanderDirectory(payload.widgetId, activePane.path)
+    const pendingOperation = createPendingOperation(widgetState, 'mkdir')
 
     return {
       ...widgets,
-      [payload.widgetId]: refreshWidgetPanes(widgetState, {
-        [widgetState.activePane === 'left' ? 'leftPane' : 'rightPane']: {
-          cursorEntryId: mkdirResult.entryId,
-          selectedIds: [],
-        },
-      }),
+      [payload.widgetId]: pendingOperation
+        ? {
+          ...widgetState,
+          pendingOperation,
+        }
+        : widgetState,
+    }
+  })
+  .on(confirmCommanderPendingOperation, (widgets, payload) => {
+    const widgetState = widgets[payload.widgetId]
+
+    if (!widgetState || !widgetState.pendingOperation) {
+      return widgets
+    }
+
+    const pendingOperation = widgetState.pendingOperation
+
+    if (pendingOperation.kind === 'copy' && pendingOperation.targetPath) {
+      copyCommanderEntries({
+        widgetId: payload.widgetId,
+        path: pendingOperation.sourcePath,
+        targetPath: pendingOperation.targetPath,
+        entryIds: pendingOperation.entryIds,
+      })
+
+      return {
+        ...widgets,
+        [payload.widgetId]: refreshWidgetPanes(widgetState, {
+          pendingOperation: null,
+        }),
+      }
+    }
+
+    if (pendingOperation.kind === 'move' && pendingOperation.targetPath) {
+      moveCommanderEntries({
+        widgetId: payload.widgetId,
+        path: pendingOperation.sourcePath,
+        targetPath: pendingOperation.targetPath,
+        entryIds: pendingOperation.entryIds,
+      })
+
+      return {
+        ...widgets,
+        [payload.widgetId]: refreshWidgetPanes(widgetState, {
+          pendingOperation: null,
+        }),
+      }
+    }
+
+    if (pendingOperation.kind === 'delete') {
+      deleteCommanderEntries({
+        widgetId: payload.widgetId,
+        path: pendingOperation.sourcePath,
+        entryIds: pendingOperation.entryIds,
+      })
+
+      return {
+        ...widgets,
+        [payload.widgetId]: refreshWidgetPanes(widgetState, {
+          pendingOperation: null,
+        }),
+      }
+    }
+
+    if (pendingOperation.kind === 'mkdir') {
+      const mkdirResult = mkdirCommanderDirectory(payload.widgetId, pendingOperation.sourcePath)
+
+      return {
+        ...widgets,
+        [payload.widgetId]: refreshWidgetPanes(widgetState, {
+          pendingOperation: null,
+          [pendingOperation.sourcePaneId === 'left' ? 'leftPane' : 'rightPane']: {
+            cursorEntryId: mkdirResult.entryId,
+            selectedIds: [],
+          },
+        }),
+      }
+    }
+
+    return {
+      ...widgets,
+      [payload.widgetId]: {
+        ...widgetState,
+        pendingOperation: null,
+      },
+    }
+  })
+  .on(cancelCommanderPendingOperation, (widgets, payload) => {
+    const widgetState = widgets[payload.widgetId]
+
+    if (!widgetState || !widgetState.pendingOperation) {
+      return widgets
+    }
+
+    return {
+      ...widgets,
+      [payload.widgetId]: {
+        ...widgetState,
+        pendingOperation: null,
+      },
     }
   })

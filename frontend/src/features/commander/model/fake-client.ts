@@ -584,6 +584,7 @@ export function createCommanderWidgetRuntimeState(widgetId: string): CommanderWi
     showHidden,
     sortMode,
     footerHints: commanderWidgetMockState.footerHints,
+    pendingOperation: null,
     leftPane: createInitialPaneState(
       widgetId,
       'left',

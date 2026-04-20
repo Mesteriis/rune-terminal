@@ -17,7 +17,11 @@ function isInteractiveTextTarget(target: EventTarget | null) {
   return tagName === 'input' || tagName === 'textarea' || tagName === 'select'
 }
 
-export function useCommanderKeyboard(widgetId: string, activePane: CommanderPaneId) {
+export function useCommanderKeyboard(
+  widgetId: string,
+  activePane: CommanderPaneId,
+  hasPendingOperation: boolean,
+) {
   const commanderActions = useCommanderActions(widgetId)
 
   return useCallback((event: KeyboardEvent<HTMLElement>) => {
@@ -27,6 +31,21 @@ export function useCommanderKeyboard(widgetId: string, activePane: CommanderPane
 
     if (event.altKey || event.metaKey || event.ctrlKey) {
       return
+    }
+
+    if (hasPendingOperation) {
+      switch (event.key) {
+        case 'Enter':
+          event.preventDefault()
+          commanderActions.confirmPendingOperation()
+          return
+        case 'Escape':
+          event.preventDefault()
+          commanderActions.cancelPendingOperation()
+          return
+        default:
+          return
+      }
     }
 
     switch (event.key) {
@@ -94,5 +113,5 @@ export function useCommanderKeyboard(widgetId: string, activePane: CommanderPane
       default:
         return
     }
-  }, [activePane, commanderActions])
+  }, [activePane, commanderActions, hasPendingOperation])
 }

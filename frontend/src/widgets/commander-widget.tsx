@@ -27,6 +27,9 @@ import {
   commanderPaneHeaderActiveStyle,
   commanderPaneHeaderStyle,
   commanderPaneMetaStyle,
+  commanderPendingActionStyle,
+  commanderPendingBarStyle,
+  commanderPendingMessageStyle,
   commanderPaneStyle,
   commanderPaneTitleStyle,
   commanderPathTextStyle,
@@ -80,6 +83,31 @@ const commanderViewModeIconMap = {
   split: Columns3,
   terminal: SquareTerminal,
 } as const
+
+function formatPendingOperationMessage(state: CommanderWidgetViewState) {
+  const pendingOperation = state.pendingOperation
+
+  if (!pendingOperation) {
+    return null
+  }
+
+  const selectionLabel = pendingOperation.entryNames.length === 1
+    ? pendingOperation.entryNames[0]
+    : `${pendingOperation.entryNames.length} items`
+
+  switch (pendingOperation.kind) {
+    case 'copy':
+      return `Copy ${selectionLabel} to ${pendingOperation.targetPath}`
+    case 'move':
+      return `Move ${selectionLabel} to ${pendingOperation.targetPath}`
+    case 'delete':
+      return `Delete ${selectionLabel} from ${pendingOperation.sourcePath}`
+    case 'mkdir':
+      return `Create ${pendingOperation.mkdirName} in ${pendingOperation.sourcePath}`
+    default:
+      return null
+  }
+}
 
 function getRowIcon(row: CommanderFileRow) {
   if (row.kind === 'folder') {
@@ -236,9 +264,10 @@ export function CommanderWidget() {
   const { widget: widgetId } = useRunaDomScope()
   const { actions, state } = useCommanderWidget(widgetId)
   const commanderActions = useCommanderActions(widgetId)
-  const onCommanderKeyDownCapture = useCommanderKeyboard(widgetId, state.activePane)
+  const onCommanderKeyDownCapture = useCommanderKeyboard(widgetId, state.activePane, Boolean(state.pendingOperation))
   const autoTagCommanderRoot = useRunaDomAutoTagging('commander-root')
   const commanderRootRef = useRef<HTMLDivElement | null>(null)
+  const pendingOperationMessage = useMemo(() => formatPendingOperationMessage(state), [state])
 
   const attachCommanderRootRef = useCallback((node: HTMLDivElement | null) => {
     commanderRootRef.current = node
@@ -345,24 +374,64 @@ export function CommanderWidget() {
           pane={state.rightPane}
         />
       </Box>
-      <Surface runaComponent="commander-hint-bar" style={commanderHintBarStyle}>
-        {state.footerHints.map((hint) => (
+      {state.pendingOperation && pendingOperationMessage ? (
+        <Surface runaComponent="commander-pending-bar" style={commanderPendingBarStyle}>
+          <Box runaComponent="commander-pending-message" style={commanderPendingMessageStyle}>
+            <Text runaComponent="commander-pending-message-text" style={{ color: 'inherit' }}>{pendingOperationMessage}</Text>
+          </Box>
           <Box
-            key={hint.key}
-            onClick={() => handleHintAction(hint.key)}
+            onClick={() => {
+              commanderActions.confirmPendingOperation()
+              focusCommanderRoot()
+            }}
             role="button"
-            runaComponent={`commander-hint-${hint.key.toLowerCase()}`}
+            runaComponent="commander-pending-confirm"
             style={{
               ...commanderHintCellStyle,
-              ...commanderHintActionStyle,
+              ...commanderPendingActionStyle,
             }}
             tabIndex={-1}
           >
-            <Text runaComponent={`commander-hint-${hint.key.toLowerCase()}-key`} style={commanderHintKeyStyle}>{hint.key}</Text>
-            <Text runaComponent={`commander-hint-${hint.key.toLowerCase()}-label`} style={commanderHintLabelStyle}>{hint.label}</Text>
+            <Text runaComponent="commander-pending-confirm-key" style={commanderHintKeyStyle}>ENTER</Text>
+            <Text runaComponent="commander-pending-confirm-label" style={commanderHintLabelStyle}>Confirm</Text>
           </Box>
-        ))}
-      </Surface>
+          <Box
+            onClick={() => {
+              commanderActions.cancelPendingOperation()
+              focusCommanderRoot()
+            }}
+            role="button"
+            runaComponent="commander-pending-cancel"
+            style={{
+              ...commanderHintCellStyle,
+              ...commanderPendingActionStyle,
+            }}
+            tabIndex={-1}
+          >
+            <Text runaComponent="commander-pending-cancel-key" style={commanderHintKeyStyle}>ESC</Text>
+            <Text runaComponent="commander-pending-cancel-label" style={commanderHintLabelStyle}>Cancel</Text>
+          </Box>
+        </Surface>
+      ) : (
+        <Surface runaComponent="commander-hint-bar" style={commanderHintBarStyle}>
+          {state.footerHints.map((hint) => (
+            <Box
+              key={hint.key}
+              onClick={() => handleHintAction(hint.key)}
+              role="button"
+              runaComponent={`commander-hint-${hint.key.toLowerCase()}`}
+              style={{
+                ...commanderHintCellStyle,
+                ...commanderHintActionStyle,
+              }}
+              tabIndex={-1}
+            >
+              <Text runaComponent={`commander-hint-${hint.key.toLowerCase()}-key`} style={commanderHintKeyStyle}>{hint.key}</Text>
+              <Text runaComponent={`commander-hint-${hint.key.toLowerCase()}-label`} style={commanderHintLabelStyle}>{hint.label}</Text>
+            </Box>
+          ))}
+        </Surface>
+      )}
     </Box>
     </RunaDomScopeProvider>
   )

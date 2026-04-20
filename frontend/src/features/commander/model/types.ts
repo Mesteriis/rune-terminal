@@ -8,6 +8,19 @@ export type CommanderFooterHint = {
   label: string
 }
 
+export type CommanderPendingOperationKind = 'copy' | 'move' | 'delete' | 'mkdir'
+
+export type CommanderPendingOperation = {
+  kind: CommanderPendingOperationKind
+  sourcePaneId: CommanderPaneId
+  sourcePath: string
+  targetPaneId?: CommanderPaneId
+  targetPath?: string
+  entryIds: string[]
+  entryNames: string[]
+  mkdirName?: string
+}
+
 export type CommanderDirectoryEntry = {
   id: string
   name: string
@@ -40,6 +53,7 @@ export type CommanderWidgetRuntimeState = {
   showHidden: boolean
   sortMode: CommanderSortMode
   footerHints: CommanderFooterHint[]
+  pendingOperation: CommanderPendingOperation | null
   leftPane: CommanderPaneRuntimeState
   rightPane: CommanderPaneRuntimeState
 }
@@ -80,6 +94,7 @@ export type CommanderWidgetViewState = {
   syncCwd: false
   sortMode: CommanderSortMode
   footerHints: CommanderFooterHint[]
+  pendingOperation: CommanderPendingOperation | null
   leftPane: CommanderPaneViewState
   rightPane: CommanderPaneViewState
 }

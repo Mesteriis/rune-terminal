@@ -328,6 +328,36 @@ export const commanderHintActionStyle: CSSProperties = {
   cursor: 'pointer',
 }
 
+export const commanderPendingBarStyle: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'minmax(0, 1fr) auto auto',
+  gap: 'var(--gap-xs)',
+  padding: 'var(--space-xs)',
+  background: 'var(--color-canvas-elevated)',
+}
+
+export const commanderPendingMessageStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  minHeight: '28px',
+  padding: '0 var(--space-sm)',
+  border: '1px solid var(--runa-commander-highlight-border)',
+  borderRadius: 'var(--radius-xs)',
+  background: 'var(--runa-commander-highlight-fill)',
+  color: 'var(--runa-commander-highlight-text)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: 'var(--font-size-sm)',
+  lineHeight: 'var(--line-height-sm)',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+}
+
+export const commanderPendingActionStyle: CSSProperties = {
+  minWidth: 'unset',
+  justifyContent: 'flex-start',
+}
+
 export const commanderHintKeyStyle: CSSProperties = {
   color: 'var(--runa-commander-key-color)',
   fontFamily: 'var(--font-family-mono)',
