@@ -128,6 +128,7 @@ its visible shell blocks as raw HTML inside `App.tsx`.
 - Commander operations now pass through a widget-local pending confirm/cancel layer before mutating the fake filesystem, so the UI can expose classic operator review flows without backend approvals yet.
 - Commander pane navigation now also keeps independent per-pane history stacks, exposed through active-pane back/forward header controls and `Alt+Left` / `Alt+Right`.
 - Commander pending operations now also cover `rename` with an inline input prompt plus overwrite warnings for `copy/move/rename`, but they still stay entirely inside the local fake client and a single widget instance.
+- Commander runtime state and fake filesystem state now persist per `widgetId` in `localStorage`, so reload restores pane paths, history stacks, cursor/selection, view toggles, and fake-client mutations for each commander widget without introducing backend state.
 - `TerminalWidget` renders the terminal-specific body composition for terminal panels.
 - `TerminalDockviewTabWidget` renders terminal-specific Dockview tab chrome for terminal panels.
 - `CommanderDemoLayout` mounts `CommanderWidget` into the isolated `tool` panel demo surface.
@@ -202,6 +203,7 @@ Lookup helpers exported from `src/shared/ui/dom-id.tsx`:
 - `CommanderWidget` stays in the widget layer, renders from a widget-scoped commander store plus a fake filesystem client, and still does not introduce backend calls or real filesystem behavior.
 - Commander write operations remain intentionally local to one widget instance: source and target panes can mutate against the same fake client, but different commander widgets do not share mutations or copy paths.
 - Commander write operations now also expose a frontend-only pending confirmation contract: `F5/F6/F7/F8` open a pending bar first, `Enter` confirms, and `Escape` cancels without mutating the fake client.
+- Commander widget state is now persisted per `widgetId`, which keeps pane paths, history, view toggles, cursor/selection, and local fake-client mutations stable across hard reloads while still avoiding cross-widget state sharing.
 - Commander pane history is widget-local and pane-local: each pane keeps its own back/forward stack, and switching panes preserves the other pane's navigation state.
 - `CommanderDemoLayout` keeps the demo mount in a layout layer instead of wiring the commander surface directly into app orchestration.
 - `WidgetBusyOverlayWidget` stays in the widget layer and uses `@tsparticles/react` directly for the busy-field rendering instead of pushing imperative particle code into shared components.

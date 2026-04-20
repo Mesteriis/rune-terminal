@@ -37,8 +37,34 @@ export type CommanderDirectoryEntry = {
   symlinkTarget?: string
 }
 
+export type CommanderClientEntrySnapshot = {
+  id?: string
+  name: string
+  ext: string
+  kind: CommanderRowKind
+  sizeLabel: string
+  modified: string
+  hidden?: boolean
+  gitStatus?: string
+  executable?: boolean
+  symlinkTarget?: string
+}
+
+export type CommanderClientSnapshot = {
+  directories: Record<string, CommanderClientEntrySnapshot[]>
+}
+
 export type CommanderPaneRuntimeState = {
   id: CommanderPaneId
+  path: string
+  entries: CommanderDirectoryEntry[]
+  cursorEntryId: string | null
+  selectedIds: string[]
+  historyBack: string[]
+  historyForward: string[]
+}
+
+export type CommanderPanePersistedState = {
   path: string
   entries: CommanderDirectoryEntry[]
   cursorEntryId: string | null
@@ -58,6 +84,20 @@ export type CommanderWidgetRuntimeState = {
   pendingOperation: CommanderPendingOperation | null
   leftPane: CommanderPaneRuntimeState
   rightPane: CommanderPaneRuntimeState
+}
+
+export type CommanderWidgetPersistedState = {
+  activePane: CommanderPaneId
+  viewMode: CommanderViewMode
+  showHidden: boolean
+  sortMode: CommanderSortMode
+  leftPane: CommanderPanePersistedState
+  rightPane: CommanderPanePersistedState
+}
+
+export type CommanderWidgetPersistedSnapshot = {
+  runtime: CommanderWidgetPersistedState
+  client: CommanderClientSnapshot
 }
 
 export type CommanderPaneCounters = {

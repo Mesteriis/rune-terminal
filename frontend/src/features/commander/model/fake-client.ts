@@ -1,27 +1,19 @@
 import { commanderWidgetMockState } from '../../../widgets/commander-widget.mock'
 import type {
+  CommanderClientEntrySnapshot,
+  CommanderClientSnapshot,
   CommanderDirectoryEntry,
   CommanderDirectorySnapshot,
   CommanderNavigationResult,
   CommanderPaneId,
+  CommanderPanePersistedState,
   CommanderPaneRuntimeState,
+  CommanderWidgetPersistedState,
   CommanderSortMode,
   CommanderWidgetRuntimeState,
-  CommanderRowKind,
 } from './types'
 
-type CommanderSeedEntry = {
-  id?: string
-  name: string
-  ext: string
-  kind: CommanderRowKind
-  sizeLabel: string
-  modified: string
-  hidden?: boolean
-  gitStatus?: string
-  executable?: boolean
-  symlinkTarget?: string
-}
+type CommanderSeedEntry = CommanderClientEntrySnapshot
 
 type CommanderClientState = {
   directories: Map<string, CommanderSeedEntry[]>
@@ -602,8 +594,13 @@ function createInitialPaneState(
     showHidden: boolean
     sortMode: CommanderSortMode
   },
+  history?: {
+    back: string[]
+    forward: string[]
+  },
+  entriesOverride?: CommanderDirectoryEntry[],
 ): CommanderPaneRuntimeState {
-  const entries = readDirectoryEntries(widgetId, path, options)
+  const entries = entriesOverride ?? readDirectoryEntries(widgetId, path, options)
   const visibleIds = new Set(entries.map((entry) => entry.id))
   const nextSelectedIds = selectedIds.filter((entryId) => visibleIds.has(entryId))
   const nextCursorEntryId = cursorEntryId && visibleIds.has(cursorEntryId)
@@ -616,40 +613,106 @@ function createInitialPaneState(
     entries,
     cursorEntryId: nextCursorEntryId,
     selectedIds: nextSelectedIds,
-    historyBack: [],
-    historyForward: [],
+    historyBack: history?.back ?? [],
+    historyForward: history?.forward ?? [],
   }
 }
 
-export function createCommanderWidgetRuntimeState(widgetId: string): CommanderWidgetRuntimeState {
-  const showHidden = commanderWidgetMockState.showHidden
-  const sortMode = commanderWidgetMockState.sortMode
+function createPaneStateFromPersisted(
+  widgetId: string,
+  paneId: CommanderPaneId,
+  paneState: CommanderPanePersistedState,
+  options: {
+    showHidden: boolean
+    sortMode: CommanderSortMode
+  },
+) {
+  return createInitialPaneState(
+    widgetId,
+    paneId,
+    paneState.path,
+    paneState.selectedIds,
+    paneState.cursorEntryId,
+    options,
+    {
+      back: paneState.historyBack,
+      forward: paneState.historyForward,
+    },
+    paneState.entries,
+  )
+}
+
+export function createCommanderWidgetRuntimeState(
+  widgetId: string,
+  persistedState?: CommanderWidgetPersistedState | null,
+): CommanderWidgetRuntimeState {
+  const showHidden = persistedState?.showHidden ?? commanderWidgetMockState.showHidden
+  const sortMode = persistedState?.sortMode ?? commanderWidgetMockState.sortMode
   const options = { showHidden, sortMode }
 
   return {
     widgetId,
     mode: 'commander',
-    viewMode: commanderWidgetMockState.viewMode,
-    activePane: commanderWidgetMockState.activePane,
+    viewMode: persistedState?.viewMode ?? commanderWidgetMockState.viewMode,
+    activePane: persistedState?.activePane ?? commanderWidgetMockState.activePane,
     showHidden,
     sortMode,
     footerHints: commanderWidgetMockState.footerHints,
     pendingOperation: null,
-    leftPane: createInitialPaneState(
-      widgetId,
-      'left',
-      commanderWidgetMockState.leftPane.path,
-      commanderWidgetMockState.leftPane.rows.filter((row) => row.selected).map((row) => row.id),
-      commanderWidgetMockState.leftPane.rows.find((row) => row.focused)?.id ?? null,
-      options,
-    ),
-    rightPane: createInitialPaneState(
-      widgetId,
-      'right',
-      commanderWidgetMockState.rightPane.path,
-      commanderWidgetMockState.rightPane.rows.filter((row) => row.selected).map((row) => row.id),
-      commanderWidgetMockState.rightPane.rows.find((row) => row.focused)?.id ?? null,
-      options,
+    leftPane: persistedState?.leftPane
+      ? createPaneStateFromPersisted(widgetId, 'left', persistedState.leftPane, options)
+      : createInitialPaneState(
+        widgetId,
+        'left',
+        commanderWidgetMockState.leftPane.path,
+        commanderWidgetMockState.leftPane.rows.filter((row) => row.selected).map((row) => row.id),
+        commanderWidgetMockState.leftPane.rows.find((row) => row.focused)?.id ?? null,
+        options,
+      ),
+    rightPane: persistedState?.rightPane
+      ? createPaneStateFromPersisted(widgetId, 'right', persistedState.rightPane, options)
+      : createInitialPaneState(
+        widgetId,
+        'right',
+        commanderWidgetMockState.rightPane.path,
+        commanderWidgetMockState.rightPane.rows.filter((row) => row.selected).map((row) => row.id),
+        commanderWidgetMockState.rightPane.rows.find((row) => row.focused)?.id ?? null,
+        options,
+      ),
+  }
+}
+
+function cloneClientDirectories(snapshot: CommanderClientSnapshot | null | undefined) {
+  if (!snapshot) {
+    return cloneSeedDirectories()
+  }
+
+  const directoryEntries = Object.entries(snapshot.directories)
+    .filter(([path, entries]) => typeof path === 'string' && Array.isArray(entries))
+    .map(([path, entries]) => [path, structuredClone(entries)] as const)
+
+  if (directoryEntries.length === 0) {
+    return cloneSeedDirectories()
+  }
+
+  return new Map<string, CommanderSeedEntry[]>(directoryEntries)
+}
+
+export function hydrateCommanderClient(
+  widgetId: string,
+  snapshot: CommanderClientSnapshot | null | undefined,
+) {
+  clients.set(widgetId, {
+    directories: cloneClientDirectories(snapshot),
+  })
+}
+
+export function getCommanderClientSnapshot(widgetId: string): CommanderClientSnapshot {
+  const client = getClient(widgetId)
+
+  return {
+    directories: Object.fromEntries(
+      Array.from(client.directories.entries()).map(([path, entries]) => [path, structuredClone(entries)]),
     ),
   }
 }

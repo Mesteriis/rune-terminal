@@ -2,6 +2,7 @@ import { useUnit } from 'effector-react'
 import { useEffect, useMemo } from 'react'
 
 import { getCommanderSelectedSize, createCommanderWidgetRuntimeState } from './fake-client'
+import { readPersistedCommanderWidget } from './persistence'
 import {
   $commanderWidgets,
   cancelCommanderPendingOperation,
@@ -107,11 +108,23 @@ export function useCommanderWidget(widgetId: string) {
     toggleCommanderPaneSelection,
   ])
 
-  useEffect(() => {
-    onMountCommanderWidget(widgetId)
-  }, [onMountCommanderWidget, widgetId])
+  const persistedWidget = useMemo(
+    () => readPersistedCommanderWidget(widgetId),
+    [widgetId],
+  )
+  const bootstrapRuntimeState = useMemo(
+    () => createCommanderWidgetRuntimeState(widgetId, persistedWidget?.runtime),
+    [persistedWidget, widgetId],
+  )
 
-  const runtimeState = commanderWidgets[widgetId] ?? createCommanderWidgetRuntimeState(widgetId)
+  useEffect(() => {
+    onMountCommanderWidget({
+      widgetId,
+      persistedWidget,
+    })
+  }, [onMountCommanderWidget, persistedWidget, widgetId])
+
+  const runtimeState = commanderWidgets[widgetId] ?? bootstrapRuntimeState
   const viewState = useMemo(() => toWidgetViewState(runtimeState), [runtimeState])
 
   return {

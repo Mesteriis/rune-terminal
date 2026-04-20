@@ -4,9 +4,11 @@ import {
   copyCommanderEntries,
   createCommanderWidgetRuntimeState,
   deleteCommanderEntries,
+  getCommanderClientSnapshot,
   getCommanderConflictingEntryNames,
   getCommanderEntryNameConflict,
   getCommanderParentPath,
+  hydrateCommanderClient,
   mkdirCommanderDirectory,
   moveCommanderEntries,
   openCommanderEntry,
@@ -14,17 +16,28 @@ import {
   renameCommanderEntry,
   resolveCommanderExistingPath,
 } from './fake-client'
+import {
+  serializeCommanderWidgetRuntimeState,
+  writePersistedCommanderWidgets,
+} from './persistence'
 import type {
   CommanderPendingOperation,
   CommanderPaneId,
   CommanderPaneRuntimeState,
+  CommanderWidgetPersistedSnapshot,
   CommanderSortMode,
   CommanderViewMode,
   CommanderWidgetRuntimeState,
 } from './types'
 
+const COMMANDER_PERSIST_DEBOUNCE_MS = 120
+
 type CommanderWidgetPayload = {
   widgetId: string
+}
+
+type CommanderMountWidgetPayload = CommanderWidgetPayload & {
+  persistedWidget?: CommanderWidgetPersistedSnapshot | null
 }
 
 type CommanderWidgetPanePayload = CommanderWidgetPayload & {
@@ -349,7 +362,7 @@ function createPendingOperation(
   } satisfies CommanderPendingOperation
 }
 
-export const mountCommanderWidget = createEvent<string>()
+export const mountCommanderWidget = createEvent<CommanderMountWidgetPayload>()
 export const setCommanderActivePane = createEvent<CommanderWidgetPanePayload>()
 export const toggleCommanderShowHidden = createEvent<CommanderWidgetPayload>()
 export const setCommanderViewMode = createEvent<CommanderSetViewModePayload>()
@@ -379,14 +392,19 @@ export const confirmCommanderPendingOperation = createEvent<CommanderWidgetPaylo
 export const cancelCommanderPendingOperation = createEvent<CommanderWidgetPayload>()
 
 export const $commanderWidgets = createStore<Record<string, CommanderWidgetRuntimeState>>({})
-  .on(mountCommanderWidget, (widgets, widgetId) => {
-    if (widgets[widgetId]) {
+  .on(mountCommanderWidget, (widgets, payload) => {
+    if (widgets[payload.widgetId]) {
       return widgets
     }
 
+    hydrateCommanderClient(payload.widgetId, payload.persistedWidget?.client)
+
     return {
       ...widgets,
-      [widgetId]: createCommanderWidgetRuntimeState(widgetId),
+      [payload.widgetId]: createCommanderWidgetRuntimeState(
+        payload.widgetId,
+        payload.persistedWidget?.runtime,
+      ),
     }
   })
   .on(setCommanderActivePane, (widgets, payload) => {
@@ -1019,3 +1037,35 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
       },
     }
   })
+
+let persistCommanderWidgetsTimeout: ReturnType<typeof setTimeout> | null = null
+let hasInitializedCommanderPersistence = false
+
+$commanderWidgets.watch((widgets) => {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  if (!hasInitializedCommanderPersistence) {
+    hasInitializedCommanderPersistence = true
+    return
+  }
+
+  if (persistCommanderWidgetsTimeout) {
+    clearTimeout(persistCommanderWidgetsTimeout)
+  }
+
+  persistCommanderWidgetsTimeout = window.setTimeout(() => {
+    writePersistedCommanderWidgets(
+      Object.fromEntries(
+        Object.entries(widgets).map(([widgetId, widgetState]) => [
+          widgetId,
+          {
+            runtime: serializeCommanderWidgetRuntimeState(widgetState),
+            client: getCommanderClientSnapshot(widgetId),
+          } satisfies CommanderWidgetPersistedSnapshot,
+        ]),
+      ),
+    )
+  }, COMMANDER_PERSIST_DEBOUNCE_MS)
+})
