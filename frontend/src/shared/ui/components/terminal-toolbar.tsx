@@ -2,9 +2,17 @@ import { useEffect, useRef } from 'react'
 
 import { ChevronDown, ChevronUp, ClipboardPaste, Copy, Cpu, Search, X } from 'lucide-react'
 
+import {
+  terminalToolbarBadgeTextStyle,
+  terminalToolbarClusterStyle,
+  terminalToolbarIconButtonStyle,
+  terminalToolbarRendererBadgeStyle,
+  terminalToolbarRootStyle,
+  terminalToolbarSearchInputStyle,
+  terminalToolbarSearchWrapStyle,
+} from '@/shared/ui/components/terminal-toolbar.styles'
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { Box, Button, Input, Text } from '@/shared/ui/primitives'
-import { resetBoxStyle } from '@/shared/ui/components/reset-box-style'
 
 export type TerminalToolbarProps = {
   isSearchOpen: boolean
@@ -17,68 +25,6 @@ export type TerminalToolbarProps = {
   onSearchPrevious: () => void
   onSearchQueryChange: (value: string) => void
   onToggleSearch: () => void
-}
-
-const rootStyle = {
-  ...resetBoxStyle,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'flex-start',
-  gap: 'var(--gap-sm)',
-  minHeight: '32px',
-}
-
-const clusterStyle = {
-  ...resetBoxStyle,
-  display: 'flex',
-  alignItems: 'center',
-  gap: 'var(--gap-sm)',
-  minWidth: 0,
-}
-
-const searchWrapStyle = {
-  ...resetBoxStyle,
-  display: 'flex',
-  alignItems: 'center',
-  gap: 'var(--gap-xs)',
-  minWidth: 0,
-  flex: 1,
-}
-
-const searchInputStyle = {
-  flex: 1,
-  minWidth: '160px',
-  padding: 'var(--space-xs) var(--space-sm)',
-  borderColor: 'var(--runa-terminal-surface-border, var(--color-border-strong))',
-  background: 'var(--runa-terminal-surface-bg, var(--color-surface-glass-soft))',
-  color: 'var(--runa-terminal-text-strong, var(--color-text-primary))',
-  caretColor: 'var(--runa-terminal-status-running, var(--color-accent-emerald-strong))',
-}
-
-const iconButtonStyle = {
-  minWidth: '28px',
-  minHeight: '28px',
-  padding: '0 var(--space-sm)',
-  borderColor: 'var(--runa-terminal-surface-border, var(--color-border-strong))',
-  color: 'var(--runa-terminal-text-secondary, var(--color-text-secondary))',
-}
-
-const rendererBadgeStyle = {
-  ...resetBoxStyle,
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 'var(--gap-xs)',
-  marginLeft: 'auto',
-  padding: '0 var(--space-sm)',
-  minHeight: '24px',
-  border: '1px solid var(--runa-terminal-surface-border, var(--color-border-subtle))',
-  borderRadius: 'var(--radius-sm)',
-}
-
-const badgeTextStyle = {
-  fontSize: 'var(--font-size-sm)',
-  lineHeight: 'var(--line-height-sm)',
-  color: 'var(--runa-terminal-text-muted, var(--color-text-muted))',
 }
 
 export function TerminalToolbar({
@@ -103,13 +49,13 @@ export function TerminalToolbar({
 
   return (
     <RunaDomScopeProvider component="terminal-toolbar">
-      <Box runaComponent="terminal-toolbar-root" style={rootStyle}>
-        <Box runaComponent="terminal-toolbar-action-cluster" style={clusterStyle}>
+      <Box runaComponent="terminal-toolbar-root" style={terminalToolbarRootStyle}>
+        <Box runaComponent="terminal-toolbar-action-cluster" style={terminalToolbarClusterStyle}>
           <Button
             aria-label="Copy selection"
             onClick={onCopy}
             runaComponent="terminal-toolbar-copy"
-            style={iconButtonStyle}
+            style={terminalToolbarIconButtonStyle}
           >
             <Copy size={14} strokeWidth={1.8} />
           </Button>
@@ -117,7 +63,7 @@ export function TerminalToolbar({
             aria-label="Paste from clipboard"
             onClick={onPaste}
             runaComponent="terminal-toolbar-paste"
-            style={iconButtonStyle}
+            style={terminalToolbarIconButtonStyle}
           >
             <ClipboardPaste size={14} strokeWidth={1.8} />
           </Button>
@@ -126,27 +72,27 @@ export function TerminalToolbar({
             aria-label="Toggle terminal search"
             onClick={onToggleSearch}
             runaComponent="terminal-toolbar-toggle-search"
-            style={iconButtonStyle}
+            style={terminalToolbarIconButtonStyle}
           >
             <Search size={14} strokeWidth={1.8} />
           </Button>
         </Box>
         {isSearchOpen ? (
-          <Box runaComponent="terminal-toolbar-search-wrap" style={searchWrapStyle}>
+          <Box runaComponent="terminal-toolbar-search-wrap" style={terminalToolbarSearchWrapStyle}>
             <Input
               aria-label="Search terminal output"
               onChange={(event) => onSearchQueryChange(event.currentTarget.value)}
               placeholder="Search output"
               ref={searchInputRef}
               runaComponent="terminal-toolbar-search-input"
-              style={searchInputStyle}
+              style={terminalToolbarSearchInputStyle}
               value={searchQuery}
             />
             <Button
               aria-label="Find previous match"
               onClick={onSearchPrevious}
               runaComponent="terminal-toolbar-search-previous"
-              style={iconButtonStyle}
+              style={terminalToolbarIconButtonStyle}
             >
               <ChevronUp size={14} strokeWidth={1.8} />
             </Button>
@@ -154,7 +100,7 @@ export function TerminalToolbar({
               aria-label="Find next match"
               onClick={onSearchNext}
               runaComponent="terminal-toolbar-search-next"
-              style={iconButtonStyle}
+              style={terminalToolbarIconButtonStyle}
             >
               <ChevronDown size={14} strokeWidth={1.8} />
             </Button>
@@ -162,15 +108,15 @@ export function TerminalToolbar({
               aria-label="Close terminal search"
               onClick={onCloseSearch}
               runaComponent="terminal-toolbar-close-search"
-              style={iconButtonStyle}
+              style={terminalToolbarIconButtonStyle}
             >
               <X size={14} strokeWidth={1.8} />
             </Button>
           </Box>
         ) : null}
-        <Box runaComponent="terminal-toolbar-renderer-badge" style={rendererBadgeStyle}>
+        <Box runaComponent="terminal-toolbar-renderer-badge" style={terminalToolbarRendererBadgeStyle}>
           <Cpu color="var(--runa-terminal-text-muted, var(--color-text-muted))" size={14} strokeWidth={1.8} />
-          <Text runaComponent="terminal-toolbar-renderer-badge-text" style={badgeTextStyle}>
+          <Text runaComponent="terminal-toolbar-renderer-badge-text" style={terminalToolbarBadgeTextStyle}>
             {rendererMode === 'webgl' ? 'WebGL' : 'Default'}
           </Text>
         </Box>

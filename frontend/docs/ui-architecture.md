@@ -304,6 +304,7 @@ Lookup helpers exported from `src/shared/ui/dom-id.tsx`:
 - Shared components now include stateless `Notify` plus a reusable `DialogPopup` surface built primarily from shared primitives.
 - Shared components now also include `IconButton`, a generic square icon-only control composed from the shared `Button` primitive.
 - Shared components may keep local style modules the same way widgets do when their inline style surface starts to grow; `Tabs` is the current baseline example of that pattern in the component layer.
+- The same component-layer pattern now also covers `TerminalToolbar`, so its toolbar/search/badge chrome lives in `terminal-toolbar.styles.ts` instead of staying inlined in the render body.
 - Shared components now also include the terminal renderer slice: a status header, toolbar, and xterm-based surface wrapped by `TerminalViewport`.
 - The new form-control components added in this slice compose shared primitives only. The existing `DialogPopup` close glyph remains the current icon exception from the earlier shell slice.
 - Live localhost smoke confirmed tokenized shell values in the DOM: `body/root` background `rgb(6, 17, 15)`, `AI` button backdrop `blur(10px)`, right rail width `40px`, and right rail glass background `rgba(11, 24, 22, 0.72)`.
