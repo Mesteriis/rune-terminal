@@ -728,9 +728,7 @@ function CommanderPane({
           }}
           title="Sort by type"
         >
-          <Text runaComponent={`commander-pane-${pane.id}-column-type-label`} style={{ color: 'inherit', fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit' }}>
-            {sortMode === 'ext' ? (sortDirection === 'desc' ? 'T▼' : 'T▲') : 'T'}
-          </Text>
+          {renderCommanderSortLabel('T', sortMode === 'ext', sortDirection)}
         </CommanderHeaderCell>
         <CommanderHeaderCell
           onActivate={() => onSetSortMode('name')}
