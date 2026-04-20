@@ -1,24 +1,16 @@
 import { createEvent, createStore } from 'effector'
 
 import {
-  copyCommanderEntries,
   createCommanderWidgetRuntimeState,
-  deleteCommanderEntries,
-  getCommanderConflictingEntryNames,
-  getCommanderEntryNameConflict,
   getCommanderParentPath,
   hydrateCommanderClient,
-  mkdirCommanderDirectory,
-  moveCommanderEntries,
   openCommanderEntry,
-  previewCommanderRenameEntries,
-  renameCommanderEntry,
-  renameCommanderEntries,
   writeCommanderFile,
 } from '@/features/commander/model/fake-client'
 import { attachCommanderWidgetsPersistence } from '@/features/commander/model/store-persistence'
 import {
   applyPendingTransferOperation,
+  confirmCommanderWidgetPendingOperation,
   createCommanderFileDialog,
   createPendingOperation,
   finalizePendingTransferOperation,
@@ -35,7 +27,6 @@ import {
   updatePaneState,
 } from '@/features/commander/model/store-navigation'
 import {
-  applySelectionMaskToPane,
   getCommanderResolvedSearchMatchIndex,
   getCommanderSearchMatches,
   invertPaneSelection,
@@ -790,283 +781,9 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
     )
   })
   .on(confirmCommanderPendingOperation, (widgets, payload) => {
-    const widgetState = widgets[payload.widgetId]
-
-    if (!widgetState || !widgetState.pendingOperation) {
-      return widgets
-    }
-
-    const pendingOperation = widgetState.pendingOperation
-
-    if (pendingOperation.kind === 'copy' && pendingOperation.targetPath) {
-      if (pendingOperation.conflictEntryNames?.length) {
-        return widgets
-      }
-
-      copyCommanderEntries({
-        widgetId: payload.widgetId,
-        path: pendingOperation.sourcePath,
-        targetPath: pendingOperation.targetPath,
-        entryIds: pendingOperation.entryIds,
-        overwrite: false,
-      })
-
-      return {
-        ...widgets,
-        [payload.widgetId]: refreshWidgetPanes(widgetState, {
-          pendingOperation: null,
-        }),
-      }
-    }
-
-    if (pendingOperation.kind === 'move' && pendingOperation.targetPath) {
-      if (pendingOperation.conflictEntryNames?.length) {
-        return widgets
-      }
-
-      moveCommanderEntries({
-        widgetId: payload.widgetId,
-        path: pendingOperation.sourcePath,
-        targetPath: pendingOperation.targetPath,
-        entryIds: pendingOperation.entryIds,
-        overwrite: false,
-      })
-
-      return {
-        ...widgets,
-        [payload.widgetId]: refreshWidgetPanes(widgetState, {
-          pendingOperation: null,
-        }),
-      }
-    }
-
-    if (pendingOperation.kind === 'delete') {
-      deleteCommanderEntries({
-        widgetId: payload.widgetId,
-        path: pendingOperation.sourcePath,
-        entryIds: pendingOperation.entryIds,
-      })
-
-      return {
-        ...widgets,
-        [payload.widgetId]: refreshWidgetPanes(widgetState, {
-          pendingOperation: null,
-        }),
-      }
-    }
-
-    if (pendingOperation.kind === 'mkdir') {
-      const mkdirResult = mkdirCommanderDirectory(payload.widgetId, pendingOperation.sourcePath)
-
-      return {
-        ...widgets,
-        [payload.widgetId]: refreshWidgetPanes(widgetState, {
-          pendingOperation: null,
-          [pendingOperation.sourcePaneId === 'left' ? 'leftPane' : 'rightPane']: {
-            cursorEntryId: mkdirResult.entryId,
-            selectedIds: [],
-          },
-        }),
-      }
-    }
-
-    if (pendingOperation.kind === 'rename') {
-      const nextName = pendingOperation.inputValue?.trim() ?? ''
-
-      if (!nextName) {
-        return widgets
-      }
-
-      if (pendingOperation.renameMode === 'batch') {
-        const renamePreview = previewCommanderRenameEntries({
-          widgetId: payload.widgetId,
-          path: pendingOperation.sourcePath,
-          entryIds: pendingOperation.entryIds,
-          template: nextName,
-        })
-
-        if (renamePreview.duplicateTargetNames.length > 0) {
-          return {
-            ...widgets,
-            [payload.widgetId]: {
-              ...widgetState,
-              pendingOperation: {
-                ...pendingOperation,
-                duplicateTargetNames: renamePreview.duplicateTargetNames,
-                conflictEntryNames: renamePreview.conflictEntryNames,
-                renamePreview: renamePreview.preview,
-              },
-            },
-          }
-        }
-
-        if (!pendingOperation.conflictEntryNames?.length && renamePreview.conflictEntryNames.length > 0) {
-          return {
-            ...widgets,
-            [payload.widgetId]: {
-              ...widgetState,
-              pendingOperation: {
-                ...pendingOperation,
-                conflictEntryNames: renamePreview.conflictEntryNames,
-                duplicateTargetNames: renamePreview.duplicateTargetNames,
-                renamePreview: renamePreview.preview,
-              },
-            },
-          }
-        }
-
-        const renameResult = renameCommanderEntries({
-          widgetId: payload.widgetId,
-          path: pendingOperation.sourcePath,
-          entryIds: pendingOperation.entryIds,
-          template: nextName,
-          overwrite: Boolean(pendingOperation.conflictEntryNames?.length),
-        })
-
-        if (!renameResult) {
-          return widgets
-        }
-
-        return {
-          ...widgets,
-          [payload.widgetId]: refreshWidgetPanes(widgetState, {
-            pendingOperation: null,
-            [pendingOperation.sourcePaneId === 'left' ? 'leftPane' : 'rightPane']: {
-              cursorEntryId: renameResult.entryIds[0] ?? null,
-              selectedIds: [],
-              selectionAnchorEntryId: renameResult.entryIds[0] ?? null,
-            },
-          }),
-        }
-      }
-
-      const entryId = pendingOperation.entryIds[0]
-
-      if (!entryId) {
-        return widgets
-      }
-
-      if (
-        !pendingOperation.conflictEntryNames?.length &&
-        getCommanderEntryNameConflict({
-          widgetId: payload.widgetId,
-          path: pendingOperation.sourcePath,
-          name: nextName,
-          ignoreEntryId: entryId,
-        })
-      ) {
-        return {
-          ...widgets,
-          [payload.widgetId]: {
-            ...widgetState,
-            pendingOperation: {
-              ...pendingOperation,
-              conflictEntryNames: [nextName],
-            },
-          },
-        }
-      }
-
-      const renameResult = renameCommanderEntry({
-        widgetId: payload.widgetId,
-        path: pendingOperation.sourcePath,
-        entryId,
-        nextName,
-        overwrite: Boolean(pendingOperation.conflictEntryNames?.length),
-      })
-
-      if (!renameResult) {
-        return widgets
-      }
-
-      return {
-        ...widgets,
-        [payload.widgetId]: refreshWidgetPanes(widgetState, {
-          pendingOperation: null,
-          [pendingOperation.sourcePaneId === 'left' ? 'leftPane' : 'rightPane']: {
-            cursorEntryId: renameResult.entryId,
-            selectedIds: [],
-            selectionAnchorEntryId: renameResult.entryId,
-          },
-        }),
-      }
-    }
-
-    if (pendingOperation.kind === 'select' || pendingOperation.kind === 'unselect') {
-      const mask = pendingOperation.inputValue?.trim() ?? ''
-      const selectionMode: 'select' | 'unselect' = pendingOperation.kind
-
-      return {
-        ...widgets,
-        [payload.widgetId]: updatePaneState(
-          {
-            ...widgetState,
-            pendingOperation: null,
-          },
-          pendingOperation.sourcePaneId,
-          (paneState) => applySelectionMaskToPane(paneState, mask, selectionMode),
-        ),
-      }
-    }
-
-    if (pendingOperation.kind === 'filter') {
-      const filterQuery = pendingOperation.inputValue?.trim() ?? ''
-
-      return {
-        ...widgets,
-        [payload.widgetId]: updatePaneState(
-          {
-            ...widgetState,
-            pendingOperation: null,
-          },
-          pendingOperation.sourcePaneId,
-          (paneState) =>
-            rebuildPaneState(widgetState, {
-              ...paneState,
-              filterQuery,
-            }),
-        ),
-      }
-    }
-
-    if (pendingOperation.kind === 'search') {
-      const sourcePane = getPaneState(widgetState, pendingOperation.sourcePaneId)
-      const matches = getCommanderSearchMatches(sourcePane, pendingOperation.inputValue ?? '')
-      const resolvedMatchIndex = getCommanderResolvedSearchMatchIndex(
-        matches.entryIds,
-        sourcePane.cursorEntryId,
-        pendingOperation.matchIndex ?? 0,
-      )
-      const nextCursorEntryId =
-        resolvedMatchIndex === -1 ? null : (matches.entryIds[resolvedMatchIndex] ?? null)
-
-      return {
-        ...widgets,
-        [payload.widgetId]: updatePaneState(
-          {
-            ...widgetState,
-            pendingOperation: null,
-          },
-          pendingOperation.sourcePaneId,
-          (paneState) =>
-            nextCursorEntryId
-              ? {
-                  ...paneState,
-                  cursorEntryId: nextCursorEntryId,
-                  selectionAnchorEntryId: nextCursorEntryId,
-                }
-              : paneState,
-        ),
-      }
-    }
-
-    return {
-      ...widgets,
-      [payload.widgetId]: {
-        ...widgetState,
-        pendingOperation: null,
-      },
-    }
+    return withCommanderWidgetState(widgets, payload, (widgetState) =>
+      confirmCommanderWidgetPendingOperation(widgetState, payload.widgetId),
+    )
   })
   .on(resolveCommanderPendingConflict, (widgets, payload) => {
     const widgetState = widgets[payload.widgetId]

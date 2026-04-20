@@ -1,11 +1,16 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { updateCommanderPendingOperationInput } from '@/features/commander/model/store-operations'
+import {
+  confirmCommanderWidgetPendingOperation,
+  updateCommanderPendingOperationInput,
+} from '@/features/commander/model/store-operations'
 import type {
   CommanderPendingOperation,
   CommanderRenamePreviewItem,
   CommanderWidgetRuntimeState,
 } from '@/features/commander/model/types'
+
+type ConfirmationDeps = NonNullable<Parameters<typeof confirmCommanderWidgetPendingOperation>[2]>
 
 function createWidgetState(pendingOperation: CommanderPendingOperation | null): CommanderWidgetRuntimeState {
   return {
@@ -42,6 +47,59 @@ function createWidgetState(pendingOperation: CommanderPendingOperation | null): 
       historyBack: [],
       historyForward: [],
     },
+  }
+}
+
+function createConfirmationDeps(): ConfirmationDeps {
+  return {
+    copyCommanderEntries: vi.fn(),
+    moveCommanderEntries: vi.fn(),
+    deleteCommanderEntries: vi.fn(),
+    mkdirCommanderDirectory: vi.fn(() => ({ entryId: 'mkdir-entry' })),
+    previewCommanderRenameEntries: vi.fn(() => ({
+      preview: [],
+      conflictEntryNames: [],
+      duplicateTargetNames: [],
+    })),
+    renameCommanderEntries: vi.fn(() => ({ entryIds: ['batch-renamed-entry'] })),
+    getCommanderEntryNameConflict: vi.fn(() => false),
+    renameCommanderEntry: vi.fn(() => ({ entryId: 'renamed-entry' })),
+    refreshWidgetPanes: vi.fn((widgetState: CommanderWidgetRuntimeState, overrides) => ({
+      ...widgetState,
+      pendingOperation:
+        overrides && Object.prototype.hasOwnProperty.call(overrides, 'pendingOperation')
+          ? (overrides.pendingOperation ?? null)
+          : widgetState.pendingOperation,
+      leftPane: {
+        ...widgetState.leftPane,
+        ...overrides?.leftPane,
+      },
+      rightPane: {
+        ...widgetState.rightPane,
+        ...overrides?.rightPane,
+      },
+    })),
+    updatePaneState: vi.fn((widgetState: CommanderWidgetRuntimeState, paneId, updater) => {
+      const nextPaneState = updater(paneId === 'left' ? widgetState.leftPane : widgetState.rightPane)
+
+      return {
+        ...widgetState,
+        [paneId === 'left' ? 'leftPane' : 'rightPane']: nextPaneState,
+      } as CommanderWidgetRuntimeState
+    }),
+    rebuildPaneState: vi.fn((_widgetState: CommanderWidgetRuntimeState, paneState) => paneState),
+    getPaneState: vi.fn((widgetState: CommanderWidgetRuntimeState, paneId) =>
+      paneId === 'left' ? widgetState.leftPane : widgetState.rightPane,
+    ),
+    applySelectionMaskToPane: vi.fn((paneState) => ({
+      ...paneState,
+      selectedIds: ['masked-entry'],
+    })),
+    getCommanderSearchMatches: vi.fn(() => ({
+      entryIds: ['match-1', 'match-2'],
+      entryNames: ['match-1.txt', 'match-2.txt'],
+    })),
+    getCommanderResolvedSearchMatchIndex: vi.fn(() => 1),
   }
 }
 
@@ -186,5 +244,120 @@ describe('updateCommanderPendingOperationInput', () => {
       inputValue: 'new-target',
     })
     expect(nextWidgetState?.pendingOperation?.conflictEntryNames).toBeUndefined()
+  })
+})
+
+describe('confirmCommanderWidgetPendingOperation', () => {
+  it('returns null when no pending operation is active', () => {
+    expect(confirmCommanderWidgetPendingOperation(createWidgetState(null), 'widget-1')).toBeNull()
+  })
+
+  it('applies copy operations and refreshes the widget panes', () => {
+    const pendingOperation: CommanderPendingOperation = {
+      kind: 'copy',
+      sourcePaneId: 'left',
+      sourcePath: '~/left',
+      targetPaneId: 'right',
+      targetPath: '~/right',
+      entryIds: ['entry-1'],
+      entryNames: ['file.txt'],
+    }
+    const widgetState = createWidgetState(pendingOperation)
+    const deps = createConfirmationDeps()
+
+    const nextWidgetState = confirmCommanderWidgetPendingOperation(widgetState, 'widget-1', deps)
+
+    expect(deps.copyCommanderEntries).toHaveBeenCalledWith({
+      widgetId: 'widget-1',
+      path: '~/left',
+      targetPath: '~/right',
+      entryIds: ['entry-1'],
+      overwrite: false,
+    })
+    expect(deps.refreshWidgetPanes).toHaveBeenCalledTimes(1)
+    expect(nextWidgetState?.pendingOperation).toBeNull()
+  })
+
+  it('keeps batch rename pending state open when the preview introduces duplicate targets', () => {
+    const pendingOperation: CommanderPendingOperation = {
+      kind: 'rename',
+      sourcePaneId: 'left',
+      sourcePath: '~/left',
+      entryIds: ['entry-1', 'entry-2'],
+      entryNames: ['a.txt', 'b.txt'],
+      inputValue: '[N]-[C:2]',
+      renameMode: 'batch',
+      renamePreview: [],
+    }
+    const widgetState = createWidgetState(pendingOperation)
+    const deps = createConfirmationDeps()
+    deps.previewCommanderRenameEntries.mockReturnValue({
+      preview: [
+        {
+          entryId: 'entry-1',
+          currentName: 'a.txt',
+          nextName: 'dup.txt',
+          status: 'duplicate',
+          conflict: false,
+        },
+      ],
+      conflictEntryNames: [],
+      duplicateTargetNames: ['dup.txt'],
+    })
+
+    const nextWidgetState = confirmCommanderWidgetPendingOperation(widgetState, 'widget-1', deps)
+
+    expect(deps.renameCommanderEntries).not.toHaveBeenCalled()
+    expect(nextWidgetState?.pendingOperation).toMatchObject({
+      kind: 'rename',
+      duplicateTargetNames: ['dup.txt'],
+    })
+  })
+
+  it('keeps single rename pending state open when the destination name already exists', () => {
+    const pendingOperation: CommanderPendingOperation = {
+      kind: 'rename',
+      sourcePaneId: 'left',
+      sourcePath: '~/left',
+      entryIds: ['entry-1'],
+      entryNames: ['old.txt'],
+      inputValue: 'new.txt',
+      renameMode: 'single',
+      renamePreview: [],
+    }
+    const widgetState = createWidgetState(pendingOperation)
+    const deps = createConfirmationDeps()
+    deps.getCommanderEntryNameConflict.mockReturnValue(true)
+
+    const nextWidgetState = confirmCommanderWidgetPendingOperation(widgetState, 'widget-1', deps)
+
+    expect(deps.renameCommanderEntry).not.toHaveBeenCalled()
+    expect(nextWidgetState?.pendingOperation).toMatchObject({
+      kind: 'rename',
+      conflictEntryNames: ['new.txt'],
+    })
+  })
+
+  it('resolves search confirmation into a cursor move and clears the pending operation', () => {
+    const pendingOperation: CommanderPendingOperation = {
+      kind: 'search',
+      sourcePaneId: 'left',
+      sourcePath: '~/left',
+      entryIds: [],
+      entryNames: [],
+      inputValue: 'match',
+      matchCount: 2,
+      matchPreview: ['match-1.txt', 'match-2.txt'],
+      matchIndex: 0,
+    }
+    const widgetState = createWidgetState(pendingOperation)
+    const deps = createConfirmationDeps()
+
+    const nextWidgetState = confirmCommanderWidgetPendingOperation(widgetState, 'widget-1', deps)
+
+    expect(deps.getCommanderSearchMatches).toHaveBeenCalledTimes(1)
+    expect(nextWidgetState?.pendingOperation).toBeNull()
+    expect(nextWidgetState?.leftPane.cursorEntryId).toBe('match-2')
+    expect(nextWidgetState?.leftPane.selectionAnchorEntryId).toBe('match-2')
   })
 })
