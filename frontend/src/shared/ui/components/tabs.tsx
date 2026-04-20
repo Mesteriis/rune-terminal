@@ -1,5 +1,14 @@
 import type * as React from 'react'
 
+import {
+  tabsHorizontalLayoutStyle,
+  tabsHorizontalListStyle,
+  tabsListBaseStyle,
+  tabsPanelStyle,
+  tabsRootStyle,
+  tabsVerticalLayoutStyle,
+  tabsVerticalListStyle,
+} from '@/shared/ui/components/tabs.styles'
 import { Box, Button } from '@/shared/ui/primitives'
 
 export type TabsItem = {
@@ -15,61 +24,22 @@ export type TabsProps = {
   orientation?: 'horizontal' | 'vertical'
 }
 
-const rootStyle = {
-  display: 'flex',
-  gap: 'var(--gap-sm)',
-}
-
-const horizontalStyle = {
-  flexDirection: 'column' as const,
-}
-
-const verticalStyle = {
-  flexDirection: 'row' as const,
-}
-
-const tabListBaseStyle = {
-  display: 'flex',
-  gap: 'var(--gap-xs)',
-  padding: 0,
-  border: 'none',
-  borderRadius: 0,
-  background: 'transparent',
-  boxShadow: 'none',
-  backdropFilter: 'none',
-  WebkitBackdropFilter: 'none',
-}
-
-const horizontalTabListStyle = {
-  flexDirection: 'row' as const,
-}
-
-const verticalTabListStyle = {
-  flexDirection: 'column' as const,
-  width: '220px',
-}
-
-const tabPanelStyle = {
-  flex: 1,
-  minWidth: 0,
-}
-
-export function Tabs({
-  items,
-  value,
-  onChange,
-  orientation = 'horizontal',
-}: TabsProps) {
+export function Tabs({ items, value, onChange, orientation = 'horizontal' }: TabsProps) {
   const activeItem = items.find((item) => item.id === value) ?? items[0]
 
   return (
-    <Box style={{ ...rootStyle, ...(orientation === 'vertical' ? verticalStyle : horizontalStyle) }}>
+    <Box
+      style={{
+        ...tabsRootStyle,
+        ...(orientation === 'vertical' ? tabsVerticalLayoutStyle : tabsHorizontalLayoutStyle),
+      }}
+    >
       <Box
         aria-orientation={orientation}
         role="tablist"
         style={{
-          ...tabListBaseStyle,
-          ...(orientation === 'vertical' ? verticalTabListStyle : horizontalTabListStyle),
+          ...tabsListBaseStyle,
+          ...(orientation === 'vertical' ? tabsVerticalListStyle : tabsHorizontalListStyle),
         }}
       >
         {items.map((item) => (
@@ -83,7 +53,7 @@ export function Tabs({
           </Button>
         ))}
       </Box>
-      <Box role="tabpanel" style={tabPanelStyle}>
+      <Box role="tabpanel" style={tabsPanelStyle}>
         {activeItem?.content ?? null}
       </Box>
     </Box>

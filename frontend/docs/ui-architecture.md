@@ -249,6 +249,7 @@ Lookup helpers exported from `src/shared/ui/dom-id.tsx`:
 - `TerminalViewport` keeps the terminal mount point as a typed primitive instead of letting widgets mount xterm into raw HTML.
 - `SearchableMultiSelect` provides a query-filtered multiselect surface on top of primitives only.
 - `Tabs` supports both horizontal and vertical layouts through a single shared component.
+- `Tabs` now also has direct component coverage for selection switching and vertical orientation semantics, and its style surface lives in `tabs.styles.ts` instead of inline component constants.
 - `RadioControl` and `RadioGroup` cover single and grouped radio selection.
 - `SwitcherControl` and `SwitcherGroup` cover single and grouped boolean toggles.
 - `ExpandableTextArea` keeps inline behavior by default and can expand to the parent bounds or to a selector target without introducing modal semantics.
@@ -302,6 +303,7 @@ Lookup helpers exported from `src/shared/ui/dom-id.tsx`:
 - Shared primitives consume only semantic tokens instead of hardcoded `#111/#fff/#333` values.
 - Shared components now include stateless `Notify` plus a reusable `DialogPopup` surface built primarily from shared primitives.
 - Shared components now also include `IconButton`, a generic square icon-only control composed from the shared `Button` primitive.
+- Shared components may keep local style modules the same way widgets do when their inline style surface starts to grow; `Tabs` is the current baseline example of that pattern in the component layer.
 - Shared components now also include the terminal renderer slice: a status header, toolbar, and xterm-based surface wrapped by `TerminalViewport`.
 - The new form-control components added in this slice compose shared primitives only. The existing `DialogPopup` close glyph remains the current icon exception from the earlier shell slice.
 - Live localhost smoke confirmed tokenized shell values in the DOM: `body/root` background `rgb(6, 17, 15)`, `AI` button backdrop `blur(10px)`, right rail width `40px`, and right rail glass background `rgba(11, 24, 22, 0.72)`.
