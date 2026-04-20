@@ -48,7 +48,7 @@ export const utilityMenuStyle: CSSProperties = {
   padding: 'var(--space-xs)',
   zIndex: 'var(--z-modal)',
   border: '1px solid var(--color-border-strong)',
-  boxShadow: '0 12px 32px rgba(0, 0, 0, 0.35)',
+  boxShadow: 'var(--shadow-menu-popover)',
   backdropFilter: 'var(--blur-glass-md)',
   WebkitBackdropFilter: 'var(--blur-glass-md)',
 }

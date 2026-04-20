@@ -11,6 +11,7 @@
 Current token families:
 
 - dark canvas and glass surface colors
+- shell and AI chrome colors for headers, active tabs, soft borders, and warning tints
 - accent colors for dark emerald and cold-tea tones
 - text and border tiers
 - spacing, gap, padding, and margin scales

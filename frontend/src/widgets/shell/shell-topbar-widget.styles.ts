@@ -49,8 +49,8 @@ export const workspaceTabStyle: CSSProperties = {
 
 export const activeWorkspaceTabStyle: CSSProperties = {
   ...workspaceTabStyle,
-  background: 'rgba(56, 92, 82, 0.78)',
+  background: 'var(--color-accent-shell-tab-active)',
   color: 'var(--color-text-primary)',
-  border: '1px solid rgba(132, 198, 178, 0.32)',
-  boxShadow: 'inset 0 0 0 1px rgba(132, 198, 178, 0.12)',
+  border: '1px solid var(--color-accent-shell-tab-active-border)',
+  boxShadow: 'var(--shadow-shell-tab-active)',
 }

@@ -9,6 +9,8 @@
   --color-surface-glass: rgba(11, 24, 22, 0.72);
   --color-surface-glass-strong: rgba(13, 29, 27, 0.84);
   --color-surface-glass-soft: rgba(18, 34, 31, 0.58);
+  --color-surface-shell-header-gradient: linear-gradient(180deg, rgba(15, 31, 28, 0.98), rgba(10, 22, 20, 0.98));
+  --color-surface-shell-header-action: rgba(14, 28, 25, 0.92);
   --color-surface-emerald: rgba(18, 59, 50, 0.54);
   --color-surface-cold-tea: rgba(87, 110, 102, 0.28);
   --color-overlay-body: rgba(3, 8, 7, 0.72);
@@ -19,10 +21,19 @@
   --color-text-muted: #8ea09a;
   --color-border-subtle: rgba(158, 188, 177, 0.16);
   --color-border-strong: rgba(130, 188, 170, 0.32);
+  --color-border-soft-emerald: rgba(130, 188, 170, 0.18);
   --color-accent-emerald: #2d8f76;
   --color-accent-emerald-strong: #47c0a0;
+  --color-accent-emerald-soft: rgba(45, 143, 118, 0.12);
   --color-accent-cold-tea: #91a8a1;
+  --color-accent-shell-tab-active: rgba(56, 92, 82, 0.78);
+  --color-accent-shell-tab-active-border: rgba(132, 198, 178, 0.32);
+  --color-accent-shell-tab-active-ring: rgba(132, 198, 178, 0.12);
+  --color-accent-warning-border: rgba(224, 197, 124, 0.28);
+  --color-accent-warning-bg: rgba(224, 197, 124, 0.14);
+  --color-accent-warning-text: rgb(228, 211, 169);
   --color-shadow: rgba(1, 7, 6, 0.46);
+  --color-shadow-menu: rgba(0, 0, 0, 0.35);
 
   --color-bg: var(--color-surface-glass);
   --color-text: var(--color-text-primary);
@@ -81,4 +92,6 @@
 
   --shadow-glass-panel: 0 18px 48px var(--color-shadow);
   --shadow-glass-control: 0 10px 24px rgba(1, 7, 6, 0.32);
+  --shadow-shell-tab-active: inset 0 0 0 1px var(--color-accent-shell-tab-active-ring);
+  --shadow-menu-popover: 0 12px 32px var(--color-shadow-menu);
 }

@@ -38,7 +38,7 @@ export const aiShellHeaderStyle: CSSProperties = {
   width: '100%',
   minWidth: 0,
   padding: 0,
-  background: 'linear-gradient(180deg, rgba(15, 31, 28, 0.98), rgba(10, 22, 20, 0.98))',
+  background: 'var(--color-surface-shell-header-gradient)',
   borderColor: 'var(--color-border-strong)',
 }
 
@@ -102,7 +102,7 @@ export const aiHeaderActionStyle: CSSProperties = {
   borderRadius: 0,
   border: 'none',
   borderLeft: '1px solid var(--color-border-strong)',
-  background: 'rgba(14, 28, 25, 0.92)',
+  background: 'var(--color-surface-shell-header-action)',
   color: 'var(--color-text-secondary)',
   boxShadow: 'none',
   backdropFilter: 'none',
@@ -263,7 +263,7 @@ export const aiPromptReasoningIndexStyle: CSSProperties = {
   minHeight: '18px',
   alignSelf: 'flex-start',
   borderColor: 'var(--color-border-strong)',
-  background: 'rgba(45, 143, 118, 0.12)',
+  background: 'var(--color-accent-emerald-soft)',
   color: 'var(--color-text-primary)',
 }
 
@@ -312,9 +312,9 @@ export const aiPromptApprovalMetaStyle: CSSProperties = {
 
 export const aiPromptApprovalStatusBadgeStyle: CSSProperties = {
   minHeight: '18px',
-  borderColor: 'rgba(224, 197, 124, 0.28)',
-  background: 'rgba(224, 197, 124, 0.14)',
-  color: 'rgb(228, 211, 169)',
+  borderColor: 'var(--color-accent-warning-border)',
+  background: 'var(--color-accent-warning-bg)',
+  color: 'var(--color-accent-warning-text)',
 }
 
 export const aiPromptApprovalCommandStyle: CSSProperties = {
@@ -440,7 +440,7 @@ export const aiToolbarChipStyle: CSSProperties = {
   padding: '0 var(--space-sm)',
   borderRadius: 'var(--radius-xs)',
   borderColor: 'var(--color-border-strong)',
-  background: 'rgba(45, 143, 118, 0.12)',
+  background: 'var(--color-accent-emerald-soft)',
   color: 'var(--color-text-primary)',
   boxShadow: 'none',
 }

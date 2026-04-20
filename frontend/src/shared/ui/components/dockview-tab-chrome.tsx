@@ -25,9 +25,9 @@ const dockviewTabChromeActiveStyle = {
   alignItems: 'stretch',
   marginTop: 'calc(var(--padding-widget) / 2)',
   padding: '0 var(--space-xs)',
-  border: '1px solid rgba(130, 188, 170, 0.18)',
+  border: '1px solid var(--color-border-soft-emerald)',
   borderRadius: 'var(--radius-sm)',
-  background: 'rgba(130, 188, 170, 0.08)',
+  background: 'var(--color-surface-cold-tea)',
   boxShadow: 'none',
   backdropFilter: 'none',
   WebkitBackdropFilter: 'none',
@@ -50,12 +50,7 @@ type DockviewTabChromeProps = {
   style?: React.CSSProperties
 }
 
-export function DockviewTabChrome({
-  active,
-  children,
-  single,
-  style,
-}: DockviewTabChromeProps) {
+export function DockviewTabChrome({ active, children, single, style }: DockviewTabChromeProps) {
   return (
     <Box runaComponent="dockview-tab-root" style={dockviewTabRootStyle}>
       <Box
@@ -63,7 +58,9 @@ export function DockviewTabChrome({
         style={{
           ...(single
             ? dockviewTabChromeSingleStyle
-            : (active ? dockviewTabChromeActiveStyle : dockviewTabChromeInactiveStyle)),
+            : active
+              ? dockviewTabChromeActiveStyle
+              : dockviewTabChromeInactiveStyle),
           ...style,
         }}
       >
