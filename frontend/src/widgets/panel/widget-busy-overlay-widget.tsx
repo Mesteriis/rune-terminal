@@ -6,7 +6,8 @@ import { createPortal } from 'react-dom'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { $aiBlockedWidgetHostIds } from '@/shared/model/ai-blocked-widgets'
-import { useRunaDomIdentity } from '@/shared/ui/dom-id'
+import { Box } from '@/shared/ui/primitives'
+import { WidgetBusyMarker } from '@/widgets/panel/widget-busy-marker'
 
 type WidgetBusyOverlayWidgetProps = {
   hostId: string
@@ -105,13 +106,6 @@ const centerPlaneStyle = {
   animation: 'runa-busy-icon-breathe 2.2s ease-in-out infinite',
 }
 
-const busyGraphicStyle = {
-  width: '100%',
-  height: '100%',
-  display: 'block',
-  overflow: 'visible',
-}
-
 function getOverlaySize(element: HTMLDivElement | null) {
   if (!element) {
     return { height: 0, width: 0 }
@@ -128,7 +122,10 @@ function getBusyPlaneSize(width: number, height: number) {
     return 0
   }
 
-  return Math.max(72, Math.min(Math.sqrt(width * height * BUSY_ICON_AREA_RATIO), Math.min(width, height) * 0.62))
+  return Math.max(
+    72,
+    Math.min(Math.sqrt(width * height * BUSY_ICON_AREA_RATIO), Math.min(width, height) * 0.62),
+  )
 }
 
 function ensureParticlesEngine() {
@@ -160,13 +157,6 @@ export function WidgetBusyOverlayWidget({ hostId }: WidgetBusyOverlayWidgetProps
   const blockedWidgetHostIds = useUnit($aiBlockedWidgetHostIds)
   const isBusy = blockedWidgetHostIds.includes(hostId)
   const overlayRef = useRef<HTMLDivElement | null>(null)
-  const overlayIdentity = useRunaDomIdentity(`widget-busy-overlay-${hostId}`)
-  const blurLayerIdentity = useRunaDomIdentity(`widget-busy-blur-layer-${hostId}`)
-  const particlesLayerIdentity = useRunaDomIdentity(`widget-busy-particles-layer-${hostId}`)
-  const foregroundLayerIdentity = useRunaDomIdentity(`widget-busy-foreground-${hostId}`)
-  const planeIdentity = useRunaDomIdentity(`widget-busy-plane-${hostId}`)
-  const graphicIdentity = useRunaDomIdentity(`widget-busy-graphic-${hostId}`)
-  const graphicBlurIdentity = useRunaDomIdentity(`widget-busy-graphic-blur-${hostId}`)
   const [mountNode, setMountNode] = useState<HTMLElement | null>(null)
   const [isParticlesReady, setIsParticlesReady] = useState(particlesEngineReady)
   const [overlaySize, setOverlaySize] = useState({ width: 0, height: 0 })
@@ -241,9 +231,6 @@ export function WidgetBusyOverlayWidget({ hostId }: WidgetBusyOverlayWidgetProps
     () => `${hostId}-${overlaySize.width}x${overlaySize.height}`,
     [hostId, overlaySize.height, overlaySize.width],
   )
-  const gradientId = useMemo(() => `busy-gradient-${hostId}`, [hostId])
-  const borderGradientId = useMemo(() => `busy-border-gradient-${hostId}`, [hostId])
-  const accentGradientId = useMemo(() => `busy-accent-gradient-${hostId}`, [hostId])
 
   const particleOptions = useMemo<ISourceOptions>(() => {
     const linkDistance = Math.max(76, Math.round(Math.min(overlaySize.width, overlaySize.height) * 0.22))
@@ -366,40 +353,24 @@ export function WidgetBusyOverlayWidget({ hostId }: WidgetBusyOverlayWidgetProps
       pauseOnBlur: true,
       pauseOnOutsideViewport: true,
     }
-  }, [busyPlaneSize, overlaySize.height, overlaySize.width])
+  }, [overlaySize.height, overlaySize.width])
 
   if (!isBusy) {
     return null
   }
 
   const overlay = (
-    <div
+    <Box
       aria-busy="true"
       aria-label={`Widget ${hostId} is busy`}
-      data-runa-component={overlayIdentity.scope.component}
-      data-runa-layout={overlayIdentity.scope.layout}
-      data-runa-node={overlayIdentity.node}
-      data-runa-widget={overlayIdentity.scope.widget}
-      id={overlayIdentity.id}
+      runaComponent="widget-busy-overlay-root"
       ref={overlayRef}
       style={overlayStyle}
     >
-      <div
-        data-runa-busy-blur-layer=""
-        data-runa-component={blurLayerIdentity.scope.component}
-        data-runa-layout={blurLayerIdentity.scope.layout}
-        data-runa-node={blurLayerIdentity.node}
-        data-runa-widget={blurLayerIdentity.scope.widget}
-        id={blurLayerIdentity.id}
-        style={blurLayerStyle}
-      />
-      <div
+      <Box data-runa-busy-blur-layer="" runaComponent="widget-busy-blur-layer" style={blurLayerStyle} />
+      <Box
         data-runa-busy-particles-layer=""
-        data-runa-component={particlesLayerIdentity.scope.component}
-        data-runa-layout={particlesLayerIdentity.scope.layout}
-        data-runa-node={particlesLayerIdentity.node}
-        data-runa-widget={particlesLayerIdentity.scope.widget}
-        id={particlesLayerIdentity.id}
+        runaComponent="widget-busy-particles-layer"
         style={particlesLayerStyle}
       >
         {isParticlesReady && overlaySize.width > 0 && overlaySize.height > 0 ? (
@@ -410,160 +381,21 @@ export function WidgetBusyOverlayWidget({ hostId }: WidgetBusyOverlayWidgetProps
             style={particlesStyle}
           />
         ) : null}
-      </div>
-      <div
-        data-runa-busy-foreground=""
-        data-runa-component={foregroundLayerIdentity.scope.component}
-        data-runa-layout={foregroundLayerIdentity.scope.layout}
-        data-runa-node={foregroundLayerIdentity.node}
-        data-runa-widget={foregroundLayerIdentity.scope.widget}
-        id={foregroundLayerIdentity.id}
-        style={foregroundLayerStyle}
-      >
-        <div
+      </Box>
+      <Box data-runa-busy-foreground="" runaComponent="widget-busy-foreground" style={foregroundLayerStyle}>
+        <Box
           data-runa-busy-plane=""
-          data-runa-component={planeIdentity.scope.component}
-          data-runa-layout={planeIdentity.scope.layout}
-          data-runa-node={planeIdentity.node}
-          data-runa-widget={planeIdentity.scope.widget}
-          id={planeIdentity.id}
+          runaComponent="widget-busy-plane"
           style={{
             ...centerPlaneStyle,
             width: `${busyPlaneSize}px`,
             height: `${busyPlaneSize}px`,
           }}
         >
-          <svg
-            aria-hidden="true"
-            data-runa-component={graphicIdentity.scope.component}
-            data-runa-layout={graphicIdentity.scope.layout}
-            data-runa-node={graphicIdentity.node}
-            data-runa-widget={graphicIdentity.scope.widget}
-            id={graphicIdentity.id}
-            style={busyGraphicStyle}
-            viewBox="0 0 100 100"
-          >
-            <defs>
-              <linearGradient id={gradientId} x1="8%" x2="92%" y1="14%" y2="86%">
-                <stop offset="0%" stopColor="var(--color-accent-cold-tea)">
-                  <animate
-                    attributeName="stop-color"
-                    dur="4.8s"
-                    repeatCount="indefinite"
-                    values="var(--color-accent-cold-tea); var(--color-accent-emerald-strong); var(--color-accent-cold-tea)"
-                  />
-                </stop>
-                <stop offset="52%" stopColor="var(--color-accent-emerald-strong)">
-                  <animate
-                    attributeName="stop-color"
-                    dur="4.8s"
-                    repeatCount="indefinite"
-                    values="var(--color-accent-emerald-strong); var(--color-text-primary); var(--color-accent-emerald-strong)"
-                  />
-                </stop>
-                <stop offset="100%" stopColor="var(--color-accent-cold-tea)">
-                  <animate
-                    attributeName="stop-color"
-                    dur="4.8s"
-                    repeatCount="indefinite"
-                    values="var(--color-accent-cold-tea); var(--color-accent-emerald); var(--color-accent-cold-tea)"
-                  />
-                </stop>
-                <animateTransform
-                  attributeName="gradientTransform"
-                  dur="6s"
-                  repeatCount="indefinite"
-                  type="rotate"
-                  values="0 0.5 0.5; 360 0.5 0.5"
-                />
-              </linearGradient>
-              <linearGradient id={borderGradientId} x1="0%" x2="100%" y1="0%" y2="100%">
-                <stop offset="0%" stopColor="var(--color-accent-cold-tea)" stopOpacity="0.72" />
-                <stop offset="50%" stopColor="var(--color-accent-emerald-strong)" stopOpacity="0.94" />
-                <stop offset="100%" stopColor="var(--color-accent-cold-tea)" stopOpacity="0.72" />
-                <animateTransform
-                  attributeName="gradientTransform"
-                  dur="5.4s"
-                  repeatCount="indefinite"
-                  type="rotate"
-                  values="0 0.5 0.5; -360 0.5 0.5"
-                />
-              </linearGradient>
-              <linearGradient id={accentGradientId} x1="0%" x2="100%" y1="0%" y2="100%">
-                <stop offset="0%" stopColor="var(--color-accent-cold-tea)" />
-                <stop offset="48%" stopColor="var(--color-accent-emerald-strong)" />
-                <stop offset="100%" stopColor="var(--color-text-primary)" />
-                <animateTransform
-                  attributeName="gradientTransform"
-                  dur="6.6s"
-                  repeatCount="indefinite"
-                  type="rotate"
-                  values="0 0.5 0.5; 360 0.5 0.5"
-                />
-              </linearGradient>
-            </defs>
-
-            <foreignObject height="84" width="84" x="8" y="8">
-              <div
-                data-runa-component={graphicBlurIdentity.scope.component}
-                data-runa-layout={graphicBlurIdentity.scope.layout}
-                data-runa-node={graphicBlurIdentity.node}
-                data-runa-widget={graphicBlurIdentity.scope.widget}
-                id={graphicBlurIdentity.id}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  borderRadius: '18px',
-                  background: 'rgba(5, 14, 12, 0.04)',
-                  backdropFilter: 'blur(12px)',
-                  WebkitBackdropFilter: 'blur(12px)',
-                }}
-              />
-            </foreignObject>
-            <rect
-              fill="transparent"
-              height="84"
-              rx="18"
-              ry="18"
-              stroke={`url(#${borderGradientId})`}
-              strokeWidth="1.4"
-              width="84"
-              x="8"
-              y="8"
-            />
-            <g transform="translate(28.4 28.4)">
-              <path
-                d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"
-                fill="none"
-                stroke={`url(#${gradientId})`}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="1.7"
-                transform="scale(1.8)"
-              />
-            </g>
-            <g transform="translate(63 16)">
-              <path
-                d="M6.917 1.614a.58.58 0 0 1 1.166 0l.624 3.301a1.19 1.19 0 0 0 .948.948l3.301.624a.58.58 0 0 1 0 1.166l-3.301.624a1.19 1.19 0 0 0-.948.948l-.624 3.301a.58.58 0 0 1-1.166 0l-.624-3.301a1.19 1.19 0 0 0-.948-.948l-3.301-.624a.58.58 0 0 1 0-1.166l3.301-.624a1.19 1.19 0 0 0 .948-.948z"
-                fill="none"
-                stroke={`url(#${accentGradientId})`}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="0.95"
-              />
-            </g>
-            <circle
-              cx="30.5"
-              cy="69.5"
-              fill="none"
-              r="5.6"
-              stroke={`url(#${accentGradientId})`}
-              strokeWidth="2.8"
-            />
-          </svg>
-        </div>
-      </div>
-    </div>
+          <WidgetBusyMarker size={busyPlaneSize} />
+        </Box>
+      </Box>
+    </Box>
   )
 
   return mountNode ? createPortal(overlay, mountNode) : overlay
