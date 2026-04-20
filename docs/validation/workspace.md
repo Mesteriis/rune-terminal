@@ -5,6 +5,7 @@
 - Date: `2026-04-20`
 - State: `VERIFIED`
 - Scope:
+  - the shared token layer now owns responsive shell/layout chrome sizing and a complete named z-index scale, so shell frame padding, topbar offsets, workspace tab minimums, modal width, Dockview header height, and rail/header dimensions adapt through breakpoint-aware tokens instead of widget-local constants
   - the frontend React runtime and types now target the latest stable React line in this repo: `react@19.2.5`, `react-dom@19.2.5`, `@types/react@19.2.14`, and `@types/react-dom@19.2.3`
   - shared frontend accessibility baselines now keep browser zoom enabled, expose labelled ARIA contracts for `SearchableMultiSelect` and `RadioGroup`, move `TerminalToolbar` search focus explicitly on open, and add `prefers-reduced-motion` plus `prefers-contrast: more` CSS fallbacks
   - terminal panels now render a frontend-only terminal widget made from `TerminalViewport`, `TerminalStatusHeader`, `TerminalSurface`, and `TerminalWidget`, with xterm mounted locally and no backend session wiring in this slice
@@ -254,6 +255,7 @@
 - Static validation confirmed the terminal widget now consumes those local vars in `TerminalStatusHeader`, `TerminalToolbar`, and `TerminalViewport`, while `TerminalSurface` reapplies xterm theme colors from the widget root and refreshes them when the surrounding `.dv-groupview` class changes.
 - Static validation confirmed the Dockview focus styling now keys off the library's own `.dv-groupview.dv-active-group` / `.dv-groupview.dv-inactive-group` classes, applying a brighter active border and a stronger shadow-based lift without changing group layout sizing.
 - Static validation confirmed the busy-state wiring: `shared/model/widget-busy.ts` owns the host-id store, `PanelModalActionsWidget` toggles it per host, and `WidgetBusyOverlayWidget` renders the overlay per panel body using `@tsparticles/react` plus `tsparticles`.
+- Static validation confirmed the token layer now exposes responsive tablet/mobile overrides for shell chrome and layout sizing (`shell` frame padding, topbar tab offset, workspace tab min width, Dockview single-tab header height, modal width, header/right-rail dimensions) plus a complete named z-index scale including the previously missing `--z-modal` tier used by the utility menu.
 - A fresh live headless smoke on `http://127.0.0.1:4194` confirmed that toggling busy for `terminal-header` did not move Dockview geometry: before and after the toggle the group rect stayed `x=6`, `y=52`, `width=1382`, `height=451`.
 - The same smoke confirmed the busy overlay rendered over the panel body at `x=7`, `y=77`, `width=1380`, `height=425`, with `aria-busy=\"true\"`, an attached `canvas`, and a visible release control.
 - The refined live smoke confirmed the centered busy marker stayed square with no visible card treatment: `planeWidth=264`, `planeHeight=264`, `planeBackground=rgba(0, 0, 0, 0)`, `planeBorderTopWidth=0px`, and `planeBoxShadow=none`.

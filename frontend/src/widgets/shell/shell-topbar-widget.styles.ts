@@ -19,7 +19,7 @@ export const tabStripStyle: CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   gap: 'var(--gap-sm)',
-  marginLeft: '2rem',
+  marginLeft: 'var(--offset-shell-tab-strip)',
   border: 'none',
   background: 'transparent',
   padding: 0,
@@ -44,7 +44,7 @@ export const addWorkspaceButtonStyle: CSSProperties = {
 }
 
 export const workspaceTabStyle: CSSProperties = {
-  minWidth: '112px',
+  minWidth: 'var(--size-workspace-tab-min)',
 }
 
 export const activeWorkspaceTabStyle: CSSProperties = {

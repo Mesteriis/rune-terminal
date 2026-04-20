@@ -53,12 +53,16 @@
   --gap-lg: var(--space-md);
   --gap-shell-chrome: 6px;
   --gap-widget-surface: 6px;
+  --offset-shell-tab-strip: var(--space-2xl);
 
   --padding-control-y: var(--space-sm);
   --padding-control-x: var(--space-md);
   --padding-panel: var(--space-md);
   --padding-widget: var(--space-lg);
+  --padding-shell-frame: var(--gap-shell-chrome);
   --padding-shell-inline: var(--space-md);
+  --padding-modal-layer: var(--space-md);
+  --padding-terminal-surface: var(--space-sm);
   --margin-block-stack: var(--space-md);
   --margin-widget-stack: var(--space-lg);
 
@@ -79,13 +83,15 @@
   --size-dockview-single-tab-header: 48px;
   --size-modal-width: 360px;
   --size-terminal-status: 28px;
+  --size-workspace-tab-min: 112px;
 
-  --padding-modal-layer: var(--space-md);
-  --padding-terminal-surface: var(--space-sm);
-
-  --z-modal-widget: 20;
-  --z-modal-body: 40;
+  --z-base: 0;
+  --z-shell-chrome: 4;
+  --z-floating: 8;
   --z-widget-busy: 16;
+  --z-modal: 24;
+  --z-modal-widget: 32;
+  --z-modal-body: 40;
 
   --blur-glass-sm: blur(10px);
   --blur-glass-md: blur(18px);
@@ -94,4 +100,38 @@
   --shadow-glass-control: 0 10px 24px rgba(1, 7, 6, 0.32);
   --shadow-shell-tab-active: inset 0 0 0 1px var(--color-accent-shell-tab-active-ring);
   --shadow-menu-popover: 0 12px 32px var(--color-shadow-menu);
+}
+
+@media (max-width: 1024px) {
+  :root {
+    --gap-shell-chrome: 4px;
+    --offset-shell-tab-strip: var(--space-xl);
+    --padding-panel: var(--space-sm);
+    --padding-widget: var(--space-md);
+    --padding-shell-inline: var(--space-sm);
+    --padding-modal-layer: var(--space-sm);
+
+    --size-shell-header: 38px;
+    --size-right-rail: 38px;
+    --size-dockview-single-tab-header: 44px;
+    --size-modal-width: 340px;
+    --size-workspace-tab-min: 104px;
+  }
+}
+
+@media (max-width: 720px) {
+  :root {
+    --gap-shell-chrome: 3px;
+    --offset-shell-tab-strip: var(--space-lg);
+    --padding-panel: var(--space-sm);
+    --padding-widget: var(--space-md);
+    --padding-shell-inline: var(--space-xs);
+    --padding-modal-layer: var(--space-xs);
+
+    --size-shell-header: 36px;
+    --size-right-rail: 36px;
+    --size-dockview-single-tab-header: 42px;
+    --size-modal-width: 320px;
+    --size-workspace-tab-min: 88px;
+  }
 }
