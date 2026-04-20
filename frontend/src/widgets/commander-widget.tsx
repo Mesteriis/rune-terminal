@@ -260,6 +260,39 @@ function CommanderPlainBox({
   )
 }
 
+function CommanderHeaderCell({
+  onActivate,
+  ...props
+}: HTMLAttributes<HTMLDivElement> & {
+  onActivate?: () => void
+}) {
+  return (
+    <CommanderPlainBox
+      {...props}
+      onClick={(event) => {
+        props.onClick?.(event)
+        if (!event.defaultPrevented) {
+          onActivate?.()
+        }
+      }}
+      onKeyDown={(event) => {
+        props.onKeyDown?.(event)
+
+        if (event.defaultPrevented) {
+          return
+        }
+
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          onActivate?.()
+        }
+      }}
+      role="button"
+      tabIndex={0}
+    />
+  )
+}
+
 function renderCommanderSortLabel(
   label: string,
   isActive: boolean,
@@ -685,8 +718,8 @@ function CommanderPane({
       </CommanderPlainBox>
       <Separator runaComponent={`commander-pane-${pane.id}-header-separator`} />
       <CommanderPlainBox runaComponent={`commander-pane-${pane.id}-list-header`} style={commanderListHeaderStyle}>
-        <CommanderPlainButton
-          onClick={() => onSetSortMode('ext')}
+        <CommanderHeaderCell
+          onActivate={() => onSetSortMode('ext')}
           runaComponent={`commander-pane-${pane.id}-column-type`}
           style={{
             ...commanderListHeaderButtonStyle,
@@ -698,9 +731,9 @@ function CommanderPane({
           <Text runaComponent={`commander-pane-${pane.id}-column-type-label`} style={{ color: 'inherit', fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit' }}>
             {sortMode === 'ext' ? (sortDirection === 'desc' ? 'T▼' : 'T▲') : 'T'}
           </Text>
-        </CommanderPlainButton>
-        <CommanderPlainButton
-          onClick={() => onSetSortMode('name')}
+        </CommanderHeaderCell>
+        <CommanderHeaderCell
+          onActivate={() => onSetSortMode('name')}
           runaComponent={`commander-pane-${pane.id}-column-name`}
           style={{
             ...commanderListHeaderButtonStyle,
@@ -709,10 +742,10 @@ function CommanderPane({
           title="Sort by name"
         >
           {renderCommanderSortLabel('Name', sortMode === 'name', sortDirection)}
-        </CommanderPlainButton>
+        </CommanderHeaderCell>
         <Text runaComponent={`commander-pane-${pane.id}-column-git`} style={commanderPaneMetaStyle}>Git</Text>
-        <CommanderPlainButton
-          onClick={() => onSetSortMode('size')}
+        <CommanderHeaderCell
+          onActivate={() => onSetSortMode('size')}
           runaComponent={`commander-pane-${pane.id}-column-size`}
           style={{
             ...commanderListHeaderButtonStyle,
@@ -722,9 +755,9 @@ function CommanderPane({
           title="Sort by size"
         >
           {renderCommanderSortLabel('Size', sortMode === 'size', sortDirection)}
-        </CommanderPlainButton>
-        <CommanderPlainButton
-          onClick={() => onSetSortMode('modified')}
+        </CommanderHeaderCell>
+        <CommanderHeaderCell
+          onActivate={() => onSetSortMode('modified')}
           runaComponent={`commander-pane-${pane.id}-column-modified`}
           style={{
             ...commanderListHeaderButtonStyle,
@@ -734,7 +767,7 @@ function CommanderPane({
           title="Sort by modified"
         >
           {renderCommanderSortLabel('Modified', sortMode === 'modified', sortDirection)}
-        </CommanderPlainButton>
+        </CommanderHeaderCell>
       </CommanderPlainBox>
       <Separator runaComponent={`commander-pane-${pane.id}-list-separator`} />
       <ScrollArea runaComponent={`commander-pane-${pane.id}-scroll-area`} style={commanderScrollAreaStyle}>
