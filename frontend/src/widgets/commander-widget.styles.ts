@@ -429,6 +429,9 @@ export const commanderListHeaderStyle: CSSProperties = {
 export const commanderListHeaderButtonStyle: CSSProperties = {
   appearance: 'none',
   WebkitAppearance: 'none',
+  boxSizing: 'border-box',
+  display: 'flex',
+  alignItems: 'center',
   width: '100%',
   minWidth: 0,
   minHeight: '24px',
@@ -445,6 +448,8 @@ export const commanderListHeaderButtonStyle: CSSProperties = {
   WebkitBackdropFilter: 'none',
   justifyContent: 'flex-start',
   textAlign: 'left',
+  userSelect: 'none',
+  cursor: 'pointer',
   fontFamily: 'var(--font-family-mono)',
   fontSize: 'var(--font-size-sm)',
   lineHeight: 'var(--line-height-sm)',
