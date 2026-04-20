@@ -1,6 +1,7 @@
 import * as React from 'react'
 
 import { useRunaDomIdentity, useRunaDomScope } from '@/shared/ui/dom-id'
+import { resolveSemanticComponent } from '@/shared/ui/primitives/semantic-component'
 
 export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   runaComponent?: string
@@ -31,11 +32,11 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function 
   ref,
 ) {
   const scope = useRunaDomScope()
-  const semanticComponent =
-    runaComponent ??
-    (typeof props['aria-label'] === 'string' && props['aria-label'].trim() !== ''
-      ? props['aria-label']
-      : `${scope.component}-button`)
+  const semanticComponent = resolveSemanticComponent({
+    runaComponent,
+    ariaLabel: props['aria-label'],
+    fallbackComponent: `${scope.component}-button`,
+  })
   const identity = useRunaDomIdentity(semanticComponent, id)
 
   return (

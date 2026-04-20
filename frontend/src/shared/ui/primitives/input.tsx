@@ -1,6 +1,7 @@
 import * as React from 'react'
 
 import { useRunaDomIdentity, useRunaDomScope } from '@/shared/ui/dom-id'
+import { resolveSemanticComponent } from '@/shared/ui/primitives/semantic-component'
 
 export type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {
   runaComponent?: string
@@ -25,11 +26,12 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(function Inp
   ref,
 ) {
   const scope = useRunaDomScope()
-  const semanticComponent =
-    runaComponent ??
-    (typeof props['aria-label'] === 'string' && props['aria-label'].trim() !== ''
-      ? props['aria-label']
-      : props.name ?? props.placeholder ?? `${scope.component}-input`)
+  const semanticComponent = resolveSemanticComponent({
+    runaComponent,
+    ariaLabel: props['aria-label'],
+    fallbackCandidates: [props.name, props.placeholder],
+    fallbackComponent: `${scope.component}-input`,
+  })
   const identity = useRunaDomIdentity(semanticComponent, id)
 
   return (

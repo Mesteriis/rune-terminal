@@ -36,6 +36,7 @@ Current isolated style modules:
 - Must be typed with native HTML props
 - Must expose `forwardRef` for the underlying native element
 - No business logic
+- Shared primitive fallback helpers are allowed only when they preserve primitive-local semantics and keep DOM identity resolution consistent
 
 Current primitives:
 

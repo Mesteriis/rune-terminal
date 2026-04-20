@@ -1,6 +1,7 @@
 import * as React from 'react'
 
 import { useRunaDomIdentity, useRunaDomScope } from '@/shared/ui/dom-id'
+import { resolveSemanticComponent } from '@/shared/ui/primitives/semantic-component'
 
 export type RadioProps = React.InputHTMLAttributes<HTMLInputElement> & {
   runaComponent?: string
@@ -19,11 +20,12 @@ export const Radio = React.forwardRef<HTMLInputElement, RadioProps>(function Rad
   ref,
 ) {
   const scope = useRunaDomScope()
-  const semanticComponent =
-    runaComponent ??
-    (typeof props['aria-label'] === 'string' && props['aria-label'].trim() !== ''
-      ? props['aria-label']
-      : (props.name ?? `${scope.component}-radio`))
+  const semanticComponent = resolveSemanticComponent({
+    runaComponent,
+    ariaLabel: props['aria-label'],
+    fallbackCandidates: [props.name],
+    fallbackComponent: `${scope.component}-radio`,
+  })
   const identity = useRunaDomIdentity(semanticComponent, id)
 
   return (
