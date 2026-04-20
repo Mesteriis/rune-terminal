@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight, Columns2, Columns3, Eye, EyeOff, FileCode2, FileText, Folder, FolderTree, Link2, SquareTerminal } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ButtonHTMLAttributes, type RefObject } from 'react'
 
 import { listCommanderDirectoryPaths } from '../features/commander/model/fake-client'
 import { useCommanderKeyboard } from '../features/commander/model/keyboard'
@@ -14,7 +14,7 @@ import type {
   CommanderSortMode,
   CommanderWidgetViewState,
 } from '../features/commander/model/types'
-import { RunaDomScopeProvider, useRunaDomAutoTagging, useRunaDomScope } from '../shared/ui/dom-id'
+import { RunaDomScopeProvider, useRunaDomAutoTagging, useRunaDomIdentity, useRunaDomScope } from '../shared/ui/dom-id'
 import { Badge, Box, Button, Input, ScrollArea, Separator, Surface, Text, TextArea } from '../shared/ui/primitives'
 import { IconButton } from '../shared/ui/components'
 
@@ -206,6 +206,33 @@ function joinCommanderPath(path: string, name: string) {
   }
 
   return `${path}/${name}`
+}
+
+function CommanderPlainButton({
+  id,
+  runaComponent,
+  style,
+  type = 'button',
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  id?: string
+  runaComponent: string
+}) {
+  const scope = useRunaDomScope()
+  const identity = useRunaDomIdentity(runaComponent ?? `${scope.component}-button`, id)
+
+  return (
+    <button
+      {...props}
+      data-runa-component={identity.scope.component}
+      data-runa-layout={identity.scope.layout}
+      data-runa-node={identity.node}
+      data-runa-widget={identity.scope.widget}
+      id={identity.id}
+      style={style}
+      type={type}
+    />
+  )
 }
 
 function renderCommanderSortLabel(
@@ -572,7 +599,7 @@ function CommanderPane({
                           const isSuggestionActive = index === pathSuggestionIndex
 
                           return (
-                            <Button
+                            <CommanderPlainButton
                               key={suggestion.path}
                               onClick={() => onApplyPathSuggestion(suggestion.path)}
                               onPointerDown={(event) => {
@@ -584,7 +611,6 @@ function CommanderPane({
                                 ...(isSuggestionActive ? commanderPathSuggestionActiveStyle : null),
                               }}
                               title={suggestion.path}
-                              variant="ghost"
                             >
                               <Text runaComponent={`commander-pane-${pane.id}-path-suggestion-${index + 1}-text`} style={commanderPathSuggestionTextStyle}>
                                 {suggestion.path}
@@ -592,7 +618,7 @@ function CommanderPane({
                               <Text runaComponent={`commander-pane-${pane.id}-path-suggestion-${index + 1}-meta`} style={commanderPathSuggestionMetaStyle}>
                                 {suggestion.meta}
                               </Text>
-                            </Button>
+                            </CommanderPlainButton>
                           )
                         })}
                       </Box>
@@ -634,7 +660,7 @@ function CommanderPane({
       </Box>
       <Separator runaComponent={`commander-pane-${pane.id}-header-separator`} />
       <Box runaComponent={`commander-pane-${pane.id}-list-header`} style={commanderListHeaderStyle}>
-        <Button
+        <CommanderPlainButton
           onClick={() => onSetSortMode('ext')}
           runaComponent={`commander-pane-${pane.id}-column-type`}
           style={{
@@ -643,13 +669,12 @@ function CommanderPane({
             ...(sortMode === 'ext' ? commanderListHeaderButtonActiveStyle : null),
           }}
           title="Sort by type"
-          variant="ghost"
         >
           <Text runaComponent={`commander-pane-${pane.id}-column-type-label`} style={{ color: 'inherit', fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit' }}>
             {sortMode === 'ext' ? (sortDirection === 'desc' ? 'T▼' : 'T▲') : 'T'}
           </Text>
-        </Button>
-        <Button
+        </CommanderPlainButton>
+        <CommanderPlainButton
           onClick={() => onSetSortMode('name')}
           runaComponent={`commander-pane-${pane.id}-column-name`}
           style={{
@@ -657,12 +682,11 @@ function CommanderPane({
             ...(sortMode === 'name' ? commanderListHeaderButtonActiveStyle : null),
           }}
           title="Sort by name"
-          variant="ghost"
         >
           {renderCommanderSortLabel('Name', sortMode === 'name', sortDirection)}
-        </Button>
+        </CommanderPlainButton>
         <Text runaComponent={`commander-pane-${pane.id}-column-git`} style={commanderPaneMetaStyle}>Git</Text>
-        <Button
+        <CommanderPlainButton
           onClick={() => onSetSortMode('size')}
           runaComponent={`commander-pane-${pane.id}-column-size`}
           style={{
@@ -671,11 +695,10 @@ function CommanderPane({
             ...(sortMode === 'size' ? commanderListHeaderButtonActiveStyle : null),
           }}
           title="Sort by size"
-          variant="ghost"
         >
           {renderCommanderSortLabel('Size', sortMode === 'size', sortDirection)}
-        </Button>
-        <Button
+        </CommanderPlainButton>
+        <CommanderPlainButton
           onClick={() => onSetSortMode('modified')}
           runaComponent={`commander-pane-${pane.id}-column-modified`}
           style={{
@@ -684,10 +707,9 @@ function CommanderPane({
             ...(sortMode === 'modified' ? commanderListHeaderButtonActiveStyle : null),
           }}
           title="Sort by modified"
-          variant="ghost"
         >
           {renderCommanderSortLabel('Modified', sortMode === 'modified', sortDirection)}
-        </Button>
+        </CommanderPlainButton>
       </Box>
       <Separator runaComponent={`commander-pane-${pane.id}-list-separator`} />
       <ScrollArea runaComponent={`commander-pane-${pane.id}-scroll-area`} style={commanderScrollAreaStyle}>
