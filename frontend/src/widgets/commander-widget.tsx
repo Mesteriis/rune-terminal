@@ -30,6 +30,7 @@ import {
   commanderPaneMetaStyle,
   commanderPendingActionStyle,
   commanderPendingBarWithInputStyle,
+  commanderPendingBarWithConflictStyle,
   commanderPendingBarStyle,
   commanderPendingInputStyle,
   commanderPendingMessageStyle,
@@ -117,13 +118,15 @@ function formatPendingOperationMessage(state: CommanderWidgetViewState) {
   switch (pendingOperation.kind) {
     case 'copy':
       if (pendingOperation.conflictEntryNames?.length) {
-        return `Overwrite ${conflictLabel} in ${pendingOperation.targetPath}`
+        const currentConflictName = pendingOperation.conflictEntryNames[0]
+        return `Conflict: ${currentConflictName} already exists in ${pendingOperation.targetPath}`
       }
 
       return `Copy ${selectionLabel} to ${pendingOperation.targetPath}`
     case 'move':
       if (pendingOperation.conflictEntryNames?.length) {
-        return `Overwrite ${conflictLabel} in ${pendingOperation.targetPath}`
+        const currentConflictName = pendingOperation.conflictEntryNames[0]
+        return `Conflict: ${currentConflictName} already exists in ${pendingOperation.targetPath}`
       }
 
       return `Move ${selectionLabel} to ${pendingOperation.targetPath}`
@@ -152,6 +155,14 @@ function formatPendingOperationMessage(state: CommanderWidgetViewState) {
 
 function isPendingOperationBlocking(state: CommanderWidgetViewState) {
   return Boolean(state.pendingOperation?.duplicateTargetNames?.length)
+}
+
+function isPendingOperationConflictResolution(state: CommanderWidgetViewState) {
+  return Boolean(
+    state.pendingOperation
+    && (state.pendingOperation.kind === 'copy' || state.pendingOperation.kind === 'move')
+    && state.pendingOperation.conflictEntryNames?.length,
+  )
 }
 
 function getRowIcon(row: CommanderFileRow) {
@@ -322,7 +333,7 @@ export function CommanderWidget() {
     widgetId,
     state.activePane,
     activePane.rows,
-    Boolean(state.pendingOperation),
+    state.pendingOperation,
   )
   const autoTagCommanderRoot = useRunaDomAutoTagging('commander-root')
   const commanderRootRef = useRef<HTMLDivElement | null>(null)
@@ -332,6 +343,7 @@ export function CommanderWidget() {
   const disableHistoryControls = Boolean(state.pendingOperation)
   const pendingOperationNeedsInput = state.pendingOperation?.kind === 'rename'
   const pendingOperationIsBlocking = isPendingOperationBlocking(state)
+  const pendingOperationNeedsConflictResolution = isPendingOperationConflictResolution(state)
   const pendingRenamePreview = state.pendingOperation?.kind === 'rename'
     ? (state.pendingOperation.renamePreview ?? [])
     : []
@@ -505,6 +517,7 @@ export function CommanderWidget() {
           style={{
             ...commanderPendingBarStyle,
             ...(pendingOperationNeedsInput ? commanderPendingBarWithInputStyle : null),
+            ...(pendingOperationNeedsConflictResolution ? commanderPendingBarWithConflictStyle : null),
           }}
         >
           <Box runaComponent="commander-pending-message" style={commanderPendingMessageStyle}>
@@ -538,27 +551,96 @@ export function CommanderWidget() {
               value={state.pendingOperation.inputValue ?? ''}
             />
           ) : null}
-          <Box
-            onClick={() => {
-              if (pendingOperationIsBlocking) {
-                return
-              }
-              commanderActions.confirmPendingOperation()
-              if (!pendingOperationNeedsInput) {
-                focusCommanderRoot()
-              }
-            }}
-            role="button"
-            runaComponent="commander-pending-confirm"
-            style={{
-              ...commanderHintCellStyle,
-              ...commanderPendingActionStyle,
-            }}
-            tabIndex={-1}
-          >
-            <Text runaComponent="commander-pending-confirm-key" style={commanderHintKeyStyle}>ENTER</Text>
-            <Text runaComponent="commander-pending-confirm-label" style={commanderHintLabelStyle}>{pendingOperationIsBlocking ? 'Fix template' : 'Confirm'}</Text>
-          </Box>
+          {pendingOperationNeedsConflictResolution ? (
+            <>
+              <Box
+                onClick={() => {
+                  commanderActions.overwritePendingConflict()
+                  focusCommanderRoot()
+                }}
+                role="button"
+                runaComponent="commander-pending-overwrite"
+                style={{
+                  ...commanderHintCellStyle,
+                  ...commanderPendingActionStyle,
+                }}
+                tabIndex={-1}
+              >
+                <Text runaComponent="commander-pending-overwrite-key" style={commanderHintKeyStyle}>ENTER</Text>
+                <Text runaComponent="commander-pending-overwrite-label" style={commanderHintLabelStyle}>Overwrite</Text>
+              </Box>
+              <Box
+                onClick={() => {
+                  commanderActions.skipPendingConflict()
+                  focusCommanderRoot()
+                }}
+                role="button"
+                runaComponent="commander-pending-skip"
+                style={{
+                  ...commanderHintCellStyle,
+                  ...commanderPendingActionStyle,
+                }}
+                tabIndex={-1}
+              >
+                <Text runaComponent="commander-pending-skip-key" style={commanderHintKeyStyle}>SPACE</Text>
+                <Text runaComponent="commander-pending-skip-label" style={commanderHintLabelStyle}>Skip</Text>
+              </Box>
+              <Box
+                onClick={() => {
+                  commanderActions.overwriteAllPendingConflicts()
+                  focusCommanderRoot()
+                }}
+                role="button"
+                runaComponent="commander-pending-overwrite-all"
+                style={{
+                  ...commanderHintCellStyle,
+                  ...commanderPendingActionStyle,
+                }}
+                tabIndex={-1}
+              >
+                <Text runaComponent="commander-pending-overwrite-all-key" style={commanderHintKeyStyle}>SHIFT+ENTER</Text>
+                <Text runaComponent="commander-pending-overwrite-all-label" style={commanderHintLabelStyle}>Overwrite all</Text>
+              </Box>
+              <Box
+                onClick={() => {
+                  commanderActions.skipAllPendingConflicts()
+                  focusCommanderRoot()
+                }}
+                role="button"
+                runaComponent="commander-pending-skip-all"
+                style={{
+                  ...commanderHintCellStyle,
+                  ...commanderPendingActionStyle,
+                }}
+                tabIndex={-1}
+              >
+                <Text runaComponent="commander-pending-skip-all-key" style={commanderHintKeyStyle}>SHIFT+SPACE</Text>
+                <Text runaComponent="commander-pending-skip-all-label" style={commanderHintLabelStyle}>Skip all</Text>
+              </Box>
+            </>
+          ) : (
+            <Box
+              onClick={() => {
+                if (pendingOperationIsBlocking) {
+                  return
+                }
+                commanderActions.confirmPendingOperation()
+                if (!pendingOperationNeedsInput) {
+                  focusCommanderRoot()
+                }
+              }}
+              role="button"
+              runaComponent="commander-pending-confirm"
+              style={{
+                ...commanderHintCellStyle,
+                ...commanderPendingActionStyle,
+              }}
+              tabIndex={-1}
+            >
+              <Text runaComponent="commander-pending-confirm-key" style={commanderHintKeyStyle}>ENTER</Text>
+              <Text runaComponent="commander-pending-confirm-label" style={commanderHintLabelStyle}>{pendingOperationIsBlocking ? 'Fix template' : 'Confirm'}</Text>
+            </Box>
+          )}
           <Box
             onClick={() => {
               commanderActions.cancelPendingOperation()

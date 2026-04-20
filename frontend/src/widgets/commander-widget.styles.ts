@@ -366,6 +366,10 @@ export const commanderPendingBarWithInputStyle: CSSProperties = {
   gridTemplateColumns: 'auto minmax(0, 1fr) auto auto',
 }
 
+export const commanderPendingBarWithConflictStyle: CSSProperties = {
+  gridTemplateColumns: 'minmax(0, 1fr) repeat(5, auto)',
+}
+
 export const commanderPendingSupplementStyle: CSSProperties = {
   gridColumn: '1 / -1',
   display: 'flex',

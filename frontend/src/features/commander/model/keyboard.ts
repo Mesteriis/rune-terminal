@@ -1,7 +1,7 @@
 import { useCallback, useRef, type KeyboardEvent } from 'react'
 
 import { useCommanderActions } from './hooks'
-import type { CommanderFileRow, CommanderPaneId } from './types'
+import type { CommanderFileRow, CommanderPaneId, CommanderPendingOperation } from './types'
 
 const COMMANDER_TYPEAHEAD_RESET_MS = 700
 
@@ -52,7 +52,7 @@ export function useCommanderKeyboard(
   widgetId: string,
   activePane: CommanderPaneId,
   activePaneRows: CommanderFileRow[],
-  hasPendingOperation: boolean,
+  pendingOperation: CommanderPendingOperation | null,
 ) {
   const commanderActions = useCommanderActions(widgetId)
   const typeaheadRef = useRef<{
@@ -98,7 +98,46 @@ export function useCommanderKeyboard(
       return
     }
 
-    if (hasPendingOperation) {
+    if (pendingOperation) {
+      const hasPendingConflictResolution = (
+        (pendingOperation.kind === 'copy' || pendingOperation.kind === 'move')
+        && Boolean(pendingOperation.conflictEntryNames?.length)
+      )
+
+      if (hasPendingConflictResolution) {
+        if (event.key === 'Enter') {
+          event.preventDefault()
+
+          if (event.shiftKey) {
+            commanderActions.overwriteAllPendingConflicts()
+            return
+          }
+
+          commanderActions.overwritePendingConflict()
+          return
+        }
+
+        if (event.key === ' ') {
+          event.preventDefault()
+
+          if (event.shiftKey) {
+            commanderActions.skipAllPendingConflicts()
+            return
+          }
+
+          commanderActions.skipPendingConflict()
+          return
+        }
+
+        if (event.key === 'Escape') {
+          event.preventDefault()
+          commanderActions.cancelPendingOperation()
+          return
+        }
+
+        return
+      }
+
       switch (event.key) {
         case 'Enter':
           event.preventDefault()
@@ -248,5 +287,5 @@ export function useCommanderKeyboard(
       default:
         return
     }
-  }, [activePane, activePaneRows, commanderActions, hasPendingOperation])
+  }, [activePane, activePaneRows, commanderActions, pendingOperation])
 }
