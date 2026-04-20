@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { type DockviewApi, type DockviewReadyEvent } from 'dockview-react'
 
-import { createTerminalPanelParams } from '@/widgets/terminal/terminal-panel'
+import { hasDockviewWorkspaceBootstrap, seedDockviewWorkspaceBootstrap } from './dockview-workspace.bootstrap'
 import {
   createDefaultWorkspaceTabs,
   DEFAULT_ACTIVE_WORKSPACE_ID,
@@ -168,7 +168,7 @@ export function useDockviewWorkspace() {
     dockviewApiRef.current = api
     bindDockviewPersistence(api)
 
-    if (api.getPanel('terminal-header')) {
+    if (hasDockviewWorkspaceBootstrap(api)) {
       scheduleDockviewLayoutSync()
       return
     }
@@ -189,37 +189,7 @@ export function useDockviewWorkspace() {
       return
     }
 
-    api.addPanel({
-      id: 'terminal-header',
-      title: 'Main terminal',
-      component: 'default',
-      tabComponent: 'terminal-tab',
-      params: createTerminalPanelParams('main'),
-    })
-
-    api.addPanel({
-      id: 'terminal',
-      title: 'Workspace shell',
-      component: 'default',
-      tabComponent: 'terminal-tab',
-      params: createTerminalPanelParams('workspace'),
-      position: {
-        direction: 'below',
-      },
-    })
-
-    api.addPanel({
-      id: 'tool',
-      title: 'tool',
-      component: 'default',
-      tabComponent: 'commander-tab',
-      position: {
-        direction: 'right',
-        referencePanel: 'terminal',
-      },
-    })
-
-    const initialWorkspaceSnapshot = api.toJSON()
+    const initialWorkspaceSnapshot = seedDockviewWorkspaceBootstrap(api)
 
     updateWorkspaceTabs((tabs) =>
       tabs.map((workspace) =>

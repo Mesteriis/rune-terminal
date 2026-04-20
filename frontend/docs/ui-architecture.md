@@ -264,6 +264,7 @@ Lookup helpers exported from `src/shared/ui/dom-id.tsx`:
 - The current shell example routes its visible shell blocks through widgets and primitives instead of raw HTML in `App.tsx`.
 - `App.tsx` remains responsible for shell composition, Dockview API orchestration, and Effector state wiring.
 - The app-local Dockview workspace persistence contract now lives in `src/app/dockview-workspace.persistence.ts`, so `use-dockview-workspace.ts` can stay focused on runtime coordination instead of owning the raw `localStorage` schema inline.
+- The default Dockview panel seed now also lives in `src/app/dockview-workspace.bootstrap.ts`, so the initial shell topology is expressed once outside the React lifecycle hook.
 - Modal state now lives in a dedicated `shared/model/modal.ts` store instead of being hidden inside widget-local React state.
 - Tokens now cover dark canvas, glass surfaces, accent hues, spacing, radii, shell sizes, blur, and shadow.
 - Shared primitives consume only semantic tokens instead of hardcoded `#111/#fff/#333` values.
