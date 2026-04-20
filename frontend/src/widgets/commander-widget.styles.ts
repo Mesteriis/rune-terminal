@@ -346,6 +346,18 @@ export const commanderPendingBarWithInputStyle: CSSProperties = {
   gridTemplateColumns: 'auto minmax(0, 1fr) auto auto',
 }
 
+export const commanderPendingSupplementStyle: CSSProperties = {
+  gridColumn: '1 / -1',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 'var(--gap-xs)',
+  padding: 0,
+  border: 'none',
+  borderRadius: 0,
+  background: 'transparent',
+  boxShadow: 'none',
+}
+
 export const commanderPendingMessageStyle: CSSProperties = {
   display: 'flex',
   alignItems: 'center',
@@ -361,6 +373,13 @@ export const commanderPendingMessageStyle: CSSProperties = {
   overflow: 'hidden',
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
+}
+
+export const commanderPendingWarningStyle: CSSProperties = {
+  ...commanderPendingMessageStyle,
+  borderColor: 'rgba(212, 180, 104, 0.42)',
+  background: 'rgba(86, 67, 26, 0.22)',
+  color: 'rgb(228, 211, 164)',
 }
 
 export const commanderPendingActionStyle: CSSProperties = {
@@ -382,6 +401,69 @@ export const commanderPendingInputStyle: CSSProperties = {
   boxShadow: 'none',
   backdropFilter: 'none',
   WebkitBackdropFilter: 'none',
+}
+
+export const commanderPendingPreviewListStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '2px',
+  padding: 0,
+  border: 'none',
+  borderRadius: 0,
+  background: 'transparent',
+  boxShadow: 'none',
+}
+
+export const commanderPendingPreviewRowStyle: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)',
+  gap: 'var(--gap-xs)',
+  alignItems: 'center',
+  minHeight: '22px',
+  padding: '0 var(--space-sm)',
+  border: '1px solid rgba(100, 138, 128, 0.14)',
+  borderRadius: 'var(--radius-xs)',
+  background: 'rgba(9, 16, 15, 0.82)',
+}
+
+export const commanderPendingPreviewConflictRowStyle: CSSProperties = {
+  borderColor: 'rgba(212, 180, 104, 0.32)',
+  background: 'rgba(68, 54, 24, 0.2)',
+}
+
+export const commanderPendingPreviewArrowStyle: CSSProperties = {
+  color: 'var(--runa-commander-text-muted)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '11px',
+  lineHeight: '14px',
+}
+
+export const commanderPendingPreviewTextStyle: CSSProperties = {
+  display: 'block',
+  minWidth: 0,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+  color: 'var(--runa-commander-text-secondary)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '11px',
+  lineHeight: '14px',
+}
+
+export const commanderPendingPreviewTargetTextStyle: CSSProperties = {
+  ...commanderPendingPreviewTextStyle,
+  color: 'var(--runa-commander-highlight-text)',
+}
+
+export const commanderPendingRenameHelpStyle: CSSProperties = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: 'var(--gap-sm)',
+  padding: '0 var(--space-sm)',
+  color: 'var(--runa-commander-text-muted)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '11px',
+  lineHeight: '14px',
 }
 
 export const commanderHintKeyStyle: CSSProperties = {

@@ -7,6 +7,7 @@ import type {
   CommanderNavigationResult,
   CommanderPaneId,
   CommanderPanePersistedState,
+  CommanderRenamePreviewItem,
   CommanderPaneRuntimeState,
   CommanderWidgetPersistedState,
   CommanderSortMode,
@@ -173,8 +174,76 @@ function splitEntryName(entry: CommanderSeedEntry) {
   return entry.name
 }
 
+function splitEntryBaseNameAndExt(entry: CommanderDirectoryEntry) {
+  if (entry.kind !== 'file' || !entry.ext) {
+    return {
+      baseName: entry.name,
+      ext: '',
+    }
+  }
+
+  const expectedSuffix = `.${entry.ext}`
+
+  if (entry.name.toLocaleLowerCase().endsWith(expectedSuffix.toLocaleLowerCase())) {
+    return {
+      baseName: entry.name.slice(0, -expectedSuffix.length),
+      ext: entry.ext,
+    }
+  }
+
+  return {
+    baseName: entry.name,
+    ext: entry.ext,
+  }
+}
+
 function normalizeEntryName(name: string) {
   return name.trim().toLowerCase()
+}
+
+function formatRenameCounter(counter: number, width?: number) {
+  const counterValue = String(counter)
+
+  if (!width || width <= counterValue.length) {
+    return counterValue
+  }
+
+  return counterValue.padStart(width, '0')
+}
+
+function applyCommanderRenameTemplate(
+  entry: CommanderDirectoryEntry,
+  template: string,
+  index: number,
+) {
+  const normalizedTemplate = template.trim()
+
+  if (!normalizedTemplate) {
+    return ''
+  }
+
+  const { baseName, ext } = splitEntryBaseNameAndExt(entry)
+  const usesFullNameToken = /\[F\]/i.test(normalizedTemplate)
+  const usesExtensionToken = /\[E\]/i.test(normalizedTemplate)
+  let nextName = normalizedTemplate
+    .replace(/\[C(?::(\d+))?\]/gi, (_match, widthValue: string | undefined) => {
+      const width = widthValue ? Number.parseInt(widthValue, 10) : undefined
+      return formatRenameCounter(index + 1, Number.isFinite(width) ? width : undefined)
+    })
+    .replace(/\[N\]/gi, baseName)
+    .replace(/\[E\]/gi, ext)
+    .replace(/\[F\]/gi, entry.name)
+    .trim()
+
+  if (!nextName) {
+    return ''
+  }
+
+  if (entry.kind === 'file' && ext && !usesFullNameToken && !usesExtensionToken && !nextName.includes('.')) {
+    nextName = `${nextName}.${ext}`
+  }
+
+  return nextName
 }
 
 function ensureDirectory(client: CommanderClientState, path: string) {
@@ -584,6 +653,16 @@ function resolveEntry(widgetId: string, path: string, entryId: string) {
   return createEntry(entry, path)
 }
 
+function resolveEntriesInOrder(
+  widgetId: string,
+  path: string,
+  entryIds: string[],
+) {
+  return entryIds
+    .map((entryId) => resolveEntry(widgetId, path, entryId))
+    .filter((entry): entry is CommanderDirectoryEntry => Boolean(entry))
+}
+
 function createInitialPaneState(
   widgetId: string,
   paneId: CommanderPaneId,
@@ -955,6 +1034,77 @@ export function getCommanderEntryNameConflict({
   })
 }
 
+export function previewCommanderRenameEntries({
+  widgetId,
+  path,
+  entryIds,
+  template,
+}: {
+  widgetId: string
+  path: string
+  entryIds: string[]
+  template: string
+}) {
+  const client = getClient(widgetId)
+  const renameEntries = resolveEntriesInOrder(widgetId, path, entryIds)
+  const renameEntryIdSet = new Set(renameEntries.map((entry) => entry.id))
+  const existingDirectoryEntries = client.directories.get(path) ?? []
+  const generatedNameCounts = new Map<string, number>()
+  const preview: CommanderRenamePreviewItem[] = renameEntries.map((entry, index) => {
+    const nextName = applyCommanderRenameTemplate(entry, template, index)
+    const normalizedNextName = normalizeEntryName(nextName)
+
+    if (normalizedNextName) {
+      generatedNameCounts.set(normalizedNextName, (generatedNameCounts.get(normalizedNextName) ?? 0) + 1)
+    }
+
+    return {
+      entryId: entry.id,
+      currentName: entry.name,
+      nextName,
+      conflict: false,
+    }
+  })
+
+  const duplicateTargetNames: string[] = []
+  const conflictEntryNames: string[] = []
+
+  preview.forEach((item) => {
+    const normalizedNextName = normalizeEntryName(item.nextName)
+
+    if (!normalizedNextName) {
+      item.conflict = true
+      duplicateTargetNames.push(item.currentName)
+      return
+    }
+
+    const hasDuplicateTarget = (generatedNameCounts.get(normalizedNextName) ?? 0) > 1
+    const hasDirectoryConflict = existingDirectoryEntries.some((entry) => {
+      const resolvedEntryId = createEntry(entry, path).id
+
+      if (renameEntryIdSet.has(resolvedEntryId)) {
+        return false
+      }
+
+      return normalizeEntryName(entry.name) === normalizedNextName
+    })
+
+    item.conflict = hasDuplicateTarget || hasDirectoryConflict
+
+    if (hasDuplicateTarget) {
+      duplicateTargetNames.push(item.nextName)
+    } else if (hasDirectoryConflict) {
+      conflictEntryNames.push(item.nextName)
+    }
+  })
+
+  return {
+    preview,
+    conflictEntryNames: Array.from(new Set(conflictEntryNames)),
+    duplicateTargetNames: Array.from(new Set(duplicateTargetNames)),
+  }
+}
+
 export function renameCommanderEntry({
   widgetId,
   path,
@@ -1027,5 +1177,73 @@ export function renameCommanderEntry({
 
   return {
     entryId: toSeedEntryId(path, trimmedNextName),
+  }
+}
+
+export function renameCommanderEntries({
+  widgetId,
+  path,
+  entryIds,
+  template,
+  overwrite,
+}: {
+  widgetId: string
+  path: string
+  entryIds: string[]
+  template: string
+  overwrite?: boolean
+}) {
+  const renamePreview = previewCommanderRenameEntries({
+    widgetId,
+    path,
+    entryIds,
+    template,
+  })
+
+  if (renamePreview.duplicateTargetNames.length > 0) {
+    return null
+  }
+
+  const shouldOverwrite = Boolean(overwrite)
+
+  if (!shouldOverwrite && renamePreview.conflictEntryNames.length > 0) {
+    return null
+  }
+
+  const renameEntries = resolveEntriesInOrder(widgetId, path, entryIds)
+
+  if (renameEntries.length === 0) {
+    return null
+  }
+
+  const client = getClient(widgetId)
+  const temporaryNamePrefix = `.runa-rename-${Date.now()}`
+
+  renameEntries.forEach((entry, index) => {
+    renameCommanderEntry({
+      widgetId,
+      path,
+      entryId: entry.id,
+      nextName: `${temporaryNamePrefix}-${index + 1}`,
+    })
+  })
+
+  if (shouldOverwrite) {
+    renamePreview.conflictEntryNames.forEach((conflictEntryName) => {
+      removeEntryByName(client, path, conflictEntryName)
+    })
+  }
+
+  const nextEntryIds = renamePreview.preview
+    .map((item, index) => renameCommanderEntry({
+      widgetId,
+      path,
+      entryId: toSeedEntryId(path, `${temporaryNamePrefix}-${index + 1}`),
+      nextName: item.nextName,
+    })?.entryId ?? null)
+    .filter((entryId): entryId is string => Boolean(entryId))
+
+  return {
+    entryIds: nextEntryIds,
   }
 }

@@ -87,6 +87,12 @@ export function useCommanderKeyboard(
       if (!event.metaKey && event.ctrlKey && event.key === 'PageUp') {
         event.preventDefault()
         commanderActions.goParent()
+        return
+      }
+
+      if (!event.metaKey && event.ctrlKey && event.key === 'PageDown') {
+        event.preventDefault()
+        commanderActions.openActiveEntry()
       }
 
       return
@@ -132,6 +138,10 @@ export function useCommanderKeyboard(
         case 'End':
           event.preventDefault()
           commanderActions.setBoundaryCursor(activePane, 'end', { extendSelection: true })
+          return
+        case 'F6':
+          event.preventDefault()
+          commanderActions.renameSelection()
           return
         default:
           break

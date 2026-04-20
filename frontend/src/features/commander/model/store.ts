@@ -12,8 +12,10 @@ import {
   mkdirCommanderDirectory,
   moveCommanderEntries,
   openCommanderEntry,
+  previewCommanderRenameEntries,
   readCommanderDirectory,
   renameCommanderEntry,
+  renameCommanderEntries,
   resolveCommanderExistingPath,
 } from './fake-client'
 import {
@@ -392,22 +394,50 @@ function createPendingOperation(
   }
 
   if (kind === 'rename') {
-    const entryId = sourcePane.cursorEntryId
-    const currentEntry = entryId
-      ? sourcePane.entries.find((entry) => entry.id === entryId)
-      : null
+    const renameEntries = sourcePane.entries.filter((entry) => entryIds.includes(entry.id))
 
-    if (!currentEntry) {
+    if (renameEntries.length === 0) {
       return null
     }
+
+    if (renameEntries.length === 1) {
+      const currentEntry = renameEntries[0]
+
+      return {
+        kind,
+        sourcePaneId: widgetState.activePane,
+        sourcePath: sourcePane.path,
+        entryIds: [currentEntry.id],
+        entryNames: [currentEntry.name],
+        inputValue: currentEntry.name,
+        renameMode: 'single',
+        renamePreview: [{
+          entryId: currentEntry.id,
+          currentName: currentEntry.name,
+          nextName: currentEntry.name,
+          conflict: false,
+        }],
+      } satisfies CommanderPendingOperation
+    }
+
+    const renamePreview = previewCommanderRenameEntries({
+      widgetId: widgetState.widgetId,
+      path: sourcePane.path,
+      entryIds: renameEntries.map((entry) => entry.id),
+      template: '[N]-[C:2]',
+    })
 
     return {
       kind,
       sourcePaneId: widgetState.activePane,
       sourcePath: sourcePane.path,
-      entryIds: [currentEntry.id],
-      entryNames: [currentEntry.name],
-      inputValue: currentEntry.name,
+      entryIds: renameEntries.map((entry) => entry.id),
+      entryNames: renameEntries.map((entry) => entry.name),
+      inputValue: '[N]-[C:2]',
+      renameMode: 'batch',
+      renamePreview: renamePreview.preview,
+      conflictEntryNames: renamePreview.conflictEntryNames,
+      duplicateTargetNames: renamePreview.duplicateTargetNames,
     } satisfies CommanderPendingOperation
   }
 
@@ -978,6 +1008,27 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
       return widgets
     }
 
+    if (widgetState.pendingOperation.kind !== 'rename') {
+      return {
+        ...widgets,
+        [payload.widgetId]: {
+          ...widgetState,
+          pendingOperation: {
+            ...widgetState.pendingOperation,
+            inputValue: payload.inputValue,
+            conflictEntryNames: undefined,
+          },
+        },
+      }
+    }
+
+    const renamePreview = previewCommanderRenameEntries({
+      widgetId: payload.widgetId,
+      path: widgetState.pendingOperation.sourcePath,
+      entryIds: widgetState.pendingOperation.entryIds,
+      template: payload.inputValue,
+    })
+
     return {
       ...widgets,
       [payload.widgetId]: {
@@ -985,7 +1036,9 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
         pendingOperation: {
           ...widgetState.pendingOperation,
           inputValue: payload.inputValue,
-          conflictEntryNames: undefined,
+          conflictEntryNames: renamePreview.conflictEntryNames,
+          duplicateTargetNames: renamePreview.duplicateTargetNames,
+          renamePreview: renamePreview.preview,
         },
       },
     }
@@ -1064,10 +1117,81 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
     }
 
     if (pendingOperation.kind === 'rename') {
-      const entryId = pendingOperation.entryIds[0]
       const nextName = pendingOperation.inputValue?.trim() ?? ''
 
-      if (!entryId || !nextName) {
+      if (!nextName) {
+        return widgets
+      }
+
+      if (pendingOperation.renameMode === 'batch') {
+        const renamePreview = previewCommanderRenameEntries({
+          widgetId: payload.widgetId,
+          path: pendingOperation.sourcePath,
+          entryIds: pendingOperation.entryIds,
+          template: nextName,
+        })
+
+        if (renamePreview.duplicateTargetNames.length > 0) {
+          return {
+            ...widgets,
+            [payload.widgetId]: {
+              ...widgetState,
+              pendingOperation: {
+                ...pendingOperation,
+                duplicateTargetNames: renamePreview.duplicateTargetNames,
+                conflictEntryNames: renamePreview.conflictEntryNames,
+                renamePreview: renamePreview.preview,
+              },
+            },
+          }
+        }
+
+        if (
+          !pendingOperation.conflictEntryNames?.length
+          && renamePreview.conflictEntryNames.length > 0
+        ) {
+          return {
+            ...widgets,
+            [payload.widgetId]: {
+              ...widgetState,
+              pendingOperation: {
+                ...pendingOperation,
+                conflictEntryNames: renamePreview.conflictEntryNames,
+                duplicateTargetNames: renamePreview.duplicateTargetNames,
+                renamePreview: renamePreview.preview,
+              },
+            },
+          }
+        }
+
+        const renameResult = renameCommanderEntries({
+          widgetId: payload.widgetId,
+          path: pendingOperation.sourcePath,
+          entryIds: pendingOperation.entryIds,
+          template: nextName,
+          overwrite: Boolean(pendingOperation.conflictEntryNames?.length),
+        })
+
+        if (!renameResult) {
+          return widgets
+        }
+
+        return {
+          ...widgets,
+          [payload.widgetId]: refreshWidgetPanes(widgetState, {
+            pendingOperation: null,
+            [pendingOperation.sourcePaneId === 'left' ? 'leftPane' : 'rightPane']: {
+              cursorEntryId: renameResult.entryIds[0] ?? null,
+              selectedIds: [],
+              selectionAnchorEntryId: renameResult.entryIds[0] ?? null,
+            },
+          }),
+        }
+      }
+
+      const entryId = pendingOperation.entryIds[0]
+
+      if (!entryId) {
         return widgets
       }
 
@@ -1111,6 +1235,7 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
           [pendingOperation.sourcePaneId === 'left' ? 'leftPane' : 'rightPane']: {
             cursorEntryId: renameResult.entryId,
             selectedIds: [],
+            selectionAnchorEntryId: renameResult.entryId,
           },
         }),
       }
