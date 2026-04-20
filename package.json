@@ -8,8 +8,11 @@
     "import:tideterm-frontend": "./scripts/import-tideterm-frontend.sh",
     "dev:frontend": "npm --prefix frontend run dev",
     "build:frontend": "npm --prefix frontend run build",
-    "lint:frontend": "npm --prefix frontend run lint:active",
-    "lint:frontend:all": "npm --prefix frontend run lint:all",
+    "lint:frontend": "eslint frontend/src frontend/vite.config.ts --max-warnings=0 && npm --prefix frontend run lint:active",
+    "lint:frontend:all": "npm run lint:frontend",
+    "lint:frontend:fix": "eslint frontend/src frontend/vite.config.ts --fix && npm --prefix frontend run lint:active",
+    "format:frontend": "prettier --write \"frontend/src/**/*.{ts,tsx}\" \"frontend/docs/**/*.md\" \"frontend/*.{json,ts,md}\"",
+    "format:frontend:check": "prettier --check \"frontend/src/**/*.{ts,tsx}\" \"frontend/docs/**/*.md\" \"frontend/*.{json,ts,md}\"",
     "test:frontend": "npm --prefix frontend run test",
     "build:core": "./scripts/build-core.sh",
     "test:go": "./scripts/go.sh test ./cmd/... ./core/... ./internal/...",
@@ -19,12 +22,37 @@
     "tauri:build": "npm exec tauri -- build --config apps/desktop/src-tauri/tauri.conf.json",
     "tauri:check": "cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml",
     "validate": "npm run lint:frontend && npm run test:frontend && npm run build:frontend && npm run test:go && npm run build:go && npm run tauri:check",
-    "check:active-path-api": "scripts/check-active-path-api-imports.sh"
+    "check:active-path-api": "scripts/check-active-path-api-imports.sh",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "frontend/src/**/*.{ts,tsx}": [
+      "eslint --fix --max-warnings=0",
+      "prettier --write"
+    ],
+    "frontend/vite.config.ts": [
+      "eslint --fix --max-warnings=0",
+      "prettier --write"
+    ],
+    "frontend/docs/**/*.md": "prettier --write",
+    "frontend/*.{json,md}": "prettier --write"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.4",
     "@playwright/test": "^1.54.2",
     "@tauri-apps/cli": "^2.10.1",
+    "@typescript-eslint/eslint-plugin": "^8.58.2",
+    "@typescript-eslint/parser": "^8.58.2",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-import-resolver-typescript": "^4.4.4",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.5.0",
     "highlight.js": "^11.11.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.8.3",
     "typescript": "^6.0.2"
   }
 }

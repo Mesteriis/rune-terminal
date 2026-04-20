@@ -195,6 +195,8 @@ Lookup helpers exported from `src/shared/ui/dom-id.tsx`:
 ### Commands
 
 - `npm --prefix frontend run lint:active`
+- `npm run lint:frontend`
+- `npm run format:frontend:check`
 - `npm --prefix frontend run test`
 - `npm --prefix frontend run build`
 - `curl -sf http://127.0.0.1:4193`

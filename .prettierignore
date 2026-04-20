@@ -1,0 +1,9 @@
+node_modules
+frontend/node_modules
+frontend/dist
+coverage
+frontend/coverage
+apps/desktop/src-tauri/target
+*.tsbuildinfo
+package-lock.json
+frontend/package-lock.json
