@@ -1,5 +1,5 @@
-import { useRunaDomIdentity, useRunaDomScope } from '@/shared/ui/dom-id'
-import { Box, type BoxProps } from '@/shared/ui/primitives'
+import { useRunaDomScope } from '@/shared/ui/dom-id'
+import { Box, Image, type BoxProps } from '@/shared/ui/primitives'
 
 export type AvatarProps = Omit<BoxProps, 'children'> & {
   label?: string
@@ -7,17 +7,9 @@ export type AvatarProps = Omit<BoxProps, 'children'> & {
   src: string
 }
 
-export function Avatar({
-  label,
-  runaComponent,
-  size = 32,
-  src,
-  style,
-  ...props
-}: AvatarProps) {
+export function Avatar({ label, runaComponent, size = 32, src, style, ...props }: AvatarProps) {
   const scope = useRunaDomScope()
   const wrapperComponent = runaComponent ?? `${scope.component}-avatar`
-  const imageIdentity = useRunaDomIdentity(`${wrapperComponent}-image`)
 
   return (
     <Box
@@ -43,14 +35,10 @@ export function Avatar({
         ...style,
       }}
     >
-      <img
+      <Image
         alt={label ?? ''}
         aria-hidden={label == null ? true : undefined}
-        data-runa-component={imageIdentity.scope.component}
-        data-runa-layout={imageIdentity.scope.layout}
-        data-runa-node={imageIdentity.node}
-        data-runa-widget={imageIdentity.scope.widget}
-        id={imageIdentity.id}
+        runaComponent={`${wrapperComponent}-image`}
         src={src}
         style={{
           width: '100%',

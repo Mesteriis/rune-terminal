@@ -40,6 +40,7 @@ Current primitives:
 - `Badge`
 - `Button`
 - `Checkbox`
+- `Image`
 - `Input`
 - `Label`
 - `Radio`
@@ -132,6 +133,7 @@ its visible shell blocks as raw HTML inside `App.tsx`.
 - `RightActionRailWidget` renders the full-height right rail.
 - `WidgetBusyOverlayWidget` renders a widget-body busy state overlay with a centered AI marker and a `tsParticles` node-edge field.
 - `CommanderWidget` renders the frontend-only Total Commander-style dual-pane surface from a per-widget commander model backed by a local fake filesystem client.
+- `CommanderPanelWidget` keeps the Dockview commander panel path inside the widget layer, so Dockview panel rendering does not import a layout.
 - The fake commander client now supports widget-local `copy/move/delete/mkdir` mutations between the left and right panes of the same widget instance, without backend calls or cross-widget filesystem sharing.
 - Commander operations now pass through a widget-local pending confirm/cancel layer before mutating the fake filesystem, so the UI can expose classic operator review flows without backend approvals yet.
 - Commander pane navigation now also keeps independent per-pane history stacks, exposed through active-pane back/forward header controls and `Alt+Left` / `Alt+Right`.

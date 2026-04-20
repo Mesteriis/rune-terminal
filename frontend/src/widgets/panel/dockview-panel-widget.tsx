@@ -2,10 +2,10 @@ import { useUnit } from 'effector-react'
 import type { IDockviewPanelProps } from 'dockview-react'
 import { useEffect, useRef } from 'react'
 
-import { CommanderDemoLayout } from '@/layouts'
 import { $activeWidgetHostId, setActiveWidgetHostId } from '@/shared/model/widget-focus'
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { Box, Text } from '@/shared/ui/primitives'
+import { CommanderPanelWidget } from '@/widgets/commander/commander-panel-widget'
 import { ModalHostWidget } from '@/widgets/panel/modal-host-widget'
 import { PanelModalActionsWidget } from '@/widgets/panel/panel-modal-actions-widget'
 import { resolveTerminalPanelParams } from '@/widgets/terminal/terminal-panel'
@@ -51,10 +51,7 @@ function isCommanderDemoPanel(panelId: string) {
 
 export function DockviewPanelWidget(props: IDockviewPanelProps) {
   const rootRef = useRef<HTMLDivElement | null>(null)
-  const [activeWidgetHostId, onSetActiveWidgetHostId] = useUnit([
-    $activeWidgetHostId,
-    setActiveWidgetHostId,
-  ])
+  const [activeWidgetHostId, onSetActiveWidgetHostId] = useUnit([$activeWidgetHostId, setActiveWidgetHostId])
   const terminalModel = props.api.id.startsWith('terminal')
     ? resolveTerminalPanelParams(props.api.id, props.params)
     : null
@@ -86,10 +83,7 @@ export function DockviewPanelWidget(props: IDockviewPanelProps) {
         runaComponent="dockview-panel-root"
         style={panelContentStyle}
       >
-        <Box
-          runaComponent="dockview-panel-content"
-          style={panelInnerContentStyle}
-        >
+        <Box runaComponent="dockview-panel-content" style={panelInnerContentStyle}>
           {terminalModel ? (
             <TerminalWidget
               connectionKind={terminalModel.connectionKind}
@@ -100,7 +94,7 @@ export function DockviewPanelWidget(props: IDockviewPanelProps) {
               shellLabel={terminalModel.shellLabel}
             />
           ) : isCommanderPanel ? (
-            <CommanderDemoLayout />
+            <CommanderPanelWidget />
           ) : (
             <>
               <Text runaComponent="dockview-panel-label">{`PANEL: ${props.api.id}`}</Text>
