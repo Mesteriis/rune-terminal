@@ -4,7 +4,7 @@
 
 ## Context
 
-TideTerm treats local and remote shells as first-class product behavior. RunaTerminal had already reached a launchable local shell baseline, but remote and SSH remained a product-level gap.
+TideTerm treats local and remote shells as first-class product behavior. rune-terminal had already reached a launchable local shell baseline, but remote and SSH remained a product-level gap.
 
 Exact parity with TideTerm's legacy remote stack would require carrying forward old connection-controller complexity, frontend-owned state, and transport-heavy semantics. That would conflict with the rewrite goals already captured in the earlier ADR set.
 
@@ -12,7 +12,7 @@ We still need a real remote foundation now, not another placeholder. The first s
 
 ## Decision
 
-RunaTerminal introduces a dedicated `core/connections` domain as the new remote foundation.
+rune-terminal introduces a dedicated `core/connections` domain as the new remote foundation.
 
 This slice implements:
 

@@ -1,4 +1,4 @@
-# RunaTerminal System Prompt Profiles
+# rune-terminal System Prompt Profiles
 
 ## Position
 

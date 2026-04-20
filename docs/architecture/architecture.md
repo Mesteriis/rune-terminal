@@ -1,8 +1,8 @@
-# RunaTerminal Architecture
+# rune-terminal Architecture
 
 ## Rewrite Position
 
-RunaTerminal is a clean-room rewrite of TideTerm, not an incremental fork evolution. The audit of the old repository produced three strong conclusions:
+rune-terminal is a clean-room rewrite of TideTerm, not an incremental fork evolution. The audit of the old repository produced three strong conclusions:
 
 1. TideTerm has the right product ideas.
 2. TideTerm carries too much product meaning inside transport and UI state plumbing.

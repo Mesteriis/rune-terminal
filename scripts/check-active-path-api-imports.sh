@@ -1,25 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-TARGETS=(
-  "$ROOT_DIR/frontend/app/tab"
-  "$ROOT_DIR/frontend/app/workspace"
-  "$ROOT_DIR/frontend/app/view/term"
-)
+# Active-path API import guard.
+#
+# Original intent: prevent widgets/pages from importing the low-level HTTP
+# client or compat facade directly, so ownership stayed inside a dedicated
+# store/facade layer. The original targets (frontend/app/tab, frontend/app/
+# workspace, frontend/app/view/term) no longer exist — the frontend is being
+# rewritten under frontend/src/.
+#
+# Until the rewritten frontend introduces a real HTTP client boundary,
+# there is nothing to guard. This script intentionally short-circuits as a
+# pass so that it remains wired into `make validate` without emitting false
+# positives or scanning code paths that do not exist.
+#
+# When the new frontend wires up a real client (e.g. under
+# frontend/src/shared/api/) the guard should be rewritten to forbid direct
+# imports of that client outside an allowlist of boundary files.
 
-PATTERN='(?:rterm-api/http/client|compat/api)'
-
-violations=$(rg -n -U -e "$PATTERN" "${TARGETS[@]}" 2>/dev/null || true)
-
-if [ -n "$violations" ]; then
-  echo "Active UI path API import guard failed"
-  echo
-  echo "Forbidden imports detected in active surfaces:" >&2
-  echo "$violations"
-  echo
-  echo "Allowed pattern: only store/facade ownership in this migration slice."
-  exit 1
-fi
-
-echo "Active UI API import guard passed: no direct rterm-api/http/client or compat/api imports in app/tab, app/workspace, app/view/term"
+echo "Active UI API import guard: no active targets yet (frontend rewrite in progress)."

@@ -47,7 +47,7 @@ an individual is officially representing the project in public spaces.
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
 reported to the project maintainers at:
 
-- `security@runa-terminal.dev`
+- `security@rune-terminal.dev`
 
 If this address changes, update this file and `SECURITY.md` together.
 

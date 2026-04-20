@@ -1,4 +1,4 @@
-# RunaTerminal Domain Model
+# rune-terminal Domain Model
 
 ## Core Entities
 

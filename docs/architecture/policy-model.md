@@ -1,4 +1,4 @@
-# RunaTerminal Policy Model
+# rune-terminal Policy Model
 
 ## Goals
 

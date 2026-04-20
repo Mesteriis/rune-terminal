@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-RunaTerminal needs prompt shaping for future AI workflows, but prompt text alone is not a sufficient control surface. The same selection must change runtime posture.
+rune-terminal needs prompt shaping for future AI workflows, but prompt text alone is not a sufficient control surface. The same selection must change runtime posture.
 
 ## Decision
 

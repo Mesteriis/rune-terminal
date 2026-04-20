@@ -4,7 +4,7 @@ apply: always
 
 You are working on the project:
 
-RunaTerminal
+rune-terminal (short name `rterm`)
 
 This is NOT a generic coding session.
 This is a structured engineering process with strict rules.
@@ -21,8 +21,12 @@ Each slice must:
 2. Be limited in scope
 3. Be broken into phases
 4. Create a commit AFTER EACH PHASE
-5. End with a push to main
-6. Produce a structured report
+5. Produce a structured report
+
+The project is pre-release and does NOT run a main-ready / release-train
+workflow. Do not treat `main` as a deployment target; treat it as a
+rolling development branch. Follow the current roadmap and the user's
+explicit instructions for the slice you are working on.
 
 There is NO continuous free-form development.
 
@@ -52,8 +56,7 @@ After EACH phase:
 - no batch commits
 - no mixing concerns
 
-After slice:
-→ push to main
+Push cadence is decided per slice by the user — do not auto-push.
 
 -------------------------------------
 REPORT FORMAT (MANDATORY)
@@ -100,12 +103,16 @@ ARCHITECTURE CONSTRAINTS
 
 The system is built with:
 
-- Go core (source of truth)
-- Tauri shell
-- React + TypeScript frontend
-- Typed API layer (frontend/rterm-api)
-- Runtime adapter (frontend/runtime)
-- Compatibility facade (frontend/compat)
+- Go core (source of truth) — `core/`, `cmd/rterm-core/`
+- Tauri shell — `apps/desktop/src-tauri/`
+- React + TypeScript frontend — `frontend/src/` (currently being rewritten)
+- Plugin runtime — JSON-line stdio protocol `rterm.plugin.v1`, see
+  `core/plugins/`
+
+Earlier frontend drafts (`frontend/app/*`, `frontend/rterm-api/*`,
+`frontend/runtime/*`, `frontend/compat/*`, `frontend/tideterm-src/*`)
+no longer exist in the active tree and must not be reintroduced without
+an ADR.
 
 RULE:
 
@@ -170,8 +177,9 @@ ROADMAP RULES
 
 All work must align with:
 
-docs/roadmap.md  
-docs/validation.md  
+docs/workflow/roadmap.md
+docs/workflow/known-limitations.md
+docs/validation/validation.md
 
 Each feature:
 

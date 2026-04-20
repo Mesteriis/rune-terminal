@@ -1,4 +1,4 @@
-# RunaTerminal Tool Runtime
+# rune-terminal Tool Runtime
 
 ## Position
 

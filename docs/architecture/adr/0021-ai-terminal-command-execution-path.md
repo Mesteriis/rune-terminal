@@ -25,7 +25,7 @@ What was missing was a single explicit bridge between the AI panel and terminal 
 
 ## Decision
 
-RunaTerminal `1.0.0` introduces one narrow, explicit AI terminal execution grammar:
+rune-terminal `1.0.0` introduces one narrow, explicit AI terminal execution grammar:
 
 - `/run <command>`
 - `run: <command>`

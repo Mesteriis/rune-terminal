@@ -1,4 +1,4 @@
-# RunaTerminal Terminal Architecture
+# rune-terminal Terminal Architecture
 
 ## Position
 

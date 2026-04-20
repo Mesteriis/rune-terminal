@@ -10,7 +10,7 @@ TideTerm proved the product demand for a terminal workspace with AI-native traje
 
 ## Decision
 
-RunaTerminal will be a clean-room rewrite that preserves product ideas while discarding the architectural shape of the old codebase.
+rune-terminal will be a clean-room rewrite that preserves product ideas while discarding the architectural shape of the old codebase.
 
 ## Consequences
 

@@ -1,4 +1,4 @@
-# RunaTerminal Agent Modes
+# rune-terminal Agent Modes
 
 ## Position
 

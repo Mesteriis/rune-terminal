@@ -12,7 +12,7 @@ Mode: `Playwright Chromium headed (visible browser window, not headless)`
 - `tideterm/pkg/blockcontroller/shellcontroller.go`
 - `tideterm/pkg/aiusechat/usechat-prompts.go`
 
-These repo-root Tide sources remained the primary reference for session identity, terminal ownership, and AI command guardrail behavior. Tide does not expose a literal `/run` UI flow in the inspected sources, so the visible validation below checked the RunaTerminal `/run` path against Tide's explicit terminal-session ownership and command-safety semantics.
+These repo-root Tide sources remained the primary reference for session identity, terminal ownership, and AI command guardrail behavior. Tide does not expose a literal `/run` UI flow in the inspected sources, so the visible validation below checked the rune-terminal `/run` path against Tide's explicit terminal-session ownership and command-safety semantics.
 
 ## Browser flow used
 

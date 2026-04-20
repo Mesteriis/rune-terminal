@@ -1,4 +1,9 @@
-# Layer System Baseline
+# Layer System Baseline (archived 2026-04-17)
+
+> **Archived.** This document refers to the legacy `frontend/app/workspace/*`
+> shell, which no longer exists in the active tree. The current frontend is
+> being rewritten under `frontend/src/` and does not carry these surfaces.
+> Kept here only as historical context.
 
 Date: `2026-04-17`
 Phase: stability hardening

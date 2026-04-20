@@ -6,7 +6,7 @@ Please do **not** report security vulnerabilities through public GitHub issues.
 
 Report security issues privately to:
 
-- `security@runa-terminal.dev`
+- `security@rune-terminal.dev`
 
 Include as much detail as possible:
 
@@ -26,9 +26,18 @@ The project will try to:
 
 ## Current security posture notes
 
-RunaTerminal is still in an active foundation phase.
+rune-terminal is pre-release and still in an active foundation phase.
 Some subsystems, especially remote/SSH and AI-related flows, are evolving.
 Please assume interfaces and guarantees may tighten over time.
+
+Additional pre-release caveats:
+
+- the frontend (`frontend/src/`) is being rewritten and currently runs
+  against mocks / fake clients in several widgets
+- the Tauri shell ships with `csp: null` today and must be tightened
+  before any public release
+- SSE for the terminal stream accepts the auth token via query parameter
+  (ADR 0018 MVP tradeoff); migration to header-based auth is planned
 
 Sensitive areas currently include:
 

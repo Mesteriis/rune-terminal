@@ -4,7 +4,7 @@
 
 ## Context
 
-RunaTerminal had already reached a credible TideTerm-shaped AI panel shell, but the panel still behaved mostly like a runtime-backed activity surface.
+rune-terminal had already reached a credible TideTerm-shaped AI panel shell, but the panel still behaved mostly like a runtime-backed activity surface.
 
 Free-text prompts did not traverse a real backend conversation path. Unsupported prompts ended in a frontend-owned placeholder response, which meant:
 
@@ -17,7 +17,7 @@ We need a narrow slice that makes the panel real without expanding into speculat
 
 ## Decision
 
-RunaTerminal introduces a dedicated `core/conversation` domain as the first real AI conversation backend slice.
+rune-terminal introduces a dedicated `core/conversation` domain as the first real AI conversation backend slice.
 
 This slice implements:
 

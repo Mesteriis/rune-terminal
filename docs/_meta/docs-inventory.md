@@ -30,7 +30,7 @@ progress) is preserved at
 | `docs/architecture/execution-contract.md` | Execution contract for tools |
 | `docs/architecture/execution-result-message-model.md` | Structured execution result message model |
 | `docs/architecture/current-behavior.md` | Snapshot of current observable behavior |
-| `docs/architecture/layer-system-baseline.md` | Architectural layering baseline |
+| `docs/architecture/history/layer-system-baseline-2026-04-17.md` | Archived layering baseline (references legacy `frontend/app/workspace/*` shell) |
 
 ## ADRs
 
