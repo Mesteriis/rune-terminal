@@ -1,4 +1,4 @@
-import type * as React from 'react'
+import * as React from 'react'
 
 import { useRunaDomIdentity, useRunaDomScope } from '../dom-id'
 
@@ -20,7 +20,10 @@ const inputStyle: React.CSSProperties = {
   WebkitBackdropFilter: 'var(--blur-glass-sm)',
 }
 
-export function Input({ id, runaComponent, style, ...props }: InputProps) {
+export const Input = React.forwardRef<HTMLInputElement, InputProps>(function Input(
+  { id, runaComponent, style, ...props },
+  ref,
+) {
   const scope = useRunaDomScope()
   const semanticComponent =
     runaComponent ??
@@ -37,7 +40,8 @@ export function Input({ id, runaComponent, style, ...props }: InputProps) {
       data-runa-node={identity.node}
       data-runa-widget={identity.scope.widget}
       id={identity.id}
+      ref={ref}
       style={{ ...inputStyle, ...style }}
     />
   )
-}
+})

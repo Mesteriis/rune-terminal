@@ -20,9 +20,11 @@ import {
   requestCommanderActivePaneDelete,
   requestCommanderActivePaneMkdir,
   requestCommanderActivePaneMove,
+  requestCommanderActivePaneRename,
   setCommanderActivePane,
   setCommanderPaneBoundaryCursor,
   setCommanderPaneCursor,
+  setCommanderPendingOperationInput,
   setCommanderViewMode,
   switchCommanderActivePane,
   toggleCommanderActivePaneSelection,
@@ -149,6 +151,7 @@ export function useCommanderActions(widgetId: string) {
     onRequestCommanderActivePaneMove,
     onRequestCommanderActivePaneDelete,
     onRequestCommanderActivePaneMkdir,
+    onRequestCommanderActivePaneRename,
     onConfirmCommanderPendingOperation,
     onCancelCommanderPendingOperation,
     onGoCommanderActivePaneParent,
@@ -159,6 +162,7 @@ export function useCommanderActions(widgetId: string) {
     onSwitchCommanderActivePane,
     onSetCommanderPaneBoundaryCursor,
     onGoCommanderPaneParent,
+    onSetCommanderPendingOperationInput,
   ] = useUnit([
     moveCommanderActivePaneCursor,
     openCommanderActivePaneEntry,
@@ -167,6 +171,7 @@ export function useCommanderActions(widgetId: string) {
     requestCommanderActivePaneMove,
     requestCommanderActivePaneDelete,
     requestCommanderActivePaneMkdir,
+    requestCommanderActivePaneRename,
     confirmCommanderPendingOperation,
     cancelCommanderPendingOperation,
     goCommanderActivePaneParent,
@@ -177,6 +182,7 @@ export function useCommanderActions(widgetId: string) {
     switchCommanderActivePane,
     setCommanderPaneBoundaryCursor,
     goCommanderPaneParent,
+    setCommanderPendingOperationInput,
   ])
 
   return {
@@ -194,9 +200,11 @@ export function useCommanderActions(widgetId: string) {
     moveSelection: () => onRequestCommanderActivePaneMove({ widgetId }),
     moveCursor: (delta: number) => onMoveCommanderActivePaneCursor({ widgetId, delta }),
     openActiveEntry: () => onOpenCommanderActivePaneEntry({ widgetId }),
+    renameSelection: () => onRequestCommanderActivePaneRename({ widgetId }),
     setBoundaryCursor: (paneId: CommanderPaneId, boundary: 'start' | 'end') => (
       onSetCommanderPaneBoundaryCursor({ widgetId, paneId, boundary })
     ),
+    setPendingOperationInput: (inputValue: string) => onSetCommanderPendingOperationInput({ widgetId, inputValue }),
     switchActivePane: () => onSwitchCommanderActivePane({ widgetId }),
     toggleSelectionAtCursor: (advance?: boolean) => onToggleCommanderActivePaneSelection({ widgetId, advance }),
   }

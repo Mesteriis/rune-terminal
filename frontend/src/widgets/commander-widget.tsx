@@ -5,7 +5,7 @@ import { useCommanderKeyboard } from '../features/commander/model/keyboard'
 import { useCommanderActions, useCommanderWidget } from '../features/commander/model/hooks'
 import type { CommanderFileRow, CommanderPaneViewState, CommanderWidgetViewState } from '../features/commander/model/types'
 import { RunaDomScopeProvider, useRunaDomAutoTagging, useRunaDomScope } from '../shared/ui/dom-id'
-import { Badge, Box, ScrollArea, Separator, Surface, Text } from '../shared/ui/primitives'
+import { Badge, Box, Input, ScrollArea, Separator, Surface, Text } from '../shared/ui/primitives'
 import { IconButton } from '../shared/ui/components'
 
 import {
@@ -29,7 +29,9 @@ import {
   commanderPaneHeaderStyle,
   commanderPaneMetaStyle,
   commanderPendingActionStyle,
+  commanderPendingBarWithInputStyle,
   commanderPendingBarStyle,
+  commanderPendingInputStyle,
   commanderPendingMessageStyle,
   commanderPaneStyle,
   commanderPaneTitleStyle,
@@ -95,16 +97,35 @@ function formatPendingOperationMessage(state: CommanderWidgetViewState) {
   const selectionLabel = pendingOperation.entryNames.length === 1
     ? pendingOperation.entryNames[0]
     : `${pendingOperation.entryNames.length} items`
+  const conflictLabel = pendingOperation.conflictEntryNames?.length === 1
+    ? pendingOperation.conflictEntryNames[0]
+    : pendingOperation.conflictEntryNames?.length
+      ? `${pendingOperation.conflictEntryNames.length} items`
+      : null
 
   switch (pendingOperation.kind) {
     case 'copy':
+      if (pendingOperation.conflictEntryNames?.length) {
+        return `Overwrite ${conflictLabel} in ${pendingOperation.targetPath}`
+      }
+
       return `Copy ${selectionLabel} to ${pendingOperation.targetPath}`
     case 'move':
+      if (pendingOperation.conflictEntryNames?.length) {
+        return `Overwrite ${conflictLabel} in ${pendingOperation.targetPath}`
+      }
+
       return `Move ${selectionLabel} to ${pendingOperation.targetPath}`
     case 'delete':
       return `Delete ${selectionLabel} from ${pendingOperation.sourcePath}`
     case 'mkdir':
       return `Create ${pendingOperation.mkdirName} in ${pendingOperation.sourcePath}`
+    case 'rename':
+      if (pendingOperation.conflictEntryNames?.length) {
+        return `Overwrite ${pendingOperation.inputValue} in ${pendingOperation.sourcePath}`
+      }
+
+      return `Rename ${pendingOperation.entryNames[0]} in ${pendingOperation.sourcePath}`
     default:
       return null
   }
@@ -268,9 +289,12 @@ export function CommanderWidget() {
   const onCommanderKeyDownCapture = useCommanderKeyboard(widgetId, state.activePane, Boolean(state.pendingOperation))
   const autoTagCommanderRoot = useRunaDomAutoTagging('commander-root')
   const commanderRootRef = useRef<HTMLDivElement | null>(null)
+  const pendingRenameInputRef = useRef<HTMLInputElement | null>(null)
+  const hadPendingOperationRef = useRef(false)
   const pendingOperationMessage = useMemo(() => formatPendingOperationMessage(state), [state])
   const activePane = state.activePane === 'left' ? state.leftPane : state.rightPane
   const disableHistoryControls = Boolean(state.pendingOperation)
+  const pendingOperationNeedsInput = state.pendingOperation?.kind === 'rename'
 
   const attachCommanderRootRef = useCallback((node: HTMLDivElement | null) => {
     commanderRootRef.current = node
@@ -283,8 +307,34 @@ export function CommanderWidget() {
     })
   }, [])
 
+  useEffect(() => {
+    if (!pendingOperationNeedsInput) {
+      return
+    }
+
+    const inputNode = pendingRenameInputRef.current
+
+    if (!inputNode) {
+      return
+    }
+
+    inputNode.focus()
+    inputNode.select()
+  }, [pendingOperationNeedsInput, state.pendingOperation?.inputValue])
+
+  useEffect(() => {
+    if (hadPendingOperationRef.current && !state.pendingOperation) {
+      focusCommanderRoot()
+    }
+
+    hadPendingOperationRef.current = Boolean(state.pendingOperation)
+  }, [focusCommanderRoot, state.pendingOperation])
+
   const handleHintAction = useCallback((hintKey: string) => {
     switch (hintKey) {
+      case 'F2':
+        commanderActions.renameSelection()
+        break
       case 'F3':
         commanderActions.openActiveEntry()
         break
@@ -410,14 +460,47 @@ export function CommanderWidget() {
         />
       </Box>
       {state.pendingOperation && pendingOperationMessage ? (
-        <Surface runaComponent="commander-pending-bar" style={commanderPendingBarStyle}>
+        <Surface
+          runaComponent="commander-pending-bar"
+          style={{
+            ...commanderPendingBarStyle,
+            ...(pendingOperationNeedsInput ? commanderPendingBarWithInputStyle : null),
+          }}
+        >
           <Box runaComponent="commander-pending-message" style={commanderPendingMessageStyle}>
             <Text runaComponent="commander-pending-message-text" style={{ color: 'inherit' }}>{pendingOperationMessage}</Text>
           </Box>
+          {pendingOperationNeedsInput ? (
+            <Input
+              aria-label="Commander pending operation input"
+              onChange={(event) => commanderActions.setPendingOperationInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  commanderActions.confirmPendingOperation()
+                  return
+                }
+
+                if (event.key === 'Escape') {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  commanderActions.cancelPendingOperation()
+                  focusCommanderRoot()
+                }
+              }}
+              ref={pendingRenameInputRef}
+              runaComponent="commander-pending-input"
+              style={commanderPendingInputStyle}
+              value={state.pendingOperation.inputValue ?? ''}
+            />
+          ) : null}
           <Box
             onClick={() => {
               commanderActions.confirmPendingOperation()
-              focusCommanderRoot()
+              if (!pendingOperationNeedsInput) {
+                focusCommanderRoot()
+              }
             }}
             role="button"
             runaComponent="commander-pending-confirm"

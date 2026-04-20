@@ -127,6 +127,7 @@ its visible shell blocks as raw HTML inside `App.tsx`.
 - The fake commander client now supports widget-local `copy/move/delete/mkdir` mutations between the left and right panes of the same widget instance, without backend calls or cross-widget filesystem sharing.
 - Commander operations now pass through a widget-local pending confirm/cancel layer before mutating the fake filesystem, so the UI can expose classic operator review flows without backend approvals yet.
 - Commander pane navigation now also keeps independent per-pane history stacks, exposed through active-pane back/forward header controls and `Alt+Left` / `Alt+Right`.
+- Commander pending operations now also cover `rename` with an inline input prompt plus overwrite warnings for `copy/move/rename`, but they still stay entirely inside the local fake client and a single widget instance.
 - `TerminalWidget` renders the terminal-specific body composition for terminal panels.
 - `TerminalDockviewTabWidget` renders terminal-specific Dockview tab chrome for terminal panels.
 - `CommanderDemoLayout` mounts `CommanderWidget` into the isolated `tool` panel demo surface.

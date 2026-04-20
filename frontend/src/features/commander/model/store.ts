@@ -4,11 +4,14 @@ import {
   copyCommanderEntries,
   createCommanderWidgetRuntimeState,
   deleteCommanderEntries,
+  getCommanderConflictingEntryNames,
+  getCommanderEntryNameConflict,
   getCommanderParentPath,
   mkdirCommanderDirectory,
   moveCommanderEntries,
   openCommanderEntry,
   readCommanderDirectory,
+  renameCommanderEntry,
   resolveCommanderExistingPath,
 } from './fake-client'
 import type {
@@ -46,6 +49,10 @@ type CommanderSetViewModePayload = CommanderWidgetPayload & {
 
 type CommanderSetSortModePayload = CommanderWidgetPayload & {
   sortMode: CommanderSortMode
+}
+
+type CommanderSetPendingOperationInputPayload = CommanderWidgetPayload & {
+  inputValue: string
 }
 
 type CommanderOpenEntryPayload = CommanderWidgetPanePayload & {
@@ -280,6 +287,26 @@ function createPendingOperation(
     } satisfies CommanderPendingOperation
   }
 
+  if (kind === 'rename') {
+    const entryId = sourcePane.cursorEntryId
+    const currentEntry = entryId
+      ? sourcePane.entries.find((entry) => entry.id === entryId)
+      : null
+
+    if (!currentEntry) {
+      return null
+    }
+
+    return {
+      kind,
+      sourcePaneId: widgetState.activePane,
+      sourcePath: sourcePane.path,
+      entryIds: [currentEntry.id],
+      entryNames: [currentEntry.name],
+      inputValue: currentEntry.name,
+    } satisfies CommanderPendingOperation
+  }
+
   if (kind === 'delete') {
     const entryNames = sourcePane.entries
       .filter((entry) => entryIds.includes(entry.id))
@@ -299,6 +326,16 @@ function createPendingOperation(
   const entryNames = sourcePane.entries
     .filter((entry) => entryIds.includes(entry.id))
     .map((entry) => entry.name)
+  const conflictEntryNames = getCommanderConflictingEntryNames({
+    widgetId: widgetState.widgetId,
+    path: sourcePane.path,
+    targetPath: targetPane.path,
+    entryIds,
+  })
+
+  if (kind === 'move' && sourcePane.path === targetPane.path) {
+    return null
+  }
 
   return {
     kind,
@@ -308,6 +345,7 @@ function createPendingOperation(
     targetPath: targetPane.path,
     entryIds,
     entryNames,
+    conflictEntryNames,
   } satisfies CommanderPendingOperation
 }
 
@@ -335,6 +373,8 @@ export const requestCommanderActivePaneCopy = createEvent<CommanderWidgetPayload
 export const requestCommanderActivePaneMove = createEvent<CommanderWidgetPayload>()
 export const requestCommanderActivePaneDelete = createEvent<CommanderWidgetPayload>()
 export const requestCommanderActivePaneMkdir = createEvent<CommanderWidgetPayload>()
+export const requestCommanderActivePaneRename = createEvent<CommanderWidgetPayload>()
+export const setCommanderPendingOperationInput = createEvent<CommanderSetPendingOperationInputPayload>()
 export const confirmCommanderPendingOperation = createEvent<CommanderWidgetPayload>()
 export const cancelCommanderPendingOperation = createEvent<CommanderWidgetPayload>()
 
@@ -793,6 +833,43 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
         : widgetState,
     }
   })
+  .on(requestCommanderActivePaneRename, (widgets, payload) => {
+    const widgetState = widgets[payload.widgetId]
+
+    if (!widgetState) {
+      return widgets
+    }
+    const pendingOperation = createPendingOperation(widgetState, 'rename')
+
+    return {
+      ...widgets,
+      [payload.widgetId]: pendingOperation
+        ? {
+          ...widgetState,
+          pendingOperation,
+        }
+        : widgetState,
+    }
+  })
+  .on(setCommanderPendingOperationInput, (widgets, payload) => {
+    const widgetState = widgets[payload.widgetId]
+
+    if (!widgetState?.pendingOperation) {
+      return widgets
+    }
+
+    return {
+      ...widgets,
+      [payload.widgetId]: {
+        ...widgetState,
+        pendingOperation: {
+          ...widgetState.pendingOperation,
+          inputValue: payload.inputValue,
+          conflictEntryNames: undefined,
+        },
+      },
+    }
+  })
   .on(confirmCommanderPendingOperation, (widgets, payload) => {
     const widgetState = widgets[payload.widgetId]
 
@@ -808,6 +885,7 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
         path: pendingOperation.sourcePath,
         targetPath: pendingOperation.targetPath,
         entryIds: pendingOperation.entryIds,
+        overwrite: Boolean(pendingOperation.conflictEntryNames?.length),
       })
 
       return {
@@ -824,6 +902,7 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
         path: pendingOperation.sourcePath,
         targetPath: pendingOperation.targetPath,
         entryIds: pendingOperation.entryIds,
+        overwrite: Boolean(pendingOperation.conflictEntryNames?.length),
       })
 
       return {
@@ -858,6 +937,59 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
           pendingOperation: null,
           [pendingOperation.sourcePaneId === 'left' ? 'leftPane' : 'rightPane']: {
             cursorEntryId: mkdirResult.entryId,
+            selectedIds: [],
+          },
+        }),
+      }
+    }
+
+    if (pendingOperation.kind === 'rename') {
+      const entryId = pendingOperation.entryIds[0]
+      const nextName = pendingOperation.inputValue?.trim() ?? ''
+
+      if (!entryId || !nextName) {
+        return widgets
+      }
+
+      if (
+        !pendingOperation.conflictEntryNames?.length
+        && getCommanderEntryNameConflict({
+          widgetId: payload.widgetId,
+          path: pendingOperation.sourcePath,
+          name: nextName,
+          ignoreEntryId: entryId,
+        })
+      ) {
+        return {
+          ...widgets,
+          [payload.widgetId]: {
+            ...widgetState,
+            pendingOperation: {
+              ...pendingOperation,
+              conflictEntryNames: [nextName],
+            },
+          },
+        }
+      }
+
+      const renameResult = renameCommanderEntry({
+        widgetId: payload.widgetId,
+        path: pendingOperation.sourcePath,
+        entryId,
+        nextName,
+        overwrite: Boolean(pendingOperation.conflictEntryNames?.length),
+      })
+
+      if (!renameResult) {
+        return widgets
+      }
+
+      return {
+        ...widgets,
+        [payload.widgetId]: refreshWidgetPanes(widgetState, {
+          pendingOperation: null,
+          [pendingOperation.sourcePaneId === 'left' ? 'leftPane' : 'rightPane']: {
+            cursorEntryId: renameResult.entryId,
             selectedIds: [],
           },
         }),

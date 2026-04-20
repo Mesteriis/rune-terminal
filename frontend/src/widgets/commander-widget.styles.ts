@@ -309,7 +309,8 @@ export const commanderFooterTextStyle: CSSProperties = {
 
 export const commanderHintBarStyle: CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(6, minmax(0, 1fr))',
+  gridAutoFlow: 'column',
+  gridAutoColumns: 'minmax(0, 1fr)',
   gap: 'var(--gap-xs)',
   padding: 'var(--space-xs)',
   background: 'var(--color-canvas-elevated)',
@@ -340,6 +341,10 @@ export const commanderPendingBarStyle: CSSProperties = {
   background: 'var(--color-canvas-elevated)',
 }
 
+export const commanderPendingBarWithInputStyle: CSSProperties = {
+  gridTemplateColumns: 'auto minmax(0, 1fr) auto auto',
+}
+
 export const commanderPendingMessageStyle: CSSProperties = {
   display: 'flex',
   alignItems: 'center',
@@ -360,6 +365,22 @@ export const commanderPendingMessageStyle: CSSProperties = {
 export const commanderPendingActionStyle: CSSProperties = {
   minWidth: 'unset',
   justifyContent: 'flex-start',
+}
+
+export const commanderPendingInputStyle: CSSProperties = {
+  width: '100%',
+  minWidth: 0,
+  minHeight: '28px',
+  padding: '0 var(--space-sm)',
+  borderColor: 'var(--runa-commander-highlight-border)',
+  background: 'rgba(9, 16, 15, 0.98)',
+  color: 'var(--runa-commander-highlight-text)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: 'var(--font-size-sm)',
+  lineHeight: 'var(--line-height-sm)',
+  boxShadow: 'none',
+  backdropFilter: 'none',
+  WebkitBackdropFilter: 'none',
 }
 
 export const commanderHintKeyStyle: CSSProperties = {

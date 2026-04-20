@@ -6,6 +6,7 @@
   "syncCwd": false,
   "sortMode": "name",
   "footerHints": [
+    { "key": "F2", "label": "Rename" },
     { "key": "F3", "label": "View" },
     { "key": "F4", "label": "Edit" },
     { "key": "F5", "label": "Copy" },

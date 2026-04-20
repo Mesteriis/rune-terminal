@@ -125,6 +125,10 @@ export function useCommanderKeyboard(
         event.preventDefault()
         commanderActions.deleteSelection()
         return
+      case 'F2':
+        event.preventDefault()
+        commanderActions.renameSelection()
+        return
       default:
         return
     }

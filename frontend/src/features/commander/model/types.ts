@@ -8,7 +8,7 @@ export type CommanderFooterHint = {
   label: string
 }
 
-export type CommanderPendingOperationKind = 'copy' | 'move' | 'delete' | 'mkdir'
+export type CommanderPendingOperationKind = 'copy' | 'move' | 'delete' | 'mkdir' | 'rename'
 
 export type CommanderPendingOperation = {
   kind: CommanderPendingOperationKind
@@ -19,6 +19,8 @@ export type CommanderPendingOperation = {
   entryIds: string[]
   entryNames: string[]
   mkdirName?: string
+  inputValue?: string
+  conflictEntryNames?: string[]
 }
 
 export type CommanderDirectoryEntry = {
