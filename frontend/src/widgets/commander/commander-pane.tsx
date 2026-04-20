@@ -1,14 +1,9 @@
-import { useEffect, useMemo, useRef, type HTMLAttributes, type RefObject } from 'react'
+import { useEffect, useMemo, useRef, type HTMLAttributes } from 'react'
 
-import type {
-  CommanderPaneViewState,
-  CommanderSortDirection,
-  CommanderSortMode,
-} from '@/features/commander/model/types'
 import { Badge, Input, ScrollArea, Separator, Surface, Text, type BoxProps } from '@/shared/ui/primitives'
 
+import type { CommanderPaneController } from '@/widgets/commander/commander-pane-controller'
 import { CommanderPlainBox, CommanderPlainButton } from '@/widgets/commander/commander-plain'
-import type { CommanderPathSuggestion } from '@/widgets/commander/commander-widget.shared'
 import {
   commanderInactivePaneStateBadgeStyle,
   commanderPaneStateBadgeStyle,
@@ -54,36 +49,8 @@ import {
   commanderFooterTextStyle,
 } from '@/widgets/commander/commander-widget.styles'
 
-type CommanderPanePathEditor = {
-  isEditing: boolean
-  value: string
-  inputRef: RefObject<HTMLInputElement | null>
-  suggestions: CommanderPathSuggestion[]
-  suggestionIndex: number
-  onApplySuggestion: (suggestion: string) => void
-  onCancel: (options?: { focusRoot?: boolean }) => void
-  onChange: (value: string) => void
-  onConfirm: () => void
-  onMoveSuggestion: (delta: 1 | -1) => void
-  onStart: () => void
-}
-
-type CommanderPaneInteractions = {
-  activate: () => void
-  focusRoot: () => void
-  openEntry: (entryId: string) => void
-  setSortMode: (sortMode: CommanderSortMode) => void
-  setCursor: (entryId: string, options?: { rangeSelect?: boolean }) => void
-  toggleSelection: (entryId: string) => void
-}
-
 export type CommanderPaneProps = {
-  isActive: boolean
-  pane: CommanderPaneViewState
-  pathEditor: CommanderPanePathEditor
-  interactions: CommanderPaneInteractions
-  sortDirection: CommanderSortDirection
-  sortMode: CommanderSortMode
+  controller: CommanderPaneController
 }
 
 function CommanderHeaderCell({
@@ -120,19 +87,10 @@ function CommanderHeaderCell({
   )
 }
 
-export function CommanderPane({
-  isActive,
-  pane,
-  pathEditor,
-  interactions,
-  sortDirection,
-  sortMode,
-}: CommanderPaneProps) {
+export function CommanderPane({ controller }: CommanderPaneProps) {
+  const { isActive, interactions, pane, pathEditor, sort } = controller
   const rowRefs = useRef<Record<string, HTMLDivElement | null>>({})
-  const focusedRowId = useMemo(
-    () => pane.rows.find((row) => row.focused)?.id ?? null,
-    [pane.rows],
-  )
+  const focusedRowId = useMemo(() => pane.rows.find((row) => row.focused)?.id ?? null, [pane.rows])
 
   useEffect(() => {
     if (!focusedRowId) {
@@ -167,7 +125,10 @@ export function CommanderPane({
           >
             {isActive ? 'ACTIVE' : 'PANE'}
           </Badge>
-          <CommanderPlainBox runaComponent={`commander-pane-${pane.id}-path-field`} style={commanderPathFieldStyle}>
+          <CommanderPlainBox
+            runaComponent={`commander-pane-${pane.id}-path-field`}
+            style={commanderPathFieldStyle}
+          >
             {pathEditor.isEditing ? (
               <>
                 <Input
@@ -192,7 +153,9 @@ export function CommanderPane({
                     if (event.key === 'Tab' && pathEditor.suggestions.length > 0) {
                       event.preventDefault()
                       event.stopPropagation()
-                      pathEditor.onApplySuggestion(pathEditor.suggestions[pathEditor.suggestionIndex]?.path ?? pathEditor.value)
+                      pathEditor.onApplySuggestion(
+                        pathEditor.suggestions[pathEditor.suggestionIndex]?.path ?? pathEditor.value,
+                      )
                       return
                     }
 
@@ -215,7 +178,10 @@ export function CommanderPane({
                   value={pathEditor.value}
                 />
                 {pathEditor.suggestions.length > 0 ? (
-                  <Surface runaComponent={`commander-pane-${pane.id}-path-suggestions`} style={commanderPathSuggestionsStyle}>
+                  <Surface
+                    runaComponent={`commander-pane-${pane.id}-path-suggestions`}
+                    style={commanderPathSuggestionsStyle}
+                  >
                     <ScrollArea
                       runaComponent={`commander-pane-${pane.id}-path-suggestions-scroll`}
                       style={commanderPathSuggestionsScrollStyle}
@@ -280,7 +246,10 @@ export function CommanderPane({
             )}
           </CommanderPlainBox>
         </CommanderPlainBox>
-        <CommanderPlainBox runaComponent={`commander-pane-${pane.id}-meta`} style={commanderPlainClusterStyle}>
+        <CommanderPlainBox
+          runaComponent={`commander-pane-${pane.id}-meta`}
+          style={commanderPlainClusterStyle}
+        >
           {pane.filterQuery ? (
             <Badge
               runaComponent={`commander-pane-${pane.id}-filter`}
@@ -296,42 +265,47 @@ export function CommanderPane({
         </CommanderPlainBox>
       </CommanderPlainBox>
       <Separator runaComponent={`commander-pane-${pane.id}-header-separator`} />
-      <CommanderPlainBox runaComponent={`commander-pane-${pane.id}-list-header`} style={commanderListHeaderStyle}>
+      <CommanderPlainBox
+        runaComponent={`commander-pane-${pane.id}-list-header`}
+        style={commanderListHeaderStyle}
+      >
         <CommanderHeaderCell
           onActivate={() => interactions.setSortMode('ext')}
           runaComponent={`commander-pane-${pane.id}-column-type`}
           style={{
             ...commanderListHeaderButtonStyle,
             ...commanderListHeaderButtonCenterAlignedStyle,
-            ...(sortMode === 'ext' ? commanderListHeaderButtonActiveStyle : null),
+            ...(sort.mode === 'ext' ? commanderListHeaderButtonActiveStyle : null),
           }}
           title="Sort by type"
         >
-          {renderCommanderSortLabel('T', sortMode === 'ext', sortDirection)}
+          {renderCommanderSortLabel('T', sort.mode === 'ext', sort.direction)}
         </CommanderHeaderCell>
         <CommanderHeaderCell
           onActivate={() => interactions.setSortMode('name')}
           runaComponent={`commander-pane-${pane.id}-column-name`}
           style={{
             ...commanderListHeaderButtonStyle,
-            ...(sortMode === 'name' ? commanderListHeaderButtonActiveStyle : null),
+            ...(sort.mode === 'name' ? commanderListHeaderButtonActiveStyle : null),
           }}
           title="Sort by name"
         >
-          {renderCommanderSortLabel('Name', sortMode === 'name', sortDirection)}
+          {renderCommanderSortLabel('Name', sort.mode === 'name', sort.direction)}
         </CommanderHeaderCell>
-        <Text runaComponent={`commander-pane-${pane.id}-column-git`} style={commanderPaneMetaStyle}>Git</Text>
+        <Text runaComponent={`commander-pane-${pane.id}-column-git`} style={commanderPaneMetaStyle}>
+          Git
+        </Text>
         <CommanderHeaderCell
           onActivate={() => interactions.setSortMode('size')}
           runaComponent={`commander-pane-${pane.id}-column-size`}
           style={{
             ...commanderListHeaderButtonStyle,
             ...commanderListHeaderButtonEndAlignedStyle,
-            ...(sortMode === 'size' ? commanderListHeaderButtonActiveStyle : null),
+            ...(sort.mode === 'size' ? commanderListHeaderButtonActiveStyle : null),
           }}
           title="Sort by size"
         >
-          {renderCommanderSortLabel('Size', sortMode === 'size', sortDirection)}
+          {renderCommanderSortLabel('Size', sort.mode === 'size', sort.direction)}
         </CommanderHeaderCell>
         <CommanderHeaderCell
           onActivate={() => interactions.setSortMode('modified')}
@@ -339,11 +313,11 @@ export function CommanderPane({
           style={{
             ...commanderListHeaderButtonStyle,
             ...commanderListHeaderButtonEndAlignedStyle,
-            ...(sortMode === 'modified' ? commanderListHeaderButtonActiveStyle : null),
+            ...(sort.mode === 'modified' ? commanderListHeaderButtonActiveStyle : null),
           }}
           title="Sort by modified"
         >
-          {renderCommanderSortLabel('Modified', sortMode === 'modified', sortDirection)}
+          {renderCommanderSortLabel('Modified', sort.mode === 'modified', sort.direction)}
         </CommanderHeaderCell>
       </CommanderPlainBox>
       <Separator runaComponent={`commander-pane-${pane.id}-list-separator`} />
@@ -389,7 +363,10 @@ export function CommanderPane({
                 runaComponent={`commander-pane-${pane.id}-row-${row.id}-name-cell`}
                 style={commanderRowNameCellStyle}
               >
-                <Text runaComponent={`commander-pane-${pane.id}-row-${row.id}-name`} style={commanderRowNameTextStyle}>
+                <Text
+                  runaComponent={`commander-pane-${pane.id}-row-${row.id}-name`}
+                  style={commanderRowNameTextStyle}
+                >
                   {row.name}
                 </Text>
                 <Badge
@@ -415,13 +392,22 @@ export function CommanderPane({
                   </>
                 ) : null}
               </CommanderPlainBox>
-              <Text runaComponent={`commander-pane-${pane.id}-row-${row.id}-git`} style={commanderRowMetaTextStyle}>
+              <Text
+                runaComponent={`commander-pane-${pane.id}-row-${row.id}-git`}
+                style={commanderRowMetaTextStyle}
+              >
                 {row.gitStatus ?? ''}
               </Text>
-              <Text runaComponent={`commander-pane-${pane.id}-row-${row.id}-size`} style={commanderRowMetaTextStyle}>
+              <Text
+                runaComponent={`commander-pane-${pane.id}-row-${row.id}-size`}
+                style={commanderRowMetaTextStyle}
+              >
                 {row.kind === 'symlink' ? '' : row.size}
               </Text>
-              <Text runaComponent={`commander-pane-${pane.id}-row-${row.id}-modified`} style={commanderRowMetaTextStyle}>
+              <Text
+                runaComponent={`commander-pane-${pane.id}-row-${row.id}-modified`}
+                style={commanderRowMetaTextStyle}
+              >
                 {row.modified}
               </Text>
             </CommanderPlainBox>

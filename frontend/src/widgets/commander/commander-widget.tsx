@@ -9,16 +9,11 @@ import { Box } from '@/shared/ui/primitives'
 
 import { CommanderFileDialog } from '@/widgets/commander/commander-file-dialog'
 import { CommanderHeaderRow } from '@/widgets/commander/commander-header-row'
+import { createCommanderPaneController } from '@/widgets/commander/commander-pane-controller'
 import { CommanderPane } from '@/widgets/commander/commander-pane'
 import { CommanderPendingBar } from '@/widgets/commander/commander-pending-bar'
-import {
-  commanderMainStyle,
-  commanderRootStyle,
-} from '@/widgets/commander/commander-widget.styles'
-import {
-  getCommanderPathSuggestions,
-  joinCommanderPath,
-} from '@/widgets/commander/commander-widget.shared'
+import { commanderMainStyle, commanderRootStyle } from '@/widgets/commander/commander-widget.styles'
+import { getCommanderPathSuggestions, joinCommanderPath } from '@/widgets/commander/commander-widget.shared'
 
 export function CommanderWidget() {
   const { widget: widgetId } = useRunaDomScope()
@@ -52,35 +47,38 @@ export function CommanderWidget() {
   const pathEditInputRef = useRef<HTMLInputElement | null>(null)
   const hadPendingOperationRef = useRef(false)
   const lastPendingInputIdentityRef = useRef<string | null>(null)
-  const pendingOperationNeedsInput = (
-    state.pendingOperation?.kind === 'rename'
-    || state.pendingOperation?.kind === 'select'
-    || state.pendingOperation?.kind === 'unselect'
-    || state.pendingOperation?.kind === 'filter'
-    || state.pendingOperation?.kind === 'search'
-  )
-  const pendingInputIdentity = pendingOperationNeedsInput && state.pendingOperation
-    ? [
-      state.pendingOperation.kind,
-      state.pendingOperation.sourcePaneId,
-      state.pendingOperation.sourcePath,
-      state.pendingOperation.renameMode ?? '',
-      state.pendingOperation.entryIds.join(','),
-    ].join(':')
-    : null
+  const pendingOperationNeedsInput =
+    state.pendingOperation?.kind === 'rename' ||
+    state.pendingOperation?.kind === 'select' ||
+    state.pendingOperation?.kind === 'unselect' ||
+    state.pendingOperation?.kind === 'filter' ||
+    state.pendingOperation?.kind === 'search'
+  const pendingInputIdentity =
+    pendingOperationNeedsInput && state.pendingOperation
+      ? [
+          state.pendingOperation.kind,
+          state.pendingOperation.sourcePaneId,
+          state.pendingOperation.sourcePath,
+          state.pendingOperation.renameMode ?? '',
+          state.pendingOperation.entryIds.join(','),
+        ].join(':')
+      : null
   const activeFileDialogPath = state.fileDialog
     ? joinCommanderPath(state.fileDialog.path, state.fileDialog.entryName)
     : ''
   const isFileDialogDirty = Boolean(
-    state.fileDialog
-    && state.fileDialog.mode === 'edit'
-    && state.fileDialog.draftValue !== state.fileDialog.content,
+    state.fileDialog &&
+    state.fileDialog.mode === 'edit' &&
+    state.fileDialog.draftValue !== state.fileDialog.content,
   )
 
-  const attachCommanderRootRef = useCallback((node: HTMLDivElement | null) => {
-    commanderRootRef.current = node
-    autoTagCommanderRoot(node)
-  }, [autoTagCommanderRoot])
+  const attachCommanderRootRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      commanderRootRef.current = node
+      autoTagCommanderRoot(node)
+    },
+    [autoTagCommanderRoot],
+  )
 
   const focusCommanderRoot = useCallback(() => {
     commanderRootRef.current?.focus({
@@ -88,43 +86,49 @@ export function CommanderWidget() {
     })
   }, [])
 
-  const startPathEdit = useCallback((paneId: CommanderPaneViewState['id']) => {
-    if (state.pendingOperation || state.fileDialog) {
-      return
-    }
+  const startPathEdit = useCallback(
+    (paneId: CommanderPaneViewState['id']) => {
+      if (state.pendingOperation || state.fileDialog) {
+        return
+      }
 
-    const pane = paneId === 'left' ? state.leftPane : state.rightPane
-    actions.setActivePane(paneId)
-    setEditingPathPaneId(paneId)
-    setEditingPathValue(pane.path)
-    setPathSuggestionIndex(0)
-  }, [actions, state.fileDialog, state.leftPane, state.pendingOperation, state.rightPane])
+      const pane = paneId === 'left' ? state.leftPane : state.rightPane
+      actions.setActivePane(paneId)
+      setEditingPathPaneId(paneId)
+      setEditingPathValue(pane.path)
+      setPathSuggestionIndex(0)
+    },
+    [actions, state.fileDialog, state.leftPane, state.pendingOperation, state.rightPane],
+  )
 
-  const cancelPathEdit = useCallback((options?: { focusRoot?: boolean }) => {
-    setEditingPathPaneId(null)
-    setEditingPathValue('')
-    setPathSuggestionIndex(0)
+  const cancelPathEdit = useCallback(
+    (options?: { focusRoot?: boolean }) => {
+      setEditingPathPaneId(null)
+      setEditingPathValue('')
+      setPathSuggestionIndex(0)
 
-    if (options?.focusRoot ?? true) {
-      focusCommanderRoot()
-    }
-  }, [focusCommanderRoot])
+      if (options?.focusRoot ?? true) {
+        focusCommanderRoot()
+      }
+    },
+    [focusCommanderRoot],
+  )
 
-  const editingPathPaneRuntimeState = editingPathPaneId === 'left'
-    ? runtimeState.leftPane
-    : editingPathPaneId === 'right'
-      ? runtimeState.rightPane
-      : null
+  const editingPathPaneRuntimeState =
+    editingPathPaneId === 'left'
+      ? runtimeState.leftPane
+      : editingPathPaneId === 'right'
+        ? runtimeState.rightPane
+        : null
   const editingPathSuggestions = useMemo(
-    () => (
+    () =>
       editingPathPaneRuntimeState
         ? getCommanderPathSuggestions(
-          editingPathValue,
-          editingPathPaneRuntimeState,
-          listCommanderDirectoryPaths(widgetId),
-        )
-        : []
-    ),
+            editingPathValue,
+            editingPathPaneRuntimeState,
+            listCommanderDirectoryPaths(widgetId),
+          )
+        : [],
     [editingPathPaneRuntimeState, editingPathValue, widgetId],
   )
 
@@ -147,15 +151,18 @@ export function CommanderWidget() {
     setPathSuggestionIndex(0)
   }, [])
 
-  const movePathSuggestion = useCallback((delta: 1 | -1) => {
-    setPathSuggestionIndex((currentIndex) => {
-      if (editingPathSuggestions.length === 0) {
-        return 0
-      }
+  const movePathSuggestion = useCallback(
+    (delta: 1 | -1) => {
+      setPathSuggestionIndex((currentIndex) => {
+        if (editingPathSuggestions.length === 0) {
+          return 0
+        }
 
-      return (currentIndex + delta + editingPathSuggestions.length) % editingPathSuggestions.length
-    })
-  }, [editingPathSuggestions.length])
+        return (currentIndex + delta + editingPathSuggestions.length) % editingPathSuggestions.length
+      })
+    },
+    [editingPathSuggestions.length],
+  )
 
   const confirmPathEdit = useCallback(() => {
     if (!editingPathPaneId) {
@@ -174,7 +181,14 @@ export function CommanderWidget() {
     }
 
     focusCommanderRoot()
-  }, [commanderActions, editingPathPaneId, editingPathSuggestions, editingPathValue, focusCommanderRoot, pathSuggestionIndex])
+  }, [
+    commanderActions,
+    editingPathPaneId,
+    editingPathSuggestions,
+    editingPathValue,
+    focusCommanderRoot,
+    pathSuggestionIndex,
+  ])
 
   useEffect(() => {
     if (!pendingOperationNeedsInput) {
@@ -229,56 +243,119 @@ export function CommanderWidget() {
     }
   }, [editingPathPaneId, state.fileDialog])
 
-  const handleHintAction = useCallback((hintKey: string) => {
-    switch (hintKey) {
-      case 'F2':
-        commanderActions.renameSelection()
-        break
-      case 'F3':
-        commanderActions.viewActiveFile()
-        break
-      case 'F4':
-        commanderActions.editActiveFile()
-        break
-      case 'F5':
-        commanderActions.copySelection()
-        break
-      case 'F6':
-        commanderActions.moveSelection()
-        break
-      case 'F7':
-        commanderActions.mkdir()
-        break
-      case 'F8':
-        commanderActions.deleteSelection()
-        break
-      case 'NUM+':
-        commanderActions.selectByMask()
-        break
-      case 'NUM-':
-        commanderActions.unselectByMask()
-        break
-      case 'NUM*':
-        commanderActions.invertSelection()
-        break
-      case 'CTRL+F':
-        commanderActions.filterActivePane()
-        break
-      case 'CTRL+S':
-        commanderActions.searchActivePane()
-        break
-      case 'CTRL+BS':
-        commanderActions.clearActivePaneFilter()
-        break
-      case 'CTRL+L':
-        startPathEdit(state.activePane)
-        return
-      default:
-        break
-    }
+  const handleHintAction = useCallback(
+    (hintKey: string) => {
+      switch (hintKey) {
+        case 'F2':
+          commanderActions.renameSelection()
+          break
+        case 'F3':
+          commanderActions.viewActiveFile()
+          break
+        case 'F4':
+          commanderActions.editActiveFile()
+          break
+        case 'F5':
+          commanderActions.copySelection()
+          break
+        case 'F6':
+          commanderActions.moveSelection()
+          break
+        case 'F7':
+          commanderActions.mkdir()
+          break
+        case 'F8':
+          commanderActions.deleteSelection()
+          break
+        case 'NUM+':
+          commanderActions.selectByMask()
+          break
+        case 'NUM-':
+          commanderActions.unselectByMask()
+          break
+        case 'NUM*':
+          commanderActions.invertSelection()
+          break
+        case 'CTRL+F':
+          commanderActions.filterActivePane()
+          break
+        case 'CTRL+S':
+          commanderActions.searchActivePane()
+          break
+        case 'CTRL+BS':
+          commanderActions.clearActivePaneFilter()
+          break
+        case 'CTRL+L':
+          startPathEdit(state.activePane)
+          return
+        default:
+          break
+      }
 
-    focusCommanderRoot()
-  }, [commanderActions, focusCommanderRoot, startPathEdit, state.activePane])
+      focusCommanderRoot()
+    },
+    [commanderActions, focusCommanderRoot, startPathEdit, state.activePane],
+  )
+
+  const commanderPaneControllerShared = useMemo(
+    () => ({
+      activePaneId: state.activePane,
+      interactions: {
+        activatePane: actions.setActivePane,
+        focusRoot: focusCommanderRoot,
+        openPaneEntry: actions.openPaneEntry,
+        setPaneCursor: actions.setPaneCursor,
+        setSortMode: commanderActions.setSortMode,
+        togglePaneSelection: actions.togglePaneSelection,
+      },
+      pathEditor: {
+        editingPaneId: editingPathPaneId,
+        inputRef: pathEditInputRef,
+        onApplySuggestion: applyPathSuggestion,
+        onCancel: cancelPathEdit,
+        onChange: handlePathEditValueChange,
+        onConfirm: confirmPathEdit,
+        onMoveSuggestion: movePathSuggestion,
+        onStartPathEdit: startPathEdit,
+        suggestionIndex: pathSuggestionIndex,
+        suggestions: editingPathSuggestions,
+        value: editingPathValue,
+      },
+      sort: {
+        direction: state.sortDirection,
+        mode: state.sortMode,
+      },
+    }),
+    [
+      actions.openPaneEntry,
+      actions.setActivePane,
+      actions.setPaneCursor,
+      actions.togglePaneSelection,
+      applyPathSuggestion,
+      cancelPathEdit,
+      commanderActions.setSortMode,
+      confirmPathEdit,
+      editingPathPaneId,
+      editingPathSuggestions,
+      editingPathValue,
+      focusCommanderRoot,
+      handlePathEditValueChange,
+      movePathSuggestion,
+      pathSuggestionIndex,
+      startPathEdit,
+      state.activePane,
+      state.sortDirection,
+      state.sortMode,
+    ],
+  )
+  const leftPaneController = useMemo(
+    () => createCommanderPaneController(state.leftPane, commanderPaneControllerShared),
+    [commanderPaneControllerShared, state.leftPane],
+  )
+  const rightPaneController = useMemo(
+    () => createCommanderPaneController(state.rightPane, commanderPaneControllerShared),
+    [commanderPaneControllerShared, state.rightPane],
+  )
 
   return (
     <RunaDomScopeProvider component="commander-widget">
@@ -297,60 +374,8 @@ export function CommanderWidget() {
           state={state}
         />
         <Box runaComponent="commander-main" style={commanderMainStyle}>
-          <CommanderPane
-            interactions={{
-              activate: () => actions.setActivePane('left'),
-              focusRoot: focusCommanderRoot,
-              openEntry: (entryId) => actions.openPaneEntry('left', entryId),
-              setCursor: (entryId, options) => actions.setPaneCursor('left', entryId, options),
-              setSortMode: commanderActions.setSortMode,
-              toggleSelection: (entryId) => actions.togglePaneSelection('left', entryId),
-            }}
-            isActive={state.activePane === 'left'}
-            pane={state.leftPane}
-            pathEditor={{
-              inputRef: pathEditInputRef,
-              isEditing: editingPathPaneId === 'left',
-              onApplySuggestion: applyPathSuggestion,
-              onCancel: cancelPathEdit,
-              onChange: handlePathEditValueChange,
-              onConfirm: confirmPathEdit,
-              onMoveSuggestion: movePathSuggestion,
-              onStart: () => startPathEdit('left'),
-              suggestionIndex: pathSuggestionIndex,
-              suggestions: editingPathPaneId === 'left' ? editingPathSuggestions : [],
-              value: editingPathValue,
-            }}
-            sortDirection={state.sortDirection}
-            sortMode={state.sortMode}
-          />
-          <CommanderPane
-            interactions={{
-              activate: () => actions.setActivePane('right'),
-              focusRoot: focusCommanderRoot,
-              openEntry: (entryId) => actions.openPaneEntry('right', entryId),
-              setCursor: (entryId, options) => actions.setPaneCursor('right', entryId, options),
-              setSortMode: commanderActions.setSortMode,
-              toggleSelection: (entryId) => actions.togglePaneSelection('right', entryId),
-            }}
-            isActive={state.activePane === 'right'}
-            pane={state.rightPane}
-            pathEditor={{
-              inputRef: pathEditInputRef,
-              isEditing: editingPathPaneId === 'right',
-              onApplySuggestion: applyPathSuggestion,
-              onCancel: cancelPathEdit,
-              onChange: handlePathEditValueChange,
-              onConfirm: confirmPathEdit,
-              onMoveSuggestion: movePathSuggestion,
-              onStart: () => startPathEdit('right'),
-              suggestionIndex: pathSuggestionIndex,
-              suggestions: editingPathPaneId === 'right' ? editingPathSuggestions : [],
-              value: editingPathValue,
-            }}
-            sortDirection={state.sortDirection}
-            sortMode={state.sortMode}
-          />
+          <CommanderPane controller={leftPaneController} />
+          <CommanderPane controller={rightPaneController} />
         </Box>
         <CommanderPendingBar
           commanderActions={commanderActions}
