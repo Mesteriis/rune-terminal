@@ -1032,6 +1032,12 @@ export function resolveCommanderExistingPath(widgetId: string, path: string) {
   return currentPath
 }
 
+export function listCommanderDirectoryPaths(widgetId: string) {
+  const client = getClient(widgetId)
+
+  return Array.from(client.directories.keys()).sort((leftPath, rightPath) => leftPath.localeCompare(rightPath))
+}
+
 export function getCommanderSelectedSize(entries: CommanderDirectoryEntry[], selectedIds: string[]) {
   const totalBytes = entries
     .filter((entry) => selectedIds.includes(entry.id))

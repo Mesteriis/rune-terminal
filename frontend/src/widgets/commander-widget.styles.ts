@@ -299,6 +299,14 @@ export const commanderPaneTitleStyle: CSSProperties = {
   boxShadow: 'none',
 }
 
+export const commanderPathFieldStyle: CSSProperties = {
+  position: 'relative',
+  display: 'flex',
+  alignItems: 'center',
+  flex: 1,
+  minWidth: 0,
+}
+
 export const commanderPathTextStyle: CSSProperties = {
   display: 'block',
   minWidth: 0,
@@ -309,6 +317,76 @@ export const commanderPathTextStyle: CSSProperties = {
   fontFamily: 'var(--font-family-mono)',
   fontSize: 'var(--font-size-sm)',
   lineHeight: 'var(--line-height-sm)',
+}
+
+export const commanderPathSuggestionsStyle: CSSProperties = {
+  position: 'absolute',
+  top: 'calc(100% + 4px)',
+  left: 0,
+  right: 0,
+  zIndex: 3,
+  display: 'flex',
+  flexDirection: 'column',
+  minWidth: 0,
+  maxHeight: '176px',
+  overflow: 'hidden',
+  border: '1px solid var(--runa-commander-highlight-border)',
+  borderRadius: 'var(--radius-xs)',
+  background: 'rgba(7, 14, 13, 0.98)',
+  boxShadow: '0 10px 24px rgba(0, 0, 0, 0.28)',
+  backdropFilter: 'blur(8px)',
+  WebkitBackdropFilter: 'blur(8px)',
+}
+
+export const commanderPathSuggestionsScrollStyle: CSSProperties = {
+  maxHeight: '176px',
+  minHeight: 0,
+  padding: 0,
+  background: 'transparent',
+}
+
+export const commanderPathSuggestionItemStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 'var(--gap-sm)',
+  minHeight: '28px',
+  padding: '0 var(--space-sm)',
+  border: 'none',
+  borderRadius: 0,
+  background: 'transparent',
+  color: 'var(--runa-commander-text-secondary)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: 'var(--font-size-sm)',
+  lineHeight: 'var(--line-height-sm)',
+  textAlign: 'left',
+  cursor: 'pointer',
+}
+
+export const commanderPathSuggestionActiveStyle: CSSProperties = {
+  background: 'var(--runa-commander-highlight-fill)',
+  color: 'var(--runa-commander-highlight-text)',
+  boxShadow: 'inset 0 0 0 1px var(--runa-commander-highlight-ring)',
+}
+
+export const commanderPathSuggestionTextStyle: CSSProperties = {
+  display: 'block',
+  minWidth: 0,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+  color: 'inherit',
+  fontFamily: 'inherit',
+  fontSize: 'inherit',
+  lineHeight: 'inherit',
+}
+
+export const commanderPathSuggestionMetaStyle: CSSProperties = {
+  color: 'var(--runa-commander-text-muted)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '11px',
+  lineHeight: '14px',
+  textTransform: 'uppercase',
 }
 
 export const commanderPathInputStyle: CSSProperties = {

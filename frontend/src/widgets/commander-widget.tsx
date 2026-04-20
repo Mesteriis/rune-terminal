@@ -1,10 +1,12 @@
 import { ChevronLeft, ChevronRight, Columns2, Columns3, Eye, EyeOff, Folder, FileCode2, FileText, Link2, SquareTerminal } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 
+import { listCommanderDirectoryPaths } from '../features/commander/model/fake-client'
 import { useCommanderKeyboard } from '../features/commander/model/keyboard'
 import { useCommanderActions, useCommanderWidget } from '../features/commander/model/hooks'
 import type {
   CommanderFileRow,
+  CommanderPaneRuntimeState,
   CommanderPaneViewState,
   CommanderRenamePreviewItem,
   CommanderRenamePreviewStatus,
@@ -68,7 +70,14 @@ import {
   commanderPendingSupplementStyle,
   commanderPaneStyle,
   commanderPaneTitleStyle,
+  commanderPathFieldStyle,
   commanderPathInputStyle,
+  commanderPathSuggestionActiveStyle,
+  commanderPathSuggestionItemStyle,
+  commanderPathSuggestionMetaStyle,
+  commanderPathSuggestionTextStyle,
+  commanderPathSuggestionsScrollStyle,
+  commanderPathSuggestionsStyle,
   commanderPathTextStyle,
   commanderRootStyle,
   commanderRowFocusedStyle,
@@ -94,6 +103,94 @@ const commanderRenameTemplatePresets = [
   '[N:u]-[C:2]',
   '[C:10:3]',
 ] as const
+
+type CommanderPathSuggestion = {
+  path: string
+  meta: 'CURRENT' | 'HISTORY' | 'PATH'
+}
+
+function getCommanderPathSuggestionMeta(
+  suggestionPath: string,
+  paneState: CommanderPaneRuntimeState,
+): CommanderPathSuggestion['meta'] {
+  if (suggestionPath === paneState.path) {
+    return 'CURRENT'
+  }
+
+  if (paneState.historyBack.includes(suggestionPath) || paneState.historyForward.includes(suggestionPath)) {
+    return 'HISTORY'
+  }
+
+  return 'PATH'
+}
+
+function getCommanderPathSuggestions(
+  inputValue: string,
+  paneState: CommanderPaneRuntimeState,
+  directoryPaths: string[],
+): CommanderPathSuggestion[] {
+  const normalizedInput = inputValue.trim().toLowerCase()
+  const historyCandidates = [
+    paneState.path,
+    ...[...paneState.historyBack].reverse(),
+    ...paneState.historyForward,
+    '~',
+  ]
+  const uniqueCandidates: string[] = []
+  const seenPaths = new Set<string>()
+
+  for (const candidatePath of [...historyCandidates, ...directoryPaths]) {
+    if (!candidatePath || seenPaths.has(candidatePath)) {
+      continue
+    }
+
+    seenPaths.add(candidatePath)
+    uniqueCandidates.push(candidatePath)
+  }
+
+  if (!normalizedInput) {
+    return uniqueCandidates.slice(0, 8).map((candidatePath) => ({
+      path: candidatePath,
+      meta: getCommanderPathSuggestionMeta(candidatePath, paneState),
+    }))
+  }
+
+  const exactMatches: string[] = []
+  const prefixMatches: string[] = []
+  const segmentPrefixMatches: string[] = []
+  const containsMatches: string[] = []
+
+  for (const candidatePath of uniqueCandidates) {
+    const normalizedPath = candidatePath.toLowerCase()
+    const lastSegment = candidatePath.split('/').pop()?.toLowerCase() ?? normalizedPath
+
+    if (normalizedPath === normalizedInput) {
+      exactMatches.push(candidatePath)
+      continue
+    }
+
+    if (normalizedPath.startsWith(normalizedInput)) {
+      prefixMatches.push(candidatePath)
+      continue
+    }
+
+    if (lastSegment.startsWith(normalizedInput)) {
+      segmentPrefixMatches.push(candidatePath)
+      continue
+    }
+
+    if (normalizedPath.includes(normalizedInput)) {
+      containsMatches.push(candidatePath)
+    }
+  }
+
+  return [...exactMatches, ...prefixMatches, ...segmentPrefixMatches, ...containsMatches]
+    .slice(0, 8)
+    .map((candidatePath) => ({
+      path: candidatePath,
+      meta: getCommanderPathSuggestionMeta(candidatePath, paneState),
+    }))
+}
 
 function joinCommanderPath(path: string, name: string) {
   if (path === '~') {
@@ -315,11 +412,15 @@ function CommanderPane({
   pane,
   pathEditValue,
   pathInputRef,
+  pathSuggestions,
+  pathSuggestionIndex,
   onActivate,
+  onApplyPathSuggestion,
   onCancelPathEdit,
   onChangePathEdit,
   onConfirmPathEdit,
   onFocusRoot,
+  onMovePathSuggestion,
   onOpenEntry,
   onStartPathEdit,
   onSetCursor,
@@ -327,11 +428,13 @@ function CommanderPane({
 }: {
   isActive: boolean
   isEditingPath: boolean
+  onApplyPathSuggestion: (suggestion: string) => void
   onActivate: () => void
   onCancelPathEdit: (options?: { focusRoot?: boolean }) => void
   onChangePathEdit: (value: string) => void
   onConfirmPathEdit: () => void
   onFocusRoot: () => void
+  onMovePathSuggestion: (delta: 1 | -1) => void
   onOpenEntry: (entryId: string) => void
   onStartPathEdit: () => void
   onSetCursor: (entryId: string, options?: { rangeSelect?: boolean }) => void
@@ -339,6 +442,8 @@ function CommanderPane({
   pane: CommanderPaneViewState
   pathEditValue: string
   pathInputRef: RefObject<HTMLInputElement | null>
+  pathSuggestionIndex: number
+  pathSuggestions: CommanderPathSuggestion[]
 }) {
   const rowRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const focusedRowId = useMemo(
@@ -376,47 +481,110 @@ function CommanderPane({
           <Badge runaComponent={`commander-pane-${pane.id}-state`} style={isActive ? paneStateBadgeStyle : inactivePaneStateBadgeStyle}>
             {isActive ? 'ACTIVE' : 'PANE'}
           </Badge>
-          {isEditingPath ? (
-            <Input
-              aria-label={`Commander ${pane.id} pane path`}
-              onBlur={() => onCancelPathEdit({ focusRoot: false })}
-              onChange={(event) => onChangePathEdit(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault()
-                  event.stopPropagation()
-                  onConfirmPathEdit()
-                  return
-                }
+          <Box runaComponent={`commander-pane-${pane.id}-path-field`} style={commanderPathFieldStyle}>
+            {isEditingPath ? (
+              <>
+                <Input
+                  aria-label={`Commander ${pane.id} pane path`}
+                  onBlur={() => onCancelPathEdit({ focusRoot: false })}
+                  onChange={(event) => onChangePathEdit(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'ArrowDown' && pathSuggestions.length > 0) {
+                      event.preventDefault()
+                      event.stopPropagation()
+                      onMovePathSuggestion(1)
+                      return
+                    }
 
-                if (event.key === 'Escape') {
-                  event.preventDefault()
-                  event.stopPropagation()
-                  onCancelPathEdit()
-                }
-              }}
-              ref={pathInputRef}
-              runaComponent={`commander-pane-${pane.id}-path-input`}
-              style={commanderPathInputStyle}
-              value={pathEditValue}
-            />
-          ) : (
-            <Text
-              onClick={(event) => {
-                if (!isActive) {
-                  return
-                }
+                    if (event.key === 'ArrowUp' && pathSuggestions.length > 0) {
+                      event.preventDefault()
+                      event.stopPropagation()
+                      onMovePathSuggestion(-1)
+                      return
+                    }
 
-                event.stopPropagation()
-                onStartPathEdit()
-              }}
-              runaComponent={`commander-pane-${pane.id}-path`}
-              style={commanderPathTextStyle}
-              title={pane.path}
-            >
-              {pane.path}
-            </Text>
-          )}
+                    if (event.key === 'Tab' && pathSuggestions.length > 0) {
+                      event.preventDefault()
+                      event.stopPropagation()
+                      onApplyPathSuggestion(pathSuggestions[pathSuggestionIndex]?.path ?? pathEditValue)
+                      return
+                    }
+
+                    if (event.key === 'Enter') {
+                      event.preventDefault()
+                      event.stopPropagation()
+                      onConfirmPathEdit()
+                      return
+                    }
+
+                    if (event.key === 'Escape') {
+                      event.preventDefault()
+                      event.stopPropagation()
+                      onCancelPathEdit()
+                    }
+                  }}
+                  ref={pathInputRef}
+                  runaComponent={`commander-pane-${pane.id}-path-input`}
+                  style={commanderPathInputStyle}
+                  value={pathEditValue}
+                />
+                {pathSuggestions.length > 0 ? (
+                  <Surface runaComponent={`commander-pane-${pane.id}-path-suggestions`} style={commanderPathSuggestionsStyle}>
+                    <ScrollArea
+                      runaComponent={`commander-pane-${pane.id}-path-suggestions-scroll`}
+                      style={commanderPathSuggestionsScrollStyle}
+                    >
+                      <Box runaComponent={`commander-pane-${pane.id}-path-suggestions-list`} style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                        {pathSuggestions.map((suggestion, index) => {
+                          const isSuggestionActive = index === pathSuggestionIndex
+
+                          return (
+                            <Button
+                              key={suggestion.path}
+                              onClick={() => onApplyPathSuggestion(suggestion.path)}
+                              onPointerDown={(event) => {
+                                event.preventDefault()
+                              }}
+                              runaComponent={`commander-pane-${pane.id}-path-suggestion-${index + 1}`}
+                              style={{
+                                ...commanderPathSuggestionItemStyle,
+                                ...(isSuggestionActive ? commanderPathSuggestionActiveStyle : null),
+                              }}
+                              title={suggestion.path}
+                              variant="ghost"
+                            >
+                              <Text runaComponent={`commander-pane-${pane.id}-path-suggestion-${index + 1}-text`} style={commanderPathSuggestionTextStyle}>
+                                {suggestion.path}
+                              </Text>
+                              <Text runaComponent={`commander-pane-${pane.id}-path-suggestion-${index + 1}-meta`} style={commanderPathSuggestionMetaStyle}>
+                                {suggestion.meta}
+                              </Text>
+                            </Button>
+                          )
+                        })}
+                      </Box>
+                    </ScrollArea>
+                  </Surface>
+                ) : null}
+              </>
+            ) : (
+              <Text
+                onClick={(event) => {
+                  if (!isActive) {
+                    return
+                  }
+
+                  event.stopPropagation()
+                  onStartPathEdit()
+                }}
+                runaComponent={`commander-pane-${pane.id}-path`}
+                style={commanderPathTextStyle}
+                title={pane.path}
+              >
+                {pane.path}
+              </Text>
+            )}
+          </Box>
         </Box>
         <Box runaComponent={`commander-pane-${pane.id}-meta`} style={plainClusterStyle}>
           {pane.filterQuery ? (
@@ -702,11 +870,12 @@ function CommanderFileDialog({
 
 export function CommanderWidget() {
   const { widget: widgetId } = useRunaDomScope()
-  const { actions, state } = useCommanderWidget(widgetId)
+  const { actions, runtimeState, state } = useCommanderWidget(widgetId)
   const commanderActions = useCommanderActions(widgetId)
   const activePane = state.activePane === 'left' ? state.leftPane : state.rightPane
   const [editingPathPaneId, setEditingPathPaneId] = useState<CommanderPaneViewState['id'] | null>(null)
   const [editingPathValue, setEditingPathValue] = useState('')
+  const [pathSuggestionIndex, setPathSuggestionIndex] = useState(0)
   const onCommanderKeyDownCapture = useCommanderKeyboard(
     widgetId,
     state.activePane,
@@ -721,6 +890,7 @@ export function CommanderWidget() {
 
         setEditingPathPaneId(state.activePane)
         setEditingPathValue(activePane.path)
+        setPathSuggestionIndex(0)
       },
     },
   )
@@ -799,33 +969,84 @@ export function CommanderWidget() {
     actions.setActivePane(paneId)
     setEditingPathPaneId(paneId)
     setEditingPathValue(pane.path)
+    setPathSuggestionIndex(0)
   }, [actions, state.fileDialog, state.leftPane, state.pendingOperation, state.rightPane])
 
   const cancelPathEdit = useCallback((options?: { focusRoot?: boolean }) => {
     setEditingPathPaneId(null)
     setEditingPathValue('')
+    setPathSuggestionIndex(0)
 
     if (options?.focusRoot ?? true) {
       focusCommanderRoot()
     }
   }, [focusCommanderRoot])
 
+  const editingPathPaneRuntimeState = editingPathPaneId === 'left'
+    ? runtimeState.leftPane
+    : editingPathPaneId === 'right'
+      ? runtimeState.rightPane
+      : null
+  const editingPathSuggestions = useMemo(
+    () => (
+      editingPathPaneRuntimeState
+        ? getCommanderPathSuggestions(
+          editingPathValue,
+          editingPathPaneRuntimeState,
+          listCommanderDirectoryPaths(widgetId),
+        )
+        : []
+    ),
+    [editingPathPaneRuntimeState, editingPathValue, widgetId],
+  )
+
+  useEffect(() => {
+    if (editingPathSuggestions.length === 0) {
+      setPathSuggestionIndex(0)
+      return
+    }
+
+    setPathSuggestionIndex((currentIndex) => Math.min(currentIndex, editingPathSuggestions.length - 1))
+  }, [editingPathSuggestions])
+
+  const applyPathSuggestion = useCallback((suggestionPath: string) => {
+    setEditingPathValue(suggestionPath)
+    setPathSuggestionIndex(0)
+  }, [])
+
+  const handlePathEditValueChange = useCallback((nextValue: string) => {
+    setEditingPathValue(nextValue)
+    setPathSuggestionIndex(0)
+  }, [])
+
+  const movePathSuggestion = useCallback((delta: 1 | -1) => {
+    setPathSuggestionIndex((currentIndex) => {
+      if (editingPathSuggestions.length === 0) {
+        return 0
+      }
+
+      return (currentIndex + delta + editingPathSuggestions.length) % editingPathSuggestions.length
+    })
+  }, [editingPathSuggestions.length])
+
   const confirmPathEdit = useCallback(() => {
     if (!editingPathPaneId) {
       return
     }
 
-    const nextPath = editingPathValue.trim()
+    const suggestedPath = editingPathSuggestions[pathSuggestionIndex]?.path
+    const nextPath = (suggestedPath ?? editingPathValue).trim()
 
     setEditingPathPaneId(null)
     setEditingPathValue('')
+    setPathSuggestionIndex(0)
 
     if (nextPath) {
       commanderActions.setPanePath(editingPathPaneId, nextPath)
     }
 
     focusCommanderRoot()
-  }, [commanderActions, editingPathPaneId, editingPathValue, focusCommanderRoot])
+  }, [commanderActions, editingPathPaneId, editingPathSuggestions, editingPathValue, focusCommanderRoot, pathSuggestionIndex])
 
   useEffect(() => {
     if (!pendingOperationNeedsInput) {
@@ -868,6 +1089,7 @@ export function CommanderWidget() {
     if (state.pendingOperation && editingPathPaneId) {
       setEditingPathPaneId(null)
       setEditingPathValue('')
+      setPathSuggestionIndex(0)
     }
   }, [editingPathPaneId, state.pendingOperation])
 
@@ -875,6 +1097,7 @@ export function CommanderWidget() {
     if (state.fileDialog && editingPathPaneId) {
       setEditingPathPaneId(null)
       setEditingPathValue('')
+      setPathSuggestionIndex(0)
     }
   }, [editingPathPaneId, state.fileDialog])
 
@@ -1015,11 +1238,13 @@ export function CommanderWidget() {
         <CommanderPane
           isActive={state.activePane === 'left'}
           isEditingPath={editingPathPaneId === 'left'}
+          onApplyPathSuggestion={applyPathSuggestion}
           onActivate={() => actions.setActivePane('left')}
           onCancelPathEdit={cancelPathEdit}
-          onChangePathEdit={setEditingPathValue}
+          onChangePathEdit={handlePathEditValueChange}
           onConfirmPathEdit={confirmPathEdit}
           onFocusRoot={focusCommanderRoot}
+          onMovePathSuggestion={movePathSuggestion}
           onOpenEntry={(entryId) => actions.openPaneEntry('left', entryId)}
           onStartPathEdit={() => startPathEdit('left')}
           onSetCursor={(entryId, options) => actions.setPaneCursor('left', entryId, options)}
@@ -1027,15 +1252,19 @@ export function CommanderWidget() {
           pane={state.leftPane}
           pathEditValue={editingPathValue}
           pathInputRef={pathEditInputRef}
+          pathSuggestionIndex={pathSuggestionIndex}
+          pathSuggestions={editingPathPaneId === 'left' ? editingPathSuggestions : []}
         />
         <CommanderPane
           isActive={state.activePane === 'right'}
           isEditingPath={editingPathPaneId === 'right'}
+          onApplyPathSuggestion={applyPathSuggestion}
           onActivate={() => actions.setActivePane('right')}
           onCancelPathEdit={cancelPathEdit}
-          onChangePathEdit={setEditingPathValue}
+          onChangePathEdit={handlePathEditValueChange}
           onConfirmPathEdit={confirmPathEdit}
           onFocusRoot={focusCommanderRoot}
+          onMovePathSuggestion={movePathSuggestion}
           onOpenEntry={(entryId) => actions.openPaneEntry('right', entryId)}
           onStartPathEdit={() => startPathEdit('right')}
           onSetCursor={(entryId, options) => actions.setPaneCursor('right', entryId, options)}
@@ -1043,6 +1272,8 @@ export function CommanderWidget() {
           pane={state.rightPane}
           pathEditValue={editingPathValue}
           pathInputRef={pathEditInputRef}
+          pathSuggestionIndex={pathSuggestionIndex}
+          pathSuggestions={editingPathPaneId === 'right' ? editingPathSuggestions : []}
         />
       </Box>
       {state.pendingOperation && pendingOperationMessage ? (
