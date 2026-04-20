@@ -4,13 +4,17 @@ import {
   handleCommanderAltNavigationKeys,
   handleCommanderFileDialogKeys,
   handleCommanderModifierKeys,
+  handleCommanderNavigationKeys,
   handleCommanderPendingOperationKeys,
+  handleCommanderSelectionShortcutKeys,
+  handleCommanderShiftNavigationKeys,
 } from '@/features/commander/model/keyboard-handlers'
 import type { CommanderPendingOperation } from '@/features/commander/model/types'
 
 function createKeyboardEvent(
   overrides: Partial<{
     altKey: boolean
+    code: string
     ctrlKey: boolean
     key: string
     metaKey: boolean
@@ -19,6 +23,7 @@ function createKeyboardEvent(
 ) {
   return {
     altKey: false,
+    code: '',
     ctrlKey: false,
     key: '',
     metaKey: false,
@@ -228,5 +233,129 @@ describe('handleCommanderPendingOperationKeys', () => {
     expect(handled).toBe(true)
     expect(event.preventDefault).not.toHaveBeenCalled()
     expect(commanderActions.confirmPendingOperation).not.toHaveBeenCalled()
+  })
+})
+
+describe('handleCommanderSelectionShortcutKeys', () => {
+  it('routes numpad selection shortcuts without falling into the main switch', () => {
+    const event = createKeyboardEvent({ code: 'NumpadAdd' })
+    const commanderActions = {
+      invertSelection: vi.fn(),
+      selectByMask: vi.fn(),
+      unselectByMask: vi.fn(),
+    }
+
+    const handled = handleCommanderSelectionShortcutKeys(event, commanderActions)
+
+    expect(handled).toBe(true)
+    expect(event.preventDefault).toHaveBeenCalledOnce()
+    expect(commanderActions.selectByMask).toHaveBeenCalledOnce()
+  })
+})
+
+describe('handleCommanderShiftNavigationKeys', () => {
+  it('routes Shift+End to an extending boundary move', () => {
+    const event = createKeyboardEvent({ key: 'End', shiftKey: true })
+    const commanderActions = {
+      moveCursor: vi.fn(),
+      renameSelection: vi.fn(),
+      setBoundaryCursor: vi.fn(),
+    }
+
+    const handled = handleCommanderShiftNavigationKeys(event, 'left', commanderActions)
+
+    expect(handled).toBe(true)
+    expect(event.preventDefault).toHaveBeenCalledOnce()
+    expect(commanderActions.setBoundaryCursor).toHaveBeenCalledWith('left', 'end', { extendSelection: true })
+  })
+
+  it('leaves unmatched Shift shortcuts for later handlers', () => {
+    const event = createKeyboardEvent({ key: 'Tab', shiftKey: true })
+    const commanderActions = {
+      moveCursor: vi.fn(),
+      renameSelection: vi.fn(),
+      setBoundaryCursor: vi.fn(),
+    }
+
+    const handled = handleCommanderShiftNavigationKeys(event, 'left', commanderActions)
+
+    expect(handled).toBe(false)
+    expect(event.preventDefault).not.toHaveBeenCalled()
+  })
+})
+
+describe('handleCommanderNavigationKeys', () => {
+  it('routes Space to toggle selection without advancing the cursor', () => {
+    const event = createKeyboardEvent({ key: ' ' })
+    const commanderActions = {
+      copySelection: vi.fn(),
+      deleteSelection: vi.fn(),
+      editActiveFile: vi.fn(),
+      goParent: vi.fn(),
+      mkdir: vi.fn(),
+      moveCursor: vi.fn(),
+      moveSelection: vi.fn(),
+      openActiveEntry: vi.fn(),
+      renameSelection: vi.fn(),
+      setBoundaryCursor: vi.fn(),
+      switchActivePane: vi.fn(),
+      toggleSelectionAtCursor: vi.fn(),
+      viewActiveFile: vi.fn(),
+    }
+
+    const handled = handleCommanderNavigationKeys(event, 'right', commanderActions)
+
+    expect(handled).toBe(true)
+    expect(event.preventDefault).toHaveBeenCalledOnce()
+    expect(commanderActions.toggleSelectionAtCursor).toHaveBeenCalledWith(false)
+  })
+
+  it('routes F3 to the active-file viewer', () => {
+    const event = createKeyboardEvent({ key: 'F3' })
+    const commanderActions = {
+      copySelection: vi.fn(),
+      deleteSelection: vi.fn(),
+      editActiveFile: vi.fn(),
+      goParent: vi.fn(),
+      mkdir: vi.fn(),
+      moveCursor: vi.fn(),
+      moveSelection: vi.fn(),
+      openActiveEntry: vi.fn(),
+      renameSelection: vi.fn(),
+      setBoundaryCursor: vi.fn(),
+      switchActivePane: vi.fn(),
+      toggleSelectionAtCursor: vi.fn(),
+      viewActiveFile: vi.fn(),
+    }
+
+    const handled = handleCommanderNavigationKeys(event, 'left', commanderActions)
+
+    expect(handled).toBe(true)
+    expect(event.preventDefault).toHaveBeenCalledOnce()
+    expect(commanderActions.viewActiveFile).toHaveBeenCalledOnce()
+  })
+
+  it('returns false for keys outside the main navigation map', () => {
+    const event = createKeyboardEvent({ key: 'x' })
+    const commanderActions = {
+      copySelection: vi.fn(),
+      deleteSelection: vi.fn(),
+      editActiveFile: vi.fn(),
+      goParent: vi.fn(),
+      mkdir: vi.fn(),
+      moveCursor: vi.fn(),
+      moveSelection: vi.fn(),
+      openActiveEntry: vi.fn(),
+      renameSelection: vi.fn(),
+      setBoundaryCursor: vi.fn(),
+      switchActivePane: vi.fn(),
+      toggleSelectionAtCursor: vi.fn(),
+      viewActiveFile: vi.fn(),
+    }
+
+    const handled = handleCommanderNavigationKeys(event, 'left', commanderActions)
+
+    expect(handled).toBe(false)
+    expect(event.preventDefault).not.toHaveBeenCalled()
   })
 })

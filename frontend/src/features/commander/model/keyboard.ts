@@ -4,7 +4,10 @@ import {
   handleCommanderAltNavigationKeys,
   handleCommanderFileDialogKeys,
   handleCommanderModifierKeys,
+  handleCommanderNavigationKeys,
   handleCommanderPendingOperationKeys,
+  handleCommanderSelectionShortcutKeys,
+  handleCommanderShiftNavigationKeys,
 } from '@/features/commander/model/keyboard-handlers'
 import { useCommanderActions } from '@/features/commander/model/hooks'
 import type {
@@ -96,58 +99,12 @@ export function useCommanderKeyboard(
         return
       }
 
-      if (!event.altKey && !event.ctrlKey && !event.metaKey) {
-        switch (event.code) {
-          case 'NumpadAdd':
-            event.preventDefault()
-            commanderActions.selectByMask()
-            return
-          case 'NumpadSubtract':
-            event.preventDefault()
-            commanderActions.unselectByMask()
-            return
-          case 'NumpadMultiply':
-            event.preventDefault()
-            commanderActions.invertSelection()
-            return
-          default:
-            break
-        }
+      if (handleCommanderSelectionShortcutKeys(event, commanderActions)) {
+        return
       }
 
-      if (event.shiftKey) {
-        switch (event.key) {
-          case 'ArrowUp':
-            event.preventDefault()
-            commanderActions.moveCursor(-1, { extendSelection: true })
-            return
-          case 'ArrowDown':
-            event.preventDefault()
-            commanderActions.moveCursor(1, { extendSelection: true })
-            return
-          case 'PageUp':
-            event.preventDefault()
-            commanderActions.moveCursor(-10, { extendSelection: true })
-            return
-          case 'PageDown':
-            event.preventDefault()
-            commanderActions.moveCursor(10, { extendSelection: true })
-            return
-          case 'Home':
-            event.preventDefault()
-            commanderActions.setBoundaryCursor(activePane, 'start', { extendSelection: true })
-            return
-          case 'End':
-            event.preventDefault()
-            commanderActions.setBoundaryCursor(activePane, 'end', { extendSelection: true })
-            return
-          case 'F6':
-            event.preventDefault()
-            commanderActions.renameSelection()
-            return
-          default:
-            break
-        }
+      if (handleCommanderShiftNavigationKeys(event, activePane, commanderActions)) {
+        return
       }
 
       if (isTypeaheadCharacter(event)) {
@@ -182,82 +139,8 @@ export function useCommanderKeyboard(
         return
       }
 
-      switch (event.key) {
-        case 'ArrowUp':
-          event.preventDefault()
-          commanderActions.moveCursor(-1)
-          return
-        case 'ArrowDown':
-          event.preventDefault()
-          commanderActions.moveCursor(1)
-          return
-        case 'PageUp':
-          event.preventDefault()
-          commanderActions.moveCursor(-10)
-          return
-        case 'PageDown':
-          event.preventDefault()
-          commanderActions.moveCursor(10)
-          return
-        case 'Home':
-          event.preventDefault()
-          commanderActions.setBoundaryCursor(activePane, 'start')
-          return
-        case 'End':
-          event.preventDefault()
-          commanderActions.setBoundaryCursor(activePane, 'end')
-          return
-        case 'Tab':
-          event.preventDefault()
-          commanderActions.switchActivePane()
-          return
-        case 'Backspace':
-          event.preventDefault()
-          commanderActions.goParent()
-          return
-        case 'Enter':
-          event.preventDefault()
-          commanderActions.openActiveEntry()
-          return
-        case 'Insert':
-          event.preventDefault()
-          commanderActions.toggleSelectionAtCursor(true)
-          return
-        case ' ':
-        case 'Spacebar':
-          event.preventDefault()
-          commanderActions.toggleSelectionAtCursor(false)
-          return
-        case 'F5':
-          event.preventDefault()
-          commanderActions.copySelection()
-          return
-        case 'F6':
-          event.preventDefault()
-          commanderActions.moveSelection()
-          return
-        case 'F7':
-          event.preventDefault()
-          commanderActions.mkdir()
-          return
-        case 'F8':
-          event.preventDefault()
-          commanderActions.deleteSelection()
-          return
-        case 'F2':
-          event.preventDefault()
-          commanderActions.renameSelection()
-          return
-        case 'F3':
-          event.preventDefault()
-          commanderActions.viewActiveFile()
-          return
-        case 'F4':
-          event.preventDefault()
-          commanderActions.editActiveFile()
-          return
-        default:
-          return
+      if (handleCommanderNavigationKeys(event, activePane, commanderActions)) {
+        return
       }
     },
     [activePane, activePaneRows, commanderActions, fileDialog, options, pendingOperation],
