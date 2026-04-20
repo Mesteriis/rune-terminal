@@ -34,6 +34,7 @@
   - commander file dialogs now also expose richer editor-shell UX without a heavyweight editor dependency: the footer shows live `Ln/Col` cursor position plus character count, and dirty edit buffers intercept `Esc`/close attempts with an explicit discard prompt instead of silently dropping changes
   - commander file dialogs now also use a roomier workspace layout: about `5%` free space remains on the left/right edges, about `3%` on the top/bottom, and the dialog surface fills the rest instead of staying as a narrow centered card
   - commander widget orchestration is now split into focused widget-layer files: `commander-widget.tsx` keeps root focus, keyboard wiring, and path-edit state, while dedicated files own the header row, pane renderer, pending bar, shared helpers, and file dialog chrome
+  - commander store helpers are now split by responsibility into `store-navigation.ts`, `store-selection.ts`, `store-operations.ts`, and `store-persistence.ts`, and the build-blocking commander type mismatch around filtered pane entries is resolved under `tsc -b`
   - commander symlink rows now render their target inline in the main name field as `name [LINK] -> target`, while the size column stays empty for symlinks so link destinations do not spill into the metadata columns
   - Dockview-backed widget bodies now drive their own visual active/inactive state through a local `widget-focus` store plus `data-runa-widget-focus-state` on the surrounding group container, so body interaction no longer depends on calling `props.api.setActive()`
   - when the commander demo widget sits in an inactive Dockview group, its own accent colors now switch to a muted grey palette instead of keeping the active emerald highlights
@@ -87,6 +88,7 @@
 
 - `npm --prefix frontend run build`
 - `npm --prefix frontend run lint:active`
+- `npm run validate`
 - `npm install motion@^12.38.0`
 - `node tmp/ai-layout-smoke.mjs`
 - `node tmp/ai-header-smoke.mjs`
@@ -149,7 +151,7 @@
 - The shell icon swap was validated by type-check, build, and source inspection. A separate visual localhost smoke for the icon glyphs was attempted but is not claimed from this environment.
 - This radius-and-gap rebalance was validated by source inspection plus type-check/build. Fresh live geometry for the new `6px` values is not claimed in this entry.
 - The modal slice was validated by type-check/build and source-level host wiring. An attempted localhost Playwright smoke did not complete cleanly in this environment, so body/widget overlay runtime is not claimed as browser-verified here.
-- The commander widget decomposition follow-up in this pass is validated by `npm --prefix frontend run lint:active`, plus a failed `npm --prefix frontend run build` that is still blocked by existing `src/features/commander/model/store.ts` type errors under `tsc -b`. This entry does not claim a green production build for the commander slice yet.
+- The commander decomposition follow-up in this pass now has a green static validation path through `npm run validate`, but it still does not claim a fresh `npm run tauri:dev` launch smoke for the UI runtime after the widget/store split.
 
 ## Evidence
 
@@ -176,6 +178,7 @@
 - A fresh headless browser smoke on `http://127.0.0.1:4199` confirmed commander pane history is live: entering `widgets` from `~/projects/runa-terminal/frontend/src`, then using `Alt+Left` returns the active pane to `~/projects/runa-terminal/frontend/src`, `Alt+Right` restores `~/projects/runa-terminal/frontend/src/widgets`, and the new header back/forward buttons reproduce the same path transitions.
 - Static validation confirmed the commander pending bar now accepts inline rename input through the shared `Input` primitive, `F2` plus `Shift+F6` are wired into the commander keyboard and footer hints, and the fake-client/store layer now exposes overwrite-aware `copy/move/rename` paths instead of relying only on silent unique-name generation.
 - Static validation confirmed the commander widget file split keeps the same widget-layer boundaries while shrinking the main orchestration shell to `383` lines and moving pane/header/pending/file-dialog rendering into dedicated widget files; the file-dialog path now also uses a ref-forwarding `TextArea` primitive instead of reaching around the shared UI layer.
+- Static validation confirmed the follow-up commander store split keeps the event contract in `store.ts` while moving pane navigation, selection/mask logic, pending-operation helpers, and persistence wiring into dedicated model files; after the generic filter fix and typed sort-direction update, `npm run validate` completed successfully on `2026-04-20`.
 - Static validation confirmed the new commander conflict-resolution branch: `copy/move` pending ops with `conflictEntryNames` now route through dedicated `resolveCommanderPendingConflict` actions, `Enter/Shift+Enter/Space/Shift+Space` are wired to `Overwrite/Overwrite all/Skip/Skip all`, and the generic `confirmCommanderPendingOperation` path now no-ops instead of silently overwriting when a conflict queue is active.
 - A fresh headless browser smoke on `http://127.0.0.1:4203` confirmed the richer commander rename flow end-to-end: `Ctrl+PgDn` opened the focused `shared` directory from the keyboard, `w + Enter` still opened `widgets`, `Shift+F6` with template `ren-[C:2]` previewed `ren-01.tsx` and `ren-02.ts` before applying them, and a follow-up `Shift+F6` on two folders in `~/projects/runa-terminal/frontend/src` with template `dup` raised `Duplicate targets: dup`, changed the pending action label to `Fix template`, and blocked confirmation before mutation.
 - A fresh headless browser smoke on `http://127.0.0.1:4204` confirmed the richer batch-rename UI itself: after entering `~/projects/runa-terminal/frontend/src/widgets`, `Shift+F6` rendered preset templates (`[N]-[C:2]`, `[C:2]-[N]`, `[N:l]-[C:2]`, `[N:u]-[C:2]`, `[C:10:3]`), the preview header row resolved `# / Current / Next / Status`, the summary badges resolved `2 total` and `2 ok`, clicking `[N:u]-[C:2]` previewed `COMMANDER-WIDGET-01.tsx` and `COMMANDER-WIDGET.STYLES-02`, and typing `[C:10:3]` previewed `010.tsx` and `011.ts`.
