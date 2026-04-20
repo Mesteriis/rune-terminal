@@ -195,6 +195,7 @@ Lookup helpers exported from `src/shared/ui/dom-id.tsx`:
 ### Commands
 
 - `npm --prefix frontend run lint:active`
+- `npm --prefix frontend run test`
 - `npm --prefix frontend run build`
 - `curl -sf http://127.0.0.1:4193`
 - `node --input-type=module -e "<headless Playwright localhost computed-style smoke for tokenized shell surfaces>"`

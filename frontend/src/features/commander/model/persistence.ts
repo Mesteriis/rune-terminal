@@ -30,8 +30,8 @@ function normalizePaneState(value: unknown): CommanderPanePersistedState | null 
     typeof value.path !== 'string'
     || (value.filterQuery !== undefined && typeof value.filterQuery !== 'string')
     || !Array.isArray(value.entries)
-    || (value.cursorEntryId !== null && typeof value.cursorEntryId !== 'string')
-    || (value.selectionAnchorEntryId !== null && typeof value.selectionAnchorEntryId !== 'string')
+    || (value.cursorEntryId !== undefined && value.cursorEntryId !== null && typeof value.cursorEntryId !== 'string')
+    || (value.selectionAnchorEntryId !== undefined && value.selectionAnchorEntryId !== null && typeof value.selectionAnchorEntryId !== 'string')
     || !isStringArray(value.selectedIds)
     || !isStringArray(value.historyBack)
     || !isStringArray(value.historyForward)
@@ -43,7 +43,7 @@ function normalizePaneState(value: unknown): CommanderPanePersistedState | null 
     path: value.path,
     filterQuery: value.filterQuery ?? '',
     entries: value.entries,
-    cursorEntryId: value.cursorEntryId,
+    cursorEntryId: value.cursorEntryId ?? null,
     selectionAnchorEntryId: value.selectionAnchorEntryId ?? value.cursorEntryId ?? null,
     selectedIds: value.selectedIds,
     historyBack: value.historyBack,
