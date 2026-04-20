@@ -16,9 +16,11 @@ import { IconButton } from '../shared/ui/components'
 
 import {
   commanderFileDialogActionsStyle,
+  commanderFileDialogClosePromptStyle,
   commanderFileDialogFooterStyle,
   commanderFileDialogHeaderStyle,
   commanderFileDialogHintStyle,
+  commanderFileDialogMetaStyle,
   commanderFileDialogOverlayStyle,
   commanderFileDialogPathStyle,
   commanderFileDialogStyle,
@@ -99,6 +101,18 @@ function joinCommanderPath(path: string, name: string) {
   }
 
   return `${path}/${name}`
+}
+
+function getCommanderCursorMetrics(content: string, position: number) {
+  const safePosition = Math.max(0, Math.min(position, content.length))
+  const beforeCursor = content.slice(0, safePosition)
+  const lastLineBreakIndex = beforeCursor.lastIndexOf('\n')
+
+  return {
+    line: beforeCursor.split('\n').length,
+    column: safePosition - lastLineBreakIndex,
+    chars: content.length,
+  }
 }
 
 const plainClusterStyle = {
@@ -508,6 +522,23 @@ function CommanderFileDialog({
 }) {
   const textAreaRef = useRef<HTMLTextAreaElement | null>(null)
   const dialogIdentityRef = useRef<string | null>(null)
+  const [showDiscardPrompt, setShowDiscardPrompt] = useState(false)
+  const [cursorMetrics, setCursorMetrics] = useState(() => getCommanderCursorMetrics(content, 0))
+
+  const syncCursorMetrics = useCallback(() => {
+    const nextPosition = textAreaRef.current?.selectionStart ?? 0
+    setCursorMetrics(getCommanderCursorMetrics(content, nextPosition))
+  }, [content])
+
+  const requestClose = useCallback(() => {
+    if (mode === 'edit' && dirty) {
+      setShowDiscardPrompt(true)
+      return
+    }
+
+    setShowDiscardPrompt(false)
+    onClose()
+  }, [dirty, mode, onClose])
 
   useEffect(() => {
     const nextIdentity = `${entryPath}:${mode}`
@@ -517,6 +548,7 @@ function CommanderFileDialog({
     }
 
     dialogIdentityRef.current = nextIdentity
+    setShowDiscardPrompt(false)
 
     if (!textAreaRef.current) {
       return
@@ -528,11 +560,16 @@ function CommanderFileDialog({
       const cursorPosition = textAreaRef.current.value.length
       textAreaRef.current.setSelectionRange(cursorPosition, cursorPosition)
     }
-  }, [entryPath, mode])
+    syncCursorMetrics()
+  }, [entryPath, mode, syncCursorMetrics])
+
+  useEffect(() => {
+    syncCursorMetrics()
+  }, [content, syncCursorMetrics])
 
   return (
     <Box
-      onMouseDown={onClose}
+      onMouseDown={requestClose}
       runaComponent="commander-file-dialog-overlay"
       style={commanderFileDialogOverlayStyle}
     >
@@ -563,14 +600,17 @@ function CommanderFileDialog({
           <Box runaComponent="commander-file-dialog-actions" style={commanderFileDialogActionsStyle}>
             {mode === 'edit' ? (
               <Button
-                onClick={onSave}
+                onClick={() => {
+                  setShowDiscardPrompt(false)
+                  onSave()
+                }}
                 runaComponent="commander-file-dialog-save"
               >
                 Save
               </Button>
             ) : null}
             <Button
-              onClick={onClose}
+              onClick={requestClose}
               runaComponent="commander-file-dialog-close"
             >
               Close
@@ -580,20 +620,24 @@ function CommanderFileDialog({
         <TextArea
           aria-label={mode === 'edit' ? `Edit ${entryName}` : `View ${entryName}`}
           onChange={(event) => onChange(event.target.value)}
+          onClick={syncCursorMetrics}
           onKeyDown={(event) => {
             if (event.key === 'Escape') {
               event.preventDefault()
               event.stopPropagation()
-              onClose()
+              requestClose()
               return
             }
 
             if (mode === 'edit' && (event.ctrlKey || event.metaKey) && (event.key === 's' || event.key === 'S')) {
               event.preventDefault()
               event.stopPropagation()
+              setShowDiscardPrompt(false)
               onSave()
             }
           }}
+          onKeyUp={syncCursorMetrics}
+          onSelect={syncCursorMetrics}
           readOnly={mode === 'view'}
           ref={textAreaRef}
           runaComponent="commander-file-dialog-textarea"
@@ -602,12 +646,54 @@ function CommanderFileDialog({
           value={content}
         />
         <Box runaComponent="commander-file-dialog-footer" style={commanderFileDialogFooterStyle}>
-          <Text runaComponent="commander-file-dialog-hint-mode" style={commanderFileDialogHintStyle}>
-            {mode === 'edit' ? 'Ctrl+S save' : 'Read only preview'}
-          </Text>
-          <Text runaComponent="commander-file-dialog-hint-close" style={commanderFileDialogHintStyle}>
-            Esc close
-          </Text>
+          <Box runaComponent="commander-file-dialog-meta" style={commanderFileDialogMetaStyle}>
+            <Text runaComponent="commander-file-dialog-hint-mode" style={commanderFileDialogHintStyle}>
+              {mode === 'edit' ? 'Ctrl+S save' : 'Read only preview'}
+            </Text>
+            <Text runaComponent="commander-file-dialog-cursor" style={commanderFileDialogHintStyle}>
+              Ln {cursorMetrics.line}, Col {cursorMetrics.column}
+            </Text>
+            <Text runaComponent="commander-file-dialog-size" style={commanderFileDialogHintStyle}>
+              {cursorMetrics.chars} chars
+            </Text>
+          </Box>
+          {showDiscardPrompt ? (
+            <Box runaComponent="commander-file-dialog-close-prompt" style={commanderFileDialogClosePromptStyle}>
+              <Text runaComponent="commander-file-dialog-close-warning" style={commanderFileDialogHintStyle}>
+                Discard unsaved changes?
+              </Text>
+              <Button
+                onClick={() => setShowDiscardPrompt(false)}
+                runaComponent="commander-file-dialog-keep-editing"
+              >
+                Keep editing
+              </Button>
+              {mode === 'edit' ? (
+                <Button
+                  onClick={() => {
+                    setShowDiscardPrompt(false)
+                    onSave()
+                  }}
+                  runaComponent="commander-file-dialog-save-and-close"
+                >
+                  Save
+                </Button>
+              ) : null}
+              <Button
+                onClick={() => {
+                  setShowDiscardPrompt(false)
+                  onClose()
+                }}
+                runaComponent="commander-file-dialog-discard"
+              >
+                Discard
+              </Button>
+            </Box>
+          ) : (
+            <Text runaComponent="commander-file-dialog-hint-close" style={commanderFileDialogHintStyle}>
+              Esc close
+            </Text>
+          )}
         </Box>
       </Surface>
     </Box>

@@ -125,6 +125,22 @@ export const commanderFileDialogFooterStyle: CSSProperties = {
   flexWrap: 'wrap',
 }
 
+export const commanderFileDialogMetaStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 'var(--gap-sm)',
+  flexWrap: 'wrap',
+  minWidth: 0,
+}
+
+export const commanderFileDialogClosePromptStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 'var(--gap-xs)',
+  flexWrap: 'wrap',
+  justifyContent: 'flex-end',
+}
+
 export const commanderFileDialogHintStyle: CSSProperties = {
   color: 'var(--runa-commander-text-muted)',
   fontFamily: 'var(--font-family-mono)',
