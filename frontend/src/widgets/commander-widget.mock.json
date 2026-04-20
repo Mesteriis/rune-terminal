@@ -12,7 +12,10 @@
     { "key": "F5", "label": "Copy" },
     { "key": "F6", "label": "Move" },
     { "key": "F7", "label": "Mkdir" },
-    { "key": "F8", "label": "Delete" }
+    { "key": "F8", "label": "Delete" },
+    { "key": "NUM+", "label": "Select" },
+    { "key": "NUM-", "label": "Unselect" },
+    { "key": "NUM*", "label": "Invert" }
   ],
   "leftPane": {
     "id": "left",

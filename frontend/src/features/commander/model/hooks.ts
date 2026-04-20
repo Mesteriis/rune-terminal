@@ -22,6 +22,8 @@ import {
   requestCommanderActivePaneMkdir,
   requestCommanderActivePaneMove,
   requestCommanderActivePaneRename,
+  requestCommanderActivePaneSelectByMask,
+  requestCommanderActivePaneUnselectByMask,
   resolveCommanderPendingConflict,
   setCommanderActivePane,
   setCommanderPaneBoundaryCursor,
@@ -32,6 +34,7 @@ import {
   toggleCommanderActivePaneSelection,
   toggleCommanderPaneSelection,
   toggleCommanderShowHidden,
+  invertCommanderActivePaneSelection,
 } from './store'
 import type {
   CommanderPaneId,
@@ -168,6 +171,8 @@ export function useCommanderActions(widgetId: string) {
     onRequestCommanderActivePaneDelete,
     onRequestCommanderActivePaneMkdir,
     onRequestCommanderActivePaneRename,
+    onRequestCommanderActivePaneSelectByMask,
+    onRequestCommanderActivePaneUnselectByMask,
     onConfirmCommanderPendingOperation,
     onCancelCommanderPendingOperation,
     onResolveCommanderPendingConflict,
@@ -181,6 +186,7 @@ export function useCommanderActions(widgetId: string) {
     onSetCommanderPaneBoundaryCursor,
     onGoCommanderPaneParent,
     onSetCommanderPendingOperationInput,
+    onInvertCommanderActivePaneSelection,
   ] = useUnit([
     moveCommanderActivePaneCursor,
     openCommanderActivePaneEntry,
@@ -190,6 +196,8 @@ export function useCommanderActions(widgetId: string) {
     requestCommanderActivePaneDelete,
     requestCommanderActivePaneMkdir,
     requestCommanderActivePaneRename,
+    requestCommanderActivePaneSelectByMask,
+    requestCommanderActivePaneUnselectByMask,
     confirmCommanderPendingOperation,
     cancelCommanderPendingOperation,
     resolveCommanderPendingConflict,
@@ -203,6 +211,7 @@ export function useCommanderActions(widgetId: string) {
     setCommanderPaneBoundaryCursor,
     goCommanderPaneParent,
     setCommanderPendingOperationInput,
+    invertCommanderActivePaneSelection,
   ])
 
   return {
@@ -218,6 +227,9 @@ export function useCommanderActions(widgetId: string) {
     goParent: () => onGoCommanderActivePaneParent({ widgetId }),
     mkdir: () => onRequestCommanderActivePaneMkdir({ widgetId }),
     moveSelection: () => onRequestCommanderActivePaneMove({ widgetId }),
+    selectByMask: () => onRequestCommanderActivePaneSelectByMask({ widgetId }),
+    unselectByMask: () => onRequestCommanderActivePaneUnselectByMask({ widgetId }),
+    invertSelection: () => onInvertCommanderActivePaneSelection({ widgetId }),
     moveCursor: (delta: number, options?: { extendSelection?: boolean }) => (
       onMoveCommanderActivePaneCursor({ widgetId, delta, extendSelection: options?.extendSelection })
     ),

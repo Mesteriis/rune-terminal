@@ -152,6 +152,25 @@ export function useCommanderKeyboard(
       }
     }
 
+    if (!event.altKey && !event.ctrlKey && !event.metaKey) {
+      switch (event.code) {
+        case 'NumpadAdd':
+          event.preventDefault()
+          commanderActions.selectByMask()
+          return
+        case 'NumpadSubtract':
+          event.preventDefault()
+          commanderActions.unselectByMask()
+          return
+        case 'NumpadMultiply':
+          event.preventDefault()
+          commanderActions.invertSelection()
+          return
+        default:
+          break
+      }
+    }
+
     if (event.shiftKey) {
       switch (event.key) {
         case 'ArrowUp':

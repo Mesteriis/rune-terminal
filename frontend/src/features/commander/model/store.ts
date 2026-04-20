@@ -334,6 +334,103 @@ function toggleEntrySelection(
   }
 }
 
+function escapeCommanderMaskRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function splitCommanderMaskPatterns(mask: string) {
+  return mask
+    .split(/[;,]+|\s+/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+}
+
+function commanderMaskPatternToRegExp(pattern: string) {
+  const normalizedPattern = pattern.trim()
+
+  if (!normalizedPattern) {
+    return null
+  }
+
+  const expression = normalizedPattern
+    .split('')
+    .map((char) => {
+      if (char === '*') {
+        return '.*'
+      }
+
+      if (char === '?') {
+        return '.'
+      }
+
+      return escapeCommanderMaskRegExp(char)
+    })
+    .join('')
+
+  return new RegExp(`^${expression}$`, 'i')
+}
+
+function getCommanderMaskMatches(
+  paneState: CommanderPaneRuntimeState,
+  mask: string,
+) {
+  const expressions = splitCommanderMaskPatterns(mask)
+    .map((pattern) => commanderMaskPatternToRegExp(pattern))
+    .filter((expression): expression is RegExp => Boolean(expression))
+
+  if (expressions.length === 0) {
+    return {
+      entryIds: [] as string[],
+      entryNames: [] as string[],
+    }
+  }
+
+  const matchedEntries = paneState.entries.filter((entry) => (
+    expressions.some((expression) => expression.test(entry.name))
+  ))
+
+  return {
+    entryIds: matchedEntries.map((entry) => entry.id),
+    entryNames: matchedEntries.map((entry) => entry.name),
+  }
+}
+
+function applySelectionMaskToPane(
+  paneState: CommanderPaneRuntimeState,
+  mask: string,
+  mode: 'select' | 'unselect',
+) {
+  const matches = getCommanderMaskMatches(paneState, mask)
+  const matchedIdSet = new Set(matches.entryIds)
+
+  const nextSelectedIds = mode === 'select'
+    ? paneState.entries
+      .filter((entry) => paneState.selectedIds.includes(entry.id) || matchedIdSet.has(entry.id))
+      .map((entry) => entry.id)
+    : paneState.selectedIds.filter((entryId) => !matchedIdSet.has(entryId))
+
+  return {
+    ...paneState,
+    selectedIds: nextSelectedIds,
+    selectionAnchorEntryId: paneState.selectionAnchorEntryId ?? paneState.cursorEntryId ?? nextSelectedIds[0] ?? null,
+  }
+}
+
+function invertPaneSelection(
+  paneState: CommanderPaneRuntimeState,
+) {
+  const selectedIdSet = new Set(paneState.selectedIds)
+  const nextSelectedIds = paneState.entries
+    .filter((entry) => !selectedIdSet.has(entry.id))
+    .map((entry) => entry.id)
+
+  return {
+    ...paneState,
+    selectedIds: nextSelectedIds,
+    selectionAnchorEntryId: paneState.cursorEntryId ?? nextSelectedIds[0] ?? null,
+  }
+}
+
 function refreshWidgetPanes(
   widgetState: CommanderWidgetRuntimeState,
   overrides?: {
@@ -453,7 +550,7 @@ function createPendingOperation(
   const sourcePane = getPaneState(widgetState, widgetState.activePane)
   const entryIds = getOperationEntryIds(sourcePane)
 
-  if (kind !== 'mkdir' && entryIds.length === 0) {
+  if (kind !== 'mkdir' && kind !== 'select' && kind !== 'unselect' && entryIds.length === 0) {
     return null
   }
 
@@ -465,6 +562,21 @@ function createPendingOperation(
       entryIds: [],
       entryNames: [],
       mkdirName: 'New folder',
+    } satisfies CommanderPendingOperation
+  }
+
+  if (kind === 'select' || kind === 'unselect') {
+    const matches = getCommanderMaskMatches(sourcePane, '*')
+
+    return {
+      kind,
+      sourcePaneId: widgetState.activePane,
+      sourcePath: sourcePane.path,
+      entryIds: [],
+      entryNames: [],
+      inputValue: '*',
+      matchCount: matches.entryIds.length,
+      matchPreview: matches.entryNames.slice(0, 6),
     } satisfies CommanderPendingOperation
   }
 
@@ -584,6 +696,9 @@ export const requestCommanderActivePaneMove = createEvent<CommanderWidgetPayload
 export const requestCommanderActivePaneDelete = createEvent<CommanderWidgetPayload>()
 export const requestCommanderActivePaneMkdir = createEvent<CommanderWidgetPayload>()
 export const requestCommanderActivePaneRename = createEvent<CommanderWidgetPayload>()
+export const requestCommanderActivePaneSelectByMask = createEvent<CommanderWidgetPayload>()
+export const requestCommanderActivePaneUnselectByMask = createEvent<CommanderWidgetPayload>()
+export const invertCommanderActivePaneSelection = createEvent<CommanderWidgetPayload>()
 export const setCommanderPendingOperationInput = createEvent<CommanderSetPendingOperationInputPayload>()
 export const confirmCommanderPendingOperation = createEvent<CommanderWidgetPayload>()
 export const cancelCommanderPendingOperation = createEvent<CommanderWidgetPayload>()
@@ -1078,11 +1193,79 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
         : widgetState,
     }
   })
+  .on(requestCommanderActivePaneSelectByMask, (widgets, payload) => {
+    const widgetState = widgets[payload.widgetId]
+
+    if (!widgetState) {
+      return widgets
+    }
+    const pendingOperation = createPendingOperation(widgetState, 'select')
+
+    return {
+      ...widgets,
+      [payload.widgetId]: pendingOperation
+        ? {
+          ...widgetState,
+          pendingOperation,
+        }
+        : widgetState,
+    }
+  })
+  .on(requestCommanderActivePaneUnselectByMask, (widgets, payload) => {
+    const widgetState = widgets[payload.widgetId]
+
+    if (!widgetState) {
+      return widgets
+    }
+    const pendingOperation = createPendingOperation(widgetState, 'unselect')
+
+    return {
+      ...widgets,
+      [payload.widgetId]: pendingOperation
+        ? {
+          ...widgetState,
+          pendingOperation,
+        }
+        : widgetState,
+    }
+  })
+  .on(invertCommanderActivePaneSelection, (widgets, payload) => {
+    const widgetState = widgets[payload.widgetId]
+
+    if (!widgetState) {
+      return widgets
+    }
+
+    return {
+      ...widgets,
+      [payload.widgetId]: updatePaneState(widgetState, widgetState.activePane, invertPaneSelection),
+    }
+  })
   .on(setCommanderPendingOperationInput, (widgets, payload) => {
     const widgetState = widgets[payload.widgetId]
 
     if (!widgetState?.pendingOperation) {
       return widgets
+    }
+
+    if (widgetState.pendingOperation.kind === 'select' || widgetState.pendingOperation.kind === 'unselect') {
+      const matches = getCommanderMaskMatches(
+        getPaneState(widgetState, widgetState.pendingOperation.sourcePaneId),
+        payload.inputValue,
+      )
+
+      return {
+        ...widgets,
+        [payload.widgetId]: {
+          ...widgetState,
+          pendingOperation: {
+            ...widgetState.pendingOperation,
+            inputValue: payload.inputValue,
+            matchCount: matches.entryIds.length,
+            matchPreview: matches.entryNames.slice(0, 6),
+          },
+        },
+      }
     }
 
     if (widgetState.pendingOperation.kind !== 'rename') {
@@ -1323,6 +1506,23 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
             selectionAnchorEntryId: renameResult.entryId,
           },
         }),
+      }
+    }
+
+    if (pendingOperation.kind === 'select' || pendingOperation.kind === 'unselect') {
+      const mask = pendingOperation.inputValue?.trim() ?? ''
+      const selectionMode: 'select' | 'unselect' = pendingOperation.kind
+
+      return {
+        ...widgets,
+        [payload.widgetId]: updatePaneState(
+          {
+            ...widgetState,
+            pendingOperation: null,
+          },
+          pendingOperation.sourcePaneId,
+          (paneState) => applySelectionMaskToPane(paneState, mask, selectionMode),
+        ),
       }
     }
 

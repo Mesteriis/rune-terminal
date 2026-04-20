@@ -162,6 +162,10 @@ function formatPendingOperationMessage(state: CommanderWidgetViewState) {
       }
 
       return `Rename ${pendingOperation.entryNames[0]} in ${pendingOperation.sourcePath}`
+    case 'select':
+      return `Select ${pendingOperation.matchCount ?? 0} entries matching ${pendingOperation.inputValue || '*'} in ${pendingOperation.sourcePath}`
+    case 'unselect':
+      return `Unselect ${pendingOperation.matchCount ?? 0} entries matching ${pendingOperation.inputValue || '*'} in ${pendingOperation.sourcePath}`
     default:
       return null
   }
@@ -411,11 +415,21 @@ export function CommanderWidget() {
   const hadPendingOperationRef = useRef(false)
   const pendingOperationMessage = useMemo(() => formatPendingOperationMessage(state), [state])
   const disableHistoryControls = Boolean(state.pendingOperation)
-  const pendingOperationNeedsInput = state.pendingOperation?.kind === 'rename'
+  const pendingOperationNeedsInput = (
+    state.pendingOperation?.kind === 'rename'
+    || state.pendingOperation?.kind === 'select'
+    || state.pendingOperation?.kind === 'unselect'
+  )
   const pendingOperationIsBlocking = isPendingOperationBlocking(state)
   const pendingOperationNeedsConflictResolution = isPendingOperationConflictResolution(state)
   const pendingRenamePreview = state.pendingOperation?.kind === 'rename'
     ? (state.pendingOperation.renamePreview ?? [])
+    : []
+  const pendingMaskPreview = (
+    state.pendingOperation?.kind === 'select'
+    || state.pendingOperation?.kind === 'unselect'
+  )
+    ? (state.pendingOperation.matchPreview ?? [])
     : []
   const pendingRenamePreviewSummary = useMemo(
     () => getRenamePreviewSummary(pendingRenamePreview),
@@ -475,6 +489,15 @@ export function CommanderWidget() {
         break
       case 'F8':
         commanderActions.deleteSelection()
+        break
+      case 'NUM+':
+        commanderActions.selectByMask()
+        break
+      case 'NUM-':
+        commanderActions.unselectByMask()
+        break
+      case 'NUM*':
+        commanderActions.invertSelection()
         break
       default:
         break
@@ -599,7 +622,11 @@ export function CommanderWidget() {
           </Box>
           {pendingOperationNeedsInput ? (
             <Input
-              aria-label="Commander pending operation input"
+              aria-label={
+                state.pendingOperation?.kind === 'rename'
+                  ? 'Commander pending operation input'
+                  : 'Commander mask selection input'
+              }
               onChange={(event) => commanderActions.setPendingOperationInput(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === 'Enter') {
@@ -733,104 +760,132 @@ export function CommanderWidget() {
           </Box>
           {pendingOperationNeedsInput ? (
             <Box runaComponent="commander-pending-rename-supplement" style={commanderPendingSupplementStyle}>
-              <Box runaComponent="commander-pending-rename-help" style={commanderPendingRenameHelpStyle}>
-                <Text runaComponent="commander-pending-rename-help-name" style={{ color: 'inherit' }}>[N] name</Text>
-                <Text runaComponent="commander-pending-rename-help-name-lower" style={{ color: 'inherit' }}>[N:l] lower</Text>
-                <Text runaComponent="commander-pending-rename-help-name-upper" style={{ color: 'inherit' }}>[N:u] upper</Text>
-                <Text runaComponent="commander-pending-rename-help-ext" style={{ color: 'inherit' }}>[E] ext</Text>
-                <Text runaComponent="commander-pending-rename-help-ext-lower" style={{ color: 'inherit' }}>[E:l] lower ext</Text>
-                <Text runaComponent="commander-pending-rename-help-full" style={{ color: 'inherit' }}>[F] full</Text>
-                <Text runaComponent="commander-pending-rename-help-full-upper" style={{ color: 'inherit' }}>[F:u] upper full</Text>
-                <Text runaComponent="commander-pending-rename-help-counter" style={{ color: 'inherit' }}>[C] counter</Text>
-                <Text runaComponent="commander-pending-rename-help-counter-width" style={{ color: 'inherit' }}>[C:2] padded counter</Text>
-                <Text runaComponent="commander-pending-rename-help-counter-start" style={{ color: 'inherit' }}>[C:10:3] start 10 width 3</Text>
-                <Text runaComponent="commander-pending-rename-help-counter-step" style={{ color: 'inherit' }}>[C:10:3:2] step 2</Text>
-              </Box>
-              {state.pendingOperation?.renameMode === 'batch' ? (
-                <Box runaComponent="commander-pending-rename-preset-row" style={commanderPendingRenamePresetRowStyle}>
-                  {commanderRenameTemplatePresets.map((template) => (
-                    <Badge
-                      key={template}
-                      onClick={() => commanderActions.setPendingOperationInput(template)}
-                      runaComponent={`commander-pending-rename-preset-${template.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
-                      style={commanderPendingRenamePresetStyle}
-                    >
-                      {template}
-                    </Badge>
-                  ))}
-                </Box>
-              ) : null}
-              {pendingRenamePreview.length > 0 ? (
-                <Box runaComponent="commander-pending-rename-summary" style={commanderPendingRenameSummaryStyle}>
-                  <Badge runaComponent="commander-pending-rename-summary-total" style={{ ...commanderTypeBadgeStyle, ...getRenamePreviewStatusStyle('ok') }}>
-                    {pendingRenamePreviewSummary.total} total
-                  </Badge>
-                  <Badge runaComponent="commander-pending-rename-summary-ok" style={{ ...commanderTypeBadgeStyle, ...getRenamePreviewStatusStyle('ok') }}>
-                    {pendingRenamePreviewSummary.ok} ok
-                  </Badge>
-                  {pendingRenamePreviewSummary.conflict ? (
-                    <Badge runaComponent="commander-pending-rename-summary-conflict" style={{ ...commanderTypeBadgeStyle, ...getRenamePreviewStatusStyle('conflict') }}>
-                      {pendingRenamePreviewSummary.conflict} exists
-                    </Badge>
-                  ) : null}
-                  {pendingRenamePreviewSummary.duplicate ? (
-                    <Badge runaComponent="commander-pending-rename-summary-duplicate" style={{ ...commanderTypeBadgeStyle, ...getRenamePreviewStatusStyle('duplicate') }}>
-                      {pendingRenamePreviewSummary.duplicate} duplicate
-                    </Badge>
-                  ) : null}
-                  {pendingRenamePreviewSummary.invalid ? (
-                    <Badge runaComponent="commander-pending-rename-summary-invalid" style={{ ...commanderTypeBadgeStyle, ...getRenamePreviewStatusStyle('invalid') }}>
-                      {pendingRenamePreviewSummary.invalid} invalid
-                    </Badge>
-                  ) : null}
-                </Box>
-              ) : null}
-              {state.pendingOperation?.duplicateTargetNames?.length ? (
-                <Box runaComponent="commander-pending-rename-duplicate-warning" style={commanderPendingWarningStyle}>
-                  <Text runaComponent="commander-pending-rename-duplicate-warning-text" style={{ color: 'inherit' }}>
-                    Duplicate targets: {state.pendingOperation.duplicateTargetNames.join(', ')}
-                  </Text>
-                </Box>
-              ) : null}
-              {pendingRenamePreview.length > 0 ? (
-                <Box runaComponent="commander-pending-rename-preview-table" style={commanderPendingPreviewListStyle}>
-                  <Box runaComponent="commander-pending-rename-preview-header" style={commanderPendingPreviewHeaderStyle}>
-                    <Text runaComponent="commander-pending-rename-preview-header-index" style={commanderPendingPreviewIndexStyle}>#</Text>
-                    <Text runaComponent="commander-pending-rename-preview-header-current" style={commanderPendingPreviewTextStyle}>Current</Text>
-                    <Text runaComponent="commander-pending-rename-preview-header-next" style={commanderPendingPreviewTextStyle}>Next</Text>
-                    <Text runaComponent="commander-pending-rename-preview-header-status" style={commanderPendingPreviewTextStyle}>Status</Text>
+              {state.pendingOperation?.kind === 'rename' ? (
+                <>
+                  <Box runaComponent="commander-pending-rename-help" style={commanderPendingRenameHelpStyle}>
+                    <Text runaComponent="commander-pending-rename-help-name" style={{ color: 'inherit' }}>[N] name</Text>
+                    <Text runaComponent="commander-pending-rename-help-name-lower" style={{ color: 'inherit' }}>[N:l] lower</Text>
+                    <Text runaComponent="commander-pending-rename-help-name-upper" style={{ color: 'inherit' }}>[N:u] upper</Text>
+                    <Text runaComponent="commander-pending-rename-help-ext" style={{ color: 'inherit' }}>[E] ext</Text>
+                    <Text runaComponent="commander-pending-rename-help-ext-lower" style={{ color: 'inherit' }}>[E:l] lower ext</Text>
+                    <Text runaComponent="commander-pending-rename-help-full" style={{ color: 'inherit' }}>[F] full</Text>
+                    <Text runaComponent="commander-pending-rename-help-full-upper" style={{ color: 'inherit' }}>[F:u] upper full</Text>
+                    <Text runaComponent="commander-pending-rename-help-counter" style={{ color: 'inherit' }}>[C] counter</Text>
+                    <Text runaComponent="commander-pending-rename-help-counter-width" style={{ color: 'inherit' }}>[C:2] padded counter</Text>
+                    <Text runaComponent="commander-pending-rename-help-counter-start" style={{ color: 'inherit' }}>[C:10:3] start 10 width 3</Text>
+                    <Text runaComponent="commander-pending-rename-help-counter-step" style={{ color: 'inherit' }}>[C:10:3:2] step 2</Text>
                   </Box>
-                  <ScrollArea runaComponent="commander-pending-rename-preview-scroll" style={commanderPendingPreviewScrollStyle}>
-                    <Box runaComponent="commander-pending-rename-preview-list" style={commanderPendingPreviewListStyle}>
-                      {pendingRenamePreview.map((previewItem, index) => (
-                        <Box
-                          key={previewItem.entryId}
-                          runaComponent={`commander-pending-rename-preview-${index + 1}`}
-                          style={{
-                            ...commanderPendingPreviewRowStyle,
-                            ...(previewItem.conflict ? commanderPendingPreviewConflictRowStyle : null),
-                          }}
+                  {state.pendingOperation.renameMode === 'batch' ? (
+                    <Box runaComponent="commander-pending-rename-preset-row" style={commanderPendingRenamePresetRowStyle}>
+                      {commanderRenameTemplatePresets.map((template) => (
+                        <Badge
+                          key={template}
+                          onClick={() => commanderActions.setPendingOperationInput(template)}
+                          runaComponent={`commander-pending-rename-preset-${template.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
+                          style={commanderPendingRenamePresetStyle}
                         >
-                          <Text runaComponent={`commander-pending-rename-preview-${index + 1}-index`} style={commanderPendingPreviewIndexStyle}>
-                            {index + 1}
-                          </Text>
-                          <Text runaComponent={`commander-pending-rename-preview-${index + 1}-current`} style={commanderPendingPreviewTextStyle}>
-                            {previewItem.currentName}
-                          </Text>
-                          <Text runaComponent={`commander-pending-rename-preview-${index + 1}-next`} style={commanderPendingPreviewTargetTextStyle}>
-                            {previewItem.nextName || 'Invalid name'}
-                          </Text>
-                          <Badge
-                            runaComponent={`commander-pending-rename-preview-${index + 1}-status`}
-                            style={{ ...commanderTypeBadgeStyle, ...getRenamePreviewStatusStyle(previewItem.status) }}
-                          >
-                            {getRenamePreviewStatusLabel(previewItem.status)}
-                          </Badge>
-                        </Box>
+                          {template}
+                        </Badge>
                       ))}
                     </Box>
-                  </ScrollArea>
-                </Box>
+                  ) : null}
+                  {pendingRenamePreview.length > 0 ? (
+                    <Box runaComponent="commander-pending-rename-summary" style={commanderPendingRenameSummaryStyle}>
+                      <Badge runaComponent="commander-pending-rename-summary-total" style={{ ...commanderTypeBadgeStyle, ...getRenamePreviewStatusStyle('ok') }}>
+                        {pendingRenamePreviewSummary.total} total
+                      </Badge>
+                      <Badge runaComponent="commander-pending-rename-summary-ok" style={{ ...commanderTypeBadgeStyle, ...getRenamePreviewStatusStyle('ok') }}>
+                        {pendingRenamePreviewSummary.ok} ok
+                      </Badge>
+                      {pendingRenamePreviewSummary.conflict ? (
+                        <Badge runaComponent="commander-pending-rename-summary-conflict" style={{ ...commanderTypeBadgeStyle, ...getRenamePreviewStatusStyle('conflict') }}>
+                          {pendingRenamePreviewSummary.conflict} exists
+                        </Badge>
+                      ) : null}
+                      {pendingRenamePreviewSummary.duplicate ? (
+                        <Badge runaComponent="commander-pending-rename-summary-duplicate" style={{ ...commanderTypeBadgeStyle, ...getRenamePreviewStatusStyle('duplicate') }}>
+                          {pendingRenamePreviewSummary.duplicate} duplicate
+                        </Badge>
+                      ) : null}
+                      {pendingRenamePreviewSummary.invalid ? (
+                        <Badge runaComponent="commander-pending-rename-summary-invalid" style={{ ...commanderTypeBadgeStyle, ...getRenamePreviewStatusStyle('invalid') }}>
+                          {pendingRenamePreviewSummary.invalid} invalid
+                        </Badge>
+                      ) : null}
+                    </Box>
+                  ) : null}
+                  {state.pendingOperation.duplicateTargetNames?.length ? (
+                    <Box runaComponent="commander-pending-rename-duplicate-warning" style={commanderPendingWarningStyle}>
+                      <Text runaComponent="commander-pending-rename-duplicate-warning-text" style={{ color: 'inherit' }}>
+                        Duplicate targets: {state.pendingOperation.duplicateTargetNames.join(', ')}
+                      </Text>
+                    </Box>
+                  ) : null}
+                  {pendingRenamePreview.length > 0 ? (
+                    <Box runaComponent="commander-pending-rename-preview-table" style={commanderPendingPreviewListStyle}>
+                      <Box runaComponent="commander-pending-rename-preview-header" style={commanderPendingPreviewHeaderStyle}>
+                        <Text runaComponent="commander-pending-rename-preview-header-index" style={commanderPendingPreviewIndexStyle}>#</Text>
+                        <Text runaComponent="commander-pending-rename-preview-header-current" style={commanderPendingPreviewTextStyle}>Current</Text>
+                        <Text runaComponent="commander-pending-rename-preview-header-next" style={commanderPendingPreviewTextStyle}>Next</Text>
+                        <Text runaComponent="commander-pending-rename-preview-header-status" style={commanderPendingPreviewTextStyle}>Status</Text>
+                      </Box>
+                      <ScrollArea runaComponent="commander-pending-rename-preview-scroll" style={commanderPendingPreviewScrollStyle}>
+                        <Box runaComponent="commander-pending-rename-preview-list" style={commanderPendingPreviewListStyle}>
+                          {pendingRenamePreview.map((previewItem, index) => (
+                            <Box
+                              key={previewItem.entryId}
+                              runaComponent={`commander-pending-rename-preview-${index + 1}`}
+                              style={{
+                                ...commanderPendingPreviewRowStyle,
+                                ...(previewItem.conflict ? commanderPendingPreviewConflictRowStyle : null),
+                              }}
+                            >
+                              <Text runaComponent={`commander-pending-rename-preview-${index + 1}-index`} style={commanderPendingPreviewIndexStyle}>
+                                {index + 1}
+                              </Text>
+                              <Text runaComponent={`commander-pending-rename-preview-${index + 1}-current`} style={commanderPendingPreviewTextStyle}>
+                                {previewItem.currentName}
+                              </Text>
+                              <Text runaComponent={`commander-pending-rename-preview-${index + 1}-next`} style={commanderPendingPreviewTargetTextStyle}>
+                                {previewItem.nextName || 'Invalid name'}
+                              </Text>
+                              <Badge
+                                runaComponent={`commander-pending-rename-preview-${index + 1}-status`}
+                                style={{ ...commanderTypeBadgeStyle, ...getRenamePreviewStatusStyle(previewItem.status) }}
+                              >
+                                {getRenamePreviewStatusLabel(previewItem.status)}
+                              </Badge>
+                            </Box>
+                          ))}
+                        </Box>
+                      </ScrollArea>
+                    </Box>
+                  ) : null}
+                </>
+              ) : null}
+              {(state.pendingOperation?.kind === 'select' || state.pendingOperation?.kind === 'unselect') ? (
+                <>
+                  <Box runaComponent="commander-pending-mask-help" style={commanderPendingRenameHelpStyle}>
+                    <Text runaComponent="commander-pending-mask-help-wildcard" style={{ color: 'inherit' }}>* any</Text>
+                    <Text runaComponent="commander-pending-mask-help-single" style={{ color: 'inherit' }}>? single</Text>
+                    <Text runaComponent="commander-pending-mask-help-split" style={{ color: 'inherit' }}>; split masks</Text>
+                  </Box>
+                  <Box runaComponent="commander-pending-mask-summary" style={commanderPendingRenameSummaryStyle}>
+                    <Badge runaComponent="commander-pending-mask-summary-count" style={{ ...commanderTypeBadgeStyle, ...getRenamePreviewStatusStyle('ok') }}>
+                      {state.pendingOperation?.matchCount ?? 0} matches
+                    </Badge>
+                    {pendingMaskPreview.map((entryName, index) => (
+                      <Text key={`${entryName}-${index}`} runaComponent={`commander-pending-mask-preview-${index + 1}`} style={commanderPendingPreviewTextStyle}>
+                        {entryName}
+                      </Text>
+                    ))}
+                    {(state.pendingOperation?.matchCount ?? 0) > pendingMaskPreview.length ? (
+                      <Text runaComponent="commander-pending-mask-preview-more" style={commanderPendingPreviewTextStyle}>
+                        +{(state.pendingOperation?.matchCount ?? 0) - pendingMaskPreview.length} more
+                      </Text>
+                    ) : null}
+                  </Box>
+                </>
               ) : null}
             </Box>
           ) : null}
@@ -842,15 +897,15 @@ export function CommanderWidget() {
               key={hint.key}
               onClick={() => handleHintAction(hint.key)}
               role="button"
-              runaComponent={`commander-hint-${hint.key.toLowerCase()}`}
+              runaComponent={`commander-hint-${hint.key.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
               style={{
                 ...commanderHintCellStyle,
                 ...commanderHintActionStyle,
               }}
               tabIndex={-1}
             >
-              <Text runaComponent={`commander-hint-${hint.key.toLowerCase()}-key`} style={commanderHintKeyStyle}>{hint.key}</Text>
-              <Text runaComponent={`commander-hint-${hint.key.toLowerCase()}-label`} style={commanderHintLabelStyle}>{hint.label}</Text>
+              <Text runaComponent={`commander-hint-${hint.key.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-key`} style={commanderHintKeyStyle}>{hint.key}</Text>
+              <Text runaComponent={`commander-hint-${hint.key.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-label`} style={commanderHintLabelStyle}>{hint.label}</Text>
             </Box>
           ))}
         </Surface>

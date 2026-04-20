@@ -8,7 +8,7 @@ export type CommanderFooterHint = {
   label: string
 }
 
-export type CommanderPendingOperationKind = 'copy' | 'move' | 'delete' | 'mkdir' | 'rename'
+export type CommanderPendingOperationKind = 'copy' | 'move' | 'delete' | 'mkdir' | 'rename' | 'select' | 'unselect'
 export type CommanderRenameMode = 'single' | 'batch'
 export type CommanderRenamePreviewStatus = 'ok' | 'duplicate' | 'conflict' | 'invalid'
 
@@ -34,6 +34,8 @@ export type CommanderPendingOperation = {
   duplicateTargetNames?: string[]
   renameMode?: CommanderRenameMode
   renamePreview?: CommanderRenamePreviewItem[]
+  matchCount?: number
+  matchPreview?: string[]
 }
 
 export type CommanderDirectoryEntry = {
