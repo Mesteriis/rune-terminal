@@ -25,14 +25,16 @@ export const commanderFileDialogOverlayStyle: CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  padding: 'var(--space-md)',
+  padding: '3% 5%',
   background: 'rgba(4, 10, 9, 0.56)',
   backdropFilter: 'blur(8px)',
   WebkitBackdropFilter: 'blur(8px)',
 }
 
 export const commanderFileDialogStyle: CSSProperties = {
-  width: 'min(100%, 920px)',
+  width: '100%',
+  height: '100%',
+  maxWidth: '100%',
   maxHeight: '100%',
   display: 'grid',
   gridTemplateRows: 'auto minmax(0, 1fr) auto',
