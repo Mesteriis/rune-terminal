@@ -34,3 +34,5 @@ export const TerminalViewport = React.forwardRef<HTMLDivElement, TerminalViewpor
     return <div {...props} {...domAttributes} ref={ref} style={{ ...terminalViewportStyle, ...style }} />
   },
 )
+
+TerminalViewport.displayName = 'TerminalViewport'

@@ -32,3 +32,5 @@ export const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(function Badg
 
   return <span {...props} {...domAttributes} ref={ref} style={{ ...badgeStyle, ...style }} />
 })
+
+Badge.displayName = 'Badge'

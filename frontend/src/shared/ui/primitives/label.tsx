@@ -25,3 +25,5 @@ export const Label = React.forwardRef<HTMLLabelElement, LabelProps>(function Lab
 
   return <label {...props} {...domAttributes} ref={ref} style={{ ...labelStyle, ...style }} />
 })
+
+Label.displayName = 'Label'

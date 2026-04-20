@@ -37,3 +37,5 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(function Inp
 
   return <input {...props} {...domAttributes} ref={ref} style={{ ...inputStyle, ...style }} />
 })
+
+Input.displayName = 'Input'

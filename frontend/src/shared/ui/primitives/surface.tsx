@@ -26,3 +26,5 @@ export const Surface = React.forwardRef<HTMLDivElement, SurfaceProps>(function S
 
   return <div {...props} {...domAttributes} ref={ref} style={{ ...surfaceStyle, ...style }} />
 })
+
+Surface.displayName = 'Surface'

@@ -40,3 +40,5 @@ export const TextArea = React.forwardRef<HTMLTextAreaElement, TextAreaProps>(fun
 
   return <textarea {...props} {...domAttributes} ref={ref} style={{ ...textAreaStyle, ...style }} />
 })
+
+TextArea.displayName = 'TextArea'

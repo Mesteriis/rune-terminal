@@ -31,3 +31,5 @@ export const Radio = React.forwardRef<HTMLInputElement, RadioProps>(function Rad
 
   return <input {...props} {...domAttributes} ref={ref} type={type} style={{ ...radioStyle, ...style }} />
 })
+
+Radio.displayName = 'Radio'

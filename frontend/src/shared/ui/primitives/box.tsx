@@ -28,3 +28,5 @@ export const Box = React.forwardRef<HTMLDivElement, BoxProps>(function Box(
 
   return <div {...props} {...domAttributes} ref={ref} style={{ ...boxStyle, ...style }} />
 })
+
+Box.displayName = 'Box'

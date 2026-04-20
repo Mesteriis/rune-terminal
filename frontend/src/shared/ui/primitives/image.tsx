@@ -23,3 +23,5 @@ export const Image = React.forwardRef<HTMLImageElement, ImageProps>(function Ima
 
   return <img {...props} alt={alt} {...domAttributes} ref={ref} style={{ ...imageStyle, ...style }} />
 })
+
+Image.displayName = 'Image'

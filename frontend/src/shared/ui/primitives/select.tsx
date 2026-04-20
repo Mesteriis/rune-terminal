@@ -37,3 +37,5 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(function 
 
   return <select {...props} {...domAttributes} ref={ref} style={{ ...selectStyle, ...style }} />
 })
+
+Select.displayName = 'Select'

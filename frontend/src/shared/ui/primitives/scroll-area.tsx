@@ -29,3 +29,5 @@ export const ScrollArea = React.forwardRef<HTMLDivElement, ScrollAreaProps>(func
 
   return <div {...props} {...domAttributes} ref={ref} style={{ ...scrollAreaStyle, ...style }} />
 })
+
+ScrollArea.displayName = 'ScrollArea'

@@ -42,3 +42,5 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function 
 
   return <button {...props} {...domAttributes} ref={ref} type={type} style={{ ...buttonStyle, ...style }} />
 })
+
+Button.displayName = 'Button'

@@ -22,3 +22,5 @@ export const Text = React.forwardRef<HTMLSpanElement, TextProps>(function Text(
 
   return <span {...props} {...domAttributes} ref={ref} style={{ ...textStyle, ...style }} />
 })
+
+Text.displayName = 'Text'

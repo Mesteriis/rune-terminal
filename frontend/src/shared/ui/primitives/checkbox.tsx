@@ -31,3 +31,5 @@ export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(functi
 
   return <input {...props} {...domAttributes} ref={ref} type={type} style={{ ...checkboxStyle, ...style }} />
 })
+
+Checkbox.displayName = 'Checkbox'
