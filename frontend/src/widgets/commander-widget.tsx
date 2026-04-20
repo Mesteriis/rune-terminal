@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Columns2, Columns3, Eye, EyeOff, FileCode2, FileText, FolderTree, Link2, SquareTerminal } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Columns2, Columns3, Eye, EyeOff, FileCode2, FileText, Folder, FolderTree, Link2, SquareTerminal } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 
 import { listCommanderDirectoryPaths } from '../features/commander/model/fake-client'
