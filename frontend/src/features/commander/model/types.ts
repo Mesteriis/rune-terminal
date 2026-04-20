@@ -37,6 +37,7 @@ export type CommanderPendingOperation = {
   renamePreview?: CommanderRenamePreviewItem[]
   matchCount?: number
   matchPreview?: string[]
+  matchIndex?: number
 }
 
 export type CommanderDirectoryEntry = {

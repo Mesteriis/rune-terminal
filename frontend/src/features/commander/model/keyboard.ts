@@ -175,6 +175,20 @@ export function useCommanderKeyboard(
         return
       }
 
+      if (pendingOperation.kind === 'search') {
+        if (event.key === 'ArrowDown') {
+          event.preventDefault()
+          commanderActions.stepSearchMatch(1)
+          return
+        }
+
+        if (event.key === 'ArrowUp') {
+          event.preventDefault()
+          commanderActions.stepSearchMatch(-1)
+          return
+        }
+      }
+
       switch (event.key) {
         case 'Enter':
           event.preventDefault()

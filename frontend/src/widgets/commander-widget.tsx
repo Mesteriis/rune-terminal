@@ -752,6 +752,11 @@ export function CommanderWidget() {
   )
     ? (state.pendingOperation.matchPreview ?? [])
     : []
+  const pendingSearchMatchPosition = state.pendingOperation?.kind === 'search'
+    && (state.pendingOperation.matchCount ?? 0) > 0
+    && typeof state.pendingOperation.matchIndex === 'number'
+    ? `${state.pendingOperation.matchIndex + 1}/${state.pendingOperation.matchCount}`
+    : null
   const pendingInputIdentity = pendingOperationNeedsInput && state.pendingOperation
     ? [
       state.pendingOperation.kind,
@@ -1306,7 +1311,8 @@ export function CommanderWidget() {
                       <>
                         <Text runaComponent="commander-pending-search-help-substring" style={{ color: 'inherit' }}>substring match</Text>
                         <Text runaComponent="commander-pending-search-help-visible" style={{ color: 'inherit' }}>visible rows only</Text>
-                        <Text runaComponent="commander-pending-search-help-enter" style={{ color: 'inherit' }}>enter jumps to first</Text>
+                        <Text runaComponent="commander-pending-search-help-arrows" style={{ color: 'inherit' }}>up/down step hits</Text>
+                        <Text runaComponent="commander-pending-search-help-enter" style={{ color: 'inherit' }}>enter confirms current</Text>
                       </>
                     ) : (
                       <>
@@ -1323,6 +1329,11 @@ export function CommanderWidget() {
                     <Badge runaComponent="commander-pending-mask-summary-count" style={{ ...commanderTypeBadgeStyle, ...getRenamePreviewStatusStyle('ok') }}>
                       {state.pendingOperation?.matchCount ?? 0} matches
                     </Badge>
+                    {state.pendingOperation?.kind === 'search' && pendingSearchMatchPosition ? (
+                      <Badge runaComponent="commander-pending-search-summary-position" style={{ ...commanderTypeBadgeStyle, ...getRenamePreviewStatusStyle('ok') }}>
+                        {pendingSearchMatchPosition}
+                      </Badge>
+                    ) : null}
                     {pendingMaskPreview.map((entryName, index) => (
                       <Text key={`${entryName}-${index}`} runaComponent={`commander-pending-mask-preview-${index + 1}`} style={commanderPendingPreviewTextStyle}>
                         {entryName}

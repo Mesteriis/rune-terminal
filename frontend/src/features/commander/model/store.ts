@@ -472,6 +472,26 @@ function getCommanderSearchMatches(
   }
 }
 
+function getCommanderResolvedSearchMatchIndex(
+  entryIds: string[],
+  cursorEntryId: string | null,
+  fallbackIndex = 0,
+) {
+  if (entryIds.length === 0) {
+    return -1
+  }
+
+  if (cursorEntryId) {
+    const cursorIndex = entryIds.findIndex((entryId) => entryId === cursorEntryId)
+
+    if (cursorIndex !== -1) {
+      return cursorIndex
+    }
+  }
+
+  return Math.max(0, Math.min(fallbackIndex, entryIds.length - 1))
+}
+
 function applySelectionMaskToPane(
   paneState: CommanderPaneRuntimeState,
   mask: string,
@@ -692,6 +712,7 @@ function createPendingOperation(
       inputValue: '',
       matchCount: matches.entryIds.length,
       matchPreview: matches.entryNames.slice(0, 6),
+      matchIndex: getCommanderResolvedSearchMatchIndex(matches.entryIds, sourcePane.cursorEntryId),
     } satisfies CommanderPendingOperation
   }
 
@@ -844,6 +865,7 @@ export const requestCommanderActivePaneSelectByMask = createEvent<CommanderWidge
 export const requestCommanderActivePaneUnselectByMask = createEvent<CommanderWidgetPayload>()
 export const requestCommanderActivePaneFilter = createEvent<CommanderWidgetPayload>()
 export const requestCommanderActivePaneSearch = createEvent<CommanderWidgetPayload>()
+export const stepCommanderPendingSearchMatch = createEvent<CommanderWidgetPayload & { delta: 1 | -1 }>()
 export const requestCommanderActivePaneView = createEvent<CommanderWidgetPayload>()
 export const requestCommanderActivePaneEdit = createEvent<CommanderWidgetPayload>()
 export const clearCommanderActivePaneFilter = createEvent<CommanderWidgetPayload>()
@@ -1519,6 +1541,51 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
         : widgetState,
     }
   })
+  .on(stepCommanderPendingSearchMatch, (widgets, payload) => {
+    const widgetState = widgets[payload.widgetId]
+
+    if (!widgetState?.pendingOperation || widgetState.pendingOperation.kind !== 'search') {
+      return widgets
+    }
+
+    const sourcePane = getPaneState(widgetState, widgetState.pendingOperation.sourcePaneId)
+    const matches = getCommanderSearchMatches(sourcePane, widgetState.pendingOperation.inputValue ?? '')
+
+    if (matches.entryIds.length === 0) {
+      return widgets
+    }
+
+    const currentIndex = getCommanderResolvedSearchMatchIndex(
+      matches.entryIds,
+      sourcePane.cursorEntryId,
+      widgetState.pendingOperation.matchIndex ?? 0,
+    )
+    const nextIndex = (currentIndex + payload.delta + matches.entryIds.length) % matches.entryIds.length
+    const nextCursorEntryId = matches.entryIds[nextIndex] ?? null
+
+    if (!nextCursorEntryId) {
+      return widgets
+    }
+
+    const nextWidgetState = updatePaneState(widgetState, widgetState.pendingOperation.sourcePaneId, (paneState) => ({
+      ...paneState,
+      cursorEntryId: nextCursorEntryId,
+      selectionAnchorEntryId: nextCursorEntryId,
+    }))
+
+    return {
+      ...widgets,
+      [payload.widgetId]: {
+        ...nextWidgetState,
+        pendingOperation: {
+          ...nextWidgetState.pendingOperation!,
+          matchCount: matches.entryIds.length,
+          matchPreview: matches.entryNames.slice(0, 6),
+          matchIndex: nextIndex,
+        },
+      },
+    }
+  })
   .on(clearCommanderActivePaneFilter, (widgets, payload) => {
     const widgetState = widgets[payload.widgetId]
 
@@ -1621,8 +1688,9 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
     }
 
     if (widgetState.pendingOperation.kind === 'search') {
+      const sourcePane = getPaneState(widgetState, widgetState.pendingOperation.sourcePaneId)
       const matches = getCommanderSearchMatches(
-        getPaneState(widgetState, widgetState.pendingOperation.sourcePaneId),
+        sourcePane,
         payload.inputValue,
       )
 
@@ -1635,6 +1703,11 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
             inputValue: payload.inputValue,
             matchCount: matches.entryIds.length,
             matchPreview: matches.entryNames.slice(0, 6),
+            matchIndex: getCommanderResolvedSearchMatchIndex(
+              matches.entryIds,
+              sourcePane.cursorEntryId,
+              0,
+            ),
           },
         },
       }
@@ -1918,11 +1991,19 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
     }
 
     if (pendingOperation.kind === 'search') {
+      const sourcePane = getPaneState(widgetState, pendingOperation.sourcePaneId)
       const matches = getCommanderSearchMatches(
-        getPaneState(widgetState, pendingOperation.sourcePaneId),
+        sourcePane,
         pendingOperation.inputValue ?? '',
       )
-      const nextCursorEntryId = matches.entryIds[0] ?? null
+      const resolvedMatchIndex = getCommanderResolvedSearchMatchIndex(
+        matches.entryIds,
+        sourcePane.cursorEntryId,
+        pendingOperation.matchIndex ?? 0,
+      )
+      const nextCursorEntryId = resolvedMatchIndex === -1
+        ? null
+        : (matches.entryIds[resolvedMatchIndex] ?? null)
 
       return {
         ...widgets,
