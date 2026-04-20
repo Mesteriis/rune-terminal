@@ -59,6 +59,7 @@ export type CommanderPaneRuntimeState = {
   path: string
   entries: CommanderDirectoryEntry[]
   cursorEntryId: string | null
+  selectionAnchorEntryId: string | null
   selectedIds: string[]
   historyBack: string[]
   historyForward: string[]
@@ -68,6 +69,7 @@ export type CommanderPanePersistedState = {
   path: string
   entries: CommanderDirectoryEntry[]
   cursorEntryId: string | null
+  selectionAnchorEntryId: string | null
   selectedIds: string[]
   historyBack: string[]
   historyForward: string[]

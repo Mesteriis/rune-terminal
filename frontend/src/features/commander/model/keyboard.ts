@@ -45,6 +45,11 @@ export function useCommanderKeyboard(
     }
 
     if (event.metaKey || event.ctrlKey) {
+      if (!event.metaKey && event.ctrlKey && event.key === 'PageUp') {
+        event.preventDefault()
+        commanderActions.goParent()
+      }
+
       return
     }
 
@@ -60,6 +65,37 @@ export function useCommanderKeyboard(
           return
         default:
           return
+      }
+    }
+
+    if (event.shiftKey) {
+      switch (event.key) {
+        case 'ArrowUp':
+          event.preventDefault()
+          commanderActions.moveCursor(-1, { extendSelection: true })
+          return
+        case 'ArrowDown':
+          event.preventDefault()
+          commanderActions.moveCursor(1, { extendSelection: true })
+          return
+        case 'PageUp':
+          event.preventDefault()
+          commanderActions.moveCursor(-10, { extendSelection: true })
+          return
+        case 'PageDown':
+          event.preventDefault()
+          commanderActions.moveCursor(10, { extendSelection: true })
+          return
+        case 'Home':
+          event.preventDefault()
+          commanderActions.setBoundaryCursor(activePane, 'start', { extendSelection: true })
+          return
+        case 'End':
+          event.preventDefault()
+          commanderActions.setBoundaryCursor(activePane, 'end', { extendSelection: true })
+          return
+        default:
+          break
       }
     }
 

@@ -590,6 +590,7 @@ function createInitialPaneState(
   path: string,
   selectedIds: string[],
   cursorEntryId: string | null,
+  selectionAnchorEntryId: string | null,
   options: {
     showHidden: boolean
     sortMode: CommanderSortMode
@@ -606,12 +607,16 @@ function createInitialPaneState(
   const nextCursorEntryId = cursorEntryId && visibleIds.has(cursorEntryId)
     ? cursorEntryId
     : (entries[0]?.id ?? null)
+  const nextSelectionAnchorEntryId = selectionAnchorEntryId && visibleIds.has(selectionAnchorEntryId)
+    ? selectionAnchorEntryId
+    : nextCursorEntryId
 
   return {
     id: paneId,
     path,
     entries,
     cursorEntryId: nextCursorEntryId,
+    selectionAnchorEntryId: nextSelectionAnchorEntryId,
     selectedIds: nextSelectedIds,
     historyBack: history?.back ?? [],
     historyForward: history?.forward ?? [],
@@ -633,6 +638,7 @@ function createPaneStateFromPersisted(
     paneState.path,
     paneState.selectedIds,
     paneState.cursorEntryId,
+    paneState.selectionAnchorEntryId,
     options,
     {
       back: paneState.historyBack,
@@ -667,6 +673,7 @@ export function createCommanderWidgetRuntimeState(
         commanderWidgetMockState.leftPane.path,
         commanderWidgetMockState.leftPane.rows.filter((row) => row.selected).map((row) => row.id),
         commanderWidgetMockState.leftPane.rows.find((row) => row.focused)?.id ?? null,
+        commanderWidgetMockState.leftPane.rows.find((row) => row.focused)?.id ?? null,
         options,
       ),
     rightPane: persistedState?.rightPane
@@ -676,6 +683,7 @@ export function createCommanderWidgetRuntimeState(
         'right',
         commanderWidgetMockState.rightPane.path,
         commanderWidgetMockState.rightPane.rows.filter((row) => row.selected).map((row) => row.id),
+        commanderWidgetMockState.rightPane.rows.find((row) => row.focused)?.id ?? null,
         commanderWidgetMockState.rightPane.rows.find((row) => row.focused)?.id ?? null,
         options,
       ),

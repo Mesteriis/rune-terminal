@@ -176,7 +176,7 @@ function CommanderPane({
   onActivate: () => void
   onFocusRoot: () => void
   onOpenEntry: (entryId: string) => void
-  onSetCursor: (entryId: string) => void
+  onSetCursor: (entryId: string, options?: { rangeSelect?: boolean }) => void
   onToggleSelection: (entryId: string) => void
   pane: CommanderPaneViewState
 }) {
@@ -236,7 +236,9 @@ function CommanderPane({
               key={row.id}
               onClick={(event) => {
                 onActivate()
-                onSetCursor(row.id)
+                onSetCursor(row.id, {
+                  rangeSelect: event.shiftKey,
+                })
                 onFocusRoot()
 
                 if (event.metaKey || event.ctrlKey) {

@@ -30,6 +30,7 @@ function normalizePaneState(value: unknown): CommanderPanePersistedState | null 
     typeof value.path !== 'string'
     || !Array.isArray(value.entries)
     || (value.cursorEntryId !== null && typeof value.cursorEntryId !== 'string')
+    || (value.selectionAnchorEntryId !== null && typeof value.selectionAnchorEntryId !== 'string')
     || !isStringArray(value.selectedIds)
     || !isStringArray(value.historyBack)
     || !isStringArray(value.historyForward)
@@ -41,6 +42,7 @@ function normalizePaneState(value: unknown): CommanderPanePersistedState | null 
     path: value.path,
     entries: value.entries,
     cursorEntryId: value.cursorEntryId,
+    selectionAnchorEntryId: value.selectionAnchorEntryId ?? value.cursorEntryId ?? null,
     selectedIds: value.selectedIds,
     historyBack: value.historyBack,
     historyForward: value.historyForward,
@@ -132,6 +134,7 @@ function serializePaneState(paneState: CommanderPaneRuntimeState): CommanderPane
     path: paneState.path,
     entries: paneState.entries,
     cursorEntryId: paneState.cursorEntryId,
+    selectionAnchorEntryId: paneState.selectionAnchorEntryId,
     selectedIds: paneState.selectedIds,
     historyBack: paneState.historyBack,
     historyForward: paneState.historyForward,

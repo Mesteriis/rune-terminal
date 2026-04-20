@@ -46,14 +46,21 @@ type CommanderWidgetPanePayload = CommanderWidgetPayload & {
 
 type CommanderSetPaneCursorPayload = CommanderWidgetPanePayload & {
   entryId: string
+  rangeSelect?: boolean
 }
 
 type CommanderMoveCursorPayload = CommanderWidgetPanePayload & {
   delta: number
+  extendSelection?: boolean
 }
 
 type CommanderToggleEntrySelectionPayload = CommanderWidgetPanePayload & {
   entryId: string
+}
+
+type CommanderSetPaneBoundaryCursorPayload = CommanderWidgetPanePayload & {
+  boundary: 'start' | 'end'
+  extendSelection?: boolean
 }
 
 type CommanderSetViewModePayload = CommanderWidgetPayload & {
@@ -119,6 +126,12 @@ function rebuildPaneState(
   const nextCursorEntryId = paneState.path === resolvedPath && paneState.cursorEntryId && visibleEntryIds.has(paneState.cursorEntryId)
     ? paneState.cursorEntryId
     : (snapshot.entries[0]?.id ?? null)
+  const nextSelectionAnchorEntryId =
+    paneState.path === resolvedPath
+    && paneState.selectionAnchorEntryId
+    && visibleEntryIds.has(paneState.selectionAnchorEntryId)
+      ? paneState.selectionAnchorEntryId
+      : nextCursorEntryId
 
   return {
     ...paneState,
@@ -126,6 +139,7 @@ function rebuildPaneState(
     entries: snapshot.entries,
     selectedIds: nextSelectedIds,
     cursorEntryId: nextCursorEntryId,
+    selectionAnchorEntryId: nextSelectionAnchorEntryId,
   }
 }
 
@@ -200,6 +214,7 @@ function movePaneCursor(
   return {
     ...paneState,
     cursorEntryId: paneState.entries[nextCursorIndex]?.id ?? null,
+    selectionAnchorEntryId: paneState.entries[nextCursorIndex]?.id ?? null,
   }
 }
 
@@ -216,7 +231,82 @@ function setCursorToBoundary(
     cursorEntryId: boundary === 'start'
       ? paneState.entries[0]?.id ?? null
       : paneState.entries[paneState.entries.length - 1]?.id ?? null,
+    selectionAnchorEntryId: boundary === 'start'
+      ? paneState.entries[0]?.id ?? null
+      : paneState.entries[paneState.entries.length - 1]?.id ?? null,
   }
+}
+
+function movePaneCursorWithSelection(
+  paneState: CommanderPaneRuntimeState,
+  delta: number,
+) {
+  if (paneState.entries.length === 0) {
+    return paneState
+  }
+
+  const currentCursorIndex = paneState.cursorEntryId
+    ? paneState.entries.findIndex((entry) => entry.id === paneState.cursorEntryId)
+    : -1
+  const startIndex = currentCursorIndex === -1 ? 0 : currentCursorIndex
+  const nextCursorIndex = Math.min(
+    paneState.entries.length - 1,
+    Math.max(0, startIndex + delta),
+  )
+  const nextCursorEntryId = paneState.entries[nextCursorIndex]?.id ?? null
+
+  if (!nextCursorEntryId) {
+    return paneState
+  }
+
+  return setSelectionRangeAtCursor(paneState, nextCursorEntryId)
+}
+
+function setSelectionRangeAtCursor(
+  paneState: CommanderPaneRuntimeState,
+  targetEntryId: string,
+) {
+  const targetIndex = paneState.entries.findIndex((entry) => entry.id === targetEntryId)
+
+  if (targetIndex === -1) {
+    return paneState
+  }
+
+  const anchorEntryId = paneState.selectionAnchorEntryId ?? paneState.cursorEntryId ?? targetEntryId
+  const anchorIndex = paneState.entries.findIndex((entry) => entry.id === anchorEntryId)
+  const resolvedAnchorIndex = anchorIndex === -1 ? targetIndex : anchorIndex
+  const [rangeStartIndex, rangeEndIndex] = resolvedAnchorIndex <= targetIndex
+    ? [resolvedAnchorIndex, targetIndex]
+    : [targetIndex, resolvedAnchorIndex]
+  const selectedIds = paneState.entries
+    .slice(rangeStartIndex, rangeEndIndex + 1)
+    .map((entry) => entry.id)
+
+  return {
+    ...paneState,
+    cursorEntryId: targetEntryId,
+    selectionAnchorEntryId: paneState.selectionAnchorEntryId ?? paneState.cursorEntryId ?? targetEntryId,
+    selectedIds,
+  }
+}
+
+function setCursorToBoundaryWithSelection(
+  paneState: CommanderPaneRuntimeState,
+  boundary: 'start' | 'end',
+) {
+  if (paneState.entries.length === 0) {
+    return paneState
+  }
+
+  const targetEntryId = boundary === 'start'
+    ? (paneState.entries[0]?.id ?? null)
+    : (paneState.entries[paneState.entries.length - 1]?.id ?? null)
+
+  if (!targetEntryId) {
+    return paneState
+  }
+
+  return setSelectionRangeAtCursor(paneState, targetEntryId)
 }
 
 function toggleEntrySelection(
@@ -234,6 +324,7 @@ function toggleEntrySelection(
   return {
     ...paneState,
     selectedIds,
+    selectionAnchorEntryId: entryId,
   }
 }
 
@@ -369,7 +460,7 @@ export const setCommanderViewMode = createEvent<CommanderSetViewModePayload>()
 export const setCommanderSortMode = createEvent<CommanderSetSortModePayload>()
 export const setCommanderPaneCursor = createEvent<CommanderSetPaneCursorPayload>()
 export const moveCommanderPaneCursor = createEvent<CommanderMoveCursorPayload>()
-export const moveCommanderActivePaneCursor = createEvent<CommanderWidgetPayload & { delta: number }>()
+export const moveCommanderActivePaneCursor = createEvent<CommanderWidgetPayload & { delta: number; extendSelection?: boolean }>()
 export const toggleCommanderPaneSelection = createEvent<CommanderToggleEntrySelectionPayload>()
 export const toggleCommanderActivePaneSelection = createEvent<CommanderWidgetPayload & { advance?: boolean }>()
 export const openCommanderPaneEntry = createEvent<CommanderOpenEntryPayload>()
@@ -381,7 +472,7 @@ export const goCommanderPaneHistoryForward = createEvent<CommanderWidgetPanePayl
 export const goCommanderActivePaneHistoryBack = createEvent<CommanderWidgetPayload>()
 export const goCommanderActivePaneHistoryForward = createEvent<CommanderWidgetPayload>()
 export const switchCommanderActivePane = createEvent<CommanderWidgetPayload>()
-export const setCommanderPaneBoundaryCursor = createEvent<CommanderWidgetPanePayload & { boundary: 'start' | 'end' }>()
+export const setCommanderPaneBoundaryCursor = createEvent<CommanderSetPaneBoundaryCursorPayload>()
 export const requestCommanderActivePaneCopy = createEvent<CommanderWidgetPayload>()
 export const requestCommanderActivePaneMove = createEvent<CommanderWidgetPayload>()
 export const requestCommanderActivePaneDelete = createEvent<CommanderWidgetPayload>()
@@ -499,9 +590,14 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
             return paneState
           }
 
+          if (payload.rangeSelect) {
+            return setSelectionRangeAtCursor(paneState, payload.entryId)
+          }
+
           return {
             ...paneState,
             cursorEntryId: payload.entryId,
+            selectionAnchorEntryId: payload.entryId,
           }
         },
       ),
@@ -522,7 +618,9 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
           activePane: payload.paneId,
         },
         payload.paneId,
-        (paneState) => movePaneCursor(paneState, payload.delta),
+        (paneState) => payload.extendSelection
+          ? movePaneCursorWithSelection(paneState, payload.delta)
+          : movePaneCursor(paneState, payload.delta),
       ),
     }
   })
@@ -536,7 +634,9 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
     return {
       ...widgets,
       [payload.widgetId]: updatePaneState(widgetState, widgetState.activePane, (paneState) => (
-        movePaneCursor(paneState, payload.delta)
+        payload.extendSelection
+          ? movePaneCursorWithSelection(paneState, payload.delta)
+          : movePaneCursor(paneState, payload.delta)
       )),
     }
   })
@@ -775,7 +875,9 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
           activePane: payload.paneId,
         },
         payload.paneId,
-        (paneState) => setCursorToBoundary(paneState, payload.boundary),
+        (paneState) => payload.extendSelection
+          ? setCursorToBoundaryWithSelection(paneState, payload.boundary)
+          : setCursorToBoundary(paneState, payload.boundary),
       ),
     }
   })

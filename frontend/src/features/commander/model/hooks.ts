@@ -133,7 +133,9 @@ export function useCommanderWidget(widgetId: string) {
     actions: {
       openPaneEntry: (paneId: CommanderPaneId, entryId: string) => onOpenCommanderPaneEntry({ widgetId, paneId, entryId }),
       setActivePane: (paneId: CommanderPaneId) => onSetCommanderActivePane({ widgetId, paneId }),
-      setPaneCursor: (paneId: CommanderPaneId, entryId: string) => onSetCommanderPaneCursor({ widgetId, paneId, entryId }),
+      setPaneCursor: (paneId: CommanderPaneId, entryId: string, options?: { rangeSelect?: boolean }) => (
+        onSetCommanderPaneCursor({ widgetId, paneId, entryId, rangeSelect: options?.rangeSelect })
+      ),
       setViewMode: (viewMode: CommanderViewMode) => onSetCommanderViewMode({ widgetId, viewMode }),
       togglePaneSelection: (paneId: CommanderPaneId, entryId: string) => onToggleCommanderPaneSelection({ widgetId, paneId, entryId }),
       toggleShowHidden: () => onToggleCommanderShowHidden({ widgetId }),
@@ -211,11 +213,13 @@ export function useCommanderActions(widgetId: string) {
     goParent: () => onGoCommanderActivePaneParent({ widgetId }),
     mkdir: () => onRequestCommanderActivePaneMkdir({ widgetId }),
     moveSelection: () => onRequestCommanderActivePaneMove({ widgetId }),
-    moveCursor: (delta: number) => onMoveCommanderActivePaneCursor({ widgetId, delta }),
+    moveCursor: (delta: number, options?: { extendSelection?: boolean }) => (
+      onMoveCommanderActivePaneCursor({ widgetId, delta, extendSelection: options?.extendSelection })
+    ),
     openActiveEntry: () => onOpenCommanderActivePaneEntry({ widgetId }),
     renameSelection: () => onRequestCommanderActivePaneRename({ widgetId }),
-    setBoundaryCursor: (paneId: CommanderPaneId, boundary: 'start' | 'end') => (
-      onSetCommanderPaneBoundaryCursor({ widgetId, paneId, boundary })
+    setBoundaryCursor: (paneId: CommanderPaneId, boundary: 'start' | 'end', options?: { extendSelection?: boolean }) => (
+      onSetCommanderPaneBoundaryCursor({ widgetId, paneId, boundary, extendSelection: options?.extendSelection })
     ),
     setPendingOperationInput: (inputValue: string) => onSetCommanderPendingOperationInput({ widgetId, inputValue }),
     switchActivePane: () => onSwitchCommanderActivePane({ widgetId }),
