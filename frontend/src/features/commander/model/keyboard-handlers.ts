@@ -1,6 +1,12 @@
 import type { KeyboardEvent } from 'react'
 
-import type { CommanderPaneId, CommanderPendingOperation } from '@/features/commander/model/types'
+import type {
+  CommanderFileRow,
+  CommanderPaneId,
+  CommanderPendingOperation,
+} from '@/features/commander/model/types'
+
+export const COMMANDER_TYPEAHEAD_RESET_MS = 700
 
 type CommanderKeyboardEvent = Pick<
   KeyboardEvent<HTMLElement>,
@@ -67,11 +73,50 @@ type CommanderNavigationKeyboardActions = {
   viewActiveFile: () => void
 }
 
+export type CommanderTypeaheadState = {
+  prefix: string
+  timestamp: number
+}
+
+type CommanderTypeaheadActions = {
+  setCursor: (paneId: CommanderPaneId, entryId: string) => void
+}
+
+type CommanderTypeaheadResult = {
+  handled: boolean
+  nextTypeaheadState: CommanderTypeaheadState
+}
+
 function hasCommanderPendingConflictResolution(pendingOperation: CommanderPendingOperation) {
   return (
     (pendingOperation.kind === 'copy' || pendingOperation.kind === 'move') &&
     Boolean(pendingOperation.conflictEntryNames?.length)
   )
+}
+
+function isTypeaheadCharacter(event: CommanderKeyboardEvent) {
+  if (event.altKey || event.ctrlKey || event.metaKey) {
+    return false
+  }
+
+  if (event.key.length !== 1) {
+    return false
+  }
+
+  return event.key.trim().length > 0
+}
+
+function findNextTypeaheadMatch(rows: CommanderFileRow[], prefix: string) {
+  if (!rows.length || !prefix) {
+    return null
+  }
+
+  const normalizedPrefix = prefix.toLocaleLowerCase()
+  const focusedIndex = rows.findIndex((row) => row.focused)
+  const searchRows =
+    focusedIndex === -1 ? rows : [...rows.slice(focusedIndex + 1), ...rows.slice(0, focusedIndex + 1)]
+
+  return searchRows.find((row) => row.name.toLocaleLowerCase().startsWith(normalizedPrefix)) ?? null
 }
 
 export function handleCommanderFileDialogKeys(
@@ -385,5 +430,55 @@ export function handleCommanderNavigationKeys(
       return true
     default:
       return false
+  }
+}
+
+export function handleCommanderTypeaheadKey(
+  event: CommanderKeyboardEvent,
+  activePane: CommanderPaneId,
+  activePaneRows: CommanderFileRow[],
+  typeaheadState: CommanderTypeaheadState,
+  commanderActions: CommanderTypeaheadActions,
+  now = Date.now(),
+): CommanderTypeaheadResult {
+  if (!isTypeaheadCharacter(event)) {
+    return {
+      handled: false,
+      nextTypeaheadState: typeaheadState,
+    }
+  }
+
+  const normalizedCharacter = event.key.toLocaleLowerCase()
+  const nextPrefix =
+    now - typeaheadState.timestamp <= COMMANDER_TYPEAHEAD_RESET_MS
+      ? `${typeaheadState.prefix}${normalizedCharacter}`
+      : normalizedCharacter
+  let resolvedPrefix = nextPrefix
+  let matchedRow = findNextTypeaheadMatch(activePaneRows, resolvedPrefix)
+
+  if (!matchedRow && nextPrefix.length > 1) {
+    resolvedPrefix = normalizedCharacter
+    matchedRow = findNextTypeaheadMatch(activePaneRows, resolvedPrefix)
+  }
+
+  if (!matchedRow) {
+    return {
+      handled: true,
+      nextTypeaheadState: {
+        prefix: '',
+        timestamp: 0,
+      },
+    }
+  }
+
+  event.preventDefault()
+  commanderActions.setCursor(activePane, matchedRow.id)
+
+  return {
+    handled: true,
+    nextTypeaheadState: {
+      prefix: resolvedPrefix,
+      timestamp: now,
+    },
   }
 }

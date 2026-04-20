@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import {
+  COMMANDER_TYPEAHEAD_RESET_MS,
   handleCommanderAltNavigationKeys,
   handleCommanderFileDialogKeys,
   handleCommanderModifierKeys,
@@ -8,8 +9,9 @@ import {
   handleCommanderPendingOperationKeys,
   handleCommanderSelectionShortcutKeys,
   handleCommanderShiftNavigationKeys,
+  handleCommanderTypeaheadKey,
 } from '@/features/commander/model/keyboard-handlers'
-import type { CommanderPendingOperation } from '@/features/commander/model/types'
+import type { CommanderFileRow, CommanderPendingOperation } from '@/features/commander/model/types'
 
 function createKeyboardEvent(
   overrides: Partial<{
@@ -44,6 +46,25 @@ function createPendingOperation(
     targetPath: '~/right',
     entryIds: ['entry-1'],
     entryNames: ['entry-1.txt'],
+    ...overrides,
+  }
+}
+
+function createFileRow(
+  id: string,
+  name: string,
+  overrides: Partial<CommanderFileRow> = {},
+): CommanderFileRow {
+  return {
+    id,
+    name,
+    ext: '',
+    focused: false,
+    hidden: false,
+    kind: 'file',
+    modified: '2026-04-20',
+    selected: false,
+    size: '1 KB',
     ...overrides,
   }
 }
@@ -357,5 +378,115 @@ describe('handleCommanderNavigationKeys', () => {
 
     expect(handled).toBe(false)
     expect(event.preventDefault).not.toHaveBeenCalled()
+  })
+})
+
+describe('handleCommanderTypeaheadKey', () => {
+  it('moves the cursor to the first matching prefix and stores the prefix state', () => {
+    const event = createKeyboardEvent({ key: 'a' })
+    const commanderActions = {
+      setCursor: vi.fn(),
+    }
+    const rows = [
+      createFileRow('entry-1', 'alpha.txt'),
+      createFileRow('entry-2', 'beta.txt', { focused: true }),
+    ]
+
+    const result = handleCommanderTypeaheadKey(
+      event,
+      'left',
+      rows,
+      { prefix: '', timestamp: 0 },
+      commanderActions,
+      1_000,
+    )
+
+    expect(result).toEqual({
+      handled: true,
+      nextTypeaheadState: {
+        prefix: 'a',
+        timestamp: 1_000,
+      },
+    })
+    expect(event.preventDefault).toHaveBeenCalledOnce()
+    expect(commanderActions.setCursor).toHaveBeenCalledWith('left', 'entry-1')
+  })
+
+  it('falls back to the latest character when the accumulated prefix no longer matches', () => {
+    const event = createKeyboardEvent({ key: 'c' })
+    const commanderActions = {
+      setCursor: vi.fn(),
+    }
+    const rows = [
+      createFileRow('entry-1', 'alpha.txt', { focused: true }),
+      createFileRow('entry-2', 'charlie.txt'),
+    ]
+
+    const result = handleCommanderTypeaheadKey(
+      event,
+      'left',
+      rows,
+      { prefix: 'a', timestamp: 1_000 },
+      commanderActions,
+      1_000 + COMMANDER_TYPEAHEAD_RESET_MS - 1,
+    )
+
+    expect(result.nextTypeaheadState).toEqual({
+      prefix: 'c',
+      timestamp: 1_000 + COMMANDER_TYPEAHEAD_RESET_MS - 1,
+    })
+    expect(commanderActions.setCursor).toHaveBeenCalledWith('left', 'entry-2')
+  })
+
+  it('resets the typeahead state when no printable match exists', () => {
+    const event = createKeyboardEvent({ key: 'z' })
+    const commanderActions = {
+      setCursor: vi.fn(),
+    }
+    const rows = [createFileRow('entry-1', 'alpha.txt')]
+
+    const result = handleCommanderTypeaheadKey(
+      event,
+      'left',
+      rows,
+      { prefix: 'a', timestamp: 1_000 },
+      commanderActions,
+      1_001,
+    )
+
+    expect(result).toEqual({
+      handled: true,
+      nextTypeaheadState: {
+        prefix: '',
+        timestamp: 0,
+      },
+    })
+    expect(event.preventDefault).not.toHaveBeenCalled()
+    expect(commanderActions.setCursor).not.toHaveBeenCalled()
+  })
+
+  it('ignores non-printable keys and leaves the current typeahead state untouched', () => {
+    const event = createKeyboardEvent({ key: 'ArrowDown' })
+    const commanderActions = {
+      setCursor: vi.fn(),
+    }
+
+    const result = handleCommanderTypeaheadKey(
+      event,
+      'left',
+      [],
+      { prefix: 'a', timestamp: 1_000 },
+      commanderActions,
+      2_000,
+    )
+
+    expect(result).toEqual({
+      handled: false,
+      nextTypeaheadState: {
+        prefix: 'a',
+        timestamp: 1_000,
+      },
+    })
+    expect(commanderActions.setCursor).not.toHaveBeenCalled()
   })
 })
