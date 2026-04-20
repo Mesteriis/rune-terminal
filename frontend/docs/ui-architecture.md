@@ -262,7 +262,8 @@ Lookup helpers exported from `src/shared/ui/dom-id.tsx`:
 - `TerminalDockviewTabWidget` keeps terminal-specific Dockview tab composition in the widget layer, reusing `TerminalStatusHeader` in a compact mode instead of duplicating terminal chrome inside the body.
 - Terminal Dockview tabs now use `cwd` as the primary visible label, while only the active terminal tab exposes connection/session/shell pills plus the local `+` action for adding another terminal tab into the same group.
 - The current shell example routes its visible shell blocks through widgets and primitives instead of raw HTML in `App.tsx`.
-- `App.tsx` remains responsible for Dockview API orchestration and Effector state wiring.
+- `App.tsx` remains responsible for shell composition, Dockview API orchestration, and Effector state wiring.
+- The app-local Dockview workspace persistence contract now lives in `src/app/dockview-workspace.persistence.ts`, so `use-dockview-workspace.ts` can stay focused on runtime coordination instead of owning the raw `localStorage` schema inline.
 - Modal state now lives in a dedicated `shared/model/modal.ts` store instead of being hidden inside widget-local React state.
 - Tokens now cover dark canvas, glass surfaces, accent hues, spacing, radii, shell sizes, blur, and shadow.
 - Shared primitives consume only semantic tokens instead of hardcoded `#111/#fff/#333` values.
