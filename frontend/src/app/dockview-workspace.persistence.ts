@@ -2,8 +2,6 @@ import { type SerializedDockview } from 'dockview-react'
 
 import { type ShellWorkspaceTab } from '@/widgets'
 
-const DOCKVIEW_WORKSPACE_STORAGE_KEY = 'runa-terminal:dockview-workspaces:v1'
-
 export const DEFAULT_ACTIVE_WORKSPACE_ID = 2
 
 export type WorkspaceLayoutTab = ShellWorkspaceTab & {
@@ -22,64 +20,46 @@ export function createDefaultWorkspaceTabs(): WorkspaceLayoutTab[] {
   ]
 }
 
-export function readPersistedDockviewWorkspaceState(): PersistedDockviewWorkspaceState | null {
-  if (typeof window === 'undefined') {
+export function normalizePersistedDockviewWorkspaceState(
+  value: unknown,
+): PersistedDockviewWorkspaceState | null {
+  if (!value || typeof value !== 'object') {
     return null
   }
 
-  try {
-    const rawValue = window.localStorage.getItem(DOCKVIEW_WORKSPACE_STORAGE_KEY)
+  const parsedValue = value as Partial<PersistedDockviewWorkspaceState>
 
-    if (!rawValue) {
-      return null
-    }
+  if (!Array.isArray(parsedValue.workspaceTabs) || typeof parsedValue.activeWorkspaceId !== 'number') {
+    return null
+  }
 
-    const parsedValue = JSON.parse(rawValue) as Partial<PersistedDockviewWorkspaceState>
-
-    if (!Array.isArray(parsedValue.workspaceTabs) || typeof parsedValue.activeWorkspaceId !== 'number') {
-      return null
-    }
-
-    const workspaceTabs = parsedValue.workspaceTabs
-      .filter((workspace): workspace is WorkspaceLayoutTab =>
-        Boolean(
-          workspace &&
-          typeof workspace.id === 'number' &&
-          typeof workspace.title === 'string' &&
-          'snapshot' in workspace,
-        ),
-      )
-      .map((workspace) => ({
-        id: workspace.id,
-        title: workspace.title,
-        snapshot: workspace.snapshot ?? null,
-      }))
-
-    if (workspaceTabs.length === 0) {
-      return null
-    }
-
-    const hasActiveWorkspace = workspaceTabs.some(
-      (workspace) => workspace.id === parsedValue.activeWorkspaceId,
+  const workspaceTabs = parsedValue.workspaceTabs
+    .filter((workspace): workspace is WorkspaceLayoutTab =>
+      Boolean(
+        workspace &&
+        typeof workspace.id === 'number' &&
+        typeof workspace.title === 'string' &&
+        'snapshot' in workspace,
+      ),
     )
+    .map((workspace) => ({
+      id: workspace.id,
+      title: workspace.title,
+      snapshot: workspace.snapshot ?? null,
+    }))
 
-    if (!hasActiveWorkspace) {
-      return null
-    }
-
-    return {
-      activeWorkspaceId: parsedValue.activeWorkspaceId,
-      workspaceTabs,
-    }
-  } catch {
+  if (workspaceTabs.length === 0) {
     return null
   }
-}
 
-export function writePersistedDockviewWorkspaceState(state: PersistedDockviewWorkspaceState) {
-  if (typeof window === 'undefined') {
-    return
+  const hasActiveWorkspace = workspaceTabs.some((workspace) => workspace.id === parsedValue.activeWorkspaceId)
+
+  if (!hasActiveWorkspace) {
+    return null
   }
 
-  window.localStorage.setItem(DOCKVIEW_WORKSPACE_STORAGE_KEY, JSON.stringify(state))
+  return {
+    activeWorkspaceId: parsedValue.activeWorkspaceId,
+    workspaceTabs,
+  }
 }

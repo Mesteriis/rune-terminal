@@ -263,7 +263,7 @@ Lookup helpers exported from `src/shared/ui/dom-id.tsx`:
 - Terminal Dockview tabs now use `cwd` as the primary visible label, while only the active terminal tab exposes connection/session/shell pills plus the local `+` action for adding another terminal tab into the same group.
 - The current shell example routes its visible shell blocks through widgets and primitives instead of raw HTML in `App.tsx`.
 - `App.tsx` remains responsible for shell composition, Dockview API orchestration, and Effector state wiring.
-- The app-local Dockview workspace persistence contract now lives in `src/app/dockview-workspace.persistence.ts`, so `use-dockview-workspace.ts` can stay focused on runtime coordination instead of owning the raw `localStorage` schema inline.
+- The app-local Dockview workspace schema normalization now lives in `src/app/dockview-workspace.persistence.ts`, while `src/app/dockview-workspace.client.ts` provides the pluggable snapshot client contract and the current `localStorage` adapter.
 - The default Dockview panel seed now also lives in `src/app/dockview-workspace.bootstrap.ts`, so the initial shell topology is expressed once outside the React lifecycle hook.
 - Dockview layout sync and persistence subscription wiring now also live in `src/app/dockview-workspace.runtime.ts`, keeping the hook focused on workspace lifecycle and state transitions instead of repeating event plumbing.
 - The Dockview ready-path decision tree now also lives in `src/app/dockview-workspace.ready.ts`, so the hook no longer mixes `onReady` lifecycle with the branching restore/bootstrap policy inline.

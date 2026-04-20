@@ -1,13 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { type DockviewApi, type DockviewReadyEvent } from 'dockview-react'
 
+import { dockviewWorkspaceClient, type DockviewWorkspaceClient } from './dockview-workspace.client'
 import {
   createDefaultWorkspaceTabs,
   DEFAULT_ACTIVE_WORKSPACE_ID,
-  readPersistedDockviewWorkspaceState,
   type PersistedDockviewWorkspaceState,
   type WorkspaceLayoutTab,
-  writePersistedDockviewWorkspaceState,
 } from './dockview-workspace.persistence'
 import {
   bindDockviewWorkspacePersistence,
@@ -20,11 +19,16 @@ import { resolveDockviewWorkspaceReadyState } from './dockview-workspace.ready'
 
 const DOCKVIEW_PERSIST_DEBOUNCE_MS = 120
 
-export function useDockviewWorkspace() {
+type UseDockviewWorkspaceOptions = {
+  client?: DockviewWorkspaceClient
+}
+
+export function useDockviewWorkspace({ client = dockviewWorkspaceClient }: UseDockviewWorkspaceOptions = {}) {
+  const workspaceClientRef = useRef(client)
   const dockviewApiRef = useRef<DockviewApi | null>(null)
   const dockviewContainerRef = useRef<HTMLDivElement | null>(null)
   const initialWorkspaceStateRef = useRef<PersistedDockviewWorkspaceState | null>(
-    readPersistedDockviewWorkspaceState(),
+    workspaceClientRef.current.readState(),
   )
   const [workspaceTabs, setWorkspaceTabs] = useState<WorkspaceLayoutTab[]>(
     initialWorkspaceStateRef.current?.workspaceTabs ?? createDefaultWorkspaceTabs(),
@@ -196,7 +200,7 @@ export function useDockviewWorkspace() {
   }, [])
 
   useEffect(() => {
-    writePersistedDockviewWorkspaceState({
+    workspaceClientRef.current.writeState({
       activeWorkspaceId,
       workspaceTabs,
     })
