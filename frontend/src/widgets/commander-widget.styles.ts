@@ -178,6 +178,22 @@ export const commanderPathTextStyle: CSSProperties = {
   lineHeight: 'var(--line-height-sm)',
 }
 
+export const commanderPathInputStyle: CSSProperties = {
+  width: '100%',
+  minWidth: 0,
+  height: '24px',
+  minHeight: '24px',
+  padding: '0 var(--space-xs)',
+  borderRadius: 'var(--radius-xs)',
+  background: 'rgba(8, 15, 14, 0.92)',
+  border: '1px solid var(--runa-commander-highlight-border)',
+  boxShadow: 'inset 0 0 0 1px var(--runa-commander-highlight-ring)',
+  color: 'var(--runa-commander-text-strong)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: 'var(--font-size-sm)',
+  lineHeight: 'var(--line-height-sm)',
+}
+
 export const commanderPaneMetaStyle: CSSProperties = {
   color: 'var(--runa-commander-text-muted)',
   fontSize: 'var(--font-size-sm)',

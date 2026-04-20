@@ -77,6 +77,10 @@ type CommanderSetPendingOperationInputPayload = CommanderWidgetPayload & {
   inputValue: string
 }
 
+type CommanderSetPanePathPayload = CommanderWidgetPanePayload & {
+  path: string
+}
+
 type CommanderResolvePendingConflictPayload = CommanderWidgetPayload & {
   resolution: 'overwrite-current' | 'skip-current' | 'overwrite-all' | 'skip-all'
 }
@@ -764,6 +768,7 @@ export const requestCommanderActivePaneUnselectByMask = createEvent<CommanderWid
 export const requestCommanderActivePaneFilter = createEvent<CommanderWidgetPayload>()
 export const clearCommanderActivePaneFilter = createEvent<CommanderWidgetPayload>()
 export const invertCommanderActivePaneSelection = createEvent<CommanderWidgetPayload>()
+export const setCommanderPanePath = createEvent<CommanderSetPanePathPayload>()
 export const setCommanderPendingOperationInput = createEvent<CommanderSetPendingOperationInputPayload>()
 export const confirmCommanderPendingOperation = createEvent<CommanderWidgetPayload>()
 export const cancelCommanderPendingOperation = createEvent<CommanderWidgetPayload>()
@@ -1327,6 +1332,30 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
           filterQuery: '',
         })
       )),
+    }
+  })
+  .on(setCommanderPanePath, (widgets, payload) => {
+    const widgetState = widgets[payload.widgetId]
+
+    if (!widgetState) {
+      return widgets
+    }
+
+    const nextPath = payload.path.trim()
+
+    if (!nextPath) {
+      return widgets
+    }
+
+    const currentPaneState = getPaneState(widgetState, payload.paneId)
+
+    if (currentPaneState.path === nextPath) {
+      return widgets
+    }
+
+    return {
+      ...widgets,
+      [payload.widgetId]: navigatePaneState(widgetState, payload.paneId, nextPath),
     }
   })
   .on(invertCommanderActivePaneSelection, (widgets, payload) => {

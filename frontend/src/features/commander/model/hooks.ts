@@ -27,6 +27,7 @@ import {
   requestCommanderActivePaneFilter,
   resolveCommanderPendingConflict,
   setCommanderActivePane,
+  setCommanderPanePath,
   setCommanderPaneBoundaryCursor,
   setCommanderPaneCursor,
   setCommanderPendingOperationInput,
@@ -188,6 +189,7 @@ export function useCommanderActions(widgetId: string) {
     onSwitchCommanderActivePane,
     onSetCommanderPaneCursor,
     onSetCommanderPaneBoundaryCursor,
+    onSetCommanderPanePath,
     onGoCommanderPaneParent,
     onSetCommanderPendingOperationInput,
     onInvertCommanderActivePaneSelection,
@@ -215,6 +217,7 @@ export function useCommanderActions(widgetId: string) {
     switchCommanderActivePane,
     setCommanderPaneCursor,
     setCommanderPaneBoundaryCursor,
+    setCommanderPanePath,
     goCommanderPaneParent,
     setCommanderPendingOperationInput,
     invertCommanderActivePaneSelection,
@@ -254,6 +257,7 @@ export function useCommanderActions(widgetId: string) {
     setBoundaryCursor: (paneId: CommanderPaneId, boundary: 'start' | 'end', options?: { extendSelection?: boolean }) => (
       onSetCommanderPaneBoundaryCursor({ widgetId, paneId, boundary, extendSelection: options?.extendSelection })
     ),
+    setPanePath: (paneId: CommanderPaneId, path: string) => onSetCommanderPanePath({ widgetId, paneId, path }),
     setPendingOperationInput: (inputValue: string) => onSetCommanderPendingOperationInput({ widgetId, inputValue }),
     switchActivePane: () => onSwitchCommanderActivePane({ widgetId }),
     toggleSelectionAtCursor: (advance?: boolean) => onToggleCommanderActivePaneSelection({ widgetId, advance }),

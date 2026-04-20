@@ -53,6 +53,9 @@ export function useCommanderKeyboard(
   activePane: CommanderPaneId,
   activePaneRows: CommanderFileRow[],
   pendingOperation: CommanderPendingOperation | null,
+  options?: {
+    onRequestPathEdit?: () => void
+  },
 ) {
   const commanderActions = useCommanderActions(widgetId)
   const typeaheadRef = useRef<{
@@ -93,6 +96,12 @@ export function useCommanderKeyboard(
       if (!event.metaKey && event.ctrlKey && event.key === 'Backspace') {
         event.preventDefault()
         commanderActions.clearActivePaneFilter()
+        return
+      }
+
+      if (!event.metaKey && event.ctrlKey && (event.key === 'l' || event.key === 'L')) {
+        event.preventDefault()
+        options?.onRequestPathEdit?.()
         return
       }
 
@@ -318,5 +327,5 @@ export function useCommanderKeyboard(
       default:
         return
     }
-  }, [activePane, activePaneRows, commanderActions, pendingOperation])
+  }, [activePane, activePaneRows, commanderActions, options, pendingOperation])
 }

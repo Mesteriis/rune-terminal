@@ -136,6 +136,7 @@ its visible shell blocks as raw HTML inside `App.tsx`.
 - Commander transfer conflicts now also stay frontend-only but explicit: when `copy` or `move` finds target-name collisions inside the same widget, the pending bar switches into `Overwrite`, `Skip`, `Overwrite all`, and `Skip all` actions instead of silently applying overwrite semantics.
 - Commander selection helpers now also follow classic Total Commander flows on the fake client: `Num +` opens select-by-mask, `Num -` opens unselect-by-mask, `Num *` inverts the active pane selection immediately, and mask input supports `*`, `?`, and `;`-separated patterns.
 - Commander panes now also support pane-local quick filtering on the fake client: `Ctrl+F` opens a pending filter input, `Ctrl+Backspace` clears the active pane filter, filter state persists with the pane, and the same wildcard grammar (`*`, `?`, `;`) is reused for filter matching.
+- Commander panes now also support inline path editing on the fake client: `Ctrl+L` or clicking the active pane path opens an inline header input, `Enter` navigates the pane to the resolved path, and `Escape` cancels without mutating the other pane or introducing backend path state.
 - `TerminalWidget` renders the terminal-specific body composition for terminal panels.
 - `TerminalDockviewTabWidget` renders terminal-specific Dockview tab chrome for terminal panels.
 - `CommanderDemoLayout` mounts `CommanderWidget` into the isolated `tool` panel demo surface.
@@ -220,6 +221,7 @@ Lookup helpers exported from `src/shared/ui/dom-id.tsx`:
 - Commander selection helpers now also stay widget-local and pane-local: `Num +` and `Num -` reuse the pending bar with mask previews/counts, `Num *` inverts the active pane selection immediately, and the model applies those mask matches without introducing backend search or cross-widget state.
 - Commander quick filter now also stays widget-local and pane-local: `Ctrl+F` opens a pending filter flow, `Ctrl+Backspace` clears the active pane filter, pane headers render a `FILTER <mask>` badge while active, and filtering reuses the same wildcard grammar as mask-selection flows.
 - Commander pending-input focus/select behavior now only selects once when a pending input operation opens, so follow-up typing in rename, mkdir, and filter flows no longer reselects the already-entered text after each character.
+- Commander inline path edit now stays widget-local and pane-local as well: `Ctrl+L` or a click on the active pane path swaps the header label for an inline input, and confirming that input rebuilds only the targeted pane against the fake client while preserving the other pane and widget-local persistence.
 - `CommanderDemoLayout` keeps the demo mount in a layout layer instead of wiring the commander surface directly into app orchestration.
 - `WidgetBusyOverlayWidget` stays in the widget layer and uses `@tsparticles/react` directly for the busy-field rendering instead of pushing imperative particle code into shared components.
 - `TerminalWidget` stays in the widget layer and now owns the terminal body only: toolbar, panel actions, and renderer surface.

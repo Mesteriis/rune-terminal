@@ -16,6 +16,7 @@
     { "key": "NUM+", "label": "Select" },
     { "key": "NUM-", "label": "Unselect" },
     { "key": "NUM*", "label": "Invert" },
+    { "key": "CTRL+L", "label": "Path" },
     { "key": "CTRL+F", "label": "Filter" },
     { "key": "CTRL+BS", "label": "Clear filter" }
   ],

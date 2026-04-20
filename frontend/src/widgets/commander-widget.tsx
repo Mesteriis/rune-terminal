@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight, Columns2, Columns3, Eye, EyeOff, Folder, FileCode2, FileText, Link2, SquareTerminal } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 
 import { useCommanderKeyboard } from '../features/commander/model/keyboard'
 import { useCommanderActions, useCommanderWidget } from '../features/commander/model/hooks'
@@ -55,6 +55,7 @@ import {
   commanderPendingSupplementStyle,
   commanderPaneStyle,
   commanderPaneTitleStyle,
+  commanderPathInputStyle,
   commanderPathTextStyle,
   commanderRootStyle,
   commanderRowFocusedStyle,
@@ -275,20 +276,34 @@ function getRowTypeLabel(row: CommanderFileRow) {
 
 function CommanderPane({
   isActive,
+  isEditingPath,
   pane,
+  pathEditValue,
+  pathInputRef,
   onActivate,
+  onCancelPathEdit,
+  onChangePathEdit,
+  onConfirmPathEdit,
   onFocusRoot,
   onOpenEntry,
+  onStartPathEdit,
   onSetCursor,
   onToggleSelection,
 }: {
   isActive: boolean
+  isEditingPath: boolean
   onActivate: () => void
+  onCancelPathEdit: (options?: { focusRoot?: boolean }) => void
+  onChangePathEdit: (value: string) => void
+  onConfirmPathEdit: () => void
   onFocusRoot: () => void
   onOpenEntry: (entryId: string) => void
+  onStartPathEdit: () => void
   onSetCursor: (entryId: string, options?: { rangeSelect?: boolean }) => void
   onToggleSelection: (entryId: string) => void
   pane: CommanderPaneViewState
+  pathEditValue: string
+  pathInputRef: RefObject<HTMLInputElement | null>
 }) {
   const rowRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const focusedRowId = useMemo(
@@ -326,7 +341,47 @@ function CommanderPane({
           <Badge runaComponent={`commander-pane-${pane.id}-state`} style={isActive ? paneStateBadgeStyle : inactivePaneStateBadgeStyle}>
             {isActive ? 'ACTIVE' : 'PANE'}
           </Badge>
-          <Text runaComponent={`commander-pane-${pane.id}-path`} style={commanderPathTextStyle}>{pane.path}</Text>
+          {isEditingPath ? (
+            <Input
+              aria-label={`Commander ${pane.id} pane path`}
+              onBlur={() => onCancelPathEdit({ focusRoot: false })}
+              onChange={(event) => onChangePathEdit(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  onConfirmPathEdit()
+                  return
+                }
+
+                if (event.key === 'Escape') {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  onCancelPathEdit()
+                }
+              }}
+              ref={pathInputRef}
+              runaComponent={`commander-pane-${pane.id}-path-input`}
+              style={commanderPathInputStyle}
+              value={pathEditValue}
+            />
+          ) : (
+            <Text
+              onClick={(event) => {
+                if (!isActive) {
+                  return
+                }
+
+                event.stopPropagation()
+                onStartPathEdit()
+              }}
+              runaComponent={`commander-pane-${pane.id}-path`}
+              style={commanderPathTextStyle}
+              title={pane.path}
+            >
+              {pane.path}
+            </Text>
+          )}
         </Box>
         <Box runaComponent={`commander-pane-${pane.id}-meta`} style={plainClusterStyle}>
           {pane.filterQuery ? (
@@ -416,15 +471,28 @@ export function CommanderWidget() {
   const { actions, state } = useCommanderWidget(widgetId)
   const commanderActions = useCommanderActions(widgetId)
   const activePane = state.activePane === 'left' ? state.leftPane : state.rightPane
+  const [editingPathPaneId, setEditingPathPaneId] = useState<CommanderPaneViewState['id'] | null>(null)
+  const [editingPathValue, setEditingPathValue] = useState('')
   const onCommanderKeyDownCapture = useCommanderKeyboard(
     widgetId,
     state.activePane,
     activePane.rows,
     state.pendingOperation,
+    {
+      onRequestPathEdit: () => {
+        if (state.pendingOperation) {
+          return
+        }
+
+        setEditingPathPaneId(state.activePane)
+        setEditingPathValue(activePane.path)
+      },
+    },
   )
   const autoTagCommanderRoot = useRunaDomAutoTagging('commander-root')
   const commanderRootRef = useRef<HTMLDivElement | null>(null)
   const pendingRenameInputRef = useRef<HTMLInputElement | null>(null)
+  const pathEditInputRef = useRef<HTMLInputElement | null>(null)
   const hadPendingOperationRef = useRef(false)
   const lastPendingInputIdentityRef = useRef<string | null>(null)
   const pendingOperationMessage = useMemo(() => formatPendingOperationMessage(state), [state])
@@ -472,6 +540,43 @@ export function CommanderWidget() {
     })
   }, [])
 
+  const startPathEdit = useCallback((paneId: CommanderPaneViewState['id']) => {
+    if (state.pendingOperation) {
+      return
+    }
+
+    const pane = paneId === 'left' ? state.leftPane : state.rightPane
+    actions.setActivePane(paneId)
+    setEditingPathPaneId(paneId)
+    setEditingPathValue(pane.path)
+  }, [actions, state.leftPane, state.pendingOperation, state.rightPane])
+
+  const cancelPathEdit = useCallback((options?: { focusRoot?: boolean }) => {
+    setEditingPathPaneId(null)
+    setEditingPathValue('')
+
+    if (options?.focusRoot ?? true) {
+      focusCommanderRoot()
+    }
+  }, [focusCommanderRoot])
+
+  const confirmPathEdit = useCallback(() => {
+    if (!editingPathPaneId) {
+      return
+    }
+
+    const nextPath = editingPathValue.trim()
+
+    setEditingPathPaneId(null)
+    setEditingPathValue('')
+
+    if (nextPath) {
+      commanderActions.setPanePath(editingPathPaneId, nextPath)
+    }
+
+    focusCommanderRoot()
+  }, [commanderActions, editingPathPaneId, editingPathValue, focusCommanderRoot])
+
   useEffect(() => {
     if (!pendingOperationNeedsInput) {
       lastPendingInputIdentityRef.current = null
@@ -499,6 +604,22 @@ export function CommanderWidget() {
 
     hadPendingOperationRef.current = Boolean(state.pendingOperation)
   }, [focusCommanderRoot, state.pendingOperation])
+
+  useEffect(() => {
+    if (!editingPathPaneId || state.pendingOperation) {
+      return
+    }
+
+    pathEditInputRef.current?.focus()
+    pathEditInputRef.current?.select()
+  }, [editingPathPaneId, state.pendingOperation])
+
+  useEffect(() => {
+    if (state.pendingOperation && editingPathPaneId) {
+      setEditingPathPaneId(null)
+      setEditingPathValue('')
+    }
+  }, [editingPathPaneId, state.pendingOperation])
 
   const handleHintAction = useCallback((hintKey: string) => {
     switch (hintKey) {
@@ -535,12 +656,15 @@ export function CommanderWidget() {
       case 'CTRL+BS':
         commanderActions.clearActivePaneFilter()
         break
+      case 'CTRL+L':
+        startPathEdit(state.activePane)
+        return
       default:
         break
     }
 
     focusCommanderRoot()
-  }, [commanderActions, focusCommanderRoot])
+  }, [commanderActions, focusCommanderRoot, startPathEdit, state.activePane])
 
   return (
     <RunaDomScopeProvider component="commander-widget">
@@ -627,21 +751,35 @@ export function CommanderWidget() {
       <Box runaComponent="commander-main" style={commanderMainStyle}>
         <CommanderPane
           isActive={state.activePane === 'left'}
+          isEditingPath={editingPathPaneId === 'left'}
           onActivate={() => actions.setActivePane('left')}
+          onCancelPathEdit={cancelPathEdit}
+          onChangePathEdit={setEditingPathValue}
+          onConfirmPathEdit={confirmPathEdit}
           onFocusRoot={focusCommanderRoot}
           onOpenEntry={(entryId) => actions.openPaneEntry('left', entryId)}
+          onStartPathEdit={() => startPathEdit('left')}
           onSetCursor={(entryId, options) => actions.setPaneCursor('left', entryId, options)}
           onToggleSelection={(entryId) => actions.togglePaneSelection('left', entryId)}
           pane={state.leftPane}
+          pathEditValue={editingPathValue}
+          pathInputRef={pathEditInputRef}
         />
         <CommanderPane
           isActive={state.activePane === 'right'}
+          isEditingPath={editingPathPaneId === 'right'}
           onActivate={() => actions.setActivePane('right')}
+          onCancelPathEdit={cancelPathEdit}
+          onChangePathEdit={setEditingPathValue}
+          onConfirmPathEdit={confirmPathEdit}
           onFocusRoot={focusCommanderRoot}
           onOpenEntry={(entryId) => actions.openPaneEntry('right', entryId)}
+          onStartPathEdit={() => startPathEdit('right')}
           onSetCursor={(entryId, options) => actions.setPaneCursor('right', entryId, options)}
           onToggleSelection={(entryId) => actions.togglePaneSelection('right', entryId)}
           pane={state.rightPane}
+          pathEditValue={editingPathValue}
+          pathInputRef={pathEditInputRef}
         />
       </Box>
       {state.pendingOperation && pendingOperationMessage ? (
