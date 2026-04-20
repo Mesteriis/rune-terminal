@@ -269,6 +269,7 @@ Lookup helpers exported from `src/shared/ui/dom-id.tsx`:
 - The Dockview ready-path decision tree now also lives in `src/app/dockview-workspace.ready.ts`, so the hook no longer mixes `onReady` lifecycle with the branching restore/bootstrap policy inline.
 - Dockview snapshot capture/apply/tab-update helpers now also live in `src/app/dockview-workspace.snapshots.ts`, so the hook does not repeat raw `toJSON()/fromJSON()/clear()` and snapshot-tab patch logic inline.
 - Workspace switching and workspace-add orchestration now also live in `src/app/dockview-workspace.actions.ts`, so the hook no longer owns the `persist -> activate -> restore` flow inline.
+- The remaining resize/persist/cleanup effects now also live in `src/app/use-dockview-workspace-effects.ts`, leaving `use-dockview-workspace.ts` as the orchestration entrypoint instead of mixing effect wiring with state transitions.
 - Modal state now lives in a dedicated `shared/model/modal.ts` store instead of being hidden inside widget-local React state.
 - Tokens now cover dark canvas, glass surfaces, accent hues, spacing, radii, shell sizes, blur, and shadow.
 - Shared primitives consume only semantic tokens instead of hardcoded `#111/#fff/#333` values.

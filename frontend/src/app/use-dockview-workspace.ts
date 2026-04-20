@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { type DockviewApi, type DockviewReadyEvent } from 'dockview-react'
 
 import { addDockviewWorkspace, selectDockviewWorkspace } from './dockview-workspace.actions'
@@ -22,6 +22,7 @@ import {
   readDockviewWorkspaceSnapshot,
   writeDockviewWorkspaceSnapshot,
 } from './dockview-workspace.snapshots'
+import { useDockviewWorkspaceEffects } from './use-dockview-workspace-effects'
 
 const DOCKVIEW_PERSIST_DEBOUNCE_MS = 120
 
@@ -143,36 +144,14 @@ export function useDockviewWorkspace({ client = dockviewWorkspaceClient }: UseDo
     scheduleDockviewLayoutSync()
   }
 
-  useEffect(() => {
-    const container = dockviewContainerRef.current
-
-    if (!container || typeof ResizeObserver === 'undefined') {
-      return
-    }
-
-    const resizeObserver = new ResizeObserver(() => {
-      syncDockviewLayout()
-    })
-
-    resizeObserver.observe(container)
-
-    return () => {
-      resizeObserver.disconnect()
-    }
-  }, [])
-
-  useEffect(() => {
-    workspaceClientRef.current.writeState({
-      activeWorkspaceId,
-      workspaceTabs,
-    })
-  }, [activeWorkspaceId, workspaceTabs])
-
-  useEffect(() => {
-    return () => {
-      dockviewPersistenceController.dispose()
-    }
-  }, [])
+  useDockviewWorkspaceEffects({
+    activeWorkspaceId,
+    dockviewContainerRef,
+    dockviewPersistenceController,
+    syncDockviewLayout,
+    workspaceClientRef,
+    workspaceTabs,
+  })
 
   return {
     activeWorkspaceId,
