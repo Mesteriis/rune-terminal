@@ -5,56 +5,15 @@ import { useUnit } from 'effector-react'
 import { BODY_MODAL_HOST_ID, $modals, closeHostModals, closeModal } from '@/shared/model/modal'
 import { DialogPopup } from '@/shared/ui/components'
 import { Box } from '@/shared/ui/primitives'
+import {
+  bodyOverlayStyle,
+  modalStackStyle,
+  widgetOverlayStyle,
+} from '@/widgets/panel/modal-host-widget.styles'
 
 type ModalHostWidgetProps = {
   hostId: string
   scope: 'body' | 'widget'
-}
-
-const overlayBaseStyle = {
-  position: 'absolute' as const,
-  inset: 0,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  padding: 'var(--padding-modal-layer)',
-  border: 'none',
-  boxShadow: 'none',
-  backdropFilter: 'none',
-  WebkitBackdropFilter: 'none',
-}
-
-const bodyOverlayStyle = {
-  ...overlayBaseStyle,
-  zIndex: 'var(--z-modal-body)',
-  borderRadius: 0,
-  background: 'var(--color-overlay-body)',
-  backdropFilter: 'var(--blur-glass-md)',
-  WebkitBackdropFilter: 'var(--blur-glass-md)',
-}
-
-const widgetOverlayStyle = {
-  ...overlayBaseStyle,
-  zIndex: 'var(--z-modal-widget)',
-  borderRadius: 'var(--radius-lg)',
-  background: 'var(--color-overlay-widget)',
-  backdropFilter: 'var(--blur-glass-sm)',
-  WebkitBackdropFilter: 'var(--blur-glass-sm)',
-}
-
-const modalStackStyle = {
-  width: '100%',
-  display: 'flex',
-  flexDirection: 'column' as const,
-  alignItems: 'center',
-  gap: 'var(--gap-sm)',
-  padding: 0,
-  border: 'none',
-  borderRadius: 0,
-  background: 'transparent',
-  boxShadow: 'none',
-  backdropFilter: 'none',
-  WebkitBackdropFilter: 'none',
 }
 
 function getWidgetModalMountNode(hostId: string) {
@@ -68,17 +27,10 @@ function getWidgetModalMountNode(hostId: string) {
 }
 
 export function ModalHostWidget({ hostId, scope }: ModalHostWidgetProps) {
-  const [modals, onCloseModal, onCloseHostModals] = useUnit([
-    $modals,
-    closeModal,
-    closeHostModals,
-  ])
+  const [modals, onCloseModal, onCloseHostModals] = useUnit([$modals, closeModal, closeHostModals])
   const [mountNode, setMountNode] = useState<HTMLElement | null>(null)
 
-  const hostModals = useMemo(
-    () => modals.filter((modal) => modal.hostId === hostId),
-    [hostId, modals],
-  )
+  const hostModals = useMemo(() => modals.filter((modal) => modal.hostId === hostId), [hostId, modals])
 
   useEffect(() => {
     if (scope !== 'widget') {

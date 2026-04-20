@@ -26,6 +26,7 @@ Current token families:
 Current isolated style modules:
 
 - `CommanderWidget` local dense-surface styles are split across `src/widgets/commander/commander-*.styles.ts`, with `commander-widget.styles.ts` acting as the public barrel for widget callers
+- `ShellTopbarWidget`, `RightActionRailWidget`, and `ModalHostWidget` now keep their shell/panel chrome constants in adjacent `*.styles.ts` files instead of mixing presentational objects into the widget files
 
 ### Primitives
 

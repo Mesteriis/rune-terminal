@@ -2,6 +2,14 @@ import { Maximize2, Minus, Plus, Sparkles, X } from 'lucide-react'
 
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { Box, Button } from '@/shared/ui/primitives'
+import {
+  activeWorkspaceTabStyle,
+  addWorkspaceButtonStyle,
+  iconButtonStyle,
+  tabStripStyle,
+  topbarStyle,
+  workspaceTabStyle,
+} from '@/widgets/shell/shell-topbar-widget.styles'
 
 export type ShellWorkspaceTab = {
   id: number
@@ -15,61 +23,6 @@ type ShellTopbarWidgetProps = {
   activeWorkspaceId: number
   onSelectWorkspace: (workspaceId: number) => void
   onAddWorkspace: () => void
-}
-
-const topbarStyle = {
-  height: 'var(--size-shell-header)',
-  flex: '0 0 var(--size-shell-header)',
-  display: 'flex',
-  alignItems: 'center',
-  gap: 'var(--gap-sm)',
-  padding: '0 var(--padding-shell-inline) 0 0',
-  border: 'none',
-  background: 'transparent',
-  borderRadius: 0,
-  boxShadow: 'none',
-  backdropFilter: 'none',
-  WebkitBackdropFilter: 'none',
-}
-
-const tabStripStyle = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 'var(--gap-sm)',
-  marginLeft: '2rem',
-  border: 'none',
-  background: 'transparent',
-  padding: 0,
-  borderRadius: 0,
-  boxShadow: 'none',
-  backdropFilter: 'none',
-  WebkitBackdropFilter: 'none',
-}
-
-const iconButtonStyle = {
-  padding: '0',
-  width: 'var(--size-control-min)',
-  minWidth: 'var(--size-control-min)',
-  height: 'var(--size-control-min)',
-  minHeight: 'var(--size-control-min)',
-  overflow: 'hidden',
-}
-
-const addWorkspaceButtonStyle = {
-  ...iconButtonStyle,
-  marginLeft: 'auto',
-}
-
-const workspaceTabStyle = {
-  minWidth: '112px',
-}
-
-const activeWorkspaceTabStyle = {
-  ...workspaceTabStyle,
-  background: 'rgba(56, 92, 82, 0.78)',
-  color: 'var(--color-text-primary)',
-  border: '1px solid rgba(132, 198, 178, 0.32)',
-  boxShadow: 'inset 0 0 0 1px rgba(132, 198, 178, 0.12)',
 }
 
 const actionIconProps = {
@@ -88,47 +41,70 @@ export function ShellTopbarWidget({
   return (
     <RunaDomScopeProvider component="shell-topbar-widget">
       <Box runaComponent="shell-topbar-root" style={topbarStyle}>
-      <Button aria-label="Close window" role="tab" aria-selected="false" runaComponent="shell-topbar-close-window" style={iconButtonStyle}>
-        <X {...actionIconProps} />
-      </Button>
-      <Button aria-label="Collapse window" role="tab" aria-selected="false" runaComponent="shell-topbar-collapse-window" style={iconButtonStyle}>
-        <Minus {...actionIconProps} />
-      </Button>
-      <Button aria-label="Toggle fullscreen" role="tab" aria-selected="false" runaComponent="shell-topbar-toggle-fullscreen" style={iconButtonStyle}>
-        <Maximize2 {...actionIconProps} />
-      </Button>
-      <Button
-        aria-label="Toggle AI panel"
-        aria-pressed={isAiOpen}
-        onClick={onToggleAi}
-        runaComponent="shell-topbar-toggle-ai-panel"
-        style={iconButtonStyle}
-      >
-        <Sparkles {...actionIconProps} />
-      </Button>
-      <Box role="tablist" aria-label="Workspace tabs" runaComponent="shell-topbar-workspace-tabs" style={tabStripStyle}>
-        {workspaceTabs.map((workspace) => (
-          <Button
-            aria-selected={activeWorkspaceId === workspace.id}
-            key={workspace.id}
-            onClick={() => onSelectWorkspace(workspace.id)}
-            role="tab"
-            runaComponent={`shell-topbar-workspace-tab-${workspace.id}`}
-            style={activeWorkspaceId === workspace.id ? activeWorkspaceTabStyle : workspaceTabStyle}
-          >
-            {workspace.title}
-          </Button>
-        ))}
+        <Button
+          aria-label="Close window"
+          role="tab"
+          aria-selected="false"
+          runaComponent="shell-topbar-close-window"
+          style={iconButtonStyle}
+        >
+          <X {...actionIconProps} />
+        </Button>
+        <Button
+          aria-label="Collapse window"
+          role="tab"
+          aria-selected="false"
+          runaComponent="shell-topbar-collapse-window"
+          style={iconButtonStyle}
+        >
+          <Minus {...actionIconProps} />
+        </Button>
+        <Button
+          aria-label="Toggle fullscreen"
+          role="tab"
+          aria-selected="false"
+          runaComponent="shell-topbar-toggle-fullscreen"
+          style={iconButtonStyle}
+        >
+          <Maximize2 {...actionIconProps} />
+        </Button>
+        <Button
+          aria-label="Toggle AI panel"
+          aria-pressed={isAiOpen}
+          onClick={onToggleAi}
+          runaComponent="shell-topbar-toggle-ai-panel"
+          style={iconButtonStyle}
+        >
+          <Sparkles {...actionIconProps} />
+        </Button>
+        <Box
+          role="tablist"
+          aria-label="Workspace tabs"
+          runaComponent="shell-topbar-workspace-tabs"
+          style={tabStripStyle}
+        >
+          {workspaceTabs.map((workspace) => (
+            <Button
+              aria-selected={activeWorkspaceId === workspace.id}
+              key={workspace.id}
+              onClick={() => onSelectWorkspace(workspace.id)}
+              role="tab"
+              runaComponent={`shell-topbar-workspace-tab-${workspace.id}`}
+              style={activeWorkspaceId === workspace.id ? activeWorkspaceTabStyle : workspaceTabStyle}
+            >
+              {workspace.title}
+            </Button>
+          ))}
+        </Box>
+        <Button
+          aria-label="Add workspace"
+          onClick={onAddWorkspace}
+          runaComponent="shell-topbar-add-workspace"
+          style={addWorkspaceButtonStyle}
+        >
+          <Plus {...actionIconProps} />
+        </Button>
       </Box>
-      <Button
-        aria-label="Add workspace"
-        onClick={onAddWorkspace}
-        runaComponent="shell-topbar-add-workspace"
-        style={addWorkspaceButtonStyle}
-      >
-        <Plus {...actionIconProps} />
-      </Button>
-    </Box>
     </RunaDomScopeProvider>
   )
 }

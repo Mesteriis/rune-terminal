@@ -6,96 +6,17 @@ import { useEffect, useRef, useState } from 'react'
 import { openBodyModal } from '@/shared/model/modal'
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { Box, Button, Separator, Surface, Text } from '@/shared/ui/primitives'
+import {
+  railButtonStyle,
+  rightRailStyle,
+  utilityMenuItemStyle,
+  utilityMenuMetaStyle,
+  utilityMenuSeparatorStyle,
+  utilityMenuStyle,
+  utilityMenuTitleStyle,
+  utilityMenuWrapStyle,
+} from '@/widgets/shell/right-action-rail-widget.styles'
 import { createNextTerminalPanelId, createTerminalPanelParams } from '@/widgets/terminal/terminal-panel'
-
-const rightRailStyle = {
-  flex: '0 0 var(--size-right-rail)',
-  width: 'var(--size-right-rail)',
-  display: 'flex',
-  flexDirection: 'column' as const,
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  boxSizing: 'border-box' as const,
-  padding: 'var(--space-xs)',
-  border: 'none',
-  borderRadius: 0,
-  background: 'transparent',
-  boxShadow: 'none',
-  backdropFilter: 'none',
-  WebkitBackdropFilter: 'none',
-}
-
-const railButtonStyle = {
-  padding: '0',
-  width: 'var(--size-control-min)',
-  minWidth: 'var(--size-control-min)',
-}
-
-const utilityMenuWrapStyle = {
-  position: 'relative' as const,
-  display: 'flex',
-  flexDirection: 'column' as const,
-  alignItems: 'center',
-  padding: 0,
-  border: 'none',
-  borderRadius: 0,
-  background: 'transparent',
-  boxShadow: 'none',
-  backdropFilter: 'none',
-  WebkitBackdropFilter: 'none',
-}
-
-const utilityMenuStyle = {
-  position: 'absolute' as const,
-  top: 0,
-  right: 'calc(100% + var(--space-xs))',
-  width: '220px',
-  display: 'flex',
-  flexDirection: 'column' as const,
-  gap: 'var(--gap-xs)',
-  padding: 'var(--space-xs)',
-  zIndex: 'var(--z-modal)',
-  border: '1px solid var(--color-border-strong)',
-  boxShadow: '0 12px 32px rgba(0, 0, 0, 0.35)',
-  backdropFilter: 'var(--blur-glass-md)',
-  WebkitBackdropFilter: 'var(--blur-glass-md)',
-}
-
-const utilityMenuItemStyle = {
-  width: '100%',
-  justifyContent: 'flex-start',
-  gap: 'var(--gap-sm)',
-  background: 'transparent',
-  boxShadow: 'none',
-  backdropFilter: 'none',
-  WebkitBackdropFilter: 'none',
-}
-
-const utilityMenuMetaStyle = {
-  display: 'flex',
-  flexDirection: 'column' as const,
-  alignItems: 'flex-start',
-  minWidth: 0,
-  padding: 0,
-  border: 'none',
-  borderRadius: 0,
-  background: 'transparent',
-  boxShadow: 'none',
-  backdropFilter: 'none',
-  WebkitBackdropFilter: 'none',
-}
-
-const utilityMenuTitleStyle = {
-  color: 'var(--color-text-primary)',
-  fontSize: 'var(--font-size-md)',
-  lineHeight: 'var(--line-height-md)',
-  fontWeight: 600,
-}
-
-const utilityMenuSeparatorStyle = {
-  width: '100%',
-  margin: '2px 0',
-}
 
 const railIconProps = {
   size: 16,
@@ -220,8 +141,17 @@ export function RightActionRailWidget({ dockviewApiRef, onAddWorkspace }: RightA
 
   return (
     <RunaDomScopeProvider component="right-action-rail-widget">
-      <Box role="complementary" aria-label="Right action rail" runaComponent="right-action-rail-root" style={rightRailStyle}>
-        <Box ref={menuWrapRef} runaComponent="right-action-rail-utility-menu-wrap" style={utilityMenuWrapStyle}>
+      <Box
+        role="complementary"
+        aria-label="Right action rail"
+        runaComponent="right-action-rail-root"
+        style={rightRailStyle}
+      >
+        <Box
+          ref={menuWrapRef}
+          runaComponent="right-action-rail-utility-menu-wrap"
+          style={utilityMenuWrapStyle}
+        >
           {isUtilityMenuOpen ? (
             <Surface
               role="menu"
@@ -238,7 +168,12 @@ export function RightActionRailWidget({ dockviewApiRef, onAddWorkspace }: RightA
               >
                 <Plus {...railIconProps} />
                 <Box runaComponent="right-action-rail-create-workspace-meta" style={utilityMenuMetaStyle}>
-                  <Text runaComponent="right-action-rail-create-workspace-title" style={utilityMenuTitleStyle}>Workspace</Text>
+                  <Text
+                    runaComponent="right-action-rail-create-workspace-title"
+                    style={utilityMenuTitleStyle}
+                  >
+                    Workspace
+                  </Text>
                 </Box>
               </Button>
               <Separator
@@ -255,7 +190,9 @@ export function RightActionRailWidget({ dockviewApiRef, onAddWorkspace }: RightA
               >
                 <Monitor {...railIconProps} />
                 <Box runaComponent="right-action-rail-create-terminal-meta" style={utilityMenuMetaStyle}>
-                  <Text runaComponent="right-action-rail-create-terminal-title" style={utilityMenuTitleStyle}>Terminal</Text>
+                  <Text runaComponent="right-action-rail-create-terminal-title" style={utilityMenuTitleStyle}>
+                    Terminal
+                  </Text>
                 </Box>
               </Button>
               <Button
@@ -267,7 +204,12 @@ export function RightActionRailWidget({ dockviewApiRef, onAddWorkspace }: RightA
               >
                 <FolderTree {...railIconProps} />
                 <Box runaComponent="right-action-rail-create-commander-meta" style={utilityMenuMetaStyle}>
-                  <Text runaComponent="right-action-rail-create-commander-title" style={utilityMenuTitleStyle}>Commander</Text>
+                  <Text
+                    runaComponent="right-action-rail-create-commander-title"
+                    style={utilityMenuTitleStyle}
+                  >
+                    Commander
+                  </Text>
                 </Box>
               </Button>
             </Surface>
@@ -289,8 +231,7 @@ export function RightActionRailWidget({ dockviewApiRef, onAddWorkspace }: RightA
           onClick={() =>
             onOpenBodyModal({
               title: 'Settings modal',
-              description:
-                'This modal is mounted on the app shell body layer and stays above every widget.',
+              description: 'This modal is mounted on the app shell body layer and stays above every widget.',
               variant: 'settings',
             })
           }
