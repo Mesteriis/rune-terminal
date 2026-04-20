@@ -1,4 +1,5 @@
 :root {
+  color-scheme: dark;
   --color-canvas: #06110f;
   --color-canvas-elevated: #0b1816;
   --color-canvas-glow-primary: rgba(71, 192, 160, 0.2);
@@ -100,6 +101,43 @@
   --shadow-glass-control: 0 10px 24px rgba(1, 7, 6, 0.32);
   --shadow-shell-tab-active: inset 0 0 0 1px var(--color-accent-shell-tab-active-ring);
   --shadow-menu-popover: 0 12px 32px var(--color-shadow-menu);
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+    --color-canvas: #e7f0ed;
+    --color-canvas-elevated: #f4f8f7;
+    --color-canvas-glow-primary: rgba(45, 143, 118, 0.12);
+    --color-canvas-glow-secondary: rgba(76, 112, 102, 0.1);
+    --color-canvas-glow-tertiary: rgba(101, 134, 124, 0.08);
+    --color-canvas-glow-quaternary: rgba(122, 158, 148, 0.08);
+    --color-canvas-glow-quinary: rgba(136, 166, 157, 0.06);
+    --color-surface-glass: rgba(252, 254, 253, 0.84);
+    --color-surface-glass-strong: rgba(248, 252, 251, 0.94);
+    --color-surface-glass-soft: rgba(241, 247, 245, 0.92);
+    --color-surface-shell-header-gradient: linear-gradient(180deg, rgba(251, 253, 252, 0.98), rgba(237, 244, 241, 0.98));
+    --color-surface-shell-header-action: rgba(232, 240, 237, 0.94);
+    --color-surface-emerald: rgba(45, 143, 118, 0.1);
+    --color-surface-cold-tea: rgba(93, 122, 114, 0.14);
+    --color-overlay-body: rgba(234, 241, 238, 0.86);
+    --color-overlay-widget: rgba(242, 247, 245, 0.92);
+    --color-overlay-busy: rgba(236, 243, 240, 0.8);
+    --color-text-primary: #13231e;
+    --color-text-secondary: #3c554e;
+    --color-text-muted: #60766f;
+    --color-border-subtle: rgba(67, 102, 93, 0.18);
+    --color-border-strong: rgba(67, 102, 93, 0.32);
+    --color-border-soft-emerald: rgba(45, 143, 118, 0.16);
+    --color-accent-shell-tab-active: rgba(190, 218, 209, 0.76);
+    --color-accent-shell-tab-active-border: rgba(88, 141, 126, 0.28);
+    --color-accent-shell-tab-active-ring: rgba(88, 141, 126, 0.14);
+    --color-accent-warning-border: rgba(159, 121, 47, 0.28);
+    --color-accent-warning-bg: rgba(210, 177, 109, 0.16);
+    --color-accent-warning-text: #6c5319;
+    --color-shadow: rgba(24, 41, 36, 0.14);
+    --color-shadow-menu: rgba(24, 41, 36, 0.18);
+  }
 }
 
 @media (max-width: 1024px) {

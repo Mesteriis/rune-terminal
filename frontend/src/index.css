@@ -75,7 +75,7 @@ body {
   --dv-activegroup-hiddenpanel-tab-color: var(--color-text-secondary);
   --dv-inactivegroup-visiblepanel-tab-color: var(--color-text-secondary);
   --dv-inactivegroup-hiddenpanel-tab-color: var(--color-text-muted);
-  --dv-icon-hover-background-color: rgba(130, 188, 170, 0.12);
+  --dv-icon-hover-background-color: var(--color-accent-emerald-soft);
   --dv-tabs-and-actions-container-font-size: var(--font-size-sm);
   --dv-tabs-and-actions-container-height: var(--size-dockview-single-tab-header);
   --dv-floating-box-shadow: none;
@@ -389,4 +389,92 @@ body {
 
 [data-runa-terminal-host] .xterm.xterm .xterm-scrollable-element > .scrollbar > .slider.active {
   background: color-mix(in srgb, var(--runa-terminal-status-running, var(--color-accent-emerald-strong)) 54%, transparent);
+}
+
+@media (prefers-color-scheme: light) {
+  body {
+    background:
+      radial-gradient(circle at 10% 14%, var(--color-canvas-glow-primary) 0, transparent 24%),
+      radial-gradient(circle at 32% 8%, var(--color-canvas-glow-quinary) 0, transparent 18%),
+      radial-gradient(circle at 78% 12%, var(--color-canvas-glow-secondary) 0, transparent 22%),
+      radial-gradient(circle at 92% 20%, var(--color-canvas-glow-quaternary) 0, transparent 20%),
+      radial-gradient(circle at 18% 58%, var(--color-canvas-glow-tertiary) 0, transparent 26%),
+      radial-gradient(circle at 52% 44%, var(--color-canvas-glow-secondary) 0, transparent 28%),
+      radial-gradient(circle at 70% 74%, var(--color-canvas-glow-quaternary) 0, transparent 24%),
+      radial-gradient(circle at 84% 88%, color-mix(in srgb, var(--color-canvas-glow-primary) 88%, var(--color-accent-emerald-strong) 12%) 0, transparent 26%),
+      radial-gradient(circle at 96% 96%, color-mix(in srgb, var(--color-canvas-glow-secondary) 88%, var(--color-accent-cold-tea) 12%) 0, transparent 18%),
+      radial-gradient(circle at 36% 92%, var(--color-canvas-glow-quinary) 0, transparent 20%),
+      linear-gradient(180deg, #f8fcfa 0%, #eef5f2 38%, var(--color-canvas) 68%, #e3eeea 100%);
+    color: var(--color-text-primary);
+  }
+
+  .dv-groupview[data-runa-widget-focus-state='inactive'] [data-runa-widget-tone-root],
+  .dv-groupview.dv-inactive-group:not([data-runa-widget-focus-state]) [data-runa-widget-tone-root] {
+    --runa-widget-accent-primary: rgba(70, 104, 95, 0.84);
+    --runa-widget-accent-secondary: rgba(87, 119, 111, 0.8);
+    --runa-widget-accent-muted: rgba(87, 119, 111, 0.74);
+    --runa-widget-text-strong: #2b3e39;
+    --runa-widget-text-secondary: #49615b;
+    --runa-widget-text-muted: #647973;
+    --runa-widget-surface-border: rgba(67, 102, 93, 0.18);
+    --runa-widget-surface-bg: rgba(243, 248, 246, 0.96);
+    --runa-widget-selection-background: rgba(45, 143, 118, 0.12);
+  }
+
+  .dv-groupview[data-runa-widget-focus-state='inactive'] [data-runa-commander-root],
+  .dv-groupview.dv-inactive-group:not([data-runa-widget-focus-state]) [data-runa-commander-root] {
+    --runa-commander-highlight-border: rgba(87, 119, 111, 0.3);
+    --runa-commander-highlight-ring: rgba(87, 119, 111, 0.12);
+    --runa-commander-highlight-fill: rgba(87, 119, 111, 0.1);
+    --runa-commander-highlight-fill-strong: rgba(246, 250, 249, 0.96);
+    --runa-commander-highlight-badge-border: rgba(87, 119, 111, 0.22);
+    --runa-commander-highlight-badge-bg: rgba(87, 119, 111, 0.1);
+    --runa-commander-highlight-text: #355049;
+    --runa-commander-text-strong: #2b3e39;
+    --runa-commander-text-secondary: #49615b;
+    --runa-commander-text-muted: #647973;
+    --runa-commander-surface-border: rgba(67, 102, 93, 0.18);
+    --runa-commander-selection-fill: rgba(87, 119, 111, 0.08);
+    --runa-commander-key-color: rgba(70, 104, 95, 0.82);
+    --runa-commander-folder-icon-color: rgba(70, 104, 95, 0.76);
+    --runa-commander-file-icon-color: rgba(87, 119, 111, 0.76);
+  }
+}
+
+@media print {
+  html,
+  body,
+  #root {
+    height: auto;
+    min-height: auto;
+    overflow: visible;
+  }
+
+  body {
+    padding: 0;
+    overflow: visible;
+    background: #fff;
+    color: #111;
+    background-attachment: initial;
+  }
+
+  .dv-dockview,
+  .dv-content-container {
+    overflow: visible;
+  }
+
+  .dv-groupview,
+  [data-runa-shell-widget-frame] {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    background: #fff;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .dv-sash-container,
+  [data-runa-shell-sash] {
+    display: none;
+  }
 }

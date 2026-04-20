@@ -17,6 +17,7 @@ Current token families:
 - spacing, gap, padding, and margin scales
 - radii, control sizes, and shell sizes
 - shell and layout sizing tokens expose responsive tablet/mobile overrides directly from `src/shared/ui/tokens/index.css` instead of scattering breakpoint constants across widgets
+- the token layer also owns dark/light environment overrides through `prefers-color-scheme`, while `src/index.css` applies the corresponding shell/body print flattening rules
 - z-index values are defined as named tiers in the token layer, from base/floating chrome through widget busy and modal overlays
 - glass blur and shadow values
 
@@ -231,6 +232,7 @@ Lookup helpers exported from `src/shared/ui/dom-id.tsx`:
 - Primitive coverage now includes `Label`, `Select`, `TextArea`, `Radio`, and `Checkbox` in addition to the original `Box`, `Button`, `Input`, and `Text`.
 - Shared accessibility contracts now also cover browser zoom, labelled composite controls, and explicit focus handoff: `main.tsx` no longer suppresses zoom gestures, `SearchableMultiSelect` and `RadioGroup` expose named ARIA containers, `TerminalToolbar` focuses its search field on open without raw `autoFocus`, and `index.css` provides `prefers-reduced-motion` plus `prefers-contrast: more` fallbacks.
 - The shared token layer now also owns responsive shell/layout chrome sizing: shell frame padding, topbar offset, workspace tab minimum width, modal width, Dockview header height, and right rail/header dimensions all adapt through tablet/mobile token overrides instead of widget-local breakpoint constants.
+- The shell environment layer now also exposes media-aware defaults: `prefers-color-scheme: light` rebinds the shared surface/text tokens for light environments, and `@media print` flattens shell chrome so Dockview surfaces print without glow, blur, or resize affordances.
 - Primitive coverage now also includes `Badge`, `ScrollArea`, `Separator`, and `Surface` for dense built-in tool surfaces.
 - Primitives contain native elements only and use CSS variable styles.
 - The new form-control components added in this slice import primitives only.
