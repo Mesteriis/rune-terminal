@@ -12,7 +12,9 @@ import {
   confirmCommanderWidgetPendingOperation,
   createCommanderFileDialog,
   createPendingOperation,
+  requestCommanderWidgetPendingOperation,
   resolveCommanderWidgetPendingConflict,
+  stepCommanderWidgetPendingSearchMatch,
   updateCommanderPendingOperationInput,
 } from '@/features/commander/model/store-operations'
 import {
@@ -231,15 +233,8 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
     })
   })
   .on(setCommanderPaneCursor, (widgets, payload) => {
-    const widgetState = widgets[payload.widgetId]
-
-    if (!widgetState) {
-      return widgets
-    }
-
-    return {
-      ...widgets,
-      [payload.widgetId]: updatePaneState(
+    return withCommanderWidgetState(widgets, payload, (widgetState) =>
+      updatePaneState(
         {
           ...widgetState,
           activePane: payload.paneId,
@@ -261,18 +256,11 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
           }
         },
       ),
-    }
+    )
   })
   .on(moveCommanderPaneCursor, (widgets, payload) => {
-    const widgetState = widgets[payload.widgetId]
-
-    if (!widgetState) {
-      return widgets
-    }
-
-    return {
-      ...widgets,
-      [payload.widgetId]: updatePaneState(
+    return withCommanderWidgetState(widgets, payload, (widgetState) =>
+      updatePaneState(
         {
           ...widgetState,
           activePane: payload.paneId,
@@ -283,7 +271,7 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
             ? movePaneCursorWithSelection(paneState, payload.delta)
             : movePaneCursor(paneState, payload.delta),
       ),
-    }
+    )
   })
   .on(moveCommanderActivePaneCursor, (widgets, payload) => {
     return withCommanderWidgetState(widgets, payload, (widgetState) =>
@@ -295,15 +283,8 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
     )
   })
   .on(toggleCommanderPaneSelection, (widgets, payload) => {
-    const widgetState = widgets[payload.widgetId]
-
-    if (!widgetState) {
-      return widgets
-    }
-
-    return {
-      ...widgets,
-      [payload.widgetId]: updatePaneState(
+    return withCommanderWidgetState(widgets, payload, (widgetState) =>
+      updatePaneState(
         {
           ...widgetState,
           activePane: payload.paneId,
@@ -311,7 +292,7 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
         payload.paneId,
         (paneState) => toggleEntrySelection(paneState, payload.entryId),
       ),
-    }
+    )
   })
   .on(toggleCommanderActivePaneSelection, (widgets, payload) => {
     return withCommanderWidgetState(widgets, payload, (widgetState) => {
@@ -423,33 +404,26 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
     })
   })
   .on(openCommanderPaneEntry, (widgets, payload) => {
-    const widgetState = widgets[payload.widgetId]
+    return withCommanderWidgetState(widgets, payload, (widgetState) => {
+      const navigationResult = openCommanderEntry(
+        payload.widgetId,
+        getPaneState(widgetState, payload.paneId).path,
+        payload.entryId,
+      )
 
-    if (!widgetState) {
-      return widgets
-    }
+      if (!navigationResult || navigationResult.kind !== 'directory') {
+        return null
+      }
 
-    const navigationResult = openCommanderEntry(
-      payload.widgetId,
-      getPaneState(widgetState, payload.paneId).path,
-      payload.entryId,
-    )
-
-    if (!navigationResult || navigationResult.kind !== 'directory') {
-      return widgets
-    }
-
-    return {
-      ...widgets,
-      [payload.widgetId]: navigatePaneState(
+      return navigatePaneState(
         {
           ...widgetState,
           activePane: payload.paneId,
         },
         payload.paneId,
         navigationResult.path,
-      ),
-    }
+      )
+    })
   })
   .on(openCommanderActivePaneEntry, (widgets, payload) => {
     return withCommanderWidgetState(widgets, payload, (widgetState) => {
@@ -470,30 +444,23 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
     })
   })
   .on(goCommanderPaneParent, (widgets, payload) => {
-    const widgetState = widgets[payload.widgetId]
+    return withCommanderWidgetState(widgets, payload, (widgetState) => {
+      const paneState = getPaneState(widgetState, payload.paneId)
+      const parentPath = getCommanderParentPath(paneState.path)
 
-    if (!widgetState) {
-      return widgets
-    }
+      if (!parentPath) {
+        return null
+      }
 
-    const paneState = getPaneState(widgetState, payload.paneId)
-    const parentPath = getCommanderParentPath(paneState.path)
-
-    if (!parentPath) {
-      return widgets
-    }
-
-    return {
-      ...widgets,
-      [payload.widgetId]: navigatePaneState(
+      return navigatePaneState(
         {
           ...widgetState,
           activePane: payload.paneId,
         },
         payload.paneId,
         parentPath,
-      ),
-    }
+      )
+    })
   })
   .on(goCommanderActivePaneParent, (widgets, payload) => {
     return withCommanderWidgetState(widgets, payload, (widgetState) => {
@@ -508,15 +475,8 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
     })
   })
   .on(goCommanderPaneHistoryBack, (widgets, payload) => {
-    const widgetState = widgets[payload.widgetId]
-
-    if (!widgetState) {
-      return widgets
-    }
-
-    return {
-      ...widgets,
-      [payload.widgetId]: navigatePaneHistory(
+    return withCommanderWidgetState(widgets, payload, (widgetState) =>
+      navigatePaneHistory(
         {
           ...widgetState,
           activePane: payload.paneId,
@@ -524,18 +484,11 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
         payload.paneId,
         'back',
       ),
-    }
+    )
   })
   .on(goCommanderPaneHistoryForward, (widgets, payload) => {
-    const widgetState = widgets[payload.widgetId]
-
-    if (!widgetState) {
-      return widgets
-    }
-
-    return {
-      ...widgets,
-      [payload.widgetId]: navigatePaneHistory(
+    return withCommanderWidgetState(widgets, payload, (widgetState) =>
+      navigatePaneHistory(
         {
           ...widgetState,
           activePane: payload.paneId,
@@ -543,7 +496,7 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
         payload.paneId,
         'forward',
       ),
-    }
+    )
   })
   .on(goCommanderActivePaneHistoryBack, (widgets, payload) => {
     return withCommanderWidgetState(widgets, payload, (widgetState) =>
@@ -562,15 +515,8 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
     }))
   })
   .on(setCommanderPaneBoundaryCursor, (widgets, payload) => {
-    const widgetState = widgets[payload.widgetId]
-
-    if (!widgetState) {
-      return widgets
-    }
-
-    return {
-      ...widgets,
-      [payload.widgetId]: updatePaneState(
+    return withCommanderWidgetState(widgets, payload, (widgetState) =>
+      updatePaneState(
         {
           ...widgetState,
           activePane: payload.paneId,
@@ -581,164 +527,57 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
             ? setCursorToBoundaryWithSelection(paneState, payload.boundary)
             : setCursorToBoundary(paneState, payload.boundary),
       ),
-    }
+    )
   })
   .on(requestCommanderActivePaneCopy, (widgets, payload) => {
-    return withCommanderWidgetState(widgets, payload, (widgetState) => {
-      const pendingOperation = createPendingOperation(widgetState, 'copy')
-
-      return pendingOperation
-        ? {
-            ...widgetState,
-            pendingOperation,
-          }
-        : widgetState
-    })
+    return withCommanderWidgetState(widgets, payload, (widgetState) =>
+      requestCommanderWidgetPendingOperation(widgetState, 'copy'),
+    )
   })
   .on(requestCommanderActivePaneMove, (widgets, payload) => {
-    return withCommanderWidgetState(widgets, payload, (widgetState) => {
-      const pendingOperation = createPendingOperation(widgetState, 'move')
-
-      return pendingOperation
-        ? {
-            ...widgetState,
-            pendingOperation,
-          }
-        : widgetState
-    })
+    return withCommanderWidgetState(widgets, payload, (widgetState) =>
+      requestCommanderWidgetPendingOperation(widgetState, 'move'),
+    )
   })
   .on(requestCommanderActivePaneDelete, (widgets, payload) => {
-    return withCommanderWidgetState(widgets, payload, (widgetState) => {
-      const pendingOperation = createPendingOperation(widgetState, 'delete')
-
-      return pendingOperation
-        ? {
-            ...widgetState,
-            pendingOperation,
-          }
-        : widgetState
-    })
+    return withCommanderWidgetState(widgets, payload, (widgetState) =>
+      requestCommanderWidgetPendingOperation(widgetState, 'delete'),
+    )
   })
   .on(requestCommanderActivePaneMkdir, (widgets, payload) => {
-    return withCommanderWidgetState(widgets, payload, (widgetState) => {
-      const pendingOperation = createPendingOperation(widgetState, 'mkdir')
-
-      return pendingOperation
-        ? {
-            ...widgetState,
-            pendingOperation,
-          }
-        : widgetState
-    })
+    return withCommanderWidgetState(widgets, payload, (widgetState) =>
+      requestCommanderWidgetPendingOperation(widgetState, 'mkdir'),
+    )
   })
   .on(requestCommanderActivePaneRename, (widgets, payload) => {
-    return withCommanderWidgetState(widgets, payload, (widgetState) => {
-      const pendingOperation = createPendingOperation(widgetState, 'rename')
-
-      return pendingOperation
-        ? {
-            ...widgetState,
-            pendingOperation,
-          }
-        : widgetState
-    })
+    return withCommanderWidgetState(widgets, payload, (widgetState) =>
+      requestCommanderWidgetPendingOperation(widgetState, 'rename'),
+    )
   })
   .on(requestCommanderActivePaneSelectByMask, (widgets, payload) => {
-    return withCommanderWidgetState(widgets, payload, (widgetState) => {
-      const pendingOperation = createPendingOperation(widgetState, 'select')
-
-      return pendingOperation
-        ? {
-            ...widgetState,
-            pendingOperation,
-          }
-        : widgetState
-    })
+    return withCommanderWidgetState(widgets, payload, (widgetState) =>
+      requestCommanderWidgetPendingOperation(widgetState, 'select'),
+    )
   })
   .on(requestCommanderActivePaneUnselectByMask, (widgets, payload) => {
-    return withCommanderWidgetState(widgets, payload, (widgetState) => {
-      const pendingOperation = createPendingOperation(widgetState, 'unselect')
-
-      return pendingOperation
-        ? {
-            ...widgetState,
-            pendingOperation,
-          }
-        : widgetState
-    })
+    return withCommanderWidgetState(widgets, payload, (widgetState) =>
+      requestCommanderWidgetPendingOperation(widgetState, 'unselect'),
+    )
   })
   .on(requestCommanderActivePaneFilter, (widgets, payload) => {
-    return withCommanderWidgetState(widgets, payload, (widgetState) => {
-      const pendingOperation = createPendingOperation(widgetState, 'filter')
-
-      return pendingOperation
-        ? {
-            ...widgetState,
-            pendingOperation,
-          }
-        : widgetState
-    })
+    return withCommanderWidgetState(widgets, payload, (widgetState) =>
+      requestCommanderWidgetPendingOperation(widgetState, 'filter'),
+    )
   })
   .on(requestCommanderActivePaneSearch, (widgets, payload) => {
-    return withCommanderWidgetState(widgets, payload, (widgetState) => {
-      const pendingOperation = createPendingOperation(widgetState, 'search')
-
-      return pendingOperation
-        ? {
-            ...widgetState,
-            pendingOperation,
-          }
-        : widgetState
-    })
+    return withCommanderWidgetState(widgets, payload, (widgetState) =>
+      requestCommanderWidgetPendingOperation(widgetState, 'search'),
+    )
   })
   .on(stepCommanderPendingSearchMatch, (widgets, payload) => {
-    const widgetState = widgets[payload.widgetId]
-
-    if (!widgetState?.pendingOperation || widgetState.pendingOperation.kind !== 'search') {
-      return widgets
-    }
-
-    const sourcePane = getPaneState(widgetState, widgetState.pendingOperation.sourcePaneId)
-    const matches = getCommanderSearchMatches(sourcePane, widgetState.pendingOperation.inputValue ?? '')
-
-    if (matches.entryIds.length === 0) {
-      return widgets
-    }
-
-    const currentIndex = getCommanderResolvedSearchMatchIndex(
-      matches.entryIds,
-      sourcePane.cursorEntryId,
-      widgetState.pendingOperation.matchIndex ?? 0,
+    return withCommanderWidgetState(widgets, payload, (widgetState) =>
+      stepCommanderWidgetPendingSearchMatch(widgetState, payload.delta),
     )
-    const nextIndex = (currentIndex + payload.delta + matches.entryIds.length) % matches.entryIds.length
-    const nextCursorEntryId = matches.entryIds[nextIndex] ?? null
-
-    if (!nextCursorEntryId) {
-      return widgets
-    }
-
-    const nextWidgetState = updatePaneState(
-      widgetState,
-      widgetState.pendingOperation.sourcePaneId,
-      (paneState) => ({
-        ...paneState,
-        cursorEntryId: nextCursorEntryId,
-        selectionAnchorEntryId: nextCursorEntryId,
-      }),
-    )
-
-    return {
-      ...widgets,
-      [payload.widgetId]: {
-        ...nextWidgetState,
-        pendingOperation: {
-          ...nextWidgetState.pendingOperation!,
-          matchCount: matches.entryIds.length,
-          matchPreview: matches.entryNames.slice(0, 6),
-          matchIndex: nextIndex,
-        },
-      },
-    }
   })
   .on(clearCommanderActivePaneFilter, (widgets, payload) => {
     return withCommanderWidgetState(widgets, payload, (widgetState) =>

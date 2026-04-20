@@ -83,6 +83,28 @@ const defaultCommanderPendingOperationConfirmDeps: CommanderPendingOperationConf
   getCommanderResolvedSearchMatchIndex,
 }
 
+type CommanderPendingOperationRequestDeps = {
+  createPendingOperation: typeof createPendingOperation
+}
+
+const defaultCommanderPendingOperationRequestDeps: CommanderPendingOperationRequestDeps = {
+  createPendingOperation,
+}
+
+type CommanderPendingSearchStepDeps = {
+  getPaneState: typeof getPaneState
+  getCommanderSearchMatches: typeof getCommanderSearchMatches
+  getCommanderResolvedSearchMatchIndex: typeof getCommanderResolvedSearchMatchIndex
+  updatePaneState: typeof updatePaneState
+}
+
+const defaultCommanderPendingSearchStepDeps: CommanderPendingSearchStepDeps = {
+  getPaneState,
+  getCommanderSearchMatches,
+  getCommanderResolvedSearchMatchIndex,
+  updatePaneState,
+}
+
 type CommanderPendingConflictResolution = 'overwrite-current' | 'skip-current' | 'overwrite-all' | 'skip-all'
 
 type CommanderPendingConflictResolutionDeps = {
@@ -268,6 +290,70 @@ export function updateCommanderPendingOperationInput(
       conflictEntryNames: renamePreview.conflictEntryNames,
       duplicateTargetNames: renamePreview.duplicateTargetNames,
       renamePreview: renamePreview.preview,
+    },
+  }
+}
+
+export function requestCommanderWidgetPendingOperation(
+  widgetState: CommanderWidgetRuntimeState,
+  kind: CommanderPendingOperation['kind'],
+  deps: CommanderPendingOperationRequestDeps = defaultCommanderPendingOperationRequestDeps,
+) {
+  const pendingOperation = deps.createPendingOperation(widgetState, kind)
+
+  if (!pendingOperation) {
+    return null
+  }
+
+  return {
+    ...widgetState,
+    pendingOperation,
+  }
+}
+
+export function stepCommanderWidgetPendingSearchMatch(
+  widgetState: CommanderWidgetRuntimeState,
+  delta: 1 | -1,
+  deps: CommanderPendingSearchStepDeps = defaultCommanderPendingSearchStepDeps,
+) {
+  const pendingOperation = widgetState.pendingOperation
+
+  if (!pendingOperation || pendingOperation.kind !== 'search') {
+    return null
+  }
+
+  const sourcePane = deps.getPaneState(widgetState, pendingOperation.sourcePaneId)
+  const matches = deps.getCommanderSearchMatches(sourcePane, pendingOperation.inputValue ?? '')
+
+  if (matches.entryIds.length === 0) {
+    return null
+  }
+
+  const currentIndex = deps.getCommanderResolvedSearchMatchIndex(
+    matches.entryIds,
+    sourcePane.cursorEntryId,
+    pendingOperation.matchIndex ?? 0,
+  )
+  const nextIndex = (currentIndex + delta + matches.entryIds.length) % matches.entryIds.length
+  const nextCursorEntryId = matches.entryIds[nextIndex] ?? null
+
+  if (!nextCursorEntryId) {
+    return null
+  }
+
+  const nextWidgetState = deps.updatePaneState(widgetState, pendingOperation.sourcePaneId, (paneState) => ({
+    ...paneState,
+    cursorEntryId: nextCursorEntryId,
+    selectionAnchorEntryId: nextCursorEntryId,
+  }))
+
+  return {
+    ...nextWidgetState,
+    pendingOperation: {
+      ...nextWidgetState.pendingOperation!,
+      matchCount: matches.entryIds.length,
+      matchPreview: matches.entryNames.slice(0, 6),
+      matchIndex: nextIndex,
     },
   }
 }

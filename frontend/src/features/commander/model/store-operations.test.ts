@@ -2,7 +2,9 @@ import { describe, expect, it, vi } from 'vitest'
 
 import {
   confirmCommanderWidgetPendingOperation,
+  requestCommanderWidgetPendingOperation,
   resolveCommanderWidgetPendingConflict,
+  stepCommanderWidgetPendingSearchMatch,
   updateCommanderPendingOperationInput,
 } from '@/features/commander/model/store-operations'
 import type {
@@ -13,6 +15,8 @@ import type {
 
 type ConfirmationDeps = NonNullable<Parameters<typeof confirmCommanderWidgetPendingOperation>[2]>
 type ConflictResolutionDeps = NonNullable<Parameters<typeof resolveCommanderWidgetPendingConflict>[3]>
+type PendingRequestDeps = NonNullable<Parameters<typeof requestCommanderWidgetPendingOperation>[2]>
+type PendingSearchStepDeps = NonNullable<Parameters<typeof stepCommanderWidgetPendingSearchMatch>[2]>
 
 function createWidgetState(pendingOperation: CommanderPendingOperation | null): CommanderWidgetRuntimeState {
   return {
@@ -138,6 +142,33 @@ function createConflictResolutionDeps(): ConflictResolutionDeps {
           finalized: true,
         }) as CommanderWidgetRuntimeState,
     ),
+  }
+}
+
+function createPendingRequestDeps(): PendingRequestDeps {
+  return {
+    createPendingOperation: vi.fn(),
+  }
+}
+
+function createPendingSearchStepDeps(): PendingSearchStepDeps {
+  return {
+    getPaneState: vi.fn((widgetState: CommanderWidgetRuntimeState, paneId) =>
+      paneId === 'left' ? widgetState.leftPane : widgetState.rightPane,
+    ),
+    getCommanderSearchMatches: vi.fn(() => ({
+      entryIds: ['match-1', 'match-2', 'match-3'],
+      entryNames: ['match-1.txt', 'match-2.txt', 'match-3.txt'],
+    })),
+    getCommanderResolvedSearchMatchIndex: vi.fn(() => 0),
+    updatePaneState: vi.fn((widgetState: CommanderWidgetRuntimeState, paneId, updater) => {
+      const nextPaneState = updater(paneId === 'left' ? widgetState.leftPane : widgetState.rightPane)
+
+      return {
+        ...widgetState,
+        [paneId === 'left' ? 'leftPane' : 'rightPane']: nextPaneState,
+      } as CommanderWidgetRuntimeState
+    }),
   }
 }
 
@@ -397,6 +428,88 @@ describe('confirmCommanderWidgetPendingOperation', () => {
     expect(nextWidgetState?.pendingOperation).toBeNull()
     expect(nextWidgetState?.leftPane.cursorEntryId).toBe('match-2')
     expect(nextWidgetState?.leftPane.selectionAnchorEntryId).toBe('match-2')
+  })
+})
+
+describe('requestCommanderWidgetPendingOperation', () => {
+  it('returns null when the pending operation cannot be created', () => {
+    const deps = createPendingRequestDeps()
+    deps.createPendingOperation.mockReturnValue(null)
+
+    expect(requestCommanderWidgetPendingOperation(createWidgetState(null), 'copy', deps)).toBeNull()
+  })
+
+  it('attaches the created pending operation to the widget state', () => {
+    const widgetState = createWidgetState(null)
+    const deps = createPendingRequestDeps()
+    deps.createPendingOperation.mockReturnValue({
+      kind: 'filter',
+      sourcePaneId: 'left',
+      sourcePath: '~/left',
+      entryIds: [],
+      entryNames: [],
+      inputValue: '*.ts',
+    })
+
+    const nextWidgetState = requestCommanderWidgetPendingOperation(widgetState, 'filter', deps)
+
+    expect(nextWidgetState?.pendingOperation).toMatchObject({
+      kind: 'filter',
+      inputValue: '*.ts',
+    })
+  })
+})
+
+describe('stepCommanderWidgetPendingSearchMatch', () => {
+  it('returns null when search stepping is requested outside an active search flow', () => {
+    expect(stepCommanderWidgetPendingSearchMatch(createWidgetState(null), 1)).toBeNull()
+  })
+
+  it('returns null when no visible matches remain', () => {
+    const widgetState = createWidgetState({
+      kind: 'search',
+      sourcePaneId: 'left',
+      sourcePath: '~/left',
+      entryIds: [],
+      entryNames: [],
+      inputValue: 'match',
+      matchCount: 0,
+      matchPreview: [],
+      matchIndex: 0,
+    })
+    const deps = createPendingSearchStepDeps()
+    deps.getCommanderSearchMatches.mockReturnValue({
+      entryIds: [],
+      entryNames: [],
+    })
+
+    expect(stepCommanderWidgetPendingSearchMatch(widgetState, 1, deps)).toBeNull()
+  })
+
+  it('moves the cursor to the next search hit and updates search metadata', () => {
+    const widgetState = createWidgetState({
+      kind: 'search',
+      sourcePaneId: 'left',
+      sourcePath: '~/left',
+      entryIds: [],
+      entryNames: [],
+      inputValue: 'match',
+      matchCount: 3,
+      matchPreview: ['match-1.txt'],
+      matchIndex: 0,
+    })
+    const deps = createPendingSearchStepDeps()
+
+    const nextWidgetState = stepCommanderWidgetPendingSearchMatch(widgetState, 1, deps)
+
+    expect(nextWidgetState?.leftPane.cursorEntryId).toBe('match-2')
+    expect(nextWidgetState?.leftPane.selectionAnchorEntryId).toBe('match-2')
+    expect(nextWidgetState?.pendingOperation).toMatchObject({
+      kind: 'search',
+      matchCount: 3,
+      matchPreview: ['match-1.txt', 'match-2.txt', 'match-3.txt'],
+      matchIndex: 1,
+    })
   })
 })
 
