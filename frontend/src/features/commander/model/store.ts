@@ -9,13 +9,10 @@ import {
 } from '@/features/commander/model/fake-client'
 import { attachCommanderWidgetsPersistence } from '@/features/commander/model/store-persistence'
 import {
-  applyPendingTransferOperation,
   confirmCommanderWidgetPendingOperation,
   createCommanderFileDialog,
   createPendingOperation,
-  finalizePendingTransferOperation,
-  getCurrentPendingConflictName,
-  removePendingTransferEntry,
+  resolveCommanderWidgetPendingConflict,
   updateCommanderPendingOperationInput,
 } from '@/features/commander/model/store-operations'
 import {
@@ -786,87 +783,9 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
     )
   })
   .on(resolveCommanderPendingConflict, (widgets, payload) => {
-    const widgetState = widgets[payload.widgetId]
-
-    if (!widgetState?.pendingOperation) {
-      return widgets
-    }
-
-    const pendingOperation = widgetState.pendingOperation
-
-    if (
-      (pendingOperation.kind !== 'copy' && pendingOperation.kind !== 'move') ||
-      !pendingOperation.targetPath
-    ) {
-      return widgets
-    }
-
-    const currentConflictName = getCurrentPendingConflictName(pendingOperation)
-
-    if (!currentConflictName && payload.resolution !== 'overwrite-all' && payload.resolution !== 'skip-all') {
-      return widgets
-    }
-
-    if (payload.resolution === 'overwrite-all') {
-      applyPendingTransferOperation(payload.widgetId, pendingOperation, pendingOperation.entryIds, true)
-
-      return {
-        ...widgets,
-        [payload.widgetId]: refreshWidgetPanes(widgetState, {
-          pendingOperation: null,
-        }),
-      }
-    }
-
-    if (payload.resolution === 'skip-all') {
-      const conflictEntryNameSet = new Set(pendingOperation.conflictEntryNames ?? [])
-      const nonConflictingEntryIds = pendingOperation.entryIds.filter(
-        (_entryId, index) => !conflictEntryNameSet.has(pendingOperation.entryNames[index] ?? ''),
-      )
-
-      applyPendingTransferOperation(payload.widgetId, pendingOperation, nonConflictingEntryIds, false)
-
-      return {
-        ...widgets,
-        [payload.widgetId]: refreshWidgetPanes(widgetState, {
-          pendingOperation: null,
-        }),
-      }
-    }
-
-    if (!currentConflictName) {
-      return widgets
-    }
-
-    const currentConflictIndex = pendingOperation.entryNames.findIndex(
-      (entryName) => entryName === currentConflictName,
+    return withCommanderWidgetState(widgets, payload, (widgetState) =>
+      resolveCommanderWidgetPendingConflict(widgetState, payload.widgetId, payload.resolution),
     )
-    const currentConflictEntryId =
-      currentConflictIndex === -1 ? null : (pendingOperation.entryIds[currentConflictIndex] ?? null)
-
-    if (payload.resolution === 'overwrite-current' && currentConflictEntryId) {
-      applyPendingTransferOperation(payload.widgetId, pendingOperation, [currentConflictEntryId], true)
-    }
-
-    const nextPendingOperation = removePendingTransferEntry(pendingOperation, currentConflictName)
-
-    if (nextPendingOperation.conflictEntryNames?.length) {
-      return {
-        ...widgets,
-        [payload.widgetId]: refreshWidgetPanes(widgetState, {
-          pendingOperation: nextPendingOperation,
-        }),
-      }
-    }
-
-    return {
-      ...widgets,
-      [payload.widgetId]: finalizePendingTransferOperation(
-        widgetState,
-        payload.widgetId,
-        nextPendingOperation,
-      ),
-    }
   })
   .on(cancelCommanderPendingOperation, (widgets, payload) => {
     return withCommanderWidgetState(widgets, payload, (widgetState) => {

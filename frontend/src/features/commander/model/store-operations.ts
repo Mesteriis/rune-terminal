@@ -83,6 +83,24 @@ const defaultCommanderPendingOperationConfirmDeps: CommanderPendingOperationConf
   getCommanderResolvedSearchMatchIndex,
 }
 
+type CommanderPendingConflictResolution = 'overwrite-current' | 'skip-current' | 'overwrite-all' | 'skip-all'
+
+type CommanderPendingConflictResolutionDeps = {
+  getCurrentPendingConflictName: typeof getCurrentPendingConflictName
+  applyPendingTransferOperation: typeof applyPendingTransferOperation
+  removePendingTransferEntry: typeof removePendingTransferEntry
+  refreshWidgetPanes: typeof refreshWidgetPanes
+  finalizePendingTransferOperation: typeof finalizePendingTransferOperation
+}
+
+const defaultCommanderPendingConflictResolutionDeps: CommanderPendingConflictResolutionDeps = {
+  getCurrentPendingConflictName,
+  applyPendingTransferOperation,
+  removePendingTransferEntry,
+  refreshWidgetPanes,
+  finalizePendingTransferOperation,
+}
+
 export function getOperationEntryIds(paneState: CommanderPaneRuntimeState) {
   if (paneState.selectedIds.length > 0) {
     return paneState.selectedIds
@@ -495,6 +513,74 @@ export function confirmCommanderWidgetPendingOperation(
     ...widgetState,
     pendingOperation: null,
   }
+}
+
+export function resolveCommanderWidgetPendingConflict(
+  widgetState: CommanderWidgetRuntimeState,
+  widgetId: string,
+  resolution: CommanderPendingConflictResolution,
+  deps: CommanderPendingConflictResolutionDeps = defaultCommanderPendingConflictResolutionDeps,
+) {
+  const pendingOperation = widgetState.pendingOperation
+
+  if (
+    !pendingOperation ||
+    (pendingOperation.kind !== 'copy' && pendingOperation.kind !== 'move') ||
+    !pendingOperation.targetPath
+  ) {
+    return null
+  }
+
+  const currentConflictName = deps.getCurrentPendingConflictName(pendingOperation)
+
+  if (!currentConflictName && resolution !== 'overwrite-all' && resolution !== 'skip-all') {
+    return null
+  }
+
+  if (resolution === 'overwrite-all') {
+    deps.applyPendingTransferOperation(widgetId, pendingOperation, pendingOperation.entryIds, true)
+
+    return deps.refreshWidgetPanes(widgetState, {
+      pendingOperation: null,
+    })
+  }
+
+  if (resolution === 'skip-all') {
+    const conflictEntryNameSet = new Set(pendingOperation.conflictEntryNames ?? [])
+    const nonConflictingEntryIds = pendingOperation.entryIds.filter(
+      (_entryId, index) => !conflictEntryNameSet.has(pendingOperation.entryNames[index] ?? ''),
+    )
+
+    deps.applyPendingTransferOperation(widgetId, pendingOperation, nonConflictingEntryIds, false)
+
+    return deps.refreshWidgetPanes(widgetState, {
+      pendingOperation: null,
+    })
+  }
+
+  if (!currentConflictName) {
+    return null
+  }
+
+  const currentConflictIndex = pendingOperation.entryNames.findIndex(
+    (entryName) => entryName === currentConflictName,
+  )
+  const currentConflictEntryId =
+    currentConflictIndex === -1 ? null : (pendingOperation.entryIds[currentConflictIndex] ?? null)
+
+  if (resolution === 'overwrite-current' && currentConflictEntryId) {
+    deps.applyPendingTransferOperation(widgetId, pendingOperation, [currentConflictEntryId], true)
+  }
+
+  const nextPendingOperation = deps.removePendingTransferEntry(pendingOperation, currentConflictName)
+
+  if (nextPendingOperation.conflictEntryNames?.length) {
+    return deps.refreshWidgetPanes(widgetState, {
+      pendingOperation: nextPendingOperation,
+    })
+  }
+
+  return deps.finalizePendingTransferOperation(widgetState, widgetId, nextPendingOperation)
 }
 
 export function createPendingOperation(
