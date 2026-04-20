@@ -86,6 +86,7 @@ Current reusable controls:
 - `SearchableMultiSelect` exposes a labelled `listbox` / `option` contract with `aria-selected` instead of toggle-button semantics
 - `RadioGroup` exposes a named `radiogroup` contract through an explicit label id
 - `TerminalToolbar` moves focus into the search field explicitly when the search row opens
+- `TerminalStatusHeader` now has direct component coverage for default terminal meta rendering and compact `primaryText` mode without meta badges
 
 ### Widgets
 
@@ -254,6 +255,7 @@ Lookup helpers exported from `src/shared/ui/dom-id.tsx`:
 - `SwitcherControl` and `SwitcherGroup` cover single and grouped boolean toggles.
 - `ExpandableTextArea` keeps inline behavior by default and can expand to the parent bounds or to a selector target without introducing modal semantics.
 - `TerminalStatusHeader` and `TerminalSurface` add the terminal renderer slice in the component layer, with `TerminalSurface` owning the frontend-only xterm mock session.
+- `TerminalStatusHeader` now also keeps its title/meta layout chrome in `terminal-status-header.styles.ts` instead of carrying that style surface inline.
 - `TerminalToolbar` adds the terminal-local addon controls layer for search, clipboard actions, and renderer status.
 - `CommanderWidget` stays in the widget layer, renders from a widget-scoped commander store plus a fake filesystem client, and still does not introduce backend calls or real filesystem behavior.
 - Commander write operations remain intentionally local to one widget instance: source and target panes can mutate against the same fake client, but different commander widgets do not share mutations or copy paths.

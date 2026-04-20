@@ -2,6 +2,17 @@ import type * as React from 'react'
 
 import { Activity, CircleSlash, Command, Laptop2, LoaderCircle, Server, SquareTerminal } from 'lucide-react'
 
+import {
+  terminalStatusHeaderClusterStyle,
+  terminalStatusHeaderCompactClusterStyle,
+  terminalStatusHeaderCompactMetaWrapStyle,
+  terminalStatusHeaderCompactRootStyle,
+  terminalStatusHeaderMetaItemStyle,
+  terminalStatusHeaderMetaTextStyle,
+  terminalStatusHeaderMetaWrapStyle,
+  terminalStatusHeaderRootStyle,
+  terminalStatusHeaderTitleTextStyle,
+} from '@/shared/ui/components/terminal-status-header.styles'
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { Box, Text } from '@/shared/ui/primitives'
 import { DockviewTabPill } from '@/shared/ui/components/dockview-tab-pill'
@@ -19,100 +30,6 @@ export type TerminalStatusHeaderProps = {
   actionSlot?: React.ReactNode
   primaryText?: string
   showMeta?: boolean
-}
-
-const rootStyle = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  gap: 'var(--gap-md)',
-  minHeight: 'var(--size-terminal-status)',
-  padding: 0,
-  border: 'none',
-  borderRadius: 0,
-  background: 'transparent',
-  boxShadow: 'none',
-  backdropFilter: 'none',
-  WebkitBackdropFilter: 'none',
-}
-
-const compactRootStyle = {
-  ...rootStyle,
-  gap: 'var(--gap-md)',
-  minHeight: '100%',
-  width: '100%',
-}
-
-const clusterStyle = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 'var(--gap-sm)',
-  minWidth: 0,
-  padding: 0,
-  border: 'none',
-  borderRadius: 0,
-  background: 'transparent',
-  boxShadow: 'none',
-  backdropFilter: 'none',
-  WebkitBackdropFilter: 'none',
-}
-
-const compactClusterStyle = {
-  ...clusterStyle,
-  gap: 'var(--gap-sm)',
-  flex: '0 1 auto',
-}
-
-const metaWrapStyle = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'flex-end',
-  gap: 'var(--gap-sm)',
-  flexWrap: 'wrap' as const,
-  minWidth: 0,
-  padding: 0,
-  border: 'none',
-  borderRadius: 0,
-  background: 'transparent',
-  boxShadow: 'none',
-  backdropFilter: 'none',
-  WebkitBackdropFilter: 'none',
-}
-
-const compactMetaWrapStyle = {
-  ...metaWrapStyle,
-  flex: 1,
-  gap: 'var(--gap-sm)',
-  flexWrap: 'nowrap' as const,
-  overflow: 'hidden' as const,
-}
-
-const titleTextStyle = {
-  fontSize: 'var(--font-size-md)',
-  lineHeight: 'var(--line-height-md)',
-  fontWeight: 600,
-  color: 'var(--runa-terminal-text-strong, var(--color-text-primary))',
-}
-
-const compactTitleTextStyle = {
-  ...titleTextStyle,
-  fontSize: 'var(--font-size-md)',
-  lineHeight: 'var(--line-height-md)',
-}
-
-const metaTextStyle = {
-  fontSize: 'var(--font-size-sm)',
-  lineHeight: 'var(--line-height-sm)',
-  color: 'var(--runa-terminal-text-secondary, var(--color-text-secondary))',
-  whiteSpace: 'nowrap' as const,
-  overflow: 'hidden' as const,
-  textOverflow: 'ellipsis' as const,
-}
-
-const compactMetaTextStyle = {
-  ...metaTextStyle,
-  fontSize: 'var(--font-size-sm)',
-  lineHeight: 'var(--line-height-sm)',
 }
 
 function getConnectionMeta(connectionKind: TerminalConnectionKind) {
@@ -165,7 +82,10 @@ function MetaItem({
   runaComponent: string
 }) {
   return (
-    <DockviewTabPill runaComponent={runaComponent} style={compact ? undefined : { minHeight: '24px' }}>
+    <DockviewTabPill
+      runaComponent={runaComponent}
+      style={compact ? undefined : terminalStatusHeaderMetaItemStyle}
+    >
       {children}
     </DockviewTabPill>
   )
@@ -190,27 +110,27 @@ export function TerminalStatusHeader({
 
   return (
     <RunaDomScopeProvider component="terminal-status-header">
-      <Box runaComponent="terminal-status-header-root" style={compact ? compactRootStyle : rootStyle}>
+      <Box
+        runaComponent="terminal-status-header-root"
+        style={compact ? terminalStatusHeaderCompactRootStyle : terminalStatusHeaderRootStyle}
+      >
         <Box
           runaComponent="terminal-status-header-title-cluster"
-          style={compact ? compactClusterStyle : clusterStyle}
+          style={compact ? terminalStatusHeaderCompactClusterStyle : terminalStatusHeaderClusterStyle}
         >
           <SquareTerminal
             color="var(--runa-terminal-status-running, var(--color-accent-emerald-strong))"
             size={titleIconSize}
             strokeWidth={1.8}
           />
-          <Text
-            runaComponent="terminal-status-header-title"
-            style={compact ? compactTitleTextStyle : titleTextStyle}
-          >
+          <Text runaComponent="terminal-status-header-title" style={terminalStatusHeaderTitleTextStyle}>
             {displayText}
           </Text>
         </Box>
         {showMeta || actionSlot ? (
           <Box
             runaComponent="terminal-status-header-meta-wrap"
-            style={compact ? compactMetaWrapStyle : metaWrapStyle}
+            style={compact ? terminalStatusHeaderCompactMetaWrapStyle : terminalStatusHeaderMetaWrapStyle}
           >
             {showMeta ? (
               <>
@@ -222,7 +142,7 @@ export function TerminalStatusHeader({
                   />
                   <Text
                     runaComponent="terminal-status-header-connection-text"
-                    style={compact ? compactMetaTextStyle : metaTextStyle}
+                    style={terminalStatusHeaderMetaTextStyle}
                   >
                     {connectionMeta.label}
                   </Text>
@@ -238,7 +158,7 @@ export function TerminalStatusHeader({
                   />
                   <Text
                     runaComponent="terminal-status-header-session-text"
-                    style={compact ? compactMetaTextStyle : metaTextStyle}
+                    style={terminalStatusHeaderMetaTextStyle}
                   >
                     {sessionMeta.label}
                   </Text>
@@ -251,7 +171,7 @@ export function TerminalStatusHeader({
                   />
                   <Text
                     runaComponent="terminal-status-header-shell-text"
-                    style={compact ? compactMetaTextStyle : metaTextStyle}
+                    style={terminalStatusHeaderMetaTextStyle}
                   >
                     {shellLabel}
                   </Text>
