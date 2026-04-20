@@ -24,6 +24,7 @@ import {
   finalizePendingTransferOperation,
   getCurrentPendingConflictName,
   removePendingTransferEntry,
+  updateCommanderPendingOperationInput,
 } from '@/features/commander/model/store-operations'
 import {
   getPaneState,
@@ -35,8 +36,6 @@ import {
 } from '@/features/commander/model/store-navigation'
 import {
   applySelectionMaskToPane,
-  getCommanderFilterMatches,
-  getCommanderMaskMatches,
   getCommanderResolvedSearchMatchIndex,
   getCommanderSearchMatches,
   invertPaneSelection,
@@ -786,106 +785,9 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
     )
   })
   .on(setCommanderPendingOperationInput, (widgets, payload) => {
-    const widgetState = widgets[payload.widgetId]
-
-    if (!widgetState?.pendingOperation) {
-      return widgets
-    }
-
-    if (widgetState.pendingOperation.kind === 'select' || widgetState.pendingOperation.kind === 'unselect') {
-      const matches = getCommanderMaskMatches(
-        getPaneState(widgetState, widgetState.pendingOperation.sourcePaneId),
-        payload.inputValue,
-      )
-
-      return {
-        ...widgets,
-        [payload.widgetId]: {
-          ...widgetState,
-          pendingOperation: {
-            ...widgetState.pendingOperation,
-            inputValue: payload.inputValue,
-            matchCount: matches.entryIds.length,
-            matchPreview: matches.entryNames.slice(0, 6),
-          },
-        },
-      }
-    }
-
-    if (widgetState.pendingOperation.kind === 'filter') {
-      const matches = getCommanderFilterMatches(
-        widgetState,
-        widgetState.pendingOperation.sourcePaneId,
-        payload.inputValue,
-      )
-
-      return {
-        ...widgets,
-        [payload.widgetId]: {
-          ...widgetState,
-          pendingOperation: {
-            ...widgetState.pendingOperation,
-            inputValue: payload.inputValue,
-            matchCount: matches.entryIds.length,
-            matchPreview: matches.entryNames.slice(0, 6),
-          },
-        },
-      }
-    }
-
-    if (widgetState.pendingOperation.kind === 'search') {
-      const sourcePane = getPaneState(widgetState, widgetState.pendingOperation.sourcePaneId)
-      const matches = getCommanderSearchMatches(sourcePane, payload.inputValue)
-
-      return {
-        ...widgets,
-        [payload.widgetId]: {
-          ...widgetState,
-          pendingOperation: {
-            ...widgetState.pendingOperation,
-            inputValue: payload.inputValue,
-            matchCount: matches.entryIds.length,
-            matchPreview: matches.entryNames.slice(0, 6),
-            matchIndex: getCommanderResolvedSearchMatchIndex(matches.entryIds, sourcePane.cursorEntryId, 0),
-          },
-        },
-      }
-    }
-
-    if (widgetState.pendingOperation.kind !== 'rename') {
-      return {
-        ...widgets,
-        [payload.widgetId]: {
-          ...widgetState,
-          pendingOperation: {
-            ...widgetState.pendingOperation,
-            inputValue: payload.inputValue,
-            conflictEntryNames: undefined,
-          },
-        },
-      }
-    }
-
-    const renamePreview = previewCommanderRenameEntries({
-      widgetId: payload.widgetId,
-      path: widgetState.pendingOperation.sourcePath,
-      entryIds: widgetState.pendingOperation.entryIds,
-      template: payload.inputValue,
-    })
-
-    return {
-      ...widgets,
-      [payload.widgetId]: {
-        ...widgetState,
-        pendingOperation: {
-          ...widgetState.pendingOperation,
-          inputValue: payload.inputValue,
-          conflictEntryNames: renamePreview.conflictEntryNames,
-          duplicateTargetNames: renamePreview.duplicateTargetNames,
-          renamePreview: renamePreview.preview,
-        },
-      },
-    }
+    return withCommanderWidgetState(widgets, payload, (widgetState) =>
+      updateCommanderPendingOperationInput(widgetState, payload.widgetId, payload.inputValue),
+    )
   })
   .on(confirmCommanderPendingOperation, (widgets, payload) => {
     const widgetState = widgets[payload.widgetId]
