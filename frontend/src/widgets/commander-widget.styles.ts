@@ -427,13 +427,17 @@ export const commanderListHeaderStyle: CSSProperties = {
 }
 
 export const commanderListHeaderButtonStyle: CSSProperties = {
+  appearance: 'none',
+  WebkitAppearance: 'none',
   width: '100%',
   minWidth: 0,
   minHeight: '24px',
   height: '24px',
+  margin: 0,
   padding: 0,
   border: 'none',
   borderRadius: 0,
+  outline: 'none',
   background: 'transparent',
   color: 'var(--runa-commander-text-muted)',
   boxShadow: 'none',
