@@ -10,9 +10,9 @@ import {
   SquareTerminal,
 } from 'lucide-react'
 
-import { RunaDomScopeProvider } from '../dom-id'
-import { Box, Text } from '../primitives'
-import { DockviewTabPill } from './dockview-tab-pill'
+import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
+import { Box, Text } from '@/shared/ui/primitives'
+import { DockviewTabPill } from '@/shared/ui/components/dockview-tab-pill'
 
 export type TerminalConnectionKind = 'local' | 'ssh'
 export type TerminalSessionState = 'running' | 'idle' | 'starting' | 'exited'

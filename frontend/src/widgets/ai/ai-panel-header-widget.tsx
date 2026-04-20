@@ -1,9 +1,9 @@
 import { Settings2 } from 'lucide-react'
 
-import runaAvatar from '../../assets/img/logo.png'
-import { RunaDomScopeProvider } from '../shared/ui/dom-id'
-import { Avatar, IconButton } from '../shared/ui/components'
-import { Box, Surface, Text } from '../shared/ui/primitives'
+import runaAvatar from '@assets/img/logo.png'
+import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
+import { Avatar, IconButton } from '@/shared/ui/components'
+import { Box, Surface, Text } from '@/shared/ui/primitives'
 
 import {
   aiHeaderActionStyle,
@@ -12,7 +12,7 @@ import {
   aiShellHeaderTitleLaneStyle,
   aiShellTitleClusterStyle,
   aiShellTitleTextStyle,
-} from './ai-panel-widget.styles'
+} from '@/widgets/ai/ai-panel-widget.styles'
 
 export type AiPanelHeaderWidgetProps = {
   title: string

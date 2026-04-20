@@ -1,4 +1,4 @@
-import { Box, Input, type InputProps, Text } from '../primitives'
+import { Box, Input, type InputProps, Text } from '@/shared/ui/primitives'
 
 export type InputFieldProps = InputProps & {
   label: string

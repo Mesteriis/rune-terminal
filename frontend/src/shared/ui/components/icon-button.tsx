@@ -1,6 +1,6 @@
 import type * as React from 'react'
 
-import { Button, type ButtonProps } from '../primitives'
+import { Button, type ButtonProps } from '@/shared/ui/primitives'
 
 export type IconButtonProps = ButtonProps & {
   size?: 'sm' | 'md'

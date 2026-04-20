@@ -1,11 +1,11 @@
 import { Copy, FileText, RotateCcw, ShieldAlert } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
-import { RunaDomScopeProvider } from '../shared/ui/dom-id'
-import { IconButton } from '../shared/ui/components'
-import { Badge, Box, Surface, Text } from '../shared/ui/primitives'
+import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
+import { IconButton } from '@/shared/ui/components'
+import { Badge, Box, Surface, Text } from '@/shared/ui/primitives'
 
-import type { AiPromptCardState } from './ai-panel-widget.mock'
+import type { AiPromptCardState } from '@/widgets/ai/ai-panel-widget.mock'
 import {
   aiPromptApprovalCommandStyle,
   aiPromptApprovalListStyle,
@@ -33,7 +33,7 @@ import {
   aiPromptSectionHeaderStyle,
   aiPromptSummarySectionStyle,
   aiPromptTitleStyle,
-} from './ai-panel-widget.styles'
+} from '@/widgets/ai/ai-panel-widget.styles'
 
 export type AiPromptCardWidgetProps = {
   prompt: AiPromptCardState

@@ -1,8 +1,8 @@
 import { List, SendHorizontal } from 'lucide-react'
 
-import { RunaDomScopeProvider } from '../shared/ui/dom-id'
-import { IconButton } from '../shared/ui/components'
-import { Badge, Box, Surface, Text, TextArea } from '../shared/ui/primitives'
+import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
+import { IconButton } from '@/shared/ui/components'
+import { Badge, Box, Surface, Text, TextArea } from '@/shared/ui/primitives'
 
 import {
   aiComposerActionRailStyle,
@@ -12,7 +12,7 @@ import {
   aiToolbarChipStyle,
   aiToolbarLabelStyle,
   aiToolbarStyle,
-} from './ai-panel-widget.styles'
+} from '@/widgets/ai/ai-panel-widget.styles'
 
 export type AiComposerWidgetProps = {
   toolbarLabel: string

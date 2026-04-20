@@ -1,16 +1,16 @@
-import { RunaDomScopeProvider, useRunaDomAutoTagging } from '../shared/ui/dom-id'
-import { Box, ScrollArea } from '../shared/ui/primitives'
+import { RunaDomScopeProvider, useRunaDomAutoTagging } from '@/shared/ui/dom-id'
+import { Box, ScrollArea } from '@/shared/ui/primitives'
 
-import { ModalHostWidget } from './modal-host-widget'
-import { WidgetBusyOverlayWidget } from './widget-busy-overlay-widget'
-import { AiComposerWidget } from './ai-composer-widget'
-import { AiPromptCardWidget } from './ai-prompt-card-widget'
-import { aiPanelWidgetMockState, type AiPanelWidgetMockState } from './ai-panel-widget.mock'
+import { ModalHostWidget } from '@/widgets/panel/modal-host-widget'
+import { WidgetBusyOverlayWidget } from '@/widgets/panel/widget-busy-overlay-widget'
+import { AiComposerWidget } from '@/widgets/ai/ai-composer-widget'
+import { AiPromptCardWidget } from '@/widgets/ai/ai-prompt-card-widget'
+import { aiPanelWidgetMockState, type AiPanelWidgetMockState } from '@/widgets/ai/ai-panel-widget.mock'
 import {
   aiPanelContentColumnStyle,
   aiPanelRootStyle,
   aiPromptStackStyle,
-} from './ai-panel-widget.styles'
+} from '@/widgets/ai/ai-panel-widget.styles'
 
 export type AiPanelWidgetProps = {
   hostId: string

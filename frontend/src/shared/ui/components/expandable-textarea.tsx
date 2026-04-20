@@ -2,8 +2,8 @@ import type * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
-import { useRunaDomIdentity, useRunaDomScope } from '../dom-id'
-import { Box, Button, Label, TextArea, type TextAreaProps } from '../primitives'
+import { useRunaDomIdentity, useRunaDomScope } from '@/shared/ui/dom-id'
+import { Box, Button, Label, TextArea, type TextAreaProps } from '@/shared/ui/primitives'
 
 export type ExpandableTextAreaProps = Omit<TextAreaProps, 'onChange'> & {
   label?: string

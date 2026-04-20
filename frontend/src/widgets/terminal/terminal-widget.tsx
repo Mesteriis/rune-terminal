@@ -1,13 +1,13 @@
 import { useRef } from 'react'
 
-import { RunaDomScopeProvider, useRunaDomAutoTagging } from '../shared/ui/dom-id'
-import { Box } from '../shared/ui/primitives'
+import { RunaDomScopeProvider, useRunaDomAutoTagging } from '@/shared/ui/dom-id'
+import { Box } from '@/shared/ui/primitives'
 import {
   TerminalSurface,
   type TerminalSurfaceHandle,
   type TerminalConnectionKind,
   type TerminalSessionState,
-} from '../shared/ui/components'
+} from '@/shared/ui/components'
 
 export type TerminalWidgetProps = {
   hostId: string

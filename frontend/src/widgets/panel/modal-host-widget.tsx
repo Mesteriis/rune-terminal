@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useUnit } from 'effector-react'
 
-import { BODY_MODAL_HOST_ID, $modals, closeHostModals, closeModal } from '../shared/model/modal'
-import { DialogPopup } from '../shared/ui/components'
-import { Box } from '../shared/ui/primitives'
+import { BODY_MODAL_HOST_ID, $modals, closeHostModals, closeModal } from '@/shared/model/modal'
+import { DialogPopup } from '@/shared/ui/components'
+import { Box } from '@/shared/ui/primitives'
 
 type ModalHostWidgetProps = {
   hostId: string

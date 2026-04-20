@@ -1,5 +1,5 @@
-import { useRunaDomIdentity, useRunaDomScope } from '../dom-id'
-import { Box, type BoxProps } from '../primitives'
+import { useRunaDomIdentity, useRunaDomScope } from '@/shared/ui/dom-id'
+import { Box, type BoxProps } from '@/shared/ui/primitives'
 
 export type AvatarProps = Omit<BoxProps, 'children'> & {
   label?: string

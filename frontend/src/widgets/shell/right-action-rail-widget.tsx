@@ -3,10 +3,10 @@ import { FolderTree, Monitor, Plus, Settings2 } from 'lucide-react'
 import { useUnit } from 'effector-react'
 import { useEffect, useRef, useState } from 'react'
 
-import { openBodyModal } from '../shared/model/modal'
-import { RunaDomScopeProvider } from '../shared/ui/dom-id'
-import { Box, Button, Surface, Text } from '../shared/ui/primitives'
-import { createNextTerminalPanelId, createTerminalPanelParams } from './terminal-panel'
+import { openBodyModal } from '@/shared/model/modal'
+import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
+import { Box, Button, Separator, Surface, Text } from '@/shared/ui/primitives'
+import { createNextTerminalPanelId, createTerminalPanelParams } from '@/widgets/terminal/terminal-panel'
 
 const rightRailStyle = {
   flex: '0 0 var(--size-right-rail)',
@@ -92,6 +92,11 @@ const utilityMenuTitleStyle = {
   fontWeight: 600,
 }
 
+const utilityMenuSeparatorStyle = {
+  width: '100%',
+  margin: '2px 0',
+}
+
 const railIconProps = {
   size: 16,
   strokeWidth: 1.75,
@@ -99,6 +104,7 @@ const railIconProps = {
 
 type RightActionRailWidgetProps = {
   dockviewApiRef: { current: DockviewApi | null }
+  onAddWorkspace: () => void
 }
 
 function createNextCommanderPanelId(containerApi: DockviewApi) {
@@ -115,7 +121,7 @@ function createNextCommanderPanelId(containerApi: DockviewApi) {
   return `tool-${index}`
 }
 
-export function RightActionRailWidget({ dockviewApiRef }: RightActionRailWidgetProps) {
+export function RightActionRailWidget({ dockviewApiRef, onAddWorkspace }: RightActionRailWidgetProps) {
   const onOpenBodyModal = useUnit(openBodyModal)
   const [isUtilityMenuOpen, setIsUtilityMenuOpen] = useState(false)
   const menuWrapRef = useRef<HTMLDivElement | null>(null)
@@ -148,6 +154,11 @@ export function RightActionRailWidget({ dockviewApiRef }: RightActionRailWidgetP
 
   const handleToggleUtilityMenu = () => {
     setIsUtilityMenuOpen((value) => !value)
+  }
+
+  const handleCreateWorkspace = () => {
+    onAddWorkspace()
+    setIsUtilityMenuOpen(false)
   }
 
   const getPanelPosition = () => {
@@ -218,6 +229,23 @@ export function RightActionRailWidget({ dockviewApiRef }: RightActionRailWidgetP
               runaComponent="right-action-rail-utility-menu"
               style={utilityMenuStyle}
             >
+              <Button
+                aria-label="Create workspace"
+                onClick={handleCreateWorkspace}
+                runaComponent="right-action-rail-create-workspace"
+                role="menuitem"
+                style={utilityMenuItemStyle}
+              >
+                <Plus {...railIconProps} />
+                <Box runaComponent="right-action-rail-create-workspace-meta" style={utilityMenuMetaStyle}>
+                  <Text runaComponent="right-action-rail-create-workspace-title" style={utilityMenuTitleStyle}>Workspace</Text>
+                </Box>
+              </Button>
+              <Separator
+                orientation="horizontal"
+                runaComponent="right-action-rail-utility-menu-separator"
+                style={utilityMenuSeparatorStyle}
+              />
               <Button
                 aria-label="Create terminal widget"
                 onClick={handleCreateTerminalWidget}

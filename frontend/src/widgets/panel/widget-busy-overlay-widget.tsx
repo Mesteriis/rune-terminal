@@ -5,8 +5,8 @@ import { loadFull } from 'tsparticles'
 import { createPortal } from 'react-dom'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
-import { $aiBlockedWidgetHostIds } from '../shared/model/ai-blocked-widgets'
-import { useRunaDomIdentity } from '../shared/ui/dom-id'
+import { $aiBlockedWidgetHostIds } from '@/shared/model/ai-blocked-widgets'
+import { useRunaDomIdentity } from '@/shared/ui/dom-id'
 
 type WidgetBusyOverlayWidgetProps = {
   hostId: string

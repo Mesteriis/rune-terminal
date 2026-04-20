@@ -1,8 +1,8 @@
 import { useUnit } from 'effector-react'
 
-import { $aiBlockedWidgetHostIds, toggleAiBlockedWidget } from '../shared/model/ai-blocked-widgets'
-import { openWidgetModal } from '../shared/model/modal'
-import { Box, Button } from '../shared/ui/primitives'
+import { $aiBlockedWidgetHostIds, toggleAiBlockedWidget } from '@/shared/model/ai-blocked-widgets'
+import { openWidgetModal } from '@/shared/model/modal'
+import { Box, Button } from '@/shared/ui/primitives'
 
 type PanelModalActionsWidgetProps = {
   hostId: string

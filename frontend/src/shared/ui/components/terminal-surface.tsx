@@ -6,8 +6,8 @@ import { WebglAddon } from '@xterm/addon-webgl'
 import { Terminal } from '@xterm/xterm'
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
 
-import { TerminalViewport } from '../primitives'
-import type { TerminalConnectionKind, TerminalSessionState } from './terminal-status-header'
+import { TerminalViewport } from '@/shared/ui/primitives'
+import type { TerminalConnectionKind, TerminalSessionState } from '@/shared/ui/components/terminal-status-header'
 
 export type TerminalSurfaceHandle = {
   copySelection: () => Promise<void>

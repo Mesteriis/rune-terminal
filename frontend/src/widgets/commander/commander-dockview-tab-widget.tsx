@@ -1,8 +1,8 @@
 import type { IDockviewPanelHeaderProps } from 'dockview-react'
 import { useEffect, useState } from 'react'
 
-import { RunaDomScopeProvider } from '../shared/ui/dom-id'
-import { DockviewTabChrome, DockviewTabPill } from '../shared/ui/components'
+import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
+import { DockviewTabChrome, DockviewTabPill } from '@/shared/ui/components'
 
 const modePillStyle = {
   borderColor: 'var(--runa-commander-highlight-badge-border)',

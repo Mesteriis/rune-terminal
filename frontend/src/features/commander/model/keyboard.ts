@@ -1,7 +1,7 @@
 import { useCallback, useRef, type KeyboardEvent } from 'react'
 
-import { useCommanderActions } from './hooks'
-import type { CommanderFileDialogState, CommanderFileRow, CommanderPaneId, CommanderPendingOperation } from './types'
+import { useCommanderActions } from '@/features/commander/model/hooks'
+import type { CommanderFileDialogState, CommanderFileRow, CommanderPaneId, CommanderPendingOperation } from '@/features/commander/model/types'
 
 const COMMANDER_TYPEAHEAD_RESET_MS = 700
 

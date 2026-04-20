@@ -1,4 +1,4 @@
-import { commanderWidgetMockState } from '../../../widgets/commander-widget.mock'
+import { commanderWidgetMockState } from '@/widgets/commander/commander-widget.mock'
 import type {
   CommanderClientEntrySnapshot,
   CommanderClientSnapshot,
@@ -14,7 +14,7 @@ import type {
   CommanderWidgetPersistedState,
   CommanderSortMode,
   CommanderWidgetRuntimeState,
-} from './types'
+} from '@/features/commander/model/types'
 
 type CommanderSeedEntry = CommanderClientEntrySnapshot
 

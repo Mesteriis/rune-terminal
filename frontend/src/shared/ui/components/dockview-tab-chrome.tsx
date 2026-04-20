@@ -1,6 +1,6 @@
 import type * as React from 'react'
 
-import { Box } from '../primitives'
+import { Box } from '@/shared/ui/primitives'
 
 const dockviewTabRootStyle = {
   width: '100%',

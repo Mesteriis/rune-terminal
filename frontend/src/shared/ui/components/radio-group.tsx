@@ -1,4 +1,4 @@
-import { Box, Label, Radio, Text } from '../primitives'
+import { Box, Label, Radio, Text } from '@/shared/ui/primitives'
 
 export type RadioGroupOption = {
   value: string

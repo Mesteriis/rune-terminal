@@ -1,9 +1,9 @@
 import { ChevronLeft, ChevronRight, Columns2, Columns3, Eye, EyeOff, FileCode2, FileText, Folder, FolderTree, Link2, SquareTerminal } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState, type ButtonHTMLAttributes, type HTMLAttributes, type RefObject } from 'react'
 
-import { listCommanderDirectoryPaths } from '../features/commander/model/fake-client'
-import { useCommanderKeyboard } from '../features/commander/model/keyboard'
-import { useCommanderActions, useCommanderWidget } from '../features/commander/model/hooks'
+import { listCommanderDirectoryPaths } from '@/features/commander/model/fake-client'
+import { useCommanderKeyboard } from '@/features/commander/model/keyboard'
+import { useCommanderActions, useCommanderWidget } from '@/features/commander/model/hooks'
 import type {
   CommanderFileRow,
   CommanderPaneRuntimeState,
@@ -13,10 +13,10 @@ import type {
   CommanderSortDirection,
   CommanderSortMode,
   CommanderWidgetViewState,
-} from '../features/commander/model/types'
-import { RunaDomScopeProvider, useRunaDomAutoTagging, useRunaDomIdentity, useRunaDomScope } from '../shared/ui/dom-id'
-import { Badge, Box, Button, Input, ScrollArea, Separator, Surface, Text, TextArea } from '../shared/ui/primitives'
-import { IconButton } from '../shared/ui/components'
+} from '@/features/commander/model/types'
+import { RunaDomScopeProvider, useRunaDomAutoTagging, useRunaDomIdentity, useRunaDomScope } from '@/shared/ui/dom-id'
+import { Badge, Box, Button, Input, ScrollArea, Separator, Surface, Text, TextArea } from '@/shared/ui/primitives'
+import { IconButton } from '@/shared/ui/components'
 
 import {
   commanderFileDialogActionsStyle,
@@ -102,7 +102,7 @@ import {
   commanderToggleActiveStyle,
   commanderTypeBadgeStyle,
   commanderPendingWarningStyle,
-} from './commander-widget.styles'
+} from '@/widgets/commander/commander-widget.styles'
 
 const commanderRenameTemplatePresets = [
   '[N]-[C:2]',

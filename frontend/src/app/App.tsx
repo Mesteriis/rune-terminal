@@ -1,13 +1,13 @@
-import { DockviewReact, type DockviewApi, type DockviewReadyEvent, type DockviewTheme } from 'dockview-react'
+import { DockviewReact, type DockviewApi, type DockviewReadyEvent, type DockviewTheme, type SerializedDockview } from 'dockview-react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import { useUnit } from 'effector-react'
 
-import { $isAiSidebarOpen, toggleAiSidebar } from '../shared/model/app'
-import { BODY_MODAL_HOST_ID } from '../shared/model/modal'
-import { RunaDomScopeProvider, useRunaDomAutoTagging } from '../shared/ui/dom-id'
-import { Box } from '../shared/ui/primitives'
-import { createTerminalPanelParams } from '../widgets/terminal-panel'
+import { $isAiSidebarOpen, toggleAiSidebar } from '@/shared/model/app'
+import { BODY_MODAL_HOST_ID } from '@/shared/model/modal'
+import { RunaDomScopeProvider, useRunaDomAutoTagging } from '@/shared/ui/dom-id'
+import { Box } from '@/shared/ui/primitives'
+import { createTerminalPanelParams } from '@/widgets/terminal/terminal-panel'
 import {
   AiPanelHeaderWidget,
   AiPanelWidget,
@@ -16,9 +16,10 @@ import {
   ModalHostWidget,
   RightActionRailWidget,
   ShellTopbarWidget,
+  type ShellWorkspaceTab,
   TerminalDockviewHeaderActionsWidget,
   TerminalDockviewTabWidget,
-} from '../widgets'
+} from '@/widgets'
 
 const AI_PANEL_DEFAULT_RATIO = 0.3
 const AI_PANEL_MIN_WIDTH = 320
@@ -27,6 +28,8 @@ const AI_SHELL_PANEL_HOST_ID = 'ai-shell-panel'
 const AI_PANEL_ANIMATION_SECONDS = 0.84
 const AI_PANEL_ANIMATION_EASE = [0.22, 0.61, 0.36, 1] as const
 const DOCKVIEW_GROUP_GAP = 6
+const DOCKVIEW_WORKSPACE_STORAGE_KEY = 'runa-terminal:dockview-workspaces:v1'
+const DOCKVIEW_PERSIST_DEBOUNCE_MS = 120
 const WORKSPACE_MIN_WIDTH = 420
 
 const runaDockviewTheme: DockviewTheme = {
@@ -193,6 +196,82 @@ const dockviewContainerStyle = {
   WebkitBackdropFilter: 'none',
 }
 
+type WorkspaceLayoutTab = ShellWorkspaceTab & {
+  snapshot: SerializedDockview | null
+}
+
+type PersistedDockviewWorkspaceState = {
+  activeWorkspaceId: number
+  workspaceTabs: WorkspaceLayoutTab[]
+}
+
+function createDefaultWorkspaceTabs(): WorkspaceLayoutTab[] {
+  return [
+    { id: 1, title: 'Workspace-1', snapshot: null },
+    { id: 2, title: 'Workspace-2', snapshot: null },
+  ]
+}
+
+function readPersistedWorkspaceState(): PersistedDockviewWorkspaceState | null {
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  try {
+    const rawValue = window.localStorage.getItem(DOCKVIEW_WORKSPACE_STORAGE_KEY)
+
+    if (!rawValue) {
+      return null
+    }
+
+    const parsedValue = JSON.parse(rawValue) as Partial<PersistedDockviewWorkspaceState>
+
+    if (!Array.isArray(parsedValue.workspaceTabs) || typeof parsedValue.activeWorkspaceId !== 'number') {
+      return null
+    }
+
+    const workspaceTabs = parsedValue.workspaceTabs
+      .filter((workspace): workspace is WorkspaceLayoutTab =>
+        Boolean(
+          workspace
+          && typeof workspace.id === 'number'
+          && typeof workspace.title === 'string'
+          && ('snapshot' in workspace),
+        ),
+      )
+      .map((workspace) => ({
+        id: workspace.id,
+        title: workspace.title,
+        snapshot: workspace.snapshot ?? null,
+      }))
+
+    if (workspaceTabs.length === 0) {
+      return null
+    }
+
+    const hasActiveWorkspace = workspaceTabs.some((workspace) => workspace.id === parsedValue.activeWorkspaceId)
+
+    if (!hasActiveWorkspace) {
+      return null
+    }
+
+    return {
+      activeWorkspaceId: parsedValue.activeWorkspaceId,
+      workspaceTabs,
+    }
+  } catch {
+    return null
+  }
+}
+
+function writePersistedWorkspaceState(state: PersistedDockviewWorkspaceState) {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  window.localStorage.setItem(DOCKVIEW_WORKSPACE_STORAGE_KEY, JSON.stringify(state))
+}
+
 function getDefaultAiPanelWidth() {
   if (typeof window === 'undefined') {
     return 450
@@ -235,6 +314,30 @@ export function App() {
   const dockviewApiRef = useRef<DockviewApi | null>(null)
   const dockviewContainerRef = useRef<HTMLDivElement | null>(null)
   const aiResizeStartRef = useRef<{ startWidth: number; startX: number } | null>(null)
+  const initialWorkspaceStateRef = useRef<PersistedDockviewWorkspaceState | null>(readPersistedWorkspaceState())
+  const [workspaceTabs, setWorkspaceTabs] = useState<WorkspaceLayoutTab[]>(
+    initialWorkspaceStateRef.current?.workspaceTabs ?? createDefaultWorkspaceTabs(),
+  )
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState(
+    initialWorkspaceStateRef.current?.activeWorkspaceId ?? 2,
+  )
+  const workspaceTabsRef = useRef<WorkspaceLayoutTab[]>(
+    initialWorkspaceStateRef.current?.workspaceTabs ?? createDefaultWorkspaceTabs(),
+  )
+  const activeWorkspaceIdRef = useRef(initialWorkspaceStateRef.current?.activeWorkspaceId ?? 2)
+  const dockviewPersistenceTimeoutRef = useRef<number | null>(null)
+  const dockviewPersistenceDisposablesRef = useRef<Array<{ dispose: () => void }>>([])
+
+  const updateWorkspaceTabs = (updater: (tabs: WorkspaceLayoutTab[]) => WorkspaceLayoutTab[]) => {
+    const nextTabs = updater(workspaceTabsRef.current)
+    workspaceTabsRef.current = nextTabs
+    setWorkspaceTabs(nextTabs)
+  }
+
+  const disposeDockviewPersistenceBindings = () => {
+    dockviewPersistenceDisposablesRef.current.forEach((disposable) => disposable.dispose())
+    dockviewPersistenceDisposablesRef.current = []
+  }
 
   const syncDockviewLayout = () => {
     const api = dockviewApiRef.current
@@ -255,11 +358,129 @@ export function App() {
     })
   }
 
+  const schedulePersistCurrentWorkspaceSnapshot = () => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    if (dockviewPersistenceTimeoutRef.current !== null) {
+      window.clearTimeout(dockviewPersistenceTimeoutRef.current)
+    }
+
+    dockviewPersistenceTimeoutRef.current = window.setTimeout(() => {
+      dockviewPersistenceTimeoutRef.current = null
+      persistCurrentWorkspaceSnapshot()
+    }, DOCKVIEW_PERSIST_DEBOUNCE_MS)
+  }
+
+  const persistCurrentWorkspaceSnapshot = () => {
+    const api = dockviewApiRef.current
+
+    if (!api) {
+      return
+    }
+
+    const activeId = activeWorkspaceIdRef.current
+    const nextSnapshot = api.panels.length > 0 ? api.toJSON() : null
+
+    updateWorkspaceTabs((tabs) =>
+      tabs.map((workspace) =>
+        workspace.id === activeId
+          ? { ...workspace, snapshot: nextSnapshot }
+          : workspace,
+      ),
+    )
+  }
+
+  const bindDockviewPersistence = (api: DockviewApi) => {
+    disposeDockviewPersistenceBindings()
+
+    dockviewPersistenceDisposablesRef.current = [
+      api.onDidLayoutChange(schedulePersistCurrentWorkspaceSnapshot),
+      api.onDidAddPanel(schedulePersistCurrentWorkspaceSnapshot),
+      api.onDidRemovePanel(schedulePersistCurrentWorkspaceSnapshot),
+      api.onDidMovePanel(schedulePersistCurrentWorkspaceSnapshot),
+      api.onDidAddGroup(schedulePersistCurrentWorkspaceSnapshot),
+      api.onDidRemoveGroup(schedulePersistCurrentWorkspaceSnapshot),
+      api.onDidActivePanelChange(schedulePersistCurrentWorkspaceSnapshot),
+      api.onDidActiveGroupChange(schedulePersistCurrentWorkspaceSnapshot),
+    ]
+  }
+
+  const restoreWorkspaceSnapshot = (workspaceId: number) => {
+    const api = dockviewApiRef.current
+
+    if (!api) {
+      return
+    }
+
+    const targetWorkspace = workspaceTabsRef.current.find((workspace) => workspace.id === workspaceId)
+
+    if (!targetWorkspace?.snapshot) {
+      api.clear()
+      scheduleDockviewLayoutSync()
+      return
+    }
+
+    api.fromJSON(targetWorkspace.snapshot)
+    scheduleDockviewLayoutSync()
+  }
+
+  const handleSelectWorkspace = (workspaceId: number) => {
+    if (workspaceId === activeWorkspaceIdRef.current) {
+      return
+    }
+
+    persistCurrentWorkspaceSnapshot()
+    activeWorkspaceIdRef.current = workspaceId
+    setActiveWorkspaceId(workspaceId)
+    restoreWorkspaceSnapshot(workspaceId)
+  }
+
+  const handleAddWorkspace = () => {
+    persistCurrentWorkspaceSnapshot()
+
+    const nextWorkspaceId = workspaceTabsRef.current.length + 1
+    const nextWorkspace: WorkspaceLayoutTab = {
+      id: nextWorkspaceId,
+      title: `Workspace-${nextWorkspaceId}`,
+      snapshot: null,
+    }
+
+    updateWorkspaceTabs((tabs) => [...tabs, nextWorkspace])
+    activeWorkspaceIdRef.current = nextWorkspaceId
+    setActiveWorkspaceId(nextWorkspaceId)
+
+    const api = dockviewApiRef.current
+
+    if (api) {
+      api.clear()
+      scheduleDockviewLayoutSync()
+    }
+  }
+
   const handleReady = (event: DockviewReadyEvent) => {
     const api = event.api
     dockviewApiRef.current = api
+    bindDockviewPersistence(api)
 
     if (api.getPanel('terminal-header')) {
+      scheduleDockviewLayoutSync()
+      return
+    }
+
+    const initialWorkspace = workspaceTabsRef.current.find(
+      (workspace) => workspace.id === activeWorkspaceIdRef.current,
+    )
+
+    if (initialWorkspace?.snapshot) {
+      api.fromJSON(initialWorkspace.snapshot)
+      scheduleDockviewLayoutSync()
+      return
+    }
+
+    if (initialWorkspaceStateRef.current) {
+      api.clear()
       scheduleDockviewLayoutSync()
       return
     }
@@ -294,6 +515,16 @@ export function App() {
       },
     })
 
+    const initialWorkspaceSnapshot = api.toJSON()
+
+    updateWorkspaceTabs((tabs) =>
+      tabs.map((workspace) =>
+        workspace.id === 2
+          ? { ...workspace, snapshot: initialWorkspaceSnapshot }
+          : workspace,
+      ),
+    )
+
     scheduleDockviewLayoutSync()
   }
 
@@ -312,6 +543,23 @@ export function App() {
 
     return () => {
       resizeObserver.disconnect()
+    }
+  }, [])
+
+  useEffect(() => {
+    writePersistedWorkspaceState({
+      activeWorkspaceId,
+      workspaceTabs,
+    })
+  }, [activeWorkspaceId, workspaceTabs])
+
+  useEffect(() => {
+    return () => {
+      disposeDockviewPersistenceBindings()
+
+      if (dockviewPersistenceTimeoutRef.current !== null) {
+        window.clearTimeout(dockviewPersistenceTimeoutRef.current)
+      }
     }
   }, [])
 
@@ -387,7 +635,14 @@ export function App() {
     <RunaDomScopeProvider component="app" layout="shell" widget="workspace">
       <Box ref={appRootRef} runaComponent="app-root" style={rootStyle}>
         <Box runaComponent="app-main-shell" style={mainShellStyle}>
-          <ShellTopbarWidget isAiOpen={isAiSidebarOpen} onToggleAi={onToggleAiSidebar} />
+          <ShellTopbarWidget
+            activeWorkspaceId={activeWorkspaceId}
+            isAiOpen={isAiSidebarOpen}
+            onAddWorkspace={handleAddWorkspace}
+            onSelectWorkspace={handleSelectWorkspace}
+            onToggleAi={onToggleAiSidebar}
+            workspaceTabs={workspaceTabs}
+          />
           <Box runaComponent="app-content-area" ref={contentAreaRef} style={contentAreaStyle}>
             <AnimatePresence initial={false}>
               {isAiSidebarOpen ? (
@@ -462,7 +717,7 @@ export function App() {
             </Box>
           </Box>
         </Box>
-        <RightActionRailWidget dockviewApiRef={dockviewApiRef} />
+        <RightActionRailWidget dockviewApiRef={dockviewApiRef} onAddWorkspace={handleAddWorkspace} />
         <ModalHostWidget hostId={BODY_MODAL_HOST_ID} scope="body" />
       </Box>
     </RunaDomScopeProvider>

@@ -2,9 +2,9 @@ import type { IDockviewPanelHeaderProps } from 'dockview-react'
 import { X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
-import { RunaDomScopeProvider } from '../shared/ui/dom-id'
-import { DockviewTabChrome, IconButton, TerminalStatusHeader } from '../shared/ui/components'
-import { resolveTerminalPanelParams } from './terminal-panel'
+import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
+import { DockviewTabChrome, IconButton, TerminalStatusHeader } from '@/shared/ui/components'
+import { resolveTerminalPanelParams } from '@/widgets/terminal/terminal-panel'
 
 const closeButtonStyle = {
   width: '28px',

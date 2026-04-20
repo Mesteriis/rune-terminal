@@ -1,4 +1,4 @@
-import { Box, Button, Text } from '../primitives'
+import { Box, Button, Text } from '@/shared/ui/primitives'
 
 type NotifyTone = 'default' | 'success' | 'warning'
 

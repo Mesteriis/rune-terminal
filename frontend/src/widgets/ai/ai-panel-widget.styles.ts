@@ -116,7 +116,7 @@ export const aiPromptStackStyle: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: 'var(--gap-sm)',
-  padding: 'var(--gap-sm) var(--space-xs) 0 0',
+  padding: 0,
   border: 'none',
   borderRadius: 0,
   background: 'transparent',

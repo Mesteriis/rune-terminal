@@ -1,12 +1,20 @@
 import { Maximize2, Minus, Plus, Sparkles, X } from 'lucide-react'
-import { useState } from 'react'
 
-import { RunaDomScopeProvider } from '../shared/ui/dom-id'
-import { Box, Button } from '../shared/ui/primitives'
+import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
+import { Box, Button } from '@/shared/ui/primitives'
+
+export type ShellWorkspaceTab = {
+  id: number
+  title: string
+}
 
 type ShellTopbarWidgetProps = {
   isAiOpen: boolean
   onToggleAi: () => void
+  workspaceTabs: ShellWorkspaceTab[]
+  activeWorkspaceId: number
+  onSelectWorkspace: (workspaceId: number) => void
+  onAddWorkspace: () => void
 }
 
 const topbarStyle = {
@@ -52,31 +60,31 @@ const addWorkspaceButtonStyle = {
   marginLeft: 'auto',
 }
 
+const workspaceTabStyle = {
+  minWidth: '112px',
+}
+
+const activeWorkspaceTabStyle = {
+  ...workspaceTabStyle,
+  background: 'rgba(56, 92, 82, 0.78)',
+  color: 'var(--color-text-primary)',
+  border: '1px solid rgba(132, 198, 178, 0.32)',
+  boxShadow: 'inset 0 0 0 1px rgba(132, 198, 178, 0.12)',
+}
+
 const actionIconProps = {
   size: 16,
   strokeWidth: 1.75,
 }
 
-export function ShellTopbarWidget({ isAiOpen, onToggleAi }: ShellTopbarWidgetProps) {
-  const [workspaceTabs, setWorkspaceTabs] = useState([
-    { id: 1, title: 'Workspace-1' },
-    { id: 2, title: 'Workspace-2' },
-  ])
-  const [activeWorkspaceId, setActiveWorkspaceId] = useState(1)
-
-  const handleAddWorkspace = () => {
-    const nextWorkspaceId = workspaceTabs.length + 1
-
-    setWorkspaceTabs((tabs) => [
-      ...tabs,
-      {
-        id: nextWorkspaceId,
-        title: `Workspace-${nextWorkspaceId}`,
-      },
-    ])
-    setActiveWorkspaceId(nextWorkspaceId)
-  }
-
+export function ShellTopbarWidget({
+  isAiOpen,
+  onToggleAi,
+  workspaceTabs,
+  activeWorkspaceId,
+  onSelectWorkspace,
+  onAddWorkspace,
+}: ShellTopbarWidgetProps) {
   return (
     <RunaDomScopeProvider component="shell-topbar-widget">
       <Box runaComponent="shell-topbar-root" style={topbarStyle}>
@@ -103,9 +111,10 @@ export function ShellTopbarWidget({ isAiOpen, onToggleAi }: ShellTopbarWidgetPro
           <Button
             aria-selected={activeWorkspaceId === workspace.id}
             key={workspace.id}
-            onClick={() => setActiveWorkspaceId(workspace.id)}
+            onClick={() => onSelectWorkspace(workspace.id)}
             role="tab"
             runaComponent={`shell-topbar-workspace-tab-${workspace.id}`}
+            style={activeWorkspaceId === workspace.id ? activeWorkspaceTabStyle : workspaceTabStyle}
           >
             {workspace.title}
           </Button>
@@ -113,7 +122,7 @@ export function ShellTopbarWidget({ isAiOpen, onToggleAi }: ShellTopbarWidgetPro
       </Box>
       <Button
         aria-label="Add workspace"
-        onClick={handleAddWorkspace}
+        onClick={onAddWorkspace}
         runaComponent="shell-topbar-add-workspace"
         style={addWorkspaceButtonStyle}
       >

@@ -1,6 +1,6 @@
 import { X } from 'lucide-react'
 
-import { Box, Button, Text } from '../primitives'
+import { Box, Button, Text } from '@/shared/ui/primitives'
 
 type DialogPopupProps = {
   title: string

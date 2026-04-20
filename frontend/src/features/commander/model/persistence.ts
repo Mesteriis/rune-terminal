@@ -5,7 +5,7 @@ import type {
   CommanderWidgetPersistedSnapshot,
   CommanderWidgetPersistedState,
   CommanderWidgetRuntimeState,
-} from './types'
+} from '@/features/commander/model/types'
 
 const COMMANDER_WIDGETS_STORAGE_KEY = 'runa-terminal:commander-widgets:v1'
 

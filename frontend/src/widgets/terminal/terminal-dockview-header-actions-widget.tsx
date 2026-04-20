@@ -2,14 +2,14 @@ import type * as React from 'react'
 import type { IDockviewHeaderActionsProps } from 'dockview-react'
 import { Plus, X } from 'lucide-react'
 
-import { RunaDomScopeProvider } from '../shared/ui/dom-id'
-import { IconButton } from '../shared/ui/components'
+import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
+import { IconButton } from '@/shared/ui/components'
 import {
   createNextTerminalPanelId,
   createTerminalPanelParams,
   isTerminalPanel,
   resolveTerminalPanelParams,
-} from './terminal-panel'
+} from '@/widgets/terminal/terminal-panel'
 
 const actionsWrapStyle = {
   display: 'flex',

@@ -1,5 +1,5 @@
-import { useRunaDomIdentity, useRunaDomScope } from '../dom-id'
-import { Box, Checkbox, Label, Text, type CheckboxProps } from '../primitives'
+import { useRunaDomIdentity, useRunaDomScope } from '@/shared/ui/dom-id'
+import { Box, Checkbox, Label, Text, type CheckboxProps } from '@/shared/ui/primitives'
 
 export type SwitcherControlProps = Omit<CheckboxProps, 'type'> & {
   label: string

@@ -1,4 +1,4 @@
-import { Box, Checkbox, Label, Text } from '../primitives'
+import { Box, Checkbox, Label, Text } from '@/shared/ui/primitives'
 
 export type SwitcherGroupOption = {
   value: string

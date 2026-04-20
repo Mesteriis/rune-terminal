@@ -1,5 +1,5 @@
-import { useRunaDomIdentity, useRunaDomScope } from '../dom-id'
-import { Box, Label, Radio, Text, type RadioProps } from '../primitives'
+import { useRunaDomIdentity, useRunaDomScope } from '@/shared/ui/dom-id'
+import { Box, Label, Radio, Text, type RadioProps } from '@/shared/ui/primitives'
 
 export type RadioControlProps = Omit<RadioProps, 'type'> & {
   label: string

@@ -25,7 +25,7 @@ Current token families:
 
 Current isolated style modules:
 
-- `CommanderWidget` local dense-surface styles in `src/widgets/commander-widget.styles.ts`
+- `CommanderWidget` local dense-surface styles in `src/widgets/commander/commander-widget.styles.ts`
 
 ### Primitives
 
@@ -79,6 +79,7 @@ Current reusable controls:
 - Compose primitives and components
 - Represent UI blocks
 - Stay above shared UI layers
+- Widget source is grouped by domain under `src/widgets/ai/`, `src/widgets/commander/`, `src/widgets/panel/`, `src/widgets/shell/`, `src/widgets/terminal/`, and `src/widgets/demo/`
 
 ### Layouts
 
@@ -106,6 +107,13 @@ Lower layers must not depend on higher layers.
 - `components -> primitives`
 - `widgets -> styles + components + primitives`
 - `layouts -> widgets`
+
+## Path Aliases
+
+- `@/* -> src/*`
+- `@assets/* -> assets/*`
+- active frontend source imports should use these aliases instead of multi-hop relative paths
+- alias usage does not change the layer rules above; it only shortens the import surface
 
 ## Public API
 

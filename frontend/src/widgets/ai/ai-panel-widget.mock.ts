@@ -130,7 +130,7 @@ export const aiPanelWidgetMockState: AiPanelWidgetMockState = {
           {
             id: 'approval-3',
             title: 'Apply workspace patch set',
-            command: 'git add frontend/src/widgets/ai-panel-widget.tsx frontend/src/widgets/ai-prompt-card-widget.tsx && git commit -m "feat(frontend): refine ai prompt history layout"',
+            command: 'git add frontend/src/widgets/ai/ai-panel-widget.tsx frontend/src/widgets/ai/ai-prompt-card-widget.tsx && git commit -m "feat(frontend): refine ai prompt history layout"',
             status: 'approval-required',
             scope: 'Git write',
           },

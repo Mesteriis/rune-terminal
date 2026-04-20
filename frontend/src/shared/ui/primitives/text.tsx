@@ -1,6 +1,6 @@
 import type * as React from 'react'
 
-import { useRunaDomIdentity, useRunaDomScope } from '../dom-id'
+import { useRunaDomIdentity, useRunaDomScope } from '@/shared/ui/dom-id'
 
 export type TextProps = React.HTMLAttributes<HTMLSpanElement> & {
   runaComponent?: string

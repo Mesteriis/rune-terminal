@@ -1,5 +1,5 @@
-import commanderWidgetMock from './commander-widget.mock.json'
-import type { CommanderFileRow, CommanderPaneCounters, CommanderPaneId, CommanderSortMode, CommanderViewMode } from '../features/commander/model/types'
+import commanderWidgetMock from '@/widgets/commander/commander-widget.mock.json'
+import type { CommanderFileRow, CommanderPaneCounters, CommanderPaneId, CommanderSortMode, CommanderViewMode } from '@/features/commander/model/types'
 
 export type CommanderPaneMockState = {
   id: CommanderPaneId

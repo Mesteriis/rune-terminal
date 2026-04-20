@@ -3,7 +3,7 @@ import type { DockviewApi } from 'dockview-react'
 import type {
   TerminalConnectionKind,
   TerminalSessionState,
-} from '../shared/ui/components'
+} from '@/shared/ui/components'
 
 export type TerminalPanelPreset = 'main' | 'workspace'
 

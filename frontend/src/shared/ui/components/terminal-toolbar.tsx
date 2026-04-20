@@ -1,7 +1,7 @@
 import { ChevronDown, ChevronUp, ClipboardPaste, Copy, Cpu, Search, X } from 'lucide-react'
 
-import { RunaDomScopeProvider } from '../dom-id'
-import { Box, Button, Input, Text } from '../primitives'
+import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
+import { Box, Button, Input, Text } from '@/shared/ui/primitives'
 
 export type TerminalToolbarProps = {
   isSearchOpen: boolean

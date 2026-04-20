@@ -1,8 +1,8 @@
 import { useUnit } from 'effector-react'
 import { useEffect, useMemo } from 'react'
 
-import { getCommanderSelectedSize, createCommanderWidgetRuntimeState } from './fake-client'
-import { readPersistedCommanderWidget } from './persistence'
+import { getCommanderSelectedSize, createCommanderWidgetRuntimeState } from '@/features/commander/model/fake-client'
+import { readPersistedCommanderWidget } from '@/features/commander/model/persistence'
 import {
   $commanderWidgets,
   cancelCommanderPendingOperation,
@@ -47,7 +47,7 @@ import {
   invertCommanderActivePaneSelection,
   clearCommanderActivePaneFilter,
   closeCommanderFileDialog,
-} from './store'
+} from '@/features/commander/model/store'
 import type {
   CommanderPaneId,
   CommanderPaneRuntimeState,
@@ -56,7 +56,7 @@ import type {
   CommanderWidgetRuntimeState,
   CommanderWidgetViewState,
   CommanderViewMode,
-} from './types'
+} from '@/features/commander/model/types'
 
 function toPaneViewState(
   widgetState: CommanderWidgetRuntimeState,

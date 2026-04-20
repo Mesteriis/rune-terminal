@@ -1,6 +1,6 @@
 import type * as React from 'react'
 
-import { Box, Button } from '../primitives'
+import { Box, Button } from '@/shared/ui/primitives'
 
 export type TabsItem = {
   id: string

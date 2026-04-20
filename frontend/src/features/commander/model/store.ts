@@ -19,11 +19,11 @@ import {
   renameCommanderEntries,
   resolveCommanderExistingPath,
   writeCommanderFile,
-} from './fake-client'
+} from '@/features/commander/model/fake-client'
 import {
   serializeCommanderWidgetRuntimeState,
   writePersistedCommanderWidgets,
-} from './persistence'
+} from '@/features/commander/model/persistence'
 import type {
   CommanderFileDialogState,
   CommanderPendingOperation,
@@ -33,7 +33,7 @@ import type {
   CommanderSortMode,
   CommanderViewMode,
   CommanderWidgetRuntimeState,
-} from './types'
+} from '@/features/commander/model/types'
 
 const COMMANDER_PERSIST_DEBOUNCE_MS = 120
 

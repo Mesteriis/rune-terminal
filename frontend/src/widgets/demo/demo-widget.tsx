@@ -1,5 +1,5 @@
-import { InputField } from '../shared/ui/components'
-import { Box, Button, Text } from '../shared/ui/primitives'
+import { InputField } from '@/shared/ui/components'
+import { Box, Button, Text } from '@/shared/ui/primitives'
 
 export function DemoWidget() {
   return (

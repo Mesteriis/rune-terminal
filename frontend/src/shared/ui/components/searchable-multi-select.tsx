@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 
-import { Box, Button, Input, Text } from '../primitives'
+import { Box, Button, Input, Text } from '@/shared/ui/primitives'
 
 export type SearchableMultiSelectOption = {
   value: string
