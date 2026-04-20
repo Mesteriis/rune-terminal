@@ -426,6 +426,58 @@ export const commanderListHeaderStyle: CSSProperties = {
   fontFamily: 'var(--font-family-mono)',
 }
 
+export const commanderListHeaderButtonStyle: CSSProperties = {
+  width: '100%',
+  minWidth: 0,
+  minHeight: '24px',
+  height: '24px',
+  padding: 0,
+  border: 'none',
+  borderRadius: 0,
+  background: 'transparent',
+  color: 'var(--runa-commander-text-muted)',
+  boxShadow: 'none',
+  backdropFilter: 'none',
+  WebkitBackdropFilter: 'none',
+  justifyContent: 'flex-start',
+  textAlign: 'left',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: 'var(--font-size-sm)',
+  lineHeight: 'var(--line-height-sm)',
+}
+
+export const commanderListHeaderButtonActiveStyle: CSSProperties = {
+  color: 'var(--runa-commander-highlight-text)',
+}
+
+export const commanderListHeaderButtonEndAlignedStyle: CSSProperties = {
+  justifyContent: 'flex-end',
+  textAlign: 'right',
+}
+
+export const commanderListHeaderButtonCenterAlignedStyle: CSSProperties = {
+  justifyContent: 'center',
+  textAlign: 'center',
+}
+
+export const commanderListHeaderLabelStyle: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '6px',
+  minWidth: 0,
+  color: 'inherit',
+  fontFamily: 'inherit',
+  fontSize: 'inherit',
+  lineHeight: 'inherit',
+}
+
+export const commanderListHeaderSortIndicatorStyle: CSSProperties = {
+  color: 'inherit',
+  fontFamily: 'inherit',
+  fontSize: '10px',
+  lineHeight: '10px',
+}
+
 export const commanderScrollAreaStyle: CSSProperties = {
   flex: 1,
   minHeight: 0,

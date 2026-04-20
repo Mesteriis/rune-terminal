@@ -10,6 +10,7 @@ import type {
   CommanderPaneViewState,
   CommanderRenamePreviewItem,
   CommanderRenamePreviewStatus,
+  CommanderSortMode,
   CommanderWidgetViewState,
 } from '../features/commander/model/types'
 import { RunaDomScopeProvider, useRunaDomAutoTagging, useRunaDomScope } from '../shared/ui/dom-id'
@@ -41,6 +42,12 @@ import {
   commanderHintKeyStyle,
   commanderHintLabelStyle,
   commanderListHeaderStyle,
+  commanderListHeaderButtonActiveStyle,
+  commanderListHeaderButtonCenterAlignedStyle,
+  commanderListHeaderButtonEndAlignedStyle,
+  commanderListHeaderButtonStyle,
+  commanderListHeaderLabelStyle,
+  commanderListHeaderSortIndicatorStyle,
   commanderMainStyle,
   commanderModeButtonActiveStyle,
   commanderModeButtonRowStyle,
@@ -198,6 +205,24 @@ function joinCommanderPath(path: string, name: string) {
   }
 
   return `${path}/${name}`
+}
+
+function renderCommanderSortLabel(
+  label: string,
+  isActive: boolean,
+) {
+  return (
+    <Box runaComponent={`commander-sort-label-${label.toLowerCase()}`} style={commanderListHeaderLabelStyle}>
+      <Text runaComponent={`commander-sort-label-${label.toLowerCase()}-text`} style={{ color: 'inherit', fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit' }}>
+        {label}
+      </Text>
+      {isActive ? (
+        <Text runaComponent={`commander-sort-label-${label.toLowerCase()}-indicator`} style={commanderListHeaderSortIndicatorStyle}>
+          ▲
+        </Text>
+      ) : null}
+    </Box>
+  )
 }
 
 function getCommanderCursorMetrics(content: string, position: number) {
@@ -422,9 +447,11 @@ function CommanderPane({
   onFocusRoot,
   onMovePathSuggestion,
   onOpenEntry,
+  onSetSortMode,
   onStartPathEdit,
   onSetCursor,
   onToggleSelection,
+  sortMode,
 }: {
   isActive: boolean
   isEditingPath: boolean
@@ -436,6 +463,7 @@ function CommanderPane({
   onFocusRoot: () => void
   onMovePathSuggestion: (delta: 1 | -1) => void
   onOpenEntry: (entryId: string) => void
+  onSetSortMode: (sortMode: CommanderSortMode) => void
   onStartPathEdit: () => void
   onSetCursor: (entryId: string, options?: { rangeSelect?: boolean }) => void
   onToggleSelection: (entryId: string) => void
@@ -444,6 +472,7 @@ function CommanderPane({
   pathInputRef: RefObject<HTMLInputElement | null>
   pathSuggestionIndex: number
   pathSuggestions: CommanderPathSuggestion[]
+  sortMode: CommanderSortMode
 }) {
   const rowRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const focusedRowId = useMemo(
@@ -601,11 +630,60 @@ function CommanderPane({
       </Box>
       <Separator runaComponent={`commander-pane-${pane.id}-header-separator`} />
       <Box runaComponent={`commander-pane-${pane.id}-list-header`} style={commanderListHeaderStyle}>
-        <Text runaComponent={`commander-pane-${pane.id}-column-type`} style={commanderPaneMetaStyle}>T</Text>
-        <Text runaComponent={`commander-pane-${pane.id}-column-name`} style={commanderPaneMetaStyle}>Name</Text>
+        <Button
+          onClick={() => onSetSortMode('ext')}
+          runaComponent={`commander-pane-${pane.id}-column-type`}
+          style={{
+            ...commanderListHeaderButtonStyle,
+            ...commanderListHeaderButtonCenterAlignedStyle,
+            ...(sortMode === 'ext' ? commanderListHeaderButtonActiveStyle : null),
+          }}
+          title="Sort by type"
+          variant="ghost"
+        >
+          <Text runaComponent={`commander-pane-${pane.id}-column-type-label`} style={{ color: 'inherit', fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit' }}>
+            T
+          </Text>
+        </Button>
+        <Button
+          onClick={() => onSetSortMode('name')}
+          runaComponent={`commander-pane-${pane.id}-column-name`}
+          style={{
+            ...commanderListHeaderButtonStyle,
+            ...(sortMode === 'name' ? commanderListHeaderButtonActiveStyle : null),
+          }}
+          title="Sort by name"
+          variant="ghost"
+        >
+          {renderCommanderSortLabel('Name', sortMode === 'name')}
+        </Button>
         <Text runaComponent={`commander-pane-${pane.id}-column-git`} style={commanderPaneMetaStyle}>Git</Text>
-        <Text runaComponent={`commander-pane-${pane.id}-column-size`} style={commanderPaneMetaStyle}>Size</Text>
-        <Text runaComponent={`commander-pane-${pane.id}-column-modified`} style={commanderPaneMetaStyle}>Modified</Text>
+        <Button
+          onClick={() => onSetSortMode('size')}
+          runaComponent={`commander-pane-${pane.id}-column-size`}
+          style={{
+            ...commanderListHeaderButtonStyle,
+            ...commanderListHeaderButtonEndAlignedStyle,
+            ...(sortMode === 'size' ? commanderListHeaderButtonActiveStyle : null),
+          }}
+          title="Sort by size"
+          variant="ghost"
+        >
+          {renderCommanderSortLabel('Size', sortMode === 'size')}
+        </Button>
+        <Button
+          onClick={() => onSetSortMode('modified')}
+          runaComponent={`commander-pane-${pane.id}-column-modified`}
+          style={{
+            ...commanderListHeaderButtonStyle,
+            ...commanderListHeaderButtonEndAlignedStyle,
+            ...(sortMode === 'modified' ? commanderListHeaderButtonActiveStyle : null),
+          }}
+          title="Sort by modified"
+          variant="ghost"
+        >
+          {renderCommanderSortLabel('Modified', sortMode === 'modified')}
+        </Button>
       </Box>
       <Separator runaComponent={`commander-pane-${pane.id}-list-separator`} />
       <ScrollArea runaComponent={`commander-pane-${pane.id}-scroll-area`} style={commanderScrollAreaStyle}>
@@ -1246,6 +1324,7 @@ export function CommanderWidget() {
           onFocusRoot={focusCommanderRoot}
           onMovePathSuggestion={movePathSuggestion}
           onOpenEntry={(entryId) => actions.openPaneEntry('left', entryId)}
+          onSetSortMode={commanderActions.setSortMode}
           onStartPathEdit={() => startPathEdit('left')}
           onSetCursor={(entryId, options) => actions.setPaneCursor('left', entryId, options)}
           onToggleSelection={(entryId) => actions.togglePaneSelection('left', entryId)}
@@ -1254,6 +1333,7 @@ export function CommanderWidget() {
           pathInputRef={pathEditInputRef}
           pathSuggestionIndex={pathSuggestionIndex}
           pathSuggestions={editingPathPaneId === 'left' ? editingPathSuggestions : []}
+          sortMode={state.sortMode}
         />
         <CommanderPane
           isActive={state.activePane === 'right'}
@@ -1266,6 +1346,7 @@ export function CommanderWidget() {
           onFocusRoot={focusCommanderRoot}
           onMovePathSuggestion={movePathSuggestion}
           onOpenEntry={(entryId) => actions.openPaneEntry('right', entryId)}
+          onSetSortMode={commanderActions.setSortMode}
           onStartPathEdit={() => startPathEdit('right')}
           onSetCursor={(entryId, options) => actions.setPaneCursor('right', entryId, options)}
           onToggleSelection={(entryId) => actions.togglePaneSelection('right', entryId)}
@@ -1274,6 +1355,7 @@ export function CommanderWidget() {
           pathInputRef={pathEditInputRef}
           pathSuggestionIndex={pathSuggestionIndex}
           pathSuggestions={editingPathPaneId === 'right' ? editingPathSuggestions : []}
+          sortMode={state.sortMode}
         />
       </Box>
       {state.pendingOperation && pendingOperationMessage ? (

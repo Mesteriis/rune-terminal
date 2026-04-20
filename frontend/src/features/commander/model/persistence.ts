@@ -65,7 +65,10 @@ function normalizeWidgetState(value: unknown): CommanderWidgetPersistedSnapshot 
     || (value.runtime.activePane !== 'left' && value.runtime.activePane !== 'right')
     || (value.runtime.viewMode !== 'commander' && value.runtime.viewMode !== 'split' && value.runtime.viewMode !== 'terminal')
     || typeof value.runtime.showHidden !== 'boolean'
-    || (value.runtime.sortMode !== 'name' && value.runtime.sortMode !== 'ext' && value.runtime.sortMode !== 'modified')
+    || (value.runtime.sortMode !== 'name'
+      && value.runtime.sortMode !== 'ext'
+      && value.runtime.sortMode !== 'size'
+      && value.runtime.sortMode !== 'modified')
     || !isObjectRecord(value.client.directories)
   ) {
     return null

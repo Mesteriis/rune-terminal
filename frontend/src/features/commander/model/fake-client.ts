@@ -160,6 +160,16 @@ function sortEntries(entries: CommanderDirectoryEntry[], sortMode: CommanderSort
       }
     }
 
+    if (sortMode === 'size') {
+      const leftSize = leftEntry.sizeBytes ?? -1
+      const rightSize = rightEntry.sizeBytes ?? -1
+      const sizeCompare = rightSize - leftSize
+
+      if (sizeCompare !== 0) {
+        return sizeCompare
+      }
+    }
+
     return leftEntry.name.localeCompare(rightEntry.name)
   })
 

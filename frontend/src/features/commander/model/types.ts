@@ -1,6 +1,6 @@
 export type CommanderPaneId = 'left' | 'right'
 export type CommanderViewMode = 'commander' | 'split' | 'terminal'
-export type CommanderSortMode = 'name' | 'ext' | 'modified'
+export type CommanderSortMode = 'name' | 'ext' | 'size' | 'modified'
 export type CommanderRowKind = 'file' | 'folder' | 'symlink'
 
 export type CommanderFooterHint = {

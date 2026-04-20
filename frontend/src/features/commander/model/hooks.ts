@@ -33,6 +33,7 @@ import {
   setCommanderActivePane,
   setCommanderFileDialogDraft,
   setCommanderPanePath,
+  setCommanderSortMode,
   setCommanderPaneBoundaryCursor,
   setCommanderPaneCursor,
   setCommanderPendingOperationInput,
@@ -49,6 +50,7 @@ import {
 import type {
   CommanderPaneId,
   CommanderPaneRuntimeState,
+  CommanderSortMode,
   CommanderPaneViewState,
   CommanderWidgetRuntimeState,
   CommanderWidgetViewState,
@@ -205,6 +207,7 @@ export function useCommanderActions(widgetId: string) {
     onSetCommanderPaneCursor,
     onSetCommanderPaneBoundaryCursor,
     onSetCommanderPanePath,
+    onSetCommanderSortMode,
     onGoCommanderPaneParent,
     onSetCommanderPendingOperationInput,
     onInvertCommanderActivePaneSelection,
@@ -240,6 +243,7 @@ export function useCommanderActions(widgetId: string) {
     setCommanderPaneCursor,
     setCommanderPaneBoundaryCursor,
     setCommanderPanePath,
+    setCommanderSortMode,
     goCommanderPaneParent,
     setCommanderPendingOperationInput,
     invertCommanderActivePaneSelection,
@@ -283,6 +287,7 @@ export function useCommanderActions(widgetId: string) {
     setCursor: (paneId: CommanderPaneId, entryId: string, options?: { rangeSelect?: boolean }) => (
       onSetCommanderPaneCursor({ widgetId, paneId, entryId, rangeSelect: options?.rangeSelect })
     ),
+    setSortMode: (sortMode: CommanderSortMode) => onSetCommanderSortMode({ widgetId, sortMode }),
     setBoundaryCursor: (paneId: CommanderPaneId, boundary: 'start' | 'end', options?: { extendSelection?: boolean }) => (
       onSetCommanderPaneBoundaryCursor({ widgetId, paneId, boundary, extendSelection: options?.extendSelection })
     ),
