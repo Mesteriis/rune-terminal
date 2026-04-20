@@ -313,11 +313,6 @@ body {
   box-sizing: border-box;
 }
 
-[data-runa-shell-sash] {
-  background: transparent !important;
-  border: 0 !important;
-}
-
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -362,21 +357,21 @@ body {
   border-radius: inherit;
 }
 
-[data-runa-terminal-host] .xterm {
+[data-runa-terminal-host] .xterm.xterm {
   flex: 1;
   height: 100%;
   color: var(--runa-terminal-text-strong, var(--color-text-primary));
-  background: transparent !important;
+  background: transparent;
 }
 
-[data-runa-terminal-host] .xterm-viewport {
-  background: transparent !important;
+[data-runa-terminal-host] .xterm.xterm .xterm-viewport {
+  background: transparent;
 }
 
-[data-runa-terminal-host] .xterm-scrollable-element,
-[data-runa-terminal-host] .xterm-screen,
-[data-runa-terminal-host] .xterm-helpers {
-  background: transparent !important;
+[data-runa-terminal-host] .xterm.xterm .xterm-scrollable-element,
+[data-runa-terminal-host] .xterm.xterm .xterm-screen,
+[data-runa-terminal-host] .xterm.xterm .xterm-helpers {
+  background: transparent;
 }
 
 [data-runa-terminal-host] .xterm-screen,
@@ -384,14 +379,14 @@ body {
   width: 100% !important;
 }
 
-[data-runa-terminal-host] .xterm .xterm-scrollable-element > .scrollbar > .slider {
-  background: color-mix(in srgb, var(--runa-terminal-text-strong, var(--color-text-primary)) 18%, transparent) !important;
+[data-runa-terminal-host] .xterm.xterm .xterm-scrollable-element > .scrollbar > .slider {
+  background: color-mix(in srgb, var(--runa-terminal-text-strong, var(--color-text-primary)) 18%, transparent);
 }
 
-[data-runa-terminal-host] .xterm .xterm-scrollable-element > .scrollbar > .slider:hover {
-  background: color-mix(in srgb, var(--runa-terminal-text-strong, var(--color-text-primary)) 34%, transparent) !important;
+[data-runa-terminal-host] .xterm.xterm .xterm-scrollable-element > .scrollbar > .slider:hover {
+  background: color-mix(in srgb, var(--runa-terminal-text-strong, var(--color-text-primary)) 34%, transparent);
 }
 
-[data-runa-terminal-host] .xterm .xterm-scrollable-element > .scrollbar > .slider.active {
-  background: color-mix(in srgb, var(--runa-terminal-status-running, var(--color-accent-emerald-strong)) 54%, transparent) !important;
+[data-runa-terminal-host] .xterm.xterm .xterm-scrollable-element > .scrollbar > .slider.active {
+  background: color-mix(in srgb, var(--runa-terminal-status-running, var(--color-accent-emerald-strong)) 54%, transparent);
 }
