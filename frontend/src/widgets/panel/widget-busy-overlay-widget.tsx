@@ -11,6 +11,7 @@ import { WidgetBusyMarker } from '@/widgets/panel/widget-busy-marker'
 
 type WidgetBusyOverlayWidgetProps = {
   hostId: string
+  mountNode?: HTMLElement | null
 }
 
 const BUSY_ICON_AREA_RATIO = 0.2
@@ -143,21 +144,10 @@ function ensureParticlesEngine() {
   return particlesEnginePromise
 }
 
-function getBusyOverlayMountNode(hostId: string) {
-  if (typeof document === 'undefined') {
-    return null
-  }
-
-  const anchor = document.querySelector(`[data-runa-modal-anchor="${hostId}"]`)
-
-  return anchor?.closest('.dv-groupview') as HTMLElement | null
-}
-
-export function WidgetBusyOverlayWidget({ hostId }: WidgetBusyOverlayWidgetProps) {
+export function WidgetBusyOverlayWidget({ hostId, mountNode }: WidgetBusyOverlayWidgetProps) {
   const blockedWidgetHostIds = useUnit($aiBlockedWidgetHostIds)
   const isBusy = blockedWidgetHostIds.includes(hostId)
   const overlayRef = useRef<HTMLDivElement | null>(null)
-  const [mountNode, setMountNode] = useState<HTMLElement | null>(null)
   const [isParticlesReady, setIsParticlesReady] = useState(particlesEngineReady)
   const [overlaySize, setOverlaySize] = useState({ width: 0, height: 0 })
 
@@ -166,22 +156,6 @@ export function WidgetBusyOverlayWidget({ hostId }: WidgetBusyOverlayWidgetProps
       setIsParticlesReady(true)
     })
   }, [])
-
-  useEffect(() => {
-    const resolveMountNode = () => {
-      setMountNode(getBusyOverlayMountNode(hostId))
-    }
-
-    resolveMountNode()
-
-    if (typeof window === 'undefined') {
-      return
-    }
-
-    const frameId = window.requestAnimationFrame(resolveMountNode)
-
-    return () => window.cancelAnimationFrame(frameId)
-  }, [hostId])
 
   useEffect(() => {
     if (!isBusy) {
@@ -204,24 +178,6 @@ export function WidgetBusyOverlayWidget({ hostId }: WidgetBusyOverlayWidgetProps
 
     return () => resizeObserver.disconnect()
   }, [isBusy])
-
-  useEffect(() => {
-    if (!isBusy || overlaySize.width === 0 || overlaySize.height === 0 || typeof document === 'undefined') {
-      return
-    }
-
-    const particlesElement = document.getElementById(`busy-particles-${hostId}`)
-
-    if (!(particlesElement instanceof HTMLDivElement)) {
-      return
-    }
-
-    particlesElement.style.position = 'absolute'
-    particlesElement.style.inset = '0'
-    particlesElement.style.width = '100%'
-    particlesElement.style.height = '100%'
-    particlesElement.style.display = 'block'
-  }, [hostId, isBusy, overlaySize.height, overlaySize.width])
 
   const busyPlaneSize = useMemo(
     () => getBusyPlaneSize(overlaySize.width, overlaySize.height),

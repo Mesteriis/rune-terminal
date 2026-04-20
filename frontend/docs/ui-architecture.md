@@ -173,12 +173,14 @@ its visible shell blocks as raw HTML inside `App.tsx`.
 - `Notify` provides the stateless shared notification surface.
 - `ModalHostWidget` renders body-scoped and widget-scoped modal layers.
 - `PanelModalActionsWidget` exposes a widget-level demo path for modal opening.
-- `DockviewPanelWidget` renders Dockview panel bodies.
+- `DockviewPanelWidget` renders Dockview panel bodies and owns Dockview-specific DOM resolution such as the surrounding `.dv-groupview`, then passes mount/theme targets down as explicit props instead of making child widgets query Dockview internals themselves.
 - `AiPanelWidget` renders the shell-managed AI panel body inside the left shell pane.
+- `AiPanelWidget` now passes its own root element down as the widget-local mount target for modal and busy overlays instead of relying on global DOM lookups.
 - `AiPanelHeaderWidget` renders the AI shell header strip.
 - `AiPromptCardWidget` renders the prompt tiles inside the AI panel.
 - `AiComposerWidget` renders the AI toolbar plus textarea composer block.
 - `App.tsx` now uses `motion` only at the app shell boundary to animate the shell-managed AI panel width; the AI body itself remains a normal widget.
+- `TerminalSurface`, `ModalHostWidget`, and `WidgetBusyOverlayWidget` now receive external mount/theme targets through props, so those lower layers no longer query for modal anchors or Dockview group wrappers on their own.
 
 ## DOM Identity
 

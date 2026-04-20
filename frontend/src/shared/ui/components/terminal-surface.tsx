@@ -7,7 +7,10 @@ import { Terminal } from '@xterm/xterm'
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
 
 import { TerminalViewport } from '@/shared/ui/primitives'
-import type { TerminalConnectionKind, TerminalSessionState } from '@/shared/ui/components/terminal-status-header'
+import type {
+  TerminalConnectionKind,
+  TerminalSessionState,
+} from '@/shared/ui/components/terminal-status-header'
 
 export type TerminalSurfaceHandle = {
   copySelection: () => Promise<void>
@@ -26,6 +29,7 @@ export type TerminalSurfaceProps = {
   introLines?: string[]
   onRendererModeChange?: (mode: 'default' | 'webgl') => void
   onRequestSearch?: () => void
+  themeClassTarget?: HTMLElement | null
 }
 
 const viewportStyle = {
@@ -203,266 +207,276 @@ async function pasteClipboardIntoTerminal(term: Terminal) {
   }
 }
 
-export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurfaceProps>(function TerminalSurface(
-  {
-    hostId,
-    cwd,
-    shellLabel,
-    connectionKind,
-    sessionState,
-    introLines = [],
-    onRendererModeChange,
-    onRequestSearch,
-  },
-  ref,
-) {
-  const viewportRef = useRef<HTMLDivElement | null>(null)
-  const termRef = useRef<Terminal | null>(null)
-  const searchAddonRef = useRef<SearchAddon | null>(null)
-  const introLinesSignature = introLines.join('\n')
-
-  useImperativeHandle(
+export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurfaceProps>(
+  function TerminalSurface(
+    {
+      hostId,
+      cwd,
+      shellLabel,
+      connectionKind,
+      sessionState,
+      introLines = [],
+      onRendererModeChange,
+      onRequestSearch,
+      themeClassTarget = null,
+    },
     ref,
-    () => ({
-      copySelection: async () => {
-        const term = termRef.current
+  ) {
+    const viewportRef = useRef<HTMLDivElement | null>(null)
+    const termRef = useRef<Terminal | null>(null)
+    const searchAddonRef = useRef<SearchAddon | null>(null)
+    const introLinesSignature = introLines.join('\n')
 
-        if (!term) {
-          return
-        }
+    useImperativeHandle(
+      ref,
+      () => ({
+        copySelection: async () => {
+          const term = termRef.current
 
-        await copyTerminalSelection(term)
-      },
-      findNext: (query) => {
-        const searchAddon = searchAddonRef.current
+          if (!term) {
+            return
+          }
 
-        if (!searchAddon || query.trim() === '') {
-          return false
-        }
+          await copyTerminalSelection(term)
+        },
+        findNext: (query) => {
+          const searchAddon = searchAddonRef.current
 
-        return searchAddon.findNext(query)
-      },
-      findPrevious: (query) => {
-        const searchAddon = searchAddonRef.current
+          if (!searchAddon || query.trim() === '') {
+            return false
+          }
 
-        if (!searchAddon || query.trim() === '') {
-          return false
-        }
+          return searchAddon.findNext(query)
+        },
+        findPrevious: (query) => {
+          const searchAddon = searchAddonRef.current
 
-        return searchAddon.findPrevious(query)
-      },
-      focus: () => {
-        termRef.current?.focus()
-      },
-      pasteFromClipboard: async () => {
-        const term = termRef.current
+          if (!searchAddon || query.trim() === '') {
+            return false
+          }
 
-        if (!term) {
-          return
-        }
+          return searchAddon.findPrevious(query)
+        },
+        focus: () => {
+          termRef.current?.focus()
+        },
+        pasteFromClipboard: async () => {
+          const term = termRef.current
 
-        await pasteClipboardIntoTerminal(term)
-      },
-    }),
-    [],
-  )
+          if (!term) {
+            return
+          }
 
-  useEffect(() => {
-    if (!viewportRef.current) {
-      return
-    }
+          await pasteClipboardIntoTerminal(term)
+        },
+      }),
+      [],
+    )
 
-    const term = new Terminal({
-      allowTransparency: true,
-      convertEol: true,
-      cursorBlink: sessionState !== 'exited',
-      disableStdin: sessionState === 'exited',
-      fontFamily: getCssVariable('--font-family-mono') || 'monospace',
-      fontSize: 13,
-      lineHeight: 1.25,
-      rightClickSelectsWord: true,
-      theme: getTerminalTheme(viewportRef.current),
-    })
-    const fitAddon = new FitAddon()
-    const searchAddon = new SearchAddon()
-    const webLinksAddon = new WebLinksAddon(createSafeLinkHandler())
-    const clipboardAddon = new ClipboardAddon(undefined, new BrowserClipboardProvider())
-    let webglAddon: WebglAddon | null = null
-    const inputBuffer = { current: '' }
-    const promptLabel = getPromptLabel(connectionKind, cwd)
-    const openTarget = viewportRef.current
+    useEffect(() => {
+      if (!viewportRef.current) {
+        return
+      }
 
-    termRef.current = term
-    searchAddonRef.current = searchAddon
-    term.loadAddon(fitAddon)
-    term.loadAddon(searchAddon)
-    term.loadAddon(webLinksAddon)
-    term.loadAddon(clipboardAddon)
-    term.open(openTarget)
-    applyTerminalTheme(term, openTarget)
-    onRendererModeChange?.('default')
-
-    try {
-      webglAddon = new WebglAddon()
-      webglAddon.onContextLoss(() => {
-        webglAddon?.dispose()
-        onRendererModeChange?.('default')
+      const term = new Terminal({
+        allowTransparency: true,
+        convertEol: true,
+        cursorBlink: sessionState !== 'exited',
+        disableStdin: sessionState === 'exited',
+        fontFamily: getCssVariable('--font-family-mono') || 'monospace',
+        fontSize: 13,
+        lineHeight: 1.25,
+        rightClickSelectsWord: true,
+        theme: getTerminalTheme(viewportRef.current),
       })
-      term.loadAddon(webglAddon)
-      onRendererModeChange?.('webgl')
-    } catch {
-      webglAddon = null
+      const fitAddon = new FitAddon()
+      const searchAddon = new SearchAddon()
+      const webLinksAddon = new WebLinksAddon(createSafeLinkHandler())
+      const clipboardAddon = new ClipboardAddon(undefined, new BrowserClipboardProvider())
+      let webglAddon: WebglAddon | null = null
+      const inputBuffer = { current: '' }
+      const promptLabel = getPromptLabel(connectionKind, cwd)
+      const openTarget = viewportRef.current
+
+      termRef.current = term
+      searchAddonRef.current = searchAddon
+      term.loadAddon(fitAddon)
+      term.loadAddon(searchAddon)
+      term.loadAddon(webLinksAddon)
+      term.loadAddon(clipboardAddon)
+      term.open(openTarget)
+      applyTerminalTheme(term, openTarget)
       onRendererModeChange?.('default')
-    }
 
-    term.attachCustomKeyEventHandler((event) => {
-      const isModifierPressed = event.ctrlKey || event.metaKey
-
-      if (isModifierPressed && event.key.toLowerCase() === 'f') {
-        event.preventDefault()
-        onRequestSearch?.()
-        return false
+      try {
+        webglAddon = new WebglAddon()
+        webglAddon.onContextLoss(() => {
+          webglAddon?.dispose()
+          onRendererModeChange?.('default')
+        })
+        term.loadAddon(webglAddon)
+        onRendererModeChange?.('webgl')
+      } catch {
+        webglAddon = null
+        onRendererModeChange?.('default')
       }
 
-      if (isModifierPressed && event.shiftKey && event.key.toLowerCase() === 'c') {
-        event.preventDefault()
-        void copyTerminalSelection(term)
-        return false
-      }
+      term.attachCustomKeyEventHandler((event) => {
+        const isModifierPressed = event.ctrlKey || event.metaKey
 
-      if (isModifierPressed && event.shiftKey && event.key.toLowerCase() === 'v') {
-        event.preventDefault()
-        void pasteClipboardIntoTerminal(term)
-        return false
-      }
-
-      return true
-    })
-
-    const printPrompt = () => {
-      term.write(promptLabel)
-    }
-
-    const bootLines = [
-      `${shellLabel} attached to ${hostId}`,
-      `cwd: ${cwd}`,
-      sessionState === 'exited'
-        ? 'session state: exited'
-        : 'session state: renderer-only mock session',
-      ...introLines,
-      '',
-      'type `help` to interact with the renderer-only terminal demo',
-      '',
-    ]
-
-    for (const line of bootLines) {
-      term.writeln(line)
-    }
-
-    printPrompt()
-
-    const dataDisposable = term.onData((data) => {
-      if (sessionState === 'exited') {
-        return
-      }
-
-      if (data === '\u0003') {
-        inputBuffer.current = ''
-        term.write('^C\r\n')
-        printPrompt()
-        return
-      }
-
-      if (data === '\r') {
-        const command = inputBuffer.current.trim()
-
-        term.write('\r\n')
-        const didClear = writeCommandResult(term, command, cwd)
-        inputBuffer.current = ''
-
-        if (didClear) {
-          term.write(promptLabel)
-        } else {
-          printPrompt()
+        if (isModifierPressed && event.key.toLowerCase() === 'f') {
+          event.preventDefault()
+          onRequestSearch?.()
+          return false
         }
 
-        fitAddon.fit()
-        return
+        if (isModifierPressed && event.shiftKey && event.key.toLowerCase() === 'c') {
+          event.preventDefault()
+          void copyTerminalSelection(term)
+          return false
+        }
+
+        if (isModifierPressed && event.shiftKey && event.key.toLowerCase() === 'v') {
+          event.preventDefault()
+          void pasteClipboardIntoTerminal(term)
+          return false
+        }
+
+        return true
+      })
+
+      const printPrompt = () => {
+        term.write(promptLabel)
       }
 
-      if (data === '\u007f') {
-        if (inputBuffer.current.length === 0) {
+      const bootLines = [
+        `${shellLabel} attached to ${hostId}`,
+        `cwd: ${cwd}`,
+        sessionState === 'exited' ? 'session state: exited' : 'session state: renderer-only mock session',
+        ...introLines,
+        '',
+        'type `help` to interact with the renderer-only terminal demo',
+        '',
+      ]
+
+      for (const line of bootLines) {
+        term.writeln(line)
+      }
+
+      printPrompt()
+
+      const dataDisposable = term.onData((data) => {
+        if (sessionState === 'exited') {
           return
         }
 
-        inputBuffer.current = inputBuffer.current.slice(0, -1)
-        term.write('\b \b')
-        return
-      }
+        if (data === '\u0003') {
+          inputBuffer.current = ''
+          term.write('^C\r\n')
+          printPrompt()
+          return
+        }
 
-      if (!isPrintableInput(data)) {
-        return
-      }
+        if (data === '\r') {
+          const command = inputBuffer.current.trim()
 
-      inputBuffer.current += data
-      term.write(data)
-    })
+          term.write('\r\n')
+          const didClear = writeCommandResult(term, command, cwd)
+          inputBuffer.current = ''
 
-    const resizeObserver =
-      typeof ResizeObserver === 'undefined'
-        ? null
-        : new ResizeObserver(() => {
-            fitAddon.fit()
-          })
+          if (didClear) {
+            term.write(promptLabel)
+          } else {
+            printPrompt()
+          }
 
-    resizeObserver?.observe(openTarget)
+          fitAddon.fit()
+          return
+        }
 
-    const groupElement = openTarget.closest('.dv-groupview')
-    const groupClassObserver =
-      typeof MutationObserver === 'undefined' || !groupElement
-        ? null
-        : new MutationObserver(() => {
-            applyTerminalTheme(term, openTarget)
-          })
+        if (data === '\u007f') {
+          if (inputBuffer.current.length === 0) {
+            return
+          }
 
-    if (groupClassObserver && groupElement instanceof HTMLElement) {
-      groupClassObserver.observe(groupElement, {
-        attributes: true,
-        attributeFilter: ['class'],
+          inputBuffer.current = inputBuffer.current.slice(0, -1)
+          term.write('\b \b')
+          return
+        }
+
+        if (!isPrintableInput(data)) {
+          return
+        }
+
+        inputBuffer.current += data
+        term.write(data)
       })
-    }
 
-    const focusTerminal = () => {
-      window.setTimeout(() => {
+      const resizeObserver =
+        typeof ResizeObserver === 'undefined'
+          ? null
+          : new ResizeObserver(() => {
+              fitAddon.fit()
+            })
+
+      resizeObserver?.observe(openTarget)
+
+      const groupClassObserver =
+        typeof MutationObserver === 'undefined' || !themeClassTarget
+          ? null
+          : new MutationObserver(() => {
+              applyTerminalTheme(term, openTarget)
+            })
+
+      if (groupClassObserver && themeClassTarget instanceof HTMLElement) {
+        groupClassObserver.observe(themeClassTarget, {
+          attributes: true,
+          attributeFilter: ['class'],
+        })
+      }
+
+      const focusTerminal = () => {
+        window.setTimeout(() => {
+          term.focus()
+        }, 0)
+      }
+
+      openTarget.addEventListener('pointerdown', focusTerminal, true)
+
+      requestAnimationFrame(() => {
+        fitAddon.fit()
         term.focus()
-      }, 0)
-    }
+      })
 
-    openTarget.addEventListener('pointerdown', focusTerminal, true)
+      return () => {
+        openTarget.removeEventListener('pointerdown', focusTerminal, true)
+        resizeObserver?.disconnect()
+        groupClassObserver?.disconnect()
+        dataDisposable.dispose()
+        webglAddon?.dispose()
+        searchAddonRef.current = null
+        termRef.current = null
+        term.dispose()
+      }
+    }, [
+      connectionKind,
+      cwd,
+      hostId,
+      introLinesSignature,
+      onRendererModeChange,
+      onRequestSearch,
+      sessionState,
+      shellLabel,
+      themeClassTarget,
+    ])
 
-    requestAnimationFrame(() => {
-      fitAddon.fit()
-      term.focus()
-    })
-
-    return () => {
-      openTarget.removeEventListener('pointerdown', focusTerminal, true)
-      resizeObserver?.disconnect()
-      groupClassObserver?.disconnect()
-      dataDisposable.dispose()
-      webglAddon?.dispose()
-      searchAddonRef.current = null
-      termRef.current = null
-      term.dispose()
-    }
-  }, [connectionKind, cwd, hostId, introLinesSignature, onRendererModeChange, onRequestSearch, sessionState, shellLabel])
-
-  return (
-    <TerminalViewport
-      data-runa-terminal-host=""
-      ref={viewportRef}
-      runaComponent="terminal-surface-viewport"
-      style={viewportStyle}
-    />
-  )
-})
+    return (
+      <TerminalViewport
+        data-runa-terminal-host=""
+        ref={viewportRef}
+        runaComponent="terminal-surface-viewport"
+        style={viewportStyle}
+      />
+    )
+  },
+)

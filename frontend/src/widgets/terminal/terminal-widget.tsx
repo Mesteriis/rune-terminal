@@ -16,6 +16,7 @@ export type TerminalWidgetProps = {
   connectionKind: TerminalConnectionKind
   sessionState: TerminalSessionState
   introLines?: string[]
+  themeClassTarget?: HTMLElement | null
 }
 
 const rootStyle = {
@@ -40,6 +41,7 @@ export function TerminalWidget({
   connectionKind,
   sessionState,
   introLines,
+  themeClassTarget = null,
 }: TerminalWidgetProps) {
   const terminalRootRef = useRunaDomAutoTagging('terminal-widget-root')
   const terminalSurfaceRef = useRef<TerminalSurfaceHandle | null>(null)
@@ -57,6 +59,7 @@ export function TerminalWidget({
           cwd={cwd}
           hostId={hostId}
           introLines={introLines}
+          themeClassTarget={themeClassTarget}
           ref={terminalSurfaceRef}
           sessionState={sessionState}
           shellLabel={shellLabel}

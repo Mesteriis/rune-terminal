@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { useUnit } from 'effector-react'
 
@@ -13,22 +13,16 @@ import {
 
 type ModalHostWidgetProps = {
   hostId: string
+  mountNode?: HTMLElement | null
   scope: 'body' | 'widget'
 }
 
-function getWidgetModalMountNode(hostId: string) {
-  if (typeof document === 'undefined') {
-    return null
-  }
-
-  const anchor = document.querySelector(`[data-runa-modal-anchor="${hostId}"]`)
-
-  return anchor?.closest('.dv-groupview') as HTMLElement | null
-}
-
-export function ModalHostWidget({ hostId, scope }: ModalHostWidgetProps) {
+export function ModalHostWidget({
+  hostId,
+  mountNode: explicitMountNode = null,
+  scope,
+}: ModalHostWidgetProps) {
   const [modals, onCloseModal, onCloseHostModals] = useUnit([$modals, closeModal, closeHostModals])
-  const [mountNode, setMountNode] = useState<HTMLElement | null>(null)
 
   const hostModals = useMemo(() => modals.filter((modal) => modal.hostId === hostId), [hostId, modals])
 
@@ -37,16 +31,7 @@ export function ModalHostWidget({ hostId, scope }: ModalHostWidgetProps) {
       return
     }
 
-    const resolveMountNode = () => {
-      setMountNode(getWidgetModalMountNode(hostId))
-    }
-
-    resolveMountNode()
-
-    const frameId = window.requestAnimationFrame(resolveMountNode)
-
     return () => {
-      window.cancelAnimationFrame(frameId)
       onCloseHostModals({ hostId })
     }
   }, [hostId, onCloseHostModals, scope])
@@ -80,5 +65,5 @@ export function ModalHostWidget({ hostId, scope }: ModalHostWidgetProps) {
     return overlay
   }
 
-  return mountNode ? createPortal(overlay, mountNode) : null
+  return explicitMountNode ? createPortal(overlay, explicitMountNode) : null
 }

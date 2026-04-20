@@ -1,6 +1,6 @@
 import { useUnit } from 'effector-react'
 import type { IDockviewPanelProps } from 'dockview-react'
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 import { $activeWidgetHostId, setActiveWidgetHostId } from '@/shared/model/widget-focus'
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
@@ -50,7 +50,7 @@ function isCommanderDemoPanel(panelId: string) {
 }
 
 export function DockviewPanelWidget(props: IDockviewPanelProps) {
-  const rootRef = useRef<HTMLDivElement | null>(null)
+  const [panelGroupElement, setPanelGroupElement] = useState<HTMLElement | null>(null)
   const [activeWidgetHostId, onSetActiveWidgetHostId] = useUnit([$activeWidgetHostId, setActiveWidgetHostId])
   const terminalModel = props.api.id.startsWith('terminal')
     ? resolveTerminalPanelParams(props.api.id, props.params)
@@ -58,8 +58,14 @@ export function DockviewPanelWidget(props: IDockviewPanelProps) {
   const isCommanderPanel = isCommanderDemoPanel(props.api.id)
   const isActiveWidget = activeWidgetHostId === props.api.id
 
+  const handleRootRef = useCallback((node: HTMLDivElement | null) => {
+    const nextPanelGroupElement = node?.closest('.dv-groupview')
+
+    setPanelGroupElement(nextPanelGroupElement instanceof HTMLElement ? nextPanelGroupElement : null)
+  }, [])
+
   useEffect(() => {
-    const groupElement = rootRef.current?.closest('.dv-groupview')
+    const groupElement = panelGroupElement
 
     if (!(groupElement instanceof HTMLElement)) {
       return
@@ -71,7 +77,7 @@ export function DockviewPanelWidget(props: IDockviewPanelProps) {
     }
 
     groupElement.dataset.runaWidgetFocusState = isActiveWidget ? 'active' : 'inactive'
-  }, [activeWidgetHostId, isActiveWidget])
+  }, [activeWidgetHostId, isActiveWidget, panelGroupElement])
 
   return (
     <RunaDomScopeProvider component="dockview-panel-widget" widget={props.api.id}>
@@ -79,7 +85,7 @@ export function DockviewPanelWidget(props: IDockviewPanelProps) {
         data-runa-modal-anchor={props.api.id}
         data-runa-widget-tone-root=""
         onPointerDownCapture={() => onSetActiveWidgetHostId(props.api.id)}
-        ref={rootRef}
+        ref={handleRootRef}
         runaComponent="dockview-panel-root"
         style={panelContentStyle}
       >
@@ -90,6 +96,7 @@ export function DockviewPanelWidget(props: IDockviewPanelProps) {
               cwd={terminalModel.cwd}
               hostId={props.api.id}
               introLines={terminalModel.introLines}
+              themeClassTarget={panelGroupElement}
               sessionState={terminalModel.sessionState}
               shellLabel={terminalModel.shellLabel}
             />
@@ -102,8 +109,12 @@ export function DockviewPanelWidget(props: IDockviewPanelProps) {
             </>
           )}
         </Box>
-        {isCommanderPanel ? null : <ModalHostWidget hostId={props.api.id} scope="widget" />}
-        {isCommanderPanel ? null : <WidgetBusyOverlayWidget hostId={props.api.id} />}
+        {isCommanderPanel ? null : (
+          <ModalHostWidget hostId={props.api.id} mountNode={panelGroupElement} scope="widget" />
+        )}
+        {isCommanderPanel ? null : (
+          <WidgetBusyOverlayWidget hostId={props.api.id} mountNode={panelGroupElement} />
+        )}
       </Box>
     </RunaDomScopeProvider>
   )

@@ -1,3 +1,5 @@
+import { useCallback, useState } from 'react'
+
 import { RunaDomScopeProvider, useRunaDomAutoTagging } from '@/shared/ui/dom-id'
 import { Box, ScrollArea } from '@/shared/ui/primitives'
 
@@ -17,23 +19,32 @@ export type AiPanelWidgetProps = {
   state?: AiPanelWidgetMockState
 }
 
-export function AiPanelWidget({
-  hostId,
-  state = aiPanelWidgetMockState,
-}: AiPanelWidgetProps) {
+export function AiPanelWidget({ hostId, state = aiPanelWidgetMockState }: AiPanelWidgetProps) {
   const lastPromptId = state.prompts[state.prompts.length - 1]?.id
-  const aiPanelRootRef = useRunaDomAutoTagging('ai-panel-root')
+  const autoTagAiPanelRootRef = useRunaDomAutoTagging('ai-panel-root')
+  const [panelRootElement, setPanelRootElement] = useState<HTMLDivElement | null>(null)
+  const handleAiPanelRootRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      autoTagAiPanelRootRef(node)
+      setPanelRootElement(node)
+    },
+    [autoTagAiPanelRootRef],
+  )
 
   return (
     <RunaDomScopeProvider component="ai-panel-widget" widget={hostId}>
       <Box
         data-runa-modal-anchor={hostId}
-        ref={aiPanelRootRef}
+        ref={handleAiPanelRootRef}
         runaComponent="ai-panel-root"
         style={aiPanelRootStyle}
       >
         <Box data-runa-ai-shell-frame="" runaComponent="ai-panel-frame" style={aiPanelContentColumnStyle}>
-          <ScrollArea data-runa-ai-prompt-stack="" runaComponent="ai-panel-prompt-stack" style={aiPromptStackStyle}>
+          <ScrollArea
+            data-runa-ai-prompt-stack=""
+            runaComponent="ai-panel-prompt-stack"
+            style={aiPromptStackStyle}
+          >
             {state.prompts.map((prompt) => (
               <AiPromptCardWidget
                 key={prompt.id}
@@ -49,8 +60,8 @@ export function AiPanelWidget({
             toolbarLabel={state.toolbarLabel}
           />
         </Box>
-        <ModalHostWidget hostId={hostId} scope="widget" />
-        <WidgetBusyOverlayWidget hostId={hostId} />
+        <ModalHostWidget hostId={hostId} mountNode={panelRootElement} scope="widget" />
+        <WidgetBusyOverlayWidget hostId={hostId} mountNode={panelRootElement} />
       </Box>
     </RunaDomScopeProvider>
   )
