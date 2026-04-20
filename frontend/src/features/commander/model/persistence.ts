@@ -1,5 +1,8 @@
+import { z } from 'zod'
+
 import type {
   CommanderClientEntrySnapshot,
+  CommanderDirectoryEntry,
   CommanderPanePersistedState,
   CommanderPaneRuntimeState,
   CommanderWidgetPersistedSnapshot,
@@ -13,86 +16,89 @@ type CommanderPersistenceState = {
   widgets: Record<string, CommanderWidgetPersistedSnapshot>
 }
 
-function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((item) => typeof item === 'string')
-}
+const commanderPaneIdSchema = z.enum(['left', 'right'])
+const commanderViewModeSchema = z.enum(['commander', 'split', 'terminal'])
+const commanderSortModeSchema = z.enum(['name', 'ext', 'size', 'modified'])
+const commanderSortDirectionSchema = z.enum(['asc', 'desc'])
+const commanderRowKindSchema = z.enum(['file', 'folder', 'symlink'])
+const stringArraySchema = z.array(z.string())
 
-function isObjectRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
-}
+const commanderDirectoryEntrySchema: z.ZodType<CommanderDirectoryEntry> = z.object({
+  id: z.string(),
+  name: z.string(),
+  ext: z.string(),
+  kind: commanderRowKindSchema,
+  sizeLabel: z.string(),
+  sizeBytes: z.number().nullable().optional().default(null),
+  modified: z.string(),
+  hidden: z.boolean().optional().default(false),
+  gitStatus: z.string().optional(),
+  executable: z.boolean().optional(),
+  symlinkTarget: z.string().optional(),
+})
 
-function normalizePaneState(value: unknown): CommanderPanePersistedState | null {
-  if (!isObjectRecord(value)) {
-    return null
-  }
+const commanderClientEntrySchema: z.ZodType<CommanderClientEntrySnapshot> = z.object({
+  id: z.string().optional(),
+  name: z.string(),
+  ext: z.string(),
+  kind: commanderRowKindSchema,
+  sizeLabel: z.string(),
+  modified: z.string(),
+  hidden: z.boolean().optional(),
+  gitStatus: z.string().optional(),
+  executable: z.boolean().optional(),
+  symlinkTarget: z.string().optional(),
+  content: z.string().optional(),
+})
 
-  if (
-    typeof value.path !== 'string'
-    || (value.filterQuery !== undefined && typeof value.filterQuery !== 'string')
-    || !Array.isArray(value.entries)
-    || (value.cursorEntryId !== undefined && value.cursorEntryId !== null && typeof value.cursorEntryId !== 'string')
-    || (value.selectionAnchorEntryId !== undefined && value.selectionAnchorEntryId !== null && typeof value.selectionAnchorEntryId !== 'string')
-    || !isStringArray(value.selectedIds)
-    || !isStringArray(value.historyBack)
-    || !isStringArray(value.historyForward)
-  ) {
-    return null
-  }
+const commanderPanePersistedStateSchema: z.ZodType<CommanderPanePersistedState> = z
+  .object({
+    path: z.string(),
+    filterQuery: z.string().optional().default(''),
+    entries: z.array(commanderDirectoryEntrySchema),
+    cursorEntryId: z.string().nullable().optional(),
+    selectionAnchorEntryId: z.string().nullable().optional(),
+    selectedIds: stringArraySchema,
+    historyBack: stringArraySchema,
+    historyForward: stringArraySchema,
+  })
+  .transform((paneState) => ({
+    path: paneState.path,
+    filterQuery: paneState.filterQuery,
+    entries: paneState.entries,
+    cursorEntryId: paneState.cursorEntryId ?? null,
+    selectionAnchorEntryId: paneState.selectionAnchorEntryId ?? paneState.cursorEntryId ?? null,
+    selectedIds: paneState.selectedIds,
+    historyBack: paneState.historyBack,
+    historyForward: paneState.historyForward,
+  }))
 
-  return {
-    path: value.path,
-    filterQuery: value.filterQuery ?? '',
-    entries: value.entries,
-    cursorEntryId: value.cursorEntryId ?? null,
-    selectionAnchorEntryId: value.selectionAnchorEntryId ?? value.cursorEntryId ?? null,
-    selectedIds: value.selectedIds,
-    historyBack: value.historyBack,
-    historyForward: value.historyForward,
-  } as CommanderPanePersistedState
-}
+const commanderWidgetPersistedRuntimeSchema: z.ZodType<CommanderWidgetPersistedState> = z.object({
+  activePane: commanderPaneIdSchema,
+  viewMode: commanderViewModeSchema,
+  showHidden: z.boolean(),
+  sortMode: commanderSortModeSchema,
+  sortDirection: commanderSortDirectionSchema.optional().default('asc'),
+  dirsFirst: z.boolean().optional().default(true),
+  leftPane: commanderPanePersistedStateSchema,
+  rightPane: commanderPanePersistedStateSchema,
+})
+
+const commanderWidgetPersistedSnapshotSchema: z.ZodType<CommanderWidgetPersistedSnapshot> = z.object({
+  runtime: commanderWidgetPersistedRuntimeSchema,
+  client: z.object({
+    directories: z.record(z.string(), z.array(commanderClientEntrySchema)),
+  }),
+})
+
+const commanderPersistenceStateSchema = z.object({
+  widgets: z.record(z.string(), z.unknown()).optional().default({}),
+})
 
 function normalizeWidgetState(value: unknown): CommanderWidgetPersistedSnapshot | null {
-  if (!isObjectRecord(value) || !isObjectRecord(value.runtime) || !isObjectRecord(value.client)) {
-    return null
-  }
+  const parsedWidgetState = commanderWidgetPersistedSnapshotSchema.safeParse(value)
 
-  const leftPane = normalizePaneState(value.runtime.leftPane)
-  const rightPane = normalizePaneState(value.runtime.rightPane)
-
-  if (
-    !leftPane
-    || !rightPane
-    || (value.runtime.activePane !== 'left' && value.runtime.activePane !== 'right')
-    || (value.runtime.viewMode !== 'commander' && value.runtime.viewMode !== 'split' && value.runtime.viewMode !== 'terminal')
-    || typeof value.runtime.showHidden !== 'boolean'
-    || (value.runtime.sortMode !== 'name'
-      && value.runtime.sortMode !== 'ext'
-      && value.runtime.sortMode !== 'size'
-      && value.runtime.sortMode !== 'modified')
-    || (value.runtime.sortDirection !== undefined
-      && value.runtime.sortDirection !== 'asc'
-      && value.runtime.sortDirection !== 'desc')
-    || (value.runtime.dirsFirst !== undefined && typeof value.runtime.dirsFirst !== 'boolean')
-    || !isObjectRecord(value.client.directories)
-  ) {
-    return null
-  }
-
-  return {
-    runtime: {
-      activePane: value.runtime.activePane,
-      viewMode: value.runtime.viewMode,
-      showHidden: value.runtime.showHidden,
-      sortMode: value.runtime.sortMode,
-      sortDirection: value.runtime.sortDirection ?? 'asc',
-      dirsFirst: value.runtime.dirsFirst ?? true,
-      leftPane,
-      rightPane,
-    },
-    client: {
-      directories: value.client.directories as Record<string, CommanderClientEntrySnapshot[]>,
-    },
-  }
+  return parsedWidgetState.success ? parsedWidgetState.data : null
 }
 
 function readPersistenceState(): CommanderPersistenceState {
@@ -107,14 +113,14 @@ function readPersistenceState(): CommanderPersistenceState {
       return { widgets: {} }
     }
 
-    const parsedValue = JSON.parse(rawValue) as { widgets?: Record<string, unknown> }
+    const parsedValue = commanderPersistenceStateSchema.safeParse(JSON.parse(rawValue))
 
-    if (!isObjectRecord(parsedValue.widgets)) {
+    if (!parsedValue.success) {
       return { widgets: {} }
     }
 
     const widgets = Object.fromEntries(
-      Object.entries(parsedValue.widgets)
+      Object.entries(parsedValue.data.widgets)
         .map(([widgetId, widgetState]) => [widgetId, normalizeWidgetState(widgetState)] as const)
         .filter((entry): entry is [string, CommanderWidgetPersistedSnapshot] => Boolean(entry[1])),
     )

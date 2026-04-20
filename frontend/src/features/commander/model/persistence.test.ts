@@ -212,4 +212,117 @@ describe('commander persistence', () => {
     })
     expect(readPersistedCommanderWidget('broken')).toBeNull()
   })
+
+  it('keeps legacy pane entries readable when optional entry fields are missing', () => {
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        widgets: {
+          'widget-legacy': {
+            runtime: {
+              activePane: 'right',
+              viewMode: 'split',
+              showHidden: true,
+              sortMode: 'size',
+              leftPane: {
+                path: '~/left',
+                filterQuery: '',
+                entries: [
+                  {
+                    id: 'legacy-entry',
+                    name: 'archive.tar',
+                    ext: 'tar',
+                    kind: 'file',
+                    sizeLabel: '4 KB',
+                    modified: '2026-04-20 10:30',
+                  },
+                ],
+                cursorEntryId: 'legacy-entry',
+                selectedIds: ['legacy-entry'],
+                historyBack: [],
+                historyForward: [],
+              },
+              rightPane: {
+                path: '~/right',
+                filterQuery: '',
+                entries: [],
+                cursorEntryId: null,
+                selectedIds: [],
+                historyBack: [],
+                historyForward: [],
+              },
+            },
+            client: {
+              directories: {
+                '~/left': [
+                  {
+                    name: 'archive.tar',
+                    ext: 'tar',
+                    kind: 'file',
+                    sizeLabel: '4 KB',
+                    modified: '2026-04-20 10:30',
+                  },
+                ],
+              },
+            },
+          },
+        },
+      }),
+    )
+
+    expect(readPersistedCommanderWidget('widget-legacy')).toEqual({
+      runtime: {
+        activePane: 'right',
+        viewMode: 'split',
+        showHidden: true,
+        sortMode: 'size',
+        sortDirection: 'asc',
+        dirsFirst: true,
+        leftPane: {
+          path: '~/left',
+          filterQuery: '',
+          entries: [
+            {
+              id: 'legacy-entry',
+              name: 'archive.tar',
+              ext: 'tar',
+              kind: 'file',
+              sizeLabel: '4 KB',
+              sizeBytes: null,
+              modified: '2026-04-20 10:30',
+              hidden: false,
+            },
+          ],
+          cursorEntryId: 'legacy-entry',
+          selectionAnchorEntryId: 'legacy-entry',
+          selectedIds: ['legacy-entry'],
+          historyBack: [],
+          historyForward: [],
+        },
+        rightPane: {
+          path: '~/right',
+          filterQuery: '',
+          entries: [],
+          cursorEntryId: null,
+          selectionAnchorEntryId: null,
+          selectedIds: [],
+          historyBack: [],
+          historyForward: [],
+        },
+      },
+      client: {
+        directories: {
+          '~/left': [
+            {
+              name: 'archive.tar',
+              ext: 'tar',
+              kind: 'file',
+              sizeLabel: '4 KB',
+              modified: '2026-04-20 10:30',
+            },
+          ],
+        },
+      },
+    })
+  })
 })
