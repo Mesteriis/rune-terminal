@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight, Columns2, Columns3, Eye, EyeOff, FileCode2, FileText, Folder, FolderTree, Link2, SquareTerminal } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useRef, useState, type ButtonHTMLAttributes, type RefObject } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ButtonHTMLAttributes, type HTMLAttributes, type RefObject } from 'react'
 
 import { listCommanderDirectoryPaths } from '../features/commander/model/fake-client'
 import { useCommanderKeyboard } from '../features/commander/model/keyboard'
@@ -231,6 +231,31 @@ function CommanderPlainButton({
       id={identity.id}
       style={style}
       type={type}
+    />
+  )
+}
+
+function CommanderPlainBox({
+  id,
+  runaComponent,
+  style,
+  ...props
+}: HTMLAttributes<HTMLDivElement> & {
+  id?: string
+  runaComponent: string
+}) {
+  const scope = useRunaDomScope()
+  const identity = useRunaDomIdentity(runaComponent ?? `${scope.component}-box`, id)
+
+  return (
+    <div
+      {...props}
+      data-runa-component={identity.scope.component}
+      data-runa-layout={identity.scope.layout}
+      data-runa-node={identity.node}
+      data-runa-widget={identity.scope.widget}
+      id={identity.id}
+      style={style}
     />
   )
 }
@@ -530,18 +555,18 @@ function CommanderPane({
       runaComponent={`commander-pane-${pane.id}`}
       style={{ ...commanderPaneStyle, ...(isActive ? commanderPaneActiveStyle : null) }}
     >
-      <Box
+      <CommanderPlainBox
         runaComponent={`commander-pane-${pane.id}-header`}
         style={{
           ...commanderPaneHeaderStyle,
           ...(isActive ? commanderPaneHeaderActiveStyle : null),
         }}
       >
-        <Box runaComponent={`commander-pane-${pane.id}-title`} style={commanderPaneTitleStyle}>
+        <CommanderPlainBox runaComponent={`commander-pane-${pane.id}-title`} style={commanderPaneTitleStyle}>
           <Badge runaComponent={`commander-pane-${pane.id}-state`} style={isActive ? paneStateBadgeStyle : inactivePaneStateBadgeStyle}>
             {isActive ? 'ACTIVE' : 'PANE'}
           </Badge>
-          <Box runaComponent={`commander-pane-${pane.id}-path-field`} style={commanderPathFieldStyle}>
+          <CommanderPlainBox runaComponent={`commander-pane-${pane.id}-path-field`} style={commanderPathFieldStyle}>
             {isEditingPath ? (
               <>
                 <Input
@@ -594,7 +619,7 @@ function CommanderPane({
                       runaComponent={`commander-pane-${pane.id}-path-suggestions-scroll`}
                       style={commanderPathSuggestionsScrollStyle}
                     >
-                      <Box runaComponent={`commander-pane-${pane.id}-path-suggestions-list`} style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                      <CommanderPlainBox runaComponent={`commander-pane-${pane.id}-path-suggestions-list`} style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
                         {pathSuggestions.map((suggestion, index) => {
                           const isSuggestionActive = index === pathSuggestionIndex
 
@@ -621,7 +646,7 @@ function CommanderPane({
                             </CommanderPlainButton>
                           )
                         })}
-                      </Box>
+                      </CommanderPlainBox>
                     </ScrollArea>
                   </Surface>
                 ) : null}
@@ -643,9 +668,9 @@ function CommanderPane({
                 {pane.path}
               </Text>
             )}
-          </Box>
-        </Box>
-        <Box runaComponent={`commander-pane-${pane.id}-meta`} style={plainClusterStyle}>
+          </CommanderPlainBox>
+        </CommanderPlainBox>
+        <CommanderPlainBox runaComponent={`commander-pane-${pane.id}-meta`} style={plainClusterStyle}>
           {pane.filterQuery ? (
             <Badge
               runaComponent={`commander-pane-${pane.id}-filter`}
@@ -656,10 +681,10 @@ function CommanderPane({
             </Badge>
           ) : null}
           <Text runaComponent={`commander-pane-${pane.id}-items`} style={commanderPaneMetaStyle}>{pane.counters.items} items</Text>
-        </Box>
-      </Box>
+        </CommanderPlainBox>
+      </CommanderPlainBox>
       <Separator runaComponent={`commander-pane-${pane.id}-header-separator`} />
-      <Box runaComponent={`commander-pane-${pane.id}-list-header`} style={commanderListHeaderStyle}>
+      <CommanderPlainBox runaComponent={`commander-pane-${pane.id}-list-header`} style={commanderListHeaderStyle}>
         <CommanderPlainButton
           onClick={() => onSetSortMode('ext')}
           runaComponent={`commander-pane-${pane.id}-column-type`}
@@ -710,7 +735,7 @@ function CommanderPane({
         >
           {renderCommanderSortLabel('Modified', sortMode === 'modified', sortDirection)}
         </CommanderPlainButton>
-      </Box>
+      </CommanderPlainBox>
       <Separator runaComponent={`commander-pane-${pane.id}-list-separator`} />
       <ScrollArea runaComponent={`commander-pane-${pane.id}-scroll-area`} style={commanderScrollAreaStyle}>
         <Box runaComponent={`commander-pane-${pane.id}-rows`} style={commanderRowsStyle}>
