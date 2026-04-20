@@ -446,6 +446,29 @@ function getCommanderFilterMatches(
   }
 }
 
+function getCommanderSearchMatches(
+  paneState: CommanderPaneRuntimeState,
+  query: string,
+) {
+  const normalizedQuery = query.trim().toLocaleLowerCase()
+
+  if (!normalizedQuery) {
+    return {
+      entryIds: [] as string[],
+      entryNames: [] as string[],
+    }
+  }
+
+  const matchedEntries = paneState.entries.filter((entry) => (
+    entry.name.toLocaleLowerCase().includes(normalizedQuery)
+  ))
+
+  return {
+    entryIds: matchedEntries.map((entry) => entry.id),
+    entryNames: matchedEntries.map((entry) => entry.name),
+  }
+}
+
 function applySelectionMaskToPane(
   paneState: CommanderPaneRuntimeState,
   mask: string,
@@ -601,7 +624,7 @@ function createPendingOperation(
   const sourcePane = getPaneState(widgetState, widgetState.activePane)
   const entryIds = getOperationEntryIds(sourcePane)
 
-  if (kind !== 'mkdir' && kind !== 'select' && kind !== 'unselect' && kind !== 'filter' && entryIds.length === 0) {
+  if (kind !== 'mkdir' && kind !== 'select' && kind !== 'unselect' && kind !== 'filter' && kind !== 'search' && entryIds.length === 0) {
     return null
   }
 
@@ -642,6 +665,21 @@ function createPendingOperation(
       entryIds: [],
       entryNames: [],
       inputValue: filterQuery,
+      matchCount: matches.entryIds.length,
+      matchPreview: matches.entryNames.slice(0, 6),
+    } satisfies CommanderPendingOperation
+  }
+
+  if (kind === 'search') {
+    const matches = getCommanderSearchMatches(sourcePane, '')
+
+    return {
+      kind,
+      sourcePaneId: widgetState.activePane,
+      sourcePath: sourcePane.path,
+      entryIds: [],
+      entryNames: [],
+      inputValue: '',
       matchCount: matches.entryIds.length,
       matchPreview: matches.entryNames.slice(0, 6),
     } satisfies CommanderPendingOperation
@@ -766,6 +804,7 @@ export const requestCommanderActivePaneRename = createEvent<CommanderWidgetPaylo
 export const requestCommanderActivePaneSelectByMask = createEvent<CommanderWidgetPayload>()
 export const requestCommanderActivePaneUnselectByMask = createEvent<CommanderWidgetPayload>()
 export const requestCommanderActivePaneFilter = createEvent<CommanderWidgetPayload>()
+export const requestCommanderActivePaneSearch = createEvent<CommanderWidgetPayload>()
 export const clearCommanderActivePaneFilter = createEvent<CommanderWidgetPayload>()
 export const invertCommanderActivePaneSelection = createEvent<CommanderWidgetPayload>()
 export const setCommanderPanePath = createEvent<CommanderSetPanePathPayload>()
@@ -1317,6 +1356,24 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
         : widgetState,
     }
   })
+  .on(requestCommanderActivePaneSearch, (widgets, payload) => {
+    const widgetState = widgets[payload.widgetId]
+
+    if (!widgetState) {
+      return widgets
+    }
+    const pendingOperation = createPendingOperation(widgetState, 'search')
+
+    return {
+      ...widgets,
+      [payload.widgetId]: pendingOperation
+        ? {
+          ...widgetState,
+          pendingOperation,
+        }
+        : widgetState,
+    }
+  })
   .on(clearCommanderActivePaneFilter, (widgets, payload) => {
     const widgetState = widgets[payload.widgetId]
 
@@ -1401,6 +1458,26 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
       const matches = getCommanderFilterMatches(
         widgetState,
         widgetState.pendingOperation.sourcePaneId,
+        payload.inputValue,
+      )
+
+      return {
+        ...widgets,
+        [payload.widgetId]: {
+          ...widgetState,
+          pendingOperation: {
+            ...widgetState.pendingOperation,
+            inputValue: payload.inputValue,
+            matchCount: matches.entryIds.length,
+            matchPreview: matches.entryNames.slice(0, 6),
+          },
+        },
+      }
+    }
+
+    if (widgetState.pendingOperation.kind === 'search') {
+      const matches = getCommanderSearchMatches(
+        getPaneState(widgetState, widgetState.pendingOperation.sourcePaneId),
         payload.inputValue,
       )
 
@@ -1691,6 +1768,34 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
             ...paneState,
             filterQuery,
           }),
+        ),
+      }
+    }
+
+    if (pendingOperation.kind === 'search') {
+      const matches = getCommanderSearchMatches(
+        getPaneState(widgetState, pendingOperation.sourcePaneId),
+        pendingOperation.inputValue ?? '',
+      )
+      const nextCursorEntryId = matches.entryIds[0] ?? null
+
+      return {
+        ...widgets,
+        [payload.widgetId]: updatePaneState(
+          {
+            ...widgetState,
+            pendingOperation: null,
+          },
+          pendingOperation.sourcePaneId,
+          (paneState) => (
+            nextCursorEntryId
+              ? {
+                ...paneState,
+                cursorEntryId: nextCursorEntryId,
+                selectionAnchorEntryId: nextCursorEntryId,
+              }
+              : paneState
+          ),
         ),
       }
     }

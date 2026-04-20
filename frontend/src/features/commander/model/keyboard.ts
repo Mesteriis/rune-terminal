@@ -93,6 +93,12 @@ export function useCommanderKeyboard(
         return
       }
 
+      if (!event.metaKey && event.ctrlKey && (event.key === 's' || event.key === 'S')) {
+        event.preventDefault()
+        commanderActions.searchActivePane()
+        return
+      }
+
       if (!event.metaKey && event.ctrlKey && event.key === 'Backspace') {
         event.preventDefault()
         commanderActions.clearActivePaneFilter()

@@ -169,6 +169,8 @@ function formatPendingOperationMessage(state: CommanderWidgetViewState) {
       return `Unselect ${pendingOperation.matchCount ?? 0} entries matching ${pendingOperation.inputValue || '*'} in ${pendingOperation.sourcePath}`
     case 'filter':
       return `Filter ${pendingOperation.matchCount ?? 0} entries matching ${pendingOperation.inputValue || '*'} in ${pendingOperation.sourcePath}`
+    case 'search':
+      return `Search ${pendingOperation.matchCount ?? 0} entries matching ${pendingOperation.inputValue || ''} in ${pendingOperation.sourcePath}`
     default:
       return null
   }
@@ -502,6 +504,7 @@ export function CommanderWidget() {
     || state.pendingOperation?.kind === 'select'
     || state.pendingOperation?.kind === 'unselect'
     || state.pendingOperation?.kind === 'filter'
+    || state.pendingOperation?.kind === 'search'
   )
   const pendingOperationIsBlocking = isPendingOperationBlocking(state)
   const pendingOperationNeedsConflictResolution = isPendingOperationConflictResolution(state)
@@ -512,6 +515,7 @@ export function CommanderWidget() {
     state.pendingOperation?.kind === 'select'
     || state.pendingOperation?.kind === 'unselect'
     || state.pendingOperation?.kind === 'filter'
+    || state.pendingOperation?.kind === 'search'
   )
     ? (state.pendingOperation.matchPreview ?? [])
     : []
@@ -652,6 +656,9 @@ export function CommanderWidget() {
         break
       case 'CTRL+F':
         commanderActions.filterActivePane()
+        break
+      case 'CTRL+S':
+        commanderActions.searchActivePane()
         break
       case 'CTRL+BS':
         commanderActions.clearActivePaneFilter()
@@ -801,6 +808,8 @@ export function CommanderWidget() {
                   ? 'Commander pending operation input'
                   : state.pendingOperation?.kind === 'filter'
                     ? 'Commander filter input'
+                  : state.pendingOperation?.kind === 'search'
+                    ? 'Commander search input'
                   : 'Commander mask selection input'
               }
               onChange={(event) => commanderActions.setPendingOperationInput(event.target.value)}
@@ -1039,12 +1048,22 @@ export function CommanderWidget() {
                   ) : null}
                 </>
               ) : null}
-              {(state.pendingOperation?.kind === 'select' || state.pendingOperation?.kind === 'unselect' || state.pendingOperation?.kind === 'filter') ? (
+              {(state.pendingOperation?.kind === 'select' || state.pendingOperation?.kind === 'unselect' || state.pendingOperation?.kind === 'filter' || state.pendingOperation?.kind === 'search') ? (
                 <>
                   <Box runaComponent="commander-pending-mask-help" style={commanderPendingRenameHelpStyle}>
-                    <Text runaComponent="commander-pending-mask-help-wildcard" style={{ color: 'inherit' }}>* any</Text>
-                    <Text runaComponent="commander-pending-mask-help-single" style={{ color: 'inherit' }}>? single</Text>
-                    <Text runaComponent="commander-pending-mask-help-split" style={{ color: 'inherit' }}>; split masks</Text>
+                    {state.pendingOperation?.kind === 'search' ? (
+                      <>
+                        <Text runaComponent="commander-pending-search-help-substring" style={{ color: 'inherit' }}>substring match</Text>
+                        <Text runaComponent="commander-pending-search-help-visible" style={{ color: 'inherit' }}>visible rows only</Text>
+                        <Text runaComponent="commander-pending-search-help-enter" style={{ color: 'inherit' }}>enter jumps to first</Text>
+                      </>
+                    ) : (
+                      <>
+                        <Text runaComponent="commander-pending-mask-help-wildcard" style={{ color: 'inherit' }}>* any</Text>
+                        <Text runaComponent="commander-pending-mask-help-single" style={{ color: 'inherit' }}>? single</Text>
+                        <Text runaComponent="commander-pending-mask-help-split" style={{ color: 'inherit' }}>; split masks</Text>
+                      </>
+                    )}
                     {state.pendingOperation?.kind === 'filter' ? (
                       <Text runaComponent="commander-pending-mask-help-empty" style={{ color: 'inherit' }}>empty clears filter</Text>
                     ) : null}

@@ -8,7 +8,7 @@ export type CommanderFooterHint = {
   label: string
 }
 
-export type CommanderPendingOperationKind = 'copy' | 'move' | 'delete' | 'mkdir' | 'rename' | 'select' | 'unselect' | 'filter'
+export type CommanderPendingOperationKind = 'copy' | 'move' | 'delete' | 'mkdir' | 'rename' | 'select' | 'unselect' | 'filter' | 'search'
 export type CommanderRenameMode = 'single' | 'batch'
 export type CommanderRenamePreviewStatus = 'ok' | 'duplicate' | 'conflict' | 'invalid'
 
