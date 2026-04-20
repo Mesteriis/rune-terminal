@@ -16,6 +16,13 @@ import {
   type DockviewWorkspaceBinding,
 } from './dockview-workspace.runtime'
 import { resolveDockviewWorkspaceReadyState } from './dockview-workspace.ready'
+import {
+  applyDockviewWorkspaceSnapshot,
+  captureDockviewWorkspaceSnapshot,
+  createDockviewWorkspaceTab,
+  readDockviewWorkspaceSnapshot,
+  writeDockviewWorkspaceSnapshot,
+} from './dockview-workspace.snapshots'
 
 const DOCKVIEW_PERSIST_DEBOUNCE_MS = 120
 
@@ -72,13 +79,9 @@ export function useDockviewWorkspace({ client = dockviewWorkspaceClient }: UseDo
     }
 
     const activeId = activeWorkspaceIdRef.current
-    const nextSnapshot = api.panels.length > 0 ? api.toJSON() : null
+    const nextSnapshot = captureDockviewWorkspaceSnapshot(api)
 
-    updateWorkspaceTabs((tabs) =>
-      tabs.map((workspace) =>
-        workspace.id === activeId ? { ...workspace, snapshot: nextSnapshot } : workspace,
-      ),
-    )
+    updateWorkspaceTabs((tabs) => writeDockviewWorkspaceSnapshot(tabs, activeId, nextSnapshot))
   }
 
   const schedulePersistCurrentWorkspaceSnapshot = () => {
@@ -111,15 +114,7 @@ export function useDockviewWorkspace({ client = dockviewWorkspaceClient }: UseDo
       return
     }
 
-    const targetWorkspace = workspaceTabsRef.current.find((workspace) => workspace.id === workspaceId)
-
-    if (!targetWorkspace?.snapshot) {
-      api.clear()
-      scheduleDockviewLayoutSync()
-      return
-    }
-
-    api.fromJSON(targetWorkspace.snapshot)
+    applyDockviewWorkspaceSnapshot(api, readDockviewWorkspaceSnapshot(workspaceTabsRef.current, workspaceId))
     scheduleDockviewLayoutSync()
   }
 
@@ -137,12 +132,8 @@ export function useDockviewWorkspace({ client = dockviewWorkspaceClient }: UseDo
   const handleAddWorkspace = () => {
     persistCurrentWorkspaceSnapshot()
 
-    const nextWorkspaceId = workspaceTabsRef.current.length + 1
-    const nextWorkspace: WorkspaceLayoutTab = {
-      id: nextWorkspaceId,
-      title: `Workspace-${nextWorkspaceId}`,
-      snapshot: null,
-    }
+    const nextWorkspace = createDockviewWorkspaceTab(workspaceTabsRef.current)
+    const nextWorkspaceId = nextWorkspace.id
 
     updateWorkspaceTabs((tabs) => [...tabs, nextWorkspace])
     activeWorkspaceIdRef.current = nextWorkspaceId
@@ -170,11 +161,7 @@ export function useDockviewWorkspace({ client = dockviewWorkspaceClient }: UseDo
 
     if (readyState.type === 'seeded-default') {
       updateWorkspaceTabs((tabs) =>
-        tabs.map((workspace) =>
-          workspace.id === DEFAULT_ACTIVE_WORKSPACE_ID
-            ? { ...workspace, snapshot: readyState.snapshot }
-            : workspace,
-        ),
+        writeDockviewWorkspaceSnapshot(tabs, DEFAULT_ACTIVE_WORKSPACE_ID, readyState.snapshot),
       )
     }
 
