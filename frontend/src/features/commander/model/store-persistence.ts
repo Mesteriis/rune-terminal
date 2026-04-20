@@ -1,4 +1,7 @@
-import type { CommanderWidgetPersistedSnapshot, CommanderWidgetRuntimeState } from '@/features/commander/model/types'
+import type {
+  CommanderWidgetPersistedSnapshot,
+  CommanderWidgetRuntimeState,
+} from '@/features/commander/model/types'
 import { getCommanderClientSnapshot } from '@/features/commander/model/fake-client'
 import {
   serializeCommanderWidgetRuntimeState,
@@ -7,15 +10,45 @@ import {
 
 const COMMANDER_PERSIST_DEBOUNCE_MS = 120
 
+type CommanderWidgetsWatchSubscription = void | (() => void) | { unsubscribe: () => void }
+
 type CommanderWidgetsStore = {
-  watch: (watcher: (widgets: Record<string, CommanderWidgetRuntimeState>) => void) => void
+  watch: (
+    watcher: (widgets: Record<string, CommanderWidgetRuntimeState>) => void,
+  ) => CommanderWidgetsWatchSubscription
 }
 
-let persistCommanderWidgetsTimeout: ReturnType<typeof setTimeout> | null = null
-let hasInitializedCommanderPersistence = false
+type CommanderWidgetsPersistenceDeps = {
+  getCommanderClientSnapshot: (widgetId: string) => CommanderWidgetPersistedSnapshot['client']
+  serializeCommanderWidgetRuntimeState: (
+    widgetState: CommanderWidgetRuntimeState,
+  ) => CommanderWidgetPersistedSnapshot['runtime']
+  writePersistedCommanderWidgets: (widgets: Record<string, CommanderWidgetPersistedSnapshot>) => void
+}
 
-export function attachCommanderWidgetsPersistence(commanderWidgetsStore: CommanderWidgetsStore) {
-  commanderWidgetsStore.watch((widgets) => {
+const defaultCommanderWidgetsPersistenceDeps: CommanderWidgetsPersistenceDeps = {
+  getCommanderClientSnapshot,
+  serializeCommanderWidgetRuntimeState,
+  writePersistedCommanderWidgets,
+}
+
+function disposeCommanderWidgetsWatchSubscription(subscription: CommanderWidgetsWatchSubscription) {
+  if (typeof subscription === 'function') {
+    subscription()
+    return
+  }
+
+  subscription?.unsubscribe?.()
+}
+
+export function attachCommanderWidgetsPersistence(
+  commanderWidgetsStore: CommanderWidgetsStore,
+  deps: CommanderWidgetsPersistenceDeps = defaultCommanderWidgetsPersistenceDeps,
+) {
+  let hasInitializedCommanderPersistence = false
+  let persistCommanderWidgetsTimeout: ReturnType<typeof setTimeout> | null = null
+
+  const watchSubscription = commanderWidgetsStore.watch((widgets) => {
     if (typeof window === 'undefined') {
       return
     }
@@ -25,22 +58,33 @@ export function attachCommanderWidgetsPersistence(commanderWidgetsStore: Command
       return
     }
 
-    if (persistCommanderWidgetsTimeout) {
+    if (persistCommanderWidgetsTimeout !== null) {
       clearTimeout(persistCommanderWidgetsTimeout)
     }
 
     persistCommanderWidgetsTimeout = window.setTimeout(() => {
-      writePersistedCommanderWidgets(
+      persistCommanderWidgetsTimeout = null
+
+      deps.writePersistedCommanderWidgets(
         Object.fromEntries(
           Object.entries(widgets).map(([widgetId, widgetState]) => [
             widgetId,
             {
-              runtime: serializeCommanderWidgetRuntimeState(widgetState),
-              client: getCommanderClientSnapshot(widgetId),
+              runtime: deps.serializeCommanderWidgetRuntimeState(widgetState),
+              client: deps.getCommanderClientSnapshot(widgetId),
             } satisfies CommanderWidgetPersistedSnapshot,
           ]),
         ),
       )
     }, COMMANDER_PERSIST_DEBOUNCE_MS)
   })
+
+  return () => {
+    if (persistCommanderWidgetsTimeout !== null) {
+      clearTimeout(persistCommanderWidgetsTimeout)
+      persistCommanderWidgetsTimeout = null
+    }
+
+    disposeCommanderWidgetsWatchSubscription(watchSubscription)
+  }
 }
