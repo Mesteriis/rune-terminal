@@ -10,6 +10,13 @@ import {
   type WorkspaceLayoutTab,
   writePersistedDockviewWorkspaceState,
 } from './dockview-workspace.persistence'
+import {
+  bindDockviewWorkspacePersistence,
+  disposeDockviewWorkspaceBindings,
+  scheduleDockviewWorkspaceLayoutSync,
+  syncDockviewWorkspaceLayout,
+  type DockviewWorkspaceBinding,
+} from './dockview-workspace.runtime'
 
 const DOCKVIEW_PERSIST_DEBOUNCE_MS = 120
 
@@ -32,7 +39,7 @@ export function useDockviewWorkspace() {
     initialWorkspaceStateRef.current?.activeWorkspaceId ?? DEFAULT_ACTIVE_WORKSPACE_ID,
   )
   const dockviewPersistenceTimeoutRef = useRef<number | null>(null)
-  const dockviewPersistenceDisposablesRef = useRef<Array<{ dispose: () => void }>>([])
+  const dockviewPersistenceBindingsRef = useRef<DockviewWorkspaceBinding[]>([])
 
   const updateWorkspaceTabs = (updater: (tabs: WorkspaceLayoutTab[]) => WorkspaceLayoutTab[]) => {
     const nextTabs = updater(workspaceTabsRef.current)
@@ -41,27 +48,16 @@ export function useDockviewWorkspace() {
   }
 
   const disposeDockviewPersistenceBindings = () => {
-    dockviewPersistenceDisposablesRef.current.forEach((disposable) => disposable.dispose())
-    dockviewPersistenceDisposablesRef.current = []
+    disposeDockviewWorkspaceBindings(dockviewPersistenceBindingsRef.current)
+    dockviewPersistenceBindingsRef.current = []
   }
 
   const syncDockviewLayout = () => {
-    const api = dockviewApiRef.current
-    const container = dockviewContainerRef.current
-
-    if (!api || !container) {
-      return
-    }
-
-    api.layout(container.clientWidth, container.clientHeight)
+    syncDockviewWorkspaceLayout(dockviewApiRef.current, dockviewContainerRef.current)
   }
 
   const scheduleDockviewLayoutSync = () => {
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => {
-        syncDockviewLayout()
-      })
-    })
+    scheduleDockviewWorkspaceLayoutSync(syncDockviewLayout)
   }
 
   const persistCurrentWorkspaceSnapshot = () => {
@@ -98,17 +94,10 @@ export function useDockviewWorkspace() {
 
   const bindDockviewPersistence = (api: DockviewApi) => {
     disposeDockviewPersistenceBindings()
-
-    dockviewPersistenceDisposablesRef.current = [
-      api.onDidLayoutChange(schedulePersistCurrentWorkspaceSnapshot),
-      api.onDidAddPanel(schedulePersistCurrentWorkspaceSnapshot),
-      api.onDidRemovePanel(schedulePersistCurrentWorkspaceSnapshot),
-      api.onDidMovePanel(schedulePersistCurrentWorkspaceSnapshot),
-      api.onDidAddGroup(schedulePersistCurrentWorkspaceSnapshot),
-      api.onDidRemoveGroup(schedulePersistCurrentWorkspaceSnapshot),
-      api.onDidActivePanelChange(schedulePersistCurrentWorkspaceSnapshot),
-      api.onDidActiveGroupChange(schedulePersistCurrentWorkspaceSnapshot),
-    ]
+    dockviewPersistenceBindingsRef.current = bindDockviewWorkspacePersistence(
+      api,
+      schedulePersistCurrentWorkspaceSnapshot,
+    )
   }
 
   const restoreWorkspaceSnapshot = (workspaceId: number) => {
