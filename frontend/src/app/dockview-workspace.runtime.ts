@@ -4,6 +4,12 @@ export type DockviewWorkspaceBinding = {
   dispose: () => void
 }
 
+export type DockviewWorkspacePersistenceController = {
+  bind: (api: DockviewApi) => void
+  dispose: () => void
+  schedule: () => void
+}
+
 export function disposeDockviewWorkspaceBindings(bindings: DockviewWorkspaceBinding[]) {
   bindings.forEach((binding) => binding.dispose())
 }
@@ -22,6 +28,51 @@ export function bindDockviewWorkspacePersistence(
     api.onDidActivePanelChange(onWorkspaceMutation),
     api.onDidActiveGroupChange(onWorkspaceMutation),
   ]
+}
+
+type CreateDockviewWorkspacePersistenceControllerOptions = {
+  debounceMs: number
+  onPersistWorkspaceSnapshot: () => void
+}
+
+export function createDockviewWorkspacePersistenceController({
+  debounceMs,
+  onPersistWorkspaceSnapshot,
+}: CreateDockviewWorkspacePersistenceControllerOptions): DockviewWorkspacePersistenceController {
+  let bindings: DockviewWorkspaceBinding[] = []
+  let timeoutId: ReturnType<typeof globalThis.setTimeout> | null = null
+
+  const dispose = () => {
+    disposeDockviewWorkspaceBindings(bindings)
+    bindings = []
+
+    if (timeoutId !== null) {
+      globalThis.clearTimeout(timeoutId)
+      timeoutId = null
+    }
+  }
+
+  const schedule = () => {
+    if (timeoutId !== null) {
+      globalThis.clearTimeout(timeoutId)
+    }
+
+    timeoutId = globalThis.setTimeout(() => {
+      timeoutId = null
+      onPersistWorkspaceSnapshot()
+    }, debounceMs)
+  }
+
+  const bind = (api: DockviewApi) => {
+    disposeDockviewWorkspaceBindings(bindings)
+    bindings = bindDockviewWorkspacePersistence(api, schedule)
+  }
+
+  return {
+    bind,
+    dispose,
+    schedule,
+  }
 }
 
 export function syncDockviewWorkspaceLayout(api: DockviewApi | null, container: HTMLDivElement | null) {

@@ -10,11 +10,10 @@ import {
   type WorkspaceLayoutTab,
 } from './dockview-workspace.persistence'
 import {
-  bindDockviewWorkspacePersistence,
-  disposeDockviewWorkspaceBindings,
+  createDockviewWorkspacePersistenceController,
   scheduleDockviewWorkspaceLayoutSync,
   syncDockviewWorkspaceLayout,
-  type DockviewWorkspaceBinding,
+  type DockviewWorkspacePersistenceController,
 } from './dockview-workspace.runtime'
 import { resolveDockviewWorkspaceReadyState } from './dockview-workspace.ready'
 import {
@@ -49,8 +48,7 @@ export function useDockviewWorkspace({ client = dockviewWorkspaceClient }: UseDo
   const activeWorkspaceIdRef = useRef(
     initialWorkspaceStateRef.current?.activeWorkspaceId ?? DEFAULT_ACTIVE_WORKSPACE_ID,
   )
-  const dockviewPersistenceTimeoutRef = useRef<number | null>(null)
-  const dockviewPersistenceBindingsRef = useRef<DockviewWorkspaceBinding[]>([])
+  const dockviewPersistenceControllerRef = useRef<DockviewWorkspacePersistenceController | null>(null)
 
   const updateWorkspaceTabs = (updater: (tabs: WorkspaceLayoutTab[]) => WorkspaceLayoutTab[]) => {
     const nextTabs = updater(workspaceTabsRef.current)
@@ -61,11 +59,6 @@ export function useDockviewWorkspace({ client = dockviewWorkspaceClient }: UseDo
   const activateWorkspace = (workspaceId: number) => {
     activeWorkspaceIdRef.current = workspaceId
     setActiveWorkspaceId(workspaceId)
-  }
-
-  const disposeDockviewPersistenceBindings = () => {
-    disposeDockviewWorkspaceBindings(dockviewPersistenceBindingsRef.current)
-    dockviewPersistenceBindingsRef.current = []
   }
 
   const syncDockviewLayout = () => {
@@ -89,28 +82,14 @@ export function useDockviewWorkspace({ client = dockviewWorkspaceClient }: UseDo
     updateWorkspaceTabs((tabs) => writeDockviewWorkspaceSnapshot(tabs, activeId, nextSnapshot))
   }
 
-  const schedulePersistCurrentWorkspaceSnapshot = () => {
-    if (typeof window === 'undefined') {
-      return
-    }
-
-    if (dockviewPersistenceTimeoutRef.current !== null) {
-      window.clearTimeout(dockviewPersistenceTimeoutRef.current)
-    }
-
-    dockviewPersistenceTimeoutRef.current = window.setTimeout(() => {
-      dockviewPersistenceTimeoutRef.current = null
-      persistCurrentWorkspaceSnapshot()
-    }, DOCKVIEW_PERSIST_DEBOUNCE_MS)
+  if (!dockviewPersistenceControllerRef.current) {
+    dockviewPersistenceControllerRef.current = createDockviewWorkspacePersistenceController({
+      debounceMs: DOCKVIEW_PERSIST_DEBOUNCE_MS,
+      onPersistWorkspaceSnapshot: persistCurrentWorkspaceSnapshot,
+    })
   }
 
-  const bindDockviewPersistence = (api: DockviewApi) => {
-    disposeDockviewPersistenceBindings()
-    dockviewPersistenceBindingsRef.current = bindDockviewWorkspacePersistence(
-      api,
-      schedulePersistCurrentWorkspaceSnapshot,
-    )
-  }
+  const dockviewPersistenceController = dockviewPersistenceControllerRef.current
 
   const restoreWorkspaceSnapshot = (workspaceId: number) => {
     const api = dockviewApiRef.current
@@ -146,7 +125,7 @@ export function useDockviewWorkspace({ client = dockviewWorkspaceClient }: UseDo
   const handleDockviewReady = (event: DockviewReadyEvent) => {
     const api = event.api
     dockviewApiRef.current = api
-    bindDockviewPersistence(api)
+    dockviewPersistenceController.bind(api)
 
     const readyState = resolveDockviewWorkspaceReadyState({
       activeWorkspaceId: activeWorkspaceIdRef.current,
@@ -191,11 +170,7 @@ export function useDockviewWorkspace({ client = dockviewWorkspaceClient }: UseDo
 
   useEffect(() => {
     return () => {
-      disposeDockviewPersistenceBindings()
-
-      if (dockviewPersistenceTimeoutRef.current !== null) {
-        window.clearTimeout(dockviewPersistenceTimeoutRef.current)
-      }
+      dockviewPersistenceController.dispose()
     }
   }, [])
 

@@ -265,7 +265,7 @@ Lookup helpers exported from `src/shared/ui/dom-id.tsx`:
 - `App.tsx` remains responsible for shell composition, Dockview API orchestration, and Effector state wiring.
 - The app-local Dockview workspace schema normalization now lives in `src/app/dockview-workspace.persistence.ts`, while `src/app/dockview-workspace.client.ts` provides the pluggable snapshot client contract and the current `localStorage` adapter.
 - The default Dockview panel seed now also lives in `src/app/dockview-workspace.bootstrap.ts`, so the initial shell topology is expressed once outside the React lifecycle hook.
-- Dockview layout sync and persistence subscription wiring now also live in `src/app/dockview-workspace.runtime.ts`, keeping the hook focused on workspace lifecycle and state transitions instead of repeating event plumbing.
+- Dockview layout sync and persistence subscription/runtime bookkeeping now also live in `src/app/dockview-workspace.runtime.ts`, including the debounced persistence controller used by the main hook.
 - The Dockview ready-path decision tree now also lives in `src/app/dockview-workspace.ready.ts`, so the hook no longer mixes `onReady` lifecycle with the branching restore/bootstrap policy inline.
 - Dockview snapshot capture/apply/tab-update helpers now also live in `src/app/dockview-workspace.snapshots.ts`, so the hook does not repeat raw `toJSON()/fromJSON()/clear()` and snapshot-tab patch logic inline.
 - Workspace switching and workspace-add orchestration now also live in `src/app/dockview-workspace.actions.ts`, so the hook no longer owns the `persist -> activate -> restore` flow inline.
