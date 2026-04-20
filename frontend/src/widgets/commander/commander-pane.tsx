@@ -87,6 +87,7 @@ function CommanderHeaderCell({
   )
 }
 
+/** Renders one commander pane from a pane-scoped controller object. */
 export function CommanderPane({ controller }: CommanderPaneProps) {
   const { isActive, interactions, pane, pathEditor, sort } = controller
   const rowRefs = useRef<Record<string, HTMLDivElement | null>>({})

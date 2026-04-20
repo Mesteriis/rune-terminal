@@ -7,6 +7,7 @@ import type {
 } from '@/features/commander/model/types'
 import type { CommanderPathSuggestion } from '@/widgets/commander/commander-widget.shared'
 
+/** Groups the inline path-edit contract for one pane header. */
 export type CommanderPanePathEditor = {
   inputRef: RefObject<HTMLInputElement | null>
   isEditing: boolean
@@ -21,6 +22,7 @@ export type CommanderPanePathEditor = {
   value: string
 }
 
+/** Groups pane-local interactions so `CommanderPane` can stay presentation-focused. */
 export type CommanderPaneInteractions = {
   activate: () => void
   focusRoot: () => void
@@ -30,6 +32,7 @@ export type CommanderPaneInteractions = {
   toggleSelection: (entryId: string) => void
 }
 
+/** Aggregates one pane view-model, path-edit state, and pane-scoped interactions. */
 export type CommanderPaneController = {
   isActive: boolean
   interactions: CommanderPaneInteractions
@@ -74,6 +77,7 @@ type CommanderPaneControllerShared = {
   }
 }
 
+/** Binds shared widget state to one pane-facing controller object. */
 export function createCommanderPaneController(
   pane: CommanderPaneViewState,
   shared: CommanderPaneControllerShared,

@@ -33,6 +33,7 @@ type CommanderHeaderRowProps = {
   onFocusRoot: () => void
 }
 
+/** Renders the commander header controls for history, view mode, hidden files, and dirs-first. */
 export function CommanderHeaderRow({
   state,
   actions,
@@ -56,7 +57,7 @@ export function CommanderHeaderRow({
           size="sm"
           style={{
             ...commanderIconControlStyle,
-            ...((disableHistoryControls || !activePane.canGoBack) ? commanderIconControlDisabledStyle : null),
+            ...(disableHistoryControls || !activePane.canGoBack ? commanderIconControlDisabledStyle : null),
           }}
         >
           <ChevronLeft size={14} strokeWidth={1.8} />
@@ -72,7 +73,9 @@ export function CommanderHeaderRow({
           size="sm"
           style={{
             ...commanderIconControlStyle,
-            ...((disableHistoryControls || !activePane.canGoForward) ? commanderIconControlDisabledStyle : null),
+            ...(disableHistoryControls || !activePane.canGoForward
+              ? commanderIconControlDisabledStyle
+              : null),
           }}
         >
           <ChevronRight size={14} strokeWidth={1.8} />

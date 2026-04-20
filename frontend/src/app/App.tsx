@@ -42,11 +42,9 @@ const tabComponents = {
   'terminal-tab': TerminalDockviewTabWidget,
 }
 
+/** Composes the shell topbar, Dockview workspace, AI sidebar, and modal hosts. */
 export function App() {
-  const [isAiSidebarOpen, onToggleAiSidebar] = useUnit([
-    $isAiSidebarOpen,
-    toggleAiSidebar,
-  ])
+  const [isAiSidebarOpen, onToggleAiSidebar] = useUnit([$isAiSidebarOpen, toggleAiSidebar])
   const contentAreaRef = useRef<HTMLDivElement | null>(null)
   const {
     activeWorkspaceId,

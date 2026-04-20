@@ -4,15 +4,18 @@ import { type ShellWorkspaceTab } from '@/widgets'
 
 export const DEFAULT_ACTIVE_WORKSPACE_ID = 2
 
+/** Extends the topbar workspace tab model with a persisted Dockview snapshot payload. */
 export type WorkspaceLayoutTab = ShellWorkspaceTab & {
   snapshot: SerializedDockview | null
 }
 
+/** Shape stored by the Dockview workspace client between shell launches. */
 export type PersistedDockviewWorkspaceState = {
   activeWorkspaceId: number
   workspaceTabs: WorkspaceLayoutTab[]
 }
 
+/** Seeds the shell with two empty workspaces before any persisted state exists. */
 export function createDefaultWorkspaceTabs(): WorkspaceLayoutTab[] {
   return [
     { id: 1, title: 'Workspace-1', snapshot: null },
@@ -20,6 +23,7 @@ export function createDefaultWorkspaceTabs(): WorkspaceLayoutTab[] {
   ]
 }
 
+/** Validates loosely parsed storage data before the shell trusts it as workspace state. */
 export function normalizePersistedDockviewWorkspaceState(
   value: unknown,
 ): PersistedDockviewWorkspaceState | null {

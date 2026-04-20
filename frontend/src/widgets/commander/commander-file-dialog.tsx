@@ -35,6 +35,7 @@ export type CommanderFileDialogProps = {
   onSave: () => void
 }
 
+/** Renders the fake-client-backed file viewer/editor modal for the focused commander file. */
 export function CommanderFileDialog({
   dirty,
   content,
@@ -105,7 +106,10 @@ export function CommanderFileDialog({
         style={commanderFileDialogStyle}
       >
         <Box runaComponent="commander-file-dialog-header" style={commanderFileDialogHeaderStyle}>
-          <Box runaComponent="commander-file-dialog-title-cluster" style={commanderFileDialogTitleClusterStyle}>
+          <Box
+            runaComponent="commander-file-dialog-title-cluster"
+            style={commanderFileDialogTitleClusterStyle}
+          >
             <Box runaComponent="commander-file-dialog-title-row" style={commanderFileDialogTitleRowStyle}>
               <Badge runaComponent="commander-file-dialog-mode" style={commanderPaneStateBadgeStyle}>
                 {mode === 'edit' ? 'EDIT' : 'VIEW'}
@@ -135,10 +139,7 @@ export function CommanderFileDialog({
                 Save
               </Button>
             ) : null}
-            <Button
-              onClick={requestClose}
-              runaComponent="commander-file-dialog-close"
-            >
+            <Button onClick={requestClose} runaComponent="commander-file-dialog-close">
               Close
             </Button>
           </Box>
@@ -155,7 +156,11 @@ export function CommanderFileDialog({
               return
             }
 
-            if (mode === 'edit' && (event.ctrlKey || event.metaKey) && (event.key === 's' || event.key === 'S')) {
+            if (
+              mode === 'edit' &&
+              (event.ctrlKey || event.metaKey) &&
+              (event.key === 's' || event.key === 'S')
+            ) {
               event.preventDefault()
               event.stopPropagation()
               setShowDiscardPrompt(false)
@@ -184,7 +189,10 @@ export function CommanderFileDialog({
             </Text>
           </Box>
           {showDiscardPrompt ? (
-            <Box runaComponent="commander-file-dialog-close-prompt" style={commanderFileDialogClosePromptStyle}>
+            <Box
+              runaComponent="commander-file-dialog-close-prompt"
+              style={commanderFileDialogClosePromptStyle}
+            >
               <Text runaComponent="commander-file-dialog-close-warning" style={commanderFileDialogHintStyle}>
                 Discard unsaved changes?
               </Text>

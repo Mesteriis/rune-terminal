@@ -2,10 +2,12 @@ import { type DockviewApi, type SerializedDockview } from 'dockview-react'
 
 import { createTerminalPanelParams } from '@/widgets/terminal/terminal-panel'
 
+/** Detects whether the default shell layout has already been seeded into Dockview. */
 export function hasDockviewWorkspaceBootstrap(api: DockviewApi) {
   return Boolean(api.getPanel('terminal-header'))
 }
 
+/** Seeds the initial terminal-plus-commander layout used by new workspaces. */
 export function seedDockviewWorkspaceBootstrap(api: DockviewApi): SerializedDockview {
   api.addPanel({
     id: 'terminal-header',

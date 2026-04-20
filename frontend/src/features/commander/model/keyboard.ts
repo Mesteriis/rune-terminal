@@ -32,6 +32,7 @@ function isInteractiveTextTarget(target: EventTarget | null) {
   return tagName === 'input' || tagName === 'textarea' || tagName === 'select'
 }
 
+/** Wires the pure commander key handlers into one widget-scoped `onKeyDownCapture` callback. */
 export function useCommanderKeyboard(
   widgetId: string,
   activePane: CommanderPaneId,

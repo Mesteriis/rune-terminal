@@ -23,8 +23,8 @@ const AI_SHELL_PANEL_HOST_ID = 'ai-shell-panel'
 const WORKSPACE_MIN_WIDTH = 420
 
 type AppAiSidebarProps = {
-  isOpen: boolean
   contentAreaRef: RefObject<HTMLDivElement | null>
+  isOpen: boolean
 }
 
 function getDefaultAiPanelWidth() {
@@ -48,6 +48,7 @@ function clampAiPanelWidth(requestedWidth: number, contentAreaElement: HTMLDivEl
   return Math.min(Math.max(requestedWidth, AI_PANEL_MIN_WIDTH), maxWidth)
 }
 
+/** Renders the shell-managed AI sidebar, including resize behavior and open/close animation. */
 export function AppAiSidebar({ isOpen, contentAreaRef }: AppAiSidebarProps) {
   const [aiPanelWidth, setAiPanelWidth] = useState(getDefaultAiPanelWidth())
   const [isAiPanelResizing, setIsAiPanelResizing] = useState(false)
@@ -117,9 +118,10 @@ export function AppAiSidebar({ isOpen, contentAreaRef }: AppAiSidebarProps) {
   }, [contentAreaRef, isAiPanelResizing])
 
   const aiShellWidth = aiPanelWidth + AI_PANEL_RESIZE_HANDLE_WIDTH
-  const aiWidthTransition = isAiPanelResizing || prefersReducedMotion
-    ? { duration: 0 }
-    : { duration: AI_PANEL_ANIMATION_SECONDS, ease: AI_PANEL_ANIMATION_EASE }
+  const aiWidthTransition =
+    isAiPanelResizing || prefersReducedMotion
+      ? { duration: 0 }
+      : { duration: AI_PANEL_ANIMATION_SECONDS, ease: AI_PANEL_ANIMATION_EASE }
 
   return (
     <AnimatePresence initial={false}>

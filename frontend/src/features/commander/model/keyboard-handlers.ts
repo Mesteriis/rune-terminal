@@ -6,6 +6,7 @@ import type {
   CommanderPendingOperation,
 } from '@/features/commander/model/types'
 
+/** Maximum idle gap before the incremental typeahead prefix resets. */
 export const COMMANDER_TYPEAHEAD_RESET_MS = 700
 
 type CommanderKeyboardEvent = Pick<
@@ -73,6 +74,7 @@ type CommanderNavigationKeyboardActions = {
   viewActiveFile: () => void
 }
 
+/** Tracks the current incremental typeahead prefix between key presses. */
 export type CommanderTypeaheadState = {
   prefix: string
   timestamp: number
@@ -119,6 +121,7 @@ function findNextTypeaheadMatch(rows: CommanderFileRow[], prefix: string) {
   return searchRows.find((row) => row.name.toLocaleLowerCase().startsWith(normalizedPrefix)) ?? null
 }
 
+/** Handles the global escape contract while the file dialog owns interaction. */
 export function handleCommanderFileDialogKeys(
   event: CommanderKeyboardEvent,
   isFileDialogOpen: boolean,
@@ -136,6 +139,7 @@ export function handleCommanderFileDialogKeys(
   return true
 }
 
+/** Handles `Alt+Left/Right` history traversal before the rest of commander navigation runs. */
 export function handleCommanderAltNavigationKeys(
   event: CommanderKeyboardEvent,
   commanderActions: Pick<CommanderModifierKeyboardActions, 'goBack' | 'goForward'>,
@@ -160,6 +164,7 @@ export function handleCommanderAltNavigationKeys(
   return true
 }
 
+/** Handles ctrl/meta modifier shortcuts such as filter, search, path edit, and parent/open navigation. */
 export function handleCommanderModifierKeys(
   event: CommanderKeyboardEvent,
   commanderActions: CommanderModifierKeyboardActions,
@@ -208,6 +213,7 @@ export function handleCommanderModifierKeys(
   return true
 }
 
+/** Handles the pending-operation keyboard contract, including conflict resolution and search stepping. */
 export function handleCommanderPendingOperationKeys(
   event: CommanderKeyboardEvent,
   pendingOperation: CommanderPendingOperation | null,
@@ -280,6 +286,7 @@ export function handleCommanderPendingOperationKeys(
   return true
 }
 
+/** Handles the numpad-driven selection shortcuts without mixing them into main navigation. */
 export function handleCommanderSelectionShortcutKeys(
   event: CommanderKeyboardEvent & Pick<KeyboardEvent<HTMLElement>, 'code'>,
   commanderActions: CommanderSelectionShortcutActions,
@@ -306,6 +313,7 @@ export function handleCommanderSelectionShortcutKeys(
   }
 }
 
+/** Handles shift-extended cursor movement and range-aware rename shortcuts. */
 export function handleCommanderShiftNavigationKeys(
   event: CommanderKeyboardEvent,
   activePane: CommanderPaneId,
@@ -349,6 +357,7 @@ export function handleCommanderShiftNavigationKeys(
   }
 }
 
+/** Handles the core commander navigation contract once higher-priority flows declined the event. */
 export function handleCommanderNavigationKeys(
   event: CommanderKeyboardEvent,
   activePane: CommanderPaneId,
@@ -433,6 +442,7 @@ export function handleCommanderNavigationKeys(
   }
 }
 
+/** Resolves character-by-character typeahead against the currently visible active-pane rows. */
 export function handleCommanderTypeaheadKey(
   event: CommanderKeyboardEvent,
   activePane: CommanderPaneId,

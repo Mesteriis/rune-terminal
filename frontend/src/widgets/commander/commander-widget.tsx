@@ -15,6 +15,7 @@ import { CommanderPendingBar } from '@/widgets/commander/commander-pending-bar'
 import { commanderMainStyle, commanderRootStyle } from '@/widgets/commander/commander-widget.styles'
 import { getCommanderPathSuggestions, joinCommanderPath } from '@/widgets/commander/commander-widget.shared'
 
+/** Renders the full commander widget shell, including panes, pending bar, and file dialog. */
 export function CommanderWidget() {
   const { widget: widgetId } = useRunaDomScope()
   const { actions, runtimeState, state } = useCommanderWidget(widgetId)

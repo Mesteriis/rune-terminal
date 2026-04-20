@@ -13,6 +13,7 @@ type UseDockviewWorkspaceEffectsOptions = {
   workspaceTabs: WorkspaceLayoutTab[]
 }
 
+/** Owns the shell-side effects around resize syncing, persistence writes, and controller cleanup. */
 export function useDockviewWorkspaceEffects({
   activeWorkspaceId,
   dockviewContainerRef,

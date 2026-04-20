@@ -1,7 +1,4 @@
-import {
-  readCommanderDirectory,
-  resolveCommanderExistingPath,
-} from '@/features/commander/model/fake-client'
+import { readCommanderDirectory, resolveCommanderExistingPath } from '@/features/commander/model/fake-client'
 import { filterEntriesByMask } from '@/features/commander/model/store-selection'
 import type {
   CommanderFileDialogState,
@@ -18,10 +15,12 @@ export type CommanderWidgetRefreshOverrides = {
   rightPane?: Partial<CommanderPaneRuntimeState>
 }
 
+/** Returns one pane runtime slice from a widget-scoped commander state object. */
 export function getPaneState(widgetState: CommanderWidgetRuntimeState, paneId: CommanderPaneId) {
   return paneId === 'left' ? widgetState.leftPane : widgetState.rightPane
 }
 
+/** Replaces one pane runtime slice without touching the rest of the widget state. */
 export function setPaneState(
   widgetState: CommanderWidgetRuntimeState,
   paneId: CommanderPaneId,
@@ -40,6 +39,7 @@ export function setPaneState(
   }
 }
 
+/** Applies a pane-local updater and writes the result back into the widget state. */
 export function updatePaneState(
   widgetState: CommanderWidgetRuntimeState,
   paneId: CommanderPaneId,
@@ -48,6 +48,7 @@ export function updatePaneState(
   return setPaneState(widgetState, paneId, updater(getPaneState(widgetState, paneId)))
 }
 
+/** Rebuilds a pane from fake-client directory state while preserving valid cursor and selection state. */
 export function rebuildPaneState(
   widgetState: CommanderWidgetRuntimeState,
   paneState: CommanderPaneRuntimeState,
@@ -60,18 +61,22 @@ export function rebuildPaneState(
     sortDirection: widgetState.sortDirection,
     dirsFirst: widgetState.dirsFirst,
   })
-  const filteredEntries = filterEntriesByMask(snapshot.entries, paneState.filterQuery, { emptyMeansAll: true })
+  const filteredEntries = filterEntriesByMask(snapshot.entries, paneState.filterQuery, {
+    emptyMeansAll: true,
+  })
   const visibleEntryIds = new Set(filteredEntries.map((entry) => entry.id))
-  const nextSelectedIds = paneState.path === resolvedPath
-    ? paneState.selectedIds.filter((entryId) => visibleEntryIds.has(entryId))
-    : []
-  const nextCursorEntryId = paneState.path === resolvedPath && paneState.cursorEntryId && visibleEntryIds.has(paneState.cursorEntryId)
-    ? paneState.cursorEntryId
-    : (snapshot.entries[0]?.id ?? null)
-  const nextSelectionAnchorEntryId =
+  const nextSelectedIds =
     paneState.path === resolvedPath
-    && paneState.selectionAnchorEntryId
-    && visibleEntryIds.has(paneState.selectionAnchorEntryId)
+      ? paneState.selectedIds.filter((entryId) => visibleEntryIds.has(entryId))
+      : []
+  const nextCursorEntryId =
+    paneState.path === resolvedPath && paneState.cursorEntryId && visibleEntryIds.has(paneState.cursorEntryId)
+      ? paneState.cursorEntryId
+      : (snapshot.entries[0]?.id ?? null)
+  const nextSelectionAnchorEntryId =
+    paneState.path === resolvedPath &&
+    paneState.selectionAnchorEntryId &&
+    visibleEntryIds.has(paneState.selectionAnchorEntryId)
       ? paneState.selectionAnchorEntryId
       : nextCursorEntryId
 
@@ -85,6 +90,7 @@ export function rebuildPaneState(
   }
 }
 
+/** Navigates one pane to a new path and updates its local back/forward history. */
 export function navigatePaneState(
   widgetState: CommanderWidgetRuntimeState,
   paneId: CommanderPaneId,
@@ -105,6 +111,7 @@ export function navigatePaneState(
   })
 }
 
+/** Walks one pane backward or forward through its local navigation history. */
 export function navigatePaneHistory(
   widgetState: CommanderWidgetRuntimeState,
   paneId: CommanderPaneId,
@@ -136,6 +143,7 @@ export function navigatePaneHistory(
   })
 }
 
+/** Rebuilds both panes after a mutation while allowing targeted widget-level overrides. */
 export function refreshWidgetPanes(
   widgetState: CommanderWidgetRuntimeState,
   overrides?: CommanderWidgetRefreshOverrides,
@@ -151,9 +159,7 @@ export function refreshWidgetPanes(
     pendingOperation: hasPendingOperationOverride
       ? (overrides?.pendingOperation ?? null)
       : widgetState.pendingOperation,
-    fileDialog: hasFileDialogOverride
-      ? (overrides?.fileDialog ?? null)
-      : widgetState.fileDialog,
+    fileDialog: hasFileDialogOverride ? (overrides?.fileDialog ?? null) : widgetState.fileDialog,
     leftPane: {
       ...widgetState.leftPane,
       ...overrides?.leftPane,

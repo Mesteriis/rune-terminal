@@ -5,10 +5,8 @@ import type {
   CommanderWidgetRuntimeState,
 } from '@/features/commander/model/types'
 
-export function movePaneCursor(
-  paneState: CommanderPaneRuntimeState,
-  delta: number,
-) {
+/** Moves the pane cursor by a delta and resets the range-selection anchor to that row. */
+export function movePaneCursor(paneState: CommanderPaneRuntimeState, delta: number) {
   if (paneState.entries.length === 0) {
     return paneState
   }
@@ -17,10 +15,7 @@ export function movePaneCursor(
     ? paneState.entries.findIndex((entry) => entry.id === paneState.cursorEntryId)
     : -1
   const startIndex = currentCursorIndex === -1 ? 0 : currentCursorIndex
-  const nextCursorIndex = Math.min(
-    paneState.entries.length - 1,
-    Math.max(0, startIndex + delta),
-  )
+  const nextCursorIndex = Math.min(paneState.entries.length - 1, Math.max(0, startIndex + delta))
 
   return {
     ...paneState,
@@ -29,29 +24,27 @@ export function movePaneCursor(
   }
 }
 
-export function setCursorToBoundary(
-  paneState: CommanderPaneRuntimeState,
-  boundary: 'start' | 'end',
-) {
+/** Jumps the pane cursor to the start or end of the visible rows. */
+export function setCursorToBoundary(paneState: CommanderPaneRuntimeState, boundary: 'start' | 'end') {
   if (paneState.entries.length === 0) {
     return paneState
   }
 
   return {
     ...paneState,
-    cursorEntryId: boundary === 'start'
-      ? paneState.entries[0]?.id ?? null
-      : paneState.entries[paneState.entries.length - 1]?.id ?? null,
-    selectionAnchorEntryId: boundary === 'start'
-      ? paneState.entries[0]?.id ?? null
-      : paneState.entries[paneState.entries.length - 1]?.id ?? null,
+    cursorEntryId:
+      boundary === 'start'
+        ? (paneState.entries[0]?.id ?? null)
+        : (paneState.entries[paneState.entries.length - 1]?.id ?? null),
+    selectionAnchorEntryId:
+      boundary === 'start'
+        ? (paneState.entries[0]?.id ?? null)
+        : (paneState.entries[paneState.entries.length - 1]?.id ?? null),
   }
 }
 
-export function movePaneCursorWithSelection(
-  paneState: CommanderPaneRuntimeState,
-  delta: number,
-) {
+/** Moves the cursor while preserving and extending the current selection range. */
+export function movePaneCursorWithSelection(paneState: CommanderPaneRuntimeState, delta: number) {
   if (paneState.entries.length === 0) {
     return paneState
   }
@@ -60,10 +53,7 @@ export function movePaneCursorWithSelection(
     ? paneState.entries.findIndex((entry) => entry.id === paneState.cursorEntryId)
     : -1
   const startIndex = currentCursorIndex === -1 ? 0 : currentCursorIndex
-  const nextCursorIndex = Math.min(
-    paneState.entries.length - 1,
-    Math.max(0, startIndex + delta),
-  )
+  const nextCursorIndex = Math.min(paneState.entries.length - 1, Math.max(0, startIndex + delta))
   const nextCursorEntryId = paneState.entries[nextCursorIndex]?.id ?? null
 
   if (!nextCursorEntryId) {
@@ -73,10 +63,8 @@ export function movePaneCursorWithSelection(
   return setSelectionRangeAtCursor(paneState, nextCursorEntryId)
 }
 
-export function setSelectionRangeAtCursor(
-  paneState: CommanderPaneRuntimeState,
-  targetEntryId: string,
-) {
+/** Recomputes the contiguous selected range between the current anchor and a target row. */
+export function setSelectionRangeAtCursor(paneState: CommanderPaneRuntimeState, targetEntryId: string) {
   const targetIndex = paneState.entries.findIndex((entry) => entry.id === targetEntryId)
 
   if (targetIndex === -1) {
@@ -86,12 +74,11 @@ export function setSelectionRangeAtCursor(
   const anchorEntryId = paneState.selectionAnchorEntryId ?? paneState.cursorEntryId ?? targetEntryId
   const anchorIndex = paneState.entries.findIndex((entry) => entry.id === anchorEntryId)
   const resolvedAnchorIndex = anchorIndex === -1 ? targetIndex : anchorIndex
-  const [rangeStartIndex, rangeEndIndex] = resolvedAnchorIndex <= targetIndex
-    ? [resolvedAnchorIndex, targetIndex]
-    : [targetIndex, resolvedAnchorIndex]
-  const selectedIds = paneState.entries
-    .slice(rangeStartIndex, rangeEndIndex + 1)
-    .map((entry) => entry.id)
+  const [rangeStartIndex, rangeEndIndex] =
+    resolvedAnchorIndex <= targetIndex
+      ? [resolvedAnchorIndex, targetIndex]
+      : [targetIndex, resolvedAnchorIndex]
+  const selectedIds = paneState.entries.slice(rangeStartIndex, rangeEndIndex + 1).map((entry) => entry.id)
 
   return {
     ...paneState,
@@ -101,6 +88,7 @@ export function setSelectionRangeAtCursor(
   }
 }
 
+/** Extends the current selection range to the first or last visible row. */
 export function setCursorToBoundaryWithSelection(
   paneState: CommanderPaneRuntimeState,
   boundary: 'start' | 'end',
@@ -109,9 +97,10 @@ export function setCursorToBoundaryWithSelection(
     return paneState
   }
 
-  const targetEntryId = boundary === 'start'
-    ? (paneState.entries[0]?.id ?? null)
-    : (paneState.entries[paneState.entries.length - 1]?.id ?? null)
+  const targetEntryId =
+    boundary === 'start'
+      ? (paneState.entries[0]?.id ?? null)
+      : (paneState.entries[paneState.entries.length - 1]?.id ?? null)
 
   if (!targetEntryId) {
     return paneState
@@ -120,10 +109,8 @@ export function setCursorToBoundaryWithSelection(
   return setSelectionRangeAtCursor(paneState, targetEntryId)
 }
 
-export function toggleEntrySelection(
-  paneState: CommanderPaneRuntimeState,
-  entryId: string,
-) {
+/** Toggles one entry inside the pane selection set and makes it the next range anchor. */
+export function toggleEntrySelection(paneState: CommanderPaneRuntimeState, entryId: string) {
   if (!paneState.entries.some((entry) => entry.id === entryId)) {
     return paneState
   }
@@ -175,6 +162,7 @@ function commanderMaskPatternToRegExp(pattern: string) {
   return new RegExp(`^${expression}$`, 'i')
 }
 
+/** Matches entries against the commander wildcard grammar used by selection and filter flows. */
 export function getCommanderMatchedEntries<T extends { id: string; name: string }>(
   entries: T[],
   mask: string,
@@ -194,11 +182,10 @@ export function getCommanderMatchedEntries<T extends { id: string; name: string 
     return []
   }
 
-  return entries.filter((entry) => (
-    expressions.some((expression) => expression.test(entry.name))
-  ))
+  return entries.filter((entry) => expressions.some((expression) => expression.test(entry.name)))
 }
 
+/** Convenience wrapper that keeps mask-based filtering terminology at the call site. */
 export function filterEntriesByMask<T extends { id: string; name: string }>(
   entries: T[],
   mask: string,
@@ -209,10 +196,8 @@ export function filterEntriesByMask<T extends { id: string; name: string }>(
   return getCommanderMatchedEntries(entries, mask, options)
 }
 
-export function getCommanderMaskMatches(
-  paneState: CommanderPaneRuntimeState,
-  mask: string,
-) {
+/** Returns the ids and names matched by a selection-mask prompt against visible pane rows. */
+export function getCommanderMaskMatches(paneState: CommanderPaneRuntimeState, mask: string) {
   const matchedEntries = getCommanderMatchedEntries(paneState.entries, mask)
 
   if (matchedEntries.length === 0) {
@@ -228,6 +213,7 @@ export function getCommanderMaskMatches(
   }
 }
 
+/** Returns the ids and names matched by a filter prompt against the unfiltered directory snapshot. */
 export function getCommanderFilterMatches(
   widgetState: CommanderWidgetRuntimeState,
   paneId: CommanderPaneId,
@@ -248,10 +234,8 @@ export function getCommanderFilterMatches(
   }
 }
 
-export function getCommanderSearchMatches(
-  paneState: CommanderPaneRuntimeState,
-  query: string,
-) {
+/** Returns visible-row matches for the transient quick-search flow. */
+export function getCommanderSearchMatches(paneState: CommanderPaneRuntimeState, query: string) {
   const normalizedQuery = query.trim().toLocaleLowerCase()
 
   if (!normalizedQuery) {
@@ -261,9 +245,9 @@ export function getCommanderSearchMatches(
     }
   }
 
-  const matchedEntries = paneState.entries.filter((entry) => (
-    entry.name.toLocaleLowerCase().includes(normalizedQuery)
-  ))
+  const matchedEntries = paneState.entries.filter((entry) =>
+    entry.name.toLocaleLowerCase().includes(normalizedQuery),
+  )
 
   return {
     entryIds: matchedEntries.map((entry) => entry.id),
@@ -271,6 +255,7 @@ export function getCommanderSearchMatches(
   }
 }
 
+/** Resolves a stable quick-search hit index against the current cursor and visible matches. */
 export function getCommanderResolvedSearchMatchIndex(
   entryIds: string[],
   cursorEntryId: string | null,
@@ -291,6 +276,7 @@ export function getCommanderResolvedSearchMatchIndex(
   return Math.max(0, Math.min(fallbackIndex, entryIds.length - 1))
 }
 
+/** Applies a select or unselect mask directly to one pane runtime state. */
 export function applySelectionMaskToPane(
   paneState: CommanderPaneRuntimeState,
   mask: string,
@@ -299,22 +285,23 @@ export function applySelectionMaskToPane(
   const matches = getCommanderMaskMatches(paneState, mask)
   const matchedIdSet = new Set(matches.entryIds)
 
-  const nextSelectedIds = mode === 'select'
-    ? paneState.entries
-      .filter((entry) => paneState.selectedIds.includes(entry.id) || matchedIdSet.has(entry.id))
-      .map((entry) => entry.id)
-    : paneState.selectedIds.filter((entryId) => !matchedIdSet.has(entryId))
+  const nextSelectedIds =
+    mode === 'select'
+      ? paneState.entries
+          .filter((entry) => paneState.selectedIds.includes(entry.id) || matchedIdSet.has(entry.id))
+          .map((entry) => entry.id)
+      : paneState.selectedIds.filter((entryId) => !matchedIdSet.has(entryId))
 
   return {
     ...paneState,
     selectedIds: nextSelectedIds,
-    selectionAnchorEntryId: paneState.selectionAnchorEntryId ?? paneState.cursorEntryId ?? nextSelectedIds[0] ?? null,
+    selectionAnchorEntryId:
+      paneState.selectionAnchorEntryId ?? paneState.cursorEntryId ?? nextSelectedIds[0] ?? null,
   }
 }
 
-export function invertPaneSelection(
-  paneState: CommanderPaneRuntimeState,
-) {
+/** Inverts selection across the currently visible rows of one pane. */
+export function invertPaneSelection(paneState: CommanderPaneRuntimeState) {
   const selectedIdSet = new Set(paneState.selectedIds)
   const nextSelectedIds = paneState.entries
     .filter((entry) => !selectedIdSet.has(entry.id))

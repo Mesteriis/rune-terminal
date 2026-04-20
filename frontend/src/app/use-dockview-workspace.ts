@@ -30,6 +30,7 @@ type UseDockviewWorkspaceOptions = {
   client?: DockviewWorkspaceClient
 }
 
+/** Orchestrates workspace tabs, Dockview startup, and pluggable snapshot persistence. */
 export function useDockviewWorkspace({ client = dockviewWorkspaceClient }: UseDockviewWorkspaceOptions = {}) {
   const workspaceClientRef = useRef(client)
   const dockviewApiRef = useRef<DockviewApi | null>(null)

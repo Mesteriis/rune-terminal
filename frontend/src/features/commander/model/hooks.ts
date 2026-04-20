@@ -1,7 +1,10 @@
 import { useUnit } from 'effector-react'
 import { useEffect, useMemo } from 'react'
 
-import { getCommanderSelectedSize, createCommanderWidgetRuntimeState } from '@/features/commander/model/fake-client'
+import {
+  getCommanderSelectedSize,
+  createCommanderWidgetRuntimeState,
+} from '@/features/commander/model/fake-client'
 import { readPersistedCommanderWidget } from '@/features/commander/model/persistence'
 import {
   $commanderWidgets,
@@ -108,6 +111,7 @@ function toWidgetViewState(widgetState: CommanderWidgetRuntimeState): CommanderW
   }
 }
 
+/** Returns the widget-scoped commander view model plus the smallest action surface needed by the widget shell. */
 export function useCommanderWidget(widgetId: string) {
   const [
     commanderWidgets,
@@ -129,10 +133,7 @@ export function useCommanderWidget(widgetId: string) {
     toggleCommanderPaneSelection,
   ])
 
-  const persistedWidget = useMemo(
-    () => readPersistedCommanderWidget(widgetId),
-    [widgetId],
-  )
+  const persistedWidget = useMemo(() => readPersistedCommanderWidget(widgetId), [widgetId])
   const bootstrapRuntimeState = useMemo(
     () => createCommanderWidgetRuntimeState(widgetId, persistedWidget?.runtime),
     [persistedWidget, widgetId],
@@ -152,18 +153,20 @@ export function useCommanderWidget(widgetId: string) {
     state: viewState,
     runtimeState,
     actions: {
-      openPaneEntry: (paneId: CommanderPaneId, entryId: string) => onOpenCommanderPaneEntry({ widgetId, paneId, entryId }),
+      openPaneEntry: (paneId: CommanderPaneId, entryId: string) =>
+        onOpenCommanderPaneEntry({ widgetId, paneId, entryId }),
       setActivePane: (paneId: CommanderPaneId) => onSetCommanderActivePane({ widgetId, paneId }),
-      setPaneCursor: (paneId: CommanderPaneId, entryId: string, options?: { rangeSelect?: boolean }) => (
-        onSetCommanderPaneCursor({ widgetId, paneId, entryId, rangeSelect: options?.rangeSelect })
-      ),
+      setPaneCursor: (paneId: CommanderPaneId, entryId: string, options?: { rangeSelect?: boolean }) =>
+        onSetCommanderPaneCursor({ widgetId, paneId, entryId, rangeSelect: options?.rangeSelect }),
       setViewMode: (viewMode: CommanderViewMode) => onSetCommanderViewMode({ widgetId, viewMode }),
-      togglePaneSelection: (paneId: CommanderPaneId, entryId: string) => onToggleCommanderPaneSelection({ widgetId, paneId, entryId }),
+      togglePaneSelection: (paneId: CommanderPaneId, entryId: string) =>
+        onToggleCommanderPaneSelection({ widgetId, paneId, entryId }),
       toggleShowHidden: () => onToggleCommanderShowHidden({ widgetId }),
     },
   }
 }
 
+/** Narrows the full commander hook state down to one pane-facing controller surface. */
 export function useCommanderPane(widgetId: string, paneId: CommanderPaneId) {
   const commander = useCommanderWidget(widgetId)
   const paneState = paneId === 'left' ? commander.state.leftPane : commander.state.rightPane
@@ -172,12 +175,14 @@ export function useCommanderPane(widgetId: string, paneId: CommanderPaneId) {
     pane: paneState,
     isActive: commander.state.activePane === paneId,
     setActive: () => commander.actions.setActivePane(paneId),
-    setCursor: (entryId: string, options?: { rangeSelect?: boolean }) => commander.actions.setPaneCursor(paneId, entryId, options),
+    setCursor: (entryId: string, options?: { rangeSelect?: boolean }) =>
+      commander.actions.setPaneCursor(paneId, entryId, options),
     openEntry: (entryId: string) => commander.actions.openPaneEntry(paneId, entryId),
     toggleSelection: (entryId: string) => commander.actions.togglePaneSelection(paneId, entryId),
   }
 }
 
+/** Exposes the full commander command surface used by keyboard handlers and widget chrome. */
 export function useCommanderActions(widgetId: string) {
   const [
     onMoveCommanderActivePaneCursor,
@@ -281,25 +286,36 @@ export function useCommanderActions(widgetId: string) {
     closeFileDialog: () => onCloseCommanderFileDialog({ widgetId }),
     clearActivePaneFilter: () => onClearCommanderActivePaneFilter({ widgetId }),
     invertSelection: () => onInvertCommanderActivePaneSelection({ widgetId }),
-    moveCursor: (delta: number, options?: { extendSelection?: boolean }) => (
-      onMoveCommanderActivePaneCursor({ widgetId, delta, extendSelection: options?.extendSelection })
-    ),
+    moveCursor: (delta: number, options?: { extendSelection?: boolean }) =>
+      onMoveCommanderActivePaneCursor({ widgetId, delta, extendSelection: options?.extendSelection }),
     openActiveEntry: () => onOpenCommanderActivePaneEntry({ widgetId }),
     renameSelection: () => onRequestCommanderActivePaneRename({ widgetId }),
-    overwritePendingConflict: () => onResolveCommanderPendingConflict({ widgetId, resolution: 'overwrite-current' }),
+    overwritePendingConflict: () =>
+      onResolveCommanderPendingConflict({ widgetId, resolution: 'overwrite-current' }),
     skipPendingConflict: () => onResolveCommanderPendingConflict({ widgetId, resolution: 'skip-current' }),
-    overwriteAllPendingConflicts: () => onResolveCommanderPendingConflict({ widgetId, resolution: 'overwrite-all' }),
+    overwriteAllPendingConflicts: () =>
+      onResolveCommanderPendingConflict({ widgetId, resolution: 'overwrite-all' }),
     skipAllPendingConflicts: () => onResolveCommanderPendingConflict({ widgetId, resolution: 'skip-all' }),
-    setCursor: (paneId: CommanderPaneId, entryId: string, options?: { rangeSelect?: boolean }) => (
-      onSetCommanderPaneCursor({ widgetId, paneId, entryId, rangeSelect: options?.rangeSelect })
-    ),
+    setCursor: (paneId: CommanderPaneId, entryId: string, options?: { rangeSelect?: boolean }) =>
+      onSetCommanderPaneCursor({ widgetId, paneId, entryId, rangeSelect: options?.rangeSelect }),
     setSortMode: (sortMode: CommanderSortMode) => onSetCommanderSortMode({ widgetId, sortMode }),
-    setBoundaryCursor: (paneId: CommanderPaneId, boundary: 'start' | 'end', options?: { extendSelection?: boolean }) => (
-      onSetCommanderPaneBoundaryCursor({ widgetId, paneId, boundary, extendSelection: options?.extendSelection })
-    ),
-    setPanePath: (paneId: CommanderPaneId, path: string) => onSetCommanderPanePath({ widgetId, paneId, path }),
-    setPendingOperationInput: (inputValue: string) => onSetCommanderPendingOperationInput({ widgetId, inputValue }),
+    setBoundaryCursor: (
+      paneId: CommanderPaneId,
+      boundary: 'start' | 'end',
+      options?: { extendSelection?: boolean },
+    ) =>
+      onSetCommanderPaneBoundaryCursor({
+        widgetId,
+        paneId,
+        boundary,
+        extendSelection: options?.extendSelection,
+      }),
+    setPanePath: (paneId: CommanderPaneId, path: string) =>
+      onSetCommanderPanePath({ widgetId, paneId, path }),
+    setPendingOperationInput: (inputValue: string) =>
+      onSetCommanderPendingOperationInput({ widgetId, inputValue }),
     switchActivePane: () => onSwitchCommanderActivePane({ widgetId }),
-    toggleSelectionAtCursor: (advance?: boolean) => onToggleCommanderActivePaneSelection({ widgetId, advance }),
+    toggleSelectionAtCursor: (advance?: boolean) =>
+      onToggleCommanderActivePaneSelection({ widgetId, advance }),
   }
 }

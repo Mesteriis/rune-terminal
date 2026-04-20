@@ -3,6 +3,7 @@ import { type DockviewApi, type SerializedDockview } from 'dockview-react'
 import { hasDockviewWorkspaceBootstrap, seedDockviewWorkspaceBootstrap } from './dockview-workspace.bootstrap'
 import { type WorkspaceLayoutTab } from './dockview-workspace.persistence'
 
+/** Describes how the shell initialized Dockview for the current ready event. */
 export type DockviewWorkspaceReadyResult =
   | { type: 'layout-only' }
   | { type: 'restored-snapshot' }
@@ -16,6 +17,7 @@ type ResolveDockviewWorkspaceReadyOptions = {
   workspaceTabs: WorkspaceLayoutTab[]
 }
 
+/** Chooses whether Dockview should restore, clear, or seed layout state on startup. */
 export function resolveDockviewWorkspaceReadyState({
   activeWorkspaceId,
   api,

@@ -14,6 +14,7 @@ const modePillStyle = {
   lineHeight: '16px',
 }
 
+/** Renders the compact commander-specific Dockview tab chrome. */
 export function CommanderDockviewTabWidget(props: IDockviewPanelHeaderProps) {
   const [isActiveTab, setIsActiveTab] = useState(props.api.group.activePanel?.id === props.api.id)
   const [panelCount, setPanelCount] = useState(props.api.group.panels.length)
@@ -38,7 +39,11 @@ export function CommanderDockviewTabWidget(props: IDockviewPanelHeaderProps) {
 
   return (
     <RunaDomScopeProvider component="commander-dockview-tab-widget" widget={props.api.id}>
-      <DockviewTabChrome active={isActiveTab} single={isSingleTab} style={{ alignItems: 'center', gap: 'var(--gap-sm)' }}>
+      <DockviewTabChrome
+        active={isActiveTab}
+        single={isSingleTab}
+        style={{ alignItems: 'center', gap: 'var(--gap-sm)' }}
+      >
         <DockviewTabPill runaComponent="commander-tab-mode-badge" style={modePillStyle}>
           commander
         </DockviewTabPill>

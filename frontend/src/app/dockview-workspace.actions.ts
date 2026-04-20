@@ -9,6 +9,7 @@ type SelectDockviewWorkspaceOptions = {
   setActiveWorkspaceId: (workspaceId: number) => void
 }
 
+/** Persists the current layout before switching to another workspace snapshot. */
 export function selectDockviewWorkspace({
   currentActiveWorkspaceId,
   nextWorkspaceId,
@@ -35,6 +36,7 @@ type AddDockviewWorkspaceOptions = {
   workspaceTabs: WorkspaceLayoutTab[]
 }
 
+/** Appends a new workspace tab and immediately activates its empty snapshot. */
 export function addDockviewWorkspace({
   persistCurrentWorkspaceSnapshot,
   restoreWorkspaceSnapshot,

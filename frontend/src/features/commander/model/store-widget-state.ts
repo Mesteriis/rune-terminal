@@ -11,6 +11,7 @@ type CommanderWidgetStateUpdater<Payload extends CommanderWidgetScopedPayload> =
   payload: Payload,
 ) => CommanderWidgetRuntimeState | null | undefined
 
+/** Applies a widget-scoped reducer only when the requested widget exists and actually changes. */
 export function withCommanderWidgetState<Payload extends CommanderWidgetScopedPayload>(
   widgets: CommanderWidgetsState,
   payload: Payload,

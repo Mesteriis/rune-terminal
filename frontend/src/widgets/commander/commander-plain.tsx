@@ -20,24 +20,15 @@ type CommanderPlainButtonProps = ButtonProps & {
   runaComponent: string
 }
 
-export const CommanderPlainBox = React.forwardRef<HTMLDivElement, CommanderPlainBoxProps>(function CommanderPlainBox(
-  { style, ...props },
-  ref,
-) {
-  return (
-    <Box
-      {...props}
-      ref={ref}
-      style={{ ...commanderPlainElementStyle, ...style }}
-    />
-  )
-})
+/** Renders a commander-local box shell without shared primitive chrome. */
+export const CommanderPlainBox = React.forwardRef<HTMLDivElement, CommanderPlainBoxProps>(
+  function CommanderPlainBox({ style, ...props }, ref) {
+    return <Box {...props} ref={ref} style={{ ...commanderPlainElementStyle, ...style }} />
+  },
+)
 
-export function CommanderPlainButton({
-  style,
-  type = 'button',
-  ...props
-}: CommanderPlainButtonProps) {
+/** Renders a commander-local button shell without shared primitive chrome. */
+export function CommanderPlainButton({ style, type = 'button', ...props }: CommanderPlainButtonProps) {
   return (
     <Button
       {...props}

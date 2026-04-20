@@ -125,6 +125,7 @@ const defaultCommanderPendingConflictResolutionDeps: CommanderPendingConflictRes
   finalizePendingTransferOperation,
 }
 
+/** Returns the active selection when present, otherwise falls back to the pane cursor entry. */
 export function getOperationEntryIds(paneState: CommanderPaneRuntimeState) {
   if (paneState.selectedIds.length > 0) {
     return paneState.selectedIds
@@ -133,10 +134,12 @@ export function getOperationEntryIds(paneState: CommanderPaneRuntimeState) {
   return paneState.cursorEntryId ? [paneState.cursorEntryId] : []
 }
 
+/** Returns the next conflicting transfer entry name that still needs user resolution. */
 export function getCurrentPendingConflictName(pendingOperation: CommanderTransferPendingOperation) {
   return pendingOperation.conflictEntryNames[0] ?? null
 }
 
+/** Applies one copy or move request for the provided transfer entries. */
 export function applyPendingTransferOperation(
   widgetId: string,
   pendingOperation: CommanderTransferPendingOperation,
@@ -167,6 +170,7 @@ export function applyPendingTransferOperation(
   })
 }
 
+/** Removes one resolved transfer entry from the pending conflict queue. */
 export function removePendingTransferEntry(
   pendingOperation: CommanderTransferPendingOperation,
   entryName: string,
@@ -190,6 +194,7 @@ export function removePendingTransferEntry(
   }
 }
 
+/** Applies the remaining non-conflicting transfer entries and clears the pending state. */
 export function finalizePendingTransferOperation(
   widgetState: CommanderWidgetRuntimeState,
   widgetId: string,
@@ -202,6 +207,7 @@ export function finalizePendingTransferOperation(
   })
 }
 
+/** Recomputes input-driven pending-operation state such as rename previews and search matches. */
 export function updateCommanderPendingOperationInput(
   widgetState: CommanderWidgetRuntimeState,
   widgetId: string,
@@ -288,6 +294,7 @@ export function updateCommanderPendingOperationInput(
   }
 }
 
+/** Opens a pending operation when the active pane has enough context to support it. */
 export function requestCommanderWidgetPendingOperation(
   widgetState: CommanderWidgetRuntimeState,
   kind: CommanderPendingOperationKind,
@@ -305,6 +312,7 @@ export function requestCommanderWidgetPendingOperation(
   }
 }
 
+/** Advances the quick-search cursor to the next or previous visible match. */
 export function stepCommanderWidgetPendingSearchMatch(
   widgetState: CommanderWidgetRuntimeState,
   delta: 1 | -1,
@@ -352,6 +360,7 @@ export function stepCommanderWidgetPendingSearchMatch(
   }
 }
 
+/** Confirms the current pending operation and applies the corresponding fake-client mutation. */
 export function confirmCommanderWidgetPendingOperation(
   widgetState: CommanderWidgetRuntimeState,
   widgetId: string,
@@ -595,6 +604,7 @@ export function confirmCommanderWidgetPendingOperation(
   }
 }
 
+/** Resolves the current transfer conflict branch with overwrite or skip semantics. */
 export function resolveCommanderWidgetPendingConflict(
   widgetState: CommanderWidgetRuntimeState,
   widgetId: string,
@@ -659,6 +669,7 @@ export function resolveCommanderWidgetPendingConflict(
   return deps.finalizePendingTransferOperation(widgetState, widgetId, nextPendingOperation)
 }
 
+/** Builds the pending-operation payload for the current active pane and requested command kind. */
 export function createPendingOperation(
   widgetState: CommanderWidgetRuntimeState,
   kind: CommanderPendingOperationKind,
@@ -830,6 +841,7 @@ export function createPendingOperation(
   } satisfies CommanderPendingOperation
 }
 
+/** Opens the focused file in view or edit mode using fake-client-backed content. */
 export function createCommanderFileDialog(
   widgetState: CommanderWidgetRuntimeState,
   paneId: CommanderPaneId,

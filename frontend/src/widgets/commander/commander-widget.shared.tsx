@@ -68,6 +68,7 @@ export const commanderViewModeIconMap = {
   terminal: SquareTerminal,
 } as const
 
+/** Classifies a suggested path so the dropdown can label current/history/path origins. */
 export function getCommanderPathSuggestionMeta(
   suggestionPath: string,
   paneState: CommanderPaneRuntimeState,
@@ -83,6 +84,7 @@ export function getCommanderPathSuggestionMeta(
   return 'PATH'
 }
 
+/** Builds a ranked path-suggestion list from pane history plus known fake-client directories. */
 export function getCommanderPathSuggestions(
   inputValue: string,
   paneState: CommanderPaneRuntimeState,
@@ -151,6 +153,7 @@ export function getCommanderPathSuggestions(
     }))
 }
 
+/** Joins a parent commander path with a child entry name while preserving `~` roots. */
 export function joinCommanderPath(path: string, name: string) {
   if (path === '~') {
     return `~/${name}`
@@ -159,6 +162,7 @@ export function joinCommanderPath(path: string, name: string) {
   return `${path}/${name}`
 }
 
+/** Renders the shared sortable commander header label with its active direction indicator. */
 export function renderCommanderSortLabel(
   label: string,
   isActive: boolean,
@@ -189,6 +193,7 @@ export function renderCommanderSortLabel(
   )
 }
 
+/** Computes line, column, and character totals for the file-dialog footer. */
 export function getCommanderCursorMetrics(content: string, position: number) {
   const safePosition = Math.max(0, Math.min(position, content.length))
   const beforeCursor = content.slice(0, safePosition)
@@ -201,6 +206,7 @@ export function getCommanderCursorMetrics(content: string, position: number) {
   }
 }
 
+/** Formats the current pending-operation state into the single-line operator message. */
 export function formatPendingOperationMessage(state: CommanderWidgetViewState) {
   const pendingOperation = state.pendingOperation
 
@@ -257,6 +263,7 @@ export function formatPendingOperationMessage(state: CommanderWidgetViewState) {
   }
 }
 
+/** Returns whether the pending bar should block confirmation until the template is fixed. */
 export function isPendingOperationBlocking(state: CommanderWidgetViewState) {
   const pendingOperation = state.pendingOperation
 
@@ -265,6 +272,7 @@ export function isPendingOperationBlocking(state: CommanderWidgetViewState) {
   )
 }
 
+/** Returns whether the pending bar should render overwrite/skip conflict actions. */
 export function isPendingOperationConflictResolution(state: CommanderWidgetViewState) {
   return Boolean(
     state.pendingOperation &&
@@ -273,6 +281,7 @@ export function isPendingOperationConflictResolution(state: CommanderWidgetViewS
   )
 }
 
+/** Converts rename preview status values into the compact badge labels shown in the preview table. */
 export function getRenamePreviewStatusLabel(status: CommanderRenamePreviewStatus) {
   switch (status) {
     case 'duplicate':
@@ -286,6 +295,7 @@ export function getRenamePreviewStatusLabel(status: CommanderRenamePreviewStatus
   }
 }
 
+/** Maps rename preview status values to their semantic badge styling. */
 export function getRenamePreviewStatusStyle(status: CommanderRenamePreviewStatus): CSSProperties {
   switch (status) {
     case 'duplicate':
@@ -315,6 +325,7 @@ export function getRenamePreviewStatusStyle(status: CommanderRenamePreviewStatus
   }
 }
 
+/** Summarizes rename preview counts for the pending-bar aggregate badges. */
 export function getRenamePreviewSummary(preview: CommanderRenamePreviewItem[]) {
   return preview.reduce(
     (summary, item) => {
@@ -332,6 +343,7 @@ export function getRenamePreviewSummary(preview: CommanderRenamePreviewItem[]) {
   )
 }
 
+/** Resolves the icon used for one commander row in the visible pane list. */
 export function getRowIcon(row: CommanderFileRow) {
   if (row.kind === 'folder') {
     return <Folder color="var(--runa-commander-folder-icon-color)" size={14} strokeWidth={1.8} />
@@ -348,6 +360,7 @@ export function getRowIcon(row: CommanderFileRow) {
   return <FileText color="var(--runa-commander-file-icon-color)" size={14} strokeWidth={1.8} />
 }
 
+/** Resolves the short row-type label rendered in the commander type column. */
 export function getRowTypeLabel(row: CommanderFileRow) {
   if (row.kind === 'folder') {
     return 'DIR'
@@ -364,6 +377,7 @@ export function getRowTypeLabel(row: CommanderFileRow) {
   return row.ext ? row.ext.toUpperCase() : 'FILE'
 }
 
+/** Returns the accessible label for the current pending-operation input field. */
 export function getCommanderPendingInputAriaLabel(pendingOperation: CommanderPendingOperation | null) {
   switch (pendingOperation?.kind) {
     case 'rename':

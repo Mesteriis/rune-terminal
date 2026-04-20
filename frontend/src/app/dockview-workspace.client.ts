@@ -5,6 +5,7 @@ import {
 
 const DEFAULT_DOCKVIEW_WORKSPACE_STORAGE_KEY = 'runa-terminal:dockview-workspaces:v1'
 
+/** Defines the persistence boundary for Dockview workspace tabs and snapshots. */
 export type DockviewWorkspaceClient = {
   readState: () => PersistedDockviewWorkspaceState | null
   writeState: (state: PersistedDockviewWorkspaceState) => void
@@ -23,6 +24,7 @@ function resolveBrowserStorage() {
   return window.localStorage
 }
 
+/** Creates the default browser-backed workspace client used by the shell hook. */
 export function createLocalDockviewWorkspaceClient({
   storage = resolveBrowserStorage(),
   storageKey = DEFAULT_DOCKVIEW_WORKSPACE_STORAGE_KEY,
@@ -55,4 +57,5 @@ export function createLocalDockviewWorkspaceClient({
   }
 }
 
+/** Default workspace client for local development and the current production wiring. */
 export const dockviewWorkspaceClient = createLocalDockviewWorkspaceClient()

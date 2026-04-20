@@ -131,10 +131,12 @@ function readPersistenceState(): CommanderPersistenceState {
   }
 }
 
+/** Reads one normalized commander widget snapshot from local storage. */
 export function readPersistedCommanderWidget(widgetId: string) {
   return readPersistenceState().widgets[widgetId] ?? null
 }
 
+/** Writes the full persisted commander widget map back to local storage. */
 export function writePersistedCommanderWidgets(widgets: Record<string, CommanderWidgetPersistedSnapshot>) {
   if (typeof window === 'undefined') {
     return
@@ -159,6 +161,7 @@ function serializePaneState(paneState: CommanderPaneRuntimeState): CommanderPane
   }
 }
 
+/** Serializes runtime-only commander state into the persisted widget schema. */
 export function serializeCommanderWidgetRuntimeState(
   widgetState: CommanderWidgetRuntimeState,
 ): CommanderWidgetPersistedState {

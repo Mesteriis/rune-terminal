@@ -61,6 +61,7 @@ type CommanderPendingBarProps = {
   onHintAction: (hintKey: string) => void
 }
 
+/** Renders either the footer hint row or the active pending-operation controls and previews. */
 export function CommanderPendingBar({
   state,
   commanderActions,
