@@ -225,12 +225,13 @@ export const commanderRowStyle: CSSProperties = {
   minHeight: '26px',
   padding: '0 var(--space-sm)',
   borderRadius: 0,
-  border: '1px solid transparent',
+  border: 'none',
   background: 'transparent',
   color: 'var(--runa-commander-text-secondary)',
   fontSize: 'var(--font-size-sm)',
   lineHeight: 'var(--line-height-sm)',
   fontFamily: 'var(--font-family-mono)',
+  boxShadow: 'none',
 }
 
 export const commanderRowSelectedStyle: CSSProperties = {
@@ -239,9 +240,9 @@ export const commanderRowSelectedStyle: CSSProperties = {
 }
 
 export const commanderRowFocusedStyle: CSSProperties = {
-  borderColor: 'var(--runa-commander-highlight-border)',
   background: 'var(--runa-commander-highlight-fill)',
   color: 'var(--runa-commander-highlight-text)',
+  boxShadow: 'inset 0 0 0 1px var(--runa-commander-highlight-border)',
 }
 
 export const commanderRowHiddenStyle: CSSProperties = {

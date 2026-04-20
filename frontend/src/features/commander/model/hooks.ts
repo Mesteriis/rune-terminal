@@ -151,7 +151,7 @@ export function useCommanderPane(widgetId: string, paneId: CommanderPaneId) {
     pane: paneState,
     isActive: commander.state.activePane === paneId,
     setActive: () => commander.actions.setActivePane(paneId),
-    setCursor: (entryId: string) => commander.actions.setPaneCursor(paneId, entryId),
+    setCursor: (entryId: string, options?: { rangeSelect?: boolean }) => commander.actions.setPaneCursor(paneId, entryId, options),
     openEntry: (entryId: string) => commander.actions.openPaneEntry(paneId, entryId),
     toggleSelection: (entryId: string) => commander.actions.togglePaneSelection(paneId, entryId),
   }
@@ -175,6 +175,7 @@ export function useCommanderActions(widgetId: string) {
     onGoCommanderPaneHistoryBack,
     onGoCommanderPaneHistoryForward,
     onSwitchCommanderActivePane,
+    onSetCommanderPaneCursor,
     onSetCommanderPaneBoundaryCursor,
     onGoCommanderPaneParent,
     onSetCommanderPendingOperationInput,
@@ -195,6 +196,7 @@ export function useCommanderActions(widgetId: string) {
     goCommanderPaneHistoryBack,
     goCommanderPaneHistoryForward,
     switchCommanderActivePane,
+    setCommanderPaneCursor,
     setCommanderPaneBoundaryCursor,
     goCommanderPaneParent,
     setCommanderPendingOperationInput,
@@ -218,6 +220,9 @@ export function useCommanderActions(widgetId: string) {
     ),
     openActiveEntry: () => onOpenCommanderActivePaneEntry({ widgetId }),
     renameSelection: () => onRequestCommanderActivePaneRename({ widgetId }),
+    setCursor: (paneId: CommanderPaneId, entryId: string, options?: { rangeSelect?: boolean }) => (
+      onSetCommanderPaneCursor({ widgetId, paneId, entryId, rangeSelect: options?.rangeSelect })
+    ),
     setBoundaryCursor: (paneId: CommanderPaneId, boundary: 'start' | 'end', options?: { extendSelection?: boolean }) => (
       onSetCommanderPaneBoundaryCursor({ widgetId, paneId, boundary, extendSelection: options?.extendSelection })
     ),

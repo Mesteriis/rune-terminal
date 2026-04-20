@@ -288,13 +288,18 @@ export function CommanderWidget() {
   const { widget: widgetId } = useRunaDomScope()
   const { actions, state } = useCommanderWidget(widgetId)
   const commanderActions = useCommanderActions(widgetId)
-  const onCommanderKeyDownCapture = useCommanderKeyboard(widgetId, state.activePane, Boolean(state.pendingOperation))
+  const activePane = state.activePane === 'left' ? state.leftPane : state.rightPane
+  const onCommanderKeyDownCapture = useCommanderKeyboard(
+    widgetId,
+    state.activePane,
+    activePane.rows,
+    Boolean(state.pendingOperation),
+  )
   const autoTagCommanderRoot = useRunaDomAutoTagging('commander-root')
   const commanderRootRef = useRef<HTMLDivElement | null>(null)
   const pendingRenameInputRef = useRef<HTMLInputElement | null>(null)
   const hadPendingOperationRef = useRef(false)
   const pendingOperationMessage = useMemo(() => formatPendingOperationMessage(state), [state])
-  const activePane = state.activePane === 'left' ? state.leftPane : state.rightPane
   const disableHistoryControls = Boolean(state.pendingOperation)
   const pendingOperationNeedsInput = state.pendingOperation?.kind === 'rename'
 
@@ -447,7 +452,7 @@ export function CommanderWidget() {
           onActivate={() => actions.setActivePane('left')}
           onFocusRoot={focusCommanderRoot}
           onOpenEntry={(entryId) => actions.openPaneEntry('left', entryId)}
-          onSetCursor={(entryId) => actions.setPaneCursor('left', entryId)}
+          onSetCursor={(entryId, options) => actions.setPaneCursor('left', entryId, options)}
           onToggleSelection={(entryId) => actions.togglePaneSelection('left', entryId)}
           pane={state.leftPane}
         />
@@ -456,7 +461,7 @@ export function CommanderWidget() {
           onActivate={() => actions.setActivePane('right')}
           onFocusRoot={focusCommanderRoot}
           onOpenEntry={(entryId) => actions.openPaneEntry('right', entryId)}
-          onSetCursor={(entryId) => actions.setPaneCursor('right', entryId)}
+          onSetCursor={(entryId, options) => actions.setPaneCursor('right', entryId, options)}
           onToggleSelection={(entryId) => actions.togglePaneSelection('right', entryId)}
           pane={state.rightPane}
         />

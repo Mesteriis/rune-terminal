@@ -130,6 +130,7 @@ its visible shell blocks as raw HTML inside `App.tsx`.
 - Commander pending operations now also cover `rename` with an inline input prompt plus overwrite warnings for `copy/move/rename`, but they still stay entirely inside the local fake client and a single widget instance.
 - Commander runtime state and fake filesystem state now persist per `widgetId` in `localStorage`, so reload restores pane paths, history stacks, cursor/selection, view toggles, and fake-client mutations for each commander widget without introducing backend state.
 - Commander selection semantics now also follow the frontend-only Total Commander contract more closely: `Shift+Arrow`, `Shift+PageUp/PageDown`, `Shift+Home/End`, and `Shift+click` extend selection ranges from a stable pane-local anchor, while `Space` and `Insert` still toggle the focused row with the existing fake-client cursor flow.
+- Commander keyboard handling now also includes type-to-jump within the active pane: printable key presses search the current pane by filename prefix and move the commander cursor without introducing backend search state.
 - `TerminalWidget` renders the terminal-specific body composition for terminal panels.
 - `TerminalDockviewTabWidget` renders terminal-specific Dockview tab chrome for terminal panels.
 - `CommanderDemoLayout` mounts `CommanderWidget` into the isolated `tool` panel demo surface.
@@ -207,6 +208,7 @@ Lookup helpers exported from `src/shared/ui/dom-id.tsx`:
 - Commander widget state is now persisted per `widgetId`, which keeps pane paths, history, view toggles, cursor/selection, and local fake-client mutations stable across hard reloads while still avoiding cross-widget state sharing.
 - Commander pane history is widget-local and pane-local: each pane keeps its own back/forward stack, and switching panes preserves the other pane's navigation state.
 - Commander selection range semantics are now also widget-local and pane-local: each pane keeps its own selection anchor so `Shift`-extended keyboard movement and `Shift+click` ranges can be rebuilt without leaking state into the opposite pane or another commander widget.
+- Commander row focus chrome now uses an inset highlight ring instead of row borders, so keyboard navigation keeps the focused entry readable without leaving pale border artifacts on adjacent rows.
 - `CommanderDemoLayout` keeps the demo mount in a layout layer instead of wiring the commander surface directly into app orchestration.
 - `WidgetBusyOverlayWidget` stays in the widget layer and uses `@tsparticles/react` directly for the busy-field rendering instead of pushing imperative particle code into shared components.
 - `TerminalWidget` stays in the widget layer and now owns the terminal body only: toolbar, panel actions, and renderer surface.
