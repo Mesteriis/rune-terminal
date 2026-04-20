@@ -125,7 +125,8 @@ function rebuildPaneState(
     showHidden: widgetState.showHidden,
     sortMode: widgetState.sortMode,
   })
-  const visibleEntryIds = new Set(snapshot.entries.map((entry) => entry.id))
+  const filteredEntries = filterEntriesByMask(snapshot.entries, paneState.filterQuery, { emptyMeansAll: true })
+  const visibleEntryIds = new Set(filteredEntries.map((entry) => entry.id))
   const nextSelectedIds = paneState.path === resolvedPath
     ? paneState.selectedIds.filter((entryId) => visibleEntryIds.has(entryId))
     : []
@@ -142,7 +143,7 @@ function rebuildPaneState(
   return {
     ...paneState,
     path: resolvedPath,
-    entries: snapshot.entries,
+    entries: filteredEntries,
     selectedIds: nextSelectedIds,
     cursorEntryId: nextCursorEntryId,
     selectionAnchorEntryId: nextSelectionAnchorEntryId,
@@ -370,24 +371,70 @@ function commanderMaskPatternToRegExp(pattern: string) {
   return new RegExp(`^${expression}$`, 'i')
 }
 
-function getCommanderMaskMatches(
-  paneState: CommanderPaneRuntimeState,
+function getCommanderMatchedEntries(
+  entries: { id: string; name: string }[],
   mask: string,
+  options?: {
+    emptyMeansAll?: boolean
+  },
 ) {
   const expressions = splitCommanderMaskPatterns(mask)
     .map((pattern) => commanderMaskPatternToRegExp(pattern))
     .filter((expression): expression is RegExp => Boolean(expression))
 
   if (expressions.length === 0) {
+    if (options?.emptyMeansAll) {
+      return entries
+    }
+
+    return []
+  }
+
+  return entries.filter((entry) => (
+    expressions.some((expression) => expression.test(entry.name))
+  ))
+}
+
+function filterEntriesByMask<T extends { id: string; name: string }>(
+  entries: T[],
+  mask: string,
+  options?: {
+    emptyMeansAll?: boolean
+  },
+) {
+  return getCommanderMatchedEntries(entries, mask, options)
+}
+
+function getCommanderMaskMatches(
+  paneState: CommanderPaneRuntimeState,
+  mask: string,
+) {
+  const matchedEntries = getCommanderMatchedEntries(paneState.entries, mask)
+
+  if (matchedEntries.length === 0) {
     return {
       entryIds: [] as string[],
       entryNames: [] as string[],
     }
   }
 
-  const matchedEntries = paneState.entries.filter((entry) => (
-    expressions.some((expression) => expression.test(entry.name))
-  ))
+  return {
+    entryIds: matchedEntries.map((entry) => entry.id),
+    entryNames: matchedEntries.map((entry) => entry.name),
+  }
+}
+
+function getCommanderFilterMatches(
+  widgetState: CommanderWidgetRuntimeState,
+  paneId: CommanderPaneId,
+  mask: string,
+) {
+  const paneState = getPaneState(widgetState, paneId)
+  const directoryEntries = readCommanderDirectory(widgetState.widgetId, paneState.path, {
+    showHidden: widgetState.showHidden,
+    sortMode: widgetState.sortMode,
+  }).entries
+  const matchedEntries = getCommanderMatchedEntries(directoryEntries, mask, { emptyMeansAll: true })
 
   return {
     entryIds: matchedEntries.map((entry) => entry.id),
@@ -550,7 +597,7 @@ function createPendingOperation(
   const sourcePane = getPaneState(widgetState, widgetState.activePane)
   const entryIds = getOperationEntryIds(sourcePane)
 
-  if (kind !== 'mkdir' && kind !== 'select' && kind !== 'unselect' && entryIds.length === 0) {
+  if (kind !== 'mkdir' && kind !== 'select' && kind !== 'unselect' && kind !== 'filter' && entryIds.length === 0) {
     return null
   }
 
@@ -575,6 +622,22 @@ function createPendingOperation(
       entryIds: [],
       entryNames: [],
       inputValue: '*',
+      matchCount: matches.entryIds.length,
+      matchPreview: matches.entryNames.slice(0, 6),
+    } satisfies CommanderPendingOperation
+  }
+
+  if (kind === 'filter') {
+    const filterQuery = sourcePane.filterQuery
+    const matches = getCommanderFilterMatches(widgetState, widgetState.activePane, filterQuery)
+
+    return {
+      kind,
+      sourcePaneId: widgetState.activePane,
+      sourcePath: sourcePane.path,
+      entryIds: [],
+      entryNames: [],
+      inputValue: filterQuery,
       matchCount: matches.entryIds.length,
       matchPreview: matches.entryNames.slice(0, 6),
     } satisfies CommanderPendingOperation
@@ -698,6 +761,8 @@ export const requestCommanderActivePaneMkdir = createEvent<CommanderWidgetPayloa
 export const requestCommanderActivePaneRename = createEvent<CommanderWidgetPayload>()
 export const requestCommanderActivePaneSelectByMask = createEvent<CommanderWidgetPayload>()
 export const requestCommanderActivePaneUnselectByMask = createEvent<CommanderWidgetPayload>()
+export const requestCommanderActivePaneFilter = createEvent<CommanderWidgetPayload>()
+export const clearCommanderActivePaneFilter = createEvent<CommanderWidgetPayload>()
 export const invertCommanderActivePaneSelection = createEvent<CommanderWidgetPayload>()
 export const setCommanderPendingOperationInput = createEvent<CommanderSetPendingOperationInputPayload>()
 export const confirmCommanderPendingOperation = createEvent<CommanderWidgetPayload>()
@@ -1229,6 +1294,41 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
         : widgetState,
     }
   })
+  .on(requestCommanderActivePaneFilter, (widgets, payload) => {
+    const widgetState = widgets[payload.widgetId]
+
+    if (!widgetState) {
+      return widgets
+    }
+    const pendingOperation = createPendingOperation(widgetState, 'filter')
+
+    return {
+      ...widgets,
+      [payload.widgetId]: pendingOperation
+        ? {
+          ...widgetState,
+          pendingOperation,
+        }
+        : widgetState,
+    }
+  })
+  .on(clearCommanderActivePaneFilter, (widgets, payload) => {
+    const widgetState = widgets[payload.widgetId]
+
+    if (!widgetState) {
+      return widgets
+    }
+
+    return {
+      ...widgets,
+      [payload.widgetId]: updatePaneState(widgetState, widgetState.activePane, (paneState) => (
+        rebuildPaneState(widgetState, {
+          ...paneState,
+          filterQuery: '',
+        })
+      )),
+    }
+  })
   .on(invertCommanderActivePaneSelection, (widgets, payload) => {
     const widgetState = widgets[payload.widgetId]
 
@@ -1251,6 +1351,27 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
     if (widgetState.pendingOperation.kind === 'select' || widgetState.pendingOperation.kind === 'unselect') {
       const matches = getCommanderMaskMatches(
         getPaneState(widgetState, widgetState.pendingOperation.sourcePaneId),
+        payload.inputValue,
+      )
+
+      return {
+        ...widgets,
+        [payload.widgetId]: {
+          ...widgetState,
+          pendingOperation: {
+            ...widgetState.pendingOperation,
+            inputValue: payload.inputValue,
+            matchCount: matches.entryIds.length,
+            matchPreview: matches.entryNames.slice(0, 6),
+          },
+        },
+      }
+    }
+
+    if (widgetState.pendingOperation.kind === 'filter') {
+      const matches = getCommanderFilterMatches(
+        widgetState,
+        widgetState.pendingOperation.sourcePaneId,
         payload.inputValue,
       )
 
@@ -1522,6 +1643,25 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
           },
           pendingOperation.sourcePaneId,
           (paneState) => applySelectionMaskToPane(paneState, mask, selectionMode),
+        ),
+      }
+    }
+
+    if (pendingOperation.kind === 'filter') {
+      const filterQuery = pendingOperation.inputValue?.trim() ?? ''
+
+      return {
+        ...widgets,
+        [payload.widgetId]: updatePaneState(
+          {
+            ...widgetState,
+            pendingOperation: null,
+          },
+          pendingOperation.sourcePaneId,
+          (paneState) => rebuildPaneState(widgetState, {
+            ...paneState,
+            filterQuery,
+          }),
         ),
       }
     }

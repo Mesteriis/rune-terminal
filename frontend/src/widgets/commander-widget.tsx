@@ -166,6 +166,8 @@ function formatPendingOperationMessage(state: CommanderWidgetViewState) {
       return `Select ${pendingOperation.matchCount ?? 0} entries matching ${pendingOperation.inputValue || '*'} in ${pendingOperation.sourcePath}`
     case 'unselect':
       return `Unselect ${pendingOperation.matchCount ?? 0} entries matching ${pendingOperation.inputValue || '*'} in ${pendingOperation.sourcePath}`
+    case 'filter':
+      return `Filter ${pendingOperation.matchCount ?? 0} entries matching ${pendingOperation.inputValue || '*'} in ${pendingOperation.sourcePath}`
     default:
       return null
   }
@@ -326,7 +328,18 @@ function CommanderPane({
           </Badge>
           <Text runaComponent={`commander-pane-${pane.id}-path`} style={commanderPathTextStyle}>{pane.path}</Text>
         </Box>
-        <Text runaComponent={`commander-pane-${pane.id}-items`} style={commanderPaneMetaStyle}>{pane.counters.items} items</Text>
+        <Box runaComponent={`commander-pane-${pane.id}-meta`} style={plainClusterStyle}>
+          {pane.filterQuery ? (
+            <Badge
+              runaComponent={`commander-pane-${pane.id}-filter`}
+              style={commanderTypeBadgeStyle}
+              title={pane.filterQuery}
+            >
+              FILTER {pane.filterQuery}
+            </Badge>
+          ) : null}
+          <Text runaComponent={`commander-pane-${pane.id}-items`} style={commanderPaneMetaStyle}>{pane.counters.items} items</Text>
+        </Box>
       </Box>
       <Separator runaComponent={`commander-pane-${pane.id}-header-separator`} />
       <Box runaComponent={`commander-pane-${pane.id}-list-header`} style={commanderListHeaderStyle}>
@@ -413,12 +426,14 @@ export function CommanderWidget() {
   const commanderRootRef = useRef<HTMLDivElement | null>(null)
   const pendingRenameInputRef = useRef<HTMLInputElement | null>(null)
   const hadPendingOperationRef = useRef(false)
+  const lastPendingInputIdentityRef = useRef<string | null>(null)
   const pendingOperationMessage = useMemo(() => formatPendingOperationMessage(state), [state])
   const disableHistoryControls = Boolean(state.pendingOperation)
   const pendingOperationNeedsInput = (
     state.pendingOperation?.kind === 'rename'
     || state.pendingOperation?.kind === 'select'
     || state.pendingOperation?.kind === 'unselect'
+    || state.pendingOperation?.kind === 'filter'
   )
   const pendingOperationIsBlocking = isPendingOperationBlocking(state)
   const pendingOperationNeedsConflictResolution = isPendingOperationConflictResolution(state)
@@ -428,9 +443,19 @@ export function CommanderWidget() {
   const pendingMaskPreview = (
     state.pendingOperation?.kind === 'select'
     || state.pendingOperation?.kind === 'unselect'
+    || state.pendingOperation?.kind === 'filter'
   )
     ? (state.pendingOperation.matchPreview ?? [])
     : []
+  const pendingInputIdentity = pendingOperationNeedsInput && state.pendingOperation
+    ? [
+      state.pendingOperation.kind,
+      state.pendingOperation.sourcePaneId,
+      state.pendingOperation.sourcePath,
+      state.pendingOperation.renameMode ?? '',
+      state.pendingOperation.entryIds.join(','),
+    ].join(':')
+    : null
   const pendingRenamePreviewSummary = useMemo(
     () => getRenamePreviewSummary(pendingRenamePreview),
     [pendingRenamePreview],
@@ -449,6 +474,7 @@ export function CommanderWidget() {
 
   useEffect(() => {
     if (!pendingOperationNeedsInput) {
+      lastPendingInputIdentityRef.current = null
       return
     }
 
@@ -459,8 +485,12 @@ export function CommanderWidget() {
     }
 
     inputNode.focus()
-    inputNode.select()
-  }, [pendingOperationNeedsInput, state.pendingOperation?.inputValue])
+
+    if (pendingInputIdentity && pendingInputIdentity !== lastPendingInputIdentityRef.current) {
+      inputNode.select()
+      lastPendingInputIdentityRef.current = pendingInputIdentity
+    }
+  }, [pendingInputIdentity, pendingOperationNeedsInput])
 
   useEffect(() => {
     if (hadPendingOperationRef.current && !state.pendingOperation) {
@@ -498,6 +528,12 @@ export function CommanderWidget() {
         break
       case 'NUM*':
         commanderActions.invertSelection()
+        break
+      case 'CTRL+F':
+        commanderActions.filterActivePane()
+        break
+      case 'CTRL+BS':
+        commanderActions.clearActivePaneFilter()
         break
       default:
         break
@@ -625,6 +661,8 @@ export function CommanderWidget() {
               aria-label={
                 state.pendingOperation?.kind === 'rename'
                   ? 'Commander pending operation input'
+                  : state.pendingOperation?.kind === 'filter'
+                    ? 'Commander filter input'
                   : 'Commander mask selection input'
               }
               onChange={(event) => commanderActions.setPendingOperationInput(event.target.value)}
@@ -863,12 +901,15 @@ export function CommanderWidget() {
                   ) : null}
                 </>
               ) : null}
-              {(state.pendingOperation?.kind === 'select' || state.pendingOperation?.kind === 'unselect') ? (
+              {(state.pendingOperation?.kind === 'select' || state.pendingOperation?.kind === 'unselect' || state.pendingOperation?.kind === 'filter') ? (
                 <>
                   <Box runaComponent="commander-pending-mask-help" style={commanderPendingRenameHelpStyle}>
                     <Text runaComponent="commander-pending-mask-help-wildcard" style={{ color: 'inherit' }}>* any</Text>
                     <Text runaComponent="commander-pending-mask-help-single" style={{ color: 'inherit' }}>? single</Text>
                     <Text runaComponent="commander-pending-mask-help-split" style={{ color: 'inherit' }}>; split masks</Text>
+                    {state.pendingOperation?.kind === 'filter' ? (
+                      <Text runaComponent="commander-pending-mask-help-empty" style={{ color: 'inherit' }}>empty clears filter</Text>
+                    ) : null}
                   </Box>
                   <Box runaComponent="commander-pending-mask-summary" style={commanderPendingRenameSummaryStyle}>
                     <Badge runaComponent="commander-pending-mask-summary-count" style={{ ...commanderTypeBadgeStyle, ...getRenamePreviewStatusStyle('ok') }}>
@@ -893,20 +934,26 @@ export function CommanderWidget() {
       ) : (
         <Surface runaComponent="commander-hint-bar" style={commanderHintBarStyle}>
           {state.footerHints.map((hint) => (
+            (() => {
+              const hintComponentKey = hint.key.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+
+              return (
             <Box
               key={hint.key}
               onClick={() => handleHintAction(hint.key)}
               role="button"
-              runaComponent={`commander-hint-${hint.key.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
+              runaComponent={`commander-hint-${hintComponentKey}`}
               style={{
                 ...commanderHintCellStyle,
                 ...commanderHintActionStyle,
               }}
               tabIndex={-1}
             >
-              <Text runaComponent={`commander-hint-${hint.key.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-key`} style={commanderHintKeyStyle}>{hint.key}</Text>
-              <Text runaComponent={`commander-hint-${hint.key.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-label`} style={commanderHintLabelStyle}>{hint.label}</Text>
+              <Text runaComponent={`commander-hint-${hintComponentKey}-key`} style={commanderHintKeyStyle}>{hint.key}</Text>
+              <Text runaComponent={`commander-hint-${hintComponentKey}-label`} style={commanderHintLabelStyle}>{hint.label}</Text>
             </Box>
+              )
+            })()
           ))}
         </Surface>
       )}

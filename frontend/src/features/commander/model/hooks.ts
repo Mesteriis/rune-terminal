@@ -24,6 +24,7 @@ import {
   requestCommanderActivePaneRename,
   requestCommanderActivePaneSelectByMask,
   requestCommanderActivePaneUnselectByMask,
+  requestCommanderActivePaneFilter,
   resolveCommanderPendingConflict,
   setCommanderActivePane,
   setCommanderPaneBoundaryCursor,
@@ -35,6 +36,7 @@ import {
   toggleCommanderPaneSelection,
   toggleCommanderShowHidden,
   invertCommanderActivePaneSelection,
+  clearCommanderActivePaneFilter,
 } from './store'
 import type {
   CommanderPaneId,
@@ -52,6 +54,7 @@ function toPaneViewState(
   return {
     id: paneState.id,
     path: paneState.path,
+    filterQuery: paneState.filterQuery,
     canGoBack: paneState.historyBack.length > 0,
     canGoForward: paneState.historyForward.length > 0,
     counters: {
@@ -173,6 +176,7 @@ export function useCommanderActions(widgetId: string) {
     onRequestCommanderActivePaneRename,
     onRequestCommanderActivePaneSelectByMask,
     onRequestCommanderActivePaneUnselectByMask,
+    onRequestCommanderActivePaneFilter,
     onConfirmCommanderPendingOperation,
     onCancelCommanderPendingOperation,
     onResolveCommanderPendingConflict,
@@ -187,6 +191,7 @@ export function useCommanderActions(widgetId: string) {
     onGoCommanderPaneParent,
     onSetCommanderPendingOperationInput,
     onInvertCommanderActivePaneSelection,
+    onClearCommanderActivePaneFilter,
   ] = useUnit([
     moveCommanderActivePaneCursor,
     openCommanderActivePaneEntry,
@@ -198,6 +203,7 @@ export function useCommanderActions(widgetId: string) {
     requestCommanderActivePaneRename,
     requestCommanderActivePaneSelectByMask,
     requestCommanderActivePaneUnselectByMask,
+    requestCommanderActivePaneFilter,
     confirmCommanderPendingOperation,
     cancelCommanderPendingOperation,
     resolveCommanderPendingConflict,
@@ -212,6 +218,7 @@ export function useCommanderActions(widgetId: string) {
     goCommanderPaneParent,
     setCommanderPendingOperationInput,
     invertCommanderActivePaneSelection,
+    clearCommanderActivePaneFilter,
   ])
 
   return {
@@ -229,6 +236,8 @@ export function useCommanderActions(widgetId: string) {
     moveSelection: () => onRequestCommanderActivePaneMove({ widgetId }),
     selectByMask: () => onRequestCommanderActivePaneSelectByMask({ widgetId }),
     unselectByMask: () => onRequestCommanderActivePaneUnselectByMask({ widgetId }),
+    filterActivePane: () => onRequestCommanderActivePaneFilter({ widgetId }),
+    clearActivePaneFilter: () => onClearCommanderActivePaneFilter({ widgetId }),
     invertSelection: () => onInvertCommanderActivePaneSelection({ widgetId }),
     moveCursor: (delta: number, options?: { extendSelection?: boolean }) => (
       onMoveCommanderActivePaneCursor({ widgetId, delta, extendSelection: options?.extendSelection })

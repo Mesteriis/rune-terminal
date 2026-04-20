@@ -8,7 +8,7 @@ export type CommanderFooterHint = {
   label: string
 }
 
-export type CommanderPendingOperationKind = 'copy' | 'move' | 'delete' | 'mkdir' | 'rename' | 'select' | 'unselect'
+export type CommanderPendingOperationKind = 'copy' | 'move' | 'delete' | 'mkdir' | 'rename' | 'select' | 'unselect' | 'filter'
 export type CommanderRenameMode = 'single' | 'batch'
 export type CommanderRenamePreviewStatus = 'ok' | 'duplicate' | 'conflict' | 'invalid'
 
@@ -72,6 +72,7 @@ export type CommanderClientSnapshot = {
 export type CommanderPaneRuntimeState = {
   id: CommanderPaneId
   path: string
+  filterQuery: string
   entries: CommanderDirectoryEntry[]
   cursorEntryId: string | null
   selectionAnchorEntryId: string | null
@@ -82,6 +83,7 @@ export type CommanderPaneRuntimeState = {
 
 export type CommanderPanePersistedState = {
   path: string
+  filterQuery: string
   entries: CommanderDirectoryEntry[]
   cursorEntryId: string | null
   selectionAnchorEntryId: string | null
@@ -141,6 +143,7 @@ export type CommanderFileRow = {
 export type CommanderPaneViewState = {
   id: CommanderPaneId
   path: string
+  filterQuery: string
   canGoBack: boolean
   canGoForward: boolean
   counters: CommanderPaneCounters

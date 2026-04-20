@@ -15,7 +15,9 @@
     { "key": "F8", "label": "Delete" },
     { "key": "NUM+", "label": "Select" },
     { "key": "NUM-", "label": "Unselect" },
-    { "key": "NUM*", "label": "Invert" }
+    { "key": "NUM*", "label": "Invert" },
+    { "key": "CTRL+F", "label": "Filter" },
+    { "key": "CTRL+BS", "label": "Clear filter" }
   ],
   "leftPane": {
     "id": "left",

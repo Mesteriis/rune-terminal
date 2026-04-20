@@ -28,6 +28,7 @@ function normalizePaneState(value: unknown): CommanderPanePersistedState | null 
 
   if (
     typeof value.path !== 'string'
+    || (value.filterQuery !== undefined && typeof value.filterQuery !== 'string')
     || !Array.isArray(value.entries)
     || (value.cursorEntryId !== null && typeof value.cursorEntryId !== 'string')
     || (value.selectionAnchorEntryId !== null && typeof value.selectionAnchorEntryId !== 'string')
@@ -40,6 +41,7 @@ function normalizePaneState(value: unknown): CommanderPanePersistedState | null 
 
   return {
     path: value.path,
+    filterQuery: value.filterQuery ?? '',
     entries: value.entries,
     cursorEntryId: value.cursorEntryId,
     selectionAnchorEntryId: value.selectionAnchorEntryId ?? value.cursorEntryId ?? null,
@@ -132,6 +134,7 @@ export function writePersistedCommanderWidgets(widgets: Record<string, Commander
 function serializePaneState(paneState: CommanderPaneRuntimeState): CommanderPanePersistedState {
   return {
     path: paneState.path,
+    filterQuery: paneState.filterQuery,
     entries: paneState.entries,
     cursorEntryId: paneState.cursorEntryId,
     selectionAnchorEntryId: paneState.selectionAnchorEntryId,

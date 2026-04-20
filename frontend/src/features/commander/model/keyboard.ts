@@ -84,6 +84,18 @@ export function useCommanderKeyboard(
     }
 
     if (event.metaKey || event.ctrlKey) {
+      if (!event.metaKey && event.ctrlKey && (event.key === 'f' || event.key === 'F')) {
+        event.preventDefault()
+        commanderActions.filterActivePane()
+        return
+      }
+
+      if (!event.metaKey && event.ctrlKey && event.key === 'Backspace') {
+        event.preventDefault()
+        commanderActions.clearActivePaneFilter()
+        return
+      }
+
       if (!event.metaKey && event.ctrlKey && event.key === 'PageUp') {
         event.preventDefault()
         commanderActions.goParent()
