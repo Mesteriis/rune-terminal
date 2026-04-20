@@ -1,4 +1,5 @@
 import { Box, Label, Radio, Text } from '@/shared/ui/primitives'
+import { resetBoxStyle } from '@/shared/ui/components/reset-box-style'
 
 export type RadioGroupOption = {
   value: string
@@ -22,15 +23,9 @@ const rootStyle = {
 }
 
 const optionsBaseStyle = {
+  ...resetBoxStyle,
   display: 'flex',
   gap: 'var(--gap-sm)',
-  padding: 0,
-  border: 'none',
-  borderRadius: 0,
-  background: 'transparent',
-  boxShadow: 'none',
-  backdropFilter: 'none',
-  WebkitBackdropFilter: 'none',
 }
 
 const horizontalStyle = {
@@ -49,16 +44,10 @@ const optionLabelStyle = {
 }
 
 const optionContentStyle = {
+  ...resetBoxStyle,
   display: 'flex',
   flexDirection: 'column' as const,
   gap: 'var(--gap-xs)',
-  padding: 0,
-  border: 'none',
-  borderRadius: 0,
-  background: 'transparent',
-  boxShadow: 'none',
-  backdropFilter: 'none',
-  WebkitBackdropFilter: 'none',
 }
 
 const descriptionStyle = {
@@ -94,9 +83,7 @@ export function RadioGroup({
               />
               <Box style={optionContentStyle}>
                 <Text>{option.label}</Text>
-                {option.description ? (
-                  <Text style={descriptionStyle}>{option.description}</Text>
-                ) : null}
+                {option.description ? <Text style={descriptionStyle}>{option.description}</Text> : null}
               </Box>
             </Label>
           )

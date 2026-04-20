@@ -1,6 +1,7 @@
 import { X } from 'lucide-react'
 
 import { Box, Button, Text } from '@/shared/ui/primitives'
+import { resetBoxStyle } from '@/shared/ui/components/reset-box-style'
 
 type DialogPopupProps = {
   title: string
@@ -29,17 +30,11 @@ const settingsDialogPopupStyle = {
 }
 
 const dialogHeaderStyle = {
+  ...resetBoxStyle,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
   gap: 'var(--gap-sm)',
-  padding: 0,
-  border: 'none',
-  borderRadius: 0,
-  background: 'transparent',
-  boxShadow: 'none',
-  backdropFilter: 'none',
-  WebkitBackdropFilter: 'none',
 }
 
 const dialogTitleStyle = {
@@ -53,16 +48,10 @@ const dialogDescriptionStyle = {
 }
 
 const dialogActionsStyle = {
+  ...resetBoxStyle,
   display: 'flex',
   justifyContent: 'flex-end',
   gap: 'var(--gap-xs)',
-  padding: 0,
-  border: 'none',
-  borderRadius: 0,
-  background: 'transparent',
-  boxShadow: 'none',
-  backdropFilter: 'none',
-  WebkitBackdropFilter: 'none',
 }
 
 const settingsCloseButtonStyle = {
@@ -82,11 +71,7 @@ export function DialogPopup({
 }: DialogPopupProps) {
   return (
     <Box
-      style={
-        variant === 'settings'
-          ? { ...dialogPopupStyle, ...settingsDialogPopupStyle }
-          : dialogPopupStyle
-      }
+      style={variant === 'settings' ? { ...dialogPopupStyle, ...settingsDialogPopupStyle } : dialogPopupStyle}
     >
       <Box style={dialogHeaderStyle}>
         <Text style={dialogTitleStyle}>{title}</Text>

@@ -61,6 +61,7 @@ Current primitives:
 - Compose primitives only
 - Must not use raw HTML elements
 - Provide reusable UI combinations
+- Repeated component-layer presentational resets should be centralized in shared component-local helpers instead of copied across files
 
 Current reusable controls:
 

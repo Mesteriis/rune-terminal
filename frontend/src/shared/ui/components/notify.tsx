@@ -1,4 +1,5 @@
 import { Box, Button, Text } from '@/shared/ui/primitives'
+import { resetBoxStyle } from '@/shared/ui/components/reset-box-style'
 
 type NotifyTone = 'default' | 'success' | 'warning'
 
@@ -19,17 +20,11 @@ const notifyStyle = {
 }
 
 const notifyHeaderStyle = {
+  ...resetBoxStyle,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
   gap: 'var(--gap-xs)',
-  padding: 0,
-  border: 'none',
-  borderRadius: 0,
-  background: 'transparent',
-  boxShadow: 'none',
-  backdropFilter: 'none',
-  WebkitBackdropFilter: 'none',
 }
 
 const notifyTitleStyle = {
@@ -43,16 +38,10 @@ const notifyMessageStyle = {
 }
 
 const notifyActionsStyle = {
+  ...resetBoxStyle,
   display: 'flex',
   justifyContent: 'flex-end',
   gap: 'var(--gap-xs)',
-  padding: 0,
-  border: 'none',
-  borderRadius: 0,
-  background: 'transparent',
-  boxShadow: 'none',
-  backdropFilter: 'none',
-  WebkitBackdropFilter: 'none',
 }
 
 function getToneStyle(tone: NotifyTone) {
@@ -72,14 +61,7 @@ function getToneStyle(tone: NotifyTone) {
   }
 }
 
-export function Notify({
-  title,
-  message,
-  tone = 'default',
-  actionLabel,
-  onAction,
-  onDismiss,
-}: NotifyProps) {
+export function Notify({ title, message, tone = 'default', actionLabel, onAction, onDismiss }: NotifyProps) {
   return (
     <Box style={{ ...notifyStyle, ...getToneStyle(tone) }}>
       <Box style={notifyHeaderStyle}>

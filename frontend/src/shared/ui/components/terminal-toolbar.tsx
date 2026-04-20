@@ -2,6 +2,7 @@ import { ChevronDown, ChevronUp, ClipboardPaste, Copy, Cpu, Search, X } from 'lu
 
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { Box, Button, Input, Text } from '@/shared/ui/primitives'
+import { resetBoxStyle } from '@/shared/ui/components/reset-box-style'
 
 export type TerminalToolbarProps = {
   isSearchOpen: boolean
@@ -17,47 +18,29 @@ export type TerminalToolbarProps = {
 }
 
 const rootStyle = {
+  ...resetBoxStyle,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'flex-start',
   gap: 'var(--gap-sm)',
   minHeight: '32px',
-  padding: 0,
-  border: 'none',
-  borderRadius: 0,
-  background: 'transparent',
-  boxShadow: 'none',
-  backdropFilter: 'none',
-  WebkitBackdropFilter: 'none',
 }
 
 const clusterStyle = {
+  ...resetBoxStyle,
   display: 'flex',
   alignItems: 'center',
   gap: 'var(--gap-sm)',
   minWidth: 0,
-  padding: 0,
-  border: 'none',
-  borderRadius: 0,
-  background: 'transparent',
-  boxShadow: 'none',
-  backdropFilter: 'none',
-  WebkitBackdropFilter: 'none',
 }
 
 const searchWrapStyle = {
+  ...resetBoxStyle,
   display: 'flex',
   alignItems: 'center',
   gap: 'var(--gap-xs)',
   minWidth: 0,
   flex: 1,
-  padding: 0,
-  border: 'none',
-  borderRadius: 0,
-  background: 'transparent',
-  boxShadow: 'none',
-  backdropFilter: 'none',
-  WebkitBackdropFilter: 'none',
 }
 
 const searchInputStyle = {
@@ -79,6 +62,7 @@ const iconButtonStyle = {
 }
 
 const rendererBadgeStyle = {
+  ...resetBoxStyle,
   display: 'inline-flex',
   alignItems: 'center',
   gap: 'var(--gap-xs)',
@@ -87,10 +71,6 @@ const rendererBadgeStyle = {
   minHeight: '24px',
   border: '1px solid var(--runa-terminal-surface-border, var(--color-border-subtle))',
   borderRadius: 'var(--radius-sm)',
-  background: 'transparent',
-  boxShadow: 'none',
-  backdropFilter: 'none',
-  WebkitBackdropFilter: 'none',
 }
 
 const badgeTextStyle = {
@@ -114,50 +94,77 @@ export function TerminalToolbar({
   return (
     <RunaDomScopeProvider component="terminal-toolbar">
       <Box runaComponent="terminal-toolbar-root" style={rootStyle}>
-      <Box runaComponent="terminal-toolbar-action-cluster" style={clusterStyle}>
-        <Button aria-label="Copy selection" onClick={onCopy} runaComponent="terminal-toolbar-copy" style={iconButtonStyle}>
-          <Copy size={14} strokeWidth={1.8} />
-        </Button>
-        <Button aria-label="Paste from clipboard" onClick={onPaste} runaComponent="terminal-toolbar-paste" style={iconButtonStyle}>
-          <ClipboardPaste size={14} strokeWidth={1.8} />
-        </Button>
-        <Button
-          aria-expanded={isSearchOpen}
-          aria-label="Toggle terminal search"
-          onClick={onToggleSearch}
-          runaComponent="terminal-toolbar-toggle-search"
-          style={iconButtonStyle}
-        >
-          <Search size={14} strokeWidth={1.8} />
-        </Button>
-      </Box>
-      {isSearchOpen ? (
-        <Box runaComponent="terminal-toolbar-search-wrap" style={searchWrapStyle}>
-          <Input
-            aria-label="Search terminal output"
-            autoFocus
-            onChange={(event) => onSearchQueryChange(event.currentTarget.value)}
-            placeholder="Search output"
-            runaComponent="terminal-toolbar-search-input"
-            style={searchInputStyle}
-            value={searchQuery}
-          />
-          <Button aria-label="Find previous match" onClick={onSearchPrevious} runaComponent="terminal-toolbar-search-previous" style={iconButtonStyle}>
-            <ChevronUp size={14} strokeWidth={1.8} />
+        <Box runaComponent="terminal-toolbar-action-cluster" style={clusterStyle}>
+          <Button
+            aria-label="Copy selection"
+            onClick={onCopy}
+            runaComponent="terminal-toolbar-copy"
+            style={iconButtonStyle}
+          >
+            <Copy size={14} strokeWidth={1.8} />
           </Button>
-          <Button aria-label="Find next match" onClick={onSearchNext} runaComponent="terminal-toolbar-search-next" style={iconButtonStyle}>
-            <ChevronDown size={14} strokeWidth={1.8} />
+          <Button
+            aria-label="Paste from clipboard"
+            onClick={onPaste}
+            runaComponent="terminal-toolbar-paste"
+            style={iconButtonStyle}
+          >
+            <ClipboardPaste size={14} strokeWidth={1.8} />
           </Button>
-          <Button aria-label="Close terminal search" onClick={onCloseSearch} runaComponent="terminal-toolbar-close-search" style={iconButtonStyle}>
-            <X size={14} strokeWidth={1.8} />
+          <Button
+            aria-expanded={isSearchOpen}
+            aria-label="Toggle terminal search"
+            onClick={onToggleSearch}
+            runaComponent="terminal-toolbar-toggle-search"
+            style={iconButtonStyle}
+          >
+            <Search size={14} strokeWidth={1.8} />
           </Button>
         </Box>
-      ) : null}
-      <Box runaComponent="terminal-toolbar-renderer-badge" style={rendererBadgeStyle}>
-        <Cpu color="var(--runa-terminal-text-muted, var(--color-text-muted))" size={14} strokeWidth={1.8} />
-        <Text runaComponent="terminal-toolbar-renderer-badge-text" style={badgeTextStyle}>{rendererMode === 'webgl' ? 'WebGL' : 'Default'}</Text>
+        {isSearchOpen ? (
+          <Box runaComponent="terminal-toolbar-search-wrap" style={searchWrapStyle}>
+            <Input
+              aria-label="Search terminal output"
+              autoFocus
+              onChange={(event) => onSearchQueryChange(event.currentTarget.value)}
+              placeholder="Search output"
+              runaComponent="terminal-toolbar-search-input"
+              style={searchInputStyle}
+              value={searchQuery}
+            />
+            <Button
+              aria-label="Find previous match"
+              onClick={onSearchPrevious}
+              runaComponent="terminal-toolbar-search-previous"
+              style={iconButtonStyle}
+            >
+              <ChevronUp size={14} strokeWidth={1.8} />
+            </Button>
+            <Button
+              aria-label="Find next match"
+              onClick={onSearchNext}
+              runaComponent="terminal-toolbar-search-next"
+              style={iconButtonStyle}
+            >
+              <ChevronDown size={14} strokeWidth={1.8} />
+            </Button>
+            <Button
+              aria-label="Close terminal search"
+              onClick={onCloseSearch}
+              runaComponent="terminal-toolbar-close-search"
+              style={iconButtonStyle}
+            >
+              <X size={14} strokeWidth={1.8} />
+            </Button>
+          </Box>
+        ) : null}
+        <Box runaComponent="terminal-toolbar-renderer-badge" style={rendererBadgeStyle}>
+          <Cpu color="var(--runa-terminal-text-muted, var(--color-text-muted))" size={14} strokeWidth={1.8} />
+          <Text runaComponent="terminal-toolbar-renderer-badge-text" style={badgeTextStyle}>
+            {rendererMode === 'webgl' ? 'WebGL' : 'Default'}
+          </Text>
+        </Box>
       </Box>
-    </Box>
     </RunaDomScopeProvider>
   )
 }

@@ -1,5 +1,6 @@
 import { useRunaDomIdentity, useRunaDomScope } from '@/shared/ui/dom-id'
 import { Box, Label, Radio, Text, type RadioProps } from '@/shared/ui/primitives'
+import { resetBoxStyle } from '@/shared/ui/components/reset-box-style'
 
 export type RadioControlProps = Omit<RadioProps, 'type'> & {
   label: string
@@ -13,16 +14,10 @@ const radioLabelStyle = {
 }
 
 const radioContentStyle = {
+  ...resetBoxStyle,
   display: 'flex',
   flexDirection: 'column' as const,
   gap: 'var(--gap-xs)',
-  padding: 0,
-  border: 'none',
-  borderRadius: 0,
-  background: 'transparent',
-  boxShadow: 'none',
-  backdropFilter: 'none',
-  WebkitBackdropFilter: 'none',
 }
 
 const descriptionStyle = {

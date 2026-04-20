@@ -1,4 +1,5 @@
 import { Box, Checkbox, Label, Text } from '@/shared/ui/primitives'
+import { resetBoxStyle } from '@/shared/ui/components/reset-box-style'
 
 export type SwitcherGroupOption = {
   value: string
@@ -21,15 +22,9 @@ const rootStyle = {
 }
 
 const optionsBaseStyle = {
+  ...resetBoxStyle,
   display: 'flex',
   gap: 'var(--gap-sm)',
-  padding: 0,
-  border: 'none',
-  borderRadius: 0,
-  background: 'transparent',
-  boxShadow: 'none',
-  backdropFilter: 'none',
-  WebkitBackdropFilter: 'none',
 }
 
 const horizontalStyle = {
@@ -48,16 +43,10 @@ const optionLabelStyle = {
 }
 
 const optionTextStyle = {
+  ...resetBoxStyle,
   display: 'flex',
   flexDirection: 'column' as const,
   gap: 'var(--gap-xs)',
-  padding: 0,
-  border: 'none',
-  borderRadius: 0,
-  background: 'transparent',
-  boxShadow: 'none',
-  backdropFilter: 'none',
-  WebkitBackdropFilter: 'none',
 }
 
 const optionDescriptionStyle = {
@@ -121,9 +110,7 @@ export function SwitcherGroup({
             <Label htmlFor={optionId} key={option.value} style={optionLabelStyle}>
               <Box style={optionTextStyle}>
                 <Text>{option.label}</Text>
-                {option.description ? (
-                  <Text style={optionDescriptionStyle}>{option.description}</Text>
-                ) : null}
+                {option.description ? <Text style={optionDescriptionStyle}>{option.description}</Text> : null}
               </Box>
               <Box
                 style={{
