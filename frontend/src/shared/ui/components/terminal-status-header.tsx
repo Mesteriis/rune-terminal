@@ -1,14 +1,6 @@
 import type * as React from 'react'
 
-import {
-  Activity,
-  CircleSlash,
-  Command,
-  Laptop2,
-  LoaderCircle,
-  Server,
-  SquareTerminal,
-} from 'lucide-react'
+import { Activity, CircleSlash, Command, Laptop2, LoaderCircle, Server, SquareTerminal } from 'lucide-react'
 
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { Box, Text } from '@/shared/ui/primitives'
@@ -124,9 +116,7 @@ const compactMetaTextStyle = {
 }
 
 function getConnectionMeta(connectionKind: TerminalConnectionKind) {
-  return connectionKind === 'ssh'
-    ? { Icon: Server, label: 'SSH' }
-    : { Icon: Laptop2, label: 'Local' }
+  return connectionKind === 'ssh' ? { Icon: Server, label: 'SSH' } : { Icon: Laptop2, label: 'Local' }
 }
 
 function getSessionMeta(sessionState: TerminalSessionState) {
@@ -175,10 +165,7 @@ function MetaItem({
   runaComponent: string
 }) {
   return (
-    <DockviewTabPill
-      runaComponent={runaComponent}
-      style={compact ? undefined : { minHeight: '24px' }}
-    >
+    <DockviewTabPill runaComponent={runaComponent} style={compact ? undefined : { minHeight: '24px' }}>
       {children}
     </DockviewTabPill>
   )
@@ -197,16 +184,13 @@ export function TerminalStatusHeader({
 }: TerminalStatusHeaderProps) {
   const connectionMeta = getConnectionMeta(connectionKind)
   const sessionMeta = getSessionMeta(sessionState)
-  const iconSize = compact ? 14 : 14
+  const iconSize = 14
   const titleIconSize = compact ? 18 : 16
   const displayText = primaryText ?? (compact ? cwd : title)
 
   return (
     <RunaDomScopeProvider component="terminal-status-header">
-      <Box
-        runaComponent="terminal-status-header-root"
-        style={compact ? compactRootStyle : rootStyle}
-      >
+      <Box runaComponent="terminal-status-header-root" style={compact ? compactRootStyle : rootStyle}>
         <Box
           runaComponent="terminal-status-header-title-cluster"
           style={compact ? compactClusterStyle : clusterStyle}
@@ -248,7 +232,9 @@ export function TerminalStatusHeader({
                     color={sessionMeta.color}
                     size={iconSize}
                     strokeWidth={1.8}
-                    style={sessionMeta.spin ? { animation: 'runa-terminal-spin 1.2s linear infinite' } : undefined}
+                    style={
+                      sessionMeta.spin ? { animation: 'runa-terminal-spin 1.2s linear infinite' } : undefined
+                    }
                   />
                   <Text
                     runaComponent="terminal-status-header-session-text"
@@ -258,7 +244,11 @@ export function TerminalStatusHeader({
                   </Text>
                 </MetaItem>
                 <MetaItem compact={compact} runaComponent="terminal-status-header-shell">
-                  <Command color="var(--runa-terminal-icon-muted, var(--color-text-secondary))" size={iconSize} strokeWidth={1.8} />
+                  <Command
+                    color="var(--runa-terminal-icon-muted, var(--color-text-secondary))"
+                    size={iconSize}
+                    strokeWidth={1.8}
+                  />
                   <Text
                     runaComponent="terminal-status-header-shell-text"
                     style={compact ? compactMetaTextStyle : metaTextStyle}
