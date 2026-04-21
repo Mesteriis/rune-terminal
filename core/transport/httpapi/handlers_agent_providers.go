@@ -6,6 +6,8 @@ import (
 
 	"github.com/Mesteriis/rune-terminal/core/agent"
 	"github.com/Mesteriis/rune-terminal/core/aiproxy"
+	"github.com/Mesteriis/rune-terminal/core/app"
+	"github.com/Mesteriis/rune-terminal/core/codexauth"
 )
 
 type createProviderPayload struct {
@@ -18,6 +20,13 @@ type createProviderPayload struct {
 	Proxy       *createProxyConfigPayload  `json:"proxy,omitempty"`
 }
 
+type providerModelsPayload struct {
+	ProviderID string                       `json:"provider_id,omitempty"`
+	Kind       string                       `json:"kind,omitempty"`
+	Codex      *providerModelsCodexPayload  `json:"codex,omitempty"`
+	OpenAI     *providerModelsOpenAIPayload `json:"openai,omitempty"`
+}
+
 type updateProviderPayload struct {
 	DisplayName *string                    `json:"display_name,omitempty"`
 	Enabled     *bool                      `json:"enabled,omitempty"`
@@ -25,6 +34,17 @@ type updateProviderPayload struct {
 	Codex       *updateCodexConfigPayload  `json:"codex,omitempty"`
 	OpenAI      *updateOpenAIConfigPayload `json:"openai,omitempty"`
 	Proxy       *updateProxyConfigPayload  `json:"proxy,omitempty"`
+}
+
+type providerModelsCodexPayload struct {
+	Model        string `json:"model,omitempty"`
+	AuthFilePath string `json:"auth_file_path,omitempty"`
+}
+
+type providerModelsOpenAIPayload struct {
+	BaseURL string `json:"base_url,omitempty"`
+	Model   string `json:"model,omitempty"`
+	APIKey  string `json:"api_key,omitempty"`
 }
 
 type createOllamaConfigPayload struct {
@@ -135,6 +155,25 @@ func (api *API) handleCreateProvider(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (api *API) handleDiscoverProviderModels(w http.ResponseWriter, r *http.Request) {
+	var payload providerModelsPayload
+	if err := decodeJSON(r, &payload); err != nil {
+		writeBadRequest(w, "invalid_request", err)
+		return
+	}
+	if payload.ProviderID == "" && payload.Kind == "" {
+		writeError(w, http.StatusBadRequest, "missing_provider_discovery_target", "provider_id or kind is required")
+		return
+	}
+
+	models, err := api.runtime.DiscoverProviderModels(r.Context(), appDiscoverProviderModelsInput(payload))
+	if err != nil {
+		writeProviderModelDiscoveryError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, models)
+}
+
 func (api *API) handleUpdateProvider(w http.ResponseWriter, r *http.Request) {
 	var payload updateProviderPayload
 	if err := decodeJSON(r, &payload); err != nil {
@@ -162,6 +201,15 @@ func (api *API) handleUpdateProvider(w http.ResponseWriter, r *http.Request) {
 		"provider":  provider,
 		"providers": catalog,
 	})
+}
+
+func appDiscoverProviderModelsInput(payload providerModelsPayload) app.DiscoverProviderModelsInput {
+	return app.DiscoverProviderModelsInput{
+		ProviderID: payload.ProviderID,
+		Kind:       agent.ProviderKind(payload.Kind),
+		Codex:      mapProviderModelsCodexSettings(payload.Codex),
+		OpenAI:     mapProviderModelsOpenAISettings(payload.OpenAI),
+	}
 }
 
 func (api *API) handleSetActiveProvider(w http.ResponseWriter, r *http.Request) {
@@ -203,6 +251,27 @@ func mapCreateOllamaProviderInput(payload *createOllamaConfigPayload) *agent.Cre
 	return &agent.CreateOllamaProviderInput{
 		BaseURL: payload.BaseURL,
 		Model:   payload.Model,
+	}
+}
+
+func mapProviderModelsCodexSettings(payload *providerModelsCodexPayload) *agent.CodexProviderSettings {
+	if payload == nil {
+		return nil
+	}
+	return &agent.CodexProviderSettings{
+		Model:        payload.Model,
+		AuthFilePath: payload.AuthFilePath,
+	}
+}
+
+func mapProviderModelsOpenAISettings(payload *providerModelsOpenAIPayload) *agent.OpenAIProviderSettings {
+	if payload == nil {
+		return nil
+	}
+	return &agent.OpenAIProviderSettings{
+		BaseURL:      payload.BaseURL,
+		Model:        payload.Model,
+		APIKeySecret: payload.APIKey,
 	}
 }
 
@@ -368,5 +437,20 @@ func writeProviderConfigError(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusConflict, "provider_delete_active", err.Error())
 	default:
 		writeInternalError(w, err)
+	}
+}
+
+func writeProviderModelDiscoveryError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, agent.ErrProviderNotFound):
+		writeNotFound(w, "provider_not_found", err.Error())
+	case errors.Is(err, agent.ErrProviderKindUnsupported):
+		writeBadRequest(w, "provider_kind_unsupported", err)
+	case errors.Is(err, agent.ErrProviderInvalidConfig):
+		writeBadRequest(w, "invalid_provider_config", err)
+	case errors.Is(err, codexauth.ErrAuthFileNotFound), errors.Is(err, codexauth.ErrCredentialsEmpty):
+		writeBadRequest(w, "provider_model_discovery_failed", err)
+	default:
+		writeError(w, http.StatusBadGateway, "provider_model_discovery_failed", err.Error())
 	}
 }

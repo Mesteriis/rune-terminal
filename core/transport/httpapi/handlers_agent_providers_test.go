@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -253,6 +254,113 @@ func TestUpdateProviderRejectsClearingSecretWithoutReplacement(t *testing.T) {
 	}
 	if strings.Contains(recorder.Body.String(), "sk-provider-test") {
 		t.Fatalf("expected response to stay masked, got %s", recorder.Body.String())
+	}
+}
+
+func TestDiscoverProviderModelsLoadsOpenAIModelsForDraft(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/models" {
+			t.Fatalf("unexpected path: %s", r.URL.Path)
+		}
+		if r.Header.Get("Authorization") != "Bearer sk-provider-test" {
+			t.Fatalf("unexpected auth header: %q", r.Header.Get("Authorization"))
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"data": []map[string]any{
+				{"id": "gpt-5"},
+				{"id": "gpt-5-mini"},
+			},
+		})
+	}))
+	defer server.Close()
+
+	handler, _ := newTestHandler(t)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPost, "/api/v1/agent/providers/models", map[string]any{
+		"kind": "openai",
+		"openai": map[string]any{
+			"base_url": server.URL + "/v1",
+			"api_key":  "sk-provider-test",
+		},
+	}))
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+
+	var payload struct {
+		Models []string `json:"models"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal models: %v", err)
+	}
+	if !slices.Equal(payload.Models, []string{"gpt-5", "gpt-5-mini"}) {
+		t.Fatalf("unexpected models: %#v", payload.Models)
+	}
+}
+
+func TestDiscoverProviderModelsUsesStoredOpenAISecret(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/models" {
+			t.Fatalf("unexpected path: %s", r.URL.Path)
+		}
+		if r.Header.Get("Authorization") != "Bearer sk-provider-test" {
+			t.Fatalf("unexpected auth header: %q", r.Header.Get("Authorization"))
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"data": []map[string]any{
+				{"id": "gpt-5.2"},
+			},
+		})
+	}))
+	defer server.Close()
+
+	handler, _ := newTestHandler(t)
+
+	createRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(createRecorder, authedJSONRequest(t, http.MethodPost, "/api/v1/agent/providers", map[string]any{
+		"kind": "openai",
+		"openai": map[string]any{
+			"base_url": server.URL + "/v1",
+			"model":    "gpt-5.2",
+			"api_key":  "sk-provider-test",
+		},
+	}))
+	if createRecorder.Code != http.StatusOK {
+		t.Fatalf("expected create 200, got %d body=%s", createRecorder.Code, createRecorder.Body.String())
+	}
+
+	var created struct {
+		Provider struct {
+			ID string `json:"id"`
+		} `json:"provider"`
+	}
+	if err := json.Unmarshal(createRecorder.Body.Bytes(), &created); err != nil {
+		t.Fatalf("unmarshal create: %v", err)
+	}
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPost, "/api/v1/agent/providers/models", map[string]any{
+		"provider_id": created.Provider.ID,
+	}))
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+
+	var payload struct {
+		Models []string `json:"models"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal models: %v", err)
+	}
+	if !slices.Equal(payload.Models, []string{"gpt-5.2"}) {
+		t.Fatalf("unexpected models: %#v", payload.Models)
 	}
 }
 

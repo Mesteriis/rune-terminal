@@ -25,15 +25,18 @@
 - Backend provider/runtime audit and validation:
   - `sed -n '1,260p' core/agent/provider_types.go`
   - `sed -n '1,320p' core/agent/provider_store.go`
+  - `sed -n '1,160p' core/agent/provider_query.go`
   - `sed -n '1,240p' core/agent/provider_view.go`
   - `sed -n '1,260p' core/codexauth/state.go`
   - `sed -n '1,260p' core/agent/store.go`
   - `sed -n '1,320p' core/app/provider_runtime.go`
   - `sed -n '1,260p' core/app/provider_actions.go`
+  - `sed -n '1,260p' core/app/provider_models.go`
   - `sed -n '1,260p' core/app/conversation_actions.go`
   - `sed -n '1,220p' core/app/ai_terminal_command.go`
   - `sed -n '1,260p' core/conversation/provider.go`
   - `sed -n '1,320p' core/conversation/provider_codex.go`
+  - `sed -n '1,260p' core/conversation/provider_models.go`
   - `sed -n '1,320p' core/conversation/provider_openai.go`
   - `sed -n '1,360p' core/conversation/service.go`
   - `sed -n '1,260p' core/transport/httpapi/handlers_agent_providers.go`
@@ -150,6 +153,14 @@
   - returns:
     - `provider`
     - `providers`
+- `POST /api/v1/agent/providers/models`
+  - loads the upstream model catalog for:
+    - an unsaved `codex` or `openai` draft
+    - an existing saved provider via `provider_id`
+  - uses stored backend secrets when a saved OpenAI-compatible provider is queried without a replacement `api_key`
+  - uses local Codex auth from `~/.codex/auth.json` (or the saved custom auth-file path) for Codex model discovery
+  - returns:
+    - `models[]`
 - `PUT /api/v1/agent/providers/active`
   - body: `{ "id": "<providerID>" }`
   - updates the active/default provider selection
@@ -163,6 +174,7 @@
 - Unknown provider ids return `provider_not_found`.
 - Unsupported kinds return `provider_kind_unsupported`.
 - Invalid payload/config returns `invalid_provider_config`.
+- Upstream model-catalog failures return `provider_model_discovery_failed`.
 - Selecting a disabled provider returns `provider_disabled`.
 - Deleting the active provider returns `provider_delete_active`.
 - JSON decoding remains strict through the shared `decodeJSON(...)` path with `DisallowUnknownFields()`.
@@ -214,6 +226,9 @@
     - `https://api.openai.com/v1/responses`
     - `https://chatgpt.com/backend-api/codex/responses`
   - supports both non-stream and SSE text-delta streaming
+  - now also supports model discovery via:
+    - `https://api.openai.com/v1/models` when the local auth file contains `OPENAI_API_KEY`
+    - `https://chatgpt.com/backend-api/codex/models` when the local auth file contains ChatGPT OAuth credentials
 
 ### OpenAI support
 
