@@ -45,8 +45,10 @@ func (s *Store) load() error {
 	if err := json.Unmarshal(payload, &s.data); err != nil {
 		return err
 	}
-	if s.data.Version == "" {
-		s.data.Version = ConfigVersion
+	normalized, changed := normalizeProviderState(s.data)
+	s.data = normalized
+	if changed {
+		return s.saveLocked()
 	}
 	return nil
 }
@@ -164,5 +166,6 @@ func cloneState(state State) State {
 	state.Profiles = slices.Clone(state.Profiles)
 	state.Roles = slices.Clone(state.Roles)
 	state.Modes = slices.Clone(state.Modes)
+	state.Providers = cloneProviderRecords(state.Providers)
 	return state
 }
