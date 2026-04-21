@@ -99,7 +99,7 @@ function upsertConversationMessage(
   const index = messages.findIndex((currentMessage) => currentMessage.id === message.id)
 
   if (index < 0) {
-    return [message, ...messages]
+    return [...messages, message]
   }
 
   const nextMessages = [...messages]
@@ -123,11 +123,11 @@ function updateConversationMessage(
   return nextMessages
 }
 
-export function prependAgentConversationMessage(
+export function appendAgentConversationMessage(
   messages: AgentConversationMessage[],
   message: AgentConversationMessage,
 ): AgentConversationMessage[] {
-  return [message, ...messages]
+  return [...messages, message]
 }
 
 export function removeAgentConversationMessage(
@@ -185,7 +185,7 @@ export function applyAgentConversationStreamEvent(
   }
 }
 
-export function prependAgentPanelStatusMessage(
+export function appendAgentPanelStatusMessage(
   panelState: AiPanelWidgetState,
   input: {
     id: string
@@ -195,6 +195,6 @@ export function prependAgentPanelStatusMessage(
 ) {
   return {
     ...panelState,
-    messages: [createStatusMessage(input), ...panelState.messages],
+    messages: [...panelState.messages, createStatusMessage(input)],
   }
 }

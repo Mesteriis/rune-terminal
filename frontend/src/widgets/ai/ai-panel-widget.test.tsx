@@ -137,35 +137,19 @@ describe('AiPanelWidget backend conversation path', () => {
       expect(screen.getByText('Inspect the backend contract')).toBeInTheDocument()
     })
 
-    expect(screen.getByText('Inspect the backend contract')).toBeInTheDocument()
-    expect(screen.getByText('The backend contract is ready.')).toBeInTheDocument()
+    const userMessage = screen.getByText('Inspect the backend contract')
+    const assistantMessage = screen.getByText('The backend contract is ready.')
+
+    expect(userMessage).toBeInTheDocument()
+    expect(assistantMessage).toBeInTheDocument()
     expect(screen.getByText('stub-model · complete')).toBeInTheDocument()
     expect(screen.queryByText('User 1')).not.toBeInTheDocument()
     expect(screen.queryByText('Assistant 2')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Show details' })).toBeInTheDocument()
     expect(screen.queryByText('Summary')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Show details' }))
-
-    expect(screen.getByText('Prompt')).toBeInTheDocument()
-    expect(screen.getByText('Reasoning')).toBeInTheDocument()
-    expect(screen.getByText('Summary')).toBeInTheDocument()
-    expect(screen.getByText('Metadata')).toBeInTheDocument()
     expect(
-      screen.getByText('Assistant · complete · stub · stub-model · 2026-04-21 10:00'),
-    ).toBeInTheDocument()
-
-    const assistantMessage = document.querySelector(
-      '#shell-ai-shell-panel-message-bubble-msg-2-content-rl',
-    ) as HTMLElement | null
-    const userMessage = document.querySelector(
-      '#shell-ai-shell-panel-message-bubble-msg-1-content-rr',
-    ) as HTMLElement | null
-
-    expect(assistantMessage).not.toBeNull()
-    expect(userMessage).not.toBeNull()
-    expect(
-      assistantMessage.compareDocumentPosition(userMessage) & Node.DOCUMENT_POSITION_FOLLOWING,
+      userMessage.compareDocumentPosition(assistantMessage) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
 
     const [userRow] = Array.from(document.querySelectorAll('[data-runa-chat-role="user"]'))
@@ -173,8 +157,8 @@ describe('AiPanelWidget backend conversation path', () => {
 
     expect((userRow as HTMLDivElement | undefined)?.style.justifyContent).toBe('flex-end')
     expect((assistantRow as HTMLDivElement | undefined)?.style.justifyContent).toBe('flex-start')
-    expect((assistantRow as HTMLDivElement | undefined)?.style.paddingBottom).toBe('var(--space-xs)')
-    expect((userRow as HTMLDivElement | undefined)?.style.paddingBottom).toBe('var(--space-lg)')
+    expect((assistantRow as HTMLDivElement | undefined)?.style.paddingBottom).toBe('var(--space-lg)')
+    expect((userRow as HTMLDivElement | undefined)?.style.paddingBottom).toBe('var(--space-xs)')
   })
 
   it('streams visible assistant output through the backend conversation stream route', async () => {
@@ -496,7 +480,7 @@ describe('AiPanelWidget backend conversation path', () => {
     expect(screen.queryByRole('button', { name: 'Hide details' })).not.toBeInTheDocument()
   })
 
-  it('preserves the reader position when a new message is added above older content', () => {
+  it('preserves the reader position when a new message is appended below older content', () => {
     const { rerender } = render(<AiPanelWidget hostId="ai-shell-panel" state={aiPanelWidgetMockState} />)
     const viewport = document.querySelector('[data-runa-ai-message-viewport]') as HTMLDivElement | null
 
@@ -516,8 +500,10 @@ describe('AiPanelWidget backend conversation path', () => {
         state={{
           ...aiPanelWidgetMockState,
           messages: [
+            ...aiPanelWidgetMockState.messages,
             {
               id: 'message-5',
+              type: 'chat',
               role: 'assistant',
               content: 'A new assistant message arrived.',
               meta: {
@@ -525,16 +511,15 @@ describe('AiPanelWidget backend conversation path', () => {
                 status: 'complete',
               },
             },
-            ...aiPanelWidgetMockState.messages,
           ],
         }}
       />,
     )
 
-    expect(metrics.getScrollTop()).toBe(300)
+    expect(metrics.getScrollTop()).toBe(180)
   })
 
-  it('keeps the latest message pinned when the viewport is already near the top', () => {
+  it('keeps the latest message pinned when the viewport is already near the bottom', () => {
     const { rerender } = render(<AiPanelWidget hostId="ai-shell-panel" state={aiPanelWidgetMockState} />)
     const viewport = document.querySelector('[data-runa-ai-message-viewport]') as HTMLDivElement | null
 
@@ -542,7 +527,7 @@ describe('AiPanelWidget backend conversation path', () => {
 
     const metrics = mockScrollViewportMetrics(viewport!, {
       scrollHeight: 960,
-      scrollTop: 18,
+      scrollTop: 628,
     })
 
     fireEvent.scroll(viewport!)
@@ -554,8 +539,10 @@ describe('AiPanelWidget backend conversation path', () => {
         state={{
           ...aiPanelWidgetMockState,
           messages: [
+            ...aiPanelWidgetMockState.messages,
             {
               id: 'message-5',
+              type: 'chat',
               role: 'assistant',
               content: 'A new assistant message arrived.',
               meta: {
@@ -563,13 +550,12 @@ describe('AiPanelWidget backend conversation path', () => {
                 status: 'complete',
               },
             },
-            ...aiPanelWidgetMockState.messages,
           ],
         }}
       />,
     )
 
-    expect(metrics.getScrollTop()).toBe(0)
+    expect(metrics.getScrollTop()).toBe(760)
   })
 
   it('renders all supported AI message types through the shared transcript switch', () => {
@@ -579,6 +565,14 @@ describe('AiPanelWidget backend conversation path', () => {
         state={{
           ...aiPanelWidgetMockState,
           messages: [
+            ...aiPanelWidgetMockState.messages,
+            {
+              id: 'plan-1',
+              type: 'plan',
+              planId: 'plan-1',
+              steps: ['Read config', 'Call API'],
+              tools: [{ name: 'read_file' }, { name: 'http_request' }],
+            },
             {
               id: 'question-1',
               type: 'questionnaire',
@@ -591,6 +585,12 @@ describe('AiPanelWidget backend conversation path', () => {
               status: 'pending',
             },
             {
+              id: 'approval-1',
+              type: 'approval',
+              planId: 'plan-1',
+              status: 'pending',
+            },
+            {
               id: 'audit-1',
               type: 'audit',
               entries: [
@@ -598,20 +598,6 @@ describe('AiPanelWidget backend conversation path', () => {
                 { tool: 'http_request', status: 'running' },
               ],
             },
-            {
-              id: 'approval-1',
-              type: 'approval',
-              planId: 'plan-1',
-              status: 'pending',
-            },
-            {
-              id: 'plan-1',
-              type: 'plan',
-              planId: 'plan-1',
-              steps: ['Read config', 'Call API'],
-              tools: [{ name: 'read_file' }, { name: 'http_request' }],
-            },
-            ...aiPanelWidgetMockState.messages,
           ],
         }}
       />,

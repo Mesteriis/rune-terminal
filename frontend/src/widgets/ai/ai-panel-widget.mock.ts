@@ -6,24 +6,10 @@ export const aiPanelWidgetMockState: AiPanelWidgetState = {
   activeTool: 'Chat',
   messages: [
     {
-      id: 'message-4',
-      type: 'chat',
-      role: 'assistant',
-      content: 'Split message content from execution metadata, then render the details separately.',
-      meta: {
-        status: 'complete',
-        provider: 'mock',
-        model: 'mock-model',
-        prompt: 'Move execution details out of the main chat flow and keep the transcript readable.',
-        reasoning: ['Status: complete', 'Provider: mock', 'Model: mock-model'].join('\n'),
-        summary: 'Assistant · complete · mock · mock-model',
-      },
-    },
-    {
-      id: 'message-3',
+      id: 'message-1',
       type: 'chat',
       role: 'user',
-      content: 'Move execution details out of the main chat flow and keep the transcript readable.',
+      content: 'Review the current frontend slice and propose the narrowest safe refactor sequence.',
     },
     {
       id: 'message-2',
@@ -40,10 +26,24 @@ export const aiPanelWidgetMockState: AiPanelWidgetState = {
       },
     },
     {
-      id: 'message-1',
+      id: 'message-3',
       type: 'chat',
       role: 'user',
-      content: 'Review the current frontend slice and propose the narrowest safe refactor sequence.',
+      content: 'Move execution details out of the main chat flow and keep the transcript readable.',
+    },
+    {
+      id: 'message-4',
+      type: 'chat',
+      role: 'assistant',
+      content: 'Split message content from execution metadata, then render the details separately.',
+      meta: {
+        status: 'complete',
+        provider: 'mock',
+        model: 'mock-model',
+        prompt: 'Move execution details out of the main chat flow and keep the transcript readable.',
+        reasoning: ['Status: complete', 'Provider: mock', 'Model: mock-model'].join('\n'),
+        summary: 'Assistant · complete · mock · mock-model',
+      },
     },
   ],
   composerPlaceholder: 'Text Area',

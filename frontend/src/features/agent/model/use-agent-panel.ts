@@ -19,8 +19,8 @@ import {
   updateQuestionnaireMessageAnswer,
 } from '@/features/agent/model/interaction-flow'
 import {
-  prependAgentConversationMessage,
-  prependAgentPanelStatusMessage,
+  appendAgentConversationMessage,
+  appendAgentPanelStatusMessage,
   applyAgentConversationStreamEvent,
   createAgentPanelErrorState,
   createAgentPanelLoadingState,
@@ -52,14 +52,14 @@ function createOptimisticUserConversationMessage(
 }
 
 function sortMessagesBySortKey(messages: ChatMessageView[]) {
-  return [...messages].sort((left, right) => (right.sortKey ?? 0) - (left.sortKey ?? 0))
+  return [...messages].sort((left, right) => (left.sortKey ?? 0) - (right.sortKey ?? 0))
 }
 
 function upsertInteractionMessage(currentMessages: ChatMessageView[], nextMessage: ChatMessageView) {
   const messageIndex = currentMessages.findIndex((message) => message.id === nextMessage.id)
 
   if (messageIndex < 0) {
-    return sortMessagesBySortKey([nextMessage, ...currentMessages])
+    return sortMessagesBySortKey([...currentMessages, nextMessage])
   }
 
   const nextMessages = [...currentMessages]
@@ -145,7 +145,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
           return
         }
 
-        setMessages([...conversation.messages].reverse())
+        setMessages(conversation.messages)
         setProvider(conversation.provider)
       })
       .catch((error: unknown) => {
@@ -191,10 +191,10 @@ export function useAgentPanel(hostId: string, enabled = true) {
     setLoadError(null)
     setSubmitError(null)
     setMessages((currentMessages) =>
-      prependAgentConversationMessage(currentMessages ?? [], optimisticUserMessage),
+      appendAgentConversationMessage(currentMessages ?? [], optimisticUserMessage),
     )
     setInteractionMessages((currentMessages) =>
-      sortMessagesBySortKey([...interactionFlow.messages, ...currentMessages]),
+      sortMessagesBySortKey([...currentMessages, ...interactionFlow.messages]),
     )
     pendingFlowRef.current = interactionFlow.flow
     setPendingFlow(interactionFlow.flow)
@@ -230,13 +230,14 @@ export function useAgentPanel(hostId: string, enabled = true) {
         return
       }
 
+      const answeredMessage = updateQuestionnaireMessageAnswer(message, answer, nextLocalSortKey)
       const approvalMessage = createApprovalMessage(activeFlow.flowID, nextLocalSortKey)
 
       setInteractionMessages((currentMessages) =>
         sortMessagesBySortKey([
-          approvalMessage,
-          updateQuestionnaireMessageAnswer(message, answer, nextLocalSortKey),
           ...currentMessages.filter((currentMessage) => currentMessage.id !== message.id),
+          answeredMessage,
+          approvalMessage,
         ]),
       )
 
@@ -259,6 +260,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
         return
       }
 
+      const approvedMessage = updateApprovalMessageStatus(message, 'approved', nextLocalSortKey)
       const auditMessage = createAuditMessage(activeFlow.flowID, activeFlow.tools, nextLocalSortKey)
       const nextFlow: PendingInteractionFlow = {
         ...activeFlow,
@@ -270,9 +272,9 @@ export function useAgentPanel(hostId: string, enabled = true) {
       setPendingFlow(nextFlow)
       setInteractionMessages((currentMessages) =>
         sortMessagesBySortKey([
-          auditMessage,
-          updateApprovalMessageStatus(message, 'approved', nextLocalSortKey),
           ...currentMessages.filter((currentMessage) => currentMessage.id !== message.id),
+          approvedMessage,
+          auditMessage,
         ]),
       )
 
@@ -449,7 +451,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
     }
 
     if (submitError) {
-      baseState = prependAgentPanelStatusMessage(baseState, {
+      baseState = appendAgentPanelStatusMessage(baseState, {
         id: 'agent-submit-error',
         content: submitError,
         meta: {

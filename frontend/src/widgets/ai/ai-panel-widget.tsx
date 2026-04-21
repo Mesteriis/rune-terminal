@@ -32,9 +32,12 @@ type AiMessageViewportMetrics = {
 }
 
 function readAiMessageViewportMetrics(viewport: HTMLDivElement): AiMessageViewportMetrics {
+  const maxScrollTop = Math.max(0, viewport.scrollHeight - viewport.clientHeight)
+  const distanceToLatest = maxScrollTop - viewport.scrollTop
+
   return {
     initialized: true,
-    isNearLatest: viewport.scrollTop <= AI_MESSAGE_LATEST_SCROLL_THRESHOLD,
+    isNearLatest: distanceToLatest <= AI_MESSAGE_LATEST_SCROLL_THRESHOLD,
     scrollHeight: viewport.scrollHeight,
     scrollTop: viewport.scrollTop,
   }
@@ -80,13 +83,12 @@ export function AiPanelWidget({ hostId, mode = 'chat', state }: AiPanelWidgetPro
     const previousMetrics = messageViewportMetricsRef.current
 
     if (previousMetrics.isNearLatest) {
-      viewport.scrollTop = 0
+      viewport.scrollTop = Math.max(0, viewport.scrollHeight - viewport.clientHeight)
     } else {
-      const heightDelta = viewport.scrollHeight - previousMetrics.scrollHeight
-
-      if (heightDelta !== 0) {
-        viewport.scrollTop = Math.max(0, previousMetrics.scrollTop + heightDelta)
-      }
+      viewport.scrollTop = Math.min(
+        previousMetrics.scrollTop,
+        Math.max(0, viewport.scrollHeight - viewport.clientHeight),
+      )
     }
 
     messageViewportMetricsRef.current = readAiMessageViewportMetrics(viewport)
@@ -117,9 +119,9 @@ export function AiPanelWidget({ hostId, mode = 'chat', state }: AiPanelWidgetPro
                 const nextMessage = panelState.messages[index + 1]
                 const isGroupedWithNext =
                   message.type === 'chat' &&
-                  message.role === 'assistant' &&
+                  message.role === 'user' &&
                   nextMessage?.type === 'chat' &&
-                  nextMessage.role === 'user'
+                  nextMessage.role === 'assistant'
 
                 return (
                   <AiChatMessageWidget
