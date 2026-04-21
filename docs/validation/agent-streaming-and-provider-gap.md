@@ -317,3 +317,108 @@
 - `B. can ship after v1`
   - Frontend provider selection UI inside the current AI sidebar, unless product requires on-screen switching for v1
   - TideTerm-style rich reasoning/tool-use/approval lifecycle beyond what RunaTerminal’s current AI sidebar needs for v1
+
+### Recommended implementation slices
+
+#### Slice: Agent streaming backend contract
+
+- Goal:
+  - Add a real backend streaming contract for agent conversation responses while keeping backend runtime truth in Go.
+- Why it is needed:
+  - The current backend only returns a final snapshot after provider completion.
+  - This is the main blocker for partial assistant output and accurate execution-state visibility.
+- Required before public v1:
+  - Yes
+- Key files likely affected:
+  - `core/conversation/types.go`
+  - `core/conversation/service.go`
+  - `core/conversation/provider.go`
+  - `core/conversation/provider_ollama.go`
+  - `core/app/conversation_actions.go`
+  - `core/transport/httpapi/api.go`
+  - `core/transport/httpapi/handlers_agent_conversation.go`
+  - corresponding tests under `core/conversation/` and `core/transport/httpapi/`
+- Main architectural risks:
+  - accidentally baking frontend widget semantics into the backend contract
+  - introducing streaming without a cancel/error boundary
+  - widening the contract more than needed for v1
+
+#### Slice: Agent streaming frontend integration
+
+- Goal:
+  - Consume the backend agent stream in the existing AI sidebar and render partial assistant output without changing layout.
+- Why it is needed:
+  - The current frontend can only replace the whole conversation snapshot after completion.
+  - Backend streaming alone does not improve the user-visible experience unless the sidebar can render in-flight output.
+- Required before public v1:
+  - Yes
+- Key files likely affected:
+  - `frontend/src/features/agent/api/client.ts`
+  - `frontend/src/features/agent/model/use-agent-panel.ts`
+  - `frontend/src/features/agent/model/panel-state.ts`
+  - `frontend/src/features/agent/model/types.ts`
+  - `frontend/src/widgets/ai/ai-panel-widget.tsx`
+  - `frontend/src/widgets/ai/ai-prompt-card-widget.tsx`
+- Main architectural risks:
+  - leaking transport details directly into widgets
+  - breaking the current static card layout while trying to add partial rendering
+  - replacing the entire transcript state on every delta instead of using a stable in-progress model
+
+#### Slice: Agent busy/working state visualization
+
+- Goal:
+  - Surface a clear AI working state in the existing sidebar without moving controls or introducing unapproved UI.
+- Why it is needed:
+  - The current submit path only disables the composer.
+  - Public v1 needs visible evidence that the agent is actively working.
+- Required before public v1:
+  - Yes
+- Key files likely affected:
+  - `frontend/src/features/agent/model/use-agent-panel.ts`
+  - `frontend/src/features/agent/model/panel-state.ts`
+  - `frontend/src/widgets/ai/ai-panel-widget.tsx`
+  - `frontend/src/widgets/ai/ai-composer-widget.tsx`
+  - `frontend/src/widgets/ai/ai-prompt-card-widget.tsx`
+- Main architectural risks:
+  - reusing the unrelated blocked-widget overlay instead of binding to agent execution state
+  - drifting into visual redesign instead of a minimal state cue
+  - coupling the UI to assumptions that should come from the stream/request lifecycle
+
+#### Slice: Third-party provider backend abstraction
+
+- Goal:
+  - Replace the current Ollama-only runtime wiring with a backend-owned provider resolution layer and at least one non-Ollama provider implementation.
+- Why it is needed:
+  - Public v1 should not depend on a single local provider path.
+  - The current provider interface exists, but the runtime path is still effectively single-provider.
+- Required before public v1:
+  - Yes
+- Key files likely affected:
+  - `core/conversation/provider.go`
+  - `core/conversation/provider_ollama.go`
+  - new provider files under `core/conversation/`
+  - `core/app/runtime.go`
+  - likely `core/agent/` and `core/transport/httpapi/handlers_agent.go` if provider availability must surface through the existing agent catalog
+  - validation/docs for provider setup and constraints
+- Main architectural risks:
+  - letting provider-specific details bleed into the frontend or unrelated runtime layers
+  - overbuilding a full settings universe instead of a narrow v1-capable provider resolver
+  - introducing credentials/config handling without a clear source of truth
+
+#### Slice: Third-party provider frontend selection UI
+
+- Goal:
+  - Expose provider or mode selection in the AI sidebar only after backend provider resolution exists and only with explicit placement approval.
+- Why it is needed:
+  - Users may eventually need on-screen provider switching, but the current sidebar has no approved placement for a new selector.
+- Required before public v1:
+  - Not necessarily
+- Key files likely affected:
+  - `frontend/src/features/agent/api/client.ts`
+  - `frontend/src/features/agent/model/use-agent-panel.ts`
+  - existing AI sidebar widgets, depending on approved placement
+  - possibly `docs/validation/agent.md` if the current selection routes are extended to cover provider choice
+- Main architectural risks:
+  - adding an unapproved visible control
+  - inventing frontend-only provider semantics instead of consuming backend catalog/selection data
+  - coupling provider UI to a temporary backend shape that will change again after the backend abstraction lands
