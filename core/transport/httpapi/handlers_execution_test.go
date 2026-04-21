@@ -106,3 +106,59 @@ func TestGetExecutionBlockReturnsNotFound(t *testing.T) {
 		t.Fatalf("expected 404, got %d body=%s", recorder.Code, recorder.Body.String())
 	}
 }
+
+func TestActiveTasksCountsAndMarksFailed(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+	execReq := authedJSONRequest(t, http.MethodPost, "/api/v1/agent/terminal-commands/explain", map[string]any{
+		"prompt":    "/run block running",
+		"command":   "sleep 1",
+		"widget_id": "term_boot",
+		"from_seq":  0,
+		"context": map[string]any{
+			"workspace_id":           "ws-default",
+			"repo_root":              "/workspace/repo",
+			"active_widget_id":       "term_boot",
+			"target_session":         "local",
+			"target_connection_id":   "local",
+			"widget_context_enabled": true,
+		},
+	})
+	handler.ServeHTTP(httptest.NewRecorder(), execReq)
+
+	activeRecorder := httptest.NewRecorder()
+	activeReq := authedJSONRequest(t, http.MethodGet, "/api/v1/tasks/active", nil)
+	handler.ServeHTTP(activeRecorder, activeReq)
+	if activeRecorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", activeRecorder.Code, activeRecorder.Body.String())
+	}
+	var activePayload struct {
+		Count int `json:"count"`
+	}
+	if err := json.Unmarshal(activeRecorder.Body.Bytes(), &activePayload); err != nil {
+		t.Fatalf("unmarshal active payload: %v", err)
+	}
+	if activePayload.Count != 0 {
+		t.Fatalf("expected zero active tasks by default, got %d", activePayload.Count)
+	}
+
+	failReq := authedJSONRequest(t, http.MethodGet, "/api/v1/tasks/stats", nil)
+	failRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(failRecorder, failReq)
+	if failRecorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", failRecorder.Code, failRecorder.Body.String())
+	}
+	var statsPayload struct {
+		Pending int `json:"pending"`
+		Running int `json:"running"`
+		Done    int `json:"done"`
+		Failed  int `json:"failed"`
+	}
+	if err := json.Unmarshal(failRecorder.Body.Bytes(), &statsPayload); err != nil {
+		t.Fatalf("unmarshal stats payload: %v", err)
+	}
+	if statsPayload.Pending < 0 || statsPayload.Running < 0 || statsPayload.Done < 0 || statsPayload.Failed < 0 {
+		t.Fatalf("invalid stats payload: %#v", statsPayload)
+	}
+}

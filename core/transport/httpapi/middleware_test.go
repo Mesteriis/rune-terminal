@@ -134,3 +134,28 @@ func TestHealthRemainsPublicWithoutServerAuthConfiguration(t *testing.T) {
 		t.Fatalf("expected 200, got %d", recorder.Code)
 	}
 }
+
+func TestHealthV1RemainsPublicWithoutServerAuthConfiguration(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandlerWithToken(t, "", executeToolDefinition(
+		"workspace.list_widgets",
+		toolruntime.EmptyDecode,
+		func(ctx context.Context, execCtx toolruntime.ExecutionContext, input any) (any, error) {
+			return map[string]any{"ok": true}, nil
+		},
+		toolruntime.Metadata{
+			Capabilities: []string{"workspace:read"},
+			ApprovalTier: policy.ApprovalTierSafe,
+			TargetKind:   toolruntime.TargetWorkspace,
+		},
+	))
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/health", nil)
+
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", recorder.Code)
+	}
+}

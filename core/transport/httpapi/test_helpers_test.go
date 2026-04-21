@@ -15,9 +15,11 @@ import (
 	"github.com/Mesteriis/rune-terminal/core/audit"
 	"github.com/Mesteriis/rune-terminal/core/connections"
 	"github.com/Mesteriis/rune-terminal/core/conversation"
+	"github.com/Mesteriis/rune-terminal/core/db"
 	"github.com/Mesteriis/rune-terminal/core/execution"
 	"github.com/Mesteriis/rune-terminal/core/plugins"
 	"github.com/Mesteriis/rune-terminal/core/policy"
+	"github.com/Mesteriis/rune-terminal/core/tasks"
 	"github.com/Mesteriis/rune-terminal/core/terminal"
 	"github.com/Mesteriis/rune-terminal/core/toolruntime"
 	"github.com/Mesteriis/rune-terminal/core/workspace"
@@ -65,6 +67,7 @@ func newTestHandlerWithToken(t *testing.T, authToken string, definitions ...tool
 	}
 	runtime := &app.Runtime{
 		RepoRoot:     "/workspace/repo",
+		HomeDir:      "/home/testuser",
 		Workspace:    workspace.NewService(workspace.BootstrapDefault()),
 		Terminals:    terminal.NewService(terminal.DefaultLauncher()),
 		Connections:  connectionStore,
@@ -75,6 +78,14 @@ func newTestHandlerWithToken(t *testing.T, authToken string, definitions ...tool
 		Audit:        auditLog,
 		Registry:     registry,
 	}
+	dbConn, err := db.Open(context.Background(), filepath.Join(tempDir, "runtime.sqlite"))
+	if err != nil {
+		t.Fatalf("db.Open error: %v", err)
+	}
+	taskStore := tasks.NewStore(dbConn)
+	runtime.DB = dbConn
+	runtime.TaskStore = taskStore
+	runtime.TaskService = tasks.NewService(taskStore)
 	runtime.MCP = plugins.NewMCPRuntimeWithOptions(nil, &testProcessSpawner{}, nil, plugins.MCPRuntimeOptions{
 		IdleCheckInterval: -1,
 	})

@@ -2,6 +2,8 @@ package app
 
 import (
 	"context"
+	"database/sql"
+	"os"
 	"sync"
 
 	"github.com/Mesteriis/rune-terminal/core/agent"
@@ -10,15 +12,19 @@ import (
 	"github.com/Mesteriis/rune-terminal/core/connections"
 	"github.com/Mesteriis/rune-terminal/core/conversation"
 	"github.com/Mesteriis/rune-terminal/core/execution"
+	"github.com/Mesteriis/rune-terminal/core/db"
 	"github.com/Mesteriis/rune-terminal/core/plugins"
 	"github.com/Mesteriis/rune-terminal/core/policy"
 	"github.com/Mesteriis/rune-terminal/core/terminal"
 	"github.com/Mesteriis/rune-terminal/core/toolruntime"
+	"github.com/Mesteriis/rune-terminal/core/tasks"
 	"github.com/Mesteriis/rune-terminal/core/workspace"
 )
 
 type Runtime struct {
 	RepoRoot         string
+	HomeDir          string
+	DB               *sql.DB
 	Paths            config.Paths
 	Workspace        *workspace.Service
 	WorkspaceCatalog *workspace.CatalogStore
@@ -33,12 +39,15 @@ type Runtime struct {
 	MCP              *plugins.MCPRuntime
 	Registry         *toolruntime.Registry
 	Executor         *toolruntime.Executor
+	TaskStore        *tasks.Store
+	TaskService      *tasks.Service
 	restoredMu       sync.RWMutex
 	restored         map[string]terminal.State
 }
 
 func NewRuntime(repoRoot string, stateDir string) (*Runtime, error) {
 	paths := config.Resolve(stateDir)
+	homeDir, _ := os.UserHomeDir()
 
 	auditLog, err := audit.NewLog(paths.AuditFile)
 	if err != nil {
@@ -64,6 +73,11 @@ func NewRuntime(repoRoot string, stateDir string) (*Runtime, error) {
 	if err != nil {
 		return nil, err
 	}
+	dbConn, err := db.Open(context.Background(), paths.DBFile)
+	if err != nil {
+		return nil, err
+	}
+	taskStore := tasks.NewStore(dbConn)
 	workspaceSnapshot, err := workspace.LoadSnapshot(paths.WorkspaceFile, workspace.BootstrapDefault())
 	if err != nil {
 		return nil, err
@@ -76,6 +90,7 @@ func NewRuntime(repoRoot string, stateDir string) (*Runtime, error) {
 
 	runtime := &Runtime{
 		RepoRoot:         repoRoot,
+		HomeDir:          homeDir,
 		Paths:            paths,
 		Workspace:        workspace.NewService(activeWorkspaceSnapshot),
 		WorkspaceCatalog: workspace.NewCatalogStore(workspaceCatalog),
@@ -84,6 +99,9 @@ func NewRuntime(repoRoot string, stateDir string) (*Runtime, error) {
 		Agent:            agentStore,
 		Conversation:     conversationStore,
 		Execution:        executionStore,
+		DB:               dbConn,
+		TaskStore:        taskStore,
+		TaskService:      tasks.NewService(taskStore),
 		Policy:           policyStore,
 		Audit:            auditLog,
 		Plugins:          plugins.NewRuntime(nil, 0),
