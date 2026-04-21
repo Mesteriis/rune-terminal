@@ -5,13 +5,15 @@
 - Date: `2026-04-21`
 - State: `PARTIALLY VERIFIED`
 - Scope:
-  - frontend AI sidebar main path now loads backend conversation state from `GET /api/v1/agent/conversation`
-  - existing textarea + send icon now submit to `POST /api/v1/agent/conversation/messages/stream`
-  - runtime transport resolves through the shared frontend runtime context; no localhost hardcoding was introduced
-  - visible assistant output now updates incrementally from backend stream events on the main sidebar path
-  - the existing busy overlay and composer disabled state are now driven by the real stream lifecycle
-  - current formatting, spacing, layout, hierarchy, typography, and control placement were intentionally preserved
-  - profile/role/mode selection and attachment reference UI remain blocked because there is no existing approved visible control for them in the current AI sidebar
+  - frontend AI sidebar main path loads backend conversation state from `GET /api/v1/agent/conversation`
+  - existing textarea + send icon submit to `POST /api/v1/agent/conversation/messages/stream`
+  - transcript rendering now projects backend messages into a chat-focused `ChatMessageView` instead of the earlier prompt/snapshot card model
+  - user messages render as right-aligned bubbles and assistant messages render as left-aligned bubbles with no visible `Assistant N` / snapshot-era labels
+  - assistant execution metadata is hidden by default behind a per-message `Show details` toggle, with `prompt`, `reasoning`, `summary`, and compact metadata rendered only in the secondary details surface
+  - assistant rows now expose a subdued `{model} · {status}` line below the main bubble
+  - a UI-only `chat` / `dev` / `debug` header control now switches transcript visibility instantly without reload; it does not call backend agent mode selection routes
+  - runtime transport still resolves through the shared frontend runtime context and no backend contract, API field, or execution pipeline change was introduced
+  - visible assistant output still updates incrementally from backend stream events and the busy overlay/composer disabled state remains tied to the real stream lifecycle
 
 ## Commands/tests used
 
@@ -25,12 +27,10 @@
   - `sed -n '1,260p' core/app/conversation_attachments.go`
   - `sed -n '1,380p' core/transport/httpapi/handlers_agent_conversation_test.go`
 - Frontend targeted validation:
-  - `npm --prefix frontend run test -- --reporter verbose --testTimeout=10000 src/features/agent/api/client.test.ts`
-  - `npm --prefix frontend run test -- --reporter verbose --testTimeout=10000 src/widgets/ai/ai-panel-widget.test.tsx src/features/agent/api/client.test.ts`
+  - `npm --prefix frontend run test -- --reporter verbose --testTimeout=10000 src/widgets/ai/ai-panel-widget.test.tsx`
   - `npm --prefix frontend run build`
-- Desktop startup smoke:
-  - `npm run tauri:dev`
-  - observed successful compile/start on the supported npm Tauri entrypoint before manual stop
+- Repository validation sweep:
+  - `npm run validate`
 
 ## Known limitations
 
@@ -39,10 +39,11 @@
   - `PUT /api/v1/agent/selection/profile`
   - `PUT /api/v1/agent/selection/role`
   - `PUT /api/v1/agent/selection/mode`
+- The visible `chat` / `dev` / `debug` header toggle is presentation-only transcript state. It does not read or write the backend agent mode catalog and must not be treated as the transport-backed work-mode selector.
 - No current visible attachment-reference control exists in the AI sidebar, so `POST /api/v1/agent/conversation/attachments/references` is implemented in the frontend API client but not wired to the UI.
-- The existing AI header settings button and composer options button remain presentational. Reusing either one for selectors or attachment flow would introduce new visible behavior and requires explicit placement approval.
+- `npm run tauri:dev` was not rerun for this exact transcript refactor, so the supported desktop startup smoke remains outstanding for this slice even though `npm run validate` passed.
 - `frontend/src/widgets/ai/ai-panel-widget.mock.ts` remains in the repository for isolated override/test scaffolding only; it is no longer the main execution path for the AI sidebar.
-- Mock-only rollback snapshots and mock approval rows still exist in that isolated scaffolding path and are not part of the backend-backed main sidebar flow.
+- The earlier prompt/snapshot card component path has been removed from the active frontend tree.
 
 ## Evidence
 
@@ -99,23 +100,28 @@ These client functions were added so the frontend follows the real backend contr
   - [frontend/src/features/agent/api/client.test.ts](../../frontend/src/features/agent/api/client.test.ts)
 - Agent model / backend-to-view projection:
   - [frontend/src/features/agent/model/types.ts](../../frontend/src/features/agent/model/types.ts)
+  - [frontend/src/features/agent/model/chat-message-view.ts](../../frontend/src/features/agent/model/chat-message-view.ts)
   - [frontend/src/features/agent/model/panel-state.ts](../../frontend/src/features/agent/model/panel-state.ts)
   - [frontend/src/features/agent/model/use-agent-panel.ts](../../frontend/src/features/agent/model/use-agent-panel.ts)
   - [frontend/src/shared/model/ai-blocked-widgets.ts](../../frontend/src/shared/model/ai-blocked-widgets.ts)
 - Existing widget surface kept in place:
+  - [frontend/src/app/app-ai-sidebar.tsx](../../frontend/src/app/app-ai-sidebar.tsx)
   - [frontend/src/widgets/ai/ai-panel-widget.tsx](../../frontend/src/widgets/ai/ai-panel-widget.tsx)
+  - [frontend/src/widgets/ai/ai-panel-header-widget.tsx](../../frontend/src/widgets/ai/ai-panel-header-widget.tsx)
+  - [frontend/src/widgets/ai/ai-chat-message-widget.tsx](../../frontend/src/widgets/ai/ai-chat-message-widget.tsx)
   - [frontend/src/widgets/ai/ai-composer-widget.tsx](../../frontend/src/widgets/ai/ai-composer-widget.tsx)
-  - [frontend/src/widgets/ai/ai-prompt-card-widget.tsx](../../frontend/src/widgets/ai/ai-prompt-card-widget.tsx)
   - [frontend/src/widgets/ai/ai-panel-widget.mock.ts](../../frontend/src/widgets/ai/ai-panel-widget.mock.ts)
   - [frontend/src/widgets/ai/ai-panel-widget.test.tsx](../../frontend/src/widgets/ai/ai-panel-widget.test.tsx)
 
 ### Exact main-path replacement that happened
 
 - The `AiPanelWidget` default path no longer uses `aiPanelWidgetMockState`.
-- The existing card stack now projects backend conversation messages into the current prompt-card layout without moving or restyling the widget.
-- The existing textarea and send icon now submit through the backend SSE route instead of waiting for a full request/response transcript replacement.
-- The visible transcript now appends a local user message immediately, creates the assistant entry on `message-start`, and updates assistant content incrementally on `text-delta`.
-- Backend error events and stream transport failures are surfaced inside the existing card stack instead of adding a new panel, toast, or control.
+- The sidebar no longer projects backend conversation messages into the old prompt/snapshot card layout.
+- The visible transcript now renders backend messages through the chat-focused `ChatMessageView` mapper and keeps execution/audit data out of the primary bubble surface.
+- The existing textarea and send icon still submit through the backend SSE route.
+- The visible transcript still appends a local user message immediately, creates the assistant entry on `message-start`, and updates assistant content incrementally on `text-delta`.
+- Backend error events and stream transport failures still surface inside the existing transcript surface instead of adding a new panel, toast, or control.
+- Assistant details are now collapsed by default in `chat` mode, auto-expanded in `dev` mode, and always visible in `debug` mode.
 
 ### Busy-state behavior
 
@@ -128,16 +134,16 @@ These client functions were added so the frontend follows the real backend contr
 ### Remaining demo/static-only paths
 
 - `frontend/src/widgets/ai/ai-panel-widget.mock.ts`
-  - retained only for explicit override/test scaffolding
-- rollback snapshot toggling in `AiPromptCardWidget`
-  - only active when rollback data is supplied through the mock override path
-- approval rows in `AiPromptCardWidget`
-  - only active when approval mock data is supplied through the mock override path
+  - retained only for explicit override/test scaffolding using the new chat message model
 
 ### Formatting change record
 
-- Formatting changes: `none`
-- No layout, spacing, visual hierarchy, typography, or component placement changes were introduced in this integration slice.
+- Formatting changes:
+  - prompt/snapshot cards were replaced with conversational left/right chat bubbles
+  - assistant execution details moved into a collapsed secondary panel
+  - assistant rows gained a subdued compact metadata line
+  - the AI header gained a UI-only `chat` / `dev` / `debug` visibility control
+  - spacing, max width, line height, and contrast were tuned to reduce transcript noise
 
 ### Placement blockers requiring user direction
 
