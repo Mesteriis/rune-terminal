@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -63,7 +64,7 @@ func TestSubmitConversationPromptUsesSelectionPromptAndContext(t *testing.T) {
 		t.Fatalf("selection: %v", err)
 	}
 
-	_, err = runtime.SubmitConversationPrompt(context.Background(), "hello", ConversationContext{
+	_, err = runtime.SubmitConversationPrompt(context.Background(), "hello", "", ConversationContext{
 		WorkspaceID:          "ws-default",
 		RepoRoot:             "/repo",
 		ActiveWidgetID:       "term_boot",
@@ -144,7 +145,7 @@ func TestSubmitConversationPromptIncludesAttachmentContextInProviderRequest(t *t
 		Audit:        auditLog,
 	}
 
-	result, err := runtime.SubmitConversationPrompt(context.Background(), "summarize attachment", ConversationContext{
+	result, err := runtime.SubmitConversationPrompt(context.Background(), "summarize attachment", "", ConversationContext{
 		WorkspaceID: "ws-default",
 		RepoRoot:    "/repo",
 	}, []conversation.AttachmentReference{
@@ -260,7 +261,7 @@ func TestSubmitConversationPromptResolvesActiveProviderFromBackendConfig(t *test
 		},
 	}
 
-	result, err := runtime.SubmitConversationPrompt(context.Background(), "hello", ConversationContext{
+	result, err := runtime.SubmitConversationPrompt(context.Background(), "hello", "", ConversationContext{
 		WorkspaceID: "ws-default",
 		RepoRoot:    "/repo",
 	}, nil)
@@ -372,7 +373,7 @@ func TestStreamConversationPromptUsesConfiguredActiveProvider(t *testing.T) {
 	}
 
 	var events []conversation.StreamEvent
-	result, err := runtime.StreamConversationPrompt(context.Background(), "hello", ConversationContext{
+	result, err := runtime.StreamConversationPrompt(context.Background(), "hello", "", ConversationContext{
 		WorkspaceID: "ws-default",
 		RepoRoot:    "/repo",
 	}, nil, func(event conversation.StreamEvent) error {
@@ -390,6 +391,149 @@ func TestStreamConversationPromptUsesConfiguredActiveProvider(t *testing.T) {
 	}
 	if result.ProviderInfo.Kind != "openai" || result.Assistant.Content != "hello world" {
 		t.Fatalf("unexpected stream result: %#v", result)
+	}
+}
+
+func TestSubmitConversationPromptAppliesSelectedModelOverride(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	agentStore, err := agent.NewStore(filepath.Join(tempDir, "agent.json"))
+	if err != nil {
+		t.Fatalf("agent store: %v", err)
+	}
+	created, _, err := agentStore.CreateProvider(agent.CreateProviderInput{
+		Kind: agent.ProviderKindOpenAI,
+		OpenAI: &agent.CreateOpenAIProviderInput{
+			BaseURL:    "https://placeholder.invalid/v1",
+			Model:      "gpt-5",
+			ChatModels: []string{"gpt-5", "gpt-5-mini"},
+			APIKey:     "sk-openai-test",
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateProvider error: %v", err)
+	}
+	if err := agentStore.SetActiveProvider(created.ID); err != nil {
+		t.Fatalf("SetActiveProvider error: %v", err)
+	}
+	auditLog, err := audit.NewLog(filepath.Join(tempDir, "audit.jsonl"))
+	if err != nil {
+		t.Fatalf("audit log: %v", err)
+	}
+	policyStore, err := policy.NewStore(filepath.Join(tempDir, "policy.json"), "/repo")
+	if err != nil {
+		t.Fatalf("policy store: %v", err)
+	}
+	connectionStore, err := connections.NewService(filepath.Join(tempDir, "connections.json"))
+	if err != nil {
+		t.Fatalf("connections: %v", err)
+	}
+
+	conversationStore, err := conversation.NewService(filepath.Join(tempDir, "conversation.json"), &recordingConversationProvider{})
+	if err != nil {
+		t.Fatalf("conversation service: %v", err)
+	}
+
+	recordingProvider := &recordingConversationProvider{}
+	var seenConfiguredModel string
+	runtime := &Runtime{
+		RepoRoot:     "/repo",
+		Workspace:    workspace.NewService(workspace.BootstrapDefault()),
+		Terminals:    terminal.NewService(terminal.DefaultLauncher()),
+		Connections:  connectionStore,
+		Agent:        agentStore,
+		Conversation: conversationStore,
+		Policy:       policyStore,
+		Audit:        auditLog,
+		ConversationProviderFactory: func(record agent.ProviderRecord) (conversation.Provider, error) {
+			seenConfiguredModel = record.OpenAI.Model
+			return recordingProvider, nil
+		},
+	}
+
+	if _, err := runtime.SubmitConversationPrompt(
+		context.Background(),
+		"hello",
+		"gpt-5-mini",
+		ConversationContext{WorkspaceID: "ws-default", RepoRoot: "/repo"},
+		nil,
+	); err != nil {
+		t.Fatalf("SubmitConversationPrompt error: %v", err)
+	}
+
+	if seenConfiguredModel != "gpt-5-mini" {
+		t.Fatalf("expected selected model in provider record, got %q", seenConfiguredModel)
+	}
+	if recordingProvider.request.Model != "gpt-5-mini" {
+		t.Fatalf("expected selected model in provider request, got %#v", recordingProvider.request)
+	}
+}
+
+func TestSubmitConversationPromptRejectsUnavailableSelectedModel(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	agentStore, err := agent.NewStore(filepath.Join(tempDir, "agent.json"))
+	if err != nil {
+		t.Fatalf("agent store: %v", err)
+	}
+	created, _, err := agentStore.CreateProvider(agent.CreateProviderInput{
+		Kind: agent.ProviderKindOpenAI,
+		OpenAI: &agent.CreateOpenAIProviderInput{
+			BaseURL:    "https://placeholder.invalid/v1",
+			Model:      "gpt-5",
+			ChatModels: []string{"gpt-5"},
+			APIKey:     "sk-openai-test",
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateProvider error: %v", err)
+	}
+	if err := agentStore.SetActiveProvider(created.ID); err != nil {
+		t.Fatalf("SetActiveProvider error: %v", err)
+	}
+	auditLog, err := audit.NewLog(filepath.Join(tempDir, "audit.jsonl"))
+	if err != nil {
+		t.Fatalf("audit log: %v", err)
+	}
+	policyStore, err := policy.NewStore(filepath.Join(tempDir, "policy.json"), "/repo")
+	if err != nil {
+		t.Fatalf("policy store: %v", err)
+	}
+	connectionStore, err := connections.NewService(filepath.Join(tempDir, "connections.json"))
+	if err != nil {
+		t.Fatalf("connections: %v", err)
+	}
+
+	conversationStore, err := conversation.NewService(filepath.Join(tempDir, "conversation.json"), &recordingConversationProvider{})
+	if err != nil {
+		t.Fatalf("conversation service: %v", err)
+	}
+
+	runtime := &Runtime{
+		RepoRoot:     "/repo",
+		Workspace:    workspace.NewService(workspace.BootstrapDefault()),
+		Terminals:    terminal.NewService(terminal.DefaultLauncher()),
+		Connections:  connectionStore,
+		Agent:        agentStore,
+		Conversation: conversationStore,
+		Policy:       policyStore,
+		Audit:        auditLog,
+		ConversationProviderFactory: func(record agent.ProviderRecord) (conversation.Provider, error) {
+			return &recordingConversationProvider{}, nil
+		},
+	}
+
+	_, err = runtime.SubmitConversationPrompt(
+		context.Background(),
+		"hello",
+		"gpt-5-mini",
+		ConversationContext{WorkspaceID: "ws-default", RepoRoot: "/repo"},
+		nil,
+	)
+	if !errors.Is(err, ErrConversationModelUnavailable) {
+		t.Fatalf("expected ErrConversationModelUnavailable, got %v", err)
 	}
 }
 

@@ -1,4 +1,5 @@
 export * from './avatar'
+export * from './clear-box'
 export * from './dialog-popup'
 export * from './dockview-tab-chrome'
 export * from './dockview-tab-pill'

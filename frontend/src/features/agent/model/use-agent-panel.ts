@@ -7,6 +7,7 @@ import {
   type AgentConversationProvider,
   type AgentConversationStreamConnection,
 } from '@/features/agent/api/client'
+import { fetchAgentProviderCatalog, type AgentProviderView } from '@/features/agent/api/provider-client'
 import {
   advanceAuditEntries,
   classifyMessageIntent,
@@ -85,11 +86,47 @@ function updateInteractionMessage(
   return sortMessagesBySortKey(nextMessages)
 }
 
+function directProviderChatModels(provider: AgentProviderView | null | undefined) {
+  if (!provider) {
+    return []
+  }
+  if (provider.kind === 'ollama') {
+    return provider.ollama?.chat_models ?? []
+  }
+  if (provider.kind === 'codex') {
+    return provider.codex?.chat_models ?? []
+  }
+  if (provider.kind === 'openai') {
+    return provider.openai?.chat_models ?? []
+  }
+  return []
+}
+
+function selectPreferredChatModel(
+  currentModel: string,
+  providerModel: string | undefined,
+  availableModels: string[],
+) {
+  const selectedModel = currentModel.trim()
+  if (selectedModel && availableModels.includes(selectedModel)) {
+    return selectedModel
+  }
+
+  const activeProviderModel = providerModel?.trim() ?? ''
+  if (activeProviderModel && availableModels.includes(activeProviderModel)) {
+    return activeProviderModel
+  }
+
+  return availableModels[0] ?? ''
+}
+
 export function useAgentPanel(hostId: string, enabled = true) {
   const [messages, setMessages] = useState<AgentConversationMessage[] | null>(null)
   const [interactionMessages, setInteractionMessages] = useState<ChatMessageView[]>([])
   const [pendingFlow, setPendingFlow] = useState<PendingInteractionFlow | null>(null)
   const [provider, setProvider] = useState<AgentConversationProvider | null>(null)
+  const [availableModels, setAvailableModels] = useState<string[]>([])
+  const [selectedModel, setSelectedModel] = useState('')
   const [loadError, setLoadError] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -137,31 +174,46 @@ export function useAgentPanel(hostId: string, enabled = true) {
     setInteractionMessages([])
     setPendingFlow(null)
     setProvider(null)
+    setAvailableModels([])
+    setSelectedModel('')
     setLoadError(null)
     setSubmitError(null)
     setIsSubmitting(false)
 
-    void fetchAgentConversation()
-      .then((conversation) => {
-        if (cancelled) {
-          return
-        }
+    void Promise.allSettled([fetchAgentConversation(), fetchAgentProviderCatalog()]).then((results) => {
+      if (cancelled) {
+        return
+      }
 
-        setMessages(conversation.messages)
-        setProvider(conversation.provider)
-      })
-      .catch((error: unknown) => {
-        if (cancelled) {
-          return
-        }
+      const [conversationResult, providerCatalogResult] = results
 
+      if (conversationResult.status === 'rejected') {
         const message =
-          error instanceof Error && error.message.trim()
-            ? error.message
+          conversationResult.reason instanceof Error && conversationResult.reason.message.trim()
+            ? conversationResult.reason.message
             : `Unable to load backend conversation for ${hostId}.`
-
         setLoadError(message)
-      })
+      } else {
+        setMessages(conversationResult.value.messages)
+        setProvider(conversationResult.value.provider)
+      }
+
+      if (providerCatalogResult.status === 'fulfilled') {
+        const activeProvider =
+          providerCatalogResult.value.providers.find(
+            (candidate) => candidate.id === providerCatalogResult.value.active_provider_id,
+          ) ?? null
+        const chatModels = directProviderChatModels(activeProvider)
+        setAvailableModels(chatModels)
+        setSelectedModel((currentModel) =>
+          selectPreferredChatModel(
+            currentModel,
+            conversationResult.status === 'fulfilled' ? conversationResult.value.provider.model : undefined,
+            chatModels,
+          ),
+        )
+      }
+    })
 
     return () => {
       cancelled = true
@@ -172,6 +224,12 @@ export function useAgentPanel(hostId: string, enabled = true) {
       unblockAiWidget(hostId)
     }
   }, [enabled, hostId])
+
+  useEffect(() => {
+    setSelectedModel((currentModel) =>
+      selectPreferredChatModel(currentModel, provider?.model, availableModels),
+    )
+  }, [availableModels, provider?.model])
 
   const clearPendingInteractionFlow = useCallback(() => {
     pendingFlowRef.current = null
@@ -188,7 +246,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
   )
 
   const runBackendPrompt = useCallback(
-    async (prompt: string, options?: { auditMessageID?: string }) => {
+    async (prompt: string, options?: { auditMessageID?: string; model?: string }) => {
       const submissionNonce = submissionNonceRef.current + 1
       submissionNonceRef.current = submissionNonce
       const isActiveSubmission = () => submissionNonceRef.current === submissionNonce
@@ -207,6 +265,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
         connection = await streamAgentConversationMessage(
           {
             prompt,
+            model: options?.model,
             context: {
               action_source: 'frontend.ai.sidebar',
               active_widget_id: hostId,
@@ -333,7 +392,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
     setDraft('')
 
     if (interactionFlow.flow == null) {
-      await runBackendPrompt(prompt)
+      await runBackendPrompt(prompt, { model: selectedModel || undefined })
       return
     }
 
@@ -342,7 +401,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
     )
     pendingFlowRef.current = interactionFlow.flow
     setPendingFlow(interactionFlow.flow)
-  }, [draft, enabled, hostId, isSubmitting, nextLocalSortKey, runBackendPrompt])
+  }, [draft, enabled, hostId, isSubmitting, nextLocalSortKey, runBackendPrompt, selectedModel])
 
   const cancelPendingPlan = useCallback(
     (message: ApprovalMessage) => {
@@ -383,7 +442,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
           ]),
         )
         clearPendingInteractionFlow()
-        await runBackendPrompt(activeFlow.prompt)
+        await runBackendPrompt(activeFlow.prompt, { model: selectedModel || undefined })
         return
       }
 
@@ -414,7 +473,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
       pendingFlowRef.current = nextFlow
       setPendingFlow(nextFlow)
     },
-    [clearPendingInteractionFlow, nextLocalSortKey, runBackendPrompt],
+    [clearPendingInteractionFlow, nextLocalSortKey, runBackendPrompt, selectedModel],
   )
 
   const approvePendingPlan = useCallback(
@@ -443,9 +502,12 @@ export function useAgentPanel(hostId: string, enabled = true) {
         ]),
       )
       clearPendingInteractionFlow()
-      await runBackendPrompt(activeFlow.prompt, { auditMessageID: auditMessage.id })
+      await runBackendPrompt(activeFlow.prompt, {
+        auditMessageID: auditMessage.id,
+        model: selectedModel || undefined,
+      })
     },
-    [clearPendingInteractionFlow, nextLocalSortKey, runBackendPrompt],
+    [clearPendingInteractionFlow, nextLocalSortKey, runBackendPrompt, selectedModel],
   )
 
   const panelState = useMemo(() => {
@@ -479,10 +541,13 @@ export function useAgentPanel(hostId: string, enabled = true) {
     approvePendingPlan,
     cancelPendingPlan,
     draft,
+    availableModels,
     isInteractionPending: pendingFlow != null,
     isSubmitting,
     panelState,
+    selectedModel,
     setDraft,
+    setSelectedModel,
     submitDraft,
   }
 }

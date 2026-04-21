@@ -417,6 +417,13 @@ export const aiToolbarStyle: CSSProperties = {
   background: 'var(--color-canvas-elevated)',
 }
 
+export const aiToolbarControlsStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 'var(--gap-sm)',
+  minWidth: 0,
+}
+
 export const aiToolbarLabelStyle: CSSProperties = {
   color: 'var(--color-text-secondary)',
   fontSize: 'var(--font-size-sm)',
@@ -435,6 +442,17 @@ export const aiToolbarChipStyle: CSSProperties = {
   background: 'var(--color-accent-emerald-soft)',
   color: 'var(--color-text-primary)',
   boxShadow: 'none',
+}
+
+export const aiToolbarModelSelectStyle: CSSProperties = {
+  width: 'min(16rem, 42vw)',
+  minWidth: '9rem',
+  paddingTop: '0.32rem',
+  paddingBottom: '0.32rem',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '12px',
+  lineHeight: '16px',
+  background: 'color-mix(in srgb, var(--color-surface-glass-soft) 78%, transparent)',
 }
 
 export const aiComposerSurfaceStyle: CSSProperties = {

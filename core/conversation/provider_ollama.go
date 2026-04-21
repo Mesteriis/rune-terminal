@@ -77,7 +77,7 @@ func (p *OllamaProvider) complete(
 	if err := validateCompletionRequest(request); err != nil {
 		return CompletionResult{}, p.Info(), err
 	}
-	model, err := p.resolveModel(ctx)
+	model, err := p.resolveModel(ctx, request.Model)
 	if err != nil {
 		return CompletionResult{}, p.Info(), err
 	}
@@ -166,7 +166,11 @@ func (p *OllamaProvider) complete(
 	}, info, nil
 }
 
-func (p *OllamaProvider) resolveModel(ctx context.Context) (string, error) {
+func (p *OllamaProvider) resolveModel(ctx context.Context, requestedModel string) (string, error) {
+	if model := strings.TrimSpace(requestedModel); model != "" {
+		p.runtime.setSelectedModel(model)
+		return model, nil
+	}
 	if model := strings.TrimSpace(p.runtime.selectedModel()); model != "" {
 		return model, nil
 	}

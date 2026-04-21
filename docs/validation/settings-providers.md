@@ -2,7 +2,7 @@
 
 ## Last verified state
 
-- Date: `2026-04-21`
+- Date: `2026-04-22`
 - State: `PARTIALLY VERIFIED`
 - Scope:
   - backend-owned AI provider configuration runtime and CRUD surface
@@ -20,6 +20,7 @@
   - `sed -n '1,260p' frontend/src/widgets/panel/modal-host-widget.tsx`
   - `sed -n '1,320p' frontend/src/widgets/settings/settings-shell-widget.tsx`
   - `sed -n '1,260p' frontend/src/widgets/settings/settings-shell-widget.styles.ts`
+  - `sed -n '1,120p' frontend/src/shared/ui/components/clear-box.tsx`
   - `sed -n '1,220p' frontend/src/shared/model/modal.ts`
   - `sed -n '1,220p' frontend/src/shared/ui/components/dialog-popup.tsx`
   - `sed -n '1,220p' frontend/src/shared/ui/components/tabs.tsx`
@@ -45,13 +46,17 @@
   - `sed -n '1,220p' core/transport/httpapi/api.go`
 - Focused validation:
   - `go test ./core/codexauth ./core/conversation ./core/agent ./core/app ./core/transport/httpapi`
+  - `go test ./core/agent ./core/conversation ./core/app ./core/transport/httpapi`
   - `npm --prefix frontend run test -- src/features/agent/api/provider-client.test.ts src/features/agent/model/provider-settings-draft.test.ts`
+  - `npm --prefix frontend run test -- src/features/agent/api/client.test.ts src/features/agent/api/provider-client.test.ts`
+  - `npm --prefix frontend run test -- src/widgets/ai/ai-panel-widget.test.tsx`
   - `npm --prefix frontend run build`
   - `npm run validate`
   - browser smoke against an already-running local split-dev frontend/backend via Playwright MCP:
     - opened the right-rail settings button
     - verified left navigation renders `Основные`, `AI > Установленные приложения`, `AI > Модели`, `AI > Лимиты`, `Terminal`, and `Commander`
     - switched at least `AI > Модели` and `Основные` and confirmed the content area changes in-place inside the existing settings modal shell
+    - toggled the `AI` parent item closed and confirmed the submenu collapses without changing the shared modal shell or breaking the active content panel
 
 ## Current frontend settings window state
 
@@ -73,6 +78,9 @@
   - `AI > Лимиты`
   - `Terminal`
   - `Commander`
+- The `AI` item is now a collapsible parent section instead of a permanently expanded label block.
+- Only the active child item is highlighted inside the `AI` branch; the parent `AI` node keeps expand/collapse behavior but no longer shares the active visual state with `Установленные приложения`, `Модели`, or `Лимиты`.
+- The previous cascade of nested framed containers was reduced: layout-only wrappers inside the settings shell and embedded provider editor now use `ClearBox`, so they keep DOM identity without inheriting the default framed `Box` chrome.
 - The provider-management surface still lives in [frontend/src/widgets/settings/agent-provider-settings-widget.tsx](../../frontend/src/widgets/settings/agent-provider-settings-widget.tsx), but it is now nested under `AI > Установленные приложения`.
 - New provider creation from the toolbar is currently limited to:
   - `ollama`
@@ -81,13 +89,19 @@
 - The unfinished `proxy` kind remains in the backend catalog and existing records remain editable, but it is intentionally hidden from the new-provider toolbar until the CLI-backed routing slice replaces the current draft proxy path.
 - all direct-provider settings now use backend-backed model discovery:
   - `ollama` loads installed model names from the configured Ollama host
+  - `ollama` prefers native `/api/tags`, but if the host is exposed only through an OpenAI-compatible surface the backend now also falls back to `<base>/models` and `<base>/v1/models`
   - the model field is a dropdown backed by `POST /api/v1/agent/providers/models`
   - the list auto-loads when the relevant provider settings change; the inline button remains only as an explicit retry path
   - `codex` model discovery auto-loads from local auth state
   - saved `openai` providers auto-load models through the stored backend secret
   - unsaved `openai` drafts auto-load models as soon as an API key is present
+  - `openai` model discovery now tolerates base URLs entered either with `/v1` or without it by trying both compatible catalog paths when necessary
   - new `ollama` drafts auto-select the first discovered installed model when no model has been chosen yet
-- `AI > Модели` now surfaces those auto-discovered model lists as a read-oriented directory for the currently selected direct provider.
+- `AI > Модели` now uses backend-owned checkboxes per direct-provider model:
+  - auto-discovered models are listed for the currently selected direct provider
+  - the provider's configured default model stays forced-on and cannot be unchecked
+  - additional models can be toggled into or out of the chat-visible allowlist through provider update requests
+- The main AI composer now shows a model dropdown when the active direct provider exposes at least one enabled `chat_model`.
 - `AI > Лимиты` is currently a status placeholder only: it shows provider readiness, but no backend-owned token/rate limit contract exists yet.
 
 ## Backend provider configuration runtime
@@ -119,12 +133,15 @@
 - `ollama` record fields:
   - `base_url`
   - `model`
+  - `chat_models[]`
 - `codex` record fields:
   - `model`
+  - `chat_models[]`
   - optional `auth_file_path`
 - `openai` record fields:
   - `base_url`
   - `model`
+  - `chat_models[]`
   - `api_key_secret`
 - `proxy` record fields:
   - `model`
@@ -179,6 +196,7 @@
     - `providers`
 - `PATCH /api/v1/agent/providers/{providerID}`
   - updates display name, enabled state, and provider-specific config
+  - direct-provider payloads now accept `chat_models[]`
   - returns:
     - `provider`
     - `providers`
@@ -228,8 +246,12 @@
   - provider info in the snapshot is now derived from the resolved active provider when the runtime factory is enabled
 - `POST /api/v1/agent/conversation/messages`
   - resolves the active provider from backend state before submission
+  - now accepts optional `model`
+  - validates that the selected model belongs to the active direct provider allowlist before the request is sent upstream
 - `POST /api/v1/agent/conversation/messages/stream`
   - resolves the same active provider from backend state before streaming submission
+  - now accepts optional `model`
+  - applies the same allowlist validation before streaming starts
 - `POST /api/v1/agent/terminal-commands/explain`
   - now also resolves the active provider from backend state before the assistant explanation call
 
@@ -241,6 +263,10 @@
   - `SubmitWithProvider(...)`
   - `SubmitStreamWithProvider(...)`
   - `AppendAssistantPromptWithProvider(...)`
+- Conversation requests now also carry an optional selected model through:
+  - `conversation.SubmitRequest.Model`
+  - `conversation.CompletionRequest.Model`
+- Direct providers (`ollama`, `codex`, `openai`) honor that per-request model override after backend validation instead of forcing the globally configured provider model for every chat message.
 - This keeps the old request/response behavior stable for tests and narrow legacy call sites while allowing production runtime selection from backend state.
 
 ## External provider implementation

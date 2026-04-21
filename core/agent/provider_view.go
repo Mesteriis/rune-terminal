@@ -30,8 +30,9 @@ func providerViewFromRecord(record ProviderRecord, activeProviderID string) Prov
 	}
 	if record.Ollama != nil {
 		view.Ollama = &OllamaProviderSettings{
-			BaseURL: record.Ollama.BaseURL,
-			Model:   record.Ollama.Model,
+			BaseURL:    record.Ollama.BaseURL,
+			Model:      record.Ollama.Model,
+			ChatModels: append([]string(nil), record.Ollama.ChatModels...),
 		}
 	}
 	if record.Codex != nil {
@@ -39,9 +40,10 @@ func providerViewFromRecord(record ProviderRecord, activeProviderID string) Prov
 	}
 	if record.OpenAI != nil {
 		view.OpenAI = &OpenAIProviderSettingsView{
-			BaseURL:   record.OpenAI.BaseURL,
-			Model:     record.OpenAI.Model,
-			HasAPIKey: strings.TrimSpace(record.OpenAI.APIKeySecret) != "",
+			BaseURL:    record.OpenAI.BaseURL,
+			Model:      record.OpenAI.Model,
+			ChatModels: append([]string(nil), record.OpenAI.ChatModels...),
+			HasAPIKey:  strings.TrimSpace(record.OpenAI.APIKeySecret) != "",
 		}
 	}
 	if record.Proxy != nil {
@@ -54,13 +56,15 @@ func cloneProviderRecord(record ProviderRecord) ProviderRecord {
 	cloned := record
 	if record.Ollama != nil {
 		cloned.Ollama = &OllamaProviderSettings{
-			BaseURL: record.Ollama.BaseURL,
-			Model:   record.Ollama.Model,
+			BaseURL:    record.Ollama.BaseURL,
+			Model:      record.Ollama.Model,
+			ChatModels: append([]string(nil), record.Ollama.ChatModels...),
 		}
 	}
 	if record.Codex != nil {
 		cloned.Codex = &CodexProviderSettings{
 			Model:        record.Codex.Model,
+			ChatModels:   append([]string(nil), record.Codex.ChatModels...),
 			AuthFilePath: record.Codex.AuthFilePath,
 		}
 	}
@@ -68,6 +72,7 @@ func cloneProviderRecord(record ProviderRecord) ProviderRecord {
 		cloned.OpenAI = &OpenAIProviderSettings{
 			BaseURL:      record.OpenAI.BaseURL,
 			Model:        record.OpenAI.Model,
+			ChatModels:   append([]string(nil), record.OpenAI.ChatModels...),
 			APIKeySecret: record.OpenAI.APIKeySecret,
 		}
 	}
@@ -92,6 +97,7 @@ func codexProviderSettingsViewFromSettings(settings *CodexProviderSettings) *Cod
 	}
 	view := &CodexProviderSettingsView{
 		Model:        settings.Model,
+		ChatModels:   append([]string(nil), settings.ChatModels...),
 		AuthFilePath: codexauth.ResolveAuthFilePath(settings.AuthFilePath),
 		AuthState:    codexauth.StatusMissing,
 	}

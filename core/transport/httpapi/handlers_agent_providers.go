@@ -54,36 +54,42 @@ type providerModelsOpenAIPayload struct {
 }
 
 type createOllamaConfigPayload struct {
-	BaseURL string `json:"base_url"`
-	Model   string `json:"model,omitempty"`
+	BaseURL    string   `json:"base_url"`
+	Model      string   `json:"model,omitempty"`
+	ChatModels []string `json:"chat_models,omitempty"`
 }
 
 type updateOllamaConfigPayload struct {
-	BaseURL *string `json:"base_url,omitempty"`
-	Model   *string `json:"model,omitempty"`
+	BaseURL    *string   `json:"base_url,omitempty"`
+	Model      *string   `json:"model,omitempty"`
+	ChatModels *[]string `json:"chat_models,omitempty"`
 }
 
 type createCodexConfigPayload struct {
-	Model        string `json:"model,omitempty"`
-	AuthFilePath string `json:"auth_file_path,omitempty"`
+	Model        string   `json:"model,omitempty"`
+	ChatModels   []string `json:"chat_models,omitempty"`
+	AuthFilePath string   `json:"auth_file_path,omitempty"`
 }
 
 type updateCodexConfigPayload struct {
-	Model        *string `json:"model,omitempty"`
-	AuthFilePath *string `json:"auth_file_path,omitempty"`
+	Model        *string   `json:"model,omitempty"`
+	ChatModels   *[]string `json:"chat_models,omitempty"`
+	AuthFilePath *string   `json:"auth_file_path,omitempty"`
 }
 
 type createOpenAIConfigPayload struct {
-	BaseURL string `json:"base_url,omitempty"`
-	Model   string `json:"model,omitempty"`
-	APIKey  string `json:"api_key"`
+	BaseURL    string   `json:"base_url,omitempty"`
+	Model      string   `json:"model,omitempty"`
+	ChatModels []string `json:"chat_models,omitempty"`
+	APIKey     string   `json:"api_key"`
 }
 
 type updateOpenAIConfigPayload struct {
-	BaseURL     *string `json:"base_url,omitempty"`
-	Model       *string `json:"model,omitempty"`
-	APIKey      *string `json:"api_key,omitempty"`
-	ClearAPIKey bool    `json:"clear_api_key,omitempty"`
+	BaseURL     *string   `json:"base_url,omitempty"`
+	Model       *string   `json:"model,omitempty"`
+	ChatModels  *[]string `json:"chat_models,omitempty"`
+	APIKey      *string   `json:"api_key,omitempty"`
+	ClearAPIKey bool      `json:"clear_api_key,omitempty"`
 }
 
 type proxyChannelPayload struct {
@@ -256,8 +262,9 @@ func mapCreateOllamaProviderInput(payload *createOllamaConfigPayload) *agent.Cre
 		return nil
 	}
 	return &agent.CreateOllamaProviderInput{
-		BaseURL: payload.BaseURL,
-		Model:   payload.Model,
+		BaseURL:    payload.BaseURL,
+		Model:      payload.Model,
+		ChatModels: payload.ChatModels,
 	}
 }
 
@@ -297,8 +304,9 @@ func mapUpdateOllamaProviderInput(payload *updateOllamaConfigPayload) *agent.Upd
 		return nil
 	}
 	return &agent.UpdateOllamaProviderInput{
-		BaseURL: payload.BaseURL,
-		Model:   payload.Model,
+		BaseURL:    payload.BaseURL,
+		Model:      payload.Model,
+		ChatModels: payload.ChatModels,
 	}
 }
 
@@ -308,6 +316,7 @@ func mapCreateCodexProviderInput(payload *createCodexConfigPayload) *agent.Creat
 	}
 	return &agent.CreateCodexProviderInput{
 		Model:        payload.Model,
+		ChatModels:   payload.ChatModels,
 		AuthFilePath: payload.AuthFilePath,
 	}
 }
@@ -318,6 +327,7 @@ func mapUpdateCodexProviderInput(payload *updateCodexConfigPayload) *agent.Updat
 	}
 	return &agent.UpdateCodexProviderInput{
 		Model:        payload.Model,
+		ChatModels:   payload.ChatModels,
 		AuthFilePath: payload.AuthFilePath,
 	}
 }
@@ -327,9 +337,10 @@ func mapCreateOpenAIProviderInput(payload *createOpenAIConfigPayload) *agent.Cre
 		return nil
 	}
 	return &agent.CreateOpenAIProviderInput{
-		BaseURL: payload.BaseURL,
-		Model:   payload.Model,
-		APIKey:  payload.APIKey,
+		BaseURL:    payload.BaseURL,
+		Model:      payload.Model,
+		ChatModels: payload.ChatModels,
+		APIKey:     payload.APIKey,
 	}
 }
 
@@ -340,6 +351,7 @@ func mapUpdateOpenAIProviderInput(payload *updateOpenAIConfigPayload) *agent.Upd
 	return &agent.UpdateOpenAIProviderInput{
 		BaseURL:     payload.BaseURL,
 		Model:       payload.Model,
+		ChatModels:  payload.ChatModels,
 		APIKey:      payload.APIKey,
 		ClearAPIKey: payload.ClearAPIKey,
 	}

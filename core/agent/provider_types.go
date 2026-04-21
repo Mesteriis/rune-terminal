@@ -16,21 +16,24 @@ const (
 )
 
 type OllamaProviderSettings struct {
-	BaseURL string `json:"base_url"`
-	Model   string `json:"model,omitempty"`
+	BaseURL    string   `json:"base_url"`
+	Model      string   `json:"model,omitempty"`
+	ChatModels []string `json:"chat_models,omitempty"`
 }
 
 // OpenAIProviderSettings stores the secret locally in backend-owned state for
 // v1. The secret is never exposed through ProviderView.
 type OpenAIProviderSettings struct {
-	BaseURL      string `json:"base_url"`
-	Model        string `json:"model"`
-	APIKeySecret string `json:"api_key_secret,omitempty"`
+	BaseURL      string   `json:"base_url"`
+	Model        string   `json:"model"`
+	ChatModels   []string `json:"chat_models,omitempty"`
+	APIKeySecret string   `json:"api_key_secret,omitempty"`
 }
 
 type CodexProviderSettings struct {
-	Model        string `json:"model"`
-	AuthFilePath string `json:"auth_file_path,omitempty"`
+	Model        string   `json:"model"`
+	ChatModels   []string `json:"chat_models,omitempty"`
+	AuthFilePath string   `json:"auth_file_path,omitempty"`
 }
 
 type ProxyProviderSettings struct {
@@ -52,13 +55,15 @@ type ProviderRecord struct {
 }
 
 type OpenAIProviderSettingsView struct {
-	BaseURL   string `json:"base_url"`
-	Model     string `json:"model"`
-	HasAPIKey bool   `json:"has_api_key"`
+	BaseURL    string   `json:"base_url"`
+	Model      string   `json:"model"`
+	ChatModels []string `json:"chat_models,omitempty"`
+	HasAPIKey  bool     `json:"has_api_key"`
 }
 
 type CodexProviderSettingsView struct {
 	Model         string    `json:"model"`
+	ChatModels    []string  `json:"chat_models,omitempty"`
 	AuthFilePath  string    `json:"auth_file_path,omitempty"`
 	AuthMode      string    `json:"auth_mode,omitempty"`
 	AuthState     string    `json:"auth_state"`
@@ -128,29 +133,34 @@ type UpdateProviderInput struct {
 }
 
 type CreateOllamaProviderInput struct {
-	BaseURL string
-	Model   string
+	BaseURL    string
+	Model      string
+	ChatModels []string
 }
 
 type UpdateOllamaProviderInput struct {
-	BaseURL *string
-	Model   *string
+	BaseURL    *string
+	Model      *string
+	ChatModels *[]string
 }
 
 type CreateCodexProviderInput struct {
 	Model        string
+	ChatModels   []string
 	AuthFilePath string
 }
 
 type UpdateCodexProviderInput struct {
 	Model        *string
+	ChatModels   *[]string
 	AuthFilePath *string
 }
 
 type CreateOpenAIProviderInput struct {
-	BaseURL string
-	Model   string
-	APIKey  string
+	BaseURL    string
+	Model      string
+	ChatModels []string
+	APIKey     string
 }
 
 type CreateProxyProviderInput struct {
@@ -166,6 +176,7 @@ type UpdateProxyChannelInput struct {
 type UpdateOpenAIProviderInput struct {
 	BaseURL     *string
 	Model       *string
+	ChatModels  *[]string
 	APIKey      *string
 	ClearAPIKey bool
 }

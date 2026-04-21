@@ -88,12 +88,12 @@ func (p *CodexProvider) complete(
 	info := ProviderInfo{
 		Kind:      "codex",
 		BaseURL:   credentials.BaseURL,
-		Model:     p.model,
+		Model:     firstNonEmptyString(strings.TrimSpace(request.Model), p.model),
 		Streaming: true,
 	}
 
 	payload := codexResponsesRequest{
-		Model:        p.model,
+		Model:        info.Model,
 		Instructions: request.SystemPrompt,
 		Input:        mapCodexInputMessages(request.Messages),
 		Stream:       stream,

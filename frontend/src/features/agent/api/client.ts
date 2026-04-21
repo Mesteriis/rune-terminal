@@ -376,12 +376,14 @@ export async function fetchAgentConversation() {
 
 export async function sendAgentConversationMessage(input: {
   prompt: string
+  model?: string
   attachments?: AgentAttachmentReference[]
   context: AgentConversationContext
 }) {
   return postRuntimeJSON<AgentConversationResponse>('/api/v1/agent/conversation/messages', {
     attachments: input.attachments,
     context: input.context,
+    model: input.model,
     prompt: input.prompt,
   })
 }
@@ -389,6 +391,7 @@ export async function sendAgentConversationMessage(input: {
 export async function streamAgentConversationMessage(
   input: {
     prompt: string
+    model?: string
     attachments?: AgentAttachmentReference[]
     context: AgentConversationContext
   },
@@ -408,6 +411,7 @@ export async function streamAgentConversationMessage(
         },
         body: JSON.stringify({
           prompt: input.prompt,
+          model: input.model,
           attachments: input.attachments,
           context: input.context,
         }),

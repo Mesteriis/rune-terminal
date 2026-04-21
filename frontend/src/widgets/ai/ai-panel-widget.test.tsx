@@ -78,6 +78,33 @@ function mockScrollViewportMetrics(
   }
 }
 
+function createProviderCatalogFetchResponse(chatModels: string[] = ['stub-model']) {
+  return {
+    ok: true,
+    json: async () => ({
+      providers: [
+        {
+          id: 'provider-stub',
+          kind: 'openai',
+          display_name: 'Stub OpenAI',
+          enabled: true,
+          active: true,
+          openai: {
+            base_url: 'http://stub',
+            model: 'stub-model',
+            chat_models: chatModels,
+            has_api_key: true,
+          },
+          created_at: '2026-04-21T10:00:00Z',
+          updated_at: '2026-04-21T10:00:00Z',
+        },
+      ],
+      active_provider_id: 'provider-stub',
+      supported_kinds: ['ollama', 'codex', 'openai', 'proxy'],
+    }),
+  }
+}
+
 describe('AiPanelWidget backend conversation path', () => {
   afterEach(() => {
     resetRuntimeContextCacheForTests()
@@ -127,6 +154,7 @@ describe('AiPanelWidget backend conversation path', () => {
           },
         }),
       })
+      .mockResolvedValueOnce(createProviderCatalogFetchResponse())
     vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
     vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
     vi.stubGlobal('fetch', fetchMock)
@@ -187,6 +215,7 @@ describe('AiPanelWidget backend conversation path', () => {
           },
         }),
       })
+      .mockResolvedValueOnce(createProviderCatalogFetchResponse())
       .mockResolvedValueOnce({
         ok: true,
         body: streamResponse.body,
@@ -207,12 +236,13 @@ describe('AiPanelWidget backend conversation path', () => {
     fireEvent.click(screen.getByLabelText('Send prompt'))
 
     await waitFor(() => {
-      expect(fetchMock.mock.calls[2]?.[0]).toBe(
+      expect(fetchMock.mock.calls[3]?.[0]).toBe(
         'http://127.0.0.1:8090/api/v1/agent/conversation/messages/stream',
       )
     })
-    expect(JSON.parse(String(fetchMock.mock.calls[2]?.[1]?.body))).toEqual({
+    expect(JSON.parse(String(fetchMock.mock.calls[3]?.[1]?.body))).toEqual({
       prompt: 'Привет',
+      model: 'stub-model',
       context: {
         action_source: 'frontend.ai.sidebar',
         active_widget_id: 'ai-shell-panel',
@@ -284,6 +314,7 @@ describe('AiPanelWidget backend conversation path', () => {
           },
         }),
       })
+      .mockResolvedValueOnce(createProviderCatalogFetchResponse())
       .mockResolvedValueOnce({
         ok: true,
         body: streamResponse.body,
@@ -357,6 +388,7 @@ describe('AiPanelWidget backend conversation path', () => {
           },
         }),
       })
+      .mockResolvedValueOnce(createProviderCatalogFetchResponse())
       .mockResolvedValueOnce({
         ok: true,
         body: streamResponse.body,
@@ -376,7 +408,7 @@ describe('AiPanelWidget backend conversation path', () => {
     })
     fireEvent.click(screen.getByLabelText('Send prompt'))
 
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock).toHaveBeenCalledTimes(3)
     expect(screen.getByText('Question')).toBeInTheDocument()
     expect(screen.getByText('Choose environment:')).toBeInTheDocument()
     expect(screen.queryByText('Plan')).not.toBeInTheDocument()
@@ -387,12 +419,12 @@ describe('AiPanelWidget backend conversation path', () => {
     expect(screen.getByText('Answer: staging')).toBeInTheDocument()
     expect(screen.getByText('Plan')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Approve' })).toBeInTheDocument()
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock).toHaveBeenCalledTimes(3)
 
     fireEvent.click(screen.getByRole('button', { name: 'Approve' }))
 
     await waitFor(() => {
-      expect(fetchMock.mock.calls[2]?.[0]).toBe(
+      expect(fetchMock.mock.calls[3]?.[0]).toBe(
         'http://127.0.0.1:8090/api/v1/agent/conversation/messages/stream',
       )
     })
@@ -437,6 +469,7 @@ describe('AiPanelWidget backend conversation path', () => {
           },
         }),
       })
+      .mockResolvedValueOnce(createProviderCatalogFetchResponse())
     vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
     vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
     vi.stubGlobal('fetch', fetchMock)
@@ -457,7 +490,7 @@ describe('AiPanelWidget backend conversation path', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
 
     expect(screen.getByText('Execution cancelled.')).toBeInTheDocument()
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock).toHaveBeenCalledTimes(3)
   })
 
   it('updates detail visibility immediately when the chat mode changes', () => {

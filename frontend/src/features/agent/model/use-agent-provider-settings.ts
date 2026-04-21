@@ -9,6 +9,7 @@ import {
   updateAgentProvider,
   type AgentProviderCatalog,
   type AgentProviderKind,
+  type AgentProviderView,
 } from '@/features/agent/api/provider-client'
 import {
   buildCreateProviderPayload,
@@ -72,6 +73,31 @@ function uniqueModels(models: string[]) {
   }
 
   return deduped
+}
+
+function buildChatModelsUpdatePayload(provider: AgentProviderView, chatModels: string[]) {
+  switch (provider.kind) {
+    case 'ollama':
+      return {
+        ollama: {
+          chat_models: chatModels,
+        },
+      }
+    case 'codex':
+      return {
+        codex: {
+          chat_models: chatModels,
+        },
+      }
+    case 'openai':
+      return {
+        openai: {
+          chat_models: chatModels,
+        },
+      }
+    default:
+      throw new Error(`Provider kind ${provider.kind} does not support chat model availability.`)
+  }
 }
 
 export function useAgentProviderSettings() {
@@ -424,6 +450,30 @@ export function useAgentProviderSettings() {
     }
   }, [draft, selectProviderFromCatalog])
 
+  const updateProviderChatModels = useCallback(
+    async (provider: AgentProviderView, chatModels: string[]) => {
+      setIsSaving(true)
+      setErrorMessage(null)
+      setStatusMessage(null)
+
+      try {
+        const response = await updateAgentProvider(
+          provider.id,
+          buildChatModelsUpdatePayload(provider, uniqueModels(chatModels)),
+        )
+        selectProviderFromCatalog(response.providers, response.provider.id)
+        setStatusMessage(
+          `Updated chat model availability for ${response.provider.display_name || response.provider.kind}.`,
+        )
+      } catch (error: unknown) {
+        setErrorMessage(getErrorMessage(error))
+      } finally {
+        setIsSaving(false)
+      }
+    },
+    [selectProviderFromCatalog],
+  )
+
   return {
     availableModels,
     catalog,
@@ -445,6 +495,7 @@ export function useAgentProviderSettings() {
     saveDraft,
     selectProvider,
     startCreateProvider,
+    updateProviderChatModels,
   }
 }
 

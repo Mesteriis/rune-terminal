@@ -76,9 +76,10 @@ func (p *OpenAIProvider) complete(
 	if strings.TrimSpace(p.apiKey) == "" {
 		return CompletionResult{}, p.Info(), fmt.Errorf("openai api_key is required")
 	}
+	model := firstNonEmptyString(strings.TrimSpace(request.Model), p.model)
 
 	payload := openAIChatCompletionRequest{
-		Model:  p.model,
+		Model:  model,
 		Stream: stream,
 		Messages: append([]openAIChatMessage{{
 			Role:    string(RoleSystem),
@@ -116,8 +117,8 @@ func (p *OpenAIProvider) complete(
 			return CompletionResult{}, p.Info(), err
 		}
 		info := p.Info()
-		if model := firstNonEmptyString(strings.TrimSpace(decoded.Model), p.model); model != "" {
-			info.Model = model
+		if resolvedModel := firstNonEmptyString(strings.TrimSpace(decoded.Model), model); resolvedModel != "" {
+			info.Model = resolvedModel
 		}
 		return CompletionResult{
 			Content: strings.TrimSpace(decoded.FirstContent()),
@@ -126,7 +127,7 @@ func (p *OpenAIProvider) complete(
 	}
 
 	var builder strings.Builder
-	finalModel := p.model
+	finalModel := model
 	if err := consumeOpenAIStream(resp.Body, func(chunk openAIChatCompletionChunk) error {
 		if model := strings.TrimSpace(chunk.Model); model != "" {
 			finalModel = model

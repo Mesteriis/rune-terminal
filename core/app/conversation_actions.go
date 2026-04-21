@@ -34,14 +34,15 @@ func (r *Runtime) ConversationSnapshot() conversation.Snapshot {
 func (r *Runtime) SubmitConversationPrompt(
 	ctx context.Context,
 	prompt string,
+	selectedModel string,
 	conversationContext ConversationContext,
 	attachments []conversation.AttachmentReference,
 ) (conversation.SubmitResult, error) {
-	submitRequest, profile, err := r.prepareConversationSubmit(prompt, conversationContext, attachments)
+	provider, normalizedModel, err := r.resolveConversationProviderForModel(selectedModel)
 	if err != nil {
 		return conversation.SubmitResult{}, err
 	}
-	provider, err := r.resolveConversationProvider()
+	submitRequest, profile, err := r.prepareConversationSubmit(prompt, normalizedModel, conversationContext, attachments)
 	if err != nil {
 		return conversation.SubmitResult{}, err
 	}
@@ -64,15 +65,16 @@ func (r *Runtime) SubmitConversationPrompt(
 func (r *Runtime) StreamConversationPrompt(
 	ctx context.Context,
 	prompt string,
+	selectedModel string,
 	conversationContext ConversationContext,
 	attachments []conversation.AttachmentReference,
 	emit func(conversation.StreamEvent) error,
 ) (conversation.SubmitResult, error) {
-	submitRequest, profile, err := r.prepareConversationSubmit(prompt, conversationContext, attachments)
+	provider, normalizedModel, err := r.resolveConversationProviderForModel(selectedModel)
 	if err != nil {
 		return conversation.SubmitResult{}, err
 	}
-	provider, err := r.resolveConversationProvider()
+	submitRequest, profile, err := r.prepareConversationSubmit(prompt, normalizedModel, conversationContext, attachments)
 	if err != nil {
 		return conversation.SubmitResult{}, err
 	}
@@ -94,6 +96,7 @@ func (r *Runtime) StreamConversationPrompt(
 
 func (r *Runtime) prepareConversationSubmit(
 	prompt string,
+	selectedModel string,
 	conversationContext ConversationContext,
 	attachments []conversation.AttachmentReference,
 ) (conversation.SubmitRequest, policy.EvaluationProfile, error) {
@@ -118,8 +121,30 @@ func (r *Runtime) prepareConversationSubmit(
 		SystemPrompt:   systemPrompt,
 		Prompt:         prompt,
 		ProviderPrompt: providerPrompt,
+		Model:          strings.TrimSpace(selectedModel),
 		Attachments:    attachments,
 	}, selection.EffectivePolicyProfile(), nil
+}
+
+func (r *Runtime) resolveConversationProviderForModel(selectedModel string) (conversation.Provider, string, error) {
+	model := strings.TrimSpace(selectedModel)
+	if r.ConversationProviderFactory == nil {
+		return nil, model, nil
+	}
+
+	record, err := r.activeConversationProviderRecord()
+	if err != nil {
+		return nil, "", err
+	}
+	record, model, err = applyConversationModelOverride(record, model)
+	if err != nil {
+		return nil, "", err
+	}
+	provider, err := r.ConversationProviderFactory(record)
+	if err != nil {
+		return nil, "", err
+	}
+	return provider, model, nil
 }
 
 func (r *Runtime) appendConversationAudit(

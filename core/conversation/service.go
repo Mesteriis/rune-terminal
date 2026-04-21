@@ -109,7 +109,13 @@ func (s *Service) SubmitWithProvider(ctx context.Context, provider Provider, req
 		historyForCompletion[len(historyForCompletion)-1].Content = providerPrompt
 	}
 
-	result, info, providerErr := s.completeWithProvider(provider, ctx, systemPrompt, historyForCompletion)
+	result, info, providerErr := s.completeWithProvider(
+		provider,
+		ctx,
+		systemPrompt,
+		historyForCompletion,
+		request.Model,
+	)
 	return s.appendAssistantResult(result, info, providerErr)
 }
 
@@ -145,6 +151,9 @@ func (s *Service) SubmitStreamWithProvider(
 
 	userMessage := newMessage(RoleUser, prompt, request.Attachments, StatusComplete, "", "")
 	info := provider.Info()
+	if model := strings.TrimSpace(request.Model); model != "" {
+		info.Model = model
+	}
 	assistant := newMessage(RoleAssistant, "", nil, StatusStreaming, info.Kind, info.Model)
 
 	s.mu.Lock()
@@ -173,22 +182,29 @@ func (s *Service) SubmitStreamWithProvider(
 		historyForCompletion[len(historyForCompletion)-1].Content = providerPrompt
 	}
 
-	result, finalInfo, providerErr := s.completeStreamWithProvider(provider, ctx, systemPrompt, historyForCompletion, func(delta string) error {
-		if delta == "" {
+	result, finalInfo, providerErr := s.completeStreamWithProvider(
+		provider,
+		ctx,
+		systemPrompt,
+		historyForCompletion,
+		request.Model,
+		func(delta string) error {
+			if delta == "" {
+				return nil
+			}
+			if err := s.appendAssistantDelta(assistant.ID, delta); err != nil {
+				return err
+			}
+			if emit != nil {
+				return emit(StreamEvent{
+					Type:      StreamEventTextDelta,
+					MessageID: assistant.ID,
+					Delta:     delta,
+				})
+			}
 			return nil
-		}
-		if err := s.appendAssistantDelta(assistant.ID, delta); err != nil {
-			return err
-		}
-		if emit != nil {
-			return emit(StreamEvent{
-				Type:      StreamEventTextDelta,
-				MessageID: assistant.ID,
-				Delta:     delta,
-			})
-		}
-		return nil
-	})
+		},
+	)
 
 	return s.finalizeAssistantStreamResult(assistant.ID, result, finalInfo, providerErr, emit)
 }
@@ -216,7 +232,7 @@ func (s *Service) AppendAssistantPromptWithProvider(
 	s.mu.RUnlock()
 
 	history = append(history, newMessage(RoleUser, prompt, nil, StatusComplete, "", ""))
-	result, info, providerErr := s.completeWithProvider(provider, ctx, systemPrompt, history)
+	result, info, providerErr := s.completeWithProvider(provider, ctx, systemPrompt, history, "")
 	return s.appendAssistantResult(result, info, providerErr)
 }
 
@@ -337,7 +353,7 @@ func cloneAttachmentReferences(attachments []AttachmentReference) []AttachmentRe
 }
 
 func (s *Service) complete(ctx context.Context, systemPrompt string, history []Message) (CompletionResult, ProviderInfo, error) {
-	return s.completeWithProvider(s.provider, ctx, systemPrompt, history)
+	return s.completeWithProvider(s.provider, ctx, systemPrompt, history, "")
 }
 
 func (s *Service) completeWithProvider(
@@ -345,12 +361,14 @@ func (s *Service) completeWithProvider(
 	ctx context.Context,
 	systemPrompt string,
 	history []Message,
+	model string,
 ) (CompletionResult, ProviderInfo, error) {
 	if provider == nil {
 		provider = s.provider
 	}
 	request := CompletionRequest{
 		SystemPrompt: systemPrompt,
+		Model:        strings.TrimSpace(model),
 		Messages:     pruneCompletionHistory(history, s.budget),
 	}
 	return provider.Complete(ctx, request)
@@ -362,7 +380,7 @@ func (s *Service) completeStream(
 	history []Message,
 	onTextDelta func(string) error,
 ) (CompletionResult, ProviderInfo, error) {
-	return s.completeStreamWithProvider(s.provider, ctx, systemPrompt, history, onTextDelta)
+	return s.completeStreamWithProvider(s.provider, ctx, systemPrompt, history, "", onTextDelta)
 }
 
 func (s *Service) completeStreamWithProvider(
@@ -370,6 +388,7 @@ func (s *Service) completeStreamWithProvider(
 	ctx context.Context,
 	systemPrompt string,
 	history []Message,
+	model string,
 	onTextDelta func(string) error,
 ) (CompletionResult, ProviderInfo, error) {
 	if provider == nil {
@@ -377,6 +396,7 @@ func (s *Service) completeStreamWithProvider(
 	}
 	request := CompletionRequest{
 		SystemPrompt: systemPrompt,
+		Model:        strings.TrimSpace(model),
 		Messages:     pruneCompletionHistory(history, s.budget),
 	}
 	return provider.CompleteStream(ctx, request, onTextDelta)

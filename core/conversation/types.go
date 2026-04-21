@@ -46,6 +46,7 @@ type SubmitRequest struct {
 	SystemPrompt   string
 	Prompt         string
 	ProviderPrompt string
+	Model          string
 	Attachments    []AttachmentReference
 }
 
@@ -77,6 +78,7 @@ type ChatMessage struct {
 
 type CompletionRequest struct {
 	SystemPrompt string
+	Model        string
 	Messages     []ChatMessage
 }
 

@@ -9,16 +9,19 @@ export type AgentProxyChannelStatus = 'active' | 'suspended' | 'disabled'
 export type AgentOllamaProviderSettings = {
   base_url: string
   model?: string
+  chat_models?: string[]
 }
 
 export type AgentOpenAIProviderSettingsView = {
   base_url: string
   model: string
+  chat_models?: string[]
   has_api_key: boolean
 }
 
 export type AgentCodexProviderSettingsView = {
   model: string
+  chat_models?: string[]
   auth_file_path?: string
   auth_mode?: string
   auth_state: 'ready' | 'missing' | 'invalid'
@@ -94,14 +97,17 @@ export type CreateAgentProviderPayload = {
   ollama?: {
     base_url: string
     model?: string
+    chat_models?: string[]
   }
   codex?: {
     model?: string
+    chat_models?: string[]
     auth_file_path?: string
   }
   openai?: {
     base_url?: string
     model?: string
+    chat_models?: string[]
     api_key: string
   }
   proxy?: {
@@ -132,14 +138,17 @@ export type UpdateAgentProviderPayload = {
   ollama?: {
     base_url?: string
     model?: string
+    chat_models?: string[]
   }
   codex?: {
     model?: string
+    chat_models?: string[]
     auth_file_path?: string
   }
   openai?: {
     base_url?: string
     model?: string
+    chat_models?: string[]
     api_key?: string
   }
   proxy?: {

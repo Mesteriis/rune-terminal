@@ -139,10 +139,13 @@ export function AiPanelWidget({ hostId, mode = 'chat', state }: AiPanelWidgetPro
           </ScrollArea>
           <AiComposerWidget
             activeTool={panelState.activeTool}
+            availableModels={state == null ? agentPanel.availableModels : undefined}
             disabled={state == null ? agentPanel.isSubmitting || agentPanel.isInteractionPending : false}
+            onModelChange={state == null ? agentPanel.setSelectedModel : undefined}
             onSubmit={state == null ? agentPanel.submitDraft : undefined}
             onValueChange={state == null ? agentPanel.setDraft : undefined}
             placeholder={panelState.composerPlaceholder}
+            selectedModel={state == null ? agentPanel.selectedModel : undefined}
             submitDisabled={
               state == null
                 ? agentPanel.isSubmitting || agentPanel.isInteractionPending || agentPanel.draft.trim() === ''

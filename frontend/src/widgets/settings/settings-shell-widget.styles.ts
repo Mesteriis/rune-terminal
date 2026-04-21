@@ -1,7 +1,7 @@
 export const settingsShellRootStyle = {
   display: 'grid',
   gridTemplateColumns: 'minmax(13rem, 17rem) minmax(0, 1fr)',
-  gap: 'var(--gap-md)',
+  gap: 'var(--gap-lg)',
   flex: 1,
   minHeight: 0,
 }
@@ -9,8 +9,9 @@ export const settingsShellRootStyle = {
 export const settingsShellSidebarStyle = {
   display: 'flex',
   flexDirection: 'column' as const,
-  gap: 'var(--gap-md)',
-  padding: 'var(--padding-panel)',
+  gap: 'var(--gap-xs)',
+  paddingRight: 'var(--gap-md)',
+  borderRight: '1px solid var(--color-border-subtle)',
   minHeight: 0,
 }
 
@@ -20,11 +21,8 @@ export const settingsShellSidebarSectionStyle = {
   gap: 'var(--gap-xs)',
 }
 
-export const settingsShellSidebarLabelStyle = {
-  color: 'var(--color-text-secondary)',
-  fontSize: '0.78rem',
-  letterSpacing: '0.08em',
-  textTransform: 'uppercase' as const,
+export const settingsShellSidebarSectionSpacingStyle = {
+  marginTop: 'var(--gap-sm)',
 }
 
 export const settingsShellNavButtonStyle = {
@@ -35,13 +33,28 @@ export const settingsShellNavButtonStyle = {
   gap: '0.15rem',
   padding: '0.75rem 0.9rem',
   textAlign: 'left' as const,
+  justifyContent: 'flex-start',
+  background: 'transparent',
+  border: 'none',
+  boxShadow: 'none',
+  backdropFilter: 'none',
+  WebkitBackdropFilter: 'none',
+  borderRadius: 'var(--radius-sm)',
+}
+
+export const settingsShellParentNavStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 'var(--gap-sm)',
+  width: '100%',
 }
 
 export const settingsShellNestedNavStyle = {
   display: 'flex',
   flexDirection: 'column' as const,
   gap: 'var(--gap-xs)',
-  marginLeft: 'var(--gap-xs)',
+  marginLeft: 'var(--gap-sm)',
   paddingLeft: 'var(--gap-sm)',
   borderLeft: '1px solid var(--color-border-subtle)',
 }
@@ -49,7 +62,6 @@ export const settingsShellNestedNavStyle = {
 export const settingsShellContentStyle = {
   display: 'flex',
   flexDirection: 'column' as const,
-  gap: 'var(--gap-md)',
   minHeight: 0,
 }
 
@@ -64,14 +76,15 @@ export const settingsShellContentScrollStyle = {
   flexDirection: 'column' as const,
   gap: 'var(--gap-md)',
   minHeight: 0,
-  paddingRight: 'var(--gap-xs)',
+  paddingRight: 'var(--gap-sm)',
 }
 
 export const settingsShellSectionCardStyle = {
   display: 'flex',
   flexDirection: 'column' as const,
   gap: 'var(--gap-sm)',
-  padding: 'var(--padding-panel)',
+  padding: '0 0 var(--gap-md) 0',
+  borderBottom: '1px solid var(--color-border-subtle)',
 }
 
 export const settingsShellCardsGridStyle = {
@@ -95,7 +108,7 @@ export const settingsShellListRowStyle = {
   padding: '0.75rem 0.9rem',
   border: '1px solid var(--color-border-subtle)',
   borderRadius: 'var(--radius-md)',
-  background: 'var(--color-surface-glass-soft)',
+  background: 'color-mix(in srgb, var(--color-surface-glass-soft) 70%, transparent)',
 }
 
 export const settingsShellBadgeStyle = {

@@ -2,6 +2,7 @@ package agent
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 	"time"
 
@@ -129,8 +130,9 @@ func buildProviderRecord(input CreateProviderInput) (ProviderRecord, error) {
 			return ProviderRecord{}, fmt.Errorf("%w: ollama config is required", ErrProviderInvalidConfig)
 		}
 		record.Ollama = &OllamaProviderSettings{
-			BaseURL: normalizeProviderBaseURL(input.Ollama.BaseURL),
-			Model:   strings.TrimSpace(input.Ollama.Model),
+			BaseURL:    normalizeProviderBaseURL(input.Ollama.BaseURL),
+			Model:      strings.TrimSpace(input.Ollama.Model),
+			ChatModels: normalizeProviderChatModels(input.Ollama.Model, input.Ollama.ChatModels),
 		}
 	case ProviderKindCodex:
 		if input.Codex == nil || input.Ollama != nil || input.OpenAI != nil || input.Proxy != nil {
@@ -138,6 +140,7 @@ func buildProviderRecord(input CreateProviderInput) (ProviderRecord, error) {
 		}
 		record.Codex = &CodexProviderSettings{
 			Model:        strings.TrimSpace(firstNonEmpty(input.Codex.Model, defaultCodexModel)),
+			ChatModels:   normalizeProviderChatModels(firstNonEmpty(input.Codex.Model, defaultCodexModel), input.Codex.ChatModels),
 			AuthFilePath: strings.TrimSpace(input.Codex.AuthFilePath),
 		}
 	case ProviderKindOpenAI:
@@ -145,8 +148,12 @@ func buildProviderRecord(input CreateProviderInput) (ProviderRecord, error) {
 			return ProviderRecord{}, fmt.Errorf("%w: openai config is required", ErrProviderInvalidConfig)
 		}
 		record.OpenAI = &OpenAIProviderSettings{
-			BaseURL:      normalizeProviderBaseURL(firstNonEmpty(input.OpenAI.BaseURL, defaultOpenAIBaseURL)),
-			Model:        strings.TrimSpace(firstNonEmpty(input.OpenAI.Model, defaultOpenAIModel)),
+			BaseURL: normalizeProviderBaseURL(firstNonEmpty(input.OpenAI.BaseURL, defaultOpenAIBaseURL)),
+			Model:   strings.TrimSpace(firstNonEmpty(input.OpenAI.Model, defaultOpenAIModel)),
+			ChatModels: normalizeProviderChatModels(
+				firstNonEmpty(input.OpenAI.Model, defaultOpenAIModel),
+				input.OpenAI.ChatModels,
+			),
 			APIKeySecret: strings.TrimSpace(input.OpenAI.APIKey),
 		}
 	case ProviderKindProxy:
@@ -191,6 +198,11 @@ func applyProviderUpdate(record ProviderRecord, input UpdateProviderInput) (Prov
 			if input.Ollama.Model != nil {
 				updated.Ollama.Model = strings.TrimSpace(*input.Ollama.Model)
 			}
+			if input.Ollama.ChatModels != nil {
+				updated.Ollama.ChatModels = normalizeProviderChatModels(updated.Ollama.Model, *input.Ollama.ChatModels)
+			} else {
+				updated.Ollama.ChatModels = normalizeProviderChatModels(updated.Ollama.Model, updated.Ollama.ChatModels)
+			}
 		}
 	case ProviderKindCodex:
 		if input.Ollama != nil || input.OpenAI != nil || input.Proxy != nil {
@@ -202,6 +214,11 @@ func applyProviderUpdate(record ProviderRecord, input UpdateProviderInput) (Prov
 			}
 			if input.Codex.Model != nil {
 				updated.Codex.Model = strings.TrimSpace(*input.Codex.Model)
+			}
+			if input.Codex.ChatModels != nil {
+				updated.Codex.ChatModels = normalizeProviderChatModels(updated.Codex.Model, *input.Codex.ChatModels)
+			} else {
+				updated.Codex.ChatModels = normalizeProviderChatModels(updated.Codex.Model, updated.Codex.ChatModels)
 			}
 			if input.Codex.AuthFilePath != nil {
 				updated.Codex.AuthFilePath = strings.TrimSpace(*input.Codex.AuthFilePath)
@@ -223,6 +240,11 @@ func applyProviderUpdate(record ProviderRecord, input UpdateProviderInput) (Prov
 			}
 			if input.OpenAI.Model != nil {
 				updated.OpenAI.Model = strings.TrimSpace(*input.OpenAI.Model)
+			}
+			if input.OpenAI.ChatModels != nil {
+				updated.OpenAI.ChatModels = normalizeProviderChatModels(updated.OpenAI.Model, *input.OpenAI.ChatModels)
+			} else {
+				updated.OpenAI.ChatModels = normalizeProviderChatModels(updated.OpenAI.Model, updated.OpenAI.ChatModels)
 			}
 			if input.OpenAI.ClearAPIKey {
 				updated.OpenAI.APIKeySecret = ""
@@ -338,6 +360,13 @@ func normalizeProviderState(state State) (State, bool) {
 		normalized.ActiveProviderID = defaultActiveProviderID()
 		changed = true
 	}
+	for index := range normalized.Providers {
+		nextProvider := normalizeProviderRecord(normalized.Providers[index])
+		if !reflect.DeepEqual(nextProvider, normalized.Providers[index]) {
+			normalized.Providers[index] = nextProvider
+			changed = true
+		}
+	}
 	if strings.TrimSpace(normalized.ActiveProviderID) == "" {
 		normalized.ActiveProviderID = selectDefaultActiveProviderID(normalized.Providers)
 		changed = true
@@ -377,4 +406,54 @@ func firstNonEmpty(values ...string) string {
 		}
 	}
 	return ""
+}
+
+func normalizeProviderRecord(record ProviderRecord) ProviderRecord {
+	normalized := cloneProviderRecord(record)
+	if normalized.Ollama != nil {
+		normalized.Ollama.ChatModels = normalizeProviderChatModels(
+			normalized.Ollama.Model,
+			normalized.Ollama.ChatModels,
+		)
+	}
+	if normalized.Codex != nil {
+		normalized.Codex.ChatModels = normalizeProviderChatModels(
+			normalized.Codex.Model,
+			normalized.Codex.ChatModels,
+		)
+	}
+	if normalized.OpenAI != nil {
+		normalized.OpenAI.ChatModels = normalizeProviderChatModels(
+			normalized.OpenAI.Model,
+			normalized.OpenAI.ChatModels,
+		)
+	}
+	return normalized
+}
+
+func normalizeProviderChatModels(defaultModel string, rawModels []string) []string {
+	models := make([]string, 0, len(rawModels)+1)
+	seen := make(map[string]struct{}, len(rawModels)+1)
+
+	appendModel := func(raw string) {
+		model := strings.TrimSpace(raw)
+		if model == "" {
+			return
+		}
+		if _, ok := seen[model]; ok {
+			return
+		}
+		seen[model] = struct{}{}
+		models = append(models, model)
+	}
+
+	appendModel(defaultModel)
+	for _, rawModel := range rawModels {
+		appendModel(rawModel)
+	}
+
+	if len(models) == 0 {
+		return nil
+	}
+	return models
 }

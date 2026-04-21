@@ -34,6 +34,10 @@ func defaultProviders() []ProviderRecord {
 			Ollama: &OllamaProviderSettings{
 				BaseURL: normalizeProviderBaseURL(defaultEnvString("RTERM_OLLAMA_BASE_URL", "http://192.168.1.2:11434")),
 				Model:   strings.TrimSpace(defaultEnvString("RTERM_OLLAMA_MODEL", "")),
+				ChatModels: normalizeProviderChatModels(
+					defaultEnvString("RTERM_OLLAMA_MODEL", ""),
+					nil,
+				),
 			},
 			CreatedAt: now,
 			UpdatedAt: now,

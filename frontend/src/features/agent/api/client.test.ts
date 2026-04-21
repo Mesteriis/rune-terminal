@@ -216,6 +216,7 @@ describe('agent api client', () => {
 
     await sendAgentConversationMessage({
       prompt: 'hello there',
+      model: 'gpt-5-mini',
       attachments: [
         {
           id: 'att_1',
@@ -245,6 +246,7 @@ describe('agent api client', () => {
     })
     expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({
       prompt: 'hello there',
+      model: 'gpt-5-mini',
       attachments: [
         {
           id: 'att_1',
@@ -303,6 +305,7 @@ describe('agent api client', () => {
     const connection = await streamAgentConversationMessage(
       {
         prompt: 'hello there',
+        model: 'gpt-5-mini',
         context: {
           action_source: 'frontend.ai.sidebar',
           active_widget_id: 'ai-shell-panel',
@@ -331,6 +334,7 @@ describe('agent api client', () => {
     })
     expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({
       prompt: 'hello there',
+      model: 'gpt-5-mini',
       context: {
         action_source: 'frontend.ai.sidebar',
         active_widget_id: 'ai-shell-panel',

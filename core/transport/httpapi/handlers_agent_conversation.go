@@ -5,12 +5,14 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/Mesteriis/rune-terminal/core/agent"
 	"github.com/Mesteriis/rune-terminal/core/app"
 	"github.com/Mesteriis/rune-terminal/core/conversation"
 )
 
 type conversationMessagePayload struct {
 	Prompt      string                             `json:"prompt"`
+	Model       string                             `json:"model,omitempty"`
 	Attachments []conversation.AttachmentReference `json:"attachments,omitempty"`
 	Context     app.ConversationContext            `json:"context"`
 }
@@ -44,7 +46,13 @@ func (api *API) handleSubmitConversationMessage(w http.ResponseWriter, r *http.R
 		writeBadRequest(w, "invalid_request", err)
 		return
 	}
-	result, err := api.runtime.SubmitConversationPrompt(r.Context(), payload.Prompt, payload.Context, payload.Attachments)
+	result, err := api.runtime.SubmitConversationPrompt(
+		r.Context(),
+		payload.Prompt,
+		payload.Model,
+		payload.Context,
+		payload.Attachments,
+	)
 	if err != nil {
 		writeConversationError(w, err)
 		return
@@ -86,7 +94,14 @@ func (api *API) handleStreamConversationMessage(w http.ResponseWriter, r *http.R
 		return nil
 	}
 
-	if _, err := api.runtime.StreamConversationPrompt(r.Context(), payload.Prompt, payload.Context, payload.Attachments, emit); err != nil {
+	if _, err := api.runtime.StreamConversationPrompt(
+		r.Context(),
+		payload.Prompt,
+		payload.Model,
+		payload.Context,
+		payload.Attachments,
+		emit,
+	); err != nil {
 		if !emitted && r.Context().Err() == nil {
 			_ = emit(conversation.StreamEvent{
 				Type:  conversation.StreamEventError,
@@ -160,6 +175,10 @@ func writeConversationError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, conversation.ErrInvalidPrompt):
 		writeBadRequest(w, "invalid_prompt", err)
+	case errors.Is(err, app.ErrConversationModelUnavailable):
+		writeError(w, http.StatusBadRequest, "invalid_model_selection", err.Error())
+	case errors.Is(err, agent.ErrProviderInvalidConfig):
+		writeError(w, http.StatusBadRequest, "invalid_provider_config", err.Error())
 	case errors.Is(err, conversation.ErrInvalidAttachmentPath):
 		writeError(w, http.StatusBadRequest, "invalid_attachment_path", err.Error())
 	case errors.Is(err, conversation.ErrAttachmentNotFound):

@@ -113,7 +113,8 @@ func TestUpdateProviderUpdatesPersistedConfig(t *testing.T) {
 	handler.ServeHTTP(updateRecorder, authedJSONRequest(t, http.MethodPatch, "/api/v1/agent/providers/"+created.Provider.ID, map[string]any{
 		"display_name": "OpenAI Release",
 		"openai": map[string]any{
-			"model": "gpt-4.1-mini",
+			"model":       "gpt-4.1-mini",
+			"chat_models": []string{"gpt-4.1"},
 		},
 	}))
 
@@ -124,7 +125,8 @@ func TestUpdateProviderUpdatesPersistedConfig(t *testing.T) {
 		Provider struct {
 			DisplayName string `json:"display_name"`
 			OpenAI      struct {
-				Model string `json:"model"`
+				Model      string   `json:"model"`
+				ChatModels []string `json:"chat_models"`
 			} `json:"openai"`
 		} `json:"provider"`
 	}
@@ -132,6 +134,9 @@ func TestUpdateProviderUpdatesPersistedConfig(t *testing.T) {
 		t.Fatalf("unmarshal update: %v", err)
 	}
 	if payload.Provider.DisplayName != "OpenAI Release" || payload.Provider.OpenAI.Model != "gpt-4.1-mini" {
+		t.Fatalf("unexpected provider payload: %#v", payload.Provider)
+	}
+	if !slices.Equal(payload.Provider.OpenAI.ChatModels, []string{"gpt-4.1-mini", "gpt-4.1"}) {
 		t.Fatalf("unexpected provider payload: %#v", payload.Provider)
 	}
 }

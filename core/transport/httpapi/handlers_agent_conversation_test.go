@@ -95,6 +95,26 @@ func TestSubmitConversationMessagePersistsTranscript(t *testing.T) {
 	}
 }
 
+func TestSubmitConversationMessagePassesSelectedModelToProvider(t *testing.T) {
+	t.Parallel()
+
+	provider := &capturingConversationProvider{}
+	handler, _ := newTestHandlerWithConversationProvider(t, provider, testAuthToken)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPost, "/api/v1/agent/conversation/messages", map[string]any{
+		"prompt": "hello there",
+		"model":  "gpt-5-mini",
+	}))
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+	if provider.request.Model != "gpt-5-mini" {
+		t.Fatalf("expected selected model in provider request, got %#v", provider.request)
+	}
+}
+
 func TestSubmitConversationMessagePersistsAttachmentReferences(t *testing.T) {
 	t.Parallel()
 
@@ -391,6 +411,10 @@ type httpConversationStreamProvider struct {
 	err    error
 }
 
+type capturingConversationProvider struct {
+	request conversation.CompletionRequest
+}
+
 func readConversationStreamEvents(t *testing.T, reader io.Reader, count int, timeout time.Duration) []conversationStreamEnvelope {
 	t.Helper()
 
@@ -502,6 +526,51 @@ func (p *httpConversationStreamProvider) CompleteStream(
 		}
 	}
 	return p.result, p.info, p.err
+}
+
+func (p *capturingConversationProvider) Info() conversation.ProviderInfo {
+	return conversation.ProviderInfo{
+		Kind:      "capture",
+		BaseURL:   "http://capture",
+		Model:     "capture-model",
+		Streaming: false,
+	}
+}
+
+func (p *capturingConversationProvider) Complete(
+	_ context.Context,
+	request conversation.CompletionRequest,
+) (conversation.CompletionResult, conversation.ProviderInfo, error) {
+	p.request = request
+	info := p.Info()
+	if request.Model != "" {
+		info.Model = request.Model
+	}
+	return conversation.CompletionResult{
+		Content: "capture reply",
+		Model:   info.Model,
+	}, info, nil
+}
+
+func (p *capturingConversationProvider) CompleteStream(
+	_ context.Context,
+	request conversation.CompletionRequest,
+	onTextDelta func(string) error,
+) (conversation.CompletionResult, conversation.ProviderInfo, error) {
+	p.request = request
+	if onTextDelta != nil {
+		if err := onTextDelta("capture reply"); err != nil {
+			return conversation.CompletionResult{}, p.Info(), err
+		}
+	}
+	info := p.Info()
+	if request.Model != "" {
+		info.Model = request.Model
+	}
+	return conversation.CompletionResult{
+		Content: "capture reply",
+		Model:   info.Model,
+	}, info, nil
 }
 
 func TestCreateAttachmentReferenceRejectsInvalidPath(t *testing.T) {

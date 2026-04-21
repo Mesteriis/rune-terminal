@@ -36,6 +36,7 @@ describe('agent provider client', () => {
               active: true,
               ollama: {
                 base_url: 'http://127.0.0.1:11434/v1',
+                chat_models: ['llama3.2:3b'],
               },
               created_at: '2026-04-21T10:00:00Z',
               updated_at: '2026-04-21T10:00:00Z',
@@ -59,6 +60,7 @@ describe('agent provider client', () => {
           active: true,
           ollama: {
             base_url: 'http://127.0.0.1:11434/v1',
+            chat_models: ['llama3.2:3b'],
           },
           created_at: '2026-04-21T10:00:00Z',
           updated_at: '2026-04-21T10:00:00Z',
@@ -117,15 +119,8 @@ describe('agent provider client', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     await updateAgentProvider('provider-1', {
-      proxy: {
-        channels: [
-          {
-            id: 'codex-primary',
-            name: 'Codex EU',
-            service_type: 'openai',
-            base_url: 'https://example.eu/v1',
-          },
-        ],
+      openai: {
+        chat_models: ['gpt-5', 'gpt-5-mini'],
       },
     })
 
@@ -134,15 +129,8 @@ describe('agent provider client', () => {
       method: 'PATCH',
     })
     expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({
-      proxy: {
-        channels: [
-          {
-            id: 'codex-primary',
-            name: 'Codex EU',
-            service_type: 'openai',
-            base_url: 'https://example.eu/v1',
-          },
-        ],
+      openai: {
+        chat_models: ['gpt-5', 'gpt-5-mini'],
       },
     })
   })
