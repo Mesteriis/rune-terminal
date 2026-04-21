@@ -391,7 +391,7 @@ fn start_or_attach_runtime(app: &AppHandle, state: &RuntimeState) -> Result<(), 
 fn shutdown_runtime(runtime: &mut RuntimeRuntime) -> Result<(), RuntimeError> {
     if let Some(watcher) = runtime.watcher.as_mut() {
         if watcher.started_by_ui {
-            let _ = graceful_shutdown_watcher(watcher);
+            graceful_shutdown_watcher(watcher)?;
         }
     }
 
@@ -401,9 +401,9 @@ fn shutdown_runtime(runtime: &mut RuntimeRuntime) -> Result<(), RuntimeError> {
     Ok(())
 }
 
-fn graceful_shutdown_watcher(watcher: &mut RuntimeProcess) {
+fn graceful_shutdown_watcher(watcher: &mut RuntimeProcess) -> Result<(), RuntimeError> {
     if !is_owned_watcher(watcher) {
-        return;
+        return Ok(());
     }
 
     let token = watcher
@@ -427,6 +427,25 @@ fn graceful_shutdown_watcher(watcher: &mut RuntimeProcess) {
 
     if response.is_err() {
         stop_process(watcher);
+        if !wait_for_service_down(&format!("{}/health", watcher.url), Duration::from_secs(5)) {
+            return Err(RuntimeError::Http(
+                "watcher process did not terminate after kill fallback".into(),
+            ));
+        }
+        return Ok(());
+    }
+
+    if wait_for_service_down(&format!("{}/health", watcher.url), Duration::from_secs(5)) {
+        return Ok(());
+    }
+
+    stop_process(watcher);
+    if wait_for_service_down(&format!("{}/health", watcher.url), Duration::from_secs(5)) {
+        Ok(())
+    } else {
+        Err(RuntimeError::Http(
+            "watcher did not reach terminal shutdown state".into(),
+        ))
     }
 }
 
@@ -765,6 +784,23 @@ fn wait_for_health_service_with_retry(url: &str, service: &str) -> Option<Health
         std::thread::sleep(Duration::from_millis(200));
     }
     None
+}
+
+fn wait_for_service_down(url: &str, timeout: Duration) -> bool {
+    let deadline = Instant::now() + timeout;
+    while Instant::now() < deadline {
+        let request = create_http_client().get(url).send();
+        match request {
+            Ok(response) => {
+                if response.status().as_u16() >= 500 {
+                    return true;
+                }
+            }
+            Err(_) => return true,
+        }
+        std::thread::sleep(Duration::from_millis(150));
+    }
+    false
 }
 
 fn wait_for_ready_file(path: &Path) -> Result<ReadyFilePayload, RuntimeError> {
