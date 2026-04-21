@@ -8,9 +8,12 @@
   - frontend AI sidebar main path loads backend conversation state from `GET /api/v1/agent/conversation`
   - existing textarea + send icon submit to `POST /api/v1/agent/conversation/messages/stream`
   - transcript rendering now projects backend messages into a chat-focused `ChatMessageView` instead of the earlier prompt/snapshot card model
+  - the visible transcript is now a single top-anchored message stream with newest messages first instead of nested cards or snapshot containers
   - user messages render as right-aligned bubbles and assistant messages render as left-aligned bubbles with no visible `Assistant N` / snapshot-era labels
   - assistant execution metadata is hidden by default behind a per-message `Show details` toggle, with `prompt`, `reasoning`, `summary`, and compact metadata rendered only in the secondary details surface
   - assistant rows now expose a subdued `{model} · {status}` line below the main bubble
+  - assistant replies and the user prompts beneath them are visually grouped with tighter pair spacing, while separate exchanges retain a larger gap
+  - transcript scrolling is now top-anchor aware: if the user is already near the latest message the viewport snaps to the top on updates, otherwise the viewport offset is preserved while new content is inserted above
   - a UI-only `chat` / `dev` / `debug` header control now switches transcript visibility instantly without reload; it does not call backend agent mode selection routes
   - runtime transport still resolves through the shared frontend runtime context and no backend contract, API field, or execution pipeline change was introduced
   - visible assistant output still updates incrementally from backend stream events and the busy overlay/composer disabled state remains tied to the real stream lifecycle
@@ -69,11 +72,11 @@
     - `text/event-stream`
     - event mapping on the visible sidebar path:
       - `message-start`
-        - creates or updates the pending assistant card
+        - creates or updates the pending assistant transcript entry
       - `text-delta`
-        - appends partial assistant content into the existing transcript card
+        - appends partial assistant content into the existing transcript entry
       - `message-complete`
-        - finalizes the assistant card and clears working state
+        - finalizes the assistant transcript entry and clears working state
       - `error`
         - finalizes the assistant error state when a message payload is present, or appends the existing backend error status prompt when only an error string is present
 
@@ -117,9 +120,9 @@ These client functions were added so the frontend follows the real backend contr
 
 - The `AiPanelWidget` default path no longer uses `aiPanelWidgetMockState`.
 - The sidebar no longer projects backend conversation messages into the old prompt/snapshot card layout.
-- The visible transcript now renders backend messages through the chat-focused `ChatMessageView` mapper and keeps execution/audit data out of the primary bubble surface.
+- The visible transcript now renders backend messages through the chat-focused `ChatMessageView` mapper, keeps execution/audit data out of the primary bubble surface, and orders the stream newest-first so the latest exchange stays at the top.
 - The existing textarea and send icon still submit through the backend SSE route.
-- The visible transcript still appends a local user message immediately, creates the assistant entry on `message-start`, and updates assistant content incrementally on `text-delta`.
+- The visible transcript now prepends the local user message immediately, prepends the assistant entry on `message-start`, and updates assistant content incrementally on `text-delta` without forcing the viewport away from older messages being read.
 - Backend error events and stream transport failures still surface inside the existing transcript surface instead of adding a new panel, toast, or control.
 - Assistant details are now collapsed by default in `chat` mode, auto-expanded in `dev` mode, and always visible in `debug` mode.
 
@@ -140,10 +143,12 @@ These client functions were added so the frontend follows the real backend contr
 
 - Formatting changes:
   - prompt/snapshot cards were replaced with conversational left/right chat bubbles
+  - the transcript was reordered into a newest-first top-anchored stream
+  - scroll updates now preserve the reader position unless the viewport is already near the latest message anchor
   - assistant execution details moved into a collapsed secondary panel
   - assistant rows gained a subdued compact metadata line
   - the AI header gained a UI-only `chat` / `dev` / `debug` visibility control
-  - spacing, max width, line height, and contrast were tuned to reduce transcript noise
+  - spacing, pair grouping, max width, line height, and contrast were tuned to reduce transcript noise
 
 ### Placement blockers requiring user direction
 
