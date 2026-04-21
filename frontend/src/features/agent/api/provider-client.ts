@@ -75,6 +75,9 @@ export type AgentProviderModelCatalog = {
 export type DiscoverAgentProviderModelsPayload = {
   provider_id?: string
   kind?: AgentProviderKind
+  ollama?: {
+    base_url?: string
+  }
   codex?: {
     auth_file_path?: string
   }

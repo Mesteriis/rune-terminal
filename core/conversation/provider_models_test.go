@@ -45,6 +45,34 @@ func TestListOpenAIModelsLoadsModelIDs(t *testing.T) {
 	}
 }
 
+func TestListOllamaModelsLoadsTagNames(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/tags" {
+			t.Fatalf("unexpected path: %s", r.URL.Path)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"models": []map[string]any{
+				{"name": "llama3.2:3b"},
+				{"name": "qwen3:8b"},
+				{"name": "llama3.2:3b"},
+			},
+		})
+	}))
+	defer server.Close()
+
+	models, err := ListOllamaModels(context.Background(), ProviderConfig{
+		BaseURL: server.URL + "/v1",
+	})
+	if err != nil {
+		t.Fatalf("ListOllamaModels error: %v", err)
+	}
+	if !slices.Equal(models, []string{"llama3.2:3b", "qwen3:8b"}) {
+		t.Fatalf("unexpected models: %#v", models)
+	}
+}
+
 func TestListCodexModelsLoadsChatGPTModelCatalog(t *testing.T) {
 	t.Parallel()
 

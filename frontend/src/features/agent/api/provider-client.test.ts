@@ -189,4 +189,43 @@ describe('agent provider client', () => {
       },
     })
   })
+
+  it('loads ollama models through the discovery route', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          models: ['llama3.2:3b', 'qwen3:8b'],
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      discoverAgentProviderModels({
+        kind: 'ollama',
+        ollama: {
+          base_url: 'http://127.0.0.1:11434',
+        },
+      }),
+    ).resolves.toEqual({
+      models: ['llama3.2:3b', 'qwen3:8b'],
+    })
+
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({
+      kind: 'ollama',
+      ollama: {
+        base_url: 'http://127.0.0.1:11434',
+      },
+    })
+  })
 })

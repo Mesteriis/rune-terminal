@@ -65,11 +65,14 @@
   - `codex`
   - `openai`
 - The unfinished `proxy` kind remains in the backend catalog and existing records remain editable, but it is intentionally hidden from the new-provider toolbar until the CLI-backed routing slice replaces the current draft proxy path.
-- `codex` and `openai` settings now use backend-backed model discovery:
+- all direct-provider settings now use backend-backed model discovery:
+  - `ollama` loads installed model names from the configured Ollama host
   - the model field is a dropdown backed by `POST /api/v1/agent/providers/models`
+  - the list auto-loads when the relevant provider settings change; the inline button remains only as an explicit retry path
   - `codex` model discovery auto-loads from local auth state
   - saved `openai` providers auto-load models through the stored backend secret
-  - unsaved `openai` drafts require an API key before the refresh action can load models
+  - unsaved `openai` drafts auto-load models as soon as an API key is present
+  - new `ollama` drafts auto-select the first discovered installed model when no model has been chosen yet
 
 ## Backend provider configuration runtime
 
@@ -165,8 +168,9 @@
     - `providers`
 - `POST /api/v1/agent/providers/models`
   - loads the upstream model catalog for:
-    - an unsaved `codex` or `openai` draft
+    - an unsaved `ollama`, `codex`, or `openai` draft
     - an existing saved provider via `provider_id`
+  - uses `ollama /api/tags` for native Ollama discovery and normalizes `/v1` suffixes away for direct Ollama runtime/discovery compatibility
   - uses stored backend secrets when a saved OpenAI-compatible provider is queried without a replacement `api_key`
   - uses local Codex auth from `~/.codex/auth.json` (or the saved custom auth-file path) for Codex model discovery
   - returns:

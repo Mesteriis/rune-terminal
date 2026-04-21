@@ -302,6 +302,47 @@ func TestDiscoverProviderModelsLoadsOpenAIModelsForDraft(t *testing.T) {
 	}
 }
 
+func TestDiscoverProviderModelsLoadsOllamaModelsForDraft(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/tags" {
+			t.Fatalf("unexpected path: %s", r.URL.Path)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"models": []map[string]any{
+				{"name": "llama3.2:3b"},
+				{"name": "qwen3:8b"},
+			},
+		})
+	}))
+	defer server.Close()
+
+	handler, _ := newTestHandler(t)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPost, "/api/v1/agent/providers/models", map[string]any{
+		"kind": "ollama",
+		"ollama": map[string]any{
+			"base_url": server.URL + "/v1",
+		},
+	}))
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+
+	var payload struct {
+		Models []string `json:"models"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal models: %v", err)
+	}
+	if !slices.Equal(payload.Models, []string{"llama3.2:3b", "qwen3:8b"}) {
+		t.Fatalf("unexpected models: %#v", payload.Models)
+	}
+}
+
 func TestDiscoverProviderModelsUsesStoredOpenAISecret(t *testing.T) {
 	t.Parallel()
 

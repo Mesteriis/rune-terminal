@@ -12,6 +12,7 @@ import (
 type DiscoverProviderModelsInput struct {
 	ProviderID string
 	Kind       agent.ProviderKind
+	Ollama     *agent.OllamaProviderSettings
 	Codex      *agent.CodexProviderSettings
 	OpenAI     *agent.OpenAIProviderSettings
 }
@@ -30,6 +31,15 @@ func (r *Runtime) DiscoverProviderModels(
 	}
 
 	switch record.Kind {
+	case agent.ProviderKindOllama:
+		models, err := conversation.ListOllamaModels(ctx, conversation.ProviderConfig{
+			BaseURL: record.Ollama.BaseURL,
+			Model:   record.Ollama.Model,
+		})
+		if err != nil {
+			return ProviderModelsCatalog{}, err
+		}
+		return ProviderModelsCatalog{Models: models}, nil
 	case agent.ProviderKindCodex:
 		models, err := conversation.ListCodexModels(ctx, conversation.CodexProviderConfig{
 			Model:        record.Codex.Model,
@@ -51,7 +61,7 @@ func (r *Runtime) DiscoverProviderModels(
 		return ProviderModelsCatalog{Models: models}, nil
 	default:
 		return ProviderModelsCatalog{}, fmt.Errorf(
-			"%w: model discovery is available only for codex and openai-compatible providers",
+			"%w: model discovery is available only for direct ollama, codex, and openai-compatible providers",
 			agent.ErrProviderKindUnsupported,
 		)
 	}
@@ -68,6 +78,14 @@ func (r *Runtime) resolveProviderModelDiscoveryInput(input DiscoverProviderModel
 
 	record := agent.ProviderRecord{Kind: input.Kind}
 	switch input.Kind {
+	case agent.ProviderKindOllama:
+		if input.Ollama == nil {
+			return agent.ProviderRecord{}, fmt.Errorf("%w: ollama config is required", agent.ErrProviderInvalidConfig)
+		}
+		record.Ollama = &agent.OllamaProviderSettings{
+			BaseURL: strings.TrimSpace(input.Ollama.BaseURL),
+			Model:   strings.TrimSpace(input.Ollama.Model),
+		}
 	case agent.ProviderKindCodex:
 		if input.Codex == nil {
 			return agent.ProviderRecord{}, fmt.Errorf("%w: codex config is required", agent.ErrProviderInvalidConfig)
@@ -106,6 +124,18 @@ func applyProviderModelDiscoveryOverrides(
 	}
 
 	switch record.Kind {
+	case agent.ProviderKindOllama:
+		if input.Codex != nil || input.OpenAI != nil {
+			return agent.ProviderRecord{}, fmt.Errorf("%w: ollama discovery payload cannot include non-ollama config", agent.ErrProviderInvalidConfig)
+		}
+		if input.Ollama != nil {
+			if baseURL := strings.TrimSpace(input.Ollama.BaseURL); baseURL != "" {
+				record.Ollama.BaseURL = baseURL
+			}
+			if model := strings.TrimSpace(input.Ollama.Model); model != "" {
+				record.Ollama.Model = model
+			}
+		}
 	case agent.ProviderKindCodex:
 		if input.OpenAI != nil {
 			return agent.ProviderRecord{}, fmt.Errorf("%w: codex discovery payload cannot include openai config", agent.ErrProviderInvalidConfig)
@@ -142,6 +172,13 @@ func applyProviderModelDiscoveryOverrides(
 
 func applyProviderModelDiscoveryDefaults(record agent.ProviderRecord) (agent.ProviderRecord, error) {
 	switch record.Kind {
+	case agent.ProviderKindOllama:
+		if record.Ollama == nil {
+			return agent.ProviderRecord{}, fmt.Errorf("%w: ollama config is required", agent.ErrProviderInvalidConfig)
+		}
+		if strings.TrimSpace(record.Ollama.BaseURL) == "" {
+			record.Ollama.BaseURL = "http://127.0.0.1:11434"
+		}
 	case agent.ProviderKindCodex:
 		if record.Codex == nil {
 			return agent.ProviderRecord{}, fmt.Errorf("%w: codex config is required", agent.ErrProviderInvalidConfig)

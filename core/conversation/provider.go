@@ -65,7 +65,11 @@ func normalizeBaseURL(raw string) string {
 	if base == "" {
 		return "http://192.168.1.2:11434"
 	}
-	return strings.TrimRight(base, "/")
+	base = strings.TrimRight(base, "/")
+	if strings.HasSuffix(base, "/v1") {
+		base = strings.TrimSuffix(base, "/v1")
+	}
+	return base
 }
 
 func validateCompletionRequest(request CompletionRequest) error {

@@ -8,7 +8,7 @@ import type {
   UpdateAgentProviderPayload,
 } from '@/features/agent/api/provider-client'
 
-const DEFAULT_OLLAMA_BASE_URL = 'http://127.0.0.1:11434/v1'
+const DEFAULT_OLLAMA_BASE_URL = 'http://127.0.0.1:11434'
 const DEFAULT_CODEX_MODEL = 'gpt-5-codex'
 const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1'
 const DEFAULT_OPENAI_MODEL = 'gpt-5-mini'

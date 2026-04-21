@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -14,6 +15,11 @@ import (
 func ListOpenAIModels(ctx context.Context, config OpenAIProviderConfig) ([]string, error) {
 	provider := NewOpenAIProvider(config)
 	return listOpenAIModelsWithClient(ctx, provider.client, provider.baseURL, provider.apiKey)
+}
+
+func ListOllamaModels(ctx context.Context, config ProviderConfig) ([]string, error) {
+	provider := NewOllamaProvider(config)
+	return listOllamaModelsWithClient(ctx, provider.client, provider.baseURL)
 }
 
 func ListCodexModels(ctx context.Context, config CodexProviderConfig) ([]string, error) {
@@ -57,6 +63,41 @@ func listOpenAIModelsWithClient(
 	models := compactModelIDs(decoded.ModelIDs())
 	if len(models) == 0 {
 		return nil, fmt.Errorf("openai model discovery returned no models")
+	}
+	return models, nil
+}
+
+func listOllamaModelsWithClient(ctx context.Context, client *http.Client, baseURL string) ([]string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(baseURL, "/")+"/api/tags", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		payload, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+		return nil, fmt.Errorf("ollama model discovery failed with %s: %s", resp.Status, strings.TrimSpace(string(payload)))
+	}
+
+	var decoded ollamaTagsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&decoded); err != nil {
+		return nil, err
+	}
+
+	models := make([]string, 0, len(decoded.Models))
+	for _, model := range decoded.Models {
+		if name := strings.TrimSpace(model.Name); name != "" {
+			models = append(models, name)
+		}
+	}
+	models = compactModelIDs(models)
+	if len(models) == 0 {
+		return nil, fmt.Errorf("ollama model discovery returned no models")
 	}
 	return models, nil
 }

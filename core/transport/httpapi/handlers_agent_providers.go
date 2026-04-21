@@ -23,6 +23,7 @@ type createProviderPayload struct {
 type providerModelsPayload struct {
 	ProviderID string                       `json:"provider_id,omitempty"`
 	Kind       string                       `json:"kind,omitempty"`
+	Ollama     *providerModelsOllamaPayload `json:"ollama,omitempty"`
 	Codex      *providerModelsCodexPayload  `json:"codex,omitempty"`
 	OpenAI     *providerModelsOpenAIPayload `json:"openai,omitempty"`
 }
@@ -39,6 +40,11 @@ type updateProviderPayload struct {
 type providerModelsCodexPayload struct {
 	Model        string `json:"model,omitempty"`
 	AuthFilePath string `json:"auth_file_path,omitempty"`
+}
+
+type providerModelsOllamaPayload struct {
+	BaseURL string `json:"base_url,omitempty"`
+	Model   string `json:"model,omitempty"`
 }
 
 type providerModelsOpenAIPayload struct {
@@ -207,6 +213,7 @@ func appDiscoverProviderModelsInput(payload providerModelsPayload) app.DiscoverP
 	return app.DiscoverProviderModelsInput{
 		ProviderID: payload.ProviderID,
 		Kind:       agent.ProviderKind(payload.Kind),
+		Ollama:     mapProviderModelsOllamaSettings(payload.Ollama),
 		Codex:      mapProviderModelsCodexSettings(payload.Codex),
 		OpenAI:     mapProviderModelsOpenAISettings(payload.OpenAI),
 	}
@@ -261,6 +268,16 @@ func mapProviderModelsCodexSettings(payload *providerModelsCodexPayload) *agent.
 	return &agent.CodexProviderSettings{
 		Model:        payload.Model,
 		AuthFilePath: payload.AuthFilePath,
+	}
+}
+
+func mapProviderModelsOllamaSettings(payload *providerModelsOllamaPayload) *agent.OllamaProviderSettings {
+	if payload == nil {
+		return nil
+	}
+	return &agent.OllamaProviderSettings{
+		BaseURL: payload.BaseURL,
+		Model:   payload.Model,
 	}
 }
 

@@ -414,7 +414,7 @@ export function AgentProviderSettingsWidget() {
                       <Box style={providerSettingsSectionHeaderStyle}>
                         <Text style={{ fontWeight: 600 }}>Ollama</Text>
                         <Text style={providerSettingsStatusMessageStyle}>
-                          Direct OpenAI-compatible local runtime.
+                          Direct local Ollama runtime with backend-discovered installed models.
                         </Text>
                       </Box>
                       <Box style={providerSettingsGridStyle}>
@@ -429,11 +429,15 @@ export function AgentProviderSettingsWidget() {
                               },
                             }))
                           }
-                          placeholder="http://127.0.0.1:11434/v1"
+                          placeholder="http://127.0.0.1:11434"
                           value={draft.ollama.baseURL}
                         />
-                        <TextInputField
-                          label="Default model"
+                        <ModelSelectField
+                          errorMessage={modelErrorMessage}
+                          hint="Installed models are loaded automatically from the configured Ollama host."
+                          isRefreshing={isLoadingModels}
+                          label="Model"
+                          models={availableModels}
                           onChange={(value) =>
                             updateDraftField(setDraft, (currentDraft) => ({
                               ...currentDraft,
@@ -443,7 +447,7 @@ export function AgentProviderSettingsWidget() {
                               },
                             }))
                           }
-                          placeholder="llama3.1"
+                          onRefresh={() => void refreshAvailableModels()}
                           value={draft.ollama.model}
                         />
                       </Box>
@@ -462,7 +466,7 @@ export function AgentProviderSettingsWidget() {
                       <Box style={providerSettingsGridStyle}>
                         <ModelSelectField
                           errorMessage={modelErrorMessage}
-                          hint="Reads the model catalog from the local Codex auth-backed upstream."
+                          hint="The model catalog is auto-loaded from the local Codex auth-backed upstream."
                           label="Model"
                           models={availableModels}
                           onChange={(value) =>
@@ -538,7 +542,7 @@ export function AgentProviderSettingsWidget() {
                         />
                         <ModelSelectField
                           errorMessage={modelErrorMessage}
-                          hint="Refresh after changing the base URL or API key to reload the upstream model list."
+                          hint="The model catalog is auto-loaded after base URL or API key changes."
                           label="Model"
                           models={availableModels}
                           onChange={(value) =>
