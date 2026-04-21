@@ -61,16 +61,24 @@ func NewService(path string, provider Provider) (*Service, error) {
 }
 
 func (s *Service) Snapshot() Snapshot {
+	return s.SnapshotWithProviderInfo(s.provider.Info())
+}
+
+func (s *Service) SnapshotWithProviderInfo(info ProviderInfo) Snapshot {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return Snapshot{
 		Messages:  append([]Message(nil), s.state.Messages...),
-		Provider:  s.provider.Info(),
+		Provider:  info,
 		UpdatedAt: s.state.UpdatedAt,
 	}
 }
 
 func (s *Service) Submit(ctx context.Context, request SubmitRequest) (SubmitResult, error) {
+	return s.SubmitWithProvider(ctx, s.provider, request)
+}
+
+func (s *Service) SubmitWithProvider(ctx context.Context, provider Provider, request SubmitRequest) (SubmitResult, error) {
 	prompt := strings.TrimSpace(request.Prompt)
 	providerPrompt := strings.TrimSpace(request.ProviderPrompt)
 	systemPrompt := strings.TrimSpace(request.SystemPrompt)
@@ -101,12 +109,21 @@ func (s *Service) Submit(ctx context.Context, request SubmitRequest) (SubmitResu
 		historyForCompletion[len(historyForCompletion)-1].Content = providerPrompt
 	}
 
-	result, info, providerErr := s.complete(ctx, systemPrompt, historyForCompletion)
+	result, info, providerErr := s.completeWithProvider(provider, ctx, systemPrompt, historyForCompletion)
 	return s.appendAssistantResult(result, info, providerErr)
 }
 
 func (s *Service) SubmitStream(
 	ctx context.Context,
+	request SubmitRequest,
+	emit func(StreamEvent) error,
+) (SubmitResult, error) {
+	return s.SubmitStreamWithProvider(ctx, s.provider, request, emit)
+}
+
+func (s *Service) SubmitStreamWithProvider(
+	ctx context.Context,
+	provider Provider,
 	request SubmitRequest,
 	emit func(StreamEvent) error,
 ) (SubmitResult, error) {
@@ -122,9 +139,12 @@ func (s *Service) SubmitStream(
 	if systemPrompt == "" {
 		return SubmitResult{}, ErrInvalidPrompt
 	}
+	if provider == nil {
+		provider = s.provider
+	}
 
 	userMessage := newMessage(RoleUser, prompt, request.Attachments, StatusComplete, "", "")
-	info := s.provider.Info()
+	info := provider.Info()
 	assistant := newMessage(RoleAssistant, "", nil, StatusStreaming, info.Kind, info.Model)
 
 	s.mu.Lock()
@@ -153,7 +173,7 @@ func (s *Service) SubmitStream(
 		historyForCompletion[len(historyForCompletion)-1].Content = providerPrompt
 	}
 
-	result, finalInfo, providerErr := s.completeStream(ctx, systemPrompt, historyForCompletion, func(delta string) error {
+	result, finalInfo, providerErr := s.completeStreamWithProvider(provider, ctx, systemPrompt, historyForCompletion, func(delta string) error {
 		if delta == "" {
 			return nil
 		}
@@ -174,6 +194,14 @@ func (s *Service) SubmitStream(
 }
 
 func (s *Service) AppendAssistantPrompt(ctx context.Context, request AssistantPromptRequest) (SubmitResult, error) {
+	return s.AppendAssistantPromptWithProvider(ctx, s.provider, request)
+}
+
+func (s *Service) AppendAssistantPromptWithProvider(
+	ctx context.Context,
+	provider Provider,
+	request AssistantPromptRequest,
+) (SubmitResult, error) {
 	prompt := strings.TrimSpace(request.Prompt)
 	systemPrompt := strings.TrimSpace(request.SystemPrompt)
 	if prompt == "" {
@@ -188,7 +216,7 @@ func (s *Service) AppendAssistantPrompt(ctx context.Context, request AssistantPr
 	s.mu.RUnlock()
 
 	history = append(history, newMessage(RoleUser, prompt, nil, StatusComplete, "", ""))
-	result, info, providerErr := s.complete(ctx, systemPrompt, history)
+	result, info, providerErr := s.completeWithProvider(provider, ctx, systemPrompt, history)
 	return s.appendAssistantResult(result, info, providerErr)
 }
 
@@ -258,8 +286,7 @@ func (s *Service) appendAssistantResult(result CompletionResult, info ProviderIn
 		s.mu.Unlock()
 		return SubmitResult{}, err
 	}
-	snapshot := s.snapshotLocked()
-	snapshot.Provider = info
+	snapshot := s.snapshotLockedWithProviderInfo(info)
 	s.mu.Unlock()
 
 	return SubmitResult{
@@ -271,9 +298,13 @@ func (s *Service) appendAssistantResult(result CompletionResult, info ProviderIn
 }
 
 func (s *Service) snapshotLocked() Snapshot {
+	return s.snapshotLockedWithProviderInfo(s.provider.Info())
+}
+
+func (s *Service) snapshotLockedWithProviderInfo(info ProviderInfo) Snapshot {
 	return Snapshot{
 		Messages:  append([]Message(nil), s.state.Messages...),
-		Provider:  s.provider.Info(),
+		Provider:  info,
 		UpdatedAt: s.state.UpdatedAt,
 	}
 }
@@ -306,11 +337,23 @@ func cloneAttachmentReferences(attachments []AttachmentReference) []AttachmentRe
 }
 
 func (s *Service) complete(ctx context.Context, systemPrompt string, history []Message) (CompletionResult, ProviderInfo, error) {
+	return s.completeWithProvider(s.provider, ctx, systemPrompt, history)
+}
+
+func (s *Service) completeWithProvider(
+	provider Provider,
+	ctx context.Context,
+	systemPrompt string,
+	history []Message,
+) (CompletionResult, ProviderInfo, error) {
+	if provider == nil {
+		provider = s.provider
+	}
 	request := CompletionRequest{
 		SystemPrompt: systemPrompt,
 		Messages:     pruneCompletionHistory(history, s.budget),
 	}
-	return s.provider.Complete(ctx, request)
+	return provider.Complete(ctx, request)
 }
 
 func (s *Service) completeStream(
@@ -319,11 +362,24 @@ func (s *Service) completeStream(
 	history []Message,
 	onTextDelta func(string) error,
 ) (CompletionResult, ProviderInfo, error) {
+	return s.completeStreamWithProvider(s.provider, ctx, systemPrompt, history, onTextDelta)
+}
+
+func (s *Service) completeStreamWithProvider(
+	provider Provider,
+	ctx context.Context,
+	systemPrompt string,
+	history []Message,
+	onTextDelta func(string) error,
+) (CompletionResult, ProviderInfo, error) {
+	if provider == nil {
+		provider = s.provider
+	}
 	request := CompletionRequest{
 		SystemPrompt: systemPrompt,
 		Messages:     pruneCompletionHistory(history, s.budget),
 	}
-	return s.provider.CompleteStream(ctx, request, onTextDelta)
+	return provider.CompleteStream(ctx, request, onTextDelta)
 }
 
 func (s *Service) appendAssistantDelta(messageID string, delta string) error {
@@ -382,8 +438,7 @@ func (s *Service) finalizeAssistantStreamResult(
 		s.mu.Unlock()
 		return SubmitResult{}, err
 	}
-	snapshot := s.snapshotLocked()
-	snapshot.Provider = info
+	snapshot := s.snapshotLockedWithProviderInfo(info)
 	s.mu.Unlock()
 
 	if emit != nil {

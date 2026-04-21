@@ -124,10 +124,20 @@ func (r *Runtime) ExplainTerminalCommand(
 	}
 
 	systemPrompt := strings.TrimSpace(selection.EffectivePrompt() + "\n\n" + buildConversationContextBlock(r, conversationContext))
-	result, err := r.Conversation.AppendAssistantPrompt(ctx, conversation.AssistantPromptRequest{
+	provider, err := r.resolveConversationProvider()
+	if err != nil {
+		return ExplainTerminalCommandResult{}, err
+	}
+	appendRequest := conversation.AssistantPromptRequest{
 		SystemPrompt: systemPrompt,
 		Prompt:       buildTerminalExplanationPrompt(prompt, command, outputExcerpt),
-	})
+	}
+	var result conversation.SubmitResult
+	if provider == nil {
+		result, err = r.Conversation.AppendAssistantPrompt(ctx, appendRequest)
+	} else {
+		result, err = r.Conversation.AppendAssistantPromptWithProvider(ctx, provider, appendRequest)
+	}
 	if err != nil {
 		return ExplainTerminalCommandResult{}, err
 	}

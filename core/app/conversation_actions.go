@@ -21,7 +21,14 @@ type ConversationContext struct {
 }
 
 func (r *Runtime) ConversationSnapshot() conversation.Snapshot {
-	return r.Conversation.Snapshot()
+	provider, err := r.resolveConversationProvider()
+	if err != nil {
+		return r.Conversation.SnapshotWithProviderInfo(conversation.ProviderInfo{})
+	}
+	if provider == nil {
+		return r.Conversation.Snapshot()
+	}
+	return r.Conversation.SnapshotWithProviderInfo(provider.Info())
 }
 
 func (r *Runtime) SubmitConversationPrompt(
@@ -34,7 +41,19 @@ func (r *Runtime) SubmitConversationPrompt(
 	if err != nil {
 		return conversation.SubmitResult{}, err
 	}
-	result, err := r.Conversation.Submit(ctx, submitRequest)
+	provider, err := r.resolveConversationProvider()
+	if err != nil {
+		return conversation.SubmitResult{}, err
+	}
+	if provider == nil {
+		result, err := r.Conversation.Submit(ctx, submitRequest)
+		if err != nil {
+			return conversation.SubmitResult{}, err
+		}
+		r.appendConversationAudit(prompt, conversationContext, profile, result.ProviderError)
+		return result, nil
+	}
+	result, err := r.Conversation.SubmitWithProvider(ctx, provider, submitRequest)
 	if err != nil {
 		return conversation.SubmitResult{}, err
 	}
@@ -53,7 +72,19 @@ func (r *Runtime) StreamConversationPrompt(
 	if err != nil {
 		return conversation.SubmitResult{}, err
 	}
-	result, err := r.Conversation.SubmitStream(ctx, submitRequest, emit)
+	provider, err := r.resolveConversationProvider()
+	if err != nil {
+		return conversation.SubmitResult{}, err
+	}
+	if provider == nil {
+		result, err := r.Conversation.SubmitStream(ctx, submitRequest, emit)
+		if err != nil {
+			return conversation.SubmitResult{}, err
+		}
+		r.appendConversationAudit(prompt, conversationContext, profile, result.ProviderError)
+		return result, nil
+	}
+	result, err := r.Conversation.SubmitStreamWithProvider(ctx, provider, submitRequest, emit)
 	if err != nil {
 		return conversation.SubmitResult{}, err
 	}

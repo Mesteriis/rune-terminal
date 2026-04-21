@@ -11,38 +11,39 @@ import (
 	"github.com/Mesteriis/rune-terminal/core/config"
 	"github.com/Mesteriis/rune-terminal/core/connections"
 	"github.com/Mesteriis/rune-terminal/core/conversation"
-	"github.com/Mesteriis/rune-terminal/core/execution"
 	"github.com/Mesteriis/rune-terminal/core/db"
+	"github.com/Mesteriis/rune-terminal/core/execution"
 	"github.com/Mesteriis/rune-terminal/core/plugins"
 	"github.com/Mesteriis/rune-terminal/core/policy"
+	"github.com/Mesteriis/rune-terminal/core/tasks"
 	"github.com/Mesteriis/rune-terminal/core/terminal"
 	"github.com/Mesteriis/rune-terminal/core/toolruntime"
-	"github.com/Mesteriis/rune-terminal/core/tasks"
 	"github.com/Mesteriis/rune-terminal/core/workspace"
 )
 
 type Runtime struct {
-	RepoRoot         string
-	HomeDir          string
-	DB               *sql.DB
-	Paths            config.Paths
-	Workspace        *workspace.Service
-	WorkspaceCatalog *workspace.CatalogStore
-	Terminals        *terminal.Service
-	Connections      *connections.Service
-	Agent            *agent.Store
-	Conversation     *conversation.Service
-	Execution        *execution.Service
-	Policy           *policy.Store
-	Audit            *audit.Log
-	Plugins          *plugins.Runtime
-	MCP              *plugins.MCPRuntime
-	Registry         *toolruntime.Registry
-	Executor         *toolruntime.Executor
-	TaskStore        *tasks.Store
-	TaskService      *tasks.Service
-	restoredMu       sync.RWMutex
-	restored         map[string]terminal.State
+	RepoRoot                    string
+	HomeDir                     string
+	DB                          *sql.DB
+	Paths                       config.Paths
+	Workspace                   *workspace.Service
+	WorkspaceCatalog            *workspace.CatalogStore
+	Terminals                   *terminal.Service
+	Connections                 *connections.Service
+	Agent                       *agent.Store
+	Conversation                *conversation.Service
+	Execution                   *execution.Service
+	Policy                      *policy.Store
+	Audit                       *audit.Log
+	Plugins                     *plugins.Runtime
+	MCP                         *plugins.MCPRuntime
+	Registry                    *toolruntime.Registry
+	Executor                    *toolruntime.Executor
+	ConversationProviderFactory ConversationProviderFactory
+	TaskStore                   *tasks.Store
+	TaskService                 *tasks.Service
+	restoredMu                  sync.RWMutex
+	restored                    map[string]terminal.State
 }
 
 func NewRuntime(repoRoot string, stateDir string) (*Runtime, error) {
@@ -89,24 +90,25 @@ func NewRuntime(repoRoot string, stateDir string) (*Runtime, error) {
 	activeWorkspaceSnapshot := workspace.NewCatalogStore(workspaceCatalog).ActiveSnapshot()
 
 	runtime := &Runtime{
-		RepoRoot:         repoRoot,
-		HomeDir:          homeDir,
-		Paths:            paths,
-		Workspace:        workspace.NewService(activeWorkspaceSnapshot),
-		WorkspaceCatalog: workspace.NewCatalogStore(workspaceCatalog),
-		Terminals:        terminal.NewService(terminal.DefaultLauncher()),
-		Connections:      connectionStore,
-		Agent:            agentStore,
-		Conversation:     conversationStore,
-		Execution:        executionStore,
-		DB:               dbConn,
-		TaskStore:        taskStore,
-		TaskService:      tasks.NewService(taskStore),
-		Policy:           policyStore,
-		Audit:            auditLog,
-		Plugins:          plugins.NewRuntime(nil, 0),
-		Registry:         toolruntime.NewRegistry(),
-		restored:         make(map[string]terminal.State),
+		RepoRoot:                    repoRoot,
+		HomeDir:                     homeDir,
+		Paths:                       paths,
+		Workspace:                   workspace.NewService(activeWorkspaceSnapshot),
+		WorkspaceCatalog:            workspace.NewCatalogStore(workspaceCatalog),
+		Terminals:                   terminal.NewService(terminal.DefaultLauncher()),
+		Connections:                 connectionStore,
+		Agent:                       agentStore,
+		Conversation:                conversationStore,
+		Execution:                   executionStore,
+		DB:                          dbConn,
+		TaskStore:                   taskStore,
+		TaskService:                 tasks.NewService(taskStore),
+		Policy:                      policyStore,
+		Audit:                       auditLog,
+		Plugins:                     plugins.NewRuntime(nil, 0),
+		Registry:                    toolruntime.NewRegistry(),
+		ConversationProviderFactory: defaultConversationProviderFactory,
+		restored:                    make(map[string]terminal.State),
 	}
 	runtime.MCP = plugins.NewMCPRuntime(nil, nil, newExternalMCPInvoker(runtime.Plugins, repoRoot))
 	runtime.Executor = toolruntime.NewExecutor(
