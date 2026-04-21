@@ -9,9 +9,11 @@ import {
 } from '@/features/agent/api/client'
 import {
   advanceAuditEntries,
+  classifyMessageIntent,
   completeAuditEntries,
   createApprovalMessage,
   createAuditMessage,
+  createPlanMessage,
   createPendingInteractionFlow,
   failAuditEntries,
   type PendingInteractionFlow,
@@ -171,6 +173,141 @@ export function useAgentPanel(hostId: string, enabled = true) {
     }
   }, [enabled, hostId])
 
+  const clearPendingInteractionFlow = useCallback(() => {
+    pendingFlowRef.current = null
+    setPendingFlow(null)
+  }, [])
+
+  const updateAuditMessageEntries = useCallback(
+    (auditMessageID: string, update: Parameters<typeof updateInteractionMessage>[2]) => {
+      setInteractionMessages((currentMessages) =>
+        updateInteractionMessage(currentMessages, auditMessageID, update),
+      )
+    },
+    [],
+  )
+
+  const runBackendPrompt = useCallback(
+    async (prompt: string, options?: { auditMessageID?: string }) => {
+      const submissionNonce = submissionNonceRef.current + 1
+      submissionNonceRef.current = submissionNonce
+      const isActiveSubmission = () => submissionNonceRef.current === submissionNonce
+
+      setIsSubmitting(true)
+      setLoadError(null)
+      setSubmitError(null)
+      blockAiWidget(hostId)
+
+      let auditProgressed = false
+      let connection: AgentConversationStreamConnection | null = null
+
+      try {
+        const runtimeContext = await resolveRuntimeContext()
+
+        connection = await streamAgentConversationMessage(
+          {
+            prompt,
+            context: {
+              action_source: 'frontend.ai.sidebar',
+              active_widget_id: hostId,
+              repo_root: runtimeContext.repoRoot,
+              widget_context_enabled: true,
+            },
+          },
+          {
+            onEvent: (event) => {
+              if (!isActiveSubmission()) {
+                return
+              }
+
+              setMessages((currentMessages) =>
+                applyAgentConversationStreamEvent(currentMessages ?? [], event),
+              )
+
+              if (event.type === 'text-delta' && options?.auditMessageID && !auditProgressed) {
+                updateAuditMessageEntries(options.auditMessageID, (currentMessage) =>
+                  currentMessage.type === 'audit'
+                    ? {
+                        ...currentMessage,
+                        entries: advanceAuditEntries(currentMessage.entries),
+                      }
+                    : currentMessage,
+                )
+                auditProgressed = true
+              }
+
+              if (event.type === 'message-complete') {
+                if (options?.auditMessageID) {
+                  updateAuditMessageEntries(options.auditMessageID, (currentMessage) =>
+                    currentMessage.type === 'audit'
+                      ? {
+                          ...currentMessage,
+                          entries: completeAuditEntries(currentMessage.entries),
+                        }
+                      : currentMessage,
+                  )
+                }
+              } else if (event.type === 'error') {
+                if (options?.auditMessageID) {
+                  updateAuditMessageEntries(options.auditMessageID, (currentMessage) =>
+                    currentMessage.type === 'audit'
+                      ? {
+                          ...currentMessage,
+                          entries: failAuditEntries(currentMessage.entries),
+                        }
+                      : currentMessage,
+                  )
+                }
+
+                if (!event.message && event.error?.trim()) {
+                  setSubmitError(event.error.trim())
+                }
+              }
+            },
+          },
+        )
+        activeStreamRef.current = connection
+        await connection.done
+      } catch (error: unknown) {
+        if (!isActiveSubmission()) {
+          return
+        }
+
+        const errorMessage =
+          error instanceof Error && error.message.trim()
+            ? error.message
+            : `Unable to send backend conversation message for ${hostId}.`
+
+        setMessages((currentMessages) =>
+          finalizeAgentConversationStreamingMessages(currentMessages ?? [], errorMessage),
+        )
+
+        if (options?.auditMessageID) {
+          updateAuditMessageEntries(options.auditMessageID, (currentMessage) =>
+            currentMessage.type === 'audit'
+              ? {
+                  ...currentMessage,
+                  entries: failAuditEntries(currentMessage.entries),
+                }
+              : currentMessage,
+          )
+        }
+
+        setSubmitError(errorMessage)
+      } finally {
+        if (isActiveSubmission()) {
+          if (activeStreamRef.current === connection) {
+            activeStreamRef.current = null
+          }
+
+          unblockAiWidget(hostId)
+          setIsSubmitting(false)
+        }
+      }
+    },
+    [hostId, updateAuditMessageEntries],
+  )
+
   const submitDraft = useCallback(async () => {
     const prompt = draft.trim()
 
@@ -193,13 +330,19 @@ export function useAgentPanel(hostId: string, enabled = true) {
     setMessages((currentMessages) =>
       appendAgentConversationMessage(currentMessages ?? [], optimisticUserMessage),
     )
+    setDraft('')
+
+    if (interactionFlow.flow == null) {
+      await runBackendPrompt(prompt)
+      return
+    }
+
     setInteractionMessages((currentMessages) =>
       sortMessagesBySortKey([...currentMessages, ...interactionFlow.messages]),
     )
     pendingFlowRef.current = interactionFlow.flow
     setPendingFlow(interactionFlow.flow)
-    setDraft('')
-  }, [draft, enabled, hostId, isSubmitting, nextLocalSortKey])
+  }, [draft, enabled, hostId, isSubmitting, nextLocalSortKey, runBackendPrompt])
 
   const cancelPendingPlan = useCallback(
     (message: ApprovalMessage) => {
@@ -216,14 +359,13 @@ export function useAgentPanel(hostId: string, enabled = true) {
             : currentMessage,
         ),
       )
-      pendingFlowRef.current = null
-      setPendingFlow(null)
+      clearPendingInteractionFlow()
     },
-    [nextLocalSortKey],
+    [clearPendingInteractionFlow, nextLocalSortKey],
   )
 
   const answerQuestionnaire = useCallback(
-    (message: QuestionnaireMessage, answer: string) => {
+    async (message: QuestionnaireMessage, answer: string) => {
       const activeFlow = pendingFlowRef.current
 
       if (!activeFlow || activeFlow.questionnaireMessageID !== message.id) {
@@ -231,12 +373,34 @@ export function useAgentPanel(hostId: string, enabled = true) {
       }
 
       const answeredMessage = updateQuestionnaireMessageAnswer(message, answer, nextLocalSortKey)
+      const classification = classifyMessageIntent(activeFlow.prompt, answer)
+
+      if (classification.intent === 'chat') {
+        setInteractionMessages((currentMessages) =>
+          sortMessagesBySortKey([
+            ...currentMessages.filter((currentMessage) => currentMessage.id !== message.id),
+            answeredMessage,
+          ]),
+        )
+        clearPendingInteractionFlow()
+        await runBackendPrompt(activeFlow.prompt)
+        return
+      }
+
+      const planMessage = createPlanMessage(
+        activeFlow.flowID,
+        activeFlow.prompt,
+        classification.tools,
+        nextLocalSortKey,
+        answer,
+      )
       const approvalMessage = createApprovalMessage(activeFlow.flowID, nextLocalSortKey)
 
       setInteractionMessages((currentMessages) =>
         sortMessagesBySortKey([
           ...currentMessages.filter((currentMessage) => currentMessage.id !== message.id),
           answeredMessage,
+          planMessage,
           approvalMessage,
         ]),
       )
@@ -245,11 +409,12 @@ export function useAgentPanel(hostId: string, enabled = true) {
         ...activeFlow,
         approvalMessageID: approvalMessage.id,
         questionnaireMessageID: undefined,
+        tools: classification.tools,
       }
       pendingFlowRef.current = nextFlow
       setPendingFlow(nextFlow)
     },
-    [nextLocalSortKey],
+    [clearPendingInteractionFlow, nextLocalSortKey, runBackendPrompt],
   )
 
   const approvePendingPlan = useCallback(
@@ -277,168 +442,10 @@ export function useAgentPanel(hostId: string, enabled = true) {
           auditMessage,
         ]),
       )
-
-      const submissionNonce = submissionNonceRef.current + 1
-      submissionNonceRef.current = submissionNonce
-      const isActiveSubmission = () => submissionNonceRef.current === submissionNonce
-
-      setIsSubmitting(true)
-      setLoadError(null)
-      setSubmitError(null)
-      blockAiWidget(hostId)
-
-      let sawStreamEvent = false
-      let sawCompletionEvent = false
-      let connection: AgentConversationStreamConnection | null = null
-
-      try {
-        const runtimeContext = await resolveRuntimeContext()
-
-        connection = await streamAgentConversationMessage(
-          {
-            prompt: activeFlow.prompt,
-            context: {
-              action_source: 'frontend.ai.sidebar',
-              active_widget_id: hostId,
-              repo_root: runtimeContext.repoRoot,
-              widget_context_enabled: true,
-            },
-          },
-          {
-            onEvent: (event) => {
-              if (!isActiveSubmission()) {
-                return
-              }
-
-              sawStreamEvent = true
-
-              setMessages((currentMessages) =>
-                applyAgentConversationStreamEvent(currentMessages ?? [], event),
-              )
-
-              if (
-                event.type === 'text-delta' &&
-                pendingFlowRef.current?.auditMessageID &&
-                !pendingFlowRef.current.auditProgressed
-              ) {
-                const auditMessageID = pendingFlowRef.current.auditMessageID
-
-                setInteractionMessages((currentMessages) =>
-                  updateInteractionMessage(currentMessages, auditMessageID, (currentMessage) =>
-                    currentMessage.type === 'audit'
-                      ? {
-                          ...currentMessage,
-                          entries: advanceAuditEntries(currentMessage.entries),
-                        }
-                      : currentMessage,
-                  ),
-                )
-
-                const progressedFlow: PendingInteractionFlow = {
-                  ...(pendingFlowRef.current as PendingInteractionFlow),
-                  auditProgressed: true,
-                }
-                pendingFlowRef.current = progressedFlow
-                setPendingFlow(progressedFlow)
-              }
-
-              if (event.type === 'message-complete') {
-                sawCompletionEvent = true
-                unblockAiWidget(hostId)
-                setIsSubmitting(false)
-
-                if (pendingFlowRef.current?.auditMessageID) {
-                  const auditMessageID = pendingFlowRef.current.auditMessageID
-
-                  setInteractionMessages((currentMessages) =>
-                    updateInteractionMessage(currentMessages, auditMessageID, (currentMessage) =>
-                      currentMessage.type === 'audit'
-                        ? {
-                            ...currentMessage,
-                            entries: completeAuditEntries(currentMessage.entries),
-                          }
-                        : currentMessage,
-                    ),
-                  )
-                }
-
-                pendingFlowRef.current = null
-                setPendingFlow(null)
-              } else if (event.type === 'error') {
-                unblockAiWidget(hostId)
-                setIsSubmitting(false)
-
-                if (pendingFlowRef.current?.auditMessageID) {
-                  const auditMessageID = pendingFlowRef.current.auditMessageID
-
-                  setInteractionMessages((currentMessages) =>
-                    updateInteractionMessage(currentMessages, auditMessageID, (currentMessage) =>
-                      currentMessage.type === 'audit'
-                        ? {
-                            ...currentMessage,
-                            entries: failAuditEntries(currentMessage.entries),
-                          }
-                        : currentMessage,
-                    ),
-                  )
-                }
-
-                pendingFlowRef.current = null
-                setPendingFlow(null)
-
-                if (!event.message && event.error?.trim()) {
-                  setSubmitError(event.error.trim())
-                }
-              }
-            },
-          },
-        )
-        activeStreamRef.current = connection
-        await connection.done
-      } catch (error: unknown) {
-        if (!isActiveSubmission()) {
-          return
-        }
-
-        const errorMessage =
-          error instanceof Error && error.message.trim()
-            ? error.message
-            : `Unable to send backend conversation message for ${hostId}.`
-
-        setMessages((currentMessages) =>
-          finalizeAgentConversationStreamingMessages(currentMessages ?? [], errorMessage),
-        )
-
-        if (pendingFlowRef.current?.auditMessageID) {
-          const auditMessageID = pendingFlowRef.current.auditMessageID
-
-          setInteractionMessages((currentMessages) =>
-            updateInteractionMessage(currentMessages, auditMessageID, (currentMessage) =>
-              currentMessage.type === 'audit'
-                ? {
-                    ...currentMessage,
-                    entries: failAuditEntries(currentMessage.entries),
-                  }
-                : currentMessage,
-            ),
-          )
-        }
-
-        pendingFlowRef.current = null
-        setPendingFlow(null)
-        setSubmitError(errorMessage)
-      } finally {
-        if (isActiveSubmission()) {
-          if (activeStreamRef.current === connection) {
-            activeStreamRef.current = null
-          }
-
-          unblockAiWidget(hostId)
-          setIsSubmitting(false)
-        }
-      }
+      clearPendingInteractionFlow()
+      await runBackendPrompt(activeFlow.prompt, { auditMessageID: auditMessage.id })
     },
-    [hostId, nextLocalSortKey],
+    [clearPendingInteractionFlow, nextLocalSortKey, runBackendPrompt],
   )
 
   const panelState = useMemo(() => {

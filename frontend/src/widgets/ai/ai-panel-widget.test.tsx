@@ -161,7 +161,7 @@ describe('AiPanelWidget backend conversation path', () => {
     expect((userRow as HTMLDivElement | undefined)?.style.paddingBottom).toBe('var(--space-xs)')
   })
 
-  it('streams visible assistant output through the backend conversation stream route', async () => {
+  it('streams pure chat prompts without plan or approval gates', async () => {
     const streamResponse = createDeferredStreamResponse()
     const fetchMock = vi.fn()
     fetchMock
@@ -202,15 +202,9 @@ describe('AiPanelWidget backend conversation path', () => {
     })
 
     fireEvent.change(screen.getByPlaceholderText('Text Area'), {
-      target: { value: 'Send this to the backend' },
+      target: { value: 'Привет' },
     })
     fireEvent.click(screen.getByLabelText('Send prompt'))
-
-    expect(fetchMock).toHaveBeenCalledTimes(2)
-    expect(screen.getByText('Plan')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Approve' })).toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Approve' }))
 
     await waitFor(() => {
       expect(fetchMock.mock.calls[2]?.[0]).toBe(
@@ -218,7 +212,7 @@ describe('AiPanelWidget backend conversation path', () => {
       )
     })
     expect(JSON.parse(String(fetchMock.mock.calls[2]?.[1]?.body))).toEqual({
-      prompt: 'Send this to the backend',
+      prompt: 'Привет',
       context: {
         action_source: 'frontend.ai.sidebar',
         active_widget_id: 'ai-shell-panel',
@@ -226,6 +220,8 @@ describe('AiPanelWidget backend conversation path', () => {
         widget_context_enabled: true,
       },
     })
+    expect(screen.queryByText('Plan')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument()
     await waitFor(() => {
       expect(screen.getByLabelText('Widget ai-shell-panel is busy')).toBeInTheDocument()
     })
@@ -306,7 +302,6 @@ describe('AiPanelWidget backend conversation path', () => {
       target: { value: 'Trigger backend error' },
     })
     fireEvent.click(screen.getByLabelText('Send prompt'))
-    fireEvent.click(screen.getByRole('button', { name: 'Approve' }))
 
     await waitFor(() => {
       expect(screen.getByLabelText('Widget ai-shell-panel is busy')).toBeInTheDocument()
@@ -384,11 +379,13 @@ describe('AiPanelWidget backend conversation path', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2)
     expect(screen.getByText('Question')).toBeInTheDocument()
     expect(screen.getByText('Choose environment:')).toBeInTheDocument()
+    expect(screen.queryByText('Plan')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Staging' }))
 
     expect(screen.getByText('Answer: staging')).toBeInTheDocument()
+    expect(screen.getByText('Plan')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Approve' })).toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledTimes(2)
 
@@ -451,9 +448,12 @@ describe('AiPanelWidget backend conversation path', () => {
     })
 
     fireEvent.change(screen.getByPlaceholderText('Text Area'), {
-      target: { value: 'Run the backend check' },
+      target: { value: 'прочитай файл' },
     })
     fireEvent.click(screen.getByLabelText('Send prompt'))
+
+    expect(screen.getByText('Plan')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Approve' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
 
     expect(screen.getByText('Execution cancelled.')).toBeInTheDocument()

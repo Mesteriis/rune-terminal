@@ -1,4 +1,5 @@
 export type ChatMode = 'chat' | 'dev' | 'debug'
+export type MessageIntent = 'chat' | 'execution' | 'question'
 
 export type MessageMeta = {
   provider?: string
