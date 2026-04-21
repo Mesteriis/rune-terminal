@@ -1,5 +1,7 @@
 import { useCallback, useState } from 'react'
 
+import { useAgentPanel } from '@/features/agent/model/use-agent-panel'
+import type { AiPanelWidgetState } from '@/features/agent/model/types'
 import { RunaDomScopeProvider, useRunaDomAutoTagging } from '@/shared/ui/dom-id'
 import { Box, ScrollArea } from '@/shared/ui/primitives'
 
@@ -7,7 +9,6 @@ import { ModalHostWidget } from '@/widgets/panel/modal-host-widget'
 import { WidgetBusyOverlayWidget } from '@/widgets/panel/widget-busy-overlay-widget'
 import { AiComposerWidget } from '@/widgets/ai/ai-composer-widget'
 import { AiPromptCardWidget } from '@/widgets/ai/ai-prompt-card-widget'
-import { aiPanelWidgetMockState, type AiPanelWidgetMockState } from '@/widgets/ai/ai-panel-widget.mock'
 import {
   aiPanelContentColumnStyle,
   aiPanelRootStyle,
@@ -16,11 +17,13 @@ import {
 
 export type AiPanelWidgetProps = {
   hostId: string
-  state?: AiPanelWidgetMockState
+  state?: AiPanelWidgetState
 }
 
-export function AiPanelWidget({ hostId, state = aiPanelWidgetMockState }: AiPanelWidgetProps) {
-  const lastPromptId = state.prompts[state.prompts.length - 1]?.id
+export function AiPanelWidget({ hostId, state }: AiPanelWidgetProps) {
+  const resolvedState = useAgentPanel(hostId, state == null)
+  const panelState = state ?? resolvedState
+  const lastPromptId = panelState.prompts[panelState.prompts.length - 1]?.id
   const autoTagAiPanelRootRef = useRunaDomAutoTagging('ai-panel-root')
   const [panelRootElement, setPanelRootElement] = useState<HTMLDivElement | null>(null)
   const handleAiPanelRootRef = useCallback(
@@ -45,7 +48,7 @@ export function AiPanelWidget({ hostId, state = aiPanelWidgetMockState }: AiPane
             runaComponent="ai-panel-prompt-stack"
             style={aiPromptStackStyle}
           >
-            {state.prompts.map((prompt) => (
+            {panelState.prompts.map((prompt) => (
               <AiPromptCardWidget
                 key={prompt.id}
                 defaultExpanded={prompt.id === lastPromptId}
@@ -55,9 +58,9 @@ export function AiPanelWidget({ hostId, state = aiPanelWidgetMockState }: AiPane
             ))}
           </ScrollArea>
           <AiComposerWidget
-            activeTool={state.activeTool}
-            placeholder={state.composerPlaceholder}
-            toolbarLabel={state.toolbarLabel}
+            activeTool={panelState.activeTool}
+            placeholder={panelState.composerPlaceholder}
+            toolbarLabel={panelState.toolbarLabel}
           />
         </Box>
         <ModalHostWidget hostId={hostId} mountNode={panelRootElement} scope="widget" />

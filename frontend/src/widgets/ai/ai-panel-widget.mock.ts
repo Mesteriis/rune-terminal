@@ -1,35 +1,6 @@
-export type AiPromptCardSnapshot = {
-  preview: string
-  prompt: string
-  reasoning: string[]
-  summary: string
-  approvals?: AiApprovalRequest[]
-}
+import type { AiPanelWidgetState } from '@/features/agent/model/types'
 
-export type AiApprovalRequest = {
-  id: string
-  title: string
-  command: string
-  status: 'approval-required' | 'queued' | 'approved'
-  scope: string
-}
-
-export type AiPromptCardState = {
-  id: string
-  title: string
-  current: AiPromptCardSnapshot
-  rollback?: AiPromptCardSnapshot
-}
-
-export type AiPanelWidgetMockState = {
-  title: string
-  toolbarLabel: string
-  activeTool: string
-  prompts: AiPromptCardState[]
-  composerPlaceholder: string
-}
-
-export const aiPanelWidgetMockState: AiPanelWidgetMockState = {
+export const aiPanelWidgetMockState: AiPanelWidgetState = {
   title: 'AI RUNE',
   toolbarLabel: 'TOOL BAR',
   activeTool: 'Chat',
@@ -60,8 +31,7 @@ export const aiPanelWidgetMockState: AiPanelWidgetMockState = {
           'Only describe the smallest safe changes that satisfy the stated UI issue.',
           'Avoid new abstractions, fake services, or backend integration points.',
         ],
-        summary:
-          'Rollback mode restores a tighter audit posture before implementation starts.',
+        summary: 'Rollback mode restores a tighter audit posture before implementation starts.',
       },
     },
     {
@@ -77,8 +47,7 @@ export const aiPanelWidgetMockState: AiPanelWidgetMockState = {
           'Keep the interaction keyboard-oriented and dense, but stop before fake services or command execution logic.',
           'Expose only enough local state to validate layout, scrolling, and review/approval affordances.',
         ],
-        summary:
-          'Use this for new static widget slices, demos, and frontend-only interaction prototypes.',
+        summary: 'Use this for new static widget slices, demos, and frontend-only interaction prototypes.',
         approvals: [
           {
             id: 'approval-1',
@@ -105,8 +74,7 @@ export const aiPanelWidgetMockState: AiPanelWidgetMockState = {
           'Constrain the slice to static composition with lightweight local state only.',
           'Remove richer interaction if it starts imitating a backend-driven workflow.',
         ],
-        summary:
-          'Rollback mode narrows the widget back to static composition with minimal local behavior.',
+        summary: 'Rollback mode narrows the widget back to static composition with minimal local behavior.',
       },
     },
     {
@@ -130,7 +98,8 @@ export const aiPanelWidgetMockState: AiPanelWidgetMockState = {
           {
             id: 'approval-3',
             title: 'Apply workspace patch set',
-            command: 'git add frontend/src/widgets/ai/ai-panel-widget.tsx frontend/src/widgets/ai/ai-prompt-card-widget.tsx && git commit -m "feat(frontend): refine ai prompt history layout"',
+            command:
+              'git add frontend/src/widgets/ai/ai-panel-widget.tsx frontend/src/widgets/ai/ai-prompt-card-widget.tsx && git commit -m "feat(frontend): refine ai prompt history layout"',
             status: 'approval-required',
             scope: 'Git write',
           },
