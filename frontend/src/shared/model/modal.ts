@@ -8,7 +8,7 @@ export type ModalDescriptor = {
   title: string
   description: string
   variant?: 'default' | 'settings'
-  contentKey?: 'agent-providers'
+  contentKey?: 'settings-shell' | 'agent-providers'
 }
 
 export type OpenModalPayload = Omit<ModalDescriptor, 'id'>

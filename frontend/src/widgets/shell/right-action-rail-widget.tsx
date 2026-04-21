@@ -231,10 +231,9 @@ export function RightActionRailWidget({ dockviewApiRef, onAddWorkspace }: RightA
           onClick={() =>
             onOpenBodyModal({
               title: 'Settings',
-              description:
-                'Manage AI provider routing, direct accounts, and proxy channels inside the shell-wide settings surface.',
+              description: 'Navigate shell settings by section: General, AI, Terminal, and Commander.',
               variant: 'settings',
-              contentKey: 'agent-providers',
+              contentKey: 'settings-shell',
             })
           }
           style={railButtonStyle}

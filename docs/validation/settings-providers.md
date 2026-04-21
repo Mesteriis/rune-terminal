@@ -18,6 +18,8 @@
   - `rg -n "tab|tabs|subtab|Tab" frontend/src/shared frontend/src/widgets frontend/src/features | head -n 200`
   - `sed -n '1,260p' frontend/src/widgets/shell/right-action-rail-widget.tsx`
   - `sed -n '1,260p' frontend/src/widgets/panel/modal-host-widget.tsx`
+  - `sed -n '1,320p' frontend/src/widgets/settings/settings-shell-widget.tsx`
+  - `sed -n '1,260p' frontend/src/widgets/settings/settings-shell-widget.styles.ts`
   - `sed -n '1,220p' frontend/src/shared/model/modal.ts`
   - `sed -n '1,220p' frontend/src/shared/ui/components/dialog-popup.tsx`
   - `sed -n '1,220p' frontend/src/shared/ui/components/tabs.tsx`
@@ -46,6 +48,10 @@
   - `npm --prefix frontend run test -- src/features/agent/api/provider-client.test.ts src/features/agent/model/provider-settings-draft.test.ts`
   - `npm --prefix frontend run build`
   - `npm run validate`
+  - browser smoke against an already-running local split-dev frontend/backend via Playwright MCP:
+    - opened the right-rail settings button
+    - verified left navigation renders `Основные`, `AI > Установленные приложения`, `AI > Модели`, `AI > Лимиты`, `Terminal`, and `Commander`
+    - switched at least `AI > Модели` and `Основные` and confirmed the content area changes in-place inside the existing settings modal shell
 
 ## Current frontend settings window state
 
@@ -57,9 +63,17 @@
 
 ### Current behavior
 
-- The settings window is still a generic `DialogPopup` with wide `variant="settings"` geometry, but it now hosts a real AI/provider management surface in the body slot.
-- The active content lives in [frontend/src/widgets/settings/agent-provider-settings-widget.tsx](../../frontend/src/widgets/settings/agent-provider-settings-widget.tsx).
+- The settings window is still a generic `DialogPopup` with wide `variant="settings"` geometry, but it now hosts a structured settings shell in the body slot instead of a single-purpose AI page.
+- The active settings shell lives in [frontend/src/widgets/settings/settings-shell-widget.tsx](../../frontend/src/widgets/settings/settings-shell-widget.tsx).
 - The shared modal shell was not replaced or forked; the provider editor is mounted inside the existing body-scoped settings surface.
+- The left navigation now exposes:
+  - `Основные`
+  - `AI > Установленные приложения`
+  - `AI > Модели`
+  - `AI > Лимиты`
+  - `Terminal`
+  - `Commander`
+- The provider-management surface still lives in [frontend/src/widgets/settings/agent-provider-settings-widget.tsx](../../frontend/src/widgets/settings/agent-provider-settings-widget.tsx), but it is now nested under `AI > Установленные приложения`.
 - New provider creation from the toolbar is currently limited to:
   - `ollama`
   - `codex`
@@ -73,6 +87,8 @@
   - saved `openai` providers auto-load models through the stored backend secret
   - unsaved `openai` drafts auto-load models as soon as an API key is present
   - new `ollama` drafts auto-select the first discovered installed model when no model has been chosen yet
+- `AI > Модели` now surfaces those auto-discovered model lists as a read-oriented directory for the currently selected direct provider.
+- `AI > Лимиты` is currently a status placeholder only: it shows provider readiness, but no backend-owned token/rate limit contract exists yet.
 
 ## Backend provider configuration runtime
 

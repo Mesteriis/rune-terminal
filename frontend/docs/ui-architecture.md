@@ -181,7 +181,8 @@ its visible shell blocks as raw HTML inside `App.tsx`.
 - `Notify` provides the stateless shared notification surface.
 - `ModalHostWidget` renders body-scoped and widget-scoped modal layers, while settings-specific body content is routed through an explicit modal `contentKey` path instead of hard-coding settings UI into the shared dialog shell.
 - `PanelModalActionsWidget` exposes a widget-level demo path for modal opening.
-- `AgentProviderSettingsWidget` renders the shell-wide provider/proxy settings editor inside the existing settings modal body, while `features/agent/api/provider-client.ts`, `features/agent/model/provider-settings-draft.ts`, and `features/agent/model/use-agent-provider-settings.ts` keep backend transport, draft serialization, and editor state outside the shared modal host.
+- `SettingsShellWidget` now owns the shell-wide settings navigation inside the existing modal body, keeping `General`, `AI`, `Terminal`, and `Commander` as explicit sections without forking the shared dialog chrome.
+- `AgentProviderSettingsWidget` now lives under `AI > Установленные приложения` inside that shell settings surface, while `features/agent/api/provider-client.ts`, `features/agent/model/provider-settings-draft.ts`, and `features/agent/model/use-agent-provider-settings.ts` keep backend transport, draft serialization, and editor state outside the shared modal host.
 - `DockviewPanelWidget` renders Dockview panel bodies and owns Dockview-specific DOM resolution such as the surrounding `.dv-groupview`, then passes mount/theme targets down as explicit props instead of making child widgets query Dockview internals themselves.
 - `AiPanelWidget` renders the shell-managed AI panel body inside the left shell pane.
 - `AiPanelWidget` now passes its own root element down as the widget-local mount target for modal and busy overlays instead of relying on global DOM lookups.

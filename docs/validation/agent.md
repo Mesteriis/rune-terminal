@@ -10,7 +10,7 @@
   - the new `core/aiproxy` domain adapts TideTerm proxy concepts into `rterm` backend rules: channel validation, masked API key storage, priority/failover selection, and direct protocol adapters for OpenAI-compatible, Claude-compatible, and Gemini upstreams
   - the new `core/codexauth` domain resolves local Codex auth state for status/reporting and runtime credential loading, which keeps the frontend/provider catalog secret-free while still showing whether machine auth is ready
   - proxy provider updates now preserve existing stored channel API keys when a channel is updated by id without a new `api_keys` payload, which keeps masked-secret frontend editing safe by default
-  - the shell-wide settings modal now renders a real provider management surface inside its body without changing the shared modal shell: existing providers can be selected, edited, activated, or deleted, while the unfinished `proxy` kind is hidden from the new-provider toolbar until the CLI-backed routing slice is ready
+  - the shell-wide settings modal now renders a real settings-navigation shell inside its body without changing the shared modal chrome: `General`, `AI`, `Terminal`, and `Commander` live in a left sidebar, and the provider-management editor now sits under `AI > Установленные приложения`
   - the frontend provider editor now resolves through typed agent-provider transport adapters and draft serializers instead of inline modal state: `features/agent/api/provider-client.ts` owns the backend routes, `provider-settings-draft.ts` owns create/update payload shaping, and `use-agent-provider-settings.ts` owns editor state
   - the frontend settings surface now treats `codex` as a separate local-auth provider instead of folding it into the generic `openai` API-key form; the editor can show backend-detected auth state while leaving the shared modal shell untouched
   - `ollama`, `codex`, and `openai` settings now load model catalogs from the backend and present model selection through dropdowns instead of forcing manual model typing; the inline action remains only as an explicit retry path
@@ -143,7 +143,7 @@
   - now accepts `codex` updates for model/auth-file path and `proxy` updates for model and full channel replacement
 - `POST /api/v1/agent/providers/models`
   - now loads backend-owned model catalogs for `ollama`, `codex`, and `openai`
-  - the current frontend uses it to populate dropdowns in the shell settings modal
+  - the current frontend uses it both for provider dropdowns and for the read-oriented `AI > Модели` directory in the shell settings modal
 - provider views mask proxy secrets:
   - channel API key values are never returned
   - channel views expose `key_count` and `enabled_key_count` instead
