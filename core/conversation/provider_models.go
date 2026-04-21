@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/Mesteriis/rune-terminal/core/codexauth"
@@ -65,10 +66,22 @@ func listCodexModelsWithCredentials(
 	client *http.Client,
 	credentials codexauth.Credentials,
 ) ([]string, error) {
+	requestURL := strings.TrimRight(credentials.BaseURL, "/") + "/models"
+	if strings.Contains(credentials.BaseURL, "chatgpt.com") {
+		parsedURL, err := url.Parse(requestURL)
+		if err != nil {
+			return nil, err
+		}
+		query := parsedURL.Query()
+		query.Set("client_version", codexClientVersion)
+		parsedURL.RawQuery = query.Encode()
+		requestURL = parsedURL.String()
+	}
+
 	req, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodGet,
-		strings.TrimRight(credentials.BaseURL, "/")+"/models",
+		requestURL,
 		nil,
 	)
 	if err != nil {

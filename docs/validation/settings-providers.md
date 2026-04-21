@@ -238,7 +238,7 @@
   - supports both non-stream and SSE text-delta streaming
   - now also supports model discovery via:
     - `https://api.openai.com/v1/models` when the local auth file contains `OPENAI_API_KEY`
-    - `https://chatgpt.com/backend-api/codex/models` when the local auth file contains ChatGPT OAuth credentials
+    - `https://chatgpt.com/backend-api/codex/models?client_version=0.120.0` when the local auth file contains ChatGPT OAuth credentials
 
 ### OpenAI support
 

@@ -17,6 +17,7 @@ import (
 const (
 	defaultCodexModel    = "gpt-5-codex"
 	codexOriginator      = "codex-tui"
+	codexClientVersion   = "0.120.0"
 	codexUserAgent       = "codex-tui/0.120.0 (rterm)"
 	codexResponsesSuffix = "/responses"
 )

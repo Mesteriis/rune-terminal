@@ -51,6 +51,7 @@ func TestListCodexModelsLoadsChatGPTModelCatalog(t *testing.T) {
 	var seenAuth string
 	var seenAccountID string
 	var seenOriginator string
+	var seenClientVersion string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/backend-api/codex/models" {
 			t.Fatalf("unexpected path: %s", r.URL.Path)
@@ -58,6 +59,7 @@ func TestListCodexModelsLoadsChatGPTModelCatalog(t *testing.T) {
 		seenAuth = r.Header.Get("Authorization")
 		seenAccountID = r.Header.Get("Chatgpt-Account-Id")
 		seenOriginator = r.Header.Get("Originator")
+		seenClientVersion = r.URL.Query().Get("client_version")
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"models": []map[string]any{
 				{"slug": "gpt-5-codex"},
@@ -77,6 +79,9 @@ func TestListCodexModelsLoadsChatGPTModelCatalog(t *testing.T) {
 	}
 	if seenAuth != "Bearer access-token" {
 		t.Fatalf("unexpected auth header: %q", seenAuth)
+	}
+	if seenClientVersion != codexClientVersion {
+		t.Fatalf("unexpected client_version: %q", seenClientVersion)
 	}
 	if seenAccountID != "acct_123" || seenOriginator != codexOriginator {
 		t.Fatalf("unexpected codex headers: account=%q originator=%q", seenAccountID, seenOriginator)
