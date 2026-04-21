@@ -55,6 +55,7 @@ const commanderPanePersistedStateSchema: z.ZodType<CommanderPanePersistedState> 
   .object({
     path: z.string(),
     filterQuery: z.string().optional().default(''),
+    directoryEntries: z.array(commanderDirectoryEntrySchema).optional(),
     entries: z.array(commanderDirectoryEntrySchema),
     cursorEntryId: z.string().nullable().optional(),
     selectionAnchorEntryId: z.string().nullable().optional(),
@@ -65,6 +66,7 @@ const commanderPanePersistedStateSchema: z.ZodType<CommanderPanePersistedState> 
   .transform((paneState) => ({
     path: paneState.path,
     filterQuery: paneState.filterQuery,
+    directoryEntries: paneState.directoryEntries ?? paneState.entries,
     entries: paneState.entries,
     cursorEntryId: paneState.cursorEntryId ?? null,
     selectionAnchorEntryId: paneState.selectionAnchorEntryId ?? paneState.cursorEntryId ?? null,
@@ -152,6 +154,7 @@ function serializePaneState(paneState: CommanderPaneRuntimeState): CommanderPane
   return {
     path: paneState.path,
     filterQuery: paneState.filterQuery,
+    directoryEntries: paneState.directoryEntries,
     entries: paneState.entries,
     cursorEntryId: paneState.cursorEntryId,
     selectionAnchorEntryId: paneState.selectionAnchorEntryId,

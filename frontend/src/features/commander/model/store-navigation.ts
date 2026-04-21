@@ -1,5 +1,4 @@
-import { readCommanderDirectory, resolveCommanderExistingPath } from '@/features/commander/model/fake-client'
-import { filterEntriesByMask } from '@/features/commander/model/store-selection'
+import { rebuildCommanderPaneState } from '@/features/commander/model/pane-state'
 import type {
   CommanderFileDialogState,
   CommanderPaneId,
@@ -48,46 +47,27 @@ export function updatePaneState(
   return setPaneState(widgetState, paneId, updater(getPaneState(widgetState, paneId)))
 }
 
-/** Rebuilds a pane from fake-client directory state while preserving valid cursor and selection state. */
+/** Rebuilds one pane from its current raw directory snapshot and projection settings. */
 export function rebuildPaneState(
   widgetState: CommanderWidgetRuntimeState,
   paneState: CommanderPaneRuntimeState,
   nextPath = paneState.path,
 ) {
-  const resolvedPath = resolveCommanderExistingPath(widgetState.widgetId, nextPath)
-  const snapshot = readCommanderDirectory(widgetState.widgetId, resolvedPath, {
-    showHidden: widgetState.showHidden,
-    sortMode: widgetState.sortMode,
-    sortDirection: widgetState.sortDirection,
-    dirsFirst: widgetState.dirsFirst,
-  })
-  const filteredEntries = filterEntriesByMask(snapshot.entries, paneState.filterQuery, {
-    emptyMeansAll: true,
-  })
-  const visibleEntryIds = new Set(filteredEntries.map((entry) => entry.id))
-  const nextSelectedIds =
-    paneState.path === resolvedPath
-      ? paneState.selectedIds.filter((entryId) => visibleEntryIds.has(entryId))
-      : []
-  const nextCursorEntryId =
-    paneState.path === resolvedPath && paneState.cursorEntryId && visibleEntryIds.has(paneState.cursorEntryId)
-      ? paneState.cursorEntryId
-      : (snapshot.entries[0]?.id ?? null)
-  const nextSelectionAnchorEntryId =
-    paneState.path === resolvedPath &&
-    paneState.selectionAnchorEntryId &&
-    visibleEntryIds.has(paneState.selectionAnchorEntryId)
-      ? paneState.selectionAnchorEntryId
-      : nextCursorEntryId
-
-  return {
-    ...paneState,
-    path: resolvedPath,
-    entries: filteredEntries,
-    selectedIds: nextSelectedIds,
-    cursorEntryId: nextCursorEntryId,
-    selectionAnchorEntryId: nextSelectionAnchorEntryId,
-  }
+  return rebuildCommanderPaneState(
+    widgetState,
+    paneState,
+    nextPath === paneState.path
+      ? undefined
+      : {
+          path: nextPath,
+          directoryEntries: [],
+          selectedIds: [],
+          cursorEntryId: null,
+          selectionAnchorEntryId: null,
+          isLoading: true,
+          errorMessage: null,
+        },
+  )
 }
 
 /** Navigates one pane to a new path and updates its local back/forward history. */

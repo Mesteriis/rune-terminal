@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 import {
   confirmCommanderWidgetPendingOperation,
+  createPendingOperation,
   requestCommanderWidgetPendingOperation,
   resolveCommanderWidgetPendingConflict,
   stepCommanderWidgetPendingSearchMatch,
@@ -19,9 +20,21 @@ type ConflictResolutionDeps = NonNullable<Parameters<typeof resolveCommanderWidg
 type PendingRequestDeps = NonNullable<Parameters<typeof requestCommanderWidgetPendingOperation>[2]>
 type PendingSearchStepDeps = NonNullable<Parameters<typeof stepCommanderWidgetPendingSearchMatch>[2]>
 
+const sampleFileEntry = {
+  id: '/repo/tmp::README.md',
+  name: 'README.md',
+  ext: 'md',
+  kind: 'file' as const,
+  sizeLabel: '1 B',
+  sizeBytes: 1,
+  modified: '2026-04-21 10:00',
+  hidden: false,
+}
+
 function createWidgetState(pendingOperation: CommanderPendingOperation | null): CommanderWidgetRuntimeState {
   return {
     widgetId: 'widget-1',
+    dataSource: 'backend',
     mode: 'commander',
     viewMode: 'split',
     activePane: 'left',
@@ -36,23 +49,29 @@ function createWidgetState(pendingOperation: CommanderPendingOperation | null): 
       id: 'left',
       path: '~/left',
       filterQuery: '',
+      directoryEntries: [],
       entries: [],
       cursorEntryId: 'entry-2',
       selectionAnchorEntryId: 'entry-2',
       selectedIds: [],
       historyBack: [],
       historyForward: [],
+      isLoading: false,
+      errorMessage: null,
     },
     rightPane: {
       id: 'right',
       path: '~/right',
       filterQuery: '',
+      directoryEntries: [],
       entries: [],
       cursorEntryId: null,
       selectionAnchorEntryId: null,
       selectedIds: [],
       historyBack: [],
       historyForward: [],
+      isLoading: false,
+      errorMessage: null,
     },
   }
 }
@@ -194,6 +213,7 @@ describe('updateCommanderPendingOperationInput', () => {
     const widgetState = createWidgetState(pendingOperation)
 
     const nextWidgetState = updateCommanderPendingOperationInput(widgetState, 'widget-1', '*.ts', {
+      getCommanderEntryNameConflict: vi.fn(),
       getCommanderMaskMatches: vi.fn(() => ({
         entryIds: ['entry-1', 'entry-2', 'entry-3'],
         entryNames: ['alpha.ts', 'beta.ts', 'gamma.ts'],
@@ -212,6 +232,32 @@ describe('updateCommanderPendingOperationInput', () => {
     })
   })
 
+  it('updates mkdir pending operations from the inline input value', () => {
+    const pendingOperation: CommanderPendingOperation = {
+      kind: 'mkdir',
+      sourcePaneId: 'left',
+      sourcePath: '~/left',
+      entryIds: [],
+      entryNames: [],
+      inputValue: 'New folder',
+    }
+    const widgetState = createWidgetState(pendingOperation)
+
+    const nextWidgetState = updateCommanderPendingOperationInput(widgetState, 'widget-1', 'notes', {
+      getCommanderEntryNameConflict: vi.fn(),
+      getCommanderMaskMatches: vi.fn(),
+      getCommanderFilterMatches: vi.fn(),
+      getCommanderSearchMatches: vi.fn(),
+      getCommanderResolvedSearchMatchIndex: vi.fn(),
+      previewCommanderRenameEntries: vi.fn(),
+    })
+
+    expect(nextWidgetState?.pendingOperation).toMatchObject({
+      kind: 'mkdir',
+      inputValue: 'notes',
+    })
+  })
+
   it('updates search pending operations and recalculates the resolved match index', () => {
     const pendingOperation: CommanderPendingOperation = {
       kind: 'search',
@@ -227,6 +273,7 @@ describe('updateCommanderPendingOperationInput', () => {
     const widgetState = createWidgetState(pendingOperation)
 
     const nextWidgetState = updateCommanderPendingOperationInput(widgetState, 'widget-1', 'term', {
+      getCommanderEntryNameConflict: vi.fn(),
       getCommanderMaskMatches: vi.fn(),
       getCommanderFilterMatches: vi.fn(),
       getCommanderSearchMatches: vi.fn(() => ({
@@ -271,6 +318,7 @@ describe('updateCommanderPendingOperationInput', () => {
     const widgetState = createWidgetState(pendingOperation)
 
     const nextWidgetState = updateCommanderPendingOperationInput(widgetState, 'widget-1', 'new.txt', {
+      getCommanderEntryNameConflict: vi.fn(),
       getCommanderMaskMatches: vi.fn(),
       getCommanderFilterMatches: vi.fn(),
       getCommanderSearchMatches: vi.fn(),
@@ -291,6 +339,38 @@ describe('updateCommanderPendingOperationInput', () => {
     })
   })
 
+  it('updates same-pane clone copy input and recalculates name conflicts', () => {
+    const pendingOperation: CommanderPendingOperation = {
+      kind: 'copy',
+      sourcePaneId: 'left',
+      sourcePath: '~/left',
+      targetPaneId: 'left',
+      targetPath: '~/left',
+      entryIds: ['entry-1'],
+      entryNames: ['file.txt'],
+      inputValue: 'file-copy.txt',
+      conflictEntryNames: [],
+      transferMode: 'clone',
+    }
+    const widgetState = createWidgetState(pendingOperation)
+
+    const nextWidgetState = updateCommanderPendingOperationInput(widgetState, 'widget-1', 'file-copy-2.txt', {
+      getCommanderEntryNameConflict: vi.fn(() => true),
+      getCommanderMaskMatches: vi.fn(),
+      getCommanderFilterMatches: vi.fn(),
+      getCommanderSearchMatches: vi.fn(),
+      getCommanderResolvedSearchMatchIndex: vi.fn(),
+      previewCommanderRenameEntries: vi.fn(),
+    })
+
+    expect(nextWidgetState?.pendingOperation).toMatchObject({
+      kind: 'copy',
+      inputValue: 'file-copy-2.txt',
+      conflictEntryNames: ['file-copy-2.txt'],
+      transferMode: 'clone',
+    })
+  })
+
   it('no-ops when input updates are requested for operations without an input contract', () => {
     const pendingOperation: CommanderPendingOperation = {
       kind: 'copy',
@@ -301,10 +381,12 @@ describe('updateCommanderPendingOperationInput', () => {
       entryIds: ['entry-1'],
       entryNames: ['file.txt'],
       conflictEntryNames: ['file.txt'],
+      transferMode: 'pane',
     }
     const widgetState = createWidgetState(pendingOperation)
 
     const nextWidgetState = updateCommanderPendingOperationInput(widgetState, 'widget-1', 'new-target', {
+      getCommanderEntryNameConflict: vi.fn(),
       getCommanderMaskMatches: vi.fn(),
       getCommanderFilterMatches: vi.fn(),
       getCommanderSearchMatches: vi.fn(),
@@ -331,6 +413,7 @@ describe('confirmCommanderWidgetPendingOperation', () => {
       entryIds: ['entry-1'],
       entryNames: ['file.txt'],
       conflictEntryNames: [],
+      transferMode: 'pane',
     }
     const widgetState = createWidgetState(pendingOperation)
     const deps = createConfirmationDeps()
@@ -437,6 +520,17 @@ describe('confirmCommanderWidgetPendingOperation', () => {
 })
 
 describe('requestCommanderWidgetPendingOperation', () => {
+  it('opens a mkdir pending operation without requiring a selected entry', () => {
+    const nextWidgetState = requestCommanderWidgetPendingOperation(createWidgetState(null), 'mkdir')
+
+    expect(nextWidgetState?.pendingOperation).toMatchObject({
+      kind: 'mkdir',
+      sourcePaneId: 'left',
+      sourcePath: '~/left',
+      inputValue: 'New folder',
+    })
+  })
+
   it('returns null when the pending operation cannot be created', () => {
     const deps = createPendingRequestDeps()
     deps.createPendingOperation.mockReturnValue(null)
@@ -463,6 +557,35 @@ describe('requestCommanderWidgetPendingOperation', () => {
     expect(nextWidgetState?.pendingOperation).toMatchObject({
       kind: 'filter',
       inputValue: '*.ts',
+    })
+  })
+
+  it('creates a same-pane clone copy operation with an inline target name', () => {
+    const baseState = createWidgetState(null)
+    const widgetState = {
+      ...baseState,
+      leftPane: {
+        ...baseState.leftPane,
+        path: '/repo/tmp',
+        directoryEntries: [sampleFileEntry],
+        entries: [sampleFileEntry],
+        cursorEntryId: sampleFileEntry.id,
+      },
+      rightPane: {
+        ...baseState.rightPane,
+        path: '/repo/tmp',
+        directoryEntries: [sampleFileEntry],
+        entries: [sampleFileEntry],
+      },
+    } satisfies CommanderWidgetRuntimeState
+
+    expect(createPendingOperation(widgetState, 'copy')).toMatchObject({
+      kind: 'copy',
+      sourcePaneId: 'left',
+      targetPaneId: 'left',
+      targetPath: '/repo/tmp',
+      inputValue: 'README-copy.md',
+      transferMode: 'clone',
     })
   })
 })
@@ -537,6 +660,7 @@ describe('resolveCommanderWidgetPendingConflict', () => {
       entryIds: ['entry-1', 'entry-2'],
       entryNames: ['alpha.txt', 'beta.txt'],
       conflictEntryNames: ['alpha.txt', 'beta.txt'],
+      transferMode: 'pane',
     }
     const widgetState = createWidgetState(pendingOperation)
     const deps = createConflictResolutionDeps()
@@ -567,6 +691,7 @@ describe('resolveCommanderWidgetPendingConflict', () => {
       entryIds: ['entry-1', 'entry-2', 'entry-3'],
       entryNames: ['alpha.txt', 'beta.txt', 'gamma.txt'],
       conflictEntryNames: ['alpha.txt', 'gamma.txt'],
+      transferMode: 'pane',
     }
     const widgetState = createWidgetState(pendingOperation)
     const deps = createConflictResolutionDeps()
@@ -592,6 +717,7 @@ describe('resolveCommanderWidgetPendingConflict', () => {
       entryIds: ['entry-1', 'entry-2'],
       entryNames: ['alpha.txt', 'beta.txt'],
       conflictEntryNames: ['alpha.txt', 'beta.txt'],
+      transferMode: 'pane',
     }
     const widgetState = createWidgetState(pendingOperation)
     const deps = createConflictResolutionDeps()
@@ -621,6 +747,7 @@ describe('resolveCommanderWidgetPendingConflict', () => {
       entryIds: ['entry-1'],
       entryNames: ['alpha.txt'],
       conflictEntryNames: ['alpha.txt'],
+      transferMode: 'pane',
     }
     const widgetState = createWidgetState(pendingOperation)
     const deps = createConflictResolutionDeps()

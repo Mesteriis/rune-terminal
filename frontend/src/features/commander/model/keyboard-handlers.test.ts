@@ -46,6 +46,8 @@ function createPendingOperation(
     targetPath: '~/right',
     entryIds: ['entry-1'],
     entryNames: ['entry-1.txt'],
+    conflictEntryNames: [],
+    transferMode: 'pane',
     ...overrides,
   }
 }
@@ -216,6 +218,7 @@ describe('handleCommanderPendingOperationKeys', () => {
     const pendingOperation = createPendingOperation({
       conflictEntryNames: ['entry-1.txt'],
       kind: 'move',
+      transferMode: 'pane',
     })
     const commanderActions = {
       cancelPendingOperation: vi.fn(),

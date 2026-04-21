@@ -235,26 +235,18 @@ function getDefaultFileContent(path: string, entry: CommanderSeedEntry) {
         '',
       ].join('\n')
     case 'sh':
-      return [
-        '#!/usr/bin/env zsh',
-        `# ${title}`,
-        '',
-        `echo "fake client ${fullPath}"`,
-        '',
-      ].join('\n')
+      return ['#!/usr/bin/env zsh', `# ${title}`, '', `echo "fake client ${fullPath}"`, ''].join('\n')
     case 'json':
-      return JSON.stringify({
-        path: fullPath,
-        source: 'fake-client',
-      }, null, 2)
+      return JSON.stringify(
+        {
+          path: fullPath,
+          source: 'fake-client',
+        },
+        null,
+        2,
+      )
     default:
-      return [
-        `${title}`,
-        '',
-        `Path: ${fullPath}`,
-        'Fake Commander viewer/editor content.',
-        '',
-      ].join('\n')
+      return [`${title}`, '', `Path: ${fullPath}`, 'Fake Commander viewer/editor content.', ''].join('\n')
   }
 }
 
@@ -310,11 +302,7 @@ function applyRenameTextTransform(value: string, modifier?: string) {
   }
 }
 
-function applyCommanderRenameTemplate(
-  entry: CommanderDirectoryEntry,
-  template: string,
-  index: number,
-) {
+function applyCommanderRenameTemplate(entry: CommanderDirectoryEntry, template: string, index: number) {
   const normalizedTemplate = template.trim()
 
   if (!normalizedTemplate) {
@@ -325,24 +313,28 @@ function applyCommanderRenameTemplate(
   const usesFullNameToken = /\[F(?::[a-z])?\]/i.test(normalizedTemplate)
   const usesExtensionToken = /\[E(?::[a-z])?\]/i.test(normalizedTemplate)
   let nextName = normalizedTemplate
-    .replace(/\[C(?::(\d+))?(?::(\d+))?(?::(\d+))?\]/gi, (_match, firstValue: string | undefined, secondValue: string | undefined, thirdValue: string | undefined) => {
-      const first = firstValue ? Number.parseInt(firstValue, 10) : undefined
-      const second = secondValue ? Number.parseInt(secondValue, 10) : undefined
-      const third = thirdValue ? Number.parseInt(thirdValue, 10) : undefined
+    .replace(
+      /\[C(?::(\d+))?(?::(\d+))?(?::(\d+))?\]/gi,
+      (
+        _match,
+        firstValue: string | undefined,
+        secondValue: string | undefined,
+        thirdValue: string | undefined,
+      ) => {
+        const first = firstValue ? Number.parseInt(firstValue, 10) : undefined
+        const second = secondValue ? Number.parseInt(secondValue, 10) : undefined
+        const third = thirdValue ? Number.parseInt(thirdValue, 10) : undefined
 
-      const start = Number.isFinite(second) ? (first ?? 1) : 1
-      const width = Number.isFinite(second) ? second : first
-      const step = Number.isFinite(third) ? (third ?? 1) : 1
-      const counter = start + (index * step)
+        const start = Number.isFinite(second) ? (first ?? 1) : 1
+        const width = Number.isFinite(second) ? second : first
+        const step = Number.isFinite(third) ? (third ?? 1) : 1
+        const counter = start + index * step
 
-      return formatRenameCounter(counter, Number.isFinite(width) ? width : undefined)
-    })
+        return formatRenameCounter(counter, Number.isFinite(width) ? width : undefined)
+      },
+    )
     .replace(/\[(N|E|F)(?::([a-z]))?\]/gi, (_match, token: 'N' | 'E' | 'F', modifier: string | undefined) => {
-      const rawValue = token === 'N'
-        ? baseName
-        : token === 'E'
-          ? ext
-          : entry.name
+      const rawValue = token === 'N' ? baseName : token === 'E' ? ext : entry.name
 
       return applyRenameTextTransform(rawValue, modifier)
     })
@@ -371,12 +363,10 @@ function ensureDirectory(client: CommanderClientState, path: string) {
   return nextEntries
 }
 
-function getUniqueEntryName(
-  client: CommanderClientState,
-  directoryPath: string,
-  baseName: string,
-) {
-  const existingNames = new Set((client.directories.get(directoryPath) ?? []).map((entry) => normalizeEntryName(entry.name)))
+function getUniqueEntryName(client: CommanderClientState, directoryPath: string, baseName: string) {
+  const existingNames = new Set(
+    (client.directories.get(directoryPath) ?? []).map((entry) => normalizeEntryName(entry.name)),
+  )
 
   if (!existingNames.has(normalizeEntryName(baseName))) {
     return baseName
@@ -395,12 +385,10 @@ function getUniqueEntryName(
   }
 }
 
-function getUniqueDirectoryName(
-  client: CommanderClientState,
-  directoryPath: string,
-  baseName: string,
-) {
-  const existingNames = new Set((client.directories.get(directoryPath) ?? []).map((entry) => normalizeEntryName(entry.name)))
+function getUniqueDirectoryName(client: CommanderClientState, directoryPath: string, baseName: string) {
+  const existingNames = new Set(
+    (client.directories.get(directoryPath) ?? []).map((entry) => normalizeEntryName(entry.name)),
+  )
 
   if (!existingNames.has(normalizeEntryName(baseName))) {
     return baseName
@@ -423,7 +411,11 @@ function formatItemCountLabel(itemCount: number) {
   return `${itemCount} item${itemCount === 1 ? '' : 's'}`
 }
 
-function cloneSeedEntryForDirectory(entry: CommanderSeedEntry, directoryPath: string, name = entry.name): CommanderSeedEntry {
+function cloneSeedEntryForDirectory(
+  entry: CommanderSeedEntry,
+  directoryPath: string,
+  name = entry.name,
+): CommanderSeedEntry {
   return {
     ...structuredClone(entry),
     id: toSeedEntryId(directoryPath, name),
@@ -459,19 +451,14 @@ function syncDirectoryMetadata(client: CommanderClientState, path: string) {
   client.directories.set(parentPath, nextEntries)
 }
 
-function cloneDirectorySubtree(
-  client: CommanderClientState,
-  sourcePath: string,
-  targetPath: string,
-) {
+function cloneDirectorySubtree(client: CommanderClientState, sourcePath: string, targetPath: string) {
   const sourceSubtreePaths = Array.from(client.directories.keys())
     .filter((candidatePath) => candidatePath === sourcePath || candidatePath.startsWith(`${sourcePath}/`))
     .sort((leftPath, rightPath) => leftPath.length - rightPath.length)
 
   sourceSubtreePaths.forEach((currentSourcePath) => {
-    const relativePath = currentSourcePath === sourcePath
-      ? ''
-      : currentSourcePath.slice(sourcePath.length + 1)
+    const relativePath =
+      currentSourcePath === sourcePath ? '' : currentSourcePath.slice(sourcePath.length + 1)
     const currentTargetPath = relativePath ? `${targetPath}/${relativePath}` : targetPath
     const sourceEntries = client.directories.get(currentSourcePath) ?? []
     const clonedEntries = sourceEntries.map((entry) => cloneSeedEntryForDirectory(entry, currentTargetPath))
@@ -480,10 +467,7 @@ function cloneDirectorySubtree(
   })
 }
 
-function removeDirectorySubtree(
-  client: CommanderClientState,
-  path: string,
-) {
+function removeDirectorySubtree(client: CommanderClientState, path: string) {
   Array.from(client.directories.keys())
     .filter((candidatePath) => candidatePath === path || candidatePath.startsWith(`${path}/`))
     .forEach((candidatePath) => {
@@ -503,27 +487,23 @@ function mutateEntryList(
   syncDirectoryMetadata(client, path)
 }
 
-function removeEntryFromDirectory(
-  client: CommanderClientState,
-  path: string,
-  entry: CommanderSeedEntry,
-) {
+function removeEntryFromDirectory(client: CommanderClientState, path: string, entry: CommanderSeedEntry) {
   if (entry.kind === 'folder') {
     removeDirectorySubtree(client, joinPath(path, entry.name))
   }
 
-  mutateEntryList(client, path, (entries) => (
-    entries.filter((candidateEntry) => normalizeEntryName(candidateEntry.name) !== normalizeEntryName(entry.name))
-  ))
+  mutateEntryList(client, path, (entries) =>
+    entries.filter(
+      (candidateEntry) => normalizeEntryName(candidateEntry.name) !== normalizeEntryName(entry.name),
+    ),
+  )
 }
 
-function removeEntryByName(
-  client: CommanderClientState,
-  path: string,
-  name: string,
-) {
+function removeEntryByName(client: CommanderClientState, path: string, name: string) {
   const directoryEntries = client.directories.get(path) ?? []
-  const matchingEntry = directoryEntries.find((entry) => normalizeEntryName(entry.name) === normalizeEntryName(name))
+  const matchingEntry = directoryEntries.find(
+    (entry) => normalizeEntryName(entry.name) === normalizeEntryName(name),
+  )
 
   if (!matchingEntry) {
     return false
@@ -543,7 +523,9 @@ function copyEntryIntoDirectory(
   },
 ) {
   const overwrite = Boolean(options?.overwrite)
-  const nextName = overwrite ? splitEntryName(entry) : getUniqueEntryName(client, targetPath, splitEntryName(entry))
+  const nextName = overwrite
+    ? splitEntryName(entry)
+    : getUniqueEntryName(client, targetPath, splitEntryName(entry))
 
   if (overwrite) {
     removeEntryByName(client, targetPath, nextName)
@@ -599,13 +581,61 @@ function buildSeedDirectories() {
     [
       '~/projects/runa-terminal/frontend/src/widgets',
       [
-        { name: 'commander-widget', ext: 'tsx', kind: 'file', sizeLabel: '8.4 KB', modified: '2026-04-20 09:14', gitStatus: 'M' },
-        { name: 'commander-widget.styles', ext: 'ts', kind: 'file', sizeLabel: '6.1 KB', modified: '2026-04-20 08:58', gitStatus: 'M' },
-        { name: 'terminal-widget', ext: 'tsx', kind: 'file', sizeLabel: '4.1 KB', modified: '2026-04-19 17:49', gitStatus: 'M' },
-        { name: 'terminal-panel', ext: 'ts', kind: 'file', sizeLabel: '2.6 KB', modified: '2026-04-19 22:12' },
-        { name: 'right-action-rail-widget', ext: 'tsx', kind: 'file', sizeLabel: '7.3 KB', modified: '2026-04-20 08:05', gitStatus: 'M' },
-        { name: 'shell-topbar-widget', ext: 'tsx', kind: 'file', sizeLabel: '5.7 KB', modified: '2026-04-20 08:11', gitStatus: 'M' },
-        { name: 'widget-busy-overlay-widget', ext: 'tsx', kind: 'file', sizeLabel: '10.9 KB', modified: '2026-04-20 07:50', gitStatus: 'M' },
+        {
+          name: 'commander-widget',
+          ext: 'tsx',
+          kind: 'file',
+          sizeLabel: '8.4 KB',
+          modified: '2026-04-20 09:14',
+          gitStatus: 'M',
+        },
+        {
+          name: 'commander-widget.styles',
+          ext: 'ts',
+          kind: 'file',
+          sizeLabel: '6.1 KB',
+          modified: '2026-04-20 08:58',
+          gitStatus: 'M',
+        },
+        {
+          name: 'terminal-widget',
+          ext: 'tsx',
+          kind: 'file',
+          sizeLabel: '4.1 KB',
+          modified: '2026-04-19 17:49',
+          gitStatus: 'M',
+        },
+        {
+          name: 'terminal-panel',
+          ext: 'ts',
+          kind: 'file',
+          sizeLabel: '2.6 KB',
+          modified: '2026-04-19 22:12',
+        },
+        {
+          name: 'right-action-rail-widget',
+          ext: 'tsx',
+          kind: 'file',
+          sizeLabel: '7.3 KB',
+          modified: '2026-04-20 08:05',
+          gitStatus: 'M',
+        },
+        {
+          name: 'shell-topbar-widget',
+          ext: 'tsx',
+          kind: 'file',
+          sizeLabel: '5.7 KB',
+          modified: '2026-04-20 08:11',
+          gitStatus: 'M',
+        },
+        {
+          name: 'widget-busy-overlay-widget',
+          ext: 'tsx',
+          kind: 'file',
+          sizeLabel: '10.9 KB',
+          modified: '2026-04-20 07:50',
+          gitStatus: 'M',
+        },
         { name: 'index', ext: 'ts', kind: 'file', sizeLabel: '1.0 KB', modified: '2026-04-20 07:44' },
       ],
     ],
@@ -621,7 +651,13 @@ function buildSeedDirectories() {
       [
         { name: 'app', ext: 'ts', kind: 'file', sizeLabel: '242 B', modified: '2026-04-19 11:20' },
         { name: 'widget-focus', ext: 'ts', kind: 'file', sizeLabel: '312 B', modified: '2026-04-20 06:41' },
-        { name: 'ai-blocked-widgets', ext: 'ts', kind: 'file', sizeLabel: '398 B', modified: '2026-04-19 21:18' },
+        {
+          name: 'ai-blocked-widgets',
+          ext: 'ts',
+          kind: 'file',
+          sizeLabel: '398 B',
+          modified: '2026-04-19 21:18',
+        },
         { name: 'modal', ext: 'ts', kind: 'file', sizeLabel: '1.1 KB', modified: '2026-04-19 22:47' },
       ],
     ],
@@ -636,10 +672,31 @@ function buildSeedDirectories() {
     [
       '~/projects/runa-terminal/frontend/src/shared/ui/components',
       [
-        { name: 'dockview-tab-chrome', ext: 'tsx', kind: 'file', sizeLabel: '2.8 KB', modified: '2026-04-20 08:19', gitStatus: 'A' },
-        { name: 'dockview-tab-pill', ext: 'tsx', kind: 'file', sizeLabel: '1.4 KB', modified: '2026-04-20 08:26', gitStatus: 'A' },
+        {
+          name: 'dockview-tab-chrome',
+          ext: 'tsx',
+          kind: 'file',
+          sizeLabel: '2.8 KB',
+          modified: '2026-04-20 08:19',
+          gitStatus: 'A',
+        },
+        {
+          name: 'dockview-tab-pill',
+          ext: 'tsx',
+          kind: 'file',
+          sizeLabel: '1.4 KB',
+          modified: '2026-04-20 08:26',
+          gitStatus: 'A',
+        },
         { name: 'icon-button', ext: 'tsx', kind: 'file', sizeLabel: '1.2 KB', modified: '2026-04-19 20:41' },
-        { name: 'terminal-status-header', ext: 'tsx', kind: 'file', sizeLabel: '5.0 KB', modified: '2026-04-20 08:25', gitStatus: 'M' },
+        {
+          name: 'terminal-status-header',
+          ext: 'tsx',
+          kind: 'file',
+          sizeLabel: '5.0 KB',
+          modified: '2026-04-20 08:25',
+          gitStatus: 'M',
+        },
         { name: 'avatar', ext: 'tsx', kind: 'file', sizeLabel: '868 B', modified: '2026-04-19 21:06' },
       ],
     ],
@@ -655,7 +712,14 @@ function buildSeedDirectories() {
     [
       '~/projects/runa-terminal/docs/validation',
       [
-        { name: 'workspace', ext: 'md', kind: 'file', sizeLabel: '15.8 KB', modified: '2026-04-20 08:32', gitStatus: 'M' },
+        {
+          name: 'workspace',
+          ext: 'md',
+          kind: 'file',
+          sizeLabel: '15.8 KB',
+          modified: '2026-04-20 08:32',
+          gitStatus: 'M',
+        },
         { name: 'ui', ext: 'md', kind: 'file', sizeLabel: '9.4 KB', modified: '2026-04-18 21:54' },
         { name: 'execution', ext: 'md', kind: 'file', sizeLabel: '4.8 KB', modified: '2026-04-18 21:33' },
         { name: 'remote', ext: 'md', kind: 'file', sizeLabel: '3.9 KB', modified: '2026-04-18 20:58' },
@@ -664,9 +728,30 @@ function buildSeedDirectories() {
     [
       '~/projects/runa-terminal/docs/.cache',
       [
-        { name: 'validation-smoke', ext: 'json', kind: 'file', sizeLabel: '1.1 KB', modified: '2026-04-17 11:06', hidden: true },
-        { name: 'workspace-snapshot', ext: 'png', kind: 'file', sizeLabel: '218 KB', modified: '2026-04-17 11:05', hidden: true },
-        { name: 'shell-layout', ext: 'json', kind: 'file', sizeLabel: '842 B', modified: '2026-04-17 11:04', hidden: true },
+        {
+          name: 'validation-smoke',
+          ext: 'json',
+          kind: 'file',
+          sizeLabel: '1.1 KB',
+          modified: '2026-04-17 11:06',
+          hidden: true,
+        },
+        {
+          name: 'workspace-snapshot',
+          ext: 'png',
+          kind: 'file',
+          sizeLabel: '218 KB',
+          modified: '2026-04-17 11:05',
+          hidden: true,
+        },
+        {
+          name: 'shell-layout',
+          ext: 'json',
+          kind: 'file',
+          sizeLabel: '842 B',
+          modified: '2026-04-17 11:04',
+          hidden: true,
+        },
       ],
     ],
   ])
@@ -682,7 +767,9 @@ function buildSeedDirectories() {
     }
   })
 
-  const sortedDirectoryPaths = Array.from(allDirectoryPaths).sort((leftPath, rightPath) => leftPath.localeCompare(rightPath))
+  const sortedDirectoryPaths = Array.from(allDirectoryPaths).sort((leftPath, rightPath) =>
+    leftPath.localeCompare(rightPath),
+  )
 
   sortedDirectoryPaths.forEach((path) => {
     if (explicitDirectories.has(path)) {
@@ -768,11 +855,7 @@ function resolveEntry(widgetId: string, path: string, entryId: string) {
   return createEntry(entry, path)
 }
 
-function resolveEntriesInOrder(
-  widgetId: string,
-  path: string,
-  entryIds: string[],
-) {
+function resolveEntriesInOrder(widgetId: string, path: string, entryIds: string[]) {
   return entryIds
     .map((entryId) => resolveEntry(widgetId, path, entryId))
     .filter((entry): entry is CommanderDirectoryEntry => Boolean(entry))
@@ -798,26 +881,30 @@ function createInitialPaneState(
   },
   entriesOverride?: CommanderDirectoryEntry[],
 ): CommanderPaneRuntimeState {
-  const entries = entriesOverride ?? readDirectoryEntries(widgetId, path, options)
+  const directoryEntries = entriesOverride ?? readDirectoryEntries(widgetId, path, options)
+  const entries = directoryEntries
   const visibleIds = new Set(entries.map((entry) => entry.id))
   const nextSelectedIds = selectedIds.filter((entryId) => visibleIds.has(entryId))
-  const nextCursorEntryId = cursorEntryId && visibleIds.has(cursorEntryId)
-    ? cursorEntryId
-    : (entries[0]?.id ?? null)
-  const nextSelectionAnchorEntryId = selectionAnchorEntryId && visibleIds.has(selectionAnchorEntryId)
-    ? selectionAnchorEntryId
-    : nextCursorEntryId
+  const nextCursorEntryId =
+    cursorEntryId && visibleIds.has(cursorEntryId) ? cursorEntryId : (entries[0]?.id ?? null)
+  const nextSelectionAnchorEntryId =
+    selectionAnchorEntryId && visibleIds.has(selectionAnchorEntryId)
+      ? selectionAnchorEntryId
+      : nextCursorEntryId
 
   return {
     id: paneId,
     path,
     filterQuery,
+    directoryEntries,
     entries,
     cursorEntryId: nextCursorEntryId,
     selectionAnchorEntryId: nextSelectionAnchorEntryId,
     selectedIds: nextSelectedIds,
     historyBack: history?.back ?? [],
     historyForward: history?.forward ?? [],
+    isLoading: false,
+    errorMessage: null,
   }
 }
 
@@ -845,7 +932,7 @@ function createPaneStateFromPersisted(
       back: paneState.historyBack,
       forward: paneState.historyForward,
     },
-    paneState.entries,
+    paneState.directoryEntries ?? paneState.entries,
   )
 }
 
@@ -861,6 +948,7 @@ export function createCommanderWidgetRuntimeState(
 
   return {
     widgetId,
+    dataSource: 'backend',
     mode: 'commander',
     viewMode: persistedState?.viewMode ?? commanderWidgetMockState.viewMode,
     activePane: persistedState?.activePane ?? commanderWidgetMockState.activePane,
@@ -874,27 +962,27 @@ export function createCommanderWidgetRuntimeState(
     leftPane: persistedState?.leftPane
       ? createPaneStateFromPersisted(widgetId, 'left', persistedState.leftPane, options)
       : createInitialPaneState(
-        widgetId,
-        'left',
-        commanderWidgetMockState.leftPane.path,
-        '',
-        commanderWidgetMockState.leftPane.rows.filter((row) => row.selected).map((row) => row.id),
-        commanderWidgetMockState.leftPane.rows.find((row) => row.focused)?.id ?? null,
-        commanderWidgetMockState.leftPane.rows.find((row) => row.focused)?.id ?? null,
-        options,
-      ),
+          widgetId,
+          'left',
+          commanderWidgetMockState.leftPane.path,
+          '',
+          commanderWidgetMockState.leftPane.rows.filter((row) => row.selected).map((row) => row.id),
+          commanderWidgetMockState.leftPane.rows.find((row) => row.focused)?.id ?? null,
+          commanderWidgetMockState.leftPane.rows.find((row) => row.focused)?.id ?? null,
+          options,
+        ),
     rightPane: persistedState?.rightPane
       ? createPaneStateFromPersisted(widgetId, 'right', persistedState.rightPane, options)
       : createInitialPaneState(
-        widgetId,
-        'right',
-        commanderWidgetMockState.rightPane.path,
-        '',
-        commanderWidgetMockState.rightPane.rows.filter((row) => row.selected).map((row) => row.id),
-        commanderWidgetMockState.rightPane.rows.find((row) => row.focused)?.id ?? null,
-        commanderWidgetMockState.rightPane.rows.find((row) => row.focused)?.id ?? null,
-        options,
-      ),
+          widgetId,
+          'right',
+          commanderWidgetMockState.rightPane.path,
+          '',
+          commanderWidgetMockState.rightPane.rows.filter((row) => row.selected).map((row) => row.id),
+          commanderWidgetMockState.rightPane.rows.find((row) => row.focused)?.id ?? null,
+          commanderWidgetMockState.rightPane.rows.find((row) => row.focused)?.id ?? null,
+          options,
+        ),
   }
 }
 
@@ -1017,20 +1105,22 @@ export function writeCommanderFile({
   const contentBytes = encoder.encode(content).length
   let saved = false
 
-  mutateEntryList(client, path, (entries) => entries.map((entry) => {
-    if (createEntry(entry, path).id !== entryId || entry.kind !== 'file') {
-      return entry
-    }
+  mutateEntryList(client, path, (entries) =>
+    entries.map((entry) => {
+      if (createEntry(entry, path).id !== entryId || entry.kind !== 'file') {
+        return entry
+      }
 
-    saved = true
+      saved = true
 
-    return {
-      ...entry,
-      content,
-      sizeLabel: formatContentSizeLabel(contentBytes),
-      modified: formatCurrentTimestamp(),
-    }
-  }))
+      return {
+        ...entry,
+        content,
+        sizeLabel: formatContentSizeLabel(contentBytes),
+        modified: formatCurrentTimestamp(),
+      }
+    }),
+  )
 
   return saved
 }
@@ -1059,7 +1149,9 @@ export function resolveCommanderExistingPath(widgetId: string, path: string) {
 export function listCommanderDirectoryPaths(widgetId: string) {
   const client = getClient(widgetId)
 
-  return Array.from(client.directories.keys()).sort((leftPath, rightPath) => leftPath.localeCompare(rightPath))
+  return Array.from(client.directories.keys()).sort((leftPath, rightPath) =>
+    leftPath.localeCompare(rightPath),
+  )
 }
 
 export function getCommanderSelectedSize(entries: CommanderDirectoryEntry[], selectedIds: string[]) {
@@ -1134,11 +1226,7 @@ export function moveCommanderEntries({
     })
 }
 
-export function deleteCommanderEntries({
-  widgetId,
-  path,
-  entryIds,
-}: CommanderMutationParams) {
+export function deleteCommanderEntries({ widgetId, path, entryIds }: CommanderMutationParams) {
   const client = getClient(widgetId)
   const sourceEntries = client.directories.get(path) ?? []
   const deletedEntryIds = new Set(entryIds)
@@ -1151,9 +1239,9 @@ export function deleteCommanderEntries({
       }
     })
 
-  mutateEntryList(client, path, (entries) => (
-    entries.filter((entry) => !deletedEntryIds.has(createEntry(entry, path).id))
-  ))
+  mutateEntryList(client, path, (entries) =>
+    entries.filter((entry) => !deletedEntryIds.has(createEntry(entry, path).id)),
+  )
 }
 
 export function mkdirCommanderDirectory(widgetId: string, path: string) {
@@ -1284,11 +1372,7 @@ export function previewCommanderRenameEntries({
     })
 
     item.conflict = hasDuplicateTarget || hasDirectoryConflict
-    item.status = hasDuplicateTarget
-      ? 'duplicate'
-      : hasDirectoryConflict
-        ? 'conflict'
-        : 'ok'
+    item.status = hasDuplicateTarget ? 'duplicate' : hasDirectoryConflict ? 'conflict' : 'ok'
 
     if (hasDuplicateTarget) {
       duplicateTargetNames.push(item.nextName)
@@ -1341,7 +1425,7 @@ export function renameCommanderEntry({
     removeEntryByName(client, path, trimmedNextName)
   }
 
-  mutateEntryList(client, path, (entries) => (
+  mutateEntryList(client, path, (entries) =>
     entries.map((entry) => {
       if (createEntry(entry, path).id !== entryId) {
         return entry
@@ -1352,14 +1436,16 @@ export function renameCommanderEntry({
         id: toSeedEntryId(path, trimmedNextName),
         name: trimmedNextName,
       }
-    })
-  ))
+    }),
+  )
 
   if (currentEntry.kind === 'folder') {
     const previousPath = joinPath(path, currentEntry.name)
     const nextPath = joinPath(path, trimmedNextName)
     const subtreeEntries = Array.from(client.directories.entries())
-      .filter(([candidatePath]) => candidatePath === previousPath || candidatePath.startsWith(`${previousPath}/`))
+      .filter(
+        ([candidatePath]) => candidatePath === previousPath || candidatePath.startsWith(`${previousPath}/`),
+      )
       .sort(([leftPath], [rightPath]) => leftPath.length - rightPath.length)
 
     subtreeEntries.forEach(([candidatePath, entries]) => {
@@ -1434,12 +1520,15 @@ export function renameCommanderEntries({
   }
 
   const nextEntryIds = renamePreview.preview
-    .map((item, index) => renameCommanderEntry({
-      widgetId,
-      path,
-      entryId: toSeedEntryId(path, `${temporaryNamePrefix}-${index + 1}`),
-      nextName: item.nextName,
-    })?.entryId ?? null)
+    .map(
+      (item, index) =>
+        renameCommanderEntry({
+          widgetId,
+          path,
+          entryId: toSeedEntryId(path, `${temporaryNamePrefix}-${index + 1}`),
+          nextName: item.nextName,
+        })?.entryId ?? null,
+    )
     .filter((entryId): entryId is string => Boolean(entryId))
 
   return {

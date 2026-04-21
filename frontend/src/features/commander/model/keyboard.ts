@@ -10,7 +10,6 @@ import {
   handleCommanderSelectionShortcutKeys,
   handleCommanderShiftNavigationKeys,
 } from '@/features/commander/model/keyboard-handlers'
-import { useCommanderActions } from '@/features/commander/model/hooks'
 import type {
   CommanderFileDialogState,
   CommanderFileRow,
@@ -34,7 +33,42 @@ function isInteractiveTextTarget(target: EventTarget | null) {
 
 /** Wires the pure commander key handlers into one widget-scoped `onKeyDownCapture` callback. */
 export function useCommanderKeyboard(
-  widgetId: string,
+  commanderActions: {
+    clearActivePaneFilter: () => void
+    closeFileDialog: () => void
+    copySelection: () => void
+    deleteSelection: () => void
+    editActiveFile: () => void
+    filterActivePane: () => void
+    goBack: () => void
+    goForward: () => void
+    goParent: () => void
+    invertSelection: () => void
+    mkdir: () => void
+    moveCursor: (delta: number, options?: { extendSelection?: boolean }) => void
+    moveSelection: () => void
+    openActiveEntry: () => void
+    overwriteAllPendingConflicts: () => void
+    overwritePendingConflict: () => void
+    renameSelection: () => void
+    searchActivePane: () => void
+    selectByMask: () => void
+    setBoundaryCursor: (
+      paneId: CommanderPaneId,
+      boundary: 'start' | 'end',
+      options?: { extendSelection?: boolean },
+    ) => void
+    setCursor: (paneId: CommanderPaneId, entryId: string) => void
+    skipAllPendingConflicts: () => void
+    skipPendingConflict: () => void
+    stepSearchMatch: (delta: 1 | -1) => void
+    switchActivePane: () => void
+    toggleSelectionAtCursor: (advance?: boolean) => void
+    unselectByMask: () => void
+    viewActiveFile: () => void
+    confirmPendingOperation: () => void
+    cancelPendingOperation: () => void
+  },
   activePane: CommanderPaneId,
   activePaneRows: CommanderFileRow[],
   pendingOperation: CommanderPendingOperation | null,
@@ -43,7 +77,6 @@ export function useCommanderKeyboard(
     onRequestPathEdit?: () => void
   },
 ) {
-  const commanderActions = useCommanderActions(widgetId)
   const typeaheadRef = useRef<{
     prefix: string
     timestamp: number

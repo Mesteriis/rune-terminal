@@ -44,17 +44,27 @@ type CommanderPendingOperationWithInput<Kind extends CommanderPendingOperationKi
     inputValue: string
   }
 
-export type CommanderTransferPendingOperation = CommanderPendingOperationBase<'copy' | 'move'> & {
+export type CommanderClonePendingOperation = CommanderPendingOperationWithInput<'copy'> & {
   targetPaneId: CommanderPaneId
   targetPath: string
   conflictEntryNames: string[]
+  transferMode: 'clone'
 }
+
+export type CommanderPaneTransferPendingOperation = CommanderPendingOperationBase<'copy' | 'move'> & {
+  targetPaneId: CommanderPaneId
+  targetPath: string
+  conflictEntryNames: string[]
+  transferMode: 'pane'
+}
+
+export type CommanderTransferPendingOperation =
+  | CommanderClonePendingOperation
+  | CommanderPaneTransferPendingOperation
 
 export type CommanderDeletePendingOperation = CommanderPendingOperationBase<'delete'>
 
-export type CommanderMkdirPendingOperation = CommanderPendingOperationBase<'mkdir'> & {
-  mkdirName: string
-}
+export type CommanderMkdirPendingOperation = CommanderPendingOperationWithInput<'mkdir'>
 
 export type CommanderRenamePendingOperation = CommanderPendingOperationWithInput<'rename'> & {
   conflictEntryNames: string[]
@@ -77,6 +87,7 @@ export type CommanderSearchPendingOperation = CommanderPendingOperationWithInput
 }
 
 export type CommanderPendingInputOperation =
+  | CommanderClonePendingOperation
   | CommanderRenamePendingOperation
   | CommanderMaskPendingOperation
   | CommanderSearchPendingOperation
@@ -125,17 +136,21 @@ export type CommanderPaneRuntimeState = {
   id: CommanderPaneId
   path: string
   filterQuery: string
+  directoryEntries: CommanderDirectoryEntry[]
   entries: CommanderDirectoryEntry[]
   cursorEntryId: string | null
   selectionAnchorEntryId: string | null
   selectedIds: string[]
   historyBack: string[]
   historyForward: string[]
+  isLoading: boolean
+  errorMessage: string | null
 }
 
 export type CommanderPanePersistedState = {
   path: string
   filterQuery: string
+  directoryEntries?: CommanderDirectoryEntry[]
   entries: CommanderDirectoryEntry[]
   cursorEntryId: string | null
   selectionAnchorEntryId: string | null
@@ -156,6 +171,7 @@ export type CommanderFileDialogState = {
 
 export type CommanderWidgetRuntimeState = {
   widgetId: string
+  dataSource: 'backend'
   mode: 'commander'
   viewMode: CommanderViewMode
   activePane: CommanderPaneId
@@ -210,9 +226,12 @@ export type CommanderFileRow = {
 export type CommanderPaneViewState = {
   id: CommanderPaneId
   path: string
+  displayPath: string
   filterQuery: string
   canGoBack: boolean
   canGoForward: boolean
+  isLoading: boolean
+  errorMessage: string | null
   counters: CommanderPaneCounters
   rows: CommanderFileRow[]
 }

@@ -40,18 +40,22 @@ function createPaneState(id: CommanderPaneRuntimeState['id']): CommanderPaneRunt
     id,
     path: id === 'left' ? '~/left' : '~/right',
     filterQuery: '',
+    directoryEntries: [baseEntry],
     entries: [baseEntry],
     cursorEntryId: baseEntry.id,
     selectionAnchorEntryId: baseEntry.id,
     selectedIds: [baseEntry.id],
     historyBack: ['~'],
     historyForward: [],
+    isLoading: false,
+    errorMessage: null,
   }
 }
 
 function createRuntimeState(): CommanderWidgetRuntimeState {
   return {
     widgetId: 'widget-1',
+    dataSource: 'backend',
     mode: 'commander',
     viewMode: 'split',
     activePane: 'left',
@@ -96,6 +100,7 @@ describe('commander persistence', () => {
       leftPane: {
         path: '~/left',
         filterQuery: '',
+        directoryEntries: [baseEntry],
         entries: [baseEntry],
         cursorEntryId: 'entry-1',
         selectionAnchorEntryId: 'entry-1',
@@ -106,6 +111,7 @@ describe('commander persistence', () => {
       rightPane: {
         path: '~/right',
         filterQuery: '',
+        directoryEntries: [baseEntry],
         entries: [baseEntry],
         cursorEntryId: 'entry-1',
         selectionAnchorEntryId: 'entry-1',
@@ -186,6 +192,7 @@ describe('commander persistence', () => {
         leftPane: {
           path: '~/left',
           filterQuery: '',
+          directoryEntries: [baseEntry],
           entries: [baseEntry],
           cursorEntryId: 'entry-1',
           selectionAnchorEntryId: 'entry-1',
@@ -196,6 +203,7 @@ describe('commander persistence', () => {
         rightPane: {
           path: '~/right',
           filterQuery: '',
+          directoryEntries: [baseEntry],
           entries: [baseEntry],
           cursorEntryId: null,
           selectionAnchorEntryId: null,
@@ -281,6 +289,18 @@ describe('commander persistence', () => {
         leftPane: {
           path: '~/left',
           filterQuery: '',
+          directoryEntries: [
+            {
+              id: 'legacy-entry',
+              name: 'archive.tar',
+              ext: 'tar',
+              kind: 'file',
+              sizeLabel: '4 KB',
+              sizeBytes: null,
+              modified: '2026-04-20 10:30',
+              hidden: false,
+            },
+          ],
           entries: [
             {
               id: 'legacy-entry',
@@ -302,6 +322,7 @@ describe('commander persistence', () => {
         rightPane: {
           path: '~/right',
           filterQuery: '',
+          directoryEntries: [],
           entries: [],
           cursorEntryId: null,
           selectionAnchorEntryId: null,

@@ -19,10 +19,12 @@ import {
   commanderListHeaderButtonStyle,
   commanderListHeaderStyle,
   commanderPaneActiveStyle,
+  commanderPaneErrorBadgeStyle,
   commanderPaneFooterStyle,
   commanderPaneHeaderActiveStyle,
   commanderPaneHeaderStyle,
   commanderPaneMetaStyle,
+  commanderPaneStatusBadgeStyle,
   commanderPaneStyle,
   commanderPaneTitleStyle,
   commanderPathFieldStyle,
@@ -45,6 +47,8 @@ import {
   commanderRowSymlinkTargetStyle,
   commanderRowsStyle,
   commanderScrollAreaStyle,
+  commanderStatusRowErrorStyle,
+  commanderStatusRowStyle,
   commanderTypeBadgeStyle,
   commanderFooterTextStyle,
 } from '@/widgets/commander/commander-widget.styles'
@@ -155,7 +159,7 @@ export function CommanderPane({ controller }: CommanderPaneProps) {
                       event.preventDefault()
                       event.stopPropagation()
                       pathEditor.onApplySuggestion(
-                        pathEditor.suggestions[pathEditor.suggestionIndex]?.path ?? pathEditor.value,
+                        pathEditor.suggestions[pathEditor.suggestionIndex]?.displayPath ?? pathEditor.value,
                       )
                       return
                     }
@@ -206,13 +210,13 @@ export function CommanderPane({ controller }: CommanderPaneProps) {
                                 ...commanderPathSuggestionItemStyle,
                                 ...(isSuggestionActive ? commanderPathSuggestionActiveStyle : null),
                               }}
-                              title={suggestion.path}
+                              title={suggestion.displayPath}
                             >
                               <Text
                                 runaComponent={`commander-pane-${pane.id}-path-suggestion-${index + 1}-text`}
                                 style={commanderPathSuggestionTextStyle}
                               >
-                                {suggestion.path}
+                                {suggestion.displayPath}
                               </Text>
                               <Text
                                 runaComponent={`commander-pane-${pane.id}-path-suggestion-${index + 1}-meta`}
@@ -242,7 +246,7 @@ export function CommanderPane({ controller }: CommanderPaneProps) {
                 style={commanderPathTextStyle}
                 title={pane.path}
               >
-                {pane.path}
+                {pane.displayPath}
               </Text>
             )}
           </CommanderPlainBox>
@@ -258,6 +262,20 @@ export function CommanderPane({ controller }: CommanderPaneProps) {
               title={pane.filterQuery}
             >
               FILTER {pane.filterQuery}
+            </Badge>
+          ) : null}
+          {pane.isLoading ? (
+            <Badge runaComponent={`commander-pane-${pane.id}-loading`} style={commanderPaneStatusBadgeStyle}>
+              LOADING
+            </Badge>
+          ) : null}
+          {pane.errorMessage ? (
+            <Badge
+              runaComponent={`commander-pane-${pane.id}-error`}
+              style={commanderPaneErrorBadgeStyle}
+              title={pane.errorMessage}
+            >
+              ERROR
             </Badge>
           ) : null}
           <Text runaComponent={`commander-pane-${pane.id}-items`} style={commanderPaneMetaStyle}>
@@ -324,6 +342,22 @@ export function CommanderPane({ controller }: CommanderPaneProps) {
       <Separator runaComponent={`commander-pane-${pane.id}-list-separator`} />
       <ScrollArea runaComponent={`commander-pane-${pane.id}-scroll-area`} style={commanderScrollAreaStyle}>
         <CommanderPlainBox runaComponent={`commander-pane-${pane.id}-rows`} style={commanderRowsStyle}>
+          {pane.isLoading && pane.rows.length === 0 ? (
+            <Text runaComponent={`commander-pane-${pane.id}-status-loading`} style={commanderStatusRowStyle}>
+              Loading directory…
+            </Text>
+          ) : null}
+          {pane.errorMessage && pane.rows.length === 0 ? (
+            <Text
+              runaComponent={`commander-pane-${pane.id}-status-error`}
+              style={{
+                ...commanderStatusRowStyle,
+                ...commanderStatusRowErrorStyle,
+              }}
+            >
+              {pane.errorMessage}
+            </Text>
+          ) : null}
           {pane.rows.map((row) => (
             <CommanderPlainBox
               key={row.id}

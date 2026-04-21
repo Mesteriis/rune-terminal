@@ -157,6 +157,18 @@ export const commanderPaneMetaStyle: CSSProperties = {
   fontFamily: 'var(--font-family-mono)',
 }
 
+export const commanderPaneStatusBadgeStyle: CSSProperties = {
+  borderColor: 'rgba(100, 138, 128, 0.24)',
+  background: 'rgba(26, 48, 43, 0.18)',
+  color: 'var(--runa-commander-text-secondary)',
+}
+
+export const commanderPaneErrorBadgeStyle: CSSProperties = {
+  borderColor: 'rgba(190, 116, 102, 0.38)',
+  background: 'rgba(82, 38, 30, 0.18)',
+  color: 'rgb(226, 185, 176)',
+}
+
 export const commanderListHeaderStyle: CSSProperties = {
   display: 'grid',
   gridTemplateColumns: '18px minmax(0, 1fr) 34px 72px 116px',
@@ -248,6 +260,23 @@ export const commanderRowsStyle: CSSProperties = {
   borderRadius: 0,
   background: 'transparent',
   boxShadow: 'none',
+}
+
+export const commanderStatusRowStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  minHeight: '32px',
+  padding: '0 var(--space-sm)',
+  borderBottom: '1px solid rgba(100, 138, 128, 0.12)',
+  color: 'var(--runa-commander-text-muted)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: 'var(--font-size-sm)',
+  lineHeight: 'var(--line-height-sm)',
+}
+
+export const commanderStatusRowErrorStyle: CSSProperties = {
+  color: 'rgb(226, 185, 176)',
+  borderBottomColor: 'rgba(190, 116, 102, 0.18)',
 }
 
 export const commanderRowStyle: CSSProperties = {

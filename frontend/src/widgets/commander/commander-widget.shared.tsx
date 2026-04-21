@@ -27,6 +27,7 @@ export const commanderRenameTemplatePresets = [
 ] as const
 
 export type CommanderPathSuggestion = {
+  displayPath: string
   path: string
   meta: 'CURRENT' | 'HISTORY' | 'PATH'
 }
@@ -89,6 +90,7 @@ export function getCommanderPathSuggestions(
   inputValue: string,
   paneState: CommanderPaneRuntimeState,
   directoryPaths: string[],
+  formatPath: (path: string) => string,
 ): CommanderPathSuggestion[] {
   const normalizedInput = inputValue.trim().toLowerCase()
   const historyCandidates = [
@@ -111,6 +113,7 @@ export function getCommanderPathSuggestions(
 
   if (!normalizedInput) {
     return uniqueCandidates.slice(0, 8).map((candidatePath) => ({
+      displayPath: formatPath(candidatePath),
       path: candidatePath,
       meta: getCommanderPathSuggestionMeta(candidatePath, paneState),
     }))
@@ -122,8 +125,9 @@ export function getCommanderPathSuggestions(
   const containsMatches: string[] = []
 
   for (const candidatePath of uniqueCandidates) {
-    const normalizedPath = candidatePath.toLowerCase()
-    const lastSegment = candidatePath.split('/').pop()?.toLowerCase() ?? normalizedPath
+    const displayPath = formatPath(candidatePath)
+    const normalizedPath = displayPath.toLowerCase()
+    const lastSegment = displayPath.split('/').pop()?.toLowerCase() ?? normalizedPath
 
     if (normalizedPath === normalizedInput) {
       exactMatches.push(candidatePath)
@@ -148,6 +152,7 @@ export function getCommanderPathSuggestions(
   return [...exactMatches, ...prefixMatches, ...segmentPrefixMatches, ...containsMatches]
     .slice(0, 8)
     .map((candidatePath) => ({
+      displayPath: formatPath(candidatePath),
       path: candidatePath,
       meta: getCommanderPathSuggestionMeta(candidatePath, paneState),
     }))
@@ -221,6 +226,24 @@ export function formatPendingOperationMessage(state: CommanderWidgetViewState) {
 
   switch (pendingOperation.kind) {
     case 'copy':
+      if (pendingOperation.transferMode === 'clone') {
+        const targetName = pendingOperation.inputValue.trim()
+
+        if (!targetName) {
+          return `Copy target name is required in ${pendingOperation.sourcePath}`
+        }
+
+        if (targetName === pendingOperation.entryNames[0]) {
+          return `Copy target name must differ from ${pendingOperation.entryNames[0]}`
+        }
+
+        if (pendingOperation.conflictEntryNames?.length) {
+          return `Conflict: ${pendingOperation.conflictEntryNames[0]} already exists in ${pendingOperation.targetPath}`
+        }
+
+        return `Copy ${selectionLabel} as ${targetName} in ${pendingOperation.sourcePath}`
+      }
+
       if (pendingOperation.conflictEntryNames?.length) {
         return `Conflict: ${pendingOperation.conflictEntryNames[0]} already exists in ${pendingOperation.targetPath}`
       }
@@ -235,7 +258,7 @@ export function formatPendingOperationMessage(state: CommanderWidgetViewState) {
     case 'delete':
       return `Delete ${selectionLabel} from ${pendingOperation.sourcePath}`
     case 'mkdir':
-      return `Create ${pendingOperation.mkdirName} in ${pendingOperation.sourcePath}`
+      return `Create ${pendingOperation.inputValue || 'directory'} in ${pendingOperation.sourcePath}`
     case 'rename':
       if (pendingOperation.duplicateTargetNames?.length) {
         return `Template creates duplicate names in ${pendingOperation.sourcePath}`
@@ -266,6 +289,12 @@ export function formatPendingOperationMessage(state: CommanderWidgetViewState) {
 /** Returns whether the pending bar should block confirmation until the template is fixed. */
 export function isPendingOperationBlocking(state: CommanderWidgetViewState) {
   const pendingOperation = state.pendingOperation
+
+  if (pendingOperation?.kind === 'copy' && pendingOperation.transferMode === 'clone') {
+    const targetName = pendingOperation.inputValue.trim()
+
+    return !targetName || targetName === pendingOperation.entryNames[0]
+  }
 
   return Boolean(
     pendingOperation && pendingOperation.kind === 'rename' && pendingOperation.duplicateTargetNames.length,
@@ -380,6 +409,10 @@ export function getRowTypeLabel(row: CommanderFileRow) {
 /** Returns the accessible label for the current pending-operation input field. */
 export function getCommanderPendingInputAriaLabel(pendingOperation: CommanderPendingOperation | null) {
   switch (pendingOperation?.kind) {
+    case 'copy':
+      return 'Commander copy target name input'
+    case 'mkdir':
+      return 'Commander directory name input'
     case 'rename':
       return 'Commander pending operation input'
     case 'filter':

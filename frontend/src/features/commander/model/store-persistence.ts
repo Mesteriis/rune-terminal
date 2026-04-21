@@ -1,8 +1,8 @@
 import type {
+  CommanderClientSnapshot,
   CommanderWidgetPersistedSnapshot,
   CommanderWidgetRuntimeState,
 } from '@/features/commander/model/types'
-import { getCommanderClientSnapshot } from '@/features/commander/model/fake-client'
 import {
   serializeCommanderWidgetRuntimeState,
   writePersistedCommanderWidgets,
@@ -27,7 +27,7 @@ type CommanderWidgetsPersistenceDeps = {
 }
 
 const defaultCommanderWidgetsPersistenceDeps: CommanderWidgetsPersistenceDeps = {
-  getCommanderClientSnapshot,
+  getCommanderClientSnapshot: () => ({ directories: {} }) satisfies CommanderClientSnapshot,
   serializeCommanderWidgetRuntimeState,
   writePersistedCommanderWidgets,
 }

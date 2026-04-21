@@ -9,9 +9,18 @@ capability.
 - `frontend/src/` is the active frontend tree; earlier drafts (e.g.
   anything under `frontend/app/*` or `frontend/rterm-api/*`) are gone
   and must not be reintroduced without an ADR
-- the commander, terminal and AI-panel widgets currently run against
-  mocks / fake clients (see `frontend/src/features/commander/model/`);
-  real wiring to the Go core over HTTP/SSE is open work
+- terminal and AI-panel widgets currently still run against mocks /
+  fake clients
+- commander now has a narrow async HTTP path into the Go core
+  (`/api/v1/bootstrap`, `/api/v1/fs/list`, `/api/v1/fs/read`,
+  `/api/v1/fs/file`, `/api/v1/fs/mkdir`, `/api/v1/fs/copy`,
+  `/api/v1/fs/move`, `/api/v1/fs/delete`, `/api/v1/fs/rename`), and the
+  active backend path now covers `F2/F3/F4/F5/F6/F7/F8`, including the
+  focused single-entry same-pane clone flow plus backend `F4` save for
+  UTF-8 text files
+- commander still does not claim the full Total Commander same-directory
+  batch clone surface, binary/non-text edit/save, or any terminal env
+  dump exposed to the frontend
 - the frontend has no ESLint / Biome yet — `lint:active` and `lint:all`
   both delegate to `tsc --noEmit`
 

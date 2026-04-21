@@ -1,15 +1,18 @@
 import {
   copyCommanderEntries,
   deleteCommanderEntries,
-  getCommanderConflictingEntryNames,
-  getCommanderEntryNameConflict,
   mkdirCommanderDirectory,
   moveCommanderEntries,
   readCommanderFile,
-  previewCommanderRenameEntries,
   renameCommanderEntries,
   renameCommanderEntry,
 } from '@/features/commander/model/fake-client'
+import {
+  getCommanderConflictingEntryNames,
+  getCommanderEntryNameConflict,
+  previewCommanderRenameEntries,
+  suggestCommanderCloneName,
+} from '@/features/commander/model/operation-preview'
 import type {
   CommanderFileDialogState,
   CommanderPendingOperation,
@@ -34,6 +37,7 @@ import {
 } from '@/features/commander/model/store-selection'
 
 type CommanderPendingOperationInputDeps = {
+  getCommanderEntryNameConflict: typeof getCommanderEntryNameConflict
   getCommanderMaskMatches: typeof getCommanderMaskMatches
   getCommanderFilterMatches: typeof getCommanderFilterMatches
   getCommanderSearchMatches: typeof getCommanderSearchMatches
@@ -42,6 +46,7 @@ type CommanderPendingOperationInputDeps = {
 }
 
 const defaultCommanderPendingOperationInputDeps: CommanderPendingOperationInputDeps = {
+  getCommanderEntryNameConflict,
   getCommanderMaskMatches,
   getCommanderFilterMatches,
   getCommanderSearchMatches,
@@ -221,6 +226,35 @@ export function updateCommanderPendingOperationInput(
   }
 
   switch (pendingOperation.kind) {
+    case 'copy': {
+      if (pendingOperation.transferMode !== 'clone') {
+        return null
+      }
+
+      const sourcePane = getPaneState(widgetState, pendingOperation.sourcePaneId)
+      const nextName = inputValue.trim()
+      const hasConflict =
+        nextName.length > 0 &&
+        nextName !== pendingOperation.entryNames[0] &&
+        deps.getCommanderEntryNameConflict(sourcePane, nextName, pendingOperation.entryIds[0])
+
+      return {
+        ...widgetState,
+        pendingOperation: {
+          ...pendingOperation,
+          inputValue,
+          conflictEntryNames: hasConflict ? [nextName] : [],
+        },
+      }
+    }
+    case 'mkdir':
+      return {
+        ...widgetState,
+        pendingOperation: {
+          ...pendingOperation,
+          inputValue,
+        },
+      }
     case 'select':
     case 'unselect': {
       const matches = deps.getCommanderMaskMatches(
@@ -271,12 +305,11 @@ export function updateCommanderPendingOperationInput(
       }
     }
     case 'rename': {
-      const renamePreview = deps.previewCommanderRenameEntries({
-        widgetId,
-        path: pendingOperation.sourcePath,
-        entryIds: pendingOperation.entryIds,
-        template: inputValue,
-      })
+      const renamePreview = deps.previewCommanderRenameEntries(
+        getPaneState(widgetState, pendingOperation.sourcePaneId),
+        pendingOperation.entryIds,
+        inputValue,
+      )
 
       return {
         ...widgetState,
@@ -440,12 +473,11 @@ export function confirmCommanderWidgetPendingOperation(
     }
 
     if (pendingOperation.renameMode === 'batch') {
-      const renamePreview = deps.previewCommanderRenameEntries({
-        widgetId,
-        path: pendingOperation.sourcePath,
-        entryIds: pendingOperation.entryIds,
-        template: nextName,
-      })
+      const renamePreview = deps.previewCommanderRenameEntries(
+        deps.getPaneState(widgetState, pendingOperation.sourcePaneId),
+        pendingOperation.entryIds,
+        nextName,
+      )
 
       if (renamePreview.duplicateTargetNames.length > 0) {
         return {
@@ -501,12 +533,11 @@ export function confirmCommanderWidgetPendingOperation(
 
     if (
       pendingOperation.conflictEntryNames.length === 0 &&
-      deps.getCommanderEntryNameConflict({
-        widgetId,
-        path: pendingOperation.sourcePath,
-        name: nextName,
-        ignoreEntryId: entryId,
-      })
+      deps.getCommanderEntryNameConflict(
+        deps.getPaneState(widgetState, pendingOperation.sourcePaneId),
+        nextName,
+        entryId,
+      )
     ) {
       return {
         ...widgetState,
@@ -695,7 +726,7 @@ export function createPendingOperation(
       sourcePath: sourcePane.path,
       entryIds: [],
       entryNames: [],
-      mkdirName: 'New folder',
+      inputValue: 'New folder',
     } satisfies CommanderPendingOperation
   }
 
@@ -778,12 +809,11 @@ export function createPendingOperation(
       } satisfies CommanderPendingOperation
     }
 
-    const renamePreview = previewCommanderRenameEntries({
-      widgetId: widgetState.widgetId,
-      path: sourcePane.path,
-      entryIds: renameEntries.map((entry) => entry.id),
-      template: '[N]-[C:2]',
-    })
+    const renamePreview = previewCommanderRenameEntries(
+      sourcePane,
+      renameEntries.map((entry) => entry.id),
+      '[N]-[C:2]',
+    )
 
     return {
       kind,
@@ -818,16 +848,37 @@ export function createPendingOperation(
   const entryNames = sourcePane.entries
     .filter((entry) => entryIds.includes(entry.id))
     .map((entry) => entry.name)
-  const conflictEntryNames = getCommanderConflictingEntryNames({
-    widgetId: widgetState.widgetId,
-    path: sourcePane.path,
-    targetPath: targetPane.path,
-    entryIds,
-  })
 
-  if (kind === 'move' && sourcePane.path === targetPane.path) {
+  if (kind === 'copy' && sourcePane.path === targetPane.path) {
+    if (entryIds.length !== 1) {
+      return null
+    }
+
+    const cloneName = suggestCommanderCloneName(sourcePane, entryIds[0])
+
+    if (!cloneName) {
+      return null
+    }
+
+    return {
+      kind,
+      sourcePaneId: widgetState.activePane,
+      sourcePath: sourcePane.path,
+      targetPaneId: widgetState.activePane,
+      targetPath: sourcePane.path,
+      entryIds,
+      entryNames,
+      inputValue: cloneName,
+      conflictEntryNames: [],
+      transferMode: 'clone',
+    } satisfies CommanderPendingOperation
+  }
+
+  if (sourcePane.path === targetPane.path) {
     return null
   }
+
+  const conflictEntryNames = getCommanderConflictingEntryNames(widgetState, widgetState.activePane, entryIds)
 
   return {
     kind,
@@ -838,10 +889,11 @@ export function createPendingOperation(
     entryIds,
     entryNames,
     conflictEntryNames,
+    transferMode: 'pane',
   } satisfies CommanderPendingOperation
 }
 
-/** Opens the focused file in view or edit mode using fake-client-backed content. */
+/** Legacy helper that opens the focused file from fake-client-backed content. */
 export function createCommanderFileDialog(
   widgetState: CommanderWidgetRuntimeState,
   paneId: CommanderPaneId,

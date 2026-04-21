@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import { listCommanderDirectoryPaths } from '@/features/commander/model/fake-client'
 import { useCommanderKeyboard } from '@/features/commander/model/keyboard'
-import { useCommanderActions, useCommanderWidget } from '@/features/commander/model/hooks'
+import { useCommanderWidget } from '@/features/commander/model/hooks'
 import type { CommanderPaneViewState } from '@/features/commander/model/types'
+import { formatRuntimePathForDisplay } from '@/shared/api/runtime'
 import { RunaDomScopeProvider, useRunaDomAutoTagging, useRunaDomScope } from '@/shared/ui/dom-id'
 import { Box } from '@/shared/ui/primitives'
 
@@ -18,14 +18,13 @@ import { getCommanderPathSuggestions, joinCommanderPath } from '@/widgets/comman
 /** Renders the full commander widget shell, including panes, pending bar, and file dialog. */
 export function CommanderWidget() {
   const { widget: widgetId } = useRunaDomScope()
-  const { actions, runtimeState, state } = useCommanderWidget(widgetId)
-  const commanderActions = useCommanderActions(widgetId)
+  const { actions, commanderActions, runtimeContext, runtimeState, state } = useCommanderWidget(widgetId)
   const activePane = state.activePane === 'left' ? state.leftPane : state.rightPane
   const [editingPathPaneId, setEditingPathPaneId] = useState<CommanderPaneViewState['id'] | null>(null)
   const [editingPathValue, setEditingPathValue] = useState('')
   const [pathSuggestionIndex, setPathSuggestionIndex] = useState(0)
   const onCommanderKeyDownCapture = useCommanderKeyboard(
-    widgetId,
+    commanderActions,
     state.activePane,
     activePane.rows,
     state.pendingOperation,
@@ -37,7 +36,7 @@ export function CommanderWidget() {
         }
 
         setEditingPathPaneId(state.activePane)
-        setEditingPathValue(activePane.path)
+        setEditingPathValue(activePane.displayPath)
         setPathSuggestionIndex(0)
       },
     },
@@ -50,7 +49,8 @@ export function CommanderWidget() {
   const lastPendingInputIdentityRef = useRef<string | null>(null)
   const pendingInputOperation =
     state.pendingOperation &&
-    (state.pendingOperation.kind === 'rename' ||
+    (state.pendingOperation.kind === 'mkdir' ||
+      state.pendingOperation.kind === 'rename' ||
       state.pendingOperation.kind === 'select' ||
       state.pendingOperation.kind === 'unselect' ||
       state.pendingOperation.kind === 'filter' ||
@@ -99,7 +99,7 @@ export function CommanderWidget() {
       const pane = paneId === 'left' ? state.leftPane : state.rightPane
       actions.setActivePane(paneId)
       setEditingPathPaneId(paneId)
-      setEditingPathValue(pane.path)
+      setEditingPathValue(pane.displayPath)
       setPathSuggestionIndex(0)
     },
     [actions, state.fileDialog, state.leftPane, state.pendingOperation, state.rightPane],
@@ -130,10 +130,28 @@ export function CommanderWidget() {
         ? getCommanderPathSuggestions(
             editingPathValue,
             editingPathPaneRuntimeState,
-            listCommanderDirectoryPaths(widgetId),
+            [
+              runtimeState.leftPane.path,
+              runtimeState.rightPane.path,
+              ...runtimeState.leftPane.historyBack,
+              ...runtimeState.leftPane.historyForward,
+              ...runtimeState.rightPane.historyBack,
+              ...runtimeState.rightPane.historyForward,
+            ].filter(Boolean),
+            (path) => (runtimeContext ? formatRuntimePathForDisplay(path, runtimeContext) : path),
           )
         : [],
-    [editingPathPaneRuntimeState, editingPathValue, widgetId],
+    [
+      editingPathPaneRuntimeState,
+      editingPathValue,
+      runtimeContext,
+      runtimeState.leftPane.historyBack,
+      runtimeState.leftPane.historyForward,
+      runtimeState.leftPane.path,
+      runtimeState.rightPane.historyBack,
+      runtimeState.rightPane.historyForward,
+      runtimeState.rightPane.path,
+    ],
   )
 
   useEffect(() => {

@@ -35,7 +35,7 @@ export type CommanderFileDialogProps = {
   onSave: () => void
 }
 
-/** Renders the fake-client-backed file viewer/editor modal for the focused commander file. */
+/** Renders the backend-backed file viewer/editor modal for the focused commander file. */
 export function CommanderFileDialog({
   dirty,
   content,

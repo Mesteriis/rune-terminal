@@ -2,29 +2,17 @@ import { createEvent, createStore } from 'effector'
 
 import {
   createCommanderWidgetRuntimeState,
-  getCommanderParentPath,
-  hydrateCommanderClient,
-  openCommanderEntry,
-  writeCommanderFile,
-} from '@/features/commander/model/fake-client'
+  rebuildCommanderPaneState,
+} from '@/features/commander/model/pane-state'
 import { attachCommanderWidgetsPersistence } from '@/features/commander/model/store-persistence'
 import {
   confirmCommanderWidgetPendingOperation,
-  createCommanderFileDialog,
-  createPendingOperation,
   requestCommanderWidgetPendingOperation,
   resolveCommanderWidgetPendingConflict,
   stepCommanderWidgetPendingSearchMatch,
   updateCommanderPendingOperationInput,
 } from '@/features/commander/model/store-operations'
-import {
-  getPaneState,
-  navigatePaneHistory,
-  navigatePaneState,
-  rebuildPaneState,
-  refreshWidgetPanes,
-  updatePaneState,
-} from '@/features/commander/model/store-navigation'
+import { getPaneState, rebuildPaneState, updatePaneState } from '@/features/commander/model/store-navigation'
 import {
   getCommanderResolvedSearchMatchIndex,
   getCommanderSearchMatches,
@@ -38,6 +26,7 @@ import {
 } from '@/features/commander/model/store-selection'
 import { withCommanderWidgetState } from '@/features/commander/model/store-widget-state'
 import type {
+  CommanderPendingOperation,
   CommanderPaneId,
   CommanderSortDirection,
   CommanderSortMode,
@@ -89,6 +78,10 @@ type CommanderSetPendingOperationInputPayload = CommanderWidgetPayload & {
   inputValue: string
 }
 
+type CommanderSetPendingOperationPayload = CommanderWidgetPayload & {
+  pendingOperation: CommanderPendingOperation | null
+}
+
 type CommanderSetPanePathPayload = CommanderWidgetPanePayload & {
   path: string
 }
@@ -99,6 +92,24 @@ type CommanderResolvePendingConflictPayload = CommanderWidgetPayload & {
 
 type CommanderOpenEntryPayload = CommanderWidgetPanePayload & {
   entryId: string
+}
+
+type CommanderHydratePanePayload = CommanderWidgetPanePayload & {
+  directoryEntries: CommanderWidgetRuntimeState['leftPane']['directoryEntries']
+  cursorEntryId?: string | null
+  historyMode?: 'back' | 'forward' | 'push' | 'replace'
+  path: string
+  selectedIds?: string[]
+  selectionAnchorEntryId?: string | null
+}
+
+type CommanderPaneStatusPayload = CommanderWidgetPanePayload & {
+  errorMessage?: string | null
+  path?: string
+}
+
+type CommanderSetFileDialogPayload = CommanderWidgetPayload & {
+  fileDialog: CommanderWidgetRuntimeState['fileDialog']
 }
 
 export const mountCommanderWidget = createEvent<CommanderMountWidgetPayload>()
@@ -142,7 +153,12 @@ export const clearCommanderActivePaneFilter = createEvent<CommanderWidgetPayload
 export const invertCommanderActivePaneSelection = createEvent<CommanderWidgetPayload>()
 export const setCommanderPanePath = createEvent<CommanderSetPanePathPayload>()
 export const setCommanderPendingOperationInput = createEvent<CommanderSetPendingOperationInputPayload>()
+export const setCommanderPendingOperation = createEvent<CommanderSetPendingOperationPayload>()
 export const setCommanderFileDialogDraft = createEvent<CommanderSetPendingOperationInputPayload>()
+export const setCommanderFileDialog = createEvent<CommanderSetFileDialogPayload>()
+export const hydrateCommanderPaneDirectory = createEvent<CommanderHydratePanePayload>()
+export const setCommanderPaneLoadError = createEvent<CommanderPaneStatusPayload>()
+export const setCommanderPaneLoading = createEvent<CommanderPaneStatusPayload>()
 export const saveCommanderFileDialog = createEvent<CommanderWidgetPayload>()
 export const closeCommanderFileDialog = createEvent<CommanderWidgetPayload>()
 export const confirmCommanderPendingOperation = createEvent<CommanderWidgetPayload>()
@@ -154,8 +170,6 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
     if (widgets[payload.widgetId]) {
       return widgets
     }
-
-    hydrateCommanderClient(payload.widgetId, payload.persistedWidget?.client)
 
     return {
       ...widgets,
@@ -170,6 +184,91 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
       ...widgetState,
       activePane: payload.paneId,
     }))
+  })
+  .on(setCommanderPaneLoading, (widgets, payload) => {
+    return withCommanderWidgetState(widgets, payload, (widgetState) =>
+      updatePaneState(widgetState, payload.paneId, (paneState) => ({
+        ...paneState,
+        isLoading: true,
+        errorMessage: null,
+      })),
+    )
+  })
+  .on(setCommanderPaneLoadError, (widgets, payload) => {
+    return withCommanderWidgetState(widgets, payload, (widgetState) =>
+      updatePaneState(widgetState, payload.paneId, (paneState) => {
+        const nextPath = payload.path ?? paneState.path
+        const pathChanged = nextPath !== paneState.path
+
+        return rebuildCommanderPaneState(widgetState, paneState, {
+          path: nextPath,
+          directoryEntries: pathChanged ? [] : paneState.directoryEntries,
+          selectedIds: pathChanged ? [] : paneState.selectedIds,
+          cursorEntryId: pathChanged ? null : paneState.cursorEntryId,
+          selectionAnchorEntryId: pathChanged ? null : paneState.selectionAnchorEntryId,
+          isLoading: false,
+          errorMessage: payload.errorMessage ?? 'Unable to load directory',
+        })
+      }),
+    )
+  })
+  .on(hydrateCommanderPaneDirectory, (widgets, payload) => {
+    return withCommanderWidgetState(widgets, payload, (widgetState) => {
+      const currentPaneState = getPaneState(widgetState, payload.paneId)
+      const pathChanged = currentPaneState.path !== payload.path
+      const nextHistoryBack =
+        payload.historyMode === 'push' && currentPaneState.path
+          ? [...currentPaneState.historyBack, currentPaneState.path]
+          : payload.historyMode === 'forward' && currentPaneState.path
+            ? [...currentPaneState.historyBack, currentPaneState.path]
+            : payload.historyMode === 'back'
+              ? currentPaneState.historyBack.slice(0, -1)
+              : currentPaneState.historyBack
+      const nextHistoryForward =
+        payload.historyMode === 'push'
+          ? []
+          : payload.historyMode === 'back' && currentPaneState.path
+            ? [...currentPaneState.historyForward, currentPaneState.path]
+            : payload.historyMode === 'forward'
+              ? currentPaneState.historyForward.slice(0, -1)
+              : currentPaneState.historyForward
+      const nextWidgetState = {
+        ...widgetState,
+        activePane: payload.paneId,
+      }
+      const hasCursorOverride = Object.prototype.hasOwnProperty.call(payload, 'cursorEntryId')
+      const hasSelectedIdsOverride = Object.prototype.hasOwnProperty.call(payload, 'selectedIds')
+      const hasSelectionAnchorOverride = Object.prototype.hasOwnProperty.call(
+        payload,
+        'selectionAnchorEntryId',
+      )
+
+      return updatePaneState(nextWidgetState, payload.paneId, (paneState) =>
+        rebuildCommanderPaneState(nextWidgetState, paneState, {
+          path: payload.path,
+          directoryEntries: payload.directoryEntries,
+          selectedIds: hasSelectedIdsOverride
+            ? (payload.selectedIds ?? [])
+            : pathChanged
+              ? []
+              : paneState.selectedIds,
+          cursorEntryId: hasCursorOverride
+            ? (payload.cursorEntryId ?? null)
+            : pathChanged
+              ? null
+              : paneState.cursorEntryId,
+          selectionAnchorEntryId: hasSelectionAnchorOverride
+            ? (payload.selectionAnchorEntryId ?? null)
+            : pathChanged
+              ? null
+              : paneState.selectionAnchorEntryId,
+          historyBack: nextHistoryBack,
+          historyForward: nextHistoryForward,
+          isLoading: false,
+          errorMessage: null,
+        }),
+      )
+    })
   })
   .on(toggleCommanderShowHidden, (widgets, payload) => {
     return withCommanderWidgetState(widgets, payload, (widgetState) => {
@@ -317,40 +416,16 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
     })
   })
   .on(requestCommanderActivePaneView, (widgets, payload) => {
-    return withCommanderWidgetState(widgets, payload, (widgetState) => {
-      if (widgetState.pendingOperation) {
-        return null
-      }
-
-      const fileDialog = createCommanderFileDialog(widgetState, widgetState.activePane, 'view')
-
-      if (!fileDialog) {
-        return null
-      }
-
-      return {
-        ...widgetState,
-        fileDialog,
-      }
-    })
+    return widgets
   })
   .on(requestCommanderActivePaneEdit, (widgets, payload) => {
-    return withCommanderWidgetState(widgets, payload, (widgetState) => {
-      if (widgetState.pendingOperation) {
-        return null
-      }
-
-      const fileDialog = createCommanderFileDialog(widgetState, widgetState.activePane, 'edit')
-
-      if (!fileDialog) {
-        return null
-      }
-
-      return {
-        ...widgetState,
-        fileDialog,
-      }
-    })
+    return widgets
+  })
+  .on(setCommanderFileDialog, (widgets, payload) => {
+    return withCommanderWidgetState(widgets, payload, (widgetState) => ({
+      ...widgetState,
+      fileDialog: payload.fileDialog,
+    }))
   })
   .on(setCommanderFileDialogDraft, (widgets, payload) => {
     return withCommanderWidgetState(widgets, payload, (widgetState) => {
@@ -368,28 +443,7 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
     })
   })
   .on(saveCommanderFileDialog, (widgets, payload) => {
-    return withCommanderWidgetState(widgets, payload, (widgetState) => {
-      const fileDialog = widgetState.fileDialog
-
-      if (!fileDialog || fileDialog.mode !== 'edit') {
-        return null
-      }
-
-      const didSave = writeCommanderFile({
-        widgetId: payload.widgetId,
-        path: fileDialog.path,
-        entryId: fileDialog.entryId,
-        content: fileDialog.draftValue,
-      })
-
-      if (!didSave) {
-        return null
-      }
-
-      return refreshWidgetPanes(widgetState, {
-        fileDialog: null,
-      })
-    })
+    return widgets
   })
   .on(closeCommanderFileDialog, (widgets, payload) => {
     return withCommanderWidgetState(widgets, payload, (widgetState) => {
@@ -404,109 +458,28 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
     })
   })
   .on(openCommanderPaneEntry, (widgets, payload) => {
-    return withCommanderWidgetState(widgets, payload, (widgetState) => {
-      const navigationResult = openCommanderEntry(
-        payload.widgetId,
-        getPaneState(widgetState, payload.paneId).path,
-        payload.entryId,
-      )
-
-      if (!navigationResult || navigationResult.kind !== 'directory') {
-        return null
-      }
-
-      return navigatePaneState(
-        {
-          ...widgetState,
-          activePane: payload.paneId,
-        },
-        payload.paneId,
-        navigationResult.path,
-      )
-    })
+    return widgets
   })
   .on(openCommanderActivePaneEntry, (widgets, payload) => {
-    return withCommanderWidgetState(widgets, payload, (widgetState) => {
-      const activePaneState = getPaneState(widgetState, widgetState.activePane)
-      const entryId = activePaneState.cursorEntryId
-
-      if (!entryId) {
-        return null
-      }
-
-      const navigationResult = openCommanderEntry(payload.widgetId, activePaneState.path, entryId)
-
-      if (!navigationResult || navigationResult.kind !== 'directory') {
-        return null
-      }
-
-      return navigatePaneState(widgetState, widgetState.activePane, navigationResult.path)
-    })
+    return widgets
   })
   .on(goCommanderPaneParent, (widgets, payload) => {
-    return withCommanderWidgetState(widgets, payload, (widgetState) => {
-      const paneState = getPaneState(widgetState, payload.paneId)
-      const parentPath = getCommanderParentPath(paneState.path)
-
-      if (!parentPath) {
-        return null
-      }
-
-      return navigatePaneState(
-        {
-          ...widgetState,
-          activePane: payload.paneId,
-        },
-        payload.paneId,
-        parentPath,
-      )
-    })
+    return widgets
   })
   .on(goCommanderActivePaneParent, (widgets, payload) => {
-    return withCommanderWidgetState(widgets, payload, (widgetState) => {
-      const paneState = getPaneState(widgetState, widgetState.activePane)
-      const parentPath = getCommanderParentPath(paneState.path)
-
-      if (!parentPath) {
-        return null
-      }
-
-      return navigatePaneState(widgetState, widgetState.activePane, parentPath)
-    })
+    return widgets
   })
   .on(goCommanderPaneHistoryBack, (widgets, payload) => {
-    return withCommanderWidgetState(widgets, payload, (widgetState) =>
-      navigatePaneHistory(
-        {
-          ...widgetState,
-          activePane: payload.paneId,
-        },
-        payload.paneId,
-        'back',
-      ),
-    )
+    return widgets
   })
   .on(goCommanderPaneHistoryForward, (widgets, payload) => {
-    return withCommanderWidgetState(widgets, payload, (widgetState) =>
-      navigatePaneHistory(
-        {
-          ...widgetState,
-          activePane: payload.paneId,
-        },
-        payload.paneId,
-        'forward',
-      ),
-    )
+    return widgets
   })
   .on(goCommanderActivePaneHistoryBack, (widgets, payload) => {
-    return withCommanderWidgetState(widgets, payload, (widgetState) =>
-      navigatePaneHistory(widgetState, widgetState.activePane, 'back'),
-    )
+    return widgets
   })
   .on(goCommanderActivePaneHistoryForward, (widgets, payload) => {
-    return withCommanderWidgetState(widgets, payload, (widgetState) =>
-      navigatePaneHistory(widgetState, widgetState.activePane, 'forward'),
-    )
+    return widgets
   })
   .on(switchCommanderActivePane, (widgets, payload) => {
     return withCommanderWidgetState(widgets, payload, (widgetState) => ({
@@ -590,21 +563,7 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
     )
   })
   .on(setCommanderPanePath, (widgets, payload) => {
-    return withCommanderWidgetState(widgets, payload, (widgetState) => {
-      const nextPath = payload.path.trim()
-
-      if (!nextPath) {
-        return null
-      }
-
-      const currentPaneState = getPaneState(widgetState, payload.paneId)
-
-      if (currentPaneState.path === nextPath) {
-        return null
-      }
-
-      return navigatePaneState(widgetState, payload.paneId, nextPath)
-    })
+    return widgets
   })
   .on(invertCommanderActivePaneSelection, (widgets, payload) => {
     return withCommanderWidgetState(widgets, payload, (widgetState) =>
@@ -615,6 +574,12 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
     return withCommanderWidgetState(widgets, payload, (widgetState) =>
       updateCommanderPendingOperationInput(widgetState, payload.widgetId, payload.inputValue),
     )
+  })
+  .on(setCommanderPendingOperation, (widgets, payload) => {
+    return withCommanderWidgetState(widgets, payload, (widgetState) => ({
+      ...widgetState,
+      pendingOperation: payload.pendingOperation,
+    }))
   })
   .on(confirmCommanderPendingOperation, (widgets, payload) => {
     return withCommanderWidgetState(widgets, payload, (widgetState) =>

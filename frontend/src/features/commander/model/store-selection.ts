@@ -1,4 +1,3 @@
-import { readCommanderDirectory } from '@/features/commander/model/fake-client'
 import type {
   CommanderPaneId,
   CommanderPaneRuntimeState,
@@ -220,13 +219,8 @@ export function getCommanderFilterMatches(
   mask: string,
 ) {
   const paneState = paneId === 'left' ? widgetState.leftPane : widgetState.rightPane
-  const directoryEntries = readCommanderDirectory(widgetState.widgetId, paneState.path, {
-    showHidden: widgetState.showHidden,
-    sortMode: widgetState.sortMode,
-    sortDirection: widgetState.sortDirection,
-    dirsFirst: widgetState.dirsFirst,
-  }).entries
-  const matchedEntries = getCommanderMatchedEntries(directoryEntries, mask, { emptyMeansAll: true })
+  const visibleEntries = paneState.directoryEntries.filter((entry) => widgetState.showHidden || !entry.hidden)
+  const matchedEntries = getCommanderMatchedEntries(visibleEntries, mask, { emptyMeansAll: true })
 
   return {
     entryIds: matchedEntries.map((entry) => entry.id),

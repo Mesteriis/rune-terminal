@@ -72,7 +72,9 @@ export function CommanderPendingBar({
   const pendingOperationMessage = formatPendingOperationMessage(state)
   const pendingInputOperation =
     state.pendingOperation &&
-    (state.pendingOperation.kind === 'rename' ||
+    ((state.pendingOperation.kind === 'copy' && state.pendingOperation.transferMode === 'clone') ||
+      state.pendingOperation.kind === 'mkdir' ||
+      state.pendingOperation.kind === 'rename' ||
       state.pendingOperation.kind === 'select' ||
       state.pendingOperation.kind === 'unselect' ||
       state.pendingOperation.kind === 'filter' ||
