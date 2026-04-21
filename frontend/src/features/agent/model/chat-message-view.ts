@@ -124,15 +124,22 @@ export function mapConversationMessageToChatMessageView(
 export function mapConversationMessagesToChatMessageViews(
   messages: AgentConversationMessage[],
 ): ChatMessageView[] {
+  const assistantPrompts = new Map<string, string | undefined>()
   let lastUserPrompt: string | undefined
 
-  return messages.map((message) => {
+  for (const message of [...messages].reverse()) {
     if (message.role === 'user') {
-      const viewMessage = mapConversationMessageToChatMessageView(message, undefined)
-      lastUserPrompt = viewMessage.content || undefined
-      return viewMessage
+      lastUserPrompt = getMessageContent(message) || undefined
+      continue
     }
 
-    return mapConversationMessageToChatMessageView(message, lastUserPrompt)
-  })
+    assistantPrompts.set(message.id, lastUserPrompt)
+  }
+
+  return messages.map((message) =>
+    mapConversationMessageToChatMessageView(
+      message,
+      message.role === 'assistant' ? assistantPrompts.get(message.id) : undefined,
+    ),
+  )
 }

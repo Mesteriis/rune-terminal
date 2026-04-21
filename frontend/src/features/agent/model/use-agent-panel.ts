@@ -8,8 +8,8 @@ import {
   type AgentConversationStreamConnection,
 } from '@/features/agent/api/client'
 import {
-  appendAgentConversationMessage,
-  appendAgentPanelStatusMessage,
+  prependAgentConversationMessage,
+  prependAgentPanelStatusMessage,
   applyAgentConversationStreamEvent,
   createAgentPanelErrorState,
   createAgentPanelLoadingState,
@@ -45,7 +45,7 @@ function ensureOptimisticUserMessage(
     return nextMessages
   }
 
-  return appendAgentConversationMessage(nextMessages, optimisticUserMessage)
+  return prependAgentConversationMessage(nextMessages, optimisticUserMessage)
 }
 
 export function useAgentPanel(hostId: string, enabled = true) {
@@ -91,7 +91,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
           return
         }
 
-        setMessages(conversation.messages)
+        setMessages([...conversation.messages].reverse())
         setProvider(conversation.provider)
       })
       .catch((error: unknown) => {
@@ -138,7 +138,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
     setSubmitError(null)
     blockAiWidget(hostId)
     setMessages((currentMessages) =>
-      appendAgentConversationMessage(currentMessages ?? [], optimisticUserMessage),
+      prependAgentConversationMessage(currentMessages ?? [], optimisticUserMessage),
     )
 
     let sawStreamEvent = false
@@ -244,7 +244,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
       return baseState
     }
 
-    return appendAgentPanelStatusMessage(baseState, {
+    return prependAgentPanelStatusMessage(baseState, {
       id: 'agent-submit-error',
       content: submitError,
       meta: {

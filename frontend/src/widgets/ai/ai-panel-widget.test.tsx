@@ -113,6 +113,19 @@ describe('AiPanelWidget backend conversation path', () => {
       screen.getByText('Assistant · complete · stub · stub-model · 2026-04-21 10:00'),
     ).toBeInTheDocument()
 
+    const assistantMessage = document.querySelector(
+      '#shell-ai-shell-panel-message-bubble-msg-2-content-rl',
+    ) as HTMLElement | null
+    const userMessage = document.querySelector(
+      '#shell-ai-shell-panel-message-bubble-msg-1-content-rr',
+    ) as HTMLElement | null
+
+    expect(assistantMessage).not.toBeNull()
+    expect(userMessage).not.toBeNull()
+    expect(
+      assistantMessage.compareDocumentPosition(userMessage) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+
     const [userRow] = Array.from(document.querySelectorAll('[data-runa-chat-role="user"]'))
     const [assistantRow] = Array.from(document.querySelectorAll('[data-runa-chat-role="assistant"]'))
 
