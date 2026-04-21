@@ -98,6 +98,18 @@ describe('AiPanelWidget backend conversation path', () => {
     expect(screen.getByText('The backend contract is ready.')).toBeInTheDocument()
     expect(screen.queryByText('User 1')).not.toBeInTheDocument()
     expect(screen.queryByText('Assistant 2')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Show details' })).toBeInTheDocument()
+    expect(screen.queryByText('Summary')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show details' }))
+
+    expect(screen.getByText('Prompt')).toBeInTheDocument()
+    expect(screen.getByText('Reasoning')).toBeInTheDocument()
+    expect(screen.getByText('Summary')).toBeInTheDocument()
+    expect(screen.getByText('Metadata')).toBeInTheDocument()
+    expect(
+      screen.getByText('Assistant · complete · stub · stub-model · 2026-04-21 10:00'),
+    ).toBeInTheDocument()
   })
 
   it('streams visible assistant output through the backend conversation stream route', async () => {
@@ -175,6 +187,7 @@ describe('AiPanelWidget backend conversation path', () => {
     await waitFor(() => {
       expect(screen.getByText((value) => value.includes('Backend'))).toBeInTheDocument()
     })
+    expect(screen.getByRole('button', { name: 'Show details' })).toBeInTheDocument()
 
     await act(async () => {
       streamResponse.push(

@@ -131,19 +131,34 @@ export const aiChatMessageRowStyle: CSSProperties = {
   display: 'flex',
 }
 
+export const aiChatMessageGroupStyle: CSSProperties = {
+  minWidth: 0,
+  maxWidth: '78%',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 'var(--space-xs)',
+}
+
 export const aiChatMessageUserRowStyle: CSSProperties = {
   justifyContent: 'flex-end',
+}
+
+export const aiChatMessageUserGroupStyle: CSSProperties = {
+  alignItems: 'flex-end',
 }
 
 export const aiChatMessageAssistantRowStyle: CSSProperties = {
   justifyContent: 'flex-start',
 }
 
+export const aiChatMessageAssistantGroupStyle: CSSProperties = {
+  alignItems: 'flex-start',
+}
+
 export const aiChatMessageBubbleStyle: CSSProperties = {
   minWidth: 0,
   display: 'flex',
   flexDirection: 'column',
-  maxWidth: '78%',
   padding: 'var(--space-md)',
   boxShadow: 'none',
 }
@@ -163,6 +178,59 @@ export const aiChatMessageContentStyle: CSSProperties = {
   fontFamily: 'var(--font-family-mono)',
   fontSize: '14px',
   lineHeight: '22px',
+  whiteSpace: 'pre-wrap',
+  wordBreak: 'break-word',
+}
+
+export const aiChatMessageDetailsToggleStyle: CSSProperties = {
+  minWidth: 'unset',
+  minHeight: 'unset',
+  padding: 0,
+  border: 'none',
+  borderRadius: 0,
+  background: 'transparent',
+  color: 'var(--color-text-muted)',
+  boxShadow: 'none',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '12px',
+  lineHeight: '18px',
+}
+
+export const aiChatMessageDetailsPanelStyle: CSSProperties = {
+  width: '100%',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 'var(--space-sm)',
+  padding: 'var(--space-sm) var(--space-md)',
+  background: 'color-mix(in srgb, var(--color-canvas-elevated) 82%, transparent)',
+  borderColor: 'color-mix(in srgb, var(--color-border-strong) 72%, transparent)',
+  boxShadow: 'none',
+}
+
+export const aiChatMessageDetailsSectionStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '2px',
+  minWidth: 0,
+}
+
+export const aiChatMessageDetailsLabelStyle: CSSProperties = {
+  color: 'var(--color-text-muted)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '11px',
+  lineHeight: '16px',
+  textTransform: 'uppercase',
+  letterSpacing: '0.04em',
+}
+
+export const aiChatMessageDetailsTextStyle: CSSProperties = {
+  color: 'var(--color-text-secondary)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '12px',
+  lineHeight: '18px',
+}
+
+export const aiChatMessageDetailsValueStyle: CSSProperties = {
   whiteSpace: 'pre-wrap',
   wordBreak: 'break-word',
 }
