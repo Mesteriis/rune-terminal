@@ -10,8 +10,9 @@ import { WidgetBusyOverlayWidget } from '@/widgets/panel/widget-busy-overlay-wid
 import { AiChatMessageWidget } from '@/widgets/ai/ai-chat-message-widget'
 import { AiComposerWidget } from '@/widgets/ai/ai-composer-widget'
 import {
+  aiChatStreamStyle,
+  aiMessageViewportStyle,
   aiPanelContentColumnStyle,
-  aiMessageStackStyle,
   aiPanelRootStyle,
 } from '@/widgets/ai/ai-panel-widget.styles'
 
@@ -44,13 +45,19 @@ export function AiPanelWidget({ hostId, mode = 'chat', state }: AiPanelWidgetPro
       >
         <Box data-runa-ai-shell-frame="" runaComponent="ai-panel-frame" style={aiPanelContentColumnStyle}>
           <ScrollArea
-            data-runa-ai-message-stack=""
-            runaComponent="ai-panel-message-stack"
-            style={aiMessageStackStyle}
+            data-runa-ai-message-viewport=""
+            runaComponent="ai-panel-message-viewport"
+            style={aiMessageViewportStyle}
           >
-            {panelState.messages.map((message) => (
-              <AiChatMessageWidget key={message.id} message={message} mode={mode} />
-            ))}
+            <Box
+              data-runa-ai-message-stream=""
+              runaComponent="ai-panel-message-stream"
+              style={aiChatStreamStyle}
+            >
+              {panelState.messages.map((message) => (
+                <AiChatMessageWidget key={message.id} message={message} mode={mode} />
+              ))}
+            </Box>
           </ScrollArea>
           <AiComposerWidget
             activeTool={panelState.activeTool}

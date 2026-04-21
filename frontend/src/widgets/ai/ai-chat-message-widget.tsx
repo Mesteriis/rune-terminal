@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
-import { Box, Button, Surface, Text } from '@/shared/ui/primitives'
+import { Box, Button, Text } from '@/shared/ui/primitives'
 
 import type { ChatMessageView, ChatMode } from '@/features/agent/model/types'
 import {
@@ -80,7 +80,7 @@ export function AiChatMessageWidget({ message, mode }: AiChatMessageWidgetProps)
             ...(isUser ? aiChatMessageUserGroupStyle : aiChatMessageAssistantGroupStyle),
           }}
         >
-          <Surface
+          <Box
             runaComponent={`ai-chat-message-${message.id}-bubble`}
             style={{
               ...aiChatMessageBubbleStyle,
@@ -90,7 +90,7 @@ export function AiChatMessageWidget({ message, mode }: AiChatMessageWidgetProps)
             <Text runaComponent={`ai-chat-message-${message.id}-content`} style={aiChatMessageContentStyle}>
               {message.content}
             </Text>
-          </Surface>
+          </Box>
           {metaLine ? (
             <Text runaComponent={`ai-chat-message-${message.id}-meta`} style={aiChatMessageMetaLineStyle}>
               {metaLine}
@@ -109,7 +109,7 @@ export function AiChatMessageWidget({ message, mode }: AiChatMessageWidgetProps)
                 </Button>
               ) : null}
               {isDetailsVisible ? (
-                <Surface
+                <Box
                   runaComponent={`ai-chat-message-${message.id}-details`}
                   style={aiChatMessageDetailsPanelStyle}
                 >
@@ -136,7 +136,7 @@ export function AiChatMessageWidget({ message, mode }: AiChatMessageWidgetProps)
                       </Text>
                     </Box>
                   ))}
-                </Surface>
+                </Box>
               ) : null}
             </>
           ) : null}
