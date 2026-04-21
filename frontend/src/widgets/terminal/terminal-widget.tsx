@@ -50,12 +50,13 @@ export function TerminalWidget({
       >
         <TerminalSurface
           hostId={hostId}
+          onInput={terminalSession.canSendInput ? terminalSession.sendInputChunk : undefined}
+          outputChunks={terminalSession.outputChunks}
           ref={terminalSurfaceRef}
           sessionKey={terminalSession.sessionKey}
           sessionState={terminalSession.sessionState}
           statusMessage={terminalSession.statusDetail}
           themeClassTarget={themeClassTarget}
-          outputChunks={terminalSession.outputChunks}
         />
       </Box>
     </RunaDomScopeProvider>
