@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useLayoutEffect, useRef, useState, type UIEvent } from 'react'
 
 import { useAgentPanel } from '@/features/agent/model/use-agent-panel'
 import type { AiPanelWidgetState, ChatMode } from '@/features/agent/model/types'
@@ -22,11 +22,36 @@ export type AiPanelWidgetProps = {
   state?: AiPanelWidgetState
 }
 
+const AI_MESSAGE_LATEST_SCROLL_THRESHOLD = 48
+
+type AiMessageViewportMetrics = {
+  initialized: boolean
+  isNearLatest: boolean
+  scrollHeight: number
+  scrollTop: number
+}
+
+function readAiMessageViewportMetrics(viewport: HTMLDivElement): AiMessageViewportMetrics {
+  return {
+    initialized: true,
+    isNearLatest: viewport.scrollTop <= AI_MESSAGE_LATEST_SCROLL_THRESHOLD,
+    scrollHeight: viewport.scrollHeight,
+    scrollTop: viewport.scrollTop,
+  }
+}
+
 export function AiPanelWidget({ hostId, mode = 'chat', state }: AiPanelWidgetProps) {
   const agentPanel = useAgentPanel(hostId, state == null)
   const panelState = state ?? agentPanel.panelState
   const autoTagAiPanelRootRef = useRunaDomAutoTagging('ai-panel-root')
   const [panelRootElement, setPanelRootElement] = useState<HTMLDivElement | null>(null)
+  const messageViewportRef = useRef<HTMLDivElement | null>(null)
+  const messageViewportMetricsRef = useRef<AiMessageViewportMetrics>({
+    initialized: false,
+    isNearLatest: true,
+    scrollHeight: 0,
+    scrollTop: 0,
+  })
   const handleAiPanelRootRef = useCallback(
     (node: HTMLDivElement | null) => {
       autoTagAiPanelRootRef(node)
@@ -34,6 +59,38 @@ export function AiPanelWidget({ hostId, mode = 'chat', state }: AiPanelWidgetPro
     },
     [autoTagAiPanelRootRef],
   )
+  const handleMessageViewportRef = useCallback((node: HTMLDivElement | null) => {
+    messageViewportRef.current = node
+
+    if (node) {
+      messageViewportMetricsRef.current = readAiMessageViewportMetrics(node)
+    }
+  }, [])
+  const handleMessageViewportScroll = useCallback((event: UIEvent<HTMLDivElement>) => {
+    messageViewportMetricsRef.current = readAiMessageViewportMetrics(event.currentTarget)
+  }, [])
+
+  useLayoutEffect(() => {
+    const viewport = messageViewportRef.current
+
+    if (!viewport) {
+      return
+    }
+
+    const previousMetrics = messageViewportMetricsRef.current
+
+    if (previousMetrics.isNearLatest) {
+      viewport.scrollTop = 0
+    } else {
+      const heightDelta = viewport.scrollHeight - previousMetrics.scrollHeight
+
+      if (heightDelta !== 0) {
+        viewport.scrollTop = Math.max(0, previousMetrics.scrollTop + heightDelta)
+      }
+    }
+
+    messageViewportMetricsRef.current = readAiMessageViewportMetrics(viewport)
+  }, [panelState.messages])
 
   return (
     <RunaDomScopeProvider component="ai-panel-widget" widget={hostId}>
@@ -46,6 +103,8 @@ export function AiPanelWidget({ hostId, mode = 'chat', state }: AiPanelWidgetPro
         <Box data-runa-ai-shell-frame="" runaComponent="ai-panel-frame" style={aiPanelContentColumnStyle}>
           <ScrollArea
             data-runa-ai-message-viewport=""
+            onScroll={handleMessageViewportScroll}
+            ref={handleMessageViewportRef}
             runaComponent="ai-panel-message-viewport"
             style={aiMessageViewportStyle}
           >

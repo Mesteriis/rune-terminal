@@ -36,6 +36,48 @@ function createDeferredStreamResponse() {
   }
 }
 
+function mockScrollViewportMetrics(
+  viewport: HTMLDivElement,
+  input: {
+    clientHeight?: number
+    scrollHeight: number
+    scrollTop: number
+  },
+) {
+  let clientHeightValue = input.clientHeight ?? 320
+  let scrollHeightValue = input.scrollHeight
+  let scrollTopValue = input.scrollTop
+
+  Object.defineProperty(viewport, 'clientHeight', {
+    configurable: true,
+    get: () => clientHeightValue,
+  })
+  Object.defineProperty(viewport, 'scrollHeight', {
+    configurable: true,
+    get: () => scrollHeightValue,
+  })
+  Object.defineProperty(viewport, 'scrollTop', {
+    configurable: true,
+    get: () => scrollTopValue,
+    set: (value: number) => {
+      scrollTopValue = value
+    },
+  })
+
+  return {
+    getScrollTop: () => scrollTopValue,
+    setClientHeight: (value: number) => {
+      clientHeightValue = value
+    },
+    setScrollHeight: (value: number) => {
+      scrollHeightValue = value
+    },
+    setScrollTop: (value: number) => {
+      scrollTopValue = value
+    },
+  }
+}
+
 describe('AiPanelWidget backend conversation path', () => {
   afterEach(() => {
     resetRuntimeContextCacheForTests()
@@ -319,5 +361,81 @@ describe('AiPanelWidget backend conversation path', () => {
     expect(screen.getAllByText('Prompt')).toHaveLength(2)
     expect(screen.queryByRole('button', { name: 'Show details' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Hide details' })).not.toBeInTheDocument()
+  })
+
+  it('preserves the reader position when a new message is added above older content', () => {
+    const { rerender } = render(<AiPanelWidget hostId="ai-shell-panel" state={aiPanelWidgetMockState} />)
+    const viewport = document.querySelector('[data-runa-ai-message-viewport]') as HTMLDivElement | null
+
+    expect(viewport).not.toBeNull()
+
+    const metrics = mockScrollViewportMetrics(viewport!, {
+      scrollHeight: 960,
+      scrollTop: 180,
+    })
+
+    fireEvent.scroll(viewport!)
+    metrics.setScrollHeight(1080)
+
+    rerender(
+      <AiPanelWidget
+        hostId="ai-shell-panel"
+        state={{
+          ...aiPanelWidgetMockState,
+          messages: [
+            {
+              id: 'message-5',
+              role: 'assistant',
+              content: 'A new assistant message arrived.',
+              meta: {
+                model: 'mock-model',
+                status: 'complete',
+              },
+            },
+            ...aiPanelWidgetMockState.messages,
+          ],
+        }}
+      />,
+    )
+
+    expect(metrics.getScrollTop()).toBe(300)
+  })
+
+  it('keeps the latest message pinned when the viewport is already near the top', () => {
+    const { rerender } = render(<AiPanelWidget hostId="ai-shell-panel" state={aiPanelWidgetMockState} />)
+    const viewport = document.querySelector('[data-runa-ai-message-viewport]') as HTMLDivElement | null
+
+    expect(viewport).not.toBeNull()
+
+    const metrics = mockScrollViewportMetrics(viewport!, {
+      scrollHeight: 960,
+      scrollTop: 18,
+    })
+
+    fireEvent.scroll(viewport!)
+    metrics.setScrollHeight(1080)
+
+    rerender(
+      <AiPanelWidget
+        hostId="ai-shell-panel"
+        state={{
+          ...aiPanelWidgetMockState,
+          messages: [
+            {
+              id: 'message-5',
+              role: 'assistant',
+              content: 'A new assistant message arrived.',
+              meta: {
+                model: 'mock-model',
+                status: 'complete',
+              },
+            },
+            ...aiPanelWidgetMockState.messages,
+          ],
+        }}
+      />,
+    )
+
+    expect(metrics.getScrollTop()).toBe(0)
   })
 })
