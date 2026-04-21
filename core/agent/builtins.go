@@ -1,6 +1,8 @@
 package agent
 
 import (
+	"os"
+	"strings"
 	"time"
 
 	"github.com/Mesteriis/rune-terminal/core/policy"
@@ -8,15 +10,54 @@ import (
 
 func defaultState() State {
 	return State{
-		Version:         ConfigVersion,
-		ActiveProfileID: "balanced",
-		ActiveRoleID:    "developer",
-		ActiveModeID:    "implement",
-		Profiles:        defaultPromptProfiles(),
-		Roles:           defaultRoles(),
-		Modes:           defaultModes(),
-		UpdatedAt:       time.Now().UTC(),
+		Version:          ConfigVersion,
+		ActiveProfileID:  "balanced",
+		ActiveRoleID:     "developer",
+		ActiveModeID:     "implement",
+		ActiveProviderID: defaultActiveProviderID(),
+		Profiles:         defaultPromptProfiles(),
+		Roles:            defaultRoles(),
+		Modes:            defaultModes(),
+		Providers:        defaultProviders(),
+		UpdatedAt:        time.Now().UTC(),
 	}
+}
+
+func defaultProviders() []ProviderRecord {
+	now := time.Now().UTC()
+	return []ProviderRecord{
+		{
+			ID:          defaultActiveProviderID(),
+			Kind:        ProviderKindOllama,
+			DisplayName: "Local Ollama",
+			Enabled:     true,
+			Ollama: &OllamaProviderSettings{
+				BaseURL: normalizeProviderBaseURL(defaultEnvString("RTERM_OLLAMA_BASE_URL", "http://192.168.1.2:11434")),
+				Model:   strings.TrimSpace(defaultEnvString("RTERM_OLLAMA_MODEL", "")),
+			},
+			CreatedAt: now,
+			UpdatedAt: now,
+		},
+	}
+}
+
+func defaultActiveProviderID() string {
+	return "ollama-local"
+}
+
+func defaultEnvString(key string, fallback string) string {
+	if value := strings.TrimSpace(os.Getenv(key)); value != "" {
+		return value
+	}
+	return fallback
+}
+
+func normalizeProviderBaseURL(raw string) string {
+	base := strings.TrimSpace(raw)
+	if base == "" {
+		return ""
+	}
+	return strings.TrimRight(base, "/")
 }
 
 func defaultPromptProfiles() []PromptProfile {

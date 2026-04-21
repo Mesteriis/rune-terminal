@@ -7,7 +7,7 @@ import (
 	"github.com/Mesteriis/rune-terminal/core/policy"
 )
 
-const ConfigVersion = "v1alpha1"
+const ConfigVersion = "v1alpha2"
 
 type SecurityPosture string
 
@@ -60,14 +60,16 @@ type WorkMode struct {
 }
 
 type State struct {
-	Version         string          `json:"version"`
-	ActiveProfileID string          `json:"active_profile_id"`
-	ActiveRoleID    string          `json:"active_role_id"`
-	ActiveModeID    string          `json:"active_mode_id"`
-	Profiles        []PromptProfile `json:"profiles"`
-	Roles           []RolePreset    `json:"roles"`
-	Modes           []WorkMode      `json:"modes"`
-	UpdatedAt       time.Time       `json:"updated_at"`
+	Version          string           `json:"version"`
+	ActiveProfileID  string           `json:"active_profile_id"`
+	ActiveRoleID     string           `json:"active_role_id"`
+	ActiveModeID     string           `json:"active_mode_id"`
+	ActiveProviderID string           `json:"active_provider_id"`
+	Profiles         []PromptProfile  `json:"profiles"`
+	Roles            []RolePreset     `json:"roles"`
+	Modes            []WorkMode       `json:"modes"`
+	Providers        []ProviderRecord `json:"providers"`
+	UpdatedAt        time.Time        `json:"updated_at"`
 }
 
 type Selection struct {
