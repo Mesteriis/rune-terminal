@@ -80,8 +80,9 @@ function formatShellLabel(shell: string | undefined, connectionKind: string | un
   }
 
   const shellSegments = trimmedShell.split(/[\\/]/).filter(Boolean)
+  const lastShellSegment = shellSegments[shellSegments.length - 1]
 
-  return shellSegments.at(-1) ?? trimmedShell
+  return lastShellSegment ?? trimmedShell
 }
 
 function mapSessionState(
