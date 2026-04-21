@@ -55,7 +55,7 @@ func (api *API) withAuth(next http.Handler) http.Handler {
 }
 
 func isPublicPath(path string) bool {
-	return path == "/healthz"
+	return path == "/healthz" || path == "/api/v1/health" || path == "/tasks/active" || path == "/tasks/active/mark-failed"
 }
 
 func allowsQueryToken(path string) bool {

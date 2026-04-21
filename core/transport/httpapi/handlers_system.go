@@ -1,9 +1,16 @@
 package httpapi
 
-import "net/http"
+import (
+	"net/http"
+	"os"
+)
 
 func (api *API) handleHealth(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	writeJSON(w, http.StatusOK, map[string]any{
+		"service": "rterm-core",
+		"status":  "ok",
+		"pid":     os.Getpid(),
+	})
 }
 
 func (api *API) handleBootstrap(w http.ResponseWriter, r *http.Request) {
@@ -13,6 +20,7 @@ func (api *API) handleBootstrap(w http.ResponseWriter, r *http.Request) {
 		"connections":  api.runtime.ConnectionsSnapshot(),
 		"tools":        api.runtime.Registry.List(),
 		"repo_root":    api.runtime.RepoRoot,
+		"home_dir":     api.runtime.HomeDir,
 	})
 }
 

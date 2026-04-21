@@ -2,6 +2,7 @@ import { DockviewReact, type DockviewTheme } from 'dockview-react'
 import { useRef } from 'react'
 import { useUnit } from 'effector-react'
 
+import { closeRuntimeWindow, requestRuntimeSettings, requestRuntimeShutdown } from '@/shared/api/runtime'
 import { $isAiSidebarOpen, toggleAiSidebar } from '@/shared/model/app'
 import { BODY_MODAL_HOST_ID } from '@/shared/model/modal'
 import { RunaDomScopeProvider, useRunaDomAutoTagging } from '@/shared/ui/dom-id'
@@ -57,6 +58,31 @@ export function App() {
   } = useDockviewWorkspace()
   const appRootRef = useRunaDomAutoTagging('app-root')
 
+  async function handleCloseWindow() {
+    try {
+      const settings = await requestRuntimeSettings()
+      const initial = await requestRuntimeShutdown({ force: false })
+      if (!initial.can_close && settings.watcher_mode === 'ephemeral') {
+        const shouldContinue = window.confirm(
+          'There are running tasks. Closing will terminate them and mark as failed.',
+        )
+        if (!shouldContinue) {
+          return
+        }
+
+        const forced = await requestRuntimeShutdown({ force: true })
+        if (!forced.can_close) {
+          return
+        }
+      }
+
+      await closeRuntimeWindow()
+    } catch (error) {
+      console.error('Unable to close runtime cleanly', error)
+      await closeRuntimeWindow()
+    }
+  }
+
   return (
     <RunaDomScopeProvider component="app" layout="shell" widget="workspace">
       <Box ref={appRootRef} runaComponent="app-root" style={rootStyle}>
@@ -64,6 +90,7 @@ export function App() {
           <ShellTopbarWidget
             activeWorkspaceId={activeWorkspaceId}
             isAiOpen={isAiSidebarOpen}
+            onClose={handleCloseWindow}
             onAddWorkspace={handleAddWorkspace}
             onSelectWorkspace={handleSelectWorkspace}
             onToggleAi={onToggleAiSidebar}

@@ -19,6 +19,7 @@ export type ShellWorkspaceTab = {
 type ShellTopbarWidgetProps = {
   isAiOpen: boolean
   onToggleAi: () => void
+  onClose: () => void
   workspaceTabs: ShellWorkspaceTab[]
   activeWorkspaceId: number
   onSelectWorkspace: (workspaceId: number) => void
@@ -33,6 +34,7 @@ const actionIconProps = {
 export function ShellTopbarWidget({
   isAiOpen,
   onToggleAi,
+  onClose,
   workspaceTabs,
   activeWorkspaceId,
   onSelectWorkspace,
@@ -41,7 +43,12 @@ export function ShellTopbarWidget({
   return (
     <RunaDomScopeProvider component="shell-topbar-widget">
       <Box runaComponent="shell-topbar-root" style={topbarStyle}>
-        <Button aria-label="Close window" runaComponent="shell-topbar-close-window" style={iconButtonStyle}>
+        <Button
+          aria-label="Close window"
+          onClick={onClose}
+          runaComponent="shell-topbar-close-window"
+          style={iconButtonStyle}
+        >
           <X {...actionIconProps} />
         </Button>
         <Button
