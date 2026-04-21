@@ -5,7 +5,7 @@ import type {
   AgentConversationStreamEvent,
 } from '@/features/agent/api/client'
 import { mapConversationMessagesToChatMessageViews } from '@/features/agent/model/chat-message-view'
-import type { AiPanelWidgetState, ChatMessageView } from '@/features/agent/model/types'
+import type { AiPanelWidgetState, ChatMessageView, MessageMeta } from '@/features/agent/model/types'
 
 const AI_PANEL_TITLE = 'AI RUNE'
 const AI_TOOLBAR_LABEL = 'TOOL BAR'
@@ -22,16 +22,14 @@ function createPanelState(messages: ChatMessageView[]): AiPanelWidgetState {
   }
 }
 
-function createStatusMessage(input: {
-  id: string
-  content: string
-  meta?: ChatMessageView['meta']
-}): ChatMessageView {
+function createStatusMessage(input: { id: string; content: string; meta?: MessageMeta }): ChatMessageView {
   return {
     id: input.id,
+    type: 'chat',
     role: 'assistant',
     content: input.content,
     meta: input.meta,
+    sortKey: 0,
   }
 }
 
@@ -192,7 +190,7 @@ export function prependAgentPanelStatusMessage(
   input: {
     id: string
     content: string
-    meta?: ChatMessageView['meta']
+    meta?: MessageMeta
   },
 ) {
   return {

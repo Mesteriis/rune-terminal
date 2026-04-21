@@ -7,6 +7,7 @@ export const aiPanelWidgetMockState: AiPanelWidgetState = {
   messages: [
     {
       id: 'message-4',
+      type: 'chat',
       role: 'assistant',
       content: 'Split message content from execution metadata, then render the details separately.',
       meta: {
@@ -20,11 +21,13 @@ export const aiPanelWidgetMockState: AiPanelWidgetState = {
     },
     {
       id: 'message-3',
+      type: 'chat',
       role: 'user',
       content: 'Move execution details out of the main chat flow and keep the transcript readable.',
     },
     {
       id: 'message-2',
+      type: 'chat',
       role: 'assistant',
       content: 'Keep the slice frontend-only and refactor the transcript view model before changing layout.',
       meta: {
@@ -38,6 +41,7 @@ export const aiPanelWidgetMockState: AiPanelWidgetState = {
     },
     {
       id: 'message-1',
+      type: 'chat',
       role: 'user',
       content: 'Review the current frontend slice and propose the narrowest safe refactor sequence.',
     },

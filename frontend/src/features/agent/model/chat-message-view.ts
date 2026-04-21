@@ -25,6 +25,16 @@ function formatConversationTimestamp(timestamp: string) {
   return `${year}-${month}-${day} ${hours}:${minutes}`
 }
 
+function createConversationMessageSortKey(timestamp: string, fallbackIndex = 0) {
+  const value = Date.parse(timestamp)
+
+  if (Number.isNaN(value)) {
+    return fallbackIndex
+  }
+
+  return value * 1000 + fallbackIndex
+}
+
 function buildAssistantReasoning(message: AgentConversationMessage) {
   const reasoningLines = [`Status: ${message.status}`]
   const createdAt = formatConversationTimestamp(message.created_at)
@@ -104,20 +114,25 @@ function getMessageContent(message: AgentConversationMessage) {
 export function mapConversationMessageToChatMessageView(
   message: AgentConversationMessage,
   prompt: string | undefined,
+  fallbackIndex = 0,
 ): ChatMessageView {
   if (message.role === 'user') {
     return {
       id: message.id,
+      type: 'chat',
       role: 'user',
       content: getMessageContent(message),
+      sortKey: createConversationMessageSortKey(message.created_at, fallbackIndex),
     }
   }
 
   return {
     id: message.id,
+    type: 'chat',
     role: 'assistant',
     content: getMessageContent(message),
     meta: buildAssistantMeta(message, prompt),
+    sortKey: createConversationMessageSortKey(message.created_at, fallbackIndex),
   }
 }
 
@@ -136,10 +151,11 @@ export function mapConversationMessagesToChatMessageViews(
     assistantPrompts.set(message.id, lastUserPrompt)
   }
 
-  return messages.map((message) =>
+  return messages.map((message, index) =>
     mapConversationMessageToChatMessageView(
       message,
       message.role === 'assistant' ? assistantPrompts.get(message.id) : undefined,
+      messages.length - index,
     ),
   )
 }

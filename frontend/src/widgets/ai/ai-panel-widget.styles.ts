@@ -272,6 +272,57 @@ export const aiChatMessageDetailsValueStyle: CSSProperties = {
   wordBreak: 'break-word',
 }
 
+export const aiInteractionBlockStyle: CSSProperties = {
+  ...aiPlainBlockStyle,
+  width: '100%',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 'var(--space-md)',
+  padding: 'var(--space-md) var(--space-lg)',
+  borderRadius: '16px',
+  background: 'color-mix(in srgb, var(--color-canvas-elevated) 60%, transparent)',
+}
+
+export const aiInteractionSectionStyle: CSSProperties = {
+  ...aiPlainBlockStyle,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 'var(--space-xs)',
+  minWidth: 0,
+}
+
+export const aiInteractionTitleStyle: CSSProperties = {
+  color: 'var(--color-text-primary)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '13px',
+  lineHeight: '18px',
+  letterSpacing: '0.04em',
+  textTransform: 'uppercase',
+}
+
+export const aiInteractionListStyle: CSSProperties = {
+  ...aiPlainBlockStyle,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 'var(--space-xs)',
+}
+
+export const aiInteractionListItemStyle: CSSProperties = {
+  color: 'var(--color-text-primary)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '14px',
+  lineHeight: '22px',
+  whiteSpace: 'pre-wrap',
+  wordBreak: 'break-word',
+}
+
+export const aiInteractionMutedTextStyle: CSSProperties = {
+  color: 'var(--color-text-muted)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '12px',
+  lineHeight: '18px',
+}
+
 export const aiToolbarStyle: CSSProperties = {
   display: 'flex',
   alignItems: 'center',
