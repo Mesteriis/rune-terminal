@@ -342,11 +342,21 @@
 - Desktop watcher spawn is explicit and identity-bound:
   - `rterm-core watcher --backend=<core_url> --listen=127.0.0.1:7788 --worker-id=<worker_id> --shutdown-token=<shutdown_token>`
   - watcher metadata is persisted in `~/.rterm/runtime.json` and validated through `/health` + `/watcher/state`.
-- Desktop ephemeral shutdown uses active-task guard (`GET /api/v1/tasks/active` with Bearer auth), then requests watcher shutdown via `POST /watcher/shutdown?token=...&worker_id=...`, and only falls back to process kill on request failure.
-- Watcher shutdown endpoint validates ownership proof, stops polling, and triggers graceful task finalization logic (finish within grace window, cancel/mark failed on timeout).
+- Desktop ephemeral shutdown uses active-task guard (`GET /api/v1/tasks/active` with Bearer auth), then requests watcher shutdown via `POST /watcher/shutdown?token=...&worker_id=...`, waits for watcher `/health` disappearance as terminal confirmation, and only then proceeds to core stop.
+- Watcher shutdown endpoint validates ownership proof and now returns success only after terminal watcher state is reached:
+  - polling stop signal delivered
+  - graceful task finalization complete
+  - task queue closed
+  - worker pool drained
+  - task/health loop goroutines stopped
+  - server shutdown trigger prepared
 - Verified in this branch via local commands:
   - `go test ./core/... ./cmd/rterm-core/... -count=1`
   - `cargo check -q --manifest-path apps/desktop/src-tauri/Cargo.toml`
+- Targeted shutdown-order tests are now present in `cmd/rterm-core/main_watcher_test.go` and cover:
+  - shutdown wait for worker-drain before return
+  - long-running task timeout path finalizing to failed
+  - no additional task API claim calls after terminal shutdown
 - Runtime smoke scenarios still unverified in this sandbox:
   - first launch spawn + runtime file write
   - second launch attach without duplicate core/watcher
