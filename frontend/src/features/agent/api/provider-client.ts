@@ -1,7 +1,7 @@
 import { AgentAPIError } from '@/features/agent/api/client'
 import { resolveRuntimeContext, type RuntimeContext } from '@/shared/api/runtime'
 
-export type AgentProviderKind = 'ollama' | 'openai' | 'proxy'
+export type AgentProviderKind = 'ollama' | 'codex' | 'openai' | 'proxy'
 export type AgentProxyServiceType = 'openai' | 'claude' | 'gemini'
 export type AgentProxyAuthType = '' | 'bearer' | 'x-api-key' | 'both' | 'x-goog-api-key'
 export type AgentProxyChannelStatus = 'active' | 'suspended' | 'disabled'
@@ -15,6 +15,16 @@ export type AgentOpenAIProviderSettingsView = {
   base_url: string
   model: string
   has_api_key: boolean
+}
+
+export type AgentCodexProviderSettingsView = {
+  model: string
+  auth_file_path?: string
+  auth_mode?: string
+  auth_state: 'ready' | 'missing' | 'invalid'
+  status_message?: string
+  last_refresh?: string
+  account_id?: string
 }
 
 export type AgentProxyChannelSettingsView = {
@@ -45,6 +55,7 @@ export type AgentProviderView = {
   enabled: boolean
   active: boolean
   ollama?: AgentOllamaProviderSettings
+  codex?: AgentCodexProviderSettingsView
   openai?: AgentOpenAIProviderSettingsView
   proxy?: AgentProxyProviderSettingsView
   created_at: string
@@ -64,6 +75,10 @@ export type CreateAgentProviderPayload = {
   ollama?: {
     base_url: string
     model?: string
+  }
+  codex?: {
+    model?: string
+    auth_file_path?: string
   }
   openai?: {
     base_url?: string
@@ -98,6 +113,10 @@ export type UpdateAgentProviderPayload = {
   ollama?: {
     base_url?: string
     model?: string
+  }
+  codex?: {
+    model?: string
+    auth_file_path?: string
   }
   openai?: {
     base_url?: string

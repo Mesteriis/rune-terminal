@@ -26,21 +26,23 @@
   - `sed -n '1,260p' core/agent/provider_types.go`
   - `sed -n '1,320p' core/agent/provider_store.go`
   - `sed -n '1,240p' core/agent/provider_view.go`
+  - `sed -n '1,260p' core/codexauth/state.go`
   - `sed -n '1,260p' core/agent/store.go`
   - `sed -n '1,320p' core/app/provider_runtime.go`
   - `sed -n '1,260p' core/app/provider_actions.go`
   - `sed -n '1,260p' core/app/conversation_actions.go`
   - `sed -n '1,220p' core/app/ai_terminal_command.go`
   - `sed -n '1,260p' core/conversation/provider.go`
+  - `sed -n '1,320p' core/conversation/provider_codex.go`
   - `sed -n '1,320p' core/conversation/provider_openai.go`
   - `sed -n '1,360p' core/conversation/service.go`
   - `sed -n '1,260p' core/transport/httpapi/handlers_agent_providers.go`
   - `sed -n '1,220p' core/transport/httpapi/api.go`
 - Focused validation:
-  - `go test ./core/agent`
-  - `go test ./core/transport/httpapi ./core/agent ./core/app`
-  - `go test ./core/conversation ./core/app ./core/transport/httpapi`
-  - `go test ./core/agent ./core/transport/httpapi`
+  - `go test ./core/codexauth ./core/conversation ./core/agent ./core/app ./core/transport/httpapi`
+  - `npm --prefix frontend run test -- src/features/agent/api/provider-client.test.ts src/features/agent/model/provider-settings-draft.test.ts`
+  - `npm --prefix frontend run build`
+  - `npm run validate`
 
 ## Current frontend settings window state
 
@@ -50,11 +52,11 @@
 - That button still opens a body-scoped modal through [frontend/src/shared/model/modal.ts](../../frontend/src/shared/model/modal.ts).
 - The mounted surface is still [frontend/src/shared/ui/components/dialog-popup.tsx](../../frontend/src/shared/ui/components/dialog-popup.tsx).
 
-### Current limitation
+### Current behavior
 
-- The settings window is still a generic `DialogPopup` with wide `variant="settings"` geometry.
-- It does not yet host real section content, vertical navigation, subtabs, or an AI / Providers panel.
-- The shared `Tabs` component in [frontend/src/shared/ui/components/tabs.tsx](../../frontend/src/shared/ui/components/tabs.tsx) already supports `orientation="vertical"`, but it is not yet wired into Settings.
+- The settings window is still a generic `DialogPopup` with wide `variant="settings"` geometry, but it now hosts a real AI/provider management surface in the body slot.
+- The active content lives in [frontend/src/widgets/settings/agent-provider-settings-widget.tsx](../../frontend/src/widgets/settings/agent-provider-settings-widget.tsx).
+- The shared modal shell was not replaced or forked; the provider editor is mounted inside the existing body-scoped settings surface.
 
 ## Backend provider configuration runtime
 
@@ -67,7 +69,9 @@
 - Provider records are defined in [core/agent/provider_types.go](../../core/agent/provider_types.go).
 - Supported provider kinds in the model:
   - `ollama`
+  - `codex`
   - `openai`
+  - `proxy`
 - Each provider record persists:
   - `id`
   - `kind`
@@ -83,13 +87,29 @@
 - `ollama` record fields:
   - `base_url`
   - `model`
+- `codex` record fields:
+  - `model`
+  - optional `auth_file_path`
 - `openai` record fields:
   - `base_url`
   - `model`
   - `api_key_secret`
+- `proxy` record fields:
+  - `model`
+  - `channels[]`
 
 ### Public vs secret-sensitive fields
 
+- Codex credentials are not copied into provider state.
+- Codex providers only persist:
+  - `model`
+  - optional `auth_file_path`
+- Codex provider views expose only backend-detected auth metadata from the local auth file:
+  - `auth_state`
+  - `auth_mode`
+  - `status_message`
+  - `last_refresh`
+  - `account_id`
 - Stored OpenAI credentials live only in backend-owned state as `api_key_secret`.
 - Provider read responses do not expose that secret.
 - Provider read responses expose only:
@@ -156,7 +176,9 @@
 - `NewRuntime(...)` initializes that factory to resolve the active provider from backend state.
 - The factory currently maps:
   - `ollama` -> `conversation.NewOllamaProvider(...)`
+  - `codex` -> `conversation.NewCodexProvider(...)`
   - `openai` -> `conversation.NewOpenAIProvider(...)`
+  - `proxy` -> `aiproxy.NewProvider(...)`
 
 ### Execution paths now using backend-owned provider state
 
@@ -181,6 +203,18 @@
 
 ## External provider implementation
 
+### Codex local-auth support
+
+- A direct Codex provider implementation now exists in [core/conversation/provider_codex.go](../../core/conversation/provider_codex.go).
+- The current implementation:
+  - reads local Codex auth state through [core/codexauth/state.go](../../core/codexauth/state.go)
+  - prefers `OPENAI_API_KEY` when present in `~/.codex/auth.json`
+  - otherwise uses the stored ChatGPT access token and account id
+  - sends Responses API requests to either:
+    - `https://api.openai.com/v1/responses`
+    - `https://chatgpt.com/backend-api/codex/responses`
+  - supports both non-stream and SSE text-delta streaming
+
 ### OpenAI support
 
 - A real external provider implementation now exists in [core/conversation/provider_openai.go](../../core/conversation/provider_openai.go).
@@ -196,7 +230,9 @@
 - The Ollama provider path remains supported.
 - The active/default provider can now be switched between:
   - the persisted local Ollama provider config
+  - a persisted Codex local-auth provider config
   - a persisted OpenAI provider config
+  - a persisted internal proxy provider config
 
 ## Secret handling
 
@@ -221,13 +257,14 @@
 
 ## Remaining limitations
 
-- The Settings UI is still not implemented on top of this backend surface.
-- Provider configuration still has no visible frontend client in Settings.
-- The current provider matrix is intentionally narrow:
+- The current provider matrix is still intentionally narrow even after this slice:
   - `ollama`
+  - `codex`
   - `openai`
+  - `proxy`
 - No provider marketplace/discovery layer exists.
 - No provider selection UI was added to the main AI sidebar, and this slice did not change that placement.
+- The Codex path currently depends on an already-authenticated local `codex` install; this slice did not add an in-app browser/device-auth connect flow yet.
 - The OpenAI implementation is intentionally minimal:
   - chat-completions text flow only
   - no tool calling

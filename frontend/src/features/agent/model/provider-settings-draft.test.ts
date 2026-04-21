@@ -8,6 +8,23 @@ import {
 } from '@/features/agent/model/provider-settings-draft'
 
 describe('provider settings draft helpers', () => {
+  it('serializes codex providers without asking for an API key', () => {
+    const draft = createEmptyProviderDraft('codex')
+    draft.displayName = 'Codex'
+    draft.codex.model = 'gpt-5-codex'
+    draft.codex.authFilePath = '~/.codex/auth.json'
+
+    expect(buildCreateProviderPayload(draft)).toEqual({
+      kind: 'codex',
+      display_name: 'Codex',
+      enabled: true,
+      codex: {
+        model: 'gpt-5-codex',
+        auth_file_path: '~/.codex/auth.json',
+      },
+    })
+  })
+
   it('preserves masked proxy secrets when an existing channel is updated without replacement keys', () => {
     const draft = createProviderDraftFromView({
       id: 'provider-1',

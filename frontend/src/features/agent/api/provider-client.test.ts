@@ -38,7 +38,7 @@ describe('agent provider client', () => {
             },
           ],
           active_provider_id: 'ollama-local',
-          supported_kinds: ['ollama', 'openai', 'proxy'],
+          supported_kinds: ['ollama', 'codex', 'openai', 'proxy'],
         }),
       })
     vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
@@ -61,7 +61,7 @@ describe('agent provider client', () => {
         },
       ],
       active_provider_id: 'ollama-local',
-      supported_kinds: ['ollama', 'openai', 'proxy'],
+      supported_kinds: ['ollama', 'codex', 'openai', 'proxy'],
     })
     expect(fetchMock.mock.calls[1]?.[0]).toBe('http://127.0.0.1:8090/api/v1/agent/providers')
   })
@@ -104,7 +104,7 @@ describe('agent provider client', () => {
           providers: {
             providers: [],
             active_provider_id: 'ollama-local',
-            supported_kinds: ['ollama', 'openai', 'proxy'],
+            supported_kinds: ['ollama', 'codex', 'openai', 'proxy'],
           },
         }),
       })

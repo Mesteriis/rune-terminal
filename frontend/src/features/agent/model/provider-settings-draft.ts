@@ -9,6 +9,7 @@ import type {
 } from '@/features/agent/api/provider-client'
 
 const DEFAULT_OLLAMA_BASE_URL = 'http://127.0.0.1:11434/v1'
+const DEFAULT_CODEX_MODEL = 'gpt-5-codex'
 const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1'
 const DEFAULT_OPENAI_MODEL = 'gpt-5-mini'
 const DEFAULT_PROXY_MODEL = 'assistant-default'
@@ -131,6 +132,10 @@ export type AgentProviderDraft = {
     baseURL: string
     model: string
   }
+  codex: {
+    model: string
+    authFilePath: string
+  }
   openai: {
     baseURL: string
     model: string
@@ -179,6 +184,10 @@ export function createEmptyProviderDraft(kind: AgentProviderKind): AgentProvider
       baseURL: DEFAULT_OLLAMA_BASE_URL,
       model: '',
     },
+    codex: {
+      model: DEFAULT_CODEX_MODEL,
+      authFilePath: '',
+    },
     openai: {
       baseURL: DEFAULT_OPENAI_BASE_URL,
       model: DEFAULT_OPENAI_MODEL,
@@ -203,6 +212,10 @@ export function createProviderDraftFromView(provider: AgentProviderView): AgentP
     ollama: {
       baseURL: provider.ollama?.base_url ?? DEFAULT_OLLAMA_BASE_URL,
       model: provider.ollama?.model ?? '',
+    },
+    codex: {
+      model: provider.codex?.model ?? DEFAULT_CODEX_MODEL,
+      authFilePath: provider.codex?.auth_file_path ?? '',
     },
     openai: {
       baseURL: provider.openai?.base_url ?? DEFAULT_OPENAI_BASE_URL,
@@ -272,6 +285,12 @@ export function buildCreateProviderPayload(draft: AgentProviderDraft): CreateAge
         model: normalizeText(draft.ollama.model) || undefined,
       }
       return payload
+    case 'codex':
+      payload.codex = {
+        model: requireText(draft.codex.model, 'Codex model'),
+        auth_file_path: normalizeText(draft.codex.authFilePath) || undefined,
+      }
+      return payload
     case 'openai':
       payload.openai = {
         base_url: requireText(draft.openai.baseURL, 'OpenAI base URL'),
@@ -308,6 +327,12 @@ export function buildUpdateProviderPayload(draft: AgentProviderDraft): UpdateAge
       payload.ollama = {
         base_url: requireText(draft.ollama.baseURL, 'Ollama base URL'),
         model: normalizeText(draft.ollama.model) || undefined,
+      }
+      return payload
+    case 'codex':
+      payload.codex = {
+        model: requireText(draft.codex.model, 'Codex model'),
+        auth_file_path: normalizeText(draft.codex.authFilePath) || undefined,
       }
       return payload
     case 'openai':

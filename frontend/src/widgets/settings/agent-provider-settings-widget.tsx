@@ -48,11 +48,12 @@ import {
 
 const kindLabels: Record<AgentProviderKind, string> = {
   ollama: 'Ollama',
-  openai: 'OpenAI / Codex',
+  codex: 'Codex',
+  openai: 'OpenAI-compatible',
   proxy: 'AI Proxy',
 }
 
-const defaultSupportedKinds: AgentProviderKind[] = ['ollama', 'openai', 'proxy']
+const defaultSupportedKinds: AgentProviderKind[] = ['ollama', 'codex', 'openai', 'proxy']
 
 function TextInputField({
   label,
@@ -141,6 +142,17 @@ function renderProxyKeySummary(draft: AgentProviderDraft['proxy']['channels'][nu
   return `Stored keys are preserved on save: ${draft.enabledKeyCount}/${draft.keyCount} enabled.`
 }
 
+function formatCodexAuthState(state?: string) {
+  switch (state) {
+    case 'ready':
+      return 'Local auth ready'
+    case 'invalid':
+      return 'Local auth invalid'
+    default:
+      return 'Local auth missing'
+  }
+}
+
 export function AgentProviderSettingsWidget() {
   const {
     catalog,
@@ -195,8 +207,9 @@ export function AgentProviderSettingsWidget() {
           <Box runaComponent="agent-provider-settings-toolbar-meta" style={providerSettingsToolbarMetaStyle}>
             <Text style={{ fontWeight: 600 }}>AI provider routing</Text>
             <Text style={providerSettingsStatusMessageStyle}>
-              Manage direct providers and the internal proxy catalog for Codex/OpenAI-compatible,
-              Claude-compatible, Gemini, and Ollama-backed accounts without leaving the shell modal.
+              Manage direct providers and the internal proxy catalog for local Codex auth, OpenAI-compatible
+              endpoints, Claude-compatible, Gemini, and Ollama-backed accounts without leaving the shell
+              modal.
             </Text>
           </Box>
           <Box
@@ -248,6 +261,10 @@ export function AgentProviderSettingsWidget() {
                     {provider.kind === 'proxy' ? (
                       <Text style={providerSettingsStatusMessageStyle}>
                         {provider.proxy?.channels.length ?? 0} channel(s) · model {provider.proxy?.model}
+                      </Text>
+                    ) : provider.kind === 'codex' ? (
+                      <Text style={providerSettingsStatusMessageStyle}>
+                        {provider.codex?.model} · {formatCodexAuthState(provider.codex?.auth_state)}
                       </Text>
                     ) : provider.kind === 'openai' ? (
                       <Text style={providerSettingsStatusMessageStyle}>
@@ -371,12 +388,71 @@ export function AgentProviderSettingsWidget() {
                     </Box>
                   ) : null}
 
+                  {draft.kind === 'codex' ? (
+                    <Box style={providerSettingsSectionStyle}>
+                      <Box style={providerSettingsSectionHeaderStyle}>
+                        <Text style={{ fontWeight: 600 }}>Codex</Text>
+                        <Text style={providerSettingsStatusMessageStyle}>
+                          Uses the local `codex` login on this machine and routes requests through the Codex
+                          Responses backend instead of asking for an API key here.
+                        </Text>
+                      </Box>
+                      <Box style={providerSettingsGridStyle}>
+                        <TextInputField
+                          label="Model"
+                          onChange={(value) =>
+                            updateDraftField(setDraft, (currentDraft) => ({
+                              ...currentDraft,
+                              codex: {
+                                ...currentDraft.codex,
+                                model: value,
+                              },
+                            }))
+                          }
+                          placeholder="gpt-5-codex"
+                          value={draft.codex.model}
+                        />
+                        <TextInputField
+                          hint="Leave empty to use ~/.codex/auth.json."
+                          label="Auth file path"
+                          onChange={(value) =>
+                            updateDraftField(setDraft, (currentDraft) => ({
+                              ...currentDraft,
+                              codex: {
+                                ...currentDraft.codex,
+                                authFilePath: value,
+                              },
+                            }))
+                          }
+                          placeholder="~/.codex/auth.json"
+                          value={draft.codex.authFilePath}
+                        />
+                      </Box>
+                      <Box style={providerSettingsGridStyle}>
+                        <Box style={providerSettingsFieldStyle}>
+                          <Label>Status</Label>
+                          <Text style={providerSettingsStatusMessageStyle}>
+                            {selectedProvider?.codex?.status_message ??
+                              'Save the provider to let the backend inspect the local Codex auth state.'}
+                          </Text>
+                        </Box>
+                        <Box style={providerSettingsFieldStyle}>
+                          <Label>Detected auth mode</Label>
+                          <Text style={providerSettingsStatusMessageStyle}>
+                            {selectedProvider?.codex?.auth_mode || 'Unknown until saved'}
+                          </Text>
+                        </Box>
+                      </Box>
+                    </Box>
+                  ) : null}
+
                   {draft.kind === 'openai' ? (
                     <Box style={providerSettingsSectionStyle}>
                       <Box style={providerSettingsSectionHeaderStyle}>
                         <Text style={{ fontWeight: 600 }}>OpenAI-compatible upstream</Text>
                         <Text style={providerSettingsStatusMessageStyle}>
-                          Use this for direct Codex/OpenAI-compatible accounts without proxy routing.
+                          Use this for direct API-key-based OpenAI-compatible endpoints without Codex local
+                          auth.
                         </Text>
                       </Box>
                       <Box style={providerSettingsGridStyle}>

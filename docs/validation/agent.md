@@ -5,13 +5,16 @@
 - Date: `2026-04-21`
 - State: `PARTIALLY VERIFIED`
 - Scope:
-  - backend agent/provider catalog now supports a third provider kind, `proxy`, which stores a backend-owned multi-channel account/router configuration instead of a single direct upstream
+  - backend agent/provider catalog now supports direct `codex` providers that read existing local Codex CLI auth from `~/.codex/auth.json` and talk to the Codex/OpenAI Responses API without exposing credentials through transport
+  - backend agent/provider catalog also supports a `proxy` kind, which stores a backend-owned multi-channel account/router configuration instead of a single direct upstream
   - the new `core/aiproxy` domain adapts TideTerm proxy concepts into `rterm` backend rules: channel validation, masked API key storage, priority/failover selection, and direct protocol adapters for OpenAI-compatible, Claude-compatible, and Gemini upstreams
+  - the new `core/codexauth` domain resolves local Codex auth state for status/reporting and runtime credential loading, which keeps the frontend/provider catalog secret-free while still showing whether machine auth is ready
   - proxy provider updates now preserve existing stored channel API keys when a channel is updated by id without a new `api_keys` payload, which keeps masked-secret frontend editing safe by default
-  - the shell-wide settings modal now renders a real provider/proxy management surface inside its body without changing the shared modal shell: existing providers can be selected, edited, activated, or deleted, and new `ollama`, `openai`, or `proxy` records can be created from the same catalog view
+  - the shell-wide settings modal now renders a real provider/proxy management surface inside its body without changing the shared modal shell: existing providers can be selected, edited, activated, or deleted, and new `ollama`, `codex`, `openai`, or `proxy` records can be created from the same catalog view
   - the frontend provider editor now resolves through typed agent-provider transport adapters and draft serializers instead of inline modal state: `features/agent/api/provider-client.ts` owns the backend routes, `provider-settings-draft.ts` owns create/update payload shaping, and `use-agent-provider-settings.ts` owns editor state
+  - the frontend settings surface now treats `codex` as a separate local-auth provider instead of folding it into the generic `openai` API-key form; the editor can show backend-detected auth state while leaving the shared modal shell untouched
   - the proxy editor now exposes multi-channel routing inside settings, including service type, base URLs, priority/status, model mapping, TLS skip, and masked key replacement/preservation semantics for each channel
-  - conversation runtime resolution can now materialize the active provider from direct `ollama` / `openai` records or from the new internal proxy provider record
+  - conversation runtime resolution can now materialize the active provider from direct `ollama` / `codex` / `openai` records or from the internal proxy provider record
   - proxy-routed conversation streaming is currently buffered at the provider boundary for Claude/Gemini channels, so the SSE route still works but does not yet expose true token-by-token deltas for those upstreams
   - frontend AI sidebar main path loads backend conversation state from `GET /api/v1/agent/conversation`
   - existing textarea + send icon submit to `POST /api/v1/agent/conversation/messages/stream`
@@ -37,6 +40,7 @@
 - Repository/contract audit:
   - `sed -n '1,260p' core/aiproxy/types.go`
   - `sed -n '1,260p' core/aiproxy/provider.go`
+  - `sed -n '1,260p' core/codexauth/state.go`
   - `sed -n '1,260p' core/agent/provider_types.go`
   - `sed -n '1,360p' core/agent/provider_store.go`
   - `sed -n '1,260p' core/app/provider_runtime.go`
@@ -55,7 +59,7 @@
   - `npm --prefix frontend run test -- --reporter verbose --testTimeout=10000 src/features/agent/model/interaction-flow.test.ts src/widgets/ai/ai-panel-widget.test.tsx src/widgets/ai/ai-chat-message-widget.test.tsx`
   - `npm --prefix frontend run build`
 - Backend targeted validation:
-  - `go test ./core/aiproxy ./core/agent ./core/app ./core/transport/httpapi`
+  - `go test ./core/codexauth ./core/conversation ./core/agent ./core/app ./core/transport/httpapi`
 - Repository validation sweep:
   - `npm run validate`
 
@@ -69,6 +73,7 @@
 - The visible `chat` / `dev` / `debug` header toggle is presentation-only transcript state. It does not read or write the backend agent mode catalog and must not be treated as the transport-backed work-mode selector.
 - No current visible attachment-reference control exists in the AI sidebar, so `POST /api/v1/agent/conversation/attachments/references` is implemented in the frontend API client but not wired to the UI.
 - The settings-surface provider editor currently treats replacement key input as newline-separated enabled keys only; it does not expose per-key enabled/disabled toggles or a richer per-account secret management workflow yet.
+- The Codex settings surface currently depends on a pre-existing local `codex` login. It does not yet expose the browser/device-auth callback flow inside `rterm`.
 - Proxy-routed Claude/Gemini conversation traffic currently uses buffered completion under `POST /api/v1/agent/conversation/messages/stream`; the route remains SSE, but delta granularity for those upstreams is not yet equivalent to the direct OpenAI/Ollama paths.
 - `npm run tauri:dev` was not rerun for this exact transcript refactor, so the supported desktop startup smoke remains outstanding for this slice even though `npm run validate` passed.
 - `frontend/src/widgets/ai/ai-panel-widget.mock.ts` remains in the repository for isolated override/test scaffolding only; it is no longer the main execution path for the AI sidebar.
@@ -117,14 +122,24 @@
 
 - `GET /api/v1/agent/providers`
   - returns `providers[]`, `active_provider_id`, and `supported_kinds`
-  - `supported_kinds` now includes `proxy`
+  - `supported_kinds` now includes `codex` and `proxy`
+- `POST /api/v1/agent/providers`
+  - accepts `kind: "codex"` with:
+    - `codex.model`
+    - optional `codex.auth_file_path`
+  - provider views expose only non-secret Codex auth metadata:
+    - `auth_state`
+    - `auth_mode`
+    - `status_message`
+    - `last_refresh`
+    - `account_id`
 - `POST /api/v1/agent/providers`
   - now accepts `kind: "proxy"` with:
     - `proxy.model`
     - `proxy.channels[]`
     - per-channel `service_type`, `base_url` / `base_urls`, `api_keys`, `auth_type`, `priority`, `status`, `model_mapping`
 - `PATCH /api/v1/agent/providers/{providerID}`
-  - now accepts `proxy` updates for model and full channel replacement
+  - now accepts `codex` updates for model/auth-file path and `proxy` updates for model and full channel replacement
 - provider views mask proxy secrets:
   - channel API key values are never returned
   - channel views expose `key_count` and `enabled_key_count` instead
