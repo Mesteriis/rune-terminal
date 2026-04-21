@@ -56,7 +56,9 @@ Go Core
   Terminal launches are connection-aware: local sessions use the current shell, while SSH sessions launch the system `ssh` binary inside the PTY.
 - `core/conversation`
   Manages the persisted AI transcript and the narrow provider adapter for real assistant responses.
-  The current provider path uses Ollama over local-network HTTP with non-streaming chat completions.
+  The conversation path now resolves providers from backend-owned agent config and can route either to direct providers (`ollama`, `openai`) or to an internal multi-channel AI proxy provider.
+- `core/aiproxy`
+  Owns backend-local AI proxy routing for conversation traffic: channel catalog validation, base URL and auth strategy selection, key masking, circuit-breaker-style failover, and protocol adapters for OpenAI-compatible, Claude-compatible, and Gemini upstreams.
 - `core/toolruntime`
   Hosts tool registry, operation planning, approval handling, execution results and audit emission.
 - `core/agent`
@@ -121,4 +123,5 @@ Role presets, work modes and system prompt profiles are not UI-only metadata. Th
 - connection state is explicit and backend-owned instead of being inferred from frontend shell heuristics
 - terminal orchestration is isolated from workspace orchestration
 - future AI features can integrate through the tool runtime instead of growing a second orchestration stack
+- AI provider/account routing now stays backend-owned instead of leaking TideTerm's standalone proxy server model into frontend or transport layers
 - remote state is explicit and backend-owned, but it is still profile-oriented rather than a long-lived remote controller model

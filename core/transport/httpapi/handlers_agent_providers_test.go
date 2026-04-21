@@ -255,3 +255,58 @@ func TestUpdateProviderRejectsClearingSecretWithoutReplacement(t *testing.T) {
 		t.Fatalf("expected response to stay masked, got %s", recorder.Body.String())
 	}
 }
+
+func TestCreateProxyProviderMasksChannelSecrets(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPost, "/api/v1/agent/providers", map[string]any{
+		"kind":         "proxy",
+		"display_name": "Proxy",
+		"proxy": map[string]any{
+			"model": "assistant-default",
+			"channels": []map[string]any{
+				{
+					"id":           "codex-primary",
+					"name":         "Codex",
+					"service_type": "openai",
+					"base_url":     "https://example.com/v1",
+					"api_keys": []map[string]any{
+						{"key": "sk-proxy-secret", "enabled": true},
+					},
+				},
+			},
+		},
+	}))
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+	if strings.Contains(recorder.Body.String(), "sk-proxy-secret") {
+		t.Fatalf("expected secret to stay masked, got %s", recorder.Body.String())
+	}
+
+	var payload struct {
+		Provider struct {
+			Kind  string `json:"kind"`
+			Proxy struct {
+				Model    string `json:"model"`
+				Channels []struct {
+					KeyCount        int `json:"key_count"`
+					EnabledKeyCount int `json:"enabled_key_count"`
+				} `json:"channels"`
+			} `json:"proxy"`
+		} `json:"provider"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
+	}
+	if payload.Provider.Kind != "proxy" || payload.Provider.Proxy.Model != "assistant-default" {
+		t.Fatalf("unexpected proxy payload: %#v", payload.Provider)
+	}
+	if len(payload.Provider.Proxy.Channels) != 1 || payload.Provider.Proxy.Channels[0].EnabledKeyCount != 1 {
+		t.Fatalf("unexpected channel payload: %#v", payload.Provider.Proxy.Channels)
+	}
+}

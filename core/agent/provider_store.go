@@ -124,7 +124,7 @@ func buildProviderRecord(input CreateProviderInput) (ProviderRecord, error) {
 
 	switch kind {
 	case ProviderKindOllama:
-		if input.Ollama == nil || input.OpenAI != nil {
+		if input.Ollama == nil || input.OpenAI != nil || input.Proxy != nil {
 			return ProviderRecord{}, fmt.Errorf("%w: ollama config is required", ErrProviderInvalidConfig)
 		}
 		record.Ollama = &OllamaProviderSettings{
@@ -132,13 +132,21 @@ func buildProviderRecord(input CreateProviderInput) (ProviderRecord, error) {
 			Model:   strings.TrimSpace(input.Ollama.Model),
 		}
 	case ProviderKindOpenAI:
-		if input.OpenAI == nil || input.Ollama != nil {
+		if input.OpenAI == nil || input.Ollama != nil || input.Proxy != nil {
 			return ProviderRecord{}, fmt.Errorf("%w: openai config is required", ErrProviderInvalidConfig)
 		}
 		record.OpenAI = &OpenAIProviderSettings{
 			BaseURL:      normalizeProviderBaseURL(firstNonEmpty(input.OpenAI.BaseURL, defaultOpenAIBaseURL)),
 			Model:        strings.TrimSpace(firstNonEmpty(input.OpenAI.Model, defaultOpenAIModel)),
 			APIKeySecret: strings.TrimSpace(input.OpenAI.APIKey),
+		}
+	case ProviderKindProxy:
+		if input.Proxy == nil || input.Ollama != nil || input.OpenAI != nil {
+			return ProviderRecord{}, fmt.Errorf("%w: proxy config is required", ErrProviderInvalidConfig)
+		}
+		record.Proxy = &ProxyProviderSettings{
+			Model:    strings.TrimSpace(input.Proxy.Model),
+			Channels: normalizeProxyChannels(input.Proxy.Channels),
 		}
 	default:
 		return ProviderRecord{}, fmt.Errorf("%w: %s", ErrProviderKindUnsupported, input.Kind)
@@ -161,7 +169,7 @@ func applyProviderUpdate(record ProviderRecord, input UpdateProviderInput) (Prov
 
 	switch updated.Kind {
 	case ProviderKindOllama:
-		if input.OpenAI != nil {
+		if input.OpenAI != nil || input.Proxy != nil {
 			return ProviderRecord{}, fmt.Errorf("%w: openai config does not match provider kind", ErrProviderInvalidConfig)
 		}
 		if input.Ollama != nil {
@@ -176,7 +184,7 @@ func applyProviderUpdate(record ProviderRecord, input UpdateProviderInput) (Prov
 			}
 		}
 	case ProviderKindOpenAI:
-		if input.Ollama != nil {
+		if input.Ollama != nil || input.Proxy != nil {
 			return ProviderRecord{}, fmt.Errorf("%w: ollama config does not match provider kind", ErrProviderInvalidConfig)
 		}
 		if input.OpenAI != nil {
@@ -198,6 +206,13 @@ func applyProviderUpdate(record ProviderRecord, input UpdateProviderInput) (Prov
 			if input.OpenAI.APIKey != nil {
 				updated.OpenAI.APIKeySecret = strings.TrimSpace(*input.OpenAI.APIKey)
 			}
+		}
+	case ProviderKindProxy:
+		if input.Ollama != nil || input.OpenAI != nil {
+			return ProviderRecord{}, fmt.Errorf("%w: proxy config does not match provider kind", ErrProviderInvalidConfig)
+		}
+		if input.Proxy != nil {
+			updated.Proxy = applyProxyProviderUpdate(updated.Proxy, *input.Proxy)
 		}
 	default:
 		return ProviderRecord{}, fmt.Errorf("%w: %s", ErrProviderKindUnsupported, updated.Kind)
@@ -222,14 +237,14 @@ func validateProviderRecord(record ProviderRecord) error {
 	}
 	switch record.Kind {
 	case ProviderKindOllama:
-		if record.Ollama == nil || record.OpenAI != nil {
+		if record.Ollama == nil || record.OpenAI != nil || record.Proxy != nil {
 			return fmt.Errorf("%w: ollama settings are required", ErrProviderInvalidConfig)
 		}
 		if strings.TrimSpace(record.Ollama.BaseURL) == "" {
 			return fmt.Errorf("%w: ollama base_url is required", ErrProviderInvalidConfig)
 		}
 	case ProviderKindOpenAI:
-		if record.OpenAI == nil || record.Ollama != nil {
+		if record.OpenAI == nil || record.Ollama != nil || record.Proxy != nil {
 			return fmt.Errorf("%w: openai settings are required", ErrProviderInvalidConfig)
 		}
 		if strings.TrimSpace(record.OpenAI.BaseURL) == "" {
@@ -240,6 +255,13 @@ func validateProviderRecord(record ProviderRecord) error {
 		}
 		if strings.TrimSpace(record.OpenAI.APIKeySecret) == "" {
 			return fmt.Errorf("%w: openai api_key is required", ErrProviderInvalidConfig)
+		}
+	case ProviderKindProxy:
+		if record.Proxy == nil || record.Ollama != nil || record.OpenAI != nil {
+			return fmt.Errorf("%w: proxy settings are required", ErrProviderInvalidConfig)
+		}
+		if err := validateProxyProviderSettings(record.Proxy); err != nil {
+			return err
 		}
 	default:
 		return fmt.Errorf("%w: %s", ErrProviderKindUnsupported, record.Kind)
@@ -263,6 +285,8 @@ func defaultProviderDisplayName(kind ProviderKind, raw string) string {
 	switch kind {
 	case ProviderKindOpenAI:
 		return "OpenAI"
+	case ProviderKindProxy:
+		return "AI Proxy"
 	default:
 		return "Ollama"
 	}

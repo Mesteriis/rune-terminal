@@ -5,6 +5,10 @@
 - Date: `2026-04-21`
 - State: `PARTIALLY VERIFIED`
 - Scope:
+  - backend agent/provider catalog now supports a third provider kind, `proxy`, which stores a backend-owned multi-channel account/router configuration instead of a single direct upstream
+  - the new `core/aiproxy` domain adapts TideTerm proxy concepts into `rterm` backend rules: channel validation, masked API key storage, priority/failover selection, and direct protocol adapters for OpenAI-compatible, Claude-compatible, and Gemini upstreams
+  - conversation runtime resolution can now materialize the active provider from direct `ollama` / `openai` records or from the new internal proxy provider record
+  - proxy-routed conversation streaming is currently buffered at the provider boundary for Claude/Gemini channels, so the SSE route still works but does not yet expose true token-by-token deltas for those upstreams
   - frontend AI sidebar main path loads backend conversation state from `GET /api/v1/agent/conversation`
   - existing textarea + send icon submit to `POST /api/v1/agent/conversation/messages/stream`
   - transcript rendering now projects backend messages into a chat-focused `ChatMessageView` instead of the earlier prompt/snapshot card model
@@ -27,6 +31,12 @@
 ## Commands/tests used
 
 - Repository/contract audit:
+  - `sed -n '1,260p' core/aiproxy/types.go`
+  - `sed -n '1,260p' core/aiproxy/provider.go`
+  - `sed -n '1,260p' core/agent/provider_types.go`
+  - `sed -n '1,360p' core/agent/provider_store.go`
+  - `sed -n '1,260p' core/app/provider_runtime.go`
+  - `sed -n '1,280p' core/transport/httpapi/handlers_agent_providers.go`
   - `rg -n "agent|conversation|profile|role|mode|attachments/references" README.md docs frontend/src core`
   - `sed -n '1,240p' core/transport/httpapi/handlers_agent.go`
   - `sed -n '1,260p' core/transport/httpapi/handlers_agent_conversation.go`
@@ -38,6 +48,8 @@
 - Frontend targeted validation:
   - `npm --prefix frontend run test -- --reporter verbose --testTimeout=10000 src/features/agent/model/interaction-flow.test.ts src/widgets/ai/ai-panel-widget.test.tsx src/widgets/ai/ai-chat-message-widget.test.tsx`
   - `npm --prefix frontend run build`
+- Backend targeted validation:
+  - `go test ./core/aiproxy ./core/agent ./core/app ./core/transport/httpapi`
 - Repository validation sweep:
   - `npm run validate`
 
@@ -50,6 +62,8 @@
   - `PUT /api/v1/agent/selection/mode`
 - The visible `chat` / `dev` / `debug` header toggle is presentation-only transcript state. It does not read or write the backend agent mode catalog and must not be treated as the transport-backed work-mode selector.
 - No current visible attachment-reference control exists in the AI sidebar, so `POST /api/v1/agent/conversation/attachments/references` is implemented in the frontend API client but not wired to the UI.
+- No current visible provider/proxy management UI exists in the active frontend tree, so the new backend `proxy` provider kind is backend-verified only in this slice.
+- Proxy-routed Claude/Gemini conversation traffic currently uses buffered completion under `POST /api/v1/agent/conversation/messages/stream`; the route remains SSE, but delta granularity for those upstreams is not yet equivalent to the direct OpenAI/Ollama paths.
 - `npm run tauri:dev` was not rerun for this exact transcript refactor, so the supported desktop startup smoke remains outstanding for this slice even though `npm run validate` passed.
 - `frontend/src/widgets/ai/ai-panel-widget.mock.ts` remains in the repository for isolated override/test scaffolding only; it is no longer the main execution path for the AI sidebar.
 - The earlier prompt/snapshot card component path has been removed from the active frontend tree.
@@ -92,6 +106,22 @@
 - `POST /api/v1/agent/conversation/messages`
   - retained as a non-stream request/response client path for compatibility/fallback isolation
   - not used by the current visible AI sidebar submit flow
+
+### Backend provider/proxy catalog contract added in this slice
+
+- `GET /api/v1/agent/providers`
+  - returns `providers[]`, `active_provider_id`, and `supported_kinds`
+  - `supported_kinds` now includes `proxy`
+- `POST /api/v1/agent/providers`
+  - now accepts `kind: "proxy"` with:
+    - `proxy.model`
+    - `proxy.channels[]`
+    - per-channel `service_type`, `base_url` / `base_urls`, `api_keys`, `auth_type`, `priority`, `status`, `model_mapping`
+- `PATCH /api/v1/agent/providers/{providerID}`
+  - now accepts `proxy` updates for model and full channel replacement
+- provider views mask proxy secrets:
+  - channel API key values are never returned
+  - channel views expose `key_count` and `enabled_key_count` instead
 
 ### Backend contracts implemented in the frontend client but not wired to visible controls
 

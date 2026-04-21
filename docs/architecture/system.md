@@ -1,6 +1,6 @@
 # System Architecture
 
-Date: `2026-04-17`
+Date: `2026-04-21`
 Phase: stability hardening
 
 ## What this document is
@@ -10,7 +10,7 @@ It defines the runtime ownership model and links to deeper architecture docs.
 
 ## Runtime ownership model
 
-- Go core owns product/runtime truth: workspace, terminal, execution, policy, audit, remote, MCP, plugins.
+- Go core owns product/runtime truth: workspace, terminal, execution, policy, audit, AI provider routing, remote, MCP, plugins.
 - Transport is an adapter (`HTTP`/`SSE`), not the product model.
 - Tauri owns desktop shell/process boundary only.
 - Frontend composes UI surfaces and consumes backend state/contracts.
@@ -34,6 +34,7 @@ It defines the runtime ownership model and links to deeper architecture docs.
 - Workspace/tab/widget/layout state is backend-owned and persisted.
 - Terminal sessions are widget-scoped and connection-aware (`local`/`ssh`).
 - MCP and plugin execution are explicit runtime resources, never implicit background behavior.
+- AI proxy/provider selection is backend-owned config and runtime behavior; transport only exposes catalog and conversation routes.
 
 ## Deep links
 

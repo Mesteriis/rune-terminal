@@ -27,6 +27,7 @@
 | Terminal service | `NOW` | pty sessions, SSE stream, buffered chunks |
 | Policy pipeline | `NOW` | five stages (ADR 0015); tests per stage needed |
 | Tool runtime | `NOW` | approval state machine, audit hooks |
+| AI provider/proxy backend | `NOW` | backend-owned provider catalog plus internal proxy channels for multi-account OpenAI/Claude/Gemini routing |
 | Plugin runtime | `NEXT` | `rterm.plugin.v1`; capability declaration needs fleshing out |
 | Remote / SSH | `LATER` | ADR 0019, narrow daily-driver path only |
 | MCP integration | `LATER` | scaffolding exists; end-to-end wiring deferred |
@@ -51,7 +52,7 @@ from any previous fork are historical inspiration only.
 | Primitives library | `NOW` | stable, contract documented |
 | Commander widget | `NOW` | running on a fake client under `features/commander/model/`; real HTTP wiring is the next milestone |
 | Terminal widget | `NEXT` | xterm surface mounted; needs to consume SSE from the real core |
-| AI panel widget | `NEXT` | chrome exists; wiring to conversation backend is open |
+| AI panel widget | `NEXT` | chrome exists; provider/proxy management UI still needs wiring to the backend catalog |
 | Dockview workspace shell | `NOW` | layout + localStorage persistence |
 | Other widgets | `NOW` | added continuously during the rewrite |
 | Linter (ESLint / Biome) | `NEXT` | currently only `tsc --noEmit` |
@@ -90,7 +91,7 @@ from any previous fork are historical inspiration only.
 
 - broad TideTerm or Wave Terminal feature parity
 - full builder / proxy / preview-zoo surfaces
-- streaming AI responses and broad provider orchestration
+- standalone TideTerm-style proxy server UI/runtime; `rterm` keeps proxy routing inside the Go core instead
 - `.ssh/config` import workflows and advanced SSH auth
 - Windows-first support
 - plugin marketplace / discovery UX

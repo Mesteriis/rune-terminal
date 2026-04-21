@@ -37,6 +37,9 @@ func providerViewFromRecord(record ProviderRecord, activeProviderID string) Prov
 			HasAPIKey: strings.TrimSpace(record.OpenAI.APIKeySecret) != "",
 		}
 	}
+	if record.Proxy != nil {
+		view.Proxy = proxyProviderSettingsViewFromSettings(record.Proxy)
+	}
 	return view
 }
 
@@ -55,6 +58,7 @@ func cloneProviderRecord(record ProviderRecord) ProviderRecord {
 			APIKeySecret: record.OpenAI.APIKeySecret,
 		}
 	}
+	cloned.Proxy = cloneProxyProviderSettings(record.Proxy)
 	return cloned
 }
 

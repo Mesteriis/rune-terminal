@@ -32,9 +32,10 @@ capability.
 - `.ssh/config` import and advanced SSH auth / topology (proxy jump,
   richer auth negotiation)
 - managed attachment storage / import and rich attachment preview UX
-- streaming AI responses
-- broad model orchestration beyond the current Ollama-compatible HTTP
-  path
+- frontend management UI for the backend provider/proxy catalog
+- fine-grained streaming deltas for proxy-routed Claude/Gemini channels
+  (the backend conversation stream currently degrades to buffered
+  completion for those upstreams)
 - plugin marketplace / discovery UX
 - Windows-first support
 
@@ -48,6 +49,7 @@ capability.
   sidebar, deep search/find) are not there yet
 - AI command flow supports explicit command grammar only (`/run` and
   `run:`), not broad natural-language execution
+- backend AI routing now supports direct providers plus a TideTerm-derived internal proxy domain, but it is not a standalone proxy server/product surface and its channel scheduler is currently scoped to conversation traffic only
 - native-window automation coverage is limited; validation leans on
   build + runtime/API smoke plus manual notes
 

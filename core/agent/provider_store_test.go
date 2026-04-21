@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/Mesteriis/rune-terminal/core/aiproxy"
 )
 
 func TestStorePersistsProvidersAndActiveProvider(t *testing.T) {
@@ -127,5 +129,59 @@ func TestNewStoreMigratesLegacyStateWithoutProviders(t *testing.T) {
 	}
 	if active.Kind != ProviderKindOllama {
 		t.Fatalf("expected migrated ollama provider, got %#v", active)
+	}
+}
+
+func TestProvidersCatalogMasksProxyAPIKeys(t *testing.T) {
+	t.Parallel()
+
+	store, err := NewStore(filepath.Join(t.TempDir(), "agent.json"))
+	if err != nil {
+		t.Fatalf("NewStore error: %v", err)
+	}
+	created, catalog, err := store.CreateProvider(CreateProviderInput{
+		Kind: ProviderKindProxy,
+		Proxy: &CreateProxyProviderInput{
+			Model: "assistant-default",
+			Channels: []aiproxy.Channel{{
+				ID:          "codex-primary",
+				Name:        "Codex",
+				ServiceType: aiproxy.ServiceTypeOpenAI,
+				BaseURL:     "https://example.com/v1",
+				APIKeys: []aiproxy.APIKey{{
+					Key:     "sk-proxy-secret",
+					Enabled: true,
+				}},
+			}},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateProvider error: %v", err)
+	}
+
+	var proxyView *ProviderView
+	for _, provider := range catalog.Providers {
+		if provider.ID == created.ID {
+			providerCopy := provider
+			proxyView = &providerCopy
+			break
+		}
+	}
+	if proxyView == nil || proxyView.Proxy == nil {
+		t.Fatalf("expected proxy provider view, got %#v", catalog.Providers)
+	}
+	if len(proxyView.Proxy.Channels) != 1 {
+		t.Fatalf("unexpected proxy channels: %#v", proxyView.Proxy.Channels)
+	}
+	if proxyView.Proxy.Channels[0].EnabledKeyCount != 1 {
+		t.Fatalf("expected enabled key count, got %#v", proxyView.Proxy.Channels[0])
+	}
+
+	raw, err := json.Marshal(proxyView)
+	if err != nil {
+		t.Fatalf("Marshal error: %v", err)
+	}
+	if contains := string(raw); strings.Contains(contains, "sk-proxy-secret") || strings.Contains(contains, "\"key\"") {
+		t.Fatalf("expected proxy secrets to stay masked, got %s", contains)
 	}
 }

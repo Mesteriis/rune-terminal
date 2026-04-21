@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/Mesteriis/rune-terminal/core/agent"
+	"github.com/Mesteriis/rune-terminal/core/aiproxy"
 	"github.com/Mesteriis/rune-terminal/core/conversation"
 )
 
@@ -28,6 +29,14 @@ func defaultConversationProviderFactory(record agent.ProviderRecord) (conversati
 			Model:   record.OpenAI.Model,
 			APIKey:  record.OpenAI.APIKeySecret,
 		}), nil
+	case agent.ProviderKindProxy:
+		if record.Proxy == nil {
+			return nil, fmt.Errorf("%w: proxy settings are required", agent.ErrProviderInvalidConfig)
+		}
+		return aiproxy.NewProvider(aiproxy.Config{
+			Model:    record.Proxy.Model,
+			Channels: record.Proxy.Channels,
+		})
 	default:
 		return nil, fmt.Errorf("%w: %s", agent.ErrProviderKindUnsupported, record.Kind)
 	}
