@@ -73,9 +73,15 @@ func (api *API) handleMarkTaskDone(w http.ResponseWriter, r *http.Request) {
 		writeTaskServiceError(w, err)
 		return
 	}
+	task, err := api.runtime.TaskStore.GetTask(r.Context(), taskID)
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"id":     taskID,
-		"status": tasks.TaskStatusDone,
+		"status": task.Status,
+		"task":   task,
 	})
 }
 
@@ -99,9 +105,15 @@ func (api *API) handleMarkTaskFail(w http.ResponseWriter, r *http.Request) {
 		writeTaskServiceError(w, err)
 		return
 	}
+	task, err := api.runtime.TaskStore.GetTask(r.Context(), taskID)
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"id":     taskID,
-		"status": tasks.TaskStatusFailed,
+		"status": task.Status,
+		"task":   task,
 	})
 }
 
@@ -152,6 +164,10 @@ func writeTaskServiceError(w http.ResponseWriter, err error) {
 	case errors.Is(err, tasks.ErrTypeRequired):
 		writeBadRequest(w, "invalid_request", err)
 	case errors.Is(err, tasks.ErrWorkerMissing):
+		writeBadRequest(w, "invalid_request", err)
+	case errors.Is(err, tasks.ErrInvalidMaxRetries):
+		writeBadRequest(w, "invalid_request", err)
+	case errors.Is(err, tasks.ErrInvalidRetryBackoff):
 		writeBadRequest(w, "invalid_request", err)
 	case errors.Is(err, tasks.ErrNotFound):
 		writeNotFound(w, "task_not_found", err.Error())
