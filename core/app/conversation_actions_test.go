@@ -194,3 +194,21 @@ func (p *recordingConversationProvider) Complete(_ context.Context, request conv
 		Model:   info.Model,
 	}, info, nil
 }
+
+func (p *recordingConversationProvider) CompleteStream(
+	_ context.Context,
+	request conversation.CompletionRequest,
+	onTextDelta func(string) error,
+) (conversation.CompletionResult, conversation.ProviderInfo, error) {
+	p.request = request
+	if onTextDelta != nil {
+		if err := onTextDelta("assistant reply"); err != nil {
+			return conversation.CompletionResult{}, p.Info(), err
+		}
+	}
+	info := p.Info()
+	return conversation.CompletionResult{
+		Content: "assistant reply",
+		Model:   info.Model,
+	}, info, nil
+}

@@ -14,9 +14,21 @@ func writeJSON(w http.ResponseWriter, status int, payload any) {
 }
 
 func writeEvent(w http.ResponseWriter, event string, payload any) {
-	body, _ := json.Marshal(payload)
-	fmt.Fprintf(w, "event: %s\n", event)
-	fmt.Fprintf(w, "data: %s\n\n", body)
+	_ = writeEventChecked(w, event, payload)
+}
+
+func writeEventChecked(w http.ResponseWriter, event string, payload any) error {
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(w, "event: %s\n", event); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(w, "data: %s\n\n", body); err != nil {
+		return err
+	}
+	return nil
 }
 
 func parseInt(raw string, fallback int) int {

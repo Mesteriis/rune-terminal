@@ -105,6 +105,74 @@ func (s *Service) Submit(ctx context.Context, request SubmitRequest) (SubmitResu
 	return s.appendAssistantResult(result, info, providerErr)
 }
 
+func (s *Service) SubmitStream(
+	ctx context.Context,
+	request SubmitRequest,
+	emit func(StreamEvent) error,
+) (SubmitResult, error) {
+	prompt := strings.TrimSpace(request.Prompt)
+	providerPrompt := strings.TrimSpace(request.ProviderPrompt)
+	systemPrompt := strings.TrimSpace(request.SystemPrompt)
+	if prompt == "" {
+		return SubmitResult{}, ErrInvalidPrompt
+	}
+	if providerPrompt == "" {
+		providerPrompt = prompt
+	}
+	if systemPrompt == "" {
+		return SubmitResult{}, ErrInvalidPrompt
+	}
+
+	userMessage := newMessage(RoleUser, prompt, request.Attachments, StatusComplete, "", "")
+	info := s.provider.Info()
+	assistant := newMessage(RoleAssistant, "", nil, StatusStreaming, info.Kind, info.Model)
+
+	s.mu.Lock()
+	s.state.Messages = append(s.state.Messages, userMessage, assistant)
+	s.state.UpdatedAt = assistant.CreatedAt
+	if err := s.persistLocked(); err != nil {
+		s.mu.Unlock()
+		return SubmitResult{}, err
+	}
+	history := append([]Message(nil), s.state.Messages[:len(s.state.Messages)-1]...)
+	s.mu.Unlock()
+
+	if emit != nil {
+		startMessage := assistant
+		if err := emit(StreamEvent{
+			Type:      StreamEventMessageStart,
+			MessageID: assistant.ID,
+			Message:   &startMessage,
+		}); err != nil {
+			return s.finalizeAssistantStreamResult(assistant.ID, CompletionResult{}, info, err, nil)
+		}
+	}
+
+	historyForCompletion := append([]Message(nil), history...)
+	if len(historyForCompletion) > 0 {
+		historyForCompletion[len(historyForCompletion)-1].Content = providerPrompt
+	}
+
+	result, finalInfo, providerErr := s.completeStream(ctx, systemPrompt, historyForCompletion, func(delta string) error {
+		if delta == "" {
+			return nil
+		}
+		if err := s.appendAssistantDelta(assistant.ID, delta); err != nil {
+			return err
+		}
+		if emit != nil {
+			return emit(StreamEvent{
+				Type:      StreamEventTextDelta,
+				MessageID: assistant.ID,
+				Delta:     delta,
+			})
+		}
+		return nil
+	})
+
+	return s.finalizeAssistantStreamResult(assistant.ID, result, finalInfo, providerErr, emit)
+}
+
 func (s *Service) AppendAssistantPrompt(ctx context.Context, request AssistantPromptRequest) (SubmitResult, error) {
 	prompt := strings.TrimSpace(request.Prompt)
 	systemPrompt := strings.TrimSpace(request.SystemPrompt)
@@ -243,6 +311,112 @@ func (s *Service) complete(ctx context.Context, systemPrompt string, history []M
 		Messages:     pruneCompletionHistory(history, s.budget),
 	}
 	return s.provider.Complete(ctx, request)
+}
+
+func (s *Service) completeStream(
+	ctx context.Context,
+	systemPrompt string,
+	history []Message,
+	onTextDelta func(string) error,
+) (CompletionResult, ProviderInfo, error) {
+	request := CompletionRequest{
+		SystemPrompt: systemPrompt,
+		Messages:     pruneCompletionHistory(history, s.budget),
+	}
+	return s.provider.CompleteStream(ctx, request, onTextDelta)
+}
+
+func (s *Service) appendAssistantDelta(messageID string, delta string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	index := s.messageIndexLocked(messageID)
+	if index < 0 {
+		return ErrInvalidMessage
+	}
+	s.state.Messages[index].Content += delta
+	s.state.UpdatedAt = time.Now().UTC()
+	return s.persistLocked()
+}
+
+func (s *Service) finalizeAssistantStreamResult(
+	messageID string,
+	result CompletionResult,
+	info ProviderInfo,
+	providerErr error,
+	emit func(StreamEvent) error,
+) (SubmitResult, error) {
+	s.mu.Lock()
+	index := s.messageIndexLocked(messageID)
+	if index < 0 {
+		s.mu.Unlock()
+		return SubmitResult{}, ErrInvalidMessage
+	}
+	assistant := s.state.Messages[index]
+	assistant.Provider = info.Kind
+	assistant.Model = info.Model
+	assistant.Status = StatusComplete
+
+	currentContent := strings.TrimSpace(assistant.Content)
+	switch {
+	case providerErr != nil:
+		assistant.Status = StatusError
+		if currentContent == "" {
+			assistant.Content = strings.TrimSpace(providerErr.Error())
+		}
+	case strings.TrimSpace(result.Content) != "":
+		assistant.Content = strings.TrimSpace(result.Content)
+	case currentContent == "":
+		assistant.Content = "The assistant returned an empty response."
+	}
+	if assistant.Content == "" {
+		assistant.Content = "The assistant returned an empty response."
+		if providerErr != nil {
+			assistant.Status = StatusError
+		}
+	}
+
+	s.state.Messages[index] = assistant
+	s.state.UpdatedAt = time.Now().UTC()
+	if err := s.persistLocked(); err != nil {
+		s.mu.Unlock()
+		return SubmitResult{}, err
+	}
+	snapshot := s.snapshotLocked()
+	snapshot.Provider = info
+	s.mu.Unlock()
+
+	if emit != nil {
+		eventType := StreamEventMessageComplete
+		if providerErr != nil {
+			eventType = StreamEventError
+		}
+		finalMessage := assistant
+		if err := emit(StreamEvent{
+			Type:      eventType,
+			MessageID: assistant.ID,
+			Message:   &finalMessage,
+			Error:     errorString(providerErr),
+		}); err != nil {
+			return SubmitResult{}, err
+		}
+	}
+
+	return SubmitResult{
+		Snapshot:      snapshot,
+		Assistant:     assistant,
+		ProviderInfo:  info,
+		ProviderError: errorString(providerErr),
+	}, nil
+}
+
+func (s *Service) messageIndexLocked(messageID string) int {
+	for index := range s.state.Messages {
+		if s.state.Messages[index].ID == messageID {
+			return index
+		}
+	}
+	return -1
 }
 
 func defaultHistoryBudget() historyBudget {

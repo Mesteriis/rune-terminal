@@ -28,10 +28,14 @@ import (
 const testAuthToken = "test-token"
 
 func newTestHandler(t *testing.T, definitions ...toolruntime.Definition) (http.Handler, *agent.Store) {
-	return newTestHandlerWithToken(t, testAuthToken, definitions...)
+	return newTestHandlerWithConversationProvider(t, testConversationProvider{}, testAuthToken, definitions...)
 }
 
 func newTestHandlerWithToken(t *testing.T, authToken string, definitions ...toolruntime.Definition) (http.Handler, *agent.Store) {
+	return newTestHandlerWithConversationProvider(t, testConversationProvider{}, authToken, definitions...)
+}
+
+func newTestHandlerWithConversationProvider(t *testing.T, provider conversation.Provider, authToken string, definitions ...toolruntime.Definition) (http.Handler, *agent.Store) {
 	t.Helper()
 
 	tempDir := t.TempDir()
@@ -51,7 +55,7 @@ func newTestHandlerWithToken(t *testing.T, authToken string, definitions ...tool
 	if err != nil {
 		t.Fatalf("NewService error: %v", err)
 	}
-	conversationStore, err := conversation.NewService(filepath.Join(tempDir, "conversation.json"), testConversationProvider{})
+	conversationStore, err := conversation.NewService(filepath.Join(tempDir, "conversation.json"), provider)
 	if err != nil {
 		t.Fatalf("NewService error: %v", err)
 	}
@@ -186,6 +190,23 @@ func (testConversationProvider) Info() conversation.ProviderInfo {
 }
 
 func (testConversationProvider) Complete(context.Context, conversation.CompletionRequest) (conversation.CompletionResult, conversation.ProviderInfo, error) {
+	info := testConversationProvider{}.Info()
+	return conversation.CompletionResult{
+		Content: "stub assistant response",
+		Model:   info.Model,
+	}, info, nil
+}
+
+func (testConversationProvider) CompleteStream(
+	_ context.Context,
+	_ conversation.CompletionRequest,
+	onTextDelta func(string) error,
+) (conversation.CompletionResult, conversation.ProviderInfo, error) {
+	if onTextDelta != nil {
+		if err := onTextDelta("stub assistant response"); err != nil {
+			return conversation.CompletionResult{}, testConversationProvider{}.Info(), err
+		}
+	}
 	info := testConversationProvider{}.Info()
 	return conversation.CompletionResult{
 		Content: "stub assistant response",

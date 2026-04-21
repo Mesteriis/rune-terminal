@@ -13,8 +13,9 @@ const (
 type MessageStatus string
 
 const (
-	StatusComplete MessageStatus = "complete"
-	StatusError    MessageStatus = "error"
+	StatusStreaming MessageStatus = "streaming"
+	StatusComplete  MessageStatus = "complete"
+	StatusError     MessageStatus = "error"
 )
 
 type ProviderInfo struct {
@@ -82,4 +83,21 @@ type CompletionRequest struct {
 type CompletionResult struct {
 	Content string
 	Model   string
+}
+
+type StreamEventType string
+
+const (
+	StreamEventMessageStart    StreamEventType = "message-start"
+	StreamEventTextDelta       StreamEventType = "text-delta"
+	StreamEventMessageComplete StreamEventType = "message-complete"
+	StreamEventError           StreamEventType = "error"
+)
+
+type StreamEvent struct {
+	Type      StreamEventType `json:"type"`
+	MessageID string          `json:"message_id,omitempty"`
+	Delta     string          `json:"delta,omitempty"`
+	Message   *Message        `json:"message,omitempty"`
+	Error     string          `json:"error,omitempty"`
 }

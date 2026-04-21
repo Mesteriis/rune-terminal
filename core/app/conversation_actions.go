@@ -7,6 +7,7 @@ import (
 
 	"github.com/Mesteriis/rune-terminal/core/audit"
 	"github.com/Mesteriis/rune-terminal/core/conversation"
+	"github.com/Mesteriis/rune-terminal/core/policy"
 )
 
 type ConversationContext struct {
@@ -29,15 +30,51 @@ func (r *Runtime) SubmitConversationPrompt(
 	conversationContext ConversationContext,
 	attachments []conversation.AttachmentReference,
 ) (conversation.SubmitResult, error) {
-	resolvedAttachments, err := resolveConversationAttachments(attachments)
+	submitRequest, profile, err := r.prepareConversationSubmit(prompt, conversationContext, attachments)
 	if err != nil {
 		return conversation.SubmitResult{}, err
+	}
+	result, err := r.Conversation.Submit(ctx, submitRequest)
+	if err != nil {
+		return conversation.SubmitResult{}, err
+	}
+	r.appendConversationAudit(prompt, conversationContext, profile, result.ProviderError)
+	return result, nil
+}
+
+func (r *Runtime) StreamConversationPrompt(
+	ctx context.Context,
+	prompt string,
+	conversationContext ConversationContext,
+	attachments []conversation.AttachmentReference,
+	emit func(conversation.StreamEvent) error,
+) (conversation.SubmitResult, error) {
+	submitRequest, profile, err := r.prepareConversationSubmit(prompt, conversationContext, attachments)
+	if err != nil {
+		return conversation.SubmitResult{}, err
+	}
+	result, err := r.Conversation.SubmitStream(ctx, submitRequest, emit)
+	if err != nil {
+		return conversation.SubmitResult{}, err
+	}
+	r.appendConversationAudit(prompt, conversationContext, profile, result.ProviderError)
+	return result, nil
+}
+
+func (r *Runtime) prepareConversationSubmit(
+	prompt string,
+	conversationContext ConversationContext,
+	attachments []conversation.AttachmentReference,
+) (conversation.SubmitRequest, policy.EvaluationProfile, error) {
+	resolvedAttachments, err := resolveConversationAttachments(attachments)
+	if err != nil {
+		return conversation.SubmitRequest{}, policy.EvaluationProfile{}, err
 	}
 	providerPrompt := buildPromptWithAttachmentContext(prompt, resolvedAttachments)
 
 	selection, err := r.Agent.Selection()
 	if err != nil {
-		return conversation.SubmitResult{}, err
+		return conversation.SubmitRequest{}, policy.EvaluationProfile{}, err
 	}
 
 	systemPrompt := strings.TrimSpace(selection.EffectivePrompt())
@@ -46,17 +83,20 @@ func (r *Runtime) SubmitConversationPrompt(
 		systemPrompt = strings.TrimSpace(systemPrompt + "\n\n" + contextBlock)
 	}
 
-	result, err := r.Conversation.Submit(ctx, conversation.SubmitRequest{
+	return conversation.SubmitRequest{
 		SystemPrompt:   systemPrompt,
 		Prompt:         prompt,
 		ProviderPrompt: providerPrompt,
 		Attachments:    attachments,
-	})
-	if err != nil {
-		return conversation.SubmitResult{}, err
-	}
+	}, selection.EffectivePolicyProfile(), nil
+}
 
-	profile := selection.EffectivePolicyProfile()
+func (r *Runtime) appendConversationAudit(
+	prompt string,
+	conversationContext ConversationContext,
+	profile policy.EvaluationProfile,
+	providerError string,
+) {
 	_ = r.Audit.Append(audit.Event{
 		ToolName:        "agent.conversation",
 		Summary:         summarizeConversationPrompt(prompt),
@@ -65,13 +105,11 @@ func (r *Runtime) SubmitConversationPrompt(
 		RoleID:          profile.RoleID,
 		ModeID:          profile.ModeID,
 		SecurityPosture: profile.SecurityPosture,
-		Success:         result.ProviderError == "",
-		Error:           result.ProviderError,
+		Success:         providerError == "",
+		Error:           providerError,
 		ActionSource:    conversationContext.ActionSource,
 		AffectedWidgets: affectedWidgets(conversationContext.ActiveWidgetID),
 	})
-
-	return result, nil
 }
 
 func buildConversationContextBlock(runtime *Runtime, conversationContext ConversationContext) string {

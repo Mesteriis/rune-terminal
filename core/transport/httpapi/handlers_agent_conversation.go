@@ -3,6 +3,7 @@ package httpapi
 import (
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/Mesteriis/rune-terminal/core/app"
 	"github.com/Mesteriis/rune-terminal/core/conversation"
@@ -52,6 +53,48 @@ func (api *API) handleSubmitConversationMessage(w http.ResponseWriter, r *http.R
 		"conversation":   result.Snapshot,
 		"provider_error": result.ProviderError,
 	})
+}
+
+func (api *API) handleStreamConversationMessage(w http.ResponseWriter, r *http.Request) {
+	var payload conversationMessagePayload
+	if err := decodeJSON(r, &payload); err != nil {
+		writeBadRequest(w, "invalid_request", err)
+		return
+	}
+	if strings.TrimSpace(payload.Prompt) == "" {
+		writeBadRequest(w, "invalid_prompt", conversation.ErrInvalidPrompt)
+		return
+	}
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		writeError(w, http.StatusInternalServerError, "streaming_unsupported", "streaming unsupported")
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+
+	emitted := false
+	emit := func(event conversation.StreamEvent) error {
+		if err := writeEventChecked(w, string(event.Type), event); err != nil {
+			return err
+		}
+		emitted = true
+		flusher.Flush()
+		return nil
+	}
+
+	if _, err := api.runtime.StreamConversationPrompt(r.Context(), payload.Prompt, payload.Context, payload.Attachments, emit); err != nil {
+		if !emitted && r.Context().Err() == nil {
+			_ = emit(conversation.StreamEvent{
+				Type:  conversation.StreamEventError,
+				Error: err.Error(),
+			})
+		}
+		return
+	}
 }
 
 func (api *API) handleCreateAttachmentReference(w http.ResponseWriter, r *http.Request) {

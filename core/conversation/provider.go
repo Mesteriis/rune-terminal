@@ -13,6 +13,7 @@ import (
 type Provider interface {
 	Info() ProviderInfo
 	Complete(ctx context.Context, request CompletionRequest) (CompletionResult, ProviderInfo, error)
+	CompleteStream(ctx context.Context, request CompletionRequest, onTextDelta func(string) error) (CompletionResult, ProviderInfo, error)
 }
 
 type ProviderConfig struct {

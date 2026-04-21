@@ -56,6 +56,23 @@ func (p *OllamaProvider) Info() ProviderInfo {
 }
 
 func (p *OllamaProvider) Complete(ctx context.Context, request CompletionRequest) (CompletionResult, ProviderInfo, error) {
+	return p.complete(ctx, request, false, nil)
+}
+
+func (p *OllamaProvider) CompleteStream(
+	_ context.Context,
+	_ CompletionRequest,
+	_ func(string) error,
+) (CompletionResult, ProviderInfo, error) {
+	return CompletionResult{}, p.Info(), fmt.Errorf("ollama streaming is not available")
+}
+
+func (p *OllamaProvider) complete(
+	ctx context.Context,
+	request CompletionRequest,
+	stream bool,
+	_ func(string) error,
+) (CompletionResult, ProviderInfo, error) {
 	if err := validateCompletionRequest(request); err != nil {
 		return CompletionResult{}, p.Info(), err
 	}
@@ -66,7 +83,7 @@ func (p *OllamaProvider) Complete(ctx context.Context, request CompletionRequest
 
 	payload := ollamaChatRequest{
 		Model:  model,
-		Stream: false,
+		Stream: stream,
 		Messages: append([]ollamaMessage{{
 			Role:    string(RoleSystem),
 			Content: request.SystemPrompt,
@@ -92,6 +109,10 @@ func (p *OllamaProvider) Complete(ctx context.Context, request CompletionRequest
 	if resp.StatusCode != http.StatusOK {
 		payload, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 		return CompletionResult{}, p.Info(), fmt.Errorf("ollama chat failed with %s: %s", resp.Status, strings.TrimSpace(string(payload)))
+	}
+
+	if stream {
+		return CompletionResult{}, p.Info(), fmt.Errorf("ollama streaming is not available")
 	}
 
 	var decoded ollamaChatResponse
@@ -172,8 +193,10 @@ type ollamaChatRequest struct {
 }
 
 type ollamaChatResponse struct {
-	Model   string        `json:"model"`
-	Message ollamaMessage `json:"message"`
+	Model      string        `json:"model"`
+	Message    ollamaMessage `json:"message"`
+	Done       bool          `json:"done"`
+	DoneReason string        `json:"done_reason,omitempty"`
 }
 
 func mapOllamaMessages(messages []ChatMessage) []ollamaMessage {

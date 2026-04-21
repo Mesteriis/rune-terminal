@@ -314,6 +314,19 @@ func (p stubProvider) Complete(context.Context, CompletionRequest) (CompletionRe
 	return p.result, p.info, p.err
 }
 
+func (p stubProvider) CompleteStream(
+	_ context.Context,
+	_ CompletionRequest,
+	onTextDelta func(string) error,
+) (CompletionResult, ProviderInfo, error) {
+	if onTextDelta != nil && p.result.Content != "" {
+		if err := onTextDelta(p.result.Content); err != nil {
+			return CompletionResult{}, p.info, err
+		}
+	}
+	return p.result, p.info, p.err
+}
+
 type recordingProvider struct {
 	info    ProviderInfo
 	result  CompletionResult
@@ -327,6 +340,20 @@ func (p *recordingProvider) Info() ProviderInfo {
 
 func (p *recordingProvider) Complete(_ context.Context, request CompletionRequest) (CompletionResult, ProviderInfo, error) {
 	p.request = request
+	return p.result, p.info, p.err
+}
+
+func (p *recordingProvider) CompleteStream(
+	_ context.Context,
+	request CompletionRequest,
+	onTextDelta func(string) error,
+) (CompletionResult, ProviderInfo, error) {
+	p.request = request
+	if onTextDelta != nil && p.result.Content != "" {
+		if err := onTextDelta(p.result.Content); err != nil {
+			return CompletionResult{}, p.info, err
+		}
+	}
 	return p.result, p.info, p.err
 }
 
