@@ -7,12 +7,12 @@ import { Box, ScrollArea } from '@/shared/ui/primitives'
 
 import { ModalHostWidget } from '@/widgets/panel/modal-host-widget'
 import { WidgetBusyOverlayWidget } from '@/widgets/panel/widget-busy-overlay-widget'
+import { AiChatMessageWidget } from '@/widgets/ai/ai-chat-message-widget'
 import { AiComposerWidget } from '@/widgets/ai/ai-composer-widget'
-import { AiPromptCardWidget } from '@/widgets/ai/ai-prompt-card-widget'
 import {
   aiPanelContentColumnStyle,
+  aiMessageStackStyle,
   aiPanelRootStyle,
-  aiPromptStackStyle,
 } from '@/widgets/ai/ai-panel-widget.styles'
 
 export type AiPanelWidgetProps = {
@@ -23,7 +23,6 @@ export type AiPanelWidgetProps = {
 export function AiPanelWidget({ hostId, state }: AiPanelWidgetProps) {
   const agentPanel = useAgentPanel(hostId, state == null)
   const panelState = state ?? agentPanel.panelState
-  const lastPromptId = panelState.prompts[panelState.prompts.length - 1]?.id
   const autoTagAiPanelRootRef = useRunaDomAutoTagging('ai-panel-root')
   const [panelRootElement, setPanelRootElement] = useState<HTMLDivElement | null>(null)
   const handleAiPanelRootRef = useCallback(
@@ -44,17 +43,12 @@ export function AiPanelWidget({ hostId, state }: AiPanelWidgetProps) {
       >
         <Box data-runa-ai-shell-frame="" runaComponent="ai-panel-frame" style={aiPanelContentColumnStyle}>
           <ScrollArea
-            data-runa-ai-prompt-stack=""
-            runaComponent="ai-panel-prompt-stack"
-            style={aiPromptStackStyle}
+            data-runa-ai-message-stack=""
+            runaComponent="ai-panel-message-stack"
+            style={aiMessageStackStyle}
           >
-            {panelState.prompts.map((prompt) => (
-              <AiPromptCardWidget
-                key={prompt.id}
-                defaultExpanded={prompt.id === lastPromptId}
-                forceExpanded={prompt.id === lastPromptId}
-                prompt={prompt}
-              />
+            {panelState.messages.map((message, index) => (
+              <AiChatMessageWidget key={message.id} index={index} message={message} />
             ))}
           </ScrollArea>
           <AiComposerWidget

@@ -9,7 +9,7 @@ import {
 } from '@/features/agent/api/client'
 import {
   appendAgentConversationMessage,
-  appendAgentPanelStatusPrompt,
+  appendAgentPanelStatusMessage,
   applyAgentConversationStreamEvent,
   createAgentPanelErrorState,
   createAgentPanelLoadingState,
@@ -244,12 +244,13 @@ export function useAgentPanel(hostId: string, enabled = true) {
       return baseState
     }
 
-    return appendAgentPanelStatusPrompt(baseState, {
+    return appendAgentPanelStatusMessage(baseState, {
       id: 'agent-submit-error',
-      title: 'Conversation',
-      preview: submitError,
-      reasoning: ['Route: POST /api/v1/agent/conversation/messages/stream'],
-      summary: 'Backend error',
+      content: submitError,
+      meta: {
+        reasoning: 'Route: POST /api/v1/agent/conversation/messages/stream',
+        summary: 'Backend error',
+      },
     })
   }, [loadError, messages, provider, submitError])
 

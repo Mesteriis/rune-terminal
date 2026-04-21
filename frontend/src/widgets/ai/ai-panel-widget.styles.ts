@@ -109,7 +109,7 @@ export const aiHeaderActionStyle: CSSProperties = {
   WebkitBackdropFilter: 'none',
 }
 
-export const aiPromptStackStyle: CSSProperties = {
+export const aiMessageStackStyle: CSSProperties = {
   flex: 1,
   minWidth: 0,
   minHeight: 0,
@@ -124,6 +124,43 @@ export const aiPromptStackStyle: CSSProperties = {
   overflowY: 'auto',
   overscrollBehavior: 'contain',
   scrollPaddingBottom: 'var(--space-md)',
+}
+
+export const aiChatMessageCardStyle: CSSProperties = {
+  minWidth: 0,
+  flex: '0 0 auto',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 'var(--space-sm)',
+  padding: 'var(--space-md)',
+  background: 'var(--color-canvas-elevated)',
+  borderColor: 'var(--color-border-strong)',
+}
+
+export const aiChatMessageHeaderStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 'var(--gap-sm)',
+  minWidth: 0,
+}
+
+export const aiChatMessageRoleStyle: CSSProperties = {
+  color: 'var(--color-text-muted)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '12px',
+  lineHeight: '18px',
+  textTransform: 'uppercase',
+  letterSpacing: '0.05em',
+}
+
+export const aiChatMessageContentStyle: CSSProperties = {
+  color: 'var(--color-text-primary)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '14px',
+  lineHeight: '20px',
+  whiteSpace: 'pre-wrap',
+  wordBreak: 'break-word',
 }
 
 export const aiPromptCardStyle: CSSProperties = {
