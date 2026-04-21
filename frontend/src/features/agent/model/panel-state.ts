@@ -186,7 +186,10 @@ export function createAgentPanelStateFromMessages(
   return createPanelState(messages.map(mapConversationMessage))
 }
 
-function upsertConversationMessage(messages: AgentConversationMessage[], message: AgentConversationMessage) {
+function upsertConversationMessage(
+  messages: AgentConversationMessage[],
+  message: AgentConversationMessage,
+): AgentConversationMessage[] {
   const index = messages.findIndex((currentMessage) => currentMessage.id === message.id)
 
   if (index < 0) {
@@ -202,7 +205,7 @@ function updateConversationMessage(
   messages: AgentConversationMessage[],
   messageID: string,
   update: (message: AgentConversationMessage) => AgentConversationMessage,
-) {
+): AgentConversationMessage[] {
   const index = messages.findIndex((message) => message.id === messageID)
 
   if (index < 0) {
@@ -217,18 +220,21 @@ function updateConversationMessage(
 export function appendAgentConversationMessage(
   messages: AgentConversationMessage[],
   message: AgentConversationMessage,
-) {
+): AgentConversationMessage[] {
   return [...messages, message]
 }
 
-export function removeAgentConversationMessage(messages: AgentConversationMessage[], messageID: string) {
+export function removeAgentConversationMessage(
+  messages: AgentConversationMessage[],
+  messageID: string,
+): AgentConversationMessage[] {
   return messages.filter((message) => message.id !== messageID)
 }
 
 export function finalizeAgentConversationStreamingMessages(
   messages: AgentConversationMessage[],
   errorMessage: string,
-) {
+): AgentConversationMessage[] {
   return messages.map((message) => {
     if (message.status !== 'streaming') {
       return message
@@ -247,7 +253,7 @@ export function finalizeAgentConversationStreamingMessages(
 export function applyAgentConversationStreamEvent(
   messages: AgentConversationMessage[],
   event: AgentConversationStreamEvent,
-) {
+): AgentConversationMessage[] {
   switch (event.type) {
     case 'message-start':
       return upsertConversationMessage(messages, event.message)
