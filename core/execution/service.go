@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -20,6 +21,10 @@ type Service struct {
 	mu    sync.RWMutex
 	path  string
 	state persistedState
+}
+
+func isActiveState(state BlockState) bool {
+	return state != BlockStateExecuted && state != BlockStateFailed
 }
 
 func NewService(path string) (*Service, error) {
@@ -118,6 +123,62 @@ func (s *Service) Replace(block Block) (Block, bool, error) {
 		return Block{}, false, err
 	}
 	return block, true, nil
+}
+
+func (s *Service) ActiveCount() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	count := 0
+	for _, block := range s.state.Blocks {
+		if isActiveState(block.Result.State) {
+			count++
+		}
+	}
+	return count
+}
+
+func (s *Service) MarkActiveFailed(reason string) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	reason = strings.TrimSpace(reason)
+	failedBy := reason
+	if failedBy == "" {
+		failedBy = "shutdown"
+	}
+
+	changed := 0
+	for i := range s.state.Blocks {
+		block := &s.state.Blocks[i]
+		if !isActiveState(block.Result.State) {
+			continue
+		}
+		block.Result.State = BlockStateFailed
+		block.Result.OutputExcerpt = appendRunningFailReason(block.Result.OutputExcerpt, failedBy)
+		block.UpdatedAt = time.Now().UTC()
+		changed++
+	}
+	if changed == 0 {
+		return 0, nil
+	}
+	s.state.UpdatedAt = time.Now().UTC()
+	if err := s.persistLocked(); err != nil {
+		return 0, err
+	}
+	return changed, nil
+}
+
+func appendRunningFailReason(existing, reason string) string {
+	reason = strings.TrimSpace(reason)
+	if reason == "" {
+		return existing
+	}
+	existing = strings.TrimSpace(existing)
+	if existing == "" {
+		return "failed: " + reason
+	}
+	return existing + "\nfailed: " + reason
 }
 
 func (s *Service) load() error {

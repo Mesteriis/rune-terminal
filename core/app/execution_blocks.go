@@ -19,3 +19,17 @@ func (r *Runtime) GetExecutionBlock(id string) (execution.Block, bool) {
 	}
 	return r.Execution.Get(strings.TrimSpace(id))
 }
+
+func (r *Runtime) CountActiveExecutionBlocks() int {
+	if r.Execution == nil {
+		return 0
+	}
+	return r.Execution.ActiveCount()
+}
+
+func (r *Runtime) FailActiveExecutionBlocks(reason string) (int, error) {
+	if r.Execution == nil {
+		return 0, nil
+	}
+	return r.Execution.MarkActiveFailed(reason)
+}

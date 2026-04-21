@@ -5,6 +5,7 @@ import "time"
 type BlockState string
 
 const (
+	BlockStateRunning  BlockState = "running"
 	BlockStateExecuted BlockState = "executed"
 	BlockStateFailed   BlockState = "failed"
 )

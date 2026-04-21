@@ -173,3 +173,43 @@ func TestServiceReplace(t *testing.T) {
 		t.Fatal("expected missing replace to report false")
 	}
 }
+
+func TestServiceActiveCountAndMarkFailed(t *testing.T) {
+	t.Parallel()
+
+	service, err := NewService(filepath.Join(t.TempDir(), "execution-blocks-active.json"))
+	if err != nil {
+		t.Fatalf("NewService error: %v", err)
+	}
+
+	_, err = service.Append(Block{
+		Intent: BlockIntent{
+			Prompt:  "/run long running",
+			Command: "sleep 10",
+		},
+		Target: BlockTarget{
+			WorkspaceID: "ws-a",
+		},
+		Result: BlockResult{
+			State: BlockStateRunning,
+		},
+	})
+	if err != nil {
+		t.Fatalf("Append error: %v", err)
+	}
+
+	if got := service.ActiveCount(); got != 1 {
+		t.Fatalf("expected 1 active block, got %d", got)
+	}
+
+	marked, err := service.MarkActiveFailed("shutdown")
+	if err != nil {
+		t.Fatalf("MarkActiveFailed error: %v", err)
+	}
+	if marked != 1 {
+		t.Fatalf("expected 1 marked block, got %d", marked)
+	}
+	if got := service.ActiveCount(); got != 0 {
+		t.Fatalf("expected 0 active blocks after mark, got %d", got)
+	}
+}
