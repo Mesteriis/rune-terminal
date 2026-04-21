@@ -1,7 +1,10 @@
-import { render, screen } from '@testing-library/react'
+import { useState } from 'react'
+
+import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
 import { AiChatMessageWidget } from '@/widgets/ai/ai-chat-message-widget'
+import type { ApprovalMessage } from '@/features/agent/model/types'
 
 describe('AiChatMessageWidget', () => {
   it('renders a plan message with steps and tools', () => {
@@ -29,5 +32,68 @@ describe('AiChatMessageWidget', () => {
     expect(screen.getByText('- read_file')).toBeInTheDocument()
     expect(screen.getByText('Inspect the existing configuration file.')).toBeInTheDocument()
     expect(screen.getByText('- http_request')).toBeInTheDocument()
+  })
+
+  it('updates approval state when approve or cancel is clicked', () => {
+    function ApprovalHarness() {
+      const [message, setMessage] = useState<ApprovalMessage>({
+        id: 'approval-1',
+        type: 'approval',
+        planId: 'plan-1',
+        status: 'pending',
+      })
+
+      return (
+        <AiChatMessageWidget
+          message={message}
+          mode="chat"
+          onApprovalApprove={(nextMessage) => {
+            setMessage({ ...nextMessage, status: 'approved' })
+          }}
+          onApprovalCancel={(nextMessage) => {
+            setMessage({ ...nextMessage, status: 'cancelled' })
+          }}
+        />
+      )
+    }
+
+    const { rerender } = render(<ApprovalHarness />)
+
+    expect(screen.getByRole('button', { name: 'Approve' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Approve' }))
+
+    expect(screen.getByText('Execution approved.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument()
+
+    function CancelHarness() {
+      const [message, setMessage] = useState<ApprovalMessage>({
+        id: 'approval-2',
+        type: 'approval',
+        planId: 'plan-2',
+        status: 'pending',
+      })
+
+      return (
+        <AiChatMessageWidget
+          message={message}
+          mode="chat"
+          onApprovalApprove={(nextMessage) => {
+            setMessage({ ...nextMessage, status: 'approved' })
+          }}
+          onApprovalCancel={(nextMessage) => {
+            setMessage({ ...nextMessage, status: 'cancelled' })
+          }}
+        />
+      )
+    }
+
+    rerender(<CancelHarness />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    expect(screen.getByText('Execution cancelled.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument()
   })
 })

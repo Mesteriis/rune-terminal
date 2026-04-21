@@ -34,7 +34,17 @@ export type PlanMessage = {
   sortKey?: ChatMessageSortKey
 }
 
-export type ChatMessageView = ChatTextMessage | PlanMessage
+export type ApprovalState = 'pending' | 'approved' | 'cancelled'
+
+export type ApprovalMessage = {
+  id: string
+  type: 'approval'
+  planId: string
+  status: ApprovalState
+  sortKey?: ChatMessageSortKey
+}
+
+export type ChatMessageView = ChatTextMessage | PlanMessage | ApprovalMessage
 
 export type AiPanelWidgetState = {
   title: string

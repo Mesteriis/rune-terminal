@@ -323,6 +323,31 @@ export const aiInteractionMutedTextStyle: CSSProperties = {
   lineHeight: '18px',
 }
 
+export const aiApprovalActionsStyle: CSSProperties = {
+  ...aiPlainBlockStyle,
+  display: 'flex',
+  gap: 'var(--space-sm)',
+  flexWrap: 'wrap',
+}
+
+export const aiApprovalButtonStyle: CSSProperties = {
+  minWidth: '112px',
+  boxShadow: 'none',
+}
+
+export const aiApprovalCancelButtonStyle: CSSProperties = {
+  ...aiApprovalButtonStyle,
+  background: 'color-mix(in srgb, var(--color-canvas-elevated) 70%, transparent)',
+  color: 'var(--color-text-primary)',
+}
+
+export const aiApprovalStatusStyle: CSSProperties = {
+  color: 'var(--color-text-primary)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '14px',
+  lineHeight: '22px',
+}
+
 export const aiToolbarStyle: CSSProperties = {
   display: 'flex',
   alignItems: 'center',
