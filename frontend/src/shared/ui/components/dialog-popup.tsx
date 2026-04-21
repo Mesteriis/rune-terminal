@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { X } from 'lucide-react'
 
 import { Box, Button, Text } from '@/shared/ui/primitives'
@@ -7,6 +8,7 @@ type DialogPopupProps = {
   title: string
   description: string
   variant?: 'default' | 'settings'
+  children?: ReactNode
   confirmLabel?: string
   dismissLabel?: string
   onConfirm?: () => void
@@ -54,6 +56,17 @@ const dialogActionsStyle = {
   gap: 'var(--gap-xs)',
 }
 
+const dialogContentStyle = {
+  display: 'flex',
+  flexDirection: 'column' as const,
+  gap: 'var(--gap-sm)',
+  minHeight: 0,
+}
+
+const settingsDialogContentStyle = {
+  flex: 1,
+}
+
 const settingsCloseButtonStyle = {
   padding: '0',
   width: 'var(--size-control-min)',
@@ -64,6 +77,7 @@ export function DialogPopup({
   title,
   description,
   variant = 'default',
+  children,
   confirmLabel = 'Confirm',
   dismissLabel = 'Dismiss',
   onConfirm,
@@ -84,6 +98,17 @@ export function DialogPopup({
         </Button>
       </Box>
       <Text style={dialogDescriptionStyle}>{description}</Text>
+      {children ? (
+        <Box
+          style={
+            variant === 'settings'
+              ? { ...dialogContentStyle, ...settingsDialogContentStyle }
+              : dialogContentStyle
+          }
+        >
+          {children}
+        </Box>
+      ) : null}
       <Box style={dialogActionsStyle}>
         {onConfirm ? <Button onClick={onConfirm}>{confirmLabel}</Button> : null}
         <Button onClick={onDismiss}>{dismissLabel}</Button>

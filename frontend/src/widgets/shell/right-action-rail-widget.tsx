@@ -230,9 +230,11 @@ export function RightActionRailWidget({ dockviewApiRef, onAddWorkspace }: RightA
           runaComponent="right-action-rail-open-settings-panel"
           onClick={() =>
             onOpenBodyModal({
-              title: 'Settings modal',
-              description: 'This modal is mounted on the app shell body layer and stays above every widget.',
+              title: 'Settings',
+              description:
+                'Manage AI provider routing, direct accounts, and proxy channels inside the shell-wide settings surface.',
               variant: 'settings',
+              contentKey: 'agent-providers',
             })
           }
           style={railButtonStyle}

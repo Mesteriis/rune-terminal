@@ -36,13 +36,16 @@ describe('DialogPopup', () => {
         onDismiss={onDismiss}
         title="Settings"
         variant="settings"
-      />,
+      >
+        <div>Embedded settings content</div>
+      </DialogPopup>,
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Apply changes' }))
     fireEvent.click(screen.getByRole('button', { name: 'Close Settings' }))
 
     expect(screen.getByText('Body-scoped settings should stay on the wide layout.')).toBeInTheDocument()
+    expect(screen.getByText('Embedded settings content')).toBeInTheDocument()
     expect(onConfirm).toHaveBeenCalledTimes(1)
     expect(onDismiss).toHaveBeenCalledTimes(1)
   })

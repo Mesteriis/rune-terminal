@@ -8,6 +8,9 @@
   - backend agent/provider catalog now supports a third provider kind, `proxy`, which stores a backend-owned multi-channel account/router configuration instead of a single direct upstream
   - the new `core/aiproxy` domain adapts TideTerm proxy concepts into `rterm` backend rules: channel validation, masked API key storage, priority/failover selection, and direct protocol adapters for OpenAI-compatible, Claude-compatible, and Gemini upstreams
   - proxy provider updates now preserve existing stored channel API keys when a channel is updated by id without a new `api_keys` payload, which keeps masked-secret frontend editing safe by default
+  - the shell-wide settings modal now renders a real provider/proxy management surface inside its body without changing the shared modal shell: existing providers can be selected, edited, activated, or deleted, and new `ollama`, `openai`, or `proxy` records can be created from the same catalog view
+  - the frontend provider editor now resolves through typed agent-provider transport adapters and draft serializers instead of inline modal state: `features/agent/api/provider-client.ts` owns the backend routes, `provider-settings-draft.ts` owns create/update payload shaping, and `use-agent-provider-settings.ts` owns editor state
+  - the proxy editor now exposes multi-channel routing inside settings, including service type, base URLs, priority/status, model mapping, TLS skip, and masked key replacement/preservation semantics for each channel
   - conversation runtime resolution can now materialize the active provider from direct `ollama` / `openai` records or from the new internal proxy provider record
   - proxy-routed conversation streaming is currently buffered at the provider boundary for Claude/Gemini channels, so the SSE route still works but does not yet expose true token-by-token deltas for those upstreams
   - frontend AI sidebar main path loads backend conversation state from `GET /api/v1/agent/conversation`
@@ -47,6 +50,8 @@
   - `sed -n '1,260p' core/app/conversation_attachments.go`
   - `sed -n '1,380p' core/transport/httpapi/handlers_agent_conversation_test.go`
 - Frontend targeted validation:
+  - `npm --prefix frontend run lint:active`
+  - `npm --prefix frontend run test -- src/features/agent/api/provider-client.test.ts src/features/agent/model/provider-settings-draft.test.ts src/shared/ui/components/dialog-popup.test.tsx`
   - `npm --prefix frontend run test -- --reporter verbose --testTimeout=10000 src/features/agent/model/interaction-flow.test.ts src/widgets/ai/ai-panel-widget.test.tsx src/widgets/ai/ai-chat-message-widget.test.tsx`
   - `npm --prefix frontend run build`
 - Backend targeted validation:
@@ -63,7 +68,7 @@
   - `PUT /api/v1/agent/selection/mode`
 - The visible `chat` / `dev` / `debug` header toggle is presentation-only transcript state. It does not read or write the backend agent mode catalog and must not be treated as the transport-backed work-mode selector.
 - No current visible attachment-reference control exists in the AI sidebar, so `POST /api/v1/agent/conversation/attachments/references` is implemented in the frontend API client but not wired to the UI.
-- No current visible provider/proxy management UI exists in the active frontend tree, so the new backend `proxy` provider kind is backend-verified only in this slice.
+- The settings-surface provider editor currently treats replacement key input as newline-separated enabled keys only; it does not expose per-key enabled/disabled toggles or a richer per-account secret management workflow yet.
 - Proxy-routed Claude/Gemini conversation traffic currently uses buffered completion under `POST /api/v1/agent/conversation/messages/stream`; the route remains SSE, but delta granularity for those upstreams is not yet equivalent to the direct OpenAI/Ollama paths.
 - `npm run tauri:dev` was not rerun for this exact transcript refactor, so the supported desktop startup smoke remains outstanding for this slice even though `npm run validate` passed.
 - `frontend/src/widgets/ai/ai-panel-widget.mock.ts` remains in the repository for isolated override/test scaffolding only; it is no longer the main execution path for the AI sidebar.

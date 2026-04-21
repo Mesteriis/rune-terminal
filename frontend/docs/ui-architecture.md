@@ -93,7 +93,7 @@ Current reusable controls:
 - Compose primitives and components
 - Represent UI blocks
 - Stay above shared UI layers
-- Widget source is grouped by domain under `src/widgets/ai/`, `src/widgets/commander/`, `src/widgets/panel/`, `src/widgets/shell/`, `src/widgets/terminal/`, and `src/widgets/demo/`
+- Widget source is grouped by domain under `src/widgets/ai/`, `src/widgets/commander/`, `src/widgets/panel/`, `src/widgets/settings/`, `src/widgets/shell/`, `src/widgets/terminal/`, and `src/widgets/demo/`
 
 ### Layouts
 
@@ -177,10 +177,11 @@ its visible shell blocks as raw HTML inside `App.tsx`.
 - `TerminalWidget` renders the terminal-specific body composition for terminal panels.
 - `TerminalDockviewTabWidget` renders terminal-specific Dockview tab chrome for terminal panels.
 - `CommanderDemoLayout` mounts `CommanderWidget` into the isolated `tool` panel demo surface.
-- `DialogPopup` provides the stateless shared dialog surface, including the wide settings-dialog variant.
+- `DialogPopup` provides the stateless shared dialog surface, including the wide settings-dialog variant and an optional body-content slot for host-provided settings widgets.
 - `Notify` provides the stateless shared notification surface.
-- `ModalHostWidget` renders body-scoped and widget-scoped modal layers.
+- `ModalHostWidget` renders body-scoped and widget-scoped modal layers, while settings-specific body content is routed through an explicit modal `contentKey` path instead of hard-coding settings UI into the shared dialog shell.
 - `PanelModalActionsWidget` exposes a widget-level demo path for modal opening.
+- `AgentProviderSettingsWidget` renders the shell-wide provider/proxy settings editor inside the existing settings modal body, while `features/agent/api/provider-client.ts`, `features/agent/model/provider-settings-draft.ts`, and `features/agent/model/use-agent-provider-settings.ts` keep backend transport, draft serialization, and editor state outside the shared modal host.
 - `DockviewPanelWidget` renders Dockview panel bodies and owns Dockview-specific DOM resolution such as the surrounding `.dv-groupview`, then passes mount/theme targets down as explicit props instead of making child widgets query Dockview internals themselves.
 - `AiPanelWidget` renders the shell-managed AI panel body inside the left shell pane.
 - `AiPanelWidget` now passes its own root element down as the widget-local mount target for modal and busy overlays instead of relying on global DOM lookups.
@@ -309,6 +310,7 @@ Lookup helpers exported from `src/shared/ui/dom-id.tsx`:
 - Tokens now cover dark canvas, glass surfaces, accent hues, spacing, radii, shell sizes, blur, and shadow.
 - Shared primitives consume only semantic tokens instead of hardcoded `#111/#fff/#333` values.
 - Shared components now include stateless `Notify` plus a reusable `DialogPopup` surface built primarily from shared primitives.
+- `DialogPopup` now also accepts children for host-owned modal body content, but the component still owns only the generic shell/header/footer contract rather than any domain-specific settings logic.
 - Shared components now also include `IconButton`, a generic square icon-only control composed from the shared `Button` primitive.
 - Shared components may keep local style modules the same way widgets do when their inline style surface starts to grow; `Tabs` is the current baseline example of that pattern in the component layer.
 - The same component-layer pattern now also covers `TerminalToolbar`, so its toolbar/search/badge chrome lives in `terminal-toolbar.styles.ts` instead of staying inlined in the render body.

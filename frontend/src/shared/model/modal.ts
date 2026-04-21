@@ -8,6 +8,7 @@ export type ModalDescriptor = {
   title: string
   description: string
   variant?: 'default' | 'settings'
+  contentKey?: 'agent-providers'
 }
 
 export type OpenModalPayload = Omit<ModalDescriptor, 'id'>
@@ -41,7 +42,5 @@ export const $modals = createStore<ModalDescriptor[]>([])
   ])
   .on(openWidgetModal, (modals, payload) => [...modals, createModal(payload)])
   .on(closeModal, (modals, payload) => modals.filter((modal) => modal.id !== payload.id))
-  .on(closeHostModals, (modals, payload) =>
-    modals.filter((modal) => modal.hostId !== payload.hostId),
-  )
+  .on(closeHostModals, (modals, payload) => modals.filter((modal) => modal.hostId !== payload.hostId))
   .reset(closeAllModals)

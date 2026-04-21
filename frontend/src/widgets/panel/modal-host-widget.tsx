@@ -5,6 +5,7 @@ import { useUnit } from 'effector-react'
 import { BODY_MODAL_HOST_ID, $modals, closeHostModals, closeModal } from '@/shared/model/modal'
 import { DialogPopup } from '@/shared/ui/components'
 import { Box } from '@/shared/ui/primitives'
+import { renderModalSettingsContent } from '@/widgets/panel/modal-settings-content'
 import {
   bodyOverlayStyle,
   modalStackStyle,
@@ -50,12 +51,15 @@ export function ModalHostWidget({
         {hostModals.map((modal) => (
           <DialogPopup
             confirmLabel="Acknowledge"
+            dismissLabel={modal.variant === 'settings' ? 'Close' : undefined}
             key={modal.id}
             description={modal.description}
             onDismiss={() => onCloseModal({ id: modal.id })}
             title={modal.title}
             variant={modal.variant}
-          />
+          >
+            {modal.variant === 'settings' ? renderModalSettingsContent(modal) : null}
+          </DialogPopup>
         ))}
       </Box>
     </Box>

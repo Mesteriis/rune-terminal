@@ -32,7 +32,6 @@ capability.
 - `.ssh/config` import and advanced SSH auth / topology (proxy jump,
   richer auth negotiation)
 - managed attachment storage / import and rich attachment preview UX
-- frontend management UI for the backend provider/proxy catalog
 - fine-grained streaming deltas for proxy-routed Claude/Gemini channels
   (the backend conversation stream currently degrades to buffered
   completion for those upstreams)
@@ -50,6 +49,7 @@ capability.
 - AI command flow supports explicit command grammar only (`/run` and
   `run:`), not broad natural-language execution
 - backend AI routing now supports direct providers plus a TideTerm-derived internal proxy domain, but it is not a standalone proxy server/product surface and its channel scheduler is currently scoped to conversation traffic only
+- the shell-wide settings modal now exposes the backend provider/proxy catalog, but proxy key editing is still a focused v1 surface: replacement keys are entered as newline-separated enabled secrets, not as a richer per-key lifecycle UI
 - native-window automation coverage is limited; validation leans on
   build + runtime/API smoke plus manual notes
 
