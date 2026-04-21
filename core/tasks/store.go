@@ -89,6 +89,7 @@ func (s *Store) ClaimReadyTasks(ctx context.Context, workerID string, limit int,
 	candidates, err := queryTasksTx(ctx, tx, `
 		SELECT `+taskSelectColumns+`
 		FROM tasks
+		-- Retry-scheduled tasks become claimable only after next_retry_at; first-run tasks use run_at.
 		WHERE status = ? AND COALESCE(next_retry_at, run_at) <= ? AND locked_by IS NULL
 		ORDER BY COALESCE(next_retry_at, run_at) ASC
 		LIMIT ?
