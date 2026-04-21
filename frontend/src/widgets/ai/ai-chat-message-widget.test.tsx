@@ -96,4 +96,29 @@ describe('AiChatMessageWidget', () => {
     expect(screen.getByText('Execution cancelled.')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument()
   })
+
+  it('renders audit entries with visible statuses', () => {
+    render(
+      <AiChatMessageWidget
+        message={{
+          id: 'audit-1',
+          type: 'audit',
+          entries: [
+            { tool: 'read_file', status: 'done', timestamp: Date.parse('2026-04-21T10:00:00Z') },
+            { tool: 'http_request', status: 'running', timestamp: Date.parse('2026-04-21T10:00:01Z') },
+            { tool: 'save_result', status: 'pending' },
+          ],
+        }}
+        mode="chat"
+      />,
+    )
+
+    expect(screen.getByText('Execution')).toBeInTheDocument()
+    expect(screen.getByText('read_file')).toBeInTheDocument()
+    expect(screen.getByText('done')).toBeInTheDocument()
+    expect(screen.getByText('http_request')).toBeInTheDocument()
+    expect(screen.getByText('running')).toBeInTheDocument()
+    expect(screen.getByText('save_result')).toBeInTheDocument()
+    expect(screen.getByText('pending')).toBeInTheDocument()
+  })
 })

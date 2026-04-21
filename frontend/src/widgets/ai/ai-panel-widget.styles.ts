@@ -348,6 +348,44 @@ export const aiApprovalStatusStyle: CSSProperties = {
   lineHeight: '22px',
 }
 
+export const aiAuditEntryRowStyle: CSSProperties = {
+  ...aiPlainBlockStyle,
+  display: 'grid',
+  gridTemplateColumns: '72px minmax(0, 1fr) auto',
+  gap: 'var(--space-sm)',
+  alignItems: 'center',
+}
+
+export const aiAuditEntryMetaStyle: CSSProperties = {
+  color: 'var(--color-text-muted)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '11px',
+  lineHeight: '16px',
+}
+
+export const aiAuditEntryStatusPendingStyle: CSSProperties = {
+  color: 'var(--color-text-muted)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '11px',
+  lineHeight: '16px',
+  textTransform: 'uppercase',
+}
+
+export const aiAuditEntryStatusRunningStyle: CSSProperties = {
+  ...aiAuditEntryStatusPendingStyle,
+  color: 'var(--color-text-primary)',
+}
+
+export const aiAuditEntryStatusDoneStyle: CSSProperties = {
+  ...aiAuditEntryStatusPendingStyle,
+  color: 'var(--color-accent-emerald-soft)',
+}
+
+export const aiAuditEntryStatusErrorStyle: CSSProperties = {
+  ...aiAuditEntryStatusPendingStyle,
+  color: 'var(--color-danger-text)',
+}
+
 export const aiToolbarStyle: CSSProperties = {
   display: 'flex',
   alignItems: 'center',

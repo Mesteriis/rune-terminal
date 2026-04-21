@@ -10,6 +10,7 @@ import {
   aiChatMessageRowStyle,
 } from '@/widgets/ai/ai-panel-widget.styles'
 import { ApprovalMessageBlock } from '@/widgets/ai/approval-message-block'
+import { AuditMessageBlock } from '@/widgets/ai/audit-message-block'
 import { ChatTextMessageWidget } from '@/widgets/ai/chat-text-message-widget'
 import { PlanMessageBlock } from '@/widgets/ai/plan-message-block'
 
@@ -29,6 +30,29 @@ export function AiChatMessageWidget({
   onApprovalCancel,
 }: AiChatMessageWidgetProps) {
   switch (message.type) {
+    case 'audit':
+      return (
+        <RunaDomScopeProvider component={`ai-chat-message-${message.id}`}>
+          <Box
+            runaComponent={`ai-chat-message-${message.id}-row`}
+            style={{
+              ...aiChatMessageRowStyle,
+              ...(isGroupedWithNext ? aiChatMessageGroupedRowStyle : null),
+              ...aiChatMessageAssistantRowStyle,
+            }}
+          >
+            <Box
+              runaComponent={`ai-chat-message-${message.id}-group`}
+              style={{
+                ...aiChatMessageGroupStyle,
+                ...aiChatMessageAssistantGroupStyle,
+              }}
+            >
+              <AuditMessageBlock message={message} />
+            </Box>
+          </Box>
+        </RunaDomScopeProvider>
+      )
     case 'approval':
       return (
         <RunaDomScopeProvider component={`ai-chat-message-${message.id}`}>

@@ -44,7 +44,22 @@ export type ApprovalMessage = {
   sortKey?: ChatMessageSortKey
 }
 
-export type ChatMessageView = ChatTextMessage | PlanMessage | ApprovalMessage
+export type AuditEntryStatus = 'pending' | 'running' | 'done' | 'error'
+
+export type AuditEntry = {
+  tool: string
+  status: AuditEntryStatus
+  timestamp?: number
+}
+
+export type AuditMessage = {
+  id: string
+  type: 'audit'
+  entries: AuditEntry[]
+  sortKey?: ChatMessageSortKey
+}
+
+export type ChatMessageView = ChatTextMessage | PlanMessage | ApprovalMessage | AuditMessage
 
 export type AiPanelWidgetState = {
   title: string
