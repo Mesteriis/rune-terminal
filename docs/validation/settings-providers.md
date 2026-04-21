@@ -3,13 +3,13 @@
 ## Last verified state
 
 - Date: `2026-04-21`
-- State: `BLOCKED`
+- State: `PARTIALLY VERIFIED`
 - Scope:
-  - current shell settings window implementation in the active `frontend/src/` tree
-  - current backend provider-configuration surface relevant to AI providers
-  - exact gaps blocking real provider configuration inside Settings
+  - backend-owned AI provider configuration runtime and CRUD surface
+  - active-provider resolution for agent conversation execution
+  - current frontend settings window state as the future consumer of that backend surface
 
-## Commands used
+## Commands/tests used
 
 - Frontend settings audit:
   - `rg -n "settings|Settings" frontend/src docs core`
@@ -22,146 +22,215 @@
   - `sed -n '1,220p' frontend/src/shared/ui/components/dialog-popup.tsx`
   - `sed -n '1,220p' frontend/src/shared/ui/components/tabs.tsx`
   - `sed -n '1,220p' frontend/src/shared/ui/components/tabs.styles.ts`
-  - `sed -n '1,220p' frontend/src/shared/ui/components/tabs.test.tsx`
-  - `sed -n '1,220p' frontend/src/app/App.tsx`
-- Backend provider/config audit:
-  - `rg -n "provider|providers|ollama|openai|anthropic|gemini|selection/profile|selection/role|selection/mode" core frontend/src docs`
-  - `rg -n "HandleFunc\\(\"(GET|POST|PUT|DELETE) /api/v1/.*provider|provider.*HandleFunc|/api/v1/agent|/api/v1/settings|/api/v1/config|provider config|provider store|ProviderConfig|active provider|default provider" core`
-  - `rg -n "RTERM_OLLAMA|OLLAMA|ProviderConfig|NewOllamaProvider|runtime_settings|watcher_mode|provider" core frontend/src | head -n 300`
-  - `sed -n '1,260p' core/transport/httpapi/api.go`
-  - `sed -n '1,260p' core/transport/httpapi/handlers_agent.go`
-  - `sed -n '1,220p' core/transport/httpapi/handlers_agent_test.go`
+- Backend provider/runtime audit and validation:
+  - `sed -n '1,260p' core/agent/provider_types.go`
+  - `sed -n '1,320p' core/agent/provider_store.go`
+  - `sed -n '1,240p' core/agent/provider_view.go`
   - `sed -n '1,260p' core/agent/store.go`
-  - `sed -n '1,260p' core/agent/types.go`
-  - `sed -n '1,240p' core/agent/view.go`
-  - `sed -n '1,260p' core/agent/builtins.go`
-  - `sed -n '1,240p' core/conversation/provider.go`
-  - `sed -n '1,260p' core/app/runtime.go`
-  - `sed -n '1,220p' core/config/paths.go`
+  - `sed -n '1,320p' core/app/provider_runtime.go`
+  - `sed -n '1,260p' core/app/provider_actions.go`
+  - `sed -n '1,260p' core/app/conversation_actions.go`
+  - `sed -n '1,220p' core/app/ai_terminal_command.go`
+  - `sed -n '1,260p' core/conversation/provider.go`
+  - `sed -n '1,320p' core/conversation/provider_openai.go`
+  - `sed -n '1,360p' core/conversation/service.go`
+  - `sed -n '1,260p' core/transport/httpapi/handlers_agent_providers.go`
+  - `sed -n '1,220p' core/transport/httpapi/api.go`
+- Focused validation:
+  - `go test ./core/agent`
+  - `go test ./core/transport/httpapi ./core/agent ./core/app`
+  - `go test ./core/conversation ./core/app ./core/transport/httpapi`
+  - `go test ./core/agent ./core/transport/httpapi`
 
-## Current settings window state
+## Current frontend settings window state
 
-### Entry points and active files
+### Active entry point
 
 - The visible settings entry point in the active shell is the right-rail settings button in [frontend/src/widgets/shell/right-action-rail-widget.tsx](../../frontend/src/widgets/shell/right-action-rail-widget.tsx).
-- That button opens a body-scoped modal through `openBodyModal(...)` from [frontend/src/shared/model/modal.ts](../../frontend/src/shared/model/modal.ts).
-- The active shell mounts body modals in [frontend/src/app/App.tsx](../../frontend/src/app/App.tsx) through [frontend/src/widgets/panel/modal-host-widget.tsx](../../frontend/src/widgets/panel/modal-host-widget.tsx).
-- The rendered surface is [frontend/src/shared/ui/components/dialog-popup.tsx](../../frontend/src/shared/ui/components/dialog-popup.tsx).
+- That button still opens a body-scoped modal through [frontend/src/shared/model/modal.ts](../../frontend/src/shared/model/modal.ts).
+- The mounted surface is still [frontend/src/shared/ui/components/dialog-popup.tsx](../../frontend/src/shared/ui/components/dialog-popup.tsx).
 
-### Actual behavior today
+### Current limitation
 
-- The current settings window is not a dedicated settings screen or settings widget.
-- It is a generic `DialogPopup` in `variant="settings"` mode.
-- The `settings` variant only changes geometry and the close button presentation:
-  - fixed `90vw x 95vh` sizing
-  - icon-based close button
-- The current body content is only:
-  - `title`
-  - `description`
-  - dismiss/confirm actions
-- `DialogPopup` does not accept arbitrary children or section content today.
-- There is no current settings-specific content area, no settings navigation, no tab model, and no provider panel inside the modal.
+- The settings window is still a generic `DialogPopup` with wide `variant="settings"` geometry.
+- It does not yet host real section content, vertical navigation, subtabs, or an AI / Providers panel.
+- The shared `Tabs` component in [frontend/src/shared/ui/components/tabs.tsx](../../frontend/src/shared/ui/components/tabs.tsx) already supports `orientation="vertical"`, but it is not yet wired into Settings.
 
-### Existing tab/subtab building blocks
+## Backend provider configuration runtime
 
-- A reusable shared `Tabs` component already exists in [frontend/src/shared/ui/components/tabs.tsx](../../frontend/src/shared/ui/components/tabs.tsx).
-- That component already supports:
-  - `orientation="horizontal"`
-  - `orientation="vertical"`
-- The related style and tests already exist in:
-  - [frontend/src/shared/ui/components/tabs.styles.ts](../../frontend/src/shared/ui/components/tabs.styles.ts)
-  - [frontend/src/shared/ui/components/tabs.test.tsx](../../frontend/src/shared/ui/components/tabs.test.tsx)
-- Those tabs are not currently used by the settings window.
-- No dedicated settings-nav or settings-subnav component exists today.
+### Provider model
 
-### Exact frontend gaps for this slice
+- Provider configuration is now backend-owned in `core/agent`.
+- The persisted agent state model now includes:
+  - `active_provider_id`
+  - `providers[]`
+- Provider records are defined in [core/agent/provider_types.go](../../core/agent/provider_types.go).
+- Supported provider kinds in the model:
+  - `ollama`
+  - `openai`
+- Each provider record persists:
+  - `id`
+  - `kind`
+  - `display_name`
+  - `enabled`
+  - provider-specific settings
+  - `created_at`
+  - `updated_at`
+- One provider becomes active/default by matching `active_provider_id` to a provider record id.
 
-- The current settings modal cannot host real settings sections because `DialogPopup` is still a stateless title/description dialog shell.
-- The settings window has no existing content composition path for:
-  - vertical navigation
-  - nested subtabs
-  - AI / Providers section content
-- The reusable vertical tab capability exists at the shared component layer, but there is no settings-specific composition around it yet.
+### Provider-specific fields
 
-## Current backend provider-config state
+- `ollama` record fields:
+  - `base_url`
+  - `model`
+- `openai` record fields:
+  - `base_url`
+  - `model`
+  - `api_key_secret`
 
-### Verified backend routes related to the agent
+### Public vs secret-sensitive fields
 
-- `GET /api/v1/agent`
-- `GET /api/v1/agent/conversation`
-- `POST /api/v1/agent/conversation/messages`
-- `POST /api/v1/agent/conversation/messages/stream`
-- `POST /api/v1/agent/conversation/attachments/references`
-- `POST /api/v1/agent/terminal-commands/explain`
-- `PUT /api/v1/agent/selection/profile`
-- `PUT /api/v1/agent/selection/role`
-- `PUT /api/v1/agent/selection/mode`
+- Stored OpenAI credentials live only in backend-owned state as `api_key_secret`.
+- Provider read responses do not expose that secret.
+- Provider read responses expose only:
+  - `has_api_key: true|false`
+- Secret-bearing create/update requests are accepted only through backend write routes.
 
-### What those routes actually configure
+## Persistence strategy
 
-- `GET /api/v1/agent` returns the agent catalog from `core/agent`.
-- That catalog contains:
-  - prompt profiles
-  - role presets
-  - work modes
-  - active profile/role/mode selection
-- The mutable selection routes only update:
-  - `ActiveProfileID`
-  - `ActiveRoleID`
-  - `ActiveModeID`
-- These values are persisted in `agent-state.json` through `core/agent/store.go`.
-
-### What provider configuration exists today
-
-- The active runtime still constructs the conversation backend as:
-  - `conversation.NewOllamaProvider(conversation.DefaultProviderConfig())`
-  - see [core/app/runtime.go](../../core/app/runtime.go)
-- `DefaultProviderConfig()` currently resolves only:
+- Provider configuration is persisted in the existing `agent-state.json` store, not in frontend state and not in a new ad hoc config file.
+- The persistence boundary stays inside [core/agent/store.go](../../core/agent/store.go).
+- The agent state schema version was advanced to `v1alpha2`.
+- Legacy agent-state files without provider data are migrated on load by seeding:
+  - one default bootstrap provider `ollama-local`
+  - `active_provider_id = "ollama-local"`
+- The bootstrap Ollama provider reads:
   - `RTERM_OLLAMA_BASE_URL`
   - `RTERM_OLLAMA_MODEL`
-  - see [core/conversation/provider.go](../../core/conversation/provider.go)
-- The provider path is therefore environment-backed and Ollama-specific.
-- There is no verified persisted provider store in `core/config/paths.go`.
-- There is no verified provider CRUD service in `core/app` or `core/agent`.
-- There is no verified HTTP route for:
-  - listing configured providers
-  - adding a provider
-  - updating provider config
-  - deleting a provider
-  - selecting the active/default provider
+- That environment path is now bootstrap-only for the default local Ollama provider.
+- Once provider state exists in `agent-state.json`, the persisted backend state is the source of truth.
+- The store file continues to use `0600` permissions through the existing backend save path.
 
-### Exact backend gaps blocking provider Settings integration
+## Backend routes
 
-- Missing route to list configured providers for a settings panel.
-- Missing route to create/add a provider configuration.
-- Missing route to persist edited provider configuration.
-- Missing route to select an active/default provider.
-- Missing backend state model/store for persisted provider definitions.
-- Missing runtime wiring that resolves conversation execution from a persisted active provider instead of hard-wiring `NewOllamaProvider(DefaultProviderConfig())`.
+### Provider CRUD/config API
 
-## Exact gaps that must be filled for this slice
+- `GET /api/v1/agent/providers`
+  - returns:
+    - `providers[]`
+    - `active_provider_id`
+    - `supported_kinds`
+- `POST /api/v1/agent/providers`
+  - creates a provider record
+  - returns:
+    - `provider`
+    - `providers`
+- `PATCH /api/v1/agent/providers/{providerID}`
+  - updates display name, enabled state, and provider-specific config
+  - returns:
+    - `provider`
+    - `providers`
+- `PUT /api/v1/agent/providers/active`
+  - body: `{ "id": "<providerID>" }`
+  - updates the active/default provider selection
+  - returns the provider catalog
+- `DELETE /api/v1/agent/providers/{providerID}`
+  - deletes a non-active provider
+  - returns the provider catalog
 
-### Frontend settings structure gap
+### Validation/error behavior
 
-- The current settings window needs a real content-hosting settings surface before any provider UI can exist.
-- The narrowest honest path is:
-  - keep the existing modal entry point
-  - replace the settings-modal body from generic dialog-only content to a dedicated settings content widget
-  - reuse the existing shared `Tabs` component for vertical navigation
-  - add settings-specific wrappers only where needed for section navigation and optional subtabs
+- Unknown provider ids return `provider_not_found`.
+- Unsupported kinds return `provider_kind_unsupported`.
+- Invalid payload/config returns `invalid_provider_config`.
+- Selecting a disabled provider returns `provider_disabled`.
+- Deleting the active provider returns `provider_delete_active`.
+- JSON decoding remains strict through the shared `decodeJSON(...)` path with `DisallowUnknownFields()`.
 
-### Backend provider gap
+## Runtime resolution
 
-- Public-v1 provider configuration in Settings is currently blocked by missing backend provider CRUD/select/persistence routes.
-- The current agent catalog/selection routes are not a substitute for provider configuration.
-- The current backend provider model is effectively:
-  - single-provider
-  - Ollama-only
-  - env-configured at runtime bootstrap
+### Resolution path
 
-## Slice conclusion
+- Runtime provider resolution now lives in [core/app/provider_runtime.go](../../core/app/provider_runtime.go).
+- `Runtime` now owns a `ConversationProviderFactory`.
+- `NewRuntime(...)` initializes that factory to resolve the active provider from backend state.
+- The factory currently maps:
+  - `ollama` -> `conversation.NewOllamaProvider(...)`
+  - `openai` -> `conversation.NewOpenAIProvider(...)`
 
-- The current settings window implementation is too thin for real provider configuration, but it has a viable frontend foundation because shared vertical tabs already exist.
-- The backend provider configuration surface required for real Settings integration is not implemented.
-- A truthful provider-settings UI cannot be completed against the current backend without inventing a fake persistence path.
-- This blocks the provider-integration phases of the requested slice until backend provider CRUD/select/persistence support exists.
+### Execution paths now using backend-owned provider state
+
+- `GET /api/v1/agent/conversation`
+  - provider info in the snapshot is now derived from the resolved active provider when the runtime factory is enabled
+- `POST /api/v1/agent/conversation/messages`
+  - resolves the active provider from backend state before submission
+- `POST /api/v1/agent/conversation/messages/stream`
+  - resolves the same active provider from backend state before streaming submission
+- `POST /api/v1/agent/terminal-commands/explain`
+  - now also resolves the active provider from backend state before the assistant explanation call
+
+### Conversation service compatibility
+
+- The conversation service still preserves its legacy default-provider methods for compatibility.
+- New runtime-aware methods were added so the backend can pass the resolved provider per request:
+  - `SnapshotWithProviderInfo(...)`
+  - `SubmitWithProvider(...)`
+  - `SubmitStreamWithProvider(...)`
+  - `AppendAssistantPromptWithProvider(...)`
+- This keeps the old request/response behavior stable for tests and narrow legacy call sites while allowing production runtime selection from backend state.
+
+## External provider implementation
+
+### OpenAI support
+
+- A real external provider implementation now exists in [core/conversation/provider_openai.go](../../core/conversation/provider_openai.go).
+- The current implementation uses OpenAI Chat Completions with:
+  - non-stream completion
+  - SSE streaming for `stream=true`
+- Verified streaming behavior:
+  - partial `text-delta` chunks are consumed during generation
+  - the same provider path works for both stream and non-stream execution
+
+### Ollama compatibility
+
+- The Ollama provider path remains supported.
+- The active/default provider can now be switched between:
+  - the persisted local Ollama provider config
+  - a persisted OpenAI provider config
+
+## Secret handling
+
+### Current v1 behavior
+
+- OpenAI API keys are written only through backend create/update routes.
+- API keys are stored locally in backend-owned state as `api_key_secret`.
+- API keys are never returned through provider list/create/update responses.
+- Read responses expose only `has_api_key`.
+- Updating an OpenAI provider with `clear_api_key: true` and no replacement key is rejected explicitly.
+
+### Explicit v1 constraint
+
+- Secret storage is local plaintext inside `agent-state.json`, protected only by local file permissions (`0600`).
+- This is an intentional local-first v1 constraint.
+- No OS keychain, remote vault, sync, rotation, or enterprise secret-management layer was added in this slice.
+
+## Cross-links
+
+- Historical pre-implementation audit: [docs/validation/agent-streaming-and-provider-gap.md](./agent-streaming-and-provider-gap.md)
+- Current AI sidebar/backend integration note: [docs/validation/agent.md](./agent.md)
+
+## Remaining limitations
+
+- The Settings UI is still not implemented on top of this backend surface.
+- Provider configuration still has no visible frontend client in Settings.
+- The current provider matrix is intentionally narrow:
+  - `ollama`
+  - `openai`
+- No provider marketplace/discovery layer exists.
+- No provider selection UI was added to the main AI sidebar, and this slice did not change that placement.
+- The OpenAI implementation is intentionally minimal:
+  - chat-completions text flow only
+  - no tool calling
+  - no reasoning-part surfacing
+  - no organization/project header support
+- Provider secrets remain local plaintext in backend state for v1.
