@@ -112,6 +112,12 @@ describe('AiPanelWidget backend conversation path', () => {
     expect(
       screen.getByText('Assistant · complete · stub · stub-model · 2026-04-21 10:00'),
     ).toBeInTheDocument()
+
+    const [userRow] = Array.from(document.querySelectorAll('[data-runa-chat-role="user"]'))
+    const [assistantRow] = Array.from(document.querySelectorAll('[data-runa-chat-role="assistant"]'))
+
+    expect((userRow as HTMLDivElement | undefined)?.style.justifyContent).toBe('flex-end')
+    expect((assistantRow as HTMLDivElement | undefined)?.style.justifyContent).toBe('flex-start')
   })
 
   it('streams visible assistant output through the backend conversation stream route', async () => {

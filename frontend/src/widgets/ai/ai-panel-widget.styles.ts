@@ -154,7 +154,7 @@ export const aiChatMessageRowStyle: CSSProperties = {
 export const aiChatMessageGroupStyle: CSSProperties = {
   ...aiPlainBlockStyle,
   minWidth: 0,
-  width: 'min(72%, 680px)',
+  width: '60%',
   display: 'flex',
   flexDirection: 'column',
   gap: 'var(--space-xs)',

@@ -64,6 +64,7 @@ export function AiChatMessageWidget({ message, mode }: AiChatMessageWidgetProps)
   return (
     <RunaDomScopeProvider component={`ai-chat-message-${message.id}`}>
       <Box
+        data-runa-chat-role={message.role}
         runaComponent={`ai-chat-message-${message.id}-row`}
         style={{
           ...aiChatMessageRowStyle,
