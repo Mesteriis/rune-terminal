@@ -229,3 +229,91 @@
   - Preventing overlapping runs for one conversation/session.
 - What is not portable or would conflict with RunaTerminal architecture:
   - TideTerm’s stop-control placement and `chatid`-scoped concurrency rules are tied to its own panel workflow and should be adapted to RunaTerminal’s conversation/session model instead of copied as-is.
+
+### Gap analysis and v1 recommendation
+
+#### Streaming
+
+- Current RunaTerminal status:
+  - Backend agent conversation is synchronous request/response.
+  - No agent streaming route is verified.
+  - Conversation messages only become visible after provider completion.
+  - Frontend replaces the full transcript snapshot after `POST /api/v1/agent/conversation/messages` returns.
+- Relevant Tide/TideTerm reference behavior:
+  - TideTerm streams assistant text, reasoning, and tool events incrementally over SSE.
+  - The frontend renders incomplete assistant output while the response is still in flight.
+- Required backend work:
+  - Add an explicit agent streaming contract to the RunaTerminal backend without inventing ad-hoc frontend semantics in the widget layer.
+  - Extend conversation/runtime state to support an in-progress assistant response and partial text accumulation instead of only final `complete`/`error` messages.
+  - Define cancellation/error handling for an interrupted stream.
+- Required frontend work:
+  - Replace full-snapshot-only submission flow with a stream consumer that can append partial assistant output in the existing card layout.
+  - Add transcript state that can represent an in-progress assistant message.
+- Must be done before public v1:
+  - `A. must-have before public v1`
+- Separate slice:
+  - Yes. Backend stream contract and frontend stream integration should be separate slices.
+- Recommendation:
+  - Public v1 should not ship with the current opaque request/response-only assistant flow. This is a direct usability gap relative to the current goals and to the reference implementation.
+
+#### Busy/working state visibility
+
+- Current RunaTerminal status:
+  - Initial load has a loading card.
+  - Submit path only disables the composer with `isSubmitting`.
+  - No verified AI-specific working animation or in-transcript assistant-working state exists.
+  - The existing busy overlay is a manual blocked-widget mechanism, not an agent-runtime indicator.
+- Relevant Tide/TideTerm reference behavior:
+  - TideTerm exposes a live streaming status, a visible thinking state, and a distinct waiting-for-approval state.
+  - The composer visibly changes behavior during an active run.
+- Required backend work:
+  - Minimal if the streaming slice lands first, provided the stream contract includes start/finish/error boundaries.
+  - No separate provider/runtime redesign is required for a first v1 pass.
+- Required frontend work:
+  - Add a clear working indicator in the existing AI sidebar layout without moving controls or adding unapproved UI.
+  - Tie that indicator to the real agent request lifecycle instead of to manual widget blocking.
+- Must be done before public v1:
+  - `A. must-have before public v1`
+- Separate slice:
+  - Yes, but it should be a narrow slice layered on top of the streaming/request lifecycle work.
+- Recommendation:
+  - Even if full streaming slipped, public v1 would still need explicit working visibility. In the current code, long-running requests appear inert.
+
+#### Third-party providers
+
+- Current RunaTerminal status:
+  - A provider interface exists.
+  - The runtime currently instantiates a single Ollama provider by default.
+  - No verified provider registry, provider factory, or non-Ollama agent backend implementation exists in the active runtime path.
+  - The frontend does not expose any visible provider selector today.
+- Relevant Tide/TideTerm reference behavior:
+  - TideTerm resolves AI modes from config and maps them to multiple providers and API types.
+  - Backend implementations are verified for OpenAI Responses, OpenAI Chat, Anthropic, and Gemini.
+  - The frontend mode dropdown is a thin selector over backend-owned mode resolution.
+- Required backend work:
+  - Introduce a backend-owned provider resolution layer for the agent runtime.
+  - Add at least one non-Ollama third-party provider implementation behind the existing provider abstraction.
+  - Decide how provider credentials and defaults are supplied without leaking provider semantics into unrelated frontend code.
+- Required frontend work:
+  - For backend capability alone: none is strictly required if one configured provider can be selected outside the sidebar.
+  - For user-switchable provider selection: a visible selector or mode control would be required, which is a separate UI placement decision in RunaTerminal.
+- Must be done before public v1:
+  - Backend third-party provider support: `A. must-have before public v1`
+  - Frontend on-panel provider selection UI: `B. can ship after v1` unless product requirements explicitly demand in-sidebar switching on day one
+- Separate slice:
+  - Yes. Backend provider abstraction/support and frontend provider selection UI should be separate slices.
+- Recommendation:
+  - Public v1 should not be limited to the current Ollama-only runtime.
+  - The backend capability is the v1 blocker.
+  - A visible provider-selection control is not yet a v1 blocker because the current sidebar has no approved placement for it.
+
+#### Classification summary
+
+- `A. must-have before public v1`
+  - Agent streaming backend contract
+  - Agent streaming frontend integration
+  - Clear AI busy/working state tied to real agent execution
+  - Backend support for at least one third-party provider beyond Ollama
+- `B. can ship after v1`
+  - Frontend provider selection UI inside the current AI sidebar, unless product requires on-screen switching for v1
+  - TideTerm-style rich reasoning/tool-use/approval lifecycle beyond what RunaTerminal’s current AI sidebar needs for v1
