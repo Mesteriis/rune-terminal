@@ -185,3 +185,71 @@ func TestProvidersCatalogMasksProxyAPIKeys(t *testing.T) {
 		t.Fatalf("expected proxy secrets to stay masked, got %s", contains)
 	}
 }
+
+func TestUpdateProxyProviderPreservesExistingChannelSecretsWhenKeysOmitted(t *testing.T) {
+	t.Parallel()
+
+	store, err := NewStore(filepath.Join(t.TempDir(), "agent.json"))
+	if err != nil {
+		t.Fatalf("NewStore error: %v", err)
+	}
+	created, _, err := store.CreateProvider(CreateProviderInput{
+		Kind: ProviderKindProxy,
+		Proxy: &CreateProxyProviderInput{
+			Model: "assistant-default",
+			Channels: []aiproxy.Channel{{
+				ID:          "codex-primary",
+				Name:        "Codex",
+				ServiceType: aiproxy.ServiceTypeOpenAI,
+				BaseURL:     "https://example.com/v1",
+				APIKeys: []aiproxy.APIKey{{
+					Key:     "sk-proxy-secret",
+					Enabled: true,
+				}},
+			}},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateProvider error: %v", err)
+	}
+	if err := store.SetActiveProvider(created.ID); err != nil {
+		t.Fatalf("SetActiveProvider error: %v", err)
+	}
+
+	updated, _, err := store.UpdateProvider(created.ID, UpdateProviderInput{
+		Proxy: &UpdateProxyProviderInput{
+			Channels: &[]UpdateProxyChannelInput{{
+				Channel: aiproxy.Channel{
+					ID:          "codex-primary",
+					Name:        "Codex EU",
+					ServiceType: aiproxy.ServiceTypeOpenAI,
+					BaseURL:     "https://example.eu/v1",
+				},
+			}},
+			ReplaceChannels: true,
+		},
+	})
+	if err != nil {
+		t.Fatalf("UpdateProvider error: %v", err)
+	}
+	if updated.Proxy == nil || len(updated.Proxy.Channels) != 1 {
+		t.Fatalf("expected proxy view after update, got %#v", updated)
+	}
+	if updated.Proxy.Channels[0].EnabledKeyCount != 1 {
+		t.Fatalf("expected preserved enabled key count, got %#v", updated.Proxy.Channels[0])
+	}
+	if updated.Proxy.Channels[0].Name != "Codex EU" || updated.Proxy.Channels[0].BaseURL != "https://example.eu/v1" {
+		t.Fatalf("expected updated channel metadata, got %#v", updated.Proxy.Channels[0])
+	}
+
+	active, err := store.ActiveProvider()
+	if err != nil {
+		t.Fatalf("ActiveProvider error: %v", err)
+	}
+	if active.Proxy == nil || len(active.Proxy.Channels) != 1 {
+		t.Fatalf("expected active proxy provider, got %#v", active)
+	}
+	if len(active.Proxy.Channels[0].APIKeys) != 1 || active.Proxy.Channels[0].APIKeys[0].Key != "sk-proxy-secret" {
+		t.Fatalf("expected preserved proxy secret, got %#v", active.Proxy.Channels[0].APIKeys)
+	}
+}

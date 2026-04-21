@@ -7,6 +7,7 @@
 - Scope:
   - backend agent/provider catalog now supports a third provider kind, `proxy`, which stores a backend-owned multi-channel account/router configuration instead of a single direct upstream
   - the new `core/aiproxy` domain adapts TideTerm proxy concepts into `rterm` backend rules: channel validation, masked API key storage, priority/failover selection, and direct protocol adapters for OpenAI-compatible, Claude-compatible, and Gemini upstreams
+  - proxy provider updates now preserve existing stored channel API keys when a channel is updated by id without a new `api_keys` payload, which keeps masked-secret frontend editing safe by default
   - conversation runtime resolution can now materialize the active provider from direct `ollama` / `openai` records or from the new internal proxy provider record
   - proxy-routed conversation streaming is currently buffered at the provider boundary for Claude/Gemini channels, so the SSE route still works but does not yet expose true token-by-token deltas for those upstreams
   - frontend AI sidebar main path loads backend conversation state from `GET /api/v1/agent/conversation`

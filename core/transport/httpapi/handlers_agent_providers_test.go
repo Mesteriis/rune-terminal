@@ -310,3 +310,89 @@ func TestCreateProxyProviderMasksChannelSecrets(t *testing.T) {
 		t.Fatalf("unexpected channel payload: %#v", payload.Provider.Proxy.Channels)
 	}
 }
+
+func TestUpdateProxyProviderPreservesChannelSecretsWhenAPIKeysOmitted(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+
+	createRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(createRecorder, authedJSONRequest(t, http.MethodPost, "/api/v1/agent/providers", map[string]any{
+		"kind":         "proxy",
+		"display_name": "Proxy",
+		"proxy": map[string]any{
+			"model": "assistant-default",
+			"channels": []map[string]any{
+				{
+					"id":           "codex-primary",
+					"name":         "Codex",
+					"service_type": "openai",
+					"base_url":     "https://example.com/v1",
+					"api_keys": []map[string]any{
+						{"key": "sk-proxy-secret", "enabled": true},
+					},
+				},
+			},
+		},
+	}))
+
+	if createRecorder.Code != http.StatusOK {
+		t.Fatalf("expected create 200, got %d body=%s", createRecorder.Code, createRecorder.Body.String())
+	}
+
+	var created struct {
+		Provider struct {
+			ID string `json:"id"`
+		} `json:"provider"`
+	}
+	if err := json.Unmarshal(createRecorder.Body.Bytes(), &created); err != nil {
+		t.Fatalf("unmarshal create: %v", err)
+	}
+
+	updateRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(updateRecorder, authedJSONRequest(t, http.MethodPatch, "/api/v1/agent/providers/"+created.Provider.ID, map[string]any{
+		"proxy": map[string]any{
+			"channels": []map[string]any{
+				{
+					"id":           "codex-primary",
+					"name":         "Codex EU",
+					"service_type": "openai",
+					"base_url":     "https://example.eu/v1",
+				},
+			},
+		},
+	}))
+
+	if updateRecorder.Code != http.StatusOK {
+		t.Fatalf("expected update 200, got %d body=%s", updateRecorder.Code, updateRecorder.Body.String())
+	}
+	if strings.Contains(updateRecorder.Body.String(), "sk-proxy-secret") {
+		t.Fatalf("expected response to stay masked, got %s", updateRecorder.Body.String())
+	}
+
+	var payload struct {
+		Provider struct {
+			Proxy struct {
+				Channels []struct {
+					Name            string `json:"name"`
+					BaseURL         string `json:"base_url"`
+					KeyCount        int    `json:"key_count"`
+					EnabledKeyCount int    `json:"enabled_key_count"`
+				} `json:"channels"`
+			} `json:"proxy"`
+		} `json:"provider"`
+	}
+	if err := json.Unmarshal(updateRecorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal update: %v", err)
+	}
+	if len(payload.Provider.Proxy.Channels) != 1 {
+		t.Fatalf("unexpected proxy channels: %#v", payload.Provider.Proxy.Channels)
+	}
+	channel := payload.Provider.Proxy.Channels[0]
+	if channel.Name != "Codex EU" || channel.BaseURL != "https://example.eu/v1" {
+		t.Fatalf("expected updated channel metadata, got %#v", channel)
+	}
+	if channel.KeyCount != 1 || channel.EnabledKeyCount != 1 {
+		t.Fatalf("expected preserved key counts, got %#v", channel)
+	}
+}

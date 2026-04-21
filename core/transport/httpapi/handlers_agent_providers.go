@@ -63,6 +63,21 @@ type proxyChannelPayload struct {
 	InsecureSkipVerify bool              `json:"insecure_skip_verify,omitempty"`
 }
 
+type updateProxyChannelPayload struct {
+	ID                 string             `json:"id,omitempty"`
+	Name               string             `json:"name"`
+	ServiceType        string             `json:"service_type"`
+	BaseURL            string             `json:"base_url,omitempty"`
+	BaseURLs           []string           `json:"base_urls,omitempty"`
+	APIKeys            *[]proxyAPIKeyItem `json:"api_keys,omitempty"`
+	AuthType           string             `json:"auth_type,omitempty"`
+	Priority           int                `json:"priority,omitempty"`
+	Status             string             `json:"status,omitempty"`
+	ModelMapping       map[string]string  `json:"model_mapping,omitempty"`
+	Description        string             `json:"description,omitempty"`
+	InsecureSkipVerify bool               `json:"insecure_skip_verify,omitempty"`
+}
+
 type proxyAPIKeyItem struct {
 	Key     string `json:"key,omitempty"`
 	Enabled bool   `json:"enabled"`
@@ -74,9 +89,9 @@ type createProxyConfigPayload struct {
 }
 
 type updateProxyConfigPayload struct {
-	Model           *string                `json:"model,omitempty"`
-	Channels        *[]proxyChannelPayload `json:"channels,omitempty"`
-	ReplaceChannels bool                   `json:"replace_channels,omitempty"`
+	Model           *string                      `json:"model,omitempty"`
+	Channels        *[]updateProxyChannelPayload `json:"channels,omitempty"`
+	ReplaceChannels bool                         `json:"replace_channels,omitempty"`
 }
 
 func (api *API) handleProviderCatalog(w http.ResponseWriter, r *http.Request) {
@@ -224,9 +239,9 @@ func mapUpdateProxyProviderInput(payload *updateProxyConfigPayload) *agent.Updat
 	if payload == nil {
 		return nil
 	}
-	var channels *[]aiproxy.Channel
+	var channels *[]agent.UpdateProxyChannelInput
 	if payload.Channels != nil {
-		mapped := mapProxyChannels(*payload.Channels)
+		mapped := mapUpdateProxyChannels(*payload.Channels)
 		channels = &mapped
 	}
 	return &agent.UpdateProxyProviderInput{
@@ -234,6 +249,36 @@ func mapUpdateProxyProviderInput(payload *updateProxyConfigPayload) *agent.Updat
 		Channels:        channels,
 		ReplaceChannels: payload.ReplaceChannels || payload.Channels != nil,
 	}
+}
+
+func mapUpdateProxyChannels(payload []updateProxyChannelPayload) []agent.UpdateProxyChannelInput {
+	if len(payload) == 0 {
+		return nil
+	}
+	channels := make([]agent.UpdateProxyChannelInput, 0, len(payload))
+	for _, item := range payload {
+		channel := agent.UpdateProxyChannelInput{
+			Channel: aiproxy.Channel{
+				ID:                 item.ID,
+				Name:               item.Name,
+				ServiceType:        aiproxy.ServiceType(item.ServiceType),
+				BaseURL:            item.BaseURL,
+				BaseURLs:           append([]string(nil), item.BaseURLs...),
+				AuthType:           aiproxy.AuthType(item.AuthType),
+				Priority:           item.Priority,
+				Status:             aiproxy.ChannelStatus(item.Status),
+				ModelMapping:       item.ModelMapping,
+				Description:        item.Description,
+				InsecureSkipVerify: item.InsecureSkipVerify,
+			},
+		}
+		if item.APIKeys != nil {
+			mappedKeys := mapProxyAPIKeys(*item.APIKeys)
+			channel.APIKeys = &mappedKeys
+		}
+		channels = append(channels, channel)
+	}
+	return channels
 }
 
 func mapProxyChannels(payload []proxyChannelPayload) []aiproxy.Channel {
@@ -255,18 +300,24 @@ func mapProxyChannels(payload []proxyChannelPayload) []aiproxy.Channel {
 			Description:        item.Description,
 			InsecureSkipVerify: item.InsecureSkipVerify,
 		}
-		if len(item.APIKeys) > 0 {
-			channel.APIKeys = make([]aiproxy.APIKey, 0, len(item.APIKeys))
-			for _, key := range item.APIKeys {
-				channel.APIKeys = append(channel.APIKeys, aiproxy.APIKey{
-					Key:     key.Key,
-					Enabled: key.Enabled,
-				})
-			}
-		}
+		channel.APIKeys = mapProxyAPIKeys(item.APIKeys)
 		channels = append(channels, channel)
 	}
 	return channels
+}
+
+func mapProxyAPIKeys(payload []proxyAPIKeyItem) []aiproxy.APIKey {
+	if len(payload) == 0 {
+		return nil
+	}
+	keys := make([]aiproxy.APIKey, 0, len(payload))
+	for _, key := range payload {
+		keys = append(keys, aiproxy.APIKey{
+			Key:     key.Key,
+			Enabled: key.Enabled,
+		})
+	}
+	return keys
 }
 
 func writeProviderConfigError(w http.ResponseWriter, err error) {

@@ -128,6 +128,11 @@ type CreateProxyProviderInput struct {
 	Channels []aiproxy.Channel
 }
 
+type UpdateProxyChannelInput struct {
+	Channel aiproxy.Channel
+	APIKeys *[]aiproxy.APIKey
+}
+
 type UpdateOpenAIProviderInput struct {
 	BaseURL     *string
 	Model       *string
@@ -137,7 +142,7 @@ type UpdateOpenAIProviderInput struct {
 
 type UpdateProxyProviderInput struct {
 	Model           *string
-	Channels        *[]aiproxy.Channel
+	Channels        *[]UpdateProxyChannelInput
 	ReplaceChannels bool
 }
 

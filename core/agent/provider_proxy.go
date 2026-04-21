@@ -27,9 +27,33 @@ func applyProxyProviderUpdate(settings *ProxyProviderSettings, input UpdateProxy
 		updated.Model = strings.TrimSpace(*input.Model)
 	}
 	if input.Channels != nil && input.ReplaceChannels {
-		updated.Channels = normalizeProxyChannels(*input.Channels)
+		updated.Channels = mergeProxyChannels(settings.Channels, *input.Channels)
 	}
 	return updated
+}
+
+func mergeProxyChannels(current []aiproxy.Channel, updates []UpdateProxyChannelInput) []aiproxy.Channel {
+	if len(updates) == 0 {
+		return nil
+	}
+
+	currentByID := make(map[string]aiproxy.Channel, len(current))
+	for _, channel := range current {
+		currentByID[channel.ID] = channel
+	}
+
+	merged := make([]aiproxy.Channel, 0, len(updates))
+	for _, item := range updates {
+		channel := item.Channel
+		if item.APIKeys != nil {
+			channel.APIKeys = append([]aiproxy.APIKey(nil), (*item.APIKeys)...)
+		} else if existing, ok := currentByID[strings.TrimSpace(channel.ID)]; ok {
+			channel.APIKeys = append([]aiproxy.APIKey(nil), existing.APIKeys...)
+		}
+		merged = append(merged, channel)
+	}
+
+	return normalizeProxyChannels(merged)
 }
 
 func validateProxyProviderSettings(settings *ProxyProviderSettings) error {
