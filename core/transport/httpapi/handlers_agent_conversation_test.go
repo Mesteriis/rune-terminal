@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -218,6 +219,78 @@ func TestConversationRoutesKeepJSONAndStreamPathsSeparate(t *testing.T) {
 	}
 }
 
+func TestStreamConversationMessageEmitsStructuredEventSequence(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandlerWithConversationProvider(t, &httpConversationStreamProvider{
+		info: conversation.ProviderInfo{
+			Kind:      "stub",
+			BaseURL:   "http://stub",
+			Model:     "stream-model",
+			Streaming: true,
+		},
+		deltas: []string{"hello ", "world"},
+		result: conversation.CompletionResult{
+			Content: "hello world",
+			Model:   "stream-model",
+		},
+	}, testAuthToken)
+	server := httptest.NewServer(handler)
+	defer server.Close()
+
+	events := postConversationStream(t, server.URL, map[string]any{
+		"prompt": "hello there",
+	}, 4)
+	if events[0].Event != "message-start" || events[1].Event != "text-delta" || events[2].Event != "text-delta" || events[3].Event != "message-complete" {
+		t.Fatalf("unexpected stream event order: %#v", events)
+	}
+	if events[0].Data.Message == nil || events[0].Data.Message.Status != conversation.StatusStreaming {
+		t.Fatalf("expected streaming start message, got %#v", events[0].Data.Message)
+	}
+	if events[1].Data.Delta != "hello " || events[2].Data.Delta != "world" {
+		t.Fatalf("unexpected stream deltas: %#v", events)
+	}
+	if events[3].Data.Message == nil || events[3].Data.Message.Status != conversation.StatusComplete {
+		t.Fatalf("expected completed final message, got %#v", events[3].Data.Message)
+	}
+	if events[3].Data.Message.Content != "hello world" {
+		t.Fatalf("unexpected final content: %q", events[3].Data.Message.Content)
+	}
+}
+
+func TestStreamConversationMessageEmitsErrorEventOnFailure(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandlerWithConversationProvider(t, &httpConversationStreamProvider{
+		info: conversation.ProviderInfo{
+			Kind:      "stub",
+			BaseURL:   "http://stub",
+			Model:     "stream-model",
+			Streaming: true,
+		},
+		deltas: []string{"partial"},
+		err:    errors.New("provider unavailable"),
+	}, testAuthToken)
+	server := httptest.NewServer(handler)
+	defer server.Close()
+
+	events := postConversationStream(t, server.URL, map[string]any{
+		"prompt": "hello there",
+	}, 3)
+	if events[0].Event != "message-start" || events[1].Event != "text-delta" || events[2].Event != "error" {
+		t.Fatalf("unexpected stream event order: %#v", events)
+	}
+	if events[2].Data.Error != "provider unavailable" {
+		t.Fatalf("unexpected error payload: %#v", events[2].Data)
+	}
+	if events[2].Data.Message == nil || events[2].Data.Message.Status != conversation.StatusError {
+		t.Fatalf("expected error message payload, got %#v", events[2].Data.Message)
+	}
+	if events[2].Data.Message.Content != "partial" {
+		t.Fatalf("expected partial assistant content to persist, got %q", events[2].Data.Message.Content)
+	}
+}
+
 func TestSubmitConversationMessageRejectsMissingAttachmentReference(t *testing.T) {
 	t.Parallel()
 
@@ -311,6 +384,13 @@ type conversationStreamEnvelope struct {
 	Data  conversation.StreamEvent
 }
 
+type httpConversationStreamProvider struct {
+	info   conversation.ProviderInfo
+	deltas []string
+	result conversation.CompletionResult
+	err    error
+}
+
 func readConversationStreamEvents(t *testing.T, reader io.Reader, count int, timeout time.Duration) []conversationStreamEnvelope {
 	t.Helper()
 
@@ -363,6 +443,65 @@ func parseConversationStreamBlock(t *testing.T, block string) conversationStream
 		}
 	}
 	return envelope
+}
+
+func postConversationStream(t *testing.T, baseURL string, payload any, eventCount int) []conversationStreamEnvelope {
+	t.Helper()
+
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatalf("marshal payload: %v", err)
+	}
+	req, err := http.NewRequest(http.MethodPost, baseURL+"/api/v1/agent/conversation/messages/stream", bytes.NewReader(raw))
+	if err != nil {
+		t.Fatalf("new request: %v", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+testAuthToken)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("do request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected stream route 200, got %d body=%s", resp.StatusCode, readAllString(t, resp.Body))
+	}
+	return readConversationStreamEvents(t, resp.Body, eventCount, 2*time.Second)
+}
+
+func readAllString(t *testing.T, reader io.Reader) string {
+	t.Helper()
+
+	raw, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatalf("read all: %v", err)
+	}
+	return string(raw)
+}
+
+func (p *httpConversationStreamProvider) Info() conversation.ProviderInfo {
+	return p.info
+}
+
+func (p *httpConversationStreamProvider) Complete(context.Context, conversation.CompletionRequest) (conversation.CompletionResult, conversation.ProviderInfo, error) {
+	return p.result, p.info, p.err
+}
+
+func (p *httpConversationStreamProvider) CompleteStream(
+	_ context.Context,
+	_ conversation.CompletionRequest,
+	onTextDelta func(string) error,
+) (conversation.CompletionResult, conversation.ProviderInfo, error) {
+	for _, delta := range p.deltas {
+		if onTextDelta != nil {
+			if err := onTextDelta(delta); err != nil {
+				return conversation.CompletionResult{}, p.info, err
+			}
+		}
+	}
+	return p.result, p.info, p.err
 }
 
 func TestCreateAttachmentReferenceRejectsInvalidPath(t *testing.T) {

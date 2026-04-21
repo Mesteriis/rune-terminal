@@ -300,6 +300,105 @@ func TestServiceSubmitUsesProviderPromptOverrideWithoutChangingPersistedUserMess
 	}
 }
 
+func TestServiceSubmitStreamEmitsStructuredEvents(t *testing.T) {
+	t.Parallel()
+
+	service, err := NewService(filepath.Join(t.TempDir(), "conversation.json"), &scriptedStreamProvider{
+		info: ProviderInfo{
+			Kind:      "stub",
+			BaseURL:   "http://stub",
+			Model:     "stream-model",
+			Streaming: true,
+		},
+		deltas: []string{"hello ", "world"},
+		result: CompletionResult{
+			Content: "hello world",
+			Model:   "stream-model",
+		},
+	})
+	if err != nil {
+		t.Fatalf("new service: %v", err)
+	}
+
+	var events []StreamEvent
+	result, err := service.SubmitStream(context.Background(), SubmitRequest{
+		SystemPrompt: "system prompt",
+		Prompt:       "hello",
+	}, func(event StreamEvent) error {
+		events = append(events, event)
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("submit stream: %v", err)
+	}
+	if result.ProviderError != "" {
+		t.Fatalf("unexpected provider error: %s", result.ProviderError)
+	}
+	if len(events) != 4 {
+		t.Fatalf("expected 4 stream events, got %#v", events)
+	}
+	if events[0].Type != StreamEventMessageStart || events[1].Type != StreamEventTextDelta || events[2].Type != StreamEventTextDelta || events[3].Type != StreamEventMessageComplete {
+		t.Fatalf("unexpected event sequence: %#v", events)
+	}
+	if events[0].Message == nil || events[0].Message.Status != StatusStreaming {
+		t.Fatalf("expected streaming start message, got %#v", events[0].Message)
+	}
+	if events[3].Message == nil || events[3].Message.Status != StatusComplete {
+		t.Fatalf("expected complete final message, got %#v", events[3].Message)
+	}
+	if result.Assistant.Content != "hello world" {
+		t.Fatalf("unexpected assistant content: %q", result.Assistant.Content)
+	}
+}
+
+func TestServiceSubmitStreamPreservesPartialAssistantOnError(t *testing.T) {
+	t.Parallel()
+
+	service, err := NewService(filepath.Join(t.TempDir(), "conversation.json"), &scriptedStreamProvider{
+		info: ProviderInfo{
+			Kind:      "stub",
+			BaseURL:   "http://stub",
+			Model:     "stream-model",
+			Streaming: true,
+		},
+		deltas: []string{"partial"},
+		err:    errors.New("provider unavailable"),
+	})
+	if err != nil {
+		t.Fatalf("new service: %v", err)
+	}
+
+	var events []StreamEvent
+	result, err := service.SubmitStream(context.Background(), SubmitRequest{
+		SystemPrompt: "system prompt",
+		Prompt:       "hello",
+	}, func(event StreamEvent) error {
+		events = append(events, event)
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("submit stream: %v", err)
+	}
+	if result.ProviderError != "provider unavailable" {
+		t.Fatalf("unexpected provider error: %q", result.ProviderError)
+	}
+	if result.Assistant.Status != StatusError {
+		t.Fatalf("expected assistant error status, got %s", result.Assistant.Status)
+	}
+	if result.Assistant.Content != "partial" {
+		t.Fatalf("expected partial assistant content, got %q", result.Assistant.Content)
+	}
+	if len(events) != 3 {
+		t.Fatalf("expected 3 stream events, got %#v", events)
+	}
+	if events[0].Type != StreamEventMessageStart || events[1].Type != StreamEventTextDelta || events[2].Type != StreamEventError {
+		t.Fatalf("unexpected event sequence: %#v", events)
+	}
+	if events[2].Message == nil || events[2].Message.Status != StatusError {
+		t.Fatalf("expected error event message, got %#v", events[2].Message)
+	}
+}
+
 type stubProvider struct {
 	info   ProviderInfo
 	result CompletionResult
@@ -334,6 +433,13 @@ type recordingProvider struct {
 	request CompletionRequest
 }
 
+type scriptedStreamProvider struct {
+	info   ProviderInfo
+	deltas []string
+	result CompletionResult
+	err    error
+}
+
 func (p *recordingProvider) Info() ProviderInfo {
 	return p.info
 }
@@ -352,6 +458,29 @@ func (p *recordingProvider) CompleteStream(
 	if onTextDelta != nil && p.result.Content != "" {
 		if err := onTextDelta(p.result.Content); err != nil {
 			return CompletionResult{}, p.info, err
+		}
+	}
+	return p.result, p.info, p.err
+}
+
+func (p *scriptedStreamProvider) Info() ProviderInfo {
+	return p.info
+}
+
+func (p *scriptedStreamProvider) Complete(context.Context, CompletionRequest) (CompletionResult, ProviderInfo, error) {
+	return p.result, p.info, p.err
+}
+
+func (p *scriptedStreamProvider) CompleteStream(
+	_ context.Context,
+	_ CompletionRequest,
+	onTextDelta func(string) error,
+) (CompletionResult, ProviderInfo, error) {
+	for _, delta := range p.deltas {
+		if onTextDelta != nil {
+			if err := onTextDelta(delta); err != nil {
+				return CompletionResult{}, p.info, err
+			}
 		}
 	}
 	return p.result, p.info, p.err
