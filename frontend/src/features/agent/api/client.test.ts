@@ -9,8 +9,23 @@ import {
   setAgentMode,
   setAgentProfile,
   setAgentRole,
+  streamAgentConversationMessage,
 } from '@/features/agent/api/client'
 import { resetRuntimeContextCacheForTests } from '@/shared/api/runtime'
+
+function createStreamResponse(chunks: string[]) {
+  const encoder = new TextEncoder()
+
+  return new ReadableStream<Uint8Array>({
+    start(controller) {
+      for (const chunk of chunks) {
+        controller.enqueue(encoder.encode(chunk))
+      }
+
+      controller.close()
+    },
+  })
+}
 
 describe('agent api client', () => {
   afterEach(() => {
@@ -258,6 +273,105 @@ describe('agent api client', () => {
       workspace_id: 'ws-default',
       action_source: 'frontend.ai.sidebar',
     })
+  })
+
+  it('connects the agent conversation stream through the backend SSE route', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        body: createStreamResponse([
+          ': keepalive\n\n',
+          'event: message-start\ndata: {"type":"message-start","message_id":"msg_2","message":{"id":"msg_2","role":"assistant","content":"","status":"streaming","provider":"stub","model":"stub-model","created_at":"2026-04-21T10:00:01Z"}}\n\n',
+          'event: text-delta\ndata: {"type":"text-delta","message_id":"msg_2","delta":"hello "}\n\n',
+          'event: text-delta\ndata: {"type":"text-delta","message_id":"msg_2","delta":"world"}\n\n',
+          'event: message-complete\ndata: {"type":"message-complete","message_id":"msg_2","message":{"id":"msg_2","role":"assistant","content":"hello world","status":"complete","provider":"stub","model":"stub-model","created_at":"2026-04-21T10:00:01Z"}}\n\n',
+        ]),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    const events: string[] = []
+    const connection = await streamAgentConversationMessage(
+      {
+        prompt: 'hello there',
+        context: {
+          action_source: 'frontend.ai.sidebar',
+          active_widget_id: 'ai-shell-panel',
+          repo_root: '/Users/avm/projects/runa-terminal',
+          widget_context_enabled: true,
+        },
+      },
+      {
+        onEvent: (event) => {
+          events.push(event.type)
+        },
+      },
+    )
+
+    await connection.done
+
+    expect(fetchMock.mock.calls[1]?.[0]).toBe(
+      'http://127.0.0.1:8090/api/v1/agent/conversation/messages/stream',
+    )
+    expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer runtime-token',
+        'Content-Type': 'application/json',
+      },
+    })
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({
+      prompt: 'hello there',
+      context: {
+        action_source: 'frontend.ai.sidebar',
+        active_widget_id: 'ai-shell-panel',
+        repo_root: '/Users/avm/projects/runa-terminal',
+        widget_context_enabled: true,
+      },
+    })
+    expect(events).toEqual(['message-start', 'text-delta', 'text-delta', 'message-complete'])
+  })
+
+  it('rejects unsupported backend stream event types', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        body: createStreamResponse(['event: unknown\ndata: {"type":"unknown"}\n\n']),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    const connection = await streamAgentConversationMessage(
+      {
+        prompt: 'hello there',
+        context: {
+          action_source: 'frontend.ai.sidebar',
+        },
+      },
+      {
+        onEvent: () => {},
+      },
+    )
+
+    await expect(connection.done).rejects.toThrow('Unsupported agent stream event type: unknown')
   })
 
   it('maps selection updates to the existing backend routes', async () => {

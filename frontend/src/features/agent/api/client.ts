@@ -78,7 +78,7 @@ export type AgentConversationMessage = {
   role: 'system' | 'user' | 'assistant'
   content: string
   attachments?: AgentAttachmentReference[]
-  status: 'complete' | 'error'
+  status: 'streaming' | 'complete' | 'error'
   provider?: string
   model?: string
   created_at: string
@@ -107,6 +107,44 @@ export type AgentConversationContext = {
   widget_context_enabled?: boolean
 }
 
+export type AgentConversationStreamEventType = 'message-start' | 'text-delta' | 'message-complete' | 'error'
+
+export type AgentConversationMessageStartEvent = {
+  type: 'message-start'
+  message_id: string
+  message: AgentConversationMessage
+}
+
+export type AgentConversationTextDeltaEvent = {
+  type: 'text-delta'
+  message_id: string
+  delta: string
+}
+
+export type AgentConversationMessageCompleteEvent = {
+  type: 'message-complete'
+  message_id: string
+  message: AgentConversationMessage
+}
+
+export type AgentConversationErrorEvent = {
+  type: 'error'
+  message_id?: string
+  message?: AgentConversationMessage
+  error?: string
+}
+
+export type AgentConversationStreamEvent =
+  | AgentConversationMessageStartEvent
+  | AgentConversationTextDeltaEvent
+  | AgentConversationMessageCompleteEvent
+  | AgentConversationErrorEvent
+
+export type AgentConversationStreamConnection = {
+  close: () => void
+  done: Promise<void>
+}
+
 type AgentConversationResponse = {
   conversation: AgentConversationSnapshot
   provider_error: string
@@ -121,6 +159,12 @@ type APIErrorEnvelope = {
     code?: string
     message?: string
   }
+}
+
+type AgentConversationStreamOptions = {
+  onError?: (error: unknown) => void
+  onEvent: (event: AgentConversationStreamEvent) => void
+  signal?: AbortSignal
 }
 
 export class AgentAPIError extends Error {
@@ -169,6 +213,142 @@ async function requestRuntimeJSON<T>(path: string, init?: RequestInit) {
   return fetchRuntimeJSON<T>(runtimeContext, path, init)
 }
 
+function parseEventBlock(block: string) {
+  const dataLines: string[] = []
+  let eventName = 'message'
+
+  for (const line of block.split('\n')) {
+    if (!line || line.startsWith(':')) {
+      continue
+    }
+
+    const separatorIndex = line.indexOf(':')
+    const field = separatorIndex === -1 ? line : line.slice(0, separatorIndex)
+    const rawValue = separatorIndex === -1 ? '' : line.slice(separatorIndex + 1)
+    const value = rawValue.startsWith(' ') ? rawValue.slice(1) : rawValue
+
+    if (field === 'event') {
+      eventName = value
+      continue
+    }
+
+    if (field === 'data') {
+      dataLines.push(value)
+    }
+  }
+
+  if (dataLines.length === 0) {
+    return null
+  }
+
+  return {
+    data: dataLines.join('\n'),
+    event: eventName,
+  }
+}
+
+function isAbortError(error: unknown) {
+  return error instanceof DOMException
+    ? error.name === 'AbortError'
+    : error instanceof Error && error.name === 'AbortError'
+}
+
+function attachAbortSignal(signal: AbortSignal | undefined, controller: AbortController) {
+  if (!signal) {
+    return () => {}
+  }
+
+  if (signal.aborted) {
+    controller.abort(signal.reason)
+    return () => {}
+  }
+
+  const abortListener = () => controller.abort(signal.reason)
+  signal.addEventListener('abort', abortListener, { once: true })
+
+  return () => {
+    signal.removeEventListener('abort', abortListener)
+  }
+}
+
+function isSupportedAgentConversationStreamEventType(
+  value: string,
+): value is AgentConversationStreamEventType {
+  return (
+    value === 'message-start' || value === 'text-delta' || value === 'message-complete' || value === 'error'
+  )
+}
+
+async function consumeAgentConversationStream(
+  body: ReadableStream<Uint8Array>,
+  onEvent: (event: AgentConversationStreamEvent) => void,
+) {
+  const decoder = new TextDecoder()
+  const reader = body.getReader()
+  let buffer = ''
+
+  const flushBuffer = (flushRemainder = false) => {
+    let normalizedBuffer = buffer.replace(/\r\n?/g, '\n')
+    let boundaryIndex = normalizedBuffer.indexOf('\n\n')
+
+    while (boundaryIndex >= 0) {
+      const eventBlock = normalizedBuffer.slice(0, boundaryIndex)
+      normalizedBuffer = normalizedBuffer.slice(boundaryIndex + 2)
+      const parsedEvent = parseEventBlock(eventBlock)
+
+      if (parsedEvent) {
+        if (!isSupportedAgentConversationStreamEventType(parsedEvent.event)) {
+          throw new Error(`Unsupported agent stream event type: ${parsedEvent.event}`)
+        }
+
+        const payload = JSON.parse(parsedEvent.data) as AgentConversationStreamEvent
+
+        if (payload.type !== parsedEvent.event) {
+          throw new Error(
+            `Agent stream event type mismatch: received ${parsedEvent.event} with payload ${payload.type}`,
+          )
+        }
+
+        onEvent(payload)
+      }
+
+      boundaryIndex = normalizedBuffer.indexOf('\n\n')
+    }
+
+    buffer = flushRemainder ? '' : normalizedBuffer
+
+    if (flushRemainder && normalizedBuffer.trim() !== '') {
+      const parsedEvent = parseEventBlock(normalizedBuffer)
+
+      if (parsedEvent) {
+        if (!isSupportedAgentConversationStreamEventType(parsedEvent.event)) {
+          throw new Error(`Unsupported agent stream event type: ${parsedEvent.event}`)
+        }
+
+        const payload = JSON.parse(parsedEvent.data) as AgentConversationStreamEvent
+
+        if (payload.type !== parsedEvent.event) {
+          throw new Error(
+            `Agent stream event type mismatch: received ${parsedEvent.event} with payload ${payload.type}`,
+          )
+        }
+
+        onEvent(payload)
+      }
+    }
+  }
+
+  while (true) {
+    const { done, value } = await reader.read()
+    buffer += decoder.decode(value ?? new Uint8Array(), { stream: !done })
+    flushBuffer(done)
+
+    if (done) {
+      return
+    }
+  }
+}
+
 async function postRuntimeJSON<T>(path: string, body: Record<string, unknown>) {
   return requestRuntimeJSON<T>(path, {
     body: JSON.stringify(body),
@@ -204,6 +384,71 @@ export async function sendAgentConversationMessage(input: {
     context: input.context,
     prompt: input.prompt,
   })
+}
+
+export async function streamAgentConversationMessage(
+  input: {
+    prompt: string
+    attachments?: AgentAttachmentReference[]
+    context: AgentConversationContext
+  },
+  { onError, onEvent, signal }: AgentConversationStreamOptions,
+): Promise<AgentConversationStreamConnection> {
+  const runtimeContext = await resolveRuntimeContext()
+  const streamAbortController = new AbortController()
+  const detachAbortSignal = attachAbortSignal(signal, streamAbortController)
+
+  const done = (async () => {
+    try {
+      const response = await fetch(`${runtimeContext.baseUrl}/api/v1/agent/conversation/messages/stream`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${runtimeContext.authToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: input.prompt,
+          attachments: input.attachments,
+          context: input.context,
+        }),
+        signal: streamAbortController.signal,
+      })
+
+      if (!response.ok) {
+        let errorPayload: APIErrorEnvelope | null = null
+
+        try {
+          errorPayload = (await response.json()) as APIErrorEnvelope
+        } catch {
+          errorPayload = null
+        }
+
+        throw new AgentAPIError(
+          response.status,
+          errorPayload?.error?.code ?? 'agent_stream_failed',
+          errorPayload?.error?.message ?? `Agent stream failed (${response.status})`,
+        )
+      }
+
+      if (!response.body) {
+        throw new Error('Agent stream response did not provide a readable body')
+      }
+
+      await consumeAgentConversationStream(response.body, onEvent)
+    } catch (error) {
+      if (!isAbortError(error)) {
+        onError?.(error)
+        throw error
+      }
+    } finally {
+      detachAbortSignal()
+    }
+  })()
+
+  return {
+    close: () => streamAbortController.abort(),
+    done,
+  }
 }
 
 export async function createAgentAttachmentReference(input: {
