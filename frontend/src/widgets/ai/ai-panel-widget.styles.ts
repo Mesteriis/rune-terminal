@@ -176,7 +176,7 @@ export const aiChatMessageAssistantGroupStyle: CSSProperties = {
   alignItems: 'flex-start',
 }
 
-export const aiChatMessageBubbleStyle: CSSProperties = {
+export const aiMessageBubbleStyle: CSSProperties = {
   ...aiPlainBlockStyle,
   minWidth: 0,
   display: 'flex',
@@ -184,17 +184,17 @@ export const aiChatMessageBubbleStyle: CSSProperties = {
   padding: 'var(--space-md) var(--space-lg)',
 }
 
-export const aiChatMessageUserBubbleStyle: CSSProperties = {
+export const aiMessageBubbleUserStyle: CSSProperties = {
   background: 'color-mix(in srgb, var(--color-accent-emerald-soft) 56%, var(--color-canvas-elevated))',
   borderColor: 'color-mix(in srgb, var(--color-accent-emerald-soft) 48%, var(--color-border-strong))',
 }
 
-export const aiChatMessageAssistantBubbleStyle: CSSProperties = {
+export const aiMessageBubbleAssistantStyle: CSSProperties = {
   background: 'color-mix(in srgb, var(--color-canvas-elevated) 84%, transparent)',
   borderColor: 'color-mix(in srgb, var(--color-border-strong) 62%, transparent)',
 }
 
-export const aiChatMessageContentStyle: CSSProperties = {
+export const aiMessageBubbleContentStyle: CSSProperties = {
   color: 'var(--color-text-primary)',
   fontFamily: 'var(--font-family-mono)',
   fontSize: '15px',

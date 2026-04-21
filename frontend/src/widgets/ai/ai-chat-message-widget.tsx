@@ -5,8 +5,6 @@ import { Box, Button, Text } from '@/shared/ui/primitives'
 
 import type { ChatMessageView, ChatMode } from '@/features/agent/model/types'
 import {
-  aiChatMessageContentStyle,
-  aiChatMessageBubbleStyle,
   aiChatMessageDetailsLabelStyle,
   aiChatMessageDetailsPanelStyle,
   aiChatMessageDetailsSectionStyle,
@@ -16,13 +14,12 @@ import {
   aiChatMessageGroupStyle,
   aiChatMessageMetaLineStyle,
   aiChatMessageRowStyle,
-  aiChatMessageAssistantBubbleStyle,
   aiChatMessageAssistantGroupStyle,
   aiChatMessageAssistantRowStyle,
-  aiChatMessageUserBubbleStyle,
   aiChatMessageUserGroupStyle,
   aiChatMessageUserRowStyle,
 } from '@/widgets/ai/ai-panel-widget.styles'
+import { MessageBubble } from '@/widgets/ai/message-bubble'
 
 export type AiChatMessageWidgetProps = {
   message: ChatMessageView
@@ -80,17 +77,12 @@ export function AiChatMessageWidget({ message, mode }: AiChatMessageWidgetProps)
             ...(isUser ? aiChatMessageUserGroupStyle : aiChatMessageAssistantGroupStyle),
           }}
         >
-          <Box
-            runaComponent={`ai-chat-message-${message.id}-bubble`}
-            style={{
-              ...aiChatMessageBubbleStyle,
-              ...(isUser ? aiChatMessageUserBubbleStyle : aiChatMessageAssistantBubbleStyle),
-            }}
-          >
-            <Text runaComponent={`ai-chat-message-${message.id}-content`} style={aiChatMessageContentStyle}>
-              {message.content}
-            </Text>
-          </Box>
+          <MessageBubble
+            content={message.content}
+            meta={message.meta}
+            role={message.role}
+            scopeId={message.id}
+          />
           {metaLine ? (
             <Text runaComponent={`ai-chat-message-${message.id}-meta`} style={aiChatMessageMetaLineStyle}>
               {metaLine}
