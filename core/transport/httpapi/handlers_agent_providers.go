@@ -13,6 +13,7 @@ type createProviderPayload struct {
 	DisplayName string                     `json:"display_name"`
 	Enabled     *bool                      `json:"enabled,omitempty"`
 	Ollama      *createOllamaConfigPayload `json:"ollama,omitempty"`
+	Codex       *createCodexConfigPayload  `json:"codex,omitempty"`
 	OpenAI      *createOpenAIConfigPayload `json:"openai,omitempty"`
 	Proxy       *createProxyConfigPayload  `json:"proxy,omitempty"`
 }
@@ -21,6 +22,7 @@ type updateProviderPayload struct {
 	DisplayName *string                    `json:"display_name,omitempty"`
 	Enabled     *bool                      `json:"enabled,omitempty"`
 	Ollama      *updateOllamaConfigPayload `json:"ollama,omitempty"`
+	Codex       *updateCodexConfigPayload  `json:"codex,omitempty"`
 	OpenAI      *updateOpenAIConfigPayload `json:"openai,omitempty"`
 	Proxy       *updateProxyConfigPayload  `json:"proxy,omitempty"`
 }
@@ -33,6 +35,16 @@ type createOllamaConfigPayload struct {
 type updateOllamaConfigPayload struct {
 	BaseURL *string `json:"base_url,omitempty"`
 	Model   *string `json:"model,omitempty"`
+}
+
+type createCodexConfigPayload struct {
+	Model        string `json:"model,omitempty"`
+	AuthFilePath string `json:"auth_file_path,omitempty"`
+}
+
+type updateCodexConfigPayload struct {
+	Model        *string `json:"model,omitempty"`
+	AuthFilePath *string `json:"auth_file_path,omitempty"`
 }
 
 type createOpenAIConfigPayload struct {
@@ -109,6 +121,7 @@ func (api *API) handleCreateProvider(w http.ResponseWriter, r *http.Request) {
 		DisplayName: payload.DisplayName,
 		Enabled:     payload.Enabled,
 		Ollama:      mapCreateOllamaProviderInput(payload.Ollama),
+		Codex:       mapCreateCodexProviderInput(payload.Codex),
 		OpenAI:      mapCreateOpenAIProviderInput(payload.OpenAI),
 		Proxy:       mapCreateProxyProviderInput(payload.Proxy),
 	})
@@ -137,6 +150,7 @@ func (api *API) handleUpdateProvider(w http.ResponseWriter, r *http.Request) {
 		DisplayName: payload.DisplayName,
 		Enabled:     payload.Enabled,
 		Ollama:      mapUpdateOllamaProviderInput(payload.Ollama),
+		Codex:       mapUpdateCodexProviderInput(payload.Codex),
 		OpenAI:      mapUpdateOpenAIProviderInput(payload.OpenAI),
 		Proxy:       mapUpdateProxyProviderInput(payload.Proxy),
 	})
@@ -199,6 +213,26 @@ func mapUpdateOllamaProviderInput(payload *updateOllamaConfigPayload) *agent.Upd
 	return &agent.UpdateOllamaProviderInput{
 		BaseURL: payload.BaseURL,
 		Model:   payload.Model,
+	}
+}
+
+func mapCreateCodexProviderInput(payload *createCodexConfigPayload) *agent.CreateCodexProviderInput {
+	if payload == nil {
+		return nil
+	}
+	return &agent.CreateCodexProviderInput{
+		Model:        payload.Model,
+		AuthFilePath: payload.AuthFilePath,
+	}
+}
+
+func mapUpdateCodexProviderInput(payload *updateCodexConfigPayload) *agent.UpdateCodexProviderInput {
+	if payload == nil {
+		return nil
+	}
+	return &agent.UpdateCodexProviderInput{
+		Model:        payload.Model,
+		AuthFilePath: payload.AuthFilePath,
 	}
 }
 

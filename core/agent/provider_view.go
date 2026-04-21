@@ -1,6 +1,10 @@
 package agent
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/Mesteriis/rune-terminal/core/codexauth"
+)
 
 func providerCatalogFromState(state State) ProviderCatalog {
 	views := make([]ProviderView, 0, len(state.Providers))
@@ -30,6 +34,9 @@ func providerViewFromRecord(record ProviderRecord, activeProviderID string) Prov
 			Model:   record.Ollama.Model,
 		}
 	}
+	if record.Codex != nil {
+		view.Codex = codexProviderSettingsViewFromSettings(record.Codex)
+	}
 	if record.OpenAI != nil {
 		view.OpenAI = &OpenAIProviderSettingsView{
 			BaseURL:   record.OpenAI.BaseURL,
@@ -49,6 +56,12 @@ func cloneProviderRecord(record ProviderRecord) ProviderRecord {
 		cloned.Ollama = &OllamaProviderSettings{
 			BaseURL: record.Ollama.BaseURL,
 			Model:   record.Ollama.Model,
+		}
+	}
+	if record.Codex != nil {
+		cloned.Codex = &CodexProviderSettings{
+			Model:        record.Codex.Model,
+			AuthFilePath: record.Codex.AuthFilePath,
 		}
 	}
 	if record.OpenAI != nil {
@@ -71,4 +84,32 @@ func cloneProviderRecords(records []ProviderRecord) []ProviderRecord {
 		cloned = append(cloned, cloneProviderRecord(record))
 	}
 	return cloned
+}
+
+func codexProviderSettingsViewFromSettings(settings *CodexProviderSettings) *CodexProviderSettingsView {
+	if settings == nil {
+		return nil
+	}
+	view := &CodexProviderSettingsView{
+		Model:        settings.Model,
+		AuthFilePath: codexauth.ResolveAuthFilePath(settings.AuthFilePath),
+		AuthState:    codexauth.StatusMissing,
+	}
+	state, err := codexauth.LoadState(settings.AuthFilePath)
+	if err != nil {
+		view.StatusMessage = state.StatusMessage
+		view.AuthMode = state.AuthMode
+		view.LastRefresh = state.LastRefresh
+		view.AccountID = state.AccountID
+		if state.Status != "" {
+			view.AuthState = state.Status
+		}
+		return view
+	}
+	view.AuthMode = state.AuthMode
+	view.AuthState = state.Status
+	view.StatusMessage = state.StatusMessage
+	view.LastRefresh = state.LastRefresh
+	view.AccountID = state.AccountID
+	return view
 }

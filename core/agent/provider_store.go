@@ -9,6 +9,7 @@ import (
 )
 
 const defaultOpenAIBaseURL = "https://api.openai.com/v1"
+const defaultCodexModel = "gpt-5-codex"
 const defaultOpenAIModel = "gpt-4o-mini"
 
 func (s *Store) ProvidersCatalog() ProviderCatalog {
@@ -124,15 +125,23 @@ func buildProviderRecord(input CreateProviderInput) (ProviderRecord, error) {
 
 	switch kind {
 	case ProviderKindOllama:
-		if input.Ollama == nil || input.OpenAI != nil || input.Proxy != nil {
+		if input.Ollama == nil || input.Codex != nil || input.OpenAI != nil || input.Proxy != nil {
 			return ProviderRecord{}, fmt.Errorf("%w: ollama config is required", ErrProviderInvalidConfig)
 		}
 		record.Ollama = &OllamaProviderSettings{
 			BaseURL: normalizeProviderBaseURL(input.Ollama.BaseURL),
 			Model:   strings.TrimSpace(input.Ollama.Model),
 		}
+	case ProviderKindCodex:
+		if input.Codex == nil || input.Ollama != nil || input.OpenAI != nil || input.Proxy != nil {
+			return ProviderRecord{}, fmt.Errorf("%w: codex config is required", ErrProviderInvalidConfig)
+		}
+		record.Codex = &CodexProviderSettings{
+			Model:        strings.TrimSpace(firstNonEmpty(input.Codex.Model, defaultCodexModel)),
+			AuthFilePath: strings.TrimSpace(input.Codex.AuthFilePath),
+		}
 	case ProviderKindOpenAI:
-		if input.OpenAI == nil || input.Ollama != nil || input.Proxy != nil {
+		if input.OpenAI == nil || input.Ollama != nil || input.Codex != nil || input.Proxy != nil {
 			return ProviderRecord{}, fmt.Errorf("%w: openai config is required", ErrProviderInvalidConfig)
 		}
 		record.OpenAI = &OpenAIProviderSettings{
@@ -169,7 +178,7 @@ func applyProviderUpdate(record ProviderRecord, input UpdateProviderInput) (Prov
 
 	switch updated.Kind {
 	case ProviderKindOllama:
-		if input.OpenAI != nil || input.Proxy != nil {
+		if input.Codex != nil || input.OpenAI != nil || input.Proxy != nil {
 			return ProviderRecord{}, fmt.Errorf("%w: openai config does not match provider kind", ErrProviderInvalidConfig)
 		}
 		if input.Ollama != nil {
@@ -183,8 +192,23 @@ func applyProviderUpdate(record ProviderRecord, input UpdateProviderInput) (Prov
 				updated.Ollama.Model = strings.TrimSpace(*input.Ollama.Model)
 			}
 		}
+	case ProviderKindCodex:
+		if input.Ollama != nil || input.OpenAI != nil || input.Proxy != nil {
+			return ProviderRecord{}, fmt.Errorf("%w: codex config does not match provider kind", ErrProviderInvalidConfig)
+		}
+		if input.Codex != nil {
+			if updated.Codex == nil {
+				updated.Codex = &CodexProviderSettings{}
+			}
+			if input.Codex.Model != nil {
+				updated.Codex.Model = strings.TrimSpace(*input.Codex.Model)
+			}
+			if input.Codex.AuthFilePath != nil {
+				updated.Codex.AuthFilePath = strings.TrimSpace(*input.Codex.AuthFilePath)
+			}
+		}
 	case ProviderKindOpenAI:
-		if input.Ollama != nil || input.Proxy != nil {
+		if input.Ollama != nil || input.Codex != nil || input.Proxy != nil {
 			return ProviderRecord{}, fmt.Errorf("%w: ollama config does not match provider kind", ErrProviderInvalidConfig)
 		}
 		if input.OpenAI != nil {
@@ -208,7 +232,7 @@ func applyProviderUpdate(record ProviderRecord, input UpdateProviderInput) (Prov
 			}
 		}
 	case ProviderKindProxy:
-		if input.Ollama != nil || input.OpenAI != nil {
+		if input.Ollama != nil || input.Codex != nil || input.OpenAI != nil {
 			return ProviderRecord{}, fmt.Errorf("%w: proxy config does not match provider kind", ErrProviderInvalidConfig)
 		}
 		if input.Proxy != nil {
@@ -237,14 +261,21 @@ func validateProviderRecord(record ProviderRecord) error {
 	}
 	switch record.Kind {
 	case ProviderKindOllama:
-		if record.Ollama == nil || record.OpenAI != nil || record.Proxy != nil {
+		if record.Ollama == nil || record.Codex != nil || record.OpenAI != nil || record.Proxy != nil {
 			return fmt.Errorf("%w: ollama settings are required", ErrProviderInvalidConfig)
 		}
 		if strings.TrimSpace(record.Ollama.BaseURL) == "" {
 			return fmt.Errorf("%w: ollama base_url is required", ErrProviderInvalidConfig)
 		}
+	case ProviderKindCodex:
+		if record.Codex == nil || record.Ollama != nil || record.OpenAI != nil || record.Proxy != nil {
+			return fmt.Errorf("%w: codex settings are required", ErrProviderInvalidConfig)
+		}
+		if strings.TrimSpace(record.Codex.Model) == "" {
+			return fmt.Errorf("%w: codex model is required", ErrProviderInvalidConfig)
+		}
 	case ProviderKindOpenAI:
-		if record.OpenAI == nil || record.Ollama != nil || record.Proxy != nil {
+		if record.OpenAI == nil || record.Ollama != nil || record.Codex != nil || record.Proxy != nil {
 			return fmt.Errorf("%w: openai settings are required", ErrProviderInvalidConfig)
 		}
 		if strings.TrimSpace(record.OpenAI.BaseURL) == "" {
@@ -283,6 +314,8 @@ func defaultProviderDisplayName(kind ProviderKind, raw string) string {
 		return name
 	}
 	switch kind {
+	case ProviderKindCodex:
+		return "Codex"
 	case ProviderKindOpenAI:
 		return "OpenAI"
 	case ProviderKindProxy:

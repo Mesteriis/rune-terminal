@@ -5,12 +5,15 @@ import (
 	"testing"
 )
 
-func TestSupportedProviderKindsIncludeOllamaOpenAIAndProxy(t *testing.T) {
+func TestSupportedProviderKindsIncludeOllamaCodexOpenAIAndProxy(t *testing.T) {
 	t.Parallel()
 
 	kinds := SupportedProviderKinds()
 	if !slices.Contains(kinds, ProviderKindOllama) {
 		t.Fatalf("expected ollama support, got %#v", kinds)
+	}
+	if !slices.Contains(kinds, ProviderKindCodex) {
+		t.Fatalf("expected codex support, got %#v", kinds)
 	}
 	if !slices.Contains(kinds, ProviderKindOpenAI) {
 		t.Fatalf("expected openai support, got %#v", kinds)

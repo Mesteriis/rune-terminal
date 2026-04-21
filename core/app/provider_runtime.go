@@ -20,6 +20,14 @@ func defaultConversationProviderFactory(record agent.ProviderRecord) (conversati
 			BaseURL: record.Ollama.BaseURL,
 			Model:   record.Ollama.Model,
 		}), nil
+	case agent.ProviderKindCodex:
+		if record.Codex == nil {
+			return nil, fmt.Errorf("%w: codex settings are required", agent.ErrProviderInvalidConfig)
+		}
+		return conversation.NewCodexProvider(conversation.CodexProviderConfig{
+			Model:        record.Codex.Model,
+			AuthFilePath: record.Codex.AuthFilePath,
+		}), nil
 	case agent.ProviderKindOpenAI:
 		if record.OpenAI == nil {
 			return nil, fmt.Errorf("%w: openai settings are required", agent.ErrProviderInvalidConfig)

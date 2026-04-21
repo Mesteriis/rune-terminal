@@ -10,6 +10,7 @@ type ProviderKind string
 
 const (
 	ProviderKindOllama ProviderKind = "ollama"
+	ProviderKindCodex  ProviderKind = "codex"
 	ProviderKindOpenAI ProviderKind = "openai"
 	ProviderKindProxy  ProviderKind = "proxy"
 )
@@ -27,6 +28,11 @@ type OpenAIProviderSettings struct {
 	APIKeySecret string `json:"api_key_secret,omitempty"`
 }
 
+type CodexProviderSettings struct {
+	Model        string `json:"model"`
+	AuthFilePath string `json:"auth_file_path,omitempty"`
+}
+
 type ProxyProviderSettings struct {
 	Model    string            `json:"model"`
 	Channels []aiproxy.Channel `json:"channels"`
@@ -38,6 +44,7 @@ type ProviderRecord struct {
 	DisplayName string                  `json:"display_name"`
 	Enabled     bool                    `json:"enabled"`
 	Ollama      *OllamaProviderSettings `json:"ollama,omitempty"`
+	Codex       *CodexProviderSettings  `json:"codex,omitempty"`
 	OpenAI      *OpenAIProviderSettings `json:"openai,omitempty"`
 	Proxy       *ProxyProviderSettings  `json:"proxy,omitempty"`
 	CreatedAt   time.Time               `json:"created_at"`
@@ -48,6 +55,16 @@ type OpenAIProviderSettingsView struct {
 	BaseURL   string `json:"base_url"`
 	Model     string `json:"model"`
 	HasAPIKey bool   `json:"has_api_key"`
+}
+
+type CodexProviderSettingsView struct {
+	Model         string    `json:"model"`
+	AuthFilePath  string    `json:"auth_file_path,omitempty"`
+	AuthMode      string    `json:"auth_mode,omitempty"`
+	AuthState     string    `json:"auth_state"`
+	StatusMessage string    `json:"status_message,omitempty"`
+	LastRefresh   time.Time `json:"last_refresh,omitempty"`
+	AccountID     string    `json:"account_id,omitempty"`
 }
 
 type ProxyChannelSettingsView struct {
@@ -78,6 +95,7 @@ type ProviderView struct {
 	Enabled     bool                        `json:"enabled"`
 	Active      bool                        `json:"active"`
 	Ollama      *OllamaProviderSettings     `json:"ollama,omitempty"`
+	Codex       *CodexProviderSettingsView  `json:"codex,omitempty"`
 	OpenAI      *OpenAIProviderSettingsView `json:"openai,omitempty"`
 	Proxy       *ProxyProviderSettingsView  `json:"proxy,omitempty"`
 	CreatedAt   time.Time                   `json:"created_at"`
@@ -95,6 +113,7 @@ type CreateProviderInput struct {
 	DisplayName string
 	Enabled     *bool
 	Ollama      *CreateOllamaProviderInput
+	Codex       *CreateCodexProviderInput
 	OpenAI      *CreateOpenAIProviderInput
 	Proxy       *CreateProxyProviderInput
 }
@@ -103,6 +122,7 @@ type UpdateProviderInput struct {
 	DisplayName *string
 	Enabled     *bool
 	Ollama      *UpdateOllamaProviderInput
+	Codex       *UpdateCodexProviderInput
 	OpenAI      *UpdateOpenAIProviderInput
 	Proxy       *UpdateProxyProviderInput
 }
@@ -115,6 +135,16 @@ type CreateOllamaProviderInput struct {
 type UpdateOllamaProviderInput struct {
 	BaseURL *string
 	Model   *string
+}
+
+type CreateCodexProviderInput struct {
+	Model        string
+	AuthFilePath string
+}
+
+type UpdateCodexProviderInput struct {
+	Model        *string
+	AuthFilePath *string
 }
 
 type CreateOpenAIProviderInput struct {
@@ -147,7 +177,7 @@ type UpdateProxyProviderInput struct {
 }
 
 func SupportedProviderKinds() []ProviderKind {
-	return []ProviderKind{ProviderKindOllama, ProviderKindOpenAI, ProviderKindProxy}
+	return []ProviderKind{ProviderKindOllama, ProviderKindCodex, ProviderKindOpenAI, ProviderKindProxy}
 }
 
 func (p ProviderRecord) GetID() string {

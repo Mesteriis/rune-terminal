@@ -97,6 +97,59 @@ func TestProvidersCatalogMasksSecrets(t *testing.T) {
 	}
 }
 
+func TestProvidersCatalogIncludesCodexAuthStatusWithoutSecrets(t *testing.T) {
+	t.Parallel()
+
+	authPath := filepath.Join(t.TempDir(), "auth.json")
+	if err := os.WriteFile(authPath, []byte(`{
+  "auth_mode": "chatgpt",
+  "tokens": {
+    "access_token": "access-token",
+    "account_id": "acct_123"
+  }
+}`), 0o600); err != nil {
+		t.Fatalf("WriteFile error: %v", err)
+	}
+
+	store, err := NewStore(filepath.Join(t.TempDir(), "agent.json"))
+	if err != nil {
+		t.Fatalf("NewStore error: %v", err)
+	}
+	created, catalog, err := store.CreateProvider(CreateProviderInput{
+		Kind: ProviderKindCodex,
+		Codex: &CreateCodexProviderInput{
+			Model:        defaultCodexModel,
+			AuthFilePath: authPath,
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateProvider error: %v", err)
+	}
+
+	var codexView *ProviderView
+	for _, provider := range catalog.Providers {
+		if provider.ID == created.ID {
+			providerCopy := provider
+			codexView = &providerCopy
+			break
+		}
+	}
+	if codexView == nil || codexView.Codex == nil {
+		t.Fatalf("expected codex provider view, got %#v", catalog.Providers)
+	}
+	if codexView.Codex.AuthState != "ready" || codexView.Codex.AuthMode != "chatgpt" {
+		t.Fatalf("unexpected codex provider view: %#v", codexView.Codex)
+	}
+
+	raw, err := json.Marshal(codexView)
+	if err != nil {
+		t.Fatalf("Marshal error: %v", err)
+	}
+	if contains := string(raw); strings.Contains(contains, "access-token") {
+		t.Fatalf("expected codex auth state to stay masked, got %s", contains)
+	}
+}
+
 func TestNewStoreMigratesLegacyStateWithoutProviders(t *testing.T) {
 	t.Parallel()
 

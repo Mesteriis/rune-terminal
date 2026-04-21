@@ -56,9 +56,11 @@ Go Core
   Terminal launches are connection-aware: local sessions use the current shell, while SSH sessions launch the system `ssh` binary inside the PTY.
 - `core/conversation`
   Manages the persisted AI transcript and the narrow provider adapter for real assistant responses.
-  The conversation path now resolves providers from backend-owned agent config and can route either to direct providers (`ollama`, `openai`) or to an internal multi-channel AI proxy provider.
+  The conversation path now resolves providers from backend-owned agent config and can route either to direct providers (`ollama`, `codex`, `openai`) or to an internal multi-channel AI proxy provider.
 - `core/aiproxy`
   Owns backend-local AI proxy routing for conversation traffic: channel catalog validation, base URL and auth strategy selection, key masking, circuit-breaker-style failover, and protocol adapters for OpenAI-compatible, Claude-compatible, and Gemini upstreams.
+- `core/codexauth`
+  Resolves local Codex CLI auth state from `~/.codex/auth.json` so the backend can use existing machine login state without exposing secrets through transport or frontend state.
 - `core/toolruntime`
   Hosts tool registry, operation planning, approval handling, execution results and audit emission.
 - `core/agent`
