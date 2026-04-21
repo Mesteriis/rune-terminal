@@ -337,8 +337,17 @@
 
 - `core` runtime now exposes `GET /api/v1/health` and keeps DB ownership in-process.
 - SQLite opens through `core/db/open.go` with runtime pragmas (`WAL`, `synchronous=NORMAL`, `busy_timeout=5000`) and runs embedded SQL migrations from `core/db/migrations/*.sql` before API readiness.
-- Task runtime schema is versioned by migrations (`tasks`, `task_events`), and task lifecycle transitions are persisted in `task_events`.
+- Task runtime schema is versioned by migrations (`tasks`, `task_events`) and now includes persisted retry metadata on `tasks`:
+  - `retry_count`
+  - `max_retries`
+  - `retry_backoff_seconds`
+  - `last_error_at`
+  - `next_retry_at`
+- Task lifecycle transitions are persisted in `task_events`, including retry visibility transitions (`running -> pending` with `retry_scheduled`, `running -> failed` with `retry_exhausted`).
 - `core` task API is wired under `/api/v1/tasks/*` (`create`, `claim`, `done`, `fail`, `active`, `stats`); watcher never accesses SQLite directly.
+- Task create API supports optional retry policy (`max_retries`, `retry_backoff_seconds`); defaults preserve legacy behavior (no retries unless explicitly configured).
+- Retry scheduling is decided only in core state transitions: on failure with remaining attempts, task is moved back to `pending`, ownership is cleared, `retry_count` increments, and `next_retry_at` is set with bounded exponential backoff (`1..3600s` cap). Exhausted attempts finalize as `failed`.
+- Task claim readiness uses effective ready time `COALESCE(next_retry_at, run_at)`, so retry backoff delay is enforced through the same persisted claim pipeline.
 - Desktop watcher spawn is explicit and identity-bound:
   - `rterm-core watcher --backend=<core_url> --listen=127.0.0.1:7788 --worker-id=<worker_id> --shutdown-token=<shutdown_token>`
   - watcher metadata is persisted in `~/.rterm/runtime.json` and validated through `/health` + `/watcher/state`.
@@ -353,6 +362,9 @@
 - Verified in this branch via local commands:
   - `go test ./core/... ./cmd/rterm-core/... -count=1`
   - `cargo check -q --manifest-path apps/desktop/src-tauri/Cargo.toml`
+- Targeted retry/backoff tests are present in:
+  - `core/db/migrator_retry_test.go` (fresh/existing migration safety for retry schema)
+  - `core/tasks/retry_test.go` (retry scheduling, backoff claim gating, eventual success, exhaustion, shutdown-path consistency)
 - Targeted shutdown-order tests are now present in `cmd/rterm-core/main_watcher_test.go` and cover:
   - shutdown wait for worker-drain before return
   - long-running task timeout path finalizing to failed
@@ -367,8 +379,8 @@
 
 ### Task runtime limitations
 
-- no retry/backoff yet
 - no cron/periodic scheduling yet
 - no multi-watcher coordination yet
 - no distributed execution yet
 - no rollback migration support yet
+- no jitter/decorrelated backoff strategy yet (current backoff is bounded doubling)
