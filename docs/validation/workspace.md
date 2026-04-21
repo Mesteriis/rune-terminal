@@ -335,22 +335,30 @@
 
 ### Runtime lifecycle evidence
 
-- `core` health endpoint was validated in unit test coverage for transport (`core/transport/httpapi`) and is now implemented as `GET /api/v1/health` with body `service`, `status`, and `pid` as required for runtime attachment validation.
-- `watcher` spawn now uses an explicit CLI contract: `rterm-core watcher --backend=<core_url> --listen=127.0.0.1:7788 --worker-id=<worker_id> --shutdown-token=<shutdown_token>`.
-- `runtime.json` persists both process records in `~/.rterm/runtime.json`:
-  - `core`: `pid`, `url`, `started_by_ui`, `auth_token`
-  - `watcher`: `pid`, `url`, `worker_id`, `shutdown_token`, `started_by_ui`.
-- attach path validates saved records against endpoints (`/api/v1/health` for core, `/health` and `/watcher/state` for watcher) and only reuses processes when identity and metadata checks match; otherwise it respawns.
-- `Tauri` shutdown now performs a graceful watcher shutdown call first via `POST /watcher/shutdown` using the stored `shutdown_token` and `worker_id`, then stops the process as fallback.
-- `watcher` shutdown endpoint stops polling and completes active-task contract (`fetch /tasks/active`, loop until zero, mark failed on timeout at 10s).
+- `core` runtime now exposes `GET /api/v1/health` and keeps DB ownership in-process.
+- SQLite opens through `core/db/open.go` with runtime pragmas (`WAL`, `synchronous=NORMAL`, `busy_timeout=5000`) and runs embedded SQL migrations from `core/db/migrations/*.sql` before API readiness.
+- Task runtime schema is versioned by migrations (`tasks`, `task_events`), and task lifecycle transitions are persisted in `task_events`.
+- `core` task API is wired under `/api/v1/tasks/*` (`create`, `claim`, `done`, `fail`, `active`, `stats`); watcher never accesses SQLite directly.
+- Desktop watcher spawn is explicit and identity-bound:
+  - `rterm-core watcher --backend=<core_url> --listen=127.0.0.1:7788 --worker-id=<worker_id> --shutdown-token=<shutdown_token>`
+  - watcher metadata is persisted in `~/.rterm/runtime.json` and validated through `/health` + `/watcher/state`.
+- Desktop ephemeral shutdown uses active-task guard (`GET /api/v1/tasks/active` with Bearer auth), then requests watcher shutdown via `POST /watcher/shutdown?token=...&worker_id=...`, and only falls back to process kill on request failure.
+- Watcher shutdown endpoint validates ownership proof, stops polling, and triggers graceful task finalization logic (finish within grace window, cancel/mark failed on timeout).
 - Verified in this branch via local commands:
-  - `go test ./cmd/rterm-core ./core/transport/httpapi -count=1`
+  - `go test ./core/... ./cmd/rterm-core/... -count=1`
   - `cargo check -q --manifest-path apps/desktop/src-tauri/Cargo.toml`
-- Runtime scenarios still unverified in this sandbox:
-  - first UI launch spawns core+watcher and writes `~/.rterm/runtime.json`
-  - second UI launch attaches without duplicate core/watcher
-  - graceful watcher shutdown endpoint call from Tauri on close (`POST /watcher/shutdown` with ownership proof)
-  - persistent mode detach and restart-reattach behavior
-  - no-duplicate invariant under repeated attach/relaunch cycles
+- Runtime smoke scenarios still unverified in this sandbox:
+  - first launch spawn + runtime file write
+  - second launch attach without duplicate core/watcher
+  - persistent detach and relaunch attach
+  - no-duplicate invariant across repeated relaunch cycles
 
-  These are blocked by sandbox network restrictions in this environment (`listen tcp ...: bind: operation not permitted`), so they are deferred to a local network-capable test run.
+  These remain deferred to a local network-capable run due sandbox bind restrictions.
+
+### Task runtime limitations
+
+- no retry/backoff yet
+- no cron/periodic scheduling yet
+- no multi-watcher coordination yet
+- no distributed execution yet
+- no rollback migration support yet
