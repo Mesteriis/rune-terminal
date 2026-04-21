@@ -218,3 +218,40 @@ func TestDeleteProviderRejectsActiveProvider(t *testing.T) {
 		t.Fatalf("expected 409, got %d body=%s", recorder.Code, recorder.Body.String())
 	}
 }
+
+func TestUpdateProviderRejectsClearingSecretWithoutReplacement(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+	createRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(createRecorder, authedJSONRequest(t, http.MethodPost, "/api/v1/agent/providers", map[string]any{
+		"kind": "openai",
+		"openai": map[string]any{
+			"base_url": "https://api.openai.com/v1",
+			"model":    "gpt-4o-mini",
+			"api_key":  "sk-provider-test",
+		},
+	}))
+	var created struct {
+		Provider struct {
+			ID string `json:"id"`
+		} `json:"provider"`
+	}
+	if err := json.Unmarshal(createRecorder.Body.Bytes(), &created); err != nil {
+		t.Fatalf("unmarshal create: %v", err)
+	}
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPatch, "/api/v1/agent/providers/"+created.Provider.ID, map[string]any{
+		"openai": map[string]any{
+			"clear_api_key": true,
+		},
+	}))
+
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+	if strings.Contains(recorder.Body.String(), "sk-provider-test") {
+		t.Fatalf("expected response to stay masked, got %s", recorder.Body.String())
+	}
+}

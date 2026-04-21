@@ -180,6 +180,9 @@ func applyProviderUpdate(record ProviderRecord, input UpdateProviderInput) (Prov
 			return ProviderRecord{}, fmt.Errorf("%w: ollama config does not match provider kind", ErrProviderInvalidConfig)
 		}
 		if input.OpenAI != nil {
+			if input.OpenAI.ClearAPIKey && input.OpenAI.APIKey == nil {
+				return ProviderRecord{}, fmt.Errorf("%w: openai api_key replacement is required when clearing the stored secret", ErrProviderInvalidConfig)
+			}
 			if updated.OpenAI == nil {
 				updated.OpenAI = &OpenAIProviderSettings{}
 			}
