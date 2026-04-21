@@ -3,63 +3,50 @@
 ## Last verified state
 
 - Date: `2026-04-21`
-- State: `AUDITED`
+- State: `PARTIALLY VERIFIED`
 - Scope:
-  - backend AI agent HTTP surface and typed request/response contracts
-  - frontend AI sidebar entry points and current demo/static state path
-  - exact frontend integration seams that can switch to backend contracts without changing formatting
+  - frontend AI sidebar main path now loads backend conversation state from `GET /api/v1/agent/conversation`
+  - existing textarea + send icon now submit to `POST /api/v1/agent/conversation/messages`
+  - runtime transport resolves through the shared frontend runtime context; no localhost hardcoding was introduced
+  - current formatting, spacing, layout, hierarchy, typography, and control placement were intentionally preserved
+  - profile/role/mode selection and attachment reference UI remain blocked because there is no existing approved visible control for them in the current AI sidebar
 
 ## Commands/tests used
 
-- `rg -n "agent|conversation|profile|role|mode|attachments/references" README.md docs frontend/src core`
-- `sed -n '1,240p' core/transport/httpapi/handlers_agent.go`
-- `sed -n '1,260p' core/transport/httpapi/handlers_agent_conversation.go`
-- `sed -n '1,260p' core/agent/view.go`
-- `sed -n '1,260p' core/conversation/types.go`
-- `sed -n '1,260p' core/app/conversation_actions.go`
-- `sed -n '1,260p' core/app/conversation_attachments.go`
-- `sed -n '1,260p' core/transport/httpapi/handlers_agent_test.go`
-- `sed -n '1,380p' core/transport/httpapi/handlers_agent_conversation_test.go`
-- `sed -n '1,260p' frontend/src/app/app-ai-sidebar.tsx`
-- `sed -n '1,260p' frontend/src/widgets/ai/ai-panel-widget.tsx`
-- `sed -n '1,260p' frontend/src/widgets/ai/ai-composer-widget.tsx`
-- `sed -n '1,260p' frontend/src/widgets/ai/ai-prompt-card-widget.tsx`
-- `sed -n '1,260p' frontend/src/widgets/ai/ai-panel-widget.mock.ts`
-- `sed -n '1,280p' frontend/src/shared/api/runtime.ts`
-- `sed -n '1,280p' frontend/src/features/commander/api/client.ts`
+- Repository/contract audit:
+  - `rg -n "agent|conversation|profile|role|mode|attachments/references" README.md docs frontend/src core`
+  - `sed -n '1,240p' core/transport/httpapi/handlers_agent.go`
+  - `sed -n '1,260p' core/transport/httpapi/handlers_agent_conversation.go`
+  - `sed -n '1,260p' core/agent/view.go`
+  - `sed -n '1,260p' core/conversation/types.go`
+  - `sed -n '1,260p' core/app/conversation_actions.go`
+  - `sed -n '1,260p' core/app/conversation_attachments.go`
+  - `sed -n '1,380p' core/transport/httpapi/handlers_agent_conversation_test.go`
+- Frontend targeted validation:
+  - `npm --prefix frontend run lint:active`
+  - `npm --prefix frontend run test -- src/features/agent/api/client.test.ts`
+  - `npm --prefix frontend run test -- src/widgets/ai/ai-panel-widget.test.tsx src/features/agent/api/client.test.ts`
+  - `npm --prefix frontend run build`
+- Desktop startup smoke:
+  - `npm run tauri:dev`
+  - observed successful compile/start on the supported npm Tauri entrypoint before manual stop
 
 ## Known limitations
 
-- The current AI sidebar is still frontend-only mock composition; no agent feature/model layer exists under `frontend/src/features/`.
-- No visible profile, role, or mode selector exists in the current AI sidebar.
-- No explicit attachment-reference UI path exists in the current AI sidebar.
-- The existing AI header settings button and composer options button are presentational only in this audit slice; treating them as selector or attachment entry points would require a new approved UI behavior.
+- No current visible profile, role, or mode selector exists in the AI sidebar, so the existing selection routes are not wired to the UI:
+  - `GET /api/v1/agent`
+  - `PUT /api/v1/agent/selection/profile`
+  - `PUT /api/v1/agent/selection/role`
+  - `PUT /api/v1/agent/selection/mode`
+- No current visible attachment-reference control exists in the AI sidebar, so `POST /api/v1/agent/conversation/attachments/references` is implemented in the frontend API client but not wired to the UI.
+- The existing AI header settings button and composer options button remain presentational. Reusing either one for selectors or attachment flow would introduce new visible behavior and requires explicit placement approval.
+- `frontend/src/widgets/ai/ai-panel-widget.mock.ts` remains in the repository for isolated override/test scaffolding only; it is no longer the main execution path for the AI sidebar.
+- Mock-only rollback snapshots and mock approval rows still exist in that isolated scaffolding path and are not part of the backend-backed main sidebar flow.
 
 ## Evidence
 
-### Backend AI agent API surface found
+### Backend contracts used on the main path
 
-- `GET /api/v1/agent`
-  - response is `agent.Catalog`
-  - shape:
-    - `profiles: PromptProfile[]`
-    - `roles: RolePreset[]`
-    - `modes: WorkMode[]`
-    - `active.profile`
-    - `active.role`
-    - `active.mode`
-    - `active.effective_prompt`
-    - `active.effective_policy_profile`
-- `PUT /api/v1/agent/selection/profile`
-- `PUT /api/v1/agent/selection/role`
-- `PUT /api/v1/agent/selection/mode`
-  - request body: `{ "id": string }`
-  - success response: full `agent.Catalog`
-  - error codes:
-    - `400 missing_id`
-    - `404 prompt_profile_not_found`
-    - `404 role_preset_not_found`
-    - `404 work_mode_not_found`
 - `GET /api/v1/agent/conversation`
   - response body: `{ "conversation": Snapshot }`
   - `Snapshot` shape:
@@ -71,66 +58,65 @@
     - `prompt: string`
     - `attachments?: AttachmentReference[]`
     - `context: ConversationContext`
-  - `ConversationContext` shape:
-    - `workspace_id?`
-    - `repo_root?`
-    - `active_widget_id?`
-    - `action_source?`
-    - `target_session?`
-    - `target_connection_id?`
-    - `widget_context_enabled?`
+  - `ConversationContext` fields used by the frontend main path:
+    - `action_source`
+    - `active_widget_id`
+    - `repo_root`
+    - `widget_context_enabled`
   - success response:
     - `conversation: Snapshot`
     - `provider_error: string`
+
+### Backend contracts implemented in the frontend client but not wired to visible controls
+
+- `GET /api/v1/agent`
+- `PUT /api/v1/agent/selection/profile`
+- `PUT /api/v1/agent/selection/role`
+- `PUT /api/v1/agent/selection/mode`
 - `POST /api/v1/agent/conversation/attachments/references`
-  - request body:
-    - `path: string`
-    - `workspace_id?`
-    - `action_source?`
-  - success response:
-    - `attachment: { id, name, path, mime_type, size, modified_time }`
-- attachment and conversation transport errors are explicit:
-  - `400 invalid_prompt`
-  - `400 invalid_attachment_path`
-  - `400 invalid_attachment_reference`
-  - `404 attachment_not_found`
 
-### Frontend demo/static wiring found
+These client functions were added so the frontend follows the real backend contract surface, but the visible UI wiring is intentionally deferred until the user specifies where those controls should live.
 
-- AI sidebar shell entry point is [app-ai-sidebar.tsx](../../frontend/src/app/app-ai-sidebar.tsx), which mounts:
-  - [AiPanelHeaderWidget](../../frontend/src/widgets/ai/ai-panel-header-widget.tsx)
-  - [AiPanelWidget](../../frontend/src/widgets/ai/ai-panel-widget.tsx)
-- The current conversation/state source is the optional `state` prop on [AiPanelWidget](../../frontend/src/widgets/ai/ai-panel-widget.tsx), which defaults to `aiPanelWidgetMockState`.
-- The main demo/static data source is [ai-panel-widget.mock.ts](../../frontend/src/widgets/ai/ai-panel-widget.mock.ts):
-  - `toolbarLabel`
-  - `activeTool`
-  - `composerPlaceholder`
-  - `prompts[]` with `preview/prompt/reasoning/summary/approvals`
-- The prompt history UI is driven by [AiPromptCardWidget](../../frontend/src/widgets/ai/ai-prompt-card-widget.tsx), which currently renders mock prompt snapshots, local expand/collapse state, and local rollback toggles.
-- The composer UI is presentational in [ai-composer-widget.tsx](../../frontend/src/widgets/ai/ai-composer-widget.tsx):
-  - textarea is uncontrolled
-  - send button has no submit wiring
-  - options button has no runtime wiring
-- Current profile/role/mode UI wiring:
-  - none
-  - no selector widget, no store, no API client, no existing visible selector control
-- Current attachment UI wiring:
-  - none
-  - no visible attachment list, picker, or reference creation flow
+### Frontend files integrated
 
-### Exact mock/static entry points that must be replaced
+- Runtime transport / backend client:
+  - [frontend/src/features/agent/api/client.ts](../../frontend/src/features/agent/api/client.ts)
+  - [frontend/src/features/agent/api/client.test.ts](../../frontend/src/features/agent/api/client.test.ts)
+- Agent model / backend-to-view projection:
+  - [frontend/src/features/agent/model/types.ts](../../frontend/src/features/agent/model/types.ts)
+  - [frontend/src/features/agent/model/panel-state.ts](../../frontend/src/features/agent/model/panel-state.ts)
+  - [frontend/src/features/agent/model/use-agent-panel.ts](../../frontend/src/features/agent/model/use-agent-panel.ts)
+- Existing widget surface kept in place:
+  - [frontend/src/widgets/ai/ai-panel-widget.tsx](../../frontend/src/widgets/ai/ai-panel-widget.tsx)
+  - [frontend/src/widgets/ai/ai-composer-widget.tsx](../../frontend/src/widgets/ai/ai-composer-widget.tsx)
+  - [frontend/src/widgets/ai/ai-prompt-card-widget.tsx](../../frontend/src/widgets/ai/ai-prompt-card-widget.tsx)
+  - [frontend/src/widgets/ai/ai-panel-widget.mock.ts](../../frontend/src/widgets/ai/ai-panel-widget.mock.ts)
+  - [frontend/src/widgets/ai/ai-panel-widget.test.tsx](../../frontend/src/widgets/ai/ai-panel-widget.test.tsx)
 
-- Replace the `AiPanelWidget` default `state = aiPanelWidgetMockState` path with backend-backed state on the main execution path.
-- Replace `state.prompts.map(...)` in [ai-panel-widget.tsx](../../frontend/src/widgets/ai/ai-panel-widget.tsx) with a backend conversation projection that preserves the current card stack layout.
-- Replace the uncontrolled composer/send no-op path in [ai-composer-widget.tsx](../../frontend/src/widgets/ai/ai-composer-widget.tsx) with backend submission wiring while preserving the same toolbar, textarea, and action-rail structure.
-- Keep [ai-panel-widget.mock.ts](../../frontend/src/widgets/ai/ai-panel-widget.mock.ts) only as isolated scaffolding if needed; it must no longer back the main sidebar path.
+### Exact main-path replacement that happened
 
-### Exact backend integration seams available now
+- The `AiPanelWidget` default path no longer uses `aiPanelWidgetMockState`.
+- The existing card stack now projects backend conversation messages into the current prompt-card layout without moving or restyling the widget.
+- The existing textarea and send icon now submit real backend conversation messages and replace the visible card stack with the returned backend transcript.
+- Submission failures are surfaced inside the existing card stack instead of adding a new panel, toast, or control.
 
-- Shared runtime transport resolution already exists in [runtime.ts](../../frontend/src/shared/api/runtime.ts) and must remain the source of `baseUrl` and `authToken`.
-- The existing typed frontend transport pattern already exists in [frontend/src/features/commander/api/client.ts](../../frontend/src/features/commander/api/client.ts); the agent client can follow the same approach without scattering fetch calls into widgets.
-- The narrow integration seam is:
-  - add `frontend/src/features/agent/api/client.ts`
-  - add a small agent model/hook layer under `frontend/src/features/agent/`
-  - keep [AiPanelWidget](../../frontend/src/widgets/ai/ai-panel-widget.tsx) and [AiComposerWidget](../../frontend/src/widgets/ai/ai-composer-widget.tsx) as the existing view layer
-- No backend contract ambiguity was found in this audit; the selection, conversation, and attachment routes are explicit in transport handlers and tests.
+### Remaining demo/static-only paths
+
+- `frontend/src/widgets/ai/ai-panel-widget.mock.ts`
+  - retained only for explicit override/test scaffolding
+- rollback snapshot toggling in `AiPromptCardWidget`
+  - only active when rollback data is supplied through the mock override path
+- approval rows in `AiPromptCardWidget`
+  - only active when approval mock data is supplied through the mock override path
+
+### Formatting change record
+
+- Formatting changes: `none`
+- No layout, spacing, visual hierarchy, typography, or component placement changes were introduced in this integration slice.
+
+### Placement blockers requiring user direction
+
+- Profile/role/mode selector placement is not defined in the current AI sidebar.
+- Attachment reference control placement is not defined in the current AI sidebar.
+
+If those controls are required next, the user must specify exactly where they should be placed before any visible UI is added or repurposed.
