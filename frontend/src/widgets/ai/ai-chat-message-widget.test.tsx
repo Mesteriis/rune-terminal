@@ -4,7 +4,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
 import { AiChatMessageWidget } from '@/widgets/ai/ai-chat-message-widget'
-import type { ApprovalMessage } from '@/features/agent/model/types'
+import type { ApprovalMessage, QuestionnaireMessage } from '@/features/agent/model/types'
 
 describe('AiChatMessageWidget', () => {
   it('renders a plan message with steps and tools', () => {
@@ -120,5 +120,72 @@ describe('AiChatMessageWidget', () => {
     expect(screen.getByText('running')).toBeInTheDocument()
     expect(screen.getByText('save_result')).toBeInTheDocument()
     expect(screen.getByText('pending')).toBeInTheDocument()
+  })
+
+  it('submits questionnaire option and custom input answers', () => {
+    function QuestionnaireHarness() {
+      const [message, setMessage] = useState<QuestionnaireMessage>({
+        id: 'question-1',
+        type: 'questionnaire',
+        question: 'Choose environment:',
+        options: [
+          { label: 'Production', value: 'production' },
+          { label: 'Staging', value: 'staging' },
+        ],
+        allowCustom: true,
+        status: 'pending',
+      })
+
+      return (
+        <AiChatMessageWidget
+          message={message}
+          mode="chat"
+          onQuestionnaireAnswer={(nextMessage, answer) => {
+            setMessage({ ...nextMessage, answer, status: 'answered' })
+          }}
+        />
+      )
+    }
+
+    const { rerender } = render(<QuestionnaireHarness />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Staging' }))
+
+    expect(screen.getByText('Answer: staging')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Production' })).not.toBeInTheDocument()
+
+    function CustomHarness() {
+      const [message, setMessage] = useState<QuestionnaireMessage>({
+        id: 'question-2',
+        type: 'questionnaire',
+        question: 'Choose environment:',
+        options: [
+          { label: 'Production', value: 'production' },
+          { label: 'Staging', value: 'staging' },
+        ],
+        allowCustom: true,
+        status: 'pending',
+      })
+
+      return (
+        <AiChatMessageWidget
+          message={message}
+          mode="chat"
+          onQuestionnaireAnswer={(nextMessage, answer) => {
+            setMessage({ ...nextMessage, answer, status: 'answered' })
+          }}
+        />
+      )
+    }
+
+    rerender(<CustomHarness />)
+
+    fireEvent.change(screen.getByPlaceholderText('Custom input'), {
+      target: { value: 'development' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Submit' }))
+
+    expect(screen.getByText('Answer: development')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Submit' })).not.toBeInTheDocument()
   })
 })

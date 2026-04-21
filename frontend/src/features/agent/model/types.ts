@@ -59,7 +59,28 @@ export type AuditMessage = {
   sortKey?: ChatMessageSortKey
 }
 
-export type ChatMessageView = ChatTextMessage | PlanMessage | ApprovalMessage | AuditMessage
+export type QuestionnaireOption = {
+  label: string
+  value: string
+}
+
+export type QuestionnaireMessage = {
+  id: string
+  type: 'questionnaire'
+  question: string
+  options: QuestionnaireOption[]
+  allowCustom: boolean
+  answer?: string
+  status: 'pending' | 'answered'
+  sortKey?: ChatMessageSortKey
+}
+
+export type ChatMessageView =
+  | ChatTextMessage
+  | PlanMessage
+  | ApprovalMessage
+  | AuditMessage
+  | QuestionnaireMessage
 
 export type AiPanelWidgetState = {
   title: string

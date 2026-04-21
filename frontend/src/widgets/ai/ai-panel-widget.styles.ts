@@ -386,6 +386,27 @@ export const aiAuditEntryStatusErrorStyle: CSSProperties = {
   color: 'var(--color-danger-text)',
 }
 
+export const aiQuestionnaireActionsStyle: CSSProperties = {
+  ...aiPlainBlockStyle,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 'var(--space-sm)',
+}
+
+export const aiQuestionnaireOptionButtonStyle: CSSProperties = {
+  minWidth: '112px',
+  justifyContent: 'flex-start',
+  boxShadow: 'none',
+}
+
+export const aiQuestionnaireInputRowStyle: CSSProperties = {
+  ...aiPlainBlockStyle,
+  display: 'grid',
+  gridTemplateColumns: 'minmax(0, 1fr) auto',
+  gap: 'var(--space-sm)',
+  alignItems: 'center',
+}
+
 export const aiToolbarStyle: CSSProperties = {
   display: 'flex',
   alignItems: 'center',
