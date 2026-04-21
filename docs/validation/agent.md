@@ -10,6 +10,10 @@
   - transcript rendering now projects backend messages into a chat-focused `ChatMessageView` instead of the earlier prompt/snapshot card model
   - the visible transcript is now a single top-anchored message stream with newest messages first instead of nested cards or snapshot containers
   - user messages render as right-aligned bubbles and assistant messages render as left-aligned bubbles with no visible `Assistant N` / snapshot-era labels
+  - the AI transcript now also supports explicit `plan`, `approval`, `audit`, and `questionnaire` message types in the frontend view model without changing the backend conversation payload
+  - user submit no longer starts execution immediately on the frontend path: a local plan is rendered first, optional questionnaire prompts can interrupt the flow, and the backend stream route is only called after the user approves the pending plan
+  - approval cancellation now stops the local interaction flow before any backend stream request is issued
+  - a frontend audit block now renders the simulated execution tool trail and updates status around the real backend stream lifecycle (`pending` / `running` / `done` / `error`)
   - assistant execution metadata is hidden by default behind a per-message `Show details` toggle, with `prompt`, `reasoning`, `summary`, and compact metadata rendered only in the secondary details surface
   - assistant rows now expose a subdued `{model} · {status}` line below the main bubble
   - assistant replies and the user prompts beneath them are visually grouped with tighter pair spacing, while separate exchanges retain a larger gap
@@ -30,7 +34,7 @@
   - `sed -n '1,260p' core/app/conversation_attachments.go`
   - `sed -n '1,380p' core/transport/httpapi/handlers_agent_conversation_test.go`
 - Frontend targeted validation:
-  - `npm --prefix frontend run test -- --reporter verbose --testTimeout=10000 src/widgets/ai/ai-panel-widget.test.tsx`
+  - `npm --prefix frontend run test -- --reporter verbose --testTimeout=10000 src/widgets/ai/ai-panel-widget.test.tsx src/widgets/ai/ai-chat-message-widget.test.tsx`
   - `npm --prefix frontend run build`
 - Repository validation sweep:
   - `npm run validate`
@@ -47,6 +51,7 @@
 - `npm run tauri:dev` was not rerun for this exact transcript refactor, so the supported desktop startup smoke remains outstanding for this slice even though `npm run validate` passed.
 - `frontend/src/widgets/ai/ai-panel-widget.mock.ts` remains in the repository for isolated override/test scaffolding only; it is no longer the main execution path for the AI sidebar.
 - The earlier prompt/snapshot card component path has been removed from the active frontend tree.
+- Plan, approval, audit, and questionnaire messages are simulated in the frontend view-model layer because the current backend conversation stream does not emit those states directly.
 
 ## Evidence
 
@@ -104,6 +109,7 @@ These client functions were added so the frontend follows the real backend contr
 - Agent model / backend-to-view projection:
   - [frontend/src/features/agent/model/types.ts](../../frontend/src/features/agent/model/types.ts)
   - [frontend/src/features/agent/model/chat-message-view.ts](../../frontend/src/features/agent/model/chat-message-view.ts)
+  - [frontend/src/features/agent/model/interaction-flow.ts](../../frontend/src/features/agent/model/interaction-flow.ts)
   - [frontend/src/features/agent/model/panel-state.ts](../../frontend/src/features/agent/model/panel-state.ts)
   - [frontend/src/features/agent/model/use-agent-panel.ts](../../frontend/src/features/agent/model/use-agent-panel.ts)
   - [frontend/src/shared/model/ai-blocked-widgets.ts](../../frontend/src/shared/model/ai-blocked-widgets.ts)
@@ -112,8 +118,14 @@ These client functions were added so the frontend follows the real backend contr
   - [frontend/src/widgets/ai/ai-panel-widget.tsx](../../frontend/src/widgets/ai/ai-panel-widget.tsx)
   - [frontend/src/widgets/ai/ai-panel-header-widget.tsx](../../frontend/src/widgets/ai/ai-panel-header-widget.tsx)
   - [frontend/src/widgets/ai/ai-chat-message-widget.tsx](../../frontend/src/widgets/ai/ai-chat-message-widget.tsx)
+  - [frontend/src/widgets/ai/approval-message-block.tsx](../../frontend/src/widgets/ai/approval-message-block.tsx)
+  - [frontend/src/widgets/ai/audit-message-block.tsx](../../frontend/src/widgets/ai/audit-message-block.tsx)
   - [frontend/src/widgets/ai/ai-composer-widget.tsx](../../frontend/src/widgets/ai/ai-composer-widget.tsx)
+  - [frontend/src/widgets/ai/chat-text-message-widget.tsx](../../frontend/src/widgets/ai/chat-text-message-widget.tsx)
+  - [frontend/src/widgets/ai/plan-message-block.tsx](../../frontend/src/widgets/ai/plan-message-block.tsx)
+  - [frontend/src/widgets/ai/questionnaire-message-block.tsx](../../frontend/src/widgets/ai/questionnaire-message-block.tsx)
   - [frontend/src/widgets/ai/ai-panel-widget.mock.ts](../../frontend/src/widgets/ai/ai-panel-widget.mock.ts)
+  - [frontend/src/widgets/ai/ai-chat-message-widget.test.tsx](../../frontend/src/widgets/ai/ai-chat-message-widget.test.tsx)
   - [frontend/src/widgets/ai/ai-panel-widget.test.tsx](../../frontend/src/widgets/ai/ai-panel-widget.test.tsx)
 
 ### Exact main-path replacement that happened
@@ -121,15 +133,17 @@ These client functions were added so the frontend follows the real backend contr
 - The `AiPanelWidget` default path no longer uses `aiPanelWidgetMockState`.
 - The sidebar no longer projects backend conversation messages into the old prompt/snapshot card layout.
 - The visible transcript now renders backend messages through the chat-focused `ChatMessageView` mapper, keeps execution/audit data out of the primary bubble surface, and orders the stream newest-first so the latest exchange stays at the top.
-- The existing textarea and send icon still submit through the backend SSE route.
+- The existing textarea and send icon still lead to the backend SSE route, but only after the frontend-local planning and approval gate complete.
+- The visible transcript now prepends a local plan immediately after the user prompt, inserts an optional questionnaire when the prompt needs environment clarification, and only renders the approval gate once the prerequisite questions are answered.
 - The visible transcript now prepends the local user message immediately, prepends the assistant entry on `message-start`, and updates assistant content incrementally on `text-delta` without forcing the viewport away from older messages being read.
+- The visible transcript now also prepends an audit block when approval is granted and updates that audit block as the real backend stream progresses or fails.
 - Backend error events and stream transport failures still surface inside the existing transcript surface instead of adding a new panel, toast, or control.
 - Assistant details are now collapsed by default in `chat` mode, auto-expanded in `dev` mode, and always visible in `debug` mode.
 
 ### Busy-state behavior
 
 - Busy state begins when the visible sidebar starts a real stream submission.
-- The existing composer remains disabled while the stream is active.
+- The existing composer is now also disabled while a local plan/questionnaire/approval flow is pending, so execution cannot bypass the approval gate through duplicate submits.
 - The existing widget busy overlay is now driven by the real stream lifecycle for the AI sidebar instead of only by manual demo toggling.
 - Busy state clears on `message-complete`, `error`, or stream abort/cleanup.
 - No timer-driven busy simulation was added.
@@ -145,6 +159,8 @@ These client functions were added so the frontend follows the real backend contr
   - prompt/snapshot cards were replaced with conversational left/right chat bubbles
   - the transcript was reordered into a newest-first top-anchored stream
   - scroll updates now preserve the reader position unless the viewport is already near the latest message anchor
+  - the transcript now also renders dedicated plan, approval, audit, and questionnaire blocks alongside chat bubbles
+  - the composer path now pauses on a frontend approval gate before the backend stream starts
   - assistant execution details moved into a collapsed secondary panel
   - assistant rows gained a subdued compact metadata line
   - the AI header gained a UI-only `chat` / `dev` / `debug` visibility control
