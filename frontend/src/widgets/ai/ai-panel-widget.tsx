@@ -113,8 +113,15 @@ export function AiPanelWidget({ hostId, mode = 'chat', state }: AiPanelWidgetPro
               runaComponent="ai-panel-message-stream"
               style={aiChatStreamStyle}
             >
-              {panelState.messages.map((message) => (
-                <AiChatMessageWidget key={message.id} message={message} mode={mode} />
+              {panelState.messages.map((message, index) => (
+                <AiChatMessageWidget
+                  key={message.id}
+                  isGroupedWithNext={
+                    message.role === 'assistant' && panelState.messages[index + 1]?.role === 'user'
+                  }
+                  message={message}
+                  mode={mode}
+                />
               ))}
             </Box>
           </ScrollArea>

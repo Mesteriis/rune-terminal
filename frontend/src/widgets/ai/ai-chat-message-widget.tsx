@@ -13,6 +13,7 @@ import {
   aiChatMessageDetailsValueStyle,
   aiChatMessageGroupStyle,
   aiChatMessageMetaLineStyle,
+  aiChatMessageGroupedRowStyle,
   aiChatMessageRowStyle,
   aiChatMessageAssistantGroupStyle,
   aiChatMessageAssistantRowStyle,
@@ -22,11 +23,12 @@ import {
 import { MessageBubble } from '@/widgets/ai/message-bubble'
 
 export type AiChatMessageWidgetProps = {
+  isGroupedWithNext?: boolean
   message: ChatMessageView
   mode: ChatMode
 }
 
-export function AiChatMessageWidget({ message, mode }: AiChatMessageWidgetProps) {
+export function AiChatMessageWidget({ isGroupedWithNext = false, message, mode }: AiChatMessageWidgetProps) {
   const isUser = message.role === 'user'
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const metaLine = !isUser
@@ -68,6 +70,7 @@ export function AiChatMessageWidget({ message, mode }: AiChatMessageWidgetProps)
         runaComponent={`ai-chat-message-${message.id}-row`}
         style={{
           ...aiChatMessageRowStyle,
+          ...(isGroupedWithNext ? aiChatMessageGroupedRowStyle : null),
           ...(isUser ? aiChatMessageUserRowStyle : aiChatMessageAssistantRowStyle),
         }}
       >

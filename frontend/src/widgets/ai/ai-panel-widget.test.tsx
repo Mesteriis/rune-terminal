@@ -173,6 +173,8 @@ describe('AiPanelWidget backend conversation path', () => {
 
     expect((userRow as HTMLDivElement | undefined)?.style.justifyContent).toBe('flex-end')
     expect((assistantRow as HTMLDivElement | undefined)?.style.justifyContent).toBe('flex-start')
+    expect((assistantRow as HTMLDivElement | undefined)?.style.paddingBottom).toBe('var(--space-xs)')
+    expect((userRow as HTMLDivElement | undefined)?.style.paddingBottom).toBe('var(--space-lg)')
   })
 
   it('streams visible assistant output through the backend conversation stream route', async () => {

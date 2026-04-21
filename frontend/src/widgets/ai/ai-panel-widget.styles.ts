@@ -140,7 +140,6 @@ export const aiChatStreamStyle: CSSProperties = {
   minHeight: '100%',
   display: 'flex',
   flexDirection: 'column',
-  gap: 'var(--space-md)',
   padding: 'var(--space-sm) var(--space-md) 0',
   scrollPaddingBottom: 'var(--space-md)',
 }
@@ -149,6 +148,11 @@ export const aiChatMessageRowStyle: CSSProperties = {
   ...aiPlainBlockStyle,
   width: '100%',
   display: 'flex',
+  paddingBottom: 'var(--space-lg)',
+}
+
+export const aiChatMessageGroupedRowStyle: CSSProperties = {
+  paddingBottom: 'var(--space-xs)',
 }
 
 export const aiChatMessageGroupStyle: CSSProperties = {
