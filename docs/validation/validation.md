@@ -15,6 +15,7 @@ Do not append new free-form log blocks in this file. Update the relevant domain 
 
 - [agent.md](./agent.md)
 - [execution.md](./execution.md)
+- [terminal.md](./terminal.md)
 - [workspace.md](./workspace.md)
 - [remote.md](./remote.md)
 - [mcp.md](./mcp.md)

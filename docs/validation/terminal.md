@@ -3,114 +3,78 @@
 ## Last verified state
 
 - Date: `2026-04-21`
-- State: `AUDITED`
+- State: `VERIFIED`
 - Scope:
-  - backend terminal HTTP transport is already present at:
-    - `GET /api/v1/terminal/{widgetID}`
-    - `POST /api/v1/terminal/{widgetID}/input`
-    - `POST /api/v1/terminal/{widgetID}/restart`
-    - `GET /api/v1/terminal/{widgetID}/stream`
-  - backend snapshot truth is `terminal.Snapshot { state, chunks, next_seq }`
-  - backend input truth is `terminal.InputResult { widget_id, bytes_sent, append_newline }`
-  - backend restart truth is `{"state": terminal.State}`
-  - backend stream truth is `text/event-stream` with `event: output` blocks carrying `terminal.OutputChunk`
-  - backend terminal state already includes:
-    - `widget_id`
-    - `session_id`
-    - `shell`
-    - `status`
-    - `pid`
-    - `started_at`
-    - `last_output_at`
-    - `exit_code`
-    - `can_send_input`
-    - `can_interrupt`
+  - the active `frontend/src` terminal surface now uses the backend terminal runtime as its source of truth for the seeded shell panels
+  - seeded Dockview terminal panels now map to backend widget IDs instead of renderer-only demo metadata:
+    - `terminal-header -> term-main`
+    - `terminal -> term-side`
+  - the frontend terminal read path now hydrates from `GET /api/v1/terminal/{widgetID}` and follows live output through `GET /api/v1/terminal/{widgetID}/stream`
+  - the visible xterm input path now sends raw terminal input through `POST /api/v1/terminal/{widgetID}/input`
+  - backend restart support is available in the terminal API client through `POST /api/v1/terminal/{widgetID}/restart`, but it is not wired to the UI because no visible restart control exists on the current terminal surface
+  - the terminal header/tab chrome now reads backend-owned session metadata for:
     - `working_dir`
-    - `connection_id`
-    - `connection_name`
+    - `shell`
     - `connection_kind`
-    - `status_detail`
-  - `core/app/terminal_restore_state.go` confirms snapshot fallback for known workspace widgets without a live session:
-    - disconnected terminals are still returned through the same snapshot route
-    - disconnected fallback disables input/interrupt and preserves connection identity
-  - the active frontend terminal surface is still renderer-only and demo-backed
+    - `status`
+    - disconnected / failed states
+  - the renderer-only terminal demo path is removed from the seeded main path:
+    - no hardcoded intro lines
+    - no local prompt generator
+    - no local `help` / `pwd` / `ls` / `clear` / `status` command interpreter
+  - formatting, spacing, layout, typography, and control placement were intentionally preserved
 
-## Frontend mapping
+## Backend contracts used
 
-- Active terminal entry points:
-  - `frontend/src/app/dockview-workspace.bootstrap.ts`
-  - `frontend/src/widgets/panel/dockview-panel-widget.tsx`
-  - `frontend/src/widgets/terminal/terminal-panel.ts`
-  - `frontend/src/widgets/terminal/terminal-widget.tsx`
-  - `frontend/src/widgets/terminal/terminal-dockview-tab-widget.tsx`
-  - `frontend/src/widgets/terminal/terminal-dockview-header-actions-widget.tsx`
-  - `frontend/src/shared/ui/components/terminal-surface.tsx`
-  - `frontend/src/shared/ui/components/terminal-status-header.tsx`
-- Current conversation/state source equivalent for terminal:
-  - terminal panel params come from `resolveTerminalPanelParams(...)`
-  - the main path is `TerminalPanelParams -> TerminalWidget -> TerminalSurface`
-  - there is no dedicated terminal feature model or runtime API client in `frontend/src/features/` yet
-- Demo/static sources that currently back the main path:
-  - `frontend/src/widgets/terminal/terminal-panel.ts`
-    - hardcoded `cwd`
-    - hardcoded `shellLabel`
-    - hardcoded `connectionKind`
-    - hardcoded `sessionState`
-    - hardcoded `introLines`
-  - `frontend/src/shared/ui/components/terminal-surface.tsx`
-    - renderer-only boot text
-    - renderer-only prompt generation
-    - local demo command handling for `help`, `pwd`, `ls`, `clear`, `status`
-    - local echo/input loop instead of backend `POST /input`
-- Existing visible controls already present in the current terminal UI:
-  - terminal text input through the mounted xterm textarea
-  - terminal tab close button
-  - terminal group `+` add-tab action
-  - right utility rail `Create terminal widget`
-- Visible controls not present on the current terminal UI:
-  - no visible restart button
-  - no visible interrupt button
-  - no visible explicit reconnect control
-  - no visible terminal attachment or AI handoff control in this active `frontend/src` terminal slice
+- `GET /api/v1/terminal/{widgetID}`
+- `GET /api/v1/terminal/{widgetID}/stream`
+- `POST /api/v1/terminal/{widgetID}/input`
+- `POST /api/v1/terminal/{widgetID}/restart`
+  - implemented in the frontend runtime client
+  - not wired to a visible control because the current terminal UI does not expose one
 
-## Integration points to replace
+## Frontend files integrated
 
-- Replace `terminal-panel.ts` as the main runtime source of terminal session metadata.
-- Introduce a frontend terminal runtime client under `frontend/src/features/terminal/` using `frontend/src/shared/api/runtime.ts`.
-- Introduce a terminal feature hook/model that:
-  - loads `GET /api/v1/terminal/{widgetID}` on mount
-  - follows `GET /api/v1/terminal/{widgetID}/stream`
-  - sends xterm input through `POST /api/v1/terminal/{widgetID}/input`
-  - exposes restart only if a current visible control already exists
-- Keep `TerminalWidget`, `TerminalStatusHeader`, Dockview tab chrome, and panel layout structure intact.
+- `frontend/src/features/terminal/api/client.ts`
+- `frontend/src/features/terminal/api/client.test.ts`
+- `frontend/src/features/terminal/model/types.ts`
+- `frontend/src/features/terminal/model/use-terminal-session.ts`
+- `frontend/src/features/terminal/model/use-terminal-session.test.tsx`
+- `frontend/src/widgets/terminal/terminal-panel.ts`
+- `frontend/src/widgets/terminal/terminal-widget.tsx`
+- `frontend/src/widgets/terminal/terminal-dockview-tab-widget.tsx`
+- `frontend/src/widgets/terminal/terminal-dockview-header-actions-widget.tsx`
+- `frontend/src/widgets/panel/dockview-panel-widget.tsx`
+- `frontend/src/widgets/shell/right-action-rail-widget.tsx`
+- `frontend/src/shared/ui/components/terminal-surface.tsx`
+- `frontend/src/shared/ui/components/terminal-status-header.tsx`
+- `frontend/src/app/dockview-workspace.bootstrap.ts`
+
+## Demo/static paths removed from the main path
+
+- `frontend/src/widgets/terminal/terminal-panel.ts`
+  - hardcoded `cwd`, `shellLabel`, `connectionKind`, `sessionState`, and `introLines` are no longer the main runtime source
+- `frontend/src/shared/ui/components/terminal-surface.tsx`
+  - renderer-only boot text and local fake command handling are removed from the seeded terminal execution path
 
 ## Commands/tests used
 
-- `sed -n '1,260p' core/transport/httpapi/api.go`
-- `sed -n '1,240p' core/transport/httpapi/handlers_terminal.go`
-- `sed -n '1,240p' core/terminal/types.go`
-- `sed -n '1,240p' core/terminal/service.go`
-- `sed -n '1,220p' core/app/terminal_restore_state.go`
-- `sed -n '1,220p' core/app/terminal_session_actions.go`
-- `sed -n '1,260p' core/transport/httpapi/handlers_terminal_test.go`
-- `sed -n '1,220p' core/workspace/service.go`
-- `sed -n '1,260p' frontend/src/widgets/terminal/terminal-panel.ts`
-- `sed -n '1,260p' frontend/src/widgets/terminal/terminal-widget.tsx`
-- `sed -n '1,220p' frontend/src/widgets/panel/dockview-panel-widget.tsx`
-- `sed -n '1,260p' frontend/src/widgets/terminal/terminal-dockview-tab-widget.tsx`
-- `sed -n '1,260p' frontend/src/widgets/terminal/terminal-dockview-header-actions-widget.tsx`
-- `sed -n '1,520p' frontend/src/shared/ui/components/terminal-surface.tsx`
-- `sed -n '1,260p' frontend/src/shared/ui/components/terminal-status-header.tsx`
-- `sed -n '1,220p' frontend/src/app/dockview-workspace.bootstrap.ts`
+- `npm --prefix frontend run lint:active`
+- `npm --prefix frontend run test -- --reporter verbose src/features/terminal/api/client.test.ts src/features/terminal/model/use-terminal-session.test.tsx`
+- `npm --prefix frontend run build`
 
 ## Known limitations
 
-- This audit confirms the active terminal frontend path is still demo-backed; it does not yet claim runtime snapshot/stream/input integration.
-- No restart or interrupt UI wiring is claimed in this audit because no dedicated visible control is present on the current terminal surface.
+- No visible restart button exists on the current terminal UI, so `POST /api/v1/terminal/{widgetID}/restart` is intentionally not wired to a visible control in this slice.
+- No visible interrupt button exists on the current terminal UI, so interrupt remains backend-owned but not wired to a new control here.
+- The current `Add terminal tab` and `Create terminal widget` actions still add frontend Dockview panels only. Extra panels now use honest backend widget IDs instead of mock output, but they do not create new backend workspace terminal widgets in this slice.
+- A fresh `npm run tauri:dev` desktop smoke was not run in this validation pass.
 
 ## Evidence
 
-- `docs/architecture/current-behavior.md` already states the runtime contract:
-  - snapshot hydration precedes stream attach
-  - stream attach is fetch-based rather than native `EventSource`
-- `docs/validation/workspace.md` still records the active terminal widget slice as renderer-only before this integration slice.
+- `core/transport/httpapi/handlers_terminal.go`
+- `core/terminal/types.go`
+- `core/app/terminal_restore_state.go`
+- `frontend/src/features/terminal/api/client.ts`
+- `frontend/src/features/terminal/model/use-terminal-session.ts`
+- `frontend/src/shared/ui/components/terminal-surface.tsx`

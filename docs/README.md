@@ -65,6 +65,7 @@ upstream. These files remain for historical reference:
 - Entrypoint: [validation/validation.md](./validation/validation.md)
 - Agent: [validation/agent.md](./validation/agent.md)
 - Execution: [validation/execution.md](./validation/execution.md)
+- Terminal: [validation/terminal.md](./validation/terminal.md)
 - Workspace: [validation/workspace.md](./validation/workspace.md)
 - Remote: [validation/remote.md](./validation/remote.md)
 - MCP: [validation/mcp.md](./validation/mcp.md)

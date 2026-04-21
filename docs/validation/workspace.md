@@ -143,7 +143,7 @@
 ## Known limitations
 
 - This validation covers only the initial layout skeleton. It does not claim backend wiring, workspace persistence, or TideTerm parity breadth.
-- The new terminal widget slice is renderer-only for now. It does not yet claim live backend session startup, SSE attachment, input routing, interrupt wiring, or persistent terminal state on the new frontend path.
+- Terminal frontend-backend integration now has its own current source of truth in `docs/validation/terminal.md`; this workspace entry should not be read as the latest terminal runtime status.
 - The commander slice is still frontend-only and fake-client backed. It does not yet claim real filesystem access, backend integration, preview panes, search panels, approvals, or cross-widget operations.
 - The new commander confirm bar is still frontend-only. It does not yet claim backend-backed approvals, server-enforced policy checks, or cross-widget transfer semantics.
 - Commander persistence is still frontend-only and fake-client backed. It does not yet claim backend-driven path validation, cross-device sync, or cleanup of stale persisted widgets whose Dockview panels were removed in an older session.
