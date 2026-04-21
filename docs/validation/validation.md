@@ -13,6 +13,7 @@ Do not append new free-form log blocks in this file. Update the relevant domain 
 
 ## Domain entrypoints
 
+- [agent.md](./agent.md)
 - [execution.md](./execution.md)
 - [workspace.md](./workspace.md)
 - [remote.md](./remote.md)

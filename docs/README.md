@@ -63,6 +63,7 @@ upstream. These files remain for historical reference:
 ## Validation
 
 - Entrypoint: [validation/validation.md](./validation/validation.md)
+- Agent: [validation/agent.md](./validation/agent.md)
 - Execution: [validation/execution.md](./validation/execution.md)
 - Workspace: [validation/workspace.md](./validation/workspace.md)
 - Remote: [validation/remote.md](./validation/remote.md)
