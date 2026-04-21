@@ -343,4 +343,14 @@
 - attach path validates saved records against endpoints (`/api/v1/health` for core, `/health` and `/watcher/state` for watcher) and only reuses processes when identity and metadata checks match; otherwise it respawns.
 - `Tauri` shutdown now performs a graceful watcher shutdown call first via `POST /watcher/shutdown` using the stored `shutdown_token` and `worker_id`, then stops the process as fallback.
 - `watcher` shutdown endpoint stops polling and completes active-task contract (`fetch /tasks/active`, loop until zero, mark failed on timeout at 10s).
-- Full runtime process evidence (`first launch`, `attach`, graceful shutdown, persistent detach/relaunch, and no duplicate instances) is not executable in this sandboxed session because listener binding is blocked (`listen tcp ...: bind: operation not permitted`); this should be re-run in a network-enabled environment for complete lifecycle evidence.
+- Verified in this branch via local commands:
+  - `go test ./cmd/rterm-core ./core/transport/httpapi -count=1`
+  - `cargo check -q --manifest-path apps/desktop/src-tauri/Cargo.toml`
+- Runtime scenarios still unverified in this sandbox:
+  - first UI launch spawns core+watcher and writes `~/.rterm/runtime.json`
+  - second UI launch attaches without duplicate core/watcher
+  - graceful watcher shutdown endpoint call from Tauri on close (`POST /watcher/shutdown` with ownership proof)
+  - persistent mode detach and restart-reattach behavior
+  - no-duplicate invariant under repeated attach/relaunch cycles
+
+  These are blocked by sandbox network restrictions in this environment (`listen tcp ...: bind: operation not permitted`), so they are deferred to a local network-capable test run.
