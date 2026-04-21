@@ -10,8 +10,8 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
-	"strings"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -55,7 +55,9 @@ type healthPayload struct {
 }
 
 type watcherState struct {
-	BackendURL string `json:"backend_url"`
+	BackendURL    string `json:"backend_url"`
+	WorkerID      string `json:"worker_id"`
+	ShutdownToken string `json:"shutdown_token"`
 }
 
 func serve(args []string) error {
@@ -134,11 +136,19 @@ func runWatcher(args []string) error {
 	flags := flag.NewFlagSet("watcher", flag.ContinueOnError)
 	backendURL := flags.String("backend", "", "core backend base URL")
 	listen := flags.String("listen", "127.0.0.1:7788", "listen address")
+	workerID := flags.String("worker-id", "", "watcher worker identity")
+	shutdownToken := flags.String("shutdown-token", "", "token used by desktop to request graceful shutdown")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
 	if *backendURL == "" {
 		return fmt.Errorf("--backend is required")
+	}
+	if *workerID == "" {
+		return fmt.Errorf("--worker-id is required")
+	}
+	if *shutdownToken == "" {
+		return fmt.Errorf("--shutdown-token is required")
 	}
 
 	mux := http.NewServeMux()
@@ -153,17 +163,6 @@ func runWatcher(args []string) error {
 		Handler:           mux,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
-
-	listener, err := net.Listen("tcp", *listen)
-	if err != nil {
-		return err
-	}
-	mux.HandleFunc("GET /watcher/state", func(writer http.ResponseWriter, _ *http.Request) {
-		writeJSONResponse(writer, watcherState{BackendURL: *backendURL})
-	})
-	baseURL := "http://" + listener.Addr().String()
-	fmt.Printf(`{"base_url":"%s","pid":%d}`+"\n", baseURL, os.Getpid())
-
 	pollDone := make(chan struct{})
 	stopPoll := func() {
 		select {
@@ -172,6 +171,44 @@ func runWatcher(args []string) error {
 			close(pollDone)
 		}
 	}
+
+	listener, err := net.Listen("tcp", *listen)
+	if err != nil {
+		return err
+	}
+	mux.HandleFunc("GET /watcher/state", func(writer http.ResponseWriter, _ *http.Request) {
+		writeJSONResponse(writer, watcherState{
+			BackendURL:    *backendURL,
+			WorkerID:      *workerID,
+			ShutdownToken: *shutdownToken,
+		})
+	})
+	mux.HandleFunc("POST /watcher/shutdown", func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method != http.MethodPost {
+			writer.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		if request.URL.Query().Get("worker_id") != *workerID {
+			writer.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		if request.URL.Query().Get("token") != *shutdownToken {
+			writer.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		stopPoll()
+		if err := gracefulWatcherShutdown(shutdownCtx, *backendURL); err != nil {
+			writeJSONError(writer, err)
+			return
+		}
+		_ = httpapi.Shutdown(shutdownCtx, server)
+		writeJSONResponse(writer, map[string]any{"phase": "stopped", "status": "ok"})
+	})
+	baseURL := "http://" + listener.Addr().String()
+	fmt.Printf(`{"base_url":"%s","pid":%d}`+"\n", baseURL, os.Getpid())
 	defer stopPoll()
 	go func() {
 		pollBackendHealth(*backendURL, pollDone)
@@ -190,6 +227,7 @@ func runWatcher(args []string) error {
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		_ = gracefulWatcherShutdown(shutdownCtx, *backendURL)
+		stopPoll()
 		return httpapi.Shutdown(shutdownCtx, server)
 	case err := <-serverErr:
 		if err == nil || err == http.ErrServerClosed {
@@ -202,7 +240,7 @@ func runWatcher(args []string) error {
 func gracefulWatcherShutdown(ctx context.Context, backendURL string) error {
 	deadline, hasDeadline := ctx.Deadline()
 	for {
-		if !hasDeadline && ctx.Err() != nil {
+		if ctx.Err() != nil {
 			return nil
 		}
 		active, err := fetchActiveTaskCount(backendURL)
@@ -230,10 +268,10 @@ func pollBackendHealth(backendURL string, stop <-chan struct{}) {
 	for {
 		select {
 		case <-ticker.C:
-		_, err := readHealth(backendURL + "/api/v1/health")
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "watcher: backend health check failed: %v\n", err)
-		}
+			_, err := readHealth(backendURL + "/api/v1/health")
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "watcher: backend health check failed: %v\n", err)
+			}
 		case <-stop:
 			return
 		}

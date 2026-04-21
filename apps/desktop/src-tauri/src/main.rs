@@ -29,6 +29,7 @@ struct RuntimeProcess {
     started_by_ui: bool,
     auth_token: Option<String>,
     worker_id: Option<String>,
+    shutdown_token: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -38,6 +39,7 @@ struct RuntimeProcessRecord {
     started_by_ui: bool,
     auth_token: Option<String>,
     worker_id: Option<String>,
+    shutdown_token: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -115,6 +117,8 @@ struct RuntimeFileWatcher {
     url: String,
     #[serde(default)]
     worker_id: Option<String>,
+    #[serde(default)]
+    shutdown_token: Option<String>,
     started_by_ui: bool,
 }
 
@@ -134,7 +138,13 @@ struct HealthPayload {
 #[derive(Debug, Serialize, Deserialize)]
 struct WatcherStatePayload {
     backend_url: String,
+    #[serde(default)]
+    worker_id: Option<String>,
+    #[serde(default)]
+    shutdown_token: Option<String>,
 }
+
+const WATCHER_LISTEN_ADDR: &str = "127.0.0.1:7788";
 
 #[derive(Debug, Error)]
 enum RuntimeError {
@@ -238,7 +248,7 @@ fn request_shutdown(state: State<'_, RuntimeState>, force: bool) -> Result<Runti
         });
     }
 
-    shutdown_runtime(runtime);
+    shutdown_runtime(runtime).map_err(|err| err.to_string())?;
     clear_runtime_file();
     let watcher_mode = watcher_mode.to_string();
     *guard = None;
@@ -283,7 +293,7 @@ fn main() {
                     if let Some(runtime) = state.as_mut() {
                         let is_persistent = matches!(runtime.settings.watcher_mode, WatcherMode::Persistent);
                         if !is_persistent {
-                            shutdown_runtime(runtime);
+                            let _ = shutdown_runtime(runtime);
                             clear_runtime_file();
                         }
                     }
@@ -328,6 +338,7 @@ fn start_or_attach_runtime(app: &AppHandle, state: &RuntimeState) -> Result<(), 
             started_by_ui: record.started_by_ui,
             auth_token: Some(token),
             worker_id: None,
+            shutdown_token: None,
         }
     } else {
         let token = settings.core_auth_token.clone().unwrap_or_else(random_token);
@@ -351,6 +362,7 @@ fn start_or_attach_runtime(app: &AppHandle, state: &RuntimeState) -> Result<(), 
                     started_by_ui: record.started_by_ui,
                     auth_token: None,
                     worker_id: record.worker_id,
+                    shutdown_token: record.shutdown_token,
                 })
             },
         )?
@@ -371,16 +383,50 @@ fn start_or_attach_runtime(app: &AppHandle, state: &RuntimeState) -> Result<(), 
     Ok(())
 }
 
-fn shutdown_runtime(runtime: &mut RuntimeRuntime) {
+fn shutdown_runtime(runtime: &mut RuntimeRuntime) -> Result<(), RuntimeError> {
     if let Some(watcher) = runtime.watcher.as_mut() {
         if watcher.started_by_ui {
-            stop_process(watcher);
+            let _ = graceful_shutdown_watcher(watcher);
         }
     }
 
     if runtime.core.started_by_ui {
         stop_process(&mut runtime.core);
     }
+    Ok(())
+}
+
+fn graceful_shutdown_watcher(watcher: &mut RuntimeProcess) {
+    if !is_owned_watcher(watcher) {
+        return;
+    }
+
+    let token = watcher
+        .shutdown_token
+        .as_ref()
+        .expect("shutdown token required for owned watcher");
+    let worker_id = watcher
+        .worker_id
+        .as_ref()
+        .expect("worker id required for owned watcher");
+
+    let client = create_http_client();
+    let endpoint = format!(
+        "{}/watcher/shutdown?token={}&worker_id={}",
+        watcher.url, token, worker_id
+    );
+    let response = client
+        .post(endpoint)
+        .send()
+        .and_then(|value| value.error_for_status());
+
+    if response.is_err() {
+        stop_process(watcher);
+    }
+}
+
+fn is_owned_watcher(process: &RuntimeProcess) -> bool {
+    process.started_by_ui && process.worker_id.is_some() && process.shutdown_token.is_some()
 }
 
 fn spawn_core(context: &StartContext, token: &str) -> Result<RuntimeProcess, RuntimeError> {
@@ -414,30 +460,48 @@ fn spawn_core(context: &StartContext, token: &str) -> Result<RuntimeProcess, Run
         started_by_ui: true,
         auth_token: Some(token.to_string()),
         worker_id: None,
+        shutdown_token: None,
     })
 }
 
 fn spawn_watcher(context: &StartContext, core_url: &str) -> Result<RuntimeProcess, RuntimeError> {
     let worker_id = format!("watcher_{}", random_token_n(12));
+    let shutdown_token = random_token_n(32);
     let child = Command::new(&context.binary)
         .arg("watcher")
         .arg(format!("--backend={core_url}"))
+        .arg(format!("--listen={WATCHER_LISTEN_ADDR}"))
+        .arg(format!("--worker-id={worker_id}"))
+        .arg(format!("--shutdown-token={shutdown_token}"))
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .spawn()
         .map_err(|err| RuntimeError::Spawn(err.to_string()))?;
 
-    let base_url = "http://127.0.0.1:7788";
+    let base_url = format!("http://{}", WATCHER_LISTEN_ADDR);
     let health = wait_for_health_service_with_retry(&format!("{}/health", base_url), "rterm-watcher")
         .ok_or_else(|| RuntimeError::Http("watcher did not become healthy".into()))?;
+    let state_url = format!("{}/watcher/state", base_url);
+    let state = request_watcher_state(&state_url)?;
+    if state.worker_id.as_deref() != Some(&worker_id) {
+        return Err(RuntimeError::RuntimePayload(
+            "watcher state returned unexpected worker identity".into(),
+        ));
+    }
+    if state.shutdown_token.as_deref() != Some(&shutdown_token) {
+        return Err(RuntimeError::RuntimePayload(
+            "watcher state returned unexpected shutdown token".into(),
+        ));
+    }
 
     Ok(RuntimeProcess {
         child: Some(child),
         pid: health.pid,
-        url: base_url.to_string(),
+        url: base_url,
         started_by_ui: true,
         auth_token: None,
         worker_id: Some(worker_id),
+        shutdown_token: Some(shutdown_token),
     })
 }
 
@@ -478,6 +542,7 @@ fn validate_core_entry(entry: RuntimeFileCore) -> Option<RuntimeProcessRecord> {
         started_by_ui: entry.started_by_ui,
         auth_token: entry.auth_token,
         worker_id: None,
+        shutdown_token: None,
     })
 }
 
@@ -494,6 +559,7 @@ fn validate_watcher_entry_for_core_record(
             pid: entry.pid,
             url: entry.url.clone(),
             worker_id: entry.worker_id.clone(),
+            shutdown_token: entry.shutdown_token.clone(),
             started_by_ui: entry.started_by_ui,
         },
         Some(expected_core_url),
@@ -514,9 +580,16 @@ fn validate_watcher_entry_for_core(
         return None;
     }
 
+    let state_url = format!("{}/watcher/state", entry.url);
+    let state = request_watcher_state(&state_url).ok()?;
+    if state.worker_id.as_deref() != entry.worker_id.as_deref() {
+        return None;
+    }
+    if state.shutdown_token.as_deref() != entry.shutdown_token.as_deref() {
+        return None;
+    }
+
     if let Some(expected_core_url) = expected_core_url {
-        let state_url = format!("{}/watcher/state", entry.url);
-        let state = request_watcher_state(&state_url).ok()?;
         if normalize_url_for_compare(&state.backend_url) != normalize_url_for_compare(expected_core_url) {
             return None;
         }
@@ -528,6 +601,7 @@ fn validate_watcher_entry_for_core(
         started_by_ui: entry.started_by_ui,
         auth_token: None,
         worker_id: entry.worker_id.clone(),
+        shutdown_token: entry.shutdown_token.clone(),
     })
 }
 
@@ -559,6 +633,7 @@ fn write_runtime_file(core: &RuntimeProcess, watcher: Option<&RuntimeProcess>) -
                     pid,
                     url: process.url.clone(),
                     worker_id: process.worker_id.clone(),
+                    shutdown_token: process.shutdown_token.clone(),
                     started_by_ui: process.started_by_ui,
                 })
             }
