@@ -157,18 +157,26 @@ What `npm run tauri:dev` does:
 
 ### Browser-only local split run
 
-If you want to run the active frontend and backend outside Tauri, use
-two terminals.
-
-Terminal 1:
+If you want to run the active frontend and backend outside Tauri, the
+supported split dev loop is:
 
 ```bash
-make run-backend
+make dev
 ```
 
-Terminal 2:
+What `make dev` does:
+
+- starts the standalone Go core behind `air` for live rebuild/restart on
+  Go source changes
+- starts the frontend with the normal Vite dev server / React refresh
+- keeps both processes in one long-lived terminal session so browser
+  smoke tests can reuse the same backend/frontend pair instead of
+  restarting them between runs
+
+If you want the split pieces separately, keep using:
 
 ```bash
+make run-backend-watch
 make run-frontend
 ```
 
@@ -182,9 +190,14 @@ Default local addresses:
 You can override those defaults via `make` variables when needed:
 
 ```bash
-make LOCAL_BACKEND_PORT=8091 LOCAL_AUTH_TOKEN=my-dev-token run-backend
+make LOCAL_BACKEND_PORT=8091 LOCAL_AUTH_TOKEN=my-dev-token run-backend-watch
 make LOCAL_BACKEND_URL=http://127.0.0.1:8091 LOCAL_AUTH_TOKEN=my-dev-token run-frontend
+make LOCAL_BACKEND_PORT=8091 LOCAL_AUTH_TOKEN=my-dev-token dev
 ```
+
+The first `make dev` / `make run-backend-watch` run bootstraps a local
+copy of `air-verse/air` into `tmp/tools/air` so it does not depend on a
+global `air` binary in your `PATH`.
 
 ## Launch troubleshooting
 

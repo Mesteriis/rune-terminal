@@ -133,8 +133,14 @@ out of scope before implementing.
 Do not claim behavior unless it was really validated.
 
 - build-only is not enough for UX-heavy slices
+- for split frontend/backend browser validation, prefer one long-lived
+  `make dev` session and reuse it across iterative checks instead of
+  restarting local services between each test run unless the environment
+  itself changed
 - for changes that touch the shell or UI, prefer a fresh launch smoke
   (`npm run tauri:dev`) in addition to `npm run validate`
+- `make dev` is the supported split browser/test loop; `npm run tauri:dev`
+  remains the supported desktop entrypoint
 - the supported Tauri entrypoint for this repo is the local npm CLI;
   do not switch to `cargo tauri dev` as the primary launch path
 - if something could not be validated, say so explicitly in

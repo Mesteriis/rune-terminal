@@ -2,14 +2,14 @@
 
 ## Last verified state
 
-- Date: `2026-04-18`
+- Date: `2026-04-21`
 - State: `VERIFIED`
 - Scope:
   - operator cross-surface handoffs (Files/AI/`/run`/Tools/Audit/MCP)
   - quick-actions explicit action flow
   - workflow identity/provenance checks
   - repo release-gate command truth
-  - standalone local split dev entrypoints from `Makefile` (`run-backend`, `run-frontend`)
+  - standalone local split dev workflow from `Makefile` (`dev`, backed by `run-backend-watch`)
 
 ## Commands/tests used
 
@@ -18,10 +18,10 @@
 - `npm run validate`
 - `npm run tauri:dev`
 - `make help`
-- `make run-backend`
-- `curl -sf http://127.0.0.1:8090/healthz`
-- `make run-frontend`
-- `curl -sf http://127.0.0.1:5173`
+- `make dev LOCAL_BACKEND_PORT=8092 LOCAL_BACKEND_LISTEN=127.0.0.1:8092 LOCAL_BACKEND_URL=http://127.0.0.1:8092 LOCAL_FRONTEND_PORT=4193`
+- `curl -sf http://127.0.0.1:8092/healthz`
+- `curl -sf http://127.0.0.1:4193`
+- temporary no-op change + revert in `cmd/rterm-core/main.go` to confirm `air` rebuild/restart on watched Go source changes
 - Workflow identity targeted tests:
   - `./scripts/go.sh test ./core/transport/httpapi -run 'TestExplainTerminalCommandUsesExplicitCommandAuditEventIDPayload'`
   - `./scripts/go.sh test ./core/app -run 'TestCreateAttachmentReferenceAppendsAuditEventWithProvenance|TestExplainTerminalCommandUsesExplicitCommandAuditEventID'`
@@ -32,7 +32,9 @@
 - Cross-surface automation is intentionally explicit/manual, not autonomous orchestration.
 - Remote coverage in workflow runs is often guard-level unless a dedicated remote slice is executed.
 - Full-frontend lint debt is tracked separately and not part of active-path release gate.
-- The standalone browser split path requires two terminals and a shared `LOCAL_AUTH_TOKEN` / backend URL pair.
+- The first split browser run that uses `make dev` or `make run-backend-watch` bootstraps `air-verse/air` into `tmp/tools/air`.
+- The split browser path still depends on a shared `LOCAL_AUTH_TOKEN` / backend URL pair when targets are launched separately.
+- This validation pass used alternate local ports (`8092` backend, `4193` frontend) because `5173` was already occupied on the validating machine.
 
 ## Evidence
 

@@ -1,0 +1,28 @@
+root = "__RTERM_ROOT__"
+tmp_dir = "tmp/air"
+
+[build]
+cmd = "__RTERM_ROOT__/scripts/go.sh build -o __RTERM_ROOT__/tmp/air/rterm-core __RTERM_ROOT__/cmd/rterm-core"
+bin = "__RTERM_ROOT__/tmp/air/rterm-core"
+args_bin = [
+  "serve",
+  "--listen",
+  "__RTERM_LISTEN__",
+  "--workspace-root",
+  "__RTERM_ROOT__",
+  "--state-dir",
+  "__RTERM_ROOT__/state",
+]
+include_ext = ["go"]
+include_dir = ["cmd", "core", "internal"]
+exclude_dir = ["apps", "dist", "frontend", "node_modules", "state", "tmp"]
+exclude_regex = ["_test\\.go"]
+exclude_unchanged = true
+follow_symlink = true
+stop_on_error = true
+send_interrupt = true
+kill_delay = "500ms"
+poll = false
+
+[log]
+time = true
