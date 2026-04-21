@@ -6,8 +6,10 @@
 - State: `PARTIALLY VERIFIED`
 - Scope:
   - frontend AI sidebar main path now loads backend conversation state from `GET /api/v1/agent/conversation`
-  - existing textarea + send icon now submit to `POST /api/v1/agent/conversation/messages`
+  - existing textarea + send icon now submit to `POST /api/v1/agent/conversation/messages/stream`
   - runtime transport resolves through the shared frontend runtime context; no localhost hardcoding was introduced
+  - visible assistant output now updates incrementally from backend stream events on the main sidebar path
+  - the existing busy overlay and composer disabled state are now driven by the real stream lifecycle
   - current formatting, spacing, layout, hierarchy, typography, and control placement were intentionally preserved
   - profile/role/mode selection and attachment reference UI remain blocked because there is no existing approved visible control for them in the current AI sidebar
 
@@ -23,9 +25,8 @@
   - `sed -n '1,260p' core/app/conversation_attachments.go`
   - `sed -n '1,380p' core/transport/httpapi/handlers_agent_conversation_test.go`
 - Frontend targeted validation:
-  - `npm --prefix frontend run lint:active`
-  - `npm --prefix frontend run test -- src/features/agent/api/client.test.ts`
-  - `npm --prefix frontend run test -- src/widgets/ai/ai-panel-widget.test.tsx src/features/agent/api/client.test.ts`
+  - `npm --prefix frontend run test -- --reporter verbose --testTimeout=10000 src/features/agent/api/client.test.ts`
+  - `npm --prefix frontend run test -- --reporter verbose --testTimeout=10000 src/widgets/ai/ai-panel-widget.test.tsx src/features/agent/api/client.test.ts`
   - `npm --prefix frontend run build`
 - Desktop startup smoke:
   - `npm run tauri:dev`
@@ -53,7 +54,7 @@
     - `messages: Message[]`
     - `provider: { kind, base_url, model?, streaming }`
     - `updated_at`
-- `POST /api/v1/agent/conversation/messages`
+- `POST /api/v1/agent/conversation/messages/stream`
   - request body:
     - `prompt: string`
     - `attachments?: AttachmentReference[]`
@@ -63,9 +64,23 @@
     - `active_widget_id`
     - `repo_root`
     - `widget_context_enabled`
-  - success response:
-    - `conversation: Snapshot`
-    - `provider_error: string`
+  - success transport:
+    - `text/event-stream`
+    - event mapping on the visible sidebar path:
+      - `message-start`
+        - creates or updates the pending assistant card
+      - `text-delta`
+        - appends partial assistant content into the existing transcript card
+      - `message-complete`
+        - finalizes the assistant card and clears working state
+      - `error`
+        - finalizes the assistant error state when a message payload is present, or appends the existing backend error status prompt when only an error string is present
+
+### Backend contracts retained in the frontend client but not used on the visible submit path
+
+- `POST /api/v1/agent/conversation/messages`
+  - retained as a non-stream request/response client path for compatibility/fallback isolation
+  - not used by the current visible AI sidebar submit flow
 
 ### Backend contracts implemented in the frontend client but not wired to visible controls
 
@@ -86,6 +101,7 @@ These client functions were added so the frontend follows the real backend contr
   - [frontend/src/features/agent/model/types.ts](../../frontend/src/features/agent/model/types.ts)
   - [frontend/src/features/agent/model/panel-state.ts](../../frontend/src/features/agent/model/panel-state.ts)
   - [frontend/src/features/agent/model/use-agent-panel.ts](../../frontend/src/features/agent/model/use-agent-panel.ts)
+  - [frontend/src/shared/model/ai-blocked-widgets.ts](../../frontend/src/shared/model/ai-blocked-widgets.ts)
 - Existing widget surface kept in place:
   - [frontend/src/widgets/ai/ai-panel-widget.tsx](../../frontend/src/widgets/ai/ai-panel-widget.tsx)
   - [frontend/src/widgets/ai/ai-composer-widget.tsx](../../frontend/src/widgets/ai/ai-composer-widget.tsx)
@@ -97,8 +113,17 @@ These client functions were added so the frontend follows the real backend contr
 
 - The `AiPanelWidget` default path no longer uses `aiPanelWidgetMockState`.
 - The existing card stack now projects backend conversation messages into the current prompt-card layout without moving or restyling the widget.
-- The existing textarea and send icon now submit real backend conversation messages and replace the visible card stack with the returned backend transcript.
-- Submission failures are surfaced inside the existing card stack instead of adding a new panel, toast, or control.
+- The existing textarea and send icon now submit through the backend SSE route instead of waiting for a full request/response transcript replacement.
+- The visible transcript now appends a local user message immediately, creates the assistant entry on `message-start`, and updates assistant content incrementally on `text-delta`.
+- Backend error events and stream transport failures are surfaced inside the existing card stack instead of adding a new panel, toast, or control.
+
+### Busy-state behavior
+
+- Busy state begins when the visible sidebar starts a real stream submission.
+- The existing composer remains disabled while the stream is active.
+- The existing widget busy overlay is now driven by the real stream lifecycle for the AI sidebar instead of only by manual demo toggling.
+- Busy state clears on `message-complete`, `error`, or stream abort/cleanup.
+- No timer-driven busy simulation was added.
 
 ### Remaining demo/static-only paths
 
