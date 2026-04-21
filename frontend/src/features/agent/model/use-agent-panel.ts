@@ -57,9 +57,11 @@ export function useAgentPanel(hostId: string, enabled = true) {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const activeStreamRef = useRef<AgentConversationStreamConnection | null>(null)
   const optimisticMessageCounterRef = useRef(0)
+  const submissionNonceRef = useRef(0)
 
   useEffect(() => {
     return () => {
+      submissionNonceRef.current += 1
       activeStreamRef.current?.close()
       activeStreamRef.current = null
       unblockAiWidget(hostId)
@@ -73,6 +75,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
 
     let cancelled = false
 
+    submissionNonceRef.current += 1
     activeStreamRef.current?.close()
     activeStreamRef.current = null
     unblockAiWidget(hostId)
@@ -106,6 +109,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
 
     return () => {
       cancelled = true
+      submissionNonceRef.current += 1
       activeStreamRef.current?.close()
       activeStreamRef.current = null
       unblockAiWidget(hostId)
@@ -125,6 +129,9 @@ export function useAgentPanel(hostId: string, enabled = true) {
       prompt,
     )
     optimisticMessageCounterRef.current += 1
+    const submissionNonce = submissionNonceRef.current + 1
+    submissionNonceRef.current = submissionNonce
+    const isActiveSubmission = () => submissionNonceRef.current === submissionNonce
 
     setIsSubmitting(true)
     setLoadError(null)
@@ -153,6 +160,10 @@ export function useAgentPanel(hostId: string, enabled = true) {
         },
         {
           onEvent: (event) => {
+            if (!isActiveSubmission()) {
+              return
+            }
+
             sawStreamEvent = true
 
             setMessages((currentMessages) =>
@@ -181,6 +192,10 @@ export function useAgentPanel(hostId: string, enabled = true) {
       activeStreamRef.current = connection
       await connection.done
     } catch (error: unknown) {
+      if (!isActiveSubmission()) {
+        return
+      }
+
       const message =
         error instanceof Error && error.message.trim()
           ? error.message
@@ -201,15 +216,17 @@ export function useAgentPanel(hostId: string, enabled = true) {
 
       setSubmitError(message)
     } finally {
-      if (activeStreamRef.current === connection) {
-        activeStreamRef.current = null
-      }
+      if (isActiveSubmission()) {
+        if (activeStreamRef.current === connection) {
+          activeStreamRef.current = null
+        }
 
-      unblockAiWidget(hostId)
-      setIsSubmitting(false)
+        unblockAiWidget(hostId)
+        setIsSubmitting(false)
 
-      if (!sawCompletionEvent && !sawStreamEvent) {
-        setDraft(prompt)
+        if (!sawCompletionEvent && !sawStreamEvent) {
+          setDraft(prompt)
+        }
       }
     }
   }, [draft, enabled, hostId, isSubmitting])

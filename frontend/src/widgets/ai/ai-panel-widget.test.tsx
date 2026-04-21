@@ -195,4 +195,77 @@ describe('AiPanelWidget backend conversation path', () => {
       expect(screen.queryByLabelText('Widget ai-shell-panel is busy')).not.toBeInTheDocument()
     })
   })
+
+  it('clears busy state and keeps partial assistant output coherent on backend error events', async () => {
+    const streamResponse = createDeferredStreamResponse()
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          conversation: {
+            messages: [],
+            provider: {
+              kind: 'stub',
+              base_url: 'http://stub',
+              model: 'stub-model',
+              streaming: true,
+            },
+            updated_at: '2026-04-21T10:00:00Z',
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        body: streamResponse.body,
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<AiPanelWidget hostId="ai-shell-panel" />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Backend conversation is empty.')).toBeInTheDocument()
+    })
+
+    fireEvent.change(screen.getByPlaceholderText('Text Area'), {
+      target: { value: 'Trigger backend error' },
+    })
+    fireEvent.click(screen.getByLabelText('Send prompt'))
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Widget ai-shell-panel is busy')).toBeInTheDocument()
+    })
+
+    await act(async () => {
+      streamResponse.push(
+        'event: message-start\ndata: {"type":"message-start","message_id":"msg_2","message":{"id":"msg_2","role":"assistant","content":"","status":"streaming","provider":"stub","model":"stub-model","created_at":"2026-04-21T10:00:05Z"}}\n\n',
+      )
+      streamResponse.push(
+        'event: text-delta\ndata: {"type":"text-delta","message_id":"msg_2","delta":"Partial reply"}\n\n',
+      )
+      streamResponse.push(
+        'event: error\ndata: {"type":"error","message_id":"msg_2","message":{"id":"msg_2","role":"assistant","content":"Partial reply","status":"error","provider":"stub","model":"stub-model","created_at":"2026-04-21T10:00:05Z"},"error":"provider unavailable"}\n\n',
+      )
+      streamResponse.close()
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Partial reply')).toBeInTheDocument()
+    })
+    await waitFor(() => {
+      expect(screen.queryByLabelText('Widget ai-shell-panel is busy')).not.toBeInTheDocument()
+    })
+    await waitFor(() => {
+      expect(screen.getByLabelText('Send prompt')).toBeEnabled()
+    })
+  })
 })
