@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { resetRuntimeContextCacheForTests } from '@/shared/api/runtime'
 import { AiPanelWidget } from '@/widgets/ai/ai-panel-widget'
+import { aiPanelWidgetMockState } from '@/widgets/ai/ai-panel-widget.mock'
 
 vi.mock('@tsparticles/react', () => ({
   __esModule: true,
@@ -279,5 +280,25 @@ describe('AiPanelWidget backend conversation path', () => {
     await waitFor(() => {
       expect(screen.getByLabelText('Send prompt')).toBeEnabled()
     })
+  })
+
+  it('updates detail visibility immediately when the chat mode changes', () => {
+    const { rerender } = render(
+      <AiPanelWidget hostId="ai-shell-panel" mode="chat" state={aiPanelWidgetMockState} />,
+    )
+
+    expect(screen.queryByText('Prompt')).not.toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Show details' })).toHaveLength(2)
+
+    rerender(<AiPanelWidget hostId="ai-shell-panel" mode="dev" state={aiPanelWidgetMockState} />)
+
+    expect(screen.getAllByText('Prompt')).toHaveLength(2)
+    expect(screen.getAllByRole('button', { name: 'Hide details' })).toHaveLength(2)
+
+    rerender(<AiPanelWidget hostId="ai-shell-panel" mode="debug" state={aiPanelWidgetMockState} />)
+
+    expect(screen.getAllByText('Prompt')).toHaveLength(2)
+    expect(screen.queryByRole('button', { name: 'Show details' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Hide details' })).not.toBeInTheDocument()
   })
 })

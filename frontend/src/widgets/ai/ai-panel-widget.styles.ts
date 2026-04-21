@@ -93,20 +93,38 @@ export const aiShellTitleTextStyle: CSSProperties = {
   whiteSpace: 'nowrap',
 }
 
-export const aiHeaderActionStyle: CSSProperties = {
-  alignSelf: 'stretch',
-  width: '44px',
-  minWidth: '44px',
-  minHeight: '48px',
-  height: 'auto',
-  borderRadius: 0,
-  border: 'none',
+export const aiHeaderModeGroupStyle: CSSProperties = {
+  flex: '0 0 auto',
+  display: 'flex',
+  alignItems: 'stretch',
+  gap: 0,
+  padding: 0,
   borderLeft: '1px solid var(--color-border-strong)',
+}
+
+export const aiHeaderModeButtonStyle: CSSProperties = {
+  minWidth: '64px',
+  minHeight: '48px',
+  padding: '0 var(--space-sm)',
+  border: 'none',
+  borderRadius: 0,
+  borderLeft: '1px solid color-mix(in srgb, var(--color-border-strong) 68%, transparent)',
   background: 'var(--color-surface-shell-header-action)',
-  color: 'var(--color-text-secondary)',
+  color: 'var(--color-text-muted)',
   boxShadow: 'none',
   backdropFilter: 'none',
   WebkitBackdropFilter: 'none',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '11px',
+  lineHeight: '16px',
+  textTransform: 'uppercase',
+  letterSpacing: '0.05em',
+}
+
+export const aiHeaderModeButtonActiveStyle: CSSProperties = {
+  background:
+    'color-mix(in srgb, var(--color-accent-emerald-soft) 54%, var(--color-surface-shell-header-action))',
+  color: 'var(--color-text-primary)',
 }
 
 export const aiMessageStackStyle: CSSProperties = {

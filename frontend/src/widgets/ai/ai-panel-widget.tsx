@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
 
 import { useAgentPanel } from '@/features/agent/model/use-agent-panel'
-import type { AiPanelWidgetState } from '@/features/agent/model/types'
+import type { AiPanelWidgetState, ChatMode } from '@/features/agent/model/types'
 import { RunaDomScopeProvider, useRunaDomAutoTagging } from '@/shared/ui/dom-id'
 import { Box, ScrollArea } from '@/shared/ui/primitives'
 
@@ -17,10 +17,11 @@ import {
 
 export type AiPanelWidgetProps = {
   hostId: string
+  mode?: ChatMode
   state?: AiPanelWidgetState
 }
 
-export function AiPanelWidget({ hostId, state }: AiPanelWidgetProps) {
+export function AiPanelWidget({ hostId, mode = 'chat', state }: AiPanelWidgetProps) {
   const agentPanel = useAgentPanel(hostId, state == null)
   const panelState = state ?? agentPanel.panelState
   const autoTagAiPanelRootRef = useRunaDomAutoTagging('ai-panel-root')
@@ -48,7 +49,7 @@ export function AiPanelWidget({ hostId, state }: AiPanelWidgetProps) {
             style={aiMessageStackStyle}
           >
             {panelState.messages.map((message) => (
-              <AiChatMessageWidget key={message.id} message={message} />
+              <AiChatMessageWidget key={message.id} message={message} mode={mode} />
             ))}
           </ScrollArea>
           <AiComposerWidget

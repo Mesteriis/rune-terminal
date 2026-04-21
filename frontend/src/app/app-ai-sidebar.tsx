@@ -1,6 +1,7 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useRef, useState, type RefObject } from 'react'
 
+import type { ChatMode } from '@/features/agent/model/types'
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { Box } from '@/shared/ui/primitives'
 import { AiPanelHeaderWidget, AiPanelWidget } from '@/widgets'
@@ -51,6 +52,7 @@ function clampAiPanelWidth(requestedWidth: number, contentAreaElement: HTMLDivEl
 /** Renders the shell-managed AI sidebar, including resize behavior and open/close animation. */
 export function AppAiSidebar({ isOpen, contentAreaRef }: AppAiSidebarProps) {
   const [aiPanelWidth, setAiPanelWidth] = useState(getDefaultAiPanelWidth())
+  const [chatMode, setChatMode] = useState<ChatMode>('chat')
   const [isAiPanelResizing, setIsAiPanelResizing] = useState(false)
   const aiResizeStartRef = useRef<{ startWidth: number; startX: number } | null>(null)
   const prefersReducedMotion = useReducedMotion()
@@ -154,10 +156,10 @@ export function AppAiSidebar({ isOpen, contentAreaRef }: AppAiSidebarProps) {
                     runaComponent="ai-shell-panel-header"
                     style={aiPanelHeaderStyle}
                   >
-                    <AiPanelHeaderWidget title="AI Rune" />
+                    <AiPanelHeaderWidget mode={chatMode} onModeChange={setChatMode} title="AI Rune" />
                   </Box>
                   <Box runaComponent="ai-shell-panel-body" style={aiPanelBodyStyle}>
-                    <AiPanelWidget hostId={AI_SHELL_PANEL_HOST_ID} />
+                    <AiPanelWidget hostId={AI_SHELL_PANEL_HOST_ID} mode={chatMode} />
                   </Box>
                 </Box>
               </Box>

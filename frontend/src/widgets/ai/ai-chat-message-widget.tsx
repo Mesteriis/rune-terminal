@@ -1,9 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { Box, Button, Surface, Text } from '@/shared/ui/primitives'
 
-import type { ChatMessageView } from '@/features/agent/model/types'
+import type { ChatMessageView, ChatMode } from '@/features/agent/model/types'
 import {
   aiChatMessageContentStyle,
   aiChatMessageBubbleStyle,
@@ -26,9 +26,10 @@ import {
 
 export type AiChatMessageWidgetProps = {
   message: ChatMessageView
+  mode: ChatMode
 }
 
-export function AiChatMessageWidget({ message }: AiChatMessageWidgetProps) {
+export function AiChatMessageWidget({ message, mode }: AiChatMessageWidgetProps) {
   const isUser = message.role === 'user'
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const metaLine = !isUser
@@ -57,6 +58,11 @@ export function AiChatMessageWidget({ message }: AiChatMessageWidgetProps) {
     ].filter(Boolean) as Array<{ id: string; label: string; value: string }>
   }, [message.meta])
   const hasDetails = !isUser && details.length > 0
+  const isDetailsVisible = hasDetails && (mode === 'debug' || isDetailsOpen)
+
+  useEffect(() => {
+    setIsDetailsOpen(mode !== 'chat')
+  }, [mode])
 
   return (
     <RunaDomScopeProvider component={`ai-chat-message-${message.id}`}>
@@ -92,15 +98,17 @@ export function AiChatMessageWidget({ message }: AiChatMessageWidgetProps) {
           ) : null}
           {hasDetails ? (
             <>
-              <Button
-                aria-expanded={isDetailsOpen}
-                onClick={() => setIsDetailsOpen((value) => !value)}
-                runaComponent={`ai-chat-message-${message.id}-details-toggle`}
-                style={aiChatMessageDetailsToggleStyle}
-              >
-                {isDetailsOpen ? 'Hide details' : 'Show details'}
-              </Button>
-              {isDetailsOpen ? (
+              {mode !== 'debug' ? (
+                <Button
+                  aria-expanded={isDetailsVisible}
+                  onClick={() => setIsDetailsOpen((value) => !value)}
+                  runaComponent={`ai-chat-message-${message.id}-details-toggle`}
+                  style={aiChatMessageDetailsToggleStyle}
+                >
+                  {isDetailsVisible ? 'Hide details' : 'Show details'}
+                </Button>
+              ) : null}
+              {isDetailsVisible ? (
                 <Surface
                   runaComponent={`ai-chat-message-${message.id}-details`}
                   style={aiChatMessageDetailsPanelStyle}
