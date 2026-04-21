@@ -235,6 +235,8 @@ func runWatcher(args []string) error {
 	runtime := newWatcherRuntime(*backendURL, *workerID, *shutdownToken, *workers, *pollInterval)
 	runtime.registerDefaultHandlers()
 	pollDone := make(chan struct{})
+	healthLoopDone := make(chan struct{})
+	taskLoopDone := make(chan struct{})
 	var stopPollingOnce sync.Once
 	stopPollingSignal := func() {
 		stopPollingOnce.Do(func() {
@@ -271,6 +273,14 @@ func runWatcher(args []string) error {
 			return
 		}
 		runtime.stopWorkers()
+		if err := waitLoopDone(shutdownCtx, taskLoopDone, "task loop"); err != nil {
+			writeJSONError(writer, err)
+			return
+		}
+		if err := waitLoopDone(shutdownCtx, healthLoopDone, "health loop"); err != nil {
+			writeJSONError(writer, err)
+			return
+		}
 		writeJSONResponse(writer, map[string]any{"phase": "stopped", "status": "ok"})
 		go func() {
 			serverShutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -281,9 +291,11 @@ func runWatcher(args []string) error {
 	baseURL := "http://" + listener.Addr().String()
 	fmt.Printf(`{"base_url":"%s","pid":%d}`+"\n", baseURL, os.Getpid())
 	go func() {
+		defer close(healthLoopDone)
 		pollBackendHealth(*backendURL, pollDone)
 	}()
 	go func() {
+		defer close(taskLoopDone)
 		runWatcherRuntime(runtime, pollDone)
 	}()
 
@@ -302,12 +314,23 @@ func runWatcher(args []string) error {
 		stopPollingSignal()
 		_ = runtime.gracefulShutdown(shutdownCtx)
 		runtime.stopWorkers()
+		_ = waitLoopDone(shutdownCtx, taskLoopDone, "task loop")
+		_ = waitLoopDone(shutdownCtx, healthLoopDone, "health loop")
 		return httpapi.Shutdown(shutdownCtx, server)
 	case err := <-serverErr:
 		if err == nil || err == http.ErrServerClosed {
 			return nil
 		}
 		return err
+	}
+}
+
+func waitLoopDone(ctx context.Context, done <-chan struct{}, name string) error {
+	select {
+	case <-done:
+		return nil
+	case <-ctx.Done():
+		return fmt.Errorf("wait %s stop: %w", name, ctx.Err())
 	}
 }
 
