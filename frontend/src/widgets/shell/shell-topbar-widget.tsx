@@ -41,19 +41,11 @@ export function ShellTopbarWidget({
   return (
     <RunaDomScopeProvider component="shell-topbar-widget">
       <Box runaComponent="shell-topbar-root" style={topbarStyle}>
-        <Button
-          aria-label="Close window"
-          role="tab"
-          aria-selected="false"
-          runaComponent="shell-topbar-close-window"
-          style={iconButtonStyle}
-        >
+        <Button aria-label="Close window" runaComponent="shell-topbar-close-window" style={iconButtonStyle}>
           <X {...actionIconProps} />
         </Button>
         <Button
           aria-label="Collapse window"
-          role="tab"
-          aria-selected="false"
           runaComponent="shell-topbar-collapse-window"
           style={iconButtonStyle}
         >
@@ -61,8 +53,6 @@ export function ShellTopbarWidget({
         </Button>
         <Button
           aria-label="Toggle fullscreen"
-          role="tab"
-          aria-selected="false"
           runaComponent="shell-topbar-toggle-fullscreen"
           style={iconButtonStyle}
         >

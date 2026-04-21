@@ -38,18 +38,13 @@ export function useDockviewWorkspace({ client = dockviewWorkspaceClient }: UseDo
   const initialWorkspaceStateRef = useRef<PersistedDockviewWorkspaceState | null>(
     workspaceClientRef.current.readState(),
   )
-  const [workspaceTabs, setWorkspaceTabs] = useState<WorkspaceLayoutTab[]>(
-    initialWorkspaceStateRef.current?.workspaceTabs ?? createDefaultWorkspaceTabs(),
-  )
-  const [activeWorkspaceId, setActiveWorkspaceId] = useState(
-    initialWorkspaceStateRef.current?.activeWorkspaceId ?? DEFAULT_ACTIVE_WORKSPACE_ID,
-  )
-  const workspaceTabsRef = useRef<WorkspaceLayoutTab[]>(
-    initialWorkspaceStateRef.current?.workspaceTabs ?? createDefaultWorkspaceTabs(),
-  )
-  const activeWorkspaceIdRef = useRef(
-    initialWorkspaceStateRef.current?.activeWorkspaceId ?? DEFAULT_ACTIVE_WORKSPACE_ID,
-  )
+  const initialWorkspaceTabs = initialWorkspaceStateRef.current?.workspaceTabs ?? createDefaultWorkspaceTabs()
+  const initialActiveWorkspaceId =
+    initialWorkspaceStateRef.current?.activeWorkspaceId ?? DEFAULT_ACTIVE_WORKSPACE_ID
+  const [workspaceTabs, setWorkspaceTabs] = useState<WorkspaceLayoutTab[]>(initialWorkspaceTabs)
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState(initialActiveWorkspaceId)
+  const workspaceTabsRef = useRef<WorkspaceLayoutTab[]>(initialWorkspaceTabs)
+  const activeWorkspaceIdRef = useRef(initialActiveWorkspaceId)
   const dockviewPersistenceControllerRef = useRef<DockviewWorkspacePersistenceController | null>(null)
 
   const updateWorkspaceTabs = (updater: (tabs: WorkspaceLayoutTab[]) => WorkspaceLayoutTab[]) => {
