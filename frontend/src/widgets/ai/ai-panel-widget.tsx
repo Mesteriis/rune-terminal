@@ -127,6 +127,9 @@ export function AiPanelWidget({ hostId, mode = 'chat', state }: AiPanelWidgetPro
                     isGroupedWithNext={isGroupedWithNext}
                     message={message}
                     mode={mode}
+                    onApprovalApprove={state == null ? agentPanel.approvePendingPlan : undefined}
+                    onApprovalCancel={state == null ? agentPanel.cancelPendingPlan : undefined}
+                    onQuestionnaireAnswer={state == null ? agentPanel.answerQuestionnaire : undefined}
                   />
                 )
               })}
@@ -134,11 +137,15 @@ export function AiPanelWidget({ hostId, mode = 'chat', state }: AiPanelWidgetPro
           </ScrollArea>
           <AiComposerWidget
             activeTool={panelState.activeTool}
-            disabled={state == null ? agentPanel.isSubmitting : false}
+            disabled={state == null ? agentPanel.isSubmitting || agentPanel.isInteractionPending : false}
             onSubmit={state == null ? agentPanel.submitDraft : undefined}
             onValueChange={state == null ? agentPanel.setDraft : undefined}
             placeholder={panelState.composerPlaceholder}
-            submitDisabled={state == null ? agentPanel.isSubmitting || agentPanel.draft.trim() === '' : true}
+            submitDisabled={
+              state == null
+                ? agentPanel.isSubmitting || agentPanel.isInteractionPending || agentPanel.draft.trim() === ''
+                : true
+            }
             toolbarLabel={panelState.toolbarLabel}
             value={state == null ? agentPanel.draft : undefined}
           />

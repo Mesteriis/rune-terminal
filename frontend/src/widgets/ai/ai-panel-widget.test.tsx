@@ -222,6 +222,12 @@ describe('AiPanelWidget backend conversation path', () => {
     })
     fireEvent.click(screen.getByLabelText('Send prompt'))
 
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(screen.getByText('Plan')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Approve' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Approve' }))
+
     await waitFor(() => {
       expect(fetchMock.mock.calls[2]?.[0]).toBe(
         'http://127.0.0.1:8090/api/v1/agent/conversation/messages/stream',
@@ -316,6 +322,7 @@ describe('AiPanelWidget backend conversation path', () => {
       target: { value: 'Trigger backend error' },
     })
     fireEvent.click(screen.getByLabelText('Send prompt'))
+    fireEvent.click(screen.getByRole('button', { name: 'Approve' }))
 
     await waitFor(() => {
       expect(screen.getByLabelText('Widget ai-shell-panel is busy')).toBeInTheDocument()
@@ -341,8 +348,132 @@ describe('AiPanelWidget backend conversation path', () => {
       expect(screen.queryByLabelText('Widget ai-shell-panel is busy')).not.toBeInTheDocument()
     })
     await waitFor(() => {
-      expect(screen.getByLabelText('Send prompt')).toBeEnabled()
+      expect(screen.getByPlaceholderText('Text Area')).toBeEnabled()
     })
+  })
+
+  it('blocks execution until the user answers the questionnaire and approves the plan', async () => {
+    const streamResponse = createDeferredStreamResponse()
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          conversation: {
+            messages: [],
+            provider: {
+              kind: 'stub',
+              base_url: 'http://stub',
+              model: 'stub-model',
+              streaming: false,
+            },
+            updated_at: '2026-04-21T10:00:00Z',
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        body: streamResponse.body,
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<AiPanelWidget hostId="ai-shell-panel" />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Backend conversation is empty.')).toBeInTheDocument()
+    })
+
+    fireEvent.change(screen.getByPlaceholderText('Text Area'), {
+      target: { value: 'Deploy the current config' },
+    })
+    fireEvent.click(screen.getByLabelText('Send prompt'))
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(screen.getByText('Question')).toBeInTheDocument()
+    expect(screen.getByText('Choose environment:')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Staging' }))
+
+    expect(screen.getByText('Answer: staging')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Approve' })).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Approve' }))
+
+    await waitFor(() => {
+      expect(fetchMock.mock.calls[2]?.[0]).toBe(
+        'http://127.0.0.1:8090/api/v1/agent/conversation/messages/stream',
+      )
+    })
+
+    await act(async () => {
+      streamResponse.push(
+        'event: message-start\ndata: {"type":"message-start","message_id":"msg_2","message":{"id":"msg_2","role":"assistant","content":"","status":"streaming","provider":"stub","model":"stub-model","created_at":"2026-04-21T10:00:05Z"}}\n\n',
+      )
+      streamResponse.push(
+        'event: message-complete\ndata: {"type":"message-complete","message_id":"msg_2","message":{"id":"msg_2","role":"assistant","content":"Deployment queued.","status":"complete","provider":"stub","model":"stub-model","created_at":"2026-04-21T10:00:05Z"}}\n\n',
+      )
+      streamResponse.close()
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Deployment queued.')).toBeInTheDocument()
+    })
+  })
+
+  it('stops the flow when approval is cancelled', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          conversation: {
+            messages: [],
+            provider: {
+              kind: 'stub',
+              base_url: 'http://stub',
+              model: 'stub-model',
+              streaming: false,
+            },
+            updated_at: '2026-04-21T10:00:00Z',
+          },
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<AiPanelWidget hostId="ai-shell-panel" />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Backend conversation is empty.')).toBeInTheDocument()
+    })
+
+    fireEvent.change(screen.getByPlaceholderText('Text Area'), {
+      target: { value: 'Run the backend check' },
+    })
+    fireEvent.click(screen.getByLabelText('Send prompt'))
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    expect(screen.getByText('Execution cancelled.')).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
   it('updates detail visibility immediately when the chat mode changes', () => {
