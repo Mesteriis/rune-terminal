@@ -158,7 +158,8 @@ export const aiChatMessageGroupedRowStyle: CSSProperties = {
 export const aiChatMessageGroupStyle: CSSProperties = {
   ...aiPlainBlockStyle,
   minWidth: 0,
-  width: '60%',
+  width: '100%',
+  maxWidth: '600px',
   display: 'flex',
   flexDirection: 'column',
   gap: 'var(--space-xs)',
@@ -183,19 +184,21 @@ export const aiChatMessageAssistantGroupStyle: CSSProperties = {
 export const aiMessageBubbleStyle: CSSProperties = {
   ...aiPlainBlockStyle,
   minWidth: 0,
+  maxWidth: '100%',
   display: 'flex',
   flexDirection: 'column',
   padding: 'var(--space-md) var(--space-lg)',
+  borderRadius: '16px',
 }
 
 export const aiMessageBubbleUserStyle: CSSProperties = {
-  background: 'color-mix(in srgb, var(--color-accent-emerald-soft) 56%, var(--color-canvas-elevated))',
-  borderColor: 'color-mix(in srgb, var(--color-accent-emerald-soft) 48%, var(--color-border-strong))',
+  background: 'color-mix(in srgb, var(--color-accent-emerald-soft) 28%, var(--color-canvas-elevated))',
+  borderColor: 'transparent',
 }
 
 export const aiMessageBubbleAssistantStyle: CSSProperties = {
-  background: 'color-mix(in srgb, var(--color-canvas-elevated) 84%, transparent)',
-  borderColor: 'color-mix(in srgb, var(--color-border-strong) 62%, transparent)',
+  background: 'color-mix(in srgb, var(--color-canvas-elevated) 68%, transparent)',
+  borderColor: 'transparent',
 }
 
 export const aiMessageBubbleContentStyle: CSSProperties = {
@@ -235,8 +238,9 @@ export const aiChatMessageDetailsPanelStyle: CSSProperties = {
   flexDirection: 'column',
   gap: 'var(--space-sm)',
   padding: 'var(--space-sm) var(--space-md)',
-  background: 'color-mix(in srgb, var(--color-canvas-elevated) 68%, transparent)',
-  borderColor: 'color-mix(in srgb, var(--color-border-strong) 48%, transparent)',
+  borderRadius: '14px',
+  background: 'color-mix(in srgb, var(--color-canvas-elevated) 56%, transparent)',
+  borderColor: 'transparent',
 }
 
 export const aiChatMessageDetailsSectionStyle: CSSProperties = {
