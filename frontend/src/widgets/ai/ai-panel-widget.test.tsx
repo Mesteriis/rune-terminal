@@ -91,12 +91,13 @@ describe('AiPanelWidget backend conversation path', () => {
     render(<AiPanelWidget hostId="ai-shell-panel" />)
 
     await waitFor(() => {
-      expect(screen.getByText('User 1')).toBeInTheDocument()
+      expect(screen.getByText('Inspect the backend contract')).toBeInTheDocument()
     })
 
     expect(screen.getByText('Inspect the backend contract')).toBeInTheDocument()
-    expect(screen.getByText('Assistant 2')).toBeInTheDocument()
     expect(screen.getByText('The backend contract is ready.')).toBeInTheDocument()
+    expect(screen.queryByText('User 1')).not.toBeInTheDocument()
+    expect(screen.queryByText('Assistant 2')).not.toBeInTheDocument()
   })
 
   it('streams visible assistant output through the backend conversation stream route', async () => {
@@ -171,9 +172,6 @@ describe('AiPanelWidget backend conversation path', () => {
       )
     })
 
-    await waitFor(() => {
-      expect(screen.getByText('Assistant 2')).toBeInTheDocument()
-    })
     await waitFor(() => {
       expect(screen.getByText((value) => value.includes('Backend'))).toBeInTheDocument()
     })

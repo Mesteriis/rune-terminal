@@ -47,8 +47,8 @@ export function AiPanelWidget({ hostId, state }: AiPanelWidgetProps) {
             runaComponent="ai-panel-message-stack"
             style={aiMessageStackStyle}
           >
-            {panelState.messages.map((message, index) => (
-              <AiChatMessageWidget key={message.id} index={index} message={message} />
+            {panelState.messages.map((message) => (
+              <AiChatMessageWidget key={message.id} message={message} />
             ))}
           </ScrollArea>
           <AiComposerWidget

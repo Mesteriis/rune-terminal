@@ -115,7 +115,7 @@ export const aiMessageStackStyle: CSSProperties = {
   minHeight: 0,
   display: 'flex',
   flexDirection: 'column',
-  gap: 'var(--gap-sm)',
+  gap: 'var(--space-sm)',
   padding: 0,
   border: 'none',
   borderRadius: 0,
@@ -126,39 +126,43 @@ export const aiMessageStackStyle: CSSProperties = {
   scrollPaddingBottom: 'var(--space-md)',
 }
 
-export const aiChatMessageCardStyle: CSSProperties = {
+export const aiChatMessageRowStyle: CSSProperties = {
+  width: '100%',
+  display: 'flex',
+}
+
+export const aiChatMessageUserRowStyle: CSSProperties = {
+  justifyContent: 'flex-end',
+}
+
+export const aiChatMessageAssistantRowStyle: CSSProperties = {
+  justifyContent: 'flex-start',
+}
+
+export const aiChatMessageBubbleStyle: CSSProperties = {
   minWidth: 0,
-  flex: '0 0 auto',
   display: 'flex',
   flexDirection: 'column',
-  gap: 'var(--space-sm)',
+  maxWidth: '78%',
   padding: 'var(--space-md)',
+  boxShadow: 'none',
+}
+
+export const aiChatMessageUserBubbleStyle: CSSProperties = {
+  background: 'color-mix(in srgb, var(--color-accent-emerald-soft) 72%, var(--color-canvas-elevated))',
+  borderColor: 'color-mix(in srgb, var(--color-accent-emerald-soft) 78%, var(--color-border-strong))',
+}
+
+export const aiChatMessageAssistantBubbleStyle: CSSProperties = {
   background: 'var(--color-canvas-elevated)',
   borderColor: 'var(--color-border-strong)',
-}
-
-export const aiChatMessageHeaderStyle: CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  gap: 'var(--gap-sm)',
-  minWidth: 0,
-}
-
-export const aiChatMessageRoleStyle: CSSProperties = {
-  color: 'var(--color-text-muted)',
-  fontFamily: 'var(--font-family-mono)',
-  fontSize: '12px',
-  lineHeight: '18px',
-  textTransform: 'uppercase',
-  letterSpacing: '0.05em',
 }
 
 export const aiChatMessageContentStyle: CSSProperties = {
   color: 'var(--color-text-primary)',
   fontFamily: 'var(--font-family-mono)',
   fontSize: '14px',
-  lineHeight: '20px',
+  lineHeight: '22px',
   whiteSpace: 'pre-wrap',
   wordBreak: 'break-word',
 }
