@@ -1,12 +1,15 @@
 package httpapi
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -165,6 +168,56 @@ func TestSubmitConversationMessageRejectsBlankPrompt(t *testing.T) {
 	}
 }
 
+func TestConversationRoutesKeepJSONAndStreamPathsSeparate(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+
+	jsonRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(jsonRecorder, authedJSONRequest(t, http.MethodPost, "/api/v1/agent/conversation/messages", map[string]any{
+		"prompt": "hello there",
+	}))
+
+	if jsonRecorder.Code != http.StatusOK {
+		t.Fatalf("expected JSON route 200, got %d", jsonRecorder.Code)
+	}
+	if contentType := jsonRecorder.Header().Get("Content-Type"); !strings.HasPrefix(contentType, "application/json") {
+		t.Fatalf("expected JSON content type, got %q", contentType)
+	}
+
+	server := httptest.NewServer(handler)
+	defer server.Close()
+
+	body := bytes.NewBufferString(`{"prompt":"hello there"}`)
+	req, err := http.NewRequest(http.MethodPost, server.URL+"/api/v1/agent/conversation/messages/stream", body)
+	if err != nil {
+		t.Fatalf("new request: %v", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+testAuthToken)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("do request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected stream route 200, got %d", resp.StatusCode)
+	}
+	if contentType := resp.Header.Get("Content-Type"); !strings.HasPrefix(contentType, "text/event-stream") {
+		t.Fatalf("expected stream content type, got %q", contentType)
+	}
+
+	events := readConversationStreamEvents(t, resp.Body, 3, 2*time.Second)
+	if len(events) != 3 {
+		t.Fatalf("expected 3 stream events, got %#v", events)
+	}
+	if events[0].Event != "message-start" || events[1].Event != "text-delta" || events[2].Event != "message-complete" {
+		t.Fatalf("unexpected stream event order: %#v", events)
+	}
+}
+
 func TestSubmitConversationMessageRejectsMissingAttachmentReference(t *testing.T) {
 	t.Parallel()
 
@@ -251,6 +304,65 @@ func TestCreateAttachmentReferenceReturnsMetadata(t *testing.T) {
 	if payload.Attachment.ModifiedTime == 0 {
 		t.Fatal("expected attachment modified_time")
 	}
+}
+
+type conversationStreamEnvelope struct {
+	Event string
+	Data  conversation.StreamEvent
+}
+
+func readConversationStreamEvents(t *testing.T, reader io.Reader, count int, timeout time.Duration) []conversationStreamEnvelope {
+	t.Helper()
+
+	deadline := time.Now().Add(timeout)
+	var pending strings.Builder
+	events := make([]conversationStreamEnvelope, 0, count)
+	buffer := make([]byte, 512)
+	for len(events) < count {
+		if time.Now().After(deadline) {
+			t.Fatalf("timed out waiting for %d stream events, got %#v raw=%q", count, events, pending.String())
+		}
+		n, err := reader.Read(buffer)
+		if n > 0 {
+			pending.Write(buffer[:n])
+			text := pending.String()
+			for strings.Contains(text, "\n\n") {
+				parts := strings.SplitN(text, "\n\n", 2)
+				block := parts[0]
+				text = parts[1]
+				event := parseConversationStreamBlock(t, block)
+				if event.Event != "" {
+					events = append(events, event)
+				}
+			}
+			pending.Reset()
+			pending.WriteString(text)
+		}
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			t.Fatalf("read stream: %v", err)
+		}
+	}
+	return events
+}
+
+func parseConversationStreamBlock(t *testing.T, block string) conversationStreamEnvelope {
+	t.Helper()
+
+	var envelope conversationStreamEnvelope
+	for _, line := range strings.Split(block, "\n") {
+		switch {
+		case strings.HasPrefix(line, "event: "):
+			envelope.Event = strings.TrimPrefix(line, "event: ")
+		case strings.HasPrefix(line, "data: "):
+			if err := json.Unmarshal([]byte(strings.TrimPrefix(line, "data: ")), &envelope.Data); err != nil {
+				t.Fatalf("unmarshal stream event: %v", err)
+			}
+		}
+	}
+	return envelope
 }
 
 func TestCreateAttachmentReferenceRejectsInvalidPath(t *testing.T) {
