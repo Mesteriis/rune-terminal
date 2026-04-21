@@ -72,6 +72,18 @@ function mapConnectionKind(connectionKind?: string): TerminalDisplayConnectionKi
   return connectionKind === 'ssh' ? 'ssh' : 'local'
 }
 
+function formatShellLabel(shell: string | undefined, connectionKind: string | undefined) {
+  const trimmedShell = shell?.trim() ?? ''
+
+  if (trimmedShell === '') {
+    return connectionKind === 'ssh' ? 'ssh' : 'shell'
+  }
+
+  const shellSegments = trimmedShell.split(/[\\/]/).filter(Boolean)
+
+  return shellSegments.at(-1) ?? trimmedShell
+}
+
 function mapSessionState(
   status: string | undefined,
   isLoading: boolean,
@@ -134,7 +146,7 @@ function buildTerminalSessionView(
       ? `${runtimeState.session_id}:${runtimeState.started_at}`
       : `${seed.runtimeWidgetId}:pending`,
     cwd: getTerminalWorkingLabel(seed, runtimeState),
-    shellLabel: runtimeState?.shell?.trim() || (runtimeState?.connection_kind === 'ssh' ? 'ssh' : 'shell'),
+    shellLabel: formatShellLabel(runtimeState?.shell, runtimeState?.connection_kind),
     connectionKind: mapConnectionKind(runtimeState?.connection_kind),
     sessionState,
     canSendInput: runtimeState?.can_send_input ?? false,
@@ -154,14 +166,17 @@ function appendTerminalChunk(record: TerminalSessionRecord, chunk: TerminalOutpu
     return
   }
 
-  record.state.snapshot = {
-    ...snapshot,
-    state: {
-      ...snapshot.state,
-      last_output_at: chunk.timestamp,
+  record.state = {
+    ...record.state,
+    snapshot: {
+      ...snapshot,
+      state: {
+        ...snapshot.state,
+        last_output_at: chunk.timestamp,
+      },
+      chunks: [...snapshot.chunks, chunk],
+      next_seq: Math.max(snapshot.next_seq, chunk.seq + 1),
     },
-    chunks: [...snapshot.chunks, chunk],
-    next_seq: Math.max(snapshot.next_seq, chunk.seq + 1),
   }
 }
 
@@ -170,17 +185,22 @@ async function ensureTerminalSession(record: TerminalSessionRecord) {
     return record.loadPromise
   }
 
-  record.state.isLoading = true
-  record.state.error = null
+  record.state = {
+    ...record.state,
+    isLoading: true,
+    error: null,
+  }
   notifyTerminalSessionRecord(record)
 
   record.loadPromise = (async () => {
     try {
       const snapshot = await fetchTerminalSnapshot(record.widgetId)
 
-      record.state.snapshot = snapshot
-      record.state.error = null
-      record.state.isLoading = false
+      record.state = {
+        error: null,
+        isLoading: false,
+        snapshot,
+      }
       notifyTerminalSessionRecord(record)
 
       const streamConnection = await connectTerminalStream(record.widgetId, {
@@ -192,10 +212,10 @@ async function ensureTerminalSession(record: TerminalSessionRecord) {
             return
           }
 
-          nextRecord.state.error = toTerminalErrorMessage(
-            error,
-            `Unable to follow terminal stream for ${record.widgetId}.`,
-          )
+          nextRecord.state = {
+            ...nextRecord.state,
+            error: toTerminalErrorMessage(error, `Unable to follow terminal stream for ${record.widgetId}.`),
+          }
           notifyTerminalSessionRecord(nextRecord)
         },
         onOutput: (chunk) => {
@@ -213,11 +233,11 @@ async function ensureTerminalSession(record: TerminalSessionRecord) {
       record.streamClose = streamConnection.close
       void streamConnection.done.catch(() => {})
     } catch (error) {
-      record.state.error = toTerminalErrorMessage(
-        error,
-        `Unable to load terminal snapshot for ${record.widgetId}.`,
-      )
-      record.state.isLoading = false
+      record.state = {
+        ...record.state,
+        error: toTerminalErrorMessage(error, `Unable to load terminal snapshot for ${record.widgetId}.`),
+        isLoading: false,
+      }
       notifyTerminalSessionRecord(record)
     }
   })().finally(() => {
@@ -264,11 +284,15 @@ export function useTerminalSession(seed: TerminalSessionSeed) {
   )
 
   const getSnapshot = useMemo(
-    () => () => buildTerminalSessionView(seed, getTerminalSessionRecord(seed.runtimeWidgetId).state),
-    [seed],
+    () => () => getTerminalSessionRecord(seed.runtimeWidgetId).state,
+    [seed.runtimeWidgetId],
   )
 
-  const sessionView = useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+  const recordState = useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+  const sessionView = useMemo(
+    () => buildTerminalSessionView(seed, recordState),
+    [recordState, seed.runtimeWidgetId, seed.title],
+  )
 
   useEffect(() => {
     const record = retainTerminalSession(seed.runtimeWidgetId)
@@ -294,15 +318,18 @@ export function useTerminalSession(seed: TerminalSessionSeed) {
           return
         }
 
-        record.state.error = null
+        record.state = {
+          ...record.state,
+          error: null,
+        }
         notifyTerminalSessionRecord(record)
       } catch (error) {
         const record = getTerminalSessionRecord(seed.runtimeWidgetId)
 
-        record.state.error = toTerminalErrorMessage(
-          error,
-          `Unable to send terminal input for ${seed.runtimeWidgetId}.`,
-        )
+        record.state = {
+          ...record.state,
+          error: toTerminalErrorMessage(error, `Unable to send terminal input for ${seed.runtimeWidgetId}.`),
+        }
         notifyTerminalSessionRecord(record)
       }
     },
@@ -313,4 +340,12 @@ export function useTerminalSession(seed: TerminalSessionSeed) {
     ...sessionView,
     sendInputChunk,
   }
+}
+
+export function resetTerminalSessionStoreForTests() {
+  for (const record of terminalSessionRecords.values()) {
+    record.streamClose?.()
+  }
+
+  terminalSessionRecords.clear()
 }
