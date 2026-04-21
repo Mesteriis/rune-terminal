@@ -121,6 +121,62 @@ function TextAreaField({
   )
 }
 
+function ModelSelectField({
+  label,
+  value,
+  models,
+  onChange,
+  onRefresh,
+  isRefreshing,
+  hint,
+  errorMessage,
+}: {
+  label: string
+  value: string
+  models: string[]
+  onChange: (value: string) => void
+  onRefresh: () => void
+  isRefreshing: boolean
+  hint?: string
+  errorMessage?: string | null
+}) {
+  const fieldID = useId()
+  const options = Array.from(new Set([value.trim(), ...models.map((model) => model.trim())].filter(Boolean)))
+
+  return (
+    <Box style={providerSettingsFieldStyle}>
+      <Label htmlFor={fieldID}>{label}</Label>
+      <Box
+        style={{
+          display: 'flex',
+          gap: 'var(--gap-xs)',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+        }}
+      >
+        <Select
+          id={fieldID}
+          onChange={(event) => onChange(event.currentTarget.value)}
+          style={{ flex: 1, minWidth: '14rem' }}
+          value={value}
+        >
+          {options.length === 0 ? <option value="">No models loaded</option> : null}
+          {options.map((model) => (
+            <option key={model} value={model}>
+              {model}
+            </option>
+          ))}
+        </Select>
+        <Button disabled={isRefreshing} onClick={onRefresh}>
+          {isRefreshing ? 'Loading…' : 'Refresh'}
+        </Button>
+      </Box>
+      {errorMessage ? <Text style={providerSettingsErrorMessageStyle}>{errorMessage}</Text> : null}
+      {!errorMessage && hint ? <Text style={providerSettingsStatusMessageStyle}>{hint}</Text> : null}
+    </Box>
+  )
+}
+
 function updateDraftField(
   setDraft: ReturnType<typeof useAgentProviderSettings>['setDraft'],
   updater: (draft: AgentProviderDraft) => AgentProviderDraft,
@@ -155,16 +211,20 @@ function formatCodexAuthState(state?: string) {
 
 export function AgentProviderSettingsWidget() {
   const {
+    availableModels,
     catalog,
     draft,
     errorMessage,
     isLoading,
+    isLoadingModels,
     isSaving,
+    modelErrorMessage,
     selectedProvider,
     selectedProviderID,
     setDraft,
     statusMessage,
     activateSelectedProvider,
+    refreshAvailableModels,
     removeSelectedProvider,
     resetDraft,
     saveDraft,
@@ -172,7 +232,9 @@ export function AgentProviderSettingsWidget() {
     startCreateProvider,
   } = useAgentProviderSettings()
 
-  const supportedKinds = catalog?.supported_kinds ?? defaultSupportedKinds
+  const supportedKinds = (catalog?.supported_kinds ?? defaultSupportedKinds).filter(
+    (kind) => kind !== 'proxy',
+  )
 
   const updateProxyChannel = useCallback(
     (
@@ -207,9 +269,9 @@ export function AgentProviderSettingsWidget() {
           <Box runaComponent="agent-provider-settings-toolbar-meta" style={providerSettingsToolbarMetaStyle}>
             <Text style={{ fontWeight: 600 }}>AI provider routing</Text>
             <Text style={providerSettingsStatusMessageStyle}>
-              Manage direct providers and the internal proxy catalog for local Codex auth, OpenAI-compatible
-              endpoints, Claude-compatible, Gemini, and Ollama-backed accounts without leaving the shell
-              modal.
+              Manage direct providers for local Codex auth, OpenAI-compatible endpoints, and Ollama without
+              leaving the shell modal. The unfinished AI Proxy path is hidden from new setup until the
+              CLI-backed routing slice replaces it.
             </Text>
           </Box>
           <Box
@@ -398,8 +460,11 @@ export function AgentProviderSettingsWidget() {
                         </Text>
                       </Box>
                       <Box style={providerSettingsGridStyle}>
-                        <TextInputField
+                        <ModelSelectField
+                          errorMessage={modelErrorMessage}
+                          hint="Reads the model catalog from the local Codex auth-backed upstream."
                           label="Model"
+                          models={availableModels}
                           onChange={(value) =>
                             updateDraftField(setDraft, (currentDraft) => ({
                               ...currentDraft,
@@ -409,7 +474,8 @@ export function AgentProviderSettingsWidget() {
                               },
                             }))
                           }
-                          placeholder="gpt-5-codex"
+                          isRefreshing={isLoadingModels}
+                          onRefresh={() => void refreshAvailableModels()}
                           value={draft.codex.model}
                         />
                         <TextInputField
@@ -470,8 +536,11 @@ export function AgentProviderSettingsWidget() {
                           placeholder="https://api.openai.com/v1"
                           value={draft.openai.baseURL}
                         />
-                        <TextInputField
+                        <ModelSelectField
+                          errorMessage={modelErrorMessage}
+                          hint="Refresh after changing the base URL or API key to reload the upstream model list."
                           label="Model"
+                          models={availableModels}
                           onChange={(value) =>
                             updateDraftField(setDraft, (currentDraft) => ({
                               ...currentDraft,
@@ -481,7 +550,8 @@ export function AgentProviderSettingsWidget() {
                               },
                             }))
                           }
-                          placeholder="gpt-5-mini"
+                          isRefreshing={isLoadingModels}
+                          onRefresh={() => void refreshAvailableModels()}
                           value={draft.openai.model}
                         />
                         <Box style={providerSettingsFieldStyle}>
@@ -540,8 +610,8 @@ export function AgentProviderSettingsWidget() {
                       <Box style={providerSettingsSectionHeaderStyle}>
                         <Text style={{ fontWeight: 600 }}>Internal proxy router</Text>
                         <Text style={providerSettingsStatusMessageStyle}>
-                          Channels can route Codex/OpenAI-compatible, Claude-compatible, Gemini, and other
-                          upstream accounts through one active provider.
+                          Existing proxy records stay editable for migration, but new proxy setup is hidden
+                          from the toolbar until the CLI-backed routing path replaces this draft surface.
                         </Text>
                       </Box>
                       <Box style={providerSettingsGridStyle}>

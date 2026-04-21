@@ -68,6 +68,22 @@ export type AgentProviderCatalog = {
   supported_kinds: AgentProviderKind[]
 }
 
+export type AgentProviderModelCatalog = {
+  models: string[]
+}
+
+export type DiscoverAgentProviderModelsPayload = {
+  provider_id?: string
+  kind?: AgentProviderKind
+  codex?: {
+    auth_file_path?: string
+  }
+  openai?: {
+    base_url?: string
+    api_key?: string
+  }
+}
+
 export type CreateAgentProviderPayload = {
   kind: AgentProviderKind
   display_name: string
@@ -197,6 +213,13 @@ export async function fetchAgentProviderCatalog() {
 
 export async function createAgentProvider(payload: CreateAgentProviderPayload) {
   return requestProviderRuntimeJSON<ProviderMutationResponse>('/api/v1/agent/providers', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function discoverAgentProviderModels(payload: DiscoverAgentProviderModelsPayload) {
+  return requestProviderRuntimeJSON<AgentProviderModelCatalog>('/api/v1/agent/providers/models', {
     method: 'POST',
     body: JSON.stringify(payload),
   })

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   createAgentProvider,
   deleteAgentProvider,
+  discoverAgentProviderModels,
   fetchAgentProviderCatalog,
   setActiveAgentProvider,
   updateAgentProvider,
@@ -41,6 +42,35 @@ function getPreferredProvider(catalog: AgentProviderCatalog, preferredID?: strin
   return catalog.providers[0] ?? null
 }
 
+function getDraftModelValue(draft: AgentProviderDraft | null) {
+  if (!draft) {
+    return ''
+  }
+  if (draft.kind === 'codex') {
+    return draft.codex.model
+  }
+  if (draft.kind === 'openai') {
+    return draft.openai.model
+  }
+  return ''
+}
+
+function uniqueModels(models: string[]) {
+  const seen = new Set<string>()
+  const deduped: string[] = []
+
+  for (const rawModel of models) {
+    const model = rawModel.trim()
+    if (!model || seen.has(model)) {
+      continue
+    }
+    seen.add(model)
+    deduped.push(model)
+  }
+
+  return deduped
+}
+
 export function useAgentProviderSettings() {
   const [catalog, setCatalog] = useState<AgentProviderCatalog | null>(null)
   const [draft, setDraft] = useState<AgentProviderDraft | null>(null)
@@ -49,6 +79,9 @@ export function useAgentProviderSettings() {
   const [isSaving, setIsSaving] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
+  const [availableModels, setAvailableModels] = useState<string[]>([])
+  const [isLoadingModels, setIsLoadingModels] = useState(false)
+  const [modelErrorMessage, setModelErrorMessage] = useState<string | null>(null)
 
   const selectProviderFromCatalog = useCallback(
     (nextCatalog: AgentProviderCatalog, providerID?: string | null) => {
@@ -89,6 +122,116 @@ export function useAgentProviderSettings() {
 
     return catalog.providers.find((provider) => provider.id === selectedProviderID) ?? null
   }, [catalog, selectedProviderID])
+
+  const refreshAvailableModels = useCallback(
+    async (draftOverride?: AgentProviderDraft | null) => {
+      const nextDraft = draftOverride ?? draft
+      const currentModel = getDraftModelValue(nextDraft)
+
+      if (!nextDraft || (nextDraft.kind !== 'codex' && nextDraft.kind !== 'openai')) {
+        setAvailableModels(currentModel ? [currentModel] : [])
+        setModelErrorMessage(null)
+        setIsLoadingModels(false)
+        return
+      }
+
+      if (
+        nextDraft.kind === 'openai' &&
+        !nextDraft.openai.hasStoredAPIKey &&
+        nextDraft.openai.apiKey.trim().length === 0
+      ) {
+        setAvailableModels(currentModel ? [currentModel] : [])
+        setModelErrorMessage(
+          nextDraft.mode === 'new'
+            ? 'Enter an API key, then refresh to load available models.'
+            : 'Store or paste an API key, then refresh to load available models.',
+        )
+        setIsLoadingModels(false)
+        return
+      }
+
+      setIsLoadingModels(true)
+      setModelErrorMessage(null)
+
+      try {
+        const payload =
+          nextDraft.kind === 'codex'
+            ? nextDraft.mode === 'existing' && nextDraft.id
+              ? {
+                  provider_id: nextDraft.id,
+                  codex: {
+                    auth_file_path: nextDraft.codex.authFilePath || undefined,
+                  },
+                }
+              : {
+                  kind: 'codex' as const,
+                  codex: {
+                    auth_file_path: nextDraft.codex.authFilePath || undefined,
+                  },
+                }
+            : nextDraft.mode === 'existing' && nextDraft.id
+              ? {
+                  provider_id: nextDraft.id,
+                  openai: {
+                    base_url: nextDraft.openai.baseURL || undefined,
+                    api_key: nextDraft.openai.apiKey.trim() || undefined,
+                  },
+                }
+              : {
+                  kind: 'openai' as const,
+                  openai: {
+                    base_url: nextDraft.openai.baseURL || undefined,
+                    api_key: nextDraft.openai.apiKey.trim() || undefined,
+                  },
+                }
+
+        const response = await discoverAgentProviderModels(payload)
+        setAvailableModels(uniqueModels([...response.models, currentModel]))
+      } catch (error: unknown) {
+        setAvailableModels(currentModel ? [currentModel] : [])
+        setModelErrorMessage(getErrorMessage(error))
+      } finally {
+        setIsLoadingModels(false)
+      }
+    },
+    [draft],
+  )
+
+  useEffect(() => {
+    if (!draft) {
+      setAvailableModels([])
+      setIsLoadingModels(false)
+      setModelErrorMessage(null)
+      return
+    }
+
+    const currentModel = getDraftModelValue(draft)
+
+    if (draft.kind === 'codex') {
+      void refreshAvailableModels(draft)
+      return
+    }
+
+    if (draft.kind === 'openai') {
+      if (draft.mode === 'existing' && draft.openai.hasStoredAPIKey) {
+        void refreshAvailableModels(draft)
+        return
+      }
+
+      setAvailableModels(currentModel ? [currentModel] : [])
+      setIsLoadingModels(false)
+      setModelErrorMessage(
+        draft.mode === 'new'
+          ? 'Enter an API key, then refresh to load available models.'
+          : 'Store or paste an API key, then refresh to load available models.',
+      )
+      return
+    }
+
+    setAvailableModels([])
+    setIsLoadingModels(false)
+    setModelErrorMessage(null)
+  }, [draft?.id, draft?.kind, draft?.mode, draft?.openai.hasStoredAPIKey, refreshAvailableModels])
 
   const selectProvider = useCallback(
     (providerID: string) => {
@@ -214,16 +357,20 @@ export function useAgentProviderSettings() {
   }, [draft, selectProviderFromCatalog])
 
   return {
+    availableModels,
     catalog,
     draft,
     errorMessage,
     isLoading,
+    isLoadingModels,
     isSaving,
+    modelErrorMessage,
     selectedProvider,
     selectedProviderID,
     setDraft,
     statusMessage,
     activateSelectedProvider,
+    refreshAvailableModels,
     reloadCatalog,
     removeSelectedProvider,
     resetDraft,

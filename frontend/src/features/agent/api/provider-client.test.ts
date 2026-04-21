@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { fetchAgentProviderCatalog, updateAgentProvider } from '@/features/agent/api/provider-client'
+import {
+  discoverAgentProviderModels,
+  fetchAgentProviderCatalog,
+  updateAgentProvider,
+} from '@/features/agent/api/provider-client'
 import { resetRuntimeContextCacheForTests } from '@/shared/api/runtime'
 
 describe('agent provider client', () => {
@@ -139,6 +143,49 @@ describe('agent provider client', () => {
             base_url: 'https://example.eu/v1',
           },
         ],
+      },
+    })
+  })
+
+  it('loads provider models through the discovery route', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          models: ['gpt-5-codex', 'gpt-5.4'],
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      discoverAgentProviderModels({
+        kind: 'codex',
+        codex: {
+          auth_file_path: '~/.codex/auth.json',
+        },
+      }),
+    ).resolves.toEqual({
+      models: ['gpt-5-codex', 'gpt-5.4'],
+    })
+
+    expect(fetchMock.mock.calls[1]?.[0]).toBe('http://127.0.0.1:8090/api/v1/agent/providers/models')
+    expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({
+      method: 'POST',
+    })
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({
+      kind: 'codex',
+      codex: {
+        auth_file_path: '~/.codex/auth.json',
       },
     })
   })

@@ -10,9 +10,10 @@
   - the new `core/aiproxy` domain adapts TideTerm proxy concepts into `rterm` backend rules: channel validation, masked API key storage, priority/failover selection, and direct protocol adapters for OpenAI-compatible, Claude-compatible, and Gemini upstreams
   - the new `core/codexauth` domain resolves local Codex auth state for status/reporting and runtime credential loading, which keeps the frontend/provider catalog secret-free while still showing whether machine auth is ready
   - proxy provider updates now preserve existing stored channel API keys when a channel is updated by id without a new `api_keys` payload, which keeps masked-secret frontend editing safe by default
-  - the shell-wide settings modal now renders a real provider/proxy management surface inside its body without changing the shared modal shell: existing providers can be selected, edited, activated, or deleted, and new `ollama`, `codex`, `openai`, or `proxy` records can be created from the same catalog view
+  - the shell-wide settings modal now renders a real provider management surface inside its body without changing the shared modal shell: existing providers can be selected, edited, activated, or deleted, while the unfinished `proxy` kind is hidden from the new-provider toolbar until the CLI-backed routing slice is ready
   - the frontend provider editor now resolves through typed agent-provider transport adapters and draft serializers instead of inline modal state: `features/agent/api/provider-client.ts` owns the backend routes, `provider-settings-draft.ts` owns create/update payload shaping, and `use-agent-provider-settings.ts` owns editor state
   - the frontend settings surface now treats `codex` as a separate local-auth provider instead of folding it into the generic `openai` API-key form; the editor can show backend-detected auth state while leaving the shared modal shell untouched
+  - `codex` and `openai` settings now load model catalogs from the backend and present model selection through dropdowns plus explicit refresh actions instead of forcing manual model typing
   - the proxy editor now exposes multi-channel routing inside settings, including service type, base URLs, priority/status, model mapping, TLS skip, and masked key replacement/preservation semantics for each channel
   - conversation runtime resolution can now materialize the active provider from direct `ollama` / `codex` / `openai` records or from the internal proxy provider record
   - proxy-routed conversation streaming is currently buffered at the provider boundary for Claude/Gemini channels, so the SSE route still works but does not yet expose true token-by-token deltas for those upstreams
@@ -140,6 +141,9 @@
     - per-channel `service_type`, `base_url` / `base_urls`, `api_keys`, `auth_type`, `priority`, `status`, `model_mapping`
 - `PATCH /api/v1/agent/providers/{providerID}`
   - now accepts `codex` updates for model/auth-file path and `proxy` updates for model and full channel replacement
+- `POST /api/v1/agent/providers/models`
+  - now loads backend-owned model catalogs for `codex` and `openai`
+  - the current frontend uses it to populate dropdowns in the shell settings modal
 - provider views mask proxy secrets:
   - channel API key values are never returned
   - channel views expose `key_count` and `enabled_key_count` instead

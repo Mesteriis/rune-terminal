@@ -60,6 +60,16 @@
 - The settings window is still a generic `DialogPopup` with wide `variant="settings"` geometry, but it now hosts a real AI/provider management surface in the body slot.
 - The active content lives in [frontend/src/widgets/settings/agent-provider-settings-widget.tsx](../../frontend/src/widgets/settings/agent-provider-settings-widget.tsx).
 - The shared modal shell was not replaced or forked; the provider editor is mounted inside the existing body-scoped settings surface.
+- New provider creation from the toolbar is currently limited to:
+  - `ollama`
+  - `codex`
+  - `openai`
+- The unfinished `proxy` kind remains in the backend catalog and existing records remain editable, but it is intentionally hidden from the new-provider toolbar until the CLI-backed routing slice replaces the current draft proxy path.
+- `codex` and `openai` settings now use backend-backed model discovery:
+  - the model field is a dropdown backed by `POST /api/v1/agent/providers/models`
+  - `codex` model discovery auto-loads from local auth state
+  - saved `openai` providers auto-load models through the stored backend secret
+  - unsaved `openai` drafts require an API key before the refresh action can load models
 
 ## Backend provider configuration runtime
 
