@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { Box } from '@/shared/ui/primitives'
 
@@ -37,105 +39,51 @@ export function AiChatMessageWidget({
   onApprovalCancel,
   onQuestionnaireAnswer,
 }: AiChatMessageWidgetProps) {
-  switch (message.type) {
-    case 'questionnaire':
-      return (
-        <RunaDomScopeProvider component={`ai-chat-message-${message.id}`}>
-          <Box
-            runaComponent={`ai-chat-message-${message.id}-row`}
-            style={{
-              ...aiChatMessageRowStyle,
-              ...(isGroupedWithNext ? aiChatMessageGroupedRowStyle : null),
-              ...aiChatMessageAssistantRowStyle,
-            }}
-          >
-            <Box
-              runaComponent={`ai-chat-message-${message.id}-group`}
-              style={{
-                ...aiChatMessageGroupStyle,
-                ...aiChatMessageAssistantGroupStyle,
-              }}
-            >
-              <QuestionnaireMessageBlock message={message} onAnswer={onQuestionnaireAnswer} />
-            </Box>
-          </Box>
-        </RunaDomScopeProvider>
-      )
-    case 'audit':
-      return (
-        <RunaDomScopeProvider component={`ai-chat-message-${message.id}`}>
-          <Box
-            runaComponent={`ai-chat-message-${message.id}-row`}
-            style={{
-              ...aiChatMessageRowStyle,
-              ...(isGroupedWithNext ? aiChatMessageGroupedRowStyle : null),
-              ...aiChatMessageAssistantRowStyle,
-            }}
-          >
-            <Box
-              runaComponent={`ai-chat-message-${message.id}-group`}
-              style={{
-                ...aiChatMessageGroupStyle,
-                ...aiChatMessageAssistantGroupStyle,
-              }}
-            >
-              <AuditMessageBlock message={message} />
-            </Box>
-          </Box>
-        </RunaDomScopeProvider>
-      )
-    case 'approval':
-      return (
-        <RunaDomScopeProvider component={`ai-chat-message-${message.id}`}>
-          <Box
-            runaComponent={`ai-chat-message-${message.id}-row`}
-            style={{
-              ...aiChatMessageRowStyle,
-              ...(isGroupedWithNext ? aiChatMessageGroupedRowStyle : null),
-              ...aiChatMessageAssistantRowStyle,
-            }}
-          >
-            <Box
-              runaComponent={`ai-chat-message-${message.id}-group`}
-              style={{
-                ...aiChatMessageGroupStyle,
-                ...aiChatMessageAssistantGroupStyle,
-              }}
-            >
-              <ApprovalMessageBlock
-                message={message}
-                onApprove={onApprovalApprove}
-                onCancel={onApprovalCancel}
-              />
-            </Box>
-          </Box>
-        </RunaDomScopeProvider>
-      )
-    case 'plan':
-      return (
-        <RunaDomScopeProvider component={`ai-chat-message-${message.id}`}>
-          <Box
-            runaComponent={`ai-chat-message-${message.id}-row`}
-            style={{
-              ...aiChatMessageRowStyle,
-              ...(isGroupedWithNext ? aiChatMessageGroupedRowStyle : null),
-              ...aiChatMessageAssistantRowStyle,
-            }}
-          >
-            <Box
-              runaComponent={`ai-chat-message-${message.id}-group`}
-              style={{
-                ...aiChatMessageGroupStyle,
-                ...aiChatMessageAssistantGroupStyle,
-              }}
-            >
-              <PlanMessageBlock message={message} />
-            </Box>
-          </Box>
-        </RunaDomScopeProvider>
-      )
-    case 'chat':
-    default:
-      return <ChatTextMessageWidget isGroupedWithNext={isGroupedWithNext} message={message} mode={mode} />
+  if (message.type === 'chat') {
+    return <ChatTextMessageWidget isGroupedWithNext={isGroupedWithNext} message={message} mode={mode} />
   }
+
+  let content: ReactNode
+
+  switch (message.type) {
+    case 'approval':
+      content = (
+        <ApprovalMessageBlock message={message} onApprove={onApprovalApprove} onCancel={onApprovalCancel} />
+      )
+      break
+    case 'audit':
+      content = <AuditMessageBlock message={message} />
+      break
+    case 'plan':
+      content = <PlanMessageBlock message={message} />
+      break
+    case 'questionnaire':
+      content = <QuestionnaireMessageBlock message={message} onAnswer={onQuestionnaireAnswer} />
+      break
+    default:
+      return null
+  }
+
+  return (
+    <RunaDomScopeProvider component={`ai-chat-message-${message.id}`}>
+      <Box
+        runaComponent={`ai-chat-message-${message.id}-row`}
+        style={{
+          ...aiChatMessageRowStyle,
+          ...(isGroupedWithNext ? aiChatMessageGroupedRowStyle : null),
+          ...aiChatMessageAssistantRowStyle,
+        }}
+      >
+        <Box
+          runaComponent={`ai-chat-message-${message.id}-group`}
+          style={{
+            ...aiChatMessageGroupStyle,
+            ...aiChatMessageAssistantGroupStyle,
+          }}
+        >
+          {content}
+        </Box>
+      </Box>
+    </RunaDomScopeProvider>
+  )
 }

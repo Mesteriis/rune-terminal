@@ -440,4 +440,59 @@ describe('AiPanelWidget backend conversation path', () => {
 
     expect(metrics.getScrollTop()).toBe(0)
   })
+
+  it('renders all supported AI message types through the shared transcript switch', () => {
+    render(
+      <AiPanelWidget
+        hostId="ai-shell-panel"
+        state={{
+          ...aiPanelWidgetMockState,
+          messages: [
+            {
+              id: 'question-1',
+              type: 'questionnaire',
+              question: 'Choose environment:',
+              options: [
+                { label: 'Production', value: 'production' },
+                { label: 'Staging', value: 'staging' },
+              ],
+              allowCustom: true,
+              status: 'pending',
+            },
+            {
+              id: 'audit-1',
+              type: 'audit',
+              entries: [
+                { tool: 'read_file', status: 'done' },
+                { tool: 'http_request', status: 'running' },
+              ],
+            },
+            {
+              id: 'approval-1',
+              type: 'approval',
+              planId: 'plan-1',
+              status: 'pending',
+            },
+            {
+              id: 'plan-1',
+              type: 'plan',
+              planId: 'plan-1',
+              steps: ['Read config', 'Call API'],
+              tools: [{ name: 'read_file' }, { name: 'http_request' }],
+            },
+            ...aiPanelWidgetMockState.messages,
+          ],
+        }}
+      />,
+    )
+
+    expect(screen.getByText('Question')).toBeInTheDocument()
+    expect(screen.getByText('Choose environment:')).toBeInTheDocument()
+    expect(screen.getByText('Execution')).toBeInTheDocument()
+    expect(screen.getByText('Approve')).toBeInTheDocument()
+    expect(screen.getByText('Plan')).toBeInTheDocument()
+    expect(
+      screen.getByText('Review the current frontend slice and propose the narrowest safe refactor sequence.'),
+    ).toBeInTheDocument()
+  })
 })
