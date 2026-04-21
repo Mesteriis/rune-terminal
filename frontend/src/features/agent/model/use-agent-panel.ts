@@ -19,6 +19,7 @@ import {
 } from '@/features/agent/model/panel-state'
 import type { AiPanelWidgetState } from '@/features/agent/model/types'
 import { resolveRuntimeContext } from '@/shared/api/runtime'
+import { blockAiWidget, unblockAiWidget } from '@/shared/model/ai-blocked-widgets'
 
 function createOptimisticUserConversationMessage(
   hostId: string,
@@ -61,8 +62,9 @@ export function useAgentPanel(hostId: string, enabled = true) {
     return () => {
       activeStreamRef.current?.close()
       activeStreamRef.current = null
+      unblockAiWidget(hostId)
     }
-  }, [])
+  }, [hostId])
 
   useEffect(() => {
     if (!enabled) {
@@ -73,6 +75,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
 
     activeStreamRef.current?.close()
     activeStreamRef.current = null
+    unblockAiWidget(hostId)
     setMessages(null)
     setProvider(null)
     setLoadError(null)
@@ -105,6 +108,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
       cancelled = true
       activeStreamRef.current?.close()
       activeStreamRef.current = null
+      unblockAiWidget(hostId)
     }
   }, [enabled, hostId])
 
@@ -125,6 +129,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
     setIsSubmitting(true)
     setLoadError(null)
     setSubmitError(null)
+    blockAiWidget(hostId)
     setMessages((currentMessages) =>
       appendAgentConversationMessage(currentMessages ?? [], optimisticUserMessage),
     )
@@ -159,9 +164,16 @@ export function useAgentPanel(hostId: string, enabled = true) {
 
             if (event.type === 'message-complete') {
               sawCompletionEvent = true
+              unblockAiWidget(hostId)
               setDraft('')
-            } else if (event.type === 'error' && !event.message && event.error?.trim()) {
-              setSubmitError(event.error.trim())
+              setIsSubmitting(false)
+            } else if (event.type === 'error') {
+              unblockAiWidget(hostId)
+              setIsSubmitting(false)
+
+              if (!event.message && event.error?.trim()) {
+                setSubmitError(event.error.trim())
+              }
             }
           },
         },
@@ -193,6 +205,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
         activeStreamRef.current = null
       }
 
+      unblockAiWidget(hostId)
       setIsSubmitting(false)
 
       if (!sawCompletionEvent && !sawStreamEvent) {

@@ -158,6 +158,9 @@ describe('AiPanelWidget backend conversation path', () => {
         widget_context_enabled: true,
       },
     })
+    await waitFor(() => {
+      expect(screen.getByLabelText('Widget ai-shell-panel is busy')).toBeInTheDocument()
+    })
 
     await act(async () => {
       streamResponse.push(
@@ -187,6 +190,9 @@ describe('AiPanelWidget backend conversation path', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Backend message received.')).toBeInTheDocument()
+    })
+    await waitFor(() => {
+      expect(screen.queryByLabelText('Widget ai-shell-panel is busy')).not.toBeInTheDocument()
     })
   })
 })
