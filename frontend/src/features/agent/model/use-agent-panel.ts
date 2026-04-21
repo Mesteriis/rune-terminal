@@ -1,20 +1,68 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import { fetchAgentConversation, sendAgentConversationMessage } from '@/features/agent/api/client'
 import {
+  fetchAgentConversation,
+  streamAgentConversationMessage,
+  type AgentConversationMessage,
+  type AgentConversationProvider,
+  type AgentConversationStreamConnection,
+} from '@/features/agent/api/client'
+import {
+  appendAgentConversationMessage,
   appendAgentPanelStatusPrompt,
+  applyAgentConversationStreamEvent,
   createAgentPanelErrorState,
   createAgentPanelLoadingState,
-  createAgentPanelStateFromConversation,
+  createAgentPanelStateFromMessages,
+  finalizeAgentConversationStreamingMessages,
+  removeAgentConversationMessage,
 } from '@/features/agent/model/panel-state'
 import type { AiPanelWidgetState } from '@/features/agent/model/types'
 import { resolveRuntimeContext } from '@/shared/api/runtime'
 
+function createOptimisticUserConversationMessage(
+  hostId: string,
+  sequence: number,
+  prompt: string,
+): AgentConversationMessage {
+  return {
+    id: `agent-local-user-${hostId}-${sequence}`,
+    role: 'user',
+    content: prompt,
+    status: 'complete',
+    created_at: new Date().toISOString(),
+  }
+}
+
+function ensureOptimisticUserMessage(
+  currentMessages: AgentConversationMessage[] | null,
+  optimisticUserMessage: AgentConversationMessage,
+) {
+  const nextMessages = currentMessages ?? []
+
+  if (nextMessages.some((message) => message.id === optimisticUserMessage.id)) {
+    return nextMessages
+  }
+
+  return appendAgentConversationMessage(nextMessages, optimisticUserMessage)
+}
+
 export function useAgentPanel(hostId: string, enabled = true) {
-  const [conversationState, setConversationState] = useState<AiPanelWidgetState>(createAgentPanelLoadingState)
+  const [messages, setMessages] = useState<AgentConversationMessage[] | null>(null)
+  const [provider, setProvider] = useState<AgentConversationProvider | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const activeStreamRef = useRef<AgentConversationStreamConnection | null>(null)
+  const optimisticMessageCounterRef = useRef(0)
+
+  useEffect(() => {
+    return () => {
+      activeStreamRef.current?.close()
+      activeStreamRef.current = null
+    }
+  }, [])
 
   useEffect(() => {
     if (!enabled) {
@@ -23,8 +71,13 @@ export function useAgentPanel(hostId: string, enabled = true) {
 
     let cancelled = false
 
-    setConversationState(createAgentPanelLoadingState())
+    activeStreamRef.current?.close()
+    activeStreamRef.current = null
+    setMessages(null)
+    setProvider(null)
+    setLoadError(null)
     setSubmitError(null)
+    setIsSubmitting(false)
 
     void fetchAgentConversation()
       .then((conversation) => {
@@ -32,7 +85,8 @@ export function useAgentPanel(hostId: string, enabled = true) {
           return
         }
 
-        setConversationState(createAgentPanelStateFromConversation(conversation))
+        setMessages(conversation.messages)
+        setProvider(conversation.provider)
       })
       .catch((error: unknown) => {
         if (cancelled) {
@@ -44,11 +98,13 @@ export function useAgentPanel(hostId: string, enabled = true) {
             ? error.message
             : `Unable to load backend conversation for ${hostId}.`
 
-        setConversationState(createAgentPanelErrorState(message))
+        setLoadError(message)
       })
 
     return () => {
       cancelled = true
+      activeStreamRef.current?.close()
+      activeStreamRef.current = null
     }
   }, [enabled, hostId])
 
@@ -59,52 +115,113 @@ export function useAgentPanel(hostId: string, enabled = true) {
       return
     }
 
+    const optimisticUserMessage = createOptimisticUserConversationMessage(
+      hostId,
+      optimisticMessageCounterRef.current,
+      prompt,
+    )
+    optimisticMessageCounterRef.current += 1
+
     setIsSubmitting(true)
+    setLoadError(null)
     setSubmitError(null)
+    setMessages((currentMessages) =>
+      appendAgentConversationMessage(currentMessages ?? [], optimisticUserMessage),
+    )
+
+    let sawStreamEvent = false
+    let sawCompletionEvent = false
+    let connection: AgentConversationStreamConnection | null = null
 
     try {
       const runtimeContext = await resolveRuntimeContext()
-      const result = await sendAgentConversationMessage({
-        prompt,
-        context: {
-          action_source: 'frontend.ai.sidebar',
-          active_widget_id: hostId,
-          repo_root: runtimeContext.repoRoot,
-          widget_context_enabled: true,
+
+      connection = await streamAgentConversationMessage(
+        {
+          prompt,
+          context: {
+            action_source: 'frontend.ai.sidebar',
+            active_widget_id: hostId,
+            repo_root: runtimeContext.repoRoot,
+            widget_context_enabled: true,
+          },
         },
-      })
+        {
+          onEvent: (event) => {
+            sawStreamEvent = true
 
-      setConversationState(createAgentPanelStateFromConversation(result.conversation))
-      setDraft('')
+            setMessages((currentMessages) =>
+              applyAgentConversationStreamEvent(
+                ensureOptimisticUserMessage(currentMessages, optimisticUserMessage),
+                event,
+              ),
+            )
 
-      if (result.provider_error) {
-        setSubmitError(result.provider_error)
-      }
+            if (event.type === 'message-complete') {
+              sawCompletionEvent = true
+              setDraft('')
+            } else if (event.type === 'error' && !event.message && event.error?.trim()) {
+              setSubmitError(event.error.trim())
+            }
+          },
+        },
+      )
+      activeStreamRef.current = connection
+      await connection.done
     } catch (error: unknown) {
       const message =
         error instanceof Error && error.message.trim()
           ? error.message
           : `Unable to send backend conversation message for ${hostId}.`
 
+      if (!sawStreamEvent) {
+        setMessages((currentMessages) =>
+          removeAgentConversationMessage(currentMessages ?? [], optimisticUserMessage.id),
+        )
+      } else {
+        setMessages((currentMessages) =>
+          finalizeAgentConversationStreamingMessages(
+            ensureOptimisticUserMessage(currentMessages, optimisticUserMessage),
+            message,
+          ),
+        )
+      }
+
       setSubmitError(message)
     } finally {
+      if (activeStreamRef.current === connection) {
+        activeStreamRef.current = null
+      }
+
       setIsSubmitting(false)
+
+      if (!sawCompletionEvent && !sawStreamEvent) {
+        setDraft(prompt)
+      }
     }
   }, [draft, enabled, hostId, isSubmitting])
 
   const panelState = useMemo(() => {
-    if (!submitError) {
-      return conversationState
+    let baseState: AiPanelWidgetState
+
+    if (messages == null) {
+      baseState = loadError ? createAgentPanelErrorState(loadError) : createAgentPanelLoadingState()
+    } else {
+      baseState = createAgentPanelStateFromMessages(messages, provider)
     }
 
-    return appendAgentPanelStatusPrompt(conversationState, {
+    if (!submitError) {
+      return baseState
+    }
+
+    return appendAgentPanelStatusPrompt(baseState, {
       id: 'agent-submit-error',
       title: 'Conversation',
       preview: submitError,
-      reasoning: ['Route: POST /api/v1/agent/conversation/messages'],
+      reasoning: ['Route: POST /api/v1/agent/conversation/messages/stream'],
       summary: 'Backend error',
     })
-  }, [conversationState, submitError])
+  }, [loadError, messages, provider, submitError])
 
   return {
     draft,

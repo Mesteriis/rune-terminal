@@ -1,4 +1,9 @@
-import type { AgentConversationMessage, AgentConversationSnapshot } from '@/features/agent/api/client'
+import type {
+  AgentConversationMessage,
+  AgentConversationProvider,
+  AgentConversationSnapshot,
+  AgentConversationStreamEvent,
+} from '@/features/agent/api/client'
 import type { AiPanelWidgetState, AiPromptCardState } from '@/features/agent/model/types'
 
 const AI_PANEL_TITLE = 'AI RUNE'
@@ -152,10 +157,17 @@ export function createAgentPanelErrorState(message: string) {
 export function createAgentPanelStateFromConversation(
   snapshot: AgentConversationSnapshot,
 ): AiPanelWidgetState {
-  if (snapshot.messages.length === 0) {
-    const providerLabel = snapshot.provider.model
-      ? `${snapshot.provider.kind} · ${snapshot.provider.model}`
-      : snapshot.provider.kind
+  return createAgentPanelStateFromMessages(snapshot.messages, snapshot.provider)
+}
+
+export function createAgentPanelStateFromMessages(
+  messages: AgentConversationMessage[],
+  provider?: AgentConversationProvider | null,
+): AiPanelWidgetState {
+  if (messages.length === 0) {
+    const providerLabel = provider?.model
+      ? `${provider.kind} · ${provider.model}`
+      : (provider?.kind ?? 'backend')
 
     return createPanelState([
       createStatusPrompt({
@@ -164,14 +176,101 @@ export function createAgentPanelStateFromConversation(
         preview: 'Backend conversation is empty.',
         reasoning: [
           `Provider: ${providerLabel}`,
-          `Streaming: ${snapshot.provider.streaming ? 'enabled' : 'disabled'}`,
+          `Streaming: ${provider?.streaming ? 'enabled' : 'disabled'}`,
         ],
         summary: 'Waiting for the first backend message.',
       }),
     ])
   }
 
-  return createPanelState(snapshot.messages.map(mapConversationMessage))
+  return createPanelState(messages.map(mapConversationMessage))
+}
+
+function upsertConversationMessage(messages: AgentConversationMessage[], message: AgentConversationMessage) {
+  const index = messages.findIndex((currentMessage) => currentMessage.id === message.id)
+
+  if (index < 0) {
+    return [...messages, message]
+  }
+
+  const nextMessages = [...messages]
+  nextMessages[index] = message
+  return nextMessages
+}
+
+function updateConversationMessage(
+  messages: AgentConversationMessage[],
+  messageID: string,
+  update: (message: AgentConversationMessage) => AgentConversationMessage,
+) {
+  const index = messages.findIndex((message) => message.id === messageID)
+
+  if (index < 0) {
+    return messages
+  }
+
+  const nextMessages = [...messages]
+  nextMessages[index] = update(nextMessages[index])
+  return nextMessages
+}
+
+export function appendAgentConversationMessage(
+  messages: AgentConversationMessage[],
+  message: AgentConversationMessage,
+) {
+  return [...messages, message]
+}
+
+export function removeAgentConversationMessage(messages: AgentConversationMessage[], messageID: string) {
+  return messages.filter((message) => message.id !== messageID)
+}
+
+export function finalizeAgentConversationStreamingMessages(
+  messages: AgentConversationMessage[],
+  errorMessage: string,
+) {
+  return messages.map((message) => {
+    if (message.status !== 'streaming') {
+      return message
+    }
+
+    const content = message.content.trim()
+
+    return {
+      ...message,
+      content: content || errorMessage,
+      status: 'error',
+    }
+  })
+}
+
+export function applyAgentConversationStreamEvent(
+  messages: AgentConversationMessage[],
+  event: AgentConversationStreamEvent,
+) {
+  switch (event.type) {
+    case 'message-start':
+      return upsertConversationMessage(messages, event.message)
+    case 'text-delta':
+      return updateConversationMessage(messages, event.message_id, (message) => ({
+        ...message,
+        content: `${message.content}${event.delta}`,
+        status: 'streaming',
+      }))
+    case 'message-complete':
+      return upsertConversationMessage(messages, event.message)
+    case 'error':
+      if (event.message) {
+        return upsertConversationMessage(messages, event.message)
+      }
+
+      return finalizeAgentConversationStreamingMessages(
+        messages,
+        event.error?.trim() || 'Agent stream failed.',
+      )
+    default:
+      return messages
+  }
 }
 
 export function appendAgentPanelStatusPrompt(

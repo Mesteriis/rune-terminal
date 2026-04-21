@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { resetRuntimeContextCacheForTests } from '@/shared/api/runtime'
@@ -15,6 +15,25 @@ vi.mock('@tsparticles/react', () => ({
 vi.mock('tsparticles', () => ({
   loadFull: vi.fn(async () => {}),
 }))
+
+function createDeferredStreamResponse() {
+  const encoder = new TextEncoder()
+  let controllerRef: ReadableStreamDefaultController<Uint8Array> | null = null
+
+  return {
+    body: new ReadableStream<Uint8Array>({
+      start(controller) {
+        controllerRef = controller
+      },
+    }),
+    close() {
+      controllerRef?.close()
+    },
+    push(chunk: string) {
+      controllerRef?.enqueue(encoder.encode(chunk))
+    },
+  }
+}
 
 describe('AiPanelWidget backend conversation path', () => {
   afterEach(() => {
@@ -80,7 +99,8 @@ describe('AiPanelWidget backend conversation path', () => {
     expect(screen.getByText('The backend contract is ready.')).toBeInTheDocument()
   })
 
-  it('submits messages through the existing composer send path', async () => {
+  it('streams visible assistant output through the backend conversation stream route', async () => {
+    const streamResponse = createDeferredStreamResponse()
     const fetchMock = vi.fn()
     fetchMock
       .mockResolvedValueOnce({
@@ -107,36 +127,7 @@ describe('AiPanelWidget backend conversation path', () => {
       })
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({
-          conversation: {
-            messages: [
-              {
-                id: 'msg_1',
-                role: 'user',
-                content: 'Send this to the backend',
-                status: 'complete',
-                created_at: '2026-04-21T10:00:00Z',
-              },
-              {
-                id: 'msg_2',
-                role: 'assistant',
-                content: 'Backend message received.',
-                status: 'complete',
-                provider: 'stub',
-                model: 'stub-model',
-                created_at: '2026-04-21T10:00:05Z',
-              },
-            ],
-            provider: {
-              kind: 'stub',
-              base_url: 'http://stub',
-              model: 'stub-model',
-              streaming: false,
-            },
-            updated_at: '2026-04-21T10:00:05Z',
-          },
-          provider_error: '',
-        }),
+        body: streamResponse.body,
       })
     vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
     vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
@@ -154,10 +145,10 @@ describe('AiPanelWidget backend conversation path', () => {
     fireEvent.click(screen.getByLabelText('Send prompt'))
 
     await waitFor(() => {
-      expect(screen.getByText('Backend message received.')).toBeInTheDocument()
+      expect(fetchMock.mock.calls[2]?.[0]).toBe(
+        'http://127.0.0.1:8090/api/v1/agent/conversation/messages/stream',
+      )
     })
-
-    expect(fetchMock.mock.calls[2]?.[0]).toBe('http://127.0.0.1:8090/api/v1/agent/conversation/messages')
     expect(JSON.parse(String(fetchMock.mock.calls[2]?.[1]?.body))).toEqual({
       prompt: 'Send this to the backend',
       context: {
@@ -166,6 +157,36 @@ describe('AiPanelWidget backend conversation path', () => {
         repo_root: '/Users/avm/projects/runa-terminal',
         widget_context_enabled: true,
       },
+    })
+
+    await act(async () => {
+      streamResponse.push(
+        'event: message-start\ndata: {"type":"message-start","message_id":"msg_2","message":{"id":"msg_2","role":"assistant","content":"","status":"streaming","provider":"stub","model":"stub-model","created_at":"2026-04-21T10:00:05Z"}}\n\n',
+      )
+      streamResponse.push(
+        'event: text-delta\ndata: {"type":"text-delta","message_id":"msg_2","delta":"Backend "}\n\n',
+      )
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Assistant 2')).toBeInTheDocument()
+    })
+    await waitFor(() => {
+      expect(screen.getByText((value) => value.includes('Backend'))).toBeInTheDocument()
+    })
+
+    await act(async () => {
+      streamResponse.push(
+        'event: text-delta\ndata: {"type":"text-delta","message_id":"msg_2","delta":"message received."}\n\n',
+      )
+      streamResponse.push(
+        'event: message-complete\ndata: {"type":"message-complete","message_id":"msg_2","message":{"id":"msg_2","role":"assistant","content":"Backend message received.","status":"complete","provider":"stub","model":"stub-model","created_at":"2026-04-21T10:00:05Z"}}\n\n',
+      )
+      streamResponse.close()
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Backend message received.')).toBeInTheDocument()
     })
   })
 })
