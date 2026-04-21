@@ -9,6 +9,16 @@
   - this note tracks the verified gaps around streaming, provider support, and busy/working visibility
   - no runtime behavior was changed in this audit phase
 
+## Historical note
+
+- This document records the pre-implementation audit state for the streaming/provider gap.
+- The backend streaming contract has since landed and is tracked in:
+  - `docs/validation/agent-streaming-backend.md`
+- Remaining open gaps from this note are now:
+  - frontend streaming consumption
+  - explicit busy/working UI visibility
+  - third-party provider backend support
+
 ## Commands/tests used
 
 - Repository/source audit:
