@@ -18,7 +18,7 @@ import { Box, Text } from '@/shared/ui/primitives'
 import { DockviewTabPill } from '@/shared/ui/components/dockview-tab-pill'
 
 export type TerminalConnectionKind = 'local' | 'ssh'
-export type TerminalSessionState = 'running' | 'idle' | 'starting' | 'exited'
+export type TerminalSessionState = 'running' | 'idle' | 'starting' | 'exited' | 'failed' | 'disconnected'
 
 export type TerminalStatusHeaderProps = {
   title: string
@@ -59,6 +59,24 @@ function getSessionMeta(sessionState: TerminalSessionState) {
     return {
       Icon: CircleSlash,
       label: 'Exited',
+      color: 'var(--runa-terminal-status-muted, var(--color-text-muted))',
+      spin: false,
+    }
+  }
+
+  if (sessionState === 'failed') {
+    return {
+      Icon: CircleSlash,
+      label: 'Failed',
+      color: 'var(--color-text-danger, #d49797)',
+      spin: false,
+    }
+  }
+
+  if (sessionState === 'disconnected') {
+    return {
+      Icon: CircleSlash,
+      label: 'Disconnected',
       color: 'var(--runa-terminal-status-muted, var(--color-text-muted))',
       spin: false,
     }

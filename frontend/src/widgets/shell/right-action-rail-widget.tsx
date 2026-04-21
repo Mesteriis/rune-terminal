@@ -104,7 +104,7 @@ export function RightActionRailWidget({ dockviewApiRef, onAddWorkspace }: RightA
     }
 
     const nextPanelId = createNextTerminalPanelId(dockviewApi, 'workspace')
-    const nextPanelParams = createTerminalPanelParams('workspace')
+    const nextPanelParams = createTerminalPanelParams('workspace', nextPanelId)
     const suffixMatch = nextPanelId.match(/-(\d+)$/)
 
     dockviewApi.addPanel({

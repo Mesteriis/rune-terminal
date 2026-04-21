@@ -62,7 +62,7 @@ export function TerminalDockviewHeaderActionsWidget(props: IDockviewHeaderAction
     }
 
     const nextPanelId = createNextTerminalPanelId(props.containerApi, terminalPanelParams.preset)
-    const nextPanelParams = createTerminalPanelParams(terminalPanelParams.preset)
+    const nextPanelParams = createTerminalPanelParams(terminalPanelParams.preset, nextPanelId)
     const suffixMatch = nextPanelId.match(/-(\d+)$/)
 
     props.containerApi.addPanel({

@@ -6,11 +6,9 @@ import { WebglAddon } from '@xterm/addon-webgl'
 import { Terminal } from '@xterm/xterm'
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
 
+import type { TerminalOutputChunk } from '@/features/terminal/api/client'
 import { TerminalViewport } from '@/shared/ui/primitives'
-import type {
-  TerminalConnectionKind,
-  TerminalSessionState,
-} from '@/shared/ui/components/terminal-status-header'
+import type { TerminalSessionState } from '@/shared/ui/components/terminal-status-header'
 
 export type TerminalSurfaceHandle = {
   copySelection: () => Promise<void>
@@ -22,11 +20,11 @@ export type TerminalSurfaceHandle = {
 
 export type TerminalSurfaceProps = {
   hostId: string
-  cwd: string
-  shellLabel: string
-  connectionKind: TerminalConnectionKind
+  outputChunks: TerminalOutputChunk[]
+  sessionKey: string
   sessionState: TerminalSessionState
-  introLines?: string[]
+  statusMessage?: string | null
+  onInput?: (data: string) => void
   onRendererModeChange?: (mode: 'default' | 'webgl') => void
   onRequestSearch?: () => void
   themeClassTarget?: HTMLElement | null
@@ -122,51 +120,6 @@ function applyTerminalTheme(term: Terminal, target: HTMLElement | null) {
   term.options.theme = getTerminalTheme(target)
 }
 
-function getPromptLabel(connectionKind: TerminalConnectionKind, cwd: string) {
-  const hostLabel = connectionKind === 'ssh' ? 'remote' : 'local'
-
-  return `${hostLabel}:${cwd} $ `
-}
-
-function isPrintableInput(data: string) {
-  return data >= ' ' && data !== '\u007f'
-}
-
-function writeCommandResult(term: Terminal, command: string, cwd: string) {
-  if (command === '') {
-    return false
-  }
-
-  if (command === 'clear') {
-    term.clear()
-    return true
-  }
-
-  if (command === 'pwd') {
-    term.writeln(cwd)
-    return false
-  }
-
-  if (command === 'ls') {
-    term.writeln('frontend  docs  core  README.md  package.json')
-    return false
-  }
-
-  if (command === 'help') {
-    term.writeln('renderer-only demo commands: help, pwd, ls, clear, status')
-    return false
-  }
-
-  if (command === 'status') {
-    term.writeln('frontend renderer only: terminal UI is live, backend session wiring is not connected yet')
-    return false
-  }
-
-  term.writeln(`${command}: renderer-only terminal demo, no backend execution attached`)
-
-  return false
-}
-
 function createSafeLinkHandler() {
   return (_event: MouseEvent, uri: string) => {
     const openedWindow = window.open(uri, '_blank', 'noopener,noreferrer')
@@ -211,11 +164,11 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
   function TerminalSurface(
     {
       hostId,
-      cwd,
-      shellLabel,
-      connectionKind,
+      outputChunks,
+      sessionKey,
       sessionState,
-      introLines = [],
+      statusMessage = null,
+      onInput,
       onRendererModeChange,
       onRequestSearch,
       themeClassTarget = null,
@@ -225,7 +178,19 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
     const viewportRef = useRef<HTMLDivElement | null>(null)
     const termRef = useRef<Terminal | null>(null)
     const searchAddonRef = useRef<SearchAddon | null>(null)
-    const introLinesSignature = introLines.join('\n')
+    const lastWrittenChunkSeqRef = useRef<number>(0)
+    const lastSessionKeyRef = useRef<string | null>(null)
+    const lastRenderedStatusMessageRef = useRef<string | null>(null)
+    const statusMessageRef = useRef(statusMessage)
+    const onInputRef = useRef(onInput)
+
+    useEffect(() => {
+      statusMessageRef.current = statusMessage
+    }, [statusMessage])
+
+    useEffect(() => {
+      onInputRef.current = onInput
+    }, [onInput])
 
     useImperativeHandle(
       ref,
@@ -294,8 +259,6 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
       const webLinksAddon = new WebLinksAddon(createSafeLinkHandler())
       const clipboardAddon = new ClipboardAddon(undefined, new BrowserClipboardProvider())
       let webglAddon: WebglAddon | null = null
-      const inputBuffer = { current: '' }
-      const promptLabel = getPromptLabel(connectionKind, cwd)
       const openTarget = viewportRef.current
 
       termRef.current = term
@@ -345,71 +308,12 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
         return true
       })
 
-      const printPrompt = () => {
-        term.write(promptLabel)
-      }
-
-      const bootLines = [
-        `${shellLabel} attached to ${hostId}`,
-        `cwd: ${cwd}`,
-        sessionState === 'exited' ? 'session state: exited' : 'session state: renderer-only mock session',
-        ...introLines,
-        '',
-        'type `help` to interact with the renderer-only terminal demo',
-        '',
-      ]
-
-      for (const line of bootLines) {
-        term.writeln(line)
-      }
-
-      printPrompt()
-
       const dataDisposable = term.onData((data) => {
-        if (sessionState === 'exited') {
+        if (!onInputRef.current) {
           return
         }
 
-        if (data === '\u0003') {
-          inputBuffer.current = ''
-          term.write('^C\r\n')
-          printPrompt()
-          return
-        }
-
-        if (data === '\r') {
-          const command = inputBuffer.current.trim()
-
-          term.write('\r\n')
-          const didClear = writeCommandResult(term, command, cwd)
-          inputBuffer.current = ''
-
-          if (didClear) {
-            term.write(promptLabel)
-          } else {
-            printPrompt()
-          }
-
-          fitAddon.fit()
-          return
-        }
-
-        if (data === '\u007f') {
-          if (inputBuffer.current.length === 0) {
-            return
-          }
-
-          inputBuffer.current = inputBuffer.current.slice(0, -1)
-          term.write('\b \b')
-          return
-        }
-
-        if (!isPrintableInput(data)) {
-          return
-        }
-
-        inputBuffer.current += data
-        term.write(data)
+        onInputRef.current(data)
       })
 
       const resizeObserver =
@@ -458,17 +362,57 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
         termRef.current = null
         term.dispose()
       }
-    }, [
-      connectionKind,
-      cwd,
-      hostId,
-      introLinesSignature,
-      onRendererModeChange,
-      onRequestSearch,
-      sessionState,
-      shellLabel,
-      themeClassTarget,
-    ])
+    }, [hostId, onRendererModeChange, onRequestSearch, themeClassTarget])
+
+    useEffect(() => {
+      const term = termRef.current
+
+      if (!term) {
+        return
+      }
+
+      term.options.cursorBlink = sessionState === 'running'
+      term.options.disableStdin = onInput == null || sessionState === 'exited' || sessionState === 'failed'
+    }, [onInput, sessionState])
+
+    useEffect(() => {
+      const term = termRef.current
+
+      if (!term) {
+        return
+      }
+
+      const shouldResetTerminal = lastSessionKeyRef.current !== sessionKey
+
+      if (shouldResetTerminal) {
+        term.clear()
+        lastSessionKeyRef.current = sessionKey
+        lastWrittenChunkSeqRef.current = 0
+        lastRenderedStatusMessageRef.current = null
+      }
+
+      const nextChunks = shouldResetTerminal
+        ? outputChunks
+        : outputChunks.filter((chunk) => chunk.seq > lastWrittenChunkSeqRef.current)
+
+      for (const chunk of nextChunks) {
+        term.write(chunk.data)
+        lastWrittenChunkSeqRef.current = Math.max(lastWrittenChunkSeqRef.current, chunk.seq)
+      }
+
+      const nextStatusMessage = statusMessageRef.current?.trim() ?? ''
+
+      if (outputChunks.length > 0) {
+        lastRenderedStatusMessageRef.current = null
+        return
+      }
+
+      if (nextStatusMessage !== '' && lastRenderedStatusMessageRef.current !== nextStatusMessage) {
+        term.clear()
+        term.writeln(nextStatusMessage)
+        lastRenderedStatusMessageRef.current = nextStatusMessage
+      }
+    }, [outputChunks, sessionKey, statusMessage])
 
     return (
       <TerminalViewport

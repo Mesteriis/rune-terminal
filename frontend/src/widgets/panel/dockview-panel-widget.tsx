@@ -92,13 +92,10 @@ export function DockviewPanelWidget(props: IDockviewPanelProps) {
         <Box runaComponent="dockview-panel-content" style={panelInnerContentStyle}>
           {terminalModel ? (
             <TerminalWidget
-              connectionKind={terminalModel.connectionKind}
-              cwd={terminalModel.cwd}
               hostId={props.api.id}
-              introLines={terminalModel.introLines}
+              runtimeWidgetId={terminalModel.widgetId}
               themeClassTarget={panelGroupElement}
-              sessionState={terminalModel.sessionState}
-              shellLabel={terminalModel.shellLabel}
+              title={terminalModel.title}
             />
           ) : isCommanderPanel ? (
             <CommanderPanelWidget />

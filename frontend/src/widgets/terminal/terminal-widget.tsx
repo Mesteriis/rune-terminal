@@ -1,21 +1,14 @@
 import { useRef } from 'react'
 
+import { useTerminalSession } from '@/features/terminal/model/use-terminal-session'
 import { RunaDomScopeProvider, useRunaDomAutoTagging } from '@/shared/ui/dom-id'
 import { Box } from '@/shared/ui/primitives'
-import {
-  TerminalSurface,
-  type TerminalSurfaceHandle,
-  type TerminalConnectionKind,
-  type TerminalSessionState,
-} from '@/shared/ui/components'
+import { TerminalSurface, type TerminalSurfaceHandle } from '@/shared/ui/components'
 
 export type TerminalWidgetProps = {
   hostId: string
-  cwd: string
-  shellLabel: string
-  connectionKind: TerminalConnectionKind
-  sessionState: TerminalSessionState
-  introLines?: string[]
+  runtimeWidgetId: string
+  title: string
   themeClassTarget?: HTMLElement | null
 }
 
@@ -36,15 +29,16 @@ const rootStyle = {
 
 export function TerminalWidget({
   hostId,
-  cwd,
-  shellLabel,
-  connectionKind,
-  sessionState,
-  introLines,
+  runtimeWidgetId,
+  title,
   themeClassTarget = null,
 }: TerminalWidgetProps) {
   const terminalRootRef = useRunaDomAutoTagging('terminal-widget-root')
   const terminalSurfaceRef = useRef<TerminalSurfaceHandle | null>(null)
+  const terminalSession = useTerminalSession({
+    runtimeWidgetId,
+    title,
+  })
 
   return (
     <RunaDomScopeProvider component="terminal-widget" widget={hostId}>
@@ -55,14 +49,13 @@ export function TerminalWidget({
         style={rootStyle}
       >
         <TerminalSurface
-          connectionKind={connectionKind}
-          cwd={cwd}
           hostId={hostId}
-          introLines={introLines}
-          themeClassTarget={themeClassTarget}
           ref={terminalSurfaceRef}
-          sessionState={sessionState}
-          shellLabel={shellLabel}
+          sessionKey={terminalSession.sessionKey}
+          sessionState={terminalSession.sessionState}
+          statusMessage={terminalSession.statusDetail}
+          themeClassTarget={themeClassTarget}
+          outputChunks={terminalSession.outputChunks}
         />
       </Box>
     </RunaDomScopeProvider>

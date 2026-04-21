@@ -2,6 +2,7 @@ import type { IDockviewPanelHeaderProps } from 'dockview-react'
 import { X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
+import { useTerminalSession } from '@/features/terminal/model/use-terminal-session'
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { DockviewTabChrome, IconButton, TerminalStatusHeader } from '@/shared/ui/components'
 import { resolveTerminalPanelParams } from '@/widgets/terminal/terminal-panel'
@@ -24,6 +25,10 @@ const closeButtonStyle = {
 
 export function TerminalDockviewTabWidget(props: IDockviewPanelHeaderProps) {
   const terminalPanelParams = resolveTerminalPanelParams(props.api.id, props.params)
+  const terminalSession = useTerminalSession({
+    runtimeWidgetId: terminalPanelParams.widgetId,
+    title: terminalPanelParams.title,
+  })
   const [isActiveTab, setIsActiveTab] = useState(props.api.group.activePanel?.id === props.api.id)
   const [panelCount, setPanelCount] = useState(props.api.group.panels.length)
   const isSingleTab = panelCount === 1
@@ -60,24 +65,26 @@ export function TerminalDockviewTabWidget(props: IDockviewPanelHeaderProps) {
     <RunaDomScopeProvider component="terminal-dockview-tab-widget" widget={props.api.id}>
       <DockviewTabChrome active={isActiveTab} single={isSingleTab}>
         <TerminalStatusHeader
-          actionSlot={panelCount > 1 ? (
-            <IconButton
-              aria-label={`Close terminal tab for ${terminalPanelParams.title}`}
-              onClick={handleCloseClick}
-              onPointerDown={handleClosePointerDown}
-              runaComponent="terminal-tab-close"
-              size="sm"
-              style={closeButtonStyle}
-            >
-              <X size={14} strokeWidth={1.8} />
-            </IconButton>
-          ) : null}
+          actionSlot={
+            panelCount > 1 ? (
+              <IconButton
+                aria-label={`Close terminal tab for ${terminalPanelParams.title}`}
+                onClick={handleCloseClick}
+                onPointerDown={handleClosePointerDown}
+                runaComponent="terminal-tab-close"
+                size="sm"
+                style={closeButtonStyle}
+              >
+                <X size={14} strokeWidth={1.8} />
+              </IconButton>
+            ) : null
+          }
           compact
-          connectionKind={terminalPanelParams.connectionKind}
-          cwd={terminalPanelParams.cwd}
-          primaryText={terminalPanelParams.cwd}
-          sessionState={terminalPanelParams.sessionState}
-          shellLabel={terminalPanelParams.shellLabel}
+          connectionKind={terminalSession.connectionKind}
+          cwd={terminalSession.cwd}
+          primaryText={terminalSession.cwd || terminalPanelParams.title}
+          sessionState={terminalSession.sessionState}
+          shellLabel={terminalSession.shellLabel}
           showMeta={isActiveTab}
           title={terminalPanelParams.title}
         />
