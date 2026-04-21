@@ -16,6 +16,26 @@ function createPanelState(prompts: AiPromptCardState[]): AiPanelWidgetState {
   }
 }
 
+function createStatusPrompt(input: {
+  id: string
+  title: string
+  preview: string
+  prompt?: string
+  reasoning?: string[]
+  summary: string
+}): AiPromptCardState {
+  return {
+    id: input.id,
+    title: input.title,
+    current: {
+      preview: input.preview,
+      prompt: input.prompt ?? input.preview,
+      reasoning: input.reasoning ?? [],
+      summary: input.summary,
+    },
+  }
+}
+
 function capitalizeLabel(value: string) {
   if (!value) {
     return ''
@@ -107,31 +127,25 @@ function mapConversationMessage(message: AgentConversationMessage, index: number
 
 export function createAgentPanelLoadingState() {
   return createPanelState([
-    {
+    createStatusPrompt({
       id: 'agent-loading',
       title: 'Conversation',
-      current: {
-        preview: 'Loading backend conversation.',
-        prompt: 'Loading backend conversation.',
-        reasoning: ['Route: GET /api/v1/agent/conversation'],
-        summary: 'Loading',
-      },
-    },
+      preview: 'Loading backend conversation.',
+      reasoning: ['Route: GET /api/v1/agent/conversation'],
+      summary: 'Loading',
+    }),
   ])
 }
 
 export function createAgentPanelErrorState(message: string) {
   return createPanelState([
-    {
+    createStatusPrompt({
       id: 'agent-error',
       title: 'Conversation',
-      current: {
-        preview: message,
-        prompt: message,
-        reasoning: ['Route: GET /api/v1/agent/conversation'],
-        summary: 'Backend error',
-      },
-    },
+      preview: message,
+      reasoning: ['Route: GET /api/v1/agent/conversation'],
+      summary: 'Backend error',
+    }),
   ])
 }
 
@@ -144,21 +158,35 @@ export function createAgentPanelStateFromConversation(
       : snapshot.provider.kind
 
     return createPanelState([
-      {
+      createStatusPrompt({
         id: 'agent-empty',
         title: 'Conversation',
-        current: {
-          preview: 'Backend conversation is empty.',
-          prompt: 'Backend conversation is empty.',
-          reasoning: [
-            `Provider: ${providerLabel}`,
-            `Streaming: ${snapshot.provider.streaming ? 'enabled' : 'disabled'}`,
-          ],
-          summary: 'Waiting for the first backend message.',
-        },
-      },
+        preview: 'Backend conversation is empty.',
+        reasoning: [
+          `Provider: ${providerLabel}`,
+          `Streaming: ${snapshot.provider.streaming ? 'enabled' : 'disabled'}`,
+        ],
+        summary: 'Waiting for the first backend message.',
+      }),
     ])
   }
 
   return createPanelState(snapshot.messages.map(mapConversationMessage))
+}
+
+export function appendAgentPanelStatusPrompt(
+  panelState: AiPanelWidgetState,
+  input: {
+    id: string
+    title: string
+    preview: string
+    prompt?: string
+    reasoning?: string[]
+    summary: string
+  },
+) {
+  return {
+    ...panelState,
+    prompts: [...panelState.prompts, createStatusPrompt(input)],
+  }
 }

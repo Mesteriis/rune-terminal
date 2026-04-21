@@ -21,8 +21,8 @@ export type AiPanelWidgetProps = {
 }
 
 export function AiPanelWidget({ hostId, state }: AiPanelWidgetProps) {
-  const resolvedState = useAgentPanel(hostId, state == null)
-  const panelState = state ?? resolvedState
+  const agentPanel = useAgentPanel(hostId, state == null)
+  const panelState = state ?? agentPanel.panelState
   const lastPromptId = panelState.prompts[panelState.prompts.length - 1]?.id
   const autoTagAiPanelRootRef = useRunaDomAutoTagging('ai-panel-root')
   const [panelRootElement, setPanelRootElement] = useState<HTMLDivElement | null>(null)
@@ -59,8 +59,13 @@ export function AiPanelWidget({ hostId, state }: AiPanelWidgetProps) {
           </ScrollArea>
           <AiComposerWidget
             activeTool={panelState.activeTool}
+            disabled={state == null ? agentPanel.isSubmitting : false}
+            onSubmit={state == null ? agentPanel.submitDraft : undefined}
+            onValueChange={state == null ? agentPanel.setDraft : undefined}
             placeholder={panelState.composerPlaceholder}
+            submitDisabled={state == null ? agentPanel.isSubmitting || agentPanel.draft.trim() === '' : true}
             toolbarLabel={panelState.toolbarLabel}
+            value={state == null ? agentPanel.draft : undefined}
           />
         </Box>
         <ModalHostWidget hostId={hostId} mountNode={panelRootElement} scope="widget" />
