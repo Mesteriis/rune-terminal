@@ -239,7 +239,12 @@ fn request_shutdown(state: State<'_, RuntimeState>, force: bool) -> Result<Runti
         });
     }
 
-    let active_tasks = query_active_tasks(&runtime.core.url).map_err(|err| err.to_string())?;
+    let auth_token = runtime
+        .core
+        .auth_token
+        .clone()
+        .ok_or_else(|| "core auth token is not available".to_string())?;
+    let active_tasks = query_active_tasks(&runtime.core.url, &auth_token).map_err(|err| err.to_string())?;
     if !force && active_tasks > 0 {
         return Ok(RuntimeShutdownResult {
             can_close: false,
@@ -353,7 +358,7 @@ fn start_or_attach_runtime(app: &AppHandle, state: &RuntimeState) -> Result<(), 
 
     let watcher = if let Some(record) = attachment.watcher {
         validate_watcher_entry_for_core_record(&record, &core.url).map_or_else(
-            || spawn_watcher(&context, &core.url),
+            || spawn_watcher(&context, &core.url, core.auth_token.as_deref()),
             |record| {
                 Ok(RuntimeProcess {
                     child: None,
@@ -367,7 +372,7 @@ fn start_or_attach_runtime(app: &AppHandle, state: &RuntimeState) -> Result<(), 
             },
         )?
     } else {
-        spawn_watcher(&context, &core.url)?
+        spawn_watcher(&context, &core.url, core.auth_token.as_deref())?
     };
 
     let runtime = RuntimeRuntime {
@@ -464,17 +469,26 @@ fn spawn_core(context: &StartContext, token: &str) -> Result<RuntimeProcess, Run
     })
 }
 
-fn spawn_watcher(context: &StartContext, core_url: &str) -> Result<RuntimeProcess, RuntimeError> {
+fn spawn_watcher(
+    context: &StartContext,
+    core_url: &str,
+    backend_auth_token: Option<&str>,
+) -> Result<RuntimeProcess, RuntimeError> {
     let worker_id = format!("watcher_{}", random_token_n(12));
     let shutdown_token = random_token_n(32);
-    let child = Command::new(&context.binary)
+    let mut command = Command::new(&context.binary);
+    command
         .arg("watcher")
         .arg(format!("--backend={core_url}"))
         .arg(format!("--listen={WATCHER_LISTEN_ADDR}"))
         .arg(format!("--worker-id={worker_id}"))
         .arg(format!("--shutdown-token={shutdown_token}"))
         .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
+        .stderr(Stdio::inherit());
+    if let Some(token) = backend_auth_token {
+        command.env("RTERM_BACKEND_AUTH_TOKEN", token);
+    }
+    let child = command
         .spawn()
         .map_err(|err| RuntimeError::Spawn(err.to_string()))?;
 
@@ -674,14 +688,15 @@ fn save_settings(settings: &SettingsFile) -> Result<(), RuntimeError> {
     fs::write(dir.join("settings.json"), payload).map_err(|err| RuntimeError::Path(err.to_string()))
 }
 
-fn query_active_tasks(core_base_url: &str) -> Result<usize, RuntimeError> {
+fn query_active_tasks(core_base_url: &str, auth_token: &str) -> Result<usize, RuntimeError> {
     let client = Client::builder()
         .timeout(Duration::from_secs(2))
         .build()
         .map_err(|err: reqwest::Error| RuntimeError::Http(err.to_string()))?;
 
     let value: serde_json::Value = client
-        .get(format!("{}/tasks/active", core_base_url))
+        .get(format!("{}/api/v1/tasks/active", core_base_url))
+        .bearer_auth(auth_token)
         .send()
         .map_err(|err: reqwest::Error| RuntimeError::Http(err.to_string()))?
         .error_for_status()
