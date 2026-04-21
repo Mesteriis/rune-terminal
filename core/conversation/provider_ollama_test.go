@@ -3,8 +3,10 @@ package conversation
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"testing"
 )
 
@@ -109,4 +111,94 @@ func TestOllamaProviderUsesConfiguredModelWithoutTagsLookup(t *testing.T) {
 	if info.Model != "configured:model" {
 		t.Fatalf("expected configured model, got %q", info.Model)
 	}
+}
+
+func TestOllamaProviderStreamsRealTextDeltas(t *testing.T) {
+	t.Parallel()
+
+	var seenRequest ollamaChatRequest
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/chat" {
+			t.Fatalf("unexpected path: %s", r.URL.Path)
+		}
+		if err := json.NewDecoder(r.Body).Decode(&seenRequest); err != nil {
+			t.Fatalf("decode chat request: %v", err)
+		}
+		flusher, ok := w.(http.Flusher)
+		if !ok {
+			t.Fatal("expected test server flusher")
+		}
+		w.Header().Set("Content-Type", "application/x-ndjson")
+		chunks := []map[string]any{
+			{
+				"model": "configured:model",
+				"message": map[string]any{
+					"role":    "assistant",
+					"content": "hello ",
+				},
+			},
+			{
+				"model": "configured:model",
+				"message": map[string]any{
+					"role":    "assistant",
+					"content": "world",
+				},
+			},
+			{
+				"model": "configured:model",
+				"message": map[string]any{
+					"role":    "assistant",
+					"content": "",
+				},
+				"done": true,
+			},
+		}
+		for _, chunk := range chunks {
+			if _, err := fmt.Fprintln(w, mustJSON(t, chunk)); err != nil {
+				t.Fatalf("write chunk: %v", err)
+			}
+			flusher.Flush()
+		}
+	}))
+	defer server.Close()
+
+	provider := NewOllamaProvider(ProviderConfig{
+		BaseURL: server.URL,
+		Model:   "configured:model",
+	})
+	var deltas []string
+	result, info, err := provider.CompleteStream(context.Background(), CompletionRequest{
+		SystemPrompt: "system prompt",
+		Messages: []ChatMessage{
+			{Role: RoleUser, Content: "hello"},
+		},
+	}, func(delta string) error {
+		deltas = append(deltas, delta)
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("complete stream: %v", err)
+	}
+	if !seenRequest.Stream {
+		t.Fatalf("expected streaming request, got %#v", seenRequest)
+	}
+	if !slices.Equal(deltas, []string{"hello ", "world"}) {
+		t.Fatalf("unexpected deltas: %#v", deltas)
+	}
+	if result.Content != "hello world" {
+		t.Fatalf("unexpected content: %q", result.Content)
+	}
+	if !info.Streaming {
+		t.Fatalf("expected provider info to report streaming")
+	}
+}
+
+func mustJSON(t *testing.T, payload any) string {
+	t.Helper()
+
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatalf("marshal payload: %v", err)
+	}
+	return string(raw)
 }

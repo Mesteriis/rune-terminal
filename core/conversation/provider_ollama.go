@@ -1,6 +1,7 @@
 package conversation
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -51,7 +52,7 @@ func (p *OllamaProvider) Info() ProviderInfo {
 		Kind:      "ollama",
 		BaseURL:   p.baseURL,
 		Model:     model,
-		Streaming: false,
+		Streaming: true,
 	}
 }
 
@@ -60,18 +61,18 @@ func (p *OllamaProvider) Complete(ctx context.Context, request CompletionRequest
 }
 
 func (p *OllamaProvider) CompleteStream(
-	_ context.Context,
-	_ CompletionRequest,
-	_ func(string) error,
+	ctx context.Context,
+	request CompletionRequest,
+	onTextDelta func(string) error,
 ) (CompletionResult, ProviderInfo, error) {
-	return CompletionResult{}, p.Info(), fmt.Errorf("ollama streaming is not available")
+	return p.complete(ctx, request, true, onTextDelta)
 }
 
 func (p *OllamaProvider) complete(
 	ctx context.Context,
 	request CompletionRequest,
 	stream bool,
-	_ func(string) error,
+	onTextDelta func(string) error,
 ) (CompletionResult, ProviderInfo, error) {
 	if err := validateCompletionRequest(request); err != nil {
 		return CompletionResult{}, p.Info(), err
@@ -111,19 +112,57 @@ func (p *OllamaProvider) complete(
 		return CompletionResult{}, p.Info(), fmt.Errorf("ollama chat failed with %s: %s", resp.Status, strings.TrimSpace(string(payload)))
 	}
 
-	if stream {
-		return CompletionResult{}, p.Info(), fmt.Errorf("ollama streaming is not available")
+	if !stream {
+		var decoded ollamaChatResponse
+		if err := json.NewDecoder(resp.Body).Decode(&decoded); err != nil {
+			return CompletionResult{}, p.Info(), err
+		}
+		p.runtime.setSelectedModel(decoded.Model)
+		info := p.Info()
+		return CompletionResult{
+			Content: strings.TrimSpace(decoded.Message.Content),
+			Model:   decoded.Model,
+		}, info, nil
 	}
 
-	var decoded ollamaChatResponse
-	if err := json.NewDecoder(resp.Body).Decode(&decoded); err != nil {
+	var builder strings.Builder
+	finalModel := model
+	scanner := bufio.NewScanner(resp.Body)
+	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+
+		var chunk ollamaChatResponse
+		if err := json.Unmarshal([]byte(line), &chunk); err != nil {
+			return CompletionResult{}, p.Info(), err
+		}
+		if strings.TrimSpace(chunk.Model) != "" {
+			finalModel = strings.TrimSpace(chunk.Model)
+		}
+		if delta := chunk.Message.Content; delta != "" {
+			builder.WriteString(delta)
+			if onTextDelta != nil {
+				if err := onTextDelta(delta); err != nil {
+					return CompletionResult{}, p.Info(), err
+				}
+			}
+		}
+		if chunk.Done {
+			break
+		}
+	}
+	if err := scanner.Err(); err != nil {
 		return CompletionResult{}, p.Info(), err
 	}
-	p.runtime.setSelectedModel(decoded.Model)
+
+	p.runtime.setSelectedModel(finalModel)
 	info := p.Info()
 	return CompletionResult{
-		Content: strings.TrimSpace(decoded.Message.Content),
-		Model:   decoded.Model,
+		Content: strings.TrimSpace(builder.String()),
+		Model:   finalModel,
 	}, info, nil
 }
 
