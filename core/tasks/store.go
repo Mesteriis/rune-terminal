@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -18,28 +19,48 @@ var (
 	ErrInvalidStatus = errors.New("task is not in expected status")
 )
 
+const taskSelectColumns = `
+id, type, payload, status, run_at, locked_by, locked_at, created_at, started_at, finished_at, error,
+retry_count, max_retries, retry_backoff_seconds, last_error_at, next_retry_at
+`
+
 func NewStore(dbConn *sql.DB) *Store {
 	return &Store{db: dbConn}
 }
 
-func (s *Store) CreateTask(ctx context.Context, taskID, taskType, payload string, runAt time.Time) (Task, error) {
+func (s *Store) CreateTask(
+	ctx context.Context,
+	taskID,
+	taskType,
+	payload string,
+	runAt time.Time,
+	maxRetries int,
+	retryBackoffSeconds int,
+) (Task, error) {
 	now := time.Now().UTC()
 	task := Task{
-		ID:        taskID,
-		Type:      taskType,
-		Payload:   payload,
-		Status:    TaskStatusPending,
-		RunAt:     runAt.UTC(),
-		CreatedAt: now,
+		ID:                  taskID,
+		Type:                taskType,
+		Payload:             payload,
+		Status:              TaskStatusPending,
+		RunAt:               runAt.UTC(),
+		CreatedAt:           now,
+		MaxRetries:          maxRetries,
+		RetryBackoffSeconds: retryBackoffSeconds,
 	}
 	if _, err := s.db.ExecContext(ctx,
-		`INSERT INTO tasks (id, type, payload, status, run_at, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO tasks
+			(id, type, payload, status, run_at, created_at, retry_count, max_retries, retry_backoff_seconds)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		task.ID,
 		task.Type,
 		task.Payload,
 		task.Status,
 		task.RunAt.Format(time.RFC3339Nano),
 		task.CreatedAt.Format(time.RFC3339Nano),
+		task.RetryCount,
+		task.MaxRetries,
+		task.RetryBackoffSeconds,
 	); err != nil {
 		return Task{}, err
 	}
@@ -66,10 +87,10 @@ func (s *Store) ClaimReadyTasks(ctx context.Context, workerID string, limit int,
 	}()
 
 	candidates, err := queryTasksTx(ctx, tx, `
-		SELECT id, type, payload, status, run_at, locked_by, locked_at, created_at, started_at, finished_at, error
+		SELECT `+taskSelectColumns+`
 		FROM tasks
-		WHERE status = ? AND run_at <= ? AND locked_by IS NULL
-		ORDER BY run_at ASC
+		WHERE status = ? AND COALESCE(next_retry_at, run_at) <= ? AND locked_by IS NULL
+		ORDER BY COALESCE(next_retry_at, run_at) ASC
 		LIMIT ?
 	`, TaskStatusPending, now.UTC().Format(time.RFC3339Nano), limit)
 	if err != nil {
@@ -110,6 +131,7 @@ func (s *Store) ClaimReadyTasks(ctx context.Context, workerID string, limit int,
 		}
 		task.Status = TaskStatusRunning
 		task.LockedBy = workerID
+		task.NextRetryAt = nil
 		lockedAt := claimAt
 		task.LockedAt = &lockedAt
 		task.StartedAt = &claimAt
@@ -144,16 +166,35 @@ func (s *Store) markFinal(ctx context.Context, id, workerID, nextStatus, message
 	if task.Status != TaskStatusRunning {
 		return ErrInvalidStatus
 	}
+	if nextStatus == TaskStatusFailed && task.RetryCount < task.MaxRetries {
+		return s.scheduleRetry(ctx, task, workerID, message)
+	}
+
+	errorMessage := strings.TrimSpace(message)
+	if nextStatus == TaskStatusDone {
+		errorMessage = ""
+	}
 	nowStr := now.Format(time.RFC3339Nano)
 	if _, err := s.db.ExecContext(ctx,
 		`UPDATE tasks
-			SET status = ?, finished_at = ?, error = ?
+			SET status = ?, finished_at = ?, error = ?, last_error_at = ?, next_retry_at = ?
 			WHERE id = ? AND status = ? AND locked_by = ?`,
-		nextStatus, nowStr, message, id, TaskStatusRunning, workerID,
+		nextStatus,
+		nowStr,
+		errorMessage,
+		nullableErrorTimestamp(nextStatus, now),
+		nil,
+		id,
+		TaskStatusRunning,
+		workerID,
 	); err != nil {
 		return err
 	}
-	return s.logEvent(ctx, task.Status, id, workerID, nextStatus, message)
+	eventMessage := errorMessage
+	if nextStatus == TaskStatusFailed && task.MaxRetries > 0 && task.RetryCount >= task.MaxRetries {
+		eventMessage = "retry_exhausted: " + errorMessage
+	}
+	return s.logEvent(ctx, task.Status, id, workerID, nextStatus, strings.TrimSpace(eventMessage))
 }
 
 func checkUpdateAffectedRows(result sql.Result, id string) (int64, error) {
@@ -166,7 +207,7 @@ func checkUpdateAffectedRows(result sql.Result, id string) (int64, error) {
 
 func (s *Store) GetTask(ctx context.Context, id string) (Task, error) {
 	row := s.db.QueryRowContext(ctx, `
-		SELECT id, type, payload, status, run_at, locked_by, locked_at, created_at, started_at, finished_at, error
+		SELECT `+taskSelectColumns+`
 		FROM tasks
 		WHERE id = ?
 	`, id)
@@ -182,10 +223,10 @@ func (s *Store) GetTask(ctx context.Context, id string) (Task, error) {
 
 func (s *Store) ListActiveTasks(ctx context.Context) ([]Task, error) {
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT id, type, payload, status, run_at, locked_by, locked_at, created_at, started_at, finished_at, error
+		SELECT `+taskSelectColumns+`
 		FROM tasks
 		WHERE status = ?
-		ORDER BY run_at ASC
+		ORDER BY COALESCE(next_retry_at, run_at) ASC
 	`, TaskStatusRunning)
 	if err != nil {
 		return nil, err
@@ -233,46 +274,25 @@ func (s *Store) FailAllRunningForWorker(ctx context.Context, workerID, reason st
 	if workerID == "" {
 		return 0, fmt.Errorf("worker_id required")
 	}
-	tx, err := s.db.BeginTx(ctx, &sql.TxOptions{})
-	if err != nil {
-		return 0, err
-	}
-	defer func() {
-		_ = tx.Rollback()
-	}()
-
-	tasksByWorker, err := queryTasksTx(ctx, tx, `
-		SELECT id, type, payload, status, run_at, locked_by, locked_at, created_at, started_at, finished_at, error
+	tasksByWorker, err := queryTasks(ctx, s.db, `
+		SELECT `+taskSelectColumns+`
 		FROM tasks
 		WHERE status = ? AND locked_by = ?
 	`, TaskStatusRunning, workerID)
 	if err != nil {
 		return 0, err
 	}
-	if len(tasksByWorker) == 0 {
-		if err := tx.Commit(); err != nil {
-			return 0, err
-		}
-		return 0, nil
-	}
-
-	now := time.Now().UTC().Format(time.RFC3339Nano)
-	if _, err := tx.ExecContext(ctx, `
-		UPDATE tasks
-		SET status = ?, finished_at = ?, error = ?
-		WHERE status = ? AND locked_by = ?
-	`, TaskStatusFailed, now, reason, TaskStatusRunning, workerID); err != nil {
-		return 0, err
-	}
+	marked := 0
 	for _, task := range tasksByWorker {
-		if err := s.logEventTx(ctx, tx, TaskStatusRunning, task.ID, workerID, TaskStatusFailed, reason); err != nil {
-			return 0, err
+		if err := s.markFinal(ctx, task.ID, workerID, TaskStatusFailed, reason); err != nil {
+			if errors.Is(err, ErrNotFound) || errors.Is(err, ErrInvalidStatus) || errors.Is(err, ErrWrongOwner) {
+				continue
+			}
+			return marked, err
 		}
+		marked++
 	}
-	if err := tx.Commit(); err != nil {
-		return 0, err
-	}
-	return len(tasksByWorker), nil
+	return marked, nil
 }
 
 func (s *Store) logEvent(ctx context.Context, fromStatus, taskID, workerID, toStatus, message string) error {
@@ -302,6 +322,15 @@ func queryTasksTx(ctx context.Context, tx *sql.Tx, query string, args ...any) ([
 	return queryTasksRows(rows)
 }
 
+func queryTasks(ctx context.Context, dbConn *sql.DB, query string, args ...any) ([]Task, error) {
+	rows, err := dbConn.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return queryTasksRows(rows)
+}
+
 func queryTasksRows(rows *sql.Rows) ([]Task, error) {
 	tasks := make([]Task, 0)
 	for rows.Next() {
@@ -321,35 +350,61 @@ func scanTaskRow(scanner interface {
 	Scan(dest ...any) error
 }) (Task, error) {
 	var task Task
-	var runAtStr, lockedAtStr, createdAtStr, startedAtStr, finishedAtStr string
+	var runAtStr, createdAtStr string
+	var lockedBy sql.NullString
+	var errorValue sql.NullString
+	var lockedAtStr sql.NullString
+	var startedAtStr sql.NullString
+	var finishedAtStr sql.NullString
+	var lastErrorAtStr sql.NullString
+	var nextRetryAtStr sql.NullString
 	if err := scanner.Scan(
 		&task.ID,
 		&task.Type,
 		&task.Payload,
 		&task.Status,
 		&runAtStr,
-		&task.LockedBy,
+		&lockedBy,
 		&lockedAtStr,
 		&createdAtStr,
 		&startedAtStr,
 		&finishedAtStr,
-		&task.Error,
+		&errorValue,
+		&task.RetryCount,
+		&task.MaxRetries,
+		&task.RetryBackoffSeconds,
+		&lastErrorAtStr,
+		&nextRetryAtStr,
 	); err != nil {
 		return Task{}, err
 	}
 	task.RunAt = parseTime(runAtStr)
 	task.CreatedAt = parseTime(createdAtStr)
-	if lockedAtStr != "" {
-		lockedAt := parseTime(lockedAtStr)
+	if errorValue.Valid {
+		task.Error = errorValue.String
+	}
+	if lockedBy.Valid {
+		task.LockedBy = lockedBy.String
+	}
+	if lockedAtStr.Valid && lockedAtStr.String != "" {
+		lockedAt := parseTime(lockedAtStr.String)
 		task.LockedAt = &lockedAt
 	}
-	if startedAtStr != "" {
-		startedAt := parseTime(startedAtStr)
+	if startedAtStr.Valid && startedAtStr.String != "" {
+		startedAt := parseTime(startedAtStr.String)
 		task.StartedAt = &startedAt
 	}
-	if finishedAtStr != "" {
-		finishedAt := parseTime(finishedAtStr)
+	if finishedAtStr.Valid && finishedAtStr.String != "" {
+		finishedAt := parseTime(finishedAtStr.String)
 		task.FinishedAt = &finishedAt
+	}
+	if lastErrorAtStr.Valid && lastErrorAtStr.String != "" {
+		lastErrorAt := parseTime(lastErrorAtStr.String)
+		task.LastErrorAt = &lastErrorAt
+	}
+	if nextRetryAtStr.Valid && nextRetryAtStr.String != "" {
+		nextRetryAt := parseTime(nextRetryAtStr.String)
+		task.NextRetryAt = &nextRetryAt
 	}
 	return task, nil
 }
@@ -360,4 +415,72 @@ func parseTime(raw string) time.Time {
 		return time.Time{}
 	}
 	return parsed
+}
+
+func (s *Store) scheduleRetry(ctx context.Context, task Task, workerID, reason string) error {
+	now := time.Now().UTC()
+	nextRetryCount := task.RetryCount + 1
+	delaySeconds := boundedRetryBackoffSeconds(task.RetryBackoffSeconds, task.RetryCount)
+	nextRetryAt := now.Add(time.Duration(delaySeconds) * time.Second).UTC()
+	retryMessage := fmt.Sprintf(
+		"retry_scheduled: attempt=%d/%d delay_seconds=%d reason=%s",
+		nextRetryCount,
+		task.MaxRetries,
+		delaySeconds,
+		strings.TrimSpace(reason),
+	)
+	result, err := s.db.ExecContext(ctx, `
+		UPDATE tasks
+		SET status = ?, retry_count = ?, next_retry_at = ?, last_error_at = ?, error = ?, locked_by = NULL, locked_at = NULL, started_at = NULL, finished_at = NULL
+		WHERE id = ? AND status = ? AND locked_by = ?
+	`,
+		TaskStatusPending,
+		nextRetryCount,
+		nextRetryAt.Format(time.RFC3339Nano),
+		now.Format(time.RFC3339Nano),
+		strings.TrimSpace(reason),
+		task.ID,
+		TaskStatusRunning,
+		workerID,
+	)
+	if err != nil {
+		return err
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return ErrInvalidStatus
+	}
+	return s.logEvent(ctx, TaskStatusRunning, task.ID, workerID, TaskStatusPending, retryMessage)
+}
+
+func boundedRetryBackoffSeconds(baseSeconds, retryCount int) int {
+	if baseSeconds < 1 {
+		baseSeconds = 1
+	}
+	if baseSeconds > 3600 {
+		baseSeconds = 3600
+	}
+	delay := baseSeconds
+	for attempt := 0; attempt < retryCount; attempt++ {
+		if delay >= 1800 {
+			delay = 3600
+			break
+		}
+		delay *= 2
+		if delay > 3600 {
+			delay = 3600
+			break
+		}
+	}
+	return delay
+}
+
+func nullableErrorTimestamp(status string, value time.Time) any {
+	if status == TaskStatusFailed {
+		return value.Format(time.RFC3339Nano)
+	}
+	return nil
 }
