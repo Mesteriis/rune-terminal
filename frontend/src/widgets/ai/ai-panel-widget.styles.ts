@@ -182,6 +182,13 @@ export const aiChatMessageContentStyle: CSSProperties = {
   wordBreak: 'break-word',
 }
 
+export const aiChatMessageMetaLineStyle: CSSProperties = {
+  color: 'color-mix(in srgb, var(--color-text-muted) 82%, transparent)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '11px',
+  lineHeight: '16px',
+}
+
 export const aiChatMessageDetailsToggleStyle: CSSProperties = {
   minWidth: 'unset',
   minHeight: 'unset',

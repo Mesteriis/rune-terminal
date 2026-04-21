@@ -14,6 +14,7 @@ import {
   aiChatMessageDetailsToggleStyle,
   aiChatMessageDetailsValueStyle,
   aiChatMessageGroupStyle,
+  aiChatMessageMetaLineStyle,
   aiChatMessageRowStyle,
   aiChatMessageAssistantBubbleStyle,
   aiChatMessageAssistantGroupStyle,
@@ -30,6 +31,9 @@ export type AiChatMessageWidgetProps = {
 export function AiChatMessageWidget({ message }: AiChatMessageWidgetProps) {
   const isUser = message.role === 'user'
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
+  const metaLine = !isUser
+    ? [message.meta?.model ?? message.meta?.provider, message.meta?.status].filter(Boolean).join(' · ')
+    : ''
   const details = useMemo(() => {
     const meta = message.meta
 
@@ -81,6 +85,11 @@ export function AiChatMessageWidget({ message }: AiChatMessageWidgetProps) {
               {message.content}
             </Text>
           </Surface>
+          {metaLine ? (
+            <Text runaComponent={`ai-chat-message-${message.id}-meta`} style={aiChatMessageMetaLineStyle}>
+              {metaLine}
+            </Text>
+          ) : null}
           {hasDetails ? (
             <>
               <Button

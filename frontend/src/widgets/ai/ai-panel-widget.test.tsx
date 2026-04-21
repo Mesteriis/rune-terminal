@@ -96,6 +96,7 @@ describe('AiPanelWidget backend conversation path', () => {
 
     expect(screen.getByText('Inspect the backend contract')).toBeInTheDocument()
     expect(screen.getByText('The backend contract is ready.')).toBeInTheDocument()
+    expect(screen.getByText('stub-model · complete')).toBeInTheDocument()
     expect(screen.queryByText('User 1')).not.toBeInTheDocument()
     expect(screen.queryByText('Assistant 2')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Show details' })).toBeInTheDocument()
