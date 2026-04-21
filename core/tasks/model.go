@@ -10,17 +10,22 @@ const (
 )
 
 type Task struct {
-	ID         string     `json:"id"`
-	Type       string     `json:"type"`
-	Payload    string     `json:"payload"`
-	Status     string     `json:"status"`
-	RunAt      time.Time  `json:"run_at"`
-	LockedBy   string     `json:"locked_by"`
-	LockedAt   *time.Time `json:"locked_at"`
-	CreatedAt  time.Time  `json:"created_at"`
-	StartedAt  *time.Time `json:"started_at"`
-	FinishedAt *time.Time `json:"finished_at"`
-	Error      string     `json:"error"`
+	ID                  string     `json:"id"`
+	Type                string     `json:"type"`
+	Payload             string     `json:"payload"`
+	Status              string     `json:"status"`
+	RunAt               time.Time  `json:"run_at"`
+	LockedBy            string     `json:"locked_by"`
+	LockedAt            *time.Time `json:"locked_at"`
+	CreatedAt           time.Time  `json:"created_at"`
+	StartedAt           *time.Time `json:"started_at"`
+	FinishedAt          *time.Time `json:"finished_at"`
+	Error               string     `json:"error"`
+	RetryCount          int        `json:"retry_count"`
+	MaxRetries          int        `json:"max_retries"`
+	RetryBackoffSeconds int        `json:"retry_backoff_seconds"`
+	LastErrorAt         *time.Time `json:"last_error_at"`
+	NextRetryAt         *time.Time `json:"next_retry_at"`
 }
 
 type TaskEvent struct {

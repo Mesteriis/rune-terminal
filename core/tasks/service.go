@@ -16,9 +16,11 @@ type Service struct {
 }
 
 type CreateTaskRequest struct {
-	Type    string          `json:"type"`
-	Payload json.RawMessage `json:"payload"`
-	RunAt   string          `json:"run_at"`
+	Type                string          `json:"type"`
+	Payload             json.RawMessage `json:"payload"`
+	RunAt               string          `json:"run_at"`
+	MaxRetries          *int            `json:"max_retries,omitempty"`
+	RetryBackoffSeconds *int            `json:"retry_backoff_seconds,omitempty"`
 }
 
 type ClaimTaskRequest struct {
@@ -45,8 +47,10 @@ func (e TaskServiceError) Error() string {
 }
 
 var (
-	ErrTypeRequired  = errors.New("task type is required")
-	ErrWorkerMissing = errors.New("worker_id is required")
+	ErrTypeRequired        = errors.New("task type is required")
+	ErrWorkerMissing       = errors.New("worker_id is required")
+	ErrInvalidMaxRetries   = errors.New("max_retries must be between 0 and 100")
+	ErrInvalidRetryBackoff = errors.New("retry_backoff_seconds must be between 1 and 3600 when max_retries > 0")
 )
 
 func NewService(store *Store) *Service {
@@ -75,7 +79,12 @@ func (s *Service) Create(ctx context.Context, request CreateTaskRequest) (Task, 
 		runAt = parsedAt.UTC()
 	}
 
-	return s.store.CreateTask(ctx, ids.New("task"), taskType, payload, runAt)
+	maxRetries, backoffSeconds, err := normalizeRetryPolicy(request.MaxRetries, request.RetryBackoffSeconds)
+	if err != nil {
+		return Task{}, err
+	}
+
+	return s.store.CreateTask(ctx, ids.New("task"), taskType, payload, runAt, maxRetries, backoffSeconds)
 }
 
 func (s *Service) Claim(ctx context.Context, request ClaimTaskRequest) ([]Task, error) {
@@ -137,4 +146,26 @@ func (s *Service) Stats(ctx context.Context) (TaskStats, error) {
 
 func (s *Service) FailAllByWorker(ctx context.Context, workerID string, reason string) (int, error) {
 	return s.store.FailAllRunningForWorker(ctx, workerID, reason)
+}
+
+func normalizeRetryPolicy(maxRetriesRaw *int, backoffRaw *int) (int, int, error) {
+	maxRetries := 0
+	if maxRetriesRaw != nil {
+		maxRetries = *maxRetriesRaw
+	}
+	if maxRetries < 0 || maxRetries > 100 {
+		return 0, 0, ErrInvalidMaxRetries
+	}
+	if maxRetries == 0 {
+		return 0, 0, nil
+	}
+
+	backoff := 1
+	if backoffRaw != nil {
+		backoff = *backoffRaw
+	}
+	if backoff < 1 || backoff > 3600 {
+		return 0, 0, ErrInvalidRetryBackoff
+	}
+	return maxRetries, backoff, nil
 }
