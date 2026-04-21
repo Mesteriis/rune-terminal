@@ -34,11 +34,29 @@
   - `sed -n '1,220p' frontend/src/widgets/panel/widget-busy-overlay-widget.tsx`
 - Historical repo context:
   - `sed -n '1,260p' docs/parity/history/tideterm-feature-inventory.md`
+- Tide/TideTerm reference source audit:
+  - `curl -fsSL 'https://api.github.com/repos/sanshao85/tideterm/git/trees/main?recursive=1' | rg 'aipanel|aiusechat|waveai|provider|gemini|anthropic|openai|chat'`
+  - `curl -fsSL 'https://raw.githubusercontent.com/sanshao85/tideterm/main/frontend/app/aipanel/aipanel.tsx'`
+  - `curl -fsSL 'https://raw.githubusercontent.com/sanshao85/tideterm/main/frontend/app/aipanel/aipanelmessages.tsx'`
+  - `curl -fsSL 'https://raw.githubusercontent.com/sanshao85/tideterm/main/frontend/app/aipanel/aimessage.tsx'`
+  - `curl -fsSL 'https://raw.githubusercontent.com/sanshao85/tideterm/main/frontend/app/aipanel/aipanelinput.tsx'`
+  - `curl -fsSL 'https://raw.githubusercontent.com/sanshao85/tideterm/main/frontend/app/aipanel/aimode.tsx'`
+  - `curl -fsSL 'https://raw.githubusercontent.com/sanshao85/tideterm/main/frontend/app/aipanel/waveai-model.tsx'`
+  - `curl -fsSL 'https://raw.githubusercontent.com/sanshao85/tideterm/main/frontend/app/aipanel/aitypes.ts'`
+  - `curl -fsSL 'https://raw.githubusercontent.com/sanshao85/tideterm/main/pkg/aiusechat/usechat.go'`
+  - `curl -fsSL 'https://raw.githubusercontent.com/sanshao85/tideterm/main/pkg/aiusechat/usechat-backend.go'`
+  - `curl -fsSL 'https://raw.githubusercontent.com/sanshao85/tideterm/main/pkg/aiusechat/usechat-mode.go'`
+  - `curl -fsSL 'https://raw.githubusercontent.com/sanshao85/tideterm/main/pkg/aiusechat/uctypes/uctypes.go'`
+  - `curl -fsSL 'https://raw.githubusercontent.com/sanshao85/tideterm/main/pkg/aiusechat/chatstore/chatstore.go'`
+  - `curl -fsSL 'https://raw.githubusercontent.com/sanshao85/tideterm/main/pkg/aiusechat/openai/openai-backend.go'`
+  - `curl -fsSL 'https://raw.githubusercontent.com/sanshao85/tideterm/main/pkg/aiusechat/anthropic/anthropic-backend.go'`
+  - `curl -fsSL 'https://raw.githubusercontent.com/sanshao85/tideterm/main/pkg/aiusechat/gemini/gemini-backend.go'`
+  - `curl -fsSL 'https://raw.githubusercontent.com/sanshao85/tideterm/main/pkg/web/sse/ssehandler.go'`
+  - `curl -fsSL 'https://raw.githubusercontent.com/sanshao85/tideterm/main/pkg/wconfig/defaultconfig/waveai.json'`
 
 ## Known limitations
 
 - This phase verified current state from repository source, not from a live provider-backed agent session.
-- Tide/TideTerm reference findings are not included yet in this phase.
 - Any capability not directly demonstrated by code is marked `not verified` rather than inferred.
 
 ## Evidence
@@ -106,3 +124,108 @@
 - Partial assistant output rendering:
   - Not verified.
   - No partial-output renderer or token-by-token transcript update path was found in the current AI widget/model files.
+
+### Tide/TideTerm reference findings
+
+#### Scope note
+
+- Reference source inspected: `sanshao85/tideterm` on GitHub `main`.
+- A separate `tide` TUI framework reference was not used for this AI audit because the AI implementation under comparison lives in the TideTerm application repo, not in the generic framework.
+
+#### Streaming assistant responses
+
+- What exists:
+  - TideTerm uses a streaming HTTP chat endpoint plus a frontend stream consumer.
+  - `frontend/app/aipanel/aipanel.tsx` uses `useChat` from `@ai-sdk/react` with `DefaultChatTransport` pointed at `model.getUseChatEndpointUrl()`, which resolves to `/api/post-chat-message`.
+  - `pkg/aiusechat/usechat.go` exposes `WaveAIPostMessageHandler`, creates an SSE handler, and calls `WaveAIPostMessageWrap(...)`.
+  - `pkg/web/sse/ssehandler.go` emits AI SDK-style stream parts such as `start`, `text-start`, `text-delta`, `reasoning-delta`, `tool-input-delta`, `finish-step`, and `finish`, and sets `x-vercel-ai-ui-message-stream: v1`.
+  - `pkg/aiusechat/openai/openai-backend.go`, `pkg/aiusechat/anthropic/anthropic-backend.go`, and `pkg/aiusechat/gemini/gemini-backend.go` all parse provider SSE responses and translate provider-specific events into the generic stream-part protocol.
+- How it works at a high level:
+  - The frontend sends one request to the stream endpoint.
+  - The backend chooses a provider backend, opens the provider stream, translates provider events into generic stream parts, and forwards those parts over SSE.
+  - The frontend `useChat` state updates incrementally as those parts arrive.
+- What is portable to RunaTerminal:
+  - A generic backend stream contract that emits assistant text deltas, reasoning deltas, and finish/error events.
+  - A provider adapter layer that converts provider-native streaming events into one internal stream shape.
+  - A frontend render path that can append partial assistant output without waiting for the full response.
+- What is not portable or would conflict with RunaTerminal architecture:
+  - TideTerm’s exact route shape (`/api/post-chat-message`) and AI SDK transport contract should not be copied verbatim into RunaTerminal’s current `/api/v1/agent/...` API surface.
+  - TideTerm’s frontend implementation depends on `@ai-sdk/react`, Jotai singletons, and the legacy `frontend/app/...` structure, which conflicts with RunaTerminal’s current frontend layering and existing backend-owned contract model.
+
+#### Busy/working/thinking UI state
+
+- What exists:
+  - `frontend/app/aipanel/aipanelmessages.tsx` treats `status === "streaming"` as a first-class render state and can show an in-progress assistant message even before a text part arrives.
+  - `frontend/app/aipanel/aimessage.tsx` contains `AIThinking`, which renders animated pulse dots while the model is thinking and a clock icon plus message when waiting for approvals.
+  - `frontend/app/aipanel/aipanelinput.tsx` swaps the send button for a stop button while streaming.
+- How it works at a high level:
+  - The transport status drives visible busy state.
+  - The last assistant message is marked streaming, incomplete markdown is rendered in-place, and a thinking indicator remains visible while only reasoning/tool activity is arriving.
+  - Approval waits are surfaced as a distinct waiting state rather than as a generic spinner.
+- What is portable to RunaTerminal:
+  - Deriving busy/working state directly from the live agent transport state instead of from a manual overlay.
+  - Showing a small in-panel assistant-working indicator before final assistant text is complete.
+  - Preserving existing layout while changing only the conversation state projection and composer action state.
+- What is not portable or would conflict with RunaTerminal architecture:
+  - TideTerm’s exact visual treatment, approval-specific widgets, and stop-button behavior are tied to its richer tool-use workflow and should not be transplanted wholesale without matching backend semantics and explicit UI placement decisions.
+
+#### Provider abstraction and multi-provider support
+
+- What exists:
+  - `pkg/aiusechat/usechat-backend.go` defines `UseChatBackend` and chooses an implementation with `GetBackendByAPIType(...)`.
+  - Verified backend implementations exist for:
+    - OpenAI Responses
+    - OpenAI Chat Completions
+    - Anthropic Messages
+    - Google Gemini
+  - `pkg/aiusechat/usechat-mode.go` resolves AI modes from config and applies provider defaults for `wave`, `openai`, `openrouter`, `azure`, `azure-legacy`, and `google`.
+  - `frontend/app/aipanel/aimode.tsx` renders a mode dropdown that groups hosted and custom modes and disables incompatible mode switches mid-chat.
+- How it works at a high level:
+  - TideTerm exposes user-selectable AI modes rather than a raw provider dropdown.
+  - Each mode resolves to a provider, API type, endpoint, model, token source, and capabilities.
+  - The backend then picks the matching provider adapter from the resolved API type.
+- What is portable to RunaTerminal:
+  - A backend-owned provider/mode registry that resolves provider configuration before execution.
+  - A provider interface plus provider-specific adapters behind one runtime path.
+  - Treating provider selection as a runtime/backend concern first, with frontend selection UI added only after backend resolution exists.
+- What is not portable or would conflict with RunaTerminal architecture:
+  - TideTerm’s telemetry gating, premium/cloud mode rules, and Wave proxy semantics are product-specific and should not be imported into RunaTerminal.
+  - TideTerm’s mode/config system is broader than the current RunaTerminal agent selection model and would need to be reduced rather than copied directly.
+
+#### Message lifecycle states and partial output rendering
+
+- What exists:
+  - `pkg/aiusechat/uctypes/uctypes.go` defines richer message-part state than RunaTerminal currently has:
+    - text/reasoning parts can be `streaming` or `done`
+    - tool parts can be `input-streaming`, `input-available`, `output-available`, or `output-error`
+    - stop reasons include `done`, `tool_use`, `max_tokens`, `content_filter`, `canceled`, `error`, `pause_turn`, and rate-limit variants
+  - `frontend/app/aipanel/aitypes.ts` mirrors those backend shapes into frontend types.
+  - `frontend/app/aipanel/aimessage.tsx` renders incomplete assistant markdown with `WaveStreamdown parseIncompleteMarkdown={isStreaming}` and also renders reasoning/tool-use parts.
+  - `pkg/aiusechat/chatstore/chatstore.go` stores native provider messages keyed by `chatid`, while provider adapters can convert stored native messages back into UI chat.
+- How it works at a high level:
+  - Stream parts update the last assistant message progressively.
+  - The UI can render partial markdown, reasoning traces, and tool activity before the provider step fully completes.
+  - Persisted chat state is backend-owned and can be reloaded after streaming stops or is interrupted.
+- What is portable to RunaTerminal:
+  - Introducing explicit in-progress/partial message states in the backend and frontend models.
+  - Rendering partial assistant text in the current transcript surface instead of waiting for a final snapshot replacement.
+  - Treating busy/thinking visibility as part of message lifecycle, not as a separate shell concern.
+- What is not portable or would conflict with RunaTerminal architecture:
+  - TideTerm’s full tool-use, reasoning, and approval message taxonomy is broader than RunaTerminal’s currently exposed AI sidebar and should not be copied unless the backend contract also grows to support it.
+
+#### Cancellation and abort behavior
+
+- What exists:
+  - `frontend/app/aipanel/aipanelinput.tsx` shows a stop button during streaming and calls `model.stopResponse()`.
+  - `frontend/app/aipanel/waveai-model.tsx` implements `stopResponse()` by calling `useChatStop?.()` and then reloading persisted chat state.
+  - Backend stream handlers treat request cancellation or SSE disconnect as `StopKindCanceled`; OpenAI and Gemini handlers explicitly recover partial text from streaming state when the client disconnects.
+  - `pkg/aiusechat/usechat.go` also guards active chats and serializes one active run per `chatid`.
+- How it works at a high level:
+  - The frontend aborts the active stream request.
+  - The backend detects the canceled stream, stops the step, preserves whatever partial assistant state it can, and the frontend reloads chat state afterward.
+- What is portable to RunaTerminal:
+  - Treating cancelation as part of the streaming contract from day one.
+  - Preserving partial assistant output on cancellation when possible.
+  - Preventing overlapping runs for one conversation/session.
+- What is not portable or would conflict with RunaTerminal architecture:
+  - TideTerm’s stop-control placement and `chatid`-scoped concurrency rules are tied to its own panel workflow and should be adapted to RunaTerminal’s conversation/session model instead of copied as-is.
