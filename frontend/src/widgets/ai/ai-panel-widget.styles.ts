@@ -133,8 +133,8 @@ export const aiMessageStackStyle: CSSProperties = {
   minHeight: 0,
   display: 'flex',
   flexDirection: 'column',
-  gap: 'var(--space-sm)',
-  padding: 0,
+  gap: 'var(--space-md)',
+  padding: 'var(--space-sm) var(--space-md) 0',
   border: 'none',
   borderRadius: 0,
   background: 'transparent',
@@ -151,7 +151,7 @@ export const aiChatMessageRowStyle: CSSProperties = {
 
 export const aiChatMessageGroupStyle: CSSProperties = {
   minWidth: 0,
-  maxWidth: '78%',
+  width: 'min(72%, 680px)',
   display: 'flex',
   flexDirection: 'column',
   gap: 'var(--space-xs)',
@@ -177,31 +177,31 @@ export const aiChatMessageBubbleStyle: CSSProperties = {
   minWidth: 0,
   display: 'flex',
   flexDirection: 'column',
-  padding: 'var(--space-md)',
+  padding: 'var(--space-md) var(--space-lg)',
   boxShadow: 'none',
 }
 
 export const aiChatMessageUserBubbleStyle: CSSProperties = {
-  background: 'color-mix(in srgb, var(--color-accent-emerald-soft) 72%, var(--color-canvas-elevated))',
-  borderColor: 'color-mix(in srgb, var(--color-accent-emerald-soft) 78%, var(--color-border-strong))',
+  background: 'color-mix(in srgb, var(--color-accent-emerald-soft) 56%, var(--color-canvas-elevated))',
+  borderColor: 'color-mix(in srgb, var(--color-accent-emerald-soft) 48%, var(--color-border-strong))',
 }
 
 export const aiChatMessageAssistantBubbleStyle: CSSProperties = {
-  background: 'var(--color-canvas-elevated)',
-  borderColor: 'var(--color-border-strong)',
+  background: 'color-mix(in srgb, var(--color-canvas-elevated) 84%, transparent)',
+  borderColor: 'color-mix(in srgb, var(--color-border-strong) 62%, transparent)',
 }
 
 export const aiChatMessageContentStyle: CSSProperties = {
   color: 'var(--color-text-primary)',
   fontFamily: 'var(--font-family-mono)',
-  fontSize: '14px',
-  lineHeight: '22px',
+  fontSize: '15px',
+  lineHeight: '24px',
   whiteSpace: 'pre-wrap',
   wordBreak: 'break-word',
 }
 
 export const aiChatMessageMetaLineStyle: CSSProperties = {
-  color: 'color-mix(in srgb, var(--color-text-muted) 82%, transparent)',
+  color: 'color-mix(in srgb, var(--color-text-muted) 72%, transparent)',
   fontFamily: 'var(--font-family-mono)',
   fontSize: '11px',
   lineHeight: '16px',
@@ -214,7 +214,7 @@ export const aiChatMessageDetailsToggleStyle: CSSProperties = {
   border: 'none',
   borderRadius: 0,
   background: 'transparent',
-  color: 'var(--color-text-muted)',
+  color: 'color-mix(in srgb, var(--color-text-muted) 82%, transparent)',
   boxShadow: 'none',
   fontFamily: 'var(--font-family-mono)',
   fontSize: '12px',
@@ -227,8 +227,8 @@ export const aiChatMessageDetailsPanelStyle: CSSProperties = {
   flexDirection: 'column',
   gap: 'var(--space-sm)',
   padding: 'var(--space-sm) var(--space-md)',
-  background: 'color-mix(in srgb, var(--color-canvas-elevated) 82%, transparent)',
-  borderColor: 'color-mix(in srgb, var(--color-border-strong) 72%, transparent)',
+  background: 'color-mix(in srgb, var(--color-canvas-elevated) 68%, transparent)',
+  borderColor: 'color-mix(in srgb, var(--color-border-strong) 48%, transparent)',
   boxShadow: 'none',
 }
 
