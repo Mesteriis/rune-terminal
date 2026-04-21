@@ -8,7 +8,7 @@
   - frontend AI sidebar main path loads backend conversation state from `GET /api/v1/agent/conversation`
   - existing textarea + send icon submit to `POST /api/v1/agent/conversation/messages/stream`
   - transcript rendering now projects backend messages into a chat-focused `ChatMessageView` instead of the earlier prompt/snapshot card model
-  - the visible transcript is now a single top-anchored message stream with newest messages first instead of nested cards or snapshot containers
+  - the visible transcript is now a single bottom-appended message stream in natural chronological order instead of nested cards or snapshot containers
   - user messages render as right-aligned bubbles and assistant messages render as left-aligned bubbles with no visible `Assistant N` / snapshot-era labels
   - the AI transcript now also supports explicit `plan`, `approval`, `audit`, and `questionnaire` message types in the frontend view model without changing the backend conversation payload
   - user submit no longer starts execution immediately on the frontend path: a local plan is rendered first, optional questionnaire prompts can interrupt the flow, and the backend stream route is only called after the user approves the pending plan
@@ -16,8 +16,8 @@
   - a frontend audit block now renders the simulated execution tool trail and updates status around the real backend stream lifecycle (`pending` / `running` / `done` / `error`)
   - assistant execution metadata is hidden by default behind a per-message `Show details` toggle, with `prompt`, `reasoning`, `summary`, and compact metadata rendered only in the secondary details surface
   - assistant rows now expose a subdued `{model} · {status}` line below the main bubble
-  - assistant replies and the user prompts beneath them are visually grouped with tighter pair spacing, while separate exchanges retain a larger gap
-  - transcript scrolling is now top-anchor aware: if the user is already near the latest message the viewport snaps to the top on updates, otherwise the viewport offset is preserved while new content is inserted above
+  - user prompts and the assistant replies beneath them are visually grouped with tighter pair spacing, while separate exchanges retain a larger gap
+  - transcript scrolling is now bottom-anchor aware: if the user is already near the latest message the viewport snaps to the bottom on updates, otherwise the viewport offset is preserved while new content is appended below
   - a UI-only `chat` / `dev` / `debug` header control now switches transcript visibility instantly without reload; it does not call backend agent mode selection routes
   - runtime transport still resolves through the shared frontend runtime context and no backend contract, API field, or execution pipeline change was introduced
   - visible assistant output still updates incrementally from backend stream events and the busy overlay/composer disabled state remains tied to the real stream lifecycle
@@ -132,11 +132,11 @@ These client functions were added so the frontend follows the real backend contr
 
 - The `AiPanelWidget` default path no longer uses `aiPanelWidgetMockState`.
 - The sidebar no longer projects backend conversation messages into the old prompt/snapshot card layout.
-- The visible transcript now renders backend messages through the chat-focused `ChatMessageView` mapper, keeps execution/audit data out of the primary bubble surface, and orders the stream newest-first so the latest exchange stays at the top.
+- The visible transcript now renders backend messages through the chat-focused `ChatMessageView` mapper, keeps execution/audit data out of the primary bubble surface, and orders the stream oldest-first so the latest exchange stays at the bottom.
 - The existing textarea and send icon still lead to the backend SSE route, but only after the frontend-local planning and approval gate complete.
-- The visible transcript now prepends a local plan immediately after the user prompt, inserts an optional questionnaire when the prompt needs environment clarification, and only renders the approval gate once the prerequisite questions are answered.
-- The visible transcript now prepends the local user message immediately, prepends the assistant entry on `message-start`, and updates assistant content incrementally on `text-delta` without forcing the viewport away from older messages being read.
-- The visible transcript now also prepends an audit block when approval is granted and updates that audit block as the real backend stream progresses or fails.
+- The visible transcript now appends a local plan immediately after the user prompt, inserts an optional questionnaire when the prompt needs environment clarification, and only renders the approval gate once the prerequisite questions are answered.
+- The visible transcript now appends the local user message immediately, appends the assistant entry on `message-start`, and updates assistant content incrementally on `text-delta` without forcing the viewport away from older messages being read.
+- The visible transcript now also appends an audit block when approval is granted and updates that audit block as the real backend stream progresses or fails.
 - Backend error events and stream transport failures still surface inside the existing transcript surface instead of adding a new panel, toast, or control.
 - Assistant details are now collapsed by default in `chat` mode, auto-expanded in `dev` mode, and always visible in `debug` mode.
 
@@ -157,8 +157,8 @@ These client functions were added so the frontend follows the real backend contr
 
 - Formatting changes:
   - prompt/snapshot cards were replaced with conversational left/right chat bubbles
-  - the transcript was reordered into a newest-first top-anchored stream
-  - scroll updates now preserve the reader position unless the viewport is already near the latest message anchor
+  - the transcript was reordered into a bottom-appended natural chat stream
+  - scroll updates now preserve the reader position unless the viewport is already near the latest message anchor at the bottom
   - the transcript now also renders dedicated plan, approval, audit, and questionnaire blocks alongside chat bubbles
   - the composer path now pauses on a frontend approval gate before the backend stream starts
   - assistant execution details moved into a collapsed secondary panel
