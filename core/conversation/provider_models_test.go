@@ -45,6 +45,42 @@ func TestListOpenAIModelsLoadsModelIDs(t *testing.T) {
 	}
 }
 
+func TestListOpenAIModelsSupportsBaseURLWithoutV1(t *testing.T) {
+	t.Parallel()
+
+	var seenPaths []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seenPaths = append(seenPaths, r.URL.Path)
+		switch r.URL.Path {
+		case "/models":
+			http.NotFound(w, r)
+		case "/v1/models":
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"data": []map[string]any{
+					{"id": "gpt-4.1-mini"},
+				},
+			})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	models, err := ListOpenAIModels(context.Background(), OpenAIProviderConfig{
+		BaseURL: server.URL,
+		APIKey:  "sk-openai-test",
+	})
+	if err != nil {
+		t.Fatalf("ListOpenAIModels error: %v", err)
+	}
+	if !slices.Equal(seenPaths, []string{"/models", "/v1/models"}) {
+		t.Fatalf("unexpected model discovery path order: %#v", seenPaths)
+	}
+	if !slices.Equal(models, []string{"gpt-4.1-mini"}) {
+		t.Fatalf("unexpected models: %#v", models)
+	}
+}
+
 func TestListOllamaModelsLoadsTagNames(t *testing.T) {
 	t.Parallel()
 
@@ -67,6 +103,44 @@ func TestListOllamaModelsLoadsTagNames(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("ListOllamaModels error: %v", err)
+	}
+	if !slices.Equal(models, []string{"llama3.2:3b", "qwen3:8b"}) {
+		t.Fatalf("unexpected models: %#v", models)
+	}
+}
+
+func TestListOllamaModelsFallsBackToOpenAICompatibleCatalog(t *testing.T) {
+	t.Parallel()
+
+	var seenPaths []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seenPaths = append(seenPaths, r.URL.Path)
+		switch r.URL.Path {
+		case "/api/tags":
+			http.NotFound(w, r)
+		case "/models":
+			http.NotFound(w, r)
+		case "/v1/models":
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"data": []map[string]any{
+					{"id": "llama3.2:3b"},
+					{"id": "qwen3:8b"},
+				},
+			})
+		default:
+			t.Fatalf("unexpected path: %s", r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	models, err := ListOllamaModels(context.Background(), ProviderConfig{
+		BaseURL: server.URL,
+	})
+	if err != nil {
+		t.Fatalf("ListOllamaModels error: %v", err)
+	}
+	if !slices.Equal(seenPaths, []string{"/api/tags", "/models", "/v1/models"}) {
+		t.Fatalf("unexpected fallback path order: %#v", seenPaths)
 	}
 	if !slices.Equal(models, []string{"llama3.2:3b", "qwen3:8b"}) {
 		t.Fatalf("unexpected models: %#v", models)

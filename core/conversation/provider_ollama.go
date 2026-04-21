@@ -175,31 +175,9 @@ func (p *OllamaProvider) resolveModel(ctx context.Context) (string, error) {
 		return model, nil
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, p.baseURL+"/api/tags", nil)
+	names, err := listOllamaModelsWithClient(ctx, p.client, p.config.BaseURL)
 	if err != nil {
 		return "", err
-	}
-	resp, err := p.client.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		payload, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		return "", fmt.Errorf("ollama tags failed with %s: %s", resp.Status, strings.TrimSpace(string(payload)))
-	}
-
-	var decoded ollamaTagsResponse
-	if err := json.NewDecoder(resp.Body).Decode(&decoded); err != nil {
-		return "", err
-	}
-
-	names := make([]string, 0, len(decoded.Models))
-	for _, model := range decoded.Models {
-		name := strings.TrimSpace(model.Name)
-		if name != "" {
-			names = append(names, name)
-		}
 	}
 	for _, preferred := range preferredModels {
 		if slices.Contains(names, preferred) {

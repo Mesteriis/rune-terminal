@@ -343,6 +343,105 @@ func TestDiscoverProviderModelsLoadsOllamaModelsForDraft(t *testing.T) {
 	}
 }
 
+func TestDiscoverProviderModelsLoadsOllamaModelsFromOpenAICompatibleFallback(t *testing.T) {
+	t.Parallel()
+
+	var seenPaths []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seenPaths = append(seenPaths, r.URL.Path)
+		switch r.URL.Path {
+		case "/api/tags":
+			http.NotFound(w, r)
+		case "/models":
+			http.NotFound(w, r)
+		case "/v1/models":
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"data": []map[string]any{
+					{"id": "llama3.2:3b"},
+				},
+			})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	handler, _ := newTestHandler(t)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPost, "/api/v1/agent/providers/models", map[string]any{
+		"kind": "ollama",
+		"ollama": map[string]any{
+			"base_url": server.URL,
+		},
+	}))
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+
+	var payload struct {
+		Models []string `json:"models"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal models: %v", err)
+	}
+	if !slices.Equal(seenPaths, []string{"/api/tags", "/models", "/v1/models"}) {
+		t.Fatalf("unexpected fallback path order: %#v", seenPaths)
+	}
+	if !slices.Equal(payload.Models, []string{"llama3.2:3b"}) {
+		t.Fatalf("unexpected models: %#v", payload.Models)
+	}
+}
+
+func TestDiscoverProviderModelsLoadsOpenAIModelsWithoutExplicitV1(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/models":
+			http.NotFound(w, r)
+		case "/v1/models":
+			if r.Header.Get("Authorization") != "Bearer sk-provider-test" {
+				t.Fatalf("unexpected auth header: %q", r.Header.Get("Authorization"))
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"data": []map[string]any{
+					{"id": "gpt-4.1-mini"},
+				},
+			})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	handler, _ := newTestHandler(t)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPost, "/api/v1/agent/providers/models", map[string]any{
+		"kind": "openai",
+		"openai": map[string]any{
+			"base_url": server.URL,
+			"api_key":  "sk-provider-test",
+		},
+	}))
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+
+	var payload struct {
+		Models []string `json:"models"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal models: %v", err)
+	}
+	if !slices.Equal(payload.Models, []string{"gpt-4.1-mini"}) {
+		t.Fatalf("unexpected models: %#v", payload.Models)
+	}
+}
+
 func TestDiscoverProviderModelsUsesStoredOpenAISecret(t *testing.T) {
 	t.Parallel()
 

@@ -40,66 +40,36 @@ func listOpenAIModelsWithClient(
 		return nil, fmt.Errorf("openai api_key is required")
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(baseURL, "/")+"/models", nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Authorization", "Bearer "+strings.TrimSpace(apiKey))
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("openai model discovery failed with %s: %s", resp.Status, readOpenAIError(resp.Body))
+	var attempts []string
+	for _, requestURL := range openAICompatibleModelCatalogURLs(baseURL, defaultOpenAIBaseURL) {
+		models, err := fetchOpenAICompatibleModelCatalog(ctx, client, requestURL, apiKey)
+		if err == nil {
+			return models, nil
+		}
+		attempts = append(attempts, err.Error())
 	}
 
-	var decoded rawModelListResponse
-	if err := json.NewDecoder(resp.Body).Decode(&decoded); err != nil {
-		return nil, err
-	}
-	models := compactModelIDs(decoded.ModelIDs())
-	if len(models) == 0 {
-		return nil, fmt.Errorf("openai model discovery returned no models")
-	}
-	return models, nil
+	return nil, fmt.Errorf("openai model discovery failed: %s", strings.Join(attempts, "; "))
 }
 
 func listOllamaModelsWithClient(ctx context.Context, client *http.Client, baseURL string) ([]string, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(baseURL, "/")+"/api/tags", nil)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		payload, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		return nil, fmt.Errorf("ollama model discovery failed with %s: %s", resp.Status, strings.TrimSpace(string(payload)))
-	}
-
-	var decoded ollamaTagsResponse
-	if err := json.NewDecoder(resp.Body).Decode(&decoded); err != nil {
-		return nil, err
-	}
-
-	models := make([]string, 0, len(decoded.Models))
-	for _, model := range decoded.Models {
-		if name := strings.TrimSpace(model.Name); name != "" {
-			models = append(models, name)
+	var attempts []string
+	for _, requestURL := range ollamaNativeModelCatalogURLs(baseURL) {
+		models, err := fetchOllamaNativeModelCatalog(ctx, client, requestURL)
+		if err == nil {
+			return models, nil
 		}
+		attempts = append(attempts, err.Error())
 	}
-	models = compactModelIDs(models)
-	if len(models) == 0 {
-		return nil, fmt.Errorf("ollama model discovery returned no models")
+	for _, requestURL := range openAICompatibleModelCatalogURLs(baseURL, normalizeBaseURL(baseURL)) {
+		models, err := fetchOpenAICompatibleModelCatalog(ctx, client, requestURL, "")
+		if err == nil {
+			return models, nil
+		}
+		attempts = append(attempts, err.Error())
 	}
-	return models, nil
+
+	return nil, fmt.Errorf("ollama model discovery failed: %s", strings.Join(attempts, "; "))
 }
 
 func listCodexModelsWithCredentials(
@@ -147,15 +117,121 @@ func listCodexModelsWithCredentials(
 		return nil, fmt.Errorf("codex model discovery failed with %s: %s", resp.Status, readOpenAIError(resp.Body))
 	}
 
-	var decoded rawModelListResponse
+	return decodeOpenAICompatibleModelCatalog(resp.Body, "codex")
+}
+
+func fetchOpenAICompatibleModelCatalog(
+	ctx context.Context,
+	client *http.Client,
+	requestURL string,
+	apiKey string,
+) ([]string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	if trimmedAPIKey := strings.TrimSpace(apiKey); trimmedAPIKey != "" {
+		req.Header.Set("Authorization", "Bearer "+trimmedAPIKey)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("GET %s: %w", requestURL, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf(
+			"GET %s returned %s: %s",
+			requestURL,
+			resp.Status,
+			readOpenAIError(resp.Body),
+		)
+	}
+
+	return decodeOpenAICompatibleModelCatalog(resp.Body, "openai")
+}
+
+func fetchOllamaNativeModelCatalog(
+	ctx context.Context,
+	client *http.Client,
+	requestURL string,
+) ([]string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("GET %s: %w", requestURL, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		payload, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+		return nil, fmt.Errorf(
+			"GET %s returned %s: %s",
+			requestURL,
+			resp.Status,
+			strings.TrimSpace(string(payload)),
+		)
+	}
+
+	var decoded ollamaTagsResponse
 	if err := json.NewDecoder(resp.Body).Decode(&decoded); err != nil {
+		return nil, err
+	}
+
+	models := make([]string, 0, len(decoded.Models))
+	for _, model := range decoded.Models {
+		if name := strings.TrimSpace(model.Name); name != "" {
+			models = append(models, name)
+		}
+	}
+	models = compactModelIDs(models)
+	if len(models) == 0 {
+		return nil, fmt.Errorf("ollama model discovery returned no models")
+	}
+	return models, nil
+}
+
+func decodeOpenAICompatibleModelCatalog(reader io.Reader, providerLabel string) ([]string, error) {
+	var decoded rawModelListResponse
+	if err := json.NewDecoder(reader).Decode(&decoded); err != nil {
 		return nil, err
 	}
 	models := compactModelIDs(decoded.ModelIDs())
 	if len(models) == 0 {
-		return nil, fmt.Errorf("codex model discovery returned no models")
+		return nil, fmt.Errorf("%s model discovery returned no models", providerLabel)
 	}
 	return models, nil
+}
+
+func openAICompatibleModelCatalogURLs(rawBaseURL string, fallbackBaseURL string) []string {
+	base := strings.TrimRight(strings.TrimSpace(rawBaseURL), "/")
+	if base == "" {
+		base = strings.TrimRight(strings.TrimSpace(fallbackBaseURL), "/")
+	}
+	if base == "" {
+		return nil
+	}
+
+	candidates := []string{base + "/models"}
+	if strings.HasSuffix(base, "/v1") {
+		trimmed := strings.TrimSuffix(base, "/v1")
+		if trimmed != "" {
+			candidates = append(candidates, trimmed+"/models")
+		}
+	} else {
+		candidates = append(candidates, base+"/v1/models")
+	}
+
+	return compactModelIDs(candidates)
+}
+
+func ollamaNativeModelCatalogURLs(rawBaseURL string) []string {
+	return compactModelIDs([]string{strings.TrimRight(normalizeBaseURL(rawBaseURL), "/") + "/api/tags"})
 }
 
 type rawModelListResponse struct {
