@@ -66,7 +66,7 @@ func NewRuntime(repoRoot string, stateDir string) (*Runtime, error) {
 	if err != nil {
 		return nil, err
 	}
-	conversationStore, err := conversation.NewService(paths.ConversationFile, conversation.NewOllamaProvider(conversation.DefaultProviderConfig()))
+	conversationStore, err := conversation.NewService(paths.ConversationFile, conversation.NewCodexCLIProvider(conversation.CodexCLIProviderConfig{}))
 	if err != nil {
 		return nil, err
 	}

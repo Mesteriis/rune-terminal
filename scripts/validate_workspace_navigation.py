@@ -20,10 +20,8 @@ import shutil
 import socket
 import subprocess
 import tempfile
-import threading
 import time
 from dataclasses import dataclass
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError
@@ -42,69 +40,43 @@ class HTTPResponse:
     body: Any
 
 
-class OllamaStubHandler(BaseHTTPRequestHandler):
-    def do_GET(self) -> None:  # noqa: N802
-        if self.path != "/api/tags":
-            self.send_response(404)
-            self.end_headers()
-            return
-        payload = {"models": [{"name": MODEL_NAME}]}
-        encoded = json.dumps(payload).encode("utf-8")
-        self.send_response(200)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(encoded)))
-        self.end_headers()
-        self.wfile.write(encoded)
-
-    def do_POST(self) -> None:  # noqa: N802
-        if self.path != "/api/chat":
-            self.send_response(404)
-            self.end_headers()
-            return
-        length = int(self.headers.get("Content-Length", "0"))
-        payload = b""
-        if length > 0:
-            payload = self.rfile.read(length)
-        prompt = "workspace-nav-validation"
-        if payload:
-            try:
-                decoded = json.loads(payload)
-                messages = decoded.get("messages") or []
-                for message in reversed(messages):
-                    if message.get("role") == "user":
-                        prompt = (message.get("content") or "").strip() or prompt
-                        break
-            except json.JSONDecodeError:
-                pass
-        response = {
-            "model": MODEL_NAME,
-            "message": {
-                "role": "assistant",
-                "content": f"stub-response: {prompt}",
-            },
-        }
-        encoded = json.dumps(response).encode("utf-8")
-        self.send_response(200)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(encoded)))
-        self.end_headers()
-        self.wfile.write(encoded)
-
-    def log_message(self, format: str, *args: Any) -> None:  # noqa: A003
-        return
-
-
 def free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.bind(("127.0.0.1", 0))
         return int(sock.getsockname()[1])
 
 
-def start_ollama_stub(port: int) -> tuple[ThreadingHTTPServer, threading.Thread]:
-    server = ThreadingHTTPServer(("127.0.0.1", port), OllamaStubHandler)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    return server, thread
+def write_codex_cli_stub(directory: Path) -> Path:
+    stub_path = directory / "codex-cli-stub.py"
+    stub_path.write_text(
+        """#!/usr/bin/env python3
+import sys
+from pathlib import Path
+
+
+def main() -> int:
+    args = sys.argv[1:]
+    output_path = None
+    for index, arg in enumerate(args):
+        if arg == "--output-last-message" and index + 1 < len(args):
+            output_path = args[index + 1]
+            break
+
+    prompt = sys.stdin.read().strip() or "workspace-nav-validation"
+    response = f"stub-response: {prompt}"
+    if output_path:
+        Path(output_path).write_text(response, encoding="utf-8")
+    print(response)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+""",
+        encoding="utf-8",
+    )
+    stub_path.chmod(0o700)
+    return stub_path
 
 
 def request_json(
@@ -179,15 +151,13 @@ def wait_for_terminal_output(
 
 
 def run_validation() -> dict[str, Any]:
-    target_file = REPO_ROOT / "docs" / "workspace-model.md"
+    target_file = REPO_ROOT / "docs" / "workspace" / "workspace-model.md"
     assert target_file.exists(), f"missing expected file: {target_file}"
 
-    ollama_port = free_port()
     core_port = free_port()
     state_dir = Path(tempfile.mkdtemp(prefix="rterm-workspace-nav-validation."))
-    ollama_server, _ = start_ollama_stub(ollama_port)
-    atexit.register(ollama_server.shutdown)
     atexit.register(lambda: shutil.rmtree(state_dir, ignore_errors=True))
+    codex_cli_stub = write_codex_cli_stub(state_dir)
 
     base_url = f"http://127.0.0.1:{core_port}"
     core_cmd = [
@@ -204,8 +174,8 @@ def run_validation() -> dict[str, Any]:
     ]
     env = os.environ.copy()
     env["RTERM_AUTH_TOKEN"] = AUTH_TOKEN
-    env["RTERM_OLLAMA_BASE_URL"] = f"http://127.0.0.1:{ollama_port}"
-    env["RTERM_OLLAMA_MODEL"] = MODEL_NAME
+    env["RTERM_CODEX_CLI_COMMAND"] = str(codex_cli_stub)
+    env["RTERM_CODEX_CLI_MODEL"] = MODEL_NAME
     core_proc = subprocess.Popen(  # noqa: S603
         core_cmd,
         cwd=str(REPO_ROOT),
@@ -262,6 +232,8 @@ def run_validation() -> dict[str, Any]:
                     "active_widget_id": "term-main",
                     "repo_root": str(REPO_ROOT),
                     "widget_context_enabled": True,
+                    "target_session": "local",
+                    "target_connection_id": "local",
                 },
             },
         )
@@ -293,6 +265,8 @@ def run_validation() -> dict[str, Any]:
                     "workspace_id": "ws-local",
                     "active_widget_id": "term-main",
                     "repo_root": str(REPO_ROOT),
+                    "target_session": "local",
+                    "target_connection_id": "local",
                 },
             },
         )
@@ -325,6 +299,8 @@ def run_validation() -> dict[str, Any]:
                     "active_widget_id": "term-main",
                     "repo_root": str(REPO_ROOT),
                     "widget_context_enabled": True,
+                    "target_session": "local",
+                    "target_connection_id": "local",
                 },
             },
         )
@@ -351,7 +327,7 @@ def run_validation() -> dict[str, Any]:
 
         return {
             "base_url": base_url,
-            "ollama_stub_url": f"http://127.0.0.1:{ollama_port}",
+            "codex_cli_stub": str(codex_cli_stub),
             "state_dir": str(state_dir),
             "checks": {
                 "fs_list": "ok",
@@ -373,7 +349,6 @@ def run_validation() -> dict[str, Any]:
         except subprocess.TimeoutExpired:
             core_proc.kill()
             core_proc.wait(timeout=5)
-        ollama_server.shutdown()
 
 
 def main() -> int:

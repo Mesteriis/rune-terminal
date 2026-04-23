@@ -1,9 +1,8 @@
 package agent
 
 import (
+	"os/exec"
 	"strings"
-
-	"github.com/Mesteriis/rune-terminal/core/codexauth"
 )
 
 func providerCatalogFromState(state State) ProviderCatalog {
@@ -28,55 +27,31 @@ func providerViewFromRecord(record ProviderRecord, activeProviderID string) Prov
 		CreatedAt:   record.CreatedAt,
 		UpdatedAt:   record.UpdatedAt,
 	}
-	if record.Ollama != nil {
-		view.Ollama = &OllamaProviderSettings{
-			BaseURL:    record.Ollama.BaseURL,
-			Model:      record.Ollama.Model,
-			ChatModels: append([]string(nil), record.Ollama.ChatModels...),
-		}
-	}
 	if record.Codex != nil {
 		view.Codex = codexProviderSettingsViewFromSettings(record.Codex)
 	}
-	if record.OpenAI != nil {
-		view.OpenAI = &OpenAIProviderSettingsView{
-			BaseURL:    record.OpenAI.BaseURL,
-			Model:      record.OpenAI.Model,
-			ChatModels: append([]string(nil), record.OpenAI.ChatModels...),
-			HasAPIKey:  strings.TrimSpace(record.OpenAI.APIKeySecret) != "",
-		}
-	}
-	if record.Proxy != nil {
-		view.Proxy = proxyProviderSettingsViewFromSettings(record.Proxy)
+	if record.Claude != nil {
+		view.Claude = claudeProviderSettingsViewFromSettings(record.Claude)
 	}
 	return view
 }
 
 func cloneProviderRecord(record ProviderRecord) ProviderRecord {
 	cloned := record
-	if record.Ollama != nil {
-		cloned.Ollama = &OllamaProviderSettings{
-			BaseURL:    record.Ollama.BaseURL,
-			Model:      record.Ollama.Model,
-			ChatModels: append([]string(nil), record.Ollama.ChatModels...),
-		}
-	}
 	if record.Codex != nil {
 		cloned.Codex = &CodexProviderSettings{
-			Model:        record.Codex.Model,
-			ChatModels:   append([]string(nil), record.Codex.ChatModels...),
-			AuthFilePath: record.Codex.AuthFilePath,
+			Command:    record.Codex.Command,
+			Model:      record.Codex.Model,
+			ChatModels: append([]string(nil), record.Codex.ChatModels...),
 		}
 	}
-	if record.OpenAI != nil {
-		cloned.OpenAI = &OpenAIProviderSettings{
-			BaseURL:      record.OpenAI.BaseURL,
-			Model:        record.OpenAI.Model,
-			ChatModels:   append([]string(nil), record.OpenAI.ChatModels...),
-			APIKeySecret: record.OpenAI.APIKeySecret,
+	if record.Claude != nil {
+		cloned.Claude = &ClaudeProviderSettings{
+			Command:    record.Claude.Command,
+			Model:      record.Claude.Model,
+			ChatModels: append([]string(nil), record.Claude.ChatModels...),
 		}
 	}
-	cloned.Proxy = cloneProxyProviderSettings(record.Proxy)
 	return cloned
 }
 
@@ -96,26 +71,35 @@ func codexProviderSettingsViewFromSettings(settings *CodexProviderSettings) *Cod
 		return nil
 	}
 	view := &CodexProviderSettingsView{
-		Model:        settings.Model,
-		ChatModels:   append([]string(nil), settings.ChatModels...),
-		AuthFilePath: codexauth.ResolveAuthFilePath(settings.AuthFilePath),
-		AuthState:    codexauth.StatusMissing,
+		Command:    firstNonEmpty(settings.Command, defaultCodexCommand),
+		Model:      settings.Model,
+		ChatModels: append([]string(nil), settings.ChatModels...),
 	}
-	state, err := codexauth.LoadState(settings.AuthFilePath)
-	if err != nil {
-		view.StatusMessage = state.StatusMessage
-		view.AuthMode = state.AuthMode
-		view.LastRefresh = state.LastRefresh
-		view.AccountID = state.AccountID
-		if state.Status != "" {
-			view.AuthState = state.Status
-		}
-		return view
-	}
-	view.AuthMode = state.AuthMode
-	view.AuthState = state.Status
-	view.StatusMessage = state.StatusMessage
-	view.LastRefresh = state.LastRefresh
-	view.AccountID = state.AccountID
+	populateCLIStatus(view.Command, "Codex CLI", &view.StatusState, &view.StatusMessage, &view.ResolvedBinary)
 	return view
+}
+
+func claudeProviderSettingsViewFromSettings(settings *ClaudeProviderSettings) *ClaudeProviderSettingsView {
+	if settings == nil {
+		return nil
+	}
+	view := &ClaudeProviderSettingsView{
+		Command:    firstNonEmpty(settings.Command, defaultClaudeCommand),
+		Model:      settings.Model,
+		ChatModels: append([]string(nil), settings.ChatModels...),
+	}
+	populateCLIStatus(view.Command, "Claude Code CLI", &view.StatusState, &view.StatusMessage, &view.ResolvedBinary)
+	return view
+}
+
+func populateCLIStatus(command string, label string, state *string, message *string, resolved *string) {
+	path, err := exec.LookPath(strings.TrimSpace(command))
+	if err != nil {
+		*state = "missing"
+		*message = label + " command is not available on PATH."
+		return
+	}
+	*state = "ready"
+	*message = label + " command is available."
+	*resolved = path
 }

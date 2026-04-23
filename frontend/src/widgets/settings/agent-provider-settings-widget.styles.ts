@@ -36,12 +36,40 @@ export const providerSettingsBodyStyle = {
   minHeight: 0,
 }
 
+export const providerSettingsEmbeddedToolbarStyle = {
+  display: 'flex',
+  alignItems: 'flex-start',
+  justifyContent: 'space-between',
+  gap: 'var(--gap-md)',
+  flexWrap: 'wrap' as const,
+  paddingBottom: 'var(--gap-md)',
+  borderBottom: '1px solid var(--color-border-subtle)',
+}
+
+export const providerSettingsEmbeddedBodyStyle = {
+  display: 'grid',
+  gridTemplateColumns: 'minmax(18rem, 22rem) minmax(0, 1fr)',
+  gap: 'var(--gap-lg)',
+  flex: 1,
+  minHeight: 0,
+}
+
 export const providerSettingsSidebarStyle = {
   display: 'flex',
   flexDirection: 'column' as const,
   gap: 'var(--gap-sm)',
   minHeight: 0,
   overflow: 'hidden',
+}
+
+export const providerSettingsEmbeddedSidebarStyle = {
+  display: 'flex',
+  flexDirection: 'column' as const,
+  gap: 'var(--gap-sm)',
+  minHeight: 0,
+  overflow: 'hidden',
+  paddingRight: 'var(--gap-md)',
+  borderRight: '1px solid var(--color-border-subtle)',
 }
 
 export const providerSettingsListStyle = {
@@ -70,6 +98,14 @@ export const providerSettingsListCardMetaStyle = {
 }
 
 export const providerSettingsEditorStyle = {
+  display: 'flex',
+  flexDirection: 'column' as const,
+  gap: 'var(--gap-md)',
+  minHeight: 0,
+  overflow: 'hidden',
+}
+
+export const providerSettingsEmbeddedEditorStyle = {
   display: 'flex',
   flexDirection: 'column' as const,
   gap: 'var(--gap-md)',

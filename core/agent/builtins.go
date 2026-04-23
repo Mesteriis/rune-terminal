@@ -28,14 +28,30 @@ func defaultProviders() []ProviderRecord {
 	return []ProviderRecord{
 		{
 			ID:          defaultActiveProviderID(),
-			Kind:        ProviderKindOllama,
-			DisplayName: "Local Ollama",
+			Kind:        ProviderKindCodex,
+			DisplayName: "Codex CLI",
 			Enabled:     true,
-			Ollama: &OllamaProviderSettings{
-				BaseURL: normalizeProviderBaseURL(defaultEnvString("RTERM_OLLAMA_BASE_URL", "http://192.168.1.2:11434")),
-				Model:   strings.TrimSpace(defaultEnvString("RTERM_OLLAMA_MODEL", "")),
+			Codex: &CodexProviderSettings{
+				Command: strings.TrimSpace(defaultEnvString("RTERM_CODEX_CLI_COMMAND", defaultCodexCommand)),
+				Model:   strings.TrimSpace(defaultEnvString("RTERM_CODEX_CLI_MODEL", defaultCodexModel)),
 				ChatModels: normalizeProviderChatModels(
-					defaultEnvString("RTERM_OLLAMA_MODEL", ""),
+					defaultEnvString("RTERM_CODEX_CLI_MODEL", defaultCodexModel),
+					nil,
+				),
+			},
+			CreatedAt: now,
+			UpdatedAt: now,
+		},
+		{
+			ID:          "claude-code-cli",
+			Kind:        ProviderKindClaude,
+			DisplayName: "Claude Code CLI",
+			Enabled:     true,
+			Claude: &ClaudeProviderSettings{
+				Command: strings.TrimSpace(defaultEnvString("RTERM_CLAUDE_CODE_COMMAND", defaultClaudeCommand)),
+				Model:   strings.TrimSpace(defaultEnvString("RTERM_CLAUDE_CODE_MODEL", defaultClaudeModel)),
+				ChatModels: normalizeProviderChatModels(
+					defaultEnvString("RTERM_CLAUDE_CODE_MODEL", defaultClaudeModel),
 					nil,
 				),
 			},
@@ -46,7 +62,7 @@ func defaultProviders() []ProviderRecord {
 }
 
 func defaultActiveProviderID() string {
-	return "ollama-local"
+	return "codex-cli"
 }
 
 func defaultEnvString(key string, fallback string) string {

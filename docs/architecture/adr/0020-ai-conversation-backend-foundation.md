@@ -1,6 +1,6 @@
 # 0020. AI Conversation Backend Foundation
 
-- Status: Accepted
+- Status: Superseded for provider runtime by [0024. CLI-only AI provider boundary](./0024-cli-only-ai-provider-boundary.md)
 
 ## Context
 

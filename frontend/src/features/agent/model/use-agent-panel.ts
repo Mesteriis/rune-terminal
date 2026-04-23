@@ -90,14 +90,11 @@ function directProviderChatModels(provider: AgentProviderView | null | undefined
   if (!provider) {
     return []
   }
-  if (provider.kind === 'ollama') {
-    return provider.ollama?.chat_models ?? []
-  }
   if (provider.kind === 'codex') {
     return provider.codex?.chat_models ?? []
   }
-  if (provider.kind === 'openai') {
-    return provider.openai?.chat_models ?? []
+  if (provider.kind === 'claude') {
+    return provider.claude?.chat_models ?? []
   }
   return []
 }

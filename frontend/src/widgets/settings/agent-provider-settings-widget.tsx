@@ -1,34 +1,21 @@
-import { useCallback, useId } from 'react'
+import { useId } from 'react'
 
 import type { AgentProviderKind } from '@/features/agent/api/provider-client'
-import {
-  type AgentProviderDraft,
-  createEmptyProxyChannelDraft,
-} from '@/features/agent/model/provider-settings-draft'
+import type { AgentProviderDraft } from '@/features/agent/model/provider-settings-draft'
 import { useAgentProviderSettings } from '@/features/agent/model/use-agent-provider-settings'
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
-import {
-  Box,
-  Button,
-  Checkbox,
-  Input,
-  Label,
-  ScrollArea,
-  Select,
-  Surface,
-  Text,
-  TextArea,
-} from '@/shared/ui/primitives'
+import { Button, Checkbox, Input, Label, ScrollArea, Select, Text } from '@/shared/ui/primitives'
+import { ClearBox } from '@/shared/ui/components'
 import {
   providerSettingsActionsBarStyle,
   providerSettingsActionsGroupStyle,
   providerSettingsBodyStyle,
-  providerSettingsChannelActionsStyle,
-  providerSettingsChannelCardStyle,
-  providerSettingsChannelHeaderStyle,
-  providerSettingsChannelMetaStyle,
   providerSettingsEditorScrollStyle,
   providerSettingsEditorStyle,
+  providerSettingsEmbeddedBodyStyle,
+  providerSettingsEmbeddedEditorStyle,
+  providerSettingsEmbeddedSidebarStyle,
+  providerSettingsEmbeddedToolbarStyle,
   providerSettingsErrorMessageStyle,
   providerSettingsFieldStyle,
   providerSettingsGridStyle,
@@ -47,13 +34,11 @@ import {
 } from '@/widgets/settings/agent-provider-settings-widget.styles'
 
 const kindLabels: Record<AgentProviderKind, string> = {
-  ollama: 'Ollama',
-  codex: 'Codex',
-  openai: 'OpenAI-compatible',
-  proxy: 'AI Proxy',
+  codex: 'Codex CLI',
+  claude: 'Claude Code CLI',
 }
 
-const defaultSupportedKinds: AgentProviderKind[] = ['ollama', 'codex', 'openai', 'proxy']
+const defaultSupportedKinds: AgentProviderKind[] = ['codex', 'claude']
 
 function TextInputField({
   label,
@@ -73,7 +58,7 @@ function TextInputField({
   const fieldID = useId()
 
   return (
-    <Box style={providerSettingsFieldStyle}>
+    <ClearBox style={providerSettingsFieldStyle}>
       <Label htmlFor={fieldID}>{label}</Label>
       <Input
         id={fieldID}
@@ -84,40 +69,7 @@ function TextInputField({
         value={value}
       />
       {hint ? <Text style={providerSettingsStatusMessageStyle}>{hint}</Text> : null}
-    </Box>
-  )
-}
-
-function TextAreaField({
-  label,
-  value,
-  onChange,
-  placeholder,
-  hint,
-  disabled = false,
-}: {
-  label: string
-  value: string
-  onChange: (value: string) => void
-  placeholder?: string
-  hint?: string
-  disabled?: boolean
-}) {
-  const fieldID = useId()
-
-  return (
-    <Box style={providerSettingsFieldStyle}>
-      <Label htmlFor={fieldID}>{label}</Label>
-      <TextArea
-        disabled={disabled}
-        id={fieldID}
-        onChange={(event) => onChange(event.currentTarget.value)}
-        placeholder={placeholder}
-        style={{ minHeight: '8rem' }}
-        value={value}
-      />
-      {hint ? <Text style={providerSettingsStatusMessageStyle}>{hint}</Text> : null}
-    </Box>
+    </ClearBox>
   )
 }
 
@@ -144,9 +96,9 @@ function ModelSelectField({
   const options = Array.from(new Set([value.trim(), ...models.map((model) => model.trim())].filter(Boolean)))
 
   return (
-    <Box style={providerSettingsFieldStyle}>
+    <ClearBox style={providerSettingsFieldStyle}>
       <Label htmlFor={fieldID}>{label}</Label>
-      <Box
+      <ClearBox
         style={{
           display: 'flex',
           gap: 'var(--gap-xs)',
@@ -170,10 +122,10 @@ function ModelSelectField({
         <Button disabled={isRefreshing} onClick={onRefresh}>
           {isRefreshing ? 'Loading…' : 'Refresh'}
         </Button>
-      </Box>
+      </ClearBox>
       {errorMessage ? <Text style={providerSettingsErrorMessageStyle}>{errorMessage}</Text> : null}
       {!errorMessage && hint ? <Text style={providerSettingsStatusMessageStyle}>{hint}</Text> : null}
-    </Box>
+    </ClearBox>
   )
 }
 
@@ -184,32 +136,16 @@ function updateDraftField(
   setDraft((currentDraft) => (currentDraft ? updater(currentDraft) : currentDraft))
 }
 
-function renderProxyKeySummary(draft: AgentProviderDraft['proxy']['channels'][number]) {
-  if (draft.keyMode === 'replace') {
-    return draft.apiKeysText.trim()
-      ? 'One key per line. All entered keys will be enabled on save.'
-      : 'Leave empty to clear the stored keys for this channel.'
-  }
-
-  if (draft.keyCount === 0) {
-    return 'No stored keys are currently attached to this channel.'
-  }
-
-  return `Stored keys are preserved on save: ${draft.enabledKeyCount}/${draft.keyCount} enabled.`
-}
-
-function formatCodexAuthState(state?: string) {
+function formatCLIStatus(state?: string) {
   switch (state) {
     case 'ready':
-      return 'Local auth ready'
-    case 'invalid':
-      return 'Local auth invalid'
+      return 'CLI ready'
     default:
-      return 'Local auth missing'
+      return 'CLI missing'
   }
 }
 
-export function AgentProviderSettingsWidget() {
+export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: boolean }) {
   const {
     availableModels,
     catalog,
@@ -233,48 +169,31 @@ export function AgentProviderSettingsWidget() {
   } = useAgentProviderSettings()
 
   const supportedKinds = (catalog?.supported_kinds ?? defaultSupportedKinds).filter(
-    (kind) => kind !== 'proxy',
+    (kind) => kind === 'codex' || kind === 'claude',
   )
-
-  const updateProxyChannel = useCallback(
-    (
-      channelUID: string,
-      updater: (
-        channel: AgentProviderDraft['proxy']['channels'][number],
-      ) => AgentProviderDraft['proxy']['channels'][number],
-    ) => {
-      updateDraftField(setDraft, (currentDraft) => {
-        if (currentDraft.kind !== 'proxy') {
-          return currentDraft
-        }
-
-        return {
-          ...currentDraft,
-          proxy: {
-            ...currentDraft.proxy,
-            channels: currentDraft.proxy.channels.map((channel) =>
-              channel.uid === channelUID ? updater(channel) : channel,
-            ),
-          },
-        }
-      })
-    },
-    [setDraft],
-  )
+  const toolbarStyle = embedded ? providerSettingsEmbeddedToolbarStyle : providerSettingsToolbarStyle
+  const bodyStyle = embedded ? providerSettingsEmbeddedBodyStyle : providerSettingsBodyStyle
+  const sidebarStyle = embedded ? providerSettingsEmbeddedSidebarStyle : providerSettingsSidebarStyle
+  const editorStyle = embedded ? providerSettingsEmbeddedEditorStyle : providerSettingsEditorStyle
 
   return (
     <RunaDomScopeProvider component="agent-provider-settings-widget">
-      <Box runaComponent="agent-provider-settings-root" style={providerSettingsRootStyle}>
-        <Box runaComponent="agent-provider-settings-toolbar" style={providerSettingsToolbarStyle}>
-          <Box runaComponent="agent-provider-settings-toolbar-meta" style={providerSettingsToolbarMetaStyle}>
-            <Text style={{ fontWeight: 600 }}>AI provider routing</Text>
-            <Text style={providerSettingsStatusMessageStyle}>
-              Manage direct providers for local Codex auth, OpenAI-compatible endpoints, and Ollama without
-              leaving the shell modal. The unfinished AI Proxy path is hidden from new setup until the
-              CLI-backed routing slice replaces it.
+      <ClearBox runaComponent="agent-provider-settings-root" style={providerSettingsRootStyle}>
+        <ClearBox runaComponent="agent-provider-settings-toolbar" style={toolbarStyle}>
+          <ClearBox
+            runaComponent="agent-provider-settings-toolbar-meta"
+            style={providerSettingsToolbarMetaStyle}
+          >
+            <Text style={{ fontWeight: 600 }}>
+              {embedded ? 'AI / Установленные приложения' : 'AI provider routing'}
             </Text>
-          </Box>
-          <Box
+            <Text style={providerSettingsStatusMessageStyle}>
+              {embedded
+                ? 'Подключай CLI providers для чата и управляй активным runtime без лишних переходов между settings sections.'
+                : 'Manage local Codex CLI and Claude Code CLI routing without leaving the shell modal.'}
+            </Text>
+          </ClearBox>
+          <ClearBox
             runaComponent="agent-provider-settings-toolbar-actions"
             style={providerSettingsToolbarActionsStyle}
           >
@@ -283,11 +202,11 @@ export function AgentProviderSettingsWidget() {
                 Add {kindLabels[kind]}
               </Button>
             ))}
-          </Box>
-        </Box>
+          </ClearBox>
+        </ClearBox>
 
-        <Box runaComponent="agent-provider-settings-body" style={providerSettingsBodyStyle}>
-          <Surface runaComponent="agent-provider-settings-sidebar" style={providerSettingsSidebarStyle}>
+        <ClearBox runaComponent="agent-provider-settings-body" style={bodyStyle}>
+          <ClearBox runaComponent="agent-provider-settings-sidebar" style={sidebarStyle}>
             <Text style={{ fontWeight: 600 }}>Configured providers</Text>
             <ScrollArea runaComponent="agent-provider-settings-list" style={providerSettingsListStyle}>
               {catalog?.providers.map((provider) => {
@@ -311,31 +230,24 @@ export function AgentProviderSettingsWidget() {
                         : 'var(--color-surface-glass-soft)',
                     }}
                   >
-                    <Box style={providerSettingsListCardMetaStyle}>
+                    <ClearBox style={providerSettingsListCardMetaStyle}>
                       <Text style={{ fontWeight: 600 }}>
                         {provider.display_name || kindLabels[provider.kind]}
                       </Text>
                       <Text style={providerSettingsStatusMessageStyle}>
                         {provider.active ? 'Active' : provider.enabled ? 'Ready' : 'Disabled'}
                       </Text>
-                    </Box>
+                    </ClearBox>
                     <Text style={providerSettingsStatusMessageStyle}>{kindLabels[provider.kind]}</Text>
-                    {provider.kind === 'proxy' ? (
+                    {provider.kind === 'codex' ? (
                       <Text style={providerSettingsStatusMessageStyle}>
-                        {provider.proxy?.channels.length ?? 0} channel(s) · model {provider.proxy?.model}
+                        {provider.codex?.model} · {formatCLIStatus(provider.codex?.status_state)}
                       </Text>
-                    ) : provider.kind === 'codex' ? (
+                    ) : provider.kind === 'claude' ? (
                       <Text style={providerSettingsStatusMessageStyle}>
-                        {provider.codex?.model} · {formatCodexAuthState(provider.codex?.auth_state)}
+                        {provider.claude?.model} · {formatCLIStatus(provider.claude?.status_state)}
                       </Text>
-                    ) : provider.kind === 'openai' ? (
-                      <Text style={providerSettingsStatusMessageStyle}>
-                        {provider.openai?.model} ·{' '}
-                        {provider.openai?.has_api_key ? 'key stored' : 'key missing'}
-                      </Text>
-                    ) : (
-                      <Text style={providerSettingsStatusMessageStyle}>{provider.ollama?.base_url}</Text>
-                    )}
+                    ) : null}
                   </Button>
                 )
               })}
@@ -345,11 +257,11 @@ export function AgentProviderSettingsWidget() {
                 </Text>
               ) : null}
             </ScrollArea>
-          </Surface>
+          </ClearBox>
 
-          <Surface runaComponent="agent-provider-settings-editor" style={providerSettingsEditorStyle}>
+          <ClearBox runaComponent="agent-provider-settings-editor" style={editorStyle}>
             {!draft ? (
-              <Box style={providerSettingsSectionHeaderStyle}>
+              <ClearBox style={providerSettingsSectionHeaderStyle}>
                 <Text style={{ fontWeight: 600 }}>No provider selected</Text>
                 <Text
                   style={
@@ -358,15 +270,15 @@ export function AgentProviderSettingsWidget() {
                 >
                   {errorMessage ?? 'Choose an existing provider on the left or create a new one.'}
                 </Text>
-              </Box>
+              </ClearBox>
             ) : (
               <>
                 <ScrollArea
                   runaComponent="agent-provider-settings-editor-scroll"
                   style={providerSettingsEditorScrollStyle}
                 >
-                  <Box style={providerSettingsSectionStyle}>
-                    <Box style={providerSettingsSectionHeaderStyle}>
+                  <ClearBox style={providerSettingsSectionStyle}>
+                    <ClearBox style={providerSettingsSectionHeaderStyle}>
                       <Text style={{ fontWeight: 600 }}>
                         {draft.mode === 'new' ? 'New provider' : draft.displayName || kindLabels[draft.kind]}
                       </Text>
@@ -374,8 +286,8 @@ export function AgentProviderSettingsWidget() {
                         Kind: {kindLabels[draft.kind]}
                         {selectedProvider?.active ? ' · currently active' : ''}
                       </Text>
-                    </Box>
-                    <Box style={providerSettingsGridStyle}>
+                    </ClearBox>
+                    <ClearBox style={providerSettingsGridStyle}>
                       <TextInputField
                         label="Display name"
                         onChange={(value) =>
@@ -387,9 +299,9 @@ export function AgentProviderSettingsWidget() {
                         placeholder="Provider display name"
                         value={draft.displayName}
                       />
-                      <Box style={providerSettingsFieldStyle}>
+                      <ClearBox style={providerSettingsFieldStyle}>
                         <Label htmlFor="provider-enabled-toggle">Provider status</Label>
-                        <Box style={providerSettingsInlineCheckboxStyle}>
+                        <ClearBox style={providerSettingsInlineCheckboxStyle}>
                           <Checkbox
                             checked={draft.enabled}
                             id="provider-enabled-toggle"
@@ -401,72 +313,41 @@ export function AgentProviderSettingsWidget() {
                             }
                           />
                           <Text>Enabled</Text>
-                        </Box>
+                        </ClearBox>
                         <Text style={providerSettingsStatusMessageStyle}>
                           Disabled providers stay in the catalog but cannot become active.
                         </Text>
-                      </Box>
-                    </Box>
-                  </Box>
-
-                  {draft.kind === 'ollama' ? (
-                    <Box style={providerSettingsSectionStyle}>
-                      <Box style={providerSettingsSectionHeaderStyle}>
-                        <Text style={{ fontWeight: 600 }}>Ollama</Text>
-                        <Text style={providerSettingsStatusMessageStyle}>
-                          Direct local Ollama runtime with backend-discovered installed models.
-                        </Text>
-                      </Box>
-                      <Box style={providerSettingsGridStyle}>
-                        <TextInputField
-                          label="Base URL"
-                          onChange={(value) =>
-                            updateDraftField(setDraft, (currentDraft) => ({
-                              ...currentDraft,
-                              ollama: {
-                                ...currentDraft.ollama,
-                                baseURL: value,
-                              },
-                            }))
-                          }
-                          placeholder="http://127.0.0.1:11434"
-                          value={draft.ollama.baseURL}
-                        />
-                        <ModelSelectField
-                          errorMessage={modelErrorMessage}
-                          hint="Installed models are loaded automatically from the configured Ollama host."
-                          isRefreshing={isLoadingModels}
-                          label="Model"
-                          models={availableModels}
-                          onChange={(value) =>
-                            updateDraftField(setDraft, (currentDraft) => ({
-                              ...currentDraft,
-                              ollama: {
-                                ...currentDraft.ollama,
-                                model: value,
-                              },
-                            }))
-                          }
-                          onRefresh={() => void refreshAvailableModels()}
-                          value={draft.ollama.model}
-                        />
-                      </Box>
-                    </Box>
-                  ) : null}
+                      </ClearBox>
+                    </ClearBox>
+                  </ClearBox>
 
                   {draft.kind === 'codex' ? (
-                    <Box style={providerSettingsSectionStyle}>
-                      <Box style={providerSettingsSectionHeaderStyle}>
-                        <Text style={{ fontWeight: 600 }}>Codex</Text>
+                    <ClearBox style={providerSettingsSectionStyle}>
+                      <ClearBox style={providerSettingsSectionHeaderStyle}>
+                        <Text style={{ fontWeight: 600 }}>Codex CLI</Text>
                         <Text style={providerSettingsStatusMessageStyle}>
-                          Uses the local `codex` login on this machine and routes requests through the Codex
-                          Responses backend instead of asking for an API key here.
+                          Uses local `codex exec` in non-interactive mode for chat completions.
                         </Text>
-                      </Box>
-                      <Box style={providerSettingsGridStyle}>
+                      </ClearBox>
+                      <ClearBox style={providerSettingsGridStyle}>
+                        <TextInputField
+                          hint="Command name or absolute path. Defaults to codex."
+                          label="Command"
+                          onChange={(value) =>
+                            updateDraftField(setDraft, (currentDraft) => ({
+                              ...currentDraft,
+                              codex: {
+                                ...currentDraft.codex,
+                                command: value,
+                              },
+                            }))
+                          }
+                          placeholder="codex"
+                          value={draft.codex.command}
+                        />
                         <ModelSelectField
                           errorMessage={modelErrorMessage}
-                          hint="The model catalog is auto-loaded from the local Codex auth-backed upstream."
+                          hint="CLI model aliases are resolved by the local Codex CLI."
                           label="Model"
                           models={availableModels}
                           onChange={(value) =>
@@ -482,398 +363,90 @@ export function AgentProviderSettingsWidget() {
                           onRefresh={() => void refreshAvailableModels()}
                           value={draft.codex.model}
                         />
-                        <TextInputField
-                          hint="Leave empty to use ~/.codex/auth.json."
-                          label="Auth file path"
-                          onChange={(value) =>
-                            updateDraftField(setDraft, (currentDraft) => ({
-                              ...currentDraft,
-                              codex: {
-                                ...currentDraft.codex,
-                                authFilePath: value,
-                              },
-                            }))
-                          }
-                          placeholder="~/.codex/auth.json"
-                          value={draft.codex.authFilePath}
-                        />
-                      </Box>
-                      <Box style={providerSettingsGridStyle}>
-                        <Box style={providerSettingsFieldStyle}>
+                      </ClearBox>
+                      <ClearBox style={providerSettingsGridStyle}>
+                        <ClearBox style={providerSettingsFieldStyle}>
                           <Label>Status</Label>
                           <Text style={providerSettingsStatusMessageStyle}>
                             {selectedProvider?.codex?.status_message ??
-                              'Save the provider to let the backend inspect the local Codex auth state.'}
+                              'Save the provider to let the backend inspect the local Codex CLI command.'}
                           </Text>
-                        </Box>
-                        <Box style={providerSettingsFieldStyle}>
-                          <Label>Detected auth mode</Label>
+                        </ClearBox>
+                        <ClearBox style={providerSettingsFieldStyle}>
+                          <Label>Resolved binary</Label>
                           <Text style={providerSettingsStatusMessageStyle}>
-                            {selectedProvider?.codex?.auth_mode || 'Unknown until saved'}
+                            {selectedProvider?.codex?.resolved_binary || 'Unknown until saved'}
                           </Text>
-                        </Box>
-                      </Box>
-                    </Box>
+                        </ClearBox>
+                      </ClearBox>
+                    </ClearBox>
                   ) : null}
 
-                  {draft.kind === 'openai' ? (
-                    <Box style={providerSettingsSectionStyle}>
-                      <Box style={providerSettingsSectionHeaderStyle}>
-                        <Text style={{ fontWeight: 600 }}>OpenAI-compatible upstream</Text>
+                  {draft.kind === 'claude' ? (
+                    <ClearBox style={providerSettingsSectionStyle}>
+                      <ClearBox style={providerSettingsSectionHeaderStyle}>
+                        <Text style={{ fontWeight: 600 }}>Claude Code CLI</Text>
                         <Text style={providerSettingsStatusMessageStyle}>
-                          Use this for direct API-key-based OpenAI-compatible endpoints without Codex local
-                          auth.
+                          Uses local `claude -p` in non-interactive mode with tools disabled for chat
+                          completions.
                         </Text>
-                      </Box>
-                      <Box style={providerSettingsGridStyle}>
+                      </ClearBox>
+                      <ClearBox style={providerSettingsGridStyle}>
                         <TextInputField
-                          label="Base URL"
+                          hint="Command name or absolute path. Defaults to claude."
+                          label="Command"
                           onChange={(value) =>
                             updateDraftField(setDraft, (currentDraft) => ({
                               ...currentDraft,
-                              openai: {
-                                ...currentDraft.openai,
-                                baseURL: value,
+                              claude: {
+                                ...currentDraft.claude,
+                                command: value,
                               },
                             }))
                           }
-                          placeholder="https://api.openai.com/v1"
-                          value={draft.openai.baseURL}
+                          placeholder="claude"
+                          value={draft.claude.command}
                         />
                         <ModelSelectField
                           errorMessage={modelErrorMessage}
-                          hint="The model catalog is auto-loaded after base URL or API key changes."
+                          hint="Common Claude Code aliases are exposed locally; the CLI resolves exact model support."
                           label="Model"
                           models={availableModels}
                           onChange={(value) =>
                             updateDraftField(setDraft, (currentDraft) => ({
                               ...currentDraft,
-                              openai: {
-                                ...currentDraft.openai,
+                              claude: {
+                                ...currentDraft.claude,
                                 model: value,
                               },
                             }))
                           }
                           isRefreshing={isLoadingModels}
                           onRefresh={() => void refreshAvailableModels()}
-                          value={draft.openai.model}
+                          value={draft.claude.model}
                         />
-                        <Box style={providerSettingsFieldStyle}>
-                          <Label htmlFor="openai-secret-mode">Stored key handling</Label>
-                          <Select
-                            id="openai-secret-mode"
-                            onChange={(event) =>
-                              updateDraftField(setDraft, (currentDraft) => ({
-                                ...currentDraft,
-                                openai: {
-                                  ...currentDraft.openai,
-                                  secretMode: event.currentTarget
-                                    .value as AgentProviderDraft['openai']['secretMode'],
-                                },
-                              }))
-                            }
-                            value={draft.openai.secretMode}
-                          >
-                            <option value="preserve">Preserve stored key</option>
-                            <option value="replace">Replace stored key</option>
-                          </Select>
+                      </ClearBox>
+                      <ClearBox style={providerSettingsGridStyle}>
+                        <ClearBox style={providerSettingsFieldStyle}>
+                          <Label>Status</Label>
                           <Text style={providerSettingsStatusMessageStyle}>
-                            {draft.openai.hasStoredAPIKey
-                              ? 'A key is already stored for this provider.'
-                              : 'No key is currently stored for this provider.'}
+                            {selectedProvider?.claude?.status_message ??
+                              'Save the provider to let the backend inspect the local Claude Code CLI command.'}
                           </Text>
-                        </Box>
-                        <TextInputField
-                          hint={
-                            draft.openai.secretMode === 'replace'
-                              ? 'A non-empty key is required when replacing.'
-                              : 'Leave untouched to keep the stored secret.'
-                          }
-                          label="API key"
-                          onChange={(value) =>
-                            updateDraftField(setDraft, (currentDraft) => ({
-                              ...currentDraft,
-                              openai: {
-                                ...currentDraft.openai,
-                                apiKey: value,
-                              },
-                            }))
-                          }
-                          placeholder={
-                            draft.openai.secretMode === 'replace' ? 'sk-...' : 'stored secret preserved'
-                          }
-                          type="password"
-                          value={draft.openai.apiKey}
-                        />
-                      </Box>
-                    </Box>
-                  ) : null}
-
-                  {draft.kind === 'proxy' ? (
-                    <Box style={providerSettingsSectionStyle}>
-                      <Box style={providerSettingsSectionHeaderStyle}>
-                        <Text style={{ fontWeight: 600 }}>Internal proxy router</Text>
-                        <Text style={providerSettingsStatusMessageStyle}>
-                          Existing proxy records stay editable for migration, but new proxy setup is hidden
-                          from the toolbar until the CLI-backed routing path replaces this draft surface.
-                        </Text>
-                      </Box>
-                      <Box style={providerSettingsGridStyle}>
-                        <TextInputField
-                          label="Proxy model"
-                          onChange={(value) =>
-                            updateDraftField(setDraft, (currentDraft) => ({
-                              ...currentDraft,
-                              proxy: {
-                                ...currentDraft.proxy,
-                                model: value,
-                              },
-                            }))
-                          }
-                          placeholder="assistant-default"
-                          value={draft.proxy.model}
-                        />
-                      </Box>
-                      <Box style={providerSettingsActionsGroupStyle}>
-                        <Button
-                          onClick={() =>
-                            updateDraftField(setDraft, (currentDraft) => ({
-                              ...currentDraft,
-                              proxy: {
-                                ...currentDraft.proxy,
-                                channels: [...currentDraft.proxy.channels, createEmptyProxyChannelDraft()],
-                              },
-                            }))
-                          }
-                        >
-                          Add channel
-                        </Button>
-                      </Box>
-                      {draft.proxy.channels.map((channelDraft, index) => (
-                        <Surface key={channelDraft.uid} style={providerSettingsChannelCardStyle}>
-                          <Box style={providerSettingsChannelHeaderStyle}>
-                            <Box style={providerSettingsChannelMetaStyle}>
-                              <Text style={{ fontWeight: 600 }}>Channel {index + 1}</Text>
-                              <Text style={providerSettingsStatusMessageStyle}>
-                                {channelDraft.name || 'Unnamed channel'} · {channelDraft.serviceType}
-                              </Text>
-                            </Box>
-                            <Box style={providerSettingsChannelActionsStyle}>
-                              <Button
-                                disabled={draft.proxy.channels.length <= 1}
-                                onClick={() =>
-                                  updateDraftField(setDraft, (currentDraft) => ({
-                                    ...currentDraft,
-                                    proxy: {
-                                      ...currentDraft.proxy,
-                                      channels: currentDraft.proxy.channels.filter(
-                                        (candidate) => candidate.uid !== channelDraft.uid,
-                                      ),
-                                    },
-                                  }))
-                                }
-                              >
-                                Remove channel
-                              </Button>
-                            </Box>
-                          </Box>
-                          <Box style={providerSettingsGridStyle}>
-                            <TextInputField
-                              label="Channel name"
-                              onChange={(value) =>
-                                updateProxyChannel(channelDraft.uid, (channel) => ({
-                                  ...channel,
-                                  name: value,
-                                }))
-                              }
-                              placeholder="Codex primary"
-                              value={channelDraft.name}
-                            />
-                            <TextInputField
-                              label="Stable channel id"
-                              onChange={(value) =>
-                                updateProxyChannel(channelDraft.uid, (channel) => ({
-                                  ...channel,
-                                  id: value,
-                                }))
-                              }
-                              placeholder="codex-primary"
-                              value={channelDraft.id}
-                            />
-                            <Box style={providerSettingsFieldStyle}>
-                              <Label htmlFor={`proxy-service-${channelDraft.uid}`}>Service type</Label>
-                              <Select
-                                id={`proxy-service-${channelDraft.uid}`}
-                                onChange={(event) =>
-                                  updateProxyChannel(channelDraft.uid, (channel) => ({
-                                    ...channel,
-                                    serviceType: event.currentTarget
-                                      .value as AgentProviderDraft['proxy']['channels'][number]['serviceType'],
-                                  }))
-                                }
-                                value={channelDraft.serviceType}
-                              >
-                                <option value="openai">OpenAI-compatible</option>
-                                <option value="claude">Claude-compatible</option>
-                                <option value="gemini">Gemini</option>
-                              </Select>
-                            </Box>
-                            <TextInputField
-                              label="Base URL"
-                              onChange={(value) =>
-                                updateProxyChannel(channelDraft.uid, (channel) => ({
-                                  ...channel,
-                                  baseURL: value,
-                                }))
-                              }
-                              placeholder="https://api.openai.com/v1"
-                              value={channelDraft.baseURL}
-                            />
-                            <TextInputField
-                              label="Priority"
-                              onChange={(value) =>
-                                updateProxyChannel(channelDraft.uid, (channel) => ({
-                                  ...channel,
-                                  priority: value,
-                                }))
-                              }
-                              placeholder="10"
-                              value={channelDraft.priority}
-                            />
-                            <Box style={providerSettingsFieldStyle}>
-                              <Label htmlFor={`proxy-auth-${channelDraft.uid}`}>Auth type</Label>
-                              <Select
-                                id={`proxy-auth-${channelDraft.uid}`}
-                                onChange={(event) =>
-                                  updateProxyChannel(channelDraft.uid, (channel) => ({
-                                    ...channel,
-                                    authType: event.currentTarget
-                                      .value as AgentProviderDraft['proxy']['channels'][number]['authType'],
-                                  }))
-                                }
-                                value={channelDraft.authType}
-                              >
-                                <option value="">Auto</option>
-                                <option value="bearer">Bearer</option>
-                                <option value="x-api-key">x-api-key</option>
-                                <option value="both">Both</option>
-                                <option value="x-goog-api-key">x-goog-api-key</option>
-                              </Select>
-                            </Box>
-                            <Box style={providerSettingsFieldStyle}>
-                              <Label htmlFor={`proxy-status-${channelDraft.uid}`}>Status</Label>
-                              <Select
-                                id={`proxy-status-${channelDraft.uid}`}
-                                onChange={(event) =>
-                                  updateProxyChannel(channelDraft.uid, (channel) => ({
-                                    ...channel,
-                                    status: event.currentTarget
-                                      .value as AgentProviderDraft['proxy']['channels'][number]['status'],
-                                  }))
-                                }
-                                value={channelDraft.status}
-                              >
-                                <option value="active">Active</option>
-                                <option value="suspended">Suspended</option>
-                                <option value="disabled">Disabled</option>
-                              </Select>
-                            </Box>
-                            <Box style={providerSettingsFieldStyle}>
-                              <Label htmlFor={`proxy-tls-${channelDraft.uid}`}>TLS checks</Label>
-                              <Box style={providerSettingsInlineCheckboxStyle}>
-                                <Checkbox
-                                  checked={channelDraft.insecureSkipVerify}
-                                  id={`proxy-tls-${channelDraft.uid}`}
-                                  onChange={(event) =>
-                                    updateProxyChannel(channelDraft.uid, (channel) => ({
-                                      ...channel,
-                                      insecureSkipVerify: event.currentTarget.checked,
-                                    }))
-                                  }
-                                />
-                                <Text>Skip TLS verification</Text>
-                              </Box>
-                            </Box>
-                          </Box>
-                          <TextAreaField
-                            hint="Optional failover URLs, one per line."
-                            label="Fallback base URLs"
-                            onChange={(value) =>
-                              updateProxyChannel(channelDraft.uid, (channel) => ({
-                                ...channel,
-                                fallbackBaseURLsText: value,
-                              }))
-                            }
-                            placeholder="https://example-backup/v1"
-                            value={channelDraft.fallbackBaseURLsText}
-                          />
-                          <TextAreaField
-                            hint='Write mapping lines as "model=upstream-model" or "model => upstream-model".'
-                            label="Model mapping"
-                            onChange={(value) =>
-                              updateProxyChannel(channelDraft.uid, (channel) => ({
-                                ...channel,
-                                modelMappingText: value,
-                              }))
-                            }
-                            placeholder="gpt-5-mini=codex-mini"
-                            value={channelDraft.modelMappingText}
-                          />
-                          <TextAreaField
-                            label="Description"
-                            onChange={(value) =>
-                              updateProxyChannel(channelDraft.uid, (channel) => ({
-                                ...channel,
-                                description: value,
-                              }))
-                            }
-                            placeholder="Primary route for Codex traffic"
-                            value={channelDraft.description}
-                          />
-                          <Box style={providerSettingsGridStyle}>
-                            <Box style={providerSettingsFieldStyle}>
-                              <Label htmlFor={`proxy-key-mode-${channelDraft.uid}`}>
-                                Stored key handling
-                              </Label>
-                              <Select
-                                id={`proxy-key-mode-${channelDraft.uid}`}
-                                onChange={(event) =>
-                                  updateProxyChannel(channelDraft.uid, (channel) => ({
-                                    ...channel,
-                                    keyMode: event.currentTarget
-                                      .value as AgentProviderDraft['proxy']['channels'][number]['keyMode'],
-                                  }))
-                                }
-                                value={channelDraft.keyMode}
-                              >
-                                <option value="preserve">Preserve stored keys</option>
-                                <option value="replace">Replace stored keys</option>
-                              </Select>
-                              <Text style={providerSettingsStatusMessageStyle}>
-                                {renderProxyKeySummary(channelDraft)}
-                              </Text>
-                            </Box>
-                            <TextAreaField
-                              disabled={channelDraft.keyMode === 'preserve'}
-                              label="API keys"
-                              onChange={(value) =>
-                                updateProxyChannel(channelDraft.uid, (channel) => ({
-                                  ...channel,
-                                  apiKeysText: value,
-                                }))
-                              }
-                              placeholder="sk-...\nsecond-key"
-                              value={channelDraft.apiKeysText}
-                            />
-                          </Box>
-                        </Surface>
-                      ))}
-                    </Box>
+                        </ClearBox>
+                        <ClearBox style={providerSettingsFieldStyle}>
+                          <Label>Resolved binary</Label>
+                          <Text style={providerSettingsStatusMessageStyle}>
+                            {selectedProvider?.claude?.resolved_binary || 'Unknown until saved'}
+                          </Text>
+                        </ClearBox>
+                      </ClearBox>
+                    </ClearBox>
                   ) : null}
                 </ScrollArea>
 
-                <Box style={providerSettingsActionsBarStyle}>
-                  <Box style={providerSettingsSectionHeaderStyle}>
+                <ClearBox style={providerSettingsActionsBarStyle}>
+                  <ClearBox style={providerSettingsSectionHeaderStyle}>
                     {errorMessage ? (
                       <Text style={providerSettingsErrorMessageStyle}>{errorMessage}</Text>
                     ) : null}
@@ -883,8 +456,8 @@ export function AgentProviderSettingsWidget() {
                     {!errorMessage && !statusMessage && isLoading ? (
                       <Text style={providerSettingsStatusMessageStyle}>Loading provider catalog…</Text>
                     ) : null}
-                  </Box>
-                  <Box style={providerSettingsActionsGroupStyle}>
+                  </ClearBox>
+                  <ClearBox style={providerSettingsActionsGroupStyle}>
                     <Button disabled={isSaving} onClick={resetDraft}>
                       Reset
                     </Button>
@@ -907,13 +480,13 @@ export function AgentProviderSettingsWidget() {
                     <Button disabled={isSaving} onClick={() => void saveDraft()}>
                       {isSaving ? 'Saving…' : draft.mode === 'new' ? 'Create provider' : 'Save changes'}
                     </Button>
-                  </Box>
-                </Box>
+                  </ClearBox>
+                </ClearBox>
               </>
             )}
-          </Surface>
-        </Box>
-      </Box>
+          </ClearBox>
+        </ClearBox>
+      </ClearBox>
     </RunaDomScopeProvider>
   )
 }

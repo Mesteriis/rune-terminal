@@ -29,10 +29,8 @@ import {
 type SettingsSectionID = 'general' | 'ai-apps' | 'ai-models' | 'ai-limits' | 'terminal' | 'commander'
 
 const providerKindLabels: Record<AgentProviderView['kind'], string> = {
-  ollama: 'Ollama',
-  codex: 'Codex',
-  openai: 'OpenAI-compatible',
-  proxy: 'Legacy proxy',
+  codex: 'Codex CLI',
+  claude: 'Claude Code CLI',
 }
 
 function navButtonStateStyle(isActive: boolean) {
@@ -65,14 +63,11 @@ function directProviderDefaultModel(provider: AgentProviderView | null | undefin
   if (!provider) {
     return ''
   }
-  if (provider.kind === 'ollama') {
-    return provider.ollama?.model?.trim() ?? ''
-  }
   if (provider.kind === 'codex') {
     return provider.codex?.model?.trim() ?? ''
   }
-  if (provider.kind === 'openai') {
-    return provider.openai?.model?.trim() ?? ''
+  if (provider.kind === 'claude') {
+    return provider.claude?.model?.trim() ?? ''
   }
   return ''
 }
@@ -81,32 +76,25 @@ function directProviderChatModels(provider: AgentProviderView | null | undefined
   if (!provider) {
     return []
   }
-  if (provider.kind === 'ollama') {
-    return provider.ollama?.chat_models ?? []
-  }
   if (provider.kind === 'codex') {
     return provider.codex?.chat_models ?? []
   }
-  if (provider.kind === 'openai') {
-    return provider.openai?.chat_models ?? []
+  if (provider.kind === 'claude') {
+    return provider.claude?.chat_models ?? []
   }
   return []
 }
 
 function describeProviderConnection(provider: AgentProviderView) {
   if (provider.kind === 'codex') {
-    return provider.codex?.status_message ?? 'Local Codex auth state will be resolved by the backend.'
+    return provider.codex?.status_message ?? 'Codex CLI command will be resolved by the backend.'
   }
 
-  if (provider.kind === 'openai') {
-    return provider.openai?.has_api_key ? 'Stored API key available.' : 'API key missing.'
+  if (provider.kind === 'claude') {
+    return provider.claude?.status_message ?? 'Claude Code CLI command will be resolved by the backend.'
   }
 
-  if (provider.kind === 'ollama') {
-    return provider.ollama?.base_url || 'No Ollama host configured.'
-  }
-
-  return `${provider.proxy?.channels.length ?? 0} channel(s) configured.`
+  return 'Unknown provider connection state.'
 }
 
 function describeProviderLimitState(provider: AgentProviderView) {
@@ -119,22 +107,18 @@ function describeProviderLimitState(provider: AgentProviderView) {
   }
 
   if (provider.kind === 'codex') {
-    return provider.codex?.auth_state === 'ready'
-      ? 'Connected through local Codex auth.'
-      : 'Needs a valid local Codex login.'
+    return provider.codex?.status_state === 'ready'
+      ? 'Codex CLI command is available.'
+      : 'Needs a valid local Codex CLI install.'
   }
 
-  if (provider.kind === 'openai') {
-    return provider.openai?.has_api_key
-      ? 'Ready, but request/token limits are not surfaced yet.'
-      : 'Blocked until an API key is stored.'
+  if (provider.kind === 'claude') {
+    return provider.claude?.status_state === 'ready'
+      ? 'Claude Code CLI command is available.'
+      : 'Needs a valid local Claude Code CLI install.'
   }
 
-  if (provider.kind === 'ollama') {
-    return 'Local runtime; no backend token/rate limit contract is exposed yet.'
-  }
-
-  return 'Legacy proxy records are editable, but provider limits are not surfaced yet.'
+  return 'Unknown provider readiness.'
 }
 
 function SectionCard({
@@ -204,10 +188,7 @@ function AiModelsSection() {
     updateProviderChatModels,
   } = useAgentProviderSettings()
 
-  const directProviders = useMemo(
-    () => catalog?.providers.filter((provider) => provider.kind !== 'proxy') ?? [],
-    [catalog],
-  )
+  const directProviders = useMemo(() => catalog?.providers ?? [], [catalog])
 
   useEffect(() => {
     if (directProviders.length === 0) {
@@ -222,9 +203,10 @@ function AiModelsSection() {
   }, [directProviders, selectProvider, selectedProviderID])
 
   const activeProvider =
-    selectedProvider && selectedProvider.kind !== 'proxy'
-      ? selectedProvider
-      : (directProviders.find((provider) => provider.id === selectedProviderID) ?? directProviders[0] ?? null)
+    selectedProvider ??
+    directProviders.find((provider) => provider.id === selectedProviderID) ??
+    directProviders[0] ??
+    null
   const configuredModel = directProviderDefaultModel(activeProvider)
   const selectedChatModels = directProviderChatModels(activeProvider)
   const visibleModels = useMemo(
@@ -250,7 +232,7 @@ function AiModelsSection() {
           <Text style={settingsShellMutedTextStyle}>Загружаю каталог провайдеров…</Text>
         ) : directProviders.length === 0 ? (
           <Text style={settingsShellMutedTextStyle}>
-            Прямых AI-провайдеров пока нет. Сначала добавь Ollama, Codex или OpenAI-compatible в разделе
+            Прямых AI-провайдеров пока нет. Сначала добавь Codex CLI или Claude Code CLI в разделе
             `Установленные приложения`.
           </Text>
         ) : (
@@ -541,9 +523,7 @@ export function SettingsShellWidget() {
                   style={navButtonStateStyle(activeSectionID === 'ai-apps')}
                 >
                   <Text style={{ fontWeight: 600 }}>Установленные приложения</Text>
-                  <Text style={settingsShellMutedTextStyle}>
-                    Codex, Ollama и OpenAI-compatible providers.
-                  </Text>
+                  <Text style={settingsShellMutedTextStyle}>Codex CLI и Claude Code CLI providers.</Text>
                 </Button>
                 <Button
                   aria-pressed={activeSectionID === 'ai-models'}

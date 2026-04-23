@@ -5,137 +5,63 @@ import (
 	"net/http"
 
 	"github.com/Mesteriis/rune-terminal/core/agent"
-	"github.com/Mesteriis/rune-terminal/core/aiproxy"
 	"github.com/Mesteriis/rune-terminal/core/app"
-	"github.com/Mesteriis/rune-terminal/core/codexauth"
 )
 
 type createProviderPayload struct {
 	Kind        string                     `json:"kind"`
 	DisplayName string                     `json:"display_name"`
 	Enabled     *bool                      `json:"enabled,omitempty"`
-	Ollama      *createOllamaConfigPayload `json:"ollama,omitempty"`
 	Codex       *createCodexConfigPayload  `json:"codex,omitempty"`
-	OpenAI      *createOpenAIConfigPayload `json:"openai,omitempty"`
-	Proxy       *createProxyConfigPayload  `json:"proxy,omitempty"`
+	Claude      *createClaudeConfigPayload `json:"claude,omitempty"`
 }
 
 type providerModelsPayload struct {
 	ProviderID string                       `json:"provider_id,omitempty"`
 	Kind       string                       `json:"kind,omitempty"`
-	Ollama     *providerModelsOllamaPayload `json:"ollama,omitempty"`
 	Codex      *providerModelsCodexPayload  `json:"codex,omitempty"`
-	OpenAI     *providerModelsOpenAIPayload `json:"openai,omitempty"`
+	Claude     *providerModelsClaudePayload `json:"claude,omitempty"`
 }
 
 type updateProviderPayload struct {
 	DisplayName *string                    `json:"display_name,omitempty"`
 	Enabled     *bool                      `json:"enabled,omitempty"`
-	Ollama      *updateOllamaConfigPayload `json:"ollama,omitempty"`
 	Codex       *updateCodexConfigPayload  `json:"codex,omitempty"`
-	OpenAI      *updateOpenAIConfigPayload `json:"openai,omitempty"`
-	Proxy       *updateProxyConfigPayload  `json:"proxy,omitempty"`
+	Claude      *updateClaudeConfigPayload `json:"claude,omitempty"`
 }
 
 type providerModelsCodexPayload struct {
-	Model        string `json:"model,omitempty"`
-	AuthFilePath string `json:"auth_file_path,omitempty"`
-}
-
-type providerModelsOllamaPayload struct {
-	BaseURL string `json:"base_url,omitempty"`
+	Command string `json:"command,omitempty"`
 	Model   string `json:"model,omitempty"`
 }
 
-type providerModelsOpenAIPayload struct {
-	BaseURL string `json:"base_url,omitempty"`
+type providerModelsClaudePayload struct {
+	Command string `json:"command,omitempty"`
 	Model   string `json:"model,omitempty"`
-	APIKey  string `json:"api_key,omitempty"`
 }
 
-type createOllamaConfigPayload struct {
-	BaseURL    string   `json:"base_url"`
+type createCodexConfigPayload struct {
+	Command    string   `json:"command,omitempty"`
 	Model      string   `json:"model,omitempty"`
 	ChatModels []string `json:"chat_models,omitempty"`
 }
 
-type updateOllamaConfigPayload struct {
-	BaseURL    *string   `json:"base_url,omitempty"`
+type updateCodexConfigPayload struct {
+	Command    *string   `json:"command,omitempty"`
 	Model      *string   `json:"model,omitempty"`
 	ChatModels *[]string `json:"chat_models,omitempty"`
 }
 
-type createCodexConfigPayload struct {
-	Model        string   `json:"model,omitempty"`
-	ChatModels   []string `json:"chat_models,omitempty"`
-	AuthFilePath string   `json:"auth_file_path,omitempty"`
-}
-
-type updateCodexConfigPayload struct {
-	Model        *string   `json:"model,omitempty"`
-	ChatModels   *[]string `json:"chat_models,omitempty"`
-	AuthFilePath *string   `json:"auth_file_path,omitempty"`
-}
-
-type createOpenAIConfigPayload struct {
-	BaseURL    string   `json:"base_url,omitempty"`
+type createClaudeConfigPayload struct {
+	Command    string   `json:"command,omitempty"`
 	Model      string   `json:"model,omitempty"`
 	ChatModels []string `json:"chat_models,omitempty"`
-	APIKey     string   `json:"api_key"`
 }
 
-type updateOpenAIConfigPayload struct {
-	BaseURL     *string   `json:"base_url,omitempty"`
-	Model       *string   `json:"model,omitempty"`
-	ChatModels  *[]string `json:"chat_models,omitempty"`
-	APIKey      *string   `json:"api_key,omitempty"`
-	ClearAPIKey bool      `json:"clear_api_key,omitempty"`
-}
-
-type proxyChannelPayload struct {
-	ID                 string            `json:"id,omitempty"`
-	Name               string            `json:"name"`
-	ServiceType        string            `json:"service_type"`
-	BaseURL            string            `json:"base_url,omitempty"`
-	BaseURLs           []string          `json:"base_urls,omitempty"`
-	APIKeys            []proxyAPIKeyItem `json:"api_keys,omitempty"`
-	AuthType           string            `json:"auth_type,omitempty"`
-	Priority           int               `json:"priority,omitempty"`
-	Status             string            `json:"status,omitempty"`
-	ModelMapping       map[string]string `json:"model_mapping,omitempty"`
-	Description        string            `json:"description,omitempty"`
-	InsecureSkipVerify bool              `json:"insecure_skip_verify,omitempty"`
-}
-
-type updateProxyChannelPayload struct {
-	ID                 string             `json:"id,omitempty"`
-	Name               string             `json:"name"`
-	ServiceType        string             `json:"service_type"`
-	BaseURL            string             `json:"base_url,omitempty"`
-	BaseURLs           []string           `json:"base_urls,omitempty"`
-	APIKeys            *[]proxyAPIKeyItem `json:"api_keys,omitempty"`
-	AuthType           string             `json:"auth_type,omitempty"`
-	Priority           int                `json:"priority,omitempty"`
-	Status             string             `json:"status,omitempty"`
-	ModelMapping       map[string]string  `json:"model_mapping,omitempty"`
-	Description        string             `json:"description,omitempty"`
-	InsecureSkipVerify bool               `json:"insecure_skip_verify,omitempty"`
-}
-
-type proxyAPIKeyItem struct {
-	Key     string `json:"key,omitempty"`
-	Enabled bool   `json:"enabled"`
-}
-
-type createProxyConfigPayload struct {
-	Model    string                `json:"model"`
-	Channels []proxyChannelPayload `json:"channels"`
-}
-
-type updateProxyConfigPayload struct {
-	Model           *string                      `json:"model,omitempty"`
-	Channels        *[]updateProxyChannelPayload `json:"channels,omitempty"`
-	ReplaceChannels bool                         `json:"replace_channels,omitempty"`
+type updateClaudeConfigPayload struct {
+	Command    *string   `json:"command,omitempty"`
+	Model      *string   `json:"model,omitempty"`
+	ChatModels *[]string `json:"chat_models,omitempty"`
 }
 
 func (api *API) handleProviderCatalog(w http.ResponseWriter, r *http.Request) {
@@ -152,10 +78,8 @@ func (api *API) handleCreateProvider(w http.ResponseWriter, r *http.Request) {
 		Kind:        agent.ProviderKind(payload.Kind),
 		DisplayName: payload.DisplayName,
 		Enabled:     payload.Enabled,
-		Ollama:      mapCreateOllamaProviderInput(payload.Ollama),
 		Codex:       mapCreateCodexProviderInput(payload.Codex),
-		OpenAI:      mapCreateOpenAIProviderInput(payload.OpenAI),
-		Proxy:       mapCreateProxyProviderInput(payload.Proxy),
+		Claude:      mapCreateClaudeProviderInput(payload.Claude),
 	})
 	if err != nil {
 		writeProviderConfigError(w, err)
@@ -200,10 +124,8 @@ func (api *API) handleUpdateProvider(w http.ResponseWriter, r *http.Request) {
 	provider, catalog, err := api.runtime.UpdateProvider(providerID, agent.UpdateProviderInput{
 		DisplayName: payload.DisplayName,
 		Enabled:     payload.Enabled,
-		Ollama:      mapUpdateOllamaProviderInput(payload.Ollama),
 		Codex:       mapUpdateCodexProviderInput(payload.Codex),
-		OpenAI:      mapUpdateOpenAIProviderInput(payload.OpenAI),
-		Proxy:       mapUpdateProxyProviderInput(payload.Proxy),
+		Claude:      mapUpdateClaudeProviderInput(payload.Claude),
 	})
 	if err != nil {
 		writeProviderConfigError(w, err)
@@ -219,9 +141,8 @@ func appDiscoverProviderModelsInput(payload providerModelsPayload) app.DiscoverP
 	return app.DiscoverProviderModelsInput{
 		ProviderID: payload.ProviderID,
 		Kind:       agent.ProviderKind(payload.Kind),
-		Ollama:     mapProviderModelsOllamaSettings(payload.Ollama),
 		Codex:      mapProviderModelsCodexSettings(payload.Codex),
-		OpenAI:     mapProviderModelsOpenAISettings(payload.OpenAI),
+		Claude:     mapProviderModelsClaudeSettings(payload.Claude),
 	}
 }
 
@@ -257,56 +178,23 @@ func (api *API) handleDeleteProvider(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, catalog)
 }
 
-func mapCreateOllamaProviderInput(payload *createOllamaConfigPayload) *agent.CreateOllamaProviderInput {
-	if payload == nil {
-		return nil
-	}
-	return &agent.CreateOllamaProviderInput{
-		BaseURL:    payload.BaseURL,
-		Model:      payload.Model,
-		ChatModels: payload.ChatModels,
-	}
-}
-
 func mapProviderModelsCodexSettings(payload *providerModelsCodexPayload) *agent.CodexProviderSettings {
 	if payload == nil {
 		return nil
 	}
 	return &agent.CodexProviderSettings{
-		Model:        payload.Model,
-		AuthFilePath: payload.AuthFilePath,
-	}
-}
-
-func mapProviderModelsOllamaSettings(payload *providerModelsOllamaPayload) *agent.OllamaProviderSettings {
-	if payload == nil {
-		return nil
-	}
-	return &agent.OllamaProviderSettings{
-		BaseURL: payload.BaseURL,
+		Command: payload.Command,
 		Model:   payload.Model,
 	}
 }
 
-func mapProviderModelsOpenAISettings(payload *providerModelsOpenAIPayload) *agent.OpenAIProviderSettings {
+func mapProviderModelsClaudeSettings(payload *providerModelsClaudePayload) *agent.ClaudeProviderSettings {
 	if payload == nil {
 		return nil
 	}
-	return &agent.OpenAIProviderSettings{
-		BaseURL:      payload.BaseURL,
-		Model:        payload.Model,
-		APIKeySecret: payload.APIKey,
-	}
-}
-
-func mapUpdateOllamaProviderInput(payload *updateOllamaConfigPayload) *agent.UpdateOllamaProviderInput {
-	if payload == nil {
-		return nil
-	}
-	return &agent.UpdateOllamaProviderInput{
-		BaseURL:    payload.BaseURL,
-		Model:      payload.Model,
-		ChatModels: payload.ChatModels,
+	return &agent.ClaudeProviderSettings{
+		Command: payload.Command,
+		Model:   payload.Model,
 	}
 }
 
@@ -315,9 +203,9 @@ func mapCreateCodexProviderInput(payload *createCodexConfigPayload) *agent.Creat
 		return nil
 	}
 	return &agent.CreateCodexProviderInput{
-		Model:        payload.Model,
-		ChatModels:   payload.ChatModels,
-		AuthFilePath: payload.AuthFilePath,
+		Command:    payload.Command,
+		Model:      payload.Model,
+		ChatModels: payload.ChatModels,
 	}
 }
 
@@ -326,130 +214,32 @@ func mapUpdateCodexProviderInput(payload *updateCodexConfigPayload) *agent.Updat
 		return nil
 	}
 	return &agent.UpdateCodexProviderInput{
-		Model:        payload.Model,
-		ChatModels:   payload.ChatModels,
-		AuthFilePath: payload.AuthFilePath,
-	}
-}
-
-func mapCreateOpenAIProviderInput(payload *createOpenAIConfigPayload) *agent.CreateOpenAIProviderInput {
-	if payload == nil {
-		return nil
-	}
-	return &agent.CreateOpenAIProviderInput{
-		BaseURL:    payload.BaseURL,
+		Command:    payload.Command,
 		Model:      payload.Model,
 		ChatModels: payload.ChatModels,
-		APIKey:     payload.APIKey,
 	}
 }
 
-func mapUpdateOpenAIProviderInput(payload *updateOpenAIConfigPayload) *agent.UpdateOpenAIProviderInput {
+func mapCreateClaudeProviderInput(payload *createClaudeConfigPayload) *agent.CreateClaudeProviderInput {
 	if payload == nil {
 		return nil
 	}
-	return &agent.UpdateOpenAIProviderInput{
-		BaseURL:     payload.BaseURL,
-		Model:       payload.Model,
-		ChatModels:  payload.ChatModels,
-		APIKey:      payload.APIKey,
-		ClearAPIKey: payload.ClearAPIKey,
+	return &agent.CreateClaudeProviderInput{
+		Command:    payload.Command,
+		Model:      payload.Model,
+		ChatModels: payload.ChatModels,
 	}
 }
 
-func mapCreateProxyProviderInput(payload *createProxyConfigPayload) *agent.CreateProxyProviderInput {
+func mapUpdateClaudeProviderInput(payload *updateClaudeConfigPayload) *agent.UpdateClaudeProviderInput {
 	if payload == nil {
 		return nil
 	}
-	return &agent.CreateProxyProviderInput{
-		Model:    payload.Model,
-		Channels: mapProxyChannels(payload.Channels),
+	return &agent.UpdateClaudeProviderInput{
+		Command:    payload.Command,
+		Model:      payload.Model,
+		ChatModels: payload.ChatModels,
 	}
-}
-
-func mapUpdateProxyProviderInput(payload *updateProxyConfigPayload) *agent.UpdateProxyProviderInput {
-	if payload == nil {
-		return nil
-	}
-	var channels *[]agent.UpdateProxyChannelInput
-	if payload.Channels != nil {
-		mapped := mapUpdateProxyChannels(*payload.Channels)
-		channels = &mapped
-	}
-	return &agent.UpdateProxyProviderInput{
-		Model:           payload.Model,
-		Channels:        channels,
-		ReplaceChannels: payload.ReplaceChannels || payload.Channels != nil,
-	}
-}
-
-func mapUpdateProxyChannels(payload []updateProxyChannelPayload) []agent.UpdateProxyChannelInput {
-	if len(payload) == 0 {
-		return nil
-	}
-	channels := make([]agent.UpdateProxyChannelInput, 0, len(payload))
-	for _, item := range payload {
-		channel := agent.UpdateProxyChannelInput{
-			Channel: aiproxy.Channel{
-				ID:                 item.ID,
-				Name:               item.Name,
-				ServiceType:        aiproxy.ServiceType(item.ServiceType),
-				BaseURL:            item.BaseURL,
-				BaseURLs:           append([]string(nil), item.BaseURLs...),
-				AuthType:           aiproxy.AuthType(item.AuthType),
-				Priority:           item.Priority,
-				Status:             aiproxy.ChannelStatus(item.Status),
-				ModelMapping:       item.ModelMapping,
-				Description:        item.Description,
-				InsecureSkipVerify: item.InsecureSkipVerify,
-			},
-		}
-		if item.APIKeys != nil {
-			mappedKeys := mapProxyAPIKeys(*item.APIKeys)
-			channel.APIKeys = &mappedKeys
-		}
-		channels = append(channels, channel)
-	}
-	return channels
-}
-
-func mapProxyChannels(payload []proxyChannelPayload) []aiproxy.Channel {
-	if len(payload) == 0 {
-		return nil
-	}
-	channels := make([]aiproxy.Channel, 0, len(payload))
-	for _, item := range payload {
-		channel := aiproxy.Channel{
-			ID:                 item.ID,
-			Name:               item.Name,
-			ServiceType:        aiproxy.ServiceType(item.ServiceType),
-			BaseURL:            item.BaseURL,
-			BaseURLs:           append([]string(nil), item.BaseURLs...),
-			AuthType:           aiproxy.AuthType(item.AuthType),
-			Priority:           item.Priority,
-			Status:             aiproxy.ChannelStatus(item.Status),
-			ModelMapping:       item.ModelMapping,
-			Description:        item.Description,
-			InsecureSkipVerify: item.InsecureSkipVerify,
-		}
-		channel.APIKeys = mapProxyAPIKeys(item.APIKeys)
-		channels = append(channels, channel)
-	}
-	return channels
-}
-
-func mapProxyAPIKeys(payload []proxyAPIKeyItem) []aiproxy.APIKey {
-	if len(payload) == 0 {
-		return nil
-	}
-	keys := make([]aiproxy.APIKey, 0, len(payload))
-	for _, key := range payload {
-		keys = append(keys, aiproxy.APIKey{
-			Key:     key.Key,
-			Enabled: key.Enabled,
-		})
-	}
-	return keys
 }
 
 func writeProviderConfigError(w http.ResponseWriter, err error) {
@@ -477,8 +267,6 @@ func writeProviderModelDiscoveryError(w http.ResponseWriter, err error) {
 		writeBadRequest(w, "provider_kind_unsupported", err)
 	case errors.Is(err, agent.ErrProviderInvalidConfig):
 		writeBadRequest(w, "invalid_provider_config", err)
-	case errors.Is(err, codexauth.ErrAuthFileNotFound), errors.Is(err, codexauth.ErrCredentialsEmpty):
-		writeBadRequest(w, "provider_model_discovery_failed", err)
 	default:
 		writeError(w, http.StatusBadGateway, "provider_model_discovery_failed", err.Error())
 	}

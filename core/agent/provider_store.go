@@ -9,9 +9,10 @@ import (
 	"github.com/Mesteriis/rune-terminal/internal/ids"
 )
 
-const defaultOpenAIBaseURL = "https://api.openai.com/v1"
 const defaultCodexModel = "gpt-5-codex"
-const defaultOpenAIModel = "gpt-4o-mini"
+const defaultCodexCommand = "codex"
+const defaultClaudeModel = "sonnet"
+const defaultClaudeCommand = "claude"
 
 func (s *Store) ProvidersCatalog() ProviderCatalog {
 	snapshot := s.Snapshot()
@@ -125,44 +126,29 @@ func buildProviderRecord(input CreateProviderInput) (ProviderRecord, error) {
 	}
 
 	switch kind {
-	case ProviderKindOllama:
-		if input.Ollama == nil || input.Codex != nil || input.OpenAI != nil || input.Proxy != nil {
-			return ProviderRecord{}, fmt.Errorf("%w: ollama config is required", ErrProviderInvalidConfig)
-		}
-		record.Ollama = &OllamaProviderSettings{
-			BaseURL:    normalizeProviderBaseURL(input.Ollama.BaseURL),
-			Model:      strings.TrimSpace(input.Ollama.Model),
-			ChatModels: normalizeProviderChatModels(input.Ollama.Model, input.Ollama.ChatModels),
-		}
 	case ProviderKindCodex:
-		if input.Codex == nil || input.Ollama != nil || input.OpenAI != nil || input.Proxy != nil {
+		if input.Codex == nil || input.Claude != nil {
 			return ProviderRecord{}, fmt.Errorf("%w: codex config is required", ErrProviderInvalidConfig)
 		}
 		record.Codex = &CodexProviderSettings{
-			Model:        strings.TrimSpace(firstNonEmpty(input.Codex.Model, defaultCodexModel)),
-			ChatModels:   normalizeProviderChatModels(firstNonEmpty(input.Codex.Model, defaultCodexModel), input.Codex.ChatModels),
-			AuthFilePath: strings.TrimSpace(input.Codex.AuthFilePath),
-		}
-	case ProviderKindOpenAI:
-		if input.OpenAI == nil || input.Ollama != nil || input.Codex != nil || input.Proxy != nil {
-			return ProviderRecord{}, fmt.Errorf("%w: openai config is required", ErrProviderInvalidConfig)
-		}
-		record.OpenAI = &OpenAIProviderSettings{
-			BaseURL: normalizeProviderBaseURL(firstNonEmpty(input.OpenAI.BaseURL, defaultOpenAIBaseURL)),
-			Model:   strings.TrimSpace(firstNonEmpty(input.OpenAI.Model, defaultOpenAIModel)),
+			Command: strings.TrimSpace(firstNonEmpty(input.Codex.Command, defaultCodexCommand)),
+			Model:   strings.TrimSpace(firstNonEmpty(input.Codex.Model, defaultCodexModel)),
 			ChatModels: normalizeProviderChatModels(
-				firstNonEmpty(input.OpenAI.Model, defaultOpenAIModel),
-				input.OpenAI.ChatModels,
+				firstNonEmpty(input.Codex.Model, defaultCodexModel),
+				input.Codex.ChatModels,
 			),
-			APIKeySecret: strings.TrimSpace(input.OpenAI.APIKey),
 		}
-	case ProviderKindProxy:
-		if input.Proxy == nil || input.Ollama != nil || input.OpenAI != nil {
-			return ProviderRecord{}, fmt.Errorf("%w: proxy config is required", ErrProviderInvalidConfig)
+	case ProviderKindClaude:
+		if input.Claude == nil || input.Codex != nil {
+			return ProviderRecord{}, fmt.Errorf("%w: claude config is required", ErrProviderInvalidConfig)
 		}
-		record.Proxy = &ProxyProviderSettings{
-			Model:    strings.TrimSpace(input.Proxy.Model),
-			Channels: normalizeProxyChannels(input.Proxy.Channels),
+		record.Claude = &ClaudeProviderSettings{
+			Command: strings.TrimSpace(firstNonEmpty(input.Claude.Command, defaultClaudeCommand)),
+			Model:   strings.TrimSpace(firstNonEmpty(input.Claude.Model, defaultClaudeModel)),
+			ChatModels: normalizeProviderChatModels(
+				firstNonEmpty(input.Claude.Model, defaultClaudeModel),
+				input.Claude.ChatModels,
+			),
 		}
 	default:
 		return ProviderRecord{}, fmt.Errorf("%w: %s", ErrProviderKindUnsupported, input.Kind)
@@ -184,33 +170,16 @@ func applyProviderUpdate(record ProviderRecord, input UpdateProviderInput) (Prov
 	}
 
 	switch updated.Kind {
-	case ProviderKindOllama:
-		if input.Codex != nil || input.OpenAI != nil || input.Proxy != nil {
-			return ProviderRecord{}, fmt.Errorf("%w: openai config does not match provider kind", ErrProviderInvalidConfig)
-		}
-		if input.Ollama != nil {
-			if updated.Ollama == nil {
-				updated.Ollama = &OllamaProviderSettings{}
-			}
-			if input.Ollama.BaseURL != nil {
-				updated.Ollama.BaseURL = normalizeProviderBaseURL(*input.Ollama.BaseURL)
-			}
-			if input.Ollama.Model != nil {
-				updated.Ollama.Model = strings.TrimSpace(*input.Ollama.Model)
-			}
-			if input.Ollama.ChatModels != nil {
-				updated.Ollama.ChatModels = normalizeProviderChatModels(updated.Ollama.Model, *input.Ollama.ChatModels)
-			} else {
-				updated.Ollama.ChatModels = normalizeProviderChatModels(updated.Ollama.Model, updated.Ollama.ChatModels)
-			}
-		}
 	case ProviderKindCodex:
-		if input.Ollama != nil || input.OpenAI != nil || input.Proxy != nil {
+		if input.Claude != nil {
 			return ProviderRecord{}, fmt.Errorf("%w: codex config does not match provider kind", ErrProviderInvalidConfig)
 		}
 		if input.Codex != nil {
 			if updated.Codex == nil {
 				updated.Codex = &CodexProviderSettings{}
+			}
+			if input.Codex.Command != nil {
+				updated.Codex.Command = strings.TrimSpace(*input.Codex.Command)
 			}
 			if input.Codex.Model != nil {
 				updated.Codex.Model = strings.TrimSpace(*input.Codex.Model)
@@ -220,45 +189,38 @@ func applyProviderUpdate(record ProviderRecord, input UpdateProviderInput) (Prov
 			} else {
 				updated.Codex.ChatModels = normalizeProviderChatModels(updated.Codex.Model, updated.Codex.ChatModels)
 			}
-			if input.Codex.AuthFilePath != nil {
-				updated.Codex.AuthFilePath = strings.TrimSpace(*input.Codex.AuthFilePath)
+			if strings.TrimSpace(updated.Codex.Command) == "" {
+				updated.Codex.Command = defaultCodexCommand
+			}
+			if strings.TrimSpace(updated.Codex.Model) == "" {
+				updated.Codex.Model = defaultCodexModel
 			}
 		}
-	case ProviderKindOpenAI:
-		if input.Ollama != nil || input.Codex != nil || input.Proxy != nil {
-			return ProviderRecord{}, fmt.Errorf("%w: ollama config does not match provider kind", ErrProviderInvalidConfig)
+	case ProviderKindClaude:
+		if input.Codex != nil {
+			return ProviderRecord{}, fmt.Errorf("%w: claude config does not match provider kind", ErrProviderInvalidConfig)
 		}
-		if input.OpenAI != nil {
-			if input.OpenAI.ClearAPIKey && input.OpenAI.APIKey == nil {
-				return ProviderRecord{}, fmt.Errorf("%w: openai api_key replacement is required when clearing the stored secret", ErrProviderInvalidConfig)
+		if input.Claude != nil {
+			if updated.Claude == nil {
+				updated.Claude = &ClaudeProviderSettings{}
 			}
-			if updated.OpenAI == nil {
-				updated.OpenAI = &OpenAIProviderSettings{}
+			if input.Claude.Command != nil {
+				updated.Claude.Command = strings.TrimSpace(*input.Claude.Command)
 			}
-			if input.OpenAI.BaseURL != nil {
-				updated.OpenAI.BaseURL = normalizeProviderBaseURL(*input.OpenAI.BaseURL)
+			if input.Claude.Model != nil {
+				updated.Claude.Model = strings.TrimSpace(*input.Claude.Model)
 			}
-			if input.OpenAI.Model != nil {
-				updated.OpenAI.Model = strings.TrimSpace(*input.OpenAI.Model)
-			}
-			if input.OpenAI.ChatModels != nil {
-				updated.OpenAI.ChatModels = normalizeProviderChatModels(updated.OpenAI.Model, *input.OpenAI.ChatModels)
+			if input.Claude.ChatModels != nil {
+				updated.Claude.ChatModels = normalizeProviderChatModels(updated.Claude.Model, *input.Claude.ChatModels)
 			} else {
-				updated.OpenAI.ChatModels = normalizeProviderChatModels(updated.OpenAI.Model, updated.OpenAI.ChatModels)
+				updated.Claude.ChatModels = normalizeProviderChatModels(updated.Claude.Model, updated.Claude.ChatModels)
 			}
-			if input.OpenAI.ClearAPIKey {
-				updated.OpenAI.APIKeySecret = ""
+			if strings.TrimSpace(updated.Claude.Command) == "" {
+				updated.Claude.Command = defaultClaudeCommand
 			}
-			if input.OpenAI.APIKey != nil {
-				updated.OpenAI.APIKeySecret = strings.TrimSpace(*input.OpenAI.APIKey)
+			if strings.TrimSpace(updated.Claude.Model) == "" {
+				updated.Claude.Model = defaultClaudeModel
 			}
-		}
-	case ProviderKindProxy:
-		if input.Ollama != nil || input.Codex != nil || input.OpenAI != nil {
-			return ProviderRecord{}, fmt.Errorf("%w: proxy config does not match provider kind", ErrProviderInvalidConfig)
-		}
-		if input.Proxy != nil {
-			updated.Proxy = applyProxyProviderUpdate(updated.Proxy, *input.Proxy)
 		}
 	default:
 		return ProviderRecord{}, fmt.Errorf("%w: %s", ErrProviderKindUnsupported, updated.Kind)
@@ -282,39 +244,25 @@ func validateProviderRecord(record ProviderRecord) error {
 		return fmt.Errorf("%w: display name is required", ErrProviderInvalidConfig)
 	}
 	switch record.Kind {
-	case ProviderKindOllama:
-		if record.Ollama == nil || record.Codex != nil || record.OpenAI != nil || record.Proxy != nil {
-			return fmt.Errorf("%w: ollama settings are required", ErrProviderInvalidConfig)
-		}
-		if strings.TrimSpace(record.Ollama.BaseURL) == "" {
-			return fmt.Errorf("%w: ollama base_url is required", ErrProviderInvalidConfig)
-		}
 	case ProviderKindCodex:
-		if record.Codex == nil || record.Ollama != nil || record.OpenAI != nil || record.Proxy != nil {
+		if record.Codex == nil || record.Claude != nil {
 			return fmt.Errorf("%w: codex settings are required", ErrProviderInvalidConfig)
+		}
+		if strings.TrimSpace(record.Codex.Command) == "" {
+			return fmt.Errorf("%w: codex command is required", ErrProviderInvalidConfig)
 		}
 		if strings.TrimSpace(record.Codex.Model) == "" {
 			return fmt.Errorf("%w: codex model is required", ErrProviderInvalidConfig)
 		}
-	case ProviderKindOpenAI:
-		if record.OpenAI == nil || record.Ollama != nil || record.Codex != nil || record.Proxy != nil {
-			return fmt.Errorf("%w: openai settings are required", ErrProviderInvalidConfig)
+	case ProviderKindClaude:
+		if record.Claude == nil || record.Codex != nil {
+			return fmt.Errorf("%w: claude settings are required", ErrProviderInvalidConfig)
 		}
-		if strings.TrimSpace(record.OpenAI.BaseURL) == "" {
-			return fmt.Errorf("%w: openai base_url is required", ErrProviderInvalidConfig)
+		if strings.TrimSpace(record.Claude.Command) == "" {
+			return fmt.Errorf("%w: claude command is required", ErrProviderInvalidConfig)
 		}
-		if strings.TrimSpace(record.OpenAI.Model) == "" {
-			return fmt.Errorf("%w: openai model is required", ErrProviderInvalidConfig)
-		}
-		if strings.TrimSpace(record.OpenAI.APIKeySecret) == "" {
-			return fmt.Errorf("%w: openai api_key is required", ErrProviderInvalidConfig)
-		}
-	case ProviderKindProxy:
-		if record.Proxy == nil || record.Ollama != nil || record.OpenAI != nil {
-			return fmt.Errorf("%w: proxy settings are required", ErrProviderInvalidConfig)
-		}
-		if err := validateProxyProviderSettings(record.Proxy); err != nil {
-			return err
+		if strings.TrimSpace(record.Claude.Model) == "" {
+			return fmt.Errorf("%w: claude model is required", ErrProviderInvalidConfig)
 		}
 	default:
 		return fmt.Errorf("%w: %s", ErrProviderKindUnsupported, record.Kind)
@@ -337,13 +285,11 @@ func defaultProviderDisplayName(kind ProviderKind, raw string) string {
 	}
 	switch kind {
 	case ProviderKindCodex:
-		return "Codex"
-	case ProviderKindOpenAI:
-		return "OpenAI"
-	case ProviderKindProxy:
-		return "AI Proxy"
+		return "Codex CLI"
+	case ProviderKindClaude:
+		return "Claude Code CLI"
 	default:
-		return "Ollama"
+		return "Provider"
 	}
 }
 
@@ -353,6 +299,21 @@ func normalizeProviderState(state State) (State, bool) {
 
 	if normalized.Version != ConfigVersion {
 		normalized.Version = ConfigVersion
+		changed = true
+	}
+	if len(normalized.Providers) == 0 {
+		normalized.Providers = defaultProviders()
+		normalized.ActiveProviderID = defaultActiveProviderID()
+		changed = true
+	}
+	filteredProviders := make([]ProviderRecord, 0, len(normalized.Providers))
+	for _, provider := range normalized.Providers {
+		if isSupportedProviderKind(provider.Kind) {
+			filteredProviders = append(filteredProviders, provider)
+		}
+	}
+	if len(filteredProviders) != len(normalized.Providers) {
+		normalized.Providers = filteredProviders
 		changed = true
 	}
 	if len(normalized.Providers) == 0 {
@@ -410,22 +371,28 @@ func firstNonEmpty(values ...string) string {
 
 func normalizeProviderRecord(record ProviderRecord) ProviderRecord {
 	normalized := cloneProviderRecord(record)
-	if normalized.Ollama != nil {
-		normalized.Ollama.ChatModels = normalizeProviderChatModels(
-			normalized.Ollama.Model,
-			normalized.Ollama.ChatModels,
-		)
-	}
 	if normalized.Codex != nil {
+		if strings.TrimSpace(normalized.Codex.Command) == "" {
+			normalized.Codex.Command = defaultCodexCommand
+		}
+		if strings.TrimSpace(normalized.Codex.Model) == "" {
+			normalized.Codex.Model = defaultCodexModel
+		}
 		normalized.Codex.ChatModels = normalizeProviderChatModels(
 			normalized.Codex.Model,
 			normalized.Codex.ChatModels,
 		)
 	}
-	if normalized.OpenAI != nil {
-		normalized.OpenAI.ChatModels = normalizeProviderChatModels(
-			normalized.OpenAI.Model,
-			normalized.OpenAI.ChatModels,
+	if normalized.Claude != nil {
+		if strings.TrimSpace(normalized.Claude.Command) == "" {
+			normalized.Claude.Command = defaultClaudeCommand
+		}
+		if strings.TrimSpace(normalized.Claude.Model) == "" {
+			normalized.Claude.Model = defaultClaudeModel
+		}
+		normalized.Claude.ChatModels = normalizeProviderChatModels(
+			normalized.Claude.Model,
+			normalized.Claude.ChatModels,
 		)
 	}
 	return normalized

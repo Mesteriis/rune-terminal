@@ -32,9 +32,9 @@ capability.
 - `.ssh/config` import and advanced SSH auth / topology (proxy jump,
   richer auth negotiation)
 - managed attachment storage / import and rich attachment preview UX
-- fine-grained streaming deltas for proxy-routed Claude/Gemini channels
-  (the backend conversation stream currently degrades to buffered
-  completion for those upstreams)
+- fine-grained token streaming for CLI-backed chat
+  (the backend conversation stream currently emits the completed CLI
+  response as one SSE text delta)
 - plugin marketplace / discovery UX
 - Windows-first support
 
@@ -48,10 +48,9 @@ capability.
   sidebar, deep search/find) are not there yet
 - AI command flow supports explicit command grammar only (`/run` and
   `run:`), not broad natural-language execution
-- backend AI routing now supports direct providers plus a TideTerm-derived internal proxy domain, but it is not a standalone proxy server/product surface and its channel scheduler is currently scoped to conversation traffic only
-- the unfinished proxy kind is now intentionally hidden from the settings modal new-provider toolbar while the CLI-backed routing replacement is still pending; existing proxy records remain backend-supported for migration only
-- the new Codex path is local-auth-first: it reads existing `codex` machine auth from `~/.codex/auth.json`, but this slice does not yet implement an in-app browser/callback connect flow
-- the shell-wide settings modal now exposes a structured `General / AI / Terminal / Commander` navigation, and the AI section includes direct-provider model autodiscovery plus read-only model/limit overview pages; proxy key editing is still a focused v1 surface where replacement keys are entered as newline-separated enabled secrets rather than managed through a richer per-key lifecycle UI
+- backend AI routing is intentionally limited to local Codex CLI and Claude Code CLI providers; `ollama`, direct API-key OpenAI-compatible providers, and the earlier internal proxy draft are not active provider kinds
+- CLI provider execution is chat-focused and does not yet integrate provider-native tool calls with `core/toolruntime` approval/audit
+- the shell-wide settings modal now exposes a structured `General / AI / Terminal / Commander` navigation, and the AI section includes CLI-provider model autodiscovery plus read-only model/limit overview pages
 - native-window automation coverage is limited; validation leans on
   build + runtime/API smoke plus manual notes
 

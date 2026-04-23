@@ -178,11 +178,12 @@ its visible shell blocks as raw HTML inside `App.tsx`.
 - `TerminalDockviewTabWidget` renders terminal-specific Dockview tab chrome for terminal panels.
 - `CommanderDemoLayout` mounts `CommanderWidget` into the isolated `tool` panel demo surface.
 - `DialogPopup` provides the stateless shared dialog surface, including the wide settings-dialog variant and an optional body-content slot for host-provided settings widgets.
+- `ClearBox` provides a neutral layout wrapper for shell/settings structure when a subtree needs DOM identity without inheriting the default glass-panel framing from `Box`.
 - `Notify` provides the stateless shared notification surface.
 - `ModalHostWidget` renders body-scoped and widget-scoped modal layers, while settings-specific body content is routed through an explicit modal `contentKey` path instead of hard-coding settings UI into the shared dialog shell.
 - `PanelModalActionsWidget` exposes a widget-level demo path for modal opening.
-- `SettingsShellWidget` now owns the shell-wide settings navigation inside the existing modal body, keeping `General`, `AI`, `Terminal`, and `Commander` as explicit sections without forking the shared dialog chrome.
-- `AgentProviderSettingsWidget` now lives under `AI > Установленные приложения` inside that shell settings surface, while `features/agent/api/provider-client.ts`, `features/agent/model/provider-settings-draft.ts`, and `features/agent/model/use-agent-provider-settings.ts` keep backend transport, draft serialization, and editor state outside the shared modal host.
+- `SettingsShellWidget` now owns the shell-wide settings navigation inside the existing modal body, keeping `General`, `AI`, `Terminal`, and `Commander` as explicit sections without forking the shared dialog chrome; the `AI` subtree can collapse instead of permanently occupying vertical space.
+- `AgentProviderSettingsWidget` now lives under `AI > Установленные приложения` inside that shell settings surface and supports an embedded rendering mode with flatter container framing by composing `ClearBox` for layout-only wrappers; the active provider setup surface is narrowed to Codex CLI and Claude Code CLI while `features/agent/api/provider-client.ts`, `features/agent/model/provider-settings-draft.ts`, and `features/agent/model/use-agent-provider-settings.ts` keep backend transport, draft serialization, and editor state outside the shared modal host.
 - `DockviewPanelWidget` renders Dockview panel bodies and owns Dockview-specific DOM resolution such as the surrounding `.dv-groupview`, then passes mount/theme targets down as explicit props instead of making child widgets query Dockview internals themselves.
 - `AiPanelWidget` renders the shell-managed AI panel body inside the left shell pane.
 - `AiPanelWidget` now passes its own root element down as the widget-local mount target for modal and busy overlays instead of relying on global DOM lookups.

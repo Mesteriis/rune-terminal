@@ -12,9 +12,8 @@ import (
 type DiscoverProviderModelsInput struct {
 	ProviderID string
 	Kind       agent.ProviderKind
-	Ollama     *agent.OllamaProviderSettings
 	Codex      *agent.CodexProviderSettings
-	OpenAI     *agent.OpenAIProviderSettings
+	Claude     *agent.ClaudeProviderSettings
 }
 
 type ProviderModelsCatalog struct {
@@ -22,7 +21,7 @@ type ProviderModelsCatalog struct {
 }
 
 func (r *Runtime) DiscoverProviderModels(
-	ctx context.Context,
+	_ context.Context,
 	input DiscoverProviderModelsInput,
 ) (ProviderModelsCatalog, error) {
 	record, err := r.resolveProviderModelDiscoveryInput(input)
@@ -31,37 +30,15 @@ func (r *Runtime) DiscoverProviderModels(
 	}
 
 	switch record.Kind {
-	case agent.ProviderKindOllama:
-		models, err := conversation.ListOllamaModels(ctx, conversation.ProviderConfig{
-			BaseURL: record.Ollama.BaseURL,
-			Model:   record.Ollama.Model,
-		})
-		if err != nil {
-			return ProviderModelsCatalog{}, err
-		}
-		return ProviderModelsCatalog{Models: models}, nil
 	case agent.ProviderKindCodex:
-		models, err := conversation.ListCodexModels(ctx, conversation.CodexProviderConfig{
-			Model:        record.Codex.Model,
-			AuthFilePath: record.Codex.AuthFilePath,
-		})
-		if err != nil {
-			return ProviderModelsCatalog{}, err
-		}
+		models := conversation.ListCodexCLIModels(record.Codex.Model, record.Codex.ChatModels)
 		return ProviderModelsCatalog{Models: models}, nil
-	case agent.ProviderKindOpenAI:
-		models, err := conversation.ListOpenAIModels(ctx, conversation.OpenAIProviderConfig{
-			BaseURL: record.OpenAI.BaseURL,
-			Model:   record.OpenAI.Model,
-			APIKey:  record.OpenAI.APIKeySecret,
-		})
-		if err != nil {
-			return ProviderModelsCatalog{}, err
-		}
+	case agent.ProviderKindClaude:
+		models := conversation.ListClaudeCodeModels(record.Claude.Model, record.Claude.ChatModels)
 		return ProviderModelsCatalog{Models: models}, nil
 	default:
 		return ProviderModelsCatalog{}, fmt.Errorf(
-			"%w: model discovery is available only for direct ollama, codex, and openai-compatible providers",
+			"%w: model discovery is available only for codex-cli and claude-code-cli providers",
 			agent.ErrProviderKindUnsupported,
 		)
 	}
@@ -78,30 +55,21 @@ func (r *Runtime) resolveProviderModelDiscoveryInput(input DiscoverProviderModel
 
 	record := agent.ProviderRecord{Kind: input.Kind}
 	switch input.Kind {
-	case agent.ProviderKindOllama:
-		if input.Ollama == nil {
-			return agent.ProviderRecord{}, fmt.Errorf("%w: ollama config is required", agent.ErrProviderInvalidConfig)
-		}
-		record.Ollama = &agent.OllamaProviderSettings{
-			BaseURL: strings.TrimSpace(input.Ollama.BaseURL),
-			Model:   strings.TrimSpace(input.Ollama.Model),
-		}
 	case agent.ProviderKindCodex:
 		if input.Codex == nil {
 			return agent.ProviderRecord{}, fmt.Errorf("%w: codex config is required", agent.ErrProviderInvalidConfig)
 		}
 		record.Codex = &agent.CodexProviderSettings{
-			Model:        strings.TrimSpace(input.Codex.Model),
-			AuthFilePath: strings.TrimSpace(input.Codex.AuthFilePath),
+			Command: strings.TrimSpace(input.Codex.Command),
+			Model:   strings.TrimSpace(input.Codex.Model),
 		}
-	case agent.ProviderKindOpenAI:
-		if input.OpenAI == nil {
-			return agent.ProviderRecord{}, fmt.Errorf("%w: openai config is required", agent.ErrProviderInvalidConfig)
+	case agent.ProviderKindClaude:
+		if input.Claude == nil {
+			return agent.ProviderRecord{}, fmt.Errorf("%w: claude config is required", agent.ErrProviderInvalidConfig)
 		}
-		record.OpenAI = &agent.OpenAIProviderSettings{
-			BaseURL:      strings.TrimSpace(input.OpenAI.BaseURL),
-			Model:        strings.TrimSpace(input.OpenAI.Model),
-			APIKeySecret: strings.TrimSpace(input.OpenAI.APIKeySecret),
+		record.Claude = &agent.ClaudeProviderSettings{
+			Command: strings.TrimSpace(input.Claude.Command),
+			Model:   strings.TrimSpace(input.Claude.Model),
 		}
 	default:
 		return agent.ProviderRecord{}, fmt.Errorf("%w: %s", agent.ErrProviderKindUnsupported, input.Kind)
@@ -124,43 +92,28 @@ func applyProviderModelDiscoveryOverrides(
 	}
 
 	switch record.Kind {
-	case agent.ProviderKindOllama:
-		if input.Codex != nil || input.OpenAI != nil {
-			return agent.ProviderRecord{}, fmt.Errorf("%w: ollama discovery payload cannot include non-ollama config", agent.ErrProviderInvalidConfig)
-		}
-		if input.Ollama != nil {
-			if baseURL := strings.TrimSpace(input.Ollama.BaseURL); baseURL != "" {
-				record.Ollama.BaseURL = baseURL
-			}
-			if model := strings.TrimSpace(input.Ollama.Model); model != "" {
-				record.Ollama.Model = model
-			}
-		}
 	case agent.ProviderKindCodex:
-		if input.OpenAI != nil {
-			return agent.ProviderRecord{}, fmt.Errorf("%w: codex discovery payload cannot include openai config", agent.ErrProviderInvalidConfig)
+		if input.Claude != nil {
+			return agent.ProviderRecord{}, fmt.Errorf("%w: codex discovery payload cannot include other provider config", agent.ErrProviderInvalidConfig)
 		}
 		if input.Codex != nil {
-			if authFilePath := strings.TrimSpace(input.Codex.AuthFilePath); authFilePath != "" {
-				record.Codex.AuthFilePath = authFilePath
+			if command := strings.TrimSpace(input.Codex.Command); command != "" {
+				record.Codex.Command = command
 			}
 			if model := strings.TrimSpace(input.Codex.Model); model != "" {
 				record.Codex.Model = model
 			}
 		}
-	case agent.ProviderKindOpenAI:
+	case agent.ProviderKindClaude:
 		if input.Codex != nil {
-			return agent.ProviderRecord{}, fmt.Errorf("%w: openai discovery payload cannot include codex config", agent.ErrProviderInvalidConfig)
+			return agent.ProviderRecord{}, fmt.Errorf("%w: claude discovery payload cannot include other provider config", agent.ErrProviderInvalidConfig)
 		}
-		if input.OpenAI != nil {
-			if baseURL := strings.TrimSpace(input.OpenAI.BaseURL); baseURL != "" {
-				record.OpenAI.BaseURL = baseURL
+		if input.Claude != nil {
+			if command := strings.TrimSpace(input.Claude.Command); command != "" {
+				record.Claude.Command = command
 			}
-			if model := strings.TrimSpace(input.OpenAI.Model); model != "" {
-				record.OpenAI.Model = model
-			}
-			if apiKey := strings.TrimSpace(input.OpenAI.APIKeySecret); apiKey != "" {
-				record.OpenAI.APIKeySecret = apiKey
+			if model := strings.TrimSpace(input.Claude.Model); model != "" {
+				record.Claude.Model = model
 			}
 		}
 	default:
@@ -172,33 +125,28 @@ func applyProviderModelDiscoveryOverrides(
 
 func applyProviderModelDiscoveryDefaults(record agent.ProviderRecord) (agent.ProviderRecord, error) {
 	switch record.Kind {
-	case agent.ProviderKindOllama:
-		if record.Ollama == nil {
-			return agent.ProviderRecord{}, fmt.Errorf("%w: ollama config is required", agent.ErrProviderInvalidConfig)
-		}
-		if strings.TrimSpace(record.Ollama.BaseURL) == "" {
-			record.Ollama.BaseURL = "http://127.0.0.1:11434"
-		}
 	case agent.ProviderKindCodex:
 		if record.Codex == nil {
 			return agent.ProviderRecord{}, fmt.Errorf("%w: codex config is required", agent.ErrProviderInvalidConfig)
 		}
+		if strings.TrimSpace(record.Codex.Command) == "" {
+			record.Codex.Command = "codex"
+		}
 		if strings.TrimSpace(record.Codex.Model) == "" {
 			record.Codex.Model = "gpt-5-codex"
 		}
-	case agent.ProviderKindOpenAI:
-		if record.OpenAI == nil {
-			return agent.ProviderRecord{}, fmt.Errorf("%w: openai config is required", agent.ErrProviderInvalidConfig)
+		record.Codex.ChatModels = conversation.ListCodexCLIModels(record.Codex.Model, record.Codex.ChatModels)
+	case agent.ProviderKindClaude:
+		if record.Claude == nil {
+			return agent.ProviderRecord{}, fmt.Errorf("%w: claude config is required", agent.ErrProviderInvalidConfig)
 		}
-		if strings.TrimSpace(record.OpenAI.BaseURL) == "" {
-			record.OpenAI.BaseURL = "https://api.openai.com/v1"
+		if strings.TrimSpace(record.Claude.Command) == "" {
+			record.Claude.Command = "claude"
 		}
-		if strings.TrimSpace(record.OpenAI.Model) == "" {
-			record.OpenAI.Model = "gpt-4o-mini"
+		if strings.TrimSpace(record.Claude.Model) == "" {
+			record.Claude.Model = "sonnet"
 		}
-		if strings.TrimSpace(record.OpenAI.APIKeySecret) == "" {
-			return agent.ProviderRecord{}, fmt.Errorf("%w: openai api_key is required", agent.ErrProviderInvalidConfig)
-		}
+		record.Claude.ChatModels = conversation.ListClaudeCodeModels(record.Claude.Model, record.Claude.ChatModels)
 	default:
 		return agent.ProviderRecord{}, fmt.Errorf("%w: %s", agent.ErrProviderKindUnsupported, record.Kind)
 	}

@@ -41,7 +41,7 @@ const (
 
 func NewService(path string, provider Provider) (*Service, error) {
 	if provider == nil {
-		provider = NewOllamaProvider(DefaultProviderConfig())
+		provider = NewCodexCLIProvider(CodexCLIProviderConfig{})
 	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return nil, err

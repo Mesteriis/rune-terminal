@@ -47,14 +47,11 @@ function getDraftModelValue(draft: AgentProviderDraft | null) {
   if (!draft) {
     return ''
   }
-  if (draft.kind === 'ollama') {
-    return draft.ollama.model
-  }
   if (draft.kind === 'codex') {
     return draft.codex.model
   }
-  if (draft.kind === 'openai') {
-    return draft.openai.model
+  if (draft.kind === 'claude') {
+    return draft.claude.model
   }
   return ''
 }
@@ -77,26 +74,22 @@ function uniqueModels(models: string[]) {
 
 function buildChatModelsUpdatePayload(provider: AgentProviderView, chatModels: string[]) {
   switch (provider.kind) {
-    case 'ollama':
-      return {
-        ollama: {
-          chat_models: chatModels,
-        },
-      }
     case 'codex':
       return {
         codex: {
           chat_models: chatModels,
         },
       }
-    case 'openai':
+    case 'claude':
       return {
-        openai: {
+        claude: {
           chat_models: chatModels,
         },
       }
     default:
-      throw new Error(`Provider kind ${provider.kind} does not support chat model availability.`)
+      throw new Error(
+        `Provider kind ${provider.kind satisfies never} does not support chat model availability.`,
+      )
   }
 }
 
@@ -157,27 +150,9 @@ export function useAgentProviderSettings() {
       const nextDraft = draftOverride ?? draft
       const currentModel = getDraftModelValue(nextDraft)
 
-      if (
-        !nextDraft ||
-        (nextDraft.kind !== 'ollama' && nextDraft.kind !== 'codex' && nextDraft.kind !== 'openai')
-      ) {
+      if (!nextDraft) {
         setAvailableModels(currentModel ? [currentModel] : [])
         setModelErrorMessage(null)
-        setIsLoadingModels(false)
-        return
-      }
-
-      if (
-        nextDraft.kind === 'openai' &&
-        !nextDraft.openai.hasStoredAPIKey &&
-        nextDraft.openai.apiKey.trim().length === 0
-      ) {
-        setAvailableModels(currentModel ? [currentModel] : [])
-        setModelErrorMessage(
-          nextDraft.mode === 'new'
-            ? 'Enter an API key, then refresh to load available models.'
-            : 'Store or paste an API key, then refresh to load available models.',
-        )
         setIsLoadingModels(false)
         return
       }
@@ -187,49 +162,37 @@ export function useAgentProviderSettings() {
 
       try {
         const payload =
-          nextDraft.kind === 'ollama'
+          nextDraft.kind === 'codex'
             ? nextDraft.mode === 'existing' && nextDraft.id
               ? {
                   provider_id: nextDraft.id,
-                  ollama: {
-                    base_url: nextDraft.ollama.baseURL || undefined,
+                  codex: {
+                    command: nextDraft.codex.command || undefined,
+                    model: nextDraft.codex.model || undefined,
                   },
                 }
               : {
-                  kind: 'ollama' as const,
-                  ollama: {
-                    base_url: nextDraft.ollama.baseURL || undefined,
+                  kind: 'codex' as const,
+                  codex: {
+                    command: nextDraft.codex.command || undefined,
+                    model: nextDraft.codex.model || undefined,
                   },
                 }
-            : nextDraft.kind === 'codex'
-              ? nextDraft.mode === 'existing' && nextDraft.id
-                ? {
-                    provider_id: nextDraft.id,
-                    codex: {
-                      auth_file_path: nextDraft.codex.authFilePath || undefined,
-                    },
-                  }
-                : {
-                    kind: 'codex' as const,
-                    codex: {
-                      auth_file_path: nextDraft.codex.authFilePath || undefined,
-                    },
-                  }
-              : nextDraft.mode === 'existing' && nextDraft.id
-                ? {
-                    provider_id: nextDraft.id,
-                    openai: {
-                      base_url: nextDraft.openai.baseURL || undefined,
-                      api_key: nextDraft.openai.apiKey.trim() || undefined,
-                    },
-                  }
-                : {
-                    kind: 'openai' as const,
-                    openai: {
-                      base_url: nextDraft.openai.baseURL || undefined,
-                      api_key: nextDraft.openai.apiKey.trim() || undefined,
-                    },
-                  }
+            : nextDraft.mode === 'existing' && nextDraft.id
+              ? {
+                  provider_id: nextDraft.id,
+                  claude: {
+                    command: nextDraft.claude.command || undefined,
+                    model: nextDraft.claude.model || undefined,
+                  },
+                }
+              : {
+                  kind: 'claude' as const,
+                  claude: {
+                    command: nextDraft.claude.command || undefined,
+                    model: nextDraft.claude.model || undefined,
+                  },
+                }
 
         const response = await discoverAgentProviderModels(payload)
         const nextModels = uniqueModels([...response.models, currentModel])
@@ -240,11 +203,21 @@ export function useAgentProviderSettings() {
               return currentDraft
             }
 
-            if (currentDraft.kind === 'ollama') {
+            if (currentDraft.kind === 'codex') {
               return {
                 ...currentDraft,
-                ollama: {
-                  ...currentDraft.ollama,
+                codex: {
+                  ...currentDraft.codex,
+                  model: nextModels[0],
+                },
+              }
+            }
+
+            if (currentDraft.kind === 'claude') {
+              return {
+                ...currentDraft,
+                claude: {
+                  ...currentDraft.claude,
                   model: nextModels[0],
                 },
               }
@@ -271,59 +244,18 @@ export function useAgentProviderSettings() {
       return
     }
 
-    const currentModel = getDraftModelValue(draft)
-
-    if (draft.kind === 'ollama') {
-      const timeoutID = window.setTimeout(() => {
-        void refreshAvailableModels(draft)
-      }, 250)
-      return () => window.clearTimeout(timeoutID)
-    }
-
-    if (draft.kind === 'codex') {
-      const timeoutID = window.setTimeout(() => {
-        void refreshAvailableModels(draft)
-      }, 250)
-      return () => window.clearTimeout(timeoutID)
-    }
-
-    if (draft.kind === 'openai') {
-      if (draft.mode === 'existing' && draft.openai.hasStoredAPIKey) {
-        const timeoutID = window.setTimeout(() => {
-          void refreshAvailableModels(draft)
-        }, 250)
-        return () => window.clearTimeout(timeoutID)
-      }
-
-      if (draft.openai.apiKey.trim().length > 0) {
-        const timeoutID = window.setTimeout(() => {
-          void refreshAvailableModels(draft)
-        }, 250)
-        return () => window.clearTimeout(timeoutID)
-      }
-
-      setAvailableModels(currentModel ? [currentModel] : [])
-      setIsLoadingModels(false)
-      setModelErrorMessage(
-        draft.mode === 'new'
-          ? 'Enter an API key to auto-load available models.'
-          : 'Store or paste an API key to auto-load available models.',
-      )
-      return
-    }
-
-    setAvailableModels([])
-    setIsLoadingModels(false)
-    setModelErrorMessage(null)
+    const timeoutID = window.setTimeout(() => {
+      void refreshAvailableModels(draft)
+    }, 250)
+    return () => window.clearTimeout(timeoutID)
   }, [
     draft?.id,
     draft?.kind,
     draft?.mode,
-    draft?.ollama.baseURL,
-    draft?.codex.authFilePath,
-    draft?.openai.apiKey,
-    draft?.openai.baseURL,
-    draft?.openai.hasStoredAPIKey,
+    draft?.codex.command,
+    draft?.codex.model,
+    draft?.claude.command,
+    draft?.claude.model,
     refreshAvailableModels,
   ])
 

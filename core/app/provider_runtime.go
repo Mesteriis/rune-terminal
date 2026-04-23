@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/Mesteriis/rune-terminal/core/agent"
-	"github.com/Mesteriis/rune-terminal/core/aiproxy"
 	"github.com/Mesteriis/rune-terminal/core/conversation"
 )
 
@@ -14,39 +13,22 @@ type ConversationProviderFactory func(agent.ProviderRecord) (conversation.Provid
 
 func defaultConversationProviderFactory(record agent.ProviderRecord) (conversation.Provider, error) {
 	switch record.Kind {
-	case agent.ProviderKindOllama:
-		if record.Ollama == nil {
-			return nil, fmt.Errorf("%w: ollama settings are required", agent.ErrProviderInvalidConfig)
-		}
-		return conversation.NewOllamaProvider(conversation.ProviderConfig{
-			BaseURL: record.Ollama.BaseURL,
-			Model:   record.Ollama.Model,
-		}), nil
 	case agent.ProviderKindCodex:
 		if record.Codex == nil {
 			return nil, fmt.Errorf("%w: codex settings are required", agent.ErrProviderInvalidConfig)
 		}
-		return conversation.NewCodexProvider(conversation.CodexProviderConfig{
-			Model:        record.Codex.Model,
-			AuthFilePath: record.Codex.AuthFilePath,
+		return conversation.NewCodexCLIProvider(conversation.CodexCLIProviderConfig{
+			Command: record.Codex.Command,
+			Model:   record.Codex.Model,
 		}), nil
-	case agent.ProviderKindOpenAI:
-		if record.OpenAI == nil {
-			return nil, fmt.Errorf("%w: openai settings are required", agent.ErrProviderInvalidConfig)
+	case agent.ProviderKindClaude:
+		if record.Claude == nil {
+			return nil, fmt.Errorf("%w: claude settings are required", agent.ErrProviderInvalidConfig)
 		}
-		return conversation.NewOpenAIProvider(conversation.OpenAIProviderConfig{
-			BaseURL: record.OpenAI.BaseURL,
-			Model:   record.OpenAI.Model,
-			APIKey:  record.OpenAI.APIKeySecret,
+		return conversation.NewClaudeCodeProvider(conversation.ClaudeCodeProviderConfig{
+			Command: record.Claude.Command,
+			Model:   record.Claude.Model,
 		}), nil
-	case agent.ProviderKindProxy:
-		if record.Proxy == nil {
-			return nil, fmt.Errorf("%w: proxy settings are required", agent.ErrProviderInvalidConfig)
-		}
-		return aiproxy.NewProvider(aiproxy.Config{
-			Model:    record.Proxy.Model,
-			Channels: record.Proxy.Channels,
-		})
 	default:
 		return nil, fmt.Errorf("%w: %s", agent.ErrProviderKindUnsupported, record.Kind)
 	}
@@ -76,17 +58,13 @@ func (r *Runtime) resolveConversationProvider() (conversation.Provider, error) {
 
 func providerChatModels(record agent.ProviderRecord) []string {
 	switch record.Kind {
-	case agent.ProviderKindOllama:
-		if record.Ollama != nil {
-			return append([]string(nil), record.Ollama.ChatModels...)
-		}
 	case agent.ProviderKindCodex:
 		if record.Codex != nil {
 			return append([]string(nil), record.Codex.ChatModels...)
 		}
-	case agent.ProviderKindOpenAI:
-		if record.OpenAI != nil {
-			return append([]string(nil), record.OpenAI.ChatModels...)
+	case agent.ProviderKindClaude:
+		if record.Claude != nil {
+			return append([]string(nil), record.Claude.ChatModels...)
 		}
 	}
 	return nil
@@ -120,33 +98,23 @@ func applyConversationModelOverride(
 
 	overridden := record
 	switch record.Kind {
-	case agent.ProviderKindOllama:
-		if record.Ollama == nil {
-			return agent.ProviderRecord{}, "", fmt.Errorf("%w: ollama settings are required", agent.ErrProviderInvalidConfig)
-		}
-		overridden.Ollama = &agent.OllamaProviderSettings{
-			BaseURL:    record.Ollama.BaseURL,
-			Model:      model,
-			ChatModels: append([]string(nil), record.Ollama.ChatModels...),
-		}
 	case agent.ProviderKindCodex:
 		if record.Codex == nil {
 			return agent.ProviderRecord{}, "", fmt.Errorf("%w: codex settings are required", agent.ErrProviderInvalidConfig)
 		}
 		overridden.Codex = &agent.CodexProviderSettings{
-			Model:        model,
-			ChatModels:   append([]string(nil), record.Codex.ChatModels...),
-			AuthFilePath: record.Codex.AuthFilePath,
+			Command:    record.Codex.Command,
+			Model:      model,
+			ChatModels: append([]string(nil), record.Codex.ChatModels...),
 		}
-	case agent.ProviderKindOpenAI:
-		if record.OpenAI == nil {
-			return agent.ProviderRecord{}, "", fmt.Errorf("%w: openai settings are required", agent.ErrProviderInvalidConfig)
+	case agent.ProviderKindClaude:
+		if record.Claude == nil {
+			return agent.ProviderRecord{}, "", fmt.Errorf("%w: claude settings are required", agent.ErrProviderInvalidConfig)
 		}
-		overridden.OpenAI = &agent.OpenAIProviderSettings{
-			BaseURL:      record.OpenAI.BaseURL,
-			Model:        model,
-			ChatModels:   append([]string(nil), record.OpenAI.ChatModels...),
-			APIKeySecret: record.OpenAI.APIKeySecret,
+		overridden.Claude = &agent.ClaudeProviderSettings{
+			Command:    record.Claude.Command,
+			Model:      model,
+			ChatModels: append([]string(nil), record.Claude.ChatModels...),
 		}
 	default:
 		return agent.ProviderRecord{}, "", fmt.Errorf(

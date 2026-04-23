@@ -85,22 +85,22 @@ function createProviderCatalogFetchResponse(chatModels: string[] = ['stub-model'
       providers: [
         {
           id: 'provider-stub',
-          kind: 'openai',
-          display_name: 'Stub OpenAI',
+          kind: 'codex',
+          display_name: 'Stub Codex CLI',
           enabled: true,
           active: true,
-          openai: {
-            base_url: 'http://stub',
+          codex: {
+            command: 'codex',
             model: 'stub-model',
             chat_models: chatModels,
-            has_api_key: true,
+            status_state: 'ready',
           },
           created_at: '2026-04-21T10:00:00Z',
           updated_at: '2026-04-21T10:00:00Z',
         },
       ],
       active_provider_id: 'provider-stub',
-      supported_kinds: ['ollama', 'codex', 'openai', 'proxy'],
+      supported_kinds: ['codex', 'claude'],
     }),
   }
 }

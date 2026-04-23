@@ -353,8 +353,10 @@ Confirmable boundaries:
   - a full frontend reload still loses pending retry context because this slice does not add persistence
 - Capability-removing modes such as `secure` can still forbid `/run` entirely. In that case the AI command path is denied rather than approval-gated.
 - The AI panel footer now includes a TideTerm-shaped composer. It still maps a small set of explicit runtime-backed intents such as terminal inspection, tab listing, widget listing, active-tab lookup, and terminal interrupt to the tool/runtime path, but all other free-text prompts now go through the real backend conversation route.
-- The conversation backend currently uses Ollama over HTTP with non-streaming chat completions. Assistant responses are real provider outputs, not local placeholders.
-- Conversation persistence remains full-transcript, but provider requests are now bounded to a recent tail before being sent to Ollama.
+- The conversation backend currently resolves active providers from backend-owned agent config and supports only local CLI providers:
+  - Codex CLI through `codex exec`
+  - Claude Code CLI through `claude -p`
+- Conversation persistence remains full-transcript, but provider requests are bounded to a recent tail before being sent to the active CLI provider.
 - The current provider request budget is deterministic and backend-owned:
   - `RTERM_CONVERSATION_MAX_MESSAGES` default `24`
   - `RTERM_CONVERSATION_MAX_CHARS` default `12000`

@@ -14,7 +14,7 @@ describe('agent provider client', () => {
     vi.unstubAllEnvs()
   })
 
-  it('loads the provider catalog from the backend contract', async () => {
+  it('loads the CLI provider catalog from the backend contract', async () => {
     const fetchMock = vi.fn()
     fetchMock
       .mockResolvedValueOnce({
@@ -29,21 +29,23 @@ describe('agent provider client', () => {
         json: async () => ({
           providers: [
             {
-              id: 'ollama-local',
-              kind: 'ollama',
-              display_name: 'Local Ollama',
+              id: 'codex-cli',
+              kind: 'codex',
+              display_name: 'Codex CLI',
               enabled: true,
               active: true,
-              ollama: {
-                base_url: 'http://127.0.0.1:11434/v1',
-                chat_models: ['llama3.2:3b'],
+              codex: {
+                command: 'codex',
+                model: 'gpt-5-codex',
+                chat_models: ['gpt-5-codex'],
+                status_state: 'ready',
               },
               created_at: '2026-04-21T10:00:00Z',
               updated_at: '2026-04-21T10:00:00Z',
             },
           ],
-          active_provider_id: 'ollama-local',
-          supported_kinds: ['ollama', 'codex', 'openai', 'proxy'],
+          active_provider_id: 'codex-cli',
+          supported_kinds: ['codex', 'claude'],
         }),
       })
     vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
@@ -53,26 +55,28 @@ describe('agent provider client', () => {
     await expect(fetchAgentProviderCatalog()).resolves.toEqual({
       providers: [
         {
-          id: 'ollama-local',
-          kind: 'ollama',
-          display_name: 'Local Ollama',
+          id: 'codex-cli',
+          kind: 'codex',
+          display_name: 'Codex CLI',
           enabled: true,
           active: true,
-          ollama: {
-            base_url: 'http://127.0.0.1:11434/v1',
-            chat_models: ['llama3.2:3b'],
+          codex: {
+            command: 'codex',
+            model: 'gpt-5-codex',
+            chat_models: ['gpt-5-codex'],
+            status_state: 'ready',
           },
           created_at: '2026-04-21T10:00:00Z',
           updated_at: '2026-04-21T10:00:00Z',
         },
       ],
-      active_provider_id: 'ollama-local',
-      supported_kinds: ['ollama', 'codex', 'openai', 'proxy'],
+      active_provider_id: 'codex-cli',
+      supported_kinds: ['codex', 'claude'],
     })
     expect(fetchMock.mock.calls[1]?.[0]).toBe('http://127.0.0.1:8090/api/v1/agent/providers')
   })
 
-  it('patches provider settings through the provider route', async () => {
+  it('patches CLI provider settings through the provider route', async () => {
     const fetchMock = vi.fn()
     fetchMock
       .mockResolvedValueOnce({
@@ -87,30 +91,23 @@ describe('agent provider client', () => {
         json: async () => ({
           provider: {
             id: 'provider-1',
-            kind: 'proxy',
-            display_name: 'Proxy',
+            kind: 'claude',
+            display_name: 'Claude Code CLI',
             enabled: true,
             active: false,
-            proxy: {
-              model: 'assistant-default',
-              channels: [
-                {
-                  id: 'codex-primary',
-                  name: 'Codex EU',
-                  service_type: 'openai',
-                  base_url: 'https://example.eu/v1',
-                  key_count: 1,
-                  enabled_key_count: 1,
-                },
-              ],
+            claude: {
+              command: 'claude',
+              model: 'sonnet',
+              chat_models: ['sonnet', 'opus'],
+              status_state: 'ready',
             },
             created_at: '2026-04-21T10:00:00Z',
             updated_at: '2026-04-21T11:00:00Z',
           },
           providers: {
             providers: [],
-            active_provider_id: 'ollama-local',
-            supported_kinds: ['ollama', 'codex', 'openai', 'proxy'],
+            active_provider_id: 'codex-cli',
+            supported_kinds: ['codex', 'claude'],
           },
         }),
       })
@@ -119,8 +116,8 @@ describe('agent provider client', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     await updateAgentProvider('provider-1', {
-      openai: {
-        chat_models: ['gpt-5', 'gpt-5-mini'],
+      claude: {
+        chat_models: ['sonnet', 'opus'],
       },
     })
 
@@ -129,13 +126,13 @@ describe('agent provider client', () => {
       method: 'PATCH',
     })
     expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({
-      openai: {
-        chat_models: ['gpt-5', 'gpt-5-mini'],
+      claude: {
+        chat_models: ['sonnet', 'opus'],
       },
     })
   })
 
-  it('loads provider models through the discovery route', async () => {
+  it('loads codex CLI models through the discovery route', async () => {
     const fetchMock = vi.fn()
     fetchMock
       .mockResolvedValueOnce({
@@ -159,7 +156,8 @@ describe('agent provider client', () => {
       discoverAgentProviderModels({
         kind: 'codex',
         codex: {
-          auth_file_path: '~/.codex/auth.json',
+          command: 'codex',
+          model: 'gpt-5-codex',
         },
       }),
     ).resolves.toEqual({
@@ -173,12 +171,13 @@ describe('agent provider client', () => {
     expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({
       kind: 'codex',
       codex: {
-        auth_file_path: '~/.codex/auth.json',
+        command: 'codex',
+        model: 'gpt-5-codex',
       },
     })
   })
 
-  it('loads ollama models through the discovery route', async () => {
+  it('loads claude CLI models through the discovery route', async () => {
     const fetchMock = vi.fn()
     fetchMock
       .mockResolvedValueOnce({
@@ -191,7 +190,7 @@ describe('agent provider client', () => {
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          models: ['llama3.2:3b', 'qwen3:8b'],
+          models: ['sonnet', 'opus'],
         }),
       })
     vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
@@ -200,19 +199,21 @@ describe('agent provider client', () => {
 
     await expect(
       discoverAgentProviderModels({
-        kind: 'ollama',
-        ollama: {
-          base_url: 'http://127.0.0.1:11434',
+        kind: 'claude',
+        claude: {
+          command: 'claude',
+          model: 'sonnet',
         },
       }),
     ).resolves.toEqual({
-      models: ['llama3.2:3b', 'qwen3:8b'],
+      models: ['sonnet', 'opus'],
     })
 
     expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({
-      kind: 'ollama',
-      ollama: {
-        base_url: 'http://127.0.0.1:11434',
+      kind: 'claude',
+      claude: {
+        command: 'claude',
+        model: 'sonnet',
       },
     })
   })

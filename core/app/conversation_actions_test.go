@@ -2,13 +2,9 @@ package app
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"testing"
 
@@ -187,11 +183,10 @@ func TestSubmitConversationPromptResolvesActiveProviderFromBackendConfig(t *test
 		t.Fatalf("agent store: %v", err)
 	}
 	created, _, err := agentStore.CreateProvider(agent.CreateProviderInput{
-		Kind: agent.ProviderKindOpenAI,
-		OpenAI: &agent.CreateOpenAIProviderInput{
-			BaseURL: "https://placeholder.invalid/v1",
-			Model:   "gpt-4o-mini",
-			APIKey:  "sk-openai-test",
+		Kind: agent.ProviderKindClaude,
+		Claude: &agent.CreateClaudeProviderInput{
+			Command: "claude",
+			Model:   "sonnet",
 		},
 	})
 	if err != nil {
@@ -218,27 +213,9 @@ func TestSubmitConversationPromptResolvesActiveProviderFromBackendConfig(t *test
 		t.Fatalf("conversation service: %v", err)
 	}
 
-	var seenAuth string
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/chat/completions" {
-			t.Fatalf("unexpected path: %s", r.URL.Path)
-		}
-		seenAuth = r.Header.Get("Authorization")
-		var payload map[string]any
-		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-			t.Fatalf("decode request: %v", err)
-		}
-		if payload["stream"] == true {
-			t.Fatalf("expected non-stream request, got %#v", payload)
-		}
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"model": "gpt-4o-mini",
-			"choices": []map[string]any{
-				{"message": map[string]any{"content": "openai reply"}},
-			},
-		})
-	}))
-	defer server.Close()
+	recordingProvider := &recordingConversationProvider{
+		info: conversation.ProviderInfo{Kind: "claude", Model: "sonnet"},
+	}
 
 	runtime := &Runtime{
 		RepoRoot:     "/repo",
@@ -250,14 +227,10 @@ func TestSubmitConversationPromptResolvesActiveProviderFromBackendConfig(t *test
 		Policy:       policyStore,
 		Audit:        auditLog,
 		ConversationProviderFactory: func(record agent.ProviderRecord) (conversation.Provider, error) {
-			if record.OpenAI == nil {
-				t.Fatalf("expected openai record, got %#v", record)
+			if record.Claude == nil {
+				t.Fatalf("expected claude record, got %#v", record)
 			}
-			return conversation.NewOpenAIProvider(conversation.OpenAIProviderConfig{
-				BaseURL: server.URL,
-				Model:   record.OpenAI.Model,
-				APIKey:  record.OpenAI.APIKeySecret,
-			}), nil
+			return recordingProvider, nil
 		},
 	}
 
@@ -268,16 +241,11 @@ func TestSubmitConversationPromptResolvesActiveProviderFromBackendConfig(t *test
 	if err != nil {
 		t.Fatalf("SubmitConversationPrompt error: %v", err)
 	}
-	if seenAuth != "Bearer sk-openai-test" {
-		t.Fatalf("unexpected auth header: %q", seenAuth)
+	if result.ProviderInfo.Kind != "claude" {
+		t.Fatalf("expected claude provider info, got %#v", result.ProviderInfo)
 	}
-	if result.ProviderInfo.Kind != "openai" {
-		t.Fatalf("expected openai provider info, got %#v", result.ProviderInfo)
-	}
-	if !slices.ContainsFunc(result.Snapshot.Messages, func(message conversation.Message) bool {
-		return message.Role == conversation.RoleAssistant && message.Provider == "openai"
-	}) {
-		t.Fatalf("expected openai assistant message, got %#v", result.Snapshot.Messages)
+	if recordingProvider.request.Messages[len(recordingProvider.request.Messages)-1].Content != "hello" {
+		t.Fatalf("expected provider request through configured active provider, got %#v", recordingProvider.request)
 	}
 }
 
@@ -290,11 +258,10 @@ func TestStreamConversationPromptUsesConfiguredActiveProvider(t *testing.T) {
 		t.Fatalf("agent store: %v", err)
 	}
 	created, _, err := agentStore.CreateProvider(agent.CreateProviderInput{
-		Kind: agent.ProviderKindOpenAI,
-		OpenAI: &agent.CreateOpenAIProviderInput{
-			BaseURL: "https://placeholder.invalid/v1",
-			Model:   "gpt-4o-mini",
-			APIKey:  "sk-openai-test",
+		Kind: agent.ProviderKindCodex,
+		Codex: &agent.CreateCodexProviderInput{
+			Command: "codex",
+			Model:   "gpt-5-codex",
 		},
 	})
 	if err != nil {
@@ -321,38 +288,9 @@ func TestStreamConversationPromptUsesConfiguredActiveProvider(t *testing.T) {
 		t.Fatalf("conversation service: %v", err)
 	}
 
-	var seenStream bool
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/chat/completions" {
-			t.Fatalf("unexpected path: %s", r.URL.Path)
-		}
-		var payload struct {
-			Stream bool `json:"stream"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-			t.Fatalf("decode request: %v", err)
-		}
-		seenStream = payload.Stream
-		flusher, ok := w.(http.Flusher)
-		if !ok {
-			t.Fatal("expected flusher")
-		}
-		w.Header().Set("Content-Type", "text/event-stream")
-		for _, line := range []string{
-			`data: {"model":"gpt-4o-mini","choices":[{"delta":{"content":"hello "}}]}`,
-			``,
-			`data: {"model":"gpt-4o-mini","choices":[{"delta":{"content":"world"}}]}`,
-			``,
-			`data: [DONE]`,
-			``,
-		} {
-			if _, err := w.Write([]byte(line + "\n")); err != nil {
-				t.Fatalf("write chunk: %v", err)
-			}
-			flusher.Flush()
-		}
-	}))
-	defer server.Close()
+	recordingProvider := &recordingConversationProvider{
+		info: conversation.ProviderInfo{Kind: "codex", Model: "gpt-5-codex"},
+	}
 
 	runtime := &Runtime{
 		RepoRoot:     "/repo",
@@ -364,11 +302,10 @@ func TestStreamConversationPromptUsesConfiguredActiveProvider(t *testing.T) {
 		Policy:       policyStore,
 		Audit:        auditLog,
 		ConversationProviderFactory: func(record agent.ProviderRecord) (conversation.Provider, error) {
-			return conversation.NewOpenAIProvider(conversation.OpenAIProviderConfig{
-				BaseURL: server.URL,
-				Model:   record.OpenAI.Model,
-				APIKey:  record.OpenAI.APIKeySecret,
-			}), nil
+			if record.Codex == nil {
+				t.Fatalf("expected codex record, got %#v", record)
+			}
+			return recordingProvider, nil
 		},
 	}
 
@@ -383,13 +320,10 @@ func TestStreamConversationPromptUsesConfiguredActiveProvider(t *testing.T) {
 	if err != nil {
 		t.Fatalf("StreamConversationPrompt error: %v", err)
 	}
-	if !seenStream {
-		t.Fatal("expected streaming request")
-	}
-	if len(events) != 4 || events[0].Type != conversation.StreamEventMessageStart || events[1].Type != conversation.StreamEventTextDelta || events[3].Type != conversation.StreamEventMessageComplete {
+	if len(events) != 3 || events[0].Type != conversation.StreamEventMessageStart || events[1].Type != conversation.StreamEventTextDelta || events[2].Type != conversation.StreamEventMessageComplete {
 		t.Fatalf("unexpected events: %#v", events)
 	}
-	if result.ProviderInfo.Kind != "openai" || result.Assistant.Content != "hello world" {
+	if result.ProviderInfo.Kind != "codex" || result.Assistant.Content != "assistant reply" {
 		t.Fatalf("unexpected stream result: %#v", result)
 	}
 }
@@ -403,12 +337,11 @@ func TestSubmitConversationPromptAppliesSelectedModelOverride(t *testing.T) {
 		t.Fatalf("agent store: %v", err)
 	}
 	created, _, err := agentStore.CreateProvider(agent.CreateProviderInput{
-		Kind: agent.ProviderKindOpenAI,
-		OpenAI: &agent.CreateOpenAIProviderInput{
-			BaseURL:    "https://placeholder.invalid/v1",
-			Model:      "gpt-5",
-			ChatModels: []string{"gpt-5", "gpt-5-mini"},
-			APIKey:     "sk-openai-test",
+		Kind: agent.ProviderKindCodex,
+		Codex: &agent.CreateCodexProviderInput{
+			Command:    "codex",
+			Model:      "gpt-5-codex",
+			ChatModels: []string{"gpt-5-codex", "gpt-5.4"},
 		},
 	})
 	if err != nil {
@@ -447,7 +380,7 @@ func TestSubmitConversationPromptAppliesSelectedModelOverride(t *testing.T) {
 		Policy:       policyStore,
 		Audit:        auditLog,
 		ConversationProviderFactory: func(record agent.ProviderRecord) (conversation.Provider, error) {
-			seenConfiguredModel = record.OpenAI.Model
+			seenConfiguredModel = record.Codex.Model
 			return recordingProvider, nil
 		},
 	}
@@ -455,17 +388,17 @@ func TestSubmitConversationPromptAppliesSelectedModelOverride(t *testing.T) {
 	if _, err := runtime.SubmitConversationPrompt(
 		context.Background(),
 		"hello",
-		"gpt-5-mini",
+		"gpt-5.4",
 		ConversationContext{WorkspaceID: "ws-default", RepoRoot: "/repo"},
 		nil,
 	); err != nil {
 		t.Fatalf("SubmitConversationPrompt error: %v", err)
 	}
 
-	if seenConfiguredModel != "gpt-5-mini" {
+	if seenConfiguredModel != "gpt-5.4" {
 		t.Fatalf("expected selected model in provider record, got %q", seenConfiguredModel)
 	}
-	if recordingProvider.request.Model != "gpt-5-mini" {
+	if recordingProvider.request.Model != "gpt-5.4" {
 		t.Fatalf("expected selected model in provider request, got %#v", recordingProvider.request)
 	}
 }
@@ -479,12 +412,11 @@ func TestSubmitConversationPromptRejectsUnavailableSelectedModel(t *testing.T) {
 		t.Fatalf("agent store: %v", err)
 	}
 	created, _, err := agentStore.CreateProvider(agent.CreateProviderInput{
-		Kind: agent.ProviderKindOpenAI,
-		OpenAI: &agent.CreateOpenAIProviderInput{
-			BaseURL:    "https://placeholder.invalid/v1",
-			Model:      "gpt-5",
-			ChatModels: []string{"gpt-5"},
-			APIKey:     "sk-openai-test",
+		Kind: agent.ProviderKindCodex,
+		Codex: &agent.CreateCodexProviderInput{
+			Command:    "codex",
+			Model:      "gpt-5-codex",
+			ChatModels: []string{"gpt-5-codex"},
 		},
 	})
 	if err != nil {
@@ -528,7 +460,7 @@ func TestSubmitConversationPromptRejectsUnavailableSelectedModel(t *testing.T) {
 	_, err = runtime.SubmitConversationPrompt(
 		context.Background(),
 		"hello",
-		"gpt-5-mini",
+		"gpt-5.4",
 		ConversationContext{WorkspaceID: "ws-default", RepoRoot: "/repo"},
 		nil,
 	)
@@ -539,9 +471,13 @@ func TestSubmitConversationPromptRejectsUnavailableSelectedModel(t *testing.T) {
 
 type recordingConversationProvider struct {
 	request conversation.CompletionRequest
+	info    conversation.ProviderInfo
 }
 
 func (p *recordingConversationProvider) Info() conversation.ProviderInfo {
+	if p.info.Kind != "" {
+		return p.info
+	}
 	return conversation.ProviderInfo{
 		Kind:      "stub",
 		BaseURL:   "http://stub",
