@@ -5,23 +5,8 @@ import { useEffect, useState } from 'react'
 import { useTerminalSession } from '@/features/terminal/model/use-terminal-session'
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { DockviewTabChrome, IconButton, TerminalStatusHeader } from '@/shared/ui/components'
+import { terminalDockviewTabCloseButtonStyle } from '@/widgets/terminal/terminal-dockview-actions.styles'
 import { closeTerminalPanel, resolveTerminalPanelParams } from '@/widgets/terminal/terminal-panel'
-
-const closeButtonStyle = {
-  width: '28px',
-  minWidth: '28px',
-  height: '28px',
-  minHeight: '28px',
-  padding: 0,
-  border: '1px solid var(--runa-terminal-surface-border, var(--color-border-subtle))',
-  borderRadius: 'var(--radius-sm)',
-  background: 'var(--color-canvas-elevated)',
-  boxShadow: 'none',
-  backdropFilter: 'none',
-  WebkitBackdropFilter: 'none',
-  flex: '0 0 auto',
-  color: 'var(--runa-terminal-text-muted, var(--color-text-muted))',
-}
 
 function formatCompactTerminalPrimaryText(cwd: string, fallbackTitle: string) {
   const trimmedCwd = cwd.trim()
@@ -94,7 +79,7 @@ export function TerminalDockviewTabWidget(props: IDockviewPanelHeaderProps) {
                 onPointerDown={handleClosePointerDown}
                 runaComponent="terminal-tab-close"
                 size="sm"
-                style={closeButtonStyle}
+                style={terminalDockviewTabCloseButtonStyle}
               >
                 <X size={14} strokeWidth={1.8} />
               </IconButton>

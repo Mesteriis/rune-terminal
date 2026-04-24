@@ -30,6 +30,10 @@
     - the body header now renders that identity as an expanded stacked view (`cwd` primary, terminal title secondary), while the Dockview tab header stays compact; both surfaces therefore read from the same session metadata but at different density levels
     - `TerminalToolbar` is now wired to the mounted xterm surface for copy, paste, in-terminal search, and live renderer badge updates
     - the toolbar itself now uses denser grouped control sections (`copy/paste` and `search/clear/jump`) plus a right-aligned utility cluster; when search opens, that search flow takes priority and temporarily replaces the renderer badge instead of competing for the same horizontal space
+    - Dockview-level terminal actions now use the same denser control language as the in-panel toolbar instead of the older elevated button treatment:
+      - terminal group header `add/close` actions are wrapped in a compact grouped shell
+      - terminal tab close uses the same reduced 24px icon-control density
+      - single-tab Dockview right-actions spacing is reduced so the tab/header chrome reads as one compact system
     - the terminal header action slot now exposes a visible restart control backed by `POST /api/v1/terminal/{widgetID}/restart`
     - terminal restart rehydrates the widget-local session state and re-subscribes the SSE output stream instead of leaving the body bound to the pre-restart snapshot
     - Ctrl/Cmd+F inside the terminal still opens search through the xterm key handler, but the same search row is now also reachable through visible toolbar controls
@@ -73,7 +77,10 @@
 - `frontend/src/widgets/terminal/terminal-widget.styles.ts`
 - `frontend/src/widgets/terminal/terminal-widget.test.tsx`
 - `frontend/src/widgets/terminal/terminal-dockview-tab-widget.tsx`
+- `frontend/src/widgets/terminal/terminal-dockview-tab-widget.test.tsx`
 - `frontend/src/widgets/terminal/terminal-dockview-header-actions-widget.tsx`
+- `frontend/src/widgets/terminal/terminal-dockview-header-actions-widget.test.tsx`
+- `frontend/src/widgets/terminal/terminal-dockview-actions.styles.ts`
 - `frontend/src/widgets/panel/dockview-panel-widget.tsx`
 - `frontend/src/widgets/shell/right-action-rail-widget.tsx`
 - `frontend/src/shared/ui/components/terminal-surface.tsx`
@@ -94,6 +101,7 @@
 - `npm --prefix frontend run test -- src/features/terminal/model/use-terminal-session.test.tsx src/widgets/terminal/terminal-widget.test.tsx`
 - `npm --prefix frontend run test -- src/shared/ui/components/terminal-status-header.test.tsx src/widgets/terminal/terminal-widget.test.tsx`
 - `npm --prefix frontend run test -- src/shared/ui/components/terminal-toolbar.test.tsx src/shared/ui/components/accessibility-contracts.test.tsx src/widgets/terminal/terminal-widget.test.tsx`
+- `npm --prefix frontend run test -- src/widgets/terminal/terminal-dockview-tab-widget.test.tsx src/widgets/terminal/terminal-dockview-header-actions-widget.test.tsx`
 - `npm --prefix frontend run test -- src/features/agent/api/client.test.ts src/widgets/ai/ai-panel-widget.test.tsx`
 - `./scripts/go.sh test ./core/terminal ./core/transport/httpapi ./core/app`
 - `npm --prefix frontend run build`

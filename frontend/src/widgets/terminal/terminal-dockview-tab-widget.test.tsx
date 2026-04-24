@@ -94,4 +94,37 @@ describe('TerminalDockviewTabWidget', () => {
     expect(screen.queryByText('Idle')).not.toBeInTheDocument()
     expect(screen.queryByText('zsh')).not.toBeInTheDocument()
   })
+
+  it('shows the compact tab close action only when the group has multiple panels', () => {
+    vi.mocked(useTerminalSession).mockReturnValue({
+      runtimeWidgetId: 'term-side',
+      sessionKey: 'term-side:1',
+      cwd: '~/workspace/app',
+      shellLabel: 'zsh',
+      connectionKind: 'local',
+      sessionState: 'running',
+      canSendInput: true,
+      canInterrupt: true,
+      isLoading: false,
+      isInterrupting: false,
+      isRestarting: false,
+      error: null,
+      statusDetail: null,
+      outputChunks: [],
+      runtimeState: null,
+      interruptSession: vi.fn(async () => undefined),
+      restartSession: vi.fn(async () => undefined),
+      sendInputChunk: vi.fn(async () => undefined),
+    } as ReturnType<typeof useTerminalSession>)
+
+    const { rerender } = render(<TerminalDockviewTabWidget {...(createHeaderProps('panel-1', 2) as never)} />)
+
+    expect(screen.getByRole('button', { name: 'Close terminal tab for Workspace shell' })).toBeInTheDocument()
+
+    rerender(<TerminalDockviewTabWidget {...(createHeaderProps('panel-1', 1) as never)} />)
+
+    expect(
+      screen.queryByRole('button', { name: 'Close terminal tab for Workspace shell' }),
+    ).not.toBeInTheDocument()
+  })
 })

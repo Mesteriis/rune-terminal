@@ -5,6 +5,7 @@ import { Plus, X } from 'lucide-react'
 import { createTerminalTab } from '@/features/terminal/api/client'
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { IconButton } from '@/shared/ui/components'
+import { Box } from '@/shared/ui/primitives'
 import {
   closeTerminalPanel,
   createNextTerminalPanelId,
@@ -12,38 +13,11 @@ import {
   isTerminalPanel,
   resolveTerminalPanelParams,
 } from '@/widgets/terminal/terminal-panel'
-
-const actionsWrapStyle = {
-  display: 'flex',
-  height: 'calc(100% - (var(--padding-widget) / 2))',
-  minHeight: 0,
-  alignItems: 'center',
-  justifyContent: 'flex-end',
-  marginTop: 'calc(var(--padding-widget) / 2)',
-  padding: '0 8px 0 0',
-  gap: 'var(--gap-xs)',
-  border: 'none',
-  borderRadius: 0,
-  background: 'transparent',
-  boxShadow: 'none',
-  backdropFilter: 'none',
-  WebkitBackdropFilter: 'none',
-}
-
-const actionButtonStyle = {
-  width: '28px',
-  minWidth: '28px',
-  height: '28px',
-  minHeight: '28px',
-  padding: 0,
-  border: '1px solid var(--runa-terminal-surface-border, var(--color-border-subtle))',
-  borderRadius: 'var(--radius-sm)',
-  background: 'var(--color-canvas-elevated)',
-  boxShadow: 'none',
-  backdropFilter: 'none',
-  WebkitBackdropFilter: 'none',
-  flex: '0 0 auto',
-}
+import {
+  terminalDockviewActionGroupStyle,
+  terminalDockviewHeaderActionsWrapStyle,
+  terminalDockviewIconButtonStyle,
+} from '@/widgets/terminal/terminal-dockview-actions.styles'
 
 export function TerminalDockviewHeaderActionsWidget(props: IDockviewHeaderActionsProps) {
   if (!props.activePanel) {
@@ -111,30 +85,35 @@ export function TerminalDockviewHeaderActionsWidget(props: IDockviewHeaderAction
 
   return (
     <RunaDomScopeProvider component="terminal-dockview-header-actions-widget" widget={props.activePanel.id}>
-      <div style={actionsWrapStyle}>
-        {terminalPanelParams ? (
+      <Box
+        runaComponent="terminal-dockview-header-actions-wrap"
+        style={terminalDockviewHeaderActionsWrapStyle}
+      >
+        <Box runaComponent="terminal-dockview-header-actions-group" style={terminalDockviewActionGroupStyle}>
+          {terminalPanelParams ? (
+            <IconButton
+              aria-label={`Add terminal tab for ${terminalPanelParams.title}`}
+              onClick={handleAddTerminalTab}
+              onPointerDown={handleAddPointerDown}
+              runaComponent="terminal-group-add"
+              size="sm"
+              style={terminalDockviewIconButtonStyle}
+            >
+              <Plus size={14} strokeWidth={1.8} />
+            </IconButton>
+          ) : null}
           <IconButton
-            aria-label={`Add terminal tab for ${terminalPanelParams.title}`}
-            onClick={handleAddTerminalTab}
-            onPointerDown={handleAddPointerDown}
-            runaComponent="terminal-group-add"
+            aria-label={`Close ${props.activePanel.title ?? props.activePanel.id}`}
+            onClick={handleClosePanel}
+            onPointerDown={handleClosePointerDown}
+            runaComponent="dockview-panel-close"
             size="sm"
-            style={actionButtonStyle}
+            style={terminalDockviewIconButtonStyle}
           >
-            <Plus size={14} strokeWidth={1.8} />
+            <X size={14} strokeWidth={1.8} />
           </IconButton>
-        ) : null}
-        <IconButton
-          aria-label={`Close ${props.activePanel.title ?? props.activePanel.id}`}
-          onClick={handleClosePanel}
-          onPointerDown={handleClosePointerDown}
-          runaComponent="dockview-panel-close"
-          size="sm"
-          style={actionButtonStyle}
-        >
-          <X size={14} strokeWidth={1.8} />
-        </IconButton>
-      </div>
+        </Box>
+      </Box>
     </RunaDomScopeProvider>
   )
 }

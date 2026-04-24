@@ -257,9 +257,9 @@ body {
   flex: 0 0 auto;
   align-items: center;
   justify-content: flex-end;
-  gap: var(--gap-sm);
+  gap: var(--gap-xs);
   min-width: max-content;
-  margin-left: var(--gap-sm);
+  margin-left: var(--gap-xs);
 }
 
 .runa-dockview-theme .dv-popover-anchor {
