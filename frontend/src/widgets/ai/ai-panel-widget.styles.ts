@@ -100,6 +100,7 @@ export const aiHeaderConversationGroupStyle: CSSProperties = {
   alignItems: 'center',
   justifyContent: 'flex-end',
   gap: 'var(--space-xs)',
+  position: 'relative',
 }
 
 export const aiHeaderConversationLabelStyle: CSSProperties = {
@@ -112,25 +113,154 @@ export const aiHeaderConversationLabelStyle: CSSProperties = {
   whiteSpace: 'nowrap',
 }
 
-export const aiHeaderConversationSelectStyle: CSSProperties = {
-  width: 'min(300px, 100%)',
-  minWidth: '180px',
+export const aiHeaderConversationTriggerStyle: CSSProperties = {
+  minWidth: 'unset',
+  width: 'min(320px, 100%)',
   minHeight: '32px',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 'var(--space-sm)',
   padding: '0 var(--space-sm)',
   borderRadius: '10px',
   background: 'color-mix(in srgb, var(--color-surface-shell-header-action) 82%, transparent)',
   borderColor: 'color-mix(in srgb, var(--color-border-strong) 58%, transparent)',
   color: 'var(--color-text-primary)',
-  fontFamily: 'var(--font-family-mono)',
-  fontSize: '12px',
-  lineHeight: '16px',
   boxShadow: 'none',
   backdropFilter: 'none',
   WebkitBackdropFilter: 'none',
 }
 
-export const aiHeaderConversationActionStyle: CSSProperties = {
+export const aiHeaderConversationTriggerLeadingStyle: CSSProperties = {
+  ...aiPlainBlockStyle,
+  flex: 1,
+  minWidth: 0,
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 'var(--space-xs)',
+}
+
+export const aiHeaderConversationSummaryStyle: CSSProperties = {
+  ...aiPlainBlockStyle,
+  flex: 1,
+  minWidth: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'flex-start',
+  gap: '2px',
+}
+
+export const aiHeaderConversationSummaryTitleStyle: CSSProperties = {
+  color: 'var(--color-text-primary)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '12px',
+  lineHeight: '16px',
+  maxWidth: '100%',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+}
+
+export const aiHeaderConversationSummaryMetaStyle: CSSProperties = {
+  color: 'var(--color-text-secondary)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '10px',
+  lineHeight: '14px',
+  maxWidth: '100%',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+}
+
+export const aiHeaderConversationDropdownWrapStyle: CSSProperties = {
+  ...aiPlainBlockStyle,
+  position: 'absolute',
+  top: 'calc(100% + var(--space-xs))',
+  right: 0,
+  width: 'min(360px, calc(100vw - 48px))',
+  zIndex: 'var(--z-modal-widget)',
+}
+
+export const aiHeaderConversationDropdownStyle: CSSProperties = {
+  width: '100%',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 'var(--space-sm)',
+  padding: 'var(--space-sm)',
+  borderRadius: '14px',
+  background: 'color-mix(in srgb, var(--color-surface-shell-header) 90%, var(--color-canvas-elevated))',
+  borderColor: 'var(--color-border-strong)',
+  boxShadow: 'var(--shadow-glass-panel)',
+  backdropFilter: 'var(--blur-glass-md)',
+  WebkitBackdropFilter: 'var(--blur-glass-md)',
+}
+
+export const aiHeaderConversationDropdownHeaderStyle: CSSProperties = {
+  ...aiPlainBlockStyle,
+  width: '100%',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 'var(--space-sm)',
+}
+
+export const aiHeaderConversationMenuSummaryStyle: CSSProperties = {
+  ...aiPlainBlockStyle,
+  flex: 1,
+  minWidth: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '2px',
+}
+
+export const aiHeaderConversationMenuMetaStyle: CSSProperties = {
+  color: 'var(--color-text-secondary)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '10px',
+  lineHeight: '14px',
+}
+
+export const aiHeaderConversationMenuListStyle: CSSProperties = {
+  ...aiPlainBlockStyle,
+  width: '100%',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '6px',
+  maxHeight: '280px',
+  overflowY: 'auto',
+}
+
+export const aiHeaderConversationMenuOptionStyle: CSSProperties = {
   minWidth: 'unset',
+  width: '100%',
+  minHeight: '48px',
+  justifyContent: 'flex-start',
+  padding: 'var(--space-sm)',
+  borderRadius: '12px',
+  borderColor: 'color-mix(in srgb, var(--color-border-strong) 58%, transparent)',
+  background: 'color-mix(in srgb, var(--color-surface-shell-header-action) 74%, transparent)',
+  color: 'var(--color-text-primary)',
+  boxShadow: 'none',
+  textAlign: 'left',
+}
+
+export const aiHeaderConversationMenuOptionActiveStyle: CSSProperties = {
+  background:
+    'color-mix(in srgb, var(--color-accent-emerald-soft) 26%, var(--color-surface-shell-header-action))',
+  borderColor: 'color-mix(in srgb, var(--color-accent-emerald-soft) 42%, var(--color-border-strong))',
+}
+
+export const aiHeaderConversationMenuOptionLeadingStyle: CSSProperties = {
+  ...aiPlainBlockStyle,
+  width: '100%',
+  minWidth: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'flex-start',
+  gap: '2px',
+}
+
+export const aiHeaderConversationActionStyle: CSSProperties = {
   minHeight: '32px',
   padding: '0 var(--space-sm)',
   borderRadius: '10px',

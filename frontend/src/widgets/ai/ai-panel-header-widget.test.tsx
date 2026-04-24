@@ -35,11 +35,11 @@ describe('AiPanelHeaderWidget', () => {
       />,
     )
 
-    expect(screen.getByRole('combobox', { name: 'Conversation' })).toHaveValue('conv_2')
+    fireEvent.click(screen.getByRole('button', { name: 'Conversation menu' }))
+    expect(screen.getByRole('dialog', { name: 'Conversation navigator' })).toBeInTheDocument()
 
-    fireEvent.change(screen.getByRole('combobox', { name: 'Conversation' }), {
-      target: { value: 'conv_1' },
-    })
+    fireEvent.click(screen.getByRole('option', { name: 'Open conversation Earlier thread' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Conversation menu' }))
     fireEvent.click(screen.getByRole('button', { name: 'Create conversation' }))
 
     expect(onConversationSelect).toHaveBeenCalledWith('conv_1')

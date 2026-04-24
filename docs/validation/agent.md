@@ -7,6 +7,7 @@
 - Scope:
   - DB-backed AI conversations with explicit create/switch lifecycle
   - provider-native CLI session continuity scoped per conversation
+  - shell-visible AI conversation navigator with recent-thread menu over the same backend conversation contract
   - backend-owned agent provider catalog
   - active conversation provider resolution
   - frontend AI/provider settings surfaces
@@ -27,6 +28,7 @@
     - explicit widget-context selection in the composer and `widget_ids` propagation into the stream request body
     - settings-driven keyboard submit behavior: `Enter` newline plus `Ctrl/Cmd+Enter` submit
     - conversation persistence across AI panel reload/reopen with backend conversation switching
+    - shell-visible conversation menu for recent thread selection and `New` creation
     - live Claude provider routing with explicit `auth-required` handling when the local CLI is installed but not logged in
     - `/run printf ...` sending input into the active terminal session without falling back to plain provider chat
 
@@ -37,6 +39,7 @@
   - explicit list/create/activate transport routes
   - messages persisted per conversation
   - provider session metadata persisted per conversation
+  - the AI shell header now projects that contract through a conversation navigator menu with active-thread summary, recent thread list, and `New` creation action
 - CLI-backed provider session continuity is conversation-scoped:
   - `codex` reuses the stored provider-native thread id for the active conversation
   - `claude` reuses the stored session id for the active conversation

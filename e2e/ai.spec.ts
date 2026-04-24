@@ -169,11 +169,12 @@ test('AI sidebar creates and switches backend conversations instead of keeping o
   await page.getByRole('button', { name: 'Toggle AI panel' }).click()
   await expect(page.getByText('AI Rune Assistant')).toBeVisible()
 
-  const conversationSelect = page.locator('select[aria-label="Conversation"]')
-  await expect(conversationSelect).toBeVisible()
+  const conversationMenuButton = page.getByRole('button', { name: 'Conversation menu' })
+  await expect(conversationMenuButton).toBeVisible()
   const createConversationButton = page.getByRole('button', { name: 'Create conversation' })
   const conversationCountBefore = (await fetchAgentConversations(request)).conversations.length
 
+  await conversationMenuButton.click()
   await createConversationButton.click()
 
   await expect
@@ -192,9 +193,9 @@ test('AI sidebar creates and switches backend conversations instead of keeping o
   await page.getByRole('button', { name: 'Toggle AI panel' }).click()
   await expect(page.getByText('AI Rune Assistant')).toBeVisible()
 
-  const reopenedConversationSelect = page.locator('select[aria-label="Conversation"]')
-  await expect(reopenedConversationSelect).toBeVisible()
-  await expect(reopenedConversationSelect).toHaveValue(createdConversationID)
+  const reopenedConversationMenuButton = page.getByRole('button', { name: 'Conversation menu' })
+  await expect(reopenedConversationMenuButton).toBeVisible()
+  await expect(reopenedConversationMenuButton).toContainText('New conversation')
   await expect
     .poll(async () => {
       const conversation = await fetchAgentConversation(request)
@@ -209,7 +210,16 @@ test('AI sidebar creates and switches backend conversations instead of keeping o
     })
 
   if (originalConversationID) {
-    await reopenedConversationSelect.selectOption(originalConversationID)
+    const originalConversationTitle =
+      initialConversations.conversations.find((conversation) => conversation.id === originalConversationID)?.title ||
+      'New conversation'
+
+    await reopenedConversationMenuButton.click()
+    await page
+      .getByRole('option', {
+        name: `Open conversation ${originalConversationTitle}`,
+      })
+      .click()
 
     await expect
       .poll(async () => {

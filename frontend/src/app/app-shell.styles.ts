@@ -88,6 +88,8 @@ export const aiPanelFrameStyle = {
 }
 
 export const aiPanelHeaderStyle = {
+  position: 'relative' as const,
+  zIndex: 'var(--z-floating)',
   flex: '0 0 auto',
   height: 'auto',
   minHeight: '44px',
