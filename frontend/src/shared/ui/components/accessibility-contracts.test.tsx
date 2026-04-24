@@ -72,6 +72,7 @@ describe('frontend accessibility contracts', () => {
     )
 
     expect(screen.getByRole('textbox', { name: 'Search terminal output' })).toHaveFocus()
+    expect(screen.queryByText('Default')).not.toBeInTheDocument()
   })
 
   it('binds input labels to their corresponding textboxes', () => {

@@ -86,6 +86,7 @@ Current reusable controls:
 - `SearchableMultiSelect` exposes a labelled `listbox` / `option` contract with `aria-selected` instead of toggle-button semantics
 - `RadioGroup` exposes a named `radiogroup` contract through an explicit label id
 - `TerminalToolbar` moves focus into the search field explicitly when the search row opens
+- `TerminalToolbar` keeps search ergonomics ahead of decorative status chrome: when terminal search opens, the search row takes over the trailing utility area and the renderer badge is intentionally hidden until search closes
 - `TerminalStatusHeader` now has direct component coverage for default terminal meta rendering and compact `primaryText` mode without meta badges
 - `TerminalStatusHeader` also supports the expanded body-header density used by `TerminalWidget`: stacked primary/secondary text for the live terminal identity, while compact Dockview tabs stay on the single-line variant
 
