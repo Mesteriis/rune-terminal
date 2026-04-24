@@ -5,6 +5,7 @@ import { Badge, Box, Input, ScrollArea, Surface, Text } from '@/shared/ui/primit
 
 import { CommanderPlainBox } from '@/widgets/commander/commander-plain'
 import {
+  commanderCopyTemplatePresets,
   commanderRenameTemplatePresets,
   formatPendingOperationMessage,
   getCommanderPendingInputAriaLabel,
@@ -82,6 +83,13 @@ export function CommanderPendingBar({
       ? state.pendingOperation
       : null
   const pendingRenameOperation = state.pendingOperation?.kind === 'rename' ? state.pendingOperation : null
+  const pendingCloneTemplateOperation =
+    state.pendingOperation?.kind === 'copy' &&
+    state.pendingOperation.transferMode === 'clone' &&
+    state.pendingOperation.cloneMode === 'batch'
+      ? state.pendingOperation
+      : null
+  const pendingTemplateOperation = pendingRenameOperation ?? pendingCloneTemplateOperation
   const pendingMaskOperation =
     state.pendingOperation &&
     (state.pendingOperation.kind === 'select' ||
@@ -94,7 +102,7 @@ export function CommanderPendingBar({
   const pendingOperationNeedsInput = Boolean(pendingInputOperation)
   const pendingOperationIsBlocking = isPendingOperationBlocking(state)
   const pendingOperationNeedsConflictResolution = isPendingOperationConflictResolution(state)
-  const pendingRenamePreview = pendingRenameOperation?.renamePreview ?? []
+  const pendingRenamePreview = pendingTemplateOperation?.renamePreview ?? []
   const pendingMaskPreview = pendingMaskOperation?.matchPreview ?? []
   const pendingSearchMatchPosition =
     pendingSearchOperation && pendingSearchOperation.matchCount > 0
@@ -315,7 +323,7 @@ export function CommanderPendingBar({
       </CommanderPlainBox>
       {pendingOperationNeedsInput ? (
         <Box runaComponent="commander-pending-rename-supplement" style={commanderPendingSupplementStyle}>
-          {pendingRenameOperation ? (
+          {pendingTemplateOperation ? (
             <>
               <Box runaComponent="commander-pending-rename-help" style={commanderPendingRenameHelpStyle}>
                 <Text runaComponent="commander-pending-rename-help-name" style={{ color: 'inherit' }}>
@@ -358,7 +366,7 @@ export function CommanderPendingBar({
                   [C:10:3:2] step 2
                 </Text>
               </Box>
-              {pendingRenameOperation.renameMode === 'batch' ? (
+              {pendingRenameOperation?.renameMode === 'batch' ? (
                 <Box
                   runaComponent="commander-pending-rename-preset-row"
                   style={commanderPendingRenamePresetRowStyle}
@@ -368,6 +376,23 @@ export function CommanderPendingBar({
                       key={template}
                       onClick={() => commanderActions.setPendingOperationInput(template)}
                       runaComponent={`commander-pending-rename-preset-${template.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
+                      style={commanderPendingRenamePresetStyle}
+                    >
+                      {template}
+                    </Badge>
+                  ))}
+                </Box>
+              ) : null}
+              {pendingCloneTemplateOperation ? (
+                <Box
+                  runaComponent="commander-pending-copy-preset-row"
+                  style={commanderPendingRenamePresetRowStyle}
+                >
+                  {commanderCopyTemplatePresets.map((template) => (
+                    <Badge
+                      key={template}
+                      onClick={() => commanderActions.setPendingOperationInput(template)}
+                      runaComponent={`commander-pending-copy-preset-${template.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
                       style={commanderPendingRenamePresetStyle}
                     >
                       {template}
@@ -418,7 +443,7 @@ export function CommanderPendingBar({
                   ) : null}
                 </Box>
               ) : null}
-              {pendingRenameOperation.duplicateTargetNames.length > 0 ? (
+              {pendingTemplateOperation.duplicateTargetNames.length > 0 ? (
                 <Box
                   runaComponent="commander-pending-rename-duplicate-warning"
                   style={commanderPendingWarningStyle}
@@ -427,7 +452,7 @@ export function CommanderPendingBar({
                     runaComponent="commander-pending-rename-duplicate-warning-text"
                     style={{ color: 'inherit' }}
                   >
-                    Duplicate targets: {pendingRenameOperation.duplicateTargetNames.join(', ')}
+                    Duplicate targets: {pendingTemplateOperation.duplicateTargetNames.join(', ')}
                   </Text>
                 </Box>
               ) : null}

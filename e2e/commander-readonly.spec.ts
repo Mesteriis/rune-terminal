@@ -204,7 +204,7 @@ test('commander copy, rename, move, and delete run through backend mutations', a
     .toEqual([])
 })
 
-test('commander same-pane clone copy and F4 save run through backend file APIs', async ({
+test('commander same-pane batch clone copy and F4 save run through backend file APIs', async ({
   page,
   request,
 }) => {
@@ -212,13 +212,15 @@ test('commander same-pane clone copy and F4 save run through backend file APIs',
   const stamp = Date.now()
   const cloneRootPath = `${bootstrap.repo_root}/tmp/clone-e2e-${stamp}`
   const cloneRootDisplayPath = formatDisplayPath(cloneRootPath, bootstrap.home_dir)
-  const cloneFileName = `README-clone-${stamp}.md`
-  const cloneFilePath = `${cloneRootPath}/${cloneFileName}`
+  const cloneMarkdownName = `README-clone-${stamp}.md`
+  const cloneLicenseName = `LICENSE-clone-${stamp}`
+  const editableCloneName = cloneLicenseName
+  const editableClonePath = `${cloneRootPath}/${editableCloneName}`
   const leftPane = getPane(page, 'left')
-  const rightPane = getPane(page, 'right')
 
   await mkdirViaApi(request, cloneRootPath)
   await copyViaApi(request, `${bootstrap.repo_root}/README.md`, cloneRootPath)
+  await copyViaApi(request, `${bootstrap.repo_root}/LICENSE`, cloneRootPath)
 
   await clearBrowserState(page)
   await page.goto('/')
@@ -226,10 +228,14 @@ test('commander same-pane clone copy and F4 save run through backend file APIs',
   await setPanePath(page, 'right', cloneRootDisplayPath)
 
   await leftPane.root.click()
+  await page.keyboard.press('Home')
+  await page.keyboard.press('Insert')
+  await page.keyboard.press('ArrowDown')
+  await page.keyboard.press('Insert')
   await page.keyboard.press('F5')
-  const copyInput = page.getByRole('textbox', { name: 'Commander copy target name input' })
+  const copyInput = page.getByRole('textbox', { name: 'Commander copy template input' })
   await expect(copyInput).toBeVisible()
-  await copyInput.fill(cloneFileName)
+  await copyInput.fill(`[N]-clone-${stamp}`)
   await copyInput.press('Enter')
 
   await expect
@@ -237,17 +243,18 @@ test('commander same-pane clone copy and F4 save run through backend file APIs',
       const listing = await listDirectoryViaApi(request, cloneRootPath)
       return listing.files?.map((entry) => entry.name) ?? []
     })
-    .toContain(cloneFileName)
+    .toEqual(expect.arrayContaining([cloneMarkdownName, cloneLicenseName]))
 
+  await leftPane.root.click()
   await page.getByRole('button', { name: 'F4 Edit' }).click()
-  const editor = page.getByRole('textbox', { name: `Edit ${cloneFileName}` })
+  const editor = page.getByRole('textbox', { name: `Edit ${editableCloneName}` })
   await expect(editor).toBeVisible()
   await editor.fill(`# clone ${stamp}\n`)
   await page.keyboard.press('Control+S')
 
   await expect
     .poll(async () => {
-      const file = await readFileViaApi(request, cloneFilePath)
+      const file = await readFileViaApi(request, editableClonePath)
       return file.content
     })
     .toBe(`# clone ${stamp}\n`)

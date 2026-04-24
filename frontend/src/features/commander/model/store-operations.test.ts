@@ -82,6 +82,11 @@ function createConfirmationDeps(): ConfirmationDeps {
     moveCommanderEntries: vi.fn(),
     deleteCommanderEntries: vi.fn(),
     mkdirCommanderDirectory: vi.fn(() => ({ entryId: 'mkdir-entry' })),
+    previewCommanderCloneEntries: vi.fn(() => ({
+      preview: [],
+      conflictEntryNames: [],
+      duplicateTargetNames: [],
+    })),
     previewCommanderRenameEntries: vi.fn(() => ({
       preview: [],
       conflictEntryNames: [],
@@ -221,6 +226,7 @@ describe('updateCommanderPendingOperationInput', () => {
       getCommanderFilterMatches: vi.fn(),
       getCommanderSearchMatches: vi.fn(),
       getCommanderResolvedSearchMatchIndex: vi.fn(),
+      previewCommanderCloneEntries: vi.fn(),
       previewCommanderRenameEntries: vi.fn(),
     })
 
@@ -249,6 +255,7 @@ describe('updateCommanderPendingOperationInput', () => {
       getCommanderFilterMatches: vi.fn(),
       getCommanderSearchMatches: vi.fn(),
       getCommanderResolvedSearchMatchIndex: vi.fn(),
+      previewCommanderCloneEntries: vi.fn(),
       previewCommanderRenameEntries: vi.fn(),
     })
 
@@ -281,6 +288,7 @@ describe('updateCommanderPendingOperationInput', () => {
         entryNames: ['terminal.log', 'termrc'],
       })),
       getCommanderResolvedSearchMatchIndex: vi.fn(() => 1),
+      previewCommanderCloneEntries: vi.fn(),
       previewCommanderRenameEntries: vi.fn(),
     })
 
@@ -323,6 +331,7 @@ describe('updateCommanderPendingOperationInput', () => {
       getCommanderFilterMatches: vi.fn(),
       getCommanderSearchMatches: vi.fn(),
       getCommanderResolvedSearchMatchIndex: vi.fn(),
+      previewCommanderCloneEntries: vi.fn(),
       previewCommanderRenameEntries: vi.fn(() => ({
         preview: renamePreview,
         conflictEntryNames: ['new.txt'],
@@ -349,7 +358,10 @@ describe('updateCommanderPendingOperationInput', () => {
       entryIds: ['entry-1'],
       entryNames: ['file.txt'],
       inputValue: 'file-copy.txt',
+      cloneMode: 'single',
       conflictEntryNames: [],
+      duplicateTargetNames: [],
+      renamePreview: [],
       transferMode: 'clone',
     }
     const widgetState = createWidgetState(pendingOperation)
@@ -360,13 +372,75 @@ describe('updateCommanderPendingOperationInput', () => {
       getCommanderFilterMatches: vi.fn(),
       getCommanderSearchMatches: vi.fn(),
       getCommanderResolvedSearchMatchIndex: vi.fn(),
+      previewCommanderCloneEntries: vi.fn(),
       previewCommanderRenameEntries: vi.fn(),
     })
 
     expect(nextWidgetState?.pendingOperation).toMatchObject({
       kind: 'copy',
       inputValue: 'file-copy-2.txt',
+      cloneMode: 'single',
       conflictEntryNames: ['file-copy-2.txt'],
+      duplicateTargetNames: [],
+      transferMode: 'clone',
+    })
+  })
+
+  it('updates same-pane batch clone copy input and recalculates template preview state', () => {
+    const preview: CommanderRenamePreviewItem[] = [
+      {
+        entryId: 'entry-1',
+        currentName: 'file-a.txt',
+        nextName: 'file-a-copy.txt',
+        status: 'ok',
+        conflict: false,
+      },
+      {
+        entryId: 'entry-2',
+        currentName: 'file-b.txt',
+        nextName: 'file-b-copy.txt',
+        status: 'conflict',
+        conflict: true,
+      },
+    ]
+    const pendingOperation: CommanderPendingOperation = {
+      kind: 'copy',
+      sourcePaneId: 'left',
+      sourcePath: '~/left',
+      targetPaneId: 'left',
+      targetPath: '~/left',
+      entryIds: ['entry-1', 'entry-2'],
+      entryNames: ['file-a.txt', 'file-b.txt'],
+      inputValue: '[N]-copy',
+      cloneMode: 'batch',
+      conflictEntryNames: [],
+      duplicateTargetNames: [],
+      renamePreview: [],
+      transferMode: 'clone',
+    }
+    const widgetState = createWidgetState(pendingOperation)
+
+    const nextWidgetState = updateCommanderPendingOperationInput(widgetState, 'widget-1', '[N]-copy', {
+      getCommanderEntryNameConflict: vi.fn(),
+      getCommanderMaskMatches: vi.fn(),
+      getCommanderFilterMatches: vi.fn(),
+      getCommanderSearchMatches: vi.fn(),
+      getCommanderResolvedSearchMatchIndex: vi.fn(),
+      previewCommanderCloneEntries: vi.fn(() => ({
+        preview,
+        conflictEntryNames: ['file-b-copy.txt'],
+        duplicateTargetNames: ['file-a-copy.txt'],
+      })),
+      previewCommanderRenameEntries: vi.fn(),
+    })
+
+    expect(nextWidgetState?.pendingOperation).toMatchObject({
+      kind: 'copy',
+      inputValue: '[N]-copy',
+      cloneMode: 'batch',
+      conflictEntryNames: ['file-b-copy.txt'],
+      duplicateTargetNames: ['file-a-copy.txt'],
+      renamePreview: preview,
       transferMode: 'clone',
     })
   })
@@ -391,6 +465,7 @@ describe('updateCommanderPendingOperationInput', () => {
       getCommanderFilterMatches: vi.fn(),
       getCommanderSearchMatches: vi.fn(),
       getCommanderResolvedSearchMatchIndex: vi.fn(),
+      previewCommanderCloneEntries: vi.fn(),
       previewCommanderRenameEntries: vi.fn(),
     })
 
@@ -585,6 +660,54 @@ describe('requestCommanderWidgetPendingOperation', () => {
       targetPaneId: 'left',
       targetPath: '/repo/tmp',
       inputValue: 'README-copy.md',
+      cloneMode: 'single',
+      transferMode: 'clone',
+    })
+  })
+
+  it('creates a same-pane batch clone copy operation with a template preview', () => {
+    const alphaEntry = {
+      ...sampleFileEntry,
+      id: '/repo/tmp::alpha.md',
+      name: 'alpha.md',
+    }
+    const betaEntry = {
+      ...sampleFileEntry,
+      id: '/repo/tmp::beta.md',
+      name: 'beta.md',
+    }
+    const baseState = createWidgetState(null)
+    const widgetState = {
+      ...baseState,
+      leftPane: {
+        ...baseState.leftPane,
+        path: '/repo/tmp',
+        directoryEntries: [alphaEntry, betaEntry],
+        entries: [alphaEntry, betaEntry],
+        cursorEntryId: alphaEntry.id,
+        selectedIds: [alphaEntry.id, betaEntry.id],
+      },
+      rightPane: {
+        ...baseState.rightPane,
+        path: '/repo/tmp',
+        directoryEntries: [alphaEntry, betaEntry],
+        entries: [alphaEntry, betaEntry],
+      },
+    } satisfies CommanderWidgetRuntimeState
+
+    expect(createPendingOperation(widgetState, 'copy')).toMatchObject({
+      kind: 'copy',
+      sourcePaneId: 'left',
+      targetPaneId: 'left',
+      targetPath: '/repo/tmp',
+      inputValue: '[N]-copy',
+      cloneMode: 'batch',
+      conflictEntryNames: [],
+      duplicateTargetNames: [],
+      renamePreview: [
+        expect.objectContaining({ currentName: 'alpha.md', nextName: 'alpha-copy.md', status: 'ok' }),
+        expect.objectContaining({ currentName: 'beta.md', nextName: 'beta-copy.md', status: 'ok' }),
+      ],
       transferMode: 'clone',
     })
   })

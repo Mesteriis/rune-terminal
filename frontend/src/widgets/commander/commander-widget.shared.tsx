@@ -26,6 +26,8 @@ export const commanderRenameTemplatePresets = [
   '[C:10:3]',
 ] as const
 
+export const commanderCopyTemplatePresets = ['[N]-copy', '[N]-copy-[C:2]', '[F]-copy'] as const
+
 export type CommanderPathSuggestion = {
   displayPath: string
   path: string
@@ -230,15 +232,34 @@ export function formatPendingOperationMessage(state: CommanderWidgetViewState) {
         const targetName = pendingOperation.inputValue.trim()
 
         if (!targetName) {
-          return `Copy target name is required in ${pendingOperation.sourcePath}`
+          return pendingOperation.cloneMode === 'batch'
+            ? `Copy template is required in ${pendingOperation.sourcePath}`
+            : `Copy target name is required in ${pendingOperation.sourcePath}`
         }
 
-        if (targetName === pendingOperation.entryNames[0]) {
+        if (pendingOperation.cloneMode === 'single' && targetName === pendingOperation.entryNames[0]) {
           return `Copy target name must differ from ${pendingOperation.entryNames[0]}`
         }
 
+        if (pendingOperation.duplicateTargetNames?.length) {
+          return `Template creates duplicate names in ${pendingOperation.sourcePath}`
+        }
+
+        if (
+          pendingOperation.cloneMode === 'batch' &&
+          pendingOperation.renamePreview.some((previewItem) => previewItem.status === 'invalid')
+        ) {
+          return `Template creates invalid names in ${pendingOperation.sourcePath}`
+        }
+
         if (pendingOperation.conflictEntryNames?.length) {
-          return `Conflict: ${pendingOperation.conflictEntryNames[0]} already exists in ${pendingOperation.targetPath}`
+          return pendingOperation.cloneMode === 'batch'
+            ? `Template conflicts with existing entries in ${pendingOperation.targetPath}`
+            : `Conflict: ${pendingOperation.conflictEntryNames[0]} already exists in ${pendingOperation.targetPath}`
+        }
+
+        if (pendingOperation.cloneMode === 'batch') {
+          return `Copy ${selectionLabel} in ${pendingOperation.sourcePath} using template`
         }
 
         return `Copy ${selectionLabel} as ${targetName} in ${pendingOperation.sourcePath}`
@@ -293,7 +314,19 @@ export function isPendingOperationBlocking(state: CommanderWidgetViewState) {
   if (pendingOperation?.kind === 'copy' && pendingOperation.transferMode === 'clone') {
     const targetName = pendingOperation.inputValue.trim()
 
-    return !targetName || targetName === pendingOperation.entryNames[0]
+    if (!targetName) {
+      return true
+    }
+
+    if (pendingOperation.cloneMode === 'batch') {
+      return (
+        pendingOperation.duplicateTargetNames.length > 0 ||
+        pendingOperation.conflictEntryNames.length > 0 ||
+        pendingOperation.renamePreview.some((previewItem) => previewItem.status === 'invalid')
+      )
+    }
+
+    return targetName === pendingOperation.entryNames[0]
   }
 
   return Boolean(
@@ -305,7 +338,10 @@ export function isPendingOperationBlocking(state: CommanderWidgetViewState) {
 export function isPendingOperationConflictResolution(state: CommanderWidgetViewState) {
   return Boolean(
     state.pendingOperation &&
-    (state.pendingOperation.kind === 'copy' || state.pendingOperation.kind === 'move') &&
+    (state.pendingOperation.kind === 'move' ||
+      (state.pendingOperation.kind === 'copy' &&
+        (state.pendingOperation.transferMode !== 'clone' ||
+          state.pendingOperation.cloneMode === 'single'))) &&
     state.pendingOperation.conflictEntryNames.length,
   )
 }
@@ -410,7 +446,9 @@ export function getRowTypeLabel(row: CommanderFileRow) {
 export function getCommanderPendingInputAriaLabel(pendingOperation: CommanderPendingOperation | null) {
   switch (pendingOperation?.kind) {
     case 'copy':
-      return 'Commander copy target name input'
+      return pendingOperation.transferMode === 'clone' && pendingOperation.cloneMode === 'batch'
+        ? 'Commander copy template input'
+        : 'Commander copy target name input'
     case 'mkdir':
       return 'Commander directory name input'
     case 'rename':

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   getCommanderConflictingEntryNames,
   getCommanderEntryNameConflict,
+  previewCommanderCloneEntries,
   previewCommanderRenameEntries,
   suggestCommanderCloneName,
 } from '@/features/commander/model/operation-preview'
@@ -142,5 +143,22 @@ describe('operation-preview', () => {
     ])
 
     expect(suggestCommanderCloneName(paneState, '/repo/src::README.md')).toBe('README-copy-3.md')
+  })
+
+  it('builds batch clone previews from the same template grammar as batch rename', () => {
+    const paneState = createPaneState('left', '/repo/src', [{ name: 'README.md' }, { name: 'notes.txt' }])
+
+    const preview = previewCommanderCloneEntries(
+      paneState,
+      ['/repo/src::README.md', '/repo/src::notes.txt'],
+      '[N]-copy',
+    )
+
+    expect(preview.duplicateTargetNames).toEqual([])
+    expect(preview.conflictEntryNames).toEqual([])
+    expect(preview.preview).toEqual([
+      expect.objectContaining({ currentName: 'README.md', nextName: 'README-copy.md', status: 'ok' }),
+      expect.objectContaining({ currentName: 'notes.txt', nextName: 'notes-copy.txt', status: 'ok' }),
+    ])
   })
 })

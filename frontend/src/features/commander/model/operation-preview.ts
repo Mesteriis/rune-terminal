@@ -180,6 +180,14 @@ export function suggestCommanderCloneName(paneState: CommanderPaneRuntimeState, 
   return buildCommanderCloneName(entry, suffixIndex)
 }
 
+export function previewCommanderCloneEntries(
+  paneState: CommanderPaneRuntimeState,
+  entryIds: string[],
+  template: string,
+) {
+  return previewCommanderRenameEntries(paneState, entryIds, template)
+}
+
 export function previewCommanderRenameEntries(
   paneState: CommanderPaneRuntimeState,
   entryIds: string[],

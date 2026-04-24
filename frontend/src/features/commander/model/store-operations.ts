@@ -10,6 +10,7 @@ import {
 import {
   getCommanderConflictingEntryNames,
   getCommanderEntryNameConflict,
+  previewCommanderCloneEntries,
   previewCommanderRenameEntries,
   suggestCommanderCloneName,
 } from '@/features/commander/model/operation-preview'
@@ -42,6 +43,7 @@ type CommanderPendingOperationInputDeps = {
   getCommanderFilterMatches: typeof getCommanderFilterMatches
   getCommanderSearchMatches: typeof getCommanderSearchMatches
   getCommanderResolvedSearchMatchIndex: typeof getCommanderResolvedSearchMatchIndex
+  previewCommanderCloneEntries: typeof previewCommanderCloneEntries
   previewCommanderRenameEntries: typeof previewCommanderRenameEntries
 }
 
@@ -51,6 +53,7 @@ const defaultCommanderPendingOperationInputDeps: CommanderPendingOperationInputD
   getCommanderFilterMatches,
   getCommanderSearchMatches,
   getCommanderResolvedSearchMatchIndex,
+  previewCommanderCloneEntries,
   previewCommanderRenameEntries,
 }
 
@@ -231,6 +234,25 @@ export function updateCommanderPendingOperationInput(
         return null
       }
 
+      if (pendingOperation.cloneMode === 'batch') {
+        const clonePreview = deps.previewCommanderCloneEntries(
+          getPaneState(widgetState, pendingOperation.sourcePaneId),
+          pendingOperation.entryIds,
+          inputValue,
+        )
+
+        return {
+          ...widgetState,
+          pendingOperation: {
+            ...pendingOperation,
+            inputValue,
+            conflictEntryNames: clonePreview.conflictEntryNames,
+            duplicateTargetNames: clonePreview.duplicateTargetNames,
+            renamePreview: clonePreview.preview,
+          },
+        }
+      }
+
       const sourcePane = getPaneState(widgetState, pendingOperation.sourcePaneId)
       const nextName = inputValue.trim()
       const hasConflict =
@@ -244,6 +266,8 @@ export function updateCommanderPendingOperationInput(
           ...pendingOperation,
           inputValue,
           conflictEntryNames: hasConflict ? [nextName] : [],
+          duplicateTargetNames: [],
+          renamePreview: [],
         },
       }
     }
@@ -850,15 +874,32 @@ export function createPendingOperation(
     .map((entry) => entry.name)
 
   if (kind === 'copy' && sourcePane.path === targetPane.path) {
-    if (entryIds.length !== 1) {
-      return null
+    if (entryIds.length === 1) {
+      const cloneName = suggestCommanderCloneName(sourcePane, entryIds[0])
+
+      if (!cloneName) {
+        return null
+      }
+
+      return {
+        kind,
+        sourcePaneId: widgetState.activePane,
+        sourcePath: sourcePane.path,
+        targetPaneId: widgetState.activePane,
+        targetPath: sourcePane.path,
+        entryIds,
+        entryNames,
+        inputValue: cloneName,
+        cloneMode: 'single',
+        conflictEntryNames: [],
+        duplicateTargetNames: [],
+        renamePreview: [],
+        transferMode: 'clone',
+      } satisfies CommanderPendingOperation
     }
 
-    const cloneName = suggestCommanderCloneName(sourcePane, entryIds[0])
-
-    if (!cloneName) {
-      return null
-    }
+    const cloneTemplate = '[N]-copy'
+    const clonePreview = previewCommanderCloneEntries(sourcePane, entryIds, cloneTemplate)
 
     return {
       kind,
@@ -868,8 +909,11 @@ export function createPendingOperation(
       targetPath: sourcePane.path,
       entryIds,
       entryNames,
-      inputValue: cloneName,
-      conflictEntryNames: [],
+      inputValue: cloneTemplate,
+      cloneMode: 'batch',
+      conflictEntryNames: clonePreview.conflictEntryNames,
+      duplicateTargetNames: clonePreview.duplicateTargetNames,
+      renamePreview: clonePreview.preview,
       transferMode: 'clone',
     } satisfies CommanderPendingOperation
   }

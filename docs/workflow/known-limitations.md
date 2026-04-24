@@ -16,11 +16,11 @@ capability.
   `/api/v1/fs/file`, `/api/v1/fs/mkdir`, `/api/v1/fs/copy`,
   `/api/v1/fs/move`, `/api/v1/fs/delete`, `/api/v1/fs/rename`), and the
   active backend path now covers `F2/F3/F4/F5/F6/F7/F8`, including the
-  focused single-entry same-pane clone flow plus backend `F4` save for
+  same-pane clone path for both explicit single-entry targets and
+  template-driven multi-entry batch clones, plus backend `F4` save for
   UTF-8 text files
-- commander still does not claim the full Total Commander same-directory
-  batch clone surface, binary/non-text edit/save, or any terminal env
-  dump exposed to the frontend
+- commander still does not claim binary/non-text edit/save or any
+  terminal env dump exposed to the frontend
 - the frontend has no ESLint / Biome yet — `lint:active` and `lint:all`
   both delegate to `tsc --noEmit`
 

@@ -20,6 +20,7 @@ export type CommanderPendingOperationKind =
   | 'filter'
   | 'search'
 export type CommanderRenameMode = 'single' | 'batch'
+export type CommanderCloneMode = 'single' | 'batch'
 export type CommanderRenamePreviewStatus = 'ok' | 'duplicate' | 'conflict' | 'invalid'
 export type CommanderFileDialogMode = 'view' | 'edit'
 
@@ -47,7 +48,10 @@ type CommanderPendingOperationWithInput<Kind extends CommanderPendingOperationKi
 export type CommanderClonePendingOperation = CommanderPendingOperationWithInput<'copy'> & {
   targetPaneId: CommanderPaneId
   targetPath: string
+  cloneMode: CommanderCloneMode
   conflictEntryNames: string[]
+  duplicateTargetNames: string[]
+  renamePreview: CommanderRenamePreviewItem[]
   transferMode: 'clone'
 }
 

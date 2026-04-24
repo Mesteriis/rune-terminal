@@ -34,8 +34,9 @@ interaction model:
   - `F2` for rename in the active pane
   - `F3` for file view
   - `F4` for text edit/save
-  - `F5` for copy into the opposite pane or single-entry same-pane clone
-    with an explicit target name
+  - `F5` for copy into the opposite pane or same-pane clone
+    (`single` via an explicit target name, `batch` via a name template
+    with preview)
   - `F6` for move into the opposite pane
   - `F7` for create-directory in the active pane
   - `F8` for delete in the active pane
@@ -53,9 +54,9 @@ interaction model:
   - text file read/write for `F4`
 - copy/move overwrite prompts remain widget-local pending-bar UI, but the
   actual overwrite semantics are enforced by typed backend endpoints
-- same-pane clone name suggestion and inline target input remain
-  frontend-local operator tooling, while the actual copy target path is
-  enforced by typed backend endpoints
+- same-pane clone naming remains frontend-local operator tooling
+  (single-name suggestion plus batch-template preview), while the actual
+  copy target paths are enforced by typed backend endpoints
 - rename preview and batch-template expansion remain frontend-local
   operator tooling, while the final rename mutation is backend-owned
 - async transport failure must remain visible in the pane surface; it is
@@ -75,9 +76,6 @@ Positive:
 
 Negative:
 
-- commander still does not claim the full Total Commander same-directory
-  batch clone surface; the current backend path only claims the focused
-  single-entry clone flow with an explicit target name
 - `F4` edit/save is intentionally limited to UTF-8 text files on the
   backend path; binary/non-text edit flows remain out of scope
 - backend mutation slices now need explicit error UX and focused tests

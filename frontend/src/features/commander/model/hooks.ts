@@ -484,15 +484,41 @@ export function useCommanderWidget(widgetId: string) {
         pendingOperation.kind === 'copy'
           ? isCloneCopyOperation(pendingOperation)
             ? await copyCommanderEntriesToPaths(
-                [
-                  {
-                    source_path: sourcePaths[0] ?? '',
-                    target_path: toCommanderEntryPath(
-                      pendingOperation.sourcePath,
-                      pendingOperation.inputValue.trim(),
-                    ),
-                  },
-                ],
+                pendingOperation.cloneMode === 'batch'
+                  ? pendingOperation.renamePreview
+                      .map((previewItem) => {
+                        const sourceIndex = pendingOperation.entryIds.findIndex(
+                          (entryId) => entryId === previewItem.entryId,
+                        )
+                        const sourcePath = sourceIndex === -1 ? null : (sourcePaths[sourceIndex] ?? null)
+                        const nextName = previewItem.nextName.trim()
+
+                        if (!sourcePath || !nextName) {
+                          return null
+                        }
+
+                        return {
+                          source_path: sourcePath,
+                          target_path: toCommanderEntryPath(pendingOperation.sourcePath, nextName),
+                        }
+                      })
+                      .filter(
+                        (
+                          entry,
+                        ): entry is {
+                          source_path: string
+                          target_path: string
+                        } => Boolean(entry),
+                      )
+                  : [
+                      {
+                        source_path: sourcePaths[0] ?? '',
+                        target_path: toCommanderEntryPath(
+                          pendingOperation.sourcePath,
+                          pendingOperation.inputValue.trim(),
+                        ),
+                      },
+                    ],
                 { overwrite },
               )
             : await copyCommanderEntries(sourcePaths, pendingOperation.targetPath, { overwrite })
@@ -896,7 +922,8 @@ export function useCommanderWidget(widgetId: string) {
         if (
           isCloneCopyOperation(pendingOperation) &&
           (!pendingOperation.inputValue.trim() ||
-            pendingOperation.inputValue.trim() === pendingOperation.entryNames[0])
+            (pendingOperation.cloneMode === 'single' &&
+              pendingOperation.inputValue.trim() === pendingOperation.entryNames[0]))
         ) {
           onSetCommanderPaneLoadError({
             widgetId,
