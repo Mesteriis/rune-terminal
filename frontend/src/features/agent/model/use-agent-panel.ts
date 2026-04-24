@@ -2,12 +2,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useUnit } from 'effector-react'
 
 import {
+  activateAgentConversation,
+  createAgentConversation,
   executeAgentTool,
   explainTerminalCommand,
+  fetchAgentConversations,
   fetchAgentConversation,
   streamAgentConversationMessage,
   type AgentConversationMessage,
   type AgentConversationProvider,
+  type AgentConversationSnapshot,
+  type AgentConversationSummary,
   type AgentConversationStreamConnection,
 } from '@/features/agent/api/client'
 import {
@@ -305,6 +310,37 @@ function filterContextWidgetSelection(selectedWidgetIDs: string[], widgetOptions
   return deduplicateWidgetIDs(selectedWidgetIDs).filter((widgetID) => availableWidgetIDs.has(widgetID))
 }
 
+function summaryFromConversationSnapshot(snapshot: AgentConversationSnapshot): AgentConversationSummary {
+  return {
+    id: snapshot.id,
+    title: snapshot.title,
+    created_at: snapshot.created_at,
+    updated_at: snapshot.updated_at,
+    message_count: snapshot.messages.length,
+  }
+}
+
+function sortConversationSummaries(conversations: AgentConversationSummary[]) {
+  return [...conversations].sort((left, right) => {
+    const updatedAtDelta = new Date(right.updated_at).getTime() - new Date(left.updated_at).getTime()
+
+    if (updatedAtDelta !== 0) {
+      return updatedAtDelta
+    }
+
+    return right.id.localeCompare(left.id)
+  })
+}
+
+function upsertConversationSummary(
+  conversations: AgentConversationSummary[],
+  nextConversation: AgentConversationSummary,
+) {
+  const nextConversations = conversations.filter((conversation) => conversation.id !== nextConversation.id)
+  nextConversations.push(nextConversation)
+  return sortConversationSummaries(nextConversations)
+}
+
 export function useAgentPanel(hostId: string, enabled = true) {
   const [activeWidgetHostId, terminalPanelBindings] = useUnit([$activeWidgetHostId, $terminalPanelBindings])
   const [messages, setMessages] = useState<AgentConversationMessage[] | null>(null)
@@ -312,6 +348,8 @@ export function useAgentPanel(hostId: string, enabled = true) {
   const [pendingFlow, setPendingFlow] = useState<PendingInteractionFlow | null>(null)
   const [provider, setProvider] = useState<AgentConversationProvider | null>(null)
   const [providerCatalog, setProviderCatalog] = useState<AgentProviderCatalog | null>(null)
+  const [conversations, setConversations] = useState<AgentConversationSummary[]>([])
+  const [activeConversationID, setActiveConversationID] = useState('')
   const [selectedProviderID, setSelectedProviderID] = useState('')
   const [availableModels, setAvailableModels] = useState<string[]>([])
   const [selectedModel, setSelectedModel] = useState('')
@@ -324,12 +362,14 @@ export function useAgentPanel(hostId: string, enabled = true) {
   const [draft, setDraft] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [isConversationPending, setIsConversationPending] = useState(false)
   const activeStreamRef = useRef<AgentConversationStreamConnection | null>(null)
   const optimisticMessageCounterRef = useRef(0)
   const flowCounterRef = useRef(0)
   const localSortCounterRef = useRef(0)
   const pendingFlowRef = useRef<PendingInteractionFlow | null>(null)
   const submissionNonceRef = useRef(0)
+  const panelStateEpochRef = useRef(0)
   const hasLoadedContextWidgetsRef = useRef(false)
   const hasCustomizedContextWidgetSelectionRef = useRef(false)
 
@@ -337,6 +377,11 @@ export function useAgentPanel(hostId: string, enabled = true) {
     const nextCounter = localSortCounterRef.current
     localSortCounterRef.current += 1
     return Date.now() * 1000 + nextCounter
+  }, [])
+
+  const beginPanelStateEpoch = useCallback(() => {
+    panelStateEpochRef.current += 1
+    return panelStateEpochRef.current
   }, [])
 
   useEffect(() => {
@@ -361,6 +406,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
     }
 
     let cancelled = false
+    const panelStateEpoch = beginPanelStateEpoch()
 
     submissionNonceRef.current += 1
     activeStreamRef.current?.close()
@@ -372,6 +418,8 @@ export function useAgentPanel(hostId: string, enabled = true) {
     setPendingFlow(null)
     setProvider(null)
     setProviderCatalog(null)
+    setConversations([])
+    setActiveConversationID('')
     setSelectedProviderID('')
     setAvailableModels([])
     setSelectedModel('')
@@ -383,15 +431,20 @@ export function useAgentPanel(hostId: string, enabled = true) {
     setLoadError(null)
     setSubmitError(null)
     setIsSubmitting(false)
+    setIsConversationPending(false)
     hasLoadedContextWidgetsRef.current = false
     hasCustomizedContextWidgetSelectionRef.current = false
 
-    void Promise.allSettled([fetchAgentConversation(), fetchAgentProviderCatalog()]).then((results) => {
-      if (cancelled) {
+    void Promise.allSettled([
+      fetchAgentConversation(),
+      fetchAgentProviderCatalog(),
+      fetchAgentConversations(),
+    ]).then((results) => {
+      if (cancelled || panelStateEpochRef.current !== panelStateEpoch) {
         return
       }
 
-      const [conversationResult, providerCatalogResult] = results
+      const [conversationResult, providerCatalogResult, conversationsResult] = results
 
       if (conversationResult.status === 'rejected') {
         setLoadError(
@@ -400,6 +453,17 @@ export function useAgentPanel(hostId: string, enabled = true) {
       } else {
         setMessages(conversationResult.value.messages)
         setProvider(conversationResult.value.provider)
+        setActiveConversationID(conversationResult.value.id)
+      }
+
+      if (conversationsResult.status === 'fulfilled') {
+        setConversations(conversationsResult.value.conversations)
+        setActiveConversationID(
+          (currentConversationID) =>
+            currentConversationID || conversationsResult.value.active_conversation_id || '',
+        )
+      } else if (conversationResult.status === 'fulfilled') {
+        setConversations([summaryFromConversationSnapshot(conversationResult.value)])
       }
 
       if (providerCatalogResult.status === 'fulfilled') {
@@ -429,13 +493,25 @@ export function useAgentPanel(hostId: string, enabled = true) {
       hasCustomizedContextWidgetSelectionRef.current = false
       unblockAiWidget(hostId)
     }
-  }, [enabled, hostId])
+  }, [beginPanelStateEpoch, enabled, hostId])
 
   useEffect(() => {
     setSelectedModel((currentModel) =>
       selectPreferredChatModel(currentModel, provider?.model, availableModels),
     )
   }, [availableModels, provider?.model])
+
+  const clearPendingInteractionFlow = useCallback(() => {
+    pendingFlowRef.current = null
+    setPendingFlow(null)
+  }, [])
+
+  const resetConversationInteractionState = useCallback(() => {
+    pendingFlowRef.current = null
+    setPendingFlow(null)
+    setInteractionMessages([])
+    setSubmitError(null)
+  }, [])
 
   const availableProviders = useMemo(() => providerOptionsFromCatalog(providerCatalog), [providerCatalog])
 
@@ -446,11 +522,16 @@ export function useAgentPanel(hostId: string, enabled = true) {
         return
       }
 
+      const panelStateEpoch = beginPanelStateEpoch()
+
       try {
         setLoadError(null)
         setSubmitError(null)
 
         const nextCatalog = await activateAgentProviderInCatalog(nextProviderID)
+        if (panelStateEpochRef.current !== panelStateEpoch) {
+          return
+        }
         const nextProvider =
           nextCatalog.providers.find((candidate) => candidate.id === nextCatalog.active_provider_id) ?? null
         const nextModels = directProviderChatModels(nextProvider)
@@ -464,13 +545,100 @@ export function useAgentPanel(hostId: string, enabled = true) {
         setSubmitError(getErrorMessage(error, 'Unable to switch the active AI provider.'))
       }
     },
-    [selectedProviderID],
+    [beginPanelStateEpoch, selectedProviderID],
   )
 
-  const clearPendingInteractionFlow = useCallback(() => {
-    pendingFlowRef.current = null
-    setPendingFlow(null)
+  const applyConversationSnapshot = useCallback((snapshot: AgentConversationSnapshot) => {
+    setMessages(snapshot.messages)
+    setProvider(snapshot.provider)
+    setActiveConversationID(snapshot.id)
+    setConversations((currentConversations) =>
+      upsertConversationSummary(currentConversations, summaryFromConversationSnapshot(snapshot)),
+    )
   }, [])
+
+  const refreshConversationList = useCallback(async () => {
+    const conversationList = await fetchAgentConversations()
+    setConversations(conversationList.conversations)
+    setActiveConversationID(conversationList.active_conversation_id || '')
+    return conversationList
+  }, [])
+
+  const switchConversation = useCallback(
+    async (conversationID: string) => {
+      const nextConversationID = conversationID.trim()
+      if (
+        !nextConversationID ||
+        nextConversationID === activeConversationID ||
+        isSubmitting ||
+        isConversationPending
+      ) {
+        return
+      }
+
+      submissionNonceRef.current += 1
+      activeStreamRef.current?.close()
+      activeStreamRef.current = null
+      const panelStateEpoch = beginPanelStateEpoch()
+      setIsConversationPending(true)
+
+      try {
+        const snapshot = await activateAgentConversation(nextConversationID)
+        if (panelStateEpochRef.current !== panelStateEpoch) {
+          return
+        }
+        applyConversationSnapshot(snapshot)
+        resetConversationInteractionState()
+        await refreshConversationList()
+      } catch (error) {
+        setSubmitError(getErrorMessage(error, 'Unable to switch the active conversation.'))
+      } finally {
+        setIsConversationPending(false)
+      }
+    },
+    [
+      activeConversationID,
+      applyConversationSnapshot,
+      beginPanelStateEpoch,
+      isConversationPending,
+      isSubmitting,
+      refreshConversationList,
+      resetConversationInteractionState,
+    ],
+  )
+
+  const createConversation = useCallback(async () => {
+    if (isSubmitting || isConversationPending) {
+      return
+    }
+
+    submissionNonceRef.current += 1
+    activeStreamRef.current?.close()
+    activeStreamRef.current = null
+    const panelStateEpoch = beginPanelStateEpoch()
+    setIsConversationPending(true)
+
+    try {
+      const snapshot = await createAgentConversation()
+      if (panelStateEpochRef.current !== panelStateEpoch) {
+        return
+      }
+      applyConversationSnapshot(snapshot)
+      resetConversationInteractionState()
+      await refreshConversationList()
+    } catch (error) {
+      setSubmitError(getErrorMessage(error, 'Unable to create a new conversation.'))
+    } finally {
+      setIsConversationPending(false)
+    }
+  }, [
+    applyConversationSnapshot,
+    beginPanelStateEpoch,
+    isConversationPending,
+    isSubmitting,
+    refreshConversationList,
+    resetConversationInteractionState,
+  ])
 
   const updateAuditMessageEntries = useCallback(
     (auditMessageID: string, update: Parameters<typeof updateInteractionMessage>[2]) => {
@@ -695,8 +863,8 @@ export function useAgentPanel(hostId: string, enabled = true) {
         widget_id: targetTerminal.runtimeWidgetId,
       })
 
-      setMessages(explainResponse.conversation.messages)
-      setProvider(explainResponse.conversation.provider)
+      applyConversationSnapshot(explainResponse.conversation)
+      await refreshConversationList()
 
       if (explainResponse.provider_error?.trim()) {
         setSubmitError(explainResponse.provider_error.trim())
@@ -704,7 +872,13 @@ export function useAgentPanel(hostId: string, enabled = true) {
 
       return true
     },
-    [activeWidgetHostId, createConversationContext, terminalPanelBindings],
+    [
+      activeWidgetHostId,
+      applyConversationSnapshot,
+      createConversationContext,
+      refreshConversationList,
+      terminalPanelBindings,
+    ],
   )
 
   const runBackendPrompt = useCallback(
@@ -791,6 +965,11 @@ export function useAgentPanel(hostId: string, enabled = true) {
         )
         activeStreamRef.current = connection
         await connection.done
+
+        if (isActiveSubmission()) {
+          const [snapshot] = await Promise.all([fetchAgentConversation(), refreshConversationList()])
+          applyConversationSnapshot(snapshot)
+        }
       } catch (error: unknown) {
         if (!isActiveSubmission()) {
           return
@@ -828,13 +1007,19 @@ export function useAgentPanel(hostId: string, enabled = true) {
         }
       }
     },
-    [hostId, runTerminalPrompt, updateAuditMessageEntries],
+    [
+      applyConversationSnapshot,
+      hostId,
+      refreshConversationList,
+      runTerminalPrompt,
+      updateAuditMessageEntries,
+    ],
   )
 
   const submitDraft = useCallback(async () => {
     const prompt = draft.trim()
 
-    if (!enabled || isSubmitting || pendingFlowRef.current || prompt === '') {
+    if (!enabled || isSubmitting || isConversationPending || pendingFlowRef.current || prompt === '') {
       return
     }
 
@@ -870,7 +1055,16 @@ export function useAgentPanel(hostId: string, enabled = true) {
     )
     pendingFlowRef.current = interactionFlow.flow
     setPendingFlow(interactionFlow.flow)
-  }, [draft, enabled, hostId, isSubmitting, nextLocalSortKey, runBackendPrompt, selectedModel])
+  }, [
+    draft,
+    enabled,
+    hostId,
+    isConversationPending,
+    isSubmitting,
+    nextLocalSortKey,
+    runBackendPrompt,
+    selectedModel,
+  ])
 
   const cancelPendingPlan = useCallback(
     (message: ApprovalMessage) => {
@@ -1006,6 +1200,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
   }, [interactionMessages, loadError, messages, provider, submitError])
 
   return {
+    activeConversationID,
     answerQuestionnaire,
     approvePendingPlan,
     availableProviders,
@@ -1017,7 +1212,10 @@ export function useAgentPanel(hostId: string, enabled = true) {
     activeContextWidgetID: workspaceActiveWidgetID,
     activeContextWidgetOption,
     handleContextOptionsOpen,
+    conversations,
+    createConversation,
     isInteractionPending: pendingFlow != null,
+    isConversationPending,
     isSubmitting,
     isWidgetContextEnabled,
     panelState,
@@ -1029,7 +1227,10 @@ export function useAgentPanel(hostId: string, enabled = true) {
     setIsWidgetContextEnabled,
     setSelectedModel,
     setSelectedContextWidgetIDs: updateSelectedContextWidgetIDs,
+    switchConversation,
     useCurrentContextWidget,
     submitDraft,
   }
 }
+
+export type AgentPanelController = ReturnType<typeof useAgentPanel>

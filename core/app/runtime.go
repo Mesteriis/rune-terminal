@@ -66,15 +66,19 @@ func NewRuntime(repoRoot string, stateDir string) (*Runtime, error) {
 	if err != nil {
 		return nil, err
 	}
-	conversationStore, err := conversation.NewService(paths.ConversationFile, conversation.NewCodexCLIProvider(conversation.CodexCLIProviderConfig{}))
-	if err != nil {
-		return nil, err
-	}
 	executionStore, err := execution.NewService(paths.ExecutionFile)
 	if err != nil {
 		return nil, err
 	}
 	dbConn, err := db.Open(context.Background(), paths.DBFile)
+	if err != nil {
+		return nil, err
+	}
+	conversationStore, err := conversation.NewServiceWithDB(
+		dbConn,
+		paths.ConversationFile,
+		conversation.NewCodexCLIProvider(conversation.CodexCLIProviderConfig{}),
+	)
 	if err != nil {
 		return nil, err
 	}

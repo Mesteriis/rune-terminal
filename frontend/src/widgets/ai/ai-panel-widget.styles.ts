@@ -76,20 +76,74 @@ export const aiShellHeaderLogoSlotStyle: CSSProperties = {
 
 export const aiShellTitleClusterStyle: CSSProperties = {
   ...aiPlainBlockStyle,
-  flex: 1,
+  flex: '0 0 auto',
   minWidth: 0,
   display: 'flex',
-  justifyContent: 'center',
+  justifyContent: 'flex-start',
   alignItems: 'center',
 }
 
 export const aiShellTitleTextStyle: CSSProperties = {
   color: 'var(--color-text-primary)',
   fontFamily: 'var(--font-family-mono)',
-  fontSize: '21px',
-  lineHeight: '26px',
-  letterSpacing: '0.03em',
+  fontSize: '18px',
+  lineHeight: '24px',
+  letterSpacing: '0.02em',
   whiteSpace: 'nowrap',
+}
+
+export const aiHeaderConversationGroupStyle: CSSProperties = {
+  ...aiPlainBlockStyle,
+  flex: 1,
+  minWidth: 0,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'flex-end',
+  gap: 'var(--space-xs)',
+}
+
+export const aiHeaderConversationLabelStyle: CSSProperties = {
+  color: 'var(--color-text-muted)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '10px',
+  lineHeight: '14px',
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase',
+  whiteSpace: 'nowrap',
+}
+
+export const aiHeaderConversationSelectStyle: CSSProperties = {
+  width: 'min(300px, 100%)',
+  minWidth: '180px',
+  minHeight: '32px',
+  padding: '0 var(--space-sm)',
+  borderRadius: '10px',
+  background: 'color-mix(in srgb, var(--color-surface-shell-header-action) 82%, transparent)',
+  borderColor: 'color-mix(in srgb, var(--color-border-strong) 58%, transparent)',
+  color: 'var(--color-text-primary)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '12px',
+  lineHeight: '16px',
+  boxShadow: 'none',
+  backdropFilter: 'none',
+  WebkitBackdropFilter: 'none',
+}
+
+export const aiHeaderConversationActionStyle: CSSProperties = {
+  minWidth: 'unset',
+  minHeight: '32px',
+  padding: '0 var(--space-sm)',
+  borderRadius: '10px',
+  background:
+    'color-mix(in srgb, var(--color-accent-emerald-soft) 34%, var(--color-surface-shell-header-action))',
+  borderColor: 'color-mix(in srgb, var(--color-border-strong) 62%, transparent)',
+  color: 'var(--color-text-primary)',
+  boxShadow: 'none',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '11px',
+  lineHeight: '16px',
+  letterSpacing: '0.05em',
+  textTransform: 'uppercase',
 }
 
 export const aiHeaderModeGroupStyle: CSSProperties = {

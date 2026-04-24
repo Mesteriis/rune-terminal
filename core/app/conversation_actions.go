@@ -23,15 +23,28 @@ type ConversationContext struct {
 	WidgetContextEnabled bool     `json:"widget_context_enabled,omitempty"`
 }
 
-func (r *Runtime) ConversationSnapshot() conversation.Snapshot {
-	provider, err := r.resolveConversationProvider()
+func (r *Runtime) ConversationList(ctx context.Context) ([]conversation.ConversationSummary, string, error) {
+	return r.Conversation.ListConversations(ctx)
+}
+
+func (r *Runtime) CreateConversation(ctx context.Context) (conversation.Snapshot, error) {
+	snapshot, err := r.Conversation.CreateConversation(ctx)
 	if err != nil {
-		return r.Conversation.SnapshotWithProviderInfo(conversation.ProviderInfo{})
+		return conversation.Snapshot{}, err
 	}
-	if provider == nil {
-		return r.Conversation.Snapshot()
+	return r.withConversationProviderInfo(snapshot), nil
+}
+
+func (r *Runtime) ActivateConversation(ctx context.Context, conversationID string) (conversation.Snapshot, error) {
+	snapshot, err := r.Conversation.ActivateConversation(ctx, conversationID)
+	if err != nil {
+		return conversation.Snapshot{}, err
 	}
-	return r.Conversation.SnapshotWithProviderInfo(provider.Info())
+	return r.withConversationProviderInfo(snapshot), nil
+}
+
+func (r *Runtime) ConversationSnapshot() conversation.Snapshot {
+	return r.withConversationProviderInfo(r.Conversation.Snapshot())
 }
 
 func (r *Runtime) SubmitConversationPrompt(
@@ -169,6 +182,19 @@ func (r *Runtime) appendConversationAudit(
 		ActionSource:    conversationContext.ActionSource,
 		AffectedWidgets: affectedWidgets(conversationContext),
 	})
+}
+
+func (r *Runtime) withConversationProviderInfo(snapshot conversation.Snapshot) conversation.Snapshot {
+	provider, err := r.resolveConversationProvider()
+	if err != nil {
+		snapshot.Provider = conversation.ProviderInfo{}
+		return snapshot
+	}
+	if provider == nil {
+		return snapshot
+	}
+	snapshot.Provider = provider.Info()
+	return snapshot
 }
 
 func buildConversationContextBlock(runtime *Runtime, conversationContext ConversationContext) string {

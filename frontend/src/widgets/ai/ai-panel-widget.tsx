@@ -1,6 +1,6 @@
 import { useCallback, useLayoutEffect, useRef, useState, type UIEvent } from 'react'
 
-import { useAgentPanel } from '@/features/agent/model/use-agent-panel'
+import { useAgentPanel, type AgentPanelController } from '@/features/agent/model/use-agent-panel'
 import { useAiComposerPreferences } from '@/features/agent/model/use-ai-composer-preferences'
 import type { AiPanelWidgetState, ChatMode } from '@/features/agent/model/types'
 import { RunaDomScopeProvider, useRunaDomAutoTagging } from '@/shared/ui/dom-id'
@@ -18,6 +18,7 @@ import {
 } from '@/widgets/ai/ai-panel-widget.styles'
 
 export type AiPanelWidgetProps = {
+  controller?: AgentPanelController
   hostId: string
   mode?: ChatMode
   state?: AiPanelWidgetState
@@ -44,8 +45,9 @@ function readAiMessageViewportMetrics(viewport: HTMLDivElement): AiMessageViewpo
   }
 }
 
-export function AiPanelWidget({ hostId, mode = 'chat', state }: AiPanelWidgetProps) {
-  const agentPanel = useAgentPanel(hostId, state == null)
+export function AiPanelWidget({ controller, hostId, mode = 'chat', state }: AiPanelWidgetProps) {
+  const internalAgentPanel = useAgentPanel(hostId, state == null && controller == null)
+  const agentPanel = controller ?? internalAgentPanel
   const { submitMode } = useAiComposerPreferences()
   const panelState = state ?? agentPanel.panelState
   const autoTagAiPanelRootRef = useRunaDomAutoTagging('ai-panel-root')
@@ -147,7 +149,13 @@ export function AiPanelWidget({ hostId, mode = 'chat', state }: AiPanelWidgetPro
             activeContextWidgetOption={state == null ? agentPanel.activeContextWidgetOption : undefined}
             contextWidgetLoadError={state == null ? agentPanel.contextWidgetLoadError : undefined}
             contextWidgetOptions={state == null ? agentPanel.contextWidgetOptions : undefined}
-            disabled={state == null ? agentPanel.isSubmitting || agentPanel.isInteractionPending : false}
+            disabled={
+              state == null
+                ? agentPanel.isSubmitting ||
+                  agentPanel.isInteractionPending ||
+                  agentPanel.isConversationPending
+                : false
+            }
             isWidgetContextEnabled={state == null ? agentPanel.isWidgetContextEnabled : undefined}
             onContextOptionsOpen={state == null ? agentPanel.handleContextOptionsOpen : undefined}
             onContextOnlyUseCurrentWidget={
@@ -170,7 +178,10 @@ export function AiPanelWidget({ hostId, mode = 'chat', state }: AiPanelWidgetPro
             selectedProviderID={state == null ? agentPanel.selectedProviderID : undefined}
             submitDisabled={
               state == null
-                ? agentPanel.isSubmitting || agentPanel.isInteractionPending || agentPanel.draft.trim() === ''
+                ? agentPanel.isSubmitting ||
+                  agentPanel.isInteractionPending ||
+                  agentPanel.isConversationPending ||
+                  agentPanel.draft.trim() === ''
                 : true
             }
             submitMode={submitMode}

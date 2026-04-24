@@ -8,4 +8,5 @@ var (
 	ErrInvalidAttachmentPath = errors.New("invalid attachment path")
 	ErrAttachmentNotFound    = errors.New("attachment not found")
 	ErrAttachmentNotFile     = errors.New("attachment is not a file")
+	ErrConversationNotFound  = errors.New("conversation not found")
 )

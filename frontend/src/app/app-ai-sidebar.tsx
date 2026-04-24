@@ -1,6 +1,7 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useRef, useState, type RefObject } from 'react'
 
+import { useAgentPanel } from '@/features/agent/model/use-agent-panel'
 import type { ChatMode } from '@/features/agent/model/types'
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { Box } from '@/shared/ui/primitives'
@@ -56,6 +57,7 @@ export function AppAiSidebar({ isOpen, contentAreaRef }: AppAiSidebarProps) {
   const [isAiPanelResizing, setIsAiPanelResizing] = useState(false)
   const aiResizeStartRef = useRef<{ startWidth: number; startX: number } | null>(null)
   const prefersReducedMotion = useReducedMotion()
+  const agentPanel = useAgentPanel(AI_SHELL_PANEL_HOST_ID, isOpen)
 
   useEffect(() => {
     if (!isOpen) {
@@ -156,10 +158,27 @@ export function AppAiSidebar({ isOpen, contentAreaRef }: AppAiSidebarProps) {
                     runaComponent="ai-shell-panel-header"
                     style={aiPanelHeaderStyle}
                   >
-                    <AiPanelHeaderWidget mode={chatMode} onModeChange={setChatMode} title="AI Rune" />
+                    <AiPanelHeaderWidget
+                      activeConversationID={agentPanel.activeConversationID}
+                      conversations={agentPanel.conversations}
+                      isConversationBusy={
+                        agentPanel.isConversationPending ||
+                        agentPanel.isSubmitting ||
+                        agentPanel.isInteractionPending
+                      }
+                      mode={chatMode}
+                      onConversationSelect={(conversationID) => {
+                        void agentPanel.switchConversation(conversationID)
+                      }}
+                      onCreateConversation={() => {
+                        void agentPanel.createConversation()
+                      }}
+                      onModeChange={setChatMode}
+                      title="AI Rune"
+                    />
                   </Box>
                   <Box runaComponent="ai-shell-panel-body" style={aiPanelBodyStyle}>
-                    <AiPanelWidget hostId={AI_SHELL_PANEL_HOST_ID} mode={chatMode} />
+                    <AiPanelWidget controller={agentPanel} hostId={AI_SHELL_PANEL_HOST_ID} mode={chatMode} />
                   </Box>
                 </Box>
               </Box>

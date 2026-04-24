@@ -1,8 +1,11 @@
 import { expect, test } from '@playwright/test'
 
 import {
+  activateAgentConversation,
   clearBrowserState,
+  createAgentConversation as createConversationViaApi,
   createAgentProvider,
+  fetchAgentConversations,
   fetchAgentConversation,
   fetchAgentProviderCatalog,
   fetchTerminalSnapshot,
@@ -145,6 +148,80 @@ test('AI sidebar switches to the LAN HTTP source from the toolbar and sends a re
   await expect(page.getByText(promptToken, { exact: true })).toBeVisible()
 })
 
+test('AI sidebar creates and switches backend conversations instead of keeping one flat transcript', async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(60_000)
+
+  const initialConversations = await fetchAgentConversations(request)
+  const originalConversationID =
+    initialConversations.active_conversation_id || initialConversations.conversations[0]?.id || ''
+
+  if (!originalConversationID) {
+    const bootstrappedConversation = await createConversationViaApi(request)
+    await activateAgentConversation(request, bootstrappedConversation.id)
+  }
+
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  await page.getByRole('button', { name: 'Toggle AI panel' }).click()
+  await expect(page.getByText('AI Rune Assistant')).toBeVisible()
+
+  const conversationSelect = page.locator('select[aria-label="Conversation"]')
+  await expect(conversationSelect).toBeVisible()
+  const createConversationButton = page.getByRole('button', { name: 'Create conversation' })
+  const conversationCountBefore = (await fetchAgentConversations(request)).conversations.length
+
+  await createConversationButton.click()
+
+  await expect
+    .poll(async () => {
+      const conversations = await fetchAgentConversations(request)
+      return conversations.conversations.length
+    })
+    .toBe(conversationCountBefore + 1)
+
+  const createdConversations = await fetchAgentConversations(request)
+  const createdConversationID = createdConversations.active_conversation_id
+
+  expect(createdConversationID).not.toBe('')
+
+  await page.reload()
+  await page.getByRole('button', { name: 'Toggle AI panel' }).click()
+  await expect(page.getByText('AI Rune Assistant')).toBeVisible()
+
+  const reopenedConversationSelect = page.locator('select[aria-label="Conversation"]')
+  await expect(reopenedConversationSelect).toBeVisible()
+  await expect(reopenedConversationSelect).toHaveValue(createdConversationID)
+  await expect
+    .poll(async () => {
+      const conversation = await fetchAgentConversation(request)
+      return {
+        id: conversation.id,
+        messageCount: conversation.messages.length,
+      }
+    })
+    .toMatchObject({
+      id: createdConversationID,
+      messageCount: 0,
+    })
+
+  if (originalConversationID) {
+    await reopenedConversationSelect.selectOption(originalConversationID)
+
+    await expect
+      .poll(async () => {
+        const conversations = await fetchAgentConversations(request)
+        return conversations.active_conversation_id
+      })
+      .toBe(originalConversationID)
+  }
+
+  expect(createdConversationID).not.toBe(originalConversationID)
+})
+
 test('AI sidebar runs a live Codex chat path and restores the transcript after reopen', async ({
   page,
   request,
@@ -229,6 +306,47 @@ test('AI sidebar lets the operator select multiple widget contexts for a request
   test.setTimeout(60_000)
 
   let capturedStreamBody: Record<string, unknown> | null = null
+  const contextSelectorAssistantMessage = {
+    id: 'msg_context',
+    role: 'assistant',
+    content: 'context-selector-ok',
+    status: 'complete',
+    provider: 'stub',
+    model: 'stub-model',
+    created_at: '2026-04-24T10:00:01Z',
+  }
+
+  await page.route('**/api/v1/agent/conversation', async (route) => {
+    if (route.request().method() !== 'GET' || capturedStreamBody == null) {
+      await route.continue()
+      return
+    }
+
+    const response = await route.fetch()
+    const payload = (await response.json()) as {
+      conversation?: { messages?: Array<Record<string, unknown>> }
+    }
+    const conversation = payload.conversation ?? {}
+    const messages = Array.isArray(conversation.messages) ? [...conversation.messages] : []
+    const hasContextSelectorMessage = messages.some(
+      (message) => typeof message.content === 'string' && message.content.includes('context-selector-ok'),
+    )
+
+    if (!hasContextSelectorMessage) {
+      messages.push(contextSelectorAssistantMessage)
+    }
+
+    await route.fulfill({
+      response,
+      json: {
+        ...payload,
+        conversation: {
+          ...conversation,
+          messages,
+        },
+      },
+    })
+  })
 
   await page.route('**/api/v1/agent/conversation/messages/stream', async (route) => {
     capturedStreamBody = route.request().postDataJSON() as Record<string, unknown>
@@ -240,7 +358,11 @@ test('AI sidebar lets the operator select multiple widget contexts for a request
       },
       body: [
         'event: message-start\ndata: {"type":"message-start","message_id":"msg_context","message":{"id":"msg_context","role":"assistant","content":"","status":"streaming","provider":"stub","model":"stub-model","created_at":"2026-04-24T10:00:00Z"}}\n\n',
-        'event: message-complete\ndata: {"type":"message-complete","message_id":"msg_context","message":{"id":"msg_context","role":"assistant","content":"context-selector-ok","status":"complete","provider":"stub","model":"stub-model","created_at":"2026-04-24T10:00:01Z"}}\n\n',
+        `event: message-complete\ndata: ${JSON.stringify({
+          type: 'message-complete',
+          message_id: 'msg_context',
+          message: contextSelectorAssistantMessage,
+        })}\n\n`,
       ].join(''),
     })
   })
@@ -302,6 +424,47 @@ test('AI composer submit shortcut can be changed from settings', async ({ page }
   test.setTimeout(60_000)
 
   const capturedStreamBodies: Array<Record<string, unknown>> = []
+  const shortcutAssistantMessage = {
+    id: 'msg_shortcuts',
+    role: 'assistant',
+    content: 'shortcut-mode-ok',
+    status: 'complete',
+    provider: 'stub',
+    model: 'stub-model',
+    created_at: '2026-04-24T10:05:01Z',
+  }
+
+  await page.route('**/api/v1/agent/conversation', async (route) => {
+    if (route.request().method() !== 'GET' || capturedStreamBodies.length === 0) {
+      await route.continue()
+      return
+    }
+
+    const response = await route.fetch()
+    const payload = (await response.json()) as {
+      conversation?: { messages?: Array<Record<string, unknown>> }
+    }
+    const conversation = payload.conversation ?? {}
+    const messages = Array.isArray(conversation.messages) ? [...conversation.messages] : []
+    const hasShortcutMessage = messages.some(
+      (message) => typeof message.content === 'string' && message.content.includes('shortcut-mode-ok'),
+    )
+
+    if (!hasShortcutMessage) {
+      messages.push(shortcutAssistantMessage)
+    }
+
+    await route.fulfill({
+      response,
+      json: {
+        ...payload,
+        conversation: {
+          ...conversation,
+          messages,
+        },
+      },
+    })
+  })
 
   await page.route('**/api/v1/agent/conversation/messages/stream', async (route) => {
     capturedStreamBodies.push(route.request().postDataJSON() as Record<string, unknown>)
@@ -313,7 +476,11 @@ test('AI composer submit shortcut can be changed from settings', async ({ page }
       },
       body: [
         'event: message-start\ndata: {"type":"message-start","message_id":"msg_shortcuts","message":{"id":"msg_shortcuts","role":"assistant","content":"","status":"streaming","provider":"stub","model":"stub-model","created_at":"2026-04-24T10:05:00Z"}}\n\n',
-        'event: message-complete\ndata: {"type":"message-complete","message_id":"msg_shortcuts","message":{"id":"msg_shortcuts","role":"assistant","content":"shortcut-mode-ok","status":"complete","provider":"stub","model":"stub-model","created_at":"2026-04-24T10:05:01Z"}}\n\n',
+        `event: message-complete\ndata: ${JSON.stringify({
+          type: 'message-complete',
+          message_id: 'msg_shortcuts',
+          message: shortcutAssistantMessage,
+        })}\n\n`,
       ].join(''),
     })
   })

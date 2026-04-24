@@ -5,7 +5,6 @@ import (
 	"errors"
 	"path/filepath"
 	"testing"
-	"time"
 )
 
 func TestServiceSubmitPersistsConversation(t *testing.T) {
@@ -102,6 +101,55 @@ func TestServiceSubmitRecordsProviderFailureInTranscript(t *testing.T) {
 	}
 	if result.Assistant.Content != "provider unavailable" {
 		t.Fatalf("unexpected assistant error content: %q", result.Assistant.Content)
+	}
+}
+
+func TestServiceConversationLifecycleCreatesListsAndActivatesThreads(t *testing.T) {
+	t.Parallel()
+
+	service, err := NewService(filepath.Join(t.TempDir(), "conversation.json"), stubProvider{
+		info: ProviderInfo{Kind: "stub", BaseURL: "http://stub", Model: "stub-model"},
+	})
+	if err != nil {
+		t.Fatalf("new service: %v", err)
+	}
+
+	originalSnapshot := service.Snapshot()
+	if originalSnapshot.ID == "" {
+		t.Fatalf("expected bootstrapped conversation id")
+	}
+
+	createdSnapshot, err := service.CreateConversation(context.Background())
+	if err != nil {
+		t.Fatalf("create conversation: %v", err)
+	}
+	if createdSnapshot.ID == "" || createdSnapshot.ID == originalSnapshot.ID {
+		t.Fatalf("expected a distinct created conversation id, got %q", createdSnapshot.ID)
+	}
+	if got := service.ActiveConversationID(); got != createdSnapshot.ID {
+		t.Fatalf("expected active conversation %q after create, got %q", createdSnapshot.ID, got)
+	}
+
+	conversations, activeConversationID, err := service.ListConversations(context.Background())
+	if err != nil {
+		t.Fatalf("list conversations: %v", err)
+	}
+	if len(conversations) != 2 {
+		t.Fatalf("expected 2 conversations, got %#v", conversations)
+	}
+	if activeConversationID != createdSnapshot.ID {
+		t.Fatalf("expected active conversation id %q, got %q", createdSnapshot.ID, activeConversationID)
+	}
+
+	reactivatedSnapshot, err := service.ActivateConversation(context.Background(), originalSnapshot.ID)
+	if err != nil {
+		t.Fatalf("activate conversation: %v", err)
+	}
+	if reactivatedSnapshot.ID != originalSnapshot.ID {
+		t.Fatalf("expected reactivated conversation %q, got %q", originalSnapshot.ID, reactivatedSnapshot.ID)
+	}
+	if got := service.ActiveConversationID(); got != originalSnapshot.ID {
+		t.Fatalf("expected active conversation %q after activate, got %q", originalSnapshot.ID, got)
 	}
 }
 
@@ -233,12 +281,14 @@ func TestServiceSubmitPrunesProviderHistoryByMessageCount(t *testing.T) {
 		t.Fatalf("new service: %v", err)
 	}
 	service.budget = historyBudget{MaxMessages: 3, MaxChars: 1024}
-	service.state.Messages = seededMessages(
-		ChatMessage{Role: RoleUser, Content: "old-1"},
-		ChatMessage{Role: RoleAssistant, Content: "old-2"},
-		ChatMessage{Role: RoleUser, Content: "old-3"},
-		ChatMessage{Role: RoleAssistant, Content: "old-4"},
-	)
+	if _, err := service.AppendMessages([]AppendMessageRequest{
+		{Role: RoleUser, Content: "old-1"},
+		{Role: RoleAssistant, Content: "old-2"},
+		{Role: RoleUser, Content: "old-3"},
+		{Role: RoleAssistant, Content: "old-4"},
+	}); err != nil {
+		t.Fatalf("seed append messages: %v", err)
+	}
 
 	result, err := service.Submit(context.Background(), SubmitRequest{
 		SystemPrompt: "system prompt",
@@ -274,11 +324,13 @@ func TestServiceSubmitPrunesProviderHistoryByCharacterBudget(t *testing.T) {
 		t.Fatalf("new service: %v", err)
 	}
 	service.budget = historyBudget{MaxMessages: 10, MaxChars: 12}
-	service.state.Messages = seededMessages(
-		ChatMessage{Role: RoleUser, Content: "1234"},
-		ChatMessage{Role: RoleAssistant, Content: "5678"},
-		ChatMessage{Role: RoleUser, Content: "9012"},
-	)
+	if _, err := service.AppendMessages([]AppendMessageRequest{
+		{Role: RoleUser, Content: "1234"},
+		{Role: RoleAssistant, Content: "5678"},
+		{Role: RoleUser, Content: "9012"},
+	}); err != nil {
+		t.Fatalf("seed append messages: %v", err)
+	}
 
 	if _, err := service.Submit(context.Background(), SubmitRequest{
 		SystemPrompt: "system prompt",
@@ -327,6 +379,61 @@ func TestServiceSubmitUsesProviderPromptOverrideWithoutChangingPersistedUserMess
 	}
 	if len(result.Snapshot.Messages) == 0 || result.Snapshot.Messages[0].Content != "original prompt" {
 		t.Fatalf("unexpected persisted user content: %#v", result.Snapshot.Messages)
+	}
+}
+
+func TestServiceSubmitReusesPersistedProviderSessionForSameConversation(t *testing.T) {
+	t.Parallel()
+
+	provider := &recordingProvider{
+		info: ProviderInfo{Kind: "stub", BaseURL: "http://stub", Model: "stub-model"},
+		result: CompletionResult{
+			Content: "reply-1",
+			Model:   "stub-model",
+			Session: &ProviderSessionState{
+				ProviderKind: "stub",
+				ID:           "session-1",
+			},
+		},
+	}
+	service, err := NewService(filepath.Join(t.TempDir(), "conversation.json"), provider)
+	if err != nil {
+		t.Fatalf("new service: %v", err)
+	}
+
+	firstResult, err := service.Submit(context.Background(), SubmitRequest{
+		SystemPrompt: "system prompt",
+		Prompt:       "hello",
+	})
+	if err != nil {
+		t.Fatalf("first submit: %v", err)
+	}
+	if provider.request.Session != nil {
+		t.Fatalf("expected no provider session on the first submit, got %#v", provider.request.Session)
+	}
+	if firstResult.Snapshot.Session.ID != "session-1" || firstResult.Snapshot.Session.ProviderKind != "stub" {
+		t.Fatalf("expected persisted provider session in snapshot, got %#v", firstResult.Snapshot.Session)
+	}
+
+	provider.result = CompletionResult{
+		Content: "reply-2",
+		Model:   "stub-model",
+		Session: &ProviderSessionState{
+			ProviderKind: "stub",
+			ID:           "session-1",
+		},
+	}
+	if _, err := service.Submit(context.Background(), SubmitRequest{
+		SystemPrompt: "system prompt",
+		Prompt:       "follow-up",
+	}); err != nil {
+		t.Fatalf("second submit: %v", err)
+	}
+	if provider.request.Session == nil {
+		t.Fatalf("expected provider session on the second submit")
+	}
+	if provider.request.Session.ProviderKind != "stub" || provider.request.Session.ID != "session-1" {
+		t.Fatalf("unexpected reused provider session %#v", provider.request.Session)
 	}
 }
 
@@ -514,19 +621,4 @@ func (p *scriptedStreamProvider) CompleteStream(
 		}
 	}
 	return p.result, p.info, p.err
-}
-
-func seededMessages(messages ...ChatMessage) []Message {
-	seeded := make([]Message, 0, len(messages))
-	now := time.Now().UTC()
-	for index, message := range messages {
-		seeded = append(seeded, Message{
-			ID:        "seeded",
-			Role:      message.Role,
-			Content:   message.Content,
-			Status:    StatusComplete,
-			CreatedAt: now.Add(time.Duration(index) * time.Second),
-		})
-	}
-	return seeded
 }

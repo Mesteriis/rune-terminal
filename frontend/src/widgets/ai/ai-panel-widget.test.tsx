@@ -114,6 +114,52 @@ function createProviderCatalogFetchResponse(
   }
 }
 
+function createConversationFetchResponse(
+  overrides: Partial<Record<string, unknown>> = {},
+  messages: Array<Record<string, unknown>> = [],
+) {
+  return {
+    ok: true,
+    json: async () => ({
+      conversation: {
+        id: 'conv_1',
+        title: 'Backend conversation',
+        messages,
+        provider: {
+          kind: 'stub',
+          base_url: 'http://stub',
+          model: 'stub-model',
+          streaming: false,
+        },
+        created_at: '2026-04-21T09:59:00Z',
+        updated_at: '2026-04-21T10:00:00Z',
+        ...overrides,
+      },
+    }),
+  }
+}
+
+function createConversationListFetchResponse(
+  activeConversationID = 'conv_1',
+  conversations = [
+    {
+      id: 'conv_1',
+      title: 'Backend conversation',
+      created_at: '2026-04-21T09:59:00Z',
+      updated_at: '2026-04-21T10:00:00Z',
+      message_count: 0,
+    },
+  ],
+) {
+  return {
+    ok: true,
+    json: async () => ({
+      active_conversation_id: activeConversationID,
+      conversations,
+    }),
+  }
+}
+
 describe('AiPanelWidget backend conversation path', () => {
   afterEach(() => {
     resetRuntimeContextCacheForTests()
@@ -214,6 +260,8 @@ describe('AiPanelWidget backend conversation path', () => {
         ok: true,
         json: async () => ({
           conversation: {
+            id: 'conv_1',
+            title: 'Provider switch test',
             messages: [],
             provider: {
               kind: 'codex',
@@ -221,6 +269,7 @@ describe('AiPanelWidget backend conversation path', () => {
               model: 'stub-model',
               streaming: false,
             },
+            created_at: '2026-04-21T09:59:00Z',
             updated_at: '2026-04-21T10:00:00Z',
           },
         }),
@@ -260,6 +309,17 @@ describe('AiPanelWidget backend conversation path', () => {
             },
           ],
         ),
+      )
+      .mockResolvedValueOnce(
+        createConversationListFetchResponse('conv_1', [
+          {
+            id: 'conv_1',
+            title: 'Provider switch test',
+            created_at: '2026-04-21T09:59:00Z',
+            updated_at: '2026-04-21T10:00:00Z',
+            message_count: 0,
+          },
+        ]),
       )
       .mockResolvedValueOnce({
         ok: true,
@@ -313,11 +373,15 @@ describe('AiPanelWidget backend conversation path', () => {
       target: { value: 'provider-http' },
     })
 
-    await waitFor(() => {
-      expect(fetchMock.mock.calls[3]?.[0]).toBe('http://127.0.0.1:8090/api/v1/agent/providers/active')
+    const providerActiveCall = await waitFor(() => {
+      const match = fetchMock.mock.calls.find((call) =>
+        String(call[0]).includes('/api/v1/agent/providers/active'),
+      )
+      expect(match).toBeDefined()
+      return match
     })
 
-    expect(JSON.parse(String(fetchMock.mock.calls[3]?.[1]?.body))).toEqual({
+    expect(JSON.parse(String(providerActiveCall?.[1]?.body))).toEqual({
       id: 'provider-http',
     })
 
@@ -352,6 +416,8 @@ describe('AiPanelWidget backend conversation path', () => {
         ok: true,
         json: async () => ({
           conversation: {
+            id: 'conv_1',
+            title: 'Pure chat',
             messages: [],
             provider: {
               kind: 'stub',
@@ -359,15 +425,64 @@ describe('AiPanelWidget backend conversation path', () => {
               model: 'stub-model',
               streaming: false,
             },
+            created_at: '2026-04-21T09:59:00Z',
             updated_at: '2026-04-21T10:00:00Z',
           },
         }),
       })
       .mockResolvedValueOnce(createProviderCatalogFetchResponse())
+      .mockResolvedValueOnce(
+        createConversationListFetchResponse('conv_1', [
+          {
+            id: 'conv_1',
+            title: 'Pure chat',
+            created_at: '2026-04-21T09:59:00Z',
+            updated_at: '2026-04-21T10:00:00Z',
+            message_count: 0,
+          },
+        ]),
+      )
       .mockResolvedValueOnce({
         ok: true,
         body: streamResponse.body,
       })
+      .mockResolvedValueOnce(
+        createConversationFetchResponse(
+          {
+            title: 'Pure chat',
+            updated_at: '2026-04-21T10:00:05Z',
+          },
+          [
+            {
+              id: 'msg_user',
+              role: 'user',
+              content: 'Привет',
+              status: 'complete',
+              created_at: '2026-04-21T10:00:00Z',
+            },
+            {
+              id: 'msg_2',
+              role: 'assistant',
+              content: 'Backend message received.',
+              status: 'complete',
+              provider: 'stub',
+              model: 'stub-model',
+              created_at: '2026-04-21T10:00:05Z',
+            },
+          ],
+        ),
+      )
+      .mockResolvedValueOnce(
+        createConversationListFetchResponse('conv_1', [
+          {
+            id: 'conv_1',
+            title: 'Pure chat',
+            created_at: '2026-04-21T09:59:00Z',
+            updated_at: '2026-04-21T10:00:05Z',
+            message_count: 2,
+          },
+        ]),
+      )
     vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
     vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
     vi.stubGlobal('fetch', fetchMock)
@@ -383,12 +498,14 @@ describe('AiPanelWidget backend conversation path', () => {
     })
     fireEvent.click(screen.getByLabelText('Send prompt'))
 
-    await waitFor(() => {
-      expect(fetchMock.mock.calls[3]?.[0]).toBe(
-        'http://127.0.0.1:8090/api/v1/agent/conversation/messages/stream',
+    const streamCall = await waitFor(() => {
+      const match = fetchMock.mock.calls.find((call) =>
+        String(call[0]).includes('/api/v1/agent/conversation/messages/stream'),
       )
+      expect(match).toBeDefined()
+      return match
     })
-    expect(JSON.parse(String(fetchMock.mock.calls[3]?.[1]?.body))).toEqual({
+    expect(JSON.parse(String(streamCall?.[1]?.body))).toEqual({
       prompt: 'Привет',
       model: 'stub-model',
       context: {
@@ -459,6 +576,8 @@ describe('AiPanelWidget backend conversation path', () => {
         ok: true,
         json: async () => ({
           conversation: {
+            id: 'conv_1',
+            title: 'Context selection',
             messages: [],
             provider: {
               kind: 'stub',
@@ -466,11 +585,23 @@ describe('AiPanelWidget backend conversation path', () => {
               model: 'stub-model',
               streaming: false,
             },
+            created_at: '2026-04-21T09:59:00Z',
             updated_at: '2026-04-21T10:00:00Z',
           },
         }),
       })
       .mockResolvedValueOnce(createProviderCatalogFetchResponse())
+      .mockResolvedValueOnce(
+        createConversationListFetchResponse('conv_1', [
+          {
+            id: 'conv_1',
+            title: 'Context selection',
+            created_at: '2026-04-21T09:59:00Z',
+            updated_at: '2026-04-21T10:00:00Z',
+            message_count: 0,
+          },
+        ]),
+      )
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({
@@ -520,12 +651,14 @@ describe('AiPanelWidget backend conversation path', () => {
     })
     fireEvent.click(screen.getByLabelText('Send prompt'))
 
-    await waitFor(() => {
-      expect(fetchMock.mock.calls[4]?.[0]).toBe(
-        'http://127.0.0.1:8090/api/v1/agent/conversation/messages/stream',
+    const streamCall = await waitFor(() => {
+      const match = fetchMock.mock.calls.find((call) =>
+        String(call[0]).includes('/api/v1/agent/conversation/messages/stream'),
       )
+      expect(match).toBeDefined()
+      return match
     })
-    expect(JSON.parse(String(fetchMock.mock.calls[4]?.[1]?.body))).toEqual({
+    expect(JSON.parse(String(streamCall?.[1]?.body))).toEqual({
       prompt: 'Привет с контекстом',
       model: 'stub-model',
       context: {
@@ -553,6 +686,8 @@ describe('AiPanelWidget backend conversation path', () => {
         ok: true,
         json: async () => ({
           conversation: {
+            id: 'conv_1',
+            title: 'Backend error',
             messages: [],
             provider: {
               kind: 'stub',
@@ -560,11 +695,23 @@ describe('AiPanelWidget backend conversation path', () => {
               model: 'stub-model',
               streaming: true,
             },
+            created_at: '2026-04-21T09:59:00Z',
             updated_at: '2026-04-21T10:00:00Z',
           },
         }),
       })
       .mockResolvedValueOnce(createProviderCatalogFetchResponse())
+      .mockResolvedValueOnce(
+        createConversationListFetchResponse('conv_1', [
+          {
+            id: 'conv_1',
+            title: 'Backend error',
+            created_at: '2026-04-21T09:59:00Z',
+            updated_at: '2026-04-21T10:00:00Z',
+            message_count: 0,
+          },
+        ]),
+      )
       .mockResolvedValueOnce({
         ok: true,
         body: streamResponse.body,
@@ -627,6 +774,8 @@ describe('AiPanelWidget backend conversation path', () => {
         ok: true,
         json: async () => ({
           conversation: {
+            id: 'conv_1',
+            title: 'Plan flow',
             messages: [],
             provider: {
               kind: 'stub',
@@ -634,15 +783,64 @@ describe('AiPanelWidget backend conversation path', () => {
               model: 'stub-model',
               streaming: false,
             },
+            created_at: '2026-04-21T09:59:00Z',
             updated_at: '2026-04-21T10:00:00Z',
           },
         }),
       })
       .mockResolvedValueOnce(createProviderCatalogFetchResponse())
+      .mockResolvedValueOnce(
+        createConversationListFetchResponse('conv_1', [
+          {
+            id: 'conv_1',
+            title: 'Plan flow',
+            created_at: '2026-04-21T09:59:00Z',
+            updated_at: '2026-04-21T10:00:00Z',
+            message_count: 0,
+          },
+        ]),
+      )
       .mockResolvedValueOnce({
         ok: true,
         body: streamResponse.body,
       })
+      .mockResolvedValueOnce(
+        createConversationFetchResponse(
+          {
+            title: 'Plan flow',
+            updated_at: '2026-04-21T10:00:05Z',
+          },
+          [
+            {
+              id: 'msg_user',
+              role: 'user',
+              content: 'Deploy the current config',
+              status: 'complete',
+              created_at: '2026-04-21T10:00:00Z',
+            },
+            {
+              id: 'msg_2',
+              role: 'assistant',
+              content: 'Deployment queued.',
+              status: 'complete',
+              provider: 'stub',
+              model: 'stub-model',
+              created_at: '2026-04-21T10:00:05Z',
+            },
+          ],
+        ),
+      )
+      .mockResolvedValueOnce(
+        createConversationListFetchResponse('conv_1', [
+          {
+            id: 'conv_1',
+            title: 'Plan flow',
+            created_at: '2026-04-21T09:59:00Z',
+            updated_at: '2026-04-21T10:00:05Z',
+            message_count: 2,
+          },
+        ]),
+      )
     vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
     vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
     vi.stubGlobal('fetch', fetchMock)
@@ -658,7 +856,7 @@ describe('AiPanelWidget backend conversation path', () => {
     })
     fireEvent.click(screen.getByLabelText('Send prompt'))
 
-    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(fetchMock).toHaveBeenCalledTimes(4)
     expect(screen.getByText('Question')).toBeInTheDocument()
     expect(screen.getByText('Choose environment:')).toBeInTheDocument()
     expect(screen.queryByText('Plan')).not.toBeInTheDocument()
@@ -669,14 +867,16 @@ describe('AiPanelWidget backend conversation path', () => {
     expect(screen.getByText('Answer: staging')).toBeInTheDocument()
     expect(screen.getByText('Plan')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Approve' })).toBeInTheDocument()
-    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(fetchMock).toHaveBeenCalledTimes(4)
 
     fireEvent.click(screen.getByRole('button', { name: 'Approve' }))
 
     await waitFor(() => {
-      expect(fetchMock.mock.calls[3]?.[0]).toBe(
-        'http://127.0.0.1:8090/api/v1/agent/conversation/messages/stream',
-      )
+      expect(
+        fetchMock.mock.calls.some((call) =>
+          String(call[0]).includes('/api/v1/agent/conversation/messages/stream'),
+        ),
+      ).toBe(true)
     })
 
     await act(async () => {
@@ -708,6 +908,8 @@ describe('AiPanelWidget backend conversation path', () => {
         ok: true,
         json: async () => ({
           conversation: {
+            id: 'conv_1',
+            title: 'Cancel flow',
             messages: [],
             provider: {
               kind: 'stub',
@@ -715,11 +917,23 @@ describe('AiPanelWidget backend conversation path', () => {
               model: 'stub-model',
               streaming: false,
             },
+            created_at: '2026-04-21T09:59:00Z',
             updated_at: '2026-04-21T10:00:00Z',
           },
         }),
       })
       .mockResolvedValueOnce(createProviderCatalogFetchResponse())
+      .mockResolvedValueOnce(
+        createConversationListFetchResponse('conv_1', [
+          {
+            id: 'conv_1',
+            title: 'Cancel flow',
+            created_at: '2026-04-21T09:59:00Z',
+            updated_at: '2026-04-21T10:00:00Z',
+            message_count: 0,
+          },
+        ]),
+      )
     vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
     vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
     vi.stubGlobal('fetch', fetchMock)
@@ -740,7 +954,7 @@ describe('AiPanelWidget backend conversation path', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
 
     expect(screen.getByText('Execution cancelled.')).toBeInTheDocument()
-    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(fetchMock).toHaveBeenCalledTimes(4)
   })
 
   it('routes /run prompts into terminal execution instead of provider chat streaming', async () => {
@@ -764,6 +978,8 @@ describe('AiPanelWidget backend conversation path', () => {
         ok: true,
         json: async () => ({
           conversation: {
+            id: 'conv_1',
+            title: 'Run flow',
             messages: [],
             provider: {
               kind: 'codex',
@@ -771,11 +987,23 @@ describe('AiPanelWidget backend conversation path', () => {
               model: 'stub-model',
               streaming: false,
             },
+            created_at: '2026-04-21T09:59:00Z',
             updated_at: '2026-04-21T10:00:00Z',
           },
         }),
       })
       .mockResolvedValueOnce(createProviderCatalogFetchResponse())
+      .mockResolvedValueOnce(
+        createConversationListFetchResponse('conv_1', [
+          {
+            id: 'conv_1',
+            title: 'Run flow',
+            created_at: '2026-04-21T09:59:00Z',
+            updated_at: '2026-04-21T10:00:00Z',
+            message_count: 0,
+          },
+        ]),
+      )
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({
@@ -836,6 +1064,8 @@ describe('AiPanelWidget backend conversation path', () => {
         ok: true,
         json: async () => ({
           conversation: {
+            id: 'conv_1',
+            title: 'Run flow',
             messages: [
               {
                 id: 'msg_user',
@@ -869,12 +1099,24 @@ describe('AiPanelWidget backend conversation path', () => {
               model: 'stub-model',
               streaming: false,
             },
+            created_at: '2026-04-21T09:59:00Z',
             updated_at: '2026-04-21T10:00:02Z',
           },
           provider_error: '',
           output_excerpt: 'run-widget-test',
         }),
       })
+      .mockResolvedValueOnce(
+        createConversationListFetchResponse('conv_1', [
+          {
+            id: 'conv_1',
+            title: 'Run flow',
+            created_at: '2026-04-21T09:59:00Z',
+            updated_at: '2026-04-21T10:00:02Z',
+            message_count: 3,
+          },
+        ]),
+      )
     vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
     vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
     vi.stubGlobal('fetch', fetchMock)
@@ -902,11 +1144,24 @@ describe('AiPanelWidget backend conversation path', () => {
         String(call[0]).includes('/api/v1/agent/conversation/messages/stream'),
       ),
     ).toBe(false)
-    expect(fetchMock.mock.calls[3]?.[0]).toBe('http://127.0.0.1:8090/api/v1/terminal/term-side')
-    expect(fetchMock.mock.calls[4]?.[0]).toBe('http://127.0.0.1:8090/api/v1/tools/execute')
-    expect(fetchMock.mock.calls[5]?.[0]).toBe('http://127.0.0.1:8090/api/v1/terminal/term-side?from=4')
-    expect(fetchMock.mock.calls[6]?.[0]).toBe('http://127.0.0.1:8090/api/v1/agent/terminal-commands/explain')
-    expect(JSON.parse(String(fetchMock.mock.calls[4]?.[1]?.body))).toEqual({
+    const terminalSnapshotCall = fetchMock.mock.calls.find((call) =>
+      String(call[0]).endsWith('/api/v1/terminal/term-side'),
+    )
+    const toolExecuteCall = fetchMock.mock.calls.find((call) =>
+      String(call[0]).includes('/api/v1/tools/execute'),
+    )
+    const terminalFromSeqCall = fetchMock.mock.calls.find((call) =>
+      String(call[0]).includes('/api/v1/terminal/term-side?from=4'),
+    )
+    const explainCall = fetchMock.mock.calls.find((call) =>
+      String(call[0]).includes('/api/v1/agent/terminal-commands/explain'),
+    )
+
+    expect(terminalSnapshotCall?.[0]).toBe('http://127.0.0.1:8090/api/v1/terminal/term-side')
+    expect(toolExecuteCall?.[0]).toBe('http://127.0.0.1:8090/api/v1/tools/execute')
+    expect(terminalFromSeqCall?.[0]).toBe('http://127.0.0.1:8090/api/v1/terminal/term-side?from=4')
+    expect(explainCall?.[0]).toBe('http://127.0.0.1:8090/api/v1/agent/terminal-commands/explain')
+    expect(JSON.parse(String(toolExecuteCall?.[1]?.body))).toEqual({
       context: {
         action_source: 'frontend.ai.sidebar.run',
         active_widget_id: 'term-side',
@@ -921,7 +1176,7 @@ describe('AiPanelWidget backend conversation path', () => {
       },
       tool_name: 'term.send_input',
     })
-    expect(JSON.parse(String(fetchMock.mock.calls[6]?.[1]?.body))).toEqual({
+    expect(JSON.parse(String(explainCall?.[1]?.body))).toEqual({
       command: 'echo run-widget-test',
       context: {
         action_source: 'frontend.ai.sidebar.run',

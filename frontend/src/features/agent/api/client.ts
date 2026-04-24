@@ -92,9 +92,26 @@ export type AgentConversationProvider = {
   streaming: boolean
 }
 
+export type AgentConversationSession = {
+  provider_kind?: string
+  id?: string
+}
+
+export type AgentConversationSummary = {
+  id: string
+  title: string
+  created_at: string
+  updated_at: string
+  message_count: number
+}
+
 export type AgentConversationSnapshot = {
+  id: string
+  title: string
   messages: AgentConversationMessage[]
   provider: AgentConversationProvider
+  session?: AgentConversationSession
+  created_at: string
   updated_at: string
 }
 
@@ -199,6 +216,11 @@ export type ExplainTerminalCommandResponse = {
 type AgentConversationResponse = {
   conversation: AgentConversationSnapshot
   provider_error: string
+}
+
+type AgentConversationListResponse = {
+  active_conversation_id: string
+  conversations: AgentConversationSummary[]
 }
 
 type AgentAttachmentReferenceResponse = {
@@ -457,6 +479,28 @@ export async function fetchAgentCatalog() {
 export async function fetchAgentConversation() {
   const payload = await requestRuntimeJSON<{ conversation: AgentConversationSnapshot }>(
     '/api/v1/agent/conversation',
+  )
+  return payload.conversation
+}
+
+export async function fetchAgentConversations() {
+  return requestRuntimeJSON<AgentConversationListResponse>('/api/v1/agent/conversations')
+}
+
+export async function createAgentConversation() {
+  const payload = await postRuntimeJSON<{ conversation: AgentConversationSnapshot }>(
+    '/api/v1/agent/conversations',
+    {},
+  )
+  return payload.conversation
+}
+
+export async function activateAgentConversation(conversationID: string) {
+  const payload = await requestRuntimeJSON<{ conversation: AgentConversationSnapshot }>(
+    `/api/v1/agent/conversations/${encodeURIComponent(conversationID)}/activate`,
+    {
+      method: 'PUT',
+    },
   )
   return payload.conversation
 }

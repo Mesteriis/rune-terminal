@@ -53,6 +53,97 @@ func TestConversationSnapshotReturnsProviderInfo(t *testing.T) {
 	}
 }
 
+func TestConversationListCreateAndActivateRoutesRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+
+	listRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(listRecorder, authedJSONRequest(t, http.MethodGet, "/api/v1/agent/conversations", nil))
+	if listRecorder.Code != http.StatusOK {
+		t.Fatalf("expected initial list 200, got %d", listRecorder.Code)
+	}
+
+	var initialList struct {
+		ActiveConversationID string `json:"active_conversation_id"`
+		Conversations        []struct {
+			ID string `json:"id"`
+		} `json:"conversations"`
+	}
+	if err := json.Unmarshal(listRecorder.Body.Bytes(), &initialList); err != nil {
+		t.Fatalf("unmarshal initial list: %v", err)
+	}
+	if initialList.ActiveConversationID == "" || len(initialList.Conversations) == 0 {
+		t.Fatalf("expected bootstrapped conversation list, got %#v", initialList)
+	}
+
+	createRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(createRecorder, authedJSONRequest(t, http.MethodPost, "/api/v1/agent/conversations", map[string]any{}))
+	if createRecorder.Code != http.StatusOK {
+		t.Fatalf("expected create 200, got %d body=%s", createRecorder.Code, createRecorder.Body.String())
+	}
+
+	var created struct {
+		Conversation struct {
+			ID string `json:"id"`
+		} `json:"conversation"`
+	}
+	if err := json.Unmarshal(createRecorder.Body.Bytes(), &created); err != nil {
+		t.Fatalf("unmarshal created conversation: %v", err)
+	}
+	if created.Conversation.ID == "" || created.Conversation.ID == initialList.ActiveConversationID {
+		t.Fatalf("expected distinct created conversation id, got %#v", created)
+	}
+
+	postCreateListRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(postCreateListRecorder, authedJSONRequest(t, http.MethodGet, "/api/v1/agent/conversations", nil))
+	if postCreateListRecorder.Code != http.StatusOK {
+		t.Fatalf("expected post-create list 200, got %d", postCreateListRecorder.Code)
+	}
+
+	var postCreateList struct {
+		ActiveConversationID string `json:"active_conversation_id"`
+		Conversations        []struct {
+			ID string `json:"id"`
+		} `json:"conversations"`
+	}
+	if err := json.Unmarshal(postCreateListRecorder.Body.Bytes(), &postCreateList); err != nil {
+		t.Fatalf("unmarshal post-create list: %v", err)
+	}
+	if postCreateList.ActiveConversationID != created.Conversation.ID {
+		t.Fatalf("expected active conversation %q after create, got %q", created.Conversation.ID, postCreateList.ActiveConversationID)
+	}
+	if len(postCreateList.Conversations) != len(initialList.Conversations)+1 {
+		t.Fatalf("expected one more conversation, got %#v", postCreateList.Conversations)
+	}
+
+	activateRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(
+		activateRecorder,
+		authedJSONRequest(
+			t,
+			http.MethodPut,
+			"/api/v1/agent/conversations/"+initialList.ActiveConversationID+"/activate",
+			nil,
+		),
+	)
+	if activateRecorder.Code != http.StatusOK {
+		t.Fatalf("expected activate 200, got %d body=%s", activateRecorder.Code, activateRecorder.Body.String())
+	}
+
+	var activated struct {
+		Conversation struct {
+			ID string `json:"id"`
+		} `json:"conversation"`
+	}
+	if err := json.Unmarshal(activateRecorder.Body.Bytes(), &activated); err != nil {
+		t.Fatalf("unmarshal activated conversation: %v", err)
+	}
+	if activated.Conversation.ID != initialList.ActiveConversationID {
+		t.Fatalf("expected reactivated conversation %q, got %q", initialList.ActiveConversationID, activated.Conversation.ID)
+	}
+}
+
 func TestSubmitConversationMessagePersistsTranscript(t *testing.T) {
 	t.Parallel()
 

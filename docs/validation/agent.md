@@ -5,6 +5,8 @@
 - Date: `2026-04-24`
 - State: `VERIFIED`
 - Scope:
+  - DB-backed AI conversations with explicit create/switch lifecycle
+  - provider-native CLI session continuity scoped per conversation
   - backend-owned agent provider catalog
   - active conversation provider resolution
   - frontend AI/provider settings surfaces
@@ -24,12 +26,21 @@
     - live Codex CLI chat request/response through the real backend conversation route
     - explicit widget-context selection in the composer and `widget_ids` propagation into the stream request body
     - settings-driven keyboard submit behavior: `Enter` newline plus `Ctrl/Cmd+Enter` submit
-    - transcript persistence across AI panel close/reopen
+    - conversation persistence across AI panel reload/reopen with backend conversation switching
     - live Claude provider routing with explicit `auth-required` handling when the local CLI is installed but not logged in
     - `/run printf ...` sending input into the active terminal session without falling back to plain provider chat
 
 ## Current provider contract
 
+- AI conversations are now backend-owned thread entities persisted in `runtime.db`:
+  - one active conversation for the shell at a time
+  - explicit list/create/activate transport routes
+  - messages persisted per conversation
+  - provider session metadata persisted per conversation
+- CLI-backed provider session continuity is conversation-scoped:
+  - `codex` reuses the stored provider-native thread id for the active conversation
+  - `claude` reuses the stored session id for the active conversation
+  - hidden helper/explain flows intentionally do not mutate the stored provider-native session
 - Active provider kinds are:
   - `codex`: local Codex CLI through `codex exec`
   - `claude`: local Claude Code CLI through `claude -p`
@@ -78,9 +89,11 @@
 ## Commands/tests used
 
 - `go test ./core/agent ./core/conversation ./core/app ./core/transport/httpapi`
+- `./scripts/go.sh test ./core/conversation ./core/transport/httpapi ./core/app`
 - `go test ./core/...`
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi`
 - `./scripts/go.sh test ./core/agent ./core/app ./core/conversation ./core/transport/httpapi`
+- `npm --prefix frontend run test -- src/features/agent/api/client.test.ts src/widgets/ai/ai-panel-header-widget.test.tsx src/widgets/ai/ai-panel-widget.test.tsx`
 - `npm --prefix frontend run test -- src/features/agent/api/client.test.ts src/features/agent/api/provider-client.test.ts src/features/agent/model/provider-settings-draft.test.ts src/widgets/ai/ai-panel-widget.test.tsx`
 - `npm --prefix frontend run test -- src/shared/api/workspace.test.ts src/features/agent/api/client.test.ts src/widgets/ai/ai-panel-widget.test.tsx`
 - `npm --prefix frontend run test -- src/features/agent/model/use-ai-composer-preferences.test.tsx src/widgets/ai/ai-composer-widget.test.tsx src/widgets/ai/ai-panel-widget.test.tsx`
@@ -101,6 +114,7 @@
 
 ## Known limitations
 
+- conversation management is still intentionally narrow: create + switch only. Rename, archive, delete, search, and multi-panel conversation views are not implemented in this slice.
 - CLI providers currently expose buffered chat completion through the existing SSE route; token-by-token provider streaming is not implemented.
 - CLI-native tool calls are not yet mediated through `core/toolruntime`, policy approval, or audit events.
 - The OpenAI-compatible HTTP source path is also buffered and non-streaming in this slice.

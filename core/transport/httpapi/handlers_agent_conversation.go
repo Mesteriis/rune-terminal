@@ -17,6 +17,10 @@ type conversationMessagePayload struct {
 	Context     app.ConversationContext            `json:"context"`
 }
 
+type activateConversationPayload struct {
+	ConversationID string `json:"conversation_id"`
+}
+
 type attachmentReferencePayload struct {
 	Path         string `json:"path"`
 	WorkspaceID  string `json:"workspace_id,omitempty"`
@@ -37,6 +41,51 @@ type terminalCommandExplanationPayload struct {
 func (api *API) handleConversationSnapshot(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"conversation": api.runtime.ConversationSnapshot(),
+	})
+}
+
+func (api *API) handleConversationList(w http.ResponseWriter, r *http.Request) {
+	conversations, activeConversationID, err := api.runtime.ConversationList(r.Context())
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"active_conversation_id": activeConversationID,
+		"conversations":          conversations,
+	})
+}
+
+func (api *API) handleCreateConversation(w http.ResponseWriter, r *http.Request) {
+	snapshot, err := api.runtime.CreateConversation(r.Context())
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"conversation": snapshot,
+	})
+}
+
+func (api *API) handleActivateConversation(w http.ResponseWriter, r *http.Request) {
+	conversationID := strings.TrimSpace(r.PathValue("conversationID"))
+	if conversationID == "" {
+		var payload activateConversationPayload
+		if err := decodeJSON(r, &payload); err == nil {
+			conversationID = strings.TrimSpace(payload.ConversationID)
+		}
+	}
+	if conversationID == "" {
+		writeNotFound(w, "conversation_not_found", conversation.ErrConversationNotFound.Error())
+		return
+	}
+	snapshot, err := api.runtime.ActivateConversation(r.Context(), conversationID)
+	if err != nil {
+		writeConversationError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"conversation": snapshot,
 	})
 }
 
@@ -185,6 +234,8 @@ func writeConversationError(w http.ResponseWriter, err error) {
 		writeNotFound(w, "attachment_not_found", err.Error())
 	case errors.Is(err, conversation.ErrAttachmentNotFile):
 		writeError(w, http.StatusBadRequest, "invalid_attachment_reference", err.Error())
+	case errors.Is(err, conversation.ErrConversationNotFound):
+		writeNotFound(w, "conversation_not_found", err.Error())
 	default:
 		writeInternalError(w, err)
 	}

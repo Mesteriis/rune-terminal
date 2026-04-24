@@ -25,6 +25,11 @@ type ProviderInfo struct {
 	Streaming bool   `json:"streaming"`
 }
 
+type ProviderSessionState struct {
+	ProviderKind string `json:"provider_kind,omitempty"`
+	ID           string `json:"id,omitempty"`
+}
+
 type Message struct {
 	ID          string                `json:"id"`
 	Role        MessageRole           `json:"role"`
@@ -37,10 +42,22 @@ type Message struct {
 	CreatedAt   time.Time             `json:"created_at"`
 }
 
+type ConversationSummary struct {
+	ID           string    `json:"id"`
+	Title        string    `json:"title"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+	MessageCount int       `json:"message_count"`
+}
+
 type Snapshot struct {
-	Messages  []Message    `json:"messages"`
-	Provider  ProviderInfo `json:"provider"`
-	UpdatedAt time.Time    `json:"updated_at"`
+	ID        string               `json:"id"`
+	Title     string               `json:"title"`
+	Messages  []Message            `json:"messages"`
+	Provider  ProviderInfo         `json:"provider"`
+	Session   ProviderSessionState `json:"session,omitempty"`
+	CreatedAt time.Time            `json:"created_at"`
+	UpdatedAt time.Time            `json:"updated_at"`
 }
 
 type SubmitRequest struct {
@@ -81,12 +98,14 @@ type CompletionRequest struct {
 	SystemPrompt string
 	Model        string
 	Messages     []ChatMessage
+	Session      *ProviderSessionState
 }
 
 type CompletionResult struct {
 	Content   string
 	Model     string
 	Reasoning string
+	Session   *ProviderSessionState
 }
 
 type StreamEventType string

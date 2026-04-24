@@ -3,11 +3,14 @@ package conversation
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 const (
@@ -141,9 +144,9 @@ func (p *localCLIProvider) complete(
 		return CompletionResult{}, info, fmt.Errorf("%s command is required", p.kind)
 	}
 
-	content, reasoning, err := p.run(ctx, request, info.Model)
+	content, reasoning, session, err := p.run(ctx, request, info.Model)
 	if err != nil {
-		return CompletionResult{}, info, err
+		return CompletionResult{Session: session}, info, err
 	}
 	content = strings.TrimSpace(content)
 	if onTextDelta != nil && content != "" {
@@ -155,30 +158,44 @@ func (p *localCLIProvider) complete(
 		Content:   content,
 		Reasoning: strings.TrimSpace(reasoning),
 		Model:     info.Model,
+		Session:   session,
 	}, info, nil
 }
 
-func (p *localCLIProvider) run(ctx context.Context, request CompletionRequest, model string) (string, string, error) {
+func (p *localCLIProvider) run(ctx context.Context, request CompletionRequest, model string) (string, string, *ProviderSessionState, error) {
 	switch p.mode {
 	case localCLIModeCodex:
-		content, err := runCodexCLI(ctx, p.command, model, formatCLICompletionPrompt(request, true))
-		return content, formatCLIReasoning("codex", p.command, model, err == nil), err
+		content, session, err := runCodexCLI(ctx, p.command, model, request.Session, formatCLICompletionPrompt(request, true))
+		return content, formatCLIReasoning("codex", p.command, model, err == nil), session, err
 	case localCLIModeClaudeCode:
-		content, err := runClaudeCodeCLI(ctx, p.command, model, request.SystemPrompt, formatCLICompletionPrompt(request, false))
-		return content, formatCLIReasoning("claude", p.command, model, err == nil), err
+		content, session, err := runClaudeCodeCLI(
+			ctx,
+			p.command,
+			model,
+			request.SystemPrompt,
+			formatCLICompletionPrompt(request, false),
+			request.Session,
+		)
+		return content, formatCLIReasoning("claude", p.command, model, err == nil), session, err
 	default:
-		return "", "", fmt.Errorf("unsupported cli provider mode: %s", p.mode)
+		return "", "", nil, fmt.Errorf("unsupported cli provider mode: %s", p.mode)
 	}
 }
 
-func runCodexCLI(ctx context.Context, command string, model string, prompt string) (string, error) {
+func runCodexCLI(
+	ctx context.Context,
+	command string,
+	model string,
+	session *ProviderSessionState,
+	prompt string,
+) (string, *ProviderSessionState, error) {
 	outputFile, err := os.CreateTemp("", "rterm-codex-last-message-*.txt")
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	outputPath := outputFile.Name()
 	if err := outputFile.Close(); err != nil {
-		return "", err
+		return "", nil, err
 	}
 	defer os.Remove(outputPath)
 
@@ -187,30 +204,61 @@ func runCodexCLI(ctx context.Context, command string, model string, prompt strin
 		"--color", "never",
 		"--sandbox", "read-only",
 		"--skip-git-repo-check",
-		"--ephemeral",
+		"--json",
 		"--output-last-message", outputPath,
 	}
 	if strings.TrimSpace(model) != "" {
 		args = append(args, "--model", strings.TrimSpace(model))
 	}
-	args = append(args, "-")
+	stdin := prompt
+	sessionID := ""
+	if session != nil {
+		sessionID = strings.TrimSpace(session.ID)
+	}
+	if sessionID != "" {
+		args = append(args, "resume", sessionID, prompt)
+		stdin = ""
+	} else {
+		args = append(args, "-")
+	}
 
-	stdout, stderr, err := runLocalCLICommand(ctx, command, args, prompt)
+	stdout, stderr, err := runLocalCLICommand(ctx, command, args, stdin)
 	if err != nil {
-		return "", formatCLICommandError("codex", err, stdout, stderr)
+		return "", nil, formatCLICommandError("codex", err, stdout, stderr)
+	}
+	nextSession := session
+	if threadID := extractCodexThreadID(stdout); threadID != "" {
+		nextSession = &ProviderSessionState{ProviderKind: "codex", ID: threadID}
+	} else if sessionID != "" {
+		nextSession = &ProviderSessionState{ProviderKind: "codex", ID: sessionID}
 	}
 	if payload, readErr := os.ReadFile(outputPath); readErr == nil && strings.TrimSpace(string(payload)) != "" {
-		return string(payload), nil
+		return string(payload), nextSession, nil
 	}
-	return stdout, nil
+	return stdout, nextSession, nil
 }
 
-func runClaudeCodeCLI(ctx context.Context, command string, model string, systemPrompt string, prompt string) (string, error) {
+func runClaudeCodeCLI(
+	ctx context.Context,
+	command string,
+	model string,
+	systemPrompt string,
+	prompt string,
+	session *ProviderSessionState,
+) (string, *ProviderSessionState, error) {
+	sessionID := ""
+	if session != nil {
+		sessionID = strings.TrimSpace(session.ID)
+	}
+	if sessionID == "" {
+		sessionID = uuid.NewString()
+	}
+
 	args := []string{
 		"-p",
 		"--output-format", "text",
-		"--no-session-persistence",
 		"--tools", "",
+		"--session-id", sessionID,
 	}
 	if strings.TrimSpace(model) != "" {
 		args = append(args, "--model", strings.TrimSpace(model))
@@ -222,9 +270,9 @@ func runClaudeCodeCLI(ctx context.Context, command string, model string, systemP
 
 	stdout, stderr, err := runLocalCLICommand(ctx, command, args, "")
 	if err != nil {
-		return "", formatCLICommandError("claude", err, stdout, stderr)
+		return "", nil, formatCLICommandError("claude", err, stdout, stderr)
 	}
-	return stdout, nil
+	return stdout, &ProviderSessionState{ProviderKind: "claude", ID: sessionID}, nil
 }
 
 func formatCLIReasoning(label, command, model string, completed bool) string {
@@ -305,4 +353,23 @@ func formatCLICommandError(label string, err error, stdout string, stderr string
 		return fmt.Errorf("%s cli failed: %w", label, err)
 	}
 	return fmt.Errorf("%s cli failed: %w: %s", label, err, detail)
+}
+
+func extractCodexThreadID(stdout string) string {
+	for _, line := range strings.Split(stdout, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		var payload struct {
+			ThreadID string `json:"thread_id"`
+		}
+		if err := json.Unmarshal([]byte(line), &payload); err != nil {
+			continue
+		}
+		if strings.TrimSpace(payload.ThreadID) != "" {
+			return strings.TrimSpace(payload.ThreadID)
+		}
+	}
+	return ""
 }

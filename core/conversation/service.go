@@ -2,9 +2,9 @@ package conversation
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
-	"os"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -13,6 +13,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	coredb "github.com/Mesteriis/rune-terminal/core/db"
 	"github.com/Mesteriis/rune-terminal/internal/ids"
 )
 
@@ -22,11 +23,13 @@ type persistedState struct {
 }
 
 type Service struct {
-	mu       sync.RWMutex
-	path     string
-	provider Provider
-	budget   historyBudget
-	state    persistedState
+	mu         sync.RWMutex
+	db         *sql.DB
+	legacyPath string
+	provider   Provider
+	budget     historyBudget
+	active     conversationRecord
+	state      persistedState
 }
 
 type historyBudget struct {
@@ -40,16 +43,23 @@ const (
 )
 
 func NewService(path string, provider Provider) (*Service, error) {
+	databasePath := filepath.Join(filepath.Dir(path), "runtime.db")
+	dbConn, err := coredb.Open(context.Background(), databasePath)
+	if err != nil {
+		return nil, err
+	}
+	return NewServiceWithDB(dbConn, path, provider)
+}
+
+func NewServiceWithDB(dbConn *sql.DB, legacyPath string, provider Provider) (*Service, error) {
 	if provider == nil {
 		provider = NewCodexCLIProvider(CodexCLIProviderConfig{})
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return nil, err
-	}
 	svc := &Service{
-		path:     path,
-		provider: provider,
-		budget:   defaultHistoryBudget(),
+		db:         dbConn,
+		legacyPath: strings.TrimSpace(legacyPath),
+		provider:   provider,
+		budget:     defaultHistoryBudget(),
 		state: persistedState{
 			Messages: []Message{},
 		},
@@ -67,11 +77,86 @@ func (s *Service) Snapshot() Snapshot {
 func (s *Service) SnapshotWithProviderInfo(info ProviderInfo) Snapshot {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return Snapshot{
-		Messages:  append([]Message(nil), s.state.Messages...),
-		Provider:  info,
-		UpdatedAt: s.state.UpdatedAt,
+	return s.snapshotLockedWithProviderInfo(info)
+}
+
+func (s *Service) ActiveConversationID() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.active.ID
+}
+
+func (s *Service) ListConversations(ctx context.Context) ([]ConversationSummary, string, error) {
+	summaries, err := listConversations(ctx, s.db)
+	if err != nil {
+		return nil, "", err
 	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return summaries, s.active.ID, nil
+}
+
+func (s *Service) CreateConversation(ctx context.Context) (Snapshot, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	record := newConversationRecord(time.Now().UTC())
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return Snapshot{}, err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+	if err := insertConversationTx(ctx, tx, record); err != nil {
+		return Snapshot{}, err
+	}
+	if err := setActiveConversationTx(ctx, tx, record.ID); err != nil {
+		return Snapshot{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return Snapshot{}, err
+	}
+
+	s.active = record
+	s.state = persistedState{Messages: []Message{}, UpdatedAt: record.UpdatedAt}
+	return s.snapshotLocked(), nil
+}
+
+func (s *Service) ActivateConversation(ctx context.Context, conversationID string) (Snapshot, error) {
+	conversationID = strings.TrimSpace(conversationID)
+	if conversationID == "" {
+		return Snapshot{}, ErrConversationNotFound
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return Snapshot{}, err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	record, messages, err := loadConversationStateTx(ctx, tx, conversationID)
+	if err != nil {
+		return Snapshot{}, err
+	}
+	if err := setActiveConversationTx(ctx, tx, conversationID); err != nil {
+		return Snapshot{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return Snapshot{}, err
+	}
+
+	s.active = record
+	s.state = persistedState{
+		Messages:  append([]Message(nil), messages...),
+		UpdatedAt: record.UpdatedAt,
+	}
+	return s.snapshotLocked(), nil
 }
 
 func (s *Service) Submit(ctx context.Context, request SubmitRequest) (SubmitResult, error) {
@@ -93,16 +178,19 @@ func (s *Service) SubmitWithProvider(ctx context.Context, provider Provider, req
 	}
 
 	userMessage := newMessage(RoleUser, prompt, request.Attachments, StatusComplete, "", "", "")
-
-	s.mu.Lock()
-	s.state.Messages = append(s.state.Messages, userMessage)
-	s.state.UpdatedAt = userMessage.CreatedAt
-	if err := s.persistLocked(); err != nil {
-		s.mu.Unlock()
+	conversationID, history, storedSession, err := s.appendMessagesForConversation(
+		ctx,
+		s.ActiveConversationID(),
+		[]Message{userMessage},
+		false,
+	)
+	if err != nil {
 		return SubmitResult{}, err
 	}
-	history := append([]Message(nil), s.state.Messages...)
-	s.mu.Unlock()
+	session := storedSession
+	if session != nil && strings.TrimSpace(session.ProviderKind) != strings.TrimSpace(provider.Info().Kind) {
+		session = nil
+	}
 
 	historyForCompletion := append([]Message(nil), history...)
 	if len(historyForCompletion) > 0 {
@@ -115,8 +203,9 @@ func (s *Service) SubmitWithProvider(ctx context.Context, provider Provider, req
 		systemPrompt,
 		historyForCompletion,
 		request.Model,
+		session,
 	)
-	return s.appendAssistantResult(result, info, providerErr)
+	return s.appendAssistantResult(conversationID, result, info, providerErr, true)
 }
 
 func (s *Service) SubmitStream(
@@ -149,22 +238,26 @@ func (s *Service) SubmitStreamWithProvider(
 		provider = s.provider
 	}
 
-	userMessage := newMessage(RoleUser, prompt, request.Attachments, StatusComplete, "", "", "")
 	info := provider.Info()
 	if model := strings.TrimSpace(request.Model); model != "" {
 		info.Model = model
 	}
+	userMessage := newMessage(RoleUser, prompt, request.Attachments, StatusComplete, "", "", "")
 	assistant := newMessage(RoleAssistant, "", nil, StatusStreaming, info.Kind, info.Model, "")
 
-	s.mu.Lock()
-	s.state.Messages = append(s.state.Messages, userMessage, assistant)
-	s.state.UpdatedAt = assistant.CreatedAt
-	if err := s.persistLocked(); err != nil {
-		s.mu.Unlock()
+	conversationID, history, storedSession, err := s.appendMessagesForConversation(
+		ctx,
+		s.ActiveConversationID(),
+		[]Message{userMessage, assistant},
+		false,
+	)
+	if err != nil {
 		return SubmitResult{}, err
 	}
-	history := append([]Message(nil), s.state.Messages[:len(s.state.Messages)-1]...)
-	s.mu.Unlock()
+	session := storedSession
+	if session != nil && strings.TrimSpace(session.ProviderKind) != strings.TrimSpace(info.Kind) {
+		session = nil
+	}
 
 	if emit != nil {
 		startMessage := assistant
@@ -173,11 +266,11 @@ func (s *Service) SubmitStreamWithProvider(
 			MessageID: assistant.ID,
 			Message:   &startMessage,
 		}); err != nil {
-			return s.finalizeAssistantStreamResult(assistant.ID, CompletionResult{}, info, err, nil)
+			return s.finalizeAssistantStreamResult(conversationID, assistant.ID, CompletionResult{}, info, err, nil, true)
 		}
 	}
 
-	historyForCompletion := append([]Message(nil), history...)
+	historyForCompletion := append([]Message(nil), history[:len(history)-1]...)
 	if len(historyForCompletion) > 0 {
 		historyForCompletion[len(historyForCompletion)-1].Content = providerPrompt
 	}
@@ -188,11 +281,12 @@ func (s *Service) SubmitStreamWithProvider(
 		systemPrompt,
 		historyForCompletion,
 		request.Model,
+		session,
 		func(delta string) error {
 			if delta == "" {
 				return nil
 			}
-			if err := s.appendAssistantDelta(assistant.ID, delta); err != nil {
+			if err := s.appendAssistantDelta(ctx, conversationID, assistant.ID, delta); err != nil {
 				return err
 			}
 			if emit != nil {
@@ -206,7 +300,7 @@ func (s *Service) SubmitStreamWithProvider(
 		},
 	)
 
-	return s.finalizeAssistantStreamResult(assistant.ID, result, finalInfo, providerErr, emit)
+	return s.finalizeAssistantStreamResult(conversationID, assistant.ID, result, finalInfo, providerErr, emit, true)
 }
 
 func (s *Service) AppendAssistantPrompt(ctx context.Context, request AssistantPromptRequest) (SubmitResult, error) {
@@ -228,12 +322,13 @@ func (s *Service) AppendAssistantPromptWithProvider(
 	}
 
 	s.mu.RLock()
+	conversationID := s.active.ID
 	history := append([]Message(nil), s.state.Messages...)
 	s.mu.RUnlock()
 
 	history = append(history, newMessage(RoleUser, prompt, nil, StatusComplete, "", "", ""))
-	result, info, providerErr := s.completeWithProvider(provider, ctx, systemPrompt, history, "")
-	return s.appendAssistantResult(result, info, providerErr)
+	result, info, providerErr := s.completeWithProvider(provider, ctx, systemPrompt, history, "", nil)
+	return s.appendAssistantResult(conversationID, result, info, providerErr, false)
 }
 
 func (s *Service) AppendMessages(requests []AppendMessageRequest) (Snapshot, error) {
@@ -241,9 +336,8 @@ func (s *Service) AppendMessages(requests []AppendMessageRequest) (Snapshot, err
 		return s.Snapshot(), nil
 	}
 
-	now := time.Now().UTC()
 	prepared := make([]Message, 0, len(requests))
-	for _, request := range requests {
+	for index, request := range requests {
 		role := MessageRole(strings.TrimSpace(string(request.Role)))
 		if role == "" {
 			return Snapshot{}, ErrInvalidMessage
@@ -256,31 +350,33 @@ func (s *Service) AppendMessages(requests []AppendMessageRequest) (Snapshot, err
 		if status == "" {
 			status = StatusComplete
 		}
+		createdAt := time.Now().UTC().Add(time.Duration(index) * time.Nanosecond)
 		prepared = append(prepared, Message{
-			ID:          ids.New("msg"),
+			ID:          newMessageID(),
 			Role:        role,
 			Content:     content,
 			Attachments: cloneAttachmentReferences(request.Attachments),
 			Status:      status,
 			Provider:    strings.TrimSpace(request.Provider),
 			Model:       strings.TrimSpace(request.Model),
-			CreatedAt:   now,
+			CreatedAt:   createdAt,
 		})
 	}
 
-	s.mu.Lock()
-	s.state.Messages = append(s.state.Messages, prepared...)
-	s.state.UpdatedAt = now
-	if err := s.persistLocked(); err != nil {
-		s.mu.Unlock()
+	_, _, _, err := s.appendMessagesForConversation(context.Background(), s.ActiveConversationID(), prepared, false)
+	if err != nil {
 		return Snapshot{}, err
 	}
-	snapshot := s.snapshotLocked()
-	s.mu.Unlock()
-	return snapshot, nil
+	return s.Snapshot(), nil
 }
 
-func (s *Service) appendAssistantResult(result CompletionResult, info ProviderInfo, providerErr error) (SubmitResult, error) {
+func (s *Service) appendAssistantResult(
+	conversationID string,
+	result CompletionResult,
+	info ProviderInfo,
+	providerErr error,
+	allowSessionUpdate bool,
+) (SubmitResult, error) {
 	assistant := newMessage(
 		RoleAssistant,
 		"",
@@ -303,15 +399,17 @@ func (s *Service) appendAssistantResult(result CompletionResult, info ProviderIn
 		}
 	}
 
-	s.mu.Lock()
-	s.state.Messages = append(s.state.Messages, assistant)
-	s.state.UpdatedAt = assistant.CreatedAt
-	if err := s.persistLocked(); err != nil {
-		s.mu.Unlock()
+	snapshot, _, err := s.appendAssistantMessageForConversation(
+		context.Background(),
+		conversationID,
+		assistant,
+		result.Session,
+		info.Kind,
+		allowSessionUpdate,
+	)
+	if err != nil {
 		return SubmitResult{}, err
 	}
-	snapshot := s.snapshotLockedWithProviderInfo(info)
-	s.mu.Unlock()
 
 	return SubmitResult{
 		Snapshot:      snapshot,
@@ -326,11 +424,7 @@ func (s *Service) snapshotLocked() Snapshot {
 }
 
 func (s *Service) snapshotLockedWithProviderInfo(info ProviderInfo) Snapshot {
-	return Snapshot{
-		Messages:  append([]Message(nil), s.state.Messages...),
-		Provider:  info,
-		UpdatedAt: s.state.UpdatedAt,
-	}
+	return s.active.snapshot(s.state.Messages, info)
 }
 
 func newMessage(
@@ -343,7 +437,7 @@ func newMessage(
 	reasoning string,
 ) Message {
 	return Message{
-		ID:          ids.New("msg"),
+		ID:          newMessageID(),
 		Role:        role,
 		Content:     content,
 		Attachments: cloneAttachmentReferences(attachments),
@@ -353,6 +447,10 @@ func newMessage(
 		Reasoning:   strings.TrimSpace(reasoning),
 		CreatedAt:   time.Now().UTC(),
 	}
+}
+
+func newMessageID() string {
+	return ids.New("msg")
 }
 
 func reasoningFromResult(result CompletionResult, info ProviderInfo) string {
@@ -381,7 +479,7 @@ func cloneAttachmentReferences(attachments []AttachmentReference) []AttachmentRe
 }
 
 func (s *Service) complete(ctx context.Context, systemPrompt string, history []Message) (CompletionResult, ProviderInfo, error) {
-	return s.completeWithProvider(s.provider, ctx, systemPrompt, history, "")
+	return s.completeWithProvider(s.provider, ctx, systemPrompt, history, "", nil)
 }
 
 func (s *Service) completeWithProvider(
@@ -390,6 +488,7 @@ func (s *Service) completeWithProvider(
 	systemPrompt string,
 	history []Message,
 	model string,
+	session *ProviderSessionState,
 ) (CompletionResult, ProviderInfo, error) {
 	if provider == nil {
 		provider = s.provider
@@ -398,6 +497,7 @@ func (s *Service) completeWithProvider(
 		SystemPrompt: systemPrompt,
 		Model:        strings.TrimSpace(model),
 		Messages:     pruneCompletionHistory(history, s.budget),
+		Session:      cloneSessionState(session),
 	}
 	return provider.Complete(ctx, request)
 }
@@ -408,7 +508,7 @@ func (s *Service) completeStream(
 	history []Message,
 	onTextDelta func(string) error,
 ) (CompletionResult, ProviderInfo, error) {
-	return s.completeStreamWithProvider(s.provider, ctx, systemPrompt, history, "", onTextDelta)
+	return s.completeStreamWithProvider(s.provider, ctx, systemPrompt, history, "", nil, onTextDelta)
 }
 
 func (s *Service) completeStreamWithProvider(
@@ -417,6 +517,7 @@ func (s *Service) completeStreamWithProvider(
 	systemPrompt string,
 	history []Message,
 	model string,
+	session *ProviderSessionState,
 	onTextDelta func(string) error,
 ) (CompletionResult, ProviderInfo, error) {
 	if provider == nil {
@@ -426,37 +527,79 @@ func (s *Service) completeStreamWithProvider(
 		SystemPrompt: systemPrompt,
 		Model:        strings.TrimSpace(model),
 		Messages:     pruneCompletionHistory(history, s.budget),
+		Session:      cloneSessionState(session),
 	}
 	return provider.CompleteStream(ctx, request, onTextDelta)
 }
 
-func (s *Service) appendAssistantDelta(messageID string, delta string) error {
+func (s *Service) appendAssistantDelta(ctx context.Context, conversationID string, messageID string, delta string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	index := s.messageIndexLocked(messageID)
-	if index < 0 {
-		return ErrInvalidMessage
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
 	}
-	s.state.Messages[index].Content += delta
-	s.state.UpdatedAt = time.Now().UTC()
-	return s.persistLocked()
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	var content string
+	if s.active.ID == conversationID {
+		index := s.messageIndexLocked(messageID)
+		if index >= 0 {
+			s.state.Messages[index].Content += delta
+			content = s.state.Messages[index].Content
+		}
+	}
+	if content == "" {
+		content, err = conversationMessageContentTx(ctx, tx, messageID)
+		if err != nil {
+			return err
+		}
+		content += delta
+	}
+	if err := updateConversationMessageContentTx(ctx, tx, messageID, content, StatusStreaming, "", "", ""); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	if s.active.ID == conversationID {
+		s.state.UpdatedAt = time.Now().UTC()
+	}
+	return nil
 }
 
 func (s *Service) finalizeAssistantStreamResult(
+	conversationID string,
 	messageID string,
 	result CompletionResult,
 	info ProviderInfo,
 	providerErr error,
 	emit func(StreamEvent) error,
+	allowSessionUpdate bool,
 ) (SubmitResult, error) {
 	s.mu.Lock()
-	index := s.messageIndexLocked(messageID)
-	if index < 0 {
-		s.mu.Unlock()
-		return SubmitResult{}, ErrInvalidMessage
+
+	var assistant Message
+	if s.active.ID == conversationID {
+		index := s.messageIndexLocked(messageID)
+		if index < 0 {
+			s.mu.Unlock()
+			return SubmitResult{}, ErrInvalidMessage
+		}
+		assistant = s.state.Messages[index]
+	} else {
+		var err error
+		assistant, err = s.loadMessageByIDLocked(context.Background(), messageID)
+		if err != nil {
+			s.mu.Unlock()
+			return SubmitResult{}, err
+		}
 	}
-	assistant := s.state.Messages[index]
+
 	assistant.Provider = info.Kind
 	assistant.Model = info.Model
 	assistant.Status = StatusComplete
@@ -481,14 +624,12 @@ func (s *Service) finalizeAssistantStreamResult(
 		}
 	}
 
-	s.state.Messages[index] = assistant
-	s.state.UpdatedAt = time.Now().UTC()
-	if err := s.persistLocked(); err != nil {
-		s.mu.Unlock()
+	nextSession := nextProviderSessionState(s.active.Session, info.Kind, result.Session, allowSessionUpdate)
+	snapshot, err := s.persistAssistantFinalizationLocked(context.Background(), conversationID, assistant, nextSession)
+	s.mu.Unlock()
+	if err != nil {
 		return SubmitResult{}, err
 	}
-	snapshot := s.snapshotLockedWithProviderInfo(info)
-	s.mu.Unlock()
 
 	if emit != nil {
 		eventType := StreamEventMessageComplete
@@ -587,41 +728,290 @@ func pruneCompletionHistory(history []Message, budget historyBudget) []ChatMessa
 }
 
 func (s *Service) load() error {
-	payload, err := os.ReadFile(s.path)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	tx, err := s.db.BeginTx(context.Background(), nil)
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return s.persist()
-		}
 		return err
 	}
-	var state persistedState
-	if err := json.Unmarshal(payload, &state); err != nil {
+	defer func() {
+		_ = tx.Rollback()
+	}()
+	if err := s.ensureBootstrappedTx(context.Background(), tx); err != nil {
 		return err
 	}
-	if state.Messages == nil {
-		state.Messages = []Message{}
+	activeConversationID, err := activeConversationIDTx(context.Background(), tx)
+	if err != nil {
+		return err
 	}
-	s.state = state
+	record, messages, err := loadConversationStateTx(context.Background(), tx, activeConversationID)
+	if err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	s.active = record
+	s.state = persistedState{
+		Messages:  append([]Message(nil), messages...),
+		UpdatedAt: record.UpdatedAt,
+	}
 	return nil
 }
 
-func (s *Service) persist() error {
+func (s *Service) appendMessagesForConversation(
+	ctx context.Context,
+	conversationID string,
+	messages []Message,
+	allowSessionReset bool,
+) (string, []Message, *ProviderSessionState, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.persistLocked()
+
+	conversationID = strings.TrimSpace(conversationID)
+	if conversationID == "" {
+		return "", nil, nil, ErrConversationNotFound
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return "", nil, nil, err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	record, persistedMessages, err := loadConversationStateTx(ctx, tx, conversationID)
+	if err != nil {
+		return "", nil, nil, err
+	}
+	if err := insertConversationMessagesTx(ctx, tx, conversationID, messages); err != nil {
+		return "", nil, nil, err
+	}
+
+	record.UpdatedAt = messages[len(messages)-1].CreatedAt.UTC()
+	if record.Title == "" {
+		record.Title = titleFromMessages(messages)
+	}
+	if allowSessionReset {
+		record.Session = ProviderSessionState{}
+	}
+	if err := updateConversationTx(ctx, tx, record); err != nil {
+		return "", nil, nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return "", nil, nil, err
+	}
+
+	persistedMessages = append(persistedMessages, messages...)
+	if s.active.ID == conversationID {
+		s.active = record
+		s.state.Messages = append([]Message(nil), persistedMessages...)
+		s.state.UpdatedAt = record.UpdatedAt
+	}
+	return conversationID, persistedMessages, cloneSessionState(sessionForProvider(record.Session, record.Session.ProviderKind)), nil
 }
 
-func (s *Service) persistLocked() error {
-	payload, err := json.MarshalIndent(s.state, "", "  ")
+func (s *Service) appendAssistantMessageForConversation(
+	ctx context.Context,
+	conversationID string,
+	assistant Message,
+	resultSession *ProviderSessionState,
+	providerKind string,
+	allowSessionUpdate bool,
+) (Snapshot, ProviderSessionState, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	nextSession := nextProviderSessionState(s.active.Session, providerKind, resultSession, allowSessionUpdate)
+	snapshot, err := s.persistAssistantFinalizationLocked(ctx, conversationID, assistant, nextSession)
 	if err != nil {
-		return err
+		return Snapshot{}, ProviderSessionState{}, err
 	}
-	return os.WriteFile(s.path, payload, 0o600)
+	return snapshot, nextSession, nil
+}
+
+func (s *Service) persistAssistantFinalizationLocked(
+	ctx context.Context,
+	conversationID string,
+	assistant Message,
+	nextSession ProviderSessionState,
+) (Snapshot, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return Snapshot{}, err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	record, persistedMessages, err := loadConversationStateTx(ctx, tx, conversationID)
+	if err != nil {
+		return Snapshot{}, err
+	}
+
+	existingIndex := -1
+	for index := range persistedMessages {
+		if persistedMessages[index].ID == assistant.ID {
+			existingIndex = index
+			break
+		}
+	}
+	if existingIndex >= 0 {
+		persistedMessages[existingIndex] = assistant
+		if err := updateConversationMessageContentTx(
+			ctx,
+			tx,
+			assistant.ID,
+			assistant.Content,
+			assistant.Status,
+			assistant.Reasoning,
+			assistant.Provider,
+			assistant.Model,
+		); err != nil {
+			return Snapshot{}, err
+		}
+	} else {
+		if err := insertConversationMessagesTx(ctx, tx, conversationID, []Message{assistant}); err != nil {
+			return Snapshot{}, err
+		}
+		persistedMessages = append(persistedMessages, assistant)
+	}
+
+	record.Session = nextSession
+	record.UpdatedAt = assistant.CreatedAt.UTC()
+	if err := updateConversationTx(ctx, tx, record); err != nil {
+		return Snapshot{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return Snapshot{}, err
+	}
+
+	if s.active.ID == conversationID {
+		s.active = record
+		s.state.Messages = append([]Message(nil), persistedMessages...)
+		s.state.UpdatedAt = record.UpdatedAt
+		return s.snapshotLocked(), nil
+	}
+	return record.snapshot(persistedMessages, s.provider.Info()), nil
+}
+
+func (s *Service) loadMessageByIDLocked(ctx context.Context, messageID string) (Message, error) {
+	row := s.db.QueryRowContext(ctx, `
+		SELECT id, role, content, attachments_json, status, provider, model, reasoning, created_at
+		FROM conversation_messages
+		WHERE id = ?
+	`, messageID)
+	var message Message
+	var attachmentsJSON string
+	var createdAtRaw string
+	if err := row.Scan(
+		&message.ID,
+		&message.Role,
+		&message.Content,
+		&attachmentsJSON,
+		&message.Status,
+		&message.Provider,
+		&message.Model,
+		&message.Reasoning,
+		&createdAtRaw,
+	); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return Message{}, ErrInvalidMessage
+		}
+		return Message{}, err
+	}
+	if strings.TrimSpace(attachmentsJSON) != "" {
+		if err := json.Unmarshal([]byte(attachmentsJSON), &message.Attachments); err != nil {
+			return Message{}, err
+		}
+	}
+	createdAt, err := parseDBTime(createdAtRaw)
+	if err != nil {
+		return Message{}, err
+	}
+	message.CreatedAt = createdAt
+	return message, nil
+}
+
+func conversationMessageContentTx(ctx context.Context, tx *sql.Tx, messageID string) (string, error) {
+	var content string
+	err := tx.QueryRowContext(ctx, `
+		SELECT content
+		FROM conversation_messages
+		WHERE id = ?
+	`, messageID).Scan(&content)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", ErrInvalidMessage
+	}
+	return content, err
+}
+
+func sessionForProvider(session ProviderSessionState, providerKind string) *ProviderSessionState {
+	session = normalizeProviderSession(session)
+	providerKind = strings.TrimSpace(providerKind)
+	if session.ID == "" {
+		return nil
+	}
+	if providerKind != "" && session.ProviderKind != providerKind {
+		return nil
+	}
+	copy := session
+	return &copy
+}
+
+func normalizeProviderSession(session ProviderSessionState) ProviderSessionState {
+	session.ProviderKind = strings.TrimSpace(session.ProviderKind)
+	session.ID = strings.TrimSpace(session.ID)
+	if session.ProviderKind == "" || session.ID == "" {
+		return ProviderSessionState{}
+	}
+	return session
+}
+
+func nextProviderSessionState(
+	current ProviderSessionState,
+	providerKind string,
+	resultSession *ProviderSessionState,
+	allowSessionUpdate bool,
+) ProviderSessionState {
+	current = normalizeProviderSession(current)
+	providerKind = strings.TrimSpace(providerKind)
+	if !allowSessionUpdate {
+		return current
+	}
+	if current.ProviderKind != "" && current.ProviderKind != providerKind {
+		current = ProviderSessionState{}
+	}
+	if resultSession != nil {
+		next := normalizeProviderSession(*resultSession)
+		if next.ProviderKind == "" {
+			next.ProviderKind = providerKind
+		}
+		next = normalizeProviderSession(next)
+		if next.ID != "" {
+			return next
+		}
+	}
+	if current.ProviderKind == providerKind {
+		return current
+	}
+	return ProviderSessionState{}
+}
+
+func cloneSessionState(session *ProviderSessionState) *ProviderSessionState {
+	if session == nil {
+		return nil
+	}
+	copy := *session
+	return &copy
 }
 
 func errorString(err error) string {
 	if err == nil {
 		return ""
 	}
-	return err.Error()
+	return strings.TrimSpace(err.Error())
 }

@@ -60,13 +60,29 @@ export type AgentConversationMessage = {
 }
 
 export type AgentConversationSnapshot = {
+  id: string
+  title: string
   messages: AgentConversationMessage[]
   provider: {
     kind: string
     model?: string
     streaming: boolean
   }
+  created_at: string
   updated_at: string
+}
+
+export type AgentConversationSummary = {
+  id: string
+  title: string
+  created_at: string
+  updated_at: string
+  message_count: number
+}
+
+export type AgentConversationList = {
+  active_conversation_id: string
+  conversations: AgentConversationSummary[]
 }
 
 export type AgentProviderCatalog = {
@@ -214,6 +230,40 @@ export async function fetchAgentConversation(request: APIRequestContext) {
     ...payload.conversation,
     messages: Array.isArray(payload.conversation.messages) ? payload.conversation.messages : [],
   }
+}
+
+export async function fetchAgentConversations(request: APIRequestContext) {
+  return expectJSONResponse<AgentConversationList>(
+    request.get(`${backendUrl}/api/v1/agent/conversations`, {
+      headers: authHeaders(),
+    }),
+  )
+}
+
+export async function createAgentConversation(request: APIRequestContext) {
+  const response = await request.post(`${backendUrl}/api/v1/agent/conversations`, {
+    data: {},
+    headers: authHeaders(),
+  })
+
+  expect(response.ok()).toBeTruthy()
+
+  const payload = (await response.json()) as { conversation: AgentConversationSnapshot }
+  return payload.conversation
+}
+
+export async function activateAgentConversation(request: APIRequestContext, conversationID: string) {
+  const response = await request.put(
+    `${backendUrl}/api/v1/agent/conversations/${encodeURIComponent(conversationID)}/activate`,
+    {
+      headers: authHeaders(),
+    },
+  )
+
+  expect(response.ok()).toBeTruthy()
+
+  const payload = (await response.json()) as { conversation: AgentConversationSnapshot }
+  return payload.conversation
 }
 
 export async function fetchAgentProviderCatalog(request: APIRequestContext) {
