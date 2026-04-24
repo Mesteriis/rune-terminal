@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
 
-import { ChevronDown, List, SendHorizontal } from 'lucide-react'
+import { ChevronDown, List, SendHorizontal, X } from 'lucide-react'
 
 import type {
   AiContextWidgetOption,
@@ -19,6 +19,12 @@ import {
   aiComposerContextMenuMetaStyle,
   aiComposerContextQuickActionStyle,
   aiComposerContextQuickActionsStyle,
+  aiComposerContextStripCurrentStyle,
+  aiComposerContextStripLabelStyle,
+  aiComposerContextStripRemoveStyle,
+  aiComposerContextStripRowStyle,
+  aiComposerContextStripStyle,
+  aiComposerContextStripValueStyle,
   aiComposerContextSummaryLabelStyle,
   aiComposerContextSummaryListStyle,
   aiComposerContextSummaryRowStyle,
@@ -130,6 +136,14 @@ export function AiComposerWidget({
             .join(', ')}${selectedContextCount > 2 ? ` +${selectedContextCount - 2}` : ''}`
   const isCurrentContextWidgetSelected =
     activeContextWidgetID != null && selectedContextWidgetIDs.includes(activeContextWidgetID)
+  const showCurrentContextStrip =
+    isWidgetContextEnabled && selectedContextCount === 0 && activeContextWidgetOption != null
+
+  const handleRemoveContextWidget = (widgetID: string) => {
+    onSelectedContextWidgetIDsChange?.(
+      selectedContextWidgetIDs.filter((selectedWidgetID) => selectedWidgetID !== widgetID),
+    )
+  }
 
   useEffect(() => {
     if (!isContextMenuOpen) {
@@ -258,6 +272,37 @@ export function AiComposerWidget({
             </Badge>
           </Box>
         </Surface>
+        {isWidgetContextEnabled && (selectedContextCount > 0 || showCurrentContextStrip) ? (
+          <Box runaComponent="ai-composer-context-strip" style={aiComposerContextStripStyle}>
+            <Text runaComponent="ai-composer-context-strip-label" style={aiComposerContextStripLabelStyle}>
+              Request context
+            </Text>
+            <Box runaComponent="ai-composer-context-strip-row" style={aiComposerContextStripRowStyle}>
+              {selectedContextOptions.map((option) => (
+                <Button
+                  key={option.value}
+                  aria-label={`Remove ${option.title ?? option.label} from request context`}
+                  onClick={() => handleRemoveContextWidget(option.value)}
+                  runaComponent="ai-composer-context-strip-chip"
+                  style={aiComposerContextStripRemoveStyle}
+                >
+                  <Text style={aiComposerContextStripValueStyle}>{option.title ?? option.label}</Text>
+                  <X size={12} strokeWidth={1.8} />
+                </Button>
+              ))}
+              {showCurrentContextStrip ? (
+                <Box
+                  runaComponent="ai-composer-context-strip-current"
+                  style={aiComposerContextStripCurrentStyle}
+                >
+                  <Text style={aiComposerContextStripValueStyle}>
+                    Current: {activeContextWidgetOption.title ?? activeContextWidgetOption.label}
+                  </Text>
+                </Box>
+              ) : null}
+            </Box>
+          </Box>
+        ) : null}
         <Surface runaComponent="ai-composer-surface" style={aiComposerSurfaceStyle}>
           {isContextMenuOpen ? (
             <Box

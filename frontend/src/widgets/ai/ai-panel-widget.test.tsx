@@ -510,7 +510,7 @@ describe('AiPanelWidget backend conversation path', () => {
     fireEvent.click(screen.getByLabelText('Composer options'))
 
     await waitFor(() => {
-      expect(screen.getByText('Request context')).toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: 'Context widgets' })).toBeInTheDocument()
     })
 
     fireEvent.click(screen.getByRole('option', { name: /Main Shell/ }))

@@ -13,6 +13,7 @@
   - AI toolbar provider/model selection over the backend provider catalog
   - AI composer request-context toolbar trigger with explicit widget multiselect
   - AI composer current-widget quick actions (`Use current`, `Only current`) over the existing workspace/widget context contract
+  - AI composer visible selected-context strip with direct remove actions for chosen widgets
   - frontend `/run ...` routing from the AI sidebar into the active terminal widget through backend tool execution plus terminal-command explanation
   - browser-level Playwright coverage for the AI sidebar over the split local dev path:
     - settings navigation for provider/model/limits/terminal/commander sections
@@ -39,6 +40,7 @@
   - explicit widget-context trigger with visible selection summary
   - explicit widget-context multiselect
   - explicit current-widget quick actions inside the request-context dropdown
+  - explicit selected-context strip with direct remove actions in the composer body
 - The AI composer submit shortcut is frontend-owned UI state:
   - default: `Enter` submits, `Shift+Enter` inserts a new line
   - alternate mode: `Enter` inserts a new line, `Ctrl/Cmd+Enter` submits
@@ -57,6 +59,9 @@
 - The visible context trigger in the composer remains frontend-owned UX over that same contract:
   - the closed trigger summarizes the effective selection state (`Context off`, active widget title, or widget count)
   - the dropdown exposes `Use current` and `Only current` actions without introducing a second backend context model
+- The selected widget set is now also visible outside the dropdown:
+  - explicit selections render as removable chips in the composer body
+  - removing chips narrows both `widget_ids` and `active_widget_id` to the remaining explicit selection, matching the current frontend context contract
 
 ## Commands/tests used
 

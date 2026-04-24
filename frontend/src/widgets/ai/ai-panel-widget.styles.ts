@@ -513,6 +513,65 @@ export const aiToolbarContextTriggerMetaStyle: CSSProperties = {
   whiteSpace: 'nowrap',
 }
 
+export const aiComposerContextStripStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 'var(--space-xs)',
+  minWidth: 0,
+  padding: '0 var(--space-xs)',
+}
+
+export const aiComposerContextStripLabelStyle: CSSProperties = {
+  color: 'var(--color-text-muted)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '11px',
+  lineHeight: '14px',
+  letterSpacing: '0.06em',
+  textTransform: 'uppercase',
+}
+
+export const aiComposerContextStripRowStyle: CSSProperties = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: 'var(--space-xs)',
+  minWidth: 0,
+}
+
+export const aiComposerContextStripRemoveStyle: CSSProperties = {
+  minHeight: '24px',
+  minWidth: 'auto',
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '6px',
+  padding: '0 var(--space-sm)',
+  borderRadius: 'var(--radius-sm)',
+  borderColor: 'var(--color-border-strong)',
+  background: 'color-mix(in srgb, var(--color-accent-emerald-soft) 18%, var(--color-surface-glass-soft))',
+  color: 'var(--color-text-primary)',
+  boxShadow: 'none',
+}
+
+export const aiComposerContextStripCurrentStyle: CSSProperties = {
+  minHeight: '24px',
+  display: 'inline-flex',
+  alignItems: 'center',
+  padding: '0 var(--space-sm)',
+  border: '1px solid var(--color-border-strong)',
+  borderRadius: 'var(--radius-sm)',
+  background: 'color-mix(in srgb, var(--color-surface-glass-soft) 78%, transparent)',
+}
+
+export const aiComposerContextStripValueStyle: CSSProperties = {
+  color: 'inherit',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '12px',
+  lineHeight: '16px',
+  maxWidth: '16rem',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+}
+
 export const aiComposerSurfaceStyle: CSSProperties = {
   position: 'relative',
   minWidth: 0,

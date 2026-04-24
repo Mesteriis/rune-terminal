@@ -148,4 +148,48 @@ describe('AiComposerWidget', () => {
     expect(onContextUseCurrentWidget).toHaveBeenCalledTimes(1)
     expect(onContextOnlyUseCurrentWidget).toHaveBeenCalledTimes(1)
   })
+
+  it('shows selected context chips and lets the operator remove a widget without reopening the dropdown', () => {
+    const onSelectedContextWidgetIDsChange = vi.fn()
+
+    render(
+      <AiComposerWidget
+        activeContextWidgetID="term-main"
+        activeContextWidgetOption={{
+          value: 'term-main',
+          label: 'Main Shell (term-main) · terminal · local',
+          title: 'Main Shell',
+          meta: 'term-main · terminal · local',
+        }}
+        activeTool="Chat"
+        contextWidgetOptions={[
+          {
+            value: 'term-main',
+            label: 'Main Shell (term-main) · terminal · local',
+            title: 'Main Shell',
+            meta: 'term-main · terminal · local',
+          },
+          {
+            value: 'term-side',
+            label: 'Ops Shell (term-side) · terminal · local',
+            title: 'Ops Shell',
+            meta: 'term-side · terminal · local',
+          },
+        ]}
+        onSelectedContextWidgetIDsChange={onSelectedContextWidgetIDsChange}
+        placeholder="Text Area"
+        selectedContextWidgetIDs={['term-main', 'term-side']}
+        toolbarLabel="TOOL BAR"
+        value=""
+      />,
+    )
+
+    expect(screen.getByText('Request context')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Remove Main Shell from request context' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Remove Ops Shell from request context' })).toBeVisible()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Ops Shell from request context' }))
+
+    expect(onSelectedContextWidgetIDsChange).toHaveBeenCalledWith(['term-main'])
+  })
 })

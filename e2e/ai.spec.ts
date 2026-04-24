@@ -271,6 +271,14 @@ test('AI sidebar lets the operator select multiple widget contexts for a request
 
   await page.keyboard.press('Escape')
   await expect(page.getByRole('button', { name: 'Composer options' })).toContainText('2 widgets')
+  await expect(page.getByText('Request context')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Remove Main Shell from request context' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Remove Ops Shell from request context' })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Remove Ops Shell from request context' }).click()
+
+  await expect(page.getByRole('button', { name: 'Composer options' })).toContainText('Main Shell')
+  await expect(page.getByRole('button', { name: 'Remove Ops Shell from request context' })).toHaveCount(0)
 
   await page.getByPlaceholder('Text Area').fill('context selector smoke')
   await page.getByRole('button', { name: 'Send prompt' }).click()
@@ -280,10 +288,10 @@ test('AI sidebar lets the operator select multiple widget contexts for a request
     prompt: 'context selector smoke',
     context: {
       action_source: 'frontend.ai.sidebar',
-      active_widget_id: 'term-side',
+      active_widget_id: 'term-main',
       repo_root: '/Users/avm/projects/Personal/tideterm/runa-terminal',
       widget_context_enabled: true,
-      widget_ids: ['term-side', 'term-main'],
+      widget_ids: ['term-main'],
     },
   })
 
