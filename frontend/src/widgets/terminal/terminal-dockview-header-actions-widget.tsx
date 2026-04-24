@@ -14,8 +14,8 @@ import {
   resolveTerminalPanelParams,
 } from '@/widgets/terminal/terminal-panel'
 import {
+  resolveDockviewHeaderActionsWrapStyle,
   terminalDockviewActionGroupStyle,
-  terminalDockviewHeaderActionsWrapStyle,
   terminalDockviewIconButtonStyle,
 } from '@/widgets/terminal/terminal-dockview-actions.styles'
 
@@ -28,6 +28,7 @@ export function TerminalDockviewHeaderActionsWidget(props: IDockviewHeaderAction
   const terminalPanelParams = isTerminal
     ? resolveTerminalPanelParams(props.activePanel.id, props.activePanel.params)
     : null
+  const headerActionsWrapStyle = resolveDockviewHeaderActionsWrapStyle(Boolean(terminalPanelParams))
 
   const handleAddTerminalTab = async (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault()
@@ -85,10 +86,7 @@ export function TerminalDockviewHeaderActionsWidget(props: IDockviewHeaderAction
 
   return (
     <RunaDomScopeProvider component="terminal-dockview-header-actions-widget" widget={props.activePanel.id}>
-      <Box
-        runaComponent="terminal-dockview-header-actions-wrap"
-        style={terminalDockviewHeaderActionsWrapStyle}
-      >
+      <Box runaComponent="terminal-dockview-header-actions-wrap" style={headerActionsWrapStyle}>
         <Box runaComponent="terminal-dockview-header-actions-group" style={terminalDockviewActionGroupStyle}>
           {terminalPanelParams ? (
             <IconButton

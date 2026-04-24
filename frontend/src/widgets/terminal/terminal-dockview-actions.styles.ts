@@ -14,6 +14,18 @@ export const terminalDockviewHeaderActionsWrapStyle: React.CSSProperties = {
   padding: '0 var(--space-xs) 0 0',
 }
 
+export const standardDockviewHeaderActionsWrapStyle: React.CSSProperties = {
+  ...resetBoxStyle,
+  display: 'flex',
+  height: '100%',
+  minHeight: 0,
+  minWidth: 'max-content',
+  alignItems: 'center',
+  justifyContent: 'flex-end',
+  marginTop: 0,
+  padding: '0 var(--space-xs) 0 0',
+}
+
 export const terminalDockviewActionGroupStyle: React.CSSProperties = {
   ...resetBoxStyle,
   display: 'inline-flex',
@@ -45,4 +57,8 @@ export const terminalDockviewIconButtonStyle: React.CSSProperties = {
 export const terminalDockviewTabCloseButtonStyle: React.CSSProperties = {
   ...terminalDockviewIconButtonStyle,
   marginLeft: '2px',
+}
+
+export function resolveDockviewHeaderActionsWrapStyle(isTerminalPanel: boolean) {
+  return isTerminalPanel ? terminalDockviewHeaderActionsWrapStyle : standardDockviewHeaderActionsWrapStyle
 }
