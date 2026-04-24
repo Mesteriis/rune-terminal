@@ -5,13 +5,15 @@ export type RuntimeContext = {
   repoRoot: string
 }
 
+export type RuntimeWatcherMode = 'ephemeral' | 'persistent'
+
 type RuntimeInfoPayload = {
   auth_token?: string
   base_url?: string
 }
 
 type RuntimeSettingsPayload = {
-  watcher_mode: 'ephemeral' | 'persistent' | string
+  watcher_mode: RuntimeWatcherMode | string
 }
 
 type RuntimeShutdownPayload = {
@@ -137,6 +139,10 @@ function getTauriInvoker() {
   return window.__TAURI_INTERNALS__?.invoke
 }
 
+export function canUpdateRuntimeSettings() {
+  return typeof getTauriInvoker() === 'function'
+}
+
 async function resolveRuntimeTransport() {
   const envTransport = readRuntimeTransportFromEnv()
 
@@ -188,6 +194,16 @@ export async function requestRuntimeSettings() {
   }
 
   return invoke<RuntimeSettingsPayload>('runtime_settings')
+}
+
+export async function setRuntimeWatcherMode(mode: RuntimeWatcherMode) {
+  const invoke = getTauriInvoker()
+
+  if (typeof invoke !== 'function') {
+    throw new Error('Runtime settings mutation is only available in the desktop app.')
+  }
+
+  return invoke<void>('set_watcher_mode', { mode })
 }
 
 export async function requestRuntimeShutdown({ force = false }: { force?: boolean } = {}) {

@@ -16,6 +16,7 @@ export type RadioGroupProps = {
   value: string
   onChange: (value: string) => void
   orientation?: 'horizontal' | 'vertical'
+  disabled?: boolean
 }
 
 const rootStyle = {
@@ -63,6 +64,7 @@ export function RadioGroup({
   value,
   onChange,
   orientation = 'vertical',
+  disabled = false,
 }: RadioGroupProps) {
   const groupLabelId = useId()
 
@@ -79,9 +81,18 @@ export function RadioGroup({
           const optionId = `${name}-${option.value}`
 
           return (
-            <Label htmlFor={optionId} key={option.value} style={optionLabelStyle}>
+            <Label
+              htmlFor={optionId}
+              key={option.value}
+              style={{
+                ...optionLabelStyle,
+                cursor: disabled ? 'not-allowed' : 'pointer',
+                opacity: disabled ? 0.7 : 1,
+              }}
+            >
               <Radio
                 checked={option.value === value}
+                disabled={disabled}
                 id={optionId}
                 name={name}
                 onChange={() => onChange(option.value)}

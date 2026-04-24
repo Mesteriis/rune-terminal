@@ -7,6 +7,7 @@ import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { ClearBox } from '@/shared/ui/components'
 import { Button, Checkbox, ScrollArea, Text } from '@/shared/ui/primitives'
 import { AgentProviderSettingsWidget } from '@/widgets/settings/agent-provider-settings-widget'
+import { RuntimeSettingsSection } from '@/widgets/settings/runtime-settings-section'
 import {
   settingsShellBadgeStyle,
   settingsShellCardsGridStyle,
@@ -47,10 +48,9 @@ const providerKindLabels: Record<AgentProviderView['kind'], string> = {
 const settingsSectionMeta: Record<SettingsSectionID, SettingsSectionMeta> = {
   general: {
     navTitle: 'Основные',
-    navDescription: 'Shell-wide базовые параметры.',
+    navDescription: 'Runtime mode и shell bootstrap context.',
     shellTitle: 'Основные',
-    shellDescription:
-      'Общий shell surface. Сюда входят базовые параметры рантайма, которые не относятся к AI, Terminal или Commander.',
+    shellDescription: 'Desktop runtime lifecycle, close-window semantics и текущий shell bootstrap context.',
     groupLabel: 'General',
   },
   'ai-apps': {
@@ -209,24 +209,7 @@ function SectionCard({
 }
 
 function GeneralSection() {
-  return (
-    <SectionCard
-      description="Здесь будут жить shell-wide параметры, которые не относятся к AI, Terminal или Commander."
-      title="Состояние раздела"
-    >
-      <ClearBox style={settingsShellListStyle}>
-        <ClearBox style={settingsShellListRowStyle}>
-          <ClearBox style={settingsShellContentHeaderStyle}>
-            <Text style={{ fontWeight: 600 }}>Общие настройки shell</Text>
-            <Text style={settingsShellMutedTextStyle}>
-              Пока структура добавлена для стабильной навигации и будущего разделения настроек.
-            </Text>
-          </ClearBox>
-          <ClearBox style={settingsShellBadgeStyle}>Planned</ClearBox>
-        </ClearBox>
-      </ClearBox>
-    </SectionCard>
-  )
+  return <RuntimeSettingsSection />
 }
 
 function AiModelsSection() {

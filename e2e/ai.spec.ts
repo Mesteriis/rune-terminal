@@ -35,7 +35,8 @@ test('settings modal exposes AI provider, model, limits, terminal, and commander
   await expect(page.getByText('Commander preferences')).toBeVisible()
 
   await page.getByRole('button', { name: 'Основные' }).click()
-  await expect(page.getByText('Общие настройки shell')).toBeVisible()
+  await expect(page.getByText('Desktop watcher mode')).toBeVisible()
+  await expect(page.getByText('Split browser dev loop', { exact: true })).toBeVisible()
 })
 
 test('AI sidebar runs a live Codex chat path and restores the transcript after reopen', async ({
