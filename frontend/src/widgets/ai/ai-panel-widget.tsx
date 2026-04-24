@@ -140,12 +140,14 @@ export function AiPanelWidget({ hostId, mode = 'chat', state }: AiPanelWidgetPro
           <AiComposerWidget
             activeTool={panelState.activeTool}
             availableModels={state == null ? agentPanel.availableModels : undefined}
+            availableProviders={state == null ? agentPanel.availableProviders : undefined}
             contextWidgetLoadError={state == null ? agentPanel.contextWidgetLoadError : undefined}
             contextWidgetOptions={state == null ? agentPanel.contextWidgetOptions : undefined}
             disabled={state == null ? agentPanel.isSubmitting || agentPanel.isInteractionPending : false}
             isWidgetContextEnabled={state == null ? agentPanel.isWidgetContextEnabled : undefined}
             onContextOptionsOpen={state == null ? agentPanel.handleContextOptionsOpen : undefined}
             onModelChange={state == null ? agentPanel.setSelectedModel : undefined}
+            onProviderChange={state == null ? agentPanel.selectProvider : undefined}
             onSelectedContextWidgetIDsChange={
               state == null ? agentPanel.setSelectedContextWidgetIDs : undefined
             }
@@ -155,6 +157,7 @@ export function AiPanelWidget({ hostId, mode = 'chat', state }: AiPanelWidgetPro
             placeholder={panelState.composerPlaceholder}
             selectedContextWidgetIDs={state == null ? agentPanel.selectedContextWidgetIDs : undefined}
             selectedModel={state == null ? agentPanel.selectedModel : undefined}
+            selectedProviderID={state == null ? agentPanel.selectedProviderID : undefined}
             submitDisabled={
               state == null
                 ? agentPanel.isSubmitting || agentPanel.isInteractionPending || agentPanel.draft.trim() === ''

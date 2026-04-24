@@ -1,6 +1,6 @@
 # 0024. CLI-only AI Provider Boundary
 
-- Status: Accepted
+- Status: Superseded by [0025. Narrow OpenAI-Compatible Source Reintroduction](./0025-narrow-openai-compatible-source-reintroduction.md)
 
 ## Context
 

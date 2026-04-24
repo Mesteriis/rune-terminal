@@ -353,15 +353,17 @@ Confirmable boundaries:
   - a full frontend reload still loses pending retry context because this slice does not add persistence
 - Capability-removing modes such as `secure` can still forbid `/run` entirely. In that case the AI command path is denied rather than approval-gated.
 - The AI panel footer now includes a TideTerm-shaped composer. It still maps a small set of explicit runtime-backed intents such as terminal inspection, tab listing, widget listing, active-tab lookup, and terminal interrupt to the tool/runtime path, but all other free-text prompts now go through the real backend conversation route.
-- The conversation backend currently resolves active providers from backend-owned agent config and supports only local CLI providers:
+- The conversation backend currently resolves active providers from backend-owned agent config and supports:
   - Codex CLI through `codex exec`
   - Claude Code CLI through `claude -p`
-- Conversation persistence remains full-transcript, but provider requests are bounded to a recent tail before being sent to the active CLI provider.
+  - operator-supplied OpenAI-compatible HTTP sources through `GET /v1/models` and `POST /v1/chat/completions`
+- Conversation persistence remains full-transcript, but provider requests are bounded to a recent tail before being sent to the active provider.
 - The current provider request budget is deterministic and backend-owned:
   - `RTERM_CONVERSATION_MAX_MESSAGES` default `24`
   - `RTERM_CONVERSATION_MAX_CHARS` default `12000`
 - Role preset, work mode, and prompt profile selection project into the backend system prompt through the Go app layer before the request reaches the provider.
 - Provider failures are recorded as assistant error messages in the transcript and as audit events. They are not silently swallowed by the frontend.
+- The AI composer toolbar now exposes explicit provider and model selection over that backend-owned catalog; it does not invent provider state locally.
 - Operator, settings, and audit navigation are now secondary header-menu controls rather than part of the primary composer surface.
 - The AI transcript now renders runtime tool activity with explicit tool names, operation summaries, affected widgets/paths, and approval-use markers so the feed behaves more like a working AI/tool conversation surface instead of a generic log.
 - The AI composer now exposes TideTerm-like control affordances: an attach button, prompt suggestion chips, and a send action.

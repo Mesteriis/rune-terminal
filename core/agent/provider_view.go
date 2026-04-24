@@ -42,6 +42,9 @@ func providerViewFromRecord(record ProviderRecord, activeProviderID string) Prov
 	if record.Claude != nil {
 		view.Claude = claudeProviderSettingsViewFromSettings(record.Claude)
 	}
+	if record.OpenAICompatible != nil {
+		view.OpenAICompatible = openAICompatibleProviderSettingsViewFromSettings(record.OpenAICompatible)
+	}
 	return view
 }
 
@@ -59,6 +62,13 @@ func cloneProviderRecord(record ProviderRecord) ProviderRecord {
 			Command:    record.Claude.Command,
 			Model:      record.Claude.Model,
 			ChatModels: append([]string(nil), record.Claude.ChatModels...),
+		}
+	}
+	if record.OpenAICompatible != nil {
+		cloned.OpenAICompatible = &OpenAICompatibleProviderSettings{
+			BaseURL:    record.OpenAICompatible.BaseURL,
+			Model:      record.OpenAICompatible.Model,
+			ChatModels: append([]string(nil), record.OpenAICompatible.ChatModels...),
 		}
 	}
 	return cloned
@@ -113,6 +123,19 @@ func claudeProviderSettingsViewFromSettings(settings *ClaudeProviderSettings) *C
 		&view.ResolvedBinary,
 	)
 	return view
+}
+
+func openAICompatibleProviderSettingsViewFromSettings(
+	settings *OpenAICompatibleProviderSettings,
+) *OpenAICompatibleProviderSettingsView {
+	if settings == nil {
+		return nil
+	}
+	return &OpenAICompatibleProviderSettingsView{
+		BaseURL:    settings.BaseURL,
+		Model:      settings.Model,
+		ChatModels: append([]string(nil), settings.ChatModels...),
+	}
 }
 
 func populateCLIStatus(

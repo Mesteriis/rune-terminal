@@ -38,7 +38,7 @@ func TestProviderCatalogReturnsBootstrapCLIProviders(t *testing.T) {
 	if len(payload.Providers) != 2 || payload.Providers[0].Kind != "codex" || payload.Providers[1].Kind != "claude" {
 		t.Fatalf("expected bootstrap cli providers, got %#v", payload.Providers)
 	}
-	if !slices.Equal(payload.SupportedKinds, []string{"codex", "claude"}) {
+	if !slices.Equal(payload.SupportedKinds, []string{"codex", "claude", "openai-compatible"}) {
 		t.Fatalf("unexpected supported kinds: %#v", payload.SupportedKinds)
 	}
 }
@@ -288,6 +288,94 @@ func TestDiscoverProviderModelsReturnsClaudeCodeModelsForStoredProvider(t *testi
 		t.Fatalf("unmarshal models: %v", err)
 	}
 	if !slices.Equal(payload.Models, []string{"opus", "sonnet"}) {
+		t.Fatalf("unexpected models: %#v", payload.Models)
+	}
+}
+
+func TestCreateProviderPersistsOpenAICompatibleConfig(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPost, "/api/v1/agent/providers", map[string]any{
+		"kind":         "openai-compatible",
+		"display_name": "LAN Gateway",
+		"openai_compatible": map[string]any{
+			"base_url":    "http://192.168.1.8:8317/",
+			"model":       "gemini-3-pro-high",
+			"chat_models": []string{"gpt-5.4"},
+		},
+	}))
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+
+	var payload struct {
+		Provider struct {
+			Kind             string `json:"kind"`
+			OpenAICompatible struct {
+				BaseURL    string   `json:"base_url"`
+				Model      string   `json:"model"`
+				ChatModels []string `json:"chat_models"`
+			} `json:"openai_compatible"`
+		} `json:"provider"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
+	}
+	if payload.Provider.Kind != "openai-compatible" {
+		t.Fatalf("unexpected provider payload: %#v", payload.Provider)
+	}
+	if payload.Provider.OpenAICompatible.BaseURL != "http://192.168.1.8:8317" {
+		t.Fatalf("unexpected base URL: %#v", payload.Provider.OpenAICompatible)
+	}
+	if !slices.Equal(payload.Provider.OpenAICompatible.ChatModels, []string{"gemini-3-pro-high", "gpt-5.4"}) {
+		t.Fatalf("unexpected chat models: %#v", payload.Provider.OpenAICompatible.ChatModels)
+	}
+}
+
+func TestDiscoverProviderModelsReturnsOpenAICompatibleModelsForDraft(t *testing.T) {
+	t.Parallel()
+
+	modelsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/models" {
+			t.Fatalf("unexpected path: %s", r.URL.Path)
+		}
+		if err := json.NewEncoder(w).Encode(map[string]any{
+			"data": []map[string]any{
+				{"id": "gemini-3-pro-high"},
+				{"id": "gpt-5.4"},
+			},
+		}); err != nil {
+			t.Fatalf("encode models: %v", err)
+		}
+	}))
+	defer modelsServer.Close()
+
+	handler, _ := newTestHandler(t)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPost, "/api/v1/agent/providers/models", map[string]any{
+		"kind": "openai-compatible",
+		"openai_compatible": map[string]any{
+			"base_url": modelsServer.URL,
+			"model":    "gemini-3-pro-high",
+		},
+	}))
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+
+	var payload struct {
+		Models []string `json:"models"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal models: %v", err)
+	}
+	if !slices.Equal(payload.Models, []string{"gemini-3-pro-high", "gpt-5.4"}) {
 		t.Fatalf("unexpected models: %#v", payload.Models)
 	}
 }

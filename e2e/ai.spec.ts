@@ -2,11 +2,48 @@ import { expect, test } from '@playwright/test'
 
 import {
   clearBrowserState,
+  createAgentProvider,
   fetchAgentConversation,
   fetchAgentProviderCatalog,
   fetchTerminalSnapshot,
   setActiveAgentProvider,
+  updateAgentProvider,
 } from './runtime'
+
+async function ensureLanSourceProvider(request: Parameters<typeof fetchAgentProviderCatalog>[0]) {
+  const providerCatalog = await fetchAgentProviderCatalog(request)
+  const existingProvider =
+    providerCatalog.providers.find(
+      (provider) =>
+        provider.kind === 'openai-compatible' &&
+        provider.openai_compatible?.base_url === 'http://192.168.1.8:8317',
+    ) ?? null
+
+  if (existingProvider) {
+    await updateAgentProvider(request, existingProvider.id, {
+      display_name: 'LAN OpenAI Source',
+      enabled: true,
+      openai_compatible: {
+        model: 'gpt-5.4',
+        chat_models: ['gpt-5.4', 'claude-sonnet-4-6', 'gemini-3-pro-low'],
+      },
+    })
+    return existingProvider.id
+  }
+
+  const created = await createAgentProvider(request, {
+    kind: 'openai-compatible',
+    display_name: 'LAN OpenAI Source',
+    enabled: true,
+    openai_compatible: {
+      base_url: 'http://192.168.1.8:8317',
+      model: 'gpt-5.4',
+      chat_models: ['gpt-5.4', 'claude-sonnet-4-6', 'gemini-3-pro-low'],
+    },
+  })
+
+  return created.provider.id
+}
 
 test('settings modal exposes AI provider, model, limits, terminal, and commander sections', async ({
   page,
@@ -20,6 +57,7 @@ test('settings modal exposes AI provider, model, limits, terminal, and commander
   await expect(page.getByText('Configured providers')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Add Codex CLI' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Add Claude Code CLI' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Add OpenAI-Compatible HTTP' })).toBeVisible()
 
   await page.getByRole('button', { name: 'Модели Список моделей, доступных в чате.' }).click()
   await expect(page.getByText('AI / Модели')).toBeVisible()
@@ -37,6 +75,66 @@ test('settings modal exposes AI provider, model, limits, terminal, and commander
   await page.getByRole('button', { name: 'Основные' }).click()
   await expect(page.getByText('Desktop watcher mode')).toBeVisible()
   await expect(page.getByText('Split browser dev loop', { exact: true })).toBeVisible()
+})
+
+test('AI sidebar switches to the LAN HTTP source from the toolbar and sends a real request', async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(180_000)
+
+  const providerID = await ensureLanSourceProvider(request)
+
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  const promptToken = `ui-ai-source-${Date.now()}`
+  const prompt = `Reply with exactly this token and nothing else: ${promptToken}`
+
+  await page.getByRole('button', { name: 'Toggle AI panel' }).click()
+  await expect(page.getByText('AI Rune Assistant')).toBeVisible()
+
+  const providerSelect = page.getByRole('combobox', { name: 'AI provider' })
+  await providerSelect.selectOption(providerID)
+  await expect(providerSelect).toHaveValue(providerID)
+
+  const modelSelect = page.getByRole('combobox', { name: 'AI model' })
+  await modelSelect.selectOption('gpt-5.4')
+  await expect(modelSelect).toHaveValue('gpt-5.4')
+
+  const composer = page.getByPlaceholder('Text Area')
+  await composer.fill(prompt)
+  await page.getByRole('button', { name: 'Send prompt' }).click()
+
+  await expect
+    .poll(
+      async () => {
+        const conversation = await fetchAgentConversation(request)
+        const assistantMessage = [...conversation.messages]
+          .reverse()
+          .find((message) => message.role === 'assistant' && message.content.includes(promptToken))
+
+        if (!assistantMessage) {
+          return null
+        }
+
+        return {
+          content: assistantMessage.content,
+          model: assistantMessage.model,
+          provider: assistantMessage.provider,
+          status: assistantMessage.status,
+        }
+      },
+      { timeout: 120_000 },
+    )
+    .toMatchObject({
+      content: promptToken,
+      model: 'gpt-5.4',
+      provider: 'openai-compatible',
+      status: 'complete',
+    })
+
+  await expect(page.getByText(promptToken, { exact: true })).toBeVisible()
 })
 
 test('AI sidebar runs a live Codex chat path and restores the transcript after reopen', async ({
@@ -100,9 +198,14 @@ test('AI sidebar runs a live Codex chat path and restores the transcript after r
       status: 'complete',
     })
 
-  await expect(page.getByText(promptToken, { exact: true })).toBeVisible()
-  await expect(page.getByText('Reasoning')).toBeVisible()
-  await expect(page.getByText(/codex via CLI command/i)).toBeVisible()
+  const codexAssistantMessage = page
+    .locator('[data-runa-chat-role="assistant"]')
+    .filter({ has: page.getByText(promptToken, { exact: true }) })
+    .last()
+
+  await expect(codexAssistantMessage).toBeVisible()
+  await expect(codexAssistantMessage.getByText('Reasoning')).toBeVisible()
+  await expect(codexAssistantMessage.getByText(/codex via CLI command/i)).toBeVisible()
 
   await page.getByRole('button', { name: 'Toggle AI panel' }).click()
   await expect(page.getByText('AI Rune Assistant')).toHaveCount(0)

@@ -9,6 +9,8 @@ const DEFAULT_CODEX_COMMAND = 'codex'
 const DEFAULT_CODEX_MODEL = 'gpt-5.4'
 const DEFAULT_CLAUDE_COMMAND = 'claude'
 const DEFAULT_CLAUDE_MODEL = 'sonnet'
+const DEFAULT_OPENAI_COMPATIBLE_BASE_URL = 'http://127.0.0.1:8317'
+const DEFAULT_OPENAI_COMPATIBLE_MODEL = 'gpt-5.4'
 
 function normalizeText(value: string) {
   return value.trim()
@@ -40,6 +42,10 @@ export type AgentProviderDraft = {
     command: string
     model: string
   }
+  openAICompatible: {
+    baseURL: string
+    model: string
+  }
 }
 
 export function createEmptyProviderDraft(kind: AgentProviderKind): AgentProviderDraft {
@@ -55,6 +61,10 @@ export function createEmptyProviderDraft(kind: AgentProviderKind): AgentProvider
     claude: {
       command: DEFAULT_CLAUDE_COMMAND,
       model: DEFAULT_CLAUDE_MODEL,
+    },
+    openAICompatible: {
+      baseURL: DEFAULT_OPENAI_COMPATIBLE_BASE_URL,
+      model: DEFAULT_OPENAI_COMPATIBLE_MODEL,
     },
   }
 }
@@ -73,6 +83,10 @@ export function createProviderDraftFromView(provider: AgentProviderView): AgentP
     claude: {
       command: provider.claude?.command ?? DEFAULT_CLAUDE_COMMAND,
       model: provider.claude?.model ?? DEFAULT_CLAUDE_MODEL,
+    },
+    openAICompatible: {
+      baseURL: provider.openai_compatible?.base_url ?? DEFAULT_OPENAI_COMPATIBLE_BASE_URL,
+      model: provider.openai_compatible?.model ?? DEFAULT_OPENAI_COMPATIBLE_MODEL,
     },
   }
 }
@@ -95,6 +109,12 @@ export function buildCreateProviderPayload(draft: AgentProviderDraft): CreateAge
       payload.claude = {
         command: requireText(draft.claude.command, 'Claude command'),
         model: requireText(draft.claude.model, 'Claude model'),
+      }
+      return payload
+    case 'openai-compatible':
+      payload.openai_compatible = {
+        base_url: requireText(draft.openAICompatible.baseURL, 'Source URL'),
+        model: requireText(draft.openAICompatible.model, 'Source model'),
       }
       return payload
     default:
@@ -123,6 +143,12 @@ export function buildUpdateProviderPayload(draft: AgentProviderDraft): UpdateAge
       payload.claude = {
         command: requireText(draft.claude.command, 'Claude command'),
         model: requireText(draft.claude.model, 'Claude model'),
+      }
+      return payload
+    case 'openai-compatible':
+      payload.openai_compatible = {
+        base_url: requireText(draft.openAICompatible.baseURL, 'Source URL'),
+        model: requireText(draft.openAICompatible.model, 'Source model'),
       }
       return payload
     default:

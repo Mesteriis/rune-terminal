@@ -10,10 +10,11 @@ import (
 )
 
 type DiscoverProviderModelsInput struct {
-	ProviderID string
-	Kind       agent.ProviderKind
-	Codex      *agent.CodexProviderSettings
-	Claude     *agent.ClaudeProviderSettings
+	ProviderID       string
+	Kind             agent.ProviderKind
+	Codex            *agent.CodexProviderSettings
+	Claude           *agent.ClaudeProviderSettings
+	OpenAICompatible *agent.OpenAICompatibleProviderSettings
 }
 
 type ProviderModelsCatalog struct {
@@ -21,7 +22,7 @@ type ProviderModelsCatalog struct {
 }
 
 func (r *Runtime) DiscoverProviderModels(
-	_ context.Context,
+	ctx context.Context,
 	input DiscoverProviderModelsInput,
 ) (ProviderModelsCatalog, error) {
 	record, err := r.resolveProviderModelDiscoveryInput(input)
@@ -36,10 +37,19 @@ func (r *Runtime) DiscoverProviderModels(
 	case agent.ProviderKindClaude:
 		models := conversation.ListClaudeCodeModels(record.Claude.Model, record.Claude.ChatModels)
 		return ProviderModelsCatalog{Models: models}, nil
+	case agent.ProviderKindOpenAICompatible:
+		models, err := conversation.DiscoverOpenAICompatibleModels(ctx, record.OpenAICompatible.BaseURL)
+		if err != nil {
+			return ProviderModelsCatalog{}, err
+		}
+		return ProviderModelsCatalog{
+			Models: compactModelIDs(append([]string{record.OpenAICompatible.Model}, models...)),
+		}, nil
 	default:
 		return ProviderModelsCatalog{}, fmt.Errorf(
-			"%w: model discovery is available only for codex-cli and claude-code-cli providers",
+			"%w: model discovery is unavailable for provider kind %s",
 			agent.ErrProviderKindUnsupported,
+			record.Kind,
 		)
 	}
 }
@@ -71,6 +81,14 @@ func (r *Runtime) resolveProviderModelDiscoveryInput(input DiscoverProviderModel
 			Command: strings.TrimSpace(input.Claude.Command),
 			Model:   strings.TrimSpace(input.Claude.Model),
 		}
+	case agent.ProviderKindOpenAICompatible:
+		if input.OpenAICompatible == nil {
+			return agent.ProviderRecord{}, fmt.Errorf("%w: openai-compatible config is required", agent.ErrProviderInvalidConfig)
+		}
+		record.OpenAICompatible = &agent.OpenAICompatibleProviderSettings{
+			BaseURL: strings.TrimSpace(input.OpenAICompatible.BaseURL),
+			Model:   strings.TrimSpace(input.OpenAICompatible.Model),
+		}
 	default:
 		return agent.ProviderRecord{}, fmt.Errorf("%w: %s", agent.ErrProviderKindUnsupported, input.Kind)
 	}
@@ -93,7 +111,7 @@ func applyProviderModelDiscoveryOverrides(
 
 	switch record.Kind {
 	case agent.ProviderKindCodex:
-		if input.Claude != nil {
+		if input.Claude != nil || input.OpenAICompatible != nil {
 			return agent.ProviderRecord{}, fmt.Errorf("%w: codex discovery payload cannot include other provider config", agent.ErrProviderInvalidConfig)
 		}
 		if input.Codex != nil {
@@ -105,7 +123,7 @@ func applyProviderModelDiscoveryOverrides(
 			}
 		}
 	case agent.ProviderKindClaude:
-		if input.Codex != nil {
+		if input.Codex != nil || input.OpenAICompatible != nil {
 			return agent.ProviderRecord{}, fmt.Errorf("%w: claude discovery payload cannot include other provider config", agent.ErrProviderInvalidConfig)
 		}
 		if input.Claude != nil {
@@ -114,6 +132,21 @@ func applyProviderModelDiscoveryOverrides(
 			}
 			if model := strings.TrimSpace(input.Claude.Model); model != "" {
 				record.Claude.Model = model
+			}
+		}
+	case agent.ProviderKindOpenAICompatible:
+		if input.Codex != nil || input.Claude != nil {
+			return agent.ProviderRecord{}, fmt.Errorf(
+				"%w: openai-compatible discovery payload cannot include other provider config",
+				agent.ErrProviderInvalidConfig,
+			)
+		}
+		if input.OpenAICompatible != nil {
+			if baseURL := strings.TrimSpace(input.OpenAICompatible.BaseURL); baseURL != "" {
+				record.OpenAICompatible.BaseURL = baseURL
+			}
+			if model := strings.TrimSpace(input.OpenAICompatible.Model); model != "" {
+				record.OpenAICompatible.Model = model
 			}
 		}
 	default:
@@ -147,9 +180,74 @@ func applyProviderModelDiscoveryDefaults(record agent.ProviderRecord) (agent.Pro
 			record.Claude.Model = "sonnet"
 		}
 		record.Claude.ChatModels = conversation.ListClaudeCodeModels(record.Claude.Model, record.Claude.ChatModels)
+	case agent.ProviderKindOpenAICompatible:
+		if record.OpenAICompatible == nil {
+			return agent.ProviderRecord{}, fmt.Errorf("%w: openai-compatible config is required", agent.ErrProviderInvalidConfig)
+		}
+		record.OpenAICompatible.BaseURL = normalizeProviderDiscoveryBaseURL(record.OpenAICompatible.BaseURL)
+		if strings.TrimSpace(record.OpenAICompatible.BaseURL) == "" {
+			return agent.ProviderRecord{}, fmt.Errorf("%w: openai-compatible base_url is required", agent.ErrProviderInvalidConfig)
+		}
+		record.OpenAICompatible.ChatModels = normalizeProviderDiscoveryChatModels(
+			record.OpenAICompatible.Model,
+			record.OpenAICompatible.ChatModels,
+		)
 	default:
 		return agent.ProviderRecord{}, fmt.Errorf("%w: %s", agent.ErrProviderKindUnsupported, record.Kind)
 	}
 
 	return record, nil
+}
+
+func normalizeProviderDiscoveryBaseURL(raw string) string {
+	baseURL := strings.TrimSpace(raw)
+	if baseURL == "" {
+		return ""
+	}
+	return strings.TrimRight(baseURL, "/")
+}
+
+func normalizeProviderDiscoveryChatModels(defaultModel string, rawModels []string) []string {
+	models := make([]string, 0, len(rawModels)+1)
+	seen := make(map[string]struct{}, len(rawModels)+1)
+
+	appendModel := func(raw string) {
+		model := strings.TrimSpace(raw)
+		if model == "" {
+			return
+		}
+		if _, ok := seen[model]; ok {
+			return
+		}
+		seen[model] = struct{}{}
+		models = append(models, model)
+	}
+
+	appendModel(defaultModel)
+	for _, rawModel := range rawModels {
+		appendModel(rawModel)
+	}
+
+	if len(models) == 0 {
+		return nil
+	}
+	return models
+}
+
+func compactModelIDs(models []string) []string {
+	compact := make([]string, 0, len(models))
+	seen := make(map[string]struct{}, len(models))
+
+	for _, rawModel := range models {
+		model := strings.TrimSpace(rawModel)
+		if model == "" {
+			continue
+		}
+		if _, ok := seen[model]; ok {
+			continue
+		}
+		seen[model] = struct{}{}
+		compact = append(compact, model)
+	}
+	return compact
 }

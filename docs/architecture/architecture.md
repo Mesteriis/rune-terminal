@@ -56,7 +56,7 @@ Go Core
   Terminal launches are connection-aware: local sessions use the current shell, while SSH sessions launch the system `ssh` binary inside the PTY.
 - `core/conversation`
   Manages the persisted AI transcript and the narrow provider adapter for real assistant responses.
-  The conversation path resolves providers from backend-owned agent config and currently routes only through local CLI adapters: Codex CLI (`codex exec`) and Claude Code CLI (`claude -p`).
+  The conversation path resolves providers from backend-owned agent config and currently routes through local CLI adapters plus one explicit OpenAI-compatible HTTP source path: Codex CLI (`codex exec`), Claude Code CLI (`claude -p`), and operator-supplied OpenAI-compatible endpoints (`/v1/models`, `/v1/chat/completions`).
 - `core/toolruntime`
   Hosts tool registry, operation planning, approval handling, execution results and audit emission.
 - `core/agent`
@@ -121,5 +121,5 @@ Role presets, work modes and system prompt profiles are not UI-only metadata. Th
 - connection state is explicit and backend-owned instead of being inferred from frontend shell heuristics
 - terminal orchestration is isolated from workspace orchestration
 - future AI features can integrate through the tool runtime instead of growing a second orchestration stack
-- AI provider/account routing now stays backend-owned and intentionally narrow: only local Codex CLI and Claude Code CLI providers are supported in the active runtime
+- AI provider/account routing stays backend-owned and intentionally narrow: the active runtime supports local Codex CLI, local Claude Code CLI, and one explicit OpenAI-compatible HTTP source kind
 - remote state is explicit and backend-owned, but it is still profile-oriented rather than a long-lived remote controller model

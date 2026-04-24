@@ -6,9 +6,9 @@
 - State: `VERIFIED`
 - Scope:
   - backend-owned AI provider catalog and active-provider resolution
-  - CLI-only provider runtime for `codex` and `claude`
+  - narrow provider runtime for `codex`, `claude`, and `openai-compatible`
   - frontend settings provider client/draft helpers and TypeScript surface
-  - browser-level Playwright validation for the provider/settings surfaces under the split local dev path
+  - browser-level Playwright validation for the provider/settings surfaces plus AI-toolbar provider/model switching under the split local dev path
 
 ## Commands/tests used
 
@@ -24,17 +24,11 @@
 
 ## Current provider contract
 
-- Active supported provider kinds are now limited to:
+- Active supported provider kinds are:
   - `codex` for local Codex CLI
   - `claude` for local Claude Code CLI
-- `ollama`, `openai`, and `proxy` are no longer returned in `supported_kinds` and new records for those kinds are rejected as unsupported.
-- The old direct provider/proxy implementation packages were removed from the active tree:
-  - `core/conversation/provider_ollama.go`
-  - `core/conversation/provider_openai.go`
-  - `core/conversation/provider_codex.go`
-  - `core/conversation/provider_models.go`
-  - `core/aiproxy`
-  - `core/codexauth`
+  - `openai-compatible` for an operator-supplied HTTP source
+- `ollama`, the older broad `openai` kind, and `proxy` are not returned in `supported_kinds`, and new records for those older kinds are rejected as unsupported.
 - Legacy persisted provider records with unsupported kinds are filtered during agent-state normalization. If filtering leaves no providers, the store bootstraps the default CLI providers.
 - Default bootstrap providers:
   - `codex-cli`, active, kind `codex`, command `codex`, model `gpt-5.4`
@@ -45,6 +39,7 @@
 - `core/app/provider_runtime.go` resolves active records only to:
   - `conversation.NewCodexCLIProvider(...)`
   - `conversation.NewClaudeCodeProvider(...)`
+  - `conversation.NewOpenAICompatibleProvider(...)`
 - The Codex CLI provider uses `codex exec` in non-interactive mode with:
   - read-only sandbox
   - `--skip-git-repo-check`
@@ -55,11 +50,20 @@
   - no session persistence
   - tools disabled via `--tools ""`
 - CLI providers expose non-streaming runtime info; `CompleteStream` emits the final CLI output as one text delta so the existing SSE conversation route remains usable.
+- The OpenAI-compatible HTTP provider is likewise non-streaming in this slice:
+  - discovery: `GET <base_url>/v1/models`
+  - completion: `POST <base_url>/v1/chat/completions`
+  - the final response is normalized into the same assistant message contract as the CLI providers
 
 ## Frontend settings state
 
-- `AI > Установленные приложения` creates only `Codex CLI` and `Claude Code CLI` providers from the toolbar.
-- The editor exposes command and model fields for both CLI providers.
+- `AI > Установленные приложения` creates:
+  - `Codex CLI`
+  - `Claude Code CLI`
+  - `OpenAI-Compatible HTTP`
+- The editor exposes:
+  - command + model fields for CLI providers
+  - base URL + model fields for the OpenAI-compatible provider
 - Backend CLI command availability is surfaced through `status_state`, `status_message`, and `resolved_binary`.
 - CLI auth state is also surfaced through the same provider view payload:
   - `ready` when the binary is present and authenticated
@@ -72,12 +76,21 @@
 - `AI > Модели` uses the same backend model discovery route, but CLI model discovery is static/backend-owned:
   - Codex returns the configured/default Codex model list, currently led by `gpt-5.4` with `gpt-5-codex` still available as an explicit choice.
   - Claude returns the configured/default Claude Code aliases, currently including `sonnet` and `opus`.
+- The AI composer toolbar now also consumes the same backend provider catalog directly:
+  - provider combobox
+  - model combobox
+  - switching provider updates visible model choices to that provider's `chat_models`
+- The OpenAI-compatible browser validation in this pass used the live LAN source:
+  - `base_url: http://192.168.1.8:8317`
+  - verified model discovery from `/v1/models`
+  - verified completion with `gpt-5.4` over `/v1/chat/completions`
 
 ## Known limitations
 
 - CLI execution is intentionally minimal and chat-focused. It does not yet integrate Codex/Claude tool calls with the core `toolruntime` approval/audit pipeline.
-- CLI providers do not stream token-by-token output yet.
+- Neither CLI nor OpenAI-compatible providers stream token-by-token output yet.
 - Browser validation now covers:
   - successful live Codex chat on the product default model
+  - successful live OpenAI-compatible HTTP chat through the toolbar-selected LAN source
   - Claude provider routing plus the `auth-required` UI path when the local CLI is installed but not logged in
-- Browser validation was rerun through the split local dev path; a fresh `npm run tauri:dev` desktop smoke was not run in this pass.
+- Browser validation was rerun through the split local dev path, and a fresh `npm run tauri:dev` desktop smoke was also run in this pass.

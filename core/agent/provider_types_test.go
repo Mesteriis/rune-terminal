@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestSupportedProviderKindsIncludeOnlyCLIProviders(t *testing.T) {
+func TestSupportedProviderKindsIncludeSupportedProviders(t *testing.T) {
 	t.Parallel()
 
 	kinds := SupportedProviderKinds()
@@ -15,8 +15,11 @@ func TestSupportedProviderKindsIncludeOnlyCLIProviders(t *testing.T) {
 	if !slices.Contains(kinds, ProviderKindClaude) {
 		t.Fatalf("expected claude support, got %#v", kinds)
 	}
-	if len(kinds) != 2 {
-		t.Fatalf("expected cli-only support, got %#v", kinds)
+	if !slices.Contains(kinds, ProviderKindOpenAICompatible) {
+		t.Fatalf("expected openai-compatible support, got %#v", kinds)
+	}
+	if len(kinds) != 3 {
+		t.Fatalf("expected three supported providers, got %#v", kinds)
 	}
 }
 

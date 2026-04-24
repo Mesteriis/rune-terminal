@@ -95,3 +95,8 @@ export type AiContextWidgetOption = {
   value: string
   label: string
 }
+
+export type AiProviderOption = {
+  value: string
+  label: string
+}

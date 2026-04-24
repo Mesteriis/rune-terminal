@@ -187,3 +187,39 @@ func TestCreateProviderRejectsUnsupportedLegacyKind(t *testing.T) {
 		t.Fatal("expected unsupported provider kind error")
 	}
 }
+
+func TestStorePersistsOpenAICompatibleProvider(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(t.TempDir(), "agent.json")
+	store, err := NewStore(path)
+	if err != nil {
+		t.Fatalf("NewStore error: %v", err)
+	}
+
+	created, _, err := store.CreateProvider(CreateProviderInput{
+		Kind:        ProviderKindOpenAICompatible,
+		DisplayName: "LAN Gateway",
+		OpenAICompatible: &CreateOpenAICompatibleProviderInput{
+			BaseURL:    "http://192.168.1.8:8317/",
+			Model:      "gemini-3-pro-high",
+			ChatModels: []string{"gpt-5.4"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateProvider error: %v", err)
+	}
+
+	if created.OpenAICompatible == nil {
+		t.Fatalf("expected openai-compatible settings, got %#v", created)
+	}
+	if created.OpenAICompatible.BaseURL != "http://192.168.1.8:8317" {
+		t.Fatalf("expected normalized base URL, got %#v", created.OpenAICompatible)
+	}
+	if !slices.Equal(
+		created.OpenAICompatible.ChatModels,
+		[]string{"gemini-3-pro-high", "gpt-5.4"},
+	) {
+		t.Fatalf("unexpected chat models: %#v", created.OpenAICompatible.ChatModels)
+	}
+}

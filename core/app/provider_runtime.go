@@ -29,6 +29,14 @@ func defaultConversationProviderFactory(record agent.ProviderRecord) (conversati
 			Command: record.Claude.Command,
 			Model:   record.Claude.Model,
 		}), nil
+	case agent.ProviderKindOpenAICompatible:
+		if record.OpenAICompatible == nil {
+			return nil, fmt.Errorf("%w: openai-compatible settings are required", agent.ErrProviderInvalidConfig)
+		}
+		return conversation.NewOpenAICompatibleProvider(conversation.OpenAICompatibleProviderConfig{
+			BaseURL: record.OpenAICompatible.BaseURL,
+			Model:   record.OpenAICompatible.Model,
+		}), nil
 	default:
 		return nil, fmt.Errorf("%w: %s", agent.ErrProviderKindUnsupported, record.Kind)
 	}
@@ -65,6 +73,10 @@ func providerChatModels(record agent.ProviderRecord) []string {
 	case agent.ProviderKindClaude:
 		if record.Claude != nil {
 			return append([]string(nil), record.Claude.ChatModels...)
+		}
+	case agent.ProviderKindOpenAICompatible:
+		if record.OpenAICompatible != nil {
+			return append([]string(nil), record.OpenAICompatible.ChatModels...)
 		}
 	}
 	return nil
@@ -115,6 +127,15 @@ func applyConversationModelOverride(
 			Command:    record.Claude.Command,
 			Model:      model,
 			ChatModels: append([]string(nil), record.Claude.ChatModels...),
+		}
+	case agent.ProviderKindOpenAICompatible:
+		if record.OpenAICompatible == nil {
+			return agent.ProviderRecord{}, "", fmt.Errorf("%w: openai-compatible settings are required", agent.ErrProviderInvalidConfig)
+		}
+		overridden.OpenAICompatible = &agent.OpenAICompatibleProviderSettings{
+			BaseURL:    record.OpenAICompatible.BaseURL,
+			Model:      model,
+			ChatModels: append([]string(nil), record.OpenAICompatible.ChatModels...),
 		}
 	default:
 		return agent.ProviderRecord{}, "", fmt.Errorf(

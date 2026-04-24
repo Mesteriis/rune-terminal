@@ -36,9 +36,10 @@ import {
 const kindLabels: Record<AgentProviderKind, string> = {
   codex: 'Codex CLI',
   claude: 'Claude Code CLI',
+  'openai-compatible': 'OpenAI-Compatible HTTP',
 }
 
-const defaultSupportedKinds: AgentProviderKind[] = ['codex', 'claude']
+const defaultSupportedKinds: AgentProviderKind[] = ['codex', 'claude', 'openai-compatible']
 
 function TextInputField({
   label,
@@ -171,7 +172,7 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
   } = useAgentProviderSettings()
 
   const supportedKinds = (catalog?.supported_kinds ?? defaultSupportedKinds).filter(
-    (kind) => kind === 'codex' || kind === 'claude',
+    (kind) => kind === 'codex' || kind === 'claude' || kind === 'openai-compatible',
   )
   const toolbarStyle = embedded ? providerSettingsEmbeddedToolbarStyle : providerSettingsToolbarStyle
   const bodyStyle = embedded ? providerSettingsEmbeddedBodyStyle : providerSettingsBodyStyle
@@ -248,6 +249,10 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                     ) : provider.kind === 'claude' ? (
                       <Text style={providerSettingsStatusMessageStyle}>
                         {provider.claude?.model} · {formatCLIStatus(provider.claude?.status_state)}
+                      </Text>
+                    ) : provider.kind === 'openai-compatible' ? (
+                      <Text style={providerSettingsStatusMessageStyle}>
+                        {provider.openai_compatible?.model} · {provider.openai_compatible?.base_url}
                       </Text>
                     ) : null}
                   </Button>
@@ -440,6 +445,69 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                           <Label>Resolved binary</Label>
                           <Text style={providerSettingsStatusMessageStyle}>
                             {selectedProvider?.claude?.resolved_binary || 'Unknown until saved'}
+                          </Text>
+                        </ClearBox>
+                      </ClearBox>
+                    </ClearBox>
+                  ) : null}
+
+                  {draft.kind === 'openai-compatible' ? (
+                    <ClearBox style={providerSettingsSectionStyle}>
+                      <ClearBox style={providerSettingsSectionHeaderStyle}>
+                        <Text style={{ fontWeight: 600 }}>OpenAI-compatible HTTP</Text>
+                        <Text style={providerSettingsStatusMessageStyle}>
+                          Uses an OpenAI-compatible `/v1/models` and `/v1/chat/completions` endpoint.
+                        </Text>
+                      </ClearBox>
+                      <ClearBox style={providerSettingsGridStyle}>
+                        <TextInputField
+                          hint="Base URL for the HTTP source. Example: http://192.168.1.8:8317"
+                          label="Base URL"
+                          onChange={(value) =>
+                            updateDraftField(setDraft, (currentDraft) => ({
+                              ...currentDraft,
+                              openAICompatible: {
+                                ...currentDraft.openAICompatible,
+                                baseURL: value,
+                              },
+                            }))
+                          }
+                          placeholder="http://127.0.0.1:8317"
+                          value={draft.openAICompatible.baseURL}
+                        />
+                        <ModelSelectField
+                          errorMessage={modelErrorMessage}
+                          hint="The backend reads `/v1/models` from this source and exposes enabled models in the chat toolbar."
+                          label="Model"
+                          models={availableModels}
+                          onChange={(value) =>
+                            updateDraftField(setDraft, (currentDraft) => ({
+                              ...currentDraft,
+                              openAICompatible: {
+                                ...currentDraft.openAICompatible,
+                                model: value,
+                              },
+                            }))
+                          }
+                          isRefreshing={isLoadingModels}
+                          onRefresh={() => void refreshAvailableModels()}
+                          value={draft.openAICompatible.model}
+                        />
+                      </ClearBox>
+                      <ClearBox style={providerSettingsGridStyle}>
+                        <ClearBox style={providerSettingsFieldStyle}>
+                          <Label>Connection</Label>
+                          <Text style={providerSettingsStatusMessageStyle}>
+                            {selectedProvider?.openai_compatible?.base_url ??
+                              'Save the provider to expose the source in the shared AI toolbar.'}
+                          </Text>
+                        </ClearBox>
+                        <ClearBox style={providerSettingsFieldStyle}>
+                          <Label>Chat visibility</Label>
+                          <Text style={providerSettingsStatusMessageStyle}>
+                            {selectedProvider?.openai_compatible?.chat_models?.length
+                              ? `${selectedProvider.openai_compatible.chat_models.length} models enabled for the chat toolbar.`
+                              : 'No discovered models are enabled yet.'}
                           </Text>
                         </ClearBox>
                       </ClearBox>

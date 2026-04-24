@@ -1,6 +1,6 @@
 # 0020. AI Conversation Backend Foundation
 
-- Status: Superseded for provider runtime by [0024. CLI-only AI provider boundary](./0024-cli-only-ai-provider-boundary.md)
+- Status: Superseded for provider runtime by [0025. Narrow OpenAI-Compatible Source Reintroduction](./0025-narrow-openai-compatible-source-reintroduction.md)
 
 ## Context
 

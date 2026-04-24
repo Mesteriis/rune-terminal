@@ -8,6 +8,8 @@
   - backend-owned agent provider catalog
   - active conversation provider resolution
   - frontend AI/provider settings surfaces
+  - narrow OpenAI-compatible HTTP source discovery/completion path
+  - AI toolbar provider/model selection over the backend provider catalog
   - AI composer request-context dropdown with explicit widget multiselect
   - frontend `/run ...` routing from the AI sidebar into the active terminal widget through backend tool execution plus terminal-command explanation
   - browser-level Playwright coverage for the AI sidebar over the split local dev path:
@@ -20,12 +22,17 @@
 
 ## Current provider contract
 
-- Active provider kinds are limited to:
+- Active provider kinds are:
   - `codex`: local Codex CLI through `codex exec`
   - `claude`: local Claude Code CLI through `claude -p`
-- The active runtime no longer includes direct Ollama, direct API-key OpenAI-compatible providers, `core/codexauth`, or the internal AI proxy draft.
-- Unsupported legacy provider records are filtered during agent-state normalization. If filtering leaves no providers, the store recreates `codex-cli` and `claude-code-cli`.
-- The provider catalog route returns `supported_kinds: ["codex", "claude"]`.
+  - `openai-compatible`: operator-supplied HTTP source using `/v1/models` and `/v1/chat/completions`
+- The active runtime still does not include `ollama`, the earlier internal AI proxy draft, or a broad provider/API-key universe.
+- Unsupported legacy provider records are filtered during agent-state normalization. If filtering leaves no providers, the store recreates the default local CLI providers.
+- The provider catalog route returns `supported_kinds: ["codex", "claude", "openai-compatible"]`.
+- The AI composer toolbar now consumes that backend-owned catalog directly:
+  - provider switcher
+  - model switcher scoped to the active provider's `chat_models`
+  - explicit widget-context multiselect
 
 ## `/run` contract
 
@@ -43,12 +50,15 @@
 - `go test ./core/agent ./core/conversation ./core/app ./core/transport/httpapi`
 - `go test ./core/...`
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi`
+- `./scripts/go.sh test ./core/agent ./core/app ./core/conversation ./core/transport/httpapi`
 - `npm --prefix frontend run test -- src/features/agent/api/client.test.ts src/features/agent/api/provider-client.test.ts src/features/agent/model/provider-settings-draft.test.ts src/widgets/ai/ai-panel-widget.test.tsx`
 - `npm --prefix frontend run test -- src/shared/api/workspace.test.ts src/features/agent/api/client.test.ts src/widgets/ai/ai-panel-widget.test.tsx`
 - `npm --prefix frontend run lint:active`
 - `npm run test:ui -- --reporter=line`
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts`
 - `npm run tauri:dev`
+- `curl -sS http://192.168.1.8:8317/v1/models`
+- `curl -sS http://192.168.1.8:8317/v1/chat/completions -H 'Content-Type: application/json' -d '{"model":"gpt-5.4","messages":[{"role":"user","content":"Reply with exactly this token and nothing else: endpoint-ok-1777"}]}'`
 - `codex login status`
 - `printf 'Return exactly CODEX_E2E_OK\n' | codex exec --color never --sandbox read-only --skip-git-repo-check --ephemeral --output-last-message -`
 - `claude auth status --json`
@@ -60,7 +70,8 @@
 
 - CLI providers currently expose buffered chat completion through the existing SSE route; token-by-token provider streaming is not implemented.
 - CLI-native tool calls are not yet mediated through `core/toolruntime`, policy approval, or audit events.
-- No current visible profile, role, or mode selector exists in the AI sidebar, so the backend selection routes remain unwired to user controls.
+- The OpenAI-compatible HTTP source path is also buffered and non-streaming in this slice.
+- No current visible profile, role, or mode selector exists in the AI sidebar, so those backend selection routes remain unwired to user controls.
 - `/run` currently surfaces approval-required toolruntime responses as a chat-side error/status message; there is no dedicated approval-confirmation UI for this path yet.
 - On this machine the local `claude` binary is installed but not authenticated, so the verified browser path is `auth-required` handling rather than a successful Claude completion.
 

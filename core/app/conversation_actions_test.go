@@ -546,6 +546,80 @@ func TestSubmitConversationPromptRejectsUnavailableSelectedModel(t *testing.T) {
 	}
 }
 
+func TestSubmitConversationPromptAppliesSelectedModelOverrideForOpenAICompatibleProvider(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	agentStore, err := agent.NewStore(filepath.Join(tempDir, "agent.json"))
+	if err != nil {
+		t.Fatalf("agent store: %v", err)
+	}
+	created, _, err := agentStore.CreateProvider(agent.CreateProviderInput{
+		Kind: agent.ProviderKindOpenAICompatible,
+		OpenAICompatible: &agent.CreateOpenAICompatibleProviderInput{
+			BaseURL:    "http://127.0.0.1:8317",
+			Model:      "gemini-3-pro-high",
+			ChatModels: []string{"gpt-5.4"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateProvider error: %v", err)
+	}
+	if err := agentStore.SetActiveProvider(created.ID); err != nil {
+		t.Fatalf("SetActiveProvider error: %v", err)
+	}
+	auditLog, err := audit.NewLog(filepath.Join(tempDir, "audit.jsonl"))
+	if err != nil {
+		t.Fatalf("audit log: %v", err)
+	}
+	policyStore, err := policy.NewStore(filepath.Join(tempDir, "policy.json"), "/repo")
+	if err != nil {
+		t.Fatalf("policy store: %v", err)
+	}
+	connectionStore, err := connections.NewService(filepath.Join(tempDir, "connections.json"))
+	if err != nil {
+		t.Fatalf("connections: %v", err)
+	}
+	conversationStore, err := conversation.NewService(filepath.Join(tempDir, "conversation.json"), &recordingConversationProvider{})
+	if err != nil {
+		t.Fatalf("conversation service: %v", err)
+	}
+
+	recordingProvider := &recordingConversationProvider{}
+	var seenConfiguredModel string
+	runtime := &Runtime{
+		RepoRoot:     "/repo",
+		Workspace:    workspace.NewService(workspace.BootstrapDefault()),
+		Terminals:    terminal.NewService(terminal.DefaultLauncher()),
+		Connections:  connectionStore,
+		Agent:        agentStore,
+		Conversation: conversationStore,
+		Policy:       policyStore,
+		Audit:        auditLog,
+		ConversationProviderFactory: func(record agent.ProviderRecord) (conversation.Provider, error) {
+			seenConfiguredModel = record.OpenAICompatible.Model
+			return recordingProvider, nil
+		},
+	}
+
+	if _, err := runtime.SubmitConversationPrompt(
+		context.Background(),
+		"hello",
+		"gpt-5.4",
+		ConversationContext{WorkspaceID: "ws-default", RepoRoot: "/repo"},
+		nil,
+	); err != nil {
+		t.Fatalf("SubmitConversationPrompt error: %v", err)
+	}
+
+	if seenConfiguredModel != "gpt-5.4" {
+		t.Fatalf("expected selected model in provider record, got %q", seenConfiguredModel)
+	}
+	if recordingProvider.request.Model != "gpt-5.4" {
+		t.Fatalf("expected selected model in provider request, got %#v", recordingProvider.request)
+	}
+}
+
 type recordingConversationProvider struct {
 	request conversation.CompletionRequest
 	info    conversation.ProviderInfo

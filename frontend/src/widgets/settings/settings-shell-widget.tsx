@@ -43,6 +43,7 @@ type SettingsSectionMeta = {
 const providerKindLabels: Record<AgentProviderView['kind'], string> = {
   codex: 'Codex CLI',
   claude: 'Claude Code CLI',
+  'openai-compatible': 'OpenAI-Compatible HTTP',
 }
 
 const settingsSectionMeta: Record<SettingsSectionID, SettingsSectionMeta> = {
@@ -55,10 +56,10 @@ const settingsSectionMeta: Record<SettingsSectionID, SettingsSectionMeta> = {
   },
   'ai-apps': {
     navTitle: 'Установленные приложения',
-    navDescription: 'Codex CLI и Claude Code CLI providers.',
+    navDescription: 'CLI и HTTP providers для AI runtime.',
     shellTitle: 'AI / Установленные приложения',
     shellDescription:
-      'Управление CLI-провайдерами, их доступностью в рантайме и локальными параметрами подключения без выхода из общего settings shell.',
+      'Управление CLI и OpenAI-compatible HTTP провайдерами, их доступностью в рантайме и параметрами подключения без выхода из общего settings shell.',
     groupLabel: 'AI',
   },
   'ai-models': {
@@ -132,6 +133,9 @@ function directProviderDefaultModel(provider: AgentProviderView | null | undefin
   if (provider.kind === 'claude') {
     return provider.claude?.model?.trim() ?? ''
   }
+  if (provider.kind === 'openai-compatible') {
+    return provider.openai_compatible?.model?.trim() ?? ''
+  }
   return ''
 }
 
@@ -145,6 +149,9 @@ function directProviderChatModels(provider: AgentProviderView | null | undefined
   if (provider.kind === 'claude') {
     return provider.claude?.chat_models ?? []
   }
+  if (provider.kind === 'openai-compatible') {
+    return provider.openai_compatible?.chat_models ?? []
+  }
   return []
 }
 
@@ -155,6 +162,10 @@ function describeProviderConnection(provider: AgentProviderView) {
 
   if (provider.kind === 'claude') {
     return provider.claude?.status_message ?? 'Claude Code CLI command will be resolved by the backend.'
+  }
+
+  if (provider.kind === 'openai-compatible') {
+    return provider.openai_compatible?.base_url ?? 'OpenAI-compatible source URL is not configured.'
   }
 
   return 'Unknown provider connection state.'
@@ -183,6 +194,12 @@ function describeProviderLimitState(provider: AgentProviderView) {
       : provider.claude?.status_state === 'auth-required'
         ? 'Needs a local Claude Code CLI login.'
         : 'Needs a valid local Claude Code CLI install.'
+  }
+
+  if (provider.kind === 'openai-compatible') {
+    return provider.enabled
+      ? 'HTTP source is configured. Use model refresh to validate the remote catalog.'
+      : 'Disabled HTTP source; chat will not route requests here.'
   }
 
   return 'Unknown provider readiness.'
@@ -264,8 +281,8 @@ function AiModelsSection() {
         <Text style={settingsShellMutedTextStyle}>Загружаю каталог провайдеров…</Text>
       ) : directProviders.length === 0 ? (
         <Text style={settingsShellMutedTextStyle}>
-          Прямых AI-провайдеров пока нет. Сначала добавь Codex CLI или Claude Code CLI в разделе
-          `Установленные приложения`.
+          Прямых AI-провайдеров пока нет. Сначала добавь CLI или HTTP source в разделе `Установленные
+          приложения`.
         </Text>
       ) : (
         <>

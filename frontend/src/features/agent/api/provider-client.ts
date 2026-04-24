@@ -1,7 +1,7 @@
 import { AgentAPIError } from '@/features/agent/api/client'
 import { resolveRuntimeContext, type RuntimeContext } from '@/shared/api/runtime'
 
-export type AgentProviderKind = 'codex' | 'claude'
+export type AgentProviderKind = 'codex' | 'claude' | 'openai-compatible'
 
 export type AgentCodexProviderSettingsView = {
   command?: string
@@ -29,6 +29,11 @@ export type AgentProviderView = {
   active: boolean
   codex?: AgentCodexProviderSettingsView
   claude?: AgentClaudeProviderSettingsView
+  openai_compatible?: {
+    base_url: string
+    model: string
+    chat_models?: string[]
+  }
   created_at: string
   updated_at: string
 }
@@ -54,6 +59,10 @@ export type DiscoverAgentProviderModelsPayload = {
     command?: string
     model?: string
   }
+  openai_compatible?: {
+    base_url?: string
+    model?: string
+  }
 }
 
 export type CreateAgentProviderPayload = {
@@ -70,6 +79,11 @@ export type CreateAgentProviderPayload = {
     model?: string
     chat_models?: string[]
   }
+  openai_compatible?: {
+    base_url?: string
+    model?: string
+    chat_models?: string[]
+  }
 }
 
 export type UpdateAgentProviderPayload = {
@@ -82,6 +96,11 @@ export type UpdateAgentProviderPayload = {
   }
   claude?: {
     command?: string
+    model?: string
+    chat_models?: string[]
+  }
+  openai_compatible?: {
+    base_url?: string
     model?: string
     chat_models?: string[]
   }
@@ -162,6 +181,18 @@ function normalizeProviderView(provider: AgentProviderView): AgentProviderView {
     }
   }
 
+  if (provider.kind === 'openai-compatible') {
+    return {
+      ...provider,
+      openai_compatible: provider.openai_compatible
+        ? {
+            ...provider.openai_compatible,
+            chat_models: normalizeChatModels(provider.openai_compatible.chat_models),
+          }
+        : provider.openai_compatible,
+    }
+  }
+
   return provider
 }
 
@@ -171,7 +202,8 @@ function normalizeProviderCatalog(catalog: AgentProviderCatalog): AgentProviderC
     providers: Array.isArray(catalog.providers) ? catalog.providers.map(normalizeProviderView) : [],
     supported_kinds: Array.isArray(catalog.supported_kinds)
       ? catalog.supported_kinds.filter(
-          (kind): kind is AgentProviderKind => kind === 'codex' || kind === 'claude',
+          (kind): kind is AgentProviderKind =>
+            kind === 'codex' || kind === 'claude' || kind === 'openai-compatible',
         )
       : [],
   }

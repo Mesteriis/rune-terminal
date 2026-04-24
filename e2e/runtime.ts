@@ -83,12 +83,17 @@ export type AgentProviderCatalog = {
       status_message?: string
       status_state: 'auth-required' | 'missing' | 'ready'
     }
+    openai_compatible?: {
+      base_url: string
+      chat_models?: string[]
+      model: string
+    }
     display_name: string
     enabled: boolean
     id: string
-    kind: 'claude' | 'codex'
+    kind: 'claude' | 'codex' | 'openai-compatible'
   }>
-  supported_kinds: Array<'claude' | 'codex'>
+  supported_kinds: Array<'claude' | 'codex' | 'openai-compatible'>
 }
 
 function authHeaders() {
@@ -205,7 +210,10 @@ export async function fetchAgentConversation(request: APIRequestContext) {
       headers: authHeaders(),
     }),
   )
-  return payload.conversation
+  return {
+    ...payload.conversation,
+    messages: Array.isArray(payload.conversation.messages) ? payload.conversation.messages : [],
+  }
 }
 
 export async function fetchAgentProviderCatalog(request: APIRequestContext) {
@@ -223,4 +231,37 @@ export async function setActiveAgentProvider(request: APIRequestContext, provide
   })
 
   expect(response.ok()).toBeTruthy()
+}
+
+export async function createAgentProvider(
+  request: APIRequestContext,
+  payload: Record<string, unknown>,
+) {
+  const response = await request.post(`${backendUrl}/api/v1/agent/providers`, {
+    data: payload,
+    headers: authHeaders(),
+  })
+
+  expect(response.ok()).toBeTruthy()
+  return response.json() as Promise<{
+    provider: AgentProviderCatalog['providers'][number]
+    providers: AgentProviderCatalog
+  }>
+}
+
+export async function updateAgentProvider(
+  request: APIRequestContext,
+  providerID: string,
+  payload: Record<string, unknown>,
+) {
+  const response = await request.patch(`${backendUrl}/api/v1/agent/providers/${encodeURIComponent(providerID)}`, {
+    data: payload,
+    headers: authHeaders(),
+  })
+
+  expect(response.ok()).toBeTruthy()
+  return response.json() as Promise<{
+    provider: AgentProviderCatalog['providers'][number]
+    providers: AgentProviderCatalog
+  }>
 }

@@ -455,6 +455,17 @@ export const aiToolbarModelSelectStyle: CSSProperties = {
   background: 'color-mix(in srgb, var(--color-surface-glass-soft) 78%, transparent)',
 }
 
+export const aiToolbarProviderSelectStyle: CSSProperties = {
+  width: 'min(14rem, 34vw)',
+  minWidth: '9rem',
+  paddingTop: '0.32rem',
+  paddingBottom: '0.32rem',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '12px',
+  lineHeight: '16px',
+  background: 'color-mix(in srgb, var(--color-surface-glass-soft) 78%, transparent)',
+}
+
 export const aiComposerSurfaceStyle: CSSProperties = {
   position: 'relative',
   minWidth: 0,

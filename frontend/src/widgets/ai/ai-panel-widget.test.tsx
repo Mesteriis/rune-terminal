@@ -83,11 +83,15 @@ function mockScrollViewportMetrics(
   }
 }
 
-function createProviderCatalogFetchResponse(chatModels: string[] = ['stub-model']) {
+function createProviderCatalogFetchResponse(
+  chatModels: string[] = ['stub-model'],
+  providers?: Array<Record<string, unknown>>,
+  activeProviderId = 'provider-stub',
+) {
   return {
     ok: true,
     json: async () => ({
-      providers: [
+      providers: providers ?? [
         {
           id: 'provider-stub',
           kind: 'codex',
@@ -104,8 +108,8 @@ function createProviderCatalogFetchResponse(chatModels: string[] = ['stub-model'
           updated_at: '2026-04-21T10:00:00Z',
         },
       ],
-      active_provider_id: 'provider-stub',
-      supported_kinds: ['codex', 'claude'],
+      active_provider_id: activeProviderId,
+      supported_kinds: ['codex', 'claude', 'openai-compatible'],
     }),
   }
 }
@@ -194,6 +198,136 @@ describe('AiPanelWidget backend conversation path', () => {
     expect((assistantRow as HTMLDivElement | undefined)?.style.justifyContent).toBe('flex-start')
     expect((assistantRow as HTMLDivElement | undefined)?.style.paddingBottom).toBe('var(--space-lg)')
     expect((userRow as HTMLDivElement | undefined)?.style.paddingBottom).toBe('var(--space-xs)')
+  })
+
+  it('switches the active provider from the chat toolbar and updates the available models', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          conversation: {
+            messages: [],
+            provider: {
+              kind: 'codex',
+              base_url: 'codex',
+              model: 'stub-model',
+              streaming: false,
+            },
+            updated_at: '2026-04-21T10:00:00Z',
+          },
+        }),
+      })
+      .mockResolvedValueOnce(
+        createProviderCatalogFetchResponse(
+          ['stub-model'],
+          [
+            {
+              id: 'provider-stub',
+              kind: 'codex',
+              display_name: 'Stub Codex CLI',
+              enabled: true,
+              active: true,
+              codex: {
+                command: 'codex',
+                model: 'stub-model',
+                chat_models: ['stub-model'],
+                status_state: 'ready',
+              },
+              created_at: '2026-04-21T10:00:00Z',
+              updated_at: '2026-04-21T10:00:00Z',
+            },
+            {
+              id: 'provider-http',
+              kind: 'openai-compatible',
+              display_name: 'LAN Source',
+              enabled: true,
+              active: false,
+              openai_compatible: {
+                base_url: 'http://192.168.1.8:8317',
+                model: 'gpt-5.4',
+                chat_models: ['gpt-5.4', 'claude-sonnet-4-6'],
+              },
+              created_at: '2026-04-24T10:00:00Z',
+              updated_at: '2026-04-24T10:00:00Z',
+            },
+          ],
+        ),
+      )
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          providers: [
+            {
+              id: 'provider-stub',
+              kind: 'codex',
+              display_name: 'Stub Codex CLI',
+              enabled: true,
+              active: false,
+              codex: {
+                command: 'codex',
+                model: 'stub-model',
+                chat_models: ['stub-model'],
+                status_state: 'ready',
+              },
+              created_at: '2026-04-21T10:00:00Z',
+              updated_at: '2026-04-21T10:00:00Z',
+            },
+            {
+              id: 'provider-http',
+              kind: 'openai-compatible',
+              display_name: 'LAN Source',
+              enabled: true,
+              active: true,
+              openai_compatible: {
+                base_url: 'http://192.168.1.8:8317',
+                model: 'gpt-5.4',
+                chat_models: ['gpt-5.4', 'claude-sonnet-4-6'],
+              },
+              created_at: '2026-04-24T10:00:00Z',
+              updated_at: '2026-04-24T10:00:00Z',
+            },
+          ],
+          active_provider_id: 'provider-http',
+          supported_kinds: ['codex', 'claude', 'openai-compatible'],
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<AiPanelWidget hostId="ai-shell-panel" />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: 'AI provider' })).toBeInTheDocument()
+    })
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'AI provider' }), {
+      target: { value: 'provider-http' },
+    })
+
+    await waitFor(() => {
+      expect(fetchMock.mock.calls[3]?.[0]).toBe('http://127.0.0.1:8090/api/v1/agent/providers/active')
+    })
+
+    expect(JSON.parse(String(fetchMock.mock.calls[3]?.[1]?.body))).toEqual({
+      id: 'provider-http',
+    })
+
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: 'AI model' })).toHaveValue('gpt-5.4')
+    })
+
+    const modelSelect = screen.getByRole('combobox', { name: 'AI model' })
+    expect(modelSelect).toHaveTextContent('gpt-5.4')
+    expect(modelSelect).toHaveTextContent('claude-sonnet-4-6')
   })
 
   it('streams pure chat prompts without plan or approval gates', async () => {

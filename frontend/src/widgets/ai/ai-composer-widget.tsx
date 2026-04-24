@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 
 import { List, SendHorizontal } from 'lucide-react'
 
-import type { AiContextWidgetOption } from '@/features/agent/model/types'
+import type { AiContextWidgetOption, AiProviderOption } from '@/features/agent/model/types'
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { IconButton, SearchableMultiSelect, SwitcherControl } from '@/shared/ui/components'
 import { Badge, Box, Select, Surface, Text, TextArea } from '@/shared/ui/primitives'
@@ -22,6 +22,7 @@ import {
   aiToolbarControlsStyle,
   aiToolbarLabelStyle,
   aiToolbarModelSelectStyle,
+  aiToolbarProviderSelectStyle,
   aiToolbarStyle,
 } from '@/widgets/ai/ai-panel-widget.styles'
 
@@ -29,8 +30,11 @@ export type AiComposerWidgetProps = {
   toolbarLabel: string
   activeTool: string
   availableModels?: string[]
+  availableProviders?: AiProviderOption[]
   placeholder: string
+  selectedProviderID?: string
   selectedModel?: string
+  onProviderChange?: (value: string) => void
   value?: string
   onModelChange?: (value: string) => void
   onValueChange?: (value: string) => void
@@ -49,11 +53,14 @@ export type AiComposerWidgetProps = {
 export function AiComposerWidget({
   activeTool,
   availableModels = [],
+  availableProviders = [],
   disabled = false,
   onModelChange,
+  onProviderChange,
   onSubmit,
   onValueChange,
   placeholder,
+  selectedProviderID,
   selectedModel,
   contextWidgetLoadError = null,
   contextWidgetOptions = [],
@@ -71,6 +78,10 @@ export function AiComposerWidget({
   const contextMenuWrapRef = useRef<HTMLDivElement | null>(null)
   const modelValue =
     selectedModel && availableModels.includes(selectedModel) ? selectedModel : (availableModels[0] ?? '')
+  const providerValue =
+    selectedProviderID && availableProviders.some((provider) => provider.value === selectedProviderID)
+      ? selectedProviderID
+      : (availableProviders[0]?.value ?? '')
   const selectedContextCount = selectedContextWidgetIDs.length
 
   useEffect(() => {
@@ -120,6 +131,22 @@ export function AiComposerWidget({
             {toolbarLabel}
           </Text>
           <Box style={aiToolbarControlsStyle}>
+            {availableProviders.length > 0 ? (
+              <Select
+                aria-label="AI provider"
+                disabled={disabled}
+                onChange={(event) => onProviderChange?.(event.currentTarget.value)}
+                runaComponent="ai-composer-provider-select"
+                style={aiToolbarProviderSelectStyle}
+                value={providerValue}
+              >
+                {availableProviders.map((provider) => (
+                  <option key={provider.value} value={provider.value}>
+                    {provider.label}
+                  </option>
+                ))}
+              </Select>
+            ) : null}
             {availableModels.length > 0 ? (
               <Select
                 aria-label="AI model"

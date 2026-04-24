@@ -49,9 +49,9 @@ capability.
   deeper search/find flows) are not there yet
 - AI command flow supports explicit command grammar only (`/run` and
   `run:`), not broad natural-language execution
-- backend AI routing is intentionally limited to local Codex CLI and Claude Code CLI providers; `ollama`, direct API-key OpenAI-compatible providers, and the earlier internal proxy draft are not active provider kinds
-- CLI provider execution is chat-focused and does not yet integrate provider-native tool calls with `core/toolruntime` approval/audit
-- the shell-wide settings modal now exposes a structured `General / AI / Terminal / Commander` navigation; `General` includes the real desktop `watcher_mode` lifecycle control plus runtime bootstrap context, the AI section includes CLI-provider model autodiscovery plus read-only model/limit overview pages, and the terminal itself now exposes richer in-panel chrome, but persisted terminal font/theme/scrollback preferences are still not backed by a dedicated runtime settings contract
+- backend AI routing is intentionally narrow, not broad: the active provider kinds are local Codex CLI, local Claude Code CLI, and one explicit OpenAI-compatible HTTP source kind; `ollama`, proxy routing, and broader API-key/provider universes are not active runtime paths
+- CLI provider execution is chat-focused and does not yet integrate provider-native tool calls with `core/toolruntime` approval/audit; the OpenAI-compatible HTTP source path is also completion-only and does not stream token deltas yet
+- the shell-wide settings modal now exposes a structured `General / AI / Terminal / Commander` navigation; `General` includes the real desktop `watcher_mode` lifecycle control plus runtime bootstrap context, the AI section now includes CLI + OpenAI-compatible provider management and provider-backed model discovery, and the composer toolbar exposes live provider/model selection plus widget-context selection, but persisted terminal font/theme/scrollback preferences are still not backed by a dedicated runtime settings contract
 - desktop startup via `npm run tauri:dev` now clears the earlier ready-file bootstrap crash, but forced desktop shutdown is still rough: killing `rterm-desktop` can leave the spawned backend and watcher alive until they are cleaned up explicitly
 - native-window automation coverage is limited; validation leans on
   build + runtime/API smoke plus manual notes

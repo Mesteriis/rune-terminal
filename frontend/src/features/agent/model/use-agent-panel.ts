@@ -10,7 +10,12 @@ import {
   type AgentConversationProvider,
   type AgentConversationStreamConnection,
 } from '@/features/agent/api/client'
-import { fetchAgentProviderCatalog, type AgentProviderView } from '@/features/agent/api/provider-client'
+import {
+  fetchAgentProviderCatalog,
+  setActiveAgentProvider as activateAgentProviderInCatalog,
+  type AgentProviderCatalog,
+  type AgentProviderView,
+} from '@/features/agent/api/provider-client'
 import {
   advanceAuditEntries,
   classifyMessageIntent,
@@ -36,6 +41,7 @@ import {
 import type {
   AiPanelWidgetState,
   AiContextWidgetOption,
+  AiProviderOption,
   ApprovalMessage,
   ChatMessageSortKey,
   ChatMessageView,
@@ -134,7 +140,94 @@ function directProviderChatModels(provider: AgentProviderView | null | undefined
   if (provider.kind === 'claude') {
     return provider.claude?.chat_models ?? []
   }
+  if (provider.kind === 'openai-compatible') {
+    return provider.openai_compatible?.chat_models ?? []
+  }
   return []
+}
+
+function directProviderDefaultModel(provider: AgentProviderView | null | undefined) {
+  if (!provider) {
+    return ''
+  }
+  if (provider.kind === 'codex') {
+    return provider.codex?.model?.trim() ?? ''
+  }
+  if (provider.kind === 'claude') {
+    return provider.claude?.model?.trim() ?? ''
+  }
+  if (provider.kind === 'openai-compatible') {
+    return provider.openai_compatible?.model?.trim() ?? ''
+  }
+  return ''
+}
+
+function providerOptionLabel(provider: AgentProviderView) {
+  if (provider.display_name.trim()) {
+    return provider.display_name.trim()
+  }
+  if (provider.kind === 'codex') {
+    return 'Codex CLI'
+  }
+  if (provider.kind === 'claude') {
+    return 'Claude Code CLI'
+  }
+  if (provider.kind === 'openai-compatible') {
+    return 'OpenAI-Compatible HTTP'
+  }
+  return provider.id
+}
+
+function providerOptionsFromCatalog(catalog: AgentProviderCatalog | null): AiProviderOption[] {
+  if (!catalog) {
+    return []
+  }
+
+  return catalog.providers
+    .filter((provider) => provider.enabled)
+    .map((provider) => ({
+      value: provider.id,
+      label: providerOptionLabel(provider),
+    }))
+}
+
+function providerViewToConversationProvider(
+  provider: AgentProviderView | null | undefined,
+  currentProvider: AgentConversationProvider | null,
+): AgentConversationProvider | null {
+  if (!provider) {
+    return currentProvider
+  }
+
+  if (provider.kind === 'codex') {
+    return {
+      kind: provider.kind,
+      base_url: provider.codex?.command ?? currentProvider?.base_url ?? '',
+      model: provider.codex?.model ?? currentProvider?.model,
+      streaming: false,
+    }
+  }
+  if (provider.kind === 'claude') {
+    return {
+      kind: provider.kind,
+      base_url: provider.claude?.command ?? currentProvider?.base_url ?? '',
+      model: provider.claude?.model ?? currentProvider?.model,
+      streaming: false,
+    }
+  }
+  if (provider.kind === 'openai-compatible') {
+    return {
+      kind: provider.kind,
+      base_url: provider.openai_compatible?.base_url ?? currentProvider?.base_url ?? '',
+      model: provider.openai_compatible?.model ?? currentProvider?.model,
+      streaming: false,
+    }
+  }
+  return currentProvider
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error && error.message.trim() ? error.message : fallback
 }
 
 function selectPreferredChatModel(
@@ -201,6 +294,8 @@ export function useAgentPanel(hostId: string, enabled = true) {
   const [interactionMessages, setInteractionMessages] = useState<ChatMessageView[]>([])
   const [pendingFlow, setPendingFlow] = useState<PendingInteractionFlow | null>(null)
   const [provider, setProvider] = useState<AgentConversationProvider | null>(null)
+  const [providerCatalog, setProviderCatalog] = useState<AgentProviderCatalog | null>(null)
+  const [selectedProviderID, setSelectedProviderID] = useState('')
   const [availableModels, setAvailableModels] = useState<string[]>([])
   const [selectedModel, setSelectedModel] = useState('')
   const [isWidgetContextEnabled, setIsWidgetContextEnabled] = useState(true)
@@ -259,6 +354,8 @@ export function useAgentPanel(hostId: string, enabled = true) {
     setInteractionMessages([])
     setPendingFlow(null)
     setProvider(null)
+    setProviderCatalog(null)
+    setSelectedProviderID('')
     setAvailableModels([])
     setSelectedModel('')
     setIsWidgetContextEnabled(true)
@@ -280,30 +377,28 @@ export function useAgentPanel(hostId: string, enabled = true) {
       const [conversationResult, providerCatalogResult] = results
 
       if (conversationResult.status === 'rejected') {
-        const message =
-          conversationResult.reason instanceof Error && conversationResult.reason.message.trim()
-            ? conversationResult.reason.message
-            : `Unable to load backend conversation for ${hostId}.`
-        setLoadError(message)
+        setLoadError(
+          getErrorMessage(conversationResult.reason, `Unable to load backend conversation for ${hostId}.`),
+        )
       } else {
         setMessages(conversationResult.value.messages)
         setProvider(conversationResult.value.provider)
       }
 
       if (providerCatalogResult.status === 'fulfilled') {
+        setProviderCatalog(providerCatalogResult.value)
         const activeProvider =
           providerCatalogResult.value.providers.find(
             (candidate) => candidate.id === providerCatalogResult.value.active_provider_id,
           ) ?? null
         const chatModels = directProviderChatModels(activeProvider)
+        const providerModel =
+          directProviderDefaultModel(activeProvider) ||
+          (conversationResult.status === 'fulfilled' ? conversationResult.value.provider.model : undefined)
+
+        setSelectedProviderID(activeProvider?.id ?? '')
         setAvailableModels(chatModels)
-        setSelectedModel((currentModel) =>
-          selectPreferredChatModel(
-            currentModel,
-            conversationResult.status === 'fulfilled' ? conversationResult.value.provider.model : undefined,
-            chatModels,
-          ),
-        )
+        setSelectedModel((currentModel) => selectPreferredChatModel(currentModel, providerModel, chatModels))
       }
     })
 
@@ -324,6 +419,36 @@ export function useAgentPanel(hostId: string, enabled = true) {
       selectPreferredChatModel(currentModel, provider?.model, availableModels),
     )
   }, [availableModels, provider?.model])
+
+  const availableProviders = useMemo(() => providerOptionsFromCatalog(providerCatalog), [providerCatalog])
+
+  const selectProvider = useCallback(
+    async (providerID: string) => {
+      const nextProviderID = providerID.trim()
+      if (!nextProviderID || nextProviderID === selectedProviderID) {
+        return
+      }
+
+      try {
+        setLoadError(null)
+        setSubmitError(null)
+
+        const nextCatalog = await activateAgentProviderInCatalog(nextProviderID)
+        const nextProvider =
+          nextCatalog.providers.find((candidate) => candidate.id === nextCatalog.active_provider_id) ?? null
+        const nextModels = directProviderChatModels(nextProvider)
+
+        setProviderCatalog(nextCatalog)
+        setSelectedProviderID(nextProvider?.id ?? nextProviderID)
+        setAvailableModels(nextModels)
+        setSelectedModel(selectPreferredChatModel('', directProviderDefaultModel(nextProvider), nextModels))
+        setProvider((currentProvider) => providerViewToConversationProvider(nextProvider, currentProvider))
+      } catch (error) {
+        setSubmitError(getErrorMessage(error, 'Unable to switch the active AI provider.'))
+      }
+    },
+    [selectedProviderID],
+  )
 
   const clearPendingInteractionFlow = useCallback(() => {
     pendingFlowRef.current = null
@@ -822,6 +947,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
   return {
     answerQuestionnaire,
     approvePendingPlan,
+    availableProviders,
     contextWidgetLoadError,
     contextWidgetOptions,
     cancelPendingPlan,
@@ -834,6 +960,8 @@ export function useAgentPanel(hostId: string, enabled = true) {
     panelState,
     selectedContextWidgetIDs: effectiveContextWidgetIDs,
     selectedModel,
+    selectedProviderID,
+    selectProvider,
     setDraft,
     setIsWidgetContextEnabled,
     setSelectedModel,

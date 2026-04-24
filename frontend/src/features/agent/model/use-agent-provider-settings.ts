@@ -53,6 +53,9 @@ function getDraftModelValue(draft: AgentProviderDraft | null) {
   if (draft.kind === 'claude') {
     return draft.claude.model
   }
+  if (draft.kind === 'openai-compatible') {
+    return draft.openAICompatible.model
+  }
   return ''
 }
 
@@ -83,6 +86,12 @@ function buildChatModelsUpdatePayload(provider: AgentProviderView, chatModels: s
     case 'claude':
       return {
         claude: {
+          chat_models: chatModels,
+        },
+      }
+    case 'openai-compatible':
+      return {
+        openai_compatible: {
           chat_models: chatModels,
         },
       }
@@ -178,21 +187,37 @@ export function useAgentProviderSettings() {
                     model: nextDraft.codex.model || undefined,
                   },
                 }
-            : nextDraft.mode === 'existing' && nextDraft.id
-              ? {
-                  provider_id: nextDraft.id,
-                  claude: {
-                    command: nextDraft.claude.command || undefined,
-                    model: nextDraft.claude.model || undefined,
-                  },
-                }
-              : {
-                  kind: 'claude' as const,
-                  claude: {
-                    command: nextDraft.claude.command || undefined,
-                    model: nextDraft.claude.model || undefined,
-                  },
-                }
+            : nextDraft.kind === 'claude'
+              ? nextDraft.mode === 'existing' && nextDraft.id
+                ? {
+                    provider_id: nextDraft.id,
+                    claude: {
+                      command: nextDraft.claude.command || undefined,
+                      model: nextDraft.claude.model || undefined,
+                    },
+                  }
+                : {
+                    kind: 'claude' as const,
+                    claude: {
+                      command: nextDraft.claude.command || undefined,
+                      model: nextDraft.claude.model || undefined,
+                    },
+                  }
+              : nextDraft.mode === 'existing' && nextDraft.id
+                ? {
+                    provider_id: nextDraft.id,
+                    openai_compatible: {
+                      base_url: nextDraft.openAICompatible.baseURL || undefined,
+                      model: nextDraft.openAICompatible.model || undefined,
+                    },
+                  }
+                : {
+                    kind: 'openai-compatible' as const,
+                    openai_compatible: {
+                      base_url: nextDraft.openAICompatible.baseURL || undefined,
+                      model: nextDraft.openAICompatible.model || undefined,
+                    },
+                  }
 
         const response = await discoverAgentProviderModels(payload)
         const nextModels = uniqueModels([...(response.models ?? []), currentModel])
@@ -218,6 +243,16 @@ export function useAgentProviderSettings() {
                 ...currentDraft,
                 claude: {
                   ...currentDraft.claude,
+                  model: nextModels[0],
+                },
+              }
+            }
+
+            if (currentDraft.kind === 'openai-compatible') {
+              return {
+                ...currentDraft,
+                openAICompatible: {
+                  ...currentDraft.openAICompatible,
                   model: nextModels[0],
                 },
               }
@@ -256,6 +291,8 @@ export function useAgentProviderSettings() {
     draft?.codex.model,
     draft?.claude.command,
     draft?.claude.model,
+    draft?.openAICompatible.baseURL,
+    draft?.openAICompatible.model,
     refreshAvailableModels,
   ])
 

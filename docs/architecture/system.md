@@ -34,7 +34,7 @@ It defines the runtime ownership model and links to deeper architecture docs.
 - Workspace/tab/widget/layout state is backend-owned and persisted.
 - Terminal sessions are widget-scoped and connection-aware (`local`/`ssh`).
 - MCP and plugin execution are explicit runtime resources, never implicit background behavior.
-- AI provider selection is backend-owned config and runtime behavior; transport only exposes the CLI provider catalog and conversation routes.
+- AI provider selection is backend-owned config and runtime behavior; transport exposes the provider catalog and conversation routes, while the active runtime remains limited to CLI providers plus one explicit OpenAI-compatible HTTP source kind.
 
 ## Deep links
 

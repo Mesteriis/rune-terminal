@@ -9,25 +9,28 @@ import (
 )
 
 type createProviderPayload struct {
-	Kind        string                     `json:"kind"`
-	DisplayName string                     `json:"display_name"`
-	Enabled     *bool                      `json:"enabled,omitempty"`
-	Codex       *createCodexConfigPayload  `json:"codex,omitempty"`
-	Claude      *createClaudeConfigPayload `json:"claude,omitempty"`
+	Kind             string                               `json:"kind"`
+	DisplayName      string                               `json:"display_name"`
+	Enabled          *bool                                `json:"enabled,omitempty"`
+	Codex            *createCodexConfigPayload            `json:"codex,omitempty"`
+	Claude           *createClaudeConfigPayload           `json:"claude,omitempty"`
+	OpenAICompatible *createOpenAICompatibleConfigPayload `json:"openai_compatible,omitempty"`
 }
 
 type providerModelsPayload struct {
-	ProviderID string                       `json:"provider_id,omitempty"`
-	Kind       string                       `json:"kind,omitempty"`
-	Codex      *providerModelsCodexPayload  `json:"codex,omitempty"`
-	Claude     *providerModelsClaudePayload `json:"claude,omitempty"`
+	ProviderID       string                                 `json:"provider_id,omitempty"`
+	Kind             string                                 `json:"kind,omitempty"`
+	Codex            *providerModelsCodexPayload            `json:"codex,omitempty"`
+	Claude           *providerModelsClaudePayload           `json:"claude,omitempty"`
+	OpenAICompatible *providerModelsOpenAICompatiblePayload `json:"openai_compatible,omitempty"`
 }
 
 type updateProviderPayload struct {
-	DisplayName *string                    `json:"display_name,omitempty"`
-	Enabled     *bool                      `json:"enabled,omitempty"`
-	Codex       *updateCodexConfigPayload  `json:"codex,omitempty"`
-	Claude      *updateClaudeConfigPayload `json:"claude,omitempty"`
+	DisplayName      *string                              `json:"display_name,omitempty"`
+	Enabled          *bool                                `json:"enabled,omitempty"`
+	Codex            *updateCodexConfigPayload            `json:"codex,omitempty"`
+	Claude           *updateClaudeConfigPayload           `json:"claude,omitempty"`
+	OpenAICompatible *updateOpenAICompatibleConfigPayload `json:"openai_compatible,omitempty"`
 }
 
 type providerModelsCodexPayload struct {
@@ -37,6 +40,11 @@ type providerModelsCodexPayload struct {
 
 type providerModelsClaudePayload struct {
 	Command string `json:"command,omitempty"`
+	Model   string `json:"model,omitempty"`
+}
+
+type providerModelsOpenAICompatiblePayload struct {
+	BaseURL string `json:"base_url,omitempty"`
 	Model   string `json:"model,omitempty"`
 }
 
@@ -58,8 +66,20 @@ type createClaudeConfigPayload struct {
 	ChatModels []string `json:"chat_models,omitempty"`
 }
 
+type createOpenAICompatibleConfigPayload struct {
+	BaseURL    string   `json:"base_url,omitempty"`
+	Model      string   `json:"model,omitempty"`
+	ChatModels []string `json:"chat_models,omitempty"`
+}
+
 type updateClaudeConfigPayload struct {
 	Command    *string   `json:"command,omitempty"`
+	Model      *string   `json:"model,omitempty"`
+	ChatModels *[]string `json:"chat_models,omitempty"`
+}
+
+type updateOpenAICompatibleConfigPayload struct {
+	BaseURL    *string   `json:"base_url,omitempty"`
 	Model      *string   `json:"model,omitempty"`
 	ChatModels *[]string `json:"chat_models,omitempty"`
 }
@@ -75,11 +95,12 @@ func (api *API) handleCreateProvider(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	provider, catalog, err := api.runtime.CreateProvider(agent.CreateProviderInput{
-		Kind:        agent.ProviderKind(payload.Kind),
-		DisplayName: payload.DisplayName,
-		Enabled:     payload.Enabled,
-		Codex:       mapCreateCodexProviderInput(payload.Codex),
-		Claude:      mapCreateClaudeProviderInput(payload.Claude),
+		Kind:             agent.ProviderKind(payload.Kind),
+		DisplayName:      payload.DisplayName,
+		Enabled:          payload.Enabled,
+		Codex:            mapCreateCodexProviderInput(payload.Codex),
+		Claude:           mapCreateClaudeProviderInput(payload.Claude),
+		OpenAICompatible: mapCreateOpenAICompatibleProviderInput(payload.OpenAICompatible),
 	})
 	if err != nil {
 		writeProviderConfigError(w, err)
@@ -122,10 +143,11 @@ func (api *API) handleUpdateProvider(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	provider, catalog, err := api.runtime.UpdateProvider(providerID, agent.UpdateProviderInput{
-		DisplayName: payload.DisplayName,
-		Enabled:     payload.Enabled,
-		Codex:       mapUpdateCodexProviderInput(payload.Codex),
-		Claude:      mapUpdateClaudeProviderInput(payload.Claude),
+		DisplayName:      payload.DisplayName,
+		Enabled:          payload.Enabled,
+		Codex:            mapUpdateCodexProviderInput(payload.Codex),
+		Claude:           mapUpdateClaudeProviderInput(payload.Claude),
+		OpenAICompatible: mapUpdateOpenAICompatibleProviderInput(payload.OpenAICompatible),
 	})
 	if err != nil {
 		writeProviderConfigError(w, err)
@@ -139,10 +161,11 @@ func (api *API) handleUpdateProvider(w http.ResponseWriter, r *http.Request) {
 
 func appDiscoverProviderModelsInput(payload providerModelsPayload) app.DiscoverProviderModelsInput {
 	return app.DiscoverProviderModelsInput{
-		ProviderID: payload.ProviderID,
-		Kind:       agent.ProviderKind(payload.Kind),
-		Codex:      mapProviderModelsCodexSettings(payload.Codex),
-		Claude:     mapProviderModelsClaudeSettings(payload.Claude),
+		ProviderID:       payload.ProviderID,
+		Kind:             agent.ProviderKind(payload.Kind),
+		Codex:            mapProviderModelsCodexSettings(payload.Codex),
+		Claude:           mapProviderModelsClaudeSettings(payload.Claude),
+		OpenAICompatible: mapProviderModelsOpenAICompatibleSettings(payload.OpenAICompatible),
 	}
 }
 
@@ -198,6 +221,18 @@ func mapProviderModelsClaudeSettings(payload *providerModelsClaudePayload) *agen
 	}
 }
 
+func mapProviderModelsOpenAICompatibleSettings(
+	payload *providerModelsOpenAICompatiblePayload,
+) *agent.OpenAICompatibleProviderSettings {
+	if payload == nil {
+		return nil
+	}
+	return &agent.OpenAICompatibleProviderSettings{
+		BaseURL: payload.BaseURL,
+		Model:   payload.Model,
+	}
+}
+
 func mapCreateCodexProviderInput(payload *createCodexConfigPayload) *agent.CreateCodexProviderInput {
 	if payload == nil {
 		return nil
@@ -231,12 +266,38 @@ func mapCreateClaudeProviderInput(payload *createClaudeConfigPayload) *agent.Cre
 	}
 }
 
+func mapCreateOpenAICompatibleProviderInput(
+	payload *createOpenAICompatibleConfigPayload,
+) *agent.CreateOpenAICompatibleProviderInput {
+	if payload == nil {
+		return nil
+	}
+	return &agent.CreateOpenAICompatibleProviderInput{
+		BaseURL:    payload.BaseURL,
+		Model:      payload.Model,
+		ChatModels: payload.ChatModels,
+	}
+}
+
 func mapUpdateClaudeProviderInput(payload *updateClaudeConfigPayload) *agent.UpdateClaudeProviderInput {
 	if payload == nil {
 		return nil
 	}
 	return &agent.UpdateClaudeProviderInput{
 		Command:    payload.Command,
+		Model:      payload.Model,
+		ChatModels: payload.ChatModels,
+	}
+}
+
+func mapUpdateOpenAICompatibleProviderInput(
+	payload *updateOpenAICompatibleConfigPayload,
+) *agent.UpdateOpenAICompatibleProviderInput {
+	if payload == nil {
+		return nil
+	}
+	return &agent.UpdateOpenAICompatibleProviderInput{
+		BaseURL:    payload.BaseURL,
 		Model:      payload.Model,
 		ChatModels: payload.ChatModels,
 	}

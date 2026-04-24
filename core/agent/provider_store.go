@@ -127,7 +127,7 @@ func buildProviderRecord(input CreateProviderInput) (ProviderRecord, error) {
 
 	switch kind {
 	case ProviderKindCodex:
-		if input.Codex == nil || input.Claude != nil {
+		if input.Codex == nil || input.Claude != nil || input.OpenAICompatible != nil {
 			return ProviderRecord{}, fmt.Errorf("%w: codex config is required", ErrProviderInvalidConfig)
 		}
 		record.Codex = &CodexProviderSettings{
@@ -139,7 +139,7 @@ func buildProviderRecord(input CreateProviderInput) (ProviderRecord, error) {
 			),
 		}
 	case ProviderKindClaude:
-		if input.Claude == nil || input.Codex != nil {
+		if input.Claude == nil || input.Codex != nil || input.OpenAICompatible != nil {
 			return ProviderRecord{}, fmt.Errorf("%w: claude config is required", ErrProviderInvalidConfig)
 		}
 		record.Claude = &ClaudeProviderSettings{
@@ -148,6 +148,18 @@ func buildProviderRecord(input CreateProviderInput) (ProviderRecord, error) {
 			ChatModels: normalizeProviderChatModels(
 				firstNonEmpty(input.Claude.Model, defaultClaudeModel),
 				input.Claude.ChatModels,
+			),
+		}
+	case ProviderKindOpenAICompatible:
+		if input.OpenAICompatible == nil || input.Codex != nil || input.Claude != nil {
+			return ProviderRecord{}, fmt.Errorf("%w: openai-compatible config is required", ErrProviderInvalidConfig)
+		}
+		record.OpenAICompatible = &OpenAICompatibleProviderSettings{
+			BaseURL: normalizeProviderBaseURL(input.OpenAICompatible.BaseURL),
+			Model:   strings.TrimSpace(input.OpenAICompatible.Model),
+			ChatModels: normalizeProviderChatModels(
+				input.OpenAICompatible.Model,
+				input.OpenAICompatible.ChatModels,
 			),
 		}
 	default:
@@ -171,7 +183,7 @@ func applyProviderUpdate(record ProviderRecord, input UpdateProviderInput) (Prov
 
 	switch updated.Kind {
 	case ProviderKindCodex:
-		if input.Claude != nil {
+		if input.Claude != nil || input.OpenAICompatible != nil {
 			return ProviderRecord{}, fmt.Errorf("%w: codex config does not match provider kind", ErrProviderInvalidConfig)
 		}
 		if input.Codex != nil {
@@ -197,7 +209,7 @@ func applyProviderUpdate(record ProviderRecord, input UpdateProviderInput) (Prov
 			}
 		}
 	case ProviderKindClaude:
-		if input.Codex != nil {
+		if input.Codex != nil || input.OpenAICompatible != nil {
 			return ProviderRecord{}, fmt.Errorf("%w: claude config does not match provider kind", ErrProviderInvalidConfig)
 		}
 		if input.Claude != nil {
@@ -220,6 +232,35 @@ func applyProviderUpdate(record ProviderRecord, input UpdateProviderInput) (Prov
 			}
 			if strings.TrimSpace(updated.Claude.Model) == "" {
 				updated.Claude.Model = defaultClaudeModel
+			}
+		}
+	case ProviderKindOpenAICompatible:
+		if input.Codex != nil || input.Claude != nil {
+			return ProviderRecord{}, fmt.Errorf(
+				"%w: openai-compatible config does not match provider kind",
+				ErrProviderInvalidConfig,
+			)
+		}
+		if input.OpenAICompatible != nil {
+			if updated.OpenAICompatible == nil {
+				updated.OpenAICompatible = &OpenAICompatibleProviderSettings{}
+			}
+			if input.OpenAICompatible.BaseURL != nil {
+				updated.OpenAICompatible.BaseURL = normalizeProviderBaseURL(*input.OpenAICompatible.BaseURL)
+			}
+			if input.OpenAICompatible.Model != nil {
+				updated.OpenAICompatible.Model = strings.TrimSpace(*input.OpenAICompatible.Model)
+			}
+			if input.OpenAICompatible.ChatModels != nil {
+				updated.OpenAICompatible.ChatModels = normalizeProviderChatModels(
+					updated.OpenAICompatible.Model,
+					*input.OpenAICompatible.ChatModels,
+				)
+			} else {
+				updated.OpenAICompatible.ChatModels = normalizeProviderChatModels(
+					updated.OpenAICompatible.Model,
+					updated.OpenAICompatible.ChatModels,
+				)
 			}
 		}
 	default:
@@ -245,7 +286,7 @@ func validateProviderRecord(record ProviderRecord) error {
 	}
 	switch record.Kind {
 	case ProviderKindCodex:
-		if record.Codex == nil || record.Claude != nil {
+		if record.Codex == nil || record.Claude != nil || record.OpenAICompatible != nil {
 			return fmt.Errorf("%w: codex settings are required", ErrProviderInvalidConfig)
 		}
 		if strings.TrimSpace(record.Codex.Command) == "" {
@@ -255,7 +296,7 @@ func validateProviderRecord(record ProviderRecord) error {
 			return fmt.Errorf("%w: codex model is required", ErrProviderInvalidConfig)
 		}
 	case ProviderKindClaude:
-		if record.Claude == nil || record.Codex != nil {
+		if record.Claude == nil || record.Codex != nil || record.OpenAICompatible != nil {
 			return fmt.Errorf("%w: claude settings are required", ErrProviderInvalidConfig)
 		}
 		if strings.TrimSpace(record.Claude.Command) == "" {
@@ -263,6 +304,16 @@ func validateProviderRecord(record ProviderRecord) error {
 		}
 		if strings.TrimSpace(record.Claude.Model) == "" {
 			return fmt.Errorf("%w: claude model is required", ErrProviderInvalidConfig)
+		}
+	case ProviderKindOpenAICompatible:
+		if record.OpenAICompatible == nil || record.Codex != nil || record.Claude != nil {
+			return fmt.Errorf("%w: openai-compatible settings are required", ErrProviderInvalidConfig)
+		}
+		if normalizeProviderBaseURL(record.OpenAICompatible.BaseURL) == "" {
+			return fmt.Errorf("%w: openai-compatible base_url is required", ErrProviderInvalidConfig)
+		}
+		if strings.TrimSpace(record.OpenAICompatible.Model) == "" {
+			return fmt.Errorf("%w: openai-compatible model is required", ErrProviderInvalidConfig)
 		}
 	default:
 		return fmt.Errorf("%w: %s", ErrProviderKindUnsupported, record.Kind)
@@ -288,6 +339,8 @@ func defaultProviderDisplayName(kind ProviderKind, raw string) string {
 		return "Codex CLI"
 	case ProviderKindClaude:
 		return "Claude Code CLI"
+	case ProviderKindOpenAICompatible:
+		return "OpenAI-Compatible HTTP"
 	default:
 		return "Provider"
 	}
@@ -393,6 +446,13 @@ func normalizeProviderRecord(record ProviderRecord) ProviderRecord {
 		normalized.Claude.ChatModels = normalizeProviderChatModels(
 			normalized.Claude.Model,
 			normalized.Claude.ChatModels,
+		)
+	}
+	if normalized.OpenAICompatible != nil {
+		normalized.OpenAICompatible.BaseURL = normalizeProviderBaseURL(normalized.OpenAICompatible.BaseURL)
+		normalized.OpenAICompatible.ChatModels = normalizeProviderChatModels(
+			normalized.OpenAICompatible.Model,
+			normalized.OpenAICompatible.ChatModels,
 		)
 	}
 	return normalized

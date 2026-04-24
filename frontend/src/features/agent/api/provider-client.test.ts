@@ -45,7 +45,7 @@ describe('agent provider client', () => {
             },
           ],
           active_provider_id: 'codex-cli',
-          supported_kinds: ['codex', 'claude'],
+          supported_kinds: ['codex', 'claude', 'openai-compatible'],
         }),
       })
     vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
@@ -71,9 +71,68 @@ describe('agent provider client', () => {
         },
       ],
       active_provider_id: 'codex-cli',
-      supported_kinds: ['codex', 'claude'],
+      supported_kinds: ['codex', 'claude', 'openai-compatible'],
     })
     expect(fetchMock.mock.calls[1]?.[0]).toBe('http://127.0.0.1:8090/api/v1/agent/providers')
+  })
+
+  it('normalizes openai-compatible providers from the backend catalog', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          providers: [
+            {
+              id: 'http-source',
+              kind: 'openai-compatible',
+              display_name: 'LAN Source',
+              enabled: true,
+              active: false,
+              openai_compatible: {
+                base_url: 'http://192.168.1.8:8317',
+                model: 'gpt-5.4',
+                chat_models: null,
+              },
+              created_at: '2026-04-24T10:00:00Z',
+              updated_at: '2026-04-24T10:00:00Z',
+            },
+          ],
+          active_provider_id: 'codex-cli',
+          supported_kinds: ['codex', 'claude', 'openai-compatible'],
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(fetchAgentProviderCatalog()).resolves.toEqual({
+      providers: [
+        {
+          id: 'http-source',
+          kind: 'openai-compatible',
+          display_name: 'LAN Source',
+          enabled: true,
+          active: false,
+          openai_compatible: {
+            base_url: 'http://192.168.1.8:8317',
+            model: 'gpt-5.4',
+            chat_models: [],
+          },
+          created_at: '2026-04-24T10:00:00Z',
+          updated_at: '2026-04-24T10:00:00Z',
+        },
+      ],
+      active_provider_id: 'codex-cli',
+      supported_kinds: ['codex', 'claude', 'openai-compatible'],
+    })
   })
 
   it('normalizes null model arrays from the backend provider catalog', async () => {
@@ -275,6 +334,47 @@ describe('agent provider client', () => {
       claude: {
         command: 'claude',
         model: 'sonnet',
+      },
+    })
+  })
+
+  it('loads openai-compatible models through the discovery route', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          models: ['gpt-5.4', 'claude-sonnet-4-6', 'gemini-3-pro-low'],
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      discoverAgentProviderModels({
+        kind: 'openai-compatible',
+        openai_compatible: {
+          base_url: 'http://192.168.1.8:8317',
+          model: 'gpt-5.4',
+        },
+      }),
+    ).resolves.toEqual({
+      models: ['gpt-5.4', 'claude-sonnet-4-6', 'gemini-3-pro-low'],
+    })
+
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({
+      kind: 'openai-compatible',
+      openai_compatible: {
+        base_url: 'http://192.168.1.8:8317',
+        model: 'gpt-5.4',
       },
     })
   })
