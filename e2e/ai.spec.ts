@@ -79,7 +79,7 @@ test('settings modal exposes AI provider, model, limits, terminal, and commander
   await expect(page.getByText('AI / Лимиты')).toBeVisible()
 
   await page.getByRole('button', { name: 'Terminal Настройки терминального runtime.' }).click()
-  await expect(page.getByText('Terminal preferences')).toBeVisible()
+  await expect(page.getByText('Current terminal font size')).toBeVisible()
 
   await page.getByRole('button', { name: 'Commander Настройки file-manager surface.' }).click()
   await expect(page.getByText('Commander preferences')).toBeVisible()

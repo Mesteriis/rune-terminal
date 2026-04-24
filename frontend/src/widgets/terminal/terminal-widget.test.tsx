@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { useTerminalPreferences } from '@/features/terminal/model/use-terminal-preferences'
 import { useTerminalSession } from '@/features/terminal/model/use-terminal-session'
 import { TerminalWidget } from '@/widgets/terminal/terminal-widget'
 
@@ -16,12 +17,17 @@ vi.mock('@/features/terminal/model/use-terminal-session', () => ({
   useTerminalSession: vi.fn(),
 }))
 
+vi.mock('@/features/terminal/model/use-terminal-preferences', () => ({
+  useTerminalPreferences: vi.fn(),
+}))
+
 vi.mock('@/shared/ui/components/terminal-surface', async () => {
   const React = await vi.importActual<typeof import('react')>('react')
 
   return {
     TerminalSurface: React.forwardRef(function MockTerminalSurface(
       props: {
+        fontSize?: number
         onRendererModeChange?: (mode: 'default' | 'webgl') => void
         onRequestSearch?: () => void
         statusMessage?: string | null
@@ -48,7 +54,11 @@ vi.mock('@/shared/ui/components/terminal-surface', async () => {
         pasteFromClipboard: pasteFromClipboardMock,
       }))
 
-      return <div data-testid="terminal-surface-mock">{props.statusMessage ?? 'terminal-ready'}</div>
+      return (
+        <div data-testid="terminal-surface-mock">
+          {props.statusMessage ?? 'terminal-ready'} · font:{props.fontSize ?? 13}
+        </div>
+      )
     }),
   }
 })
@@ -82,6 +92,13 @@ describe('TerminalWidget', () => {
       sendInputChunk: vi.fn(),
       restartSession: restartSessionMock,
     } as ReturnType<typeof useTerminalSession>)
+    vi.mocked(useTerminalPreferences).mockReturnValue({
+      fontSize: 15,
+      updateFontSize: vi.fn(),
+      increaseFontSize: vi.fn(),
+      decreaseFontSize: vi.fn(),
+      resetFontSize: vi.fn(),
+    })
 
     render(<TerminalWidget hostId="terminal" runtimeWidgetId="term-side" title="Workspace shell" />)
 
@@ -89,7 +106,9 @@ describe('TerminalWidget', () => {
     expect(screen.getByText('Workspace shell')).toBeInTheDocument()
     expect(screen.getByText('zsh')).toBeInTheDocument()
     expect(screen.getByText('Running')).toBeInTheDocument()
-    expect(screen.getByTestId('terminal-surface-mock')).toHaveTextContent('Attached to local shell.')
+    expect(screen.getByTestId('terminal-surface-mock')).toHaveTextContent(
+      'Attached to local shell. · font:15',
+    )
 
     await waitFor(() => {
       expect(screen.getByText('WebGL')).toBeInTheDocument()

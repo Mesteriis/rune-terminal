@@ -9,6 +9,7 @@ import { Button, Checkbox, ScrollArea, Text } from '@/shared/ui/primitives'
 import { AgentProviderSettingsWidget } from '@/widgets/settings/agent-provider-settings-widget'
 import { AiComposerSettingsSection } from '@/widgets/settings/ai-composer-settings-section'
 import { RuntimeSettingsSection } from '@/widgets/settings/runtime-settings-section'
+import { TerminalSettingsSection } from '@/widgets/settings/terminal-settings-section'
 import {
   settingsShellBadgeStyle,
   settingsShellCardsGridStyle,
@@ -439,22 +440,7 @@ function AiLimitsSection() {
 }
 
 function TerminalSection() {
-  return (
-    <SectionCard
-      description="Здесь будут жить terminal-specific preferences после выделения отдельного backend/frontend contract."
-      title="Состояние раздела"
-    >
-      <ClearBox style={settingsShellListRowStyle}>
-        <ClearBox style={settingsShellContentHeaderStyle}>
-          <Text style={{ fontWeight: 600 }}>Terminal preferences</Text>
-          <Text style={settingsShellMutedTextStyle}>
-            Настройка терминала пока остаётся вне этого модального UI, но раздел уже закреплён в структуре.
-          </Text>
-        </ClearBox>
-        <ClearBox style={settingsShellBadgeStyle}>Planned</ClearBox>
-      </ClearBox>
-    </SectionCard>
-  )
+  return <TerminalSettingsSection />
 }
 
 function CommanderSection() {

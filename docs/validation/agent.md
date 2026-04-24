@@ -64,6 +64,10 @@
   - default: `Enter` submits, `Shift+Enter` inserts a new line
   - alternate mode: `Enter` inserts a new line, `Ctrl/Cmd+Enter` submits
   - persistence is local to the shell UI and does not extend the backend provider/runtime contract
+- The `Settings -> Terminal` section is now a real shell-owned preference surface:
+  - terminal font size is adjustable from the settings shell
+  - the preference is stored in local UI state and applied live to mounted xterm surfaces
+  - this does not introduce a backend-owned terminal settings contract
 
 ## `/run` contract
 

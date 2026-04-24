@@ -1,6 +1,7 @@
 import { LoaderCircle, RotateCcw, Square } from 'lucide-react'
 import { useCallback, useState, useRef } from 'react'
 
+import { useTerminalPreferences } from '@/features/terminal/model/use-terminal-preferences'
 import { useTerminalSession } from '@/features/terminal/model/use-terminal-session'
 import { ClearBox, IconButton } from '@/shared/ui/components'
 import { RunaDomScopeProvider, useRunaDomAutoTagging } from '@/shared/ui/dom-id'
@@ -32,6 +33,7 @@ export function TerminalWidget({
 }: TerminalWidgetProps) {
   const terminalRootRef = useRunaDomAutoTagging('terminal-widget-root')
   const terminalSurfaceRef = useRef<TerminalSurfaceHandle | null>(null)
+  const { fontSize } = useTerminalPreferences()
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [rendererMode, setRendererMode] = useState<'default' | 'webgl'>('default')
   const [searchQuery, setSearchQuery] = useState('')
@@ -189,6 +191,7 @@ export function TerminalWidget({
         </ClearBox>
         <ClearBox runaComponent="terminal-widget-surface-wrap" style={terminalWidgetSurfaceWrapStyle}>
           <TerminalSurface
+            fontSize={fontSize}
             hostId={hostId}
             onInput={terminalSession.canSendInput ? terminalSession.sendInputChunk : undefined}
             onRendererModeChange={setRendererMode}

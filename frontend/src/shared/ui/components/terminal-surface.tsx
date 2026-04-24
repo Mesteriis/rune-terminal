@@ -21,6 +21,7 @@ export type TerminalSurfaceHandle = {
 }
 
 export type TerminalSurfaceProps = {
+  fontSize?: number
   hostId: string
   outputChunks: TerminalOutputChunk[]
   sessionKey: string
@@ -165,6 +166,7 @@ async function pasteClipboardIntoTerminal(term: Terminal) {
 export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurfaceProps>(
   function TerminalSurface(
     {
+      fontSize = 13,
       hostId,
       outputChunks,
       sessionKey,
@@ -180,6 +182,7 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
     const viewportRef = useRef<HTMLDivElement | null>(null)
     const termRef = useRef<Terminal | null>(null)
     const searchAddonRef = useRef<SearchAddon | null>(null)
+    const fitAddonRef = useRef<FitAddon | null>(null)
     const lastWrittenChunkSeqRef = useRef<number>(0)
     const lastSessionKeyRef = useRef<string | null>(null)
     const lastRenderedStatusMessageRef = useRef<string | null>(null)
@@ -267,7 +270,7 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
         cursorBlink: sessionState !== 'exited',
         disableStdin: sessionState === 'exited',
         fontFamily: getCssVariable('--font-family-mono') || 'monospace',
-        fontSize: 13,
+        fontSize,
         lineHeight: 1.25,
         rightClickSelectsWord: true,
         theme: getTerminalTheme(viewportRef.current),
@@ -281,6 +284,7 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
 
       termRef.current = term
       searchAddonRef.current = searchAddon
+      fitAddonRef.current = fitAddon
       term.loadAddon(fitAddon)
       term.loadAddon(searchAddon)
       term.loadAddon(webLinksAddon)
@@ -376,6 +380,7 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
         groupClassObserver?.disconnect()
         dataDisposable.dispose()
         webglAddon?.dispose()
+        fitAddonRef.current = null
         searchAddonRef.current = null
         termRef.current = null
         term.dispose()
@@ -392,6 +397,17 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
       term.options.cursorBlink = sessionState === 'running'
       term.options.disableStdin = onInput == null || sessionState === 'exited' || sessionState === 'failed'
     }, [onInput, sessionState])
+
+    useEffect(() => {
+      const term = termRef.current
+
+      if (!term) {
+        return
+      }
+
+      term.options.fontSize = fontSize
+      fitAddonRef.current?.fit()
+    }, [fontSize])
 
     useEffect(() => {
       const term = termRef.current

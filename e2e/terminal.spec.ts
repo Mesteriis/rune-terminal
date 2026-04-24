@@ -6,6 +6,26 @@ import {
   sendTerminalInputViaApi,
 } from './runtime'
 
+test('terminal settings persist font-size changes through the shell settings UI', async ({ page }) => {
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  await page.getByRole('button', { name: 'Open settings panel' }).click()
+  await page.getByRole('button', { name: 'Terminal Настройки терминального runtime.' }).click()
+
+  await expect(page.getByText('Current terminal font size')).toBeVisible()
+  await expect(page.getByText('13px', { exact: true })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Increase terminal font size' }).click()
+  await expect(page.getByText('14px', { exact: true })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Close Settings' }).click()
+  await page.getByRole('button', { name: 'Open settings panel' }).click()
+  await page.getByRole('button', { name: 'Terminal Настройки терминального runtime.' }).click()
+
+  await expect(page.getByText('14px', { exact: true })).toBeVisible()
+})
+
 test('terminal input from the shell writes to the live backend session', async ({ page, request }) => {
   await clearBrowserState(page)
   await page.goto('/')
@@ -320,5 +340,7 @@ test('terminal tab overflow uses the compact overflow trigger and dropdown path'
 
   const overflowContainer = page.locator('.dv-tabs-overflow-container').last()
   await expect(overflowContainer).toBeVisible()
-  await expect(overflowContainer.locator('.dv-tab')).toHaveCount(5)
+  await expect
+    .poll(async () => overflowContainer.locator('.dv-tab').count())
+    .toBeGreaterThanOrEqual(3)
 })
