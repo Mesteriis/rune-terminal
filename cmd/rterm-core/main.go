@@ -158,7 +158,7 @@ func serve(args []string) error {
 	}
 	if *readyFile != "" {
 		payload, _ := json.Marshal(ready)
-		if err := os.WriteFile(*readyFile, payload, 0o600); err != nil {
+		if err := writeFileAtomic(*readyFile, payload, 0o600); err != nil {
 			return err
 		}
 	}
@@ -185,6 +185,44 @@ func serve(args []string) error {
 		}
 		return err
 	}
+}
+
+func writeFileAtomic(path string, payload []byte, mode os.FileMode) error {
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+
+	tempFile, err := os.CreateTemp(dir, ".rterm-ready-*")
+	if err != nil {
+		return err
+	}
+	tempPath := tempFile.Name()
+	cleanup := true
+	defer func() {
+		_ = tempFile.Close()
+		if cleanup {
+			_ = os.Remove(tempPath)
+		}
+	}()
+
+	if err := tempFile.Chmod(mode); err != nil {
+		return err
+	}
+	if _, err := tempFile.Write(payload); err != nil {
+		return err
+	}
+	if err := tempFile.Sync(); err != nil {
+		return err
+	}
+	if err := tempFile.Close(); err != nil {
+		return err
+	}
+	if err := os.Rename(tempPath, path); err != nil {
+		return err
+	}
+	cleanup = false
+	return nil
 }
 
 func runWatcher(args []string) error {

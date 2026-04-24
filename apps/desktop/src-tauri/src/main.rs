@@ -122,7 +122,7 @@ struct RuntimeFileWatcher {
     started_by_ui: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 struct ReadyFilePayload {
     base_url: String,
     pid: u32,
@@ -805,18 +805,29 @@ fn wait_for_service_down(url: &str, timeout: Duration) -> bool {
 
 fn wait_for_ready_file(path: &Path) -> Result<ReadyFilePayload, RuntimeError> {
     let deadline = Instant::now() + Duration::from_secs(10);
+    let mut last_parse_error: Option<String> = None;
     while Instant::now() < deadline {
         if let Ok(raw) = fs::read_to_string(path) {
-            return serde_json::from_str(&raw)
-                .map_err(|err| RuntimeError::Ready(err.to_string()));
+            if raw.trim().is_empty() {
+                std::thread::sleep(Duration::from_millis(100));
+                continue;
+            }
+            match serde_json::from_str(&raw) {
+                Ok(payload) => return Ok(payload),
+                Err(err) => {
+                    last_parse_error = Some(err.to_string());
+                }
+            }
         }
         std::thread::sleep(Duration::from_millis(100));
     }
 
-    Err(RuntimeError::Ready(format!(
-        "timed out waiting for ready file {}",
-        path.display()
-    )))
+    let mut message = format!("timed out waiting for ready file {}", path.display());
+    if let Some(err) = last_parse_error {
+        message.push_str(": ");
+        message.push_str(&err);
+    }
+    Err(RuntimeError::Ready(message))
 }
 
 fn read_json_file<T: serde::de::DeserializeOwned>(path: &Path) -> Option<T> {
@@ -889,4 +900,38 @@ fn request_watcher_state(url: &str) -> Result<WatcherStatePayload, RuntimeError>
     }
 
     Ok(payload)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{wait_for_ready_file, ReadyFilePayload};
+    use std::fs;
+    use std::thread;
+    use std::time::Duration;
+
+    #[test]
+    fn wait_for_ready_file_retries_until_payload_is_complete() {
+        let temp_dir = tempfile::tempdir().expect("temp dir");
+        let ready_path = temp_dir.path().join("runtime-ready.json");
+
+        fs::write(&ready_path, "{").expect("write partial payload");
+        let ready_path_clone = ready_path.clone();
+        thread::spawn(move || {
+            thread::sleep(Duration::from_millis(150));
+            fs::write(
+                &ready_path_clone,
+                r#"{"base_url":"http://127.0.0.1:40123","pid":4242}"#,
+            )
+            .expect("write complete payload");
+        });
+
+        let payload = wait_for_ready_file(&ready_path).expect("payload should be readable");
+        assert_eq!(
+            payload,
+            ReadyFilePayload {
+                base_url: "http://127.0.0.1:40123".into(),
+                pid: 4242,
+            }
+        );
+    }
 }
