@@ -16,7 +16,7 @@ test('settings modal exposes AI provider, model, limits, terminal, and commander
 
   await page.getByRole('button', { name: 'Open settings panel' }).click()
 
-  await expect(page.getByText('AI / Установленные приложения')).toBeVisible()
+  await expect(page.getByText('Rune Terminal')).toBeVisible()
   await expect(page.getByText('Configured providers')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Add Codex CLI' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Add Claude Code CLI' })).toBeVisible()

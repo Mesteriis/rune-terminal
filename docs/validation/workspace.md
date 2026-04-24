@@ -9,6 +9,7 @@
     - workspace tab switching and workspace creation
     - right-rail utility menu actions for new workspace, terminal widget, and commander widget
     - settings modal open/close from shell chrome
+    - the settings shell now renders as a tighter navigator/editor surface with a dedicated sidebar header and one framed content pane for the active section, while preserving the existing `General / AI / Terminal / Commander` structure
     - terminal Dockview header `+` actions for the seeded main/workspace terminal groups
     - extra terminal panels now request a fresh backend terminal session before mounting, so shell creation paths no longer fail with `terminal widget not found: terminal`
     - closing those extra terminal panels now also restores the backend workspace tab count, so the UI no longer leaks hidden runtime tabs/sessions on close

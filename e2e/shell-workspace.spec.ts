@@ -77,7 +77,7 @@ test('shell workspace tabs, utility actions, widget creation, and settings modal
     .toBe(baselineBackendTabCount + 1)
 
   await openSettingsButton.click()
-  await expect(page.getByText('Settings', { exact: true })).toBeVisible()
+  await expect(page.getByText('Rune Terminal')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Установленные приложения' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Terminal Настройки терминального runtime.' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Commander Настройки file-manager surface.' })).toBeVisible()
