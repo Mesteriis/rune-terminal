@@ -204,6 +204,7 @@ its visible shell blocks as raw HTML inside `App.tsx`.
 - `AiComposerWidget` now groups toolbar chrome into a meta row plus a denser control strip with explicit `Source`, `Model`, and `Context` labels, keeping the selectors readable without extending the provider/runtime contract.
 - `AiComposerWidget` now also renders its request-context dropdown with a denser grouped summary block, while `SearchableMultiSelect` provides tighter widget option rows and clearer selection-state chips for that dropdown without changing the underlying context-selection contract.
 - `AiComposerWidget` also owns the UI-side keyboard semantics for submit vs newline, but the selected mode is sourced from `features/agent/model/use-ai-composer-preferences.ts` so the widget stays a view over explicit shell preference state rather than reaching into storage directly.
+- `ChatTextMessageWidget` now keeps assistant message chrome denser without changing message semantics: model/status metadata and the details toggle share one compact action row under the assistant bubble, and expanded details render inside a grouped inset panel with a small header plus per-field sections.
 - `App.tsx` now uses `motion` only at the app shell boundary to animate the shell-managed AI panel width; the AI body itself remains a normal widget.
 - `TerminalSurface`, `ModalHostWidget`, and `WidgetBusyOverlayWidget` now receive external mount/theme targets through props, so those lower layers no longer query for modal anchors or Dockview group wrappers on their own.
 

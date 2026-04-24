@@ -16,6 +16,7 @@
   - AI composer visible selected-context strip with direct remove actions for chosen widgets
   - AI composer two-row toolbar grouping with explicit `Source / Model / Context` field labels
   - AI composer denser request-context dropdown summary block and widget option rows
+  - AI assistant message meta row and details panel chrome refinement
   - frontend `/run ...` routing from the AI sidebar into the active terminal widget through backend tool execution plus terminal-command explanation
   - browser-level Playwright coverage for the AI sidebar over the split local dev path:
     - settings navigation for provider/model/limits/terminal/commander sections
@@ -69,6 +70,10 @@
 - The dropdown body itself is now denser but semantically unchanged:
   - summary rows render inside a compact grouped block
   - searchable widget options use tighter rows with clearer `Selected` / `Add` status chips
+- Assistant chat messages now also use denser presentation-only chrome without changing message semantics:
+  - assistant model/status metadata and the details toggle share one compact action row under the bubble
+  - expanded details render inside a grouped panel with an explicit header and per-field inset sections
+  - chat/dev/debug visibility behavior for details is unchanged
 
 ## Commands/tests used
 
@@ -80,6 +85,7 @@
 - `npm --prefix frontend run test -- src/shared/api/workspace.test.ts src/features/agent/api/client.test.ts src/widgets/ai/ai-panel-widget.test.tsx`
 - `npm --prefix frontend run test -- src/features/agent/model/use-ai-composer-preferences.test.tsx src/widgets/ai/ai-composer-widget.test.tsx src/widgets/ai/ai-panel-widget.test.tsx`
 - `npm --prefix frontend run test -- src/widgets/ai/ai-composer-widget.test.tsx src/widgets/ai/ai-panel-widget.test.tsx src/shared/ui/components/accessibility-contracts.test.tsx`
+- `npm --prefix frontend run test -- src/widgets/ai/ai-chat-message-widget.test.tsx src/widgets/ai/ai-panel-widget.test.tsx`
 - `npm --prefix frontend run lint:active`
 - `npm run test:ui -- --reporter=line`
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts`

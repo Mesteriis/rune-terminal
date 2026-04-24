@@ -122,6 +122,42 @@ describe('AiChatMessageWidget', () => {
     expect(screen.getByText('pending')).toBeInTheDocument()
   })
 
+  it('renders assistant chat messages with compact meta chrome and grouped details', () => {
+    render(
+      <AiChatMessageWidget
+        message={{
+          id: 'chat-1',
+          type: 'chat',
+          role: 'assistant',
+          content: 'The backend contract is ready.',
+          meta: {
+            provider: 'codex',
+            model: 'gpt-5.4',
+            status: 'complete',
+            prompt: 'Inspect the backend contract',
+            reasoning: 'Compared the transport adapter against the service layer.',
+            summary: 'No contract drift found.',
+          },
+        }}
+        mode="chat"
+      />,
+    )
+
+    expect(screen.getByText('gpt-5.4 · complete')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Show details' })).toBeInTheDocument()
+    expect(screen.queryByText('Request details')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show details' }))
+
+    expect(screen.getByText('Request details')).toBeInTheDocument()
+    expect(screen.getByText('4 fields')).toBeInTheDocument()
+    expect(screen.getByText('Prompt')).toBeInTheDocument()
+    expect(screen.getByText('Reasoning')).toBeInTheDocument()
+    expect(screen.getByText('Summary')).toBeInTheDocument()
+    expect(screen.getByText('Metadata')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Hide details' })).toBeInTheDocument()
+  })
+
   it('submits questionnaire option and custom input answers', () => {
     function QuestionnaireHarness() {
       const [message, setMessage] = useState<QuestionnaireMessage>({

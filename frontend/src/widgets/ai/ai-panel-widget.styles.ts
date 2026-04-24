@@ -217,18 +217,42 @@ export const aiChatMessageMetaLineStyle: CSSProperties = {
   lineHeight: '16px',
 }
 
+export const aiChatMessageMetaBarStyle: CSSProperties = {
+  ...aiPlainBlockStyle,
+  width: '100%',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 'var(--space-sm)',
+  flexWrap: 'wrap',
+}
+
+export const aiChatMessageMetaBadgeStyle: CSSProperties = {
+  ...aiPlainBlockStyle,
+  display: 'inline-flex',
+  alignItems: 'center',
+  minHeight: '22px',
+  maxWidth: '100%',
+  padding: '0 var(--space-sm)',
+  borderRadius: '999px',
+  background: 'color-mix(in srgb, var(--color-canvas-elevated) 58%, transparent)',
+  borderColor: 'transparent',
+}
+
 export const aiChatMessageDetailsToggleStyle: CSSProperties = {
   minWidth: 'unset',
-  minHeight: 'unset',
-  padding: 0,
-  border: 'none',
-  borderRadius: 0,
-  background: 'transparent',
-  color: 'color-mix(in srgb, var(--color-text-muted) 82%, transparent)',
+  minHeight: '24px',
+  padding: '0 var(--space-sm)',
+  border: '1px solid color-mix(in srgb, var(--color-border-strong) 58%, transparent)',
+  borderRadius: '999px',
+  background: 'color-mix(in srgb, var(--color-canvas-elevated) 62%, transparent)',
+  color: 'var(--color-text-secondary)',
   boxShadow: 'none',
   fontFamily: 'var(--font-family-mono)',
-  fontSize: '12px',
-  lineHeight: '18px',
+  fontSize: '11px',
+  lineHeight: '16px',
+  letterSpacing: '0.03em',
+  textTransform: 'uppercase',
 }
 
 export const aiChatMessageDetailsPanelStyle: CSSProperties = {
@@ -239,16 +263,44 @@ export const aiChatMessageDetailsPanelStyle: CSSProperties = {
   gap: 'var(--space-sm)',
   padding: 'var(--space-sm) var(--space-md)',
   borderRadius: '14px',
-  background: 'color-mix(in srgb, var(--color-canvas-elevated) 56%, transparent)',
+  background: 'color-mix(in srgb, var(--color-canvas-elevated) 72%, transparent)',
   borderColor: 'transparent',
+}
+
+export const aiChatMessageDetailsHeaderStyle: CSSProperties = {
+  ...aiPlainBlockStyle,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 'var(--space-sm)',
+  flexWrap: 'wrap',
+}
+
+export const aiChatMessageDetailsHeaderTitleStyle: CSSProperties = {
+  color: 'var(--color-text-primary)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '11px',
+  lineHeight: '16px',
+  textTransform: 'uppercase',
+  letterSpacing: '0.05em',
+}
+
+export const aiChatMessageDetailsHeaderMetaStyle: CSSProperties = {
+  color: 'var(--color-text-muted)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '11px',
+  lineHeight: '16px',
 }
 
 export const aiChatMessageDetailsSectionStyle: CSSProperties = {
   ...aiPlainBlockStyle,
   display: 'flex',
   flexDirection: 'column',
-  gap: '2px',
+  gap: '4px',
   minWidth: 0,
+  padding: 'var(--space-xs) var(--space-sm)',
+  borderRadius: '10px',
+  background: 'color-mix(in srgb, var(--color-canvas) 84%, var(--color-canvas-elevated))',
 }
 
 export const aiChatMessageDetailsLabelStyle: CSSProperties = {

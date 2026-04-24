@@ -7,6 +7,9 @@ import type { ChatMode, ChatTextMessage } from '@/features/agent/model/types'
 import {
   aiChatMessageAssistantGroupStyle,
   aiChatMessageAssistantRowStyle,
+  aiChatMessageDetailsHeaderMetaStyle,
+  aiChatMessageDetailsHeaderStyle,
+  aiChatMessageDetailsHeaderTitleStyle,
   aiChatMessageDetailsLabelStyle,
   aiChatMessageDetailsPanelStyle,
   aiChatMessageDetailsSectionStyle,
@@ -15,6 +18,8 @@ import {
   aiChatMessageDetailsValueStyle,
   aiChatMessageGroupStyle,
   aiChatMessageGroupedRowStyle,
+  aiChatMessageMetaBadgeStyle,
+  aiChatMessageMetaBarStyle,
   aiChatMessageMetaLineStyle,
   aiChatMessageRowStyle,
   aiChatMessageUserGroupStyle,
@@ -62,6 +67,7 @@ export function ChatTextMessageWidget({
   }, [message.meta])
   const hasDetails = !isUser && details.length > 0
   const isDetailsVisible = hasDetails && (mode === 'debug' || isDetailsOpen)
+  const showMetaBar = Boolean(metaLine) || hasDetails
 
   useEffect(() => {
     setIsDetailsOpen(mode !== 'chat')
@@ -91,14 +97,24 @@ export function ChatTextMessageWidget({
             role={message.role}
             scopeId={message.id}
           />
-          {metaLine ? (
-            <Text runaComponent={`ai-chat-message-${message.id}-meta`} style={aiChatMessageMetaLineStyle}>
-              {metaLine}
-            </Text>
-          ) : null}
-          {hasDetails ? (
-            <>
-              {mode !== 'debug' ? (
+          {showMetaBar ? (
+            <Box runaComponent={`ai-chat-message-${message.id}-meta-bar`} style={aiChatMessageMetaBarStyle}>
+              {metaLine ? (
+                <Box
+                  runaComponent={`ai-chat-message-${message.id}-meta-badge`}
+                  style={aiChatMessageMetaBadgeStyle}
+                >
+                  <Text
+                    runaComponent={`ai-chat-message-${message.id}-meta`}
+                    style={aiChatMessageMetaLineStyle}
+                  >
+                    {metaLine}
+                  </Text>
+                </Box>
+              ) : (
+                <Box aria-hidden="true" style={{ flex: 1, minWidth: 0 }} />
+              )}
+              {hasDetails && mode !== 'debug' ? (
                 <Button
                   aria-expanded={isDetailsVisible}
                   onClick={() => setIsDetailsOpen((value) => !value)}
@@ -108,11 +124,32 @@ export function ChatTextMessageWidget({
                   {isDetailsVisible ? 'Hide details' : 'Show details'}
                 </Button>
               ) : null}
+            </Box>
+          ) : null}
+          {hasDetails ? (
+            <>
               {isDetailsVisible ? (
                 <Box
                   runaComponent={`ai-chat-message-${message.id}-details`}
                   style={aiChatMessageDetailsPanelStyle}
                 >
+                  <Box
+                    runaComponent={`ai-chat-message-${message.id}-details-header`}
+                    style={aiChatMessageDetailsHeaderStyle}
+                  >
+                    <Text
+                      runaComponent={`ai-chat-message-${message.id}-details-title`}
+                      style={aiChatMessageDetailsHeaderTitleStyle}
+                    >
+                      Request details
+                    </Text>
+                    <Text
+                      runaComponent={`ai-chat-message-${message.id}-details-meta`}
+                      style={aiChatMessageDetailsHeaderMetaStyle}
+                    >
+                      {details.length} {details.length === 1 ? 'field' : 'fields'}
+                    </Text>
+                  </Box>
                   {details.map((detail) => (
                     <Box
                       key={detail.id}
