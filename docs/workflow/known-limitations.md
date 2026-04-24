@@ -50,7 +50,7 @@ capability.
   `run:`), not broad natural-language execution
 - backend AI routing is intentionally limited to local Codex CLI and Claude Code CLI providers; `ollama`, direct API-key OpenAI-compatible providers, and the earlier internal proxy draft are not active provider kinds
 - CLI provider execution is chat-focused and does not yet integrate provider-native tool calls with `core/toolruntime` approval/audit
-- the shell-wide settings modal now exposes a structured `General / AI / Terminal / Commander` navigation; `General` includes the real desktop `watcher_mode` lifecycle control plus runtime bootstrap context, while the AI section includes CLI-provider model autodiscovery plus read-only model/limit overview pages
+- the shell-wide settings modal now exposes a structured `General / AI / Terminal / Commander` navigation; `General` includes the real desktop `watcher_mode` lifecycle control plus runtime bootstrap context, the AI section includes CLI-provider model autodiscovery plus read-only model/limit overview pages, and the terminal itself now exposes richer in-panel chrome, but persisted terminal font/theme/scrollback preferences are still not backed by a dedicated runtime settings contract
 - native-window automation coverage is limited; validation leans on
   build + runtime/API smoke plus manual notes
 

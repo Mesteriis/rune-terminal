@@ -8,8 +8,13 @@ test('terminal input from the shell writes to the live backend session', async (
 
   const marker = `terminal-e2e-${Date.now()}`
   const terminalInput = page.getByRole('textbox', { name: 'Terminal input' }).last()
+  const searchToggle = page.getByRole('button', { name: 'Toggle terminal search' }).last()
 
   await expect(terminalInput).toBeVisible()
+  await expect(searchToggle).toBeVisible()
+  await searchToggle.click()
+  await expect(page.getByRole('textbox', { name: 'Search terminal output' }).last()).toBeVisible()
+  await page.getByRole('button', { name: 'Close terminal search' }).last().click()
   await expect
     .poll(async () => {
       const snapshot = await fetchTerminalSnapshot(request, 'term-side')
