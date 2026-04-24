@@ -25,6 +25,15 @@ export const terminalStatusHeaderClusterStyle: React.CSSProperties = {
   minWidth: 0,
 }
 
+export const terminalStatusHeaderTextStackStyle: React.CSSProperties = {
+  ...resetBoxStyle,
+  display: 'flex',
+  flexDirection: 'column',
+  justifyContent: 'center',
+  gap: '2px',
+  minWidth: 0,
+}
+
 export const terminalStatusHeaderCompactClusterStyle: React.CSSProperties = {
   ...terminalStatusHeaderClusterStyle,
   flex: '0 1 auto',
@@ -52,6 +61,18 @@ export const terminalStatusHeaderTitleTextStyle: React.CSSProperties = {
   lineHeight: 'var(--line-height-md)',
   fontWeight: 600,
   color: 'var(--runa-terminal-text-strong, var(--color-text-primary))',
+  whiteSpace: 'nowrap',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+}
+
+export const terminalStatusHeaderSecondaryTextStyle: React.CSSProperties = {
+  fontSize: 'var(--font-size-sm)',
+  lineHeight: 'var(--line-height-sm)',
+  color: 'var(--runa-terminal-text-muted, var(--color-text-muted))',
+  whiteSpace: 'nowrap',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
 }
 
 export const terminalStatusHeaderMetaTextStyle: React.CSSProperties = {

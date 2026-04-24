@@ -86,6 +86,7 @@ describe('TerminalWidget', () => {
     render(<TerminalWidget hostId="terminal" runtimeWidgetId="term-side" title="Workspace shell" />)
 
     expect(screen.getByText('/Users/avm/projects/Personal/tideterm/runa-terminal')).toBeInTheDocument()
+    expect(screen.getByText('Workspace shell')).toBeInTheDocument()
     expect(screen.getByText('zsh')).toBeInTheDocument()
     expect(screen.getByText('Running')).toBeInTheDocument()
     expect(screen.getByTestId('terminal-surface-mock')).toHaveTextContent('Attached to local shell.')

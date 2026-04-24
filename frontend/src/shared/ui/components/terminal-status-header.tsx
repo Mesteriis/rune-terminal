@@ -11,6 +11,8 @@ import {
   terminalStatusHeaderMetaTextStyle,
   terminalStatusHeaderMetaWrapStyle,
   terminalStatusHeaderRootStyle,
+  terminalStatusHeaderSecondaryTextStyle,
+  terminalStatusHeaderTextStackStyle,
   terminalStatusHeaderTitleTextStyle,
 } from '@/shared/ui/components/terminal-status-header.styles'
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
@@ -30,6 +32,7 @@ export type TerminalStatusHeaderProps = {
   compactMetaMode?: 'full' | 'minimal'
   actionSlot?: React.ReactNode
   primaryText?: string
+  secondaryText?: string
   showMeta?: boolean
 }
 
@@ -120,6 +123,7 @@ export function TerminalStatusHeader({
   compactMetaMode = 'full',
   actionSlot,
   primaryText,
+  secondaryText,
   showMeta = true,
 }: TerminalStatusHeaderProps) {
   const connectionMeta = getConnectionMeta(connectionKind)
@@ -128,6 +132,8 @@ export function TerminalStatusHeader({
   const titleIconSize = compact ? 18 : 16
   const displayText = primaryText ?? (compact ? cwd : title)
   const titleTooltip = compact && cwd.trim() !== '' ? cwd : displayText
+  const shouldRenderSecondaryText =
+    !compact && typeof secondaryText === 'string' && secondaryText.trim() !== ''
 
   return (
     <RunaDomScopeProvider component="terminal-status-header">
@@ -144,13 +150,32 @@ export function TerminalStatusHeader({
             size={titleIconSize}
             strokeWidth={1.8}
           />
-          <Text
-            runaComponent="terminal-status-header-title"
-            style={terminalStatusHeaderTitleTextStyle}
-            title={titleTooltip}
-          >
-            {displayText}
-          </Text>
+          {shouldRenderSecondaryText ? (
+            <Box runaComponent="terminal-status-header-text-stack" style={terminalStatusHeaderTextStackStyle}>
+              <Text
+                runaComponent="terminal-status-header-title"
+                style={terminalStatusHeaderTitleTextStyle}
+                title={titleTooltip}
+              >
+                {displayText}
+              </Text>
+              <Text
+                runaComponent="terminal-status-header-secondary"
+                style={terminalStatusHeaderSecondaryTextStyle}
+                title={secondaryText}
+              >
+                {secondaryText}
+              </Text>
+            </Box>
+          ) : (
+            <Text
+              runaComponent="terminal-status-header-title"
+              style={terminalStatusHeaderTitleTextStyle}
+              title={titleTooltip}
+            >
+              {displayText}
+            </Text>
+          )}
         </Box>
         {showMeta || actionSlot ? (
           <Box

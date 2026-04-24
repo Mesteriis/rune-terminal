@@ -87,6 +87,7 @@ Current reusable controls:
 - `RadioGroup` exposes a named `radiogroup` contract through an explicit label id
 - `TerminalToolbar` moves focus into the search field explicitly when the search row opens
 - `TerminalStatusHeader` now has direct component coverage for default terminal meta rendering and compact `primaryText` mode without meta badges
+- `TerminalStatusHeader` also supports the expanded body-header density used by `TerminalWidget`: stacked primary/secondary text for the live terminal identity, while compact Dockview tabs stay on the single-line variant
 
 ### Widgets
 

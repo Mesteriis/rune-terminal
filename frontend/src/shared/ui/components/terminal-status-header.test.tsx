@@ -21,6 +21,23 @@ describe('TerminalStatusHeader', () => {
     expect(screen.getByText('zsh')).toBeInTheDocument()
   })
 
+  it('renders secondary text as an expanded stacked header in non-compact mode', () => {
+    render(
+      <TerminalStatusHeader
+        connectionKind="local"
+        cwd="~/workspace/app"
+        primaryText="~/workspace/app"
+        secondaryText="Workspace shell"
+        sessionState="running"
+        shellLabel="zsh"
+        title="Workspace shell"
+      />,
+    )
+
+    expect(screen.getByText('~/workspace/app')).toBeInTheDocument()
+    expect(screen.getByText('Workspace shell')).toBeInTheDocument()
+  })
+
   it('prefers primaryText in compact mode and can hide meta badges', () => {
     render(
       <TerminalStatusHeader
@@ -28,6 +45,7 @@ describe('TerminalStatusHeader', () => {
         connectionKind="ssh"
         cwd="~/workspace"
         primaryText="~/workspace/app"
+        secondaryText="Workspace shell"
         sessionState="idle"
         shellLabel="bash"
         showMeta={false}
@@ -39,6 +57,7 @@ describe('TerminalStatusHeader', () => {
     expect(screen.queryByText('SSH')).not.toBeInTheDocument()
     expect(screen.queryByText('Idle')).not.toBeInTheDocument()
     expect(screen.queryByText('bash')).not.toBeInTheDocument()
+    expect(screen.queryByText('Workspace shell')).not.toBeInTheDocument()
   })
 
   it('keeps compact active meta minimal when requested', () => {

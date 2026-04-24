@@ -18,12 +18,27 @@ export const terminalWidgetRootStyle: React.CSSProperties = {
 export const terminalWidgetChromeStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
-  gap: 'var(--gap-xs)',
-  padding: '0.75rem 0.85rem',
+  gap: 0,
+  padding: 0,
   border: '1px solid var(--runa-terminal-surface-border, var(--color-border-subtle))',
   borderRadius: 'var(--radius-sm)',
   background:
     'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 72%, transparent)',
+}
+
+export const terminalWidgetHeaderRowStyle: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 'var(--gap-xs)',
+  padding: '0.8rem 0.9rem 0.65rem',
+  borderBottom: '1px solid var(--runa-terminal-surface-border, var(--color-border-subtle))',
+}
+
+export const terminalWidgetToolbarRowStyle: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 'var(--gap-xs)',
+  padding: '0.5rem 0.9rem 0.65rem',
 }
 
 export const terminalWidgetSurfaceWrapStyle: React.CSSProperties = {

@@ -11,8 +11,10 @@ import {
   terminalWidgetChromeStyle,
   terminalWidgetHeaderActionButtonStyle,
   terminalWidgetHeaderActionsStyle,
+  terminalWidgetHeaderRowStyle,
   terminalWidgetRootStyle,
   terminalWidgetSurfaceWrapStyle,
+  terminalWidgetToolbarRowStyle,
 } from '@/widgets/terminal/terminal-widget.styles'
 
 export type TerminalWidgetProps = {
@@ -96,89 +98,94 @@ export function TerminalWidget({
         style={terminalWidgetRootStyle}
       >
         <ClearBox runaComponent="terminal-widget-chrome" style={terminalWidgetChromeStyle}>
-          <TerminalStatusHeader
-            actionSlot={
-              <ClearBox
-                runaComponent="terminal-widget-header-actions"
-                style={terminalWidgetHeaderActionsStyle}
-              >
-                <IconButton
-                  aria-label={`Interrupt terminal for ${title}`}
-                  disabled={isInterruptDisabled}
-                  onClick={handleInterrupt}
-                  runaComponent="terminal-widget-interrupt"
-                  size="sm"
-                  style={{
-                    ...terminalWidgetHeaderActionButtonStyle,
-                    ...(isInterruptDisabled
-                      ? {
-                          cursor: 'default',
-                          opacity: 0.58,
-                        }
-                      : null),
-                  }}
-                  title={terminalSession.isInterrupting ? 'Interrupting terminal…' : 'Interrupt terminal'}
+          <ClearBox runaComponent="terminal-widget-header-row" style={terminalWidgetHeaderRowStyle}>
+            <TerminalStatusHeader
+              actionSlot={
+                <ClearBox
+                  runaComponent="terminal-widget-header-actions"
+                  style={terminalWidgetHeaderActionsStyle}
                 >
-                  <InterruptIcon
-                    size={12}
-                    strokeWidth={2}
-                    style={
-                      terminalSession.isInterrupting
-                        ? { animation: 'runa-terminal-spin 1.2s linear infinite' }
-                        : undefined
-                    }
-                  />
-                </IconButton>
-                <IconButton
-                  aria-label={`Restart terminal for ${title}`}
-                  disabled={isRestartDisabled}
-                  onClick={handleRestart}
-                  runaComponent="terminal-widget-restart"
-                  size="sm"
-                  style={{
-                    ...terminalWidgetHeaderActionButtonStyle,
-                    ...(isRestartDisabled
-                      ? {
-                          cursor: 'default',
-                          opacity: 0.58,
-                        }
-                      : null),
-                  }}
-                  title={terminalSession.isRestarting ? 'Restarting terminal…' : 'Restart terminal'}
-                >
-                  <RestartIcon
-                    size={14}
-                    strokeWidth={1.8}
-                    style={
-                      terminalSession.isRestarting
-                        ? { animation: 'runa-terminal-spin 1.2s linear infinite' }
-                        : undefined
-                    }
-                  />
-                </IconButton>
-              </ClearBox>
-            }
-            connectionKind={terminalSession.connectionKind}
-            cwd={terminalSession.cwd}
-            primaryText={terminalSession.cwd}
-            sessionState={terminalSession.sessionState}
-            shellLabel={terminalSession.shellLabel}
-            title={title}
-          />
-          <TerminalToolbar
-            isSearchOpen={isSearchOpen}
-            onClear={handleClear}
-            onCloseSearch={handleCloseSearch}
-            onCopy={() => void handleCopy()}
-            onJumpToLatest={handleJumpToLatest}
-            onPaste={() => void handlePaste()}
-            onSearchNext={handleSearchNext}
-            onSearchPrevious={handleSearchPrevious}
-            onSearchQueryChange={setSearchQuery}
-            onToggleSearch={handleToggleSearch}
-            rendererMode={rendererMode}
-            searchQuery={searchQuery}
-          />
+                  <IconButton
+                    aria-label={`Interrupt terminal for ${title}`}
+                    disabled={isInterruptDisabled}
+                    onClick={handleInterrupt}
+                    runaComponent="terminal-widget-interrupt"
+                    size="sm"
+                    style={{
+                      ...terminalWidgetHeaderActionButtonStyle,
+                      ...(isInterruptDisabled
+                        ? {
+                            cursor: 'default',
+                            opacity: 0.58,
+                          }
+                        : null),
+                    }}
+                    title={terminalSession.isInterrupting ? 'Interrupting terminal…' : 'Interrupt terminal'}
+                  >
+                    <InterruptIcon
+                      size={12}
+                      strokeWidth={2}
+                      style={
+                        terminalSession.isInterrupting
+                          ? { animation: 'runa-terminal-spin 1.2s linear infinite' }
+                          : undefined
+                      }
+                    />
+                  </IconButton>
+                  <IconButton
+                    aria-label={`Restart terminal for ${title}`}
+                    disabled={isRestartDisabled}
+                    onClick={handleRestart}
+                    runaComponent="terminal-widget-restart"
+                    size="sm"
+                    style={{
+                      ...terminalWidgetHeaderActionButtonStyle,
+                      ...(isRestartDisabled
+                        ? {
+                            cursor: 'default',
+                            opacity: 0.58,
+                          }
+                        : null),
+                    }}
+                    title={terminalSession.isRestarting ? 'Restarting terminal…' : 'Restart terminal'}
+                  >
+                    <RestartIcon
+                      size={14}
+                      strokeWidth={1.8}
+                      style={
+                        terminalSession.isRestarting
+                          ? { animation: 'runa-terminal-spin 1.2s linear infinite' }
+                          : undefined
+                      }
+                    />
+                  </IconButton>
+                </ClearBox>
+              }
+              connectionKind={terminalSession.connectionKind}
+              cwd={terminalSession.cwd}
+              primaryText={terminalSession.cwd}
+              secondaryText={terminalSession.cwd.trim() !== '' ? title : undefined}
+              sessionState={terminalSession.sessionState}
+              shellLabel={terminalSession.shellLabel}
+              title={title}
+            />
+          </ClearBox>
+          <ClearBox runaComponent="terminal-widget-toolbar-row" style={terminalWidgetToolbarRowStyle}>
+            <TerminalToolbar
+              isSearchOpen={isSearchOpen}
+              onClear={handleClear}
+              onCloseSearch={handleCloseSearch}
+              onCopy={() => void handleCopy()}
+              onJumpToLatest={handleJumpToLatest}
+              onPaste={() => void handlePaste()}
+              onSearchNext={handleSearchNext}
+              onSearchPrevious={handleSearchPrevious}
+              onSearchQueryChange={setSearchQuery}
+              onToggleSearch={handleToggleSearch}
+              rendererMode={rendererMode}
+              searchQuery={searchQuery}
+            />
+          </ClearBox>
         </ClearBox>
         <ClearBox runaComponent="terminal-widget-surface-wrap" style={terminalWidgetSurfaceWrapStyle}>
           <TerminalSurface
