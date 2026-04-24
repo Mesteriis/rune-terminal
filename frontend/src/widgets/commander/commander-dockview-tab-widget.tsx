@@ -28,7 +28,7 @@ export function CommanderDockviewTabWidget(props: IDockviewPanelHeaderProps) {
   const [isActiveTab, setIsActiveTab] = useState(props.api.group.activePanel?.id === props.api.id)
   const [panelCount, setPanelCount] = useState(props.api.group.panels.length)
   const isSingleTab = panelCount === 1
-  const displayTitle = formatCommanderTabTitle(props.api.id, props.api.title)
+  const displayTitle = formatCommanderTabTitle(props.api.id, props.api.title ?? 'tool')
 
   useEffect(() => {
     const syncActiveTab = () => {

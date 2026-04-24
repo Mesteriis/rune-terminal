@@ -35,6 +35,15 @@ describe('CommanderDockviewTabWidget', () => {
     expect(screen.getByText('tool 2')).toHaveAttribute('title', 'tool 2')
   })
 
+  it('falls back to the default tool title when dockview does not provide one', () => {
+    const props = createHeaderProps('tool', 'tool-3', 2)
+    props.api.title = undefined
+
+    render(<CommanderDockviewTabWidget {...(props as never)} />)
+
+    expect(screen.getByText('tool 3')).toHaveAttribute('title', 'tool 3')
+  })
+
   it('shows the tab close action only for multi-tab groups', () => {
     const { rerender } = render(
       <CommanderDockviewTabWidget {...(createHeaderProps('tool', 'tool', 2) as never)} />,

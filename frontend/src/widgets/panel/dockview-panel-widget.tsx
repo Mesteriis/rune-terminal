@@ -12,42 +12,13 @@ import { Box, Text } from '@/shared/ui/primitives'
 import { CommanderPanelWidget } from '@/widgets/commander/commander-panel-widget'
 import { ModalHostWidget } from '@/widgets/panel/modal-host-widget'
 import { PanelModalActionsWidget } from '@/widgets/panel/panel-modal-actions-widget'
+import {
+  dockviewPanelContentStyle as panelContentStyle,
+  resolveDockviewPanelInnerContentStyle,
+} from '@/widgets/panel/dockview-panel-widget.styles'
 import { resolveTerminalPanelParams } from '@/widgets/terminal/terminal-panel'
 import { TerminalWidget } from '@/widgets/terminal/terminal-widget'
 import { WidgetBusyOverlayWidget } from '@/widgets/panel/widget-busy-overlay-widget'
-
-const panelContentStyle = {
-  width: '100%',
-  height: '100%',
-  position: 'relative' as const,
-  display: 'flex',
-  flexDirection: 'column' as const,
-  gap: 0,
-  padding: 0,
-  overflow: 'hidden' as const,
-  border: 'none',
-  borderRadius: 0,
-  background: 'transparent',
-  boxShadow: 'none',
-  backdropFilter: 'none',
-  WebkitBackdropFilter: 'none',
-}
-
-const panelInnerContentStyle = {
-  flex: 1,
-  minHeight: 0,
-  display: 'flex',
-  flexDirection: 'column' as const,
-  gap: 'var(--gap-sm)',
-  padding: 'calc(var(--padding-widget) / 2)',
-  overflow: 'hidden' as const,
-  border: 'none',
-  borderRadius: 0,
-  background: 'transparent',
-  boxShadow: 'none',
-  backdropFilter: 'none',
-  WebkitBackdropFilter: 'none',
-}
 
 function isCommanderDemoPanel(panelId: string) {
   return panelId === 'tool' || panelId.startsWith('tool-')
@@ -61,6 +32,7 @@ export function DockviewPanelWidget(props: IDockviewPanelProps) {
     : null
   const isCommanderPanel = isCommanderDemoPanel(props.api.id)
   const isActiveWidget = activeWidgetHostId === props.api.id
+  const panelInnerContentStyle = resolveDockviewPanelInnerContentStyle(Boolean(terminalModel))
 
   const handleRootRef = useCallback((node: HTMLDivElement | null) => {
     const nextPanelGroupElement = node?.closest('.dv-groupview')

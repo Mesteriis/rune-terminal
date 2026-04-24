@@ -43,8 +43,12 @@ test('shell workspace tabs, utility actions, widget creation, and settings modal
 
   await openUtilityPanelButton.click()
   await page.getByRole('menuitem', { name: 'Create commander widget' }).click()
+  const commanderTab = page.locator('.dv-tab').filter({ hasText: 'commander' }).last()
   await expect(page.getByRole('button', { name: 'Close tool' })).toHaveCount(1)
-  await expect(page.locator('.dv-tab').filter({ hasText: 'commander' }).last()).toContainText('tool')
+  await expect(commanderTab).toContainText('tool')
+  await commanderTab.click()
+  await expect(page.getByRole('button', { name: /Go back in (left|right) pane/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Set commander view mode to commander' })).toBeVisible()
 
   await workspaceTwoTab.click()
   await expect(workspaceTwoTab).toHaveAttribute('aria-selected', 'true')
