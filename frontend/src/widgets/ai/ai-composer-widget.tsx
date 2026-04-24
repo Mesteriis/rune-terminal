@@ -12,7 +12,6 @@ import { IconButton, SearchableMultiSelect, SwitcherControl } from '@/shared/ui/
 import { Badge, Box, Button, Select, Surface, Text, TextArea } from '@/shared/ui/primitives'
 
 import {
-  aiComposerActionActiveStyle,
   aiComposerActionRailStyle,
   aiComposerActionStyle,
   aiComposerContextMenuHeaderStyle,
@@ -35,15 +34,20 @@ import {
   aiComposerSurfaceStyle,
   aiComposerTextAreaStyle,
   aiToolbarChipStyle,
+  aiToolbarControlStripStyle,
   aiToolbarControlsStyle,
   aiToolbarContextTriggerActiveStyle,
   aiToolbarContextTriggerLabelClusterStyle,
   aiToolbarContextTriggerMetaStyle,
   aiToolbarContextTriggerStyle,
   aiToolbarContextTriggerTitleStyle,
+  aiToolbarFieldLabelStyle,
+  aiToolbarFieldStackStyle,
   aiToolbarLabelStyle,
+  aiToolbarMetaRowStyle,
   aiToolbarModelSelectStyle,
   aiToolbarProviderSelectStyle,
+  aiToolbarStatusClusterStyle,
   aiToolbarStyle,
 } from '@/widgets/ai/ai-panel-widget.styles'
 
@@ -211,65 +215,80 @@ export function AiComposerWidget({
         style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap-sm)' }}
       >
         <Surface runaComponent="ai-composer-toolbar" style={aiToolbarStyle}>
-          <Text runaComponent="ai-composer-toolbar-label" style={aiToolbarLabelStyle}>
-            {toolbarLabel}
-          </Text>
-          <Box style={aiToolbarControlsStyle}>
-            {availableProviders.length > 0 ? (
-              <Select
-                aria-label="AI provider"
-                disabled={disabled}
-                onChange={(event) => onProviderChange?.(event.currentTarget.value)}
-                runaComponent="ai-composer-provider-select"
-                style={aiToolbarProviderSelectStyle}
-                value={providerValue}
-              >
-                {availableProviders.map((provider) => (
-                  <option key={provider.value} value={provider.value}>
-                    {provider.label}
-                  </option>
-                ))}
-              </Select>
-            ) : null}
-            {availableModels.length > 0 ? (
-              <Select
-                aria-label="AI model"
-                disabled={disabled}
-                onChange={(event) => onModelChange?.(event.currentTarget.value)}
-                runaComponent="ai-composer-model-select"
-                style={aiToolbarModelSelectStyle}
-                value={modelValue}
-              >
-                {availableModels.map((model) => (
-                  <option key={model} value={model}>
-                    {model}
-                  </option>
-                ))}
-              </Select>
-            ) : null}
-            <Button
-              aria-controls={isContextMenuOpen ? contextMenuId : undefined}
-              aria-expanded={isContextMenuOpen}
-              aria-label="Composer options"
-              disabled={disabled}
-              onClick={handleToggleContextMenu}
-              runaComponent="ai-composer-context-trigger"
-              style={{
-                ...aiToolbarContextTriggerStyle,
-                ...(isContextMenuOpen || (isWidgetContextEnabled && selectedContextCount > 0)
-                  ? aiToolbarContextTriggerActiveStyle
-                  : {}),
-              }}
-            >
-              <Box style={aiToolbarContextTriggerLabelClusterStyle}>
-                <Text style={aiToolbarContextTriggerTitleStyle}>Context</Text>
-                <Text style={aiToolbarContextTriggerMetaStyle}>{contextSummaryPrimary}</Text>
+          <Box runaComponent="ai-composer-toolbar-meta-row" style={aiToolbarMetaRowStyle}>
+            <Text runaComponent="ai-composer-toolbar-label" style={aiToolbarLabelStyle}>
+              {toolbarLabel}
+            </Text>
+            <Box runaComponent="ai-composer-toolbar-status-cluster" style={aiToolbarStatusClusterStyle}>
+              <Badge runaComponent="ai-composer-toolbar-chip" style={aiToolbarChipStyle}>
+                {activeTool}
+              </Badge>
+            </Box>
+          </Box>
+          <Box runaComponent="ai-composer-toolbar-control-strip" style={aiToolbarControlStripStyle}>
+            <Box style={aiToolbarControlsStyle}>
+              {availableProviders.length > 0 ? (
+                <Box runaComponent="ai-composer-provider-stack" style={aiToolbarFieldStackStyle}>
+                  <Text style={aiToolbarFieldLabelStyle}>Source</Text>
+                  <Select
+                    aria-label="AI provider"
+                    disabled={disabled}
+                    onChange={(event) => onProviderChange?.(event.currentTarget.value)}
+                    runaComponent="ai-composer-provider-select"
+                    style={aiToolbarProviderSelectStyle}
+                    value={providerValue}
+                  >
+                    {availableProviders.map((provider) => (
+                      <option key={provider.value} value={provider.value}>
+                        {provider.label}
+                      </option>
+                    ))}
+                  </Select>
+                </Box>
+              ) : null}
+              {availableModels.length > 0 ? (
+                <Box runaComponent="ai-composer-model-stack" style={aiToolbarFieldStackStyle}>
+                  <Text style={aiToolbarFieldLabelStyle}>Model</Text>
+                  <Select
+                    aria-label="AI model"
+                    disabled={disabled}
+                    onChange={(event) => onModelChange?.(event.currentTarget.value)}
+                    runaComponent="ai-composer-model-select"
+                    style={aiToolbarModelSelectStyle}
+                    value={modelValue}
+                  >
+                    {availableModels.map((model) => (
+                      <option key={model} value={model}>
+                        {model}
+                      </option>
+                    ))}
+                  </Select>
+                </Box>
+              ) : null}
+              <Box runaComponent="ai-composer-context-stack" style={aiToolbarFieldStackStyle}>
+                <Text style={aiToolbarFieldLabelStyle}>Context</Text>
+                <Button
+                  aria-controls={isContextMenuOpen ? contextMenuId : undefined}
+                  aria-expanded={isContextMenuOpen}
+                  aria-label="Composer options"
+                  disabled={disabled}
+                  onClick={handleToggleContextMenu}
+                  runaComponent="ai-composer-context-trigger"
+                  style={{
+                    ...aiToolbarContextTriggerStyle,
+                    ...(isContextMenuOpen || (isWidgetContextEnabled && selectedContextCount > 0)
+                      ? aiToolbarContextTriggerActiveStyle
+                      : {}),
+                  }}
+                >
+                  <Box style={aiToolbarContextTriggerLabelClusterStyle}>
+                    <Text style={aiToolbarContextTriggerTitleStyle}>Context</Text>
+                    <Text style={aiToolbarContextTriggerMetaStyle}>{contextSummaryPrimary}</Text>
+                  </Box>
+                  <ChevronDown size={14} strokeWidth={1.8} />
+                </Button>
               </Box>
-              <ChevronDown size={14} strokeWidth={1.8} />
-            </Button>
-            <Badge runaComponent="ai-composer-toolbar-chip" style={aiToolbarChipStyle}>
-              {activeTool}
-            </Badge>
+            </Box>
           </Box>
         </Surface>
         {isWidgetContextEnabled && (selectedContextCount > 0 || showCurrentContextStrip) ? (

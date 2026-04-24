@@ -14,6 +14,7 @@
   - AI composer request-context toolbar trigger with explicit widget multiselect
   - AI composer current-widget quick actions (`Use current`, `Only current`) over the existing workspace/widget context contract
   - AI composer visible selected-context strip with direct remove actions for chosen widgets
+  - AI composer two-row toolbar grouping with explicit `Source / Model / Context` field labels
   - frontend `/run ...` routing from the AI sidebar into the active terminal widget through backend tool execution plus terminal-command explanation
   - browser-level Playwright coverage for the AI sidebar over the split local dev path:
     - settings navigation for provider/model/limits/terminal/commander sections
@@ -41,6 +42,7 @@
   - explicit widget-context multiselect
   - explicit current-widget quick actions inside the request-context dropdown
   - explicit selected-context strip with direct remove actions in the composer body
+  - explicit two-row toolbar grouping with `Source / Model / Context` labels over the existing selector contract
 - The AI composer submit shortcut is frontend-owned UI state:
   - default: `Enter` submits, `Shift+Enter` inserts a new line
   - alternate mode: `Enter` inserts a new line, `Ctrl/Cmd+Enter` submits

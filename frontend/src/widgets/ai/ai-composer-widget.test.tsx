@@ -100,6 +100,8 @@ describe('AiComposerWidget', () => {
 
     render(
       <AiComposerWidget
+        availableModels={['gpt-5.4']}
+        availableProviders={[{ value: 'lan-http', label: 'LAN OpenAI Source' }]}
         activeContextWidgetID="term-main"
         activeContextWidgetOption={{
           value: 'term-main',
@@ -131,6 +133,9 @@ describe('AiComposerWidget', () => {
       />,
     )
 
+    expect(screen.getByText('Source')).toBeVisible()
+    expect(screen.getByText('Model')).toBeVisible()
+    expect(screen.getAllByText('Context')[0]).toBeVisible()
     expect(screen.getByRole('button', { name: 'Composer options' })).toHaveTextContent('Context')
     expect(screen.getByRole('button', { name: 'Composer options' })).toHaveTextContent('Ops Shell')
 

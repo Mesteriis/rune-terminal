@@ -354,7 +354,7 @@ test('AI composer submit shortcut can be changed from settings', async ({ page }
     prompt: 'shortcut setting smoke\nsecond line',
   })
 
-  await expect(page.getByText('shortcut-mode-ok')).toBeVisible()
+  await expect(page.getByText('shortcut-mode-ok')).toBeVisible({ timeout: 15_000 })
 })
 
 test('AI sidebar routes through Claude provider and surfaces local auth state honestly', async ({

@@ -409,20 +409,64 @@ export const aiQuestionnaireInputRowStyle: CSSProperties = {
 
 export const aiToolbarStyle: CSSProperties = {
   display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'stretch',
+  gap: 'var(--space-xs)',
+  minHeight: '28px',
+  padding: 'var(--space-xs) var(--space-md)',
+  background: 'var(--color-canvas-elevated)',
+}
+
+export const aiToolbarMetaRowStyle: CSSProperties = {
+  display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
   gap: 'var(--gap-sm)',
-  minHeight: '28px',
-  padding: '0 var(--space-md)',
-  background: 'var(--color-canvas-elevated)',
+  minWidth: 0,
+}
+
+export const aiToolbarControlStripStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'stretch',
+  justifyContent: 'space-between',
+  gap: 'var(--space-sm)',
+  minWidth: 0,
+  padding: 'var(--space-xs)',
+  border: '1px solid var(--color-border-strong)',
+  borderRadius: 'var(--radius-sm)',
+  background: 'color-mix(in srgb, var(--color-surface-glass-soft) 78%, transparent)',
 }
 
 export const aiToolbarControlsStyle: CSSProperties = {
   display: 'flex',
-  alignItems: 'center',
-  gap: 'var(--gap-sm)',
+  alignItems: 'stretch',
+  gap: 'var(--space-sm)',
   minWidth: 0,
   flexWrap: 'wrap',
+  flex: 1,
+}
+
+export const aiToolbarFieldStackStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '2px',
+  minWidth: 0,
+}
+
+export const aiToolbarFieldLabelStyle: CSSProperties = {
+  color: 'var(--color-text-muted)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '10px',
+  lineHeight: '12px',
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase',
+  paddingLeft: '2px',
+}
+
+export const aiToolbarStatusClusterStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'flex-end',
+  gap: 'var(--space-xs)',
 }
 
 export const aiToolbarLabelStyle: CSSProperties = {
@@ -453,7 +497,7 @@ export const aiToolbarModelSelectStyle: CSSProperties = {
   fontFamily: 'var(--font-family-mono)',
   fontSize: '12px',
   lineHeight: '16px',
-  background: 'color-mix(in srgb, var(--color-surface-glass-soft) 78%, transparent)',
+  background: 'var(--color-surface-glass-strong)',
 }
 
 export const aiToolbarProviderSelectStyle: CSSProperties = {
@@ -464,7 +508,7 @@ export const aiToolbarProviderSelectStyle: CSSProperties = {
   fontFamily: 'var(--font-family-mono)',
   fontSize: '12px',
   lineHeight: '16px',
-  background: 'color-mix(in srgb, var(--color-surface-glass-soft) 78%, transparent)',
+  background: 'var(--color-surface-glass-strong)',
 }
 
 export const aiToolbarContextTriggerStyle: CSSProperties = {
@@ -475,7 +519,7 @@ export const aiToolbarContextTriggerStyle: CSSProperties = {
   padding: '0 var(--space-sm)',
   borderRadius: 'var(--radius-sm)',
   borderColor: 'var(--color-border-strong)',
-  background: 'color-mix(in srgb, var(--color-surface-glass-soft) 78%, transparent)',
+  background: 'var(--color-surface-glass-strong)',
   color: 'var(--color-text-secondary)',
   boxShadow: 'none',
 }
