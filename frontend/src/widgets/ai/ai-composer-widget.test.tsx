@@ -93,4 +93,59 @@ describe('AiComposerWidget', () => {
 
     expect(onSubmit).not.toHaveBeenCalled()
   })
+
+  it('shows context summary in the toolbar and exposes quick actions for the active widget', () => {
+    const onContextUseCurrentWidget = vi.fn()
+    const onContextOnlyUseCurrentWidget = vi.fn()
+
+    render(
+      <AiComposerWidget
+        activeContextWidgetID="term-main"
+        activeContextWidgetOption={{
+          value: 'term-main',
+          label: 'Main Shell (term-main) · terminal · local',
+          title: 'Main Shell',
+          meta: 'term-main · terminal · local',
+        }}
+        activeTool="Chat"
+        contextWidgetOptions={[
+          {
+            value: 'term-main',
+            label: 'Main Shell (term-main) · terminal · local',
+            title: 'Main Shell',
+            meta: 'term-main · terminal · local',
+          },
+          {
+            value: 'term-side',
+            label: 'Ops Shell (term-side) · terminal · local',
+            title: 'Ops Shell',
+            meta: 'term-side · terminal · local',
+          },
+        ]}
+        onContextOnlyUseCurrentWidget={onContextOnlyUseCurrentWidget}
+        onContextUseCurrentWidget={onContextUseCurrentWidget}
+        placeholder="Text Area"
+        selectedContextWidgetIDs={['term-side']}
+        toolbarLabel="TOOL BAR"
+        value=""
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Composer options' })).toHaveTextContent('Context')
+    expect(screen.getByRole('button', { name: 'Composer options' })).toHaveTextContent('Ops Shell')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Composer options' }))
+
+    const contextDialog = screen.getByRole('dialog', { name: 'Context widgets' })
+
+    expect(contextDialog).toHaveTextContent('Current')
+    expect(contextDialog).toHaveTextContent('Main Shell · term-main · terminal · local')
+    expect(contextDialog).toHaveTextContent('Selected')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use current' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Only current' }))
+
+    expect(onContextUseCurrentWidget).toHaveBeenCalledTimes(1)
+    expect(onContextOnlyUseCurrentWidget).toHaveBeenCalledTimes(1)
+  })
 })

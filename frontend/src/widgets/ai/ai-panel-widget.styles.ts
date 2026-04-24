@@ -422,6 +422,7 @@ export const aiToolbarControlsStyle: CSSProperties = {
   alignItems: 'center',
   gap: 'var(--gap-sm)',
   minWidth: 0,
+  flexWrap: 'wrap',
 }
 
 export const aiToolbarLabelStyle: CSSProperties = {
@@ -464,6 +465,52 @@ export const aiToolbarProviderSelectStyle: CSSProperties = {
   fontSize: '12px',
   lineHeight: '16px',
   background: 'color-mix(in srgb, var(--color-surface-glass-soft) 78%, transparent)',
+}
+
+export const aiToolbarContextTriggerStyle: CSSProperties = {
+  minHeight: '30px',
+  minWidth: '11rem',
+  justifyContent: 'space-between',
+  gap: 'var(--gap-sm)',
+  padding: '0 var(--space-sm)',
+  borderRadius: 'var(--radius-sm)',
+  borderColor: 'var(--color-border-strong)',
+  background: 'color-mix(in srgb, var(--color-surface-glass-soft) 78%, transparent)',
+  color: 'var(--color-text-secondary)',
+  boxShadow: 'none',
+}
+
+export const aiToolbarContextTriggerActiveStyle: CSSProperties = {
+  background: 'color-mix(in srgb, var(--color-accent-emerald-soft) 16%, var(--color-surface-glass-soft))',
+  color: 'var(--color-text-primary)',
+}
+
+export const aiToolbarContextTriggerLabelClusterStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'flex-start',
+  minWidth: 0,
+  gap: '2px',
+}
+
+export const aiToolbarContextTriggerTitleStyle: CSSProperties = {
+  color: 'inherit',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '11px',
+  lineHeight: '14px',
+  letterSpacing: '0.06em',
+  textTransform: 'uppercase',
+}
+
+export const aiToolbarContextTriggerMetaStyle: CSSProperties = {
+  color: 'var(--color-text-secondary)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '12px',
+  lineHeight: '16px',
+  maxWidth: '11rem',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
 }
 
 export const aiComposerSurfaceStyle: CSSProperties = {
@@ -542,6 +589,52 @@ export const aiComposerContextMenuHeaderStyle: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: 'var(--gap-xs)',
+}
+
+export const aiComposerContextSummaryListStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 'var(--gap-xs)',
+}
+
+export const aiComposerContextSummaryRowStyle: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: '86px minmax(0, 1fr)',
+  gap: 'var(--space-sm)',
+  alignItems: 'start',
+}
+
+export const aiComposerContextSummaryLabelStyle: CSSProperties = {
+  color: 'var(--color-text-muted)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '11px',
+  lineHeight: '16px',
+  textTransform: 'uppercase',
+  letterSpacing: '0.04em',
+}
+
+export const aiComposerContextSummaryValueStyle: CSSProperties = {
+  color: 'var(--color-text-primary)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '12px',
+  lineHeight: '18px',
+  whiteSpace: 'pre-wrap',
+  wordBreak: 'break-word',
+}
+
+export const aiComposerContextQuickActionsStyle: CSSProperties = {
+  display: 'flex',
+  gap: 'var(--gap-sm)',
+  flexWrap: 'wrap',
+}
+
+export const aiComposerContextQuickActionStyle: CSSProperties = {
+  minHeight: '28px',
+  padding: '0 var(--space-sm)',
+  borderColor: 'var(--color-border-strong)',
+  background: 'var(--color-surface-glass-strong)',
+  color: 'var(--color-text-primary)',
+  boxShadow: 'none',
 }
 
 export const aiComposerContextMenuTitleStyle: CSSProperties = {

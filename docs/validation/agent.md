@@ -11,7 +11,8 @@
   - frontend-owned AI composer submit-shortcut preference (`Enter` vs `Ctrl/Cmd+Enter`)
   - narrow OpenAI-compatible HTTP source discovery/completion path
   - AI toolbar provider/model selection over the backend provider catalog
-  - AI composer request-context dropdown with explicit widget multiselect
+  - AI composer request-context toolbar trigger with explicit widget multiselect
+  - AI composer current-widget quick actions (`Use current`, `Only current`) over the existing workspace/widget context contract
   - frontend `/run ...` routing from the AI sidebar into the active terminal widget through backend tool execution plus terminal-command explanation
   - browser-level Playwright coverage for the AI sidebar over the split local dev path:
     - settings navigation for provider/model/limits/terminal/commander sections
@@ -32,10 +33,12 @@
 - The active runtime still does not include `ollama`, the earlier internal AI proxy draft, or a broad provider/API-key universe.
 - Unsupported legacy provider records are filtered during agent-state normalization. If filtering leaves no providers, the store recreates the default local CLI providers.
 - The provider catalog route returns `supported_kinds: ["codex", "claude", "openai-compatible"]`.
-- The AI composer toolbar now consumes that backend-owned catalog directly:
+  - The AI composer toolbar now consumes that backend-owned catalog directly:
   - provider switcher
   - model switcher scoped to the active provider's `chat_models`
+  - explicit widget-context trigger with visible selection summary
   - explicit widget-context multiselect
+  - explicit current-widget quick actions inside the request-context dropdown
 - The AI composer submit shortcut is frontend-owned UI state:
   - default: `Enter` submits, `Shift+Enter` inserts a new line
   - alternate mode: `Enter` inserts a new line, `Ctrl/Cmd+Enter` submits
@@ -51,6 +54,9 @@
   - appends the backend-owned execution transcript/explanation chain through `POST /api/v1/agent/terminal-commands/explain`
 - `widget_context_enabled` remains valid for conversation/explain routes, but is intentionally omitted from `POST /api/v1/tools/execute` because that transport contract does not accept it.
 - Plain conversation requests now also support explicit `widget_ids` in the conversation context. The composer dropdown resolves widget options from `GET /api/v1/workspace`, and the backend context/audit path now uses that explicit widget list instead of only `active_widget_id`.
+- The visible context trigger in the composer remains frontend-owned UX over that same contract:
+  - the closed trigger summarizes the effective selection state (`Context off`, active widget title, or widget count)
+  - the dropdown exposes `Use current` and `Only current` actions without introducing a second backend context model
 
 ## Commands/tests used
 
@@ -61,6 +67,7 @@
 - `npm --prefix frontend run test -- src/features/agent/api/client.test.ts src/features/agent/api/provider-client.test.ts src/features/agent/model/provider-settings-draft.test.ts src/widgets/ai/ai-panel-widget.test.tsx`
 - `npm --prefix frontend run test -- src/shared/api/workspace.test.ts src/features/agent/api/client.test.ts src/widgets/ai/ai-panel-widget.test.tsx`
 - `npm --prefix frontend run test -- src/features/agent/model/use-ai-composer-preferences.test.tsx src/widgets/ai/ai-composer-widget.test.tsx src/widgets/ai/ai-panel-widget.test.tsx`
+- `npm --prefix frontend run test -- src/widgets/ai/ai-composer-widget.test.tsx src/widgets/ai/ai-panel-widget.test.tsx src/shared/ui/components/accessibility-contracts.test.tsx`
 - `npm --prefix frontend run lint:active`
 - `npm run test:ui -- --reporter=line`
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts`

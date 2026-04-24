@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
 
-import { List, SendHorizontal } from 'lucide-react'
+import { ChevronDown, List, SendHorizontal } from 'lucide-react'
 
 import type {
   AiContextWidgetOption,
@@ -9,7 +9,7 @@ import type {
 } from '@/features/agent/model/types'
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { IconButton, SearchableMultiSelect, SwitcherControl } from '@/shared/ui/components'
-import { Badge, Box, Select, Surface, Text, TextArea } from '@/shared/ui/primitives'
+import { Badge, Box, Button, Select, Surface, Text, TextArea } from '@/shared/ui/primitives'
 
 import {
   aiComposerActionActiveStyle,
@@ -17,6 +17,12 @@ import {
   aiComposerActionStyle,
   aiComposerContextMenuHeaderStyle,
   aiComposerContextMenuMetaStyle,
+  aiComposerContextQuickActionStyle,
+  aiComposerContextQuickActionsStyle,
+  aiComposerContextSummaryLabelStyle,
+  aiComposerContextSummaryListStyle,
+  aiComposerContextSummaryRowStyle,
+  aiComposerContextSummaryValueStyle,
   aiComposerContextMenuStyle,
   aiComposerContextMenuTitleStyle,
   aiComposerContextMenuWrapStyle,
@@ -24,6 +30,11 @@ import {
   aiComposerTextAreaStyle,
   aiToolbarChipStyle,
   aiToolbarControlsStyle,
+  aiToolbarContextTriggerActiveStyle,
+  aiToolbarContextTriggerLabelClusterStyle,
+  aiToolbarContextTriggerMetaStyle,
+  aiToolbarContextTriggerStyle,
+  aiToolbarContextTriggerTitleStyle,
   aiToolbarLabelStyle,
   aiToolbarModelSelectStyle,
   aiToolbarProviderSelectStyle,
@@ -46,10 +57,14 @@ export type AiComposerWidgetProps = {
   disabled?: boolean
   submitDisabled?: boolean
   contextWidgetOptions?: AiContextWidgetOption[]
+  activeContextWidgetID?: string
+  activeContextWidgetOption?: AiContextWidgetOption | null
   selectedContextWidgetIDs?: string[]
   isWidgetContextEnabled?: boolean
   contextWidgetLoadError?: string | null
   onContextOptionsOpen?: () => void
+  onContextUseCurrentWidget?: () => void
+  onContextOnlyUseCurrentWidget?: () => void
   onSelectedContextWidgetIDsChange?: (value: string[]) => void
   onWidgetContextEnabledChange?: (value: boolean) => void
   submitMode?: AiComposerSubmitMode
@@ -67,10 +82,14 @@ export function AiComposerWidget({
   placeholder,
   selectedProviderID,
   selectedModel,
+  activeContextWidgetID,
+  activeContextWidgetOption = null,
   contextWidgetLoadError = null,
   contextWidgetOptions = [],
   isWidgetContextEnabled = true,
   onContextOptionsOpen,
+  onContextUseCurrentWidget,
+  onContextOnlyUseCurrentWidget,
   onSelectedContextWidgetIDsChange,
   onWidgetContextEnabledChange,
   selectedContextWidgetIDs = [],
@@ -89,6 +108,28 @@ export function AiComposerWidget({
       ? selectedProviderID
       : (availableProviders[0]?.value ?? '')
   const selectedContextCount = selectedContextWidgetIDs.length
+  const selectedContextOptions = selectedContextWidgetIDs
+    .map((widgetID) => contextWidgetOptions.find((option) => option.value === widgetID) ?? null)
+    .filter((option): option is AiContextWidgetOption => option != null)
+  const contextSummaryPrimary = !isWidgetContextEnabled
+    ? 'Context off'
+    : selectedContextCount === 0
+      ? (activeContextWidgetOption?.title ?? 'Context widgets')
+      : selectedContextCount === 1
+        ? (selectedContextOptions[0]?.title ?? '1 widget')
+        : `${selectedContextCount} widgets`
+  const contextSummarySecondary = !isWidgetContextEnabled
+    ? 'Excluded from request'
+    : selectedContextCount === 0
+      ? (activeContextWidgetOption?.meta ?? 'Use current widget or pick specific widgets')
+      : selectedContextCount === 1
+        ? (selectedContextOptions[0]?.meta ?? 'Selected for this request')
+        : `${selectedContextOptions
+            .slice(0, 2)
+            .map((option) => option.title ?? option.label)
+            .join(', ')}${selectedContextCount > 2 ? ` +${selectedContextCount - 2}` : ''}`
+  const isCurrentContextWidgetSelected =
+    activeContextWidgetID != null && selectedContextWidgetIDs.includes(activeContextWidgetID)
 
   useEffect(() => {
     if (!isContextMenuOpen) {
@@ -192,6 +233,26 @@ export function AiComposerWidget({
                 ))}
               </Select>
             ) : null}
+            <Button
+              aria-controls={isContextMenuOpen ? contextMenuId : undefined}
+              aria-expanded={isContextMenuOpen}
+              aria-label="Composer options"
+              disabled={disabled}
+              onClick={handleToggleContextMenu}
+              runaComponent="ai-composer-context-trigger"
+              style={{
+                ...aiToolbarContextTriggerStyle,
+                ...(isContextMenuOpen || (isWidgetContextEnabled && selectedContextCount > 0)
+                  ? aiToolbarContextTriggerActiveStyle
+                  : {}),
+              }}
+            >
+              <Box style={aiToolbarContextTriggerLabelClusterStyle}>
+                <Text style={aiToolbarContextTriggerTitleStyle}>Context</Text>
+                <Text style={aiToolbarContextTriggerMetaStyle}>{contextSummaryPrimary}</Text>
+              </Box>
+              <ChevronDown size={14} strokeWidth={1.8} />
+            </Button>
             <Badge runaComponent="ai-composer-toolbar-chip" style={aiToolbarChipStyle}>
               {activeTool}
             </Badge>
@@ -223,6 +284,35 @@ export function AiComposerWidget({
                       ? `${selectedContextCount} widget${selectedContextCount === 1 ? '' : 's'} selected`
                       : 'No widgets selected'}
                   </Text>
+                </Box>
+                <Box style={aiComposerContextSummaryListStyle}>
+                  <Box style={aiComposerContextSummaryRowStyle}>
+                    <Text style={aiComposerContextSummaryLabelStyle}>Current</Text>
+                    <Text style={aiComposerContextSummaryValueStyle}>
+                      {activeContextWidgetOption?.title ?? 'No active widget'}
+                      {activeContextWidgetOption?.meta ? ` · ${activeContextWidgetOption.meta}` : ''}
+                    </Text>
+                  </Box>
+                  <Box style={aiComposerContextSummaryRowStyle}>
+                    <Text style={aiComposerContextSummaryLabelStyle}>Selected</Text>
+                    <Text style={aiComposerContextSummaryValueStyle}>{contextSummarySecondary}</Text>
+                  </Box>
+                </Box>
+                <Box style={aiComposerContextQuickActionsStyle}>
+                  <Button
+                    disabled={disabled || !activeContextWidgetOption || isCurrentContextWidgetSelected}
+                    onClick={() => onContextUseCurrentWidget?.()}
+                    style={aiComposerContextQuickActionStyle}
+                  >
+                    Use current
+                  </Button>
+                  <Button
+                    disabled={disabled || !activeContextWidgetOption}
+                    onClick={() => onContextOnlyUseCurrentWidget?.()}
+                    style={aiComposerContextQuickActionStyle}
+                  >
+                    Only current
+                  </Button>
                 </Box>
                 <SwitcherControl
                   checked={isWidgetContextEnabled}
@@ -260,22 +350,25 @@ export function AiComposerWidget({
             value={value}
           />
           <Box runaComponent="ai-composer-action-rail" style={aiComposerActionRailStyle}>
-            <IconButton
-              aria-label="Composer options"
-              aria-controls={isContextMenuOpen ? contextMenuId : undefined}
-              aria-expanded={isContextMenuOpen}
-              disabled={disabled}
-              onClick={handleToggleContextMenu}
-              runaComponent="ai-composer-options"
+            <Badge
+              runaComponent="ai-composer-context-badge"
               style={{
-                ...aiComposerActionStyle,
-                ...(isContextMenuOpen || (isWidgetContextEnabled && selectedContextCount > 0)
-                  ? aiComposerActionActiveStyle
-                  : {}),
+                ...aiToolbarChipStyle,
+                alignSelf: 'flex-start',
+                minWidth: 'auto',
+                background:
+                  isWidgetContextEnabled && selectedContextCount > 0
+                    ? aiToolbarChipStyle.background
+                    : 'var(--color-surface-glass-strong)',
+                color:
+                  isWidgetContextEnabled && selectedContextCount > 0
+                    ? aiToolbarChipStyle.color
+                    : 'var(--color-text-secondary)',
               }}
             >
-              <List size={18} strokeWidth={1.8} />
-            </IconButton>
+              <List size={12} strokeWidth={2} />
+              {isWidgetContextEnabled ? `${selectedContextCount || 0} ctx` : 'ctx off'}
+            </Badge>
             <IconButton
               aria-label="Send prompt"
               disabled={submitDisabled}

@@ -143,11 +143,19 @@ export function AiPanelWidget({ hostId, mode = 'chat', state }: AiPanelWidgetPro
             activeTool={panelState.activeTool}
             availableModels={state == null ? agentPanel.availableModels : undefined}
             availableProviders={state == null ? agentPanel.availableProviders : undefined}
+            activeContextWidgetID={state == null ? agentPanel.activeContextWidgetID : undefined}
+            activeContextWidgetOption={state == null ? agentPanel.activeContextWidgetOption : undefined}
             contextWidgetLoadError={state == null ? agentPanel.contextWidgetLoadError : undefined}
             contextWidgetOptions={state == null ? agentPanel.contextWidgetOptions : undefined}
             disabled={state == null ? agentPanel.isSubmitting || agentPanel.isInteractionPending : false}
             isWidgetContextEnabled={state == null ? agentPanel.isWidgetContextEnabled : undefined}
             onContextOptionsOpen={state == null ? agentPanel.handleContextOptionsOpen : undefined}
+            onContextOnlyUseCurrentWidget={
+              state == null ? () => void agentPanel.useCurrentContextWidget('replace') : undefined
+            }
+            onContextUseCurrentWidget={
+              state == null ? () => void agentPanel.useCurrentContextWidget('append') : undefined
+            }
             onModelChange={state == null ? agentPanel.setSelectedModel : undefined}
             onProviderChange={state == null ? agentPanel.selectProvider : undefined}
             onSelectedContextWidgetIDsChange={

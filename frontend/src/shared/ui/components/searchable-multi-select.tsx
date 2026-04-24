@@ -5,6 +5,8 @@ import { Box, Button, Input, Text } from '@/shared/ui/primitives'
 export type SearchableMultiSelectOption = {
   value: string
   label: string
+  title?: string
+  meta?: string
 }
 
 export type SearchableMultiSelectProps = {
@@ -41,6 +43,14 @@ const optionButtonStyle = {
   width: '100%',
 }
 
+const optionTextClusterStyle = {
+  display: 'flex',
+  flexDirection: 'column' as const,
+  alignItems: 'flex-start',
+  minWidth: 0,
+  gap: '2px',
+}
+
 const optionMetaStyle = {
   color: 'var(--color-text-secondary)',
 }
@@ -63,7 +73,11 @@ export function SearchableMultiSelect({
       return options
     }
 
-    return options.filter((option) => option.label.toLowerCase().includes(normalizedQuery))
+    return options.filter((option) =>
+      [option.label, option.title, option.meta].some((value) =>
+        value?.toLowerCase().includes(normalizedQuery),
+      ),
+    )
   }, [options, query])
 
   const toggleOption = (nextValue: string) => {
@@ -101,7 +115,10 @@ export function SearchableMultiSelect({
               role="option"
               style={optionButtonStyle}
             >
-              <Text>{option.label}</Text>
+              <Box style={optionTextClusterStyle}>
+                <Text>{option.title ?? option.label}</Text>
+                {option.meta ? <Text style={optionMetaStyle}>{option.meta}</Text> : null}
+              </Box>
               <Text style={optionMetaStyle}>{isSelected ? 'Selected' : 'Add'}</Text>
             </Button>
           )

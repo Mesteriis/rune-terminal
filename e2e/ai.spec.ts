@@ -269,6 +269,9 @@ test('AI sidebar lets the operator select multiple widget contexts for a request
   await expect(opsShellOption).toHaveAttribute('aria-selected', 'true')
   await expect(mainShellOption).toHaveAttribute('aria-selected', 'true')
 
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('button', { name: 'Composer options' })).toContainText('2 widgets')
+
   await page.getByPlaceholder('Text Area').fill('context selector smoke')
   await page.getByRole('button', { name: 'Send prompt' }).click()
 
@@ -324,6 +327,11 @@ test('AI composer submit shortcut can be changed from settings', async ({ page }
 
   const composer = page.getByPlaceholder('Text Area')
   await composer.fill('shortcut setting smoke')
+  await composer.evaluate((element) => {
+    const textarea = element as HTMLTextAreaElement
+    const cursor = textarea.value.length
+    textarea.setSelectionRange(cursor, cursor)
+  })
   await composer.press('Enter')
 
   await expect.poll(() => capturedStreamBodies.length).toBe(0)

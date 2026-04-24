@@ -95,6 +95,8 @@ export type AiPanelWidgetState = {
 export type AiContextWidgetOption = {
   value: string
   label: string
+  title?: string
+  meta?: string
 }
 
 export type AiProviderOption = {

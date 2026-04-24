@@ -199,6 +199,7 @@ its visible shell blocks as raw HTML inside `App.tsx`.
 - `AiPanelHeaderWidget` renders the AI shell header strip.
 - `AiPromptCardWidget` renders the prompt tiles inside the AI panel.
 - `AiComposerWidget` renders the AI toolbar plus textarea composer block and owns both the visible provider/model selectors and the inline request-context dropdown for widget selection; backend provider/workspace discovery plus `widget_ids` request assembly remain in `features/agent/model/use-agent-panel.ts`, not in the widget layer.
+- `AiComposerWidget` now also keeps the request-context affordance visible even when the dropdown is closed: the toolbar trigger summarizes the effective context state, and the dropdown exposes `Use current` / `Only current` quick actions as frontend-owned UX over the same workspace widget contract instead of inventing a second context model.
 - `AiComposerWidget` also owns the UI-side keyboard semantics for submit vs newline, but the selected mode is sourced from `features/agent/model/use-ai-composer-preferences.ts` so the widget stays a view over explicit shell preference state rather than reaching into storage directly.
 - `App.tsx` now uses `motion` only at the app shell boundary to animate the shell-managed AI panel width; the AI body itself remains a normal widget.
 - `TerminalSurface`, `ModalHostWidget`, and `WidgetBusyOverlayWidget` now receive external mount/theme targets through props, so those lower layers no longer query for modal anchors or Dockview group wrappers on their own.
