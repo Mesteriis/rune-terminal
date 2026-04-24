@@ -8,14 +8,17 @@
   - backend-owned agent provider catalog
   - active conversation provider resolution
   - frontend AI/provider settings surfaces
+  - frontend-owned AI composer submit-shortcut preference (`Enter` vs `Ctrl/Cmd+Enter`)
   - narrow OpenAI-compatible HTTP source discovery/completion path
   - AI toolbar provider/model selection over the backend provider catalog
   - AI composer request-context dropdown with explicit widget multiselect
   - frontend `/run ...` routing from the AI sidebar into the active terminal widget through backend tool execution plus terminal-command explanation
   - browser-level Playwright coverage for the AI sidebar over the split local dev path:
     - settings navigation for provider/model/limits/terminal/commander sections
+    - settings navigation for the dedicated `AI / Composer` section
     - live Codex CLI chat request/response through the real backend conversation route
     - explicit widget-context selection in the composer and `widget_ids` propagation into the stream request body
+    - settings-driven keyboard submit behavior: `Enter` newline plus `Ctrl/Cmd+Enter` submit
     - transcript persistence across AI panel close/reopen
     - live Claude provider routing with explicit `auth-required` handling when the local CLI is installed but not logged in
     - `/run printf ...` sending input into the active terminal session without falling back to plain provider chat
@@ -33,6 +36,10 @@
   - provider switcher
   - model switcher scoped to the active provider's `chat_models`
   - explicit widget-context multiselect
+- The AI composer submit shortcut is frontend-owned UI state:
+  - default: `Enter` submits, `Shift+Enter` inserts a new line
+  - alternate mode: `Enter` inserts a new line, `Ctrl/Cmd+Enter` submits
+  - persistence is local to the shell UI and does not extend the backend provider/runtime contract
 
 ## `/run` contract
 
@@ -53,6 +60,7 @@
 - `./scripts/go.sh test ./core/agent ./core/app ./core/conversation ./core/transport/httpapi`
 - `npm --prefix frontend run test -- src/features/agent/api/client.test.ts src/features/agent/api/provider-client.test.ts src/features/agent/model/provider-settings-draft.test.ts src/widgets/ai/ai-panel-widget.test.tsx`
 - `npm --prefix frontend run test -- src/shared/api/workspace.test.ts src/features/agent/api/client.test.ts src/widgets/ai/ai-panel-widget.test.tsx`
+- `npm --prefix frontend run test -- src/features/agent/model/use-ai-composer-preferences.test.tsx src/widgets/ai/ai-composer-widget.test.tsx src/widgets/ai/ai-panel-widget.test.tsx`
 - `npm --prefix frontend run lint:active`
 - `npm run test:ui -- --reporter=line`
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts`
@@ -74,6 +82,7 @@
 - No current visible profile, role, or mode selector exists in the AI sidebar, so those backend selection routes remain unwired to user controls.
 - `/run` currently surfaces approval-required toolruntime responses as a chat-side error/status message; there is no dedicated approval-confirmation UI for this path yet.
 - On this machine the local `claude` binary is installed but not authenticated, so the verified browser path is `auth-required` handling rather than a successful Claude completion.
+- The composer shortcut preference is intentionally local UI state today; there is no backend/user-profile sync for this behavior.
 
 ## Related validation
 

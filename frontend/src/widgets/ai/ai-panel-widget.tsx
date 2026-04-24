@@ -1,6 +1,7 @@
 import { useCallback, useLayoutEffect, useRef, useState, type UIEvent } from 'react'
 
 import { useAgentPanel } from '@/features/agent/model/use-agent-panel'
+import { useAiComposerPreferences } from '@/features/agent/model/use-ai-composer-preferences'
 import type { AiPanelWidgetState, ChatMode } from '@/features/agent/model/types'
 import { RunaDomScopeProvider, useRunaDomAutoTagging } from '@/shared/ui/dom-id'
 import { Box, ScrollArea } from '@/shared/ui/primitives'
@@ -45,6 +46,7 @@ function readAiMessageViewportMetrics(viewport: HTMLDivElement): AiMessageViewpo
 
 export function AiPanelWidget({ hostId, mode = 'chat', state }: AiPanelWidgetProps) {
   const agentPanel = useAgentPanel(hostId, state == null)
+  const { submitMode } = useAiComposerPreferences()
   const panelState = state ?? agentPanel.panelState
   const autoTagAiPanelRootRef = useRunaDomAutoTagging('ai-panel-root')
   const [panelRootElement, setPanelRootElement] = useState<HTMLDivElement | null>(null)
@@ -163,6 +165,7 @@ export function AiPanelWidget({ hostId, mode = 'chat', state }: AiPanelWidgetPro
                 ? agentPanel.isSubmitting || agentPanel.isInteractionPending || agentPanel.draft.trim() === ''
                 : true
             }
+            submitMode={submitMode}
             toolbarLabel={panelState.toolbarLabel}
             value={state == null ? agentPanel.draft : undefined}
           />

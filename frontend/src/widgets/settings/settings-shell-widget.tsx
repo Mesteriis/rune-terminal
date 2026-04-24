@@ -7,6 +7,7 @@ import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { ClearBox } from '@/shared/ui/components'
 import { Button, Checkbox, ScrollArea, Text } from '@/shared/ui/primitives'
 import { AgentProviderSettingsWidget } from '@/widgets/settings/agent-provider-settings-widget'
+import { AiComposerSettingsSection } from '@/widgets/settings/ai-composer-settings-section'
 import { RuntimeSettingsSection } from '@/widgets/settings/runtime-settings-section'
 import {
   settingsShellBadgeStyle,
@@ -31,7 +32,14 @@ import {
   settingsShellSidebarStyle,
 } from '@/widgets/settings/settings-shell-widget.styles'
 
-type SettingsSectionID = 'general' | 'ai-apps' | 'ai-models' | 'ai-limits' | 'terminal' | 'commander'
+type SettingsSectionID =
+  | 'general'
+  | 'ai-apps'
+  | 'ai-models'
+  | 'ai-composer'
+  | 'ai-limits'
+  | 'terminal'
+  | 'commander'
 type SettingsSectionMeta = {
   navTitle: string
   navDescription: string
@@ -68,6 +76,14 @@ const settingsSectionMeta: Record<SettingsSectionID, SettingsSectionMeta> = {
     shellTitle: 'AI / Модели',
     shellDescription:
       'Каталог моделей, которые backend вернул для активных CLI-провайдеров, и их экспозиция в основном AI чате.',
+    groupLabel: 'AI',
+  },
+  'ai-composer': {
+    navTitle: 'Composer',
+    navDescription: 'Поведение Enter / Shift+Enter в чате.',
+    shellTitle: 'AI / Composer',
+    shellDescription:
+      'Frontend-owned keyboard behavior for the AI composer: visible send/newline shortcut selection without inventing a backend runtime contract.',
     groupLabel: 'AI',
   },
   'ai-limits': {
@@ -468,6 +484,8 @@ function renderSection(sectionID: SettingsSectionID) {
       return <AgentProviderSettingsWidget embedded />
     case 'ai-models':
       return <AiModelsSection />
+    case 'ai-composer':
+      return <AiComposerSettingsSection />
     case 'ai-limits':
       return <AiLimitsSection />
     case 'terminal':
@@ -564,6 +582,16 @@ export function SettingsShellWidget() {
                   <Text style={{ fontWeight: 600 }}>{settingsSectionMeta['ai-models'].navTitle}</Text>
                   <Text style={settingsShellMutedTextStyle}>
                     {settingsSectionMeta['ai-models'].navDescription}
+                  </Text>
+                </Button>
+                <Button
+                  aria-pressed={activeSectionID === 'ai-composer'}
+                  onClick={() => setActiveSectionID('ai-composer')}
+                  style={navButtonStateStyle(activeSectionID === 'ai-composer')}
+                >
+                  <Text style={{ fontWeight: 600 }}>{settingsSectionMeta['ai-composer'].navTitle}</Text>
+                  <Text style={settingsShellMutedTextStyle}>
+                    {settingsSectionMeta['ai-composer'].navDescription}
                   </Text>
                 </Button>
                 <Button

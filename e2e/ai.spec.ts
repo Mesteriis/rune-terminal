@@ -63,6 +63,14 @@ test('settings modal exposes AI provider, model, limits, terminal, and commander
   await expect(page.getByText('AI / Модели')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Refresh models' })).toBeVisible()
 
+  await page.getByRole('button', { name: 'Composer Поведение Enter / Shift+Enter в чате.' }).click()
+  await expect(page.getByText('AI / Composer')).toBeVisible()
+  await expect(
+    page.getByRole('radio', {
+      name: /^Enter sends Shift\+Enter inserts a new line\.$/,
+    }),
+  ).toBeVisible()
+
   await page.getByRole('button', { name: 'Лимиты Готовность и будущие quota surfaces.' }).click()
   await expect(page.getByText('AI / Лимиты')).toBeVisible()
 
@@ -277,6 +285,60 @@ test('AI sidebar lets the operator select multiple widget contexts for a request
   })
 
   await expect(page.getByText('context-selector-ok')).toBeVisible()
+})
+
+test('AI composer submit shortcut can be changed from settings', async ({ page }) => {
+  test.setTimeout(60_000)
+
+  const capturedStreamBodies: Array<Record<string, unknown>> = []
+
+  await page.route('**/api/v1/agent/conversation/messages/stream', async (route) => {
+    capturedStreamBodies.push(route.request().postDataJSON() as Record<string, unknown>)
+
+    await route.fulfill({
+      status: 200,
+      headers: {
+        'content-type': 'text/event-stream',
+      },
+      body: [
+        'event: message-start\ndata: {"type":"message-start","message_id":"msg_shortcuts","message":{"id":"msg_shortcuts","role":"assistant","content":"","status":"streaming","provider":"stub","model":"stub-model","created_at":"2026-04-24T10:05:00Z"}}\n\n',
+        'event: message-complete\ndata: {"type":"message-complete","message_id":"msg_shortcuts","message":{"id":"msg_shortcuts","role":"assistant","content":"shortcut-mode-ok","status":"complete","provider":"stub","model":"stub-model","created_at":"2026-04-24T10:05:01Z"}}\n\n',
+      ].join(''),
+    })
+  })
+
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  await page.getByRole('button', { name: 'Open settings panel' }).click()
+  await page.getByRole('button', { name: 'Composer Поведение Enter / Shift+Enter в чате.' }).click()
+  await page
+    .getByRole('radio', {
+      name: /^Ctrl\/Cmd\+Enter sends Plain Enter inserts a new line\.$/,
+    })
+    .check()
+  await page.getByRole('button', { name: 'Close Settings' }).click()
+
+  await page.getByRole('button', { name: 'Toggle AI panel' }).click()
+  await expect(page.getByText('AI Rune Assistant')).toBeVisible()
+
+  const composer = page.getByPlaceholder('Text Area')
+  await composer.fill('shortcut setting smoke')
+  await composer.press('Enter')
+
+  await expect.poll(() => capturedStreamBodies.length).toBe(0)
+  await expect(composer).toHaveValue('shortcut setting smoke\n')
+  await composer.pressSequentially('second line')
+  await expect(composer).toHaveValue('shortcut setting smoke\nsecond line')
+
+  await composer.press('Control+Enter')
+
+  await expect.poll(() => capturedStreamBodies.length, { timeout: 15_000 }).toBe(1)
+  expect(capturedStreamBodies[0]).toMatchObject({
+    prompt: 'shortcut setting smoke\nsecond line',
+  })
+
+  await expect(page.getByText('shortcut-mode-ok')).toBeVisible()
 })
 
 test('AI sidebar routes through Claude provider and surfaces local auth state honestly', async ({

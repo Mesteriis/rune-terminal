@@ -1,8 +1,12 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
 
 import { List, SendHorizontal } from 'lucide-react'
 
-import type { AiContextWidgetOption, AiProviderOption } from '@/features/agent/model/types'
+import type {
+  AiContextWidgetOption,
+  AiProviderOption,
+  AiComposerSubmitMode,
+} from '@/features/agent/model/types'
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { IconButton, SearchableMultiSelect, SwitcherControl } from '@/shared/ui/components'
 import { Badge, Box, Select, Surface, Text, TextArea } from '@/shared/ui/primitives'
@@ -48,6 +52,7 @@ export type AiComposerWidgetProps = {
   onContextOptionsOpen?: () => void
   onSelectedContextWidgetIDsChange?: (value: string[]) => void
   onWidgetContextEnabledChange?: (value: boolean) => void
+  submitMode?: AiComposerSubmitMode
 }
 
 export function AiComposerWidget({
@@ -69,6 +74,7 @@ export function AiComposerWidget({
   onSelectedContextWidgetIDsChange,
   onWidgetContextEnabledChange,
   selectedContextWidgetIDs = [],
+  submitMode = 'enter-sends',
   submitDisabled = false,
   toolbarLabel,
   value,
@@ -118,6 +124,29 @@ export function AiComposerWidget({
       }
       return nextValue
     })
+  }
+
+  const handleTextAreaKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (disabled || event.nativeEvent.isComposing) {
+      return
+    }
+
+    if (submitMode === 'enter-sends') {
+      if (event.key === 'Enter' && !event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey) {
+        event.preventDefault()
+        if (!submitDisabled) {
+          onSubmit?.()
+        }
+      }
+      return
+    }
+
+    if (event.key === 'Enter' && (event.ctrlKey || event.metaKey) && !event.altKey) {
+      event.preventDefault()
+      if (!submitDisabled) {
+        onSubmit?.()
+      }
+    }
   }
 
   return (
@@ -224,6 +253,7 @@ export function AiComposerWidget({
             onChange={(event) => {
               onValueChange?.(event.currentTarget.value)
             }}
+            onKeyDown={handleTextAreaKeyDown}
             placeholder={placeholder}
             runaComponent="ai-composer-textarea"
             style={aiComposerTextAreaStyle}
