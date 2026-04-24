@@ -23,6 +23,27 @@ const closeButtonStyle = {
   color: 'var(--runa-terminal-text-muted, var(--color-text-muted))',
 }
 
+function formatCompactTerminalPrimaryText(cwd: string, fallbackTitle: string) {
+  const trimmedCwd = cwd.trim()
+
+  if (trimmedCwd === '') {
+    return fallbackTitle
+  }
+
+  if (trimmedCwd === '~') {
+    return trimmedCwd
+  }
+
+  const normalizedSegments = trimmedCwd.split('/').filter(Boolean)
+  const lastSegment = normalizedSegments[normalizedSegments.length - 1]
+
+  if (!lastSegment) {
+    return trimmedCwd
+  }
+
+  return trimmedCwd.startsWith('~/') ? `~/${lastSegment}` : lastSegment
+}
+
 export function TerminalDockviewTabWidget(props: IDockviewPanelHeaderProps) {
   const terminalPanelParams = resolveTerminalPanelParams(props.api.id, props.params)
   const terminalSession = useTerminalSession({
@@ -80,9 +101,10 @@ export function TerminalDockviewTabWidget(props: IDockviewPanelHeaderProps) {
             ) : null
           }
           compact
+          compactMetaMode="minimal"
           connectionKind={terminalSession.connectionKind}
           cwd={terminalSession.cwd}
-          primaryText={terminalSession.cwd || terminalPanelParams.title}
+          primaryText={formatCompactTerminalPrimaryText(terminalSession.cwd, terminalPanelParams.title)}
           sessionState={terminalSession.sessionState}
           shellLabel={terminalSession.shellLabel}
           showMeta={isActiveTab}

@@ -40,4 +40,25 @@ describe('TerminalStatusHeader', () => {
     expect(screen.queryByText('Idle')).not.toBeInTheDocument()
     expect(screen.queryByText('bash')).not.toBeInTheDocument()
   })
+
+  it('keeps compact active meta minimal when requested', () => {
+    render(
+      <TerminalStatusHeader
+        compact
+        compactMetaMode="minimal"
+        connectionKind="local"
+        cwd="~/workspace/app"
+        primaryText="app"
+        sessionState="running"
+        shellLabel="zsh"
+        title="Workspace shell"
+      />,
+    )
+
+    expect(screen.getByText('app')).toBeInTheDocument()
+    expect(screen.getByText('Local')).toBeInTheDocument()
+    expect(screen.getByText('Running')).toBeInTheDocument()
+    expect(screen.queryByText('zsh')).not.toBeInTheDocument()
+    expect(screen.getByText('app')).toHaveAttribute('title', '~/workspace/app')
+  })
 })

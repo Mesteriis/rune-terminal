@@ -1,0 +1,97 @@
+import { render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
+
+import { useTerminalSession } from '@/features/terminal/model/use-terminal-session'
+import { createTerminalPanelParams } from '@/widgets/terminal/terminal-panel'
+import { TerminalDockviewTabWidget } from '@/widgets/terminal/terminal-dockview-tab-widget'
+
+vi.mock('@/features/terminal/model/use-terminal-session', () => ({
+  useTerminalSession: vi.fn(),
+}))
+
+function createHeaderProps(activePanelId: string, panelCount = 2) {
+  return {
+    api: {
+      close: vi.fn(),
+      group: {
+        activePanel: activePanelId ? { id: activePanelId } : null,
+        api: {
+          onDidActivePanelChange: () => ({
+            dispose: vi.fn(),
+          }),
+        },
+        panels: Array.from({ length: panelCount }, (_, index) => ({
+          id: `panel-${index + 1}`,
+        })),
+      },
+      id: 'panel-1',
+      onDidGroupChange: () => ({
+        dispose: vi.fn(),
+      }),
+    },
+    params: createTerminalPanelParams('workspace'),
+  }
+}
+
+describe('TerminalDockviewTabWidget', () => {
+  it('renders a shortened compact title with minimal active meta', () => {
+    vi.mocked(useTerminalSession).mockReturnValue({
+      runtimeWidgetId: 'term-side',
+      sessionKey: 'term-side:1',
+      cwd: '~/workspace/app',
+      shellLabel: 'zsh',
+      connectionKind: 'local',
+      sessionState: 'running',
+      canSendInput: true,
+      canInterrupt: true,
+      isLoading: false,
+      isInterrupting: false,
+      isRestarting: false,
+      error: null,
+      statusDetail: null,
+      outputChunks: [],
+      runtimeState: null,
+      interruptSession: vi.fn(async () => undefined),
+      restartSession: vi.fn(async () => undefined),
+      sendInputChunk: vi.fn(async () => undefined),
+    } as ReturnType<typeof useTerminalSession>)
+
+    render(<TerminalDockviewTabWidget {...(createHeaderProps('panel-1') as never)} />)
+
+    expect(screen.getByText('~/app')).toBeInTheDocument()
+    expect(screen.getByText('~/app')).toHaveAttribute('title', '~/workspace/app')
+    expect(screen.getByText('Local')).toBeInTheDocument()
+    expect(screen.getByText('Running')).toBeInTheDocument()
+    expect(screen.queryByText('zsh')).not.toBeInTheDocument()
+  })
+
+  it('hides compact meta when the terminal tab is inactive', () => {
+    vi.mocked(useTerminalSession).mockReturnValue({
+      runtimeWidgetId: 'term-side',
+      sessionKey: 'term-side:1',
+      cwd: '~/workspace/app',
+      shellLabel: 'zsh',
+      connectionKind: 'ssh',
+      sessionState: 'idle',
+      canSendInput: true,
+      canInterrupt: true,
+      isLoading: false,
+      isInterrupting: false,
+      isRestarting: false,
+      error: null,
+      statusDetail: null,
+      outputChunks: [],
+      runtimeState: null,
+      interruptSession: vi.fn(async () => undefined),
+      restartSession: vi.fn(async () => undefined),
+      sendInputChunk: vi.fn(async () => undefined),
+    } as ReturnType<typeof useTerminalSession>)
+
+    render(<TerminalDockviewTabWidget {...(createHeaderProps('panel-2') as never)} />)
+
+    expect(screen.getByText('~/app')).toBeInTheDocument()
+    expect(screen.queryByText('SSH')).not.toBeInTheDocument()
+    expect(screen.queryByText('Idle')).not.toBeInTheDocument()
+    expect(screen.queryByText('zsh')).not.toBeInTheDocument()
+  })
+})

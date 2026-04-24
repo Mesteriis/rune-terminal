@@ -27,6 +27,7 @@ export type TerminalStatusHeaderProps = {
   connectionKind: TerminalConnectionKind
   sessionState: TerminalSessionState
   compact?: boolean
+  compactMetaMode?: 'full' | 'minimal'
   actionSlot?: React.ReactNode
   primaryText?: string
   showMeta?: boolean
@@ -116,6 +117,7 @@ export function TerminalStatusHeader({
   connectionKind,
   sessionState,
   compact = false,
+  compactMetaMode = 'full',
   actionSlot,
   primaryText,
   showMeta = true,
@@ -125,6 +127,7 @@ export function TerminalStatusHeader({
   const iconSize = 14
   const titleIconSize = compact ? 18 : 16
   const displayText = primaryText ?? (compact ? cwd : title)
+  const titleTooltip = compact && cwd.trim() !== '' ? cwd : displayText
 
   return (
     <RunaDomScopeProvider component="terminal-status-header">
@@ -141,7 +144,11 @@ export function TerminalStatusHeader({
             size={titleIconSize}
             strokeWidth={1.8}
           />
-          <Text runaComponent="terminal-status-header-title" style={terminalStatusHeaderTitleTextStyle}>
+          <Text
+            runaComponent="terminal-status-header-title"
+            style={terminalStatusHeaderTitleTextStyle}
+            title={titleTooltip}
+          >
             {displayText}
           </Text>
         </Box>
@@ -181,19 +188,21 @@ export function TerminalStatusHeader({
                     {sessionMeta.label}
                   </Text>
                 </MetaItem>
-                <MetaItem compact={compact} runaComponent="terminal-status-header-shell">
-                  <Command
-                    color="var(--runa-terminal-icon-muted, var(--color-text-secondary))"
-                    size={iconSize}
-                    strokeWidth={1.8}
-                  />
-                  <Text
-                    runaComponent="terminal-status-header-shell-text"
-                    style={terminalStatusHeaderMetaTextStyle}
-                  >
-                    {shellLabel}
-                  </Text>
-                </MetaItem>
+                {!(compact && compactMetaMode === 'minimal') ? (
+                  <MetaItem compact={compact} runaComponent="terminal-status-header-shell">
+                    <Command
+                      color="var(--runa-terminal-icon-muted, var(--color-text-secondary))"
+                      size={iconSize}
+                      strokeWidth={1.8}
+                    />
+                    <Text
+                      runaComponent="terminal-status-header-shell-text"
+                      style={terminalStatusHeaderMetaTextStyle}
+                    >
+                      {shellLabel}
+                    </Text>
+                  </MetaItem>
+                ) : null}
               </>
             ) : null}
             {actionSlot}
