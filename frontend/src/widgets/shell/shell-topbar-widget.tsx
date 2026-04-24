@@ -8,6 +8,7 @@ import {
   iconButtonStyle,
   tabStripStyle,
   topbarStyle,
+  workspaceStripShellStyle,
   workspaceTabStyle,
 } from '@/widgets/shell/shell-topbar-widget.styles'
 
@@ -74,33 +75,36 @@ export function ShellTopbarWidget({
         >
           <Sparkles {...actionIconProps} />
         </Button>
-        <Box
-          role="tablist"
-          aria-label="Workspace tabs"
-          runaComponent="shell-topbar-workspace-tabs"
-          style={tabStripStyle}
-        >
-          {workspaceTabs.map((workspace) => (
-            <Button
-              aria-selected={activeWorkspaceId === workspace.id}
-              key={workspace.id}
-              onClick={() => onSelectWorkspace(workspace.id)}
-              role="tab"
-              runaComponent={`shell-topbar-workspace-tab-${workspace.id}`}
-              style={activeWorkspaceId === workspace.id ? activeWorkspaceTabStyle : workspaceTabStyle}
-            >
-              {workspace.title}
-            </Button>
-          ))}
+        <Box runaComponent="shell-topbar-workspace-strip-shell" style={workspaceStripShellStyle}>
+          <Box
+            role="tablist"
+            aria-label="Workspace tabs"
+            runaComponent="shell-topbar-workspace-tabs"
+            style={tabStripStyle}
+          >
+            {workspaceTabs.map((workspace) => (
+              <Button
+                aria-selected={activeWorkspaceId === workspace.id}
+                key={workspace.id}
+                onClick={() => onSelectWorkspace(workspace.id)}
+                role="tab"
+                runaComponent={`shell-topbar-workspace-tab-${workspace.id}`}
+                style={activeWorkspaceId === workspace.id ? activeWorkspaceTabStyle : workspaceTabStyle}
+                title={workspace.title}
+              >
+                {workspace.title}
+              </Button>
+            ))}
+          </Box>
+          <Button
+            aria-label="Add workspace"
+            onClick={onAddWorkspace}
+            runaComponent="shell-topbar-add-workspace"
+            style={addWorkspaceButtonStyle}
+          >
+            <Plus {...actionIconProps} />
+          </Button>
         </Box>
-        <Button
-          aria-label="Add workspace"
-          onClick={onAddWorkspace}
-          runaComponent="shell-topbar-add-workspace"
-          style={addWorkspaceButtonStyle}
-        >
-          <Plus {...actionIconProps} />
-        </Button>
       </Box>
     </RunaDomScopeProvider>
   )

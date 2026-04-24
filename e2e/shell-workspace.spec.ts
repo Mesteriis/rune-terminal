@@ -19,6 +19,8 @@ test('shell workspace tabs, utility actions, widget creation, and settings modal
 
   await expect(workspaceOneTab).toBeVisible()
   await expect(workspaceTwoTab).toHaveAttribute('aria-selected', 'true')
+  await expect(workspaceTwoTab).toHaveCSS('min-height', '24px')
+  await expect(addWorkspaceButton).toHaveCSS('min-height', '24px')
   await expect(page.getByRole('button', { name: 'Close tool' })).toHaveCount(1)
 
   await addWorkspaceButton.click()

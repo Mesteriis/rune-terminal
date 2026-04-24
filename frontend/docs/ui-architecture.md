@@ -144,7 +144,7 @@ The active frontend shell example now consumes the UI layers instead of renderin
 its visible shell blocks as raw HTML inside `App.tsx`.
 
 - `App.tsx` owns Dockview wiring and UI state only.
-- `ShellTopbarWidget` renders the top header block.
+- `ShellTopbarWidget` renders the top header block and now keeps workspace tabs plus the add-workspace affordance inside one compact grouped strip, instead of splitting the tab row and the create action into separate shell controls.
 - `RightActionRailWidget` renders the full-height right rail.
 - `WidgetBusyOverlayWidget` renders a widget-body busy state overlay with a centered AI marker and a `tsParticles` node-edge field.
 - `CommanderWidget` renders the Total Commander-style dual-pane surface from a per-widget commander model.
