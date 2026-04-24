@@ -28,6 +28,8 @@
   - the terminal body now exposes a reference-like chrome layer on top of the same runtime contract:
     - `TerminalStatusHeader` is rendered inside the panel body and uses live `cwd`, `connection_kind`, `status`, and `shell`
     - `TerminalToolbar` is now wired to the mounted xterm surface for copy, paste, in-terminal search, and live renderer badge updates
+    - the terminal header action slot now exposes a visible restart control backed by `POST /api/v1/terminal/{widgetID}/restart`
+    - terminal restart rehydrates the widget-local session state and re-subscribes the SSE output stream instead of leaving the body bound to the pre-restart snapshot
     - Ctrl/Cmd+F inside the terminal still opens search through the xterm key handler, but the same search row is now also reachable through visible toolbar controls
   - the renderer-only terminal demo path is removed from the seeded main path:
     - no hardcoded intro lines
@@ -87,7 +89,7 @@
 
 - `npm --prefix frontend run lint:active`
 - `npm --prefix frontend run test -- --reporter verbose src/features/terminal/api/client.test.ts src/features/terminal/model/use-terminal-session.test.tsx`
-- `npm --prefix frontend run test -- src/widgets/terminal/terminal-widget.test.tsx`
+- `npm --prefix frontend run test -- src/features/terminal/model/use-terminal-session.test.tsx src/widgets/terminal/terminal-widget.test.tsx`
 - `npm --prefix frontend run test -- src/features/agent/api/client.test.ts src/widgets/ai/ai-panel-widget.test.tsx`
 - `./scripts/go.sh test ./core/terminal ./core/transport/httpapi ./core/app`
 - `npm --prefix frontend run build`
@@ -95,10 +97,10 @@
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts`
 - `npm run test:ui -- --reporter=line e2e/shell-workspace.spec.ts`
 - `npm run test:ui -- --reporter=line e2e/terminal.spec.ts`
+- `npm run tauri:dev`
 
 ## Known limitations
 
-- No visible restart button exists on the current terminal UI, so `POST /api/v1/terminal/{widgetID}/restart` is intentionally not wired to a visible control in this slice.
 - No visible interrupt button exists on the current terminal UI, so interrupt remains backend-owned but not wired to a new control here.
 - Terminal chrome is now much closer to the reference surface, but terminal preferences remain runtime-local defaults; no backend-owned terminal settings contract exists yet for persisted font/theme/scrollback toggles.
 - Browser validation for terminal input now runs through Playwright on the split local dev path. The suite is intentionally serialized (`workers: 1`) because terminal/runtime state is shared across the same backend instance.

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useSyncExternalStore } from 'react'
 import {
   connectTerminalStream,
   fetchTerminalSnapshot,
+  restartTerminal,
   sendTerminalInput,
   type TerminalOutputChunk,
   type TerminalSnapshot,
@@ -17,6 +18,7 @@ import type {
 type TerminalSessionRecordState = {
   error: string | null
   isLoading: boolean
+  isRestarting: boolean
   snapshot: TerminalSnapshot | null
 }
 
@@ -39,6 +41,7 @@ function createTerminalSessionRecord(widgetId: string): TerminalSessionRecord {
     state: {
       error: null,
       isLoading: false,
+      isRestarting: false,
       snapshot: null,
     },
     streamClose: null,
@@ -62,6 +65,10 @@ function notifyTerminalSessionRecord(record: TerminalSessionRecord) {
   for (const listener of record.listeners) {
     listener()
   }
+}
+
+function isActiveTerminalSessionRecord(record: TerminalSessionRecord) {
+  return terminalSessionRecords.get(record.widgetId) === record
 }
 
 function toTerminalErrorMessage(error: unknown, fallback: string) {
@@ -153,6 +160,7 @@ function buildTerminalSessionView(
     canSendInput: runtimeState?.can_send_input ?? false,
     canInterrupt: runtimeState?.can_interrupt ?? false,
     isLoading: state.isLoading,
+    isRestarting: state.isRestarting,
     error,
     statusDetail: error ?? runtimeState?.status_detail?.trim() ?? null,
     outputChunks: state.snapshot?.chunks ?? [],
@@ -189,6 +197,7 @@ async function ensureTerminalSession(record: TerminalSessionRecord) {
   record.state = {
     ...record.state,
     isLoading: true,
+    isRestarting: false,
     error: null,
   }
   notifyTerminalSessionRecord(record)
@@ -197,9 +206,14 @@ async function ensureTerminalSession(record: TerminalSessionRecord) {
     try {
       const snapshot = await fetchTerminalSnapshot(record.widgetId)
 
+      if (!isActiveTerminalSessionRecord(record)) {
+        return
+      }
+
       record.state = {
         error: null,
         isLoading: false,
+        isRestarting: false,
         snapshot,
       }
       notifyTerminalSessionRecord(record)
@@ -231,13 +245,23 @@ async function ensureTerminalSession(record: TerminalSessionRecord) {
         },
       })
 
+      if (!isActiveTerminalSessionRecord(record)) {
+        streamConnection.close()
+        return
+      }
+
       record.streamClose = streamConnection.close
       void streamConnection.done.catch(() => {})
     } catch (error) {
+      if (!isActiveTerminalSessionRecord(record)) {
+        return
+      }
+
       record.state = {
         ...record.state,
         error: toTerminalErrorMessage(error, `Unable to load terminal snapshot for ${record.widgetId}.`),
         isLoading: false,
+        isRestarting: false,
       }
       notifyTerminalSessionRecord(record)
     }
@@ -337,9 +361,98 @@ export function useTerminalSession(seed: TerminalSessionSeed) {
     [seed.runtimeWidgetId],
   )
 
+  const restartSession = useCallback(async () => {
+    const record = getTerminalSessionRecord(seed.runtimeWidgetId)
+
+    if (record.state.isRestarting) {
+      return
+    }
+
+    record.state = {
+      ...record.state,
+      error: null,
+      isRestarting: true,
+    }
+    notifyTerminalSessionRecord(record)
+
+    try {
+      record.streamClose?.()
+      record.streamClose = null
+
+      await restartTerminal(seed.runtimeWidgetId)
+      const snapshot = await fetchTerminalSnapshot(seed.runtimeWidgetId)
+
+      if (!isActiveTerminalSessionRecord(record)) {
+        return
+      }
+
+      record.state = {
+        ...record.state,
+        error: null,
+        isLoading: false,
+        isRestarting: false,
+        snapshot,
+      }
+      notifyTerminalSessionRecord(record)
+
+      const streamConnection = await connectTerminalStream(seed.runtimeWidgetId, {
+        from: snapshot.next_seq,
+        onError: (error) => {
+          const nextRecord = terminalSessionRecords.get(seed.runtimeWidgetId)
+
+          if (!nextRecord) {
+            return
+          }
+
+          nextRecord.state = {
+            ...nextRecord.state,
+            error: toTerminalErrorMessage(
+              error,
+              `Unable to follow terminal stream for ${seed.runtimeWidgetId}.`,
+            ),
+          }
+          notifyTerminalSessionRecord(nextRecord)
+        },
+        onOutput: (chunk) => {
+          const nextRecord = terminalSessionRecords.get(seed.runtimeWidgetId)
+
+          if (!nextRecord) {
+            return
+          }
+
+          appendTerminalChunk(nextRecord, chunk)
+          notifyTerminalSessionRecord(nextRecord)
+        },
+      })
+
+      if (!isActiveTerminalSessionRecord(record)) {
+        streamConnection.close()
+        return
+      }
+
+      record.streamClose = streamConnection.close
+      void streamConnection.done.catch(() => {})
+    } catch (error) {
+      if (!isActiveTerminalSessionRecord(record)) {
+        return
+      }
+
+      record.state = {
+        ...record.state,
+        error: toTerminalErrorMessage(
+          error,
+          `Unable to restart terminal session for ${seed.runtimeWidgetId}.`,
+        ),
+        isRestarting: false,
+      }
+      notifyTerminalSessionRecord(record)
+    }
+  }, [seed.runtimeWidgetId])
+
   return {
     ...sessionView,
     sendInputChunk,
+    restartSession,
   }
 }
 

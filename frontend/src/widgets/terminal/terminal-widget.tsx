@@ -1,13 +1,16 @@
+import { LoaderCircle, RotateCcw } from 'lucide-react'
 import { useCallback, useState, useRef } from 'react'
 
 import { useTerminalSession } from '@/features/terminal/model/use-terminal-session'
-import { ClearBox } from '@/shared/ui/components'
+import { ClearBox, IconButton } from '@/shared/ui/components'
 import { RunaDomScopeProvider, useRunaDomAutoTagging } from '@/shared/ui/dom-id'
 import { TerminalStatusHeader } from '@/shared/ui/components/terminal-status-header'
 import { TerminalSurface, type TerminalSurfaceHandle } from '@/shared/ui/components/terminal-surface'
 import { TerminalToolbar } from '@/shared/ui/components/terminal-toolbar'
 import {
   terminalWidgetChromeStyle,
+  terminalWidgetHeaderActionButtonStyle,
+  terminalWidgetHeaderActionsStyle,
   terminalWidgetRootStyle,
   terminalWidgetSurfaceWrapStyle,
 } from '@/widgets/terminal/terminal-widget.styles'
@@ -62,6 +65,11 @@ export function TerminalWidget({
     setIsSearchOpen(false)
     terminalSurfaceRef.current?.focus()
   }, [])
+  const handleRestart = useCallback(() => {
+    void terminalSession.restartSession()
+  }, [terminalSession])
+  const isRestartDisabled = terminalSession.isLoading || terminalSession.isRestarting
+  const RestartIcon = terminalSession.isRestarting ? LoaderCircle : RotateCcw
 
   return (
     <RunaDomScopeProvider component="terminal-widget" widget={hostId}>
@@ -73,6 +81,40 @@ export function TerminalWidget({
       >
         <ClearBox runaComponent="terminal-widget-chrome" style={terminalWidgetChromeStyle}>
           <TerminalStatusHeader
+            actionSlot={
+              <ClearBox
+                runaComponent="terminal-widget-header-actions"
+                style={terminalWidgetHeaderActionsStyle}
+              >
+                <IconButton
+                  aria-label={`Restart terminal for ${title}`}
+                  disabled={isRestartDisabled}
+                  onClick={handleRestart}
+                  runaComponent="terminal-widget-restart"
+                  size="sm"
+                  style={{
+                    ...terminalWidgetHeaderActionButtonStyle,
+                    ...(isRestartDisabled
+                      ? {
+                          cursor: 'default',
+                          opacity: 0.58,
+                        }
+                      : null),
+                  }}
+                  title={terminalSession.isRestarting ? 'Restarting terminal…' : 'Restart terminal'}
+                >
+                  <RestartIcon
+                    size={14}
+                    strokeWidth={1.8}
+                    style={
+                      terminalSession.isRestarting
+                        ? { animation: 'runa-terminal-spin 1.2s linear infinite' }
+                        : undefined
+                    }
+                  />
+                </IconButton>
+              </ClearBox>
+            }
             connectionKind={terminalSession.connectionKind}
             cwd={terminalSession.cwd}
             primaryText={terminalSession.cwd}

@@ -55,6 +55,8 @@ describe('TerminalWidget', () => {
   })
 
   it('renders terminal chrome and wires toolbar actions into the surface handle', async () => {
+    const restartSessionMock = vi.fn(async () => undefined)
+
     vi.mocked(useTerminalSession).mockReturnValue({
       runtimeWidgetId: 'term-side',
       sessionKey: 'term-side:1',
@@ -65,10 +67,12 @@ describe('TerminalWidget', () => {
       canSendInput: true,
       canInterrupt: true,
       isLoading: false,
+      isRestarting: false,
       error: null,
       statusDetail: 'Attached to local shell.',
       outputChunks: [],
       runtimeState: null,
+      restartSession: restartSessionMock,
       sendInputChunk: vi.fn(),
     } as ReturnType<typeof useTerminalSession>)
 
@@ -95,9 +99,11 @@ describe('TerminalWidget', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Copy selection' }))
     fireEvent.click(screen.getByRole('button', { name: 'Paste from clipboard' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Restart terminal for Workspace shell' }))
 
     expect(copySelectionMock).toHaveBeenCalledTimes(1)
     expect(pasteFromClipboardMock).toHaveBeenCalledTimes(1)
+    expect(restartSessionMock).toHaveBeenCalledTimes(1)
 
     fireEvent.click(screen.getByRole('button', { name: 'Close terminal search' }))
 

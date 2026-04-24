@@ -168,3 +168,55 @@ test('newly added terminal streams live output without browser errors', async ({
 
   expect(pageErrors).toEqual([])
 })
+
+test('terminal restart action restarts the live backend session and keeps input working', async ({
+  page,
+  request,
+}) => {
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  await expect
+    .poll(async () => {
+      const snapshot = await fetchTerminalSnapshot(request, 'term-side')
+      return snapshot.state.can_send_input === true && snapshot.state.status === 'running'
+    })
+    .toBe(true)
+
+  const baselineSnapshot = await fetchTerminalSnapshot(request, 'term-side')
+
+  await page.getByRole('button', { name: 'Restart terminal for Workspace shell' }).last().click()
+
+  await expect
+    .poll(
+      async () => {
+        const snapshot = await fetchTerminalSnapshot(request, 'term-side')
+        return (
+          snapshot.state.status === 'running' &&
+          snapshot.state.can_send_input === true &&
+          snapshot.state.started_at !== baselineSnapshot.state.started_at
+        )
+      },
+      { timeout: 30_000 },
+    )
+    .toBe(true)
+
+  const marker = `restart-terminal-e2e-${Date.now()}`
+  const restartedSnapshot = await fetchTerminalSnapshot(request, 'term-side')
+
+  await sendTerminalInputViaApi(request, 'term-side', `printf '${marker}\\n'`, true)
+
+  await expect
+    .poll(
+      async () => {
+        const snapshot = await fetchTerminalSnapshot(request, 'term-side')
+
+        return (
+          snapshot.next_seq > restartedSnapshot.next_seq &&
+          snapshot.chunks.some((chunk) => chunk.data.includes(marker))
+        )
+      },
+      { timeout: 30_000 },
+    )
+    .toBe(true)
+})

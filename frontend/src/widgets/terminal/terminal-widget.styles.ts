@@ -31,3 +31,26 @@ export const terminalWidgetSurfaceWrapStyle: React.CSSProperties = {
   minHeight: 0,
   display: 'flex',
 }
+
+export const terminalWidgetHeaderActionsStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'flex-end',
+  gap: 'var(--gap-xs)',
+}
+
+export const terminalWidgetHeaderActionButtonStyle: React.CSSProperties = {
+  width: '28px',
+  minWidth: '28px',
+  minHeight: '28px',
+  height: '28px',
+  padding: 0,
+  border: '1px solid var(--runa-terminal-surface-border, var(--color-border-subtle))',
+  borderRadius: 'var(--radius-sm)',
+  background: 'var(--color-canvas-elevated)',
+  boxShadow: 'none',
+  backdropFilter: 'none',
+  WebkitBackdropFilter: 'none',
+  flex: '0 0 auto',
+  color: 'var(--runa-terminal-text-muted, var(--color-text-muted))',
+}

@@ -33,6 +33,7 @@ export type TerminalSnapshot = {
   state: {
     can_send_input?: boolean
     connection_kind?: string
+    started_at?: string
     shell?: string
     status_detail?: string
     widget_id: string

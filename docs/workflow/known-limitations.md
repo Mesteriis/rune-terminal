@@ -45,7 +45,8 @@ capability.
 - connection lifecycle is explicit but narrow (`saved profile` vs
   `last check` vs `last launch`)
 - terminal parity is practical but advanced surfaces (multi-session
-  sidebar, deep search/find) are not there yet
+  sidebar, interrupt controls, persisted font/theme/scrollback settings,
+  deeper search/find flows) are not there yet
 - AI command flow supports explicit command grammar only (`/run` and
   `run:`), not broad natural-language execution
 - backend AI routing is intentionally limited to local Codex CLI and Claude Code CLI providers; `ollama`, direct API-key OpenAI-compatible providers, and the earlier internal proxy draft are not active provider kinds

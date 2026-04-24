@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   connectTerminalStream,
   fetchTerminalSnapshot,
+  restartTerminal,
   sendTerminalInput,
 } from '@/features/terminal/api/client'
 import {
@@ -20,6 +21,7 @@ vi.mock('@/features/terminal/api/client', async () => {
     ...actual,
     connectTerminalStream: vi.fn(),
     fetchTerminalSnapshot: vi.fn(),
+    restartTerminal: vi.fn(),
     sendTerminalInput: vi.fn(),
   }
 })
@@ -203,5 +205,101 @@ describe('useTerminalSession', () => {
         },
       ])
     })
+  })
+
+  it('restarts the terminal session and resubscribes to the new stream', async () => {
+    const initialStreamClose = vi.fn()
+    const restartedStreamClose = vi.fn()
+
+    vi.mocked(fetchTerminalSnapshot)
+      .mockResolvedValueOnce({
+        state: {
+          widget_id: 'term-main',
+          session_id: 'term-main',
+          shell: '/bin/zsh',
+          status: 'running',
+          pid: 4242,
+          started_at: '2026-04-24T09:00:00Z',
+          can_send_input: true,
+          can_interrupt: true,
+          working_dir: '/Users/avm/projects/runa-terminal',
+          connection_id: 'local',
+          connection_name: 'Local Machine',
+          connection_kind: 'local',
+        },
+        chunks: [],
+        next_seq: 1,
+      })
+      .mockResolvedValueOnce({
+        state: {
+          widget_id: 'term-main',
+          session_id: 'term-main',
+          shell: '/bin/zsh',
+          status: 'running',
+          pid: 5252,
+          started_at: '2026-04-24T09:05:00Z',
+          can_send_input: true,
+          can_interrupt: true,
+          working_dir: '/Users/avm/projects/runa-terminal',
+          connection_id: 'local',
+          connection_name: 'Local Machine',
+          connection_kind: 'local',
+        },
+        chunks: [],
+        next_seq: 1,
+      })
+
+    vi.mocked(connectTerminalStream)
+      .mockResolvedValueOnce({
+        close: initialStreamClose,
+        done: Promise.resolve(),
+      })
+      .mockResolvedValueOnce({
+        close: restartedStreamClose,
+        done: Promise.resolve(),
+      })
+
+    vi.mocked(restartTerminal).mockResolvedValue({
+      widget_id: 'term-main',
+      session_id: 'term-main',
+      shell: '/bin/zsh',
+      status: 'running',
+      pid: 5252,
+      started_at: '2026-04-24T09:05:00Z',
+      can_send_input: true,
+      can_interrupt: true,
+      connection_id: 'local',
+      connection_name: 'Local Machine',
+      connection_kind: 'local',
+    })
+
+    const { result } = renderHook(() =>
+      useTerminalSession({
+        runtimeWidgetId: 'term-main',
+        title: 'Main terminal',
+      }),
+    )
+
+    await waitFor(() => {
+      expect(result.current.runtimeState?.started_at).toBe('2026-04-24T09:00:00Z')
+    })
+
+    await act(async () => {
+      await result.current.restartSession()
+    })
+
+    await waitFor(() => {
+      expect(result.current.runtimeState?.started_at).toBe('2026-04-24T09:05:00Z')
+    })
+
+    expect(restartTerminal).toHaveBeenCalledWith('term-main')
+    expect(initialStreamClose).toHaveBeenCalledTimes(1)
+    expect(connectTerminalStream).toHaveBeenNthCalledWith(
+      2,
+      'term-main',
+      expect.objectContaining({
+        from: 1,
+      }),
+    )
   })
 })
