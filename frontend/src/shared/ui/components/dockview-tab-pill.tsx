@@ -9,10 +9,10 @@ type DockviewTabPillProps = React.HTMLAttributes<HTMLDivElement> & {
 const dockviewTabPillStyle: React.CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
-  gap: 'var(--gap-sm)',
+  gap: '6px',
   minWidth: 0,
-  minHeight: '28px',
-  padding: '0 var(--space-sm)',
+  minHeight: '24px',
+  padding: '0 8px',
   border: '1px solid var(--runa-terminal-surface-border, var(--color-border-subtle))',
   borderRadius: 'var(--radius-sm)',
   background: 'var(--color-canvas-elevated)',

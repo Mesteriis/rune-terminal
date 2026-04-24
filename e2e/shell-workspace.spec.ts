@@ -44,6 +44,7 @@ test('shell workspace tabs, utility actions, widget creation, and settings modal
   await openUtilityPanelButton.click()
   await page.getByRole('menuitem', { name: 'Create commander widget' }).click()
   await expect(page.getByRole('button', { name: 'Close tool' })).toHaveCount(1)
+  await expect(page.locator('.dv-tab').filter({ hasText: 'commander' }).last()).toContainText('tool')
 
   await workspaceTwoTab.click()
   await expect(workspaceTwoTab).toHaveAttribute('aria-selected', 'true')
