@@ -34,6 +34,7 @@
       - terminal group header `add/close` actions are wrapped in a compact grouped shell
       - terminal tab close uses the same reduced 24px icon-control density
       - single-tab Dockview right-actions spacing is reduced so the tab/header chrome reads as one compact system
+      - the Dockview overflow trigger and overflow dropdown now follow the same compact terminal chrome instead of the generic Dockview defaults
     - the terminal header action slot now exposes a visible restart control backed by `POST /api/v1/terminal/{widgetID}/restart`
     - terminal restart rehydrates the widget-local session state and re-subscribes the SSE output stream instead of leaving the body bound to the pre-restart snapshot
     - Ctrl/Cmd+F inside the terminal still opens search through the xterm key handler, but the same search row is now also reachable through visible toolbar controls
@@ -110,6 +111,13 @@
 - `npm run test:ui -- --reporter=line e2e/shell-workspace.spec.ts`
 - `npm run test:ui -- --reporter=line e2e/terminal.spec.ts`
 - `npm run tauri:dev`
+
+## Browser evidence added for this slice
+
+- the terminal Playwright suite now also validates the real Dockview overflow path:
+  - additional terminal tabs are created through the visible group `+` action
+  - the compact overflow trigger becomes visible under a narrower viewport
+  - opening the overflow trigger shows the Dockview overflow container with the hidden tabs list
 
 ## Known limitations
 

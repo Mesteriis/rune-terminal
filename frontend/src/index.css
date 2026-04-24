@@ -280,20 +280,73 @@ body {
   z-index: 1;
 }
 
+.runa-dockview-theme .dv-tabs-overflow-dropdown-default {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  margin: 0;
+  padding: 2px 8px;
+  border: 1px solid var(--runa-terminal-surface-border, var(--color-border-subtle));
+  border-radius: var(--radius-sm);
+  background:
+    color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 78%, transparent);
+  color: var(--runa-terminal-text-secondary, var(--color-text-secondary));
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.runa-dockview-theme .dv-tabs-overflow-dropdown-default > span {
+  padding-left: 0;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-sm);
+}
+
+.runa-dockview-theme .dv-tabs-overflow-dropdown-default > svg {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
+}
+
+.runa-dockview-theme .dv-tabs-overflow-dropdown-default:hover {
+  background:
+    color-mix(in srgb, var(--color-surface-cold-tea) 58%, var(--color-surface-glass-soft) 42%);
+}
+
 .runa-dockview-theme .dv-tabs-overflow-container {
   position: relative;
   z-index: 1;
-  min-width: 220px;
+  min-width: 200px;
   max-height: min(320px, 50vh);
   overflow: auto;
   border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   background: rgba(8, 19, 17, 0.96);
   box-shadow:
     0 24px 54px rgba(1, 7, 6, 0.52),
     0 0 0 1px rgba(130, 188, 170, 0.12);
   backdrop-filter: var(--blur-glass-md);
   -webkit-backdrop-filter: var(--blur-glass-md);
+}
+
+.runa-dockview-theme .dv-tabs-overflow-container .dv-tab {
+  margin: 0;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.runa-dockview-theme .dv-tabs-overflow-container .dv-tab + .dv-tab {
+  margin-top: 2px;
+}
+
+.runa-dockview-theme .dv-tabs-overflow-container .dv-tab:not(:last-child) {
+  border-bottom: none;
+}
+
+.runa-dockview-theme .dv-tabs-overflow-container .dv-tab:hover {
+  background:
+    color-mix(in srgb, var(--color-surface-cold-tea) 58%, var(--color-surface-glass-soft) 42%);
 }
 
 [data-runa-shell-widget-frame] {

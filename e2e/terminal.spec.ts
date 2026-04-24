@@ -298,3 +298,27 @@ test('terminal interrupt action signals the live backend session without breakin
     )
     .toBe(true)
 })
+
+test('terminal tab overflow uses the compact overflow trigger and dropdown path', async ({ page }) => {
+  await clearBrowserState(page)
+  await page.setViewportSize({ width: 900, height: 900 })
+  await page.goto('/')
+
+  const addButton = page.getByRole('button', { name: 'Add terminal tab for Workspace shell' }).last()
+
+  await expect(addButton).toBeVisible()
+
+  for (let index = 0; index < 6; index += 1) {
+    await addButton.click()
+  }
+
+  const overflowTrigger = page.locator('.dv-tabs-overflow-dropdown-default').last()
+  await expect(overflowTrigger).toBeVisible()
+  await expect(overflowTrigger).toHaveCSS('min-height', '28px')
+
+  await overflowTrigger.click()
+
+  const overflowContainer = page.locator('.dv-tabs-overflow-container').last()
+  await expect(overflowContainer).toBeVisible()
+  await expect(overflowContainer.locator('.dv-tab')).toHaveCount(5)
+})
