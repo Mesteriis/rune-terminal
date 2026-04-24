@@ -153,6 +153,57 @@ func TestServiceConversationLifecycleCreatesListsAndActivatesThreads(t *testing.
 	}
 }
 
+func TestServiceRenameConversationUpdatesTitleAndActivity(t *testing.T) {
+	t.Parallel()
+
+	service, err := NewService(filepath.Join(t.TempDir(), "conversation.json"), stubProvider{
+		info: ProviderInfo{Kind: "stub", BaseURL: "http://stub", Model: "stub-model"},
+	})
+	if err != nil {
+		t.Fatalf("new service: %v", err)
+	}
+
+	snapshot := service.Snapshot()
+	renamedSnapshot, err := service.RenameConversation(context.Background(), snapshot.ID, "  Renamed thread for audit  ")
+	if err != nil {
+		t.Fatalf("rename conversation: %v", err)
+	}
+
+	if renamedSnapshot.Title != "Renamed thread for audit" {
+		t.Fatalf("expected trimmed title, got %q", renamedSnapshot.Title)
+	}
+	if !renamedSnapshot.UpdatedAt.After(snapshot.UpdatedAt) {
+		t.Fatalf("expected updated_at to advance: before=%s after=%s", snapshot.UpdatedAt, renamedSnapshot.UpdatedAt)
+	}
+	if got := service.Snapshot().Title; got != renamedSnapshot.Title {
+		t.Fatalf("expected active snapshot title %q, got %q", renamedSnapshot.Title, got)
+	}
+
+	conversations, activeConversationID, err := service.ListConversations(context.Background())
+	if err != nil {
+		t.Fatalf("list conversations: %v", err)
+	}
+	if activeConversationID != snapshot.ID {
+		t.Fatalf("expected active conversation %q, got %q", snapshot.ID, activeConversationID)
+	}
+	if len(conversations) != 1 || conversations[0].Title != renamedSnapshot.Title {
+		t.Fatalf("expected renamed summary, got %#v", conversations)
+	}
+}
+
+func TestServiceRenameConversationRejectsBlankTitle(t *testing.T) {
+	t.Parallel()
+
+	service, err := NewService(filepath.Join(t.TempDir(), "conversation.json"), stubProvider{})
+	if err != nil {
+		t.Fatalf("new service: %v", err)
+	}
+
+	if _, err := service.RenameConversation(context.Background(), service.ActiveConversationID(), "   "); !errors.Is(err, ErrInvalidConversationTitle) {
+		t.Fatalf("expected invalid conversation title error, got %v", err)
+	}
+}
+
 func TestServiceSubmitRejectsBlankPrompt(t *testing.T) {
 	t.Parallel()
 

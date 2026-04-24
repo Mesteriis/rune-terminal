@@ -173,6 +173,9 @@ export function AppAiSidebar({ isOpen, contentAreaRef }: AppAiSidebarProps) {
                       onCreateConversation={() => {
                         void agentPanel.createConversation()
                       }}
+                      onRenameConversation={(conversationID, title) =>
+                        agentPanel.renameConversation(conversationID, title)
+                      }
                       onModeChange={setChatMode}
                       title="AI Rune"
                     />

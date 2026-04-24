@@ -35,6 +35,18 @@ func (r *Runtime) CreateConversation(ctx context.Context) (conversation.Snapshot
 	return r.withConversationProviderInfo(snapshot), nil
 }
 
+func (r *Runtime) RenameConversation(
+	ctx context.Context,
+	conversationID string,
+	title string,
+) (conversation.Snapshot, error) {
+	snapshot, err := r.Conversation.RenameConversation(ctx, conversationID, title)
+	if err != nil {
+		return conversation.Snapshot{}, err
+	}
+	return r.withConversationProviderInfo(snapshot), nil
+}
+
 func (r *Runtime) ActivateConversation(ctx context.Context, conversationID string) (conversation.Snapshot, error) {
 	snapshot, err := r.Conversation.ActivateConversation(ctx, conversationID)
 	if err != nil {

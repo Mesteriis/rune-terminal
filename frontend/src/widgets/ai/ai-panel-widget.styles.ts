@@ -204,6 +204,13 @@ export const aiHeaderConversationDropdownHeaderStyle: CSSProperties = {
   gap: 'var(--space-sm)',
 }
 
+export const aiHeaderConversationDropdownActionsStyle: CSSProperties = {
+  ...aiPlainBlockStyle,
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '6px',
+}
+
 export const aiHeaderConversationMenuSummaryStyle: CSSProperties = {
   ...aiPlainBlockStyle,
   flex: 1,
@@ -274,6 +281,37 @@ export const aiHeaderConversationActionStyle: CSSProperties = {
   lineHeight: '16px',
   letterSpacing: '0.05em',
   textTransform: 'uppercase',
+}
+
+export const aiHeaderConversationRenamePanelStyle: CSSProperties = {
+  ...aiPlainBlockStyle,
+  width: '100%',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '8px',
+  padding: 'var(--space-sm)',
+  borderRadius: '12px',
+  border: '1px solid color-mix(in srgb, var(--color-border-strong) 58%, transparent)',
+  background: 'color-mix(in srgb, var(--color-surface-shell-header-action) 68%, transparent)',
+}
+
+export const aiHeaderConversationRenameActionsStyle: CSSProperties = {
+  ...aiPlainBlockStyle,
+  display: 'inline-flex',
+  justifyContent: 'flex-end',
+  alignItems: 'center',
+  gap: '6px',
+}
+
+export const aiHeaderConversationRenameInputStyle: CSSProperties = {
+  minHeight: '34px',
+  borderRadius: '10px',
+  background: 'color-mix(in srgb, var(--color-surface-input) 84%, transparent)',
+  border: '1px solid color-mix(in srgb, var(--color-border-strong) 62%, transparent)',
+  color: 'var(--color-text-primary)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '12px',
+  lineHeight: '16px',
 }
 
 export const aiHeaderModeGroupStyle: CSSProperties = {

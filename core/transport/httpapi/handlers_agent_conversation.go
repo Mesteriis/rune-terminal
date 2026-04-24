@@ -21,6 +21,10 @@ type activateConversationPayload struct {
 	ConversationID string `json:"conversation_id"`
 }
 
+type renameConversationPayload struct {
+	Title string `json:"title"`
+}
+
 type attachmentReferencePayload struct {
 	Path         string `json:"path"`
 	WorkspaceID  string `json:"workspace_id,omitempty"`
@@ -62,6 +66,30 @@ func (api *API) handleCreateConversation(w http.ResponseWriter, r *http.Request)
 		writeInternalError(w, err)
 		return
 	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"conversation": snapshot,
+	})
+}
+
+func (api *API) handleRenameConversation(w http.ResponseWriter, r *http.Request) {
+	conversationID := strings.TrimSpace(r.PathValue("conversationID"))
+	if conversationID == "" {
+		writeNotFound(w, "conversation_not_found", conversation.ErrConversationNotFound.Error())
+		return
+	}
+
+	var payload renameConversationPayload
+	if err := decodeJSON(r, &payload); err != nil {
+		writeBadRequest(w, "invalid_request", err)
+		return
+	}
+
+	snapshot, err := api.runtime.RenameConversation(r.Context(), conversationID, payload.Title)
+	if err != nil {
+		writeConversationError(w, err)
+		return
+	}
+
 	writeJSON(w, http.StatusOK, map[string]any{
 		"conversation": snapshot,
 	})
@@ -224,6 +252,8 @@ func writeConversationError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, conversation.ErrInvalidPrompt):
 		writeBadRequest(w, "invalid_prompt", err)
+	case errors.Is(err, conversation.ErrInvalidConversationTitle):
+		writeBadRequest(w, "invalid_conversation_title", err)
 	case errors.Is(err, app.ErrConversationModelUnavailable):
 		writeError(w, http.StatusBadRequest, "invalid_model_selection", err.Error())
 	case errors.Is(err, agent.ErrProviderInvalidConfig):

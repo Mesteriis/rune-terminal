@@ -144,6 +144,55 @@ func TestConversationListCreateAndActivateRoutesRoundTrip(t *testing.T) {
 	}
 }
 
+func TestConversationRenameRouteUpdatesConversationTitle(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+
+	listRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(listRecorder, authedJSONRequest(t, http.MethodGet, "/api/v1/agent/conversations", nil))
+	if listRecorder.Code != http.StatusOK {
+		t.Fatalf("expected initial list 200, got %d", listRecorder.Code)
+	}
+
+	var initialList struct {
+		ActiveConversationID string `json:"active_conversation_id"`
+	}
+	if err := json.Unmarshal(listRecorder.Body.Bytes(), &initialList); err != nil {
+		t.Fatalf("unmarshal initial list: %v", err)
+	}
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(
+		recorder,
+		authedJSONRequest(
+			t,
+			http.MethodPatch,
+			"/api/v1/agent/conversations/"+initialList.ActiveConversationID,
+			map[string]any{"title": "Renamed navigator thread"},
+		),
+	)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected rename 200, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+
+	var payload struct {
+		Conversation struct {
+			ID    string `json:"id"`
+			Title string `json:"title"`
+		} `json:"conversation"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal rename payload: %v", err)
+	}
+	if payload.Conversation.ID != initialList.ActiveConversationID {
+		t.Fatalf("expected renamed conversation %q, got %q", initialList.ActiveConversationID, payload.Conversation.ID)
+	}
+	if payload.Conversation.Title != "Renamed navigator thread" {
+		t.Fatalf("expected renamed title, got %q", payload.Conversation.Title)
+	}
+}
+
 func TestSubmitConversationMessagePersistsTranscript(t *testing.T) {
 	t.Parallel()
 

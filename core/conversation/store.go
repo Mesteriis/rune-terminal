@@ -400,6 +400,10 @@ func summarizeConversationTitle(raw string) string {
 	return strings.TrimSpace(title[:69]) + "..."
 }
 
+func normalizeConversationTitle(raw string) string {
+	return summarizeConversationTitle(raw)
+}
+
 func conversationUpdatedAt(createdAt time.Time, persistedUpdatedAt time.Time, messages []Message) time.Time {
 	if !persistedUpdatedAt.IsZero() {
 		return persistedUpdatedAt.UTC()

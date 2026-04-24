@@ -495,6 +495,17 @@ export async function createAgentConversation() {
   return payload.conversation
 }
 
+export async function renameAgentConversation(conversationID: string, title: string) {
+  const payload = await requestRuntimeJSON<{ conversation: AgentConversationSnapshot }>(
+    `/api/v1/agent/conversations/${encodeURIComponent(conversationID)}`,
+    {
+      body: JSON.stringify({ title }),
+      method: 'PATCH',
+    },
+  )
+  return payload.conversation
+}
+
 export async function activateAgentConversation(conversationID: string) {
   const payload = await requestRuntimeJSON<{ conversation: AgentConversationSnapshot }>(
     `/api/v1/agent/conversations/${encodeURIComponent(conversationID)}/activate`,

@@ -8,6 +8,7 @@ import {
   explainTerminalCommand,
   fetchAgentConversations,
   fetchAgentConversation,
+  renameAgentConversation,
   streamAgentConversationMessage,
   type AgentConversationMessage,
   type AgentConversationProvider,
@@ -640,6 +641,29 @@ export function useAgentPanel(hostId: string, enabled = true) {
     resetConversationInteractionState,
   ])
 
+  const renameConversation = useCallback(
+    async (conversationID: string, title: string) => {
+      const nextConversationID = conversationID.trim()
+      if (!nextConversationID || isSubmitting || isConversationPending) {
+        return
+      }
+
+      setIsConversationPending(true)
+      try {
+        const snapshot = await renameAgentConversation(nextConversationID, title)
+        applyConversationSnapshot(snapshot)
+        void refreshConversationList().catch((error) => {
+          setSubmitError(getErrorMessage(error, 'Unable to refresh the conversation list.'))
+        })
+      } catch (error) {
+        setSubmitError(getErrorMessage(error, 'Unable to rename the conversation.'))
+      } finally {
+        setIsConversationPending(false)
+      }
+    },
+    [applyConversationSnapshot, isConversationPending, isSubmitting, refreshConversationList],
+  )
+
   const updateAuditMessageEntries = useCallback(
     (auditMessageID: string, update: Parameters<typeof updateInteractionMessage>[2]) => {
       setInteractionMessages((currentMessages) =>
@@ -1228,6 +1252,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
     setSelectedModel,
     setSelectedContextWidgetIDs: updateSelectedContextWidgetIDs,
     switchConversation,
+    renameConversation,
     useCurrentContextWidget,
     submitDraft,
   }

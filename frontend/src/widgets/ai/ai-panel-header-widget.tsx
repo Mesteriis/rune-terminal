@@ -1,17 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 
-import { ChevronDown, MessageSquareMore, Plus } from 'lucide-react'
+import { Check, ChevronDown, MessageSquareMore, Pencil, Plus, X } from 'lucide-react'
 
 import runaAvatar from '@assets/img/logo.png'
 import type { AgentConversationSummary } from '@/features/agent/api/client'
 import type { ChatMode } from '@/features/agent/model/types'
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { Avatar } from '@/shared/ui/components'
-import { Box, Button, Surface, Text } from '@/shared/ui/primitives'
+import { Box, Button, Input, Surface, Text } from '@/shared/ui/primitives'
 
 import {
   aiHeaderConversationActionStyle,
   aiHeaderConversationDropdownHeaderStyle,
+  aiHeaderConversationDropdownActionsStyle,
   aiHeaderConversationDropdownStyle,
   aiHeaderConversationDropdownWrapStyle,
   aiHeaderConversationGroupStyle,
@@ -22,6 +23,9 @@ import {
   aiHeaderConversationMenuOptionLeadingStyle,
   aiHeaderConversationMenuOptionStyle,
   aiHeaderConversationMenuSummaryStyle,
+  aiHeaderConversationRenameActionsStyle,
+  aiHeaderConversationRenameInputStyle,
+  aiHeaderConversationRenamePanelStyle,
   aiHeaderConversationSummaryMetaStyle,
   aiHeaderConversationSummaryStyle,
   aiHeaderConversationSummaryTitleStyle,
@@ -44,6 +48,7 @@ export type AiPanelHeaderWidgetProps = {
   mode: ChatMode
   onConversationSelect?: (conversationID: string) => void
   onCreateConversation?: () => void
+  onRenameConversation?: (conversationID: string, title: string) => Promise<void> | void
   onModeChange: (mode: ChatMode) => void
   title: string
 }
@@ -84,10 +89,14 @@ export function AiPanelHeaderWidget({
   mode,
   onConversationSelect,
   onCreateConversation,
+  onRenameConversation,
   onModeChange,
   title,
 }: AiPanelHeaderWidgetProps) {
   const [isConversationMenuOpen, setIsConversationMenuOpen] = useState(false)
+  const [isRenamingConversation, setIsRenamingConversation] = useState(false)
+  const [renameDraft, setRenameDraft] = useState('')
+  const [optimisticConversationTitle, setOptimisticConversationTitle] = useState('')
   const conversationMenuWrapRef = useRef<HTMLDivElement | null>(null)
   const hasConversationOptions = conversations.length > 0
   const selectedConversationID = activeConversationID || conversations[0]?.id || ''
@@ -98,9 +107,33 @@ export function AiPanelHeaderWidget({
   const activeConversationTitle = activeConversation
     ? formatConversationTitle(activeConversation)
     : 'Loading conversations'
+  const displayedConversationTitle = optimisticConversationTitle.trim() || activeConversationTitle
   const activeConversationMeta = activeConversation
     ? `${formatConversationCount(activeConversation)} · ${formatConversationUpdatedAt(activeConversation.updated_at)}`
     : 'Recent thread list'
+  const canRenameConversation = activeConversation != null && onRenameConversation != null
+
+  useEffect(() => {
+    if (!isConversationMenuOpen) {
+      setIsRenamingConversation(false)
+      return
+    }
+
+    setRenameDraft(activeConversation?.title ?? '')
+  }, [activeConversation?.id, activeConversation?.title, isConversationMenuOpen])
+
+  useEffect(() => {
+    if (!optimisticConversationTitle.trim()) {
+      return
+    }
+
+    if (
+      !activeConversation ||
+      formatConversationTitle(activeConversation) === optimisticConversationTitle.trim()
+    ) {
+      setOptimisticConversationTitle('')
+    }
+  }, [activeConversation, optimisticConversationTitle])
 
   useEffect(() => {
     if (!isConversationMenuOpen) {
@@ -127,6 +160,19 @@ export function AiPanelHeaderWidget({
       window.removeEventListener('keydown', handleKeyDown)
     }
   }, [isConversationMenuOpen])
+
+  const handleRenameConversation = async () => {
+    const nextTitle = renameDraft.trim()
+
+    if (!activeConversation || onRenameConversation == null || nextTitle === '') {
+      return
+    }
+
+    setOptimisticConversationTitle(nextTitle)
+    setIsRenamingConversation(false)
+    setIsConversationMenuOpen(false)
+    await onRenameConversation(activeConversation.id, nextTitle)
+  }
 
   return (
     <RunaDomScopeProvider component="ai-panel-header-widget">
@@ -161,7 +207,7 @@ export function AiPanelHeaderWidget({
               onClick={() => setIsConversationMenuOpen((currentValue) => !currentValue)}
               runaComponent="ai-panel-header-conversation-trigger"
               style={aiHeaderConversationTriggerStyle}
-              title={activeConversationTitle}
+              title={displayedConversationTitle}
             >
               <Box
                 runaComponent="ai-panel-header-conversation-trigger-leading"
@@ -172,7 +218,7 @@ export function AiPanelHeaderWidget({
                   runaComponent="ai-panel-header-conversation-summary"
                   style={aiHeaderConversationSummaryStyle}
                 >
-                  <Text style={aiHeaderConversationSummaryTitleStyle}>{activeConversationTitle}</Text>
+                  <Text style={aiHeaderConversationSummaryTitleStyle}>{displayedConversationTitle}</Text>
                   <Text style={aiHeaderConversationSummaryMetaStyle}>{activeConversationMeta}</Text>
                 </Box>
               </Box>
@@ -202,20 +248,91 @@ export function AiPanelHeaderWidget({
                         {conversations.length === 1 ? '1 thread' : `${conversations.length} threads`}
                       </Text>
                     </Box>
-                    <Button
-                      aria-label="Create conversation"
-                      disabled={isConversationBusy || onCreateConversation == null}
-                      onClick={() => {
-                        setIsConversationMenuOpen(false)
-                        onCreateConversation?.()
-                      }}
-                      runaComponent="ai-panel-header-conversation-create"
-                      style={aiHeaderConversationActionStyle}
+                    <Box
+                      runaComponent="ai-panel-header-conversation-dropdown-actions"
+                      style={aiHeaderConversationDropdownActionsStyle}
                     >
-                      <Plus {...conversationActionIconProps} />
-                      New
-                    </Button>
+                      <Button
+                        aria-label="Rename conversation"
+                        disabled={isConversationBusy || !canRenameConversation}
+                        onClick={() => setIsRenamingConversation(true)}
+                        runaComponent="ai-panel-header-conversation-rename"
+                        style={aiHeaderConversationActionStyle}
+                      >
+                        <Pencil {...conversationActionIconProps} />
+                        Rename
+                      </Button>
+                      <Button
+                        aria-label="Create conversation"
+                        disabled={isConversationBusy || onCreateConversation == null}
+                        onClick={() => {
+                          setIsConversationMenuOpen(false)
+                          onCreateConversation?.()
+                        }}
+                        runaComponent="ai-panel-header-conversation-create"
+                        style={aiHeaderConversationActionStyle}
+                      >
+                        <Plus {...conversationActionIconProps} />
+                        New
+                      </Button>
+                    </Box>
                   </Box>
+                  {isRenamingConversation && activeConversation ? (
+                    <Box
+                      runaComponent="ai-panel-header-conversation-rename-panel"
+                      style={aiHeaderConversationRenamePanelStyle}
+                    >
+                      <Text style={aiHeaderConversationMenuMetaStyle}>Rename active conversation</Text>
+                      <Input
+                        aria-label="Conversation title"
+                        autoFocus
+                        disabled={isConversationBusy}
+                        onChange={(event) => setRenameDraft(event.currentTarget.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') {
+                            event.preventDefault()
+                            void handleRenameConversation()
+                          }
+                          if (event.key === 'Escape') {
+                            event.preventDefault()
+                            setIsRenamingConversation(false)
+                            setRenameDraft(activeConversation.title)
+                          }
+                        }}
+                        runaComponent="ai-panel-header-conversation-rename-input"
+                        style={aiHeaderConversationRenameInputStyle}
+                        value={renameDraft}
+                      />
+                      <Box
+                        runaComponent="ai-panel-header-conversation-rename-actions"
+                        style={aiHeaderConversationRenameActionsStyle}
+                      >
+                        <Button
+                          aria-label="Cancel rename"
+                          disabled={isConversationBusy}
+                          onClick={() => {
+                            setIsRenamingConversation(false)
+                            setRenameDraft(activeConversation.title)
+                          }}
+                          runaComponent="ai-panel-header-conversation-rename-cancel"
+                          style={aiHeaderConversationActionStyle}
+                        >
+                          <X {...conversationActionIconProps} />
+                          Cancel
+                        </Button>
+                        <Button
+                          aria-label="Save conversation title"
+                          disabled={isConversationBusy || renameDraft.trim() === ''}
+                          onClick={() => void handleRenameConversation()}
+                          runaComponent="ai-panel-header-conversation-rename-save"
+                          style={aiHeaderConversationActionStyle}
+                        >
+                          <Check {...conversationActionIconProps} />
+                          Save
+                        </Button>
+                      </Box>
+                    </Box>
+                  ) : null}
                   <Box
                     aria-label="Conversation list"
                     role="listbox"

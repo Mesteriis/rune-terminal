@@ -9,6 +9,7 @@ import {
   fetchAgentConversation,
   fetchAgentProviderCatalog,
   fetchTerminalSnapshot,
+  renameAgentConversation as renameConversationViaApi,
   setActiveAgentProvider,
   updateAgentProvider,
 } from './runtime'
@@ -230,6 +231,34 @@ test('AI sidebar creates and switches backend conversations instead of keeping o
   }
 
   expect(createdConversationID).not.toBe(originalConversationID)
+})
+
+test('AI conversation navigator renames the active backend conversation', async ({ page, request }) => {
+  test.setTimeout(60_000)
+
+  const createdConversation = await createConversationViaApi(request)
+  await renameConversationViaApi(request, createdConversation.id, 'Rename target before UI')
+
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  await page.getByRole('button', { name: 'Toggle AI panel' }).click()
+  const conversationMenuButton = page.getByRole('button', { name: 'Conversation menu' })
+  await conversationMenuButton.click()
+  await page.getByRole('button', { name: 'Rename conversation' }).click()
+  await page.getByRole('textbox', { name: 'Conversation title' }).fill('Renamed from UI')
+  await page.getByRole('button', { name: 'Save conversation title' }).click()
+
+  await expect
+    .poll(async () => {
+      const conversation = await fetchAgentConversation(request)
+      return conversation.title
+    })
+    .toBe('Renamed from UI')
+
+  const renamedConversationMenuButton = page.getByRole('button', { name: 'Conversation menu' })
+  await expect(renamedConversationMenuButton).toBeVisible()
+  await expect(renamedConversationMenuButton).toContainText('Renamed from UI')
 })
 
 test('AI sidebar runs a live Codex chat path and restores the transcript after reopen', async ({

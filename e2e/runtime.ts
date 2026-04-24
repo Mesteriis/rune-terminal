@@ -240,6 +240,19 @@ export async function fetchAgentConversations(request: APIRequestContext) {
   )
 }
 
+export async function renameAgentConversation(
+  request: APIRequestContext,
+  conversationID: string,
+  title: string,
+) {
+  return expectJSONResponse<{ conversation: AgentConversationSnapshot }>(
+    request.patch(`${backendUrl}/api/v1/agent/conversations/${encodeURIComponent(conversationID)}`, {
+      data: { title },
+      headers: authHeaders(),
+    }),
+  )
+}
+
 export async function createAgentConversation(request: APIRequestContext) {
   const response = await request.post(`${backendUrl}/api/v1/agent/conversations`, {
     data: {},

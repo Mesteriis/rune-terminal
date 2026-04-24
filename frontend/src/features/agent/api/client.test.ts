@@ -10,6 +10,7 @@ import {
   fetchAgentCatalog,
   fetchAgentConversation,
   fetchAgentConversations,
+  renameAgentConversation,
   sendAgentConversationMessage,
   setAgentMode,
   setAgentProfile,
@@ -314,6 +315,50 @@ describe('agent api client', () => {
       'http://127.0.0.1:8090/api/v1/agent/conversations/conv_1/activate',
     )
     expect(fetchMock.mock.calls[2]?.[1]).toMatchObject({ method: 'PUT' })
+  })
+
+  it('renames conversations through the backend contract', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          conversation: {
+            id: 'conv_1',
+            title: 'Renamed thread',
+            messages: [],
+            provider: {
+              kind: 'stub',
+              base_url: 'http://stub',
+              model: 'stub-model',
+              streaming: false,
+            },
+            created_at: '2026-04-21T10:00:00Z',
+            updated_at: '2026-04-21T10:05:00Z',
+          },
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(renameAgentConversation('conv_1', 'Renamed thread')).resolves.toMatchObject({
+      id: 'conv_1',
+      title: 'Renamed thread',
+    })
+
+    expect(fetchMock.mock.calls[1]?.[0]).toBe('http://127.0.0.1:8090/api/v1/agent/conversations/conv_1')
+    expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({
+      method: 'PATCH',
+      body: JSON.stringify({ title: 'Renamed thread' }),
+    })
   })
 
   it('posts tool execution requests and preserves approval responses from the backend', async () => {

@@ -123,6 +123,51 @@ func (s *Service) CreateConversation(ctx context.Context) (Snapshot, error) {
 	return s.snapshotLocked(), nil
 }
 
+func (s *Service) RenameConversation(ctx context.Context, conversationID string, title string) (Snapshot, error) {
+	conversationID = strings.TrimSpace(conversationID)
+	normalizedTitle := normalizeConversationTitle(title)
+	if conversationID == "" {
+		return Snapshot{}, ErrConversationNotFound
+	}
+	if normalizedTitle == "" {
+		return Snapshot{}, ErrInvalidConversationTitle
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return Snapshot{}, err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	record, messages, err := loadConversationStateTx(ctx, tx, conversationID)
+	if err != nil {
+		return Snapshot{}, err
+	}
+	record.Title = normalizedTitle
+	record.UpdatedAt = time.Now().UTC()
+	if err := updateConversationTx(ctx, tx, record); err != nil {
+		return Snapshot{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return Snapshot{}, err
+	}
+
+	if s.active.ID == conversationID {
+		s.active = record
+		s.state = persistedState{
+			Messages:  append([]Message(nil), messages...),
+			UpdatedAt: record.UpdatedAt,
+		}
+	}
+
+	return record.snapshot(messages, s.provider.Info()), nil
+}
+
 func (s *Service) ActivateConversation(ctx context.Context, conversationID string) (Snapshot, error) {
 	conversationID = strings.TrimSpace(conversationID)
 	if conversationID == "" {
