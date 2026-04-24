@@ -243,7 +243,7 @@ func TestDiscoverProviderModelsReturnsCodexCLIModelsForDraft(t *testing.T) {
 	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
 		t.Fatalf("unmarshal models: %v", err)
 	}
-	if !slices.Equal(payload.Models, []string{"gpt-5.4"}) {
+	if !slices.Equal(payload.Models, []string{"gpt-5.4", "gpt-5-codex"}) {
 		t.Fatalf("unexpected models: %#v", payload.Models)
 	}
 }

@@ -36,8 +36,8 @@ describe('agent provider client', () => {
               active: true,
               codex: {
                 command: 'codex',
-                model: 'gpt-5-codex',
-                chat_models: ['gpt-5-codex'],
+                model: 'gpt-5.4',
+                chat_models: ['gpt-5.4'],
                 status_state: 'ready',
               },
               created_at: '2026-04-21T10:00:00Z',
@@ -62,8 +62,8 @@ describe('agent provider client', () => {
           active: true,
           codex: {
             command: 'codex',
-            model: 'gpt-5-codex',
-            chat_models: ['gpt-5-codex'],
+            model: 'gpt-5.4',
+            chat_models: ['gpt-5.4'],
             status_state: 'ready',
           },
           created_at: '2026-04-21T10:00:00Z',
@@ -74,6 +74,67 @@ describe('agent provider client', () => {
       supported_kinds: ['codex', 'claude'],
     })
     expect(fetchMock.mock.calls[1]?.[0]).toBe('http://127.0.0.1:8090/api/v1/agent/providers')
+  })
+
+  it('normalizes null model arrays from the backend provider catalog', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          providers: [
+            {
+              id: 'claude-code-cli',
+              kind: 'claude',
+              display_name: 'Claude Code CLI',
+              enabled: true,
+              active: true,
+              claude: {
+                command: 'claude',
+                model: 'sonnet',
+                chat_models: null,
+                status_state: 'auth-required',
+              },
+              created_at: '2026-04-21T10:00:00Z',
+              updated_at: '2026-04-21T10:00:00Z',
+            },
+          ],
+          active_provider_id: 'claude-code-cli',
+          supported_kinds: null,
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(fetchAgentProviderCatalog()).resolves.toEqual({
+      providers: [
+        {
+          id: 'claude-code-cli',
+          kind: 'claude',
+          display_name: 'Claude Code CLI',
+          enabled: true,
+          active: true,
+          claude: {
+            command: 'claude',
+            model: 'sonnet',
+            chat_models: [],
+            status_state: 'auth-required',
+          },
+          created_at: '2026-04-21T10:00:00Z',
+          updated_at: '2026-04-21T10:00:00Z',
+        },
+      ],
+      active_provider_id: 'claude-code-cli',
+      supported_kinds: [],
+    })
   })
 
   it('patches CLI provider settings through the provider route', async () => {
@@ -145,7 +206,7 @@ describe('agent provider client', () => {
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          models: ['gpt-5-codex', 'gpt-5.4'],
+          models: ['gpt-5.4', 'gpt-5-codex'],
         }),
       })
     vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
@@ -157,11 +218,11 @@ describe('agent provider client', () => {
         kind: 'codex',
         codex: {
           command: 'codex',
-          model: 'gpt-5-codex',
+          model: 'gpt-5.4',
         },
       }),
     ).resolves.toEqual({
-      models: ['gpt-5-codex', 'gpt-5.4'],
+      models: ['gpt-5.4', 'gpt-5-codex'],
     })
 
     expect(fetchMock.mock.calls[1]?.[0]).toBe('http://127.0.0.1:8090/api/v1/agent/providers/models')
@@ -172,7 +233,7 @@ describe('agent provider client', () => {
       kind: 'codex',
       codex: {
         command: 'codex',
-        model: 'gpt-5-codex',
+        model: 'gpt-5.4',
       },
     })
   })
@@ -215,6 +276,39 @@ describe('agent provider client', () => {
         command: 'claude',
         model: 'sonnet',
       },
+    })
+  })
+
+  it('normalizes null discovery model arrays from the backend', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          models: null,
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      discoverAgentProviderModels({
+        kind: 'claude',
+        claude: {
+          command: 'claude',
+          model: 'sonnet',
+        },
+      }),
+    ).resolves.toEqual({
+      models: [],
     })
   })
 })

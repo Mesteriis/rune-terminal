@@ -1,0 +1,92 @@
+import { expect, test } from '@playwright/test'
+
+import { clearBrowserState, fetchWorkspaceSnapshot } from './runtime'
+
+test('shell workspace tabs, utility actions, widget creation, and settings modal work end to end', async ({
+  page,
+  request,
+}) => {
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  const baselineBackendTabCount = (await fetchWorkspaceSnapshot(request)).tabs.length
+
+  const workspaceOneTab = page.getByRole('tab', { name: 'Workspace-1' })
+  const workspaceTwoTab = page.getByRole('tab', { name: 'Workspace-2' })
+  const addWorkspaceButton = page.getByRole('button', { name: 'Add workspace' })
+  const openUtilityPanelButton = page.getByRole('button', { name: 'Open utility panel' })
+  const openSettingsButton = page.getByRole('button', { name: 'Open settings panel' })
+
+  await expect(workspaceOneTab).toBeVisible()
+  await expect(workspaceTwoTab).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByRole('button', { name: 'Close tool' })).toHaveCount(1)
+
+  await addWorkspaceButton.click()
+  const workspaceThreeTab = page.getByRole('tab', { name: 'Workspace-3' })
+  await expect(workspaceThreeTab).toHaveAttribute('aria-selected', 'true')
+
+  await openUtilityPanelButton.click()
+  await page.getByRole('menuitem', { name: 'Create workspace' }).click()
+  const workspaceFourTab = page.getByRole('tab', { name: 'Workspace-4' })
+  await expect(workspaceFourTab).toHaveAttribute('aria-selected', 'true')
+
+  await openUtilityPanelButton.click()
+  await page.getByRole('menuitem', { name: 'Create terminal widget' }).click()
+  await expect(page.getByRole('button', { name: 'Close Workspace shell' })).toBeVisible()
+  await expect(page.getByText(/terminal widget not found/i)).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Close Main terminal' })).toHaveCount(0)
+  await expect
+    .poll(async () => (await fetchWorkspaceSnapshot(request)).tabs.length)
+    .toBe(baselineBackendTabCount + 1)
+
+  await openUtilityPanelButton.click()
+  await page.getByRole('menuitem', { name: 'Create commander widget' }).click()
+  await expect(page.getByRole('button', { name: 'Close tool' })).toHaveCount(1)
+
+  await workspaceTwoTab.click()
+  await expect(workspaceTwoTab).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByRole('button', { name: 'Close Main terminal' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Close tool' })).toHaveCount(1)
+  await page.getByRole('button', { name: 'Add terminal tab for Main terminal' }).click()
+  await expect(page.getByRole('button', { name: 'Close Main terminal 2' })).toBeVisible()
+  await expect(page.getByText(/terminal widget not found/i)).toHaveCount(0)
+  await expect
+    .poll(async () => (await fetchWorkspaceSnapshot(request)).tabs.length)
+    .toBe(baselineBackendTabCount + 2)
+  await page.getByRole('button', { name: 'Close Main terminal 2' }).click()
+  await expect(page.getByRole('button', { name: 'Close Main terminal 2' })).toHaveCount(0)
+  await expect
+    .poll(async () => (await fetchWorkspaceSnapshot(request)).tabs.length)
+    .toBe(baselineBackendTabCount + 1)
+
+  await workspaceFourTab.click()
+  await expect(workspaceFourTab).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByRole('button', { name: 'Close Main terminal' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Close Workspace shell' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Close tool' })).toHaveCount(1)
+  await page.getByRole('button', { name: 'Add terminal tab for Workspace shell' }).click()
+  await expect(page.getByRole('button', { name: 'Close Workspace shell 2' })).toBeVisible()
+  await expect(page.getByText(/terminal widget not found/i)).toHaveCount(0)
+  await expect
+    .poll(async () => (await fetchWorkspaceSnapshot(request)).tabs.length)
+    .toBe(baselineBackendTabCount + 2)
+  await page.getByRole('button', { name: 'Close Workspace shell 2' }).click()
+  await expect(page.getByRole('button', { name: 'Close Workspace shell 2' })).toHaveCount(0)
+  await expect
+    .poll(async () => (await fetchWorkspaceSnapshot(request)).tabs.length)
+    .toBe(baselineBackendTabCount + 1)
+
+  await openSettingsButton.click()
+  await expect(page.getByText('Settings', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Установленные приложения' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Terminal Настройки терминального runtime.' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Commander Настройки file-manager surface.' })).toBeVisible()
+  await page.getByRole('button', { name: 'Close Settings' }).click()
+  await expect(page.getByText('Settings', { exact: true })).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'Close Workspace shell' }).click()
+  await expect(page.getByRole('button', { name: 'Close Workspace shell' })).toHaveCount(0)
+  await expect
+    .poll(async () => (await fetchWorkspaceSnapshot(request)).tabs.length)
+    .toBe(baselineBackendTabCount)
+})

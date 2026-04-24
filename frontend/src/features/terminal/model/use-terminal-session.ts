@@ -175,7 +175,7 @@ function appendTerminalChunk(record: TerminalSessionRecord, chunk: TerminalOutpu
         ...snapshot.state,
         last_output_at: chunk.timestamp,
       },
-      chunks: [...snapshot.chunks, chunk],
+      chunks: [...(snapshot.chunks ?? []), chunk],
       next_seq: Math.max(snapshot.next_seq, chunk.seq + 1),
     },
   }

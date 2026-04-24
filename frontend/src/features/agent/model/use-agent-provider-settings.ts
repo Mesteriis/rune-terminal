@@ -195,7 +195,7 @@ export function useAgentProviderSettings() {
                 }
 
         const response = await discoverAgentProviderModels(payload)
-        const nextModels = uniqueModels([...response.models, currentModel])
+        const nextModels = uniqueModels([...(response.models ?? []), currentModel])
         setAvailableModels(nextModels)
         if (!currentModel && nextModels[0]) {
           setDraft((currentDraft) => {

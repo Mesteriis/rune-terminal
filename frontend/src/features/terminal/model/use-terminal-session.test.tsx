@@ -154,4 +154,54 @@ describe('useTerminalSession', () => {
 
     expect(sendTerminalInput).toHaveBeenCalledWith('term-main', 'pwd\r', false)
   })
+
+  it('appends live stream output when the initial snapshot carries null chunks', async () => {
+    vi.mocked(fetchTerminalSnapshot).mockResolvedValue({
+      state: {
+        widget_id: 'term-fresh',
+        session_id: 'term-fresh',
+        shell: '/bin/zsh',
+        status: 'running',
+        pid: 5151,
+        started_at: '2026-04-24T08:10:00Z',
+        can_send_input: true,
+        can_interrupt: true,
+        working_dir: '/Users/avm/projects/runa-terminal',
+        connection_id: 'local',
+        connection_name: 'Local Machine',
+        connection_kind: 'local',
+      },
+      chunks: null as never,
+      next_seq: 1,
+    })
+    vi.mocked(connectTerminalStream).mockImplementation(async (_widgetId, options) => {
+      options.onOutput({
+        seq: 1,
+        data: 'pwd\n',
+        timestamp: '2026-04-24T08:10:01Z',
+      })
+
+      return {
+        close: vi.fn(),
+        done: Promise.resolve(),
+      }
+    })
+
+    const { result } = renderHook(() =>
+      useTerminalSession({
+        runtimeWidgetId: 'term-fresh',
+        title: 'Fresh terminal',
+      }),
+    )
+
+    await waitFor(() => {
+      expect(result.current.outputChunks).toEqual([
+        {
+          seq: 1,
+          data: 'pwd\n',
+          timestamp: '2026-04-24T08:10:01Z',
+        },
+      ])
+    })
+  })
 })

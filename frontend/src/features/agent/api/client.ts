@@ -81,6 +81,7 @@ export type AgentConversationMessage = {
   status: 'streaming' | 'complete' | 'error'
   provider?: string
   model?: string
+  reasoning?: string
   created_at: string
 }
 
@@ -143,6 +144,55 @@ export type AgentConversationStreamEvent =
 export type AgentConversationStreamConnection = {
   close: () => void
   done: Promise<void>
+}
+
+export type AgentToolPendingApproval = {
+  approval_tier: string
+  created_at: string
+  expires_at: string
+  id: string
+  summary: string
+  tool_name: string
+}
+
+export type AgentToolOperation = {
+  affected_paths?: string[]
+  affected_widgets?: string[]
+  approval_tier?: string
+  required_capabilities?: string[]
+  summary: string
+}
+
+export type AgentToolInfo = {
+  description: string
+  input_schema: unknown
+  metadata: {
+    approval_tier: string
+    capabilities: string[]
+    mutating: boolean
+    target_kind: string
+  }
+  name: string
+  output_schema: unknown
+}
+
+export type AgentToolExecuteResponse = {
+  error?: string
+  error_code?: string
+  operation?: AgentToolOperation
+  output?: unknown
+  pending_approval?: AgentToolPendingApproval
+  status: 'error' | 'ok' | 'requires_confirmation' | string
+  tool?: AgentToolInfo
+}
+
+export type ExplainTerminalCommandResponse = {
+  command_audit_event_id?: string
+  conversation: AgentConversationSnapshot
+  execution_block_id?: string
+  explain_audit_event_id?: string
+  output_excerpt?: string
+  provider_error?: string
 }
 
 type AgentConversationResponse = {
@@ -211,6 +261,42 @@ async function fetchRuntimeJSON<T>(runtimeContext: RuntimeContext, path: string,
 async function requestRuntimeJSON<T>(path: string, init?: RequestInit) {
   const runtimeContext = await resolveRuntimeContext()
   return fetchRuntimeJSON<T>(runtimeContext, path, init)
+}
+
+async function postToolExecution(body: Record<string, unknown>) {
+  const runtimeContext = await resolveRuntimeContext()
+  const response = await fetch(`${runtimeContext.baseUrl}/api/v1/tools/execute`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${runtimeContext.authToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  })
+
+  let payload: unknown = null
+
+  try {
+    payload = await response.json()
+  } catch {
+    payload = null
+  }
+
+  if (
+    payload &&
+    typeof payload === 'object' &&
+    typeof (payload as { status?: unknown }).status === 'string'
+  ) {
+    return payload as AgentToolExecuteResponse
+  }
+
+  const errorPayload = payload as APIErrorEnvelope | null
+
+  throw new AgentAPIError(
+    response.status,
+    errorPayload?.error?.code ?? 'tool_execute_failed',
+    errorPayload?.error?.message ?? `Tool execution failed (${response.status})`,
+  )
 }
 
 function parseEventBlock(block: string) {
@@ -465,6 +551,40 @@ export async function createAgentAttachmentReference(input: {
     input,
   )
   return payload.attachment
+}
+
+export async function executeAgentTool(input: {
+  approval_token?: string
+  context: AgentConversationContext
+  input?: Record<string, unknown>
+  tool_name: string
+}) {
+  return postToolExecution({
+    approval_token: input.approval_token,
+    context: input.context,
+    input: input.input,
+    tool_name: input.tool_name,
+  })
+}
+
+export async function explainTerminalCommand(input: {
+  command: string
+  command_audit_event_id?: string
+  context: AgentConversationContext
+  execution_block_id?: string
+  from_seq: number
+  prompt: string
+  widget_id: string
+}) {
+  return postRuntimeJSON<ExplainTerminalCommandResponse>('/api/v1/agent/terminal-commands/explain', {
+    command: input.command,
+    command_audit_event_id: input.command_audit_event_id,
+    context: input.context,
+    execution_block_id: input.execution_block_id,
+    from_seq: input.from_seq,
+    prompt: input.prompt,
+    widget_id: input.widget_id,
+  })
 }
 
 export async function setAgentProfile(id: string) {

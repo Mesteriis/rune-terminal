@@ -109,13 +109,17 @@ function describeProviderLimitState(provider: AgentProviderView) {
   if (provider.kind === 'codex') {
     return provider.codex?.status_state === 'ready'
       ? 'Codex CLI command is available.'
-      : 'Needs a valid local Codex CLI install.'
+      : provider.codex?.status_state === 'auth-required'
+        ? 'Needs a local Codex CLI login.'
+        : 'Needs a valid local Codex CLI install.'
   }
 
   if (provider.kind === 'claude') {
     return provider.claude?.status_state === 'ready'
       ? 'Claude Code CLI command is available.'
-      : 'Needs a valid local Claude Code CLI install.'
+      : provider.claude?.status_state === 'auth-required'
+        ? 'Needs a local Claude Code CLI login.'
+        : 'Needs a valid local Claude Code CLI install.'
   }
 
   return 'Unknown provider readiness.'
@@ -210,7 +214,7 @@ function AiModelsSection() {
   const configuredModel = directProviderDefaultModel(activeProvider)
   const selectedChatModels = directProviderChatModels(activeProvider)
   const visibleModels = useMemo(
-    () => uniqueModelIDs([configuredModel, ...selectedChatModels, ...availableModels]),
+    () => uniqueModelIDs([configuredModel, ...(selectedChatModels ?? []), ...(availableModels ?? [])]),
     [availableModels, configuredModel, selectedChatModels],
   )
 
@@ -320,8 +324,8 @@ function AiModelsSection() {
                                 }
 
                                 const nextChatModels = event.currentTarget.checked
-                                  ? uniqueModelIDs([...selectedChatModels, model])
-                                  : selectedChatModels.filter((entry) => entry !== model)
+                                  ? uniqueModelIDs([...(selectedChatModels ?? []), model])
+                                  : (selectedChatModels ?? []).filter((entry) => entry !== model)
 
                                 void updateProviderChatModels(activeProvider, nextChatModels)
                               }}

@@ -1,30 +1,38 @@
 import { defineConfig } from '@playwright/test'
 
-const backendHost = '127.0.0.1'
-const backendPort = 8092
-const frontendHost = '127.0.0.1'
-const frontendPort = 4193
-const authToken = 'commander-e2e-token'
+import {
+  authToken,
+  backendHost,
+  backendPort,
+  backendStateDir,
+  frontendHost,
+  frontendPort,
+  frontendUrl,
+  preparePlaywrightStateDir,
+} from './test-env'
+
+preparePlaywrightStateDir()
 
 export default defineConfig({
   testDir: '.',
-  timeout: 30_000,
+  timeout: 120_000,
+  workers: 1,
   use: {
-    baseURL: `http://${frontendHost}:${frontendPort}`,
+    baseURL: frontendUrl,
     trace: 'retain-on-failure',
   },
   webServer: [
     {
-      command: `LOCAL_BACKEND_PORT=${backendPort} LOCAL_AUTH_TOKEN=${authToken} make -C .. run-backend`,
+      command: `LOCAL_BACKEND_PORT=${backendPort} LOCAL_AUTH_TOKEN=${authToken} make -C .. BACKEND_STATE_DIR=${backendStateDir} run-backend`,
       url: `http://${backendHost}:${backendPort}/healthz`,
-      reuseExistingServer: true,
+      reuseExistingServer: false,
       stdout: 'pipe',
       stderr: 'pipe',
     },
     {
       command: `LOCAL_BACKEND_PORT=${backendPort} LOCAL_FRONTEND_PORT=${frontendPort} LOCAL_AUTH_TOKEN=${authToken} make -C .. run-frontend`,
       url: `http://${frontendHost}:${frontendPort}/`,
-      reuseExistingServer: true,
+      reuseExistingServer: false,
       stdout: 'pipe',
       stderr: 'pipe',
     },

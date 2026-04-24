@@ -2,9 +2,11 @@ import type * as React from 'react'
 import type { IDockviewHeaderActionsProps } from 'dockview-react'
 import { Plus, X } from 'lucide-react'
 
+import { createTerminalTab } from '@/features/terminal/api/client'
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { IconButton } from '@/shared/ui/components'
 import {
+  closeTerminalPanel,
   createNextTerminalPanelId,
   createTerminalPanelParams,
   isTerminalPanel,
@@ -53,7 +55,7 @@ export function TerminalDockviewHeaderActionsWidget(props: IDockviewHeaderAction
     ? resolveTerminalPanelParams(props.activePanel.id, props.activePanel.params)
     : null
 
-  const handleAddTerminalTab = (event: React.MouseEvent<HTMLButtonElement>) => {
+  const handleAddTerminalTab = async (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault()
     event.stopPropagation()
 
@@ -65,27 +67,42 @@ export function TerminalDockviewHeaderActionsWidget(props: IDockviewHeaderAction
     const nextPanelParams = createTerminalPanelParams(terminalPanelParams.preset, nextPanelId)
     const suffixMatch = nextPanelId.match(/-(\d+)$/)
 
-    props.containerApi.addPanel({
-      id: nextPanelId,
-      title: suffixMatch ? `${nextPanelParams.title} ${suffixMatch[1]}` : nextPanelParams.title,
-      component: 'default',
-      tabComponent: 'terminal-tab',
-      params: nextPanelParams,
-      position: {
-        direction: 'within',
-        referencePanel: props.activePanel!.id,
-      },
-    })
+    try {
+      const runtimeTerminal = await createTerminalTab(nextPanelParams.title)
+
+      props.containerApi.addPanel({
+        id: nextPanelId,
+        title: suffixMatch ? `${nextPanelParams.title} ${suffixMatch[1]}` : nextPanelParams.title,
+        component: 'default',
+        tabComponent: 'terminal-tab',
+        params: createTerminalPanelParams(
+          terminalPanelParams.preset,
+          runtimeTerminal.widget_id,
+          runtimeTerminal.tab_id,
+        ),
+        position: {
+          direction: 'within',
+          referencePanel: props.activePanel!.id,
+        },
+      })
+    } catch (error) {
+      console.error('Unable to add terminal tab', error)
+    }
   }
 
   const handleAddPointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
     event.stopPropagation()
   }
 
-  const handleClosePanel = (event: React.MouseEvent<HTMLButtonElement>) => {
+  const handleClosePanel = async (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault()
     event.stopPropagation()
-    props.activePanel?.api.close()
+
+    if (!props.activePanel || !terminalPanelParams) {
+      return
+    }
+
+    await closeTerminalPanel(props.activePanel.api, terminalPanelParams)
   }
 
   const handleClosePointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {

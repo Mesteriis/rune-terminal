@@ -6,7 +6,7 @@ import type {
 } from '@/features/agent/api/provider-client'
 
 const DEFAULT_CODEX_COMMAND = 'codex'
-const DEFAULT_CODEX_MODEL = 'gpt-5-codex'
+const DEFAULT_CODEX_MODEL = 'gpt-5.4'
 const DEFAULT_CLAUDE_COMMAND = 'claude'
 const DEFAULT_CLAUDE_MODEL = 'sonnet'
 

@@ -1,9 +1,18 @@
 package agent
 
 import (
+	"context"
+	"encoding/json"
 	"os/exec"
 	"strings"
+	"time"
 )
+
+const providerStatusCommandTimeout = 2 * time.Second
+
+var resolveProviderCLICommand = exec.LookPath
+var inspectCodexCLIAuthStatus = defaultInspectCodexCLIAuthStatus
+var inspectClaudeCLIAuthStatus = defaultInspectClaudeCLIAuthStatus
 
 func providerCatalogFromState(state State) ProviderCatalog {
 	views := make([]ProviderView, 0, len(state.Providers))
@@ -75,7 +84,14 @@ func codexProviderSettingsViewFromSettings(settings *CodexProviderSettings) *Cod
 		Model:      settings.Model,
 		ChatModels: append([]string(nil), settings.ChatModels...),
 	}
-	populateCLIStatus(view.Command, "Codex CLI", &view.StatusState, &view.StatusMessage, &view.ResolvedBinary)
+	populateCLIStatus(
+		view.Command,
+		"Codex CLI",
+		inspectCodexCLIAuthStatus,
+		&view.StatusState,
+		&view.StatusMessage,
+		&view.ResolvedBinary,
+	)
 	return view
 }
 
@@ -88,18 +104,91 @@ func claudeProviderSettingsViewFromSettings(settings *ClaudeProviderSettings) *C
 		Model:      settings.Model,
 		ChatModels: append([]string(nil), settings.ChatModels...),
 	}
-	populateCLIStatus(view.Command, "Claude Code CLI", &view.StatusState, &view.StatusMessage, &view.ResolvedBinary)
+	populateCLIStatus(
+		view.Command,
+		"Claude Code CLI",
+		inspectClaudeCLIAuthStatus,
+		&view.StatusState,
+		&view.StatusMessage,
+		&view.ResolvedBinary,
+	)
 	return view
 }
 
-func populateCLIStatus(command string, label string, state *string, message *string, resolved *string) {
-	path, err := exec.LookPath(strings.TrimSpace(command))
+func populateCLIStatus(
+	command string,
+	label string,
+	inspectAuth func(string) (string, string, bool),
+	state *string,
+	message *string,
+	resolved *string,
+) {
+	path, err := resolveProviderCLICommand(strings.TrimSpace(command))
 	if err != nil {
 		*state = "missing"
 		*message = label + " command is not available on PATH."
 		return
 	}
+	*resolved = path
 	*state = "ready"
 	*message = label + " command is available."
-	*resolved = path
+
+	if inspectAuth == nil {
+		return
+	}
+
+	nextState, nextMessage, ok := inspectAuth(path)
+	if !ok {
+		return
+	}
+
+	*state = nextState
+	*message = nextMessage
+}
+
+func defaultInspectCodexCLIAuthStatus(commandPath string) (string, string, bool) {
+	output, _ := runProviderStatusCommand(commandPath, "login", "status")
+	trimmedOutput := strings.TrimSpace(output)
+
+	switch {
+	case strings.Contains(strings.ToLower(trimmedOutput), "logged in"):
+		return "ready", "Codex CLI is authenticated.", true
+	case strings.Contains(strings.ToLower(trimmedOutput), "not logged in"):
+		return "auth-required", "Codex CLI is installed but not logged in.", true
+	default:
+		return "", "", false
+	}
+}
+
+func defaultInspectClaudeCLIAuthStatus(commandPath string) (string, string, bool) {
+	output, _ := runProviderStatusCommand(commandPath, "auth", "status", "--json")
+	trimmedOutput := strings.TrimSpace(output)
+	if trimmedOutput == "" {
+		return "", "", false
+	}
+
+	var payload struct {
+		LoggedIn bool `json:"loggedIn"`
+	}
+	if err := json.Unmarshal([]byte(trimmedOutput), &payload); err != nil {
+		if strings.Contains(strings.ToLower(trimmedOutput), "not logged in") {
+			return "auth-required", "Claude Code CLI is installed but not logged in.", true
+		}
+		return "", "", false
+	}
+
+	if payload.LoggedIn {
+		return "ready", "Claude Code CLI is authenticated.", true
+	}
+
+	return "auth-required", "Claude Code CLI is installed but not logged in.", true
+}
+
+func runProviderStatusCommand(commandPath string, args ...string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), providerStatusCommandTimeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, commandPath, args...)
+	output, err := cmd.CombinedOutput()
+	return string(output), err
 }

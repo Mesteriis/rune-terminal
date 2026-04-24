@@ -2,12 +2,13 @@
 
 ## Last verified state
 
-- Date: `2026-04-23`
-- State: `FOCUSED VERIFIED`
+- Date: `2026-04-24`
+- State: `VERIFIED`
 - Scope:
   - backend-owned AI provider catalog and active-provider resolution
   - CLI-only provider runtime for `codex` and `claude`
   - frontend settings provider client/draft helpers and TypeScript surface
+  - browser-level Playwright validation for the provider/settings surfaces under the split local dev path
 
 ## Commands/tests used
 
@@ -15,6 +16,7 @@
 - `go test ./core/...`
 - `npm --prefix frontend run test -- src/features/agent/api/provider-client.test.ts src/features/agent/model/provider-settings-draft.test.ts src/widgets/ai/ai-panel-widget.test.tsx`
 - `npm --prefix frontend run lint:active`
+- `npm run test:ui -- --reporter=line`
 - `python3 -m py_compile scripts/validate_workspace_navigation.py scripts/validate_operator_workflow.py`
 - `python3 scripts/validate_operator_workflow.py`
 - `python3 scripts/validate_workspace_navigation.py`
@@ -35,7 +37,7 @@
   - `core/codexauth`
 - Legacy persisted provider records with unsupported kinds are filtered during agent-state normalization. If filtering leaves no providers, the store bootstraps the default CLI providers.
 - Default bootstrap providers:
-  - `codex-cli`, active, kind `codex`, command `codex`, model `gpt-5-codex`
+  - `codex-cli`, active, kind `codex`, command `codex`, model `gpt-5.4`
   - `claude-code-cli`, kind `claude`, command `claude`, model `sonnet`
 
 ## Runtime behavior
@@ -45,7 +47,7 @@
   - `conversation.NewClaudeCodeProvider(...)`
 - The Codex CLI provider uses `codex exec` in non-interactive mode with:
   - read-only sandbox
-  - approval policy `never`
+  - `--skip-git-repo-check`
   - ephemeral session
   - `--output-last-message` for final response capture
 - The Claude provider uses `claude -p` in non-interactive mode with:
@@ -59,12 +61,23 @@
 - `AI > Установленные приложения` creates only `Codex CLI` and `Claude Code CLI` providers from the toolbar.
 - The editor exposes command and model fields for both CLI providers.
 - Backend CLI command availability is surfaced through `status_state`, `status_message`, and `resolved_binary`.
+- CLI auth state is also surfaced through the same provider view payload:
+  - `ready` when the binary is present and authenticated
+  - `auth-required` when the binary is present but local login is missing
+  - `missing` when the binary cannot be resolved
+- The frontend provider client now normalizes nullable backend arrays at the API boundary:
+  - `chat_models: null -> []`
+  - discovery `models: null -> []`
+  - `supported_kinds: null -> []`
 - `AI > Модели` uses the same backend model discovery route, but CLI model discovery is static/backend-owned:
-  - Codex returns the configured/default Codex model list.
+  - Codex returns the configured/default Codex model list, currently led by `gpt-5.4` with `gpt-5-codex` still available as an explicit choice.
   - Claude returns the configured/default Claude Code aliases, currently including `sonnet` and `opus`.
 
 ## Known limitations
 
 - CLI execution is intentionally minimal and chat-focused. It does not yet integrate Codex/Claude tool calls with the core `toolruntime` approval/audit pipeline.
 - CLI providers do not stream token-by-token output yet.
-- Browser/Tauri smoke was not rerun for this slice; validation was limited to Go tests, focused frontend unit tests, frontend `tsc --noEmit` through `lint:active`, and backend HTTP smoke scripts using a Codex CLI stub.
+- Browser validation now covers:
+  - successful live Codex chat on the product default model
+  - Claude provider routing plus the `auth-required` UI path when the local CLI is installed but not logged in
+- Browser validation was rerun through the split local dev path; a fresh `npm run tauri:dev` desktop smoke was not run in this pass.

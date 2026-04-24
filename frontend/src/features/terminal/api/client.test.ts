@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
+  createTerminalTab,
+  closeTerminalTab,
   connectTerminalStream,
   fetchTerminalSnapshot,
   restartTerminal,
@@ -98,6 +100,61 @@ describe('terminal api client', () => {
     expect(fetchMock.mock.calls[1]?.[0]).toBe('http://127.0.0.1:8090/api/v1/terminal/term-main?from=3')
   })
 
+  it('normalizes null terminal chunk payloads to an empty array', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          state: {
+            widget_id: 'term-fresh',
+            session_id: 'term-fresh',
+            shell: '/bin/zsh',
+            status: 'running',
+            pid: 4242,
+            started_at: '2026-04-24T08:00:00Z',
+            can_send_input: true,
+            can_interrupt: true,
+            working_dir: '/Users/avm/projects/runa-terminal',
+            connection_id: 'local',
+            connection_name: 'Local Machine',
+            connection_kind: 'local',
+          },
+          chunks: null,
+          next_seq: 1,
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(fetchTerminalSnapshot('term-fresh')).resolves.toEqual({
+      state: {
+        widget_id: 'term-fresh',
+        session_id: 'term-fresh',
+        shell: '/bin/zsh',
+        status: 'running',
+        pid: 4242,
+        started_at: '2026-04-24T08:00:00Z',
+        can_send_input: true,
+        can_interrupt: true,
+        working_dir: '/Users/avm/projects/runa-terminal',
+        connection_id: 'local',
+        connection_name: 'Local Machine',
+        connection_kind: 'local',
+      },
+      chunks: [],
+      next_seq: 1,
+    })
+  })
+
   it('posts input and restart requests to the backend contract', async () => {
     const fetchMock = vi.fn()
     fetchMock
@@ -168,6 +225,71 @@ describe('terminal api client', () => {
     expect(fetchMock.mock.calls[2]?.[0]).toBe('http://127.0.0.1:8090/api/v1/terminal/term-main/restart')
     expect(fetchMock.mock.calls[2]?.[1]).toMatchObject({
       method: 'POST',
+    })
+  })
+
+  it('creates a backend-backed terminal tab and returns its widget id', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          tab_id: 'tab-created',
+          widget_id: 'term-created',
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(createTerminalTab('Workspace shell')).resolves.toEqual({
+      tab_id: 'tab-created',
+      widget_id: 'term-created',
+    })
+
+    expect(fetchMock.mock.calls[1]?.[0]).toBe('http://127.0.0.1:8090/api/v1/workspace/tabs')
+    expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({
+      method: 'POST',
+    })
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({
+      title: 'Workspace shell',
+    })
+  })
+
+  it('closes a backend-backed terminal tab by tab id', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          closed_tab_id: 'tab-created',
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(closeTerminalTab('tab-created')).resolves.toEqual({
+      closed_tab_id: 'tab-created',
+    })
+
+    expect(fetchMock.mock.calls[1]?.[0]).toBe('http://127.0.0.1:8090/api/v1/workspace/tabs/tab-created')
+    expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({
+      method: 'DELETE',
     })
   })
 

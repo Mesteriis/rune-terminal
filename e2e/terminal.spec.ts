@@ -1,0 +1,165 @@
+import { expect, test } from '@playwright/test'
+
+import { clearBrowserState, fetchTerminalSnapshot, sendTerminalInputViaApi } from './runtime'
+
+test('terminal input from the shell writes to the live backend session', async ({ page, request }) => {
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  const marker = `terminal-e2e-${Date.now()}`
+  const terminalInput = page.getByRole('textbox', { name: 'Terminal input' }).last()
+
+  await expect(terminalInput).toBeVisible()
+  await expect
+    .poll(async () => {
+      const snapshot = await fetchTerminalSnapshot(request, 'term-side')
+      return (
+        snapshot.state.can_send_input === true &&
+        snapshot.state.status === 'running' &&
+        snapshot.next_seq > 0
+      )
+    })
+    .toBe(true)
+
+  const [mainBaseline, sideBaseline] = await Promise.all([
+    fetchTerminalSnapshot(request, 'term-main'),
+    fetchTerminalSnapshot(request, 'term-side'),
+  ])
+
+  await terminalInput.click()
+  await expect(terminalInput).toBeFocused()
+  await page.keyboard.type(`printf '${marker}\\n'`)
+  await page.keyboard.press('Enter')
+
+  await expect
+    .poll(
+      async () => {
+        const [mainSnapshot, sideSnapshot] = await Promise.all([
+          fetchTerminalSnapshot(request, 'term-main'),
+          fetchTerminalSnapshot(request, 'term-side'),
+        ])
+
+        return (
+          mainSnapshot.next_seq > mainBaseline.next_seq ||
+          sideSnapshot.next_seq > sideBaseline.next_seq ||
+          [mainSnapshot, sideSnapshot].some((snapshot) =>
+            snapshot.chunks.some((chunk) => chunk.data.includes(marker)),
+          )
+        )
+      },
+      { timeout: 30_000 },
+    )
+    .toBe(true)
+})
+
+test('newly added terminal streams live output without browser errors', async ({ page, request }) => {
+  await clearBrowserState(page)
+
+  const pageErrors: string[] = []
+  page.on('pageerror', (error) => {
+    pageErrors.push(error.message)
+  })
+
+  await page.goto('/')
+  const readRuntimeWidgetIds = async () =>
+    page.evaluate(() => {
+      const rawValue = localStorage.getItem('runa-terminal:dockview-workspaces:v1')
+
+      if (!rawValue) {
+        return [] as string[]
+      }
+
+      const parsedValue = JSON.parse(rawValue) as {
+        activeWorkspaceId?: number
+        workspaceTabs?: Array<{
+          id: number
+          snapshot?: {
+            panels?: Record<string, { params?: { runtimeTabId?: string; widgetId?: string } }>
+          } | null
+        }>
+      }
+      const activeWorkspace = parsedValue.workspaceTabs?.find(
+        (workspace) => workspace.id === parsedValue.activeWorkspaceId,
+      )
+      return Object.values(activeWorkspace?.snapshot?.panels ?? {})
+        .filter(
+          (panel) => typeof panel.params?.runtimeTabId === 'string' && typeof panel.params?.widgetId === 'string',
+        )
+        .map((panel) => panel.params!.widgetId!)
+    })
+
+  const baselineRuntimeWidgetIds = await readRuntimeWidgetIds()
+
+  await page.getByRole('button', { name: 'Open utility panel' }).click()
+  await page.getByRole('menuitem', { name: 'Create terminal widget' }).click()
+
+  const readNewRuntimeWidgetId = async () =>
+    page.evaluate((existingWidgetIds: string[]) => {
+      const rawValue = localStorage.getItem('runa-terminal:dockview-workspaces:v1')
+
+      if (!rawValue) {
+        return null
+      }
+
+      const parsedValue = JSON.parse(rawValue) as {
+        activeWorkspaceId?: number
+        workspaceTabs?: Array<{
+          id: number
+          snapshot?: {
+            panels?: Record<string, { params?: { runtimeTabId?: string; widgetId?: string } }>
+          } | null
+        }>
+      }
+      const activeWorkspace = parsedValue.workspaceTabs?.find(
+        (workspace) => workspace.id === parsedValue.activeWorkspaceId,
+      )
+      const runtimePanels = Object.values(activeWorkspace?.snapshot?.panels ?? {}).filter(
+        (panel) => typeof panel.params?.runtimeTabId === 'string' && typeof panel.params?.widgetId === 'string',
+      )
+      const newRuntimePanel = runtimePanels.find(
+        (panel) => !existingWidgetIds.includes(panel.params?.widgetId ?? ''),
+      )
+
+      return newRuntimePanel?.params?.widgetId ?? null
+    }, baselineRuntimeWidgetIds)
+
+  await expect.poll(readNewRuntimeWidgetId).not.toBeNull()
+
+  const runtimeWidgetId = await readNewRuntimeWidgetId()
+  if (!runtimeWidgetId) {
+    throw new Error('new terminal widget id was not persisted to localStorage')
+  }
+
+  await expect
+    .poll(async () => {
+      const snapshot = await fetchTerminalSnapshot(request, runtimeWidgetId)
+      return snapshot.state.can_send_input === true && snapshot.state.status === 'running'
+    })
+    .toBe(true)
+
+  await page.waitForTimeout(250)
+
+  const terminalInput = page.getByRole('textbox', { name: 'Terminal input' }).last()
+  const marker = `added-terminal-e2e-${Date.now()}`
+  const baselineSnapshot = await fetchTerminalSnapshot(request, runtimeWidgetId)
+
+  await terminalInput.click()
+  await expect(terminalInput).toBeFocused()
+  await sendTerminalInputViaApi(request, runtimeWidgetId, `printf '${marker}\\n'`, true)
+
+  await expect
+    .poll(
+      async () => {
+        const snapshot = await fetchTerminalSnapshot(request, runtimeWidgetId)
+
+        return (
+          snapshot.next_seq > baselineSnapshot.next_seq &&
+          snapshot.chunks.some((chunk) => chunk.data.includes(marker))
+        )
+      },
+      { timeout: 30_000 },
+    )
+    .toBe(true)
+
+  expect(pageErrors).toEqual([])
+})

@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 import { useTerminalSession } from '@/features/terminal/model/use-terminal-session'
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { DockviewTabChrome, IconButton, TerminalStatusHeader } from '@/shared/ui/components'
-import { resolveTerminalPanelParams } from '@/widgets/terminal/terminal-panel'
+import { closeTerminalPanel, resolveTerminalPanelParams } from '@/widgets/terminal/terminal-panel'
 
 const closeButtonStyle = {
   width: '28px',
@@ -55,10 +55,10 @@ export function TerminalDockviewTabWidget(props: IDockviewPanelHeaderProps) {
     event.stopPropagation()
   }
 
-  const handleCloseClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+  const handleCloseClick = async (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault()
     event.stopPropagation()
-    props.api.close()
+    await closeTerminalPanel(props.api, terminalPanelParams)
   }
 
   return (

@@ -133,7 +133,7 @@ func applyProviderModelDiscoveryDefaults(record agent.ProviderRecord) (agent.Pro
 			record.Codex.Command = "codex"
 		}
 		if strings.TrimSpace(record.Codex.Model) == "" {
-			record.Codex.Model = "gpt-5-codex"
+			record.Codex.Model = "gpt-5.4"
 		}
 		record.Codex.ChatModels = conversation.ListCodexCLIModels(record.Codex.Model, record.Codex.ChatModels)
 	case agent.ProviderKindClaude:

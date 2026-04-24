@@ -3,6 +3,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   AgentAPIError,
   createAgentAttachmentReference,
+  executeAgentTool,
+  explainTerminalCommand,
   fetchAgentCatalog,
   fetchAgentConversation,
   sendAgentConversationMessage,
@@ -170,6 +172,147 @@ describe('agent api client', () => {
       updated_at: '2026-04-21T10:00:00Z',
     })
     expect(fetchMock.mock.calls[1]?.[0]).toBe('http://127.0.0.1:8090/api/v1/agent/conversation')
+  })
+
+  it('posts tool execution requests and preserves approval responses from the backend', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 428,
+        json: async () => ({
+          status: 'requires_confirmation',
+          error_code: 'approval_required',
+          pending_approval: {
+            approval_tier: 'moderate',
+            created_at: '2026-04-24T10:00:00Z',
+            expires_at: '2026-04-24T10:05:00Z',
+            id: 'approval_1',
+            summary: 'send input to term-side: echo smoke',
+            tool_name: 'term.send_input',
+          },
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      executeAgentTool({
+        context: {
+          action_source: 'frontend.ai.sidebar.run',
+          active_widget_id: 'term-side',
+          repo_root: '/Users/avm/projects/runa-terminal',
+          target_connection_id: 'local',
+          target_session: 'local',
+        },
+        input: {
+          append_newline: true,
+          text: 'echo smoke',
+          widget_id: 'term-side',
+        },
+        tool_name: 'term.send_input',
+      }),
+    ).resolves.toMatchObject({
+      error_code: 'approval_required',
+      status: 'requires_confirmation',
+    })
+
+    expect(fetchMock.mock.calls[1]?.[0]).toBe('http://127.0.0.1:8090/api/v1/tools/execute')
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({
+      context: {
+        action_source: 'frontend.ai.sidebar.run',
+        active_widget_id: 'term-side',
+        repo_root: '/Users/avm/projects/runa-terminal',
+        target_connection_id: 'local',
+        target_session: 'local',
+      },
+      input: {
+        append_newline: true,
+        text: 'echo smoke',
+        widget_id: 'term-side',
+      },
+      tool_name: 'term.send_input',
+    })
+  })
+
+  it('posts terminal explain requests to the backend contract', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          command_audit_event_id: 'audit_1',
+          conversation: {
+            messages: [],
+            provider: {
+              kind: 'codex',
+              base_url: 'http://codex',
+              model: 'gpt-5.4',
+              streaming: false,
+            },
+            updated_at: '2026-04-24T10:00:00Z',
+          },
+          execution_block_id: 'exec_1',
+          explain_audit_event_id: 'audit_2',
+          output_excerpt: 'smoke',
+          provider_error: '',
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      explainTerminalCommand({
+        command: 'echo smoke',
+        context: {
+          action_source: 'frontend.ai.sidebar.run',
+          active_widget_id: 'term-side',
+          repo_root: '/Users/avm/projects/runa-terminal',
+          target_connection_id: 'local',
+          target_session: 'local',
+          widget_context_enabled: true,
+        },
+        from_seq: 4,
+        prompt: '/run echo smoke',
+        widget_id: 'term-side',
+      }),
+    ).resolves.toMatchObject({
+      command_audit_event_id: 'audit_1',
+      execution_block_id: 'exec_1',
+      output_excerpt: 'smoke',
+    })
+
+    expect(fetchMock.mock.calls[1]?.[0]).toBe('http://127.0.0.1:8090/api/v1/agent/terminal-commands/explain')
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({
+      command: 'echo smoke',
+      context: {
+        action_source: 'frontend.ai.sidebar.run',
+        active_widget_id: 'term-side',
+        repo_root: '/Users/avm/projects/runa-terminal',
+        target_connection_id: 'local',
+        target_session: 'local',
+        widget_context_enabled: true,
+      },
+      from_seq: 4,
+      prompt: '/run echo smoke',
+      widget_id: 'term-side',
+    })
   })
 
   it('posts typed message and attachment payloads to the agent backend routes', async () => {

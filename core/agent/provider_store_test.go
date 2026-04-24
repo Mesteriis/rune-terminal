@@ -61,7 +61,7 @@ func TestProvidersCatalogIncludesCLIStatus(t *testing.T) {
 		Codex: &CreateCodexProviderInput{
 			Command:    "definitely-missing-rterm-codex",
 			Model:      defaultCodexModel,
-			ChatModels: []string{"gpt-5-codex", "gpt-5.4"},
+			ChatModels: []string{"gpt-5-codex"},
 		},
 	})
 	if err != nil {
@@ -82,7 +82,7 @@ func TestProvidersCatalogIncludesCLIStatus(t *testing.T) {
 	if codexView.Codex.StatusState != "missing" {
 		t.Fatalf("unexpected codex provider view: %#v", codexView.Codex)
 	}
-	if !slices.Equal(codexView.Codex.ChatModels, []string{"gpt-5-codex", "gpt-5.4"}) {
+	if !slices.Equal(codexView.Codex.ChatModels, []string{"gpt-5.4", "gpt-5-codex"}) {
 		t.Fatalf("unexpected chat models: %#v", codexView.Codex.ChatModels)
 	}
 }

@@ -12,7 +12,7 @@ describe('provider settings draft helpers', () => {
     const draft = createEmptyProviderDraft('codex')
     draft.displayName = 'Codex CLI'
     draft.codex.command = 'codex'
-    draft.codex.model = 'gpt-5-codex'
+    draft.codex.model = 'gpt-5.4'
 
     expect(buildCreateProviderPayload(draft)).toEqual({
       kind: 'codex',
@@ -20,7 +20,7 @@ describe('provider settings draft helpers', () => {
       enabled: true,
       codex: {
         command: 'codex',
-        model: 'gpt-5-codex',
+        model: 'gpt-5.4',
       },
     })
   })

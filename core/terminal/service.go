@@ -371,7 +371,7 @@ func (s *Service) closeSubscribers(sess *session) {
 }
 
 func snapshotFromSessionLocked(sess *session, from uint64) Snapshot {
-	var chunks []OutputChunk
+	chunks := make([]OutputChunk, 0, len(sess.chunks))
 	for _, chunk := range sess.chunks {
 		if chunk.Seq >= from {
 			chunks = append(chunks, chunk)

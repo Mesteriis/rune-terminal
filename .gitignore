@@ -36,3 +36,4 @@ test-results/
 *.backup
 .husky/
 .aiassistant/
+tiberterm/

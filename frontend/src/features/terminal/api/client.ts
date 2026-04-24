@@ -39,6 +39,15 @@ export type TerminalInputResult = {
   append_newline: boolean
 }
 
+export type CreateTerminalTabResult = {
+  tab_id: string
+  widget_id: string
+}
+
+export type CloseTerminalTabResult = {
+  closed_tab_id: string
+}
+
 export type TerminalStreamConnection = {
   close: () => void
   done: Promise<void>
@@ -60,6 +69,17 @@ type TerminalStreamOptions = {
   onError?: (error: unknown) => void
   onOutput: (chunk: TerminalOutputChunk) => void
   signal?: AbortSignal
+}
+
+function normalizeTerminalChunks(chunks: unknown): TerminalOutputChunk[] {
+  return Array.isArray(chunks) ? chunks : []
+}
+
+function normalizeTerminalSnapshot(snapshot: TerminalSnapshot): TerminalSnapshot {
+  return {
+    ...snapshot,
+    chunks: normalizeTerminalChunks(snapshot.chunks),
+  }
 }
 
 export class TerminalAPIError extends Error {
@@ -224,7 +244,27 @@ function attachAbortSignal(signal: AbortSignal | undefined, controller: AbortCon
 }
 
 export async function fetchTerminalSnapshot(widgetID: string, from?: number) {
-  return requestRuntimeJSON<TerminalSnapshot>(buildTerminalPath(widgetID, '', from))
+  const snapshot = await requestRuntimeJSON<TerminalSnapshot>(buildTerminalPath(widgetID, '', from))
+  return normalizeTerminalSnapshot(snapshot)
+}
+
+export async function createTerminalTab(title?: string) {
+  return requestRuntimeJSON<CreateTerminalTabResult>('/api/v1/workspace/tabs', {
+    body: JSON.stringify(
+      title && title.trim()
+        ? {
+            title,
+          }
+        : {},
+    ),
+    method: 'POST',
+  })
+}
+
+export async function closeTerminalTab(tabID: string) {
+  return requestRuntimeJSON<CloseTerminalTabResult>(`/api/v1/workspace/tabs/${encodeURIComponent(tabID)}`, {
+    method: 'DELETE',
+  })
 }
 
 export async function sendTerminalInput(widgetID: string, text: string, appendNewline: boolean) {

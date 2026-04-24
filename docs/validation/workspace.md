@@ -2,9 +2,17 @@
 
 ## Last verified state
 
-- Date: `2026-04-20`
+- Date: `2026-04-24`
 - State: `VERIFIED`
 - Scope:
+  - serialized Playwright coverage now exercises the active shell/user paths over the split local dev runtime:
+    - workspace tab switching and workspace creation
+    - right-rail utility menu actions for new workspace, terminal widget, and commander widget
+    - settings modal open/close from shell chrome
+    - terminal Dockview header `+` actions for the seeded main/workspace terminal groups
+    - extra terminal panels now request a fresh backend terminal session before mounting, so shell creation paths no longer fail with `terminal widget not found: terminal`
+    - closing those extra terminal panels now also restores the backend workspace tab count, so the UI no longer leaks hidden runtime tabs/sessions on close
+    - commander read/navigation/preview and backend write flows (`F7`, `F5`, `F2`, `F6`, `F8`, same-pane clone, `F4` save)
   - the shared token layer now owns responsive shell/layout chrome sizing and a complete named z-index scale, so shell frame padding, topbar offsets, workspace tab minimums, modal width, Dockview header height, and rail/header dimensions adapt through breakpoint-aware tokens instead of widget-local constants
   - the shell environment layer now also owns dark/light and print media contracts, so `prefers-color-scheme: light` remaps shared surface/text tokens and `@media print` flattens shell chrome for printable output without glow, blur, or resize affordances
   - the shared DOM identity layer now defaults repo-owned primitives and auto-tagged subtrees to a minimal contract (`id` + `data-runa-node`), while verbose `data-runa-layout/widget/component` metadata is available only through an explicit `RunaDomScopeProvider metadata="verbose"` opt-in
@@ -108,6 +116,7 @@
 - `npm --prefix frontend run build`
 - `npm --prefix frontend run lint:active`
 - `npm run validate`
+- `npm run test:ui -- --reporter=line`
 - `npm install motion@^12.38.0`
 - `node tmp/ai-layout-smoke.mjs`
 - `node tmp/ai-header-smoke.mjs`
@@ -142,11 +151,10 @@
 
 ## Known limitations
 
-- This validation covers only the initial layout skeleton. It does not claim backend wiring, workspace persistence, or TideTerm parity breadth.
+- This validation does not claim literal 100% user-path coverage. It covers the active shell/chat/commander/terminal routes listed above, but not every dormant or future branch in the product surface.
 - Terminal frontend-backend integration now has its own current source of truth in `docs/validation/terminal.md`; this workspace entry should not be read as the latest terminal runtime status.
-- The commander slice is still frontend-only and fake-client backed. It does not yet claim real filesystem access, backend integration, preview panes, search panels, approvals, or cross-widget operations.
-- The new commander confirm bar is still frontend-only. It does not yet claim backend-backed approvals, server-enforced policy checks, or cross-widget transfer semantics.
-- Commander persistence is still frontend-only and fake-client backed. It does not yet claim backend-driven path validation, cross-device sync, or cleanup of stale persisted widgets whose Dockview panels were removed in an older session.
+- The active commander read/write path is backend-backed in this repo. What is still out of scope here are approvals, remote/cross-widget orchestration, and broader parity-only feature breadth.
+- Commander persistence and some historical interaction notes below still describe earlier frontend-only slices. The current browser-verified source of truth for the active commander path is the Playwright evidence recorded later in this file.
 - The root cause in the previous commander-color pass was inline commander CSS variables on the widget root, which prevented the inactive Dockview override from winning. That inline override is now removed, and a fresh browser-level active vs inactive comparison is recorded in this entry.
 - The broader non-AI widget inactive-tone pass in this slice is validated by source inspection plus type-check/build only. A fresh browser-level comparison of terminal active vs inactive color states is not claimed here.
 - The Dockview body-activation fix in this pass is validated by source inspection plus type-check/build plus narrow browser-smoke checks for terminal focus order and widget-body control behavior. It does not claim a broader full-shell focus audit beyond those paths.
@@ -167,6 +175,7 @@
 - The shared DOM identity layer covers repo-owned frontend DOM and widget/layout subtree descendants. This entry does not claim ownership over arbitrary third-party portal roots outside the tagged subtrees.
 - The refreshed AI panel body is still a static shell surface. It does not claim prompt execution, chat state, message history, streaming, or settings behavior behind the new header/action controls.
 - Browser validation was run headlessly against the Vite dev server, not through full `npm run tauri:dev`.
+- The Playwright suite for this stateful shell path now runs with `workers: 1` because the browser specs share one backend/frontend runtime and mutate the same workspace/session state.
 - The shell icon swap was validated by type-check, build, and source inspection. A separate visual localhost smoke for the icon glyphs was attempted but is not claimed from this environment.
 - This radius-and-gap rebalance was validated by source inspection plus type-check/build. Fresh live geometry for the new `6px` values is not claimed in this entry.
 - The modal slice was validated by type-check/build and source-level host wiring. An attempted localhost Playwright smoke did not complete cleanly in this environment, so body/widget overlay runtime is not claimed as browser-verified here.
@@ -332,6 +341,7 @@
 - A fresh full frontend/backend validation pass for the same slice on `2026-04-21` confirmed the active commander backend path no longer depends on fake-client mutation semantics for `F2/F5/F6/F8`: pending-operation preview/conflict state is derived from live pane state, final mutation confirmation runs through typed async HTTP adapters, and the affected panes reload with backend-confirmed paths instead of local fake mutations. The same pass reconfirmed `npm --prefix frontend run lint:active`, `npm --prefix frontend run test`, `npm --prefix frontend run build`, `git diff --check`, and `npm run test:ui` all pass; the Playwright run now covers real backend `F5 -> F2 -> F6 -> F8` flow by driving the UI while verifying filesystem results through the same local runtime API. This slice still does not claim same-pane duplicate-name copy flows, backend `F4` edit/save, or a fresh `npm run tauri:dev` desktop launch smoke.
 - A fresh focused validation pass for the commander same-pane clone plus backend `F4` file-save slice on `2026-04-21` confirmed the Go core now exposes typed `GET/PUT /api/v1/fs/file` plus explicit-target `POST /api/v1/fs/copy` entry payloads, the frontend commander now opens a single-entry same-pane clone input when both panes point at the same directory, and `F4` now reads/saves UTF-8 text buffers through the backend before reloading the active pane metadata. The same pass reconfirmed `./scripts/go.sh test ./core/transport/httpapi -run 'TestCopyFS|TestReadFS|TestWriteFS|TestMkdirFS|TestMoveFS|TestDeleteFS|TestRenameFS' -count=1`, `npm --prefix frontend run test`, `npm --prefix frontend run lint:active`, `npm --prefix frontend run build`, `git diff --check`, and `npm run test:ui` all pass. The Playwright run now also covers `F5` same-pane clone plus `F4` save end to end while verifying saved content through the same backend API. This slice still does not claim same-directory batch clone flows, binary/non-text edit/save, or a fresh `npm run tauri:dev` desktop launch smoke.
 - A fresh focused validation pass for the shell accessibility/bootstrap cleanup slice on `2026-04-21` confirmed three frontend regressions are now closed in the active tree: shell window controls in `ShellTopbarWidget` no longer masquerade as `tab` elements outside the workspace tablist, `InputField` now binds its visible label through `htmlFor/id`, and `main.tsx` now guards the `#root` mount point before rendering under `React.StrictMode`. The same pass also confirmed `use-dockview-workspace.ts` now reuses one initial workspace-tab seed for both state and refs instead of creating duplicate default arrays on the first render. The same pass reconfirmed `npm --prefix frontend run lint:active`, `npm --prefix frontend run test`, and `npm --prefix frontend run build` all pass with `18` frontend test files / `92` tests. This slice does not claim a fresh `npm run tauri:dev` desktop launch smoke.
+- A fresh serialized Playwright pass on `2026-04-24` against the split local dev path (`npm run test:ui -- --reporter=line`) completed green with `8` browser tests. That run now covers AI settings navigation, live Codex chat plus transcript restore, workspace tab creation/switching, shell utility-panel widget creation, terminal-header `+` flows for `Main terminal` and `Workspace shell`, commander backend read/write flows, and live terminal input through the seeded workspace shell. This pass intentionally does not claim live Claude chat, remote connection paths, or a fresh `npm run tauri:dev` desktop launch smoke.
 
 ### Runtime lifecycle evidence
 

@@ -35,7 +35,7 @@ function createConversationMessageSortKey(timestamp: string, fallbackIndex = 0) 
   return value * 1000 + fallbackIndex
 }
 
-function buildAssistantReasoning(message: AgentConversationMessage) {
+function buildFallbackAssistantReasoning(message: AgentConversationMessage) {
   const reasoningLines = [`Status: ${message.status}`]
   const createdAt = formatConversationTimestamp(message.created_at)
 
@@ -58,6 +58,14 @@ function buildAssistantReasoning(message: AgentConversationMessage) {
   }
 
   return reasoningLines.join('\n')
+}
+
+function buildAssistantReasoning(message: AgentConversationMessage) {
+  const explicitReasoning = (message.reasoning ?? '').trim()
+  if (explicitReasoning) {
+    return explicitReasoning
+  }
+  return buildFallbackAssistantReasoning(message)
 }
 
 function buildAssistantSummary(message: AgentConversationMessage) {

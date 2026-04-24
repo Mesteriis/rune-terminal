@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react'
 import { openBodyModal } from '@/shared/model/modal'
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { Box, Button, Separator, Surface, Text } from '@/shared/ui/primitives'
+import { createTerminalTab } from '@/features/terminal/api/client'
 import {
   railButtonStyle,
   rightRailStyle,
@@ -96,7 +97,7 @@ export function RightActionRailWidget({ dockviewApiRef, onAddWorkspace }: RightA
     }
   }
 
-  const handleCreateTerminalWidget = () => {
+  const handleCreateTerminalWidget = async () => {
     const dockviewApi = dockviewApiRef.current
 
     if (!dockviewApi) {
@@ -107,14 +108,21 @@ export function RightActionRailWidget({ dockviewApiRef, onAddWorkspace }: RightA
     const nextPanelParams = createTerminalPanelParams('workspace', nextPanelId)
     const suffixMatch = nextPanelId.match(/-(\d+)$/)
 
-    dockviewApi.addPanel({
-      id: nextPanelId,
-      title: suffixMatch ? `${nextPanelParams.title} ${suffixMatch[1]}` : nextPanelParams.title,
-      component: 'default',
-      tabComponent: 'terminal-tab',
-      params: nextPanelParams,
-      position: getPanelPosition(),
-    })
+    try {
+      const runtimeTerminal = await createTerminalTab(nextPanelParams.title)
+
+      dockviewApi.addPanel({
+        id: nextPanelId,
+        title: suffixMatch ? `${nextPanelParams.title} ${suffixMatch[1]}` : nextPanelParams.title,
+        component: 'default',
+        tabComponent: 'terminal-tab',
+        params: createTerminalPanelParams('workspace', runtimeTerminal.widget_id, runtimeTerminal.tab_id),
+        position: getPanelPosition(),
+      })
+    } catch (error) {
+      console.error('Unable to create terminal widget', error)
+      return
+    }
 
     setIsUtilityMenuOpen(false)
   }

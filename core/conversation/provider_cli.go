@@ -12,7 +12,7 @@ import (
 
 const (
 	defaultCodexCLICommand      = "codex"
-	defaultCodexCLIModel        = "gpt-5-codex"
+	defaultCodexCLIModel        = "gpt-5.4"
 	defaultClaudeCodeCommand    = "claude"
 	defaultClaudeCodeModel      = "sonnet"
 	defaultCLICompletionTimeout = 2 * time.Minute
@@ -62,7 +62,11 @@ func NewClaudeCodeProvider(config ClaudeCodeProviderConfig) *localCLIProvider {
 
 func ListCodexCLIModels(model string, configuredModels []string) []string {
 	return compactModelIDs(append(
-		[]string{firstNonEmptyString(model, defaultCodexCLIModel)},
+		[]string{
+			firstNonEmptyString(model, defaultCodexCLIModel),
+			"gpt-5.4",
+			"gpt-5-codex",
+		},
 		configuredModels...,
 	))
 }
@@ -137,7 +141,7 @@ func (p *localCLIProvider) complete(
 		return CompletionResult{}, info, fmt.Errorf("%s command is required", p.kind)
 	}
 
-	content, err := p.run(ctx, request, info.Model)
+	content, reasoning, err := p.run(ctx, request, info.Model)
 	if err != nil {
 		return CompletionResult{}, info, err
 	}
@@ -148,19 +152,22 @@ func (p *localCLIProvider) complete(
 		}
 	}
 	return CompletionResult{
-		Content: content,
-		Model:   info.Model,
+		Content:   content,
+		Reasoning: strings.TrimSpace(reasoning),
+		Model:     info.Model,
 	}, info, nil
 }
 
-func (p *localCLIProvider) run(ctx context.Context, request CompletionRequest, model string) (string, error) {
+func (p *localCLIProvider) run(ctx context.Context, request CompletionRequest, model string) (string, string, error) {
 	switch p.mode {
 	case localCLIModeCodex:
-		return runCodexCLI(ctx, p.command, model, formatCLICompletionPrompt(request, true))
+		content, err := runCodexCLI(ctx, p.command, model, formatCLICompletionPrompt(request, true))
+		return content, formatCLIReasoning("codex", p.command, model, err == nil), err
 	case localCLIModeClaudeCode:
-		return runClaudeCodeCLI(ctx, p.command, model, request.SystemPrompt, formatCLICompletionPrompt(request, false))
+		content, err := runClaudeCodeCLI(ctx, p.command, model, request.SystemPrompt, formatCLICompletionPrompt(request, false))
+		return content, formatCLIReasoning("claude", p.command, model, err == nil), err
 	default:
-		return "", fmt.Errorf("unsupported cli provider mode: %s", p.mode)
+		return "", "", fmt.Errorf("unsupported cli provider mode: %s", p.mode)
 	}
 }
 
@@ -179,7 +186,6 @@ func runCodexCLI(ctx context.Context, command string, model string, prompt strin
 		"exec",
 		"--color", "never",
 		"--sandbox", "read-only",
-		"--ask-for-approval", "never",
 		"--skip-git-repo-check",
 		"--ephemeral",
 		"--output-last-message", outputPath,
@@ -219,6 +225,22 @@ func runClaudeCodeCLI(ctx context.Context, command string, model string, systemP
 		return "", formatCLICommandError("claude", err, stdout, stderr)
 	}
 	return stdout, nil
+}
+
+func formatCLIReasoning(label, command, model string, completed bool) string {
+	status := "completed"
+	if !completed {
+		status = "failed"
+	}
+	commandLine := strings.TrimSpace(command)
+	if commandLine == "" {
+		commandLine = label
+	}
+	normalizedModel := strings.TrimSpace(model)
+	if normalizedModel == "" {
+		normalizedModel = "default"
+	}
+	return fmt.Sprintf("%s via CLI command %q (model=%s) %s", label, commandLine, normalizedModel, status)
 }
 
 func runLocalCLICommand(ctx context.Context, command string, args []string, stdin string) (string, string, error) {

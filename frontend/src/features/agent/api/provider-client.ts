@@ -7,7 +7,7 @@ export type AgentCodexProviderSettingsView = {
   command?: string
   model: string
   chat_models?: string[]
-  status_state: 'ready' | 'missing'
+  status_state: 'auth-required' | 'ready' | 'missing'
   status_message?: string
   resolved_binary?: string
 }
@@ -16,7 +16,7 @@ export type AgentClaudeProviderSettingsView = {
   command?: string
   model: string
   chat_models?: string[]
-  status_state: 'ready' | 'missing'
+  status_state: 'auth-required' | 'ready' | 'missing'
   status_message?: string
   resolved_binary?: string
 }
@@ -133,40 +133,110 @@ async function requestProviderRuntimeJSON<T>(path: string, init?: RequestInit) {
   return fetchProviderRuntimeJSON<T>(runtimeContext, path, init)
 }
 
+function normalizeChatModels(models: unknown) {
+  return Array.isArray(models) ? models.filter((model): model is string => typeof model === 'string') : []
+}
+
+function normalizeProviderView(provider: AgentProviderView): AgentProviderView {
+  if (provider.kind === 'codex') {
+    return {
+      ...provider,
+      codex: provider.codex
+        ? {
+            ...provider.codex,
+            chat_models: normalizeChatModels(provider.codex.chat_models),
+          }
+        : provider.codex,
+    }
+  }
+
+  if (provider.kind === 'claude') {
+    return {
+      ...provider,
+      claude: provider.claude
+        ? {
+            ...provider.claude,
+            chat_models: normalizeChatModels(provider.claude.chat_models),
+          }
+        : provider.claude,
+    }
+  }
+
+  return provider
+}
+
+function normalizeProviderCatalog(catalog: AgentProviderCatalog): AgentProviderCatalog {
+  return {
+    ...catalog,
+    providers: Array.isArray(catalog.providers) ? catalog.providers.map(normalizeProviderView) : [],
+    supported_kinds: Array.isArray(catalog.supported_kinds)
+      ? catalog.supported_kinds.filter(
+          (kind): kind is AgentProviderKind => kind === 'codex' || kind === 'claude',
+        )
+      : [],
+  }
+}
+
+function normalizeProviderMutationResponse(response: ProviderMutationResponse): ProviderMutationResponse {
+  return {
+    ...response,
+    provider: normalizeProviderView(response.provider),
+    providers: normalizeProviderCatalog(response.providers),
+  }
+}
+
+function normalizeModelCatalog(catalog: AgentProviderModelCatalog): AgentProviderModelCatalog {
+  return {
+    models: normalizeChatModels(catalog.models),
+  }
+}
+
 export async function fetchAgentProviderCatalog() {
-  return requestProviderRuntimeJSON<AgentProviderCatalog>('/api/v1/agent/providers')
+  return normalizeProviderCatalog(
+    await requestProviderRuntimeJSON<AgentProviderCatalog>('/api/v1/agent/providers'),
+  )
 }
 
 export async function createAgentProvider(payload: CreateAgentProviderPayload) {
-  return requestProviderRuntimeJSON<ProviderMutationResponse>('/api/v1/agent/providers', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  })
+  return normalizeProviderMutationResponse(
+    await requestProviderRuntimeJSON<ProviderMutationResponse>('/api/v1/agent/providers', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  )
 }
 
 export async function discoverAgentProviderModels(payload: DiscoverAgentProviderModelsPayload) {
-  return requestProviderRuntimeJSON<AgentProviderModelCatalog>('/api/v1/agent/providers/models', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  })
+  return normalizeModelCatalog(
+    await requestProviderRuntimeJSON<AgentProviderModelCatalog>('/api/v1/agent/providers/models', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  )
 }
 
 export async function updateAgentProvider(providerID: string, payload: UpdateAgentProviderPayload) {
-  return requestProviderRuntimeJSON<ProviderMutationResponse>(`/api/v1/agent/providers/${providerID}`, {
-    method: 'PATCH',
-    body: JSON.stringify(payload),
-  })
+  return normalizeProviderMutationResponse(
+    await requestProviderRuntimeJSON<ProviderMutationResponse>(`/api/v1/agent/providers/${providerID}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
+  )
 }
 
 export async function setActiveAgentProvider(providerID: string) {
-  return requestProviderRuntimeJSON<AgentProviderCatalog>('/api/v1/agent/providers/active', {
-    method: 'PUT',
-    body: JSON.stringify({ id: providerID }),
-  })
+  return normalizeProviderCatalog(
+    await requestProviderRuntimeJSON<AgentProviderCatalog>('/api/v1/agent/providers/active', {
+      method: 'PUT',
+      body: JSON.stringify({ id: providerID }),
+    }),
+  )
 }
 
 export async function deleteAgentProvider(providerID: string) {
-  return requestProviderRuntimeJSON<AgentProviderCatalog>(`/api/v1/agent/providers/${providerID}`, {
-    method: 'DELETE',
-  })
+  return normalizeProviderCatalog(
+    await requestProviderRuntimeJSON<AgentProviderCatalog>(`/api/v1/agent/providers/${providerID}`, {
+      method: 'DELETE',
+    }),
+  )
 }

@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useUnit } from 'effector-react'
 
 import {
+  executeAgentTool,
+  explainTerminalCommand,
   fetchAgentConversation,
   streamAgentConversationMessage,
   type AgentConversationMessage,
@@ -37,8 +40,41 @@ import type {
   ChatMessageView,
   QuestionnaireMessage,
 } from '@/features/agent/model/types'
+import { $terminalPanelBindings, resolveTerminalPanelBinding } from '@/features/terminal/model/panel-registry'
+import { fetchTerminalSnapshot } from '@/features/terminal/api/client'
 import { resolveRuntimeContext } from '@/shared/api/runtime'
 import { blockAiWidget, unblockAiWidget } from '@/shared/model/ai-blocked-widgets'
+import { $activeWidgetHostId } from '@/shared/model/widget-focus'
+
+const runCommandPattern = /^\/run(?:\s+([\s\S]*))?$/
+const runOutputPollIntervalMs = 100
+const runOutputWaitTimeoutMs = 1500
+
+function getRunCommand(prompt: string) {
+  const match = prompt.match(runCommandPattern)
+
+  if (!match) {
+    return null
+  }
+
+  return match[1]?.trim() ?? ''
+}
+
+function targetSessionForConnectionKind(connectionKind: string | undefined) {
+  return connectionKind === 'ssh' ? 'remote' : 'local'
+}
+
+async function waitForTerminalOutput(widgetId: string, fromSeq: number) {
+  const deadline = Date.now() + runOutputWaitTimeoutMs
+  let latestSnapshot = await fetchTerminalSnapshot(widgetId, fromSeq)
+
+  while (latestSnapshot.next_seq <= fromSeq && latestSnapshot.chunks.length === 0 && Date.now() < deadline) {
+    await new Promise((resolve) => window.setTimeout(resolve, runOutputPollIntervalMs))
+    latestSnapshot = await fetchTerminalSnapshot(widgetId, fromSeq)
+  }
+
+  return latestSnapshot
+}
 
 function createOptimisticUserConversationMessage(
   hostId: string,
@@ -118,6 +154,7 @@ function selectPreferredChatModel(
 }
 
 export function useAgentPanel(hostId: string, enabled = true) {
+  const [activeWidgetHostId, terminalPanelBindings] = useUnit([$activeWidgetHostId, $terminalPanelBindings])
   const [messages, setMessages] = useState<AgentConversationMessage[] | null>(null)
   const [interactionMessages, setInteractionMessages] = useState<ChatMessageView[]>([])
   const [pendingFlow, setPendingFlow] = useState<PendingInteractionFlow | null>(null)
@@ -242,6 +279,88 @@ export function useAgentPanel(hostId: string, enabled = true) {
     [],
   )
 
+  const runTerminalPrompt = useCallback(
+    async (prompt: string, repoRoot: string) => {
+      const command = getRunCommand(prompt)
+
+      if (command == null) {
+        return false
+      }
+
+      if (command === '') {
+        throw new Error('Usage: /run <command>')
+      }
+
+      const targetTerminal = resolveTerminalPanelBinding(terminalPanelBindings, activeWidgetHostId)
+
+      if (!targetTerminal) {
+        throw new Error('No terminal widget is available for /run.')
+      }
+
+      const baselineSnapshot = await fetchTerminalSnapshot(targetTerminal.runtimeWidgetId)
+      const targetSession = targetSessionForConnectionKind(baselineSnapshot.state.connection_kind)
+      const targetConnectionId =
+        baselineSnapshot.state.connection_id?.trim() || (targetSession === 'local' ? 'local' : '')
+
+      if (!targetConnectionId) {
+        throw new Error(`Terminal ${targetTerminal.runtimeWidgetId} has no active connection id.`)
+      }
+
+      const executionContext = {
+        action_source: 'frontend.ai.sidebar.run',
+        active_widget_id: targetTerminal.runtimeWidgetId,
+        repo_root: repoRoot,
+        target_connection_id: targetConnectionId,
+        target_session: targetSession,
+      }
+
+      const executionResponse = await executeAgentTool({
+        context: executionContext,
+        input: {
+          append_newline: true,
+          text: command,
+          widget_id: targetTerminal.runtimeWidgetId,
+        },
+        tool_name: 'term.send_input',
+      })
+
+      if (executionResponse.status === 'requires_confirmation') {
+        throw new Error(
+          executionResponse.pending_approval?.summary
+            ? `Confirmation required before /run can continue: ${executionResponse.pending_approval.summary}`
+            : 'Confirmation required before /run can continue.',
+        )
+      }
+
+      if (executionResponse.status !== 'ok') {
+        throw new Error(executionResponse.error?.trim() || 'Unable to execute /run command.')
+      }
+
+      await waitForTerminalOutput(targetTerminal.runtimeWidgetId, baselineSnapshot.next_seq)
+
+      const explainResponse = await explainTerminalCommand({
+        command,
+        context: {
+          ...executionContext,
+          widget_context_enabled: true,
+        },
+        from_seq: baselineSnapshot.next_seq,
+        prompt,
+        widget_id: targetTerminal.runtimeWidgetId,
+      })
+
+      setMessages(explainResponse.conversation.messages)
+      setProvider(explainResponse.conversation.provider)
+
+      if (explainResponse.provider_error?.trim()) {
+        setSubmitError(explainResponse.provider_error.trim())
+      }
+
+      return true
+    },
+    [activeWidgetHostId, terminalPanelBindings],
+  )
+
   const runBackendPrompt = useCallback(
     async (prompt: string, options?: { auditMessageID?: string; model?: string }) => {
       const submissionNonce = submissionNonceRef.current + 1
@@ -258,6 +377,10 @@ export function useAgentPanel(hostId: string, enabled = true) {
 
       try {
         const runtimeContext = await resolveRuntimeContext()
+
+        if (await runTerminalPrompt(prompt, runtimeContext.repoRoot)) {
+          return
+        }
 
         connection = await streamAgentConversationMessage(
           {
@@ -361,7 +484,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
         }
       }
     },
-    [hostId, updateAuditMessageEntries],
+    [hostId, runTerminalPrompt, updateAuditMessageEntries],
   )
 
   const submitDraft = useCallback(async () => {
@@ -387,6 +510,11 @@ export function useAgentPanel(hostId: string, enabled = true) {
       appendAgentConversationMessage(currentMessages ?? [], optimisticUserMessage),
     )
     setDraft('')
+
+    if (getRunCommand(prompt) !== null) {
+      await runBackendPrompt(prompt)
+      return
+    }
 
     if (interactionFlow.flow == null) {
       await runBackendPrompt(prompt, { model: selectedModel || undefined })

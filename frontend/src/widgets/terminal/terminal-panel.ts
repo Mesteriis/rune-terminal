@@ -1,11 +1,14 @@
 import type { DockviewApi } from 'dockview-react'
 
+import { closeTerminalTab, TerminalAPIError } from '@/features/terminal/api/client'
+
 export type TerminalPanelPreset = 'main' | 'workspace'
 
 export type TerminalPanelParams = {
   preset: TerminalPanelPreset
   title: string
   widgetId: string
+  runtimeTabId?: string
 }
 
 function getDefaultTerminalWidgetId(preset: TerminalPanelPreset) {
@@ -15,12 +18,14 @@ function getDefaultTerminalWidgetId(preset: TerminalPanelPreset) {
 export function createTerminalPanelParams(
   preset: TerminalPanelPreset,
   widgetId = getDefaultTerminalWidgetId(preset),
+  runtimeTabId?: string,
 ): TerminalPanelParams {
   if (preset === 'main') {
     return {
       preset,
       title: 'Main terminal',
       widgetId,
+      runtimeTabId,
     }
   }
 
@@ -28,6 +33,7 @@ export function createTerminalPanelParams(
     preset,
     title: 'Workspace shell',
     widgetId,
+    runtimeTabId,
   }
 }
 
@@ -47,7 +53,8 @@ export function isTerminalPanelParams(value: unknown): value is TerminalPanelPar
   return (
     (candidate.preset === 'main' || candidate.preset === 'workspace') &&
     typeof candidate.title === 'string' &&
-    typeof candidate.widgetId === 'string'
+    typeof candidate.widgetId === 'string' &&
+    (candidate.runtimeTabId === undefined || typeof candidate.runtimeTabId === 'string')
   )
 }
 
@@ -83,4 +90,25 @@ export function createNextTerminalPanelId(containerApi: DockviewApi, preset: Ter
   }
 
   return `${idSeed}-${index}`
+}
+
+export async function closeTerminalPanel(
+  panel: {
+    close: () => void
+  },
+  params: TerminalPanelParams,
+) {
+  if (params.runtimeTabId) {
+    try {
+      await closeTerminalTab(params.runtimeTabId)
+    } catch (error) {
+      if (!(error instanceof TerminalAPIError && error.status === 404)) {
+        console.error('Unable to close runtime terminal tab', error)
+        return false
+      }
+    }
+  }
+
+  panel.close()
+  return true
 }

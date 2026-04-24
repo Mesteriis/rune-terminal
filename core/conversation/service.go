@@ -92,7 +92,7 @@ func (s *Service) SubmitWithProvider(ctx context.Context, provider Provider, req
 		return SubmitResult{}, ErrInvalidPrompt
 	}
 
-	userMessage := newMessage(RoleUser, prompt, request.Attachments, StatusComplete, "", "")
+	userMessage := newMessage(RoleUser, prompt, request.Attachments, StatusComplete, "", "", "")
 
 	s.mu.Lock()
 	s.state.Messages = append(s.state.Messages, userMessage)
@@ -149,12 +149,12 @@ func (s *Service) SubmitStreamWithProvider(
 		provider = s.provider
 	}
 
-	userMessage := newMessage(RoleUser, prompt, request.Attachments, StatusComplete, "", "")
+	userMessage := newMessage(RoleUser, prompt, request.Attachments, StatusComplete, "", "", "")
 	info := provider.Info()
 	if model := strings.TrimSpace(request.Model); model != "" {
 		info.Model = model
 	}
-	assistant := newMessage(RoleAssistant, "", nil, StatusStreaming, info.Kind, info.Model)
+	assistant := newMessage(RoleAssistant, "", nil, StatusStreaming, info.Kind, info.Model, "")
 
 	s.mu.Lock()
 	s.state.Messages = append(s.state.Messages, userMessage, assistant)
@@ -231,7 +231,7 @@ func (s *Service) AppendAssistantPromptWithProvider(
 	history := append([]Message(nil), s.state.Messages...)
 	s.mu.RUnlock()
 
-	history = append(history, newMessage(RoleUser, prompt, nil, StatusComplete, "", ""))
+	history = append(history, newMessage(RoleUser, prompt, nil, StatusComplete, "", "", ""))
 	result, info, providerErr := s.completeWithProvider(provider, ctx, systemPrompt, history, "")
 	return s.appendAssistantResult(result, info, providerErr)
 }
@@ -281,7 +281,15 @@ func (s *Service) AppendMessages(requests []AppendMessageRequest) (Snapshot, err
 }
 
 func (s *Service) appendAssistantResult(result CompletionResult, info ProviderInfo, providerErr error) (SubmitResult, error) {
-	assistant := newMessage(RoleAssistant, "", nil, StatusComplete, info.Kind, info.Model)
+	assistant := newMessage(
+		RoleAssistant,
+		"",
+		nil,
+		StatusComplete,
+		info.Kind,
+		info.Model,
+		reasoningFromResult(result, info),
+	)
 	if providerErr != nil {
 		assistant.Status = StatusError
 		assistant.Content = strings.TrimSpace(providerErr.Error())
@@ -332,6 +340,7 @@ func newMessage(
 	status MessageStatus,
 	provider string,
 	model string,
+	reasoning string,
 ) Message {
 	return Message{
 		ID:          ids.New("msg"),
@@ -341,8 +350,27 @@ func newMessage(
 		Status:      status,
 		Provider:    provider,
 		Model:       model,
+		Reasoning:   strings.TrimSpace(reasoning),
 		CreatedAt:   time.Now().UTC(),
 	}
+}
+
+func reasoningFromResult(result CompletionResult, info ProviderInfo) string {
+	reasoning := strings.TrimSpace(result.Reasoning)
+	if reasoning != "" {
+		return reasoning
+	}
+	if info.Kind == "" && strings.TrimSpace(info.Model) == "" {
+		return ""
+	}
+	parts := []string{}
+	if strings.TrimSpace(info.Kind) != "" {
+		parts = append(parts, "provider: "+strings.TrimSpace(info.Kind))
+	}
+	if strings.TrimSpace(info.Model) != "" {
+		parts = append(parts, "model: "+strings.TrimSpace(info.Model))
+	}
+	return strings.Join(parts, ", ")
 }
 
 func cloneAttachmentReferences(attachments []AttachmentReference) []AttachmentReference {
@@ -432,6 +460,7 @@ func (s *Service) finalizeAssistantStreamResult(
 	assistant.Provider = info.Kind
 	assistant.Model = info.Model
 	assistant.Status = StatusComplete
+	assistant.Reasoning = reasoningFromResult(result, info)
 
 	currentContent := strings.TrimSpace(assistant.Content)
 	switch {

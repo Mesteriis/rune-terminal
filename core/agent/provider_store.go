@@ -9,7 +9,7 @@ import (
 	"github.com/Mesteriis/rune-terminal/internal/ids"
 )
 
-const defaultCodexModel = "gpt-5-codex"
+const defaultCodexModel = "gpt-5.4"
 const defaultCodexCommand = "codex"
 const defaultClaudeModel = "sonnet"
 const defaultClaudeCommand = "claude"

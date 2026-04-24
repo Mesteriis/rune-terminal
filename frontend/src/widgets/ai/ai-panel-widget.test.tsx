@@ -1,7 +1,12 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import {
+  registerTerminalPanelBinding,
+  resetTerminalPanelBindingsForTests,
+} from '@/features/terminal/model/panel-registry'
 import { resetRuntimeContextCacheForTests } from '@/shared/api/runtime'
+import { clearActiveWidgetHostId, setActiveWidgetHostId } from '@/shared/model/widget-focus'
 import { AiPanelWidget } from '@/widgets/ai/ai-panel-widget'
 import { aiPanelWidgetMockState } from '@/widgets/ai/ai-panel-widget.mock'
 
@@ -108,6 +113,8 @@ function createProviderCatalogFetchResponse(chatModels: string[] = ['stub-model'
 describe('AiPanelWidget backend conversation path', () => {
   afterEach(() => {
     resetRuntimeContextCacheForTests()
+    resetTerminalPanelBindingsForTests()
+    clearActiveWidgetHostId()
     vi.restoreAllMocks()
     vi.unstubAllEnvs()
   })
@@ -491,6 +498,186 @@ describe('AiPanelWidget backend conversation path', () => {
 
     expect(screen.getByText('Execution cancelled.')).toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledTimes(3)
+  })
+
+  it('routes /run prompts into terminal execution instead of provider chat streaming', async () => {
+    registerTerminalPanelBinding({
+      hostId: 'terminal',
+      preset: 'workspace',
+      runtimeWidgetId: 'term-side',
+    })
+    setActiveWidgetHostId('terminal')
+
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          conversation: {
+            messages: [],
+            provider: {
+              kind: 'codex',
+              base_url: 'http://codex',
+              model: 'stub-model',
+              streaming: false,
+            },
+            updated_at: '2026-04-21T10:00:00Z',
+          },
+        }),
+      })
+      .mockResolvedValueOnce(createProviderCatalogFetchResponse())
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          state: {
+            widget_id: 'term-side',
+            session_id: 'term-side',
+            shell: '/bin/zsh',
+            connection_id: 'local',
+            connection_kind: 'local',
+            pid: 100,
+            status: 'running',
+            started_at: '2026-04-21T10:00:00Z',
+            can_send_input: true,
+            can_interrupt: true,
+          },
+          chunks: [],
+          next_seq: 4,
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          status: 'ok',
+          output: {
+            append_newline: true,
+            bytes_sent: 11,
+            widget_id: 'term-side',
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          state: {
+            widget_id: 'term-side',
+            session_id: 'term-side',
+            shell: '/bin/zsh',
+            connection_id: 'local',
+            connection_kind: 'local',
+            pid: 100,
+            status: 'running',
+            started_at: '2026-04-21T10:00:00Z',
+            can_send_input: true,
+            can_interrupt: true,
+          },
+          chunks: [
+            {
+              seq: 4,
+              data: 'run-widget-test\n',
+              timestamp: '2026-04-21T10:00:01Z',
+            },
+          ],
+          next_seq: 5,
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          conversation: {
+            messages: [
+              {
+                id: 'msg_user',
+                role: 'user',
+                content: '/run echo run-widget-test',
+                status: 'complete',
+                created_at: '2026-04-21T10:00:00Z',
+              },
+              {
+                id: 'msg_exec',
+                role: 'assistant',
+                content: 'Executed `echo run-widget-test`.\n\n```text\nrun-widget-test\n```',
+                status: 'complete',
+                provider: 'codex',
+                model: 'stub-model',
+                created_at: '2026-04-21T10:00:01Z',
+              },
+              {
+                id: 'msg_explain',
+                role: 'assistant',
+                content: 'Ran `echo run-widget-test` and got the expected output.',
+                status: 'complete',
+                provider: 'codex',
+                model: 'stub-model',
+                created_at: '2026-04-21T10:00:02Z',
+              },
+            ],
+            provider: {
+              kind: 'codex',
+              base_url: 'http://codex',
+              model: 'stub-model',
+              streaming: false,
+            },
+            updated_at: '2026-04-21T10:00:02Z',
+          },
+          provider_error: '',
+          output_excerpt: 'run-widget-test',
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<AiPanelWidget hostId="ai-shell-panel" />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Backend conversation is empty.')).toBeInTheDocument()
+    })
+
+    fireEvent.change(screen.getByPlaceholderText('Text Area'), {
+      target: { value: '/run echo run-widget-test' },
+    })
+    fireEvent.click(screen.getByLabelText('Send prompt'))
+
+    await waitFor(() => {
+      expect(
+        screen.getByText((value) => value.includes('Executed `echo run-widget-test`')),
+      ).toBeInTheDocument()
+    })
+
+    expect(screen.getByText('Ran `echo run-widget-test` and got the expected output.')).toBeInTheDocument()
+    expect(
+      fetchMock.mock.calls.some((call) =>
+        String(call[0]).includes('/api/v1/agent/conversation/messages/stream'),
+      ),
+    ).toBe(false)
+    expect(fetchMock.mock.calls[3]?.[0]).toBe('http://127.0.0.1:8090/api/v1/terminal/term-side')
+    expect(fetchMock.mock.calls[4]?.[0]).toBe('http://127.0.0.1:8090/api/v1/tools/execute')
+    expect(fetchMock.mock.calls[5]?.[0]).toBe('http://127.0.0.1:8090/api/v1/terminal/term-side?from=4')
+    expect(fetchMock.mock.calls[6]?.[0]).toBe('http://127.0.0.1:8090/api/v1/agent/terminal-commands/explain')
+    expect(JSON.parse(String(fetchMock.mock.calls[4]?.[1]?.body))).toEqual({
+      context: {
+        action_source: 'frontend.ai.sidebar.run',
+        active_widget_id: 'term-side',
+        repo_root: '/Users/avm/projects/runa-terminal',
+        target_connection_id: 'local',
+        target_session: 'local',
+      },
+      input: {
+        append_newline: true,
+        text: 'echo run-widget-test',
+        widget_id: 'term-side',
+      },
+      tool_name: 'term.send_input',
+    })
   })
 
   it('updates detail visibility immediately when the chat mode changes', () => {

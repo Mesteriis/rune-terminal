@@ -33,6 +33,7 @@ type Message struct {
 	Status      MessageStatus         `json:"status"`
 	Provider    string                `json:"provider,omitempty"`
 	Model       string                `json:"model,omitempty"`
+	Reasoning   string                `json:"reasoning,omitempty"`
 	CreatedAt   time.Time             `json:"created_at"`
 }
 
@@ -83,8 +84,9 @@ type CompletionRequest struct {
 }
 
 type CompletionResult struct {
-	Content string
-	Model   string
+	Content   string
+	Model     string
+	Reasoning string
 }
 
 type StreamEventType string

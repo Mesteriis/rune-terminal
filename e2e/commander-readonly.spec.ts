@@ -1,78 +1,14 @@
-import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 
-const backendUrl = 'http://127.0.0.1:8092'
-const authToken = 'commander-e2e-token'
-
-type BootstrapPayload = {
-  home_dir: string
-  repo_root: string
-}
-
-function formatDisplayPath(path: string, homeDir: string) {
-  if (path === homeDir) {
-    return '~'
-  }
-
-  if (homeDir && path.startsWith(`${homeDir}/`)) {
-    return `~${path.slice(homeDir.length)}`
-  }
-
-  return path
-}
-
-async function mkdirViaApi(request: APIRequestContext, path: string) {
-  const response = await request.post(`${backendUrl}/api/v1/fs/mkdir`, {
-    data: { path },
-    headers: {
-      Authorization: `Bearer ${authToken}`,
-    },
-  })
-
-  expect(response.ok()).toBeTruthy()
-}
-
-async function copyViaApi(request: APIRequestContext, sourcePath: string, targetPath: string) {
-  const response = await request.post(`${backendUrl}/api/v1/fs/copy`, {
-    data: {
-      source_paths: [sourcePath],
-      target_path: targetPath,
-    },
-    headers: {
-      Authorization: `Bearer ${authToken}`,
-    },
-  })
-
-  expect(response.ok()).toBeTruthy()
-}
-
-async function listDirectoryViaApi(request: APIRequestContext, path: string) {
-  const response = await request.get(`${backendUrl}/api/v1/fs/list?path=${encodeURIComponent(path)}`, {
-    headers: {
-      Authorization: `Bearer ${authToken}`,
-    },
-  })
-
-  expect(response.ok()).toBeTruthy()
-  return response.json() as Promise<{
-    directories?: Array<{ name: string }>
-    files?: Array<{ name: string }>
-    path: string
-  }>
-}
-
-async function readFileViaApi(request: APIRequestContext, path: string) {
-  const response = await request.get(`${backendUrl}/api/v1/fs/file?path=${encodeURIComponent(path)}`, {
-    headers: {
-      Authorization: `Bearer ${authToken}`,
-    },
-  })
-
-  expect(response.ok()).toBeTruthy()
-  return response.json() as Promise<{
-    content: string
-    path: string
-  }>
-}
+import {
+  clearBrowserState,
+  copyViaApi,
+  fetchBootstrap,
+  formatDisplayPath,
+  listDirectoryViaApi,
+  mkdirViaApi,
+  readFileViaApi,
+} from './runtime'
 
 function getPane(page: Page, paneId: 'left' | 'right') {
   return {
@@ -107,14 +43,7 @@ test('commander read-only wiring loads repo paths, navigates by tilde path, and 
   page,
   request,
 }) => {
-  const bootstrapResponse = await request.get(`${backendUrl}/api/v1/bootstrap`, {
-    headers: {
-      Authorization: `Bearer ${authToken}`,
-    },
-  })
-  expect(bootstrapResponse.ok()).toBeTruthy()
-
-  const bootstrap = (await bootstrapResponse.json()) as BootstrapPayload
+  const bootstrap = await fetchBootstrap(request)
   const repoRootDisplayPath = formatDisplayPath(bootstrap.repo_root, bootstrap.home_dir)
   const targetDirectoryPath = `${bootstrap.repo_root}/core/transport/httpapi`
   const targetDirectoryInput = formatDisplayPath(targetDirectoryPath, bootstrap.home_dir)
@@ -124,10 +53,7 @@ test('commander read-only wiring loads repo paths, navigates by tilde path, and 
     .locator('[id*="commander-pane-left-row-"][id*="handlers-system-go-name-"]')
     .first()
 
-  await page.addInitScript(() => {
-    window.localStorage.clear()
-  })
-
+  await clearBrowserState(page)
   await page.goto('/')
 
   const coreRows = page.getByText('core', { exact: true })
@@ -163,14 +89,7 @@ test('commander mkdir creates a directory over the backend and focuses the new e
   page,
   request,
 }) => {
-  const bootstrapResponse = await request.get(`${backendUrl}/api/v1/bootstrap`, {
-    headers: {
-      Authorization: `Bearer ${authToken}`,
-    },
-  })
-  expect(bootstrapResponse.ok()).toBeTruthy()
-
-  const bootstrap = (await bootstrapResponse.json()) as BootstrapPayload
+  const bootstrap = await fetchBootstrap(request)
   const repoRootDisplayPath = formatDisplayPath(bootstrap.repo_root, bootstrap.home_dir)
   const tmpDirectoryPath = `${bootstrap.repo_root}/tmp`
   const tmpDirectoryDisplayPath = formatDisplayPath(tmpDirectoryPath, bootstrap.home_dir)
@@ -180,10 +99,7 @@ test('commander mkdir creates a directory over the backend and focuses the new e
   const leftPanePath = page.locator('[id^="shell-tool-commander-pane-left-path-r"]').first()
   const tmpRow = page.locator('[id*="commander-pane-left-row-"][id*="-tmp-name-"]').first()
 
-  await page.addInitScript(() => {
-    window.localStorage.clear()
-  })
-
+  await clearBrowserState(page)
   await page.goto('/')
   await expect(leftPanePath).toHaveText(repoRootDisplayPath)
 
@@ -210,14 +126,7 @@ test('commander copy, rename, move, and delete run through backend mutations', a
   page,
   request,
 }) => {
-  const bootstrapResponse = await request.get(`${backendUrl}/api/v1/bootstrap`, {
-    headers: {
-      Authorization: `Bearer ${authToken}`,
-    },
-  })
-  expect(bootstrapResponse.ok()).toBeTruthy()
-
-  const bootstrap = (await bootstrapResponse.json()) as BootstrapPayload
+  const bootstrap = await fetchBootstrap(request)
   const stamp = Date.now()
   const sourcePath = `${bootstrap.repo_root}/tmp/source-e2e-${stamp}`
   const copyTargetPath = `${bootstrap.repo_root}/tmp/copy-e2e-${stamp}`
@@ -234,10 +143,7 @@ test('commander copy, rename, move, and delete run through backend mutations', a
   await mkdirViaApi(request, moveTargetPath)
   await copyViaApi(request, `${bootstrap.repo_root}/README.md`, sourcePath)
 
-  await page.addInitScript(() => {
-    window.localStorage.clear()
-  })
-
+  await clearBrowserState(page)
   await page.goto('/')
   await setPanePath(page, 'left', sourceDisplayPath)
   await setPanePath(page, 'right', copyTargetDisplayPath)
@@ -302,14 +208,7 @@ test('commander same-pane clone copy and F4 save run through backend file APIs',
   page,
   request,
 }) => {
-  const bootstrapResponse = await request.get(`${backendUrl}/api/v1/bootstrap`, {
-    headers: {
-      Authorization: `Bearer ${authToken}`,
-    },
-  })
-  expect(bootstrapResponse.ok()).toBeTruthy()
-
-  const bootstrap = (await bootstrapResponse.json()) as BootstrapPayload
+  const bootstrap = await fetchBootstrap(request)
   const stamp = Date.now()
   const cloneRootPath = `${bootstrap.repo_root}/tmp/clone-e2e-${stamp}`
   const cloneRootDisplayPath = formatDisplayPath(cloneRootPath, bootstrap.home_dir)
@@ -321,10 +220,7 @@ test('commander same-pane clone copy and F4 save run through backend file APIs',
   await mkdirViaApi(request, cloneRootPath)
   await copyViaApi(request, `${bootstrap.repo_root}/README.md`, cloneRootPath)
 
-  await page.addInitScript(() => {
-    window.localStorage.clear()
-  })
-
+  await clearBrowserState(page)
   await page.goto('/')
   await setPanePath(page, 'left', cloneRootDisplayPath)
   await setPanePath(page, 'right', cloneRootDisplayPath)
@@ -343,7 +239,7 @@ test('commander same-pane clone copy and F4 save run through backend file APIs',
     })
     .toContain(cloneFileName)
 
-  await page.keyboard.press('F4')
+  await page.getByRole('button', { name: 'F4 Edit' }).click()
   const editor = page.getByRole('textbox', { name: `Edit ${cloneFileName}` })
   await expect(editor).toBeVisible()
   await editor.fill(`# clone ${stamp}\n`)

@@ -2,6 +2,10 @@ import { useUnit } from 'effector-react'
 import type { IDockviewPanelProps } from 'dockview-react'
 import { useCallback, useEffect, useState } from 'react'
 
+import {
+  registerTerminalPanelBinding,
+  unregisterTerminalPanelBinding,
+} from '@/features/terminal/model/panel-registry'
 import { $activeWidgetHostId, setActiveWidgetHostId } from '@/shared/model/widget-focus'
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { Box, Text } from '@/shared/ui/primitives'
@@ -78,6 +82,23 @@ export function DockviewPanelWidget(props: IDockviewPanelProps) {
 
     groupElement.dataset.runaWidgetFocusState = isActiveWidget ? 'active' : 'inactive'
   }, [activeWidgetHostId, isActiveWidget, panelGroupElement])
+
+  useEffect(() => {
+    if (!terminalModel) {
+      return
+    }
+
+    registerTerminalPanelBinding({
+      hostId: props.api.id,
+      preset: terminalModel.preset,
+      runtimeTabId: terminalModel.runtimeTabId,
+      runtimeWidgetId: terminalModel.widgetId,
+    })
+
+    return () => {
+      unregisterTerminalPanelBinding({ hostId: props.api.id })
+    }
+  }, [props.api.id, terminalModel])
 
   return (
     <RunaDomScopeProvider component="dockview-panel-widget" widget={props.api.id}>

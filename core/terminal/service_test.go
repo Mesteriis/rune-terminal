@@ -126,6 +126,33 @@ func TestTerminalServiceSnapshotAndInput(t *testing.T) {
 	}
 }
 
+func TestSnapshotReturnsEmptyChunkSliceForFreshSession(t *testing.T) {
+	t.Parallel()
+
+	process := &fakeProcess{
+		outputCh: make(chan []byte, 1),
+		waitCh:   make(chan struct{}),
+	}
+	service := NewService(fakeLauncher{process: process})
+	if _, err := service.StartSession(context.Background(), LaunchOptions{WidgetID: "term-fresh", Shell: "/bin/sh"}); err != nil {
+		t.Fatalf("StartSession error: %v", err)
+	}
+
+	snapshot, err := service.Snapshot("term-fresh", 0)
+	if err != nil {
+		t.Fatalf("Snapshot error: %v", err)
+	}
+	if snapshot.Chunks == nil {
+		t.Fatal("expected empty chunk slice, got nil")
+	}
+	if len(snapshot.Chunks) != 0 {
+		t.Fatalf("expected no buffered chunks, got %d", len(snapshot.Chunks))
+	}
+	if snapshot.NextSeq != 1 {
+		t.Fatalf("expected next seq 1 for fresh session, got %d", snapshot.NextSeq)
+	}
+}
+
 func TestSSHSessionUsesSharedSnapshotAndChunkSequenceModel(t *testing.T) {
 	t.Parallel()
 

@@ -46,6 +46,36 @@ func TestServiceSubmitPersistsConversation(t *testing.T) {
 	}
 }
 
+func TestServiceSubmitPropagatesReasoningFromProvider(t *testing.T) {
+	t.Parallel()
+
+	service, err := NewService(filepath.Join(t.TempDir(), "conversation.json"), stubProvider{
+		info: ProviderInfo{Kind: "stub", BaseURL: "http://stub", Model: "stub-model"},
+		result: CompletionResult{
+			Content:   "hello from assistant",
+			Model:     "stub-model",
+			Reasoning: "mock reasoning for test",
+		},
+	})
+	if err != nil {
+		t.Fatalf("new service: %v", err)
+	}
+
+	result, err := service.Submit(context.Background(), SubmitRequest{
+		SystemPrompt: "system prompt",
+		Prompt:       "hello",
+	})
+	if err != nil {
+		t.Fatalf("submit: %v", err)
+	}
+	if got := result.Assistant.Reasoning; got != "mock reasoning for test" {
+		t.Fatalf("expected reasoning, got %q", got)
+	}
+	if result.Snapshot.Messages[1].Reasoning != "mock reasoning for test" {
+		t.Fatalf("expected snapshot reasoning, got %q", result.Snapshot.Messages[1].Reasoning)
+	}
+}
+
 func TestServiceSubmitRecordsProviderFailureInTranscript(t *testing.T) {
 	t.Parallel()
 

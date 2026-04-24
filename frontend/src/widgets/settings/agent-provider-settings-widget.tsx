@@ -140,6 +140,8 @@ function formatCLIStatus(state?: string) {
   switch (state) {
     case 'ready':
       return 'CLI ready'
+    case 'auth-required':
+      return 'Login required'
     default:
       return 'CLI missing'
   }
