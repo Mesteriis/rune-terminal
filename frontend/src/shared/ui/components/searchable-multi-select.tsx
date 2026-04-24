@@ -20,13 +20,17 @@ export type SearchableMultiSelectProps = {
 const rootStyle = {
   display: 'flex',
   flexDirection: 'column' as const,
-  gap: 'var(--gap-sm)',
+  gap: 'var(--gap-xs)',
+}
+
+const inputStyle = {
+  background: 'var(--color-surface-glass-strong)',
 }
 
 const optionsStyle = {
   display: 'flex',
   flexDirection: 'column' as const,
-  gap: 'var(--gap-xs)',
+  gap: '6px',
   maxHeight: '240px',
   overflow: 'auto',
   padding: 0,
@@ -39,8 +43,14 @@ const optionsStyle = {
 }
 
 const optionButtonStyle = {
+  minHeight: '42px',
   justifyContent: 'space-between',
   width: '100%',
+  padding: 'var(--space-xs) var(--space-sm)',
+  borderRadius: 'var(--radius-sm)',
+  borderColor: 'var(--color-border-strong)',
+  background: 'color-mix(in srgb, var(--color-surface-glass-strong) 84%, transparent)',
+  boxShadow: 'none',
 }
 
 const optionTextClusterStyle = {
@@ -49,9 +59,36 @@ const optionTextClusterStyle = {
   alignItems: 'flex-start',
   minWidth: 0,
   gap: '2px',
+  flex: 1,
 }
 
 const optionMetaStyle = {
+  color: 'var(--color-text-secondary)',
+  fontSize: '12px',
+  lineHeight: '16px',
+}
+
+const optionActionStyle = {
+  minWidth: '60px',
+  padding: '0 var(--space-xs)',
+  border: '1px solid var(--color-border-strong)',
+  borderRadius: 'var(--radius-xs)',
+  background: 'color-mix(in srgb, var(--color-surface-glass-soft) 82%, transparent)',
+  color: 'var(--color-text-secondary)',
+  fontSize: '11px',
+  lineHeight: '16px',
+  textTransform: 'uppercase' as const,
+  letterSpacing: '0.04em',
+  textAlign: 'center' as const,
+}
+
+const optionActionSelectedStyle = {
+  background: 'color-mix(in srgb, var(--color-accent-emerald-soft) 22%, var(--color-surface-glass-soft))',
+  color: 'var(--color-text-primary)',
+}
+
+const emptyStateStyle = {
+  padding: 'var(--space-sm)',
   color: 'var(--color-text-secondary)',
 }
 
@@ -95,6 +132,7 @@ export function SearchableMultiSelect({
         aria-controls={listboxId}
         onChange={(event) => setQuery(event.target.value)}
         placeholder={searchPlaceholder}
+        style={inputStyle}
         value={query}
       />
       <Box
@@ -119,11 +157,13 @@ export function SearchableMultiSelect({
                 <Text>{option.title ?? option.label}</Text>
                 {option.meta ? <Text style={optionMetaStyle}>{option.meta}</Text> : null}
               </Box>
-              <Text style={optionMetaStyle}>{isSelected ? 'Selected' : 'Add'}</Text>
+              <Text style={{ ...optionActionStyle, ...(isSelected ? optionActionSelectedStyle : {}) }}>
+                {isSelected ? 'Selected' : 'Add'}
+              </Text>
             </Button>
           )
         })}
-        {filteredOptions.length === 0 ? <Text>No matching options</Text> : null}
+        {filteredOptions.length === 0 ? <Text style={emptyStateStyle}>No matching options</Text> : null}
       </Box>
     </Box>
   )

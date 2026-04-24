@@ -679,7 +679,7 @@ export const aiComposerContextMenuWrapStyle: CSSProperties = {
 export const aiComposerContextMenuStyle: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
-  gap: 'var(--gap-sm)',
+  gap: 'var(--gap-xs)',
   padding: 'var(--space-md)',
   borderColor: 'var(--color-border-strong)',
   background: 'color-mix(in srgb, var(--color-canvas-elevated) 82%, transparent)',
@@ -690,19 +690,24 @@ export const aiComposerContextMenuStyle: CSSProperties = {
 
 export const aiComposerContextMenuHeaderStyle: CSSProperties = {
   display: 'flex',
-  flexDirection: 'column',
-  gap: 'var(--gap-xs)',
+  alignItems: 'flex-start',
+  justifyContent: 'space-between',
+  gap: 'var(--space-sm)',
 }
 
 export const aiComposerContextSummaryListStyle: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
-  gap: 'var(--gap-xs)',
+  gap: '6px',
+  padding: 'var(--space-sm)',
+  border: '1px solid var(--color-border-strong)',
+  borderRadius: 'var(--radius-sm)',
+  background: 'color-mix(in srgb, var(--color-surface-glass-soft) 82%, transparent)',
 }
 
 export const aiComposerContextSummaryRowStyle: CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: '86px minmax(0, 1fr)',
+  gridTemplateColumns: '72px minmax(0, 1fr)',
   gap: 'var(--space-sm)',
   alignItems: 'start',
 }
@@ -720,14 +725,14 @@ export const aiComposerContextSummaryValueStyle: CSSProperties = {
   color: 'var(--color-text-primary)',
   fontFamily: 'var(--font-family-mono)',
   fontSize: '12px',
-  lineHeight: '18px',
+  lineHeight: '16px',
   whiteSpace: 'pre-wrap',
   wordBreak: 'break-word',
 }
 
 export const aiComposerContextQuickActionsStyle: CSSProperties = {
   display: 'flex',
-  gap: 'var(--gap-sm)',
+  gap: 'var(--gap-xs)',
   flexWrap: 'wrap',
 }
 
@@ -753,6 +758,6 @@ export const aiComposerContextMenuMetaStyle: CSSProperties = {
   color: 'var(--color-text-secondary)',
   fontFamily: 'var(--font-family-mono)',
   fontSize: '12px',
-  lineHeight: '18px',
+  lineHeight: '16px',
   whiteSpace: 'pre-wrap',
 }
