@@ -97,6 +97,8 @@ describe('AiComposerWidget', () => {
   it('shows context summary in the toolbar and exposes quick actions for the active widget', () => {
     const onContextUseCurrentWidget = vi.fn()
     const onContextOnlyUseCurrentWidget = vi.fn()
+    const onContextUseAllWidgets = vi.fn()
+    const onContextUseDefault = vi.fn()
 
     render(
       <AiComposerWidget
@@ -124,8 +126,10 @@ describe('AiComposerWidget', () => {
             meta: 'term-side · terminal · local',
           },
         ]}
+        onContextUseDefault={onContextUseDefault}
         onContextOnlyUseCurrentWidget={onContextOnlyUseCurrentWidget}
         onContextUseCurrentWidget={onContextUseCurrentWidget}
+        onContextUseAllWidgets={onContextUseAllWidgets}
         placeholder="Text Area"
         selectedContextWidgetIDs={['term-side']}
         toolbarLabel="TOOL BAR"
@@ -149,9 +153,13 @@ describe('AiComposerWidget', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Use current' }))
     fireEvent.click(screen.getByRole('button', { name: 'Only current' }))
+    fireEvent.click(screen.getByRole('button', { name: 'All widgets' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Use default' }))
 
     expect(onContextUseCurrentWidget).toHaveBeenCalledTimes(1)
     expect(onContextOnlyUseCurrentWidget).toHaveBeenCalledTimes(1)
+    expect(onContextUseAllWidgets).toHaveBeenCalledTimes(1)
+    expect(onContextUseDefault).toHaveBeenCalledTimes(1)
   })
 
   it('shows selected context chips and lets the operator remove a widget without reopening the dropdown', () => {

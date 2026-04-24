@@ -75,6 +75,8 @@ export type AiComposerWidgetProps = {
   onContextOptionsOpen?: () => void
   onContextUseCurrentWidget?: () => void
   onContextOnlyUseCurrentWidget?: () => void
+  onContextUseAllWidgets?: () => void
+  onContextUseDefault?: () => void
   onSelectedContextWidgetIDsChange?: (value: string[]) => void
   onWidgetContextEnabledChange?: (value: boolean) => void
   submitMode?: AiComposerSubmitMode
@@ -100,6 +102,8 @@ export function AiComposerWidget({
   onContextOptionsOpen,
   onContextUseCurrentWidget,
   onContextOnlyUseCurrentWidget,
+  onContextUseAllWidgets,
+  onContextUseDefault,
   onSelectedContextWidgetIDsChange,
   onWidgetContextEnabledChange,
   selectedContextWidgetIDs = [],
@@ -142,6 +146,11 @@ export function AiComposerWidget({
     activeContextWidgetID != null && selectedContextWidgetIDs.includes(activeContextWidgetID)
   const showCurrentContextStrip =
     isWidgetContextEnabled && selectedContextCount === 0 && activeContextWidgetOption != null
+  const allContextWidgetIDs = contextWidgetOptions.map((option) => option.value)
+  const areAllWidgetsSelected =
+    contextWidgetOptions.length > 0 &&
+    allContextWidgetIDs.every((widgetID) => selectedContextWidgetIDs.includes(widgetID)) &&
+    selectedContextWidgetIDs.length === contextWidgetOptions.length
 
   const handleRemoveContextWidget = (widgetID: string) => {
     onSelectedContextWidgetIDsChange?.(
@@ -376,6 +385,20 @@ export function AiComposerWidget({
                     style={aiComposerContextQuickActionStyle}
                   >
                     Only current
+                  </Button>
+                  <Button
+                    disabled={disabled || contextWidgetOptions.length === 0 || areAllWidgetsSelected}
+                    onClick={() => onContextUseAllWidgets?.()}
+                    style={aiComposerContextQuickActionStyle}
+                  >
+                    All widgets
+                  </Button>
+                  <Button
+                    disabled={disabled || (!isWidgetContextEnabled && selectedContextCount === 0)}
+                    onClick={() => onContextUseDefault?.()}
+                    style={aiComposerContextQuickActionStyle}
+                  >
+                    Use default
                   </Button>
                 </Box>
                 <SwitcherControl

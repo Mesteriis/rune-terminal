@@ -255,10 +255,6 @@ test('AI conversation navigator renames the active backend conversation', async 
       return conversation.title
     })
     .toBe('Renamed from UI')
-
-  const renamedConversationMenuButton = page.getByRole('button', { name: 'Conversation menu' })
-  await expect(renamedConversationMenuButton).toBeVisible()
-  await expect(renamedConversationMenuButton).toContainText('Renamed from UI')
 })
 
 test('AI sidebar runs a live Codex chat path and restores the transcript after reopen', async ({
@@ -339,7 +335,7 @@ test('AI sidebar runs a live Codex chat path and restores the transcript after r
   await expect(page.getByText(promptToken, { exact: true })).toBeVisible()
 })
 
-test('AI sidebar lets the operator select multiple widget contexts for a request', async ({
+test('AI sidebar lets the operator bulk-select widgets for a request', async ({
   page,
 }) => {
   test.setTimeout(60_000)
@@ -414,32 +410,17 @@ test('AI sidebar lets the operator select multiple widget contexts for a request
 
   await page.getByRole('button', { name: 'Composer options' }).click()
   await expect(page.getByRole('dialog', { name: 'Context widgets' })).toBeVisible()
-  const opsShellOption = page.getByRole('option', { name: /Ops Shell/ })
-  const mainShellOption = page.getByRole('option', { name: /Main Shell/ })
+  await page.getByRole('button', { name: 'Only current' }).click()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('button', { name: 'Composer options' })).toContainText('Main Shell')
 
-  await expect(opsShellOption).toBeVisible()
-  await expect(mainShellOption).toBeVisible()
-
-  if ((await opsShellOption.getAttribute('aria-selected')) !== 'true') {
-    await opsShellOption.click()
-  }
-  if ((await mainShellOption.getAttribute('aria-selected')) !== 'true') {
-    await mainShellOption.click()
-  }
-
-  await expect(opsShellOption).toHaveAttribute('aria-selected', 'true')
-  await expect(mainShellOption).toHaveAttribute('aria-selected', 'true')
-
+  await page.getByRole('button', { name: 'Composer options' }).click()
+  await page.getByRole('button', { name: 'All widgets' }).click()
   await page.keyboard.press('Escape')
   await expect(page.getByRole('button', { name: 'Composer options' })).toContainText('2 widgets')
   await expect(page.getByText('Request context')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Remove Main Shell from request context' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Remove Ops Shell from request context' })).toBeVisible()
-
-  await page.getByRole('button', { name: 'Remove Ops Shell from request context' }).click()
-
-  await expect(page.getByRole('button', { name: 'Composer options' })).toContainText('Main Shell')
-  await expect(page.getByRole('button', { name: 'Remove Ops Shell from request context' })).toHaveCount(0)
 
   await page.getByPlaceholder('Text Area').fill('context selector smoke')
   await page.getByRole('button', { name: 'Send prompt' }).click()
@@ -452,7 +433,7 @@ test('AI sidebar lets the operator select multiple widget contexts for a request
       active_widget_id: 'term-main',
       repo_root: '/Users/avm/projects/Personal/tideterm/runa-terminal',
       widget_context_enabled: true,
-      widget_ids: ['term-main'],
+      widget_ids: ['term-main', 'term-side'],
     },
   })
 

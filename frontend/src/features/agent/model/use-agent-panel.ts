@@ -700,6 +700,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
   const updateSelectedContextWidgetIDs = useCallback((widgetIDs: string[]) => {
     hasCustomizedContextWidgetSelectionRef.current = true
     setSelectedContextWidgetIDs(deduplicateWidgetIDs(widgetIDs))
+    setIsWidgetContextEnabled(true)
   }, [])
 
   const loadContextWidgets = useCallback(async () => {
@@ -759,6 +760,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
         }
 
         hasCustomizedContextWidgetSelectionRef.current = true
+        setIsWidgetContextEnabled(true)
         setSelectedContextWidgetIDs((currentSelection) =>
           mode === 'replace' ? [activeWidgetID] : deduplicateWidgetIDs([...currentSelection, activeWidgetID]),
         )
@@ -771,6 +773,37 @@ export function useAgentPanel(hostId: string, enabled = true) {
     },
     [loadContextWidgets],
   )
+
+  const useAllContextWidgets = useCallback(async () => {
+    try {
+      const snapshot = await loadContextWidgets()
+      const nextWidgetIDs = deduplicateWidgetIDs(snapshot.options.map((option) => option.value))
+
+      hasCustomizedContextWidgetSelectionRef.current = true
+      setIsWidgetContextEnabled(true)
+      setSelectedContextWidgetIDs(nextWidgetIDs)
+      setContextWidgetLoadError(null)
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error && error.message.trim() ? error.message : 'Unable to load workspace widgets.'
+      setContextWidgetLoadError(errorMessage)
+    }
+  }, [loadContextWidgets])
+
+  const resetContextWidgetSelection = useCallback(async () => {
+    try {
+      await loadContextWidgets()
+
+      hasCustomizedContextWidgetSelectionRef.current = false
+      setIsWidgetContextEnabled(true)
+      setSelectedContextWidgetIDs([])
+      setContextWidgetLoadError(null)
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error && error.message.trim() ? error.message : 'Unable to load workspace widgets.'
+      setContextWidgetLoadError(errorMessage)
+    }
+  }, [loadContextWidgets])
 
   const activeContextWidgetOption = useMemo(() => {
     if (!workspaceActiveWidgetID) {
@@ -1253,6 +1286,8 @@ export function useAgentPanel(hostId: string, enabled = true) {
     setSelectedContextWidgetIDs: updateSelectedContextWidgetIDs,
     switchConversation,
     renameConversation,
+    resetContextWidgetSelection,
+    useAllContextWidgets,
     useCurrentContextWidget,
     submitDraft,
   }

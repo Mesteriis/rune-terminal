@@ -15,7 +15,7 @@
   - narrow OpenAI-compatible HTTP source discovery/completion path
   - AI toolbar provider/model selection over the backend provider catalog
   - AI composer request-context toolbar trigger with explicit widget multiselect
-  - AI composer current-widget quick actions (`Use current`, `Only current`) over the existing workspace/widget context contract
+  - AI composer context quick actions (`Use current`, `Only current`, `All widgets`, `Use default`) over the existing workspace/widget context contract
   - AI composer visible selected-context strip with direct remove actions for chosen widgets
   - AI composer two-row toolbar grouping with explicit `Source / Model / Context` field labels
   - AI composer denser request-context dropdown summary block and widget option rows
@@ -56,7 +56,7 @@
   - model switcher scoped to the active provider's `chat_models`
   - explicit widget-context trigger with visible selection summary
   - explicit widget-context multiselect
-  - explicit current-widget quick actions inside the request-context dropdown
+  - explicit context quick actions inside the request-context dropdown
   - explicit selected-context strip with direct remove actions in the composer body
   - explicit two-row toolbar grouping with `Source / Model / Context` labels over the existing selector contract
   - denser request-context dropdown summary block and widget option rows without changing selection semantics
@@ -77,7 +77,7 @@
 - Plain conversation requests now also support explicit `widget_ids` in the conversation context. The composer dropdown resolves widget options from `GET /api/v1/workspace`, and the backend context/audit path now uses that explicit widget list instead of only `active_widget_id`.
 - The visible context trigger in the composer remains frontend-owned UX over that same contract:
   - the closed trigger summarizes the effective selection state (`Context off`, active widget title, or widget count)
-  - the dropdown exposes `Use current` and `Only current` actions without introducing a second backend context model
+  - the dropdown exposes `Use current`, `Only current`, `All widgets`, and `Use default` actions without introducing a second backend context model
 - The selected widget set is now also visible outside the dropdown:
   - explicit selections render as removable chips in the composer body
   - removing chips narrows both `widget_ids` and `active_widget_id` to the remaining explicit selection, matching the current frontend context contract

@@ -161,9 +161,13 @@ export function AiPanelWidget({ controller, hostId, mode = 'chat', state }: AiPa
             onContextOnlyUseCurrentWidget={
               state == null ? () => void agentPanel.useCurrentContextWidget('replace') : undefined
             }
+            onContextUseDefault={
+              state == null ? () => void agentPanel.resetContextWidgetSelection() : undefined
+            }
             onContextUseCurrentWidget={
               state == null ? () => void agentPanel.useCurrentContextWidget('append') : undefined
             }
+            onContextUseAllWidgets={state == null ? () => void agentPanel.useAllContextWidgets() : undefined}
             onModelChange={state == null ? agentPanel.setSelectedModel : undefined}
             onProviderChange={state == null ? agentPanel.selectProvider : undefined}
             onSelectedContextWidgetIDsChange={
