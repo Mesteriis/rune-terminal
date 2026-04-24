@@ -102,6 +102,7 @@ export type AgentConversationContext = {
   workspace_id?: string
   repo_root?: string
   active_widget_id?: string
+  widget_ids?: string[]
   action_source?: string
   target_session?: string
   target_connection_id?: string

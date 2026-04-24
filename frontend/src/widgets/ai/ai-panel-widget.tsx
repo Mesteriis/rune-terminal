@@ -140,11 +140,20 @@ export function AiPanelWidget({ hostId, mode = 'chat', state }: AiPanelWidgetPro
           <AiComposerWidget
             activeTool={panelState.activeTool}
             availableModels={state == null ? agentPanel.availableModels : undefined}
+            contextWidgetLoadError={state == null ? agentPanel.contextWidgetLoadError : undefined}
+            contextWidgetOptions={state == null ? agentPanel.contextWidgetOptions : undefined}
             disabled={state == null ? agentPanel.isSubmitting || agentPanel.isInteractionPending : false}
+            isWidgetContextEnabled={state == null ? agentPanel.isWidgetContextEnabled : undefined}
+            onContextOptionsOpen={state == null ? agentPanel.handleContextOptionsOpen : undefined}
             onModelChange={state == null ? agentPanel.setSelectedModel : undefined}
+            onSelectedContextWidgetIDsChange={
+              state == null ? agentPanel.setSelectedContextWidgetIDs : undefined
+            }
             onSubmit={state == null ? agentPanel.submitDraft : undefined}
             onValueChange={state == null ? agentPanel.setDraft : undefined}
+            onWidgetContextEnabledChange={state == null ? agentPanel.setIsWidgetContextEnabled : undefined}
             placeholder={panelState.composerPlaceholder}
+            selectedContextWidgetIDs={state == null ? agentPanel.selectedContextWidgetIDs : undefined}
             selectedModel={state == null ? agentPanel.selectedModel : undefined}
             submitDisabled={
               state == null

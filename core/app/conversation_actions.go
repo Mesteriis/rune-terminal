@@ -3,21 +3,24 @@ package app
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/Mesteriis/rune-terminal/core/audit"
 	"github.com/Mesteriis/rune-terminal/core/conversation"
 	"github.com/Mesteriis/rune-terminal/core/policy"
+	"github.com/Mesteriis/rune-terminal/core/workspace"
 )
 
 type ConversationContext struct {
-	WorkspaceID          string `json:"workspace_id,omitempty"`
-	RepoRoot             string `json:"repo_root,omitempty"`
-	ActiveWidgetID       string `json:"active_widget_id,omitempty"`
-	ActionSource         string `json:"action_source,omitempty"`
-	TargetSession        string `json:"target_session,omitempty"`
-	TargetConnectionID   string `json:"target_connection_id,omitempty"`
-	WidgetContextEnabled bool   `json:"widget_context_enabled,omitempty"`
+	WorkspaceID          string   `json:"workspace_id,omitempty"`
+	RepoRoot             string   `json:"repo_root,omitempty"`
+	ActiveWidgetID       string   `json:"active_widget_id,omitempty"`
+	WidgetIDs            []string `json:"widget_ids,omitempty"`
+	ActionSource         string   `json:"action_source,omitempty"`
+	TargetSession        string   `json:"target_session,omitempty"`
+	TargetConnectionID   string   `json:"target_connection_id,omitempty"`
+	WidgetContextEnabled bool     `json:"widget_context_enabled,omitempty"`
 }
 
 func (r *Runtime) ConversationSnapshot() conversation.Snapshot {
@@ -164,7 +167,7 @@ func (r *Runtime) appendConversationAudit(
 		Success:         providerError == "",
 		Error:           providerError,
 		ActionSource:    conversationContext.ActionSource,
-		AffectedWidgets: affectedWidgets(conversationContext.ActiveWidgetID),
+		AffectedWidgets: affectedWidgets(conversationContext),
 	})
 }
 
@@ -176,10 +179,23 @@ func buildConversationContextBlock(runtime *Runtime, conversationContext Convers
 	if conversationContext.WorkspaceID != "" {
 		lines = append(lines, fmt.Sprintf("- Workspace: %s", conversationContext.WorkspaceID))
 	}
-	if conversationContext.WidgetContextEnabled && conversationContext.ActiveWidgetID != "" {
-		lines = append(lines, fmt.Sprintf("- Active widget: %s", conversationContext.ActiveWidgetID))
-	} else {
+	if !conversationContext.WidgetContextEnabled {
 		lines = append(lines, "- Active widget context: detached")
+	} else {
+		activeWidgetID := strings.TrimSpace(conversationContext.ActiveWidgetID)
+		if activeWidgetID != "" {
+			lines = append(lines, fmt.Sprintf("- Active widget: %s", activeWidgetID))
+		}
+
+		contextWidgetIDs := effectiveConversationWidgetIDs(conversationContext)
+		if len(contextWidgetIDs) == 0 {
+			lines = append(lines, "- Context widgets: none selected")
+		} else {
+			lines = append(lines, "- Context widgets:")
+			for _, widgetLabel := range describeConversationWidgets(runtime, contextWidgetIDs) {
+				lines = append(lines, fmt.Sprintf("  - %s", widgetLabel))
+			}
+		}
 	}
 	if conversationContext.TargetSession != "" || conversationContext.TargetConnectionID != "" {
 		targetSession := firstNonEmpty(conversationContext.TargetSession, "local")
@@ -205,11 +221,78 @@ func summarizeConversationPrompt(prompt string) string {
 	return trimmed[:117] + "..."
 }
 
-func affectedWidgets(activeWidgetID string) []string {
+func affectedWidgets(conversationContext ConversationContext) []string {
+	widgetIDs := effectiveConversationWidgetIDs(conversationContext)
+	if len(widgetIDs) == 0 {
+		return nil
+	}
+	return widgetIDs
+}
+
+func effectiveConversationWidgetIDs(conversationContext ConversationContext) []string {
+	if !conversationContext.WidgetContextEnabled {
+		return nil
+	}
+
+	widgetIDs := normalizeWidgetIDs(conversationContext.WidgetIDs)
+	if len(widgetIDs) > 0 {
+		return widgetIDs
+	}
+
+	activeWidgetID := strings.TrimSpace(conversationContext.ActiveWidgetID)
 	if activeWidgetID == "" {
 		return nil
 	}
+
 	return []string{activeWidgetID}
+}
+
+func normalizeWidgetIDs(widgetIDs []string) []string {
+	normalized := make([]string, 0, len(widgetIDs))
+	for _, widgetID := range widgetIDs {
+		trimmedWidgetID := strings.TrimSpace(widgetID)
+		if trimmedWidgetID == "" || slices.Contains(normalized, trimmedWidgetID) {
+			continue
+		}
+		normalized = append(normalized, trimmedWidgetID)
+	}
+	return normalized
+}
+
+func describeConversationWidgets(runtime *Runtime, widgetIDs []string) []string {
+	widgetsByID := make(map[string]workspace.Widget, len(widgetIDs))
+	for _, widget := range runtime.Workspace.ListWidgets() {
+		widgetsByID[widget.ID] = widget
+	}
+
+	descriptions := make([]string, 0, len(widgetIDs))
+	for _, widgetID := range widgetIDs {
+		widget, ok := widgetsByID[widgetID]
+		if !ok {
+			descriptions = append(descriptions, widgetID)
+			continue
+		}
+		descriptions = append(descriptions, formatConversationWidget(widget))
+	}
+	return descriptions
+}
+
+func formatConversationWidget(widget workspace.Widget) string {
+	label := widget.ID
+	title := strings.TrimSpace(widget.Title)
+	if title != "" && title != widget.ID {
+		label = fmt.Sprintf("%s (%s)", title, widget.ID)
+	}
+
+	meta := []string{string(widget.Kind)}
+	if widget.ConnectionID != "" {
+		meta = append(meta, widget.ConnectionID)
+	}
+	if widget.Path != "" {
+		meta = append(meta, widget.Path)
+	}
+
+	return fmt.Sprintf("%s · %s", label, strings.Join(meta, " · "))
 }
 
 func firstNonEmpty(values ...string) string {

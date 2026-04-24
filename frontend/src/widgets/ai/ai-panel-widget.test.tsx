@@ -197,6 +197,13 @@ describe('AiPanelWidget backend conversation path', () => {
   })
 
   it('streams pure chat prompts without plan or approval gates', async () => {
+    registerTerminalPanelBinding({
+      hostId: 'terminal',
+      preset: 'workspace',
+      runtimeWidgetId: 'term-side',
+    })
+    setActiveWidgetHostId('terminal')
+
     const streamResponse = createDeferredStreamResponse()
     const fetchMock = vi.fn()
     fetchMock
@@ -252,8 +259,9 @@ describe('AiPanelWidget backend conversation path', () => {
       model: 'stub-model',
       context: {
         action_source: 'frontend.ai.sidebar',
-        active_widget_id: 'ai-shell-panel',
+        active_widget_id: 'term-side',
         repo_root: '/Users/avm/projects/runa-terminal',
+        widget_ids: ['term-side'],
         widget_context_enabled: true,
       },
     })
@@ -292,6 +300,107 @@ describe('AiPanelWidget backend conversation path', () => {
     })
     await waitFor(() => {
       expect(screen.queryByLabelText('Widget ai-shell-panel is busy')).not.toBeInTheDocument()
+    })
+  })
+
+  it('allows selecting multiple workspace widgets for the AI request context', async () => {
+    registerTerminalPanelBinding({
+      hostId: 'terminal',
+      preset: 'workspace',
+      runtimeWidgetId: 'term-side',
+    })
+    setActiveWidgetHostId('terminal')
+
+    const streamResponse = createDeferredStreamResponse()
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          conversation: {
+            messages: [],
+            provider: {
+              kind: 'stub',
+              base_url: 'http://stub',
+              model: 'stub-model',
+              streaming: false,
+            },
+            updated_at: '2026-04-21T10:00:00Z',
+          },
+        }),
+      })
+      .mockResolvedValueOnce(createProviderCatalogFetchResponse())
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          id: 'ws-local',
+          name: 'Local Workspace',
+          active_widget_id: 'term-side',
+          widgets: [
+            {
+              id: 'term-main',
+              kind: 'terminal',
+              title: 'Main Shell',
+              connection_id: 'local',
+            },
+            {
+              id: 'term-side',
+              kind: 'terminal',
+              title: 'Ops Shell',
+              connection_id: 'local',
+            },
+          ],
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        body: streamResponse.body,
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<AiPanelWidget hostId="ai-shell-panel" />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Backend conversation is empty.')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByLabelText('Composer options'))
+
+    await waitFor(() => {
+      expect(screen.getByText('Request context')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('option', { name: /Main Shell/ }))
+    fireEvent.click(screen.getByLabelText('Composer options'))
+    fireEvent.change(screen.getByPlaceholderText('Text Area'), {
+      target: { value: 'Привет с контекстом' },
+    })
+    fireEvent.click(screen.getByLabelText('Send prompt'))
+
+    await waitFor(() => {
+      expect(fetchMock.mock.calls[4]?.[0]).toBe(
+        'http://127.0.0.1:8090/api/v1/agent/conversation/messages/stream',
+      )
+    })
+    expect(JSON.parse(String(fetchMock.mock.calls[4]?.[1]?.body))).toEqual({
+      prompt: 'Привет с контекстом',
+      model: 'stub-model',
+      context: {
+        action_source: 'frontend.ai.sidebar',
+        active_widget_id: 'term-side',
+        repo_root: '/Users/avm/projects/runa-terminal',
+        widget_ids: ['term-side', 'term-main'],
+        widget_context_enabled: true,
+      },
     })
   })
 
@@ -677,6 +786,21 @@ describe('AiPanelWidget backend conversation path', () => {
         widget_id: 'term-side',
       },
       tool_name: 'term.send_input',
+    })
+    expect(JSON.parse(String(fetchMock.mock.calls[6]?.[1]?.body))).toEqual({
+      command: 'echo run-widget-test',
+      context: {
+        action_source: 'frontend.ai.sidebar.run',
+        active_widget_id: 'term-side',
+        repo_root: '/Users/avm/projects/runa-terminal',
+        target_connection_id: 'local',
+        target_session: 'local',
+        widget_ids: ['term-side'],
+        widget_context_enabled: true,
+      },
+      from_seq: 4,
+      prompt: '/run echo run-widget-test',
+      widget_id: 'term-side',
     })
   })
 

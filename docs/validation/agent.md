@@ -8,10 +8,12 @@
   - backend-owned agent provider catalog
   - active conversation provider resolution
   - frontend AI/provider settings surfaces
+  - AI composer request-context dropdown with explicit widget multiselect
   - frontend `/run ...` routing from the AI sidebar into the active terminal widget through backend tool execution plus terminal-command explanation
   - browser-level Playwright coverage for the AI sidebar over the split local dev path:
     - settings navigation for provider/model/limits/terminal/commander sections
     - live Codex CLI chat request/response through the real backend conversation route
+    - explicit widget-context selection in the composer and `widget_ids` propagation into the stream request body
     - transcript persistence across AI panel close/reopen
     - live Claude provider routing with explicit `auth-required` handling when the local CLI is installed but not logged in
     - `/run printf ...` sending input into the active terminal session without falling back to plain provider chat
@@ -34,15 +36,19 @@
   - waits briefly for post-command terminal output
   - appends the backend-owned execution transcript/explanation chain through `POST /api/v1/agent/terminal-commands/explain`
 - `widget_context_enabled` remains valid for conversation/explain routes, but is intentionally omitted from `POST /api/v1/tools/execute` because that transport contract does not accept it.
+- Plain conversation requests now also support explicit `widget_ids` in the conversation context. The composer dropdown resolves widget options from `GET /api/v1/workspace`, and the backend context/audit path now uses that explicit widget list instead of only `active_widget_id`.
 
 ## Commands/tests used
 
 - `go test ./core/agent ./core/conversation ./core/app ./core/transport/httpapi`
 - `go test ./core/...`
+- `./scripts/go.sh test ./core/app ./core/transport/httpapi`
 - `npm --prefix frontend run test -- src/features/agent/api/client.test.ts src/features/agent/api/provider-client.test.ts src/features/agent/model/provider-settings-draft.test.ts src/widgets/ai/ai-panel-widget.test.tsx`
+- `npm --prefix frontend run test -- src/shared/api/workspace.test.ts src/features/agent/api/client.test.ts src/widgets/ai/ai-panel-widget.test.tsx`
 - `npm --prefix frontend run lint:active`
 - `npm run test:ui -- --reporter=line`
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts`
+- `npm run tauri:dev`
 - `codex login status`
 - `printf 'Return exactly CODEX_E2E_OK\n' | codex exec --color never --sandbox read-only --skip-git-repo-check --ephemeral --output-last-message -`
 - `claude auth status --json`
@@ -57,7 +63,6 @@
 - No current visible profile, role, or mode selector exists in the AI sidebar, so the backend selection routes remain unwired to user controls.
 - `/run` currently surfaces approval-required toolruntime responses as a chat-side error/status message; there is no dedicated approval-confirmation UI for this path yet.
 - On this machine the local `claude` binary is installed but not authenticated, so the verified browser path is `auth-required` handling rather than a successful Claude completion.
-- Browser validation was rerun through the split local dev path; a fresh `npm run tauri:dev` desktop smoke was not run in this pass.
 
 ## Related validation
 

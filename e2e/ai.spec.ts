@@ -112,6 +112,70 @@ test('AI sidebar runs a live Codex chat path and restores the transcript after r
   await expect(page.getByText(promptToken, { exact: true })).toBeVisible()
 })
 
+test('AI sidebar lets the operator select multiple widget contexts for a request', async ({
+  page,
+}) => {
+  test.setTimeout(60_000)
+
+  let capturedStreamBody: Record<string, unknown> | null = null
+
+  await page.route('**/api/v1/agent/conversation/messages/stream', async (route) => {
+    capturedStreamBody = route.request().postDataJSON() as Record<string, unknown>
+
+    await route.fulfill({
+      status: 200,
+      headers: {
+        'content-type': 'text/event-stream',
+      },
+      body: [
+        'event: message-start\ndata: {"type":"message-start","message_id":"msg_context","message":{"id":"msg_context","role":"assistant","content":"","status":"streaming","provider":"stub","model":"stub-model","created_at":"2026-04-24T10:00:00Z"}}\n\n',
+        'event: message-complete\ndata: {"type":"message-complete","message_id":"msg_context","message":{"id":"msg_context","role":"assistant","content":"context-selector-ok","status":"complete","provider":"stub","model":"stub-model","created_at":"2026-04-24T10:00:01Z"}}\n\n',
+      ].join(''),
+    })
+  })
+
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  await page.getByRole('button', { name: 'Toggle AI panel' }).click()
+  await expect(page.getByText('AI Rune Assistant')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Composer options' }).click()
+  await expect(page.getByRole('dialog', { name: 'Context widgets' })).toBeVisible()
+  const opsShellOption = page.getByRole('option', { name: /Ops Shell/ })
+  const mainShellOption = page.getByRole('option', { name: /Main Shell/ })
+
+  await expect(opsShellOption).toBeVisible()
+  await expect(mainShellOption).toBeVisible()
+
+  if ((await opsShellOption.getAttribute('aria-selected')) !== 'true') {
+    await opsShellOption.click()
+  }
+  if ((await mainShellOption.getAttribute('aria-selected')) !== 'true') {
+    await mainShellOption.click()
+  }
+
+  await expect(opsShellOption).toHaveAttribute('aria-selected', 'true')
+  await expect(mainShellOption).toHaveAttribute('aria-selected', 'true')
+
+  await page.getByPlaceholder('Text Area').fill('context selector smoke')
+  await page.getByRole('button', { name: 'Send prompt' }).click()
+
+  await expect.poll(() => capturedStreamBody, { timeout: 15_000 }).not.toBeNull()
+  expect(capturedStreamBody).toMatchObject({
+    prompt: 'context selector smoke',
+    context: {
+      action_source: 'frontend.ai.sidebar',
+      active_widget_id: 'term-side',
+      repo_root: '/Users/avm/projects/Personal/tideterm/runa-terminal',
+      widget_context_enabled: true,
+      widget_ids: ['term-side', 'term-main'],
+    },
+  })
+
+  await expect(page.getByText('context-selector-ok')).toBeVisible()
+})
+
 test('AI sidebar routes through Claude provider and surfaces local auth state honestly', async ({
   page,
   request,

@@ -456,6 +456,7 @@ export const aiToolbarModelSelectStyle: CSSProperties = {
 }
 
 export const aiComposerSurfaceStyle: CSSProperties = {
+  position: 'relative',
   minWidth: 0,
   minHeight: '180px',
   display: 'flex',
@@ -499,4 +500,52 @@ export const aiComposerActionStyle: CSSProperties = {
   background: 'var(--color-surface-glass-strong)',
   color: 'var(--color-text-secondary)',
   boxShadow: 'none',
+}
+
+export const aiComposerActionActiveStyle: CSSProperties = {
+  background: 'color-mix(in srgb, var(--color-accent-emerald-soft) 28%, var(--color-surface-glass-strong))',
+  color: 'var(--color-text-primary)',
+}
+
+export const aiComposerContextMenuWrapStyle: CSSProperties = {
+  position: 'absolute',
+  right: 'calc(var(--space-sm) + 34px + var(--gap-sm))',
+  bottom: 'var(--space-sm)',
+  width: 'min(24rem, calc(100% - 5rem))',
+  zIndex: 'var(--z-floating)',
+}
+
+export const aiComposerContextMenuStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 'var(--gap-sm)',
+  padding: 'var(--space-md)',
+  borderColor: 'var(--color-border-strong)',
+  background: 'color-mix(in srgb, var(--color-canvas-elevated) 82%, transparent)',
+  boxShadow: 'var(--shadow-glass-lg)',
+  backdropFilter: 'var(--blur-glass-sm)',
+  WebkitBackdropFilter: 'var(--blur-glass-sm)',
+}
+
+export const aiComposerContextMenuHeaderStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 'var(--gap-xs)',
+}
+
+export const aiComposerContextMenuTitleStyle: CSSProperties = {
+  color: 'var(--color-text-primary)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '12px',
+  lineHeight: '16px',
+  letterSpacing: '0.06em',
+  textTransform: 'uppercase',
+}
+
+export const aiComposerContextMenuMetaStyle: CSSProperties = {
+  color: 'var(--color-text-secondary)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '12px',
+  lineHeight: '18px',
+  whiteSpace: 'pre-wrap',
 }

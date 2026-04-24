@@ -96,6 +96,83 @@ func TestSubmitConversationPromptUsesSelectionPromptAndContext(t *testing.T) {
 	if events[0].ActionSource != "test.ai.submit" {
 		t.Fatalf("expected action source in audit, got %#v", events[0])
 	}
+	if len(events[0].AffectedWidgets) != 1 || events[0].AffectedWidgets[0] != "term_boot" {
+		t.Fatalf("expected active widget in audit, got %#v", events[0].AffectedWidgets)
+	}
+}
+
+func TestSubmitConversationPromptUsesExplicitContextWidgetIDs(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	agentStore, err := agent.NewStore(filepath.Join(tempDir, "agent.json"))
+	if err != nil {
+		t.Fatalf("agent store: %v", err)
+	}
+	auditLog, err := audit.NewLog(filepath.Join(tempDir, "audit.jsonl"))
+	if err != nil {
+		t.Fatalf("audit log: %v", err)
+	}
+	policyStore, err := policy.NewStore(filepath.Join(tempDir, "policy.json"), "/repo")
+	if err != nil {
+		t.Fatalf("policy store: %v", err)
+	}
+	connectionStore, err := connections.NewService(filepath.Join(tempDir, "connections.json"))
+	if err != nil {
+		t.Fatalf("connections: %v", err)
+	}
+
+	provider := &recordingConversationProvider{}
+	conversationStore, err := conversation.NewService(filepath.Join(tempDir, "conversation.json"), provider)
+	if err != nil {
+		t.Fatalf("conversation service: %v", err)
+	}
+
+	runtime := &Runtime{
+		RepoRoot:     "/repo",
+		Workspace:    workspace.NewService(workspace.BootstrapDefault()),
+		Terminals:    terminal.NewService(terminal.DefaultLauncher()),
+		Connections:  connectionStore,
+		Agent:        agentStore,
+		Conversation: conversationStore,
+		Policy:       policyStore,
+		Audit:        auditLog,
+	}
+
+	_, err = runtime.SubmitConversationPrompt(context.Background(), "hello", "", ConversationContext{
+		WorkspaceID:          "ws-default",
+		RepoRoot:             "/repo",
+		ActiveWidgetID:       "term-main",
+		WidgetIDs:            []string{"term-side", "", "term-main", "term-side"},
+		ActionSource:         "test.ai.context.widgets",
+		WidgetContextEnabled: true,
+	}, nil)
+	if err != nil {
+		t.Fatalf("submit prompt: %v", err)
+	}
+
+	if !strings.Contains(provider.request.SystemPrompt, "Context widgets:") {
+		t.Fatalf("expected context widget block in system prompt, got %q", provider.request.SystemPrompt)
+	}
+	if !strings.Contains(provider.request.SystemPrompt, "Ops Shell (term-side) · terminal · local") {
+		t.Fatalf("expected explicit term-side context widget, got %q", provider.request.SystemPrompt)
+	}
+	if !strings.Contains(provider.request.SystemPrompt, "Main Shell (term-main) · terminal · local") {
+		t.Fatalf("expected explicit term-main context widget, got %q", provider.request.SystemPrompt)
+	}
+
+	events, err := runtime.Audit.List(10)
+	if err != nil {
+		t.Fatalf("audit list: %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("expected 1 audit event, got %d", len(events))
+	}
+	if len(events[0].AffectedWidgets) != 2 ||
+		events[0].AffectedWidgets[0] != "term-side" ||
+		events[0].AffectedWidgets[1] != "term-main" {
+		t.Fatalf("expected explicit widget list in audit, got %#v", events[0].AffectedWidgets)
+	}
 }
 
 func TestSubmitConversationPromptIncludesAttachmentContextInProviderRequest(t *testing.T) {

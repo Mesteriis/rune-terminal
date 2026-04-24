@@ -212,6 +212,7 @@ describe('agent api client', () => {
           repo_root: '/Users/avm/projects/runa-terminal',
           target_connection_id: 'local',
           target_session: 'local',
+          widget_ids: ['term-side'],
         },
         input: {
           append_newline: true,
@@ -233,6 +234,7 @@ describe('agent api client', () => {
         repo_root: '/Users/avm/projects/runa-terminal',
         target_connection_id: 'local',
         target_session: 'local',
+        widget_ids: ['term-side'],
       },
       input: {
         append_newline: true,
@@ -286,6 +288,7 @@ describe('agent api client', () => {
           repo_root: '/Users/avm/projects/runa-terminal',
           target_connection_id: 'local',
           target_session: 'local',
+          widget_ids: ['term-side'],
           widget_context_enabled: true,
         },
         from_seq: 4,
@@ -307,6 +310,7 @@ describe('agent api client', () => {
         repo_root: '/Users/avm/projects/runa-terminal',
         target_connection_id: 'local',
         target_session: 'local',
+        widget_ids: ['term-side'],
         widget_context_enabled: true,
       },
       from_seq: 4,
@@ -374,6 +378,7 @@ describe('agent api client', () => {
         action_source: 'frontend.ai.sidebar',
         active_widget_id: 'ai-shell-panel',
         repo_root: '/Users/avm/projects/runa-terminal',
+        widget_ids: ['term-side', 'term-main'],
         widget_context_enabled: true,
       },
     })
@@ -404,6 +409,7 @@ describe('agent api client', () => {
         action_source: 'frontend.ai.sidebar',
         active_widget_id: 'ai-shell-panel',
         repo_root: '/Users/avm/projects/runa-terminal',
+        widget_ids: ['term-side', 'term-main'],
         widget_context_enabled: true,
       },
     })
@@ -453,6 +459,7 @@ describe('agent api client', () => {
           action_source: 'frontend.ai.sidebar',
           active_widget_id: 'ai-shell-panel',
           repo_root: '/Users/avm/projects/runa-terminal',
+          widget_ids: ['term-side', 'term-main'],
           widget_context_enabled: true,
         },
       },
@@ -482,6 +489,7 @@ describe('agent api client', () => {
         action_source: 'frontend.ai.sidebar',
         active_widget_id: 'ai-shell-panel',
         repo_root: '/Users/avm/projects/runa-terminal',
+        widget_ids: ['term-side', 'term-main'],
         widget_context_enabled: true,
       },
     })

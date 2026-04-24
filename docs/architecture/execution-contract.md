@@ -17,7 +17,9 @@ User input:
      - `repo_root`
      - `target_session`
      - `target_connection_id`
-   - It also builds a conversation context with the same fields plus `widget_context_enabled`.
+   - It also builds a conversation context with the same fields plus:
+     - `widget_context_enabled`
+     - `widget_ids` when the operator selects explicit context widgets from the composer dropdown
 
 3. Tool execution request
    - Before sending the command, the UI reads `GET /api/v1/terminal/{widgetID}` to capture the current `next_seq`.
@@ -118,6 +120,7 @@ User input:
 - The explain request uses the corresponding conversation context:
   - the same execution fields
   - `widget_context_enabled`
+  - `widget_ids` when explicit widget context is enabled
 - Backend transport types allow omitted context fields, but the active compat `/run` path is expected to send explicit context from frontend state rather than inventing it server-side.
 
 ### 2.2 Tool execution contract
@@ -256,6 +259,7 @@ User input:
   - local explanation-fallback message
 - Persisted conversation messages come from the backend conversation service.
 - In the current `/run` flow, the persisted message is the assistant explanation; the local `/run` prompt and the local execution-result message are not written into conversation storage.
+- Plain conversation requests sent through `/api/v1/agent/conversation/messages` and `/stream` now also carry `widget_ids` when the operator enables multiple-widget context in the AI composer.
 - Structured execution block retrieval API:
   - `GET /api/v1/execution/blocks?workspace_id=<id>&limit=<n>`
   - `GET /api/v1/execution/blocks/{blockID}`

@@ -90,3 +90,8 @@ export type AiPanelWidgetState = {
   messages: ChatMessageView[]
   composerPlaceholder: string
 }
+
+export type AiContextWidgetOption = {
+  value: string
+  label: string
+}

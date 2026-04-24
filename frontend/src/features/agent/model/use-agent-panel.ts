@@ -35,6 +35,7 @@ import {
 } from '@/features/agent/model/panel-state'
 import type {
   AiPanelWidgetState,
+  AiContextWidgetOption,
   ApprovalMessage,
   ChatMessageSortKey,
   ChatMessageView,
@@ -43,6 +44,7 @@ import type {
 import { $terminalPanelBindings, resolveTerminalPanelBinding } from '@/features/terminal/model/panel-registry'
 import { fetchTerminalSnapshot } from '@/features/terminal/api/client'
 import { resolveRuntimeContext } from '@/shared/api/runtime'
+import { fetchWorkspaceSnapshot, type WorkspaceWidgetSnapshot } from '@/shared/api/workspace'
 import { blockAiWidget, unblockAiWidget } from '@/shared/model/ai-blocked-widgets'
 import { $activeWidgetHostId } from '@/shared/model/widget-focus'
 
@@ -153,6 +155,46 @@ function selectPreferredChatModel(
   return availableModels[0] ?? ''
 }
 
+function deduplicateWidgetIDs(widgetIDs: string[]) {
+  return widgetIDs.reduce<string[]>((accumulator, widgetID) => {
+    const trimmedWidgetID = widgetID.trim()
+
+    if (!trimmedWidgetID || accumulator.includes(trimmedWidgetID)) {
+      return accumulator
+    }
+
+    return [...accumulator, trimmedWidgetID]
+  }, [])
+}
+
+function formatContextWidgetLabel(widget: WorkspaceWidgetSnapshot) {
+  const title = widget.title?.trim() || widget.id
+  const meta = [widget.kind]
+
+  if (widget.connection_id?.trim()) {
+    meta.push(widget.connection_id.trim())
+  }
+  if (widget.path?.trim()) {
+    meta.push(widget.path.trim())
+  }
+
+  return title === widget.id
+    ? `${title} · ${meta.join(' · ')}`
+    : `${title} (${widget.id}) · ${meta.join(' · ')}`
+}
+
+function mapContextWidgetOptions(widgets: WorkspaceWidgetSnapshot[]): AiContextWidgetOption[] {
+  return widgets.map((widget) => ({
+    value: widget.id,
+    label: formatContextWidgetLabel(widget),
+  }))
+}
+
+function filterContextWidgetSelection(selectedWidgetIDs: string[], widgetOptions: AiContextWidgetOption[]) {
+  const availableWidgetIDs = new Set(widgetOptions.map((option) => option.value))
+  return deduplicateWidgetIDs(selectedWidgetIDs).filter((widgetID) => availableWidgetIDs.has(widgetID))
+}
+
 export function useAgentPanel(hostId: string, enabled = true) {
   const [activeWidgetHostId, terminalPanelBindings] = useUnit([$activeWidgetHostId, $terminalPanelBindings])
   const [messages, setMessages] = useState<AgentConversationMessage[] | null>(null)
@@ -161,6 +203,11 @@ export function useAgentPanel(hostId: string, enabled = true) {
   const [provider, setProvider] = useState<AgentConversationProvider | null>(null)
   const [availableModels, setAvailableModels] = useState<string[]>([])
   const [selectedModel, setSelectedModel] = useState('')
+  const [isWidgetContextEnabled, setIsWidgetContextEnabled] = useState(true)
+  const [contextWidgetOptions, setContextWidgetOptions] = useState<AiContextWidgetOption[]>([])
+  const [selectedContextWidgetIDs, setSelectedContextWidgetIDs] = useState<string[]>([])
+  const [workspaceActiveWidgetID, setWorkspaceActiveWidgetID] = useState('')
+  const [contextWidgetLoadError, setContextWidgetLoadError] = useState<string | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -171,6 +218,8 @@ export function useAgentPanel(hostId: string, enabled = true) {
   const localSortCounterRef = useRef(0)
   const pendingFlowRef = useRef<PendingInteractionFlow | null>(null)
   const submissionNonceRef = useRef(0)
+  const hasLoadedContextWidgetsRef = useRef(false)
+  const hasCustomizedContextWidgetSelectionRef = useRef(false)
 
   const nextLocalSortKey = useCallback((): ChatMessageSortKey => {
     const nextCounter = localSortCounterRef.current
@@ -188,6 +237,8 @@ export function useAgentPanel(hostId: string, enabled = true) {
       activeStreamRef.current?.close()
       activeStreamRef.current = null
       pendingFlowRef.current = null
+      hasLoadedContextWidgetsRef.current = false
+      hasCustomizedContextWidgetSelectionRef.current = false
       unblockAiWidget(hostId)
     }
   }, [hostId])
@@ -210,9 +261,16 @@ export function useAgentPanel(hostId: string, enabled = true) {
     setProvider(null)
     setAvailableModels([])
     setSelectedModel('')
+    setIsWidgetContextEnabled(true)
+    setContextWidgetOptions([])
+    setSelectedContextWidgetIDs([])
+    setWorkspaceActiveWidgetID('')
+    setContextWidgetLoadError(null)
     setLoadError(null)
     setSubmitError(null)
     setIsSubmitting(false)
+    hasLoadedContextWidgetsRef.current = false
+    hasCustomizedContextWidgetSelectionRef.current = false
 
     void Promise.allSettled([fetchAgentConversation(), fetchAgentProviderCatalog()]).then((results) => {
       if (cancelled) {
@@ -255,6 +313,8 @@ export function useAgentPanel(hostId: string, enabled = true) {
       activeStreamRef.current?.close()
       activeStreamRef.current = null
       pendingFlowRef.current = null
+      hasLoadedContextWidgetsRef.current = false
+      hasCustomizedContextWidgetSelectionRef.current = false
       unblockAiWidget(hostId)
     }
   }, [enabled, hostId])
@@ -277,6 +337,102 @@ export function useAgentPanel(hostId: string, enabled = true) {
       )
     },
     [],
+  )
+
+  const deriveFallbackContextWidgetIDs = useCallback(
+    (nextWorkspaceActiveWidgetID?: string) => {
+      const terminalBinding = resolveTerminalPanelBinding(terminalPanelBindings, activeWidgetHostId)
+      return deduplicateWidgetIDs([
+        terminalBinding?.runtimeWidgetId ?? '',
+        nextWorkspaceActiveWidgetID ?? workspaceActiveWidgetID,
+      ])
+    },
+    [activeWidgetHostId, terminalPanelBindings, workspaceActiveWidgetID],
+  )
+
+  const effectiveContextWidgetIDs = useMemo(() => {
+    const filteredSelection =
+      contextWidgetOptions.length > 0
+        ? filterContextWidgetSelection(selectedContextWidgetIDs, contextWidgetOptions)
+        : deduplicateWidgetIDs(selectedContextWidgetIDs)
+
+    if (filteredSelection.length > 0) {
+      return filteredSelection
+    }
+
+    return deriveFallbackContextWidgetIDs()
+  }, [contextWidgetOptions, deriveFallbackContextWidgetIDs, selectedContextWidgetIDs])
+
+  const updateSelectedContextWidgetIDs = useCallback((widgetIDs: string[]) => {
+    hasCustomizedContextWidgetSelectionRef.current = true
+    setSelectedContextWidgetIDs(deduplicateWidgetIDs(widgetIDs))
+  }, [])
+
+  const loadContextWidgets = useCallback(async () => {
+    if (!enabled) {
+      return
+    }
+    if (hasLoadedContextWidgetsRef.current) {
+      return
+    }
+
+    const workspaceSnapshot = await fetchWorkspaceSnapshot()
+    const nextContextWidgetOptions = mapContextWidgetOptions(workspaceSnapshot.widgets)
+
+    hasLoadedContextWidgetsRef.current = true
+    setWorkspaceActiveWidgetID(workspaceSnapshot.active_widget_id?.trim() ?? '')
+    setContextWidgetOptions(nextContextWidgetOptions)
+    setContextWidgetLoadError(null)
+    setSelectedContextWidgetIDs((currentSelection) => {
+      if (hasCustomizedContextWidgetSelectionRef.current) {
+        return filterContextWidgetSelection(currentSelection, nextContextWidgetOptions)
+      }
+
+      return deriveFallbackContextWidgetIDs(workspaceSnapshot.active_widget_id)
+    })
+  }, [deriveFallbackContextWidgetIDs, enabled])
+
+  const handleContextOptionsOpen = useCallback(async () => {
+    try {
+      await loadContextWidgets()
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error && error.message.trim() ? error.message : 'Unable to load workspace widgets.'
+      setContextWidgetLoadError(errorMessage)
+    }
+  }, [loadContextWidgets])
+
+  const createConversationContext = useCallback(
+    (input: {
+      actionSource: string
+      activeWidgetID?: string
+      repoRoot: string
+      targetConnectionID?: string
+      targetSession?: string
+      includeActiveWidgetInSelection?: boolean
+    }) => {
+      const selectedWidgetIDs = isWidgetContextEnabled ? effectiveContextWidgetIDs : []
+      const activeWidgetID =
+        input.activeWidgetID?.trim() || selectedWidgetIDs[0] || deriveFallbackContextWidgetIDs()[0] || ''
+      const contextWidgetIDs = isWidgetContextEnabled
+        ? deduplicateWidgetIDs(
+            input.includeActiveWidgetInSelection && activeWidgetID
+              ? [activeWidgetID, ...selectedWidgetIDs]
+              : selectedWidgetIDs,
+          )
+        : []
+
+      return {
+        action_source: input.actionSource,
+        active_widget_id: activeWidgetID,
+        repo_root: input.repoRoot,
+        target_connection_id: input.targetConnectionID,
+        target_session: input.targetSession,
+        widget_context_enabled: isWidgetContextEnabled,
+        ...(contextWidgetIDs.length > 0 ? { widget_ids: contextWidgetIDs } : {}),
+      }
+    },
+    [deriveFallbackContextWidgetIDs, effectiveContextWidgetIDs, isWidgetContextEnabled],
   )
 
   const runTerminalPrompt = useCallback(
@@ -340,10 +496,14 @@ export function useAgentPanel(hostId: string, enabled = true) {
 
       const explainResponse = await explainTerminalCommand({
         command,
-        context: {
-          ...executionContext,
-          widget_context_enabled: true,
-        },
+        context: createConversationContext({
+          actionSource: executionContext.action_source,
+          activeWidgetID: targetTerminal.runtimeWidgetId,
+          includeActiveWidgetInSelection: true,
+          repoRoot: repoRoot,
+          targetConnectionID: targetConnectionId,
+          targetSession: targetSession,
+        }),
         from_seq: baselineSnapshot.next_seq,
         prompt,
         widget_id: targetTerminal.runtimeWidgetId,
@@ -358,7 +518,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
 
       return true
     },
-    [activeWidgetHostId, terminalPanelBindings],
+    [activeWidgetHostId, createConversationContext, terminalPanelBindings],
   )
 
   const runBackendPrompt = useCallback(
@@ -386,12 +546,10 @@ export function useAgentPanel(hostId: string, enabled = true) {
           {
             prompt,
             model: options?.model,
-            context: {
-              action_source: 'frontend.ai.sidebar',
-              active_widget_id: hostId,
-              repo_root: runtimeContext.repoRoot,
-              widget_context_enabled: true,
-            },
+            context: createConversationContext({
+              actionSource: 'frontend.ai.sidebar',
+              repoRoot: runtimeContext.repoRoot,
+            }),
           },
           {
             onEvent: (event) => {
@@ -664,15 +822,22 @@ export function useAgentPanel(hostId: string, enabled = true) {
   return {
     answerQuestionnaire,
     approvePendingPlan,
+    contextWidgetLoadError,
+    contextWidgetOptions,
     cancelPendingPlan,
     draft,
     availableModels,
+    handleContextOptionsOpen,
     isInteractionPending: pendingFlow != null,
     isSubmitting,
+    isWidgetContextEnabled,
     panelState,
+    selectedContextWidgetIDs: effectiveContextWidgetIDs,
     selectedModel,
     setDraft,
+    setIsWidgetContextEnabled,
     setSelectedModel,
+    setSelectedContextWidgetIDs: updateSelectedContextWidgetIDs,
     submitDraft,
   }
 }

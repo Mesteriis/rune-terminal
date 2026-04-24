@@ -115,6 +115,34 @@ func TestSubmitConversationMessagePassesSelectedModelToProvider(t *testing.T) {
 	}
 }
 
+func TestSubmitConversationMessagePassesExplicitWidgetContextToProvider(t *testing.T) {
+	t.Parallel()
+
+	provider := &capturingConversationProvider{}
+	handler, _ := newTestHandlerWithConversationProvider(t, provider, testAuthToken)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPost, "/api/v1/agent/conversation/messages", map[string]any{
+		"prompt": "hello there",
+		"context": map[string]any{
+			"workspace_id":           "ws-default",
+			"active_widget_id":       "term-main",
+			"widget_ids":             []string{"term-side", "term-main"},
+			"widget_context_enabled": true,
+		},
+	}))
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+	if !strings.Contains(provider.request.SystemPrompt, "Context widgets:") {
+		t.Fatalf("expected explicit context widget block, got %q", provider.request.SystemPrompt)
+	}
+	if !strings.Contains(provider.request.SystemPrompt, "Ops Shell (term-side) · terminal · local") {
+		t.Fatalf("expected term-side descriptor in system prompt, got %q", provider.request.SystemPrompt)
+	}
+}
+
 func TestSubmitConversationMessagePersistsAttachmentReferences(t *testing.T) {
 	t.Parallel()
 

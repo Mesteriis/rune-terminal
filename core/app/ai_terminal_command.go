@@ -159,7 +159,7 @@ func (r *Runtime) ExplainTerminalCommand(
 		RoleID:             profile.RoleID,
 		ModeID:             profile.ModeID,
 		SecurityPosture:    profile.SecurityPosture,
-		AffectedWidgets:    affectedWidgets(widgetID),
+		AffectedWidgets:    affectedWidgets(conversationContext),
 		ApprovalUsed:       approvalUsed,
 		ActionSource:       conversationContext.ActionSource,
 		TargetSession:      targetSession,

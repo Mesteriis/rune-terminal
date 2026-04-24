@@ -197,7 +197,7 @@ its visible shell blocks as raw HTML inside `App.tsx`.
 - `AiPanelWidget` now passes its own root element down as the widget-local mount target for modal and busy overlays instead of relying on global DOM lookups.
 - `AiPanelHeaderWidget` renders the AI shell header strip.
 - `AiPromptCardWidget` renders the prompt tiles inside the AI panel.
-- `AiComposerWidget` renders the AI toolbar plus textarea composer block.
+- `AiComposerWidget` renders the AI toolbar plus textarea composer block and owns the inline request-context dropdown for widget selection; backend workspace discovery and `widget_ids` request assembly remain in `features/agent/model/use-agent-panel.ts`, not in the widget layer.
 - `App.tsx` now uses `motion` only at the app shell boundary to animate the shell-managed AI panel width; the AI body itself remains a normal widget.
 - `TerminalSurface`, `ModalHostWidget`, and `WidgetBusyOverlayWidget` now receive external mount/theme targets through props, so those lower layers no longer query for modal anchors or Dockview group wrappers on their own.
 
