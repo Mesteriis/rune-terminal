@@ -45,7 +45,7 @@ capability.
 - connection lifecycle is explicit but narrow (`saved profile` vs
   `last check` vs `last launch`)
 - terminal parity is practical but advanced surfaces (multi-session
-  sidebar, interrupt controls, persisted font/theme/scrollback settings,
+  sidebar, persisted font/theme/scrollback settings,
   deeper search/find flows) are not there yet
 - AI command flow supports explicit command grammar only (`/run` and
   `run:`), not broad natural-language execution

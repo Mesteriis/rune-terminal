@@ -1,4 +1,4 @@
-import { LoaderCircle, RotateCcw } from 'lucide-react'
+import { LoaderCircle, RotateCcw, Square } from 'lucide-react'
 import { useCallback, useState, useRef } from 'react'
 
 import { useTerminalSession } from '@/features/terminal/model/use-terminal-session'
@@ -68,8 +68,18 @@ export function TerminalWidget({
   const handleRestart = useCallback(() => {
     void terminalSession.restartSession()
   }, [terminalSession])
-  const isRestartDisabled = terminalSession.isLoading || terminalSession.isRestarting
+  const handleInterrupt = useCallback(() => {
+    void terminalSession.interruptSession()
+  }, [terminalSession])
+  const isRestartDisabled =
+    terminalSession.isLoading || terminalSession.isInterrupting || terminalSession.isRestarting
+  const isInterruptDisabled =
+    terminalSession.isLoading ||
+    terminalSession.isInterrupting ||
+    terminalSession.isRestarting ||
+    !terminalSession.canInterrupt
   const RestartIcon = terminalSession.isRestarting ? LoaderCircle : RotateCcw
+  const InterruptIcon = terminalSession.isInterrupting ? LoaderCircle : Square
 
   return (
     <RunaDomScopeProvider component="terminal-widget" widget={hostId}>
@@ -86,6 +96,33 @@ export function TerminalWidget({
                 runaComponent="terminal-widget-header-actions"
                 style={terminalWidgetHeaderActionsStyle}
               >
+                <IconButton
+                  aria-label={`Interrupt terminal for ${title}`}
+                  disabled={isInterruptDisabled}
+                  onClick={handleInterrupt}
+                  runaComponent="terminal-widget-interrupt"
+                  size="sm"
+                  style={{
+                    ...terminalWidgetHeaderActionButtonStyle,
+                    ...(isInterruptDisabled
+                      ? {
+                          cursor: 'default',
+                          opacity: 0.58,
+                        }
+                      : null),
+                  }}
+                  title={terminalSession.isInterrupting ? 'Interrupting terminal…' : 'Interrupt terminal'}
+                >
+                  <InterruptIcon
+                    size={12}
+                    strokeWidth={2}
+                    style={
+                      terminalSession.isInterrupting
+                        ? { animation: 'runa-terminal-spin 1.2s linear infinite' }
+                        : undefined
+                    }
+                  />
+                </IconButton>
                 <IconButton
                   aria-label={`Restart terminal for ${title}`}
                   disabled={isRestartDisabled}

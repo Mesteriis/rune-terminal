@@ -3,6 +3,7 @@ package httpapi
 import (
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"time"
 
@@ -36,6 +37,22 @@ func (api *API) handleTerminalSnapshot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, snapshot)
+}
+
+func (api *API) handleTerminalInterrupt(w http.ResponseWriter, r *http.Request) {
+	widgetID := r.PathValue("widgetID")
+	if err := api.runtime.Terminals.Interrupt(widgetID); err != nil {
+		writeTerminalError(w, err)
+		return
+	}
+
+	snapshot, err := api.runtime.TerminalSnapshot(widgetID, math.MaxUint64)
+	if err != nil {
+		writeTerminalError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{"state": snapshot.State})
 }
 
 func (api *API) handleTerminalRestart(w http.ResponseWriter, r *http.Request) {

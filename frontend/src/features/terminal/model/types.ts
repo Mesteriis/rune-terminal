@@ -25,10 +25,13 @@ export type TerminalSessionView = {
   canSendInput: boolean
   canInterrupt: boolean
   isLoading: boolean
+  isInterrupting: boolean
   isRestarting: boolean
   error: string | null
   statusDetail: string | null
   outputChunks: TerminalOutputChunk[]
   runtimeState: TerminalRuntimeState | null
+  sendInputChunk: (text: string) => Promise<void>
+  interruptSession: () => Promise<void>
   restartSession: () => Promise<void>
 }

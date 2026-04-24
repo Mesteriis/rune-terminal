@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -27,6 +28,7 @@ func TestTerminalSnapshotReturnsBufferedChunks(t *testing.T) {
 
 	process := &httpTestProcess{
 		outputCh: make(chan []byte, 2),
+		waitCh:   make(chan struct{}),
 	}
 	launcher := &httpTestLauncher{process: process}
 
@@ -129,6 +131,7 @@ func TestTerminalStreamReplaysBufferedChunksAndKeepsLiveSubscription(t *testing.
 
 	process := &httpTestProcess{
 		outputCh: make(chan []byte, 4),
+		waitCh:   make(chan struct{}),
 	}
 	launcher := &httpTestLauncher{process: process}
 
@@ -268,15 +271,95 @@ func (l *httpTestLauncher) Launch(context.Context, terminal.LaunchOptions) (term
 }
 
 type httpTestProcess struct {
-	outputCh chan []byte
+	closeOnce sync.Once
+	outputCh  chan []byte
+	signalled bool
+	waitCh    chan struct{}
 }
 
 func (p *httpTestProcess) PID() int                       { return 1234 }
 func (p *httpTestProcess) Write(data []byte) (int, error) { return len(data), nil }
 func (p *httpTestProcess) Output() <-chan []byte          { return p.outputCh }
-func (p *httpTestProcess) Wait() (int, error)             { return 0, nil }
-func (p *httpTestProcess) Signal(os.Signal) error         { return nil }
-func (p *httpTestProcess) Close() error {
-	close(p.outputCh)
+func (p *httpTestProcess) Wait() (int, error) {
+	<-p.waitCh
+	return 0, nil
+}
+func (p *httpTestProcess) Signal(os.Signal) error {
+	p.signalled = true
 	return nil
+}
+func (p *httpTestProcess) Close() error {
+	p.closeOnce.Do(func() {
+		close(p.waitCh)
+		close(p.outputCh)
+	})
+	return nil
+}
+
+func TestTerminalInterruptSignalsProcessAndReturnsCurrentState(t *testing.T) {
+	t.Parallel()
+
+	process := &httpTestProcess{
+		outputCh: make(chan []byte, 1),
+		waitCh:   make(chan struct{}),
+	}
+	launcher := &httpTestLauncher{process: process}
+
+	tempDir := t.TempDir()
+	policyStore, err := policy.NewStore(filepath.Join(tempDir, "policy.json"), "/workspace/repo")
+	if err != nil {
+		t.Fatalf("NewStore error: %v", err)
+	}
+	auditLog, err := audit.NewLog(filepath.Join(tempDir, "audit.jsonl"))
+	if err != nil {
+		t.Fatalf("NewLog error: %v", err)
+	}
+	agentStore, err := agent.NewStore(filepath.Join(tempDir, "agent.json"))
+	if err != nil {
+		t.Fatalf("NewStore error: %v", err)
+	}
+	registry := toolruntime.NewRegistry()
+	runtime := &app.Runtime{
+		RepoRoot:  "/workspace/repo",
+		Terminals: terminal.NewService(launcher),
+		Agent:     agentStore,
+		Policy:    policyStore,
+		Audit:     auditLog,
+		Registry:  registry,
+	}
+	runtime.Executor = toolruntime.NewExecutor(runtime.Registry, runtime.Policy, runtime.Audit)
+
+	if _, err := runtime.Terminals.StartSession(context.Background(), terminal.LaunchOptions{
+		WidgetID:   "widget-1",
+		Shell:      "/bin/zsh",
+		WorkingDir: "/workspace/repo",
+	}); err != nil {
+		t.Fatalf("StartSession error: %v", err)
+	}
+
+	handler := NewHandler(runtime, testAuthToken)
+	recorder := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/terminal/widget-1/interrupt", nil)
+	req.Header.Set("Authorization", "Bearer "+testAuthToken)
+	handler.ServeHTTP(recorder, req)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d (%s)", recorder.Code, recorder.Body.String())
+	}
+	if !process.signalled {
+		t.Fatal("expected terminal interrupt to signal the process")
+	}
+
+	var payload struct {
+		State terminal.State `json:"state"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("Unmarshal error: %v", err)
+	}
+	if payload.State.WidgetID != "widget-1" {
+		t.Fatalf("expected state for widget-1, got %q", payload.State.WidgetID)
+	}
+	if payload.State.Status != terminal.StatusRunning {
+		t.Fatalf("expected running status, got %q", payload.State.Status)
+	}
 }

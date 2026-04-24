@@ -101,8 +101,7 @@
 
 ## Known limitations
 
-- No visible interrupt button exists on the current terminal UI, so interrupt remains backend-owned but not wired to a new control here.
-- Terminal chrome is now much closer to the reference surface, but terminal preferences remain runtime-local defaults; no backend-owned terminal settings contract exists yet for persisted font/theme/scrollback toggles.
+- Visible restart and interrupt controls now exist in the terminal header chrome, but terminal preferences remain runtime-local defaults; no backend-owned terminal settings contract exists yet for persisted font/theme/scrollback toggles.
 - Browser validation for terminal input now runs through Playwright on the split local dev path. The suite is intentionally serialized (`workers: 1`) because terminal/runtime state is shared across the same backend instance.
 - A fresh `npm run tauri:dev` desktop smoke was run for this slice and the spawned `rterm-desktop` / core listener processes were cleaned up after verification.
 
@@ -114,5 +113,6 @@
 - `core/app/terminal_restore_state.go`
 - `frontend/src/features/terminal/api/client.ts`
 - `frontend/src/features/terminal/model/use-terminal-session.ts`
+- `frontend/src/widgets/terminal/terminal-widget.tsx`
 - `frontend/src/shared/ui/components/terminal-surface.tsx`
 - `e2e/terminal.spec.ts`

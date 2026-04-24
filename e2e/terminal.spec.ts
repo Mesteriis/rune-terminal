@@ -1,6 +1,10 @@
 import { expect, test } from '@playwright/test'
 
-import { clearBrowserState, fetchTerminalSnapshot, sendTerminalInputViaApi } from './runtime'
+import {
+  clearBrowserState,
+  fetchTerminalSnapshot,
+  sendTerminalInputViaApi,
+} from './runtime'
 
 test('terminal input from the shell writes to the live backend session', async ({ page, request }) => {
   await clearBrowserState(page)
@@ -213,6 +217,57 @@ test('terminal restart action restarts the live backend session and keeps input 
 
         return (
           snapshot.next_seq > restartedSnapshot.next_seq &&
+          snapshot.chunks.some((chunk) => chunk.data.includes(marker))
+        )
+      },
+      { timeout: 30_000 },
+    )
+    .toBe(true)
+})
+
+test('terminal interrupt action signals the live backend session without breaking the stream', async ({
+  page,
+  request,
+}) => {
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  await expect
+    .poll(async () => {
+      const snapshot = await fetchTerminalSnapshot(request, 'term-side')
+      return snapshot.state.can_send_input === true && snapshot.state.can_interrupt === true
+    })
+    .toBe(true)
+
+  const baselineSnapshot = await fetchTerminalSnapshot(request, 'term-side')
+  const interruptResponsePromise = page.waitForResponse((response) =>
+    response.url().includes('/api/v1/terminal/term-side/interrupt') && response.request().method() === 'POST',
+  )
+  await page.getByRole('button', { name: 'Interrupt terminal for Workspace shell' }).last().click()
+  const interruptResponse = await interruptResponsePromise
+  expect(interruptResponse.ok()).toBeTruthy()
+
+  await expect
+    .poll(
+      async () => {
+        const snapshot = await fetchTerminalSnapshot(request, 'term-side')
+        return snapshot.state.widget_id === 'term-side' && snapshot.state.started_at === baselineSnapshot.state.started_at
+      },
+      { timeout: 10_000 },
+    )
+    .toBe(true)
+
+  const marker = `interrupt-terminal-e2e-${Date.now()}`
+  const afterInterruptSnapshot = await fetchTerminalSnapshot(request, 'term-side')
+
+  await sendTerminalInputViaApi(request, 'term-side', `printf '${marker}\\n'`, true)
+
+  await expect
+    .poll(
+      async () => {
+        const snapshot = await fetchTerminalSnapshot(request, 'term-side')
+        return (
+          snapshot.next_seq > afterInterruptSnapshot.next_seq &&
           snapshot.chunks.some((chunk) => chunk.data.includes(marker))
         )
       },

@@ -57,6 +57,10 @@ type TerminalRestartResponse = {
   state: TerminalRuntimeState
 }
 
+type TerminalInterruptResponse = {
+  state: TerminalRuntimeState
+}
+
 type APIErrorEnvelope = {
   error?: {
     code?: string
@@ -281,6 +285,17 @@ export async function restartTerminal(widgetID: string) {
   const payload = await requestRuntimeJSON<TerminalRestartResponse>(buildTerminalPath(widgetID, '/restart'), {
     method: 'POST',
   })
+
+  return payload.state
+}
+
+export async function interruptTerminal(widgetID: string) {
+  const payload = await requestRuntimeJSON<TerminalInterruptResponse>(
+    buildTerminalPath(widgetID, '/interrupt'),
+    {
+      method: 'POST',
+    },
+  )
 
   return payload.state
 }

@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   connectTerminalStream,
   fetchTerminalSnapshot,
+  interruptTerminal,
   restartTerminal,
   sendTerminalInput,
 } from '@/features/terminal/api/client'
@@ -21,6 +22,7 @@ vi.mock('@/features/terminal/api/client', async () => {
     ...actual,
     connectTerminalStream: vi.fn(),
     fetchTerminalSnapshot: vi.fn(),
+    interruptTerminal: vi.fn(),
     restartTerminal: vi.fn(),
     sendTerminalInput: vi.fn(),
   }
@@ -301,5 +303,66 @@ describe('useTerminalSession', () => {
         from: 1,
       }),
     )
+  })
+
+  it('interrupts the terminal session without replacing the active stream', async () => {
+    const initialStreamClose = vi.fn()
+
+    vi.mocked(fetchTerminalSnapshot).mockResolvedValue({
+      state: {
+        widget_id: 'term-main',
+        session_id: 'term-main',
+        shell: '/bin/zsh',
+        status: 'running',
+        pid: 4242,
+        started_at: '2026-04-24T09:00:00Z',
+        can_send_input: true,
+        can_interrupt: true,
+        working_dir: '/Users/avm/projects/runa-terminal',
+        connection_id: 'local',
+        connection_name: 'Local Machine',
+        connection_kind: 'local',
+      },
+      chunks: [],
+      next_seq: 1,
+    })
+    vi.mocked(connectTerminalStream).mockResolvedValue({
+      close: initialStreamClose,
+      done: Promise.resolve(),
+    })
+    vi.mocked(interruptTerminal).mockResolvedValue({
+      widget_id: 'term-main',
+      session_id: 'term-main',
+      shell: '/bin/zsh',
+      status: 'running',
+      pid: 4242,
+      started_at: '2026-04-24T09:00:00Z',
+      can_send_input: true,
+      can_interrupt: true,
+      connection_id: 'local',
+      connection_name: 'Local Machine',
+      connection_kind: 'local',
+      status_detail: 'interrupt sent',
+    })
+
+    const { result } = renderHook(() =>
+      useTerminalSession({
+        runtimeWidgetId: 'term-main',
+        title: 'Main terminal',
+      }),
+    )
+
+    await waitFor(() => {
+      expect(result.current.runtimeState?.widget_id).toBe('term-main')
+    })
+
+    await act(async () => {
+      await result.current.interruptSession()
+    })
+
+    expect(interruptTerminal).toHaveBeenCalledWith('term-main')
+    expect(initialStreamClose).not.toHaveBeenCalled()
+    expect(connectTerminalStream).toHaveBeenCalledTimes(1)
+    expect(result.current.runtimeState?.status_detail).toBe('interrupt sent')
   })
 })

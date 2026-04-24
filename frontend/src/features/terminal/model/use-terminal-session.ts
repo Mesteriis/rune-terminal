@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useSyncExternalStore } from 'react'
 import {
   connectTerminalStream,
   fetchTerminalSnapshot,
+  interruptTerminal,
   restartTerminal,
   sendTerminalInput,
   type TerminalOutputChunk,
@@ -15,8 +16,14 @@ import type {
   TerminalSessionView,
 } from '@/features/terminal/model/types'
 
+type TerminalSessionStaticView = Omit<
+  TerminalSessionView,
+  'interruptSession' | 'restartSession' | 'sendInputChunk'
+>
+
 type TerminalSessionRecordState = {
   error: string | null
+  isInterrupting: boolean
   isLoading: boolean
   isRestarting: boolean
   snapshot: TerminalSnapshot | null
@@ -40,6 +47,7 @@ function createTerminalSessionRecord(widgetId: string): TerminalSessionRecord {
     retainers: 0,
     state: {
       error: null,
+      isInterrupting: false,
       isLoading: false,
       isRestarting: false,
       snapshot: null,
@@ -141,7 +149,7 @@ function getTerminalWorkingLabel(seed: TerminalSessionSeed, state: TerminalSnaps
 function buildTerminalSessionView(
   seed: TerminalSessionSeed,
   state: TerminalSessionRecordState,
-): TerminalSessionView {
+): TerminalSessionStaticView {
   const runtimeState = state.snapshot?.state ?? null
   const error = state.error
   const hasSnapshot = runtimeState !== null
@@ -160,6 +168,7 @@ function buildTerminalSessionView(
     canSendInput: runtimeState?.can_send_input ?? false,
     canInterrupt: runtimeState?.can_interrupt ?? false,
     isLoading: state.isLoading,
+    isInterrupting: state.isInterrupting,
     isRestarting: state.isRestarting,
     error,
     statusDetail: error ?? runtimeState?.status_detail?.trim() ?? null,
@@ -197,6 +206,7 @@ async function ensureTerminalSession(record: TerminalSessionRecord) {
   record.state = {
     ...record.state,
     isLoading: true,
+    isInterrupting: false,
     isRestarting: false,
     error: null,
   }
@@ -212,6 +222,7 @@ async function ensureTerminalSession(record: TerminalSessionRecord) {
 
       record.state = {
         error: null,
+        isInterrupting: false,
         isLoading: false,
         isRestarting: false,
         snapshot,
@@ -260,6 +271,7 @@ async function ensureTerminalSession(record: TerminalSessionRecord) {
       record.state = {
         ...record.state,
         error: toTerminalErrorMessage(error, `Unable to load terminal snapshot for ${record.widgetId}.`),
+        isInterrupting: false,
         isLoading: false,
         isRestarting: false,
       }
@@ -364,13 +376,14 @@ export function useTerminalSession(seed: TerminalSessionSeed) {
   const restartSession = useCallback(async () => {
     const record = getTerminalSessionRecord(seed.runtimeWidgetId)
 
-    if (record.state.isRestarting) {
+    if (record.state.isInterrupting || record.state.isRestarting) {
       return
     }
 
     record.state = {
       ...record.state,
       error: null,
+      isInterrupting: false,
       isRestarting: true,
     }
     notifyTerminalSessionRecord(record)
@@ -389,6 +402,7 @@ export function useTerminalSession(seed: TerminalSessionSeed) {
       record.state = {
         ...record.state,
         error: null,
+        isInterrupting: false,
         isLoading: false,
         isRestarting: false,
         snapshot,
@@ -443,14 +457,73 @@ export function useTerminalSession(seed: TerminalSessionSeed) {
           error,
           `Unable to restart terminal session for ${seed.runtimeWidgetId}.`,
         ),
+        isInterrupting: false,
         isRestarting: false,
       }
       notifyTerminalSessionRecord(record)
     }
   }, [seed.runtimeWidgetId])
 
+  const interruptSession = useCallback(async () => {
+    const record = getTerminalSessionRecord(seed.runtimeWidgetId)
+
+    if (
+      record.state.isInterrupting ||
+      record.state.isRestarting ||
+      record.state.snapshot?.state.can_interrupt !== true
+    ) {
+      return
+    }
+
+    record.state = {
+      ...record.state,
+      error: null,
+      isInterrupting: true,
+    }
+    notifyTerminalSessionRecord(record)
+
+    try {
+      const nextState = await interruptTerminal(seed.runtimeWidgetId)
+      const nextRecord = terminalSessionRecords.get(seed.runtimeWidgetId)
+
+      if (!nextRecord || !isActiveTerminalSessionRecord(nextRecord)) {
+        return
+      }
+
+      nextRecord.state = {
+        ...nextRecord.state,
+        error: null,
+        isInterrupting: false,
+        snapshot: nextRecord.state.snapshot
+          ? {
+              ...nextRecord.state.snapshot,
+              state: nextState,
+            }
+          : nextRecord.state.snapshot,
+      }
+      notifyTerminalSessionRecord(nextRecord)
+    } catch (error) {
+      const nextRecord = terminalSessionRecords.get(seed.runtimeWidgetId)
+
+      if (!nextRecord || !isActiveTerminalSessionRecord(nextRecord)) {
+        return
+      }
+
+      nextRecord.state = {
+        ...nextRecord.state,
+        error: toTerminalErrorMessage(
+          error,
+          `Unable to interrupt terminal session for ${seed.runtimeWidgetId}.`,
+        ),
+        isInterrupting: false,
+      }
+      notifyTerminalSessionRecord(nextRecord)
+    }
+  }, [seed.runtimeWidgetId])
+
   return {
     ...sessionView,
+    interruptSession,
     sendInputChunk,
     restartSession,
   }

@@ -55,6 +55,7 @@ describe('TerminalWidget', () => {
   })
 
   it('renders terminal chrome and wires toolbar actions into the surface handle', async () => {
+    const interruptSessionMock = vi.fn(async () => undefined)
     const restartSessionMock = vi.fn(async () => undefined)
 
     vi.mocked(useTerminalSession).mockReturnValue({
@@ -67,13 +68,15 @@ describe('TerminalWidget', () => {
       canSendInput: true,
       canInterrupt: true,
       isLoading: false,
+      isInterrupting: false,
       isRestarting: false,
       error: null,
       statusDetail: 'Attached to local shell.',
       outputChunks: [],
       runtimeState: null,
-      restartSession: restartSessionMock,
+      interruptSession: interruptSessionMock,
       sendInputChunk: vi.fn(),
+      restartSession: restartSessionMock,
     } as ReturnType<typeof useTerminalSession>)
 
     render(<TerminalWidget hostId="terminal" runtimeWidgetId="term-side" title="Workspace shell" />)
@@ -99,10 +102,12 @@ describe('TerminalWidget', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Copy selection' }))
     fireEvent.click(screen.getByRole('button', { name: 'Paste from clipboard' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Interrupt terminal for Workspace shell' }))
     fireEvent.click(screen.getByRole('button', { name: 'Restart terminal for Workspace shell' }))
 
     expect(copySelectionMock).toHaveBeenCalledTimes(1)
     expect(pasteFromClipboardMock).toHaveBeenCalledTimes(1)
+    expect(interruptSessionMock).toHaveBeenCalledTimes(1)
     expect(restartSessionMock).toHaveBeenCalledTimes(1)
 
     fireEvent.click(screen.getByRole('button', { name: 'Close terminal search' }))

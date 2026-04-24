@@ -32,6 +32,7 @@ export type FileSnapshot = {
 export type TerminalSnapshot = {
   state: {
     can_send_input?: boolean
+    can_interrupt?: boolean
     connection_kind?: string
     started_at?: string
     shell?: string

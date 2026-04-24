@@ -5,6 +5,7 @@ import {
   closeTerminalTab,
   connectTerminalStream,
   fetchTerminalSnapshot,
+  interruptTerminal,
   restartTerminal,
   sendTerminalInput,
   TerminalAPIError,
@@ -155,7 +156,7 @@ describe('terminal api client', () => {
     })
   })
 
-  it('posts input and restart requests to the backend contract', async () => {
+  it('posts input, interrupt and restart requests to the backend contract', async () => {
     const fetchMock = vi.fn()
     fetchMock
       .mockResolvedValueOnce({
@@ -171,6 +172,24 @@ describe('terminal api client', () => {
           widget_id: 'term-main',
           bytes_sent: 4,
           append_newline: true,
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          state: {
+            widget_id: 'term-main',
+            session_id: 'term-main',
+            shell: '/bin/zsh',
+            status: 'running',
+            pid: 5252,
+            started_at: '2026-04-21T08:02:00Z',
+            can_send_input: true,
+            can_interrupt: true,
+            connection_id: 'local',
+            connection_name: 'Local Machine',
+            connection_kind: 'local',
+          },
         }),
       })
       .mockResolvedValueOnce({
@@ -213,6 +232,19 @@ describe('terminal api client', () => {
       connection_name: 'Local Machine',
       connection_kind: 'local',
     })
+    await expect(interruptTerminal('term-main')).resolves.toEqual({
+      widget_id: 'term-main',
+      session_id: 'term-main',
+      shell: '/bin/zsh',
+      status: 'running',
+      pid: 5252,
+      started_at: '2026-04-21T08:02:00Z',
+      can_send_input: true,
+      can_interrupt: true,
+      connection_id: 'local',
+      connection_name: 'Local Machine',
+      connection_kind: 'local',
+    })
 
     expect(fetchMock.mock.calls[1]?.[0]).toBe('http://127.0.0.1:8090/api/v1/terminal/term-main/input')
     expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({
@@ -224,6 +256,10 @@ describe('terminal api client', () => {
     })
     expect(fetchMock.mock.calls[2]?.[0]).toBe('http://127.0.0.1:8090/api/v1/terminal/term-main/restart')
     expect(fetchMock.mock.calls[2]?.[1]).toMatchObject({
+      method: 'POST',
+    })
+    expect(fetchMock.mock.calls[3]?.[0]).toBe('http://127.0.0.1:8090/api/v1/terminal/term-main/interrupt')
+    expect(fetchMock.mock.calls[3]?.[1]).toMatchObject({
       method: 'POST',
     })
   })
