@@ -1,6 +1,16 @@
 import { useEffect, useRef } from 'react'
 
-import { ChevronDown, ChevronUp, ClipboardPaste, Copy, Cpu, Search, X } from 'lucide-react'
+import {
+  ChevronDown,
+  ChevronUp,
+  ClipboardPaste,
+  Copy,
+  Cpu,
+  Eraser,
+  Search,
+  X,
+  ChevronsDown,
+} from 'lucide-react'
 
 import {
   terminalToolbarBadgeTextStyle,
@@ -18,8 +28,10 @@ export type TerminalToolbarProps = {
   isSearchOpen: boolean
   rendererMode: 'default' | 'webgl'
   searchQuery: string
+  onClear: () => void
   onCloseSearch: () => void
   onCopy: () => void
+  onJumpToLatest: () => void
   onPaste: () => void
   onSearchNext: () => void
   onSearchPrevious: () => void
@@ -31,8 +43,10 @@ export function TerminalToolbar({
   isSearchOpen,
   rendererMode,
   searchQuery,
+  onClear,
   onCloseSearch,
   onCopy,
+  onJumpToLatest,
   onPaste,
   onSearchNext,
   onSearchPrevious,
@@ -75,6 +89,22 @@ export function TerminalToolbar({
             style={terminalToolbarIconButtonStyle}
           >
             <Search size={14} strokeWidth={1.8} />
+          </Button>
+          <Button
+            aria-label="Clear terminal viewport"
+            onClick={onClear}
+            runaComponent="terminal-toolbar-clear"
+            style={terminalToolbarIconButtonStyle}
+          >
+            <Eraser size={14} strokeWidth={1.8} />
+          </Button>
+          <Button
+            aria-label="Jump to latest terminal output"
+            onClick={onJumpToLatest}
+            runaComponent="terminal-toolbar-jump-latest"
+            style={terminalToolbarIconButtonStyle}
+          >
+            <ChevronsDown size={14} strokeWidth={1.8} />
           </Button>
         </Box>
         {isSearchOpen ? (

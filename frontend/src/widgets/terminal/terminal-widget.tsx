@@ -40,6 +40,12 @@ export function TerminalWidget({
   const handleCopy = useCallback(async () => {
     await terminalSurfaceRef.current?.copySelection()
   }, [])
+  const handleClear = useCallback(() => {
+    terminalSurfaceRef.current?.clearViewport()
+  }, [])
+  const handleJumpToLatest = useCallback(() => {
+    terminalSurfaceRef.current?.jumpToLatest()
+  }, [])
   const handlePaste = useCallback(async () => {
     await terminalSurfaceRef.current?.pasteFromClipboard()
   }, [])
@@ -161,8 +167,10 @@ export function TerminalWidget({
           />
           <TerminalToolbar
             isSearchOpen={isSearchOpen}
+            onClear={handleClear}
             onCloseSearch={handleCloseSearch}
             onCopy={() => void handleCopy()}
+            onJumpToLatest={handleJumpToLatest}
             onPaste={() => void handlePaste()}
             onSearchNext={handleSearchNext}
             onSearchPrevious={handleSearchPrevious}

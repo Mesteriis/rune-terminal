@@ -102,6 +102,7 @@
 ## Known limitations
 
 - Visible restart and interrupt controls now exist in the terminal header chrome, but terminal preferences remain runtime-local defaults; no backend-owned terminal settings contract exists yet for persisted font/theme/scrollback toggles.
+- Terminal toolbar `clear` and `jump-to-latest` actions are intentionally local xterm viewport controls. They do not mutate backend snapshot history and were validated as non-breaking live affordances rather than as persisted runtime state.
 - Browser validation for terminal input now runs through Playwright on the split local dev path. The suite is intentionally serialized (`workers: 1`) because terminal/runtime state is shared across the same backend instance.
 - A fresh `npm run tauri:dev` desktop smoke was run for this slice and the spawned `rterm-desktop` / core listener processes were cleaned up after verification.
 
@@ -113,6 +114,7 @@
 - `core/app/terminal_restore_state.go`
 - `frontend/src/features/terminal/api/client.ts`
 - `frontend/src/features/terminal/model/use-terminal-session.ts`
+- `frontend/src/shared/ui/components/terminal-toolbar.tsx`
 - `frontend/src/widgets/terminal/terminal-widget.tsx`
 - `frontend/src/shared/ui/components/terminal-surface.tsx`
 - `e2e/terminal.spec.ts`

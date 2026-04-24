@@ -5,9 +5,11 @@ import { useTerminalSession } from '@/features/terminal/model/use-terminal-sessi
 import { TerminalWidget } from '@/widgets/terminal/terminal-widget'
 
 const copySelectionMock = vi.fn(async () => undefined)
+const clearViewportMock = vi.fn(() => undefined)
 const findNextMock = vi.fn((_query: string) => true)
 const findPreviousMock = vi.fn((_query: string) => true)
 const focusMock = vi.fn(() => undefined)
+const jumpToLatestMock = vi.fn(() => undefined)
 const pasteFromClipboardMock = vi.fn(async () => undefined)
 
 vi.mock('@/features/terminal/model/use-terminal-session', () => ({
@@ -37,10 +39,12 @@ vi.mock('@/shared/ui/components/terminal-surface', async () => {
       }, [props])
 
       React.useImperativeHandle(ref, () => ({
+        clearViewport: clearViewportMock,
         copySelection: copySelectionMock,
         findNext: findNextMock,
         findPrevious: findPreviousMock,
         focus: focusMock,
+        jumpToLatest: jumpToLatestMock,
         pasteFromClipboard: pasteFromClipboardMock,
       }))
 
@@ -102,10 +106,14 @@ describe('TerminalWidget', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Copy selection' }))
     fireEvent.click(screen.getByRole('button', { name: 'Paste from clipboard' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Clear terminal viewport' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Jump to latest terminal output' }))
     fireEvent.click(screen.getByRole('button', { name: 'Interrupt terminal for Workspace shell' }))
     fireEvent.click(screen.getByRole('button', { name: 'Restart terminal for Workspace shell' }))
 
     expect(copySelectionMock).toHaveBeenCalledTimes(1)
+    expect(clearViewportMock).toHaveBeenCalledTimes(1)
+    expect(jumpToLatestMock).toHaveBeenCalledTimes(1)
     expect(pasteFromClipboardMock).toHaveBeenCalledTimes(1)
     expect(interruptSessionMock).toHaveBeenCalledTimes(1)
     expect(restartSessionMock).toHaveBeenCalledTimes(1)

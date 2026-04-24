@@ -11,10 +11,12 @@ import { TerminalViewport } from '@/shared/ui/primitives'
 import type { TerminalSessionState } from '@/shared/ui/components/terminal-status-header'
 
 export type TerminalSurfaceHandle = {
+  clearViewport: () => void
   copySelection: () => Promise<void>
   findNext: (query: string) => boolean
   findPrevious: (query: string) => boolean
   focus: () => void
+  jumpToLatest: () => void
   pasteFromClipboard: () => Promise<void>
 }
 
@@ -195,6 +197,18 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
     useImperativeHandle(
       ref,
       () => ({
+        clearViewport: () => {
+          const term = termRef.current
+
+          if (!term) {
+            return
+          }
+
+          const latestChunkSeq = outputChunks[outputChunks.length - 1]?.seq ?? 0
+          term.clear()
+          lastWrittenChunkSeqRef.current = latestChunkSeq
+          lastRenderedStatusMessageRef.current = statusMessageRef.current?.trim() || null
+        },
         copySelection: async () => {
           const term = termRef.current
 
@@ -225,6 +239,10 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
         focus: () => {
           termRef.current?.focus()
         },
+        jumpToLatest: () => {
+          termRef.current?.scrollToBottom()
+          termRef.current?.focus()
+        },
         pasteFromClipboard: async () => {
           const term = termRef.current
 
@@ -235,7 +253,7 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
           await pasteClipboardIntoTerminal(term)
         },
       }),
-      [],
+      [outputChunks],
     )
 
     useEffect(() => {

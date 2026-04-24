@@ -16,6 +16,8 @@ test('terminal input from the shell writes to the live backend session', async (
 
   await expect(terminalInput).toBeVisible()
   await expect(searchToggle).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Clear terminal viewport' }).last()).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Jump to latest terminal output' }).last()).toBeVisible()
   await searchToggle.click()
   await expect(page.getByRole('textbox', { name: 'Search terminal output' }).last()).toBeVisible()
   await page.getByRole('button', { name: 'Close terminal search' }).last().click()
@@ -54,6 +56,27 @@ test('terminal input from the shell writes to the live backend session', async (
           [mainSnapshot, sideSnapshot].some((snapshot) =>
             snapshot.chunks.some((chunk) => chunk.data.includes(marker)),
           )
+        )
+      },
+      { timeout: 30_000 },
+    )
+    .toBe(true)
+
+  await page.getByRole('button', { name: 'Clear terminal viewport' }).last().click()
+  await page.getByRole('button', { name: 'Jump to latest terminal output' }).last().click()
+
+  const postToolbarMarker = `terminal-post-toolbar-${Date.now()}`
+  const postToolbarBaseline = await fetchTerminalSnapshot(request, 'term-side')
+  await sendTerminalInputViaApi(request, 'term-side', `printf '${postToolbarMarker}\\n'`, true)
+
+  await expect
+    .poll(
+      async () => {
+        const snapshot = await fetchTerminalSnapshot(request, 'term-side')
+
+        return (
+          snapshot.next_seq > postToolbarBaseline.next_seq &&
+          snapshot.chunks.some((chunk) => chunk.data.includes(postToolbarMarker))
         )
       },
       { timeout: 30_000 },

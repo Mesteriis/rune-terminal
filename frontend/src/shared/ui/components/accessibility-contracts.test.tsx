@@ -57,8 +57,10 @@ describe('frontend accessibility contracts', () => {
     render(
       <TerminalToolbar
         isSearchOpen
+        onClear={() => undefined}
         onCloseSearch={() => undefined}
         onCopy={() => undefined}
+        onJumpToLatest={() => undefined}
         onPaste={() => undefined}
         onSearchNext={() => undefined}
         onSearchPrevious={() => undefined}
