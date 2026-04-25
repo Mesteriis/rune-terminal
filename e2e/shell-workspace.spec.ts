@@ -42,18 +42,27 @@ test('shell workspace tabs, utility actions, widget creation, and settings modal
     .toBe(baselineBackendTabCount + 1)
 
   await openUtilityPanelButton.click()
-  await page.getByRole('menuitem', { name: 'Create commander widget' }).click()
-  const commanderTab = page.locator('.dv-tab').filter({ hasText: 'commander' }).last()
-  await expect(page.getByRole('button', { name: 'Close tool' })).toHaveCount(1)
-  await expect(commanderTab).toContainText('tool')
-  await commanderTab.click()
-  await expect(page.getByRole('button', { name: /Go back in (left|right) pane/ })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Set commander view mode to commander' })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: 'Create Terminal widget' })).toBeEnabled()
+  await expect(
+    page.getByRole('menuitem', { name: 'Files widget unavailable: Requires path handoff' }),
+  ).toBeDisabled()
+  await expect(
+    page.getByRole('menuitem', { name: 'Commander widget unavailable: Frontend-local' }),
+  ).toBeDisabled()
+  await expect(page.getByRole('menuitem', { name: 'Preview widget unavailable: Planned' })).toBeDisabled()
+  await expect(page.getByRole('menuitem', { name: 'Editor widget unavailable: Planned' })).toBeDisabled()
+  await expect(
+    page.getByRole('menuitem', { name: 'Web Placeholder widget unavailable: Planned' }),
+  ).toBeDisabled()
+  await expect(page.getByRole('menuitem', { name: 'Create commander widget' })).toHaveCount(0)
+  await openUtilityPanelButton.click()
 
   await workspaceTwoTab.click()
   await expect(workspaceTwoTab).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByRole('button', { name: 'Close Main terminal' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Close tool' })).toHaveCount(1)
+  const commanderTab = page.locator('.dv-tab').filter({ hasText: 'commander' }).first()
+  await expect(commanderTab).toContainText('tool')
   await page.getByRole('button', { name: 'Add terminal tab for Main terminal' }).click()
   await expect(page.getByRole('button', { name: 'Close Main terminal 2' })).toBeVisible()
   await expect(page.getByText(/terminal widget not found/i)).toHaveCount(0)
@@ -70,7 +79,7 @@ test('shell workspace tabs, utility actions, widget creation, and settings modal
   await expect(workspaceFourTab).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByRole('button', { name: 'Close Main terminal' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Close Workspace shell' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Close tool' })).toHaveCount(1)
+  await expect(page.getByRole('button', { name: 'Close tool' })).toHaveCount(0)
   await page.getByRole('button', { name: 'Add terminal tab for Workspace shell' }).click()
   await expect(page.getByRole('button', { name: 'Close Workspace shell 2' })).toBeVisible()
   await expect(page.getByText(/terminal widget not found/i)).toHaveCount(0)

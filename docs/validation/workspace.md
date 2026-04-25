@@ -14,11 +14,16 @@
     `fetchWorkspaceWidgetKindCatalog()` client for that backend contract,
     and the rewritten Dockview workspace shell now consumes the loaded
     catalog for startup seeding plus right-rail widget discoverability
+  - browser e2e coverage now verifies the active right-rail catalog behavior:
+    terminal remains enabled and runtime-created, while `files`,
+    `commander`, and planned widget kinds are visible but disabled according
+    to catalog status/path-handoff constraints
   - serialized Playwright coverage now exercises the active shell/user paths over the split local dev runtime:
     - workspace tab switching and workspace creation
     - the shell topbar now renders workspace tabs and the add-workspace affordance as one compact grouped strip, so workspace switching and creation read as a single control cluster instead of separate header controls
     - commander Dockview tabs now follow the same compact workspace-strip language instead of a badge-only placeholder: each commander tab shows a compact `commander` pill, a readable `tool/tool N` title, and a per-tab close action only when the commander group actually has multiple tabs
-    - right-rail utility menu actions for new workspace, terminal widget, and commander widget
+    - right-rail utility menu actions for new workspace and terminal widget,
+      with non-creatable widget kinds disabled from backend catalog truth
     - settings modal open/close from shell chrome
     - the settings shell now renders as a tighter navigator/editor surface with a dedicated sidebar header and one framed content pane for the active section, while preserving the existing `General / AI / Terminal / Commander` structure
     - the `General` section now reads real runtime bootstrap metadata and exposes the desktop `watcher_mode` lifecycle setting; in the split browser dev loop this control degrades to a visible read-only fallback instead of pretending browser mode can persist desktop settings
@@ -157,6 +162,7 @@
 - `(cd frontend && npm exec prettier -- --write src/widgets/ai/ai-composer-widget.tsx)`
 - `npm --prefix frontend run test -- src/widgets/ai/ai-composer-widget.test.tsx`
 - `npm --prefix frontend run build`
+- `npm run test:ui -- --reporter=line e2e/shell-workspace.spec.ts`
 - `npm run validate`
 - `npm run validate:desktop-runtime`
 - `npm run test:ui -- --reporter=line`
@@ -205,8 +211,7 @@
 - The widget-kind catalog now drives Dockview startup seeding and right-rail
   discoverability, but this validation still does not claim backend-owned
   Dockview layout persistence, generic files-widget creation without an
-  explicit path handoff, rich preview/editor/web rendering, or a browser e2e
-  proof for catalog consumption yet.
+  explicit path handoff, or rich preview/editor/web rendering.
 - The AI composer DOM `keydown` listener now uses the real browser
   `globalThis.KeyboardEvent` type instead of React's synthetic
   `KeyboardEvent`, so the fresh `npm --prefix frontend run build` pass is no
@@ -248,6 +253,11 @@
   model helpers, Dockview startup seeding decisions, and the right-rail menu
   behavior that enables only catalog-creatable terminal widgets while showing
   path-handoff, frontend-local, and planned kinds as disabled.
+- Browser e2e validation now covers the catalog-backed right rail inside
+  `e2e/shell-workspace.spec.ts`: `Create Terminal widget` remains enabled and
+  still increases the backend tab count, while `Files`, `Commander`,
+  `Preview`, `Editor`, and `Web Placeholder` menu entries are asserted
+  disabled with their catalog-derived reason labels.
 - Static validation confirmed the frontend dependency upgrade to `react@19.2.5`, `react-dom@19.2.5`, `@types/react@19.2.14`, and `@types/react-dom@19.2.3`, and `npm --prefix frontend run lint:active` plus `npm --prefix frontend run build` both passed on that stack.
 - Static validation confirmed the terminal renderer slice dependencies `@xterm/xterm@6.0.0` and `@xterm/addon-fit@0.11.0`, plus the new UI-layer chain `TerminalViewport -> TerminalStatusHeader/TerminalSurface -> TerminalWidget`.
 - Static validation confirmed terminal panel params now act as the local source of truth for terminal title/session metadata, so both the body widget and the custom Dockview tab renderer reuse the same terminal panel config.
