@@ -160,6 +160,38 @@ test('commander persistence stores pane runtime state without directory snapshot
   await rm(beforeFilePath, { force: true })
 })
 
+test('commander reload restores the persisted pane path through the backend list path', async ({
+  page,
+  request,
+}) => {
+  const bootstrap = await fetchBootstrap(request)
+  const stamp = Date.now()
+  const restoreRootPath = `${bootstrap.repo_root}/tmp/restore-e2e-${stamp}`
+  const restoreRootDisplayPath = formatDisplayPath(restoreRootPath, bootstrap.home_dir)
+  const restoreFileName = `restore-${stamp}.txt`
+  const restoreFilePath = `${restoreRootPath}/${restoreFileName}`
+  const leftPane = getPane(page, 'left')
+
+  await mkdirViaApi(request, restoreRootPath)
+  await writeFile(restoreFilePath, 'restore\n')
+
+  await clearBrowserState(page)
+  await page.goto('/')
+  await setPanePath(page, 'left', restoreRootDisplayPath)
+  await expect(leftPane.row(restoreFileName)).toHaveCount(1)
+  await page.waitForFunction(
+    (path) => window.localStorage.getItem('runa-terminal:commander-widgets:v1')?.includes(path) === true,
+    restoreRootPath,
+  )
+
+  await page.reload()
+
+  await expect(leftPane.path).toHaveText(restoreRootDisplayPath)
+  await expect(leftPane.row(restoreFileName)).toHaveCount(1)
+
+  await rm(restoreFilePath, { force: true })
+})
+
 test('commander mkdir creates a directory over the backend and focuses the new entry', async ({
   page,
   request,

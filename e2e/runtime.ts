@@ -149,8 +149,11 @@ async function expectJSONResponse<T>(responsePromise: ReturnType<APIRequestConte
 }
 
 export async function clearBrowserState(page: Page) {
-  await page.addInitScript(() => {
+  await page.context().clearCookies()
+  await page.goto('/')
+  await page.evaluate(() => {
     window.localStorage.clear()
+    window.sessionStorage.clear()
   })
 }
 
