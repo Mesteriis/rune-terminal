@@ -287,6 +287,24 @@ function formatContextWidgetLabel(widget: WorkspaceWidgetSnapshot) {
     : `${title} (${widget.id}) · ${meta.join(' · ')}`
 }
 
+function formatContextWidgetGroup(widgetKind: string) {
+  switch (widgetKind.trim().toLowerCase()) {
+    case 'terminal':
+      return 'Terminal widgets'
+    case 'commander':
+      return 'Commander widgets'
+    case 'ai':
+      return 'AI widgets'
+    default: {
+      const normalizedKind = widgetKind.trim()
+      if (normalizedKind === '') {
+        return 'Other widgets'
+      }
+      return `${normalizedKind.charAt(0).toUpperCase()}${normalizedKind.slice(1)} widgets`
+    }
+  }
+}
+
 function mapContextWidgetOptions(widgets: WorkspaceWidgetSnapshot[]): AiContextWidgetOption[] {
   return widgets.map((widget) => {
     const title = widget.title?.trim() || widget.id
@@ -303,6 +321,7 @@ function mapContextWidgetOptions(widgets: WorkspaceWidgetSnapshot[]): AiContextW
     }
 
     return {
+      group: formatContextWidgetGroup(widget.kind),
       value: widget.id,
       label: formatContextWidgetLabel(widget),
       title,

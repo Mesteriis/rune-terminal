@@ -7,6 +7,7 @@ export type SearchableMultiSelectOption = {
   label: string
   title?: string
   meta?: string
+  group?: string
 }
 
 export type SearchableMultiSelectProps = {
@@ -87,6 +88,21 @@ const optionActionSelectedStyle = {
   color: 'var(--color-text-primary)',
 }
 
+const optionGroupStyle = {
+  display: 'flex',
+  flexDirection: 'column' as const,
+  gap: '6px',
+}
+
+const optionGroupTitleStyle = {
+  padding: '0 var(--space-xs)',
+  color: 'var(--color-text-secondary)',
+  fontSize: '11px',
+  lineHeight: '16px',
+  textTransform: 'uppercase' as const,
+  letterSpacing: '0.04em',
+}
+
 const emptyStateStyle = {
   padding: 'var(--space-sm)',
   color: 'var(--color-text-secondary)',
@@ -117,6 +133,30 @@ export function SearchableMultiSelect({
     )
   }, [options, query])
 
+  const groupedOptions = useMemo(() => {
+    const orderedGroups: Array<{ id: string; title?: string; options: SearchableMultiSelectOption[] }> = []
+    const groupIndex = new Map<string, number>()
+
+    filteredOptions.forEach((option) => {
+      const groupId = option.group?.trim() || '__ungrouped__'
+      const existingIndex = groupIndex.get(groupId)
+
+      if (existingIndex == null) {
+        groupIndex.set(groupId, orderedGroups.length)
+        orderedGroups.push({
+          id: groupId,
+          title: groupId === '__ungrouped__' ? undefined : option.group?.trim(),
+          options: [option],
+        })
+        return
+      }
+
+      orderedGroups[existingIndex].options.push(option)
+    })
+
+    return orderedGroups
+  }, [filteredOptions])
+
   const toggleOption = (nextValue: string) => {
     onChange(
       value.includes(nextValue)
@@ -142,28 +182,33 @@ export function SearchableMultiSelect({
         role="listbox"
         style={optionsStyle}
       >
-        {filteredOptions.map((option) => {
-          const isSelected = value.includes(option.value)
+        {groupedOptions.map((group) => (
+          <Box key={group.id} style={optionGroupStyle}>
+            {group.title ? <Text style={optionGroupTitleStyle}>{group.title}</Text> : null}
+            {group.options.map((option) => {
+              const isSelected = value.includes(option.value)
 
-          return (
-            <Button
-              aria-selected={isSelected}
-              key={option.value}
-              onClick={() => toggleOption(option.value)}
-              role="option"
-              style={optionButtonStyle}
-            >
-              <Box style={optionTextClusterStyle}>
-                <Text>{option.title ?? option.label}</Text>
-                {option.meta ? <Text style={optionMetaStyle}>{option.meta}</Text> : null}
-              </Box>
-              <Text style={{ ...optionActionStyle, ...(isSelected ? optionActionSelectedStyle : {}) }}>
-                {isSelected ? 'Selected' : 'Add'}
-              </Text>
-            </Button>
-          )
-        })}
-        {filteredOptions.length === 0 ? <Text style={emptyStateStyle}>No matching options</Text> : null}
+              return (
+                <Button
+                  aria-selected={isSelected}
+                  key={option.value}
+                  onClick={() => toggleOption(option.value)}
+                  role="option"
+                  style={optionButtonStyle}
+                >
+                  <Box style={optionTextClusterStyle}>
+                    <Text>{option.title ?? option.label}</Text>
+                    {option.meta ? <Text style={optionMetaStyle}>{option.meta}</Text> : null}
+                  </Box>
+                  <Text style={{ ...optionActionStyle, ...(isSelected ? optionActionSelectedStyle : {}) }}>
+                    {isSelected ? 'Selected' : 'Add'}
+                  </Text>
+                </Button>
+              )
+            })}
+          </Box>
+        ))}
+        {groupedOptions.length === 0 ? <Text style={emptyStateStyle}>No matching options</Text> : null}
       </Box>
     </Box>
   )

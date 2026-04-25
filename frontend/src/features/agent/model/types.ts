@@ -97,6 +97,7 @@ export type AiContextWidgetOption = {
   label: string
   title?: string
   meta?: string
+  group?: string
 }
 
 export type AiProviderOption = {

@@ -106,6 +106,7 @@
 - The dropdown body itself is now denser but semantically unchanged:
   - summary rows render inside a compact grouped block
   - searchable widget options use tighter rows with clearer `Selected` / `Add` status chips
+  - widget options are now visually grouped by widget kind (`Terminal widgets`, `Commander widgets`, `AI widgets`) without changing the persisted `widget_ids` contract
 - Assistant chat messages now also use denser presentation-only chrome without changing message semantics:
   - assistant model/status metadata and the details toggle share one compact action row under the bubble
   - expanded details render inside a grouped panel with an explicit header and per-field inset sections

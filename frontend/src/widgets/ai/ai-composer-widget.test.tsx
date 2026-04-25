@@ -109,6 +109,7 @@ describe('AiComposerWidget', () => {
           value: 'term-main',
           label: 'Main Shell (term-main) · terminal · local',
           title: 'Main Shell',
+          group: 'Terminal widgets',
           meta: 'term-main · terminal · local',
         }}
         activeTool="Chat"
@@ -117,13 +118,22 @@ describe('AiComposerWidget', () => {
             value: 'term-main',
             label: 'Main Shell (term-main) · terminal · local',
             title: 'Main Shell',
+            group: 'Terminal widgets',
             meta: 'term-main · terminal · local',
           },
           {
             value: 'term-side',
             label: 'Ops Shell (term-side) · terminal · local',
             title: 'Ops Shell',
+            group: 'Terminal widgets',
             meta: 'term-side · terminal · local',
+          },
+          {
+            value: 'cmd-main',
+            label: 'Files (cmd-main) · commander · local',
+            title: 'Files',
+            group: 'Commander widgets',
+            meta: 'cmd-main · commander · local',
           },
         ]}
         onContextUseDefault={onContextUseDefault}
@@ -150,6 +160,8 @@ describe('AiComposerWidget', () => {
     expect(contextDialog).toHaveTextContent('Current')
     expect(contextDialog).toHaveTextContent('Main Shell · term-main · terminal · local')
     expect(contextDialog).toHaveTextContent('Selected')
+    expect(contextDialog).toHaveTextContent('Terminal widgets')
+    expect(contextDialog).toHaveTextContent('Commander widgets')
 
     fireEvent.click(screen.getByRole('button', { name: 'Use current' }))
     fireEvent.click(screen.getByRole('button', { name: 'Only current' }))
