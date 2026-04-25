@@ -70,7 +70,7 @@ struct SingleInstancePayload {
     cwd: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 enum WatcherMode {
     #[default]
@@ -963,7 +963,22 @@ fn load_settings() -> SettingsFile {
         return SettingsFile::default();
     };
 
-    read_json_file::<SettingsFile>(&path).unwrap_or_default()
+    load_settings_from_path(&path)
+}
+
+fn load_settings_from_path(path: &Path) -> SettingsFile {
+    let raw = match fs::read_to_string(path) {
+        Ok(raw) => raw,
+        Err(_) => return SettingsFile::default(),
+    };
+
+    match serde_json::from_str::<SettingsFile>(&raw) {
+        Ok(settings) => settings,
+        Err(_) => {
+            let _ = fs::remove_file(path);
+            SettingsFile::default()
+        }
+    }
 }
 
 fn normalize_url_for_compare(value: &str) -> String {
@@ -1128,11 +1143,6 @@ fn wait_for_ready_file(path: &Path) -> Result<ReadyFilePayload, RuntimeError> {
     Err(RuntimeError::Ready(message))
 }
 
-fn read_json_file<T: serde::de::DeserializeOwned>(path: &Path) -> Option<T> {
-    let raw = fs::read_to_string(path).ok()?;
-    serde_json::from_str::<T>(&raw).ok()
-}
-
 fn default_workspace_root() -> PathBuf {
     env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
 }
@@ -1204,6 +1214,7 @@ fn request_watcher_state(url: &str) -> Result<WatcherStatePayload, RuntimeError>
 mod tests {
     use super::{
         cleanup_runtime_slot, discover_running_watcher_for_core,
+        load_settings_from_path,
         read_runtime_attachment_from_path, recover_or_drop_watcher_record,
         reject_foreign_watcher_listener, sanitize_runtime_attachment, wait_for_ready_file,
         write_file_atomically, HealthPayload, ReadyFilePayload, RuntimeError, RuntimeFile,
@@ -1548,6 +1559,42 @@ mod tests {
         assert!(
             !runtime_path.exists(),
             "dead runtime attachment records should be deleted during startup recovery"
+        );
+    }
+
+    #[test]
+    fn load_settings_from_path_clears_malformed_settings_file() {
+        let temp_dir = tempfile::tempdir().expect("temp dir");
+        let settings_path = temp_dir.path().join("settings.json");
+        fs::write(&settings_path, "{").expect("write malformed settings file");
+
+        let settings = load_settings_from_path(&settings_path);
+
+        assert_eq!(settings.watcher_mode, WatcherMode::Ephemeral);
+        assert_eq!(settings.core_auth_token, None);
+        assert!(
+            !settings_path.exists(),
+            "malformed settings.json should be deleted during startup recovery"
+        );
+    }
+
+    #[test]
+    fn load_settings_from_path_keeps_valid_settings_file() {
+        let temp_dir = tempfile::tempdir().expect("temp dir");
+        let settings_path = temp_dir.path().join("settings.json");
+        fs::write(
+            &settings_path,
+            r#"{"watcher_mode":"persistent","core_auth_token":"token"}"#,
+        )
+        .expect("write valid settings file");
+
+        let settings = load_settings_from_path(&settings_path);
+
+        assert_eq!(settings.watcher_mode, WatcherMode::Persistent);
+        assert_eq!(settings.core_auth_token.as_deref(), Some("token"));
+        assert!(
+            settings_path.exists(),
+            "valid settings.json should be preserved during startup recovery"
         );
     }
 
