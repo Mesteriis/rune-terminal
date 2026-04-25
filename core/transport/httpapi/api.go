@@ -80,6 +80,7 @@ func NewHandler(runtime *app.Runtime, authToken string) http.Handler {
 	mux.HandleFunc("GET /api/v1/agent/conversations", api.handleConversationList)
 	mux.HandleFunc("POST /api/v1/agent/conversations", api.handleCreateConversation)
 	mux.HandleFunc("PATCH /api/v1/agent/conversations/{conversationID}", api.handleRenameConversation)
+	mux.HandleFunc("DELETE /api/v1/agent/conversations/{conversationID}", api.handleDeleteConversation)
 	mux.HandleFunc("PUT /api/v1/agent/conversations/{conversationID}/activate", api.handleActivateConversation)
 	mux.HandleFunc("POST /api/v1/agent/providers", api.handleCreateProvider)
 	mux.HandleFunc("POST /api/v1/agent/providers/models", api.handleDiscoverProviderModels)

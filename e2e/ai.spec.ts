@@ -257,6 +257,56 @@ test('AI conversation navigator renames the active backend conversation', async 
     .toBe('Renamed from UI')
 })
 
+test('AI conversation navigator deletes the active thread and promotes the next conversation', async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(60_000)
+
+  const keepConversation = await createConversationViaApi(request)
+  await renameConversationViaApi(request, keepConversation.id, 'Keep after delete')
+
+  const deleteConversation = await createConversationViaApi(request)
+  await renameConversationViaApi(request, deleteConversation.id, 'Delete from UI')
+  await activateAgentConversation(request, deleteConversation.id)
+
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  await page.getByRole('button', { name: 'Toggle AI panel' }).click()
+  const conversationMenuButton = page.getByRole('button', { name: 'Conversation menu' })
+  await conversationMenuButton.click()
+  await page.getByRole('button', { name: 'Delete conversation' }).click()
+  await expect(page.getByText('Delete active conversation')).toBeVisible()
+  await page.getByRole('button', { name: 'Confirm delete conversation' }).click()
+
+  await expect
+    .poll(async () => {
+      const conversations = await fetchAgentConversations(request)
+      return {
+        active: conversations.active_conversation_id,
+        ids: conversations.conversations.map((conversation) => conversation.id),
+      }
+    })
+    .toMatchObject({
+      active: keepConversation.id,
+      ids: expect.not.arrayContaining([deleteConversation.id]),
+    })
+
+  await expect(conversationMenuButton).toContainText('Keep after delete')
+  await conversationMenuButton.click()
+  await expect(
+    page.getByRole('option', {
+      name: 'Open conversation Keep after delete',
+    }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('option', {
+      name: 'Open conversation Delete from UI',
+    }),
+  ).toHaveCount(0)
+})
+
 test('AI conversation navigator filters recent threads locally', async ({ page, request }) => {
   test.setTimeout(60_000)
 

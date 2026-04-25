@@ -4,6 +4,7 @@ import { useUnit } from 'effector-react'
 import {
   activateAgentConversation,
   createAgentConversation,
+  deleteAgentConversation,
   executeAgentTool,
   explainTerminalCommand,
   fetchAgentConversations,
@@ -664,6 +665,48 @@ export function useAgentPanel(hostId: string, enabled = true) {
     [applyConversationSnapshot, isConversationPending, isSubmitting, refreshConversationList],
   )
 
+  const deleteConversation = useCallback(
+    async (conversationID: string) => {
+      const nextConversationID = conversationID.trim()
+      if (!nextConversationID || isSubmitting || isConversationPending) {
+        return
+      }
+
+      submissionNonceRef.current += 1
+      activeStreamRef.current?.close()
+      activeStreamRef.current = null
+      const panelStateEpoch = beginPanelStateEpoch()
+      setIsConversationPending(true)
+
+      try {
+        await deleteAgentConversation(nextConversationID)
+        const [snapshot, conversationList] = await Promise.all([
+          fetchAgentConversation(),
+          fetchAgentConversations(),
+        ])
+        if (panelStateEpochRef.current !== panelStateEpoch) {
+          return
+        }
+        applyConversationSnapshot(snapshot)
+        resetConversationInteractionState()
+        setConversations(conversationList.conversations)
+        setActiveConversationID(conversationList.active_conversation_id || snapshot.id)
+      } catch (error) {
+        setSubmitError(getErrorMessage(error, 'Unable to delete the conversation.'))
+      } finally {
+        setIsConversationPending(false)
+      }
+    },
+    [
+      applyConversationSnapshot,
+      beginPanelStateEpoch,
+      isConversationPending,
+      isSubmitting,
+      refreshConversationList,
+      resetConversationInteractionState,
+    ],
+  )
+
   const updateAuditMessageEntries = useCallback(
     (auditMessageID: string, update: Parameters<typeof updateInteractionMessage>[2]) => {
       setInteractionMessages((currentMessages) =>
@@ -1285,6 +1328,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
     setSelectedModel,
     setSelectedContextWidgetIDs: updateSelectedContextWidgetIDs,
     switchConversation,
+    deleteConversation,
     renameConversation,
     resetContextWidgetSelection,
     useAllContextWidgets,

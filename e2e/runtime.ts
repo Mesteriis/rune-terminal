@@ -279,6 +279,20 @@ export async function activateAgentConversation(request: APIRequestContext, conv
   return payload.conversation
 }
 
+export async function deleteAgentConversation(request: APIRequestContext, conversationID: string) {
+  const response = await request.delete(
+    `${backendUrl}/api/v1/agent/conversations/${encodeURIComponent(conversationID)}`,
+    {
+      headers: authHeaders(),
+    },
+  )
+
+  expect(response.ok()).toBeTruthy()
+
+  const payload = (await response.json()) as { conversation: AgentConversationSnapshot }
+  return payload.conversation
+}
+
 export async function fetchAgentProviderCatalog(request: APIRequestContext) {
   return expectJSONResponse<AgentProviderCatalog>(
     request.get(`${backendUrl}/api/v1/agent/providers`, {

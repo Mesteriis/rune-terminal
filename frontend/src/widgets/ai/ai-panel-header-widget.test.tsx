@@ -85,6 +85,36 @@ describe('AiPanelHeaderWidget', () => {
     expect(onRenameConversation).toHaveBeenCalledWith('conv_2', 'Renamed thread')
   })
 
+  it('routes active conversation delete through the header controls after confirmation', () => {
+    const onDeleteConversation = vi.fn()
+
+    render(
+      <AiPanelHeaderWidget
+        activeConversationID="conv_2"
+        conversations={[
+          {
+            id: 'conv_2',
+            title: 'Current thread',
+            created_at: '2026-04-24T10:00:00Z',
+            updated_at: '2026-04-24T10:01:00Z',
+            message_count: 1,
+          },
+        ]}
+        mode="chat"
+        onDeleteConversation={onDeleteConversation}
+        onModeChange={() => {}}
+        title="AI Rune"
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Conversation menu' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Delete conversation' }))
+    expect(screen.getByText('Delete active conversation')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm delete conversation' }))
+
+    expect(onDeleteConversation).toHaveBeenCalledWith('conv_2')
+  })
+
   it('shows the renamed title optimistically while the rename request is still pending', () => {
     let resolveRename: (() => void) | null = null
     const onRenameConversation = vi.fn(

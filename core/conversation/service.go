@@ -168,6 +168,75 @@ func (s *Service) RenameConversation(ctx context.Context, conversationID string,
 	return record.snapshot(messages, s.provider.Info()), nil
 }
 
+func (s *Service) DeleteConversation(ctx context.Context, conversationID string) (Snapshot, error) {
+	conversationID = strings.TrimSpace(conversationID)
+	if conversationID == "" {
+		return Snapshot{}, ErrConversationNotFound
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return Snapshot{}, err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	if _, err := loadConversationRecordTx(ctx, tx, conversationID); err != nil {
+		return Snapshot{}, err
+	}
+
+	wasActive := s.active.ID == conversationID
+	nextActiveRecord := s.active
+	nextActiveMessages := append([]Message(nil), s.state.Messages...)
+
+	if wasActive {
+		nextConversationID, err := nextConversationCandidateTx(ctx, tx, conversationID)
+		if err != nil {
+			return Snapshot{}, err
+		}
+		if nextConversationID == "" {
+			nextActiveRecord = newConversationRecord(time.Now().UTC())
+			nextActiveMessages = []Message{}
+			if err := insertConversationTx(ctx, tx, nextActiveRecord); err != nil {
+				return Snapshot{}, err
+			}
+		} else {
+			nextActiveRecord, nextActiveMessages, err = loadConversationStateTx(ctx, tx, nextConversationID)
+			if err != nil {
+				return Snapshot{}, err
+			}
+		}
+	}
+
+	if _, err := tx.ExecContext(ctx, `DELETE FROM conversations WHERE id = ?`, conversationID); err != nil {
+		return Snapshot{}, err
+	}
+
+	if wasActive {
+		if err := setActiveConversationTx(ctx, tx, nextActiveRecord.ID); err != nil {
+			return Snapshot{}, err
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return Snapshot{}, err
+	}
+
+	if wasActive {
+		s.active = nextActiveRecord
+		s.state = persistedState{
+			Messages:  append([]Message(nil), nextActiveMessages...),
+			UpdatedAt: nextActiveRecord.UpdatedAt,
+		}
+	}
+
+	return s.snapshotLocked(), nil
+}
+
 func (s *Service) ActivateConversation(ctx context.Context, conversationID string) (Snapshot, error) {
 	conversationID = strings.TrimSpace(conversationID)
 	if conversationID == "" {

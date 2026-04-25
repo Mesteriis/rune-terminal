@@ -126,6 +126,13 @@ export type AgentConversationContext = {
   widget_context_enabled?: boolean
 }
 
+function normalizeConversationSnapshot(conversation: AgentConversationSnapshot): AgentConversationSnapshot {
+  return {
+    ...conversation,
+    messages: Array.isArray(conversation.messages) ? conversation.messages : [],
+  }
+}
+
 export type AgentConversationStreamEventType = 'message-start' | 'text-delta' | 'message-complete' | 'error'
 
 export type AgentConversationMessageStartEvent = {
@@ -480,7 +487,7 @@ export async function fetchAgentConversation() {
   const payload = await requestRuntimeJSON<{ conversation: AgentConversationSnapshot }>(
     '/api/v1/agent/conversation',
   )
-  return payload.conversation
+  return normalizeConversationSnapshot(payload.conversation)
 }
 
 export async function fetchAgentConversations() {
@@ -492,7 +499,7 @@ export async function createAgentConversation() {
     '/api/v1/agent/conversations',
     {},
   )
-  return payload.conversation
+  return normalizeConversationSnapshot(payload.conversation)
 }
 
 export async function renameAgentConversation(conversationID: string, title: string) {
@@ -503,7 +510,17 @@ export async function renameAgentConversation(conversationID: string, title: str
       method: 'PATCH',
     },
   )
-  return payload.conversation
+  return normalizeConversationSnapshot(payload.conversation)
+}
+
+export async function deleteAgentConversation(conversationID: string) {
+  const payload = await requestRuntimeJSON<{ conversation: AgentConversationSnapshot }>(
+    `/api/v1/agent/conversations/${encodeURIComponent(conversationID)}`,
+    {
+      method: 'DELETE',
+    },
+  )
+  return normalizeConversationSnapshot(payload.conversation)
 }
 
 export async function activateAgentConversation(conversationID: string) {
@@ -513,7 +530,7 @@ export async function activateAgentConversation(conversationID: string) {
       method: 'PUT',
     },
   )
-  return payload.conversation
+  return normalizeConversationSnapshot(payload.conversation)
 }
 
 export async function sendAgentConversationMessage(input: {

@@ -204,6 +204,73 @@ func TestServiceRenameConversationRejectsBlankTitle(t *testing.T) {
 	}
 }
 
+func TestServiceDeleteConversationPromotesAnotherThread(t *testing.T) {
+	t.Parallel()
+
+	service, err := NewService(filepath.Join(t.TempDir(), "conversation.json"), stubProvider{
+		info: ProviderInfo{Kind: "stub", BaseURL: "http://stub", Model: "stub-model"},
+	})
+	if err != nil {
+		t.Fatalf("new service: %v", err)
+	}
+
+	originalSnapshot := service.Snapshot()
+	secondSnapshot, err := service.CreateConversation(context.Background())
+	if err != nil {
+		t.Fatalf("create conversation: %v", err)
+	}
+
+	deletedResult, err := service.DeleteConversation(context.Background(), secondSnapshot.ID)
+	if err != nil {
+		t.Fatalf("delete conversation: %v", err)
+	}
+
+	if deletedResult.ID != originalSnapshot.ID {
+		t.Fatalf("expected original conversation to become active again, got %q", deletedResult.ID)
+	}
+	if got := service.ActiveConversationID(); got != originalSnapshot.ID {
+		t.Fatalf("expected active conversation %q, got %q", originalSnapshot.ID, got)
+	}
+
+	conversations, activeConversationID, err := service.ListConversations(context.Background())
+	if err != nil {
+		t.Fatalf("list conversations: %v", err)
+	}
+	if activeConversationID != originalSnapshot.ID {
+		t.Fatalf("expected active conversation id %q, got %q", originalSnapshot.ID, activeConversationID)
+	}
+	if len(conversations) != 1 || conversations[0].ID != originalSnapshot.ID {
+		t.Fatalf("expected only original conversation to remain, got %#v", conversations)
+	}
+}
+
+func TestServiceDeleteConversationBootstrapsReplacementWhenDeletingTheLastThread(t *testing.T) {
+	t.Parallel()
+
+	service, err := NewService(filepath.Join(t.TempDir(), "conversation.json"), stubProvider{
+		info: ProviderInfo{Kind: "stub", BaseURL: "http://stub", Model: "stub-model"},
+	})
+	if err != nil {
+		t.Fatalf("new service: %v", err)
+	}
+
+	originalSnapshot := service.Snapshot()
+	deletedResult, err := service.DeleteConversation(context.Background(), originalSnapshot.ID)
+	if err != nil {
+		t.Fatalf("delete conversation: %v", err)
+	}
+
+	if deletedResult.ID == "" || deletedResult.ID == originalSnapshot.ID {
+		t.Fatalf("expected replacement conversation after deleting last thread, got %#v", deletedResult)
+	}
+	if len(deletedResult.Messages) != 0 {
+		t.Fatalf("expected replacement conversation to start empty, got %#v", deletedResult.Messages)
+	}
+	if got := service.ActiveConversationID(); got != deletedResult.ID {
+		t.Fatalf("expected active conversation %q, got %q", deletedResult.ID, got)
+	}
+}
+
 func TestServiceSubmitRejectsBlankPrompt(t *testing.T) {
 	t.Parallel()
 

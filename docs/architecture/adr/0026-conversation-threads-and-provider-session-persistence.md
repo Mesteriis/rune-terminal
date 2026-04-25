@@ -51,8 +51,8 @@ Positive:
 
 Negative:
 
-- conversation management is intentionally still narrow: create + switch only
-- rename/archive/delete/search remain future work
+- conversation management is intentionally still narrow: the base slice owns create + switch, while later follow-up slices add rename and delete without broadening into archive/search/multi-panel lifecycle
+- archive/search and broader conversation lifecycle remain future work
 - provider-native sessions are persisted only as lightweight runtime metadata, not as a broad provider abstraction
 - hidden helper prompts must stay disciplined so they do not accidentally contaminate stored provider sessions
 

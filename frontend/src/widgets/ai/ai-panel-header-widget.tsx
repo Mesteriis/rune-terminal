@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 
-import { Check, ChevronDown, MessageSquareMore, Pencil, Plus, X } from 'lucide-react'
+import { Check, ChevronDown, MessageSquareMore, Pencil, Plus, Trash2, X } from 'lucide-react'
 
 import runaAvatar from '@assets/img/logo.png'
 import type { AgentConversationSummary } from '@/features/agent/api/client'
@@ -52,6 +52,7 @@ export type AiPanelHeaderWidgetProps = {
   mode: ChatMode
   onConversationSelect?: (conversationID: string) => void
   onCreateConversation?: () => void
+  onDeleteConversation?: (conversationID: string) => Promise<void> | void
   onRenameConversation?: (conversationID: string, title: string) => Promise<void> | void
   onModeChange: (mode: ChatMode) => void
   title: string
@@ -93,12 +94,14 @@ export function AiPanelHeaderWidget({
   mode,
   onConversationSelect,
   onCreateConversation,
+  onDeleteConversation,
   onRenameConversation,
   onModeChange,
   title,
 }: AiPanelHeaderWidgetProps) {
   const [isConversationMenuOpen, setIsConversationMenuOpen] = useState(false)
   const [isRenamingConversation, setIsRenamingConversation] = useState(false)
+  const [isDeleteConversationConfirmOpen, setIsDeleteConversationConfirmOpen] = useState(false)
   const [conversationSearchQuery, setConversationSearchQuery] = useState('')
   const [renameDraft, setRenameDraft] = useState('')
   const [optimisticConversationTitle, setOptimisticConversationTitle] = useState('')
@@ -117,6 +120,7 @@ export function AiPanelHeaderWidget({
     ? `${formatConversationCount(activeConversation)} · ${formatConversationUpdatedAt(activeConversation.updated_at)}`
     : 'Recent thread list'
   const canRenameConversation = activeConversation != null && onRenameConversation != null
+  const canDeleteConversation = activeConversation != null && onDeleteConversation != null
   const normalizedConversationSearchQuery = conversationSearchQuery.trim().toLowerCase()
   const filteredConversations = useMemo(() => {
     if (normalizedConversationSearchQuery === '') {
@@ -131,6 +135,7 @@ export function AiPanelHeaderWidget({
   useEffect(() => {
     if (!isConversationMenuOpen) {
       setIsRenamingConversation(false)
+      setIsDeleteConversationConfirmOpen(false)
       setConversationSearchQuery('')
       return
     }
@@ -188,6 +193,16 @@ export function AiPanelHeaderWidget({
     setIsRenamingConversation(false)
     setIsConversationMenuOpen(false)
     await onRenameConversation(activeConversation.id, nextTitle)
+  }
+
+  const handleDeleteConversation = async () => {
+    if (!activeConversation || onDeleteConversation == null) {
+      return
+    }
+
+    setIsDeleteConversationConfirmOpen(false)
+    setIsConversationMenuOpen(false)
+    await onDeleteConversation(activeConversation.id)
   }
 
   return (
@@ -278,12 +293,28 @@ export function AiPanelHeaderWidget({
                         <Button
                           aria-label="Rename conversation"
                           disabled={isConversationBusy || !canRenameConversation}
-                          onClick={() => setIsRenamingConversation(true)}
+                          onClick={() => {
+                            setIsDeleteConversationConfirmOpen(false)
+                            setIsRenamingConversation(true)
+                          }}
                           runaComponent="ai-panel-header-conversation-rename"
                           style={aiHeaderConversationActionStyle}
                         >
                           <Pencil {...conversationActionIconProps} />
                           Rename
+                        </Button>
+                        <Button
+                          aria-label="Delete conversation"
+                          disabled={isConversationBusy || !canDeleteConversation}
+                          onClick={() => {
+                            setIsRenamingConversation(false)
+                            setIsDeleteConversationConfirmOpen(true)
+                          }}
+                          runaComponent="ai-panel-header-conversation-delete"
+                          style={aiHeaderConversationActionStyle}
+                        >
+                          <Trash2 {...conversationActionIconProps} />
+                          Delete
                         </Button>
                         <Button
                           aria-label="Create conversation"
@@ -315,6 +346,46 @@ export function AiPanelHeaderWidget({
                       />
                     </Box>
                   </Box>
+                  {isDeleteConversationConfirmOpen && activeConversation ? (
+                    <Box
+                      runaComponent="ai-panel-header-conversation-delete-panel"
+                      style={aiHeaderConversationRenamePanelStyle}
+                    >
+                      <Text style={aiHeaderConversationMenuMetaStyle}>Delete active conversation</Text>
+                      <Text style={aiHeaderConversationSummaryTitleStyle}>
+                        {formatConversationTitle(activeConversation)}
+                      </Text>
+                      <Text style={aiHeaderConversationMenuMetaStyle}>
+                        This removes the thread from the database and switches the panel to the next available
+                        conversation.
+                      </Text>
+                      <Box
+                        runaComponent="ai-panel-header-conversation-delete-actions"
+                        style={aiHeaderConversationRenameActionsStyle}
+                      >
+                        <Button
+                          aria-label="Cancel delete"
+                          disabled={isConversationBusy}
+                          onClick={() => setIsDeleteConversationConfirmOpen(false)}
+                          runaComponent="ai-panel-header-conversation-delete-cancel"
+                          style={aiHeaderConversationActionStyle}
+                        >
+                          <X {...conversationActionIconProps} />
+                          Cancel
+                        </Button>
+                        <Button
+                          aria-label="Confirm delete conversation"
+                          disabled={isConversationBusy}
+                          onClick={() => void handleDeleteConversation()}
+                          runaComponent="ai-panel-header-conversation-delete-confirm"
+                          style={aiHeaderConversationActionStyle}
+                        >
+                          <Trash2 {...conversationActionIconProps} />
+                          Delete
+                        </Button>
+                      </Box>
+                    </Box>
+                  ) : null}
                   {isRenamingConversation && activeConversation ? (
                     <Box
                       runaComponent="ai-panel-header-conversation-rename-panel"

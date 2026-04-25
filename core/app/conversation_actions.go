@@ -47,6 +47,14 @@ func (r *Runtime) RenameConversation(
 	return r.withConversationProviderInfo(snapshot), nil
 }
 
+func (r *Runtime) DeleteConversation(ctx context.Context, conversationID string) (conversation.Snapshot, error) {
+	snapshot, err := r.Conversation.DeleteConversation(ctx, conversationID)
+	if err != nil {
+		return conversation.Snapshot{}, err
+	}
+	return r.withConversationProviderInfo(snapshot), nil
+}
+
 func (r *Runtime) ActivateConversation(ctx context.Context, conversationID string) (conversation.Snapshot, error) {
 	snapshot, err := r.Conversation.ActivateConversation(ctx, conversationID)
 	if err != nil {

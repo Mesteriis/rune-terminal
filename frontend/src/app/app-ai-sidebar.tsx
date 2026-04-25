@@ -173,6 +173,7 @@ export function AppAiSidebar({ isOpen, contentAreaRef }: AppAiSidebarProps) {
                       onCreateConversation={() => {
                         void agentPanel.createConversation()
                       }}
+                      onDeleteConversation={(conversationID) => agentPanel.deleteConversation(conversationID)}
                       onRenameConversation={(conversationID, title) =>
                         agentPanel.renameConversation(conversationID, title)
                       }

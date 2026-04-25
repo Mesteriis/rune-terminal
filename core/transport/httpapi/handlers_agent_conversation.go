@@ -95,6 +95,24 @@ func (api *API) handleRenameConversation(w http.ResponseWriter, r *http.Request)
 	})
 }
 
+func (api *API) handleDeleteConversation(w http.ResponseWriter, r *http.Request) {
+	conversationID := strings.TrimSpace(r.PathValue("conversationID"))
+	if conversationID == "" {
+		writeNotFound(w, "conversation_not_found", conversation.ErrConversationNotFound.Error())
+		return
+	}
+
+	snapshot, err := api.runtime.DeleteConversation(r.Context(), conversationID)
+	if err != nil {
+		writeConversationError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"conversation": snapshot,
+	})
+}
+
 func (api *API) handleActivateConversation(w http.ResponseWriter, r *http.Request) {
 	conversationID := strings.TrimSpace(r.PathValue("conversationID"))
 	if conversationID == "" {

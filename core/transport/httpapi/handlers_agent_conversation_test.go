@@ -193,6 +193,77 @@ func TestConversationRenameRouteUpdatesConversationTitle(t *testing.T) {
 	}
 }
 
+func TestConversationDeleteRouteDeletesActiveConversationAndReturnsReplacement(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+
+	createRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(createRecorder, authedJSONRequest(t, http.MethodPost, "/api/v1/agent/conversations", map[string]any{}))
+	if createRecorder.Code != http.StatusOK {
+		t.Fatalf("expected create 200, got %d body=%s", createRecorder.Code, createRecorder.Body.String())
+	}
+
+	var created struct {
+		Conversation struct {
+			ID string `json:"id"`
+		} `json:"conversation"`
+	}
+	if err := json.Unmarshal(createRecorder.Body.Bytes(), &created); err != nil {
+		t.Fatalf("unmarshal created conversation: %v", err)
+	}
+
+	deleteRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(
+		deleteRecorder,
+		authedJSONRequest(
+			t,
+			http.MethodDelete,
+			"/api/v1/agent/conversations/"+created.Conversation.ID,
+			nil,
+		),
+	)
+	if deleteRecorder.Code != http.StatusOK {
+		t.Fatalf("expected delete 200, got %d body=%s", deleteRecorder.Code, deleteRecorder.Body.String())
+	}
+
+	var deleted struct {
+		Conversation struct {
+			ID string `json:"id"`
+		} `json:"conversation"`
+	}
+	if err := json.Unmarshal(deleteRecorder.Body.Bytes(), &deleted); err != nil {
+		t.Fatalf("unmarshal delete payload: %v", err)
+	}
+	if deleted.Conversation.ID == "" || deleted.Conversation.ID == created.Conversation.ID {
+		t.Fatalf("expected replacement active conversation, got %#v", deleted)
+	}
+
+	listRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(listRecorder, authedJSONRequest(t, http.MethodGet, "/api/v1/agent/conversations", nil))
+	if listRecorder.Code != http.StatusOK {
+		t.Fatalf("expected list 200, got %d", listRecorder.Code)
+	}
+
+	var listPayload struct {
+		ActiveConversationID string `json:"active_conversation_id"`
+		Conversations        []struct {
+			ID string `json:"id"`
+		} `json:"conversations"`
+	}
+	if err := json.Unmarshal(listRecorder.Body.Bytes(), &listPayload); err != nil {
+		t.Fatalf("unmarshal list payload: %v", err)
+	}
+	if listPayload.ActiveConversationID != deleted.Conversation.ID {
+		t.Fatalf("expected active conversation %q, got %q", deleted.Conversation.ID, listPayload.ActiveConversationID)
+	}
+	for _, item := range listPayload.Conversations {
+		if item.ID == created.Conversation.ID {
+			t.Fatalf("expected deleted conversation %q to be absent from list", created.Conversation.ID)
+		}
+	}
+}
+
 func TestSubmitConversationMessagePersistsTranscript(t *testing.T) {
 	t.Parallel()
 

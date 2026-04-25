@@ -122,7 +122,7 @@
 
 ## Known limitations
 
-- conversation management is still intentionally narrow: create + switch + active-thread rename plus local navigator filtering only. Archive, delete, and multi-panel conversation views are not implemented in this slice.
+- conversation management is still intentionally narrow: create + switch + active-thread rename + active-thread delete plus local navigator filtering only. Archive, broader search, and multi-panel conversation views are not implemented in this slice.
 - CLI providers currently expose buffered chat completion through the existing SSE route; token-by-token provider streaming is not implemented.
 - CLI-native tool calls are not yet mediated through `core/toolruntime`, policy approval, or audit events.
 - The OpenAI-compatible HTTP source path is also buffered and non-streaming in this slice.

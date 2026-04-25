@@ -5,6 +5,7 @@ import {
   activateAgentConversation,
   createAgentAttachmentReference,
   createAgentConversation,
+  deleteAgentConversation,
   executeAgentTool,
   explainTerminalCommand,
   fetchAgentCatalog,
@@ -358,6 +359,50 @@ describe('agent api client', () => {
     expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({
       method: 'PATCH',
       body: JSON.stringify({ title: 'Renamed thread' }),
+    })
+  })
+
+  it('deletes conversations through the backend contract', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          conversation: {
+            id: 'conv_2',
+            title: 'Replacement thread',
+            messages: null,
+            provider: {
+              kind: 'stub',
+              base_url: 'http://stub',
+              model: 'stub-model',
+              streaming: false,
+            },
+            created_at: '2026-04-21T10:10:00Z',
+            updated_at: '2026-04-21T10:10:00Z',
+          },
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(deleteAgentConversation('conv_1')).resolves.toMatchObject({
+      id: 'conv_2',
+      title: 'Replacement thread',
+      messages: [],
+    })
+
+    expect(fetchMock.mock.calls[1]?.[0]).toBe('http://127.0.0.1:8090/api/v1/agent/conversations/conv_1')
+    expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({
+      method: 'DELETE',
     })
   })
 

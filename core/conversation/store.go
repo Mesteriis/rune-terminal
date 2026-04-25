@@ -376,6 +376,24 @@ func listConversations(ctx context.Context, dbConn *sql.DB) ([]ConversationSumma
 	return summaries, nil
 }
 
+func nextConversationCandidateTx(ctx context.Context, tx *sql.Tx, excludingConversationID string) (string, error) {
+	var conversationID string
+	err := tx.QueryRowContext(ctx, `
+		SELECT id
+		FROM conversations
+		WHERE id <> ?
+		ORDER BY updated_at DESC, created_at DESC, id DESC
+		LIMIT 1
+	`, excludingConversationID).Scan(&conversationID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(conversationID), nil
+}
+
 func titleFromMessages(messages []Message) string {
 	for _, message := range messages {
 		if message.Role != RoleUser {
