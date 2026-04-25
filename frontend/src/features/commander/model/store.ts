@@ -8,7 +8,6 @@ import { attachCommanderWidgetsPersistence } from '@/features/commander/model/st
 import {
   confirmCommanderWidgetPendingOperation,
   requestCommanderWidgetPendingOperation,
-  resolveCommanderWidgetPendingConflict,
   stepCommanderWidgetPendingSearchMatch,
   updateCommanderPendingOperationInput,
 } from '@/features/commander/model/store-operations'
@@ -584,11 +583,6 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
   .on(confirmCommanderPendingOperation, (widgets, payload) => {
     return withCommanderWidgetState(widgets, payload, (widgetState) =>
       confirmCommanderWidgetPendingOperation(widgetState, payload.widgetId),
-    )
-  })
-  .on(resolveCommanderPendingConflict, (widgets, payload) => {
-    return withCommanderWidgetState(widgets, payload, (widgetState) =>
-      resolveCommanderWidgetPendingConflict(widgetState, payload.widgetId, payload.resolution),
     )
   })
   .on(cancelCommanderPendingOperation, (widgets, payload) => {

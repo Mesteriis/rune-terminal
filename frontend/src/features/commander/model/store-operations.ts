@@ -1,13 +1,4 @@
 import {
-  copyCommanderEntries,
-  deleteCommanderEntries,
-  mkdirCommanderDirectory,
-  moveCommanderEntries,
-  readCommanderFile,
-  renameCommanderEntries,
-  renameCommanderEntry,
-} from '@/features/commander/model/fake-client'
-import {
   getCommanderConflictingEntryNames,
   getCommanderEntryNameConflict,
   previewCommanderCloneEntries,
@@ -15,10 +6,8 @@ import {
   suggestCommanderCloneName,
 } from '@/features/commander/model/operation-preview'
 import type {
-  CommanderFileDialogState,
   CommanderPendingOperation,
   CommanderPendingOperationKind,
-  CommanderPaneId,
   CommanderPaneRuntimeState,
   CommanderTransferPendingOperation,
   CommanderWidgetRuntimeState,
@@ -58,15 +47,6 @@ const defaultCommanderPendingOperationInputDeps: CommanderPendingOperationInputD
 }
 
 type CommanderPendingOperationConfirmDeps = {
-  copyCommanderEntries: typeof copyCommanderEntries
-  moveCommanderEntries: typeof moveCommanderEntries
-  deleteCommanderEntries: typeof deleteCommanderEntries
-  mkdirCommanderDirectory: typeof mkdirCommanderDirectory
-  previewCommanderRenameEntries: typeof previewCommanderRenameEntries
-  renameCommanderEntries: typeof renameCommanderEntries
-  getCommanderEntryNameConflict: typeof getCommanderEntryNameConflict
-  renameCommanderEntry: typeof renameCommanderEntry
-  refreshWidgetPanes: typeof refreshWidgetPanes
   updatePaneState: typeof updatePaneState
   rebuildPaneState: typeof rebuildPaneState
   getPaneState: typeof getPaneState
@@ -76,15 +56,6 @@ type CommanderPendingOperationConfirmDeps = {
 }
 
 const defaultCommanderPendingOperationConfirmDeps: CommanderPendingOperationConfirmDeps = {
-  copyCommanderEntries,
-  moveCommanderEntries,
-  deleteCommanderEntries,
-  mkdirCommanderDirectory,
-  previewCommanderRenameEntries,
-  renameCommanderEntries,
-  getCommanderEntryNameConflict,
-  renameCommanderEntry,
-  refreshWidgetPanes,
   updatePaneState,
   rebuildPaneState,
   getPaneState,
@@ -117,22 +88,6 @@ const defaultCommanderPendingSearchStepDeps: CommanderPendingSearchStepDeps = {
 
 type CommanderPendingConflictResolution = 'overwrite-current' | 'skip-current' | 'overwrite-all' | 'skip-all'
 
-type CommanderPendingConflictResolutionDeps = {
-  getCurrentPendingConflictName: typeof getCurrentPendingConflictName
-  applyPendingTransferOperation: typeof applyPendingTransferOperation
-  removePendingTransferEntry: typeof removePendingTransferEntry
-  refreshWidgetPanes: typeof refreshWidgetPanes
-  finalizePendingTransferOperation: typeof finalizePendingTransferOperation
-}
-
-const defaultCommanderPendingConflictResolutionDeps: CommanderPendingConflictResolutionDeps = {
-  getCurrentPendingConflictName,
-  applyPendingTransferOperation,
-  removePendingTransferEntry,
-  refreshWidgetPanes,
-  finalizePendingTransferOperation,
-}
-
 /** Returns the active selection when present, otherwise falls back to the pane cursor entry. */
 export function getOperationEntryIds(paneState: CommanderPaneRuntimeState) {
   if (paneState.selectedIds.length > 0) {
@@ -145,37 +100,6 @@ export function getOperationEntryIds(paneState: CommanderPaneRuntimeState) {
 /** Returns the next conflicting transfer entry name that still needs user resolution. */
 export function getCurrentPendingConflictName(pendingOperation: CommanderTransferPendingOperation) {
   return pendingOperation.conflictEntryNames[0] ?? null
-}
-
-/** Applies one copy or move request for the provided transfer entries. */
-export function applyPendingTransferOperation(
-  widgetId: string,
-  pendingOperation: CommanderTransferPendingOperation,
-  entryIds: string[],
-  overwrite: boolean,
-) {
-  if (entryIds.length === 0) {
-    return
-  }
-
-  if (pendingOperation.kind === 'copy') {
-    copyCommanderEntries({
-      widgetId,
-      path: pendingOperation.sourcePath,
-      targetPath: pendingOperation.targetPath,
-      entryIds,
-      overwrite,
-    })
-    return
-  }
-
-  moveCommanderEntries({
-    widgetId,
-    path: pendingOperation.sourcePath,
-    targetPath: pendingOperation.targetPath,
-    entryIds,
-    overwrite,
-  })
 }
 
 /** Removes one resolved transfer entry from the pending conflict queue. */
@@ -200,19 +124,6 @@ export function removePendingTransferEntry(
       (candidateName) => candidateName !== entryName,
     ),
   }
-}
-
-/** Applies the remaining non-conflicting transfer entries and clears the pending state. */
-export function finalizePendingTransferOperation(
-  widgetState: CommanderWidgetRuntimeState,
-  widgetId: string,
-  pendingOperation: CommanderTransferPendingOperation,
-) {
-  applyPendingTransferOperation(widgetId, pendingOperation, pendingOperation.entryIds, false)
-
-  return refreshWidgetPanes(widgetState, {
-    pendingOperation: null,
-  })
 }
 
 /** Recomputes input-driven pending-operation state such as rename previews and search matches. */
@@ -417,10 +328,10 @@ export function stepCommanderWidgetPendingSearchMatch(
   }
 }
 
-/** Confirms the current pending operation and applies the corresponding fake-client mutation. */
+/** Confirms local-only pending flows; backend mutation kinds are owned by the async hook path. */
 export function confirmCommanderWidgetPendingOperation(
   widgetState: CommanderWidgetRuntimeState,
-  widgetId: string,
+  _widgetId: string,
   deps: CommanderPendingOperationConfirmDeps = defaultCommanderPendingOperationConfirmDeps,
 ) {
   const pendingOperation = widgetState.pendingOperation
@@ -429,169 +340,14 @@ export function confirmCommanderWidgetPendingOperation(
     return null
   }
 
-  if (pendingOperation.kind === 'copy') {
-    if (pendingOperation.conflictEntryNames.length > 0) {
-      return null
-    }
-
-    deps.copyCommanderEntries({
-      widgetId,
-      path: pendingOperation.sourcePath,
-      targetPath: pendingOperation.targetPath,
-      entryIds: pendingOperation.entryIds,
-      overwrite: false,
-    })
-
-    return deps.refreshWidgetPanes(widgetState, {
-      pendingOperation: null,
-    })
-  }
-
-  if (pendingOperation.kind === 'move') {
-    if (pendingOperation.conflictEntryNames.length > 0) {
-      return null
-    }
-
-    deps.moveCommanderEntries({
-      widgetId,
-      path: pendingOperation.sourcePath,
-      targetPath: pendingOperation.targetPath,
-      entryIds: pendingOperation.entryIds,
-      overwrite: false,
-    })
-
-    return deps.refreshWidgetPanes(widgetState, {
-      pendingOperation: null,
-    })
-  }
-
-  if (pendingOperation.kind === 'delete') {
-    deps.deleteCommanderEntries({
-      widgetId,
-      path: pendingOperation.sourcePath,
-      entryIds: pendingOperation.entryIds,
-    })
-
-    return deps.refreshWidgetPanes(widgetState, {
-      pendingOperation: null,
-    })
-  }
-
-  if (pendingOperation.kind === 'mkdir') {
-    const mkdirResult = deps.mkdirCommanderDirectory(widgetId, pendingOperation.sourcePath)
-
-    return deps.refreshWidgetPanes(widgetState, {
-      pendingOperation: null,
-      [pendingOperation.sourcePaneId === 'left' ? 'leftPane' : 'rightPane']: {
-        cursorEntryId: mkdirResult.entryId,
-        selectedIds: [],
-      },
-    })
-  }
-
-  if (pendingOperation.kind === 'rename') {
-    const nextName = pendingOperation.inputValue.trim()
-
-    if (!nextName) {
-      return null
-    }
-
-    if (pendingOperation.renameMode === 'batch') {
-      const renamePreview = deps.previewCommanderRenameEntries(
-        deps.getPaneState(widgetState, pendingOperation.sourcePaneId),
-        pendingOperation.entryIds,
-        nextName,
-      )
-
-      if (renamePreview.duplicateTargetNames.length > 0) {
-        return {
-          ...widgetState,
-          pendingOperation: {
-            ...pendingOperation,
-            duplicateTargetNames: renamePreview.duplicateTargetNames,
-            conflictEntryNames: renamePreview.conflictEntryNames,
-            renamePreview: renamePreview.preview,
-          },
-        }
-      }
-
-      if (pendingOperation.conflictEntryNames.length === 0 && renamePreview.conflictEntryNames.length > 0) {
-        return {
-          ...widgetState,
-          pendingOperation: {
-            ...pendingOperation,
-            conflictEntryNames: renamePreview.conflictEntryNames,
-            duplicateTargetNames: renamePreview.duplicateTargetNames,
-            renamePreview: renamePreview.preview,
-          },
-        }
-      }
-
-      const renameResult = deps.renameCommanderEntries({
-        widgetId,
-        path: pendingOperation.sourcePath,
-        entryIds: pendingOperation.entryIds,
-        template: nextName,
-        overwrite: pendingOperation.conflictEntryNames.length > 0,
-      })
-
-      if (!renameResult) {
-        return null
-      }
-
-      return deps.refreshWidgetPanes(widgetState, {
-        pendingOperation: null,
-        [pendingOperation.sourcePaneId === 'left' ? 'leftPane' : 'rightPane']: {
-          cursorEntryId: renameResult.entryIds[0] ?? null,
-          selectedIds: [],
-          selectionAnchorEntryId: renameResult.entryIds[0] ?? null,
-        },
-      })
-    }
-
-    const entryId = pendingOperation.entryIds[0]
-
-    if (!entryId) {
-      return null
-    }
-
-    if (
-      pendingOperation.conflictEntryNames.length === 0 &&
-      deps.getCommanderEntryNameConflict(
-        deps.getPaneState(widgetState, pendingOperation.sourcePaneId),
-        nextName,
-        entryId,
-      )
-    ) {
-      return {
-        ...widgetState,
-        pendingOperation: {
-          ...pendingOperation,
-          conflictEntryNames: [nextName],
-        },
-      }
-    }
-
-    const renameResult = deps.renameCommanderEntry({
-      widgetId,
-      path: pendingOperation.sourcePath,
-      entryId,
-      nextName,
-      overwrite: pendingOperation.conflictEntryNames.length > 0,
-    })
-
-    if (!renameResult) {
-      return null
-    }
-
-    return deps.refreshWidgetPanes(widgetState, {
-      pendingOperation: null,
-      [pendingOperation.sourcePaneId === 'left' ? 'leftPane' : 'rightPane']: {
-        cursorEntryId: renameResult.entryId,
-        selectedIds: [],
-        selectionAnchorEntryId: renameResult.entryId,
-      },
-    })
+  if (
+    pendingOperation.kind === 'copy' ||
+    pendingOperation.kind === 'move' ||
+    pendingOperation.kind === 'delete' ||
+    pendingOperation.kind === 'mkdir' ||
+    pendingOperation.kind === 'rename'
+  ) {
+    return null
   }
 
   if (pendingOperation.kind === 'select' || pendingOperation.kind === 'unselect') {
@@ -658,72 +414,6 @@ export function confirmCommanderWidgetPendingOperation(
     pendingOperation: null,
   }
 }
-
-/** Resolves the current transfer conflict branch with overwrite or skip semantics. */
-export function resolveCommanderWidgetPendingConflict(
-  widgetState: CommanderWidgetRuntimeState,
-  widgetId: string,
-  resolution: CommanderPendingConflictResolution,
-  deps: CommanderPendingConflictResolutionDeps = defaultCommanderPendingConflictResolutionDeps,
-) {
-  const pendingOperation = widgetState.pendingOperation
-
-  if (!pendingOperation || (pendingOperation.kind !== 'copy' && pendingOperation.kind !== 'move')) {
-    return null
-  }
-
-  const currentConflictName = deps.getCurrentPendingConflictName(pendingOperation)
-
-  if (!currentConflictName && resolution !== 'overwrite-all' && resolution !== 'skip-all') {
-    return null
-  }
-
-  if (resolution === 'overwrite-all') {
-    deps.applyPendingTransferOperation(widgetId, pendingOperation, pendingOperation.entryIds, true)
-
-    return deps.refreshWidgetPanes(widgetState, {
-      pendingOperation: null,
-    })
-  }
-
-  if (resolution === 'skip-all') {
-    const conflictEntryNameSet = new Set(pendingOperation.conflictEntryNames)
-    const nonConflictingEntryIds = pendingOperation.entryIds.filter(
-      (_entryId, index) => !conflictEntryNameSet.has(pendingOperation.entryNames[index] ?? ''),
-    )
-
-    deps.applyPendingTransferOperation(widgetId, pendingOperation, nonConflictingEntryIds, false)
-
-    return deps.refreshWidgetPanes(widgetState, {
-      pendingOperation: null,
-    })
-  }
-
-  if (!currentConflictName) {
-    return null
-  }
-
-  const currentConflictIndex = pendingOperation.entryNames.findIndex(
-    (entryName) => entryName === currentConflictName,
-  )
-  const currentConflictEntryId =
-    currentConflictIndex === -1 ? null : (pendingOperation.entryIds[currentConflictIndex] ?? null)
-
-  if (resolution === 'overwrite-current' && currentConflictEntryId) {
-    deps.applyPendingTransferOperation(widgetId, pendingOperation, [currentConflictEntryId], true)
-  }
-
-  const nextPendingOperation = deps.removePendingTransferEntry(pendingOperation, currentConflictName)
-
-  if (nextPendingOperation.conflictEntryNames.length > 0) {
-    return deps.refreshWidgetPanes(widgetState, {
-      pendingOperation: nextPendingOperation,
-    })
-  }
-
-  return deps.finalizePendingTransferOperation(widgetState, widgetId, nextPendingOperation)
-}
-
 /** Builds the pending-operation payload for the current active pane and requested command kind. */
 export function createPendingOperation(
   widgetState: CommanderWidgetRuntimeState,
@@ -935,34 +625,4 @@ export function createPendingOperation(
     conflictEntryNames,
     transferMode: 'pane',
   } satisfies CommanderPendingOperation
-}
-
-/** Legacy helper that opens the focused file from fake-client-backed content. */
-export function createCommanderFileDialog(
-  widgetState: CommanderWidgetRuntimeState,
-  paneId: CommanderPaneId,
-  mode: 'view' | 'edit',
-) {
-  const paneState = getPaneState(widgetState, paneId)
-  const entryId = paneState.cursorEntryId
-
-  if (!entryId) {
-    return null
-  }
-
-  const fileSnapshot = readCommanderFile(widgetState.widgetId, paneState.path, entryId)
-
-  if (!fileSnapshot) {
-    return null
-  }
-
-  return {
-    paneId,
-    path: paneState.path,
-    entryId: fileSnapshot.entryId,
-    entryName: fileSnapshot.entryName,
-    mode,
-    content: fileSnapshot.content,
-    draftValue: fileSnapshot.content,
-  } satisfies CommanderFileDialogState
 }
