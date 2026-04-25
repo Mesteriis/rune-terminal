@@ -413,6 +413,8 @@ fn start_or_attach_runtime(app: &AppHandle, state: &RuntimeState) -> Result<(), 
         }
     };
 
+    let watcher_record = watcher_record.or_else(|| recover_running_watcher_for_core(&core.url));
+
     let watcher = if let Some(record) = watcher_record {
         RuntimeProcess {
             child: None,
@@ -675,6 +677,46 @@ fn spawn_watcher(
         child: Some(child),
         pid: health.pid,
         url: base_url,
+        started_by_ui: true,
+        auth_token: None,
+        worker_id: Some(worker_id),
+        shutdown_token: Some(shutdown_token),
+    })
+}
+
+fn recover_running_watcher_for_core(expected_core_url: &str) -> Option<RuntimeProcessRecord> {
+    discover_running_watcher_for_core(
+        &format!("http://{}", WATCHER_LISTEN_ADDR),
+        expected_core_url,
+        wait_for_health_service,
+        request_watcher_state,
+    )
+}
+
+fn discover_running_watcher_for_core<FHealth, FState>(
+    watcher_base_url: &str,
+    expected_core_url: &str,
+    mut health_lookup: FHealth,
+    mut state_lookup: FState,
+) -> Option<RuntimeProcessRecord>
+where
+    FHealth: FnMut(&str, &str) -> Result<HealthPayload, RuntimeError>,
+    FState: FnMut(&str) -> Result<WatcherStatePayload, RuntimeError>,
+{
+    let health_url = format!("{}/health", watcher_base_url);
+    let health = health_lookup(&health_url, "rterm-watcher").ok()?;
+
+    let state_url = format!("{}/watcher/state", watcher_base_url);
+    let state = state_lookup(&state_url).ok()?;
+    if normalize_url_for_compare(&state.backend_url) != normalize_url_for_compare(expected_core_url) {
+        return None;
+    }
+
+    let worker_id = state.worker_id?;
+    let shutdown_token = state.shutdown_token?;
+    Some(RuntimeProcessRecord {
+        pid: health.pid,
+        url: watcher_base_url.to_string(),
         started_by_ui: true,
         auth_token: None,
         worker_id: Some(worker_id),
@@ -1114,11 +1156,12 @@ fn request_watcher_state(url: &str) -> Result<WatcherStatePayload, RuntimeError>
 #[cfg(test)]
 mod tests {
     use super::{
-        cleanup_runtime_slot, read_runtime_attachment_from_path, recover_or_drop_watcher_record,
-        sanitize_runtime_attachment, wait_for_ready_file, write_file_atomically, ReadyFilePayload,
-        RuntimeError, RuntimeFile, RuntimeFileCore, RuntimeFileWatcher, RuntimeProcess,
-        RuntimeProcessRecord, RuntimeRuntime, SettingsFile, SingleInstancePayload, WatcherMode,
-        SINGLE_INSTANCE_EVENT,
+        cleanup_runtime_slot, discover_running_watcher_for_core,
+        read_runtime_attachment_from_path, recover_or_drop_watcher_record,
+        sanitize_runtime_attachment, wait_for_ready_file, write_file_atomically, HealthPayload,
+        ReadyFilePayload, RuntimeError, RuntimeFile, RuntimeFileCore, RuntimeFileWatcher,
+        RuntimeProcess, RuntimeProcessRecord, RuntimeRuntime, SettingsFile, SingleInstancePayload,
+        WatcherMode, WatcherStatePayload, SINGLE_INSTANCE_EVENT,
     };
     use std::fs;
     use std::thread;
@@ -1253,6 +1296,62 @@ mod tests {
         .expect_err("cleanup failure should stop startup");
 
         assert!(matches!(err, RuntimeError::Http(message) if message == "cleanup failed"));
+    }
+
+    #[test]
+    fn discover_running_watcher_for_core_reuses_matching_listener_without_runtime_file() {
+        let record = discover_running_watcher_for_core(
+            "http://127.0.0.1:7788",
+            "http://127.0.0.1:40100",
+            |url, service| {
+                assert_eq!(url, "http://127.0.0.1:7788/health");
+                assert_eq!(service, "rterm-watcher");
+                Ok(HealthPayload {
+                    service: "rterm-watcher".into(),
+                    status: "ok".into(),
+                    pid: 4243,
+                })
+            },
+            |url| {
+                assert_eq!(url, "http://127.0.0.1:7788/watcher/state");
+                Ok(WatcherStatePayload {
+                    backend_url: "http://127.0.0.1:40100".into(),
+                    worker_id: Some("watcher_live".into()),
+                    shutdown_token: Some("shutdown".into()),
+                })
+            },
+        )
+        .expect("matching live watcher should be reused");
+
+        assert_eq!(record.pid, 4243);
+        assert_eq!(record.url, "http://127.0.0.1:7788");
+        assert!(record.started_by_ui);
+        assert_eq!(record.worker_id.as_deref(), Some("watcher_live"));
+        assert_eq!(record.shutdown_token.as_deref(), Some("shutdown"));
+    }
+
+    #[test]
+    fn discover_running_watcher_for_core_rejects_mismatched_backend() {
+        let record = discover_running_watcher_for_core(
+            "http://127.0.0.1:7788",
+            "http://127.0.0.1:40100",
+            |_url, _service| {
+                Ok(HealthPayload {
+                    service: "rterm-watcher".into(),
+                    status: "ok".into(),
+                    pid: 4243,
+                })
+            },
+            |_url| {
+                Ok(WatcherStatePayload {
+                    backend_url: "http://127.0.0.1:49999".into(),
+                    worker_id: Some("watcher_other".into()),
+                    shutdown_token: Some("shutdown".into()),
+                })
+            },
+        );
+
+        assert!(record.is_none(), "foreign watcher listener must not be adopted");
     }
 
     #[test]
