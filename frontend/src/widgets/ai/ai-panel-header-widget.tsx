@@ -21,6 +21,9 @@ import { Box, Button, Input, Surface, Text } from '@/shared/ui/primitives'
 
 import {
   aiHeaderConversationActionStyle,
+  aiHeaderConversationCurrentBadgeStyle,
+  aiHeaderConversationCurrentBlockStyle,
+  aiHeaderConversationCurrentHeaderStyle,
   aiHeaderConversationDropdownHeaderStyle,
   aiHeaderConversationDropdownHeaderTopStyle,
   aiHeaderConversationDropdownActionsStyle,
@@ -171,6 +174,11 @@ export function AiPanelHeaderWidget({
       ? `${formatConversationCount(activeConversation)} · Archived ${formatConversationUpdatedAt(activeConversation.archived_at ?? activeConversation.updated_at)}`
       : `${formatConversationCount(activeConversation)} · ${formatConversationUpdatedAt(activeConversation.updated_at)}`
     : 'Recent thread list'
+  const activeConversationBadgeLabel = activeConversation
+    ? isArchivedConversation(activeConversation)
+      ? 'Archived'
+      : 'Open'
+    : ''
   const canRenameConversation = activeConversation != null && onRenameConversation != null
   const canArchiveConversation =
     activeConversation != null && onArchiveConversation != null && !isArchivedConversation(activeConversation)
@@ -624,6 +632,29 @@ export function AiPanelHeaderWidget({
                       runaComponent="ai-panel-header-conversation-search-wrap"
                       style={aiHeaderConversationSearchWrapStyle}
                     >
+                      {activeConversation ? (
+                        <Box
+                          aria-label="Active conversation summary"
+                          runaComponent="ai-panel-header-conversation-current-block"
+                          style={aiHeaderConversationCurrentBlockStyle}
+                        >
+                          <Box
+                            runaComponent="ai-panel-header-conversation-current-header"
+                            style={aiHeaderConversationCurrentHeaderStyle}
+                          >
+                            <Text style={aiHeaderConversationMenuSectionTitleStyle}>Active thread</Text>
+                            <Text style={aiHeaderConversationCurrentBadgeStyle}>
+                              {activeConversationBadgeLabel}
+                            </Text>
+                          </Box>
+                          <Box style={aiHeaderConversationMenuOptionLeadingStyle}>
+                            <Text style={aiHeaderConversationSummaryTitleStyle}>
+                              {displayedConversationTitle}
+                            </Text>
+                            <Text style={aiHeaderConversationMenuMetaStyle}>{activeConversationMeta}</Text>
+                          </Box>
+                        </Box>
+                      ) : null}
                       <Box
                         runaComponent="ai-panel-header-conversation-scope-strip"
                         style={aiHeaderConversationScopeStripStyle}

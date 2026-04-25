@@ -244,6 +244,44 @@ export const aiHeaderConversationSearchWrapStyle: CSSProperties = {
   gap: '6px',
 }
 
+export const aiHeaderConversationCurrentBlockStyle: CSSProperties = {
+  ...aiPlainBlockStyle,
+  width: '100%',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '6px',
+  padding: 'var(--space-sm)',
+  borderRadius: '12px',
+  border: '1px solid color-mix(in srgb, var(--color-border-strong) 58%, transparent)',
+  background: 'color-mix(in srgb, var(--color-surface-shell-header-action) 68%, transparent)',
+}
+
+export const aiHeaderConversationCurrentHeaderStyle: CSSProperties = {
+  ...aiPlainBlockStyle,
+  width: '100%',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 'var(--space-sm)',
+}
+
+export const aiHeaderConversationCurrentBadgeStyle: CSSProperties = {
+  ...aiPlainBlockStyle,
+  display: 'inline-flex',
+  alignItems: 'center',
+  minHeight: '20px',
+  padding: '0 var(--space-xs)',
+  borderRadius: '999px',
+  border: '1px solid color-mix(in srgb, var(--color-border-strong) 56%, transparent)',
+  background: 'color-mix(in srgb, var(--color-canvas-elevated) 58%, transparent)',
+  color: 'var(--color-text-secondary)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '10px',
+  lineHeight: '14px',
+  letterSpacing: '0.04em',
+  textTransform: 'uppercase',
+}
+
 export const aiHeaderConversationScopeStripStyle: CSSProperties = {
   ...aiPlainBlockStyle,
   width: '100%',

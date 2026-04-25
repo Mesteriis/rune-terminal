@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { AiPanelHeaderWidget } from '@/widgets/ai/ai-panel-header-widget'
@@ -269,6 +269,40 @@ describe('AiPanelHeaderWidget', () => {
     })
 
     expect(screen.getByText('No conversations match this filter.')).toBeInTheDocument()
+  })
+
+  it('shows the active thread summary block inside the navigator', () => {
+    render(
+      <AiPanelHeaderWidget
+        activeConversationID="conv_2"
+        conversations={[
+          {
+            id: 'conv_1',
+            title: 'Earlier thread',
+            created_at: '2026-04-24T09:00:00Z',
+            updated_at: '2026-04-24T09:05:00Z',
+            message_count: 2,
+          },
+          {
+            id: 'conv_2',
+            title: 'Current thread',
+            created_at: '2026-04-24T10:00:00Z',
+            updated_at: '2026-04-24T10:01:00Z',
+            message_count: 1,
+          },
+        ]}
+        mode="chat"
+        onModeChange={() => {}}
+        title="AI Rune"
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Conversation menu' }))
+
+    const activeSummary = screen.getByLabelText('Active conversation summary')
+    expect(within(activeSummary).getByText('Active thread')).toBeInTheDocument()
+    expect(within(activeSummary).getByText('Current thread')).toBeInTheDocument()
+    expect(within(activeSummary).getByText('Open')).toBeInTheDocument()
   })
 
   it('switches the navigator scope to archived conversations', () => {

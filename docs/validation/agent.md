@@ -8,6 +8,7 @@
   - DB-backed AI conversations with explicit create/switch/rename/archive/restore/delete lifecycle
   - provider-native CLI session continuity scoped per conversation
   - shell-visible AI conversation navigator with recent-thread menu over the same backend conversation contract
+  - pinned active-thread summary block inside the AI conversation navigator
   - shell-visible AI conversation navigator scope controls for `Open / Archived / All` thread views over the loaded backend conversation list
   - local search/filter inside the AI conversation navigator over the loaded backend conversation list
   - keyboard navigation inside the searchable AI conversation navigator through `aria-activedescendant` plus `Enter` selection
@@ -37,6 +38,7 @@
     - settings-driven keyboard submit behavior: `Enter` newline plus `Ctrl/Cmd+Enter` submit
     - conversation persistence across AI panel reload/reopen with backend conversation switching
     - shell-visible conversation menu for `Recent / Archived` thread grouping, `New` creation, active-thread rename, archive, restore, and delete
+    - visible `Active thread` summary block inside the conversation navigator before search/scope controls
     - keyboard navigation through filtered conversation results in the AI conversation navigator
     - live Claude provider routing with explicit `auth-required` handling when the local CLI is installed but not logged in
     - `/run printf ...` sending input into the active terminal session without falling back to plain provider chat
@@ -83,6 +85,7 @@
   - `Open threads` for active/unarchived conversations
   - `Archived threads` for archived conversations
   - `All` to inspect both groups together
+- The navigator now also keeps the currently active thread pinned as an explicit summary block above the search/scope controls, so operators can always verify which backend conversation is live before acting on filtered lists.
 - The searchable conversation navigator keeps keyboard focus on the search input and drives highlighted thread rows through `aria-activedescendant`; `ArrowUp/ArrowDown/Home/End` move the highlight and `Enter` selects the currently highlighted conversation.
 - The composer request-context quick actions now tolerate immediate operator interaction after the dropdown opens:
   - workspace widget discovery is cached behind stable refs
