@@ -87,6 +87,42 @@ test('commander read-only wiring loads repo paths, navigates by tilde path, and 
   await expect(leftPanePath).toHaveText(repoRootDisplayPath)
 })
 
+test('commander inline path autocomplete suggests loaded backend directories and accepts them with Tab', async ({
+  page,
+  request,
+}) => {
+  const bootstrap = await fetchBootstrap(request)
+  const repoRootDisplayPath = formatDisplayPath(bootstrap.repo_root, bootstrap.home_dir)
+  const frontendDisplayPath = `${repoRootDisplayPath}/frontend`
+  const leftPaneRoot = page.locator('[id^="shell-tool-commander-pane-left-r"]').first()
+
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  await expect(page.locator('[id^="shell-tool-commander-pane-left-path-r"]').first()).toHaveText(
+    repoRootDisplayPath,
+  )
+
+  await leftPaneRoot.click()
+  await page.keyboard.press('Control+L')
+  const leftPanePathInput = page.getByRole('textbox', { name: 'Commander left pane path' })
+  await expect(leftPanePathInput).toBeVisible()
+  await leftPanePathInput.fill(`${repoRootDisplayPath}/fron`)
+
+  const firstSuggestion = page
+    .locator('[id^="shell-tool-commander-pane-left-path-suggestion-1-text-r"]')
+    .first()
+  await expect(firstSuggestion).toHaveText(frontendDisplayPath)
+
+  await leftPanePathInput.press('Tab')
+  await expect(leftPanePathInput).toHaveValue(frontendDisplayPath)
+  await leftPanePathInput.press('Enter')
+
+  await expect(page.locator('[id^="shell-tool-commander-pane-left-path-r"]').first()).toHaveText(
+    frontendDisplayPath,
+  )
+})
+
 test('commander mkdir creates a directory over the backend and focuses the new entry', async ({
   page,
   request,

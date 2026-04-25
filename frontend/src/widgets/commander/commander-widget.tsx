@@ -124,6 +124,15 @@ export function CommanderWidget() {
       : editingPathPaneId === 'right'
         ? runtimeState.rightPane
         : null
+  const editingPaneDirectoryPaths = useMemo(
+    () =>
+      editingPathPaneRuntimeState
+        ? editingPathPaneRuntimeState.directoryEntries
+            .filter((entry) => entry.kind === 'folder')
+            .map((entry) => joinCommanderPath(editingPathPaneRuntimeState.path, entry.name))
+        : [],
+    [editingPathPaneRuntimeState],
+  )
   const editingPathSuggestions = useMemo(
     () =>
       editingPathPaneRuntimeState
@@ -137,11 +146,13 @@ export function CommanderWidget() {
               ...runtimeState.leftPane.historyForward,
               ...runtimeState.rightPane.historyBack,
               ...runtimeState.rightPane.historyForward,
+              ...editingPaneDirectoryPaths,
             ].filter(Boolean),
             (path) => (runtimeContext ? formatRuntimePathForDisplay(path, runtimeContext) : path),
           )
         : [],
     [
+      editingPaneDirectoryPaths,
       editingPathPaneRuntimeState,
       editingPathValue,
       runtimeContext,

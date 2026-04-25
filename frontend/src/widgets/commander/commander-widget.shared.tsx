@@ -87,7 +87,7 @@ export function getCommanderPathSuggestionMeta(
   return 'PATH'
 }
 
-/** Builds a ranked path-suggestion list from pane history plus known fake-client directories. */
+/** Builds a ranked path-suggestion list from pane history plus currently known directory paths. */
 export function getCommanderPathSuggestions(
   inputValue: string,
   paneState: CommanderPaneRuntimeState,
