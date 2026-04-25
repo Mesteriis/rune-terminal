@@ -28,6 +28,10 @@ type FSListPayload = {
   path: string
 }
 
+type FSOpenPayload = {
+  path: string
+}
+
 type APIErrorEnvelope = {
   error?: {
     code?: string
@@ -87,10 +91,13 @@ function toFilesEntry(path: string, node: FSNode): FilesDirectoryEntry {
   }
 }
 
-async function fetchRuntimeJSON<T>(runtimeContext: RuntimeContext, path: string) {
+async function fetchRuntimeJSON<T>(runtimeContext: RuntimeContext, path: string, init?: RequestInit) {
   const response = await fetch(`${runtimeContext.baseUrl}${path}`, {
+    ...init,
     headers: {
       Authorization: `Bearer ${runtimeContext.authToken}`,
+      ...(init?.body ? { 'Content-Type': 'application/json' } : null),
+      ...init?.headers,
     },
   })
 
@@ -113,6 +120,15 @@ async function fetchRuntimeJSON<T>(runtimeContext: RuntimeContext, path: string)
   return (await response.json()) as T
 }
 
+async function postRuntimeJSON<T>(path: string, body: Record<string, unknown>): Promise<T> {
+  const runtimeContext = await resolveRuntimeContext()
+
+  return fetchRuntimeJSON<T>(runtimeContext, path, {
+    body: JSON.stringify(body),
+    method: 'POST',
+  })
+}
+
 export async function listFilesDirectory(path: string): Promise<FilesDirectorySnapshot> {
   const runtimeContext = await resolveRuntimeContext()
   const payload = await fetchRuntimeJSON<FSListPayload>(
@@ -126,4 +142,10 @@ export async function listFilesDirectory(path: string): Promise<FilesDirectorySn
     ),
     path: payload.path,
   }
+}
+
+export async function openFilesPathExternally(path: string) {
+  return postRuntimeJSON<FSOpenPayload>('/api/v1/fs/open', {
+    path,
+  })
 }

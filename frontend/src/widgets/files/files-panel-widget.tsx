@@ -2,6 +2,7 @@ import { useEffect, useState, type KeyboardEvent } from 'react'
 
 import {
   listFilesDirectory,
+  openFilesPathExternally,
   type FilesDirectoryEntry,
   type FilesDirectorySnapshot,
 } from '@/features/files/api/client'
@@ -44,6 +45,12 @@ type FilesPanelSortState = {
   direction: FilesPanelSortDirection
   mode: FilesPanelSortMode
 }
+
+type FilesPanelOpenState =
+  | { status: 'idle'; entryName: null; message: null }
+  | { status: 'pending'; entryName: string; message: null }
+  | { status: 'success'; entryName: string; message: string }
+  | { status: 'error'; entryName: string; message: string }
 
 function getEntryKindLabel(entry: FilesDirectoryEntry) {
   return entry.kind === 'directory' ? 'DIR' : 'FILE'
@@ -108,6 +115,11 @@ export function FilesPanelWidget({ path, title }: FilesPanelWidgetProps) {
     direction: 'asc',
     mode: 'name',
   })
+  const [openState, setOpenState] = useState<FilesPanelOpenState>({
+    entryName: null,
+    message: null,
+    status: 'idle',
+  })
   const [state, setState] = useState<FilesPanelLoadState>({
     errorMessage: null,
     snapshot: null,
@@ -117,6 +129,14 @@ export function FilesPanelWidget({ path, title }: FilesPanelWidgetProps) {
   useEffect(() => {
     setCurrentPath(path)
   }, [path])
+
+  useEffect(() => {
+    setOpenState({
+      entryName: null,
+      message: null,
+      status: 'idle',
+    })
+  }, [currentPath])
 
   useEffect(() => {
     let isCancelled = false
@@ -164,12 +184,32 @@ export function FilesPanelWidget({ path, title }: FilesPanelWidgetProps) {
     }
   }
 
-  const handleOpenEntry = (entry: FilesDirectoryEntry) => {
-    if (entry.kind !== 'directory') {
+  const handleOpenEntry = async (entry: FilesDirectoryEntry) => {
+    if (entry.kind === 'directory') {
+      setCurrentPath(joinRuntimePath(currentPath, entry.name))
       return
     }
 
-    setCurrentPath(joinRuntimePath(currentPath, entry.name))
+    setOpenState({
+      entryName: entry.name,
+      message: null,
+      status: 'pending',
+    })
+
+    try {
+      await openFilesPathExternally(joinRuntimePath(currentPath, entry.name))
+      setOpenState({
+        entryName: entry.name,
+        message: `Open request sent for ${entry.name}`,
+        status: 'success',
+      })
+    } catch (error: unknown) {
+      setOpenState({
+        entryName: entry.name,
+        message: error instanceof Error ? error.message : `Unable to open ${entry.name}`,
+        status: 'error',
+      })
+    }
   }
 
   const handleFilterKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -200,7 +240,7 @@ export function FilesPanelWidget({ path, title }: FilesPanelWidgetProps) {
     }
 
     event.preventDefault()
-    handleOpenEntry(entry)
+    void handleOpenEntry(entry)
   }
 
   const parentPath = getRuntimePathParent(currentPath)
@@ -333,17 +373,36 @@ export function FilesPanelWidget({ path, title }: FilesPanelWidgetProps) {
               No entries match filter
             </Text>
           ) : null}
+          {openState.status === 'pending' ? (
+            <Text runaComponent="files-panel-open-pending" style={filesPanelStateStyle}>
+              Opening {openState.entryName}
+            </Text>
+          ) : null}
+          {openState.status === 'success' ? (
+            <Text runaComponent="files-panel-open-success" style={filesPanelStateStyle}>
+              {openState.message}
+            </Text>
+          ) : null}
+          {openState.status === 'error' ? (
+            <Text runaComponent="files-panel-open-error" style={filesPanelStateStyle}>
+              {openState.message}
+            </Text>
+          ) : null}
           {state.status === 'ready'
             ? sortedEntries.map((entry) => (
                 <Box
-                  aria-label={entry.kind === 'directory' ? `Open directory ${entry.name}` : undefined}
+                  aria-label={
+                    entry.kind === 'directory' ? `Open directory ${entry.name}` : `Open file ${entry.name}`
+                  }
                   key={entry.id}
-                  onClick={() => handleOpenEntry(entry)}
+                  onClick={() => {
+                    void handleOpenEntry(entry)
+                  }}
                   onKeyDown={(event) => handleEntryKeyDown(event, entry)}
-                  role={entry.kind === 'directory' ? 'button' : undefined}
+                  role="button"
                   runaComponent="files-panel-row"
-                  style={resolveFilesPanelRowStyle(entry.kind === 'directory')}
-                  tabIndex={entry.kind === 'directory' ? 0 : undefined}
+                  style={resolveFilesPanelRowStyle(entry.kind === 'directory', true)}
+                  tabIndex={0}
                 >
                   <Text runaComponent="files-panel-row-kind">{getEntryKindLabel(entry)}</Text>
                   <Text runaComponent="files-panel-row-name" style={filesPanelRowNameStyle}>

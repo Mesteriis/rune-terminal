@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { resetRuntimeContextCacheForTests } from '@/shared/api/runtime'
-import { FilesAPIError, listFilesDirectory } from './client'
+import { FilesAPIError, listFilesDirectory, openFilesPathExternally } from './client'
 
 afterEach(() => {
   resetRuntimeContextCacheForTests()
@@ -90,5 +90,39 @@ describe('listFilesDirectory', () => {
         status: 403,
       }),
     )
+  })
+
+  it('opens a path through the runtime external opener route', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/repo',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          path: '/repo/README.md',
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(openFilesPathExternally('/repo/README.md')).resolves.toEqual({
+      path: '/repo/README.md',
+    })
+    expect(fetchMock.mock.calls[1]?.[0]).toBe('http://127.0.0.1:8090/api/v1/fs/open')
+    expect(fetchMock.mock.calls[1]?.[1]).toEqual({
+      body: JSON.stringify({ path: '/repo/README.md' }),
+      headers: {
+        Authorization: 'Bearer runtime-token',
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+    })
   })
 })

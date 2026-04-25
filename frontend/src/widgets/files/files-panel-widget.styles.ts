@@ -117,7 +117,7 @@ export const filesPanelSortButtonEndAlignedStyle: CSSProperties = {
   textAlign: 'right',
 }
 
-export function resolveFilesPanelRowStyle(isDirectory: boolean): CSSProperties {
+export function resolveFilesPanelRowStyle(isDirectory: boolean, isInteractive = isDirectory): CSSProperties {
   return {
     display: 'grid',
     gridTemplateColumns: '56px minmax(0, 1fr) 88px 132px',
@@ -126,7 +126,7 @@ export function resolveFilesPanelRowStyle(isDirectory: boolean): CSSProperties {
     padding: '5px var(--space-sm)',
     borderRadius: 'var(--radius-sm)',
     color: isDirectory ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
-    cursor: isDirectory ? 'pointer' : 'default',
+    cursor: isInteractive ? 'pointer' : 'default',
     fontSize: 'var(--font-size-sm)',
     lineHeight: 'var(--line-height-sm)',
   }

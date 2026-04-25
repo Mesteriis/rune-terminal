@@ -14,6 +14,21 @@ test('shell workspace tabs, utility actions, widget creation, and settings modal
   const baselineBackendSnapshot = await fetchWorkspaceSnapshot(request)
   const baselineBackendTabCount = baselineBackendSnapshot.tabs.length
   const baselineBackendWidgetCount = baselineBackendSnapshot.widgets.length
+  const openedFilesPaths: string[] = []
+
+  await page.route('**/api/v1/fs/open', async (route) => {
+    const postData = route.request().postDataJSON() as { path?: string } | null
+
+    if (postData?.path) {
+      openedFilesPaths.push(postData.path)
+    }
+
+    await route.fulfill({
+      body: JSON.stringify({ path: postData?.path ?? '' }),
+      contentType: 'application/json',
+      status: 200,
+    })
+  })
 
   const workspaceOneTab = page.getByRole('tab', { name: 'Workspace-1' })
   const workspaceTwoTab = page.getByRole('tab', { name: 'Workspace-2' })
@@ -69,6 +84,9 @@ test('shell workspace tabs, utility actions, widget creation, and settings modal
   await expect(filesPanelPath).toHaveText(bootstrap.repo_root)
   await page.getByRole('button', { name: 'Sort files by modified time' }).click()
   await expect(page.getByText('Modified DESC')).toBeVisible()
+  await page.getByRole('button', { name: 'Open file package.json' }).click()
+  await expect(page.getByText('Open request sent for package.json')).toBeVisible()
+  expect(openedFilesPaths).toEqual([`${bootstrap.repo_root}/package.json`])
   await page.getByRole('button', { name: 'Open directory frontend' }).click()
   await expect(filesPanelPath).toHaveText(`${bootstrap.repo_root}/frontend`)
   await page.getByRole('button', { name: 'Open parent directory' }).click()

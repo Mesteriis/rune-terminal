@@ -1,11 +1,12 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { listFilesDirectory } from '@/features/files/api/client'
+import { listFilesDirectory, openFilesPathExternally } from '@/features/files/api/client'
 import { FilesPanelWidget } from './files-panel-widget'
 
 vi.mock('@/features/files/api/client', () => ({
   listFilesDirectory: vi.fn(),
+  openFilesPathExternally: vi.fn(),
 }))
 
 afterEach(() => {
@@ -249,5 +250,34 @@ describe('FilesPanelWidget', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Sort files by size' }))
 
     expectTextBefore('small.txt', 'large.txt')
+  })
+
+  it('opens files through the runtime external opener route', async () => {
+    vi.mocked(listFilesDirectory).mockResolvedValue({
+      entries: [
+        {
+          id: '/repo::README.md',
+          kind: 'file',
+          modified: '2026-04-25 20:01',
+          modifiedTime: 1_776_800_060,
+          name: 'README.md',
+          sizeBytes: 2048,
+          sizeLabel: '2.0 KB',
+        },
+      ],
+      path: '/repo',
+    })
+    vi.mocked(openFilesPathExternally).mockResolvedValue({
+      path: '/repo/README.md',
+    })
+
+    render(<FilesPanelWidget path="/repo" title="repo" />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Open file README.md' }))
+
+    await waitFor(() => {
+      expect(openFilesPathExternally).toHaveBeenCalledWith('/repo/README.md')
+      expect(screen.getByText('Open request sent for README.md')).toBeInTheDocument()
+    })
   })
 })
