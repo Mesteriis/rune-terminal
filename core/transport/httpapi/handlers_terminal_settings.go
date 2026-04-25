@@ -8,7 +8,8 @@ import (
 )
 
 type updateTerminalSettingsPayload struct {
-	FontSize *int `json:"font_size"`
+	FontSize   *int     `json:"font_size"`
+	LineHeight *float64 `json:"line_height"`
 }
 
 func (api *API) handleTerminalSettings(w http.ResponseWriter, r *http.Request) {
@@ -29,14 +30,26 @@ func (api *API) handleUpdateTerminalSettings(w http.ResponseWriter, r *http.Requ
 		writeBadRequest(w, "invalid_request", err)
 		return
 	}
-	if payload.FontSize == nil {
-		writeBadRequest(w, "invalid_request", errors.New("font_size is required"))
+	if payload.FontSize == nil && payload.LineHeight == nil {
+		writeBadRequest(w, "invalid_request", errors.New("font_size or line_height is required"))
 		return
 	}
 
-	settings, err := api.runtime.UpdateTerminalSettings(r.Context(), terminal.Preferences{
-		FontSize: *payload.FontSize,
-	})
+	current, err := api.runtime.TerminalSettings(r.Context())
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+
+	next := current
+	if payload.FontSize != nil {
+		next.FontSize = *payload.FontSize
+	}
+	if payload.LineHeight != nil {
+		next.LineHeight = *payload.LineHeight
+	}
+
+	settings, err := api.runtime.UpdateTerminalSettings(r.Context(), terminal.Preferences(next))
 	if err != nil {
 		writeInternalError(w, err)
 		return

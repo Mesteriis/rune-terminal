@@ -32,9 +32,12 @@ func TestPreferencesStoreBootstrapsDefaultSettings(t *testing.T) {
 	if settings.FontSize != DefaultFontSize {
 		t.Fatalf("expected default font size %d, got %d", DefaultFontSize, settings.FontSize)
 	}
+	if settings.LineHeight != DefaultLineHeight {
+		t.Fatalf("expected default line height %.2f, got %.2f", DefaultLineHeight, settings.LineHeight)
+	}
 }
 
-func TestPreferencesStoreClampsAndPersistsFontSize(t *testing.T) {
+func TestPreferencesStoreClampsAndPersistsSettings(t *testing.T) {
 	t.Parallel()
 
 	dbConn, err := db.Open(context.Background(), filepath.Join(t.TempDir(), "runtime.sqlite"))
@@ -50,12 +53,26 @@ func TestPreferencesStoreClampsAndPersistsFontSize(t *testing.T) {
 		t.Fatalf("new preferences store: %v", err)
 	}
 
-	updated, err := store.Update(context.Background(), Preferences{FontSize: 99})
+	updated, err := store.Update(context.Background(), Preferences{FontSize: 99, LineHeight: 9})
 	if err != nil {
 		t.Fatalf("update preferences: %v", err)
 	}
 	if updated.FontSize != MaxFontSize {
 		t.Fatalf("expected clamped max font size %d, got %d", MaxFontSize, updated.FontSize)
+	}
+	if updated.LineHeight != MaxLineHeight {
+		t.Fatalf("expected clamped max line height %.2f, got %.2f", MaxLineHeight, updated.LineHeight)
+	}
+
+	updated, err = store.Update(context.Background(), Preferences{FontSize: 1, LineHeight: 0.2})
+	if err != nil {
+		t.Fatalf("update preferences with low values: %v", err)
+	}
+	if updated.FontSize != MinFontSize {
+		t.Fatalf("expected clamped min font size %d, got %d", MinFontSize, updated.FontSize)
+	}
+	if updated.LineHeight != MinLineHeight {
+		t.Fatalf("expected clamped min line height %.2f, got %.2f", MinLineHeight, updated.LineHeight)
 	}
 
 	reloadedStore, err := NewPreferencesStore(context.Background(), dbConn)
@@ -66,7 +83,10 @@ func TestPreferencesStoreClampsAndPersistsFontSize(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reload snapshot: %v", err)
 	}
-	if reloaded.FontSize != MaxFontSize {
-		t.Fatalf("expected persisted font size %d, got %d", MaxFontSize, reloaded.FontSize)
+	if reloaded.FontSize != MinFontSize {
+		t.Fatalf("expected persisted font size %d, got %d", MinFontSize, reloaded.FontSize)
+	}
+	if reloaded.LineHeight != MinLineHeight {
+		t.Fatalf("expected persisted line height %.2f, got %.2f", MinLineHeight, reloaded.LineHeight)
 	}
 }

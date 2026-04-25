@@ -2,14 +2,25 @@ import { useCallback, useEffect, useSyncExternalStore } from 'react'
 
 import {
   clampTerminalFontSize,
+  clampTerminalLineHeight,
   DEFAULT_TERMINAL_FONT_SIZE,
+  DEFAULT_TERMINAL_LINE_HEIGHT,
   MAX_TERMINAL_FONT_SIZE,
+  MAX_TERMINAL_LINE_HEIGHT,
   MIN_TERMINAL_FONT_SIZE,
+  MIN_TERMINAL_LINE_HEIGHT,
   requestTerminalSettings,
   updateTerminalSettings,
 } from '@/shared/api/terminal-settings'
 
-export { DEFAULT_TERMINAL_FONT_SIZE, MAX_TERMINAL_FONT_SIZE, MIN_TERMINAL_FONT_SIZE }
+export {
+  DEFAULT_TERMINAL_FONT_SIZE,
+  DEFAULT_TERMINAL_LINE_HEIGHT,
+  MAX_TERMINAL_FONT_SIZE,
+  MAX_TERMINAL_LINE_HEIGHT,
+  MIN_TERMINAL_FONT_SIZE,
+  MIN_TERMINAL_LINE_HEIGHT,
+}
 
 const subscribers = new Set<() => void>()
 let loadPromise: Promise<void> | null = null
@@ -17,6 +28,7 @@ let loadPromise: Promise<void> | null = null
 type TerminalPreferencesState = {
   errorMessage: string | null
   fontSize: number
+  lineHeight: number
   isLoading: boolean
   isSaving: boolean
 }
@@ -24,6 +36,7 @@ type TerminalPreferencesState = {
 let terminalPreferencesState: TerminalPreferencesState = {
   errorMessage: null,
   fontSize: DEFAULT_TERMINAL_FONT_SIZE,
+  lineHeight: DEFAULT_TERMINAL_LINE_HEIGHT,
   isLoading: true,
   isSaving: false,
 }
@@ -53,6 +66,7 @@ async function refreshTerminalPreferences() {
     terminalPreferencesState = {
       ...terminalPreferencesState,
       fontSize: settings.font_size,
+      lineHeight: settings.line_height,
     }
   } catch (error) {
     terminalPreferencesState = {
@@ -90,7 +104,7 @@ function getTerminalPreferencesSnapshot() {
   return terminalPreferencesState
 }
 
-export async function setTerminalFontSize(fontSize: number) {
+async function persistTerminalSettings(next: { fontSize: number; lineHeight: number }) {
   terminalPreferencesState = {
     ...terminalPreferencesState,
     errorMessage: null,
@@ -100,11 +114,13 @@ export async function setTerminalFontSize(fontSize: number) {
 
   try {
     const settings = await updateTerminalSettings({
-      font_size: clampTerminalFontSize(fontSize),
+      font_size: clampTerminalFontSize(next.fontSize),
+      line_height: clampTerminalLineHeight(next.lineHeight),
     })
     terminalPreferencesState = {
       ...terminalPreferencesState,
       fontSize: settings.font_size,
+      lineHeight: settings.line_height,
     }
   } catch (error) {
     terminalPreferencesState = {
@@ -120,10 +136,25 @@ export async function setTerminalFontSize(fontSize: number) {
   }
 }
 
+export async function setTerminalFontSize(fontSize: number) {
+  await persistTerminalSettings({
+    fontSize,
+    lineHeight: terminalPreferencesState.lineHeight,
+  })
+}
+
+export async function setTerminalLineHeight(lineHeight: number) {
+  await persistTerminalSettings({
+    fontSize: terminalPreferencesState.fontSize,
+    lineHeight,
+  })
+}
+
 export function resetTerminalPreferencesForTests() {
   terminalPreferencesState = {
     errorMessage: null,
     fontSize: DEFAULT_TERMINAL_FONT_SIZE,
+    lineHeight: DEFAULT_TERMINAL_LINE_HEIGHT,
     isLoading: true,
     isSaving: false,
   }
@@ -158,15 +189,36 @@ export function useTerminalPreferences() {
     await setTerminalFontSize(DEFAULT_TERMINAL_FONT_SIZE)
   }, [])
 
+  const updateLineHeight = useCallback(async (value: number) => {
+    await setTerminalLineHeight(value)
+  }, [])
+
+  const increaseLineHeight = useCallback(async () => {
+    await setTerminalLineHeight(state.lineHeight + 0.05)
+  }, [state.lineHeight])
+
+  const decreaseLineHeight = useCallback(async () => {
+    await setTerminalLineHeight(state.lineHeight - 0.05)
+  }, [state.lineHeight])
+
+  const resetLineHeight = useCallback(async () => {
+    await setTerminalLineHeight(DEFAULT_TERMINAL_LINE_HEIGHT)
+  }, [])
+
   return {
     errorMessage: state.errorMessage,
     fontSize: state.fontSize,
+    lineHeight: state.lineHeight,
     isLoading: state.isLoading,
     isSaving: state.isSaving,
     updateFontSize,
     increaseFontSize,
     decreaseFontSize,
     resetFontSize,
+    updateLineHeight,
+    increaseLineHeight,
+    decreaseLineHeight,
+    resetLineHeight,
     refresh: ensureTerminalPreferencesLoaded,
   }
 }

@@ -50,6 +50,7 @@ export type TerminalSnapshot = {
 
 export type TerminalSettings = {
   font_size: number
+  line_height: number
 }
 
 export type AgentConversationMessage = {
@@ -223,11 +224,12 @@ export async function fetchTerminalSettings(request: APIRequestContext) {
   return payload.settings
 }
 
-export async function updateTerminalSettingsViaApi(request: APIRequestContext, fontSize: number) {
+export async function updateTerminalSettingsViaApi(
+  request: APIRequestContext,
+  settings: { font_size?: number; line_height?: number },
+) {
   const response = await request.put(`${backendUrl}/api/v1/settings/terminal`, {
-    data: {
-      font_size: fontSize,
-    },
+    data: settings,
     headers: authHeaders(),
   })
 

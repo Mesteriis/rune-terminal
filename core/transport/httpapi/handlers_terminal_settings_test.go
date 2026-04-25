@@ -14,7 +14,8 @@ func TestTerminalSettingsRouteReturnsPersistedFontSize(t *testing.T) {
 
 	updateRecorder := httptest.NewRecorder()
 	updateRequest := authedJSONRequest(t, http.MethodPut, "/api/v1/settings/terminal", map[string]any{
-		"font_size": 15,
+		"font_size":   15,
+		"line_height": 1.35,
 	})
 	handler.ServeHTTP(updateRecorder, updateRequest)
 	if updateRecorder.Code != http.StatusOK {
@@ -31,7 +32,8 @@ func TestTerminalSettingsRouteReturnsPersistedFontSize(t *testing.T) {
 
 	var payload struct {
 		Settings struct {
-			FontSize int `json:"font_size"`
+			FontSize   int     `json:"font_size"`
+			LineHeight float64 `json:"line_height"`
 		} `json:"settings"`
 	}
 	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
@@ -40,9 +42,12 @@ func TestTerminalSettingsRouteReturnsPersistedFontSize(t *testing.T) {
 	if payload.Settings.FontSize != 15 {
 		t.Fatalf("expected persisted font size 15, got %d", payload.Settings.FontSize)
 	}
+	if payload.Settings.LineHeight != 1.35 {
+		t.Fatalf("expected persisted line height 1.35, got %.2f", payload.Settings.LineHeight)
+	}
 }
 
-func TestUpdateTerminalSettingsRequiresFontSize(t *testing.T) {
+func TestUpdateTerminalSettingsRequiresKnownField(t *testing.T) {
 	t.Parallel()
 
 	handler, _ := newTestHandler(t)
@@ -53,5 +58,44 @@ func TestUpdateTerminalSettingsRequiresFontSize(t *testing.T) {
 
 	if recorder.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d (%s)", recorder.Code, recorder.Body.String())
+	}
+}
+
+func TestUpdateTerminalSettingsSupportsPartialLineHeightUpdate(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+
+	updateRecorder := httptest.NewRecorder()
+	updateRequest := authedJSONRequest(t, http.MethodPut, "/api/v1/settings/terminal", map[string]any{
+		"line_height": 1.45,
+	})
+	handler.ServeHTTP(updateRecorder, updateRequest)
+	if updateRecorder.Code != http.StatusOK {
+		t.Fatalf("expected update 200, got %d (%s)", updateRecorder.Code, updateRecorder.Body.String())
+	}
+
+	recorder := httptest.NewRecorder()
+	req := authedJSONRequest(t, http.MethodGet, "/api/v1/settings/terminal", nil)
+	handler.ServeHTTP(recorder, req)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d (%s)", recorder.Code, recorder.Body.String())
+	}
+
+	var payload struct {
+		Settings struct {
+			FontSize   int     `json:"font_size"`
+			LineHeight float64 `json:"line_height"`
+		} `json:"settings"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	if payload.Settings.FontSize != 13 {
+		t.Fatalf("expected unchanged font size 13, got %d", payload.Settings.FontSize)
+	}
+	if payload.Settings.LineHeight != 1.45 {
+		t.Fatalf("expected persisted line height 1.45, got %.2f", payload.Settings.LineHeight)
 	}
 }

@@ -5,20 +5,25 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 )
 
 const (
-	DefaultFontSize = 13
-	MinFontSize     = 11
-	MaxFontSize     = 16
+	DefaultFontSize   = 13
+	MinFontSize       = 11
+	MaxFontSize       = 16
+	DefaultLineHeight = 1.25
+	MinLineHeight     = 1.05
+	MaxLineHeight     = 1.6
 
 	defaultTerminalSettingsScope = "default"
 )
 
 type Preferences struct {
-	FontSize int `json:"font_size"`
+	FontSize   int     `json:"font_size"`
+	LineHeight float64 `json:"line_height"`
 }
 
 type PreferencesStore struct {
@@ -44,17 +49,19 @@ func (s *PreferencesStore) Snapshot(ctx context.Context) (Preferences, error) {
 	}
 
 	var fontSize int
+	var lineHeight float64
 	err := s.db.QueryRowContext(ctx, `
-		SELECT font_size
+		SELECT font_size, line_height
 		FROM terminal_settings
 		WHERE scope = ?
-	`, defaultTerminalSettingsScope).Scan(&fontSize)
+	`, defaultTerminalSettingsScope).Scan(&fontSize, &lineHeight)
 	if err != nil {
 		return Preferences{}, fmt.Errorf("load terminal settings: %w", err)
 	}
 
 	return Preferences{
-		FontSize: clampFontSize(fontSize),
+		FontSize:   clampFontSize(fontSize),
+		LineHeight: clampLineHeight(lineHeight),
 	}, nil
 }
 
@@ -64,15 +71,17 @@ func (s *PreferencesStore) Update(ctx context.Context, next Preferences) (Prefer
 	}
 
 	normalized := Preferences{
-		FontSize: clampFontSize(next.FontSize),
+		FontSize:   clampFontSize(next.FontSize),
+		LineHeight: clampLineHeight(next.LineHeight),
 	}
 
 	_, err := s.db.ExecContext(ctx, `
 		UPDATE terminal_settings
-		SET font_size = ?, updated_at = ?
+		SET font_size = ?, line_height = ?, updated_at = ?
 		WHERE scope = ?
 	`,
 		normalized.FontSize,
+		normalized.LineHeight,
 		time.Now().UTC().Format(time.RFC3339Nano),
 		defaultTerminalSettingsScope,
 	)
@@ -97,11 +106,12 @@ func (s *PreferencesStore) ensureDefaultRow(ctx context.Context) error {
 	}
 
 	_, err := s.db.ExecContext(ctx, `
-		INSERT INTO terminal_settings (scope, font_size, updated_at)
-		VALUES (?, ?, ?)
+		INSERT INTO terminal_settings (scope, font_size, line_height, updated_at)
+		VALUES (?, ?, ?, ?)
 	`,
 		defaultTerminalSettingsScope,
 		DefaultFontSize,
+		DefaultLineHeight,
 		time.Now().UTC().Format(time.RFC3339Nano),
 	)
 	if err != nil && !isUniqueConstraintError(err) {
@@ -122,6 +132,19 @@ func clampFontSize(value int) int {
 		return DefaultFontSize
 	}
 	return value
+}
+
+func clampLineHeight(value float64) float64 {
+	if value == 0 {
+		return DefaultLineHeight
+	}
+	if value < MinLineHeight {
+		return MinLineHeight
+	}
+	if value > MaxLineHeight {
+		return MaxLineHeight
+	}
+	return math.Round(value*100) / 100
 }
 
 func isUniqueConstraintError(err error) bool {

@@ -28,6 +28,7 @@ vi.mock('@/shared/ui/components/terminal-surface', async () => {
     TerminalSurface: React.forwardRef(function MockTerminalSurface(
       props: {
         fontSize?: number
+        lineHeight?: number
         onRendererModeChange?: (mode: 'default' | 'webgl') => void
         onRequestSearch?: () => void
         statusMessage?: string | null
@@ -56,7 +57,8 @@ vi.mock('@/shared/ui/components/terminal-surface', async () => {
 
       return (
         <div data-testid="terminal-surface-mock">
-          {props.statusMessage ?? 'terminal-ready'} · font:{props.fontSize ?? 13}
+          {props.statusMessage ?? 'terminal-ready'} · font:{props.fontSize ?? 13} · line:
+          {props.lineHeight ?? 1.25}
         </div>
       )
     }),
@@ -93,11 +95,20 @@ describe('TerminalWidget', () => {
       restartSession: restartSessionMock,
     } as ReturnType<typeof useTerminalSession>)
     vi.mocked(useTerminalPreferences).mockReturnValue({
-      fontSize: 15,
-      updateFontSize: vi.fn(),
-      increaseFontSize: vi.fn(),
+      errorMessage: null,
       decreaseFontSize: vi.fn(),
+      decreaseLineHeight: vi.fn(),
+      fontSize: 15,
+      increaseFontSize: vi.fn(),
+      increaseLineHeight: vi.fn(),
+      isLoading: false,
+      isSaving: false,
+      lineHeight: 1.4,
+      refresh: vi.fn(async () => undefined),
       resetFontSize: vi.fn(),
+      resetLineHeight: vi.fn(),
+      updateFontSize: vi.fn(),
+      updateLineHeight: vi.fn(),
     })
 
     render(<TerminalWidget hostId="terminal" runtimeWidgetId="term-side" title="Workspace shell" />)
@@ -107,7 +118,7 @@ describe('TerminalWidget', () => {
     expect(screen.getByText('zsh')).toBeInTheDocument()
     expect(screen.getByText('Running')).toBeInTheDocument()
     expect(screen.getByTestId('terminal-surface-mock')).toHaveTextContent(
-      'Attached to local shell. · font:15',
+      'Attached to local shell. · font:15 · line:1.4',
     )
 
     await waitFor(() => {

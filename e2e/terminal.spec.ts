@@ -31,7 +31,39 @@ test('terminal settings persist font-size changes through the shell settings UI'
   await expect(page.getByText('14px', { exact: true })).toBeVisible()
   await expect.poll(async () => (await fetchTerminalSettings(request)).font_size).toBe(14)
 
-  await updateTerminalSettingsViaApi(request, 13)
+  await updateTerminalSettingsViaApi(request, {
+    font_size: 13,
+    line_height: 1.25,
+  })
+})
+
+test('terminal settings persist line-height changes through the shell settings UI', async ({
+  page,
+  request,
+}) => {
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  await page.getByRole('button', { name: 'Open settings panel' }).click()
+  await page.getByRole('button', { name: 'Terminal Настройки терминального runtime.' }).click()
+
+  await expect(page.getByText('Current line height')).toBeVisible()
+  await expect(page.getByText('1.25x', { exact: true })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Increase terminal line height' }).click()
+  await expect(page.getByText('1.30x', { exact: true })).toBeVisible()
+
+  await page.reload()
+  await page.getByRole('button', { name: 'Open settings panel' }).click()
+  await page.getByRole('button', { name: 'Terminal Настройки терминального runtime.' }).click()
+
+  await expect(page.getByText('1.30x', { exact: true })).toBeVisible()
+  await expect.poll(async () => (await fetchTerminalSettings(request)).line_height).toBe(1.3)
+
+  await updateTerminalSettingsViaApi(request, {
+    font_size: 13,
+    line_height: 1.25,
+  })
 })
 
 test('terminal input from the shell writes to the live backend session', async ({ page, request }) => {

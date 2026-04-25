@@ -22,6 +22,7 @@ export type TerminalSurfaceHandle = {
 
 export type TerminalSurfaceProps = {
   fontSize?: number
+  lineHeight?: number
   hostId: string
   outputChunks: TerminalOutputChunk[]
   sessionKey: string
@@ -167,6 +168,7 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
   function TerminalSurface(
     {
       fontSize = 13,
+      lineHeight = 1.25,
       hostId,
       outputChunks,
       sessionKey,
@@ -271,7 +273,7 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
         disableStdin: sessionState === 'exited',
         fontFamily: getCssVariable('--font-family-mono') || 'monospace',
         fontSize,
-        lineHeight: 1.25,
+        lineHeight,
         rightClickSelectsWord: true,
         theme: getTerminalTheme(viewportRef.current),
       })
@@ -385,7 +387,7 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
         termRef.current = null
         term.dispose()
       }
-    }, [hostId, onRendererModeChange, onRequestSearch, themeClassTarget])
+    }, [hostId, lineHeight, onRendererModeChange, onRequestSearch, themeClassTarget])
 
     useEffect(() => {
       const term = termRef.current
@@ -408,6 +410,17 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
       term.options.fontSize = fontSize
       fitAddonRef.current?.fit()
     }, [fontSize])
+
+    useEffect(() => {
+      const term = termRef.current
+
+      if (!term) {
+        return
+      }
+
+      term.options.lineHeight = lineHeight
+      fitAddonRef.current?.fit()
+    }, [lineHeight])
 
     useEffect(() => {
       const term = termRef.current

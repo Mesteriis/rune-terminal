@@ -3,8 +3,11 @@ import type { ReactNode } from 'react'
 
 import {
   DEFAULT_TERMINAL_FONT_SIZE,
+  DEFAULT_TERMINAL_LINE_HEIGHT,
   MAX_TERMINAL_FONT_SIZE,
+  MAX_TERMINAL_LINE_HEIGHT,
   MIN_TERMINAL_FONT_SIZE,
+  MIN_TERMINAL_LINE_HEIGHT,
   useTerminalPreferences,
 } from '@/features/terminal/model/use-terminal-preferences'
 import { ClearBox } from '@/shared/ui/components'
@@ -39,15 +42,28 @@ function SectionCard({
 }
 
 export function TerminalSettingsSection() {
-  const { decreaseFontSize, errorMessage, fontSize, increaseFontSize, isLoading, isSaving, resetFontSize } =
-    useTerminalPreferences()
+  const {
+    decreaseFontSize,
+    decreaseLineHeight,
+    errorMessage,
+    fontSize,
+    increaseFontSize,
+    increaseLineHeight,
+    isLoading,
+    isSaving,
+    lineHeight,
+    resetFontSize,
+    resetLineHeight,
+  } = useTerminalPreferences()
   const canDecreaseFontSize = fontSize > MIN_TERMINAL_FONT_SIZE
   const canIncreaseFontSize = fontSize < MAX_TERMINAL_FONT_SIZE
+  const canDecreaseLineHeight = lineHeight > MIN_TERMINAL_LINE_HEIGHT
+  const canIncreaseLineHeight = lineHeight < MAX_TERMINAL_LINE_HEIGHT
 
   return (
     <SectionCard
-      description="Это runtime-owned terminal preference. Оно хранится в backend state и применяется ко всем живым terminal widgets в текущем shell."
-      title="Terminal font size"
+      description="Это runtime-owned terminal typography. Она хранится в backend state и применяется ко всем живым terminal widgets в текущем shell."
+      title="Terminal typography"
     >
       <ClearBox style={settingsShellListStyle}>
         <ClearBox style={settingsShellListRowStyle}>
@@ -91,9 +107,53 @@ export function TerminalSettingsSection() {
             </Button>
           </ClearBox>
         </ClearBox>
+        <ClearBox style={settingsShellListRowStyle}>
+          <ClearBox style={settingsShellContentHeaderStyle}>
+            <Text style={{ fontWeight: 600 }}>Current line height</Text>
+            <Text style={settingsShellMutedTextStyle}>
+              Line height управляет вертикальной плотностью xterm и тоже применяется сразу ко всем живым
+              terminal widgets.
+            </Text>
+          </ClearBox>
+          <ClearBox style={settingsShellBadgeStyle}>
+            {isLoading ? 'Loading…' : `${lineHeight.toFixed(2)}x`}
+          </ClearBox>
+        </ClearBox>
+        <ClearBox style={settingsShellListRowStyle}>
+          <ClearBox style={settingsShellContentHeaderStyle}>
+            <Text style={{ fontWeight: 600 }}>Adjust line height</Text>
+            <Text style={settingsShellMutedTextStyle}>
+              Диапазон {MIN_TERMINAL_LINE_HEIGHT.toFixed(2)}x–{MAX_TERMINAL_LINE_HEIGHT.toFixed(2)}x, default{' '}
+              {DEFAULT_TERMINAL_LINE_HEIGHT.toFixed(2)}x.
+            </Text>
+          </ClearBox>
+          <ClearBox style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--gap-xs)' }}>
+            <Button
+              aria-label="Decrease terminal line height"
+              disabled={isLoading || isSaving || !canDecreaseLineHeight}
+              onClick={() => void decreaseLineHeight()}
+            >
+              <Minus size={14} strokeWidth={1.8} />
+            </Button>
+            <Button
+              aria-label="Reset terminal line height"
+              disabled={isLoading || isSaving || lineHeight === DEFAULT_TERMINAL_LINE_HEIGHT}
+              onClick={() => void resetLineHeight()}
+            >
+              <RotateCcw size={14} strokeWidth={1.8} />
+            </Button>
+            <Button
+              aria-label="Increase terminal line height"
+              disabled={isLoading || isSaving || !canIncreaseLineHeight}
+              onClick={() => void increaseLineHeight()}
+            >
+              <Plus size={14} strokeWidth={1.8} />
+            </Button>
+          </ClearBox>
+        </ClearBox>
       </ClearBox>
       <Text style={settingsShellMutedTextStyle}>
-        {errorMessage ?? 'This terminal setting is now backed by the shared runtime contract.'}
+        {errorMessage ?? 'These terminal settings are now backed by the shared runtime contract.'}
       </Text>
     </SectionCard>
   )

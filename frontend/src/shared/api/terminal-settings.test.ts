@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
   DEFAULT_TERMINAL_FONT_SIZE,
+  DEFAULT_TERMINAL_LINE_HEIGHT,
   requestTerminalSettings,
   updateTerminalSettings,
 } from '@/shared/api/terminal-settings'
@@ -32,6 +33,7 @@ describe('terminal settings api', () => {
           json: async () => ({
             settings: {
               font_size: 14,
+              line_height: 1.4,
             },
           }),
         }),
@@ -39,6 +41,7 @@ describe('terminal settings api', () => {
 
     await expect(requestTerminalSettings()).resolves.toEqual({
       font_size: 14,
+      line_height: 1.4,
     })
   })
 
@@ -66,6 +69,7 @@ describe('terminal settings api', () => {
 
     await expect(requestTerminalSettings()).resolves.toEqual({
       font_size: DEFAULT_TERMINAL_FONT_SIZE,
+      line_height: DEFAULT_TERMINAL_LINE_HEIGHT,
     })
   })
 
@@ -86,6 +90,7 @@ describe('terminal settings api', () => {
         json: async () => ({
           settings: {
             font_size: 16,
+            line_height: 1.45,
           },
         }),
       })
@@ -94,9 +99,11 @@ describe('terminal settings api', () => {
     await expect(
       updateTerminalSettings({
         font_size: 99,
+        line_height: 9,
       }),
     ).resolves.toEqual({
       font_size: 16,
+      line_height: 1.45,
     })
 
     expect(fetchMock).toHaveBeenLastCalledWith(
@@ -104,6 +111,7 @@ describe('terminal settings api', () => {
       expect.objectContaining({
         body: JSON.stringify({
           font_size: 16,
+          line_height: 1.6,
         }),
         method: 'PUT',
       }),

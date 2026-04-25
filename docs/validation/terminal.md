@@ -2,7 +2,7 @@
 
 ## Last verified state
 
-- Date: `2026-04-24`
+- Date: `2026-04-25`
 - State: `VERIFIED`
 - Scope:
   - the active `frontend/src` terminal surface now uses the backend terminal runtime as its source of truth for the seeded shell panels
@@ -40,9 +40,11 @@
     - Ctrl/Cmd+F inside the terminal still opens search through the xterm key handler, but the same search row is now also reachable through visible toolbar controls
   - the shell settings modal now exposes a backend-owned `Terminal` settings slice instead of a placeholder:
     - current terminal font size is visible in `Settings -> Terminal`
+    - current terminal line height is visible in `Settings -> Terminal`
     - the operator can decrease, increase, and reset terminal font size inside the existing settings shell
-    - font size is loaded and persisted through the runtime contract (`GET/PUT /api/v1/settings/terminal`)
-    - the mounted xterm surface still applies that value live in the frontend, but the source of truth is now the runtime DB rather than local UI storage
+    - the operator can decrease, increase, and reset terminal line height inside the same shell section
+    - font size and line height are loaded and persisted through the runtime contract (`GET/PUT /api/v1/settings/terminal`)
+    - the mounted xterm surface still applies those values live in the frontend, but the source of truth is now the runtime DB rather than local UI storage
   - the renderer-only terminal demo path is removed from the seeded main path:
     - no hardcoded intro lines
     - no local prompt generator
@@ -101,6 +103,7 @@
 - `frontend/src/shared/ui/components/terminal-status-header.tsx`
 - `frontend/src/app/dockview-workspace.bootstrap.ts`
 - `core/db/migrations/0008_terminal_settings.sql`
+- `core/db/migrations/0009_terminal_line_height.sql`
 - `core/terminal/preferences.go`
 - `core/terminal/preferences_test.go`
 - `core/app/terminal_settings.go`
@@ -142,7 +145,7 @@
 
 ## Known limitations
 
-- Visible restart and interrupt controls now exist in the terminal header chrome, and terminal font size is now configurable through a backend-owned runtime settings contract; deeper terminal settings (`theme`, `scrollback`, `line height`, cursor behavior) still do not have a backend-owned contract yet.
+- Visible restart and interrupt controls now exist in the terminal header chrome, and terminal font size plus line height are now configurable through a backend-owned runtime settings contract; deeper terminal settings (`theme`, `scrollback`, cursor behavior) still do not have a backend-owned contract yet.
 - Terminal toolbar `clear` and `jump-to-latest` actions are intentionally local xterm viewport controls. They do not mutate backend snapshot history and were validated as non-breaking live affordances rather than as persisted runtime state.
 - Browser validation for terminal input now runs through Playwright on the split local dev path. The suite is intentionally serialized (`workers: 1`) because terminal/runtime state is shared across the same backend instance.
 - A fresh `npm run tauri:dev` desktop smoke was run for this slice and the spawned `rterm-desktop` / core listener processes were cleaned up after verification.
