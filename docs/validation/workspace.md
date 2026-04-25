@@ -31,6 +31,7 @@
     - the commander widget-store confirm path now only handles local pending flows (`select/unselect/filter/search`); backend mutation kinds (`copy/move/delete/mkdir/rename`) no longer keep dead fake-client mutation branches in the reducer path because the live async hook/API path already owns them
     - the commander store also drops no-op reducers for backend-owned async actions (`view/edit/open/path/history/save`), so those flows no longer pretend to have synchronous reducer ownership when the real work lives entirely in hooks plus backend HTTP
     - commander widget persistence now writes only runtime pane/widget state into `runa-terminal:commander-widgets:v1`; older persisted `client.directories` payloads are still accepted on read so existing localStorage survives the cleanup without losing widget restore state
+    - browser validation now also proves that the active commander persistence contract stays narrow in practice: after navigating a pane to a backend path, the persisted `runa-terminal:commander-widgets:v1` snapshot records the pane path but omits `entries` / `directoryEntries`, so reload no longer depends on a frontend-owned directory snapshot being stored in `localStorage`
     - the unused frontend `fake-client.ts` and `commander-widget.mock*` files are now removed from the active tree entirely, so commander parity work no longer carries a dead second transport model beside the backend-owned path
   - the shared token layer now owns responsive shell/layout chrome sizing and a complete named z-index scale, so shell frame padding, topbar offsets, workspace tab minimums, modal width, Dockview header height, and rail/header dimensions adapt through breakpoint-aware tokens instead of widget-local constants
   - the shell environment layer now also owns dark/light and print media contracts, so `prefers-color-scheme: light` remaps shared surface/text tokens and `@media print` flattens shell chrome for printable output without glow, blur, or resize affordances
@@ -164,7 +165,9 @@
 - `node --input-type=module -e "<headless Playwright localhost smoke for commander file-dialog cursor metrics and dirty-close prompt on http://127.0.0.1:4208>"`
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi`
 - `npm --prefix frontend run test -- src/features/commander/api/client.test.ts src/features/commander/model/hooks.test.tsx`
+- `npm --prefix frontend run test -- src/features/commander/model/persistence.test.ts src/features/commander/model/pane-state.test.ts src/features/commander/model/store-persistence.test.ts`
 - `npm run test:ui -- --reporter=line e2e/commander-readonly.spec.ts --grep "quick filter"`
+- `npm run test:ui -- --reporter=line e2e/commander-readonly.spec.ts`
 - `node --input-type=module -e "<headless Playwright localhost width samples for Motion-based AI shell panel on http://127.0.0.1:5173>"`
 - `node --input-type=module -e "<headless Playwright localhost smoke for AI header title, square logo slot, and header-to-prompts gap on http://127.0.0.1:5173>"`
 - `node --input-type=module -e "<headless Playwright localhost smoke for AI prompt-card actions, line clamp, expand, and rollback on http://127.0.0.1:5173>"`

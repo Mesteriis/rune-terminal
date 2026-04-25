@@ -1,7 +1,6 @@
 import { z } from 'zod'
 
 import type {
-  CommanderClientEntrySnapshot,
   CommanderDirectoryEntry,
   CommanderPanePersistedState,
   CommanderPaneRuntimeState,
@@ -37,26 +36,12 @@ const commanderDirectoryEntrySchema: z.ZodType<CommanderDirectoryEntry> = z.obje
   symlinkTarget: z.string().optional(),
 })
 
-const commanderClientEntrySchema: z.ZodType<CommanderClientEntrySnapshot> = z.object({
-  id: z.string().optional(),
-  name: z.string(),
-  ext: z.string(),
-  kind: commanderRowKindSchema,
-  sizeLabel: z.string(),
-  modified: z.string(),
-  hidden: z.boolean().optional(),
-  gitStatus: z.string().optional(),
-  executable: z.boolean().optional(),
-  symlinkTarget: z.string().optional(),
-  content: z.string().optional(),
-})
-
 const commanderPanePersistedStateSchema: z.ZodType<CommanderPanePersistedState> = z
   .object({
     path: z.string(),
     filterQuery: z.string().optional().default(''),
     directoryEntries: z.array(commanderDirectoryEntrySchema).optional(),
-    entries: z.array(commanderDirectoryEntrySchema),
+    entries: z.array(commanderDirectoryEntrySchema).optional(),
     cursorEntryId: z.string().nullable().optional(),
     selectionAnchorEntryId: z.string().nullable().optional(),
     selectedIds: stringArraySchema,
@@ -66,8 +51,8 @@ const commanderPanePersistedStateSchema: z.ZodType<CommanderPanePersistedState> 
   .transform((paneState) => ({
     path: paneState.path,
     filterQuery: paneState.filterQuery,
-    directoryEntries: paneState.directoryEntries ?? paneState.entries,
-    entries: paneState.entries,
+    directoryEntries: paneState.directoryEntries ?? paneState.entries ?? [],
+    entries: paneState.entries ?? paneState.directoryEntries ?? [],
     cursorEntryId: paneState.cursorEntryId ?? null,
     selectionAnchorEntryId: paneState.selectionAnchorEntryId ?? paneState.cursorEntryId ?? null,
     selectedIds: paneState.selectedIds,
@@ -88,11 +73,6 @@ const commanderWidgetPersistedRuntimeSchema: z.ZodType<CommanderWidgetPersistedS
 
 const commanderWidgetPersistedSnapshotSchema: z.ZodType<CommanderWidgetPersistedSnapshot> = z.object({
   runtime: commanderWidgetPersistedRuntimeSchema,
-  client: z
-    .object({
-      directories: z.record(z.string(), z.array(commanderClientEntrySchema)),
-    })
-    .optional(),
 })
 
 const commanderPersistenceStateSchema = z.object({
@@ -156,8 +136,6 @@ function serializePaneState(paneState: CommanderPaneRuntimeState): CommanderPane
   return {
     path: paneState.path,
     filterQuery: paneState.filterQuery,
-    directoryEntries: paneState.directoryEntries,
-    entries: paneState.entries,
     cursorEntryId: paneState.cursorEntryId,
     selectionAnchorEntryId: paneState.selectionAnchorEntryId,
     selectedIds: paneState.selectedIds,

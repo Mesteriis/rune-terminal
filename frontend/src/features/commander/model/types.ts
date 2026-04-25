@@ -119,24 +119,6 @@ export type CommanderDirectoryEntry = {
   symlinkTarget?: string
 }
 
-export type CommanderClientEntrySnapshot = {
-  id?: string
-  name: string
-  ext: string
-  kind: CommanderRowKind
-  sizeLabel: string
-  modified: string
-  hidden?: boolean
-  gitStatus?: string
-  executable?: boolean
-  symlinkTarget?: string
-  content?: string
-}
-
-export type CommanderClientSnapshot = {
-  directories: Record<string, CommanderClientEntrySnapshot[]>
-}
-
 export type CommanderPaneRuntimeState = {
   id: CommanderPaneId
   path: string
@@ -156,7 +138,7 @@ export type CommanderPanePersistedState = {
   path: string
   filterQuery: string
   directoryEntries?: CommanderDirectoryEntry[]
-  entries: CommanderDirectoryEntry[]
+  entries?: CommanderDirectoryEntry[]
   cursorEntryId: string | null
   selectionAnchorEntryId: string | null
   selectedIds: string[]
@@ -208,7 +190,6 @@ export type CommanderWidgetPersistedState = {
 
 export type CommanderWidgetPersistedSnapshot = {
   runtime: CommanderWidgetPersistedState
-  client?: CommanderClientSnapshot
 }
 
 export type CommanderPaneCounters = {

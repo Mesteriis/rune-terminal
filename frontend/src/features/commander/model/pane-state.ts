@@ -130,32 +130,21 @@ function buildCommanderPaneState(
   }
 }
 
-function createPaneStateFromPersisted(
-  paneId: CommanderPaneId,
-  paneState: CommanderPanePersistedState,
-  options: {
-    showHidden: boolean
-    sortMode: CommanderSortMode
-    sortDirection: CommanderSortDirection
-    dirsFirst: boolean
-  },
-) {
-  const directoryEntries = paneState.directoryEntries ?? paneState.entries
-
-  return buildCommanderPaneState(
-    paneId,
-    paneState.path,
-    directoryEntries,
-    paneState.filterQuery,
-    paneState.selectedIds,
-    paneState.cursorEntryId,
-    paneState.selectionAnchorEntryId,
-    {
-      back: paneState.historyBack,
-      forward: paneState.historyForward,
-    },
-    options,
-  )
+function createPaneStateFromPersisted(paneId: CommanderPaneId, paneState: CommanderPanePersistedState) {
+  return {
+    id: paneId,
+    path: paneState.path,
+    filterQuery: paneState.filterQuery,
+    directoryEntries: [],
+    entries: [],
+    cursorEntryId: paneState.cursorEntryId,
+    selectionAnchorEntryId: paneState.selectionAnchorEntryId,
+    selectedIds: paneState.selectedIds,
+    historyBack: paneState.historyBack,
+    historyForward: paneState.historyForward,
+    isLoading: true,
+    errorMessage: null,
+  }
 }
 
 function createEmptyPaneState(paneId: CommanderPaneId): CommanderPaneRuntimeState {
@@ -183,7 +172,6 @@ export function createCommanderWidgetRuntimeState(
   const sortMode = persistedState?.sortMode ?? defaultCommanderSortMode
   const sortDirection = persistedState?.sortDirection ?? defaultCommanderSortDirection
   const dirsFirst = persistedState?.dirsFirst ?? defaultCommanderDirsFirst
-  const options = { showHidden, sortMode, sortDirection, dirsFirst }
 
   return {
     widgetId,
@@ -199,10 +187,10 @@ export function createCommanderWidgetRuntimeState(
     pendingOperation: null,
     fileDialog: null,
     leftPane: persistedState?.leftPane
-      ? createPaneStateFromPersisted('left', persistedState.leftPane, options)
+      ? createPaneStateFromPersisted('left', persistedState.leftPane)
       : createEmptyPaneState('left'),
     rightPane: persistedState?.rightPane
-      ? createPaneStateFromPersisted('right', persistedState.rightPane, options)
+      ? createPaneStateFromPersisted('right', persistedState.rightPane)
       : createEmptyPaneState('right'),
   }
 }

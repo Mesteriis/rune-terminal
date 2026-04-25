@@ -50,7 +50,7 @@ from any previous fork are historical inspiration only.
 | --- | --- | --- |
 | Layered architecture (tokens → primitives → components → widgets) | `NOW` | see `frontend/docs/ui-architecture.md` |
 | Primitives library | `NOW` | stable, contract documented |
-| Commander widget | `NOW` | running on a fake client under `features/commander/model/`; real HTTP wiring is the next milestone |
+| Commander widget | `NOW` | backend-backed read/write path is live; remaining parity work is about removing leftover frontend-owned seams rather than introducing the first HTTP wiring |
 | Terminal widget | `NEXT` | xterm surface mounted; needs to consume SSE from the real core |
 | AI panel widget | `NEXT` | chrome exists; shell settings modal now hosts CLI + narrow HTTP provider management, and the main AI panel now exposes provider/model selection plus widget-context selection while deeper runtime/tooling UX still remains |
 | Dockview workspace shell | `NOW` | layout + localStorage persistence |

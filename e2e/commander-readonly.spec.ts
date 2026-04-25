@@ -1,4 +1,4 @@
-import { writeFile } from 'node:fs/promises'
+import { rm, writeFile } from 'node:fs/promises'
 
 import { expect, test, type Page } from '@playwright/test'
 
@@ -121,6 +121,43 @@ test('commander inline path autocomplete suggests loaded backend directories and
   await expect(page.locator('[id^="shell-tool-commander-pane-left-path-r"]').first()).toHaveText(
     frontendDisplayPath,
   )
+})
+
+test('commander persistence stores pane runtime state without directory snapshots', async ({
+  page,
+  request,
+}) => {
+  const bootstrap = await fetchBootstrap(request)
+  const stamp = Date.now()
+  const persistRootPath = `${bootstrap.repo_root}/tmp/persist-e2e-${stamp}`
+  const persistRootDisplayPath = formatDisplayPath(persistRootPath, bootstrap.home_dir)
+  const beforeFileName = `before-${stamp}.txt`
+  const beforeFilePath = `${persistRootPath}/${beforeFileName}`
+  const leftPane = getPane(page, 'left')
+
+  await mkdirViaApi(request, persistRootPath)
+  await writeFile(beforeFilePath, 'before\n')
+
+  await clearBrowserState(page)
+  await page.goto('/')
+  await setPanePath(page, 'left', persistRootDisplayPath)
+  await expect(leftPane.row(beforeFileName)).toHaveCount(1)
+  await page.waitForFunction(
+    (path) => window.localStorage.getItem('runa-terminal:commander-widgets:v1')?.includes(path) === true,
+    persistRootPath,
+  )
+
+  const persistedSnapshot = await page.evaluate(() =>
+    JSON.parse(window.localStorage.getItem('runa-terminal:commander-widgets:v1') ?? '{}'),
+  )
+
+  expect(persistedSnapshot.widgets.tool.runtime.leftPane.path).toBe(persistRootPath)
+  expect(persistedSnapshot.widgets.tool.runtime.leftPane.entries).toBeUndefined()
+  expect(persistedSnapshot.widgets.tool.runtime.leftPane.directoryEntries).toBeUndefined()
+  expect(persistedSnapshot.widgets.tool.runtime.rightPane.entries).toBeUndefined()
+  expect(persistedSnapshot.widgets.tool.runtime.rightPane.directoryEntries).toBeUndefined()
+
+  await rm(beforeFilePath, { force: true })
 })
 
 test('commander mkdir creates a directory over the backend and focuses the new entry', async ({

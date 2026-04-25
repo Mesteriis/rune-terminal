@@ -66,7 +66,19 @@ function createPersistedSnapshot(): CommanderWidgetPersistedSnapshot {
   const runtime = serializeCommanderWidgetRuntimeState(createRuntimeState())
 
   return {
-    runtime,
+    runtime: {
+      ...runtime,
+      leftPane: {
+        ...runtime.leftPane,
+        directoryEntries: [],
+        entries: [],
+      },
+      rightPane: {
+        ...runtime.rightPane,
+        directoryEntries: [],
+        entries: [],
+      },
+    },
   }
 }
 
@@ -86,8 +98,6 @@ describe('commander persistence', () => {
       leftPane: {
         path: '~/left',
         filterQuery: '',
-        directoryEntries: [baseEntry],
-        entries: [baseEntry],
         cursorEntryId: 'entry-1',
         selectionAnchorEntryId: 'entry-1',
         selectedIds: ['entry-1'],
@@ -97,8 +107,6 @@ describe('commander persistence', () => {
       rightPane: {
         path: '~/right',
         filterQuery: '',
-        directoryEntries: [baseEntry],
-        entries: [baseEntry],
         cursorEntryId: 'entry-1',
         selectionAnchorEntryId: 'entry-1',
         selectedIds: ['entry-1'],
@@ -156,27 +164,10 @@ describe('commander persistence', () => {
                 historyForward: [],
               },
             },
-            client: {
-              directories: {
-                '~/left': [
-                  {
-                    name: 'notes.txt',
-                    ext: 'txt',
-                    kind: 'file',
-                    sizeLabel: '128 B',
-                    modified: '2026-04-20 10:30',
-                    content: 'hello',
-                  },
-                ],
-              },
-            },
           },
           broken: {
             runtime: {
               activePane: 'middle',
-            },
-            client: {
-              directories: [],
             },
           },
         },
@@ -212,20 +203,6 @@ describe('commander persistence', () => {
           selectedIds: [],
           historyBack: [],
           historyForward: [],
-        },
-      },
-      client: {
-        directories: {
-          '~/left': [
-            {
-              name: 'notes.txt',
-              ext: 'txt',
-              kind: 'file',
-              sizeLabel: '128 B',
-              modified: '2026-04-20 10:30',
-              content: 'hello',
-            },
-          ],
         },
       },
     })
@@ -269,19 +246,6 @@ describe('commander persistence', () => {
                 selectedIds: [],
                 historyBack: [],
                 historyForward: [],
-              },
-            },
-            client: {
-              directories: {
-                '~/left': [
-                  {
-                    name: 'archive.tar',
-                    ext: 'tar',
-                    kind: 'file',
-                    sizeLabel: '4 KB',
-                    modified: '2026-04-20 10:30',
-                  },
-                ],
               },
             },
           },
@@ -340,19 +304,6 @@ describe('commander persistence', () => {
           selectedIds: [],
           historyBack: [],
           historyForward: [],
-        },
-      },
-      client: {
-        directories: {
-          '~/left': [
-            {
-              name: 'archive.tar',
-              ext: 'tar',
-              kind: 'file',
-              sizeLabel: '4 KB',
-              modified: '2026-04-20 10:30',
-            },
-          ],
         },
       },
     })
