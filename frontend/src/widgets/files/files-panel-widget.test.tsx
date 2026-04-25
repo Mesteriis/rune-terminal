@@ -103,4 +103,41 @@ describe('FilesPanelWidget', () => {
       expect(screen.getByRole('button', { name: 'Open directory src' })).toBeInTheDocument()
     })
   })
+
+  it('filters visible entries by filename and clears the filter', async () => {
+    vi.mocked(listFilesDirectory).mockResolvedValue({
+      entries: [
+        {
+          id: '/repo::src',
+          kind: 'directory',
+          modified: '2026-04-25 20:00',
+          name: 'src',
+          sizeLabel: '',
+        },
+        {
+          id: '/repo::package.json',
+          kind: 'file',
+          modified: '2026-04-25 20:03',
+          name: 'package.json',
+          sizeLabel: '1.0 KB',
+        },
+      ],
+      path: '/repo',
+    })
+
+    render(<FilesPanelWidget path="/repo" title="repo" />)
+
+    await screen.findByRole('button', { name: 'Open directory src' })
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Filter files' }), {
+      target: { value: 'package' },
+    })
+
+    expect(screen.queryByRole('button', { name: 'Open directory src' })).not.toBeInTheDocument()
+    expect(screen.getByText('package.json')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear files filter' }))
+
+    expect(screen.getByRole('button', { name: 'Open directory src' })).toBeInTheDocument()
+  })
 })

@@ -55,9 +55,9 @@ This is the canonical workspace entrypoint for tab/widget/layout behavior.
   removed, so the runtime workspace snapshot collapses the split layout and
   removes the widget record.
 - The files widget currently renders a narrow directory list for the
-  handed-off path, with child-directory open and parent navigation.
-  TideTerm-style rich file preview, drag/copy, media preview, and editor
-  handoff remain future slices.
+  handed-off path, with filename filtering, child-directory open, and parent
+  navigation. TideTerm-style rich file preview, drag/copy, media preview, and
+  editor handoff remain future slices.
 
 ## Deep links
 

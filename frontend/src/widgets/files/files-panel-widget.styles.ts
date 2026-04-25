@@ -54,6 +54,22 @@ export const filesPanelParentButtonStyle: CSSProperties = {
   lineHeight: 'var(--line-height-sm)',
 }
 
+export const filesPanelControlsStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 'var(--gap-sm)',
+  flex: '0 0 auto',
+  minWidth: 0,
+}
+
+export const filesPanelFilterInputStyle: CSSProperties = {
+  width: '150px',
+  minHeight: '24px',
+  padding: '2px var(--space-sm)',
+  fontSize: 'var(--font-size-sm)',
+  lineHeight: 'var(--line-height-sm)',
+}
+
 export const filesPanelListStyle: CSSProperties = {
   flex: 1,
   minHeight: 0,
