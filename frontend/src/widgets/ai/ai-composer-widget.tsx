@@ -338,6 +338,27 @@ export function AiComposerWidget({
             </Box>
           </Box>
         ) : null}
+        {missingContextWidgetCount > 0 && !isContextMenuOpen ? (
+          <Box
+            runaComponent="ai-composer-context-repair-notice-inline"
+            style={aiComposerContextRepairNoticeStyle}
+          >
+            <Text style={aiComposerContextRepairNoticeTextStyle}>
+              {missingContextWidgetCount === 1
+                ? '1 saved widget is no longer available in this workspace.'
+                : `${missingContextWidgetCount} saved widgets are no longer available in this workspace.`}
+            </Text>
+            <Box style={aiComposerContextRepairNoticeActionsStyle}>
+              <Button
+                disabled={disabled}
+                onClick={() => onRepairMissingContextWidgets?.()}
+                style={aiComposerContextQuickActionStyle}
+              >
+                Save cleaned context
+              </Button>
+            </Box>
+          </Box>
+        ) : null}
         <Surface runaComponent="ai-composer-surface" style={aiComposerSurfaceStyle}>
           {isContextMenuOpen ? (
             <Box

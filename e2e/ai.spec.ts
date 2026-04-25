@@ -784,14 +784,16 @@ test('AI sidebar repairs stale persisted widget context selections', async ({ pa
   await page.goto('/')
   await page.getByRole('button', { name: 'Toggle AI panel' }).click({ force: true })
   await expect(page.getByText('AI Rune Assistant')).toBeVisible()
+  await expect(
+    page.getByText('2 saved widgets are no longer available in this workspace.'),
+  ).toBeVisible()
+  await page.getByRole('button', { name: 'Save cleaned context' }).click()
 
   await page.getByRole('button', { name: 'Composer options' }).click()
   await expect(page.getByRole('dialog', { name: 'Context widgets' })).toBeVisible()
   await expect(
     page.getByText('2 saved widgets are no longer available in this workspace.'),
-  ).toBeVisible()
-
-  await page.getByRole('button', { name: 'Save cleaned context' }).click()
+  ).toHaveCount(0)
 
   await expect
     .poll(async () => {

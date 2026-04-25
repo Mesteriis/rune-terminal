@@ -248,12 +248,18 @@ describe('AiComposerWidget', () => {
       />,
     )
 
+    expect(screen.getByText('2 saved widgets are no longer available in this workspace.')).toBeVisible()
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save cleaned context' })[0]!)
+    expect(onRepairMissingContextWidgets).toHaveBeenCalledTimes(1)
+
     fireEvent.click(screen.getByRole('button', { name: 'Composer options' }))
 
-    expect(screen.getByText('2 saved widgets are no longer available in this workspace.')).toBeVisible()
+    expect(
+      screen.getAllByText('2 saved widgets are no longer available in this workspace.').length,
+    ).toBeGreaterThanOrEqual(1)
 
     fireEvent.click(screen.getByRole('button', { name: 'Save cleaned context' }))
 
-    expect(onRepairMissingContextWidgets).toHaveBeenCalledTimes(1)
+    expect(onRepairMissingContextWidgets).toHaveBeenCalledTimes(2)
   })
 })

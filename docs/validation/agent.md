@@ -23,6 +23,7 @@
   - AI composer context quick actions (`Use current`, `Only current`, `All widgets`, `Use default`) over the existing workspace/widget context contract
   - AI composer visible selected-context strip with direct remove actions for chosen widgets
   - explicit stale-widget repair notice plus `Save cleaned context` action for persisted conversation context that no longer matches the current workspace
+  - stale-widget mismatch is now visible in the closed composer body as well, not only after opening the context dropdown
   - AI composer two-row toolbar grouping with explicit `Source / Model / Context` field labels
   - AI composer denser request-context dropdown summary block and widget option rows
   - AI assistant message meta row and details panel chrome refinement
@@ -34,6 +35,7 @@
     - explicit widget-context selection in the composer and `widget_ids` propagation into the stream request body
     - persisted per-conversation widget-context restore across conversation activation and reload
     - explicit stale-widget repair flow that rewrites persisted `widget_ids` to the still-valid workspace subset
+    - visible stale-context repair notice before opening the composer context dropdown when persisted widget ids no longer match the current workspace
     - immediate `Only current` context selection after opening the composer context menu without losing the current workspace widget to frontend state races
     - settings-driven keyboard submit behavior: `Enter` newline plus `Ctrl/Cmd+Enter` submit
     - conversation persistence across AI panel reload/reopen with backend conversation switching
@@ -106,6 +108,7 @@
   - the closed trigger summarizes the effective selection state (`Context off`, active widget title, or widget count)
   - the dropdown exposes `Use current`, `Only current`, `All widgets`, and `Use default` actions without introducing a second backend context model
 - When persisted `widget_ids` reference widgets that no longer exist in the current `GET /api/v1/workspace` snapshot, the composer now shows that mismatch explicitly and offers `Save cleaned context`, which rewrites the active conversation with only the still-valid widget ids.
+- When a conversation already carries persisted `widget_ids`, the frontend now eagerly resolves the current workspace widget snapshot instead of waiting for `onContextOptionsOpen`, so stale-widget mismatch can be surfaced in the closed composer body without hiding behind the dropdown.
 - The selected widget set is now also visible outside the dropdown:
   - explicit selections render as removable chips in the composer body
   - removing chips narrows both `widget_ids` and `active_widget_id` to the remaining explicit selection, matching the current frontend context contract

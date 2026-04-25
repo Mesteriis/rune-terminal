@@ -1016,6 +1016,18 @@ export function useAgentPanel(hostId: string, enabled = true) {
     }
   }, [ensureCurrentConversationSnapshotLoaded, loadContextWidgets])
 
+  useEffect(() => {
+    if (!enabled || hasLoadedContextWidgetsRef.current || storedContextWidgetIDs.length === 0) {
+      return
+    }
+
+    void loadContextWidgets().catch((error) => {
+      const errorMessage =
+        error instanceof Error && error.message.trim() ? error.message : 'Unable to load workspace widgets.'
+      setContextWidgetLoadError(errorMessage)
+    })
+  }, [enabled, loadContextWidgets, storedContextWidgetIDs])
+
   const useCurrentContextWidget = useCallback(
     async (mode: 'append' | 'replace') => {
       try {

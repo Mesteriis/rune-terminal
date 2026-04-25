@@ -799,6 +799,107 @@ describe('AiPanelWidget backend conversation path', () => {
     })
   })
 
+  it('shows stale persisted context outside the dropdown and saves the cleaned selection', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce(
+        createConversationFetchResponse({
+          title: 'Stale widget context',
+          context_preferences: {
+            widget_context_enabled: true,
+            widget_ids: ['term-main', 'missing-widget-a', 'missing-widget-b'],
+          },
+        }),
+      )
+      .mockResolvedValueOnce(createProviderCatalogFetchResponse())
+      .mockResolvedValueOnce(
+        createConversationListFetchResponse('conv_1', [
+          {
+            id: 'conv_1',
+            title: 'Stale widget context',
+            created_at: '2026-04-21T09:59:00Z',
+            updated_at: '2026-04-21T10:00:00Z',
+            message_count: 0,
+          },
+        ]),
+      )
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          active_widget_id: 'term-main',
+          tabs: [
+            {
+              id: 'tab_1',
+              widget_id: 'term-main',
+              kind: 'terminal',
+              title: 'Main Shell',
+              connection_id: 'local',
+              path: '/Users/avm/projects/runa-terminal',
+            },
+          ],
+          widgets: [
+            {
+              id: 'term-main',
+              kind: 'terminal',
+              title: 'Main Shell',
+              connection_id: 'local',
+              path: '/Users/avm/projects/runa-terminal',
+            },
+          ],
+        }),
+      })
+      .mockResolvedValueOnce(
+        createConversationFetchResponse({
+          title: 'Stale widget context',
+          context_preferences: {
+            widget_context_enabled: true,
+            widget_ids: ['term-main'],
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        createConversationListFetchResponse('conv_1', [
+          {
+            id: 'conv_1',
+            title: 'Stale widget context',
+            created_at: '2026-04-21T09:59:00Z',
+            updated_at: '2026-04-21T10:00:00Z',
+            message_count: 0,
+          },
+        ]),
+      )
+
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<AiPanelWidget hostId="ai-shell-panel" />)
+
+    await waitFor(() => {
+      expect(screen.getByText('2 saved widgets are no longer available in this workspace.')).toBeVisible()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save cleaned context' }))
+
+    await waitFor(() => {
+      const contextUpdateCall = fetchMock.mock.calls.find((call) =>
+        String(call[0]).includes('/api/v1/agent/conversations/conv_1/context'),
+      )
+      expect(contextUpdateCall).toBeDefined()
+      expect(JSON.parse(String(contextUpdateCall?.[1]?.body))).toEqual({
+        widget_context_enabled: true,
+        widget_ids: ['term-main'],
+      })
+    })
+  })
+
   it('clears busy state and keeps partial assistant output coherent on backend error events', async () => {
     const streamResponse = createDeferredStreamResponse()
     const fetchMock = vi.fn()
