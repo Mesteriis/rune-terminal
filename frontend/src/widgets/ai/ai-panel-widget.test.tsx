@@ -248,34 +248,33 @@ describe('AiPanelWidget backend conversation path', () => {
 
   it('switches the active provider from the chat toolbar and updates the available models', async () => {
     const fetchMock = vi.fn()
-    fetchMock
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          home_dir: '/Users/avm',
-          repo_root: '/Users/avm/projects/runa-terminal',
-        }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          conversation: {
-            id: 'conv_1',
-            title: 'Provider switch test',
-            messages: [],
-            provider: {
-              kind: 'codex',
-              base_url: 'codex',
-              model: 'stub-model',
-              streaming: false,
-            },
-            created_at: '2026-04-21T09:59:00Z',
-            updated_at: '2026-04-21T10:00:00Z',
+    fetchMock.mockImplementation(async (input) => {
+      const url = String(input)
+
+      if (url.endsWith('/api/v1/bootstrap')) {
+        return {
+          ok: true,
+          json: async () => ({
+            home_dir: '/Users/avm',
+            repo_root: '/Users/avm/projects/runa-terminal',
+          }),
+        }
+      }
+
+      if (url.endsWith('/api/v1/agent/conversation')) {
+        return createConversationFetchResponse({
+          title: 'Provider switch test',
+          provider: {
+            kind: 'codex',
+            base_url: 'codex',
+            model: 'stub-model',
+            streaming: false,
           },
-        }),
-      })
-      .mockResolvedValueOnce(
-        createProviderCatalogFetchResponse(
+        })
+      }
+
+      if (url.endsWith('/api/v1/agent/providers')) {
+        return createProviderCatalogFetchResponse(
           ['stub-model'],
           [
             {
@@ -308,10 +307,52 @@ describe('AiPanelWidget backend conversation path', () => {
               updated_at: '2026-04-24T10:00:00Z',
             },
           ],
-        ),
-      )
-      .mockResolvedValueOnce(
-        createConversationListFetchResponse('conv_1', [
+        )
+      }
+
+      if (url.includes('/api/v1/agent/providers/active')) {
+        return {
+          ok: true,
+          json: async () => ({
+            providers: [
+              {
+                id: 'provider-stub',
+                kind: 'codex',
+                display_name: 'Stub Codex CLI',
+                enabled: true,
+                active: false,
+                codex: {
+                  command: 'codex',
+                  model: 'stub-model',
+                  chat_models: ['stub-model'],
+                  status_state: 'ready',
+                },
+                created_at: '2026-04-21T10:00:00Z',
+                updated_at: '2026-04-21T10:00:00Z',
+              },
+              {
+                id: 'provider-http',
+                kind: 'openai-compatible',
+                display_name: 'LAN Source',
+                enabled: true,
+                active: true,
+                openai_compatible: {
+                  base_url: 'http://192.168.1.8:8317',
+                  model: 'gpt-5.4',
+                  chat_models: ['gpt-5.4', 'claude-sonnet-4-6'],
+                },
+                created_at: '2026-04-24T10:00:00Z',
+                updated_at: '2026-04-24T10:00:00Z',
+              },
+            ],
+            active_provider_id: 'provider-http',
+            supported_kinds: ['codex', 'claude', 'openai-compatible'],
+          }),
+        }
+      }
+
+      if (url.includes('/api/v1/agent/conversations?scope=recent')) {
+        return createConversationListFetchResponse('conv_1', [
           {
             id: 'conv_1',
             title: 'Provider switch test',
@@ -319,46 +360,11 @@ describe('AiPanelWidget backend conversation path', () => {
             updated_at: '2026-04-21T10:00:00Z',
             message_count: 0,
           },
-        ]),
-      )
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          providers: [
-            {
-              id: 'provider-stub',
-              kind: 'codex',
-              display_name: 'Stub Codex CLI',
-              enabled: true,
-              active: false,
-              codex: {
-                command: 'codex',
-                model: 'stub-model',
-                chat_models: ['stub-model'],
-                status_state: 'ready',
-              },
-              created_at: '2026-04-21T10:00:00Z',
-              updated_at: '2026-04-21T10:00:00Z',
-            },
-            {
-              id: 'provider-http',
-              kind: 'openai-compatible',
-              display_name: 'LAN Source',
-              enabled: true,
-              active: true,
-              openai_compatible: {
-                base_url: 'http://192.168.1.8:8317',
-                model: 'gpt-5.4',
-                chat_models: ['gpt-5.4', 'claude-sonnet-4-6'],
-              },
-              created_at: '2026-04-24T10:00:00Z',
-              updated_at: '2026-04-24T10:00:00Z',
-            },
-          ],
-          active_provider_id: 'provider-http',
-          supported_kinds: ['codex', 'claude', 'openai-compatible'],
-        }),
-      })
+        ])
+      }
+
+      throw new Error(`Unhandled fetch in provider switch test: ${url}`)
+    })
     vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
     vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
     vi.stubGlobal('fetch', fetchMock)
@@ -369,8 +375,15 @@ describe('AiPanelWidget backend conversation path', () => {
       expect(screen.getByRole('combobox', { name: 'AI provider' })).toBeInTheDocument()
     })
 
-    fireEvent.change(screen.getByRole('combobox', { name: 'AI provider' }), {
-      target: { value: 'provider-http' },
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: 'AI provider' })).toHaveValue('provider-stub')
+      expect(screen.getByRole('combobox', { name: 'AI model' })).toHaveValue('stub-model')
+    })
+
+    await act(async () => {
+      fireEvent.change(screen.getByRole('combobox', { name: 'AI provider' }), {
+        target: { value: 'provider-http' },
+      })
     })
 
     const providerActiveCall = await waitFor(() => {
@@ -564,35 +577,31 @@ describe('AiPanelWidget backend conversation path', () => {
 
     const streamResponse = createDeferredStreamResponse()
     const fetchMock = vi.fn()
-    fetchMock
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          home_dir: '/Users/avm',
-          repo_root: '/Users/avm/projects/runa-terminal',
-        }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          conversation: {
-            id: 'conv_1',
-            title: 'Context selection',
-            messages: [],
-            provider: {
-              kind: 'stub',
-              base_url: 'http://stub',
-              model: 'stub-model',
-              streaming: false,
-            },
-            created_at: '2026-04-21T09:59:00Z',
-            updated_at: '2026-04-21T10:00:00Z',
-          },
-        }),
-      })
-      .mockResolvedValueOnce(createProviderCatalogFetchResponse())
-      .mockResolvedValueOnce(
-        createConversationListFetchResponse('conv_1', [
+    fetchMock.mockImplementation(async (input) => {
+      const url = String(input)
+
+      if (url.endsWith('/api/v1/bootstrap')) {
+        return {
+          ok: true,
+          json: async () => ({
+            home_dir: '/Users/avm',
+            repo_root: '/Users/avm/projects/runa-terminal',
+          }),
+        }
+      }
+
+      if (url.endsWith('/api/v1/agent/conversation')) {
+        return createConversationFetchResponse({
+          title: 'Context selection',
+        })
+      }
+
+      if (url.endsWith('/api/v1/agent/providers')) {
+        return createProviderCatalogFetchResponse()
+      }
+
+      if (url.includes('/api/v1/agent/conversations?scope=recent')) {
+        return createConversationListFetchResponse('conv_1', [
           {
             id: 'conv_1',
             title: 'Context selection',
@@ -600,34 +609,43 @@ describe('AiPanelWidget backend conversation path', () => {
             updated_at: '2026-04-21T10:00:00Z',
             message_count: 0,
           },
-        ]),
-      )
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          id: 'ws-local',
-          name: 'Local Workspace',
-          active_widget_id: 'term-side',
-          widgets: [
-            {
-              id: 'term-main',
-              kind: 'terminal',
-              title: 'Main Shell',
-              connection_id: 'local',
-            },
-            {
-              id: 'term-side',
-              kind: 'terminal',
-              title: 'Ops Shell',
-              connection_id: 'local',
-            },
-          ],
-        }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        body: streamResponse.body,
-      })
+        ])
+      }
+
+      if (url.endsWith('/api/v1/workspace')) {
+        return {
+          ok: true,
+          json: async () => ({
+            id: 'ws-local',
+            name: 'Local Workspace',
+            active_widget_id: 'term-side',
+            widgets: [
+              {
+                id: 'term-main',
+                kind: 'terminal',
+                title: 'Main Shell',
+                connection_id: 'local',
+              },
+              {
+                id: 'term-side',
+                kind: 'terminal',
+                title: 'Ops Shell',
+                connection_id: 'local',
+              },
+            ],
+          }),
+        }
+      }
+
+      if (url.endsWith('/api/v1/agent/conversation/messages/stream')) {
+        return {
+          ok: true,
+          body: streamResponse.body,
+        }
+      }
+
+      throw new Error(`Unexpected fetch request: ${url}`)
+    })
     vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
     vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
     vi.stubGlobal('fetch', fetchMock)
@@ -642,6 +660,9 @@ describe('AiPanelWidget backend conversation path', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('dialog', { name: 'Context widgets' })).toBeInTheDocument()
+    })
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: /Main Shell/ })).toBeInTheDocument()
     })
 
     fireEvent.click(screen.getByRole('option', { name: /Main Shell/ }))
@@ -673,94 +694,35 @@ describe('AiPanelWidget backend conversation path', () => {
 
   it('persists the current workspace widget when the operator clicks Only current immediately after opening context options', async () => {
     const fetchMock = vi.fn()
-    fetchMock
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          home_dir: '/Users/avm',
-          repo_root: '/Users/avm/projects/runa-terminal',
-        }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          conversation: {
-            id: 'conv_1',
-            title: 'Current widget context',
-            messages: [],
-            provider: {
-              kind: 'stub',
-              base_url: 'http://stub',
-              model: 'stub-model',
-              streaming: false,
-            },
-            context_preferences: {
-              widget_context_enabled: true,
-              widget_ids: [],
-            },
-            created_at: '2026-04-21T09:59:00Z',
-            updated_at: '2026-04-21T10:00:00Z',
+    fetchMock.mockImplementation(async (input) => {
+      const url = String(input)
+
+      if (url.endsWith('/api/v1/bootstrap')) {
+        return {
+          ok: true,
+          json: async () => ({
+            home_dir: '/Users/avm',
+            repo_root: '/Users/avm/projects/runa-terminal',
+          }),
+        }
+      }
+
+      if (url.endsWith('/api/v1/agent/conversation')) {
+        return createConversationFetchResponse({
+          title: 'Current widget context',
+          context_preferences: {
+            widget_context_enabled: true,
+            widget_ids: [],
           },
-        }),
-      })
-      .mockResolvedValueOnce(createProviderCatalogFetchResponse())
-      .mockResolvedValueOnce(
-        createConversationListFetchResponse('conv_1', [
-          {
-            id: 'conv_1',
-            title: 'Current widget context',
-            created_at: '2026-04-21T09:59:00Z',
-            updated_at: '2026-04-21T10:00:00Z',
-            message_count: 0,
-          },
-        ]),
-      )
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          id: 'ws-local',
-          name: 'Local Workspace',
-          active_widget_id: 'term-main',
-          widgets: [
-            {
-              id: 'term-main',
-              kind: 'terminal',
-              title: 'Main Shell',
-              connection_id: 'local',
-            },
-            {
-              id: 'term-side',
-              kind: 'terminal',
-              title: 'Ops Shell',
-              connection_id: 'local',
-            },
-          ],
-        }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          conversation: {
-            id: 'conv_1',
-            title: 'Current widget context',
-            messages: [],
-            provider: {
-              kind: 'stub',
-              base_url: 'http://stub',
-              model: 'stub-model',
-              streaming: false,
-            },
-            context_preferences: {
-              widget_context_enabled: true,
-              widget_ids: ['term-main'],
-            },
-            created_at: '2026-04-21T09:59:00Z',
-            updated_at: '2026-04-21T10:00:01Z',
-          },
-        }),
-      })
-      .mockResolvedValueOnce(
-        createConversationListFetchResponse('conv_1', [
+        })
+      }
+
+      if (url.endsWith('/api/v1/agent/providers')) {
+        return createProviderCatalogFetchResponse()
+      }
+
+      if (url.includes('/api/v1/agent/conversations?scope=recent')) {
+        return createConversationListFetchResponse('conv_1', [
           {
             id: 'conv_1',
             title: 'Current widget context',
@@ -768,8 +730,47 @@ describe('AiPanelWidget backend conversation path', () => {
             updated_at: '2026-04-21T10:00:01Z',
             message_count: 0,
           },
-        ]),
-      )
+        ])
+      }
+
+      if (url.endsWith('/api/v1/workspace')) {
+        return {
+          ok: true,
+          json: async () => ({
+            id: 'ws-local',
+            name: 'Local Workspace',
+            active_widget_id: 'term-main',
+            widgets: [
+              {
+                id: 'term-main',
+                kind: 'terminal',
+                title: 'Main Shell',
+                connection_id: 'local',
+              },
+              {
+                id: 'term-side',
+                kind: 'terminal',
+                title: 'Ops Shell',
+                connection_id: 'local',
+              },
+            ],
+          }),
+        }
+      }
+
+      if (url.includes('/api/v1/agent/conversations/conv_1/context')) {
+        return createConversationFetchResponse({
+          title: 'Current widget context',
+          context_preferences: {
+            widget_context_enabled: true,
+            widget_ids: ['term-main'],
+          },
+          updated_at: '2026-04-21T10:00:01Z',
+        })
+      }
+
+      throw new Error(`Unexpected fetch request: ${url}`)
+    })
 
     vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
     vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
@@ -785,6 +786,9 @@ describe('AiPanelWidget backend conversation path', () => {
     await waitFor(() => {
       expect(screen.getByRole('dialog', { name: 'Context widgets' })).toBeInTheDocument()
     })
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Only current' })).toBeEnabled()
+    })
     fireEvent.click(screen.getByRole('button', { name: 'Only current' }))
 
     await waitFor(() => {
@@ -799,73 +803,47 @@ describe('AiPanelWidget backend conversation path', () => {
     })
   })
 
-  it('shows stale persisted context outside the dropdown and saves the cleaned selection', async () => {
+  it('auto-saves stale persisted context when context widgets are opened', async () => {
     const fetchMock = vi.fn()
-    fetchMock
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          home_dir: '/Users/avm',
-          repo_root: '/Users/avm/projects/runa-terminal',
-        }),
-      })
-      .mockResolvedValueOnce(
-        createConversationFetchResponse({
+    fetchMock.mockImplementation(async (input) => {
+      const url = String(input)
+
+      if (url.endsWith('/api/v1/bootstrap')) {
+        return {
+          ok: true,
+          json: async () => ({
+            home_dir: '/Users/avm',
+            repo_root: '/Users/avm/projects/runa-terminal',
+          }),
+        }
+      }
+
+      if (url.endsWith('/api/v1/agent/conversation')) {
+        return createConversationFetchResponse({
           title: 'Stale widget context',
           context_preferences: {
             widget_context_enabled: true,
             widget_ids: ['term-main', 'missing-widget-a', 'missing-widget-b'],
           },
-        }),
-      )
-      .mockResolvedValueOnce(createProviderCatalogFetchResponse())
-      .mockResolvedValueOnce(
-        createConversationListFetchResponse('conv_1', [
-          {
-            id: 'conv_1',
-            title: 'Stale widget context',
-            created_at: '2026-04-21T09:59:00Z',
-            updated_at: '2026-04-21T10:00:00Z',
-            message_count: 0,
-          },
-        ]),
-      )
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          active_widget_id: 'term-main',
-          tabs: [
-            {
-              id: 'tab_1',
-              widget_id: 'term-main',
-              kind: 'terminal',
-              title: 'Main Shell',
-              connection_id: 'local',
-              path: '/Users/avm/projects/runa-terminal',
-            },
-          ],
-          widgets: [
-            {
-              id: 'term-main',
-              kind: 'terminal',
-              title: 'Main Shell',
-              connection_id: 'local',
-              path: '/Users/avm/projects/runa-terminal',
-            },
-          ],
-        }),
-      })
-      .mockResolvedValueOnce(
-        createConversationFetchResponse({
+        })
+      }
+
+      if (url.endsWith('/api/v1/agent/providers')) {
+        return createProviderCatalogFetchResponse()
+      }
+
+      if (url.includes('/api/v1/agent/conversations/conv_1/context')) {
+        return createConversationFetchResponse({
           title: 'Stale widget context',
           context_preferences: {
             widget_context_enabled: true,
             widget_ids: ['term-main'],
           },
-        }),
-      )
-      .mockResolvedValueOnce(
-        createConversationListFetchResponse('conv_1', [
+        })
+      }
+
+      if (url.includes('/api/v1/agent/conversations?scope=recent')) {
+        return createConversationListFetchResponse('conv_1', [
           {
             id: 'conv_1',
             title: 'Stale widget context',
@@ -873,8 +851,39 @@ describe('AiPanelWidget backend conversation path', () => {
             updated_at: '2026-04-21T10:00:00Z',
             message_count: 0,
           },
-        ]),
-      )
+        ])
+      }
+
+      if (url.endsWith('/api/v1/workspace')) {
+        return {
+          ok: true,
+          json: async () => ({
+            active_widget_id: 'term-main',
+            tabs: [
+              {
+                id: 'tab_1',
+                widget_id: 'term-main',
+                kind: 'terminal',
+                title: 'Main Shell',
+                connection_id: 'local',
+                path: '/Users/avm/projects/runa-terminal',
+              },
+            ],
+            widgets: [
+              {
+                id: 'term-main',
+                kind: 'terminal',
+                title: 'Main Shell',
+                connection_id: 'local',
+                path: '/Users/avm/projects/runa-terminal',
+              },
+            ],
+          }),
+        }
+      }
+
+      throw new Error(`Unhandled fetch in stale widget context test: ${url}`)
+    })
 
     vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
     vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
@@ -882,21 +891,26 @@ describe('AiPanelWidget backend conversation path', () => {
 
     render(<AiPanelWidget hostId="ai-shell-panel" />)
 
+    fireEvent.click(screen.getByLabelText('Composer options'))
     await waitFor(() => {
-      expect(screen.getByText('2 saved widgets are no longer available in this workspace.')).toBeVisible()
+      expect(screen.getByRole('dialog', { name: 'Context widgets' })).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save cleaned context' }))
-
     await waitFor(() => {
-      const contextUpdateCall = fetchMock.mock.calls.find((call) =>
+      const contextUpdateCalls = fetchMock.mock.calls.filter((call) =>
         String(call[0]).includes('/api/v1/agent/conversations/conv_1/context'),
       )
-      expect(contextUpdateCall).toBeDefined()
-      expect(JSON.parse(String(contextUpdateCall?.[1]?.body))).toEqual({
+      expect(contextUpdateCalls).toHaveLength(1)
+      expect(JSON.parse(String(contextUpdateCalls[0]?.[1]?.body))).toEqual({
         widget_context_enabled: true,
         widget_ids: ['term-main'],
       })
+    })
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText('2 saved widgets are no longer available in this workspace.'),
+      ).not.toBeInTheDocument()
     })
   })
 

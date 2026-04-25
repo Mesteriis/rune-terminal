@@ -116,7 +116,7 @@
   - the closed trigger summarizes the effective selection state (`Context off`, active widget title, or widget count)
   - the dropdown exposes `Use current`, `Only current`, `All widgets`, and `Use default` actions without introducing a second backend context model
 - When persisted `widget_ids` reference widgets that no longer exist in the current `GET /api/v1/workspace` snapshot, the composer now shows that mismatch explicitly and offers `Save cleaned context`, which rewrites the active conversation with only the still-valid widget ids.
-- When a conversation already carries persisted `widget_ids`, the frontend now eagerly resolves the current workspace widget snapshot instead of waiting for `onContextOptionsOpen`, so stale-widget mismatch can be surfaced in the closed composer body without hiding behind the dropdown.
+- When a conversation already carries persisted `widget_ids`, the context-open path now resolves the current workspace widget snapshot through stable refs before mutating selection state, so immediate actions like `Only current` and stale-widget cleanup do not race React state.
 - The selected widget set is now also visible outside the dropdown:
   - explicit selections render as removable chips in the composer body
   - removing chips narrows both `widget_ids` and `active_widget_id` to the remaining explicit selection, matching the current frontend context contract
@@ -154,6 +154,7 @@
 - controlled `npm run tauri:dev` startup smoke: observed live `target/debug/rterm-desktop` plus desktop-owned `rterm-core serve` / `rterm-core watcher`, then explicitly cleaned the smoke-owned process delta while leaving the user-owned `rterm-core serve --listen 127.0.0.1:8090` intact
 - `npm run test:ui -- --reporter=line --grep "keyboard navigation through filtered thread options" e2e/ai.spec.ts`
 - `npm --prefix frontend run test -- src/widgets/ai/ai-panel-widget.test.tsx src/widgets/ai/ai-panel-header-widget.test.tsx src/widgets/ai/ai-composer-widget.test.tsx`
+- `npm --prefix frontend run test -- src/widgets/ai/ai-panel-widget.test.tsx -t "allows selecting multiple workspace widgets for the AI request context|persists the current workspace widget when the operator clicks Only current immediately after opening context options|auto-saves stale persisted context when context widgets are opened"`
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts`
 - `npx playwright test -c e2e/playwright.config.ts --reporter=line e2e/ai.spec.ts -g "archives and restores a non-active thread from row actions"`
 - `npm run tauri:dev`
@@ -170,6 +171,7 @@
 
 - conversation management is still intentionally narrow: create + switch + active-thread rename + archive + restore + delete plus local navigator filtering only. Broader conversation search, archive-only management views, and multi-panel conversation views are not implemented in this slice.
 - request-context persistence is now conversation-scoped and stale-widget repair is explicit, but there are still no named context presets or grouped context modes.
+- the full isolated `src/widgets/ai/ai-panel-widget.test.tsx` suite still contains unrelated red cases around buffered stream mocks and `/run` path mocks; this slice was validated with targeted context tests plus `lint:active`, not with a fully green file-wide widget suite.
 - CLI providers currently expose buffered chat completion through the existing SSE route; token-by-token provider streaming is not implemented.
 - CLI-native tool calls are not yet mediated through `core/toolruntime`, policy approval, or audit events.
 - The OpenAI-compatible HTTP source path is also buffered and non-streaming in this slice.
