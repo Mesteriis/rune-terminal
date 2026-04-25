@@ -88,9 +88,11 @@ const commanderWidgetPersistedRuntimeSchema: z.ZodType<CommanderWidgetPersistedS
 
 const commanderWidgetPersistedSnapshotSchema: z.ZodType<CommanderWidgetPersistedSnapshot> = z.object({
   runtime: commanderWidgetPersistedRuntimeSchema,
-  client: z.object({
-    directories: z.record(z.string(), z.array(commanderClientEntrySchema)),
-  }),
+  client: z
+    .object({
+      directories: z.record(z.string(), z.array(commanderClientEntrySchema)),
+    })
+    .optional(),
 })
 
 const commanderPersistenceStateSchema = z.object({

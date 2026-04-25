@@ -206,7 +206,7 @@ export type CommanderWidgetPersistedState = {
 
 export type CommanderWidgetPersistedSnapshot = {
   runtime: CommanderWidgetPersistedState
-  client: CommanderClientSnapshot
+  client?: CommanderClientSnapshot
 }
 
 export type CommanderPaneCounters = {

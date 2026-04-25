@@ -1,5 +1,4 @@
 import type {
-  CommanderClientSnapshot,
   CommanderWidgetPersistedSnapshot,
   CommanderWidgetRuntimeState,
 } from '@/features/commander/model/types'
@@ -19,7 +18,6 @@ type CommanderWidgetsStore = {
 }
 
 type CommanderWidgetsPersistenceDeps = {
-  getCommanderClientSnapshot: (widgetId: string) => CommanderWidgetPersistedSnapshot['client']
   serializeCommanderWidgetRuntimeState: (
     widgetState: CommanderWidgetRuntimeState,
   ) => CommanderWidgetPersistedSnapshot['runtime']
@@ -27,7 +25,6 @@ type CommanderWidgetsPersistenceDeps = {
 }
 
 const defaultCommanderWidgetsPersistenceDeps: CommanderWidgetsPersistenceDeps = {
-  getCommanderClientSnapshot: () => ({ directories: {} }) satisfies CommanderClientSnapshot,
   serializeCommanderWidgetRuntimeState,
   writePersistedCommanderWidgets,
 }
@@ -71,7 +68,6 @@ export function attachCommanderWidgetsPersistence(
             widgetId,
             {
               runtime: deps.serializeCommanderWidgetRuntimeState(widgetState),
-              client: deps.getCommanderClientSnapshot(widgetId),
             } satisfies CommanderWidgetPersistedSnapshot,
           ]),
         ),

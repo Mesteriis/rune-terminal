@@ -28,7 +28,6 @@ function createCommanderWidgetsStoreMock() {
 
 function createPersistenceDeps() {
   return {
-    getCommanderClientSnapshot: vi.fn((_widgetId: string) => ({ directories: {} })),
     serializeCommanderWidgetRuntimeState: vi.fn(
       (_widgetState: CommanderWidgetRuntimeState) =>
         ({
@@ -87,6 +86,38 @@ describe('commander store persistence attachment', () => {
 
     vi.advanceTimersByTime(1)
     expect(deps.writePersistedCommanderWidgets).toHaveBeenCalledTimes(1)
+    expect(deps.writePersistedCommanderWidgets).toHaveBeenCalledWith({
+      'widget-1': {
+        runtime: {
+          activePane: 'left',
+          viewMode: 'split',
+          showHidden: false,
+          sortMode: 'name',
+          sortDirection: 'asc',
+          dirsFirst: true,
+          leftPane: {
+            path: '~/left',
+            filterQuery: '',
+            entries: [],
+            cursorEntryId: null,
+            selectionAnchorEntryId: null,
+            selectedIds: [],
+            historyBack: [],
+            historyForward: [],
+          },
+          rightPane: {
+            path: '~/right',
+            filterQuery: '',
+            entries: [],
+            cursorEntryId: null,
+            selectionAnchorEntryId: null,
+            selectedIds: [],
+            historyBack: [],
+            historyForward: [],
+          },
+        },
+      },
+    })
 
     detach()
   })

@@ -18,7 +18,7 @@ capability.
   only owns local pending flows (`select/unselect/filter/search`) rather
   than carrying dead fake-client mutation branches for backend-owned
   `copy/move/delete/mkdir/rename`; the same store now also drops empty
-  reducer listeners for backend-owned async actions (`view/edit/open/path/history/save`) so those flows are owned only by hooks/API code
+  reducer listeners for backend-owned async actions (`view/edit/open/path/history/save`) so those flows are owned only by hooks/API code, and commander widget persistence now writes only runtime pane/widget state while still accepting older `client.directories` snapshots as a read-only compatibility input
 - commander now has a narrow async HTTP path into the Go core
   (`/api/v1/bootstrap`, `/api/v1/fs/list`, `/api/v1/fs/read`,
   `/api/v1/fs/file`, `/api/v1/fs/mkdir`, `/api/v1/fs/copy`,

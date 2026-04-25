@@ -6,9 +6,7 @@ import {
   writePersistedCommanderWidgets,
 } from '@/features/commander/model/persistence'
 import type {
-  CommanderClientEntrySnapshot,
   CommanderDirectoryEntry,
-  CommanderPaneRuntimeState,
   CommanderWidgetPersistedSnapshot,
   CommanderWidgetRuntimeState,
 } from '@/features/commander/model/types'
@@ -26,16 +24,9 @@ const baseEntry: CommanderDirectoryEntry = {
   hidden: false,
 }
 
-const baseClientEntry: CommanderClientEntrySnapshot = {
-  name: 'notes.txt',
-  ext: 'txt',
-  kind: 'file',
-  sizeLabel: '128 B',
-  modified: '2026-04-20 10:30',
-  content: 'hello',
-}
-
-function createPaneState(id: CommanderPaneRuntimeState['id']): CommanderPaneRuntimeState {
+function createPaneState(
+  id: CommanderWidgetRuntimeState['leftPane']['id'],
+): CommanderWidgetRuntimeState['leftPane'] {
   return {
     id,
     path: id === 'left' ? '~/left' : '~/right',
@@ -76,11 +67,6 @@ function createPersistedSnapshot(): CommanderWidgetPersistedSnapshot {
 
   return {
     runtime,
-    client: {
-      directories: {
-        '~/left': [baseClientEntry],
-      },
-    },
   }
 }
 
@@ -131,6 +117,13 @@ describe('commander persistence', () => {
 
     expect(readPersistedCommanderWidget('widget-1')).toEqual(persistedSnapshot)
     expect(readPersistedCommanderWidget('widget-2')).toBeNull()
+    expect(JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? '{}')).toEqual({
+      widgets: {
+        'widget-1': {
+          runtime: persistedSnapshot.runtime,
+        },
+      },
+    })
   })
 
   it('normalizes legacy persisted defaults and drops invalid widget snapshots', () => {
@@ -165,7 +158,16 @@ describe('commander persistence', () => {
             },
             client: {
               directories: {
-                '~/left': [baseClientEntry],
+                '~/left': [
+                  {
+                    name: 'notes.txt',
+                    ext: 'txt',
+                    kind: 'file',
+                    sizeLabel: '128 B',
+                    modified: '2026-04-20 10:30',
+                    content: 'hello',
+                  },
+                ],
               },
             },
           },
@@ -214,7 +216,16 @@ describe('commander persistence', () => {
       },
       client: {
         directories: {
-          '~/left': [baseClientEntry],
+          '~/left': [
+            {
+              name: 'notes.txt',
+              ext: 'txt',
+              kind: 'file',
+              sizeLabel: '128 B',
+              modified: '2026-04-20 10:30',
+              content: 'hello',
+            },
+          ],
         },
       },
     })
