@@ -346,7 +346,8 @@ test('AI conversation navigator archives the active thread and restores it from 
 
   await expect(conversationMenuButton).toContainText('Keep in recent')
   await conversationMenuButton.click()
-  await expect(page.getByText('Archived', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Show archived conversations' }).click()
+  await expect(page.getByText('Archived threads')).toBeVisible()
   await page
     .getByRole('option', {
       name: 'Open conversation Archive from UI',
@@ -365,7 +366,7 @@ test('AI conversation navigator archives the active thread and restores it from 
     .toBeUndefined()
 
   await conversationMenuButton.click()
-  await expect(page.getByText('Recent', { exact: true })).toBeVisible()
+  await expect(page.getByText('Open threads')).toBeVisible()
   await expect(
     page.getByRole('option', {
       name: 'Open conversation Archive from UI',

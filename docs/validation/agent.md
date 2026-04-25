@@ -8,6 +8,7 @@
   - DB-backed AI conversations with explicit create/switch/rename/archive/restore/delete lifecycle
   - provider-native CLI session continuity scoped per conversation
   - shell-visible AI conversation navigator with recent-thread menu over the same backend conversation contract
+  - shell-visible AI conversation navigator scope controls for `Open / Archived / All` thread views over the loaded backend conversation list
   - local search/filter inside the AI conversation navigator over the loaded backend conversation list
   - backend-owned agent provider catalog
   - active conversation provider resolution
@@ -31,6 +32,7 @@
     - explicit widget-context selection in the composer and `widget_ids` propagation into the stream request body
     - persisted per-conversation widget-context restore across conversation activation and reload
     - explicit stale-widget repair flow that rewrites persisted `widget_ids` to the still-valid workspace subset
+    - immediate `Only current` context selection after opening the composer context menu without losing the current workspace widget to frontend state races
     - settings-driven keyboard submit behavior: `Enter` newline plus `Ctrl/Cmd+Enter` submit
     - conversation persistence across AI panel reload/reopen with backend conversation switching
     - shell-visible conversation menu for `Recent / Archived` thread grouping, `New` creation, active-thread rename, archive, restore, and delete
@@ -75,6 +77,13 @@
   - terminal font size is adjustable from the settings shell
   - the preference is stored in local UI state and applied live to mounted xterm surfaces
   - this does not introduce a backend-owned terminal settings contract
+- The conversation navigator now exposes explicit scoped views over the same backend list contract:
+  - `Open threads` for active/unarchived conversations
+  - `Archived threads` for archived conversations
+  - `All` to inspect both groups together
+- The composer request-context quick actions now tolerate immediate operator interaction after the dropdown opens:
+  - workspace widget discovery is cached behind stable refs
+  - `Only current` no longer drops the current workspace widget when the dropdown is opened and acted on in the same interaction burst
 
 ## `/run` contract
 
@@ -118,6 +127,8 @@
 - `npm --prefix frontend run test -- src/widgets/ai/ai-chat-message-widget.test.tsx src/widgets/ai/ai-panel-widget.test.tsx`
 - `npm --prefix frontend run lint:active`
 - `npm run test:ui -- --reporter=line`
+- `npm run test:ui -- --reporter=line e2e/ai.spec.ts`
+- `npm --prefix frontend run test -- src/widgets/ai/ai-panel-widget.test.tsx src/widgets/ai/ai-panel-header-widget.test.tsx src/widgets/ai/ai-composer-widget.test.tsx`
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts`
 - `npm run tauri:dev`
 - `curl -sS http://192.168.1.8:8317/v1/models`

@@ -244,6 +244,36 @@ export const aiHeaderConversationSearchWrapStyle: CSSProperties = {
   gap: '6px',
 }
 
+export const aiHeaderConversationScopeStripStyle: CSSProperties = {
+  ...aiPlainBlockStyle,
+  width: '100%',
+  display: 'flex',
+  alignItems: 'center',
+  gap: '6px',
+}
+
+export const aiHeaderConversationScopeButtonStyle: CSSProperties = {
+  minHeight: '28px',
+  padding: '0 10px',
+  borderRadius: '999px',
+  background: 'color-mix(in srgb, var(--color-surface-shell-header-action) 74%, transparent)',
+  borderColor: 'color-mix(in srgb, var(--color-border-strong) 56%, transparent)',
+  boxShadow: 'none',
+  color: 'var(--color-text-secondary)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '10px',
+  lineHeight: '14px',
+  letterSpacing: '0.04em',
+  textTransform: 'uppercase',
+}
+
+export const aiHeaderConversationScopeButtonActiveStyle: CSSProperties = {
+  background:
+    'color-mix(in srgb, var(--color-accent-emerald-soft) 26%, var(--color-surface-shell-header-action))',
+  borderColor: 'color-mix(in srgb, var(--color-accent-emerald-soft) 42%, var(--color-border-strong))',
+  color: 'var(--color-text-primary)',
+}
+
 export const aiHeaderConversationSearchInputStyle: CSSProperties = {
   width: '100%',
 }

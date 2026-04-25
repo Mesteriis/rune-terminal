@@ -671,6 +671,134 @@ describe('AiPanelWidget backend conversation path', () => {
     })
   })
 
+  it('persists the current workspace widget when the operator clicks Only current immediately after opening context options', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          conversation: {
+            id: 'conv_1',
+            title: 'Current widget context',
+            messages: [],
+            provider: {
+              kind: 'stub',
+              base_url: 'http://stub',
+              model: 'stub-model',
+              streaming: false,
+            },
+            context_preferences: {
+              widget_context_enabled: true,
+              widget_ids: [],
+            },
+            created_at: '2026-04-21T09:59:00Z',
+            updated_at: '2026-04-21T10:00:00Z',
+          },
+        }),
+      })
+      .mockResolvedValueOnce(createProviderCatalogFetchResponse())
+      .mockResolvedValueOnce(
+        createConversationListFetchResponse('conv_1', [
+          {
+            id: 'conv_1',
+            title: 'Current widget context',
+            created_at: '2026-04-21T09:59:00Z',
+            updated_at: '2026-04-21T10:00:00Z',
+            message_count: 0,
+          },
+        ]),
+      )
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          id: 'ws-local',
+          name: 'Local Workspace',
+          active_widget_id: 'term-main',
+          widgets: [
+            {
+              id: 'term-main',
+              kind: 'terminal',
+              title: 'Main Shell',
+              connection_id: 'local',
+            },
+            {
+              id: 'term-side',
+              kind: 'terminal',
+              title: 'Ops Shell',
+              connection_id: 'local',
+            },
+          ],
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          conversation: {
+            id: 'conv_1',
+            title: 'Current widget context',
+            messages: [],
+            provider: {
+              kind: 'stub',
+              base_url: 'http://stub',
+              model: 'stub-model',
+              streaming: false,
+            },
+            context_preferences: {
+              widget_context_enabled: true,
+              widget_ids: ['term-main'],
+            },
+            created_at: '2026-04-21T09:59:00Z',
+            updated_at: '2026-04-21T10:00:01Z',
+          },
+        }),
+      })
+      .mockResolvedValueOnce(
+        createConversationListFetchResponse('conv_1', [
+          {
+            id: 'conv_1',
+            title: 'Current widget context',
+            created_at: '2026-04-21T09:59:00Z',
+            updated_at: '2026-04-21T10:00:01Z',
+            message_count: 0,
+          },
+        ]),
+      )
+
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<AiPanelWidget hostId="ai-shell-panel" />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Backend conversation is empty.')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByLabelText('Composer options'))
+    await waitFor(() => {
+      expect(screen.getByRole('dialog', { name: 'Context widgets' })).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Only current' }))
+
+    await waitFor(() => {
+      const contextUpdateCall = fetchMock.mock.calls.find((call) =>
+        String(call[0]).includes('/api/v1/agent/conversations/conv_1/context'),
+      )
+      expect(contextUpdateCall).toBeDefined()
+      expect(JSON.parse(String(contextUpdateCall?.[1]?.body))).toEqual({
+        widget_context_enabled: true,
+        widget_ids: ['term-main'],
+      })
+    })
+  })
+
   it('clears busy state and keeps partial assistant output coherent on backend error events', async () => {
     const streamResponse = createDeferredStreamResponse()
     const fetchMock = vi.fn()

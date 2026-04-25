@@ -146,8 +146,8 @@ describe('AiPanelHeaderWidget', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Conversation menu' }))
-    expect(screen.getByText('Recent')).toBeInTheDocument()
-    expect(screen.getByText('Archived')).toBeInTheDocument()
+    expect(screen.getByText('Open threads')).toBeInTheDocument()
+    expect(screen.queryByText('Archived')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Archive conversation' }))
 
     expect(onArchiveConversation).toHaveBeenCalledWith('conv_2')
@@ -269,5 +269,60 @@ describe('AiPanelHeaderWidget', () => {
     })
 
     expect(screen.getByText('No conversations match this filter.')).toBeInTheDocument()
+  })
+
+  it('switches the navigator scope to archived conversations', () => {
+    render(
+      <AiPanelHeaderWidget
+        activeConversationID="conv_2"
+        conversations={[
+          {
+            id: 'conv_1',
+            title: 'Archived audit thread',
+            created_at: '2026-04-24T09:00:00Z',
+            updated_at: '2026-04-24T09:05:00Z',
+            archived_at: '2026-04-24T09:06:00Z',
+            message_count: 2,
+          },
+          {
+            id: 'conv_2',
+            title: 'Active runtime thread',
+            created_at: '2026-04-24T10:00:00Z',
+            updated_at: '2026-04-24T10:01:00Z',
+            message_count: 1,
+          },
+        ]}
+        mode="chat"
+        onModeChange={() => {}}
+        title="AI Rune"
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Conversation menu' }))
+    expect(screen.getByText('Open threads')).toBeInTheDocument()
+    expect(
+      screen.getByRole('option', {
+        name: 'Open conversation Active runtime thread',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('option', {
+        name: 'Open conversation Archived audit thread',
+      }),
+    ).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show archived conversations' }))
+
+    expect(screen.getByText('Archived threads')).toBeInTheDocument()
+    expect(
+      screen.getByRole('option', {
+        name: 'Open conversation Archived audit thread',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('option', {
+        name: 'Open conversation Active runtime thread',
+      }),
+    ).not.toBeInTheDocument()
   })
 })

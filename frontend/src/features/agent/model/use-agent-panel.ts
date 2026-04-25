@@ -396,6 +396,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
   const submissionNonceRef = useRef(0)
   const panelStateEpochRef = useRef(0)
   const contextWidgetOptionsRef = useRef<AiContextWidgetOption[]>([])
+  const workspaceActiveWidgetIDRef = useRef('')
   const hasLoadedContextWidgetsRef = useRef(false)
   const hasCustomizedContextWidgetSelectionRef = useRef(false)
 
@@ -454,6 +455,10 @@ export function useAgentPanel(hostId: string, enabled = true) {
   useEffect(() => {
     contextWidgetOptionsRef.current = contextWidgetOptions
   }, [contextWidgetOptions])
+
+  useEffect(() => {
+    workspaceActiveWidgetIDRef.current = workspaceActiveWidgetID
+  }, [workspaceActiveWidgetID])
 
   useEffect(() => {
     return () => {
@@ -855,6 +860,18 @@ export function useAgentPanel(hostId: string, enabled = true) {
     [activeWidgetHostId, terminalPanelBindings, workspaceActiveWidgetID],
   )
 
+  const resolveCurrentContextWidgetID = useCallback(
+    (options: AiContextWidgetOption[], nextWorkspaceActiveWidgetID?: string) => {
+      const availableWidgetIDs = new Set(options.map((option) => option.value))
+      return (
+        deriveFallbackContextWidgetIDs(nextWorkspaceActiveWidgetID).find((widgetID) =>
+          availableWidgetIDs.has(widgetID),
+        ) ?? ''
+      )
+    },
+    [deriveFallbackContextWidgetIDs],
+  )
+
   const effectiveContextWidgetIDs = useMemo(() => {
     const filteredSelection =
       contextWidgetOptions.length > 0
@@ -868,12 +885,44 @@ export function useAgentPanel(hostId: string, enabled = true) {
     return deriveFallbackContextWidgetIDs()
   }, [contextWidgetOptions, deriveFallbackContextWidgetIDs, storedContextWidgetIDs])
 
+  const resolvedMissingContextWidgetCount = useMemo(() => {
+    if (contextWidgetOptions.length === 0) {
+      return missingContextWidgetCount
+    }
+
+    const normalizedSelection = deduplicateWidgetIDs(storedContextWidgetIDs)
+    return Math.max(
+      0,
+      normalizedSelection.length -
+        filterContextWidgetSelection(normalizedSelection, contextWidgetOptions).length,
+    )
+  }, [contextWidgetOptions, missingContextWidgetCount, storedContextWidgetIDs])
+
+  const ensureCurrentConversationSnapshotLoaded = useCallback(async () => {
+    if (activeConversationID.trim() && messages != null) {
+      return
+    }
+
+    const snapshot = await fetchAgentConversation()
+    applyConversationSnapshot(snapshot)
+    await refreshConversationList()
+  }, [activeConversationID, applyConversationSnapshot, messages, refreshConversationList])
+
   const persistConversationContextPreferences = useCallback(
     async (preferences: AgentConversationContextPreferences) => {
-      if (!activeConversationID.trim()) {
+      let conversationID = activeConversationID.trim()
+
+      if (!conversationID) {
+        const currentSnapshot = await fetchAgentConversation()
+        applyConversationSnapshot(currentSnapshot)
+        conversationID = currentSnapshot.id.trim()
+      }
+
+      if (!conversationID) {
         return
       }
-      const snapshot = await updateAgentConversationContext(activeConversationID, preferences)
+
+      const snapshot = await updateAgentConversationContext(conversationID, preferences)
       applyConversationSnapshot(snapshot)
       await refreshConversationList()
     },
@@ -906,8 +955,8 @@ export function useAgentPanel(hostId: string, enabled = true) {
     }
     if (hasLoadedContextWidgetsRef.current) {
       return {
-        activeWidgetID: workspaceActiveWidgetID,
-        options: contextWidgetOptions,
+        activeWidgetID: workspaceActiveWidgetIDRef.current,
+        options: contextWidgetOptionsRef.current,
       }
     }
 
@@ -916,6 +965,8 @@ export function useAgentPanel(hostId: string, enabled = true) {
     const nextWorkspaceActiveWidgetID = workspaceSnapshot.active_widget_id?.trim() ?? ''
 
     hasLoadedContextWidgetsRef.current = true
+    contextWidgetOptionsRef.current = nextContextWidgetOptions
+    workspaceActiveWidgetIDRef.current = nextWorkspaceActiveWidgetID
     setWorkspaceActiveWidgetID(nextWorkspaceActiveWidgetID)
     setContextWidgetOptions(nextContextWidgetOptions)
     setContextWidgetLoadError(null)
@@ -937,19 +988,20 @@ export function useAgentPanel(hostId: string, enabled = true) {
 
   const handleContextOptionsOpen = useCallback(async () => {
     try {
+      await ensureCurrentConversationSnapshotLoaded()
       await loadContextWidgets()
     } catch (error) {
       const errorMessage =
         error instanceof Error && error.message.trim() ? error.message : 'Unable to load workspace widgets.'
       setContextWidgetLoadError(errorMessage)
     }
-  }, [loadContextWidgets])
+  }, [ensureCurrentConversationSnapshotLoaded, loadContextWidgets])
 
   const useCurrentContextWidget = useCallback(
     async (mode: 'append' | 'replace') => {
       try {
         const snapshot = await loadContextWidgets()
-        const activeWidgetID = snapshot.activeWidgetID.trim()
+        const activeWidgetID = resolveCurrentContextWidgetID(snapshot.options, snapshot.activeWidgetID)
 
         if (!activeWidgetID) {
           return
@@ -976,7 +1028,12 @@ export function useAgentPanel(hostId: string, enabled = true) {
         setContextWidgetLoadError(errorMessage)
       }
     },
-    [effectiveContextWidgetIDs, loadContextWidgets, persistConversationContextPreferences],
+    [
+      effectiveContextWidgetIDs,
+      loadContextWidgets,
+      persistConversationContextPreferences,
+      resolveCurrentContextWidgetID,
+    ],
   )
 
   const useAllContextWidgets = useCallback(async () => {
@@ -1024,13 +1081,18 @@ export function useAgentPanel(hostId: string, enabled = true) {
     }
   }, [loadContextWidgets, persistConversationContextPreferences])
 
+  const activeContextWidgetID = useMemo(
+    () => resolveCurrentContextWidgetID(contextWidgetOptions),
+    [contextWidgetOptions, resolveCurrentContextWidgetID],
+  )
+
   const activeContextWidgetOption = useMemo(() => {
-    if (!workspaceActiveWidgetID) {
+    if (!activeContextWidgetID) {
       return null
     }
 
-    return contextWidgetOptions.find((option) => option.value === workspaceActiveWidgetID) ?? null
-  }, [contextWidgetOptions, workspaceActiveWidgetID])
+    return contextWidgetOptions.find((option) => option.value === activeContextWidgetID) ?? null
+  }, [activeContextWidgetID, contextWidgetOptions])
 
   const updateWidgetContextEnabled = useCallback(
     (nextValue: boolean) => {
@@ -1514,11 +1576,11 @@ export function useAgentPanel(hostId: string, enabled = true) {
     cancelPendingPlan,
     draft,
     availableModels,
-    activeContextWidgetID: workspaceActiveWidgetID,
+    activeContextWidgetID,
     activeContextWidgetOption,
     archiveConversation,
     handleContextOptionsOpen,
-    missingContextWidgetCount,
+    missingContextWidgetCount: resolvedMissingContextWidgetCount,
     conversations,
     createConversation,
     isInteractionPending: pendingFlow != null,
