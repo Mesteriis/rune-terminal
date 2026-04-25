@@ -8,10 +8,12 @@ import (
 )
 
 type updateTerminalSettingsPayload struct {
-	FontSize   *int     `json:"font_size"`
-	LineHeight *float64 `json:"line_height"`
-	ThemeMode  *string  `json:"theme_mode"`
-	Scrollback *int     `json:"scrollback"`
+	FontSize    *int     `json:"font_size"`
+	LineHeight  *float64 `json:"line_height"`
+	ThemeMode   *string  `json:"theme_mode"`
+	Scrollback  *int     `json:"scrollback"`
+	CursorStyle *string  `json:"cursor_style"`
+	CursorBlink *bool    `json:"cursor_blink"`
 }
 
 func (api *API) handleTerminalSettings(w http.ResponseWriter, r *http.Request) {
@@ -32,8 +34,13 @@ func (api *API) handleUpdateTerminalSettings(w http.ResponseWriter, r *http.Requ
 		writeBadRequest(w, "invalid_request", err)
 		return
 	}
-	if payload.FontSize == nil && payload.LineHeight == nil && payload.ThemeMode == nil && payload.Scrollback == nil {
-		writeBadRequest(w, "invalid_request", errors.New("font_size, line_height, theme_mode, or scrollback is required"))
+	if payload.FontSize == nil &&
+		payload.LineHeight == nil &&
+		payload.ThemeMode == nil &&
+		payload.Scrollback == nil &&
+		payload.CursorStyle == nil &&
+		payload.CursorBlink == nil {
+		writeBadRequest(w, "invalid_request", errors.New("font_size, line_height, theme_mode, scrollback, cursor_style, or cursor_blink is required"))
 		return
 	}
 
@@ -55,6 +62,12 @@ func (api *API) handleUpdateTerminalSettings(w http.ResponseWriter, r *http.Requ
 	}
 	if payload.Scrollback != nil {
 		next.Scrollback = *payload.Scrollback
+	}
+	if payload.CursorStyle != nil {
+		next.CursorStyle = *payload.CursorStyle
+	}
+	if payload.CursorBlink != nil {
+		next.CursorBlink = *payload.CursorBlink
 	}
 
 	settings, err := api.runtime.UpdateTerminalSettings(r.Context(), terminal.Preferences(next))

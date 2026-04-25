@@ -41,6 +41,12 @@ func TestPreferencesStoreBootstrapsDefaultSettings(t *testing.T) {
 	if settings.Scrollback != DefaultScrollback {
 		t.Fatalf("expected default scrollback %d, got %d", DefaultScrollback, settings.Scrollback)
 	}
+	if settings.CursorStyle != DefaultCursorStyle {
+		t.Fatalf("expected default cursor style %q, got %q", DefaultCursorStyle, settings.CursorStyle)
+	}
+	if !settings.CursorBlink {
+		t.Fatalf("expected default cursor blink to be enabled")
+	}
 }
 
 func TestPreferencesStoreClampsAndPersistsSettings(t *testing.T) {
@@ -60,10 +66,12 @@ func TestPreferencesStoreClampsAndPersistsSettings(t *testing.T) {
 	}
 
 	updated, err := store.Update(context.Background(), Preferences{
-		FontSize:   99,
-		LineHeight: 9,
-		ThemeMode:  ContrastThemeMode,
-		Scrollback: 99999,
+		FontSize:    99,
+		LineHeight:  9,
+		ThemeMode:   ContrastThemeMode,
+		Scrollback:  99999,
+		CursorStyle: CursorStyleUnderline,
+		CursorBlink: false,
 	})
 	if err != nil {
 		t.Fatalf("update preferences: %v", err)
@@ -80,12 +88,20 @@ func TestPreferencesStoreClampsAndPersistsSettings(t *testing.T) {
 	if updated.Scrollback != MaxScrollback {
 		t.Fatalf("expected clamped max scrollback %d, got %d", MaxScrollback, updated.Scrollback)
 	}
+	if updated.CursorStyle != CursorStyleUnderline {
+		t.Fatalf("expected underline cursor style, got %q", updated.CursorStyle)
+	}
+	if updated.CursorBlink {
+		t.Fatalf("expected cursor blink to persist as disabled")
+	}
 
 	updated, err = store.Update(context.Background(), Preferences{
-		FontSize:   1,
-		LineHeight: 0.2,
-		ThemeMode:  "bogus",
-		Scrollback: 10,
+		FontSize:    1,
+		LineHeight:  0.2,
+		ThemeMode:   "bogus",
+		Scrollback:  10,
+		CursorStyle: "bogus",
+		CursorBlink: true,
 	})
 	if err != nil {
 		t.Fatalf("update preferences with low values: %v", err)
@@ -101,6 +117,12 @@ func TestPreferencesStoreClampsAndPersistsSettings(t *testing.T) {
 	}
 	if updated.Scrollback != MinScrollback {
 		t.Fatalf("expected clamped min scrollback %d, got %d", MinScrollback, updated.Scrollback)
+	}
+	if updated.CursorStyle != DefaultCursorStyle {
+		t.Fatalf("expected invalid cursor style to clamp to %q, got %q", DefaultCursorStyle, updated.CursorStyle)
+	}
+	if !updated.CursorBlink {
+		t.Fatalf("expected cursor blink to persist as enabled")
 	}
 
 	reloadedStore, err := NewPreferencesStore(context.Background(), dbConn)
@@ -122,5 +144,11 @@ func TestPreferencesStoreClampsAndPersistsSettings(t *testing.T) {
 	}
 	if reloaded.Scrollback != MinScrollback {
 		t.Fatalf("expected persisted scrollback %d, got %d", MinScrollback, reloaded.Scrollback)
+	}
+	if reloaded.CursorStyle != DefaultCursorStyle {
+		t.Fatalf("expected persisted cursor style %q, got %q", DefaultCursorStyle, reloaded.CursorStyle)
+	}
+	if !reloaded.CursorBlink {
+		t.Fatalf("expected persisted cursor blink to be enabled")
 	}
 }

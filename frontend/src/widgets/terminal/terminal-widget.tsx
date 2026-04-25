@@ -33,7 +33,7 @@ export function TerminalWidget({
 }: TerminalWidgetProps) {
   const terminalRootRef = useRunaDomAutoTagging('terminal-widget-root')
   const terminalSurfaceRef = useRef<TerminalSurfaceHandle | null>(null)
-  const { fontSize, lineHeight, scrollback, themeMode } = useTerminalPreferences()
+  const { cursorBlink, cursorStyle, fontSize, lineHeight, scrollback, themeMode } = useTerminalPreferences()
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [rendererMode, setRendererMode] = useState<'default' | 'webgl'>('default')
   const [searchQuery, setSearchQuery] = useState('')
@@ -191,6 +191,8 @@ export function TerminalWidget({
         </ClearBox>
         <ClearBox runaComponent="terminal-widget-surface-wrap" style={terminalWidgetSurfaceWrapStyle}>
           <TerminalSurface
+            cursorBlink={cursorBlink}
+            cursorStyle={cursorStyle}
             fontSize={fontSize}
             hostId={hostId}
             lineHeight={lineHeight}

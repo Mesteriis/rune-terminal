@@ -49,6 +49,8 @@ export type TerminalSnapshot = {
 }
 
 export type TerminalSettings = {
+  cursor_blink: boolean
+  cursor_style: 'block' | 'bar' | 'underline'
   font_size: number
   line_height: number
   scrollback: number
@@ -229,6 +231,8 @@ export async function fetchTerminalSettings(request: APIRequestContext) {
 export async function updateTerminalSettingsViaApi(
   request: APIRequestContext,
   settings: {
+    cursor_blink?: boolean
+    cursor_style?: 'block' | 'bar' | 'underline'
     font_size?: number
     line_height?: number
     scrollback?: number

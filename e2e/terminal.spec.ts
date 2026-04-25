@@ -32,6 +32,8 @@ test('terminal settings persist font-size changes through the shell settings UI'
   await expect.poll(async () => (await fetchTerminalSettings(request)).font_size).toBe(14)
 
   await updateTerminalSettingsViaApi(request, {
+    cursor_blink: true,
+    cursor_style: 'block',
     font_size: 13,
     line_height: 1.25,
     scrollback: 5000,
@@ -63,6 +65,8 @@ test('terminal settings persist line-height changes through the shell settings U
   await expect.poll(async () => (await fetchTerminalSettings(request)).line_height).toBe(1.3)
 
   await updateTerminalSettingsViaApi(request, {
+    cursor_blink: true,
+    cursor_style: 'block',
     font_size: 13,
     line_height: 1.25,
     scrollback: 5000,
@@ -93,6 +97,8 @@ test('terminal settings persist theme-mode changes through the shell settings UI
   await expect.poll(async () => (await fetchTerminalSettings(request)).theme_mode).toBe('contrast')
 
   await updateTerminalSettingsViaApi(request, {
+    cursor_blink: true,
+    cursor_style: 'block',
     font_size: 13,
     line_height: 1.25,
     scrollback: 5000,
@@ -124,6 +130,44 @@ test('terminal settings persist scrollback changes through the shell settings UI
   await expect.poll(async () => (await fetchTerminalSettings(request)).scrollback).toBe(6000)
 
   await updateTerminalSettingsViaApi(request, {
+    cursor_blink: true,
+    cursor_style: 'block',
+    font_size: 13,
+    line_height: 1.25,
+    scrollback: 5000,
+    theme_mode: 'adaptive',
+  })
+})
+
+test('terminal settings persist cursor behavior changes through the shell settings UI', async ({
+  page,
+  request,
+}) => {
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  await page.getByRole('button', { name: 'Open settings panel' }).click()
+  await page.getByRole('button', { name: 'Terminal Настройки терминального runtime.' }).click()
+
+  await expect(page.getByRole('combobox', { name: 'Terminal cursor style' })).toHaveValue('block')
+  await expect(page.getByRole('checkbox', { name: 'Enable terminal cursor blink' })).toBeChecked()
+
+  await page.getByRole('combobox', { name: 'Terminal cursor style' }).selectOption('underline')
+  await page.getByRole('checkbox', { name: 'Enable terminal cursor blink' }).click()
+  await expect(page.getByRole('checkbox', { name: 'Enable terminal cursor blink' })).not.toBeChecked()
+
+  await page.reload()
+  await page.getByRole('button', { name: 'Open settings panel' }).click()
+  await page.getByRole('button', { name: 'Terminal Настройки терминального runtime.' }).click()
+
+  await expect(page.getByRole('combobox', { name: 'Terminal cursor style' })).toHaveValue('underline')
+  await expect(page.getByRole('checkbox', { name: 'Enable terminal cursor blink' })).not.toBeChecked()
+  await expect.poll(async () => (await fetchTerminalSettings(request)).cursor_style).toBe('underline')
+  await expect.poll(async () => (await fetchTerminalSettings(request)).cursor_blink).toBe(false)
+
+  await updateTerminalSettingsViaApi(request, {
+    cursor_blink: true,
+    cursor_style: 'block',
     font_size: 13,
     line_height: 1.25,
     scrollback: 5000,

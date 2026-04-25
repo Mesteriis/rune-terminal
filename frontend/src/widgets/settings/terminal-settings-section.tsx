@@ -2,6 +2,8 @@ import { Minus, Plus, RotateCcw } from 'lucide-react'
 import type { ReactNode } from 'react'
 
 import {
+  DEFAULT_TERMINAL_CURSOR_BLINK,
+  DEFAULT_TERMINAL_CURSOR_STYLE,
   DEFAULT_TERMINAL_FONT_SIZE,
   DEFAULT_TERMINAL_LINE_HEIGHT,
   DEFAULT_TERMINAL_SCROLLBACK,
@@ -15,7 +17,7 @@ import {
   useTerminalPreferences,
 } from '@/features/terminal/model/use-terminal-preferences'
 import { ClearBox } from '@/shared/ui/components'
-import { Button, Select, Text } from '@/shared/ui/primitives'
+import { Button, Checkbox, Label, Select, Text } from '@/shared/ui/primitives'
 import {
   settingsShellBadgeStyle,
   settingsShellContentHeaderStyle,
@@ -46,9 +48,12 @@ function SectionCard({
 }
 
 export function TerminalSettingsSection() {
+  const cursorBlinkInputId = 'terminal-cursor-blink'
   const {
     decreaseFontSize,
     decreaseLineHeight,
+    cursorBlink,
+    cursorStyle,
     errorMessage,
     fontSize,
     increaseFontSize,
@@ -60,10 +65,14 @@ export function TerminalSettingsSection() {
     resetScrollback,
     resetFontSize,
     resetLineHeight,
+    resetCursorBlink,
+    resetCursorStyle,
     resetThemeMode,
     scrollback,
     themeMode,
     decreaseScrollback,
+    updateCursorBlink,
+    updateCursorStyle,
     updateThemeMode,
   } = useTerminalPreferences()
   const canDecreaseFontSize = fontSize > MIN_TERMINAL_FONT_SIZE
@@ -75,8 +84,8 @@ export function TerminalSettingsSection() {
 
   return (
     <SectionCard
-      description="Это runtime-owned terminal typography. Она хранится в backend state и применяется ко всем живым terminal widgets в текущем shell."
-      title="Terminal typography"
+      description="Это runtime-owned terminal defaults. Они хранятся в backend state и применяются ко всем живым terminal widgets в текущем shell."
+      title="Terminal runtime defaults"
     >
       <ClearBox style={settingsShellListStyle}>
         <ClearBox style={settingsShellListRowStyle}>
@@ -187,6 +196,66 @@ export function TerminalSettingsSection() {
               onClick={() => void increaseScrollback()}
             >
               <Plus size={14} strokeWidth={1.8} />
+            </Button>
+          </ClearBox>
+        </ClearBox>
+        <ClearBox style={settingsShellListRowStyle}>
+          <ClearBox style={settingsShellContentHeaderStyle}>
+            <Text style={{ fontWeight: 600 }}>Terminal cursor style</Text>
+            <Text style={settingsShellMutedTextStyle}>
+              Cursor shape теперь задаётся через backend-owned contract и применяется к живым xterm sessions.
+            </Text>
+          </ClearBox>
+          <ClearBox style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--gap-xs)' }}>
+            <Select
+              aria-label="Terminal cursor style"
+              disabled={isLoading || isSaving}
+              onChange={(event) =>
+                void updateCursorStyle(event.currentTarget.value as 'block' | 'bar' | 'underline')
+              }
+              value={cursorStyle}
+            >
+              <option value="block">Block</option>
+              <option value="bar">Bar</option>
+              <option value="underline">Underline</option>
+            </Select>
+            <Button
+              aria-label="Reset terminal cursor style"
+              disabled={isLoading || isSaving || cursorStyle === DEFAULT_TERMINAL_CURSOR_STYLE}
+              onClick={() => void resetCursorStyle()}
+            >
+              <RotateCcw size={14} strokeWidth={1.8} />
+            </Button>
+          </ClearBox>
+        </ClearBox>
+        <ClearBox style={settingsShellListRowStyle}>
+          <ClearBox style={settingsShellContentHeaderStyle}>
+            <Text style={{ fontWeight: 600 }}>Blinking cursor</Text>
+            <Text style={settingsShellMutedTextStyle}>
+              Blink preference хранится в runtime, но xterm всё равно отключает blink для exited и failed
+              sessions.
+            </Text>
+          </ClearBox>
+          <ClearBox style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--gap-sm)' }}>
+            <Label
+              htmlFor={cursorBlinkInputId}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--gap-xs)' }}
+            >
+              <Checkbox
+                checked={cursorBlink}
+                id={cursorBlinkInputId}
+                disabled={isLoading || isSaving}
+                aria-label="Enable terminal cursor blink"
+                onChange={(event) => void updateCursorBlink(event.currentTarget.checked)}
+              />
+              <Text>{cursorBlink ? 'Enabled' : 'Disabled'}</Text>
+            </Label>
+            <Button
+              aria-label="Reset terminal cursor blink"
+              disabled={isLoading || isSaving || cursorBlink === DEFAULT_TERMINAL_CURSOR_BLINK}
+              onClick={() => void resetCursorBlink()}
+            >
+              <RotateCcw size={14} strokeWidth={1.8} />
             </Button>
           </ClearBox>
         </ClearBox>

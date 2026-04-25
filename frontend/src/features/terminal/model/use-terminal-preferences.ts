@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useSyncExternalStore } from 'react'
 
 import {
+  clampTerminalCursorStyle,
   clampTerminalFontSize,
   clampTerminalLineHeight,
   clampTerminalScrollback,
   clampTerminalThemeMode,
+  DEFAULT_TERMINAL_CURSOR_BLINK,
+  DEFAULT_TERMINAL_CURSOR_STYLE,
   DEFAULT_TERMINAL_FONT_SIZE,
   DEFAULT_TERMINAL_LINE_HEIGHT,
   DEFAULT_TERMINAL_SCROLLBACK,
@@ -15,12 +18,15 @@ import {
   MIN_TERMINAL_FONT_SIZE,
   MIN_TERMINAL_LINE_HEIGHT,
   MIN_TERMINAL_SCROLLBACK,
+  type TerminalCursorStyle,
   type TerminalThemeMode,
   requestTerminalSettings,
   updateTerminalSettings,
 } from '@/shared/api/terminal-settings'
 
 export {
+  DEFAULT_TERMINAL_CURSOR_BLINK,
+  DEFAULT_TERMINAL_CURSOR_STYLE,
   DEFAULT_TERMINAL_FONT_SIZE,
   DEFAULT_TERMINAL_LINE_HEIGHT,
   DEFAULT_TERMINAL_SCROLLBACK,
@@ -37,6 +43,8 @@ const subscribers = new Set<() => void>()
 let loadPromise: Promise<void> | null = null
 
 type TerminalPreferencesState = {
+  cursorBlink: boolean
+  cursorStyle: TerminalCursorStyle
   errorMessage: string | null
   fontSize: number
   lineHeight: number
@@ -47,6 +55,8 @@ type TerminalPreferencesState = {
 }
 
 let terminalPreferencesState: TerminalPreferencesState = {
+  cursorBlink: DEFAULT_TERMINAL_CURSOR_BLINK,
+  cursorStyle: DEFAULT_TERMINAL_CURSOR_STYLE,
   errorMessage: null,
   fontSize: DEFAULT_TERMINAL_FONT_SIZE,
   lineHeight: DEFAULT_TERMINAL_LINE_HEIGHT,
@@ -80,6 +90,8 @@ async function refreshTerminalPreferences() {
     const settings = await requestTerminalSettings()
     terminalPreferencesState = {
       ...terminalPreferencesState,
+      cursorBlink: settings.cursor_blink,
+      cursorStyle: settings.cursor_style,
       fontSize: settings.font_size,
       lineHeight: settings.line_height,
       scrollback: settings.scrollback,
@@ -122,6 +134,8 @@ function getTerminalPreferencesSnapshot() {
 }
 
 async function persistTerminalSettings(next: {
+  cursorBlink: boolean
+  cursorStyle: TerminalCursorStyle
   fontSize: number
   lineHeight: number
   scrollback: number
@@ -136,6 +150,8 @@ async function persistTerminalSettings(next: {
 
   try {
     const settings = await updateTerminalSettings({
+      cursor_blink: next.cursorBlink,
+      cursor_style: clampTerminalCursorStyle(next.cursorStyle),
       font_size: clampTerminalFontSize(next.fontSize),
       line_height: clampTerminalLineHeight(next.lineHeight),
       scrollback: clampTerminalScrollback(next.scrollback),
@@ -143,6 +159,8 @@ async function persistTerminalSettings(next: {
     })
     terminalPreferencesState = {
       ...terminalPreferencesState,
+      cursorBlink: settings.cursor_blink,
+      cursorStyle: settings.cursor_style,
       fontSize: settings.font_size,
       lineHeight: settings.line_height,
       scrollback: settings.scrollback,
@@ -164,6 +182,8 @@ async function persistTerminalSettings(next: {
 
 export async function setTerminalFontSize(fontSize: number) {
   await persistTerminalSettings({
+    cursorBlink: terminalPreferencesState.cursorBlink,
+    cursorStyle: terminalPreferencesState.cursorStyle,
     fontSize,
     lineHeight: terminalPreferencesState.lineHeight,
     scrollback: terminalPreferencesState.scrollback,
@@ -173,6 +193,8 @@ export async function setTerminalFontSize(fontSize: number) {
 
 export async function setTerminalLineHeight(lineHeight: number) {
   await persistTerminalSettings({
+    cursorBlink: terminalPreferencesState.cursorBlink,
+    cursorStyle: terminalPreferencesState.cursorStyle,
     fontSize: terminalPreferencesState.fontSize,
     lineHeight,
     scrollback: terminalPreferencesState.scrollback,
@@ -182,6 +204,8 @@ export async function setTerminalLineHeight(lineHeight: number) {
 
 export async function setTerminalScrollback(scrollback: number) {
   await persistTerminalSettings({
+    cursorBlink: terminalPreferencesState.cursorBlink,
+    cursorStyle: terminalPreferencesState.cursorStyle,
     fontSize: terminalPreferencesState.fontSize,
     lineHeight: terminalPreferencesState.lineHeight,
     scrollback,
@@ -191,6 +215,8 @@ export async function setTerminalScrollback(scrollback: number) {
 
 export async function setTerminalThemeMode(themeMode: TerminalThemeMode) {
   await persistTerminalSettings({
+    cursorBlink: terminalPreferencesState.cursorBlink,
+    cursorStyle: terminalPreferencesState.cursorStyle,
     fontSize: terminalPreferencesState.fontSize,
     lineHeight: terminalPreferencesState.lineHeight,
     scrollback: terminalPreferencesState.scrollback,
@@ -198,8 +224,32 @@ export async function setTerminalThemeMode(themeMode: TerminalThemeMode) {
   })
 }
 
+export async function setTerminalCursorStyle(cursorStyle: TerminalCursorStyle) {
+  await persistTerminalSettings({
+    cursorBlink: terminalPreferencesState.cursorBlink,
+    cursorStyle,
+    fontSize: terminalPreferencesState.fontSize,
+    lineHeight: terminalPreferencesState.lineHeight,
+    scrollback: terminalPreferencesState.scrollback,
+    themeMode: terminalPreferencesState.themeMode,
+  })
+}
+
+export async function setTerminalCursorBlink(cursorBlink: boolean) {
+  await persistTerminalSettings({
+    cursorBlink,
+    cursorStyle: terminalPreferencesState.cursorStyle,
+    fontSize: terminalPreferencesState.fontSize,
+    lineHeight: terminalPreferencesState.lineHeight,
+    scrollback: terminalPreferencesState.scrollback,
+    themeMode: terminalPreferencesState.themeMode,
+  })
+}
+
 export function resetTerminalPreferencesForTests() {
   terminalPreferencesState = {
+    cursorBlink: DEFAULT_TERMINAL_CURSOR_BLINK,
+    cursorStyle: DEFAULT_TERMINAL_CURSOR_STYLE,
     errorMessage: null,
     fontSize: DEFAULT_TERMINAL_FONT_SIZE,
     lineHeight: DEFAULT_TERMINAL_LINE_HEIGHT,
@@ -279,7 +329,25 @@ export function useTerminalPreferences() {
     await setTerminalThemeMode(DEFAULT_TERMINAL_THEME_MODE)
   }, [])
 
+  const updateCursorStyle = useCallback(async (value: TerminalCursorStyle) => {
+    await setTerminalCursorStyle(value)
+  }, [])
+
+  const resetCursorStyle = useCallback(async () => {
+    await setTerminalCursorStyle(DEFAULT_TERMINAL_CURSOR_STYLE)
+  }, [])
+
+  const updateCursorBlink = useCallback(async (value: boolean) => {
+    await setTerminalCursorBlink(value)
+  }, [])
+
+  const resetCursorBlink = useCallback(async () => {
+    await setTerminalCursorBlink(DEFAULT_TERMINAL_CURSOR_BLINK)
+  }, [])
+
   return {
+    cursorBlink: state.cursorBlink,
+    cursorStyle: state.cursorStyle,
     errorMessage: state.errorMessage,
     fontSize: state.fontSize,
     lineHeight: state.lineHeight,
@@ -301,6 +369,10 @@ export function useTerminalPreferences() {
     resetScrollback,
     updateThemeMode,
     resetThemeMode,
+    updateCursorStyle,
+    resetCursorStyle,
+    updateCursorBlink,
+    resetCursorBlink,
     refresh: ensureTerminalPreferencesLoaded,
   }
 }

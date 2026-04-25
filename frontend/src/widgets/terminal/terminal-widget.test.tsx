@@ -27,6 +27,8 @@ vi.mock('@/shared/ui/components/terminal-surface', async () => {
   return {
     TerminalSurface: React.forwardRef(function MockTerminalSurface(
       props: {
+        cursorBlink?: boolean
+        cursorStyle?: 'block' | 'bar' | 'underline'
         fontSize?: number
         lineHeight?: number
         onRendererModeChange?: (mode: 'default' | 'webgl') => void
@@ -61,7 +63,8 @@ vi.mock('@/shared/ui/components/terminal-surface', async () => {
         <div data-testid="terminal-surface-mock">
           {props.statusMessage ?? 'terminal-ready'} · font:{props.fontSize ?? 13} · line:
           {props.lineHeight ?? 1.25} · theme:{props.themeMode ?? 'adaptive'} · scrollback:
-          {props.scrollback ?? 5000}
+          {props.scrollback ?? 5000} · cursor:{props.cursorStyle ?? 'block'} · blink:
+          {String(props.cursorBlink ?? true)}
         </div>
       )
     }),
@@ -101,6 +104,8 @@ describe('TerminalWidget', () => {
       errorMessage: null,
       decreaseFontSize: vi.fn(),
       decreaseLineHeight: vi.fn(),
+      cursorBlink: false,
+      cursorStyle: 'bar',
       fontSize: 15,
       increaseFontSize: vi.fn(),
       increaseLineHeight: vi.fn(),
@@ -112,12 +117,16 @@ describe('TerminalWidget', () => {
       resetScrollback: vi.fn(),
       resetFontSize: vi.fn(),
       resetLineHeight: vi.fn(),
+      resetCursorBlink: vi.fn(),
+      resetCursorStyle: vi.fn(),
       resetThemeMode: vi.fn(),
       scrollback: 7000,
       themeMode: 'contrast',
       decreaseScrollback: vi.fn(),
+      updateCursorBlink: vi.fn(),
       updateFontSize: vi.fn(),
       updateLineHeight: vi.fn(),
+      updateCursorStyle: vi.fn(),
       updateThemeMode: vi.fn(),
     })
 
@@ -128,7 +137,7 @@ describe('TerminalWidget', () => {
     expect(screen.getByText('zsh')).toBeInTheDocument()
     expect(screen.getByText('Running')).toBeInTheDocument()
     expect(screen.getByTestId('terminal-surface-mock')).toHaveTextContent(
-      'Attached to local shell. · font:15 · line:1.4 · theme:contrast · scrollback:7000',
+      'Attached to local shell. · font:15 · line:1.4 · theme:contrast · scrollback:7000 · cursor:bar · blink:false',
     )
 
     await waitFor(() => {

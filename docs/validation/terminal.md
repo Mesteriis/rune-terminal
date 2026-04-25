@@ -145,11 +145,11 @@
 
 ## Known limitations
 
-- Visible restart and interrupt controls now exist in the terminal header chrome, and terminal font size, line height, theme mode, plus scrollback are now configurable through a backend-owned runtime settings contract; deeper terminal settings (`cursor behavior`) still do not have a backend-owned contract yet.
+- Visible restart and interrupt controls now exist in the terminal header chrome, and terminal font size, line height, theme mode, scrollback, plus cursor behavior are now configurable through a backend-owned runtime settings contract.
 - Terminal toolbar `clear` and `jump-to-latest` actions are intentionally local xterm viewport controls. They do not mutate backend snapshot history and were validated as non-breaking live affordances rather than as persisted runtime state.
 - Browser validation for terminal input now runs through Playwright on the split local dev path. The suite is intentionally serialized (`workers: 1`) because terminal/runtime state is shared across the same backend instance.
 - A fresh `npm run tauri:dev` desktop smoke was run for this slice and the spawned `rterm-desktop` / core listener processes were cleaned up after verification.
-- Browser validation now also covers runtime-owned terminal theme mode plus scrollback persistence through the `Settings -> Terminal` shell path and confirms that `theme_mode` and `scrollback` survive reload through the backend contract.
+- Browser validation now also covers runtime-owned terminal theme mode, scrollback, plus cursor behavior persistence through the `Settings -> Terminal` shell path and confirms that `theme_mode`, `scrollback`, `cursor_style`, and `cursor_blink` survive reload through the backend contract.
 
 ## Evidence
 

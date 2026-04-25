@@ -22,15 +22,20 @@ const (
 	DefaultScrollback = 5000
 	MinScrollback     = 1000
 	MaxScrollback     = 20000
+	DefaultCursorStyle    = "block"
+	CursorStyleBar        = "bar"
+	CursorStyleUnderline  = "underline"
 
 	defaultTerminalSettingsScope = "default"
 )
 
 type Preferences struct {
-	FontSize   int     `json:"font_size"`
-	LineHeight float64 `json:"line_height"`
-	ThemeMode  string  `json:"theme_mode"`
-	Scrollback int     `json:"scrollback"`
+	FontSize    int     `json:"font_size"`
+	LineHeight  float64 `json:"line_height"`
+	ThemeMode   string  `json:"theme_mode"`
+	Scrollback  int     `json:"scrollback"`
+	CursorStyle string  `json:"cursor_style"`
+	CursorBlink bool    `json:"cursor_blink"`
 }
 
 type PreferencesStore struct {
@@ -59,20 +64,24 @@ func (s *PreferencesStore) Snapshot(ctx context.Context) (Preferences, error) {
 	var lineHeight float64
 	var themeMode string
 	var scrollback int
+	var cursorStyle string
+	var cursorBlink int
 	err := s.db.QueryRowContext(ctx, `
-		SELECT font_size, line_height, theme_mode, scrollback
+		SELECT font_size, line_height, theme_mode, scrollback, cursor_style, cursor_blink
 		FROM terminal_settings
 		WHERE scope = ?
-	`, defaultTerminalSettingsScope).Scan(&fontSize, &lineHeight, &themeMode, &scrollback)
+	`, defaultTerminalSettingsScope).Scan(&fontSize, &lineHeight, &themeMode, &scrollback, &cursorStyle, &cursorBlink)
 	if err != nil {
 		return Preferences{}, fmt.Errorf("load terminal settings: %w", err)
 	}
 
 	return Preferences{
-		FontSize:   clampFontSize(fontSize),
-		LineHeight: clampLineHeight(lineHeight),
-		ThemeMode:  clampThemeMode(themeMode),
-		Scrollback: clampScrollback(scrollback),
+		FontSize:    clampFontSize(fontSize),
+		LineHeight:  clampLineHeight(lineHeight),
+		ThemeMode:   clampThemeMode(themeMode),
+		Scrollback:  clampScrollback(scrollback),
+		CursorStyle: clampCursorStyle(cursorStyle),
+		CursorBlink: cursorBlink != 0,
 	}, nil
 }
 
@@ -82,21 +91,25 @@ func (s *PreferencesStore) Update(ctx context.Context, next Preferences) (Prefer
 	}
 
 	normalized := Preferences{
-		FontSize:   clampFontSize(next.FontSize),
-		LineHeight: clampLineHeight(next.LineHeight),
-		ThemeMode:  clampThemeMode(next.ThemeMode),
-		Scrollback: clampScrollback(next.Scrollback),
+		FontSize:    clampFontSize(next.FontSize),
+		LineHeight:  clampLineHeight(next.LineHeight),
+		ThemeMode:   clampThemeMode(next.ThemeMode),
+		Scrollback:  clampScrollback(next.Scrollback),
+		CursorStyle: clampCursorStyle(next.CursorStyle),
+		CursorBlink: next.CursorBlink,
 	}
 
 	_, err := s.db.ExecContext(ctx, `
 		UPDATE terminal_settings
-		SET font_size = ?, line_height = ?, theme_mode = ?, scrollback = ?, updated_at = ?
+		SET font_size = ?, line_height = ?, theme_mode = ?, scrollback = ?, cursor_style = ?, cursor_blink = ?, updated_at = ?
 		WHERE scope = ?
 	`,
 		normalized.FontSize,
 		normalized.LineHeight,
 		normalized.ThemeMode,
 		normalized.Scrollback,
+		normalized.CursorStyle,
+		boolToSQLite(normalized.CursorBlink),
 		time.Now().UTC().Format(time.RFC3339Nano),
 		defaultTerminalSettingsScope,
 	)
@@ -121,14 +134,16 @@ func (s *PreferencesStore) ensureDefaultRow(ctx context.Context) error {
 	}
 
 	_, err := s.db.ExecContext(ctx, `
-		INSERT INTO terminal_settings (scope, font_size, line_height, theme_mode, scrollback, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?)
+		INSERT INTO terminal_settings (scope, font_size, line_height, theme_mode, scrollback, cursor_style, cursor_blink, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 	`,
 		defaultTerminalSettingsScope,
 		DefaultFontSize,
 		DefaultLineHeight,
 		DefaultThemeMode,
 		DefaultScrollback,
+		DefaultCursorStyle,
+		boolToSQLite(true),
 		time.Now().UTC().Format(time.RFC3339Nano),
 	)
 	if err != nil && !isUniqueConstraintError(err) {
@@ -187,6 +202,27 @@ func clampScrollback(value int) int {
 		return MaxScrollback
 	}
 	return value
+}
+
+func clampCursorStyle(value string) string {
+	normalized := strings.TrimSpace(strings.ToLower(value))
+	switch normalized {
+	case "", DefaultCursorStyle:
+		return DefaultCursorStyle
+	case CursorStyleBar:
+		return CursorStyleBar
+	case CursorStyleUnderline:
+		return CursorStyleUnderline
+	default:
+		return DefaultCursorStyle
+	}
+}
+
+func boolToSQLite(value bool) int {
+	if value {
+		return 1
+	}
+	return 0
 }
 
 func isUniqueConstraintError(err error) bool {

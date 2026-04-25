@@ -21,6 +21,8 @@ export type TerminalSurfaceHandle = {
 }
 
 export type TerminalSurfaceProps = {
+  cursorBlink?: boolean
+  cursorStyle?: 'block' | 'bar' | 'underline'
   fontSize?: number
   lineHeight?: number
   hostId: string
@@ -160,6 +162,10 @@ function applyTerminalTheme(term: Terminal, target: HTMLElement | null, mode: 'a
   term.options.theme = getTerminalTheme(mode, target)
 }
 
+function shouldBlinkCursor(sessionState: TerminalSessionState, cursorBlink: boolean) {
+  return cursorBlink && sessionState === 'running'
+}
+
 function createSafeLinkHandler() {
   return (_event: MouseEvent, uri: string) => {
     const openedWindow = window.open(uri, '_blank', 'noopener,noreferrer')
@@ -203,6 +209,8 @@ async function pasteClipboardIntoTerminal(term: Terminal) {
 export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurfaceProps>(
   function TerminalSurface(
     {
+      cursorBlink = true,
+      cursorStyle = 'block',
       fontSize = 13,
       lineHeight = 1.25,
       hostId,
@@ -307,8 +315,9 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
       const term = new Terminal({
         allowTransparency: true,
         convertEol: true,
-        cursorBlink: sessionState !== 'exited',
-        disableStdin: sessionState === 'exited',
+        cursorBlink: shouldBlinkCursor(sessionState, cursorBlink),
+        cursorStyle,
+        disableStdin: onInput == null || sessionState === 'exited' || sessionState === 'failed',
         fontFamily: getCssVariable('--font-family-mono') || 'monospace',
         fontSize,
         lineHeight,
@@ -435,9 +444,19 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
         return
       }
 
-      term.options.cursorBlink = sessionState === 'running'
+      term.options.cursorBlink = shouldBlinkCursor(sessionState, cursorBlink)
       term.options.disableStdin = onInput == null || sessionState === 'exited' || sessionState === 'failed'
-    }, [onInput, sessionState])
+    }, [cursorBlink, onInput, sessionState])
+
+    useEffect(() => {
+      const term = termRef.current
+
+      if (!term) {
+        return
+      }
+
+      term.options.cursorStyle = cursorStyle
+    }, [cursorStyle])
 
     useEffect(() => {
       const term = termRef.current
