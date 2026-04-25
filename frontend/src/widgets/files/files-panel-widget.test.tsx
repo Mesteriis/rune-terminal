@@ -346,6 +346,27 @@ describe('FilesPanelWidget', () => {
     })
   })
 
+  it('opens the current directory through the runtime external opener route', async () => {
+    vi.mocked(listFilesDirectory).mockResolvedValue({
+      entries: [],
+      path: '/repo',
+    })
+    vi.mocked(openFilesPathExternally).mockResolvedValue({
+      path: '/repo',
+    })
+
+    render(<FilesPanelWidget path="/repo" title="repo" />)
+
+    await expect(screen.findByText('Directory is empty')).resolves.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open current directory externally' }))
+
+    await waitFor(() => {
+      expect(openFilesPathExternally).toHaveBeenCalledWith('/repo')
+      expect(screen.getByText('Open request sent for current directory')).toBeInTheDocument()
+    })
+  })
+
   it('hides dotfiles by default and can reveal them on demand', async () => {
     vi.mocked(listFilesDirectory).mockResolvedValue({
       entries: [

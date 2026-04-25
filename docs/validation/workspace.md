@@ -35,6 +35,8 @@
     - files widget hidden-file toggle hides dotfiles by default and can reveal
       them
     - files widget direct path input can jump to a backend path
+    - files widget current-directory button dispatches backend external-open
+      requests
     - files widget file rows dispatch backend external-open requests
     - settings modal open/close from shell chrome
     - the settings shell now renders as a tighter navigator/editor surface with a dedicated sidebar header and one framed content pane for the active section, while preserving the existing `General / AI / Terminal / Commander` structure
@@ -283,8 +285,8 @@
   workspace API client, the dedicated files directory-list client, files panel
   params, files panel rendering, right-rail repo-root path handoff, and basic
   refresh, local sorting, hidden-file toggling, direct path jump, file
-  external-open handoff, filename filtering, and child/parent directory
-  navigation.
+  external-open handoff, current-directory external-open handoff, filename
+  filtering, and child/parent directory navigation.
 - Targeted close-widget validation covers `core/workspace.CloseWidget`,
   `DELETE /api/v1/workspace/widgets/{widgetID}`, the frontend
   `closeWorkspaceWidget()` client, and the Dockview header close path for
@@ -297,11 +299,10 @@
   direct path input can jump to `repo_root/frontend` and parent back to
   `repo_root`, files filtering narrows the visible rows to `package.json`,
   refresh reloads the current root path, local sort can switch to
-  `Modified DESC`, file-row open dispatches the expected `/api/v1/fs/open`
-  payload for
-  `repo_root/package.json`, files navigation opens `repo_root/frontend` and
-  returns to `repo_root`, closing that files panel decreases the backend widget
-  count again, while
+  `Modified DESC`, current-directory and file-row open dispatch the expected
+  `/api/v1/fs/open` payloads for `repo_root` and `repo_root/package.json`,
+  files navigation opens `repo_root/frontend` and returns to `repo_root`,
+  closing that files panel decreases the backend widget count again, while
   `Commander`, `Preview`, `Editor`, and `Web Placeholder` menu entries are
   asserted disabled with their catalog-derived reason labels.
 - Static validation confirmed the frontend dependency upgrade to `react@19.2.5`, `react-dom@19.2.5`, `@types/react@19.2.14`, and `@types/react-dom@19.2.3`, and `npm --prefix frontend run lint:active` plus `npm --prefix frontend run build` both passed on that stack.

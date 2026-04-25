@@ -205,6 +205,29 @@ export function FilesPanelWidget({ path, title }: FilesPanelWidgetProps) {
     setPathDraft(currentPath)
   }
 
+  const handleOpenCurrentDirectory = async () => {
+    setOpenState({
+      entryName: currentPath,
+      message: null,
+      status: 'pending',
+    })
+
+    try {
+      await openFilesPathExternally(currentPath)
+      setOpenState({
+        entryName: currentPath,
+        message: 'Open request sent for current directory',
+        status: 'success',
+      })
+    } catch (error: unknown) {
+      setOpenState({
+        entryName: currentPath,
+        message: error instanceof Error ? error.message : 'Unable to open current directory',
+        status: 'error',
+      })
+    }
+  }
+
   const handleOpenEntry = async (entry: FilesDirectoryEntry) => {
     if (entry.kind === 'directory') {
       setCurrentPath(joinRuntimePath(currentPath, entry.name))
@@ -351,6 +374,16 @@ export function FilesPanelWidget({ path, title }: FilesPanelWidgetProps) {
             style={filesPanelParentButtonStyle}
           >
             Refresh
+          </Button>
+          <Button
+            aria-label="Open current directory externally"
+            onClick={() => {
+              void handleOpenCurrentDirectory()
+            }}
+            runaComponent="files-panel-open-current-directory"
+            style={filesPanelParentButtonStyle}
+          >
+            Open dir
           </Button>
           <Button
             aria-label="Open parent directory"
