@@ -3,8 +3,11 @@ import { expect, type APIRequestContext, type Page } from '@playwright/test'
 import { authToken, backendUrl } from './test-env'
 
 export type BootstrapPayload = {
+  color_term?: string
+  default_shell?: string
   home_dir: string
   repo_root: string
+  term?: string
   workspace: {
     active_widget_id: string
   }

@@ -3,6 +3,8 @@ package httpapi
 import (
 	"net/http"
 	"os"
+
+	"github.com/Mesteriis/rune-terminal/core/terminal"
 )
 
 func (api *API) handleHealth(w http.ResponseWriter, r *http.Request) {
@@ -15,12 +17,15 @@ func (api *API) handleHealth(w http.ResponseWriter, r *http.Request) {
 
 func (api *API) handleBootstrap(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
-		"product_name": "RunaTerminal",
-		"workspace":    api.runtime.Workspace.Snapshot(),
-		"connections":  api.runtime.ConnectionsSnapshot(),
-		"tools":        api.runtime.Registry.List(),
-		"repo_root":    api.runtime.RepoRoot,
-		"home_dir":     api.runtime.HomeDir,
+		"product_name":  "RunaTerminal",
+		"workspace":     api.runtime.Workspace.Snapshot(),
+		"connections":   api.runtime.ConnectionsSnapshot(),
+		"tools":         api.runtime.Registry.List(),
+		"repo_root":     api.runtime.RepoRoot,
+		"home_dir":      api.runtime.HomeDir,
+		"default_shell": terminal.DefaultShell(),
+		"term":          os.Getenv("TERM"),
+		"color_term":    os.Getenv("COLORTERM"),
 	})
 }
 

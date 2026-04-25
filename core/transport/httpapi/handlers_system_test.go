@@ -4,7 +4,10 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
+
+	"github.com/Mesteriis/rune-terminal/core/terminal"
 )
 
 func TestBootstrapReturnsRuntimePathContext(t *testing.T) {
@@ -20,9 +23,12 @@ func TestBootstrapReturnsRuntimePathContext(t *testing.T) {
 	}
 
 	var payload struct {
-		ProductName string `json:"product_name"`
-		RepoRoot    string `json:"repo_root"`
-		HomeDir     string `json:"home_dir"`
+		ProductName  string `json:"product_name"`
+		RepoRoot     string `json:"repo_root"`
+		HomeDir      string `json:"home_dir"`
+		DefaultShell string `json:"default_shell"`
+		Term         string `json:"term"`
+		ColorTerm    string `json:"color_term"`
 	}
 	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
 		t.Fatalf("unmarshal response: %v", err)
@@ -38,6 +44,15 @@ func TestBootstrapReturnsRuntimePathContext(t *testing.T) {
 
 	if payload.HomeDir != "/home/testuser" {
 		t.Fatalf("unexpected home_dir %q", payload.HomeDir)
+	}
+	if payload.DefaultShell != terminal.DefaultShell() {
+		t.Fatalf("unexpected default_shell %q", payload.DefaultShell)
+	}
+	if payload.Term != os.Getenv("TERM") {
+		t.Fatalf("unexpected term %q", payload.Term)
+	}
+	if payload.ColorTerm != os.Getenv("COLORTERM") {
+		t.Fatalf("unexpected color_term %q", payload.ColorTerm)
 	}
 }
 

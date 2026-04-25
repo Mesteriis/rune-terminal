@@ -64,6 +64,22 @@ test('commander read-only wiring loads repo paths, navigates by tilde path, and 
   await expect(coreRows).toHaveCount(2)
   await expect(page.getByText('frontend', { exact: true })).toHaveCount(2)
 
+  await page.getByRole('button', { name: 'Show shell context' }).click()
+  await expect(page.locator('[id^="shell-tool-commander-runtime-context-shell-label-"]').first()).toHaveText(
+    'Shell',
+  )
+  await expect(page.locator('[id^="shell-tool-commander-runtime-context-shell-value-"]').first()).toHaveText(
+    bootstrap.default_shell ?? '',
+  )
+  await expect(page.locator('[id^="shell-tool-commander-runtime-context-root-label-"]').first()).toHaveText(
+    'Workspace root',
+  )
+  await expect(page.locator('[id^="shell-tool-commander-runtime-context-root-value-"]').first()).toHaveText(
+    bootstrap.repo_root,
+  )
+  await page.getByRole('button', { name: 'Hide shell context' }).click()
+  await expect(page.locator('[id^="shell-tool-commander-runtime-context-root-label-"]').first()).toBeHidden()
+
   await leftPaneRoot.click()
   await page.keyboard.press('Control+L')
   const leftPanePathInput = page.getByRole('textbox', { name: 'Commander left pane path' })

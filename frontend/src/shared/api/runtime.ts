@@ -1,8 +1,11 @@
 export type RuntimeContext = {
   authToken: string
   baseUrl: string
+  colorTerm: string
+  defaultShell: string
   homeDir: string
   repoRoot: string
+  term: string
 }
 
 export type RuntimeWatcherMode = 'ephemeral' | 'persistent'
@@ -23,8 +26,11 @@ type RuntimeShutdownPayload = {
 }
 
 type BootstrapPayload = {
+  color_term?: string
+  default_shell?: string
   home_dir?: string
   repo_root?: string
+  term?: string
 }
 
 type TauriInternals = {
@@ -181,8 +187,11 @@ async function loadRuntimeContext(): Promise<RuntimeContext> {
   return {
     authToken: transport.authToken,
     baseUrl: transport.baseUrl,
+    colorTerm: payload.color_term?.trim() ?? '',
+    defaultShell: payload.default_shell?.trim() ?? '',
     homeDir: trimTrailingSeparators(payload.home_dir?.trim() ?? ''),
     repoRoot: trimTrailingSeparators(repoRoot),
+    term: payload.term?.trim() ?? '',
   }
 }
 

@@ -36,8 +36,11 @@ describe('useCommanderWidget', () => {
     vi.mocked(resolveRuntimeContext).mockResolvedValue({
       authToken: 'runtime-token',
       baseUrl: 'http://127.0.0.1:8090',
+      colorTerm: 'truecolor',
+      defaultShell: '/bin/zsh',
       homeDir: '/Users/avm',
       repoRoot: '/Users/avm/projects/runa-terminal',
+      term: 'xterm-256color',
     })
     vi.mocked(listCommanderDirectory).mockImplementation(async (path, options) => {
       const query = options?.query?.trim()

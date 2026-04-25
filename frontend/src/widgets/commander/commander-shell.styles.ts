@@ -96,3 +96,40 @@ export const commanderMainStyle: CSSProperties = {
   background: 'transparent',
   boxShadow: 'none',
 }
+
+export const commanderRuntimeContextStyle: CSSProperties = {
+  padding: 'var(--space-sm) var(--space-md)',
+  background: 'var(--color-canvas-elevated)',
+  border: '1px solid var(--runa-commander-surface-border, var(--color-border-subtle))',
+  borderRadius: 'var(--radius-sm)',
+}
+
+export const commanderRuntimeContextGridStyle: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+  gap: 'var(--gap-sm) var(--gap-md)',
+  minWidth: 0,
+}
+
+export const commanderRuntimeContextItemStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 'var(--gap-2xs)',
+  minWidth: 0,
+}
+
+export const commanderRuntimeContextLabelStyle: CSSProperties = {
+  color: 'var(--runa-commander-text-muted, var(--color-text-muted))',
+  fontSize: 'var(--font-size-xs)',
+  lineHeight: 1.3,
+  textTransform: 'uppercase',
+}
+
+export const commanderRuntimeContextValueStyle: CSSProperties = {
+  color: 'var(--runa-commander-text-strong, var(--color-text-primary))',
+  fontSize: 'var(--font-size-sm)',
+  lineHeight: 1.4,
+  whiteSpace: 'nowrap',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+}

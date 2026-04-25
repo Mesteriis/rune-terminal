@@ -1,6 +1,7 @@
-import { ChevronLeft, ChevronRight, Eye, EyeOff, FolderTree } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Eye, EyeOff, FolderTree, SquareTerminal } from 'lucide-react'
 
 import type { CommanderViewMode, CommanderWidgetViewState } from '@/features/commander/model/types'
+import type { RuntimeContext } from '@/shared/api/runtime'
 import { Box, Surface } from '@/shared/ui/primitives'
 import { IconButton } from '@/shared/ui/components'
 
@@ -17,6 +18,7 @@ import {
 
 type CommanderHeaderActions = {
   setViewMode: (viewMode: CommanderViewMode) => void
+  toggleRuntimeContext: () => void
   toggleShowHidden: () => void
 }
 
@@ -31,6 +33,8 @@ type CommanderHeaderRowProps = {
   actions: CommanderHeaderActions
   commanderActions: CommanderHeaderCommanderActions
   onFocusRoot: () => void
+  runtimeContext: RuntimeContext | null
+  showRuntimeContext: boolean
 }
 
 /** Renders the commander header controls for history, view mode, hidden files, and dirs-first. */
@@ -39,6 +43,8 @@ export function CommanderHeaderRow({
   actions,
   commanderActions,
   onFocusRoot,
+  runtimeContext,
+  showRuntimeContext,
 }: CommanderHeaderRowProps) {
   const activePane = state.activePane === 'left' ? state.leftPane : state.rightPane
   const disableHistoryControls = Boolean(state.pendingOperation)
@@ -104,6 +110,24 @@ export function CommanderHeaderRow({
         </Box>
       </Box>
       <Box runaComponent="commander-header-toggle-cluster" style={commanderHeaderClusterStyle}>
+        <IconButton
+          aria-label={showRuntimeContext ? 'Hide shell context' : 'Show shell context'}
+          aria-pressed={showRuntimeContext}
+          disabled={!runtimeContext}
+          onClick={() => {
+            actions.toggleRuntimeContext()
+            onFocusRoot()
+          }}
+          runaComponent="commander-toggle-runtime-context"
+          size="sm"
+          style={{
+            ...commanderIconControlStyle,
+            ...(!runtimeContext ? commanderIconControlDisabledStyle : null),
+            ...(showRuntimeContext ? commanderToggleActiveStyle : null),
+          }}
+        >
+          <SquareTerminal size={14} strokeWidth={1.8} />
+        </IconButton>
         <IconButton
           aria-label={state.dirsFirst ? 'Disable folders first sorting' : 'Enable folders first sorting'}
           aria-pressed={state.dirsFirst}

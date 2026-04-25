@@ -12,6 +12,7 @@ import { CommanderHeaderRow } from '@/widgets/commander/commander-header-row'
 import { createCommanderPaneController } from '@/widgets/commander/commander-pane-controller'
 import { CommanderPane } from '@/widgets/commander/commander-pane'
 import { CommanderPendingBar } from '@/widgets/commander/commander-pending-bar'
+import { CommanderRuntimeContext } from '@/widgets/commander/commander-runtime-context'
 import { commanderMainStyle, commanderRootStyle } from '@/widgets/commander/commander-widget.styles'
 import { getCommanderPathSuggestions, joinCommanderPath } from '@/widgets/commander/commander-widget.shared'
 
@@ -20,6 +21,7 @@ export function CommanderWidget() {
   const { widget: widgetId } = useRunaDomScope()
   const { actions, commanderActions, runtimeContext, runtimeState, state } = useCommanderWidget(widgetId)
   const activePane = state.activePane === 'left' ? state.leftPane : state.rightPane
+  const [showRuntimeContext, setShowRuntimeContext] = useState(false)
   const [editingPathPaneId, setEditingPathPaneId] = useState<CommanderPaneViewState['id'] | null>(null)
   const [editingPathValue, setEditingPathValue] = useState('')
   const [pathSuggestionIndex, setPathSuggestionIndex] = useState(0)
@@ -401,11 +403,21 @@ export function CommanderWidget() {
         tabIndex={0}
       >
         <CommanderHeaderRow
-          actions={actions}
+          actions={{
+            ...actions,
+            toggleRuntimeContext: () => {
+              setShowRuntimeContext((currentValue) => !currentValue)
+            },
+          }}
           commanderActions={commanderActions}
           onFocusRoot={focusCommanderRoot}
+          runtimeContext={runtimeContext}
           state={state}
+          showRuntimeContext={showRuntimeContext}
         />
+        {showRuntimeContext && runtimeContext ? (
+          <CommanderRuntimeContext runtimeContext={runtimeContext} />
+        ) : null}
         <Box runaComponent="commander-main" style={commanderMainStyle}>
           <CommanderPane controller={leftPaneController} />
           <CommanderPane controller={rightPaneController} />

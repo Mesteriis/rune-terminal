@@ -43,8 +43,11 @@ describe('resolveRuntimeContext', () => {
       vi.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
+          color_term: 'truecolor',
+          default_shell: '/bin/zsh',
           home_dir: '/Users/avm',
           repo_root: '/Users/avm/projects/runa-terminal',
+          term: 'xterm-256color',
         }),
       }),
     )
@@ -52,8 +55,11 @@ describe('resolveRuntimeContext', () => {
     await expect(resolveRuntimeContext()).resolves.toEqual({
       authToken: 'runtime-token',
       baseUrl: 'http://127.0.0.1:8090',
+      colorTerm: 'truecolor',
+      defaultShell: '/bin/zsh',
       homeDir: '/Users/avm',
       repoRoot: '/Users/avm/projects/runa-terminal',
+      term: 'xterm-256color',
     })
   })
 })

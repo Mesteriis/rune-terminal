@@ -31,8 +31,11 @@ describe('useRuntimeSettings', () => {
     vi.mocked(resolveRuntimeContext).mockResolvedValue({
       authToken: 'token',
       baseUrl: 'http://127.0.0.1:38092',
+      colorTerm: 'truecolor',
+      defaultShell: '/bin/zsh',
       homeDir: '/Users/avm',
       repoRoot: '/Users/avm/projects/Personal/tideterm/runa-terminal',
+      term: 'xterm-256color',
     })
     vi.mocked(requestRuntimeSettings).mockResolvedValue({
       watcher_mode: 'persistent',
@@ -48,8 +51,11 @@ describe('useRuntimeSettings', () => {
     expect(result.current.watcherMode).toBe('persistent')
     expect(result.current.runtimeContext).toMatchObject({
       baseUrl: 'http://127.0.0.1:38092',
+      colorTerm: 'truecolor',
+      defaultShell: '/bin/zsh',
       homeDir: '/Users/avm',
       repoRoot: '/Users/avm/projects/Personal/tideterm/runa-terminal',
+      term: 'xterm-256color',
     })
   })
 
@@ -58,8 +64,11 @@ describe('useRuntimeSettings', () => {
     vi.mocked(resolveRuntimeContext).mockResolvedValue({
       authToken: 'token',
       baseUrl: 'http://127.0.0.1:38092',
+      colorTerm: 'truecolor',
+      defaultShell: '/bin/zsh',
       homeDir: '/Users/avm',
       repoRoot: '/Users/avm/projects/Personal/tideterm/runa-terminal',
+      term: 'xterm-256color',
     })
     vi.mocked(requestRuntimeSettings)
       .mockResolvedValueOnce({
