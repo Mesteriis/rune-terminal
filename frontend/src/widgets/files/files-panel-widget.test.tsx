@@ -12,6 +12,13 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 
+function expectTextBefore(leftText: string, rightText: string) {
+  const leftNode = screen.getByText(leftText)
+  const rightNode = screen.getByText(rightText)
+
+  expect(leftNode.compareDocumentPosition(rightNode) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+}
+
 describe('FilesPanelWidget', () => {
   it('loads and renders a backend directory listing', async () => {
     vi.mocked(listFilesDirectory).mockResolvedValue({
@@ -20,14 +27,18 @@ describe('FilesPanelWidget', () => {
           id: '/repo::src',
           kind: 'directory',
           modified: '2026-04-25 20:00',
+          modifiedTime: 1_776_800_000,
           name: 'src',
+          sizeBytes: 0,
           sizeLabel: '',
         },
         {
           id: '/repo::README.md',
           kind: 'file',
           modified: '2026-04-25 20:01',
+          modifiedTime: 1_776_800_060,
           name: 'README.md',
+          sizeBytes: 2048,
           sizeLabel: '2.0 KB',
         },
       ],
@@ -63,7 +74,9 @@ describe('FilesPanelWidget', () => {
               id: '/repo/src::index.ts',
               kind: 'file',
               modified: '2026-04-25 20:02',
+              modifiedTime: 1_776_800_120,
               name: 'index.ts',
+              sizeBytes: 512,
               sizeLabel: '512 B',
             },
           ],
@@ -77,7 +90,9 @@ describe('FilesPanelWidget', () => {
             id: '/repo::src',
             kind: 'directory',
             modified: '2026-04-25 20:00',
+            modifiedTime: 1_776_800_000,
             name: 'src',
+            sizeBytes: 0,
             sizeLabel: '',
           },
         ],
@@ -111,14 +126,18 @@ describe('FilesPanelWidget', () => {
           id: '/repo::src',
           kind: 'directory',
           modified: '2026-04-25 20:00',
+          modifiedTime: 1_776_800_000,
           name: 'src',
+          sizeBytes: 0,
           sizeLabel: '',
         },
         {
           id: '/repo::package.json',
           kind: 'file',
           modified: '2026-04-25 20:03',
+          modifiedTime: 1_776_800_180,
           name: 'package.json',
+          sizeBytes: 1024,
           sizeLabel: '1.0 KB',
         },
       ],
@@ -153,7 +172,9 @@ describe('FilesPanelWidget', () => {
             id: '/repo::new-file.txt',
             kind: 'file',
             modified: '2026-04-25 20:04',
+            modifiedTime: 1_776_800_240,
             name: 'new-file.txt',
+            sizeBytes: 4,
             sizeLabel: '4 B',
           },
         ],
@@ -170,5 +191,63 @@ describe('FilesPanelWidget', () => {
       expect(listFilesDirectory).toHaveBeenCalledTimes(2)
       expect(screen.getByText('new-file.txt')).toBeInTheDocument()
     })
+  })
+
+  it('sorts the current listing by file metadata', async () => {
+    vi.mocked(listFilesDirectory).mockResolvedValue({
+      entries: [
+        {
+          id: '/repo::zeta',
+          kind: 'directory',
+          modified: '2026-04-25 20:00',
+          modifiedTime: 1_776_800_000,
+          name: 'zeta',
+          sizeBytes: 0,
+          sizeLabel: '',
+        },
+        {
+          id: '/repo::alpha',
+          kind: 'directory',
+          modified: '2026-04-25 20:01',
+          modifiedTime: 1_776_800_060,
+          name: 'alpha',
+          sizeBytes: 0,
+          sizeLabel: '',
+        },
+        {
+          id: '/repo::small.txt',
+          kind: 'file',
+          modified: '2026-04-25 20:02',
+          modifiedTime: 1_776_800_120,
+          name: 'small.txt',
+          sizeBytes: 10,
+          sizeLabel: '10 B',
+        },
+        {
+          id: '/repo::large.txt',
+          kind: 'file',
+          modified: '2026-04-25 20:03',
+          modifiedTime: 1_776_800_180,
+          name: 'large.txt',
+          sizeBytes: 200,
+          sizeLabel: '200 B',
+        },
+      ],
+      path: '/repo',
+    })
+
+    render(<FilesPanelWidget path="/repo" title="repo" />)
+
+    await screen.findByRole('button', { name: 'Open directory alpha' })
+
+    expectTextBefore('alpha', 'zeta')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sort files by size' }))
+
+    expectTextBefore('large.txt', 'small.txt')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sort files by size' }))
+
+    expectTextBefore('small.txt', 'large.txt')
   })
 })

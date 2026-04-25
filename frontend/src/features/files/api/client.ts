@@ -4,7 +4,9 @@ export type FilesDirectoryEntry = {
   id: string
   kind: 'directory' | 'file'
   modified: string
+  modifiedTime: number
   name: string
+  sizeBytes: number
   sizeLabel: string
 }
 
@@ -78,7 +80,9 @@ function toFilesEntry(path: string, node: FSNode): FilesDirectoryEntry {
     id: `${path}::${node.name}`,
     kind,
     modified: formatModifiedTime(node.modified_time),
+    modifiedTime: node.modified_time ?? 0,
     name: node.name,
+    sizeBytes: kind === 'file' ? (node.size ?? 0) : 0,
     sizeLabel: kind === 'file' ? formatBytes(node.size ?? 0) : '',
   }
 }

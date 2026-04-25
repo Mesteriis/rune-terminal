@@ -84,10 +84,43 @@ export const filesPanelListInnerStyle: CSSProperties = {
   padding: 'var(--space-xs)',
 }
 
+export const filesPanelListHeaderStyle: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: '56px minmax(0, 1fr) 88px 132px',
+  gap: 'var(--gap-sm)',
+  alignItems: 'center',
+  padding: '0 var(--space-sm) var(--space-xs)',
+  color: 'var(--color-text-muted)',
+  fontSize: 'var(--font-size-xs)',
+  lineHeight: 'var(--line-height-sm)',
+}
+
+export const filesPanelSortButtonStyle: CSSProperties = {
+  justifyContent: 'flex-start',
+  minHeight: '22px',
+  minWidth: 0,
+  padding: '1px 0',
+  border: 'none',
+  background: 'transparent',
+  color: 'var(--color-text-muted)',
+  fontSize: 'var(--font-size-xs)',
+  lineHeight: 'var(--line-height-sm)',
+  boxShadow: 'none',
+}
+
+export const filesPanelSortButtonActiveStyle: CSSProperties = {
+  color: 'var(--color-text-primary)',
+}
+
+export const filesPanelSortButtonEndAlignedStyle: CSSProperties = {
+  justifyContent: 'flex-end',
+  textAlign: 'right',
+}
+
 export function resolveFilesPanelRowStyle(isDirectory: boolean): CSSProperties {
   return {
     display: 'grid',
-    gridTemplateColumns: '32px minmax(0, 1fr) 88px 132px',
+    gridTemplateColumns: '56px minmax(0, 1fr) 88px 132px',
     gap: 'var(--gap-sm)',
     alignItems: 'center',
     padding: '5px var(--space-sm)',

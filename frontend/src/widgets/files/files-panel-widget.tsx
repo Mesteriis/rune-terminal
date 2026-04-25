@@ -13,11 +13,15 @@ import {
   filesPanelHeaderMetaStyle,
   filesPanelHeaderStyle,
   filesPanelListInnerStyle,
+  filesPanelListHeaderStyle,
   filesPanelListStyle,
   filesPanelParentButtonStyle,
   filesPanelPathStyle,
   filesPanelRootStyle,
   filesPanelRowNameStyle,
+  filesPanelSortButtonActiveStyle,
+  filesPanelSortButtonEndAlignedStyle,
+  filesPanelSortButtonStyle,
   filesPanelStateStyle,
   filesPanelTitleStyle,
   resolveFilesPanelRowStyle,
@@ -33,14 +37,77 @@ type FilesPanelLoadState =
   | { status: 'ready'; snapshot: FilesDirectorySnapshot; errorMessage: null }
   | { status: 'error'; snapshot: null; errorMessage: string }
 
+type FilesPanelSortMode = 'kind' | 'modified' | 'name' | 'size'
+type FilesPanelSortDirection = 'asc' | 'desc'
+
+type FilesPanelSortState = {
+  direction: FilesPanelSortDirection
+  mode: FilesPanelSortMode
+}
+
 function getEntryKindLabel(entry: FilesDirectoryEntry) {
   return entry.kind === 'directory' ? 'DIR' : 'FILE'
+}
+
+function getEntryKindRank(entry: FilesDirectoryEntry) {
+  return entry.kind === 'directory' ? 0 : 1
+}
+
+function getDefaultSortDirection(mode: FilesPanelSortMode): FilesPanelSortDirection {
+  return mode === 'modified' || mode === 'size' ? 'desc' : 'asc'
+}
+
+function renderSortLabel(label: string, mode: FilesPanelSortMode, sort: FilesPanelSortState) {
+  if (sort.mode !== mode) {
+    return label
+  }
+
+  return `${label} ${sort.direction.toUpperCase()}`
+}
+
+function sortFilesPanelEntries(entries: FilesDirectoryEntry[], sort: FilesPanelSortState) {
+  const sortedEntries = [...entries]
+
+  sortedEntries.sort((leftEntry, rightEntry) => {
+    const leftKindRank = getEntryKindRank(leftEntry)
+    const rightKindRank = getEntryKindRank(rightEntry)
+
+    if (sort.mode !== 'kind' && leftKindRank !== rightKindRank) {
+      return leftKindRank - rightKindRank
+    }
+
+    let compareResult = 0
+
+    if (sort.mode === 'kind') {
+      compareResult = leftKindRank - rightKindRank
+    }
+
+    if (sort.mode === 'modified' && compareResult === 0) {
+      compareResult = leftEntry.modifiedTime - rightEntry.modifiedTime
+    }
+
+    if (sort.mode === 'size' && compareResult === 0) {
+      compareResult = leftEntry.sizeBytes - rightEntry.sizeBytes
+    }
+
+    if (compareResult === 0) {
+      compareResult = leftEntry.name.localeCompare(rightEntry.name)
+    }
+
+    return sort.direction === 'desc' ? compareResult * -1 : compareResult
+  })
+
+  return sortedEntries
 }
 
 export function FilesPanelWidget({ path, title }: FilesPanelWidgetProps) {
   const [currentPath, setCurrentPath] = useState(path)
   const [filterValue, setFilterValue] = useState('')
   const [refreshNonce, setRefreshNonce] = useState(0)
+  const [sort, setSort] = useState<FilesPanelSortState>({
+    direction: 'asc',
+    mode: 'name',
+  })
   const [state, setState] = useState<FilesPanelLoadState>({
     errorMessage: null,
     snapshot: null,
@@ -111,6 +178,22 @@ export function FilesPanelWidget({ path, title }: FilesPanelWidgetProps) {
     }
   }
 
+  const handleSort = (mode: FilesPanelSortMode) => {
+    setSort((currentSort) => {
+      if (currentSort.mode !== mode) {
+        return {
+          direction: getDefaultSortDirection(mode),
+          mode,
+        }
+      }
+
+      return {
+        direction: currentSort.direction === 'asc' ? 'desc' : 'asc',
+        mode,
+      }
+    })
+  }
+
   const handleEntryKeyDown = (event: KeyboardEvent<HTMLDivElement>, entry: FilesDirectoryEntry) => {
     if (event.key !== 'Enter' && event.key !== ' ') {
       return
@@ -128,6 +211,7 @@ export function FilesPanelWidget({ path, title }: FilesPanelWidgetProps) {
       : state.status === 'ready'
         ? state.snapshot.entries
         : []
+  const sortedEntries = sortFilesPanelEntries(visibleEntries, sort)
 
   return (
     <Box runaComponent="files-panel-root" style={filesPanelRootStyle}>
@@ -181,6 +265,54 @@ export function FilesPanelWidget({ path, title }: FilesPanelWidgetProps) {
       </Box>
       <ScrollArea runaComponent="files-panel-list" style={filesPanelListStyle}>
         <Box runaComponent="files-panel-list-inner" style={filesPanelListInnerStyle}>
+          <Box runaComponent="files-panel-list-header" style={filesPanelListHeaderStyle}>
+            <Button
+              aria-label="Sort files by kind"
+              onClick={() => handleSort('kind')}
+              runaComponent="files-panel-sort-kind"
+              style={{
+                ...filesPanelSortButtonStyle,
+                ...(sort.mode === 'kind' ? filesPanelSortButtonActiveStyle : null),
+              }}
+            >
+              {renderSortLabel('Kind', 'kind', sort)}
+            </Button>
+            <Button
+              aria-label="Sort files by name"
+              onClick={() => handleSort('name')}
+              runaComponent="files-panel-sort-name"
+              style={{
+                ...filesPanelSortButtonStyle,
+                ...(sort.mode === 'name' ? filesPanelSortButtonActiveStyle : null),
+              }}
+            >
+              {renderSortLabel('Name', 'name', sort)}
+            </Button>
+            <Button
+              aria-label="Sort files by size"
+              onClick={() => handleSort('size')}
+              runaComponent="files-panel-sort-size"
+              style={{
+                ...filesPanelSortButtonStyle,
+                ...filesPanelSortButtonEndAlignedStyle,
+                ...(sort.mode === 'size' ? filesPanelSortButtonActiveStyle : null),
+              }}
+            >
+              {renderSortLabel('Size', 'size', sort)}
+            </Button>
+            <Button
+              aria-label="Sort files by modified time"
+              onClick={() => handleSort('modified')}
+              runaComponent="files-panel-sort-modified"
+              style={{
+                ...filesPanelSortButtonStyle,
+                ...filesPanelSortButtonEndAlignedStyle,
+                ...(sort.mode === 'modified' ? filesPanelSortButtonActiveStyle : null),
+              }}
+            >
+              {renderSortLabel('Modified', 'modified', sort)}
+            </Button>
+          </Box>
           {state.status === 'loading' ? (
             <Text runaComponent="files-panel-loading" style={filesPanelStateStyle}>
               Loading directory
@@ -202,7 +334,7 @@ export function FilesPanelWidget({ path, title }: FilesPanelWidgetProps) {
             </Text>
           ) : null}
           {state.status === 'ready'
-            ? visibleEntries.map((entry) => (
+            ? sortedEntries.map((entry) => (
                 <Box
                   aria-label={entry.kind === 'directory' ? `Open directory ${entry.name}` : undefined}
                   key={entry.id}
