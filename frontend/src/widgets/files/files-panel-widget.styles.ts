@@ -10,12 +10,25 @@ export const filesPanelRootStyle: CSSProperties = {
 
 export const filesPanelHeaderStyle: CSSProperties = {
   display: 'flex',
-  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'space-between',
   gap: 'var(--gap-xs)',
   padding: 'var(--space-sm) var(--space-md)',
   border: '1px solid var(--color-border-subtle)',
   borderRadius: 'var(--radius-md)',
   background: 'var(--color-surface-glass-soft)',
+}
+
+export const filesPanelHeaderMetaStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 'var(--gap-xs)',
+  minWidth: 0,
+  padding: 0,
+  border: 'none',
+  borderRadius: 0,
+  background: 'transparent',
+  boxShadow: 'none',
 }
 
 export const filesPanelTitleStyle: CSSProperties = {
@@ -27,6 +40,16 @@ export const filesPanelTitleStyle: CSSProperties = {
 
 export const filesPanelPathStyle: CSSProperties = {
   color: 'var(--color-text-muted)',
+  fontSize: 'var(--font-size-sm)',
+  lineHeight: 'var(--line-height-sm)',
+}
+
+export const filesPanelParentButtonStyle: CSSProperties = {
+  flex: '0 0 auto',
+  minHeight: '24px',
+  minWidth: 'auto',
+  padding: '2px var(--space-sm)',
+  color: 'var(--color-text-secondary)',
   fontSize: 'var(--font-size-sm)',
   lineHeight: 'var(--line-height-sm)',
 }
@@ -45,16 +68,19 @@ export const filesPanelListInnerStyle: CSSProperties = {
   padding: 'var(--space-xs)',
 }
 
-export const filesPanelRowStyle: CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: '32px minmax(0, 1fr) 88px 132px',
-  gap: 'var(--gap-sm)',
-  alignItems: 'center',
-  padding: '5px var(--space-sm)',
-  borderRadius: 'var(--radius-sm)',
-  color: 'var(--color-text-secondary)',
-  fontSize: 'var(--font-size-sm)',
-  lineHeight: 'var(--line-height-sm)',
+export function resolveFilesPanelRowStyle(isDirectory: boolean): CSSProperties {
+  return {
+    display: 'grid',
+    gridTemplateColumns: '32px minmax(0, 1fr) 88px 132px',
+    gap: 'var(--gap-sm)',
+    alignItems: 'center',
+    padding: '5px var(--space-sm)',
+    borderRadius: 'var(--radius-sm)',
+    color: isDirectory ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
+    cursor: isDirectory ? 'pointer' : 'default',
+    fontSize: 'var(--font-size-sm)',
+    lineHeight: 'var(--line-height-sm)',
+  }
 }
 
 export const filesPanelRowNameStyle: CSSProperties = {

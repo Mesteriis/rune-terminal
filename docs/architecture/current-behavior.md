@@ -22,7 +22,7 @@ It is intentionally operational, not narrative.
   existing `POST /api/v1/workspace/widgets/open-directory` path-handoff
   route, using the runtime `repo_root` as the initial directory. The frontend
   renders that widget as a narrow directory-list surface backed by
-  `GET /api/v1/fs/list`.
+  `GET /api/v1/fs/list`, with child-directory open and parent navigation.
 - Backend-owned non-terminal widgets can be closed through
   `DELETE /api/v1/workspace/widgets/{widgetID}`. The files panel close action
   uses that route before removing the Dockview panel, so the workspace

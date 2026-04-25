@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { listFilesDirectory } from '@/features/files/api/client'
@@ -52,5 +52,55 @@ describe('FilesPanelWidget', () => {
     render(<FilesPanelWidget path="/private" title="private" />)
 
     await expect(screen.findByText('policy denied')).resolves.toBeInTheDocument()
+  })
+
+  it('navigates into child directories and back to the parent path', async () => {
+    vi.mocked(listFilesDirectory).mockImplementation(async (path) => {
+      if (path === '/repo/src') {
+        return {
+          entries: [
+            {
+              id: '/repo/src::index.ts',
+              kind: 'file',
+              modified: '2026-04-25 20:02',
+              name: 'index.ts',
+              sizeLabel: '512 B',
+            },
+          ],
+          path,
+        }
+      }
+
+      return {
+        entries: [
+          {
+            id: '/repo::src',
+            kind: 'directory',
+            modified: '2026-04-25 20:00',
+            name: 'src',
+            sizeLabel: '',
+          },
+        ],
+        path: '/repo',
+      }
+    })
+
+    render(<FilesPanelWidget path="/repo" title="repo" />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Open directory src' }))
+
+    await waitFor(() => {
+      expect(listFilesDirectory).toHaveBeenCalledWith('/repo/src')
+      expect(screen.getByText('/repo/src')).toBeInTheDocument()
+      expect(screen.getByText('index.ts')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open parent directory' }))
+
+    await waitFor(() => {
+      expect(listFilesDirectory).toHaveBeenCalledWith('/repo')
+      expect(screen.getByText('/repo')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Open directory src' })).toBeInTheDocument()
+    })
   })
 })

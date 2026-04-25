@@ -27,6 +27,8 @@
       with non-creatable widget kinds disabled from backend catalog truth
     - closing a backend-owned files widget from the Dockview header removes
       the backend widget record and collapses the runtime workspace layout
+    - files widget directory navigation for opening a child directory and
+      returning to the parent path
     - settings modal open/close from shell chrome
     - the settings shell now renders as a tighter navigator/editor surface with a dedicated sidebar header and one framed content pane for the active section, while preserving the existing `General / AI / Terminal / Commander` structure
     - the `General` section now reads real runtime bootstrap metadata and exposes the desktop `watcher_mode` lifecycle setting; in the split browser dev loop this control degrades to a visible read-only fallback instead of pretending browser mode can persist desktop settings
@@ -170,6 +172,8 @@
 - `./scripts/go.sh test ./core/workspace ./core/transport/httpapi`
 - `(cd frontend && npm exec prettier -- --write src/shared/api/workspace.ts src/shared/api/workspace.test.ts src/widgets/terminal/terminal-dockview-header-actions-widget.tsx src/widgets/terminal/terminal-dockview-header-actions-widget.test.tsx)`
 - `npm --prefix frontend run test -- src/shared/api/workspace.test.ts src/widgets/terminal/terminal-dockview-header-actions-widget.test.tsx`
+- `(cd frontend && npm exec prettier -- --write src/widgets/files/files-panel-widget.tsx src/widgets/files/files-panel-widget.test.tsx src/widgets/files/files-panel-widget.styles.ts)`
+- `npm --prefix frontend run test -- src/widgets/files/files-panel-widget.test.tsx`
 - `npm --prefix frontend run build`
 - `npm run test:ui -- --reporter=line e2e/shell-workspace.spec.ts`
 - `npm run validate`
@@ -264,7 +268,8 @@
   showing frontend-local and planned kinds as disabled.
 - Targeted files-widget validation covers the frontend open-directory
   workspace API client, the dedicated files directory-list client, files panel
-  params, files panel rendering, and right-rail repo-root path handoff.
+  params, files panel rendering, right-rail repo-root path handoff, and basic
+  child/parent directory navigation.
 - Targeted close-widget validation covers `core/workspace.CloseWidget`,
   `DELETE /api/v1/workspace/widgets/{widgetID}`, the frontend
   `closeWorkspaceWidget()` client, and the Dockview header close path for
@@ -273,6 +278,7 @@
   `e2e/shell-workspace.spec.ts`: `Create Terminal widget` remains enabled and
   still increases the backend tab count, `Create Files widget` opens the
   runtime `repo_root` directory panel and increases backend widget count,
+  files navigation opens `repo_root/frontend` and returns to `repo_root`,
   closing that files panel decreases the backend widget count again, while
   `Commander`, `Preview`, `Editor`, and `Web Placeholder` menu entries are
   asserted disabled with their catalog-derived reason labels.
