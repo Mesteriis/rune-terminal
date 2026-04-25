@@ -1,7 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { resetRuntimeContextCacheForTests } from '@/shared/api/runtime'
-import { WorkspaceAPIError, fetchWorkspaceSnapshot } from '@/shared/api/workspace'
+import {
+  WorkspaceAPIError,
+  fetchWorkspaceSnapshot,
+  fetchWorkspaceWidgetKindCatalog,
+} from '@/shared/api/workspace'
 
 describe('fetchWorkspaceSnapshot', () => {
   afterEach(() => {
@@ -98,6 +102,122 @@ describe('fetchWorkspaceSnapshot', () => {
         message: 'workspace unavailable',
         name: 'WorkspaceAPIError',
         status: 500,
+      }),
+    )
+  })
+})
+
+describe('fetchWorkspaceWidgetKindCatalog', () => {
+  afterEach(() => {
+    resetRuntimeContextCacheForTests()
+    vi.restoreAllMocks()
+    vi.unstubAllEnvs()
+  })
+
+  it('loads the backend-owned widget kind catalog through the runtime transport', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          widget_kinds: [
+            {
+              kind: 'terminal',
+              label: 'Terminal',
+              description: 'Backend-owned terminal',
+              status: 'available',
+              runtime_owned: true,
+              can_create: true,
+              supports_connections: true,
+              supports_path: false,
+              default_title: 'Terminal',
+              create_route: '/api/v1/workspace/tabs',
+            },
+            {
+              kind: 'commander',
+              label: 'Commander',
+              description: 'Frontend-local commander',
+              status: 'frontend-local',
+              runtime_owned: false,
+              can_create: false,
+              supports_connections: false,
+              supports_path: false,
+              default_title: 'Commander',
+              notes: 'not backend-owned yet',
+            },
+          ],
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(fetchWorkspaceWidgetKindCatalog()).resolves.toEqual([
+      {
+        kind: 'terminal',
+        label: 'Terminal',
+        description: 'Backend-owned terminal',
+        status: 'available',
+        runtime_owned: true,
+        can_create: true,
+        supports_connections: true,
+        supports_path: false,
+        default_title: 'Terminal',
+        create_route: '/api/v1/workspace/tabs',
+      },
+      {
+        kind: 'commander',
+        label: 'Commander',
+        description: 'Frontend-local commander',
+        status: 'frontend-local',
+        runtime_owned: false,
+        can_create: false,
+        supports_connections: false,
+        supports_path: false,
+        default_title: 'Commander',
+        notes: 'not backend-owned yet',
+      },
+    ])
+    expect(fetchMock.mock.calls[1]?.[0]).toBe('http://127.0.0.1:8090/api/v1/workspace/widget-kinds')
+  })
+
+  it('surfaces typed widget catalog errors', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+        json: async () => ({
+          error: {
+            code: 'catalog_unavailable',
+            message: 'catalog unavailable',
+          },
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(fetchWorkspaceWidgetKindCatalog()).rejects.toEqual(
+      expect.objectContaining<Partial<WorkspaceAPIError>>({
+        code: 'catalog_unavailable',
+        message: 'catalog unavailable',
+        name: 'WorkspaceAPIError',
+        status: 503,
       }),
     )
   })

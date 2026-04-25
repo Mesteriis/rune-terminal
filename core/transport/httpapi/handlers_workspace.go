@@ -21,6 +21,12 @@ func (api *API) handleWorkspaceThemes(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (api *API) handleWorkspaceWidgetKinds(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{
+		"widget_kinds": workspace.WidgetKindCatalog(),
+	})
+}
+
 func (api *API) handleCreateWorkspace(w http.ResponseWriter, r *http.Request) {
 	snapshot, err := api.runtime.CreateWorkspace(r.Context())
 	if err != nil {

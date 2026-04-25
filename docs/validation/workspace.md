@@ -5,6 +5,15 @@
 - Date: `2026-04-25`
 - State: `VERIFIED`
 - Scope:
+  - backend widget-kind catalog contract now exists at
+    `GET /api/v1/workspace/widget-kinds`, with `terminal` and `files`
+    exposed as available backend-owned kinds, `commander` exposed as
+    `frontend-local`, and `preview` / `editor` / `web` exposed as
+    planned kinds instead of being overclaimed as active runtime surfaces
+  - the frontend shared workspace API now has a typed
+    `fetchWorkspaceWidgetKindCatalog()` client for that backend contract,
+    but the Dockview workspace shell has not yet migrated its panel seed or
+    persistence path to consume this catalog
   - serialized Playwright coverage now exercises the active shell/user paths over the split local dev runtime:
     - workspace tab switching and workspace creation
     - the shell topbar now renders workspace tabs and the add-workspace affordance as one compact grouped strip, so workspace switching and creation read as a single control cluster instead of separate header controls
@@ -138,6 +147,10 @@
 
 ## Commands/tests used
 
+- `gofmt -w core/workspace/types.go core/workspace/widget_catalog.go core/workspace/widget_catalog_test.go core/transport/httpapi/api.go core/transport/httpapi/handlers_workspace.go core/transport/httpapi/handlers_workspace_test.go`
+- `(cd frontend && npm exec prettier -- --write src/shared/api/workspace.ts src/shared/api/workspace.test.ts)`
+- `./scripts/go.sh test ./core/workspace ./core/transport/httpapi`
+- `npm --prefix frontend run test -- src/shared/api/workspace.test.ts`
 - `npm --prefix frontend run build`
 - `npm --prefix frontend run lint:active`
 - `npm run validate`
@@ -185,6 +198,9 @@
 - This validation does not claim literal 100% user-path coverage. It covers the active shell/chat/commander/terminal routes listed above, but not every dormant or future branch in the product surface.
 - Terminal frontend-backend integration now has its own current source of truth in `docs/validation/terminal.md`; this workspace entry should not be read as the latest terminal runtime status.
 - The active commander read/write path is backend-backed in this repo. What is still out of scope here are approvals, remote/cross-widget orchestration, and broader parity-only feature breadth.
+- The widget-kind catalog slice is contract-only. It does not claim a
+  Dockview migration, new widget creation UI, rich preview/editor/web
+  rendering, or a browser e2e proof for catalog consumption yet.
 - Commander persistence and some historical interaction notes below still describe earlier frontend-only slices. The current browser-verified source of truth for the active commander path is the Playwright evidence recorded later in this file.
 - The root cause in the previous commander-color pass was inline commander CSS variables on the widget root, which prevented the inactive Dockview override from winning. That inline override is now removed, and a fresh browser-level active vs inactive comparison is recorded in this entry.
 - The broader non-AI widget inactive-tone pass in this slice is validated by source inspection plus type-check/build only. A fresh browser-level comparison of terminal active vs inactive color states is not claimed here.
@@ -215,6 +231,9 @@
 ## Evidence
 
 - Initial panel set rendered as `terminal-header`, `terminal`, and `tool`.
+- Targeted workspace catalog validation covers `core/workspace`, the
+  `GET /api/v1/workspace/widget-kinds` transport response, and the frontend
+  workspace API client normalization/error path.
 - Static validation confirmed the frontend dependency upgrade to `react@19.2.5`, `react-dom@19.2.5`, `@types/react@19.2.14`, and `@types/react-dom@19.2.3`, and `npm --prefix frontend run lint:active` plus `npm --prefix frontend run build` both passed on that stack.
 - Static validation confirmed the terminal renderer slice dependencies `@xterm/xterm@6.0.0` and `@xterm/addon-fit@0.11.0`, plus the new UI-layer chain `TerminalViewport -> TerminalStatusHeader/TerminalSurface -> TerminalWidget`.
 - Static validation confirmed terminal panel params now act as the local source of truth for terminal title/session metadata, so both the body widget and the custom Dockview tab renderer reuse the same terminal panel config.

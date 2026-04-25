@@ -10,6 +10,22 @@ export type WorkspaceWidgetSnapshot = {
   path?: string
 }
 
+export type WorkspaceWidgetKindStatus = 'available' | 'frontend-local' | 'planned'
+
+export type WorkspaceWidgetKindCatalogEntry = {
+  kind: string
+  label: string
+  description: string
+  status: WorkspaceWidgetKindStatus
+  runtime_owned: boolean
+  can_create: boolean
+  supports_connections: boolean
+  supports_path: boolean
+  default_title: string
+  create_route?: string
+  notes?: string
+}
+
 export type WorkspaceSnapshot = {
   id: string
   name: string
@@ -61,4 +77,32 @@ export async function fetchWorkspaceSnapshot() {
   }
 
   return (await response.json()) as WorkspaceSnapshot
+}
+
+export async function fetchWorkspaceWidgetKindCatalog() {
+  const runtimeContext = await resolveRuntimeContext()
+  const response = await fetch(`${runtimeContext.baseUrl}/api/v1/workspace/widget-kinds`, {
+    headers: {
+      Authorization: `Bearer ${runtimeContext.authToken}`,
+    },
+  })
+
+  if (!response.ok) {
+    let errorPayload: APIErrorEnvelope | null = null
+
+    try {
+      errorPayload = (await response.json()) as APIErrorEnvelope
+    } catch {
+      errorPayload = null
+    }
+
+    throw new WorkspaceAPIError(
+      response.status,
+      errorPayload?.error?.code ?? 'workspace_widget_catalog_request_failed',
+      errorPayload?.error?.message ?? `Workspace widget catalog request failed (${response.status})`,
+    )
+  }
+
+  const payload = (await response.json()) as { widget_kinds?: WorkspaceWidgetKindCatalogEntry[] }
+  return Array.isArray(payload.widget_kinds) ? payload.widget_kinds : []
 }

@@ -1,6 +1,6 @@
 # Workspace Model
 
-Date: `2026-04-17`
+Date: `2026-04-25`
 Phase: stability hardening
 
 ## What this document is
@@ -14,6 +14,9 @@ This is the canonical workspace entrypoint for tab/widget/layout behavior.
 - Widgets are runtime binding units (terminal/session/connection context).
 - Active tab and active widget are explicit and synchronized.
 - Tab layout is backend-owned (`window_layout` tree with `leaf` and `split` nodes).
+- Widget-kind discovery is backend-owned through
+  `GET /api/v1/workspace/widget-kinds`; the catalog intentionally separates
+  available backend-owned kinds from frontend-local and planned kinds.
 
 ## Active capabilities
 
@@ -22,6 +25,9 @@ This is the canonical workspace entrypoint for tab/widget/layout behavior.
 - Move widgets by explicit split direction (`left`, `right`, `top`, `bottom`, outer zones, `center` swap).
 - Persist and restore layout composition presets (`split`/`focus`, active surfaces, focus surface).
 - Keep widget `connection_id` binding stable across tab/layout operations.
+- Expose the current widget-kind catalog with honest implementation status:
+  `terminal` and `files` are available, `commander` is frontend-local, and
+  `preview` / `editor` / `web` are planned.
 
 ## Contract rules
 
@@ -32,9 +38,11 @@ This is the canonical workspace entrypoint for tab/widget/layout behavior.
 
 ## Current limits
 
-- Last remaining tab cannot be closed.
+- Closing the last remaining tab leaves an explicit empty workspace state.
 - Cross-group drag between pinned and regular tabs is rejected.
 - Multi-session-in-one-terminal-block parity is not implemented on the active path.
+- Dockview still does not consume the backend widget-kind catalog as its
+  source of truth; that migration is the next workspace slice.
 
 ## Deep links
 

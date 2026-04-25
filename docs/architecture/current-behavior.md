@@ -8,6 +8,12 @@ It is intentionally operational, not narrative.
 - The workspace now owns both `tabs` and `widgets`.
 - There is exactly one active tab and one active widget.
 - Tabs can now contain multiple widgets via backend-owned `window_layout` trees (`leaf` / `split`).
+- The backend now exposes a widget-kind catalog at
+  `GET /api/v1/workspace/widget-kinds` so frontend discovery can read
+  widget status from core truth instead of inventing kind metadata locally:
+  - `terminal` and `files` are backend-owned available kinds
+  - `commander` is explicitly marked `frontend-local`
+  - `preview`, `editor`, and `web` are explicitly marked `planned`
 - Focusing a tab synchronizes the active widget to the first visible leaf in that tab's window layout.
 - Focusing a widget also synchronizes the active tab if that widget belongs to a known tab.
 - Tabs are the shell-level navigation unit.

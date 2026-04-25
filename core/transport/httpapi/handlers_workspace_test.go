@@ -71,6 +71,50 @@ func TestWorkspaceFocusTabBypassesRestrictiveMode(t *testing.T) {
 	}
 }
 
+func TestWorkspaceWidgetKindsCatalog(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodGet, "/api/v1/workspace/widget-kinds", nil))
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d (%s)", recorder.Code, recorder.Body.String())
+	}
+
+	var response struct {
+		WidgetKinds []struct {
+			Kind         string `json:"kind"`
+			Status       string `json:"status"`
+			RuntimeOwned bool   `json:"runtime_owned"`
+			CanCreate    bool   `json:"can_create"`
+			CreateRoute  string `json:"create_route"`
+		} `json:"widget_kinds"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatalf("Unmarshal error: %v", err)
+	}
+	if len(response.WidgetKinds) != 6 {
+		t.Fatalf("expected 6 widget kinds, got %#v", response.WidgetKinds)
+	}
+	if response.WidgetKinds[0].Kind != "terminal" || response.WidgetKinds[0].Status != "available" {
+		t.Fatalf("expected terminal to be first available widget kind: %#v", response.WidgetKinds)
+	}
+	if !response.WidgetKinds[0].RuntimeOwned || !response.WidgetKinds[0].CanCreate {
+		t.Fatalf("expected terminal to be backend-owned and creatable: %#v", response.WidgetKinds[0])
+	}
+	if response.WidgetKinds[0].CreateRoute != "/api/v1/workspace/tabs" {
+		t.Fatalf("unexpected terminal create route: %#v", response.WidgetKinds[0])
+	}
+	if response.WidgetKinds[2].Kind != "commander" || response.WidgetKinds[2].Status != "frontend-local" {
+		t.Fatalf("expected commander to be explicitly frontend-local: %#v", response.WidgetKinds)
+	}
+	if response.WidgetKinds[2].RuntimeOwned || response.WidgetKinds[2].CanCreate {
+		t.Fatalf("commander must not be overclaimed as backend-owned yet: %#v", response.WidgetKinds[2])
+	}
+}
+
 func TestWorkspaceCloseLastTabReturnsEmptyWorkspace(t *testing.T) {
 	t.Parallel()
 
@@ -91,10 +135,14 @@ func TestWorkspaceCloseLastTabReturnsEmptyWorkspace(t *testing.T) {
 	var response struct {
 		ClosedTabID string `json:"closed_tab_id"`
 		Workspace   struct {
-			Tabs           []struct{ ID string `json:"id"` } `json:"tabs"`
-			Widgets        []struct{ ID string `json:"id"` } `json:"widgets"`
-			ActiveTabID    string                          `json:"active_tab_id"`
-			ActiveWidgetID string                          `json:"active_widget_id"`
+			Tabs []struct {
+				ID string `json:"id"`
+			} `json:"tabs"`
+			Widgets []struct {
+				ID string `json:"id"`
+			} `json:"widgets"`
+			ActiveTabID    string `json:"active_tab_id"`
+			ActiveWidgetID string `json:"active_widget_id"`
 		} `json:"workspace"`
 	}
 	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {

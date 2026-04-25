@@ -4,6 +4,10 @@ type WidgetKind string
 
 const WidgetKindTerminal WidgetKind = "terminal"
 const WidgetKindFiles WidgetKind = "files"
+const WidgetKindCommander WidgetKind = "commander"
+const WidgetKindPreview WidgetKind = "preview"
+const WidgetKindEditor WidgetKind = "editor"
+const WidgetKindWeb WidgetKind = "web"
 
 type Widget struct {
 	ID           string     `json:"id"`

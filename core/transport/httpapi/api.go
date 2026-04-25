@@ -22,6 +22,7 @@ func NewHandler(runtime *app.Runtime, authToken string) http.Handler {
 	mux.HandleFunc("GET /api/v1/workspace", api.handleWorkspace)
 	mux.HandleFunc("GET /api/v1/workspaces", api.handleListWorkspaces)
 	mux.HandleFunc("GET /api/v1/workspaces/themes", api.handleWorkspaceThemes)
+	mux.HandleFunc("GET /api/v1/workspace/widget-kinds", api.handleWorkspaceWidgetKinds)
 	mux.HandleFunc("POST /api/v1/workspaces", api.handleCreateWorkspace)
 	mux.HandleFunc("PATCH /api/v1/workspaces/{workspaceID}", api.handleUpdateWorkspaceMetadata)
 	mux.HandleFunc("DELETE /api/v1/workspaces/{workspaceID}", api.handleDeleteWorkspace)
