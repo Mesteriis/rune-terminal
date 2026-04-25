@@ -8,6 +8,7 @@
   - DB-backed AI conversations with explicit create/switch/rename/archive/restore/delete lifecycle
   - provider-native CLI session continuity scoped per conversation
   - shell-visible AI conversation navigator with recent-thread menu over the same backend conversation contract
+  - conversation lifecycle mutations (`archive / restore / delete`) now resynchronize the navigator to the default unfiltered `Recent` view instead of leaving `counts` and visible rows on mismatched scopes
   - pinned active-thread summary block inside the AI conversation navigator
   - shell-visible AI conversation navigator scope controls for `Open / Archived / All` thread views over the backend conversation list route
   - backend-backed search/filter inside the AI conversation navigator through explicit `query` / `scope` list params
@@ -89,6 +90,7 @@
   - `Open threads` for active/unarchived conversations
   - `Archived threads` for archived conversations
   - `All` to inspect both groups together
+- After row-level lifecycle mutations from the navigator, the controller now resets scope/search back to the default `Recent` view before refetching the visible list. This keeps the returned `counts` and rendered rows consistent after restoring an archived non-active thread or deleting from a filtered view.
 - Scope and search are now controller-owned request state:
   - the AI shell sends `GET /api/v1/agent/conversations?scope=...&query=...`
   - the navigator projects the returned `counts` plus filtered list
@@ -153,6 +155,7 @@
 - `npm run test:ui -- --reporter=line --grep "keyboard navigation through filtered thread options" e2e/ai.spec.ts`
 - `npm --prefix frontend run test -- src/widgets/ai/ai-panel-widget.test.tsx src/widgets/ai/ai-panel-header-widget.test.tsx src/widgets/ai/ai-composer-widget.test.tsx`
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts`
+- `npx playwright test -c e2e/playwright.config.ts --reporter=line e2e/ai.spec.ts -g "archives and restores a non-active thread from row actions"`
 - `npm run tauri:dev`
 - `curl -sS http://192.168.1.8:8317/v1/models`
 - `curl -sS http://192.168.1.8:8317/v1/chat/completions -H 'Content-Type: application/json' -d '{"model":"gpt-5.4","messages":[{"role":"user","content":"Reply with exactly this token and nothing else: endpoint-ok-1777"}]}'`

@@ -166,7 +166,6 @@ export function AppAiSidebar({ isOpen, contentAreaRef }: AppAiSidebarProps) {
                       conversationSearchQuery={agentPanel.conversationSearchQuery}
                       conversations={agentPanel.conversations}
                       isConversationBusy={
-                        agentPanel.isConversationListPending ||
                         agentPanel.isConversationPending ||
                         agentPanel.isSubmitting ||
                         agentPanel.isInteractionPending

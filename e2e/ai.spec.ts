@@ -280,8 +280,8 @@ test('AI conversation navigator deletes the active thread and promotes the next 
   await page.getByRole('button', { name: 'Toggle AI panel' }).click()
   const conversationMenuButton = page.getByRole('button', { name: 'Conversation menu' })
   await conversationMenuButton.click()
-  await page.getByRole('button', { name: 'Delete conversation' }).click()
-  await expect(page.getByText('Delete active conversation')).toBeVisible()
+  await page.getByRole('button', { name: 'Delete conversation', exact: true }).click()
+  await expect(page.getByText('Delete conversation')).toBeVisible()
   await page.getByRole('button', { name: 'Confirm delete conversation' }).click()
 
   await expect
@@ -311,7 +311,7 @@ test('AI conversation navigator deletes the active thread and promotes the next 
   ).toHaveCount(0)
 })
 
-test('AI conversation navigator archives the active thread and restores it from the archived group', async ({
+test('AI conversation navigator archives and restores a non-active thread from row actions', async ({
   page,
   request,
 }) => {
@@ -319,10 +319,10 @@ test('AI conversation navigator archives the active thread and restores it from 
 
   const keepConversation = await createConversationViaApi(request)
   await renameConversationViaApi(request, keepConversation.id, 'Keep in recent')
+  await activateAgentConversation(request, keepConversation.id)
 
   const archiveConversation = await createConversationViaApi(request)
   await renameConversationViaApi(request, archiveConversation.id, 'Archive from UI')
-  await activateAgentConversation(request, archiveConversation.id)
 
   await clearBrowserState(page)
   await page.goto('/')
@@ -330,7 +330,7 @@ test('AI conversation navigator archives the active thread and restores it from 
   await page.getByRole('button', { name: 'Toggle AI panel' }).click()
   const conversationMenuButton = page.getByRole('button', { name: 'Conversation menu' })
   await conversationMenuButton.click()
-  await page.getByRole('button', { name: 'Archive conversation' }).click()
+  await page.getByRole('button', { name: 'Archive conversation Archive from UI' }).click()
 
   await expect
     .poll(async () => {
@@ -351,16 +351,7 @@ test('AI conversation navigator archives the active thread and restores it from 
   await conversationMenuButton.click()
   await page.getByRole('button', { name: 'Show archived conversations' }).click()
   await expect(page.getByText('Archived threads')).toBeVisible()
-  await page
-    .getByRole('option', {
-      name: 'Open conversation Archive from UI',
-    })
-    .click()
-  await expect(conversationMenuButton).toContainText('Archive from UI')
-
-  await conversationMenuButton.click()
-  await expect(page.getByRole('button', { name: 'Restore conversation' })).toBeEnabled()
-  await page.getByRole('button', { name: 'Restore conversation' }).click()
+  await page.getByRole('button', { name: 'Restore conversation Archive from UI' }).click()
 
   await expect
     .poll(async () => {

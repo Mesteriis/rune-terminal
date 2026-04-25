@@ -109,10 +109,121 @@ describe('AiPanelHeaderWidget', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Conversation menu' }))
     fireEvent.click(screen.getByRole('button', { name: 'Delete conversation' }))
-    expect(screen.getByText('Delete active conversation')).toBeInTheDocument()
+    expect(screen.getByText('Delete conversation')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Confirm delete conversation' }))
 
     expect(onDeleteConversation).toHaveBeenCalledWith('conv_2')
+  })
+
+  it('routes row-level archive actions for non-active recent conversations', () => {
+    const onArchiveConversation = vi.fn()
+
+    render(
+      <AiPanelHeaderWidget
+        activeConversationID="conv_2"
+        conversations={[
+          {
+            id: 'conv_1',
+            title: 'Earlier thread',
+            created_at: '2026-04-24T09:00:00Z',
+            updated_at: '2026-04-24T09:05:00Z',
+            message_count: 2,
+          },
+          {
+            id: 'conv_2',
+            title: 'Current thread',
+            created_at: '2026-04-24T10:00:00Z',
+            updated_at: '2026-04-24T10:01:00Z',
+            message_count: 1,
+          },
+        ]}
+        mode="chat"
+        onArchiveConversation={onArchiveConversation}
+        onModeChange={() => {}}
+        title="AI Rune"
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Conversation menu' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Archive conversation Earlier thread' }))
+
+    expect(onArchiveConversation).toHaveBeenCalledWith('conv_1')
+  })
+
+  it('routes row-level restore actions for archived conversations', () => {
+    const onRestoreConversation = vi.fn()
+
+    render(
+      <AiPanelHeaderWidget
+        activeConversationID="conv_2"
+        conversations={[
+          {
+            id: 'conv_1',
+            title: 'Archived thread',
+            created_at: '2026-04-24T09:00:00Z',
+            updated_at: '2026-04-24T09:05:00Z',
+            archived_at: '2026-04-24T09:06:00Z',
+            message_count: 2,
+          },
+          {
+            id: 'conv_2',
+            title: 'Current thread',
+            created_at: '2026-04-24T10:00:00Z',
+            updated_at: '2026-04-24T10:01:00Z',
+            message_count: 1,
+          },
+        ]}
+        mode="chat"
+        onModeChange={() => {}}
+        onRestoreConversation={onRestoreConversation}
+        title="AI Rune"
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Conversation menu' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Show archived conversations' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Restore conversation Archived thread' }))
+
+    expect(onRestoreConversation).toHaveBeenCalledWith('conv_1')
+  })
+
+  it('routes row-level delete actions through the shared confirmation panel', () => {
+    const onDeleteConversation = vi.fn()
+
+    render(
+      <AiPanelHeaderWidget
+        activeConversationID="conv_2"
+        conversations={[
+          {
+            id: 'conv_1',
+            title: 'Earlier thread',
+            created_at: '2026-04-24T09:00:00Z',
+            updated_at: '2026-04-24T09:05:00Z',
+            message_count: 2,
+          },
+          {
+            id: 'conv_2',
+            title: 'Current thread',
+            created_at: '2026-04-24T10:00:00Z',
+            updated_at: '2026-04-24T10:01:00Z',
+            message_count: 1,
+          },
+        ]}
+        mode="chat"
+        onDeleteConversation={onDeleteConversation}
+        onModeChange={() => {}}
+        title="AI Rune"
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Conversation menu' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Delete conversation Earlier thread' }))
+    const deletePanel = screen.getByText('Delete conversation').closest('div')
+    expect(deletePanel).not.toBeNull()
+    expect(within(deletePanel as HTMLElement).getByText('Earlier thread')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm delete conversation' }))
+
+    expect(onDeleteConversation).toHaveBeenCalledWith('conv_1')
   })
 
   it('routes active conversation archive through the header controls and groups archived threads', () => {
@@ -479,6 +590,27 @@ describe('AiPanelHeaderWidget', () => {
     )
 
     expect(screen.getByRole('button', { name: 'Conversation menu' })).toBeDisabled()
+  })
+
+  it('keeps the conversation navigator trigger enabled when the active conversation is present but the list is empty', () => {
+    render(
+      <AiPanelHeaderWidget
+        activeConversation={{
+          id: 'conv_2',
+          title: 'Pinned thread',
+          created_at: '2026-04-24T10:00:00Z',
+          updated_at: '2026-04-24T10:01:00Z',
+          message_count: 1,
+        }}
+        activeConversationID="conv_2"
+        conversations={[]}
+        mode="chat"
+        onModeChange={() => {}}
+        title="AI Rune"
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Conversation menu' })).toBeEnabled()
   })
 
   it('opens the conversation navigator from the trigger with keyboard controls', async () => {

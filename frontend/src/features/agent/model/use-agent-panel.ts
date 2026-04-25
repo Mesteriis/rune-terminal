@@ -807,6 +807,11 @@ export function useAgentPanel(hostId: string, enabled = true) {
     [applyConversationSnapshot, isConversationPending, isSubmitting, refreshConversationList],
   )
 
+  const resetConversationNavigatorFilters = useCallback(() => {
+    setConversationSearchQuery('')
+    setConversationScope('recent')
+  }, [])
+
   const deleteConversation = useCallback(
     async (conversationID: string) => {
       const nextConversationID = conversationID.trim()
@@ -822,11 +827,12 @@ export function useAgentPanel(hostId: string, enabled = true) {
 
       try {
         await deleteAgentConversation(nextConversationID)
+        resetConversationNavigatorFilters()
         const [snapshot, conversationList] = await Promise.all([
           fetchAgentConversation(),
           fetchAgentConversations({
-            query: conversationSearchQuery,
-            scope: conversationScope,
+            query: '',
+            scope: 'recent',
           }),
         ])
         if (panelStateEpochRef.current !== panelStateEpoch) {
@@ -846,10 +852,9 @@ export function useAgentPanel(hostId: string, enabled = true) {
     [
       applyConversationSnapshot,
       beginPanelStateEpoch,
-      conversationScope,
-      conversationSearchQuery,
       isConversationPending,
       isSubmitting,
+      resetConversationNavigatorFilters,
       resetConversationInteractionState,
     ],
   )
@@ -868,13 +873,23 @@ export function useAgentPanel(hostId: string, enabled = true) {
       setIsConversationPending(true)
 
       try {
-        const snapshot = await archiveAgentConversation(nextConversationID)
+        await archiveAgentConversation(nextConversationID)
+        resetConversationNavigatorFilters()
+        const [snapshot, conversationList] = await Promise.all([
+          fetchAgentConversation(),
+          fetchAgentConversations({
+            query: '',
+            scope: 'recent',
+          }),
+        ])
         if (panelStateEpochRef.current !== panelStateEpoch) {
           return
         }
         applyConversationSnapshot(snapshot)
         resetConversationInteractionState()
-        await refreshConversationList()
+        setConversations(sortConversationSummaries(conversationList.conversations))
+        setConversationCounts(conversationList.counts)
+        setActiveConversationID(conversationList.active_conversation_id || snapshot.id)
       } catch (error) {
         setSubmitError(getErrorMessage(error, 'Unable to archive the conversation.'))
       } finally {
@@ -886,7 +901,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
       beginPanelStateEpoch,
       isConversationPending,
       isSubmitting,
-      refreshConversationList,
+      resetConversationNavigatorFilters,
       resetConversationInteractionState,
     ],
   )
@@ -905,13 +920,23 @@ export function useAgentPanel(hostId: string, enabled = true) {
       setIsConversationPending(true)
 
       try {
-        const snapshot = await restoreAgentConversation(nextConversationID)
+        await restoreAgentConversation(nextConversationID)
+        resetConversationNavigatorFilters()
+        const [snapshot, conversationList] = await Promise.all([
+          fetchAgentConversation(),
+          fetchAgentConversations({
+            query: '',
+            scope: 'recent',
+          }),
+        ])
         if (panelStateEpochRef.current !== panelStateEpoch) {
           return
         }
         applyConversationSnapshot(snapshot)
         resetConversationInteractionState()
-        await refreshConversationList()
+        setConversations(sortConversationSummaries(conversationList.conversations))
+        setConversationCounts(conversationList.counts)
+        setActiveConversationID(conversationList.active_conversation_id || snapshot.id)
       } catch (error) {
         setSubmitError(getErrorMessage(error, 'Unable to restore the conversation.'))
       } finally {
@@ -923,7 +948,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
       beginPanelStateEpoch,
       isConversationPending,
       isSubmitting,
-      refreshConversationList,
+      resetConversationNavigatorFilters,
       resetConversationInteractionState,
     ],
   )

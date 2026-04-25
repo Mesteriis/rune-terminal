@@ -41,6 +41,10 @@ import {
   aiHeaderConversationMenuOptionActiveStyle,
   aiHeaderConversationMenuOptionHighlightedStyle,
   aiHeaderConversationMenuOptionLeadingStyle,
+  aiHeaderConversationMenuOptionSelectStyle,
+  aiHeaderConversationMenuRowActionStyle,
+  aiHeaderConversationMenuRowActionsStyle,
+  aiHeaderConversationMenuRowStyle,
   aiHeaderConversationMenuOptionStyle,
   aiHeaderConversationMenuSectionStyle,
   aiHeaderConversationMenuSectionTitleStyle,
@@ -194,6 +198,7 @@ export function AiPanelHeaderWidget({
   const [isConversationMenuOpen, setIsConversationMenuOpen] = useState(false)
   const [isRenamingConversation, setIsRenamingConversation] = useState(false)
   const [isDeleteConversationConfirmOpen, setIsDeleteConversationConfirmOpen] = useState(false)
+  const [pendingDeleteConversationID, setPendingDeleteConversationID] = useState('')
   const [localConversationSearchQuery, setLocalConversationSearchQuery] = useState('')
   const [localConversationScope, setLocalConversationScope] = useState<AgentConversationListScope>('recent')
   const [renameDraft, setRenameDraft] = useState('')
@@ -220,6 +225,7 @@ export function AiPanelHeaderWidget({
       null,
     [activeConversationOverride, conversations, selectedConversationID],
   )
+  const canOpenConversationMenu = hasConversationOptions || activeConversation != null
   const activeConversationTitle = activeConversation
     ? formatConversationTitle(activeConversation)
     : 'Loading conversations'
@@ -305,6 +311,7 @@ export function AiPanelHeaderWidget({
     if (!isConversationMenuOpen) {
       setIsRenamingConversation(false)
       setIsDeleteConversationConfirmOpen(false)
+      setPendingDeleteConversationID('')
       if (isConversationSearchControlled) {
         onConversationSearchQueryChange('')
       } else {
@@ -545,35 +552,51 @@ export function AiPanelHeaderWidget({
   }
 
   const handleDeleteConversation = async () => {
-    if (!activeConversation || onDeleteConversation == null) {
+    const targetConversationID = pendingDeleteConversationID.trim() || activeConversation?.id || ''
+    if (!targetConversationID || onDeleteConversation == null) {
       return
     }
 
     setIsDeleteConversationConfirmOpen(false)
+    setPendingDeleteConversationID('')
     setIsConversationMenuOpen(false)
-    await onDeleteConversation(activeConversation.id)
+    await onDeleteConversation(targetConversationID)
   }
 
-  const handleArchiveConversation = async () => {
-    if (!activeConversation || onArchiveConversation == null) {
+  const handleArchiveConversation = async (conversationID?: string) => {
+    const targetConversationID = conversationID?.trim() || activeConversation?.id || ''
+    if (!targetConversationID || onArchiveConversation == null) {
       return
     }
 
     setIsDeleteConversationConfirmOpen(false)
+    setPendingDeleteConversationID('')
     setIsRenamingConversation(false)
     setIsConversationMenuOpen(false)
-    await onArchiveConversation(activeConversation.id)
+    await onArchiveConversation(targetConversationID)
   }
 
-  const handleRestoreConversation = async () => {
-    if (!activeConversation || onRestoreConversation == null) {
+  const handleRestoreConversation = async (conversationID?: string) => {
+    const targetConversationID = conversationID?.trim() || activeConversation?.id || ''
+    if (!targetConversationID || onRestoreConversation == null) {
       return
     }
 
     setIsDeleteConversationConfirmOpen(false)
+    setPendingDeleteConversationID('')
     setIsRenamingConversation(false)
     setIsConversationMenuOpen(false)
-    await onRestoreConversation(activeConversation.id)
+    await onRestoreConversation(targetConversationID)
+  }
+
+  const pendingDeleteConversation =
+    conversations.find((conversation) => conversation.id === pendingDeleteConversationID) ??
+    activeConversation
+
+  const openDeleteConversationConfirm = (conversationID: string) => {
+    setIsRenamingConversation(false)
+    setPendingDeleteConversationID(conversationID)
+    setIsDeleteConversationConfirmOpen(true)
   }
 
   return (
@@ -605,7 +628,7 @@ export function AiPanelHeaderWidget({
               aria-expanded={isConversationMenuOpen}
               aria-haspopup="dialog"
               aria-label="Conversation menu"
-              disabled={isConversationBusy || !hasConversationOptions}
+              disabled={isConversationBusy || !canOpenConversationMenu}
               onClick={() => setIsConversationMenuOpen((currentValue) => !currentValue)}
               onKeyDown={handleConversationTriggerKeyDown}
               runaComponent="ai-panel-header-conversation-trigger"
@@ -701,8 +724,10 @@ export function AiPanelHeaderWidget({
                           aria-label="Delete conversation"
                           disabled={isConversationBusy || !canDeleteConversation}
                           onClick={() => {
-                            setIsRenamingConversation(false)
-                            setIsDeleteConversationConfirmOpen(true)
+                            if (!activeConversation) {
+                              return
+                            }
+                            openDeleteConversationConfirm(activeConversation.id)
                           }}
                           runaComponent="ai-panel-header-conversation-delete"
                           style={aiHeaderConversationActionStyle}
@@ -814,14 +839,14 @@ export function AiPanelHeaderWidget({
                       />
                     </Box>
                   </Box>
-                  {isDeleteConversationConfirmOpen && activeConversation ? (
+                  {isDeleteConversationConfirmOpen && pendingDeleteConversation ? (
                     <Box
                       runaComponent="ai-panel-header-conversation-delete-panel"
                       style={aiHeaderConversationRenamePanelStyle}
                     >
-                      <Text style={aiHeaderConversationMenuMetaStyle}>Delete active conversation</Text>
+                      <Text style={aiHeaderConversationMenuMetaStyle}>Delete conversation</Text>
                       <Text style={aiHeaderConversationSummaryTitleStyle}>
-                        {formatConversationTitle(activeConversation)}
+                        {formatConversationTitle(pendingDeleteConversation)}
                       </Text>
                       <Text style={aiHeaderConversationMenuMetaStyle}>
                         This removes the thread from the database and switches the panel to the next available
@@ -942,45 +967,86 @@ export function AiPanelHeaderWidget({
                             (option) => option.id === conversation.id,
                           )
                           return (
-                            <Button
-                              aria-label={conversationOptionAriaLabel(conversation, conversationTitleCounts)}
-                              aria-selected={isActive}
-                              disabled={isConversationBusy}
-                              id={`ai-panel-header-conversation-option-${conversation.id}`}
+                            <Box
                               key={conversation.id}
-                              onFocus={() => setHighlightedConversationID(conversation.id)}
-                              onMouseDown={(event) => {
-                                event.preventDefault()
-                              }}
-                              onKeyDown={handleConversationOptionKeyDown(optionIndex)}
-                              onClick={() => {
-                                selectConversationFromNavigator(conversation.id)
-                              }}
-                              ref={(node) => {
-                                if (node) {
-                                  conversationOptionRefs.current.set(conversation.id, node)
-                                  return
-                                }
-                                conversationOptionRefs.current.delete(conversation.id)
-                              }}
-                              role="option"
-                              runaComponent={`ai-panel-header-conversation-option-${conversation.id}`}
-                              style={{
-                                ...aiHeaderConversationMenuOptionStyle,
-                                ...(isHighlighted ? aiHeaderConversationMenuOptionHighlightedStyle : null),
-                                ...(isActive ? aiHeaderConversationMenuOptionActiveStyle : null),
-                              }}
+                              runaComponent={`ai-panel-header-conversation-row-${conversation.id}`}
+                              style={aiHeaderConversationMenuRowStyle}
                             >
-                              <Box style={aiHeaderConversationMenuOptionLeadingStyle}>
-                                <Text style={aiHeaderConversationSummaryTitleStyle}>
-                                  {formatConversationTitle(conversation)}
-                                </Text>
-                                <Text style={aiHeaderConversationMenuMetaStyle}>
-                                  {formatConversationCount(conversation)} ·{' '}
-                                  {formatConversationUpdatedAt(conversation.updated_at)}
-                                </Text>
+                              <Button
+                                aria-label={conversationOptionAriaLabel(
+                                  conversation,
+                                  conversationTitleCounts,
+                                )}
+                                aria-selected={isActive}
+                                disabled={isConversationBusy}
+                                id={`ai-panel-header-conversation-option-${conversation.id}`}
+                                onFocus={() => setHighlightedConversationID(conversation.id)}
+                                onMouseDown={(event) => {
+                                  event.preventDefault()
+                                }}
+                                onKeyDown={handleConversationOptionKeyDown(optionIndex)}
+                                onClick={() => {
+                                  selectConversationFromNavigator(conversation.id)
+                                }}
+                                ref={(node) => {
+                                  if (node) {
+                                    conversationOptionRefs.current.set(conversation.id, node)
+                                    return
+                                  }
+                                  conversationOptionRefs.current.delete(conversation.id)
+                                }}
+                                role="option"
+                                runaComponent={`ai-panel-header-conversation-option-${conversation.id}`}
+                                style={{
+                                  ...aiHeaderConversationMenuOptionStyle,
+                                  ...aiHeaderConversationMenuOptionSelectStyle,
+                                  ...(isHighlighted ? aiHeaderConversationMenuOptionHighlightedStyle : null),
+                                  ...(isActive ? aiHeaderConversationMenuOptionActiveStyle : null),
+                                }}
+                              >
+                                <Box style={aiHeaderConversationMenuOptionLeadingStyle}>
+                                  <Text style={aiHeaderConversationSummaryTitleStyle}>
+                                    {formatConversationTitle(conversation)}
+                                  </Text>
+                                  <Text style={aiHeaderConversationMenuMetaStyle}>
+                                    {formatConversationCount(conversation)} ·{' '}
+                                    {formatConversationUpdatedAt(conversation.updated_at)}
+                                  </Text>
+                                </Box>
+                              </Button>
+                              <Box style={aiHeaderConversationMenuRowActionsStyle}>
+                                <Button
+                                  aria-label={`Archive conversation ${formatConversationTitle(conversation)}`}
+                                  disabled={isConversationBusy || onArchiveConversation == null}
+                                  onMouseDown={(event) => {
+                                    event.preventDefault()
+                                  }}
+                                  onClick={() => {
+                                    void handleArchiveConversation(conversation.id)
+                                  }}
+                                  runaComponent={`ai-panel-header-conversation-row-archive-${conversation.id}`}
+                                  style={aiHeaderConversationMenuRowActionStyle}
+                                  title="Archive conversation"
+                                >
+                                  <Archive {...conversationActionIconProps} />
+                                </Button>
+                                <Button
+                                  aria-label={`Delete conversation ${formatConversationTitle(conversation)}`}
+                                  disabled={isConversationBusy || onDeleteConversation == null}
+                                  onMouseDown={(event) => {
+                                    event.preventDefault()
+                                  }}
+                                  onClick={() => {
+                                    openDeleteConversationConfirm(conversation.id)
+                                  }}
+                                  runaComponent={`ai-panel-header-conversation-row-delete-${conversation.id}`}
+                                  style={aiHeaderConversationMenuRowActionStyle}
+                                  title="Delete conversation"
+                                >
+                                  <Trash2 {...conversationActionIconProps} />
+                                </Button>
                               </Box>
-                            </Button>
+                            </Box>
                           )
                         })}
                       </Box>
@@ -1000,47 +1066,88 @@ export function AiPanelHeaderWidget({
                             (option) => option.id === conversation.id,
                           )
                           return (
-                            <Button
-                              aria-label={conversationOptionAriaLabel(conversation, conversationTitleCounts)}
-                              aria-selected={isActive}
-                              disabled={isConversationBusy}
-                              id={`ai-panel-header-conversation-option-${conversation.id}`}
+                            <Box
                               key={conversation.id}
-                              onFocus={() => setHighlightedConversationID(conversation.id)}
-                              onMouseDown={(event) => {
-                                event.preventDefault()
-                              }}
-                              onKeyDown={handleConversationOptionKeyDown(optionIndex)}
-                              onClick={() => {
-                                selectConversationFromNavigator(conversation.id)
-                              }}
-                              ref={(node) => {
-                                if (node) {
-                                  conversationOptionRefs.current.set(conversation.id, node)
-                                  return
-                                }
-                                conversationOptionRefs.current.delete(conversation.id)
-                              }}
-                              role="option"
-                              runaComponent={`ai-panel-header-conversation-option-${conversation.id}`}
-                              style={{
-                                ...aiHeaderConversationMenuOptionStyle,
-                                ...(isHighlighted ? aiHeaderConversationMenuOptionHighlightedStyle : null),
-                                ...(isActive ? aiHeaderConversationMenuOptionActiveStyle : null),
-                              }}
+                              runaComponent={`ai-panel-header-conversation-row-${conversation.id}`}
+                              style={aiHeaderConversationMenuRowStyle}
                             >
-                              <Box style={aiHeaderConversationMenuOptionLeadingStyle}>
-                                <Text style={aiHeaderConversationSummaryTitleStyle}>
-                                  {formatConversationTitle(conversation)}
-                                </Text>
-                                <Text style={aiHeaderConversationMenuMetaStyle}>
-                                  {formatConversationCount(conversation)} · Archived{' '}
-                                  {formatConversationUpdatedAt(
-                                    conversation.archived_at ?? conversation.updated_at,
-                                  )}
-                                </Text>
+                              <Button
+                                aria-label={conversationOptionAriaLabel(
+                                  conversation,
+                                  conversationTitleCounts,
+                                )}
+                                aria-selected={isActive}
+                                disabled={isConversationBusy}
+                                id={`ai-panel-header-conversation-option-${conversation.id}`}
+                                onFocus={() => setHighlightedConversationID(conversation.id)}
+                                onMouseDown={(event) => {
+                                  event.preventDefault()
+                                }}
+                                onKeyDown={handleConversationOptionKeyDown(optionIndex)}
+                                onClick={() => {
+                                  selectConversationFromNavigator(conversation.id)
+                                }}
+                                ref={(node) => {
+                                  if (node) {
+                                    conversationOptionRefs.current.set(conversation.id, node)
+                                    return
+                                  }
+                                  conversationOptionRefs.current.delete(conversation.id)
+                                }}
+                                role="option"
+                                runaComponent={`ai-panel-header-conversation-option-${conversation.id}`}
+                                style={{
+                                  ...aiHeaderConversationMenuOptionStyle,
+                                  ...aiHeaderConversationMenuOptionSelectStyle,
+                                  ...(isHighlighted ? aiHeaderConversationMenuOptionHighlightedStyle : null),
+                                  ...(isActive ? aiHeaderConversationMenuOptionActiveStyle : null),
+                                }}
+                              >
+                                <Box style={aiHeaderConversationMenuOptionLeadingStyle}>
+                                  <Text style={aiHeaderConversationSummaryTitleStyle}>
+                                    {formatConversationTitle(conversation)}
+                                  </Text>
+                                  <Text style={aiHeaderConversationMenuMetaStyle}>
+                                    {formatConversationCount(conversation)} · Archived{' '}
+                                    {formatConversationUpdatedAt(
+                                      conversation.archived_at ?? conversation.updated_at,
+                                    )}
+                                  </Text>
+                                </Box>
+                              </Button>
+                              <Box style={aiHeaderConversationMenuRowActionsStyle}>
+                                <Button
+                                  aria-label={`Restore conversation ${formatConversationTitle(conversation)}`}
+                                  disabled={isConversationBusy || onRestoreConversation == null}
+                                  onMouseDown={(event) => {
+                                    event.preventDefault()
+                                  }}
+                                  onClick={() => {
+                                    void handleRestoreConversation(conversation.id)
+                                  }}
+                                  runaComponent={`ai-panel-header-conversation-row-restore-${conversation.id}`}
+                                  style={aiHeaderConversationMenuRowActionStyle}
+                                  title="Restore conversation"
+                                >
+                                  <RotateCcw {...conversationActionIconProps} />
+                                </Button>
+                                <Button
+                                  aria-label={`Delete conversation ${formatConversationTitle(conversation)}`}
+                                  disabled={isConversationBusy || onDeleteConversation == null}
+                                  onMouseDown={(event) => {
+                                    event.preventDefault()
+                                  }}
+                                  onClick={() => {
+                                    openDeleteConversationConfirm(conversation.id)
+                                  }}
+                                  runaComponent={`ai-panel-header-conversation-row-delete-${conversation.id}`}
+                                  style={aiHeaderConversationMenuRowActionStyle}
+                                  title="Delete conversation"
+                                >
+                                  <Trash2 {...conversationActionIconProps} />
+                                </Button>
                               </Box>
-                            </Button>
+                            </Box>
                           )
                         })}
                       </Box>

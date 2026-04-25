@@ -393,6 +393,39 @@ export const aiHeaderConversationMenuOptionLeadingStyle: CSSProperties = {
   gap: '2px',
 }
 
+export const aiHeaderConversationMenuRowStyle: CSSProperties = {
+  ...aiPlainBlockStyle,
+  width: '100%',
+  display: 'flex',
+  alignItems: 'stretch',
+  gap: '6px',
+}
+
+export const aiHeaderConversationMenuOptionSelectStyle: CSSProperties = {
+  flex: '1 1 auto',
+  minWidth: 0,
+}
+
+export const aiHeaderConversationMenuRowActionsStyle: CSSProperties = {
+  ...aiPlainBlockStyle,
+  flex: '0 0 auto',
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '4px',
+}
+
+export const aiHeaderConversationMenuRowActionStyle: CSSProperties = {
+  minWidth: '32px',
+  width: '32px',
+  minHeight: '48px',
+  padding: '0',
+  borderRadius: '10px',
+  background: 'color-mix(in srgb, var(--color-surface-shell-header-action) 66%, transparent)',
+  borderColor: 'color-mix(in srgb, var(--color-border-strong) 58%, transparent)',
+  color: 'var(--color-text-primary)',
+  boxShadow: 'none',
+}
+
 export const aiHeaderConversationActionStyle: CSSProperties = {
   minHeight: '32px',
   padding: '0 var(--space-sm)',
