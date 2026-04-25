@@ -88,6 +88,7 @@ describe('CommanderFileDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open externally' }))
 
     expect(onOpenExternal).toHaveBeenCalledTimes(1)
+    expect(await screen.findAllByText('Open request sent to the system opener.')).not.toHaveLength(0)
   })
 
   it('shows an inline error when external open fails', async () => {

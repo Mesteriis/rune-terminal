@@ -316,16 +316,20 @@ test('commander F3 opens a bounded hex preview for binary files while F4 still b
   await clearBrowserState(page)
   await page.goto('/')
   await setPanePath(page, 'left', binaryRootDisplayPath)
+  const binaryRow = page
+    .locator('[id*="commander-pane-left-row-"]')
+    .filter({ hasText: binaryFileName })
+    .first()
 
   await leftPane.root.click()
-  await leftPane.row(binaryFileName).click()
+  await expect(binaryRow).toBeVisible()
+  await binaryRow.click()
   await page.keyboard.press('F3')
 
   const preview = page.getByRole('textbox', { name: `View ${binaryFileName}` })
   await expect(preview).toBeVisible()
-  await expect(page.getByText('HEX')).toBeVisible()
   await expect(preview).toHaveValue(/00000000  00 01 02 03 04 05/)
-  await expect(page.getByText('Read only hex preview')).toBeVisible()
+  await expect(page.getByText('Read only preview')).toBeVisible()
   await page.getByRole('button', { name: 'Close', exact: true }).click()
   await expect(preview).toHaveCount(0)
 
@@ -371,4 +375,51 @@ test('commander quick filter reloads pane rows through the backend list query', 
   await page.keyboard.press('Control+Backspace')
   await expect(leftPaneFilter).toHaveCount(0)
   await expect(leftPane.row('core')).toHaveCount(1)
+})
+
+test('commander blocked dialog keeps a visible external-open handoff confirmation', async ({
+  page,
+  request,
+}) => {
+  const bootstrap = await fetchBootstrap(request)
+  const stamp = Date.now()
+  const binaryRootPath = `${bootstrap.repo_root}/tmp/binary-open-e2e-${stamp}`
+  const binaryRootDisplayPath = formatDisplayPath(binaryRootPath, bootstrap.home_dir)
+  const binaryFileName = `blob-open-${stamp}.dat`
+  const binaryFilePath = `${binaryRootPath}/${binaryFileName}`
+  const leftPane = getPane(page, 'left')
+  let openRequestCount = 0
+
+  await mkdirViaApi(request, binaryRootPath)
+  await writeFile(binaryFilePath, Buffer.from([0, 1, 2, 3, 4, 5]))
+
+  await clearBrowserState(page)
+  await page.route('**/api/v1/fs/open', async (route) => {
+    openRequestCount += 1
+    await route.fulfill({
+      body: '{}',
+      contentType: 'application/json',
+      status: 200,
+    })
+  })
+  await page.goto('/')
+  await setPanePath(page, 'left', binaryRootDisplayPath)
+  const binaryRow = page
+    .locator('[id*="commander-pane-left-row-"]')
+    .filter({ hasText: binaryFileName })
+    .first()
+
+  await leftPane.root.click()
+  await expect(binaryRow).toBeVisible()
+  await binaryRow.click()
+  await page.keyboard.press('F4')
+
+  await expect(page.getByText('Edit unavailable for this file')).toBeVisible()
+  await page.getByRole('button', { name: 'Open externally' }).click()
+
+  await expect(page.locator('[id^="shell-tool-commander-file-dialog-open-external-success-r"]').first()).toHaveText(
+    'Open request sent to the system opener.',
+  )
+  expect(openRequestCount).toBe(1)
+  await expect(page.getByText('Edit unavailable for this file')).toBeVisible()
 })

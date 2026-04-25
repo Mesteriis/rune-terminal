@@ -64,6 +64,7 @@ export function CommanderFileDialog({
   const [showDiscardPrompt, setShowDiscardPrompt] = useState(false)
   const [cursorMetrics, setCursorMetrics] = useState(() => getCommanderCursorMetrics(content, 0))
   const [externalOpenError, setExternalOpenError] = useState<string | null>(null)
+  const [externalOpenSuccess, setExternalOpenSuccess] = useState<string | null>(null)
   const [externalOpenPending, setExternalOpenPending] = useState(false)
   const isEditable = mode === 'edit'
   const isBlocked = mode === 'blocked'
@@ -94,6 +95,7 @@ export function CommanderFileDialog({
     dialogIdentityRef.current = nextIdentity
     setShowDiscardPrompt(false)
     setExternalOpenError(null)
+    setExternalOpenSuccess(null)
     setExternalOpenPending(false)
 
     if (!textAreaRef.current) {
@@ -122,8 +124,11 @@ export function CommanderFileDialog({
     try {
       setExternalOpenPending(true)
       setExternalOpenError(null)
+      setExternalOpenSuccess(null)
       await onOpenExternal()
+      setExternalOpenSuccess('Open request sent to the system opener.')
     } catch (error) {
+      setExternalOpenSuccess(null)
       setExternalOpenError(error instanceof Error ? error.message : 'Unable to open file externally.')
     } finally {
       setExternalOpenPending(false)
@@ -219,6 +224,14 @@ export function CommanderFileDialog({
                 {externalOpenError}
               </Text>
             ) : null}
+            {externalOpenSuccess ? (
+              <Text
+                runaComponent="commander-file-dialog-open-external-success"
+                style={commanderFileDialogBlockedReasonStyle}
+              >
+                {externalOpenSuccess}
+              </Text>
+            ) : null}
           </Box>
         ) : (
           <TextArea
@@ -281,6 +294,14 @@ export function CommanderFileDialog({
                 style={commanderFileDialogHintStyle}
               >
                 {externalOpenError}
+              </Text>
+            ) : null}
+            {externalOpenSuccess ? (
+              <Text
+                runaComponent="commander-file-dialog-open-external-footer-success"
+                style={commanderFileDialogHintStyle}
+              >
+                {externalOpenSuccess}
               </Text>
             ) : null}
           </Box>

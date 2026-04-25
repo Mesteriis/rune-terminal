@@ -824,7 +824,6 @@ export function useCommanderWidget(widgetId: string) {
 
     try {
       await openCommanderFileExternally(toCommanderEntryPath(fileDialog.path, fileDialog.entryName))
-      onCloseCommanderFileDialog({ widgetId })
     } catch (error) {
       onSetCommanderPaneLoadError({
         widgetId,
@@ -833,7 +832,7 @@ export function useCommanderWidget(widgetId: string) {
         errorMessage: toLoadErrorMessage(error),
       })
     }
-  }, [onCloseCommanderFileDialog, onSetCommanderPaneLoadError, runtimeState.fileDialog, widgetId])
+  }, [onSetCommanderPaneLoadError, runtimeState.fileDialog, widgetId])
 
   const resolvePendingTransferConflictAsync = useCallback(
     async (resolution: 'overwrite-current' | 'skip-current' | 'overwrite-all' | 'skip-all') => {
