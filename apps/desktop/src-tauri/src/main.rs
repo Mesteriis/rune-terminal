@@ -9,8 +9,11 @@ use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use thiserror::Error;
+
+const MAIN_WINDOW_LABEL: &str = "main";
+const SINGLE_INSTANCE_EVENT: &str = "rterm://single-instance";
 
 #[derive(Default)]
 struct RuntimeState {
@@ -59,6 +62,12 @@ struct RuntimeShutdownResult {
 #[derive(Debug, Serialize)]
 struct RuntimeSettingsPayload {
     watcher_mode: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct SingleInstancePayload {
+    args: Vec<String>,
+    cwd: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -277,6 +286,9 @@ fn main() {
     let runtime_state = RuntimeState::default();
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, argv, cwd| {
+            handle_second_instance(app, argv, cwd);
+        }))
         .manage(runtime_state)
         .setup(|app| {
             let state = app.state::<RuntimeState>();
@@ -300,6 +312,25 @@ fn main() {
                 cleanup_runtime_state(&app.state::<RuntimeState>());
             }
         });
+}
+
+fn handle_second_instance<R: tauri::Runtime>(app: &AppHandle<R>, argv: Vec<String>, cwd: String) {
+    focus_main_window(app);
+
+    let _ = app.emit(
+        SINGLE_INSTANCE_EVENT,
+        SingleInstancePayload { args: argv, cwd },
+    );
+}
+
+fn focus_main_window<R: tauri::Runtime>(app: &AppHandle<R>) {
+    let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) else {
+        return;
+    };
+
+    let _ = window.show();
+    let _ = window.unminimize();
+    let _ = window.set_focus();
 }
 
 fn install_signal_cleanup(app: &AppHandle) -> Result<(), RuntimeError> {
@@ -1019,7 +1050,8 @@ fn request_watcher_state(url: &str) -> Result<WatcherStatePayload, RuntimeError>
 mod tests {
     use super::{
         cleanup_runtime_slot, recover_or_drop_watcher_record, wait_for_ready_file, ReadyFilePayload,
-        RuntimeError, RuntimeProcess, RuntimeProcessRecord, RuntimeRuntime, SettingsFile, WatcherMode,
+        RuntimeError, RuntimeProcess, RuntimeProcessRecord, RuntimeRuntime, SettingsFile,
+        SingleInstancePayload, WatcherMode, SINGLE_INSTANCE_EVENT,
     };
     use std::fs;
     use std::thread;
@@ -1189,5 +1221,19 @@ mod tests {
 
         assert!(slot.is_none(), "runtime slot should still be cleared after cleanup");
         assert!(!clear_called, "persistent cleanup should preserve runtime file");
+    }
+
+    #[test]
+    fn single_instance_payload_serializes_args_and_cwd() {
+        let payload = SingleInstancePayload {
+            args: vec!["/Applications/RunaTerminal.app".into(), "--workspace".into()],
+            cwd: "/tmp/rterm".into(),
+        };
+
+        let value = serde_json::to_value(&payload).expect("payload should serialize");
+        assert_eq!(value["args"][0], "/Applications/RunaTerminal.app");
+        assert_eq!(value["args"][1], "--workspace");
+        assert_eq!(value["cwd"], "/tmp/rterm");
+        assert_eq!(SINGLE_INSTANCE_EVENT, "rterm://single-instance");
     }
 }
