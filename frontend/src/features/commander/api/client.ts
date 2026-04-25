@@ -22,6 +22,7 @@ type FSReadPayload = {
   path: string
   preview: string
   preview_available: boolean
+  preview_kind?: 'hex' | 'text'
   truncated: boolean
 }
 
@@ -236,6 +237,7 @@ export async function readCommanderFilePreview(
     entryName,
     path: payload.path.slice(0, payload.path.lastIndexOf('/')) || '/',
     previewAvailable: payload.preview_available,
+    previewKind: payload.preview_kind === 'hex' ? 'hex' : 'text',
   }
 }
 
@@ -253,6 +255,7 @@ export async function readCommanderFile(path: string): Promise<CommanderFileSnap
     entryName,
     path: payload.path.slice(0, payload.path.lastIndexOf('/')) || '/',
     previewAvailable: true,
+    previewKind: 'text',
   }
 }
 
@@ -269,6 +272,7 @@ export async function writeCommanderFile(path: string, content: string): Promise
     entryName,
     path: payload.path.slice(0, payload.path.lastIndexOf('/')) || '/',
     previewAvailable: true,
+    previewKind: 'text',
   }
 }
 

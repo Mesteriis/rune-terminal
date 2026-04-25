@@ -42,8 +42,8 @@ It is intentionally operational, not narrative.
 - The right-side utility rail now includes a minimal `Files` panel for workspace-root-bounded navigation:
   - backend path source of truth: `GET /api/v1/fs/list?path=...`
   - directory traversal is explicit (click folder), with no recursive indexing/caching
-  - file selection reveals the absolute path and can request bounded text preview from backend truth (`GET /api/v1/fs/read?path=...`)
-  - text preview is bounded (`max_bytes`, clamped server-side) and non-text/binary content is exposed as metadata-only preview-unavailable state
+  - file selection reveals the absolute path and can request bounded file preview from backend truth (`GET /api/v1/fs/read?path=...`)
+  - text preview is bounded (`max_bytes`, clamped server-side), and non-text/binary content is exposed as bounded hex preview rather than a placeholder-unavailable shell
   - filesystem routes enforce workspace-root boundaries and reject outside-root traversal attempts
 - File-to-AI context bridging now reuses the existing attachment reference contract from the files panel:
   - attachment references are created through `POST /api/v1/agent/conversation/attachments/references`

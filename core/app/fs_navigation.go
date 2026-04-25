@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"errors"
 	"io"
 	"os"
@@ -34,6 +35,7 @@ type FSReadResult struct {
 	Path             string `json:"path"`
 	Preview          string `json:"preview"`
 	PreviewAvailable bool   `json:"preview_available"`
+	PreviewKind      string `json:"preview_kind,omitempty"`
 	Truncated        bool   `json:"truncated"`
 }
 
@@ -183,7 +185,9 @@ func (r *Runtime) readFSPreview(path string, maxBytes int, allowOutsideWorkspace
 	if hasNULByte(previewBytes) || !utf8.Valid(previewBytes) {
 		return FSReadResult{
 			Path:             targetPath,
-			PreviewAvailable: false,
+			Preview:          formatHexPreview(previewBytes),
+			PreviewAvailable: true,
+			PreviewKind:      "hex",
 			Truncated:        truncated,
 		}, nil
 	}
@@ -192,6 +196,7 @@ func (r *Runtime) readFSPreview(path string, maxBytes int, allowOutsideWorkspace
 		Path:             targetPath,
 		Preview:          string(previewBytes),
 		PreviewAvailable: true,
+		PreviewKind:      "text",
 		Truncated:        truncated,
 	}, nil
 }
@@ -203,4 +208,42 @@ func hasNULByte(payload []byte) bool {
 		}
 	}
 	return false
+}
+
+func formatHexPreview(payload []byte) string {
+	if len(payload) == 0 {
+		return ""
+	}
+
+	var builder strings.Builder
+	for offset := 0; offset < len(payload); offset += 16 {
+		if offset > 0 {
+			builder.WriteByte('\n')
+		}
+
+		row := payload[offset:min(offset+16, len(payload))]
+		builder.WriteString(fmt.Sprintf("%08x  ", offset))
+		for index := 0; index < 16; index++ {
+			if index < len(row) {
+				builder.WriteString(fmt.Sprintf("%02x", row[index]))
+			} else {
+				builder.WriteString("  ")
+			}
+			if index != 15 {
+				builder.WriteByte(' ')
+			}
+		}
+
+		builder.WriteString("  |")
+		for _, value := range row {
+			if value >= 32 && value <= 126 {
+				builder.WriteByte(value)
+			} else {
+				builder.WriteByte('.')
+			}
+		}
+		builder.WriteByte('|')
+	}
+
+	return builder.String()
 }

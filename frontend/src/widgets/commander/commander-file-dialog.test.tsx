@@ -66,4 +66,27 @@ describe('CommanderFileDialog', () => {
 
     expect(onClose).toHaveBeenCalledTimes(1)
   })
+
+  it('renders a read-only hex preview for binary file views', () => {
+    render(
+      <CommanderFileDialog
+        content="00000000  00 01 02 03                                      |....|"
+        dirty={false}
+        entryName="binary.dat"
+        entryPath="/workspace/tmp/binary.dat"
+        mode="view"
+        onChange={vi.fn()}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+        previewKind="hex"
+      />,
+    )
+
+    expect(screen.getByText('VIEW')).toBeInTheDocument()
+    expect(screen.getByText('HEX')).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'View binary.dat' })).toHaveValue(
+      '00000000  00 01 02 03                                      |....|',
+    )
+    expect(screen.getByText('Read only hex preview')).toBeInTheDocument()
+  })
 })

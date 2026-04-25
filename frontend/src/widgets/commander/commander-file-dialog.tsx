@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import type { CommanderFileDialogMode } from '@/features/commander/model/types'
+import type { CommanderFileDialogMode, CommanderFilePreviewKind } from '@/features/commander/model/types'
 import { Badge, Box, Button, Surface, Text, TextArea } from '@/shared/ui/primitives'
 
 import {
@@ -36,6 +36,7 @@ export type CommanderFileDialogProps = {
   entryName: string
   entryPath: string
   mode: CommanderFileDialogMode
+  previewKind?: CommanderFilePreviewKind
   onChange: (value: string) => void
   onClose: () => void
   onSave: () => void
@@ -51,6 +52,7 @@ export function CommanderFileDialog({
   entryName,
   entryPath,
   mode,
+  previewKind,
   onChange,
   onClose,
   onSave,
@@ -61,6 +63,7 @@ export function CommanderFileDialog({
   const [cursorMetrics, setCursorMetrics] = useState(() => getCommanderCursorMetrics(content, 0))
   const isEditable = mode === 'edit'
   const isBlocked = mode === 'blocked'
+  const isHexPreview = !isEditable && !isBlocked && previewKind === 'hex'
 
   const syncCursorMetrics = useCallback(() => {
     const nextPosition = textAreaRef.current?.selectionStart ?? 0
@@ -128,6 +131,11 @@ export function CommanderFileDialog({
               <Text runaComponent="commander-file-dialog-title" style={commanderFileDialogTitleStyle}>
                 {entryName}
               </Text>
+              {isHexPreview ? (
+                <Badge runaComponent="commander-file-dialog-preview-kind" style={commanderTypeBadgeStyle}>
+                  HEX
+                </Badge>
+              ) : null}
               {isEditable && dirty ? (
                 <Badge runaComponent="commander-file-dialog-dirty" style={commanderTypeBadgeStyle}>
                   DIRTY
@@ -212,7 +220,9 @@ export function CommanderFileDialog({
                 ? 'Ctrl+S save'
                 : isBlocked
                   ? (blockedHint ?? 'Edit unavailable')
-                  : 'Read only preview'}
+                  : isHexPreview
+                    ? 'Read only hex preview'
+                    : 'Read only preview'}
             </Text>
             {!isBlocked ? (
               <>

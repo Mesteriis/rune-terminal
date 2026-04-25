@@ -23,6 +23,7 @@ export type CommanderRenameMode = 'single' | 'batch'
 export type CommanderCloneMode = 'single' | 'batch'
 export type CommanderRenamePreviewStatus = 'ok' | 'duplicate' | 'conflict' | 'invalid'
 export type CommanderFileDialogMode = 'view' | 'edit' | 'blocked'
+export type CommanderFilePreviewKind = 'text' | 'hex'
 
 export type CommanderRenamePreviewItem = {
   entryId: string
@@ -171,6 +172,7 @@ export type CommanderFileDialogState = {
   mode: CommanderFileDialogMode
   content: string
   draftValue: string
+  previewKind?: CommanderFilePreviewKind
   blockedReason?: string
   blockedTitle?: string
   blockedHint?: string
@@ -284,4 +286,5 @@ export type CommanderFileSnapshot = {
   path: string
   content: string
   previewAvailable: boolean
+  previewKind: CommanderFilePreviewKind
 }

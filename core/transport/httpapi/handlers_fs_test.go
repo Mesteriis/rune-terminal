@@ -552,6 +552,7 @@ func TestReadFSPreviewReturnsBoundedText(t *testing.T) {
 		Path             string `json:"path"`
 		Preview          string `json:"preview"`
 		PreviewAvailable bool   `json:"preview_available"`
+		PreviewKind      string `json:"preview_kind"`
 		Truncated        bool   `json:"truncated"`
 	}
 	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
@@ -566,12 +567,15 @@ func TestReadFSPreviewReturnsBoundedText(t *testing.T) {
 	if !payload.PreviewAvailable {
 		t.Fatalf("expected preview_available=true, got %#v", payload)
 	}
+	if payload.PreviewKind != "text" {
+		t.Fatalf("expected preview_kind=text, got %#v", payload)
+	}
 	if !payload.Truncated {
 		t.Fatalf("expected truncated=true, got %#v", payload)
 	}
 }
 
-func TestReadFSPreviewReturnsMetadataOnlyForBinary(t *testing.T) {
+func TestReadFSPreviewReturnsHexPreviewForBinary(t *testing.T) {
 	t.Parallel()
 
 	repoRoot := t.TempDir()
@@ -591,15 +595,19 @@ func TestReadFSPreviewReturnsMetadataOnlyForBinary(t *testing.T) {
 	var payload struct {
 		Preview          string `json:"preview"`
 		PreviewAvailable bool   `json:"preview_available"`
+		PreviewKind      string `json:"preview_kind"`
 	}
 	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
 		t.Fatalf("unmarshal response: %v", err)
 	}
-	if payload.Preview != "" {
-		t.Fatalf("expected empty preview for binary file, got %q", payload.Preview)
+	if payload.Preview != "00000000  00 01 02 03                                      |....|" {
+		t.Fatalf("unexpected binary preview %q", payload.Preview)
 	}
-	if payload.PreviewAvailable {
-		t.Fatalf("expected preview_available=false, got %#v", payload)
+	if !payload.PreviewAvailable {
+		t.Fatalf("expected preview_available=true, got %#v", payload)
+	}
+	if payload.PreviewKind != "hex" {
+		t.Fatalf("expected preview_kind=hex, got %#v", payload)
 	}
 }
 

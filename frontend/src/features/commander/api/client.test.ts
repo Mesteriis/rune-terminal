@@ -127,7 +127,7 @@ describe('commander api client', () => {
     expect(fetchMock).toHaveBeenCalledTimes(3)
   })
 
-  it('preserves backend preview availability for binary file previews', async () => {
+  it('maps backend hex previews for binary file views', async () => {
     const fetchMock = vi.fn()
     fetchMock
       .mockResolvedValueOnce({
@@ -141,8 +141,9 @@ describe('commander api client', () => {
         ok: true,
         json: async () => ({
           path: '/Users/avm/projects/runa-terminal/blob.dat',
-          preview: '',
-          preview_available: false,
+          preview: '00000000  00 01 02 03                                      |....|',
+          preview_available: true,
+          preview_kind: 'hex',
           truncated: false,
         }),
       })
@@ -151,11 +152,12 @@ describe('commander api client', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     await expect(readCommanderFilePreview('/Users/avm/projects/runa-terminal/blob.dat')).resolves.toEqual({
-      content: '',
+      content: '00000000  00 01 02 03                                      |....|',
       entryId: '/Users/avm/projects/runa-terminal::blob.dat',
       entryName: 'blob.dat',
       path: '/Users/avm/projects/runa-terminal',
-      previewAvailable: false,
+      previewAvailable: true,
+      previewKind: 'hex',
     })
   })
 
@@ -193,6 +195,7 @@ describe('commander api client', () => {
       entryName: 'README.md',
       path: '/Users/avm/projects/runa-terminal',
       previewAvailable: true,
+      previewKind: 'text',
     })
     await expect(
       writeCommanderFile('/Users/avm/projects/runa-terminal/README.md', 'saved file'),
@@ -202,6 +205,7 @@ describe('commander api client', () => {
       entryName: 'README.md',
       path: '/Users/avm/projects/runa-terminal',
       previewAvailable: true,
+      previewKind: 'text',
     })
     expect(fetchMock.mock.calls[2]?.[0]).toBe('http://127.0.0.1:8090/api/v1/fs/file')
     expect(fetchMock.mock.calls[2]?.[1]).toMatchObject({

@@ -602,6 +602,7 @@ export function useCommanderWidget(widgetId: string) {
             mode,
             content: fileSnapshot.content,
             draftValue: fileSnapshot.content,
+            previewKind: fileSnapshot.previewKind,
           } satisfies CommanderFileDialogState,
         })
       } catch (error) {

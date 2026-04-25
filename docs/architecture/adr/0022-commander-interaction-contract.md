@@ -77,7 +77,8 @@ Positive:
 Negative:
 
 - `F4` edit/save is intentionally limited to UTF-8 text files on the
-  backend path; binary/non-text edit flows remain out of scope
+  backend path; binary/non-text edit flows remain out of scope even
+  though `F3` now has a bounded backend-owned hex preview path
 - backend mutation slices now need explicit error UX and focused tests
   before they can be exposed
 
