@@ -11,6 +11,7 @@ type updateTerminalSettingsPayload struct {
 	FontSize   *int     `json:"font_size"`
 	LineHeight *float64 `json:"line_height"`
 	ThemeMode  *string  `json:"theme_mode"`
+	Scrollback *int     `json:"scrollback"`
 }
 
 func (api *API) handleTerminalSettings(w http.ResponseWriter, r *http.Request) {
@@ -31,8 +32,8 @@ func (api *API) handleUpdateTerminalSettings(w http.ResponseWriter, r *http.Requ
 		writeBadRequest(w, "invalid_request", err)
 		return
 	}
-	if payload.FontSize == nil && payload.LineHeight == nil && payload.ThemeMode == nil {
-		writeBadRequest(w, "invalid_request", errors.New("font_size, line_height, or theme_mode is required"))
+	if payload.FontSize == nil && payload.LineHeight == nil && payload.ThemeMode == nil && payload.Scrollback == nil {
+		writeBadRequest(w, "invalid_request", errors.New("font_size, line_height, theme_mode, or scrollback is required"))
 		return
 	}
 
@@ -51,6 +52,9 @@ func (api *API) handleUpdateTerminalSettings(w http.ResponseWriter, r *http.Requ
 	}
 	if payload.ThemeMode != nil {
 		next.ThemeMode = *payload.ThemeMode
+	}
+	if payload.Scrollback != nil {
+		next.Scrollback = *payload.Scrollback
 	}
 
 	settings, err := api.runtime.UpdateTerminalSettings(r.Context(), terminal.Preferences(next))

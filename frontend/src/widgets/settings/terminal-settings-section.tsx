@@ -4,11 +4,14 @@ import type { ReactNode } from 'react'
 import {
   DEFAULT_TERMINAL_FONT_SIZE,
   DEFAULT_TERMINAL_LINE_HEIGHT,
+  DEFAULT_TERMINAL_SCROLLBACK,
   DEFAULT_TERMINAL_THEME_MODE,
   MAX_TERMINAL_FONT_SIZE,
   MAX_TERMINAL_LINE_HEIGHT,
+  MAX_TERMINAL_SCROLLBACK,
   MIN_TERMINAL_FONT_SIZE,
   MIN_TERMINAL_LINE_HEIGHT,
+  MIN_TERMINAL_SCROLLBACK,
   useTerminalPreferences,
 } from '@/features/terminal/model/use-terminal-preferences'
 import { ClearBox } from '@/shared/ui/components'
@@ -50,19 +53,25 @@ export function TerminalSettingsSection() {
     fontSize,
     increaseFontSize,
     increaseLineHeight,
+    increaseScrollback,
     isLoading,
     isSaving,
     lineHeight,
+    resetScrollback,
     resetFontSize,
     resetLineHeight,
     resetThemeMode,
+    scrollback,
     themeMode,
+    decreaseScrollback,
     updateThemeMode,
   } = useTerminalPreferences()
   const canDecreaseFontSize = fontSize > MIN_TERMINAL_FONT_SIZE
   const canIncreaseFontSize = fontSize < MAX_TERMINAL_FONT_SIZE
   const canDecreaseLineHeight = lineHeight > MIN_TERMINAL_LINE_HEIGHT
   const canIncreaseLineHeight = lineHeight < MAX_TERMINAL_LINE_HEIGHT
+  const canDecreaseScrollback = scrollback > MIN_TERMINAL_SCROLLBACK
+  const canIncreaseScrollback = scrollback < MAX_TERMINAL_SCROLLBACK
 
   return (
     <SectionCard
@@ -135,6 +144,49 @@ export function TerminalSettingsSection() {
               onClick={() => void resetThemeMode()}
             >
               <RotateCcw size={14} strokeWidth={1.8} />
+            </Button>
+          </ClearBox>
+        </ClearBox>
+        <ClearBox style={settingsShellListRowStyle}>
+          <ClearBox style={settingsShellContentHeaderStyle}>
+            <Text style={{ fontWeight: 600 }}>Current scrollback</Text>
+            <Text style={settingsShellMutedTextStyle}>
+              Scrollback ограничивает объём буфера в xterm и теперь тоже идёт через runtime-owned contract.
+            </Text>
+          </ClearBox>
+          <ClearBox style={settingsShellBadgeStyle}>
+            {isLoading ? 'Loading…' : `${scrollback} lines`}
+          </ClearBox>
+        </ClearBox>
+        <ClearBox style={settingsShellListRowStyle}>
+          <ClearBox style={settingsShellContentHeaderStyle}>
+            <Text style={{ fontWeight: 600 }}>Adjust scrollback</Text>
+            <Text style={settingsShellMutedTextStyle}>
+              Диапазон {MIN_TERMINAL_SCROLLBACK}–{MAX_TERMINAL_SCROLLBACK} lines, default{' '}
+              {DEFAULT_TERMINAL_SCROLLBACK}.
+            </Text>
+          </ClearBox>
+          <ClearBox style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--gap-xs)' }}>
+            <Button
+              aria-label="Decrease terminal scrollback"
+              disabled={isLoading || isSaving || !canDecreaseScrollback}
+              onClick={() => void decreaseScrollback()}
+            >
+              <Minus size={14} strokeWidth={1.8} />
+            </Button>
+            <Button
+              aria-label="Reset terminal scrollback"
+              disabled={isLoading || isSaving || scrollback === DEFAULT_TERMINAL_SCROLLBACK}
+              onClick={() => void resetScrollback()}
+            >
+              <RotateCcw size={14} strokeWidth={1.8} />
+            </Button>
+            <Button
+              aria-label="Increase terminal scrollback"
+              disabled={isLoading || isSaving || !canIncreaseScrollback}
+              onClick={() => void increaseScrollback()}
+            >
+              <Plus size={14} strokeWidth={1.8} />
             </Button>
           </ClearBox>
         </ClearBox>

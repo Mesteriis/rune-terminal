@@ -38,6 +38,9 @@ func TestPreferencesStoreBootstrapsDefaultSettings(t *testing.T) {
 	if settings.ThemeMode != DefaultThemeMode {
 		t.Fatalf("expected default theme mode %q, got %q", DefaultThemeMode, settings.ThemeMode)
 	}
+	if settings.Scrollback != DefaultScrollback {
+		t.Fatalf("expected default scrollback %d, got %d", DefaultScrollback, settings.Scrollback)
+	}
 }
 
 func TestPreferencesStoreClampsAndPersistsSettings(t *testing.T) {
@@ -56,7 +59,12 @@ func TestPreferencesStoreClampsAndPersistsSettings(t *testing.T) {
 		t.Fatalf("new preferences store: %v", err)
 	}
 
-	updated, err := store.Update(context.Background(), Preferences{FontSize: 99, LineHeight: 9, ThemeMode: ContrastThemeMode})
+	updated, err := store.Update(context.Background(), Preferences{
+		FontSize:   99,
+		LineHeight: 9,
+		ThemeMode:  ContrastThemeMode,
+		Scrollback: 99999,
+	})
 	if err != nil {
 		t.Fatalf("update preferences: %v", err)
 	}
@@ -69,8 +77,16 @@ func TestPreferencesStoreClampsAndPersistsSettings(t *testing.T) {
 	if updated.ThemeMode != ContrastThemeMode {
 		t.Fatalf("expected contrast theme mode, got %q", updated.ThemeMode)
 	}
+	if updated.Scrollback != MaxScrollback {
+		t.Fatalf("expected clamped max scrollback %d, got %d", MaxScrollback, updated.Scrollback)
+	}
 
-	updated, err = store.Update(context.Background(), Preferences{FontSize: 1, LineHeight: 0.2, ThemeMode: "bogus"})
+	updated, err = store.Update(context.Background(), Preferences{
+		FontSize:   1,
+		LineHeight: 0.2,
+		ThemeMode:  "bogus",
+		Scrollback: 10,
+	})
 	if err != nil {
 		t.Fatalf("update preferences with low values: %v", err)
 	}
@@ -82,6 +98,9 @@ func TestPreferencesStoreClampsAndPersistsSettings(t *testing.T) {
 	}
 	if updated.ThemeMode != DefaultThemeMode {
 		t.Fatalf("expected invalid theme mode to clamp to %q, got %q", DefaultThemeMode, updated.ThemeMode)
+	}
+	if updated.Scrollback != MinScrollback {
+		t.Fatalf("expected clamped min scrollback %d, got %d", MinScrollback, updated.Scrollback)
 	}
 
 	reloadedStore, err := NewPreferencesStore(context.Background(), dbConn)
@@ -100,5 +119,8 @@ func TestPreferencesStoreClampsAndPersistsSettings(t *testing.T) {
 	}
 	if reloaded.ThemeMode != DefaultThemeMode {
 		t.Fatalf("expected persisted theme mode %q, got %q", DefaultThemeMode, reloaded.ThemeMode)
+	}
+	if reloaded.Scrollback != MinScrollback {
+		t.Fatalf("expected persisted scrollback %d, got %d", MinScrollback, reloaded.Scrollback)
 	}
 }

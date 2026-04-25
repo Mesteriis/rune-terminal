@@ -34,6 +34,7 @@ test('terminal settings persist font-size changes through the shell settings UI'
   await updateTerminalSettingsViaApi(request, {
     font_size: 13,
     line_height: 1.25,
+    scrollback: 5000,
     theme_mode: 'adaptive',
   })
 })
@@ -64,6 +65,7 @@ test('terminal settings persist line-height changes through the shell settings U
   await updateTerminalSettingsViaApi(request, {
     font_size: 13,
     line_height: 1.25,
+    scrollback: 5000,
     theme_mode: 'adaptive',
   })
 })
@@ -93,6 +95,38 @@ test('terminal settings persist theme-mode changes through the shell settings UI
   await updateTerminalSettingsViaApi(request, {
     font_size: 13,
     line_height: 1.25,
+    scrollback: 5000,
+    theme_mode: 'adaptive',
+  })
+})
+
+test('terminal settings persist scrollback changes through the shell settings UI', async ({
+  page,
+  request,
+}) => {
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  await page.getByRole('button', { name: 'Open settings panel' }).click()
+  await page.getByRole('button', { name: 'Terminal Настройки терминального runtime.' }).click()
+
+  await expect(page.getByText('Current scrollback')).toBeVisible()
+  await expect(page.getByText('5000 lines', { exact: true })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Increase terminal scrollback' }).click()
+  await expect(page.getByText('6000 lines', { exact: true })).toBeVisible()
+
+  await page.reload()
+  await page.getByRole('button', { name: 'Open settings panel' }).click()
+  await page.getByRole('button', { name: 'Terminal Настройки терминального runtime.' }).click()
+
+  await expect(page.getByText('6000 lines', { exact: true })).toBeVisible()
+  await expect.poll(async () => (await fetchTerminalSettings(request)).scrollback).toBe(6000)
+
+  await updateTerminalSettingsViaApi(request, {
+    font_size: 13,
+    line_height: 1.25,
+    scrollback: 5000,
     theme_mode: 'adaptive',
   })
 })

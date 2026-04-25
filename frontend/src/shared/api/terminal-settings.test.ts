@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   DEFAULT_TERMINAL_FONT_SIZE,
   DEFAULT_TERMINAL_LINE_HEIGHT,
+  DEFAULT_TERMINAL_SCROLLBACK,
   DEFAULT_TERMINAL_THEME_MODE,
   requestTerminalSettings,
   updateTerminalSettings,
@@ -36,6 +37,7 @@ describe('terminal settings api', () => {
               font_size: 14,
               line_height: 1.4,
               theme_mode: 'contrast',
+              scrollback: 7000,
             },
           }),
         }),
@@ -45,6 +47,7 @@ describe('terminal settings api', () => {
       font_size: 14,
       line_height: 1.4,
       theme_mode: 'contrast',
+      scrollback: 7000,
     })
   })
 
@@ -74,6 +77,7 @@ describe('terminal settings api', () => {
       font_size: DEFAULT_TERMINAL_FONT_SIZE,
       line_height: DEFAULT_TERMINAL_LINE_HEIGHT,
       theme_mode: DEFAULT_TERMINAL_THEME_MODE,
+      scrollback: DEFAULT_TERMINAL_SCROLLBACK,
     })
   })
 
@@ -96,6 +100,7 @@ describe('terminal settings api', () => {
             font_size: 16,
             line_height: 1.45,
             theme_mode: 'contrast',
+            scrollback: 8000,
           },
         }),
       })
@@ -106,11 +111,13 @@ describe('terminal settings api', () => {
         font_size: 99,
         line_height: 9,
         theme_mode: 'contrast',
+        scrollback: 999999,
       }),
     ).resolves.toEqual({
       font_size: 16,
       line_height: 1.45,
       theme_mode: 'contrast',
+      scrollback: 8000,
     })
 
     expect(fetchMock).toHaveBeenLastCalledWith(
@@ -120,6 +127,7 @@ describe('terminal settings api', () => {
           font_size: 16,
           line_height: 1.6,
           theme_mode: 'contrast',
+          scrollback: 20000,
         }),
         method: 'PUT',
       }),

@@ -31,6 +31,7 @@ vi.mock('@/shared/ui/components/terminal-surface', async () => {
         lineHeight?: number
         onRendererModeChange?: (mode: 'default' | 'webgl') => void
         onRequestSearch?: () => void
+        scrollback?: number
         statusMessage?: string | null
         themeMode?: 'adaptive' | 'contrast'
       },
@@ -59,7 +60,8 @@ vi.mock('@/shared/ui/components/terminal-surface', async () => {
       return (
         <div data-testid="terminal-surface-mock">
           {props.statusMessage ?? 'terminal-ready'} · font:{props.fontSize ?? 13} · line:
-          {props.lineHeight ?? 1.25} · theme:{props.themeMode ?? 'adaptive'}
+          {props.lineHeight ?? 1.25} · theme:{props.themeMode ?? 'adaptive'} · scrollback:
+          {props.scrollback ?? 5000}
         </div>
       )
     }),
@@ -102,14 +104,18 @@ describe('TerminalWidget', () => {
       fontSize: 15,
       increaseFontSize: vi.fn(),
       increaseLineHeight: vi.fn(),
+      increaseScrollback: vi.fn(),
       isLoading: false,
       isSaving: false,
       lineHeight: 1.4,
       refresh: vi.fn(async () => undefined),
+      resetScrollback: vi.fn(),
       resetFontSize: vi.fn(),
       resetLineHeight: vi.fn(),
       resetThemeMode: vi.fn(),
+      scrollback: 7000,
       themeMode: 'contrast',
+      decreaseScrollback: vi.fn(),
       updateFontSize: vi.fn(),
       updateLineHeight: vi.fn(),
       updateThemeMode: vi.fn(),
@@ -122,7 +128,7 @@ describe('TerminalWidget', () => {
     expect(screen.getByText('zsh')).toBeInTheDocument()
     expect(screen.getByText('Running')).toBeInTheDocument()
     expect(screen.getByTestId('terminal-surface-mock')).toHaveTextContent(
-      'Attached to local shell. · font:15 · line:1.4 · theme:contrast',
+      'Attached to local shell. · font:15 · line:1.4 · theme:contrast · scrollback:7000',
     )
 
     await waitFor(() => {

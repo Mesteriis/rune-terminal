@@ -4,11 +4,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   DEFAULT_TERMINAL_FONT_SIZE,
   DEFAULT_TERMINAL_LINE_HEIGHT,
+  DEFAULT_TERMINAL_SCROLLBACK,
   DEFAULT_TERMINAL_THEME_MODE,
   MAX_TERMINAL_FONT_SIZE,
   MAX_TERMINAL_LINE_HEIGHT,
+  MAX_TERMINAL_SCROLLBACK,
   MIN_TERMINAL_FONT_SIZE,
   MIN_TERMINAL_LINE_HEIGHT,
+  MIN_TERMINAL_SCROLLBACK,
   resetTerminalPreferencesForTests,
   useTerminalPreferences,
 } from '@/features/terminal/model/use-terminal-preferences'
@@ -36,6 +39,7 @@ describe('useTerminalPreferences', () => {
     vi.mocked(requestTerminalSettings).mockResolvedValue({
       font_size: DEFAULT_TERMINAL_FONT_SIZE,
       line_height: DEFAULT_TERMINAL_LINE_HEIGHT,
+      scrollback: DEFAULT_TERMINAL_SCROLLBACK,
       theme_mode: DEFAULT_TERMINAL_THEME_MODE,
     })
 
@@ -47,6 +51,7 @@ describe('useTerminalPreferences', () => {
 
     expect(result.current.fontSize).toBe(DEFAULT_TERMINAL_FONT_SIZE)
     expect(result.current.lineHeight).toBe(DEFAULT_TERMINAL_LINE_HEIGHT)
+    expect(result.current.scrollback).toBe(DEFAULT_TERMINAL_SCROLLBACK)
     expect(result.current.themeMode).toBe(DEFAULT_TERMINAL_THEME_MODE)
   })
 
@@ -54,11 +59,13 @@ describe('useTerminalPreferences', () => {
     vi.mocked(requestTerminalSettings).mockResolvedValue({
       font_size: DEFAULT_TERMINAL_FONT_SIZE,
       line_height: DEFAULT_TERMINAL_LINE_HEIGHT,
+      scrollback: DEFAULT_TERMINAL_SCROLLBACK,
       theme_mode: DEFAULT_TERMINAL_THEME_MODE,
     })
     vi.mocked(updateTerminalSettings).mockResolvedValue({
       font_size: 15,
       line_height: 1.3,
+      scrollback: DEFAULT_TERMINAL_SCROLLBACK,
       theme_mode: 'contrast',
     })
 
@@ -74,10 +81,12 @@ describe('useTerminalPreferences', () => {
 
     expect(result.current.fontSize).toBe(15)
     expect(result.current.lineHeight).toBe(1.3)
+    expect(result.current.scrollback).toBe(DEFAULT_TERMINAL_SCROLLBACK)
     expect(result.current.themeMode).toBe('contrast')
     expect(updateTerminalSettings).toHaveBeenCalledWith({
       font_size: 15,
       line_height: DEFAULT_TERMINAL_LINE_HEIGHT,
+      scrollback: DEFAULT_TERMINAL_SCROLLBACK,
       theme_mode: DEFAULT_TERMINAL_THEME_MODE,
     })
   })
@@ -86,17 +95,20 @@ describe('useTerminalPreferences', () => {
     vi.mocked(requestTerminalSettings).mockResolvedValue({
       font_size: DEFAULT_TERMINAL_FONT_SIZE,
       line_height: DEFAULT_TERMINAL_LINE_HEIGHT,
+      scrollback: DEFAULT_TERMINAL_SCROLLBACK,
       theme_mode: DEFAULT_TERMINAL_THEME_MODE,
     })
     vi.mocked(updateTerminalSettings)
       .mockResolvedValueOnce({
         font_size: MAX_TERMINAL_FONT_SIZE,
         line_height: DEFAULT_TERMINAL_LINE_HEIGHT,
+        scrollback: DEFAULT_TERMINAL_SCROLLBACK,
         theme_mode: DEFAULT_TERMINAL_THEME_MODE,
       })
       .mockResolvedValueOnce({
         font_size: MIN_TERMINAL_FONT_SIZE,
         line_height: DEFAULT_TERMINAL_LINE_HEIGHT,
+        scrollback: DEFAULT_TERMINAL_SCROLLBACK,
         theme_mode: DEFAULT_TERMINAL_THEME_MODE,
       })
 
@@ -123,17 +135,20 @@ describe('useTerminalPreferences', () => {
     vi.mocked(requestTerminalSettings).mockResolvedValue({
       font_size: DEFAULT_TERMINAL_FONT_SIZE,
       line_height: DEFAULT_TERMINAL_LINE_HEIGHT,
+      scrollback: DEFAULT_TERMINAL_SCROLLBACK,
       theme_mode: DEFAULT_TERMINAL_THEME_MODE,
     })
     vi.mocked(updateTerminalSettings)
       .mockResolvedValueOnce({
         font_size: DEFAULT_TERMINAL_FONT_SIZE,
         line_height: MAX_TERMINAL_LINE_HEIGHT,
+        scrollback: DEFAULT_TERMINAL_SCROLLBACK,
         theme_mode: DEFAULT_TERMINAL_THEME_MODE,
       })
       .mockResolvedValueOnce({
         font_size: DEFAULT_TERMINAL_FONT_SIZE,
         line_height: MIN_TERMINAL_LINE_HEIGHT,
+        scrollback: DEFAULT_TERMINAL_SCROLLBACK,
         theme_mode: DEFAULT_TERMINAL_THEME_MODE,
       })
 
@@ -160,11 +175,13 @@ describe('useTerminalPreferences', () => {
     vi.mocked(requestTerminalSettings).mockResolvedValue({
       font_size: DEFAULT_TERMINAL_FONT_SIZE,
       line_height: DEFAULT_TERMINAL_LINE_HEIGHT,
+      scrollback: DEFAULT_TERMINAL_SCROLLBACK,
       theme_mode: DEFAULT_TERMINAL_THEME_MODE,
     })
     vi.mocked(updateTerminalSettings).mockResolvedValue({
       font_size: DEFAULT_TERMINAL_FONT_SIZE,
       line_height: DEFAULT_TERMINAL_LINE_HEIGHT,
+      scrollback: DEFAULT_TERMINAL_SCROLLBACK,
       theme_mode: 'contrast',
     })
 
@@ -182,7 +199,48 @@ describe('useTerminalPreferences', () => {
     expect(updateTerminalSettings).toHaveBeenCalledWith({
       font_size: DEFAULT_TERMINAL_FONT_SIZE,
       line_height: DEFAULT_TERMINAL_LINE_HEIGHT,
+      scrollback: DEFAULT_TERMINAL_SCROLLBACK,
       theme_mode: 'contrast',
     })
+  })
+
+  it('clamps terminal scrollback updates into the supported range', async () => {
+    vi.mocked(requestTerminalSettings).mockResolvedValue({
+      font_size: DEFAULT_TERMINAL_FONT_SIZE,
+      line_height: DEFAULT_TERMINAL_LINE_HEIGHT,
+      scrollback: DEFAULT_TERMINAL_SCROLLBACK,
+      theme_mode: DEFAULT_TERMINAL_THEME_MODE,
+    })
+    vi.mocked(updateTerminalSettings)
+      .mockResolvedValueOnce({
+        font_size: DEFAULT_TERMINAL_FONT_SIZE,
+        line_height: DEFAULT_TERMINAL_LINE_HEIGHT,
+        scrollback: MAX_TERMINAL_SCROLLBACK,
+        theme_mode: DEFAULT_TERMINAL_THEME_MODE,
+      })
+      .mockResolvedValueOnce({
+        font_size: DEFAULT_TERMINAL_FONT_SIZE,
+        line_height: DEFAULT_TERMINAL_LINE_HEIGHT,
+        scrollback: MIN_TERMINAL_SCROLLBACK,
+        theme_mode: DEFAULT_TERMINAL_THEME_MODE,
+      })
+
+    const { result } = renderHook(() => useTerminalPreferences())
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    await act(async () => {
+      await result.current.updateScrollback(999999)
+    })
+
+    expect(result.current.scrollback).toBe(MAX_TERMINAL_SCROLLBACK)
+
+    await act(async () => {
+      await result.current.updateScrollback(1)
+    })
+
+    expect(result.current.scrollback).toBe(MIN_TERMINAL_SCROLLBACK)
   })
 })

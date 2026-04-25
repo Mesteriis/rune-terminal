@@ -3,14 +3,18 @@ import { useCallback, useEffect, useSyncExternalStore } from 'react'
 import {
   clampTerminalFontSize,
   clampTerminalLineHeight,
+  clampTerminalScrollback,
   clampTerminalThemeMode,
   DEFAULT_TERMINAL_FONT_SIZE,
   DEFAULT_TERMINAL_LINE_HEIGHT,
+  DEFAULT_TERMINAL_SCROLLBACK,
   DEFAULT_TERMINAL_THEME_MODE,
   MAX_TERMINAL_FONT_SIZE,
   MAX_TERMINAL_LINE_HEIGHT,
+  MAX_TERMINAL_SCROLLBACK,
   MIN_TERMINAL_FONT_SIZE,
   MIN_TERMINAL_LINE_HEIGHT,
+  MIN_TERMINAL_SCROLLBACK,
   type TerminalThemeMode,
   requestTerminalSettings,
   updateTerminalSettings,
@@ -19,11 +23,14 @@ import {
 export {
   DEFAULT_TERMINAL_FONT_SIZE,
   DEFAULT_TERMINAL_LINE_HEIGHT,
+  DEFAULT_TERMINAL_SCROLLBACK,
   DEFAULT_TERMINAL_THEME_MODE,
   MAX_TERMINAL_FONT_SIZE,
   MAX_TERMINAL_LINE_HEIGHT,
+  MAX_TERMINAL_SCROLLBACK,
   MIN_TERMINAL_FONT_SIZE,
   MIN_TERMINAL_LINE_HEIGHT,
+  MIN_TERMINAL_SCROLLBACK,
 }
 
 const subscribers = new Set<() => void>()
@@ -33,6 +40,7 @@ type TerminalPreferencesState = {
   errorMessage: string | null
   fontSize: number
   lineHeight: number
+  scrollback: number
   themeMode: TerminalThemeMode
   isLoading: boolean
   isSaving: boolean
@@ -42,6 +50,7 @@ let terminalPreferencesState: TerminalPreferencesState = {
   errorMessage: null,
   fontSize: DEFAULT_TERMINAL_FONT_SIZE,
   lineHeight: DEFAULT_TERMINAL_LINE_HEIGHT,
+  scrollback: DEFAULT_TERMINAL_SCROLLBACK,
   themeMode: DEFAULT_TERMINAL_THEME_MODE,
   isLoading: true,
   isSaving: false,
@@ -73,6 +82,7 @@ async function refreshTerminalPreferences() {
       ...terminalPreferencesState,
       fontSize: settings.font_size,
       lineHeight: settings.line_height,
+      scrollback: settings.scrollback,
       themeMode: settings.theme_mode,
     }
   } catch (error) {
@@ -114,6 +124,7 @@ function getTerminalPreferencesSnapshot() {
 async function persistTerminalSettings(next: {
   fontSize: number
   lineHeight: number
+  scrollback: number
   themeMode: TerminalThemeMode
 }) {
   terminalPreferencesState = {
@@ -127,12 +138,14 @@ async function persistTerminalSettings(next: {
     const settings = await updateTerminalSettings({
       font_size: clampTerminalFontSize(next.fontSize),
       line_height: clampTerminalLineHeight(next.lineHeight),
+      scrollback: clampTerminalScrollback(next.scrollback),
       theme_mode: clampTerminalThemeMode(next.themeMode),
     })
     terminalPreferencesState = {
       ...terminalPreferencesState,
       fontSize: settings.font_size,
       lineHeight: settings.line_height,
+      scrollback: settings.scrollback,
       themeMode: settings.theme_mode,
     }
   } catch (error) {
@@ -153,6 +166,7 @@ export async function setTerminalFontSize(fontSize: number) {
   await persistTerminalSettings({
     fontSize,
     lineHeight: terminalPreferencesState.lineHeight,
+    scrollback: terminalPreferencesState.scrollback,
     themeMode: terminalPreferencesState.themeMode,
   })
 }
@@ -161,6 +175,16 @@ export async function setTerminalLineHeight(lineHeight: number) {
   await persistTerminalSettings({
     fontSize: terminalPreferencesState.fontSize,
     lineHeight,
+    scrollback: terminalPreferencesState.scrollback,
+    themeMode: terminalPreferencesState.themeMode,
+  })
+}
+
+export async function setTerminalScrollback(scrollback: number) {
+  await persistTerminalSettings({
+    fontSize: terminalPreferencesState.fontSize,
+    lineHeight: terminalPreferencesState.lineHeight,
+    scrollback,
     themeMode: terminalPreferencesState.themeMode,
   })
 }
@@ -169,6 +193,7 @@ export async function setTerminalThemeMode(themeMode: TerminalThemeMode) {
   await persistTerminalSettings({
     fontSize: terminalPreferencesState.fontSize,
     lineHeight: terminalPreferencesState.lineHeight,
+    scrollback: terminalPreferencesState.scrollback,
     themeMode,
   })
 }
@@ -178,6 +203,7 @@ export function resetTerminalPreferencesForTests() {
     errorMessage: null,
     fontSize: DEFAULT_TERMINAL_FONT_SIZE,
     lineHeight: DEFAULT_TERMINAL_LINE_HEIGHT,
+    scrollback: DEFAULT_TERMINAL_SCROLLBACK,
     themeMode: DEFAULT_TERMINAL_THEME_MODE,
     isLoading: true,
     isSaving: false,
@@ -229,6 +255,22 @@ export function useTerminalPreferences() {
     await setTerminalLineHeight(DEFAULT_TERMINAL_LINE_HEIGHT)
   }, [])
 
+  const updateScrollback = useCallback(async (value: number) => {
+    await setTerminalScrollback(value)
+  }, [])
+
+  const increaseScrollback = useCallback(async () => {
+    await setTerminalScrollback(state.scrollback + 1000)
+  }, [state.scrollback])
+
+  const decreaseScrollback = useCallback(async () => {
+    await setTerminalScrollback(state.scrollback - 1000)
+  }, [state.scrollback])
+
+  const resetScrollback = useCallback(async () => {
+    await setTerminalScrollback(DEFAULT_TERMINAL_SCROLLBACK)
+  }, [])
+
   const updateThemeMode = useCallback(async (value: TerminalThemeMode) => {
     await setTerminalThemeMode(value)
   }, [])
@@ -241,6 +283,7 @@ export function useTerminalPreferences() {
     errorMessage: state.errorMessage,
     fontSize: state.fontSize,
     lineHeight: state.lineHeight,
+    scrollback: state.scrollback,
     themeMode: state.themeMode,
     isLoading: state.isLoading,
     isSaving: state.isSaving,
@@ -252,6 +295,10 @@ export function useTerminalPreferences() {
     increaseLineHeight,
     decreaseLineHeight,
     resetLineHeight,
+    updateScrollback,
+    increaseScrollback,
+    decreaseScrollback,
+    resetScrollback,
     updateThemeMode,
     resetThemeMode,
     refresh: ensureTerminalPreferencesLoaded,

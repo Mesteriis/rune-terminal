@@ -1,0 +1,2 @@
+ALTER TABLE terminal_settings
+ADD COLUMN scrollback INTEGER NOT NULL DEFAULT 5000;

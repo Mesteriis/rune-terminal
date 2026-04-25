@@ -33,7 +33,7 @@ export function TerminalWidget({
 }: TerminalWidgetProps) {
   const terminalRootRef = useRunaDomAutoTagging('terminal-widget-root')
   const terminalSurfaceRef = useRef<TerminalSurfaceHandle | null>(null)
-  const { fontSize, lineHeight, themeMode } = useTerminalPreferences()
+  const { fontSize, lineHeight, scrollback, themeMode } = useTerminalPreferences()
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [rendererMode, setRendererMode] = useState<'default' | 'webgl'>('default')
   const [searchQuery, setSearchQuery] = useState('')
@@ -199,6 +199,7 @@ export function TerminalWidget({
             onRequestSearch={handleOpenSearch}
             outputChunks={terminalSession.outputChunks}
             ref={terminalSurfaceRef}
+            scrollback={scrollback}
             sessionKey={terminalSession.sessionKey}
             sessionState={terminalSession.sessionState}
             statusMessage={terminalSession.statusDetail}

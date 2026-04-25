@@ -19,6 +19,9 @@ const (
 	MaxLineHeight     = 1.6
 	DefaultThemeMode  = "adaptive"
 	ContrastThemeMode = "contrast"
+	DefaultScrollback = 5000
+	MinScrollback     = 1000
+	MaxScrollback     = 20000
 
 	defaultTerminalSettingsScope = "default"
 )
@@ -27,6 +30,7 @@ type Preferences struct {
 	FontSize   int     `json:"font_size"`
 	LineHeight float64 `json:"line_height"`
 	ThemeMode  string  `json:"theme_mode"`
+	Scrollback int     `json:"scrollback"`
 }
 
 type PreferencesStore struct {
@@ -54,11 +58,12 @@ func (s *PreferencesStore) Snapshot(ctx context.Context) (Preferences, error) {
 	var fontSize int
 	var lineHeight float64
 	var themeMode string
+	var scrollback int
 	err := s.db.QueryRowContext(ctx, `
-		SELECT font_size, line_height, theme_mode
+		SELECT font_size, line_height, theme_mode, scrollback
 		FROM terminal_settings
 		WHERE scope = ?
-	`, defaultTerminalSettingsScope).Scan(&fontSize, &lineHeight, &themeMode)
+	`, defaultTerminalSettingsScope).Scan(&fontSize, &lineHeight, &themeMode, &scrollback)
 	if err != nil {
 		return Preferences{}, fmt.Errorf("load terminal settings: %w", err)
 	}
@@ -67,6 +72,7 @@ func (s *PreferencesStore) Snapshot(ctx context.Context) (Preferences, error) {
 		FontSize:   clampFontSize(fontSize),
 		LineHeight: clampLineHeight(lineHeight),
 		ThemeMode:  clampThemeMode(themeMode),
+		Scrollback: clampScrollback(scrollback),
 	}, nil
 }
 
@@ -79,16 +85,18 @@ func (s *PreferencesStore) Update(ctx context.Context, next Preferences) (Prefer
 		FontSize:   clampFontSize(next.FontSize),
 		LineHeight: clampLineHeight(next.LineHeight),
 		ThemeMode:  clampThemeMode(next.ThemeMode),
+		Scrollback: clampScrollback(next.Scrollback),
 	}
 
 	_, err := s.db.ExecContext(ctx, `
 		UPDATE terminal_settings
-		SET font_size = ?, line_height = ?, theme_mode = ?, updated_at = ?
+		SET font_size = ?, line_height = ?, theme_mode = ?, scrollback = ?, updated_at = ?
 		WHERE scope = ?
 	`,
 		normalized.FontSize,
 		normalized.LineHeight,
 		normalized.ThemeMode,
+		normalized.Scrollback,
 		time.Now().UTC().Format(time.RFC3339Nano),
 		defaultTerminalSettingsScope,
 	)
@@ -113,13 +121,14 @@ func (s *PreferencesStore) ensureDefaultRow(ctx context.Context) error {
 	}
 
 	_, err := s.db.ExecContext(ctx, `
-		INSERT INTO terminal_settings (scope, font_size, line_height, theme_mode, updated_at)
-		VALUES (?, ?, ?, ?, ?)
+		INSERT INTO terminal_settings (scope, font_size, line_height, theme_mode, scrollback, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?)
 	`,
 		defaultTerminalSettingsScope,
 		DefaultFontSize,
 		DefaultLineHeight,
 		DefaultThemeMode,
+		DefaultScrollback,
 		time.Now().UTC().Format(time.RFC3339Nano),
 	)
 	if err != nil && !isUniqueConstraintError(err) {
@@ -165,6 +174,19 @@ func clampThemeMode(value string) string {
 	default:
 		return DefaultThemeMode
 	}
+}
+
+func clampScrollback(value int) int {
+	if value == 0 {
+		return DefaultScrollback
+	}
+	if value < MinScrollback {
+		return MinScrollback
+	}
+	if value > MaxScrollback {
+		return MaxScrollback
+	}
+	return value
 }
 
 func isUniqueConstraintError(err error) bool {

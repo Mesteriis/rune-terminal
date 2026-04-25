@@ -31,6 +31,7 @@ export type TerminalSurfaceProps = {
   onInput?: (data: string) => void
   onRendererModeChange?: (mode: 'default' | 'webgl') => void
   onRequestSearch?: () => void
+  scrollback?: number
   themeClassTarget?: HTMLElement | null
   themeMode?: 'adaptive' | 'contrast'
 }
@@ -212,6 +213,7 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
       onInput,
       onRendererModeChange,
       onRequestSearch,
+      scrollback = 5000,
       themeClassTarget = null,
       themeMode = 'adaptive',
     },
@@ -311,6 +313,7 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
         fontSize,
         lineHeight,
         rightClickSelectsWord: true,
+        scrollback,
         theme: getTerminalTheme(themeMode, viewportRef.current),
       })
       const fitAddon = new FitAddon()
@@ -457,6 +460,16 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
       term.options.lineHeight = lineHeight
       fitAddonRef.current?.fit()
     }, [lineHeight])
+
+    useEffect(() => {
+      const term = termRef.current
+
+      if (!term) {
+        return
+      }
+
+      term.options.scrollback = scrollback
+    }, [scrollback])
 
     useEffect(() => {
       const term = termRef.current
