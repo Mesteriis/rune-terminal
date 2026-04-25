@@ -355,24 +355,43 @@ fn start_or_attach_runtime(app: &AppHandle, state: &RuntimeState) -> Result<(), 
     }
     core.started_by_ui = core.child.is_some() || core.started_by_ui;
     settings.core_auth_token = core.auth_token.clone();
+    let spawned_core_for_this_launch = core.child.is_some();
 
-    let watcher = if let Some(record) = attachment.watcher {
-        validate_watcher_entry_for_core_record(&record, &core.url).map_or_else(
-            || spawn_watcher(&context, &core.url, core.auth_token.as_deref()),
-            |record| {
-                Ok(RuntimeProcess {
-                    child: None,
-                    pid: record.pid,
-                    url: record.url,
-                    started_by_ui: record.started_by_ui,
-                    auth_token: None,
-                    worker_id: record.worker_id,
-                    shutdown_token: record.shutdown_token,
-                })
-            },
-        )?
+    let watcher_record = match recover_or_drop_watcher_record(
+        attachment.watcher,
+        &core.url,
+        validate_watcher_entry_for_core_record,
+        cleanup_stale_watcher_record,
+    ) {
+        Ok(record) => record,
+        Err(err) => {
+            if spawned_core_for_this_launch {
+                stop_process(&mut core);
+            }
+            return Err(err);
+        }
+    };
+
+    let watcher = if let Some(record) = watcher_record {
+        RuntimeProcess {
+            child: None,
+            pid: record.pid,
+            url: record.url,
+            started_by_ui: record.started_by_ui,
+            auth_token: None,
+            worker_id: record.worker_id,
+            shutdown_token: record.shutdown_token,
+        }
     } else {
-        spawn_watcher(&context, &core.url, core.auth_token.as_deref())?
+        match spawn_watcher(&context, &core.url, core.auth_token.as_deref()) {
+            Ok(watcher) => watcher,
+            Err(err) => {
+                if spawned_core_for_this_launch {
+                    stop_process(&mut core);
+                }
+                return Err(err);
+            }
+        }
     };
 
     let runtime = RuntimeRuntime {
@@ -406,14 +425,24 @@ fn graceful_shutdown_watcher(watcher: &mut RuntimeProcess) -> Result<(), Runtime
         return Ok(());
     }
 
+    request_graceful_watcher_shutdown(watcher)
+}
+
+fn request_graceful_watcher_shutdown(watcher: &mut RuntimeProcess) -> Result<(), RuntimeError> {
+    if watcher.worker_id.is_none() || watcher.shutdown_token.is_none() {
+        return Err(RuntimeError::Http(
+            "watcher shutdown requires worker identity and token".into(),
+        ));
+    }
+
     let token = watcher
         .shutdown_token
         .as_ref()
-        .expect("shutdown token required for owned watcher");
+        .expect("shutdown token required for controlled watcher");
     let worker_id = watcher
         .worker_id
         .as_ref()
-        .expect("worker id required for owned watcher");
+        .expect("worker id required for controlled watcher");
 
     let client = create_http_client();
     let endpoint = format!(
@@ -451,6 +480,59 @@ fn graceful_shutdown_watcher(watcher: &mut RuntimeProcess) -> Result<(), Runtime
 
 fn is_owned_watcher(process: &RuntimeProcess) -> bool {
     process.started_by_ui && process.worker_id.is_some() && process.shutdown_token.is_some()
+}
+
+fn cleanup_stale_watcher_record(record: &RuntimeProcessRecord) -> Result<(), RuntimeError> {
+    let mut process = RuntimeProcess {
+        child: None,
+        pid: record.pid,
+        url: record.url.clone(),
+        started_by_ui: record.started_by_ui,
+        auth_token: None,
+        worker_id: record.worker_id.clone(),
+        shutdown_token: record.shutdown_token.clone(),
+    };
+
+    if process.worker_id.is_some() && process.shutdown_token.is_some() {
+        match request_graceful_watcher_shutdown(&mut process) {
+            Ok(()) => return Ok(()),
+            Err(_) => {
+                stop_process(&mut process);
+            }
+        }
+    } else {
+        stop_process(&mut process);
+    }
+
+    if wait_for_service_down(&format!("{}/health", process.url), Duration::from_secs(5)) {
+        Ok(())
+    } else {
+        Err(RuntimeError::Http(
+            "stale watcher did not terminate before respawn".into(),
+        ))
+    }
+}
+
+fn recover_or_drop_watcher_record<FValidate, FCleanup>(
+    record: Option<RuntimeProcessRecord>,
+    expected_core_url: &str,
+    mut validate: FValidate,
+    mut cleanup: FCleanup,
+) -> Result<Option<RuntimeProcessRecord>, RuntimeError>
+where
+    FValidate: FnMut(&RuntimeProcessRecord, &str) -> Option<RuntimeProcessRecord>,
+    FCleanup: FnMut(&RuntimeProcessRecord) -> Result<(), RuntimeError>,
+{
+    let Some(record) = record else {
+        return Ok(None);
+    };
+
+    if let Some(valid) = validate(&record, expected_core_url) {
+        return Ok(Some(valid));
+    }
+
+    cleanup(&record)?;
+    Ok(None)
 }
 
 fn spawn_core(context: &StartContext, token: &str) -> Result<RuntimeProcess, RuntimeError> {
@@ -904,7 +986,10 @@ fn request_watcher_state(url: &str) -> Result<WatcherStatePayload, RuntimeError>
 
 #[cfg(test)]
 mod tests {
-    use super::{wait_for_ready_file, ReadyFilePayload};
+    use super::{
+        recover_or_drop_watcher_record, wait_for_ready_file, ReadyFilePayload, RuntimeError,
+        RuntimeProcessRecord,
+    };
     use std::fs;
     use std::thread;
     use std::time::Duration;
@@ -933,5 +1018,81 @@ mod tests {
                 pid: 4242,
             }
         );
+    }
+
+    #[test]
+    fn recover_or_drop_watcher_record_reuses_valid_record_without_cleanup() {
+        let record = RuntimeProcessRecord {
+            pid: 4242,
+            url: "http://127.0.0.1:7788".into(),
+            started_by_ui: true,
+            auth_token: None,
+            worker_id: Some("watcher_valid".into()),
+            shutdown_token: Some("token".into()),
+        };
+
+        let mut cleanup_called = false;
+        let resolved = recover_or_drop_watcher_record(
+            Some(record.clone()),
+            "http://127.0.0.1:5000",
+            |candidate, _| Some(candidate.clone()),
+            |_| {
+                cleanup_called = true;
+                Ok(())
+            },
+        )
+        .expect("valid watcher should be reused");
+
+        assert_eq!(resolved.expect("record").pid, 4242);
+        assert!(!cleanup_called, "cleanup must not run for valid watcher");
+    }
+
+    #[test]
+    fn recover_or_drop_watcher_record_cleans_invalid_record_before_respawn() {
+        let record = RuntimeProcessRecord {
+            pid: 4242,
+            url: "http://127.0.0.1:7788".into(),
+            started_by_ui: true,
+            auth_token: None,
+            worker_id: Some("watcher_stale".into()),
+            shutdown_token: Some("token".into()),
+        };
+
+        let mut cleanup_called = false;
+        let resolved = recover_or_drop_watcher_record(
+            Some(record),
+            "http://127.0.0.1:6000",
+            |_, _| None,
+            |_| {
+                cleanup_called = true;
+                Ok(())
+            },
+        )
+        .expect("stale watcher should be dropped after cleanup");
+
+        assert!(resolved.is_none(), "stale watcher must be dropped");
+        assert!(cleanup_called, "cleanup must run for invalid watcher");
+    }
+
+    #[test]
+    fn recover_or_drop_watcher_record_surfaces_cleanup_failure() {
+        let record = RuntimeProcessRecord {
+            pid: 4242,
+            url: "http://127.0.0.1:7788".into(),
+            started_by_ui: true,
+            auth_token: None,
+            worker_id: Some("watcher_stale".into()),
+            shutdown_token: Some("token".into()),
+        };
+
+        let err = recover_or_drop_watcher_record(
+            Some(record),
+            "http://127.0.0.1:6000",
+            |_, _| None,
+            |_| Err(RuntimeError::Http("cleanup failed".into())),
+        )
+        .expect_err("cleanup failure should stop startup");
+
+        assert!(matches!(err, RuntimeError::Http(message) if message == "cleanup failed"));
     }
 }

@@ -2,7 +2,7 @@
 
 ## Last verified state
 
-- Date: `2026-04-24`
+- Date: `2026-04-25`
 - State: `VERIFIED`
 - Scope:
   - serialized Playwright coverage now exercises the active shell/user paths over the split local dev runtime:
@@ -14,6 +14,8 @@
     - the settings shell now renders as a tighter navigator/editor surface with a dedicated sidebar header and one framed content pane for the active section, while preserving the existing `General / AI / Terminal / Commander` structure
     - the `General` section now reads real runtime bootstrap metadata and exposes the desktop `watcher_mode` lifecycle setting; in the split browser dev loop this control degrades to a visible read-only fallback instead of pretending browser mode can persist desktop settings
     - a fresh `npm run tauri:dev` smoke still builds and launches the desktop entrypoint after the runtime-settings slice, so the new `watcher_mode` plumbing does not break desktop startup
+    - desktop startup now also self-heals stale watcher attachments recorded in `~/.rterm/runtime.json`: if a previously UI-owned watcher is still bound to `127.0.0.1:7788` but no longer matches the newly attached/spawned core, startup explicitly shuts that stale watcher down before spawning the next one, instead of panicking on `unexpected worker identity`
+    - if desktop startup spawns a fresh core and watcher recovery/spawn then fails, the just-spawned core is now stopped before setup returns the error, so startup no longer leaks a brand-new backend process on the failure path
     - terminal Dockview header `+` actions for the seeded main/workspace terminal groups
     - extra terminal panels now request a fresh backend terminal session before mounting, so shell creation paths no longer fail with `terminal widget not found: terminal`
     - closing those extra terminal panels now also restores the backend workspace tab count, so the UI no longer leaks hidden runtime tabs/sessions on close
@@ -196,6 +198,8 @@
 - The same smoke confirmed the workspace terminal header plus button adds a sibling terminal tab in-place: the workspace terminal group moved from `tabs=1` to `tabs=2` while the other groups stayed unchanged.
 - A follow-up headless smoke on `http://127.0.0.1:5173` confirmed the multi-tab terminal header behavior: the workspace terminal group rendered exactly one `terminal-tab-add` control total, while the inactive terminal tab rendered `metaCount=0` and the active one rendered `metaCount=2`.
 - A fresh `npm run tauri:dev` validation pass on `2026-04-24` confirmed the earlier setup-hook crash is closed: `rterm-desktop` now launches cleanly past ready-file bootstrap after the desktop side started tolerating empty/partial ready payloads and `rterm-core` switched the ready-file write to an atomic temp-file rename. The same smoke also surfaced a separate shutdown-path issue: after sending `SIGTERM` to `rterm-desktop`, the spawned `rterm-core` backend and watcher were still alive until they were terminated manually, so startup is now claimed for this slice but clean desktop shutdown is still not.
+- A fresh `cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml` pass on `2026-04-25` added startup-recovery coverage for the watcher attach path: valid watcher records are reused, invalid watcher records trigger cleanup before respawn, and cleanup failures now stop startup instead of being ignored.
+- A fresh `npm run tauri:dev` smoke on `2026-04-25` confirmed that desktop startup now recovers from a stale `~/.rterm/runtime.json` watcher attachment instead of crashing. The validation case was a stale watcher still listening on `127.0.0.1:7788` with an old `worker_id`; after the fix, startup recycled that watcher, launched a new core plus watcher successfully, and exited without leaving live `rterm-desktop` / `rterm-core` / watcher processes behind.
 - A fresh headless smoke on `http://127.0.0.1:5173` confirmed all rendered `.dv-tabs-and-actions-container.dv-single-tab` headers now resolve to `height=48` and `cssHeight=48px`.
 - Static validation confirmed the compact terminal header content was scaled up to match that taller `48px` shell: the compact title now uses `font-size-md`, the compact terminal icon now renders at `18px`, compact status pills now use `min-height=28px`, and the terminal tab plus button now renders at `28x28`.
 - Static validation confirmed the first addon wave on the terminal renderer slice: `@xterm/addon-search@0.16.0`, `@xterm/addon-web-links@0.12.0`, `@xterm/addon-clipboard@0.2.0`, and `@xterm/addon-webgl@0.19.0`, plus the new `TerminalToolbar` control strip above the surface.
