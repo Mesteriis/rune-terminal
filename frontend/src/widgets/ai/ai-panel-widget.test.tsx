@@ -889,6 +889,10 @@ describe('AiPanelWidget backend conversation path', () => {
 
     render(<AiPanelWidget hostId="ai-shell-panel" />)
 
+    await waitFor(() => {
+      expect(screen.getByText('2 saved widgets are no longer available in this workspace.')).toBeVisible()
+    })
+
     fireEvent.click(screen.getByLabelText('Composer options'))
     await waitFor(() => {
       expect(screen.getByRole('dialog', { name: 'Context widgets' })).toBeInTheDocument()

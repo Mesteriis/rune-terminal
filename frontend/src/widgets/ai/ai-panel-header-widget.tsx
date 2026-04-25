@@ -312,30 +312,12 @@ export function AiPanelHeaderWidget({
       setIsRenamingConversation(false)
       setIsDeleteConversationConfirmOpen(false)
       setPendingDeleteConversationID('')
-      if (isConversationSearchControlled) {
-        onConversationSearchQueryChange('')
-      } else {
-        setLocalConversationSearchQuery('')
-      }
-      if (isConversationScopeControlled) {
-        onConversationScopeChange('recent')
-      } else {
-        setLocalConversationScope('recent')
-      }
       setHighlightedConversationID('')
       return
     }
 
     setRenameDraft(activeConversation?.title ?? '')
-  }, [
-    activeConversation?.id,
-    activeConversation?.title,
-    isConversationMenuOpen,
-    isConversationScopeControlled,
-    isConversationSearchControlled,
-    onConversationScopeChange,
-    onConversationSearchQueryChange,
-  ])
+  }, [activeConversation?.id, activeConversation?.title, isConversationMenuOpen])
 
   useEffect(() => {
     if (!optimisticConversationTitle.trim()) {

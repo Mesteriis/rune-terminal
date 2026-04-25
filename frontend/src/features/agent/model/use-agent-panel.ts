@@ -833,11 +833,6 @@ export function useAgentPanel(hostId: string, enabled = true) {
     [applyConversationSnapshot, isConversationPending, isSubmitting, refreshConversationList],
   )
 
-  const resetConversationNavigatorFilters = useCallback(() => {
-    setConversationSearchQuery('')
-    setConversationScope('recent')
-  }, [])
-
   const deleteConversation = useCallback(
     async (conversationID: string) => {
       const nextConversationID = conversationID.trim()
@@ -852,20 +847,18 @@ export function useAgentPanel(hostId: string, enabled = true) {
       setIsConversationPending(true)
 
       try {
-        await deleteAgentConversation(nextConversationID)
-        resetConversationNavigatorFilters()
-        const [snapshot, conversationList] = await Promise.all([
-          fetchAgentConversation(),
-          fetchAgentConversations({
-            query: '',
-            scope: 'recent',
-          }),
-        ])
+        const snapshot = await deleteAgentConversation(nextConversationID)
+        const conversationList = await fetchAgentConversations({
+          query: conversationSearchQuery,
+          scope: conversationScope,
+        })
         if (panelStateEpochRef.current !== panelStateEpoch) {
           return
         }
-        applyConversationSnapshot(snapshot)
-        resetConversationInteractionState()
+        if (activeConversationID === nextConversationID) {
+          applyConversationSnapshot(snapshot)
+          resetConversationInteractionState()
+        }
         setConversations(sortConversationSummaries(conversationList.conversations))
         setConversationCounts(conversationList.counts)
         setActiveConversationID(conversationList.active_conversation_id || snapshot.id)
@@ -877,10 +870,12 @@ export function useAgentPanel(hostId: string, enabled = true) {
     },
     [
       applyConversationSnapshot,
+      activeConversationID,
       beginPanelStateEpoch,
+      conversationScope,
+      conversationSearchQuery,
       isConversationPending,
       isSubmitting,
-      resetConversationNavigatorFilters,
       resetConversationInteractionState,
     ],
   )
@@ -899,20 +894,18 @@ export function useAgentPanel(hostId: string, enabled = true) {
       setIsConversationPending(true)
 
       try {
-        await archiveAgentConversation(nextConversationID)
-        resetConversationNavigatorFilters()
-        const [snapshot, conversationList] = await Promise.all([
-          fetchAgentConversation(),
-          fetchAgentConversations({
-            query: '',
-            scope: 'recent',
-          }),
-        ])
+        const snapshot = await archiveAgentConversation(nextConversationID)
+        const conversationList = await fetchAgentConversations({
+          query: conversationSearchQuery,
+          scope: conversationScope,
+        })
         if (panelStateEpochRef.current !== panelStateEpoch) {
           return
         }
-        applyConversationSnapshot(snapshot)
-        resetConversationInteractionState()
+        if (activeConversationID === nextConversationID) {
+          applyConversationSnapshot(snapshot)
+          resetConversationInteractionState()
+        }
         setConversations(sortConversationSummaries(conversationList.conversations))
         setConversationCounts(conversationList.counts)
         setActiveConversationID(conversationList.active_conversation_id || snapshot.id)
@@ -924,10 +917,12 @@ export function useAgentPanel(hostId: string, enabled = true) {
     },
     [
       applyConversationSnapshot,
+      activeConversationID,
       beginPanelStateEpoch,
+      conversationScope,
+      conversationSearchQuery,
       isConversationPending,
       isSubmitting,
-      resetConversationNavigatorFilters,
       resetConversationInteractionState,
     ],
   )
@@ -946,20 +941,18 @@ export function useAgentPanel(hostId: string, enabled = true) {
       setIsConversationPending(true)
 
       try {
-        await restoreAgentConversation(nextConversationID)
-        resetConversationNavigatorFilters()
-        const [snapshot, conversationList] = await Promise.all([
-          fetchAgentConversation(),
-          fetchAgentConversations({
-            query: '',
-            scope: 'recent',
-          }),
-        ])
+        const snapshot = await restoreAgentConversation(nextConversationID)
+        const conversationList = await fetchAgentConversations({
+          query: conversationSearchQuery,
+          scope: conversationScope,
+        })
         if (panelStateEpochRef.current !== panelStateEpoch) {
           return
         }
-        applyConversationSnapshot(snapshot)
-        resetConversationInteractionState()
+        if (activeConversationID === nextConversationID) {
+          applyConversationSnapshot(snapshot)
+          resetConversationInteractionState()
+        }
         setConversations(sortConversationSummaries(conversationList.conversations))
         setConversationCounts(conversationList.counts)
         setActiveConversationID(conversationList.active_conversation_id || snapshot.id)
@@ -971,10 +964,12 @@ export function useAgentPanel(hostId: string, enabled = true) {
     },
     [
       applyConversationSnapshot,
+      activeConversationID,
       beginPanelStateEpoch,
+      conversationScope,
+      conversationSearchQuery,
       isConversationPending,
       isSubmitting,
-      resetConversationNavigatorFilters,
       resetConversationInteractionState,
     ],
   )
@@ -1160,6 +1155,31 @@ export function useAgentPanel(hostId: string, enabled = true) {
       options: nextContextWidgetOptions,
     }
   }, [enabled])
+
+  useEffect(() => {
+    if (!enabled || hasLoadedContextWidgetsRef.current) {
+      return
+    }
+
+    const normalizedSelection = deduplicateWidgetIDs(storedContextWidgetIDs)
+    if (normalizedSelection.length === 0) {
+      return
+    }
+
+    let cancelled = false
+    void loadContextWidgets().catch((error) => {
+      if (cancelled) {
+        return
+      }
+      const errorMessage =
+        error instanceof Error && error.message.trim() ? error.message : 'Unable to load workspace widgets.'
+      setContextWidgetLoadError(errorMessage)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [enabled, loadContextWidgets, storedContextWidgetIDs])
 
   const handleContextOptionsOpen = useCallback(async () => {
     try {

@@ -433,6 +433,48 @@ describe('AiPanelHeaderWidget', () => {
     ).toBeInTheDocument()
   })
 
+  it('keeps controlled scope and search state when the navigator closes', () => {
+    const onConversationSearchQueryChange = vi.fn()
+    const onConversationScopeChange = vi.fn()
+
+    render(
+      <AiPanelHeaderWidget
+        activeConversationID="conv_2"
+        conversationCounts={{
+          recent: 0,
+          archived: 1,
+          all: 1,
+        }}
+        conversationScope="archived"
+        conversationSearchQuery="terminal"
+        conversations={[
+          {
+            id: 'conv_1',
+            title: 'Terminal restart notes',
+            created_at: '2026-04-24T09:00:00Z',
+            updated_at: '2026-04-24T09:05:00Z',
+            archived_at: '2026-04-24T09:06:00Z',
+            message_count: 2,
+          },
+        ]}
+        mode="chat"
+        onConversationScopeChange={onConversationScopeChange}
+        onConversationSearchQueryChange={onConversationSearchQueryChange}
+        onModeChange={() => {}}
+        title="AI Rune"
+      />,
+    )
+
+    const trigger = screen.getByRole('button', { name: 'Conversation menu' })
+    fireEvent.click(trigger)
+    expect(screen.getByRole('textbox', { name: 'Search conversations' })).toHaveValue('terminal')
+
+    fireEvent.click(trigger)
+
+    expect(onConversationSearchQueryChange).not.toHaveBeenCalledWith('')
+    expect(onConversationScopeChange).not.toHaveBeenCalledWith('recent')
+  })
+
   it('shows the active thread summary block inside the navigator', () => {
     render(
       <AiPanelHeaderWidget

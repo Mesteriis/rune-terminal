@@ -159,6 +159,8 @@
 - `npm --prefix frontend run test -- src/widgets/ai/ai-panel-widget.test.tsx -t "allows selecting multiple workspace widgets for the AI request context|persists the current workspace widget when the operator clicks Only current immediately after opening context options|auto-saves stale persisted context when context widgets are opened"`
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts`
 - `npx playwright test -c e2e/playwright.config.ts --reporter=line e2e/ai.spec.ts -g "archives and restores a non-active thread from row actions"`
+- `npm --prefix frontend run test -- src/widgets/ai/ai-panel-header-widget.test.tsx`
+- `npm run test:ui -- --reporter=line e2e/ai.spec.ts --grep "keeps archived filters while managing archived threads"`
 - `npm run tauri:dev`
 - `curl -sS http://192.168.1.8:8317/v1/models`
 - `curl -sS http://192.168.1.8:8317/v1/chat/completions -H 'Content-Type: application/json' -d '{"model":"gpt-5.4","messages":[{"role":"user","content":"Reply with exactly this token and nothing else: endpoint-ok-1777"}]}'`
@@ -171,7 +173,7 @@
 
 ## Known limitations
 
-- conversation management is still intentionally narrow: create + switch + active-thread rename + archive + restore + delete plus local navigator filtering only. Broader conversation search, archive-only management views, and multi-panel conversation views are not implemented in this slice.
+- conversation management is still intentionally narrow: create + switch + active-thread rename + archive + restore + delete plus one shared navigator. Server-backed scope/query filtering and archive-management flows are now live, but multi-panel conversation views are still not implemented in this slice.
 - request-context persistence is now conversation-scoped and stale-widget repair is explicit, but there are still no named context presets or grouped context modes.
 - CLI providers currently expose buffered chat completion through the existing SSE route; token-by-token provider streaming is not implemented.
 - CLI-native tool calls are not yet mediated through `core/toolruntime`, policy approval, or audit events.

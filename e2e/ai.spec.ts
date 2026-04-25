@@ -311,7 +311,7 @@ test('AI conversation navigator deletes the active thread and promotes the next 
   ).toHaveCount(0)
 })
 
-test('AI conversation navigator archives and restores a non-active thread from row actions', async ({
+test('AI conversation navigator keeps archived filters while managing archived threads', async ({
   page,
   request,
 }) => {
@@ -350,6 +350,7 @@ test('AI conversation navigator archives and restores a non-active thread from r
   await expect(conversationMenuButton).toContainText('Keep in recent')
   await conversationMenuButton.click()
   await page.getByRole('button', { name: 'Show archived conversations' }).click()
+  await page.getByRole('textbox', { name: 'Search conversations' }).fill('archive')
   await expect(page.getByText('Archived threads')).toBeVisible()
   await page.getByRole('button', { name: 'Restore conversation Archive from UI' }).click()
 
@@ -361,12 +362,17 @@ test('AI conversation navigator archives and restores a non-active thread from r
     .toBeUndefined()
 
   await conversationMenuButton.click()
-  await expect(page.getByText('Open threads')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Show archived conversations' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
+  await expect(page.getByRole('textbox', { name: 'Search conversations' })).toHaveValue('archive')
+  await expect(page.getByText('No conversations match this filter.')).toBeVisible()
   await expect(
     page.getByRole('option', {
       name: 'Open conversation Archive from UI',
     }),
-  ).toBeVisible()
+  ).toHaveCount(0)
 })
 
 test('AI conversation navigator filters archived threads through the backend list route', async ({
@@ -887,11 +893,16 @@ test('AI composer submit shortcut can be changed from settings', async ({ page, 
 
   await page.getByRole('button', { name: 'Open settings panel' }).click()
   await page.getByRole('button', { name: 'Composer Поведение Enter / Shift+Enter в чате.' }).click()
-  await page
-    .getByRole('radio', {
-      name: /^Ctrl\/Cmd\+Enter sends Plain Enter inserts a new line\.$/,
-    })
-    .check()
+  const enterSendsRadio = page.getByRole('radio', {
+    name: /^Enter sends Shift\+Enter inserts a new line\.$/,
+  })
+  const modEnterRadio = page.getByRole('radio', {
+    name: /^Ctrl\/Cmd\+Enter sends Plain Enter inserts a new line\.$/,
+  })
+  await expect(enterSendsRadio).toBeChecked()
+  await expect(modEnterRadio).toBeEnabled()
+  await modEnterRadio.click()
+  await expect(modEnterRadio).toBeChecked()
   await page.getByRole('button', { name: 'Close Settings' }).click()
 
   await page.getByRole('button', { name: 'Toggle AI panel' }).click()
