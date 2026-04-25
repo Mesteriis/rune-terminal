@@ -1,6 +1,7 @@
 export * from './ai'
 export * from './commander'
 export * from './demo'
+export * from './files'
 export * from './panel'
 export * from './shell'
 export * from './terminal'

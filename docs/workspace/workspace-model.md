@@ -30,9 +30,10 @@ This is the canonical workspace entrypoint for tab/widget/layout behavior.
   `preview` / `editor` / `web` are planned.
 - Seed the rewritten Dockview shell and right-rail widget menu from that
   catalog: `terminal` remains the only right-rail-created runtime widget,
+  `files` opens through an explicit backend directory path handoff,
   `commander` may still appear as an explicit frontend-local default panel,
-  and future/path-backed widget kinds stay visible but disabled until their
-  frontend runtime path exists.
+  and future widget kinds stay visible but disabled until their frontend
+  runtime path exists.
 
 ## Contract rules
 
@@ -49,6 +50,9 @@ This is the canonical workspace entrypoint for tab/widget/layout behavior.
 - Dockview persistence is still frontend-local `localStorage`; the current
   catalog migration covers initial seeding and right-rail discoverability,
   not backend-owned Dockview layout persistence.
+- The files widget currently renders a narrow directory list for the handed-off
+  path. TideTerm-style rich preview navigation, drag/copy, media preview, and
+  editor handoff remain future slices.
 
 ## Deep links
 

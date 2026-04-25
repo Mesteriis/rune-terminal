@@ -5,6 +5,7 @@ import {
   WorkspaceAPIError,
   fetchWorkspaceSnapshot,
   fetchWorkspaceWidgetKindCatalog,
+  openDirectoryWorkspaceWidget,
 } from '@/shared/api/workspace'
 
 describe('fetchWorkspaceSnapshot', () => {
@@ -218,6 +219,94 @@ describe('fetchWorkspaceWidgetKindCatalog', () => {
         message: 'catalog unavailable',
         name: 'WorkspaceAPIError',
         status: 503,
+      }),
+    )
+  })
+})
+
+describe('openDirectoryWorkspaceWidget', () => {
+  afterEach(() => {
+    resetRuntimeContextCacheForTests()
+    vi.restoreAllMocks()
+    vi.unstubAllEnvs()
+  })
+
+  it('opens a directory widget through the backend workspace path-handoff route', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          tab_id: 'tab-main',
+          widget_id: 'files-1',
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      openDirectoryWorkspaceWidget({
+        path: '/Users/avm/projects/runa-terminal',
+        targetWidgetId: 'term-main',
+      }),
+    ).resolves.toEqual({
+      tab_id: 'tab-main',
+      widget_id: 'files-1',
+    })
+    expect(fetchMock.mock.calls[1]?.[0]).toBe('http://127.0.0.1:8090/api/v1/workspace/widgets/open-directory')
+    expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({
+      body: JSON.stringify({
+        connection_id: undefined,
+        path: '/Users/avm/projects/runa-terminal',
+        target_widget_id: 'term-main',
+      }),
+      method: 'POST',
+    })
+  })
+
+  it('surfaces typed open-directory errors', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        json: async () => ({
+          error: {
+            code: 'target_missing',
+            message: 'target missing',
+          },
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      openDirectoryWorkspaceWidget({
+        path: '/Users/avm/projects/runa-terminal',
+        targetWidgetId: 'missing',
+      }),
+    ).rejects.toEqual(
+      expect.objectContaining<Partial<WorkspaceAPIError>>({
+        code: 'target_missing',
+        message: 'target missing',
+        name: 'WorkspaceAPIError',
+        status: 404,
       }),
     )
   })

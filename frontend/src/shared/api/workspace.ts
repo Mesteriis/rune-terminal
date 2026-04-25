@@ -26,6 +26,17 @@ export type WorkspaceWidgetKindCatalogEntry = {
   notes?: string
 }
 
+export type OpenDirectoryWorkspaceWidgetInput = {
+  connectionId?: string
+  path: string
+  targetWidgetId: string
+}
+
+export type CreateWorkspaceWidgetResult = {
+  tab_id: string
+  widget_id: string
+}
+
 export type WorkspaceSnapshot = {
   id: string
   name: string
@@ -105,4 +116,42 @@ export async function fetchWorkspaceWidgetKindCatalog() {
 
   const payload = (await response.json()) as { widget_kinds?: WorkspaceWidgetKindCatalogEntry[] }
   return Array.isArray(payload.widget_kinds) ? payload.widget_kinds : []
+}
+
+export async function openDirectoryWorkspaceWidget({
+  connectionId,
+  path,
+  targetWidgetId,
+}: OpenDirectoryWorkspaceWidgetInput) {
+  const runtimeContext = await resolveRuntimeContext()
+  const response = await fetch(`${runtimeContext.baseUrl}/api/v1/workspace/widgets/open-directory`, {
+    body: JSON.stringify({
+      connection_id: connectionId,
+      path,
+      target_widget_id: targetWidgetId,
+    }),
+    headers: {
+      Authorization: `Bearer ${runtimeContext.authToken}`,
+      'Content-Type': 'application/json',
+    },
+    method: 'POST',
+  })
+
+  if (!response.ok) {
+    let errorPayload: APIErrorEnvelope | null = null
+
+    try {
+      errorPayload = (await response.json()) as APIErrorEnvelope
+    } catch {
+      errorPayload = null
+    }
+
+    throw new WorkspaceAPIError(
+      response.status,
+      errorPayload?.error?.code ?? 'workspace_open_directory_request_failed',
+      errorPayload?.error?.message ?? `Workspace open-directory request failed (${response.status})`,
+    )
+  }
+
+  return (await response.json()) as CreateWorkspaceWidgetResult
 }

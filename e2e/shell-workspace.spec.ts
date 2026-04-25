@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-import { clearBrowserState, fetchWorkspaceSnapshot } from './runtime'
+import { clearBrowserState, fetchBootstrap, fetchWorkspaceSnapshot } from './runtime'
 
 test('shell workspace tabs, utility actions, widget creation, and settings modal work end to end', async ({
   page,
@@ -9,7 +9,11 @@ test('shell workspace tabs, utility actions, widget creation, and settings modal
   await clearBrowserState(page)
   await page.goto('/')
 
-  const baselineBackendTabCount = (await fetchWorkspaceSnapshot(request)).tabs.length
+  const bootstrap = await fetchBootstrap(request)
+  const repoRootTitle = bootstrap.repo_root.split('/').filter(Boolean).pop() ?? bootstrap.repo_root
+  const baselineBackendSnapshot = await fetchWorkspaceSnapshot(request)
+  const baselineBackendTabCount = baselineBackendSnapshot.tabs.length
+  const baselineBackendWidgetCount = baselineBackendSnapshot.widgets.length
 
   const workspaceOneTab = page.getByRole('tab', { name: 'Workspace-1' })
   const workspaceTwoTab = page.getByRole('tab', { name: 'Workspace-2' })
@@ -43,9 +47,7 @@ test('shell workspace tabs, utility actions, widget creation, and settings modal
 
   await openUtilityPanelButton.click()
   await expect(page.getByRole('menuitem', { name: 'Create Terminal widget' })).toBeEnabled()
-  await expect(
-    page.getByRole('menuitem', { name: 'Files widget unavailable: Requires path handoff' }),
-  ).toBeDisabled()
+  await expect(page.getByRole('menuitem', { name: 'Create Files widget' })).toBeEnabled()
   await expect(
     page.getByRole('menuitem', { name: 'Commander widget unavailable: Frontend-local' }),
   ).toBeDisabled()
@@ -55,7 +57,12 @@ test('shell workspace tabs, utility actions, widget creation, and settings modal
     page.getByRole('menuitem', { name: 'Web Placeholder widget unavailable: Planned' }),
   ).toBeDisabled()
   await expect(page.getByRole('menuitem', { name: 'Create commander widget' })).toHaveCount(0)
-  await openUtilityPanelButton.click()
+  await page.getByRole('menuitem', { name: 'Create Files widget' }).click()
+  await expect(page.getByText(bootstrap.repo_root, { exact: true })).toBeVisible()
+  await expect(page.getByText('package.json', { exact: true })).toBeVisible()
+  await expect
+    .poll(async () => (await fetchWorkspaceSnapshot(request)).widgets.length)
+    .toBe(baselineBackendWidgetCount + 2)
 
   await workspaceTwoTab.click()
   await expect(workspaceTwoTab).toHaveAttribute('aria-selected', 'true')
@@ -80,6 +87,7 @@ test('shell workspace tabs, utility actions, widget creation, and settings modal
   await expect(page.getByRole('button', { name: 'Close Main terminal' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Close Workspace shell' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Close tool' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: `Close ${repoRootTitle}` })).toBeVisible()
   await page.getByRole('button', { name: 'Add terminal tab for Workspace shell' }).click()
   await expect(page.getByRole('button', { name: 'Close Workspace shell 2' })).toBeVisible()
   await expect(page.getByText(/terminal widget not found/i)).toHaveCount(0)

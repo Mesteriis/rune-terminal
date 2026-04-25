@@ -15,14 +15,15 @@
     and the rewritten Dockview workspace shell now consumes the loaded
     catalog for startup seeding plus right-rail widget discoverability
   - browser e2e coverage now verifies the active right-rail catalog behavior:
-    terminal remains enabled and runtime-created, while `files`,
-    `commander`, and planned widget kinds are visible but disabled according
-    to catalog status/path-handoff constraints
+    `terminal` and `files` remain enabled and runtime-created, while
+    `commander` and planned widget kinds are visible but disabled according
+    to catalog status constraints
   - serialized Playwright coverage now exercises the active shell/user paths over the split local dev runtime:
     - workspace tab switching and workspace creation
     - the shell topbar now renders workspace tabs and the add-workspace affordance as one compact grouped strip, so workspace switching and creation read as a single control cluster instead of separate header controls
     - commander Dockview tabs now follow the same compact workspace-strip language instead of a badge-only placeholder: each commander tab shows a compact `commander` pill, a readable `tool/tool N` title, and a per-tab close action only when the commander group actually has multiple tabs
-    - right-rail utility menu actions for new workspace and terminal widget,
+    - right-rail utility menu actions for new workspace, terminal widget,
+      and files widget,
       with non-creatable widget kinds disabled from backend catalog truth
     - settings modal open/close from shell chrome
     - the settings shell now renders as a tighter navigator/editor surface with a dedicated sidebar header and one framed content pane for the active section, while preserving the existing `General / AI / Terminal / Commander` structure
@@ -161,6 +162,8 @@
 - `npm --prefix frontend run lint:active`
 - `(cd frontend && npm exec prettier -- --write src/widgets/ai/ai-composer-widget.tsx)`
 - `npm --prefix frontend run test -- src/widgets/ai/ai-composer-widget.test.tsx`
+- `(cd frontend && npm exec prettier -- --write src/shared/api/workspace.ts src/shared/api/workspace.test.ts src/features/files/api/client.ts src/features/files/api/client.test.ts src/widgets/files/files-panel.ts src/widgets/files/files-panel.test.ts src/widgets/files/files-panel-widget.tsx src/widgets/files/files-panel-widget.test.tsx src/widgets/files/files-panel-widget.styles.ts src/widgets/files/index.ts src/widgets/index.ts src/widgets/panel/dockview-panel-widget.tsx src/widgets/shell/right-action-rail-widget.tsx src/widgets/shell/right-action-rail-widget.test.tsx)`
+- `npm --prefix frontend run test -- src/shared/api/workspace.test.ts src/features/files/api/client.test.ts src/widgets/files/files-panel.test.ts src/widgets/files/files-panel-widget.test.tsx src/widgets/shell/right-action-rail-widget.test.tsx`
 - `npm --prefix frontend run build`
 - `npm run test:ui -- --reporter=line e2e/shell-workspace.spec.ts`
 - `npm run validate`
@@ -210,8 +213,8 @@
 - The active commander read/write path is backend-backed in this repo. What is still out of scope here are approvals, remote/cross-widget orchestration, and broader parity-only feature breadth.
 - The widget-kind catalog now drives Dockview startup seeding and right-rail
   discoverability, but this validation still does not claim backend-owned
-  Dockview layout persistence, generic files-widget creation without an
-  explicit path handoff, or rich preview/editor/web rendering.
+  Dockview layout persistence, arbitrary-path files-widget creation from a
+  picker, or rich preview/editor/web rendering.
 - The AI composer DOM `keydown` listener now uses the real browser
   `globalThis.KeyboardEvent` type instead of React's synthetic
   `KeyboardEvent`, so the fresh `npm --prefix frontend run build` pass is no
@@ -251,13 +254,17 @@
   workspace API client normalization/error path.
 - Targeted frontend catalog-consumption validation covers the widget catalog
   model helpers, Dockview startup seeding decisions, and the right-rail menu
-  behavior that enables only catalog-creatable terminal widgets while showing
-  path-handoff, frontend-local, and planned kinds as disabled.
+  behavior that enables catalog-creatable terminal/files widgets while
+  showing frontend-local and planned kinds as disabled.
+- Targeted files-widget validation covers the frontend open-directory
+  workspace API client, the dedicated files directory-list client, files panel
+  params, files panel rendering, and right-rail repo-root path handoff.
 - Browser e2e validation now covers the catalog-backed right rail inside
   `e2e/shell-workspace.spec.ts`: `Create Terminal widget` remains enabled and
-  still increases the backend tab count, while `Files`, `Commander`,
-  `Preview`, `Editor`, and `Web Placeholder` menu entries are asserted
-  disabled with their catalog-derived reason labels.
+  still increases the backend tab count, `Create Files widget` opens the
+  runtime `repo_root` directory panel and increases backend widget count, while
+  `Commander`, `Preview`, `Editor`, and `Web Placeholder` menu entries are
+  asserted disabled with their catalog-derived reason labels.
 - Static validation confirmed the frontend dependency upgrade to `react@19.2.5`, `react-dom@19.2.5`, `@types/react@19.2.14`, and `@types/react-dom@19.2.3`, and `npm --prefix frontend run lint:active` plus `npm --prefix frontend run build` both passed on that stack.
 - Static validation confirmed the terminal renderer slice dependencies `@xterm/xterm@6.0.0` and `@xterm/addon-fit@0.11.0`, plus the new UI-layer chain `TerminalViewport -> TerminalStatusHeader/TerminalSurface -> TerminalWidget`.
 - Static validation confirmed terminal panel params now act as the local source of truth for terminal title/session metadata, so both the body widget and the custom Dockview tab renderer reuse the same terminal panel config.

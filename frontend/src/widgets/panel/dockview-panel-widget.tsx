@@ -10,6 +10,7 @@ import { $activeWidgetHostId, setActiveWidgetHostId } from '@/shared/model/widge
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { Box, Text } from '@/shared/ui/primitives'
 import { CommanderPanelWidget } from '@/widgets/commander/commander-panel-widget'
+import { FilesPanelWidget, resolveFilesPanelParams } from '@/widgets/files'
 import { ModalHostWidget } from '@/widgets/panel/modal-host-widget'
 import { PanelModalActionsWidget } from '@/widgets/panel/panel-modal-actions-widget'
 import {
@@ -30,6 +31,7 @@ export function DockviewPanelWidget(props: IDockviewPanelProps) {
   const terminalModel = props.api.id.startsWith('terminal')
     ? resolveTerminalPanelParams(props.api.id, props.params)
     : null
+  const filesModel = resolveFilesPanelParams(props.params)
   const isCommanderPanel = isCommanderDemoPanel(props.api.id)
   const isActiveWidget = activeWidgetHostId === props.api.id
   const panelInnerContentStyle = resolveDockviewPanelInnerContentStyle(Boolean(terminalModel))
@@ -90,6 +92,8 @@ export function DockviewPanelWidget(props: IDockviewPanelProps) {
               themeClassTarget={panelGroupElement}
               title={terminalModel.title}
             />
+          ) : filesModel ? (
+            <FilesPanelWidget path={filesModel.path} title={filesModel.title} />
           ) : isCommanderPanel ? (
             <CommanderPanelWidget />
           ) : (

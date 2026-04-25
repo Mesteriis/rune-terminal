@@ -19,6 +19,11 @@ export type WorkspaceSnapshot = {
   tabs: Array<{
     id: string
   }>
+  widgets: Array<{
+    id: string
+    kind: string
+    path?: string
+  }>
 }
 
 export type DirectoryListing = {

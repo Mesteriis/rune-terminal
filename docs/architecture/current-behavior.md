@@ -16,9 +16,13 @@ It is intentionally operational, not narrative.
   - `preview`, `editor`, and `web` are explicitly marked `planned`
 - The rewritten Dockview shell consumes that catalog for default panel
   seeding and right-rail widget discoverability. The right rail only creates
-  catalog-creatable runtime widgets; frontend-local, path-handoff, and
-  planned kinds are shown as disabled instead of being silently hardcoded as
-  creatable.
+  catalog-creatable runtime widgets; frontend-local and planned kinds are
+  shown as disabled instead of being silently hardcoded as creatable.
+- The right rail can now open the backend-owned `files` widget through the
+  existing `POST /api/v1/workspace/widgets/open-directory` path-handoff
+  route, using the runtime `repo_root` as the initial directory. The frontend
+  renders that widget as a narrow directory-list surface backed by
+  `GET /api/v1/fs/list`.
 - Focusing a tab synchronizes the active widget to the first visible leaf in that tab's window layout.
 - Focusing a widget also synchronizes the active tab if that widget belongs to a known tab.
 - Tabs are the shell-level navigation unit.

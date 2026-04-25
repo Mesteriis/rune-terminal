@@ -3,6 +3,8 @@ import { Code2, FileText, FolderTree, Globe2, Monitor, Plus, Settings2 } from 'l
 import { useUnit } from 'effector-react'
 import { useEffect, useRef, useState } from 'react'
 
+import { resolveRuntimeContext } from '@/shared/api/runtime'
+import { openDirectoryWorkspaceWidget } from '@/shared/api/workspace'
 import { openBodyModal } from '@/shared/model/modal'
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { Box, Button, Separator, Surface, Text } from '@/shared/ui/primitives'
@@ -12,6 +14,7 @@ import {
   isWorkspaceWidgetKindCreatable,
   type WorkspaceWidgetCatalogState,
 } from '@/features/workspace/model/widget-catalog'
+import { createFilesPanelParams, resolveFilesPanelParams } from '@/widgets/files'
 import {
   railButtonStyle,
   resolveUtilityMenuItemStyle,
@@ -24,7 +27,12 @@ import {
   utilityMenuTitleStyle,
   utilityMenuWrapStyle,
 } from '@/widgets/shell/right-action-rail-widget.styles'
-import { createNextTerminalPanelId, createTerminalPanelParams } from '@/widgets/terminal/terminal-panel'
+import {
+  createNextTerminalPanelId,
+  createTerminalPanelParams,
+  isTerminalPanel,
+  resolveTerminalPanelParams,
+} from '@/widgets/terminal/terminal-panel'
 
 const railIconProps = {
   size: 16,
@@ -60,11 +68,14 @@ function getUnavailableWidgetReason(kind: string, widgetCatalog: WorkspaceWidget
     return 'Frontend-local'
   }
 
-  if (entry.supports_path) {
-    return 'Requires path handoff'
-  }
-
   return 'Unavailable'
+}
+
+function getPathTitle(path: string) {
+  const trimmedPath = path.replace(/\/+$/g, '')
+  const title = trimmedPath.split('/').filter(Boolean).pop()
+
+  return title || trimmedPath || 'Files'
 }
 
 export function RightActionRailWidget({
@@ -125,6 +136,22 @@ export function RightActionRailWidget({
     }
   }
 
+  const getBackendTargetWidgetId = () => {
+    const activePanel = dockviewApiRef.current?.activePanel
+
+    if (!activePanel) {
+      return null
+    }
+
+    if (isTerminalPanel(activePanel.id, activePanel.params)) {
+      return resolveTerminalPanelParams(activePanel.id, activePanel.params).widgetId
+    }
+
+    const filesPanelParams = resolveFilesPanelParams(activePanel.params)
+
+    return filesPanelParams?.widgetId ?? null
+  }
+
   const handleCreateTerminalWidget = async () => {
     if (!isWorkspaceWidgetKindCreatable(widgetCatalog.entries, 'terminal')) {
       return
@@ -159,6 +186,46 @@ export function RightActionRailWidget({
     setIsUtilityMenuOpen(false)
   }
 
+  const handleCreateFilesWidget = async () => {
+    if (!isWorkspaceWidgetKindCreatable(widgetCatalog.entries, 'files')) {
+      return
+    }
+
+    const dockviewApi = dockviewApiRef.current
+    const targetWidgetId = getBackendTargetWidgetId()
+
+    if (!dockviewApi || !targetWidgetId) {
+      return
+    }
+
+    try {
+      const runtimeContext = await resolveRuntimeContext()
+      const path = runtimeContext.repoRoot
+      const result = await openDirectoryWorkspaceWidget({
+        path,
+        targetWidgetId,
+      })
+      const title = getPathTitle(path)
+
+      dockviewApi.addPanel({
+        id: result.widget_id,
+        title,
+        component: 'default',
+        params: createFilesPanelParams({
+          path,
+          title,
+          widgetId: result.widget_id,
+        }),
+        position: getPanelPosition(),
+      })
+    } catch (error) {
+      console.error('Unable to create files widget', error)
+      return
+    }
+
+    setIsUtilityMenuOpen(false)
+  }
+
   const terminalEntry = getWorkspaceWidgetKindEntry(widgetCatalog.entries, 'terminal')
   const filesEntry = getWorkspaceWidgetKindEntry(widgetCatalog.entries, 'files')
   const commanderEntry = getWorkspaceWidgetKindEntry(widgetCatalog.entries, 'commander')
@@ -166,6 +233,7 @@ export function RightActionRailWidget({
   const editorEntry = getWorkspaceWidgetKindEntry(widgetCatalog.entries, 'editor')
   const webEntry = getWorkspaceWidgetKindEntry(widgetCatalog.entries, 'web')
   const canCreateTerminal = isWorkspaceWidgetKindCreatable(widgetCatalog.entries, 'terminal')
+  const canCreateFiles = isWorkspaceWidgetKindCreatable(widgetCatalog.entries, 'files')
   const canCreateCommander = false
 
   return (
@@ -247,26 +315,33 @@ export function RightActionRailWidget({
               ) : null}
               {filesEntry ? (
                 <Button
-                  aria-label={`${filesEntry.label} widget unavailable: ${getUnavailableWidgetReason(
-                    'files',
-                    widgetCatalog,
-                  )}`}
-                  disabled
+                  aria-label={
+                    canCreateFiles
+                      ? `Create ${filesEntry.label} widget`
+                      : `${filesEntry.label} widget unavailable: ${getUnavailableWidgetReason(
+                          'files',
+                          widgetCatalog,
+                        )}`
+                  }
+                  disabled={!canCreateFiles}
+                  onClick={handleCreateFilesWidget}
                   runaComponent="right-action-rail-create-files"
                   role="menuitem"
-                  style={resolveUtilityMenuItemStyle(true)}
+                  style={resolveUtilityMenuItemStyle(!canCreateFiles)}
                 >
                   <FileText {...railIconProps} />
                   <Box runaComponent="right-action-rail-create-files-meta" style={utilityMenuMetaStyle}>
                     <Text runaComponent="right-action-rail-create-files-title" style={utilityMenuTitleStyle}>
                       {filesEntry.label}
                     </Text>
-                    <Text
-                      runaComponent="right-action-rail-create-files-status"
-                      style={utilityMenuStatusTextStyle}
-                    >
-                      {getUnavailableWidgetReason('files', widgetCatalog)}
-                    </Text>
+                    {!canCreateFiles ? (
+                      <Text
+                        runaComponent="right-action-rail-create-files-status"
+                        style={utilityMenuStatusTextStyle}
+                      >
+                        {getUnavailableWidgetReason('files', widgetCatalog)}
+                      </Text>
+                    ) : null}
                   </Box>
                 </Button>
               ) : null}

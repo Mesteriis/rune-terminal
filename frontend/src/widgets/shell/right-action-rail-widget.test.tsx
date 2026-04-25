@@ -3,10 +3,20 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { createTerminalTab } from '@/features/terminal/api/client'
 import { type WorkspaceWidgetCatalogState } from '@/features/workspace/model/widget-catalog'
+import { resolveRuntimeContext } from '@/shared/api/runtime'
+import { openDirectoryWorkspaceWidget } from '@/shared/api/workspace'
 import { RightActionRailWidget } from '@/widgets/shell/right-action-rail-widget'
 
 vi.mock('@/features/terminal/api/client', () => ({
   createTerminalTab: vi.fn(),
+}))
+
+vi.mock('@/shared/api/runtime', () => ({
+  resolveRuntimeContext: vi.fn(),
+}))
+
+vi.mock('@/shared/api/workspace', () => ({
+  openDirectoryWorkspaceWidget: vi.fn(),
 }))
 
 afterEach(() => {
@@ -96,13 +106,47 @@ describe('RightActionRailWidget', () => {
     renderRail()
 
     expect(screen.getByRole('menuitem', { name: 'Create Terminal widget' })).toBeEnabled()
-    expect(
-      screen.getByRole('menuitem', { name: 'Files widget unavailable: Requires path handoff' }),
-    ).toBeDisabled()
+    expect(screen.getByRole('menuitem', { name: 'Create Files widget' })).toBeEnabled()
     expect(
       screen.getByRole('menuitem', { name: 'Commander widget unavailable: Frontend-local' }),
     ).toBeDisabled()
     expect(screen.getByRole('menuitem', { name: 'Preview widget unavailable: Planned' })).toBeDisabled()
+  })
+
+  it('creates catalog-creatable files widgets through an explicit repo-root path handoff', async () => {
+    vi.mocked(resolveRuntimeContext).mockResolvedValue({
+      authToken: 'runtime-token',
+      baseUrl: 'http://127.0.0.1:8090',
+      colorTerm: '',
+      defaultShell: '/bin/zsh',
+      homeDir: '/Users/avm',
+      repoRoot: '/repo',
+      term: 'xterm-256color',
+    })
+    vi.mocked(openDirectoryWorkspaceWidget).mockResolvedValue({
+      tab_id: 'tab-main',
+      widget_id: 'files-9',
+    })
+    const { dockviewApi } = renderRail()
+
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Create Files widget' }))
+
+    await waitFor(() => {
+      expect(openDirectoryWorkspaceWidget).toHaveBeenCalledWith({
+        path: '/repo',
+        targetWidgetId: 'term-side',
+      })
+      expect(dockviewApi.addPanel).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'files-9',
+          params: expect.objectContaining({
+            component: 'files',
+            path: '/repo',
+            widgetId: 'files-9',
+          }),
+        }),
+      )
+    })
   })
 
   it('creates only catalog-creatable terminal widgets through the runtime path', async () => {

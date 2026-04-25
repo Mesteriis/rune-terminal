@@ -48,8 +48,9 @@ capability.
 - backend widget-kind discovery now drives Dockview initial seeding and the
   right-rail widget menu, but Dockview layout persistence is still
   frontend-local; `commander` is intentionally reported as `frontend-local`,
-  `files` remains a path-handoff surface rather than a generic right-rail
-  create action, and `preview`, `editor`, and `web` remain planned
+  `files` is now creatable from the right rail through a repo-root
+  open-directory handoff with a narrow directory-list renderer, and
+  `preview`, `editor`, and `web` remain planned
 - the frontend has no ESLint / Biome yet — `lint:active` and `lint:all`
   both delegate to `tsc --noEmit`
 
