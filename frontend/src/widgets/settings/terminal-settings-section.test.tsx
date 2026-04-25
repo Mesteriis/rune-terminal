@@ -8,6 +8,7 @@ vi.mock('@/features/terminal/model/use-terminal-preferences', async () => {
   return {
     DEFAULT_TERMINAL_FONT_SIZE: 13,
     DEFAULT_TERMINAL_LINE_HEIGHT: 1.25,
+    DEFAULT_TERMINAL_THEME_MODE: 'adaptive',
     MAX_TERMINAL_FONT_SIZE: 16,
     MAX_TERMINAL_LINE_HEIGHT: 1.6,
     MIN_TERMINAL_FONT_SIZE: 11,
@@ -35,17 +36,22 @@ describe('TerminalSettingsSection', () => {
       refresh: vi.fn(async () => undefined),
       resetFontSize: vi.fn(async () => undefined),
       resetLineHeight: vi.fn(async () => undefined),
+      resetThemeMode: vi.fn(async () => undefined),
+      themeMode: 'adaptive',
       updateFontSize: vi.fn(async () => undefined),
       updateLineHeight: vi.fn(async () => undefined),
+      updateThemeMode: vi.fn(async () => undefined),
     })
 
     render(<TerminalSettingsSection />)
 
     expect(screen.getByText('13px')).toBeVisible()
     expect(screen.getByText('1.25x')).toBeVisible()
+    expect(screen.getByRole('combobox', { name: 'Terminal theme mode' })).toHaveValue('adaptive')
     expect(screen.getByRole('button', { name: 'Increase terminal font size' })).toBeEnabled()
     expect(screen.getByRole('button', { name: 'Reset terminal font size' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Decrease terminal font size' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Reset terminal theme mode' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Increase terminal line height' })).toBeEnabled()
     expect(screen.getByRole('button', { name: 'Reset terminal line height' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Decrease terminal line height' })).toBeEnabled()

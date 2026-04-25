@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   DEFAULT_TERMINAL_FONT_SIZE,
   DEFAULT_TERMINAL_LINE_HEIGHT,
+  DEFAULT_TERMINAL_THEME_MODE,
   MAX_TERMINAL_FONT_SIZE,
   MAX_TERMINAL_LINE_HEIGHT,
   MIN_TERMINAL_FONT_SIZE,
@@ -35,6 +36,7 @@ describe('useTerminalPreferences', () => {
     vi.mocked(requestTerminalSettings).mockResolvedValue({
       font_size: DEFAULT_TERMINAL_FONT_SIZE,
       line_height: DEFAULT_TERMINAL_LINE_HEIGHT,
+      theme_mode: DEFAULT_TERMINAL_THEME_MODE,
     })
 
     const { result } = renderHook(() => useTerminalPreferences())
@@ -45,16 +47,19 @@ describe('useTerminalPreferences', () => {
 
     expect(result.current.fontSize).toBe(DEFAULT_TERMINAL_FONT_SIZE)
     expect(result.current.lineHeight).toBe(DEFAULT_TERMINAL_LINE_HEIGHT)
+    expect(result.current.themeMode).toBe(DEFAULT_TERMINAL_THEME_MODE)
   })
 
   it('persists font-size updates through the backend contract', async () => {
     vi.mocked(requestTerminalSettings).mockResolvedValue({
       font_size: DEFAULT_TERMINAL_FONT_SIZE,
       line_height: DEFAULT_TERMINAL_LINE_HEIGHT,
+      theme_mode: DEFAULT_TERMINAL_THEME_MODE,
     })
     vi.mocked(updateTerminalSettings).mockResolvedValue({
       font_size: 15,
       line_height: 1.3,
+      theme_mode: 'contrast',
     })
 
     const { result } = renderHook(() => useTerminalPreferences())
@@ -69,9 +74,11 @@ describe('useTerminalPreferences', () => {
 
     expect(result.current.fontSize).toBe(15)
     expect(result.current.lineHeight).toBe(1.3)
+    expect(result.current.themeMode).toBe('contrast')
     expect(updateTerminalSettings).toHaveBeenCalledWith({
       font_size: 15,
       line_height: DEFAULT_TERMINAL_LINE_HEIGHT,
+      theme_mode: DEFAULT_TERMINAL_THEME_MODE,
     })
   })
 
@@ -79,15 +86,18 @@ describe('useTerminalPreferences', () => {
     vi.mocked(requestTerminalSettings).mockResolvedValue({
       font_size: DEFAULT_TERMINAL_FONT_SIZE,
       line_height: DEFAULT_TERMINAL_LINE_HEIGHT,
+      theme_mode: DEFAULT_TERMINAL_THEME_MODE,
     })
     vi.mocked(updateTerminalSettings)
       .mockResolvedValueOnce({
         font_size: MAX_TERMINAL_FONT_SIZE,
         line_height: DEFAULT_TERMINAL_LINE_HEIGHT,
+        theme_mode: DEFAULT_TERMINAL_THEME_MODE,
       })
       .mockResolvedValueOnce({
         font_size: MIN_TERMINAL_FONT_SIZE,
         line_height: DEFAULT_TERMINAL_LINE_HEIGHT,
+        theme_mode: DEFAULT_TERMINAL_THEME_MODE,
       })
 
     const { result } = renderHook(() => useTerminalPreferences())
@@ -113,15 +123,18 @@ describe('useTerminalPreferences', () => {
     vi.mocked(requestTerminalSettings).mockResolvedValue({
       font_size: DEFAULT_TERMINAL_FONT_SIZE,
       line_height: DEFAULT_TERMINAL_LINE_HEIGHT,
+      theme_mode: DEFAULT_TERMINAL_THEME_MODE,
     })
     vi.mocked(updateTerminalSettings)
       .mockResolvedValueOnce({
         font_size: DEFAULT_TERMINAL_FONT_SIZE,
         line_height: MAX_TERMINAL_LINE_HEIGHT,
+        theme_mode: DEFAULT_TERMINAL_THEME_MODE,
       })
       .mockResolvedValueOnce({
         font_size: DEFAULT_TERMINAL_FONT_SIZE,
         line_height: MIN_TERMINAL_LINE_HEIGHT,
+        theme_mode: DEFAULT_TERMINAL_THEME_MODE,
       })
 
     const { result } = renderHook(() => useTerminalPreferences())
@@ -141,5 +154,35 @@ describe('useTerminalPreferences', () => {
     })
 
     expect(result.current.lineHeight).toBe(MIN_TERMINAL_LINE_HEIGHT)
+  })
+
+  it('persists terminal theme mode updates through the backend contract', async () => {
+    vi.mocked(requestTerminalSettings).mockResolvedValue({
+      font_size: DEFAULT_TERMINAL_FONT_SIZE,
+      line_height: DEFAULT_TERMINAL_LINE_HEIGHT,
+      theme_mode: DEFAULT_TERMINAL_THEME_MODE,
+    })
+    vi.mocked(updateTerminalSettings).mockResolvedValue({
+      font_size: DEFAULT_TERMINAL_FONT_SIZE,
+      line_height: DEFAULT_TERMINAL_LINE_HEIGHT,
+      theme_mode: 'contrast',
+    })
+
+    const { result } = renderHook(() => useTerminalPreferences())
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    await act(async () => {
+      await result.current.updateThemeMode('contrast')
+    })
+
+    expect(result.current.themeMode).toBe('contrast')
+    expect(updateTerminalSettings).toHaveBeenCalledWith({
+      font_size: DEFAULT_TERMINAL_FONT_SIZE,
+      line_height: DEFAULT_TERMINAL_LINE_HEIGHT,
+      theme_mode: 'contrast',
+    })
   })
 })

@@ -32,6 +32,7 @@ export type TerminalSurfaceProps = {
   onRendererModeChange?: (mode: 'default' | 'webgl') => void
   onRequestSearch?: () => void
   themeClassTarget?: HTMLElement | null
+  themeMode?: 'adaptive' | 'contrast'
 }
 
 const viewportStyle = {
@@ -56,7 +57,7 @@ function getCssVariableFromElement(element: HTMLElement | null, name: string) {
   return getComputedStyle(element).getPropertyValue(name).trim()
 }
 
-function getTerminalTheme(target: HTMLElement | null) {
+function getAdaptiveTerminalTheme(target: HTMLElement | null) {
   const background =
     getCssVariableFromElement(target, '--runa-terminal-surface-bg') ||
     getCssVariable('--color-surface-glass-soft') ||
@@ -120,8 +121,42 @@ function getTerminalTheme(target: HTMLElement | null) {
   }
 }
 
-function applyTerminalTheme(term: Terminal, target: HTMLElement | null) {
-  term.options.theme = getTerminalTheme(target)
+function getContrastTerminalTheme() {
+  return {
+    background: '#020605',
+    black: '#020605',
+    brightBlack: '#8da39d',
+    brightBlue: '#9fd7ff',
+    brightCyan: '#9ef5df',
+    brightGreen: '#69f3c6',
+    brightMagenta: '#d2c8ff',
+    brightRed: '#ffb0b0',
+    brightWhite: '#f5fffc',
+    brightYellow: '#ffe3a1',
+    blue: '#84bff4',
+    cursor: '#f5fffc',
+    cursorAccent: '#020605',
+    cyan: '#82d8c7',
+    foreground: '#f0fbf8',
+    green: '#47d6b3',
+    magenta: '#b8afe6',
+    red: '#ff9d9d',
+    selectionBackground: 'rgba(245, 255, 252, 0.24)',
+    white: '#f0fbf8',
+    yellow: '#e7cc84',
+  }
+}
+
+function getTerminalTheme(mode: 'adaptive' | 'contrast', target: HTMLElement | null) {
+  if (mode === 'contrast') {
+    return getContrastTerminalTheme()
+  }
+
+  return getAdaptiveTerminalTheme(target)
+}
+
+function applyTerminalTheme(term: Terminal, target: HTMLElement | null, mode: 'adaptive' | 'contrast') {
+  term.options.theme = getTerminalTheme(mode, target)
 }
 
 function createSafeLinkHandler() {
@@ -178,6 +213,7 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
       onRendererModeChange,
       onRequestSearch,
       themeClassTarget = null,
+      themeMode = 'adaptive',
     },
     ref,
   ) {
@@ -275,7 +311,7 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
         fontSize,
         lineHeight,
         rightClickSelectsWord: true,
-        theme: getTerminalTheme(viewportRef.current),
+        theme: getTerminalTheme(themeMode, viewportRef.current),
       })
       const fitAddon = new FitAddon()
       const searchAddon = new SearchAddon()
@@ -292,7 +328,7 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
       term.loadAddon(webLinksAddon)
       term.loadAddon(clipboardAddon)
       term.open(openTarget)
-      applyTerminalTheme(term, openTarget)
+      applyTerminalTheme(term, openTarget, themeMode)
       onRendererModeChange?.('default')
 
       try {
@@ -353,7 +389,7 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
         typeof MutationObserver === 'undefined' || !themeClassTarget
           ? null
           : new MutationObserver(() => {
-              applyTerminalTheme(term, openTarget)
+              applyTerminalTheme(term, openTarget, themeMode)
             })
 
       if (groupClassObserver && themeClassTarget instanceof HTMLElement) {
@@ -421,6 +457,16 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
       term.options.lineHeight = lineHeight
       fitAddonRef.current?.fit()
     }, [lineHeight])
+
+    useEffect(() => {
+      const term = termRef.current
+
+      if (!term) {
+        return
+      }
+
+      applyTerminalTheme(term, viewportRef.current, themeMode)
+    }, [themeMode, themeClassTarget])
 
     useEffect(() => {
       const term = termRef.current

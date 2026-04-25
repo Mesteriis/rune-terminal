@@ -3,12 +3,15 @@ import { useCallback, useEffect, useSyncExternalStore } from 'react'
 import {
   clampTerminalFontSize,
   clampTerminalLineHeight,
+  clampTerminalThemeMode,
   DEFAULT_TERMINAL_FONT_SIZE,
   DEFAULT_TERMINAL_LINE_HEIGHT,
+  DEFAULT_TERMINAL_THEME_MODE,
   MAX_TERMINAL_FONT_SIZE,
   MAX_TERMINAL_LINE_HEIGHT,
   MIN_TERMINAL_FONT_SIZE,
   MIN_TERMINAL_LINE_HEIGHT,
+  type TerminalThemeMode,
   requestTerminalSettings,
   updateTerminalSettings,
 } from '@/shared/api/terminal-settings'
@@ -16,6 +19,7 @@ import {
 export {
   DEFAULT_TERMINAL_FONT_SIZE,
   DEFAULT_TERMINAL_LINE_HEIGHT,
+  DEFAULT_TERMINAL_THEME_MODE,
   MAX_TERMINAL_FONT_SIZE,
   MAX_TERMINAL_LINE_HEIGHT,
   MIN_TERMINAL_FONT_SIZE,
@@ -29,6 +33,7 @@ type TerminalPreferencesState = {
   errorMessage: string | null
   fontSize: number
   lineHeight: number
+  themeMode: TerminalThemeMode
   isLoading: boolean
   isSaving: boolean
 }
@@ -37,6 +42,7 @@ let terminalPreferencesState: TerminalPreferencesState = {
   errorMessage: null,
   fontSize: DEFAULT_TERMINAL_FONT_SIZE,
   lineHeight: DEFAULT_TERMINAL_LINE_HEIGHT,
+  themeMode: DEFAULT_TERMINAL_THEME_MODE,
   isLoading: true,
   isSaving: false,
 }
@@ -67,6 +73,7 @@ async function refreshTerminalPreferences() {
       ...terminalPreferencesState,
       fontSize: settings.font_size,
       lineHeight: settings.line_height,
+      themeMode: settings.theme_mode,
     }
   } catch (error) {
     terminalPreferencesState = {
@@ -104,7 +111,11 @@ function getTerminalPreferencesSnapshot() {
   return terminalPreferencesState
 }
 
-async function persistTerminalSettings(next: { fontSize: number; lineHeight: number }) {
+async function persistTerminalSettings(next: {
+  fontSize: number
+  lineHeight: number
+  themeMode: TerminalThemeMode
+}) {
   terminalPreferencesState = {
     ...terminalPreferencesState,
     errorMessage: null,
@@ -116,11 +127,13 @@ async function persistTerminalSettings(next: { fontSize: number; lineHeight: num
     const settings = await updateTerminalSettings({
       font_size: clampTerminalFontSize(next.fontSize),
       line_height: clampTerminalLineHeight(next.lineHeight),
+      theme_mode: clampTerminalThemeMode(next.themeMode),
     })
     terminalPreferencesState = {
       ...terminalPreferencesState,
       fontSize: settings.font_size,
       lineHeight: settings.line_height,
+      themeMode: settings.theme_mode,
     }
   } catch (error) {
     terminalPreferencesState = {
@@ -140,6 +153,7 @@ export async function setTerminalFontSize(fontSize: number) {
   await persistTerminalSettings({
     fontSize,
     lineHeight: terminalPreferencesState.lineHeight,
+    themeMode: terminalPreferencesState.themeMode,
   })
 }
 
@@ -147,6 +161,15 @@ export async function setTerminalLineHeight(lineHeight: number) {
   await persistTerminalSettings({
     fontSize: terminalPreferencesState.fontSize,
     lineHeight,
+    themeMode: terminalPreferencesState.themeMode,
+  })
+}
+
+export async function setTerminalThemeMode(themeMode: TerminalThemeMode) {
+  await persistTerminalSettings({
+    fontSize: terminalPreferencesState.fontSize,
+    lineHeight: terminalPreferencesState.lineHeight,
+    themeMode,
   })
 }
 
@@ -155,6 +178,7 @@ export function resetTerminalPreferencesForTests() {
     errorMessage: null,
     fontSize: DEFAULT_TERMINAL_FONT_SIZE,
     lineHeight: DEFAULT_TERMINAL_LINE_HEIGHT,
+    themeMode: DEFAULT_TERMINAL_THEME_MODE,
     isLoading: true,
     isSaving: false,
   }
@@ -205,10 +229,19 @@ export function useTerminalPreferences() {
     await setTerminalLineHeight(DEFAULT_TERMINAL_LINE_HEIGHT)
   }, [])
 
+  const updateThemeMode = useCallback(async (value: TerminalThemeMode) => {
+    await setTerminalThemeMode(value)
+  }, [])
+
+  const resetThemeMode = useCallback(async () => {
+    await setTerminalThemeMode(DEFAULT_TERMINAL_THEME_MODE)
+  }, [])
+
   return {
     errorMessage: state.errorMessage,
     fontSize: state.fontSize,
     lineHeight: state.lineHeight,
+    themeMode: state.themeMode,
     isLoading: state.isLoading,
     isSaving: state.isSaving,
     updateFontSize,
@@ -219,6 +252,8 @@ export function useTerminalPreferences() {
     increaseLineHeight,
     decreaseLineHeight,
     resetLineHeight,
+    updateThemeMode,
+    resetThemeMode,
     refresh: ensureTerminalPreferencesLoaded,
   }
 }

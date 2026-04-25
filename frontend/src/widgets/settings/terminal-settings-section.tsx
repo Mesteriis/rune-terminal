@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import {
   DEFAULT_TERMINAL_FONT_SIZE,
   DEFAULT_TERMINAL_LINE_HEIGHT,
+  DEFAULT_TERMINAL_THEME_MODE,
   MAX_TERMINAL_FONT_SIZE,
   MAX_TERMINAL_LINE_HEIGHT,
   MIN_TERMINAL_FONT_SIZE,
@@ -11,7 +12,7 @@ import {
   useTerminalPreferences,
 } from '@/features/terminal/model/use-terminal-preferences'
 import { ClearBox } from '@/shared/ui/components'
-import { Button, Text } from '@/shared/ui/primitives'
+import { Button, Select, Text } from '@/shared/ui/primitives'
 import {
   settingsShellBadgeStyle,
   settingsShellContentHeaderStyle,
@@ -54,6 +55,9 @@ export function TerminalSettingsSection() {
     lineHeight,
     resetFontSize,
     resetLineHeight,
+    resetThemeMode,
+    themeMode,
+    updateThemeMode,
   } = useTerminalPreferences()
   const canDecreaseFontSize = fontSize > MIN_TERMINAL_FONT_SIZE
   const canIncreaseFontSize = fontSize < MAX_TERMINAL_FONT_SIZE
@@ -104,6 +108,33 @@ export function TerminalSettingsSection() {
               onClick={() => void increaseFontSize()}
             >
               <Plus size={14} strokeWidth={1.8} />
+            </Button>
+          </ClearBox>
+        </ClearBox>
+        <ClearBox style={settingsShellListRowStyle}>
+          <ClearBox style={settingsShellContentHeaderStyle}>
+            <Text style={{ fontWeight: 600 }}>Terminal theme mode</Text>
+            <Text style={settingsShellMutedTextStyle}>
+              `adaptive` следует текущему shell chrome, а `contrast` принудительно включает более контрастную
+              terminal palette.
+            </Text>
+          </ClearBox>
+          <ClearBox style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--gap-xs)' }}>
+            <Select
+              aria-label="Terminal theme mode"
+              disabled={isLoading || isSaving}
+              onChange={(event) => void updateThemeMode(event.currentTarget.value as 'adaptive' | 'contrast')}
+              value={themeMode}
+            >
+              <option value="adaptive">Adaptive</option>
+              <option value="contrast">Contrast</option>
+            </Select>
+            <Button
+              aria-label="Reset terminal theme mode"
+              disabled={isLoading || isSaving || themeMode === DEFAULT_TERMINAL_THEME_MODE}
+              onClick={() => void resetThemeMode()}
+            >
+              <RotateCcw size={14} strokeWidth={1.8} />
             </Button>
           </ClearBox>
         </ClearBox>

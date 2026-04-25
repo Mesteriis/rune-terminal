@@ -35,6 +35,9 @@ func TestPreferencesStoreBootstrapsDefaultSettings(t *testing.T) {
 	if settings.LineHeight != DefaultLineHeight {
 		t.Fatalf("expected default line height %.2f, got %.2f", DefaultLineHeight, settings.LineHeight)
 	}
+	if settings.ThemeMode != DefaultThemeMode {
+		t.Fatalf("expected default theme mode %q, got %q", DefaultThemeMode, settings.ThemeMode)
+	}
 }
 
 func TestPreferencesStoreClampsAndPersistsSettings(t *testing.T) {
@@ -53,7 +56,7 @@ func TestPreferencesStoreClampsAndPersistsSettings(t *testing.T) {
 		t.Fatalf("new preferences store: %v", err)
 	}
 
-	updated, err := store.Update(context.Background(), Preferences{FontSize: 99, LineHeight: 9})
+	updated, err := store.Update(context.Background(), Preferences{FontSize: 99, LineHeight: 9, ThemeMode: ContrastThemeMode})
 	if err != nil {
 		t.Fatalf("update preferences: %v", err)
 	}
@@ -63,8 +66,11 @@ func TestPreferencesStoreClampsAndPersistsSettings(t *testing.T) {
 	if updated.LineHeight != MaxLineHeight {
 		t.Fatalf("expected clamped max line height %.2f, got %.2f", MaxLineHeight, updated.LineHeight)
 	}
+	if updated.ThemeMode != ContrastThemeMode {
+		t.Fatalf("expected contrast theme mode, got %q", updated.ThemeMode)
+	}
 
-	updated, err = store.Update(context.Background(), Preferences{FontSize: 1, LineHeight: 0.2})
+	updated, err = store.Update(context.Background(), Preferences{FontSize: 1, LineHeight: 0.2, ThemeMode: "bogus"})
 	if err != nil {
 		t.Fatalf("update preferences with low values: %v", err)
 	}
@@ -73,6 +79,9 @@ func TestPreferencesStoreClampsAndPersistsSettings(t *testing.T) {
 	}
 	if updated.LineHeight != MinLineHeight {
 		t.Fatalf("expected clamped min line height %.2f, got %.2f", MinLineHeight, updated.LineHeight)
+	}
+	if updated.ThemeMode != DefaultThemeMode {
+		t.Fatalf("expected invalid theme mode to clamp to %q, got %q", DefaultThemeMode, updated.ThemeMode)
 	}
 
 	reloadedStore, err := NewPreferencesStore(context.Background(), dbConn)
@@ -88,5 +97,8 @@ func TestPreferencesStoreClampsAndPersistsSettings(t *testing.T) {
 	}
 	if reloaded.LineHeight != MinLineHeight {
 		t.Fatalf("expected persisted line height %.2f, got %.2f", MinLineHeight, reloaded.LineHeight)
+	}
+	if reloaded.ThemeMode != DefaultThemeMode {
+		t.Fatalf("expected persisted theme mode %q, got %q", DefaultThemeMode, reloaded.ThemeMode)
 	}
 }

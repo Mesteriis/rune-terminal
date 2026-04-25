@@ -17,6 +17,8 @@ const (
 	DefaultLineHeight = 1.25
 	MinLineHeight     = 1.05
 	MaxLineHeight     = 1.6
+	DefaultThemeMode  = "adaptive"
+	ContrastThemeMode = "contrast"
 
 	defaultTerminalSettingsScope = "default"
 )
@@ -24,6 +26,7 @@ const (
 type Preferences struct {
 	FontSize   int     `json:"font_size"`
 	LineHeight float64 `json:"line_height"`
+	ThemeMode  string  `json:"theme_mode"`
 }
 
 type PreferencesStore struct {
@@ -50,11 +53,12 @@ func (s *PreferencesStore) Snapshot(ctx context.Context) (Preferences, error) {
 
 	var fontSize int
 	var lineHeight float64
+	var themeMode string
 	err := s.db.QueryRowContext(ctx, `
-		SELECT font_size, line_height
+		SELECT font_size, line_height, theme_mode
 		FROM terminal_settings
 		WHERE scope = ?
-	`, defaultTerminalSettingsScope).Scan(&fontSize, &lineHeight)
+	`, defaultTerminalSettingsScope).Scan(&fontSize, &lineHeight, &themeMode)
 	if err != nil {
 		return Preferences{}, fmt.Errorf("load terminal settings: %w", err)
 	}
@@ -62,6 +66,7 @@ func (s *PreferencesStore) Snapshot(ctx context.Context) (Preferences, error) {
 	return Preferences{
 		FontSize:   clampFontSize(fontSize),
 		LineHeight: clampLineHeight(lineHeight),
+		ThemeMode:  clampThemeMode(themeMode),
 	}, nil
 }
 
@@ -73,15 +78,17 @@ func (s *PreferencesStore) Update(ctx context.Context, next Preferences) (Prefer
 	normalized := Preferences{
 		FontSize:   clampFontSize(next.FontSize),
 		LineHeight: clampLineHeight(next.LineHeight),
+		ThemeMode:  clampThemeMode(next.ThemeMode),
 	}
 
 	_, err := s.db.ExecContext(ctx, `
 		UPDATE terminal_settings
-		SET font_size = ?, line_height = ?, updated_at = ?
+		SET font_size = ?, line_height = ?, theme_mode = ?, updated_at = ?
 		WHERE scope = ?
 	`,
 		normalized.FontSize,
 		normalized.LineHeight,
+		normalized.ThemeMode,
 		time.Now().UTC().Format(time.RFC3339Nano),
 		defaultTerminalSettingsScope,
 	)
@@ -106,12 +113,13 @@ func (s *PreferencesStore) ensureDefaultRow(ctx context.Context) error {
 	}
 
 	_, err := s.db.ExecContext(ctx, `
-		INSERT INTO terminal_settings (scope, font_size, line_height, updated_at)
-		VALUES (?, ?, ?, ?)
+		INSERT INTO terminal_settings (scope, font_size, line_height, theme_mode, updated_at)
+		VALUES (?, ?, ?, ?, ?)
 	`,
 		defaultTerminalSettingsScope,
 		DefaultFontSize,
 		DefaultLineHeight,
+		DefaultThemeMode,
 		time.Now().UTC().Format(time.RFC3339Nano),
 	)
 	if err != nil && !isUniqueConstraintError(err) {
@@ -145,6 +153,18 @@ func clampLineHeight(value float64) float64 {
 		return MaxLineHeight
 	}
 	return math.Round(value*100) / 100
+}
+
+func clampThemeMode(value string) string {
+	normalized := strings.TrimSpace(strings.ToLower(value))
+	switch normalized {
+	case "", DefaultThemeMode:
+		return DefaultThemeMode
+	case ContrastThemeMode:
+		return ContrastThemeMode
+	default:
+		return DefaultThemeMode
+	}
 }
 
 func isUniqueConstraintError(err error) bool {

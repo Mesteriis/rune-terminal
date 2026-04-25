@@ -32,6 +32,7 @@ vi.mock('@/shared/ui/components/terminal-surface', async () => {
         onRendererModeChange?: (mode: 'default' | 'webgl') => void
         onRequestSearch?: () => void
         statusMessage?: string | null
+        themeMode?: 'adaptive' | 'contrast'
       },
       ref: React.ForwardedRef<{
         copySelection: () => Promise<void>
@@ -58,7 +59,7 @@ vi.mock('@/shared/ui/components/terminal-surface', async () => {
       return (
         <div data-testid="terminal-surface-mock">
           {props.statusMessage ?? 'terminal-ready'} · font:{props.fontSize ?? 13} · line:
-          {props.lineHeight ?? 1.25}
+          {props.lineHeight ?? 1.25} · theme:{props.themeMode ?? 'adaptive'}
         </div>
       )
     }),
@@ -107,8 +108,11 @@ describe('TerminalWidget', () => {
       refresh: vi.fn(async () => undefined),
       resetFontSize: vi.fn(),
       resetLineHeight: vi.fn(),
+      resetThemeMode: vi.fn(),
+      themeMode: 'contrast',
       updateFontSize: vi.fn(),
       updateLineHeight: vi.fn(),
+      updateThemeMode: vi.fn(),
     })
 
     render(<TerminalWidget hostId="terminal" runtimeWidgetId="term-side" title="Workspace shell" />)
@@ -118,7 +122,7 @@ describe('TerminalWidget', () => {
     expect(screen.getByText('zsh')).toBeInTheDocument()
     expect(screen.getByText('Running')).toBeInTheDocument()
     expect(screen.getByTestId('terminal-surface-mock')).toHaveTextContent(
-      'Attached to local shell. · font:15 · line:1.4',
+      'Attached to local shell. · font:15 · line:1.4 · theme:contrast',
     )
 
     await waitFor(() => {

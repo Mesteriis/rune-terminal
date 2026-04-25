@@ -3,12 +3,16 @@ import { resolveRuntimeContext } from '@/shared/api/runtime'
 export type TerminalSettings = {
   font_size: number
   line_height: number
+  theme_mode: TerminalThemeMode
 }
+
+export type TerminalThemeMode = 'adaptive' | 'contrast'
 
 type TerminalSettingsPayload = {
   settings?: {
     font_size?: number | null
     line_height?: number | null
+    theme_mode?: string | null
   } | null
 }
 
@@ -18,6 +22,7 @@ export const MAX_TERMINAL_FONT_SIZE = 16
 export const DEFAULT_TERMINAL_LINE_HEIGHT = 1.25
 export const MIN_TERMINAL_LINE_HEIGHT = 1.05
 export const MAX_TERMINAL_LINE_HEIGHT = 1.6
+export const DEFAULT_TERMINAL_THEME_MODE: TerminalThemeMode = 'adaptive'
 
 export function clampTerminalFontSize(value: number) {
   if (!Number.isFinite(value)) {
@@ -36,10 +41,25 @@ export function clampTerminalLineHeight(value: number) {
   return Math.round(clamped * 100) / 100
 }
 
+export function clampTerminalThemeMode(value: string | null | undefined): TerminalThemeMode {
+  switch (
+    String(value ?? '')
+      .trim()
+      .toLowerCase()
+  ) {
+    case 'contrast':
+      return 'contrast'
+    case 'adaptive':
+    default:
+      return DEFAULT_TERMINAL_THEME_MODE
+  }
+}
+
 function normalizeTerminalSettings(payload: TerminalSettingsPayload) {
   return {
     font_size: clampTerminalFontSize(payload.settings?.font_size ?? DEFAULT_TERMINAL_FONT_SIZE),
     line_height: clampTerminalLineHeight(payload.settings?.line_height ?? DEFAULT_TERMINAL_LINE_HEIGHT),
+    theme_mode: clampTerminalThemeMode(payload.settings?.theme_mode),
   } satisfies TerminalSettings
 }
 
@@ -65,6 +85,7 @@ export async function updateTerminalSettings(settings: TerminalSettings) {
     body: JSON.stringify({
       font_size: clampTerminalFontSize(settings.font_size),
       line_height: clampTerminalLineHeight(settings.line_height),
+      theme_mode: clampTerminalThemeMode(settings.theme_mode),
     }),
     headers: {
       Authorization: `Bearer ${runtimeContext.authToken}`,

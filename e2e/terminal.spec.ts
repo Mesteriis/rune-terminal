@@ -34,6 +34,7 @@ test('terminal settings persist font-size changes through the shell settings UI'
   await updateTerminalSettingsViaApi(request, {
     font_size: 13,
     line_height: 1.25,
+    theme_mode: 'adaptive',
   })
 })
 
@@ -63,6 +64,36 @@ test('terminal settings persist line-height changes through the shell settings U
   await updateTerminalSettingsViaApi(request, {
     font_size: 13,
     line_height: 1.25,
+    theme_mode: 'adaptive',
+  })
+})
+
+test('terminal settings persist theme-mode changes through the shell settings UI', async ({
+  page,
+  request,
+}) => {
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  await page.getByRole('button', { name: 'Open settings panel' }).click()
+  await page.getByRole('button', { name: 'Terminal Настройки терминального runtime.' }).click()
+
+  await expect(page.getByRole('combobox', { name: 'Terminal theme mode' })).toHaveValue('adaptive')
+
+  await page.getByRole('combobox', { name: 'Terminal theme mode' }).selectOption('contrast')
+  await expect(page.getByRole('combobox', { name: 'Terminal theme mode' })).toHaveValue('contrast')
+
+  await page.reload()
+  await page.getByRole('button', { name: 'Open settings panel' }).click()
+  await page.getByRole('button', { name: 'Terminal Настройки терминального runtime.' }).click()
+
+  await expect(page.getByRole('combobox', { name: 'Terminal theme mode' })).toHaveValue('contrast')
+  await expect.poll(async () => (await fetchTerminalSettings(request)).theme_mode).toBe('contrast')
+
+  await updateTerminalSettingsViaApi(request, {
+    font_size: 13,
+    line_height: 1.25,
+    theme_mode: 'adaptive',
   })
 })
 
