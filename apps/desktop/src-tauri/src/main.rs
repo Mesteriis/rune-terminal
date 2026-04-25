@@ -6,7 +6,8 @@ use std::fmt::{self, Display};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
-use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Manager, State};
 use thiserror::Error;
@@ -281,6 +282,8 @@ fn main() {
             let state = app.state::<RuntimeState>();
             start_or_attach_runtime(&app.app_handle(), &state)
                 .map_err(|err| tauri::Error::Anyhow(anyhow::anyhow!(err.to_string())))?;
+            install_signal_cleanup(&app.app_handle())
+                .map_err(|err| tauri::Error::Anyhow(anyhow::anyhow!(err.to_string())))?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -294,18 +297,25 @@ fn main() {
         .expect("failed to build tauri app")
         .run(|app, event| {
             if matches!(event, tauri::RunEvent::Exit) {
-                if let Ok(mut state) = app.state::<RuntimeState>().inner.lock() {
-                    if let Some(runtime) = state.as_mut() {
-                        let is_persistent = matches!(runtime.settings.watcher_mode, WatcherMode::Persistent);
-                        if !is_persistent {
-                            let _ = shutdown_runtime(runtime);
-                            clear_runtime_file();
-                        }
-                    }
-                    *state = None;
-                }
+                cleanup_runtime_state(&app.state::<RuntimeState>());
             }
         });
+}
+
+fn install_signal_cleanup(app: &AppHandle) -> Result<(), RuntimeError> {
+    let app_handle = app.clone();
+    let cleanup_started = Arc::new(AtomicBool::new(false));
+    let cleanup_guard = Arc::clone(&cleanup_started);
+
+    ctrlc::set_handler(move || {
+        if cleanup_guard.swap(true, Ordering::SeqCst) {
+            return;
+        }
+
+        cleanup_runtime_state(&app_handle.state::<RuntimeState>());
+        app_handle.exit(0);
+    })
+    .map_err(|err| RuntimeError::Path(format!("failed to install signal handler: {err}")))
 }
 
 fn start_or_attach_runtime(app: &AppHandle, state: &RuntimeState) -> Result<(), RuntimeError> {
@@ -418,6 +428,27 @@ fn shutdown_runtime(runtime: &mut RuntimeRuntime) -> Result<(), RuntimeError> {
         stop_process(&mut runtime.core);
     }
     Ok(())
+}
+
+fn cleanup_runtime_state(state: &State<'_, RuntimeState>) {
+    if let Ok(mut guard) = state.inner.lock() {
+        cleanup_runtime_slot(&mut guard, clear_runtime_file);
+    }
+}
+
+fn cleanup_runtime_slot<F>(slot: &mut Option<RuntimeRuntime>, mut clear_runtime_file_fn: F)
+where
+    F: FnMut(),
+{
+    if let Some(runtime) = slot.as_mut() {
+        let is_persistent = matches!(runtime.settings.watcher_mode, WatcherMode::Persistent);
+        if !is_persistent {
+            let _ = shutdown_runtime(runtime);
+            clear_runtime_file_fn();
+        }
+    }
+
+    *slot = None;
 }
 
 fn graceful_shutdown_watcher(watcher: &mut RuntimeProcess) -> Result<(), RuntimeError> {
@@ -987,8 +1018,8 @@ fn request_watcher_state(url: &str) -> Result<WatcherStatePayload, RuntimeError>
 #[cfg(test)]
 mod tests {
     use super::{
-        recover_or_drop_watcher_record, wait_for_ready_file, ReadyFilePayload, RuntimeError,
-        RuntimeProcessRecord,
+        cleanup_runtime_slot, recover_or_drop_watcher_record, wait_for_ready_file, ReadyFilePayload,
+        RuntimeError, RuntimeProcess, RuntimeProcessRecord, RuntimeRuntime, SettingsFile, WatcherMode,
     };
     use std::fs;
     use std::thread;
@@ -1094,5 +1125,69 @@ mod tests {
         .expect_err("cleanup failure should stop startup");
 
         assert!(matches!(err, RuntimeError::Http(message) if message == "cleanup failed"));
+    }
+
+    #[test]
+    fn cleanup_runtime_slot_shuts_down_ephemeral_runtime_and_clears_runtime_file() {
+        let mut clear_called = false;
+        let mut slot = Some(RuntimeRuntime {
+            core: RuntimeProcess {
+                child: None,
+                pid: 4242,
+                url: "http://127.0.0.1:40100".into(),
+                started_by_ui: false,
+                auth_token: Some("token".into()),
+                worker_id: None,
+                shutdown_token: None,
+            },
+            watcher: Some(RuntimeProcess {
+                child: None,
+                pid: 4243,
+                url: "http://127.0.0.1:7788".into(),
+                started_by_ui: false,
+                auth_token: None,
+                worker_id: Some("watcher".into()),
+                shutdown_token: Some("shutdown".into()),
+            }),
+            settings: SettingsFile {
+                watcher_mode: WatcherMode::Ephemeral,
+                core_auth_token: Some("token".into()),
+            },
+        });
+
+        cleanup_runtime_slot(&mut slot, || {
+            clear_called = true;
+        });
+
+        assert!(slot.is_none(), "runtime slot should be cleared after cleanup");
+        assert!(clear_called, "ephemeral cleanup should clear runtime file");
+    }
+
+    #[test]
+    fn cleanup_runtime_slot_preserves_runtime_file_for_persistent_runtime() {
+        let mut clear_called = false;
+        let mut slot = Some(RuntimeRuntime {
+            core: RuntimeProcess {
+                child: None,
+                pid: 4242,
+                url: "http://127.0.0.1:40100".into(),
+                started_by_ui: false,
+                auth_token: Some("token".into()),
+                worker_id: None,
+                shutdown_token: None,
+            },
+            watcher: None,
+            settings: SettingsFile {
+                watcher_mode: WatcherMode::Persistent,
+                core_auth_token: Some("token".into()),
+            },
+        });
+
+        cleanup_runtime_slot(&mut slot, || {
+            clear_called = true;
+        });
+
+        assert!(slot.is_none(), "runtime slot should still be cleared after cleanup");
+        assert!(!clear_called, "persistent cleanup should preserve runtime file");
     }
 }
