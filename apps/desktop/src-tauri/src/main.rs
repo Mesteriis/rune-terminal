@@ -789,10 +789,9 @@ struct RuntimeAttachment {
 }
 
 fn write_runtime_file(core: &RuntimeProcess, watcher: Option<&RuntimeProcess>) -> Result<(), RuntimeError> {
-    let Some(dir) = runtime_dir() else {
+    let Some(path) = runtime_file_path() else {
         return Err(RuntimeError::Path("missing home directory".into()));
     };
-    fs::create_dir_all(&dir).map_err(|err| RuntimeError::Path(err.to_string()))?;
 
     let payload = RuntimeFile {
         core: Some(RuntimeFileCore {
@@ -819,7 +818,7 @@ fn write_runtime_file(core: &RuntimeProcess, watcher: Option<&RuntimeProcess>) -
 
     let serialized = serde_json::to_string_pretty(&payload)
         .map_err(|err| RuntimeError::RuntimePayload(err.to_string()))?;
-    fs::write(dir.join("runtime.json"), serialized).map_err(|err| RuntimeError::Path(err.to_string()))
+    write_file_atomically(&path, &serialized)
 }
 
 fn clear_runtime_file() {
@@ -842,13 +841,37 @@ fn normalize_url_for_compare(value: &str) -> String {
 }
 
 fn save_settings(settings: &SettingsFile) -> Result<(), RuntimeError> {
-    let Some(dir) = runtime_dir() else {
+    let Some(path) = settings_file_path() else {
         return Err(RuntimeError::Path("missing home directory".into()));
     };
-    fs::create_dir_all(&dir).map_err(|err| RuntimeError::Path(err.to_string()))?;
     let payload = serde_json::to_string_pretty(settings)
         .map_err(|err| RuntimeError::RuntimePayload(err.to_string()))?;
-    fs::write(dir.join("settings.json"), payload).map_err(|err| RuntimeError::Path(err.to_string()))
+    write_file_atomically(&path, &payload)
+}
+
+fn write_file_atomically(path: &Path, contents: &str) -> Result<(), RuntimeError> {
+    let Some(parent) = path.parent() else {
+        return Err(RuntimeError::Path(format!(
+            "missing parent directory for {}",
+            path.display()
+        )));
+    };
+    fs::create_dir_all(parent).map_err(|err| RuntimeError::Path(err.to_string()))?;
+
+    let file_name = path
+        .file_name()
+        .and_then(|value| value.to_str())
+        .unwrap_or("runtime-file");
+    let temp_path = parent.join(format!(".{}.tmp-{}", file_name, random_token_n(8)));
+
+    fs::write(&temp_path, contents).map_err(|err| RuntimeError::Path(err.to_string()))?;
+    match fs::rename(&temp_path, path) {
+        Ok(()) => Ok(()),
+        Err(err) => {
+            let _ = fs::remove_file(&temp_path);
+            Err(RuntimeError::Path(err.to_string()))
+        }
+    }
 }
 
 fn query_active_tasks(core_base_url: &str, auth_token: &str) -> Result<usize, RuntimeError> {
@@ -1049,9 +1072,9 @@ fn request_watcher_state(url: &str) -> Result<WatcherStatePayload, RuntimeError>
 #[cfg(test)]
 mod tests {
     use super::{
-        cleanup_runtime_slot, recover_or_drop_watcher_record, wait_for_ready_file, ReadyFilePayload,
-        RuntimeError, RuntimeProcess, RuntimeProcessRecord, RuntimeRuntime, SettingsFile,
-        SingleInstancePayload, WatcherMode, SINGLE_INSTANCE_EVENT,
+        cleanup_runtime_slot, recover_or_drop_watcher_record, wait_for_ready_file, write_file_atomically,
+        ReadyFilePayload, RuntimeError, RuntimeProcess, RuntimeProcessRecord, RuntimeRuntime,
+        SettingsFile, SingleInstancePayload, WatcherMode, SINGLE_INSTANCE_EVENT,
     };
     use std::fs;
     use std::thread;
@@ -1080,6 +1103,35 @@ mod tests {
                 base_url: "http://127.0.0.1:40123".into(),
                 pid: 4242,
             }
+        );
+    }
+
+    #[test]
+    fn write_file_atomically_replaces_existing_payload() {
+        let temp_dir = tempfile::tempdir().expect("temp dir");
+        let path = temp_dir.path().join("runtime.json");
+        fs::write(&path, r#"{"base_url":"http://127.0.0.1:1","pid":1}"#).expect("seed payload");
+
+        write_file_atomically(&path, r#"{"base_url":"http://127.0.0.1:2","pid":2}"#)
+            .expect("atomic write should replace payload");
+
+        assert_eq!(
+            fs::read_to_string(&path).expect("read payload"),
+            r#"{"base_url":"http://127.0.0.1:2","pid":2}"#
+        );
+    }
+
+    #[test]
+    fn write_file_atomically_creates_missing_parent_directory() {
+        let temp_dir = tempfile::tempdir().expect("temp dir");
+        let path = temp_dir.path().join("nested").join("settings.json");
+
+        write_file_atomically(&path, r#"{"watcher_mode":"ephemeral"}"#)
+            .expect("atomic write should create parent directory");
+
+        assert_eq!(
+            fs::read_to_string(&path).expect("read payload"),
+            r#"{"watcher_mode":"ephemeral"}"#
         );
     }
 
