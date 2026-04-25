@@ -76,6 +76,8 @@ func NewHandler(runtime *app.Runtime, authToken string) http.Handler {
 	mux.HandleFunc("GET /api/v1/policy/ignore-rules", api.handleIgnoreRules)
 	mux.HandleFunc("GET /api/v1/agent", api.handleAgentCatalog)
 	mux.HandleFunc("GET /api/v1/agent/providers", api.handleProviderCatalog)
+	mux.HandleFunc("GET /api/v1/settings/agent", api.handleAgentSettings)
+	mux.HandleFunc("PUT /api/v1/settings/agent", api.handleUpdateAgentSettings)
 	mux.HandleFunc("GET /api/v1/settings/terminal", api.handleTerminalSettings)
 	mux.HandleFunc("PUT /api/v1/settings/terminal", api.handleUpdateTerminalSettings)
 	mux.HandleFunc("GET /api/v1/agent/conversation", api.handleConversationSnapshot)

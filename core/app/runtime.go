@@ -30,6 +30,7 @@ type Runtime struct {
 	WorkspaceCatalog            *workspace.CatalogStore
 	Terminals                   *terminal.Service
 	TerminalPreferences         *terminal.PreferencesStore
+	AgentComposerPreferences    *agent.ComposerPreferencesStore
 	Connections                 *connections.Service
 	Agent                       *agent.Store
 	Conversation                *conversation.Service
@@ -120,6 +121,11 @@ func NewRuntime(repoRoot string, stateDir string) (*Runtime, error) {
 		return nil, err
 	}
 	runtime.TerminalPreferences = terminalPreferences
+	agentComposerPreferences, err := agent.NewComposerPreferencesStore(context.Background(), dbConn)
+	if err != nil {
+		return nil, err
+	}
+	runtime.AgentComposerPreferences = agentComposerPreferences
 	runtime.MCP = plugins.NewMCPRuntime(nil, nil, newExternalMCPInvoker(runtime.Plugins, repoRoot))
 	runtime.Executor = toolruntime.NewExecutor(
 		runtime.Registry,

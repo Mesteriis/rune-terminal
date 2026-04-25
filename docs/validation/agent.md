@@ -15,7 +15,7 @@
   - backend-owned agent provider catalog
   - active conversation provider resolution
   - frontend AI/provider settings surfaces
-  - frontend-owned AI composer submit-shortcut preference (`Enter` vs `Ctrl/Cmd+Enter`)
+  - runtime-backed AI composer submit-shortcut preference (`Enter` vs `Ctrl/Cmd+Enter`) through `GET/PUT /api/v1/settings/agent`
   - narrow OpenAI-compatible HTTP source discovery/completion path
   - AI toolbar provider/model selection over the backend provider catalog
   - AI composer request-context toolbar trigger with explicit widget multiselect
@@ -75,14 +75,16 @@
   - explicit stale-widget repair notice and one-click cleanup for persisted conversation context
   - explicit two-row toolbar grouping with `Source / Model / Context` labels over the existing selector contract
   - denser request-context dropdown summary block and widget option rows without changing selection semantics
-- The AI composer submit shortcut is frontend-owned UI state:
+- The AI composer submit shortcut is now part of the backend-owned agent settings contract:
+  - `GET /api/v1/settings/agent`
+  - `PUT /api/v1/settings/agent`
   - default: `Enter` submits, `Shift+Enter` inserts a new line
   - alternate mode: `Enter` inserts a new line, `Ctrl/Cmd+Enter` submits
-  - persistence is local to the shell UI and does not extend the backend provider/runtime contract
-- The `Settings -> Terminal` section is now a real shell-owned preference surface:
+  - persistence now lives in `runtime.db` and applies across shell reload/reopen inside the same runtime
+- The `Settings -> Terminal` section is now a real shell-owned preference surface backed by the runtime DB contract:
   - terminal font size is adjustable from the settings shell
-  - the preference is stored in local UI state and applied live to mounted xterm surfaces
-  - this does not introduce a backend-owned terminal settings contract
+  - the preference is stored in backend terminal settings and applied live to mounted xterm surfaces
+  - this reuses the existing backend-owned terminal settings contract rather than frontend-local storage
 - The conversation navigator now exposes explicit scoped views over the same backend list contract:
   - `Open threads` for active/unarchived conversations
   - `Archived threads` for archived conversations
@@ -137,11 +139,17 @@
 - `npm --prefix frontend run test -- src/shared/api/workspace.test.ts src/features/agent/api/client.test.ts src/widgets/ai/ai-panel-widget.test.tsx`
 - `npm --prefix frontend run test -- src/features/agent/api/client.test.ts src/widgets/ai/ai-panel-header-widget.test.tsx src/widgets/ai/ai-panel-widget.test.tsx`
 - `npm --prefix frontend run test -- src/features/agent/model/use-ai-composer-preferences.test.tsx src/widgets/ai/ai-composer-widget.test.tsx src/widgets/ai/ai-panel-widget.test.tsx`
+- `npm --prefix frontend run test -- src/shared/api/agent-settings.test.ts src/features/agent/model/use-ai-composer-preferences.test.tsx src/widgets/ai/ai-composer-widget.test.tsx`
 - `npm --prefix frontend run test -- src/widgets/ai/ai-composer-widget.test.tsx src/widgets/ai/ai-panel-widget.test.tsx src/shared/ui/components/accessibility-contracts.test.tsx`
 - `npm --prefix frontend run test -- src/widgets/ai/ai-chat-message-widget.test.tsx src/widgets/ai/ai-panel-widget.test.tsx`
 - `npm --prefix frontend run lint:active`
 - `npm run test:ui -- --reporter=line`
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts`
+- `./scripts/go.sh test ./core/agent ./core/app ./core/transport/httpapi`
+- `npm --prefix frontend run test -- src/shared/api/agent-settings.test.ts src/features/agent/model/use-ai-composer-preferences.test.tsx src/widgets/ai/ai-composer-widget.test.tsx`
+- `npm --prefix frontend run lint:active`
+- `npm run test:ui -- --reporter=line e2e/ai.spec.ts`
+- controlled `npm run tauri:dev` startup smoke: observed live `target/debug/rterm-desktop` plus desktop-owned `rterm-core serve` / `rterm-core watcher`, then explicitly cleaned the smoke-owned process delta while leaving the user-owned `rterm-core serve --listen 127.0.0.1:8090` intact
 - `npm run test:ui -- --reporter=line --grep "keyboard navigation through filtered thread options" e2e/ai.spec.ts`
 - `npm --prefix frontend run test -- src/widgets/ai/ai-panel-widget.test.tsx src/widgets/ai/ai-panel-header-widget.test.tsx src/widgets/ai/ai-composer-widget.test.tsx`
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts`
@@ -165,7 +173,7 @@
 - No current visible profile, role, or mode selector exists in the AI sidebar, so those backend selection routes remain unwired to user controls.
 - `/run` currently surfaces approval-required toolruntime responses as a chat-side error/status message; there is no dedicated approval-confirmation UI for this path yet.
 - On this machine the local `claude` binary is installed and authenticated, and the verified browser path includes a successful Claude completion on a fresh conversation.
-- The composer shortcut preference is intentionally local UI state today; there is no backend/user-profile sync for this behavior.
+- The composer shortcut preference is now runtime-backed inside the local desktop/browser runtime, but it still is not a broader roaming user-profile setting shared across multiple runtimes or machines.
 
 ## Related validation
 

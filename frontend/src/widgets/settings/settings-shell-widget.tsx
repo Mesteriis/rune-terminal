@@ -84,7 +84,7 @@ const settingsSectionMeta: Record<SettingsSectionID, SettingsSectionMeta> = {
     navDescription: 'Поведение Enter / Shift+Enter в чате.',
     shellTitle: 'AI / Composer',
     shellDescription:
-      'Frontend-owned keyboard behavior for the AI composer: visible send/newline shortcut selection without inventing a backend runtime contract.',
+      'Runtime-backed keyboard behavior for the AI composer: send/newline shortcut selection stored in the shared settings contract.',
     groupLabel: 'AI',
   },
   'ai-limits': {

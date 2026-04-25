@@ -23,6 +23,7 @@ It is intentionally operational, not narrative.
   - it opens near the right utility rail instead of as a centered modal
   - dragging is limited to the header chrome and clamped to the desktop window bounds
   - its frame, sections, and navigation now use the same restrained overlay token set instead of mixed ad hoc panel colors
+  - the `AI / Composer` slice now persists its send/newline shortcut through the backend-owned `GET/PUT /api/v1/settings/agent` contract instead of browser-local UI storage
 - The visible shell typography/icon path for the active compat UI now uses:
   - `Inter` for body/header UI text
   - `Hack` for terminal-adjacent fixed-width text

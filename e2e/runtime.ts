@@ -57,6 +57,10 @@ export type TerminalSettings = {
   theme_mode: 'adaptive' | 'contrast'
 }
 
+export type AgentSettings = {
+  composer_submit_mode: 'enter-sends' | 'mod-enter-sends'
+}
+
 export type AgentConversationMessage = {
   content: string
   created_at: string
@@ -245,6 +249,18 @@ export async function updateTerminalSettingsViaApi(
   },
 ) {
   const response = await request.put(`${backendUrl}/api/v1/settings/terminal`, {
+    data: settings,
+    headers: authHeaders(),
+  })
+
+  expect(response.ok()).toBeTruthy()
+}
+
+export async function updateAgentSettingsViaApi(
+  request: APIRequestContext,
+  settings: Partial<AgentSettings>,
+) {
+  const response = await request.put(`${backendUrl}/api/v1/settings/agent`, {
     data: settings,
     headers: authHeaders(),
   })

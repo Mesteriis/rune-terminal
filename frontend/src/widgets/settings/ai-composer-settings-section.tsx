@@ -33,11 +33,11 @@ function SectionCard({
 }
 
 export function AiComposerSettingsSection() {
-  const { submitMode, updateSubmitMode } = useAiComposerPreferences()
+  const { submitMode, updateSubmitMode, isLoading, isSaving, errorMessage } = useAiComposerPreferences()
 
   return (
     <SectionCard
-      description="Это frontend-owned composer preference. Оно управляет клавишами отправки в текущем shell UI и не вводит новый backend contract."
+      description="Runtime-backed keyboard behavior for the AI composer. The selected send/newline shortcut is now stored in the shared runtime settings contract."
       title="Keyboard submit behavior"
     >
       <ClearBox style={settingsShellListStyle}>
@@ -50,7 +50,9 @@ export function AiComposerSettingsSection() {
                 : 'Enter inserts a new line; Ctrl/Cmd+Enter sends the prompt.'}
             </Text>
           </ClearBox>
-          <ClearBox style={settingsShellBadgeStyle}>Frontend</ClearBox>
+          <ClearBox style={settingsShellBadgeStyle}>
+            {isLoading ? 'Loading' : isSaving ? 'Saving' : 'Runtime'}
+          </ClearBox>
         </ClearBox>
       </ClearBox>
 
@@ -73,11 +75,13 @@ export function AiComposerSettingsSection() {
           },
         ]}
         value={submitMode}
+        disabled={isLoading || isSaving}
       />
 
       <Text style={settingsShellMutedTextStyle}>
-        This preference is stored in local UI state and applies immediately to the AI composer.
+        This preference is stored in the runtime DB and applies immediately to the AI composer.
       </Text>
+      {errorMessage ? <Text style={settingsShellMutedTextStyle}>{errorMessage}</Text> : null}
     </SectionCard>
   )
 }

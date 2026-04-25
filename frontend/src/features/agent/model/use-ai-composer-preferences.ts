@@ -1,91 +1,156 @@
 import { useCallback, useSyncExternalStore } from 'react'
 
 import type { AiComposerSubmitMode } from '@/features/agent/model/types'
-
-const AI_COMPOSER_SUBMIT_MODE_STORAGE_KEY = 'rterm.ai.composer.submit-mode.v1'
-const DEFAULT_AI_COMPOSER_SUBMIT_MODE: AiComposerSubmitMode = 'enter-sends'
+import {
+  clampAgentComposerSubmitMode,
+  DEFAULT_AGENT_COMPOSER_SUBMIT_MODE,
+  requestAgentSettings,
+  updateAgentSettings,
+} from '@/shared/api/agent-settings'
 
 const subscribers = new Set<() => void>()
+let loadPromise: Promise<void> | null = null
+
+type AiComposerPreferencesState = {
+  submitMode: AiComposerSubmitMode
+  isLoading: boolean
+  isSaving: boolean
+  errorMessage: string | null
+}
+
+let aiComposerPreferencesState: AiComposerPreferencesState = {
+  submitMode: DEFAULT_AGENT_COMPOSER_SUBMIT_MODE,
+  isLoading: true,
+  isSaving: false,
+  errorMessage: null,
+}
 
 function normalizeAiComposerSubmitMode(value: string | null | undefined): AiComposerSubmitMode {
-  return value === 'mod-enter-sends' ? 'mod-enter-sends' : DEFAULT_AI_COMPOSER_SUBMIT_MODE
+  return clampAgentComposerSubmitMode(value)
 }
 
 function emitAiComposerPreferenceChange() {
   subscribers.forEach((subscriber) => subscriber())
 }
 
-function readAiComposerSubmitMode(): AiComposerSubmitMode {
-  if (typeof window === 'undefined') {
-    return DEFAULT_AI_COMPOSER_SUBMIT_MODE
+function formatAiComposerPreferencesError(error: unknown) {
+  if (error instanceof Error && error.message.trim() !== '') {
+    return error.message
   }
 
-  try {
-    return normalizeAiComposerSubmitMode(window.localStorage.getItem(AI_COMPOSER_SUBMIT_MODE_STORAGE_KEY))
-  } catch {
-    return DEFAULT_AI_COMPOSER_SUBMIT_MODE
+  return 'Unable to load AI composer settings.'
+}
+
+async function refreshAiComposerPreferences() {
+  aiComposerPreferencesState = {
+    ...aiComposerPreferencesState,
+    errorMessage: null,
+    isLoading: true,
   }
+  emitAiComposerPreferenceChange()
+
+  try {
+    const settings = await requestAgentSettings()
+    aiComposerPreferencesState = {
+      ...aiComposerPreferencesState,
+      submitMode: settings.composer_submit_mode,
+    }
+  } catch (error) {
+    aiComposerPreferencesState = {
+      ...aiComposerPreferencesState,
+      errorMessage: formatAiComposerPreferencesError(error),
+    }
+  } finally {
+    aiComposerPreferencesState = {
+      ...aiComposerPreferencesState,
+      isLoading: false,
+    }
+    emitAiComposerPreferenceChange()
+  }
+}
+
+function ensureAiComposerPreferencesLoaded() {
+  if (!loadPromise) {
+    loadPromise = refreshAiComposerPreferences().finally(() => {
+      loadPromise = null
+    })
+  }
+
+  return loadPromise
 }
 
 function subscribeToAiComposerPreferences(callback: () => void) {
   subscribers.add(callback)
-
-  const handleStorage = (event: StorageEvent) => {
-    if (event.key === AI_COMPOSER_SUBMIT_MODE_STORAGE_KEY) {
-      callback()
-    }
-  }
-
-  if (typeof window !== 'undefined') {
-    window.addEventListener('storage', handleStorage)
-  }
+  void ensureAiComposerPreferencesLoaded()
 
   return () => {
     subscribers.delete(callback)
-    if (typeof window !== 'undefined') {
-      window.removeEventListener('storage', handleStorage)
-    }
   }
 }
 
-export function setAiComposerSubmitMode(mode: AiComposerSubmitMode) {
+function getAiComposerPreferencesSnapshot() {
+  return aiComposerPreferencesState
+}
+
+export async function setAiComposerSubmitMode(mode: AiComposerSubmitMode) {
   const nextMode = normalizeAiComposerSubmitMode(mode)
 
-  if (typeof window === 'undefined') {
-    return
-  }
-
   try {
-    window.localStorage.setItem(AI_COMPOSER_SUBMIT_MODE_STORAGE_KEY, nextMode)
-  } catch {
-    return
-  }
+    aiComposerPreferencesState = {
+      ...aiComposerPreferencesState,
+      errorMessage: null,
+      isSaving: true,
+    }
+    emitAiComposerPreferenceChange()
 
-  emitAiComposerPreferenceChange()
+    const settings = await updateAgentSettings({
+      composer_submit_mode: nextMode,
+    })
+    aiComposerPreferencesState = {
+      ...aiComposerPreferencesState,
+      submitMode: settings.composer_submit_mode,
+    }
+  } catch (error) {
+    aiComposerPreferencesState = {
+      ...aiComposerPreferencesState,
+      errorMessage: formatAiComposerPreferencesError(error),
+    }
+  } finally {
+    aiComposerPreferencesState = {
+      ...aiComposerPreferencesState,
+      isSaving: false,
+    }
+    emitAiComposerPreferenceChange()
+  }
 }
 
 export function resetAiComposerPreferencesForTests() {
-  if (typeof window === 'undefined') {
-    return
+  loadPromise = null
+  aiComposerPreferencesState = {
+    submitMode: DEFAULT_AGENT_COMPOSER_SUBMIT_MODE,
+    isLoading: true,
+    isSaving: false,
+    errorMessage: null,
   }
-
-  window.localStorage.removeItem(AI_COMPOSER_SUBMIT_MODE_STORAGE_KEY)
   emitAiComposerPreferenceChange()
 }
 
 export function useAiComposerPreferences() {
-  const submitMode = useSyncExternalStore(
+  const state = useSyncExternalStore(
     subscribeToAiComposerPreferences,
-    readAiComposerSubmitMode,
-    () => DEFAULT_AI_COMPOSER_SUBMIT_MODE,
+    getAiComposerPreferencesSnapshot,
+    () => aiComposerPreferencesState,
   )
 
   const updateSubmitMode = useCallback((mode: AiComposerSubmitMode) => {
-    setAiComposerSubmitMode(mode)
+    void setAiComposerSubmitMode(mode)
   }, [])
 
   return {
-    submitMode,
+    submitMode: state.submitMode,
+    isLoading: state.isLoading,
+    isSaving: state.isSaving,
+    errorMessage: state.errorMessage,
     updateSubmitMode,
   }
 }

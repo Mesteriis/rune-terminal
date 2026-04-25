@@ -12,6 +12,7 @@ import {
   fetchTerminalSnapshot,
   renameAgentConversation as renameConversationViaApi,
   setActiveAgentProvider,
+  updateAgentSettingsViaApi,
   updateAgentConversationContext,
   updateAgentProvider,
 } from './runtime'
@@ -821,7 +822,7 @@ test('AI sidebar repairs stale persisted widget context selections', async ({ pa
   await expect(page.getByText('2 saved widgets are no longer available in this workspace.')).toHaveCount(0)
 })
 
-test('AI composer submit shortcut can be changed from settings', async ({ page }) => {
+test('AI composer submit shortcut can be changed from settings', async ({ page, request }) => {
   test.setTimeout(60_000)
 
   const capturedStreamBodies: Array<Record<string, unknown>> = []
@@ -884,6 +885,10 @@ test('AI composer submit shortcut can be changed from settings', async ({ page }
         })}\n\n`,
       ].join(''),
     })
+  })
+
+  await updateAgentSettingsViaApi(request, {
+    composer_submit_mode: 'enter-sends',
   })
 
   await clearBrowserState(page)

@@ -90,9 +90,14 @@ func newTestHandlerWithConversationProvider(t *testing.T, provider conversation.
 	if err != nil {
 		t.Fatalf("NewPreferencesStore error: %v", err)
 	}
+	agentComposerPreferences, err := agent.NewComposerPreferencesStore(context.Background(), dbConn)
+	if err != nil {
+		t.Fatalf("NewComposerPreferencesStore error: %v", err)
+	}
 	taskStore := tasks.NewStore(dbConn)
 	runtime.DB = dbConn
 	runtime.TerminalPreferences = terminalPreferences
+	runtime.AgentComposerPreferences = agentComposerPreferences
 	runtime.TaskStore = taskStore
 	runtime.TaskService = tasks.NewService(taskStore)
 	runtime.MCP = plugins.NewMCPRuntimeWithOptions(nil, &testProcessSpawner{}, nil, plugins.MCPRuntimeOptions{
