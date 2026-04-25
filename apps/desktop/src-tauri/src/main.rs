@@ -700,30 +700,80 @@ fn spawn_watcher(
         .map_err(|err| RuntimeError::Spawn(err.to_string()))?;
 
     let base_url = format!("http://{}", WATCHER_LISTEN_ADDR);
-    let health = wait_for_health_service_with_retry(&format!("{}/health", base_url), "rterm-watcher")
-        .ok_or_else(|| RuntimeError::Http("watcher did not become healthy".into()))?;
+    let mut watcher = RuntimeProcess {
+        child: Some(child),
+        pid: 0,
+        url: base_url.clone(),
+        started_by_ui: true,
+        auth_token: None,
+        worker_id: Some(worker_id.clone()),
+        shutdown_token: Some(shutdown_token.clone()),
+    };
+    let health = match wait_for_health_service_with_retry(&format!("{}/health", base_url), "rterm-watcher")
+    {
+        Some(health) => health,
+        None => {
+            return Err(finalize_spawned_watcher_startup_failure(
+                &mut watcher,
+                RuntimeError::Http("watcher did not become healthy".into()),
+                stop_process,
+                wait_for_service_down,
+            ))
+        }
+    };
+    watcher.pid = health.pid;
     let state_url = format!("{}/watcher/state", base_url);
-    let state = request_watcher_state(&state_url)?;
+    let state = match request_watcher_state(&state_url) {
+        Ok(state) => state,
+        Err(err) => {
+            return Err(finalize_spawned_watcher_startup_failure(
+                &mut watcher,
+                err,
+                stop_process,
+                wait_for_service_down,
+            ))
+        }
+    };
     if state.worker_id.as_deref() != Some(&worker_id) {
-        return Err(RuntimeError::RuntimePayload(
-            "watcher state returned unexpected worker identity".into(),
+        return Err(finalize_spawned_watcher_startup_failure(
+            &mut watcher,
+            RuntimeError::RuntimePayload("watcher state returned unexpected worker identity".into()),
+            stop_process,
+            wait_for_service_down,
         ));
     }
     if state.shutdown_token.as_deref() != Some(&shutdown_token) {
-        return Err(RuntimeError::RuntimePayload(
-            "watcher state returned unexpected shutdown token".into(),
+        return Err(finalize_spawned_watcher_startup_failure(
+            &mut watcher,
+            RuntimeError::RuntimePayload("watcher state returned unexpected shutdown token".into()),
+            stop_process,
+            wait_for_service_down,
         ));
     }
 
-    Ok(RuntimeProcess {
-        child: Some(child),
-        pid: health.pid,
-        url: base_url,
-        started_by_ui: true,
-        auth_token: None,
-        worker_id: Some(worker_id),
-        shutdown_token: Some(shutdown_token),
-    })
+    Ok(watcher)
+}
+
+fn finalize_spawned_watcher_startup_failure<FStop, FWait>(
+    watcher: &mut RuntimeProcess,
+    startup_error: RuntimeError,
+    mut stop: FStop,
+    mut wait_for_down: FWait,
+) -> RuntimeError
+where
+    FStop: FnMut(&mut RuntimeProcess),
+    FWait: FnMut(&str, Duration) -> bool,
+{
+    stop(watcher);
+
+    let health_url = format!("{}/health", watcher.url);
+    if wait_for_down(&health_url, Duration::from_secs(5)) {
+        return startup_error;
+    }
+
+    RuntimeError::Http(format!(
+        "{startup_error}; spawned watcher cleanup did not complete"
+    ))
 }
 
 fn recover_running_runtime_from_watcher(core_auth_token: Option<&str>) -> Option<RecoveredRuntime> {
@@ -1332,6 +1382,7 @@ mod tests {
     use super::{
         cleanup_runtime_slot, discover_running_watcher_for_core,
         discover_running_core_record, inspect_live_watcher_listener,
+        finalize_spawned_watcher_startup_failure,
         load_settings_from_path,
         read_runtime_attachment_from_path, recover_or_drop_watcher_record,
         recover_running_runtime_from_watcher,
@@ -1631,6 +1682,62 @@ mod tests {
         );
 
         assert!(result.is_ok(), "empty port should not block watcher spawn");
+    }
+
+    #[test]
+    fn finalize_spawned_watcher_startup_failure_preserves_original_error_when_cleanup_finishes() {
+        let mut watcher = RuntimeProcess {
+            child: None,
+            pid: 7788,
+            url: "http://127.0.0.1:7788".into(),
+            started_by_ui: true,
+            auth_token: None,
+            worker_id: Some("watcher_live".into()),
+            shutdown_token: Some("shutdown".into()),
+        };
+        let mut stopped = false;
+        let err = finalize_spawned_watcher_startup_failure(
+            &mut watcher,
+            RuntimeError::RuntimePayload("watcher state returned unexpected worker identity".into()),
+            |_watcher| {
+                stopped = true;
+            },
+            |url, timeout| {
+                assert_eq!(url, "http://127.0.0.1:7788/health");
+                assert_eq!(timeout, Duration::from_secs(5));
+                true
+            },
+        );
+
+        assert!(stopped, "cleanup should stop the spawned watcher");
+        assert!(
+            matches!(err, RuntimeError::RuntimePayload(ref message) if message.contains("unexpected worker identity")),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn finalize_spawned_watcher_startup_failure_surfaces_cleanup_failure() {
+        let mut watcher = RuntimeProcess {
+            child: None,
+            pid: 7788,
+            url: "http://127.0.0.1:7788".into(),
+            started_by_ui: true,
+            auth_token: None,
+            worker_id: Some("watcher_live".into()),
+            shutdown_token: Some("shutdown".into()),
+        };
+        let err = finalize_spawned_watcher_startup_failure(
+            &mut watcher,
+            RuntimeError::Http("watcher did not become healthy".into()),
+            |_watcher| {},
+            |_url, _timeout| false,
+        );
+
+        assert!(
+            matches!(err, RuntimeError::Http(ref message) if message.contains("watcher did not become healthy") && message.contains("cleanup did not complete")),
+            "unexpected error: {err}"
+        );
     }
 
     #[test]
