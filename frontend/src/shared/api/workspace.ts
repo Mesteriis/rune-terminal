@@ -37,6 +37,10 @@ export type CreateWorkspaceWidgetResult = {
   widget_id: string
 }
 
+export type CloseWorkspaceWidgetResult = {
+  closed_widget_id: string
+}
+
 export type WorkspaceSnapshot = {
   id: string
   name: string
@@ -154,4 +158,35 @@ export async function openDirectoryWorkspaceWidget({
   }
 
   return (await response.json()) as CreateWorkspaceWidgetResult
+}
+
+export async function closeWorkspaceWidget(widgetId: string) {
+  const runtimeContext = await resolveRuntimeContext()
+  const response = await fetch(
+    `${runtimeContext.baseUrl}/api/v1/workspace/widgets/${encodeURIComponent(widgetId)}`,
+    {
+      headers: {
+        Authorization: `Bearer ${runtimeContext.authToken}`,
+      },
+      method: 'DELETE',
+    },
+  )
+
+  if (!response.ok) {
+    let errorPayload: APIErrorEnvelope | null = null
+
+    try {
+      errorPayload = (await response.json()) as APIErrorEnvelope
+    } catch {
+      errorPayload = null
+    }
+
+    throw new WorkspaceAPIError(
+      response.status,
+      errorPayload?.error?.code ?? 'workspace_close_widget_request_failed',
+      errorPayload?.error?.message ?? `Workspace close-widget request failed (${response.status})`,
+    )
+  }
+
+  return (await response.json()) as CloseWorkspaceWidgetResult
 }

@@ -347,6 +347,88 @@ func (s *Service) CloseTab(tabID string) (Snapshot, error) {
 	return cloneSnapshot(s.snapshot), nil
 }
 
+func (s *Service) CloseWidget(widgetID string) (Snapshot, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	widgetID = strings.TrimSpace(widgetID)
+	if widgetID == "" {
+		return Snapshot{}, fmt.Errorf("%w: widget id is required", ErrWidgetNotFound)
+	}
+
+	tabIndex := -1
+	widgetIndex := -1
+	for i, widget := range s.snapshot.Widgets {
+		if widget.ID == widgetID {
+			widgetIndex = i
+			break
+		}
+	}
+	if widgetIndex == -1 {
+		return Snapshot{}, fmt.Errorf("%w: %s", ErrWidgetNotFound, widgetID)
+	}
+
+	for i, tab := range s.snapshot.Tabs {
+		if slices.Contains(tab.WidgetIDs, widgetID) {
+			tabIndex = i
+			break
+		}
+	}
+	if tabIndex == -1 {
+		return Snapshot{}, fmt.Errorf("%w: %s", ErrWidgetNotFound, widgetID)
+	}
+
+	tab := s.snapshot.Tabs[tabIndex]
+	nextWidgetIDs := make([]string, 0, len(tab.WidgetIDs)-1)
+	for _, existingWidgetID := range tab.WidgetIDs {
+		if existingWidgetID != widgetID {
+			nextWidgetIDs = append(nextWidgetIDs, existingWidgetID)
+		}
+	}
+
+	s.snapshot.Widgets = append(s.snapshot.Widgets[:widgetIndex], s.snapshot.Widgets[widgetIndex+1:]...)
+
+	if len(nextWidgetIDs) == 0 {
+		s.snapshot.Tabs = append(s.snapshot.Tabs[:tabIndex], s.snapshot.Tabs[tabIndex+1:]...)
+		if len(s.snapshot.Tabs) == 0 {
+			s.snapshot.ActiveTabID = ""
+			s.snapshot.ActiveWidgetID = ""
+			return cloneSnapshot(s.snapshot), nil
+		}
+
+		if s.snapshot.ActiveTabID == tab.ID || s.snapshot.ActiveWidgetID == widgetID {
+			nextIndex := min(tabIndex, len(s.snapshot.Tabs)-1)
+			nextTab := s.snapshot.Tabs[nextIndex]
+			s.snapshot.ActiveTabID = nextTab.ID
+			s.snapshot.ActiveWidgetID = firstWindowLeafID(nextTab.WindowLayout)
+			if s.snapshot.ActiveWidgetID == "" && len(nextTab.WidgetIDs) > 0 {
+				s.snapshot.ActiveWidgetID = nextTab.WidgetIDs[0]
+			}
+		}
+		return cloneSnapshot(s.snapshot), nil
+	}
+
+	layout := normalizeWindowLayout(tab.WindowLayout, tab.WidgetIDs, s.snapshot.ActiveWidgetID)
+	nextLayout, removed := removeWindowLayoutWidget(layout, widgetID)
+	if !removed || nextLayout == nil {
+		nextLayout = &WindowLayoutNode{Kind: WindowNodeLeaf, WidgetID: nextWidgetIDs[0]}
+	}
+
+	tab.WidgetIDs = nextWidgetIDs
+	tab.WindowLayout = normalizeWindowLayout(nextLayout, nextWidgetIDs, nextWidgetIDs[0])
+	s.snapshot.Tabs[tabIndex] = tab
+
+	if s.snapshot.ActiveWidgetID == widgetID {
+		s.snapshot.ActiveTabID = tab.ID
+		s.snapshot.ActiveWidgetID = firstWindowLeafID(tab.WindowLayout)
+		if s.snapshot.ActiveWidgetID == "" {
+			s.snapshot.ActiveWidgetID = nextWidgetIDs[0]
+		}
+	}
+
+	return cloneSnapshot(s.snapshot), nil
+}
+
 func (s *Service) RenameTab(tabID string, title string) (Tab, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

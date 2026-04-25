@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { resetRuntimeContextCacheForTests } from '@/shared/api/runtime'
 import {
   WorkspaceAPIError,
+  closeWorkspaceWidget,
   fetchWorkspaceSnapshot,
   fetchWorkspaceWidgetKindCatalog,
   openDirectoryWorkspaceWidget,
@@ -305,6 +306,77 @@ describe('openDirectoryWorkspaceWidget', () => {
       expect.objectContaining<Partial<WorkspaceAPIError>>({
         code: 'target_missing',
         message: 'target missing',
+        name: 'WorkspaceAPIError',
+        status: 404,
+      }),
+    )
+  })
+})
+
+describe('closeWorkspaceWidget', () => {
+  afterEach(() => {
+    resetRuntimeContextCacheForTests()
+    vi.restoreAllMocks()
+    vi.unstubAllEnvs()
+  })
+
+  it('closes a backend-owned workspace widget through the runtime transport', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          closed_widget_id: 'files-1',
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(closeWorkspaceWidget('files-1')).resolves.toEqual({
+      closed_widget_id: 'files-1',
+    })
+    expect(fetchMock.mock.calls[1]?.[0]).toBe('http://127.0.0.1:8090/api/v1/workspace/widgets/files-1')
+    expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({
+      method: 'DELETE',
+    })
+  })
+
+  it('surfaces typed close-widget errors', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        json: async () => ({
+          error: {
+            code: 'workspace_widget_not_found',
+            message: 'widget not found',
+          },
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(closeWorkspaceWidget('missing')).rejects.toEqual(
+      expect.objectContaining<Partial<WorkspaceAPIError>>({
+        code: 'workspace_widget_not_found',
+        message: 'widget not found',
         name: 'WorkspaceAPIError',
         status: 404,
       }),

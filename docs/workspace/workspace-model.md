@@ -50,6 +50,10 @@ This is the canonical workspace entrypoint for tab/widget/layout behavior.
 - Dockview persistence is still frontend-local `localStorage`; the current
   catalog migration covers initial seeding and right-rail discoverability,
   not backend-owned Dockview layout persistence.
+- Closing a backend-owned files widget goes through
+  `DELETE /api/v1/workspace/widgets/{widgetID}` before the Dockview panel is
+  removed, so the runtime workspace snapshot collapses the split layout and
+  removes the widget record.
 - The files widget currently renders a narrow directory list for the handed-off
   path. TideTerm-style rich preview navigation, drag/copy, media preview, and
   editor handoff remain future slices.

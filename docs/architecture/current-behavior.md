@@ -23,6 +23,10 @@ It is intentionally operational, not narrative.
   route, using the runtime `repo_root` as the initial directory. The frontend
   renders that widget as a narrow directory-list surface backed by
   `GET /api/v1/fs/list`.
+- Backend-owned non-terminal widgets can be closed through
+  `DELETE /api/v1/workspace/widgets/{widgetID}`. The files panel close action
+  uses that route before removing the Dockview panel, so the workspace
+  snapshot does not retain hidden files widgets after UI close.
 - Focusing a tab synchronizes the active widget to the first visible leaf in that tab's window layout.
 - Focusing a widget also synchronizes the active tab if that widget belongs to a known tab.
 - Tabs are the shell-level navigation unit.

@@ -106,6 +106,54 @@ func TestCloseLastTabLeavesEmptyWorkspace(t *testing.T) {
 	}
 }
 
+func TestCloseWidgetRemovesWidgetFromSplitTab(t *testing.T) {
+	t.Parallel()
+
+	snapshot := BootstrapDefault()
+	snapshot.Tabs[0].WidgetIDs = []string{"term-main", "files-1"}
+	snapshot.Tabs[0].WindowLayout = &WindowLayoutNode{
+		Kind: WindowNodeSplit,
+		Axis: WindowSplitHorizontal,
+		First: &WindowLayoutNode{
+			Kind:     WindowNodeLeaf,
+			WidgetID: "term-main",
+		},
+		Second: &WindowLayoutNode{
+			Kind:     WindowNodeLeaf,
+			WidgetID: "files-1",
+		},
+	}
+	snapshot.Widgets = append(snapshot.Widgets, Widget{
+		ID:           "files-1",
+		Kind:         WidgetKindFiles,
+		Title:        "repo",
+		ConnectionID: "local",
+		Path:         "/repo",
+	})
+	snapshot.ActiveTabID = "tab-main"
+	snapshot.ActiveWidgetID = "files-1"
+
+	service := NewService(snapshot)
+	next, err := service.CloseWidget("files-1")
+	if err != nil {
+		t.Fatalf("CloseWidget error: %v", err)
+	}
+	if len(next.Tabs[0].WidgetIDs) != 1 || next.Tabs[0].WidgetIDs[0] != "term-main" {
+		t.Fatalf("unexpected tab widgets after close: %#v", next.Tabs[0].WidgetIDs)
+	}
+	if next.Tabs[0].WindowLayout == nil || next.Tabs[0].WindowLayout.WidgetID != "term-main" {
+		t.Fatalf("expected layout to collapse to remaining widget: %#v", next.Tabs[0].WindowLayout)
+	}
+	if next.ActiveWidgetID != "term-main" {
+		t.Fatalf("expected active widget fallback to remaining widget, got %#v", next)
+	}
+	for _, widget := range next.Widgets {
+		if widget.ID == "files-1" {
+			t.Fatalf("closed files widget still present: %#v", next.Widgets)
+		}
+	}
+}
+
 func TestRenameTab(t *testing.T) {
 	t.Parallel()
 

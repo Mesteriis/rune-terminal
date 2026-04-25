@@ -3,9 +3,11 @@ import type { IDockviewHeaderActionsProps } from 'dockview-react'
 import { Plus, X } from 'lucide-react'
 
 import { createTerminalTab } from '@/features/terminal/api/client'
+import { closeWorkspaceWidget, WorkspaceAPIError } from '@/shared/api/workspace'
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { IconButton } from '@/shared/ui/components'
 import { Box } from '@/shared/ui/primitives'
+import { resolveFilesPanelParams } from '@/widgets/files'
 import {
   closeTerminalPanel,
   createNextTerminalPanelId,
@@ -28,6 +30,7 @@ export function TerminalDockviewHeaderActionsWidget(props: IDockviewHeaderAction
   const terminalPanelParams = isTerminal
     ? resolveTerminalPanelParams(props.activePanel.id, props.activePanel.params)
     : null
+  const filesPanelParams = resolveFilesPanelParams(props.activePanel.params)
   const headerActionsWrapStyle = resolveDockviewHeaderActionsWrapStyle(Boolean(terminalPanelParams))
 
   const handleAddTerminalTab = async (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -73,11 +76,27 @@ export function TerminalDockviewHeaderActionsWidget(props: IDockviewHeaderAction
     event.preventDefault()
     event.stopPropagation()
 
-    if (!props.activePanel || !terminalPanelParams) {
+    if (!props.activePanel) {
       return
     }
 
-    await closeTerminalPanel(props.activePanel.api, terminalPanelParams)
+    if (terminalPanelParams) {
+      await closeTerminalPanel(props.activePanel.api, terminalPanelParams)
+      return
+    }
+
+    if (filesPanelParams) {
+      try {
+        await closeWorkspaceWidget(filesPanelParams.widgetId)
+      } catch (error) {
+        if (!(error instanceof WorkspaceAPIError && error.status === 404)) {
+          console.error('Unable to close workspace widget', error)
+          return
+        }
+      }
+    }
+
+    props.activePanel.api.close()
   }
 
   const handleClosePointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {

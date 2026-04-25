@@ -46,6 +46,11 @@ type CloseTabResult struct {
 	Workspace   workspace.Snapshot `json:"workspace"`
 }
 
+type CloseWidgetResult struct {
+	ClosedWidgetID string             `json:"closed_widget_id"`
+	Workspace      workspace.Snapshot `json:"workspace"`
+}
+
 func (r *Runtime) FocusWidget(widgetID string) (workspace.Snapshot, error) {
 	if _, err := r.Workspace.FocusWidget(widgetID); err != nil {
 		return workspace.Snapshot{}, err
@@ -508,5 +513,40 @@ func (r *Runtime) CloseTab(tabID string) (CloseTabResult, error) {
 	return CloseTabResult{
 		ClosedTabID: tabID,
 		Workspace:   nextSnapshot,
+	}, nil
+}
+
+func (r *Runtime) CloseWidget(widgetID string) (CloseWidgetResult, error) {
+	snapshot := r.Workspace.Snapshot()
+	var widget workspace.Widget
+	found := false
+	for _, candidate := range snapshot.Widgets {
+		if candidate.ID == widgetID {
+			widget = candidate
+			found = true
+			break
+		}
+	}
+	if !found {
+		return CloseWidgetResult{}, fmt.Errorf("%w: %s", workspace.ErrWidgetNotFound, widgetID)
+	}
+
+	if widget.Kind == workspace.WidgetKindTerminal {
+		if err := r.Terminals.CloseSession(widgetID); err != nil && !errors.Is(err, terminal.ErrWidgetNotFound) {
+			return CloseWidgetResult{}, err
+		}
+		r.clearRestoredTerminalState(widgetID)
+	}
+
+	nextSnapshot, err := r.Workspace.CloseWidget(widgetID)
+	if err != nil {
+		return CloseWidgetResult{}, err
+	}
+	if err := r.persistWorkspaceSnapshot(nextSnapshot); err != nil {
+		return CloseWidgetResult{}, err
+	}
+	return CloseWidgetResult{
+		ClosedWidgetID: widgetID,
+		Workspace:      nextSnapshot,
 	}, nil
 }

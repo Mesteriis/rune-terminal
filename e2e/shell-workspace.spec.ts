@@ -88,6 +88,11 @@ test('shell workspace tabs, utility actions, widget creation, and settings modal
   await expect(page.getByRole('button', { name: 'Close Workspace shell' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Close tool' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: `Close ${repoRootTitle}` })).toBeVisible()
+  await page.getByRole('button', { name: `Close ${repoRootTitle}` }).click()
+  await expect(page.getByRole('button', { name: `Close ${repoRootTitle}` })).toHaveCount(0)
+  await expect
+    .poll(async () => (await fetchWorkspaceSnapshot(request)).widgets.length)
+    .toBe(baselineBackendWidgetCount + 1)
   await page.getByRole('button', { name: 'Add terminal tab for Workspace shell' }).click()
   await expect(page.getByRole('button', { name: 'Close Workspace shell 2' })).toBeVisible()
   await expect(page.getByText(/terminal widget not found/i)).toHaveCount(0)

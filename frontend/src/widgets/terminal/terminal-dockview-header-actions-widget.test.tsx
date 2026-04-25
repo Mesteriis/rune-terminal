@@ -2,12 +2,26 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { createTerminalTab } from '@/features/terminal/api/client'
+import { closeWorkspaceWidget } from '@/shared/api/workspace'
+import { createFilesPanelParams } from '@/widgets/files'
 import { createTerminalPanelParams } from '@/widgets/terminal/terminal-panel'
 import { TerminalDockviewHeaderActionsWidget } from '@/widgets/terminal/terminal-dockview-header-actions-widget'
 import * as terminalPanelModule from '@/widgets/terminal/terminal-panel'
 
 vi.mock('@/features/terminal/api/client', () => ({
   createTerminalTab: vi.fn(),
+}))
+
+vi.mock('@/shared/api/workspace', () => ({
+  closeWorkspaceWidget: vi.fn(),
+  WorkspaceAPIError: class WorkspaceAPIError extends Error {
+    status: number
+
+    constructor(status: number) {
+      super('workspace api error')
+      this.status = status
+    }
+  },
 }))
 
 afterEach(() => {
@@ -95,6 +109,45 @@ describe('TerminalDockviewHeaderActionsWidget', () => {
           title: 'Workspace shell',
         }),
       )
+    })
+  })
+
+  it('closes backend-owned files widgets before closing the Dockview panel', async () => {
+    vi.mocked(closeWorkspaceWidget).mockResolvedValue({
+      closed_widget_id: 'files-9',
+    })
+    const props = createHeaderActionsProps(
+      createFilesPanelParams({
+        path: '/repo',
+        title: 'repo',
+        widgetId: 'files-9',
+      }) as never,
+    )
+    props.activePanel.id = 'files-9'
+    props.activePanel.title = 'repo'
+
+    render(<TerminalDockviewHeaderActionsWidget {...(props as never)} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close repo' }))
+
+    await waitFor(() => {
+      expect(closeWorkspaceWidget).toHaveBeenCalledWith('files-9')
+      expect(props.activePanel.api.close).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  it('closes frontend-local non-terminal panels locally', async () => {
+    const props = createHeaderActionsProps({ component: 'commander' } as never)
+    props.activePanel.id = 'commander'
+    props.activePanel.title = 'Commander'
+
+    render(<TerminalDockviewHeaderActionsWidget {...(props as never)} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close Commander' }))
+
+    await waitFor(() => {
+      expect(closeWorkspaceWidget).not.toHaveBeenCalled()
+      expect(props.activePanel.api.close).toHaveBeenCalledTimes(1)
     })
   })
 })

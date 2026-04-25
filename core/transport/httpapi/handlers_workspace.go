@@ -227,6 +227,15 @@ func (api *API) handleOpenDirectoryInNewBlock(w http.ResponseWriter, r *http.Req
 	writeJSON(w, http.StatusOK, result)
 }
 
+func (api *API) handleCloseWidget(w http.ResponseWriter, r *http.Request) {
+	result, err := api.runtime.CloseWidget(r.PathValue("widgetID"))
+	if err != nil {
+		writeWorkspaceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
 func (api *API) handleSaveLayout(w http.ResponseWriter, r *http.Request) {
 	var payload struct {
 		LayoutID string `json:"layout_id,omitempty"`

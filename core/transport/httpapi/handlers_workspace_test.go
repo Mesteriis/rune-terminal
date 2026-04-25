@@ -255,6 +255,58 @@ func TestWorkspaceOpenDirectoryInNewBlockCreatesFilesWidget(t *testing.T) {
 	}
 }
 
+func TestWorkspaceCloseWidgetRemovesFilesWidget(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+	openRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(openRecorder, authedJSONRequest(t, http.MethodPost, "/api/v1/workspace/widgets/open-directory", map[string]any{
+		"target_widget_id": "term-main",
+		"path":             "/workspace/repo/docs",
+		"connection_id":    "local",
+	}))
+	if openRecorder.Code != http.StatusOK {
+		t.Fatalf("expected open-directory 200, got %d (%s)", openRecorder.Code, openRecorder.Body.String())
+	}
+
+	var openResponse struct {
+		WidgetID string `json:"widget_id"`
+	}
+	if err := json.Unmarshal(openRecorder.Body.Bytes(), &openResponse); err != nil {
+		t.Fatalf("Unmarshal open response error: %v", err)
+	}
+
+	closeRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(closeRecorder, authedJSONRequest(t, http.MethodDelete, "/api/v1/workspace/widgets/"+openResponse.WidgetID, nil))
+	if closeRecorder.Code != http.StatusOK {
+		t.Fatalf("expected close widget 200, got %d (%s)", closeRecorder.Code, closeRecorder.Body.String())
+	}
+
+	var closeResponse struct {
+		ClosedWidgetID string `json:"closed_widget_id"`
+		Workspace      struct {
+			ActiveWidgetID string `json:"active_widget_id"`
+			Widgets        []struct {
+				ID string `json:"id"`
+			} `json:"widgets"`
+		} `json:"workspace"`
+	}
+	if err := json.Unmarshal(closeRecorder.Body.Bytes(), &closeResponse); err != nil {
+		t.Fatalf("Unmarshal close response error: %v", err)
+	}
+	if closeResponse.ClosedWidgetID != openResponse.WidgetID {
+		t.Fatalf("unexpected closed widget id: %#v", closeResponse)
+	}
+	if closeResponse.Workspace.ActiveWidgetID != "term-main" {
+		t.Fatalf("expected active widget to fall back to term-main: %#v", closeResponse)
+	}
+	for _, widget := range closeResponse.Workspace.Widgets {
+		if widget.ID == openResponse.WidgetID {
+			t.Fatalf("closed widget still present: %#v", closeResponse.Workspace.Widgets)
+		}
+	}
+}
+
 func TestWorkspaceMoveWidgetBySplitRejectsInvalidDirection(t *testing.T) {
 	t.Parallel()
 
