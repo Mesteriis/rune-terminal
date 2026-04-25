@@ -76,8 +76,10 @@ capability.
 - desktop runtime startup, shutdown, and single-instance attach path are now hardened: `npm run tauri:dev` recovers stale watcher attachments, can now also reuse a still-running watcher on `127.0.0.1:7788` when runtime metadata lost the watcher record but the live watcher still targets the same core, refuses startup with an explicit conflict error when that fixed watcher port is already serving a different backend, startup failures no longer leak a freshly spawned backend, sending `SIGTERM` to `rterm-desktop` now tears down the desktop-owned backend and watcher before exit, and a second desktop launch now reuses the existing window instead of spawning a second desktop-owned core/watcher pair; broader desktop runtime hardening (richer crash recovery, port-policy cleanup) is still intentionally incomplete
 - desktop runtime metadata writes are now also durable against torn-file startup races: the desktop shell writes both `~/.rterm/runtime.json` and `~/.rterm/settings.json` through an atomic temp-file rename path, and startup now also quarantines malformed runtime/settings payloads beside the live files instead of silently reusing defaults while discarding the broken bytes; broader crash-recovery policy is still intentionally incomplete
 - desktop startup now also clears malformed or dead attachment metadata out of `~/.rterm/runtime.json` instead of only ignoring it in memory, so repeated launches no longer keep retrying against the same broken persisted desktop attachment records
-- native-window automation coverage is limited; validation leans on
-  build + runtime/API smoke plus manual notes
+- native-window automation coverage is still limited; validation now
+  includes an isolated desktop runtime smoke (`npm run validate:desktop-runtime`)
+  plus build/runtime/API checks, but it does not yet claim full native UI
+  automation across the desktop shell
 
 ## Infrastructure gaps
 

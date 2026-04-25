@@ -19,6 +19,7 @@
     - desktop shutdown now also handles the narrow forced-exit case that was still rough before: a `SIGTERM` delivered to `rterm-desktop` triggers the same ephemeral-runtime cleanup path as a normal app exit, so the desktop-owned backend and watcher are torn down before the process leaves
     - desktop runtime metadata writes (`~/.rterm/runtime.json` and `~/.rterm/settings.json`) now go through an atomic temp-file rename path instead of direct `fs::write`, so startup no longer depends on partially written runtime/settings JSON surviving process interruption cleanly
     - desktop shutdown policy now also has direct Rust coverage for the Tauri command path itself: `request_shutdown_runtime()` is exercised for `missing runtime`, `persistent`, `ephemeral blocked by active tasks`, `forced ephemeral close`, and `missing auth token`, while a fresh `npm run tauri:dev` smoke still reaches live desktop startup and the smoke-owned runtime delta is terminated cleanly afterward
+    - desktop runtime lifecycle now also has an isolated scripted smoke path: `npm run validate:desktop-runtime` launches `npm run tauri:dev` under a temporary `HOME`, waits for `.rterm/runtime.json` plus live core/watcher health, sends `SIGTERM` to the resolved live `rterm-desktop` parent of the spawned core/watcher pair, and verifies watcher/core exit plus runtime metadata cleanup without touching the user's real `~/.rterm`
     - terminal Dockview header `+` actions for the seeded main/workspace terminal groups
     - extra terminal panels now request a fresh backend terminal session before mounting, so shell creation paths no longer fail with `terminal widget not found: terminal`
     - closing those extra terminal panels now also restores the backend workspace tab count, so the UI no longer leaks hidden runtime tabs/sessions on close
@@ -134,6 +135,7 @@
 - `npm --prefix frontend run build`
 - `npm --prefix frontend run lint:active`
 - `npm run validate`
+- `npm run validate:desktop-runtime`
 - `npm run test:ui -- --reporter=line`
 - `npm install motion@^12.38.0`
 - `node tmp/ai-layout-smoke.mjs`
