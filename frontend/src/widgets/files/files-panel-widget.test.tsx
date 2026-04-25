@@ -25,6 +25,7 @@ describe('FilesPanelWidget', () => {
     vi.mocked(listFilesDirectory).mockResolvedValue({
       entries: [
         {
+          hidden: false,
           id: '/repo::src',
           kind: 'directory',
           modified: '2026-04-25 20:00',
@@ -34,6 +35,7 @@ describe('FilesPanelWidget', () => {
           sizeLabel: '',
         },
         {
+          hidden: false,
           id: '/repo::README.md',
           kind: 'file',
           modified: '2026-04-25 20:01',
@@ -72,6 +74,7 @@ describe('FilesPanelWidget', () => {
         return {
           entries: [
             {
+              hidden: false,
               id: '/repo/src::index.ts',
               kind: 'file',
               modified: '2026-04-25 20:02',
@@ -88,6 +91,7 @@ describe('FilesPanelWidget', () => {
       return {
         entries: [
           {
+            hidden: false,
             id: '/repo::src',
             kind: 'directory',
             modified: '2026-04-25 20:00',
@@ -124,6 +128,7 @@ describe('FilesPanelWidget', () => {
     vi.mocked(listFilesDirectory).mockResolvedValue({
       entries: [
         {
+          hidden: false,
           id: '/repo::src',
           kind: 'directory',
           modified: '2026-04-25 20:00',
@@ -133,6 +138,7 @@ describe('FilesPanelWidget', () => {
           sizeLabel: '',
         },
         {
+          hidden: false,
           id: '/repo::package.json',
           kind: 'file',
           modified: '2026-04-25 20:03',
@@ -170,6 +176,7 @@ describe('FilesPanelWidget', () => {
       .mockResolvedValueOnce({
         entries: [
           {
+            hidden: false,
             id: '/repo::new-file.txt',
             kind: 'file',
             modified: '2026-04-25 20:04',
@@ -198,6 +205,7 @@ describe('FilesPanelWidget', () => {
     vi.mocked(listFilesDirectory).mockResolvedValue({
       entries: [
         {
+          hidden: false,
           id: '/repo::zeta',
           kind: 'directory',
           modified: '2026-04-25 20:00',
@@ -207,6 +215,7 @@ describe('FilesPanelWidget', () => {
           sizeLabel: '',
         },
         {
+          hidden: false,
           id: '/repo::alpha',
           kind: 'directory',
           modified: '2026-04-25 20:01',
@@ -216,6 +225,7 @@ describe('FilesPanelWidget', () => {
           sizeLabel: '',
         },
         {
+          hidden: false,
           id: '/repo::small.txt',
           kind: 'file',
           modified: '2026-04-25 20:02',
@@ -225,6 +235,7 @@ describe('FilesPanelWidget', () => {
           sizeLabel: '10 B',
         },
         {
+          hidden: false,
           id: '/repo::large.txt',
           kind: 'file',
           modified: '2026-04-25 20:03',
@@ -256,6 +267,7 @@ describe('FilesPanelWidget', () => {
     vi.mocked(listFilesDirectory).mockResolvedValue({
       entries: [
         {
+          hidden: false,
           id: '/repo::README.md',
           kind: 'file',
           modified: '2026-04-25 20:01',
@@ -279,5 +291,47 @@ describe('FilesPanelWidget', () => {
       expect(openFilesPathExternally).toHaveBeenCalledWith('/repo/README.md')
       expect(screen.getByText('Open request sent for README.md')).toBeInTheDocument()
     })
+  })
+
+  it('hides dotfiles by default and can reveal them on demand', async () => {
+    vi.mocked(listFilesDirectory).mockResolvedValue({
+      entries: [
+        {
+          hidden: true,
+          id: '/repo::.env',
+          kind: 'file',
+          modified: '2026-04-25 20:00',
+          modifiedTime: 1_776_800_000,
+          name: '.env',
+          sizeBytes: 12,
+          sizeLabel: '12 B',
+        },
+        {
+          hidden: false,
+          id: '/repo::README.md',
+          kind: 'file',
+          modified: '2026-04-25 20:01',
+          modifiedTime: 1_776_800_060,
+          name: 'README.md',
+          sizeBytes: 2048,
+          sizeLabel: '2.0 KB',
+        },
+      ],
+      path: '/repo',
+    })
+
+    render(<FilesPanelWidget path="/repo" title="repo" />)
+
+    await screen.findByRole('button', { name: 'Open file README.md' })
+
+    expect(screen.queryByRole('button', { name: 'Open file .env' })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show hidden files' }))
+
+    expect(screen.getByRole('button', { name: 'Open file .env' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hide hidden files' }))
+
+    expect(screen.queryByRole('button', { name: 'Open file .env' })).not.toBeInTheDocument()
   })
 })

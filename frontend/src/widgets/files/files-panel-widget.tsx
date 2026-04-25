@@ -110,6 +110,7 @@ function sortFilesPanelEntries(entries: FilesDirectoryEntry[], sort: FilesPanelS
 export function FilesPanelWidget({ path, title }: FilesPanelWidgetProps) {
   const [currentPath, setCurrentPath] = useState(path)
   const [filterValue, setFilterValue] = useState('')
+  const [showHidden, setShowHidden] = useState(false)
   const [refreshNonce, setRefreshNonce] = useState(0)
   const [sort, setSort] = useState<FilesPanelSortState>({
     direction: 'asc',
@@ -246,11 +247,13 @@ export function FilesPanelWidget({ path, title }: FilesPanelWidgetProps) {
   const parentPath = getRuntimePathParent(currentPath)
   const normalizedFilterValue = filterValue.trim().toLowerCase()
   const visibleEntries =
-    state.status === 'ready' && normalizedFilterValue
-      ? state.snapshot.entries.filter((entry) => entry.name.toLowerCase().includes(normalizedFilterValue))
-      : state.status === 'ready'
-        ? state.snapshot.entries
-        : []
+    state.status === 'ready'
+      ? state.snapshot.entries.filter(
+          (entry) =>
+            (showHidden || !entry.hidden) &&
+            (!normalizedFilterValue || entry.name.toLowerCase().includes(normalizedFilterValue)),
+        )
+      : []
   const sortedEntries = sortFilesPanelEntries(visibleEntries, sort)
 
   return (
@@ -284,6 +287,15 @@ export function FilesPanelWidget({ path, title }: FilesPanelWidgetProps) {
               Clear
             </Button>
           ) : null}
+          <Button
+            aria-label={showHidden ? 'Hide hidden files' : 'Show hidden files'}
+            aria-pressed={showHidden}
+            onClick={() => setShowHidden((value) => !value)}
+            runaComponent="files-panel-toggle-hidden"
+            style={filesPanelParentButtonStyle}
+          >
+            {showHidden ? 'Hidden on' : 'Hidden off'}
+          </Button>
           <Button
             aria-label="Refresh directory"
             onClick={() => setRefreshNonce((value) => value + 1)}
@@ -370,7 +382,7 @@ export function FilesPanelWidget({ path, title }: FilesPanelWidgetProps) {
           ) : null}
           {state.status === 'ready' && state.snapshot.entries.length > 0 && visibleEntries.length === 0 ? (
             <Text runaComponent="files-panel-filter-empty" style={filesPanelStateStyle}>
-              No entries match filter
+              {normalizedFilterValue ? 'No entries match filter' : 'No visible entries'}
             </Text>
           ) : null}
           {openState.status === 'pending' ? (

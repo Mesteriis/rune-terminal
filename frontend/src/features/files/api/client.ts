@@ -1,6 +1,7 @@
 import { resolveRuntimeContext, type RuntimeContext } from '@/shared/api/runtime'
 
 export type FilesDirectoryEntry = {
+  hidden: boolean
   id: string
   kind: 'directory' | 'file'
   modified: string
@@ -81,6 +82,7 @@ function toFilesEntry(path: string, node: FSNode): FilesDirectoryEntry {
   const kind = node.type === 'directory' ? 'directory' : 'file'
 
   return {
+    hidden: node.name.startsWith('.'),
     id: `${path}::${node.name}`,
     kind,
     modified: formatModifiedTime(node.modified_time),

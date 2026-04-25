@@ -35,6 +35,7 @@ describe('listFilesDirectory', () => {
     await expect(listFilesDirectory('/repo')).resolves.toEqual({
       entries: [
         {
+          hidden: false,
           id: '/repo::src',
           kind: 'directory',
           modified: '2023-11-14 22:13',
@@ -44,6 +45,7 @@ describe('listFilesDirectory', () => {
           sizeLabel: '',
         },
         {
+          hidden: false,
           id: '/repo::README.md',
           kind: 'file',
           modified: '2023-11-14 22:14',
