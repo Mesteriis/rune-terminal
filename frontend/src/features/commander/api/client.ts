@@ -22,7 +22,9 @@ type FSReadPayload = {
   path: string
   preview: string
   preview_available: boolean
+  preview_bytes?: number
   preview_kind?: 'hex' | 'text'
+  size_bytes?: number
   truncated: boolean
 }
 
@@ -257,6 +259,9 @@ export async function readCommanderFilePreview(
     path: payload.path.slice(0, payload.path.lastIndexOf('/')) || '/',
     previewAvailable: payload.preview_available,
     previewKind: payload.preview_kind === 'hex' ? 'hex' : 'text',
+    previewBytes: payload.preview_bytes,
+    sizeBytes: payload.size_bytes,
+    truncated: payload.truncated,
   }
 }
 

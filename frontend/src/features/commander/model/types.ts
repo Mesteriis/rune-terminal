@@ -155,6 +155,9 @@ export type CommanderFileDialogState = {
   content: string
   draftValue: string
   previewKind?: CommanderFilePreviewKind
+  previewBytes?: number
+  sizeBytes?: number
+  truncated?: boolean
   blockedReason?: string
   blockedTitle?: string
   blockedHint?: string
@@ -268,4 +271,7 @@ export type CommanderFileSnapshot = {
   content: string
   previewAvailable: boolean
   previewKind: CommanderFilePreviewKind
+  previewBytes?: number
+  sizeBytes?: number
+  truncated?: boolean
 }

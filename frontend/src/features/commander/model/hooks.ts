@@ -62,6 +62,7 @@ import {
   toggleCommanderShowHidden,
 } from '@/features/commander/model/store'
 import type {
+  CommanderFileSnapshot,
   CommanderFileDialogState,
   CommanderPendingOperation,
   CommanderPaneId,
@@ -566,8 +567,9 @@ export function useCommanderWidget(widgetId: string) {
     async (paneId: CommanderPaneId, entryId: string, mode: 'view' | 'edit') => {
       const paneState = paneId === 'left' ? runtimeState.leftPane : runtimeState.rightPane
       const entry = paneState.entries.find((candidateEntry) => candidateEntry.id === entryId)
+      const entryPath = entry ? toCommanderEntryPath(paneState.path, entry.name) : null
 
-      if (!entry || entry.kind !== 'file') {
+      if (!entry || entry.kind !== 'file' || !entryPath) {
         return
       }
 
@@ -576,9 +578,7 @@ export function useCommanderWidget(widgetId: string) {
 
       try {
         const fileSnapshot =
-          mode === 'edit'
-            ? await readCommanderFile(toCommanderEntryPath(paneState.path, entry.name))
-            : await readCommanderFilePreview(toCommanderEntryPath(paneState.path, entry.name))
+          mode === 'edit' ? await readCommanderFile(entryPath) : await readCommanderFilePreview(entryPath)
 
         if (fileRequestIdRef.current !== requestId) {
           return
@@ -614,10 +614,25 @@ export function useCommanderWidget(widgetId: string) {
             content: fileSnapshot.content,
             draftValue: fileSnapshot.content,
             previewKind: fileSnapshot.previewKind,
+            previewBytes: fileSnapshot.previewBytes,
+            sizeBytes: fileSnapshot.sizeBytes,
+            truncated: fileSnapshot.truncated,
           } satisfies CommanderFileDialogState,
         })
       } catch (error) {
         if (mode === 'edit' && error instanceof CommanderAPIError && error.code === 'invalid_fs_text') {
+          let binarySnapshot: CommanderFileSnapshot | null = null
+
+          try {
+            binarySnapshot = await readCommanderFilePreview(entryPath)
+          } catch {
+            binarySnapshot = null
+          }
+
+          if (fileRequestIdRef.current !== requestId) {
+            return
+          }
+
           onSetCommanderFileDialog({
             widgetId,
             fileDialog: {
@@ -629,6 +644,10 @@ export function useCommanderWidget(widgetId: string) {
               content: '',
               draftValue: '',
               blockedReason: 'File is not UTF-8 text. Use F3 for preview or open it with an external tool.',
+              previewKind: binarySnapshot?.previewKind,
+              previewBytes: binarySnapshot?.previewBytes,
+              sizeBytes: binarySnapshot?.sizeBytes,
+              truncated: binarySnapshot?.truncated,
             } satisfies CommanderFileDialogState,
           })
           return

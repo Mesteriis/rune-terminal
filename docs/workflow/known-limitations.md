@@ -36,10 +36,12 @@ capability.
   that blocked dialog can now hand the selected path off to the host OS
   opener, but commander still does not claim a richer external-tool
   chooser or a browser-verifiable opener side effect
-- commander still does not claim in-place binary editing, richer binary
-  inspection beyond that bounded hex `F3` preview, or any terminal env
-  dump exposed to the frontend
-  exposed to the frontend
+- commander still does not claim in-place binary editing, a full binary
+  inspector, or any terminal env dump exposed to the frontend; the
+  current backend-owned file dialog now surfaces bounded binary preview
+  metadata (file size plus preview span) for the existing `F3` hex
+  preview and blocked `F4` path, but it remains intentionally narrower
+  than a dedicated binary inspection tool
 - the frontend has no ESLint / Biome yet — `lint:active` and `lint:all`
   both delegate to `tsc --noEmit`
 

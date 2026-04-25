@@ -606,7 +606,9 @@ func TestReadFSPreviewReturnsBoundedText(t *testing.T) {
 		Path             string `json:"path"`
 		Preview          string `json:"preview"`
 		PreviewAvailable bool   `json:"preview_available"`
+		PreviewBytes     int    `json:"preview_bytes"`
 		PreviewKind      string `json:"preview_kind"`
+		SizeBytes        int64  `json:"size_bytes"`
 		Truncated        bool   `json:"truncated"`
 	}
 	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
@@ -623,6 +625,12 @@ func TestReadFSPreviewReturnsBoundedText(t *testing.T) {
 	}
 	if payload.PreviewKind != "text" {
 		t.Fatalf("expected preview_kind=text, got %#v", payload)
+	}
+	if payload.PreviewBytes != len("hello") {
+		t.Fatalf("expected preview_bytes=%d, got %#v", len("hello"), payload)
+	}
+	if payload.SizeBytes != int64(len("hello world")) {
+		t.Fatalf("expected size_bytes=%d, got %#v", len("hello world"), payload)
 	}
 	if !payload.Truncated {
 		t.Fatalf("expected truncated=true, got %#v", payload)
@@ -649,7 +657,9 @@ func TestReadFSPreviewReturnsHexPreviewForBinary(t *testing.T) {
 	var payload struct {
 		Preview          string `json:"preview"`
 		PreviewAvailable bool   `json:"preview_available"`
+		PreviewBytes     int    `json:"preview_bytes"`
 		PreviewKind      string `json:"preview_kind"`
+		SizeBytes        int64  `json:"size_bytes"`
 	}
 	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
 		t.Fatalf("unmarshal response: %v", err)
@@ -662,6 +672,12 @@ func TestReadFSPreviewReturnsHexPreviewForBinary(t *testing.T) {
 	}
 	if payload.PreviewKind != "hex" {
 		t.Fatalf("expected preview_kind=hex, got %#v", payload)
+	}
+	if payload.PreviewBytes != 4 {
+		t.Fatalf("expected preview_bytes=4, got %#v", payload)
+	}
+	if payload.SizeBytes != 4 {
+		t.Fatalf("expected size_bytes=4, got %#v", payload)
 	}
 }
 

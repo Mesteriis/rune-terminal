@@ -398,7 +398,7 @@ test('commander F3 opens a bounded hex preview for binary files while F4 still b
   const preview = page.getByRole('textbox', { name: `View ${binaryFileName}` })
   await expect(preview).toBeVisible()
   await expect(preview).toHaveValue(/00000000  00 01 02 03 04 05/)
-  await expect(page.getByText('Read only preview')).toBeVisible()
+  await expect(page.getByText('Binary file · 6 B · Previewing 6 B')).toBeVisible()
   await page.getByRole('button', { name: 'Close', exact: true }).click()
   await expect(preview).toHaveCount(0)
 
@@ -408,6 +408,8 @@ test('commander F3 opens a bounded hex preview for binary files while F4 still b
   await expect(
     page.getByText('File is not UTF-8 text. Use F3 for preview or open it with an external tool.'),
   ).toBeVisible()
+  await expect(page.getByText('Binary file size: 6 B. Use F3 for bounded hex preview.')).toBeVisible()
+  await expect(page.getByText('Binary file · 6 B · Previewing 6 B')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Save' })).toHaveCount(0)
   await expect(page.getByText('Read only preview', { exact: true })).toHaveCount(0)
   await page.getByRole('button', { name: 'Close', exact: true }).click()

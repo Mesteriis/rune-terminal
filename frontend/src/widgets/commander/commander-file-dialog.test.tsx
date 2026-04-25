@@ -20,6 +20,7 @@ describe('CommanderFileDialog', () => {
         onChange={vi.fn()}
         onClose={onClose}
         onSave={vi.fn()}
+        sizeBytes={6}
       />,
     )
 
@@ -28,7 +29,8 @@ describe('CommanderFileDialog', () => {
     expect(
       screen.getByText('File is binary or not UTF-8 text. Open it with an external tool.'),
     ).toBeInTheDocument()
-    expect(screen.getByText('Binary preview unavailable')).toBeInTheDocument()
+    expect(screen.getByText('Binary file size: 6 B. Use F3 for bounded hex preview.')).toBeInTheDocument()
+    expect(screen.getByText('Binary file · 6 B')).toBeInTheDocument()
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
 
@@ -51,6 +53,10 @@ describe('CommanderFileDialog', () => {
         onChange={vi.fn()}
         onClose={onClose}
         onSave={vi.fn()}
+        previewBytes={6}
+        previewKind="hex"
+        sizeBytes={6}
+        truncated={false}
       />,
     )
 
@@ -59,6 +65,8 @@ describe('CommanderFileDialog', () => {
     expect(
       screen.getByText('File is not UTF-8 text. Use F3 for preview or open it with an external tool.'),
     ).toBeInTheDocument()
+    expect(screen.getByText('Binary file size: 6 B. Use F3 for bounded hex preview.')).toBeInTheDocument()
+    expect(screen.getByText('Binary file · 6 B · Previewing 6 B')).toBeInTheDocument()
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
 
@@ -126,7 +134,10 @@ describe('CommanderFileDialog', () => {
         onClose={vi.fn()}
         onOpenExternal={vi.fn()}
         onSave={vi.fn()}
+        previewBytes={4}
         previewKind="hex"
+        sizeBytes={4}
+        truncated={false}
       />,
     )
 
@@ -135,7 +146,7 @@ describe('CommanderFileDialog', () => {
     expect(screen.getByRole('textbox', { name: 'View binary.dat' })).toHaveValue(
       '00000000  00 01 02 03                                      |....|',
     )
-    expect(screen.getByText('Read only hex preview')).toBeInTheDocument()
+    expect(screen.getByText('Binary file · 4 B · Previewing 4 B')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Open externally' })).toBeInTheDocument()
   })
 })

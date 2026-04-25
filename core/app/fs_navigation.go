@@ -38,6 +38,8 @@ type FSReadResult struct {
 	Preview          string `json:"preview"`
 	PreviewAvailable bool   `json:"preview_available"`
 	PreviewKind      string `json:"preview_kind,omitempty"`
+	PreviewBytes     int    `json:"preview_bytes,omitempty"`
+	SizeBytes        int64  `json:"size_bytes,omitempty"`
 	Truncated        bool   `json:"truncated"`
 }
 
@@ -230,6 +232,8 @@ func (r *Runtime) readFSPreview(path string, maxBytes int, allowOutsideWorkspace
 			Preview:          formatHexPreview(previewBytes),
 			PreviewAvailable: true,
 			PreviewKind:      "hex",
+			PreviewBytes:     len(previewBytes),
+			SizeBytes:        info.Size(),
 			Truncated:        truncated,
 		}, nil
 	}
@@ -239,6 +243,8 @@ func (r *Runtime) readFSPreview(path string, maxBytes int, allowOutsideWorkspace
 		Preview:          string(previewBytes),
 		PreviewAvailable: true,
 		PreviewKind:      "text",
+		PreviewBytes:     len(previewBytes),
+		SizeBytes:        info.Size(),
 		Truncated:        truncated,
 	}, nil
 }

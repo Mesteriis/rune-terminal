@@ -175,7 +175,9 @@ describe('commander api client', () => {
           path: '/Users/avm/projects/runa-terminal/blob.dat',
           preview: '00000000  00 01 02 03                                      |....|',
           preview_available: true,
+          preview_bytes: 4,
           preview_kind: 'hex',
+          size_bytes: 4,
           truncated: false,
         }),
       })
@@ -189,7 +191,10 @@ describe('commander api client', () => {
       entryName: 'blob.dat',
       path: '/Users/avm/projects/runa-terminal',
       previewAvailable: true,
+      previewBytes: 4,
       previewKind: 'hex',
+      sizeBytes: 4,
+      truncated: false,
     })
   })
 

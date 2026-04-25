@@ -432,14 +432,18 @@ export function CommanderWidget() {
               commanderActions.closeFileDialog()
               focusCommanderRoot()
             }}
-            onSave={() => {
-              commanderActions.saveFileDialog()
-              focusCommanderRoot()
-            }}
             onOpenExternal={async () => {
               await commanderActions.openFileExternally()
               focusCommanderRoot()
             }}
+            onSave={() => {
+              commanderActions.saveFileDialog()
+              focusCommanderRoot()
+            }}
+            previewBytes={state.fileDialog.previewBytes}
+            previewKind={state.fileDialog.previewKind}
+            sizeBytes={state.fileDialog.sizeBytes}
+            truncated={state.fileDialog.truncated}
           />
         ) : null}
       </Box>

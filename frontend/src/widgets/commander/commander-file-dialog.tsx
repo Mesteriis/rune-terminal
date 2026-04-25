@@ -37,7 +37,10 @@ export type CommanderFileDialogProps = {
   entryPath: string
   mode: CommanderFileDialogMode
   onOpenExternal?: () => Promise<void> | void
+  previewBytes?: number
   previewKind?: CommanderFilePreviewKind
+  sizeBytes?: number
+  truncated?: boolean
   onChange: (value: string) => void
   onClose: () => void
   onSave: () => void
@@ -54,7 +57,10 @@ export function CommanderFileDialog({
   entryPath,
   mode,
   onOpenExternal,
+  previewBytes,
   previewKind,
+  sizeBytes,
+  truncated,
   onChange,
   onClose,
   onSave,
@@ -69,6 +75,39 @@ export function CommanderFileDialog({
   const isEditable = mode === 'edit'
   const isBlocked = mode === 'blocked'
   const isHexPreview = !isEditable && !isBlocked && previewKind === 'hex'
+
+  const formatBytes = useCallback((value?: number) => {
+    if (!Number.isFinite(value) || value == null || value <= 0) {
+      return null
+    }
+
+    if (value < 1024) {
+      return `${value} B`
+    }
+
+    if (value < 1024 * 1024) {
+      return `${(value / 1024).toFixed(1)} KB`
+    }
+
+    if (value < 1024 * 1024 * 1024) {
+      return `${(value / (1024 * 1024)).toFixed(1)} MB`
+    }
+
+    return `${(value / (1024 * 1024 * 1024)).toFixed(1)} GB`
+  }, [])
+
+  const binarySizeLabel = formatBytes(sizeBytes)
+  const binaryPreviewBytesLabel = formatBytes(previewBytes)
+  const binaryPreviewSummary =
+    binarySizeLabel && binaryPreviewBytesLabel
+      ? truncated
+        ? `Binary file · ${binarySizeLabel} · Previewing first ${binaryPreviewBytesLabel}`
+        : `Binary file · ${binarySizeLabel} · Previewing ${binaryPreviewBytesLabel}`
+      : binarySizeLabel
+        ? `Binary file · ${binarySizeLabel}`
+        : null
+  const blockedBinaryHint =
+    binarySizeLabel != null ? `Binary file size: ${binarySizeLabel}. Use F3 for bounded hex preview.` : null
 
   const syncCursorMetrics = useCallback(() => {
     const nextPosition = textAreaRef.current?.selectionStart ?? 0
@@ -216,6 +255,14 @@ export function CommanderFileDialog({
               {blockedReason ??
                 'File is not UTF-8 text. Use `F3` for preview or open it with an external tool.'}
             </Text>
+            {blockedBinaryHint ? (
+              <Text
+                runaComponent="commander-file-dialog-blocked-binary-hint"
+                style={commanderFileDialogBlockedReasonStyle}
+              >
+                {blockedBinaryHint}
+              </Text>
+            ) : null}
             {externalOpenError ? (
               <Text
                 runaComponent="commander-file-dialog-open-external-error"
@@ -273,9 +320,9 @@ export function CommanderFileDialog({
               {isEditable
                 ? 'Ctrl+S save'
                 : isBlocked
-                  ? (blockedHint ?? 'Edit unavailable')
+                  ? (binaryPreviewSummary ?? blockedHint ?? 'Edit unavailable')
                   : isHexPreview
-                    ? 'Read only hex preview'
+                    ? (binaryPreviewSummary ?? 'Read only hex preview')
                     : 'Read only preview'}
             </Text>
             {!isBlocked ? (
