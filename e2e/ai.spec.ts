@@ -489,8 +489,16 @@ test('AI sidebar runs a live Codex chat path and restores the transcript after r
 
 test('AI sidebar lets the operator bulk-select widgets for a request', async ({
   page,
+  request,
 }) => {
   test.setTimeout(60_000)
+
+  const conversation = await createConversationViaApi(request)
+  await updateAgentConversationContext(request, conversation.id, {
+    widget_context_enabled: true,
+    widget_ids: [],
+  })
+  await activateAgentConversation(request, conversation.id)
 
   let capturedStreamBody: Record<string, unknown> | null = null
   const contextSelectorAssistantMessage = {
@@ -564,7 +572,12 @@ test('AI sidebar lets the operator bulk-select widgets for a request', async ({
   await expect(page.getByRole('dialog', { name: 'Context widgets' })).toBeVisible()
   await page.getByRole('button', { name: 'Only current' }).click()
   await page.keyboard.press('Escape')
-  await expect(page.getByRole('button', { name: 'Composer options' })).toContainText('Main Shell')
+  await expect
+    .poll(async () => {
+      const activeConversation = await fetchAgentConversation(request)
+      return activeConversation.context_preferences.widget_ids
+    })
+    .toHaveLength(1)
 
   await page.getByRole('button', { name: 'Composer options' }).click()
   await page.getByRole('button', { name: 'All widgets' }).click()
@@ -694,6 +707,38 @@ test('AI sidebar restores persisted widget context per conversation', async ({ p
       },
     })
   await expect(page.getByRole('button', { name: 'Composer options' })).toContainText('Context off')
+})
+
+test('AI sidebar repairs stale persisted widget context selections', async ({ page, request }) => {
+  test.setTimeout(90_000)
+
+  const conversation = await createConversationViaApi(request)
+  await updateAgentConversationContext(request, conversation.id, {
+    widget_context_enabled: true,
+    widget_ids: ['term-main', 'missing-widget-a', 'missing-widget-b'],
+  })
+  await activateAgentConversation(request, conversation.id)
+
+  await clearBrowserState(page)
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Toggle AI panel' }).click({ force: true })
+  await expect(page.getByText('AI Rune Assistant')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Composer options' }).click()
+  await expect(page.getByRole('dialog', { name: 'Context widgets' })).toBeVisible()
+  await expect(
+    page.getByText('2 saved widgets are no longer available in this workspace.'),
+  ).toBeVisible()
+
+  await page.getByRole('button', { name: 'Save cleaned context' }).click()
+
+  await expect
+    .poll(async () => {
+      const activeConversation = await fetchAgentConversation(request)
+      return activeConversation.context_preferences.widget_ids
+    })
+    .toEqual(['term-main'])
+  await expect(page.getByText('2 saved widgets are no longer available in this workspace.')).toHaveCount(0)
 })
 
 test('AI composer submit shortcut can be changed from settings', async ({ page }) => {

@@ -157,9 +157,13 @@ export function AiPanelWidget({ controller, hostId, mode = 'chat', state }: AiPa
                 : false
             }
             isWidgetContextEnabled={state == null ? agentPanel.isWidgetContextEnabled : undefined}
+            missingContextWidgetCount={state == null ? agentPanel.missingContextWidgetCount : undefined}
             onContextOptionsOpen={state == null ? agentPanel.handleContextOptionsOpen : undefined}
             onContextOnlyUseCurrentWidget={
               state == null ? () => void agentPanel.useCurrentContextWidget('replace') : undefined
+            }
+            onRepairMissingContextWidgets={
+              state == null ? () => void agentPanel.repairMissingContextWidgets() : undefined
             }
             onContextUseDefault={
               state == null ? () => void agentPanel.resetContextWidgetSelection() : undefined

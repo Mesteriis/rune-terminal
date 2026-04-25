@@ -996,15 +996,21 @@ export const aiComposerActionActiveStyle: CSSProperties = {
 
 export const aiComposerContextMenuWrapStyle: CSSProperties = {
   position: 'absolute',
+  top: 'var(--space-sm)',
   right: 'calc(var(--space-sm) + 34px + var(--gap-sm))',
   bottom: 'var(--space-sm)',
   width: 'min(24rem, calc(100% - 5rem))',
-  zIndex: 'var(--z-floating)',
+  display: 'flex',
+  alignItems: 'flex-end',
+  zIndex: 'var(--z-modal-body)',
 }
 
 export const aiComposerContextMenuStyle: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
+  width: '100%',
+  maxHeight: '100%',
+  overflowY: 'auto',
   gap: 'var(--gap-xs)',
   padding: 'var(--space-md)',
   borderColor: 'var(--color-border-strong)',
@@ -1054,6 +1060,33 @@ export const aiComposerContextSummaryValueStyle: CSSProperties = {
   lineHeight: '16px',
   whiteSpace: 'pre-wrap',
   wordBreak: 'break-word',
+}
+
+export const aiComposerContextRepairNoticeStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 'var(--space-sm)',
+  padding: 'var(--space-sm)',
+  border: '1px solid var(--color-accent-warning-border)',
+  borderRadius: 'var(--radius-sm)',
+  background: 'color-mix(in srgb, var(--color-accent-warning-bg) 86%, transparent)',
+}
+
+export const aiComposerContextRepairNoticeTextStyle: CSSProperties = {
+  color: 'var(--color-text-primary)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '12px',
+  lineHeight: '16px',
+  whiteSpace: 'pre-wrap',
+  wordBreak: 'break-word',
+}
+
+export const aiComposerContextRepairNoticeActionsStyle: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 'var(--space-xs)',
+  flexShrink: 0,
 }
 
 export const aiComposerContextQuickActionsStyle: CSSProperties = {

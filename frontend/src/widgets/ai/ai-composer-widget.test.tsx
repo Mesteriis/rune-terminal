@@ -205,4 +205,43 @@ describe('AiComposerWidget', () => {
 
     expect(onSelectedContextWidgetIDsChange).toHaveBeenCalledWith(['term-main'])
   })
+
+  it('shows a repair notice when saved context widgets are missing and persists the cleaned selection', () => {
+    const onRepairMissingContextWidgets = vi.fn()
+
+    render(
+      <AiComposerWidget
+        activeContextWidgetID="term-main"
+        activeContextWidgetOption={{
+          value: 'term-main',
+          label: 'Main Shell (term-main) · terminal · local',
+          title: 'Main Shell',
+          meta: 'term-main · terminal · local',
+        }}
+        activeTool="Chat"
+        contextWidgetOptions={[
+          {
+            value: 'term-main',
+            label: 'Main Shell (term-main) · terminal · local',
+            title: 'Main Shell',
+            meta: 'term-main · terminal · local',
+          },
+        ]}
+        missingContextWidgetCount={2}
+        onRepairMissingContextWidgets={onRepairMissingContextWidgets}
+        placeholder="Text Area"
+        selectedContextWidgetIDs={['term-main']}
+        toolbarLabel="TOOL BAR"
+        value=""
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Composer options' }))
+
+    expect(screen.getByText('2 saved widgets are no longer available in this workspace.')).toBeVisible()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save cleaned context' }))
+
+    expect(onRepairMissingContextWidgets).toHaveBeenCalledTimes(1)
+  })
 })

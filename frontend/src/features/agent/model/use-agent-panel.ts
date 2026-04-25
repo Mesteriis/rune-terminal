@@ -379,7 +379,8 @@ export function useAgentPanel(hostId: string, enabled = true) {
   const [selectedModel, setSelectedModel] = useState('')
   const [isWidgetContextEnabled, setIsWidgetContextEnabled] = useState(true)
   const [contextWidgetOptions, setContextWidgetOptions] = useState<AiContextWidgetOption[]>([])
-  const [selectedContextWidgetIDs, setSelectedContextWidgetIDs] = useState<string[]>([])
+  const [storedContextWidgetIDs, setStoredContextWidgetIDs] = useState<string[]>([])
+  const [missingContextWidgetCount, setMissingContextWidgetCount] = useState(0)
   const [workspaceActiveWidgetID, setWorkspaceActiveWidgetID] = useState('')
   const [contextWidgetLoadError, setContextWidgetLoadError] = useState<string | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -394,6 +395,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
   const pendingFlowRef = useRef<PendingInteractionFlow | null>(null)
   const submissionNonceRef = useRef(0)
   const panelStateEpochRef = useRef(0)
+  const contextWidgetOptionsRef = useRef<AiContextWidgetOption[]>([])
   const hasLoadedContextWidgetsRef = useRef(false)
   const hasCustomizedContextWidgetSelectionRef = useRef(false)
 
@@ -410,13 +412,24 @@ export function useAgentPanel(hostId: string, enabled = true) {
 
   const applyConversationContextPreferences = useCallback(
     (preferences: AgentConversationContextPreferences | undefined) => {
+      const nextContextWidgetOptions = contextWidgetOptionsRef.current
       const normalizedPreferences: AgentConversationContextPreferences = {
         widget_context_enabled: preferences?.widget_context_enabled ?? true,
         widget_ids: deduplicateWidgetIDs(preferences?.widget_ids ?? []),
       }
       hasCustomizedContextWidgetSelectionRef.current = isCustomizedContextPreference(normalizedPreferences)
       setIsWidgetContextEnabled(normalizedPreferences.widget_context_enabled)
-      setSelectedContextWidgetIDs(normalizedPreferences.widget_ids ?? [])
+      setStoredContextWidgetIDs(normalizedPreferences.widget_ids ?? [])
+      setMissingContextWidgetCount(
+        nextContextWidgetOptions.length > 0
+          ? Math.max(
+              0,
+              (normalizedPreferences.widget_ids?.length ?? 0) -
+                filterContextWidgetSelection(normalizedPreferences.widget_ids ?? [], nextContextWidgetOptions)
+                  .length,
+            )
+          : 0,
+      )
     },
     [],
   )
@@ -437,6 +450,10 @@ export function useAgentPanel(hostId: string, enabled = true) {
   useEffect(() => {
     pendingFlowRef.current = pendingFlow
   }, [pendingFlow])
+
+  useEffect(() => {
+    contextWidgetOptionsRef.current = contextWidgetOptions
+  }, [contextWidgetOptions])
 
   useEffect(() => {
     return () => {
@@ -475,7 +492,8 @@ export function useAgentPanel(hostId: string, enabled = true) {
     setSelectedModel('')
     setIsWidgetContextEnabled(true)
     setContextWidgetOptions([])
-    setSelectedContextWidgetIDs([])
+    setStoredContextWidgetIDs([])
+    setMissingContextWidgetCount(0)
     setWorkspaceActiveWidgetID('')
     setContextWidgetLoadError(null)
     setLoadError(null)
@@ -840,15 +858,15 @@ export function useAgentPanel(hostId: string, enabled = true) {
   const effectiveContextWidgetIDs = useMemo(() => {
     const filteredSelection =
       contextWidgetOptions.length > 0
-        ? filterContextWidgetSelection(selectedContextWidgetIDs, contextWidgetOptions)
-        : deduplicateWidgetIDs(selectedContextWidgetIDs)
+        ? filterContextWidgetSelection(storedContextWidgetIDs, contextWidgetOptions)
+        : deduplicateWidgetIDs(storedContextWidgetIDs)
 
     if (filteredSelection.length > 0) {
       return filteredSelection
     }
 
     return deriveFallbackContextWidgetIDs()
-  }, [contextWidgetOptions, deriveFallbackContextWidgetIDs, selectedContextWidgetIDs])
+  }, [contextWidgetOptions, deriveFallbackContextWidgetIDs, storedContextWidgetIDs])
 
   const persistConversationContextPreferences = useCallback(
     async (preferences: AgentConversationContextPreferences) => {
@@ -866,8 +884,9 @@ export function useAgentPanel(hostId: string, enabled = true) {
     (widgetIDs: string[]) => {
       const normalizedWidgetIDs = deduplicateWidgetIDs(widgetIDs)
       hasCustomizedContextWidgetSelectionRef.current = true
-      setSelectedContextWidgetIDs(normalizedWidgetIDs)
+      setStoredContextWidgetIDs(normalizedWidgetIDs)
       setIsWidgetContextEnabled(true)
+      setMissingContextWidgetCount(0)
       void persistConversationContextPreferences({
         widget_context_enabled: true,
         widget_ids: normalizedWidgetIDs,
@@ -900,19 +919,21 @@ export function useAgentPanel(hostId: string, enabled = true) {
     setWorkspaceActiveWidgetID(nextWorkspaceActiveWidgetID)
     setContextWidgetOptions(nextContextWidgetOptions)
     setContextWidgetLoadError(null)
-    setSelectedContextWidgetIDs((currentSelection) => {
+    setMissingContextWidgetCount((currentMissingCount) => {
       if (hasCustomizedContextWidgetSelectionRef.current) {
-        return filterContextWidgetSelection(currentSelection, nextContextWidgetOptions)
+        const normalizedSelection = deduplicateWidgetIDs(storedContextWidgetIDs)
+        const filteredSelection = filterContextWidgetSelection(normalizedSelection, nextContextWidgetOptions)
+        return Math.max(0, normalizedSelection.length - filteredSelection.length)
       }
 
-      return deriveFallbackContextWidgetIDs(workspaceSnapshot.active_widget_id)
+      return currentMissingCount > 0 ? 0 : currentMissingCount
     })
 
     return {
       activeWidgetID: nextWorkspaceActiveWidgetID,
       options: nextContextWidgetOptions,
     }
-  }, [contextWidgetOptions, deriveFallbackContextWidgetIDs, enabled, workspaceActiveWidgetID])
+  }, [contextWidgetOptions, enabled, storedContextWidgetIDs, workspaceActiveWidgetID])
 
   const handleContextOptionsOpen = useCallback(async () => {
     try {
@@ -939,9 +960,10 @@ export function useAgentPanel(hostId: string, enabled = true) {
         const nextWidgetIDs =
           mode === 'replace'
             ? [activeWidgetID]
-            : deduplicateWidgetIDs([...selectedContextWidgetIDs, activeWidgetID])
-        setSelectedContextWidgetIDs(nextWidgetIDs)
+            : deduplicateWidgetIDs([...effectiveContextWidgetIDs, activeWidgetID])
+        setStoredContextWidgetIDs(nextWidgetIDs)
         setContextWidgetLoadError(null)
+        setMissingContextWidgetCount(0)
         void persistConversationContextPreferences({
           widget_context_enabled: true,
           widget_ids: nextWidgetIDs,
@@ -954,7 +976,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
         setContextWidgetLoadError(errorMessage)
       }
     },
-    [loadContextWidgets, persistConversationContextPreferences, selectedContextWidgetIDs],
+    [effectiveContextWidgetIDs, loadContextWidgets, persistConversationContextPreferences],
   )
 
   const useAllContextWidgets = useCallback(async () => {
@@ -964,8 +986,9 @@ export function useAgentPanel(hostId: string, enabled = true) {
 
       hasCustomizedContextWidgetSelectionRef.current = true
       setIsWidgetContextEnabled(true)
-      setSelectedContextWidgetIDs(nextWidgetIDs)
+      setStoredContextWidgetIDs(nextWidgetIDs)
       setContextWidgetLoadError(null)
+      setMissingContextWidgetCount(0)
       void persistConversationContextPreferences({
         widget_context_enabled: true,
         widget_ids: nextWidgetIDs,
@@ -985,8 +1008,9 @@ export function useAgentPanel(hostId: string, enabled = true) {
 
       hasCustomizedContextWidgetSelectionRef.current = false
       setIsWidgetContextEnabled(true)
-      setSelectedContextWidgetIDs([])
+      setStoredContextWidgetIDs([])
       setContextWidgetLoadError(null)
+      setMissingContextWidgetCount(0)
       void persistConversationContextPreferences({
         widget_context_enabled: true,
         widget_ids: [],
@@ -1011,17 +1035,31 @@ export function useAgentPanel(hostId: string, enabled = true) {
   const updateWidgetContextEnabled = useCallback(
     (nextValue: boolean) => {
       setIsWidgetContextEnabled(nextValue)
+      setMissingContextWidgetCount(0)
       hasCustomizedContextWidgetSelectionRef.current =
-        !nextValue || deduplicateWidgetIDs(selectedContextWidgetIDs).length > 0
+        !nextValue || deduplicateWidgetIDs(effectiveContextWidgetIDs).length > 0
       void persistConversationContextPreferences({
         widget_context_enabled: nextValue,
-        widget_ids: deduplicateWidgetIDs(selectedContextWidgetIDs),
+        widget_ids: deduplicateWidgetIDs(effectiveContextWidgetIDs),
       }).catch((error) => {
         setSubmitError(getErrorMessage(error, 'Unable to update the conversation context.'))
       })
     },
-    [persistConversationContextPreferences, selectedContextWidgetIDs],
+    [effectiveContextWidgetIDs, persistConversationContextPreferences],
   )
+
+  const repairMissingContextWidgets = useCallback(() => {
+    const nextWidgetIDs = deduplicateWidgetIDs(effectiveContextWidgetIDs)
+    hasCustomizedContextWidgetSelectionRef.current = nextWidgetIDs.length > 0 || !isWidgetContextEnabled
+    setStoredContextWidgetIDs(nextWidgetIDs)
+    setMissingContextWidgetCount(0)
+    void persistConversationContextPreferences({
+      widget_context_enabled: isWidgetContextEnabled,
+      widget_ids: nextWidgetIDs,
+    }).catch((error) => {
+      setSubmitError(getErrorMessage(error, 'Unable to save the cleaned conversation context.'))
+    })
+  }, [effectiveContextWidgetIDs, isWidgetContextEnabled, persistConversationContextPreferences])
 
   const createConversationContext = useCallback(
     (input: {
@@ -1480,6 +1518,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
     activeContextWidgetOption,
     archiveConversation,
     handleContextOptionsOpen,
+    missingContextWidgetCount,
     conversations,
     createConversation,
     isInteractionPending: pendingFlow != null,
@@ -1498,6 +1537,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
     switchConversation,
     deleteConversation,
     renameConversation,
+    repairMissingContextWidgets,
     resetContextWidgetSelection,
     restoreConversation,
     useAllContextWidgets,

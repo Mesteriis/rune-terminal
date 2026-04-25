@@ -16,6 +16,9 @@ import {
   aiComposerActionStyle,
   aiComposerContextMenuHeaderStyle,
   aiComposerContextMenuMetaStyle,
+  aiComposerContextRepairNoticeActionsStyle,
+  aiComposerContextRepairNoticeStyle,
+  aiComposerContextRepairNoticeTextStyle,
   aiComposerContextQuickActionStyle,
   aiComposerContextQuickActionsStyle,
   aiComposerContextStripCurrentStyle,
@@ -72,11 +75,13 @@ export type AiComposerWidgetProps = {
   selectedContextWidgetIDs?: string[]
   isWidgetContextEnabled?: boolean
   contextWidgetLoadError?: string | null
+  missingContextWidgetCount?: number
   onContextOptionsOpen?: () => void
   onContextUseCurrentWidget?: () => void
   onContextOnlyUseCurrentWidget?: () => void
   onContextUseAllWidgets?: () => void
   onContextUseDefault?: () => void
+  onRepairMissingContextWidgets?: () => void
   onSelectedContextWidgetIDsChange?: (value: string[]) => void
   onWidgetContextEnabledChange?: (value: boolean) => void
   submitMode?: AiComposerSubmitMode
@@ -99,11 +104,13 @@ export function AiComposerWidget({
   contextWidgetLoadError = null,
   contextWidgetOptions = [],
   isWidgetContextEnabled = true,
+  missingContextWidgetCount = 0,
   onContextOptionsOpen,
   onContextUseCurrentWidget,
   onContextOnlyUseCurrentWidget,
   onContextUseAllWidgets,
   onContextUseDefault,
+  onRepairMissingContextWidgets,
   onSelectedContextWidgetIDsChange,
   onWidgetContextEnabledChange,
   selectedContextWidgetIDs = [],
@@ -371,6 +378,24 @@ export function AiComposerWidget({
                     <Text style={aiComposerContextSummaryValueStyle}>{contextSummarySecondary}</Text>
                   </Box>
                 </Box>
+                {missingContextWidgetCount > 0 ? (
+                  <Box style={aiComposerContextRepairNoticeStyle}>
+                    <Text style={aiComposerContextRepairNoticeTextStyle}>
+                      {missingContextWidgetCount === 1
+                        ? '1 saved widget is no longer available in this workspace.'
+                        : `${missingContextWidgetCount} saved widgets are no longer available in this workspace.`}
+                    </Text>
+                    <Box style={aiComposerContextRepairNoticeActionsStyle}>
+                      <Button
+                        disabled={disabled}
+                        onClick={() => onRepairMissingContextWidgets?.()}
+                        style={aiComposerContextQuickActionStyle}
+                      >
+                        Save cleaned context
+                      </Button>
+                    </Box>
+                  </Box>
+                ) : null}
                 <Box style={aiComposerContextQuickActionsStyle}>
                   <Button
                     disabled={disabled || !activeContextWidgetOption || isCurrentContextWidgetSelected}

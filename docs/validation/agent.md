@@ -19,6 +19,7 @@
   - persisted request-context selection per conversation in `runtime.db`
   - AI composer context quick actions (`Use current`, `Only current`, `All widgets`, `Use default`) over the existing workspace/widget context contract
   - AI composer visible selected-context strip with direct remove actions for chosen widgets
+  - explicit stale-widget repair notice plus `Save cleaned context` action for persisted conversation context that no longer matches the current workspace
   - AI composer two-row toolbar grouping with explicit `Source / Model / Context` field labels
   - AI composer denser request-context dropdown summary block and widget option rows
   - AI assistant message meta row and details panel chrome refinement
@@ -29,6 +30,7 @@
     - live Codex CLI chat request/response through the real backend conversation route
     - explicit widget-context selection in the composer and `widget_ids` propagation into the stream request body
     - persisted per-conversation widget-context restore across conversation activation and reload
+    - explicit stale-widget repair flow that rewrites persisted `widget_ids` to the still-valid workspace subset
     - settings-driven keyboard submit behavior: `Enter` newline plus `Ctrl/Cmd+Enter` submit
     - conversation persistence across AI panel reload/reopen with backend conversation switching
     - shell-visible conversation menu for `Recent / Archived` thread grouping, `New` creation, active-thread rename, archive, restore, and delete
@@ -62,6 +64,7 @@
   - explicit widget-context multiselect
   - explicit context quick actions inside the request-context dropdown
   - explicit selected-context strip with direct remove actions in the composer body
+  - explicit stale-widget repair notice and one-click cleanup for persisted conversation context
   - explicit two-row toolbar grouping with `Source / Model / Context` labels over the existing selector contract
   - denser request-context dropdown summary block and widget option rows without changing selection semantics
 - The AI composer submit shortcut is frontend-owned UI state:
@@ -87,6 +90,7 @@
 - The visible context trigger in the composer remains frontend-owned UX over that same contract:
   - the closed trigger summarizes the effective selection state (`Context off`, active widget title, or widget count)
   - the dropdown exposes `Use current`, `Only current`, `All widgets`, and `Use default` actions without introducing a second backend context model
+- When persisted `widget_ids` reference widgets that no longer exist in the current `GET /api/v1/workspace` snapshot, the composer now shows that mismatch explicitly and offers `Save cleaned context`, which rewrites the active conversation with only the still-valid widget ids.
 - The selected widget set is now also visible outside the dropdown:
   - explicit selections render as removable chips in the composer body
   - removing chips narrows both `widget_ids` and `active_widget_id` to the remaining explicit selection, matching the current frontend context contract
@@ -128,7 +132,7 @@
 ## Known limitations
 
 - conversation management is still intentionally narrow: create + switch + active-thread rename + archive + restore + delete plus local navigator filtering only. Broader conversation search, archive-only management views, and multi-panel conversation views are not implemented in this slice.
-- request-context persistence is now conversation-scoped, but there are still no named context presets, grouped context modes, or stale-widget repair UX beyond current normalization of missing widget ids.
+- request-context persistence is now conversation-scoped and stale-widget repair is explicit, but there are still no named context presets or grouped context modes.
 - CLI providers currently expose buffered chat completion through the existing SSE route; token-by-token provider streaming is not implemented.
 - CLI-native tool calls are not yet mediated through `core/toolruntime`, policy approval, or audit events.
 - The OpenAI-compatible HTTP source path is also buffered and non-streaming in this slice.
