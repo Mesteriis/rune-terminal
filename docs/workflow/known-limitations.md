@@ -12,7 +12,9 @@ capability.
 - the active terminal and AI shell paths now run against the backend
   runtime over the documented HTTP/SSE contracts; commander still keeps
   some frontend-local orchestration and persistence seams even though the
-  active file read/write flows already use backend HTTP routes
+  active file read/write flows already use backend HTTP routes and the
+  backend-backed commander runtime no longer inherits its default shell
+  state from the old mock seed
 - commander now has a narrow async HTTP path into the Go core
   (`/api/v1/bootstrap`, `/api/v1/fs/list`, `/api/v1/fs/read`,
   `/api/v1/fs/file`, `/api/v1/fs/mkdir`, `/api/v1/fs/copy`,

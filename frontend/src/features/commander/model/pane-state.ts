@@ -1,4 +1,12 @@
-import { commanderWidgetMockState } from '@/widgets/commander/commander-widget.mock'
+import {
+  defaultCommanderActivePane,
+  defaultCommanderDirsFirst,
+  defaultCommanderFooterHints,
+  defaultCommanderShowHidden,
+  defaultCommanderSortDirection,
+  defaultCommanderSortMode,
+  defaultCommanderViewMode,
+} from '@/features/commander/model/commander-defaults'
 import { filterEntriesByMask } from '@/features/commander/model/store-selection'
 import type {
   CommanderDirectoryEntry,
@@ -10,20 +18,6 @@ import type {
   CommanderWidgetPersistedState,
   CommanderWidgetRuntimeState,
 } from '@/features/commander/model/types'
-
-const backendCommanderFooterHints = [
-  { key: 'F2', label: 'Rename' },
-  { key: 'F3', label: 'View' },
-  { key: 'F4', label: 'Edit' },
-  { key: 'F5', label: 'Copy' },
-  { key: 'F6', label: 'Move' },
-  { key: 'F7', label: 'Mkdir' },
-  { key: 'F8', label: 'Delete' },
-  { key: 'CTRL+L', label: 'Path' },
-  { key: 'CTRL+S', label: 'Search' },
-  { key: 'CTRL+F', label: 'Filter' },
-  { key: 'CTRL+BS', label: 'Clear filter' },
-] as const
 
 function sortCommanderEntries(
   entries: CommanderDirectoryEntry[],
@@ -185,23 +179,23 @@ export function createCommanderWidgetRuntimeState(
   widgetId: string,
   persistedState?: CommanderWidgetPersistedState | null,
 ): CommanderWidgetRuntimeState {
-  const showHidden = persistedState?.showHidden ?? commanderWidgetMockState.showHidden
-  const sortMode = persistedState?.sortMode ?? commanderWidgetMockState.sortMode
-  const sortDirection = persistedState?.sortDirection ?? 'asc'
-  const dirsFirst = persistedState?.dirsFirst ?? true
+  const showHidden = persistedState?.showHidden ?? defaultCommanderShowHidden
+  const sortMode = persistedState?.sortMode ?? defaultCommanderSortMode
+  const sortDirection = persistedState?.sortDirection ?? defaultCommanderSortDirection
+  const dirsFirst = persistedState?.dirsFirst ?? defaultCommanderDirsFirst
   const options = { showHidden, sortMode, sortDirection, dirsFirst }
 
   return {
     widgetId,
     dataSource: 'backend',
     mode: 'commander',
-    viewMode: persistedState?.viewMode ?? commanderWidgetMockState.viewMode,
-    activePane: persistedState?.activePane ?? commanderWidgetMockState.activePane,
+    viewMode: persistedState?.viewMode ?? defaultCommanderViewMode,
+    activePane: persistedState?.activePane ?? defaultCommanderActivePane,
     showHidden,
     sortMode,
     sortDirection,
     dirsFirst,
-    footerHints: [...backendCommanderFooterHints],
+    footerHints: [...defaultCommanderFooterHints],
     pendingOperation: null,
     fileDialog: null,
     leftPane: persistedState?.leftPane
