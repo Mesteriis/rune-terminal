@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::env;
 use std::fmt::{self, Display};
 use std::fs;
+use std::net::TcpListener;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -805,17 +806,18 @@ fn recover_running_watcher_for_core(expected_core_url: &str) -> Option<RuntimePr
 }
 
 fn ensure_no_foreign_watcher_listener(expected_core_url: &str) -> Result<(), RuntimeError> {
-    reject_foreign_watcher_listener(
+    reject_foreign_watcher_listener_with_probe(
         &format!("http://{}", WATCHER_LISTEN_ADDR),
         expected_core_url,
         wait_for_health_service,
         request_watcher_state,
+        || watcher_listen_addr_available(WATCHER_LISTEN_ADDR),
     )
 }
 
 fn reject_foreign_watcher_listener<FHealth, FState>(
     watcher_base_url: &str,
-    _expected_core_url: &str,
+    expected_core_url: &str,
     mut health_lookup: FHealth,
     mut state_lookup: FState,
 ) -> Result<(), RuntimeError>
@@ -823,9 +825,36 @@ where
     FHealth: FnMut(&str, &str) -> Result<HealthPayload, RuntimeError>,
     FState: FnMut(&str) -> Result<WatcherStatePayload, RuntimeError>,
 {
+    reject_foreign_watcher_listener_with_probe(
+        watcher_base_url,
+        expected_core_url,
+        &mut health_lookup,
+        &mut state_lookup,
+        || watcher_listen_addr_available(WATCHER_LISTEN_ADDR),
+    )
+}
+
+fn reject_foreign_watcher_listener_with_probe<FHealth, FState, FProbe>(
+    watcher_base_url: &str,
+    _expected_core_url: &str,
+    mut health_lookup: FHealth,
+    mut state_lookup: FState,
+    mut listen_addr_available: FProbe,
+) -> Result<(), RuntimeError>
+where
+    FHealth: FnMut(&str, &str) -> Result<HealthPayload, RuntimeError>,
+    FState: FnMut(&str) -> Result<WatcherStatePayload, RuntimeError>,
+    FProbe: FnMut() -> bool,
+{
     let Some(live_watcher) =
         inspect_live_watcher_listener(watcher_base_url, &mut health_lookup, &mut state_lookup)
     else {
+        if !listen_addr_available() {
+            return Err(RuntimeError::Http(format!(
+                "watcher listen address {} is already occupied by a non-rterm service",
+                WATCHER_LISTEN_ADDR
+            )));
+        }
         return Ok(());
     };
 
@@ -833,6 +862,10 @@ where
         "watcher listen address {} is already occupied by watcher pid {} for backend {}",
         WATCHER_LISTEN_ADDR, live_watcher.process.pid, live_watcher.backend_url
     )))
+}
+
+fn watcher_listen_addr_available(listen_addr: &str) -> bool {
+    TcpListener::bind(listen_addr).is_ok()
 }
 
 fn discover_running_watcher_for_core<FHealth, FState>(
@@ -1387,7 +1420,8 @@ mod tests {
         read_runtime_attachment_from_path, recover_or_drop_watcher_record,
         recover_running_runtime_from_watcher,
         request_shutdown_runtime,
-        reject_foreign_watcher_listener, sanitize_runtime_attachment, wait_for_ready_file,
+        reject_foreign_watcher_listener, reject_foreign_watcher_listener_with_probe,
+        sanitize_runtime_attachment, wait_for_ready_file,
         write_file_atomically, HealthPayload, ReadyFilePayload, RuntimeError, RuntimeFile,
         RuntimeFileCore, RuntimeFileWatcher, RuntimeProcess, RuntimeProcessRecord,
         RuntimeRuntime, SettingsFile, SingleInstancePayload, WatcherMode, WatcherStatePayload,
@@ -1674,14 +1708,32 @@ mod tests {
 
     #[test]
     fn reject_foreign_watcher_listener_ignores_empty_port() {
-        let result = reject_foreign_watcher_listener(
+        let result = reject_foreign_watcher_listener_with_probe(
             "http://127.0.0.1:7788",
             "http://127.0.0.1:40100",
             |_url, _service| Err(RuntimeError::Http("connection refused".into())),
             |_url| unreachable!("state lookup should not run when health fails"),
+            || true,
         );
 
         assert!(result.is_ok(), "empty port should not block watcher spawn");
+    }
+
+    #[test]
+    fn reject_foreign_watcher_listener_surfaces_non_rterm_listener_conflict() {
+        let err = reject_foreign_watcher_listener_with_probe(
+            "http://127.0.0.1:7788",
+            "http://127.0.0.1:40100",
+            |_url, _service| Err(RuntimeError::Http("unexpected response".into())),
+            |_url| unreachable!("state lookup should not run when watcher health is invalid"),
+            || false,
+        )
+        .expect_err("non-rterm listener conflict should block watcher spawn");
+
+        assert!(
+            matches!(err, RuntimeError::Http(ref message) if message.contains("127.0.0.1:7788") && message.contains("non-rterm service")),
+            "unexpected error: {err}"
+        );
     }
 
     #[test]
