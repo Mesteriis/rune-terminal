@@ -28,6 +28,7 @@
   - AI composer two-row toolbar grouping with explicit `Source / Model / Context` field labels
   - AI composer denser request-context dropdown summary block and widget option rows
   - AI assistant message meta row and details panel chrome refinement
+  - stream-error handling in the AI panel now preserves partial assistant output instead of immediately overwriting it with a post-stream conversation resync
   - frontend `/run ...` routing from the AI sidebar into the active terminal widget through backend tool execution plus terminal-command explanation
   - browser-level Playwright coverage for the AI sidebar over the split local dev path:
     - settings navigation for provider/model/limits/terminal/commander sections
@@ -154,6 +155,7 @@
 - controlled `npm run tauri:dev` startup smoke: observed live `target/debug/rterm-desktop` plus desktop-owned `rterm-core serve` / `rterm-core watcher`, then explicitly cleaned the smoke-owned process delta while leaving the user-owned `rterm-core serve --listen 127.0.0.1:8090` intact
 - `npm run test:ui -- --reporter=line --grep "keyboard navigation through filtered thread options" e2e/ai.spec.ts`
 - `npm --prefix frontend run test -- src/widgets/ai/ai-panel-widget.test.tsx src/widgets/ai/ai-panel-header-widget.test.tsx src/widgets/ai/ai-composer-widget.test.tsx`
+- `npm --prefix frontend run test -- src/widgets/ai/ai-panel-widget.test.tsx`
 - `npm --prefix frontend run test -- src/widgets/ai/ai-panel-widget.test.tsx -t "allows selecting multiple workspace widgets for the AI request context|persists the current workspace widget when the operator clicks Only current immediately after opening context options|auto-saves stale persisted context when context widgets are opened"`
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts`
 - `npx playwright test -c e2e/playwright.config.ts --reporter=line e2e/ai.spec.ts -g "archives and restores a non-active thread from row actions"`
@@ -171,7 +173,6 @@
 
 - conversation management is still intentionally narrow: create + switch + active-thread rename + archive + restore + delete plus local navigator filtering only. Broader conversation search, archive-only management views, and multi-panel conversation views are not implemented in this slice.
 - request-context persistence is now conversation-scoped and stale-widget repair is explicit, but there are still no named context presets or grouped context modes.
-- the full isolated `src/widgets/ai/ai-panel-widget.test.tsx` suite still contains unrelated red cases around buffered stream mocks and `/run` path mocks; this slice was validated with targeted context tests plus `lint:active`, not with a fully green file-wide widget suite.
 - CLI providers currently expose buffered chat completion through the existing SSE route; token-by-token provider streaming is not implemented.
 - CLI-native tool calls are not yet mediated through `core/toolruntime`, policy approval, or audit events.
 - The OpenAI-compatible HTTP source path is also buffered and non-streaming in this slice.

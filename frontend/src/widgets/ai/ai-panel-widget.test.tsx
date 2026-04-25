@@ -417,85 +417,82 @@ describe('AiPanelWidget backend conversation path', () => {
 
     const streamResponse = createDeferredStreamResponse()
     const fetchMock = vi.fn()
-    fetchMock
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          home_dir: '/Users/avm',
-          repo_root: '/Users/avm/projects/runa-terminal',
-        }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          conversation: {
-            id: 'conv_1',
-            title: 'Pure chat',
-            messages: [],
-            provider: {
-              kind: 'stub',
-              base_url: 'http://stub',
-              model: 'stub-model',
-              streaming: false,
-            },
-            created_at: '2026-04-21T09:59:00Z',
-            updated_at: '2026-04-21T10:00:00Z',
-          },
-        }),
-      })
-      .mockResolvedValueOnce(createProviderCatalogFetchResponse())
-      .mockResolvedValueOnce(
-        createConversationListFetchResponse('conv_1', [
+    let isConversationComplete = false
+    fetchMock.mockImplementation(async (input) => {
+      const url = String(input)
+
+      if (url.endsWith('/api/v1/bootstrap')) {
+        return {
+          ok: true,
+          json: async () => ({
+            home_dir: '/Users/avm',
+            repo_root: '/Users/avm/projects/runa-terminal',
+          }),
+        }
+      }
+
+      if (url.endsWith('/api/v1/agent/conversation')) {
+        return isConversationComplete
+          ? createConversationFetchResponse(
+              {
+                title: 'Pure chat',
+                updated_at: '2026-04-21T10:00:05Z',
+              },
+              [
+                {
+                  id: 'msg_user',
+                  role: 'user',
+                  content: 'Привет',
+                  status: 'complete',
+                  created_at: '2026-04-21T10:00:00Z',
+                },
+                {
+                  id: 'msg_2',
+                  role: 'assistant',
+                  content: 'Backend message received.',
+                  status: 'complete',
+                  provider: 'stub',
+                  model: 'stub-model',
+                  created_at: '2026-04-21T10:00:05Z',
+                },
+              ],
+            )
+          : createConversationFetchResponse({
+              title: 'Pure chat',
+              provider: {
+                kind: 'stub',
+                base_url: 'http://stub',
+                model: 'stub-model',
+                streaming: false,
+              },
+            })
+      }
+
+      if (url.endsWith('/api/v1/agent/providers')) {
+        return createProviderCatalogFetchResponse()
+      }
+
+      if (url.includes('/api/v1/agent/conversations?scope=recent')) {
+        return createConversationListFetchResponse('conv_1', [
           {
             id: 'conv_1',
             title: 'Pure chat',
             created_at: '2026-04-21T09:59:00Z',
-            updated_at: '2026-04-21T10:00:00Z',
-            message_count: 0,
+            updated_at: isConversationComplete ? '2026-04-21T10:00:05Z' : '2026-04-21T10:00:00Z',
+            message_count: isConversationComplete ? 2 : 0,
           },
-        ]),
-      )
-      .mockResolvedValueOnce({
-        ok: true,
-        body: streamResponse.body,
-      })
-      .mockResolvedValueOnce(
-        createConversationFetchResponse(
-          {
-            title: 'Pure chat',
-            updated_at: '2026-04-21T10:00:05Z',
-          },
-          [
-            {
-              id: 'msg_user',
-              role: 'user',
-              content: 'Привет',
-              status: 'complete',
-              created_at: '2026-04-21T10:00:00Z',
-            },
-            {
-              id: 'msg_2',
-              role: 'assistant',
-              content: 'Backend message received.',
-              status: 'complete',
-              provider: 'stub',
-              model: 'stub-model',
-              created_at: '2026-04-21T10:00:05Z',
-            },
-          ],
-        ),
-      )
-      .mockResolvedValueOnce(
-        createConversationListFetchResponse('conv_1', [
-          {
-            id: 'conv_1',
-            title: 'Pure chat',
-            created_at: '2026-04-21T09:59:00Z',
-            updated_at: '2026-04-21T10:00:05Z',
-            message_count: 2,
-          },
-        ]),
-      )
+        ])
+      }
+
+      if (url.endsWith('/api/v1/agent/conversation/messages/stream')) {
+        return {
+          ok: true,
+          body: streamResponse.body,
+        }
+      }
+
+      throw new Error(`Unexpected fetch request: ${url}`)
+    })
     vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
     vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
     vi.stubGlobal('fetch', fetchMock)
@@ -556,6 +553,7 @@ describe('AiPanelWidget backend conversation path', () => {
       streamResponse.push(
         'event: message-complete\ndata: {"type":"message-complete","message_id":"msg_2","message":{"id":"msg_2","role":"assistant","content":"Backend message received.","status":"complete","provider":"stub","model":"stub-model","created_at":"2026-04-21T10:00:05Z"}}\n\n',
       )
+      isConversationComplete = true
       streamResponse.close()
     })
 
@@ -917,35 +915,37 @@ describe('AiPanelWidget backend conversation path', () => {
   it('clears busy state and keeps partial assistant output coherent on backend error events', async () => {
     const streamResponse = createDeferredStreamResponse()
     const fetchMock = vi.fn()
-    fetchMock
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          home_dir: '/Users/avm',
-          repo_root: '/Users/avm/projects/runa-terminal',
-        }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          conversation: {
-            id: 'conv_1',
-            title: 'Backend error',
-            messages: [],
-            provider: {
-              kind: 'stub',
-              base_url: 'http://stub',
-              model: 'stub-model',
-              streaming: true,
-            },
-            created_at: '2026-04-21T09:59:00Z',
-            updated_at: '2026-04-21T10:00:00Z',
+    fetchMock.mockImplementation(async (input) => {
+      const url = String(input)
+
+      if (url.endsWith('/api/v1/bootstrap')) {
+        return {
+          ok: true,
+          json: async () => ({
+            home_dir: '/Users/avm',
+            repo_root: '/Users/avm/projects/runa-terminal',
+          }),
+        }
+      }
+
+      if (url.endsWith('/api/v1/agent/conversation')) {
+        return createConversationFetchResponse({
+          title: 'Backend error',
+          provider: {
+            kind: 'stub',
+            base_url: 'http://stub',
+            model: 'stub-model',
+            streaming: true,
           },
-        }),
-      })
-      .mockResolvedValueOnce(createProviderCatalogFetchResponse())
-      .mockResolvedValueOnce(
-        createConversationListFetchResponse('conv_1', [
+        })
+      }
+
+      if (url.endsWith('/api/v1/agent/providers')) {
+        return createProviderCatalogFetchResponse()
+      }
+
+      if (url.includes('/api/v1/agent/conversations?scope=recent')) {
+        return createConversationListFetchResponse('conv_1', [
           {
             id: 'conv_1',
             title: 'Backend error',
@@ -953,12 +953,18 @@ describe('AiPanelWidget backend conversation path', () => {
             updated_at: '2026-04-21T10:00:00Z',
             message_count: 0,
           },
-        ]),
-      )
-      .mockResolvedValueOnce({
-        ok: true,
-        body: streamResponse.body,
-      })
+        ])
+      }
+
+      if (url.endsWith('/api/v1/agent/conversation/messages/stream')) {
+        return {
+          ok: true,
+          body: streamResponse.body,
+        }
+      }
+
+      throw new Error(`Unexpected fetch request: ${url}`)
+    })
     vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
     vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
     vi.stubGlobal('fetch', fetchMock)
@@ -1005,85 +1011,82 @@ describe('AiPanelWidget backend conversation path', () => {
   it('blocks execution until the user answers the questionnaire and approves the plan', async () => {
     const streamResponse = createDeferredStreamResponse()
     const fetchMock = vi.fn()
-    fetchMock
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          home_dir: '/Users/avm',
-          repo_root: '/Users/avm/projects/runa-terminal',
-        }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          conversation: {
-            id: 'conv_1',
-            title: 'Plan flow',
-            messages: [],
-            provider: {
-              kind: 'stub',
-              base_url: 'http://stub',
-              model: 'stub-model',
-              streaming: false,
-            },
-            created_at: '2026-04-21T09:59:00Z',
-            updated_at: '2026-04-21T10:00:00Z',
-          },
-        }),
-      })
-      .mockResolvedValueOnce(createProviderCatalogFetchResponse())
-      .mockResolvedValueOnce(
-        createConversationListFetchResponse('conv_1', [
+    let isConversationComplete = false
+    fetchMock.mockImplementation(async (input) => {
+      const url = String(input)
+
+      if (url.endsWith('/api/v1/bootstrap')) {
+        return {
+          ok: true,
+          json: async () => ({
+            home_dir: '/Users/avm',
+            repo_root: '/Users/avm/projects/runa-terminal',
+          }),
+        }
+      }
+
+      if (url.endsWith('/api/v1/agent/conversation')) {
+        return isConversationComplete
+          ? createConversationFetchResponse(
+              {
+                title: 'Plan flow',
+                updated_at: '2026-04-21T10:00:05Z',
+              },
+              [
+                {
+                  id: 'msg_user',
+                  role: 'user',
+                  content: 'Deploy the current config',
+                  status: 'complete',
+                  created_at: '2026-04-21T10:00:00Z',
+                },
+                {
+                  id: 'msg_2',
+                  role: 'assistant',
+                  content: 'Deployment queued.',
+                  status: 'complete',
+                  provider: 'stub',
+                  model: 'stub-model',
+                  created_at: '2026-04-21T10:00:05Z',
+                },
+              ],
+            )
+          : createConversationFetchResponse({
+              title: 'Plan flow',
+              provider: {
+                kind: 'stub',
+                base_url: 'http://stub',
+                model: 'stub-model',
+                streaming: false,
+              },
+            })
+      }
+
+      if (url.endsWith('/api/v1/agent/providers')) {
+        return createProviderCatalogFetchResponse()
+      }
+
+      if (url.includes('/api/v1/agent/conversations?scope=recent')) {
+        return createConversationListFetchResponse('conv_1', [
           {
             id: 'conv_1',
             title: 'Plan flow',
             created_at: '2026-04-21T09:59:00Z',
-            updated_at: '2026-04-21T10:00:00Z',
-            message_count: 0,
+            updated_at: isConversationComplete ? '2026-04-21T10:00:05Z' : '2026-04-21T10:00:00Z',
+            message_count: isConversationComplete ? 2 : 0,
           },
-        ]),
-      )
-      .mockResolvedValueOnce({
-        ok: true,
-        body: streamResponse.body,
-      })
-      .mockResolvedValueOnce(
-        createConversationFetchResponse(
-          {
-            title: 'Plan flow',
-            updated_at: '2026-04-21T10:00:05Z',
-          },
-          [
-            {
-              id: 'msg_user',
-              role: 'user',
-              content: 'Deploy the current config',
-              status: 'complete',
-              created_at: '2026-04-21T10:00:00Z',
-            },
-            {
-              id: 'msg_2',
-              role: 'assistant',
-              content: 'Deployment queued.',
-              status: 'complete',
-              provider: 'stub',
-              model: 'stub-model',
-              created_at: '2026-04-21T10:00:05Z',
-            },
-          ],
-        ),
-      )
-      .mockResolvedValueOnce(
-        createConversationListFetchResponse('conv_1', [
-          {
-            id: 'conv_1',
-            title: 'Plan flow',
-            created_at: '2026-04-21T09:59:00Z',
-            updated_at: '2026-04-21T10:00:05Z',
-            message_count: 2,
-          },
-        ]),
-      )
+        ])
+      }
+
+      if (url.endsWith('/api/v1/agent/conversation/messages/stream')) {
+        return {
+          ok: true,
+          body: streamResponse.body,
+        }
+      }
+
+      throw new Error(`Unexpected fetch request: ${url}`)
+    })
     vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
     vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
     vi.stubGlobal('fetch', fetchMock)
@@ -1099,7 +1102,11 @@ describe('AiPanelWidget backend conversation path', () => {
     })
     fireEvent.click(screen.getByLabelText('Send prompt'))
 
-    expect(fetchMock).toHaveBeenCalledTimes(4)
+    expect(
+      fetchMock.mock.calls.some((call) =>
+        String(call[0]).includes('/api/v1/agent/conversation/messages/stream'),
+      ),
+    ).toBe(false)
     expect(screen.getByText('Question')).toBeInTheDocument()
     expect(screen.getByText('Choose environment:')).toBeInTheDocument()
     expect(screen.queryByText('Plan')).not.toBeInTheDocument()
@@ -1110,7 +1117,11 @@ describe('AiPanelWidget backend conversation path', () => {
     expect(screen.getByText('Answer: staging')).toBeInTheDocument()
     expect(screen.getByText('Plan')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Approve' })).toBeInTheDocument()
-    expect(fetchMock).toHaveBeenCalledTimes(4)
+    expect(
+      fetchMock.mock.calls.some((call) =>
+        String(call[0]).includes('/api/v1/agent/conversation/messages/stream'),
+      ),
+    ).toBe(false)
 
     fireEvent.click(screen.getByRole('button', { name: 'Approve' }))
 
@@ -1129,6 +1140,7 @@ describe('AiPanelWidget backend conversation path', () => {
       streamResponse.push(
         'event: message-complete\ndata: {"type":"message-complete","message_id":"msg_2","message":{"id":"msg_2","role":"assistant","content":"Deployment queued.","status":"complete","provider":"stub","model":"stub-model","created_at":"2026-04-21T10:00:05Z"}}\n\n',
       )
+      isConversationComplete = true
       streamResponse.close()
     })
 
@@ -1139,35 +1151,37 @@ describe('AiPanelWidget backend conversation path', () => {
 
   it('stops the flow when approval is cancelled', async () => {
     const fetchMock = vi.fn()
-    fetchMock
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          home_dir: '/Users/avm',
-          repo_root: '/Users/avm/projects/runa-terminal',
-        }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          conversation: {
-            id: 'conv_1',
-            title: 'Cancel flow',
-            messages: [],
-            provider: {
-              kind: 'stub',
-              base_url: 'http://stub',
-              model: 'stub-model',
-              streaming: false,
-            },
-            created_at: '2026-04-21T09:59:00Z',
-            updated_at: '2026-04-21T10:00:00Z',
+    fetchMock.mockImplementation(async (input) => {
+      const url = String(input)
+
+      if (url.endsWith('/api/v1/bootstrap')) {
+        return {
+          ok: true,
+          json: async () => ({
+            home_dir: '/Users/avm',
+            repo_root: '/Users/avm/projects/runa-terminal',
+          }),
+        }
+      }
+
+      if (url.endsWith('/api/v1/agent/conversation')) {
+        return createConversationFetchResponse({
+          title: 'Cancel flow',
+          provider: {
+            kind: 'stub',
+            base_url: 'http://stub',
+            model: 'stub-model',
+            streaming: false,
           },
-        }),
-      })
-      .mockResolvedValueOnce(createProviderCatalogFetchResponse())
-      .mockResolvedValueOnce(
-        createConversationListFetchResponse('conv_1', [
+        })
+      }
+
+      if (url.endsWith('/api/v1/agent/providers')) {
+        return createProviderCatalogFetchResponse()
+      }
+
+      if (url.includes('/api/v1/agent/conversations?scope=recent')) {
+        return createConversationListFetchResponse('conv_1', [
           {
             id: 'conv_1',
             title: 'Cancel flow',
@@ -1175,8 +1189,11 @@ describe('AiPanelWidget backend conversation path', () => {
             updated_at: '2026-04-21T10:00:00Z',
             message_count: 0,
           },
-        ]),
-      )
+        ])
+      }
+
+      throw new Error(`Unexpected fetch request: ${url}`)
+    })
     vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
     vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
     vi.stubGlobal('fetch', fetchMock)
@@ -1197,7 +1214,11 @@ describe('AiPanelWidget backend conversation path', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
 
     expect(screen.getByText('Execution cancelled.')).toBeInTheDocument()
-    expect(fetchMock).toHaveBeenCalledTimes(4)
+    expect(
+      fetchMock.mock.calls.some((call) =>
+        String(call[0]).includes('/api/v1/agent/conversation/messages/stream'),
+      ),
+    ).toBe(false)
   })
 
   it('routes /run prompts into terminal execution instead of provider chat streaming', async () => {
@@ -1209,148 +1230,56 @@ describe('AiPanelWidget backend conversation path', () => {
     setActiveWidgetHostId('terminal')
 
     const fetchMock = vi.fn()
-    fetchMock
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          home_dir: '/Users/avm',
-          repo_root: '/Users/avm/projects/runa-terminal',
-        }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          conversation: {
-            id: 'conv_1',
-            title: 'Run flow',
-            messages: [],
-            provider: {
-              kind: 'codex',
-              base_url: 'http://codex',
-              model: 'stub-model',
-              streaming: false,
-            },
-            created_at: '2026-04-21T09:59:00Z',
-            updated_at: '2026-04-21T10:00:00Z',
+    fetchMock.mockImplementation(async (input) => {
+      const url = String(input)
+
+      if (url.endsWith('/api/v1/bootstrap')) {
+        return {
+          ok: true,
+          json: async () => ({
+            home_dir: '/Users/avm',
+            repo_root: '/Users/avm/projects/runa-terminal',
+          }),
+        }
+      }
+
+      if (url.endsWith('/api/v1/agent/conversation')) {
+        return createConversationFetchResponse({
+          title: 'Run flow',
+          provider: {
+            kind: 'codex',
+            base_url: 'http://codex',
+            model: 'stub-model',
+            streaming: false,
           },
-        }),
-      })
-      .mockResolvedValueOnce(createProviderCatalogFetchResponse())
-      .mockResolvedValueOnce(
-        createConversationListFetchResponse('conv_1', [
-          {
-            id: 'conv_1',
-            title: 'Run flow',
-            created_at: '2026-04-21T09:59:00Z',
-            updated_at: '2026-04-21T10:00:00Z',
-            message_count: 0,
-          },
-        ]),
-      )
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          state: {
-            widget_id: 'term-side',
-            session_id: 'term-side',
-            shell: '/bin/zsh',
-            connection_id: 'local',
-            connection_kind: 'local',
-            pid: 100,
-            status: 'running',
-            started_at: '2026-04-21T10:00:00Z',
-            can_send_input: true,
-            can_interrupt: true,
-          },
-          chunks: [],
-          next_seq: 4,
-        }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          status: 'ok',
-          output: {
-            append_newline: true,
-            bytes_sent: 11,
-            widget_id: 'term-side',
-          },
-        }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          state: {
-            widget_id: 'term-side',
-            session_id: 'term-side',
-            shell: '/bin/zsh',
-            connection_id: 'local',
-            connection_kind: 'local',
-            pid: 100,
-            status: 'running',
-            started_at: '2026-04-21T10:00:00Z',
-            can_send_input: true,
-            can_interrupt: true,
-          },
-          chunks: [
+        })
+      }
+
+      if (url.endsWith('/api/v1/agent/providers')) {
+        return createProviderCatalogFetchResponse(
+          ['stub-model'],
+          [
             {
-              seq: 4,
-              data: 'run-widget-test\n',
-              timestamp: '2026-04-21T10:00:01Z',
+              id: 'provider-stub',
+              kind: 'codex',
+              display_name: 'Stub Codex CLI',
+              enabled: true,
+              active: true,
+              codex: {
+                command: 'codex',
+                model: 'stub-model',
+                chat_models: ['stub-model'],
+                status_state: 'ready',
+              },
+              created_at: '2026-04-21T10:00:00Z',
+              updated_at: '2026-04-21T10:00:00Z',
             },
           ],
-          next_seq: 5,
-        }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          conversation: {
-            id: 'conv_1',
-            title: 'Run flow',
-            messages: [
-              {
-                id: 'msg_user',
-                role: 'user',
-                content: '/run echo run-widget-test',
-                status: 'complete',
-                created_at: '2026-04-21T10:00:00Z',
-              },
-              {
-                id: 'msg_exec',
-                role: 'assistant',
-                content: 'Executed `echo run-widget-test`.\n\n```text\nrun-widget-test\n```',
-                status: 'complete',
-                provider: 'codex',
-                model: 'stub-model',
-                created_at: '2026-04-21T10:00:01Z',
-              },
-              {
-                id: 'msg_explain',
-                role: 'assistant',
-                content: 'Ran `echo run-widget-test` and got the expected output.',
-                status: 'complete',
-                provider: 'codex',
-                model: 'stub-model',
-                created_at: '2026-04-21T10:00:02Z',
-              },
-            ],
-            provider: {
-              kind: 'codex',
-              base_url: 'http://codex',
-              model: 'stub-model',
-              streaming: false,
-            },
-            created_at: '2026-04-21T09:59:00Z',
-            updated_at: '2026-04-21T10:00:02Z',
-          },
-          provider_error: '',
-          output_excerpt: 'run-widget-test',
-        }),
-      })
-      .mockResolvedValueOnce(
-        createConversationListFetchResponse('conv_1', [
+        )
+      }
+
+      if (url.includes('/api/v1/agent/conversations?scope=recent')) {
+        return createConversationListFetchResponse('conv_1', [
           {
             id: 'conv_1',
             title: 'Run flow',
@@ -1358,8 +1287,125 @@ describe('AiPanelWidget backend conversation path', () => {
             updated_at: '2026-04-21T10:00:02Z',
             message_count: 3,
           },
-        ]),
-      )
+        ])
+      }
+
+      if (url.endsWith('/api/v1/terminal/term-side')) {
+        return {
+          ok: true,
+          json: async () => ({
+            state: {
+              widget_id: 'term-side',
+              session_id: 'term-side',
+              shell: '/bin/zsh',
+              connection_id: 'local',
+              connection_kind: 'local',
+              pid: 100,
+              status: 'running',
+              started_at: '2026-04-21T10:00:00Z',
+              can_send_input: true,
+              can_interrupt: true,
+            },
+            chunks: [],
+            next_seq: 4,
+          }),
+        }
+      }
+
+      if (url.endsWith('/api/v1/tools/execute')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            status: 'ok',
+            output: {
+              append_newline: true,
+              bytes_sent: 11,
+              widget_id: 'term-side',
+            },
+          }),
+        }
+      }
+
+      if (url.endsWith('/api/v1/terminal/term-side?from=4')) {
+        return {
+          ok: true,
+          json: async () => ({
+            state: {
+              widget_id: 'term-side',
+              session_id: 'term-side',
+              shell: '/bin/zsh',
+              connection_id: 'local',
+              connection_kind: 'local',
+              pid: 100,
+              status: 'running',
+              started_at: '2026-04-21T10:00:00Z',
+              can_send_input: true,
+              can_interrupt: true,
+            },
+            chunks: [
+              {
+                seq: 4,
+                data: 'run-widget-test\n',
+                timestamp: '2026-04-21T10:00:01Z',
+              },
+            ],
+            next_seq: 5,
+          }),
+        }
+      }
+
+      if (url.endsWith('/api/v1/agent/terminal-commands/explain')) {
+        return {
+          ok: true,
+          json: async () => ({
+            conversation: {
+              id: 'conv_1',
+              title: 'Run flow',
+              messages: [
+                {
+                  id: 'msg_user',
+                  role: 'user',
+                  content: '/run echo run-widget-test',
+                  status: 'complete',
+                  created_at: '2026-04-21T10:00:00Z',
+                },
+                {
+                  id: 'msg_exec',
+                  role: 'assistant',
+                  content: 'Executed `echo run-widget-test`.\n\n```text\nrun-widget-test\n```',
+                  status: 'complete',
+                  provider: 'codex',
+                  model: 'stub-model',
+                  created_at: '2026-04-21T10:00:01Z',
+                },
+                {
+                  id: 'msg_explain',
+                  role: 'assistant',
+                  content: 'Ran `echo run-widget-test` and got the expected output.',
+                  status: 'complete',
+                  provider: 'codex',
+                  model: 'stub-model',
+                  created_at: '2026-04-21T10:00:02Z',
+                },
+              ],
+              provider: {
+                kind: 'codex',
+                base_url: 'http://codex',
+                model: 'stub-model',
+                streaming: false,
+              },
+              created_at: '2026-04-21T09:59:00Z',
+              updated_at: '2026-04-21T10:00:02Z',
+            },
+            provider_error: '',
+            output_excerpt: 'run-widget-test',
+          }),
+        }
+      }
+
+      throw new Error(`Unexpected fetch request: ${url}`)
+    })
     vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
     vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
     vi.stubGlobal('fetch', fetchMock)

@@ -1436,6 +1436,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
       blockAiWidget(hostId)
 
       let auditProgressed = false
+      let streamErrored = false
       let connection: AgentConversationStreamConnection | null = null
 
       try {
@@ -1488,6 +1489,8 @@ export function useAgentPanel(hostId: string, enabled = true) {
                   )
                 }
               } else if (event.type === 'error') {
+                streamErrored = true
+
                 if (options?.auditMessageID) {
                   updateAuditMessageEntries(options.auditMessageID, (currentMessage) =>
                     currentMessage.type === 'audit'
@@ -1509,7 +1512,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
         activeStreamRef.current = connection
         await connection.done
 
-        if (isActiveSubmission()) {
+        if (isActiveSubmission() && !streamErrored) {
           const [snapshot] = await Promise.all([fetchAgentConversation(), refreshConversationList()])
           applyConversationSnapshot(snapshot)
         }
