@@ -31,6 +31,10 @@ type FSFilePayload = {
   path: string
 }
 
+type FSOpenPayload = {
+  path: string
+}
+
 type FSMkdirPayload = {
   path: string
 }
@@ -274,6 +278,12 @@ export async function writeCommanderFile(path: string, content: string): Promise
     previewAvailable: true,
     previewKind: 'text',
   }
+}
+
+export async function openCommanderFileExternally(path: string) {
+  return postRuntimeJSON<FSOpenPayload>('/api/v1/fs/open', {
+    path,
+  })
 }
 
 export async function mkdirCommanderDirectory(path: string) {

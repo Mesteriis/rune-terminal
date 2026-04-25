@@ -8,6 +8,7 @@ import {
   listCommanderDirectory,
   mkdirCommanderDirectory,
   moveCommanderEntries,
+  openCommanderFileExternally,
   readCommanderFile,
   readCommanderFilePreview,
   renameCommanderEntries,
@@ -214,6 +215,38 @@ describe('commander api client', () => {
         path: '/Users/avm/projects/runa-terminal/README.md',
       }),
       method: 'PUT',
+    })
+  })
+
+  it('posts typed backend payloads for external open requests', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          path: '/Users/avm/projects/runa-terminal/blob.dat',
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(openCommanderFileExternally('/Users/avm/projects/runa-terminal/blob.dat')).resolves.toEqual({
+      path: '/Users/avm/projects/runa-terminal/blob.dat',
+    })
+    expect(fetchMock.mock.calls[1]?.[0]).toBe('http://127.0.0.1:8090/api/v1/fs/open')
+    expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({
+      body: JSON.stringify({
+        path: '/Users/avm/projects/runa-terminal/blob.dat',
+      }),
+      method: 'POST',
     })
   })
 

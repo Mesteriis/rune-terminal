@@ -67,6 +67,52 @@ describe('CommanderFileDialog', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
+  it('surfaces the external open action for blocked and hex preview flows', async () => {
+    const onOpenExternal = vi.fn().mockResolvedValue(undefined)
+
+    render(
+      <CommanderFileDialog
+        blockedReason="File is binary or not UTF-8 text. Open it with an external tool."
+        content=""
+        dirty={false}
+        entryName="binary.dat"
+        entryPath="/workspace/tmp/binary.dat"
+        mode="blocked"
+        onChange={vi.fn()}
+        onClose={vi.fn()}
+        onOpenExternal={onOpenExternal}
+        onSave={vi.fn()}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open externally' }))
+
+    expect(onOpenExternal).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows an inline error when external open fails', async () => {
+    const onOpenExternal = vi.fn().mockRejectedValue(new Error('Unable to open file externally.'))
+
+    render(
+      <CommanderFileDialog
+        blockedReason="File is binary or not UTF-8 text. Open it with an external tool."
+        content=""
+        dirty={false}
+        entryName="binary.dat"
+        entryPath="/workspace/tmp/binary.dat"
+        mode="blocked"
+        onChange={vi.fn()}
+        onClose={vi.fn()}
+        onOpenExternal={onOpenExternal}
+        onSave={vi.fn()}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open externally' }))
+
+    expect(await screen.findAllByText('Unable to open file externally.')).not.toHaveLength(0)
+  })
+
   it('renders a read-only hex preview for binary file views', () => {
     render(
       <CommanderFileDialog
@@ -77,6 +123,7 @@ describe('CommanderFileDialog', () => {
         mode="view"
         onChange={vi.fn()}
         onClose={vi.fn()}
+        onOpenExternal={vi.fn()}
         onSave={vi.fn()}
         previewKind="hex"
       />,
@@ -88,5 +135,6 @@ describe('CommanderFileDialog', () => {
       '00000000  00 01 02 03                                      |....|',
     )
     expect(screen.getByText('Read only hex preview')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Open externally' })).toBeInTheDocument()
   })
 })

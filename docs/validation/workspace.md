@@ -420,6 +420,8 @@
 
   These remain deferred to a local network-capable run due sandbox bind restrictions.
 
+- A fresh focused validation pass for the commander external-open slice on `2026-04-25` confirmed the Go core now exposes a typed `POST /api/v1/fs/open` route that resolves the requested path through the same workspace-bound FS contract before dispatching to the host OS opener (`open` on macOS, `xdg-open` on Linux, `start` on Windows). The commander blocked/hex file dialog now surfaces an explicit `Open externally` action wired through the real backend client instead of a dead placeholder instruction, and the frontend dialog keeps inline pending/error state for opener failures. The same pass reconfirmed `./scripts/go.sh test ./core/app -run 'TestOpenFSExternal' -count=1`, `./scripts/go.sh test ./core/transport/httpapi -run 'TestOpenFSExternal' -count=1`, `npm --prefix frontend run test -- src/features/commander/api/client.test.ts src/widgets/commander/commander-file-dialog.test.tsx`, and `npm --prefix frontend run lint:active` all pass. This slice does not claim a fresh browser-level validation of the actual OS opener side effect, and a broader `e2e/commander-readonly.spec.ts` rerun in this environment still hit an unrelated pre-existing timeout in the binary-preview row-click path, so no new Playwright claim is attached to this step.
+
 ### Task runtime limitations
 
 - no cron/periodic scheduling yet

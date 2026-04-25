@@ -9,6 +9,7 @@ import {
   listCommanderDirectory,
   mkdirCommanderDirectory,
   moveCommanderEntries,
+  openCommanderFileExternally,
   readCommanderFile,
   readCommanderFilePreview,
   renameCommanderEntries,
@@ -804,6 +805,26 @@ export function useCommanderWidget(widgetId: string) {
     widgetId,
   ])
 
+  const openFileDialogExternallyAsync = useCallback(async () => {
+    const fileDialog = runtimeState.fileDialog
+
+    if (!fileDialog) {
+      return
+    }
+
+    try {
+      await openCommanderFileExternally(toCommanderEntryPath(fileDialog.path, fileDialog.entryName))
+      onCloseCommanderFileDialog({ widgetId })
+    } catch (error) {
+      onSetCommanderPaneLoadError({
+        widgetId,
+        paneId: fileDialog.paneId,
+        path: fileDialog.path,
+        errorMessage: toLoadErrorMessage(error),
+      })
+    }
+  }, [onCloseCommanderFileDialog, onSetCommanderPaneLoadError, runtimeState.fileDialog, widgetId])
+
   const resolvePendingTransferConflictAsync = useCallback(
     async (resolution: 'overwrite-current' | 'skip-current' | 'overwrite-all' | 'skip-all') => {
       const pendingOperation = runtimeState.pendingOperation
@@ -1139,6 +1160,9 @@ export function useCommanderWidget(widgetId: string) {
       saveFileDialog: () => {
         void saveFileDialogAsync()
       },
+      openFileExternally: () => {
+        void openFileDialogExternallyAsync()
+      },
       closeFileDialog: () => onCloseCommanderFileDialog({ widgetId }),
       clearActivePaneFilter: () => onClearCommanderActivePaneFilter({ widgetId }),
       invertSelection: () => onInvertCommanderActivePaneSelection({ widgetId }),
@@ -1218,6 +1242,7 @@ export function useCommanderWidget(widgetId: string) {
       confirmPendingOperationAsync,
       openFileEditor,
       openFilePreview,
+      openFileDialogExternallyAsync,
       openPaneEntry,
       resolvePendingTransferConflictAsync,
       runtimeState.activePane,

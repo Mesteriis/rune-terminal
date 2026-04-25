@@ -436,6 +436,10 @@ export function CommanderWidget() {
               commanderActions.saveFileDialog()
               focusCommanderRoot()
             }}
+            onOpenExternal={async () => {
+              await commanderActions.openFileExternally()
+              focusCommanderRoot()
+            }}
           />
         ) : null}
       </Box>

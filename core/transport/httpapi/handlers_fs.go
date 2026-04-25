@@ -53,6 +53,10 @@ type writeFSRequest struct {
 	Path    string `json:"path"`
 }
 
+type openFSRequest struct {
+	Path string `json:"path"`
+}
+
 func (api *API) handleListFS(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Query().Get("path")
 	allowOutsideWorkspace := r.URL.Query().Get("allow_outside_workspace") == "1"
@@ -116,6 +120,22 @@ func (api *API) handleWriteFSFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	result, err := api.runtime.WriteFSFile(request.Path, request.Content)
+	if err != nil {
+		writeFSError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, result)
+}
+
+func (api *API) handleOpenFSExternal(w http.ResponseWriter, r *http.Request) {
+	var request openFSRequest
+	if err := decodeJSON(r, &request); err != nil {
+		writeBadRequest(w, "invalid_request", err)
+		return
+	}
+
+	result, err := api.runtime.OpenFSExternal(request.Path)
 	if err != nil {
 		writeFSError(w, err)
 		return
@@ -247,6 +267,10 @@ func writeFSError(w http.ResponseWriter, err error) {
 		writeNotFound(w, "fs_path_not_found", err.Error())
 	case errors.Is(err, app.ErrFSPathExists):
 		writeError(w, http.StatusConflict, "fs_path_exists", err.Error())
+	case errors.Is(err, app.ErrFSExternalOpenUnsupported):
+		writeError(w, http.StatusServiceUnavailable, "fs_external_open_unsupported", err.Error())
+	case errors.Is(err, app.ErrFSExternalOpenUnavailable):
+		writeError(w, http.StatusServiceUnavailable, "fs_external_open_unavailable", err.Error())
 	default:
 		writeInternalError(w, err)
 	}

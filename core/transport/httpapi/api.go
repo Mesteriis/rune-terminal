@@ -30,6 +30,7 @@ func NewHandler(runtime *app.Runtime, authToken string) http.Handler {
 	mux.HandleFunc("GET /api/v1/fs/read", api.handleReadFS)
 	mux.HandleFunc("GET /api/v1/fs/file", api.handleReadFSFile)
 	mux.HandleFunc("PUT /api/v1/fs/file", api.handleWriteFSFile)
+	mux.HandleFunc("POST /api/v1/fs/open", api.handleOpenFSExternal)
 	mux.HandleFunc("POST /api/v1/fs/mkdir", api.handleMkdirFS)
 	mux.HandleFunc("POST /api/v1/fs/copy", api.handleCopyFS)
 	mux.HandleFunc("POST /api/v1/fs/move", api.handleMoveFS)

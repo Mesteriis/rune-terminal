@@ -36,6 +36,7 @@ export type CommanderFileDialogProps = {
   entryName: string
   entryPath: string
   mode: CommanderFileDialogMode
+  onOpenExternal?: () => Promise<void> | void
   previewKind?: CommanderFilePreviewKind
   onChange: (value: string) => void
   onClose: () => void
@@ -52,6 +53,7 @@ export function CommanderFileDialog({
   entryName,
   entryPath,
   mode,
+  onOpenExternal,
   previewKind,
   onChange,
   onClose,
@@ -61,6 +63,8 @@ export function CommanderFileDialog({
   const dialogIdentityRef = useRef<string | null>(null)
   const [showDiscardPrompt, setShowDiscardPrompt] = useState(false)
   const [cursorMetrics, setCursorMetrics] = useState(() => getCommanderCursorMetrics(content, 0))
+  const [externalOpenError, setExternalOpenError] = useState<string | null>(null)
+  const [externalOpenPending, setExternalOpenPending] = useState(false)
   const isEditable = mode === 'edit'
   const isBlocked = mode === 'blocked'
   const isHexPreview = !isEditable && !isBlocked && previewKind === 'hex'
@@ -89,6 +93,8 @@ export function CommanderFileDialog({
 
     dialogIdentityRef.current = nextIdentity
     setShowDiscardPrompt(false)
+    setExternalOpenError(null)
+    setExternalOpenPending(false)
 
     if (!textAreaRef.current) {
       return
@@ -107,6 +113,22 @@ export function CommanderFileDialog({
   useEffect(() => {
     syncCursorMetrics()
   }, [content, syncCursorMetrics])
+
+  const handleOpenExternal = useCallback(async () => {
+    if (!onOpenExternal || externalOpenPending) {
+      return
+    }
+
+    try {
+      setExternalOpenPending(true)
+      setExternalOpenError(null)
+      await onOpenExternal()
+    } catch (error) {
+      setExternalOpenError(error instanceof Error ? error.message : 'Unable to open file externally.')
+    } finally {
+      setExternalOpenPending(false)
+    }
+  }, [externalOpenPending, onOpenExternal])
 
   return (
     <Box
@@ -147,6 +169,17 @@ export function CommanderFileDialog({
             </Text>
           </Box>
           <Box runaComponent="commander-file-dialog-actions" style={commanderFileDialogActionsStyle}>
+            {isBlocked || isHexPreview ? (
+              <Button
+                disabled={!onOpenExternal || externalOpenPending}
+                onClick={() => {
+                  void handleOpenExternal()
+                }}
+                runaComponent="commander-file-dialog-open-external"
+              >
+                {externalOpenPending ? 'Opening…' : 'Open externally'}
+              </Button>
+            ) : null}
             {isEditable ? (
               <Button
                 onClick={() => {
@@ -178,6 +211,14 @@ export function CommanderFileDialog({
               {blockedReason ??
                 'File is not UTF-8 text. Use `F3` for preview or open it with an external tool.'}
             </Text>
+            {externalOpenError ? (
+              <Text
+                runaComponent="commander-file-dialog-open-external-error"
+                style={commanderFileDialogBlockedReasonStyle}
+              >
+                {externalOpenError}
+              </Text>
+            ) : null}
           </Box>
         ) : (
           <TextArea
@@ -233,6 +274,14 @@ export function CommanderFileDialog({
                   {cursorMetrics.chars} chars
                 </Text>
               </>
+            ) : null}
+            {externalOpenError ? (
+              <Text
+                runaComponent="commander-file-dialog-open-external-footer-error"
+                style={commanderFileDialogHintStyle}
+              >
+                {externalOpenError}
+              </Text>
             ) : null}
           </Box>
           {showDiscardPrompt ? (

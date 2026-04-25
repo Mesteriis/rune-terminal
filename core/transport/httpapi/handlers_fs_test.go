@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/Mesteriis/rune-terminal/core/app"
@@ -722,6 +723,43 @@ func TestWriteFSFilePersistsTextContent(t *testing.T) {
 	}
 	if string(content) != "after" {
 		t.Fatalf("unexpected saved content %q", string(content))
+	}
+}
+
+func TestOpenFSExternalRejectsInvalidRequestBody(t *testing.T) {
+	t.Parallel()
+
+	repoRoot := t.TempDir()
+	handler := NewHandler(&app.Runtime{RepoRoot: repoRoot}, testAuthToken)
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/fs/open", strings.NewReader("{"))
+	request.Header.Set("Authorization", "Bearer "+testAuthToken)
+	request.Header.Set("Content-Type", "application/json")
+
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+}
+
+func TestOpenFSExternalReturnsNotFoundForMissingPath(t *testing.T) {
+	t.Parallel()
+
+	repoRoot := t.TempDir()
+	handler := NewHandler(&app.Runtime{RepoRoot: repoRoot}, testAuthToken)
+	recorder := httptest.NewRecorder()
+	missingPath := filepath.Join(repoRoot, "missing.bin")
+
+	handler.ServeHTTP(
+		recorder,
+		authedJSONRequest(t, http.MethodPost, "/api/v1/fs/open", map[string]string{
+			"path": missingPath,
+		}),
+	)
+
+	if recorder.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d body=%s", recorder.Code, recorder.Body.String())
 	}
 }
 
