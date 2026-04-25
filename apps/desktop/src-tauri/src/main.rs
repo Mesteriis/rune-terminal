@@ -426,6 +426,12 @@ fn start_or_attach_runtime(app: &AppHandle, state: &RuntimeState) -> Result<(), 
             shutdown_token: record.shutdown_token,
         }
     } else {
+        if let Err(err) = ensure_no_foreign_watcher_listener(&core.url) {
+            if spawned_core_for_this_launch {
+                stop_process(&mut core);
+            }
+            return Err(err);
+        }
         match spawn_watcher(&context, &core.url, core.auth_token.as_deref()) {
             Ok(watcher) => watcher,
             Err(err) => {
@@ -691,6 +697,47 @@ fn recover_running_watcher_for_core(expected_core_url: &str) -> Option<RuntimePr
         wait_for_health_service,
         request_watcher_state,
     )
+}
+
+fn ensure_no_foreign_watcher_listener(expected_core_url: &str) -> Result<(), RuntimeError> {
+    reject_foreign_watcher_listener(
+        &format!("http://{}", WATCHER_LISTEN_ADDR),
+        expected_core_url,
+        wait_for_health_service,
+        request_watcher_state,
+    )
+}
+
+fn reject_foreign_watcher_listener<FHealth, FState>(
+    watcher_base_url: &str,
+    expected_core_url: &str,
+    mut health_lookup: FHealth,
+    mut state_lookup: FState,
+) -> Result<(), RuntimeError>
+where
+    FHealth: FnMut(&str, &str) -> Result<HealthPayload, RuntimeError>,
+    FState: FnMut(&str) -> Result<WatcherStatePayload, RuntimeError>,
+{
+    let health_url = format!("{}/health", watcher_base_url);
+    let health = match health_lookup(&health_url, "rterm-watcher") {
+        Ok(payload) => payload,
+        Err(_) => return Ok(()),
+    };
+
+    let state_url = format!("{}/watcher/state", watcher_base_url);
+    let state = match state_lookup(&state_url) {
+        Ok(payload) => payload,
+        Err(_) => return Ok(()),
+    };
+
+    if normalize_url_for_compare(&state.backend_url) == normalize_url_for_compare(expected_core_url) {
+        return Ok(());
+    }
+
+    Err(RuntimeError::Http(format!(
+        "watcher listen address {} is already occupied by watcher pid {} for backend {}",
+        WATCHER_LISTEN_ADDR, health.pid, state.backend_url
+    )))
 }
 
 fn discover_running_watcher_for_core<FHealth, FState>(
@@ -1158,10 +1205,11 @@ mod tests {
     use super::{
         cleanup_runtime_slot, discover_running_watcher_for_core,
         read_runtime_attachment_from_path, recover_or_drop_watcher_record,
-        sanitize_runtime_attachment, wait_for_ready_file, write_file_atomically, HealthPayload,
-        ReadyFilePayload, RuntimeError, RuntimeFile, RuntimeFileCore, RuntimeFileWatcher,
-        RuntimeProcess, RuntimeProcessRecord, RuntimeRuntime, SettingsFile, SingleInstancePayload,
-        WatcherMode, WatcherStatePayload, SINGLE_INSTANCE_EVENT,
+        reject_foreign_watcher_listener, sanitize_runtime_attachment, wait_for_ready_file,
+        write_file_atomically, HealthPayload, ReadyFilePayload, RuntimeError, RuntimeFile,
+        RuntimeFileCore, RuntimeFileWatcher, RuntimeProcess, RuntimeProcessRecord,
+        RuntimeRuntime, SettingsFile, SingleInstancePayload, WatcherMode, WatcherStatePayload,
+        SINGLE_INSTANCE_EVENT,
     };
     use std::fs;
     use std::thread;
@@ -1352,6 +1400,46 @@ mod tests {
         );
 
         assert!(record.is_none(), "foreign watcher listener must not be adopted");
+    }
+
+    #[test]
+    fn reject_foreign_watcher_listener_surfaces_port_conflict_for_other_backend() {
+        let err = reject_foreign_watcher_listener(
+            "http://127.0.0.1:7788",
+            "http://127.0.0.1:40100",
+            |_url, _service| {
+                Ok(HealthPayload {
+                    service: "rterm-watcher".into(),
+                    status: "ok".into(),
+                    pid: 4243,
+                })
+            },
+            |_url| {
+                Ok(WatcherStatePayload {
+                    backend_url: "http://127.0.0.1:49999".into(),
+                    worker_id: Some("watcher_other".into()),
+                    shutdown_token: Some("shutdown".into()),
+                })
+            },
+        )
+        .expect_err("foreign watcher listener should block startup");
+
+        assert!(
+            matches!(err, RuntimeError::Http(ref message) if message.contains("127.0.0.1:7788") && message.contains("http://127.0.0.1:49999")),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn reject_foreign_watcher_listener_ignores_empty_port() {
+        let result = reject_foreign_watcher_listener(
+            "http://127.0.0.1:7788",
+            "http://127.0.0.1:40100",
+            |_url, _service| Err(RuntimeError::Http("connection refused".into())),
+            |_url| unreachable!("state lookup should not run when health fails"),
+        );
+
+        assert!(result.is_ok(), "empty port should not block watcher spawn");
     }
 
     #[test]
