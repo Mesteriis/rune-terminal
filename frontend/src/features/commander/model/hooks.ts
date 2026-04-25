@@ -51,6 +51,7 @@ import {
   setCommanderPaneLoading,
   setCommanderPendingOperation,
   setCommanderPendingOperationInput,
+  setCommanderPaneFilterQuery,
   setCommanderSortMode,
   setCommanderViewMode,
   stepCommanderPendingSearchMatch,
@@ -268,6 +269,7 @@ export function useCommanderWidget(widgetId: string) {
     onToggleCommanderDirsFirst,
     onConfirmCommanderPendingOperation,
     onCancelCommanderPendingOperation,
+    onClearCommanderActivePaneFilter,
     onResolveCommanderPendingConflict,
     onSetCommanderFileDialogDraft,
     onCloseCommanderFileDialog,
@@ -276,8 +278,8 @@ export function useCommanderWidget(widgetId: string) {
     onSetCommanderSortMode,
     onSetCommanderPendingOperation,
     onSetCommanderPendingOperationInput,
+    onSetCommanderPaneFilterQuery,
     onInvertCommanderActivePaneSelection,
-    onClearCommanderActivePaneFilter,
   ] = useUnit([
     $commanderWidgets,
     mountCommanderWidget,
@@ -305,6 +307,7 @@ export function useCommanderWidget(widgetId: string) {
     toggleCommanderDirsFirst,
     confirmCommanderPendingOperation,
     cancelCommanderPendingOperation,
+    clearCommanderActivePaneFilter,
     resolveCommanderPendingConflict,
     setCommanderFileDialogDraft,
     closeCommanderFileDialog,
@@ -313,8 +316,8 @@ export function useCommanderWidget(widgetId: string) {
     setCommanderSortMode,
     setCommanderPendingOperation,
     setCommanderPendingOperationInput,
+    setCommanderPaneFilterQuery,
     invertCommanderActivePaneSelection,
-    clearCommanderActivePaneFilter,
   ])
 
   const persistedWidget = useMemo(() => readPersistedCommanderWidget(widgetId), [widgetId])
@@ -372,6 +375,7 @@ export function useCommanderWidget(widgetId: string) {
       historyMode: 'back' | 'forward' | 'push' | 'replace' = 'replace',
       options?: {
         cursorEntryId?: string | null
+        filterQuery?: string
         selectedIds?: string[]
         selectionAnchorEntryId?: string | null
       },
@@ -388,7 +392,11 @@ export function useCommanderWidget(widgetId: string) {
       onSetCommanderPaneLoading({ widgetId, paneId, path })
 
       try {
-        const snapshot = await listCommanderDirectory(path)
+        const paneState = getRuntimePaneState(runtimeState, paneId)
+        const filterQuery = options?.filterQuery ?? paneState.filterQuery
+        const snapshot = await listCommanderDirectory(path, {
+          query: filterQuery,
+        })
 
         if (paneRequestIdsRef.current[paneId] !== requestId) {
           return
@@ -398,6 +406,7 @@ export function useCommanderWidget(widgetId: string) {
           widgetId,
           paneId,
           path: snapshot.path,
+          filterQuery,
           directoryEntries: snapshot.entries,
           cursorEntryId: options?.cursorEntryId,
           historyMode,
@@ -422,6 +431,7 @@ export function useCommanderWidget(widgetId: string) {
       onSetCommanderPaneLoadError,
       onSetCommanderPaneLoading,
       runtimeContext,
+      runtimeState,
       widgetId,
     ],
   )
@@ -965,6 +975,25 @@ export function useCommanderWidget(widgetId: string) {
       pendingOperation.kind !== 'mkdir' &&
       pendingOperation.kind !== 'rename'
     ) {
+      if (pendingOperation.kind === 'filter') {
+        const paneState = getRuntimePaneState(runtimeState, pendingOperation.sourcePaneId)
+        const filterQuery = pendingOperation.inputValue.trim()
+
+        await loadPaneDirectory(pendingOperation.sourcePaneId, pendingOperation.sourcePath, 'replace', {
+          cursorEntryId: paneState.cursorEntryId,
+          filterQuery,
+          selectedIds: paneState.selectedIds,
+          selectionAnchorEntryId: paneState.selectionAnchorEntryId,
+        })
+        onSetCommanderPaneFilterQuery({
+          widgetId,
+          paneId: pendingOperation.sourcePaneId,
+          filterQuery,
+        })
+        onSetCommanderPendingOperation({ widgetId, pendingOperation: null })
+        return
+      }
+
       onConfirmCommanderPendingOperation({ widgetId })
       return
     }
@@ -1164,7 +1193,24 @@ export function useCommanderWidget(widgetId: string) {
         void openFileDialogExternallyAsync()
       },
       closeFileDialog: () => onCloseCommanderFileDialog({ widgetId }),
-      clearActivePaneFilter: () => onClearCommanderActivePaneFilter({ widgetId }),
+      clearActivePaneFilter: () => {
+        const paneState = getRuntimePaneState(runtimeState, runtimeState.activePane)
+
+        void (async () => {
+          await loadPaneDirectory(runtimeState.activePane, paneState.path, 'replace', {
+            cursorEntryId: paneState.cursorEntryId,
+            filterQuery: '',
+            selectedIds: paneState.selectedIds,
+            selectionAnchorEntryId: paneState.selectionAnchorEntryId,
+          })
+          onSetCommanderPaneFilterQuery({
+            widgetId,
+            paneId: runtimeState.activePane,
+            filterQuery: '',
+          })
+          onClearCommanderActivePaneFilter({ widgetId })
+        })()
+      },
       invertSelection: () => onInvertCommanderActivePaneSelection({ widgetId }),
       moveCursor: (delta: number, options?: { extendSelection?: boolean }) =>
         onMoveCommanderActivePaneCursor({ widgetId, delta, extendSelection: options?.extendSelection }),
@@ -1234,6 +1280,7 @@ export function useCommanderWidget(widgetId: string) {
       onSetCommanderPaneBoundaryCursor,
       onSetCommanderPaneCursor,
       onSetCommanderPendingOperationInput,
+      onSetCommanderPaneFilterQuery,
       onSetCommanderSortMode,
       onStepCommanderPendingSearchMatch,
       onSwitchCommanderActivePane,

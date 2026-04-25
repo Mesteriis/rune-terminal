@@ -59,15 +59,16 @@ type openFSRequest struct {
 
 func (api *API) handleListFS(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Query().Get("path")
+	query := r.URL.Query().Get("query")
 	allowOutsideWorkspace := r.URL.Query().Get("allow_outside_workspace") == "1"
 	var (
 		result app.FSListResult
 		err    error
 	)
 	if allowOutsideWorkspace {
-		result, err = api.runtime.ListFSUnbounded(path)
+		result, err = api.runtime.ListFSUnbounded(path, query)
 	} else {
-		result, err = api.runtime.ListFS(path)
+		result, err = api.runtime.ListFS(path, query)
 	}
 	if err != nil {
 		writeFSError(w, err)

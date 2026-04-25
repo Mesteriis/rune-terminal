@@ -340,3 +340,35 @@ test('commander F3 opens a bounded hex preview for binary files while F4 still b
   await page.getByRole('button', { name: 'Close', exact: true }).click()
   await expect(page.getByText('Edit unavailable for this file')).toHaveCount(0)
 })
+
+test('commander quick filter reloads pane rows through the backend list query', async ({
+  page,
+  request,
+}) => {
+  const bootstrap = await fetchBootstrap(request)
+  const repoRootDisplayPath = formatDisplayPath(bootstrap.repo_root, bootstrap.home_dir)
+  const leftPane = getPane(page, 'left')
+  const leftPaneFilter = page.locator('[id^="shell-tool-commander-pane-left-filter-r"]').first()
+
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  await expect(leftPane.path).toHaveText(repoRootDisplayPath)
+  await expect(leftPane.row('core')).toHaveCount(1)
+
+  await leftPane.root.click()
+  await page.keyboard.press('Control+F')
+  const filterInput = page.getByRole('textbox', { name: 'Commander filter input' })
+  await expect(filterInput).toBeVisible()
+  await filterInput.fill('README*')
+  await filterInput.press('Enter')
+
+  await expect(leftPaneFilter).toHaveText('FILTER README*')
+  await expect(leftPane.row('README.md')).toHaveCount(1)
+  await expect(leftPane.row('core')).toHaveCount(0)
+
+  await leftPane.root.click()
+  await page.keyboard.press('Control+Backspace')
+  await expect(leftPaneFilter).toHaveCount(0)
+  await expect(leftPane.row('core')).toHaveCount(1)
+})

@@ -93,6 +93,59 @@ func TestListFSReturnsNotFoundForMissingPath(t *testing.T) {
 	}
 }
 
+func TestListFSFiltersEntriesByWildcardQuery(t *testing.T) {
+	t.Parallel()
+
+	repoRoot := t.TempDir()
+	if err := os.Mkdir(filepath.Join(repoRoot, "docs"), 0o755); err != nil {
+		t.Fatalf("mkdir docs: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(repoRoot, "alpha.ts"), []byte("alpha"), 0o600); err != nil {
+		t.Fatalf("write alpha.ts: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(repoRoot, "beta.md"), []byte("beta"), 0o600); err != nil {
+		t.Fatalf("write beta.md: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(repoRoot, "notes.txt"), []byte("notes"), 0o600); err != nil {
+		t.Fatalf("write notes.txt: %v", err)
+	}
+
+	handler := NewHandler(&app.Runtime{RepoRoot: repoRoot}, testAuthToken)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(
+		recorder,
+		authedJSONRequest(
+			t,
+			http.MethodGet,
+			"/api/v1/fs/list?query="+url.QueryEscape("*.md;docs"),
+			nil,
+		),
+	)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+
+	var payload struct {
+		Directories []struct {
+			Name string `json:"name"`
+		} `json:"directories"`
+		Files []struct {
+			Name string `json:"name"`
+		} `json:"files"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	if len(payload.Directories) != 1 || payload.Directories[0].Name != "docs" {
+		t.Fatalf("unexpected filtered directories: %#v", payload.Directories)
+	}
+	if len(payload.Files) != 1 || payload.Files[0].Name != "beta.md" {
+		t.Fatalf("unexpected filtered files: %#v", payload.Files)
+	}
+}
+
 func TestListFSRejectsTraversalOutsideWorkspace(t *testing.T) {
 	t.Parallel()
 

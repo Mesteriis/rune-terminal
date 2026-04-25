@@ -77,6 +77,10 @@ export class CommanderAPIError extends Error {
   }
 }
 
+type ListCommanderDirectoryOptions = {
+  query?: string
+}
+
 function toCommanderEntryId(path: string, name: string) {
   return `${path}::${name}`
 }
@@ -204,11 +208,22 @@ async function putRuntimeJSON<T>(path: string, body: Record<string, unknown>): P
   })
 }
 
-export async function listCommanderDirectory(path: string): Promise<CommanderDirectorySnapshot> {
+export async function listCommanderDirectory(
+  path: string,
+  options?: ListCommanderDirectoryOptions,
+): Promise<CommanderDirectorySnapshot> {
   const runtimeContext = await resolveRuntimeContext()
+  const params = new URLSearchParams({
+    path,
+  })
+
+  if (options?.query?.trim()) {
+    params.set('query', options.query.trim())
+  }
+
   const payload = await fetchRuntimeJSON<FSListPayload>(
     runtimeContext,
-    `/api/v1/fs/list?path=${encodeURIComponent(path)}`,
+    `/api/v1/fs/list?${params.toString()}`,
   )
   const entries = [...(payload.directories ?? []), ...(payload.files ?? [])].map((node) =>
     mapFSNode(payload.path, node),

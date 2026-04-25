@@ -1,13 +1,15 @@
 package app
 
 import (
-	"fmt"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -39,15 +41,15 @@ type FSReadResult struct {
 	Truncated        bool   `json:"truncated"`
 }
 
-func (r *Runtime) ListFS(path string) (FSListResult, error) {
-	return r.listFS(path, false)
+func (r *Runtime) ListFS(path string, query string) (FSListResult, error) {
+	return r.listFS(path, query, false)
 }
 
-func (r *Runtime) ListFSUnbounded(path string) (FSListResult, error) {
-	return r.listFS(path, true)
+func (r *Runtime) ListFSUnbounded(path string, query string) (FSListResult, error) {
+	return r.listFS(path, query, true)
 }
 
-func (r *Runtime) listFS(path string, allowOutsideWorkspace bool) (FSListResult, error) {
+func (r *Runtime) listFS(path string, query string, allowOutsideWorkspace bool) (FSListResult, error) {
 	normalizedPath, err := r.resolveFSPath(path, allowOutsideWorkspace)
 	if err != nil {
 		return FSListResult{}, err
@@ -66,8 +68,13 @@ func (r *Runtime) listFS(path string, allowOutsideWorkspace bool) (FSListResult,
 		Directories: make([]FSNode, 0, len(entries)),
 		Files:       make([]FSNode, 0, len(entries)),
 	}
+	queryMatchers := compileFSListQueryMatchers(query)
 
 	for _, entry := range entries {
+		if !matchesFSListQuery(entry.Name(), queryMatchers) {
+			continue
+		}
+
 		info, infoErr := entry.Info()
 		if infoErr != nil {
 			continue
@@ -97,6 +104,41 @@ func (r *Runtime) listFS(path string, allowOutsideWorkspace bool) (FSListResult,
 	})
 
 	return result, nil
+}
+
+func compileFSListQueryMatchers(query string) []*regexp.Regexp {
+	patterns := strings.FieldsFunc(query, func(r rune) bool {
+		return r == ';' || r == ',' || unicode.IsSpace(r)
+	})
+	matchers := make([]*regexp.Regexp, 0, len(patterns))
+
+	for _, pattern := range patterns {
+		normalizedPattern := strings.TrimSpace(pattern)
+		if normalizedPattern == "" {
+			continue
+		}
+
+		expression := regexp.QuoteMeta(normalizedPattern)
+		expression = strings.ReplaceAll(expression, `\*`, `.*`)
+		expression = strings.ReplaceAll(expression, `\?`, `.`)
+		matchers = append(matchers, regexp.MustCompile(`(?i)^`+expression+`$`))
+	}
+
+	return matchers
+}
+
+func matchesFSListQuery(name string, matchers []*regexp.Regexp) bool {
+	if len(matchers) == 0 {
+		return true
+	}
+
+	for _, matcher := range matchers {
+		if matcher.MatchString(name) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (r *Runtime) resolveFSPath(path string, allowOutsideWorkspace bool) (string, error) {

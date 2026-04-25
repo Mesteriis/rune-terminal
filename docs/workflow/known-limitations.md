@@ -16,8 +16,8 @@ capability.
   backend-backed commander runtime no longer inherits its default shell
   state from the old mock seed, the old fake-client transport layer is no
   longer part of the active frontend tree, and the widget-store confirm path now
-  only owns local pending flows (`select/unselect/filter/search`) rather
-  than carrying dead fake-client mutation branches for backend-owned
+  only owns local pending flows (`select/unselect/search`) rather than
+  carrying dead fake-client mutation branches for backend-owned
   `copy/move/delete/mkdir/rename`; the same store now also drops empty
   reducer listeners for backend-owned async actions (`view/edit/open/path/history/save`) so those flows are owned only by hooks/API code, and commander widget persistence now writes only runtime pane/widget state while still accepting older `client.directories` snapshots as a read-only compatibility input
 - commander now has a narrow async HTTP path into the Go core
@@ -30,6 +30,9 @@ capability.
   template-driven multi-entry batch clones, backend `F4` save for UTF-8
   text files, bounded hex `F3` preview for non-text/binary files, and an
   explicit blocked-dialog path when `F4` targets a non-text/binary file;
+  commander quick filter now also reloads through backend
+  `GET /api/v1/fs/list?query=...` instead of filtering only the
+  frontend-projected pane rows;
   that blocked dialog can now hand the selected path off to the host OS
   opener, but commander still does not claim a richer external-tool
   chooser or a browser-verifiable opener side effect

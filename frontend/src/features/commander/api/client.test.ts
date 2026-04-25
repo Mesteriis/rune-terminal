@@ -128,6 +128,37 @@ describe('commander api client', () => {
     expect(fetchMock).toHaveBeenCalledTimes(3)
   })
 
+  it('sends the optional backend filter query when listing a commander directory', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          path: '/Users/avm/projects/runa-terminal',
+          directories: [],
+          files: [],
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await listCommanderDirectory('/Users/avm/projects/runa-terminal', {
+      query: '*.md',
+    })
+
+    expect(fetchMock.mock.calls[1]?.[0]).toBe(
+      'http://127.0.0.1:8090/api/v1/fs/list?path=%2FUsers%2Favm%2Fprojects%2Fruna-terminal&query=*.md',
+    )
+  })
+
   it('maps backend hex previews for binary file views', async () => {
     const fetchMock = vi.fn()
     fetchMock

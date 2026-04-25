@@ -85,6 +85,10 @@ type CommanderSetPanePathPayload = CommanderWidgetPanePayload & {
   path: string
 }
 
+type CommanderSetPaneFilterQueryPayload = CommanderWidgetPanePayload & {
+  filterQuery: string
+}
+
 type CommanderResolvePendingConflictPayload = CommanderWidgetPayload & {
   resolution: 'overwrite-current' | 'skip-current' | 'overwrite-all' | 'skip-all'
 }
@@ -96,6 +100,7 @@ type CommanderOpenEntryPayload = CommanderWidgetPanePayload & {
 type CommanderHydratePanePayload = CommanderWidgetPanePayload & {
   directoryEntries: CommanderWidgetRuntimeState['leftPane']['directoryEntries']
   cursorEntryId?: string | null
+  filterQuery?: string
   historyMode?: 'back' | 'forward' | 'push' | 'replace'
   path: string
   selectedIds?: string[]
@@ -151,6 +156,7 @@ export const requestCommanderActivePaneEdit = createEvent<CommanderWidgetPayload
 export const clearCommanderActivePaneFilter = createEvent<CommanderWidgetPayload>()
 export const invertCommanderActivePaneSelection = createEvent<CommanderWidgetPayload>()
 export const setCommanderPanePath = createEvent<CommanderSetPanePathPayload>()
+export const setCommanderPaneFilterQuery = createEvent<CommanderSetPaneFilterQueryPayload>()
 export const setCommanderPendingOperationInput = createEvent<CommanderSetPendingOperationInputPayload>()
 export const setCommanderPendingOperation = createEvent<CommanderSetPendingOperationPayload>()
 export const setCommanderFileDialogDraft = createEvent<CommanderSetPendingOperationInputPayload>()
@@ -245,6 +251,7 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
       return updatePaneState(nextWidgetState, payload.paneId, (paneState) =>
         rebuildCommanderPaneState(nextWidgetState, paneState, {
           path: payload.path,
+          filterQuery: payload.filterQuery ?? (pathChanged ? '' : paneState.filterQuery),
           directoryEntries: payload.directoryEntries,
           selectedIds: hasSelectedIdsOverride
             ? (payload.selectedIds ?? [])
@@ -524,6 +531,16 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
         rebuildPaneState(widgetState, {
           ...paneState,
           filterQuery: '',
+        }),
+      ),
+    )
+  })
+  .on(setCommanderPaneFilterQuery, (widgets, payload) => {
+    return withCommanderWidgetState(widgets, payload, (widgetState) =>
+      updatePaneState(widgetState, payload.paneId, (paneState) =>
+        rebuildPaneState(widgetState, {
+          ...paneState,
+          filterQuery: payload.filterQuery,
         }),
       ),
     )
