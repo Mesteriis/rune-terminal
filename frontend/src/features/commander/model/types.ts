@@ -172,6 +172,8 @@ export type CommanderFileDialogState = {
   content: string
   draftValue: string
   blockedReason?: string
+  blockedTitle?: string
+  blockedHint?: string
 }
 
 export type CommanderWidgetRuntimeState = {
@@ -281,4 +283,5 @@ export type CommanderFileSnapshot = {
   entryName: string
   path: string
   content: string
+  previewAvailable: boolean
 }

@@ -262,7 +262,7 @@ test('commander same-pane batch clone copy and F4 save run through backend file 
     .toBe(`# clone ${stamp}\n`)
 })
 
-test('commander F4 on a binary file opens a blocked dialog instead of a pane error', async ({
+test('commander F3/F4 on a binary file open explicit blocked dialogs instead of pane errors', async ({
   page,
   request,
 }) => {
@@ -283,6 +283,17 @@ test('commander F4 on a binary file opens a blocked dialog instead of a pane err
 
   await leftPane.root.click()
   await leftPane.row(binaryFileName).click()
+  await page.keyboard.press('F3')
+
+  await expect(page.getByText('Preview unavailable for this file')).toBeVisible()
+  await expect(
+    page.getByText('File is binary or not UTF-8 text. Open it with an external tool.'),
+  ).toBeVisible()
+  await expect(page.getByText('Binary preview unavailable')).toBeVisible()
+  await expect(page.getByText('Read only preview', { exact: true })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Close', exact: true }).click()
+  await expect(page.getByText('Preview unavailable for this file')).toHaveCount(0)
+
   await page.keyboard.press('F4')
 
   await expect(page.getByText('Edit unavailable for this file')).toBeVisible()

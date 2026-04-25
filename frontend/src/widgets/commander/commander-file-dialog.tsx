@@ -29,6 +29,8 @@ import {
 
 export type CommanderFileDialogProps = {
   blockedReason?: string
+  blockedTitle?: string
+  blockedHint?: string
   dirty: boolean
   content: string
   entryName: string
@@ -42,6 +44,8 @@ export type CommanderFileDialogProps = {
 /** Renders the backend-backed file viewer/editor modal for the focused commander file. */
 export function CommanderFileDialog({
   blockedReason,
+  blockedTitle,
+  blockedHint,
   dirty,
   content,
   entryName,
@@ -157,7 +161,7 @@ export function CommanderFileDialog({
               runaComponent="commander-file-dialog-blocked-title"
               style={commanderFileDialogBlockedTitleStyle}
             >
-              Edit unavailable for this file
+              {blockedTitle ?? 'Edit unavailable for this file'}
             </Text>
             <Text
               runaComponent="commander-file-dialog-blocked-reason"
@@ -204,7 +208,11 @@ export function CommanderFileDialog({
         <Box runaComponent="commander-file-dialog-footer" style={commanderFileDialogFooterStyle}>
           <Box runaComponent="commander-file-dialog-meta" style={commanderFileDialogMetaStyle}>
             <Text runaComponent="commander-file-dialog-hint-mode" style={commanderFileDialogHintStyle}>
-              {isEditable ? 'Ctrl+S save' : isBlocked ? 'Edit unavailable' : 'Read only preview'}
+              {isEditable
+                ? 'Ctrl+S save'
+                : isBlocked
+                  ? (blockedHint ?? 'Edit unavailable')
+                  : 'Read only preview'}
             </Text>
             {!isBlocked ? (
               <>

@@ -127,6 +127,38 @@ describe('commander api client', () => {
     expect(fetchMock).toHaveBeenCalledTimes(3)
   })
 
+  it('preserves backend preview availability for binary file previews', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          path: '/Users/avm/projects/runa-terminal/blob.dat',
+          preview: '',
+          preview_available: false,
+          truncated: false,
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(readCommanderFilePreview('/Users/avm/projects/runa-terminal/blob.dat')).resolves.toEqual({
+      content: '',
+      entryId: '/Users/avm/projects/runa-terminal::blob.dat',
+      entryName: 'blob.dat',
+      path: '/Users/avm/projects/runa-terminal',
+      previewAvailable: false,
+    })
+  })
+
   it('maps full file read and write responses into commander snapshots', async () => {
     const fetchMock = vi.fn()
     fetchMock
@@ -160,6 +192,7 @@ describe('commander api client', () => {
       entryId: '/Users/avm/projects/runa-terminal::README.md',
       entryName: 'README.md',
       path: '/Users/avm/projects/runa-terminal',
+      previewAvailable: true,
     })
     await expect(
       writeCommanderFile('/Users/avm/projects/runa-terminal/README.md', 'saved file'),
@@ -168,6 +201,7 @@ describe('commander api client', () => {
       entryId: '/Users/avm/projects/runa-terminal::README.md',
       entryName: 'README.md',
       path: '/Users/avm/projects/runa-terminal',
+      previewAvailable: true,
     })
     expect(fetchMock.mock.calls[2]?.[0]).toBe('http://127.0.0.1:8090/api/v1/fs/file')
     expect(fetchMock.mock.calls[2]?.[1]).toMatchObject({

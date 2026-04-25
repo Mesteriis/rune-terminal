@@ -573,6 +573,25 @@ export function useCommanderWidget(widgetId: string) {
           return
         }
 
+        if (mode === 'view' && !fileSnapshot.previewAvailable) {
+          onSetCommanderFileDialog({
+            widgetId,
+            fileDialog: {
+              paneId,
+              path: paneState.path,
+              entryId,
+              entryName: entry.name,
+              mode: 'blocked',
+              content: '',
+              draftValue: '',
+              blockedTitle: 'Preview unavailable for this file',
+              blockedReason: 'File is binary or not UTF-8 text. Open it with an external tool.',
+              blockedHint: 'Binary preview unavailable',
+            } satisfies CommanderFileDialogState,
+          })
+          return
+        }
+
         onSetCommanderFileDialog({
           widgetId,
           fileDialog: {

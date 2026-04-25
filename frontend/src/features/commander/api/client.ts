@@ -228,15 +228,14 @@ export async function readCommanderFilePreview(
     `/api/v1/fs/read?path=${encodeURIComponent(path)}${maxBytesQuery}`,
   )
   const entryName = payload.path.split('/').pop() ?? payload.path
-  const content = payload.preview_available
-    ? payload.preview
-    : '[Binary preview unavailable in commander preview.]'
+  const content = payload.preview_available ? payload.preview : ''
 
   return {
     content: payload.truncated ? `${content}\n\n[Preview truncated.]` : content,
     entryId: toCommanderEntryId(payload.path.slice(0, payload.path.lastIndexOf('/')) || '/', entryName),
     entryName,
     path: payload.path.slice(0, payload.path.lastIndexOf('/')) || '/',
+    previewAvailable: payload.preview_available,
   }
 }
 
@@ -253,6 +252,7 @@ export async function readCommanderFile(path: string): Promise<CommanderFileSnap
     entryId: toCommanderEntryId(payload.path.slice(0, payload.path.lastIndexOf('/')) || '/', entryName),
     entryName,
     path: payload.path.slice(0, payload.path.lastIndexOf('/')) || '/',
+    previewAvailable: true,
   }
 }
 
@@ -268,6 +268,7 @@ export async function writeCommanderFile(path: string, content: string): Promise
     entryId: toCommanderEntryId(payload.path.slice(0, payload.path.lastIndexOf('/')) || '/', entryName),
     entryName,
     path: payload.path.slice(0, payload.path.lastIndexOf('/')) || '/',
+    previewAvailable: true,
   }
 }
 

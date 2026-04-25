@@ -408,7 +408,9 @@ export function CommanderWidget() {
         />
         {state.fileDialog ? (
           <CommanderFileDialog
+            blockedHint={state.fileDialog.blockedHint}
             blockedReason={state.fileDialog.blockedReason}
+            blockedTitle={state.fileDialog.blockedTitle}
             content={state.fileDialog.draftValue}
             dirty={isFileDialogDirty}
             entryName={state.fileDialog.entryName}
