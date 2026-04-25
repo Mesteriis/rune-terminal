@@ -232,7 +232,29 @@ fn set_watcher_mode(state: State<'_, RuntimeState>, mode: String) -> Result<(), 
 #[tauri::command]
 fn request_shutdown(state: State<'_, RuntimeState>, force: bool) -> Result<RuntimeShutdownResult, String> {
     let mut guard = state.inner.lock().map_err(|err| err.to_string())?;
-    let Some(runtime) = guard.as_mut() else {
+    request_shutdown_runtime(
+        &mut guard,
+        force,
+        query_active_tasks,
+        shutdown_runtime,
+        clear_runtime_file,
+    )
+    .map_err(|err| err.to_string())
+}
+
+fn request_shutdown_runtime<FQuery, FShutdown, FClear>(
+    slot: &mut Option<RuntimeRuntime>,
+    force: bool,
+    mut query_active_tasks_fn: FQuery,
+    mut shutdown_runtime_fn: FShutdown,
+    mut clear_runtime_file_fn: FClear,
+) -> Result<RuntimeShutdownResult, RuntimeError>
+where
+    FQuery: FnMut(&str, &str) -> Result<usize, RuntimeError>,
+    FShutdown: FnMut(&mut RuntimeRuntime) -> Result<(), RuntimeError>,
+    FClear: FnMut(),
+{
+    let Some(runtime) = slot.as_mut() else {
         return Ok(RuntimeShutdownResult {
             can_close: true,
             active_tasks: 0,
@@ -253,8 +275,8 @@ fn request_shutdown(state: State<'_, RuntimeState>, force: bool) -> Result<Runti
         .core
         .auth_token
         .clone()
-        .ok_or_else(|| "core auth token is not available".to_string())?;
-    let active_tasks = query_active_tasks(&runtime.core.url, &auth_token).map_err(|err| err.to_string())?;
+        .ok_or_else(|| RuntimeError::Http("core auth token is not available".into()))?;
+    let active_tasks = query_active_tasks_fn(&runtime.core.url, &auth_token)?;
     if !force && active_tasks > 0 {
         return Ok(RuntimeShutdownResult {
             can_close: false,
@@ -263,10 +285,10 @@ fn request_shutdown(state: State<'_, RuntimeState>, force: bool) -> Result<Runti
         });
     }
 
-    shutdown_runtime(runtime).map_err(|err| err.to_string())?;
-    clear_runtime_file();
+    shutdown_runtime_fn(runtime)?;
+    clear_runtime_file_fn();
     let watcher_mode = watcher_mode.to_string();
-    *guard = None;
+    *slot = None;
 
     Ok(RuntimeShutdownResult {
         can_close: true,
@@ -1243,6 +1265,7 @@ mod tests {
         cleanup_runtime_slot, discover_running_watcher_for_core,
         load_settings_from_path,
         read_runtime_attachment_from_path, recover_or_drop_watcher_record,
+        request_shutdown_runtime,
         reject_foreign_watcher_listener, sanitize_runtime_attachment, wait_for_ready_file,
         write_file_atomically, HealthPayload, ReadyFilePayload, RuntimeError, RuntimeFile,
         RuntimeFileCore, RuntimeFileWatcher, RuntimeProcess, RuntimeProcessRecord,
@@ -1711,6 +1734,182 @@ mod tests {
 
         assert!(slot.is_none(), "runtime slot should still be cleared after cleanup");
         assert!(!clear_called, "persistent cleanup should preserve runtime file");
+    }
+
+    #[test]
+    fn request_shutdown_runtime_allows_close_when_runtime_is_missing() {
+        let mut slot = None;
+        let result = request_shutdown_runtime(
+            &mut slot,
+            false,
+            |_url, _token| unreachable!("no runtime should skip task lookup"),
+            |_runtime| unreachable!("no runtime should skip shutdown"),
+            || unreachable!("no runtime should skip runtime-file cleanup"),
+        )
+        .expect("missing runtime should still allow close");
+
+        assert!(result.can_close);
+        assert_eq!(result.active_tasks, 0);
+        assert_eq!(result.watcher_mode, "ephemeral");
+        assert!(slot.is_none());
+    }
+
+    #[test]
+    fn request_shutdown_runtime_bypasses_task_lookup_for_persistent_mode() {
+        let mut slot = Some(RuntimeRuntime {
+            core: RuntimeProcess {
+                child: None,
+                pid: 4242,
+                url: "http://127.0.0.1:40100".into(),
+                started_by_ui: false,
+                auth_token: Some("token".into()),
+                worker_id: None,
+                shutdown_token: None,
+            },
+            watcher: None,
+            settings: SettingsFile {
+                watcher_mode: WatcherMode::Persistent,
+                core_auth_token: Some("token".into()),
+            },
+        });
+
+        let result = request_shutdown_runtime(
+            &mut slot,
+            false,
+            |_url, _token| unreachable!("persistent mode should not query active tasks"),
+            |_runtime| unreachable!("persistent mode should not shut runtime down"),
+            || unreachable!("persistent mode should not clear runtime file"),
+        )
+        .expect("persistent mode should allow close immediately");
+
+        assert!(result.can_close);
+        assert_eq!(result.active_tasks, 0);
+        assert_eq!(result.watcher_mode, "persistent");
+        assert!(slot.is_some(), "persistent mode should preserve the runtime slot");
+    }
+
+    #[test]
+    fn request_shutdown_runtime_blocks_ephemeral_close_when_active_tasks_exist() {
+        let mut clear_called = false;
+        let mut shutdown_called = false;
+        let mut slot = Some(RuntimeRuntime {
+            core: RuntimeProcess {
+                child: None,
+                pid: 4242,
+                url: "http://127.0.0.1:40100".into(),
+                started_by_ui: false,
+                auth_token: Some("token".into()),
+                worker_id: None,
+                shutdown_token: None,
+            },
+            watcher: None,
+            settings: SettingsFile {
+                watcher_mode: WatcherMode::Ephemeral,
+                core_auth_token: Some("token".into()),
+            },
+        });
+
+        let result = request_shutdown_runtime(
+            &mut slot,
+            false,
+            |url, token| {
+                assert_eq!(url, "http://127.0.0.1:40100");
+                assert_eq!(token, "token");
+                Ok(3)
+            },
+            |_runtime| {
+                shutdown_called = true;
+                Ok(())
+            },
+            || {
+                clear_called = true;
+            },
+        )
+        .expect("active tasks should return a non-closing result");
+
+        assert!(!result.can_close);
+        assert_eq!(result.active_tasks, 3);
+        assert_eq!(result.watcher_mode, "ephemeral");
+        assert!(slot.is_some(), "active tasks should keep runtime attached");
+        assert!(!shutdown_called, "blocked close must not shut runtime down");
+        assert!(!clear_called, "blocked close must not clear runtime metadata");
+    }
+
+    #[test]
+    fn request_shutdown_runtime_forces_ephemeral_shutdown_when_requested() {
+        let mut clear_called = false;
+        let mut shutdown_called = false;
+        let mut slot = Some(RuntimeRuntime {
+            core: RuntimeProcess {
+                child: None,
+                pid: 4242,
+                url: "http://127.0.0.1:40100".into(),
+                started_by_ui: false,
+                auth_token: Some("token".into()),
+                worker_id: None,
+                shutdown_token: None,
+            },
+            watcher: None,
+            settings: SettingsFile {
+                watcher_mode: WatcherMode::Ephemeral,
+                core_auth_token: Some("token".into()),
+            },
+        });
+
+        let result = request_shutdown_runtime(
+            &mut slot,
+            true,
+            |_url, _token| Ok(2),
+            |_runtime| {
+                shutdown_called = true;
+                Ok(())
+            },
+            || {
+                clear_called = true;
+            },
+        )
+        .expect("forced close should shut runtime down");
+
+        assert!(result.can_close);
+        assert_eq!(result.active_tasks, 2);
+        assert_eq!(result.watcher_mode, "ephemeral");
+        assert!(slot.is_none(), "forced shutdown should clear the runtime slot");
+        assert!(shutdown_called, "forced close must shut runtime down");
+        assert!(clear_called, "forced close must clear runtime metadata");
+    }
+
+    #[test]
+    fn request_shutdown_runtime_requires_core_auth_token_for_ephemeral_mode() {
+        let mut slot = Some(RuntimeRuntime {
+            core: RuntimeProcess {
+                child: None,
+                pid: 4242,
+                url: "http://127.0.0.1:40100".into(),
+                started_by_ui: false,
+                auth_token: None,
+                worker_id: None,
+                shutdown_token: None,
+            },
+            watcher: None,
+            settings: SettingsFile {
+                watcher_mode: WatcherMode::Ephemeral,
+                core_auth_token: None,
+            },
+        });
+
+        let err = request_shutdown_runtime(
+            &mut slot,
+            false,
+            |_url, _token| unreachable!("missing token should fail before task lookup"),
+            |_runtime| unreachable!("missing token should fail before shutdown"),
+            || unreachable!("missing token should fail before cleanup"),
+        )
+        .expect_err("ephemeral shutdown requires a core auth token");
+
+        assert!(
+            matches!(err, RuntimeError::Http(message) if message == "core auth token is not available")
+        );
+        assert!(slot.is_some(), "failure should preserve runtime slot for recovery");
     }
 
     #[test]
