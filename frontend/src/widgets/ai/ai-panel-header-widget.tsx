@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 
 import {
   Archive,
@@ -32,6 +32,7 @@ import {
   aiHeaderConversationMenuListStyle,
   aiHeaderConversationMenuMetaStyle,
   aiHeaderConversationMenuOptionActiveStyle,
+  aiHeaderConversationMenuOptionHighlightedStyle,
   aiHeaderConversationMenuOptionLeadingStyle,
   aiHeaderConversationMenuOptionStyle,
   aiHeaderConversationMenuSectionStyle,
@@ -152,7 +153,9 @@ export function AiPanelHeaderWidget({
   const [conversationScope, setConversationScope] = useState<ConversationScope>('recent')
   const [renameDraft, setRenameDraft] = useState('')
   const [optimisticConversationTitle, setOptimisticConversationTitle] = useState('')
+  const [highlightedConversationID, setHighlightedConversationID] = useState('')
   const conversationMenuWrapRef = useRef<HTMLDivElement | null>(null)
+  const conversationOptionRefs = useRef(new Map<string, HTMLButtonElement>())
   const hasConversationOptions = conversations.length > 0
   const selectedConversationID = activeConversationID || conversations[0]?.id || ''
   const activeConversation = useMemo(
@@ -202,6 +205,22 @@ export function AiPanelHeaderWidget({
         return filteredConversations
     }
   }, [conversationScope, filteredArchivedConversations, filteredConversations, filteredRecentConversations])
+  const orderedConversationOptions = useMemo(() => {
+    const nextOptions: AgentConversationSummary[] = []
+
+    if (conversationScope !== 'archived') {
+      nextOptions.push(...filteredRecentConversations)
+    }
+
+    if (conversationScope !== 'recent') {
+      nextOptions.push(...filteredArchivedConversations)
+    }
+
+    return nextOptions
+  }, [conversationScope, filteredArchivedConversations, filteredRecentConversations])
+  const highlightedConversationIndex = highlightedConversationID
+    ? orderedConversationOptions.findIndex((conversation) => conversation.id === highlightedConversationID)
+    : -1
 
   useEffect(() => {
     if (!isConversationMenuOpen) {
@@ -209,6 +228,7 @@ export function AiPanelHeaderWidget({
       setIsDeleteConversationConfirmOpen(false)
       setConversationSearchQuery('')
       setConversationScope('recent')
+      setHighlightedConversationID('')
       return
     }
 
@@ -253,6 +273,156 @@ export function AiPanelHeaderWidget({
       window.removeEventListener('keydown', handleKeyDown)
     }
   }, [isConversationMenuOpen])
+
+  useEffect(() => {
+    if (!isConversationMenuOpen) {
+      return
+    }
+
+    if (orderedConversationOptions.length === 0) {
+      setHighlightedConversationID('')
+      return
+    }
+
+    const highlightedStillVisible = orderedConversationOptions.some(
+      (conversation) => conversation.id === highlightedConversationID,
+    )
+
+    if (highlightedStillVisible) {
+      return
+    }
+
+    setHighlightedConversationID(orderedConversationOptions[0].id)
+  }, [highlightedConversationID, isConversationMenuOpen, orderedConversationOptions])
+
+  const highlightConversationOption = (index: number) => {
+    if (orderedConversationOptions.length === 0) {
+      return
+    }
+
+    const boundedIndex = Math.max(0, Math.min(index, orderedConversationOptions.length - 1))
+    setHighlightedConversationID(orderedConversationOptions[boundedIndex].id)
+  }
+
+  const focusConversationButton = (index: number) => {
+    if (orderedConversationOptions.length === 0) {
+      return
+    }
+
+    const boundedIndex = Math.max(0, Math.min(index, orderedConversationOptions.length - 1))
+    const nextConversation = orderedConversationOptions[boundedIndex]
+    setHighlightedConversationID(nextConversation.id)
+    conversationOptionRefs.current.get(nextConversation.id)?.focus()
+  }
+
+  const selectConversationFromNavigator = (conversationID: string) => {
+    setIsConversationMenuOpen(false)
+    onConversationSelect?.(conversationID)
+  }
+
+  const selectHighlightedConversation = () => {
+    if (!highlightedConversationID) {
+      return
+    }
+
+    selectConversationFromNavigator(highlightedConversationID)
+  }
+
+  const handleConversationTriggerKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
+    if (!hasConversationOptions) {
+      return
+    }
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      if (!isConversationMenuOpen) {
+        setIsConversationMenuOpen(true)
+        highlightConversationOption(0)
+        return
+      }
+      highlightConversationOption(0)
+      return
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      if (!isConversationMenuOpen) {
+        setIsConversationMenuOpen(true)
+        highlightConversationOption(orderedConversationOptions.length - 1)
+        return
+      }
+      highlightConversationOption(orderedConversationOptions.length - 1)
+    }
+  }
+
+  const handleConversationSearchKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
+    if (orderedConversationOptions.length === 0) {
+      return
+    }
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      highlightConversationOption(highlightedConversationIndex >= 0 ? highlightedConversationIndex + 1 : 0)
+      return
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      highlightConversationOption(
+        highlightedConversationIndex >= 0
+          ? highlightedConversationIndex - 1
+          : orderedConversationOptions.length - 1,
+      )
+      return
+    }
+
+    if (event.key === 'Home') {
+      event.preventDefault()
+      highlightConversationOption(0)
+      return
+    }
+
+    if (event.key === 'End') {
+      event.preventDefault()
+      highlightConversationOption(orderedConversationOptions.length - 1)
+      return
+    }
+
+    if (event.key === 'Enter') {
+      event.preventDefault()
+      selectHighlightedConversation()
+    }
+  }
+
+  const handleConversationOptionKeyDown =
+    (index: number) => (event: ReactKeyboardEvent<HTMLButtonElement>) => {
+      if (orderedConversationOptions.length === 0) {
+        return
+      }
+
+      if (event.key === 'ArrowDown') {
+        event.preventDefault()
+        focusConversationButton(index + 1)
+        return
+      }
+
+      if (event.key === 'ArrowUp') {
+        event.preventDefault()
+        focusConversationButton(index - 1)
+        return
+      }
+
+      if (event.key === 'Home') {
+        event.preventDefault()
+        focusConversationButton(0)
+        return
+      }
+
+      if (event.key === 'End') {
+        event.preventDefault()
+        focusConversationButton(orderedConversationOptions.length - 1)
+      }
+    }
 
   const handleRenameConversation = async () => {
     const nextTitle = renameDraft.trim()
@@ -330,6 +500,7 @@ export function AiPanelHeaderWidget({
               aria-label="Conversation menu"
               disabled={isConversationBusy || !hasConversationOptions}
               onClick={() => setIsConversationMenuOpen((currentValue) => !currentValue)}
+              onKeyDown={handleConversationTriggerKeyDown}
               runaComponent="ai-panel-header-conversation-trigger"
               style={aiHeaderConversationTriggerStyle}
               title={displayedConversationTitle}
@@ -485,9 +656,16 @@ export function AiPanelHeaderWidget({
                         })}
                       </Box>
                       <Input
+                        aria-activedescendant={
+                          highlightedConversationID
+                            ? `ai-panel-header-conversation-option-${highlightedConversationID}`
+                            : undefined
+                        }
                         aria-label="Search conversations"
+                        aria-controls="ai-panel-header-conversation-listbox"
                         disabled={isConversationBusy || conversations.length === 0}
                         onChange={(event) => setConversationSearchQuery(event.currentTarget.value)}
+                        onKeyDown={handleConversationSearchKeyDown}
                         placeholder="Search conversations"
                         runaComponent="ai-panel-header-conversation-search-input"
                         style={aiHeaderConversationSearchInputStyle}
@@ -593,6 +771,7 @@ export function AiPanelHeaderWidget({
                   ) : null}
                   <Box
                     aria-label="Conversation list"
+                    id="ai-panel-header-conversation-listbox"
                     role="listbox"
                     runaComponent="ai-panel-header-conversation-list"
                     style={aiHeaderConversationMenuListStyle}
@@ -617,19 +796,34 @@ export function AiPanelHeaderWidget({
                         </Text>
                         {filteredRecentConversations.map((conversation) => {
                           const isActive = conversation.id === selectedConversationID
+                          const isHighlighted = conversation.id === highlightedConversationID
+                          const optionIndex = orderedConversationOptions.findIndex(
+                            (option) => option.id === conversation.id,
+                          )
                           return (
                             <Button
                               aria-label={`Open conversation ${formatConversationTitle(conversation)}`}
                               aria-selected={isActive}
+                              id={`ai-panel-header-conversation-option-${conversation.id}`}
                               key={conversation.id}
+                              onFocus={() => setHighlightedConversationID(conversation.id)}
+                              onKeyDown={handleConversationOptionKeyDown(optionIndex)}
+                              onMouseEnter={() => setHighlightedConversationID(conversation.id)}
                               onClick={() => {
-                                setIsConversationMenuOpen(false)
-                                onConversationSelect?.(conversation.id)
+                                selectConversationFromNavigator(conversation.id)
+                              }}
+                              ref={(node) => {
+                                if (node) {
+                                  conversationOptionRefs.current.set(conversation.id, node)
+                                  return
+                                }
+                                conversationOptionRefs.current.delete(conversation.id)
                               }}
                               role="option"
                               runaComponent={`ai-panel-header-conversation-option-${conversation.id}`}
                               style={{
                                 ...aiHeaderConversationMenuOptionStyle,
+                                ...(isHighlighted ? aiHeaderConversationMenuOptionHighlightedStyle : null),
                                 ...(isActive ? aiHeaderConversationMenuOptionActiveStyle : null),
                               }}
                             >
@@ -657,19 +851,34 @@ export function AiPanelHeaderWidget({
                         </Text>
                         {filteredArchivedConversations.map((conversation) => {
                           const isActive = conversation.id === selectedConversationID
+                          const isHighlighted = conversation.id === highlightedConversationID
+                          const optionIndex = orderedConversationOptions.findIndex(
+                            (option) => option.id === conversation.id,
+                          )
                           return (
                             <Button
                               aria-label={`Open conversation ${formatConversationTitle(conversation)}`}
                               aria-selected={isActive}
+                              id={`ai-panel-header-conversation-option-${conversation.id}`}
                               key={conversation.id}
+                              onFocus={() => setHighlightedConversationID(conversation.id)}
+                              onKeyDown={handleConversationOptionKeyDown(optionIndex)}
+                              onMouseEnter={() => setHighlightedConversationID(conversation.id)}
                               onClick={() => {
-                                setIsConversationMenuOpen(false)
-                                onConversationSelect?.(conversation.id)
+                                selectConversationFromNavigator(conversation.id)
+                              }}
+                              ref={(node) => {
+                                if (node) {
+                                  conversationOptionRefs.current.set(conversation.id, node)
+                                  return
+                                }
+                                conversationOptionRefs.current.delete(conversation.id)
                               }}
                               role="option"
                               runaComponent={`ai-panel-header-conversation-option-${conversation.id}`}
                               style={{
                                 ...aiHeaderConversationMenuOptionStyle,
+                                ...(isHighlighted ? aiHeaderConversationMenuOptionHighlightedStyle : null),
                                 ...(isActive ? aiHeaderConversationMenuOptionActiveStyle : null),
                               }}
                             >

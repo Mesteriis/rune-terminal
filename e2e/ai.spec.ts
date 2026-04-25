@@ -374,6 +374,63 @@ test('AI conversation navigator archives the active thread and restores it from 
   ).toBeVisible()
 })
 
+test('AI conversation navigator supports keyboard navigation through filtered thread options', async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(60_000)
+
+  const token = `keyboard-${Date.now()}`
+  const firstConversation = await createConversationViaApi(request)
+  const secondConversation = await createConversationViaApi(request)
+  const thirdConversation = await createConversationViaApi(request)
+
+  await renameConversationViaApi(request, firstConversation.id, `${token} first thread`)
+  await renameConversationViaApi(request, secondConversation.id, `${token} second thread`)
+  await renameConversationViaApi(request, thirdConversation.id, `${token} third thread`)
+  await activateAgentConversation(request, thirdConversation.id)
+
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  await page.getByRole('button', { name: 'Toggle AI panel' }).click()
+
+  const conversationMenuButton = page.getByRole('button', { name: 'Conversation menu' })
+  await conversationMenuButton.click()
+  const searchInput = page.getByRole('textbox', { name: 'Search conversations' })
+  await searchInput.fill(token)
+
+  const filteredOptions = page
+    .getByRole('option')
+    .filter({ hasText: token })
+
+  await expect(filteredOptions).toHaveCount(3)
+
+  const optionCount = await filteredOptions.count()
+  const orderedOptionIDs: string[] = []
+  const orderedOptionNames: string[] = []
+
+  for (let index = 0; index < optionCount; index += 1) {
+    const option = filteredOptions.nth(index)
+    orderedOptionIDs.push((await option.getAttribute('id')) ?? '')
+    orderedOptionNames.push((await option.textContent())?.trim() ?? '')
+  }
+
+  await expect(searchInput).toHaveAttribute('aria-activedescendant', orderedOptionIDs[0] ?? '')
+
+  await searchInput.press('ArrowDown')
+  await expect(searchInput).toHaveAttribute('aria-activedescendant', orderedOptionIDs[1] ?? '')
+
+  await searchInput.press('End')
+  await expect(searchInput).toHaveAttribute('aria-activedescendant', orderedOptionIDs[2] ?? '')
+
+  await searchInput.press('Home')
+  await expect(searchInput).toHaveAttribute('aria-activedescendant', orderedOptionIDs[0] ?? '')
+
+  await searchInput.press('Enter')
+  await expect(conversationMenuButton).toContainText(orderedOptionNames[0] ?? '')
+})
+
 test('AI conversation navigator filters recent threads locally', async ({ page, request }) => {
   test.setTimeout(60_000)
 

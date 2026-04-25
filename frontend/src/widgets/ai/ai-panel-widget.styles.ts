@@ -339,6 +339,12 @@ export const aiHeaderConversationMenuOptionActiveStyle: CSSProperties = {
   borderColor: 'color-mix(in srgb, var(--color-accent-emerald-soft) 42%, var(--color-border-strong))',
 }
 
+export const aiHeaderConversationMenuOptionHighlightedStyle: CSSProperties = {
+  background:
+    'color-mix(in srgb, var(--color-accent-emerald-soft) 14%, var(--color-surface-shell-header-action))',
+  borderColor: 'color-mix(in srgb, var(--color-accent-emerald-soft) 28%, var(--color-border-strong))',
+}
+
 export const aiHeaderConversationMenuOptionLeadingStyle: CSSProperties = {
   ...aiPlainBlockStyle,
   width: '100%',

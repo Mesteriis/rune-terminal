@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { AiPanelHeaderWidget } from '@/widgets/ai/ai-panel-header-widget'
@@ -324,5 +324,111 @@ describe('AiPanelHeaderWidget', () => {
         name: 'Open conversation Active runtime thread',
       }),
     ).not.toBeInTheDocument()
+  })
+
+  it('opens the conversation navigator from the trigger with keyboard controls', async () => {
+    render(
+      <AiPanelHeaderWidget
+        activeConversationID="conv_2"
+        conversations={[
+          {
+            id: 'conv_1',
+            title: 'Earlier thread',
+            created_at: '2026-04-24T09:00:00Z',
+            updated_at: '2026-04-24T09:05:00Z',
+            message_count: 2,
+          },
+          {
+            id: 'conv_2',
+            title: 'Current thread',
+            created_at: '2026-04-24T10:00:00Z',
+            updated_at: '2026-04-24T10:01:00Z',
+            message_count: 1,
+          },
+        ]}
+        mode="chat"
+        onModeChange={() => {}}
+        title="AI Rune"
+      />,
+    )
+
+    const trigger = screen.getByRole('button', { name: 'Conversation menu' })
+    trigger.focus()
+    fireEvent.keyDown(trigger, { key: 'ArrowDown' })
+
+    const firstOption = await screen.findByRole('option', {
+      name: 'Open conversation Earlier thread',
+    })
+    const searchInput = screen.getByRole('textbox', { name: 'Search conversations' })
+
+    await waitFor(() => {
+      expect(searchInput).toHaveAttribute('aria-activedescendant', firstOption.id)
+    })
+  })
+
+  it('tracks keyboard navigation through conversation options from the search field', async () => {
+    const onConversationSelect = vi.fn()
+
+    render(
+      <AiPanelHeaderWidget
+        activeConversationID="conv_3"
+        conversations={[
+          {
+            id: 'conv_1',
+            title: 'Earlier thread',
+            created_at: '2026-04-24T09:00:00Z',
+            updated_at: '2026-04-24T09:05:00Z',
+            message_count: 2,
+          },
+          {
+            id: 'conv_2',
+            title: 'Current thread',
+            created_at: '2026-04-24T10:00:00Z',
+            updated_at: '2026-04-24T10:01:00Z',
+            message_count: 1,
+          },
+          {
+            id: 'conv_3',
+            title: 'Latest thread',
+            created_at: '2026-04-24T11:00:00Z',
+            updated_at: '2026-04-24T11:01:00Z',
+            message_count: 5,
+          },
+        ]}
+        mode="chat"
+        onConversationSelect={onConversationSelect}
+        onModeChange={() => {}}
+        title="AI Rune"
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Conversation menu' }))
+
+    const searchInput = screen.getByRole('textbox', { name: 'Search conversations' })
+    const firstOption = screen.getByRole('option', { name: 'Open conversation Earlier thread' })
+    const secondOption = screen.getByRole('option', { name: 'Open conversation Current thread' })
+    const thirdOption = screen.getByRole('option', { name: 'Open conversation Latest thread' })
+
+    await waitFor(() => {
+      expect(searchInput).toHaveAttribute('aria-activedescendant', firstOption.id)
+    })
+
+    fireEvent.keyDown(searchInput, { key: 'ArrowDown' })
+    await waitFor(() => {
+      expect(searchInput).toHaveAttribute('aria-activedescendant', secondOption.id)
+    })
+
+    fireEvent.keyDown(searchInput, { key: 'End' })
+    await waitFor(() => {
+      expect(searchInput).toHaveAttribute('aria-activedescendant', thirdOption.id)
+    })
+
+    fireEvent.keyDown(searchInput, { key: 'Home' })
+    await waitFor(() => {
+      expect(searchInput).toHaveAttribute('aria-activedescendant', firstOption.id)
+    })
+
+    fireEvent.keyDown(searchInput, { key: 'Enter' })
+    expect(onConversationSelect).toHaveBeenCalledWith('conv_1')
   })
 })
