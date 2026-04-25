@@ -176,7 +176,7 @@ export function AiComposerWidget({
       }
     }
 
-    const handleKeyDown = (event: KeyboardEvent) => {
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.key === 'Escape') {
         setIsContextMenuOpen(false)
       }

@@ -154,7 +154,8 @@
 - `(cd frontend && npm exec prettier -- --write src/app/App.tsx src/app/app-shell.styles.ts src/app/dockview-workspace.bootstrap.ts src/app/dockview-workspace.bootstrap.test.ts src/app/dockview-workspace.ready.ts src/app/use-dockview-workspace.ts src/features/workspace/model/widget-catalog.ts src/features/workspace/model/widget-catalog.test.ts src/widgets/shell/right-action-rail-widget.tsx src/widgets/shell/right-action-rail-widget.styles.ts src/widgets/shell/right-action-rail-widget.test.tsx)`
 - `npm --prefix frontend run test -- src/features/workspace/model/widget-catalog.test.ts src/app/dockview-workspace.bootstrap.test.ts src/widgets/shell/right-action-rail-widget.test.tsx`
 - `npm --prefix frontend run lint:active`
-- `npm --prefix frontend run build` (fresh catalog-consumption rerun blocked by the existing `frontend/src/widgets/ai/ai-composer-widget.tsx` `KeyboardEvent` listener typing issue; not claimed as passed for this slice)
+- `(cd frontend && npm exec prettier -- --write src/widgets/ai/ai-composer-widget.tsx)`
+- `npm --prefix frontend run test -- src/widgets/ai/ai-composer-widget.test.tsx`
 - `npm --prefix frontend run build`
 - `npm run validate`
 - `npm run validate:desktop-runtime`
@@ -206,10 +207,10 @@
   Dockview layout persistence, generic files-widget creation without an
   explicit path handoff, rich preview/editor/web rendering, or a browser e2e
   proof for catalog consumption yet.
-- A fresh `npm --prefix frontend run build` attempt for the catalog-consumption
-  slice is blocked by an existing `KeyboardEvent` typing issue in
-  `frontend/src/widgets/ai/ai-composer-widget.tsx`; targeted frontend tests
-  and `npm --prefix frontend run lint:active` pass for the files touched here.
+- The AI composer DOM `keydown` listener now uses the real browser
+  `globalThis.KeyboardEvent` type instead of React's synthetic
+  `KeyboardEvent`, so the fresh `npm --prefix frontend run build` pass is no
+  longer blocked by that listener typing mismatch.
 - Commander persistence and some historical interaction notes below still describe earlier frontend-only slices. The current browser-verified source of truth for the active commander path is the Playwright evidence recorded later in this file.
 - The root cause in the previous commander-color pass was inline commander CSS variables on the widget root, which prevented the inactive Dockview override from winning. That inline override is now removed, and a fresh browser-level active vs inactive comparison is recorded in this entry.
 - The broader non-AI widget inactive-tone pass in this slice is validated by source inspection plus type-check/build only. A fresh browser-level comparison of terminal active vs inactive color states is not claimed here.
