@@ -476,6 +476,7 @@ test('commander blocked dialog keeps a visible external-open handoff confirmatio
   const binaryFilePath = `${binaryRootPath}/${binaryFileName}`
   const leftPane = getPane(page, 'left')
   let openRequestCount = 0
+  const openedPaths: string[] = []
 
   await mkdirViaApi(request, binaryRootPath)
   await writeFile(binaryFilePath, Buffer.from([0, 1, 2, 3, 4, 5]))
@@ -483,6 +484,10 @@ test('commander blocked dialog keeps a visible external-open handoff confirmatio
   await clearBrowserState(page)
   await page.route('**/api/v1/fs/open', async (route) => {
     openRequestCount += 1
+    const postData = route.request().postDataJSON() as { path?: string } | null
+    if (postData?.path) {
+      openedPaths.push(postData.path)
+    }
     await route.fulfill({
       body: '{}',
       contentType: 'application/json',
@@ -502,11 +507,21 @@ test('commander blocked dialog keeps a visible external-open handoff confirmatio
   await page.keyboard.press('F4')
 
   await expect(page.getByText('Edit unavailable for this file')).toBeVisible()
-  await page.getByRole('button', { name: 'Open externally' }).click()
+  await page.getByRole('button', { name: 'Open file' }).click()
 
   await expect(page.locator('[id^="shell-tool-commander-file-dialog-open-external-success-r"]').first()).toHaveText(
-    'Open request sent to the system opener.',
+    'File open request sent to the system opener.',
   )
   expect(openRequestCount).toBe(1)
+  expect(openedPaths).toEqual([binaryFilePath])
+  await expect(page.getByText('Edit unavailable for this file')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Open containing folder' }).click()
+
+  await expect(page.locator('[id^="shell-tool-commander-file-dialog-open-external-success-r"]').first()).toHaveText(
+    'Containing folder open request sent to the system opener.',
+  )
+  expect(openRequestCount).toBe(2)
+  expect(openedPaths).toEqual([binaryFilePath, binaryRootPath])
   await expect(page.getByText('Edit unavailable for this file')).toBeVisible()
 })

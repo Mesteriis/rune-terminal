@@ -75,8 +75,9 @@ describe('CommanderFileDialog', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
-  it('surfaces the external open action for blocked and hex preview flows', async () => {
-    const onOpenExternal = vi.fn().mockResolvedValue(undefined)
+  it('surfaces file and containing-folder external open actions for blocked and hex preview flows', async () => {
+    const onOpenExternalFile = vi.fn().mockResolvedValue(undefined)
+    const onOpenExternalFolder = vi.fn().mockResolvedValue(undefined)
 
     render(
       <CommanderFileDialog
@@ -88,19 +89,27 @@ describe('CommanderFileDialog', () => {
         mode="blocked"
         onChange={vi.fn()}
         onClose={vi.fn()}
-        onOpenExternal={onOpenExternal}
+        onOpenExternalFile={onOpenExternalFile}
+        onOpenExternalFolder={onOpenExternalFolder}
         onSave={vi.fn()}
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Open externally' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Open file' }))
 
-    expect(onOpenExternal).toHaveBeenCalledTimes(1)
-    expect(await screen.findAllByText('Open request sent to the system opener.')).not.toHaveLength(0)
+    expect(onOpenExternalFile).toHaveBeenCalledTimes(1)
+    expect(await screen.findAllByText('File open request sent to the system opener.')).not.toHaveLength(0)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open containing folder' }))
+
+    expect(onOpenExternalFolder).toHaveBeenCalledTimes(1)
+    expect(
+      await screen.findAllByText('Containing folder open request sent to the system opener.'),
+    ).not.toHaveLength(0)
   })
 
-  it('shows an inline error when external open fails', async () => {
-    const onOpenExternal = vi.fn().mockRejectedValue(new Error('Unable to open file externally.'))
+  it('shows an inline error when external file open fails', async () => {
+    const onOpenExternalFile = vi.fn().mockRejectedValue(new Error('Unable to open file externally.'))
 
     render(
       <CommanderFileDialog
@@ -112,14 +121,39 @@ describe('CommanderFileDialog', () => {
         mode="blocked"
         onChange={vi.fn()}
         onClose={vi.fn()}
-        onOpenExternal={onOpenExternal}
+        onOpenExternalFile={onOpenExternalFile}
         onSave={vi.fn()}
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Open externally' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Open file' }))
 
     expect(await screen.findAllByText('Unable to open file externally.')).not.toHaveLength(0)
+  })
+
+  it('shows an inline error when external folder open fails', async () => {
+    const onOpenExternalFolder = vi
+      .fn()
+      .mockRejectedValue(new Error('Unable to open containing folder externally.'))
+
+    render(
+      <CommanderFileDialog
+        blockedReason="File is binary or not UTF-8 text. Open it with an external tool."
+        content=""
+        dirty={false}
+        entryName="binary.dat"
+        entryPath="/workspace/tmp/binary.dat"
+        mode="blocked"
+        onChange={vi.fn()}
+        onClose={vi.fn()}
+        onOpenExternalFolder={onOpenExternalFolder}
+        onSave={vi.fn()}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open containing folder' }))
+
+    expect(await screen.findAllByText('Unable to open containing folder externally.')).not.toHaveLength(0)
   })
 
   it('renders a read-only hex preview for binary file views', () => {
@@ -132,7 +166,8 @@ describe('CommanderFileDialog', () => {
         mode="view"
         onChange={vi.fn()}
         onClose={vi.fn()}
-        onOpenExternal={vi.fn()}
+        onOpenExternalFile={vi.fn()}
+        onOpenExternalFolder={vi.fn()}
         onSave={vi.fn()}
         previewBytes={4}
         previewKind="hex"
@@ -147,6 +182,7 @@ describe('CommanderFileDialog', () => {
       '00000000  00 01 02 03                                      |....|',
     )
     expect(screen.getByText('Binary file · 4 B · Previewing 4 B')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Open externally' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Open file' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Open containing folder' })).toBeInTheDocument()
   })
 })

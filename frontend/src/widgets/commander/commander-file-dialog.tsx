@@ -36,7 +36,8 @@ export type CommanderFileDialogProps = {
   entryName: string
   entryPath: string
   mode: CommanderFileDialogMode
-  onOpenExternal?: () => Promise<void> | void
+  onOpenExternalFile?: () => Promise<void> | void
+  onOpenExternalFolder?: () => Promise<void> | void
   previewBytes?: number
   previewKind?: CommanderFilePreviewKind
   sizeBytes?: number
@@ -56,7 +57,8 @@ export function CommanderFileDialog({
   entryName,
   entryPath,
   mode,
-  onOpenExternal,
+  onOpenExternalFile,
+  onOpenExternalFolder,
   previewBytes,
   previewKind,
   sizeBytes,
@@ -72,6 +74,7 @@ export function CommanderFileDialog({
   const [externalOpenError, setExternalOpenError] = useState<string | null>(null)
   const [externalOpenSuccess, setExternalOpenSuccess] = useState<string | null>(null)
   const [externalOpenPending, setExternalOpenPending] = useState(false)
+  const [externalOpenPendingAction, setExternalOpenPendingAction] = useState<'file' | 'folder' | null>(null)
   const isEditable = mode === 'edit'
   const isBlocked = mode === 'blocked'
   const isHexPreview = !isEditable && !isBlocked && previewKind === 'hex'
@@ -136,6 +139,7 @@ export function CommanderFileDialog({
     setExternalOpenError(null)
     setExternalOpenSuccess(null)
     setExternalOpenPending(false)
+    setExternalOpenPendingAction(null)
 
     if (!textAreaRef.current) {
       return
@@ -155,24 +159,47 @@ export function CommanderFileDialog({
     syncCursorMetrics()
   }, [content, syncCursorMetrics])
 
-  const handleOpenExternal = useCallback(async () => {
-    if (!onOpenExternal || externalOpenPending) {
-      return
-    }
+  const handleOpenExternal = useCallback(
+    async (action: 'file' | 'folder') => {
+      const openAction = action === 'folder' ? onOpenExternalFolder : onOpenExternalFile
 
-    try {
-      setExternalOpenPending(true)
-      setExternalOpenError(null)
-      setExternalOpenSuccess(null)
-      await onOpenExternal()
-      setExternalOpenSuccess('Open request sent to the system opener.')
-    } catch (error) {
-      setExternalOpenSuccess(null)
-      setExternalOpenError(error instanceof Error ? error.message : 'Unable to open file externally.')
-    } finally {
-      setExternalOpenPending(false)
-    }
-  }, [externalOpenPending, onOpenExternal])
+      if (!openAction || externalOpenPending) {
+        return
+      }
+
+      const successMessage =
+        action === 'folder'
+          ? 'Containing folder open request sent to the system opener.'
+          : 'File open request sent to the system opener.'
+      const fallbackErrorMessage =
+        action === 'folder'
+          ? 'Unable to open containing folder externally.'
+          : 'Unable to open file externally.'
+
+      try {
+        setExternalOpenPending(true)
+        setExternalOpenPendingAction(action)
+        setExternalOpenError(null)
+        setExternalOpenSuccess(null)
+        await openAction()
+        setExternalOpenSuccess(successMessage)
+      } catch (error) {
+        setExternalOpenSuccess(null)
+        setExternalOpenError(error instanceof Error ? error.message : fallbackErrorMessage)
+      } finally {
+        setExternalOpenPending(false)
+        setExternalOpenPendingAction(null)
+      }
+    },
+    [externalOpenPending, onOpenExternalFile, onOpenExternalFolder],
+  )
+
+  const openExternalFileLabel =
+    externalOpenPending && externalOpenPendingAction === 'file' ? 'Opening file…' : 'Open file'
+  const openExternalFolderLabel =
+    externalOpenPending && externalOpenPendingAction === 'folder'
+      ? 'Opening folder…'
+      : 'Open containing folder'
 
   return (
     <Box
@@ -214,15 +241,26 @@ export function CommanderFileDialog({
           </Box>
           <Box runaComponent="commander-file-dialog-actions" style={commanderFileDialogActionsStyle}>
             {isBlocked || isHexPreview ? (
-              <Button
-                disabled={!onOpenExternal || externalOpenPending}
-                onClick={() => {
-                  void handleOpenExternal()
-                }}
-                runaComponent="commander-file-dialog-open-external"
-              >
-                {externalOpenPending ? 'Opening…' : 'Open externally'}
-              </Button>
+              <>
+                <Button
+                  disabled={!onOpenExternalFile || externalOpenPending}
+                  onClick={() => {
+                    void handleOpenExternal('file')
+                  }}
+                  runaComponent="commander-file-dialog-open-external-file"
+                >
+                  {openExternalFileLabel}
+                </Button>
+                <Button
+                  disabled={!onOpenExternalFolder || externalOpenPending}
+                  onClick={() => {
+                    void handleOpenExternal('folder')
+                  }}
+                  runaComponent="commander-file-dialog-open-external-folder"
+                >
+                  {openExternalFolderLabel}
+                </Button>
+              </>
             ) : null}
             {isEditable ? (
               <Button

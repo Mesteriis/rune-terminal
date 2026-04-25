@@ -33,9 +33,10 @@ capability.
   commander quick filter now also reloads through backend
   `GET /api/v1/fs/list?query=...` instead of filtering only the
   frontend-projected pane rows;
-  that blocked dialog can now hand the selected path off to the host OS
-  opener, but commander still does not claim a richer external-tool
-  chooser or a browser-verifiable opener side effect
+  that blocked dialog can now hand either the selected file or its
+  containing folder off to the host OS opener, but commander still does
+  not claim a broader external-tool registry/chooser or a
+  browser-verifiable opener side effect
 - commander still does not claim in-place binary editing or a full binary
   inspector; the frontend now exposes only a bounded backend-owned shell
   summary (`default shell`, `TERM`, `COLORTERM`, `workspace root`) rather

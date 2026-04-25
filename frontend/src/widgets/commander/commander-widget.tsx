@@ -444,8 +444,12 @@ export function CommanderWidget() {
               commanderActions.closeFileDialog()
               focusCommanderRoot()
             }}
-            onOpenExternal={async () => {
+            onOpenExternalFile={async () => {
               await commanderActions.openFileExternally()
+              focusCommanderRoot()
+            }}
+            onOpenExternalFolder={async () => {
+              await commanderActions.openContainingFolderExternally()
               focusCommanderRoot()
             }}
             onSave={() => {

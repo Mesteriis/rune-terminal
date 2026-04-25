@@ -834,7 +834,7 @@ export function useCommanderWidget(widgetId: string) {
     widgetId,
   ])
 
-  const openFileDialogExternallyAsync = useCallback(async () => {
+  const openFileDialogEntryExternallyAsync = useCallback(async () => {
     const fileDialog = runtimeState.fileDialog
 
     if (!fileDialog) {
@@ -843,6 +843,25 @@ export function useCommanderWidget(widgetId: string) {
 
     try {
       await openCommanderFileExternally(toCommanderEntryPath(fileDialog.path, fileDialog.entryName))
+    } catch (error) {
+      onSetCommanderPaneLoadError({
+        widgetId,
+        paneId: fileDialog.paneId,
+        path: fileDialog.path,
+        errorMessage: toLoadErrorMessage(error),
+      })
+    }
+  }, [onSetCommanderPaneLoadError, runtimeState.fileDialog, widgetId])
+
+  const openFileDialogFolderExternallyAsync = useCallback(async () => {
+    const fileDialog = runtimeState.fileDialog
+
+    if (!fileDialog) {
+      return
+    }
+
+    try {
+      await openCommanderFileExternally(fileDialog.path)
     } catch (error) {
       onSetCommanderPaneLoadError({
         widgetId,
@@ -1208,7 +1227,10 @@ export function useCommanderWidget(widgetId: string) {
         void saveFileDialogAsync()
       },
       openFileExternally: () => {
-        void openFileDialogExternallyAsync()
+        void openFileDialogEntryExternallyAsync()
+      },
+      openContainingFolderExternally: () => {
+        void openFileDialogFolderExternallyAsync()
       },
       closeFileDialog: () => onCloseCommanderFileDialog({ widgetId }),
       clearActivePaneFilter: () => {
@@ -1307,7 +1329,8 @@ export function useCommanderWidget(widgetId: string) {
       confirmPendingOperationAsync,
       openFileEditor,
       openFilePreview,
-      openFileDialogExternallyAsync,
+      openFileDialogEntryExternallyAsync,
+      openFileDialogFolderExternallyAsync,
       openPaneEntry,
       resolvePendingTransferConflictAsync,
       runtimeState.activePane,
