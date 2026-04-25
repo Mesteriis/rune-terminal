@@ -1,5 +1,6 @@
 import { type DockviewApi, type SerializedDockview } from 'dockview-react'
 
+import { type WorkspaceWidgetKindCatalogEntry } from '@/shared/api/workspace'
 import { hasDockviewWorkspaceBootstrap, seedDockviewWorkspaceBootstrap } from './dockview-workspace.bootstrap'
 import { type WorkspaceLayoutTab } from './dockview-workspace.persistence'
 
@@ -14,6 +15,7 @@ type ResolveDockviewWorkspaceReadyOptions = {
   activeWorkspaceId: number
   api: DockviewApi
   hasPersistedWorkspaceState: boolean
+  widgetCatalogEntries?: WorkspaceWidgetKindCatalogEntry[]
   workspaceTabs: WorkspaceLayoutTab[]
 }
 
@@ -22,6 +24,7 @@ export function resolveDockviewWorkspaceReadyState({
   activeWorkspaceId,
   api,
   hasPersistedWorkspaceState,
+  widgetCatalogEntries,
   workspaceTabs,
 }: ResolveDockviewWorkspaceReadyOptions): DockviewWorkspaceReadyResult {
   if (hasDockviewWorkspaceBootstrap(api)) {
@@ -42,6 +45,6 @@ export function resolveDockviewWorkspaceReadyState({
 
   return {
     type: 'seeded-default',
-    snapshot: seedDockviewWorkspaceBootstrap(api),
+    snapshot: seedDockviewWorkspaceBootstrap(api, widgetCatalogEntries),
   }
 }

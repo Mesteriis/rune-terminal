@@ -1,5 +1,5 @@
 import type { DockviewApi } from 'dockview-react'
-import { FolderTree, Monitor, Plus, Settings2 } from 'lucide-react'
+import { Code2, FileText, FolderTree, Globe2, Monitor, Plus, Settings2 } from 'lucide-react'
 import { useUnit } from 'effector-react'
 import { useEffect, useRef, useState } from 'react'
 
@@ -8,11 +8,18 @@ import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { Box, Button, Separator, Surface, Text } from '@/shared/ui/primitives'
 import { createTerminalTab } from '@/features/terminal/api/client'
 import {
+  getWorkspaceWidgetKindEntry,
+  isWorkspaceWidgetKindCreatable,
+  type WorkspaceWidgetCatalogState,
+} from '@/features/workspace/model/widget-catalog'
+import {
   railButtonStyle,
+  resolveUtilityMenuItemStyle,
   rightRailStyle,
   utilityMenuItemStyle,
   utilityMenuMetaStyle,
   utilityMenuSeparatorStyle,
+  utilityMenuStatusTextStyle,
   utilityMenuStyle,
   utilityMenuTitleStyle,
   utilityMenuWrapStyle,
@@ -27,23 +34,44 @@ const railIconProps = {
 type RightActionRailWidgetProps = {
   dockviewApiRef: { current: DockviewApi | null }
   onAddWorkspace: () => void
+  widgetCatalog: WorkspaceWidgetCatalogState
 }
 
-function createNextCommanderPanelId(containerApi: DockviewApi) {
-  if (!containerApi.getPanel('tool')) {
-    return 'tool'
+function getUnavailableWidgetReason(kind: string, widgetCatalog: WorkspaceWidgetCatalogState) {
+  if (widgetCatalog.status === 'loading') {
+    return 'Loading catalog'
   }
 
-  let index = 2
-
-  while (containerApi.getPanel(`tool-${index}`)) {
-    index += 1
+  if (widgetCatalog.status === 'error') {
+    return widgetCatalog.errorMessage ?? 'Catalog unavailable'
   }
 
-  return `tool-${index}`
+  const entry = getWorkspaceWidgetKindEntry(widgetCatalog.entries, kind)
+
+  if (!entry) {
+    return 'Not reported by backend'
+  }
+
+  if (entry.status === 'planned') {
+    return 'Planned'
+  }
+
+  if (entry.status === 'frontend-local') {
+    return 'Frontend-local'
+  }
+
+  if (entry.supports_path) {
+    return 'Requires path handoff'
+  }
+
+  return 'Unavailable'
 }
 
-export function RightActionRailWidget({ dockviewApiRef, onAddWorkspace }: RightActionRailWidgetProps) {
+export function RightActionRailWidget({
+  dockviewApiRef,
+  onAddWorkspace,
+  widgetCatalog,
+}: RightActionRailWidgetProps) {
   const onOpenBodyModal = useUnit(openBodyModal)
   const [isUtilityMenuOpen, setIsUtilityMenuOpen] = useState(false)
   const menuWrapRef = useRef<HTMLDivElement | null>(null)
@@ -98,6 +126,10 @@ export function RightActionRailWidget({ dockviewApiRef, onAddWorkspace }: RightA
   }
 
   const handleCreateTerminalWidget = async () => {
+    if (!isWorkspaceWidgetKindCreatable(widgetCatalog.entries, 'terminal')) {
+      return
+    }
+
     const dockviewApi = dockviewApiRef.current
 
     if (!dockviewApi) {
@@ -127,25 +159,14 @@ export function RightActionRailWidget({ dockviewApiRef, onAddWorkspace }: RightA
     setIsUtilityMenuOpen(false)
   }
 
-  const handleCreateCommanderWidget = () => {
-    const dockviewApi = dockviewApiRef.current
-
-    if (!dockviewApi) {
-      return
-    }
-
-    const nextPanelId = createNextCommanderPanelId(dockviewApi)
-
-    dockviewApi.addPanel({
-      id: nextPanelId,
-      title: 'tool',
-      component: 'default',
-      tabComponent: 'commander-tab',
-      position: getPanelPosition(),
-    })
-
-    setIsUtilityMenuOpen(false)
-  }
+  const terminalEntry = getWorkspaceWidgetKindEntry(widgetCatalog.entries, 'terminal')
+  const filesEntry = getWorkspaceWidgetKindEntry(widgetCatalog.entries, 'files')
+  const commanderEntry = getWorkspaceWidgetKindEntry(widgetCatalog.entries, 'commander')
+  const previewEntry = getWorkspaceWidgetKindEntry(widgetCatalog.entries, 'preview')
+  const editorEntry = getWorkspaceWidgetKindEntry(widgetCatalog.entries, 'editor')
+  const webEntry = getWorkspaceWidgetKindEntry(widgetCatalog.entries, 'web')
+  const canCreateTerminal = isWorkspaceWidgetKindCreatable(widgetCatalog.entries, 'terminal')
+  const canCreateCommander = false
 
   return (
     <RunaDomScopeProvider component="right-action-rail-widget">
@@ -189,37 +210,178 @@ export function RightActionRailWidget({ dockviewApiRef, onAddWorkspace }: RightA
                 runaComponent="right-action-rail-utility-menu-separator"
                 style={utilityMenuSeparatorStyle}
               />
-              <Button
-                aria-label="Create terminal widget"
-                onClick={handleCreateTerminalWidget}
-                runaComponent="right-action-rail-create-terminal"
-                role="menuitem"
-                style={utilityMenuItemStyle}
-              >
-                <Monitor {...railIconProps} />
-                <Box runaComponent="right-action-rail-create-terminal-meta" style={utilityMenuMetaStyle}>
-                  <Text runaComponent="right-action-rail-create-terminal-title" style={utilityMenuTitleStyle}>
-                    Terminal
-                  </Text>
-                </Box>
-              </Button>
-              <Button
-                aria-label="Create commander widget"
-                onClick={handleCreateCommanderWidget}
-                runaComponent="right-action-rail-create-commander"
-                role="menuitem"
-                style={utilityMenuItemStyle}
-              >
-                <FolderTree {...railIconProps} />
-                <Box runaComponent="right-action-rail-create-commander-meta" style={utilityMenuMetaStyle}>
-                  <Text
-                    runaComponent="right-action-rail-create-commander-title"
-                    style={utilityMenuTitleStyle}
-                  >
-                    Commander
-                  </Text>
-                </Box>
-              </Button>
+              {terminalEntry ? (
+                <Button
+                  aria-label={
+                    canCreateTerminal
+                      ? `Create ${terminalEntry.label} widget`
+                      : `${terminalEntry.label} widget unavailable: ${getUnavailableWidgetReason(
+                          'terminal',
+                          widgetCatalog,
+                        )}`
+                  }
+                  disabled={!canCreateTerminal}
+                  onClick={handleCreateTerminalWidget}
+                  runaComponent="right-action-rail-create-terminal"
+                  role="menuitem"
+                  style={resolveUtilityMenuItemStyle(!canCreateTerminal)}
+                >
+                  <Monitor {...railIconProps} />
+                  <Box runaComponent="right-action-rail-create-terminal-meta" style={utilityMenuMetaStyle}>
+                    <Text
+                      runaComponent="right-action-rail-create-terminal-title"
+                      style={utilityMenuTitleStyle}
+                    >
+                      {terminalEntry.label}
+                    </Text>
+                    {!canCreateTerminal ? (
+                      <Text
+                        runaComponent="right-action-rail-create-terminal-status"
+                        style={utilityMenuStatusTextStyle}
+                      >
+                        {getUnavailableWidgetReason('terminal', widgetCatalog)}
+                      </Text>
+                    ) : null}
+                  </Box>
+                </Button>
+              ) : null}
+              {filesEntry ? (
+                <Button
+                  aria-label={`${filesEntry.label} widget unavailable: ${getUnavailableWidgetReason(
+                    'files',
+                    widgetCatalog,
+                  )}`}
+                  disabled
+                  runaComponent="right-action-rail-create-files"
+                  role="menuitem"
+                  style={resolveUtilityMenuItemStyle(true)}
+                >
+                  <FileText {...railIconProps} />
+                  <Box runaComponent="right-action-rail-create-files-meta" style={utilityMenuMetaStyle}>
+                    <Text runaComponent="right-action-rail-create-files-title" style={utilityMenuTitleStyle}>
+                      {filesEntry.label}
+                    </Text>
+                    <Text
+                      runaComponent="right-action-rail-create-files-status"
+                      style={utilityMenuStatusTextStyle}
+                    >
+                      {getUnavailableWidgetReason('files', widgetCatalog)}
+                    </Text>
+                  </Box>
+                </Button>
+              ) : null}
+              {commanderEntry ? (
+                <Button
+                  aria-label={
+                    canCreateCommander
+                      ? `Create ${commanderEntry.label} widget`
+                      : `${commanderEntry.label} widget unavailable: ${getUnavailableWidgetReason(
+                          'commander',
+                          widgetCatalog,
+                        )}`
+                  }
+                  disabled={!canCreateCommander}
+                  runaComponent="right-action-rail-create-commander"
+                  role="menuitem"
+                  style={resolveUtilityMenuItemStyle(!canCreateCommander)}
+                >
+                  <FolderTree {...railIconProps} />
+                  <Box runaComponent="right-action-rail-create-commander-meta" style={utilityMenuMetaStyle}>
+                    <Text
+                      runaComponent="right-action-rail-create-commander-title"
+                      style={utilityMenuTitleStyle}
+                    >
+                      {commanderEntry.label}
+                    </Text>
+                    {!canCreateCommander ? (
+                      <Text
+                        runaComponent="right-action-rail-create-commander-status"
+                        style={utilityMenuStatusTextStyle}
+                      >
+                        {getUnavailableWidgetReason('commander', widgetCatalog)}
+                      </Text>
+                    ) : null}
+                  </Box>
+                </Button>
+              ) : null}
+              {previewEntry ? (
+                <Button
+                  aria-label={`${previewEntry.label} widget unavailable: ${getUnavailableWidgetReason(
+                    'preview',
+                    widgetCatalog,
+                  )}`}
+                  disabled
+                  runaComponent="right-action-rail-create-preview"
+                  role="menuitem"
+                  style={resolveUtilityMenuItemStyle(true)}
+                >
+                  <FileText {...railIconProps} />
+                  <Box runaComponent="right-action-rail-create-preview-meta" style={utilityMenuMetaStyle}>
+                    <Text
+                      runaComponent="right-action-rail-create-preview-title"
+                      style={utilityMenuTitleStyle}
+                    >
+                      {previewEntry.label}
+                    </Text>
+                    <Text
+                      runaComponent="right-action-rail-create-preview-status"
+                      style={utilityMenuStatusTextStyle}
+                    >
+                      {getUnavailableWidgetReason('preview', widgetCatalog)}
+                    </Text>
+                  </Box>
+                </Button>
+              ) : null}
+              {editorEntry ? (
+                <Button
+                  aria-label={`${editorEntry.label} widget unavailable: ${getUnavailableWidgetReason(
+                    'editor',
+                    widgetCatalog,
+                  )}`}
+                  disabled
+                  runaComponent="right-action-rail-create-editor"
+                  role="menuitem"
+                  style={resolveUtilityMenuItemStyle(true)}
+                >
+                  <Code2 {...railIconProps} />
+                  <Box runaComponent="right-action-rail-create-editor-meta" style={utilityMenuMetaStyle}>
+                    <Text runaComponent="right-action-rail-create-editor-title" style={utilityMenuTitleStyle}>
+                      {editorEntry.label}
+                    </Text>
+                    <Text
+                      runaComponent="right-action-rail-create-editor-status"
+                      style={utilityMenuStatusTextStyle}
+                    >
+                      {getUnavailableWidgetReason('editor', widgetCatalog)}
+                    </Text>
+                  </Box>
+                </Button>
+              ) : null}
+              {webEntry ? (
+                <Button
+                  aria-label={`${webEntry.label} widget unavailable: ${getUnavailableWidgetReason(
+                    'web',
+                    widgetCatalog,
+                  )}`}
+                  disabled
+                  runaComponent="right-action-rail-create-web"
+                  role="menuitem"
+                  style={resolveUtilityMenuItemStyle(true)}
+                >
+                  <Globe2 {...railIconProps} />
+                  <Box runaComponent="right-action-rail-create-web-meta" style={utilityMenuMetaStyle}>
+                    <Text runaComponent="right-action-rail-create-web-title" style={utilityMenuTitleStyle}>
+                      {webEntry.label}
+                    </Text>
+                    <Text
+                      runaComponent="right-action-rail-create-web-status"
+                      style={utilityMenuStatusTextStyle}
+                    >
+                      {getUnavailableWidgetReason('web', widgetCatalog)}
+                    </Text>
+                  </Box>
+                </Button>
+              ) : null}
             </Surface>
           ) : null}
           <Button

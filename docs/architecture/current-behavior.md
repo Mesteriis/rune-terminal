@@ -14,6 +14,11 @@ It is intentionally operational, not narrative.
   - `terminal` and `files` are backend-owned available kinds
   - `commander` is explicitly marked `frontend-local`
   - `preview`, `editor`, and `web` are explicitly marked `planned`
+- The rewritten Dockview shell consumes that catalog for default panel
+  seeding and right-rail widget discoverability. The right rail only creates
+  catalog-creatable runtime widgets; frontend-local, path-handoff, and
+  planned kinds are shown as disabled instead of being silently hardcoded as
+  creatable.
 - Focusing a tab synchronizes the active widget to the first visible leaf in that tab's window layout.
 - Focusing a widget also synchronizes the active tab if that widget belongs to a known tab.
 - Tabs are the shell-level navigation unit.

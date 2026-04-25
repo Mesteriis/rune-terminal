@@ -2,11 +2,12 @@ import { DockviewReact, type DockviewTheme } from 'dockview-react'
 import { useRef } from 'react'
 import { useUnit } from 'effector-react'
 
+import { useWorkspaceWidgetCatalog } from '@/features/workspace/model/widget-catalog'
 import { closeRuntimeWindow, requestRuntimeSettings, requestRuntimeShutdown } from '@/shared/api/runtime'
 import { $isAiSidebarOpen, toggleAiSidebar } from '@/shared/model/app'
 import { BODY_MODAL_HOST_ID } from '@/shared/model/modal'
 import { RunaDomScopeProvider, useRunaDomAutoTagging } from '@/shared/ui/dom-id'
-import { Box } from '@/shared/ui/primitives'
+import { Box, Text } from '@/shared/ui/primitives'
 import {
   CommanderDockviewTabWidget,
   DockviewPanelWidget,
@@ -22,6 +23,7 @@ import {
   dockviewContainerStyle,
   mainShellStyle,
   rootStyle,
+  workspaceCatalogStatusStyle,
   workspaceStyle,
 } from './app-shell.styles'
 import { useDockviewWorkspace } from './use-dockview-workspace'
@@ -46,6 +48,7 @@ const tabComponents = {
 /** Composes the shell topbar, Dockview workspace, AI sidebar, and modal hosts. */
 export function App() {
   const [isAiSidebarOpen, onToggleAiSidebar] = useUnit([$isAiSidebarOpen, toggleAiSidebar])
+  const widgetCatalog = useWorkspaceWidgetCatalog()
   const contentAreaRef = useRef<HTMLDivElement | null>(null)
   const {
     activeWorkspaceId,
@@ -55,7 +58,7 @@ export function App() {
     handleAddWorkspace,
     handleDockviewReady,
     handleSelectWorkspace,
-  } = useDockviewWorkspace()
+  } = useDockviewWorkspace({ widgetCatalogEntries: widgetCatalog.entries })
   const appRootRef = useRunaDomAutoTagging('app-root')
 
   async function handleCloseWindow() {
@@ -104,18 +107,33 @@ export function App() {
                 runaComponent="app-dockview-container"
                 style={dockviewContainerStyle}
               >
-                <DockviewReact
-                  components={components}
-                  onReady={handleDockviewReady}
-                  rightHeaderActionsComponent={TerminalDockviewHeaderActionsWidget}
-                  tabComponents={tabComponents}
-                  theme={runaDockviewTheme}
-                />
+                {widgetCatalog.status === 'loading' ? (
+                  <Box
+                    aria-label="Loading workspace widget catalog"
+                    role="status"
+                    runaComponent="workspace-widget-catalog-loading"
+                    style={workspaceCatalogStatusStyle}
+                  >
+                    <Text runaComponent="workspace-widget-catalog-loading-text">Loading widget catalog</Text>
+                  </Box>
+                ) : (
+                  <DockviewReact
+                    components={components}
+                    onReady={handleDockviewReady}
+                    rightHeaderActionsComponent={TerminalDockviewHeaderActionsWidget}
+                    tabComponents={tabComponents}
+                    theme={runaDockviewTheme}
+                  />
+                )}
               </Box>
             </Box>
           </Box>
         </Box>
-        <RightActionRailWidget dockviewApiRef={dockviewApiRef} onAddWorkspace={handleAddWorkspace} />
+        <RightActionRailWidget
+          dockviewApiRef={dockviewApiRef}
+          onAddWorkspace={handleAddWorkspace}
+          widgetCatalog={widgetCatalog}
+        />
         <ModalHostWidget hostId={BODY_MODAL_HOST_ID} scope="body" />
       </Box>
     </RunaDomScopeProvider>

@@ -53,6 +53,20 @@ export const utilityMenuStyle: CSSProperties = {
   WebkitBackdropFilter: 'var(--blur-glass-md)',
 }
 
+export function resolveUtilityMenuItemStyle(isDisabled = false): CSSProperties {
+  return {
+    width: '100%',
+    justifyContent: 'flex-start',
+    gap: 'var(--gap-sm)',
+    background: 'transparent',
+    boxShadow: 'none',
+    backdropFilter: 'none',
+    WebkitBackdropFilter: 'none',
+    cursor: isDisabled ? 'not-allowed' : 'pointer',
+    opacity: isDisabled ? 0.58 : 1,
+  }
+}
+
 export const utilityMenuItemStyle: CSSProperties = {
   width: '100%',
   justifyContent: 'flex-start',
@@ -82,6 +96,13 @@ export const utilityMenuTitleStyle: CSSProperties = {
   fontSize: 'var(--font-size-md)',
   lineHeight: 'var(--line-height-md)',
   fontWeight: 600,
+}
+
+export const utilityMenuStatusTextStyle: CSSProperties = {
+  color: 'var(--color-text-muted)',
+  fontSize: 'var(--font-size-sm)',
+  lineHeight: 'var(--line-height-sm)',
+  fontWeight: 500,
 }
 
 export const utilityMenuSeparatorStyle: CSSProperties = {

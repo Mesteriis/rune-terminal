@@ -28,6 +28,11 @@ This is the canonical workspace entrypoint for tab/widget/layout behavior.
 - Expose the current widget-kind catalog with honest implementation status:
   `terminal` and `files` are available, `commander` is frontend-local, and
   `preview` / `editor` / `web` are planned.
+- Seed the rewritten Dockview shell and right-rail widget menu from that
+  catalog: `terminal` remains the only right-rail-created runtime widget,
+  `commander` may still appear as an explicit frontend-local default panel,
+  and future/path-backed widget kinds stay visible but disabled until their
+  frontend runtime path exists.
 
 ## Contract rules
 
@@ -41,8 +46,9 @@ This is the canonical workspace entrypoint for tab/widget/layout behavior.
 - Closing the last remaining tab leaves an explicit empty workspace state.
 - Cross-group drag between pinned and regular tabs is rejected.
 - Multi-session-in-one-terminal-block parity is not implemented on the active path.
-- Dockview still does not consume the backend widget-kind catalog as its
-  source of truth; that migration is the next workspace slice.
+- Dockview persistence is still frontend-local `localStorage`; the current
+  catalog migration covers initial seeding and right-rail discoverability,
+  not backend-owned Dockview layout persistence.
 
 ## Deep links
 

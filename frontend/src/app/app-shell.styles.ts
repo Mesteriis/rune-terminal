@@ -157,3 +157,17 @@ export const dockviewContainerStyle = {
   backdropFilter: 'none',
   WebkitBackdropFilter: 'none',
 }
+
+export const workspaceCatalogStatusStyle = {
+  height: '100%',
+  width: '100%',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  color: 'var(--color-text-muted)',
+  fontSize: 'var(--font-size-md)',
+  lineHeight: 'var(--line-height-md)',
+  border: '1px solid var(--color-border-subtle)',
+  borderRadius: 'var(--radius-md)',
+  background: 'var(--color-surface-glass-soft)',
+}

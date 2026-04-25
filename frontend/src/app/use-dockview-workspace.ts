@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { type DockviewApi, type DockviewReadyEvent } from 'dockview-react'
 
+import { type WorkspaceWidgetKindCatalogEntry } from '@/shared/api/workspace'
 import { addDockviewWorkspace, selectDockviewWorkspace } from './dockview-workspace.actions'
 import { dockviewWorkspaceClient, type DockviewWorkspaceClient } from './dockview-workspace.client'
 import {
@@ -28,10 +29,14 @@ const DOCKVIEW_PERSIST_DEBOUNCE_MS = 120
 
 type UseDockviewWorkspaceOptions = {
   client?: DockviewWorkspaceClient
+  widgetCatalogEntries?: WorkspaceWidgetKindCatalogEntry[]
 }
 
 /** Orchestrates workspace tabs, Dockview startup, and pluggable snapshot persistence. */
-export function useDockviewWorkspace({ client = dockviewWorkspaceClient }: UseDockviewWorkspaceOptions = {}) {
+export function useDockviewWorkspace({
+  client = dockviewWorkspaceClient,
+  widgetCatalogEntries,
+}: UseDockviewWorkspaceOptions = {}) {
   const workspaceClientRef = useRef(client)
   const dockviewApiRef = useRef<DockviewApi | null>(null)
   const dockviewContainerRef = useRef<HTMLDivElement | null>(null)
@@ -128,6 +133,7 @@ export function useDockviewWorkspace({ client = dockviewWorkspaceClient }: UseDo
       activeWorkspaceId: activeWorkspaceIdRef.current,
       api,
       hasPersistedWorkspaceState: Boolean(initialWorkspaceStateRef.current),
+      widgetCatalogEntries,
       workspaceTabs: workspaceTabsRef.current,
     })
 

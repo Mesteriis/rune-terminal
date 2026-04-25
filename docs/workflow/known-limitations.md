@@ -45,10 +45,11 @@ capability.
   preview span) for the existing `F3` hex preview and blocked `F4` path,
   but it remains intentionally narrower than a dedicated binary inspection
   tool
-- backend widget-kind discovery now exists at
-  `GET /api/v1/workspace/widget-kinds`, but Dockview has not yet migrated
-  to backend widget catalog truth; `commander` is intentionally reported as
-  `frontend-local`, while `preview`, `editor`, and `web` remain planned
+- backend widget-kind discovery now drives Dockview initial seeding and the
+  right-rail widget menu, but Dockview layout persistence is still
+  frontend-local; `commander` is intentionally reported as `frontend-local`,
+  `files` remains a path-handoff surface rather than a generic right-rail
+  create action, and `preview`, `editor`, and `web` remain planned
 - the frontend has no ESLint / Biome yet — `lint:active` and `lint:all`
   both delegate to `tsc --noEmit`
 
