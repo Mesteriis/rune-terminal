@@ -8,6 +8,7 @@
   - DB-backed AI conversations with explicit create/switch/rename lifecycle
   - provider-native CLI session continuity scoped per conversation
   - shell-visible AI conversation navigator with recent-thread menu over the same backend conversation contract
+  - local search/filter inside the AI conversation navigator over the loaded backend conversation list
   - backend-owned agent provider catalog
   - active conversation provider resolution
   - frontend AI/provider settings surfaces
@@ -39,7 +40,7 @@
   - explicit list/create/activate/rename transport routes
   - messages persisted per conversation
   - provider session metadata persisted per conversation
-  - the AI shell header now projects that contract through a conversation navigator menu with active-thread summary, recent thread list, `New` creation action, and inline rename for the active thread
+  - the AI shell header now projects that contract through a conversation navigator menu with active-thread summary, recent thread list, local search/filter over the loaded list, `New` creation action, and inline rename for the active thread
 - CLI-backed provider session continuity is conversation-scoped:
   - `codex` reuses the stored provider-native thread id for the active conversation
   - `claude` reuses the stored session id for the active conversation
@@ -121,7 +122,7 @@
 
 ## Known limitations
 
-- conversation management is still intentionally narrow: create + switch + active-thread rename only. Archive, delete, search, and multi-panel conversation views are not implemented in this slice.
+- conversation management is still intentionally narrow: create + switch + active-thread rename plus local navigator filtering only. Archive, delete, and multi-panel conversation views are not implemented in this slice.
 - CLI providers currently expose buffered chat completion through the existing SSE route; token-by-token provider streaming is not implemented.
 - CLI-native tool calls are not yet mediated through `core/toolruntime`, policy approval, or audit events.
 - The OpenAI-compatible HTTP source path is also buffered and non-streaming in this slice.

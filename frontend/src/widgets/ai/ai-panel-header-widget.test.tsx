@@ -124,4 +124,53 @@ describe('AiPanelHeaderWidget', () => {
 
     resolveRename?.()
   })
+
+  it('filters the conversation list locally inside the navigator', () => {
+    render(
+      <AiPanelHeaderWidget
+        activeConversationID="conv_2"
+        conversations={[
+          {
+            id: 'conv_1',
+            title: 'Backend audit thread',
+            created_at: '2026-04-24T09:00:00Z',
+            updated_at: '2026-04-24T09:05:00Z',
+            message_count: 2,
+          },
+          {
+            id: 'conv_2',
+            title: 'Terminal restart notes',
+            created_at: '2026-04-24T10:00:00Z',
+            updated_at: '2026-04-24T10:01:00Z',
+            message_count: 1,
+          },
+        ]}
+        mode="chat"
+        onModeChange={() => {}}
+        title="AI Rune"
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Conversation menu' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search conversations' }), {
+      target: { value: 'terminal' },
+    })
+
+    expect(
+      screen.getByRole('option', {
+        name: 'Open conversation Terminal restart notes',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('option', {
+        name: 'Open conversation Backend audit thread',
+      }),
+    ).not.toBeInTheDocument()
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search conversations' }), {
+      target: { value: 'missing' },
+    })
+
+    expect(screen.getByText('No conversations match this filter.')).toBeInTheDocument()
+  })
 })

@@ -199,6 +199,15 @@ export const aiHeaderConversationDropdownHeaderStyle: CSSProperties = {
   ...aiPlainBlockStyle,
   width: '100%',
   display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'stretch',
+  gap: 'var(--space-sm)',
+}
+
+export const aiHeaderConversationDropdownHeaderTopStyle: CSSProperties = {
+  ...aiPlainBlockStyle,
+  width: '100%',
+  display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
   gap: 'var(--space-sm)',
@@ -225,6 +234,31 @@ export const aiHeaderConversationMenuMetaStyle: CSSProperties = {
   fontFamily: 'var(--font-family-mono)',
   fontSize: '10px',
   lineHeight: '14px',
+}
+
+export const aiHeaderConversationSearchWrapStyle: CSSProperties = {
+  ...aiPlainBlockStyle,
+  width: '100%',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '6px',
+}
+
+export const aiHeaderConversationSearchInputStyle: CSSProperties = {
+  width: '100%',
+}
+
+export const aiHeaderConversationEmptyStateStyle: CSSProperties = {
+  ...aiPlainBlockStyle,
+  width: '100%',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  minHeight: '72px',
+  padding: 'var(--space-sm)',
+  borderRadius: '12px',
+  border: '1px solid color-mix(in srgb, var(--color-border-strong) 52%, transparent)',
+  background: 'color-mix(in srgb, var(--color-surface-shell-header-action) 68%, transparent)',
 }
 
 export const aiHeaderConversationMenuListStyle: CSSProperties = {

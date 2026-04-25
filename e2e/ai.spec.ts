@@ -257,6 +257,42 @@ test('AI conversation navigator renames the active backend conversation', async 
     .toBe('Renamed from UI')
 })
 
+test('AI conversation navigator filters recent threads locally', async ({ page, request }) => {
+  test.setTimeout(60_000)
+
+  const terminalConversation = await createConversationViaApi(request)
+  await renameConversationViaApi(request, terminalConversation.id, 'Terminal runtime notes')
+
+  const backendConversation = await createConversationViaApi(request)
+  await renameConversationViaApi(request, backendConversation.id, 'Backend audit notes')
+  await activateAgentConversation(request, backendConversation.id)
+
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  await page.getByRole('button', { name: 'Toggle AI panel' }).click()
+  await expect(page.getByText('AI Rune Assistant')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Conversation menu' }).click()
+
+  const searchInput = page.getByRole('textbox', { name: 'Search conversations' })
+  await searchInput.fill('terminal')
+
+  await expect(
+    page.getByRole('option', {
+      name: 'Open conversation Terminal runtime notes',
+    }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('option', {
+      name: 'Open conversation Backend audit notes',
+    }),
+  ).toHaveCount(0)
+
+  await searchInput.fill('missing')
+  await expect(page.getByText('No conversations match this filter.')).toBeVisible()
+})
+
 test('AI sidebar runs a live Codex chat path and restores the transcript after reopen', async ({
   page,
   request,

@@ -12,9 +12,11 @@ import { Box, Button, Input, Surface, Text } from '@/shared/ui/primitives'
 import {
   aiHeaderConversationActionStyle,
   aiHeaderConversationDropdownHeaderStyle,
+  aiHeaderConversationDropdownHeaderTopStyle,
   aiHeaderConversationDropdownActionsStyle,
   aiHeaderConversationDropdownStyle,
   aiHeaderConversationDropdownWrapStyle,
+  aiHeaderConversationEmptyStateStyle,
   aiHeaderConversationGroupStyle,
   aiHeaderConversationLabelStyle,
   aiHeaderConversationMenuListStyle,
@@ -26,6 +28,8 @@ import {
   aiHeaderConversationRenameActionsStyle,
   aiHeaderConversationRenameInputStyle,
   aiHeaderConversationRenamePanelStyle,
+  aiHeaderConversationSearchInputStyle,
+  aiHeaderConversationSearchWrapStyle,
   aiHeaderConversationSummaryMetaStyle,
   aiHeaderConversationSummaryStyle,
   aiHeaderConversationSummaryTitleStyle,
@@ -95,6 +99,7 @@ export function AiPanelHeaderWidget({
 }: AiPanelHeaderWidgetProps) {
   const [isConversationMenuOpen, setIsConversationMenuOpen] = useState(false)
   const [isRenamingConversation, setIsRenamingConversation] = useState(false)
+  const [conversationSearchQuery, setConversationSearchQuery] = useState('')
   const [renameDraft, setRenameDraft] = useState('')
   const [optimisticConversationTitle, setOptimisticConversationTitle] = useState('')
   const conversationMenuWrapRef = useRef<HTMLDivElement | null>(null)
@@ -112,10 +117,21 @@ export function AiPanelHeaderWidget({
     ? `${formatConversationCount(activeConversation)} · ${formatConversationUpdatedAt(activeConversation.updated_at)}`
     : 'Recent thread list'
   const canRenameConversation = activeConversation != null && onRenameConversation != null
+  const normalizedConversationSearchQuery = conversationSearchQuery.trim().toLowerCase()
+  const filteredConversations = useMemo(() => {
+    if (normalizedConversationSearchQuery === '') {
+      return conversations
+    }
+
+    return conversations.filter((conversation) =>
+      formatConversationTitle(conversation).toLowerCase().includes(normalizedConversationSearchQuery),
+    )
+  }, [conversations, normalizedConversationSearchQuery])
 
   useEffect(() => {
     if (!isConversationMenuOpen) {
       setIsRenamingConversation(false)
+      setConversationSearchQuery('')
       return
     }
 
@@ -240,41 +256,63 @@ export function AiPanelHeaderWidget({
                     style={aiHeaderConversationDropdownHeaderStyle}
                   >
                     <Box
-                      runaComponent="ai-panel-header-conversation-dropdown-summary"
-                      style={aiHeaderConversationMenuSummaryStyle}
+                      runaComponent="ai-panel-header-conversation-dropdown-header-top"
+                      style={aiHeaderConversationDropdownHeaderTopStyle}
                     >
-                      <Text style={aiHeaderConversationSummaryTitleStyle}>Conversations</Text>
-                      <Text style={aiHeaderConversationMenuMetaStyle}>
-                        {conversations.length === 1 ? '1 thread' : `${conversations.length} threads`}
-                      </Text>
+                      <Box
+                        runaComponent="ai-panel-header-conversation-dropdown-summary"
+                        style={aiHeaderConversationMenuSummaryStyle}
+                      >
+                        <Text style={aiHeaderConversationSummaryTitleStyle}>Conversations</Text>
+                        <Text style={aiHeaderConversationMenuMetaStyle}>
+                          {conversations.length === 1 ? '1 thread' : `${conversations.length} threads`}
+                          {normalizedConversationSearchQuery !== ''
+                            ? ` · ${filteredConversations.length} shown`
+                            : ''}
+                        </Text>
+                      </Box>
+                      <Box
+                        runaComponent="ai-panel-header-conversation-dropdown-actions"
+                        style={aiHeaderConversationDropdownActionsStyle}
+                      >
+                        <Button
+                          aria-label="Rename conversation"
+                          disabled={isConversationBusy || !canRenameConversation}
+                          onClick={() => setIsRenamingConversation(true)}
+                          runaComponent="ai-panel-header-conversation-rename"
+                          style={aiHeaderConversationActionStyle}
+                        >
+                          <Pencil {...conversationActionIconProps} />
+                          Rename
+                        </Button>
+                        <Button
+                          aria-label="Create conversation"
+                          disabled={isConversationBusy || onCreateConversation == null}
+                          onClick={() => {
+                            setIsConversationMenuOpen(false)
+                            onCreateConversation?.()
+                          }}
+                          runaComponent="ai-panel-header-conversation-create"
+                          style={aiHeaderConversationActionStyle}
+                        >
+                          <Plus {...conversationActionIconProps} />
+                          New
+                        </Button>
+                      </Box>
                     </Box>
                     <Box
-                      runaComponent="ai-panel-header-conversation-dropdown-actions"
-                      style={aiHeaderConversationDropdownActionsStyle}
+                      runaComponent="ai-panel-header-conversation-search-wrap"
+                      style={aiHeaderConversationSearchWrapStyle}
                     >
-                      <Button
-                        aria-label="Rename conversation"
-                        disabled={isConversationBusy || !canRenameConversation}
-                        onClick={() => setIsRenamingConversation(true)}
-                        runaComponent="ai-panel-header-conversation-rename"
-                        style={aiHeaderConversationActionStyle}
-                      >
-                        <Pencil {...conversationActionIconProps} />
-                        Rename
-                      </Button>
-                      <Button
-                        aria-label="Create conversation"
-                        disabled={isConversationBusy || onCreateConversation == null}
-                        onClick={() => {
-                          setIsConversationMenuOpen(false)
-                          onCreateConversation?.()
-                        }}
-                        runaComponent="ai-panel-header-conversation-create"
-                        style={aiHeaderConversationActionStyle}
-                      >
-                        <Plus {...conversationActionIconProps} />
-                        New
-                      </Button>
+                      <Input
+                        aria-label="Search conversations"
+                        disabled={isConversationBusy || conversations.length === 0}
+                        onChange={(event) => setConversationSearchQuery(event.currentTarget.value)}
+                        placeholder="Search conversations"
+                        runaComponent="ai-panel-header-conversation-search-input"
+                        style={aiHeaderConversationSearchInputStyle}
+                        value={conversationSearchQuery}
+                      />
                     </Box>
                   </Box>
                   {isRenamingConversation && activeConversation ? (
@@ -339,7 +377,17 @@ export function AiPanelHeaderWidget({
                     runaComponent="ai-panel-header-conversation-list"
                     style={aiHeaderConversationMenuListStyle}
                   >
-                    {conversations.map((conversation) => {
+                    {filteredConversations.length === 0 ? (
+                      <Box
+                        runaComponent="ai-panel-header-conversation-empty-state"
+                        style={aiHeaderConversationEmptyStateStyle}
+                      >
+                        <Text style={aiHeaderConversationMenuMetaStyle}>
+                          No conversations match this filter.
+                        </Text>
+                      </Box>
+                    ) : null}
+                    {filteredConversations.map((conversation) => {
                       const isActive = conversation.id === selectedConversationID
                       return (
                         <Button
