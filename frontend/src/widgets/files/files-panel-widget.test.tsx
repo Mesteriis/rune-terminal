@@ -140,4 +140,35 @@ describe('FilesPanelWidget', () => {
 
     expect(screen.getByRole('button', { name: 'Open directory src' })).toBeInTheDocument()
   })
+
+  it('refreshes the current directory on demand', async () => {
+    vi.mocked(listFilesDirectory)
+      .mockResolvedValueOnce({
+        entries: [],
+        path: '/repo',
+      })
+      .mockResolvedValueOnce({
+        entries: [
+          {
+            id: '/repo::new-file.txt',
+            kind: 'file',
+            modified: '2026-04-25 20:04',
+            name: 'new-file.txt',
+            sizeLabel: '4 B',
+          },
+        ],
+        path: '/repo',
+      })
+
+    render(<FilesPanelWidget path="/repo" title="repo" />)
+
+    await expect(screen.findByText('Directory is empty')).resolves.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh directory' }))
+
+    await waitFor(() => {
+      expect(listFilesDirectory).toHaveBeenCalledTimes(2)
+      expect(screen.getByText('new-file.txt')).toBeInTheDocument()
+    })
+  })
 })

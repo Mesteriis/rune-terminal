@@ -65,6 +65,8 @@ test('shell workspace tabs, utility actions, widget creation, and settings modal
   await expect(page.getByRole('button', { name: 'Open directory frontend' })).toHaveCount(0)
   await expect(page.getByText('package.json', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Clear files filter' }).click()
+  await page.getByRole('button', { name: 'Refresh directory' }).click()
+  await expect(filesPanelPath).toHaveText(bootstrap.repo_root)
   await page.getByRole('button', { name: 'Open directory frontend' }).click()
   await expect(filesPanelPath).toHaveText(`${bootstrap.repo_root}/frontend`)
   await page.getByRole('button', { name: 'Open parent directory' }).click()

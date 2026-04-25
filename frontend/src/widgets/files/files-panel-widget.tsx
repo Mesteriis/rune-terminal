@@ -40,6 +40,7 @@ function getEntryKindLabel(entry: FilesDirectoryEntry) {
 export function FilesPanelWidget({ path, title }: FilesPanelWidgetProps) {
   const [currentPath, setCurrentPath] = useState(path)
   const [filterValue, setFilterValue] = useState('')
+  const [refreshNonce, setRefreshNonce] = useState(0)
   const [state, setState] = useState<FilesPanelLoadState>({
     errorMessage: null,
     snapshot: null,
@@ -86,7 +87,7 @@ export function FilesPanelWidget({ path, title }: FilesPanelWidgetProps) {
     return () => {
       isCancelled = true
     }
-  }, [currentPath])
+  }, [currentPath, refreshNonce])
 
   const handleOpenParent = () => {
     const parentPath = getRuntimePathParent(currentPath)
@@ -159,6 +160,14 @@ export function FilesPanelWidget({ path, title }: FilesPanelWidgetProps) {
               Clear
             </Button>
           ) : null}
+          <Button
+            aria-label="Refresh directory"
+            onClick={() => setRefreshNonce((value) => value + 1)}
+            runaComponent="files-panel-refresh"
+            style={filesPanelParentButtonStyle}
+          >
+            Refresh
+          </Button>
           <Button
             aria-label="Open parent directory"
             disabled={!parentPath}
