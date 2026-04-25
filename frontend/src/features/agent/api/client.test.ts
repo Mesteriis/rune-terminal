@@ -19,6 +19,7 @@ import {
   setAgentProfile,
   setAgentRole,
   streamAgentConversationMessage,
+  updateAgentConversationContext,
 } from '@/features/agent/api/client'
 import { resetRuntimeContextCacheForTests } from '@/shared/api/runtime'
 
@@ -138,6 +139,10 @@ describe('agent api client', () => {
         json: async () => ({
           conversation: {
             id: 'conv_1',
+            context_preferences: {
+              widget_context_enabled: true,
+              widget_ids: ['term-main'],
+            },
             title: 'Inspect backend contract',
             messages: [
               {
@@ -190,9 +195,73 @@ describe('agent api client', () => {
         id: 'session_1',
         provider_kind: 'stub',
       },
+      context_preferences: {
+        widget_context_enabled: true,
+        widget_ids: ['term-main'],
+      },
       updated_at: '2026-04-21T10:00:00Z',
     })
     expect(fetchMock.mock.calls[1]?.[0]).toBe('http://127.0.0.1:8090/api/v1/agent/conversation')
+  })
+
+  it('updates conversation context preferences through the backend contract', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          conversation: {
+            id: 'conv_2',
+            title: 'Current thread',
+            messages: [],
+            provider: {
+              kind: 'stub',
+              base_url: 'http://stub',
+              model: 'stub-model',
+              streaming: false,
+            },
+            context_preferences: {
+              widget_context_enabled: false,
+              widget_ids: ['term-main', 'commander'],
+            },
+            created_at: '2026-04-21T10:00:00Z',
+            updated_at: '2026-04-21T10:05:00Z',
+          },
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      updateAgentConversationContext('conv_2', {
+        widget_context_enabled: false,
+        widget_ids: ['term-main', 'commander'],
+      }),
+    ).resolves.toMatchObject({
+      id: 'conv_2',
+      context_preferences: {
+        widget_context_enabled: false,
+        widget_ids: ['term-main', 'commander'],
+      },
+    })
+    expect(fetchMock.mock.calls[1]?.[0]).toBe(
+      'http://127.0.0.1:8090/api/v1/agent/conversations/conv_2/context',
+    )
+    expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({
+      method: 'PUT',
+      body: JSON.stringify({
+        widget_context_enabled: false,
+        widget_ids: ['term-main', 'commander'],
+      }),
+    })
   })
 
   it('loads the conversation list and active conversation id from the backend contract', async () => {

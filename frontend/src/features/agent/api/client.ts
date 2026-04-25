@@ -97,6 +97,11 @@ export type AgentConversationSession = {
   id?: string
 }
 
+export type AgentConversationContextPreferences = {
+  widget_context_enabled: boolean
+  widget_ids?: string[]
+}
+
 export type AgentConversationSummary = {
   id: string
   title: string
@@ -112,6 +117,7 @@ export type AgentConversationSnapshot = {
   messages: AgentConversationMessage[]
   provider: AgentConversationProvider
   session?: AgentConversationSession
+  context_preferences: AgentConversationContextPreferences
   created_at: string
   updated_at: string
   archived_at?: string
@@ -131,6 +137,12 @@ export type AgentConversationContext = {
 function normalizeConversationSnapshot(conversation: AgentConversationSnapshot): AgentConversationSnapshot {
   return {
     ...conversation,
+    context_preferences: {
+      widget_context_enabled: conversation.context_preferences?.widget_context_enabled ?? true,
+      widget_ids: Array.isArray(conversation.context_preferences?.widget_ids)
+        ? conversation.context_preferences.widget_ids
+        : [],
+    },
     messages: Array.isArray(conversation.messages) ? conversation.messages : [],
   }
 }
@@ -568,6 +580,17 @@ export async function activateAgentConversation(conversationID: string) {
     {
       method: 'PUT',
     },
+  )
+  return normalizeConversationSnapshot(payload.conversation)
+}
+
+export async function updateAgentConversationContext(
+  conversationID: string,
+  preferences: AgentConversationContextPreferences,
+) {
+  const payload = await putRuntimeJSON<{ conversation: AgentConversationSnapshot }>(
+    `/api/v1/agent/conversations/${encodeURIComponent(conversationID)}/context`,
+    preferences,
   )
   return normalizeConversationSnapshot(payload.conversation)
 }

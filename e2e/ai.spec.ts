@@ -11,6 +11,7 @@ import {
   fetchTerminalSnapshot,
   renameAgentConversation as renameConversationViaApi,
   setActiveAgentProvider,
+  updateAgentConversationContext,
   updateAgentProvider,
 } from './runtime'
 
@@ -591,6 +592,110 @@ test('AI sidebar lets the operator bulk-select widgets for a request', async ({
   await expect(page.getByText('context-selector-ok')).toBeVisible()
 })
 
+test('AI sidebar restores persisted widget context per conversation', async ({ page, request }) => {
+  test.setTimeout(90_000)
+
+  const threadOneTitle = `Context Thread One ${Date.now()}`
+  const threadTwoTitle = `Context Thread Two ${Date.now()}`
+  const initialConversations = await fetchAgentConversations(request)
+  const threadOneID = initialConversations.active_conversation_id || initialConversations.conversations[0]?.id || ''
+
+  if (!threadOneID) {
+    throw new Error('Expected an active conversation before context persistence test.')
+  }
+
+  await renameConversationViaApi(request, threadOneID, threadOneTitle)
+  await updateAgentConversationContext(request, threadOneID, {
+    widget_context_enabled: true,
+    widget_ids: ['term-main'],
+  })
+
+  await clearBrowserState(page)
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Toggle AI panel' }).click()
+  await expect(page.getByText('AI Rune Assistant')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Conversation menu' }).click()
+  await page.getByRole('button', { name: 'Create conversation' }).click()
+
+  await expect
+    .poll(async () => {
+      const conversations = await fetchAgentConversations(request)
+      return conversations.active_conversation_id !== threadOneID ? conversations.active_conversation_id : ''
+    })
+    .not.toBe('')
+
+  const activeConversationID = (await fetchAgentConversations(request)).active_conversation_id
+  await renameConversationViaApi(request, activeConversationID, threadTwoTitle)
+  await updateAgentConversationContext(request, activeConversationID, {
+    widget_context_enabled: false,
+    widget_ids: [],
+  })
+
+  await page.reload()
+  await page.getByRole('button', { name: 'Toggle AI panel' }).click()
+  await expect(page.getByRole('button', { name: 'Conversation menu' })).toContainText(threadTwoTitle)
+
+  await expect
+    .poll(async () => {
+      const conversation = await fetchAgentConversation(request)
+      return conversation.context_preferences
+    })
+    .toMatchObject({
+      widget_context_enabled: false,
+      widget_ids: [],
+    })
+  await expect(page.getByRole('button', { name: 'Composer options' })).toContainText('Context off')
+
+  await activateAgentConversation(request, threadOneID)
+  await page.reload()
+  await page.getByRole('button', { name: 'Toggle AI panel' }).click()
+
+  await expect
+    .poll(async () => {
+      const conversation = await fetchAgentConversation(request)
+      return {
+        id: conversation.id,
+        preferences: conversation.context_preferences,
+      }
+    })
+    .toMatchObject({
+      id: threadOneID,
+      preferences: {
+        widget_context_enabled: true,
+        widget_ids: ['term-main'],
+      },
+    })
+  await expect(page.getByRole('button', { name: 'Composer options' })).toContainText('1 widget')
+  await page.getByRole('button', { name: 'Composer options' }).click()
+  await expect(
+    page.getByRole('option', {
+      name: /Main Shell/,
+    }),
+  ).toBeVisible()
+
+  await activateAgentConversation(request, activeConversationID)
+  await page.reload()
+  await page.getByRole('button', { name: 'Toggle AI panel' }).click()
+
+  await expect
+    .poll(async () => {
+      const conversation = await fetchAgentConversation(request)
+      return {
+        id: conversation.id,
+        preferences: conversation.context_preferences,
+      }
+    })
+    .toMatchObject({
+      id: activeConversationID,
+      preferences: {
+        widget_context_enabled: false,
+        widget_ids: [],
+      },
+    })
+  await expect(page.getByRole('button', { name: 'Composer options' })).toContainText('Context off')
+})
+
 test('AI composer submit shortcut can be changed from settings', async ({ page }) => {
   test.setTimeout(60_000)
 
@@ -716,6 +821,9 @@ test('AI sidebar routes through Claude provider and surfaces local auth state ho
   if (providerCatalog.active_provider_id !== claudeProvider.id) {
     await setActiveAgentProvider(request, claudeProvider.id)
   }
+
+  const claudeConversation = await createConversationViaApi(request)
+  await activateAgentConversation(request, claudeConversation.id)
 
   await clearBrowserState(page)
   await page.goto('/')

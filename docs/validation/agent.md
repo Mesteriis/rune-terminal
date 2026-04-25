@@ -16,6 +16,7 @@
   - narrow OpenAI-compatible HTTP source discovery/completion path
   - AI toolbar provider/model selection over the backend provider catalog
   - AI composer request-context toolbar trigger with explicit widget multiselect
+  - persisted request-context selection per conversation in `runtime.db`
   - AI composer context quick actions (`Use current`, `Only current`, `All widgets`, `Use default`) over the existing workspace/widget context contract
   - AI composer visible selected-context strip with direct remove actions for chosen widgets
   - AI composer two-row toolbar grouping with explicit `Source / Model / Context` field labels
@@ -27,6 +28,7 @@
     - settings navigation for the dedicated `AI / Composer` section
     - live Codex CLI chat request/response through the real backend conversation route
     - explicit widget-context selection in the composer and `widget_ids` propagation into the stream request body
+    - persisted per-conversation widget-context restore across conversation activation and reload
     - settings-driven keyboard submit behavior: `Enter` newline plus `Ctrl/Cmd+Enter` submit
     - conversation persistence across AI panel reload/reopen with backend conversation switching
     - shell-visible conversation menu for `Recent / Archived` thread grouping, `New` creation, active-thread rename, archive, restore, and delete
@@ -40,6 +42,7 @@
   - explicit list/create/activate/rename/archive/restore transport routes
   - messages persisted per conversation
   - provider session metadata persisted per conversation
+  - widget-context preferences (`widget_context_enabled`, `widget_ids`) persisted per conversation
   - the AI shell header now projects that contract through a conversation navigator menu with active-thread summary, `Recent / Archived` grouping, local search/filter over the loaded list, `New` creation action, inline rename for the active thread, and explicit archive/restore/delete actions
 - CLI-backed provider session continuity is conversation-scoped:
   - `codex` reuses the stored provider-native thread id for the active conversation
@@ -80,6 +83,7 @@
   - appends the backend-owned execution transcript/explanation chain through `POST /api/v1/agent/terminal-commands/explain`
 - `widget_context_enabled` remains valid for conversation/explain routes, but is intentionally omitted from `POST /api/v1/tools/execute` because that transport contract does not accept it.
 - Plain conversation requests now also support explicit `widget_ids` in the conversation context. The composer dropdown resolves widget options from `GET /api/v1/workspace`, and the backend context/audit path now uses that explicit widget list instead of only `active_widget_id`.
+- The selected request context is now also persisted per conversation through `PUT /api/v1/agent/conversations/{conversationID}/context`, so switching conversations restores both the enabled/disabled state and the explicit widget selection for that thread.
 - The visible context trigger in the composer remains frontend-owned UX over that same contract:
   - the closed trigger summarizes the effective selection state (`Context off`, active widget title, or widget count)
   - the dropdown exposes `Use current`, `Only current`, `All widgets`, and `Use default` actions without introducing a second backend context model
@@ -104,6 +108,7 @@
 - `npm --prefix frontend run test -- src/features/agent/api/client.test.ts src/widgets/ai/ai-panel-header-widget.test.tsx src/widgets/ai/ai-panel-widget.test.tsx`
 - `npm --prefix frontend run test -- src/features/agent/api/client.test.ts src/features/agent/api/provider-client.test.ts src/features/agent/model/provider-settings-draft.test.ts src/widgets/ai/ai-panel-widget.test.tsx`
 - `npm --prefix frontend run test -- src/shared/api/workspace.test.ts src/features/agent/api/client.test.ts src/widgets/ai/ai-panel-widget.test.tsx`
+- `npm --prefix frontend run test -- src/features/agent/api/client.test.ts src/widgets/ai/ai-panel-header-widget.test.tsx src/widgets/ai/ai-panel-widget.test.tsx`
 - `npm --prefix frontend run test -- src/features/agent/model/use-ai-composer-preferences.test.tsx src/widgets/ai/ai-composer-widget.test.tsx src/widgets/ai/ai-panel-widget.test.tsx`
 - `npm --prefix frontend run test -- src/widgets/ai/ai-composer-widget.test.tsx src/widgets/ai/ai-panel-widget.test.tsx src/shared/ui/components/accessibility-contracts.test.tsx`
 - `npm --prefix frontend run test -- src/widgets/ai/ai-chat-message-widget.test.tsx src/widgets/ai/ai-panel-widget.test.tsx`
@@ -123,12 +128,13 @@
 ## Known limitations
 
 - conversation management is still intentionally narrow: create + switch + active-thread rename + archive + restore + delete plus local navigator filtering only. Broader conversation search, archive-only management views, and multi-panel conversation views are not implemented in this slice.
+- request-context persistence is now conversation-scoped, but there are still no named context presets, grouped context modes, or stale-widget repair UX beyond current normalization of missing widget ids.
 - CLI providers currently expose buffered chat completion through the existing SSE route; token-by-token provider streaming is not implemented.
 - CLI-native tool calls are not yet mediated through `core/toolruntime`, policy approval, or audit events.
 - The OpenAI-compatible HTTP source path is also buffered and non-streaming in this slice.
 - No current visible profile, role, or mode selector exists in the AI sidebar, so those backend selection routes remain unwired to user controls.
 - `/run` currently surfaces approval-required toolruntime responses as a chat-side error/status message; there is no dedicated approval-confirmation UI for this path yet.
-- On this machine the local `claude` binary is installed but not authenticated, so the verified browser path is `auth-required` handling rather than a successful Claude completion.
+- On this machine the local `claude` binary is installed and authenticated, and the verified browser path includes a successful Claude completion on a fresh conversation.
 - The composer shortcut preference is intentionally local UI state today; there is no backend/user-profile sync for this behavior.
 
 ## Related validation

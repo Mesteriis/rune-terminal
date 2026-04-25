@@ -370,6 +370,88 @@ func TestConversationArchiveAndRestoreRoutesRoundTrip(t *testing.T) {
 	}
 }
 
+func TestConversationContextRoutePersistsWidgetSelection(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+
+	listRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(listRecorder, authedJSONRequest(t, http.MethodGet, "/api/v1/agent/conversations", nil))
+	if listRecorder.Code != http.StatusOK {
+		t.Fatalf("expected list 200, got %d", listRecorder.Code)
+	}
+
+	var initialList struct {
+		ActiveConversationID string `json:"active_conversation_id"`
+	}
+	if err := json.Unmarshal(listRecorder.Body.Bytes(), &initialList); err != nil {
+		t.Fatalf("unmarshal initial list: %v", err)
+	}
+
+	updateRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(
+		updateRecorder,
+		authedJSONRequest(
+			t,
+			http.MethodPut,
+			"/api/v1/agent/conversations/"+initialList.ActiveConversationID+"/context",
+			map[string]any{
+				"widget_context_enabled": true,
+				"widget_ids":             []string{"term-main", "commander"},
+			},
+		),
+	)
+	if updateRecorder.Code != http.StatusOK {
+		t.Fatalf("expected context update 200, got %d body=%s", updateRecorder.Code, updateRecorder.Body.String())
+	}
+
+	var updated struct {
+		Conversation struct {
+			ID                 string `json:"id"`
+			ContextPreferences struct {
+				WidgetContextEnabled bool     `json:"widget_context_enabled"`
+				WidgetIDs            []string `json:"widget_ids"`
+			} `json:"context_preferences"`
+		} `json:"conversation"`
+	}
+	if err := json.Unmarshal(updateRecorder.Body.Bytes(), &updated); err != nil {
+		t.Fatalf("unmarshal context update payload: %v", err)
+	}
+	if updated.Conversation.ID != initialList.ActiveConversationID {
+		t.Fatalf("expected updated conversation %q, got %q", initialList.ActiveConversationID, updated.Conversation.ID)
+	}
+	if !updated.Conversation.ContextPreferences.WidgetContextEnabled {
+		t.Fatalf("expected widget context enabled")
+	}
+	if got := updated.Conversation.ContextPreferences.WidgetIDs; len(got) != 2 || got[0] != "term-main" || got[1] != "commander" {
+		t.Fatalf("unexpected widget ids: %#v", got)
+	}
+
+	snapshotRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(snapshotRecorder, authedJSONRequest(t, http.MethodGet, "/api/v1/agent/conversation", nil))
+	if snapshotRecorder.Code != http.StatusOK {
+		t.Fatalf("expected snapshot 200, got %d", snapshotRecorder.Code)
+	}
+
+	var snapshotPayload struct {
+		Conversation struct {
+			ContextPreferences struct {
+				WidgetContextEnabled bool     `json:"widget_context_enabled"`
+				WidgetIDs            []string `json:"widget_ids"`
+			} `json:"context_preferences"`
+		} `json:"conversation"`
+	}
+	if err := json.Unmarshal(snapshotRecorder.Body.Bytes(), &snapshotPayload); err != nil {
+		t.Fatalf("unmarshal snapshot payload: %v", err)
+	}
+	if !snapshotPayload.Conversation.ContextPreferences.WidgetContextEnabled {
+		t.Fatalf("expected snapshot widget context enabled")
+	}
+	if got := snapshotPayload.Conversation.ContextPreferences.WidgetIDs; len(got) != 2 || got[0] != "term-main" || got[1] != "commander" {
+		t.Fatalf("unexpected snapshot widget ids: %#v", got)
+	}
+}
+
 func TestSubmitConversationMessagePersistsTranscript(t *testing.T) {
 	t.Parallel()
 

@@ -68,6 +68,10 @@ export type AgentConversationSnapshot = {
     model?: string
     streaming: boolean
   }
+  context_preferences?: {
+    widget_context_enabled: boolean
+    widget_ids?: string[]
+  }
   created_at: string
   updated_at: string
   archived_at?: string
@@ -230,6 +234,12 @@ export async function fetchAgentConversation(request: APIRequestContext) {
   )
   return {
     ...payload.conversation,
+    context_preferences: {
+      widget_context_enabled: payload.conversation.context_preferences?.widget_context_enabled ?? true,
+      widget_ids: Array.isArray(payload.conversation.context_preferences?.widget_ids)
+        ? payload.conversation.context_preferences.widget_ids
+        : [],
+    },
     messages: Array.isArray(payload.conversation.messages) ? payload.conversation.messages : [],
   }
 }
@@ -271,6 +281,28 @@ export async function activateAgentConversation(request: APIRequestContext, conv
   const response = await request.put(
     `${backendUrl}/api/v1/agent/conversations/${encodeURIComponent(conversationID)}/activate`,
     {
+      headers: authHeaders(),
+    },
+  )
+
+  expect(response.ok()).toBeTruthy()
+
+  const payload = (await response.json()) as { conversation: AgentConversationSnapshot }
+  return payload.conversation
+}
+
+export async function updateAgentConversationContext(
+  request: APIRequestContext,
+  conversationID: string,
+  preferences: {
+    widget_context_enabled: boolean
+    widget_ids?: string[]
+  },
+) {
+  const response = await request.put(
+    `${backendUrl}/api/v1/agent/conversations/${encodeURIComponent(conversationID)}/context`,
+    {
+      data: preferences,
       headers: authHeaders(),
     },
   )

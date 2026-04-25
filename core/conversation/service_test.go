@@ -204,6 +204,52 @@ func TestServiceRenameConversationRejectsBlankTitle(t *testing.T) {
 	}
 }
 
+func TestServiceConversationContextPreferencesPersistAcrossActivation(t *testing.T) {
+	t.Parallel()
+
+	service, err := NewService(filepath.Join(t.TempDir(), "conversation.json"), stubProvider{
+		info: ProviderInfo{Kind: "stub", BaseURL: "http://stub", Model: "stub-model"},
+	})
+	if err != nil {
+		t.Fatalf("new service: %v", err)
+	}
+
+	originalSnapshot := service.Snapshot()
+	createdSnapshot, err := service.CreateConversation(context.Background())
+	if err != nil {
+		t.Fatalf("create conversation: %v", err)
+	}
+
+	updatedSnapshot, err := service.UpdateConversationContextPreferences(context.Background(), createdSnapshot.ID, ContextPreferences{
+		WidgetContextEnabled: true,
+		WidgetIDs:            []string{"term-main", "commander"},
+	})
+	if err != nil {
+		t.Fatalf("update conversation context preferences: %v", err)
+	}
+	if !updatedSnapshot.ContextPreferences.WidgetContextEnabled {
+		t.Fatalf("expected widget context to remain enabled")
+	}
+	if got := updatedSnapshot.ContextPreferences.WidgetIDs; len(got) != 2 || got[0] != "term-main" || got[1] != "commander" {
+		t.Fatalf("unexpected widget ids: %#v", got)
+	}
+
+	if _, err := service.ActivateConversation(context.Background(), originalSnapshot.ID); err != nil {
+		t.Fatalf("activate original conversation: %v", err)
+	}
+	reactivatedSnapshot, err := service.ActivateConversation(context.Background(), createdSnapshot.ID)
+	if err != nil {
+		t.Fatalf("reactivate created conversation: %v", err)
+	}
+
+	if !reactivatedSnapshot.ContextPreferences.WidgetContextEnabled {
+		t.Fatalf("expected reactivated conversation widget context to be enabled")
+	}
+	if got := reactivatedSnapshot.ContextPreferences.WidgetIDs; len(got) != 2 || got[0] != "term-main" || got[1] != "commander" {
+		t.Fatalf("unexpected reactivated widget ids: %#v", got)
+	}
+}
+
 func TestServiceDeleteConversationPromotesAnotherThread(t *testing.T) {
 	t.Parallel()
 

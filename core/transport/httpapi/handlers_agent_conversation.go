@@ -25,6 +25,11 @@ type renameConversationPayload struct {
 	Title string `json:"title"`
 }
 
+type updateConversationContextPayload struct {
+	WidgetContextEnabled bool     `json:"widget_context_enabled"`
+	WidgetIDs            []string `json:"widget_ids,omitempty"`
+}
+
 type attachmentReferencePayload struct {
 	Path         string `json:"path"`
 	WorkspaceID  string `json:"workspace_id,omitempty"`
@@ -139,6 +144,37 @@ func (api *API) handleRestoreConversation(w http.ResponseWriter, r *http.Request
 	}
 
 	snapshot, err := api.runtime.RestoreConversation(r.Context(), conversationID)
+	if err != nil {
+		writeConversationError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"conversation": snapshot,
+	})
+}
+
+func (api *API) handleUpdateConversationContext(w http.ResponseWriter, r *http.Request) {
+	conversationID := strings.TrimSpace(r.PathValue("conversationID"))
+	if conversationID == "" {
+		writeNotFound(w, "conversation_not_found", conversation.ErrConversationNotFound.Error())
+		return
+	}
+
+	var payload updateConversationContextPayload
+	if err := decodeJSON(r, &payload); err != nil {
+		writeBadRequest(w, "invalid_request", err)
+		return
+	}
+
+	snapshot, err := api.runtime.UpdateConversationContextPreferences(
+		r.Context(),
+		conversationID,
+		conversation.ContextPreferences{
+			WidgetContextEnabled: payload.WidgetContextEnabled,
+			WidgetIDs:            payload.WidgetIDs,
+		},
+	)
 	if err != nil {
 		writeConversationError(w, err)
 		return

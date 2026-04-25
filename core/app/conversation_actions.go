@@ -71,6 +71,18 @@ func (r *Runtime) RestoreConversation(ctx context.Context, conversationID string
 	return r.withConversationProviderInfo(snapshot), nil
 }
 
+func (r *Runtime) UpdateConversationContextPreferences(
+	ctx context.Context,
+	conversationID string,
+	preferences conversation.ContextPreferences,
+) (conversation.Snapshot, error) {
+	snapshot, err := r.Conversation.UpdateConversationContextPreferences(ctx, conversationID, preferences)
+	if err != nil {
+		return conversation.Snapshot{}, err
+	}
+	return r.withConversationProviderInfo(snapshot), nil
+}
+
 func (r *Runtime) ActivateConversation(ctx context.Context, conversationID string) (conversation.Snapshot, error) {
 	snapshot, err := r.Conversation.ActivateConversation(ctx, conversationID)
 	if err != nil {

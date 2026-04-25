@@ -360,6 +360,51 @@ func (s *Service) RestoreConversation(ctx context.Context, conversationID string
 	return record.snapshot(messages, s.provider.Info()), nil
 }
 
+func (s *Service) UpdateConversationContextPreferences(
+	ctx context.Context,
+	conversationID string,
+	preferences ContextPreferences,
+) (Snapshot, error) {
+	conversationID = strings.TrimSpace(conversationID)
+	if conversationID == "" {
+		return Snapshot{}, ErrConversationNotFound
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return Snapshot{}, err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	record, messages, err := loadConversationStateTx(ctx, tx, conversationID)
+	if err != nil {
+		return Snapshot{}, err
+	}
+	record.ContextPreferences = normalizeContextPreferences(preferences)
+	record.UpdatedAt = time.Now().UTC()
+	if err := updateConversationTx(ctx, tx, record); err != nil {
+		return Snapshot{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return Snapshot{}, err
+	}
+
+	if s.active.ID == conversationID {
+		s.active = record
+		s.state = persistedState{
+			Messages:  append([]Message(nil), messages...),
+			UpdatedAt: record.UpdatedAt,
+		}
+	}
+
+	return record.snapshot(messages, s.provider.Info()), nil
+}
+
 func (s *Service) ActivateConversation(ctx context.Context, conversationID string) (Snapshot, error) {
 	conversationID = strings.TrimSpace(conversationID)
 	if conversationID == "" {
@@ -713,6 +758,21 @@ func cloneAttachmentReferences(attachments []AttachmentReference) []AttachmentRe
 		return nil
 	}
 	return append([]AttachmentReference(nil), attachments...)
+}
+
+func normalizeContextPreferences(preferences ContextPreferences) ContextPreferences {
+	widgetIDs := make([]string, 0, len(preferences.WidgetIDs))
+	for _, widgetID := range preferences.WidgetIDs {
+		trimmedWidgetID := strings.TrimSpace(widgetID)
+		if trimmedWidgetID == "" || slices.Contains(widgetIDs, trimmedWidgetID) {
+			continue
+		}
+		widgetIDs = append(widgetIDs, trimmedWidgetID)
+	}
+	return ContextPreferences{
+		WidgetContextEnabled: preferences.WidgetContextEnabled,
+		WidgetIDs:            widgetIDs,
+	}
 }
 
 func (s *Service) complete(ctx context.Context, systemPrompt string, history []Message) (CompletionResult, ProviderInfo, error) {

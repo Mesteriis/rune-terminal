@@ -30,6 +30,11 @@ type ProviderSessionState struct {
 	ID           string `json:"id,omitempty"`
 }
 
+type ContextPreferences struct {
+	WidgetContextEnabled bool     `json:"widget_context_enabled"`
+	WidgetIDs            []string `json:"widget_ids,omitempty"`
+}
+
 type Message struct {
 	ID          string                `json:"id"`
 	Role        MessageRole           `json:"role"`
@@ -52,14 +57,15 @@ type ConversationSummary struct {
 }
 
 type Snapshot struct {
-	ID         string               `json:"id"`
-	Title      string               `json:"title"`
-	Messages   []Message            `json:"messages"`
-	Provider   ProviderInfo         `json:"provider"`
-	Session    ProviderSessionState `json:"session,omitempty"`
-	CreatedAt  time.Time            `json:"created_at"`
-	UpdatedAt  time.Time            `json:"updated_at"`
-	ArchivedAt *time.Time           `json:"archived_at,omitempty"`
+	ID                 string               `json:"id"`
+	Title              string               `json:"title"`
+	Messages           []Message            `json:"messages"`
+	Provider           ProviderInfo         `json:"provider"`
+	Session            ProviderSessionState `json:"session,omitempty"`
+	ContextPreferences ContextPreferences   `json:"context_preferences"`
+	CreatedAt          time.Time            `json:"created_at"`
+	UpdatedAt          time.Time            `json:"updated_at"`
+	ArchivedAt         *time.Time           `json:"archived_at,omitempty"`
 }
 
 type SubmitRequest struct {

@@ -16,24 +16,26 @@ import (
 const activeConversationStateKey = "active_conversation_id"
 
 type conversationRecord struct {
-	ID         string
-	Title      string
-	Session    ProviderSessionState
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
-	ArchivedAt *time.Time
+	ID                 string
+	Title              string
+	Session            ProviderSessionState
+	ContextPreferences ContextPreferences
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+	ArchivedAt         *time.Time
 }
 
 func (record conversationRecord) snapshot(messages []Message, info ProviderInfo) Snapshot {
 	return Snapshot{
-		ID:         record.ID,
-		Title:      record.Title,
-		Messages:   append([]Message(nil), messages...),
-		Provider:   info,
-		Session:    record.Session,
-		CreatedAt:  record.CreatedAt,
-		UpdatedAt:  record.UpdatedAt,
-		ArchivedAt: cloneTimePointer(record.ArchivedAt),
+		ID:                 record.ID,
+		Title:              record.Title,
+		Messages:           append([]Message(nil), messages...),
+		Provider:           info,
+		Session:            record.Session,
+		ContextPreferences: cloneContextPreferences(record.ContextPreferences),
+		CreatedAt:          record.CreatedAt,
+		UpdatedAt:          record.UpdatedAt,
+		ArchivedAt:         cloneTimePointer(record.ArchivedAt),
 	}
 }
 
@@ -50,7 +52,10 @@ func (record conversationRecord) summary(messageCount int) ConversationSummary {
 
 func newConversationRecord(now time.Time) conversationRecord {
 	return conversationRecord{
-		ID:        ids.New("conv"),
+		ID: ids.New("conv"),
+		ContextPreferences: ContextPreferences{
+			WidgetContextEnabled: true,
+		},
 		CreatedAt: now.UTC(),
 		UpdatedAt: now.UTC(),
 	}
@@ -166,13 +171,15 @@ func setActiveConversationTx(ctx context.Context, tx *sql.Tx, conversationID str
 func insertConversationTx(ctx context.Context, tx *sql.Tx, record conversationRecord) error {
 	_, err := tx.ExecContext(ctx, `
 		INSERT INTO conversations
-			(id, title, provider_session_kind, provider_session_id, created_at, updated_at, archived_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
+			(id, title, provider_session_kind, provider_session_id, widget_context_enabled, context_widget_ids_json, created_at, updated_at, archived_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`,
 		record.ID,
 		record.Title,
 		record.Session.ProviderKind,
 		record.Session.ID,
+		boolToSQLite(record.ContextPreferences.WidgetContextEnabled),
+		mustJSONString(record.ContextPreferences.WidgetIDs),
 		formatDBTime(record.CreatedAt),
 		formatDBTime(record.UpdatedAt),
 		formatOptionalDBTime(record.ArchivedAt),
@@ -183,12 +190,14 @@ func insertConversationTx(ctx context.Context, tx *sql.Tx, record conversationRe
 func updateConversationTx(ctx context.Context, tx *sql.Tx, record conversationRecord) error {
 	_, err := tx.ExecContext(ctx, `
 		UPDATE conversations
-		SET title = ?, provider_session_kind = ?, provider_session_id = ?, updated_at = ?, archived_at = ?
+		SET title = ?, provider_session_kind = ?, provider_session_id = ?, widget_context_enabled = ?, context_widget_ids_json = ?, updated_at = ?, archived_at = ?
 		WHERE id = ?
 	`,
 		record.Title,
 		record.Session.ProviderKind,
 		record.Session.ID,
+		boolToSQLite(record.ContextPreferences.WidgetContextEnabled),
+		mustJSONString(record.ContextPreferences.WidgetIDs),
 		formatDBTime(record.UpdatedAt),
 		formatOptionalDBTime(record.ArchivedAt),
 		record.ID,
@@ -268,7 +277,7 @@ func loadConversationRecordTx(ctx context.Context, tx *sql.Tx, conversationID st
 	var updatedAtRaw string
 	var archivedAtRaw sql.NullString
 	err := tx.QueryRowContext(ctx, `
-		SELECT id, title, provider_session_kind, provider_session_id, created_at, updated_at, archived_at
+		SELECT id, title, provider_session_kind, provider_session_id, widget_context_enabled, context_widget_ids_json, created_at, updated_at, archived_at
 		FROM conversations
 		WHERE id = ?
 	`, conversationID).Scan(
@@ -276,6 +285,8 @@ func loadConversationRecordTx(ctx context.Context, tx *sql.Tx, conversationID st
 		&record.Title,
 		&record.Session.ProviderKind,
 		&record.Session.ID,
+		(*sqliteBool)(&record.ContextPreferences.WidgetContextEnabled),
+		(*jsonStringSlice)(&record.ContextPreferences.WidgetIDs),
 		&createdAtRaw,
 		&updatedAtRaw,
 		&archivedAtRaw,
@@ -521,4 +532,79 @@ func cloneTimePointer(value *time.Time) *time.Time {
 	}
 	cloned := value.UTC()
 	return &cloned
+}
+
+func cloneContextPreferences(value ContextPreferences) ContextPreferences {
+	return ContextPreferences{
+		WidgetContextEnabled: value.WidgetContextEnabled,
+		WidgetIDs:            append([]string(nil), value.WidgetIDs...),
+	}
+}
+
+type sqliteBool bool
+
+func (value *sqliteBool) Scan(src any) error {
+	switch typed := src.(type) {
+	case int64:
+		*value = typed != 0
+		return nil
+	case bool:
+		*value = sqliteBool(typed)
+		return nil
+	case []byte:
+		return value.Scan(string(typed))
+	case string:
+		switch strings.TrimSpace(typed) {
+		case "", "0", "false", "FALSE":
+			*value = false
+		default:
+			*value = true
+		}
+		return nil
+	default:
+		return fmt.Errorf("scan sqlite bool: unsupported type %T", src)
+	}
+}
+
+type jsonStringSlice []string
+
+func (value *jsonStringSlice) Scan(src any) error {
+	var raw string
+	switch typed := src.(type) {
+	case nil:
+		raw = "[]"
+	case []byte:
+		raw = string(typed)
+	case string:
+		raw = typed
+	default:
+		return fmt.Errorf("scan json string slice: unsupported type %T", src)
+	}
+	if strings.TrimSpace(raw) == "" {
+		raw = "[]"
+	}
+	var decoded []string
+	if err := json.Unmarshal([]byte(raw), &decoded); err != nil {
+		return err
+	}
+	*value = decoded
+	return nil
+}
+
+func boolToSQLite(value bool) int {
+	if value {
+		return 1
+	}
+	return 0
+}
+
+func mustJSONString(values []string) string {
+	if len(values) == 0 {
+		return "[]"
+	}
+	payload, err := json.Marshal(values)
+	if err != nil {
+		panic(err)
+	}
+	return string(payload)
 }
