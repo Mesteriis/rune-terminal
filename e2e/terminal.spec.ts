@@ -2,11 +2,16 @@ import { expect, test } from '@playwright/test'
 
 import {
   clearBrowserState,
+  fetchTerminalSettings,
   fetchTerminalSnapshot,
   sendTerminalInputViaApi,
+  updateTerminalSettingsViaApi,
 } from './runtime'
 
-test('terminal settings persist font-size changes through the shell settings UI', async ({ page }) => {
+test('terminal settings persist font-size changes through the shell settings UI', async ({
+  page,
+  request,
+}) => {
   await clearBrowserState(page)
   await page.goto('/')
 
@@ -19,11 +24,14 @@ test('terminal settings persist font-size changes through the shell settings UI'
   await page.getByRole('button', { name: 'Increase terminal font size' }).click()
   await expect(page.getByText('14px', { exact: true })).toBeVisible()
 
-  await page.getByRole('button', { name: 'Close Settings' }).click()
+  await page.reload()
   await page.getByRole('button', { name: 'Open settings panel' }).click()
   await page.getByRole('button', { name: 'Terminal Настройки терминального runtime.' }).click()
 
   await expect(page.getByText('14px', { exact: true })).toBeVisible()
+  await expect.poll(async () => (await fetchTerminalSettings(request)).font_size).toBe(14)
+
+  await updateTerminalSettingsViaApi(request, 13)
 })
 
 test('terminal input from the shell writes to the live backend session', async ({ page, request }) => {

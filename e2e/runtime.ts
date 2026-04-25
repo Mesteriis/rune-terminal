@@ -48,6 +48,10 @@ export type TerminalSnapshot = {
   next_seq: number
 }
 
+export type TerminalSettings = {
+  font_size: number
+}
+
 export type AgentConversationMessage = {
   content: string
   created_at: string
@@ -207,6 +211,27 @@ export async function fetchTerminalSnapshot(request: APIRequestContext, widgetID
       headers: authHeaders(),
     }),
   )
+}
+
+export async function fetchTerminalSettings(request: APIRequestContext) {
+  const payload = await expectJSONResponse<{ settings: TerminalSettings }>(
+    request.get(`${backendUrl}/api/v1/settings/terminal`, {
+      headers: authHeaders(),
+    }),
+  )
+
+  return payload.settings
+}
+
+export async function updateTerminalSettingsViaApi(request: APIRequestContext, fontSize: number) {
+  const response = await request.put(`${backendUrl}/api/v1/settings/terminal`, {
+    data: {
+      font_size: fontSize,
+    },
+    headers: authHeaders(),
+  })
+
+  expect(response.ok()).toBeTruthy()
 }
 
 export async function sendTerminalInputViaApi(

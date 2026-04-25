@@ -1,114 +1,172 @@
-import { useCallback, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useSyncExternalStore } from 'react'
 
-const TERMINAL_FONT_SIZE_STORAGE_KEY = 'rterm.terminal.font-size.v1'
+import {
+  clampTerminalFontSize,
+  DEFAULT_TERMINAL_FONT_SIZE,
+  MAX_TERMINAL_FONT_SIZE,
+  MIN_TERMINAL_FONT_SIZE,
+  requestTerminalSettings,
+  updateTerminalSettings,
+} from '@/shared/api/terminal-settings'
 
-export const DEFAULT_TERMINAL_FONT_SIZE = 13
-export const MIN_TERMINAL_FONT_SIZE = 11
-export const MAX_TERMINAL_FONT_SIZE = 16
+export { DEFAULT_TERMINAL_FONT_SIZE, MAX_TERMINAL_FONT_SIZE, MIN_TERMINAL_FONT_SIZE }
 
 const subscribers = new Set<() => void>()
+let loadPromise: Promise<void> | null = null
 
-function clampTerminalFontSize(value: number) {
-  if (!Number.isFinite(value)) {
-    return DEFAULT_TERMINAL_FONT_SIZE
-  }
+type TerminalPreferencesState = {
+  errorMessage: string | null
+  fontSize: number
+  isLoading: boolean
+  isSaving: boolean
+}
 
-  return Math.min(MAX_TERMINAL_FONT_SIZE, Math.max(MIN_TERMINAL_FONT_SIZE, Math.round(value)))
+let terminalPreferencesState: TerminalPreferencesState = {
+  errorMessage: null,
+  fontSize: DEFAULT_TERMINAL_FONT_SIZE,
+  isLoading: true,
+  isSaving: false,
 }
 
 function emitTerminalPreferenceChange() {
   subscribers.forEach((subscriber) => subscriber())
 }
 
-function readTerminalFontSize() {
-  if (typeof window === 'undefined') {
-    return DEFAULT_TERMINAL_FONT_SIZE
+function formatTerminalPreferencesError(error: unknown) {
+  if (error instanceof Error && error.message.trim() !== '') {
+    return error.message
   }
+
+  return 'Unable to load terminal settings.'
+}
+
+async function refreshTerminalPreferences() {
+  terminalPreferencesState = {
+    ...terminalPreferencesState,
+    errorMessage: null,
+    isLoading: true,
+  }
+  emitTerminalPreferenceChange()
 
   try {
-    const rawValue = window.localStorage.getItem(TERMINAL_FONT_SIZE_STORAGE_KEY)
-    if (rawValue == null) {
-      return DEFAULT_TERMINAL_FONT_SIZE
+    const settings = await requestTerminalSettings()
+    terminalPreferencesState = {
+      ...terminalPreferencesState,
+      fontSize: settings.font_size,
     }
-
-    return clampTerminalFontSize(Number(rawValue))
-  } catch {
-    return DEFAULT_TERMINAL_FONT_SIZE
+  } catch (error) {
+    terminalPreferencesState = {
+      ...terminalPreferencesState,
+      errorMessage: formatTerminalPreferencesError(error),
+    }
+  } finally {
+    terminalPreferencesState = {
+      ...terminalPreferencesState,
+      isLoading: false,
+    }
+    emitTerminalPreferenceChange()
   }
+}
+
+function ensureTerminalPreferencesLoaded() {
+  if (!loadPromise) {
+    loadPromise = refreshTerminalPreferences().finally(() => {
+      loadPromise = null
+    })
+  }
+
+  return loadPromise
 }
 
 function subscribeToTerminalPreferences(callback: () => void) {
   subscribers.add(callback)
 
-  const handleStorage = (event: StorageEvent) => {
-    if (event.key === TERMINAL_FONT_SIZE_STORAGE_KEY) {
-      callback()
-    }
-  }
-
-  if (typeof window !== 'undefined') {
-    window.addEventListener('storage', handleStorage)
-  }
-
   return () => {
     subscribers.delete(callback)
-    if (typeof window !== 'undefined') {
-      window.removeEventListener('storage', handleStorage)
-    }
   }
 }
 
-export function setTerminalFontSize(fontSize: number) {
-  if (typeof window === 'undefined') {
-    return
+function getTerminalPreferencesSnapshot() {
+  return terminalPreferencesState
+}
+
+export async function setTerminalFontSize(fontSize: number) {
+  terminalPreferencesState = {
+    ...terminalPreferencesState,
+    errorMessage: null,
+    isSaving: true,
   }
+  emitTerminalPreferenceChange()
 
   try {
-    window.localStorage.setItem(TERMINAL_FONT_SIZE_STORAGE_KEY, String(clampTerminalFontSize(fontSize)))
-  } catch {
-    return
+    const settings = await updateTerminalSettings({
+      font_size: clampTerminalFontSize(fontSize),
+    })
+    terminalPreferencesState = {
+      ...terminalPreferencesState,
+      fontSize: settings.font_size,
+    }
+  } catch (error) {
+    terminalPreferencesState = {
+      ...terminalPreferencesState,
+      errorMessage: formatTerminalPreferencesError(error),
+    }
+  } finally {
+    terminalPreferencesState = {
+      ...terminalPreferencesState,
+      isSaving: false,
+    }
+    emitTerminalPreferenceChange()
   }
-
-  emitTerminalPreferenceChange()
 }
 
 export function resetTerminalPreferencesForTests() {
-  if (typeof window === 'undefined') {
-    return
+  terminalPreferencesState = {
+    errorMessage: null,
+    fontSize: DEFAULT_TERMINAL_FONT_SIZE,
+    isLoading: true,
+    isSaving: false,
   }
-
-  window.localStorage.removeItem(TERMINAL_FONT_SIZE_STORAGE_KEY)
+  loadPromise = null
   emitTerminalPreferenceChange()
 }
 
 export function useTerminalPreferences() {
-  const fontSize = useSyncExternalStore(
+  const state = useSyncExternalStore(
     subscribeToTerminalPreferences,
-    readTerminalFontSize,
-    () => DEFAULT_TERMINAL_FONT_SIZE,
+    getTerminalPreferencesSnapshot,
+    getTerminalPreferencesSnapshot,
   )
 
-  const updateFontSize = useCallback((value: number) => {
-    setTerminalFontSize(value)
+  useEffect(() => {
+    void ensureTerminalPreferencesLoaded()
   }, [])
 
-  const increaseFontSize = useCallback(() => {
-    setTerminalFontSize(fontSize + 1)
-  }, [fontSize])
+  const updateFontSize = useCallback(async (value: number) => {
+    await setTerminalFontSize(value)
+  }, [])
 
-  const decreaseFontSize = useCallback(() => {
-    setTerminalFontSize(fontSize - 1)
-  }, [fontSize])
+  const increaseFontSize = useCallback(async () => {
+    await setTerminalFontSize(state.fontSize + 1)
+  }, [state.fontSize])
 
-  const resetFontSize = useCallback(() => {
-    setTerminalFontSize(DEFAULT_TERMINAL_FONT_SIZE)
+  const decreaseFontSize = useCallback(async () => {
+    await setTerminalFontSize(state.fontSize - 1)
+  }, [state.fontSize])
+
+  const resetFontSize = useCallback(async () => {
+    await setTerminalFontSize(DEFAULT_TERMINAL_FONT_SIZE)
   }, [])
 
   return {
-    fontSize,
+    errorMessage: state.errorMessage,
+    fontSize: state.fontSize,
+    isLoading: state.isLoading,
+    isSaving: state.isSaving,
     updateFontSize,
     increaseFontSize,
     decreaseFontSize,
     resetFontSize,
+    refresh: ensureTerminalPreferencesLoaded,
   }
 }

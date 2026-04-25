@@ -45,14 +45,14 @@ capability.
 - connection lifecycle is explicit but narrow (`saved profile` vs
   `last check` vs `last launch`)
 - terminal parity is practical but advanced surfaces (multi-session
-  sidebar, persisted font/theme/scrollback settings,
+  sidebar, persisted theme/scrollback/line-height settings,
   deeper search/find flows) are not there yet
 - AI command flow supports explicit command grammar only (`/run` and
   `run:`), not broad natural-language execution
 - backend AI routing is intentionally narrow, not broad: the active provider kinds are local Codex CLI, local Claude Code CLI, and one explicit OpenAI-compatible HTTP source kind; `ollama`, proxy routing, and broader API-key/provider universes are not active runtime paths
 - backend AI conversations are now persisted as explicit DB-backed threads with per-conversation CLI session continuity and persisted per-conversation request-context selection (`widget_context_enabled` plus explicit `widget_ids`), and the shell navigator now supports local filtering over the loaded thread list plus active-thread rename/archive/restore/delete, but conversation management is still intentionally narrow: there is no broader conversation search, archive-management view, or multi-panel conversation UX yet
 - CLI provider execution is chat-focused and does not yet integrate provider-native tool calls with `core/toolruntime` approval/audit; the OpenAI-compatible HTTP source path is also completion-only and does not stream token deltas yet
-- the shell-wide settings modal now exposes a structured `General / AI / Terminal / Commander` navigation; `General` includes the real desktop `watcher_mode` lifecycle control plus runtime bootstrap context, the AI section now includes CLI + OpenAI-compatible provider management and provider-backed model discovery, and the composer toolbar exposes live provider/model selection plus widget-context selection, but persisted terminal font/theme/scrollback preferences are still not backed by a dedicated runtime settings contract
+- the shell-wide settings modal now exposes a structured `General / AI / Terminal / Commander` navigation; `General` includes the real desktop `watcher_mode` lifecycle control plus runtime bootstrap context, the AI section now includes CLI + OpenAI-compatible provider management and provider-backed model discovery, the composer toolbar exposes live provider/model selection plus widget-context selection, and terminal font size is now backed by the runtime DB through `GET/PUT /api/v1/settings/terminal`, but deeper terminal settings (`theme`, `scrollback`, `line height`, cursor behavior) still are not
 - the AI composer keyboard-submit preference is now configurable in settings, but it remains a frontend-local preference persisted in browser/UI storage rather than a backend-synced operator profile
 - desktop startup via `npm run tauri:dev` now clears the earlier ready-file bootstrap crash, but forced desktop shutdown is still rough: killing `rterm-desktop` can leave the spawned backend and watcher alive until they are cleaned up explicitly
 - native-window automation coverage is limited; validation leans on

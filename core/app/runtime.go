@@ -29,6 +29,7 @@ type Runtime struct {
 	Workspace                   *workspace.Service
 	WorkspaceCatalog            *workspace.CatalogStore
 	Terminals                   *terminal.Service
+	TerminalPreferences         *terminal.PreferencesStore
 	Connections                 *connections.Service
 	Agent                       *agent.Store
 	Conversation                *conversation.Service
@@ -114,6 +115,11 @@ func NewRuntime(repoRoot string, stateDir string) (*Runtime, error) {
 		ConversationProviderFactory: defaultConversationProviderFactory,
 		restored:                    make(map[string]terminal.State),
 	}
+	terminalPreferences, err := terminal.NewPreferencesStore(context.Background(), dbConn)
+	if err != nil {
+		return nil, err
+	}
+	runtime.TerminalPreferences = terminalPreferences
 	runtime.MCP = plugins.NewMCPRuntime(nil, nil, newExternalMCPInvoker(runtime.Plugins, repoRoot))
 	runtime.Executor = toolruntime.NewExecutor(
 		runtime.Registry,

@@ -86,8 +86,13 @@ func newTestHandlerWithConversationProvider(t *testing.T, provider conversation.
 	if err != nil {
 		t.Fatalf("db.Open error: %v", err)
 	}
+	terminalPreferences, err := terminal.NewPreferencesStore(context.Background(), dbConn)
+	if err != nil {
+		t.Fatalf("NewPreferencesStore error: %v", err)
+	}
 	taskStore := tasks.NewStore(dbConn)
 	runtime.DB = dbConn
+	runtime.TerminalPreferences = terminalPreferences
 	runtime.TaskStore = taskStore
 	runtime.TaskService = tasks.NewService(taskStore)
 	runtime.MCP = plugins.NewMCPRuntimeWithOptions(nil, &testProcessSpawner{}, nil, plugins.MCPRuntimeOptions{

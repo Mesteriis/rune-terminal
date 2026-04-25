@@ -38,10 +38,11 @@
     - the terminal header action slot now exposes a visible restart control backed by `POST /api/v1/terminal/{widgetID}/restart`
     - terminal restart rehydrates the widget-local session state and re-subscribes the SSE output stream instead of leaving the body bound to the pre-restart snapshot
     - Ctrl/Cmd+F inside the terminal still opens search through the xterm key handler, but the same search row is now also reachable through visible toolbar controls
-  - the shell settings modal now exposes a frontend-owned `Terminal` preference slice instead of a placeholder:
+  - the shell settings modal now exposes a backend-owned `Terminal` settings slice instead of a placeholder:
     - current terminal font size is visible in `Settings -> Terminal`
     - the operator can decrease, increase, and reset terminal font size inside the existing settings shell
-    - the font-size preference is stored in local UI state and applied live to the mounted xterm surface without inventing a backend terminal settings contract
+    - font size is loaded and persisted through the runtime contract (`GET/PUT /api/v1/settings/terminal`)
+    - the mounted xterm surface still applies that value live in the frontend, but the source of truth is now the runtime DB rather than local UI storage
   - the renderer-only terminal demo path is removed from the seeded main path:
     - no hardcoded intro lines
     - no local prompt generator
@@ -60,6 +61,8 @@
 - `POST /api/v1/terminal/{widgetID}/restart`
   - implemented in the frontend runtime client
   - wired to the visible terminal header restart control
+- `GET /api/v1/settings/terminal`
+- `PUT /api/v1/settings/terminal`
 - `POST /api/v1/workspace/tabs`
   - used by the visible shell actions that create additional terminal panels
 - `DELETE /api/v1/workspace/tabs/{tabID}`
@@ -77,6 +80,8 @@
 - `frontend/src/features/terminal/model/use-terminal-session.ts`
 - `frontend/src/features/terminal/model/use-terminal-preferences.ts`
 - `frontend/src/features/terminal/model/use-terminal-preferences.test.tsx`
+- `frontend/src/shared/api/terminal-settings.ts`
+- `frontend/src/shared/api/terminal-settings.test.ts`
 - `frontend/src/features/terminal/model/panel-registry.ts`
 - `frontend/src/features/terminal/model/use-terminal-session.test.tsx`
 - `frontend/src/widgets/terminal/terminal-panel.ts`
@@ -95,6 +100,12 @@
 - `frontend/src/shared/ui/components/terminal-surface.tsx`
 - `frontend/src/shared/ui/components/terminal-status-header.tsx`
 - `frontend/src/app/dockview-workspace.bootstrap.ts`
+- `core/db/migrations/0008_terminal_settings.sql`
+- `core/terminal/preferences.go`
+- `core/terminal/preferences_test.go`
+- `core/app/terminal_settings.go`
+- `core/transport/httpapi/handlers_terminal_settings.go`
+- `core/transport/httpapi/handlers_terminal_settings_test.go`
 
 ## Demo/static paths removed from the main path
 
@@ -111,6 +122,7 @@
 - `npm --prefix frontend run test -- src/shared/ui/components/terminal-status-header.test.tsx src/widgets/terminal/terminal-widget.test.tsx`
 - `npm --prefix frontend run test -- src/features/terminal/model/use-terminal-preferences.test.tsx src/widgets/settings/terminal-settings-section.test.tsx src/widgets/terminal/terminal-widget.test.tsx`
 - `npm --prefix frontend run test -- src/shared/ui/components/terminal-toolbar.test.tsx src/shared/ui/components/accessibility-contracts.test.tsx src/widgets/terminal/terminal-widget.test.tsx`
+- `npm --prefix frontend run test -- src/shared/api/terminal-settings.test.ts src/features/terminal/model/use-terminal-preferences.test.tsx src/widgets/settings/terminal-settings-section.test.tsx src/widgets/terminal/terminal-widget.test.tsx`
 - `npm --prefix frontend run test -- src/widgets/terminal/terminal-dockview-tab-widget.test.tsx src/widgets/terminal/terminal-dockview-header-actions-widget.test.tsx`
 - `npm --prefix frontend run test -- src/features/agent/api/client.test.ts src/widgets/ai/ai-panel-widget.test.tsx`
 - `./scripts/go.sh test ./core/terminal ./core/transport/httpapi ./core/app`
@@ -130,7 +142,7 @@
 
 ## Known limitations
 
-- Visible restart and interrupt controls now exist in the terminal header chrome, and terminal font size is now configurable in the shell settings UI, but that preference remains frontend-local state; there is still no backend-owned terminal settings contract for font/theme/scrollback toggles.
+- Visible restart and interrupt controls now exist in the terminal header chrome, and terminal font size is now configurable through a backend-owned runtime settings contract; deeper terminal settings (`theme`, `scrollback`, `line height`, cursor behavior) still do not have a backend-owned contract yet.
 - Terminal toolbar `clear` and `jump-to-latest` actions are intentionally local xterm viewport controls. They do not mutate backend snapshot history and were validated as non-breaking live affordances rather than as persisted runtime state.
 - Browser validation for terminal input now runs through Playwright on the split local dev path. The suite is intentionally serialized (`workers: 1`) because terminal/runtime state is shared across the same backend instance.
 - A fresh `npm run tauri:dev` desktop smoke was run for this slice and the spawned `rterm-desktop` / core listener processes were cleaned up after verification.
@@ -138,11 +150,16 @@
 ## Evidence
 
 - `core/transport/httpapi/handlers_terminal.go`
+- `core/transport/httpapi/handlers_terminal_settings.go`
 - `core/terminal/service.go`
+- `core/terminal/preferences.go`
 - `core/terminal/types.go`
 - `core/app/terminal_restore_state.go`
+- `core/app/terminal_settings.go`
 - `frontend/src/features/terminal/api/client.ts`
+- `frontend/src/shared/api/terminal-settings.ts`
 - `frontend/src/features/terminal/model/use-terminal-session.ts`
+- `frontend/src/features/terminal/model/use-terminal-preferences.ts`
 - `frontend/src/shared/ui/components/terminal-toolbar.tsx`
 - `frontend/src/widgets/terminal/terminal-widget.tsx`
 - `frontend/src/shared/ui/components/terminal-surface.tsx`

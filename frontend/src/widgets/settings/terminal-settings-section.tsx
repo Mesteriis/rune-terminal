@@ -39,13 +39,14 @@ function SectionCard({
 }
 
 export function TerminalSettingsSection() {
-  const { decreaseFontSize, fontSize, increaseFontSize, resetFontSize } = useTerminalPreferences()
+  const { decreaseFontSize, errorMessage, fontSize, increaseFontSize, isLoading, isSaving, resetFontSize } =
+    useTerminalPreferences()
   const canDecreaseFontSize = fontSize > MIN_TERMINAL_FONT_SIZE
   const canIncreaseFontSize = fontSize < MAX_TERMINAL_FONT_SIZE
 
   return (
     <SectionCard
-      description="Это frontend-owned terminal preference. Оно применяется к живому xterm surface и хранится локально, пока отдельный backend terminal settings contract не введён."
+      description="Это runtime-owned terminal preference. Оно хранится в backend state и применяется ко всем живым terminal widgets в текущем shell."
       title="Terminal font size"
     >
       <ClearBox style={settingsShellListStyle}>
@@ -53,10 +54,10 @@ export function TerminalSettingsSection() {
           <ClearBox style={settingsShellContentHeaderStyle}>
             <Text style={{ fontWeight: 600 }}>Current terminal font size</Text>
             <Text style={settingsShellMutedTextStyle}>
-              Изменение применяется сразу ко всем terminal widgets в текущем shell UI.
+              Изменение применяется сразу ко всем terminal widgets и сохраняется в runtime state.
             </Text>
           </ClearBox>
-          <ClearBox style={settingsShellBadgeStyle}>{fontSize}px</ClearBox>
+          <ClearBox style={settingsShellBadgeStyle}>{isLoading ? 'Loading…' : `${fontSize}px`}</ClearBox>
         </ClearBox>
         <ClearBox style={settingsShellListRowStyle}>
           <ClearBox style={settingsShellContentHeaderStyle}>
@@ -69,22 +70,22 @@ export function TerminalSettingsSection() {
           <ClearBox style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--gap-xs)' }}>
             <Button
               aria-label="Decrease terminal font size"
-              disabled={!canDecreaseFontSize}
-              onClick={decreaseFontSize}
+              disabled={isLoading || isSaving || !canDecreaseFontSize}
+              onClick={() => void decreaseFontSize()}
             >
               <Minus size={14} strokeWidth={1.8} />
             </Button>
             <Button
               aria-label="Reset terminal font size"
-              disabled={fontSize === DEFAULT_TERMINAL_FONT_SIZE}
-              onClick={resetFontSize}
+              disabled={isLoading || isSaving || fontSize === DEFAULT_TERMINAL_FONT_SIZE}
+              onClick={() => void resetFontSize()}
             >
               <RotateCcw size={14} strokeWidth={1.8} />
             </Button>
             <Button
               aria-label="Increase terminal font size"
-              disabled={!canIncreaseFontSize}
-              onClick={increaseFontSize}
+              disabled={isLoading || isSaving || !canIncreaseFontSize}
+              onClick={() => void increaseFontSize()}
             >
               <Plus size={14} strokeWidth={1.8} />
             </Button>
@@ -92,7 +93,7 @@ export function TerminalSettingsSection() {
         </ClearBox>
       </ClearBox>
       <Text style={settingsShellMutedTextStyle}>
-        This preference is stored in local UI state and does not extend the backend terminal runtime contract.
+        {errorMessage ?? 'This terminal setting is now backed by the shared runtime contract.'}
       </Text>
     </SectionCard>
   )
