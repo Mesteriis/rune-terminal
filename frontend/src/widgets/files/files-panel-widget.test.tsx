@@ -57,6 +57,7 @@ describe('FilesPanelWidget', () => {
       expect(screen.getByText('src')).toBeInTheDocument()
       expect(screen.getByText('README.md')).toBeInTheDocument()
       expect(screen.getByText('2.0 KB')).toBeInTheDocument()
+      expect(screen.getByText('2 entries')).toBeInTheDocument()
     })
   })
 
@@ -214,10 +215,12 @@ describe('FilesPanelWidget', () => {
 
     expect(screen.queryByRole('button', { name: 'Open directory src' })).not.toBeInTheDocument()
     expect(screen.getByText('package.json')).toBeInTheDocument()
+    expect(screen.getByText('1 of 2 entries')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Clear files filter' }))
 
     expect(screen.getByRole('button', { name: 'Open directory src' })).toBeInTheDocument()
+    expect(screen.getByText('2 entries')).toBeInTheDocument()
   })
 
   it('refreshes the current directory on demand', async () => {
@@ -399,10 +402,12 @@ describe('FilesPanelWidget', () => {
     await screen.findByRole('button', { name: 'Open file README.md' })
 
     expect(screen.queryByRole('button', { name: 'Open file .env' })).not.toBeInTheDocument()
+    expect(screen.getByText('1 of 2 entries')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Show hidden files' }))
 
     expect(screen.getByRole('button', { name: 'Open file .env' })).toBeInTheDocument()
+    expect(screen.getByText('2 entries')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Hide hidden files' }))
 

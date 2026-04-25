@@ -73,6 +73,16 @@ function renderSortLabel(label: string, mode: FilesPanelSortMode, sort: FilesPan
   return `${label} ${sort.direction.toUpperCase()}`
 }
 
+function formatEntryCount(visibleCount: number, totalCount: number) {
+  const entryLabel = totalCount === 1 ? 'entry' : 'entries'
+
+  if (visibleCount === totalCount) {
+    return `${totalCount} ${entryLabel}`
+  }
+
+  return `${visibleCount} of ${totalCount} ${entryLabel}`
+}
+
 function sortFilesPanelEntries(entries: FilesDirectoryEntry[], sort: FilesPanelSortState) {
   const sortedEntries = [...entries]
 
@@ -309,6 +319,8 @@ export function FilesPanelWidget({ path, title }: FilesPanelWidgetProps) {
         )
       : []
   const sortedEntries = sortFilesPanelEntries(visibleEntries, sort)
+  const entryCountLabel =
+    state.status === 'ready' ? formatEntryCount(visibleEntries.length, state.snapshot.entries.length) : null
 
   return (
     <Box runaComponent="files-panel-root" style={filesPanelRootStyle}>
@@ -320,6 +332,11 @@ export function FilesPanelWidget({ path, title }: FilesPanelWidgetProps) {
           <Text runaComponent="files-panel-path" style={filesPanelPathStyle}>
             {currentPath}
           </Text>
+          {entryCountLabel ? (
+            <Text runaComponent="files-panel-entry-count" style={filesPanelPathStyle}>
+              {entryCountLabel}
+            </Text>
+          ) : null}
         </Box>
         <Box runaComponent="files-panel-controls" style={filesPanelControlsStyle}>
           <Input

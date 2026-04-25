@@ -23,9 +23,9 @@ It is intentionally operational, not narrative.
   route, using the runtime `repo_root` as the initial directory. The frontend
   renders that widget as a narrow directory-list surface backed by
   `GET /api/v1/fs/list`, with refresh, local kind/name/size/modified sorting,
-  hidden-file toggle, direct path jump, filename filtering, child-directory
-  open, parent navigation, current-directory external handoff, and file-row
-  handoff through `POST /api/v1/fs/open`.
+  visible/total entry count, hidden-file toggle, direct path jump, filename
+  filtering, child-directory open, parent navigation, current-directory
+  external handoff, and file-row handoff through `POST /api/v1/fs/open`.
 - Backend-owned non-terminal widgets can be closed through
   `DELETE /api/v1/workspace/widgets/{widgetID}`. The files panel close action
   uses that route before removing the Dockview panel, so the workspace

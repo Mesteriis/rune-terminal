@@ -56,11 +56,11 @@ This is the canonical workspace entrypoint for tab/widget/layout behavior.
   removes the widget record.
 - The files widget currently renders a narrow directory list for the
   handed-off path, with refresh, local kind/name/size/modified sorting,
-  hidden-file toggle, direct path jump, filename filtering, child-directory
-  open, and parent navigation. Current-directory and file-row external-open
-  handoffs dispatch to the existing backend external-opener route. TideTerm-
-  style rich file preview, drag/copy, media preview, and editor handoff remain
-  future slices.
+  visible/total entry count, hidden-file toggle, direct path jump, filename
+  filtering, child-directory open, and parent navigation. Current-directory
+  and file-row external-open handoffs dispatch to the existing backend
+  external-opener route. TideTerm-style rich file preview, drag/copy, media
+  preview, and editor handoff remain future slices.
 
 ## Deep links
 
