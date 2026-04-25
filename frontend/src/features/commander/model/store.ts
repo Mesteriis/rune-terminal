@@ -414,12 +414,6 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
       return nextWidgetState
     })
   })
-  .on(requestCommanderActivePaneView, (widgets, payload) => {
-    return widgets
-  })
-  .on(requestCommanderActivePaneEdit, (widgets, payload) => {
-    return widgets
-  })
   .on(setCommanderFileDialog, (widgets, payload) => {
     return withCommanderWidgetState(widgets, payload, (widgetState) => ({
       ...widgetState,
@@ -441,9 +435,6 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
       }
     })
   })
-  .on(saveCommanderFileDialog, (widgets, payload) => {
-    return widgets
-  })
   .on(closeCommanderFileDialog, (widgets, payload) => {
     return withCommanderWidgetState(widgets, payload, (widgetState) => {
       if (!widgetState.fileDialog) {
@@ -455,30 +446,6 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
         fileDialog: null,
       }
     })
-  })
-  .on(openCommanderPaneEntry, (widgets, payload) => {
-    return widgets
-  })
-  .on(openCommanderActivePaneEntry, (widgets, payload) => {
-    return widgets
-  })
-  .on(goCommanderPaneParent, (widgets, payload) => {
-    return widgets
-  })
-  .on(goCommanderActivePaneParent, (widgets, payload) => {
-    return widgets
-  })
-  .on(goCommanderPaneHistoryBack, (widgets, payload) => {
-    return widgets
-  })
-  .on(goCommanderPaneHistoryForward, (widgets, payload) => {
-    return widgets
-  })
-  .on(goCommanderActivePaneHistoryBack, (widgets, payload) => {
-    return widgets
-  })
-  .on(goCommanderActivePaneHistoryForward, (widgets, payload) => {
-    return widgets
   })
   .on(switchCommanderActivePane, (widgets, payload) => {
     return withCommanderWidgetState(widgets, payload, (widgetState) => ({
@@ -560,9 +527,6 @@ export const $commanderWidgets = createStore<Record<string, CommanderWidgetRunti
         }),
       ),
     )
-  })
-  .on(setCommanderPanePath, (widgets, payload) => {
-    return widgets
   })
   .on(invertCommanderActivePaneSelection, (widgets, payload) => {
     return withCommanderWidgetState(widgets, payload, (widgetState) =>
