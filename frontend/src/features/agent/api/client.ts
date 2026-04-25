@@ -103,6 +103,7 @@ export type AgentConversationSummary = {
   created_at: string
   updated_at: string
   message_count: number
+  archived_at?: string
 }
 
 export type AgentConversationSnapshot = {
@@ -113,6 +114,7 @@ export type AgentConversationSnapshot = {
   session?: AgentConversationSession
   created_at: string
   updated_at: string
+  archived_at?: string
 }
 
 export type AgentConversationContext = {
@@ -130,6 +132,22 @@ function normalizeConversationSnapshot(conversation: AgentConversationSnapshot):
   return {
     ...conversation,
     messages: Array.isArray(conversation.messages) ? conversation.messages : [],
+  }
+}
+
+function normalizeConversationSummary(conversation: AgentConversationSummary): AgentConversationSummary {
+  return {
+    ...conversation,
+    archived_at: conversation.archived_at?.trim() || undefined,
+  }
+}
+
+function normalizeConversationList(payload: AgentConversationListResponse): AgentConversationListResponse {
+  return {
+    ...payload,
+    conversations: Array.isArray(payload.conversations)
+      ? payload.conversations.map(normalizeConversationSummary)
+      : [],
   }
 }
 
@@ -491,7 +509,8 @@ export async function fetchAgentConversation() {
 }
 
 export async function fetchAgentConversations() {
-  return requestRuntimeJSON<AgentConversationListResponse>('/api/v1/agent/conversations')
+  const payload = await requestRuntimeJSON<AgentConversationListResponse>('/api/v1/agent/conversations')
+  return normalizeConversationList(payload)
 }
 
 export async function createAgentConversation() {
@@ -518,6 +537,26 @@ export async function deleteAgentConversation(conversationID: string) {
     `/api/v1/agent/conversations/${encodeURIComponent(conversationID)}`,
     {
       method: 'DELETE',
+    },
+  )
+  return normalizeConversationSnapshot(payload.conversation)
+}
+
+export async function archiveAgentConversation(conversationID: string) {
+  const payload = await requestRuntimeJSON<{ conversation: AgentConversationSnapshot }>(
+    `/api/v1/agent/conversations/${encodeURIComponent(conversationID)}/archive`,
+    {
+      method: 'PUT',
+    },
+  )
+  return normalizeConversationSnapshot(payload.conversation)
+}
+
+export async function restoreAgentConversation(conversationID: string) {
+  const payload = await requestRuntimeJSON<{ conversation: AgentConversationSnapshot }>(
+    `/api/v1/agent/conversations/${encodeURIComponent(conversationID)}/restore`,
+    {
+      method: 'PUT',
     },
   )
   return normalizeConversationSnapshot(payload.conversation)

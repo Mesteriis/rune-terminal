@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useUnit } from 'effector-react'
 
 import {
+  archiveAgentConversation,
   activateAgentConversation,
   createAgentConversation,
   deleteAgentConversation,
@@ -10,6 +11,7 @@ import {
   fetchAgentConversations,
   fetchAgentConversation,
   renameAgentConversation,
+  restoreAgentConversation,
   streamAgentConversationMessage,
   type AgentConversationMessage,
   type AgentConversationProvider,
@@ -314,6 +316,7 @@ function filterContextWidgetSelection(selectedWidgetIDs: string[], widgetOptions
 
 function summaryFromConversationSnapshot(snapshot: AgentConversationSnapshot): AgentConversationSummary {
   return {
+    archived_at: snapshot.archived_at,
     id: snapshot.id,
     title: snapshot.title,
     created_at: snapshot.created_at,
@@ -324,7 +327,20 @@ function summaryFromConversationSnapshot(snapshot: AgentConversationSnapshot): A
 
 function sortConversationSummaries(conversations: AgentConversationSummary[]) {
   return [...conversations].sort((left, right) => {
-    const updatedAtDelta = new Date(right.updated_at).getTime() - new Date(left.updated_at).getTime()
+    const leftArchivedAt = left.archived_at?.trim() ?? ''
+    const rightArchivedAt = right.archived_at?.trim() ?? ''
+
+    if (!leftArchivedAt && rightArchivedAt) {
+      return -1
+    }
+
+    if (leftArchivedAt && !rightArchivedAt) {
+      return 1
+    }
+
+    const leftSortKey = leftArchivedAt || left.updated_at
+    const rightSortKey = rightArchivedAt || right.updated_at
+    const updatedAtDelta = new Date(rightSortKey).getTime() - new Date(leftSortKey).getTime()
 
     if (updatedAtDelta !== 0) {
       return updatedAtDelta
@@ -459,7 +475,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
       }
 
       if (conversationsResult.status === 'fulfilled') {
-        setConversations(conversationsResult.value.conversations)
+        setConversations(sortConversationSummaries(conversationsResult.value.conversations))
         setActiveConversationID(
           (currentConversationID) =>
             currentConversationID || conversationsResult.value.active_conversation_id || '',
@@ -561,7 +577,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
 
   const refreshConversationList = useCallback(async () => {
     const conversationList = await fetchAgentConversations()
-    setConversations(conversationList.conversations)
+    setConversations(sortConversationSummaries(conversationList.conversations))
     setActiveConversationID(conversationList.active_conversation_id || '')
     return conversationList
   }, [])
@@ -689,10 +705,83 @@ export function useAgentPanel(hostId: string, enabled = true) {
         }
         applyConversationSnapshot(snapshot)
         resetConversationInteractionState()
-        setConversations(conversationList.conversations)
+        setConversations(sortConversationSummaries(conversationList.conversations))
         setActiveConversationID(conversationList.active_conversation_id || snapshot.id)
       } catch (error) {
         setSubmitError(getErrorMessage(error, 'Unable to delete the conversation.'))
+      } finally {
+        setIsConversationPending(false)
+      }
+    },
+    [
+      applyConversationSnapshot,
+      beginPanelStateEpoch,
+      isConversationPending,
+      isSubmitting,
+      resetConversationInteractionState,
+    ],
+  )
+
+  const archiveConversation = useCallback(
+    async (conversationID: string) => {
+      const nextConversationID = conversationID.trim()
+      if (!nextConversationID || isSubmitting || isConversationPending) {
+        return
+      }
+
+      submissionNonceRef.current += 1
+      activeStreamRef.current?.close()
+      activeStreamRef.current = null
+      const panelStateEpoch = beginPanelStateEpoch()
+      setIsConversationPending(true)
+
+      try {
+        const snapshot = await archiveAgentConversation(nextConversationID)
+        if (panelStateEpochRef.current !== panelStateEpoch) {
+          return
+        }
+        applyConversationSnapshot(snapshot)
+        resetConversationInteractionState()
+        await refreshConversationList()
+      } catch (error) {
+        setSubmitError(getErrorMessage(error, 'Unable to archive the conversation.'))
+      } finally {
+        setIsConversationPending(false)
+      }
+    },
+    [
+      applyConversationSnapshot,
+      beginPanelStateEpoch,
+      isConversationPending,
+      isSubmitting,
+      refreshConversationList,
+      resetConversationInteractionState,
+    ],
+  )
+
+  const restoreConversation = useCallback(
+    async (conversationID: string) => {
+      const nextConversationID = conversationID.trim()
+      if (!nextConversationID || isSubmitting || isConversationPending) {
+        return
+      }
+
+      submissionNonceRef.current += 1
+      activeStreamRef.current?.close()
+      activeStreamRef.current = null
+      const panelStateEpoch = beginPanelStateEpoch()
+      setIsConversationPending(true)
+
+      try {
+        const snapshot = await restoreAgentConversation(nextConversationID)
+        if (panelStateEpochRef.current !== panelStateEpoch) {
+          return
+        }
+        applyConversationSnapshot(snapshot)
+        resetConversationInteractionState()
+        await refreshConversationList()
+      } catch (error) {
+        setSubmitError(getErrorMessage(error, 'Unable to restore the conversation.'))
       } finally {
         setIsConversationPending(false)
       }
@@ -1311,6 +1400,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
     availableModels,
     activeContextWidgetID: workspaceActiveWidgetID,
     activeContextWidgetOption,
+    archiveConversation,
     handleContextOptionsOpen,
     conversations,
     createConversation,
@@ -1331,6 +1421,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
     deleteConversation,
     renameConversation,
     resetContextWidgetSelection,
+    restoreConversation,
     useAllContextWidgets,
     useCurrentContextWidget,
     submitDraft,

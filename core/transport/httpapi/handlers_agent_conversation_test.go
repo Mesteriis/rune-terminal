@@ -264,6 +264,112 @@ func TestConversationDeleteRouteDeletesActiveConversationAndReturnsReplacement(t
 	}
 }
 
+func TestConversationArchiveAndRestoreRoutesRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+
+	keepRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(keepRecorder, authedJSONRequest(t, http.MethodPost, "/api/v1/agent/conversations", map[string]any{}))
+	if keepRecorder.Code != http.StatusOK {
+		t.Fatalf("expected keep create 200, got %d body=%s", keepRecorder.Code, keepRecorder.Body.String())
+	}
+
+	archiveTargetRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(
+		archiveTargetRecorder,
+		authedJSONRequest(t, http.MethodPost, "/api/v1/agent/conversations", map[string]any{}),
+	)
+	if archiveTargetRecorder.Code != http.StatusOK {
+		t.Fatalf("expected archive target create 200, got %d body=%s", archiveTargetRecorder.Code, archiveTargetRecorder.Body.String())
+	}
+
+	var archiveTarget struct {
+		Conversation struct {
+			ID string `json:"id"`
+		} `json:"conversation"`
+	}
+	if err := json.Unmarshal(archiveTargetRecorder.Body.Bytes(), &archiveTarget); err != nil {
+		t.Fatalf("unmarshal archive target: %v", err)
+	}
+
+	archiveRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(
+		archiveRecorder,
+		authedJSONRequest(
+			t,
+			http.MethodPut,
+			"/api/v1/agent/conversations/"+archiveTarget.Conversation.ID+"/archive",
+			nil,
+		),
+	)
+	if archiveRecorder.Code != http.StatusOK {
+		t.Fatalf("expected archive 200, got %d body=%s", archiveRecorder.Code, archiveRecorder.Body.String())
+	}
+
+	var archived struct {
+		Conversation struct {
+			ID string `json:"id"`
+		} `json:"conversation"`
+	}
+	if err := json.Unmarshal(archiveRecorder.Body.Bytes(), &archived); err != nil {
+		t.Fatalf("unmarshal archive payload: %v", err)
+	}
+	if archived.Conversation.ID == "" || archived.Conversation.ID == archiveTarget.Conversation.ID {
+		t.Fatalf("expected active replacement after archive, got %#v", archived)
+	}
+
+	listRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(listRecorder, authedJSONRequest(t, http.MethodGet, "/api/v1/agent/conversations", nil))
+	if listRecorder.Code != http.StatusOK {
+		t.Fatalf("expected list 200, got %d", listRecorder.Code)
+	}
+
+	var listPayload struct {
+		Conversations []struct {
+			ID         string  `json:"id"`
+			ArchivedAt *string `json:"archived_at"`
+		} `json:"conversations"`
+	}
+	if err := json.Unmarshal(listRecorder.Body.Bytes(), &listPayload); err != nil {
+		t.Fatalf("unmarshal archived list: %v", err)
+	}
+	if len(listPayload.Conversations) != 3 {
+		t.Fatalf("expected 3 conversations after archive, got %#v", listPayload.Conversations)
+	}
+	if listPayload.Conversations[len(listPayload.Conversations)-1].ID != archiveTarget.Conversation.ID ||
+		listPayload.Conversations[len(listPayload.Conversations)-1].ArchivedAt == nil {
+		t.Fatalf("expected archived conversation in second slot, got %#v", listPayload.Conversations)
+	}
+
+	restoreRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(
+		restoreRecorder,
+		authedJSONRequest(
+			t,
+			http.MethodPut,
+			"/api/v1/agent/conversations/"+archiveTarget.Conversation.ID+"/restore",
+			nil,
+		),
+	)
+	if restoreRecorder.Code != http.StatusOK {
+		t.Fatalf("expected restore 200, got %d body=%s", restoreRecorder.Code, restoreRecorder.Body.String())
+	}
+
+	var restored struct {
+		Conversation struct {
+			ID         string  `json:"id"`
+			ArchivedAt *string `json:"archived_at"`
+		} `json:"conversation"`
+	}
+	if err := json.Unmarshal(restoreRecorder.Body.Bytes(), &restored); err != nil {
+		t.Fatalf("unmarshal restore payload: %v", err)
+	}
+	if restored.Conversation.ID != archiveTarget.Conversation.ID || restored.Conversation.ArchivedAt != nil {
+		t.Fatalf("expected restored unarchived conversation, got %#v", restored)
+	}
+}
+
 func TestSubmitConversationMessagePersistsTranscript(t *testing.T) {
 	t.Parallel()
 

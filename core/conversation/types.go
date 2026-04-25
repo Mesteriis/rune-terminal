@@ -43,21 +43,23 @@ type Message struct {
 }
 
 type ConversationSummary struct {
-	ID           string    `json:"id"`
-	Title        string    `json:"title"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
-	MessageCount int       `json:"message_count"`
+	ID           string     `json:"id"`
+	Title        string     `json:"title"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
+	MessageCount int        `json:"message_count"`
+	ArchivedAt   *time.Time `json:"archived_at,omitempty"`
 }
 
 type Snapshot struct {
-	ID        string               `json:"id"`
-	Title     string               `json:"title"`
-	Messages  []Message            `json:"messages"`
-	Provider  ProviderInfo         `json:"provider"`
-	Session   ProviderSessionState `json:"session,omitempty"`
-	CreatedAt time.Time            `json:"created_at"`
-	UpdatedAt time.Time            `json:"updated_at"`
+	ID         string               `json:"id"`
+	Title      string               `json:"title"`
+	Messages   []Message            `json:"messages"`
+	Provider   ProviderInfo         `json:"provider"`
+	Session    ProviderSessionState `json:"session,omitempty"`
+	CreatedAt  time.Time            `json:"created_at"`
+	UpdatedAt  time.Time            `json:"updated_at"`
+	ArchivedAt *time.Time           `json:"archived_at,omitempty"`
 }
 
 type SubmitRequest struct {

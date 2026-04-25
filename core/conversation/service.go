@@ -237,6 +237,129 @@ func (s *Service) DeleteConversation(ctx context.Context, conversationID string)
 	return s.snapshotLocked(), nil
 }
 
+func (s *Service) ArchiveConversation(ctx context.Context, conversationID string) (Snapshot, error) {
+	conversationID = strings.TrimSpace(conversationID)
+	if conversationID == "" {
+		return Snapshot{}, ErrConversationNotFound
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return Snapshot{}, err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	record, _, err := loadConversationStateTx(ctx, tx, conversationID)
+	if err != nil {
+		return Snapshot{}, err
+	}
+	if record.ArchivedAt != nil {
+		if s.active.ID == conversationID {
+			return s.snapshotLocked(), nil
+		}
+		return s.snapshotLockedWithProviderInfo(s.provider.Info()), nil
+	}
+
+	now := time.Now().UTC()
+	record.ArchivedAt = &now
+	record.UpdatedAt = now
+	if err := updateConversationTx(ctx, tx, record); err != nil {
+		return Snapshot{}, err
+	}
+
+	if s.active.ID != conversationID {
+		if err := tx.Commit(); err != nil {
+			return Snapshot{}, err
+		}
+		return s.snapshotLocked(), nil
+	}
+
+	nextConversationID, err := nextUnarchivedConversationCandidateTx(ctx, tx, conversationID)
+	if err != nil {
+		return Snapshot{}, err
+	}
+
+	nextActiveRecord := s.active
+	nextActiveMessages := append([]Message(nil), s.state.Messages...)
+	if nextConversationID == "" {
+		nextActiveRecord = newConversationRecord(now)
+		nextActiveMessages = []Message{}
+		if err := insertConversationTx(ctx, tx, nextActiveRecord); err != nil {
+			return Snapshot{}, err
+		}
+	} else {
+		nextActiveRecord, nextActiveMessages, err = loadConversationStateTx(ctx, tx, nextConversationID)
+		if err != nil {
+			return Snapshot{}, err
+		}
+	}
+
+	if err := setActiveConversationTx(ctx, tx, nextActiveRecord.ID); err != nil {
+		return Snapshot{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return Snapshot{}, err
+	}
+
+	s.active = nextActiveRecord
+	s.state = persistedState{
+		Messages:  append([]Message(nil), nextActiveMessages...),
+		UpdatedAt: nextActiveRecord.UpdatedAt,
+	}
+
+	return s.snapshotLocked(), nil
+}
+
+func (s *Service) RestoreConversation(ctx context.Context, conversationID string) (Snapshot, error) {
+	conversationID = strings.TrimSpace(conversationID)
+	if conversationID == "" {
+		return Snapshot{}, ErrConversationNotFound
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return Snapshot{}, err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	record, messages, err := loadConversationStateTx(ctx, tx, conversationID)
+	if err != nil {
+		return Snapshot{}, err
+	}
+	if record.ArchivedAt == nil {
+		return record.snapshot(messages, s.provider.Info()), nil
+	}
+
+	record.ArchivedAt = nil
+	record.UpdatedAt = time.Now().UTC()
+	if err := updateConversationTx(ctx, tx, record); err != nil {
+		return Snapshot{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return Snapshot{}, err
+	}
+
+	if s.active.ID == conversationID {
+		s.active = record
+		s.state = persistedState{
+			Messages:  append([]Message(nil), messages...),
+			UpdatedAt: record.UpdatedAt,
+		}
+	}
+
+	return record.snapshot(messages, s.provider.Info()), nil
+}
+
 func (s *Service) ActivateConversation(ctx context.Context, conversationID string) (Snapshot, error) {
 	conversationID = strings.TrimSpace(conversationID)
 	if conversationID == "" {

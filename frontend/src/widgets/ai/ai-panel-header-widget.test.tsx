@@ -115,6 +115,73 @@ describe('AiPanelHeaderWidget', () => {
     expect(onDeleteConversation).toHaveBeenCalledWith('conv_2')
   })
 
+  it('routes active conversation archive through the header controls and groups archived threads', () => {
+    const onArchiveConversation = vi.fn()
+
+    render(
+      <AiPanelHeaderWidget
+        activeConversationID="conv_2"
+        conversations={[
+          {
+            id: 'conv_1',
+            title: 'Archived thread',
+            created_at: '2026-04-24T09:00:00Z',
+            updated_at: '2026-04-24T09:05:00Z',
+            archived_at: '2026-04-24T09:06:00Z',
+            message_count: 2,
+          },
+          {
+            id: 'conv_2',
+            title: 'Current thread',
+            created_at: '2026-04-24T10:00:00Z',
+            updated_at: '2026-04-24T10:01:00Z',
+            message_count: 1,
+          },
+        ]}
+        mode="chat"
+        onArchiveConversation={onArchiveConversation}
+        onModeChange={() => {}}
+        title="AI Rune"
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Conversation menu' }))
+    expect(screen.getByText('Recent')).toBeInTheDocument()
+    expect(screen.getByText('Archived')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Archive conversation' }))
+
+    expect(onArchiveConversation).toHaveBeenCalledWith('conv_2')
+  })
+
+  it('routes active archived conversation restore through the header controls', () => {
+    const onRestoreConversation = vi.fn()
+
+    render(
+      <AiPanelHeaderWidget
+        activeConversationID="conv_2"
+        conversations={[
+          {
+            id: 'conv_2',
+            title: 'Archived thread',
+            created_at: '2026-04-24T10:00:00Z',
+            updated_at: '2026-04-24T10:01:00Z',
+            archived_at: '2026-04-24T10:10:00Z',
+            message_count: 1,
+          },
+        ]}
+        mode="chat"
+        onModeChange={() => {}}
+        onRestoreConversation={onRestoreConversation}
+        title="AI Rune"
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Conversation menu' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Restore conversation' }))
+
+    expect(onRestoreConversation).toHaveBeenCalledWith('conv_2')
+  })
+
   it('shows the renamed title optimistically while the rename request is still pending', () => {
     let resolveRename: (() => void) | null = null
     const onRenameConversation = vi.fn(

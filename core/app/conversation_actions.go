@@ -55,6 +55,22 @@ func (r *Runtime) DeleteConversation(ctx context.Context, conversationID string)
 	return r.withConversationProviderInfo(snapshot), nil
 }
 
+func (r *Runtime) ArchiveConversation(ctx context.Context, conversationID string) (conversation.Snapshot, error) {
+	snapshot, err := r.Conversation.ArchiveConversation(ctx, conversationID)
+	if err != nil {
+		return conversation.Snapshot{}, err
+	}
+	return r.withConversationProviderInfo(snapshot), nil
+}
+
+func (r *Runtime) RestoreConversation(ctx context.Context, conversationID string) (conversation.Snapshot, error) {
+	snapshot, err := r.Conversation.RestoreConversation(ctx, conversationID)
+	if err != nil {
+		return conversation.Snapshot{}, err
+	}
+	return r.withConversationProviderInfo(snapshot), nil
+}
+
 func (r *Runtime) ActivateConversation(ctx context.Context, conversationID string) (conversation.Snapshot, error) {
 	snapshot, err := r.Conversation.ActivateConversation(ctx, conversationID)
 	if err != nil {

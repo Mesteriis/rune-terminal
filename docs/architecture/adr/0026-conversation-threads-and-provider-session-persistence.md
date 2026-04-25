@@ -13,7 +13,7 @@ That was not sufficient for the current shell contract:
 - CLI-backed providers should retain provider-native context within one conversation
 - hidden helper prompts must not silently mutate the provider-native session
 
-The shell already has a real backend-owned AI panel path. The next narrow step is to make conversation identity explicit without broadening into archive/search/rename UX or speculative autonomy.
+The shell already has a real backend-owned AI panel path. The base step was to make conversation identity explicit without broadening immediately into archive/search/rename UX or speculative autonomy.
 
 ## Decision
 
@@ -51,8 +51,8 @@ Positive:
 
 Negative:
 
-- conversation management is intentionally still narrow: the base slice owns create + switch, while later follow-up slices add rename and delete without broadening into archive/search/multi-panel lifecycle
-- archive/search and broader conversation lifecycle remain future work
+- conversation management remains intentionally staged: the base slice owns create + switch, while follow-up slices add rename, delete, archive, and restore without broadening into archive-management views, broader search, or multi-panel lifecycle
+- broader conversation search and multi-panel conversation lifecycle remain future work
 - provider-native sessions are persisted only as lightweight runtime metadata, not as a broad provider abstraction
 - hidden helper prompts must stay disciplined so they do not accidentally contaminate stored provider sessions
 

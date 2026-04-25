@@ -16,22 +16,24 @@ import (
 const activeConversationStateKey = "active_conversation_id"
 
 type conversationRecord struct {
-	ID        string
-	Title     string
-	Session   ProviderSessionState
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID         string
+	Title      string
+	Session    ProviderSessionState
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+	ArchivedAt *time.Time
 }
 
 func (record conversationRecord) snapshot(messages []Message, info ProviderInfo) Snapshot {
 	return Snapshot{
-		ID:        record.ID,
-		Title:     record.Title,
-		Messages:  append([]Message(nil), messages...),
-		Provider:  info,
-		Session:   record.Session,
-		CreatedAt: record.CreatedAt,
-		UpdatedAt: record.UpdatedAt,
+		ID:         record.ID,
+		Title:      record.Title,
+		Messages:   append([]Message(nil), messages...),
+		Provider:   info,
+		Session:    record.Session,
+		CreatedAt:  record.CreatedAt,
+		UpdatedAt:  record.UpdatedAt,
+		ArchivedAt: cloneTimePointer(record.ArchivedAt),
 	}
 }
 
@@ -42,6 +44,7 @@ func (record conversationRecord) summary(messageCount int) ConversationSummary {
 		CreatedAt:    record.CreatedAt,
 		UpdatedAt:    record.UpdatedAt,
 		MessageCount: messageCount,
+		ArchivedAt:   cloneTimePointer(record.ArchivedAt),
 	}
 }
 
@@ -96,7 +99,10 @@ func (s *Service) ensureActiveConversationStateTx(ctx context.Context, tx *sql.T
 	if err := tx.QueryRowContext(ctx, `
 		SELECT id
 		FROM conversations
-		ORDER BY updated_at DESC, created_at DESC, id DESC
+		ORDER BY CASE WHEN archived_at IS NULL THEN 0 ELSE 1 END ASC,
+		         COALESCE(archived_at, updated_at) DESC,
+		         created_at DESC,
+		         id DESC
 		LIMIT 1
 	`).Scan(&conversationID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -160,15 +166,16 @@ func setActiveConversationTx(ctx context.Context, tx *sql.Tx, conversationID str
 func insertConversationTx(ctx context.Context, tx *sql.Tx, record conversationRecord) error {
 	_, err := tx.ExecContext(ctx, `
 		INSERT INTO conversations
-			(id, title, provider_session_kind, provider_session_id, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?)
+			(id, title, provider_session_kind, provider_session_id, created_at, updated_at, archived_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
 	`,
 		record.ID,
 		record.Title,
 		record.Session.ProviderKind,
 		record.Session.ID,
-		record.CreatedAt.Format(time.RFC3339Nano),
-		record.UpdatedAt.Format(time.RFC3339Nano),
+		formatDBTime(record.CreatedAt),
+		formatDBTime(record.UpdatedAt),
+		formatOptionalDBTime(record.ArchivedAt),
 	)
 	return err
 }
@@ -176,13 +183,14 @@ func insertConversationTx(ctx context.Context, tx *sql.Tx, record conversationRe
 func updateConversationTx(ctx context.Context, tx *sql.Tx, record conversationRecord) error {
 	_, err := tx.ExecContext(ctx, `
 		UPDATE conversations
-		SET title = ?, provider_session_kind = ?, provider_session_id = ?, updated_at = ?
+		SET title = ?, provider_session_kind = ?, provider_session_id = ?, updated_at = ?, archived_at = ?
 		WHERE id = ?
 	`,
 		record.Title,
 		record.Session.ProviderKind,
 		record.Session.ID,
-		record.UpdatedAt.Format(time.RFC3339Nano),
+		formatDBTime(record.UpdatedAt),
+		formatOptionalDBTime(record.ArchivedAt),
 		record.ID,
 	)
 	return err
@@ -208,7 +216,7 @@ func insertConversationMessagesTx(ctx context.Context, tx *sql.Tx, conversationI
 			strings.TrimSpace(message.Provider),
 			strings.TrimSpace(message.Model),
 			strings.TrimSpace(message.Reasoning),
-			message.CreatedAt.UTC().Format(time.RFC3339Nano),
+			formatDBTime(message.CreatedAt),
 		)
 		if err != nil {
 			return err
@@ -258,8 +266,9 @@ func loadConversationRecordTx(ctx context.Context, tx *sql.Tx, conversationID st
 	var record conversationRecord
 	var createdAtRaw string
 	var updatedAtRaw string
+	var archivedAtRaw sql.NullString
 	err := tx.QueryRowContext(ctx, `
-		SELECT id, title, provider_session_kind, provider_session_id, created_at, updated_at
+		SELECT id, title, provider_session_kind, provider_session_id, created_at, updated_at, archived_at
 		FROM conversations
 		WHERE id = ?
 	`, conversationID).Scan(
@@ -269,6 +278,7 @@ func loadConversationRecordTx(ctx context.Context, tx *sql.Tx, conversationID st
 		&record.Session.ID,
 		&createdAtRaw,
 		&updatedAtRaw,
+		&archivedAtRaw,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -281,6 +291,10 @@ func loadConversationRecordTx(ctx context.Context, tx *sql.Tx, conversationID st
 		return conversationRecord{}, err
 	}
 	record.UpdatedAt, err = parseDBTime(updatedAtRaw)
+	if err != nil {
+		return conversationRecord{}, err
+	}
+	record.ArchivedAt, err = parseOptionalDBTime(archivedAtRaw)
 	if err != nil {
 		return conversationRecord{}, err
 	}
@@ -340,11 +354,14 @@ func loadConversationMessagesTx(ctx context.Context, tx *sql.Tx, conversationID 
 
 func listConversations(ctx context.Context, dbConn *sql.DB) ([]ConversationSummary, error) {
 	rows, err := dbConn.QueryContext(ctx, `
-		SELECT c.id, c.title, c.created_at, c.updated_at, COUNT(m.id)
+		SELECT c.id, c.title, c.created_at, c.updated_at, c.archived_at, COUNT(m.id)
 		FROM conversations c
 		LEFT JOIN conversation_messages m ON m.conversation_id = c.id
-		GROUP BY c.id, c.title, c.created_at, c.updated_at
-		ORDER BY c.updated_at DESC, c.created_at DESC, c.id DESC
+		GROUP BY c.id, c.title, c.created_at, c.updated_at, c.archived_at
+		ORDER BY CASE WHEN c.archived_at IS NULL THEN 0 ELSE 1 END ASC,
+		         COALESCE(c.archived_at, c.updated_at) DESC,
+		         c.created_at DESC,
+		         c.id DESC
 	`)
 	if err != nil {
 		return nil, err
@@ -356,7 +373,15 @@ func listConversations(ctx context.Context, dbConn *sql.DB) ([]ConversationSumma
 		var summary ConversationSummary
 		var createdAtRaw string
 		var updatedAtRaw string
-		if err := rows.Scan(&summary.ID, &summary.Title, &createdAtRaw, &updatedAtRaw, &summary.MessageCount); err != nil {
+		var archivedAtRaw sql.NullString
+		if err := rows.Scan(
+			&summary.ID,
+			&summary.Title,
+			&createdAtRaw,
+			&updatedAtRaw,
+			&archivedAtRaw,
+			&summary.MessageCount,
+		); err != nil {
 			return nil, err
 		}
 		var err error
@@ -365,6 +390,10 @@ func listConversations(ctx context.Context, dbConn *sql.DB) ([]ConversationSumma
 			return nil, err
 		}
 		summary.UpdatedAt, err = parseDBTime(updatedAtRaw)
+		if err != nil {
+			return nil, err
+		}
+		summary.ArchivedAt, err = parseOptionalDBTime(archivedAtRaw)
 		if err != nil {
 			return nil, err
 		}
@@ -382,6 +411,27 @@ func nextConversationCandidateTx(ctx context.Context, tx *sql.Tx, excludingConve
 		SELECT id
 		FROM conversations
 		WHERE id <> ?
+		ORDER BY CASE WHEN archived_at IS NULL THEN 0 ELSE 1 END ASC,
+		         COALESCE(archived_at, updated_at) DESC,
+		         created_at DESC,
+		         id DESC
+		LIMIT 1
+	`, excludingConversationID).Scan(&conversationID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(conversationID), nil
+}
+
+func nextUnarchivedConversationCandidateTx(ctx context.Context, tx *sql.Tx, excludingConversationID string) (string, error) {
+	var conversationID string
+	err := tx.QueryRowContext(ctx, `
+		SELECT id
+		FROM conversations
+		WHERE id <> ? AND archived_at IS NULL
 		ORDER BY updated_at DESC, created_at DESC, id DESC
 		LIMIT 1
 	`, excludingConversationID).Scan(&conversationID)
@@ -441,4 +491,34 @@ func parseDBTime(raw string) (time.Time, error) {
 		return time.Time{}, fmt.Errorf("parse db time %q: %w", raw, err)
 	}
 	return parsed.UTC(), nil
+}
+
+func formatDBTime(value time.Time) string {
+	return value.UTC().Format("2006-01-02T15:04:05.000000000Z07:00")
+}
+
+func parseOptionalDBTime(raw sql.NullString) (*time.Time, error) {
+	if !raw.Valid || strings.TrimSpace(raw.String) == "" {
+		return nil, nil
+	}
+	parsed, err := parseDBTime(raw.String)
+	if err != nil {
+		return nil, err
+	}
+	return &parsed, nil
+}
+
+func formatOptionalDBTime(value *time.Time) any {
+	if value == nil {
+		return nil
+	}
+	return formatDBTime(*value)
+}
+
+func cloneTimePointer(value *time.Time) *time.Time {
+	if value == nil {
+		return nil
+	}
+	cloned := value.UTC()
+	return &cloned
 }

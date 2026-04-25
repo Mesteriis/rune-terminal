@@ -307,6 +307,71 @@ test('AI conversation navigator deletes the active thread and promotes the next 
   ).toHaveCount(0)
 })
 
+test('AI conversation navigator archives the active thread and restores it from the archived group', async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(60_000)
+
+  const keepConversation = await createConversationViaApi(request)
+  await renameConversationViaApi(request, keepConversation.id, 'Keep in recent')
+
+  const archiveConversation = await createConversationViaApi(request)
+  await renameConversationViaApi(request, archiveConversation.id, 'Archive from UI')
+  await activateAgentConversation(request, archiveConversation.id)
+
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  await page.getByRole('button', { name: 'Toggle AI panel' }).click()
+  const conversationMenuButton = page.getByRole('button', { name: 'Conversation menu' })
+  await conversationMenuButton.click()
+  await page.getByRole('button', { name: 'Archive conversation' }).click()
+
+  await expect
+    .poll(async () => {
+      const conversations = await fetchAgentConversations(request)
+      return {
+        active: conversations.active_conversation_id,
+        archivedAt:
+          conversations.conversations.find((conversation) => conversation.id === archiveConversation.id)?.archived_at ??
+          null,
+      }
+    })
+    .toMatchObject({
+      active: keepConversation.id,
+      archivedAt: expect.any(String),
+    })
+
+  await expect(conversationMenuButton).toContainText('Keep in recent')
+  await conversationMenuButton.click()
+  await expect(page.getByText('Archived', { exact: true })).toBeVisible()
+  await page
+    .getByRole('option', {
+      name: 'Open conversation Archive from UI',
+    })
+    .click()
+  await expect(conversationMenuButton).toContainText('Archive from UI')
+
+  await conversationMenuButton.click()
+  await page.getByRole('button', { name: 'Restore conversation' }).click()
+
+  await expect
+    .poll(async () => {
+      const conversations = await fetchAgentConversations(request)
+      return conversations.conversations.find((conversation) => conversation.id === archiveConversation.id)?.archived_at
+    })
+    .toBeUndefined()
+
+  await conversationMenuButton.click()
+  await expect(page.getByText('Recent', { exact: true })).toBeVisible()
+  await expect(
+    page.getByRole('option', {
+      name: 'Open conversation Archive from UI',
+    }),
+  ).toBeVisible()
+})
+
 test('AI conversation navigator filters recent threads locally', async ({ page, request }) => {
   test.setTimeout(60_000)
 

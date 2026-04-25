@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 
-import { Check, ChevronDown, MessageSquareMore, Pencil, Plus, Trash2, X } from 'lucide-react'
+import {
+  Archive,
+  Check,
+  ChevronDown,
+  MessageSquareMore,
+  Pencil,
+  Plus,
+  RotateCcw,
+  Trash2,
+  X,
+} from 'lucide-react'
 
 import runaAvatar from '@assets/img/logo.png'
 import type { AgentConversationSummary } from '@/features/agent/api/client'
@@ -24,6 +34,8 @@ import {
   aiHeaderConversationMenuOptionActiveStyle,
   aiHeaderConversationMenuOptionLeadingStyle,
   aiHeaderConversationMenuOptionStyle,
+  aiHeaderConversationMenuSectionStyle,
+  aiHeaderConversationMenuSectionTitleStyle,
   aiHeaderConversationMenuSummaryStyle,
   aiHeaderConversationRenameActionsStyle,
   aiHeaderConversationRenameInputStyle,
@@ -52,8 +64,10 @@ export type AiPanelHeaderWidgetProps = {
   mode: ChatMode
   onConversationSelect?: (conversationID: string) => void
   onCreateConversation?: () => void
+  onArchiveConversation?: (conversationID: string) => Promise<void> | void
   onDeleteConversation?: (conversationID: string) => Promise<void> | void
   onRenameConversation?: (conversationID: string, title: string) => Promise<void> | void
+  onRestoreConversation?: (conversationID: string) => Promise<void> | void
   onModeChange: (mode: ChatMode) => void
   title: string
 }
@@ -71,6 +85,10 @@ function formatConversationTitle(conversation: AgentConversationSummary) {
 function formatConversationCount(conversation: AgentConversationSummary) {
   const suffix = conversation.message_count === 1 ? '1 msg' : `${conversation.message_count} msgs`
   return suffix
+}
+
+function isArchivedConversation(conversation: AgentConversationSummary | null) {
+  return Boolean(conversation?.archived_at?.trim())
 }
 
 function formatConversationUpdatedAt(value: string) {
@@ -94,8 +112,10 @@ export function AiPanelHeaderWidget({
   mode,
   onConversationSelect,
   onCreateConversation,
+  onArchiveConversation,
   onDeleteConversation,
   onRenameConversation,
+  onRestoreConversation,
   onModeChange,
   title,
 }: AiPanelHeaderWidgetProps) {
@@ -117,9 +137,15 @@ export function AiPanelHeaderWidget({
     : 'Loading conversations'
   const displayedConversationTitle = optimisticConversationTitle.trim() || activeConversationTitle
   const activeConversationMeta = activeConversation
-    ? `${formatConversationCount(activeConversation)} · ${formatConversationUpdatedAt(activeConversation.updated_at)}`
+    ? isArchivedConversation(activeConversation)
+      ? `${formatConversationCount(activeConversation)} · Archived ${formatConversationUpdatedAt(activeConversation.archived_at ?? activeConversation.updated_at)}`
+      : `${formatConversationCount(activeConversation)} · ${formatConversationUpdatedAt(activeConversation.updated_at)}`
     : 'Recent thread list'
   const canRenameConversation = activeConversation != null && onRenameConversation != null
+  const canArchiveConversation =
+    activeConversation != null && onArchiveConversation != null && !isArchivedConversation(activeConversation)
+  const canRestoreConversation =
+    activeConversation != null && onRestoreConversation != null && isArchivedConversation(activeConversation)
   const canDeleteConversation = activeConversation != null && onDeleteConversation != null
   const normalizedConversationSearchQuery = conversationSearchQuery.trim().toLowerCase()
   const filteredConversations = useMemo(() => {
@@ -131,6 +157,14 @@ export function AiPanelHeaderWidget({
       formatConversationTitle(conversation).toLowerCase().includes(normalizedConversationSearchQuery),
     )
   }, [conversations, normalizedConversationSearchQuery])
+  const filteredRecentConversations = useMemo(
+    () => filteredConversations.filter((conversation) => !isArchivedConversation(conversation)),
+    [filteredConversations],
+  )
+  const filteredArchivedConversations = useMemo(
+    () => filteredConversations.filter((conversation) => isArchivedConversation(conversation)),
+    [filteredConversations],
+  )
 
   useEffect(() => {
     if (!isConversationMenuOpen) {
@@ -203,6 +237,28 @@ export function AiPanelHeaderWidget({
     setIsDeleteConversationConfirmOpen(false)
     setIsConversationMenuOpen(false)
     await onDeleteConversation(activeConversation.id)
+  }
+
+  const handleArchiveConversation = async () => {
+    if (!activeConversation || onArchiveConversation == null) {
+      return
+    }
+
+    setIsDeleteConversationConfirmOpen(false)
+    setIsRenamingConversation(false)
+    setIsConversationMenuOpen(false)
+    await onArchiveConversation(activeConversation.id)
+  }
+
+  const handleRestoreConversation = async () => {
+    if (!activeConversation || onRestoreConversation == null) {
+      return
+    }
+
+    setIsDeleteConversationConfirmOpen(false)
+    setIsRenamingConversation(false)
+    setIsConversationMenuOpen(false)
+    await onRestoreConversation(activeConversation.id)
   }
 
   return (
@@ -302,6 +358,30 @@ export function AiPanelHeaderWidget({
                         >
                           <Pencil {...conversationActionIconProps} />
                           Rename
+                        </Button>
+                        <Button
+                          aria-label={
+                            canRestoreConversation ? 'Restore conversation' : 'Archive conversation'
+                          }
+                          disabled={
+                            isConversationBusy || (!canArchiveConversation && !canRestoreConversation)
+                          }
+                          onClick={() => {
+                            if (canRestoreConversation) {
+                              void handleRestoreConversation()
+                              return
+                            }
+                            void handleArchiveConversation()
+                          }}
+                          runaComponent="ai-panel-header-conversation-archive"
+                          style={aiHeaderConversationActionStyle}
+                        >
+                          {canRestoreConversation ? (
+                            <RotateCcw {...conversationActionIconProps} />
+                          ) : (
+                            <Archive {...conversationActionIconProps} />
+                          )}
+                          {canRestoreConversation ? 'Restore' : 'Archive'}
                         </Button>
                         <Button
                           aria-label="Delete conversation"
@@ -458,36 +538,84 @@ export function AiPanelHeaderWidget({
                         </Text>
                       </Box>
                     ) : null}
-                    {filteredConversations.map((conversation) => {
-                      const isActive = conversation.id === selectedConversationID
-                      return (
-                        <Button
-                          aria-label={`Open conversation ${formatConversationTitle(conversation)}`}
-                          aria-selected={isActive}
-                          key={conversation.id}
-                          onClick={() => {
-                            setIsConversationMenuOpen(false)
-                            onConversationSelect?.(conversation.id)
-                          }}
-                          role="option"
-                          runaComponent={`ai-panel-header-conversation-option-${conversation.id}`}
-                          style={{
-                            ...aiHeaderConversationMenuOptionStyle,
-                            ...(isActive ? aiHeaderConversationMenuOptionActiveStyle : null),
-                          }}
-                        >
-                          <Box style={aiHeaderConversationMenuOptionLeadingStyle}>
-                            <Text style={aiHeaderConversationSummaryTitleStyle}>
-                              {formatConversationTitle(conversation)}
-                            </Text>
-                            <Text style={aiHeaderConversationMenuMetaStyle}>
-                              {formatConversationCount(conversation)} ·{' '}
-                              {formatConversationUpdatedAt(conversation.updated_at)}
-                            </Text>
-                          </Box>
-                        </Button>
-                      )
-                    })}
+                    {filteredRecentConversations.length > 0 ? (
+                      <Box
+                        runaComponent="ai-panel-header-conversation-section-recent"
+                        style={aiHeaderConversationMenuSectionStyle}
+                      >
+                        <Text style={aiHeaderConversationMenuSectionTitleStyle}>Recent</Text>
+                        {filteredRecentConversations.map((conversation) => {
+                          const isActive = conversation.id === selectedConversationID
+                          return (
+                            <Button
+                              aria-label={`Open conversation ${formatConversationTitle(conversation)}`}
+                              aria-selected={isActive}
+                              key={conversation.id}
+                              onClick={() => {
+                                setIsConversationMenuOpen(false)
+                                onConversationSelect?.(conversation.id)
+                              }}
+                              role="option"
+                              runaComponent={`ai-panel-header-conversation-option-${conversation.id}`}
+                              style={{
+                                ...aiHeaderConversationMenuOptionStyle,
+                                ...(isActive ? aiHeaderConversationMenuOptionActiveStyle : null),
+                              }}
+                            >
+                              <Box style={aiHeaderConversationMenuOptionLeadingStyle}>
+                                <Text style={aiHeaderConversationSummaryTitleStyle}>
+                                  {formatConversationTitle(conversation)}
+                                </Text>
+                                <Text style={aiHeaderConversationMenuMetaStyle}>
+                                  {formatConversationCount(conversation)} ·{' '}
+                                  {formatConversationUpdatedAt(conversation.updated_at)}
+                                </Text>
+                              </Box>
+                            </Button>
+                          )
+                        })}
+                      </Box>
+                    ) : null}
+                    {filteredArchivedConversations.length > 0 ? (
+                      <Box
+                        runaComponent="ai-panel-header-conversation-section-archived"
+                        style={aiHeaderConversationMenuSectionStyle}
+                      >
+                        <Text style={aiHeaderConversationMenuSectionTitleStyle}>Archived</Text>
+                        {filteredArchivedConversations.map((conversation) => {
+                          const isActive = conversation.id === selectedConversationID
+                          return (
+                            <Button
+                              aria-label={`Open conversation ${formatConversationTitle(conversation)}`}
+                              aria-selected={isActive}
+                              key={conversation.id}
+                              onClick={() => {
+                                setIsConversationMenuOpen(false)
+                                onConversationSelect?.(conversation.id)
+                              }}
+                              role="option"
+                              runaComponent={`ai-panel-header-conversation-option-${conversation.id}`}
+                              style={{
+                                ...aiHeaderConversationMenuOptionStyle,
+                                ...(isActive ? aiHeaderConversationMenuOptionActiveStyle : null),
+                              }}
+                            >
+                              <Box style={aiHeaderConversationMenuOptionLeadingStyle}>
+                                <Text style={aiHeaderConversationSummaryTitleStyle}>
+                                  {formatConversationTitle(conversation)}
+                                </Text>
+                                <Text style={aiHeaderConversationMenuMetaStyle}>
+                                  {formatConversationCount(conversation)} · Archived{' '}
+                                  {formatConversationUpdatedAt(
+                                    conversation.archived_at ?? conversation.updated_at,
+                                  )}
+                                </Text>
+                              </Box>
+                            </Button>
+                          )
+                        })}
+                      </Box>
+                    ) : null}
                   </Box>
                 </Surface>
               </Box>

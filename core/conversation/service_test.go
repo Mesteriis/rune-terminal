@@ -271,6 +271,125 @@ func TestServiceDeleteConversationBootstrapsReplacementWhenDeletingTheLastThread
 	}
 }
 
+func TestServiceArchiveConversationMovesActiveThreadIntoArchivedGroupAndPromotesReplacement(t *testing.T) {
+	t.Parallel()
+
+	service, err := NewService(filepath.Join(t.TempDir(), "conversation.json"), stubProvider{
+		info: ProviderInfo{Kind: "stub", BaseURL: "http://stub", Model: "stub-model"},
+	})
+	if err != nil {
+		t.Fatalf("new service: %v", err)
+	}
+
+	keepSnapshot := service.Snapshot()
+	archivedTarget, err := service.CreateConversation(context.Background())
+	if err != nil {
+		t.Fatalf("create conversation: %v", err)
+	}
+
+	archivedResult, err := service.ArchiveConversation(context.Background(), archivedTarget.ID)
+	if err != nil {
+		t.Fatalf("archive conversation: %v", err)
+	}
+
+	if archivedResult.ID != keepSnapshot.ID {
+		t.Fatalf("expected unarchived replacement %q, got %q", keepSnapshot.ID, archivedResult.ID)
+	}
+	if got := service.ActiveConversationID(); got != keepSnapshot.ID {
+		t.Fatalf("expected active conversation %q, got %q", keepSnapshot.ID, got)
+	}
+
+	conversations, activeConversationID, err := service.ListConversations(context.Background())
+	if err != nil {
+		t.Fatalf("list conversations: %v", err)
+	}
+	if activeConversationID != keepSnapshot.ID {
+		t.Fatalf("expected active conversation %q, got %q", keepSnapshot.ID, activeConversationID)
+	}
+	if len(conversations) != 2 {
+		t.Fatalf("expected 2 conversations, got %#v", conversations)
+	}
+	if conversations[0].ID != keepSnapshot.ID || conversations[0].ArchivedAt != nil {
+		t.Fatalf("expected unarchived conversation first, got %#v", conversations[0])
+	}
+	if conversations[1].ID != archivedTarget.ID || conversations[1].ArchivedAt == nil {
+		t.Fatalf("expected archived conversation second, got %#v", conversations[1])
+	}
+}
+
+func TestServiceArchiveConversationBootstrapsFreshReplacementWhenNoUnarchivedThreadRemains(t *testing.T) {
+	t.Parallel()
+
+	service, err := NewService(filepath.Join(t.TempDir(), "conversation.json"), stubProvider{
+		info: ProviderInfo{Kind: "stub", BaseURL: "http://stub", Model: "stub-model"},
+	})
+	if err != nil {
+		t.Fatalf("new service: %v", err)
+	}
+
+	originalSnapshot := service.Snapshot()
+	archivedResult, err := service.ArchiveConversation(context.Background(), originalSnapshot.ID)
+	if err != nil {
+		t.Fatalf("archive conversation: %v", err)
+	}
+
+	if archivedResult.ID == "" || archivedResult.ID == originalSnapshot.ID {
+		t.Fatalf("expected fresh replacement after archiving the only active thread, got %#v", archivedResult)
+	}
+	if archivedResult.ArchivedAt != nil {
+		t.Fatalf("expected replacement thread to stay unarchived, got %#v", archivedResult.ArchivedAt)
+	}
+	if len(archivedResult.Messages) != 0 {
+		t.Fatalf("expected replacement thread to be empty, got %#v", archivedResult.Messages)
+	}
+}
+
+func TestServiceRestoreConversationReturnsThreadToRecentGroup(t *testing.T) {
+	t.Parallel()
+
+	service, err := NewService(filepath.Join(t.TempDir(), "conversation.json"), stubProvider{
+		info: ProviderInfo{Kind: "stub", BaseURL: "http://stub", Model: "stub-model"},
+	})
+	if err != nil {
+		t.Fatalf("new service: %v", err)
+	}
+
+	originalSnapshot := service.Snapshot()
+	archivedTarget, err := service.CreateConversation(context.Background())
+	if err != nil {
+		t.Fatalf("create conversation: %v", err)
+	}
+	if _, err := service.ArchiveConversation(context.Background(), archivedTarget.ID); err != nil {
+		t.Fatalf("archive conversation: %v", err)
+	}
+
+	restoredSnapshot, err := service.RestoreConversation(context.Background(), archivedTarget.ID)
+	if err != nil {
+		t.Fatalf("restore conversation: %v", err)
+	}
+
+	if restoredSnapshot.ID != archivedTarget.ID {
+		t.Fatalf("expected restored snapshot %q, got %q", archivedTarget.ID, restoredSnapshot.ID)
+	}
+	if restoredSnapshot.ArchivedAt != nil {
+		t.Fatalf("expected restored thread to be active in recent group, got archived_at=%v", restoredSnapshot.ArchivedAt)
+	}
+
+	conversations, activeConversationID, err := service.ListConversations(context.Background())
+	if err != nil {
+		t.Fatalf("list conversations: %v", err)
+	}
+	if activeConversationID != originalSnapshot.ID {
+		t.Fatalf("expected active conversation to stay %q, got %q", originalSnapshot.ID, activeConversationID)
+	}
+	if len(conversations) != 2 {
+		t.Fatalf("expected 2 conversations, got %#v", conversations)
+	}
+	if conversations[0].ID != archivedTarget.ID || conversations[0].ArchivedAt != nil {
+		t.Fatalf("expected restored conversation to return to recent group, got %#v", conversations[0])
+	}
+}
+
 func TestServiceSubmitRejectsBlankPrompt(t *testing.T) {
 	t.Parallel()
 

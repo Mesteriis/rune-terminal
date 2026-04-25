@@ -271,6 +271,24 @@ export const aiHeaderConversationMenuListStyle: CSSProperties = {
   overflowY: 'auto',
 }
 
+export const aiHeaderConversationMenuSectionStyle: CSSProperties = {
+  ...aiPlainBlockStyle,
+  width: '100%',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '6px',
+}
+
+export const aiHeaderConversationMenuSectionTitleStyle: CSSProperties = {
+  color: 'var(--color-text-muted)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '10px',
+  lineHeight: '14px',
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase',
+  padding: '0 var(--space-xs)',
+}
+
 export const aiHeaderConversationMenuOptionStyle: CSSProperties = {
   minWidth: 'unset',
   width: '100%',

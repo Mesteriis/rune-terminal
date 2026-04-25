@@ -70,6 +70,7 @@ export type AgentConversationSnapshot = {
   }
   created_at: string
   updated_at: string
+  archived_at?: string
 }
 
 export type AgentConversationSummary = {
@@ -77,6 +78,7 @@ export type AgentConversationSummary = {
   title: string
   created_at: string
   updated_at: string
+  archived_at?: string
   message_count: number
 }
 
@@ -282,6 +284,34 @@ export async function activateAgentConversation(request: APIRequestContext, conv
 export async function deleteAgentConversation(request: APIRequestContext, conversationID: string) {
   const response = await request.delete(
     `${backendUrl}/api/v1/agent/conversations/${encodeURIComponent(conversationID)}`,
+    {
+      headers: authHeaders(),
+    },
+  )
+
+  expect(response.ok()).toBeTruthy()
+
+  const payload = (await response.json()) as { conversation: AgentConversationSnapshot }
+  return payload.conversation
+}
+
+export async function archiveAgentConversation(request: APIRequestContext, conversationID: string) {
+  const response = await request.put(
+    `${backendUrl}/api/v1/agent/conversations/${encodeURIComponent(conversationID)}/archive`,
+    {
+      headers: authHeaders(),
+    },
+  )
+
+  expect(response.ok()).toBeTruthy()
+
+  const payload = (await response.json()) as { conversation: AgentConversationSnapshot }
+  return payload.conversation
+}
+
+export async function restoreAgentConversation(request: APIRequestContext, conversationID: string) {
+  const response = await request.put(
+    `${backendUrl}/api/v1/agent/conversations/${encodeURIComponent(conversationID)}/restore`,
     {
       headers: authHeaders(),
     },
