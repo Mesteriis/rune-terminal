@@ -124,6 +124,59 @@ describe('FilesPanelWidget', () => {
     })
   })
 
+  it('opens an explicit path from the path input', async () => {
+    vi.mocked(listFilesDirectory).mockImplementation(async (path) => {
+      if (path === '/repo/frontend') {
+        return {
+          entries: [
+            {
+              hidden: false,
+              id: '/repo/frontend::src',
+              kind: 'directory',
+              modified: '2026-04-25 20:02',
+              modifiedTime: 1_776_800_120,
+              name: 'src',
+              sizeBytes: 0,
+              sizeLabel: '',
+            },
+          ],
+          path,
+        }
+      }
+
+      return {
+        entries: [
+          {
+            hidden: false,
+            id: '/repo::frontend',
+            kind: 'directory',
+            modified: '2026-04-25 20:00',
+            modifiedTime: 1_776_800_000,
+            name: 'frontend',
+            sizeBytes: 0,
+            sizeLabel: '',
+          },
+        ],
+        path: '/repo',
+      }
+    })
+
+    render(<FilesPanelWidget path="/repo" title="repo" />)
+
+    await screen.findByRole('button', { name: 'Open directory frontend' })
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Files path' }), {
+      target: { value: '/repo/frontend' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Open files path' }))
+
+    await waitFor(() => {
+      expect(listFilesDirectory).toHaveBeenCalledWith('/repo/frontend')
+      expect(screen.getByText('/repo/frontend')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Open directory src' })).toBeInTheDocument()
+    })
+  })
+
   it('filters visible entries by filename and clears the filter', async () => {
     vi.mocked(listFilesDirectory).mockResolvedValue({
       entries: [

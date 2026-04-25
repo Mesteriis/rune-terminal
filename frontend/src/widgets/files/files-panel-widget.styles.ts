@@ -70,6 +70,14 @@ export const filesPanelFilterInputStyle: CSSProperties = {
   lineHeight: 'var(--line-height-sm)',
 }
 
+export const filesPanelPathInputStyle: CSSProperties = {
+  width: '220px',
+  minHeight: '24px',
+  padding: '2px var(--space-sm)',
+  fontSize: 'var(--font-size-sm)',
+  lineHeight: 'var(--line-height-sm)',
+}
+
 export const filesPanelListStyle: CSSProperties = {
   flex: 1,
   minHeight: 0,

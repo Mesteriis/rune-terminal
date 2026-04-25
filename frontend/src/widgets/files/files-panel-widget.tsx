@@ -17,6 +17,7 @@ import {
   filesPanelListHeaderStyle,
   filesPanelListStyle,
   filesPanelParentButtonStyle,
+  filesPanelPathInputStyle,
   filesPanelPathStyle,
   filesPanelRootStyle,
   filesPanelRowNameStyle,
@@ -109,6 +110,7 @@ function sortFilesPanelEntries(entries: FilesDirectoryEntry[], sort: FilesPanelS
 
 export function FilesPanelWidget({ path, title }: FilesPanelWidgetProps) {
   const [currentPath, setCurrentPath] = useState(path)
+  const [pathDraft, setPathDraft] = useState(path)
   const [filterValue, setFilterValue] = useState('')
   const [showHidden, setShowHidden] = useState(false)
   const [refreshNonce, setRefreshNonce] = useState(0)
@@ -129,9 +131,11 @@ export function FilesPanelWidget({ path, title }: FilesPanelWidgetProps) {
 
   useEffect(() => {
     setCurrentPath(path)
+    setPathDraft(path)
   }, [path])
 
   useEffect(() => {
+    setPathDraft(currentPath)
     setOpenState({
       entryName: null,
       message: null,
@@ -185,6 +189,22 @@ export function FilesPanelWidget({ path, title }: FilesPanelWidgetProps) {
     }
   }
 
+  const handleOpenPath = () => {
+    const nextPath = pathDraft.trim()
+
+    if (!nextPath) {
+      setPathDraft(currentPath)
+      return
+    }
+
+    if (nextPath !== currentPath) {
+      setCurrentPath(nextPath)
+      return
+    }
+
+    setPathDraft(currentPath)
+  }
+
   const handleOpenEntry = async (entry: FilesDirectoryEntry) => {
     if (entry.kind === 'directory') {
       setCurrentPath(joinRuntimePath(currentPath, entry.name))
@@ -216,6 +236,17 @@ export function FilesPanelWidget({ path, title }: FilesPanelWidgetProps) {
   const handleFilterKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Escape') {
       setFilterValue('')
+    }
+  }
+
+  const handlePathKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      handleOpenPath()
+      return
+    }
+
+    if (event.key === 'Escape') {
+      setPathDraft(currentPath)
     }
   }
 
@@ -268,6 +299,23 @@ export function FilesPanelWidget({ path, title }: FilesPanelWidgetProps) {
           </Text>
         </Box>
         <Box runaComponent="files-panel-controls" style={filesPanelControlsStyle}>
+          <Input
+            aria-label="Files path"
+            onChange={(event) => setPathDraft(event.target.value)}
+            onKeyDown={handlePathKeyDown}
+            placeholder="Path"
+            runaComponent="files-panel-path-input"
+            style={filesPanelPathInputStyle}
+            value={pathDraft}
+          />
+          <Button
+            aria-label="Open files path"
+            onClick={handleOpenPath}
+            runaComponent="files-panel-open-path"
+            style={filesPanelParentButtonStyle}
+          >
+            Open
+          </Button>
           <Input
             aria-label="Filter files"
             onChange={(event) => setFilterValue(event.target.value)}
