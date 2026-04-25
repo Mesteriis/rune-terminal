@@ -794,7 +794,7 @@ where
     let file = match serde_json::from_str::<RuntimeFile>(&raw) {
         Ok(file) => file,
         Err(_) => {
-            clear_runtime_file_at_path(path);
+            quarantine_invalid_metadata_file_at_path(path);
             return RuntimeAttachment::default();
         }
     };
@@ -958,6 +958,33 @@ fn clear_runtime_file_at_path(path: &Path) {
     let _ = fs::remove_file(path);
 }
 
+fn quarantine_invalid_metadata_file_at_path(path: &Path) {
+    if !path.exists() {
+        return;
+    }
+
+    let Some(parent) = path.parent() else {
+        let _ = fs::remove_file(path);
+        return;
+    };
+
+    let stem = path
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .unwrap_or("metadata");
+    let extension = path.extension().and_then(|value| value.to_str()).unwrap_or("json");
+    let quarantined_path = parent.join(format!(
+        "{}.invalid-{}.{}",
+        stem,
+        random_token_n(8),
+        extension
+    ));
+
+    if fs::rename(path, &quarantined_path).is_err() {
+        let _ = fs::remove_file(path);
+    }
+}
+
 fn load_settings() -> SettingsFile {
     let Some(path) = settings_file_path() else {
         return SettingsFile::default();
@@ -975,7 +1002,7 @@ fn load_settings_from_path(path: &Path) -> SettingsFile {
     match serde_json::from_str::<SettingsFile>(&raw) {
         Ok(settings) => settings,
         Err(_) => {
-            let _ = fs::remove_file(path);
+            quarantine_invalid_metadata_file_at_path(path);
             SettingsFile::default()
         }
     }
@@ -1511,7 +1538,7 @@ mod tests {
     }
 
     #[test]
-    fn read_runtime_attachment_from_path_clears_malformed_runtime_file() {
+    fn read_runtime_attachment_from_path_quarantines_malformed_runtime_file() {
         let temp_dir = tempfile::tempdir().expect("temp dir");
         let runtime_path = temp_dir.path().join("runtime.json");
         fs::write(&runtime_path, "{").expect("write malformed runtime file");
@@ -1521,9 +1548,21 @@ mod tests {
 
         assert!(attachment.core.is_none());
         assert!(attachment.watcher.is_none());
-        assert!(
-            !runtime_path.exists(),
-            "malformed runtime.json should be deleted during startup recovery"
+        assert!(!runtime_path.exists(), "malformed runtime.json should be removed from the active path");
+
+        let quarantined = fs::read_dir(temp_dir.path())
+            .expect("read temp dir")
+            .filter_map(Result::ok)
+            .map(|entry| entry.path())
+            .find(|path| {
+                path.file_name()
+                    .and_then(|value| value.to_str())
+                    .is_some_and(|name| name.starts_with("runtime.invalid-") && name.ends_with(".json"))
+            })
+            .expect("malformed runtime metadata should be quarantined");
+        assert_eq!(
+            fs::read_to_string(quarantined).expect("read quarantined runtime file"),
+            "{"
         );
     }
 
@@ -1563,7 +1602,7 @@ mod tests {
     }
 
     #[test]
-    fn load_settings_from_path_clears_malformed_settings_file() {
+    fn load_settings_from_path_quarantines_malformed_settings_file() {
         let temp_dir = tempfile::tempdir().expect("temp dir");
         let settings_path = temp_dir.path().join("settings.json");
         fs::write(&settings_path, "{").expect("write malformed settings file");
@@ -1572,9 +1611,21 @@ mod tests {
 
         assert_eq!(settings.watcher_mode, WatcherMode::Ephemeral);
         assert_eq!(settings.core_auth_token, None);
-        assert!(
-            !settings_path.exists(),
-            "malformed settings.json should be deleted during startup recovery"
+        assert!(!settings_path.exists(), "malformed settings.json should be removed from the active path");
+
+        let quarantined = fs::read_dir(temp_dir.path())
+            .expect("read temp dir")
+            .filter_map(Result::ok)
+            .map(|entry| entry.path())
+            .find(|path| {
+                path.file_name()
+                    .and_then(|value| value.to_str())
+                    .is_some_and(|name| name.starts_with("settings.invalid-") && name.ends_with(".json"))
+            })
+            .expect("malformed settings metadata should be quarantined");
+        assert_eq!(
+            fs::read_to_string(quarantined).expect("read quarantined settings file"),
+            "{"
         );
     }
 
