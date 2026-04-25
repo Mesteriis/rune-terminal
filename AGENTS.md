@@ -74,12 +74,13 @@ The frontend is under active rewrite. Ground rules while it moves:
   - `frontend/src/app/App.tsx`
   - `frontend/src/widgets/commander/commander-widget.tsx`
   - `frontend/src/features/commander/model/store.ts`
-  - `frontend/src/features/commander/model/fake-client.ts`
+  - `frontend/src/features/commander/model/hooks.ts`
   If any of these grows meaningfully, split it into focused
   hooks / components / services before continuing.
-- mock clients (the `fake-client` under `features/commander/model/`) must
-  stay behind a clear boundary so they can be swapped for real HTTP/SSE
-  calls into the Go core without rewriting widgets.
+- do not reintroduce a second frontend-owned commander transport model;
+  backend HTTP/SSE adapters under `features/commander/api/` are the active
+  runtime path, and any compatibility shims must stay narrow and explicit
+  instead of reviving the old fake-client layer
 
 Legacy directories from earlier drafts do **not** exist in the active tree
 and must not be reintroduced without an ADR:

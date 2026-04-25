@@ -14,7 +14,8 @@ capability.
   some frontend-local orchestration and persistence seams even though the
   active file read/write flows already use backend HTTP routes and the
   backend-backed commander runtime no longer inherits its default shell
-  state from the old mock seed, and the widget-store confirm path now
+  state from the old mock seed, the old fake-client transport layer is no
+  longer part of the active frontend tree, and the widget-store confirm path now
   only owns local pending flows (`select/unselect/filter/search`) rather
   than carrying dead fake-client mutation branches for backend-owned
   `copy/move/delete/mkdir/rename`; the same store now also drops empty
