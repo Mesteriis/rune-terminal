@@ -271,6 +271,57 @@ describe('AiPanelHeaderWidget', () => {
     expect(screen.getByText('No conversations match this filter.')).toBeInTheDocument()
   })
 
+  it('routes search and scope changes through controlled navigator props', () => {
+    const onConversationSearchQueryChange = vi.fn()
+    const onConversationScopeChange = vi.fn()
+
+    render(
+      <AiPanelHeaderWidget
+        activeConversationID="conv_2"
+        conversationCounts={{
+          recent: 0,
+          archived: 1,
+          all: 1,
+        }}
+        conversationScope="archived"
+        conversationSearchQuery="terminal"
+        conversations={[
+          {
+            id: 'conv_1',
+            title: 'Terminal restart notes',
+            created_at: '2026-04-24T09:00:00Z',
+            updated_at: '2026-04-24T09:05:00Z',
+            archived_at: '2026-04-24T09:06:00Z',
+            message_count: 2,
+          },
+        ]}
+        mode="chat"
+        onConversationScopeChange={onConversationScopeChange}
+        onConversationSearchQueryChange={onConversationSearchQueryChange}
+        onModeChange={() => {}}
+        title="AI Rune"
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Conversation menu' }))
+
+    const searchInput = screen.getByRole('textbox', { name: 'Search conversations' })
+    expect(searchInput).toHaveValue('terminal')
+
+    fireEvent.change(searchInput, {
+      target: { value: 'audit' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Show recent conversations' }))
+
+    expect(onConversationSearchQueryChange).toHaveBeenCalledWith('audit')
+    expect(onConversationScopeChange).toHaveBeenCalledWith('recent')
+    expect(
+      screen.getByRole('option', {
+        name: 'Open conversation Terminal restart notes',
+      }),
+    ).toBeInTheDocument()
+  })
+
   it('shows the active thread summary block inside the navigator', () => {
     render(
       <AiPanelHeaderWidget
@@ -358,6 +409,76 @@ describe('AiPanelHeaderWidget', () => {
         name: 'Open conversation Active runtime thread',
       }),
     ).not.toBeInTheDocument()
+  })
+
+  it('disambiguates duplicate untitled conversations in option aria labels', () => {
+    render(
+      <AiPanelHeaderWidget
+        activeConversationID="conv_2"
+        conversations={[
+          {
+            id: 'conv_1',
+            title: '',
+            created_at: '2026-04-24T09:00:00Z',
+            updated_at: '2026-04-24T09:05:00Z',
+            message_count: 2,
+          },
+          {
+            id: 'conv_2',
+            title: '',
+            created_at: '2026-04-24T10:00:00Z',
+            updated_at: '2026-04-24T10:10:00Z',
+            message_count: 1,
+          },
+        ]}
+        mode="chat"
+        onModeChange={() => {}}
+        title="AI Rune"
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Conversation menu' }))
+
+    const optionLabels = screen
+      .getAllByRole('option')
+      .map((option) => option.getAttribute('aria-label'))
+      .filter((label): label is string => Boolean(label))
+
+    expect(optionLabels).toHaveLength(2)
+    expect(new Set(optionLabels).size).toBe(2)
+    expect(optionLabels.every((label) => label.startsWith('Open conversation New conversation'))).toBe(true)
+  })
+
+  it('disables the conversation navigator trigger while the controller is busy', () => {
+    render(
+      <AiPanelHeaderWidget
+        activeConversationID="conv_2"
+        conversations={[
+          {
+            id: 'conv_1',
+            title: 'Earlier thread',
+            created_at: '2026-04-24T09:00:00Z',
+            updated_at: '2026-04-24T09:05:00Z',
+            message_count: 2,
+          },
+          {
+            id: 'conv_2',
+            title: 'Archived thread',
+            created_at: '2026-04-24T10:00:00Z',
+            updated_at: '2026-04-24T10:01:00Z',
+            archived_at: '2026-04-24T10:10:00Z',
+            message_count: 1,
+          },
+        ]}
+        isConversationBusy
+        mode="chat"
+        onModeChange={() => {}}
+        onRestoreConversation={() => {}}
+        title="AI Rune"
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Conversation menu' })).toBeDisabled()
   })
 
   it('opens the conversation navigator from the trigger with keyboard controls', async () => {
@@ -463,6 +584,44 @@ describe('AiPanelHeaderWidget', () => {
     })
 
     fireEvent.keyDown(searchInput, { key: 'Enter' })
+    expect(onConversationSelect).toHaveBeenCalledWith('conv_1')
+  })
+
+  it('selects a focused conversation option with Enter', () => {
+    const onConversationSelect = vi.fn()
+
+    render(
+      <AiPanelHeaderWidget
+        activeConversationID="conv_2"
+        conversations={[
+          {
+            id: 'conv_1',
+            title: 'Earlier thread',
+            created_at: '2026-04-24T09:00:00Z',
+            updated_at: '2026-04-24T09:05:00Z',
+            message_count: 2,
+          },
+          {
+            id: 'conv_2',
+            title: 'Current thread',
+            created_at: '2026-04-24T10:00:00Z',
+            updated_at: '2026-04-24T10:01:00Z',
+            message_count: 1,
+          },
+        ]}
+        mode="chat"
+        onConversationSelect={onConversationSelect}
+        onModeChange={() => {}}
+        title="AI Rune"
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Conversation menu' }))
+
+    const option = screen.getByRole('option', { name: 'Open conversation Earlier thread' })
+    option.focus()
+    fireEvent.keyDown(option, { key: 'Enter' })
+
     expect(onConversationSelect).toHaveBeenCalledWith('conv_1')
   })
 })

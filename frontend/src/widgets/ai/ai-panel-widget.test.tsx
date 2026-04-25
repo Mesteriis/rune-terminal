@@ -230,7 +230,7 @@ describe('AiPanelWidget backend conversation path', () => {
     expect(screen.getByText('stub-model · complete')).toBeInTheDocument()
     expect(screen.queryByText('User 1')).not.toBeInTheDocument()
     expect(screen.queryByText('Assistant 2')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Show details' })).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Show details' }).length).toBeGreaterThan(0)
     expect(screen.queryByText('Summary')).not.toBeInTheDocument()
 
     expect(

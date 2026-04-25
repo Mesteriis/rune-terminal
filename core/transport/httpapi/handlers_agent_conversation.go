@@ -54,13 +54,24 @@ func (api *API) handleConversationSnapshot(w http.ResponseWriter, r *http.Reques
 }
 
 func (api *API) handleConversationList(w http.ResponseWriter, r *http.Request) {
-	conversations, activeConversationID, err := api.runtime.ConversationList(r.Context())
+	conversations, activeConversationID, counts, err := api.runtime.ConversationList(
+		r.Context(),
+		app.ConversationListOptions{
+			Query: r.URL.Query().Get("query"),
+			Scope: r.URL.Query().Get("scope"),
+		},
+	)
 	if err != nil {
+		if errors.Is(err, app.ErrInvalidConversationListScope) {
+			writeBadRequest(w, "invalid_conversation_scope", err)
+			return
+		}
 		writeInternalError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"active_conversation_id": activeConversationID,
+		"counts":                 counts,
 		"conversations":          conversations,
 	})
 }

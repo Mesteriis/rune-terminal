@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -23,8 +24,85 @@ type ConversationContext struct {
 	WidgetContextEnabled bool     `json:"widget_context_enabled,omitempty"`
 }
 
-func (r *Runtime) ConversationList(ctx context.Context) ([]conversation.ConversationSummary, string, error) {
-	return r.Conversation.ListConversations(ctx)
+type ConversationListOptions struct {
+	Query string
+	Scope string
+}
+
+type ConversationListCounts struct {
+	Recent   int `json:"recent"`
+	Archived int `json:"archived"`
+	All      int `json:"all"`
+}
+
+var ErrInvalidConversationListScope = errors.New("invalid conversation list scope")
+
+func (r *Runtime) ConversationList(
+	ctx context.Context,
+	options ConversationListOptions,
+) ([]conversation.ConversationSummary, string, ConversationListCounts, error) {
+	conversations, activeConversationID, err := r.Conversation.ListConversations(ctx)
+	if err != nil {
+		return nil, "", ConversationListCounts{}, err
+	}
+
+	filteredConversations, counts, err := filterConversationSummaries(conversations, options)
+	if err != nil {
+		return nil, "", ConversationListCounts{}, err
+	}
+
+	return filteredConversations, activeConversationID, counts, nil
+}
+
+func filterConversationSummaries(
+	conversations []conversation.ConversationSummary,
+	options ConversationListOptions,
+) ([]conversation.ConversationSummary, ConversationListCounts, error) {
+	query := strings.ToLower(strings.TrimSpace(options.Query))
+	scope := strings.ToLower(strings.TrimSpace(options.Scope))
+	if scope == "" {
+		scope = "all"
+	}
+
+	switch scope {
+	case "all", "recent", "archived":
+	default:
+		return nil, ConversationListCounts{}, ErrInvalidConversationListScope
+	}
+
+	queryFiltered := make([]conversation.ConversationSummary, 0, len(conversations))
+	for _, summary := range conversations {
+		if query == "" || strings.Contains(strings.ToLower(strings.TrimSpace(summary.Title)), query) {
+			queryFiltered = append(queryFiltered, summary)
+		}
+	}
+
+	counts := ConversationListCounts{}
+	for _, summary := range queryFiltered {
+		if summary.ArchivedAt == nil {
+			counts.Recent += 1
+			continue
+		}
+		counts.Archived += 1
+	}
+	counts.All = counts.Recent + counts.Archived
+
+	if scope == "all" {
+		return queryFiltered, counts, nil
+	}
+
+	filteredConversations := make([]conversation.ConversationSummary, 0, len(queryFiltered))
+	for _, summary := range queryFiltered {
+		archived := summary.ArchivedAt != nil
+		if scope == "recent" && !archived {
+			filteredConversations = append(filteredConversations, summary)
+		}
+		if scope == "archived" && archived {
+			filteredConversations = append(filteredConversations, summary)
+		}
+	}
+
+	return filteredConversations, counts, nil
 }
 
 func (r *Runtime) CreateConversation(ctx context.Context) (conversation.Snapshot, error) {

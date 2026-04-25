@@ -278,6 +278,11 @@ describe('agent api client', () => {
         ok: true,
         json: async () => ({
           active_conversation_id: 'conv_2',
+          counts: {
+            recent: 1,
+            archived: 1,
+            all: 2,
+          },
           conversations: [
             {
               id: 'conv_1',
@@ -303,6 +308,11 @@ describe('agent api client', () => {
 
     await expect(fetchAgentConversations()).resolves.toEqual({
       active_conversation_id: 'conv_2',
+      counts: {
+        recent: 1,
+        archived: 1,
+        all: 2,
+      },
       conversations: [
         {
           id: 'conv_1',
@@ -322,6 +332,44 @@ describe('agent api client', () => {
       ],
     })
     expect(fetchMock.mock.calls[1]?.[0]).toBe('http://127.0.0.1:8090/api/v1/agent/conversations')
+  })
+
+  it('passes conversation list filter params through the backend contract', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          active_conversation_id: 'conv_2',
+          counts: {
+            recent: 0,
+            archived: 1,
+            all: 1,
+          },
+          conversations: [],
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(fetchAgentConversations({ query: 'terminal', scope: 'archived' })).resolves.toMatchObject({
+      counts: {
+        recent: 0,
+        archived: 1,
+        all: 1,
+      },
+    })
+    expect(fetchMock.mock.calls[1]?.[0]).toBe(
+      'http://127.0.0.1:8090/api/v1/agent/conversations?query=terminal&scope=archived',
+    )
   })
 
   it('creates and activates conversations through the backend contract', async () => {

@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test'
 
 import {
   activateAgentConversation,
+  archiveAgentConversation,
   clearBrowserState,
   createAgentConversation as createConversationViaApi,
   createAgentProvider,
@@ -173,6 +174,7 @@ test('AI sidebar creates and switches backend conversations instead of keeping o
 
   const conversationMenuButton = page.getByRole('button', { name: 'Conversation menu' })
   await expect(conversationMenuButton).toBeVisible()
+  await expect(conversationMenuButton).toBeEnabled()
   const createConversationButton = page.getByRole('button', { name: 'Create conversation' })
   const conversationCountBefore = (await fetchAgentConversations(request)).conversations.length
 
@@ -197,6 +199,7 @@ test('AI sidebar creates and switches backend conversations instead of keeping o
 
   const reopenedConversationMenuButton = page.getByRole('button', { name: 'Conversation menu' })
   await expect(reopenedConversationMenuButton).toBeVisible()
+  await expect(reopenedConversationMenuButton).toBeEnabled()
   await expect(reopenedConversationMenuButton).toContainText('New conversation')
   await expect
     .poll(async () => {
@@ -212,16 +215,12 @@ test('AI sidebar creates and switches backend conversations instead of keeping o
     })
 
   if (originalConversationID) {
-    const originalConversationTitle =
-      initialConversations.conversations.find((conversation) => conversation.id === originalConversationID)?.title ||
-      'New conversation'
-
     await reopenedConversationMenuButton.click()
-    await page
-      .getByRole('option', {
-        name: `Open conversation ${originalConversationTitle}`,
-      })
-      .click()
+    const originalConversationOption = page.locator(
+      `#ai-panel-header-conversation-option-${originalConversationID}`,
+    )
+    await expect(originalConversationOption).toBeVisible()
+    await originalConversationOption.click()
 
     await expect
       .poll(async () => {
@@ -359,6 +358,7 @@ test('AI conversation navigator archives the active thread and restores it from 
   await expect(conversationMenuButton).toContainText('Archive from UI')
 
   await conversationMenuButton.click()
+  await expect(page.getByRole('button', { name: 'Restore conversation' })).toBeEnabled()
   await page.getByRole('button', { name: 'Restore conversation' }).click()
 
   await expect
@@ -375,6 +375,59 @@ test('AI conversation navigator archives the active thread and restores it from 
       name: 'Open conversation Archive from UI',
     }),
   ).toBeVisible()
+})
+
+test('AI conversation navigator filters archived threads through the backend list route', async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(60_000)
+
+  const recentConversation = await createConversationViaApi(request)
+  await renameConversationViaApi(request, recentConversation.id, 'Backend audit thread')
+
+  const archivedConversation = await createConversationViaApi(request)
+  await renameConversationViaApi(request, archivedConversation.id, 'Terminal restart notes')
+  await archiveAgentConversation(request, archivedConversation.id)
+
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  await page.getByRole('button', { name: 'Toggle AI panel' }).click()
+  await page.getByRole('button', { name: 'Conversation menu' }).click()
+  await page.getByRole('button', { name: 'Show archived conversations' }).click()
+  await page.getByRole('textbox', { name: 'Search conversations' }).fill('terminal')
+
+  await expect
+    .poll(async () => {
+      const conversations = await fetchAgentConversations(request, {
+        query: 'terminal',
+        scope: 'archived',
+      })
+      return {
+        counts: conversations.counts,
+        titles: conversations.conversations.map((conversation) => conversation.title),
+      }
+    })
+    .toMatchObject({
+      counts: {
+        recent: 0,
+        archived: 1,
+        all: 1,
+      },
+      titles: ['Terminal restart notes'],
+    })
+
+  await expect(
+    page.getByRole('option', {
+      name: 'Open conversation Terminal restart notes',
+    }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('option', {
+      name: 'Open conversation Backend audit thread',
+    }),
+  ).toHaveCount(0)
 })
 
 test('AI conversation navigator supports keyboard navigation through filtered thread options', async ({
@@ -432,42 +485,6 @@ test('AI conversation navigator supports keyboard navigation through filtered th
 
   await searchInput.press('Enter')
   await expect(conversationMenuButton).toContainText(orderedOptionNames[0] ?? '')
-})
-
-test('AI conversation navigator filters recent threads locally', async ({ page, request }) => {
-  test.setTimeout(60_000)
-
-  const terminalConversation = await createConversationViaApi(request)
-  await renameConversationViaApi(request, terminalConversation.id, 'Terminal runtime notes')
-
-  const backendConversation = await createConversationViaApi(request)
-  await renameConversationViaApi(request, backendConversation.id, 'Backend audit notes')
-  await activateAgentConversation(request, backendConversation.id)
-
-  await clearBrowserState(page)
-  await page.goto('/')
-
-  await page.getByRole('button', { name: 'Toggle AI panel' }).click()
-  await expect(page.getByText('AI Rune Assistant')).toBeVisible()
-
-  await page.getByRole('button', { name: 'Conversation menu' }).click()
-
-  const searchInput = page.getByRole('textbox', { name: 'Search conversations' })
-  await searchInput.fill('terminal')
-
-  await expect(
-    page.getByRole('option', {
-      name: 'Open conversation Terminal runtime notes',
-    }),
-  ).toBeVisible()
-  await expect(
-    page.getByRole('option', {
-      name: 'Open conversation Backend audit notes',
-    }),
-  ).toHaveCount(0)
-
-  await searchInput.fill('missing')
-  await expect(page.getByText('No conversations match this filter.')).toBeVisible()
 })
 
 test('AI sidebar runs a live Codex chat path and restores the transcript after reopen', async ({

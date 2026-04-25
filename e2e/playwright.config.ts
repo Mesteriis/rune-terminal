@@ -4,6 +4,7 @@ import {
   authToken,
   backendHost,
   backendPort,
+  repoRoot,
   backendStateDir,
   frontendHost,
   frontendPort,
@@ -23,14 +24,14 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: `LOCAL_BACKEND_PORT=${backendPort} LOCAL_AUTH_TOKEN=${authToken} make -C .. BACKEND_STATE_DIR=${backendStateDir} run-backend`,
+      command: `cd ${repoRoot} && LOCAL_BACKEND_PORT=${backendPort} LOCAL_AUTH_TOKEN=${authToken} make BACKEND_STATE_DIR=${backendStateDir} run-backend`,
       url: `http://${backendHost}:${backendPort}/healthz`,
       reuseExistingServer: false,
       stdout: 'pipe',
       stderr: 'pipe',
     },
     {
-      command: `LOCAL_BACKEND_PORT=${backendPort} LOCAL_FRONTEND_PORT=${frontendPort} LOCAL_AUTH_TOKEN=${authToken} make -C .. run-frontend`,
+      command: `cd ${repoRoot} && LOCAL_BACKEND_PORT=${backendPort} LOCAL_FRONTEND_PORT=${frontendPort} LOCAL_AUTH_TOKEN=${authToken} make run-frontend`,
       url: `http://${frontendHost}:${frontendPort}/`,
       reuseExistingServer: false,
       stdout: 'pipe',

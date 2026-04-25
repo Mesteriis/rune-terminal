@@ -13,6 +13,8 @@ import {
   renameAgentConversation,
   restoreAgentConversation,
   streamAgentConversationMessage,
+  type AgentConversationListCounts,
+  type AgentConversationListScope,
   type AgentConversationMessage,
   type AgentConversationContextPreferences,
   type AgentConversationProvider,
@@ -375,6 +377,12 @@ function sortConversationSummaries(conversations: AgentConversationSummary[]) {
   })
 }
 
+const defaultConversationListCounts: AgentConversationListCounts = {
+  recent: 0,
+  archived: 0,
+  all: 0,
+}
+
 function upsertConversationSummary(
   conversations: AgentConversationSummary[],
   nextConversation: AgentConversationSummary,
@@ -391,7 +399,16 @@ export function useAgentPanel(hostId: string, enabled = true) {
   const [pendingFlow, setPendingFlow] = useState<PendingInteractionFlow | null>(null)
   const [provider, setProvider] = useState<AgentConversationProvider | null>(null)
   const [providerCatalog, setProviderCatalog] = useState<AgentProviderCatalog | null>(null)
+  const [activeConversationSummary, setActiveConversationSummary] = useState<AgentConversationSummary | null>(
+    null,
+  )
   const [conversations, setConversations] = useState<AgentConversationSummary[]>([])
+  const [conversationCounts, setConversationCounts] = useState<AgentConversationListCounts>(
+    defaultConversationListCounts,
+  )
+  const [isConversationListPending, setIsConversationListPending] = useState(false)
+  const [conversationSearchQuery, setConversationSearchQuery] = useState('')
+  const [conversationScope, setConversationScope] = useState<AgentConversationListScope>('recent')
   const [activeConversationID, setActiveConversationID] = useState('')
   const [selectedProviderID, setSelectedProviderID] = useState('')
   const [availableModels, setAvailableModels] = useState<string[]>([])
@@ -414,6 +431,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
   const pendingFlowRef = useRef<PendingInteractionFlow | null>(null)
   const submissionNonceRef = useRef(0)
   const panelStateEpochRef = useRef(0)
+  const conversationListRequestNonceRef = useRef(0)
   const contextWidgetOptionsRef = useRef<AiContextWidgetOption[]>([])
   const workspaceActiveWidgetIDRef = useRef('')
   const hasLoadedContextWidgetsRef = useRef(false)
@@ -456,12 +474,14 @@ export function useAgentPanel(hostId: string, enabled = true) {
 
   const applyConversationSnapshot = useCallback(
     (snapshot: AgentConversationSnapshot) => {
+      const nextConversationSummary = summaryFromConversationSnapshot(snapshot)
       setMessages(snapshot.messages)
       setProvider(snapshot.provider)
       setActiveConversationID(snapshot.id)
+      setActiveConversationSummary(nextConversationSummary)
       applyConversationContextPreferences(snapshot.context_preferences)
       setConversations((currentConversations) =>
-        upsertConversationSummary(currentConversations, summaryFromConversationSnapshot(snapshot)),
+        upsertConversationSummary(currentConversations, nextConversationSummary),
       )
     },
     [applyConversationContextPreferences],
@@ -509,7 +529,12 @@ export function useAgentPanel(hostId: string, enabled = true) {
     setPendingFlow(null)
     setProvider(null)
     setProviderCatalog(null)
+    setActiveConversationSummary(null)
     setConversations([])
+    setConversationCounts(defaultConversationListCounts)
+    setIsConversationListPending(true)
+    setConversationSearchQuery('')
+    setConversationScope('recent')
     setActiveConversationID('')
     setSelectedProviderID('')
     setAvailableModels([])
@@ -527,16 +552,12 @@ export function useAgentPanel(hostId: string, enabled = true) {
     hasLoadedContextWidgetsRef.current = false
     hasCustomizedContextWidgetSelectionRef.current = false
 
-    void Promise.allSettled([
-      fetchAgentConversation(),
-      fetchAgentProviderCatalog(),
-      fetchAgentConversations(),
-    ]).then((results) => {
+    void Promise.allSettled([fetchAgentConversation(), fetchAgentProviderCatalog()]).then((results) => {
       if (cancelled || panelStateEpochRef.current !== panelStateEpoch) {
         return
       }
 
-      const [conversationResult, providerCatalogResult, conversationsResult] = results
+      const [conversationResult, providerCatalogResult] = results
 
       if (conversationResult.status === 'rejected') {
         setLoadError(
@@ -544,16 +565,6 @@ export function useAgentPanel(hostId: string, enabled = true) {
         )
       } else {
         applyConversationSnapshot(conversationResult.value)
-      }
-
-      if (conversationsResult.status === 'fulfilled') {
-        setConversations(sortConversationSummaries(conversationsResult.value.conversations))
-        setActiveConversationID(
-          (currentConversationID) =>
-            currentConversationID || conversationsResult.value.active_conversation_id || '',
-        )
-      } else if (conversationResult.status === 'fulfilled') {
-        setConversations([summaryFromConversationSnapshot(conversationResult.value)])
       }
 
       if (providerCatalogResult.status === 'fulfilled') {
@@ -584,6 +595,65 @@ export function useAgentPanel(hostId: string, enabled = true) {
       unblockAiWidget(hostId)
     }
   }, [applyConversationSnapshot, beginPanelStateEpoch, enabled, hostId])
+
+  const refreshConversationList = useCallback(
+    async (
+      overrides: {
+        query?: string
+        scope?: AgentConversationListScope
+      } = {},
+    ) => {
+      const requestNonce = conversationListRequestNonceRef.current + 1
+      conversationListRequestNonceRef.current = requestNonce
+      setIsConversationListPending(true)
+      const nextQuery = overrides.query ?? conversationSearchQuery
+      const nextScope = overrides.scope ?? conversationScope
+      try {
+        const conversationList = await fetchAgentConversations({
+          query: nextQuery,
+          scope: nextScope,
+        })
+
+        if (conversationListRequestNonceRef.current !== requestNonce) {
+          return null
+        }
+
+        setConversations(sortConversationSummaries(conversationList.conversations))
+        setConversationCounts(conversationList.counts)
+        setActiveConversationID(
+          (currentConversationID) => conversationList.active_conversation_id || currentConversationID || '',
+        )
+        return conversationList
+      } finally {
+        if (conversationListRequestNonceRef.current === requestNonce) {
+          setIsConversationListPending(false)
+        }
+      }
+    },
+    [conversationScope, conversationSearchQuery],
+  )
+
+  useEffect(() => {
+    if (!enabled) {
+      return
+    }
+
+    let cancelled = false
+
+    void refreshConversationList({
+      query: conversationSearchQuery,
+      scope: conversationScope,
+    }).catch((error) => {
+      if (cancelled) {
+        return
+      }
+      setSubmitError(getErrorMessage(error, 'Unable to refresh the conversation list.'))
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [conversationScope, conversationSearchQuery, enabled, refreshConversationList])
 
   useEffect(() => {
     setSelectedModel((currentModel) =>
@@ -637,13 +707,6 @@ export function useAgentPanel(hostId: string, enabled = true) {
     },
     [beginPanelStateEpoch, selectedProviderID],
   )
-
-  const refreshConversationList = useCallback(async () => {
-    const conversationList = await fetchAgentConversations()
-    setConversations(sortConversationSummaries(conversationList.conversations))
-    setActiveConversationID(conversationList.active_conversation_id || '')
-    return conversationList
-  }, [])
 
   const switchConversation = useCallback(
     async (conversationID: string) => {
@@ -761,7 +824,10 @@ export function useAgentPanel(hostId: string, enabled = true) {
         await deleteAgentConversation(nextConversationID)
         const [snapshot, conversationList] = await Promise.all([
           fetchAgentConversation(),
-          fetchAgentConversations(),
+          fetchAgentConversations({
+            query: conversationSearchQuery,
+            scope: conversationScope,
+          }),
         ])
         if (panelStateEpochRef.current !== panelStateEpoch) {
           return
@@ -769,6 +835,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
         applyConversationSnapshot(snapshot)
         resetConversationInteractionState()
         setConversations(sortConversationSummaries(conversationList.conversations))
+        setConversationCounts(conversationList.counts)
         setActiveConversationID(conversationList.active_conversation_id || snapshot.id)
       } catch (error) {
         setSubmitError(getErrorMessage(error, 'Unable to delete the conversation.'))
@@ -779,6 +846,8 @@ export function useAgentPanel(hostId: string, enabled = true) {
     [
       applyConversationSnapshot,
       beginPanelStateEpoch,
+      conversationScope,
+      conversationSearchQuery,
       isConversationPending,
       isSubmitting,
       resetConversationInteractionState,
@@ -858,6 +927,14 @@ export function useAgentPanel(hostId: string, enabled = true) {
       resetConversationInteractionState,
     ],
   )
+
+  const updateConversationSearchQuery = useCallback((value: string) => {
+    setConversationSearchQuery(value)
+  }, [])
+
+  const updateConversationScope = useCallback((value: AgentConversationListScope) => {
+    setConversationScope(value)
+  }, [])
 
   const updateAuditMessageEntries = useCallback(
     (auditMessageID: string, update: Parameters<typeof updateInteractionMessage>[2]) => {
@@ -1599,6 +1676,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
 
   return {
     activeConversationID,
+    activeConversationSummary,
     answerQuestionnaire,
     approvePendingPlan,
     availableProviders,
@@ -1610,11 +1688,15 @@ export function useAgentPanel(hostId: string, enabled = true) {
     activeContextWidgetID,
     activeContextWidgetOption,
     archiveConversation,
+    conversationCounts,
+    conversationScope,
+    conversationSearchQuery,
     handleContextOptionsOpen,
     missingContextWidgetCount: resolvedMissingContextWidgetCount,
     conversations,
     createConversation,
     isInteractionPending: pendingFlow != null,
+    isConversationListPending,
     isConversationPending,
     isSubmitting,
     isWidgetContextEnabled,
@@ -1630,6 +1712,8 @@ export function useAgentPanel(hostId: string, enabled = true) {
     switchConversation,
     deleteConversation,
     renameConversation,
+    setConversationScope: updateConversationScope,
+    setConversationSearchQuery: updateConversationSearchQuery,
     repairMissingContextWidgets,
     resetContextWidgetSelection,
     restoreConversation,

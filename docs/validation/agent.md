@@ -9,8 +9,8 @@
   - provider-native CLI session continuity scoped per conversation
   - shell-visible AI conversation navigator with recent-thread menu over the same backend conversation contract
   - pinned active-thread summary block inside the AI conversation navigator
-  - shell-visible AI conversation navigator scope controls for `Open / Archived / All` thread views over the loaded backend conversation list
-  - local search/filter inside the AI conversation navigator over the loaded backend conversation list
+  - shell-visible AI conversation navigator scope controls for `Open / Archived / All` thread views over the backend conversation list route
+  - backend-backed search/filter inside the AI conversation navigator through explicit `query` / `scope` list params
   - keyboard navigation inside the searchable AI conversation navigator through `aria-activedescendant` plus `Enter` selection
   - backend-owned agent provider catalog
   - active conversation provider resolution
@@ -39,7 +39,7 @@
     - immediate `Only current` context selection after opening the composer context menu without losing the current workspace widget to frontend state races
     - settings-driven keyboard submit behavior: `Enter` newline plus `Ctrl/Cmd+Enter` submit
     - conversation persistence across AI panel reload/reopen with backend conversation switching
-    - shell-visible conversation menu for `Recent / Archived` thread grouping, `New` creation, active-thread rename, archive, restore, and delete
+    - shell-visible conversation menu for `Recent / Archived / All` thread grouping, `New` creation, active-thread rename, archive, restore, and delete
     - visible `Active thread` summary block inside the conversation navigator before search/scope controls
     - keyboard navigation through filtered conversation results in the AI conversation navigator
     - live Claude provider routing with explicit `auth-required` handling when the local CLI is installed but not logged in
@@ -87,6 +87,10 @@
   - `Open threads` for active/unarchived conversations
   - `Archived threads` for archived conversations
   - `All` to inspect both groups together
+- Scope and search are now controller-owned request state:
+  - the AI shell sends `GET /api/v1/agent/conversations?scope=...&query=...`
+  - the navigator projects the returned `counts` plus filtered list
+  - the controller no longer falls back to re-seeding the visible list from only the active conversation snapshot after reload/create
 - The navigator now also keeps the currently active thread pinned as an explicit summary block above the search/scope controls, so operators can always verify which backend conversation is live before acting on filtered lists.
 - The searchable conversation navigator keeps keyboard focus on the search input and drives highlighted thread rows through `aria-activedescendant`; `ArrowUp/ArrowDown/Home/End` move the highlight and `Enter` selects the currently highlighted conversation.
 - The composer request-context quick actions now tolerate immediate operator interaction after the dropdown opens:

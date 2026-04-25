@@ -159,13 +159,20 @@ export function AppAiSidebar({ isOpen, contentAreaRef }: AppAiSidebarProps) {
                     style={aiPanelHeaderStyle}
                   >
                     <AiPanelHeaderWidget
+                      activeConversation={agentPanel.activeConversationSummary}
                       activeConversationID={agentPanel.activeConversationID}
+                      conversationCounts={agentPanel.conversationCounts}
+                      conversationScope={agentPanel.conversationScope}
+                      conversationSearchQuery={agentPanel.conversationSearchQuery}
                       conversations={agentPanel.conversations}
                       isConversationBusy={
+                        agentPanel.isConversationListPending ||
                         agentPanel.isConversationPending ||
                         agentPanel.isSubmitting ||
                         agentPanel.isInteractionPending
                       }
+                      onConversationScopeChange={agentPanel.setConversationScope}
+                      onConversationSearchQueryChange={agentPanel.setConversationSearchQuery}
                       mode={chatMode}
                       onConversationSelect={(conversationID) => {
                         void agentPanel.switchConversation(conversationID)

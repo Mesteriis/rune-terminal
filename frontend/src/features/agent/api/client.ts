@@ -111,6 +111,14 @@ export type AgentConversationSummary = {
   archived_at?: string
 }
 
+export type AgentConversationListScope = 'recent' | 'archived' | 'all'
+
+export type AgentConversationListCounts = {
+  recent: number
+  archived: number
+  all: number
+}
+
 export type AgentConversationSnapshot = {
   id: string
   title: string
@@ -157,6 +165,11 @@ function normalizeConversationSummary(conversation: AgentConversationSummary): A
 function normalizeConversationList(payload: AgentConversationListResponse): AgentConversationListResponse {
   return {
     ...payload,
+    counts: {
+      recent: Number.isFinite(payload.counts?.recent) ? payload.counts.recent : 0,
+      archived: Number.isFinite(payload.counts?.archived) ? payload.counts.archived : 0,
+      all: Number.isFinite(payload.counts?.all) ? payload.counts.all : 0,
+    },
     conversations: Array.isArray(payload.conversations)
       ? payload.conversations.map(normalizeConversationSummary)
       : [],
@@ -257,6 +270,7 @@ type AgentConversationResponse = {
 
 type AgentConversationListResponse = {
   active_conversation_id: string
+  counts: AgentConversationListCounts
   conversations: AgentConversationSummary[]
 }
 
@@ -520,8 +534,25 @@ export async function fetchAgentConversation() {
   return normalizeConversationSnapshot(payload.conversation)
 }
 
-export async function fetchAgentConversations() {
-  const payload = await requestRuntimeJSON<AgentConversationListResponse>('/api/v1/agent/conversations')
+export async function fetchAgentConversations(input?: {
+  query?: string
+  scope?: AgentConversationListScope
+}) {
+  const params = new URLSearchParams()
+  const normalizedQuery = input?.query?.trim() ?? ''
+  const normalizedScope = input?.scope?.trim() ?? ''
+
+  if (normalizedQuery !== '') {
+    params.set('query', normalizedQuery)
+  }
+  if (normalizedScope !== '') {
+    params.set('scope', normalizedScope)
+  }
+
+  const suffix = params.size > 0 ? `?${params.toString()}` : ''
+  const payload = await requestRuntimeJSON<AgentConversationListResponse>(
+    `/api/v1/agent/conversations${suffix}`,
+  )
   return normalizeConversationList(payload)
 }
 

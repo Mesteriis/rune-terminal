@@ -144,6 +144,114 @@ func TestConversationListCreateAndActivateRoutesRoundTrip(t *testing.T) {
 	}
 }
 
+func TestConversationListRouteFiltersByScopeAndQuery(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+
+	recentRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(
+		recentRecorder,
+		authedJSONRequest(t, http.MethodPost, "/api/v1/agent/conversations", map[string]any{}),
+	)
+	if recentRecorder.Code != http.StatusOK {
+		t.Fatalf("expected recent create 200, got %d body=%s", recentRecorder.Code, recentRecorder.Body.String())
+	}
+
+	var recentCreated struct {
+		Conversation struct {
+			ID string `json:"id"`
+		} `json:"conversation"`
+	}
+	if err := json.Unmarshal(recentRecorder.Body.Bytes(), &recentCreated); err != nil {
+		t.Fatalf("unmarshal recent create payload: %v", err)
+	}
+	if _, err := renameAgentConversationInRuntimeTest(t, handler, recentCreated.Conversation.ID, "Backend audit thread"); err != nil {
+		t.Fatalf("rename recent conversation: %v", err)
+	}
+
+	archivedRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(
+		archivedRecorder,
+		authedJSONRequest(t, http.MethodPost, "/api/v1/agent/conversations", map[string]any{}),
+	)
+	if archivedRecorder.Code != http.StatusOK {
+		t.Fatalf("expected archived create 200, got %d body=%s", archivedRecorder.Code, archivedRecorder.Body.String())
+	}
+
+	var archivedCreated struct {
+		Conversation struct {
+			ID string `json:"id"`
+		} `json:"conversation"`
+	}
+	if err := json.Unmarshal(archivedRecorder.Body.Bytes(), &archivedCreated); err != nil {
+		t.Fatalf("unmarshal archived create payload: %v", err)
+	}
+	if _, err := renameAgentConversationInRuntimeTest(t, handler, archivedCreated.Conversation.ID, "Terminal restart notes"); err != nil {
+		t.Fatalf("rename archived conversation: %v", err)
+	}
+	if _, err := archiveAgentConversationInRuntimeTest(t, handler, archivedCreated.Conversation.ID); err != nil {
+		t.Fatalf("archive conversation: %v", err)
+	}
+
+	filteredRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(
+		filteredRecorder,
+		authedJSONRequest(
+			t,
+			http.MethodGet,
+			"/api/v1/agent/conversations?scope=archived&query=terminal",
+			nil,
+		),
+	)
+	if filteredRecorder.Code != http.StatusOK {
+		t.Fatalf("expected filtered list 200, got %d body=%s", filteredRecorder.Code, filteredRecorder.Body.String())
+	}
+
+	var filteredPayload struct {
+		Counts struct {
+			Recent   int `json:"recent"`
+			Archived int `json:"archived"`
+			All      int `json:"all"`
+		} `json:"counts"`
+		Conversations []struct {
+			ID         string  `json:"id"`
+			Title      string  `json:"title"`
+			ArchivedAt *string `json:"archived_at"`
+		} `json:"conversations"`
+	} 
+	if err := json.Unmarshal(filteredRecorder.Body.Bytes(), &filteredPayload); err != nil {
+		t.Fatalf("unmarshal filtered list payload: %v", err)
+	}
+	if filteredPayload.Counts.Recent != 0 || filteredPayload.Counts.Archived != 1 || filteredPayload.Counts.All != 1 {
+		t.Fatalf("unexpected filtered counts: %#v", filteredPayload.Counts)
+	}
+	if len(filteredPayload.Conversations) != 1 {
+		t.Fatalf("expected one archived match, got %#v", filteredPayload.Conversations)
+	}
+	if filteredPayload.Conversations[0].ID != archivedCreated.Conversation.ID ||
+		filteredPayload.Conversations[0].Title != "Terminal restart notes" ||
+		filteredPayload.Conversations[0].ArchivedAt == nil {
+		t.Fatalf("unexpected filtered conversations: %#v", filteredPayload.Conversations)
+	}
+}
+
+func TestConversationListRouteRejectsInvalidScope(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(
+		recorder,
+		authedJSONRequest(t, http.MethodGet, "/api/v1/agent/conversations?scope=invalid", nil),
+	)
+
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+}
+
 func TestConversationRenameRouteUpdatesConversationTitle(t *testing.T) {
 	t.Parallel()
 
@@ -368,6 +476,49 @@ func TestConversationArchiveAndRestoreRoutesRoundTrip(t *testing.T) {
 	if restored.Conversation.ID != archiveTarget.Conversation.ID || restored.Conversation.ArchivedAt != nil {
 		t.Fatalf("expected restored unarchived conversation, got %#v", restored)
 	}
+}
+
+func renameAgentConversationInRuntimeTest(
+	t *testing.T,
+	handler http.Handler,
+	conversationID string,
+	title string,
+) (*httptest.ResponseRecorder, error) {
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(
+		recorder,
+		authedJSONRequest(
+			t,
+			http.MethodPatch,
+			"/api/v1/agent/conversations/"+conversationID,
+			map[string]any{"title": title},
+		),
+	)
+	if recorder.Code != http.StatusOK {
+		return recorder, errors.New(recorder.Body.String())
+	}
+	return recorder, nil
+}
+
+func archiveAgentConversationInRuntimeTest(
+	t *testing.T,
+	handler http.Handler,
+	conversationID string,
+) (*httptest.ResponseRecorder, error) {
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(
+		recorder,
+		authedJSONRequest(
+			t,
+			http.MethodPut,
+			"/api/v1/agent/conversations/"+conversationID+"/archive",
+			nil,
+		),
+	)
+	if recorder.Code != http.StatusOK {
+		return recorder, errors.New(recorder.Body.String())
+	}
+	return recorder, nil
 }
 
 func TestConversationContextRoutePersistsWidgetSelection(t *testing.T) {

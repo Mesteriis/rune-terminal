@@ -13,7 +13,11 @@ import {
 } from 'lucide-react'
 
 import runaAvatar from '@assets/img/logo.png'
-import type { AgentConversationSummary } from '@/features/agent/api/client'
+import type {
+  AgentConversationListCounts,
+  AgentConversationListScope,
+  AgentConversationSummary,
+} from '@/features/agent/api/client'
 import type { ChatMode } from '@/features/agent/model/types'
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { Avatar } from '@/shared/ui/components'
@@ -65,10 +69,16 @@ import {
 } from '@/widgets/ai/ai-panel-widget.styles'
 
 export type AiPanelHeaderWidgetProps = {
+  activeConversation?: AgentConversationSummary | null
   activeConversationID?: string
+  conversationCounts?: AgentConversationListCounts
+  conversationScope?: AgentConversationListScope
+  conversationSearchQuery?: string
   conversations?: AgentConversationSummary[]
   isConversationBusy?: boolean
   mode: ChatMode
+  onConversationScopeChange?: (scope: AgentConversationListScope) => void
+  onConversationSearchQueryChange?: (value: string) => void
   onConversationSelect?: (conversationID: string) => void
   onCreateConversation?: () => void
   onArchiveConversation?: (conversationID: string) => Promise<void> | void
@@ -81,7 +91,11 @@ export type AiPanelHeaderWidgetProps = {
 
 const CHAT_MODES: ChatMode[] = ['chat', 'dev', 'debug']
 const CONVERSATION_SCOPES = ['recent', 'archived', 'all'] as const
-type ConversationScope = (typeof CONVERSATION_SCOPES)[number]
+const defaultConversationCounts: AgentConversationListCounts = {
+  recent: 0,
+  archived: 0,
+  all: 0,
+}
 const conversationActionIconProps = {
   size: 14,
   strokeWidth: 1.75,
@@ -114,7 +128,7 @@ function formatConversationUpdatedAt(value: string) {
   }).format(parsed)
 }
 
-function conversationScopeLabel(scope: ConversationScope, count: number) {
+function conversationScopeLabel(scope: AgentConversationListScope, count: number) {
   const suffix = count === 1 ? '1' : String(count)
 
   switch (scope) {
@@ -127,7 +141,7 @@ function conversationScopeLabel(scope: ConversationScope, count: number) {
   }
 }
 
-function conversationSectionTitle(scope: ConversationScope, archived: boolean) {
+function conversationSectionTitle(scope: AgentConversationListScope, archived: boolean) {
   if (scope === 'all') {
     return archived ? 'Archived' : 'Recent'
   }
@@ -135,11 +149,39 @@ function conversationSectionTitle(scope: ConversationScope, archived: boolean) {
   return archived ? 'Archived threads' : 'Open threads'
 }
 
+function buildConversationTitleCounts(conversations: AgentConversationSummary[]) {
+  return conversations.reduce<Map<string, number>>((counts, conversation) => {
+    const title = formatConversationTitle(conversation)
+    counts.set(title, (counts.get(title) ?? 0) + 1)
+    return counts
+  }, new Map())
+}
+
+function conversationOptionAriaLabel(
+  conversation: AgentConversationSummary,
+  titleCounts: Map<string, number>,
+) {
+  const title = formatConversationTitle(conversation)
+  if ((titleCounts.get(title) ?? 0) <= 1) {
+    return `Open conversation ${title}`
+  }
+
+  return `Open conversation ${title} · ${formatConversationCount(conversation)} · ${formatConversationUpdatedAt(
+    conversation.archived_at ?? conversation.updated_at,
+  )}`
+}
+
 export function AiPanelHeaderWidget({
+  activeConversation: activeConversationOverride = null,
   activeConversationID = '',
+  conversationCounts = defaultConversationCounts,
+  conversationScope: controlledConversationScope,
+  conversationSearchQuery: controlledConversationSearchQuery,
   conversations = [],
   isConversationBusy = false,
   mode,
+  onConversationScopeChange,
+  onConversationSearchQueryChange,
   onConversationSelect,
   onCreateConversation,
   onArchiveConversation,
@@ -152,18 +194,31 @@ export function AiPanelHeaderWidget({
   const [isConversationMenuOpen, setIsConversationMenuOpen] = useState(false)
   const [isRenamingConversation, setIsRenamingConversation] = useState(false)
   const [isDeleteConversationConfirmOpen, setIsDeleteConversationConfirmOpen] = useState(false)
-  const [conversationSearchQuery, setConversationSearchQuery] = useState('')
-  const [conversationScope, setConversationScope] = useState<ConversationScope>('recent')
+  const [localConversationSearchQuery, setLocalConversationSearchQuery] = useState('')
+  const [localConversationScope, setLocalConversationScope] = useState<AgentConversationListScope>('recent')
   const [renameDraft, setRenameDraft] = useState('')
   const [optimisticConversationTitle, setOptimisticConversationTitle] = useState('')
   const [highlightedConversationID, setHighlightedConversationID] = useState('')
   const conversationMenuWrapRef = useRef<HTMLDivElement | null>(null)
   const conversationOptionRefs = useRef(new Map<string, HTMLButtonElement>())
+  const isConversationSearchControlled =
+    controlledConversationSearchQuery != null && onConversationSearchQueryChange != null
+  const isConversationScopeControlled =
+    controlledConversationScope != null && onConversationScopeChange != null
+  const conversationSearchQuery = isConversationSearchControlled
+    ? (controlledConversationSearchQuery ?? '')
+    : localConversationSearchQuery
+  const conversationScope = isConversationScopeControlled
+    ? (controlledConversationScope ?? 'recent')
+    : localConversationScope
   const hasConversationOptions = conversations.length > 0
   const selectedConversationID = activeConversationID || conversations[0]?.id || ''
   const activeConversation = useMemo(
-    () => conversations.find((conversation) => conversation.id === selectedConversationID) ?? null,
-    [conversations, selectedConversationID],
+    () =>
+      activeConversationOverride ??
+      conversations.find((conversation) => conversation.id === selectedConversationID) ??
+      null,
+    [activeConversationOverride, conversations, selectedConversationID],
   )
   const activeConversationTitle = activeConversation
     ? formatConversationTitle(activeConversation)
@@ -185,8 +240,12 @@ export function AiPanelHeaderWidget({
   const canRestoreConversation =
     activeConversation != null && onRestoreConversation != null && isArchivedConversation(activeConversation)
   const canDeleteConversation = activeConversation != null && onDeleteConversation != null
+  const hasConversationSearchQuery = conversationSearchQuery.trim() !== ''
   const normalizedConversationSearchQuery = conversationSearchQuery.trim().toLowerCase()
   const filteredConversations = useMemo(() => {
+    if (isConversationSearchControlled) {
+      return conversations
+    }
     if (normalizedConversationSearchQuery === '') {
       return conversations
     }
@@ -194,7 +253,7 @@ export function AiPanelHeaderWidget({
     return conversations.filter((conversation) =>
       formatConversationTitle(conversation).toLowerCase().includes(normalizedConversationSearchQuery),
     )
-  }, [conversations, normalizedConversationSearchQuery])
+  }, [conversations, isConversationSearchControlled, normalizedConversationSearchQuery])
   const filteredRecentConversations = useMemo(
     () => filteredConversations.filter((conversation) => !isArchivedConversation(conversation)),
     [filteredConversations],
@@ -203,6 +262,14 @@ export function AiPanelHeaderWidget({
     () => filteredConversations.filter((conversation) => isArchivedConversation(conversation)),
     [filteredConversations],
   )
+  const effectiveConversationCounts =
+    isConversationSearchControlled || isConversationScopeControlled
+      ? conversationCounts
+      : {
+          recent: filteredRecentConversations.length,
+          archived: filteredArchivedConversations.length,
+          all: filteredConversations.length,
+        }
   const visibleConversations = useMemo(() => {
     switch (conversationScope) {
       case 'recent':
@@ -229,19 +296,39 @@ export function AiPanelHeaderWidget({
   const highlightedConversationIndex = highlightedConversationID
     ? orderedConversationOptions.findIndex((conversation) => conversation.id === highlightedConversationID)
     : -1
+  const conversationTitleCounts = useMemo(
+    () => buildConversationTitleCounts(orderedConversationOptions),
+    [orderedConversationOptions],
+  )
 
   useEffect(() => {
     if (!isConversationMenuOpen) {
       setIsRenamingConversation(false)
       setIsDeleteConversationConfirmOpen(false)
-      setConversationSearchQuery('')
-      setConversationScope('recent')
+      if (isConversationSearchControlled) {
+        onConversationSearchQueryChange('')
+      } else {
+        setLocalConversationSearchQuery('')
+      }
+      if (isConversationScopeControlled) {
+        onConversationScopeChange('recent')
+      } else {
+        setLocalConversationScope('recent')
+      }
       setHighlightedConversationID('')
       return
     }
 
     setRenameDraft(activeConversation?.title ?? '')
-  }, [activeConversation?.id, activeConversation?.title, isConversationMenuOpen])
+  }, [
+    activeConversation?.id,
+    activeConversation?.title,
+    isConversationMenuOpen,
+    isConversationScopeControlled,
+    isConversationSearchControlled,
+    onConversationScopeChange,
+    onConversationSearchQueryChange,
+  ])
 
   useEffect(() => {
     if (!optimisticConversationTitle.trim()) {
@@ -324,6 +411,9 @@ export function AiPanelHeaderWidget({
   }
 
   const selectConversationFromNavigator = (conversationID: string) => {
+    if (isConversationBusy) {
+      return
+    }
     setIsConversationMenuOpen(false)
     onConversationSelect?.(conversationID)
   }
@@ -405,6 +495,15 @@ export function AiPanelHeaderWidget({
   const handleConversationOptionKeyDown =
     (index: number) => (event: ReactKeyboardEvent<HTMLButtonElement>) => {
       if (orderedConversationOptions.length === 0) {
+        return
+      }
+
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault()
+        const nextConversationID = orderedConversationOptions[index]?.id
+        if (nextConversationID) {
+          selectConversationFromNavigator(nextConversationID)
+        }
         return
       }
 
@@ -554,9 +653,7 @@ export function AiPanelHeaderWidget({
                         <Text style={aiHeaderConversationSummaryTitleStyle}>Conversations</Text>
                         <Text style={aiHeaderConversationMenuMetaStyle}>
                           {conversations.length === 1 ? '1 thread' : `${conversations.length} threads`}
-                          {normalizedConversationSearchQuery !== ''
-                            ? ` · ${filteredConversations.length} shown`
-                            : ''}
+                          {hasConversationSearchQuery ? ` · ${filteredConversations.length} shown` : ''}
                         </Text>
                       </Box>
                       <Box
@@ -662,17 +759,23 @@ export function AiPanelHeaderWidget({
                         {CONVERSATION_SCOPES.map((scope) => {
                           const count =
                             scope === 'recent'
-                              ? filteredRecentConversations.length
+                              ? effectiveConversationCounts.recent
                               : scope === 'archived'
-                                ? filteredArchivedConversations.length
-                                : filteredConversations.length
+                                ? effectiveConversationCounts.archived
+                                : effectiveConversationCounts.all
 
                           return (
                             <Button
                               aria-label={`Show ${scope} conversations`}
                               aria-pressed={conversationScope === scope}
                               key={scope}
-                              onClick={() => setConversationScope(scope)}
+                              onClick={() => {
+                                if (isConversationScopeControlled) {
+                                  onConversationScopeChange?.(scope)
+                                  return
+                                }
+                                setLocalConversationScope(scope)
+                              }}
                               runaComponent={`ai-panel-header-conversation-scope-${scope}`}
                               style={{
                                 ...aiHeaderConversationScopeButtonStyle,
@@ -695,7 +798,14 @@ export function AiPanelHeaderWidget({
                         aria-label="Search conversations"
                         aria-controls="ai-panel-header-conversation-listbox"
                         disabled={isConversationBusy || conversations.length === 0}
-                        onChange={(event) => setConversationSearchQuery(event.currentTarget.value)}
+                        onChange={(event) => {
+                          const nextValue = event.currentTarget.value
+                          if (isConversationSearchControlled) {
+                            onConversationSearchQueryChange?.(nextValue)
+                            return
+                          }
+                          setLocalConversationSearchQuery(nextValue)
+                        }}
                         onKeyDown={handleConversationSearchKeyDown}
                         placeholder="Search conversations"
                         runaComponent="ai-panel-header-conversation-search-input"
@@ -833,13 +943,16 @@ export function AiPanelHeaderWidget({
                           )
                           return (
                             <Button
-                              aria-label={`Open conversation ${formatConversationTitle(conversation)}`}
+                              aria-label={conversationOptionAriaLabel(conversation, conversationTitleCounts)}
                               aria-selected={isActive}
+                              disabled={isConversationBusy}
                               id={`ai-panel-header-conversation-option-${conversation.id}`}
                               key={conversation.id}
                               onFocus={() => setHighlightedConversationID(conversation.id)}
+                              onMouseDown={(event) => {
+                                event.preventDefault()
+                              }}
                               onKeyDown={handleConversationOptionKeyDown(optionIndex)}
-                              onMouseEnter={() => setHighlightedConversationID(conversation.id)}
                               onClick={() => {
                                 selectConversationFromNavigator(conversation.id)
                               }}
@@ -888,13 +1001,16 @@ export function AiPanelHeaderWidget({
                           )
                           return (
                             <Button
-                              aria-label={`Open conversation ${formatConversationTitle(conversation)}`}
+                              aria-label={conversationOptionAriaLabel(conversation, conversationTitleCounts)}
                               aria-selected={isActive}
+                              disabled={isConversationBusy}
                               id={`ai-panel-header-conversation-option-${conversation.id}`}
                               key={conversation.id}
                               onFocus={() => setHighlightedConversationID(conversation.id)}
+                              onMouseDown={(event) => {
+                                event.preventDefault()
+                              }}
                               onKeyDown={handleConversationOptionKeyDown(optionIndex)}
-                              onMouseEnter={() => setHighlightedConversationID(conversation.id)}
                               onClick={() => {
                                 selectConversationFromNavigator(conversation.id)
                               }}

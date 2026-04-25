@@ -97,6 +97,11 @@ export type AgentConversationSummary = {
 
 export type AgentConversationList = {
   active_conversation_id: string
+  counts: {
+    recent: number
+    archived: number
+    all: number
+  }
   conversations: AgentConversationSummary[]
 }
 
@@ -282,9 +287,27 @@ export async function fetchAgentConversation(request: APIRequestContext) {
   }
 }
 
-export async function fetchAgentConversations(request: APIRequestContext) {
+export async function fetchAgentConversations(
+  request: APIRequestContext,
+  input?: {
+    query?: string
+    scope?: 'recent' | 'archived' | 'all'
+  },
+) {
+  const params = new URLSearchParams()
+  const normalizedQuery = input?.query?.trim() ?? ''
+  const normalizedScope = input?.scope?.trim() ?? ''
+
+  if (normalizedQuery !== '') {
+    params.set('query', normalizedQuery)
+  }
+  if (normalizedScope !== '') {
+    params.set('scope', normalizedScope)
+  }
+
+  const suffix = params.size > 0 ? `?${params.toString()}` : ''
   return expectJSONResponse<AgentConversationList>(
-    request.get(`${backendUrl}/api/v1/agent/conversations`, {
+    request.get(`${backendUrl}/api/v1/agent/conversations${suffix}`, {
       headers: authHeaders(),
     }),
   )
