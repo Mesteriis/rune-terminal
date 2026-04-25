@@ -43,6 +43,7 @@
     - current terminal line height is visible in `Settings -> Terminal`
     - the operator can decrease, increase, and reset terminal font size inside the existing settings shell
     - the operator can decrease, increase, and reset terminal line height inside the same shell section
+    - the operator can also restore all runtime-owned terminal defaults in one action, using the same `PUT /api/v1/settings/terminal` contract instead of a separate reset endpoint
     - font size and line height are loaded and persisted through the runtime contract (`GET/PUT /api/v1/settings/terminal`)
     - the mounted xterm surface still applies those values live in the frontend, but the source of truth is now the runtime DB rather than local UI storage
   - the renderer-only terminal demo path is removed from the seeded main path:
@@ -124,6 +125,7 @@
 - `npm --prefix frontend run test -- src/features/terminal/model/use-terminal-session.test.tsx src/widgets/terminal/terminal-widget.test.tsx`
 - `npm --prefix frontend run test -- src/shared/ui/components/terminal-status-header.test.tsx src/widgets/terminal/terminal-widget.test.tsx`
 - `npm --prefix frontend run test -- src/features/terminal/model/use-terminal-preferences.test.tsx src/widgets/settings/terminal-settings-section.test.tsx src/widgets/terminal/terminal-widget.test.tsx`
+- `npm --prefix frontend run test -- src/features/terminal/model/use-terminal-preferences.test.tsx src/widgets/settings/terminal-settings-section.test.tsx`
 - `npm --prefix frontend run test -- src/shared/ui/components/terminal-toolbar.test.tsx src/shared/ui/components/accessibility-contracts.test.tsx src/widgets/terminal/terminal-widget.test.tsx`
 - `npm --prefix frontend run test -- src/shared/api/terminal-settings.test.ts src/features/terminal/model/use-terminal-preferences.test.tsx src/widgets/settings/terminal-settings-section.test.tsx src/widgets/terminal/terminal-widget.test.tsx`
 - `npm --prefix frontend run test -- src/widgets/terminal/terminal-dockview-tab-widget.test.tsx src/widgets/terminal/terminal-dockview-header-actions-widget.test.tsx`
@@ -134,6 +136,7 @@
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts`
 - `npm run test:ui -- --reporter=line e2e/shell-workspace.spec.ts`
 - `npm run test:ui -- --reporter=line e2e/terminal.spec.ts`
+- `npm run test:ui -- --reporter=line --grep "reset all runtime-owned defaults" e2e/terminal.spec.ts`
 - `npm run tauri:dev`
 
 ## Browser evidence added for this slice
@@ -150,6 +153,7 @@
 - Browser validation for terminal input now runs through Playwright on the split local dev path. The suite is intentionally serialized (`workers: 1`) because terminal/runtime state is shared across the same backend instance.
 - A fresh `npm run tauri:dev` desktop smoke was run for this slice and the spawned `rterm-desktop` / core listener processes were cleaned up after verification.
 - Browser validation now also covers runtime-owned terminal theme mode, scrollback, plus cursor behavior persistence through the `Settings -> Terminal` shell path and confirms that `theme_mode`, `scrollback`, `cursor_style`, and `cursor_blink` survive reload through the backend contract.
+- Browser validation now also covers the one-shot reset path for the runtime-owned terminal settings shell and confirms that font size, line height, theme mode, scrollback, and cursor behavior all return to the backend defaults through the shared settings contract.
 
 ## Evidence
 

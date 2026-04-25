@@ -41,6 +41,51 @@ test('terminal settings persist font-size changes through the shell settings UI'
   })
 })
 
+test('terminal settings reset all runtime-owned defaults through the shell settings UI', async ({
+  page,
+  request,
+}) => {
+  await updateTerminalSettingsViaApi(request, {
+    cursor_blink: false,
+    cursor_style: 'underline',
+    font_size: 15,
+    line_height: 1.35,
+    scrollback: 7000,
+    theme_mode: 'contrast',
+  })
+
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  await page.getByRole('button', { name: 'Open settings panel' }).click()
+  await page.getByRole('button', { name: 'Terminal Настройки терминального runtime.' }).click()
+
+  await expect(page.getByText('15px', { exact: true })).toBeVisible()
+  await expect(page.getByText('1.35x', { exact: true })).toBeVisible()
+  await expect(page.getByText('7000 lines', { exact: true })).toBeVisible()
+  await expect(page.getByRole('combobox', { name: 'Terminal theme mode' })).toHaveValue('contrast')
+  await expect(page.getByRole('combobox', { name: 'Terminal cursor style' })).toHaveValue('underline')
+  await expect(page.getByRole('checkbox', { name: 'Enable terminal cursor blink' })).not.toBeChecked()
+
+  await page.getByRole('button', { name: 'Reset all terminal defaults' }).click()
+
+  await expect(page.getByText('13px', { exact: true })).toBeVisible()
+  await expect(page.getByText('1.25x', { exact: true })).toBeVisible()
+  await expect(page.getByText('5000 lines', { exact: true })).toBeVisible()
+  await expect(page.getByRole('combobox', { name: 'Terminal theme mode' })).toHaveValue('adaptive')
+  await expect(page.getByRole('combobox', { name: 'Terminal cursor style' })).toHaveValue('block')
+  await expect(page.getByRole('checkbox', { name: 'Enable terminal cursor blink' })).toBeChecked()
+
+  await expect.poll(async () => await fetchTerminalSettings(request)).toEqual({
+    cursor_blink: true,
+    cursor_style: 'block',
+    font_size: 13,
+    line_height: 1.25,
+    scrollback: 5000,
+    theme_mode: 'adaptive',
+  })
+})
+
 test('terminal settings persist line-height changes through the shell settings UI', async ({
   page,
   request,

@@ -343,4 +343,48 @@ describe('useTerminalPreferences', () => {
       theme_mode: DEFAULT_TERMINAL_THEME_MODE,
     })
   })
+
+  it('restores all terminal defaults through the shared backend contract', async () => {
+    vi.mocked(requestTerminalSettings).mockResolvedValue({
+      font_size: 15,
+      line_height: 1.35,
+      scrollback: 7000,
+      theme_mode: 'contrast',
+      cursor_style: 'underline',
+      cursor_blink: false,
+    })
+    vi.mocked(updateTerminalSettings).mockResolvedValue({
+      font_size: DEFAULT_TERMINAL_FONT_SIZE,
+      line_height: DEFAULT_TERMINAL_LINE_HEIGHT,
+      scrollback: DEFAULT_TERMINAL_SCROLLBACK,
+      theme_mode: DEFAULT_TERMINAL_THEME_MODE,
+      cursor_style: DEFAULT_TERMINAL_CURSOR_STYLE,
+      cursor_blink: DEFAULT_TERMINAL_CURSOR_BLINK,
+    })
+
+    const { result } = renderHook(() => useTerminalPreferences())
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    await act(async () => {
+      await result.current.resetAllDefaults()
+    })
+
+    expect(result.current.fontSize).toBe(DEFAULT_TERMINAL_FONT_SIZE)
+    expect(result.current.lineHeight).toBe(DEFAULT_TERMINAL_LINE_HEIGHT)
+    expect(result.current.scrollback).toBe(DEFAULT_TERMINAL_SCROLLBACK)
+    expect(result.current.themeMode).toBe(DEFAULT_TERMINAL_THEME_MODE)
+    expect(result.current.cursorStyle).toBe(DEFAULT_TERMINAL_CURSOR_STYLE)
+    expect(result.current.cursorBlink).toBe(DEFAULT_TERMINAL_CURSOR_BLINK)
+    expect(updateTerminalSettings).toHaveBeenCalledWith({
+      cursor_blink: DEFAULT_TERMINAL_CURSOR_BLINK,
+      cursor_style: DEFAULT_TERMINAL_CURSOR_STYLE,
+      font_size: DEFAULT_TERMINAL_FONT_SIZE,
+      line_height: DEFAULT_TERMINAL_LINE_HEIGHT,
+      scrollback: DEFAULT_TERMINAL_SCROLLBACK,
+      theme_mode: DEFAULT_TERMINAL_THEME_MODE,
+    })
+  })
 })

@@ -68,6 +68,7 @@ export function TerminalSettingsSection() {
     resetCursorBlink,
     resetCursorStyle,
     resetThemeMode,
+    resetAllDefaults,
     scrollback,
     themeMode,
     decreaseScrollback,
@@ -81,6 +82,13 @@ export function TerminalSettingsSection() {
   const canIncreaseLineHeight = lineHeight < MAX_TERMINAL_LINE_HEIGHT
   const canDecreaseScrollback = scrollback > MIN_TERMINAL_SCROLLBACK
   const canIncreaseScrollback = scrollback < MAX_TERMINAL_SCROLLBACK
+  const isAtTerminalDefaults =
+    fontSize === DEFAULT_TERMINAL_FONT_SIZE &&
+    lineHeight === DEFAULT_TERMINAL_LINE_HEIGHT &&
+    themeMode === DEFAULT_TERMINAL_THEME_MODE &&
+    scrollback === DEFAULT_TERMINAL_SCROLLBACK &&
+    cursorStyle === DEFAULT_TERMINAL_CURSOR_STYLE &&
+    cursorBlink === DEFAULT_TERMINAL_CURSOR_BLINK
 
   return (
     <SectionCard
@@ -88,6 +96,22 @@ export function TerminalSettingsSection() {
       title="Terminal runtime defaults"
     >
       <ClearBox style={settingsShellListStyle}>
+        <ClearBox style={settingsShellListRowStyle}>
+          <ClearBox style={settingsShellContentHeaderStyle}>
+            <Text style={{ fontWeight: 600 }}>Reset terminal defaults</Text>
+            <Text style={settingsShellMutedTextStyle}>
+              One-shot restore of the runtime-owned terminal baseline for typography, palette, scrollback, and
+              cursor behavior.
+            </Text>
+          </ClearBox>
+          <Button
+            aria-label="Reset all terminal defaults"
+            disabled={isLoading || isSaving || isAtTerminalDefaults}
+            onClick={() => void resetAllDefaults()}
+          >
+            <RotateCcw size={14} strokeWidth={1.8} />
+          </Button>
+        </ClearBox>
         <ClearBox style={settingsShellListRowStyle}>
           <ClearBox style={settingsShellContentHeaderStyle}>
             <Text style={{ fontWeight: 600 }}>Current terminal font size</Text>

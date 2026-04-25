@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { useTerminalPreferences } from '@/features/terminal/model/use-terminal-preferences'
@@ -28,6 +28,8 @@ describe('TerminalSettingsSection', () => {
   })
 
   it('renders the current runtime-owned terminal typography controls', () => {
+    const resetAllDefaults = vi.fn(async () => undefined)
+
     vi.mocked(useTerminalPreferences).mockReturnValue({
       decreaseFontSize: vi.fn(async () => undefined),
       decreaseLineHeight: vi.fn(async () => undefined),
@@ -42,6 +44,7 @@ describe('TerminalSettingsSection', () => {
       isSaving: false,
       lineHeight: 1.25,
       refresh: vi.fn(async () => undefined),
+      resetAllDefaults,
       resetScrollback: vi.fn(async () => undefined),
       resetFontSize: vi.fn(async () => undefined),
       resetLineHeight: vi.fn(async () => undefined),
@@ -67,6 +70,7 @@ describe('TerminalSettingsSection', () => {
     expect(screen.getByRole('combobox', { name: 'Terminal cursor style' })).toHaveValue('block')
     expect(screen.getByRole('checkbox', { name: 'Enable terminal cursor blink' })).toBeChecked()
     expect(screen.getByRole('button', { name: 'Increase terminal font size' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Reset all terminal defaults' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Reset terminal font size' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Decrease terminal font size' })).toBeEnabled()
     expect(screen.getByRole('button', { name: 'Increase terminal scrollback' })).toBeEnabled()
@@ -79,5 +83,48 @@ describe('TerminalSettingsSection', () => {
     expect(screen.getByRole('button', { name: 'Reset terminal line height' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Decrease terminal line height' })).toBeEnabled()
     expect(screen.getByText(/runtime-owned terminal defaults/i)).toBeVisible()
+  })
+
+  it('enables the one-shot reset button when terminal settings drift from defaults', () => {
+    const resetAllDefaults = vi.fn(async () => undefined)
+
+    vi.mocked(useTerminalPreferences).mockReturnValue({
+      decreaseFontSize: vi.fn(async () => undefined),
+      decreaseLineHeight: vi.fn(async () => undefined),
+      cursorBlink: true,
+      cursorStyle: 'block',
+      errorMessage: null,
+      fontSize: 14,
+      increaseFontSize: vi.fn(async () => undefined),
+      increaseLineHeight: vi.fn(async () => undefined),
+      increaseScrollback: vi.fn(async () => undefined),
+      isLoading: false,
+      isSaving: false,
+      lineHeight: 1.25,
+      refresh: vi.fn(async () => undefined),
+      resetAllDefaults,
+      resetScrollback: vi.fn(async () => undefined),
+      resetFontSize: vi.fn(async () => undefined),
+      resetLineHeight: vi.fn(async () => undefined),
+      resetCursorBlink: vi.fn(async () => undefined),
+      resetCursorStyle: vi.fn(async () => undefined),
+      resetThemeMode: vi.fn(async () => undefined),
+      scrollback: 5000,
+      themeMode: 'adaptive',
+      decreaseScrollback: vi.fn(async () => undefined),
+      updateCursorBlink: vi.fn(async () => undefined),
+      updateFontSize: vi.fn(async () => undefined),
+      updateLineHeight: vi.fn(async () => undefined),
+      updateCursorStyle: vi.fn(async () => undefined),
+      updateThemeMode: vi.fn(async () => undefined),
+    })
+
+    render(<TerminalSettingsSection />)
+
+    const resetButton = screen.getByRole('button', { name: 'Reset all terminal defaults' })
+    expect(resetButton).toBeEnabled()
+
+    fireEvent.click(resetButton)
+    expect(resetAllDefaults).toHaveBeenCalledTimes(1)
   })
 })

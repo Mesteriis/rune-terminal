@@ -246,6 +246,17 @@ export async function setTerminalCursorBlink(cursorBlink: boolean) {
   })
 }
 
+export async function resetTerminalDefaults() {
+  await persistTerminalSettings({
+    cursorBlink: DEFAULT_TERMINAL_CURSOR_BLINK,
+    cursorStyle: DEFAULT_TERMINAL_CURSOR_STYLE,
+    fontSize: DEFAULT_TERMINAL_FONT_SIZE,
+    lineHeight: DEFAULT_TERMINAL_LINE_HEIGHT,
+    scrollback: DEFAULT_TERMINAL_SCROLLBACK,
+    themeMode: DEFAULT_TERMINAL_THEME_MODE,
+  })
+}
+
 export function resetTerminalPreferencesForTests() {
   terminalPreferencesState = {
     cursorBlink: DEFAULT_TERMINAL_CURSOR_BLINK,
@@ -345,6 +356,10 @@ export function useTerminalPreferences() {
     await setTerminalCursorBlink(DEFAULT_TERMINAL_CURSOR_BLINK)
   }, [])
 
+  const resetAllDefaults = useCallback(async () => {
+    await resetTerminalDefaults()
+  }, [])
+
   return {
     cursorBlink: state.cursorBlink,
     cursorStyle: state.cursorStyle,
@@ -373,6 +388,7 @@ export function useTerminalPreferences() {
     resetCursorStyle,
     updateCursorBlink,
     resetCursorBlink,
+    resetAllDefaults,
     refresh: ensureTerminalPreferencesLoaded,
   }
 }
