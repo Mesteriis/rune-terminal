@@ -67,6 +67,7 @@ capability.
 - the AI composer keyboard-submit preference is now configurable in settings, but it remains a frontend-local preference persisted in browser/UI storage rather than a backend-synced operator profile
 - desktop runtime startup, shutdown, and single-instance attach path are now hardened: `npm run tauri:dev` recovers stale watcher attachments, startup failures no longer leak a freshly spawned backend, sending `SIGTERM` to `rterm-desktop` now tears down the desktop-owned backend and watcher before exit, and a second desktop launch now reuses the existing window instead of spawning a second desktop-owned core/watcher pair; broader desktop runtime hardening (richer crash recovery, port-policy cleanup) is still intentionally incomplete
 - desktop runtime metadata writes are now also durable against torn-file startup races: the desktop shell writes both `~/.rterm/runtime.json` and `~/.rterm/settings.json` through an atomic temp-file rename path, but broader crash-recovery policy is still intentionally incomplete
+- desktop startup now also clears malformed or dead attachment metadata out of `~/.rterm/runtime.json` instead of only ignoring it in memory, so repeated launches no longer keep retrying against the same broken persisted desktop attachment records
 - native-window automation coverage is limited; validation leans on
   build + runtime/API smoke plus manual notes
 

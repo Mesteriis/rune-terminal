@@ -686,20 +686,62 @@ fn read_runtime_attachment() -> RuntimeAttachment {
     let Some(path) = runtime_file_path() else {
         return RuntimeAttachment::default();
     };
-    let file = match read_json_file::<RuntimeFile>(&path) {
-        Some(file) => file,
-        None => return RuntimeAttachment::default(),
+    read_runtime_attachment_from_path(&path, validate_core_entry, validate_watcher_entry_for_core)
+}
+
+fn read_runtime_attachment_from_path<ValidateCore, ValidateWatcher>(
+    path: &Path,
+    validate_core: ValidateCore,
+    validate_watcher: ValidateWatcher,
+) -> RuntimeAttachment
+where
+    ValidateCore: Fn(RuntimeFileCore) -> Option<RuntimeProcessRecord>,
+    ValidateWatcher: Fn(&RuntimeFileWatcher, Option<&str>) -> Option<RuntimeProcessRecord>,
+{
+    let raw = match fs::read_to_string(path) {
+        Ok(raw) => raw,
+        Err(_) => return RuntimeAttachment::default(),
+    };
+    let file = match serde_json::from_str::<RuntimeFile>(&raw) {
+        Ok(file) => file,
+        Err(_) => {
+            clear_runtime_file_at_path(path);
+            return RuntimeAttachment::default();
+        }
     };
 
-    let core = file.core.and_then(validate_core_entry);
+    let (attachment, should_clear) = sanitize_runtime_attachment(file, validate_core, validate_watcher);
+    if should_clear {
+        clear_runtime_file_at_path(path);
+    }
+    attachment
+}
+
+fn sanitize_runtime_attachment<ValidateCore, ValidateWatcher>(
+    file: RuntimeFile,
+    validate_core: ValidateCore,
+    validate_watcher: ValidateWatcher,
+) -> (RuntimeAttachment, bool)
+where
+    ValidateCore: Fn(RuntimeFileCore) -> Option<RuntimeProcessRecord>,
+    ValidateWatcher: Fn(&RuntimeFileWatcher, Option<&str>) -> Option<RuntimeProcessRecord>,
+{
+    let had_core = file.core.is_some();
+    let had_watcher = file.watcher.is_some();
+
+    let core = file.core.and_then(validate_core);
     let watcher = if let Some(core) = core.as_ref() {
         file.watcher
             .as_ref()
-            .and_then(|watcher| validate_watcher_entry_for_core(watcher, Some(&core.url)))
+            .and_then(|watcher| validate_watcher(watcher, Some(&core.url)))
     } else {
-        file.watcher.and_then(validate_watcher_entry)
+        file.watcher
+            .as_ref()
+            .and_then(|watcher| validate_watcher(watcher, None))
     };
-    RuntimeAttachment { core, watcher }
+
+    let should_clear = (had_core && core.is_none()) || (had_watcher && watcher.is_none());
+    (RuntimeAttachment { core, watcher }, should_clear)
 }
 
 fn validate_core_entry(entry: RuntimeFileCore) -> Option<RuntimeProcessRecord> {
@@ -721,10 +763,6 @@ fn validate_core_entry(entry: RuntimeFileCore) -> Option<RuntimeProcessRecord> {
         worker_id: None,
         shutdown_token: None,
     })
-}
-
-fn validate_watcher_entry(entry: RuntimeFileWatcher) -> Option<RuntimeProcessRecord> {
-    validate_watcher_entry_for_core(&entry, None)
 }
 
 fn validate_watcher_entry_for_core_record(
@@ -823,8 +861,12 @@ fn write_runtime_file(core: &RuntimeProcess, watcher: Option<&RuntimeProcess>) -
 
 fn clear_runtime_file() {
     if let Some(path) = runtime_file_path() {
-        let _ = fs::remove_file(path);
+        clear_runtime_file_at_path(&path);
     }
+}
+
+fn clear_runtime_file_at_path(path: &Path) {
+    let _ = fs::remove_file(path);
 }
 
 fn load_settings() -> SettingsFile {
@@ -1072,9 +1114,11 @@ fn request_watcher_state(url: &str) -> Result<WatcherStatePayload, RuntimeError>
 #[cfg(test)]
 mod tests {
     use super::{
-        cleanup_runtime_slot, recover_or_drop_watcher_record, wait_for_ready_file, write_file_atomically,
-        ReadyFilePayload, RuntimeError, RuntimeProcess, RuntimeProcessRecord, RuntimeRuntime,
-        SettingsFile, SingleInstancePayload, WatcherMode, SINGLE_INSTANCE_EVENT,
+        cleanup_runtime_slot, read_runtime_attachment_from_path, recover_or_drop_watcher_record,
+        sanitize_runtime_attachment, wait_for_ready_file, write_file_atomically, ReadyFilePayload,
+        RuntimeError, RuntimeFile, RuntimeFileCore, RuntimeFileWatcher, RuntimeProcess,
+        RuntimeProcessRecord, RuntimeRuntime, SettingsFile, SingleInstancePayload, WatcherMode,
+        SINGLE_INSTANCE_EVENT,
     };
     use std::fs;
     use std::thread;
@@ -1209,6 +1253,115 @@ mod tests {
         .expect_err("cleanup failure should stop startup");
 
         assert!(matches!(err, RuntimeError::Http(message) if message == "cleanup failed"));
+    }
+
+    #[test]
+    fn sanitize_runtime_attachment_marks_invalid_core_record_for_clear() {
+        let (attachment, should_clear) = sanitize_runtime_attachment(
+            RuntimeFile {
+                core: Some(RuntimeFileCore {
+                    pid: 41,
+                    url: "http://127.0.0.1:40100".into(),
+                    started_by_ui: true,
+                    auth_token: Some("token".into()),
+                }),
+                watcher: None,
+            },
+            |_| None,
+            |_watcher, _expected_core| None,
+        );
+
+        assert!(attachment.core.is_none());
+        assert!(attachment.watcher.is_none());
+        assert!(should_clear, "invalid core metadata must be cleared from disk");
+    }
+
+    #[test]
+    fn sanitize_runtime_attachment_marks_invalid_watcher_record_for_clear() {
+        let (attachment, should_clear) = sanitize_runtime_attachment(
+            RuntimeFile {
+                core: Some(RuntimeFileCore {
+                    pid: 41,
+                    url: "http://127.0.0.1:40100".into(),
+                    started_by_ui: true,
+                    auth_token: Some("token".into()),
+                }),
+                watcher: Some(RuntimeFileWatcher {
+                    pid: 42,
+                    url: "http://127.0.0.1:7788".into(),
+                    worker_id: Some("watcher".into()),
+                    shutdown_token: Some("shutdown".into()),
+                    started_by_ui: true,
+                }),
+            },
+            |core| {
+                Some(RuntimeProcessRecord {
+                    pid: core.pid,
+                    url: core.url,
+                    started_by_ui: core.started_by_ui,
+                    auth_token: core.auth_token,
+                    worker_id: None,
+                    shutdown_token: None,
+                })
+            },
+            |_watcher, _expected_core| None,
+        );
+
+        assert!(attachment.core.is_some());
+        assert!(attachment.watcher.is_none());
+        assert!(should_clear, "invalid watcher metadata must be cleared from disk");
+    }
+
+    #[test]
+    fn read_runtime_attachment_from_path_clears_malformed_runtime_file() {
+        let temp_dir = tempfile::tempdir().expect("temp dir");
+        let runtime_path = temp_dir.path().join("runtime.json");
+        fs::write(&runtime_path, "{").expect("write malformed runtime file");
+
+        let attachment =
+            read_runtime_attachment_from_path(&runtime_path, |_core| None, |_watcher, _expected| None);
+
+        assert!(attachment.core.is_none());
+        assert!(attachment.watcher.is_none());
+        assert!(
+            !runtime_path.exists(),
+            "malformed runtime.json should be deleted during startup recovery"
+        );
+    }
+
+    #[test]
+    fn read_runtime_attachment_from_path_clears_dead_attachment_records() {
+        let temp_dir = tempfile::tempdir().expect("temp dir");
+        let runtime_path = temp_dir.path().join("runtime.json");
+        fs::write(
+            &runtime_path,
+            r#"{
+  "core": {
+    "pid": 41,
+    "url": "http://127.0.0.1:40100",
+    "started_by_ui": true,
+    "auth_token": "token"
+  },
+  "watcher": {
+    "pid": 42,
+    "url": "http://127.0.0.1:7788",
+    "worker_id": "watcher",
+    "shutdown_token": "shutdown",
+    "started_by_ui": true
+  }
+}"#,
+        )
+        .expect("write runtime file");
+
+        let attachment =
+            read_runtime_attachment_from_path(&runtime_path, |_core| None, |_watcher, _expected| None);
+
+        assert!(attachment.core.is_none());
+        assert!(attachment.watcher.is_none());
+        assert!(
+            !runtime_path.exists(),
+            "dead runtime attachment records should be deleted during startup recovery"
+        );
     }
 
     #[test]
