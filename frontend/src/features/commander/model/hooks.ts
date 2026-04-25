@@ -586,6 +586,23 @@ export function useCommanderWidget(widgetId: string) {
           } satisfies CommanderFileDialogState,
         })
       } catch (error) {
+        if (mode === 'edit' && error instanceof CommanderAPIError && error.code === 'invalid_fs_text') {
+          onSetCommanderFileDialog({
+            widgetId,
+            fileDialog: {
+              paneId,
+              path: paneState.path,
+              entryId,
+              entryName: entry.name,
+              mode: 'blocked',
+              content: '',
+              draftValue: '',
+              blockedReason: 'File is not UTF-8 text. Use F3 for preview or open it with an external tool.',
+            } satisfies CommanderFileDialogState,
+          })
+          return
+        }
+
         onSetCommanderPaneLoadError({
           widgetId,
           paneId,

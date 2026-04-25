@@ -17,10 +17,12 @@ capability.
   `/api/v1/fs/move`, `/api/v1/fs/delete`, `/api/v1/fs/rename`), and the
   active backend path now covers `F2/F3/F4/F5/F6/F7/F8`, including the
   same-pane clone path for both explicit single-entry targets and
-  template-driven multi-entry batch clones, plus backend `F4` save for
-  UTF-8 text files
-- commander still does not claim binary/non-text edit/save or any
-  terminal env dump exposed to the frontend
+  template-driven multi-entry batch clones, backend `F4` save for UTF-8
+  text files, and an explicit blocked-dialog path when `F4` targets a
+  non-text/binary file
+- commander still does not claim in-place binary editing, richer binary
+  preview beyond that blocked `F4` dialog, or any terminal env dump
+  exposed to the frontend
 - the frontend has no ESLint / Biome yet — `lint:active` and `lint:all`
   both delegate to `tsc --noEmit`
 

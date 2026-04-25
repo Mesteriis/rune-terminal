@@ -1,3 +1,5 @@
+import { writeFile } from 'node:fs/promises'
+
 import { expect, test, type Page } from '@playwright/test'
 
 import {
@@ -258,4 +260,37 @@ test('commander same-pane batch clone copy and F4 save run through backend file 
       return file.content
     })
     .toBe(`# clone ${stamp}\n`)
+})
+
+test('commander F4 on a binary file opens a blocked dialog instead of a pane error', async ({
+  page,
+  request,
+}) => {
+  const bootstrap = await fetchBootstrap(request)
+  const stamp = Date.now()
+  const binaryRootPath = `${bootstrap.repo_root}/tmp/binary-e2e-${stamp}`
+  const binaryRootDisplayPath = formatDisplayPath(binaryRootPath, bootstrap.home_dir)
+  const binaryFileName = `blob-${stamp}.dat`
+  const binaryFilePath = `${binaryRootPath}/${binaryFileName}`
+  const leftPane = getPane(page, 'left')
+
+  await mkdirViaApi(request, binaryRootPath)
+  await writeFile(binaryFilePath, Buffer.from([0, 1, 2, 3, 4, 5]))
+
+  await clearBrowserState(page)
+  await page.goto('/')
+  await setPanePath(page, 'left', binaryRootDisplayPath)
+
+  await leftPane.root.click()
+  await leftPane.row(binaryFileName).click()
+  await page.keyboard.press('F4')
+
+  await expect(page.getByText('Edit unavailable for this file')).toBeVisible()
+  await expect(
+    page.getByText('File is not UTF-8 text. Use F3 for preview or open it with an external tool.'),
+  ).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Save' })).toHaveCount(0)
+  await expect(page.getByText('Read only preview', { exact: true })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Close', exact: true }).click()
+  await expect(page.getByText('Edit unavailable for this file')).toHaveCount(0)
 })

@@ -9,6 +9,9 @@ import {
 } from '@/widgets/commander/commander-widget.shared'
 import {
   commanderFileDialogActionsStyle,
+  commanderFileDialogBlockedBodyStyle,
+  commanderFileDialogBlockedReasonStyle,
+  commanderFileDialogBlockedTitleStyle,
   commanderFileDialogClosePromptStyle,
   commanderFileDialogFooterStyle,
   commanderFileDialogHeaderStyle,
@@ -25,6 +28,7 @@ import {
 } from '@/widgets/commander/commander-widget.styles'
 
 export type CommanderFileDialogProps = {
+  blockedReason?: string
   dirty: boolean
   content: string
   entryName: string
@@ -37,6 +41,7 @@ export type CommanderFileDialogProps = {
 
 /** Renders the backend-backed file viewer/editor modal for the focused commander file. */
 export function CommanderFileDialog({
+  blockedReason,
   dirty,
   content,
   entryName,
@@ -50,6 +55,8 @@ export function CommanderFileDialog({
   const dialogIdentityRef = useRef<string | null>(null)
   const [showDiscardPrompt, setShowDiscardPrompt] = useState(false)
   const [cursorMetrics, setCursorMetrics] = useState(() => getCommanderCursorMetrics(content, 0))
+  const isEditable = mode === 'edit'
+  const isBlocked = mode === 'blocked'
 
   const syncCursorMetrics = useCallback(() => {
     const nextPosition = textAreaRef.current?.selectionStart ?? 0
@@ -57,14 +64,14 @@ export function CommanderFileDialog({
   }, [content])
 
   const requestClose = useCallback(() => {
-    if (mode === 'edit' && dirty) {
+    if (isEditable && dirty) {
       setShowDiscardPrompt(true)
       return
     }
 
     setShowDiscardPrompt(false)
     onClose()
-  }, [dirty, mode, onClose])
+  }, [dirty, isEditable, onClose])
 
   useEffect(() => {
     const nextIdentity = `${entryPath}:${mode}`
@@ -82,13 +89,13 @@ export function CommanderFileDialog({
 
     textAreaRef.current.focus()
 
-    if (mode === 'edit') {
+    if (isEditable) {
       const cursorPosition = textAreaRef.current.value.length
       textAreaRef.current.setSelectionRange(cursorPosition, cursorPosition)
     }
 
     syncCursorMetrics()
-  }, [entryPath, mode, syncCursorMetrics])
+  }, [entryPath, isEditable, mode, syncCursorMetrics])
 
   useEffect(() => {
     syncCursorMetrics()
@@ -112,12 +119,12 @@ export function CommanderFileDialog({
           >
             <Box runaComponent="commander-file-dialog-title-row" style={commanderFileDialogTitleRowStyle}>
               <Badge runaComponent="commander-file-dialog-mode" style={commanderPaneStateBadgeStyle}>
-                {mode === 'edit' ? 'EDIT' : 'VIEW'}
+                {isEditable ? 'EDIT' : isBlocked ? 'BLOCKED' : 'VIEW'}
               </Badge>
               <Text runaComponent="commander-file-dialog-title" style={commanderFileDialogTitleStyle}>
                 {entryName}
               </Text>
-              {mode === 'edit' && dirty ? (
+              {isEditable && dirty ? (
                 <Badge runaComponent="commander-file-dialog-dirty" style={commanderTypeBadgeStyle}>
                   DIRTY
                 </Badge>
@@ -128,7 +135,7 @@ export function CommanderFileDialog({
             </Text>
           </Box>
           <Box runaComponent="commander-file-dialog-actions" style={commanderFileDialogActionsStyle}>
-            {mode === 'edit' ? (
+            {isEditable ? (
               <Button
                 onClick={() => {
                   setShowDiscardPrompt(false)
@@ -144,49 +151,71 @@ export function CommanderFileDialog({
             </Button>
           </Box>
         </Box>
-        <TextArea
-          aria-label={mode === 'edit' ? `Edit ${entryName}` : `View ${entryName}`}
-          onChange={(event) => onChange(event.target.value)}
-          onClick={syncCursorMetrics}
-          onKeyDown={(event) => {
-            if (event.key === 'Escape') {
-              event.preventDefault()
-              event.stopPropagation()
-              requestClose()
-              return
-            }
+        {isBlocked ? (
+          <Box runaComponent="commander-file-dialog-blocked-body" style={commanderFileDialogBlockedBodyStyle}>
+            <Text
+              runaComponent="commander-file-dialog-blocked-title"
+              style={commanderFileDialogBlockedTitleStyle}
+            >
+              Edit unavailable for this file
+            </Text>
+            <Text
+              runaComponent="commander-file-dialog-blocked-reason"
+              style={commanderFileDialogBlockedReasonStyle}
+            >
+              {blockedReason ??
+                'File is not UTF-8 text. Use `F3` for preview or open it with an external tool.'}
+            </Text>
+          </Box>
+        ) : (
+          <TextArea
+            aria-label={isEditable ? `Edit ${entryName}` : `View ${entryName}`}
+            onChange={(event) => onChange(event.target.value)}
+            onClick={syncCursorMetrics}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') {
+                event.preventDefault()
+                event.stopPropagation()
+                requestClose()
+                return
+              }
 
-            if (
-              mode === 'edit' &&
-              (event.ctrlKey || event.metaKey) &&
-              (event.key === 's' || event.key === 'S')
-            ) {
-              event.preventDefault()
-              event.stopPropagation()
-              setShowDiscardPrompt(false)
-              onSave()
-            }
-          }}
-          onKeyUp={syncCursorMetrics}
-          onSelect={syncCursorMetrics}
-          readOnly={mode === 'view'}
-          ref={textAreaRef}
-          runaComponent="commander-file-dialog-textarea"
-          spellCheck={false}
-          style={commanderFileDialogTextAreaStyle}
-          value={content}
-        />
+              if (
+                isEditable &&
+                (event.ctrlKey || event.metaKey) &&
+                (event.key === 's' || event.key === 'S')
+              ) {
+                event.preventDefault()
+                event.stopPropagation()
+                setShowDiscardPrompt(false)
+                onSave()
+              }
+            }}
+            onKeyUp={syncCursorMetrics}
+            onSelect={syncCursorMetrics}
+            readOnly={!isEditable}
+            ref={textAreaRef}
+            runaComponent="commander-file-dialog-textarea"
+            spellCheck={false}
+            style={commanderFileDialogTextAreaStyle}
+            value={content}
+          />
+        )}
         <Box runaComponent="commander-file-dialog-footer" style={commanderFileDialogFooterStyle}>
           <Box runaComponent="commander-file-dialog-meta" style={commanderFileDialogMetaStyle}>
             <Text runaComponent="commander-file-dialog-hint-mode" style={commanderFileDialogHintStyle}>
-              {mode === 'edit' ? 'Ctrl+S save' : 'Read only preview'}
+              {isEditable ? 'Ctrl+S save' : isBlocked ? 'Edit unavailable' : 'Read only preview'}
             </Text>
-            <Text runaComponent="commander-file-dialog-cursor" style={commanderFileDialogHintStyle}>
-              Ln {cursorMetrics.line}, Col {cursorMetrics.column}
-            </Text>
-            <Text runaComponent="commander-file-dialog-size" style={commanderFileDialogHintStyle}>
-              {cursorMetrics.chars} chars
-            </Text>
+            {!isBlocked ? (
+              <>
+                <Text runaComponent="commander-file-dialog-cursor" style={commanderFileDialogHintStyle}>
+                  Ln {cursorMetrics.line}, Col {cursorMetrics.column}
+                </Text>
+                <Text runaComponent="commander-file-dialog-size" style={commanderFileDialogHintStyle}>
+                  {cursorMetrics.chars} chars
+                </Text>
+              </>
+            ) : null}
           </Box>
           {showDiscardPrompt ? (
             <Box
@@ -202,7 +231,7 @@ export function CommanderFileDialog({
               >
                 Keep editing
               </Button>
-              {mode === 'edit' ? (
+              {isEditable ? (
                 <Button
                   onClick={() => {
                     setShowDiscardPrompt(false)

@@ -101,6 +101,36 @@ export const commanderFileDialogTextAreaStyle: CSSProperties = {
   WebkitBackdropFilter: 'none',
 }
 
+export const commanderFileDialogBlockedBodyStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  justifyContent: 'center',
+  gap: 'var(--gap-sm)',
+  minWidth: 0,
+  minHeight: 0,
+  height: '100%',
+  padding: 'var(--space-lg)',
+  border: '1px solid var(--runa-commander-surface-border)',
+  borderRadius: 'var(--radius-xs)',
+  background: 'rgba(5, 11, 10, 0.98)',
+}
+
+export const commanderFileDialogBlockedTitleStyle: CSSProperties = {
+  color: 'var(--runa-commander-text-strong)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: 'var(--font-size-lg)',
+  lineHeight: 'var(--line-height-lg)',
+  fontWeight: 600,
+}
+
+export const commanderFileDialogBlockedReasonStyle: CSSProperties = {
+  color: 'var(--runa-commander-text-muted)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: 'var(--font-size-md)',
+  lineHeight: '1.5',
+  maxWidth: '72ch',
+}
+
 export const commanderFileDialogFooterStyle: CSSProperties = {
   display: 'flex',
   alignItems: 'center',

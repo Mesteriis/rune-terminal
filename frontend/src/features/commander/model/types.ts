@@ -22,7 +22,7 @@ export type CommanderPendingOperationKind =
 export type CommanderRenameMode = 'single' | 'batch'
 export type CommanderCloneMode = 'single' | 'batch'
 export type CommanderRenamePreviewStatus = 'ok' | 'duplicate' | 'conflict' | 'invalid'
-export type CommanderFileDialogMode = 'view' | 'edit'
+export type CommanderFileDialogMode = 'view' | 'edit' | 'blocked'
 
 export type CommanderRenamePreviewItem = {
   entryId: string
@@ -171,6 +171,7 @@ export type CommanderFileDialogState = {
   mode: CommanderFileDialogMode
   content: string
   draftValue: string
+  blockedReason?: string
 }
 
 export type CommanderWidgetRuntimeState = {
