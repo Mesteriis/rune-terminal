@@ -39,6 +39,16 @@ func (api *API) handleTerminalSnapshot(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, snapshot)
 }
 
+func (api *API) handleTerminalDiagnostics(w http.ResponseWriter, r *http.Request) {
+	diagnostics, err := api.runtime.TerminalDiagnostics(r.PathValue("widgetID"))
+	if err != nil {
+		writeTerminalError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, diagnostics)
+}
+
 func (api *API) handleTerminalInterrupt(w http.ResponseWriter, r *http.Request) {
 	widgetID := r.PathValue("widgetID")
 	if err := api.runtime.Terminals.Interrupt(widgetID); err != nil {

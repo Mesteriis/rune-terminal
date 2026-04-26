@@ -120,3 +120,33 @@ func TestBootstrapSessionsKeepsRemoteWidgetAsDisconnectedWhenConnectionMissing(t
 		t.Fatalf("expected missing connection detail, got %q", remoteSnapshot.State.StatusDetail)
 	}
 }
+
+func TestTerminalDiagnosticsUsesDisconnectedSummaryForRestoredWidget(t *testing.T) {
+	t.Parallel()
+
+	runtime := &Runtime{
+		Workspace: workspace.NewService(workspace.BootstrapDefault()),
+		Terminals: terminal.NewService(&queueLaunchOptions{}),
+		restored:  make(map[string]terminal.State),
+	}
+
+	diagnostics, err := runtime.TerminalDiagnostics("term-main")
+	if err != nil {
+		t.Fatalf("TerminalDiagnostics error: %v", err)
+	}
+	if diagnostics.WidgetID != "term-main" {
+		t.Fatalf("expected term-main, got %q", diagnostics.WidgetID)
+	}
+	if diagnostics.SessionState != terminal.StatusDisconnected {
+		t.Fatalf("expected disconnected status, got %q", diagnostics.SessionState)
+	}
+	if diagnostics.IssueSummary == "" {
+		t.Fatalf("expected non-empty issue summary")
+	}
+	if !strings.Contains(diagnostics.IssueSummary, "restart explicitly") {
+		t.Fatalf("expected disconnected summary, got %q", diagnostics.IssueSummary)
+	}
+	if diagnostics.OutputExcerpt != "" {
+		t.Fatalf("expected empty output excerpt, got %q", diagnostics.OutputExcerpt)
+	}
+}

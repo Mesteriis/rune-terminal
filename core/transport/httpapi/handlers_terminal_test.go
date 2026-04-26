@@ -126,6 +126,95 @@ func TestWriteTerminalErrorMapsConnectionNotFoundToNotFound(t *testing.T) {
 	}
 }
 
+func TestTerminalDiagnosticsReturnsNormalizedIssueAndOutput(t *testing.T) {
+	t.Parallel()
+
+	process := &httpTestProcess{
+		outputCh: make(chan []byte, 2),
+		waitCh:   make(chan struct{}),
+	}
+	launcher := &httpTestLauncher{process: process}
+
+	tempDir := t.TempDir()
+	policyStore, err := policy.NewStore(filepath.Join(tempDir, "policy.json"), "/workspace/repo")
+	if err != nil {
+		t.Fatalf("NewStore error: %v", err)
+	}
+	auditLog, err := audit.NewLog(filepath.Join(tempDir, "audit.jsonl"))
+	if err != nil {
+		t.Fatalf("NewLog error: %v", err)
+	}
+	agentStore, err := agent.NewStore(filepath.Join(tempDir, "agent.json"))
+	if err != nil {
+		t.Fatalf("NewStore error: %v", err)
+	}
+	registry := toolruntime.NewRegistry()
+	runtime := &app.Runtime{
+		RepoRoot:  "/workspace/repo",
+		Terminals: terminal.NewService(launcher),
+		Agent:     agentStore,
+		Policy:    policyStore,
+		Audit:     auditLog,
+		Registry:  registry,
+	}
+	runtime.Executor = toolruntime.NewExecutor(runtime.Registry, runtime.Policy, runtime.Audit)
+
+	if _, err := runtime.Terminals.StartSession(context.Background(), terminal.LaunchOptions{
+		WidgetID:   "widget-1",
+		Shell:      "/bin/zsh",
+		WorkingDir: "/workspace/repo",
+	}); err != nil {
+		t.Fatalf("StartSession error: %v", err)
+	}
+
+	process.outputCh <- []byte("ls /definitely-missing\n")
+	process.outputCh <- []byte("ls: /definitely-missing: No such file or directory\n")
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		snapshot, err := runtime.Terminals.Snapshot("widget-1", 0)
+		if err != nil {
+			t.Fatalf("Snapshot error: %v", err)
+		}
+		if len(snapshot.Chunks) >= 2 {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("timed out waiting for buffered chunks, got %d", len(snapshot.Chunks))
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	handler := NewHandler(runtime, testAuthToken)
+	recorder := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/terminal/widget-1/diagnostics", nil)
+	req.Header.Set("Authorization", "Bearer "+testAuthToken)
+	handler.ServeHTTP(recorder, req)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", recorder.Code)
+	}
+
+	var diagnostics app.TerminalDiagnosticsResult
+	if err := json.Unmarshal(recorder.Body.Bytes(), &diagnostics); err != nil {
+		t.Fatalf("Unmarshal error: %v", err)
+	}
+	if diagnostics.WidgetID != "widget-1" {
+		t.Fatalf("expected widget-1, got %q", diagnostics.WidgetID)
+	}
+	if diagnostics.SessionState != terminal.StatusRunning {
+		t.Fatalf("expected running status, got %q", diagnostics.SessionState)
+	}
+	if diagnostics.IssueSummary == "" {
+		t.Fatalf("expected issue summary, got empty result")
+	}
+	if !strings.Contains(diagnostics.OutputExcerpt, "No such file or directory") {
+		t.Fatalf("expected normalized output excerpt, got %q", diagnostics.OutputExcerpt)
+	}
+	if strings.Contains(diagnostics.OutputExcerpt, "ls /definitely-missing") {
+		t.Fatalf("expected command echo to be trimmed from excerpt, got %q", diagnostics.OutputExcerpt)
+	}
+}
+
 func TestTerminalStreamReplaysBufferedChunksAndKeepsLiveSubscription(t *testing.T) {
 	t.Parallel()
 
