@@ -50,7 +50,8 @@ capability.
   frontend-local; `commander` is intentionally reported as `frontend-local`,
   `files` is now creatable from the right rail through a repo-root
   open-directory handoff with a narrow directory-list renderer, and
-  `preview`, `editor`, and `web` remain planned
+  path-handoff `preview` widgets are now backend-owned and rendered as bounded
+  text/hex file previews. `editor` and `web` remain planned
 - the frontend has no ESLint / Biome yet — `lint:active` and `lint:all`
   both delegate to `tsc --noEmit`
 

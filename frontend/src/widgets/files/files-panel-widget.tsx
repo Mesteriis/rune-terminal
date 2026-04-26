@@ -8,6 +8,7 @@ import {
 } from '@/features/files/api/client'
 import { getRuntimePathParent, joinRuntimePath } from '@/shared/api/runtime'
 import { openPreviewWorkspaceWidget } from '@/shared/api/workspace'
+import { writeTextToClipboard } from '@/shared/model/clipboard'
 import { Box, Button, Input, ScrollArea, Text } from '@/shared/ui/primitives'
 import {
   filesPanelControlsStyle,
@@ -55,7 +56,7 @@ type FilesPanelSortState = {
 
 type FilesPanelOpenState =
   | { status: 'idle'; entryName: null; message: null }
-  | { status: 'pending'; entryName: string; message: null }
+  | { status: 'pending'; entryName: string; message: string }
   | { status: 'success'; entryName: string; message: string }
   | { status: 'error'; entryName: string; message: string }
 
@@ -230,7 +231,7 @@ export function FilesPanelWidget({
   const handleOpenCurrentDirectory = async () => {
     setOpenState({
       entryName: currentPath,
-      message: null,
+      message: `Opening ${currentPath}`,
       status: 'pending',
     })
 
@@ -262,7 +263,7 @@ export function FilesPanelWidget({
   const handleOpenFileExternally = async (entry: FilesDirectoryEntry) => {
     setOpenState({
       entryName: entry.name,
-      message: null,
+      message: `Opening ${entry.name}`,
       status: 'pending',
     })
 
@@ -296,7 +297,7 @@ export function FilesPanelWidget({
 
     setOpenState({
       entryName: entry.name,
-      message: null,
+      message: `Opening preview for ${entry.name}`,
       status: 'pending',
     })
 
@@ -322,6 +323,29 @@ export function FilesPanelWidget({
       setOpenState({
         entryName: entry.name,
         message: error instanceof Error ? error.message : `Unable to preview ${entry.name}`,
+        status: 'error',
+      })
+    }
+  }
+
+  const handleCopyPath = async (targetPath: string, label: string) => {
+    setOpenState({
+      entryName: label,
+      message: `Copying path for ${label}`,
+      status: 'pending',
+    })
+
+    try {
+      await writeTextToClipboard(targetPath)
+      setOpenState({
+        entryName: label,
+        message: `Copied path for ${label}`,
+        status: 'success',
+      })
+    } catch (error: unknown) {
+      setOpenState({
+        entryName: label,
+        message: error instanceof Error ? error.message : `Unable to copy path for ${label}`,
         status: 'error',
       })
     }
@@ -464,6 +488,16 @@ export function FilesPanelWidget({
             Open dir
           </Button>
           <Button
+            aria-label="Copy current directory path"
+            onClick={() => {
+              void handleCopyPath(currentPath, 'current directory')
+            }}
+            runaComponent="files-panel-copy-current-directory"
+            style={filesPanelParentButtonStyle}
+          >
+            Copy path
+          </Button>
+          <Button
             aria-label="Open parent directory"
             disabled={!parentPath}
             onClick={handleOpenParent}
@@ -549,7 +583,7 @@ export function FilesPanelWidget({
           ) : null}
           {openState.status === 'pending' ? (
             <Text runaComponent="files-panel-open-pending" style={filesPanelStateStyle}>
-              Opening {openState.entryName}
+              {openState.message}
             </Text>
           ) : null}
           {openState.status === 'success' ? (
@@ -610,6 +644,16 @@ export function FilesPanelWidget({
                         style={filesPanelRowActionButtonStyle}
                       >
                         Open
+                      </Button>
+                      <Button
+                        aria-label={`Copy path for file ${entry.name}`}
+                        onClick={() => {
+                          void handleCopyPath(joinRuntimePath(currentPath, entry.name), entry.name)
+                        }}
+                        runaComponent="files-panel-row-copy-path"
+                        style={filesPanelRowActionButtonStyle}
+                      >
+                        Copy
                       </Button>
                     </Box>
                   ) : (

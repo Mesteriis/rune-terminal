@@ -26,15 +26,16 @@ It is intentionally operational, not narrative.
   `GET /api/v1/fs/list`, with refresh, local kind/name/size/modified sorting,
   visible/total entry count, hidden-file toggle, direct path jump, filename
   filtering, child-directory open, parent navigation, current-directory
-  external handoff, file-row external handoff through `POST /api/v1/fs/open`,
-  and file-row preview handoff through
+  external handoff, current-directory path copy, file-row path copy, file-row
+  external handoff through `POST /api/v1/fs/open`, and file-row preview handoff through
   `POST /api/v1/workspace/widgets/open-preview`.
 - The backend can now create a runtime-owned standalone `preview` widget via
   `POST /api/v1/workspace/widgets/open-preview` when the caller supplies an
   existing file path. The frontend renders preview panel params through
   `PreviewPanelWidget`, which reads bounded text or hex content from
   `GET /api/v1/fs/read` and can explicitly hand the previewed file to the
-  system opener through `POST /api/v1/fs/open`.
+  system opener through `POST /api/v1/fs/open` or copy the file path to the
+  browser clipboard.
 - Backend-owned non-terminal widgets can be closed through
   `DELETE /api/v1/workspace/widgets/{widgetID}`. The files panel close action
   uses that route before removing the Dockview panel, so the workspace

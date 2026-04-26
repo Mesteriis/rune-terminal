@@ -2,11 +2,16 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { openPreviewPathExternally, readPreviewFile } from '@/features/preview/api/client'
+import { writeTextToClipboard } from '@/shared/model/clipboard'
 import { PreviewPanelWidget } from './preview-panel-widget'
 
 vi.mock('@/features/preview/api/client', () => ({
   openPreviewPathExternally: vi.fn(),
   readPreviewFile: vi.fn(),
+}))
+
+vi.mock('@/shared/model/clipboard', () => ({
+  writeTextToClipboard: vi.fn(),
 }))
 
 afterEach(() => {
@@ -104,6 +109,29 @@ describe('PreviewPanelWidget', () => {
     await waitFor(() => {
       expect(openPreviewPathExternally).toHaveBeenCalledWith('/repo/README.md')
       expect(screen.getByText('Preview file open request sent to the system opener.')).toBeInTheDocument()
+    })
+  })
+
+  it('copies the preview file path to the browser clipboard', async () => {
+    vi.mocked(readPreviewFile).mockResolvedValue({
+      content: '# Readme',
+      path: '/repo/README.md',
+      previewBytes: 8,
+      previewKind: 'text',
+      sizeBytes: 8,
+      truncated: false,
+    })
+    vi.mocked(writeTextToClipboard).mockResolvedValue(undefined)
+
+    render(<PreviewPanelWidget path="/repo/README.md" title="README.md" />)
+
+    await expect(screen.findByText('# Readme')).resolves.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copy preview file path' }))
+
+    await waitFor(() => {
+      expect(writeTextToClipboard).toHaveBeenCalledWith('/repo/README.md')
+      expect(screen.getByText('Copied preview file path to clipboard.')).toBeInTheDocument()
     })
   })
 

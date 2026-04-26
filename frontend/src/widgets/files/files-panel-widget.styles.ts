@@ -94,7 +94,7 @@ export const filesPanelListInnerStyle: CSSProperties = {
 
 export const filesPanelListHeaderStyle: CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: '56px minmax(0, 1fr) 88px 132px 136px',
+  gridTemplateColumns: '56px minmax(0, 1fr) 88px 132px 184px',
   gap: 'var(--gap-sm)',
   alignItems: 'center',
   padding: '0 var(--space-sm) var(--space-xs)',
@@ -128,7 +128,7 @@ export const filesPanelSortButtonEndAlignedStyle: CSSProperties = {
 export function resolveFilesPanelRowStyle(isDirectory: boolean, isInteractive = isDirectory): CSSProperties {
   return {
     display: 'grid',
-    gridTemplateColumns: '56px minmax(0, 1fr) 88px 132px 136px',
+    gridTemplateColumns: '56px minmax(0, 1fr) 88px 132px 184px',
     gap: 'var(--gap-sm)',
     alignItems: 'center',
     padding: '5px var(--space-sm)',

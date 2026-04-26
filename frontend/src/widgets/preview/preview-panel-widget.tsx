@@ -5,6 +5,7 @@ import {
   readPreviewFile,
   type PreviewFileSnapshot,
 } from '@/features/preview/api/client'
+import { writeTextToClipboard } from '@/shared/model/clipboard'
 import { Box, Button, ScrollArea, Text } from '@/shared/ui/primitives'
 import {
   previewPanelBodyInnerStyle,
@@ -37,6 +38,12 @@ type PreviewPanelExternalOpenState =
   | { status: 'success'; message: string }
   | { status: 'error'; message: string }
 
+type PreviewPanelPathCopyState =
+  | { status: 'idle'; message: null }
+  | { status: 'pending'; message: null }
+  | { status: 'success'; message: string }
+  | { status: 'error'; message: string }
+
 function formatBytes(size?: number) {
   if (size == null) {
     return 'unknown size'
@@ -60,7 +67,12 @@ function getPreviewKindLabel(snapshot: PreviewFileSnapshot) {
 export function PreviewPanelWidget({ path, title }: PreviewPanelWidgetProps) {
   const [refreshNonce, setRefreshNonce] = useState(0)
   const externalOpenRequestIdRef = useRef(0)
+  const pathCopyRequestIdRef = useRef(0)
   const [externalOpenState, setExternalOpenState] = useState<PreviewPanelExternalOpenState>({
+    message: null,
+    status: 'idle',
+  })
+  const [pathCopyState, setPathCopyState] = useState<PreviewPanelPathCopyState>({
     message: null,
     status: 'idle',
   })
@@ -110,7 +122,12 @@ export function PreviewPanelWidget({ path, title }: PreviewPanelWidgetProps) {
 
   useEffect(() => {
     externalOpenRequestIdRef.current += 1
+    pathCopyRequestIdRef.current += 1
     setExternalOpenState({
+      message: null,
+      status: 'idle',
+    })
+    setPathCopyState({
       message: null,
       status: 'idle',
     })
@@ -147,6 +164,37 @@ export function PreviewPanelWidget({ path, title }: PreviewPanelWidgetProps) {
     }
   }
 
+  async function handleCopyPath() {
+    const requestId = pathCopyRequestIdRef.current + 1
+    pathCopyRequestIdRef.current = requestId
+
+    setPathCopyState({
+      message: null,
+      status: 'pending',
+    })
+
+    try {
+      await writeTextToClipboard(path)
+      if (pathCopyRequestIdRef.current !== requestId) {
+        return
+      }
+
+      setPathCopyState({
+        message: 'Copied preview file path to clipboard.',
+        status: 'success',
+      })
+    } catch (error) {
+      if (pathCopyRequestIdRef.current !== requestId) {
+        return
+      }
+
+      setPathCopyState({
+        message: error instanceof Error ? error.message : 'Unable to copy preview file path',
+        status: 'error',
+      })
+    }
+  }
+
   const previewSummary =
     state.status === 'ready'
       ? `${getPreviewKindLabel(state.snapshot)} · ${formatBytes(state.snapshot.sizeBytes)}${
@@ -174,6 +222,11 @@ export function PreviewPanelWidget({ path, title }: PreviewPanelWidgetProps) {
               {externalOpenState.message}
             </Text>
           ) : null}
+          {pathCopyState.message ? (
+            <Text runaComponent="preview-panel-copy-status" style={previewPanelHandoffStatusStyle}>
+              {pathCopyState.message}
+            </Text>
+          ) : null}
         </Box>
         <Box runaComponent="preview-panel-actions" style={previewPanelHeaderActionsStyle}>
           <Button
@@ -184,6 +237,15 @@ export function PreviewPanelWidget({ path, title }: PreviewPanelWidgetProps) {
             style={previewPanelRefreshButtonStyle}
           >
             {externalOpenState.status === 'pending' ? 'Opening...' : 'Open file'}
+          </Button>
+          <Button
+            aria-label="Copy preview file path"
+            disabled={pathCopyState.status === 'pending'}
+            onClick={() => void handleCopyPath()}
+            runaComponent="preview-panel-copy-path"
+            style={previewPanelRefreshButtonStyle}
+          >
+            {pathCopyState.status === 'pending' ? 'Copying...' : 'Copy path'}
           </Button>
           <Button
             aria-label="Refresh preview"

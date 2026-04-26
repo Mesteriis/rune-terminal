@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { listFilesDirectory, openFilesPathExternally } from '@/features/files/api/client'
 import { openPreviewWorkspaceWidget } from '@/shared/api/workspace'
+import { writeTextToClipboard } from '@/shared/model/clipboard'
 import { FilesPanelWidget } from './files-panel-widget'
 
 vi.mock('@/features/files/api/client', () => ({
@@ -12,6 +13,10 @@ vi.mock('@/features/files/api/client', () => ({
 
 vi.mock('@/shared/api/workspace', () => ({
   openPreviewWorkspaceWidget: vi.fn(),
+}))
+
+vi.mock('@/shared/model/clipboard', () => ({
+  writeTextToClipboard: vi.fn(),
 }))
 
 afterEach(() => {
@@ -354,6 +359,34 @@ describe('FilesPanelWidget', () => {
     })
   })
 
+  it('copies file row paths to the browser clipboard', async () => {
+    vi.mocked(listFilesDirectory).mockResolvedValue({
+      entries: [
+        {
+          hidden: false,
+          id: '/repo::README.md',
+          kind: 'file',
+          modified: '2026-04-25 20:01',
+          modifiedTime: 1_776_800_060,
+          name: 'README.md',
+          sizeBytes: 2048,
+          sizeLabel: '2.0 KB',
+        },
+      ],
+      path: '/repo',
+    })
+    vi.mocked(writeTextToClipboard).mockResolvedValue(undefined)
+
+    render(<FilesPanelWidget path="/repo" title="repo" />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Copy path for file README.md' }))
+
+    await waitFor(() => {
+      expect(writeTextToClipboard).toHaveBeenCalledWith('/repo/README.md')
+      expect(screen.getByText('Copied path for README.md')).toBeInTheDocument()
+    })
+  })
+
   it('opens preview widgets for file rows through the workspace handoff route', async () => {
     vi.mocked(listFilesDirectory).mockResolvedValue({
       entries: [
@@ -422,6 +455,25 @@ describe('FilesPanelWidget', () => {
     await waitFor(() => {
       expect(openFilesPathExternally).toHaveBeenCalledWith('/repo')
       expect(screen.getByText('Open request sent for current directory')).toBeInTheDocument()
+    })
+  })
+
+  it('copies the current directory path to the browser clipboard', async () => {
+    vi.mocked(listFilesDirectory).mockResolvedValue({
+      entries: [],
+      path: '/repo',
+    })
+    vi.mocked(writeTextToClipboard).mockResolvedValue(undefined)
+
+    render(<FilesPanelWidget path="/repo" title="repo" />)
+
+    await expect(screen.findByText('Directory is empty')).resolves.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copy current directory path' }))
+
+    await waitFor(() => {
+      expect(writeTextToClipboard).toHaveBeenCalledWith('/repo')
+      expect(screen.getByText('Copied path for current directory')).toBeInTheDocument()
     })
   })
 

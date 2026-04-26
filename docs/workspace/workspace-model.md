@@ -59,14 +59,16 @@ This is the canonical workspace entrypoint for tab/widget/layout behavior.
   visible/total entry count, hidden-file toggle, direct path jump, filename
   filtering, child-directory open, and parent navigation. Current-directory
   and file-row external-open handoffs dispatch to the existing backend
-  external-opener route, while file-row preview handoff creates a backend-owned
-  `preview` widget. TideTerm-style drag/copy, media preview, and editor handoff
-  remain future slices.
+  external-opener route, current-directory and file-row path-copy handoffs use
+  the browser clipboard, and file-row preview handoff creates a backend-owned
+  `preview` widget. TideTerm-style filesystem drag/copy, media preview, and
+  editor handoff remain future slices.
 - The backend preview widget path now exists as a workspace-owned file handoff:
   `POST /api/v1/workspace/widgets/open-preview` validates an existing file and
   splits a `preview` widget into the target tab. The frontend preview panel
-  renders bounded text/hex previews through `GET /api/v1/fs/read` and exposes
-  an explicit file-open handoff through `POST /api/v1/fs/open`.
+  renders bounded text/hex previews through `GET /api/v1/fs/read`, exposes an
+  explicit file-open handoff through `POST /api/v1/fs/open`, and can copy the
+  previewed path to the browser clipboard.
 
 ## Deep links
 
