@@ -32,17 +32,22 @@ Please assume interfaces and guarantees may tighten over time.
 
 Additional pre-release caveats:
 
-- the frontend (`frontend/src/`) is being rewritten and currently runs
-  against mocks / fake clients in several widgets
-- the Tauri shell ships with `csp: null` today and must be tightened
-  before any public release
-- SSE for the terminal stream accepts the auth token via query parameter
-  (ADR 0018 MVP tradeoff); migration to header-based auth is planned
+- the frontend (`frontend/src/`) is being rewritten; several widgets are still
+  intentionally narrower than the final product surface
+- the Tauri shell now uses an explicit local-runtime CSP, but every CSP change
+  still needs build/config validation and, for UI changes, a fresh desktop smoke
+- the active terminal stream path uses bearer-header auth; query-token auth
+  remains available only as the constrained ADR 0018 fallback for clients that
+  cannot send headers
+- plugins are local child processes, not OS-sandboxed code; plugin environment
+  variables must be passed explicitly, but plugin binaries still run with the
+  operating-system permissions of the current user
 
 Sensitive areas currently include:
 
 - terminal execution
 - remote/SSH launch paths
+- plugin process execution
 - policy and approval flows
 - secret-protection / ignore-rule behavior
 - local loopback transport between Tauri and Go core

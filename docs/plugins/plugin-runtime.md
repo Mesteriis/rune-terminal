@@ -40,10 +40,18 @@ This is the canonical plugin entrypoint for runtime boundary and protocol behavi
 - Plugins do not mint/validate approval tokens.
 - Audit entries remain core-owned for both success and failure.
 - Plugin output is normalized into tool-runtime response shape by core.
+- Plugin process environment is explicit: `ProcessConfig.Env` is the only
+  environment passed to the child process, so parent process environment
+  variables are not inherited by default.
+- This is not a full OS sandbox. Plugin binaries are still local executables
+  running as the current user unless a future sandbox layer changes that
+  boundary.
 
 ## Release-scope limits
 
 - No plugin discovery/install ecosystem in this phase.
+- No plugin marketplace trust model in this phase.
+- No container/chroot/seccomp/AppArmor-style plugin sandbox in this phase.
 - Plugin runtime remains narrow and execution-path focused.
 
 ## Deep links
@@ -51,4 +59,5 @@ This is the canonical plugin entrypoint for runtime boundary and protocol behavi
 - Execution model: [plugin-execution-model.md](./plugin-execution-model.md)
 - Protocol details: [plugin-runtime-protocol.md](./plugin-runtime-protocol.md)
 - Boundary verification: [plugin-boundary-verification.md](./plugin-boundary-verification.md)
+- Permission boundary ADR: [../architecture/adr/0027-plugin-process-permission-boundary.md](../architecture/adr/0027-plugin-process-permission-boundary.md)
 - Historical runtime slices: [history/](./history)

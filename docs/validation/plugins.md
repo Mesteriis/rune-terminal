@@ -8,6 +8,7 @@
   - side-process plugin execution path
   - manifest handshake + exposed-tool validation
   - manifest capability declaration allow-list validation
+  - explicit plugin process environment boundary
   - plugin failure taxonomy behavior
   - approval/audit invariants during plugin execution
 
@@ -17,6 +18,13 @@ Capability declaration slice (`2026-04-26`):
 
 - `./scripts/go.sh test ./core/plugins ./plugins/example -run 'TestInvokeAcceptsManifestCapabilitiesWithinSpecAllowList|TestInvokeRequiresManifestCapabilitiesWhenSpecAllowsCapabilities|TestInvokeRejectsManifestCapabilitiesOutsideSpecAllowList|TestRunHandlesHandshakeAndRequest' -count=1`
 - `./scripts/go.sh test ./core/plugins ./plugins/example ./core/toolruntime ./core/app -count=1`
+- `git diff --check`
+
+Permission boundary slice (`2026-04-26`):
+
+- `./scripts/go.sh test ./core/plugins -run 'TestOSProcessSpawnerDoesNotInheritParentEnvironment|TestOSProcessSpawnerRejectsInvalidWorkingDirectory' -count=1`
+- `./scripts/go.sh test ./core/plugins -count=1`
+- `./scripts/go.sh test ./cmd/rterm-core ./core/app ./plugins/example -count=1`
 - `git diff --check`
 
 Earlier runtime/API evidence retained for the broader plugin boundary:
@@ -35,6 +43,9 @@ Earlier runtime/API evidence retained for the broader plugin boundary:
 ## Known limitations
 
 - Plugin ecosystem/discovery/install workflows remain out of scope.
+- Plugin execution is not an OS sandbox; local plugin binaries still run with
+  current-user OS permissions. The current hardening only removes ambient
+  parent-environment inheritance and documents the boundary.
 - Some slice-local `npm run validate` checks were marked not verified when repo-wide lint debt blocked that command in older runs.
 
 ## Evidence

@@ -57,6 +57,12 @@ progress) is preserved at
 | `docs/architecture/adr/0019-remote-ssh-foundation.md` | Remote / SSH foundation |
 | `docs/architecture/adr/0020-ai-conversation-backend-foundation.md` | AI conversation backend foundation |
 | `docs/architecture/adr/0021-ai-terminal-command-execution-path.md` | AI terminal command execution path |
+| `docs/architecture/adr/0022-commander-interaction-contract.md` | Commander interaction contract |
+| `docs/architecture/adr/0023-public-v1-boundary.md` | Public v1 product boundary |
+| `docs/architecture/adr/0024-cli-only-ai-provider-boundary.md` | CLI-only AI provider boundary |
+| `docs/architecture/adr/0025-narrow-openai-compatible-source-reintroduction.md` | Narrow OpenAI-compatible source reintroduction |
+| `docs/architecture/adr/0026-conversation-threads-and-provider-session-persistence.md` | Conversation threads and provider session persistence |
+| `docs/architecture/adr/0027-plugin-process-permission-boundary.md` | Plugin process permission boundary |
 
 ## Execution
 

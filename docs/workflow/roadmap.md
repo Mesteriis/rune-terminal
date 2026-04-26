@@ -75,7 +75,7 @@ from any previous fork are historical inspiration only.
 | Go reference plugin                 | `NOW`   | `plugins/example/plugin.go`          |
 | Non-Go reference (Python/Node)      | `LATER` | proves language-neutrality           |
 | Capability declaration in handshake | `NOW`   | plugin-requested resources are checked against the bound allow-list |
-| Sandbox / permission model doc      | `NEXT`  | ADR + SECURITY note                  |
+| Sandbox / permission model doc      | `NOW`   | ADR 0027 + SECURITY note; no OS sandbox claimed |
 
 ### 6. Infrastructure
 

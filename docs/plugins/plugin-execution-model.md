@@ -151,8 +151,12 @@ It is not a frontend contract.
 
 - A plugin gets no shared-memory access to core services.
 - A plugin gets no direct access to the policy store, audit log, agent store, workspace store, or terminal session state except through the explicit contract the core chooses to send.
-- A plugin must not be assumed to have uncontrolled environment access.
+- A plugin process receives only explicit `ProcessConfig.Env` values; parent
+  process environment variables are not inherited by default.
+- A plugin must not be assumed to be OS-sandboxed just because it declares
+  runtime capabilities.
 - Any future filesystem, terminal, network, or OS-level power exposed to a plugin must come from an explicit core-owned execution contract, not from ambient trust.
 - High-level sandbox assumption:
   - the plugin process is an isolated execution peer
   - the core validates both request boundaries and response boundaries
+  - direct OS access by the plugin process is not yet brokered by the core

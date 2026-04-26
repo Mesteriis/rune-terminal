@@ -52,6 +52,11 @@ archives superseded documents under `history/`.
 - Agent modes: [workflow/agent-modes.md](./workflow/agent-modes.md)
 - System prompts: [workflow/system-prompts.md](./workflow/system-prompts.md)
 
+## Security
+
+- Security policy: [../SECURITY.md](../SECURITY.md)
+- Plugin permission boundary: [architecture/adr/0027-plugin-process-permission-boundary.md](./architecture/adr/0027-plugin-process-permission-boundary.md)
+
 ## Parity (historical context)
 
 rune-terminal is no longer running a parity-matrix workflow against any

@@ -52,9 +52,8 @@ func (s OSProcessSpawner) Spawn(ctx context.Context, config ProcessConfig) (Proc
 
 	cmd := exec.CommandContext(ctx, resolvedCommand, config.Args...)
 	cmd.Dir = config.Dir
-	if len(config.Env) > 0 {
-		cmd.Env = append(os.Environ(), config.Env...)
-	}
+	// Do not inherit the parent runtime environment into plugin processes.
+	cmd.Env = append([]string{}, config.Env...)
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
