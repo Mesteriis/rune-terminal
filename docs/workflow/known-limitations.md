@@ -95,7 +95,9 @@ capability.
 
 ## Infrastructure gaps
 
-- no `.github/` — CI is not yet running
+- `.github/workflows/ci.yml` now defines frontend, Go, desktop-check and
+  secret-scan jobs, but the hosted GitHub Actions run is not verified until
+  the branch is pushed
 - Tauri shell ships with `csp: null`; this must be tightened before any
   public release
 - SSE terminal stream accepts the auth token via query parameter

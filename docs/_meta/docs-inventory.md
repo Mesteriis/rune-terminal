@@ -128,6 +128,7 @@ progress) is preserved at
 | `docs/validation/mcp.md` | MCP validation |
 | `docs/validation/plugins.md` | Plugins validation |
 | `docs/validation/workflow.md` | Workflow validation |
+| `docs/validation/infrastructure.md` | Infrastructure validation |
 | `docs/validation/structured-execution-browser-validation.md` | Structured execution browser validation |
 
 ## Meta

@@ -81,10 +81,10 @@ from any previous fork are historical inspiration only.
 
 | Area                       | State   | Notes                                                 |
 | -------------------------- | ------- | ----------------------------------------------------- |
-| CI (GitHub Actions)        | `NEXT`  | repository has no `.github/` yet                      |
-| `make validate` coverage   | `NOW`   | runs locally; needs CI enforcement                    |
-| Go test coverage reporting | `NEXT`  | `-coverprofile` in CI                                 |
-| Secret scanning            | `NEXT`  | part of CI                                            |
+| CI (GitHub Actions)        | `NOW`   | `.github/workflows/ci.yml` covers frontend, Go, desktop check and secret scan |
+| `make validate` coverage   | `NOW`   | local gate remains; CI mirrors the same major checks                          |
+| Go test coverage reporting | `NOW`   | CI emits `coverage.out` as an artifact                                        |
+| Secret scanning            | `NOW`   | CI includes a gitleaks job                                                    |
 | Release pipeline           | `LATER` | out of scope until core + frontend wire up end-to-end |
 
 ## Out of scope for now (`HOLD`)

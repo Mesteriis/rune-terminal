@@ -71,6 +71,7 @@ upstream. These files remain for historical reference:
 - MCP: [validation/mcp.md](./validation/mcp.md)
 - Plugins: [validation/plugins.md](./validation/plugins.md)
 - Workflow: [validation/workflow.md](./validation/workflow.md)
+- Infrastructure: [validation/infrastructure.md](./validation/infrastructure.md)
 
 ## Frontend docs
 

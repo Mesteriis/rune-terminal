@@ -23,6 +23,7 @@ Do not append new free-form log blocks in this file. Update the relevant domain 
 - [plugins.md](./plugins.md)
 - [workflow.md](./workflow.md)
 - [ui.md](./ui.md)
+- [infrastructure.md](./infrastructure.md)
 
 ## Focused parity validations
 
