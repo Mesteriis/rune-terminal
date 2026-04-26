@@ -48,4 +48,37 @@ describe('TerminalToolbar', () => {
     expect(screen.getByRole('textbox', { name: 'Search terminal output' })).toBeInTheDocument()
     expect(screen.queryByText('WebGL')).not.toBeInTheDocument()
   })
+
+  it('supports keyboard navigation inside the terminal search row', () => {
+    const onSearchNext = vi.fn()
+    const onSearchPrevious = vi.fn()
+    const onCloseSearch = vi.fn()
+
+    render(
+      <TerminalToolbar
+        isSearchOpen
+        onClear={() => undefined}
+        onCloseSearch={onCloseSearch}
+        onCopy={() => undefined}
+        onJumpToLatest={() => undefined}
+        onPaste={() => undefined}
+        onSearchNext={onSearchNext}
+        onSearchPrevious={onSearchPrevious}
+        onSearchQueryChange={() => undefined}
+        onToggleSearch={() => undefined}
+        rendererMode="default"
+        searchQuery="needle"
+      />,
+    )
+
+    const searchInput = screen.getByRole('textbox', { name: 'Search terminal output' })
+
+    fireEvent.keyDown(searchInput, { key: 'Enter', code: 'Enter' })
+    fireEvent.keyDown(searchInput, { key: 'Enter', code: 'Enter', shiftKey: true })
+    fireEvent.keyDown(searchInput, { key: 'Escape', code: 'Escape' })
+
+    expect(onSearchNext).toHaveBeenCalledTimes(1)
+    expect(onSearchPrevious).toHaveBeenCalledTimes(1)
+    expect(onCloseSearch).toHaveBeenCalledTimes(1)
+  })
 })

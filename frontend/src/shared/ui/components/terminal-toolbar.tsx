@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type KeyboardEvent } from 'react'
 
 import {
   ChevronDown,
@@ -64,6 +64,29 @@ export function TerminalToolbar({
     }
   }, [isSearchOpen])
 
+  const handleSearchInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.nativeEvent.isComposing) {
+      return
+    }
+
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      onCloseSearch()
+      return
+    }
+
+    if (event.key !== 'Enter' || event.altKey || event.ctrlKey || event.metaKey) {
+      return
+    }
+
+    event.preventDefault()
+    if (event.shiftKey) {
+      onSearchPrevious()
+      return
+    }
+    onSearchNext()
+  }
+
   return (
     <RunaDomScopeProvider component="terminal-toolbar">
       <Box runaComponent="terminal-toolbar-root" style={terminalToolbarRootStyle}>
@@ -125,6 +148,7 @@ export function TerminalToolbar({
               <Input
                 aria-label="Search terminal output"
                 onChange={(event) => onSearchQueryChange(event.currentTarget.value)}
+                onKeyDown={handleSearchInputKeyDown}
                 placeholder="Search output"
                 ref={searchInputRef}
                 runaComponent="terminal-toolbar-search-input"

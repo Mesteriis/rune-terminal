@@ -150,8 +150,19 @@ describe('TerminalWidget', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: 'Find next match' }))
     fireEvent.click(screen.getByRole('button', { name: 'Find previous match' }))
+    fireEvent.keyDown(screen.getByRole('textbox', { name: 'Search terminal output' }), {
+      key: 'Enter',
+      code: 'Enter',
+    })
+    fireEvent.keyDown(screen.getByRole('textbox', { name: 'Search terminal output' }), {
+      key: 'Enter',
+      code: 'Enter',
+      shiftKey: true,
+    })
 
+    expect(findNextMock).toHaveBeenCalledTimes(2)
     expect(findNextMock).toHaveBeenCalledWith('needle')
+    expect(findPreviousMock).toHaveBeenCalledTimes(2)
     expect(findPreviousMock).toHaveBeenCalledWith('needle')
 
     fireEvent.click(screen.getByRole('button', { name: 'Copy selection' }))
