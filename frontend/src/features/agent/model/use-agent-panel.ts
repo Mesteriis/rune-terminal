@@ -376,6 +376,26 @@ function filterContextWidgetSelection(selectedWidgetIDs: string[], widgetOptions
   return deduplicateWidgetIDs(selectedWidgetIDs).filter((widgetID) => availableWidgetIDs.has(widgetID))
 }
 
+function isTerminalWorkspaceWidget(widget: WorkspaceWidgetSnapshot) {
+  return widget.kind.trim().toLowerCase() === 'terminal'
+}
+
+function resolveContextTerminalWidget(
+  widgets: WorkspaceWidgetSnapshot[],
+  candidateWidgetIDs: string[],
+): WorkspaceWidgetSnapshot | null {
+  const widgetsByID = new Map(widgets.map((widget) => [widget.id, widget]))
+
+  for (const widgetID of deduplicateWidgetIDs(candidateWidgetIDs)) {
+    const widget = widgetsByID.get(widgetID)
+    if (widget && isTerminalWorkspaceWidget(widget)) {
+      return widget
+    }
+  }
+
+  return null
+}
+
 function summaryFromConversationSnapshot(snapshot: AgentConversationSnapshot): AgentConversationSummary {
   return {
     archived_at: snapshot.archived_at,
@@ -495,6 +515,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
   const workspaceActiveWidgetIDRef = useRef('')
   const hasLoadedContextWidgetsRef = useRef(false)
   const hasCustomizedContextWidgetSelectionRef = useRef(false)
+  const workspaceWidgetsRef = useRef<WorkspaceWidgetSnapshot[]>([])
 
   const nextLocalSortKey = useCallback((): ChatMessageSortKey => {
     const nextCounter = localSortCounterRef.current
@@ -589,6 +610,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
       pendingFlowRef.current = null
       hasLoadedContextWidgetsRef.current = false
       hasCustomizedContextWidgetSelectionRef.current = false
+      workspaceWidgetsRef.current = []
       setIsResponseCancellable(false)
       unblockAiWidget(hostId)
     }
@@ -641,6 +663,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
     messagesRef.current = null
     hasLoadedContextWidgetsRef.current = false
     hasCustomizedContextWidgetSelectionRef.current = false
+    workspaceWidgetsRef.current = []
 
     void Promise.allSettled([
       fetchAgentConversation(),
@@ -693,6 +716,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
       pendingFlowRef.current = null
       hasLoadedContextWidgetsRef.current = false
       hasCustomizedContextWidgetSelectionRef.current = false
+      workspaceWidgetsRef.current = []
       setIsResponseCancellable(false)
       unblockAiWidget(hostId)
     }
@@ -1281,6 +1305,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
       return {
         activeWidgetID: workspaceActiveWidgetIDRef.current,
         options: contextWidgetOptionsRef.current,
+        widgets: workspaceWidgetsRef.current,
       }
     }
 
@@ -1291,6 +1316,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
     hasLoadedContextWidgetsRef.current = true
     contextWidgetOptionsRef.current = nextContextWidgetOptions
     workspaceActiveWidgetIDRef.current = nextWorkspaceActiveWidgetID
+    workspaceWidgetsRef.current = workspaceSnapshot.widgets
     setWorkspaceActiveWidgetID(nextWorkspaceActiveWidgetID)
     setContextWidgetOptions(nextContextWidgetOptions)
     setContextWidgetLoadError(null)
@@ -1307,6 +1333,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
     return {
       activeWidgetID: nextWorkspaceActiveWidgetID,
       options: nextContextWidgetOptions,
+      widgets: workspaceSnapshot.widgets,
     }
   }, [enabled])
 
@@ -1518,7 +1545,45 @@ export function useAgentPanel(hostId: string, enabled = true) {
         throw new Error('Usage: /run <command>')
       }
 
-      const targetTerminal = resolveTerminalPanelBinding(terminalPanelBindings, activeWidgetHostId)
+      const shouldResolveFromContext =
+        isWidgetContextEnabled &&
+        (storedContextWidgetIDsRef.current.length > 0 || hasLoadedContextWidgetsRef.current)
+      let contextTerminal: WorkspaceWidgetSnapshot | null = null
+
+      if (shouldResolveFromContext) {
+        const contextSnapshot = hasLoadedContextWidgetsRef.current
+          ? {
+              activeWidgetID: workspaceActiveWidgetIDRef.current,
+              options: contextWidgetOptionsRef.current,
+              widgets: workspaceWidgetsRef.current,
+            }
+          : await loadContextWidgets()
+        const activeContextTerminalID = resolveCurrentContextWidgetID(
+          contextSnapshot.options,
+          contextSnapshot.activeWidgetID,
+        )
+        const selectedContextWidgetIDs =
+          contextSnapshot.options.length > 0
+            ? filterContextWidgetSelection(storedContextWidgetIDsRef.current, contextSnapshot.options)
+            : deduplicateWidgetIDs(storedContextWidgetIDsRef.current)
+        const contextTerminalCandidates =
+          selectedContextWidgetIDs.length > 0
+            ? deduplicateWidgetIDs([
+                ...selectedContextWidgetIDs,
+                ...(selectedContextWidgetIDs.includes(activeContextTerminalID)
+                  ? [activeContextTerminalID]
+                  : []),
+              ])
+            : [activeContextTerminalID]
+        contextTerminal = resolveContextTerminalWidget(contextSnapshot.widgets, contextTerminalCandidates)
+      }
+
+      const fallbackTerminal = resolveTerminalPanelBinding(terminalPanelBindings, activeWidgetHostId)
+      const targetTerminal = contextTerminal
+        ? {
+            runtimeWidgetId: contextTerminal.id,
+          }
+        : fallbackTerminal
 
       if (!targetTerminal) {
         throw new Error('No terminal widget is available for /run.')
@@ -1631,9 +1696,13 @@ export function useAgentPanel(hostId: string, enabled = true) {
       activeWidgetHostId,
       applyConversationSnapshot,
       createConversationContext,
+      deriveFallbackContextWidgetIDs,
       hostId,
+      isWidgetContextEnabled,
+      loadContextWidgets,
       nextLocalSortKey,
       refreshConversationList,
+      resolveCurrentContextWidgetID,
       terminalPanelBindings,
     ],
   )

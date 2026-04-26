@@ -35,7 +35,7 @@
   - AI assistant message meta row and details panel chrome refinement
   - stream-error handling in the AI panel now preserves partial assistant output instead of immediately overwriting it with a post-stream conversation resync
   - active conversation stream cancellation from the composer: the UI aborts the in-flight fetch stream, clears busy state, and keeps partial assistant output visible as an operator-cancelled error message
-  - frontend `/run ...` routing from the AI sidebar into the active terminal widget through backend tool execution plus terminal-command explanation
+  - frontend `/run ...` routing from the AI sidebar into the selected terminal widget context through backend tool execution plus terminal-command explanation
   - browser-level Playwright coverage for the AI sidebar over the split local dev path:
     - settings navigation for provider/model/limits/terminal/commander sections
     - settings navigation for the dedicated `AI / Composer` section
@@ -51,7 +51,7 @@
     - visible `Active thread` summary block inside the conversation navigator before search/scope controls
     - keyboard navigation through filtered conversation results in the AI conversation navigator
     - live Claude provider routing with explicit `auth-required` handling when the local CLI is installed but not logged in
-    - `/run printf ...` sending input into the active terminal session without falling back to plain provider chat
+    - `/run printf ...` sending input into the selected terminal session without falling back to plain provider chat
 
 ## Current provider contract
 
@@ -114,7 +114,9 @@
 ## `/run` contract
 
 - `/run <command>` is now a frontend-owned branch in the AI sidebar, not a plain chat prompt.
-- The frontend resolves the active terminal target from the current Dockview terminal panel registry, then:
+- The frontend resolves the terminal target in this order, then:
+  - an explicitly selected terminal widget from the AI conversation context (`widget_ids`)
+  - otherwise the current Dockview terminal panel binding fallback
   - reads the target terminal snapshot with `GET /api/v1/terminal/{widgetID}`
   - sends input through `POST /api/v1/tools/execute` using `term.send_input`
   - if toolruntime returns `requires_confirmation`, renders the existing approval UI, calls `safety.confirm`, and retries the original `term.send_input` with the returned one-time `approval_token`
@@ -189,6 +191,7 @@
 - `npm --prefix frontend run test -- src/widgets/files/files-panel-widget.test.tsx src/widgets/ai/ai-composer-widget.test.tsx src/widgets/ai/ai-chat-message-widget.test.tsx src/widgets/ai/ai-panel-widget.test.tsx`
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestCreateAttachmentReference|TestSubmitConversationPromptIncludesAttachmentContextInProviderRequest|TestSubmitConversationMessagePersistsAttachmentReferences|TestSubmitConversationMessageRejectsMissingAttachmentReference' -count=1`
 - `npm --prefix frontend run test -- src/widgets/ai/ai-panel-widget.test.tsx -t "confirms and retries approval-required /run execution through toolruntime"`
+- `npm --prefix frontend run test -- src/widgets/ai/ai-panel-widget.test.tsx -t "routes /run prompts into terminal execution instead of provider chat streaming|prefers the terminal widget selected in AI context for /run execution|confirms and retries approval-required /run execution through toolruntime"`
 - `npm run build:frontend`
 - `npm run lint:frontend`
 

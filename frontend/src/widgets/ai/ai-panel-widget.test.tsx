@@ -1867,6 +1867,240 @@ describe('AiPanelWidget backend conversation path', () => {
     })
   })
 
+  it('prefers the terminal widget selected in AI context for /run execution', async () => {
+    registerTerminalPanelBinding({
+      hostId: 'terminal',
+      preset: 'workspace',
+      runtimeWidgetId: 'term-local',
+    })
+    setActiveWidgetHostId('terminal')
+
+    const fetchMock = vi.fn()
+    fetchMock.mockImplementation(async (input, init) => {
+      const url = String(input)
+
+      if (url.endsWith('/api/v1/bootstrap')) {
+        return {
+          ok: true,
+          json: async () => ({
+            home_dir: '/Users/avm',
+            repo_root: '/Users/avm/projects/runa-terminal',
+          }),
+        }
+      }
+
+      if (url.endsWith('/api/v1/agent/conversation')) {
+        return createConversationFetchResponse({
+          title: 'Context run flow',
+          context_preferences: {
+            widget_context_enabled: true,
+            widget_ids: ['term-pve'],
+          },
+          provider: {
+            kind: 'codex',
+            base_url: 'http://codex',
+            model: 'stub-model',
+            streaming: false,
+          },
+        })
+      }
+
+      if (url.endsWith('/api/v1/agent/providers')) {
+        return createProviderCatalogFetchResponse()
+      }
+
+      if (url.endsWith('/api/v1/workspace')) {
+        return {
+          ok: true,
+          json: async () => ({
+            id: 'ws_1',
+            name: 'Workspace',
+            active_widget_id: 'preview-1',
+            widgets: [
+              {
+                id: 'preview-1',
+                kind: 'preview',
+                title: 'Preview',
+              },
+              {
+                id: 'term-pve',
+                kind: 'terminal',
+                title: 'PVE host',
+                connection_id: 'conn-pve',
+              },
+              {
+                id: 'term-local',
+                kind: 'terminal',
+                title: 'Local shell',
+                connection_id: 'local',
+              },
+            ],
+          }),
+        }
+      }
+
+      if (url.includes('/api/v1/agent/conversations?scope=recent')) {
+        return createConversationListFetchResponse('conv_1', [
+          {
+            id: 'conv_1',
+            title: 'Context run flow',
+            created_at: '2026-04-21T09:59:00Z',
+            updated_at: '2026-04-21T10:00:02Z',
+            message_count: 3,
+          },
+        ])
+      }
+
+      if (url.endsWith('/api/v1/terminal/term-pve')) {
+        return {
+          ok: true,
+          json: async () => ({
+            state: {
+              widget_id: 'term-pve',
+              session_id: 'term-pve',
+              shell: '/bin/zsh',
+              connection_id: 'conn-pve',
+              connection_kind: 'ssh',
+              pid: 200,
+              status: 'running',
+              started_at: '2026-04-21T10:00:00Z',
+              can_send_input: true,
+              can_interrupt: true,
+            },
+            chunks: [],
+            next_seq: 9,
+          }),
+        }
+      }
+
+      if (url.endsWith('/api/v1/tools/execute')) {
+        expect(JSON.parse(String(init?.body))).toEqual({
+          context: {
+            action_source: 'frontend.ai.sidebar.run',
+            active_widget_id: 'term-pve',
+            repo_root: '/Users/avm/projects/runa-terminal',
+            target_connection_id: 'conn-pve',
+            target_session: 'remote',
+          },
+          input: {
+            append_newline: true,
+            text: 'df -h',
+            widget_id: 'term-pve',
+          },
+          tool_name: 'term.send_input',
+        })
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            status: 'ok',
+            output: {
+              append_newline: true,
+              bytes_sent: 5,
+              widget_id: 'term-pve',
+            },
+          }),
+        }
+      }
+
+      if (url.endsWith('/api/v1/terminal/term-pve?from=9')) {
+        return {
+          ok: true,
+          json: async () => ({
+            state: {
+              widget_id: 'term-pve',
+              session_id: 'term-pve',
+              shell: '/bin/zsh',
+              connection_id: 'conn-pve',
+              connection_kind: 'ssh',
+              pid: 200,
+              status: 'running',
+              started_at: '2026-04-21T10:00:00Z',
+              can_send_input: true,
+              can_interrupt: true,
+            },
+            chunks: [
+              {
+                seq: 9,
+                data: 'Filesystem  Size Used Avail Use% Mounted on\n',
+                timestamp: '2026-04-21T10:00:01Z',
+              },
+            ],
+            next_seq: 10,
+          }),
+        }
+      }
+
+      if (url.endsWith('/api/v1/agent/terminal-commands/explain')) {
+        return {
+          ok: true,
+          json: async () => ({
+            conversation: {
+              id: 'conv_1',
+              title: 'Context run flow',
+              messages: [
+                {
+                  id: 'msg_user',
+                  role: 'user',
+                  content: '/run df -h',
+                  status: 'complete',
+                  created_at: '2026-04-21T10:00:00Z',
+                },
+                {
+                  id: 'msg_exec',
+                  role: 'assistant',
+                  content: 'Executed `df -h` on the selected PVE terminal.',
+                  status: 'complete',
+                  provider: 'codex',
+                  model: 'stub-model',
+                  created_at: '2026-04-21T10:00:01Z',
+                },
+              ],
+              provider: {
+                kind: 'codex',
+                base_url: 'http://codex',
+                model: 'stub-model',
+                streaming: false,
+              },
+              context_preferences: {
+                widget_context_enabled: true,
+                widget_ids: ['term-pve'],
+              },
+              created_at: '2026-04-21T09:59:00Z',
+              updated_at: '2026-04-21T10:00:02Z',
+            },
+            provider_error: '',
+            output_excerpt: 'Filesystem  Size Used Avail Use% Mounted on',
+          }),
+        }
+      }
+
+      throw new Error(`Unexpected fetch request: ${url}`)
+    })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<AiPanelWidget hostId="ai-shell-panel" />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Backend conversation is empty.')).toBeInTheDocument()
+    })
+
+    fireEvent.change(screen.getByPlaceholderText('Text Area'), {
+      target: { value: '/run df -h' },
+    })
+    fireEvent.click(screen.getByLabelText('Send prompt'))
+
+    await waitFor(() => {
+      expect(screen.getByText('Executed `df -h` on the selected PVE terminal.')).toBeInTheDocument()
+    })
+
+    expect(fetchMock.mock.calls.some((call) => String(call[0]).includes('/api/v1/terminal/term-local'))).toBe(
+      false,
+    )
+  })
+
   it('confirms and retries approval-required /run execution through toolruntime', async () => {
     registerTerminalPanelBinding({
       hostId: 'terminal',
