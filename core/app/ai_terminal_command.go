@@ -55,7 +55,7 @@ func (r *Runtime) ExplainTerminalCommand(
 		return ExplainTerminalCommandResult{}, conversation.ErrInvalidPrompt
 	}
 
-	widgetID, err := requireExplicitExplainExecutionTarget(request, conversationContext)
+	widgetID, err := requireExplicitExecutionTarget(request.WidgetID, conversationContext)
 	if err != nil {
 		return ExplainTerminalCommandResult{}, err
 	}
@@ -360,11 +360,8 @@ func containsString(values []string, expected string) bool {
 	return false
 }
 
-func requireExplicitExplainExecutionTarget(
-	request ExplainTerminalCommandRequest,
-	conversationContext ConversationContext,
-) (string, error) {
-	widgetID := strings.TrimSpace(request.WidgetID)
+func requireExplicitExecutionTarget(widgetID string, conversationContext ConversationContext) (string, error) {
+	widgetID = strings.TrimSpace(widgetID)
 	if widgetID == "" {
 		return "", fmt.Errorf("%w: widget_id is required", ErrExecutionTargetRequired)
 	}

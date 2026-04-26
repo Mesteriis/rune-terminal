@@ -6,6 +6,7 @@
 - State: `VERIFIED` (targeted + headed + local/remote guardrail coverage present)
 - Scope:
   - explicit `/run` execution path
+  - approved terminal-context natural-language execution path
   - approval confirm/retry intent binding
   - execution block identity/provenance
   - explain/audit linkage
@@ -39,7 +40,7 @@
 
 ## Known limitations
 
-- `/run` is explicit grammar only (`/run`, `run:`); no broad natural-language execution path.
+- approved terminal-context planning now covers a narrow natural-language execution path, but the runtime still does not expose broad provider-native tool execution or unconstrained natural-language automation.
 - Some earlier slices recorded `npm run validate` as not verified because of repo-wide lint debt at that time.
 - Tide does not expose a literal `/run` UI in the inspected sources; parity is grounded in Tide's explicit terminal-session ownership semantics rather than a Tide `/run` screen.
 - Remote guardrail validation in this pass used an isolated localhost SSH daemon, not an arbitrary external host.

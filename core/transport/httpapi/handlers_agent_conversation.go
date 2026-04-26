@@ -47,6 +47,13 @@ type terminalCommandExplanationPayload struct {
 	Context             app.ConversationContext `json:"context"`
 }
 
+type terminalCommandPlanPayload struct {
+	Prompt   string                  `json:"prompt"`
+	Model    string                  `json:"model,omitempty"`
+	WidgetID string                  `json:"widget_id,omitempty"`
+	Context  app.ConversationContext `json:"context"`
+}
+
 func (api *API) handleConversationSnapshot(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"conversation": api.runtime.ConversationSnapshot(),
@@ -346,6 +353,34 @@ func (api *API) handleExplainTerminalCommand(w http.ResponseWriter, r *http.Requ
 		"command_audit_event_id": result.CommandAuditEventID,
 		"explain_audit_event_id": result.ExplainAuditEventID,
 		"execution_block_id":     result.ExecutionBlockID,
+	})
+}
+
+func (api *API) handlePlanTerminalCommand(w http.ResponseWriter, r *http.Request) {
+	var payload terminalCommandPlanPayload
+	if err := decodeJSON(r, &payload); err != nil {
+		writeBadRequest(w, "invalid_request", err)
+		return
+	}
+	result, err := api.runtime.PlanTerminalCommand(r.Context(), app.PlanTerminalCommandRequest{
+		Model:    payload.Model,
+		Prompt:   payload.Prompt,
+		WidgetID: payload.WidgetID,
+	}, payload.Context)
+	if err != nil {
+		switch {
+		case errors.Is(err, app.ErrExecutionTargetRequired):
+			writeError(w, http.StatusBadRequest, "execution_target_required", err.Error())
+		case errors.Is(err, app.ErrExecutionTargetMismatch):
+			writeError(w, http.StatusBadRequest, "execution_target_mismatch", err.Error())
+		default:
+			writeConversationError(w, err)
+		}
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"command": result.Command,
+		"summary": result.Summary,
 	})
 }
 

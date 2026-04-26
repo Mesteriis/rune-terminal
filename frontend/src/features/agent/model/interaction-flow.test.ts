@@ -29,4 +29,15 @@ describe('classifyMessageIntent', () => {
   it('reclassifies a clarified deployment prompt as execution', () => {
     expect(classifyMessageIntent('Deploy the current config', 'staging').intent).toBe('execution')
   })
+
+  it('classifies terminal diagnostics as execution only when terminal context exists', () => {
+    expect(classifyMessageIntent('Посмотри свободное место на pve').intent).toBe('chat')
+
+    const classification = classifyMessageIntent('Посмотри свободное место на pve', undefined, {
+      hasTerminalContext: true,
+    })
+
+    expect(classification.intent).toBe('execution')
+    expect(classification.tools.map((tool) => tool.name)).toContain('execute_terminal')
+  })
 })

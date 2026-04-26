@@ -105,6 +105,7 @@ func NewHandler(runtime *app.Runtime, authToken string) http.Handler {
 	mux.HandleFunc("POST /api/v1/agent/conversation/messages", api.handleSubmitConversationMessage)
 	mux.HandleFunc("POST /api/v1/agent/conversation/messages/stream", api.handleStreamConversationMessage)
 	mux.HandleFunc("POST /api/v1/agent/conversation/attachments/references", api.handleCreateAttachmentReference)
+	mux.HandleFunc("POST /api/v1/agent/terminal-commands/plan", api.handlePlanTerminalCommand)
 	mux.HandleFunc("POST /api/v1/agent/terminal-commands/explain", api.handleExplainTerminalCommand)
 	mux.HandleFunc("GET /api/v1/execution/blocks", api.handleListExecutionBlocks)
 	mux.HandleFunc("GET /api/v1/execution/blocks/{blockID}", api.handleGetExecutionBlock)

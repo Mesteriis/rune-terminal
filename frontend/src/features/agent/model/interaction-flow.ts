@@ -40,6 +40,10 @@ export type InteractionClassification = {
   tools: PlanTool[]
 }
 
+export type InteractionClassificationOptions = {
+  hasTerminalContext?: boolean
+}
+
 const ENVIRONMENT_OPTIONS = [
   { label: 'Production', value: 'production' },
   { label: 'Staging', value: 'staging' },
@@ -89,6 +93,38 @@ const EXECUTION_KEYWORDS = [
   'миграц',
 ] as const
 
+const TERMINAL_EXECUTION_KEYWORDS = [
+  'check',
+  'show',
+  'inspect',
+  'status',
+  'logs',
+  'disk',
+  'space',
+  'memory',
+  'cpu',
+  'process',
+  'service',
+  'port',
+  'console',
+  'terminal',
+  'ssh',
+  'проверь',
+  'посмотри',
+  'покажи',
+  'статус',
+  'логи',
+  'диск',
+  'место',
+  'память',
+  'процесс',
+  'сервис',
+  'порт',
+  'консоль',
+  'терминал',
+  'ssh',
+] as const
+
 const ENVIRONMENT_HINT_KEYWORDS = [
   'environment',
   'production',
@@ -123,7 +159,7 @@ function dedupeTools(tools: PlanTool[]) {
   })
 }
 
-function buildPlanTools(prompt: string): PlanTool[] {
+function buildPlanTools(prompt: string, options: InteractionClassificationOptions = {}): PlanTool[] {
   const normalizedPrompt = prompt.toLowerCase()
   const tools: PlanTool[] = []
 
@@ -152,6 +188,13 @@ function buildPlanTools(prompt: string): PlanTool[] {
     tools.push({
       name: 'execute_plan',
       description: 'Run the approved execution step.',
+    })
+  }
+
+  if (options.hasTerminalContext && containsAnyKeyword(normalizedPrompt, TERMINAL_EXECUTION_KEYWORDS)) {
+    tools.push({
+      name: 'execute_terminal',
+      description: 'Plan and run the approved terminal command in the selected shell context.',
     })
   }
 
@@ -222,8 +265,12 @@ function needsEnvironmentQuestionnaire(prompt: string, answer?: string) {
   return mentionsEnvironment && !hasExplicitEnvironment
 }
 
-export function classifyMessageIntent(prompt: string, answer?: string): InteractionClassification {
-  const tools = buildPlanTools(prompt)
+export function classifyMessageIntent(
+  prompt: string,
+  answer?: string,
+  options: InteractionClassificationOptions = {},
+): InteractionClassification {
+  const tools = buildPlanTools(prompt, options)
 
   if (needsEnvironmentQuestionnaire(prompt, answer) && tools.length > 0) {
     return {
@@ -316,13 +363,14 @@ export function createPendingInteractionFlow(
   sequence: number,
   nextSortKey: LocalSortKeyGenerator,
   answer?: string,
+  options: InteractionClassificationOptions = {},
 ): {
   classification: InteractionClassification
   flow: PendingInteractionFlow | null
   messages: ChatMessageView[]
 } {
   const flowID = `agent-flow-${hostID}-${sequence}`
-  const classification = classifyMessageIntent(prompt, answer)
+  const classification = classifyMessageIntent(prompt, answer, options)
 
   if (classification.intent === 'chat') {
     return {

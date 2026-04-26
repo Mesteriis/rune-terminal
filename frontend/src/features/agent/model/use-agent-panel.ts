@@ -11,6 +11,7 @@ import {
   fetchAgentCatalog,
   fetchAgentConversations,
   fetchAgentConversation,
+  planTerminalCommand,
   renameAgentConversation,
   restoreAgentConversation,
   setAgentMode,
@@ -84,6 +85,13 @@ import { $activeWidgetHostId } from '@/shared/model/widget-focus'
 const runCommandPattern = /^\/run(?:\s+([\s\S]*))?$/
 const runOutputPollIntervalMs = 100
 const runOutputWaitTimeoutMs = 1500
+
+type TerminalExecutionTarget = {
+  baselineNextSeq: number
+  targetConnectionID: string
+  targetSession: string
+  targetWidgetID: string
+}
 
 function getRunCommand(prompt: string) {
   const match = prompt.match(runCommandPattern)
@@ -1294,11 +1302,16 @@ export function useAgentPanel(hostId: string, enabled = true) {
     [persistConversationContextPreferences],
   )
 
-  const loadContextWidgets = useCallback(async () => {
+  const loadContextWidgets = useCallback(async (): Promise<{
+    activeWidgetID: string
+    options: AiContextWidgetOption[]
+    widgets: WorkspaceWidgetSnapshot[]
+  }> => {
     if (!enabled) {
       return {
         activeWidgetID: '',
         options: [] as AiContextWidgetOption[],
+        widgets: [] as WorkspaceWidgetSnapshot[],
       }
     }
     if (hasLoadedContextWidgetsRef.current) {
@@ -1533,6 +1546,73 @@ export function useAgentPanel(hostId: string, enabled = true) {
     [deriveFallbackContextWidgetIDs, effectiveContextWidgetIDs, isWidgetContextEnabled],
   )
 
+  const hasTerminalExecutionContext =
+    Object.keys(terminalPanelBindings).length > 0 || storedContextWidgetIDs.length > 0
+
+  const resolveTerminalExecutionTarget = useCallback(async (): Promise<TerminalExecutionTarget> => {
+    const shouldResolveFromContext =
+      isWidgetContextEnabled &&
+      (storedContextWidgetIDsRef.current.length > 0 || hasLoadedContextWidgetsRef.current)
+    let contextTerminal: WorkspaceWidgetSnapshot | null = null
+
+    if (shouldResolveFromContext) {
+      const contextSnapshot = hasLoadedContextWidgetsRef.current
+        ? {
+            activeWidgetID: workspaceActiveWidgetIDRef.current,
+            options: contextWidgetOptionsRef.current,
+            widgets: workspaceWidgetsRef.current,
+          }
+        : await loadContextWidgets()
+      const activeContextTerminalID = resolveCurrentContextWidgetID(
+        contextSnapshot.options,
+        contextSnapshot.activeWidgetID,
+      )
+      const selectedContextWidgetIDs =
+        contextSnapshot.options.length > 0
+          ? filterContextWidgetSelection(storedContextWidgetIDsRef.current, contextSnapshot.options)
+          : deduplicateWidgetIDs(storedContextWidgetIDsRef.current)
+      const contextTerminalCandidates =
+        selectedContextWidgetIDs.length > 0
+          ? deduplicateWidgetIDs([
+              ...selectedContextWidgetIDs,
+              ...(selectedContextWidgetIDs.includes(activeContextTerminalID)
+                ? [activeContextTerminalID]
+                : []),
+            ])
+          : [activeContextTerminalID]
+      contextTerminal = resolveContextTerminalWidget(contextSnapshot.widgets, contextTerminalCandidates)
+    }
+
+    const fallbackTerminal = resolveTerminalPanelBinding(terminalPanelBindings, activeWidgetHostId)
+    const targetWidgetID = contextTerminal?.id ?? fallbackTerminal?.runtimeWidgetId ?? ''
+
+    if (!targetWidgetID) {
+      throw new Error('No terminal widget is available for execution.')
+    }
+
+    const baselineSnapshot = await fetchTerminalSnapshot(targetWidgetID)
+    const targetSession = targetSessionForConnectionKind(baselineSnapshot.state.connection_kind)
+    const targetConnectionID =
+      baselineSnapshot.state.connection_id?.trim() || (targetSession === 'local' ? 'local' : '')
+
+    if (!targetConnectionID) {
+      throw new Error(`Terminal ${targetWidgetID} has no active connection id.`)
+    }
+
+    return {
+      baselineNextSeq: baselineSnapshot.next_seq,
+      targetConnectionID,
+      targetSession,
+      targetWidgetID,
+    }
+  }, [
+    activeWidgetHostId,
+    isWidgetContextEnabled,
+    loadContextWidgets,
+    resolveCurrentContextWidgetID,
+    terminalPanelBindings,
+  ])
+
   const runTerminalPrompt = useCallback(
     async (prompt: string, repoRoot: string) => {
       const command = getRunCommand(prompt)
@@ -1545,70 +1625,19 @@ export function useAgentPanel(hostId: string, enabled = true) {
         throw new Error('Usage: /run <command>')
       }
 
-      const shouldResolveFromContext =
-        isWidgetContextEnabled &&
-        (storedContextWidgetIDsRef.current.length > 0 || hasLoadedContextWidgetsRef.current)
-      let contextTerminal: WorkspaceWidgetSnapshot | null = null
-
-      if (shouldResolveFromContext) {
-        const contextSnapshot = hasLoadedContextWidgetsRef.current
-          ? {
-              activeWidgetID: workspaceActiveWidgetIDRef.current,
-              options: contextWidgetOptionsRef.current,
-              widgets: workspaceWidgetsRef.current,
-            }
-          : await loadContextWidgets()
-        const activeContextTerminalID = resolveCurrentContextWidgetID(
-          contextSnapshot.options,
-          contextSnapshot.activeWidgetID,
-        )
-        const selectedContextWidgetIDs =
-          contextSnapshot.options.length > 0
-            ? filterContextWidgetSelection(storedContextWidgetIDsRef.current, contextSnapshot.options)
-            : deduplicateWidgetIDs(storedContextWidgetIDsRef.current)
-        const contextTerminalCandidates =
-          selectedContextWidgetIDs.length > 0
-            ? deduplicateWidgetIDs([
-                ...selectedContextWidgetIDs,
-                ...(selectedContextWidgetIDs.includes(activeContextTerminalID)
-                  ? [activeContextTerminalID]
-                  : []),
-              ])
-            : [activeContextTerminalID]
-        contextTerminal = resolveContextTerminalWidget(contextSnapshot.widgets, contextTerminalCandidates)
-      }
-
-      const fallbackTerminal = resolveTerminalPanelBinding(terminalPanelBindings, activeWidgetHostId)
-      const targetTerminal = contextTerminal
-        ? {
-            runtimeWidgetId: contextTerminal.id,
-          }
-        : fallbackTerminal
-
-      if (!targetTerminal) {
-        throw new Error('No terminal widget is available for /run.')
-      }
-
-      const baselineSnapshot = await fetchTerminalSnapshot(targetTerminal.runtimeWidgetId)
-      const targetSession = targetSessionForConnectionKind(baselineSnapshot.state.connection_kind)
-      const targetConnectionId =
-        baselineSnapshot.state.connection_id?.trim() || (targetSession === 'local' ? 'local' : '')
-
-      if (!targetConnectionId) {
-        throw new Error(`Terminal ${targetTerminal.runtimeWidgetId} has no active connection id.`)
-      }
+      const resolvedTarget = await resolveTerminalExecutionTarget()
 
       const executionContext = {
         action_source: 'frontend.ai.sidebar.run',
-        active_widget_id: targetTerminal.runtimeWidgetId,
+        active_widget_id: resolvedTarget.targetWidgetID,
         repo_root: repoRoot,
-        target_connection_id: targetConnectionId,
-        target_session: targetSession,
+        target_connection_id: resolvedTarget.targetConnectionID,
+        target_session: resolvedTarget.targetSession,
       }
       const executionInput = {
         append_newline: true,
         text: command,
-        widget_id: targetTerminal.runtimeWidgetId,
+        widget_id: resolvedTarget.targetWidgetID,
       }
 
       const executionResponse = await executeAgentTool({
@@ -1637,13 +1666,13 @@ export function useAgentPanel(hostId: string, enabled = true) {
         const approvalMessage = createApprovalMessage(flowID, nextLocalSortKey)
         const runApproval: PendingRunApproval = {
           approvalID: pendingApproval.id,
-          baselineNextSeq: baselineSnapshot.next_seq,
+          baselineNextSeq: resolvedTarget.baselineNextSeq,
           command,
           prompt,
           repoRoot,
-          targetConnectionID: targetConnectionId,
-          targetSession,
-          targetWidgetID: targetTerminal.runtimeWidgetId,
+          targetConnectionID: resolvedTarget.targetConnectionID,
+          targetSession: resolvedTarget.targetSession,
+          targetWidgetID: resolvedTarget.targetWidgetID,
         }
         const nextFlow: PendingInteractionFlow = {
           approvalMessageID: approvalMessage.id,
@@ -1666,21 +1695,21 @@ export function useAgentPanel(hostId: string, enabled = true) {
         throw new Error(executionResponse.error?.trim() || 'Unable to execute /run command.')
       }
 
-      await waitForTerminalOutput(targetTerminal.runtimeWidgetId, baselineSnapshot.next_seq)
+      await waitForTerminalOutput(resolvedTarget.targetWidgetID, resolvedTarget.baselineNextSeq)
 
       const explainResponse = await explainTerminalCommand({
         command,
         context: createConversationContext({
           actionSource: executionContext.action_source,
-          activeWidgetID: targetTerminal.runtimeWidgetId,
+          activeWidgetID: resolvedTarget.targetWidgetID,
           includeActiveWidgetInSelection: true,
           repoRoot: repoRoot,
-          targetConnectionID: targetConnectionId,
-          targetSession: targetSession,
+          targetConnectionID: resolvedTarget.targetConnectionID,
+          targetSession: resolvedTarget.targetSession,
         }),
-        from_seq: baselineSnapshot.next_seq,
+        from_seq: resolvedTarget.baselineNextSeq,
         prompt,
-        widget_id: targetTerminal.runtimeWidgetId,
+        widget_id: resolvedTarget.targetWidgetID,
       })
 
       applyConversationSnapshot(explainResponse.conversation)
@@ -1696,14 +1725,10 @@ export function useAgentPanel(hostId: string, enabled = true) {
       activeWidgetHostId,
       applyConversationSnapshot,
       createConversationContext,
-      deriveFallbackContextWidgetIDs,
       hostId,
-      isWidgetContextEnabled,
-      loadContextWidgets,
       nextLocalSortKey,
       refreshConversationList,
-      resolveCurrentContextWidgetID,
-      terminalPanelBindings,
+      resolveTerminalExecutionTarget,
     ],
   )
 
@@ -1759,6 +1784,105 @@ export function useAgentPanel(hostId: string, enabled = true) {
       }
     },
     [applyConversationSnapshot, createConversationContext, refreshConversationList],
+  )
+
+  const runApprovedExecutionPlan = useCallback(
+    async (prompt: string, repoRoot: string, model?: string) => {
+      const resolvedTarget = await resolveTerminalExecutionTarget()
+      const executionContext = createConversationContext({
+        actionSource: 'frontend.ai.sidebar.execute',
+        activeWidgetID: resolvedTarget.targetWidgetID,
+        includeActiveWidgetInSelection: true,
+        repoRoot,
+        targetConnectionID: resolvedTarget.targetConnectionID,
+        targetSession: resolvedTarget.targetSession,
+      })
+      const executionInput = {
+        append_newline: true,
+        widget_id: resolvedTarget.targetWidgetID,
+      }
+      const plannedCommand = await planTerminalCommand({
+        context: executionContext,
+        model,
+        prompt,
+        widget_id: resolvedTarget.targetWidgetID,
+      })
+      const command = plannedCommand.command.trim()
+
+      if (!command) {
+        throw new Error('Terminal command planning did not return a runnable command.')
+      }
+
+      let executionResponse = await executeAgentTool({
+        context: executionContext,
+        input: {
+          ...executionInput,
+          text: command,
+        },
+        tool_name: 'term.send_input',
+      })
+
+      if (executionResponse.status === 'requires_confirmation') {
+        const pendingApproval = executionResponse.pending_approval
+        if (!pendingApproval?.id) {
+          throw new Error('Approval confirmation did not return a terminal execution approval id.')
+        }
+
+        const confirmationResponse = await executeAgentTool({
+          context: {
+            ...executionContext,
+            action_source: 'frontend.ai.sidebar.execute.confirm',
+          },
+          input: {
+            approval_id: pendingApproval.id,
+          },
+          tool_name: 'safety.confirm',
+        })
+
+        if (confirmationResponse.status !== 'ok') {
+          throw new Error(
+            confirmationResponse.error?.trim() || 'Unable to confirm the planned terminal execution.',
+          )
+        }
+
+        executionResponse = await executeAgentTool({
+          approval_token: getApprovalToken(confirmationResponse),
+          context: executionContext,
+          input: {
+            ...executionInput,
+            text: command,
+          },
+          tool_name: 'term.send_input',
+        })
+      }
+
+      if (executionResponse.status !== 'ok') {
+        throw new Error(executionResponse.error?.trim() || 'Unable to execute the approved terminal plan.')
+      }
+
+      await waitForTerminalOutput(resolvedTarget.targetWidgetID, resolvedTarget.baselineNextSeq)
+
+      const explainResponse = await explainTerminalCommand({
+        command,
+        context: executionContext,
+        from_seq: resolvedTarget.baselineNextSeq,
+        prompt,
+        widget_id: resolvedTarget.targetWidgetID,
+      })
+
+      applyConversationSnapshot(explainResponse.conversation)
+      await refreshConversationList()
+
+      if (explainResponse.provider_error?.trim()) {
+        setSubmitError(explainResponse.provider_error.trim())
+      }
+    },
+    [
+      applyConversationSnapshot,
+      createConversationContext,
+      refreshConversationList,
+      resolveTerminalExecutionTarget,
+    ],
   )
 
   const runBackendPrompt = useCallback(
@@ -1944,7 +2068,16 @@ export function useAgentPanel(hostId: string, enabled = true) {
     optimisticMessageCounterRef.current += 1
     const flowSequence = flowCounterRef.current
     flowCounterRef.current += 1
-    const interactionFlow = createPendingInteractionFlow(hostId, prompt, flowSequence, nextLocalSortKey)
+    const interactionFlow = createPendingInteractionFlow(
+      hostId,
+      prompt,
+      flowSequence,
+      nextLocalSortKey,
+      undefined,
+      {
+        hasTerminalContext: hasTerminalExecutionContext,
+      },
+    )
 
     setLoadError(null)
     setSubmitError(null)
@@ -1989,6 +2122,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
     queuedAttachmentReferences,
     runBackendPrompt,
     selectedModel,
+    hasTerminalExecutionContext,
   ])
 
   const cancelActiveSubmission = useCallback(() => {
@@ -2073,7 +2207,9 @@ export function useAgentPanel(hostId: string, enabled = true) {
       }
 
       const answeredMessage = updateQuestionnaireMessageAnswer(message, answer, nextLocalSortKey)
-      const classification = classifyMessageIntent(activeFlow.prompt, answer)
+      const classification = classifyMessageIntent(activeFlow.prompt, answer, {
+        hasTerminalContext: hasTerminalExecutionContext,
+      })
 
       if (classification.intent === 'chat') {
         setInteractionMessages((currentMessages) =>
@@ -2118,7 +2254,13 @@ export function useAgentPanel(hostId: string, enabled = true) {
       pendingFlowRef.current = nextFlow
       setPendingFlow(nextFlow)
     },
-    [clearPendingInteractionFlow, nextLocalSortKey, runBackendPrompt, selectedModel],
+    [
+      clearPendingInteractionFlow,
+      hasTerminalExecutionContext,
+      nextLocalSortKey,
+      runBackendPrompt,
+      selectedModel,
+    ],
   )
 
   const approvePendingPlan = useCallback(
@@ -2201,6 +2343,63 @@ export function useAgentPanel(hostId: string, enabled = true) {
         return
       }
 
+      const executesInTerminal = activeFlow.tools.some((tool) => tool.name === 'execute_terminal')
+
+      if (executesInTerminal) {
+        const nextFlow: PendingInteractionFlow = {
+          ...activeFlow,
+          approvalMessageID: message.id,
+          auditMessageID: auditMessage.id,
+          auditProgressed: false,
+        }
+        pendingFlowRef.current = nextFlow
+        setPendingFlow(nextFlow)
+        setInteractionMessages((currentMessages) =>
+          sortMessagesBySortKey([
+            ...currentMessages.filter((currentMessage) => currentMessage.id !== message.id),
+            approvedMessage,
+            auditMessage,
+          ]),
+        )
+        setIsSubmitting(true)
+        setIsResponseCancellable(false)
+        setSubmitError(null)
+        blockAiWidget(hostId)
+
+        try {
+          const runtimeContext = await resolveRuntimeContext()
+          await runApprovedExecutionPlan(
+            activeFlow.prompt,
+            runtimeContext.repoRoot,
+            selectedModel || undefined,
+          )
+          updateAuditMessageEntries(auditMessage.id, (currentMessage) =>
+            currentMessage.type === 'audit'
+              ? {
+                  ...currentMessage,
+                  entries: completeAuditEntries(currentMessage.entries),
+                }
+              : currentMessage,
+          )
+        } catch (error) {
+          updateAuditMessageEntries(auditMessage.id, (currentMessage) =>
+            currentMessage.type === 'audit'
+              ? {
+                  ...currentMessage,
+                  entries: failAuditEntries(currentMessage.entries),
+                }
+              : currentMessage,
+          )
+          setSubmitError(getErrorMessage(error, 'Unable to run the approved terminal plan.'))
+        } finally {
+          clearPendingInteractionFlow()
+          unblockAiWidget(hostId)
+          setIsSubmitting(false)
+          setIsResponseCancellable(false)
+        }
+        return
+      }
+
       const nextFlow: PendingInteractionFlow = {
         ...activeFlow,
         approvalMessageID: message.id,
@@ -2227,6 +2426,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
       clearPendingInteractionFlow,
       hostId,
       nextLocalSortKey,
+      runApprovedExecutionPlan,
       runApprovedTerminalPrompt,
       runBackendPrompt,
       selectedModel,

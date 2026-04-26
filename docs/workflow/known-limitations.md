@@ -82,8 +82,9 @@ capability.
 - terminal parity is practical but the advanced multi-session/sidebar
   browsing model is not there yet; the current search and terminal-settings
   flows are intentionally scoped to the active single-session widget
-- AI command flow supports explicit command grammar only (`/run` and
-  `run:`), not broad natural-language execution
+- AI command flow now supports explicit `/run` grammar plus approved
+  terminal-context command planning for narrow natural-language terminal
+  requests, but it is still not broad provider-native tool execution
 - backend AI routing is intentionally narrow, not broad: the active provider kinds are local Codex CLI, local Claude Code CLI, and one explicit OpenAI-compatible HTTP source kind; `ollama`, proxy routing, and broader API-key/provider universes are not active runtime paths
 - TideTerm-style WaveProxy is not part of the active product direction;
   see `docs/workflow/tideterm-residual-decisions.md`

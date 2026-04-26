@@ -263,6 +263,11 @@ export type ExplainTerminalCommandResponse = {
   provider_error?: string
 }
 
+export type PlanTerminalCommandResponse = {
+  command: string
+  summary?: string
+}
+
 type AgentConversationResponse = {
   conversation: AgentConversationSnapshot
   provider_error: string
@@ -748,6 +753,20 @@ export async function explainTerminalCommand(input: {
     context: input.context,
     execution_block_id: input.execution_block_id,
     from_seq: input.from_seq,
+    prompt: input.prompt,
+    widget_id: input.widget_id,
+  })
+}
+
+export async function planTerminalCommand(input: {
+  context: AgentConversationContext
+  model?: string
+  prompt: string
+  widget_id: string
+}) {
+  return postRuntimeJSON<PlanTerminalCommandResponse>('/api/v1/agent/terminal-commands/plan', {
+    context: input.context,
+    model: input.model,
     prompt: input.prompt,
     widget_id: input.widget_id,
   })

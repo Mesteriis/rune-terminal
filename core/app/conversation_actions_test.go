@@ -623,6 +623,7 @@ func TestSubmitConversationPromptAppliesSelectedModelOverrideForOpenAICompatible
 type recordingConversationProvider struct {
 	request conversation.CompletionRequest
 	info    conversation.ProviderInfo
+	result  conversation.CompletionResult
 }
 
 func (p *recordingConversationProvider) Info() conversation.ProviderInfo {
@@ -640,6 +641,13 @@ func (p *recordingConversationProvider) Info() conversation.ProviderInfo {
 func (p *recordingConversationProvider) Complete(_ context.Context, request conversation.CompletionRequest) (conversation.CompletionResult, conversation.ProviderInfo, error) {
 	p.request = request
 	info := p.Info()
+	if strings.TrimSpace(p.result.Content) != "" || p.result.Session != nil {
+		result := p.result
+		if strings.TrimSpace(result.Model) == "" {
+			result.Model = info.Model
+		}
+		return result, info, nil
+	}
 	return conversation.CompletionResult{
 		Content: "assistant reply",
 		Model:   info.Model,
@@ -653,11 +661,22 @@ func (p *recordingConversationProvider) CompleteStream(
 ) (conversation.CompletionResult, conversation.ProviderInfo, error) {
 	p.request = request
 	if onTextDelta != nil {
-		if err := onTextDelta("assistant reply"); err != nil {
+		delta := "assistant reply"
+		if strings.TrimSpace(p.result.Content) != "" {
+			delta = p.result.Content
+		}
+		if err := onTextDelta(delta); err != nil {
 			return conversation.CompletionResult{}, p.Info(), err
 		}
 	}
 	info := p.Info()
+	if strings.TrimSpace(p.result.Content) != "" || p.result.Session != nil {
+		result := p.result
+		if strings.TrimSpace(result.Model) == "" {
+			result.Model = info.Model
+		}
+		return result, info, nil
+	}
 	return conversation.CompletionResult{
 		Content: "assistant reply",
 		Model:   info.Model,

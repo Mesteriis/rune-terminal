@@ -350,6 +350,50 @@ func TestExplainTerminalCommandUpdatesExistingExecutionBlockByIdentity(t *testin
 	}
 }
 
+func TestPlanTerminalCommandReturnsRunnableCommandForExplicitTarget(t *testing.T) {
+	t.Parallel()
+
+	runtime := newExplainCommandTestRuntime(t, "Filesystem\n")
+	provider := &recordingConversationProvider{
+		result: conversation.CompletionResult{
+			Content: `{"command":"df -h","summary":"Check free space on the selected host."}`,
+		},
+	}
+	runtime.ConversationProviderFactory = func(agent.ProviderRecord) (conversation.Provider, error) {
+		return provider, nil
+	}
+
+	result, err := runtime.PlanTerminalCommand(context.Background(), PlanTerminalCommandRequest{
+		Prompt:   "Посмотри свободное место на pve",
+		WidgetID: "term_boot",
+	}, ConversationContext{
+		WorkspaceID:          "ws-default",
+		RepoRoot:             "/repo",
+		ActiveWidgetID:       "term_boot",
+		TargetSession:        "local",
+		TargetConnectionID:   "local",
+		WidgetContextEnabled: true,
+	})
+	if err != nil {
+		t.Fatalf("plan terminal command: %v", err)
+	}
+	if result.Command != "df -h" {
+		t.Fatalf("expected planned command df -h, got %q", result.Command)
+	}
+	if result.Summary != "Check free space on the selected host." {
+		t.Fatalf("unexpected plan summary: %q", result.Summary)
+	}
+	if len(provider.request.Messages) != 1 {
+		t.Fatalf("expected single planning prompt, got %#v", provider.request.Messages)
+	}
+	if !strings.Contains(provider.request.Messages[0].Content, "widget_id: term_boot") {
+		t.Fatalf("expected planning prompt to pin widget target, got %q", provider.request.Messages[0].Content)
+	}
+	if !strings.Contains(provider.request.Messages[0].Content, "target_connection_id: local") {
+		t.Fatalf("expected planning prompt to pin connection target, got %q", provider.request.Messages[0].Content)
+	}
+}
+
 func TestExplainTerminalCommandRejectsExecutionBlockIdentityMismatch(t *testing.T) {
 	t.Parallel()
 

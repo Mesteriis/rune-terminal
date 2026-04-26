@@ -219,7 +219,7 @@ func TestConversationListRouteFiltersByScopeAndQuery(t *testing.T) {
 			Title      string  `json:"title"`
 			ArchivedAt *string `json:"archived_at"`
 		} `json:"conversations"`
-	} 
+	}
 	if err := json.Unmarshal(filteredRecorder.Body.Bytes(), &filteredPayload); err != nil {
 		t.Fatalf("unmarshal filtered list payload: %v", err)
 	}
@@ -1224,6 +1224,49 @@ func TestExplainTerminalCommandReturnsConversationSnapshot(t *testing.T) {
 	}
 }
 
+func TestPlanTerminalCommandReturnsRunnableCommand(t *testing.T) {
+	t.Parallel()
+
+	handler, runtime := newExplainCommandHandler(t)
+	runtime.ConversationProviderFactory = func(agent.ProviderRecord) (conversation.Provider, error) {
+		return scriptedHandlerConversationProvider{
+			content: `{"command":"df -h","summary":"Check free space on the selected host."}`,
+		}, nil
+	}
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPost, "/api/v1/agent/terminal-commands/plan", map[string]any{
+		"prompt":    "Посмотри свободное место на pve",
+		"widget_id": "term_boot",
+		"context": map[string]any{
+			"workspace_id":           "ws-default",
+			"repo_root":              "/workspace/repo",
+			"active_widget_id":       "term_boot",
+			"target_session":         "local",
+			"target_connection_id":   "local",
+			"widget_context_enabled": true,
+		},
+	}))
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+
+	var payload struct {
+		Command string `json:"command"`
+		Summary string `json:"summary"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
+	}
+	if payload.Command != "df -h" {
+		t.Fatalf("expected planned command df -h, got %q", payload.Command)
+	}
+	if payload.Summary != "Check free space on the selected host." {
+		t.Fatalf("unexpected plan summary: %q", payload.Summary)
+	}
+}
+
 func TestExplainTerminalCommandIgnoresFrontendApprovalUsedPayload(t *testing.T) {
 	t.Parallel()
 
@@ -1611,13 +1654,52 @@ func newExplainCommandHandler(t *testing.T) (http.Handler, *app.Runtime) {
 		Connections:  connectionStore,
 		Agent:        agentStore,
 		Conversation: conversationStore,
-		Execution:    executionStore,
-		Policy:       policyStore,
-		Audit:        auditLog,
-		Registry:     toolruntime.NewRegistry(),
+		ConversationProviderFactory: func(agent.ProviderRecord) (conversation.Provider, error) {
+			return testConversationProvider{}, nil
+		},
+		Execution: executionStore,
+		Policy:    policyStore,
+		Audit:     auditLog,
+		Registry:  toolruntime.NewRegistry(),
 	}
 	runtime.Executor = toolruntime.NewExecutor(runtime.Registry, runtime.Policy, runtime.Audit)
 	return NewHandler(runtime, testAuthToken), runtime
+}
+
+type scriptedHandlerConversationProvider struct {
+	content string
+}
+
+func (p scriptedHandlerConversationProvider) Info() conversation.ProviderInfo {
+	return testConversationProvider{}.Info()
+}
+
+func (p scriptedHandlerConversationProvider) Complete(
+	context.Context,
+	conversation.CompletionRequest,
+) (conversation.CompletionResult, conversation.ProviderInfo, error) {
+	info := p.Info()
+	return conversation.CompletionResult{
+		Content: p.content,
+		Model:   info.Model,
+	}, info, nil
+}
+
+func (p scriptedHandlerConversationProvider) CompleteStream(
+	_ context.Context,
+	_ conversation.CompletionRequest,
+	onTextDelta func(string) error,
+) (conversation.CompletionResult, conversation.ProviderInfo, error) {
+	if onTextDelta != nil {
+		if err := onTextDelta(p.content); err != nil {
+			return conversation.CompletionResult{}, p.Info(), err
+		}
+	}
+	info := p.Info()
+	return conversation.CompletionResult{
+		Content: p.content,
+		Model:   info.Model,
+	}, info, nil
 }
 
 type handlerTestProcess struct {
