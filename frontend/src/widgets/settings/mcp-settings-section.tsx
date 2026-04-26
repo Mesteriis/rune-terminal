@@ -3,10 +3,14 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   controlMCPServer,
   deleteMCPServer,
+  fetchMCPTemplateCatalog,
   fetchMCPServerDetails,
   fetchMCPServers,
+  probeMCPServer,
+  type MCPProbeResult,
   registerRemoteMCPServer,
   type MCPServerControlAction,
+  type MCPServerTemplate,
   type MCPServerView,
   updateRemoteMCPServer,
 } from '@/features/mcp/api/client'
@@ -110,19 +114,93 @@ function formatHeadersDraft(headers: Record<string, string>) {
 
 const defaultServerID = 'mcp.context7'
 const defaultEndpoint = 'https://mcp.context7.com/mcp'
+const defaultTemplateID = 'context7'
+
+function findSelectedTemplate(templates: MCPServerTemplate[], templateID: string | null) {
+  if (!templateID) {
+    return null
+  }
+
+  return templates.find((template) => template.id === templateID) ?? null
+}
+
+function matchTemplateForServer(templates: MCPServerTemplate[], server: { id: string; endpoint?: string }) {
+  const normalizedEndpoint = server.endpoint?.trim()
+  const normalizedID = server.id.trim()
+
+  return (
+    templates.find((template) => {
+      if (template.suggested_server_id && template.suggested_server_id === normalizedID) {
+        return true
+      }
+      return Boolean(template.endpoint && normalizedEndpoint && template.endpoint === normalizedEndpoint)
+    }) ?? null
+  )
+}
+
+function buildDraftHeaders(
+  headersDraft: string,
+  selectedTemplate: MCPServerTemplate | null,
+  authSecretDraft: string,
+) {
+  const headers = parseHeadersDraft(headersDraft)
+  const authKind = selectedTemplate?.auth.kind ?? 'none'
+  const authSecret = authSecretDraft.trim()
+
+  if (authKind === 'none' || authSecret === '') {
+    return headers
+  }
+
+  const headerName = selectedTemplate?.auth.header_name?.trim()
+  if (!headerName) {
+    return headers
+  }
+
+  const duplicateHeader = Object.keys(headers).find(
+    (name) => name.trim().toLowerCase() === headerName.toLowerCase(),
+  )
+  if (duplicateHeader) {
+    throw new Error(`${headerName} is already set in raw headers. Clear one of the duplicates.`)
+  }
+
+  headers[headerName] = `${selectedTemplate?.auth.value_prefix ?? ''}${authSecret}`
+  return headers
+}
+
+function describeProbeResult(result: MCPProbeResult) {
+  const detail = [
+    result.server_name,
+    result.server_version ? `v${result.server_version}` : null,
+    result.protocol_version ? `protocol ${result.protocol_version}` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+
+  if (!detail) {
+    return result.message
+  }
+
+  return `${result.message} ${detail}`
+}
 
 export function MCPSettingsSection() {
   const [servers, setServers] = useState<MCPServerView[]>([])
+  const [templates, setTemplates] = useState<MCPServerTemplate[]>([])
   const [idDraft, setIdDraft] = useState(defaultServerID)
   const [endpointDraft, setEndpointDraft] = useState(defaultEndpoint)
   const [headersDraft, setHeadersDraft] = useState('')
+  const [selectedTemplateID, setSelectedTemplateID] = useState<string | null>(defaultTemplateID)
+  const [authSecretDraft, setAuthSecretDraft] = useState('')
   const [filterDraft, setFilterDraft] = useState('')
   const [isLoading, setIsLoading] = useState(true)
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(true)
   const [isSubmittingForm, setIsSubmittingForm] = useState(false)
+  const [isProbing, setIsProbing] = useState(false)
   const [busyServerID, setBusyServerID] = useState<string | null>(null)
   const [editingServerID, setEditingServerID] = useState<string | null>(null)
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [probeResult, setProbeResult] = useState<MCPProbeResult | null>(null)
   const hasServers = servers.length > 0
   const isEditing = editingServerID !== null
   const canSubmit = idDraft.trim().length > 0 && endpointDraft.trim().length > 0
@@ -132,12 +210,19 @@ export function MCPSettingsSection() {
   )
   const activeServersCount = servers.filter((server) => server.active).length
   const disabledServersCount = servers.filter((server) => !server.enabled).length
+  const selectedTemplate = useMemo(
+    () => findSelectedTemplate(templates, selectedTemplateID),
+    [selectedTemplateID, templates],
+  )
 
   function resetForm() {
     setEditingServerID(null)
     setIdDraft(defaultServerID)
     setEndpointDraft(defaultEndpoint)
     setHeadersDraft('')
+    setAuthSecretDraft('')
+    setSelectedTemplateID(defaultTemplateID)
+    setProbeResult(null)
   }
 
   async function loadServers(options: { isCancelled?: () => boolean } = {}) {
@@ -160,10 +245,33 @@ export function MCPSettingsSection() {
     }
   }
 
+  async function loadTemplates(options: { isCancelled?: () => boolean } = {}) {
+    setIsLoadingTemplates(true)
+
+    try {
+      const nextTemplates = await fetchMCPTemplateCatalog()
+      if (!options.isCancelled?.()) {
+        setTemplates(nextTemplates)
+        if (nextTemplates.length > 0 && !findSelectedTemplate(nextTemplates, selectedTemplateID)) {
+          setSelectedTemplateID(nextTemplates[0]?.id ?? null)
+        }
+      }
+    } catch (error) {
+      if (!options.isCancelled?.()) {
+        setErrorMessage(error instanceof Error ? error.message : 'Unable to load MCP templates')
+      }
+    } finally {
+      if (!options.isCancelled?.()) {
+        setIsLoadingTemplates(false)
+      }
+    }
+  }
+
   useEffect(() => {
     let cancelled = false
 
     void loadServers({ isCancelled: () => cancelled })
+    void loadTemplates({ isCancelled: () => cancelled })
 
     return () => {
       cancelled = true
@@ -174,9 +282,10 @@ export function MCPSettingsSection() {
     setIsSubmittingForm(true)
     setErrorMessage(null)
     setStatusMessage(null)
+    setProbeResult(null)
 
     try {
-      const headers = parseHeadersDraft(headersDraft)
+      const headers = buildDraftHeaders(headersDraft, selectedTemplate, authSecretDraft)
       const server = isEditing
         ? await updateRemoteMCPServer(editingServerID, {
             endpoint: endpointDraft,
@@ -197,6 +306,27 @@ export function MCPSettingsSection() {
       setErrorMessage(error instanceof Error ? error.message : 'Unable to save MCP server')
     } finally {
       setIsSubmittingForm(false)
+    }
+  }
+
+  async function handleProbe() {
+    setIsProbing(true)
+    setErrorMessage(null)
+    setStatusMessage(null)
+    setProbeResult(null)
+
+    try {
+      const headers = buildDraftHeaders(headersDraft, selectedTemplate, authSecretDraft)
+      const result = await probeMCPServer({
+        endpoint: endpointDraft,
+        headers,
+        id: idDraft,
+      })
+      setProbeResult(result)
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Unable to probe MCP endpoint')
+    } finally {
+      setIsProbing(false)
     }
   }
 
@@ -227,6 +357,9 @@ export function MCPSettingsSection() {
       setIdDraft(server.id)
       setEndpointDraft(server.endpoint ?? '')
       setHeadersDraft(formatHeadersDraft(server.headers))
+      setAuthSecretDraft('')
+      setProbeResult(null)
+      setSelectedTemplateID(matchTemplateForServer(templates, server)?.id ?? null)
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Unable to load MCP server details')
     } finally {
@@ -253,6 +386,18 @@ export function MCPSettingsSection() {
     }
   }
 
+  function handleApplyTemplate(template: MCPServerTemplate) {
+    setEditingServerID(null)
+    setSelectedTemplateID(template.id)
+    setIdDraft(template.suggested_server_id ?? defaultServerID)
+    setEndpointDraft(template.endpoint ?? '')
+    setHeadersDraft('')
+    setAuthSecretDraft('')
+    setProbeResult(null)
+    setStatusMessage(`Loaded ${template.display_name} template.`)
+    setErrorMessage(null)
+  }
+
   return (
     <ClearBox style={settingsShellSectionCardStyle}>
       <ClearBox style={settingsShellContentHeaderStyle}>
@@ -261,6 +406,31 @@ export function MCPSettingsSection() {
           External MCP onboarding is explicit: register or edit a remote endpoint, then start/stop/enable it
           manually. Invoke and AI handoff remain separate operator actions outside this settings slice.
         </Text>
+      </ClearBox>
+
+      <ClearBox style={{ display: 'grid', gap: 'var(--gap-xs)' }}>
+        <Text style={{ fontWeight: 600 }}>Onboarding templates</Text>
+        <Text style={settingsShellMutedTextStyle}>
+          Load a bounded template to prefill endpoint and auth helpers. Registration still stays explicit.
+        </Text>
+        {isLoadingTemplates ? (
+          <Text style={settingsShellMutedTextStyle}>Loading MCP templates…</Text>
+        ) : (
+          <ClearBox style={{ display: 'flex', gap: 'var(--gap-xs)', flexWrap: 'wrap' as const }}>
+            {templates.map((template) => (
+              <Button
+                key={template.id}
+                disabled={isSubmittingForm || isProbing || busyServerID !== null}
+                onClick={() => handleApplyTemplate(template)}
+              >
+                {template.display_name}
+              </Button>
+            ))}
+          </ClearBox>
+        )}
+        {selectedTemplate ? (
+          <Text style={settingsShellMutedTextStyle}>{selectedTemplate.description}</Text>
+        ) : null}
       </ClearBox>
 
       <ClearBox style={{ display: 'grid', gap: 'var(--gap-sm)', gridTemplateColumns: '1fr 1.4fr' }}>
@@ -278,6 +448,14 @@ export function MCPSettingsSection() {
           value={endpointDraft}
         />
       </ClearBox>
+      {selectedTemplate && selectedTemplate.auth.kind !== 'none' ? (
+        <Input
+          aria-label={selectedTemplate.auth.secret_label ?? 'MCP template secret'}
+          onChange={(event) => setAuthSecretDraft(event.target.value)}
+          placeholder={selectedTemplate.auth.secret_placeholder ?? 'Optional auth secret'}
+          value={authSecretDraft}
+        />
+      ) : null}
       <TextArea
         aria-label="MCP request headers"
         onChange={(event) => setHeadersDraft(event.target.value)}
@@ -286,7 +464,8 @@ export function MCPSettingsSection() {
         value={headersDraft}
       />
       <Text style={settingsShellMutedTextStyle}>
-        Header values are persisted in the local runtime MCP registry. Do not put broad-scope secrets here.
+        Raw headers are persisted in the local runtime MCP registry. Template auth helpers are merged at
+        request time before probe/register.
       </Text>
 
       <ClearBox style={{ display: 'flex', gap: 'var(--gap-sm)', flexWrap: 'wrap' as const }}>
@@ -302,6 +481,13 @@ export function MCPSettingsSection() {
             : isEditing
               ? 'Save changes'
               : 'Register remote MCP'}
+        </Button>
+        <Button
+          aria-label="Test MCP endpoint"
+          disabled={!canSubmit || isSubmittingForm || isProbing || busyServerID !== null}
+          onClick={() => void handleProbe()}
+        >
+          {isProbing ? 'Testing…' : 'Test endpoint'}
         </Button>
         {isEditing ? (
           <Button disabled={isSubmittingForm} onClick={() => resetForm()}>
@@ -338,6 +524,11 @@ export function MCPSettingsSection() {
       </ClearBox>
 
       {statusMessage ? <Text style={settingsShellMutedTextStyle}>{statusMessage}</Text> : null}
+      {probeResult ? (
+        <Text style={settingsShellMutedTextStyle}>
+          Probe `{probeResult.status}`: {describeProbeResult(probeResult)}
+        </Text>
+      ) : null}
       {errorMessage ? (
         <Text style={{ color: 'var(--color-danger-text, #ff8e8e)' }}>{errorMessage}</Text>
       ) : null}

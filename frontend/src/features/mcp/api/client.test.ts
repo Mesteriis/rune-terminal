@@ -3,8 +3,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   controlMCPServer,
   deleteMCPServer,
+  fetchMCPTemplateCatalog,
   fetchMCPServerDetails,
   fetchMCPServers,
+  probeMCPServer,
   registerRemoteMCPServer,
   updateRemoteMCPServer,
 } from '@/features/mcp/api/client'
@@ -108,6 +110,113 @@ describe('mcp client', () => {
       headers: { Authorization: 'Bearer mcp-token' },
       id: 'mcp.context7',
       type: 'remote',
+    })
+  })
+
+  it('loads the MCP onboarding template catalog from the backend contract', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          templates: [
+            {
+              auth: {
+                header_name: 'Authorization',
+                kind: 'bearer_token',
+                secret_label: 'Bearer token',
+                value_prefix: 'Bearer ',
+              },
+              description: 'Reference docs endpoint',
+              display_name: 'Context7',
+              endpoint: 'https://mcp.context7.com/mcp',
+              id: 'context7',
+              suggested_server_id: 'mcp.context7',
+            },
+          ],
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(fetchMCPTemplateCatalog()).resolves.toEqual([
+      {
+        auth: {
+          header_name: 'Authorization',
+          kind: 'bearer_token',
+          secret_label: 'Bearer token',
+          secret_placeholder: undefined,
+          value_prefix: 'Bearer ',
+        },
+        description: 'Reference docs endpoint',
+        display_name: 'Context7',
+        endpoint: 'https://mcp.context7.com/mcp',
+        id: 'context7',
+        suggested_server_id: 'mcp.context7',
+      },
+    ])
+    expect(fetchMock.mock.calls[1]?.[0]).toBe('http://127.0.0.1:8090/api/v1/mcp/catalog')
+  })
+
+  it('probes remote MCP drafts through the onboarding contract', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          probe: {
+            http_status: 200,
+            message: 'Connected. Endpoint completed initialize and advertised 2 tool(s).',
+            protocol_version: '2024-11-05',
+            reachable: true,
+            server_name: 'Context7',
+            server_version: '1.2.3',
+            status: 'ready',
+            tool_count: 2,
+          },
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      probeMCPServer({
+        endpoint: ' https://mcp.context7.com/mcp ',
+        headers: { Authorization: 'Bearer mcp-token' },
+        id: 'ignored.by.probe',
+      }),
+    ).resolves.toEqual({
+      http_status: 200,
+      message: 'Connected. Endpoint completed initialize and advertised 2 tool(s).',
+      protocol_version: '2024-11-05',
+      reachable: true,
+      server_name: 'Context7',
+      server_version: '1.2.3',
+      status: 'ready',
+      tool_count: 2,
+    })
+
+    expect(fetchMock.mock.calls[1]?.[0]).toBe('http://127.0.0.1:8090/api/v1/mcp/probe')
+    expect(fetchMock.mock.calls[1]?.[1]?.method).toBe('POST')
+    expect(JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string)).toEqual({
+      endpoint: 'https://mcp.context7.com/mcp',
+      headers: { Authorization: 'Bearer mcp-token' },
     })
   })
 

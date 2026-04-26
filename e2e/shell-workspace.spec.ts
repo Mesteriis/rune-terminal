@@ -367,6 +367,60 @@ test('remote settings surface normalized preflight failures and default-target s
   await expect(page.getByText('default', { exact: true })).toBeVisible()
 })
 
+test('mcp settings onboard a remote server from template helpers and draft probe', async ({ page }) => {
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  const seedStamp = Date.now()
+  const serverID = `mcp.phase7-${seedStamp}`
+
+  await page.route('**/api/v1/mcp/probe', async (route) => {
+    const payload = route.request().postDataJSON() as {
+      endpoint?: string
+      headers?: Record<string, string>
+    } | null
+
+    expect(payload?.endpoint).toBe('https://mcp.phase7.example.test/mcp')
+    expect(payload?.headers).toEqual({
+      'X-API-Key': 'phase7-secret',
+    })
+
+    await route.fulfill({
+      body: JSON.stringify({
+        probe: {
+          http_status: 200,
+          message: 'Connected. Endpoint completed initialize and advertised 3 tool(s).',
+          protocol_version: '2024-11-05',
+          reachable: true,
+          server_name: 'Phase7 MCP',
+          server_version: '1.0.0',
+          status: 'ready',
+          tool_count: 3,
+        },
+      }),
+      contentType: 'application/json',
+      status: 200,
+    })
+  })
+
+  await page.getByRole('button', { name: 'Open settings panel' }).click()
+  await page.getByRole('button', { name: /^MCP / }).click()
+
+  await expect(page.getByRole('button', { name: 'Generic API-key MCP' })).toBeVisible()
+  await page.getByRole('button', { name: 'Generic API-key MCP' }).click()
+
+  await page.getByRole('textbox', { name: 'MCP server id' }).fill(serverID)
+  await page.getByRole('textbox', { name: 'MCP endpoint URL' }).fill('https://mcp.phase7.example.test/mcp')
+  await page.getByRole('textbox', { name: 'API key' }).fill('phase7-secret')
+  await page.getByRole('button', { name: 'Test MCP endpoint' }).click()
+
+  await expect(page.getByText(/Probe `ready`:/)).toBeVisible()
+
+  await page.getByRole('button', { name: 'Register remote MCP server' }).click()
+  await expect(page.getByText(`Registered ${serverID}. Start it explicitly before invoke.`)).toBeVisible()
+  await expect(page.getByText(serverID, { exact: true })).toBeVisible()
+})
+
 test('remote settings persist tmux resume launch policy', async ({ page }) => {
   await clearBrowserState(page)
   await page.goto('/')

@@ -9,6 +9,7 @@
   - active `frontend/src` settings onboarding section
   - filterable MCP server inventory inside the active settings shell
   - backend-owned MCP onboarding catalog and draft probe contract
+  - template-driven onboarding helpers inside active settings
   - explicit invoke path
   - output normalization/bounding behavior
   - explicit MCP-to-AI handoff behavior (no auto-injection)
@@ -19,6 +20,7 @@
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestNormalizeRemoteMCPRegistrationRequest|TestProbeRemoteMCPServerReportsReadyWithToolCount|TestListMCPCatalogReturnsTemplates|TestProbeMCPServerRejectsInvalidDraft' -count=1`
 - `npm --prefix frontend run test -- src/features/mcp/api/client.test.ts src/widgets/settings/mcp-settings-section.test.tsx`
 - `frontend/node_modules/.bin/vitest run src/widgets/settings/mcp-settings-section.test.tsx --reporter=verbose`
+- `npm run test:ui -- --reporter=line e2e/shell-workspace.spec.ts --grep "mcp settings onboard a remote server from template helpers and draft probe"`
 - `npm run lint:frontend`
 - `npm run build:frontend`
 - Runtime/API checks:
@@ -36,7 +38,7 @@
 ## Known limitations
 
 - External provider onboarding remains narrower than desired: settings supports explicit remote endpoint registration, inspection, edit, and removal, but there is no broad discovery/catalog/import workflow.
-- Template catalog and draft probe now exist at the backend contract, but active settings UI has not yet been widened to drive them end to end.
+- Active settings now drives the bounded template catalog and draft probe end to end, but this still remains a curated onboarding surface rather than a broad MCP marketplace/discovery product.
 - Explicit-only handoff is intentional: invoke does not auto-append agent conversation context.
 
 ## Evidence
