@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 
 import {
   clearBrowserState,
@@ -7,6 +7,66 @@ import {
   registerRemoteMCPServerViaApi,
   saveRemoteProfileViaApi,
 } from './runtime'
+
+async function mockRemoteTerminalSurface(
+  page: Page,
+  input: {
+    connectionId: string
+    connectionName: string
+    widgetId: string
+    workingDir?: string
+  },
+) {
+  await page.route(`**/api/v1/terminal/${input.widgetId}`, async (route) => {
+    await route.fulfill({
+      body: JSON.stringify({
+        active_session_id: input.widgetId,
+        chunks: [],
+        next_seq: 1,
+        sessions: [
+          {
+            can_interrupt: true,
+            can_send_input: true,
+            connection_id: input.connectionId,
+            connection_kind: 'ssh',
+            connection_name: input.connectionName,
+            pid: 4242,
+            session_id: input.widgetId,
+            shell: '/bin/zsh',
+            started_at: '2026-04-26T12:00:00Z',
+            status: 'running',
+            widget_id: input.widgetId,
+            working_dir: input.workingDir ?? `/remote/${input.connectionName}`,
+          },
+        ],
+        state: {
+          can_interrupt: true,
+          can_send_input: true,
+          connection_id: input.connectionId,
+          connection_kind: 'ssh',
+          connection_name: input.connectionName,
+          pid: 4242,
+          session_id: input.widgetId,
+          shell: '/bin/zsh',
+          started_at: '2026-04-26T12:00:00Z',
+          status: 'running',
+          widget_id: input.widgetId,
+          working_dir: input.workingDir ?? `/remote/${input.connectionName}`,
+        },
+      }),
+      contentType: 'application/json',
+      status: 200,
+    })
+  })
+
+  await page.route(`**/api/v1/terminal/${input.widgetId}/stream?*`, async (route) => {
+    await route.fulfill({
+      body: '',
+      contentType: 'text/event-stream',
+      status: 200,
+    })
+  })
+}
 
 test('shell workspace tabs, utility actions, widget creation, and settings modal work end to end', async ({
   page,
@@ -381,4 +441,134 @@ test('remote settings browse tmux sessions and load one into the profile editor'
 
   await expect(page.getByRole('checkbox', { name: 'Resume remote shell through tmux' })).toBeChecked()
   await expect(page.getByRole('textbox', { name: 'Remote profile tmux session' })).toHaveValue('prod-jobs')
+})
+
+test('remote settings open shell creates a visible terminal panel in the active workspace', async ({
+  page,
+  request,
+}) => {
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  const seedStamp = Date.now()
+  const remoteToken = `phase5-open-shell-${seedStamp}`
+  const saved = await saveRemoteProfileViaApi(request, {
+    host: `${remoteToken}.example.test`,
+    name: `Remote ${remoteToken}`,
+    user: 'deploy',
+  })
+
+  const widgetId = 'term-remote-open-shell'
+  const tabId = 'tab-remote-open-shell'
+  await mockRemoteTerminalSurface(page, {
+    connectionId: saved.profile.id,
+    connectionName: `Remote ${remoteToken}`,
+    widgetId,
+  })
+  await page.route(`**/api/v1/remote/profiles/${saved.profile.id}/session`, async (route) => {
+    await route.fulfill({
+      body: JSON.stringify({
+        connection_id: saved.profile.id,
+        profile_id: saved.profile.id,
+        reused: false,
+        session_id: widgetId,
+        tab_id: tabId,
+        widget_id: widgetId,
+      }),
+      contentType: 'application/json',
+      status: 200,
+    })
+  })
+
+  await page.getByRole('button', { name: 'Open settings panel' }).click()
+  await page.getByRole('button', { name: /^Remote / }).click()
+  await page.getByRole('textbox', { name: 'Filter remote profiles' }).fill(remoteToken)
+
+  const savedProfileRow = page.locator('[data-runa-component="clear-box"]').filter({
+    has: page.getByText(`Remote ${remoteToken}`),
+  })
+
+  await savedProfileRow.getByRole('button', { name: 'Open shell' }).click()
+  await expect(page.getByText(`Opened remote shell for Remote ${remoteToken}.`)).toBeVisible()
+  await expect(
+    page
+      .locator('[data-runa-component="terminal-status-header-title"]')
+      .filter({ hasText: `Remote ${remoteToken}` }),
+  ).toBeVisible()
+  await expect(page.getByText('SSH', { exact: true })).toBeVisible()
+})
+
+test('remote settings resume discovered tmux session opens that session in the workspace', async ({
+  page,
+  request,
+}) => {
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  const seedStamp = Date.now()
+  const remoteToken = `phase5-resume-shell-${seedStamp}`
+  const saved = await saveRemoteProfileViaApi(request, {
+    host: `${remoteToken}.example.test`,
+    launch_mode: 'tmux',
+    name: `Remote ${remoteToken}`,
+    tmux_session: 'prod-main',
+    user: 'deploy',
+  })
+
+  const widgetId = 'term-remote-resume-shell'
+  const tabId = 'tab-remote-resume-shell'
+  await mockRemoteTerminalSurface(page, {
+    connectionId: saved.profile.id,
+    connectionName: `Remote ${remoteToken}`,
+    widgetId,
+    workingDir: `/tmux/${remoteToken}/prod-jobs`,
+  })
+  await page.route(`**/api/v1/remote/profiles/${saved.profile.id}/tmux-sessions`, async (route) => {
+    await route.fulfill({
+      body: JSON.stringify({
+        sessions: [
+          { attached: true, name: 'prod-main', window_count: 2 },
+          { attached: false, name: 'prod-jobs', window_count: 1 },
+        ],
+      }),
+      contentType: 'application/json',
+      status: 200,
+    })
+  })
+  await page.route(`**/api/v1/remote/profiles/${saved.profile.id}/session`, async (route) => {
+    const payload = route.request().postDataJSON() as { tmux_session?: string } | null
+
+    await route.fulfill({
+      body: JSON.stringify({
+        connection_id: saved.profile.id,
+        profile_id: saved.profile.id,
+        remote_session_name: payload?.tmux_session ?? 'prod-jobs',
+        reused: false,
+        session_id: widgetId,
+        tab_id: tabId,
+        widget_id: widgetId,
+      }),
+      contentType: 'application/json',
+      status: 200,
+    })
+  })
+
+  await page.getByRole('button', { name: 'Open settings panel' }).click()
+  await page.getByRole('button', { name: /^Remote / }).click()
+  await page.getByRole('textbox', { name: 'Filter remote profiles' }).fill(remoteToken)
+
+  const savedProfileRow = page.locator('[data-runa-component="clear-box"]').filter({
+    has: page.getByText(`Remote ${remoteToken}`),
+  })
+
+  await savedProfileRow.getByRole('button', { name: 'Browse tmux' }).click()
+  await expect(page.getByText('prod-jobs · detached · 1 windows')).toBeVisible()
+  await savedProfileRow.getByRole('button', { name: 'Resume session' }).nth(1).click()
+
+  await expect(page.getByText(`Opened Remote ${remoteToken} on tmux session prod-jobs.`)).toBeVisible()
+  await expect(
+    page
+      .locator('[data-runa-component="terminal-status-header-title"]')
+      .filter({ hasText: 'prod-jobs' }),
+  ).toBeVisible()
 })

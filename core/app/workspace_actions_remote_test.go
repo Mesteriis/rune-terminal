@@ -162,7 +162,7 @@ func TestCreateRemoteTerminalTabFromProfileCreatesSSHSession(t *testing.T) {
 		t.Fatalf("save remote profile: %v", err)
 	}
 
-	result, err := runtime.CreateRemoteTerminalTabFromProfile(context.Background(), "Profile Shell", profile.ID)
+	result, err := runtime.CreateRemoteTerminalTabFromProfile(context.Background(), "Profile Shell", profile.ID, "")
 	if err != nil {
 		t.Fatalf("CreateRemoteTerminalTabFromProfile error: %v", err)
 	}
@@ -204,7 +204,7 @@ func TestCreateRemoteTerminalTabFromProfileRequiresProfileID(t *testing.T) {
 	}
 	runtime := newLaunchRuntime(t, process)
 
-	if _, err := runtime.CreateRemoteTerminalTabFromProfile(context.Background(), "Remote Shell", ""); !errors.Is(err, connections.ErrInvalidConnection) {
+	if _, err := runtime.CreateRemoteTerminalTabFromProfile(context.Background(), "Remote Shell", "", ""); !errors.Is(err, connections.ErrInvalidConnection) {
 		t.Fatalf("expected invalid connection for empty profile id, got %v", err)
 	}
 }
@@ -230,7 +230,7 @@ func TestCreateRemoteTerminalTabFromProfileReusesRunningSession(t *testing.T) {
 		t.Fatalf("save remote profile: %v", err)
 	}
 
-	first, err := runtime.CreateRemoteTerminalTabFromProfile(context.Background(), "Reuse Shell", profile.ID)
+	first, err := runtime.CreateRemoteTerminalTabFromProfile(context.Background(), "Reuse Shell", profile.ID, "")
 	if err != nil {
 		t.Fatalf("first CreateRemoteTerminalTabFromProfile error: %v", err)
 	}
@@ -238,7 +238,7 @@ func TestCreateRemoteTerminalTabFromProfileReusesRunningSession(t *testing.T) {
 		t.Fatalf("expected first profile open to create a new session")
 	}
 
-	second, err := runtime.CreateRemoteTerminalTabFromProfile(context.Background(), "Reuse Shell", profile.ID)
+	second, err := runtime.CreateRemoteTerminalTabFromProfile(context.Background(), "Reuse Shell", profile.ID, "")
 	if err != nil {
 		t.Fatalf("second CreateRemoteTerminalTabFromProfile error: %v", err)
 	}
@@ -279,7 +279,7 @@ func TestCreateRemoteTerminalTabFromProfileCarriesTmuxLaunchPolicy(t *testing.T)
 		t.Fatalf("save remote profile: %v", err)
 	}
 
-	if _, err := runtime.CreateRemoteTerminalTabFromProfile(context.Background(), "Prod Shell", profile.ID); err != nil {
+	if _, err := runtime.CreateRemoteTerminalTabFromProfile(context.Background(), "Prod Shell", profile.ID, ""); err != nil {
 		t.Fatalf("CreateRemoteTerminalTabFromProfile error: %v", err)
 	}
 	if launched.Connection.SSH == nil {
@@ -290,6 +290,58 @@ func TestCreateRemoteTerminalTabFromProfileCarriesTmuxLaunchPolicy(t *testing.T)
 	}
 	if launched.Connection.SSH.TmuxSession != "prod-main" {
 		t.Fatalf("expected tmux session %q, got %#v", "prod-main", launched.Connection.SSH)
+	}
+}
+
+func TestCreateRemoteTerminalTabFromProfileUsesTmuxSessionOverrideForReuse(t *testing.T) {
+	t.Parallel()
+
+	process := &launchTestProcess{
+		pid:      108,
+		outputCh: make(chan []byte, 1),
+		waitCh:   make(chan struct{}),
+		exitCode: 0,
+	}
+	process.outputCh <- []byte("remote@fixture:~$ ")
+	var launched terminal.LaunchOptions
+	runtime := newLaunchRuntimeWithCapture(t, process, &launched)
+
+	profile, _, err := runtime.Connections.SaveRemoteProfile(connections.SaveRemoteProfileInput{
+		Name:        "Prod Shell",
+		Host:        "prod.example.com",
+		User:        "deploy",
+		LaunchMode:  connections.LaunchModeTmux,
+		TmuxSession: "prod-main",
+	})
+	if err != nil {
+		t.Fatalf("save remote profile: %v", err)
+	}
+
+	first, err := runtime.CreateRemoteTerminalTabFromProfile(context.Background(), "Prod Shell", profile.ID, "prod-main")
+	if err != nil {
+		t.Fatalf("first CreateRemoteTerminalTabFromProfile error: %v", err)
+	}
+	if first.Reused {
+		t.Fatalf("expected first tmux open to create a new session")
+	}
+
+	second, err := runtime.CreateRemoteTerminalTabFromProfile(context.Background(), "Prod Shell", profile.ID, "prod-main")
+	if err != nil {
+		t.Fatalf("second CreateRemoteTerminalTabFromProfile error: %v", err)
+	}
+	if !second.Reused {
+		t.Fatalf("expected same tmux session to reuse running remote widget")
+	}
+
+	third, err := runtime.CreateRemoteTerminalTabFromProfile(context.Background(), "Prod Shell", profile.ID, "prod-jobs")
+	if err != nil {
+		t.Fatalf("third CreateRemoteTerminalTabFromProfile error: %v", err)
+	}
+	if third.Reused {
+		t.Fatalf("expected different tmux session override to create a new remote widget")
+	}
+	if launched.Connection.SSH == nil || launched.Connection.SSH.TmuxSession != "prod-jobs" {
+		t.Fatalf("expected latest launch to use override tmux session, got %#v", launched.Connection.SSH)
 	}
 }
 

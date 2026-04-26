@@ -33,8 +33,11 @@
   - `./scripts/go.sh test ./core/connections ./core/transport/httpapi -run 'TestImportSSHConfig|TestRemoteProfilesImportSSHConfig|TestRemoteProfilesEndpointsListSaveAndDelete' -count=1`
   - `./scripts/go.sh test ./core/connections -count=1`
   - `./scripts/go.sh test ./core/connections ./core/terminal ./core/app ./core/transport/httpapi -run 'TestBuildCommandAddsTmuxResumeCommandForSSHProfiles|TestRemoteProfilesCanBeSavedListedAndDeleted|TestRemoteProfilesNormalizeTmuxLaunchPolicy|TestCreateRemoteTerminalTabFromProfileCarriesTmuxLaunchPolicy|TestRemoteProfilesEndpointsListSaveAndDelete' -count=1`
+  - `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestCreateRemoteTerminalTabFromProfileUsesTmuxSessionOverrideForReuse|TestRemoteProfilesCreateSessionReturnsNotFoundForMissingProfile' -count=1`
+  - `./scripts/go.sh test ./core/app ./core/transport/httpapi -count=1`
   - `./scripts/go.sh test ./core/transport/httpapi ./core/app -run 'TestConnectionsEndpointsListSelectAndSave|TestRemoteProfilesEndpointsListSaveAndDelete|TestObserveConnectionLaunchMarksLaunch(Failed|Succeeded)' -count=1`
   - `npm --prefix frontend run test -- src/features/remote/api/client.test.ts src/widgets/settings/remote-profiles-settings-section.test.tsx --reporter=verbose`
+  - `npm --prefix frontend run test -- src/features/remote/api/client.test.ts src/widgets/settings/remote-profiles-settings-section.test.tsx src/app/open-remote-profile-session.test.ts --reporter=verbose`
   - `frontend/node_modules/.bin/vitest run src/widgets/settings/remote-profiles-settings-section.test.tsx --reporter=verbose`
   - `npm --prefix frontend run test -- src/widgets/settings/remote-profiles-settings-section.test.tsx --reporter=verbose`
   - `npm --prefix frontend run lint:active`
@@ -42,6 +45,7 @@
   - `npm run test:ui -- --reporter=line e2e/shell-workspace.spec.ts --grep "remote settings surface normalized preflight failures and default-target state"`
   - `npm run test:ui -- --reporter=line e2e/shell-workspace.spec.ts --grep "remote settings persist tmux resume launch policy"` (attempted; Playwright hung in teardown after the test body ran, so this path is not claimed as a clean pass yet)
   - `npm run test:ui -- --reporter=line e2e/shell-workspace.spec.ts --grep "remote settings browse tmux sessions and load one into the profile editor"` (attempted; Playwright hung in teardown after the test body ran, so this path is not claimed as a clean pass yet)
+  - `npm run test:ui -- --reporter=line e2e/shell-workspace.spec.ts --grep "remote settings open shell creates a visible terminal panel in the active workspace|remote settings resume discovered tmux session opens that session in the workspace"` (attempted; Playwright hung after starting the test body, so these paths are not claimed as clean passes yet)
 - External reachability/auth probe example:
   - `ssh -o BatchMode=yes -o ConnectTimeout=5 -p 22 192.168.1.2 exit`
 - Runtime/API checks in validation runs:
@@ -60,9 +64,10 @@
   or two-way synchronization back to SSH config files.
 - Advanced SSH auth/topology flows and long-lived remote-controller semantics remain out of current scope and move to `Phase 5`.
 - tmux resume currently means "profile-owned attach-or-create on launch".
-  There is now a narrow profile-scoped session discovery list in settings,
-  but there is still no separate tmux session catalog, broader named-session
-  browser, or detached-session manager UI on top of that backend path.
+  There is now a narrow profile-scoped session discovery list in settings
+  plus direct open/resume actions into the active workspace, but there is
+  still no separate tmux session catalog, broader named-session browser,
+  or detached-session manager UI on top of that backend path.
 
 ## Evidence
 

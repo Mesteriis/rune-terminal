@@ -1,7 +1,8 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { type DockviewApi, type DockviewReadyEvent } from 'dockview-react'
 
 import { type WorkspaceWidgetKindCatalogEntry } from '@/shared/api/workspace'
+import { setActiveDockviewApi } from './dockview-api-registry'
 import { addDockviewWorkspace, selectDockviewWorkspace } from './dockview-workspace.actions'
 import { dockviewWorkspaceClient, type DockviewWorkspaceClient } from './dockview-workspace.client'
 import {
@@ -93,6 +94,8 @@ export function useDockviewWorkspace({
 
   const dockviewPersistenceController = dockviewPersistenceControllerRef.current
 
+  useEffect(() => () => setActiveDockviewApi(null), [])
+
   const restoreWorkspaceSnapshot = (workspaceId: number) => {
     const api = dockviewApiRef.current
 
@@ -127,6 +130,7 @@ export function useDockviewWorkspace({
   const handleDockviewReady = (event: DockviewReadyEvent) => {
     const api = event.api
     dockviewApiRef.current = api
+    setActiveDockviewApi(api)
     dockviewPersistenceController.bind(api)
 
     const readyState = resolveDockviewWorkspaceReadyState({

@@ -23,7 +23,9 @@ Phase status:
 - `Phase 4` is complete: SSH profile lifecycle, `.ssh/config` breadth, and
   operator-facing preflight/launch diagnostics are landed on the active
   remote path.
-- `Phase 5` is the next implementation phase.
+- `Phase 5` is active: grouped terminal sessions plus tmux-backed
+  remote open/resume flows are landed, while broader remote topology
+  work remains.
 - Later phases remain implementation work.
 
 ## Success condition

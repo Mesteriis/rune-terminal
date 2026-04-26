@@ -80,19 +80,21 @@ func (s *Service) StartSession(ctx context.Context, opts LaunchOptions) (State, 
 	}
 
 	state := State{
-		WidgetID:       opts.WidgetID,
-		SessionID:      sessionID,
-		Shell:          resolveShellName(opts),
-		Restored:       opts.Restored,
-		ConnectionID:   opts.Connection.ID,
-		ConnectionName: opts.Connection.Name,
-		ConnectionKind: opts.Connection.Kind,
-		PID:            process.PID(),
-		Status:         StatusRunning,
-		StartedAt:      time.Now().UTC(),
-		CanSendInput:   true,
-		CanInterrupt:   true,
-		WorkingDir:     resolveWorkingDir(opts),
+		WidgetID:          opts.WidgetID,
+		SessionID:         sessionID,
+		Shell:             resolveShellName(opts),
+		Restored:          opts.Restored,
+		ConnectionID:      opts.Connection.ID,
+		ConnectionName:    opts.Connection.Name,
+		ConnectionKind:    opts.Connection.Kind,
+		RemoteLaunchMode:  resolveRemoteLaunchMode(opts),
+		RemoteSessionName: resolveRemoteSessionName(opts),
+		PID:               process.PID(),
+		Status:            StatusRunning,
+		StartedAt:         time.Now().UTC(),
+		CanSendInput:      true,
+		CanInterrupt:      true,
+		WorkingDir:        resolveWorkingDir(opts),
 	}
 
 	sess := &session{
@@ -160,19 +162,21 @@ func (s *Service) CreateSession(ctx context.Context, opts LaunchOptions) (State,
 	}
 
 	state := State{
-		WidgetID:       opts.WidgetID,
-		SessionID:      sessionID,
-		Shell:          resolveShellName(opts),
-		Restored:       opts.Restored,
-		ConnectionID:   opts.Connection.ID,
-		ConnectionName: opts.Connection.Name,
-		ConnectionKind: opts.Connection.Kind,
-		PID:            process.PID(),
-		Status:         StatusRunning,
-		StartedAt:      time.Now().UTC(),
-		CanSendInput:   true,
-		CanInterrupt:   true,
-		WorkingDir:     resolveWorkingDir(opts),
+		WidgetID:          opts.WidgetID,
+		SessionID:         sessionID,
+		Shell:             resolveShellName(opts),
+		Restored:          opts.Restored,
+		ConnectionID:      opts.Connection.ID,
+		ConnectionName:    opts.Connection.Name,
+		ConnectionKind:    opts.Connection.Kind,
+		RemoteLaunchMode:  resolveRemoteLaunchMode(opts),
+		RemoteSessionName: resolveRemoteSessionName(opts),
+		PID:               process.PID(),
+		Status:            StatusRunning,
+		StartedAt:         time.Now().UTC(),
+		CanSendInput:      true,
+		CanInterrupt:      true,
+		WorkingDir:        resolveWorkingDir(opts),
 	}
 
 	sess := &session{
@@ -220,6 +224,20 @@ func resolveWorkingDir(opts LaunchOptions) string {
 		return ""
 	}
 	return opts.WorkingDir
+}
+
+func resolveRemoteLaunchMode(opts LaunchOptions) string {
+	if opts.Connection.Kind != "ssh" || opts.Connection.SSH == nil {
+		return ""
+	}
+	return strings.TrimSpace(opts.Connection.SSH.LaunchMode)
+}
+
+func resolveRemoteSessionName(opts LaunchOptions) string {
+	if opts.Connection.Kind != "ssh" || opts.Connection.SSH == nil {
+		return ""
+	}
+	return strings.TrimSpace(opts.Connection.SSH.TmuxSession)
 }
 
 func normalizeLaunchOptions(opts LaunchOptions) LaunchOptions {

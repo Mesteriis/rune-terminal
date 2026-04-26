@@ -27,19 +27,21 @@ type CreateTerminalTabResult struct {
 }
 
 type CreateRemoteSessionResult struct {
-	TabID        string             `json:"tab_id"`
-	WidgetID     string             `json:"widget_id"`
-	SessionID    string             `json:"session_id"`
-	ProfileID    string             `json:"profile_id"`
-	ConnectionID string             `json:"connection_id"`
-	Reused       bool               `json:"reused"`
-	Workspace    workspace.Snapshot `json:"workspace"`
+	TabID             string             `json:"tab_id"`
+	WidgetID          string             `json:"widget_id"`
+	SessionID         string             `json:"session_id"`
+	ProfileID         string             `json:"profile_id"`
+	ConnectionID      string             `json:"connection_id"`
+	RemoteSessionName string             `json:"remote_session_name,omitempty"`
+	Reused            bool               `json:"reused"`
+	Workspace         workspace.Snapshot `json:"workspace"`
 }
 
 type remoteSessionIdentity struct {
-	TabID     string
-	WidgetID  string
-	SessionID string
+	TabID             string
+	WidgetID          string
+	SessionID         string
+	RemoteSessionName string
 }
 
 type CloseTabResult struct {
@@ -440,41 +442,119 @@ func (r *Runtime) CreateRemoteTerminalTab(ctx context.Context, title string, con
 	return r.CreateTerminalTabWithConnection(ctx, title, connectionID)
 }
 
-func (r *Runtime) CreateRemoteTerminalTabFromProfile(ctx context.Context, title string, profileID string) (CreateRemoteSessionResult, error) {
+func (r *Runtime) CreateRemoteTerminalTabWithProfile(
+	ctx context.Context,
+	title string,
+	profileID string,
+	tmuxSessionOverride string,
+) (CreateTerminalTabResult, terminal.State, error) {
+	title = strings.TrimSpace(title)
+	if title == "" {
+		title = "Remote Shell"
+	}
+	profileID = strings.TrimSpace(profileID)
+	tmuxSessionOverride = strings.TrimSpace(tmuxSessionOverride)
+
+	widgetID := ids.New("term")
+	tabID := ids.New("tab")
+	connection, err := r.connectionForWidget(profileID)
+	if err != nil {
+		_, _, _ = r.Connections.ReportLaunchResult(profileID, err)
+		return CreateTerminalTabResult{}, terminal.State{}, err
+	}
+	if connection.Kind != string(connections.KindSSH) {
+		return CreateTerminalTabResult{}, terminal.State{}, fmt.Errorf("%w: remote terminal requires an ssh connection target", connections.ErrInvalidConnection)
+	}
+	if connection.SSH != nil && tmuxSessionOverride != "" {
+		connection.SSH.TmuxSession = tmuxSessionOverride
+	}
+
+	state, err := r.Terminals.StartSession(ctx, terminal.LaunchOptions{
+		WidgetID:   widgetID,
+		WorkingDir: r.RepoRoot,
+		Connection: connection,
+	})
+	if err != nil {
+		_, _, _ = r.Connections.ReportLaunchResult(profileID, err)
+		return CreateTerminalTabResult{}, terminal.State{}, err
+	}
+	if err := r.observeConnectionLaunch(ctx, widgetID, connection); err != nil {
+		_, _, _ = r.Connections.ReportLaunchResult(profileID, err)
+		_ = r.Terminals.CloseSession(widgetID)
+		return CreateTerminalTabResult{}, terminal.State{}, err
+	}
+	_, _, _ = r.Connections.ReportLaunchResult(profileID, nil)
+
+	nextSnapshot := r.Workspace.AddTerminalTab(
+		workspace.Tab{
+			ID:        tabID,
+			Title:     title,
+			WidgetIDs: []string{widgetID},
+		},
+		workspace.Widget{
+			ID:           widgetID,
+			Kind:         workspace.WidgetKindTerminal,
+			Title:        title,
+			Description:  fmt.Sprintf("%s terminal session", title),
+			TerminalID:   widgetID,
+			ConnectionID: profileID,
+		},
+	)
+	if err := r.persistWorkspaceSnapshot(nextSnapshot); err != nil {
+		_ = r.Terminals.CloseSession(widgetID)
+		return CreateTerminalTabResult{}, terminal.State{}, err
+	}
+
+	return CreateTerminalTabResult{
+		TabID:     tabID,
+		WidgetID:  widgetID,
+		Workspace: nextSnapshot,
+	}, state, nil
+}
+
+func (r *Runtime) CreateRemoteTerminalTabFromProfile(
+	ctx context.Context,
+	title string,
+	profileID string,
+	tmuxSessionOverride string,
+) (CreateRemoteSessionResult, error) {
 	profileID = strings.TrimSpace(profileID)
 	if profileID == "" {
 		return CreateRemoteSessionResult{}, fmt.Errorf("%w: remote profile id is required", connections.ErrInvalidConnection)
 	}
-	if identity, ok := r.findReusableRemoteSession(profileID); ok {
+	tmuxSessionOverride = strings.TrimSpace(tmuxSessionOverride)
+	if identity, ok := r.findReusableRemoteSession(profileID, tmuxSessionOverride); ok {
 		if _, err := r.FocusWidget(identity.WidgetID); err != nil {
 			return CreateRemoteSessionResult{}, err
 		}
 		return CreateRemoteSessionResult{
-			TabID:        identity.TabID,
-			WidgetID:     identity.WidgetID,
-			SessionID:    identity.SessionID,
-			ProfileID:    profileID,
-			ConnectionID: profileID,
-			Reused:       true,
-			Workspace:    r.Workspace.Snapshot(),
+			TabID:             identity.TabID,
+			WidgetID:          identity.WidgetID,
+			SessionID:         identity.SessionID,
+			ProfileID:         profileID,
+			ConnectionID:      profileID,
+			RemoteSessionName: identity.RemoteSessionName,
+			Reused:            true,
+			Workspace:         r.Workspace.Snapshot(),
 		}, nil
 	}
-	created, err := r.CreateRemoteTerminalTab(ctx, title, profileID)
+	created, state, err := r.CreateRemoteTerminalTabWithProfile(ctx, title, profileID, tmuxSessionOverride)
 	if err != nil {
 		return CreateRemoteSessionResult{}, err
 	}
 	return CreateRemoteSessionResult{
-		TabID:        created.TabID,
-		WidgetID:     created.WidgetID,
-		SessionID:    created.WidgetID,
-		ProfileID:    profileID,
-		ConnectionID: profileID,
-		Reused:       false,
-		Workspace:    created.Workspace,
+		TabID:             created.TabID,
+		WidgetID:          created.WidgetID,
+		SessionID:         created.WidgetID,
+		ProfileID:         profileID,
+		ConnectionID:      profileID,
+		RemoteSessionName: state.RemoteSessionName,
+		Reused:            false,
+		Workspace:         created.Workspace,
 	}, nil
 }
 
-func (r *Runtime) findReusableRemoteSession(profileID string) (remoteSessionIdentity, bool) {
+func (r *Runtime) findReusableRemoteSession(profileID string, remoteSessionName string) (remoteSessionIdentity, bool) {
 	snapshot := r.Workspace.Snapshot()
 	widgetTabIndex := make(map[string]string, len(snapshot.Widgets))
 	for _, tab := range snapshot.Tabs {
@@ -493,14 +573,18 @@ func (r *Runtime) findReusableRemoteSession(profileID string) (remoteSessionIden
 		if state.ConnectionKind != string(connections.KindSSH) || state.Status != terminal.StatusRunning {
 			continue
 		}
+		if remoteSessionName != "" && strings.TrimSpace(state.RemoteSessionName) != remoteSessionName {
+			continue
+		}
 		tabID := widgetTabIndex[widget.ID]
 		if tabID == "" {
 			continue
 		}
 		return remoteSessionIdentity{
-			TabID:     tabID,
-			WidgetID:  widget.ID,
-			SessionID: state.SessionID,
+			TabID:             tabID,
+			WidgetID:          widget.ID,
+			SessionID:         state.SessionID,
+			RemoteSessionName: strings.TrimSpace(state.RemoteSessionName),
 		}, true
 	}
 	return remoteSessionIdentity{}, false

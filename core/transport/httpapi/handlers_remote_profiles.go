@@ -69,13 +69,19 @@ func (api *API) handleListRemoteProfileTmuxSessions(w http.ResponseWriter, r *ht
 
 func (api *API) handleCreateRemoteSessionFromProfile(w http.ResponseWriter, r *http.Request) {
 	var payload struct {
-		Title string `json:"title,omitempty"`
+		Title       string `json:"title,omitempty"`
+		TmuxSession string `json:"tmux_session,omitempty"`
 	}
 	if err := decodeJSON(r, &payload); err != nil {
 		writeBadRequest(w, "invalid_request", err)
 		return
 	}
-	result, err := api.runtime.CreateRemoteTerminalTabFromProfile(r.Context(), payload.Title, r.PathValue("profileID"))
+	result, err := api.runtime.CreateRemoteTerminalTabFromProfile(
+		r.Context(),
+		payload.Title,
+		r.PathValue("profileID"),
+		payload.TmuxSession,
+	)
 	if err != nil {
 		writeWorkspaceError(w, err)
 		return

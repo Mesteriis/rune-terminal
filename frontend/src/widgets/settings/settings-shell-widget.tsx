@@ -1,6 +1,7 @@
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { type ReactNode, useEffect, useMemo, useState } from 'react'
 
+import { getActiveDockviewApi } from '@/app/dockview-api-registry'
 import type { AgentProviderView } from '@/features/agent/api/provider-client'
 import { useAgentProviderSettings } from '@/features/agent/model/use-agent-provider-settings'
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
@@ -464,7 +465,7 @@ function TerminalSection() {
 }
 
 function RemoteSection() {
-  return <RemoteProfilesSettingsSection />
+  return <RemoteProfilesSettingsSection dockviewApi={getActiveDockviewApi()} />
 }
 
 function MCPSection() {

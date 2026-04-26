@@ -17,22 +17,24 @@ const (
 )
 
 type State struct {
-	WidgetID       string     `json:"widget_id"`
-	SessionID      string     `json:"session_id"`
-	Shell          string     `json:"shell"`
-	Restored       bool       `json:"restored,omitempty"`
-	StatusDetail   string     `json:"status_detail,omitempty"`
-	ConnectionID   string     `json:"connection_id,omitempty"`
-	ConnectionName string     `json:"connection_name,omitempty"`
-	ConnectionKind string     `json:"connection_kind,omitempty"`
-	PID            int        `json:"pid"`
-	Status         Status     `json:"status"`
-	StartedAt      time.Time  `json:"started_at"`
-	LastOutputAt   *time.Time `json:"last_output_at,omitempty"`
-	ExitCode       *int       `json:"exit_code,omitempty"`
-	CanSendInput   bool       `json:"can_send_input"`
-	CanInterrupt   bool       `json:"can_interrupt"`
-	WorkingDir     string     `json:"working_dir,omitempty"`
+	WidgetID          string     `json:"widget_id"`
+	SessionID         string     `json:"session_id"`
+	Shell             string     `json:"shell"`
+	Restored          bool       `json:"restored,omitempty"`
+	StatusDetail      string     `json:"status_detail,omitempty"`
+	ConnectionID      string     `json:"connection_id,omitempty"`
+	ConnectionName    string     `json:"connection_name,omitempty"`
+	ConnectionKind    string     `json:"connection_kind,omitempty"`
+	RemoteLaunchMode  string     `json:"remote_launch_mode,omitempty"`
+	RemoteSessionName string     `json:"remote_session_name,omitempty"`
+	PID               int        `json:"pid"`
+	Status            Status     `json:"status"`
+	StartedAt         time.Time  `json:"started_at"`
+	LastOutputAt      *time.Time `json:"last_output_at,omitempty"`
+	ExitCode          *int       `json:"exit_code,omitempty"`
+	CanSendInput      bool       `json:"can_send_input"`
+	CanInterrupt      bool       `json:"can_interrupt"`
+	WorkingDir        string     `json:"working_dir,omitempty"`
 }
 
 type OutputChunk struct {

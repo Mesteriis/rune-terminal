@@ -29,6 +29,16 @@ export type RemoteTmuxSession = {
   window_count?: number
 }
 
+export type CreateRemoteProfileSessionResult = {
+  connection_id: string
+  profile_id: string
+  remote_session_name?: string
+  reused: boolean
+  session_id: string
+  tab_id: string
+  widget_id: string
+}
+
 export type SaveRemoteProfilePayload = {
   host: string
   id?: string
@@ -201,4 +211,22 @@ export async function fetchRemoteProfileTmuxSessions(profileID: string) {
   )
 
   return Array.isArray(payload.sessions) ? payload.sessions : []
+}
+
+export async function createRemoteProfileSession(
+  profileID: string,
+  payload?: { title?: string; tmux_session?: string },
+) {
+  const runtimeContext = await resolveRuntimeContext()
+  return requestRemoteJSON<CreateRemoteProfileSessionResult>(
+    runtimeContext,
+    `/api/v1/remote/profiles/${encodeURIComponent(profileID)}/session`,
+    {
+      body: JSON.stringify({
+        title: payload?.title?.trim() || undefined,
+        tmux_session: payload?.tmux_session?.trim() || undefined,
+      }),
+      method: 'POST',
+    },
+  )
 }

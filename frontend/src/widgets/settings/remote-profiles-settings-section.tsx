@@ -1,5 +1,7 @@
+import type { DockviewApi } from 'dockview-react'
 import { useEffect, useMemo, useState } from 'react'
 
+import { openRemoteProfileSession } from '@/app/open-remote-profile-session'
 import {
   checkRemoteProfileConnection,
   deleteRemoteProfile,
@@ -104,7 +106,7 @@ const defaultProfileDraft = {
   user: '',
 }
 
-export function RemoteProfilesSettingsSection() {
+export function RemoteProfilesSettingsSection({ dockviewApi = null }: { dockviewApi?: DockviewApi | null }) {
   const [profiles, setProfiles] = useState<RemoteProfile[]>([])
   const [connectionsSnapshot, setConnectionsSnapshot] = useState<RemoteConnectionsSnapshot>({
     active_connection_id: 'local',
@@ -342,6 +344,38 @@ export function RemoteProfilesSettingsSection() {
     setStatusMessage(`Loaded tmux session ${sessionName} into profile editor.`)
   }
 
+  async function handleOpenProfileShell(profile: RemoteProfile, tmuxSession?: string) {
+    setBusyProfileID(profile.id)
+    setErrorMessage(null)
+    setStatusMessage(null)
+
+    try {
+      const result = await openRemoteProfileSession(dockviewApi, {
+        profileId: profile.id,
+        title: profile.name,
+        tmuxSession,
+      })
+      const targetSession = result.remote_session_name?.trim() || tmuxSession?.trim() || ''
+      if (result.reused) {
+        setStatusMessage(
+          targetSession
+            ? `Resumed ${profile.name} on tmux session ${targetSession}.`
+            : `Focused running remote shell for ${profile.name}.`,
+        )
+      } else {
+        setStatusMessage(
+          targetSession
+            ? `Opened ${profile.name} on tmux session ${targetSession}.`
+            : `Opened remote shell for ${profile.name}.`,
+        )
+      }
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Unable to open remote shell')
+    } finally {
+      setBusyProfileID(null)
+    }
+  }
+
   return (
     <ClearBox style={settingsShellSectionCardStyle}>
       <ClearBox style={settingsShellContentHeaderStyle}>
@@ -552,6 +586,12 @@ export function RemoteProfilesSettingsSection() {
                   >
                     Check
                   </Button>
+                  <Button
+                    disabled={isBusy || isSavingProfile}
+                    onClick={() => void handleOpenProfileShell(profile)}
+                  >
+                    Open shell
+                  </Button>
                   {profile.launch_mode === 'tmux' ? (
                     <Button
                       disabled={isBusy || isSavingProfile || tmuxLoadingProfileID === profile.id}
@@ -594,6 +634,12 @@ export function RemoteProfilesSettingsSection() {
                           {session.attached ? ' · attached' : ' · detached'}
                           {session.window_count ? ` · ${session.window_count} windows` : ''}
                         </Text>
+                        <Button
+                          disabled={isSavingProfile || busyProfileID !== null}
+                          onClick={() => void handleOpenProfileShell(profile, session.name)}
+                        >
+                          Resume session
+                        </Button>
                         <Button
                           disabled={isSavingProfile || busyProfileID !== null}
                           onClick={() => handleUseTmuxSession(profile, session.name)}

@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { openRemoteProfileSession } from '@/app/open-remote-profile-session'
 import {
   checkRemoteProfileConnection,
   deleteRemoteProfile,
@@ -12,6 +13,10 @@ import {
   selectRemoteProfileConnection,
 } from '@/features/remote/api/client'
 import { RemoteProfilesSettingsSection } from './remote-profiles-settings-section'
+
+vi.mock('@/app/open-remote-profile-session', () => ({
+  openRemoteProfileSession: vi.fn(),
+}))
 
 vi.mock('@/features/remote/api/client', () => ({
   checkRemoteProfileConnection: vi.fn(),
@@ -547,6 +552,44 @@ describe('RemoteProfilesSettingsSection', () => {
     expect(screen.getByText('launch:succeeded')).toBeInTheDocument()
   })
 
+  it('opens a remote shell from a saved profile', async () => {
+    vi.mocked(fetchRemoteProfiles).mockResolvedValue([
+      {
+        host: 'prod.example.com',
+        id: 'conn-prod',
+        name: 'Prod',
+        user: 'deploy',
+      },
+    ])
+    vi.mocked(fetchRemoteConnectionsSnapshot).mockResolvedValue({
+      active_connection_id: 'local',
+      connections: [],
+    })
+    vi.mocked(openRemoteProfileSession).mockResolvedValue({
+      connection_id: 'conn-prod',
+      profile_id: 'conn-prod',
+      reused: false,
+      session_id: 'term-remote',
+      tab_id: 'tab-remote',
+      widget_id: 'term-remote',
+    })
+
+    render(<RemoteProfilesSettingsSection />)
+
+    await expect(screen.findByText('Prod')).resolves.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open shell' }))
+
+    await waitFor(() => {
+      expect(openRemoteProfileSession).toHaveBeenCalledWith(null, {
+        profileId: 'conn-prod',
+        title: 'Prod',
+        tmuxSession: undefined,
+      })
+      expect(screen.getByText('Opened remote shell for Prod.')).toBeInTheDocument()
+    })
+  })
+
   it('browses tmux sessions for tmux-backed remote profiles and loads a selected session into edit mode', async () => {
     vi.mocked(fetchRemoteProfiles).mockResolvedValue([
       {
@@ -585,6 +628,57 @@ describe('RemoteProfilesSettingsSection', () => {
       expect(screen.getByRole('checkbox', { name: 'Resume remote shell through tmux' })).toBeChecked()
       expect(screen.getByRole('textbox', { name: 'Remote profile tmux session' })).toHaveValue('prod-jobs')
       expect(screen.getByText('Loaded tmux session prod-jobs into profile editor.')).toBeInTheDocument()
+    })
+  })
+
+  it('resumes a discovered tmux session directly from the profile row', async () => {
+    vi.mocked(fetchRemoteProfiles).mockResolvedValue([
+      {
+        host: 'prod.example.com',
+        id: 'conn-prod',
+        launch_mode: 'tmux',
+        name: 'Prod',
+        tmux_session: 'prod-main',
+        user: 'deploy',
+      },
+    ])
+    vi.mocked(fetchRemoteConnectionsSnapshot).mockResolvedValue({
+      active_connection_id: 'local',
+      connections: [],
+    })
+    vi.mocked(fetchRemoteProfileTmuxSessions).mockResolvedValue([
+      { attached: true, name: 'prod-main', window_count: 2 },
+      { attached: false, name: 'prod-jobs', window_count: 1 },
+    ])
+    vi.mocked(openRemoteProfileSession).mockResolvedValue({
+      connection_id: 'conn-prod',
+      profile_id: 'conn-prod',
+      remote_session_name: 'prod-jobs',
+      reused: false,
+      session_id: 'term-remote',
+      tab_id: 'tab-remote',
+      widget_id: 'term-remote',
+    })
+
+    render(<RemoteProfilesSettingsSection />)
+
+    await expect(screen.findByText('Prod')).resolves.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Browse tmux' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('prod-jobs · detached · 1 windows')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Resume session' })[1]!)
+
+    await waitFor(() => {
+      expect(openRemoteProfileSession).toHaveBeenCalledWith(null, {
+        profileId: 'conn-prod',
+        title: 'Prod',
+        tmuxSession: 'prod-jobs',
+      })
+      expect(screen.getByText('Opened Prod on tmux session prod-jobs.')).toBeInTheDocument()
     })
   })
 

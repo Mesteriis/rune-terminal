@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { resetRuntimeContextCacheForTests } from '@/shared/api/runtime'
 import {
   checkRemoteProfileConnection,
+  createRemoteProfileSession,
   deleteRemoteProfile,
   fetchRemoteConnectionsSnapshot,
   fetchRemoteProfileTmuxSessions,
@@ -352,6 +353,51 @@ describe('remote api client', () => {
     ])
     expect(fetchMock.mock.calls[1]?.[0]).toBe(
       'http://127.0.0.1:8090/api/v1/remote/profiles/conn-prod/tmux-sessions',
+    )
+  })
+
+  it('starts a remote session from a saved profile through the runtime transport', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/repo',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          connection_id: 'conn-prod',
+          profile_id: 'conn-prod',
+          remote_session_name: 'prod-jobs',
+          reused: false,
+          session_id: 'term-remote',
+          tab_id: 'tab-remote',
+          widget_id: 'term-remote',
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      createRemoteProfileSession('conn-prod', {
+        title: 'Prod Shell',
+        tmux_session: 'prod-jobs',
+      }),
+    ).resolves.toEqual({
+      connection_id: 'conn-prod',
+      profile_id: 'conn-prod',
+      remote_session_name: 'prod-jobs',
+      reused: false,
+      session_id: 'term-remote',
+      tab_id: 'tab-remote',
+      widget_id: 'term-remote',
+    })
+    expect(fetchMock.mock.calls[1]?.[0]).toBe(
+      'http://127.0.0.1:8090/api/v1/remote/profiles/conn-prod/session',
     )
   })
 
