@@ -11,6 +11,8 @@ export type TerminalRuntimeState = {
   connection_id?: string
   connection_name?: string
   connection_kind?: string
+  remote_launch_mode?: string
+  remote_session_name?: string
   pid: number
   status: TerminalRuntimeStatus
   started_at: string
@@ -291,6 +293,16 @@ export async function setActiveTerminalSession(widgetID: string, sessionID: stri
         session_id: sessionID,
       }),
       method: 'PUT',
+    },
+  )
+  return normalizeTerminalSnapshot(snapshot)
+}
+
+export async function closeTerminalSession(widgetID: string, sessionID: string) {
+  const snapshot = await requestRuntimeJSON<TerminalSnapshot>(
+    buildTerminalPath(widgetID, `/sessions/${encodeURIComponent(sessionID)}`),
+    {
+      method: 'DELETE',
     },
   )
   return normalizeTerminalSnapshot(snapshot)

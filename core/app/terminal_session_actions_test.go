@@ -180,3 +180,89 @@ func TestCreateAndFocusTerminalSiblingSessionKeepsOneWidgetIdentity(t *testing.T
 		t.Fatalf("expected active state term-main after focus, got %q", focusedSnapshot.State.SessionID)
 	}
 }
+
+func TestCloseTerminalSessionRemovesSiblingAndKeepsWidgetAlive(t *testing.T) {
+	t.Parallel()
+
+	processA := &launchTestProcess{
+		pid:      500,
+		outputCh: make(chan []byte, 1),
+		waitCh:   make(chan struct{}),
+		exitCode: 0,
+	}
+	processB := &launchTestProcess{
+		pid:      600,
+		outputCh: make(chan []byte, 1),
+		waitCh:   make(chan struct{}),
+		exitCode: 0,
+	}
+	launcher := &queueLaunchOptions{
+		processes: []terminal.Process{processA, processB},
+	}
+	runtime := newRestartRuntime(t, launcher)
+
+	connection, err := runtime.connectionForWidget("local")
+	if err != nil {
+		t.Fatalf("connectionForWidget error: %v", err)
+	}
+	if _, err := runtime.Terminals.StartSession(context.Background(), terminal.LaunchOptions{
+		WidgetID:   "term-main",
+		WorkingDir: runtime.RepoRoot,
+		Connection: connection,
+	}); err != nil {
+		t.Fatalf("StartSession error: %v", err)
+	}
+
+	snapshot, err := runtime.CreateTerminalSiblingSession(context.Background(), "term-main")
+	if err != nil {
+		t.Fatalf("CreateTerminalSiblingSession error: %v", err)
+	}
+
+	closedSnapshot, err := runtime.CloseTerminalSession("term-main", snapshot.ActiveSessionID)
+	if err != nil {
+		t.Fatalf("CloseTerminalSession error: %v", err)
+	}
+	if len(closedSnapshot.Sessions) != 1 {
+		t.Fatalf("expected one remaining session, got %d", len(closedSnapshot.Sessions))
+	}
+	if closedSnapshot.ActiveSessionID != "term-main" {
+		t.Fatalf("expected remaining active session term-main, got %q", closedSnapshot.ActiveSessionID)
+	}
+	select {
+	case <-processB.waitCh:
+	default:
+		t.Fatalf("expected sibling process to be closed")
+	}
+}
+
+func TestCloseTerminalSessionRejectsLastRemainingSession(t *testing.T) {
+	t.Parallel()
+
+	process := &launchTestProcess{
+		pid:      700,
+		outputCh: make(chan []byte, 1),
+		waitCh:   make(chan struct{}),
+		exitCode: 0,
+	}
+	launcher := &queueLaunchOptions{
+		processes: []terminal.Process{process},
+	}
+	runtime := newRestartRuntime(t, launcher)
+
+	connection, err := runtime.connectionForWidget("local")
+	if err != nil {
+		t.Fatalf("connectionForWidget error: %v", err)
+	}
+	if _, err := runtime.Terminals.StartSession(context.Background(), terminal.LaunchOptions{
+		WidgetID:   "term-main",
+		WorkingDir: runtime.RepoRoot,
+		Connection: connection,
+	}); err != nil {
+		t.Fatalf("StartSession error: %v", err)
+	}
+
+	_, err = runtime.CloseTerminalSession("term-main", "term-main")
+	if !errors.Is(err, terminal.ErrCannotCloseLastSession) {
+		t.Fatalf("expected terminal.ErrCannotCloseLastSession, got %v", err)
+	}
+}

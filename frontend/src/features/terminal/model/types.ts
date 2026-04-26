@@ -19,6 +19,9 @@ export type TerminalSessionListEntry = {
   sessionId: string
   shellLabel: string
   connectionKind: TerminalDisplayConnectionKind
+  connectionName: string | null
+  remoteLaunchMode: string | null
+  remoteSessionName: string | null
   sessionState: TerminalDisplaySessionState
   statusDetail: string | null
   cwd: string
@@ -47,6 +50,7 @@ export type TerminalSessionView = {
   runtimeState: TerminalRuntimeState | null
   createSession: () => Promise<void>
   focusSession: (sessionID: string) => Promise<void>
+  closeSession: (sessionID: string) => Promise<void>
   sendInputChunk: (text: string) => Promise<void>
   interruptSession: () => Promise<void>
   restartSession: () => Promise<void>

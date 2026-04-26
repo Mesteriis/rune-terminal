@@ -598,6 +598,56 @@ test('terminal widget creates and switches grouped backend sessions through the 
     .toBe('term-side')
 })
 
+test('terminal widget browser filters and closes grouped backend sessions', async ({
+  page,
+  request,
+}) => {
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  await expect
+    .poll(async () => {
+      const snapshot = await fetchTerminalSnapshot(request, 'term-side')
+      return snapshot.state.can_send_input === true && snapshot.state.status === 'running'
+    })
+    .toBe(true)
+
+  await page
+    .getByRole('button', { name: 'Create another terminal session for Workspace shell' })
+    .last()
+    .click()
+
+  await expect
+    .poll(async () => {
+      const snapshot = await fetchTerminalSnapshot(request, 'term-side')
+      return snapshot.sessions && snapshot.sessions.length > 1 ? snapshot.active_session_id : null
+    })
+    .not.toBeNull()
+
+  const snapshotAfterCreate = await fetchTerminalSnapshot(request, 'term-side')
+  const activeSessionID = snapshotAfterCreate.active_session_id
+  expect(activeSessionID).toBeTruthy()
+
+  await page.getByRole('button', { name: 'Browse grouped terminal sessions for Workspace shell' }).last().click()
+  await page.getByRole('textbox', { name: 'Filter grouped terminal sessions' }).fill('local machine')
+  await expect(page.getByRole('button', { name: 'Close terminal session 1 for Workspace shell' }).last()).toBeVisible()
+
+  await page.getByRole('button', { name: 'Close terminal session 1 for Workspace shell' }).last().click()
+
+  await expect
+    .poll(async () => {
+      const snapshot = await fetchTerminalSnapshot(request, 'term-side')
+      return {
+        active_session_id: snapshot.active_session_id,
+        sessions: snapshot.sessions?.length ?? 0,
+      }
+    })
+    .toEqual({
+      active_session_id: activeSessionID,
+      sessions: 1,
+    })
+})
+
 test('terminal tab overflow uses the compact overflow trigger and dropdown path', async ({ page }) => {
   await clearBrowserState(page)
   await page.setViewportSize({ width: 900, height: 900 })

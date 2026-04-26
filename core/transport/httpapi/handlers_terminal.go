@@ -74,6 +74,15 @@ func (api *API) handleSetActiveTerminalSession(w http.ResponseWriter, r *http.Re
 	writeJSON(w, http.StatusOK, snapshot)
 }
 
+func (api *API) handleCloseTerminalSession(w http.ResponseWriter, r *http.Request) {
+	snapshot, err := api.runtime.CloseTerminalSession(r.PathValue("widgetID"), r.PathValue("sessionID"))
+	if err != nil {
+		writeTerminalError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, snapshot)
+}
+
 func (api *API) handleTerminalInterrupt(w http.ResponseWriter, r *http.Request) {
 	widgetID := r.PathValue("widgetID")
 	if err := api.runtime.Terminals.Interrupt(widgetID); err != nil {
@@ -151,7 +160,9 @@ func writeTerminalError(w http.ResponseWriter, err error) {
 		writeNotFound(w, "session_not_found", err.Error())
 	case errors.Is(err, connections.ErrConnectionNotFound):
 		writeNotFound(w, "connection_not_found", err.Error())
-	case errors.Is(err, terminal.ErrCannotSendInput), errors.Is(err, terminal.ErrCannotInterrupt):
+	case errors.Is(err, terminal.ErrCannotSendInput),
+		errors.Is(err, terminal.ErrCannotInterrupt),
+		errors.Is(err, terminal.ErrCannotCloseLastSession):
 		writeBadRequest(w, "invalid_terminal_state", err)
 	default:
 		writeInternalError(w, err)

@@ -566,3 +566,97 @@ func TestTerminalSessionEndpointsCreateAndFocusGroupedSessions(t *testing.T) {
 		t.Fatalf("expected active session term-main, got %q", focused.ActiveSessionID)
 	}
 }
+
+func TestTerminalSessionEndpointClosesGroupedSession(t *testing.T) {
+	t.Parallel()
+
+	processA := &httpTestProcess{
+		outputCh: make(chan []byte, 1),
+		waitCh:   make(chan struct{}),
+	}
+	processB := &httpTestProcess{
+		outputCh: make(chan []byte, 1),
+		waitCh:   make(chan struct{}),
+	}
+	launcher := &httpQueueLauncher{
+		processes: []terminal.Process{processA, processB},
+	}
+
+	tempDir := t.TempDir()
+	policyStore, err := policy.NewStore(filepath.Join(tempDir, "policy.json"), "/workspace/repo")
+	if err != nil {
+		t.Fatalf("NewStore error: %v", err)
+	}
+	auditLog, err := audit.NewLog(filepath.Join(tempDir, "audit.jsonl"))
+	if err != nil {
+		t.Fatalf("NewLog error: %v", err)
+	}
+	agentStore, err := agent.NewStore(filepath.Join(tempDir, "agent.json"))
+	if err != nil {
+		t.Fatalf("NewStore error: %v", err)
+	}
+	registry := toolruntime.NewRegistry()
+	runtime := &app.Runtime{
+		RepoRoot:  "/workspace/repo",
+		Workspace: workspace.NewService(workspace.BootstrapDefault()),
+		Terminals: terminal.NewService(launcher),
+		Agent:     agentStore,
+		Policy:    policyStore,
+		Audit:     auditLog,
+		Registry:  registry,
+		Connections: func() *connections.Service {
+			store, storeErr := connections.NewService(filepath.Join(tempDir, "connections.json"))
+			if storeErr != nil {
+				t.Fatalf("connections store: %v", storeErr)
+			}
+			return store
+		}(),
+	}
+	runtime.Executor = toolruntime.NewExecutor(runtime.Registry, runtime.Policy, runtime.Audit)
+
+	if _, err := runtime.Terminals.StartSession(context.Background(), terminal.LaunchOptions{
+		WidgetID:   "term-main",
+		WorkingDir: runtime.RepoRoot,
+		Connection: terminal.ConnectionSpec{ID: "local", Name: "Local Machine", Kind: "local"},
+	}); err != nil {
+		t.Fatalf("StartSession error: %v", err)
+	}
+
+	if _, err := runtime.CreateTerminalSiblingSession(context.Background(), "term-main"); err != nil {
+		t.Fatalf("CreateTerminalSiblingSession error: %v", err)
+	}
+	snapshotBeforeClose, err := runtime.TerminalSnapshot("term-main", 0)
+	if err != nil {
+		t.Fatalf("TerminalSnapshot error: %v", err)
+	}
+	if len(snapshotBeforeClose.Sessions) != 2 {
+		t.Fatalf("expected two sessions before close, got %d", len(snapshotBeforeClose.Sessions))
+	}
+	sessionToClose := snapshotBeforeClose.ActiveSessionID
+
+	handler := NewHandler(runtime, testAuthToken)
+
+	closeRecorder := httptest.NewRecorder()
+	closeReq := httptest.NewRequest(
+		http.MethodDelete,
+		"/api/v1/terminal/term-main/sessions/"+sessionToClose,
+		nil,
+	)
+	closeReq.Header.Set("Authorization", "Bearer "+testAuthToken)
+	handler.ServeHTTP(closeRecorder, closeReq)
+
+	if closeRecorder.Code != http.StatusOK {
+		t.Fatalf("expected 200 close, got %d (%s)", closeRecorder.Code, closeRecorder.Body.String())
+	}
+
+	var closed terminal.Snapshot
+	if err := json.Unmarshal(closeRecorder.Body.Bytes(), &closed); err != nil {
+		t.Fatalf("Unmarshal close snapshot error: %v", err)
+	}
+	if len(closed.Sessions) != 1 {
+		t.Fatalf("expected one remaining session after close, got %d", len(closed.Sessions))
+	}
+	if closed.ActiveSessionID != "term-main" {
+		t.Fatalf("expected active session term-main after close, got %q", closed.ActiveSessionID)
+	}
+}

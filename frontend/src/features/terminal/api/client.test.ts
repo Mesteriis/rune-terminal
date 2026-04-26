@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
+  closeTerminalSession,
   closeTerminalTab,
   connectTerminalStream,
   createSplitTerminalWidget,
@@ -228,6 +229,74 @@ describe('terminal api client', () => {
     })
 
     expect(fetchMock.mock.calls[1]?.[0]).toBe('http://127.0.0.1:8090/api/v1/terminal/term-pve/diagnostics')
+  })
+
+  it('closes a grouped terminal session through the runtime transport', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          active_session_id: 'term-main',
+          state: {
+            widget_id: 'term-main',
+            session_id: 'term-main',
+            shell: '/bin/zsh',
+            status: 'running',
+            pid: 4242,
+            started_at: '2026-04-26T09:00:00Z',
+            can_send_input: true,
+            can_interrupt: true,
+            working_dir: '/repo',
+            connection_id: 'local',
+            connection_name: 'Local Machine',
+            connection_kind: 'local',
+          },
+          chunks: [],
+          next_seq: 1,
+          sessions: [
+            {
+              widget_id: 'term-main',
+              session_id: 'term-main',
+              shell: '/bin/zsh',
+              status: 'running',
+              pid: 4242,
+              started_at: '2026-04-26T09:00:00Z',
+              can_send_input: true,
+              can_interrupt: true,
+              working_dir: '/repo',
+              connection_id: 'local',
+              connection_name: 'Local Machine',
+              connection_kind: 'local',
+            },
+          ],
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(closeTerminalSession('term-main', 'sess-2')).resolves.toMatchObject({
+      active_session_id: 'term-main',
+      sessions: [
+        expect.objectContaining({
+          session_id: 'term-main',
+        }),
+      ],
+    })
+    expect(fetchMock.mock.calls[1]?.[0]).toBe(
+      'http://127.0.0.1:8090/api/v1/terminal/term-main/sessions/sess-2',
+    )
+    expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({
+      method: 'DELETE',
+    })
   })
 
   it('posts input, interrupt and restart requests to the backend contract', async () => {

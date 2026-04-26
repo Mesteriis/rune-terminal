@@ -1,5 +1,5 @@
 import { LoaderCircle, Plus, RotateCcw, Sparkles, Square } from 'lucide-react'
-import { useCallback, useState, useRef } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 
 import { fetchTerminalDiagnostics } from '@/features/terminal/api/client'
 import { useTerminalPreferences } from '@/features/terminal/model/use-terminal-preferences'
@@ -23,6 +23,13 @@ import {
   terminalWidgetHeaderActionsStyle,
   terminalWidgetHeaderRowStyle,
   terminalWidgetRootStyle,
+  terminalWidgetSessionBrowserFilterStyle,
+  terminalWidgetSessionBrowserListStyle,
+  terminalWidgetSessionBrowserStyle,
+  terminalWidgetSessionCardActionsStyle,
+  terminalWidgetSessionCardHeaderStyle,
+  terminalWidgetSessionCardMetaRowStyle,
+  terminalWidgetSessionCardStyle,
   terminalWidgetSessionButtonActiveStyle,
   terminalWidgetSessionButtonStyle,
   terminalWidgetSessionMetaStyle,
@@ -48,8 +55,10 @@ export function TerminalWidget({
   const terminalSurfaceRef = useRef<TerminalSurfaceHandle | null>(null)
   const { cursorBlink, cursorStyle, fontSize, lineHeight, scrollback, themeMode } = useTerminalPreferences()
   const [isExplainAndFixPending, setIsExplainAndFixPending] = useState(false)
+  const [isSessionBrowserOpen, setIsSessionBrowserOpen] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [rendererMode, setRendererMode] = useState<'default' | 'webgl'>('default')
+  const [sessionFilterQuery, setSessionFilterQuery] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResult, setSearchResult] = useState<TerminalSearchResult | null>(null)
   const terminalSession = useTerminalSession({
@@ -57,6 +66,25 @@ export function TerminalWidget({
     title,
   })
   const groupedSessions = terminalSession.sessions ?? []
+  const visibleGroupedSessions = useMemo(() => {
+    const filter = sessionFilterQuery.trim().toLowerCase()
+
+    if (filter === '') {
+      return groupedSessions
+    }
+
+    return groupedSessions.filter((session, index) =>
+      [
+        `session ${index + 1}`,
+        session.cwd,
+        session.shellLabel,
+        session.sessionState,
+        session.connectionName ?? '',
+        session.remoteSessionName ?? '',
+        session.remoteLaunchMode ?? '',
+      ].some((field) => field.toLowerCase().includes(filter)),
+    )
+  }, [groupedSessions, sessionFilterQuery])
   const handleCopy = useCallback(async () => {
     await terminalSurfaceRef.current?.copySelection()
   }, [])
@@ -178,6 +206,11 @@ export function TerminalWidget({
   const RestartIcon = terminalSession.isRestarting ? LoaderCircle : RotateCcw
   const InterruptIcon = terminalSession.isInterrupting ? LoaderCircle : Square
   const isExplainAndFixDisabled = !canExplainAndFix || isExplainAndFixPending
+  const isSessionMutationDisabled =
+    terminalSession.isLoading ||
+    terminalSession.isCreatingSession ||
+    terminalSession.isInterrupting ||
+    terminalSession.isRestarting
 
   return (
     <RunaDomScopeProvider component="terminal-widget" widget={hostId}>
@@ -216,6 +249,22 @@ export function TerminalWidget({
                     <Plus size={13} strokeWidth={1.8} />
                     {terminalSession.isCreatingSession ? 'Creating…' : 'New session'}
                   </Button>
+                  {groupedSessions.length > 1 ? (
+                    <Button
+                      aria-label={`Browse grouped terminal sessions for ${title}`}
+                      onClick={() => {
+                        setIsSessionBrowserOpen((currentValue) => !currentValue)
+                        if (isSessionBrowserOpen) {
+                          setSessionFilterQuery('')
+                        }
+                      }}
+                      runaComponent="terminal-widget-browse-sessions"
+                      style={terminalWidgetAiActionButtonStyle}
+                      title="Inspect, filter, focus, or close grouped sessions in this terminal widget"
+                    >
+                      {isSessionBrowserOpen ? 'Hide sessions' : 'Browse sessions'}
+                    </Button>
+                  ) : null}
                   <Button
                     aria-label={`Explain and fix the latest terminal issue for ${title}`}
                     disabled={isExplainAndFixDisabled}
@@ -334,6 +383,79 @@ export function TerminalWidget({
                   </span>
                 </Button>
               ))}
+            </ClearBox>
+          ) : null}
+          {groupedSessions.length > 1 && isSessionBrowserOpen ? (
+            <ClearBox
+              runaComponent="terminal-widget-session-browser"
+              style={terminalWidgetSessionBrowserStyle}
+            >
+              <input
+                aria-label="Filter grouped terminal sessions"
+                onChange={(event) => setSessionFilterQuery(event.target.value)}
+                placeholder="Filter sessions by cwd, shell, or tmux target"
+                style={terminalWidgetSessionBrowserFilterStyle}
+                value={sessionFilterQuery}
+              />
+              <ClearBox
+                runaComponent="terminal-widget-session-browser-list"
+                style={terminalWidgetSessionBrowserListStyle}
+              >
+                {visibleGroupedSessions.map((session, index) => (
+                  <ClearBox
+                    key={session.sessionId}
+                    runaComponent="terminal-widget-session-card"
+                    style={terminalWidgetSessionCardStyle}
+                  >
+                    <ClearBox style={terminalWidgetSessionCardHeaderStyle}>
+                      <strong>{`Session ${groupedSessions.findIndex((item) => item.sessionId === session.sessionId) + 1}`}</strong>
+                      <span style={terminalWidgetSessionMetaStyle}>
+                        {session.isActive ? 'active' : session.sessionState}
+                      </span>
+                    </ClearBox>
+                    <span>{session.cwd}</span>
+                    <ClearBox style={terminalWidgetSessionCardMetaRowStyle}>
+                      <span style={terminalWidgetSessionMetaStyle}>{session.shellLabel}</span>
+                      <span style={terminalWidgetSessionMetaStyle}>
+                        {session.connectionKind === 'ssh' ? 'SSH' : 'Local'}
+                      </span>
+                      {session.connectionName ? (
+                        <span style={terminalWidgetSessionMetaStyle}>{session.connectionName}</span>
+                      ) : null}
+                      {session.remoteSessionName ? (
+                        <span
+                          style={terminalWidgetSessionMetaStyle}
+                        >{`tmux:${session.remoteSessionName}`}</span>
+                      ) : null}
+                    </ClearBox>
+                    <ClearBox style={terminalWidgetSessionCardActionsStyle}>
+                      <Button
+                        aria-label={`Focus terminal session ${index + 1} from browser for ${title}`}
+                        disabled={session.isActive || isSessionMutationDisabled}
+                        onClick={() => {
+                          void terminalSession.focusSession(session.sessionId)
+                        }}
+                      >
+                        Focus
+                      </Button>
+                      <Button
+                        aria-label={`Close terminal session ${index + 1} for ${title}`}
+                        disabled={groupedSessions.length <= 1 || isSessionMutationDisabled}
+                        onClick={() => {
+                          void terminalSession.closeSession(session.sessionId)
+                        }}
+                      >
+                        Close
+                      </Button>
+                    </ClearBox>
+                  </ClearBox>
+                ))}
+                {visibleGroupedSessions.length === 0 ? (
+                  <span style={terminalWidgetSessionMetaStyle}>
+                    No grouped sessions match the current filter.
+                  </span>
+                ) : null}
+              </ClearBox>
             </ClearBox>
           ) : null}
           <ClearBox runaComponent="terminal-widget-toolbar-row" style={terminalWidgetToolbarRowStyle}>

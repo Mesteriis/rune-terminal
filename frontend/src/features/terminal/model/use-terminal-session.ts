@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from 'react'
 
 import {
+  closeTerminalSession,
   connectTerminalStream,
   createTerminalSession,
   fetchTerminalSnapshot,
@@ -21,7 +22,7 @@ import type {
 
 type TerminalSessionStaticView = Omit<
   TerminalSessionView,
-  'createSession' | 'focusSession' | 'interruptSession' | 'restartSession' | 'sendInputChunk'
+  'closeSession' | 'createSession' | 'focusSession' | 'interruptSession' | 'restartSession' | 'sendInputChunk'
 >
 
 type TerminalSessionRecordState = {
@@ -199,6 +200,9 @@ function buildTerminalSessionList(
     sessionId: runtimeState.session_id,
     shellLabel: formatShellLabel(runtimeState.shell, runtimeState.connection_kind),
     connectionKind: mapConnectionKind(runtimeState.connection_kind),
+    connectionName: runtimeState.connection_name?.trim() || null,
+    remoteLaunchMode: runtimeState.remote_launch_mode?.trim() || null,
+    remoteSessionName: runtimeState.remote_session_name?.trim() || null,
     sessionState: mapSessionState(runtimeState.status, false, true),
     statusDetail: runtimeState.status_detail?.trim() ?? null,
     cwd: getTerminalWorkingLabel(seed, runtimeState),
@@ -618,8 +622,49 @@ export function useTerminalSession(seed: TerminalSessionSeed) {
     [seed.runtimeWidgetId],
   )
 
+  const closeSessionForWidget = useCallback(
+    async (sessionID: string) => {
+      const record = getTerminalSessionRecord(seed.runtimeWidgetId)
+      const sessionCount = record.state.snapshot?.sessions?.length ?? 0
+
+      if (
+        sessionID.trim() === '' ||
+        sessionCount <= 1 ||
+        record.state.isCreatingSession ||
+        record.state.isInterrupting ||
+        record.state.isRestarting
+      ) {
+        return
+      }
+
+      record.state = {
+        ...record.state,
+        error: null,
+        isLoading: true,
+      }
+      notifyTerminalSessionRecord(record)
+
+      try {
+        await closeTerminalSession(seed.runtimeWidgetId, sessionID)
+        await reloadTerminalSessionRecord(record)
+      } catch (error) {
+        if (!isActiveTerminalSessionRecord(record)) {
+          return
+        }
+        record.state = {
+          ...record.state,
+          error: toTerminalErrorMessage(error, `Unable to close terminal session ${sessionID}.`),
+          isLoading: false,
+        }
+        notifyTerminalSessionRecord(record)
+      }
+    },
+    [seed.runtimeWidgetId],
+  )
+
   return {
     ...sessionView,
+    closeSession: closeSessionForWidget,
     createSession: createSessionForWidget,
     focusSession,
     interruptSession,

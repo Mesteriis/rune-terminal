@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
+  closeTerminalSession,
   connectTerminalStream,
   createTerminalSession,
   fetchTerminalSnapshot,
@@ -23,6 +24,7 @@ vi.mock('@/features/terminal/api/client', async () => {
   return {
     ...actual,
     connectTerminalStream: vi.fn(),
+    closeTerminalSession: vi.fn(),
     createTerminalSession: vi.fn(),
     fetchTerminalSnapshot: vi.fn(),
     interruptTerminal: vi.fn(),
@@ -590,5 +592,153 @@ describe('useTerminalSession', () => {
     })
     expect(setActiveTerminalSession).toHaveBeenCalledWith('term-main', 'term-main')
     expect(refreshedStreamClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('closes a sibling terminal session and reloads the grouped snapshot', async () => {
+    vi.mocked(fetchTerminalSnapshot)
+      .mockResolvedValueOnce({
+        active_session_id: 'sess-2',
+        state: {
+          widget_id: 'term-main',
+          session_id: 'sess-2',
+          shell: '/bin/zsh',
+          status: 'running',
+          pid: 4243,
+          started_at: '2026-04-26T09:05:00Z',
+          can_send_input: true,
+          can_interrupt: true,
+          working_dir: '/repo',
+          connection_id: 'local',
+          connection_name: 'Local Machine',
+          connection_kind: 'local',
+        },
+        chunks: [],
+        next_seq: 1,
+        sessions: [
+          {
+            widget_id: 'term-main',
+            session_id: 'term-main',
+            shell: '/bin/zsh',
+            status: 'running',
+            pid: 4242,
+            started_at: '2026-04-26T09:00:00Z',
+            can_send_input: true,
+            can_interrupt: true,
+            working_dir: '/repo',
+            connection_id: 'local',
+            connection_name: 'Local Machine',
+            connection_kind: 'local',
+          },
+          {
+            widget_id: 'term-main',
+            session_id: 'sess-2',
+            shell: '/bin/zsh',
+            status: 'running',
+            pid: 4243,
+            started_at: '2026-04-26T09:05:00Z',
+            can_send_input: true,
+            can_interrupt: true,
+            working_dir: '/repo',
+            connection_id: 'local',
+            connection_name: 'Local Machine',
+            connection_kind: 'local',
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        active_session_id: 'term-main',
+        state: {
+          widget_id: 'term-main',
+          session_id: 'term-main',
+          shell: '/bin/zsh',
+          status: 'running',
+          pid: 4242,
+          started_at: '2026-04-26T09:00:00Z',
+          can_send_input: true,
+          can_interrupt: true,
+          working_dir: '/repo',
+          connection_id: 'local',
+          connection_name: 'Local Machine',
+          connection_kind: 'local',
+        },
+        chunks: [],
+        next_seq: 1,
+        sessions: [
+          {
+            widget_id: 'term-main',
+            session_id: 'term-main',
+            shell: '/bin/zsh',
+            status: 'running',
+            pid: 4242,
+            started_at: '2026-04-26T09:00:00Z',
+            can_send_input: true,
+            can_interrupt: true,
+            working_dir: '/repo',
+            connection_id: 'local',
+            connection_name: 'Local Machine',
+            connection_kind: 'local',
+          },
+        ],
+      })
+    vi.mocked(connectTerminalStream).mockResolvedValue({
+      close: vi.fn(),
+      done: Promise.resolve(),
+    })
+    vi.mocked(closeTerminalSession).mockResolvedValue({
+      active_session_id: 'term-main',
+      state: {
+        widget_id: 'term-main',
+        session_id: 'term-main',
+        shell: '/bin/zsh',
+        status: 'running',
+        pid: 4242,
+        started_at: '2026-04-26T09:00:00Z',
+        can_send_input: true,
+        can_interrupt: true,
+        working_dir: '/repo',
+        connection_id: 'local',
+        connection_name: 'Local Machine',
+        connection_kind: 'local',
+      },
+      chunks: [],
+      next_seq: 1,
+      sessions: [
+        {
+          widget_id: 'term-main',
+          session_id: 'term-main',
+          shell: '/bin/zsh',
+          status: 'running',
+          pid: 4242,
+          started_at: '2026-04-26T09:00:00Z',
+          can_send_input: true,
+          can_interrupt: true,
+          working_dir: '/repo',
+          connection_id: 'local',
+          connection_name: 'Local Machine',
+          connection_kind: 'local',
+        },
+      ],
+    })
+
+    const { result } = renderHook(() =>
+      useTerminalSession({
+        runtimeWidgetId: 'term-main',
+        title: 'Main terminal',
+      }),
+    )
+
+    await waitFor(() => {
+      expect(result.current.sessions).toHaveLength(2)
+    })
+
+    await act(async () => {
+      await result.current.closeSession('sess-2')
+    })
+
+    expect(closeTerminalSession).toHaveBeenCalledWith('term-main', 'sess-2')
+    await waitFor(() => {
+      expect(result.current.sessions).toHaveLength(1)
+      expect(result.current.activeSessionId).toBe('term-main')
+    })
   })
 })

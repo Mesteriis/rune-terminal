@@ -374,6 +374,7 @@ describe('TerminalWidget', () => {
 
   it('shows a grouped session rail and switches sessions through the terminal hook', async () => {
     const createSessionMock = vi.fn(async () => undefined)
+    const closeSessionMock = vi.fn(async () => undefined)
     const focusSessionMock = vi.fn(async () => undefined)
 
     vi.mocked(useTerminalSession).mockReturnValue({
@@ -389,6 +390,9 @@ describe('TerminalWidget', () => {
           sessionId: 'term-main',
           shellLabel: 'zsh',
           connectionKind: 'local',
+          connectionName: 'Local Machine',
+          remoteLaunchMode: null,
+          remoteSessionName: null,
           sessionState: 'running',
           statusDetail: null,
           cwd: '/repo',
@@ -409,6 +413,9 @@ describe('TerminalWidget', () => {
           sessionId: 'sess-2',
           shellLabel: 'zsh',
           connectionKind: 'local',
+          connectionName: 'Local Machine',
+          remoteLaunchMode: null,
+          remoteSessionName: null,
           sessionState: 'running',
           statusDetail: null,
           cwd: '/repo',
@@ -446,6 +453,7 @@ describe('TerminalWidget', () => {
         can_interrupt: true,
         working_dir: '/repo',
       },
+      closeSession: closeSessionMock,
       createSession: createSessionMock,
       focusSession: focusSessionMock,
       interruptSession: vi.fn(),
@@ -492,10 +500,18 @@ describe('TerminalWidget', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Create another terminal session for Main terminal' }))
     fireEvent.click(screen.getByRole('button', { name: 'Focus terminal session 1 for Main terminal' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Browse grouped terminal sessions for Main terminal' }),
+    )
+    fireEvent.change(screen.getByRole('textbox', { name: 'Filter grouped terminal sessions' }), {
+      target: { value: 'local machine' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Close terminal session 1 for Main terminal' }))
 
     await waitFor(() => {
       expect(createSessionMock).toHaveBeenCalledTimes(1)
       expect(focusSessionMock).toHaveBeenCalledWith('term-main')
+      expect(closeSessionMock).toHaveBeenCalledWith('term-main')
     })
   })
 })

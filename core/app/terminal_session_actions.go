@@ -131,6 +131,26 @@ func (r *Runtime) FocusTerminalSession(widgetID string, sessionID string) (termi
 	return r.TerminalSnapshot(widgetID, 0)
 }
 
+func (r *Runtime) CloseTerminalSession(widgetID string, sessionID string) (terminal.Snapshot, error) {
+	if _, err := r.findWorkspaceWidget(widgetID); err != nil {
+		return terminal.Snapshot{}, err
+	}
+
+	snapshot, err := r.TerminalSnapshot(widgetID, 0)
+	if err != nil {
+		return terminal.Snapshot{}, err
+	}
+	if len(snapshot.Sessions) <= 1 {
+		return terminal.Snapshot{}, terminal.ErrCannotCloseLastSession
+	}
+
+	if err := r.Terminals.CloseWidgetSession(widgetID, sessionID); err != nil {
+		return terminal.Snapshot{}, err
+	}
+
+	return r.TerminalSnapshot(widgetID, 0)
+}
+
 func (r *Runtime) findWorkspaceWidget(widgetID string) (workspace.Widget, error) {
 	if r.Workspace == nil {
 		return workspace.Widget{}, fmt.Errorf("%w: %s", terminal.ErrWidgetNotFound, widgetID)

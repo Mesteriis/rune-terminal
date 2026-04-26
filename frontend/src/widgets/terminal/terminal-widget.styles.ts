@@ -49,6 +49,60 @@ export const terminalWidgetSessionRailStyle: React.CSSProperties = {
   borderBottom: '1px solid var(--runa-terminal-surface-border, var(--color-border-subtle))',
 }
 
+export const terminalWidgetSessionBrowserStyle: React.CSSProperties = {
+  display: 'grid',
+  gap: '0.42rem',
+  padding: '0 0.78rem 0.58rem',
+  borderBottom: '1px solid var(--runa-terminal-surface-border, var(--color-border-subtle))',
+}
+
+export const terminalWidgetSessionBrowserFilterStyle: React.CSSProperties = {
+  minHeight: '28px',
+  padding: '0 0.62rem',
+  border: '1px solid var(--runa-terminal-surface-border, var(--color-border-subtle))',
+  borderRadius: 'var(--radius-sm)',
+  background:
+    'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 72%, transparent)',
+  color: 'var(--color-text-primary)',
+}
+
+export const terminalWidgetSessionBrowserListStyle: React.CSSProperties = {
+  display: 'grid',
+  gap: '0.32rem',
+}
+
+export const terminalWidgetSessionCardStyle: React.CSSProperties = {
+  display: 'grid',
+  gap: '0.18rem',
+  padding: '0.52rem 0.62rem',
+  border: '1px solid var(--runa-terminal-surface-border, var(--color-border-subtle))',
+  borderRadius: 'var(--radius-sm)',
+  background:
+    'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 78%, transparent)',
+}
+
+export const terminalWidgetSessionCardHeaderStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: '0.5rem',
+  flexWrap: 'wrap',
+}
+
+export const terminalWidgetSessionCardMetaRowStyle: React.CSSProperties = {
+  display: 'flex',
+  gap: '0.32rem',
+  flexWrap: 'wrap',
+  alignItems: 'center',
+}
+
+export const terminalWidgetSessionCardActionsStyle: React.CSSProperties = {
+  display: 'flex',
+  gap: '0.32rem',
+  flexWrap: 'wrap',
+  alignItems: 'center',
+}
+
 export const terminalWidgetSessionButtonStyle: React.CSSProperties = {
   minHeight: '30px',
   padding: '0.34rem 0.54rem',

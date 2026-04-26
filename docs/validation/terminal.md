@@ -53,8 +53,10 @@
       `GET /api/v1/terminal/{widgetID}` returns `active_session_id` plus grouped `sessions[]`,
       `POST /api/v1/terminal/{widgetID}/sessions` creates a sibling session and makes it active,
       `PUT /api/v1/terminal/{widgetID}/sessions/active` switches the active session explicitly,
-      and the widget renders a compact session rail once more than one session exists
+      `DELETE /api/v1/terminal/{widgetID}/sessions/{sessionID}` closes an individual grouped session while preserving the widget,
+      and the widget now renders both a compact session rail and a richer filterable session browser once more than one session exists
     - grouped-session switching rehydrates the widget snapshot and reconnects the SSE stream against the newly active backend session instead of leaving the UI attached to stale output
+    - grouped-session browser actions can now focus or close individual sibling sessions without collapsing the whole terminal widget/panel
   - the shell settings modal now exposes a backend-owned `Terminal` settings slice instead of a placeholder:
     - current terminal font size is visible in `Settings -> Terminal`
     - current terminal line height is visible in `Settings -> Terminal`
@@ -91,6 +93,8 @@
   - creates another runtime-backed session inside the same terminal widget group
 - `PUT /api/v1/terminal/{widgetID}/sessions/active`
   - explicitly switches the active runtime session inside the same widget group
+- `DELETE /api/v1/terminal/{widgetID}/sessions/{sessionID}`
+  - explicitly closes one grouped runtime session while keeping the terminal widget alive as long as another grouped session remains
 - `GET /api/v1/terminal/{widgetID}/diagnostics`
   - used by the visible `Explain & fix` action to fetch backend-owned issue/output summaries for AI handoff
 - `GET /api/v1/terminal/{widgetID}/stream`
@@ -188,6 +192,7 @@
 - `./scripts/go.sh test ./core/terminal ./core/app ./core/transport/httpapi -run 'TestTerminalServiceCreatesAndSwitchesGroupedSessionsPerWidget|TestCreateAndFocusTerminalSiblingSessionKeepsOneWidgetIdentity|TestTerminalSessionEndpointsCreateAndFocusGroupedSessions|TestRestartTerminalSessionReplacesExistingProcess' -count=1`
 - `npm --prefix frontend run test -- src/features/terminal/api/client.test.ts src/features/terminal/model/use-terminal-session.test.tsx src/widgets/terminal/terminal-widget.test.tsx --reporter=verbose`
 - `npm run test:ui -- --reporter=line e2e/terminal.spec.ts --grep "grouped backend sessions through the session rail"`
+- `npm run test:ui -- --reporter=line e2e/terminal.spec.ts --grep "terminal widget browser filters and closes grouped backend sessions"`
 - `npm run tauri:dev`
 
 ## Browser evidence added for this slice
@@ -200,6 +205,9 @@
   - `New session` creates a sibling backend session under the same widget id
   - the compact session rail becomes visible once more than one session exists
   - selecting a rail entry switches `active_session_id` back on the backend snapshot contract
+  - opening `Browse sessions` exposes the richer grouped-session browser
+  - filtering that browser leaves the matching grouped sessions visible
+  - closing an inactive grouped session removes it from backend session state without destroying the widget
 
 ## Known limitations
 
@@ -208,7 +216,7 @@
 - Terminal toolbar `clear` and `jump-to-latest` actions are intentionally local xterm viewport controls. They do not mutate backend snapshot history and were validated as non-breaking live affordances rather than as persisted runtime state.
 - Browser validation for terminal input now runs through Playwright on the split local dev path. The suite is intentionally serialized (`workers: 1`) because terminal/runtime state is shared across the same backend instance.
 - Browser validation for the terminal search row currently asserts the live shell affordance contract (`open`, `query`, enable/disable state, `close`) on the runtime-backed widget; lower-level hotkey/result-count semantics stay covered by widget/unit tests because browser-level delivery of function-key aliases is platform-sensitive.
-- Grouped sessions currently stay inside one terminal widget with a compact rail. There is still no richer sidebar/session browser, named session management UI, or tmux-resume surface on top of this runtime foundation yet.
+- Grouped sessions currently stay inside one terminal widget with a compact rail plus a richer inline browser. There is still no separate shell-wide session sidebar or tmux-specific session manager on top of this runtime foundation yet.
 - A fresh `npm run tauri:dev` desktop smoke was run for this slice and the spawned `rterm-desktop` / core listener processes were cleaned up after verification.
 - Browser validation now also covers runtime-owned terminal theme mode, scrollback, plus cursor behavior persistence through the `Settings -> Terminal` shell path and confirms that `theme_mode`, `scrollback`, `cursor_style`, and `cursor_blink` survive reload through the backend contract.
 - Browser validation now also covers the one-shot reset path for the runtime-owned terminal settings shell and confirms that font size, line height, theme mode, scrollback, and cursor behavior all return to the backend defaults through the shared settings contract.
