@@ -43,7 +43,15 @@ func TestWidgetKindCatalogIsStableAndHonest(t *testing.T) {
 		t.Fatalf("commander must not be overclaimed as backend-owned yet: %#v", commander)
 	}
 
-	for _, entry := range catalog[3:] {
+	preview := catalog[3]
+	if preview.Status != WidgetKindStatusAvailable || !preview.RuntimeOwned || preview.CanCreate || !preview.SupportsPath {
+		t.Fatalf("preview must be available as backend-owned path handoff only: %#v", preview)
+	}
+	if preview.CreateRoute != "/api/v1/workspace/widgets/open-preview" {
+		t.Fatalf("unexpected preview create route: %#v", preview)
+	}
+
+	for _, entry := range catalog[4:] {
 		if entry.Status != WidgetKindStatusPlanned || entry.RuntimeOwned || entry.CanCreate {
 			t.Fatalf("future widget kind must remain planned until implemented: %#v", entry)
 		}

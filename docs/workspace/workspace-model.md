@@ -26,8 +26,8 @@ This is the canonical workspace entrypoint for tab/widget/layout behavior.
 - Persist and restore layout composition presets (`split`/`focus`, active surfaces, focus surface).
 - Keep widget `connection_id` binding stable across tab/layout operations.
 - Expose the current widget-kind catalog with honest implementation status:
-  `terminal` and `files` are available, `commander` is frontend-local, and
-  `preview` / `editor` / `web` are planned.
+  `terminal`, `files`, and path-handoff `preview` are available, `commander`
+  is frontend-local, and `editor` / `web` are planned.
 - Seed the rewritten Dockview shell and right-rail widget menu from that
   catalog: `terminal` remains the only right-rail-created runtime widget,
   `files` opens through an explicit backend directory path handoff,
@@ -61,6 +61,10 @@ This is the canonical workspace entrypoint for tab/widget/layout behavior.
   and file-row external-open handoffs dispatch to the existing backend
   external-opener route. TideTerm-style rich file preview, drag/copy, media
   preview, and editor handoff remain future slices.
+- The backend preview widget path now exists as a workspace-owned file handoff:
+  `POST /api/v1/workspace/widgets/open-preview` validates an existing file and
+  splits a `preview` widget into the target tab. Frontend rendering and file-row
+  handoff into that widget remain separate slices.
 
 ## Deep links
 

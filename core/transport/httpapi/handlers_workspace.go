@@ -227,6 +227,24 @@ func (api *API) handleOpenDirectoryInNewBlock(w http.ResponseWriter, r *http.Req
 	writeJSON(w, http.StatusOK, result)
 }
 
+func (api *API) handleOpenPreviewInNewBlock(w http.ResponseWriter, r *http.Request) {
+	var payload struct {
+		TargetWidgetID string `json:"target_widget_id"`
+		Path           string `json:"path"`
+		ConnectionID   string `json:"connection_id,omitempty"`
+	}
+	if err := decodeJSON(r, &payload); err != nil {
+		writeBadRequest(w, "invalid_request", err)
+		return
+	}
+	result, err := api.runtime.OpenPreviewInNewBlock(payload.Path, payload.TargetWidgetID, payload.ConnectionID)
+	if err != nil {
+		writeWorkspaceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
 func (api *API) handleCloseWidget(w http.ResponseWriter, r *http.Request) {
 	result, err := api.runtime.CloseWidget(r.PathValue("widgetID"))
 	if err != nil {

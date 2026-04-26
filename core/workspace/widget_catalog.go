@@ -58,9 +58,13 @@ var defaultWidgetKindCatalog = []WidgetKindCatalogEntry{
 	{
 		Kind:         WidgetKindPreview,
 		Label:        "Preview",
-		Description:  "Planned standalone rich preview widget for text, markdown, images, media, and binary metadata.",
-		Status:       WidgetKindStatusPlanned,
+		Description:  "Backend-owned standalone file preview widget created from an explicit path handoff.",
+		Status:       WidgetKindStatusAvailable,
+		RuntimeOwned: true,
+		SupportsPath: true,
 		DefaultTitle: "Preview",
+		CreateRoute:  "/api/v1/workspace/widgets/open-preview",
+		Notes:        "Creatable only when the caller supplies a concrete file path.",
 	},
 	{
 		Kind:         WidgetKindEditor,

@@ -4,7 +4,12 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
+
+	"github.com/Mesteriis/rune-terminal/core/app"
+	"github.com/Mesteriis/rune-terminal/core/workspace"
 )
 
 func TestWorkspaceCloseTabBypassesToolPolicyPath(t *testing.T) {
@@ -112,6 +117,15 @@ func TestWorkspaceWidgetKindsCatalog(t *testing.T) {
 	}
 	if response.WidgetKinds[2].RuntimeOwned || response.WidgetKinds[2].CanCreate {
 		t.Fatalf("commander must not be overclaimed as backend-owned yet: %#v", response.WidgetKinds[2])
+	}
+	if response.WidgetKinds[3].Kind != "preview" || response.WidgetKinds[3].Status != "available" {
+		t.Fatalf("expected preview to be available as backend path handoff: %#v", response.WidgetKinds)
+	}
+	if !response.WidgetKinds[3].RuntimeOwned || response.WidgetKinds[3].CanCreate {
+		t.Fatalf("preview should be backend-owned but not globally creatable: %#v", response.WidgetKinds[3])
+	}
+	if response.WidgetKinds[3].CreateRoute != "/api/v1/workspace/widgets/open-preview" {
+		t.Fatalf("unexpected preview create route: %#v", response.WidgetKinds[3])
 	}
 }
 
@@ -252,6 +266,93 @@ func TestWorkspaceOpenDirectoryInNewBlockCreatesFilesWidget(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("expected to find created widget in workspace snapshot: %#v", response)
+	}
+}
+
+func TestWorkspaceOpenPreviewInNewBlockCreatesPreviewWidget(t *testing.T) {
+	t.Parallel()
+
+	repoRoot := t.TempDir()
+	previewPath := filepath.Join(repoRoot, "README.md")
+	if err := os.WriteFile(previewPath, []byte("# Preview\n"), 0o600); err != nil {
+		t.Fatalf("write preview file: %v", err)
+	}
+	handler := NewHandler(&app.Runtime{
+		RepoRoot:  repoRoot,
+		Workspace: workspace.NewService(workspace.BootstrapDefault()),
+	}, testAuthToken)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPost, "/api/v1/workspace/widgets/open-preview", map[string]any{
+		"target_widget_id": "term-main",
+		"path":             previewPath,
+		"connection_id":    "local",
+	}))
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d (%s)", recorder.Code, recorder.Body.String())
+	}
+
+	var response struct {
+		WidgetID  string `json:"widget_id"`
+		Workspace struct {
+			ActiveWidgetID string `json:"active_widget_id"`
+			Widgets        []struct {
+				ID           string `json:"id"`
+				Kind         string `json:"kind"`
+				Path         string `json:"path"`
+				ConnectionID string `json:"connection_id"`
+			} `json:"widgets"`
+		} `json:"workspace"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatalf("Unmarshal error: %v", err)
+	}
+	if response.WidgetID == "" {
+		t.Fatalf("expected widget id in response: %#v", response)
+	}
+	if response.Workspace.ActiveWidgetID != response.WidgetID {
+		t.Fatalf("expected new preview widget to become active, got %#v", response)
+	}
+
+	found := false
+	for _, widget := range response.Workspace.Widgets {
+		if widget.ID != response.WidgetID {
+			continue
+		}
+		found = true
+		if widget.Kind != "preview" {
+			t.Fatalf("expected preview widget kind, got %#v", widget)
+		}
+		if widget.Path != previewPath {
+			t.Fatalf("expected preview widget path to be preserved, got %#v", widget)
+		}
+		if widget.ConnectionID != "local" {
+			t.Fatalf("expected preview widget connection id local, got %#v", widget)
+		}
+	}
+	if !found {
+		t.Fatalf("expected to find created widget in workspace snapshot: %#v", response)
+	}
+}
+
+func TestWorkspaceOpenPreviewInNewBlockRejectsDirectories(t *testing.T) {
+	t.Parallel()
+
+	repoRoot := t.TempDir()
+	handler := NewHandler(&app.Runtime{
+		RepoRoot:  repoRoot,
+		Workspace: workspace.NewService(workspace.BootstrapDefault()),
+	}, testAuthToken)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPost, "/api/v1/workspace/widgets/open-preview", map[string]any{
+		"target_widget_id": "term-main",
+		"path":             repoRoot,
+	}))
+
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d (%s)", recorder.Code, recorder.Body.String())
 	}
 }
 

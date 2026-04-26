@@ -61,6 +61,7 @@ func NewHandler(runtime *app.Runtime, authToken string) http.Handler {
 	mux.HandleFunc("POST /api/v1/workspace/tabs", api.handleCreateTerminalTab)
 	mux.HandleFunc("POST /api/v1/workspace/widgets/split", api.handleCreateSplitTerminalWidget)
 	mux.HandleFunc("POST /api/v1/workspace/widgets/open-directory", api.handleOpenDirectoryInNewBlock)
+	mux.HandleFunc("POST /api/v1/workspace/widgets/open-preview", api.handleOpenPreviewInNewBlock)
 	mux.HandleFunc("POST /api/v1/workspace/widgets/move-split", api.handleMoveWidgetBySplit)
 	mux.HandleFunc("DELETE /api/v1/workspace/widgets/{widgetID}", api.handleCloseWidget)
 	mux.HandleFunc("POST /api/v1/workspace/tabs/remote", api.handleCreateRemoteTerminalTab)

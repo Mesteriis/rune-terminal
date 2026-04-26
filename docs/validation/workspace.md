@@ -18,6 +18,9 @@
     `terminal` and `files` remain enabled and runtime-created, while
     `commander` and planned widget kinds are visible but disabled according
     to catalog status constraints
+  - backend workspace coverage now also verifies the path-handoff `preview`
+    widget route and catalog entry; frontend rendering for that widget is a
+    follow-up slice
   - serialized Playwright coverage now exercises the active shell/user paths over the split local dev runtime:
     - workspace tab switching and workspace creation
     - the shell topbar now renders workspace tabs and the add-workspace affordance as one compact grouped strip, so workspace switching and creation read as a single control cluster instead of separate header controls
@@ -195,6 +198,8 @@
 - `npm run test:ui -- --reporter=line e2e/shell-workspace.spec.ts`
 - `npm run validate`
 - `npm run validate:desktop-runtime`
+- `gofmt -w core/app/workspace_actions.go core/app/tool_errors.go core/transport/httpapi/api.go core/transport/httpapi/handlers_workspace.go core/transport/httpapi/handlers_workspace_test.go core/workspace/widget_catalog.go core/workspace/widget_catalog_test.go`
+- `./scripts/go.sh test ./core/app ./core/workspace ./core/transport/httpapi -run 'TestWidgetKindCatalog|TestWorkspaceWidgetKindsCatalog|TestWorkspaceOpenPreviewInNewBlock' -count=1`
 - `npm run test:ui -- --reporter=line`
 - `npm install motion@^12.38.0`
 - `node tmp/ai-layout-smoke.mjs`
@@ -279,6 +284,10 @@
 - Targeted workspace catalog validation covers `core/workspace`, the
   `GET /api/v1/workspace/widget-kinds` transport response, and the frontend
   workspace API client normalization/error path.
+- Targeted backend preview-widget validation covers the new
+  `POST /api/v1/workspace/widgets/open-preview` path handoff, including
+  existing-file widget creation and directory rejection. This entry does not
+  claim frontend preview-widget rendering yet.
 - Targeted frontend catalog-consumption validation covers the widget catalog
   model helpers, Dockview startup seeding decisions, and the right-rail menu
   behavior that enables catalog-creatable terminal/files widgets while

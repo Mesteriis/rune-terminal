@@ -11,9 +11,10 @@ It is intentionally operational, not narrative.
 - The backend now exposes a widget-kind catalog at
   `GET /api/v1/workspace/widget-kinds` so frontend discovery can read
   widget status from core truth instead of inventing kind metadata locally:
-  - `terminal` and `files` are backend-owned available kinds
+  - `terminal`, `files`, and path-handoff `preview` are backend-owned
+    available kinds
   - `commander` is explicitly marked `frontend-local`
-  - `preview`, `editor`, and `web` are explicitly marked `planned`
+  - `editor` and `web` are explicitly marked `planned`
 - The rewritten Dockview shell consumes that catalog for default panel
   seeding and right-rail widget discoverability. The right rail only creates
   catalog-creatable runtime widgets; frontend-local and planned kinds are
@@ -26,6 +27,10 @@ It is intentionally operational, not narrative.
   visible/total entry count, hidden-file toggle, direct path jump, filename
   filtering, child-directory open, parent navigation, current-directory
   external handoff, and file-row handoff through `POST /api/v1/fs/open`.
+- The backend can now create a runtime-owned standalone `preview` widget via
+  `POST /api/v1/workspace/widgets/open-preview` when the caller supplies an
+  existing file path. The first frontend renderer for that widget is still a
+  follow-up slice.
 - Backend-owned non-terminal widgets can be closed through
   `DELETE /api/v1/workspace/widgets/{widgetID}`. The files panel close action
   uses that route before removing the Dockview panel, so the workspace

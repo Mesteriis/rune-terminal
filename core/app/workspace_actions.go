@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -300,6 +301,84 @@ func (r *Runtime) OpenDirectoryInNewBlock(path string, targetWidgetID string, co
 			Kind:         workspace.WidgetKindFiles,
 			Title:        title,
 			Description:  fmt.Sprintf("Directory view for %s", cleanPath),
+			ConnectionID: connectionID,
+			Path:         cleanPath,
+		},
+		workspace.WindowSplitRight,
+	)
+	if err != nil {
+		return CreateTerminalTabResult{}, err
+	}
+	if err := r.persistWorkspaceSnapshot(nextSnapshot); err != nil {
+		return CreateTerminalTabResult{}, err
+	}
+	return CreateTerminalTabResult{
+		TabID:     targetTab.ID,
+		WidgetID:  widgetID,
+		Workspace: nextSnapshot,
+	}, nil
+}
+
+func (r *Runtime) OpenPreviewInNewBlock(path string, targetWidgetID string, connectionID string) (CreateTerminalTabResult, error) {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return CreateTerminalTabResult{}, fmt.Errorf("%w: preview path is required", workspace.ErrInvalidWidgetPath)
+	}
+
+	cleanPath, err := r.resolveFSExistingPath(path)
+	if err != nil {
+		return CreateTerminalTabResult{}, err
+	}
+	info, err := os.Stat(cleanPath)
+	if err != nil {
+		return CreateTerminalTabResult{}, err
+	}
+	if info.IsDir() {
+		return CreateTerminalTabResult{}, ErrFSPathNotFile
+	}
+
+	snapshot := r.Workspace.Snapshot()
+	targetWidgetID = strings.TrimSpace(targetWidgetID)
+	if targetWidgetID == "" {
+		targetWidgetID = snapshot.ActiveWidgetID
+	}
+
+	var targetTab workspace.Tab
+	foundTab := false
+	for _, tab := range snapshot.Tabs {
+		if slices.Contains(tab.WidgetIDs, targetWidgetID) {
+			targetTab = tab
+			foundTab = true
+			break
+		}
+	}
+	if !foundTab {
+		return CreateTerminalTabResult{}, fmt.Errorf("%w: %s", workspace.ErrWidgetNotFound, targetWidgetID)
+	}
+
+	if connectionID == "" {
+		for _, widget := range snapshot.Widgets {
+			if widget.ID == targetWidgetID {
+				connectionID = widget.ConnectionID
+				break
+			}
+		}
+	}
+
+	title := filepath.Base(cleanPath)
+	if strings.TrimSpace(title) == "" {
+		title = "Preview"
+	}
+
+	widgetID := ids.New("preview")
+	nextSnapshot, err := r.Workspace.SplitTabWithWidget(
+		targetTab.ID,
+		targetWidgetID,
+		workspace.Widget{
+			ID:           widgetID,
+			Kind:         workspace.WidgetKindPreview,
+			Title:        title,
+			Description:  fmt.Sprintf("Preview for %s", cleanPath),
 			ConnectionID: connectionID,
 			Path:         cleanPath,
 		},

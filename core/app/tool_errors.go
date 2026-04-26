@@ -24,6 +24,7 @@ func normalizeToolError(err error) error {
 		errors.Is(err, workspace.ErrWorkspaceNotFound),
 		errors.Is(err, workspace.ErrTabNotFound),
 		errors.Is(err, workspace.ErrLayoutNotFound),
+		errors.Is(err, ErrFSPathNotFound),
 		errors.Is(err, terminal.ErrWidgetNotFound),
 		errors.Is(err, toolruntime.ErrPendingApprovalNotFound),
 		errors.Is(err, connections.ErrConnectionNotFound),
@@ -33,6 +34,10 @@ func normalizeToolError(err error) error {
 		return toolruntime.NotFoundError(err.Error())
 	case errors.Is(err, terminal.ErrCannotSendInput),
 		errors.Is(err, terminal.ErrCannotInterrupt),
+		errors.Is(err, ErrInvalidFSPath),
+		errors.Is(err, ErrFSPathOutsideWorkspace),
+		errors.Is(err, ErrFSPathNotFile),
+		errors.Is(err, ErrFSPathNotDirectory),
 		errors.Is(err, workspace.ErrCannotCloseLastTab),
 		errors.Is(err, workspace.ErrInvalidTabName),
 		errors.Is(err, workspace.ErrInvalidTabMove),
