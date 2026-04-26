@@ -10,6 +10,7 @@ import { Button, Checkbox, ScrollArea, Text } from '@/shared/ui/primitives'
 import { AgentProviderSettingsWidget } from '@/widgets/settings/agent-provider-settings-widget'
 import { AiComposerSettingsSection } from '@/widgets/settings/ai-composer-settings-section'
 import { MCPSettingsSection } from '@/widgets/settings/mcp-settings-section'
+import { PluginsSettingsSection } from '@/widgets/settings/plugins-settings-section'
 import { RemoteProfilesSettingsSection } from '@/widgets/settings/remote-profiles-settings-section'
 import { RuntimeSettingsSection } from '@/widgets/settings/runtime-settings-section'
 import { TerminalSettingsSection } from '@/widgets/settings/terminal-settings-section'
@@ -43,6 +44,7 @@ type SettingsSectionID =
   | 'ai-composer'
   | 'ai-limits'
   | 'mcp'
+  | 'plugins'
   | 'remote'
   | 'terminal'
   | 'commander'
@@ -69,9 +71,9 @@ const settingsSectionMeta: Record<SettingsSectionID, SettingsSectionMeta> = {
     groupLabel: 'General',
   },
   'ai-apps': {
-    navTitle: 'Установленные приложения',
+    navTitle: 'AI провайдеры',
     navDescription: 'CLI и HTTP providers для AI runtime.',
-    shellTitle: 'AI / Установленные приложения',
+    shellTitle: 'AI / Провайдеры',
     shellDescription:
       'Управление CLI и OpenAI-compatible HTTP провайдерами, их доступностью в рантайме и параметрами подключения без выхода из общего settings shell.',
     groupLabel: 'AI',
@@ -122,6 +124,14 @@ const settingsSectionMeta: Record<SettingsSectionID, SettingsSectionMeta> = {
     shellTitle: 'MCP',
     shellDescription:
       'Register remote MCP endpoints and control lifecycle state through the backend-owned MCP runtime without adding implicit AI context injection.',
+    groupLabel: 'Runtime',
+  },
+  plugins: {
+    navTitle: 'Plugins',
+    navDescription: 'Local catalog and install lifecycle.',
+    shellTitle: 'Plugins',
+    shellDescription:
+      'Backend-owned local plugin catalog with explicit git/zip install sources, runtime-safe activation checks, and future-facing access metadata.',
     groupLabel: 'Runtime',
   },
   commander: {
@@ -491,6 +501,10 @@ function CommanderSection() {
   )
 }
 
+function PluginsSection() {
+  return <PluginsSettingsSection />
+}
+
 function renderSection(sectionID: SettingsSectionID) {
   switch (sectionID) {
     case 'general':
@@ -509,6 +523,8 @@ function renderSection(sectionID: SettingsSectionID) {
       return <RemoteSection />
     case 'mcp':
       return <MCPSection />
+    case 'plugins':
+      return <PluginsSection />
     case 'commander':
       return <CommanderSection />
     default:
@@ -653,6 +669,14 @@ export function SettingsShellWidget() {
             >
               <Text style={{ fontWeight: 600 }}>{settingsSectionMeta.mcp.navTitle}</Text>
               <Text style={settingsShellMutedTextStyle}>{settingsSectionMeta.mcp.navDescription}</Text>
+            </Button>
+            <Button
+              aria-pressed={activeSectionID === 'plugins'}
+              onClick={() => setActiveSectionID('plugins')}
+              style={navButtonStateStyle(activeSectionID === 'plugins')}
+            >
+              <Text style={{ fontWeight: 600 }}>{settingsSectionMeta.plugins.navTitle}</Text>
+              <Text style={settingsShellMutedTextStyle}>{settingsSectionMeta.plugins.navDescription}</Text>
             </Button>
           </ClearBox>
 

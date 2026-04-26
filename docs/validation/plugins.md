@@ -40,6 +40,10 @@ Permission boundary slice (`2026-04-26`):
 Local catalog/install slice (`2026-04-26`):
 
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi ./core/toolruntime -count=1`
+- `npm --prefix frontend run test -- src/features/plugins/api/client.test.ts src/widgets/settings/plugins-settings-section.test.tsx --reporter=verbose`
+- `npm run test:ui -- --reporter=line e2e/shell-workspace.spec.ts --grep "plugin settings install, filter, enable, update, and remove local catalog entries"`
+- `npm run lint:frontend`
+- `npm run build:frontend`
 - `git diff --check`
 
 Earlier runtime/API evidence retained for the broader plugin boundary:

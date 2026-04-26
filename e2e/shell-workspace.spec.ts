@@ -259,8 +259,9 @@ test('shell workspace tabs, utility actions, widget creation, and settings modal
 
   await openSettingsButton.click()
   await expect(page.getByText('Rune Terminal')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Установленные приложения' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'AI провайдеры' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Terminal Настройки терминального runtime.' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Plugins Local catalog and install lifecycle.' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Commander Настройки file-manager surface.' })).toBeVisible()
 
   await page.getByRole('button', { name: /^Remote / }).click()
@@ -419,6 +420,228 @@ test('mcp settings onboard a remote server from template helpers and draft probe
   await page.getByRole('button', { name: 'Register remote MCP server' }).click()
   await expect(page.getByText(`Registered ${serverID}. Start it explicitly before invoke.`)).toBeVisible()
   await expect(page.getByText(serverID, { exact: true })).toBeVisible()
+})
+
+test('plugin settings install, filter, enable, update, and remove local catalog entries', async ({
+  page,
+}) => {
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  const seedStamp = Date.now()
+  const installID = `plugin.phase8-${seedStamp}`
+
+  let catalog = {
+    current_actor: {
+      home_dir: '/Users/avm',
+      username: 'avm',
+    },
+    plugins: [
+      {
+        access: {
+          allowed_users: ['alice'],
+          owner_username: 'avm',
+          visibility: 'shared',
+        },
+        display_name: 'Docs Plugin',
+        enabled: false,
+        id: 'docs.plugin',
+        installed_by: {
+          username: 'avm',
+        },
+        metadata: {
+          team: 'docs',
+        },
+        plugin_version: '0.9.0',
+        protocol_version: 'rterm.plugin.v1',
+        runtime_status: 'disabled',
+        source: {
+          kind: 'git',
+          ref: 'main',
+          url: 'https://example.test/docs-plugin.git',
+        },
+        tools: [{ approval_tier: 'safe', name: 'plugin.docs_echo', target_kind: 'workspace' }],
+        updated_by: {
+          username: 'avm',
+        },
+      },
+    ],
+  }
+
+  await page.route('**/api/v1/plugins**', async (route) => {
+    const request = route.request()
+    const url = new URL(request.url())
+    const path = url.pathname
+
+    if (request.method() === 'GET' && path === '/api/v1/plugins') {
+      await route.fulfill({
+        body: JSON.stringify(catalog),
+        contentType: 'application/json',
+        status: 200,
+      })
+      return
+    }
+
+    if (request.method() === 'POST' && path === '/api/v1/plugins/install') {
+      const payload = request.postDataJSON() as {
+        access?: {
+          allowed_users?: string[]
+          visibility?: string
+        }
+        metadata?: Record<string, string>
+        source?: {
+          kind?: string
+          url?: string
+        }
+      } | null
+
+      expect(payload?.source?.kind).toBe('zip')
+      expect(payload?.source?.url).toBe(`file:///tmp/${installID}.zip`)
+      expect(payload?.metadata).toEqual({ team: 'ops' })
+      expect(payload?.access?.allowed_users).toEqual(['alice', 'bob'])
+      expect(payload?.access?.visibility).toBe('private')
+
+      const nextPlugin = {
+        access: {
+          allowed_users: ['alice', 'bob'],
+          owner_username: 'avm',
+          visibility: 'private',
+        },
+        display_name: `Zip Plugin ${seedStamp}`,
+        enabled: true,
+        id: installID,
+        installed_by: {
+          username: 'avm',
+        },
+        metadata: {
+          team: 'ops',
+        },
+        plugin_version: '1.2.0',
+        protocol_version: 'rterm.plugin.v1',
+        runtime_status: 'ready',
+        source: {
+          kind: 'zip',
+          url: `file:///tmp/${installID}.zip`,
+        },
+        tools: [{ approval_tier: 'safe', name: 'plugin.bundle_echo', target_kind: 'workspace' }],
+        updated_by: {
+          username: 'avm',
+        },
+      }
+      catalog = {
+        ...catalog,
+        plugins: [...catalog.plugins, nextPlugin],
+      }
+      await route.fulfill({
+        body: JSON.stringify({
+          plugin: nextPlugin,
+          plugins: catalog,
+        }),
+        contentType: 'application/json',
+        status: 200,
+      })
+      return
+    }
+
+    if (request.method() === 'POST' && path === '/api/v1/plugins/docs.plugin/enable') {
+      catalog = {
+        ...catalog,
+        plugins: catalog.plugins.map((plugin) =>
+          plugin.id === 'docs.plugin'
+            ? {
+                ...plugin,
+                enabled: true,
+                runtime_status: 'ready',
+              }
+            : plugin,
+        ),
+      }
+      const updatedPlugin = catalog.plugins.find((plugin) => plugin.id === 'docs.plugin')
+      await route.fulfill({
+        body: JSON.stringify({
+          plugin: updatedPlugin,
+          plugins: catalog,
+        }),
+        contentType: 'application/json',
+        status: 200,
+      })
+      return
+    }
+
+    if (request.method() === 'POST' && path === `/api/v1/plugins/${installID}/update`) {
+      catalog = {
+        ...catalog,
+        plugins: catalog.plugins.map((plugin) =>
+          plugin.id === installID
+            ? {
+                ...plugin,
+                plugin_version: '1.3.0',
+              }
+            : plugin,
+        ),
+      }
+      const updatedPlugin = catalog.plugins.find((plugin) => plugin.id === installID)
+      await route.fulfill({
+        body: JSON.stringify({
+          plugin: updatedPlugin,
+          plugins: catalog,
+        }),
+        contentType: 'application/json',
+        status: 200,
+      })
+      return
+    }
+
+    if (request.method() === 'DELETE' && path === `/api/v1/plugins/${installID}`) {
+      const removedPlugin = catalog.plugins.find((plugin) => plugin.id === installID)
+      catalog = {
+        ...catalog,
+        plugins: catalog.plugins.filter((plugin) => plugin.id !== installID),
+      }
+      await route.fulfill({
+        body: JSON.stringify({
+          plugin: removedPlugin,
+          plugins: catalog,
+        }),
+        contentType: 'application/json',
+        status: 200,
+      })
+      return
+    }
+
+    await route.fallback()
+  })
+
+  await page.getByRole('button', { name: 'Open settings panel' }).click()
+  await page.getByRole('button', { name: /^Plugins / }).click()
+
+  await expect(page.getByText('actor: avm')).toBeVisible()
+  await expect(page.getByText('Docs Plugin')).toBeVisible()
+
+  const filterInput = page.getByRole('textbox', { name: 'Filter installed plugins' })
+  await filterInput.fill('disabled')
+  await expect(page.getByText('Docs Plugin')).toBeVisible()
+  await page.getByRole('button', { name: 'Enable' }).click()
+  await expect(page.getByText('Docs Plugin enabled.')).toBeVisible()
+
+  await filterInput.fill('')
+  await page.getByRole('combobox', { name: 'Plugin source kind' }).selectOption('zip')
+  await page.getByRole('textbox', { name: 'Plugin source URL' }).fill(`file:///tmp/${installID}.zip`)
+  await page.getByRole('textbox', { name: 'Plugin metadata' }).fill('team=ops')
+  await page.getByRole('textbox', { name: 'Plugin allowed users' }).fill('alice\nbob')
+  await page.getByRole('button', { name: 'Install from zip' }).click()
+
+  await expect(page.getByText(`Installed Zip Plugin ${seedStamp}.`)).toBeVisible()
+  await expect(page.getByText(`Zip Plugin ${seedStamp}`, { exact: true })).toBeVisible()
+
+  await filterInput.fill(installID)
+  await page.getByRole('button', { name: 'Update' }).click()
+  await expect(page.getByText(`Updated Zip Plugin ${seedStamp} to 1.3.0.`)).toBeVisible()
+  await expect(page.getByText('1.3.0', { exact: true })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Remove' }).click()
+  await expect(page.getByText(`Removed Zip Plugin ${seedStamp}.`)).toBeVisible()
+  await expect(page.getByText(`Zip Plugin ${seedStamp}`, { exact: true })).toHaveCount(0)
 })
 
 test('remote settings persist tmux resume launch policy', async ({ page }) => {
