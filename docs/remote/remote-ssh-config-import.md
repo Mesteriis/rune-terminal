@@ -18,17 +18,23 @@ Supported directives are intentionally limited:
 - `Port`
 - `IdentityFile`
 
+Selector breadth is broader than the original direct-only baseline:
+
+- `Include` is expanded in place, including relative globs
+- wildcard / negated `Host` patterns can contribute defaults to concrete
+  aliases without becoming imported profiles themselves
+- `Match host ...` and `Match originalhost ...` can contribute supported
+  profile fields for concrete aliases
+
 Imported hosts become explicit saved remote profiles. Re-running the import is
 idempotent by `Host` alias: an existing profile with the same name is updated
 instead of duplicated.
 
 ## Intentionally unsupported
 
-- `Match`
-- `Include`
-- wildcard / negated host expansion beyond reporting skipped hosts
 - `ProxyJump` / proxy chaining
 - control socket / multiplexing directives
+- broader `Match` criteria beyond `host` / `originalhost`
 - agent/keychain integration
 - password/passphrase handling
 - two-way synchronization back into the user's SSH config

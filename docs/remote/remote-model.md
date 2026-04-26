@@ -37,7 +37,9 @@ This is the canonical remote entrypoint for local-vs-SSH runtime behavior.
 - No persistent live remote controller object yet.
 - Narrow one-way `~/.ssh/config` import is available through
   `POST /api/v1/remote/profiles/import-ssh-config`; it supports direct
-  `Host`, `HostName`, `User`, `Port`, and `IdentityFile` profile fields only.
+  `Host`, `HostName`, `User`, `Port`, and `IdentityFile` profile fields,
+  plus `Include`, wildcard-host defaults, and `Match host/originalhost`
+  when deriving concrete saved profiles.
 - No advanced auth/proxy-jump/agent workflows implemented yet.
 
 ## Deep links

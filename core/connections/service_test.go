@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 )
@@ -349,6 +350,111 @@ Match host special
 	}
 	if len(result.Skipped) != 1 || result.Skipped[0].Host != "*.internal" {
 		t.Fatalf("expected wildcard host to be skipped, got %#v", result.Skipped)
+	}
+}
+
+func TestImportSSHConfigAppliesIncludeWildcardDefaultsAndMatchOverrides(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	sshDir := filepath.Join(tempDir, ".ssh")
+	if err := os.MkdirAll(filepath.Join(sshDir, "conf.d"), 0o755); err != nil {
+		t.Fatalf("mkdir ssh include dir: %v", err)
+	}
+	identityPath := filepath.Join(sshDir, "id_shared")
+	if err := os.WriteFile(identityPath, []byte("key"), 0o600); err != nil {
+		t.Fatalf("write identity: %v", err)
+	}
+	includedPath := filepath.Join(sshDir, "conf.d", "shared.conf")
+	if err := os.WriteFile(includedPath, []byte(`
+Host prod-* stage
+  User deploy
+  Port 2200
+  IdentityFile `+identityPath+`
+
+Host prod-1
+  HostName prod-1.example.com
+
+Host stage
+  HostName stage.example.com
+
+Match host prod-1.example.com
+  User ops
+`), 0o600); err != nil {
+		t.Fatalf("write included config: %v", err)
+	}
+	configPath := filepath.Join(sshDir, "config")
+	if err := os.WriteFile(configPath, []byte(`
+Include conf.d/*.conf
+`), 0o600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	svc, err := NewServiceWithChecker(filepath.Join(tempDir, "connections.json"), stubChecker{
+		results: map[string]CheckResult{},
+	})
+	if err != nil {
+		t.Fatalf("new service: %v", err)
+	}
+
+	result, err := svc.ImportSSHConfig(configPath)
+	if err != nil {
+		t.Fatalf("import ssh config: %v", err)
+	}
+	if len(result.Imported) != 2 {
+		t.Fatalf("expected two imported profiles, got %#v", result.Imported)
+	}
+
+	prodIndex := slices.IndexFunc(result.Imported, func(profile RemoteProfile) bool { return profile.Name == "prod-1" })
+	stageIndex := slices.IndexFunc(result.Imported, func(profile RemoteProfile) bool { return profile.Name == "stage" })
+	if prodIndex < 0 || stageIndex < 0 {
+		t.Fatalf("expected prod-1 and stage profiles, got %#v", result.Imported)
+	}
+
+	prodProfile := result.Imported[prodIndex]
+	if prodProfile.Host != "prod-1.example.com" || prodProfile.User != "deploy" || prodProfile.Port != 2200 {
+		t.Fatalf("expected included wildcard defaults for prod-1, got %#v", prodProfile)
+	}
+	if prodProfile.IdentityFile != identityPath {
+		t.Fatalf("expected identity file %q, got %q", identityPath, prodProfile.IdentityFile)
+	}
+
+	stageProfile := result.Imported[stageIndex]
+	if stageProfile.Host != "stage.example.com" || stageProfile.User != "deploy" || stageProfile.Port != 2200 {
+		t.Fatalf("expected included defaults for stage, got %#v", stageProfile)
+	}
+}
+
+func TestImportSSHConfigMatchOriginalHostOverridesConcreteAlias(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	configPath := filepath.Join(tempDir, "ssh_config")
+	if err := os.WriteFile(configPath, []byte(`
+Host prod
+  HostName prod.example.com
+
+Match originalhost prod
+  User ops
+`), 0o600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	svc, err := NewServiceWithChecker(filepath.Join(tempDir, "connections.json"), stubChecker{
+		results: map[string]CheckResult{},
+	})
+	if err != nil {
+		t.Fatalf("new service: %v", err)
+	}
+
+	result, err := svc.ImportSSHConfig(configPath)
+	if err != nil {
+		t.Fatalf("import ssh config: %v", err)
+	}
+	if len(result.Imported) != 1 {
+		t.Fatalf("expected one imported profile, got %#v", result.Imported)
+	}
+	if result.Imported[0].User != "ops" {
+		t.Fatalf("expected Match originalhost user to apply, got %#v", result.Imported[0])
 	}
 }
 

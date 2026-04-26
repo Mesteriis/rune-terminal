@@ -6,7 +6,8 @@
 - State: `PARTIALLY VERIFIED` (core workflow hardening verified; external auth breadth remains limited)
 - Scope:
   - saved profile create/list/select/check/open-shell flows
-  - narrow one-way SSH config import for direct host profile fields
+  - one-way SSH config import with `Include`, wildcard-host default
+    application, and `Match host/originalhost` support for concrete aliases
   - settings-shell remote profile create/edit/delete/list/import entrypoint
   - settings-shell remote preflight/default-target controls
   - filterable saved-profile inventory inside the active settings shell
@@ -21,6 +22,7 @@
   - `go test ./core/transport/httpapi -run 'TestRemoteProfilesEndpointsListSaveAndDelete|TestRemoteProfilesCreateSessionReturnsNotFoundForMissingProfile|TestRemoteProfilesDeleteReturnsNotFoundForMissingProfile'`
   - `go test ./core/transport/httpapi -run TestWriteTerminalErrorMapsConnectionNotFoundToNotFound`
   - `./scripts/go.sh test ./core/connections ./core/transport/httpapi -run 'TestImportSSHConfig|TestRemoteProfilesImportSSHConfig|TestRemoteProfilesEndpointsListSaveAndDelete' -count=1`
+  - `./scripts/go.sh test ./core/connections -count=1`
   - `npm --prefix frontend run test -- src/features/remote/api/client.test.ts src/widgets/settings/remote-profiles-settings-section.test.tsx`
   - `frontend/node_modules/.bin/vitest run src/widgets/settings/remote-profiles-settings-section.test.tsx --reporter=verbose`
   - `npm --prefix frontend run lint:active`
@@ -38,9 +40,9 @@
 ## Known limitations
 
 - Some runs verified guardrails and session semantics without authenticated real-host SSH command execution.
-- SSH config import remains intentionally narrow: no `Match`, `Include`,
-  wildcard expansion, proxy chaining, keychain/passphrase workflows, or
-  two-way synchronization back to SSH config files.
+- SSH config import remains intentionally narrower than a full SSH manager:
+  no `ProxyJump`, broader `Match` criteria, keychain/passphrase workflows,
+  or two-way synchronization back to SSH config files.
 - Advanced SSH auth/topology flows and long-lived remote-controller semantics are out of current scope.
 
 ## Evidence
