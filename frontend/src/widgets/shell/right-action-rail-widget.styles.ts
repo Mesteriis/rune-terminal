@@ -8,7 +8,7 @@ export const rightRailStyle: CSSProperties = {
   justifyContent: 'space-between',
   alignItems: 'center',
   boxSizing: 'border-box',
-  padding: 'var(--space-xs)',
+  padding: '0.22rem',
   border: 'none',
   borderRadius: 0,
   background: 'transparent',
@@ -41,11 +41,11 @@ export const utilityMenuStyle: CSSProperties = {
   position: 'absolute',
   top: 0,
   right: 'calc(100% + var(--space-xs))',
-  width: '220px',
+  width: '208px',
   display: 'flex',
   flexDirection: 'column',
-  gap: 'var(--gap-xs)',
-  padding: 'var(--space-xs)',
+  gap: '0.35rem',
+  padding: '0.35rem',
   zIndex: 'var(--z-modal)',
   border: '1px solid var(--color-border-strong)',
   boxShadow: 'var(--shadow-menu-popover)',
@@ -57,24 +57,26 @@ export function resolveUtilityMenuItemStyle(isDisabled = false): CSSProperties {
   return {
     width: '100%',
     justifyContent: 'flex-start',
-    gap: 'var(--gap-sm)',
+    gap: '0.55rem',
     background: 'transparent',
     boxShadow: 'none',
     backdropFilter: 'none',
     WebkitBackdropFilter: 'none',
     cursor: isDisabled ? 'not-allowed' : 'pointer',
     opacity: isDisabled ? 0.58 : 1,
+    padding: '0.42rem 0.48rem',
   }
 }
 
 export const utilityMenuItemStyle: CSSProperties = {
   width: '100%',
   justifyContent: 'flex-start',
-  gap: 'var(--gap-sm)',
+  gap: '0.55rem',
   background: 'transparent',
   boxShadow: 'none',
   backdropFilter: 'none',
   WebkitBackdropFilter: 'none',
+  padding: '0.42rem 0.48rem',
 }
 
 export const utilityMenuMetaStyle: CSSProperties = {
@@ -93,19 +95,19 @@ export const utilityMenuMetaStyle: CSSProperties = {
 
 export const utilityMenuTitleStyle: CSSProperties = {
   color: 'var(--color-text-primary)',
-  fontSize: 'var(--font-size-md)',
-  lineHeight: 'var(--line-height-md)',
+  fontSize: '0.88rem',
+  lineHeight: '1.2',
   fontWeight: 600,
 }
 
 export const utilityMenuStatusTextStyle: CSSProperties = {
   color: 'var(--color-text-muted)',
-  fontSize: 'var(--font-size-sm)',
-  lineHeight: 'var(--line-height-sm)',
+  fontSize: '0.76rem',
+  lineHeight: '1.15',
   fontWeight: 500,
 }
 
 export const utilityMenuSeparatorStyle: CSSProperties = {
   width: '100%',
-  margin: '2px 0',
+  margin: '1px 0',
 }

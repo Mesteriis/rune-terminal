@@ -26,7 +26,7 @@
     semantics
   - serialized Playwright coverage now exercises the active shell/user paths over the split local dev runtime:
     - workspace tab switching and workspace creation
-    - the shell topbar now renders workspace tabs and the add-workspace affordance as one compact grouped strip, so workspace switching and creation read as a single control cluster instead of separate header controls
+    - the shell topbar now renders workspace tabs and the add-workspace affordance as one tighter grouped strip, with denser active/inactive tab rhythm so workspace switching and creation read as a single compact control cluster instead of separate header controls
     - the shell topbar close/minimize/fullscreen controls now route through explicit desktop window callbacks; close keeps the existing shutdown guard, while minimize/fullscreen call Tauri commands and degrade to no-ops in split-browser mode
     - commander Dockview tabs now follow the same compact workspace-strip language instead of a badge-only placeholder: each commander tab shows a compact `commander` pill, a readable `tool/tool N` title, and a per-tab close action only when the commander group actually has multiple tabs
     - right-rail utility menu actions for new workspace, terminal widget,
@@ -49,6 +49,8 @@
     - files widget file rows dispatch backend external-open requests
     - files widget file rows can open backend-owned preview widgets
     - settings modal open/close from shell chrome
+    - the right utility rail popover now follows the same compact shell density as the topbar strip, with tighter menu rows and status text instead of a looser generic popover treatment
+    - modal overlays now also use a tighter shell framing rhythm so body/widget modal spacing matches the compact shell chrome instead of reading like a separate larger overlay system
     - the settings shell now renders as a denser navigator/editor surface with a narrower sidebar, tighter content framing, lighter badges, and a more compact section rhythm, while preserving the existing `General / AI / Terminal / Commander` structure
     - the `General` section now reads real runtime bootstrap metadata and exposes the desktop `watcher_mode` lifecycle setting; in the split browser dev loop this control degrades to a visible read-only fallback instead of pretending browser mode can persist desktop settings
     - a fresh `npm run tauri:dev` smoke still builds and launches the desktop entrypoint after the runtime-settings slice, so the new `watcher_mode` plumbing does not break desktop startup
