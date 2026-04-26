@@ -19,8 +19,10 @@
     `commander` and planned widget kinds are visible but disabled according
     to catalog status constraints
   - backend workspace coverage now also verifies the path-handoff `preview`
-    widget route and catalog entry; frontend rendering for that widget is a
-    follow-up slice
+    widget route and catalog entry
+  - frontend preview-widget coverage verifies preview panel params, bounded
+    text/hex rendering, refresh, inline errors, and backend-owned close
+    semantics
   - serialized Playwright coverage now exercises the active shell/user paths over the split local dev runtime:
     - workspace tab switching and workspace creation
     - the shell topbar now renders workspace tabs and the add-workspace affordance as one compact grouped strip, so workspace switching and creation read as a single control cluster instead of separate header controls
@@ -200,6 +202,10 @@
 - `npm run validate:desktop-runtime`
 - `gofmt -w core/app/workspace_actions.go core/app/tool_errors.go core/transport/httpapi/api.go core/transport/httpapi/handlers_workspace.go core/transport/httpapi/handlers_workspace_test.go core/workspace/widget_catalog.go core/workspace/widget_catalog_test.go`
 - `./scripts/go.sh test ./core/app ./core/workspace ./core/transport/httpapi -run 'TestWidgetKindCatalog|TestWorkspaceWidgetKindsCatalog|TestWorkspaceOpenPreviewInNewBlock' -count=1`
+- `(cd frontend && npm exec prettier -- --write src/features/preview/api/client.ts src/features/preview/api/client.test.ts src/widgets/preview/index.ts src/widgets/preview/preview-panel.ts src/widgets/preview/preview-panel.test.ts src/widgets/preview/preview-panel-widget.tsx src/widgets/preview/preview-panel-widget.test.tsx src/widgets/preview/preview-panel-widget.styles.ts src/widgets/index.ts src/widgets/panel/dockview-panel-widget.tsx src/widgets/terminal/terminal-dockview-header-actions-widget.tsx src/widgets/terminal/terminal-dockview-header-actions-widget.test.tsx)`
+- `npm --prefix frontend run test -- src/features/preview/api/client.test.ts src/widgets/preview/preview-panel.test.ts src/widgets/preview/preview-panel-widget.test.tsx src/widgets/terminal/terminal-dockview-header-actions-widget.test.tsx`
+- `npm --prefix frontend run lint:active`
+- `npm --prefix frontend run build`
 - `npm run test:ui -- --reporter=line`
 - `npm install motion@^12.38.0`
 - `node tmp/ai-layout-smoke.mjs`
@@ -286,8 +292,11 @@
   workspace API client normalization/error path.
 - Targeted backend preview-widget validation covers the new
   `POST /api/v1/workspace/widgets/open-preview` path handoff, including
-  existing-file widget creation and directory rejection. This entry does not
-  claim frontend preview-widget rendering yet.
+  existing-file widget creation and directory rejection.
+- Targeted frontend preview-widget validation covers the `readPreviewFile()`
+  adapter over `GET /api/v1/fs/read`, preview panel params, text/hex/truncated
+  render states, refresh, inline error rendering, Dockview panel rendering, and
+  backend-owned close routing for preview panels.
 - Targeted frontend catalog-consumption validation covers the widget catalog
   model helpers, Dockview startup seeding decisions, and the right-rail menu
   behavior that enables catalog-creatable terminal/files widgets while

@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createTerminalTab } from '@/features/terminal/api/client'
 import { closeWorkspaceWidget } from '@/shared/api/workspace'
 import { createFilesPanelParams } from '@/widgets/files'
+import { createPreviewPanelParams } from '@/widgets/preview'
 import { createTerminalPanelParams } from '@/widgets/terminal/terminal-panel'
 import { TerminalDockviewHeaderActionsWidget } from '@/widgets/terminal/terminal-dockview-header-actions-widget'
 import * as terminalPanelModule from '@/widgets/terminal/terminal-panel'
@@ -132,6 +133,30 @@ describe('TerminalDockviewHeaderActionsWidget', () => {
 
     await waitFor(() => {
       expect(closeWorkspaceWidget).toHaveBeenCalledWith('files-9')
+      expect(props.activePanel.api.close).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  it('closes backend-owned preview widgets before closing the Dockview panel', async () => {
+    vi.mocked(closeWorkspaceWidget).mockResolvedValue({
+      closed_widget_id: 'preview-9',
+    })
+    const props = createHeaderActionsProps(
+      createPreviewPanelParams({
+        path: '/repo/README.md',
+        title: 'README.md',
+        widgetId: 'preview-9',
+      }) as never,
+    )
+    props.activePanel.id = 'preview-9'
+    props.activePanel.title = 'README.md'
+
+    render(<TerminalDockviewHeaderActionsWidget {...(props as never)} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close README.md' }))
+
+    await waitFor(() => {
+      expect(closeWorkspaceWidget).toHaveBeenCalledWith('preview-9')
       expect(props.activePanel.api.close).toHaveBeenCalledTimes(1)
     })
   })

@@ -29,8 +29,9 @@ It is intentionally operational, not narrative.
   external handoff, and file-row handoff through `POST /api/v1/fs/open`.
 - The backend can now create a runtime-owned standalone `preview` widget via
   `POST /api/v1/workspace/widgets/open-preview` when the caller supplies an
-  existing file path. The first frontend renderer for that widget is still a
-  follow-up slice.
+  existing file path. The frontend renders preview panel params through
+  `PreviewPanelWidget`, which reads bounded text or hex content from
+  `GET /api/v1/fs/read`.
 - Backend-owned non-terminal widgets can be closed through
   `DELETE /api/v1/workspace/widgets/{widgetID}`. The files panel close action
   uses that route before removing the Dockview panel, so the workspace

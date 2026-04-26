@@ -63,8 +63,9 @@ This is the canonical workspace entrypoint for tab/widget/layout behavior.
   preview, and editor handoff remain future slices.
 - The backend preview widget path now exists as a workspace-owned file handoff:
   `POST /api/v1/workspace/widgets/open-preview` validates an existing file and
-  splits a `preview` widget into the target tab. Frontend rendering and file-row
-  handoff into that widget remain separate slices.
+  splits a `preview` widget into the target tab. The frontend preview panel
+  renders bounded text/hex previews through `GET /api/v1/fs/read`; file-row
+  handoff into that widget remains a separate slice.
 
 ## Deep links
 

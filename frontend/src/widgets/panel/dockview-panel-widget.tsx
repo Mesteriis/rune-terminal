@@ -20,6 +20,7 @@ import {
 import { resolveTerminalPanelParams } from '@/widgets/terminal/terminal-panel'
 import { TerminalWidget } from '@/widgets/terminal/terminal-widget'
 import { WidgetBusyOverlayWidget } from '@/widgets/panel/widget-busy-overlay-widget'
+import { PreviewPanelWidget, resolvePreviewPanelParams } from '@/widgets/preview'
 
 function isCommanderDemoPanel(panelId: string) {
   return panelId === 'tool' || panelId.startsWith('tool-')
@@ -32,6 +33,7 @@ export function DockviewPanelWidget(props: IDockviewPanelProps) {
     ? resolveTerminalPanelParams(props.api.id, props.params)
     : null
   const filesModel = resolveFilesPanelParams(props.params)
+  const previewModel = resolvePreviewPanelParams(props.params)
   const isCommanderPanel = isCommanderDemoPanel(props.api.id)
   const isActiveWidget = activeWidgetHostId === props.api.id
   const panelInnerContentStyle = resolveDockviewPanelInnerContentStyle(Boolean(terminalModel))
@@ -94,6 +96,8 @@ export function DockviewPanelWidget(props: IDockviewPanelProps) {
             />
           ) : filesModel ? (
             <FilesPanelWidget path={filesModel.path} title={filesModel.title} />
+          ) : previewModel ? (
+            <PreviewPanelWidget path={previewModel.path} title={previewModel.title} />
           ) : isCommanderPanel ? (
             <CommanderPanelWidget />
           ) : (

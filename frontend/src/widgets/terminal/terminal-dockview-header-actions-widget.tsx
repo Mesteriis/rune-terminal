@@ -8,6 +8,7 @@ import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { IconButton } from '@/shared/ui/components'
 import { Box } from '@/shared/ui/primitives'
 import { resolveFilesPanelParams } from '@/widgets/files'
+import { resolvePreviewPanelParams } from '@/widgets/preview'
 import {
   closeTerminalPanel,
   createNextTerminalPanelId,
@@ -31,6 +32,7 @@ export function TerminalDockviewHeaderActionsWidget(props: IDockviewHeaderAction
     ? resolveTerminalPanelParams(props.activePanel.id, props.activePanel.params)
     : null
   const filesPanelParams = resolveFilesPanelParams(props.activePanel.params)
+  const previewPanelParams = resolvePreviewPanelParams(props.activePanel.params)
   const headerActionsWrapStyle = resolveDockviewHeaderActionsWrapStyle(Boolean(terminalPanelParams))
 
   const handleAddTerminalTab = async (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -85,9 +87,11 @@ export function TerminalDockviewHeaderActionsWidget(props: IDockviewHeaderAction
       return
     }
 
-    if (filesPanelParams) {
+    const backendPanelParams = filesPanelParams ?? previewPanelParams
+
+    if (backendPanelParams) {
       try {
-        await closeWorkspaceWidget(filesPanelParams.widgetId)
+        await closeWorkspaceWidget(backendPanelParams.widgetId)
       } catch (error) {
         if (!(error instanceof WorkspaceAPIError && error.status === 404)) {
           console.error('Unable to close workspace widget', error)
