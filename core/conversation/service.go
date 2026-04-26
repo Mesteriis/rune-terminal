@@ -743,10 +743,11 @@ func (s *Service) appendAssistantResult(
 	}
 
 	return SubmitResult{
-		Snapshot:      snapshot,
-		Assistant:     assistant,
-		ProviderInfo:  info,
-		ProviderError: errorString(providerErr),
+		Snapshot:               snapshot,
+		Assistant:              assistant,
+		ProviderInfo:           info,
+		ProviderError:          errorString(providerErr),
+		FirstResponseLatencyMS: result.FirstResponseLatencyMS,
 	}, nil
 }
 
@@ -1001,10 +1002,11 @@ func (s *Service) finalizeAssistantStreamResult(
 	}
 
 	return SubmitResult{
-		Snapshot:      snapshot,
-		Assistant:     assistant,
-		ProviderInfo:  info,
-		ProviderError: errorString(providerErr),
+		Snapshot:               snapshot,
+		Assistant:              assistant,
+		ProviderInfo:           info,
+		ProviderError:          errorString(providerErr),
+		FirstResponseLatencyMS: result.FirstResponseLatencyMS,
 	}, nil
 }
 

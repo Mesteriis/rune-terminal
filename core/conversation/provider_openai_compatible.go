@@ -191,6 +191,7 @@ func (p *openAICompatibleProvider) complete(
 	request CompletionRequest,
 	onTextDelta func(string) error,
 ) (CompletionResult, ProviderInfo, error) {
+	startedAt := time.Now()
 	info := p.Info()
 	if model := strings.TrimSpace(request.Model); model != "" {
 		info.Model = model
@@ -216,8 +217,9 @@ func (p *openAICompatibleProvider) complete(
 		}
 	}
 	return CompletionResult{
-		Content: content,
-		Model:   info.Model,
+		Content:                content,
+		Model:                  info.Model,
+		FirstResponseLatencyMS: normalizeFirstResponseLatency(0, startedAt, content != ""),
 	}, info, nil
 }
 
@@ -243,13 +245,14 @@ func (p *openAICompatibleProvider) completeStream(
 		return p.complete(ctx, request, nil)
 	}
 
-	content, err := p.runStream(ctx, request, info.Model, onTextDelta)
+	content, firstResponseLatencyMS, err := p.runStream(ctx, request, info.Model, onTextDelta)
 	if err != nil {
 		return CompletionResult{}, info, err
 	}
 	return CompletionResult{
-		Content: strings.TrimSpace(content),
-		Model:   info.Model,
+		Content:                strings.TrimSpace(content),
+		Model:                  info.Model,
+		FirstResponseLatencyMS: firstResponseLatencyMS,
 	}, info, nil
 }
 
@@ -323,7 +326,8 @@ func (p *openAICompatibleProvider) runStream(
 	request CompletionRequest,
 	model string,
 	onTextDelta func(string) error,
-) (string, error) {
+) (string, int64, error) {
+	startedAt := time.Now()
 	runCtx := ctx
 	cancel := func() {}
 	if _, ok := ctx.Deadline(); !ok {
@@ -351,7 +355,7 @@ func (p *openAICompatibleProvider) runStream(
 
 	body, err := json.Marshal(payload)
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
 
 	httpRequest, err := http.NewRequestWithContext(
@@ -361,34 +365,39 @@ func (p *openAICompatibleProvider) runStream(
 		strings.NewReader(string(body)),
 	)
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
 	httpRequest.Header.Set("Accept", "text/event-stream")
 	httpRequest.Header.Set("Content-Type", "application/json")
 
 	response, err := p.client.Do(httpRequest)
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
 	defer response.Body.Close()
 
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		var completion openAICompatibleChatResponse
 		if err := json.NewDecoder(response.Body).Decode(&completion); err != nil {
-			return "", err
+			return "", 0, err
 		}
-		return "", openAICompatibleResponseError(response.StatusCode, completion.Error)
+		return "", 0, openAICompatibleResponseError(response.StatusCode, completion.Error)
 	}
-	return consumeOpenAICompatibleChatStream(response.Body, onTextDelta)
+	return consumeOpenAICompatibleChatStream(response.Body, onTextDelta, startedAt)
 }
 
-func consumeOpenAICompatibleChatStream(body io.Reader, onTextDelta func(string) error) (string, error) {
+func consumeOpenAICompatibleChatStream(
+	body io.Reader,
+	onTextDelta func(string) error,
+	startedAt time.Time,
+) (string, int64, error) {
 	scanner := bufio.NewScanner(body)
 	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 
 	var dataLines []string
 	var content strings.Builder
 	sawDataFrame := false
+	firstResponseLatencyMS := int64(0)
 	flush := func() error {
 		if len(dataLines) == 0 {
 			return nil
@@ -411,6 +420,9 @@ func consumeOpenAICompatibleChatStream(body io.Reader, onTextDelta func(string) 
 			if delta == "" {
 				continue
 			}
+			if firstResponseLatencyMS == 0 {
+				firstResponseLatencyMS = elapsedMillisecondsSince(startedAt)
+			}
 			content.WriteString(delta)
 			if err := onTextDelta(delta); err != nil {
 				return err
@@ -423,7 +435,7 @@ func consumeOpenAICompatibleChatStream(body io.Reader, onTextDelta func(string) 
 		line := strings.TrimRight(scanner.Text(), "\r")
 		if line == "" {
 			if err := flush(); err != nil {
-				return "", err
+				return "", 0, err
 			}
 			continue
 		}
@@ -436,15 +448,15 @@ func consumeOpenAICompatibleChatStream(body io.Reader, onTextDelta func(string) 
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		return "", err
+		return "", 0, err
 	}
 	if !sawDataFrame {
-		return "", fmt.Errorf("openai-compatible stream did not include data frames")
+		return "", 0, fmt.Errorf("openai-compatible stream did not include data frames")
 	}
 	if err := flush(); err != nil {
-		return "", err
+		return "", 0, err
 	}
-	return content.String(), nil
+	return content.String(), normalizeFirstResponseLatency(firstResponseLatencyMS, startedAt, strings.TrimSpace(content.String()) != ""), nil
 }
 
 func openAICompatibleResponseError(

@@ -23,50 +23,58 @@ const (
 )
 
 type RunRecord struct {
-	ID                  string    `json:"id"`
-	ProviderID          string    `json:"provider_id"`
-	ProviderKind        string    `json:"provider_kind"`
-	ProviderDisplayName string    `json:"provider_display_name"`
-	RequestMode         string    `json:"request_mode"`
-	Model               string    `json:"model,omitempty"`
-	ConversationID      string    `json:"conversation_id,omitempty"`
-	Status              string    `json:"status"`
-	ErrorCode           string    `json:"error_code,omitempty"`
-	ErrorMessage        string    `json:"error_message,omitempty"`
-	DurationMS          int64     `json:"duration_ms"`
-	StartedAt           time.Time `json:"started_at"`
-	CompletedAt         time.Time `json:"completed_at"`
+	ID                     string    `json:"id"`
+	ProviderID             string    `json:"provider_id"`
+	ProviderKind           string    `json:"provider_kind"`
+	ProviderDisplayName    string    `json:"provider_display_name"`
+	RequestMode            string    `json:"request_mode"`
+	Model                  string    `json:"model,omitempty"`
+	ConversationID         string    `json:"conversation_id,omitempty"`
+	Status                 string    `json:"status"`
+	ErrorCode              string    `json:"error_code,omitempty"`
+	ErrorMessage           string    `json:"error_message,omitempty"`
+	DurationMS             int64     `json:"duration_ms"`
+	FirstResponseLatencyMS int64     `json:"first_response_latency_ms"`
+	StartedAt              time.Time `json:"started_at"`
+	CompletedAt            time.Time `json:"completed_at"`
 }
 
 type ProviderStats struct {
-	ProviderID          string     `json:"provider_id"`
-	ProviderKind        string     `json:"provider_kind"`
-	ProviderDisplayName string     `json:"provider_display_name"`
-	TotalRuns           int        `json:"total_runs"`
-	SucceededRuns       int        `json:"succeeded_runs"`
-	FailedRuns          int        `json:"failed_runs"`
-	CancelledRuns       int        `json:"cancelled_runs"`
-	AverageDurationMS   int64      `json:"average_duration_ms"`
-	LastDurationMS      int64      `json:"last_duration_ms"`
-	LastStatus          string     `json:"last_status,omitempty"`
-	LastErrorCode       string     `json:"last_error_code,omitempty"`
-	LastErrorMessage    string     `json:"last_error_message,omitempty"`
-	LastStartedAt       *time.Time `json:"last_started_at,omitempty"`
-	LastCompletedAt     *time.Time `json:"last_completed_at,omitempty"`
+	ProviderID                    string     `json:"provider_id"`
+	ProviderKind                  string     `json:"provider_kind"`
+	ProviderDisplayName           string     `json:"provider_display_name"`
+	TotalRuns                     int        `json:"total_runs"`
+	SucceededRuns                 int        `json:"succeeded_runs"`
+	FailedRuns                    int        `json:"failed_runs"`
+	CancelledRuns                 int        `json:"cancelled_runs"`
+	AverageDurationMS             int64      `json:"average_duration_ms"`
+	AverageFirstResponseLatencyMS int64      `json:"average_first_response_latency_ms"`
+	LastDurationMS                int64      `json:"last_duration_ms"`
+	LastFirstResponseLatencyMS    int64      `json:"last_first_response_latency_ms"`
+	LastStatus                    string     `json:"last_status,omitempty"`
+	LastErrorCode                 string     `json:"last_error_code,omitempty"`
+	LastErrorMessage              string     `json:"last_error_message,omitempty"`
+	LastStartedAt                 *time.Time `json:"last_started_at,omitempty"`
+	LastCompletedAt               *time.Time `json:"last_completed_at,omitempty"`
 }
 
 type ProbeRecord struct {
-	ProviderID     string    `json:"provider_id"`
-	ProviderKind   string    `json:"provider_kind"`
-	DisplayName    string    `json:"display_name"`
-	Ready          bool      `json:"ready"`
-	StatusState    string    `json:"status_state"`
-	StatusMessage  string    `json:"status_message"`
-	ResolvedBinary string    `json:"resolved_binary,omitempty"`
-	BaseURL        string    `json:"base_url,omitempty"`
-	Model          string    `json:"model,omitempty"`
-	ProbeLatencyMS int64     `json:"probe_latency_ms"`
-	CheckedAt      time.Time `json:"checked_at"`
+	ProviderID       string     `json:"provider_id"`
+	ProviderKind     string     `json:"provider_kind"`
+	DisplayName      string     `json:"display_name"`
+	Ready            bool       `json:"ready"`
+	StatusState      string     `json:"status_state"`
+	StatusMessage    string     `json:"status_message"`
+	ResolvedBinary   string     `json:"resolved_binary,omitempty"`
+	BaseURL          string     `json:"base_url,omitempty"`
+	Model            string     `json:"model,omitempty"`
+	ProbeLatencyMS   int64      `json:"probe_latency_ms"`
+	CheckedAt        time.Time  `json:"checked_at"`
+	Prepared         bool       `json:"prepared"`
+	PrepareState     string     `json:"prepare_state,omitempty"`
+	PrepareMessage   string     `json:"prepare_message,omitempty"`
+	PrepareLatencyMS int64      `json:"prepare_latency_ms"`
+	PreparedAt       *time.Time `json:"prepared_at,omitempty"`
 }
 
 type Store struct {
@@ -95,9 +103,10 @@ func (s *Store) RecordRun(ctx context.Context, run RunRecord) (RunRecord, error)
 			error_code,
 			error_message,
 			duration_ms,
+			first_response_latency_ms,
 			started_at,
 			completed_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`,
 		normalized.ID,
 		normalized.ProviderID,
@@ -110,6 +119,7 @@ func (s *Store) RecordRun(ctx context.Context, run RunRecord) (RunRecord, error)
 		normalized.ErrorCode,
 		normalized.ErrorMessage,
 		normalized.DurationMS,
+		normalized.FirstResponseLatencyMS,
 		normalized.StartedAt.Format(time.RFC3339Nano),
 		normalized.CompletedAt.Format(time.RFC3339Nano),
 	)
@@ -134,6 +144,7 @@ func (s *Store) ListRecentRuns(ctx context.Context, limit int) ([]RunRecord, err
 			error_code,
 			error_message,
 			duration_ms,
+			first_response_latency_ms,
 			started_at,
 			completed_at
 		FROM provider_gateway_runs
@@ -169,7 +180,8 @@ func (s *Store) ListProviderStats(ctx context.Context) ([]ProviderStats, error) 
 				SUM(CASE WHEN status = 'succeeded' THEN 1 ELSE 0 END) AS succeeded_runs,
 				SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed_runs,
 				SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) AS cancelled_runs,
-				CAST(AVG(duration_ms) AS INTEGER) AS average_duration_ms
+				CAST(AVG(duration_ms) AS INTEGER) AS average_duration_ms,
+				CAST(AVG(first_response_latency_ms) AS INTEGER) AS average_first_response_latency_ms
 			FROM provider_gateway_runs
 			GROUP BY provider_id, provider_kind
 		)
@@ -182,7 +194,9 @@ func (s *Store) ListProviderStats(ctx context.Context) ([]ProviderStats, error) 
 			rollup.failed_runs,
 			rollup.cancelled_runs,
 			COALESCE(rollup.average_duration_ms, 0) AS average_duration_ms,
+			COALESCE(rollup.average_first_response_latency_ms, 0) AS average_first_response_latency_ms,
 			latest.duration_ms,
+			latest.first_response_latency_ms,
 			latest.status,
 			latest.error_code,
 			latest.error_message,
@@ -264,6 +278,66 @@ func (s *Store) RecordProbe(ctx context.Context, probe ProbeRecord) (ProbeRecord
 	return normalized, nil
 }
 
+func (s *Store) RecordPrepare(ctx context.Context, probe ProbeRecord) (ProbeRecord, error) {
+	normalized := normalizeProbeRecord(probe)
+	preparedAt := ""
+	if normalized.PreparedAt != nil && !normalized.PreparedAt.IsZero() {
+		preparedAt = normalized.PreparedAt.UTC().Format(time.RFC3339Nano)
+	}
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO provider_gateway_probes (
+			provider_id,
+			provider_kind,
+			display_name,
+			ready,
+			status_state,
+			status_message,
+			resolved_binary,
+			base_url,
+			model,
+			probe_latency_ms,
+			checked_at,
+			prepared,
+			prepare_state,
+			prepare_message,
+			prepare_latency_ms,
+			prepared_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(provider_id) DO UPDATE SET
+			provider_kind = excluded.provider_kind,
+			display_name = excluded.display_name,
+			resolved_binary = excluded.resolved_binary,
+			base_url = excluded.base_url,
+			model = excluded.model,
+			prepared = excluded.prepared,
+			prepare_state = excluded.prepare_state,
+			prepare_message = excluded.prepare_message,
+			prepare_latency_ms = excluded.prepare_latency_ms,
+			prepared_at = excluded.prepared_at
+	`,
+		normalized.ProviderID,
+		normalized.ProviderKind,
+		normalized.DisplayName,
+		normalized.Ready,
+		normalized.StatusState,
+		normalized.StatusMessage,
+		normalized.ResolvedBinary,
+		normalized.BaseURL,
+		normalized.Model,
+		normalized.ProbeLatencyMS,
+		normalized.CheckedAt.Format(time.RFC3339Nano),
+		normalized.Prepared,
+		normalized.PrepareState,
+		normalized.PrepareMessage,
+		normalized.PrepareLatencyMS,
+		preparedAt,
+	)
+	if err != nil {
+		return ProbeRecord{}, fmt.Errorf("record provider gateway prepare: %w", err)
+	}
+	return normalized, nil
+}
+
 func (s *Store) ListLatestProbes(ctx context.Context) ([]ProbeRecord, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT
@@ -277,7 +351,12 @@ func (s *Store) ListLatestProbes(ctx context.Context) ([]ProbeRecord, error) {
 			base_url,
 			model,
 			probe_latency_ms,
-			checked_at
+			checked_at,
+			prepared,
+			prepare_state,
+			prepare_message,
+			prepare_latency_ms,
+			prepared_at
 		FROM provider_gateway_probes
 		ORDER BY checked_at DESC, provider_id
 	`)
@@ -316,6 +395,9 @@ func normalizeRunRecord(run RunRecord) RunRecord {
 	if run.DurationMS < 0 {
 		run.DurationMS = 0
 	}
+	if run.FirstResponseLatencyMS < 0 {
+		run.FirstResponseLatencyMS = 0
+	}
 	if run.StartedAt.IsZero() {
 		run.StartedAt = time.Now().UTC()
 	}
@@ -351,11 +433,20 @@ func normalizeProbeRecord(probe ProbeRecord) ProbeRecord {
 	probe.ResolvedBinary = strings.TrimSpace(probe.ResolvedBinary)
 	probe.BaseURL = strings.TrimSpace(probe.BaseURL)
 	probe.Model = strings.TrimSpace(probe.Model)
+	probe.PrepareState = strings.TrimSpace(probe.PrepareState)
+	probe.PrepareMessage = strings.TrimSpace(probe.PrepareMessage)
 	if probe.ProbeLatencyMS < 0 {
 		probe.ProbeLatencyMS = 0
 	}
+	if probe.PrepareLatencyMS < 0 {
+		probe.PrepareLatencyMS = 0
+	}
 	if probe.CheckedAt.IsZero() {
 		probe.CheckedAt = time.Now().UTC()
+	}
+	if probe.PreparedAt != nil {
+		preparedAt := probe.PreparedAt.UTC()
+		probe.PreparedAt = &preparedAt
 	}
 	return probe
 }
@@ -398,6 +489,7 @@ func scanRunRecord(scanner interface {
 		&run.ErrorCode,
 		&run.ErrorMessage,
 		&run.DurationMS,
+		&run.FirstResponseLatencyMS,
 		&startedAt,
 		&completedAt,
 	); err != nil {
@@ -431,7 +523,9 @@ func scanProviderStats(scanner interface {
 		&stats.FailedRuns,
 		&stats.CancelledRuns,
 		&stats.AverageDurationMS,
+		&stats.AverageFirstResponseLatencyMS,
 		&stats.LastDurationMS,
+		&stats.LastFirstResponseLatencyMS,
 		&stats.LastStatus,
 		&stats.LastErrorCode,
 		&stats.LastErrorMessage,
@@ -467,6 +561,12 @@ func scanProviderStats(scanner interface {
 	if stats.LastDurationMS < 0 {
 		stats.LastDurationMS = 0
 	}
+	if stats.AverageFirstResponseLatencyMS < 0 {
+		stats.AverageFirstResponseLatencyMS = 0
+	}
+	if stats.LastFirstResponseLatencyMS < 0 {
+		stats.LastFirstResponseLatencyMS = 0
+	}
 	return stats, nil
 }
 
@@ -475,6 +575,7 @@ func scanProbeRecord(scanner interface {
 }) (ProbeRecord, error) {
 	var probe ProbeRecord
 	var checkedAt string
+	var preparedAt string
 	if err := scanner.Scan(
 		&probe.ProviderID,
 		&probe.ProviderKind,
@@ -487,6 +588,11 @@ func scanProbeRecord(scanner interface {
 		&probe.Model,
 		&probe.ProbeLatencyMS,
 		&checkedAt,
+		&probe.Prepared,
+		&probe.PrepareState,
+		&probe.PrepareMessage,
+		&probe.PrepareLatencyMS,
+		&preparedAt,
 	); err != nil {
 		return ProbeRecord{}, fmt.Errorf("scan provider gateway probe: %w", err)
 	}
@@ -495,5 +601,12 @@ func scanProbeRecord(scanner interface {
 		return ProbeRecord{}, fmt.Errorf("parse provider gateway probe checked_at: %w", err)
 	}
 	probe.CheckedAt = parsedCheckedAt
+	if strings.TrimSpace(preparedAt) != "" {
+		parsedPreparedAt, err := time.Parse(time.RFC3339Nano, preparedAt)
+		if err != nil {
+			return ProbeRecord{}, fmt.Errorf("parse provider gateway probe prepared_at: %w", err)
+		}
+		probe.PreparedAt = &parsedPreparedAt
+	}
 	return normalizeProbeRecord(probe), nil
 }

@@ -17,30 +17,37 @@ const (
 )
 
 type ProviderGatewayProviderView struct {
-	ProviderID         string     `json:"provider_id"`
-	ProviderKind       string     `json:"provider_kind"`
-	DisplayName        string     `json:"display_name"`
-	Enabled            bool       `json:"enabled"`
-	Active             bool       `json:"active"`
-	RouteReady         bool       `json:"route_ready"`
-	RouteStatusState   string     `json:"route_status_state"`
-	RouteStatusMessage string     `json:"route_status_message,omitempty"`
-	ResolvedBinary     string     `json:"resolved_binary,omitempty"`
-	BaseURL            string     `json:"base_url,omitempty"`
-	Model              string     `json:"model,omitempty"`
-	RouteCheckedAt     *time.Time `json:"route_checked_at,omitempty"`
-	RouteLatencyMS     int64      `json:"route_latency_ms"`
-	TotalRuns          int        `json:"total_runs"`
-	SucceededRuns      int        `json:"succeeded_runs"`
-	FailedRuns         int        `json:"failed_runs"`
-	CancelledRuns      int        `json:"cancelled_runs"`
-	AverageDurationMS  int64      `json:"average_duration_ms"`
-	LastDurationMS     int64      `json:"last_duration_ms"`
-	LastStatus         string     `json:"last_status,omitempty"`
-	LastErrorCode      string     `json:"last_error_code,omitempty"`
-	LastErrorMessage   string     `json:"last_error_message,omitempty"`
-	LastStartedAt      *time.Time `json:"last_started_at,omitempty"`
-	LastCompletedAt    *time.Time `json:"last_completed_at,omitempty"`
+	ProviderID                    string     `json:"provider_id"`
+	ProviderKind                  string     `json:"provider_kind"`
+	DisplayName                   string     `json:"display_name"`
+	Enabled                       bool       `json:"enabled"`
+	Active                        bool       `json:"active"`
+	RouteReady                    bool       `json:"route_ready"`
+	RouteStatusState              string     `json:"route_status_state"`
+	RouteStatusMessage            string     `json:"route_status_message,omitempty"`
+	ResolvedBinary                string     `json:"resolved_binary,omitempty"`
+	BaseURL                       string     `json:"base_url,omitempty"`
+	Model                         string     `json:"model,omitempty"`
+	RouteCheckedAt                *time.Time `json:"route_checked_at,omitempty"`
+	RouteLatencyMS                int64      `json:"route_latency_ms"`
+	RoutePrepared                 bool       `json:"route_prepared"`
+	RoutePrepareState             string     `json:"route_prepare_state,omitempty"`
+	RoutePrepareMessage           string     `json:"route_prepare_message,omitempty"`
+	RoutePreparedAt               *time.Time `json:"route_prepared_at,omitempty"`
+	RoutePrepareLatencyMS         int64      `json:"route_prepare_latency_ms"`
+	TotalRuns                     int        `json:"total_runs"`
+	SucceededRuns                 int        `json:"succeeded_runs"`
+	FailedRuns                    int        `json:"failed_runs"`
+	CancelledRuns                 int        `json:"cancelled_runs"`
+	AverageDurationMS             int64      `json:"average_duration_ms"`
+	AverageFirstResponseLatencyMS int64      `json:"average_first_response_latency_ms"`
+	LastDurationMS                int64      `json:"last_duration_ms"`
+	LastFirstResponseLatencyMS    int64      `json:"last_first_response_latency_ms"`
+	LastStatus                    string     `json:"last_status,omitempty"`
+	LastErrorCode                 string     `json:"last_error_code,omitempty"`
+	LastErrorMessage              string     `json:"last_error_message,omitempty"`
+	LastStartedAt                 *time.Time `json:"last_started_at,omitempty"`
+	LastCompletedAt               *time.Time `json:"last_completed_at,omitempty"`
 }
 
 type ProviderGatewaySnapshot struct {
@@ -160,7 +167,9 @@ func applyProviderGatewayStats(view *ProviderGatewayProviderView, stats provider
 	view.FailedRuns = stats.FailedRuns
 	view.CancelledRuns = stats.CancelledRuns
 	view.AverageDurationMS = stats.AverageDurationMS
+	view.AverageFirstResponseLatencyMS = stats.AverageFirstResponseLatencyMS
 	view.LastDurationMS = stats.LastDurationMS
+	view.LastFirstResponseLatencyMS = stats.LastFirstResponseLatencyMS
 	view.LastStatus = stats.LastStatus
 	view.LastErrorCode = stats.LastErrorCode
 	view.LastErrorMessage = stats.LastErrorMessage
@@ -182,6 +191,14 @@ func applyProviderGatewayProbe(view *ProviderGatewayProviderView, probe provider
 	view.RouteLatencyMS = probe.ProbeLatencyMS
 	checkedAt := probe.CheckedAt.UTC()
 	view.RouteCheckedAt = &checkedAt
+	view.RoutePrepared = probe.Prepared
+	view.RoutePrepareState = probe.PrepareState
+	view.RoutePrepareMessage = probe.PrepareMessage
+	view.RoutePrepareLatencyMS = probe.PrepareLatencyMS
+	if probe.PreparedAt != nil {
+		preparedAt := probe.PreparedAt.UTC()
+		view.RoutePreparedAt = &preparedAt
+	}
 }
 
 func providerConfigModel(provider agent.ProviderView) string {
@@ -223,18 +240,19 @@ func (r *Runtime) recordConversationProviderRun(
 
 	status, errorCode, errorMessage := classifyProviderRunOutcome(result, callErr)
 	_, _ = r.ProviderGateway.RecordRun(ctx, providergateway.RunRecord{
-		ProviderID:          binding.Record.ID,
-		ProviderKind:        string(binding.Record.Kind),
-		ProviderDisplayName: binding.Record.DisplayName,
-		RequestMode:         requestMode,
-		Model:               strings.TrimSpace(binding.Model),
-		ConversationID:      strings.TrimSpace(result.Snapshot.ID),
-		Status:              status,
-		ErrorCode:           errorCode,
-		ErrorMessage:        errorMessage,
-		DurationMS:          time.Since(startedAt).Milliseconds(),
-		StartedAt:           startedAt.UTC(),
-		CompletedAt:         time.Now().UTC(),
+		ProviderID:             binding.Record.ID,
+		ProviderKind:           string(binding.Record.Kind),
+		ProviderDisplayName:    binding.Record.DisplayName,
+		RequestMode:            requestMode,
+		Model:                  strings.TrimSpace(binding.Model),
+		ConversationID:         strings.TrimSpace(result.Snapshot.ID),
+		Status:                 status,
+		ErrorCode:              errorCode,
+		ErrorMessage:           errorMessage,
+		DurationMS:             time.Since(startedAt).Milliseconds(),
+		FirstResponseLatencyMS: result.FirstResponseLatencyMS,
+		StartedAt:              startedAt.UTC(),
+		CompletedAt:            time.Now().UTC(),
 	})
 }
 

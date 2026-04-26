@@ -6,8 +6,8 @@
 - State: `VERIFIED`
 - Scope:
   - backend-owned AI provider catalog and active-provider resolution
-  - backend-owned provider gateway operational snapshot, recent-run history, and persisted probe state
-  - explicit provider probe route that refreshes the same operational snapshot instead of creating a second UI truth
+  - backend-owned provider gateway operational snapshot, recent-run history, persisted probe state, persisted route-prepare state, and first-response latency telemetry
+  - explicit provider probe/prewarm routes that refresh the same operational snapshot instead of creating a second UI truth
   - narrow provider runtime for `codex`, `claude`, and `openai-compatible`
   - frontend settings provider client/draft helpers and TypeScript surface
   - browser-level Playwright validation for the provider/settings surfaces plus AI-toolbar provider/model switching under the split local dev path
@@ -23,6 +23,7 @@
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts --grep "AI provider settings show gateway telemetry after a mocked Codex run"`
 - `./scripts/go.sh test ./core/providergateway ./core/app ./core/transport/httpapi -run 'TestStore|TestProviderGatewaySnapshotReturnsRecentRunsAndStats' -count=1`
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestProbeProviderReturnsReachableOpenAICompatibleStatus|TestProviderGatewaySnapshotReturnsRecentRunsAndStats' -count=1`
+- `./scripts/go.sh test ./core/providergateway ./core/conversation ./core/app ./core/transport/httpapi -run 'TestStore|TestProviderGatewaySnapshotReturnsRecentRunsAndStats|TestProbeProviderReturnsReachableOpenAICompatibleStatus|TestProviderGatewaySnapshotIncludesLatestProbeState|TestPrewarmProviderReturnsPreparedRouteState|TestOpenAICompatibleProviderComplete|TestOpenAICompatibleProviderCompleteStreamEmitsDeltas|TestServiceSubmitStreamEmitsStructuredEvents' -count=1`
 - `python3 -m py_compile scripts/validate_workspace_navigation.py scripts/validate_operator_workflow.py`
 - `python3 scripts/validate_operator_workflow.py`
 - `python3 scripts/validate_workspace_navigation.py`
@@ -75,18 +76,26 @@
   - runtime readiness is no longer derived from `GET /api/v1/agent/providers`
 - The settings shell now consumes `GET /api/v1/agent/providers/gateway` as the single operational source:
   - per-provider route readiness (`route_ready`, `route_status_state`, `route_status_message`)
+  - per-provider route-prepare state (`route_prepared`, `route_prepare_state`, `route_prepare_message`)
   - resolved CLI binary when the backend probe found one
   - OpenAI-compatible route source/model echo from the backend probe snapshot
   - route checked-at / probe latency
+  - route prepared-at / prepare latency
   - per-provider recent run totals
   - health status derived from backend run truth
-  - average and last latency
+  - average and last completion latency
+  - average and last first-response latency from the real conversation runtime path
   - recent activity rows with request mode, model, duration, and last error
 - Provider settings now also expose an explicit `Probe provider route` action:
   - `POST /api/v1/agent/providers/{providerID}/probe`
   - CLI providers return explicit binary/auth readiness from the backend-owned probe path
   - OpenAI-compatible providers probe `/v1/models`, return discovered models, and fail explicitly when the configured model is not present
   - the probe writes back into the same backend-owned gateway snapshot, so the editor and shell summaries read one source of truth
+- Provider settings now also expose an explicit `Prewarm provider route` action through the same gateway store:
+  - `POST /api/v1/agent/providers/{providerID}/prewarm`
+  - CLI routes are marked `prepared` only after the backend verifies the binary/auth path for on-demand launch
+  - OpenAI-compatible routes are marked `prepared` only after the backend successfully primes `/v1/models`
+  - prewarm writes back into the same gateway row as probe/readiness data instead of creating a frontend-only warm cache
 - Gateway telemetry load no longer fails silently in the settings shell:
   - if `/api/v1/agent/providers/gateway` fails, the UI shows an explicit gateway telemetry error instead of quietly pretending the telemetry surface has no data
 - CLI/OpenAI probe states are now surfaced only through the gateway snapshot:

@@ -146,6 +146,7 @@ func (p *localCLIProvider) complete(
 	request CompletionRequest,
 	onTextDelta func(string) error,
 ) (CompletionResult, ProviderInfo, error) {
+	startedAt := time.Now()
 	info := p.Info()
 	if model := strings.TrimSpace(request.Model); model != "" {
 		info.Model = model
@@ -157,7 +158,7 @@ func (p *localCLIProvider) complete(
 		return CompletionResult{}, info, fmt.Errorf("%s command is required", p.kind)
 	}
 
-	content, reasoning, session, err := p.run(ctx, request, info.Model)
+	content, reasoning, session, firstResponseLatencyMS, err := p.run(ctx, request, info.Model)
 	if err != nil {
 		return CompletionResult{Session: session}, info, err
 	}
@@ -168,10 +169,11 @@ func (p *localCLIProvider) complete(
 		}
 	}
 	return CompletionResult{
-		Content:   content,
-		Reasoning: strings.TrimSpace(reasoning),
-		Model:     info.Model,
-		Session:   session,
+		Content:                content,
+		Reasoning:              strings.TrimSpace(reasoning),
+		Model:                  info.Model,
+		Session:                session,
+		FirstResponseLatencyMS: normalizeFirstResponseLatency(firstResponseLatencyMS, startedAt, content != ""),
 	}, info, nil
 }
 
@@ -180,6 +182,7 @@ func (p *localCLIProvider) completeStructured(
 	request CompletionRequest,
 	emit func(ProviderStreamEvent) error,
 ) (CompletionResult, ProviderInfo, error) {
+	startedAt := time.Now()
 	info := p.Info()
 	if model := strings.TrimSpace(request.Model); model != "" {
 		info.Model = model
@@ -191,23 +194,29 @@ func (p *localCLIProvider) completeStructured(
 		return CompletionResult{}, info, fmt.Errorf("%s command is required", p.kind)
 	}
 
-	content, reasoning, session, err := p.runStructured(ctx, request, info.Model, emit)
+	content, reasoning, session, firstResponseLatencyMS, err := p.runStructured(ctx, request, info.Model, emit)
 	if err != nil {
 		return CompletionResult{Session: session}, info, err
 	}
 	return CompletionResult{
-		Content:   strings.TrimSpace(content),
-		Reasoning: strings.TrimSpace(reasoning),
-		Model:     info.Model,
-		Session:   session,
+		Content:                strings.TrimSpace(content),
+		Reasoning:              strings.TrimSpace(reasoning),
+		Model:                  info.Model,
+		Session:                session,
+		FirstResponseLatencyMS: normalizeFirstResponseLatency(firstResponseLatencyMS, startedAt, strings.TrimSpace(content) != ""),
 	}, info, nil
 }
 
-func (p *localCLIProvider) run(ctx context.Context, request CompletionRequest, model string) (string, string, *ProviderSessionState, error) {
+func (p *localCLIProvider) run(
+	ctx context.Context,
+	request CompletionRequest,
+	model string,
+) (string, string, *ProviderSessionState, int64, error) {
+	startedAt := time.Now()
 	switch p.mode {
 	case localCLIModeCodex:
 		content, session, err := runCodexCLI(ctx, p.command, model, request.Session, formatCLICompletionPrompt(request, true))
-		return content, formatCLIReasoning("codex", p.command, model, err == nil), session, err
+		return content, formatCLIReasoning("codex", p.command, model, err == nil), session, elapsedMillisecondsSince(startedAt), err
 	case localCLIModeClaudeCode:
 		content, session, err := runClaudeCodeCLI(
 			ctx,
@@ -217,9 +226,9 @@ func (p *localCLIProvider) run(ctx context.Context, request CompletionRequest, m
 			formatCLICompletionPrompt(request, false),
 			request.Session,
 		)
-		return content, formatCLIReasoning("claude", p.command, model, err == nil), session, err
+		return content, formatCLIReasoning("claude", p.command, model, err == nil), session, elapsedMillisecondsSince(startedAt), err
 	default:
-		return "", "", nil, fmt.Errorf("unsupported cli provider mode: %s", p.mode)
+		return "", "", nil, 0, fmt.Errorf("unsupported cli provider mode: %s", p.mode)
 	}
 }
 
@@ -228,10 +237,10 @@ func (p *localCLIProvider) runStructured(
 	request CompletionRequest,
 	model string,
 	emit func(ProviderStreamEvent) error,
-) (string, string, *ProviderSessionState, error) {
+) (string, string, *ProviderSessionState, int64, error) {
 	switch p.mode {
 	case localCLIModeCodex:
-		content, reasoning, session, err := runCodexCLIStream(
+		content, reasoning, session, firstResponseLatencyMS, err := runCodexCLIStream(
 			ctx,
 			p.command,
 			model,
@@ -242,9 +251,9 @@ func (p *localCLIProvider) runStructured(
 		if strings.TrimSpace(reasoning) == "" {
 			reasoning = formatCLIReasoning("codex", p.command, model, err == nil)
 		}
-		return content, reasoning, session, err
+		return content, reasoning, session, firstResponseLatencyMS, err
 	case localCLIModeClaudeCode:
-		content, reasoning, session, err := runClaudeCodeCLIStream(
+		content, reasoning, session, firstResponseLatencyMS, err := runClaudeCodeCLIStream(
 			ctx,
 			p.command,
 			model,
@@ -256,9 +265,9 @@ func (p *localCLIProvider) runStructured(
 		if strings.TrimSpace(reasoning) == "" {
 			reasoning = formatCLIReasoning("claude", p.command, model, err == nil)
 		}
-		return content, reasoning, session, err
+		return content, reasoning, session, firstResponseLatencyMS, err
 	default:
-		return "", "", nil, fmt.Errorf("unsupported cli provider mode: %s", p.mode)
+		return "", "", nil, 0, fmt.Errorf("unsupported cli provider mode: %s", p.mode)
 	}
 }
 
@@ -455,4 +464,22 @@ func extractCodexThreadID(stdout string) string {
 		}
 	}
 	return ""
+}
+
+func elapsedMillisecondsSince(startedAt time.Time) int64 {
+	elapsed := time.Since(startedAt).Milliseconds()
+	if elapsed <= 0 {
+		return 1
+	}
+	return elapsed
+}
+
+func normalizeFirstResponseLatency(latencyMS int64, startedAt time.Time, hasVisibleResponse bool) int64 {
+	if latencyMS > 0 {
+		return latencyMS
+	}
+	if !hasVisibleResponse {
+		return 0
+	}
+	return elapsedMillisecondsSince(startedAt)
 }

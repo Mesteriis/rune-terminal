@@ -82,10 +82,11 @@ type AssistantPromptRequest struct {
 }
 
 type SubmitResult struct {
-	Snapshot      Snapshot
-	Assistant     Message
-	ProviderInfo  ProviderInfo
-	ProviderError string
+	Snapshot               Snapshot
+	Assistant              Message
+	ProviderInfo           ProviderInfo
+	ProviderError          string
+	FirstResponseLatencyMS int64
 }
 
 type AppendMessageRequest struct {
@@ -110,10 +111,11 @@ type CompletionRequest struct {
 }
 
 type CompletionResult struct {
-	Content   string
-	Model     string
-	Reasoning string
-	Session   *ProviderSessionState
+	Content                string
+	Model                  string
+	Reasoning              string
+	Session                *ProviderSessionState
+	FirstResponseLatencyMS int64
 }
 
 type StreamEventType string

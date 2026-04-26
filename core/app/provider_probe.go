@@ -19,6 +19,7 @@ const (
 	providerProbeStatusUnreachable      = "unreachable"
 	providerProbeStatusModelUnavailable = "model-unavailable"
 	providerProbeStatusUnchecked        = "unchecked"
+	providerPrepareStatePrepared        = "prepared"
 )
 
 type ProviderProbeResult struct {
@@ -34,6 +35,23 @@ type ProviderProbeResult struct {
 	DiscoveredModels []string  `json:"discovered_models,omitempty"`
 	LatencyMS        int64     `json:"latency_ms"`
 	CheckedAt        time.Time `json:"checked_at"`
+}
+
+type ProviderPrepareResult struct {
+	ProviderID         string    `json:"provider_id"`
+	ProviderKind       string    `json:"provider_kind"`
+	DisplayName        string    `json:"display_name"`
+	Prepared           bool      `json:"prepared"`
+	PrepareState       string    `json:"prepare_state"`
+	PrepareMessage     string    `json:"prepare_message"`
+	ResolvedBinary     string    `json:"resolved_binary,omitempty"`
+	BaseURL            string    `json:"base_url,omitempty"`
+	Model              string    `json:"model,omitempty"`
+	LatencyMS          int64     `json:"latency_ms"`
+	PreparedAt         time.Time `json:"prepared_at"`
+	RouteReady         bool      `json:"route_ready"`
+	RouteStatusState   string    `json:"route_status_state"`
+	RouteStatusMessage string    `json:"route_status_message"`
 }
 
 func (r *Runtime) ProbeProvider(ctx context.Context, providerID string) (ProviderProbeResult, error) {
@@ -76,6 +94,82 @@ func (r *Runtime) ProbeProvider(ctx context.Context, providerID string) (Provide
 	default:
 		return ProviderProbeResult{}, fmt.Errorf("%w: %s", agent.ErrProviderKindUnsupported, record.Kind)
 	}
+}
+
+func (r *Runtime) PrewarmProvider(ctx context.Context, providerID string) (ProviderPrepareResult, error) {
+	record, err := r.Agent.Provider(strings.TrimSpace(providerID))
+	if err != nil {
+		return ProviderPrepareResult{}, err
+	}
+
+	startedAt := time.Now().UTC()
+	baseResult := ProviderPrepareResult{
+		ProviderID:   record.ID,
+		ProviderKind: string(record.Kind),
+		DisplayName:  strings.TrimSpace(record.DisplayName),
+		Model:        providerRecordModel(record),
+		PreparedAt:   startedAt,
+	}
+	if !record.Enabled {
+		baseResult.Prepared = false
+		baseResult.PrepareState = providerProbeStatusDisabled
+		baseResult.PrepareMessage = "Provider is disabled."
+		baseResult.RouteReady = false
+		baseResult.RouteStatusState = providerProbeStatusDisabled
+		baseResult.RouteStatusMessage = "Provider is disabled."
+		baseResult.LatencyMS = time.Since(startedAt).Milliseconds()
+		r.recordProviderPrepare(ctx, baseResult)
+		return baseResult, nil
+	}
+
+	var probeResult ProviderProbeResult
+	switch record.Kind {
+	case agent.ProviderKindCodex, agent.ProviderKindClaude:
+		probeResult, err = r.probeCLIProvider(record, startedAt)
+	case agent.ProviderKindOpenAICompatible:
+		probeResult, err = r.probeOpenAICompatibleProvider(ctx, record, startedAt)
+	default:
+		return ProviderPrepareResult{}, fmt.Errorf("%w: %s", agent.ErrProviderKindUnsupported, record.Kind)
+	}
+	if err != nil {
+		return ProviderPrepareResult{}, err
+	}
+
+	result := ProviderPrepareResult{
+		ProviderID:         probeResult.ProviderID,
+		ProviderKind:       probeResult.ProviderKind,
+		DisplayName:        probeResult.DisplayName,
+		ResolvedBinary:     probeResult.ResolvedBinary,
+		BaseURL:            probeResult.BaseURL,
+		Model:              probeResult.Model,
+		LatencyMS:          probeResult.LatencyMS,
+		PreparedAt:         time.Now().UTC(),
+		RouteReady:         probeResult.Ready,
+		RouteStatusState:   probeResult.StatusState,
+		RouteStatusMessage: probeResult.StatusMessage,
+	}
+	if probeResult.Ready {
+		result.Prepared = true
+		result.PrepareState = providerPrepareStatePrepared
+		if record.Kind == agent.ProviderKindOpenAICompatible {
+			result.PrepareMessage = fmt.Sprintf(
+				"Route prepared via model discovery with %d available model(s).",
+				len(probeResult.DiscoveredModels),
+			)
+		} else {
+			result.PrepareMessage = fmt.Sprintf(
+				"%s route verified and ready for on-demand launch.",
+				firstNonEmptyProviderLabel(strings.TrimSpace(record.DisplayName), string(record.Kind)),
+			)
+		}
+	} else {
+		result.Prepared = false
+		result.PrepareState = probeResult.StatusState
+		result.PrepareMessage = probeResult.StatusMessage
+	}
+	r.recordProviderProbe(ctx, probeResult)
+	r.recordProviderPrepare(ctx, result)
+	return result, nil
 }
 
 func (r *Runtime) probeCLIProvider(record agent.ProviderRecord, startedAt time.Time) (ProviderProbeResult, error) {
@@ -164,6 +258,27 @@ func (r *Runtime) recordProviderProbe(ctx context.Context, result ProviderProbeR
 	})
 }
 
+func (r *Runtime) recordProviderPrepare(ctx context.Context, result ProviderPrepareResult) {
+	if r.ProviderGateway == nil {
+		return
+	}
+	preparedAt := result.PreparedAt.UTC()
+	_, _ = r.ProviderGateway.RecordPrepare(ctx, providergateway.ProbeRecord{
+		ProviderID:       strings.TrimSpace(result.ProviderID),
+		ProviderKind:     strings.TrimSpace(result.ProviderKind),
+		DisplayName:      strings.TrimSpace(result.DisplayName),
+		ResolvedBinary:   strings.TrimSpace(result.ResolvedBinary),
+		BaseURL:          strings.TrimSpace(result.BaseURL),
+		Model:            strings.TrimSpace(result.Model),
+		Prepared:         result.Prepared,
+		PrepareState:     strings.TrimSpace(result.PrepareState),
+		PrepareMessage:   strings.TrimSpace(result.PrepareMessage),
+		PrepareLatencyMS: result.LatencyMS,
+		CheckedAt:        preparedAt,
+		PreparedAt:       &preparedAt,
+	})
+}
+
 func providerRecordModel(record agent.ProviderRecord) string {
 	switch record.Kind {
 	case agent.ProviderKindCodex:
@@ -193,4 +308,20 @@ func containsTrimmedString(items []string, needle string) bool {
 		}
 	}
 	return false
+}
+
+func firstNonEmptyProviderLabel(displayName string, fallback string) string {
+	if strings.TrimSpace(displayName) != "" {
+		return strings.TrimSpace(displayName)
+	}
+	switch strings.TrimSpace(fallback) {
+	case "codex":
+		return "Codex CLI"
+	case "claude":
+		return "Claude Code CLI"
+	case "openai-compatible":
+		return "OpenAI-compatible route"
+	default:
+		return strings.TrimSpace(fallback)
+	}
 }

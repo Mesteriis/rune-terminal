@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -167,14 +168,15 @@ func runCodexCLIStream(
 	session *ProviderSessionState,
 	prompt string,
 	emit func(ProviderStreamEvent) error,
-) (string, string, *ProviderSessionState, error) {
+) (string, string, *ProviderSessionState, int64, error) {
+	startedAt := time.Now()
 	outputFile, err := os.CreateTemp("", "rterm-codex-last-message-*.txt")
 	if err != nil {
-		return "", "", nil, err
+		return "", "", nil, 0, err
 	}
 	outputPath := outputFile.Name()
 	if err := outputFile.Close(); err != nil {
-		return "", "", nil, err
+		return "", "", nil, 0, err
 	}
 	defer os.Remove(outputPath)
 
@@ -206,6 +208,12 @@ func runCodexCLIStream(
 	resolvedSessionID := sessionID
 	textStreamed := false
 	var providerErr error
+	firstResponseLatencyMS := int64(0)
+	markFirstResponse := func() {
+		if firstResponseLatencyMS == 0 {
+			firstResponseLatencyMS = elapsedMillisecondsSince(startedAt)
+		}
+	}
 
 	stdout, stderr, runErr := runStreamingLocalCLICommand(ctx, command, args, stdin, func(line string) error {
 		line = strings.TrimSpace(line)
@@ -228,6 +236,7 @@ func runCodexCLIStream(
 			if strings.TrimSpace(delta) == "" {
 				return nil
 			}
+			markFirstResponse()
 			textStreamed = true
 			textBuilder.WriteString(delta)
 			return emitProviderTextDelta(emit, delta)
@@ -235,6 +244,7 @@ func runCodexCLIStream(
 			if payload.Item == nil || strings.TrimSpace(payload.Item.Type) != "command_execution" {
 				return nil
 			}
+			markFirstResponse()
 			return emitProviderToolCall(emit, &ProviderStreamToolCall{
 				ID:      strings.TrimSpace(payload.Item.ID),
 				Kind:    "command_execution",
@@ -264,9 +274,11 @@ func runCodexCLIStream(
 				if reasoning == "" {
 					return nil
 				}
+				markFirstResponse()
 				appendReasoningDelta(&reasoningBuilder, reasoning)
 				return emitProviderReasoningDelta(emit, reasoning)
 			case "command_execution":
+				markFirstResponse()
 				status := normalizeToolCallStatus(payload.Item.Status, "completed")
 				if payload.Item.ExitCode != nil && *payload.Item.ExitCode != 0 {
 					status = "failed"
@@ -299,17 +311,17 @@ func runCodexCLIStream(
 		return nil
 	})
 	if runErr != nil {
-		return "", strings.TrimSpace(reasoningBuilder.String()), nextCLISessionState("codex", resolvedSessionID), formatCLICommandError("codex", runErr, stdout, stderr)
+		return "", strings.TrimSpace(reasoningBuilder.String()), nextCLISessionState("codex", resolvedSessionID), firstResponseLatencyMS, formatCLICommandError("codex", runErr, stdout, stderr)
 	}
 	if providerErr != nil {
-		return "", strings.TrimSpace(reasoningBuilder.String()), nextCLISessionState("codex", resolvedSessionID), providerErr
+		return "", strings.TrimSpace(reasoningBuilder.String()), nextCLISessionState("codex", resolvedSessionID), firstResponseLatencyMS, providerErr
 	}
 
 	finalContent := strings.TrimSpace(readCLIOutputFile(outputPath))
 	if finalContent == "" {
 		finalContent = strings.TrimSpace(textBuilder.String())
 	}
-	return finalContent, strings.TrimSpace(reasoningBuilder.String()), nextCLISessionState("codex", resolvedSessionID), nil
+	return finalContent, strings.TrimSpace(reasoningBuilder.String()), nextCLISessionState("codex", resolvedSessionID), normalizeFirstResponseLatency(firstResponseLatencyMS, startedAt, finalContent != ""), nil
 }
 
 type claudeCodeStreamJSONLine struct {
@@ -350,7 +362,8 @@ func runClaudeCodeCLIStream(
 	prompt string,
 	session *ProviderSessionState,
 	emit func(ProviderStreamEvent) error,
-) (string, string, *ProviderSessionState, error) {
+) (string, string, *ProviderSessionState, int64, error) {
+	startedAt := time.Now()
 	sessionID := ""
 	if session != nil {
 		sessionID = strings.TrimSpace(session.ID)
@@ -379,6 +392,12 @@ func runClaudeCodeCLIStream(
 	resolvedSessionID := sessionID
 	toolUses := map[int]*claudeToolUseState{}
 	var providerErr error
+	firstResponseLatencyMS := int64(0)
+	markFirstResponse := func() {
+		if firstResponseLatencyMS == 0 {
+			firstResponseLatencyMS = elapsedMillisecondsSince(startedAt)
+		}
+	}
 
 	stdout, stderr, runErr := runStreamingLocalCLICommand(ctx, command, args, "", func(line string) error {
 		line = strings.TrimSpace(line)
@@ -408,6 +427,7 @@ func runClaudeCodeCLIStream(
 					if strings.TrimSpace(payload.Event.Delta.Text) == "" {
 						return nil
 					}
+					markFirstResponse()
 					textBuilder.WriteString(payload.Event.Delta.Text)
 					return emitProviderTextDelta(emit, payload.Event.Delta.Text)
 				case "input_json_delta":
@@ -432,6 +452,7 @@ func runClaudeCodeCLIStream(
 					toolUse.InputBuilder.Write(payload.Event.ContentBlock.Input)
 				}
 				toolUses[payload.Event.Index] = toolUse
+				markFirstResponse()
 				return emitProviderToolCall(emit, &ProviderStreamToolCall{
 					ID:      toolUse.ID,
 					Kind:    "tool_use",
@@ -446,6 +467,7 @@ func runClaudeCodeCLIStream(
 					return nil
 				}
 				delete(toolUses, payload.Event.Index)
+				markFirstResponse()
 				return emitProviderToolCall(emit, &ProviderStreamToolCall{
 					ID:      toolUse.ID,
 					Kind:    "tool_use",
@@ -467,6 +489,7 @@ func runClaudeCodeCLIStream(
 				providerErr = errors.New(message)
 			}
 			if strings.TrimSpace(payload.Result) != "" && textBuilder.Len() == 0 {
+				markFirstResponse()
 				textBuilder.WriteString(strings.TrimSpace(payload.Result))
 				if err := emitProviderTextDelta(emit, strings.TrimSpace(payload.Result)); err != nil {
 					return err
@@ -476,13 +499,14 @@ func runClaudeCodeCLIStream(
 		return nil
 	})
 	if runErr != nil {
-		return "", "", nextCLISessionState("claude", resolvedSessionID), formatCLICommandError("claude", runErr, stdout, stderr)
+		return "", "", nextCLISessionState("claude", resolvedSessionID), firstResponseLatencyMS, formatCLICommandError("claude", runErr, stdout, stderr)
 	}
 	if providerErr != nil {
-		return "", "", nextCLISessionState("claude", resolvedSessionID), providerErr
+		return "", "", nextCLISessionState("claude", resolvedSessionID), firstResponseLatencyMS, providerErr
 	}
 
-	return strings.TrimSpace(textBuilder.String()), "", nextCLISessionState("claude", resolvedSessionID), nil
+	finalContent := strings.TrimSpace(textBuilder.String())
+	return finalContent, "", nextCLISessionState("claude", resolvedSessionID), normalizeFirstResponseLatency(firstResponseLatencyMS, startedAt, finalContent != ""), nil
 }
 
 func appendReasoningDelta(builder *strings.Builder, delta string) {

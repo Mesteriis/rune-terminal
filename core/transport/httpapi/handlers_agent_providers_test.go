@@ -321,16 +321,18 @@ func TestProviderGatewaySnapshotReturnsRecentRunsAndStats(t *testing.T) {
 
 	var payload struct {
 		Providers []struct {
-			ProviderID    string `json:"provider_id"`
-			ProviderKind  string `json:"provider_kind"`
-			TotalRuns     int    `json:"total_runs"`
-			SucceededRuns int    `json:"succeeded_runs"`
-			LastStatus    string `json:"last_status"`
+			ProviderID                 string `json:"provider_id"`
+			ProviderKind               string `json:"provider_kind"`
+			TotalRuns                  int    `json:"total_runs"`
+			SucceededRuns              int    `json:"succeeded_runs"`
+			LastStatus                 string `json:"last_status"`
+			LastFirstResponseLatencyMS int64  `json:"last_first_response_latency_ms"`
 		} `json:"providers"`
 		RecentRuns []struct {
-			ProviderID string `json:"provider_id"`
-			Status     string `json:"status"`
-			Model      string `json:"model"`
+			ProviderID             string `json:"provider_id"`
+			Status                 string `json:"status"`
+			Model                  string `json:"model"`
+			FirstResponseLatencyMS int64  `json:"first_response_latency_ms"`
 		} `json:"recent_runs"`
 	}
 	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
@@ -345,13 +347,17 @@ func TestProviderGatewaySnapshotReturnsRecentRunsAndStats(t *testing.T) {
 	if payload.RecentRuns[0].Model != "gpt-5.4" {
 		t.Fatalf("expected recorded model, got %#v", payload.RecentRuns[0])
 	}
+	if payload.RecentRuns[0].FirstResponseLatencyMS <= 0 {
+		t.Fatalf("expected first-response latency for recent run, got %#v", payload.RecentRuns[0])
+	}
 
 	var codexProvider struct {
-		ProviderID    string `json:"provider_id"`
-		ProviderKind  string `json:"provider_kind"`
-		TotalRuns     int    `json:"total_runs"`
-		SucceededRuns int    `json:"succeeded_runs"`
-		LastStatus    string `json:"last_status"`
+		ProviderID                 string `json:"provider_id"`
+		ProviderKind               string `json:"provider_kind"`
+		TotalRuns                  int    `json:"total_runs"`
+		SucceededRuns              int    `json:"succeeded_runs"`
+		LastStatus                 string `json:"last_status"`
+		LastFirstResponseLatencyMS int64  `json:"last_first_response_latency_ms"`
 	}
 	for _, provider := range payload.Providers {
 		if provider.ProviderID == "codex-cli" {
@@ -364,6 +370,9 @@ func TestProviderGatewaySnapshotReturnsRecentRunsAndStats(t *testing.T) {
 	}
 	if codexProvider.ProviderKind != "codex" || codexProvider.TotalRuns != 1 || codexProvider.SucceededRuns != 1 || codexProvider.LastStatus != "succeeded" {
 		t.Fatalf("unexpected codex provider stats: %#v", codexProvider)
+	}
+	if codexProvider.LastFirstResponseLatencyMS <= 0 {
+		t.Fatalf("expected first-response provider stats, got %#v", codexProvider)
 	}
 }
 
@@ -486,12 +495,15 @@ func TestProviderGatewaySnapshotIncludesLatestProbeState(t *testing.T) {
 
 	var payload struct {
 		Providers []struct {
-			ProviderID         string `json:"provider_id"`
-			RouteReady         bool   `json:"route_ready"`
-			RouteStatusState   string `json:"route_status_state"`
-			RouteStatusMessage string `json:"route_status_message"`
-			BaseURL            string `json:"base_url"`
-			Model              string `json:"model"`
+			ProviderID          string `json:"provider_id"`
+			RouteReady          bool   `json:"route_ready"`
+			RouteStatusState    string `json:"route_status_state"`
+			RouteStatusMessage  string `json:"route_status_message"`
+			RoutePrepared       bool   `json:"route_prepared"`
+			RoutePrepareState   string `json:"route_prepare_state"`
+			RoutePrepareMessage string `json:"route_prepare_message"`
+			BaseURL             string `json:"base_url"`
+			Model               string `json:"model"`
 		} `json:"providers"`
 	}
 	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
@@ -517,6 +529,100 @@ func TestProviderGatewaySnapshotIncludesLatestProbeState(t *testing.T) {
 	t.Fatalf("expected provider %q in gateway snapshot: %#v", createdProvider.ID, payload.Providers)
 }
 
+func TestPrewarmProviderReturnsPreparedRouteState(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/models" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[{"id":"gpt-5.4"},{"id":"gpt-5.4-mini"}]}`))
+	}))
+	defer server.Close()
+
+	handler, agentStore := newTestHandler(t)
+	createdProvider, _, err := agentStore.CreateProvider(agent.CreateProviderInput{
+		Kind:        agent.ProviderKindOpenAICompatible,
+		DisplayName: "LAN Source",
+		Enabled:     boolPtr(true),
+		OpenAICompatible: &agent.CreateOpenAICompatibleProviderInput{
+			BaseURL: server.URL,
+			Model:   "gpt-5.4",
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateProvider error: %v", err)
+	}
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(
+		recorder,
+		authedJSONRequest(
+			t,
+			http.MethodPost,
+			"/api/v1/agent/providers/"+createdProvider.ID+"/prewarm",
+			nil,
+		),
+	)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+
+	var payload struct {
+		ProviderID         string `json:"provider_id"`
+		Prepared           bool   `json:"prepared"`
+		PrepareState       string `json:"prepare_state"`
+		PrepareMessage     string `json:"prepare_message"`
+		RouteReady         bool   `json:"route_ready"`
+		RouteStatusState   string `json:"route_status_state"`
+		RouteStatusMessage string `json:"route_status_message"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
+	}
+	if payload.ProviderID != createdProvider.ID || !payload.Prepared || payload.PrepareState != "prepared" {
+		t.Fatalf("unexpected prewarm payload: %#v", payload)
+	}
+	if !payload.RouteReady || payload.RouteStatusState != "ready" {
+		t.Fatalf("expected route readiness in prewarm payload: %#v", payload)
+	}
+	if payload.PrepareMessage == "" || payload.RouteStatusMessage == "" {
+		t.Fatalf("expected detailed prewarm payload: %#v", payload)
+	}
+
+	gatewayRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(gatewayRecorder, authedJSONRequest(t, http.MethodGet, "/api/v1/agent/providers/gateway", nil))
+	if gatewayRecorder.Code != http.StatusOK {
+		t.Fatalf("gateway expected 200, got %d body=%s", gatewayRecorder.Code, gatewayRecorder.Body.String())
+	}
+
+	var gatewayPayload struct {
+		Providers []struct {
+			ProviderID          string `json:"provider_id"`
+			RoutePrepared       bool   `json:"route_prepared"`
+			RoutePrepareState   string `json:"route_prepare_state"`
+			RoutePrepareMessage string `json:"route_prepare_message"`
+		} `json:"providers"`
+	}
+	if err := json.Unmarshal(gatewayRecorder.Body.Bytes(), &gatewayPayload); err != nil {
+		t.Fatalf("unmarshal gateway error: %v", err)
+	}
+	for _, provider := range gatewayPayload.Providers {
+		if provider.ProviderID != createdProvider.ID {
+			continue
+		}
+		if !provider.RoutePrepared || provider.RoutePrepareState != "prepared" || provider.RoutePrepareMessage == "" {
+			t.Fatalf("expected prepared route state in gateway snapshot, got %#v", provider)
+		}
+		return
+	}
+
+	t.Fatalf("expected provider %q in gateway payload: %#v", createdProvider.ID, gatewayPayload.Providers)
+}
+
 type gatewayCodexProvider struct{}
 
 func (gatewayCodexProvider) Info() conversation.ProviderInfo {
@@ -530,8 +636,9 @@ func (gatewayCodexProvider) Info() conversation.ProviderInfo {
 func (gatewayCodexProvider) Complete(context.Context, conversation.CompletionRequest) (conversation.CompletionResult, conversation.ProviderInfo, error) {
 	info := gatewayCodexProvider{}.Info()
 	return conversation.CompletionResult{
-		Content: "gateway ok",
-		Model:   info.Model,
+		Content:                "gateway ok",
+		Model:                  info.Model,
+		FirstResponseLatencyMS: 84,
 	}, info, nil
 }
 
@@ -542,8 +649,9 @@ func (gatewayCodexProvider) CompleteStream(
 ) (conversation.CompletionResult, conversation.ProviderInfo, error) {
 	info := gatewayCodexProvider{}.Info()
 	return conversation.CompletionResult{
-		Content: "gateway ok",
-		Model:   info.Model,
+		Content:                "gateway ok",
+		Model:                  info.Model,
+		FirstResponseLatencyMS: 42,
 	}, info, nil
 }
 
