@@ -176,7 +176,13 @@ function normalizeConversationList(payload: AgentConversationListResponse): Agen
   }
 }
 
-export type AgentConversationStreamEventType = 'message-start' | 'text-delta' | 'message-complete' | 'error'
+export type AgentConversationStreamEventType =
+  | 'message-start'
+  | 'text-delta'
+  | 'reasoning-delta'
+  | 'tool-call'
+  | 'message-complete'
+  | 'error'
 
 export type AgentConversationMessageStartEvent = {
   type: 'message-start'
@@ -188,6 +194,29 @@ export type AgentConversationTextDeltaEvent = {
   type: 'text-delta'
   message_id: string
   delta: string
+}
+
+export type AgentConversationReasoningDeltaEvent = {
+  type: 'reasoning-delta'
+  message_id: string
+  delta: string
+}
+
+export type AgentConversationToolCall = {
+  id?: string
+  kind?: string
+  name?: string
+  status?: string
+  summary?: string
+  input?: string
+  output?: string
+  exit_code?: number
+}
+
+export type AgentConversationToolCallEvent = {
+  type: 'tool-call'
+  message_id: string
+  tool_call: AgentConversationToolCall
 }
 
 export type AgentConversationMessageCompleteEvent = {
@@ -212,6 +241,8 @@ type AgentConversationStreamCancelableEvent = {
 export type AgentConversationStreamEvent =
   | AgentConversationMessageStartEvent
   | AgentConversationTextDeltaEvent
+  | AgentConversationReasoningDeltaEvent
+  | AgentConversationToolCallEvent
   | AgentConversationMessageCompleteEvent
   | AgentConversationErrorEvent
 
@@ -452,7 +483,12 @@ function isSupportedAgentConversationStreamEventType(
   value: string,
 ): value is AgentConversationStreamEventType {
   return (
-    value === 'message-start' || value === 'text-delta' || value === 'message-complete' || value === 'error'
+    value === 'message-start' ||
+    value === 'text-delta' ||
+    value === 'reasoning-delta' ||
+    value === 'tool-call' ||
+    value === 'message-complete' ||
+    value === 'error'
   )
 }
 

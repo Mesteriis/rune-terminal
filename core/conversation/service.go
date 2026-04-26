@@ -564,6 +564,55 @@ func (s *Service) SubmitStreamWithProvider(
 		historyForCompletion,
 		request.Model,
 		session,
+		func(event ProviderStreamEvent) error {
+			switch event.Type {
+			case ProviderStreamEventTextDelta:
+				delta := event.Delta
+				if delta == "" {
+					return nil
+				}
+				if err := s.appendAssistantDelta(ctx, conversationID, assistant.ID, delta); err != nil {
+					return err
+				}
+				if emit != nil {
+					return emit(StreamEvent{
+						Type:      StreamEventTextDelta,
+						MessageID: assistant.ID,
+						Delta:     delta,
+					})
+				}
+				return nil
+			case ProviderStreamEventReasoningDelta:
+				if emit == nil || event.Delta == "" {
+					return nil
+				}
+				return emit(StreamEvent{
+					Type:      StreamEventReasoningDelta,
+					MessageID: assistant.ID,
+					Delta:     event.Delta,
+				})
+			case ProviderStreamEventToolCall:
+				if emit == nil || event.ToolCall == nil {
+					return nil
+				}
+				return emit(StreamEvent{
+					Type:      StreamEventToolCall,
+					MessageID: assistant.ID,
+					ToolCall: &StreamToolCall{
+						ID:       strings.TrimSpace(event.ToolCall.ID),
+						Kind:     strings.TrimSpace(event.ToolCall.Kind),
+						Name:     strings.TrimSpace(event.ToolCall.Name),
+						Status:   strings.TrimSpace(event.ToolCall.Status),
+						Summary:  strings.TrimSpace(event.ToolCall.Summary),
+						Input:    strings.TrimSpace(event.ToolCall.Input),
+						Output:   strings.TrimSpace(event.ToolCall.Output),
+						ExitCode: event.ToolCall.ExitCode,
+					},
+				})
+			default:
+				return nil
+			}
+		},
 		func(delta string) error {
 			if delta == "" {
 				return nil
@@ -805,7 +854,7 @@ func (s *Service) completeStream(
 	history []Message,
 	onTextDelta func(string) error,
 ) (CompletionResult, ProviderInfo, error) {
-	return s.completeStreamWithProvider(s.provider, ctx, systemPrompt, history, "", nil, onTextDelta)
+	return s.completeStreamWithProvider(s.provider, ctx, systemPrompt, history, "", nil, nil, onTextDelta)
 }
 
 func (s *Service) completeStreamWithProvider(
@@ -815,6 +864,7 @@ func (s *Service) completeStreamWithProvider(
 	history []Message,
 	model string,
 	session *ProviderSessionState,
+	onStreamEvent func(ProviderStreamEvent) error,
 	onTextDelta func(string) error,
 ) (CompletionResult, ProviderInfo, error) {
 	if provider == nil {
@@ -825,6 +875,9 @@ func (s *Service) completeStreamWithProvider(
 		Model:        strings.TrimSpace(model),
 		Messages:     pruneCompletionHistory(history, s.budget),
 		Session:      cloneSessionState(session),
+	}
+	if structuredProvider, ok := provider.(StructuredStreamingProvider); ok {
+		return structuredProvider.CompleteStructuredStream(ctx, request, onStreamEvent)
 	}
 	return provider.CompleteStream(ctx, request, onTextDelta)
 }

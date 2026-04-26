@@ -65,10 +65,9 @@ capability.
 - advanced SSH auth / topology (proxy jump, richer auth negotiation)
 - full remote files domain (connection-scoped browse/preview/edit) before
   ADR 0029 lands
-- managed attachment storage / import and rich attachment preview UX; current active path is queued local file references from Files -> AI composer plus transcript chips
-- fine-grained token streaming for CLI-backed chat
-  (the backend conversation stream currently emits the completed CLI
-  response as one SSE text delta)
+- managed attachment browser/history closure is still narrower than the rest
+  of the AI flow; the active path has backend-stored recent references plus
+  transcript reuse, but not a broader gallery-style surface yet
 - broad online plugin marketplace / discovery UX; ADR 0030 keeps only a
   narrower local catalog/import direction in scope
 - Windows-first support
@@ -89,7 +88,7 @@ capability.
 - TideTerm-style WaveProxy is not part of the active product direction;
   see `docs/workflow/tideterm-residual-decisions.md`
 - backend AI conversations are now persisted as explicit DB-backed threads with per-conversation CLI session continuity and persisted per-conversation request-context selection (`widget_context_enabled` plus explicit `widget_ids`), and the shell navigator now supports server-backed scope/query filtering plus active-thread rename/archive/restore/delete while preserving the current archive-management filter state across row actions; conversation management is still intentionally narrow in one important way: there is still no multi-panel conversation UX
-- CLI provider execution is chat-focused and does not yet integrate provider-native tool calls with `core/toolruntime` approval/audit; Codex CLI and Claude Code CLI still emit buffered chat output through the SSE route, while the OpenAI-compatible HTTP source now streams text deltas from provider SSE but does not stream reasoning/tool-call deltas
+- CLI provider execution is chat-focused and does not yet integrate provider-native tool calls with `core/toolruntime` approval/audit; the shared conversation SSE route now streams CLI text/reasoning/tool-call parts plus HTTP text deltas, but OpenAI-compatible provider-native reasoning/tool-call detail remains intentionally narrower
 - the AI composer now exposes a request-scoped `Cancel response` control for active chat streams, but there is still no separate durable backend job cancellation queue for already-detached provider work
 - the shell-wide settings modal now exposes a structured `General / AI / Terminal / Remote / MCP / Commander` navigation; `General` includes the real desktop `watcher_mode` lifecycle control plus runtime bootstrap context, the AI section now includes CLI + OpenAI-compatible provider management and provider-backed model discovery, `Remote` lists saved SSH profiles and triggers the narrow `.ssh/config` import route, `MCP` lists/registers remote MCP servers and runs explicit lifecycle actions through `/api/v1/mcp/*`, the composer toolbar exposes live provider/model, profile/role/mode, and widget-context selection, and terminal font size, line height, theme mode, scrollback, plus cursor behavior are now backed by the runtime DB through `GET/PUT /api/v1/settings/terminal`
 - the AI composer keyboard-submit preference is now configurable through the runtime-backed `GET/PUT /api/v1/settings/agent` contract and persists in `runtime.db`, but broader operator-profile sync/roaming beyond the local runtime is still intentionally incomplete

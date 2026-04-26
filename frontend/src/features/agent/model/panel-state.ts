@@ -123,6 +123,43 @@ function updateConversationMessage(
   return nextMessages
 }
 
+function appendConversationReasoning(message: AgentConversationMessage, delta: string) {
+  const trimmedDelta = delta.trim()
+  if (!trimmedDelta) {
+    return message
+  }
+
+  const currentReasoning = message.reasoning?.trim() ?? ''
+  const reasoning = currentReasoning ? `${currentReasoning}\n\n${trimmedDelta}` : trimmedDelta
+
+  return {
+    ...message,
+    reasoning,
+    status: 'streaming' as const,
+  }
+}
+
+function formatToolCallReasoningLine(
+  event: Extract<AgentConversationStreamEvent, { type: 'tool-call' }>,
+): string {
+  const toolCall = event.tool_call
+  const status = toolCall.status?.trim() || 'updated'
+  const name = toolCall.summary?.trim() || toolCall.name?.trim() || toolCall.kind?.trim() || 'tool'
+  const details: string[] = [`Tool ${status}: ${name}`]
+
+  if (toolCall.output?.trim()) {
+    details.push(`Output: ${toolCall.output.trim()}`)
+  } else if (toolCall.input?.trim()) {
+    details.push(`Input: ${toolCall.input.trim()}`)
+  }
+
+  if (Number.isFinite(toolCall.exit_code)) {
+    details.push(`Exit code: ${toolCall.exit_code}`)
+  }
+
+  return details.join('\n')
+}
+
 export function appendAgentConversationMessage(
   messages: AgentConversationMessage[],
   message: AgentConversationMessage,
@@ -169,6 +206,14 @@ export function applyAgentConversationStreamEvent(
         content: `${message.content}${event.delta}`,
         status: 'streaming',
       }))
+    case 'reasoning-delta':
+      return updateConversationMessage(messages, event.message_id, (message) =>
+        appendConversationReasoning(message, event.delta),
+      )
+    case 'tool-call':
+      return updateConversationMessage(messages, event.message_id, (message) =>
+        appendConversationReasoning(message, formatToolCallReasoningLine(event)),
+      )
     case 'message-complete':
       return upsertConversationMessage(messages, event.message)
     case 'error':

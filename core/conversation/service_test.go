@@ -819,6 +819,73 @@ func TestServiceSubmitStreamPreservesPartialAssistantOnError(t *testing.T) {
 	}
 }
 
+func TestServiceSubmitStreamEmitsStructuredReasoningAndToolCallEvents(t *testing.T) {
+	t.Parallel()
+
+	service, err := NewService(filepath.Join(t.TempDir(), "conversation.json"), &scriptedStructuredStreamProvider{
+		info: ProviderInfo{
+			Kind:      "structured",
+			BaseURL:   "http://stub",
+			Model:     "stream-model",
+			Streaming: true,
+		},
+		events: []ProviderStreamEvent{
+			{Type: ProviderStreamEventReasoningDelta, Delta: "Inspecting runtime state."},
+			{
+				Type: ProviderStreamEventToolCall,
+				ToolCall: &ProviderStreamToolCall{
+					ID:      "tool_1",
+					Kind:    "command_execution",
+					Name:    "command_execution",
+					Status:  "completed",
+					Summary: "ls -la",
+					Input:   "ls -la",
+					Output:  "file1",
+				},
+			},
+			{Type: ProviderStreamEventTextDelta, Delta: "hello world"},
+		},
+		result: CompletionResult{
+			Content:   "hello world",
+			Model:     "stream-model",
+			Reasoning: "Inspecting runtime state.",
+		},
+	})
+	if err != nil {
+		t.Fatalf("new service: %v", err)
+	}
+
+	var events []StreamEvent
+	result, err := service.SubmitStream(context.Background(), SubmitRequest{
+		SystemPrompt: "system prompt",
+		Prompt:       "hello",
+	}, func(event StreamEvent) error {
+		events = append(events, event)
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("submit stream: %v", err)
+	}
+	if result.ProviderError != "" {
+		t.Fatalf("unexpected provider error: %s", result.ProviderError)
+	}
+	if len(events) != 5 {
+		t.Fatalf("expected 5 stream events, got %#v", events)
+	}
+	if events[1].Type != StreamEventReasoningDelta || events[1].Delta != "Inspecting runtime state." {
+		t.Fatalf("unexpected reasoning event: %#v", events[1])
+	}
+	if events[2].Type != StreamEventToolCall || events[2].ToolCall == nil || events[2].ToolCall.Input != "ls -la" {
+		t.Fatalf("unexpected tool-call event: %#v", events[2])
+	}
+	if events[3].Type != StreamEventTextDelta || events[3].Delta != "hello world" {
+		t.Fatalf("unexpected text event: %#v", events[3])
+	}
+	if events[4].Type != StreamEventMessageComplete || events[4].Message == nil || events[4].Message.Reasoning != "Inspecting runtime state." {
+		t.Fatalf("unexpected final event: %#v", events[4])
+	}
+}
+
 type stubProvider struct {
 	info   ProviderInfo
 	result CompletionResult
@@ -856,6 +923,13 @@ type recordingProvider struct {
 type scriptedStreamProvider struct {
 	info   ProviderInfo
 	deltas []string
+	result CompletionResult
+	err    error
+}
+
+type scriptedStructuredStreamProvider struct {
+	info   ProviderInfo
+	events []ProviderStreamEvent
 	result CompletionResult
 	err    error
 }
@@ -899,6 +973,44 @@ func (p *scriptedStreamProvider) CompleteStream(
 	for _, delta := range p.deltas {
 		if onTextDelta != nil {
 			if err := onTextDelta(delta); err != nil {
+				return CompletionResult{}, p.info, err
+			}
+		}
+	}
+	return p.result, p.info, p.err
+}
+
+func (p *scriptedStructuredStreamProvider) Info() ProviderInfo {
+	return p.info
+}
+
+func (p *scriptedStructuredStreamProvider) Complete(context.Context, CompletionRequest) (CompletionResult, ProviderInfo, error) {
+	return p.result, p.info, p.err
+}
+
+func (p *scriptedStructuredStreamProvider) CompleteStream(
+	_ context.Context,
+	_ CompletionRequest,
+	onTextDelta func(string) error,
+) (CompletionResult, ProviderInfo, error) {
+	for _, event := range p.events {
+		if event.Type == ProviderStreamEventTextDelta && onTextDelta != nil {
+			if err := onTextDelta(event.Delta); err != nil {
+				return CompletionResult{}, p.info, err
+			}
+		}
+	}
+	return p.result, p.info, p.err
+}
+
+func (p *scriptedStructuredStreamProvider) CompleteStructuredStream(
+	_ context.Context,
+	_ CompletionRequest,
+	emit func(ProviderStreamEvent) error,
+) (CompletionResult, ProviderInfo, error) {
+	for _, event := range p.events {
+		if emit != nil {
+			if err := emit(event); err != nil {
 				return CompletionResult{}, p.info, err
 			}
 		}

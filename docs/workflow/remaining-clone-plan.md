@@ -15,7 +15,12 @@ Phase status:
 - `Phase 1` is complete: the active shell/settings/terminal compact pass,
   linked browser coverage, and validation-doc closure are landed on the
   active `frontend/src` path.
-- `Phase 2` is the next implementation phase.
+- `Phase 2` is complete: backend-owned stream cancellation plus shared
+  CLI/HTTP streaming semantics are now landed on the active conversation
+  route.
+- `Phase 3` remains in progress: storage/reuse is landed, and browser-level
+  recent-library closure is the remaining validation/doc step.
+- `Phase 4` is the next implementation phase after that closure.
 - Later phases remain implementation work.
 
 ## Success condition
@@ -106,6 +111,9 @@ Validation:
 - desktop smoke where shell chrome changed materially
 
 ### Phase 2. Complete AI streaming and cancellation semantics
+
+Status:
+completed on `2026-04-26`
 
 Purpose:
 finish the active AI transport so the remaining AI gaps are transport

@@ -1,3 +1,6 @@
+import { chmod, mkdir, writeFile } from 'node:fs/promises'
+import path from 'node:path'
+
 import { expect, test } from '@playwright/test'
 
 import {
@@ -52,6 +55,57 @@ async function ensureLanSourceProvider(request: Parameters<typeof fetchAgentProv
     },
   })
 
+  return created.provider.id
+}
+
+async function ensureMockCodexStreamProvider(request: Parameters<typeof fetchAgentProviderCatalog>[0]) {
+  const scriptDir = path.join(process.cwd(), 'tmp', 'playwright')
+  const scriptPath = path.join(scriptDir, 'mock-codex-stream.sh')
+
+  await mkdir(scriptDir, { recursive: true })
+  await writeFile(
+    scriptPath,
+    `#!/bin/sh
+output_path=""
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --output-last-message)
+      output_path="$2"
+      shift 2
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
+printf '%s\\n' '{"type":"thread.started","thread_id":"thread_mock_cli"}'
+sleep 0.1
+printf '%s\\n' '{"type":"item.completed","item":{"id":"reason_1","type":"reasoning","text":"Inspecting request context."}}'
+sleep 0.1
+printf '%s\\n' '{"type":"item.started","item":{"id":"cmd_1","type":"command_execution","command":"printf stream","status":"in_progress"}}'
+sleep 0.1
+printf '%s\\n' '{"type":"agent_message_delta","delta":"CLI token "}'
+sleep 0.1
+printf '%s\\n' '{"type":"item.completed","item":{"id":"cmd_1","type":"command_execution","command":"printf stream","aggregated_output":"stream","exit_code":0,"status":"completed"}}'
+sleep 0.1
+printf '%s\\n' '{"type":"agent_message_delta","delta":"stream OK"}'
+printf 'CLI token stream OK' > "$output_path"
+`,
+    'utf8',
+  )
+  await chmod(scriptPath, 0o755)
+
+  const created = await createAgentProvider(request, {
+    kind: 'codex',
+    display_name: `Mock Codex Stream ${Date.now()}`,
+    enabled: true,
+    codex: {
+      command: scriptPath,
+      model: 'gpt-5.4',
+      chat_models: ['gpt-5.4'],
+    },
+  })
+  await setActiveAgentProvider(request, created.provider.id)
   return created.provider.id
 }
 
@@ -153,6 +207,58 @@ test('AI sidebar switches to the LAN HTTP source from the toolbar and sends a re
     })
 
   await expect(page.getByText(promptToken, { exact: true })).toBeVisible()
+})
+
+test('AI sidebar streams a mocked Codex CLI provider through the backend conversation route', async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(60_000)
+
+  const providerID = await ensureMockCodexStreamProvider(request)
+
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  await page.getByRole('button', { name: 'Toggle AI panel' }).click()
+  await expect(page.getByText('AI Rune Assistant')).toBeVisible()
+
+  const providerSelect = page.getByRole('combobox', { name: 'AI provider' })
+  await expect(providerSelect).toHaveValue(providerID)
+
+  const composer = page.getByPlaceholder('Text Area')
+  await composer.fill('Reply with the mocked CLI stream token.')
+  await page.getByRole('button', { name: 'Send prompt' }).click()
+
+  await expect
+    .poll(
+      async () => {
+        const conversation = await fetchAgentConversation(request)
+        const assistantMessage = [...conversation.messages]
+          .reverse()
+          .find((message) => message.role === 'assistant' && message.provider === 'codex')
+
+        if (!assistantMessage) {
+          return null
+        }
+
+        return {
+          content: assistantMessage.content,
+          provider: assistantMessage.provider,
+          status: assistantMessage.status,
+          reasoning: assistantMessage.reasoning,
+        }
+      },
+      { timeout: 20_000 },
+    )
+    .toMatchObject({
+      content: 'CLI token stream OK',
+      provider: 'codex',
+      status: 'complete',
+      reasoning: 'Inspecting request context.',
+    })
+
+  await expect(page.getByText('CLI token stream OK', { exact: true })).toBeVisible()
 })
 
 test('AI sidebar creates and switches backend conversations instead of keeping one flat transcript', async ({

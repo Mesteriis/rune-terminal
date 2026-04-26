@@ -32,8 +32,8 @@ Status legend:
 Summary by grouped slices:
 
 - `Exceeds original`: `4`
-- `Transferred`: `4`
-- `Partially transferred`: `6`
+- `Transferred`: `5`
+- `Partially transferred`: `5`
 - `Planned`: `4`
 - `Not carried forward`: `3`
 
@@ -46,8 +46,8 @@ Summary by grouped slices:
 | Launcher, files, tools, audit operator chain | `Transferred` | Workspace switcher, launcher entry, files panel navigation, tools inputs, audit traceability, and explicit cross-surface operator handoff are all live on the current shell. | Remaining work here is mostly visual compaction, not missing runtime behavior. |
 | AI conversations, provider routing, and request context | `Exceeds original` | `rterm` now has DB-backed conversation threads, create/switch/rename/archive/restore/delete lifecycle, scoped search/filter views, conversation-scoped provider continuity, persisted widget context, stale-context repair, and explicit selected-context chips. | TideTerm had the baseline conversation surface; the current `rterm` shell is already stronger in thread lifecycle and context integrity. |
 | Structured `/run`, approvals, explain, and target guardrails | `Exceeds original` | Explicit `/run` grammar, approval confirm/retry, execution blocks, explain linkage, audit provenance, and target-session/local-vs-remote guardrails are live and validated. | This area is already stricter than TideTerm because execution identity and retry safety are backend-owned and mismatch-safe. |
-| Streaming AI responses and cancellation | `Partially transferred` | SSE conversation streaming is live, the composer can cancel in-flight streams, and OpenAI-compatible HTTP sources forward text deltas. | CLI providers still emit buffered deltas; reasoning/tool-call stream parts and durable backend-side cancellation are not complete yet. |
-| File attachments into AI | `Partially transferred` | Files panel can queue backend-issued attachment references into the AI composer, remove them before submit, and render persisted attachment chips in transcript history. | There is still no managed attachment library, gallery/history UI, or broader storage/import flow. |
+| Streaming AI responses and cancellation | `Transferred` | The shared conversation SSE route now carries backend-owned `stream_id` cancellation, Codex CLI `--json` token/reasoning/tool-call stream parts, Claude Code `stream-json` partials, and OpenAI-compatible HTTP text deltas through one frontend contract. | OpenAI-compatible HTTP remains narrower than the CLI-backed contract for provider-native reasoning/tool-call detail, but the active `rterm` streaming/cancel transport is now transferred. |
+| File attachments into AI | `Partially transferred` | Files panel handoff, backend attachment reference storage, composer-side queued chips, recent attachment library reuse/delete, and transcript attachment reuse are all live on the active AI path. | Browser-level recent-library reuse coverage and final `Phase 3` closure are the remaining validation/docs step. |
 | Settings, help, trust, and secret-shield utility shell | `Transferred` | Active settings now expose overview plus real `AI / Terminal / Remote / MCP / Commander` sections, trusted tools, secret shielding, help entry points, compact shell framing, and browser-validated `Remote` / `MCP` inventory filtering flows. | Later breadth belongs to the `Remote SSH profile lifecycle` and `External MCP onboarding breadth` rows rather than to the shell container itself. |
 | Remote SSH profile lifecycle | `Partially transferred` | `rterm` supports saved profile create/edit/delete/list, preflight check, default-target selection, and open-shell actions from the active settings shell. | Daily-driver breadth is improved, but the slice is still intentionally narrower than TideTerm's broader remote controller surface. |
 | `.ssh/config` import | `Partially transferred` | There is a narrow one-way import for direct `Host` / `HostName` / `User` / `Port` / `IdentityFile` profile fields. | `Match`, `Include`, wildcard expansion, proxy chaining, keychain/passphrase workflows, and reverse sync are still absent. |

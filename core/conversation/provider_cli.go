@@ -112,7 +112,7 @@ func (p *localCLIProvider) Info() ProviderInfo {
 	return ProviderInfo{
 		Kind:      p.kind,
 		Model:     p.model,
-		Streaming: false,
+		Streaming: true,
 	}
 }
 
@@ -125,7 +125,20 @@ func (p *localCLIProvider) CompleteStream(
 	request CompletionRequest,
 	onTextDelta func(string) error,
 ) (CompletionResult, ProviderInfo, error) {
-	return p.complete(ctx, request, onTextDelta)
+	return p.CompleteStructuredStream(ctx, request, func(event ProviderStreamEvent) error {
+		if onTextDelta == nil || event.Type != ProviderStreamEventTextDelta || event.Delta == "" {
+			return nil
+		}
+		return onTextDelta(event.Delta)
+	})
+}
+
+func (p *localCLIProvider) CompleteStructuredStream(
+	ctx context.Context,
+	request CompletionRequest,
+	emit func(ProviderStreamEvent) error,
+) (CompletionResult, ProviderInfo, error) {
+	return p.completeStructured(ctx, request, emit)
 }
 
 func (p *localCLIProvider) complete(
@@ -162,6 +175,34 @@ func (p *localCLIProvider) complete(
 	}, info, nil
 }
 
+func (p *localCLIProvider) completeStructured(
+	ctx context.Context,
+	request CompletionRequest,
+	emit func(ProviderStreamEvent) error,
+) (CompletionResult, ProviderInfo, error) {
+	info := p.Info()
+	if model := strings.TrimSpace(request.Model); model != "" {
+		info.Model = model
+	}
+	if err := validateCompletionRequest(request); err != nil {
+		return CompletionResult{}, info, err
+	}
+	if strings.TrimSpace(p.command) == "" {
+		return CompletionResult{}, info, fmt.Errorf("%s command is required", p.kind)
+	}
+
+	content, reasoning, session, err := p.runStructured(ctx, request, info.Model, emit)
+	if err != nil {
+		return CompletionResult{Session: session}, info, err
+	}
+	return CompletionResult{
+		Content:   strings.TrimSpace(content),
+		Reasoning: strings.TrimSpace(reasoning),
+		Model:     info.Model,
+		Session:   session,
+	}, info, nil
+}
+
 func (p *localCLIProvider) run(ctx context.Context, request CompletionRequest, model string) (string, string, *ProviderSessionState, error) {
 	switch p.mode {
 	case localCLIModeCodex:
@@ -177,6 +218,45 @@ func (p *localCLIProvider) run(ctx context.Context, request CompletionRequest, m
 			request.Session,
 		)
 		return content, formatCLIReasoning("claude", p.command, model, err == nil), session, err
+	default:
+		return "", "", nil, fmt.Errorf("unsupported cli provider mode: %s", p.mode)
+	}
+}
+
+func (p *localCLIProvider) runStructured(
+	ctx context.Context,
+	request CompletionRequest,
+	model string,
+	emit func(ProviderStreamEvent) error,
+) (string, string, *ProviderSessionState, error) {
+	switch p.mode {
+	case localCLIModeCodex:
+		content, reasoning, session, err := runCodexCLIStream(
+			ctx,
+			p.command,
+			model,
+			request.Session,
+			formatCLICompletionPrompt(request, true),
+			emit,
+		)
+		if strings.TrimSpace(reasoning) == "" {
+			reasoning = formatCLIReasoning("codex", p.command, model, err == nil)
+		}
+		return content, reasoning, session, err
+	case localCLIModeClaudeCode:
+		content, reasoning, session, err := runClaudeCodeCLIStream(
+			ctx,
+			p.command,
+			model,
+			request.SystemPrompt,
+			formatCLICompletionPrompt(request, false),
+			request.Session,
+			emit,
+		)
+		if strings.TrimSpace(reasoning) == "" {
+			reasoning = formatCLIReasoning("claude", p.command, model, err == nil)
+		}
+		return content, reasoning, session, err
 	default:
 		return "", "", nil, fmt.Errorf("unsupported cli provider mode: %s", p.mode)
 	}

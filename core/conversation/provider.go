@@ -14,6 +14,39 @@ type Provider interface {
 	CompleteStream(ctx context.Context, request CompletionRequest, onTextDelta func(string) error) (CompletionResult, ProviderInfo, error)
 }
 
+type StructuredStreamingProvider interface {
+	CompleteStructuredStream(
+		ctx context.Context,
+		request CompletionRequest,
+		emit func(ProviderStreamEvent) error,
+	) (CompletionResult, ProviderInfo, error)
+}
+
+type ProviderStreamEventType string
+
+const (
+	ProviderStreamEventTextDelta      ProviderStreamEventType = "text-delta"
+	ProviderStreamEventReasoningDelta ProviderStreamEventType = "reasoning-delta"
+	ProviderStreamEventToolCall       ProviderStreamEventType = "tool-call"
+)
+
+type ProviderStreamToolCall struct {
+	ID       string
+	Kind     string
+	Name     string
+	Status   string
+	Summary  string
+	Input    string
+	Output   string
+	ExitCode *int
+}
+
+type ProviderStreamEvent struct {
+	Type     ProviderStreamEventType
+	Delta    string
+	ToolCall *ProviderStreamToolCall
+}
+
 type providerRuntime struct {
 	mu    sync.RWMutex
 	model string

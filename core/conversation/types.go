@@ -121,15 +121,29 @@ type StreamEventType string
 const (
 	StreamEventMessageStart    StreamEventType = "message-start"
 	StreamEventTextDelta       StreamEventType = "text-delta"
+	StreamEventReasoningDelta  StreamEventType = "reasoning-delta"
+	StreamEventToolCall        StreamEventType = "tool-call"
 	StreamEventMessageComplete StreamEventType = "message-complete"
 	StreamEventError           StreamEventType = "error"
 )
+
+type StreamToolCall struct {
+	ID       string `json:"id,omitempty"`
+	Kind     string `json:"kind,omitempty"`
+	Name     string `json:"name,omitempty"`
+	Status   string `json:"status,omitempty"`
+	Summary  string `json:"summary,omitempty"`
+	Input    string `json:"input,omitempty"`
+	Output   string `json:"output,omitempty"`
+	ExitCode *int   `json:"exit_code,omitempty"`
+}
 
 type StreamEvent struct {
 	Type      StreamEventType `json:"type"`
 	StreamID  string          `json:"stream_id,omitempty"`
 	MessageID string          `json:"message_id,omitempty"`
 	Delta     string          `json:"delta,omitempty"`
+	ToolCall  *StreamToolCall `json:"tool_call,omitempty"`
 	Message   *Message        `json:"message,omitempty"`
 	ErrorCode string          `json:"error_code,omitempty"`
 	Error     string          `json:"error,omitempty"`

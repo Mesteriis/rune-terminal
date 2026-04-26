@@ -929,6 +929,8 @@ describe('agent api client', () => {
         body: createStreamResponse([
           ': keepalive\n\n',
           'event: message-start\ndata: {"type":"message-start","stream_id":"stream_1","message_id":"msg_2","message":{"id":"msg_2","role":"assistant","content":"","status":"streaming","provider":"stub","model":"stub-model","created_at":"2026-04-21T10:00:01Z"}}\n\n',
+          'event: reasoning-delta\ndata: {"type":"reasoning-delta","stream_id":"stream_1","message_id":"msg_2","delta":"Checking backend state."}\n\n',
+          'event: tool-call\ndata: {"type":"tool-call","stream_id":"stream_1","message_id":"msg_2","tool_call":{"id":"tool_1","kind":"command_execution","name":"command_execution","status":"completed","summary":"ls -la","input":"ls -la","output":"file1","exit_code":0}}\n\n',
           'event: text-delta\ndata: {"type":"text-delta","stream_id":"stream_1","message_id":"msg_2","delta":"hello "}\n\n',
           'event: text-delta\ndata: {"type":"text-delta","stream_id":"stream_1","message_id":"msg_2","delta":"world"}\n\n',
           'event: message-complete\ndata: {"type":"message-complete","stream_id":"stream_1","message_id":"msg_2","message":{"id":"msg_2","role":"assistant","content":"hello world","status":"complete","provider":"stub","model":"stub-model","created_at":"2026-04-21T10:00:01Z"}}\n\n',
@@ -981,7 +983,14 @@ describe('agent api client', () => {
         widget_context_enabled: true,
       },
     })
-    expect(events).toEqual(['message-start', 'text-delta', 'text-delta', 'message-complete'])
+    expect(events).toEqual([
+      'message-start',
+      'reasoning-delta',
+      'tool-call',
+      'text-delta',
+      'text-delta',
+      'message-complete',
+    ])
     expect(connection.streamId).toBe('stream_1')
   })
 
