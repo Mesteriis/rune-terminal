@@ -16,6 +16,8 @@
   - backend-owned agent provider catalog
   - backend-owned provider gateway operational snapshot over the active conversation/provider route: recent run history, route status, and latency summaries persisted in `runtime.db`
   - explicit provider probe contract over the same provider route, including CLI readiness and OpenAI-compatible source reachability/model availability checks, with probe results written back into that same gateway snapshot
+  - explicit provider prewarm contract over the same provider route, with persisted route-prepare state and first-response latency telemetry from the real conversation runtime path
+  - AI shell header consumption of that same provider gateway snapshot for the active route, including explicit route-prepare actions without reintroducing a second frontend-owned provider-runtime truth
   - active conversation provider resolution
   - frontend AI/provider settings surfaces
   - runtime-backed AI composer submit-shortcut preference (`Enter` vs `Ctrl/Cmd+Enter`) through `GET/PUT /api/v1/settings/agent`
@@ -94,14 +96,19 @@
   - The active provider settings shell now also exposes a backend-owned provider gateway surface through `GET /api/v1/agent/providers/gateway`:
   - recent provider run history persisted in `runtime.db`
   - per-provider health summary derived from backend run truth
-  - latency signals (`average_duration_ms`, `last_duration_ms`)
+  - latency signals (`average_duration_ms`, `last_duration_ms`, `average_first_response_latency_ms`, `last_first_response_latency_ms`)
   - route probe truth (`route_status_state`, `route_status_message`, `resolved_binary`, `route_checked_at`, `route_latency_ms`) as the single runtime-readiness source for the UI
+  - route-prepare truth (`route_prepared`, `route_prepare_state`, `route_prepare_message`, `route_prepared_at`, `route_prepare_latency_ms`) through the same gateway row
   - last-status / last-error visibility for operator diagnosis without reopening a standalone proxy stack
   - gateway telemetry failures are now surfaced explicitly in the settings shell instead of being swallowed as an empty telemetry view
   - provider settings also expose `POST /api/v1/agent/providers/{providerID}/probe` for explicit operator health checks:
   - CLI probes resolve backend-owned binary/auth readiness directly from the runtime probe path
   - OpenAI-compatible probes verify source reachability plus configured-model availability
   - the probe response updates the same gateway snapshot, so provider settings and AI-related shell sections no longer read a second catalog-derived readiness surface
+  - provider settings and the AI shell header now also expose `POST /api/v1/agent/providers/{providerID}/prewarm`:
+  - CLI routes are marked `prepared` only after the backend verifies the on-demand launch path
+  - OpenAI-compatible routes are marked `prepared` only after the backend primes `/v1/models`
+  - provider switches and completed conversation runs now refresh the gateway snapshot in the AI shell, so the active-route header stays aligned to backend truth
 - Unsupported legacy provider records are filtered during agent-state normalization. If filtering leaves no providers, the store recreates the default local CLI providers.
 - The provider catalog route returns `supported_kinds: ["codex", "claude", "openai-compatible"]`.
   - The AI composer toolbar now consumes that backend-owned catalog directly:

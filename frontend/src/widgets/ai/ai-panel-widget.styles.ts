@@ -92,6 +92,61 @@ export const aiShellTitleTextStyle: CSSProperties = {
   whiteSpace: 'nowrap',
 }
 
+export const aiShellRouteClusterStyle: CSSProperties = {
+  ...aiPlainBlockStyle,
+  flex: '0 1 320px',
+  minWidth: 0,
+  display: 'flex',
+  alignItems: 'center',
+  gap: 'var(--space-xs)',
+  padding: '6px 8px',
+  borderRadius: '10px',
+  border: '1px solid color-mix(in srgb, var(--color-border-strong) 52%, transparent)',
+  background: 'color-mix(in srgb, var(--color-surface-shell-header-action) 76%, transparent)',
+}
+
+export const aiShellRouteSummaryStyle: CSSProperties = {
+  ...aiPlainBlockStyle,
+  flex: 1,
+  minWidth: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '2px',
+}
+
+export const aiShellRouteTitleStyle: CSSProperties = {
+  color: 'var(--color-text-primary)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '11px',
+  lineHeight: '14px',
+  whiteSpace: 'nowrap',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+}
+
+export const aiShellRouteMetaStyle: CSSProperties = {
+  color: 'var(--color-text-muted)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '10px',
+  lineHeight: '13px',
+  whiteSpace: 'nowrap',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+}
+
+export const aiShellRouteActionStyle: CSSProperties = {
+  minWidth: 'unset',
+  minHeight: '26px',
+  padding: '0 8px',
+  borderRadius: '8px',
+  background: 'color-mix(in srgb, var(--color-surface-elevated) 90%, transparent)',
+  borderColor: 'color-mix(in srgb, var(--color-border-strong) 56%, transparent)',
+  color: 'var(--color-text-primary)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '10px',
+  lineHeight: '12px',
+}
+
 export const aiHeaderConversationGroupStyle: CSSProperties = {
   ...aiPlainBlockStyle,
   flex: 1,

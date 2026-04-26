@@ -4,6 +4,39 @@ import { describe, expect, it, vi } from 'vitest'
 import { AiPanelHeaderWidget } from '@/widgets/ai/ai-panel-header-widget'
 
 describe('AiPanelHeaderWidget', () => {
+  it('renders active provider route telemetry and routes prepare actions through the header controls', () => {
+    const onPrewarmProviderRoute = vi.fn()
+
+    render(
+      <AiPanelHeaderWidget
+        activeProviderRoute={{
+          displayName: 'Codex CLI',
+          model: 'gpt-5.4',
+          routeReady: true,
+          routeStatusState: 'ready',
+          routeStatusMessage: 'Codex CLI route is authenticated.',
+          routePrepared: true,
+          routePrepareState: 'prepared',
+          routePrepareMessage: 'Codex CLI route verified and ready for on-demand launch.',
+          routeLatencyMS: 48,
+          routePrepareLatencyMS: 52,
+          lastFirstResponseLatencyMS: 84,
+        }}
+        mode="chat"
+        onModeChange={() => {}}
+        onPrewarmProviderRoute={onPrewarmProviderRoute}
+        title="AI Rune"
+      />,
+    )
+
+    expect(screen.getByText('Codex CLI · Prepared')).toBeVisible()
+    expect(screen.getByText('Codex CLI route verified and ready for on-demand launch.')).toBeVisible()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Re-prepare provider route' }))
+
+    expect(onPrewarmProviderRoute).toHaveBeenCalledTimes(1)
+  })
+
   it('renders conversations and routes select/create actions through the header controls', () => {
     const onConversationSelect = vi.fn()
     const onCreateConversation = vi.fn()

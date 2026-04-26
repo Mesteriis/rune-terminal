@@ -4,6 +4,7 @@ import {
   discoverAgentProviderModels,
   fetchAgentProviderCatalog,
   fetchAgentProviderGatewaySnapshot,
+  prewarmAgentProvider,
   probeAgentProvider,
   updateAgentProvider,
 } from '@/features/agent/api/provider-client'
@@ -104,12 +105,19 @@ describe('agent provider client', () => {
               model: 'gpt-5.4',
               route_checked_at: '2026-04-26T10:18:30Z',
               route_latency_ms: 42,
+              route_prepared: true,
+              route_prepare_state: 'prepared',
+              route_prepare_message: 'Codex CLI route verified and ready for on-demand launch.',
+              route_prepared_at: '2026-04-26T10:18:35Z',
+              route_prepare_latency_ms: 45,
               total_runs: 4,
               succeeded_runs: 3,
               failed_runs: 1,
               cancelled_runs: 0,
               average_duration_ms: 420,
+              average_first_response_latency_ms: 110,
               last_duration_ms: 380,
+              last_first_response_latency_ms: 84,
               last_status: 'succeeded',
               last_started_at: '2026-04-26T10:19:00Z',
               last_completed_at: '2026-04-26T10:19:00.380Z',
@@ -126,6 +134,7 @@ describe('agent provider client', () => {
               conversation_id: 'conv-1',
               status: 'succeeded',
               duration_ms: 380,
+              first_response_latency_ms: 84,
               started_at: '2026-04-26T10:19:00Z',
               completed_at: '2026-04-26T10:19:00.380Z',
             },
@@ -152,12 +161,19 @@ describe('agent provider client', () => {
           model: 'gpt-5.4',
           route_checked_at: '2026-04-26T10:18:30Z',
           route_latency_ms: 42,
+          route_prepared: true,
+          route_prepare_state: 'prepared',
+          route_prepare_message: 'Codex CLI route verified and ready for on-demand launch.',
+          route_prepared_at: '2026-04-26T10:18:35Z',
+          route_prepare_latency_ms: 45,
           total_runs: 4,
           succeeded_runs: 3,
           failed_runs: 1,
           cancelled_runs: 0,
           average_duration_ms: 420,
+          average_first_response_latency_ms: 110,
           last_duration_ms: 380,
+          last_first_response_latency_ms: 84,
           last_status: 'succeeded',
           last_started_at: '2026-04-26T10:19:00Z',
           last_completed_at: '2026-04-26T10:19:00.380Z',
@@ -174,6 +190,7 @@ describe('agent provider client', () => {
           conversation_id: 'conv-1',
           status: 'succeeded',
           duration_ms: 380,
+          first_response_latency_ms: 84,
           started_at: '2026-04-26T10:19:00Z',
           completed_at: '2026-04-26T10:19:00.380Z',
         },
@@ -226,6 +243,61 @@ describe('agent provider client', () => {
       checked_at: '2026-04-26T11:00:00Z',
     })
     expect(fetchMock.mock.calls[1]?.[0]).toBe('http://127.0.0.1:8090/api/v1/agent/providers/provider-1/probe')
+    expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({
+      method: 'POST',
+    })
+  })
+
+  it('prewarms one provider through the backend contract', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          provider_id: 'provider-1',
+          provider_kind: 'openai-compatible',
+          display_name: 'LAN Source',
+          prepared: true,
+          prepare_state: 'prepared',
+          prepare_message: 'Route prepared via model discovery with 2 available model(s).',
+          base_url: 'http://127.0.0.1:8317',
+          model: 'gpt-5.4',
+          latency_ms: 57,
+          prepared_at: '2026-04-26T11:00:05Z',
+          route_ready: true,
+          route_status_state: 'ready',
+          route_status_message: 'Source is reachable with 2 discovered model(s).',
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(prewarmAgentProvider('provider-1')).resolves.toEqual({
+      provider_id: 'provider-1',
+      provider_kind: 'openai-compatible',
+      display_name: 'LAN Source',
+      prepared: true,
+      prepare_state: 'prepared',
+      prepare_message: 'Route prepared via model discovery with 2 available model(s).',
+      base_url: 'http://127.0.0.1:8317',
+      model: 'gpt-5.4',
+      latency_ms: 57,
+      prepared_at: '2026-04-26T11:00:05Z',
+      route_ready: true,
+      route_status_state: 'ready',
+      route_status_message: 'Source is reachable with 2 discovered model(s).',
+    })
+    expect(fetchMock.mock.calls[1]?.[0]).toBe(
+      'http://127.0.0.1:8090/api/v1/agent/providers/provider-1/prewarm',
+    )
     expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({
       method: 'POST',
     })

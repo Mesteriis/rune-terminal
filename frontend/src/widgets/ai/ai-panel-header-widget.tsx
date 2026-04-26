@@ -4,6 +4,7 @@ import {
   Archive,
   Check,
   ChevronDown,
+  LoaderCircle,
   MessageSquareMore,
   Pencil,
   Plus,
@@ -67,12 +68,30 @@ import {
   aiHeaderModeGroupStyle,
   aiShellHeaderStyle,
   aiShellHeaderLogoSlotStyle,
+  aiShellRouteActionStyle,
+  aiShellRouteClusterStyle,
+  aiShellRouteMetaStyle,
+  aiShellRouteSummaryStyle,
+  aiShellRouteTitleStyle,
   aiShellHeaderTitleLaneStyle,
   aiShellTitleClusterStyle,
   aiShellTitleTextStyle,
 } from '@/widgets/ai/ai-panel-widget.styles'
 
 export type AiPanelHeaderWidgetProps = {
+  activeProviderRoute?: {
+    displayName: string
+    model?: string
+    routeReady: boolean
+    routeStatusState?: string
+    routeStatusMessage?: string
+    routePrepared: boolean
+    routePrepareState?: string
+    routePrepareMessage?: string
+    routeLatencyMS: number
+    routePrepareLatencyMS: number
+    lastFirstResponseLatencyMS: number
+  } | null
   activeConversation?: AgentConversationSummary | null
   activeConversationID?: string
   conversationCounts?: AgentConversationListCounts
@@ -80,6 +99,7 @@ export type AiPanelHeaderWidgetProps = {
   conversationSearchQuery?: string
   conversations?: AgentConversationSummary[]
   isConversationBusy?: boolean
+  isProviderRouteBusy?: boolean
   mode: ChatMode
   onConversationScopeChange?: (scope: AgentConversationListScope) => void
   onConversationSearchQueryChange?: (value: string) => void
@@ -87,9 +107,11 @@ export type AiPanelHeaderWidgetProps = {
   onCreateConversation?: () => void
   onArchiveConversation?: (conversationID: string) => Promise<void> | void
   onDeleteConversation?: (conversationID: string) => Promise<void> | void
+  onPrewarmProviderRoute?: () => Promise<void> | void
   onRenameConversation?: (conversationID: string, title: string) => Promise<void> | void
   onRestoreConversation?: (conversationID: string) => Promise<void> | void
   onModeChange: (mode: ChatMode) => void
+  providerRouteError?: string | null
   title: string
 }
 
@@ -175,7 +197,39 @@ function conversationOptionAriaLabel(
   )}`
 }
 
+function formatProviderRouteStateLabel(route: NonNullable<AiPanelHeaderWidgetProps['activeProviderRoute']>) {
+  if (route.routePrepareState?.trim() === 'prepared' && route.routePrepared) {
+    return 'Prepared'
+  }
+  if (route.routeStatusState?.trim() === 'ready' && route.routeReady) {
+    return 'Ready'
+  }
+  if (route.routePrepareState?.trim()) {
+    return route.routePrepareState.trim()
+  }
+  if (route.routeStatusState?.trim()) {
+    return route.routeStatusState.trim()
+  }
+  return 'Unchecked'
+}
+
+function formatProviderRouteMeta(route: NonNullable<AiPanelHeaderWidgetProps['activeProviderRoute']>) {
+  const segments: string[] = []
+  if (route.model?.trim()) {
+    segments.push(route.model.trim())
+  }
+  if (route.lastFirstResponseLatencyMS > 0) {
+    segments.push(`first ${route.lastFirstResponseLatencyMS}ms`)
+  } else if (route.routePrepareLatencyMS > 0) {
+    segments.push(`prepare ${route.routePrepareLatencyMS}ms`)
+  } else if (route.routeLatencyMS > 0) {
+    segments.push(`probe ${route.routeLatencyMS}ms`)
+  }
+  return segments.join(' · ')
+}
+
 export function AiPanelHeaderWidget({
+  activeProviderRoute = null,
   activeConversation: activeConversationOverride = null,
   activeConversationID = '',
   conversationCounts = defaultConversationCounts,
@@ -183,6 +237,7 @@ export function AiPanelHeaderWidget({
   conversationSearchQuery: controlledConversationSearchQuery,
   conversations = [],
   isConversationBusy = false,
+  isProviderRouteBusy = false,
   mode,
   onConversationScopeChange,
   onConversationSearchQueryChange,
@@ -190,9 +245,11 @@ export function AiPanelHeaderWidget({
   onCreateConversation,
   onArchiveConversation,
   onDeleteConversation,
+  onPrewarmProviderRoute,
   onRenameConversation,
   onRestoreConversation,
   onModeChange,
+  providerRouteError = null,
   title,
 }: AiPanelHeaderWidgetProps) {
   const [isConversationMenuOpen, setIsConversationMenuOpen] = useState(false)
@@ -306,6 +363,15 @@ export function AiPanelHeaderWidget({
     () => buildConversationTitleCounts(orderedConversationOptions),
     [orderedConversationOptions],
   )
+  const activeProviderRouteStateLabel = activeProviderRoute
+    ? formatProviderRouteStateLabel(activeProviderRoute)
+    : ''
+  const activeProviderRouteMeta = activeProviderRoute ? formatProviderRouteMeta(activeProviderRoute) : ''
+  const activeProviderRouteMessage =
+    activeProviderRoute?.routePrepareMessage?.trim() ||
+    activeProviderRoute?.routeStatusMessage?.trim() ||
+    providerRouteError?.trim() ||
+    ''
 
   useEffect(() => {
     if (!isConversationMenuOpen) {
@@ -598,6 +664,44 @@ export function AiPanelHeaderWidget({
               {title} Assistant
             </Text>
           </Box>
+          {activeProviderRoute ? (
+            <Box runaComponent="ai-panel-header-route-cluster" style={aiShellRouteClusterStyle}>
+              <Box runaComponent="ai-panel-header-route-summary" style={aiShellRouteSummaryStyle}>
+                <Text
+                  runaComponent="ai-panel-header-route-title"
+                  style={aiShellRouteTitleStyle}
+                  title={activeProviderRouteMessage || activeProviderRoute.displayName}
+                >
+                  {activeProviderRoute.displayName} · {activeProviderRouteStateLabel}
+                </Text>
+                <Text
+                  runaComponent="ai-panel-header-route-meta"
+                  style={aiShellRouteMetaStyle}
+                  title={activeProviderRouteMessage || activeProviderRouteMeta}
+                >
+                  {activeProviderRouteMessage || activeProviderRouteMeta || 'No route telemetry yet'}
+                </Text>
+              </Box>
+              <Button
+                aria-label={
+                  activeProviderRoute.routePrepared ? 'Re-prepare provider route' : 'Prepare provider route'
+                }
+                disabled={isProviderRouteBusy || onPrewarmProviderRoute == null}
+                onClick={() => {
+                  void onPrewarmProviderRoute?.()
+                }}
+                runaComponent="ai-panel-header-route-action"
+                style={aiShellRouteActionStyle}
+              >
+                {isProviderRouteBusy ? (
+                  <LoaderCircle aria-hidden="true" size={12} />
+                ) : (
+                  <Check aria-hidden="true" size={12} />
+                )}
+                {activeProviderRoute.routePrepared ? 'Refresh' : 'Prepare'}
+              </Button>
+            </Box>
+          ) : null}
           <Box
             ref={conversationMenuWrapRef}
             runaComponent="ai-panel-header-conversation-group"

@@ -216,6 +216,25 @@ export function AppAiSidebar({ dockviewApiRef, isOpen, contentAreaRef }: AppAiSi
                     <AiPanelHeaderWidget
                       activeConversation={agentPanel.activeConversationSummary}
                       activeConversationID={agentPanel.activeConversationID}
+                      activeProviderRoute={
+                        agentPanel.activeProviderGateway
+                          ? {
+                              displayName: agentPanel.activeProviderGateway.display_name,
+                              model: agentPanel.activeProviderGateway.model,
+                              routeReady: agentPanel.activeProviderGateway.route_ready,
+                              routeStatusState: agentPanel.activeProviderGateway.route_status_state,
+                              routeStatusMessage: agentPanel.activeProviderGateway.route_status_message,
+                              routePrepared: agentPanel.activeProviderGateway.route_prepared,
+                              routePrepareState: agentPanel.activeProviderGateway.route_prepare_state,
+                              routePrepareMessage: agentPanel.activeProviderGateway.route_prepare_message,
+                              routeLatencyMS: agentPanel.activeProviderGateway.route_latency_ms,
+                              routePrepareLatencyMS:
+                                agentPanel.activeProviderGateway.route_prepare_latency_ms,
+                              lastFirstResponseLatencyMS:
+                                agentPanel.activeProviderGateway.last_first_response_latency_ms,
+                            }
+                          : null
+                      }
                       conversationCounts={agentPanel.conversationCounts}
                       conversationScope={agentPanel.conversationScope}
                       conversationSearchQuery={agentPanel.conversationSearchQuery}
@@ -224,6 +243,9 @@ export function AppAiSidebar({ dockviewApiRef, isOpen, contentAreaRef }: AppAiSi
                         agentPanel.isConversationPending ||
                         agentPanel.isSubmitting ||
                         agentPanel.isInteractionPending
+                      }
+                      isProviderRouteBusy={
+                        agentPanel.isProviderGatewayPending || agentPanel.isProviderRoutePreparing
                       }
                       onConversationScopeChange={agentPanel.setConversationScope}
                       onConversationSearchQueryChange={agentPanel.setConversationSearchQuery}
@@ -238,6 +260,7 @@ export function AppAiSidebar({ dockviewApiRef, isOpen, contentAreaRef }: AppAiSi
                         agentPanel.archiveConversation(conversationID)
                       }
                       onDeleteConversation={(conversationID) => agentPanel.deleteConversation(conversationID)}
+                      onPrewarmProviderRoute={() => agentPanel.prewarmActiveProviderRoute()}
                       onRenameConversation={(conversationID, title) =>
                         agentPanel.renameConversation(conversationID, title)
                       }
@@ -245,6 +268,7 @@ export function AppAiSidebar({ dockviewApiRef, isOpen, contentAreaRef }: AppAiSi
                         agentPanel.restoreConversation(conversationID)
                       }
                       onModeChange={setChatMode}
+                      providerRouteError={agentPanel.providerGatewayError}
                       title="AI Rune"
                     />
                   </Box>

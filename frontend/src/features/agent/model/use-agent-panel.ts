@@ -35,8 +35,12 @@ import {
 } from '@/features/agent/api/client'
 import {
   fetchAgentProviderCatalog,
+  fetchAgentProviderGatewaySnapshot,
+  prewarmAgentProvider,
   setActiveAgentProvider as activateAgentProviderInCatalog,
   type AgentProviderCatalog,
+  type AgentProviderGatewayProvider,
+  type AgentProviderGatewaySnapshot,
   type AgentProviderView,
 } from '@/features/agent/api/provider-client'
 import {
@@ -492,6 +496,7 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
   const [pendingFlow, setPendingFlow] = useState<PendingInteractionFlow | null>(null)
   const [provider, setProvider] = useState<AgentConversationProvider | null>(null)
   const [providerCatalog, setProviderCatalog] = useState<AgentProviderCatalog | null>(null)
+  const [providerGateway, setProviderGateway] = useState<AgentProviderGatewaySnapshot | null>(null)
   const [agentCatalog, setAgentCatalog] = useState<AgentCatalog | null>(null)
   const [activeConversationSummary, setActiveConversationSummary] = useState<AgentConversationSummary | null>(
     null,
@@ -518,7 +523,10 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isResponseCancellable, setIsResponseCancellable] = useState(false)
   const [isAttachmentLibraryPending, setIsAttachmentLibraryPending] = useState(false)
+  const [isProviderGatewayPending, setIsProviderGatewayPending] = useState(false)
+  const [isProviderRoutePreparing, setIsProviderRoutePreparing] = useState(false)
   const [recentAttachmentReferences, setRecentAttachmentReferences] = useState<AgentAttachmentReference[]>([])
+  const [providerGatewayError, setProviderGatewayError] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [isConversationPending, setIsConversationPending] = useState(false)
   const activeConversationIDRef = useRef('')
@@ -540,6 +548,23 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
   const hasLoadedContextWidgetsRef = useRef(false)
   const hasCustomizedContextWidgetSelectionRef = useRef(false)
   const workspaceWidgetsRef = useRef<WorkspaceWidgetSnapshot[]>([])
+
+  const refreshProviderGatewaySnapshot = useCallback(async (options?: { suppressError?: boolean }) => {
+    setIsProviderGatewayPending(true)
+    try {
+      const snapshot = await fetchAgentProviderGatewaySnapshot()
+      setProviderGateway(snapshot)
+      setProviderGatewayError(null)
+      return snapshot
+    } catch (error) {
+      if (!options?.suppressError) {
+        setProviderGatewayError(getErrorMessage(error, 'Unable to load provider gateway telemetry.'))
+      }
+      return null
+    } finally {
+      setIsProviderGatewayPending(false)
+    }
+  }, [])
 
   const nextLocalSortKey = useCallback((): ChatMessageSortKey => {
     const nextCounter = localSortCounterRef.current
@@ -661,6 +686,7 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
     setPendingFlow(null)
     setProvider(null)
     setProviderCatalog(null)
+    setProviderGateway(null)
     setAgentCatalog(null)
     setActiveConversationSummary(null)
     setConversations([])
@@ -683,7 +709,10 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
     setIsSubmitting(false)
     setIsResponseCancellable(false)
     setIsAttachmentLibraryPending(false)
+    setIsProviderGatewayPending(true)
+    setIsProviderRoutePreparing(false)
     setRecentAttachmentReferences([])
+    setProviderGatewayError(null)
     setIsConversationPending(false)
     activeConversationIDRef.current = ''
     messagesRef.current = null
@@ -694,6 +723,7 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
     void Promise.allSettled([
       fetchAgentConversation(),
       fetchAgentProviderCatalog(),
+      fetchAgentProviderGatewaySnapshot(),
       fetchAgentCatalog(),
       fetchAgentAttachmentReferences(),
     ]).then((results) => {
@@ -701,7 +731,13 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
         return
       }
 
-      const [conversationResult, providerCatalogResult, agentCatalogResult, attachmentLibraryResult] = results
+      const [
+        conversationResult,
+        providerCatalogResult,
+        providerGatewayResult,
+        agentCatalogResult,
+        attachmentLibraryResult,
+      ] = results
 
       if (conversationResult.status === 'rejected') {
         setLoadError(
@@ -726,6 +762,16 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
         setAvailableModels(chatModels)
         setSelectedModel((currentModel) => selectPreferredChatModel(currentModel, providerModel, chatModels))
       }
+
+      if (providerGatewayResult.status === 'fulfilled') {
+        setProviderGateway(providerGatewayResult.value)
+        setProviderGatewayError(null)
+      } else {
+        setProviderGatewayError(
+          getErrorMessage(providerGatewayResult.reason, 'Unable to load provider gateway telemetry.'),
+        )
+      }
+      setIsProviderGatewayPending(false)
 
       if (agentCatalogResult.status === 'fulfilled') {
         setAgentCatalog(agentCatalogResult.value)
@@ -946,12 +992,47 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
         setAvailableModels(nextModels)
         setSelectedModel(selectPreferredChatModel('', directProviderDefaultModel(nextProvider), nextModels))
         setProvider((currentProvider) => providerViewToConversationProvider(nextProvider, currentProvider))
+        await refreshProviderGatewaySnapshot({ suppressError: true })
       } catch (error) {
         setSubmitError(getErrorMessage(error, 'Unable to switch the active AI provider.'))
       }
     },
-    [beginPanelStateEpoch, selectedProviderID],
+    [beginPanelStateEpoch, refreshProviderGatewaySnapshot, selectedProviderID],
   )
+
+  const activeProviderGateway = useMemo<AgentProviderGatewayProvider | null>(() => {
+    if (!providerGateway) {
+      return null
+    }
+    const activeProviderID = selectedProviderID || providerCatalog?.active_provider_id || ''
+    if (!activeProviderID) {
+      return providerGateway.providers.find((candidate) => candidate.active) ?? null
+    }
+    return providerGateway.providers.find((candidate) => candidate.provider_id === activeProviderID) ?? null
+  }, [providerCatalog?.active_provider_id, providerGateway, selectedProviderID])
+
+  const prewarmActiveProviderRoute = useCallback(async () => {
+    const providerID = (selectedProviderID || providerCatalog?.active_provider_id || '').trim()
+    if (!providerID || isProviderRoutePreparing) {
+      return
+    }
+
+    setProviderGatewayError(null)
+    setIsProviderRoutePreparing(true)
+    try {
+      await prewarmAgentProvider(providerID)
+      await refreshProviderGatewaySnapshot({ suppressError: true })
+    } catch (error) {
+      setProviderGatewayError(getErrorMessage(error, 'Unable to prepare the active provider route.'))
+    } finally {
+      setIsProviderRoutePreparing(false)
+    }
+  }, [
+    isProviderRoutePreparing,
+    providerCatalog?.active_provider_id,
+    refreshProviderGatewaySnapshot,
+    selectedProviderID,
+  ])
 
   const switchConversation = useCallback(
     async (conversationID: string) => {
@@ -2134,6 +2215,7 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
             activeAuditMessageIDRef.current = null
           }
 
+          void refreshProviderGatewaySnapshot({ suppressError: true })
           unblockAiWidget(hostId)
           setIsSubmitting(false)
           setIsResponseCancellable(false)
@@ -2143,6 +2225,7 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
     [
       applyConversationSnapshot,
       hostId,
+      refreshProviderGatewaySnapshot,
       refreshConversationList,
       runTerminalPrompt,
       updateAuditMessageEntries,
@@ -2563,6 +2646,7 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
   return {
     activeConversationID,
     activeConversationSummary,
+    activeProviderGateway,
     answerQuestionnaire,
     approvePendingPlan,
     availableModes,
@@ -2595,7 +2679,10 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
     queuedAttachmentReferences,
     recentAttachmentReferences,
     isAttachmentLibraryPending,
+    isProviderGatewayPending,
+    isProviderRoutePreparing,
     refreshAttachmentLibrary,
+    refreshProviderGatewaySnapshot,
     reuseStoredAttachmentReference,
     deleteStoredAttachmentReference,
     removeQueuedAttachmentReference: onRemoveQueuedAttachmentReference,
@@ -2608,6 +2695,8 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
     selectMode,
     selectProfile,
     selectProvider,
+    prewarmActiveProviderRoute,
+    providerGatewayError,
     selectRole,
     setDraft,
     setIsWidgetContextEnabled: updateWidgetContextEnabled,

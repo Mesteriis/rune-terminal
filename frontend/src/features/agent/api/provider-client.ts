@@ -52,12 +52,19 @@ export type AgentProviderGatewayProvider = {
   model?: string
   route_checked_at?: string
   route_latency_ms: number
+  route_prepared: boolean
+  route_prepare_state?: string
+  route_prepare_message?: string
+  route_prepared_at?: string
+  route_prepare_latency_ms: number
   total_runs: number
   succeeded_runs: number
   failed_runs: number
   cancelled_runs: number
   average_duration_ms: number
+  average_first_response_latency_ms: number
   last_duration_ms: number
+  last_first_response_latency_ms: number
   last_status?: 'succeeded' | 'failed' | 'cancelled' | string
   last_error_code?: string
   last_error_message?: string
@@ -77,6 +84,7 @@ export type AgentProviderGatewayRun = {
   error_code?: string
   error_message?: string
   duration_ms: number
+  first_response_latency_ms: number
   started_at: string
   completed_at: string
 }
@@ -100,6 +108,23 @@ export type AgentProviderProbeResult = {
   discovered_models?: string[]
   latency_ms: number
   checked_at: string
+}
+
+export type AgentProviderPrewarmResult = {
+  provider_id: string
+  provider_kind: AgentProviderKind | string
+  display_name: string
+  prepared: boolean
+  prepare_state: string
+  prepare_message: string
+  resolved_binary?: string
+  base_url?: string
+  model?: string
+  latency_ms: number
+  prepared_at: string
+  route_ready: boolean
+  route_status_state: string
+  route_status_message: string
 }
 
 export type AgentProviderModelCatalog = {
@@ -306,6 +331,15 @@ export async function fetchAgentProviderGatewaySnapshot() {
 export async function probeAgentProvider(providerID: string) {
   return await requestProviderRuntimeJSON<AgentProviderProbeResult>(
     `/api/v1/agent/providers/${encodeURIComponent(providerID)}/probe`,
+    {
+      method: 'POST',
+    },
+  )
+}
+
+export async function prewarmAgentProvider(providerID: string) {
+  return await requestProviderRuntimeJSON<AgentProviderPrewarmResult>(
+    `/api/v1/agent/providers/${encodeURIComponent(providerID)}/prewarm`,
     {
       method: 'POST',
     },
