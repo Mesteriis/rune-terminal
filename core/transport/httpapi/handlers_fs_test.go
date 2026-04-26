@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/Mesteriis/rune-terminal/core/app"
+	"github.com/Mesteriis/rune-terminal/core/connections"
 )
 
 func TestListFSReturnsDirectoriesAndFiles(t *testing.T) {
@@ -695,6 +696,98 @@ func TestReadFSPreviewRejectsDirectoryPath(t *testing.T) {
 	}
 }
 
+func TestListFSRoutesRemoteConnectionAwareRequestsThroughSSH(t *testing.T) {
+	t.Setenv("PATH", installFakeSSHBinary(t, "#!/bin/sh\nprintf '/remote/project\\n__RTSEP__\\nsrc\\tdirectory\\t1714170000\\t0\\nREADME.md\\tfile\\t1714170060\\t12\\n'\n")+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	runtime := &app.Runtime{
+		Connections: newRemoteFSHandlerConnectionStore(t),
+		RepoRoot:    t.TempDir(),
+	}
+	handler := NewHandler(runtime, testAuthToken)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(
+		recorder,
+		authedJSONRequest(
+			t,
+			http.MethodGet,
+			"/api/v1/fs/list?path="+url.QueryEscape("/remote/project")+"&connection_id=conn-ssh",
+			nil,
+		),
+	)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+
+	var payload struct {
+		Path        string `json:"path"`
+		Directories []struct {
+			Name string `json:"name"`
+		} `json:"directories"`
+		Files []struct {
+			Name string `json:"name"`
+		} `json:"files"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	if payload.Path != "/remote/project" {
+		t.Fatalf("unexpected path %q", payload.Path)
+	}
+	if len(payload.Directories) != 1 || payload.Directories[0].Name != "src" {
+		t.Fatalf("unexpected remote directories: %#v", payload.Directories)
+	}
+	if len(payload.Files) != 1 || payload.Files[0].Name != "README.md" {
+		t.Fatalf("unexpected remote files: %#v", payload.Files)
+	}
+}
+
+func TestReadFSPreviewRoutesRemoteConnectionAwareRequestsThroughSSH(t *testing.T) {
+	t.Setenv(
+		"PATH",
+		installFakeSSHBinary(
+			t,
+			"#!/bin/sh\nprintf '__RTMETA__5\\nSGVsbG8=\\n'\n",
+		)+string(os.PathListSeparator)+os.Getenv("PATH"),
+	)
+
+	runtime := &app.Runtime{
+		Connections: newRemoteFSHandlerConnectionStore(t),
+		RepoRoot:    t.TempDir(),
+	}
+	handler := NewHandler(runtime, testAuthToken)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(
+		recorder,
+		authedJSONRequest(
+			t,
+			http.MethodGet,
+			"/api/v1/fs/read?path="+url.QueryEscape("/remote/README.md")+"&connection_id=conn-ssh",
+			nil,
+		),
+	)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+
+	var payload struct {
+		Path    string `json:"path"`
+		Preview string `json:"preview"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	if payload.Path != "/remote/README.md" {
+		t.Fatalf("unexpected path %q", payload.Path)
+	}
+	if payload.Preview != "Hello" {
+		t.Fatalf("unexpected preview %q", payload.Preview)
+	}
+}
+
 func TestReadFSFileReturnsFullTextContent(t *testing.T) {
 	t.Parallel()
 
@@ -728,6 +821,35 @@ func TestReadFSFileReturnsFullTextContent(t *testing.T) {
 	if payload.Content != "hello\nworld" {
 		t.Fatalf("unexpected content %q", payload.Content)
 	}
+}
+
+func installFakeSSHBinary(t *testing.T, script string) string {
+	t.Helper()
+
+	binDir := t.TempDir()
+	sshPath := filepath.Join(binDir, "ssh")
+	if err := os.WriteFile(sshPath, []byte(script), 0o755); err != nil {
+		t.Fatalf("write fake ssh: %v", err)
+	}
+	return binDir
+}
+
+func newRemoteFSHandlerConnectionStore(t *testing.T) *connections.Service {
+	t.Helper()
+
+	store, err := connections.NewService(filepath.Join(t.TempDir(), "connections.json"))
+	if err != nil {
+		t.Fatalf("connections.NewService: %v", err)
+	}
+	if _, _, err := store.SaveSSH(connections.SaveSSHInput{
+		ID:   "conn-ssh",
+		Name: "Prod",
+		Host: "prod.example",
+		User: "ops",
+	}); err != nil {
+		t.Fatalf("SaveSSH: %v", err)
+	}
+	return store
 }
 
 func TestReadFSFileRejectsBinaryContent(t *testing.T) {

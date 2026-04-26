@@ -21,6 +21,10 @@
     constraints
   - backend workspace coverage now also verifies the path-handoff `preview`
     widget route and catalog entry
+  - backend workspace path handoff now also accepts SSH-scoped preview
+    targets without forcing a local `os.Stat` check first, so a remote
+    terminal can open a preview widget for its own path identity instead
+    of failing against the local filesystem
   - frontend preview-widget coverage verifies preview panel params, bounded
     text/hex rendering, refresh, inline errors, and backend-owned close
     semantics
@@ -215,6 +219,7 @@
 - `npm run validate:desktop-runtime`
 - `gofmt -w core/app/workspace_actions.go core/app/tool_errors.go core/transport/httpapi/api.go core/transport/httpapi/handlers_workspace.go core/transport/httpapi/handlers_workspace_test.go core/workspace/widget_catalog.go core/workspace/widget_catalog_test.go`
 - `./scripts/go.sh test ./core/app ./core/workspace ./core/transport/httpapi -run 'TestWidgetKindCatalog|TestWorkspaceWidgetKindsCatalog|TestWorkspaceOpenPreviewInNewBlock' -count=1`
+- `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestOpenPreviewInNewBlockAllowsRemotePathWithoutLocalStat|TestListFSRoutesRemoteConnectionAwareRequestsThroughSSH|TestReadFSPreviewRoutesRemoteConnectionAwareRequestsThroughSSH' -count=1`
 - `(cd frontend && npm exec prettier -- --write src/features/preview/api/client.ts src/features/preview/api/client.test.ts src/widgets/preview/index.ts src/widgets/preview/preview-panel.ts src/widgets/preview/preview-panel.test.ts src/widgets/preview/preview-panel-widget.tsx src/widgets/preview/preview-panel-widget.test.tsx src/widgets/preview/preview-panel-widget.styles.ts src/widgets/index.ts src/widgets/panel/dockview-panel-widget.tsx src/widgets/terminal/terminal-dockview-header-actions-widget.tsx src/widgets/terminal/terminal-dockview-header-actions-widget.test.tsx)`
 - `npm --prefix frontend run test -- src/features/preview/api/client.test.ts src/widgets/preview/preview-panel.test.ts src/widgets/preview/preview-panel-widget.test.tsx src/widgets/terminal/terminal-dockview-header-actions-widget.test.tsx`
 - `npm --prefix frontend run lint:active`

@@ -332,18 +332,6 @@ func (r *Runtime) OpenPreviewInNewBlock(path string, targetWidgetID string, conn
 		return CreateTerminalTabResult{}, fmt.Errorf("%w: preview path is required", workspace.ErrInvalidWidgetPath)
 	}
 
-	cleanPath, err := r.resolveFSExistingPath(path)
-	if err != nil {
-		return CreateTerminalTabResult{}, err
-	}
-	info, err := os.Stat(cleanPath)
-	if err != nil {
-		return CreateTerminalTabResult{}, err
-	}
-	if info.IsDir() {
-		return CreateTerminalTabResult{}, ErrFSPathNotFile
-	}
-
 	snapshot := r.Workspace.Snapshot()
 	targetWidgetID = strings.TrimSpace(targetWidgetID)
 	if targetWidgetID == "" {
@@ -369,6 +357,28 @@ func (r *Runtime) OpenPreviewInNewBlock(path string, targetWidgetID string, conn
 				connectionID = widget.ConnectionID
 				break
 			}
+		}
+	}
+
+	connection, err := r.resolveFSConnection(connectionID)
+	if err != nil {
+		return CreateTerminalTabResult{}, err
+	}
+
+	cleanPath := path
+	if connection.Kind == connections.KindSSH {
+		cleanPath = normalizeRemoteFSPath(path, ".")
+	} else {
+		cleanPath, err = r.resolveFSExistingPath(path)
+		if err != nil {
+			return CreateTerminalTabResult{}, err
+		}
+		info, err := os.Stat(cleanPath)
+		if err != nil {
+			return CreateTerminalTabResult{}, err
+		}
+		if info.IsDir() {
+			return CreateTerminalTabResult{}, ErrFSPathNotFile
 		}
 	}
 

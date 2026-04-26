@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/Mesteriis/rune-terminal/core/app"
+	"github.com/Mesteriis/rune-terminal/core/connections"
 )
 
 const (
@@ -49,27 +50,22 @@ type renameFSRequest struct {
 }
 
 type writeFSRequest struct {
-	Content string `json:"content"`
-	Path    string `json:"path"`
+	ConnectionID string `json:"connection_id,omitempty"`
+	Content      string `json:"content"`
+	Path         string `json:"path"`
 }
 
 type openFSRequest struct {
-	Path string `json:"path"`
+	ConnectionID string `json:"connection_id,omitempty"`
+	Path         string `json:"path"`
 }
 
 func (api *API) handleListFS(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Query().Get("path")
 	query := r.URL.Query().Get("query")
+	connectionID := r.URL.Query().Get("connection_id")
 	allowOutsideWorkspace := r.URL.Query().Get("allow_outside_workspace") == "1"
-	var (
-		result app.FSListResult
-		err    error
-	)
-	if allowOutsideWorkspace {
-		result, err = api.runtime.ListFSUnbounded(path, query)
-	} else {
-		result, err = api.runtime.ListFS(path, query)
-	}
+	result, err := api.runtime.ListFSForConnection(r.Context(), path, query, connectionID, allowOutsideWorkspace)
 	if err != nil {
 		writeFSError(w, err)
 		return
@@ -79,6 +75,7 @@ func (api *API) handleListFS(w http.ResponseWriter, r *http.Request) {
 
 func (api *API) handleReadFS(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Query().Get("path")
+	connectionID := r.URL.Query().Get("connection_id")
 	maxBytes := parseInt(r.URL.Query().Get("max_bytes"), defaultFSPreviewBytes)
 	allowOutsideWorkspace := r.URL.Query().Get("allow_outside_workspace") == "1"
 	if maxBytes <= 0 {
@@ -87,15 +84,13 @@ func (api *API) handleReadFS(w http.ResponseWriter, r *http.Request) {
 	if maxBytes > maxFSPreviewBytes {
 		maxBytes = maxFSPreviewBytes
 	}
-	var (
-		result app.FSReadResult
-		err    error
+	result, err := api.runtime.ReadFSPreviewForConnection(
+		r.Context(),
+		path,
+		maxBytes,
+		connectionID,
+		allowOutsideWorkspace,
 	)
-	if allowOutsideWorkspace {
-		result, err = api.runtime.ReadFSPreviewUnbounded(path, maxBytes)
-	} else {
-		result, err = api.runtime.ReadFSPreview(path, maxBytes)
-	}
 	if err != nil {
 		writeFSError(w, err)
 		return
@@ -104,7 +99,11 @@ func (api *API) handleReadFS(w http.ResponseWriter, r *http.Request) {
 }
 
 func (api *API) handleReadFSFile(w http.ResponseWriter, r *http.Request) {
-	result, err := api.runtime.ReadFSFile(r.URL.Query().Get("path"))
+	result, err := api.runtime.ReadFSFileForConnection(
+		r.Context(),
+		r.URL.Query().Get("path"),
+		r.URL.Query().Get("connection_id"),
+	)
 	if err != nil {
 		writeFSError(w, err)
 		return
@@ -120,7 +119,12 @@ func (api *API) handleWriteFSFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := api.runtime.WriteFSFile(request.Path, request.Content)
+	result, err := api.runtime.WriteFSFileForConnection(
+		r.Context(),
+		request.Path,
+		request.Content,
+		request.ConnectionID,
+	)
 	if err != nil {
 		writeFSError(w, err)
 		return
@@ -136,7 +140,7 @@ func (api *API) handleOpenFSExternal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := api.runtime.OpenFSExternal(request.Path)
+	result, err := api.runtime.OpenFSExternalForConnection(r.Context(), request.Path, request.ConnectionID)
 	if err != nil {
 		writeFSError(w, err)
 		return
@@ -272,6 +276,10 @@ func writeFSError(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusServiceUnavailable, "fs_external_open_unsupported", err.Error())
 	case errors.Is(err, app.ErrFSExternalOpenUnavailable):
 		writeError(w, http.StatusServiceUnavailable, "fs_external_open_unavailable", err.Error())
+	case errors.Is(err, connections.ErrConnectionNotFound):
+		writeNotFound(w, "connection_not_found", err.Error())
+	case errors.Is(err, connections.ErrInvalidConnection):
+		writeBadRequest(w, "invalid_connection_request", err)
 	default:
 		writeInternalError(w, err)
 	}

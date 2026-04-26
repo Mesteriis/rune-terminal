@@ -28,7 +28,7 @@ func (defaultTmuxProbe) ListSessions(ctx context.Context, connection Connection)
 		return nil, fmt.Errorf("%w: tmux sessions require an ssh profile", ErrInvalidConnection)
 	}
 
-	sshPath, args, err := buildSSHProbeArgs(connection.SSH, "sh", "-lc", tmuxListSessionsScript)
+	sshPath, args, err := BuildSSHCommandArgs(connection.SSH, "sh", "-lc", tmuxListSessionsScript)
 	if err != nil {
 		return nil, err
 	}
@@ -53,40 +53,6 @@ func (defaultTmuxProbe) ListSessions(ctx context.Context, connection Connection)
 	}
 
 	return parseTmuxSessionsOutput(stdout.String()), nil
-}
-
-func buildSSHProbeArgs(config *SSHConfig, remoteArgs ...string) (string, []string, error) {
-	if config == nil {
-		return "", nil, errors.New("ssh connection is missing config")
-	}
-	if strings.TrimSpace(config.Host) == "" {
-		return "", nil, errors.New("ssh connection host is required")
-	}
-	sshPath, err := exec.LookPath("ssh")
-	if err != nil {
-		return "", nil, errors.New("ssh binary is not available on this machine")
-	}
-
-	args := make([]string, 0, 12+len(remoteArgs))
-	args = append(
-		args,
-		"-o", "BatchMode=yes",
-		"-o", "ConnectTimeout=5",
-		"-o", "StrictHostKeyChecking=accept-new",
-	)
-	if config.Port > 0 {
-		args = append(args, "-p", strconv.Itoa(config.Port))
-	}
-	if config.IdentityFile != "" {
-		args = append(args, "-i", config.IdentityFile)
-	}
-	target := config.Host
-	if config.User != "" {
-		target = config.User + "@" + target
-	}
-	args = append(args, target)
-	args = append(args, remoteArgs...)
-	return sshPath, args, nil
 }
 
 func parseTmuxSessionsOutput(raw string) []TmuxSession {
