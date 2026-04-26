@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"net/url"
 	"strings"
 
 	"github.com/Mesteriis/rune-terminal/core/app"
@@ -27,61 +26,6 @@ type mcpServerDetailsResponse struct {
 	Active   bool                    `json:"active"`
 	Enabled  bool                    `json:"enabled"`
 	Headers  map[string]string       `json:"headers,omitempty"`
-}
-
-func normalizeRemoteMCPRegistration(payload registerMCPServerRequest, targetID string) (app.MCPRegistrationRequest, error) {
-	id := strings.TrimSpace(payload.ID)
-	if id == "" {
-		id = strings.TrimSpace(targetID)
-	}
-	if id == "" {
-		return app.MCPRegistrationRequest{}, errors.New("id is required")
-	}
-
-	normalizedTargetID := strings.TrimSpace(targetID)
-	if normalizedTargetID != "" && id != normalizedTargetID {
-		return app.MCPRegistrationRequest{}, errors.New("id must match the target server")
-	}
-
-	registrationType := strings.TrimSpace(payload.Type)
-	if registrationType != "remote" {
-		return app.MCPRegistrationRequest{}, errors.New("type must be remote")
-	}
-
-	endpoint := strings.TrimSpace(payload.Endpoint)
-	if endpoint == "" {
-		return app.MCPRegistrationRequest{}, errors.New("endpoint is required")
-	}
-
-	parsedEndpoint, err := url.Parse(endpoint)
-	if err != nil || parsedEndpoint.Scheme == "" || parsedEndpoint.Host == "" {
-		return app.MCPRegistrationRequest{}, errors.New("endpoint must be an absolute URL")
-	}
-	if parsedEndpoint.Scheme != "http" && parsedEndpoint.Scheme != "https" {
-		return app.MCPRegistrationRequest{}, errors.New("endpoint scheme must be http or https")
-	}
-
-	headers := make(map[string]string, len(payload.Headers))
-	for name, value := range payload.Headers {
-		headerName := strings.TrimSpace(name)
-		if headerName == "" {
-			return app.MCPRegistrationRequest{}, errors.New("header names must be non-empty")
-		}
-		if strings.ContainsAny(headerName, "\r\n") {
-			return app.MCPRegistrationRequest{}, errors.New("header names must not contain newlines")
-		}
-		if strings.ContainsAny(value, "\r\n") {
-			return app.MCPRegistrationRequest{}, errors.New("header values must not contain newlines")
-		}
-		headers[headerName] = value
-	}
-
-	return app.MCPRegistrationRequest{
-		ID:       id,
-		Type:     registrationType,
-		Endpoint: parsedEndpoint.String(),
-		Headers:  headers,
-	}, nil
 }
 
 func encodeMCPServerDetails(snapshot plugins.MCPServerSnapshot, spec plugins.MCPServerSpec) mcpServerDetailsResponse {
@@ -111,9 +55,14 @@ func (api *API) handleRegisterMCPServer(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	request, err := normalizeRemoteMCPRegistration(payload, "")
+	request, err := app.NormalizeRemoteMCPRegistrationRequest(app.MCPRegistrationRequest{
+		ID:       payload.ID,
+		Type:     payload.Type,
+		Endpoint: payload.Endpoint,
+		Headers:  payload.Headers,
+	}, "")
 	if err != nil {
-		writeBadRequest(w, "invalid_request", err)
+		writeMCPError(w, err)
 		return
 	}
 
@@ -131,6 +80,12 @@ func (api *API) handleRegisterMCPServer(w http.ResponseWriter, r *http.Request) 
 func (api *API) handleListMCPServers(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"servers": api.runtime.ListMCPServers(),
+	})
+}
+
+func (api *API) handleListMCPCatalog(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{
+		"templates": api.runtime.MCPTemplateCatalog(),
 	})
 }
 
@@ -160,9 +115,14 @@ func (api *API) handleUpdateMCPServer(w http.ResponseWriter, r *http.Request) {
 		writeBadRequest(w, "invalid_request", err)
 		return
 	}
-	request, err := normalizeRemoteMCPRegistration(payload, serverID)
+	request, err := app.NormalizeRemoteMCPRegistrationRequest(app.MCPRegistrationRequest{
+		ID:       payload.ID,
+		Type:     payload.Type,
+		Endpoint: payload.Endpoint,
+		Headers:  payload.Headers,
+	}, serverID)
 	if err != nil {
-		writeBadRequest(w, "invalid_request", err)
+		writeMCPError(w, err)
 		return
 	}
 
@@ -279,6 +239,28 @@ func (api *API) handleInvokeMCP(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, result)
 }
 
+func (api *API) handleProbeMCPServer(w http.ResponseWriter, r *http.Request) {
+	var payload struct {
+		Endpoint string            `json:"endpoint"`
+		Headers  map[string]string `json:"headers,omitempty"`
+	}
+	if err := decodeJSON(r, &payload); err != nil {
+		writeBadRequest(w, "invalid_request", err)
+		return
+	}
+	result, err := api.runtime.ProbeRemoteMCPServer(r.Context(), app.MCPProbeRequest{
+		Endpoint: payload.Endpoint,
+		Headers:  payload.Headers,
+	})
+	if err != nil {
+		writeMCPError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"probe": result,
+	})
+}
+
 func writeMCPError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, app.ErrMCPRuntimeNotConfigured):
@@ -295,6 +277,8 @@ func writeMCPError(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusConflict, "mcp_server_disabled", err.Error())
 	case errors.Is(err, plugins.ErrMCPServerBusy):
 		writeError(w, http.StatusConflict, "mcp_server_busy", err.Error())
+	case errors.Is(err, plugins.ErrInvalidPluginSpec):
+		writeBadRequest(w, "invalid_mcp_request", err)
 	default:
 		writeInternalError(w, err)
 	}

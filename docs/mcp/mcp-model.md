@@ -14,6 +14,7 @@ This is the canonical MCP entrypoint for runtime lifecycle and usage rules.
   - `stopped`, `starting`, `active`, `idle`, `stopped_auto`
 - Registration and lifecycle actions are API-driven, not implicit background behavior.
 - The active settings shell provides the narrow operator UI for remote server registration plus lifecycle controls; it is a view over the same backend registry, not a second frontend MCP registry.
+- Backend onboarding helpers can expose a bounded template catalog and draft probe surface, but they remain operator-driven and do not auto-register or auto-invoke anything.
 
 ## Usage rules
 

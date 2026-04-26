@@ -63,29 +63,17 @@ func (r *Runtime) RegisterMCPServer(request MCPRegistrationRequest) (plugins.MCP
 	if r.MCP == nil {
 		return plugins.MCPServerSnapshot{}, ErrMCPRuntimeNotConfigured
 	}
-	id := strings.TrimSpace(request.ID)
-	if id == "" {
-		return plugins.MCPServerSnapshot{}, fmt.Errorf("%w: id is required", plugins.ErrInvalidPluginSpec)
-	}
-	if strings.TrimSpace(request.Type) != string(plugins.MCPServerTypeRemote) {
-		return plugins.MCPServerSnapshot{}, fmt.Errorf("%w: unsupported mcp registration type", plugins.ErrInvalidPluginSpec)
-	}
-	endpoint := strings.TrimSpace(request.Endpoint)
-	if endpoint == "" {
-		return plugins.MCPServerSnapshot{}, fmt.Errorf("%w: endpoint is required", plugins.ErrInvalidPluginSpec)
-	}
-
-	headers := make(map[string]string, len(request.Headers))
-	for key, value := range request.Headers {
-		headers[key] = value
+	normalizedRequest, err := NormalizeRemoteMCPRegistrationRequest(request, "")
+	if err != nil {
+		return plugins.MCPServerSnapshot{}, err
 	}
 
 	spec := plugins.MCPServerSpec{
-		ID:   id,
+		ID:   normalizedRequest.ID,
 		Type: plugins.MCPServerTypeRemote,
 		Remote: &plugins.MCPRemoteConfig{
-			Endpoint: endpoint,
-			Headers:  headers,
+			Endpoint: normalizedRequest.Endpoint,
+			Headers:  cloneMCPHeaders(normalizedRequest.Headers),
 		},
 	}
 
@@ -103,15 +91,12 @@ func (r *Runtime) UpdateMCPServer(serverID string, request MCPRegistrationReques
 		return plugins.MCPServerSnapshot{}, ErrMCPRuntimeNotConfigured
 	}
 
-	id := strings.TrimSpace(serverID)
-	if id == "" {
-		return plugins.MCPServerSnapshot{}, fmt.Errorf("%w: id is required", plugins.ErrInvalidPluginSpec)
-	}
-	requestID := strings.TrimSpace(request.ID)
-	if requestID != "" && requestID != id {
-		return plugins.MCPServerSnapshot{}, fmt.Errorf("%w: id does not match target server", plugins.ErrInvalidPluginSpec)
+	normalizedRequest, err := NormalizeRemoteMCPRegistrationRequest(request, serverID)
+	if err != nil {
+		return plugins.MCPServerSnapshot{}, err
 	}
 
+	id := normalizedRequest.ID
 	existingSpec, err := r.MCP.Registry().Spec(id)
 	if err != nil {
 		return plugins.MCPServerSnapshot{}, err
@@ -129,25 +114,12 @@ func (r *Runtime) UpdateMCPServer(serverID string, request MCPRegistrationReques
 		}
 	}
 
-	endpoint := strings.TrimSpace(request.Endpoint)
-	if strings.TrimSpace(request.Type) != string(plugins.MCPServerTypeRemote) {
-		return plugins.MCPServerSnapshot{}, fmt.Errorf("%w: unsupported mcp registration type", plugins.ErrInvalidPluginSpec)
-	}
-	if endpoint == "" {
-		return plugins.MCPServerSnapshot{}, fmt.Errorf("%w: endpoint is required", plugins.ErrInvalidPluginSpec)
-	}
-
-	headers := make(map[string]string, len(request.Headers))
-	for key, value := range request.Headers {
-		headers[key] = value
-	}
-
 	if err := r.MCP.Registry().Update(plugins.MCPServerSpec{
 		ID:   id,
 		Type: plugins.MCPServerTypeRemote,
 		Remote: &plugins.MCPRemoteConfig{
-			Endpoint: endpoint,
-			Headers:  headers,
+			Endpoint: normalizedRequest.Endpoint,
+			Headers:  cloneMCPHeaders(normalizedRequest.Headers),
 		},
 	}); err != nil {
 		return plugins.MCPServerSnapshot{}, err
