@@ -115,6 +115,87 @@ function createProviderCatalogFetchResponse(
   }
 }
 
+function createAgentCatalogFetchResponse(
+  active: {
+    modeID?: string
+    profileID?: string
+    roleID?: string
+  } = {},
+) {
+  const profiles = [
+    {
+      id: 'default',
+      name: 'Default',
+      description: 'General coding assistant.',
+      system_prompt: 'default prompt',
+      overlay: {},
+    },
+    {
+      id: 'hardened',
+      name: 'Hardened',
+      description: 'More conservative operator profile.',
+      system_prompt: 'hardened prompt',
+      overlay: { security_posture: 'hardened' },
+    },
+  ]
+  const roles = [
+    {
+      id: 'developer',
+      name: 'Developer',
+      description: 'Implementation role.',
+      prompt: 'developer prompt',
+      overlay: {},
+    },
+    {
+      id: 'reviewer',
+      name: 'Reviewer',
+      description: 'Review role.',
+      prompt: 'reviewer prompt',
+      overlay: { capability_removals: ['terminal:input'] },
+    },
+  ]
+  const modes = [
+    {
+      id: 'execute',
+      name: 'Execute',
+      description: 'Run implementation tasks.',
+      prompt: 'execute prompt',
+      overlay: {},
+    },
+    {
+      id: 'review',
+      name: 'Review',
+      description: 'Inspect changes without mutation.',
+      prompt: 'review prompt',
+      overlay: { minimum_mutation_tier: 'dangerous' },
+    },
+  ]
+  const activeProfile =
+    profiles.find((profile) => profile.id === (active.profileID ?? 'default')) ?? profiles[0]
+  const activeRole = roles.find((role) => role.id === (active.roleID ?? 'developer')) ?? roles[0]
+  const activeMode = modes.find((mode) => mode.id === (active.modeID ?? 'execute')) ?? modes[0]
+
+  return {
+    ok: true,
+    json: async () => ({
+      profiles,
+      roles,
+      modes,
+      active: {
+        profile: activeProfile,
+        role: activeRole,
+        mode: activeMode,
+        effective_prompt: 'effective prompt',
+        effective_policy_profile: {
+          prompt_profile_id: activeProfile.id,
+          role_id: activeRole.id,
+          mode_id: activeMode.id,
+        },
+      },
+    }),
+  }
+}
+
 function createConversationFetchResponse(
   overrides: Partial<Record<string, unknown>> = {},
   messages: Array<Record<string, unknown>> = [],
@@ -407,6 +488,97 @@ describe('AiPanelWidget backend conversation path', () => {
     const modelSelect = screen.getByRole('combobox', { name: 'AI model' })
     expect(modelSelect).toHaveTextContent('gpt-5.4')
     expect(modelSelect).toHaveTextContent('claude-sonnet-4-6')
+  })
+
+  it('switches backend agent role and mode selections from the composer toolbar', async () => {
+    const fetchMock = vi.fn()
+    fetchMock.mockImplementation(async (input, init) => {
+      const url = String(input)
+
+      if (url.endsWith('/api/v1/bootstrap')) {
+        return {
+          ok: true,
+          json: async () => ({
+            home_dir: '/Users/avm',
+            repo_root: '/Users/avm/projects/runa-terminal',
+          }),
+        }
+      }
+
+      if (url.endsWith('/api/v1/agent/conversation')) {
+        return createConversationFetchResponse({
+          title: 'Agent selection test',
+          provider: {
+            kind: 'codex',
+            base_url: 'codex',
+            model: 'stub-model',
+            streaming: false,
+          },
+        })
+      }
+
+      if (url.endsWith('/api/v1/agent/providers')) {
+        return createProviderCatalogFetchResponse()
+      }
+
+      if (url.endsWith('/api/v1/agent')) {
+        return createAgentCatalogFetchResponse()
+      }
+
+      if (url.endsWith('/api/v1/agent/selection/role')) {
+        expect(JSON.parse(String(init?.body))).toEqual({ id: 'reviewer' })
+        return createAgentCatalogFetchResponse({ roleID: 'reviewer' })
+      }
+
+      if (url.endsWith('/api/v1/agent/selection/mode')) {
+        expect(JSON.parse(String(init?.body))).toEqual({ id: 'review' })
+        return createAgentCatalogFetchResponse({ modeID: 'review', roleID: 'reviewer' })
+      }
+
+      if (url.includes('/api/v1/agent/conversations?scope=recent')) {
+        return createConversationListFetchResponse('conv_1', [
+          {
+            id: 'conv_1',
+            title: 'Agent selection test',
+            created_at: '2026-04-21T09:59:00Z',
+            updated_at: '2026-04-21T10:00:00Z',
+            message_count: 0,
+          },
+        ])
+      }
+
+      throw new Error(`Unhandled fetch in agent selection test: ${url}`)
+    })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<AiPanelWidget hostId="ai-shell-panel" />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: 'Agent role' })).toHaveValue('developer')
+      expect(screen.getByRole('combobox', { name: 'Agent mode' })).toHaveValue('execute')
+    })
+
+    await act(async () => {
+      fireEvent.change(screen.getByRole('combobox', { name: 'Agent role' }), {
+        target: { value: 'reviewer' },
+      })
+    })
+
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: 'Agent role' })).toHaveValue('reviewer')
+    })
+
+    await act(async () => {
+      fireEvent.change(screen.getByRole('combobox', { name: 'Agent mode' }), {
+        target: { value: 'review' },
+      })
+    })
+
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: 'Agent mode' })).toHaveValue('review')
+    })
   })
 
   it('streams pure chat prompts without plan or approval gates', async () => {

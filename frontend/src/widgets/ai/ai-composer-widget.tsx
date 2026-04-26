@@ -3,6 +3,7 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
 import { ChevronDown, List, SendHorizontal, X } from 'lucide-react'
 
 import type {
+  AiAgentSelectionOption,
   AiComposerAttachmentReference,
   AiContextWidgetOption,
   AiProviderOption,
@@ -60,10 +61,19 @@ export type AiComposerWidgetProps = {
   activeTool: string
   availableModels?: string[]
   availableProviders?: AiProviderOption[]
+  availableProfiles?: AiAgentSelectionOption[]
+  availableRoles?: AiAgentSelectionOption[]
+  availableModes?: AiAgentSelectionOption[]
   attachments?: AiComposerAttachmentReference[]
   placeholder: string
   selectedProviderID?: string
   selectedModel?: string
+  selectedProfileID?: string
+  selectedRoleID?: string
+  selectedModeID?: string
+  onProfileChange?: (value: string) => void
+  onRoleChange?: (value: string) => void
+  onModeChange?: (value: string) => void
   onProviderChange?: (value: string) => void
   value?: string
   onModelChange?: (value: string) => void
@@ -95,12 +105,18 @@ export type AiComposerWidgetProps = {
 export function AiComposerWidget({
   activeTool,
   availableModels = [],
+  availableModes = [],
+  availableProfiles = [],
   availableProviders = [],
+  availableRoles = [],
   attachments = [],
   disabled = false,
   isSubmitting = false,
   onModelChange,
+  onModeChange,
+  onProfileChange,
   onProviderChange,
+  onRoleChange,
   onCancelSubmit,
   onRemoveAttachment,
   onSubmit,
@@ -108,6 +124,9 @@ export function AiComposerWidget({
   placeholder,
   selectedProviderID,
   selectedModel,
+  selectedModeID,
+  selectedProfileID,
+  selectedRoleID,
   activeContextWidgetID,
   activeContextWidgetOption = null,
   contextWidgetLoadError = null,
@@ -137,6 +156,18 @@ export function AiComposerWidget({
     selectedProviderID && availableProviders.some((provider) => provider.value === selectedProviderID)
       ? selectedProviderID
       : (availableProviders[0]?.value ?? '')
+  const profileValue =
+    selectedProfileID && availableProfiles.some((profile) => profile.value === selectedProfileID)
+      ? selectedProfileID
+      : (availableProfiles[0]?.value ?? '')
+  const roleValue =
+    selectedRoleID && availableRoles.some((role) => role.value === selectedRoleID)
+      ? selectedRoleID
+      : (availableRoles[0]?.value ?? '')
+  const modeValue =
+    selectedModeID && availableModes.some((mode) => mode.value === selectedModeID)
+      ? selectedModeID
+      : (availableModes[0]?.value ?? '')
   const selectedContextCount = selectedContextWidgetIDs.length
   const hasAttachments = attachments.length > 0
   const selectedContextOptions = selectedContextWidgetIDs
@@ -286,6 +317,63 @@ export function AiComposerWidget({
                     {availableModels.map((model) => (
                       <option key={model} value={model}>
                         {model}
+                      </option>
+                    ))}
+                  </Select>
+                </Box>
+              ) : null}
+              {availableProfiles.length > 0 ? (
+                <Box runaComponent="ai-composer-profile-stack" style={aiToolbarFieldStackStyle}>
+                  <Text style={aiToolbarFieldLabelStyle}>Profile</Text>
+                  <Select
+                    aria-label="Agent profile"
+                    disabled={disabled}
+                    onChange={(event) => onProfileChange?.(event.currentTarget.value)}
+                    runaComponent="ai-composer-profile-select"
+                    style={aiToolbarProviderSelectStyle}
+                    value={profileValue}
+                  >
+                    {availableProfiles.map((profile) => (
+                      <option key={profile.value} value={profile.value}>
+                        {profile.label}
+                      </option>
+                    ))}
+                  </Select>
+                </Box>
+              ) : null}
+              {availableRoles.length > 0 ? (
+                <Box runaComponent="ai-composer-role-stack" style={aiToolbarFieldStackStyle}>
+                  <Text style={aiToolbarFieldLabelStyle}>Role</Text>
+                  <Select
+                    aria-label="Agent role"
+                    disabled={disabled}
+                    onChange={(event) => onRoleChange?.(event.currentTarget.value)}
+                    runaComponent="ai-composer-role-select"
+                    style={aiToolbarProviderSelectStyle}
+                    value={roleValue}
+                  >
+                    {availableRoles.map((role) => (
+                      <option key={role.value} value={role.value}>
+                        {role.label}
+                      </option>
+                    ))}
+                  </Select>
+                </Box>
+              ) : null}
+              {availableModes.length > 0 ? (
+                <Box runaComponent="ai-composer-mode-stack" style={aiToolbarFieldStackStyle}>
+                  <Text style={aiToolbarFieldLabelStyle}>Mode</Text>
+                  <Select
+                    aria-label="Agent mode"
+                    disabled={disabled}
+                    onChange={(event) => onModeChange?.(event.currentTarget.value)}
+                    runaComponent="ai-composer-mode-select"
+                    style={aiToolbarProviderSelectStyle}
+                    value={modeValue}
+                  >
+                    {availableModes.map((mode) => (
+                      <option key={mode.value} value={mode.value}>
+                        {mode.label}
                       </option>
                     ))}
                   </Select>

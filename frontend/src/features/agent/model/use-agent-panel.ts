@@ -8,11 +8,16 @@ import {
   deleteAgentConversation,
   executeAgentTool,
   explainTerminalCommand,
+  fetchAgentCatalog,
   fetchAgentConversations,
   fetchAgentConversation,
   renameAgentConversation,
   restoreAgentConversation,
+  setAgentMode,
+  setAgentProfile,
+  setAgentRole,
   streamAgentConversationMessage,
+  type AgentCatalog,
   type AgentAttachmentReference,
   type AgentConversationListCounts,
   type AgentConversationListScope,
@@ -53,6 +58,7 @@ import {
   finalizeAgentConversationStreamingMessages,
 } from '@/features/agent/model/panel-state'
 import type {
+  AiAgentSelectionOption,
   AiPanelWidgetState,
   AiContextWidgetOption,
   AiProviderOption,
@@ -210,6 +216,16 @@ function providerOptionsFromCatalog(catalog: AgentProviderCatalog | null): AiPro
       value: provider.id,
       label: providerOptionLabel(provider),
     }))
+}
+
+function agentSelectionOptionsFromItems(
+  items: Array<{ id: string; name: string; description: string }>,
+): AiAgentSelectionOption[] {
+  return items.map((item) => ({
+    value: item.id,
+    label: item.name,
+    description: item.description,
+  }))
 }
 
 function providerViewToConversationProvider(
@@ -419,6 +435,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
   const [pendingFlow, setPendingFlow] = useState<PendingInteractionFlow | null>(null)
   const [provider, setProvider] = useState<AgentConversationProvider | null>(null)
   const [providerCatalog, setProviderCatalog] = useState<AgentProviderCatalog | null>(null)
+  const [agentCatalog, setAgentCatalog] = useState<AgentCatalog | null>(null)
   const [activeConversationSummary, setActiveConversationSummary] = useState<AgentConversationSummary | null>(
     null,
   )
@@ -583,6 +600,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
     setPendingFlow(null)
     setProvider(null)
     setProviderCatalog(null)
+    setAgentCatalog(null)
     setActiveConversationSummary(null)
     setConversations([])
     setConversationCounts(defaultConversationListCounts)
@@ -609,12 +627,16 @@ export function useAgentPanel(hostId: string, enabled = true) {
     hasLoadedContextWidgetsRef.current = false
     hasCustomizedContextWidgetSelectionRef.current = false
 
-    void Promise.allSettled([fetchAgentConversation(), fetchAgentProviderCatalog()]).then((results) => {
+    void Promise.allSettled([
+      fetchAgentConversation(),
+      fetchAgentProviderCatalog(),
+      fetchAgentCatalog(),
+    ]).then((results) => {
       if (cancelled || panelStateEpochRef.current !== panelStateEpoch) {
         return
       }
 
-      const [conversationResult, providerCatalogResult] = results
+      const [conversationResult, providerCatalogResult, agentCatalogResult] = results
 
       if (conversationResult.status === 'rejected') {
         setLoadError(
@@ -638,6 +660,10 @@ export function useAgentPanel(hostId: string, enabled = true) {
         setSelectedProviderID(activeProvider?.id ?? '')
         setAvailableModels(chatModels)
         setSelectedModel((currentModel) => selectPreferredChatModel(currentModel, providerModel, chatModels))
+      }
+
+      if (agentCatalogResult.status === 'fulfilled') {
+        setAgentCatalog(agentCatalogResult.value)
       }
     })
 
@@ -735,6 +761,69 @@ export function useAgentPanel(hostId: string, enabled = true) {
   }, [])
 
   const availableProviders = useMemo(() => providerOptionsFromCatalog(providerCatalog), [providerCatalog])
+  const availableProfiles = useMemo(
+    () => (agentCatalog ? agentSelectionOptionsFromItems(agentCatalog.profiles) : []),
+    [agentCatalog],
+  )
+  const availableRoles = useMemo(
+    () => (agentCatalog ? agentSelectionOptionsFromItems(agentCatalog.roles) : []),
+    [agentCatalog],
+  )
+  const availableModes = useMemo(
+    () => (agentCatalog ? agentSelectionOptionsFromItems(agentCatalog.modes) : []),
+    [agentCatalog],
+  )
+
+  const selectProfile = useCallback(
+    async (profileID: string) => {
+      const nextProfileID = profileID.trim()
+      if (!nextProfileID || nextProfileID === agentCatalog?.active.profile.id) {
+        return
+      }
+
+      try {
+        setSubmitError(null)
+        setAgentCatalog(await setAgentProfile(nextProfileID))
+      } catch (error) {
+        setSubmitError(getErrorMessage(error, 'Unable to switch the active AI prompt profile.'))
+      }
+    },
+    [agentCatalog?.active.profile.id],
+  )
+
+  const selectRole = useCallback(
+    async (roleID: string) => {
+      const nextRoleID = roleID.trim()
+      if (!nextRoleID || nextRoleID === agentCatalog?.active.role.id) {
+        return
+      }
+
+      try {
+        setSubmitError(null)
+        setAgentCatalog(await setAgentRole(nextRoleID))
+      } catch (error) {
+        setSubmitError(getErrorMessage(error, 'Unable to switch the active AI role.'))
+      }
+    },
+    [agentCatalog?.active.role.id],
+  )
+
+  const selectMode = useCallback(
+    async (modeID: string) => {
+      const nextModeID = modeID.trim()
+      if (!nextModeID || nextModeID === agentCatalog?.active.mode.id) {
+        return
+      }
+
+      try {
+        setSubmitError(null)
+        setAgentCatalog(await setAgentMode(nextModeID))
+      } catch (error) {
+        setSubmitError(getErrorMessage(error, 'Unable to switch the active AI mode.'))
+      }
+    },
+    [agentCatalog?.active.mode.id],
+  )
 
   const selectProvider = useCallback(
     async (providerID: string) => {
@@ -1920,7 +2009,10 @@ export function useAgentPanel(hostId: string, enabled = true) {
     activeConversationSummary,
     answerQuestionnaire,
     approvePendingPlan,
+    availableModes,
     availableProviders,
+    availableProfiles,
+    availableRoles,
     cancelActiveSubmission,
     contextWidgetLoadError,
     contextWidgetOptions,
@@ -1949,7 +2041,13 @@ export function useAgentPanel(hostId: string, enabled = true) {
     selectedContextWidgetIDs: effectiveContextWidgetIDs,
     selectedModel,
     selectedProviderID,
+    selectedProfileID: agentCatalog?.active.profile.id ?? '',
+    selectedRoleID: agentCatalog?.active.role.id ?? '',
+    selectedModeID: agentCatalog?.active.mode.id ?? '',
+    selectMode,
+    selectProfile,
     selectProvider,
+    selectRole,
     setDraft,
     setIsWidgetContextEnabled: updateWidgetContextEnabled,
     setSelectedModel,

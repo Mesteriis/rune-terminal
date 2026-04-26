@@ -2,7 +2,7 @@
 
 ## Last verified state
 
-- Date: `2026-04-25`
+- Date: `2026-04-26`
 - State: `VERIFIED`
 - Scope:
   - DB-backed AI conversations with explicit create/switch/rename/archive/restore/delete lifecycle
@@ -20,6 +20,7 @@
   - narrow OpenAI-compatible HTTP source discovery/completion path
   - OpenAI-compatible HTTP source token/delta streaming over provider SSE
   - AI toolbar provider/model selection over the backend provider catalog
+  - AI composer prompt profile / role / mode selection over the backend agent catalog and existing selection routes
   - AI composer request-context toolbar trigger with explicit widget multiselect
   - persisted request-context selection per conversation in `runtime.db`
   - AI composer context quick actions (`Use current`, `Only current`, `All widgets`, `Use default`) over the existing workspace/widget context contract
@@ -75,6 +76,9 @@
   - The AI composer toolbar now consumes that backend-owned catalog directly:
   - provider switcher
   - model switcher scoped to the active provider's `chat_models`
+  - prompt profile switcher through `PUT /api/v1/agent/selection/profile`
+  - role switcher through `PUT /api/v1/agent/selection/role`
+  - mode switcher through `PUT /api/v1/agent/selection/mode`
   - explicit widget-context trigger with visible selection summary
   - explicit widget-context multiselect
   - explicit context quick actions inside the request-context dropdown
@@ -162,6 +166,7 @@
 - `npm --prefix frontend run test -- src/widgets/ai/ai-panel-widget.test.tsx src/widgets/ai/ai-panel-header-widget.test.tsx src/widgets/ai/ai-composer-widget.test.tsx`
 - `npm --prefix frontend run test -- src/widgets/ai/ai-panel-widget.test.tsx`
 - `npm --prefix frontend run test -- src/widgets/ai/ai-panel-widget.test.tsx -t "allows selecting multiple workspace widgets for the AI request context|persists the current workspace widget when the operator clicks Only current immediately after opening context options|auto-saves stale persisted context when context widgets are opened"`
+- `npm --prefix frontend run test -- src/widgets/ai/ai-composer-widget.test.tsx src/widgets/ai/ai-panel-widget.test.tsx`
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts`
 - `npx playwright test -c e2e/playwright.config.ts --reporter=line e2e/ai.spec.ts -g "archives and restores a non-active thread from row actions"`
 - `npm --prefix frontend run test -- src/widgets/ai/ai-panel-header-widget.test.tsx`
@@ -194,7 +199,7 @@
 - Composer cancellation aborts the browser fetch stream and clears frontend busy state; it does not claim a durable backend-side job cancellation queue beyond normal request-context cancellation.
 - CLI-native tool calls are not yet mediated through `core/toolruntime`, policy approval, or audit events.
 - The OpenAI-compatible HTTP source streams text deltas only; reasoning deltas and provider-native tool-call stream events remain out of scope.
-- No current visible profile, role, or mode selector exists in the AI sidebar, so those backend selection routes remain unwired to user controls.
+- Profile, role, and mode controls are now visible in the AI composer toolbar, but they remain global backend selection controls rather than per-conversation named presets.
 - `/run` currently surfaces approval-required toolruntime responses as a chat-side error/status message; there is no dedicated approval-confirmation UI for this path yet.
 - On this machine the local `claude` binary is installed and authenticated, and the verified browser path includes a successful Claude completion on a fresh conversation.
 - The composer shortcut preference is now runtime-backed inside the local desktop/browser runtime, but it still is not a broader roaming user-profile setting shared across multiple runtimes or machines.

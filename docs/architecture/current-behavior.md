@@ -333,7 +333,7 @@ Confirmable boundaries:
   - legacy Electron net fetch fallback is opt-in only via `RTERM_ENABLE_LEGACY_ELECTRON_NET=1`
 - The terminal shell is now much closer to TideTerm's compact term surface, but it still lacks TideTerm's multi-session sidebar, search UI, and shell-integration toolbar details.
 - The AI panel now uses a TideTerm-shaped header with widget context toggle and overflow menu, and it now has a real backend-owned conversation path in addition to the existing runtime, audit, and policy surfaces.
-- Prompt profile, role preset, and work mode controls now live in an AI mode strip near the top of the message feed instead of in the footer.
+- Prompt profile, role preset, and work mode controls are now visible in the AI composer toolbar and write through the existing backend-owned `/api/v1/agent/selection/*` routes.
 - The AI panel welcome card now exposes runtime-backed quick actions for terminal inspection, tab listing, and audit navigation as the current closest-compatible equivalent to deeper TideTerm AI flows.
 - The AI panel now keeps a merged transcript:
   - backend-owned conversation messages persisted by the Go runtime
@@ -410,7 +410,7 @@ Confirmable boundaries:
   - `RTERM_CONVERSATION_MAX_CHARS` default `12000`
 - Role preset, work mode, and prompt profile selection project into the backend system prompt through the Go app layer before the request reaches the provider.
 - Provider failures are recorded as assistant error messages in the transcript and as audit events. They are not silently swallowed by the frontend.
-- The AI composer toolbar now exposes explicit provider and model selection over that backend-owned catalog; it does not invent provider state locally.
+- The AI composer toolbar now exposes explicit provider/model selection plus prompt profile, role preset, and work mode controls over backend-owned catalogs; it does not invent provider or agent selection state locally.
 - Operator, settings, and audit navigation are now secondary header-menu controls rather than part of the primary composer surface.
 - The AI transcript now renders runtime tool activity with explicit tool names, operation summaries, affected widgets/paths, and approval-use markers so the feed behaves more like a working AI/tool conversation surface instead of a generic log.
 - The AI composer now exposes TideTerm-like control affordances: an attach button, prompt suggestion chips, and a send action.

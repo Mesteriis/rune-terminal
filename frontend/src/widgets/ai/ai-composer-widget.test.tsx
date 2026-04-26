@@ -226,6 +226,57 @@ describe('AiComposerWidget', () => {
     expect(onContextUseDefault).toHaveBeenCalledTimes(1)
   })
 
+  it('shows backend agent profile role and mode selectors', () => {
+    const onProfileChange = vi.fn()
+    const onRoleChange = vi.fn()
+    const onModeChange = vi.fn()
+
+    render(
+      <AiComposerWidget
+        activeTool="Chat"
+        availableModes={[
+          { value: 'execute', label: 'Execute' },
+          { value: 'review', label: 'Review' },
+        ]}
+        availableProfiles={[
+          { value: 'default', label: 'Default' },
+          { value: 'hardened', label: 'Hardened' },
+        ]}
+        availableRoles={[
+          { value: 'developer', label: 'Developer' },
+          { value: 'reviewer', label: 'Reviewer' },
+        ]}
+        onModeChange={onModeChange}
+        onProfileChange={onProfileChange}
+        onRoleChange={onRoleChange}
+        placeholder="Text Area"
+        selectedModeID="execute"
+        selectedProfileID="default"
+        selectedRoleID="developer"
+        toolbarLabel="TOOL BAR"
+        value=""
+      />,
+    )
+
+    expect(screen.getByRole('combobox', { name: 'Agent profile' })).toHaveValue('default')
+    expect(screen.getByRole('combobox', { name: 'Agent role' })).toHaveValue('developer')
+    expect(screen.getByRole('combobox', { name: 'Agent mode' })).toHaveValue('execute')
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Agent profile' }), {
+      target: { value: 'hardened' },
+    })
+    fireEvent.change(screen.getByRole('combobox', { name: 'Agent role' }), {
+      target: { value: 'reviewer' },
+    })
+    fireEvent.change(screen.getByRole('combobox', { name: 'Agent mode' }), {
+      target: { value: 'review' },
+    })
+
+    expect(onProfileChange).toHaveBeenCalledWith('hardened')
+    expect(onRoleChange).toHaveBeenCalledWith('reviewer')
+    expect(onModeChange).toHaveBeenCalledWith('review')
+  })
+
   it('shows selected context chips and lets the operator remove a widget without reopening the dropdown', () => {
     const onSelectedContextWidgetIDsChange = vi.fn()
 

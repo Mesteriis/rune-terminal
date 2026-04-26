@@ -145,7 +145,10 @@ export function AiPanelWidget({ controller, hostId, mode = 'chat', state }: AiPa
             activeTool={panelState.activeTool}
             attachments={state == null ? agentPanel.queuedAttachmentReferences : undefined}
             availableModels={state == null ? agentPanel.availableModels : undefined}
+            availableModes={state == null ? agentPanel.availableModes : undefined}
+            availableProfiles={state == null ? agentPanel.availableProfiles : undefined}
             availableProviders={state == null ? agentPanel.availableProviders : undefined}
+            availableRoles={state == null ? agentPanel.availableRoles : undefined}
             activeContextWidgetID={state == null ? agentPanel.activeContextWidgetID : undefined}
             activeContextWidgetOption={state == null ? agentPanel.activeContextWidgetOption : undefined}
             contextWidgetLoadError={state == null ? agentPanel.contextWidgetLoadError : undefined}
@@ -176,7 +179,10 @@ export function AiPanelWidget({ controller, hostId, mode = 'chat', state }: AiPa
             }
             onContextUseAllWidgets={state == null ? () => void agentPanel.useAllContextWidgets() : undefined}
             onModelChange={state == null ? agentPanel.setSelectedModel : undefined}
+            onModeChange={state == null ? agentPanel.selectMode : undefined}
+            onProfileChange={state == null ? agentPanel.selectProfile : undefined}
             onProviderChange={state == null ? agentPanel.selectProvider : undefined}
+            onRoleChange={state == null ? agentPanel.selectRole : undefined}
             onRemoveAttachment={state == null ? agentPanel.removeQueuedAttachmentReference : undefined}
             onSelectedContextWidgetIDsChange={
               state == null ? agentPanel.setSelectedContextWidgetIDs : undefined
@@ -186,8 +192,11 @@ export function AiPanelWidget({ controller, hostId, mode = 'chat', state }: AiPa
             onWidgetContextEnabledChange={state == null ? agentPanel.setIsWidgetContextEnabled : undefined}
             placeholder={panelState.composerPlaceholder}
             selectedContextWidgetIDs={state == null ? agentPanel.selectedContextWidgetIDs : undefined}
+            selectedModeID={state == null ? agentPanel.selectedModeID : undefined}
             selectedModel={state == null ? agentPanel.selectedModel : undefined}
+            selectedProfileID={state == null ? agentPanel.selectedProfileID : undefined}
             selectedProviderID={state == null ? agentPanel.selectedProviderID : undefined}
+            selectedRoleID={state == null ? agentPanel.selectedRoleID : undefined}
             submitDisabled={
               state == null
                 ? agentPanel.isSubmitting ||

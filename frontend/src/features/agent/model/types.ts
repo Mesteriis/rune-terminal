@@ -114,3 +114,9 @@ export type AiProviderOption = {
   value: string
   label: string
 }
+
+export type AiAgentSelectionOption = {
+  value: string
+  label: string
+  description?: string
+}
