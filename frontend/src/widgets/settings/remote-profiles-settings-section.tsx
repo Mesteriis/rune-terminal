@@ -4,6 +4,7 @@ import {
   checkRemoteProfileConnection,
   deleteRemoteProfile,
   fetchRemoteConnectionsSnapshot,
+  fetchRemoteProfileTmuxSessions,
   fetchRemoteProfiles,
   importSSHConfigProfiles,
   selectRemoteProfileConnection,
@@ -11,6 +12,7 @@ import {
   type RemoteConnectionsSnapshot,
   type RemoteConnectionView,
   type RemoteProfile,
+  type RemoteTmuxSession,
   type SSHConfigImportResult,
 } from '@/features/remote/api/client'
 import { ClearBox } from '@/shared/ui/components'
@@ -81,6 +83,8 @@ function profileMatchesFilter(
     profile.host,
     profile.user ?? '',
     profile.identity_file ?? '',
+    profile.launch_mode ?? '',
+    profile.tmux_session ?? '',
     profile.port ? String(profile.port) : '',
     connection?.usability ?? '',
     connection?.runtime.check_status ?? '',
@@ -120,6 +124,8 @@ export function RemoteProfilesSettingsSection() {
   const [isImporting, setIsImporting] = useState(false)
   const [busyProfileID, setBusyProfileID] = useState<string | null>(null)
   const [editingProfileID, setEditingProfileID] = useState<string | null>(null)
+  const [tmuxSessionsByProfile, setTmuxSessionsByProfile] = useState<Record<string, RemoteTmuxSession[]>>({})
+  const [tmuxLoadingProfileID, setTmuxLoadingProfileID] = useState<string | null>(null)
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const isEditing = editingProfileID !== null
@@ -165,6 +171,7 @@ export function RemoteProfilesSettingsSection() {
 
       setProfiles(nextProfiles)
       setConnectionsSnapshot(nextConnectionsSnapshot)
+      setTmuxSessionsByProfile({})
     } catch (error) {
       if (options.isCancelled?.()) {
         return
@@ -303,6 +310,36 @@ export function RemoteProfilesSettingsSection() {
     } finally {
       setBusyProfileID(null)
     }
+  }
+
+  async function handleBrowseTmuxSessions(profileID: string) {
+    setTmuxLoadingProfileID(profileID)
+    setErrorMessage(null)
+    setStatusMessage(null)
+
+    try {
+      const sessions = await fetchRemoteProfileTmuxSessions(profileID)
+      setTmuxSessionsByProfile((current) => ({
+        ...current,
+        [profileID]: sessions,
+      }))
+      setStatusMessage(
+        sessions.length > 0
+          ? `Loaded ${sessions.length} tmux sessions.`
+          : 'No tmux sessions reported by remote host.',
+      )
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Unable to load tmux sessions')
+    } finally {
+      setTmuxLoadingProfileID(null)
+    }
+  }
+
+  function handleUseTmuxSession(profile: RemoteProfile, sessionName: string) {
+    handleStartEdit(profile)
+    setLaunchModeDraft('tmux')
+    setTmuxSessionDraft(sessionName)
+    setStatusMessage(`Loaded tmux session ${sessionName} into profile editor.`)
   }
 
   return (
@@ -515,6 +552,14 @@ export function RemoteProfilesSettingsSection() {
                   >
                     Check
                   </Button>
+                  {profile.launch_mode === 'tmux' ? (
+                    <Button
+                      disabled={isBusy || isSavingProfile || tmuxLoadingProfileID === profile.id}
+                      onClick={() => void handleBrowseTmuxSessions(profile.id)}
+                    >
+                      {tmuxLoadingProfileID === profile.id ? 'Loading tmux…' : 'Browse tmux'}
+                    </Button>
+                  ) : null}
                   <Button disabled={isBusy || isSavingProfile} onClick={() => handleStartEdit(profile)}>
                     Edit
                   </Button>
@@ -525,6 +570,40 @@ export function RemoteProfilesSettingsSection() {
                     Delete
                   </Button>
                 </ClearBox>
+                {profile.launch_mode === 'tmux' ? (
+                  <ClearBox
+                    style={{
+                      display: 'grid',
+                      gap: 'var(--gap-xs)',
+                      width: '100%',
+                    }}
+                  >
+                    {(tmuxSessionsByProfile[profile.id] ?? []).map((session) => (
+                      <ClearBox
+                        key={session.name}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 'var(--gap-sm)',
+                          flexWrap: 'wrap' as const,
+                        }}
+                      >
+                        <Text style={settingsShellMutedTextStyle}>
+                          {session.name}
+                          {session.attached ? ' · attached' : ' · detached'}
+                          {session.window_count ? ` · ${session.window_count} windows` : ''}
+                        </Text>
+                        <Button
+                          disabled={isSavingProfile || busyProfileID !== null}
+                          onClick={() => handleUseTmuxSession(profile, session.name)}
+                        >
+                          Use session
+                        </Button>
+                      </ClearBox>
+                    ))}
+                  </ClearBox>
+                ) : null}
               </ClearBox>
             )
           })}

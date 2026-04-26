@@ -5,6 +5,7 @@ import {
   checkRemoteProfileConnection,
   deleteRemoteProfile,
   fetchRemoteConnectionsSnapshot,
+  fetchRemoteProfileTmuxSessions,
   fetchRemoteProfiles,
   importSSHConfigProfiles,
   saveRemoteProfile,
@@ -16,6 +17,7 @@ vi.mock('@/features/remote/api/client', () => ({
   checkRemoteProfileConnection: vi.fn(),
   deleteRemoteProfile: vi.fn(),
   fetchRemoteConnectionsSnapshot: vi.fn(),
+  fetchRemoteProfileTmuxSessions: vi.fn(),
   fetchRemoteProfiles: vi.fn(),
   importSSHConfigProfiles: vi.fn(),
   saveRemoteProfile: vi.fn(),
@@ -543,6 +545,47 @@ describe('RemoteProfilesSettingsSection', () => {
     await expect(screen.findByText('Prod')).resolves.toBeInTheDocument()
     expect(screen.getByText('Last shell launch succeeded.')).toBeInTheDocument()
     expect(screen.getByText('launch:succeeded')).toBeInTheDocument()
+  })
+
+  it('browses tmux sessions for tmux-backed remote profiles and loads a selected session into edit mode', async () => {
+    vi.mocked(fetchRemoteProfiles).mockResolvedValue([
+      {
+        host: 'prod.example.com',
+        id: 'conn-prod',
+        launch_mode: 'tmux',
+        name: 'Prod',
+        tmux_session: 'prod-main',
+        user: 'deploy',
+      },
+    ])
+    vi.mocked(fetchRemoteConnectionsSnapshot).mockResolvedValue({
+      active_connection_id: 'local',
+      connections: [],
+    })
+    vi.mocked(fetchRemoteProfileTmuxSessions).mockResolvedValue([
+      { attached: true, name: 'prod-main', window_count: 2 },
+      { attached: false, name: 'prod-jobs', window_count: 1 },
+    ])
+
+    render(<RemoteProfilesSettingsSection />)
+
+    await expect(screen.findByText('Prod')).resolves.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Browse tmux' }))
+
+    await waitFor(() => {
+      expect(fetchRemoteProfileTmuxSessions).toHaveBeenCalledWith('conn-prod')
+      expect(screen.getByText('prod-main · attached · 2 windows')).toBeInTheDocument()
+      expect(screen.getByText('prod-jobs · detached · 1 windows')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Use session' })[1]!)
+
+    await waitFor(() => {
+      expect(screen.getByRole('checkbox', { name: 'Resume remote shell through tmux' })).toBeChecked()
+      expect(screen.getByRole('textbox', { name: 'Remote profile tmux session' })).toHaveValue('prod-jobs')
+      expect(screen.getByText('Loaded tmux session prod-jobs into profile editor.')).toBeInTheDocument()
+    })
   })
 
   it('derives tmux session names on save when tmux resume is enabled without an explicit name', async () => {

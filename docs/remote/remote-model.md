@@ -27,6 +27,9 @@ This is the canonical remote entrypoint for local-vs-SSH runtime behavior.
 - tmux-backed profiles resume through the same SSH launch path by opening
   `tmux new-session -A -s <session>` on the remote host; this adds resume
   semantics without introducing a separate remote controller object.
+- The active settings shell can also browse discovered tmux sessions for a
+  saved tmux-backed profile and load one back into the profile editor as
+  the next resume target.
 - Connection lifecycle is explicit:
   - profile state
   - preflight status (`runtime.check_status`)
@@ -48,7 +51,8 @@ This is the canonical remote entrypoint for local-vs-SSH runtime behavior.
 
 - No persistent live remote controller object yet.
 - No separate tmux session catalog/manager UI yet; the current scope is a
-  profile-owned resume policy, not a broader remote session browser.
+  profile-owned resume policy plus narrow session discovery, not a broader
+  remote session browser.
 - Narrow one-way `~/.ssh/config` import is available through
   `POST /api/v1/remote/profiles/import-ssh-config`; it supports direct
   `Host`, `HostName`, `User`, `Port`, and `IdentityFile` profile fields,

@@ -8,6 +8,8 @@
   - saved profile create/list/select/check/open-shell flows
   - saved profile tmux launch policy (`shell` vs `tmux`) and persisted
     tmux session naming for resume-oriented SSH launches
+  - profile-scoped tmux session discovery in settings plus loading a
+    discovered session back into the profile editor
   - one-way SSH config import with `Include`, wildcard-host default
     application, and `Match host/originalhost` support for concrete aliases
   - normalized SSH preflight and launch diagnostics for missing keys,
@@ -39,6 +41,7 @@
   - `npm --prefix frontend run build`
   - `npm run test:ui -- --reporter=line e2e/shell-workspace.spec.ts --grep "remote settings surface normalized preflight failures and default-target state"`
   - `npm run test:ui -- --reporter=line e2e/shell-workspace.spec.ts --grep "remote settings persist tmux resume launch policy"` (attempted; Playwright hung in teardown after the test body ran, so this path is not claimed as a clean pass yet)
+  - `npm run test:ui -- --reporter=line e2e/shell-workspace.spec.ts --grep "remote settings browse tmux sessions and load one into the profile editor"` (attempted; Playwright hung in teardown after the test body ran, so this path is not claimed as a clean pass yet)
 - External reachability/auth probe example:
   - `ssh -o BatchMode=yes -o ConnectTimeout=5 -p 22 192.168.1.2 exit`
 - Runtime/API checks in validation runs:
@@ -57,8 +60,9 @@
   or two-way synchronization back to SSH config files.
 - Advanced SSH auth/topology flows and long-lived remote-controller semantics remain out of current scope and move to `Phase 5`.
 - tmux resume currently means "profile-owned attach-or-create on launch".
-  There is still no separate tmux session catalog, named-session browser,
-  or detached-session manager UI on top of that backend path.
+  There is now a narrow profile-scoped session discovery list in settings,
+  but there is still no separate tmux session catalog, broader named-session
+  browser, or detached-session manager UI on top of that backend path.
 
 ## Evidence
 

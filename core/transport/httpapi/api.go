@@ -45,6 +45,7 @@ func NewHandler(runtime *app.Runtime, authToken string) http.Handler {
 	mux.HandleFunc("POST /api/v1/remote/profiles", api.handleSaveRemoteProfile)
 	mux.HandleFunc("POST /api/v1/remote/profiles/import-ssh-config", api.handleImportRemoteProfilesFromSSHConfig)
 	mux.HandleFunc("DELETE /api/v1/remote/profiles/{profileID}", api.handleDeleteRemoteProfile)
+	mux.HandleFunc("GET /api/v1/remote/profiles/{profileID}/tmux-sessions", api.handleListRemoteProfileTmuxSessions)
 	mux.HandleFunc("POST /api/v1/remote/profiles/{profileID}/session", api.handleCreateRemoteSessionFromProfile)
 	mux.HandleFunc("GET /api/v1/mcp/servers", api.handleListMCPServers)
 	mux.HandleFunc("POST /api/v1/mcp/servers", api.handleRegisterMCPServer)

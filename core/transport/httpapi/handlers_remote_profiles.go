@@ -56,6 +56,17 @@ func (api *API) handleDeleteRemoteProfile(w http.ResponseWriter, r *http.Request
 	})
 }
 
+func (api *API) handleListRemoteProfileTmuxSessions(w http.ResponseWriter, r *http.Request) {
+	sessions, err := api.runtime.ListRemoteProfileTmuxSessions(r.Context(), r.PathValue("profileID"))
+	if err != nil {
+		writeConnectionError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"sessions": sessions,
+	})
+}
+
 func (api *API) handleCreateRemoteSessionFromProfile(w http.ResponseWriter, r *http.Request) {
 	var payload struct {
 		Title string `json:"title,omitempty"`

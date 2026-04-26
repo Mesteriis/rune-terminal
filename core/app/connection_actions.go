@@ -36,6 +36,10 @@ func (r *Runtime) DeleteRemoteProfile(profileID string) ([]connections.RemotePro
 	return r.Connections.DeleteRemoteProfile(profileID)
 }
 
+func (r *Runtime) ListRemoteProfileTmuxSessions(ctx context.Context, profileID string) ([]connections.TmuxSession, error) {
+	return r.Connections.ListRemoteProfileTmuxSessions(ctx, profileID)
+}
+
 func (r *Runtime) ImportRemoteProfilesFromSSHConfig(path string) (connections.SSHConfigImportResult, error) {
 	path = strings.TrimSpace(path)
 	if path == "" {

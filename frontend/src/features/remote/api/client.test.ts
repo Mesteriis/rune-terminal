@@ -5,6 +5,7 @@ import {
   checkRemoteProfileConnection,
   deleteRemoteProfile,
   fetchRemoteConnectionsSnapshot,
+  fetchRemoteProfileTmuxSessions,
   fetchRemoteProfiles,
   importSSHConfigProfiles,
   RemoteAPIError,
@@ -320,6 +321,38 @@ describe('remote api client', () => {
       },
       method: 'POST',
     })
+  })
+
+  it('loads tmux sessions for a saved remote profile through the runtime transport', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/repo',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          sessions: [
+            { attached: true, name: 'prod-main', window_count: 2 },
+            { attached: false, name: 'prod-jobs', window_count: 1 },
+          ],
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(fetchRemoteProfileTmuxSessions('conn-prod')).resolves.toEqual([
+      { attached: true, name: 'prod-main', window_count: 2 },
+      { attached: false, name: 'prod-jobs', window_count: 1 },
+    ])
+    expect(fetchMock.mock.calls[1]?.[0]).toBe(
+      'http://127.0.0.1:8090/api/v1/remote/profiles/conn-prod/tmux-sessions',
+    )
   })
 
   it('selects a remote profile as the default connection through the runtime transport', async () => {

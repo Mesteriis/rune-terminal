@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -8,8 +9,34 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/Mesteriis/rune-terminal/core/agent"
+	"github.com/Mesteriis/rune-terminal/core/app"
+	"github.com/Mesteriis/rune-terminal/core/audit"
 	"github.com/Mesteriis/rune-terminal/core/connections"
+	"github.com/Mesteriis/rune-terminal/core/conversation"
+	"github.com/Mesteriis/rune-terminal/core/execution"
+	"github.com/Mesteriis/rune-terminal/core/policy"
+	"github.com/Mesteriis/rune-terminal/core/terminal"
+	"github.com/Mesteriis/rune-terminal/core/workspace"
 )
+
+type tmuxProfilesChecker struct{}
+
+func (tmuxProfilesChecker) Check(_ context.Context, _ connections.Connection) connections.CheckResult {
+	return connections.CheckResult{Status: connections.CheckStatusPassed}
+}
+
+type tmuxProfilesProbe struct{}
+
+func (tmuxProfilesProbe) ListSessions(_ context.Context, connection connections.Connection) ([]connections.TmuxSession, error) {
+	if connection.ID != "conn-prod" {
+		return []connections.TmuxSession{}, nil
+	}
+	return []connections.TmuxSession{
+		{Name: "prod-main", Attached: true, WindowCount: 2},
+		{Name: "prod-jobs", Attached: false, WindowCount: 1},
+	}, nil
+}
 
 func TestRemoteProfilesEndpointsListSaveAndDelete(t *testing.T) {
 	t.Parallel()
@@ -152,5 +179,84 @@ func TestRemoteProfilesCreateSessionReturnsNotFoundForMissingProfile(t *testing.
 
 	if recorder.Code != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d (%s)", recorder.Code, recorder.Body.String())
+	}
+}
+
+func TestRemoteProfilesTmuxSessionsEndpointListsSessions(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	policyStore, err := policy.NewStore(filepath.Join(tempDir, "policy.json"), "/workspace/repo")
+	if err != nil {
+		t.Fatalf("NewStore error: %v", err)
+	}
+	auditLog, err := audit.NewLog(filepath.Join(tempDir, "audit.jsonl"))
+	if err != nil {
+		t.Fatalf("NewLog error: %v", err)
+	}
+	agentStore, err := agent.NewStore(filepath.Join(tempDir, "agent.json"))
+	if err != nil {
+		t.Fatalf("agent.NewStore error: %v", err)
+	}
+	connectionStore, err := connections.NewServiceWithCheckerAndTmuxProbe(
+		filepath.Join(tempDir, "connections.json"),
+		tmuxProfilesChecker{},
+		tmuxProfilesProbe{},
+	)
+	if err != nil {
+		t.Fatalf("NewServiceWithCheckerAndTmuxProbe error: %v", err)
+	}
+	if _, _, err := connectionStore.SaveRemoteProfile(connections.SaveRemoteProfileInput{
+		ID:         "conn-prod",
+		Name:       "Prod",
+		Host:       "prod.example.com",
+		LaunchMode: connections.LaunchModeTmux,
+	}); err != nil {
+		t.Fatalf("SaveRemoteProfile error: %v", err)
+	}
+	conversationStore, err := conversation.NewService(filepath.Join(tempDir, "conversation.json"), testConversationProvider{})
+	if err != nil {
+		t.Fatalf("conversation.NewService error: %v", err)
+	}
+	executionStore, err := execution.NewService(filepath.Join(tempDir, "execution.json"))
+	if err != nil {
+		t.Fatalf("execution.NewService error: %v", err)
+	}
+
+	runtime := &app.Runtime{
+		RepoRoot:     "/workspace/repo",
+		HomeDir:      "/home/testuser",
+		Workspace:    workspace.NewService(workspace.BootstrapDefault()),
+		Terminals:    terminal.NewService(terminal.DefaultLauncher()),
+		Connections:  connectionStore,
+		Agent:        agentStore,
+		Conversation: conversationStore,
+		Execution:    executionStore,
+		Policy:       policyStore,
+		Audit:        auditLog,
+	}
+
+	handler := NewHandler(runtime, testAuthToken)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(
+		recorder,
+		authedJSONRequest(t, http.MethodGet, "/api/v1/remote/profiles/conn-prod/tmux-sessions", nil),
+	)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d (%s)", recorder.Code, recorder.Body.String())
+	}
+
+	var payload struct {
+		Sessions []connections.TmuxSession `json:"sessions"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal tmux sessions: %v", err)
+	}
+	if len(payload.Sessions) != 2 {
+		t.Fatalf("expected two tmux sessions, got %#v", payload.Sessions)
+	}
+	if payload.Sessions[0].Name != "prod-main" || !payload.Sessions[0].Attached {
+		t.Fatalf("unexpected first tmux session: %#v", payload.Sessions[0])
 	}
 }

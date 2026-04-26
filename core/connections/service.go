@@ -41,23 +41,32 @@ type savedSSH struct {
 }
 
 type Service struct {
-	mu      sync.RWMutex
-	path    string
-	checker Checker
-	state   persistedState
+	mu        sync.RWMutex
+	path      string
+	checker   Checker
+	tmuxProbe TmuxProbe
+	state     persistedState
 }
 
 func NewService(path string) (*Service, error) {
-	return NewServiceWithChecker(path, DefaultChecker())
+	return NewServiceWithCheckerAndTmuxProbe(path, DefaultChecker(), DefaultTmuxProbe())
 }
 
 func NewServiceWithChecker(path string, checker Checker) (*Service, error) {
+	return NewServiceWithCheckerAndTmuxProbe(path, checker, DefaultTmuxProbe())
+}
+
+func NewServiceWithCheckerAndTmuxProbe(path string, checker Checker, tmuxProbe TmuxProbe) (*Service, error) {
 	if checker == nil {
 		checker = DefaultChecker()
 	}
+	if tmuxProbe == nil {
+		tmuxProbe = DefaultTmuxProbe()
+	}
 	svc := &Service{
-		path:    path,
-		checker: checker,
+		path:      path,
+		checker:   checker,
+		tmuxProbe: tmuxProbe,
 		state: persistedState{
 			ActiveConnectionID: localConnection().ID,
 		},
@@ -147,6 +156,20 @@ func (s *Service) DeleteRemoteProfile(id string) ([]RemoteProfile, error) {
 		return nil, err
 	}
 	return s.listRemoteProfilesLocked(), nil
+}
+
+func (s *Service) ListRemoteProfileTmuxSessions(ctx context.Context, id string) ([]TmuxSession, error) {
+	s.mu.RLock()
+	connection, err := s.resolveLocked(strings.TrimSpace(id))
+	probe := s.tmuxProbe
+	s.mu.RUnlock()
+	if err != nil {
+		return nil, err
+	}
+	if connection.Kind != KindSSH {
+		return nil, fmt.Errorf("%w: tmux sessions require an ssh profile", ErrInvalidConnection)
+	}
+	return probe.ListSessions(ctx, connection)
 }
 
 func (s *Service) Select(id string) (Snapshot, error) {

@@ -15,6 +15,11 @@ type stubChecker struct {
 	results map[string]CheckResult
 }
 
+type stubTmuxProbe struct {
+	sessionsByConnection map[string][]TmuxSession
+	errByConnection      map[string]error
+}
+
 func (s stubChecker) Check(_ context.Context, connection Connection) CheckResult {
 	if result, ok := s.results[connection.ID]; ok {
 		return result
@@ -23,6 +28,16 @@ func (s stubChecker) Check(_ context.Context, connection Connection) CheckResult
 		Status:    CheckStatusPassed,
 		CheckedAt: time.Unix(100, 0).UTC(),
 	}
+}
+
+func (s stubTmuxProbe) ListSessions(_ context.Context, connection Connection) ([]TmuxSession, error) {
+	if err, ok := s.errByConnection[connection.ID]; ok {
+		return nil, err
+	}
+	if sessions, ok := s.sessionsByConnection[connection.ID]; ok {
+		return append([]TmuxSession(nil), sessions...), nil
+	}
+	return []TmuxSession{}, nil
 }
 
 func TestNewServiceBootstrapsLocalConnection(t *testing.T) {
@@ -461,6 +476,46 @@ func TestRemoteProfilesNormalizeTmuxLaunchPolicy(t *testing.T) {
 	}
 	if connection.SSH.TmuxSession == "" {
 		t.Fatalf("expected derived tmux session on resolved connection")
+	}
+}
+
+func TestListRemoteProfileTmuxSessionsUsesProbe(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(t.TempDir(), "connections.json")
+	svc, err := NewServiceWithCheckerAndTmuxProbe(path, stubChecker{
+		results: map[string]CheckResult{},
+	}, stubTmuxProbe{
+		sessionsByConnection: map[string][]TmuxSession{
+			"conn-prod": {
+				{Name: "prod-main", Attached: true, WindowCount: 2},
+				{Name: "prod-jobs", Attached: false, WindowCount: 1},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("new service: %v", err)
+	}
+
+	saved, _, err := svc.SaveRemoteProfile(SaveRemoteProfileInput{
+		ID:         "conn-prod",
+		Name:       "Prod",
+		Host:       "prod.example.com",
+		LaunchMode: LaunchModeTmux,
+	})
+	if err != nil {
+		t.Fatalf("save remote profile: %v", err)
+	}
+
+	sessions, err := svc.ListRemoteProfileTmuxSessions(context.Background(), saved.ID)
+	if err != nil {
+		t.Fatalf("list tmux sessions: %v", err)
+	}
+	if len(sessions) != 2 {
+		t.Fatalf("expected two tmux sessions, got %#v", sessions)
+	}
+	if sessions[0].Name != "prod-main" || !sessions[0].Attached {
+		t.Fatalf("unexpected first tmux session: %#v", sessions[0])
 	}
 }
 

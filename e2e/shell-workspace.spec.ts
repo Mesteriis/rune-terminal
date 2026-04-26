@@ -334,3 +334,51 @@ test('remote settings persist tmux resume launch policy', async ({ page }) => {
   await expect(page.getByRole('checkbox', { name: 'Resume remote shell through tmux' })).toBeChecked()
   await expect(page.getByRole('textbox', { name: 'Remote profile tmux session' })).toHaveValue('prod-main')
 })
+
+test('remote settings browse tmux sessions and load one into the profile editor', async ({
+  page,
+  request,
+}) => {
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  const seedStamp = Date.now()
+  const remoteToken = `phase5-tmux-browser-${seedStamp}`
+  const saved = await saveRemoteProfileViaApi(request, {
+    host: `${remoteToken}.example.test`,
+    launch_mode: 'tmux',
+    name: `Remote ${remoteToken}`,
+    tmux_session: 'prod-main',
+    user: 'deploy',
+  })
+
+  await page.route(`**/api/v1/remote/profiles/${saved.profile.id}/tmux-sessions`, async (route) => {
+    await route.fulfill({
+      body: JSON.stringify({
+        sessions: [
+          { attached: true, name: 'prod-main', window_count: 2 },
+          { attached: false, name: 'prod-jobs', window_count: 1 },
+        ],
+      }),
+      contentType: 'application/json',
+      status: 200,
+    })
+  })
+
+  await page.getByRole('button', { name: 'Open settings panel' }).click()
+  await page.getByRole('button', { name: /^Remote / }).click()
+  await page.getByRole('textbox', { name: 'Filter remote profiles' }).fill(remoteToken)
+  await expect(page.getByText(`Remote ${remoteToken}`)).toBeVisible()
+
+  const savedProfileRow = page.locator('[data-runa-component="clear-box"]').filter({
+    has: page.getByText(`Remote ${remoteToken}`),
+  })
+
+  await savedProfileRow.getByRole('button', { name: 'Browse tmux' }).click()
+  await expect(page.getByText('prod-main · attached · 2 windows')).toBeVisible()
+  await expect(page.getByText('prod-jobs · detached · 1 windows')).toBeVisible()
+  await savedProfileRow.getByRole('button', { name: 'Use session' }).nth(1).click()
+
+  await expect(page.getByRole('checkbox', { name: 'Resume remote shell through tmux' })).toBeChecked()
+  await expect(page.getByRole('textbox', { name: 'Remote profile tmux session' })).toHaveValue('prod-jobs')
+})

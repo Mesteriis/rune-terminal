@@ -39,6 +39,12 @@ type SSHConfigImportResult struct {
 	Profiles []RemoteProfile          `json:"profiles"`
 }
 
+type TmuxSession struct {
+	Name        string `json:"name"`
+	Attached    bool   `json:"attached"`
+	WindowCount int    `json:"window_count,omitempty"`
+}
+
 func (input SaveRemoteProfileInput) toSaveSSHInput() SaveSSHInput {
 	return SaveSSHInput{
 		ID:           input.ID,

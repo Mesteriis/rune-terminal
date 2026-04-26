@@ -23,6 +23,12 @@ export type SSHConfigImportResult = {
   skipped?: SSHConfigImportSkipped[]
 }
 
+export type RemoteTmuxSession = {
+  attached: boolean
+  name: string
+  window_count?: number
+}
+
 export type SaveRemoteProfilePayload = {
   host: string
   id?: string
@@ -185,4 +191,14 @@ export async function importSSHConfigProfiles(path?: string) {
       method: 'POST',
     },
   )
+}
+
+export async function fetchRemoteProfileTmuxSessions(profileID: string) {
+  const runtimeContext = await resolveRuntimeContext()
+  const payload = await requestRemoteJSON<{ sessions?: RemoteTmuxSession[] }>(
+    runtimeContext,
+    `/api/v1/remote/profiles/${encodeURIComponent(profileID)}/tmux-sessions`,
+  )
+
+  return Array.isArray(payload.sessions) ? payload.sessions : []
 }
