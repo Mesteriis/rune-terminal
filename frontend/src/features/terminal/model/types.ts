@@ -41,6 +41,7 @@ export type TerminalSessionView = {
   canSendInput: boolean
   canInterrupt: boolean
   isCreatingSession: boolean
+  isRecoveringStream: boolean
   isLoading: boolean
   isInterrupting: boolean
   isRestarting: boolean
@@ -51,6 +52,7 @@ export type TerminalSessionView = {
   createSession: () => Promise<void>
   focusSession: (sessionID: string) => Promise<void>
   closeSession: (sessionID: string) => Promise<void>
+  recoverSession: () => Promise<void>
   sendInputChunk: (text: string) => Promise<void>
   interruptSession: () => Promise<void>
   restartSession: () => Promise<void>

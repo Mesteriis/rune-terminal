@@ -2,7 +2,7 @@
 
 ## Last verified state
 
-- Date: `2026-04-26`
+- Date: `2026-04-27`
 - State: `VERIFIED`
 - Scope:
   - the active `frontend/src` terminal surface now uses the backend terminal runtime as its source of truth for the seeded shell panels
@@ -44,6 +44,11 @@
       fetches backend-owned terminal diagnostics for that widget,
       preloads a terminal-aware prompt with the normalized issue/output summary,
       and auto-submits it so the operator can immediately review the plan/approval flow
+    - the same header action slot now also exposes explicit recovery actions for broken terminal state:
+      local failed/disconnected shells surface `Restart shell`,
+      SSH failed/disconnected shells surface `Reconnect shell`,
+      tmux-backed SSH failed/disconnected shells surface `Resume session`,
+      and live stream disconnects surface `Reconnect stream` while the widget reattaches against backend snapshot truth
     - terminal restart rehydrates the widget-local session state and re-subscribes the SSE output stream instead of leaving the body bound to the pre-restart snapshot
     - Ctrl/Cmd+F inside the terminal still opens search through the xterm key handler, but the same search row is now also reachable through visible toolbar controls
     - the terminal search row supports keyboard navigation: `Enter`, `F3`, and `Ctrl/Cmd+G` find next; `Shift+Enter`, `Shift+F3`, and `Shift+Ctrl/Cmd+G` find previous; `Escape` closes search
@@ -191,6 +196,7 @@
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestTerminalDiagnostics|TestTerminalSnapshot|TestBootstrapSessionsKeepsRemoteWidgetAsDisconnectedWhenConnectionMissing' -count=1`
 - `./scripts/go.sh test ./core/terminal ./core/app ./core/transport/httpapi -run 'TestTerminalServiceCreatesAndSwitchesGroupedSessionsPerWidget|TestCreateAndFocusTerminalSiblingSessionKeepsOneWidgetIdentity|TestTerminalSessionEndpointsCreateAndFocusGroupedSessions|TestRestartTerminalSessionReplacesExistingProcess' -count=1`
 - `npm --prefix frontend run test -- src/features/terminal/api/client.test.ts src/features/terminal/model/use-terminal-session.test.tsx src/widgets/terminal/terminal-widget.test.tsx --reporter=verbose`
+- `npm --prefix frontend run test -- src/features/terminal/model/use-terminal-session.test.tsx src/widgets/terminal/terminal-widget.test.tsx src/shared/ui/components/terminal-status-header.test.tsx --reporter=verbose`
 - `npm run test:ui -- --reporter=line e2e/terminal.spec.ts --grep "grouped backend sessions through the session rail"`
 - `npm run test:ui -- --reporter=line e2e/terminal.spec.ts --grep "terminal widget browser filters and closes grouped backend sessions"`
 - `npm run tauri:dev`
@@ -212,6 +218,7 @@
 ## Known limitations
 
 - Visible restart and interrupt controls now exist in the terminal header chrome, and terminal font size, line height, theme mode, scrollback, plus cursor behavior are now configurable through a backend-owned runtime settings contract.
+- Recovery-specific terminal states are validated on the model/widget path in this slice, including stream auto-reattach and honest recovery labels, but this entry does not yet claim a dedicated browser scenario for visibly failed/disconnected recovery states.
 - `Explain & fix` now depends on the backend diagnostics route. Direct ad hoc `frontend/node_modules/.bin/vitest ...` invocation from this repo root can resolve the parent `vitest.config.ts` outside the workspace and fail with an `EPERM` temp-dir write; the supported validation path for this slice was `npm --prefix frontend run test ...`.
 - Terminal toolbar `clear` and `jump-to-latest` actions are intentionally local xterm viewport controls. They do not mutate backend snapshot history and were validated as non-breaking live affordances rather than as persisted runtime state.
 - Browser validation for terminal input now runs through Playwright on the split local dev path. The suite is intentionally serialized (`workers: 1`) because terminal/runtime state is shared across the same backend instance.

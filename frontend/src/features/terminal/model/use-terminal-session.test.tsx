@@ -36,6 +36,7 @@ vi.mock('@/features/terminal/api/client', async () => {
 
 describe('useTerminalSession', () => {
   afterEach(() => {
+    vi.useRealTimers()
     resetTerminalSessionStoreForTests()
     vi.clearAllMocks()
   })
@@ -370,6 +371,88 @@ describe('useTerminalSession', () => {
     expect(initialStreamClose).not.toHaveBeenCalled()
     expect(connectTerminalStream).toHaveBeenCalledTimes(1)
     expect(result.current.runtimeState?.status_detail).toBe('interrupt sent')
+  })
+
+  it('auto-recovers the live terminal stream after an unexpected stream failure', async () => {
+    const initialStreamClose = vi.fn()
+    const recoveredStreamClose = vi.fn()
+
+    vi.mocked(fetchTerminalSnapshot)
+      .mockResolvedValueOnce({
+        state: {
+          widget_id: 'term-main',
+          session_id: 'term-main',
+          shell: '/bin/zsh',
+          status: 'running',
+          pid: 4242,
+          started_at: '2026-04-24T09:00:00Z',
+          can_send_input: true,
+          can_interrupt: true,
+          working_dir: '/Users/avm/projects/runa-terminal',
+          connection_id: 'local',
+          connection_name: 'Local Machine',
+          connection_kind: 'local',
+        },
+        chunks: [],
+        next_seq: 1,
+      })
+      .mockResolvedValueOnce({
+        state: {
+          widget_id: 'term-main',
+          session_id: 'term-main',
+          shell: '/bin/zsh',
+          status: 'running',
+          pid: 4242,
+          started_at: '2026-04-24T09:00:00Z',
+          can_send_input: true,
+          can_interrupt: true,
+          working_dir: '/Users/avm/projects/runa-terminal',
+          connection_id: 'local',
+          connection_name: 'Local Machine',
+          connection_kind: 'local',
+        },
+        chunks: [],
+        next_seq: 1,
+      })
+
+    let rejectStream: ((error: Error) => void) | null = null
+    vi.mocked(connectTerminalStream)
+      .mockImplementationOnce(async () => ({
+        close: initialStreamClose,
+        done: new Promise<void>((_resolve, reject) => {
+          rejectStream = reject
+        }),
+      }))
+      .mockResolvedValueOnce({
+        close: recoveredStreamClose,
+        done: Promise.resolve(),
+      })
+
+    const { result } = renderHook(() =>
+      useTerminalSession({
+        runtimeWidgetId: 'term-main',
+        title: 'Main terminal',
+      }),
+    )
+
+    await waitFor(() => {
+      expect(result.current.runtimeState?.widget_id).toBe('term-main')
+    })
+
+    await act(async () => {
+      rejectStream?.(new Error('stream disconnected'))
+      await Promise.resolve()
+    })
+
+    expect(result.current.isRecoveringStream).toBe(true)
+    expect(result.current.statusDetail).toBe('Reconnecting live terminal stream…')
+
+    await waitFor(() => {
+      expect(connectTerminalStream).toHaveBeenCalledTimes(2)
+    })
+    await waitFor(() => {
+      expect(result.current.isRecoveringStream).toBe(false)
+    })
   })
 
   it('creates and focuses grouped terminal sessions through the backend contract', async () => {

@@ -22,16 +22,24 @@ import type {
 
 type TerminalSessionStaticView = Omit<
   TerminalSessionView,
-  'closeSession' | 'createSession' | 'focusSession' | 'interruptSession' | 'restartSession' | 'sendInputChunk'
+  | 'closeSession'
+  | 'createSession'
+  | 'focusSession'
+  | 'interruptSession'
+  | 'recoverSession'
+  | 'restartSession'
+  | 'sendInputChunk'
 >
 
 type TerminalSessionRecordState = {
   error: string | null
   isCreatingSession: boolean
+  isRecoveringStream: boolean
   isInterrupting: boolean
   isLoading: boolean
   isRestarting: boolean
   snapshot: TerminalSnapshot | null
+  streamRetryCount: number
 }
 
 type TerminalSessionRecord = {
@@ -40,6 +48,7 @@ type TerminalSessionRecord = {
   retainers: number
   state: TerminalSessionRecordState
   streamClose: (() => void) | null
+  streamReconnectTimer: ReturnType<typeof globalThis.setTimeout> | null
   widgetId: string
 }
 
@@ -53,12 +62,15 @@ function createTerminalSessionRecord(widgetId: string): TerminalSessionRecord {
     state: {
       error: null,
       isCreatingSession: false,
+      isRecoveringStream: false,
       isInterrupting: false,
       isLoading: false,
       isRestarting: false,
       snapshot: null,
+      streamRetryCount: 0,
     },
     streamClose: null,
+    streamReconnectTimer: null,
     widgetId,
   }
 }
@@ -87,6 +99,11 @@ function isActiveTerminalSessionRecord(record: TerminalSessionRecord) {
 
 function toTerminalErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message.trim() ? error.message : fallback
+}
+
+function shouldAutoRecoverStream(snapshot: TerminalSnapshot | null) {
+  const status = snapshot?.state.status
+  return status === 'running' || status === 'starting'
 }
 
 function mapConnectionKind(connectionKind?: string): TerminalDisplayConnectionKind {
@@ -176,11 +193,14 @@ function buildTerminalSessionView(
     canSendInput: runtimeState?.can_send_input ?? false,
     canInterrupt: runtimeState?.can_interrupt ?? false,
     isCreatingSession: state.isCreatingSession,
+    isRecoveringStream: state.isRecoveringStream,
     isLoading: state.isLoading,
     isInterrupting: state.isInterrupting,
     isRestarting: state.isRestarting,
     error,
-    statusDetail: error ?? runtimeState?.status_detail?.trim() ?? null,
+    statusDetail: state.isRecoveringStream
+      ? 'Reconnecting live terminal stream…'
+      : (error ?? runtimeState?.status_detail?.trim() ?? null),
     outputChunks: state.snapshot?.chunks ?? [],
     runtimeState,
   }
@@ -232,22 +252,130 @@ function appendTerminalChunk(record: TerminalSessionRecord, chunk: TerminalOutpu
   }
 }
 
+function clearTerminalStreamReconnectTimer(record: TerminalSessionRecord) {
+  if (record.streamReconnectTimer !== null) {
+    globalThis.clearTimeout(record.streamReconnectTimer)
+    record.streamReconnectTimer = null
+  }
+}
+
+function clearTerminalStreamConnection(record: TerminalSessionRecord) {
+  record.streamClose?.()
+  record.streamClose = null
+}
+
+async function reloadTerminalSessionRecord(
+  record: TerminalSessionRecord,
+  options?: {
+    preserveRecoveryState?: boolean
+    silent?: boolean
+  },
+) {
+  clearTerminalStreamReconnectTimer(record)
+  clearTerminalStreamConnection(record)
+
+  if (!options?.silent) {
+    record.state = {
+      ...record.state,
+      error: null,
+      isLoading: true,
+    }
+    notifyTerminalSessionRecord(record)
+  }
+
+  try {
+    const snapshot = await fetchTerminalSnapshot(record.widgetId)
+
+    if (!isActiveTerminalSessionRecord(record)) {
+      return
+    }
+
+    record.state = {
+      ...record.state,
+      error: null,
+      isLoading: false,
+      isRecoveringStream: options?.preserveRecoveryState ? record.state.isRecoveringStream : false,
+      snapshot,
+      streamRetryCount: options?.preserveRecoveryState ? record.state.streamRetryCount : 0,
+    }
+    notifyTerminalSessionRecord(record)
+
+    await attachTerminalStream(record, snapshot.next_seq)
+
+    if (!isActiveTerminalSessionRecord(record)) {
+      return
+    }
+
+    if (record.state.isRecoveringStream || record.state.streamRetryCount > 0) {
+      record.state = {
+        ...record.state,
+        isRecoveringStream: false,
+        streamRetryCount: 0,
+      }
+      notifyTerminalSessionRecord(record)
+    }
+  } catch (error) {
+    if (!isActiveTerminalSessionRecord(record)) {
+      return
+    }
+
+    if (options?.preserveRecoveryState && shouldAutoRecoverStream(record.state.snapshot)) {
+      scheduleTerminalStreamReconnect(record, error)
+      return
+    }
+
+    record.state = {
+      ...record.state,
+      error: toTerminalErrorMessage(error, `Unable to load terminal snapshot for ${record.widgetId}.`),
+      isLoading: false,
+    }
+    notifyTerminalSessionRecord(record)
+  }
+}
+
+function scheduleTerminalStreamReconnect(record: TerminalSessionRecord, error: unknown) {
+  if (!isActiveTerminalSessionRecord(record) || record.retainers <= 0) {
+    return
+  }
+
+  if (!shouldAutoRecoverStream(record.state.snapshot)) {
+    record.state = {
+      ...record.state,
+      error: toTerminalErrorMessage(error, `Unable to follow terminal stream for ${record.widgetId}.`),
+      isRecoveringStream: false,
+    }
+    notifyTerminalSessionRecord(record)
+    return
+  }
+
+  clearTerminalStreamReconnectTimer(record)
+  const nextRetryCount = record.state.streamRetryCount + 1
+  const reconnectDelay = Math.min(4000, 500 * nextRetryCount)
+
+  record.state = {
+    ...record.state,
+    error: null,
+    isRecoveringStream: true,
+    streamRetryCount: nextRetryCount,
+  }
+  notifyTerminalSessionRecord(record)
+
+  record.streamReconnectTimer = globalThis.setTimeout(() => {
+    record.streamReconnectTimer = null
+    if (!isActiveTerminalSessionRecord(record) || record.retainers <= 0) {
+      return
+    }
+    void reloadTerminalSessionRecord(record, {
+      preserveRecoveryState: true,
+      silent: true,
+    })
+  }, reconnectDelay)
+}
+
 async function attachTerminalStream(record: TerminalSessionRecord, nextSeq: number) {
+  let closedByClient = false
   const streamConnection = await connectTerminalStream(record.widgetId, {
     from: nextSeq,
-    onError: (error) => {
-      const nextRecord = terminalSessionRecords.get(record.widgetId)
-
-      if (!nextRecord) {
-        return
-      }
-
-      nextRecord.state = {
-        ...nextRecord.state,
-        error: toTerminalErrorMessage(error, `Unable to follow terminal stream for ${record.widgetId}.`),
-      }
-      notifyTerminalSessionRecord(nextRecord)
-    },
     onOutput: (chunk) => {
       const nextRecord = terminalSessionRecords.get(record.widgetId)
 
@@ -256,6 +384,14 @@ async function attachTerminalStream(record: TerminalSessionRecord, nextSeq: numb
       }
 
       appendTerminalChunk(nextRecord, chunk)
+      if (nextRecord.state.isRecoveringStream || nextRecord.state.streamRetryCount > 0) {
+        nextRecord.state = {
+          ...nextRecord.state,
+          error: null,
+          isRecoveringStream: false,
+          streamRetryCount: 0,
+        }
+      }
       notifyTerminalSessionRecord(nextRecord)
     },
   })
@@ -265,29 +401,31 @@ async function attachTerminalStream(record: TerminalSessionRecord, nextSeq: numb
     return
   }
 
-  record.streamClose = streamConnection.close
-  void streamConnection.done.catch(() => {})
-}
-
-async function reloadTerminalSessionRecord(record: TerminalSessionRecord) {
-  record.streamClose?.()
-  record.streamClose = null
-
-  const snapshot = await fetchTerminalSnapshot(record.widgetId)
-
-  if (!isActiveTerminalSessionRecord(record)) {
-    return
+  record.streamClose = () => {
+    closedByClient = true
+    streamConnection.close()
   }
-
-  record.state = {
-    ...record.state,
-    error: null,
-    isLoading: false,
-    snapshot,
-  }
-  notifyTerminalSessionRecord(record)
-
-  await attachTerminalStream(record, snapshot.next_seq)
+  void streamConnection.done
+    .then(() => {
+      if (closedByClient) {
+        return
+      }
+      const nextRecord = terminalSessionRecords.get(record.widgetId)
+      if (!nextRecord) {
+        return
+      }
+      scheduleTerminalStreamReconnect(nextRecord, new Error('Terminal stream ended unexpectedly.'))
+    })
+    .catch((error) => {
+      if (closedByClient) {
+        return
+      }
+      const nextRecord = terminalSessionRecords.get(record.widgetId)
+      if (!nextRecord) {
+        return
+      }
+      scheduleTerminalStreamReconnect(nextRecord, error)
+    })
 }
 
 async function ensureTerminalSession(record: TerminalSessionRecord) {
@@ -316,10 +454,12 @@ async function ensureTerminalSession(record: TerminalSessionRecord) {
       record.state = {
         error: null,
         isCreatingSession: false,
+        isRecoveringStream: false,
         isInterrupting: false,
         isLoading: false,
         isRestarting: false,
         snapshot,
+        streamRetryCount: 0,
       }
       notifyTerminalSessionRecord(record)
       await attachTerminalStream(record, snapshot.next_seq)
@@ -333,6 +473,7 @@ async function ensureTerminalSession(record: TerminalSessionRecord) {
         error: toTerminalErrorMessage(error, `Unable to load terminal snapshot for ${record.widgetId}.`),
         isCreatingSession: false,
         isInterrupting: false,
+        isRecoveringStream: false,
         isLoading: false,
         isRestarting: false,
       }
@@ -364,7 +505,8 @@ function releaseTerminalSession(widgetId: string) {
     return
   }
 
-  record.streamClose?.()
+  clearTerminalStreamReconnectTimer(record)
+  clearTerminalStreamConnection(record)
   terminalSessionRecords.delete(widgetId)
 }
 
@@ -480,6 +622,38 @@ export function useTerminalSession(seed: TerminalSessionSeed) {
       notifyTerminalSessionRecord(record)
     }
   }, [seed.runtimeWidgetId])
+
+  const recoverSession = useCallback(async () => {
+    const record = getTerminalSessionRecord(seed.runtimeWidgetId)
+
+    if (
+      record.state.isCreatingSession ||
+      record.state.isInterrupting ||
+      record.state.isLoading ||
+      record.state.isRestarting
+    ) {
+      return
+    }
+
+    const runtimeStatus = record.state.snapshot?.state.status
+    if (runtimeStatus === 'exited' || runtimeStatus === 'failed' || runtimeStatus === 'disconnected') {
+      await restartSession()
+      return
+    }
+
+    record.state = {
+      ...record.state,
+      error: null,
+      isRecoveringStream: true,
+      streamRetryCount: 0,
+    }
+    notifyTerminalSessionRecord(record)
+
+    await reloadTerminalSessionRecord(record, {
+      preserveRecoveryState: true,
+      silent: true,
+    })
+  }, [restartSession, seed.runtimeWidgetId])
 
   const interruptSession = useCallback(async () => {
     const record = getTerminalSessionRecord(seed.runtimeWidgetId)
@@ -668,6 +842,7 @@ export function useTerminalSession(seed: TerminalSessionSeed) {
     createSession: createSessionForWidget,
     focusSession,
     interruptSession,
+    recoverSession,
     sendInputChunk,
     restartSession,
   }
@@ -675,7 +850,8 @@ export function useTerminalSession(seed: TerminalSessionSeed) {
 
 export function resetTerminalSessionStoreForTests() {
   for (const record of terminalSessionRecords.values()) {
-    record.streamClose?.()
+    clearTerminalStreamReconnectTimer(record)
+    clearTerminalStreamConnection(record)
   }
 
   terminalSessionRecords.clear()

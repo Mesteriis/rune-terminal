@@ -203,6 +203,27 @@ export function TerminalWidget({
     terminalSession.isInterrupting ||
     terminalSession.isRestarting ||
     !terminalSession.canInterrupt
+  const canRecoverTerminal =
+    terminalSession.isRecoveringStream ||
+    terminalSession.error !== null ||
+    terminalSession.sessionState === 'disconnected' ||
+    terminalSession.sessionState === 'failed' ||
+    terminalSession.sessionState === 'exited'
+  const isRecoverDisabled =
+    !canRecoverTerminal ||
+    terminalSession.isLoading ||
+    terminalSession.isCreatingSession ||
+    terminalSession.isInterrupting ||
+    terminalSession.isRestarting
+  const recoverButtonLabel = terminalSession.isRecoveringStream
+    ? 'Reconnect stream'
+    : terminalSession.connectionKind === 'ssh' &&
+        terminalSession.runtimeState?.remote_launch_mode === 'tmux' &&
+        terminalSession.sessionState !== 'running'
+      ? 'Resume session'
+      : terminalSession.connectionKind === 'ssh' && terminalSession.sessionState !== 'running'
+        ? 'Reconnect shell'
+        : 'Restart shell'
   const RestartIcon = terminalSession.isRestarting ? LoaderCircle : RotateCcw
   const InterruptIcon = terminalSession.isInterrupting ? LoaderCircle : Square
   const isExplainAndFixDisabled = !canExplainAndFix || isExplainAndFixPending
@@ -249,6 +270,43 @@ export function TerminalWidget({
                     <Plus size={13} strokeWidth={1.8} />
                     {terminalSession.isCreatingSession ? 'Creating…' : 'New session'}
                   </Button>
+                  {canRecoverTerminal ? (
+                    <Button
+                      aria-label={`Recover terminal session for ${title}`}
+                      disabled={isRecoverDisabled}
+                      onClick={() => {
+                        void terminalSession.recoverSession()
+                      }}
+                      runaComponent="terminal-widget-recover-session"
+                      style={{
+                        ...terminalWidgetAiActionButtonStyle,
+                        ...(isRecoverDisabled
+                          ? {
+                              cursor: 'default',
+                              opacity: 0.58,
+                            }
+                          : null),
+                      }}
+                      title={
+                        terminalSession.isRecoveringStream
+                          ? 'Reconnect the live terminal output stream without restarting the shell'
+                          : terminalSession.connectionKind === 'ssh'
+                            ? 'Recover the current SSH-backed shell against the same terminal target'
+                            : 'Recover the current local shell session'
+                      }
+                    >
+                      <RotateCcw
+                        size={13}
+                        strokeWidth={1.8}
+                        style={
+                          terminalSession.isRecoveringStream
+                            ? { animation: 'runa-terminal-spin 1.2s linear infinite' }
+                            : undefined
+                        }
+                      />
+                      {recoverButtonLabel}
+                    </Button>
+                  ) : null}
                   {groupedSessions.length > 1 ? (
                     <Button
                       aria-label={`Browse grouped terminal sessions for ${title}`}

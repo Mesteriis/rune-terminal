@@ -372,6 +372,100 @@ describe('TerminalWidget', () => {
     })
   })
 
+  it('shows a terminal recovery action for disconnected tmux-backed SSH sessions', async () => {
+    const recoverSessionMock = vi.fn(async () => undefined)
+
+    vi.mocked(useTerminalSession).mockReturnValue({
+      runtimeWidgetId: 'term-pve',
+      sessionKey: 'term-pve:1',
+      activeSessionId: 'term-pve',
+      cwd: 'prod-shell',
+      shellLabel: 'ssh',
+      connectionKind: 'ssh',
+      sessionState: 'disconnected',
+      sessions: [],
+      canSendInput: false,
+      canInterrupt: false,
+      isCreatingSession: false,
+      isRecoveringStream: false,
+      isLoading: false,
+      isInterrupting: false,
+      isRestarting: false,
+      error: null,
+      statusDetail: 'session is not running; restart explicitly to create a new process',
+      outputChunks: [],
+      runtimeState: {
+        widget_id: 'term-pve',
+        session_id: 'term-pve',
+        shell: 'ssh',
+        status: 'disconnected',
+        pid: 0,
+        started_at: '2026-04-27T09:00:00Z',
+        can_send_input: false,
+        can_interrupt: false,
+        connection_id: 'conn-pve',
+        connection_name: 'pve',
+        connection_kind: 'ssh',
+        remote_launch_mode: 'tmux',
+        remote_session_name: 'prod-main',
+      },
+      closeSession: vi.fn(),
+      createSession: vi.fn(),
+      focusSession: vi.fn(),
+      interruptSession: vi.fn(),
+      recoverSession: recoverSessionMock,
+      sendInputChunk: vi.fn(),
+      restartSession: vi.fn(),
+    } as ReturnType<typeof useTerminalSession>)
+    vi.mocked(useTerminalPreferences).mockReturnValue({
+      errorMessage: null,
+      decreaseFontSize: vi.fn(),
+      decreaseLineHeight: vi.fn(),
+      cursorBlink: true,
+      cursorStyle: 'block',
+      fontSize: 13,
+      increaseFontSize: vi.fn(),
+      increaseLineHeight: vi.fn(),
+      increaseScrollback: vi.fn(),
+      isLoading: false,
+      isSaving: false,
+      lineHeight: 1.25,
+      refresh: vi.fn(async () => undefined),
+      resetScrollback: vi.fn(),
+      resetFontSize: vi.fn(),
+      resetLineHeight: vi.fn(),
+      resetCursorBlink: vi.fn(),
+      resetCursorStyle: vi.fn(),
+      resetThemeMode: vi.fn(),
+      scrollback: 5000,
+      themeMode: 'adaptive',
+      decreaseScrollback: vi.fn(),
+      updateCursorBlink: vi.fn(),
+      updateFontSize: vi.fn(),
+      updateLineHeight: vi.fn(),
+      updateCursorStyle: vi.fn(),
+      updateThemeMode: vi.fn(),
+    })
+    vi.mocked(fetchTerminalDiagnostics).mockResolvedValue({
+      widget_id: 'term-pve',
+      session_state: 'disconnected',
+      status_detail: 'session is not running; restart explicitly to create a new process',
+      issue_summary: 'session is not running; restart explicitly to create a new process',
+      output_excerpt: '',
+    })
+
+    render(<TerminalWidget hostId="terminal" runtimeWidgetId="term-pve" title="PVE host" />)
+
+    const recoveryButton = screen.getByRole('button', { name: 'Recover terminal session for PVE host' })
+    expect(recoveryButton).toHaveTextContent('Resume session')
+
+    fireEvent.click(recoveryButton)
+
+    await waitFor(() => {
+      expect(recoverSessionMock).toHaveBeenCalledTimes(1)
+    })
+  })
+
   it('shows a grouped session rail and switches sessions through the terminal hook', async () => {
     const createSessionMock = vi.fn(async () => undefined)
     const closeSessionMock = vi.fn(async () => undefined)
