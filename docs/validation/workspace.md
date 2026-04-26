@@ -2,7 +2,7 @@
 
 ## Last verified state
 
-- Date: `2026-04-25`
+- Date: `2026-04-26`
 - State: `VERIFIED`
 - Scope:
   - backend widget-kind catalog contract now exists at
@@ -27,6 +27,7 @@
   - serialized Playwright coverage now exercises the active shell/user paths over the split local dev runtime:
     - workspace tab switching and workspace creation
     - the shell topbar now renders workspace tabs and the add-workspace affordance as one compact grouped strip, so workspace switching and creation read as a single control cluster instead of separate header controls
+    - the shell topbar close/minimize/fullscreen controls now route through explicit desktop window callbacks; close keeps the existing shutdown guard, while minimize/fullscreen call Tauri commands and degrade to no-ops in split-browser mode
     - commander Dockview tabs now follow the same compact workspace-strip language instead of a badge-only placeholder: each commander tab shows a compact `commander` pill, a readable `tool/tool N` title, and a per-tab close action only when the commander group actually has multiple tabs
     - right-rail utility menu actions for new workspace, terminal widget,
       and files widget,
@@ -584,6 +585,7 @@
 - A fresh focused validation pass for the files/preview containing-folder handoff slice on `2026-04-26` confirmed file rows and preview panels now expose TideTerm-shaped `Folder` actions that send the containing directory through the existing backend `POST /api/v1/fs/open` route while keeping inline success/error state in the originating widget. The same pass reconfirmed `npm --prefix frontend run test -- src/widgets/files/files-panel-widget.test.tsx src/widgets/preview/preview-panel-widget.test.tsx`, `npm --prefix frontend run lint:active`, and `npm --prefix frontend run build` all pass. This slice verifies the request payloads and UI state only; it does not claim native file-manager reveal semantics beyond the existing runtime opener contract.
 - A fresh focused validation pass for the files terminal-handoff slice on `2026-04-26` confirmed `POST /api/v1/workspace/widgets/split` now accepts an explicit `working_dir` for split terminal creation, and the files widget can open a terminal at the current directory or a file row's containing directory while adding the returned runtime terminal widget to Dockview. The same pass reconfirmed `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestCreateSplitTerminalWidgetUsesRequestedWorkingDir|TestWorkspaceCreateSplitTerminalWidgetRejectsInvalidDirection' -count=1`, `npm --prefix frontend run test -- src/features/terminal/api/client.test.ts src/widgets/files/files-panel-widget.test.tsx`, `npm --prefix frontend run lint:active`, and `npm --prefix frontend run build` all pass. This slice validates the backend launch option and frontend request/add-panel path; it does not claim remote SSH cwd semantics, because the current SSH launcher still starts the remote login shell without applying `working_dir`.
 - A fresh focused validation pass for the preview CSV/TSV table slice on `2026-04-26` confirmed `.csv`, `.tsv`, and `.tab` text previews now render as bounded tables in the backend-owned preview widget while non-table text and hex previews keep the existing rendering path. The same pass reconfirmed `npm --prefix frontend run test -- src/widgets/preview/preview-table.test.ts src/widgets/preview/preview-panel-widget.test.tsx`, `npm --prefix frontend run lint:active`, and `npm --prefix frontend run build` all pass. This slice intentionally uses a small dependency-free parser and does not claim full spreadsheet behavior, formulas, or large-file virtualization.
+- A fresh focused validation pass for the shell topbar desktop-window controls slice on `2026-04-26` confirmed the visible close/minimize/fullscreen controls no longer leave minimize/fullscreen inert: frontend unit coverage verifies the shell callbacks and Tauri invoke names, while the desktop Rust command surface now exposes `minimize_window` and `toggle_fullscreen_window` beside the existing guarded close path. The same pass reconfirmed `npm --prefix frontend run test -- src/widgets/shell/shell-topbar-widget.test.tsx src/shared/api/runtime.test.ts src/shared/ui/components/accessibility-contracts.test.tsx`, `npm run lint:frontend`, `npm run build:frontend`, `npm run tauri:check`, and `git diff --check` all pass. This slice does not claim a fresh interactive desktop click smoke.
 
 ### Task runtime limitations
 

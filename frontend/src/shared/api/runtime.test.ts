@@ -1,10 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
+  closeRuntimeWindow,
   formatRuntimePathForDisplay,
+  minimizeRuntimeWindow,
   resetRuntimeContextCacheForTests,
   resolveRuntimeContext,
   resolveRuntimePathInput,
+  toggleRuntimeFullscreen,
 } from '@/shared/api/runtime'
 
 describe('runtime path helpers', () => {
@@ -26,6 +29,35 @@ describe('runtime path helpers', () => {
         '/Users/avm/projects/runa-terminal/frontend',
       ),
     ).toBe('/Users/avm/projects/runa-terminal/docs')
+  })
+})
+
+describe('runtime desktop window commands', () => {
+  afterEach(() => {
+    window.__TAURI_INTERNALS__ = undefined
+  })
+
+  it('routes shell window commands through the Tauri invoke bridge', async () => {
+    const invoke = vi.fn(async () => undefined)
+    window.__TAURI_INTERNALS__ = { invoke }
+
+    await closeRuntimeWindow()
+    await minimizeRuntimeWindow()
+    await toggleRuntimeFullscreen()
+
+    expect(invoke.mock.calls.map(([command]) => command)).toEqual([
+      'close_window',
+      'minimize_window',
+      'toggle_fullscreen_window',
+    ])
+  })
+
+  it('treats desktop window commands as no-ops outside Tauri', async () => {
+    window.__TAURI_INTERNALS__ = undefined
+
+    await expect(closeRuntimeWindow()).resolves.toBeUndefined()
+    await expect(minimizeRuntimeWindow()).resolves.toBeUndefined()
+    await expect(toggleRuntimeFullscreen()).resolves.toBeUndefined()
   })
 })
 

@@ -3,7 +3,13 @@ import { useRef } from 'react'
 import { useUnit } from 'effector-react'
 
 import { useWorkspaceWidgetCatalog } from '@/features/workspace/model/widget-catalog'
-import { closeRuntimeWindow, requestRuntimeSettings, requestRuntimeShutdown } from '@/shared/api/runtime'
+import {
+  closeRuntimeWindow,
+  minimizeRuntimeWindow,
+  requestRuntimeSettings,
+  requestRuntimeShutdown,
+  toggleRuntimeFullscreen,
+} from '@/shared/api/runtime'
 import { $isAiSidebarOpen, toggleAiSidebar } from '@/shared/model/app'
 import { BODY_MODAL_HOST_ID } from '@/shared/model/modal'
 import { RunaDomScopeProvider, useRunaDomAutoTagging } from '@/shared/ui/dom-id'
@@ -86,6 +92,22 @@ export function App() {
     }
   }
 
+  async function handleMinimizeWindow() {
+    try {
+      await minimizeRuntimeWindow()
+    } catch (error) {
+      console.error('Unable to minimize runtime window', error)
+    }
+  }
+
+  async function handleToggleFullscreen() {
+    try {
+      await toggleRuntimeFullscreen()
+    } catch (error) {
+      console.error('Unable to toggle runtime fullscreen', error)
+    }
+  }
+
   return (
     <RunaDomScopeProvider component="app" layout="shell" widget="workspace">
       <Box ref={appRootRef} runaComponent="app-root" style={rootStyle}>
@@ -94,8 +116,10 @@ export function App() {
             activeWorkspaceId={activeWorkspaceId}
             isAiOpen={isAiSidebarOpen}
             onClose={handleCloseWindow}
+            onMinimize={handleMinimizeWindow}
             onAddWorkspace={handleAddWorkspace}
             onSelectWorkspace={handleSelectWorkspace}
+            onToggleFullscreen={handleToggleFullscreen}
             onToggleAi={onToggleAiSidebar}
             workspaceTabs={workspaceTabs}
           />

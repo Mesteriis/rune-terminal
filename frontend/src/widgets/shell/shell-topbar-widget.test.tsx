@@ -6,7 +6,9 @@ import { ShellTopbarWidget } from '@/widgets/shell/shell-topbar-widget'
 function renderShellTopbar() {
   const onAddWorkspace = vi.fn()
   const onClose = vi.fn()
+  const onMinimize = vi.fn()
   const onSelectWorkspace = vi.fn()
+  const onToggleFullscreen = vi.fn()
   const onToggleAi = vi.fn()
 
   render(
@@ -15,7 +17,9 @@ function renderShellTopbar() {
       isAiOpen={false}
       onAddWorkspace={onAddWorkspace}
       onClose={onClose}
+      onMinimize={onMinimize}
       onSelectWorkspace={onSelectWorkspace}
+      onToggleFullscreen={onToggleFullscreen}
       onToggleAi={onToggleAi}
       workspaceTabs={[
         { id: 1, title: 'Workspace-1' },
@@ -28,7 +32,9 @@ function renderShellTopbar() {
   return {
     onAddWorkspace,
     onClose,
+    onMinimize,
     onSelectWorkspace,
+    onToggleFullscreen,
     onToggleAi,
   }
 }
@@ -52,5 +58,19 @@ describe('ShellTopbarWidget', () => {
 
     expect(onSelectWorkspace).toHaveBeenCalledWith(1)
     expect(onAddWorkspace).toHaveBeenCalledTimes(1)
+  })
+
+  it('routes shell window controls through desktop callbacks', () => {
+    const { onClose, onMinimize, onToggleFullscreen, onToggleAi } = renderShellTopbar()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close window' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse window' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Toggle fullscreen' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Toggle AI panel' }))
+
+    expect(onClose).toHaveBeenCalledTimes(1)
+    expect(onMinimize).toHaveBeenCalledTimes(1)
+    expect(onToggleFullscreen).toHaveBeenCalledTimes(1)
+    expect(onToggleAi).toHaveBeenCalledTimes(1)
   })
 })

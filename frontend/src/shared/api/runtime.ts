@@ -239,6 +239,26 @@ export async function closeRuntimeWindow() {
   return invoke<void>('close_window')
 }
 
+export async function minimizeRuntimeWindow() {
+  const invoke = getTauriInvoker()
+
+  if (typeof invoke !== 'function') {
+    return
+  }
+
+  return invoke<void>('minimize_window')
+}
+
+export async function toggleRuntimeFullscreen() {
+  const invoke = getTauriInvoker()
+
+  if (typeof invoke !== 'function') {
+    return
+  }
+
+  return invoke<void>('toggle_fullscreen_window')
+}
+
 export function resetRuntimeContextCacheForTests() {
   runtimeContextPromise = null
 }

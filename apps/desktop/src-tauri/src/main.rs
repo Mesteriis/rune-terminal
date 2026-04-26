@@ -311,6 +311,24 @@ fn close_window(window: tauri::Window) -> Result<(), String> {
         .map_err(|err| format!("unable to close window: {err}"))
 }
 
+#[tauri::command]
+fn minimize_window(window: tauri::Window) -> Result<(), String> {
+    window
+        .minimize()
+        .map_err(|err| format!("unable to minimize window: {err}"))
+}
+
+#[tauri::command]
+fn toggle_fullscreen_window(window: tauri::Window) -> Result<(), String> {
+    let is_fullscreen = window
+        .is_fullscreen()
+        .map_err(|err| format!("unable to read fullscreen state: {err}"))?;
+
+    window
+        .set_fullscreen(!is_fullscreen)
+        .map_err(|err| format!("unable to toggle fullscreen: {err}"))
+}
+
 fn main() {
     let runtime_state = RuntimeState::default();
 
@@ -332,7 +350,9 @@ fn main() {
             runtime_settings,
             set_watcher_mode,
             request_shutdown,
-            close_window
+            close_window,
+            minimize_window,
+            toggle_fullscreen_window,
         ])
         .build(tauri::generate_context!())
         .expect("failed to build tauri app")

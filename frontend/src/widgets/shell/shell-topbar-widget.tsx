@@ -21,6 +21,8 @@ type ShellTopbarWidgetProps = {
   isAiOpen: boolean
   onToggleAi: () => void
   onClose: () => void
+  onMinimize: () => void
+  onToggleFullscreen: () => void
   workspaceTabs: ShellWorkspaceTab[]
   activeWorkspaceId: number
   onSelectWorkspace: (workspaceId: number) => void
@@ -36,6 +38,8 @@ export function ShellTopbarWidget({
   isAiOpen,
   onToggleAi,
   onClose,
+  onMinimize,
+  onToggleFullscreen,
   workspaceTabs,
   activeWorkspaceId,
   onSelectWorkspace,
@@ -54,6 +58,7 @@ export function ShellTopbarWidget({
         </Button>
         <Button
           aria-label="Collapse window"
+          onClick={onMinimize}
           runaComponent="shell-topbar-collapse-window"
           style={iconButtonStyle}
         >
@@ -61,6 +66,7 @@ export function ShellTopbarWidget({
         </Button>
         <Button
           aria-label="Toggle fullscreen"
+          onClick={onToggleFullscreen}
           runaComponent="shell-topbar-toggle-fullscreen"
           style={iconButtonStyle}
         >

@@ -87,7 +87,10 @@ describe('frontend accessibility contracts', () => {
         activeWorkspaceId={2}
         isAiOpen={false}
         onAddWorkspace={() => undefined}
+        onClose={() => undefined}
+        onMinimize={() => undefined}
         onSelectWorkspace={() => undefined}
+        onToggleFullscreen={() => undefined}
         onToggleAi={() => undefined}
         workspaceTabs={[
           { id: 1, title: 'Workspace-1' },

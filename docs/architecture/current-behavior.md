@@ -72,6 +72,10 @@ It is intentionally operational, not narrative.
 - The compat shell utility rail now uses a narrower chrome rhythm:
   - the rail is reduced to a slimmer fixed width with smaller icon/label sizing
   - compat tab content uses a tighter outer frame and smaller inter-pane split gaps
+- The top shell window controls now route through the desktop runtime bridge:
+  - close still runs the active shutdown guard before asking Tauri to close the window
+  - minimize and fullscreen controls now invoke explicit desktop window commands instead of rendering as inert chrome
+  - split-browser development keeps those commands as no-ops when no Tauri bridge is present
 - Launcher discoverability in the active compat shell now lives inside that right-utility flyout rather than a separate top-level panel.
 - The compat shell right-utility rail now enforces a single active flyout:
   - opening launcher/files/tools/audit/apps/settings replaces the previous flyout instead of stacking overlays
