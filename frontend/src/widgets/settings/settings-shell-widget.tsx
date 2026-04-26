@@ -8,6 +8,7 @@ import { ClearBox } from '@/shared/ui/components'
 import { Button, Checkbox, ScrollArea, Text } from '@/shared/ui/primitives'
 import { AgentProviderSettingsWidget } from '@/widgets/settings/agent-provider-settings-widget'
 import { AiComposerSettingsSection } from '@/widgets/settings/ai-composer-settings-section'
+import { MCPSettingsSection } from '@/widgets/settings/mcp-settings-section'
 import { RemoteProfilesSettingsSection } from '@/widgets/settings/remote-profiles-settings-section'
 import { RuntimeSettingsSection } from '@/widgets/settings/runtime-settings-section'
 import { TerminalSettingsSection } from '@/widgets/settings/terminal-settings-section'
@@ -40,6 +41,7 @@ type SettingsSectionID =
   | 'ai-models'
   | 'ai-composer'
   | 'ai-limits'
+  | 'mcp'
   | 'remote'
   | 'terminal'
   | 'commander'
@@ -111,6 +113,14 @@ const settingsSectionMeta: Record<SettingsSectionID, SettingsSectionMeta> = {
     shellTitle: 'Remote',
     shellDescription:
       'Backend-owned SSH profiles, narrow ~/.ssh/config import, and explicit limits around advanced remote topology.',
+    groupLabel: 'Runtime',
+  },
+  mcp: {
+    navTitle: 'MCP',
+    navDescription: 'External server registration and lifecycle.',
+    shellTitle: 'MCP',
+    shellDescription:
+      'Register remote MCP endpoints and control lifecycle state through the backend-owned MCP runtime without adding implicit AI context injection.',
     groupLabel: 'Runtime',
   },
   commander: {
@@ -457,6 +467,10 @@ function RemoteSection() {
   return <RemoteProfilesSettingsSection />
 }
 
+function MCPSection() {
+  return <MCPSettingsSection />
+}
+
 function CommanderSection() {
   return (
     <SectionCard
@@ -492,6 +506,8 @@ function renderSection(sectionID: SettingsSectionID) {
       return <TerminalSection />
     case 'remote':
       return <RemoteSection />
+    case 'mcp':
+      return <MCPSection />
     case 'commander':
       return <CommanderSection />
     default:
@@ -530,7 +546,7 @@ export function SettingsShellWidget() {
             <Text style={settingsShellEyebrowStyle}>Rune Terminal</Text>
             <Text style={{ fontWeight: 600 }}>Settings</Text>
             <Text style={settingsShellMutedTextStyle}>
-              Общий навигатор по shell, AI runtime, terminal и commander surface.
+              Общий навигатор по shell, AI runtime, terminal, remote, MCP и commander surface.
             </Text>
           </ClearBox>
           <ClearBox style={settingsShellSidebarSectionStyle}>
@@ -628,6 +644,14 @@ export function SettingsShellWidget() {
             >
               <Text style={{ fontWeight: 600 }}>{settingsSectionMeta.remote.navTitle}</Text>
               <Text style={settingsShellMutedTextStyle}>{settingsSectionMeta.remote.navDescription}</Text>
+            </Button>
+            <Button
+              aria-pressed={activeSectionID === 'mcp'}
+              onClick={() => setActiveSectionID('mcp')}
+              style={navButtonStateStyle(activeSectionID === 'mcp')}
+            >
+              <Text style={{ fontWeight: 600 }}>{settingsSectionMeta.mcp.navTitle}</Text>
+              <Text style={settingsShellMutedTextStyle}>{settingsSectionMeta.mcp.navDescription}</Text>
             </Button>
           </ClearBox>
 

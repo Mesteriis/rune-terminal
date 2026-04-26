@@ -3,6 +3,10 @@
 Date: `2026-04-16`  
 Phase: stability hardening
 
+> Historical note: this file records the 2026-04-16 playground run. Current
+> validation is tracked in [MCP Validation](../validation/mcp.md); the active
+> settings shell now exposes remote MCP registration and lifecycle controls.
+
 ## Slice 1 — Real MCP setup (Context7)
 
 ### Real MCP chosen

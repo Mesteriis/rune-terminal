@@ -17,7 +17,7 @@ Source of truth: [parity-matrix.md](./parity-matrix.md)
   - copy/paste parity edge cases
   - jump-to-latest control parity
   - drag/drop path parity breadth
-- MCP external onboarding (`MCP`): lifecycle controls exist but real external setup remains `PARTIAL`.
+- MCP external onboarding (`MCP`): settings can register remote endpoints and run lifecycle controls, but broad discovery/catalog setup remains `PARTIAL`.
 - Settings surface breadth (`panels`): intentionally reduced scope vs TideTerm.
 - Last-tab closure behavior (`workspace/layout`): currently guarded.
 - Attachment UX breadth (`UX`): basic references exist, broader management UX remains partial.

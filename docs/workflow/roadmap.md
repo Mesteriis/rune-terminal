@@ -30,7 +30,7 @@
 | AI provider backend | `NOW`   | backend-owned provider catalog with Codex CLI, Claude Code CLI, and one narrow OpenAI-compatible HTTP source kind |
 | Plugin runtime      | `NOW`   | `rterm.plugin.v1`; manifest tool exposure plus capability allow-list validation                                   |
 | Remote / SSH        | `LATER` | ADR 0019, narrow daily-driver path only                                                                           |
-| MCP integration     | `LATER` | scaffolding exists; end-to-end wiring deferred                                                                    |
+| MCP integration     | `NOW`   | explicit registration/lifecycle/invoke runtime is active; broad discovery remains deferred                         |
 
 ### 2. Transport (Go ↔ Tauri ↔ Frontend)
 
@@ -53,6 +53,7 @@ from any previous fork are historical inspiration only.
 | Commander widget                                                  | `NOW`   | backend-backed read/write path is live; remaining parity work is about removing leftover frontend-owned seams rather than introducing the first HTTP wiring                                                                 |
 | Terminal widget                                                   | `NOW`   | xterm surface consumes backend snapshots plus real terminal SSE                                                                                                                                                             |
 | AI panel widget                                                   | `NEXT`  | chrome exists; shell settings modal now hosts CLI + narrow HTTP provider management, and the main AI panel now exposes provider/model selection plus widget-context selection while deeper runtime/tooling UX still remains |
+| MCP settings section                                              | `NOW`   | shell settings can list/register remote MCP servers and run explicit lifecycle actions through the backend MCP API                                                                |
 | Dockview workspace shell                                          | `NOW`   | layout + localStorage persistence                                                                                                                                                                                           |
 | Other widgets                                                     | `NOW`   | added continuously during the rewrite                                                                                                                                                                                       |
 | Linter (ESLint / Biome)                                           | `NOW`   | ESLint + `tsc --noEmit` gate the active frontend; Biome is not in use                                                                                                                                                       |

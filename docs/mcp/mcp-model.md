@@ -13,6 +13,7 @@ This is the canonical MCP entrypoint for runtime lifecycle and usage rules.
 - Lifecycle is explicit and stateful per server:
   - `stopped`, `starting`, `active`, `idle`, `stopped_auto`
 - Registration and lifecycle actions are API-driven, not implicit background behavior.
+- The active settings shell provides the narrow operator UI for remote server registration plus lifecycle controls; it is a view over the same backend registry, not a second frontend MCP registry.
 
 ## Usage rules
 
