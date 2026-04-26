@@ -115,6 +115,11 @@
   - `Probe` when the route is unchecked, missing, auth-blocked, unreachable, or model-mismatched
   - `Prepare` when the route is ready but not warmed or when the last run failed on a transient route-level condition like timeout/upstream rejection
   - provider settings also expose a filterable persisted run history plus run diagnostics drill-down over that same gateway snapshot, instead of requiring a separate proxy/history subsystem
+  - the AI shell now also renders a compact operator panel from that same backend gateway truth:
+  - active-route status, policy, warm TTL, and warm-expiry visibility
+  - explicit `Probe/Prepare` recovery action chosen from the gateway snapshot
+  - explicit `Clear route state` reset action over the backend route-state contract
+  - provider-scoped recent persisted run history with inline diagnostics for the active route, without introducing a second chat-local runtime model
 - Unsupported legacy provider records are filtered during agent-state normalization. If filtering leaves no providers, the store recreates the default local CLI providers.
 - The provider catalog route returns `supported_kinds: ["codex", "claude", "openai-compatible"]`.
   - The AI composer toolbar now consumes that backend-owned catalog directly:

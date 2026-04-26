@@ -34,6 +34,7 @@ import {
   updateAgentConversationContext,
 } from '@/features/agent/api/client'
 import {
+  clearAgentProviderRouteState,
   fetchAgentProviderCatalog,
   fetchAgentProviderGatewaySnapshot,
   prewarmAgentProvider,
@@ -41,6 +42,7 @@ import {
   setActiveAgentProvider as activateAgentProviderInCatalog,
   type AgentProviderCatalog,
   type AgentProviderGatewayProvider,
+  type AgentProviderGatewayRun,
   type AgentProviderGatewaySnapshot,
   type AgentProviderView,
 } from '@/features/agent/api/provider-client'
@@ -498,6 +500,9 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
   const [provider, setProvider] = useState<AgentConversationProvider | null>(null)
   const [providerCatalog, setProviderCatalog] = useState<AgentProviderCatalog | null>(null)
   const [providerGateway, setProviderGateway] = useState<AgentProviderGatewaySnapshot | null>(null)
+  const [activeProviderHistoryRuns, setActiveProviderHistoryRuns] = useState<AgentProviderGatewayRun[]>([])
+  const [activeProviderHistoryTotal, setActiveProviderHistoryTotal] = useState(0)
+  const [activeProviderHistoryError, setActiveProviderHistoryError] = useState<string | null>(null)
   const [agentCatalog, setAgentCatalog] = useState<AgentCatalog | null>(null)
   const [activeConversationSummary, setActiveConversationSummary] = useState<AgentConversationSummary | null>(
     null,
@@ -525,6 +530,7 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
   const [isResponseCancellable, setIsResponseCancellable] = useState(false)
   const [isAttachmentLibraryPending, setIsAttachmentLibraryPending] = useState(false)
   const [isProviderGatewayPending, setIsProviderGatewayPending] = useState(false)
+  const [isActiveProviderHistoryPending, setIsActiveProviderHistoryPending] = useState(false)
   const [isProviderRouteProbing, setIsProviderRouteProbing] = useState(false)
   const [isProviderRoutePreparing, setIsProviderRoutePreparing] = useState(false)
   const [recentAttachmentReferences, setRecentAttachmentReferences] = useState<AgentAttachmentReference[]>([])
@@ -551,6 +557,11 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
   const hasCustomizedContextWidgetSelectionRef = useRef(false)
   const workspaceWidgetsRef = useRef<WorkspaceWidgetSnapshot[]>([])
 
+  const activeProviderID = useMemo(
+    () => (selectedProviderID || providerCatalog?.active_provider_id || '').trim(),
+    [providerCatalog?.active_provider_id, selectedProviderID],
+  )
+
   const refreshProviderGatewaySnapshot = useCallback(async (options?: { suppressError?: boolean }) => {
     setIsProviderGatewayPending(true)
     try {
@@ -567,6 +578,45 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
       setIsProviderGatewayPending(false)
     }
   }, [])
+
+  const refreshActiveProviderHistory = useCallback(
+    async (options?: { providerID?: string; suppressError?: boolean }) => {
+      const providerID = (options?.providerID ?? activeProviderID).trim()
+
+      if (!providerID) {
+        setActiveProviderHistoryRuns([])
+        setActiveProviderHistoryTotal(0)
+        setActiveProviderHistoryError(null)
+        setIsActiveProviderHistoryPending(false)
+        return []
+      }
+
+      setIsActiveProviderHistoryPending(true)
+
+      try {
+        const snapshot = await fetchAgentProviderGatewaySnapshot({
+          providerID,
+          limit: 3,
+        })
+        setActiveProviderHistoryRuns(snapshot.recent_runs)
+        setActiveProviderHistoryTotal(snapshot.recent_runs_total)
+        setActiveProviderHistoryError(null)
+        return snapshot.recent_runs
+      } catch (error) {
+        setActiveProviderHistoryRuns([])
+        setActiveProviderHistoryTotal(0)
+        if (!options?.suppressError) {
+          setActiveProviderHistoryError(
+            getErrorMessage(error, 'Unable to load the recent route activity for the active provider.'),
+          )
+        }
+        return []
+      } finally {
+        setIsActiveProviderHistoryPending(false)
+      }
+    },
+    [activeProviderID],
+  )
 
   const nextLocalSortKey = useCallback((): ChatMessageSortKey => {
     const nextCounter = localSortCounterRef.current
@@ -689,6 +739,9 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
     setProvider(null)
     setProviderCatalog(null)
     setProviderGateway(null)
+    setActiveProviderHistoryRuns([])
+    setActiveProviderHistoryTotal(0)
+    setActiveProviderHistoryError(null)
     setAgentCatalog(null)
     setActiveConversationSummary(null)
     setConversations([])
@@ -712,6 +765,7 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
     setIsResponseCancellable(false)
     setIsAttachmentLibraryPending(false)
     setIsProviderGatewayPending(true)
+    setIsActiveProviderHistoryPending(false)
     setIsProviderRouteProbing(false)
     setIsProviderRoutePreparing(false)
     setRecentAttachmentReferences([])
@@ -801,6 +855,14 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
       unblockAiWidget(hostId)
     }
   }, [applyConversationSnapshot, beginPanelStateEpoch, enabled, hostId])
+
+  useEffect(() => {
+    if (!enabled) {
+      return
+    }
+
+    void refreshActiveProviderHistory({ suppressError: true })
+  }, [enabled, providerGateway?.generated_at, refreshActiveProviderHistory])
 
   const refreshConversationList = useCallback(
     async (
@@ -1007,15 +1069,14 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
     if (!providerGateway) {
       return null
     }
-    const activeProviderID = selectedProviderID || providerCatalog?.active_provider_id || ''
     if (!activeProviderID) {
       return providerGateway.providers.find((candidate) => candidate.active) ?? null
     }
     return providerGateway.providers.find((candidate) => candidate.provider_id === activeProviderID) ?? null
-  }, [providerCatalog?.active_provider_id, providerGateway, selectedProviderID])
+  }, [activeProviderID, providerGateway])
 
   const prewarmActiveProviderRoute = useCallback(async () => {
-    const providerID = (selectedProviderID || providerCatalog?.active_provider_id || '').trim()
+    const providerID = activeProviderID
     if (!providerID || isProviderRoutePreparing) {
       return
     }
@@ -1030,15 +1091,10 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
     } finally {
       setIsProviderRoutePreparing(false)
     }
-  }, [
-    isProviderRoutePreparing,
-    providerCatalog?.active_provider_id,
-    refreshProviderGatewaySnapshot,
-    selectedProviderID,
-  ])
+  }, [activeProviderID, isProviderRoutePreparing, refreshProviderGatewaySnapshot])
 
   const probeActiveProviderRoute = useCallback(async () => {
-    const providerID = (selectedProviderID || providerCatalog?.active_provider_id || '').trim()
+    const providerID = activeProviderID
     if (!providerID || isProviderRouteProbing) {
       return
     }
@@ -1053,11 +1109,27 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
     } finally {
       setIsProviderRouteProbing(false)
     }
+  }, [activeProviderID, isProviderRouteProbing, refreshProviderGatewaySnapshot])
+
+  const clearActiveProviderRouteState = useCallback(async () => {
+    const providerID = activeProviderID
+    if (!providerID || isProviderGatewayPending || isProviderRoutePreparing || isProviderRouteProbing) {
+      return
+    }
+
+    setProviderGatewayError(null)
+    try {
+      await clearAgentProviderRouteState(providerID)
+      await refreshProviderGatewaySnapshot({ suppressError: true })
+    } catch (error) {
+      setProviderGatewayError(getErrorMessage(error, 'Unable to clear the active provider route state.'))
+    }
   }, [
+    activeProviderID,
+    isProviderGatewayPending,
+    isProviderRoutePreparing,
     isProviderRouteProbing,
-    providerCatalog?.active_provider_id,
     refreshProviderGatewaySnapshot,
-    selectedProviderID,
   ])
 
   const switchConversation = useCallback(
@@ -2673,6 +2745,9 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
     activeConversationID,
     activeConversationSummary,
     activeProviderGateway,
+    activeProviderHistoryError,
+    activeProviderHistoryRuns,
+    activeProviderHistoryTotal,
     answerQuestionnaire,
     approvePendingPlan,
     availableModes,
@@ -2705,9 +2780,11 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
     queuedAttachmentReferences,
     recentAttachmentReferences,
     isAttachmentLibraryPending,
+    isActiveProviderHistoryPending,
     isProviderGatewayPending,
     isProviderRouteProbing,
     isProviderRoutePreparing,
+    clearActiveProviderRouteState,
     refreshAttachmentLibrary,
     refreshProviderGatewaySnapshot,
     reuseStoredAttachmentReference,
