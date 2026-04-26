@@ -1,11 +1,12 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { fetchTerminalDiagnostics } from '@/features/terminal/api/client'
 import { useTerminalPreferences } from '@/features/terminal/model/use-terminal-preferences'
 import { useTerminalSession } from '@/features/terminal/model/use-terminal-session'
-import { TerminalWidget } from '@/widgets/terminal/terminal-widget'
-import { openAiSidebar } from '@/shared/model/app'
 import { queueAiPromptHandoff } from '@/shared/model/ai-handoff'
+import { openAiSidebar } from '@/shared/model/app'
+import { TerminalWidget } from '@/widgets/terminal/terminal-widget'
 
 const copySelectionMock = vi.fn(async () => undefined)
 const clearSearchMock = vi.fn(() => undefined)
@@ -22,6 +23,10 @@ vi.mock('@/features/terminal/model/use-terminal-session', () => ({
 
 vi.mock('@/features/terminal/model/use-terminal-preferences', () => ({
   useTerminalPreferences: vi.fn(),
+}))
+
+vi.mock('@/features/terminal/api/client', () => ({
+  fetchTerminalDiagnostics: vi.fn(),
 }))
 
 vi.mock('@/shared/model/app', () => ({
@@ -141,6 +146,13 @@ describe('TerminalWidget', () => {
       updateLineHeight: vi.fn(),
       updateCursorStyle: vi.fn(),
       updateThemeMode: vi.fn(),
+    })
+    vi.mocked(fetchTerminalDiagnostics).mockResolvedValue({
+      widget_id: 'term-side',
+      session_state: 'running',
+      status_detail: 'Attached to local shell.',
+      issue_summary: 'Attached to local shell.',
+      output_excerpt: 'terminal-ready',
     })
 
     render(<TerminalWidget hostId="terminal" runtimeWidgetId="term-side" title="Workspace shell" />)
@@ -272,7 +284,7 @@ describe('TerminalWidget', () => {
     expect(screen.getByLabelText('Terminal search results')).toHaveTextContent('Type query')
   })
 
-  it('hands terminal error context to the AI sidebar from the explain and fix button', () => {
+  it('hands backend terminal diagnostics to the AI sidebar from the explain and fix button', async () => {
     vi.mocked(useTerminalSession).mockReturnValue({
       runtimeWidgetId: 'term-pve',
       sessionKey: 'term-pve:1',
@@ -328,6 +340,13 @@ describe('TerminalWidget', () => {
       updateCursorStyle: vi.fn(),
       updateThemeMode: vi.fn(),
     })
+    vi.mocked(fetchTerminalDiagnostics).mockResolvedValue({
+      widget_id: 'term-pve',
+      session_state: 'failed',
+      status_detail: 'Remote shell reported a command failure.',
+      issue_summary: 'df: cannot read table of mounted file systems',
+      output_excerpt: 'df: cannot read table of mounted file systems',
+    })
 
     render(<TerminalWidget hostId="terminal" runtimeWidgetId="term-pve" title="PVE host" />)
 
@@ -335,18 +354,21 @@ describe('TerminalWidget', () => {
       screen.getByRole('button', { name: 'Explain and fix the latest terminal issue for PVE host' }),
     )
 
-    expect(queueAiPromptHandoff).toHaveBeenCalledWith({
-      context_widget_ids: ['term-pve'],
-      prompt: expect.stringContaining(
-        'Проверь и помоги объяснить и исправить последнюю ошибку в этом терминале.',
-      ),
-      submit: true,
+    await waitFor(() => {
+      expect(fetchTerminalDiagnostics).toHaveBeenCalledWith('term-pve')
+      expect(queueAiPromptHandoff).toHaveBeenCalledWith({
+        context_widget_ids: ['term-pve'],
+        prompt: expect.stringContaining(
+          'Проверь и помоги объяснить и исправить последнюю ошибку в этом терминале.',
+        ),
+        submit: true,
+      })
+      expect(queueAiPromptHandoff).toHaveBeenCalledWith({
+        context_widget_ids: ['term-pve'],
+        prompt: expect.stringContaining('df: cannot read table of mounted file systems'),
+        submit: true,
+      })
+      expect(openAiSidebar).toHaveBeenCalledTimes(1)
     })
-    expect(queueAiPromptHandoff).toHaveBeenCalledWith({
-      context_widget_ids: ['term-pve'],
-      prompt: expect.stringContaining('df: cannot read table of mounted file systems'),
-      submit: true,
-    })
-    expect(openAiSidebar).toHaveBeenCalledTimes(1)
   })
 })

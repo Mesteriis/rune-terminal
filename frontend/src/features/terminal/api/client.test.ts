@@ -5,6 +5,7 @@ import {
   connectTerminalStream,
   createSplitTerminalWidget,
   createTerminalTab,
+  fetchTerminalDiagnostics,
   fetchTerminalSnapshot,
   interruptTerminal,
   restartTerminal,
@@ -155,6 +156,41 @@ describe('terminal api client', () => {
       chunks: [],
       next_seq: 1,
     })
+  })
+
+  it('loads backend-owned terminal diagnostics for explain and fix flows', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          widget_id: 'term-pve',
+          session_state: 'failed',
+          status_detail: 'Remote shell reported a command failure.',
+          issue_summary: 'df: cannot read table of mounted file systems',
+          output_excerpt: 'df: cannot read table of mounted file systems',
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(fetchTerminalDiagnostics('term-pve')).resolves.toEqual({
+      widget_id: 'term-pve',
+      session_state: 'failed',
+      status_detail: 'Remote shell reported a command failure.',
+      issue_summary: 'df: cannot read table of mounted file systems',
+      output_excerpt: 'df: cannot read table of mounted file systems',
+    })
+
+    expect(fetchMock.mock.calls[1]?.[0]).toBe('http://127.0.0.1:8090/api/v1/terminal/term-pve/diagnostics')
   })
 
   it('posts input, interrupt and restart requests to the backend contract', async () => {

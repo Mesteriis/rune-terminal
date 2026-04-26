@@ -27,6 +27,7 @@
   - AI composer visible selected-context strip with direct remove actions for chosen widgets
   - AI composer queued attachment strip with direct remove actions for file references handed off from the files panel
   - terminal-origin AI handoff: a terminal widget can now open the AI sidebar with a preloaded terminal-aware prompt, explicit `widget_ids` context, and immediate submit for explain/fix flows over the same conversation/runtime contract
+  - that terminal-origin explain/fix handoff now reads backend-owned `issue_summary`, `status_detail`, and `output_excerpt` from `GET /api/v1/terminal/{widgetID}/diagnostics` instead of assembling the prompt purely from frontend chunk state
   - browser-level terminal-origin AI handoff coverage: a real shell failure can now jump straight into the AI sidebar and land in the local `Plan / Approve` flow with the failing terminal pinned as conversation context
   - files-panel `Attach file ... to AI` handoff through `POST /api/v1/agent/conversation/attachments/references`, shell attachment queue, and stream request `attachments`
   - transcript attachment chips sourced from backend conversation message attachment metadata
@@ -188,6 +189,7 @@
 - `npm --prefix frontend run test -- src/widgets/ai/ai-panel-widget.test.tsx src/widgets/ai/ai-panel-header-widget.test.tsx src/widgets/ai/ai-composer-widget.test.tsx`
 - `npm --prefix frontend run test -- src/widgets/ai/ai-panel-widget.test.tsx`
 - `npm --prefix frontend run test -- src/widgets/terminal/terminal-widget.test.tsx src/app/app-ai-sidebar.test.tsx`
+- `npm --prefix frontend run test -- src/features/terminal/api/client.test.ts src/widgets/terminal/terminal-widget.test.tsx src/app/app-ai-sidebar.test.tsx --reporter=verbose`
 - `npm --prefix frontend run test -- src/widgets/ai/ai-panel-widget.test.tsx -t "allows selecting multiple workspace widgets for the AI request context|persists the current workspace widget when the operator clicks Only current immediately after opening context options|auto-saves stale persisted context when context widgets are opened"`
 - `npm --prefix frontend run test -- src/widgets/ai/ai-composer-widget.test.tsx src/widgets/ai/ai-panel-widget.test.tsx`
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts`
@@ -218,6 +220,7 @@
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestPlanTerminalCommandRejectsInvalidProviderPlan|TestPlanTerminalCommandReturnsBadGatewayForInvalidProviderPlan' -count=1`
 - `node_modules/.bin/vitest run src/widgets/ai/ai-panel-widget.test.tsx --reporter=verbose`
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts --grep "selected context widget instead of the active terminal"`
+- `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestTerminalDiagnostics|TestTerminalSnapshot|TestBootstrapSessionsKeepsRemoteWidgetAsDisconnectedWhenConnectionMissing' -count=1`
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts --grep "keeps remote host semantics when the selected context widget is SSH-backed"`
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts --grep "restores persisted remote context before approved terminal execution after reopen"`
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts --grep "preserves persisted remote host semantics from the selected context widget"`

@@ -41,7 +41,8 @@
     - the same header action slot now also exposes a visible `Explain & fix` AI handoff control:
       it opens the AI sidebar,
       binds the request context to that terminal widget,
-      preloads a terminal-aware prompt with the latest visible issue/output,
+      fetches backend-owned terminal diagnostics for that widget,
+      preloads a terminal-aware prompt with the normalized issue/output summary,
       and auto-submits it so the operator can immediately review the plan/approval flow
     - terminal restart rehydrates the widget-local session state and re-subscribes the SSE output stream instead of leaving the body bound to the pre-restart snapshot
     - Ctrl/Cmd+F inside the terminal still opens search through the xterm key handler, but the same search row is now also reachable through visible toolbar controls
@@ -70,11 +71,14 @@
       next/previous controls stay disabled without a query, and those controls
       become enabled when a query is typed into the live search field
     - the terminal `Explain & fix` control can hand off a real shell failure into the AI sidebar, auto-apply that terminal as the conversation context, and land the operator directly in the local `Plan / Approve` flow
+    - that same handoff now reads `issue_summary`, `status_detail`, and `output_excerpt` from the backend diagnostics route instead of assembling the prompt from raw frontend chunk state
     - when no terminal panel is open, the AI `/run ...` path creates a fresh visible workspace terminal and routes the command there instead of failing with a hidden/no-target execution
 
 ## Backend contracts used
 
 - `GET /api/v1/terminal/{widgetID}`
+- `GET /api/v1/terminal/{widgetID}/diagnostics`
+  - used by the visible `Explain & fix` action to fetch backend-owned issue/output summaries for AI handoff
 - `GET /api/v1/terminal/{widgetID}/stream`
 - `POST /api/v1/terminal/{widgetID}/input`
 - `POST /api/v1/terminal/{widgetID}/restart`
@@ -149,6 +153,7 @@
 - `frontend/node_modules/.bin/vitest run src/shared/ui/components/terminal-toolbar.test.tsx --reporter=verbose`
 - `frontend/node_modules/.bin/vitest run src/widgets/terminal/terminal-widget.test.tsx --reporter=verbose`
 - `frontend/node_modules/.bin/vitest run src/widgets/terminal/terminal-widget.test.tsx src/app/app-ai-sidebar.test.tsx --reporter=verbose`
+- `npm --prefix frontend run test -- src/features/terminal/api/client.test.ts src/widgets/terminal/terminal-widget.test.tsx src/app/app-ai-sidebar.test.tsx --reporter=verbose`
 - `npm run lint:frontend`
 - `npm --prefix frontend run test -- src/shared/api/terminal-settings.test.ts src/features/terminal/model/use-terminal-preferences.test.tsx src/widgets/settings/terminal-settings-section.test.tsx src/widgets/terminal/terminal-widget.test.tsx`
 - `npm --prefix frontend run test -- src/widgets/terminal/terminal-dockview-tab-widget.test.tsx src/widgets/terminal/terminal-dockview-header-actions-widget.test.tsx`
@@ -163,6 +168,7 @@
 - `npm run test:ui -- --reporter=line --grep "reset all runtime-owned defaults" e2e/terminal.spec.ts`
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts --grep "creates a visible terminal in the active workspace when none is open"`
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts --grep "terminal explain and fix button opens the AI sidebar with terminal context"`
+- `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestTerminalDiagnostics|TestTerminalSnapshot|TestBootstrapSessionsKeepsRemoteWidgetAsDisconnectedWhenConnectionMissing' -count=1`
 - `npm run tauri:dev`
 
 ## Browser evidence added for this slice
@@ -175,6 +181,7 @@
 ## Known limitations
 
 - Visible restart and interrupt controls now exist in the terminal header chrome, and terminal font size, line height, theme mode, scrollback, plus cursor behavior are now configurable through a backend-owned runtime settings contract.
+- `Explain & fix` now depends on the backend diagnostics route. Direct ad hoc `frontend/node_modules/.bin/vitest ...` invocation from this repo root can resolve the parent `vitest.config.ts` outside the workspace and fail with an `EPERM` temp-dir write; the supported validation path for this slice was `npm --prefix frontend run test ...`.
 - Terminal toolbar `clear` and `jump-to-latest` actions are intentionally local xterm viewport controls. They do not mutate backend snapshot history and were validated as non-breaking live affordances rather than as persisted runtime state.
 - Browser validation for terminal input now runs through Playwright on the split local dev path. The suite is intentionally serialized (`workers: 1`) because terminal/runtime state is shared across the same backend instance.
 - Browser validation for the terminal search row currently asserts the live shell affordance contract (`open`, `query`, enable/disable state, `close`) on the runtime-backed widget; lower-level hotkey/result-count semantics stay covered by widget/unit tests because browser-level delivery of function-key aliases is platform-sensitive.

@@ -1,6 +1,7 @@
 import { LoaderCircle, RotateCcw, Sparkles, Square } from 'lucide-react'
 import { useCallback, useState, useRef } from 'react'
 
+import { fetchTerminalDiagnostics } from '@/features/terminal/api/client'
 import { useTerminalPreferences } from '@/features/terminal/model/use-terminal-preferences'
 import { useTerminalSession } from '@/features/terminal/model/use-terminal-session'
 import { openAiSidebar } from '@/shared/model/app'
@@ -42,6 +43,7 @@ export function TerminalWidget({
   const terminalRootRef = useRunaDomAutoTagging('terminal-widget-root')
   const terminalSurfaceRef = useRef<TerminalSurfaceHandle | null>(null)
   const { cursorBlink, cursorStyle, fontSize, lineHeight, scrollback, themeMode } = useTerminalPreferences()
+  const [isExplainAndFixPending, setIsExplainAndFixPending] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [rendererMode, setRendererMode] = useState<'default' | 'webgl'>('default')
   const [searchQuery, setSearchQuery] = useState('')
@@ -108,57 +110,53 @@ export function TerminalWidget({
   const handleInterrupt = useCallback(() => {
     void terminalSession.interruptSession()
   }, [terminalSession])
-  const latestOutputExcerpt = terminalSession.outputChunks
-    .map((chunk) => chunk.data)
-    .join('')
-    .replace(/\r\n/g, '\n')
-    .replace(/\r/g, '\n')
-    .trim()
-    .slice(-1800)
   const terminalIssueSummary =
     terminalSession.error?.trim() ||
     (terminalSession.sessionState !== 'running'
       ? terminalSession.statusDetail?.trim() || terminalSession.sessionState
       : '')
   const canExplainAndFix =
-    terminalIssueSummary !== '' || latestOutputExcerpt !== '' || terminalSession.statusDetail?.trim() !== ''
-  const handleExplainAndFix = useCallback(() => {
-    const promptSections = [
-      'Проверь и помоги объяснить и исправить последнюю ошибку в этом терминале.',
-      `Terminal: ${title}`,
-      `Connection: ${terminalSession.connectionKind === 'ssh' ? 'SSH' : 'Local'}`,
-      `Shell: ${terminalSession.shellLabel}`,
-    ]
+    terminalIssueSummary !== '' ||
+    terminalSession.outputChunks.length > 0 ||
+    terminalSession.statusDetail?.trim() !== ''
+  const handleExplainAndFix = useCallback(async () => {
+    setIsExplainAndFixPending(true)
+    try {
+      const diagnostics = await fetchTerminalDiagnostics(runtimeWidgetId)
+      const promptSections = [
+        'Проверь и помоги объяснить и исправить последнюю ошибку в этом терминале.',
+        `Terminal: ${title}`,
+        `Connection: ${terminalSession.connectionKind === 'ssh' ? 'SSH' : 'Local'}`,
+        `Shell: ${terminalSession.shellLabel}`,
+      ]
+      const diagnosticsIssueSummary = diagnostics.issue_summary?.trim() ?? ''
+      const diagnosticsStatusDetail = diagnostics.status_detail?.trim() ?? ''
+      const diagnosticsOutputExcerpt = diagnostics.output_excerpt?.trim() ?? ''
 
-    if (terminalIssueSummary) {
-      promptSections.push(`Current issue: ${terminalIssueSummary}`)
-    }
-    if (terminalSession.statusDetail?.trim()) {
-      promptSections.push(`Runtime status: ${terminalSession.statusDetail.trim()}`)
-    }
-    if (latestOutputExcerpt !== '') {
-      promptSections.push(`Recent terminal output:\n\`\`\`text\n${latestOutputExcerpt}\n\`\`\``)
-    }
+      if (diagnosticsIssueSummary !== '') {
+        promptSections.push(`Current issue: ${diagnosticsIssueSummary}`)
+      }
+      if (diagnosticsStatusDetail !== '' && diagnosticsStatusDetail !== diagnosticsIssueSummary) {
+        promptSections.push(`Runtime status: ${diagnosticsStatusDetail}`)
+      }
+      if (diagnosticsOutputExcerpt !== '') {
+        promptSections.push(`Recent terminal output:\n\`\`\`text\n${diagnosticsOutputExcerpt}\n\`\`\``)
+      }
 
-    promptSections.push(
-      'Если для исправления нужны команды, сначала спланируй их и выполняй только в этом терминале после approval.',
-    )
+      promptSections.push(
+        'Если для исправления нужны команды, сначала спланируй их и выполняй только в этом терминале после approval.',
+      )
 
-    queueAiPromptHandoff({
-      context_widget_ids: [runtimeWidgetId],
-      prompt: promptSections.join('\n\n'),
-      submit: true,
-    })
-    openAiSidebar()
-  }, [
-    latestOutputExcerpt,
-    runtimeWidgetId,
-    terminalIssueSummary,
-    terminalSession.connectionKind,
-    terminalSession.shellLabel,
-    terminalSession.statusDetail,
-    title,
-  ])
+      queueAiPromptHandoff({
+        context_widget_ids: [runtimeWidgetId],
+        prompt: promptSections.join('\n\n'),
+        submit: true,
+      })
+      openAiSidebar()
+    } finally {
+      setIsExplainAndFixPending(false)
+    }
+  }, [runtimeWidgetId, terminalSession.connectionKind, terminalSession.shellLabel, title])
   const isRestartDisabled =
     terminalSession.isLoading || terminalSession.isInterrupting || terminalSession.isRestarting
   const isInterruptDisabled =
@@ -168,6 +166,7 @@ export function TerminalWidget({
     !terminalSession.canInterrupt
   const RestartIcon = terminalSession.isRestarting ? LoaderCircle : RotateCcw
   const InterruptIcon = terminalSession.isInterrupting ? LoaderCircle : Square
+  const isExplainAndFixDisabled = !canExplainAndFix || isExplainAndFixPending
 
   return (
     <RunaDomScopeProvider component="terminal-widget" widget={hostId}>
@@ -187,12 +186,14 @@ export function TerminalWidget({
                 >
                   <Button
                     aria-label={`Explain and fix the latest terminal issue for ${title}`}
-                    disabled={!canExplainAndFix}
-                    onClick={handleExplainAndFix}
+                    disabled={isExplainAndFixDisabled}
+                    onClick={() => {
+                      void handleExplainAndFix()
+                    }}
                     runaComponent="terminal-widget-explain-fix"
                     style={{
                       ...terminalWidgetAiActionButtonStyle,
-                      ...(!canExplainAndFix
+                      ...(isExplainAndFixDisabled
                         ? {
                             cursor: 'default',
                             opacity: 0.58,
@@ -206,7 +207,7 @@ export function TerminalWidget({
                     }
                   >
                     <Sparkles size={13} strokeWidth={1.8} />
-                    Explain & fix
+                    {isExplainAndFixPending ? 'Loading…' : 'Explain & fix'}
                   </Button>
                   <IconButton
                     aria-label={`Interrupt terminal for ${title}`}

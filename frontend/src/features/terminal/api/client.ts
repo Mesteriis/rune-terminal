@@ -39,6 +39,14 @@ export type TerminalInputResult = {
   append_newline: boolean
 }
 
+export type TerminalDiagnostics = {
+  widget_id: string
+  session_state: string
+  status_detail?: string
+  issue_summary?: string
+  output_excerpt?: string
+}
+
 export type CreateTerminalTabResult = {
   tab_id: string
   widget_id: string
@@ -259,6 +267,10 @@ function attachAbortSignal(signal: AbortSignal | undefined, controller: AbortCon
 export async function fetchTerminalSnapshot(widgetID: string, from?: number) {
   const snapshot = await requestRuntimeJSON<TerminalSnapshot>(buildTerminalPath(widgetID, '', from))
   return normalizeTerminalSnapshot(snapshot)
+}
+
+export async function fetchTerminalDiagnostics(widgetID: string) {
+  return requestRuntimeJSON<TerminalDiagnostics>(buildTerminalPath(widgetID, '/diagnostics'))
 }
 
 export async function createTerminalTab(title?: string) {
