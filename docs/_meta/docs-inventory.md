@@ -122,6 +122,7 @@ progress) is preserved at
 | --- | --- |
 | `docs/parity/parity-matrix.md` | Legacy parity matrix; no longer a source of truth |
 | `docs/parity/gap-summary.md` | Legacy gap summary |
+| `docs/parity/clone-status-matrix.md` | Grouped TideTerm clone-status matrix for active migration tracking |
 
 ## Validation
 

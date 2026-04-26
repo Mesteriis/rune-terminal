@@ -64,6 +64,7 @@ upstream. These files remain for historical reference:
 
 - [parity/parity-matrix.md](./parity/parity-matrix.md)
 - [parity/gap-summary.md](./parity/gap-summary.md)
+- [parity/clone-status-matrix.md](./parity/clone-status-matrix.md)
 
 ## Validation
 
