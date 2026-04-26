@@ -127,8 +127,10 @@ const (
 
 type StreamEvent struct {
 	Type      StreamEventType `json:"type"`
+	StreamID  string          `json:"stream_id,omitempty"`
 	MessageID string          `json:"message_id,omitempty"`
 	Delta     string          `json:"delta,omitempty"`
 	Message   *Message        `json:"message,omitempty"`
+	ErrorCode string          `json:"error_code,omitempty"`
 	Error     string          `json:"error,omitempty"`
 }

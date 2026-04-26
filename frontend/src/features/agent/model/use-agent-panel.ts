@@ -2196,11 +2196,11 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
     const auditMessageID = activeAuditMessageIDRef.current
 
     submissionNonceRef.current = nextSubmissionNonce
-    activeSubmissionAbortRef.current?.abort()
-    activeStreamRef.current?.close()
-    activeStreamRef.current = null
     activeSubmissionAbortRef.current = null
+    const activeStream = activeStreamRef.current
+    activeStreamRef.current = null
     activeAuditMessageIDRef.current = null
+    void activeStream?.cancel()
 
     if (auditMessageID) {
       updateAuditMessageEntries(auditMessageID, (currentMessage) =>

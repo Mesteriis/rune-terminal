@@ -789,7 +789,20 @@ describe('AiPanelWidget backend conversation path', () => {
         streamSignal = init?.signal instanceof AbortSignal ? init.signal : null
         return {
           ok: true,
+          headers: new Headers({
+            'X-Rterm-Conversation-Stream-Id': 'stream_1',
+          }),
           body: streamResponse.body,
+        }
+      }
+
+      if (url.endsWith('/api/v1/agent/conversation/streams/stream_1/cancel')) {
+        return {
+          ok: true,
+          json: async () => ({
+            cancelled: true,
+            stream_id: 'stream_1',
+          }),
         }
       }
 
@@ -817,10 +830,10 @@ describe('AiPanelWidget backend conversation path', () => {
 
     await act(async () => {
       streamResponse.push(
-        'event: message-start\ndata: {"type":"message-start","message_id":"msg_2","message":{"id":"msg_2","role":"assistant","content":"","status":"streaming","provider":"stub","model":"stub-model","created_at":"2026-04-21T10:00:05Z"}}\n\n',
+        'event: message-start\ndata: {"type":"message-start","stream_id":"stream_1","message_id":"msg_2","message":{"id":"msg_2","role":"assistant","content":"","status":"streaming","provider":"stub","model":"stub-model","created_at":"2026-04-21T10:00:05Z"}}\n\n',
       )
       streamResponse.push(
-        'event: text-delta\ndata: {"type":"text-delta","message_id":"msg_2","delta":"Partial reply"}\n\n',
+        'event: text-delta\ndata: {"type":"text-delta","stream_id":"stream_1","message_id":"msg_2","delta":"Partial reply"}\n\n',
       )
     })
 
@@ -830,8 +843,13 @@ describe('AiPanelWidget backend conversation path', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancel response' }))
 
-    expect(streamSignal?.aborted).toBe(true)
     await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some((call) =>
+          String(call[0]).includes('/api/v1/agent/conversation/streams/stream_1/cancel'),
+        ),
+      ).toBe(true)
+      expect(streamSignal?.aborted).toBe(true)
       expect(screen.queryByLabelText('Widget ai-shell-panel is busy')).not.toBeInTheDocument()
       expect(screen.getByText('stub-model · error')).toBeInTheDocument()
     })

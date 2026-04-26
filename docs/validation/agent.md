@@ -38,6 +38,7 @@
   - AI assistant message meta row and details panel chrome refinement
   - stream-error handling in the AI panel now preserves partial assistant output instead of immediately overwriting it with a post-stream conversation resync
   - active conversation stream cancellation from the composer: the UI aborts the in-flight fetch stream, clears busy state, and keeps partial assistant output visible as an operator-cancelled error message
+  - active conversation streams now carry a backend-owned `stream_id` plus explicit `POST /api/v1/agent/conversation/streams/{streamID}/cancel` path for live provider cancellation instead of fetch abort alone
   - frontend `/run ...` routing from the AI sidebar into the selected terminal widget context through backend tool execution plus terminal-command explanation
   - browser-level Playwright coverage for the AI sidebar over the split local dev path:
     - settings navigation for provider/model/limits/terminal/commander sections
@@ -221,6 +222,7 @@
 - `node_modules/.bin/vitest run src/widgets/ai/ai-panel-widget.test.tsx --reporter=verbose`
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts --grep "selected context widget instead of the active terminal"`
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestTerminalDiagnostics|TestTerminalSnapshot|TestBootstrapSessionsKeepsRemoteWidgetAsDisconnectedWhenConnectionMissing' -count=1`
+- `./scripts/go.sh test ./core/conversation ./core/app ./core/transport/httpapi -run 'TestStreamConversationMessageEmitsStructuredEventSequence|TestStreamConversationMessageEmitsErrorEventOnFailure|TestCancelConversationStreamCancelsActiveProviderRun' -count=1`
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts --grep "keeps remote host semantics when the selected context widget is SSH-backed"`
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts --grep "restores persisted remote context before approved terminal execution after reopen"`
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts --grep "preserves persisted remote host semantics from the selected context widget"`
@@ -236,7 +238,7 @@
 - request-context persistence is now conversation-scoped and stale-widget repair is explicit, but there are still no named context presets or grouped context modes.
 - queued attachment references are shell-local until submit; the app still does not import files into managed storage or provide a gallery/library of historical attachments.
 - CLI providers currently expose buffered chat completion through the existing SSE route; token-by-token provider streaming is implemented only for the OpenAI-compatible HTTP source.
-- Composer cancellation aborts the browser fetch stream and clears frontend busy state; it does not claim a durable backend-side job cancellation queue beyond normal request-context cancellation.
+- Composer cancellation now posts backend cancellation for the active live `stream_id` before the UI tears down the local stream, but it still is not a persisted detached job queue beyond the lifetime of that active request.
 - CLI-native tool calls are not yet mediated through `core/toolruntime`, policy approval, or audit events.
 - The OpenAI-compatible HTTP source streams text deltas only; reasoning deltas and provider-native tool-call stream events remain out of scope.
 - Profile, role, and mode controls are now visible in the AI composer toolbar, but they remain global backend selection controls rather than per-conversation named presets.

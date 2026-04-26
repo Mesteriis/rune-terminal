@@ -863,12 +863,15 @@ describe('agent api client', () => {
       })
       .mockResolvedValueOnce({
         ok: true,
+        headers: new Headers({
+          'X-Rterm-Conversation-Stream-Id': 'stream_1',
+        }),
         body: createStreamResponse([
           ': keepalive\n\n',
-          'event: message-start\ndata: {"type":"message-start","message_id":"msg_2","message":{"id":"msg_2","role":"assistant","content":"","status":"streaming","provider":"stub","model":"stub-model","created_at":"2026-04-21T10:00:01Z"}}\n\n',
-          'event: text-delta\ndata: {"type":"text-delta","message_id":"msg_2","delta":"hello "}\n\n',
-          'event: text-delta\ndata: {"type":"text-delta","message_id":"msg_2","delta":"world"}\n\n',
-          'event: message-complete\ndata: {"type":"message-complete","message_id":"msg_2","message":{"id":"msg_2","role":"assistant","content":"hello world","status":"complete","provider":"stub","model":"stub-model","created_at":"2026-04-21T10:00:01Z"}}\n\n',
+          'event: message-start\ndata: {"type":"message-start","stream_id":"stream_1","message_id":"msg_2","message":{"id":"msg_2","role":"assistant","content":"","status":"streaming","provider":"stub","model":"stub-model","created_at":"2026-04-21T10:00:01Z"}}\n\n',
+          'event: text-delta\ndata: {"type":"text-delta","stream_id":"stream_1","message_id":"msg_2","delta":"hello "}\n\n',
+          'event: text-delta\ndata: {"type":"text-delta","stream_id":"stream_1","message_id":"msg_2","delta":"world"}\n\n',
+          'event: message-complete\ndata: {"type":"message-complete","stream_id":"stream_1","message_id":"msg_2","message":{"id":"msg_2","role":"assistant","content":"hello world","status":"complete","provider":"stub","model":"stub-model","created_at":"2026-04-21T10:00:01Z"}}\n\n',
         ]),
       })
     vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
@@ -919,6 +922,60 @@ describe('agent api client', () => {
       },
     })
     expect(events).toEqual(['message-start', 'text-delta', 'text-delta', 'message-complete'])
+    expect(connection.streamId).toBe('stream_1')
+  })
+
+  it('posts explicit backend cancellation for active conversation streams', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        headers: new Headers({
+          'X-Rterm-Conversation-Stream-Id': 'stream_cancel_1',
+        }),
+        body: createStreamResponse([]),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          cancelled: true,
+          stream_id: 'stream_cancel_1',
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    const connection = await streamAgentConversationMessage(
+      {
+        prompt: 'cancel me',
+        context: {
+          action_source: 'frontend.ai.sidebar',
+          active_widget_id: 'ai-shell-panel',
+          repo_root: '/Users/avm/projects/runa-terminal',
+          widget_context_enabled: true,
+        },
+      },
+      {
+        onEvent: () => undefined,
+      },
+    )
+
+    await connection.cancel()
+
+    expect(fetchMock.mock.calls[2]?.[0]).toBe(
+      'http://127.0.0.1:8090/api/v1/agent/conversation/streams/stream_cancel_1/cancel',
+    )
+    expect(fetchMock.mock.calls[2]?.[1]).toMatchObject({
+      method: 'POST',
+    })
   })
 
   it('rejects unsupported backend stream event types', async () => {

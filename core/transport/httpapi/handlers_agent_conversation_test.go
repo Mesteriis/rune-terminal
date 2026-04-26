@@ -807,6 +807,9 @@ func TestConversationRoutesKeepJSONAndStreamPathsSeparate(t *testing.T) {
 	if contentType := resp.Header.Get("Content-Type"); !strings.HasPrefix(contentType, "text/event-stream") {
 		t.Fatalf("expected stream content type, got %q", contentType)
 	}
+	if streamID := strings.TrimSpace(resp.Header.Get("X-Rterm-Conversation-Stream-Id")); streamID == "" {
+		t.Fatal("expected stream id header")
+	}
 
 	events := readConversationStreamEvents(t, resp.Body, 3, 2*time.Second)
 	if len(events) != 3 {
@@ -841,6 +844,14 @@ func TestStreamConversationMessageEmitsStructuredEventSequence(t *testing.T) {
 	}, 4)
 	if events[0].Event != "message-start" || events[1].Event != "text-delta" || events[2].Event != "text-delta" || events[3].Event != "message-complete" {
 		t.Fatalf("unexpected stream event order: %#v", events)
+	}
+	if events[0].Data.StreamID == "" {
+		t.Fatalf("expected stream id on start event, got %#v", events[0].Data)
+	}
+	for _, event := range events[1:] {
+		if event.Data.StreamID != events[0].Data.StreamID {
+			t.Fatalf("expected consistent stream id across events, got %#v", events)
+		}
 	}
 	if events[0].Data.Message == nil || events[0].Data.Message.Status != conversation.StatusStreaming {
 		t.Fatalf("expected streaming start message, got %#v", events[0].Data.Message)
@@ -880,6 +891,76 @@ func TestStreamConversationMessageEmitsErrorEventOnFailure(t *testing.T) {
 	}
 	if events[2].Data.Error != "provider unavailable" {
 		t.Fatalf("unexpected error payload: %#v", events[2].Data)
+	}
+	if events[2].Data.Message == nil || events[2].Data.Message.Status != conversation.StatusError {
+		t.Fatalf("expected error message payload, got %#v", events[2].Data.Message)
+	}
+	if events[2].Data.Message.Content != "partial" {
+		t.Fatalf("expected partial assistant content to persist, got %q", events[2].Data.Message.Content)
+	}
+}
+
+func TestCancelConversationStreamCancelsActiveProviderRun(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandlerWithConversationProvider(t, &blockingConversationStreamProvider{
+		info: conversation.ProviderInfo{
+			Kind:      "stub",
+			BaseURL:   "http://stub",
+			Model:     "stream-model",
+			Streaming: true,
+		},
+		firstDelta: "partial",
+	}, testAuthToken)
+	server := httptest.NewServer(handler)
+	defer server.Close()
+
+	req, err := http.NewRequest(http.MethodPost, server.URL+"/api/v1/agent/conversation/messages/stream", bytes.NewBufferString(`{"prompt":"cancel this"}`))
+	if err != nil {
+		t.Fatalf("new request: %v", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+testAuthToken)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("do stream request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected stream route 200, got %d", resp.StatusCode)
+	}
+	streamID := strings.TrimSpace(resp.Header.Get("X-Rterm-Conversation-Stream-Id"))
+	if streamID == "" {
+		t.Fatal("expected stream id header")
+	}
+
+	cancelReq, err := http.NewRequest(
+		http.MethodPost,
+		server.URL+"/api/v1/agent/conversation/streams/"+streamID+"/cancel",
+		nil,
+	)
+	if err != nil {
+		t.Fatalf("new cancel request: %v", err)
+	}
+	cancelReq.Header.Set("Authorization", "Bearer "+testAuthToken)
+
+	cancelResp, err := http.DefaultClient.Do(cancelReq)
+	if err != nil {
+		t.Fatalf("cancel stream request: %v", err)
+	}
+	defer cancelResp.Body.Close()
+	if cancelResp.StatusCode != http.StatusOK {
+		t.Fatalf("expected cancel route 200, got %d body=%s", cancelResp.StatusCode, readAllString(t, cancelResp.Body))
+	}
+
+	events := readConversationStreamEvents(t, resp.Body, 3, 3*time.Second)
+	if events[0].Event != "message-start" || events[1].Event != "text-delta" || events[2].Event != "error" {
+		t.Fatalf("unexpected stream event order: %#v", events)
+	}
+	if events[2].Data.ErrorCode != "stream_cancelled" {
+		t.Fatalf("expected stream_cancelled error code, got %#v", events[2].Data)
 	}
 	if events[2].Data.Message == nil || events[2].Data.Message.Status != conversation.StatusError {
 		t.Fatalf("expected error message payload, got %#v", events[2].Data.Message)
@@ -987,6 +1068,11 @@ type httpConversationStreamProvider struct {
 	deltas []string
 	result conversation.CompletionResult
 	err    error
+}
+
+type blockingConversationStreamProvider struct {
+	info       conversation.ProviderInfo
+	firstDelta string
 }
 
 type capturingConversationProvider struct {
@@ -1104,6 +1190,31 @@ func (p *httpConversationStreamProvider) CompleteStream(
 		}
 	}
 	return p.result, p.info, p.err
+}
+
+func (p *blockingConversationStreamProvider) Info() conversation.ProviderInfo {
+	return p.info
+}
+
+func (p *blockingConversationStreamProvider) Complete(context.Context, conversation.CompletionRequest) (conversation.CompletionResult, conversation.ProviderInfo, error) {
+	return conversation.CompletionResult{}, p.info, nil
+}
+
+func (p *blockingConversationStreamProvider) CompleteStream(
+	ctx context.Context,
+	_ conversation.CompletionRequest,
+	onTextDelta func(string) error,
+) (conversation.CompletionResult, conversation.ProviderInfo, error) {
+	if strings.TrimSpace(p.firstDelta) != "" && onTextDelta != nil {
+		if err := onTextDelta(p.firstDelta); err != nil {
+			return conversation.CompletionResult{}, p.info, err
+		}
+	}
+	<-ctx.Done()
+	return conversation.CompletionResult{
+		Content: strings.TrimSpace(p.firstDelta),
+		Model:   p.info.Model,
+	}, p.info, context.Cause(ctx)
 }
 
 func (p *capturingConversationProvider) Info() conversation.ProviderInfo {

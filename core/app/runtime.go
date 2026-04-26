@@ -44,6 +44,7 @@ type Runtime struct {
 	ConversationProviderFactory ConversationProviderFactory
 	TaskStore                   *tasks.Store
 	TaskService                 *tasks.Service
+	conversationStreams         conversationStreamRegistry
 	restoredMu                  sync.RWMutex
 	restored                    map[string]terminal.State
 }
@@ -114,6 +115,7 @@ func NewRuntime(repoRoot string, stateDir string) (*Runtime, error) {
 		Plugins:                     plugins.NewRuntime(nil, 0),
 		Registry:                    toolruntime.NewRegistry(),
 		ConversationProviderFactory: defaultConversationProviderFactory,
+		conversationStreams:         newConversationStreamRegistry(),
 		restored:                    make(map[string]terminal.State),
 	}
 	terminalPreferences, err := terminal.NewPreferencesStore(context.Background(), dbConn)

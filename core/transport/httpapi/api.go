@@ -104,6 +104,7 @@ func NewHandler(runtime *app.Runtime, authToken string) http.Handler {
 	mux.HandleFunc("DELETE /api/v1/agent/providers/{providerID}", api.handleDeleteProvider)
 	mux.HandleFunc("POST /api/v1/agent/conversation/messages", api.handleSubmitConversationMessage)
 	mux.HandleFunc("POST /api/v1/agent/conversation/messages/stream", api.handleStreamConversationMessage)
+	mux.HandleFunc("POST /api/v1/agent/conversation/streams/{streamID}/cancel", api.handleCancelConversationStream)
 	mux.HandleFunc("POST /api/v1/agent/conversation/attachments/references", api.handleCreateAttachmentReference)
 	mux.HandleFunc("POST /api/v1/agent/terminal-commands/plan", api.handlePlanTerminalCommand)
 	mux.HandleFunc("POST /api/v1/agent/terminal-commands/explain", api.handleExplainTerminalCommand)

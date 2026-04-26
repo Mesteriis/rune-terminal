@@ -878,6 +878,8 @@ func (s *Service) finalizeAssistantStreamResult(
 	emit func(StreamEvent) error,
 	allowSessionUpdate bool,
 ) (SubmitResult, error) {
+	providerErr = normalizeConversationStreamError(providerErr)
+
 	s.mu.Lock()
 
 	var assistant Message
@@ -938,6 +940,7 @@ func (s *Service) finalizeAssistantStreamResult(
 			Type:      eventType,
 			MessageID: assistant.ID,
 			Message:   &finalMessage,
+			ErrorCode: conversationStreamErrorCode(providerErr),
 			Error:     errorString(providerErr),
 		}); err != nil {
 			return SubmitResult{}, err
@@ -950,6 +953,27 @@ func (s *Service) finalizeAssistantStreamResult(
 		ProviderInfo:  info,
 		ProviderError: errorString(providerErr),
 	}, nil
+}
+
+func normalizeConversationStreamError(err error) error {
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, context.Canceled) {
+		return ErrConversationStreamCancelled
+	}
+	return err
+}
+
+func conversationStreamErrorCode(err error) string {
+	switch {
+	case err == nil:
+		return ""
+	case errors.Is(err, ErrConversationStreamCancelled):
+		return "stream_cancelled"
+	default:
+		return ""
+	}
 }
 
 func (s *Service) messageIndexLocked(messageID string) int {

@@ -198,9 +198,15 @@ export type AgentConversationMessageCompleteEvent = {
 
 export type AgentConversationErrorEvent = {
   type: 'error'
+  stream_id?: string
   message_id?: string
   message?: AgentConversationMessage
+  error_code?: string
   error?: string
+}
+
+type AgentConversationStreamCancelableEvent = {
+  stream_id?: string
 }
 
 export type AgentConversationStreamEvent =
@@ -210,8 +216,10 @@ export type AgentConversationStreamEvent =
   | AgentConversationErrorEvent
 
 export type AgentConversationStreamConnection = {
+  cancel: () => Promise<void>
   close: () => void
   done: Promise<void>
+  streamId?: string
 }
 
 export type AgentToolPendingApproval = {
@@ -657,6 +665,33 @@ export async function streamAgentConversationMessage(
   const runtimeContext = await resolveRuntimeContext()
   const streamAbortController = new AbortController()
   const detachAbortSignal = attachAbortSignal(signal, streamAbortController)
+  let activeStreamID = ''
+  let cancelRequested = false
+  const connection: AgentConversationStreamConnection = {
+    cancel: async () => {
+      if (cancelRequested) {
+        return
+      }
+      cancelRequested = true
+
+      try {
+        const streamID = activeStreamID.trim()
+        if (streamID !== '') {
+          await postRuntimeJSON(
+            `/api/v1/agent/conversation/streams/${encodeURIComponent(streamID)}/cancel`,
+            {},
+          )
+        }
+      } catch {
+        // Ignore backend cancel race failures; local abort still tears down the fetch path.
+      } finally {
+        streamAbortController.abort()
+      }
+    },
+    close: () => streamAbortController.abort(),
+    done: Promise.resolve(),
+    streamId: undefined,
+  }
 
   const done = (async () => {
     try {
@@ -695,7 +730,17 @@ export async function streamAgentConversationMessage(
         throw new Error('Agent stream response did not provide a readable body')
       }
 
-      await consumeAgentConversationStream(response.body, onEvent)
+      activeStreamID = response.headers?.get?.('X-Rterm-Conversation-Stream-Id')?.trim() ?? ''
+      connection.streamId = activeStreamID || undefined
+
+      await consumeAgentConversationStream(response.body, (event) => {
+        const eventStreamID = (event as AgentConversationStreamCancelableEvent).stream_id?.trim()
+        if (eventStreamID) {
+          activeStreamID = eventStreamID
+          connection.streamId = eventStreamID
+        }
+        onEvent(event)
+      })
     } catch (error) {
       if (!isAbortError(error)) {
         onError?.(error)
@@ -706,10 +751,8 @@ export async function streamAgentConversationMessage(
     }
   })()
 
-  return {
-    close: () => streamAbortController.abort(),
-    done,
-  }
+  connection.done = done
+  return connection
 }
 
 export async function createAgentAttachmentReference(input: {

@@ -316,6 +316,9 @@ func runLocalCLICommand(ctx context.Context, command string, args []string, stdi
 	cmd.Stderr = &stderr
 
 	err = cmd.Run()
+	if cause := context.Cause(runCtx); cause != nil {
+		return stdout.String(), stderr.String(), cause
+	}
 	if runCtx.Err() != nil {
 		return stdout.String(), stderr.String(), runCtx.Err()
 	}

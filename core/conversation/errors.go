@@ -10,4 +10,5 @@ var (
 	ErrAttachmentNotFound       = errors.New("attachment not found")
 	ErrAttachmentNotFile        = errors.New("attachment is not a file")
 	ErrConversationNotFound     = errors.New("conversation not found")
+	ErrConversationStreamCancelled = errors.New("conversation stream cancelled")
 )

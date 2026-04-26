@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"strings"
@@ -8,6 +9,7 @@ import (
 	"github.com/Mesteriis/rune-terminal/core/agent"
 	"github.com/Mesteriis/rune-terminal/core/app"
 	"github.com/Mesteriis/rune-terminal/core/conversation"
+	"github.com/Mesteriis/rune-terminal/internal/ids"
 )
 
 type conversationMessagePayload struct {
@@ -268,9 +270,16 @@ func (api *API) handleStreamConversationMessage(w http.ResponseWriter, r *http.R
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
+	streamID := ids.New("stream")
+	w.Header().Set("X-Rterm-Conversation-Stream-Id", streamID)
+
+	streamCtx, cancelStream := context.WithCancelCause(r.Context())
+	api.runtime.RegisterConversationStream(streamID, cancelStream)
+	defer api.runtime.ReleaseConversationStream(streamID)
 
 	emitted := false
 	emit := func(event conversation.StreamEvent) error {
+		event.StreamID = streamID
 		if err := writeEventChecked(w, string(event.Type), event); err != nil {
 			return err
 		}
@@ -280,7 +289,7 @@ func (api *API) handleStreamConversationMessage(w http.ResponseWriter, r *http.R
 	}
 
 	if _, err := api.runtime.StreamConversationPrompt(
-		r.Context(),
+		streamCtx,
 		payload.Prompt,
 		payload.Model,
 		payload.Context,
@@ -288,13 +297,38 @@ func (api *API) handleStreamConversationMessage(w http.ResponseWriter, r *http.R
 		emit,
 	); err != nil {
 		if !emitted && r.Context().Err() == nil {
+			errorCode := ""
+			if errors.Is(err, conversation.ErrConversationStreamCancelled) || errors.Is(err, context.Canceled) {
+				errorCode = "stream_cancelled"
+			}
 			_ = emit(conversation.StreamEvent{
-				Type:  conversation.StreamEventError,
-				Error: err.Error(),
+				Type:      conversation.StreamEventError,
+				ErrorCode: errorCode,
+				Error:     err.Error(),
 			})
 		}
 		return
 	}
+}
+
+func (api *API) handleCancelConversationStream(w http.ResponseWriter, r *http.Request) {
+	streamID := strings.TrimSpace(r.PathValue("streamID"))
+	if streamID == "" {
+		writeNotFound(w, "conversation_stream_not_found", app.ErrConversationStreamNotFound.Error())
+		return
+	}
+	if err := api.runtime.CancelConversationStream(streamID); err != nil {
+		if errors.Is(err, app.ErrConversationStreamNotFound) {
+			writeNotFound(w, "conversation_stream_not_found", err.Error())
+			return
+		}
+		writeInternalError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"cancelled": true,
+		"stream_id": streamID,
+	})
 }
 
 func (api *API) handleCreateAttachmentReference(w http.ResponseWriter, r *http.Request) {
