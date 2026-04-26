@@ -108,8 +108,9 @@
   - renders the error class next to the last recorded error
   - shows first-response latency in both gateway summary and recent-activity rows
   - surfaces a context-appropriate recovery action (`Probe` vs `Prepare`) instead of a single blind retry button
-- The provider settings surface now also provides an operator history view over persisted gateway runs:
-  - local search over provider/model/request-mode/error/conversation id
+- The provider settings surface now also provides an operator history view over persisted gateway runs through the same gateway route:
+  - `GET /api/v1/agent/providers/gateway?provider_id=&status=&query=&limit=`
+  - search over provider/model/request-mode/error/conversation id is backend-filtered, not frontend-only projection
   - status filter (`all/failed/succeeded/cancelled`)
   - scope filter (`selected provider` vs `all providers`)
   - run diagnostics drill-down for the currently selected persisted run, including timing, error class, conversation id, and request mode

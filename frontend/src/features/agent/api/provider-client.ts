@@ -95,6 +95,13 @@ export type AgentProviderGatewaySnapshot = {
   recent_runs: AgentProviderGatewayRun[]
 }
 
+export type AgentProviderGatewaySnapshotQuery = {
+  providerID?: string
+  status?: 'failed' | 'succeeded' | 'cancelled'
+  query?: string
+  limit?: number
+}
+
 export type AgentProviderProbeResult = {
   provider_id: string
   provider_kind: AgentProviderKind | string
@@ -322,9 +329,25 @@ export async function fetchAgentProviderCatalog() {
   )
 }
 
-export async function fetchAgentProviderGatewaySnapshot() {
+export async function fetchAgentProviderGatewaySnapshot(query?: AgentProviderGatewaySnapshotQuery) {
+  const searchParams = new URLSearchParams()
+  if (query?.providerID?.trim()) {
+    searchParams.set('provider_id', query.providerID.trim())
+  }
+  if (query?.status?.trim()) {
+    searchParams.set('status', query.status.trim())
+  }
+  if (query?.query?.trim()) {
+    searchParams.set('query', query.query.trim())
+  }
+  if (typeof query?.limit === 'number' && Number.isFinite(query.limit) && query.limit > 0) {
+    searchParams.set('limit', String(Math.trunc(query.limit)))
+  }
+  const suffix = searchParams.size > 0 ? `?${searchParams.toString()}` : ''
   return normalizeProviderGatewaySnapshot(
-    await requestProviderRuntimeJSON<AgentProviderGatewaySnapshot>('/api/v1/agent/providers/gateway'),
+    await requestProviderRuntimeJSON<AgentProviderGatewaySnapshot>(
+      `/api/v1/agent/providers/gateway${suffix}`,
+    ),
   )
 }
 

@@ -623,6 +623,48 @@ func TestPrewarmProviderReturnsPreparedRouteState(t *testing.T) {
 	t.Fatalf("expected provider %q in gateway payload: %#v", createdProvider.ID, gatewayPayload.Providers)
 }
 
+func TestProviderGatewaySnapshotFiltersRecentRunsFromQueryParams(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandlerWithConversationProvider(t, gatewayCodexProvider{}, testAuthToken)
+
+	for _, prompt := range []string{"hello gateway", "second gateway"} {
+		submitRecorder := httptest.NewRecorder()
+		handler.ServeHTTP(submitRecorder, authedJSONRequest(t, http.MethodPost, "/api/v1/agent/conversation/messages", map[string]any{
+			"prompt": prompt,
+			"context": map[string]any{
+				"workspace_id": "ws-default",
+			},
+		}))
+		if submitRecorder.Code != http.StatusOK {
+			t.Fatalf("submit expected 200, got %d body=%s", submitRecorder.Code, submitRecorder.Body.String())
+		}
+	}
+
+	recorder := httptest.NewRecorder()
+	request := authedJSONRequest(t, http.MethodGet, "/api/v1/agent/providers/gateway?provider_id=codex-cli&status=succeeded&query=gpt-5.4&limit=1", nil)
+	handler.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+
+	var payload struct {
+		RecentRuns []struct {
+			ProviderID     string `json:"provider_id"`
+			ConversationID string `json:"conversation_id"`
+		} `json:"recent_runs"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
+	}
+	if len(payload.RecentRuns) != 1 {
+		t.Fatalf("expected 1 filtered run, got %#v", payload.RecentRuns)
+	}
+	if payload.RecentRuns[0].ProviderID != "codex-cli" {
+		t.Fatalf("unexpected filtered run payload: %#v", payload.RecentRuns[0])
+	}
+}
+
 type gatewayCodexProvider struct{}
 
 func (gatewayCodexProvider) Info() conversation.ProviderInfo {

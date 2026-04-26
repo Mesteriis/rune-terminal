@@ -199,6 +199,45 @@ describe('agent provider client', () => {
     expect(fetchMock.mock.calls[1]?.[0]).toBe('http://127.0.0.1:8090/api/v1/agent/providers/gateway')
   })
 
+  it('loads provider gateway telemetry with backend history filters', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          generated_at: '2026-04-26T10:20:00Z',
+          providers: [],
+          recent_runs: [],
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      fetchAgentProviderGatewaySnapshot({
+        providerID: 'codex-cli',
+        status: 'failed',
+        query: 'timeout',
+        limit: 5,
+      }),
+    ).resolves.toEqual({
+      generated_at: '2026-04-26T10:20:00Z',
+      providers: [],
+      recent_runs: [],
+    })
+    expect(fetchMock.mock.calls[1]?.[0]).toBe(
+      'http://127.0.0.1:8090/api/v1/agent/providers/gateway?provider_id=codex-cli&status=failed&query=timeout&limit=5',
+    )
+  })
+
   it('probes one provider through the backend contract', async () => {
     const fetchMock = vi.fn()
     fetchMock

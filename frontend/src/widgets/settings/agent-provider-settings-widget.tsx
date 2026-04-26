@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from 'react'
+import { useId, useState } from 'react'
 
 import type {
   AgentProviderGatewayProvider,
@@ -208,25 +208,6 @@ function routeStatusForProvider(
   return gateway.find((provider) => provider.provider_id === providerID) ?? null
 }
 
-function runMatchesHistoryQuery(run: AgentProviderGatewayRun, query: string) {
-  const normalizedQuery = query.trim().toLowerCase()
-  if (!normalizedQuery) {
-    return true
-  }
-  return [
-    run.provider_display_name,
-    run.provider_id,
-    run.model,
-    run.error_message,
-    run.error_code,
-    run.conversation_id,
-    run.request_mode,
-    run.status,
-  ]
-    .filter(Boolean)
-    .some((value) => value?.toLowerCase().includes(normalizedQuery))
-}
-
 export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: boolean }) {
   const {
     availableModels,
@@ -235,6 +216,12 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
     errorMessage,
     gateway,
     gatewayErrorMessage,
+    historyErrorMessage,
+    historyQuery,
+    historyRuns,
+    historyScope,
+    historyStatus,
+    isHistoryLoading,
     isLoading,
     isLoadingModels,
     isPreparing,
@@ -245,6 +232,9 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
     selectedProvider,
     selectedProviderID,
     setDraft,
+    setHistoryQuery,
+    setHistoryScope,
+    setHistoryStatus,
     statusMessage,
     activateSelectedProvider,
     prewarmSelectedProvider,
@@ -266,26 +256,9 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
   const editorStyle = embedded ? providerSettingsEmbeddedEditorStyle : providerSettingsEditorStyle
   const selectedGatewayProvider = routeStatusForProvider(selectedProviderID, gateway?.providers ?? null)
   const selectedGatewayRecoveryAction = getProviderGatewayRecoveryAction(selectedGatewayProvider)
-  const recentGatewayRuns = gateway?.recent_runs ?? []
-  const [historyQuery, setHistoryQuery] = useState('')
-  const [historyStatus, setHistoryStatus] = useState<'all' | 'failed' | 'succeeded' | 'cancelled'>('all')
-  const [historyScope, setHistoryScope] = useState<'selected' | 'all'>('selected')
-  const filteredRecentGatewayRuns = useMemo(() => {
-    return recentGatewayRuns.filter((run) => {
-      if (historyScope === 'selected' && selectedProviderID && run.provider_id !== selectedProviderID) {
-        return false
-      }
-      if (historyStatus !== 'all' && run.status !== historyStatus) {
-        return false
-      }
-      return runMatchesHistoryQuery(run, historyQuery)
-    })
-  }, [historyQuery, historyScope, historyStatus, recentGatewayRuns, selectedProviderID])
   const [selectedHistoryRunID, setSelectedHistoryRunID] = useState('')
   const selectedHistoryRun =
-    filteredRecentGatewayRuns.find((run) => run.id === selectedHistoryRunID) ??
-    filteredRecentGatewayRuns[0] ??
-    null
+    historyRuns.find((run) => run.id === selectedHistoryRunID) ?? historyRuns[0] ?? null
 
   return (
     <RunaDomScopeProvider component="agent-provider-settings-widget">
@@ -738,7 +711,7 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                     <ClearBox style={providerSettingsSectionHeaderStyle}>
                       <Text style={{ fontWeight: 600 }}>Recent provider activity</Text>
                       <Text style={providerSettingsStatusMessageStyle}>
-                        Latest backend-recorded chat runs across the current provider gateway.
+                        Filtered persisted gateway history over the same backend-owned provider route.
                       </Text>
                     </ClearBox>
                     <ClearBox style={providerSettingsGridStyle}>
@@ -780,9 +753,16 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                         </Select>
                       </ClearBox>
                     </ClearBox>
+                    {historyErrorMessage ? (
+                      <Text style={providerSettingsErrorMessageStyle}>
+                        Provider run history is unavailable: {historyErrorMessage}
+                      </Text>
+                    ) : null}
                     <ClearBox style={{ display: 'grid', gap: 'var(--gap-xs)' }}>
-                      {filteredRecentGatewayRuns.length ? (
-                        filteredRecentGatewayRuns.map((run: AgentProviderGatewayRun) => (
+                      {isHistoryLoading ? (
+                        <Text style={providerSettingsStatusMessageStyle}>Loading provider activity…</Text>
+                      ) : historyRuns.length ? (
+                        historyRuns.map((run: AgentProviderGatewayRun) => (
                           <ClearBox
                             aria-pressed={selectedHistoryRun?.id === run.id}
                             key={run.id}
@@ -820,7 +800,7 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                         ))
                       ) : (
                         <Text style={providerSettingsStatusMessageStyle}>
-                          No provider activity matches the current filters.
+                          No provider activity matches the current backend filters.
                         </Text>
                       )}
                     </ClearBox>

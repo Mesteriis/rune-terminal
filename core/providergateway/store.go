@@ -81,6 +81,13 @@ type Store struct {
 	db *sql.DB
 }
 
+type RecentRunsFilter struct {
+	ProviderID string
+	Status     string
+	Query      string
+	Limit      int
+}
+
 func NewStore(ctx context.Context, db *sql.DB) (*Store, error) {
 	if db == nil {
 		return nil, fmt.Errorf("provider gateway db is required")
@@ -130,8 +137,17 @@ func (s *Store) RecordRun(ctx context.Context, run RunRecord) (RunRecord, error)
 }
 
 func (s *Store) ListRecentRuns(ctx context.Context, limit int) ([]RunRecord, error) {
-	normalizedLimit := normalizeRecentRunsLimit(limit)
-	rows, err := s.db.QueryContext(ctx, `
+	return s.ListRecentRunsFiltered(ctx, RecentRunsFilter{Limit: limit})
+}
+
+func (s *Store) ListRecentRunsFiltered(ctx context.Context, filter RecentRunsFilter) ([]RunRecord, error) {
+	normalizedLimit := normalizeRecentRunsLimit(filter.Limit)
+	normalizedStatus := normalizeRunStatusFilter(filter.Status)
+	normalizedProviderID := strings.TrimSpace(filter.ProviderID)
+	normalizedQuery := strings.ToLower(strings.TrimSpace(filter.Query))
+
+	query := strings.Builder{}
+	query.WriteString(`
 		SELECT
 			id,
 			provider_id,
@@ -148,9 +164,45 @@ func (s *Store) ListRecentRuns(ctx context.Context, limit int) ([]RunRecord, err
 			started_at,
 			completed_at
 		FROM provider_gateway_runs
+	`)
+
+	whereClauses := make([]string, 0, 3)
+	args := make([]any, 0, 4)
+	if normalizedProviderID != "" {
+		whereClauses = append(whereClauses, "provider_id = ?")
+		args = append(args, normalizedProviderID)
+	}
+	if normalizedStatus != "" {
+		whereClauses = append(whereClauses, "status = ?")
+		args = append(args, normalizedStatus)
+	}
+	if normalizedQuery != "" {
+		whereClauses = append(whereClauses, `(
+			LOWER(provider_id) LIKE ?
+			OR LOWER(provider_display_name) LIKE ?
+			OR LOWER(model) LIKE ?
+			OR LOWER(conversation_id) LIKE ?
+			OR LOWER(status) LIKE ?
+			OR LOWER(error_code) LIKE ?
+			OR LOWER(error_message) LIKE ?
+			OR LOWER(request_mode) LIKE ?
+		)`)
+		searchTerm := "%" + normalizedQuery + "%"
+		for range 8 {
+			args = append(args, searchTerm)
+		}
+	}
+	if len(whereClauses) > 0 {
+		query.WriteString(" WHERE ")
+		query.WriteString(strings.Join(whereClauses, " AND "))
+	}
+	query.WriteString(`
 		ORDER BY started_at DESC, id DESC
 		LIMIT ?
-	`, normalizedLimit)
+	`)
+	args = append(args, normalizedLimit)
+
+	rows, err := s.db.QueryContext(ctx, query.String(), args...)
 	if err != nil {
 		return nil, fmt.Errorf("list provider gateway runs: %w", err)
 	}
@@ -457,6 +509,19 @@ func normalizeRequestMode(mode string) string {
 		return RunModeSync
 	default:
 		return RunModeStream
+	}
+}
+
+func normalizeRunStatusFilter(status string) string {
+	switch strings.TrimSpace(strings.ToLower(status)) {
+	case RunStatusSucceeded:
+		return RunStatusSucceeded
+	case RunStatusFailed:
+		return RunStatusFailed
+	case RunStatusCancelled:
+		return RunStatusCancelled
+	default:
+		return ""
 	}
 }
 

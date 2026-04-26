@@ -3,6 +3,7 @@ package httpapi
 import (
 	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/Mesteriis/rune-terminal/core/agent"
 	"github.com/Mesteriis/rune-terminal/core/app"
@@ -89,7 +90,22 @@ func (api *API) handleProviderCatalog(w http.ResponseWriter, r *http.Request) {
 }
 
 func (api *API) handleProviderGatewaySnapshot(w http.ResponseWriter, r *http.Request) {
-	snapshot, err := api.runtime.ProviderGatewaySnapshot(r.Context())
+	limit := 0
+	if rawLimit := r.URL.Query().Get("limit"); rawLimit != "" {
+		parsedLimit, err := strconv.Atoi(rawLimit)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid_provider_gateway_limit", "limit must be an integer")
+			return
+		}
+		limit = parsedLimit
+	}
+
+	snapshot, err := api.runtime.ProviderGatewaySnapshot(r.Context(), app.ProviderGatewaySnapshotOptions{
+		ProviderID: r.URL.Query().Get("provider_id"),
+		Status:     r.URL.Query().Get("status"),
+		Query:      r.URL.Query().Get("query"),
+		Limit:      limit,
+	})
 	if err != nil {
 		writeInternalError(w, err)
 		return

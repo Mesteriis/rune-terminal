@@ -3,6 +3,10 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { AgentProviderSettingsWidget } from '@/widgets/settings/agent-provider-settings-widget'
 
+const setHistoryQuery = vi.fn()
+const setHistoryStatus = vi.fn()
+const setHistoryScope = vi.fn()
+
 vi.mock('@/features/agent/model/use-agent-provider-settings', () => ({
   useAgentProviderSettings: () => ({
     availableModels: ['gpt-5.4'],
@@ -62,6 +66,11 @@ vi.mock('@/features/agent/model/use-agent-provider-settings', () => ({
           model: 'gpt-5.4',
           route_checked_at: '2026-04-26T10:21:00Z',
           route_latency_ms: 48,
+          route_prepared: false,
+          route_prepare_state: 'stale',
+          route_prepare_message: 'Route should be prepared again.',
+          route_prepared_at: '2026-04-26T10:20:30Z',
+          route_prepare_latency_ms: 0,
           total_runs: 3,
           succeeded_runs: 2,
           failed_runs: 1,
@@ -77,42 +86,48 @@ vi.mock('@/features/agent/model/use-agent-provider-settings', () => ({
           last_completed_at: '2026-04-26T10:19:00.380Z',
         },
       ],
-      recent_runs: [
-        {
-          id: 'provider-run-1',
-          provider_id: 'codex-cli',
-          provider_kind: 'codex',
-          provider_display_name: 'Codex CLI',
-          request_mode: 'stream',
-          model: 'gpt-5.4',
-          conversation_id: 'conv-1',
-          status: 'failed',
-          error_code: 'timeout',
-          error_message: 'upstream timeout',
-          duration_ms: 380,
-          first_response_latency_ms: 84,
-          started_at: '2026-04-26T10:19:00Z',
-          completed_at: '2026-04-26T10:19:00.380Z',
-        },
-        {
-          id: 'provider-run-2',
-          provider_id: 'claude-cli',
-          provider_kind: 'claude',
-          provider_display_name: 'Claude Code CLI',
-          request_mode: 'sync',
-          model: 'sonnet',
-          conversation_id: 'conv-2',
-          status: 'succeeded',
-          error_code: '',
-          error_message: '',
-          duration_ms: 240,
-          first_response_latency_ms: 56,
-          started_at: '2026-04-26T10:18:00Z',
-          completed_at: '2026-04-26T10:18:00.240Z',
-        },
-      ],
+      recent_runs: [],
     },
     gatewayErrorMessage: 'gateway route unavailable',
+    historyErrorMessage: null,
+    historyQuery: 'timeout',
+    historyRuns: [
+      {
+        id: 'provider-run-1',
+        provider_id: 'codex-cli',
+        provider_kind: 'codex',
+        provider_display_name: 'Codex CLI',
+        request_mode: 'stream',
+        model: 'gpt-5.4',
+        conversation_id: 'conv-1',
+        status: 'failed',
+        error_code: 'timeout',
+        error_message: 'upstream timeout',
+        duration_ms: 380,
+        first_response_latency_ms: 84,
+        started_at: '2026-04-26T10:19:00Z',
+        completed_at: '2026-04-26T10:19:00.380Z',
+      },
+      {
+        id: 'provider-run-2',
+        provider_id: 'claude-cli',
+        provider_kind: 'claude',
+        provider_display_name: 'Claude Code CLI',
+        request_mode: 'sync',
+        model: 'sonnet',
+        conversation_id: 'conv-2',
+        status: 'succeeded',
+        error_code: '',
+        error_message: '',
+        duration_ms: 240,
+        first_response_latency_ms: 56,
+        started_at: '2026-04-26T10:18:00Z',
+        completed_at: '2026-04-26T10:18:00.240Z',
+      },
+    ],
+    historyScope: 'selected',
+    historyStatus: 'failed',
+    isHistoryLoading: false,
     isLoading: false,
     isLoadingModels: false,
     isPreparing: false,
@@ -136,21 +151,26 @@ vi.mock('@/features/agent/model/use-agent-provider-settings', () => ({
     },
     selectedProviderID: 'codex-cli',
     setDraft: vi.fn(),
+    setHistoryQuery,
+    setHistoryScope,
+    setHistoryStatus,
     statusMessage: null,
     activateSelectedProvider: vi.fn(),
     prewarmSelectedProvider: vi.fn(),
     probeSelectedProvider: vi.fn(),
     refreshAvailableModels: vi.fn(),
+    reloadCatalog: vi.fn(),
     removeSelectedProvider: vi.fn(),
     resetDraft: vi.fn(),
     saveDraft: vi.fn(),
     selectProvider: vi.fn(),
     startCreateProvider: vi.fn(),
+    updateProviderChatModels: vi.fn(),
   }),
 }))
 
 describe('AgentProviderSettingsWidget', () => {
-  it('renders gateway telemetry and recent provider activity', () => {
+  it('renders gateway telemetry and backend-filtered provider activity controls', () => {
     render(<AgentProviderSettingsWidget embedded />)
 
     expect(screen.getByText('Gateway signals')).toBeVisible()
@@ -171,8 +191,14 @@ describe('AgentProviderSettingsWidget', () => {
     fireEvent.change(screen.getByLabelText('History search'), {
       target: { value: 'claude' },
     })
+    fireEvent.change(screen.getByLabelText('Status filter'), {
+      target: { value: 'succeeded' },
+    })
 
-    expect(screen.getByText(/Claude Code CLI · Healthy/)).toBeVisible()
+    expect(setHistoryScope).toHaveBeenCalledWith('all')
+    expect(setHistoryQuery).toHaveBeenCalledWith('claude')
+    expect(setHistoryStatus).toHaveBeenCalledWith('succeeded')
+
     fireEvent.click(screen.getByText(/Claude Code CLI · Healthy/))
     expect(screen.getByText('Claude Code CLI')).toBeVisible()
     expect(screen.getByText('56ms')).toBeVisible()

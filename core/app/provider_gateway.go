@@ -67,13 +67,23 @@ type ProviderGatewaySnapshot struct {
 	RecentRuns  []providergateway.RunRecord   `json:"recent_runs"`
 }
 
+type ProviderGatewaySnapshotOptions struct {
+	ProviderID string
+	Status     string
+	Query      string
+	Limit      int
+}
+
 type resolvedConversationProvider struct {
 	Provider conversation.Provider
 	Record   *agent.ProviderRecord
 	Model    string
 }
 
-func (r *Runtime) ProviderGatewaySnapshot(ctx context.Context) (ProviderGatewaySnapshot, error) {
+func (r *Runtime) ProviderGatewaySnapshot(
+	ctx context.Context,
+	options ProviderGatewaySnapshotOptions,
+) (ProviderGatewaySnapshot, error) {
 	catalog := r.ProviderCatalog()
 	if r.ProviderGateway == nil {
 		return ProviderGatewaySnapshot{
@@ -83,7 +93,17 @@ func (r *Runtime) ProviderGatewaySnapshot(ctx context.Context) (ProviderGatewayS
 		}, nil
 	}
 
-	recentRuns, err := r.ProviderGateway.ListRecentRuns(ctx, providerGatewayRecentRunsLimit)
+	recentRuns, err := r.ProviderGateway.ListRecentRunsFiltered(ctx, providergateway.RecentRunsFilter{
+		ProviderID: strings.TrimSpace(options.ProviderID),
+		Status:     strings.TrimSpace(options.Status),
+		Query:      strings.TrimSpace(options.Query),
+		Limit: func() int {
+			if options.Limit > 0 {
+				return options.Limit
+			}
+			return providerGatewayRecentRunsLimit
+		}(),
+	})
 	if err != nil {
 		return ProviderGatewaySnapshot{}, err
 	}

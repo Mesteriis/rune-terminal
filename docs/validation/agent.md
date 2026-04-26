@@ -18,6 +18,7 @@
   - explicit provider probe contract over the same provider route, including CLI readiness and OpenAI-compatible source reachability/model availability checks, with probe results written back into that same gateway snapshot
   - explicit provider prewarm contract over the same provider route, with persisted route-prepare state and first-response latency telemetry from the real conversation runtime path
   - AI shell header consumption of that same provider gateway snapshot for the active route, including explicit route-prepare actions without reintroducing a second frontend-owned provider-runtime truth
+  - backend-filtered provider gateway history queries (`provider_id` / `status` / `query` / `limit`) for the settings-side operator diagnostics view over the same persisted gateway run store
   - active conversation provider resolution
   - frontend AI/provider settings surfaces
   - runtime-backed AI composer submit-shortcut preference (`Enter` vs `Ctrl/Cmd+Enter`) through `GET/PUT /api/v1/settings/agent`

@@ -8,6 +8,7 @@ import {
   fetchAgentProviderGatewaySnapshot,
   prewarmAgentProvider,
   probeAgentProvider,
+  type AgentProviderGatewayRun,
   setActiveAgentProvider,
   updateAgentProvider,
   type AgentProviderCatalog,
@@ -106,10 +107,17 @@ function buildChatModelsUpdatePayload(provider: AgentProviderView, chatModels: s
   }
 }
 
+type ProviderHistoryStatusFilter = 'all' | 'failed' | 'succeeded' | 'cancelled'
+type ProviderHistoryScopeFilter = 'selected' | 'all'
+
+const providerGatewayHistoryLimit = 20
+
 export function useAgentProviderSettings() {
   const [catalog, setCatalog] = useState<AgentProviderCatalog | null>(null)
   const [gateway, setGateway] = useState<AgentProviderGatewaySnapshot | null>(null)
   const [gatewayErrorMessage, setGatewayErrorMessage] = useState<string | null>(null)
+  const [historyRuns, setHistoryRuns] = useState<AgentProviderGatewayRun[]>([])
+  const [historyErrorMessage, setHistoryErrorMessage] = useState<string | null>(null)
   const [draft, setDraft] = useState<AgentProviderDraft | null>(null)
   const [selectedProviderID, setSelectedProviderID] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -122,6 +130,10 @@ export function useAgentProviderSettings() {
   const [probeErrorMessage, setProbeErrorMessage] = useState<string | null>(null)
   const [isProbing, setIsProbing] = useState(false)
   const [isPreparing, setIsPreparing] = useState(false)
+  const [historyQuery, setHistoryQuery] = useState('')
+  const [historyStatus, setHistoryStatus] = useState<ProviderHistoryStatusFilter>('all')
+  const [historyScope, setHistoryScope] = useState<ProviderHistoryScopeFilter>('selected')
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false)
 
   const reloadGateway = useCallback(async () => {
     try {
@@ -133,6 +145,40 @@ export function useAgentProviderSettings() {
       setGatewayErrorMessage(getErrorMessage(error))
     }
   }, [])
+
+  const reloadHistory = useCallback(async () => {
+    if (!catalog) {
+      setHistoryRuns([])
+      setHistoryErrorMessage(null)
+      setIsHistoryLoading(false)
+      return
+    }
+
+    if (historyScope === 'selected' && !selectedProviderID) {
+      setHistoryRuns([])
+      setHistoryErrorMessage(null)
+      setIsHistoryLoading(false)
+      return
+    }
+
+    setIsHistoryLoading(true)
+
+    try {
+      const nextHistorySnapshot = await fetchAgentProviderGatewaySnapshot({
+        providerID: historyScope === 'selected' ? (selectedProviderID ?? undefined) : undefined,
+        status: historyStatus === 'all' ? undefined : historyStatus,
+        query: historyQuery,
+        limit: providerGatewayHistoryLimit,
+      })
+      setHistoryRuns(nextHistorySnapshot.recent_runs)
+      setHistoryErrorMessage(null)
+    } catch (error: unknown) {
+      setHistoryRuns([])
+      setHistoryErrorMessage(getErrorMessage(error))
+    } finally {
+      setIsHistoryLoading(false)
+    }
+  }, [catalog, historyQuery, historyScope, historyStatus, selectedProviderID])
 
   const selectProviderFromCatalog = useCallback(
     (nextCatalog: AgentProviderCatalog, providerID?: string | null) => {
@@ -167,6 +213,17 @@ export function useAgentProviderSettings() {
   useEffect(() => {
     void reloadCatalog()
   }, [reloadCatalog])
+
+  useEffect(() => {
+    const timeoutID = window.setTimeout(
+      () => {
+        void reloadHistory()
+      },
+      historyQuery.trim() ? 200 : 0,
+    )
+
+    return () => window.clearTimeout(timeoutID)
+  }, [historyQuery, reloadHistory])
 
   const selectedProvider = useMemo(() => {
     if (!catalog || !selectedProviderID) {
@@ -395,6 +452,7 @@ export function useAgentProviderSettings() {
         const response = await updateAgentProvider(draft.id ?? '', buildUpdateProviderPayload(draft))
         selectProviderFromCatalog(response.providers, response.provider.id)
         await reloadGateway()
+        await reloadHistory()
         setStatusMessage(`Saved ${response.provider.display_name || response.provider.kind} provider.`)
       }
     } catch (error: unknown) {
@@ -402,7 +460,7 @@ export function useAgentProviderSettings() {
     } finally {
       setIsSaving(false)
     }
-  }, [draft, reloadGateway, selectProviderFromCatalog])
+  }, [draft, reloadGateway, reloadHistory, selectProviderFromCatalog])
 
   const activateSelectedProvider = useCallback(async () => {
     if (!selectedProviderID) {
@@ -417,6 +475,7 @@ export function useAgentProviderSettings() {
       const nextCatalog = await setActiveAgentProvider(selectedProviderID)
       selectProviderFromCatalog(nextCatalog, selectedProviderID)
       await reloadGateway()
+      await reloadHistory()
       const provider = nextCatalog.providers.find((candidate) => candidate.id === selectedProviderID)
       setStatusMessage(`Activated ${provider?.display_name || provider?.kind || 'provider'}.`)
     } catch (error: unknown) {
@@ -424,7 +483,7 @@ export function useAgentProviderSettings() {
     } finally {
       setIsSaving(false)
     }
-  }, [reloadGateway, selectProviderFromCatalog, selectedProviderID])
+  }, [reloadGateway, reloadHistory, selectProviderFromCatalog, selectedProviderID])
 
   const removeSelectedProvider = useCallback(async () => {
     if (!draft || draft.mode !== 'existing' || !draft.id) {
@@ -462,6 +521,7 @@ export function useAgentProviderSettings() {
         )
         selectProviderFromCatalog(response.providers, response.provider.id)
         await reloadGateway()
+        await reloadHistory()
         setStatusMessage(
           `Updated chat model availability for ${response.provider.display_name || response.provider.kind}.`,
         )
@@ -471,7 +531,7 @@ export function useAgentProviderSettings() {
         setIsSaving(false)
       }
     },
-    [reloadGateway, selectProviderFromCatalog],
+    [reloadGateway, reloadHistory, selectProviderFromCatalog],
   )
 
   const probeSelectedProvider = useCallback(async () => {
@@ -485,13 +545,14 @@ export function useAgentProviderSettings() {
     try {
       const result = await probeAgentProvider(selectedProviderID)
       await reloadGateway()
+      await reloadHistory()
       setStatusMessage(`Probed ${result.display_name || result.provider_kind} provider.`)
     } catch (error: unknown) {
       setProbeErrorMessage(getErrorMessage(error))
     } finally {
       setIsProbing(false)
     }
-  }, [reloadGateway, selectedProviderID])
+  }, [reloadGateway, reloadHistory, selectedProviderID])
 
   const prewarmSelectedProvider = useCallback(async () => {
     if (!selectedProviderID) {
@@ -504,13 +565,14 @@ export function useAgentProviderSettings() {
     try {
       const result = await prewarmAgentProvider(selectedProviderID)
       await reloadGateway()
+      await reloadHistory()
       setStatusMessage(`Prepared ${result.display_name || result.provider_kind} route.`)
     } catch (error: unknown) {
       setProbeErrorMessage(getErrorMessage(error))
     } finally {
       setIsPreparing(false)
     }
-  }, [reloadGateway, selectedProviderID])
+  }, [reloadGateway, reloadHistory, selectedProviderID])
 
   return {
     availableModels,
@@ -519,6 +581,12 @@ export function useAgentProviderSettings() {
     errorMessage,
     gateway,
     gatewayErrorMessage,
+    historyErrorMessage,
+    historyQuery,
+    historyRuns,
+    historyScope,
+    historyStatus,
+    isHistoryLoading,
     isLoading,
     isLoadingModels,
     isPreparing,
@@ -529,6 +597,9 @@ export function useAgentProviderSettings() {
     selectedProvider,
     selectedProviderID,
     setDraft,
+    setHistoryQuery,
+    setHistoryScope,
+    setHistoryStatus,
     statusMessage,
     activateSelectedProvider,
     refreshAvailableModels,

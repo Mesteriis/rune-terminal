@@ -160,6 +160,73 @@ func TestStoreListsProviderStats(t *testing.T) {
 	}
 }
 
+func TestStoreListsRecentRunsWithFilters(t *testing.T) {
+	t.Parallel()
+
+	dbConn, err := coredb.Open(context.Background(), filepath.Join(t.TempDir(), "runtime.db"))
+	if err != nil {
+		t.Fatalf("coredb.Open error: %v", err)
+	}
+
+	store, err := NewStore(context.Background(), dbConn)
+	if err != nil {
+		t.Fatalf("NewStore error: %v", err)
+	}
+
+	baseTime := time.Date(2026, 4, 26, 10, 0, 0, 0, time.UTC)
+	records := []RunRecord{
+		{
+			ProviderID:             "codex-cli",
+			ProviderKind:           "codex",
+			ProviderDisplayName:    "Codex CLI",
+			RequestMode:            RunModeStream,
+			Model:                  "gpt-5.4",
+			ConversationID:         "conv-1",
+			Status:                 RunStatusFailed,
+			ErrorCode:              "timeout",
+			ErrorMessage:           "upstream timeout",
+			DurationMS:             300,
+			FirstResponseLatencyMS: 80,
+			StartedAt:              baseTime,
+			CompletedAt:            baseTime.Add(300 * time.Millisecond),
+		},
+		{
+			ProviderID:             "claude-cli",
+			ProviderKind:           "claude",
+			ProviderDisplayName:    "Claude Code CLI",
+			RequestMode:            RunModeSync,
+			Model:                  "sonnet",
+			ConversationID:         "conv-2",
+			Status:                 RunStatusSucceeded,
+			DurationMS:             200,
+			FirstResponseLatencyMS: 60,
+			StartedAt:              baseTime.Add(1 * time.Minute),
+			CompletedAt:            baseTime.Add(1*time.Minute + 200*time.Millisecond),
+		},
+	}
+	for _, record := range records {
+		if _, err := store.RecordRun(context.Background(), record); err != nil {
+			t.Fatalf("RecordRun error: %v", err)
+		}
+	}
+
+	runs, err := store.ListRecentRunsFiltered(context.Background(), RecentRunsFilter{
+		ProviderID: "codex-cli",
+		Status:     "failed",
+		Query:      "timeout",
+		Limit:      10,
+	})
+	if err != nil {
+		t.Fatalf("ListRecentRunsFiltered error: %v", err)
+	}
+	if len(runs) != 1 {
+		t.Fatalf("expected 1 filtered run, got %#v", runs)
+	}
+	if runs[0].ProviderID != "codex-cli" || runs[0].ErrorCode != "timeout" {
+		t.Fatalf("unexpected filtered run: %#v", runs[0])
+	}
+}
+
 func TestStoreRecordsAndListsLatestProbes(t *testing.T) {
 	t.Parallel()
 
