@@ -8,6 +8,7 @@ import { ClearBox } from '@/shared/ui/components'
 import { Button, Checkbox, ScrollArea, Text } from '@/shared/ui/primitives'
 import { AgentProviderSettingsWidget } from '@/widgets/settings/agent-provider-settings-widget'
 import { AiComposerSettingsSection } from '@/widgets/settings/ai-composer-settings-section'
+import { RemoteProfilesSettingsSection } from '@/widgets/settings/remote-profiles-settings-section'
 import { RuntimeSettingsSection } from '@/widgets/settings/runtime-settings-section'
 import { TerminalSettingsSection } from '@/widgets/settings/terminal-settings-section'
 import {
@@ -39,6 +40,7 @@ type SettingsSectionID =
   | 'ai-models'
   | 'ai-composer'
   | 'ai-limits'
+  | 'remote'
   | 'terminal'
   | 'commander'
 type SettingsSectionMeta = {
@@ -101,6 +103,14 @@ const settingsSectionMeta: Record<SettingsSectionID, SettingsSectionMeta> = {
     shellTitle: 'Terminal',
     shellDescription:
       'Отдельная точка входа для terminal runtime и будущих терминальных preferences, без смешения с общими или AI настройками.',
+    groupLabel: 'Runtime',
+  },
+  remote: {
+    navTitle: 'Remote',
+    navDescription: 'SSH profiles and config import.',
+    shellTitle: 'Remote',
+    shellDescription:
+      'Backend-owned SSH profiles, narrow ~/.ssh/config import, and explicit limits around advanced remote topology.',
     groupLabel: 'Runtime',
   },
   commander: {
@@ -443,6 +453,10 @@ function TerminalSection() {
   return <TerminalSettingsSection />
 }
 
+function RemoteSection() {
+  return <RemoteProfilesSettingsSection />
+}
+
 function CommanderSection() {
   return (
     <SectionCard
@@ -476,6 +490,8 @@ function renderSection(sectionID: SettingsSectionID) {
       return <AiLimitsSection />
     case 'terminal':
       return <TerminalSection />
+    case 'remote':
+      return <RemoteSection />
     case 'commander':
       return <CommanderSection />
     default:
@@ -604,6 +620,14 @@ export function SettingsShellWidget() {
             >
               <Text style={{ fontWeight: 600 }}>{settingsSectionMeta.terminal.navTitle}</Text>
               <Text style={settingsShellMutedTextStyle}>{settingsSectionMeta.terminal.navDescription}</Text>
+            </Button>
+            <Button
+              aria-pressed={activeSectionID === 'remote'}
+              onClick={() => setActiveSectionID('remote')}
+              style={navButtonStateStyle(activeSectionID === 'remote')}
+            >
+              <Text style={{ fontWeight: 600 }}>{settingsSectionMeta.remote.navTitle}</Text>
+              <Text style={settingsShellMutedTextStyle}>{settingsSectionMeta.remote.navDescription}</Text>
             </Button>
           </ClearBox>
 

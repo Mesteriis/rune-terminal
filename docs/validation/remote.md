@@ -7,6 +7,7 @@
 - Scope:
   - saved profile create/list/select/check/open-shell flows
   - narrow one-way SSH config import for direct host profile fields
+  - settings-shell remote profile list/import entrypoint
   - remote session/tab binding and local-vs-remote guardrails
   - missing-profile restore error semantics
   - audit target-session truth for remote runs
@@ -18,6 +19,9 @@
   - `go test ./core/transport/httpapi -run 'TestRemoteProfilesEndpointsListSaveAndDelete|TestRemoteProfilesCreateSessionReturnsNotFoundForMissingProfile|TestRemoteProfilesDeleteReturnsNotFoundForMissingProfile'`
   - `go test ./core/transport/httpapi -run TestWriteTerminalErrorMapsConnectionNotFoundToNotFound`
   - `./scripts/go.sh test ./core/connections ./core/transport/httpapi -run 'TestImportSSHConfig|TestRemoteProfilesImportSSHConfig|TestRemoteProfilesEndpointsListSaveAndDelete' -count=1`
+  - `npm --prefix frontend run test -- src/features/remote/api/client.test.ts src/widgets/settings/remote-profiles-settings-section.test.tsx`
+  - `npm --prefix frontend run lint:active`
+  - `npm --prefix frontend run build`
 - External reachability/auth probe example:
   - `ssh -o BatchMode=yes -o ConnectTimeout=5 -p 22 192.168.1.2 exit`
 - Runtime/API checks in validation runs:
