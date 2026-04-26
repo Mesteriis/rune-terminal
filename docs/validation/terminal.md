@@ -62,6 +62,11 @@
       and the widget now renders both a compact session rail and a richer filterable session browser once more than one session exists
     - grouped-session switching rehydrates the widget snapshot and reconnects the SSE stream against the newly active backend session instead of leaving the UI attached to stale output
     - grouped-session browser actions can now focus or close individual sibling sessions without collapsing the whole terminal widget/panel
+    - the shell utility panel now also exposes a backend-owned terminal session navigator over `GET /api/v1/terminal/sessions`:
+      it lists visible terminal sessions across the active shell state,
+      can filter by workspace/host/cwd/status,
+      can focus a chosen grouped session back into its widget,
+      and can surface the same recovery affordance labels (`Restart shell`, `Reconnect shell`, `Resume session`) from the shell-wide entry point instead of only inside the terminal widget
   - the shell settings modal now exposes a backend-owned `Terminal` settings slice instead of a placeholder:
     - current terminal font size is visible in `Settings -> Terminal`
     - current terminal line height is visible in `Settings -> Terminal`
@@ -100,6 +105,8 @@
   - explicitly switches the active runtime session inside the same widget group
 - `DELETE /api/v1/terminal/{widgetID}/sessions/{sessionID}`
   - explicitly closes one grouped runtime session while keeping the terminal widget alive as long as another grouped session remains
+- `GET /api/v1/terminal/sessions`
+  - returns the shell-wide terminal session catalog, including grouped sessions, workspace/tab metadata, and active/focus flags
 - `GET /api/v1/terminal/{widgetID}/diagnostics`
   - used by the visible `Explain & fix` action to fetch backend-owned issue/output summaries for AI handoff
 - `GET /api/v1/terminal/{widgetID}/stream`
@@ -134,6 +141,7 @@
 - `frontend/src/widgets/terminal/terminal-widget.tsx`
 - `frontend/src/widgets/terminal/terminal-widget.styles.ts`
 - `frontend/src/widgets/terminal/terminal-widget.test.tsx`
+- `frontend/src/widgets/terminal/terminal-session-navigator-widget.tsx`
 - `frontend/src/widgets/settings/terminal-settings-section.tsx`
 - `frontend/src/widgets/settings/terminal-settings-section.test.tsx`
 - `frontend/src/widgets/terminal/terminal-dockview-tab-widget.tsx`
@@ -143,6 +151,7 @@
 - `frontend/src/widgets/terminal/terminal-dockview-actions.styles.ts`
 - `frontend/src/widgets/panel/dockview-panel-widget.tsx`
 - `frontend/src/widgets/shell/right-action-rail-widget.tsx`
+- `frontend/src/widgets/shell/right-action-rail-widget.test.tsx`
 - `frontend/src/shared/ui/components/terminal-surface.tsx`
 - `frontend/src/shared/ui/components/terminal-toolbar.tsx`
 - `frontend/src/shared/ui/components/terminal-status-header.tsx`
@@ -151,6 +160,7 @@
 - `core/db/migrations/0009_terminal_line_height.sql`
 - `core/terminal/preferences.go`
 - `core/terminal/preferences_test.go`
+- `core/app/terminal_session_catalog.go`
 - `core/app/terminal_session_actions.go`
 - `core/app/terminal_settings.go`
 - `core/transport/httpapi/handlers_terminal_settings.go`
@@ -199,6 +209,7 @@
 - `npm --prefix frontend run test -- src/features/terminal/model/use-terminal-session.test.tsx src/widgets/terminal/terminal-widget.test.tsx src/shared/ui/components/terminal-status-header.test.tsx --reporter=verbose`
 - `npm run test:ui -- --reporter=line e2e/terminal.spec.ts --grep "grouped backend sessions through the session rail"`
 - `npm run test:ui -- --reporter=line e2e/terminal.spec.ts --grep "terminal widget browser filters and closes grouped backend sessions"`
+- `npm run test:ui -- --reporter=line e2e/terminal.spec.ts --grep "shell-wide terminal session navigator focuses grouped sessions from the utility panel"`
 - `npm run tauri:dev`
 
 ## Browser evidence added for this slice
@@ -214,6 +225,10 @@
   - opening `Browse sessions` exposes the richer grouped-session browser
   - filtering that browser leaves the matching grouped sessions visible
   - closing an inactive grouped session removes it from backend session state without destroying the widget
+- the same terminal Playwright suite now also validates the shell-wide utility-panel navigator:
+  - after creating a grouped sibling session, the operator can open `Terminal sessions`
+  - filtering by session id narrows the shell-wide catalog
+  - `Open` from that catalog switches the backend `active_session_id` back to the selected grouped session
 
 ## Known limitations
 
@@ -223,7 +238,7 @@
 - Terminal toolbar `clear` and `jump-to-latest` actions are intentionally local xterm viewport controls. They do not mutate backend snapshot history and were validated as non-breaking live affordances rather than as persisted runtime state.
 - Browser validation for terminal input now runs through Playwright on the split local dev path. The suite is intentionally serialized (`workers: 1`) because terminal/runtime state is shared across the same backend instance.
 - Browser validation for the terminal search row currently asserts the live shell affordance contract (`open`, `query`, enable/disable state, `close`) on the runtime-backed widget; lower-level hotkey/result-count semantics stay covered by widget/unit tests because browser-level delivery of function-key aliases is platform-sensitive.
-- Grouped sessions currently stay inside one terminal widget with a compact rail plus a richer inline browser. There is still no separate shell-wide session sidebar or tmux-specific session manager on top of this runtime foundation yet.
+- Grouped sessions now have both a widget-local browser and a shell-wide utility-panel navigator, but there is still no dedicated persistent session sidebar or tmux-specific session manager on top of this runtime foundation yet.
 - A fresh `npm run tauri:dev` desktop smoke was run for this slice and the spawned `rterm-desktop` / core listener processes were cleaned up after verification.
 - Browser validation now also covers runtime-owned terminal theme mode, scrollback, plus cursor behavior persistence through the `Settings -> Terminal` shell path and confirms that `theme_mode`, `scrollback`, `cursor_style`, and `cursor_blink` survive reload through the backend contract.
 - Browser validation now also covers the one-shot reset path for the runtime-owned terminal settings shell and confirms that font size, line height, theme mode, scrollback, and cursor behavior all return to the backend defaults through the shared settings contract.
@@ -236,6 +251,7 @@
 - `core/terminal/preferences.go`
 - `core/terminal/types.go`
 - `core/app/terminal_restore_state.go`
+- `core/app/terminal_session_catalog.go`
 - `core/app/terminal_settings.go`
 - `frontend/src/features/terminal/api/client.ts`
 - `frontend/src/shared/api/terminal-settings.ts`
@@ -243,5 +259,7 @@
 - `frontend/src/features/terminal/model/use-terminal-preferences.ts`
 - `frontend/src/shared/ui/components/terminal-toolbar.tsx`
 - `frontend/src/widgets/terminal/terminal-widget.tsx`
+- `frontend/src/widgets/terminal/terminal-session-navigator-widget.tsx`
 - `frontend/src/shared/ui/components/terminal-surface.tsx`
+- `frontend/src/widgets/shell/right-action-rail-widget.tsx`
 - `e2e/terminal.spec.ts`

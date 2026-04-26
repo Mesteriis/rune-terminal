@@ -33,6 +33,7 @@ import {
   isTerminalPanel,
   resolveTerminalPanelParams,
 } from '@/widgets/terminal/terminal-panel'
+import { TerminalSessionNavigatorWidget } from '@/widgets/terminal/terminal-session-navigator-widget'
 
 const railIconProps = {
   size: 16,
@@ -349,6 +350,12 @@ export function RightActionRailWidget({
                   </Box>
                 </Button>
               ) : null}
+              <Separator
+                orientation="horizontal"
+                runaComponent="right-action-rail-session-menu-separator"
+                style={utilityMenuSeparatorStyle}
+              />
+              <TerminalSessionNavigatorWidget dockviewApiRef={dockviewApiRef} />
               {commanderEntry ? (
                 <Button
                   aria-label={

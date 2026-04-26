@@ -98,6 +98,7 @@ func NewHandler(runtime *app.Runtime, authToken string) http.Handler {
 	mux.HandleFunc("PUT /api/v1/settings/agent", api.handleUpdateAgentSettings)
 	mux.HandleFunc("GET /api/v1/settings/terminal", api.handleTerminalSettings)
 	mux.HandleFunc("PUT /api/v1/settings/terminal", api.handleUpdateTerminalSettings)
+	mux.HandleFunc("GET /api/v1/terminal/sessions", api.handleTerminalSessionCatalog)
 	mux.HandleFunc("GET /api/v1/settings/window-title", api.handleWindowTitleSettings)
 	mux.HandleFunc("PUT /api/v1/settings/window-title", api.handleUpdateWindowTitleSettings)
 	mux.HandleFunc("GET /api/v1/settings/locale", api.handleLocaleSettings)

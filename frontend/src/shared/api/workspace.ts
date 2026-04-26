@@ -100,6 +100,38 @@ export async function fetchWorkspaceSnapshot() {
   return (await response.json()) as WorkspaceSnapshot
 }
 
+export async function focusWorkspaceWidget(widgetId: string) {
+  const runtimeContext = await resolveRuntimeContext()
+  const response = await fetch(`${runtimeContext.baseUrl}/api/v1/workspace/focus-widget`, {
+    body: JSON.stringify({
+      widget_id: widgetId,
+    }),
+    headers: {
+      Authorization: `Bearer ${runtimeContext.authToken}`,
+      'Content-Type': 'application/json',
+    },
+    method: 'POST',
+  })
+
+  if (!response.ok) {
+    let errorPayload: APIErrorEnvelope | null = null
+
+    try {
+      errorPayload = (await response.json()) as APIErrorEnvelope
+    } catch {
+      errorPayload = null
+    }
+
+    throw new WorkspaceAPIError(
+      response.status,
+      errorPayload?.error?.code ?? 'workspace_focus_widget_request_failed',
+      errorPayload?.error?.message ?? `Workspace focus-widget request failed (${response.status})`,
+    )
+  }
+
+  return (await response.json()) as { workspace: WorkspaceSnapshot }
+}
+
 export async function fetchWorkspaceWidgetKindCatalog() {
   const runtimeContext = await resolveRuntimeContext()
   const response = await fetch(`${runtimeContext.baseUrl}/api/v1/workspace/widget-kinds`, {

@@ -84,9 +84,10 @@ capability.
   write contract
 - terminal parity is practical and one widget can now host grouped backend
   sessions with visible create/switch/filter/focus/close controls,
-  explicit recovery actions, and stream auto-reattach, but there is still
-  no broader cross-workspace session navigator or a fuller global
-  session-management shell beyond the active widget-scoped browser
+  explicit recovery actions, stream auto-reattach, and a shell utility-panel
+  navigator for cross-widget session focus, but there is still no dedicated
+  persistent session sidebar or richer tmux/session-manager shell beyond
+  those active runtime paths
 - AI command flow now supports explicit `/run` grammar plus approved
   terminal-context command planning for narrow natural-language terminal
   requests, but it is still not broad provider-native tool execution

@@ -51,6 +51,34 @@ export type TerminalDiagnostics = {
   output_excerpt?: string
 }
 
+export type TerminalSessionCatalogEntry = {
+  workspace_id: string
+  workspace_name: string
+  tab_id?: string
+  tab_title?: string
+  widget_id: string
+  widget_title: string
+  session_id: string
+  connection_id?: string
+  connection_kind?: string
+  connection_name?: string
+  remote_launch_mode?: string
+  remote_session_name?: string
+  shell: string
+  status: TerminalRuntimeStatus
+  status_detail?: string
+  working_dir?: string
+  is_active_workspace: boolean
+  is_active_tab: boolean
+  is_active_widget: boolean
+  is_active_session: boolean
+}
+
+export type TerminalSessionCatalog = {
+  active_workspace_id?: string
+  sessions: TerminalSessionCatalogEntry[]
+}
+
 export type CreateTerminalTabResult = {
   tab_id: string
   widget_id: string
@@ -310,6 +338,15 @@ export async function closeTerminalSession(widgetID: string, sessionID: string) 
 
 export async function fetchTerminalDiagnostics(widgetID: string) {
   return requestRuntimeJSON<TerminalDiagnostics>(buildTerminalPath(widgetID, '/diagnostics'))
+}
+
+export async function fetchTerminalSessionCatalog() {
+  const payload = await requestRuntimeJSON<TerminalSessionCatalog>('/api/v1/terminal/sessions')
+
+  return {
+    active_workspace_id: payload.active_workspace_id,
+    sessions: Array.isArray(payload.sessions) ? payload.sessions : [],
+  } satisfies TerminalSessionCatalog
 }
 
 export async function createTerminalTab(title?: string) {

@@ -1,14 +1,21 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { createTerminalTab } from '@/features/terminal/api/client'
+import {
+  createTerminalTab,
+  fetchTerminalSessionCatalog,
+  setActiveTerminalSession,
+} from '@/features/terminal/api/client'
 import { type WorkspaceWidgetCatalogState } from '@/features/workspace/model/widget-catalog'
 import { resolveRuntimeContext } from '@/shared/api/runtime'
-import { openDirectoryWorkspaceWidget } from '@/shared/api/workspace'
+import { focusWorkspaceWidget, openDirectoryWorkspaceWidget } from '@/shared/api/workspace'
 import { RightActionRailWidget } from '@/widgets/shell/right-action-rail-widget'
 
 vi.mock('@/features/terminal/api/client', () => ({
   createTerminalTab: vi.fn(),
+  fetchTerminalSessionCatalog: vi.fn(),
+  restartTerminal: vi.fn(),
+  setActiveTerminalSession: vi.fn(),
 }))
 
 vi.mock('@/shared/api/runtime', () => ({
@@ -16,7 +23,12 @@ vi.mock('@/shared/api/runtime', () => ({
 }))
 
 vi.mock('@/shared/api/workspace', () => ({
+  focusWorkspaceWidget: vi.fn(),
   openDirectoryWorkspaceWidget: vi.fn(),
+}))
+
+vi.mock('@/app/ensure-ai-terminal-visibility', () => ({
+  ensureAiTerminalVisibility: vi.fn(async () => ({ widgetId: 'term-main' })),
 }))
 
 afterEach(() => {
@@ -75,7 +87,33 @@ function createWidgetCatalog(): WorkspaceWidgetCatalogState {
   }
 }
 
-function renderRail(widgetCatalog = createWidgetCatalog()) {
+function defaultTerminalSessionCatalog() {
+  return {
+    active_workspace_id: 'ws-local',
+    sessions: [
+      {
+        workspace_id: 'ws-local',
+        workspace_name: 'Local Workspace',
+        tab_id: 'tab-main',
+        tab_title: 'Main Shell',
+        widget_id: 'term-main',
+        widget_title: 'Main Shell',
+        session_id: 'term-main',
+        connection_kind: 'local',
+        connection_name: 'Local Machine',
+        shell: 'zsh',
+        status: 'running',
+        working_dir: '/repo',
+        is_active_workspace: true,
+        is_active_tab: true,
+        is_active_widget: true,
+        is_active_session: true,
+      },
+    ],
+  }
+}
+
+function renderRail(widgetCatalog = createWidgetCatalog(), sessionCatalog = defaultTerminalSessionCatalog()) {
   const dockviewApi = {
     activePanel: {
       id: 'terminal',
@@ -84,6 +122,8 @@ function renderRail(widgetCatalog = createWidgetCatalog()) {
     getPanel: vi.fn((_panelId: string) => null),
   }
   const onAddWorkspace = vi.fn()
+
+  vi.mocked(fetchTerminalSessionCatalog).mockResolvedValue(sessionCatalog)
 
   render(
     <RightActionRailWidget
@@ -183,5 +223,68 @@ describe('RightActionRailWidget', () => {
 
     expect(screen.queryByRole('menuitem', { name: 'Create Terminal widget' })).not.toBeInTheDocument()
     expect(screen.queryByRole('menuitem', { name: 'Create Commander widget' })).not.toBeInTheDocument()
+  })
+
+  it('renders the global terminal session navigator and focuses a selected session', async () => {
+    vi.mocked(setActiveTerminalSession).mockResolvedValue({
+      active_session_id: 'term-main',
+      chunks: [],
+      next_seq: 1,
+      sessions: [],
+      state: {
+        widget_id: 'term-main',
+        session_id: 'term-main',
+        shell: '/bin/zsh',
+        status: 'running',
+        pid: 101,
+        started_at: '2026-04-27T08:00:00Z',
+        can_send_input: true,
+        can_interrupt: true,
+      },
+    })
+    vi.mocked(focusWorkspaceWidget).mockResolvedValue({
+      workspace: {
+        id: 'ws-local',
+        name: 'Local Workspace',
+        active_widget_id: 'term-main',
+        widgets: [],
+      },
+    })
+
+    renderRail(createWidgetCatalog(), {
+      active_workspace_id: 'ws-local',
+      sessions: [
+        {
+          workspace_id: 'ws-local',
+          workspace_name: 'Local Workspace',
+          tab_id: 'tab-main',
+          tab_title: 'Main Shell',
+          widget_id: 'term-main',
+          widget_title: 'Main Shell',
+          session_id: 'term-main',
+          connection_kind: 'local',
+          connection_name: 'Local Machine',
+          shell: 'zsh',
+          status: 'running',
+          working_dir: '/repo',
+          is_active_workspace: true,
+          is_active_tab: true,
+          is_active_widget: false,
+          is_active_session: false,
+        },
+      ],
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Terminal sessions')).toBeInTheDocument()
+      expect(screen.getByText('Local Workspace / Main Shell')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Focus terminal session term-main' }))
+
+    await waitFor(() => {
+      expect(setActiveTerminalSession).toHaveBeenCalledWith('term-main', 'term-main')
+      expect(focusWorkspaceWidget).toHaveBeenCalledWith('term-main')
+    })
   })
 })

@@ -648,6 +648,62 @@ test('terminal widget browser filters and closes grouped backend sessions', asyn
     })
 })
 
+test('shell-wide terminal session navigator focuses grouped sessions from the utility panel', async ({
+  page,
+  request,
+}) => {
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  await expect
+    .poll(async () => {
+      const snapshot = await fetchTerminalSnapshot(request, 'term-side')
+      return snapshot.state.can_send_input === true && snapshot.state.status === 'running'
+    })
+    .toBe(true)
+
+  await page
+    .getByRole('button', { name: 'Create another terminal session for Workspace shell' })
+    .last()
+    .click()
+
+  await expect
+    .poll(async () => {
+      const snapshot = await fetchTerminalSnapshot(request, 'term-side')
+      const activeSessionID = snapshot.active_session_id ?? snapshot.state.session_id
+      return activeSessionID !== 'term-side' ? activeSessionID : null
+    })
+    .not.toBeNull()
+
+  const createdSessionID = (await fetchTerminalSnapshot(request, 'term-side')).active_session_id
+  expect(createdSessionID).toBeTruthy()
+  expect(createdSessionID).not.toBe('term-side')
+
+  await page.getByRole('button', { name: 'Focus terminal session 1 for Workspace shell' }).last().click()
+
+  await expect
+    .poll(async () => (await fetchTerminalSnapshot(request, 'term-side')).active_session_id)
+    .toBe('term-side')
+
+  await page.getByRole('button', { name: 'Open utility panel' }).click()
+  await page.getByRole('textbox', { name: 'Filter terminal sessions' }).fill(createdSessionID ?? '')
+  await expect(
+    page.getByRole('button', {
+      name: `Focus terminal session ${createdSessionID}`,
+    }),
+  ).toBeVisible()
+
+  await page
+    .getByRole('button', {
+      name: `Focus terminal session ${createdSessionID}`,
+    })
+    .click()
+
+  await expect
+    .poll(async () => (await fetchTerminalSnapshot(request, 'term-side')).active_session_id)
+    .toBe(createdSessionID)
+})
+
 test('terminal tab overflow uses the compact overflow trigger and dropdown path', async ({ page }) => {
   await clearBrowserState(page)
   await page.setViewportSize({ width: 900, height: 900 })

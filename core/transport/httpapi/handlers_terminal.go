@@ -49,6 +49,10 @@ func (api *API) handleTerminalDiagnostics(w http.ResponseWriter, r *http.Request
 	writeJSON(w, http.StatusOK, diagnostics)
 }
 
+func (api *API) handleTerminalSessionCatalog(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, api.runtime.TerminalSessionCatalog())
+}
+
 func (api *API) handleCreateTerminalSession(w http.ResponseWriter, r *http.Request) {
 	snapshot, err := api.runtime.CreateTerminalSiblingSession(r.Context(), r.PathValue("widgetID"))
 	if err != nil {

@@ -216,6 +216,110 @@ func TestTerminalDiagnosticsReturnsNormalizedIssueAndOutput(t *testing.T) {
 	}
 }
 
+func TestTerminalSessionCatalogReturnsWorkspaceAndGroupedSessionMetadata(t *testing.T) {
+	t.Parallel()
+
+	processA := &httpTestProcess{
+		outputCh: make(chan []byte, 1),
+		waitCh:   make(chan struct{}),
+	}
+	processB := &httpTestProcess{
+		outputCh: make(chan []byte, 1),
+		waitCh:   make(chan struct{}),
+	}
+	launcher := &httpQueueLauncher{processes: []terminal.Process{processA, processB}}
+
+	tempDir := t.TempDir()
+	policyStore, err := policy.NewStore(filepath.Join(tempDir, "policy.json"), "/workspace/repo")
+	if err != nil {
+		t.Fatalf("NewStore error: %v", err)
+	}
+	auditLog, err := audit.NewLog(filepath.Join(tempDir, "audit.jsonl"))
+	if err != nil {
+		t.Fatalf("NewLog error: %v", err)
+	}
+	agentStore, err := agent.NewStore(filepath.Join(tempDir, "agent.json"))
+	if err != nil {
+		t.Fatalf("NewStore error: %v", err)
+	}
+	registry := toolruntime.NewRegistry()
+	workspaceSnapshot := workspace.BootstrapDefault()
+	runtime := &app.Runtime{
+		RepoRoot:         "/workspace/repo",
+		Workspace:        workspace.NewService(workspaceSnapshot),
+		WorkspaceCatalog: workspace.NewCatalogStore(workspace.BootstrapCatalog(workspaceSnapshot)),
+		Terminals:        terminal.NewService(launcher),
+		Agent:            agentStore,
+		Policy:           policyStore,
+		Audit:            auditLog,
+		Registry:         registry,
+	}
+	runtime.Executor = toolruntime.NewExecutor(runtime.Registry, runtime.Policy, runtime.Audit)
+
+	if _, err := runtime.Terminals.StartSession(context.Background(), terminal.LaunchOptions{
+		WidgetID:   "term-main",
+		Shell:      "/bin/zsh",
+		WorkingDir: "/workspace/repo",
+	}); err != nil {
+		t.Fatalf("StartSession error: %v", err)
+	}
+	if _, err := runtime.Terminals.CreateSession(context.Background(), terminal.LaunchOptions{
+		WidgetID:   "term-main",
+		SessionID:  "sess-2",
+		Shell:      "/bin/zsh",
+		WorkingDir: "/workspace/repo",
+	}); err != nil {
+		t.Fatalf("CreateSession error: %v", err)
+	}
+
+	handler := NewHandler(runtime, testAuthToken)
+	recorder := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/terminal/sessions", nil)
+	req.Header.Set("Authorization", "Bearer "+testAuthToken)
+	handler.ServeHTTP(recorder, req)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d (%s)", recorder.Code, recorder.Body.String())
+	}
+
+	var response app.TerminalSessionCatalogResult
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatalf("Unmarshal error: %v", err)
+	}
+
+	if response.ActiveWorkspaceID != "ws-local" {
+		t.Fatalf("expected active workspace ws-local, got %q", response.ActiveWorkspaceID)
+	}
+	if len(response.Sessions) < 2 {
+		t.Fatalf("expected grouped terminal sessions in catalog, got %#v", response.Sessions)
+	}
+
+	mainSessions := 0
+	activeGroupedSession := false
+	for _, entry := range response.Sessions {
+		if entry.WidgetID != "term-main" {
+			continue
+		}
+		mainSessions += 1
+		if entry.WorkspaceName != "Local Workspace" {
+			t.Fatalf("expected workspace metadata for term-main, got %#v", entry)
+		}
+		if entry.TabTitle != "Main Shell" {
+			t.Fatalf("expected tab title Main Shell, got %#v", entry)
+		}
+		if entry.IsActiveSession && entry.SessionID == "sess-2" {
+			activeGroupedSession = true
+		}
+	}
+
+	if mainSessions != 2 {
+		t.Fatalf("expected 2 grouped sessions for term-main, got %d (%#v)", mainSessions, response.Sessions)
+	}
+	if !activeGroupedSession {
+		t.Fatalf("expected sess-2 to be marked active in %#v", response.Sessions)
+	}
+}
+
 func TestTerminalStreamReplaysBufferedChunksAndKeepsLiveSubscription(t *testing.T) {
 	t.Parallel()
 
