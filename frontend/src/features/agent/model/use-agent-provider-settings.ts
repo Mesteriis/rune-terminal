@@ -10,7 +10,6 @@ import {
   setActiveAgentProvider,
   updateAgentProvider,
   type AgentProviderCatalog,
-  type AgentProviderProbeResult,
   type AgentProviderGatewaySnapshot,
   type AgentProviderKind,
   type AgentProviderView,
@@ -119,7 +118,6 @@ export function useAgentProviderSettings() {
   const [availableModels, setAvailableModels] = useState<string[]>([])
   const [isLoadingModels, setIsLoadingModels] = useState(false)
   const [modelErrorMessage, setModelErrorMessage] = useState<string | null>(null)
-  const [probeResult, setProbeResult] = useState<AgentProviderProbeResult | null>(null)
   const [probeErrorMessage, setProbeErrorMessage] = useState<string | null>(null)
   const [isProbing, setIsProbing] = useState(false)
 
@@ -141,7 +139,6 @@ export function useAgentProviderSettings() {
       setCatalog(nextCatalog)
       setSelectedProviderID(provider?.id ?? null)
       setDraft(provider ? createProviderDraftFromView(provider) : null)
-      setProbeResult(null)
       setProbeErrorMessage(null)
     },
     [],
@@ -335,7 +332,6 @@ export function useAgentProviderSettings() {
       setDraft(createProviderDraftFromView(provider))
       setErrorMessage(null)
       setStatusMessage(null)
-      setProbeResult(null)
       setProbeErrorMessage(null)
     },
     [catalog],
@@ -346,7 +342,6 @@ export function useAgentProviderSettings() {
     setDraft(createEmptyProviderDraft(kind))
     setErrorMessage(null)
     setStatusMessage(null)
-    setProbeResult(null)
     setProbeErrorMessage(null)
   }, [])
 
@@ -359,7 +354,6 @@ export function useAgentProviderSettings() {
       setDraft(createEmptyProviderDraft(draft.kind))
       setErrorMessage(null)
       setStatusMessage(null)
-      setProbeResult(null)
       setProbeErrorMessage(null)
       return
     }
@@ -377,7 +371,6 @@ export function useAgentProviderSettings() {
     setDraft(createProviderDraftFromView(provider))
     setErrorMessage(null)
     setStatusMessage(null)
-    setProbeResult(null)
     setProbeErrorMessage(null)
   }, [catalog, draft])
 
@@ -486,18 +479,17 @@ export function useAgentProviderSettings() {
 
     setIsProbing(true)
     setProbeErrorMessage(null)
-    setProbeResult(null)
 
     try {
       const result = await probeAgentProvider(selectedProviderID)
-      setProbeResult(result)
+      await reloadGateway()
       setStatusMessage(`Probed ${result.display_name || result.provider_kind} provider.`)
     } catch (error: unknown) {
       setProbeErrorMessage(getErrorMessage(error))
     } finally {
       setIsProbing(false)
     }
-  }, [selectedProviderID])
+  }, [reloadGateway, selectedProviderID])
 
   return {
     availableModels,
@@ -512,7 +504,6 @@ export function useAgentProviderSettings() {
     isSaving,
     modelErrorMessage,
     probeErrorMessage,
-    probeResult,
     selectedProvider,
     selectedProviderID,
     setDraft,

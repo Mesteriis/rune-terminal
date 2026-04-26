@@ -2,7 +2,7 @@ import { ChevronDown, ChevronRight } from 'lucide-react'
 import { type ReactNode, useEffect, useMemo, useState } from 'react'
 
 import { getActiveDockviewApi } from '@/app/dockview-api-registry'
-import type { AgentProviderView } from '@/features/agent/api/provider-client'
+import type { AgentProviderGatewayProvider, AgentProviderView } from '@/features/agent/api/provider-client'
 import { useAgentProviderSettings } from '@/features/agent/model/use-agent-provider-settings'
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { ClearBox } from '@/shared/ui/components'
@@ -203,23 +203,63 @@ function directProviderChatModels(provider: AgentProviderView | null | undefined
   return []
 }
 
-function describeProviderConnection(provider: AgentProviderView) {
+function findGatewayProvider(
+  providerID: string,
+  gatewayProviders: AgentProviderGatewayProvider[] | null | undefined,
+) {
+  return gatewayProviders?.find((provider) => provider.provider_id === providerID) ?? null
+}
+
+function formatProviderRouteState(state?: string) {
+  switch (state) {
+    case 'ready':
+      return 'Ready'
+    case 'auth-required':
+      return 'Login required'
+    case 'disabled':
+      return 'Disabled'
+    case 'unchecked':
+      return 'Unchecked'
+    case 'unreachable':
+      return 'Unreachable'
+    case 'model-unavailable':
+      return 'Model unavailable'
+    default:
+      return 'Needs attention'
+  }
+}
+
+function describeProviderConnection(
+  provider: AgentProviderView,
+  gatewayProvider: AgentProviderGatewayProvider | null,
+) {
+  if (gatewayProvider?.route_status_message?.trim()) {
+    return gatewayProvider.route_status_message
+  }
+
   if (provider.kind === 'codex') {
-    return provider.codex?.status_message ?? 'Codex CLI command will be resolved by the backend.'
+    return 'Codex CLI route has not been probed yet.'
   }
 
   if (provider.kind === 'claude') {
-    return provider.claude?.status_message ?? 'Claude Code CLI command will be resolved by the backend.'
+    return 'Claude Code CLI route has not been probed yet.'
   }
 
   if (provider.kind === 'openai-compatible') {
-    return provider.openai_compatible?.base_url ?? 'OpenAI-compatible source URL is not configured.'
+    return (
+      gatewayProvider?.base_url ??
+      provider.openai_compatible?.base_url ??
+      'OpenAI-compatible source URL is not configured.'
+    )
   }
 
   return 'Unknown provider connection state.'
 }
 
-function describeProviderLimitState(provider: AgentProviderView) {
+function describeProviderLimitState(
+  provider: AgentProviderView,
+  gatewayProvider: AgentProviderGatewayProvider | null,
+) {
   if (!provider.enabled) {
     return 'Disabled provider; chat will not route requests here.'
   }
@@ -228,20 +268,14 @@ function describeProviderLimitState(provider: AgentProviderView) {
     return 'Active provider for the current chat runtime.'
   }
 
-  if (provider.kind === 'codex') {
-    return provider.codex?.status_state === 'ready'
-      ? 'Codex CLI command is available.'
-      : provider.codex?.status_state === 'auth-required'
-        ? 'Needs a local Codex CLI login.'
-        : 'Needs a valid local Codex CLI install.'
+  if (gatewayProvider?.route_status_state === 'ready') {
+    return 'Backend-owned route is ready for chat traffic.'
   }
-
-  if (provider.kind === 'claude') {
-    return provider.claude?.status_state === 'ready'
-      ? 'Claude Code CLI command is available.'
-      : provider.claude?.status_state === 'auth-required'
-        ? 'Needs a local Claude Code CLI login.'
-        : 'Needs a valid local Claude Code CLI install.'
+  if (gatewayProvider?.route_status_state === 'auth-required') {
+    return 'Needs a local CLI login before the route can be used.'
+  }
+  if (gatewayProvider?.route_status_state === 'unchecked') {
+    return 'Route has not been probed yet.'
   }
 
   if (provider.kind === 'openai-compatible') {
@@ -282,6 +316,7 @@ function AiModelsSection() {
     availableModels,
     catalog,
     errorMessage,
+    gateway,
     isLoading,
     isLoadingModels,
     isSaving,
@@ -349,7 +384,12 @@ function AiModelsSection() {
                     {provider.display_name || providerKindLabels[provider.kind]}
                   </Text>
                   <Text style={settingsShellMutedTextStyle}>{providerKindLabels[provider.kind]}</Text>
-                  <Text style={settingsShellMutedTextStyle}>{describeProviderConnection(provider)}</Text>
+                  <Text style={settingsShellMutedTextStyle}>
+                    {describeProviderConnection(
+                      provider,
+                      findGatewayProvider(provider.id, gateway?.providers ?? null),
+                    )}
+                  </Text>
                 </Button>
               )
             })}
@@ -438,7 +478,7 @@ function AiModelsSection() {
 }
 
 function AiLimitsSection() {
-  const { catalog, isLoading } = useAgentProviderSettings()
+  const { catalog, gateway, isLoading } = useAgentProviderSettings()
 
   return (
     <SectionCard
@@ -457,10 +497,19 @@ function AiLimitsSection() {
                 <Text style={{ fontWeight: 600 }}>
                   {provider.display_name || providerKindLabels[provider.kind]}
                 </Text>
-                <Text style={settingsShellMutedTextStyle}>{describeProviderLimitState(provider)}</Text>
+                <Text style={settingsShellMutedTextStyle}>
+                  {describeProviderLimitState(
+                    provider,
+                    findGatewayProvider(provider.id, gateway?.providers ?? null),
+                  )}
+                </Text>
               </ClearBox>
               <ClearBox style={settingsShellBadgeStyle}>
-                {provider.active ? 'active' : provider.enabled ? 'ready' : 'disabled'}
+                {provider.active
+                  ? 'active'
+                  : formatProviderRouteState(
+                      findGatewayProvider(provider.id, gateway?.providers ?? null)?.route_status_state,
+                    ).toLowerCase()}
               </ClearBox>
             </ClearBox>
           ))}

@@ -7,18 +7,12 @@ export type AgentCodexProviderSettingsView = {
   command?: string
   model: string
   chat_models?: string[]
-  status_state: 'auth-required' | 'ready' | 'missing'
-  status_message?: string
-  resolved_binary?: string
 }
 
 export type AgentClaudeProviderSettingsView = {
   command?: string
   model: string
   chat_models?: string[]
-  status_state: 'auth-required' | 'ready' | 'missing'
-  status_message?: string
-  resolved_binary?: string
 }
 
 export type AgentProviderView = {
@@ -50,6 +44,14 @@ export type AgentProviderGatewayProvider = {
   display_name: string
   enabled: boolean
   active: boolean
+  route_ready: boolean
+  route_status_state?: string
+  route_status_message?: string
+  resolved_binary?: string
+  base_url?: string
+  model?: string
+  route_checked_at?: string
+  route_latency_ms: number
   total_runs: number
   succeeded_runs: number
   failed_runs: number

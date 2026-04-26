@@ -144,11 +144,19 @@ function updateDraftField(
 function formatCLIStatus(state?: string) {
   switch (state) {
     case 'ready':
-      return 'CLI ready'
+      return 'Route ready'
     case 'auth-required':
       return 'Login required'
+    case 'disabled':
+      return 'Disabled'
+    case 'unchecked':
+      return 'Unchecked'
+    case 'unreachable':
+      return 'Unreachable'
+    case 'model-unavailable':
+      return 'Model unavailable'
     default:
-      return 'CLI missing'
+      return 'Needs attention'
   }
 }
 
@@ -186,6 +194,16 @@ function formatRunTimestamp(value?: string) {
   return timestamp.toLocaleString()
 }
 
+function routeStatusForProvider(
+  providerID: string | null | undefined,
+  gateway?: AgentProviderGatewayProvider[] | null,
+) {
+  if (!providerID || !gateway?.length) {
+    return null
+  }
+  return gateway.find((provider) => provider.provider_id === providerID) ?? null
+}
+
 export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: boolean }) {
   const {
     availableModels,
@@ -200,7 +218,6 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
     isSaving,
     modelErrorMessage,
     probeErrorMessage,
-    probeResult,
     selectedProvider,
     selectedProviderID,
     setDraft,
@@ -222,8 +239,7 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
   const bodyStyle = embedded ? providerSettingsEmbeddedBodyStyle : providerSettingsBodyStyle
   const sidebarStyle = embedded ? providerSettingsEmbeddedSidebarStyle : providerSettingsSidebarStyle
   const editorStyle = embedded ? providerSettingsEmbeddedEditorStyle : providerSettingsEditorStyle
-  const selectedGatewayProvider =
-    gateway?.providers.find((provider) => provider.provider_id === selectedProviderID) ?? null
+  const selectedGatewayProvider = routeStatusForProvider(selectedProviderID, gateway?.providers ?? null)
   const recentGatewayRuns = gateway?.recent_runs ?? []
 
   return (
@@ -291,15 +307,23 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                     <Text style={providerSettingsStatusMessageStyle}>{kindLabels[provider.kind]}</Text>
                     {provider.kind === 'codex' ? (
                       <Text style={providerSettingsStatusMessageStyle}>
-                        {provider.codex?.model} · {formatCLIStatus(provider.codex?.status_state)}
+                        {provider.codex?.model} ·{' '}
+                        {formatCLIStatus(
+                          routeStatusForProvider(provider.id, gateway?.providers ?? null)?.route_status_state,
+                        )}
                       </Text>
                     ) : provider.kind === 'claude' ? (
                       <Text style={providerSettingsStatusMessageStyle}>
-                        {provider.claude?.model} · {formatCLIStatus(provider.claude?.status_state)}
+                        {provider.claude?.model} ·{' '}
+                        {formatCLIStatus(
+                          routeStatusForProvider(provider.id, gateway?.providers ?? null)?.route_status_state,
+                        )}
                       </Text>
                     ) : provider.kind === 'openai-compatible' ? (
                       <Text style={providerSettingsStatusMessageStyle}>
-                        {provider.openai_compatible?.model} · {provider.openai_compatible?.base_url}
+                        {provider.openai_compatible?.model} ·{' '}
+                        {routeStatusForProvider(provider.id, gateway?.providers ?? null)?.base_url ??
+                          provider.openai_compatible?.base_url}
                       </Text>
                     ) : null}
                     {gateway?.providers.find((entry) => entry.provider_id === provider.id)?.total_runs ? (
@@ -399,7 +423,7 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                       <ClearBox style={providerSettingsFieldStyle}>
                         <Label>Current status</Label>
                         <Text style={providerSettingsStatusMessageStyle}>
-                          {formatGatewayStatus(selectedGatewayProvider?.last_status)}
+                          {formatCLIStatus(selectedGatewayProvider?.route_status_state)}
                         </Text>
                       </ClearBox>
                       <ClearBox style={providerSettingsFieldStyle}>
@@ -409,17 +433,15 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                         </Text>
                       </ClearBox>
                       <ClearBox style={providerSettingsFieldStyle}>
-                        <Label>Last run</Label>
+                        <Label>Route checked</Label>
                         <Text style={providerSettingsStatusMessageStyle}>
-                          {formatRunTimestamp(selectedGatewayProvider?.last_completed_at)}
+                          {formatRunTimestamp(selectedGatewayProvider?.route_checked_at)}
                         </Text>
                       </ClearBox>
                       <ClearBox style={providerSettingsFieldStyle}>
-                        <Label>Run totals</Label>
+                        <Label>Probe latency</Label>
                         <Text style={providerSettingsStatusMessageStyle}>
-                          {selectedGatewayProvider
-                            ? `${selectedGatewayProvider.succeeded_runs} ok · ${selectedGatewayProvider.failed_runs} fail · ${selectedGatewayProvider.cancelled_runs} cancelled`
-                            : 'No runs recorded yet.'}
+                          {formatDuration(selectedGatewayProvider?.route_latency_ms)}
                         </Text>
                       </ClearBox>
                     </ClearBox>
@@ -433,6 +455,11 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                         Last error: {selectedGatewayProvider.last_error_message}
                       </Text>
                     ) : null}
+                    {selectedGatewayProvider?.route_status_message ? (
+                      <Text style={providerSettingsStatusMessageStyle}>
+                        {selectedGatewayProvider.route_status_message}
+                      </Text>
+                    ) : null}
                     <ClearBox style={providerSettingsActionsGroupStyle}>
                       <Button
                         disabled={isSaving || isProbing || draft.mode !== 'existing'}
@@ -443,32 +470,6 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                     </ClearBox>
                     {probeErrorMessage ? (
                       <Text style={providerSettingsErrorMessageStyle}>{probeErrorMessage}</Text>
-                    ) : null}
-                    {probeResult ? (
-                      <ClearBox style={providerSettingsGridStyle}>
-                        <ClearBox style={providerSettingsFieldStyle}>
-                          <Label>Probe status</Label>
-                          <Text style={providerSettingsStatusMessageStyle}>
-                            {probeResult.ready ? 'Ready' : 'Needs attention'}
-                          </Text>
-                        </ClearBox>
-                        <ClearBox style={providerSettingsFieldStyle}>
-                          <Label>Probe detail</Label>
-                          <Text style={providerSettingsStatusMessageStyle}>{probeResult.status_message}</Text>
-                        </ClearBox>
-                        <ClearBox style={providerSettingsFieldStyle}>
-                          <Label>Probe latency</Label>
-                          <Text style={providerSettingsStatusMessageStyle}>
-                            {formatDuration(probeResult.latency_ms)}
-                          </Text>
-                        </ClearBox>
-                        <ClearBox style={providerSettingsFieldStyle}>
-                          <Label>Checked at</Label>
-                          <Text style={providerSettingsStatusMessageStyle}>
-                            {formatRunTimestamp(probeResult.checked_at)}
-                          </Text>
-                        </ClearBox>
-                      </ClearBox>
                     ) : null}
                   </ClearBox>
 
@@ -519,14 +520,14 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                         <ClearBox style={providerSettingsFieldStyle}>
                           <Label>Status</Label>
                           <Text style={providerSettingsStatusMessageStyle}>
-                            {selectedProvider?.codex?.status_message ??
-                              'Save the provider to let the backend inspect the local Codex CLI command.'}
+                            {selectedGatewayProvider?.route_status_message ??
+                              'Save the provider, then probe the route to inspect the backend-owned Codex status.'}
                           </Text>
                         </ClearBox>
                         <ClearBox style={providerSettingsFieldStyle}>
                           <Label>Resolved binary</Label>
                           <Text style={providerSettingsStatusMessageStyle}>
-                            {selectedProvider?.codex?.resolved_binary || 'Unknown until saved'}
+                            {selectedGatewayProvider?.resolved_binary || 'Unknown until probed'}
                           </Text>
                         </ClearBox>
                       </ClearBox>
@@ -581,14 +582,14 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                         <ClearBox style={providerSettingsFieldStyle}>
                           <Label>Status</Label>
                           <Text style={providerSettingsStatusMessageStyle}>
-                            {selectedProvider?.claude?.status_message ??
-                              'Save the provider to let the backend inspect the local Claude Code CLI command.'}
+                            {selectedGatewayProvider?.route_status_message ??
+                              'Save the provider, then probe the route to inspect the backend-owned Claude status.'}
                           </Text>
                         </ClearBox>
                         <ClearBox style={providerSettingsFieldStyle}>
                           <Label>Resolved binary</Label>
                           <Text style={providerSettingsStatusMessageStyle}>
-                            {selectedProvider?.claude?.resolved_binary || 'Unknown until saved'}
+                            {selectedGatewayProvider?.resolved_binary || 'Unknown until probed'}
                           </Text>
                         </ClearBox>
                       </ClearBox>
@@ -642,7 +643,8 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                         <ClearBox style={providerSettingsFieldStyle}>
                           <Label>Connection</Label>
                           <Text style={providerSettingsStatusMessageStyle}>
-                            {selectedProvider?.openai_compatible?.base_url ??
+                            {selectedGatewayProvider?.base_url ??
+                              selectedProvider?.openai_compatible?.base_url ??
                               'Save the provider to expose the source in the shared AI toolbar.'}
                           </Text>
                         </ClearBox>

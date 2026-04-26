@@ -285,11 +285,10 @@ test('AI provider settings show gateway telemetry after a mocked Codex run', asy
   await expect(page.getByText('Configured providers')).toBeVisible()
   await expect(page.getByText('Gateway signals')).toBeVisible()
   await expect(page.getByText('Recent provider activity')).toBeVisible()
-  await expect(page.getByText('Healthy', { exact: true })).toBeVisible()
   await expect(page.getByText(/stream · gpt-5.4/)).toBeVisible()
   await page.getByRole('button', { name: 'Probe provider route' }).click()
   await expect(page.getByText('Probe latency')).toBeVisible()
-  await expect(page.getByText('Probe status')).toBeVisible()
+  await expect(page.getByText(/^Probed .* provider\.$/)).toBeVisible()
 })
 
 test('AI sidebar reuses stored attachment references from the recent library', async ({

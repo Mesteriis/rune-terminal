@@ -19,9 +19,6 @@ vi.mock('@/features/agent/model/use-agent-provider-settings', () => ({
             command: 'codex',
             model: 'gpt-5.4',
             chat_models: ['gpt-5.4'],
-            status_state: 'ready',
-            status_message: 'Codex CLI is authenticated.',
-            resolved_binary: '/usr/local/bin/codex',
           },
           created_at: '2026-04-26T10:00:00Z',
           updated_at: '2026-04-26T10:00:00Z',
@@ -58,6 +55,13 @@ vi.mock('@/features/agent/model/use-agent-provider-settings', () => ({
           display_name: 'Codex CLI',
           enabled: true,
           active: true,
+          route_ready: true,
+          route_status_state: 'ready',
+          route_status_message: 'Codex CLI route is reachable.',
+          resolved_binary: '/usr/local/bin/codex',
+          model: 'gpt-5.4',
+          route_checked_at: '2026-04-26T10:21:00Z',
+          route_latency_ms: 48,
           total_runs: 3,
           succeeded_runs: 2,
           failed_runs: 1,
@@ -96,18 +100,6 @@ vi.mock('@/features/agent/model/use-agent-provider-settings', () => ({
     isSaving: false,
     modelErrorMessage: null,
     probeErrorMessage: null,
-    probeResult: {
-      provider_id: 'codex-cli',
-      provider_kind: 'codex',
-      display_name: 'Codex CLI',
-      ready: true,
-      status_state: 'ready',
-      status_message: 'Codex CLI route is reachable.',
-      resolved_binary: '/usr/local/bin/codex',
-      model: 'gpt-5.4',
-      latency_ms: 48,
-      checked_at: '2026-04-26T10:21:00Z',
-    },
     selectedProvider: {
       id: 'codex-cli',
       kind: 'codex',
@@ -118,9 +110,6 @@ vi.mock('@/features/agent/model/use-agent-provider-settings', () => ({
         command: 'codex',
         model: 'gpt-5.4',
         chat_models: ['gpt-5.4'],
-        status_state: 'ready',
-        status_message: 'Codex CLI is authenticated.',
-        resolved_binary: '/usr/local/bin/codex',
       },
       created_at: '2026-04-26T10:00:00Z',
       updated_at: '2026-04-26T10:00:00Z',
@@ -148,7 +137,7 @@ describe('AgentProviderSettingsWidget', () => {
     expect(screen.getByText('Last error: upstream timeout')).toBeVisible()
     expect(screen.getByText(/Gateway telemetry is unavailable:/)).toBeVisible()
     expect(screen.getByRole('button', { name: 'Probe provider route' })).toBeVisible()
-    expect(screen.getByText('Codex CLI route is reachable.')).toBeVisible()
+    expect(screen.getAllByText('Codex CLI route is reachable.')).toHaveLength(2)
     expect(screen.getByText(/Codex CLI · Failing/)).toBeVisible()
     expect(screen.getByText(/stream · gpt-5.4 · 380ms/)).toBeVisible()
   })

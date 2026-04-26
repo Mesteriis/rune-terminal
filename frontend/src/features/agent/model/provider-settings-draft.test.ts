@@ -53,7 +53,6 @@ describe('provider settings draft helpers', () => {
         command: 'claude',
         model: 'opus',
         chat_models: ['opus', 'sonnet'],
-        status_state: 'ready',
       },
       created_at: '2026-04-21T10:00:00Z',
       updated_at: '2026-04-21T10:00:00Z',
