@@ -151,6 +151,7 @@ func (api *API) handleCreateSplitTerminalWidget(w http.ResponseWriter, r *http.R
 		TargetWidgetID string `json:"target_widget_id,omitempty"`
 		Direction      string `json:"direction,omitempty"`
 		ConnectionID   string `json:"connection_id,omitempty"`
+		WorkingDir     string `json:"working_dir,omitempty"`
 	}
 	if err := decodeJSON(r, &payload); err != nil {
 		writeBadRequest(w, "invalid_request", err)
@@ -168,6 +169,7 @@ func (api *API) handleCreateSplitTerminalWidget(w http.ResponseWriter, r *http.R
 		payload.TargetWidgetID,
 		direction,
 		payload.ConnectionID,
+		payload.WorkingDir,
 	)
 	if err != nil {
 		writeWorkspaceError(w, err)

@@ -17,7 +17,7 @@ import {
   dockviewPanelContentStyle as panelContentStyle,
   resolveDockviewPanelInnerContentStyle,
 } from '@/widgets/panel/dockview-panel-widget.styles'
-import { resolveTerminalPanelParams } from '@/widgets/terminal/terminal-panel'
+import { createTerminalPanelParams, resolveTerminalPanelParams } from '@/widgets/terminal/terminal-panel'
 import { TerminalWidget } from '@/widgets/terminal/terminal-widget'
 import { WidgetBusyOverlayWidget } from '@/widgets/panel/widget-busy-overlay-widget'
 import { createPreviewPanelParams, PreviewPanelWidget, resolvePreviewPanelParams } from '@/widgets/preview'
@@ -103,6 +103,19 @@ export function DockviewPanelWidget(props: IDockviewPanelProps) {
                   title: preview.title,
                   component: 'default',
                   params: createPreviewPanelParams(preview),
+                  position: {
+                    direction: 'right',
+                    referencePanel: props.api.id,
+                  },
+                })
+              }}
+              onOpenTerminal={(terminal) => {
+                props.containerApi.addPanel({
+                  id: terminal.widgetId,
+                  title: terminal.title,
+                  component: 'default',
+                  tabComponent: 'terminal-tab',
+                  params: createTerminalPanelParams('workspace', terminal.widgetId, terminal.tabId),
                   position: {
                     direction: 'right',
                     referencePanel: props.api.id,

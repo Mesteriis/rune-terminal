@@ -27,7 +27,6 @@ Source of truth: [parity-matrix.md](./parity-matrix.md)
 - `.ssh/config` import (`remote`) — `MISSING`
 - Advanced SSH auth/topology (`remote`) — `MISSING`
 - Multi-session terminal block (`terminal`) — `MISSING`
-- Open current directory in new block (`terminal`) — `MISSING`
 - Terminal advanced affordances/search/sidebar (`UX`) — `MISSING`
 - Plugin ecosystem/discovery (`plugins`) — `MISSING`
 - Streaming AI responses (`UX`) — `MISSING`

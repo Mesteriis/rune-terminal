@@ -147,10 +147,15 @@ func (r *Runtime) CreateSplitTerminalWidget(
 	targetWidgetID string,
 	direction workspace.WindowSplitDirection,
 	connectionID string,
+	workingDir string,
 ) (CreateTerminalTabResult, error) {
 	title = strings.TrimSpace(title)
 	if title == "" {
 		title = "New Shell"
+	}
+	workingDir = strings.TrimSpace(workingDir)
+	if workingDir == "" {
+		workingDir = r.RepoRoot
 	}
 
 	snapshot := r.Workspace.Snapshot()
@@ -208,7 +213,7 @@ func (r *Runtime) CreateSplitTerminalWidget(
 	}
 	if _, err := r.Terminals.StartSession(ctx, terminal.LaunchOptions{
 		WidgetID:   widgetID,
-		WorkingDir: r.RepoRoot,
+		WorkingDir: workingDir,
 		Connection: connection,
 	}); err != nil {
 		_, _, _ = r.Connections.ReportLaunchResult(connectionID, err)

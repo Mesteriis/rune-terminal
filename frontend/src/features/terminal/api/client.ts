@@ -48,6 +48,15 @@ export type CloseTerminalTabResult = {
   closed_tab_id: string
 }
 
+export type CreateSplitTerminalWidgetInput = {
+  connectionId?: string
+  direction?: 'left' | 'right' | 'top' | 'bottom'
+  tabId?: string
+  targetWidgetId: string
+  title?: string
+  workingDir?: string
+}
+
 export type TerminalStreamConnection = {
   close: () => void
   done: Promise<void>
@@ -261,6 +270,27 @@ export async function createTerminalTab(title?: string) {
           }
         : {},
     ),
+    method: 'POST',
+  })
+}
+
+export async function createSplitTerminalWidget({
+  connectionId,
+  direction = 'right',
+  tabId,
+  targetWidgetId,
+  title,
+  workingDir,
+}: CreateSplitTerminalWidgetInput) {
+  return requestRuntimeJSON<CreateTerminalTabResult>('/api/v1/workspace/widgets/split', {
+    body: JSON.stringify({
+      connection_id: connectionId,
+      direction,
+      tab_id: tabId,
+      target_widget_id: targetWidgetId,
+      title,
+      working_dir: workingDir,
+    }),
     method: 'POST',
   })
 }

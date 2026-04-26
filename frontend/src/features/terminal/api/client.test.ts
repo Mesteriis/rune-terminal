@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
-  createTerminalTab,
   closeTerminalTab,
   connectTerminalStream,
+  createSplitTerminalWidget,
+  createTerminalTab,
   fetchTerminalSnapshot,
   interruptTerminal,
   restartTerminal,
@@ -296,6 +297,52 @@ describe('terminal api client', () => {
     })
     expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({
       title: 'Workspace shell',
+    })
+  })
+
+  it('creates a split terminal widget with an explicit working directory', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          tab_id: 'tab-main',
+          widget_id: 'term-docs',
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      createSplitTerminalWidget({
+        connectionId: 'local',
+        targetWidgetId: 'files-1',
+        title: 'Shell: docs',
+        workingDir: '/repo/docs',
+      }),
+    ).resolves.toEqual({
+      tab_id: 'tab-main',
+      widget_id: 'term-docs',
+    })
+
+    expect(fetchMock.mock.calls[1]?.[0]).toBe('http://127.0.0.1:8090/api/v1/workspace/widgets/split')
+    expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({
+      method: 'POST',
+    })
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({
+      connection_id: 'local',
+      direction: 'right',
+      target_widget_id: 'files-1',
+      title: 'Shell: docs',
+      working_dir: '/repo/docs',
     })
   })
 

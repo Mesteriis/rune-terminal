@@ -6,6 +6,7 @@ import {
   type FilesDirectoryEntry,
   type FilesDirectorySnapshot,
 } from '@/features/files/api/client'
+import { createSplitTerminalWidget } from '@/features/terminal/api/client'
 import { getRuntimePathParent, joinRuntimePath } from '@/shared/api/runtime'
 import { openPreviewWorkspaceWidget } from '@/shared/api/workspace'
 import { writeTextToClipboard } from '@/shared/model/clipboard'
@@ -36,6 +37,7 @@ import {
 export type FilesPanelWidgetProps = {
   connectionId?: string
   onOpenPreview?: (preview: { connectionId?: string; path: string; title: string; widgetId: string }) => void
+  onOpenTerminal?: (terminal: { tabId: string; title: string; widgetId: string }) => void
   path: string
   title: string
   widgetId?: string
@@ -90,6 +92,13 @@ function formatEntryCount(visibleCount: number, totalCount: number) {
   return `${visibleCount} of ${totalCount} ${entryLabel}`
 }
 
+function getPathTitle(path: string) {
+  const trimmedPath = path.replace(/\/+$/g, '')
+  const lastSegment = trimmedPath.split('/').filter(Boolean).pop()
+
+  return lastSegment || trimmedPath || 'Shell'
+}
+
 function sortFilesPanelEntries(entries: FilesDirectoryEntry[], sort: FilesPanelSortState) {
   const sortedEntries = [...entries]
 
@@ -128,6 +137,7 @@ function sortFilesPanelEntries(entries: FilesDirectoryEntry[], sort: FilesPanelS
 export function FilesPanelWidget({
   connectionId,
   onOpenPreview,
+  onOpenTerminal,
   path,
   title,
   widgetId,
@@ -375,6 +385,51 @@ export function FilesPanelWidget({
     }
   }
 
+  const handleOpenTerminalHere = async (targetPath: string, label: string) => {
+    if (!widgetId) {
+      setOpenState({
+        entryName: label,
+        message: 'Terminal target widget is unavailable',
+        status: 'error',
+      })
+      return
+    }
+
+    const terminalTitle = `Shell: ${getPathTitle(targetPath)}`
+
+    setOpenState({
+      entryName: label,
+      message: `Opening terminal for ${label}`,
+      status: 'pending',
+    })
+
+    try {
+      const result = await createSplitTerminalWidget({
+        connectionId,
+        targetWidgetId: widgetId,
+        title: terminalTitle,
+        workingDir: targetPath,
+      })
+
+      onOpenTerminal?.({
+        tabId: result.tab_id,
+        title: terminalTitle,
+        widgetId: result.widget_id,
+      })
+      setOpenState({
+        entryName: label,
+        message: `Terminal opened for ${label}`,
+        status: 'success',
+      })
+    } catch (error: unknown) {
+      setOpenState({
+        entryName: label,
+        message: error instanceof Error ? error.message : `Unable to open terminal for ${label}`,
+        status: 'error',
+      })
+    }
+  }
+
   const handleFilterKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Escape') {
       setFilterValue('')
@@ -510,6 +565,17 @@ export function FilesPanelWidget({
             style={filesPanelParentButtonStyle}
           >
             Open dir
+          </Button>
+          <Button
+            aria-label="Open terminal in current directory"
+            disabled={!widgetId}
+            onClick={() => {
+              void handleOpenTerminalHere(currentPath, 'current directory')
+            }}
+            runaComponent="files-panel-open-current-terminal"
+            style={filesPanelParentButtonStyle}
+          >
+            Terminal
           </Button>
           <Button
             aria-label="Copy current directory path"
@@ -678,6 +744,17 @@ export function FilesPanelWidget({
                         style={filesPanelRowActionButtonStyle}
                       >
                         Folder
+                      </Button>
+                      <Button
+                        aria-label={`Open terminal for file ${entry.name}`}
+                        disabled={!widgetId}
+                        onClick={() => {
+                          void handleOpenTerminalHere(currentPath, entry.name)
+                        }}
+                        runaComponent="files-panel-row-open-terminal"
+                        style={filesPanelRowActionButtonStyle}
+                      >
+                        Term
                       </Button>
                       <Button
                         aria-label={`Copy path for file ${entry.name}`}

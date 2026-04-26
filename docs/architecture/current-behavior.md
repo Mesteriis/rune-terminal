@@ -28,7 +28,10 @@ It is intentionally operational, not narrative.
   filtering, child-directory open, parent navigation, current-directory
   external handoff, current-directory path copy, file-row path copy, file-row
   external handoff plus containing-folder handoff through `POST /api/v1/fs/open`, and file-row preview handoff through
-  `POST /api/v1/workspace/widgets/open-preview`.
+  `POST /api/v1/workspace/widgets/open-preview`. It can also open a split
+  terminal widget at the current directory or a file row's containing directory
+  through `POST /api/v1/workspace/widgets/split` with an explicit
+  `working_dir`.
 - The backend can now create a runtime-owned standalone `preview` widget via
   `POST /api/v1/workspace/widgets/open-preview` when the caller supplies an
   existing file path. The frontend renders preview panel params through

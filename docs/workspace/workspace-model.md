@@ -62,8 +62,11 @@ This is the canonical workspace entrypoint for tab/widget/layout behavior.
   external-opener route, file rows can also hand their containing folder to the
   same opener route, current-directory and file-row path-copy handoffs use the
   browser clipboard, and file-row preview handoff creates a backend-owned
-  `preview` widget. TideTerm-style filesystem drag/copy, media preview, and
-  editor handoff remain future slices.
+  `preview` widget. Current-directory and file-row terminal handoffs create a
+  split backend-owned terminal widget through
+  `POST /api/v1/workspace/widgets/split` with an explicit `working_dir`.
+  TideTerm-style filesystem drag/copy, media preview, and editor handoff remain
+  future slices.
 - The backend preview widget path now exists as a workspace-owned file handoff:
   `POST /api/v1/workspace/widgets/open-preview` validates an existing file and
   splits a `preview` widget into the target tab. The frontend preview panel

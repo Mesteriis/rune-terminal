@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { listFilesDirectory, openFilesPathExternally } from '@/features/files/api/client'
+import { createSplitTerminalWidget } from '@/features/terminal/api/client'
 import { openPreviewWorkspaceWidget } from '@/shared/api/workspace'
 import { writeTextToClipboard } from '@/shared/model/clipboard'
 import { FilesPanelWidget } from './files-panel-widget'
@@ -9,6 +10,10 @@ import { FilesPanelWidget } from './files-panel-widget'
 vi.mock('@/features/files/api/client', () => ({
   listFilesDirectory: vi.fn(),
   openFilesPathExternally: vi.fn(),
+}))
+
+vi.mock('@/features/terminal/api/client', () => ({
+  createSplitTerminalWidget: vi.fn(),
 }))
 
 vi.mock('@/shared/api/workspace', () => ({
@@ -468,6 +473,97 @@ describe('FilesPanelWidget', () => {
         widgetId: 'preview-1',
       })
       expect(screen.getByText('Preview widget opened for README.md')).toBeInTheDocument()
+    })
+  })
+
+  it('opens terminal widgets for the current directory through the split route', async () => {
+    vi.mocked(listFilesDirectory).mockResolvedValue({
+      entries: [],
+      path: '/repo/docs',
+    })
+    vi.mocked(createSplitTerminalWidget).mockResolvedValue({
+      tab_id: 'tab-main',
+      widget_id: 'term-docs',
+    })
+    const onOpenTerminal = vi.fn()
+
+    render(
+      <FilesPanelWidget
+        connectionId="local"
+        onOpenTerminal={onOpenTerminal}
+        path="/repo/docs"
+        title="docs"
+        widgetId="files-1"
+      />,
+    )
+
+    await expect(screen.findByText('Directory is empty')).resolves.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open terminal in current directory' }))
+
+    await waitFor(() => {
+      expect(createSplitTerminalWidget).toHaveBeenCalledWith({
+        connectionId: 'local',
+        targetWidgetId: 'files-1',
+        title: 'Shell: docs',
+        workingDir: '/repo/docs',
+      })
+      expect(onOpenTerminal).toHaveBeenCalledWith({
+        tabId: 'tab-main',
+        title: 'Shell: docs',
+        widgetId: 'term-docs',
+      })
+      expect(screen.getByText('Terminal opened for current directory')).toBeInTheDocument()
+    })
+  })
+
+  it('opens terminal widgets for file rows using their containing directory', async () => {
+    vi.mocked(listFilesDirectory).mockResolvedValue({
+      entries: [
+        {
+          hidden: false,
+          id: '/repo/docs::README.md',
+          kind: 'file',
+          modified: '2026-04-25 20:01',
+          modifiedTime: 1_776_800_060,
+          name: 'README.md',
+          sizeBytes: 2048,
+          sizeLabel: '2.0 KB',
+        },
+      ],
+      path: '/repo/docs',
+    })
+    vi.mocked(createSplitTerminalWidget).mockResolvedValue({
+      tab_id: 'tab-main',
+      widget_id: 'term-docs',
+    })
+    const onOpenTerminal = vi.fn()
+
+    render(
+      <FilesPanelWidget
+        connectionId="local"
+        onOpenTerminal={onOpenTerminal}
+        path="/repo/docs"
+        title="docs"
+        widgetId="files-1"
+      />,
+    )
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Open terminal for file README.md' }))
+
+    await waitFor(() => {
+      expect(createSplitTerminalWidget).toHaveBeenCalledWith({
+        connectionId: 'local',
+        targetWidgetId: 'files-1',
+        title: 'Shell: docs',
+        workingDir: '/repo/docs',
+      })
+      expect(onOpenTerminal).toHaveBeenCalledWith({
+        tabId: 'tab-main',
+        title: 'Shell: docs',
+        widgetId: 'term-docs',
+      })
+      expect(screen.getByText('Terminal opened for README.md')).toBeInTheDocument()
     })
   })
 
