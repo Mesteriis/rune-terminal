@@ -33,7 +33,11 @@ Phase status:
 - `Phase 7` is complete: backend-owned MCP onboarding catalog/probe
   helpers plus template-driven settings flows are now landed on the
   active path.
-- Later phases remain implementation work.
+- `Phase 8` is complete: the active settings shell now exposes a
+  backend-owned local plugin catalog plus install/update/enable/disable/remove
+  flows for explicit `git` and `zip` sources, without reopening a marketplace
+  trust claim.
+- `Phase 9` is the only remaining implementation work.
 
 ## Success condition
 
@@ -303,6 +307,9 @@ Validation:
 
 ### Phase 8. Add plugin catalog and install/discovery UX
 
+Status:
+completed on `2026-04-26`
+
 Purpose:
 finish the plugin story on top of the already validated runtime boundary.
 
@@ -315,7 +322,7 @@ Covers:
 
 Exit criteria:
 
-- `Plugin discovery and marketplace UX` is no longer blocked
+- `Plugin catalog and install UX` can move to `Transferred`
 - operators can manage more than hard-coded local reference plugins
 - install/update/remove flows preserve policy/audit invariants
 
@@ -369,12 +376,8 @@ Validation:
 
 ## Recommended implementation order
 
-1. `Phase 8`
-2. `Phase 9`
+1. `Phase 9`
 
 This order keeps the remaining program coherent:
 
-- plugin catalog/install UX next, because MCP/remote/files breadth is now
-  closed and local plugin management is the last substantive product
-  surface still planned
 - residual title-surface cleanup last, because it is intentionally narrow

@@ -66,8 +66,10 @@ capability.
 - managed attachment browser/history closure is still narrower than the rest
   of the AI flow; the active path has backend-stored recent references plus
   transcript reuse, but not a broader gallery-style surface yet
-- broad online plugin marketplace / discovery UX; ADR 0030 keeps only a
-  narrower local catalog/import direction in scope
+- broad online plugin marketplace / discovery UX; ADR 0030 keeps only the
+  narrower backend-owned local catalog/import direction in scope, and the
+  current active shell now intentionally limits install sources to explicit
+  `git` URLs and `zip` archives
 - Windows-first support
 
 ## Partial / rough today
@@ -96,6 +98,10 @@ capability.
 - the AI composer now exposes a request-scoped `Cancel response` control for active chat streams, but there is still no separate durable backend job cancellation queue for already-detached provider work
 - the shell-wide settings modal now exposes a structured `General / AI / Terminal / Remote / MCP / Commander` navigation; `General` includes the real desktop `watcher_mode` lifecycle control plus runtime bootstrap context, the AI section now includes CLI + OpenAI-compatible provider management and provider-backed model discovery, `Remote` lists saved SSH profiles and triggers the narrow `.ssh/config` import route, `MCP` now also exposes a bounded onboarding catalog plus draft probe before explicit register/start over `/api/v1/mcp/*`, the composer toolbar exposes live provider/model, profile/role/mode, and widget-context selection, and terminal font size, line height, theme mode, scrollback, plus cursor behavior are now backed by the runtime DB through `GET/PUT /api/v1/settings/terminal`
 - the AI composer keyboard-submit preference is now configurable through the runtime-backed `GET/PUT /api/v1/settings/agent` contract and persists in `runtime.db`, but broader operator-profile sync/roaming beyond the local runtime is still intentionally incomplete
+- plugin access-policy metadata is now persisted in the local catalog
+  (`owner_username`, `visibility`, `allowed_users`) together with
+  current-user actor provenance, but those fields are not enforced yet;
+  this phase only reserves the model/runtime shape for later rights work
 - desktop runtime startup, shutdown, and single-instance attach path are now hardened: `npm run tauri:dev` recovers stale watcher attachments, can now also reuse a still-running watcher on `127.0.0.1:7788` when runtime metadata lost either the watcher record or the core record but the live watcher still targets the same core, refuses startup with an explicit conflict error when that fixed watcher port is already serving a different backend or is simply occupied by a non-`rterm` service, startup failures no longer leak a freshly spawned backend or a freshly spawned watcher that later fails identity/state validation, sending `SIGTERM` to `rterm-desktop` now tears down the desktop-owned backend and watcher before exit, and a second desktop launch now reuses the existing window instead of spawning a second desktop-owned core/watcher pair; broader desktop runtime hardening (richer crash recovery, port-policy cleanup) is still intentionally incomplete
 - desktop runtime metadata writes are now also durable against torn-file startup races: the desktop shell writes both `~/.rterm/runtime.json` and `~/.rterm/settings.json` through an atomic temp-file rename path, and startup now also quarantines malformed runtime/settings payloads beside the live files instead of silently reusing defaults while discarding the broken bytes; broader crash-recovery policy is still intentionally incomplete
 - desktop startup now also clears malformed or dead attachment metadata out of `~/.rterm/runtime.json` instead of only ignoring it in memory, so repeated launches no longer keep retrying against the same broken persisted desktop attachment records

@@ -32,9 +32,9 @@ Status legend:
 Summary by grouped slices:
 
 - `Exceeds original`: `4`
-- `Transferred`: `12`
+- `Transferred`: `13`
 - `Partially transferred`: `0`
-- `Planned`: `2`
+- `Planned`: `1`
 - `Not carried forward`: `3`
 
 ## Matrix
@@ -56,7 +56,7 @@ Summary by grouped slices:
 | MCP lifecycle, invoke, and normalized outputs | `Exceeds original` | Active settings can list/register/get/edit/delete/start/stop/restart/enable/disable MCP servers; invoke is explicit; downstream data is bounded through `mcp.normalized.v1`. | This already goes beyond the original manager surface because `rterm` keeps lifecycle strict, output bounded, and AI handoff explicit instead of implicit. |
 | External MCP onboarding breadth | `Transferred` | The active settings shell now exposes a bounded onboarding catalog, template-driven endpoint/auth prefills, draft probe before register, and explicit remote MCP registration/lifecycle over the same backend contract. | The curated catalog intentionally stays narrower than a marketplace-style discovery surface, but onboarding no longer depends on low-level raw field entry alone. |
 | Plugin runtime boundary | `Exceeds original` | Side-process plugin runtime, manifest handshake, exposed-tool checks, capability allow-lists, normalized failure taxonomy, and core-owned policy/audit invariants are all live, with Go and Python reference plugins validated. | The core/plugin boundary is already stricter than the old baseline and is no longer frontend-coupled. |
-| Plugin catalog and install UX | `Planned` | Local reference plugins are supported and validated, and ADR 0030 now defines the next step as backend-owned local catalog/import/install flows rather than hard-coded references forever. | Catalog/import/install management moves to Phase `8`. |
+| Plugin catalog and install UX | `Transferred` | The active settings shell now exposes a backend-owned local plugin catalog with explicit install sources limited to `git` repository URLs and `zip` archive URLs, plus enable/disable/update/remove lifecycle controls. Install records persist metadata, current-user actor provenance, and a future-facing access-policy shape before activation, while runtime registration still goes through the existing plugin boundary and policy/audit path. | Access-policy fields are persisted for future rights enforcement but are not enforced yet; broad online marketplace/discovery remains intentionally out of scope. |
 | Online plugin marketplace | `Not carried forward` | The current plugin trust model is explicit local-code execution with runtime checks, not a sandboxed marketplace surface. | ADR 0030 explicitly declines a broad online marketplace in this phase. |
 | Shell chrome and terminal advanced affordances | `Transferred` | The shell is now compact and Tide-recognizable, settings/terminal/right-rail/modal chrome has been tightened and browser-validated, terminal search is live with count/no-match state, one terminal widget can now host multiple backend-owned sessions with visible create/switch controls, a filterable grouped-session browser with per-session close/focus actions, and remote settings can open/resume SSH-backed tmux shells into the active workspace. | Remaining remote tmux/session breadth is tracked in `Advanced remote breadth`, not in shell/terminal chrome parity. |
 | Window title rules | `Planned` | A narrow runtime-backed title surface still fits the active shell, but the old compat-only title manager is not the implementation path. | [tideterm-residual-decisions.md](../workflow/tideterm-residual-decisions.md) keeps this in scope for a later narrow slice (`Phase 9`). |

@@ -77,7 +77,7 @@ from any previous fork are historical inspiration only.
 | Non-Go reference (Python/Node)      | `NOW`   | `plugins/python_reference/plugin.py` proves language-neutrality through the existing runtime |
 | Capability declaration in handshake | `NOW`   | plugin-requested resources are checked against the bound allow-list |
 | Sandbox / permission model doc      | `NOW`   | ADR 0027 + SECURITY note; no OS sandbox claimed |
-| Local catalog / install UX          | `LATER` | ADR 0030 accepts local catalog/import flows; broad online marketplace remains out of scope |
+| Local catalog / install UX          | `NOW`   | Active settings shell now manages local plugin install/update/enable/disable/remove over backend-owned `git`/`zip` sources; broad online marketplace remains out of scope |
 
 ### 6. Infrastructure
 
