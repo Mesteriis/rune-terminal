@@ -5,13 +5,10 @@ Source of truth: [parity-matrix.md](./parity-matrix.md)
 
 ## Release blocking
 
-- No TideTerm-derived runtime slice remains blocked. The remaining work is the
-  narrow residual `Phase 9` title-surface cleanup tracked in
-  [../workflow/remaining-clone-plan.md](../workflow/remaining-clone-plan.md).
-
-## Near-term
-
-- Window title rules (`workspace`) — `PLANNED`
+- No TideTerm-derived runtime slice remains blocked or still planned for
+  implementation. The program tracked in
+  [../workflow/remaining-clone-plan.md](../workflow/remaining-clone-plan.md)
+  is complete.
 
 ## Optional
 

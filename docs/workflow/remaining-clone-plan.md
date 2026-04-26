@@ -37,7 +37,9 @@ Phase status:
   backend-owned local plugin catalog plus install/update/enable/disable/remove
   flows for explicit `git` and `zip` sources, without reopening a marketplace
   trust claim.
-- `Phase 9` is the only remaining implementation work.
+- `Phase 9` is complete: the active shell now has a narrow runtime-backed
+  window-title rule surface with explicit custom rename/reset and live
+  title sync on the current shell path.
 
 ## Success condition
 
@@ -334,6 +336,9 @@ Validation:
 
 ### Phase 9. Resolve residual Tide-specific surfaces
 
+Status:
+completed on `2026-04-26`
+
 Purpose:
 close the remaining misc rows cleanly instead of leaving them as legacy
 shadows.
@@ -370,14 +375,10 @@ Validation:
 | Plugin catalog and install UX | `8` | `Transferred` |
 | Online plugin marketplace | `0` | `Not carried forward` by ADR 0030 |
 | Shell chrome and terminal advanced affordances | `5` | `Transferred` |
-| Window title rules | `9` | `Implemented` as a narrow runtime-backed surface or explicitly retired |
+| Window title rules | `9` | `Transferred` as a narrow runtime-backed surface |
 | Language switch surface | `0` | `Not carried forward` unless localization becomes a first-class product requirement |
 | WaveProxy | `0` | `Not carried forward` unless a new transport/infrastructure ADR reopens it |
 
 ## Recommended implementation order
 
-1. `Phase 9`
-
-This order keeps the remaining program coherent:
-
-- residual title-surface cleanup last, because it is intentionally narrow
+The remaining TideTerm-derived implementation program is complete.

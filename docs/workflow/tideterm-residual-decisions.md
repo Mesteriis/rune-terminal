@@ -24,7 +24,7 @@ Reopen trigger:
 
 ## Window title rules
 
-Decision: `Retained narrowly`
+Decision: `Implemented narrowly`
 
 Reason:
 
@@ -33,9 +33,14 @@ Reason:
 - the old TideTerm title manager should not be copied directly from the
   legacy compat path
 
-Planned shape:
+Delivered shape:
 
 - narrow runtime-backed rules for auto title plus explicit operator rename
+- backend-owned `auto/custom` title settings contract with persisted
+  custom title state
+- active shell `document.title` sync that follows the current workspace
+  title in `auto` mode and respects explicit operator rename in `custom`
+  mode
 - no legacy compat-only title manager revival
 
 ## WaveProxy

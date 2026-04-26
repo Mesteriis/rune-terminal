@@ -14,6 +14,12 @@
     `fetchWorkspaceWidgetKindCatalog()` client for that backend contract,
     and the rewritten Dockview workspace shell now consumes the loaded
     catalog for startup seeding plus right-rail widget discoverability
+  - the active shell now also has a narrow runtime-backed window-title
+    rule surface: backend settings persist `auto/custom` title mode plus
+    explicit custom title state, `General` settings can pin or reset that
+    state, and live `document.title` sync follows the current workspace
+    title in `auto` mode or the explicit operator-defined custom title in
+    `custom` mode
   - browser e2e coverage now verifies the active right-rail catalog behavior:
     `terminal` and `files` remain enabled and runtime-created, path-required
     `preview` remains disabled in the generic menu, and `commander` plus
@@ -68,6 +74,10 @@
     - the `General` section now reads real runtime bootstrap metadata and exposes the desktop `watcher_mode` lifecycle setting; in the split browser dev loop this control degrades to a visible read-only fallback instead of pretending browser mode can persist desktop settings
     - `Settings -> Remote` now has browser coverage for the filterable saved-profile inventory, including the visible-count summary and explicit no-match empty state
     - `Settings -> MCP` now has matching browser coverage for the filterable registered-server inventory, including the same visible-count summary and explicit no-match empty state
+    - `Settings -> General` now also has browser coverage for custom
+      window-title persistence: saving a custom title updates the live
+      shell title immediately, and `Reset to auto` returns the shell title
+      to the active workspace-driven form
     - a fresh `npm run tauri:dev` smoke still builds and launches the desktop entrypoint after the runtime-settings slice, so the new `watcher_mode` plumbing does not break desktop startup
     - desktop startup now also self-heals stale watcher attachments recorded in `~/.rterm/runtime.json`: if a previously UI-owned watcher is still bound to `127.0.0.1:7788` but no longer matches the newly attached/spawned core, startup explicitly shuts that stale watcher down before spawning the next one, instead of panicking on `unexpected worker identity`
     - if desktop startup spawns a fresh core and watcher recovery/spawn then fails, the just-spawned core is now stopped before setup returns the error, so startup no longer leaks a brand-new backend process on the failure path
@@ -228,6 +238,10 @@
 - `npm --prefix frontend run test -- src/features/preview/api/client.test.ts src/widgets/preview/preview-panel.test.ts src/widgets/preview/preview-panel-widget.test.tsx src/widgets/terminal/terminal-dockview-header-actions-widget.test.tsx`
 - `npm --prefix frontend run test -- src/features/files/api/client.test.ts src/features/preview/api/client.test.ts src/widgets/files/files-panel-widget.test.tsx src/widgets/preview/preview-panel-widget.test.tsx --reporter=verbose`
 - `npm run test:ui -- --reporter=line e2e/shell-workspace.spec.ts --grep "SSH-backed files and preview widgets keep connection-scoped fs requests"` (attempted; test body progressed but Playwright hung after starting the remote files scenario, so this path is not claimed as a clean browser pass yet)
+- `gofmt -w core/windowtitle/settings.go core/windowtitle/settings_test.go core/app/runtime.go core/app/window_title_settings.go core/transport/httpapi/api.go core/transport/httpapi/handlers_system.go core/transport/httpapi/handlers_window_title_settings.go core/transport/httpapi/handlers_window_title_settings_test.go core/transport/httpapi/test_helpers_test.go`
+- `./scripts/go.sh test ./core/windowtitle ./core/app ./core/transport/httpapi -count=1`
+- `npm --prefix frontend run test -- src/shared/api/runtime.test.ts src/features/runtime/model/use-window-title-settings.test.tsx src/app/use-window-title-sync.test.tsx src/widgets/settings/runtime-settings-section.test.tsx --reporter=verbose`
+- `npm run test:ui -- --reporter=line e2e/shell-workspace.spec.ts --grep "general settings persist custom window title and reset back to auto"`
 - `npm --prefix frontend run lint:active`
 - `npm --prefix frontend run build`
 - `(cd frontend && npm exec prettier -- --write src/shared/api/workspace.ts src/shared/api/workspace.test.ts src/widgets/files/files-panel-widget.tsx src/widgets/files/files-panel-widget.test.tsx src/widgets/files/files-panel-widget.styles.ts src/widgets/panel/dockview-panel-widget.tsx src/widgets/shell/right-action-rail-widget.tsx src/widgets/shell/right-action-rail-widget.test.tsx)`

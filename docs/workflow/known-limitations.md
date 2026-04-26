@@ -83,10 +83,9 @@ capability.
   or broader remote file-management shell surface beyond the backend-owned
   write contract
 - terminal parity is practical and one widget can now host grouped backend
-  sessions, but the richer multi-session/sidebar browsing model is not
-  there yet; the current search and terminal-settings flows are still
-  intentionally scoped to the active terminal widget rather than a fuller
-  session browser
+  sessions with visible create/switch/filter/focus/close controls, but
+  there is still no broader cross-workspace session navigator or a fuller
+  global session-management shell beyond the active widget-scoped browser
 - AI command flow now supports explicit `/run` grammar plus approved
   terminal-context command planning for narrow natural-language terminal
   requests, but it is still not broad provider-native tool execution
