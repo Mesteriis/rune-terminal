@@ -125,10 +125,11 @@
   - if toolruntime returns `requires_confirmation`, renders the existing approval UI, calls `safety.confirm`, and retries the original `term.send_input` with the returned one-time `approval_token`
   - waits briefly for post-command terminal output
   - appends the backend-owned execution transcript/explanation chain through `POST /api/v1/agent/terminal-commands/explain`
-- approved natural-language terminal prompts now also use the same runtime-owned execution path when the interaction classifier sees terminal intent in a live terminal context:
+  - approved natural-language terminal prompts now also use the same runtime-owned execution path when the interaction classifier sees terminal intent in a live terminal context:
   - the plan/approve UI remains frontend-owned
   - after approval the frontend requests a single-command plan from `POST /api/v1/agent/terminal-commands/plan`
   - the returned command is executed through `term.send_input` against the same explicit terminal target and then explained through the existing `/explain` route
+  - if that planned execution hits `requires_confirmation`, the frontend reuses the same `safety.confirm` plus retry path against the same selected terminal target, including SSH-backed remote contexts
   - the `term.send_input` / `safety.confirm` toolruntime requests intentionally omit `widget_context_enabled` and `widget_ids`; those remain conversation/explain-only context fields and are no longer sent to `/api/v1/tools/execute`
   - this still is not broad provider-native tool-calling; it is a constrained terminal-command planning path over the existing runtime/tool contract
   - if the provider returns an invalid terminal plan payload, the route now fails fast with `502 terminal_command_plan_invalid`, and the UI surfaces that planner error instead of silently falling back to chat streaming
@@ -201,6 +202,7 @@
 - `npm --prefix frontend run test -- src/widgets/files/files-panel-widget.test.tsx src/widgets/ai/ai-composer-widget.test.tsx src/widgets/ai/ai-chat-message-widget.test.tsx src/widgets/ai/ai-panel-widget.test.tsx`
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestCreateAttachmentReference|TestSubmitConversationPromptIncludesAttachmentContextInProviderRequest|TestSubmitConversationMessagePersistsAttachmentReferences|TestSubmitConversationMessageRejectsMissingAttachmentReference' -count=1`
 - `npm --prefix frontend run test -- src/widgets/ai/ai-panel-widget.test.tsx -t "confirms and retries approval-required /run execution through toolruntime"`
+- `npm --prefix frontend run test -- src/widgets/ai/ai-panel-widget.test.tsx -t "confirms and retries approval-required terminal-context prompts against the selected remote widget"`
 - `npm --prefix frontend run test -- src/widgets/ai/ai-panel-widget.test.tsx -t "routes /run prompts into terminal execution instead of provider chat streaming|prefers the terminal widget selected in AI context for /run execution|confirms and retries approval-required /run execution through toolruntime"`
 - `npm --prefix frontend run test -- src/features/agent/model/interaction-flow.test.ts src/widgets/ai/ai-panel-widget.test.tsx`
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestPlanTerminalCommandReturnsRunnableCommandForExplicitTarget|TestPlanTerminalCommandReturnsRunnableCommand' -count=1`
