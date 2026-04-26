@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import {
   controlMCPServer,
@@ -38,6 +38,24 @@ function formatServerState(server: MCPServerView) {
   }
 
   return server.state
+}
+
+function serverMatchesFilter(server: MCPServerView, rawFilter: string) {
+  const filter = rawFilter.trim().toLowerCase()
+  if (!filter) {
+    return true
+  }
+
+  const fields = [
+    server.id,
+    server.type,
+    server.state,
+    server.endpoint ?? '',
+    server.enabled ? 'enabled' : 'disabled',
+    server.active ? 'active' : 'inactive',
+  ]
+
+  return fields.some((field) => field.toLowerCase().includes(filter))
 }
 
 function upsertServer(servers: MCPServerView[], nextServer: MCPServerView) {
@@ -98,6 +116,7 @@ export function MCPSettingsSection() {
   const [idDraft, setIdDraft] = useState(defaultServerID)
   const [endpointDraft, setEndpointDraft] = useState(defaultEndpoint)
   const [headersDraft, setHeadersDraft] = useState('')
+  const [filterDraft, setFilterDraft] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmittingForm, setIsSubmittingForm] = useState(false)
   const [busyServerID, setBusyServerID] = useState<string | null>(null)
@@ -107,6 +126,12 @@ export function MCPSettingsSection() {
   const hasServers = servers.length > 0
   const isEditing = editingServerID !== null
   const canSubmit = idDraft.trim().length > 0 && endpointDraft.trim().length > 0
+  const visibleServers = useMemo(
+    () => servers.filter((server) => serverMatchesFilter(server, filterDraft)),
+    [filterDraft, servers],
+  )
+  const activeServersCount = servers.filter((server) => server.active).length
+  const disabledServersCount = servers.filter((server) => !server.enabled).length
 
   function resetForm() {
     setEditingServerID(null)
@@ -287,6 +312,30 @@ export function MCPSettingsSection() {
           {isLoading ? 'Refreshing…' : 'Refresh'}
         </Button>
       </ClearBox>
+      <ClearBox
+        style={{
+          display: 'flex',
+          gap: 'var(--gap-sm)',
+          flexWrap: 'wrap' as const,
+          alignItems: 'center',
+        }}
+      >
+        <Input
+          aria-label="Filter MCP servers"
+          onChange={(event) => setFilterDraft(event.target.value)}
+          placeholder="Filter registered MCP servers"
+          style={{ minWidth: '16rem', flex: '1 1 16rem' }}
+          value={filterDraft}
+        />
+        <ClearBox style={{ display: 'flex', gap: 'var(--gap-xs)', flexWrap: 'wrap' as const }}>
+          <ClearBox style={settingsShellBadgeStyle}>{servers.length} registered</ClearBox>
+          {filterDraft.trim() !== '' ? (
+            <ClearBox style={settingsShellBadgeStyle}>{visibleServers.length} visible</ClearBox>
+          ) : null}
+          <ClearBox style={settingsShellBadgeStyle}>{activeServersCount} active</ClearBox>
+          <ClearBox style={settingsShellBadgeStyle}>{disabledServersCount} disabled</ClearBox>
+        </ClearBox>
+      </ClearBox>
 
       {statusMessage ? <Text style={settingsShellMutedTextStyle}>{statusMessage}</Text> : null}
       {errorMessage ? (
@@ -297,9 +346,11 @@ export function MCPSettingsSection() {
         <Text style={settingsShellMutedTextStyle}>Loading MCP servers…</Text>
       ) : !hasServers ? (
         <Text style={settingsShellMutedTextStyle}>No MCP servers registered yet.</Text>
+      ) : visibleServers.length === 0 ? (
+        <Text style={settingsShellMutedTextStyle}>No MCP servers match current filter.</Text>
       ) : (
         <ClearBox style={settingsShellListStyle}>
-          {servers.map((server) => {
+          {visibleServers.map((server) => {
             const isBusy = busyServerID === server.id
 
             return (

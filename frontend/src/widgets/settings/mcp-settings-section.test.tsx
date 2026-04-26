@@ -42,6 +42,49 @@ describe('MCPSettingsSection', () => {
     await expect(screen.findByText('mcp.context7')).resolves.toBeInTheDocument()
     expect(screen.getByText('https://mcp.context7.com/mcp')).toBeInTheDocument()
     expect(screen.getByText('stopped')).toBeInTheDocument()
+    expect(screen.getByText('1 registered')).toBeInTheDocument()
+    expect(screen.getByText('0 active')).toBeInTheDocument()
+  })
+
+  it('filters the visible MCP inventory', async () => {
+    vi.mocked(fetchMCPServers).mockResolvedValue([
+      {
+        active: false,
+        enabled: true,
+        endpoint: 'https://mcp.context7.com/mcp',
+        id: 'mcp.context7',
+        state: 'stopped',
+        type: 'remote',
+      },
+      {
+        active: true,
+        enabled: false,
+        endpoint: 'https://mcp.docs.test/mcp',
+        id: 'mcp.docs',
+        state: 'idle',
+        type: 'remote',
+      },
+    ])
+
+    render(<MCPSettingsSection />)
+
+    await expect(screen.findByText('mcp.context7')).resolves.toBeInTheDocument()
+    await expect(screen.findByText('mcp.docs')).resolves.toBeInTheDocument()
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Filter MCP servers' }), {
+      target: { value: 'disabled' },
+    })
+
+    expect(screen.getByText('2 registered')).toBeInTheDocument()
+    expect(screen.getByText('1 visible')).toBeInTheDocument()
+    expect(screen.getByText('mcp.docs')).toBeInTheDocument()
+    expect(screen.queryByText('mcp.context7')).not.toBeInTheDocument()
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Filter MCP servers' }), {
+      target: { value: 'missing' },
+    })
+
+    expect(screen.getByText('No MCP servers match current filter.')).toBeInTheDocument()
   })
 
   it('registers a remote MCP server and refreshes the visible list', async () => {

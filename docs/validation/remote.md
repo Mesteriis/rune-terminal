@@ -2,13 +2,14 @@
 
 ## Last verified state
 
-- Date: `2026-04-17`
+- Date: `2026-04-26`
 - State: `PARTIALLY VERIFIED` (core workflow hardening verified; external auth breadth remains limited)
 - Scope:
   - saved profile create/list/select/check/open-shell flows
   - narrow one-way SSH config import for direct host profile fields
   - settings-shell remote profile create/edit/delete/list/import entrypoint
   - settings-shell remote preflight/default-target controls
+  - filterable saved-profile inventory inside the active settings shell
   - remote session/tab binding and local-vs-remote guardrails
   - missing-profile restore error semantics
   - audit target-session truth for remote runs
@@ -21,6 +22,7 @@
   - `go test ./core/transport/httpapi -run TestWriteTerminalErrorMapsConnectionNotFoundToNotFound`
   - `./scripts/go.sh test ./core/connections ./core/transport/httpapi -run 'TestImportSSHConfig|TestRemoteProfilesImportSSHConfig|TestRemoteProfilesEndpointsListSaveAndDelete' -count=1`
   - `npm --prefix frontend run test -- src/features/remote/api/client.test.ts src/widgets/settings/remote-profiles-settings-section.test.tsx`
+  - `frontend/node_modules/.bin/vitest run src/widgets/settings/remote-profiles-settings-section.test.tsx --reporter=verbose`
   - `npm --prefix frontend run lint:active`
   - `npm --prefix frontend run build`
 - External reachability/auth probe example:

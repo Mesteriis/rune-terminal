@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import {
   checkRemoteProfileConnection,
@@ -62,6 +62,31 @@ function summarizeConnectionStatus(connection: RemoteConnectionView | undefined)
   return 'Not checked yet.'
 }
 
+function profileMatchesFilter(
+  profile: RemoteProfile,
+  connection: RemoteConnectionView | undefined,
+  rawFilter: string,
+) {
+  const filter = rawFilter.trim().toLowerCase()
+  if (!filter) {
+    return true
+  }
+
+  const fields = [
+    profile.id,
+    profile.name,
+    profile.host,
+    profile.user ?? '',
+    profile.identity_file ?? '',
+    profile.port ? String(profile.port) : '',
+    connection?.usability ?? '',
+    connection?.runtime.check_status ?? '',
+    connection?.runtime.launch_status ?? '',
+  ]
+
+  return fields.some((field) => field.toLowerCase().includes(filter))
+}
+
 const defaultProfileDraft = {
   host: '',
   identityFile: '',
@@ -82,6 +107,7 @@ export function RemoteProfilesSettingsSection() {
   const [portDraft, setPortDraft] = useState(defaultProfileDraft.port)
   const [identityFileDraft, setIdentityFileDraft] = useState(defaultProfileDraft.identityFile)
   const [pathDraft, setPathDraft] = useState('')
+  const [filterDraft, setFilterDraft] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isSavingProfile, setIsSavingProfile] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
@@ -91,6 +117,20 @@ export function RemoteProfilesSettingsSection() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const isEditing = editingProfileID !== null
   const canSaveProfile = hostDraft.trim() !== ''
+  const visibleProfiles = useMemo(
+    () =>
+      profiles.filter((profile) =>
+        profileMatchesFilter(
+          profile,
+          connectionsSnapshot.connections.find((item) => item.id === profile.id),
+          filterDraft,
+        ),
+      ),
+    [connectionsSnapshot.connections, filterDraft, profiles],
+  )
+  const defaultProfilesCount = profiles.filter(
+    (profile) => connectionsSnapshot.active_connection_id === profile.id,
+  ).length
 
   function resetProfileForm() {
     setEditingProfileID(null)
@@ -337,6 +377,29 @@ export function RemoteProfilesSettingsSection() {
           {isLoading ? 'Refreshing…' : 'Refresh'}
         </Button>
       </ClearBox>
+      <ClearBox
+        style={{
+          display: 'flex',
+          gap: 'var(--gap-sm)',
+          flexWrap: 'wrap' as const,
+          alignItems: 'center',
+        }}
+      >
+        <Input
+          aria-label="Filter remote profiles"
+          onChange={(event) => setFilterDraft(event.target.value)}
+          placeholder="Filter saved SSH profiles"
+          style={{ minWidth: '16rem', flex: '1 1 16rem' }}
+          value={filterDraft}
+        />
+        <ClearBox style={{ display: 'flex', gap: 'var(--gap-xs)', flexWrap: 'wrap' as const }}>
+          <ClearBox style={settingsShellBadgeStyle}>{profiles.length} saved</ClearBox>
+          {filterDraft.trim() !== '' ? (
+            <ClearBox style={settingsShellBadgeStyle}>{visibleProfiles.length} visible</ClearBox>
+          ) : null}
+          <ClearBox style={settingsShellBadgeStyle}>{defaultProfilesCount} default</ClearBox>
+        </ClearBox>
+      </ClearBox>
 
       {statusMessage ? <Text style={settingsShellMutedTextStyle}>{statusMessage}</Text> : null}
       {errorMessage ? (
@@ -347,9 +410,11 @@ export function RemoteProfilesSettingsSection() {
         <Text style={settingsShellMutedTextStyle}>Loading remote profiles…</Text>
       ) : profiles.length === 0 ? (
         <Text style={settingsShellMutedTextStyle}>No saved SSH profiles yet.</Text>
+      ) : visibleProfiles.length === 0 ? (
+        <Text style={settingsShellMutedTextStyle}>No SSH profiles match current filter.</Text>
       ) : (
         <ClearBox style={settingsShellListStyle}>
-          {profiles.map((profile) => {
+          {visibleProfiles.map((profile) => {
             const connection = connectionsSnapshot.connections.find((item) => item.id === profile.id)
             const isDefault = connectionsSnapshot.active_connection_id === profile.id
             const isBusy = busyProfileID === profile.id

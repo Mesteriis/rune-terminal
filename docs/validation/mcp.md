@@ -7,6 +7,7 @@
 - Scope:
   - explicit lifecycle controls
   - active `frontend/src` settings onboarding section
+  - filterable MCP server inventory inside the active settings shell
   - explicit invoke path
   - output normalization/bounding behavior
   - explicit MCP-to-AI handoff behavior (no auto-injection)
@@ -15,6 +16,7 @@
 
 - `./scripts/go.sh test ./core/plugins ./core/app ./core/transport/httpapi -count=1`
 - `npm --prefix frontend run test -- src/features/mcp/api/client.test.ts src/widgets/settings/mcp-settings-section.test.tsx`
+- `frontend/node_modules/.bin/vitest run src/widgets/settings/mcp-settings-section.test.tsx --reporter=verbose`
 - `npm run lint:frontend`
 - `npm run build:frontend`
 - Runtime/API checks:

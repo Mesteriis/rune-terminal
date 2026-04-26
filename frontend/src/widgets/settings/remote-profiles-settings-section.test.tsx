@@ -60,6 +60,72 @@ describe('RemoteProfilesSettingsSection', () => {
     expect(screen.getByText('deploy@prod.example.com:2222')).toBeInTheDocument()
     expect(screen.getByText('default')).toBeInTheDocument()
     expect(screen.getByText('passed')).toBeInTheDocument()
+    expect(screen.getByText('1 saved')).toBeInTheDocument()
+    expect(screen.getByText('1 default')).toBeInTheDocument()
+  })
+
+  it('filters the visible remote profile inventory', async () => {
+    vi.mocked(fetchRemoteProfiles).mockResolvedValue([
+      {
+        host: 'prod.example.com',
+        id: 'conn-prod',
+        name: 'Prod',
+        user: 'deploy',
+      },
+      {
+        host: 'stage.example.com',
+        id: 'conn-stage',
+        name: 'Stage',
+        user: 'qa',
+      },
+    ])
+    vi.mocked(fetchRemoteConnectionsSnapshot).mockResolvedValue({
+      active_connection_id: 'conn-prod',
+      connections: [
+        {
+          active: true,
+          id: 'conn-prod',
+          kind: 'ssh',
+          name: 'Prod',
+          runtime: {
+            check_status: 'passed',
+            launch_status: 'idle',
+          },
+          usability: 'available',
+        },
+        {
+          active: false,
+          id: 'conn-stage',
+          kind: 'ssh',
+          name: 'Stage',
+          runtime: {
+            check_status: 'failed',
+            launch_status: 'idle',
+          },
+          usability: 'error',
+        },
+      ],
+    })
+
+    render(<RemoteProfilesSettingsSection />)
+
+    await expect(screen.findByText('Prod')).resolves.toBeInTheDocument()
+    await expect(screen.findByText('Stage')).resolves.toBeInTheDocument()
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Filter remote profiles' }), {
+      target: { value: 'stage' },
+    })
+
+    expect(screen.getByText('2 saved')).toBeInTheDocument()
+    expect(screen.getByText('1 visible')).toBeInTheDocument()
+    expect(screen.getByText('Stage')).toBeInTheDocument()
+    expect(screen.queryByText('Prod')).not.toBeInTheDocument()
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Filter remote profiles' }), {
+      target: { value: 'missing' },
+    })
+
+    expect(screen.getByText('No SSH profiles match current filter.')).toBeInTheDocument()
   })
 
   it('imports ssh config profiles and refreshes the visible list', async () => {
