@@ -93,6 +93,15 @@ type TerminalExecutionTarget = {
   targetWidgetID: string
 }
 
+type UseAgentPanelOptions = {
+  ensureVisibleTerminalTarget?: (input: {
+    requestedWidgetId?: string
+    requestedWidgetTitle?: string
+  }) => Promise<{
+    widgetId: string
+  } | null>
+}
+
 function getRunCommand(prompt: string) {
   const match = prompt.match(runCommandPattern)
 
@@ -459,7 +468,7 @@ function upsertConversationSummary(
   return sortConversationSummaries(nextConversations)
 }
 
-export function useAgentPanel(hostId: string, enabled = true) {
+export function useAgentPanel(hostId: string, enabled = true, options: UseAgentPanelOptions = {}) {
   const [
     activeWidgetHostId,
     terminalPanelBindings,
@@ -1606,7 +1615,27 @@ export function useAgentPanel(hostId: string, enabled = true) {
     }
 
     const fallbackTerminal = resolveTerminalPanelBinding(terminalPanelBindings, activeWidgetHostId)
-    const targetWidgetID = contextTerminal?.id ?? fallbackTerminal?.runtimeWidgetId ?? ''
+    const hasVisibleContextTerminal =
+      contextTerminal != null &&
+      Object.values(terminalPanelBindings).some((binding) => binding.runtimeWidgetId === contextTerminal?.id)
+    const requestedWidgetTitle =
+      contextTerminal?.title?.trim() ||
+      (fallbackTerminal?.preset === 'main' ? 'Main terminal' : 'Workspace shell')
+    let targetWidgetID = contextTerminal?.id ?? fallbackTerminal?.runtimeWidgetId ?? ''
+    const needsVisibleTerminalTarget =
+      !targetWidgetID || (contextTerminal != null && !hasVisibleContextTerminal)
+
+    if (options.ensureVisibleTerminalTarget && needsVisibleTerminalTarget) {
+      const ensuredTarget = await options.ensureVisibleTerminalTarget({
+        requestedWidgetId: targetWidgetID || undefined,
+        requestedWidgetTitle,
+      })
+      const ensuredWidgetID = ensuredTarget?.widgetId?.trim() ?? ''
+
+      if (ensuredWidgetID !== '') {
+        targetWidgetID = ensuredWidgetID
+      }
+    }
 
     if (!targetWidgetID) {
       throw new Error('No terminal widget is available for execution.')
@@ -1631,6 +1660,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
     activeWidgetHostId,
     isWidgetContextEnabled,
     loadContextWidgets,
+    options,
     resolveCurrentContextWidgetID,
     terminalPanelBindings,
   ])

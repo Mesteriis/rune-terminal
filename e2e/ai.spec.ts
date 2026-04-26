@@ -13,6 +13,7 @@ import {
   fetchTerminalSnapshot,
   fetchWorkspaceSnapshot,
   renameAgentConversation as renameConversationViaApi,
+  sendTerminalInputViaApi,
   setActiveAgentProvider,
   updateAgentSettingsViaApi,
   updateAgentConversationContext,
@@ -1103,6 +1104,139 @@ test('AI sidebar /run sends input into the active terminal instead of falling ba
   expect(toolRequests.length).toBeGreaterThan(0)
   expect(explainRequests.length).toBeGreaterThan(0)
   expect(pageErrors).toEqual([])
+})
+
+test('AI sidebar /run creates a visible terminal in the active workspace when none is open', async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(180_000)
+
+  const providerCatalog = await fetchAgentProviderCatalog(request)
+  const codexProvider =
+    providerCatalog.providers.find((provider) => provider.id === 'codex-cli') ??
+    providerCatalog.providers.find((provider) => provider.kind === 'codex') ??
+    null
+
+  test.skip(!codexProvider, 'Codex CLI provider is not available in the backend catalog.')
+
+  if (providerCatalog.active_provider_id !== codexProvider.id) {
+    await setActiveAgentProvider(request, codexProvider.id)
+  }
+
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  await expect(page.getByRole('button', { name: 'Close Workspace shell' })).toBeVisible()
+  await page.getByRole('button', { name: 'Close Workspace shell' }).click()
+  await expect(page.getByRole('button', { name: 'Close Main terminal' })).toBeVisible()
+  await page.getByRole('button', { name: 'Close Main terminal' }).click()
+
+  await expect(page.getByRole('button', { name: 'Toggle AI panel' })).toBeVisible()
+
+  const baselineWorkspace = await fetchWorkspaceSnapshot(request)
+  const baselineTerminalWidgetIDs = baselineWorkspace.widgets
+    .filter((widget) => widget.kind === 'terminal')
+    .map((widget) => widget.id)
+  const marker = `ai-run-created-terminal-${Date.now()}`
+  const command = `printf '${marker}\\n'`
+
+  await page.getByRole('button', { name: 'Toggle AI panel' }).click()
+  await expect(page.getByText('AI Rune Assistant')).toBeVisible()
+  await page.getByPlaceholder('Text Area').fill(`/run ${command}`)
+  await page.getByRole('button', { name: 'Send prompt' }).click()
+
+  let createdTerminalWidgetID = ''
+
+  await expect
+    .poll(
+      async () => {
+        const workspace = await fetchWorkspaceSnapshot(request)
+        const nextTerminalWidget = workspace.widgets.find(
+          (widget) => widget.kind === 'terminal' && !baselineTerminalWidgetIDs.includes(widget.id),
+        )
+
+        createdTerminalWidgetID = nextTerminalWidget?.id ?? ''
+        return createdTerminalWidgetID
+      },
+      { timeout: 30_000 },
+    )
+    .not.toBe('')
+
+  await expect
+    .poll(
+      async () => {
+        if (!createdTerminalWidgetID) {
+          return false
+        }
+
+        const snapshot = await fetchTerminalSnapshot(request, createdTerminalWidgetID)
+        return snapshot.chunks.some((chunk) => chunk.data.includes(marker))
+      },
+      { timeout: 30_000 },
+    )
+    .toBe(true)
+
+  await expect(page.getByRole('button', { name: 'Close Workspace shell' })).toBeVisible()
+  await expect
+    .poll(
+      async () => {
+        const conversation = await fetchAgentConversation(request)
+        return conversation.messages.some(
+          (message) => message.role === 'assistant' && message.content.includes(`Executed \`${command}\``),
+        )
+      },
+      { timeout: 120_000 },
+    )
+    .toBe(true)
+})
+
+test('terminal explain and fix button opens the AI sidebar with terminal context and a pending approval flow', async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(180_000)
+
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  const missingPathToken = `definitely-missing-ai-fix-${Date.now()}`
+
+  await expect
+    .poll(async () => {
+      const snapshot = await fetchTerminalSnapshot(request, 'term-side')
+      return snapshot.state.can_send_input === true && snapshot.state.status === 'running'
+    })
+    .toBe(true)
+
+  await sendTerminalInputViaApi(request, 'term-side', `ls /${missingPathToken}`, true)
+
+  await expect
+    .poll(
+      async () => {
+        const snapshot = await fetchTerminalSnapshot(request, 'term-side')
+        return snapshot.chunks.some((chunk) => chunk.data.includes(missingPathToken))
+      },
+      { timeout: 30_000 },
+    )
+    .toBe(true)
+
+  await page
+    .getByRole('button', { name: 'Explain and fix the latest terminal issue for Workspace shell' })
+    .click()
+  await expect(page.getByText('AI Rune Assistant')).toBeVisible()
+  await expect(page.getByText('Plan', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Approve' })).toBeVisible()
+
+  await expect
+    .poll(
+      async () => {
+        const conversation = await fetchAgentConversation(request)
+        return conversation.context_preferences.widget_ids
+      },
+      { timeout: 30_000 },
+    )
+    .toEqual(['term-side'])
 })
 
 test('AI sidebar /run preserves persisted remote host semantics from the selected context widget', async ({

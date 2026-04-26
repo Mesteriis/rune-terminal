@@ -111,8 +111,8 @@ export function TerminalWidget({
   const latestOutputExcerpt = terminalSession.outputChunks
     .map((chunk) => chunk.data)
     .join('')
-    .replaceAll('\r\n', '\n')
-    .replaceAll('\r', '\n')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
     .trim()
     .slice(-1800)
   const terminalIssueSummary =

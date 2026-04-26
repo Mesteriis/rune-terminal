@@ -98,7 +98,13 @@ describe('AppAiSidebar', () => {
       submit: false,
     })
 
-    render(<AppAiSidebar contentAreaRef={{ current: document.createElement('div') }} isOpen />)
+    render(
+      <AppAiSidebar
+        contentAreaRef={{ current: document.createElement('div') }}
+        dockviewApiRef={{ current: null }}
+        isOpen
+      />,
+    )
 
     await waitFor(() => {
       expect(agentPanelMock.setSelectedContextWidgetIDs).toHaveBeenCalledWith(['term-pve'])
@@ -116,7 +122,13 @@ describe('AppAiSidebar', () => {
     })
     agentPanelMock.draft = 'Проверь и исправь ошибку на pve'
 
-    render(<AppAiSidebar contentAreaRef={{ current: document.createElement('div') }} isOpen />)
+    render(
+      <AppAiSidebar
+        contentAreaRef={{ current: document.createElement('div') }}
+        dockviewApiRef={{ current: null }}
+        isOpen
+      />,
+    )
 
     await waitFor(() => {
       expect(agentPanelMock.submitDraft).toHaveBeenCalledTimes(1)

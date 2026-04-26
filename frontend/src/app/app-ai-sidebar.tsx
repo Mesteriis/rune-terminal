@@ -1,7 +1,9 @@
+import type { DockviewApi } from 'dockview-react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useUnit } from 'effector-react'
 import { useEffect, useRef, useState, type RefObject } from 'react'
 
+import { ensureAiTerminalVisibility } from '@/app/ensure-ai-terminal-visibility'
 import { useAgentPanel } from '@/features/agent/model/use-agent-panel'
 import { $queuedAiPromptHandoff, consumeAiPromptHandoff } from '@/shared/model/ai-handoff'
 import type { ChatMode } from '@/features/agent/model/types'
@@ -28,6 +30,7 @@ const WORKSPACE_MIN_WIDTH = 420
 
 type AppAiSidebarProps = {
   contentAreaRef: RefObject<HTMLDivElement | null>
+  dockviewApiRef: RefObject<DockviewApi | null>
   isOpen: boolean
 }
 
@@ -53,14 +56,20 @@ function clampAiPanelWidth(requestedWidth: number, contentAreaElement: HTMLDivEl
 }
 
 /** Renders the shell-managed AI sidebar, including resize behavior and open/close animation. */
-export function AppAiSidebar({ isOpen, contentAreaRef }: AppAiSidebarProps) {
+export function AppAiSidebar({ dockviewApiRef, isOpen, contentAreaRef }: AppAiSidebarProps) {
   const [aiPanelWidth, setAiPanelWidth] = useState(getDefaultAiPanelWidth())
   const [chatMode, setChatMode] = useState<ChatMode>('chat')
   const [isAiPanelResizing, setIsAiPanelResizing] = useState(false)
   const [pendingAutoSubmitRequestID, setPendingAutoSubmitRequestID] = useState<number | null>(null)
   const aiResizeStartRef = useRef<{ startWidth: number; startX: number } | null>(null)
   const prefersReducedMotion = useReducedMotion()
-  const agentPanel = useAgentPanel(AI_SHELL_PANEL_HOST_ID, isOpen)
+  const agentPanel = useAgentPanel(AI_SHELL_PANEL_HOST_ID, isOpen, {
+    ensureVisibleTerminalTarget: async (input) =>
+      ensureAiTerminalVisibility(dockviewApiRef.current, {
+        requestedWidgetId: input.requestedWidgetId,
+        requestedWidgetTitle: input.requestedWidgetTitle,
+      }),
+  })
   const [queuedAiPromptHandoff, onConsumeAiPromptHandoff] = useUnit([
     $queuedAiPromptHandoff,
     consumeAiPromptHandoff,

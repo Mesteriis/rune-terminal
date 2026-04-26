@@ -16,6 +16,7 @@
   - a freshly created backend terminal session now returns `chunks: []` instead of `chunks: null` on `GET /api/v1/terminal/{widgetID}`, and the frontend terminal client/session path defensively normalizes `null` chunk payloads so the first live stream append cannot crash the UI
   - the AI sidebar `/run ...` path now targets the active terminal widget instead of sending `/run` as plain chat text:
     - target terminal selection comes from the live Dockview terminal-panel registry
+    - if no visible terminal widget is available, the shell now creates or re-reveals a workspace terminal panel in the active workspace first, so the operator can watch the AI-issued command land in a real terminal surface
     - command execution goes through `POST /api/v1/tools/execute` with `term.send_input`
     - assistant-side execution summaries are appended through `POST /api/v1/agent/terminal-commands/explain`
   - backend restart support is available in the terminal API client through `POST /api/v1/terminal/{widgetID}/restart`, but it is not wired to the UI because no visible restart control exists on the current terminal surface
@@ -68,6 +69,8 @@
       toolbar search can open and close on the active runtime-backed widget,
       next/previous controls stay disabled without a query, and those controls
       become enabled when a query is typed into the live search field
+    - the terminal `Explain & fix` control can hand off a real shell failure into the AI sidebar, auto-apply that terminal as the conversation context, and land the operator directly in the local `Plan / Approve` flow
+    - when no terminal panel is open, the AI `/run ...` path creates a fresh visible workspace terminal and routes the command there instead of failing with a hidden/no-target execution
 
 ## Backend contracts used
 
@@ -158,6 +161,8 @@
 - `npm run test:ui -- --reporter=line e2e/terminal.spec.ts`
 - `npm run test:ui -- --reporter=line e2e/shell-workspace.spec.ts e2e/terminal.spec.ts`
 - `npm run test:ui -- --reporter=line --grep "reset all runtime-owned defaults" e2e/terminal.spec.ts`
+- `npm run test:ui -- --reporter=line e2e/ai.spec.ts --grep "creates a visible terminal in the active workspace when none is open"`
+- `npm run test:ui -- --reporter=line e2e/ai.spec.ts --grep "terminal explain and fix button opens the AI sidebar with terminal context"`
 - `npm run tauri:dev`
 
 ## Browser evidence added for this slice

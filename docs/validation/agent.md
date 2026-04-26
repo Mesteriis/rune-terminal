@@ -27,6 +27,7 @@
   - AI composer visible selected-context strip with direct remove actions for chosen widgets
   - AI composer queued attachment strip with direct remove actions for file references handed off from the files panel
   - terminal-origin AI handoff: a terminal widget can now open the AI sidebar with a preloaded terminal-aware prompt, explicit `widget_ids` context, and immediate submit for explain/fix flows over the same conversation/runtime contract
+  - browser-level terminal-origin AI handoff coverage: a real shell failure can now jump straight into the AI sidebar and land in the local `Plan / Approve` flow with the failing terminal pinned as conversation context
   - files-panel `Attach file ... to AI` handoff through `POST /api/v1/agent/conversation/attachments/references`, shell attachment queue, and stream request `attachments`
   - transcript attachment chips sourced from backend conversation message attachment metadata
   - explicit stale-widget repair notice plus `Save cleaned context` action for persisted conversation context that no longer matches the current workspace
@@ -123,6 +124,7 @@
 - The frontend resolves the terminal target in this order, then:
   - an explicitly selected terminal widget from the AI conversation context (`widget_ids`)
   - otherwise the current Dockview terminal panel binding fallback
+  - if neither path yields a visible shell panel, the app now creates or re-reveals a workspace terminal in the active Dockview workspace before execution, so operator-visible terminal output remains the source of truth
   - reads the target terminal snapshot with `GET /api/v1/terminal/{widgetID}`
   - sends input through `POST /api/v1/tools/execute` using `term.send_input`
   - if toolruntime returns `requires_confirmation`, renders the existing approval UI, calls `safety.confirm`, and retries the original `term.send_input` with the returned one-time `approval_token`
@@ -220,6 +222,8 @@
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts --grep "restores persisted remote context before approved terminal execution after reopen"`
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts --grep "preserves persisted remote host semantics from the selected context widget"`
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts --grep "confirms and retries approval-required terminal execution on the selected SSH-backed context"`
+- `npm run test:ui -- --reporter=line e2e/ai.spec.ts --grep "creates a visible terminal in the active workspace when none is open"`
+- `npm run test:ui -- --reporter=line e2e/ai.spec.ts --grep "terminal explain and fix button opens the AI sidebar with terminal context"`
 - `npm run build:frontend`
 - `npm run lint:frontend`
 

@@ -124,7 +124,11 @@ export function App() {
             workspaceTabs={workspaceTabs}
           />
           <Box runaComponent="app-content-area" ref={contentAreaRef} style={contentAreaStyle}>
-            <AppAiSidebar contentAreaRef={contentAreaRef} isOpen={isAiSidebarOpen} />
+            <AppAiSidebar
+              contentAreaRef={contentAreaRef}
+              dockviewApiRef={dockviewApiRef}
+              isOpen={isAiSidebarOpen}
+            />
             <Box runaComponent="app-workspace" style={workspaceStyle}>
               <Box
                 ref={dockviewContainerRef}
