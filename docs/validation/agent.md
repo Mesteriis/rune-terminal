@@ -26,6 +26,7 @@
   - AI composer context quick actions (`Use current`, `Only current`, `All widgets`, `Use default`) over the existing workspace/widget context contract
   - AI composer visible selected-context strip with direct remove actions for chosen widgets
   - AI composer queued attachment strip with direct remove actions for file references handed off from the files panel
+  - terminal-origin AI handoff: a terminal widget can now open the AI sidebar with a preloaded terminal-aware prompt, explicit `widget_ids` context, and immediate submit for explain/fix flows over the same conversation/runtime contract
   - files-panel `Attach file ... to AI` handoff through `POST /api/v1/agent/conversation/attachments/references`, shell attachment queue, and stream request `attachments`
   - transcript attachment chips sourced from backend conversation message attachment metadata
   - explicit stale-widget repair notice plus `Save cleaned context` action for persisted conversation context that no longer matches the current workspace
@@ -146,6 +147,9 @@
 - The selected widget set is now also visible outside the dropdown:
   - explicit selections render as removable chips in the composer body
   - removing chips narrows both `widget_ids` and `active_widget_id` to the remaining explicit selection, matching the current frontend context contract
+- The shell now also accepts terminal-origin prompt handoff over the same controller:
+  - a terminal widget can queue a prompt plus explicit `widget_ids`
+  - opening the AI sidebar consumes that handoff, applies the terminal widget as the selected conversation context, preloads the draft, and can auto-submit it without introducing a second AI transport path
 - The dropdown body itself is now denser but semantically unchanged:
   - summary rows render inside a compact grouped block
   - searchable widget options use tighter rows with clearer `Selected` / `Add` status chips
@@ -181,6 +185,7 @@
 - `npm run test:ui -- --reporter=line --grep "keyboard navigation through filtered thread options" e2e/ai.spec.ts`
 - `npm --prefix frontend run test -- src/widgets/ai/ai-panel-widget.test.tsx src/widgets/ai/ai-panel-header-widget.test.tsx src/widgets/ai/ai-composer-widget.test.tsx`
 - `npm --prefix frontend run test -- src/widgets/ai/ai-panel-widget.test.tsx`
+- `npm --prefix frontend run test -- src/widgets/terminal/terminal-widget.test.tsx src/app/app-ai-sidebar.test.tsx`
 - `npm --prefix frontend run test -- src/widgets/ai/ai-panel-widget.test.tsx -t "allows selecting multiple workspace widgets for the AI request context|persists the current workspace widget when the operator clicks Only current immediately after opening context options|auto-saves stale persisted context when context widgets are opened"`
 - `npm --prefix frontend run test -- src/widgets/ai/ai-composer-widget.test.tsx src/widgets/ai/ai-panel-widget.test.tsx`
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts`

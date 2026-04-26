@@ -1,7 +1,9 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import { useUnit } from 'effector-react'
 import { useEffect, useRef, useState, type RefObject } from 'react'
 
 import { useAgentPanel } from '@/features/agent/model/use-agent-panel'
+import { $queuedAiPromptHandoff, consumeAiPromptHandoff } from '@/shared/model/ai-handoff'
 import type { ChatMode } from '@/features/agent/model/types'
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { Box } from '@/shared/ui/primitives'
@@ -55,9 +57,14 @@ export function AppAiSidebar({ isOpen, contentAreaRef }: AppAiSidebarProps) {
   const [aiPanelWidth, setAiPanelWidth] = useState(getDefaultAiPanelWidth())
   const [chatMode, setChatMode] = useState<ChatMode>('chat')
   const [isAiPanelResizing, setIsAiPanelResizing] = useState(false)
+  const [pendingAutoSubmitRequestID, setPendingAutoSubmitRequestID] = useState<number | null>(null)
   const aiResizeStartRef = useRef<{ startWidth: number; startX: number } | null>(null)
   const prefersReducedMotion = useReducedMotion()
   const agentPanel = useAgentPanel(AI_SHELL_PANEL_HOST_ID, isOpen)
+  const [queuedAiPromptHandoff, onConsumeAiPromptHandoff] = useUnit([
+    $queuedAiPromptHandoff,
+    consumeAiPromptHandoff,
+  ])
 
   useEffect(() => {
     if (!isOpen) {
@@ -120,6 +127,45 @@ export function AppAiSidebar({ isOpen, contentAreaRef }: AppAiSidebarProps) {
       window.removeEventListener('pointerup', handlePointerUp)
     }
   }, [contentAreaRef, isAiPanelResizing])
+
+  useEffect(() => {
+    if (!isOpen || queuedAiPromptHandoff == null) {
+      return
+    }
+
+    if ((queuedAiPromptHandoff.context_widget_ids?.length ?? 0) > 0) {
+      agentPanel.setSelectedContextWidgetIDs(queuedAiPromptHandoff.context_widget_ids ?? [])
+    }
+    agentPanel.setDraft(queuedAiPromptHandoff.prompt)
+    setPendingAutoSubmitRequestID(queuedAiPromptHandoff.submit ? queuedAiPromptHandoff.request_id : null)
+    onConsumeAiPromptHandoff(queuedAiPromptHandoff.request_id)
+  }, [agentPanel, isOpen, onConsumeAiPromptHandoff, queuedAiPromptHandoff])
+
+  useEffect(() => {
+    if (pendingAutoSubmitRequestID == null || !isOpen) {
+      return
+    }
+
+    if (
+      agentPanel.draft.trim() === '' ||
+      agentPanel.isSubmitting ||
+      agentPanel.isConversationPending ||
+      agentPanel.isInteractionPending
+    ) {
+      return
+    }
+
+    setPendingAutoSubmitRequestID(null)
+    void agentPanel.submitDraft()
+  }, [
+    agentPanel,
+    isOpen,
+    pendingAutoSubmitRequestID,
+    agentPanel.draft,
+    agentPanel.isConversationPending,
+    agentPanel.isInteractionPending,
+    agentPanel.isSubmitting,
+  ])
 
   const aiShellWidth = aiPanelWidth + AI_PANEL_RESIZE_HANDLE_WIDTH
   const aiWidthTransition =

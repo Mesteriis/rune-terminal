@@ -70,3 +70,22 @@ export const terminalWidgetHeaderActionButtonStyle: React.CSSProperties = {
   flex: '0 0 auto',
   color: 'var(--runa-terminal-text-muted, var(--color-text-muted))',
 }
+
+export const terminalWidgetAiActionButtonStyle: React.CSSProperties = {
+  minHeight: '26px',
+  padding: '0 0.62rem',
+  border: '1px solid var(--runa-terminal-surface-border, var(--color-border-subtle))',
+  borderRadius: 'var(--radius-sm)',
+  background:
+    'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 68%, transparent)',
+  color: 'var(--runa-terminal-text-secondary, var(--color-text-secondary))',
+  fontSize: '0.76rem',
+  lineHeight: 1,
+  fontWeight: 600,
+  boxShadow: 'none',
+  backdropFilter: 'none',
+  WebkitBackdropFilter: 'none',
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '0.34rem',
+}

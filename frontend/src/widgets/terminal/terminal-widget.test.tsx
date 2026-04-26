@@ -4,6 +4,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useTerminalPreferences } from '@/features/terminal/model/use-terminal-preferences'
 import { useTerminalSession } from '@/features/terminal/model/use-terminal-session'
 import { TerminalWidget } from '@/widgets/terminal/terminal-widget'
+import { openAiSidebar } from '@/shared/model/app'
+import { queueAiPromptHandoff } from '@/shared/model/ai-handoff'
 
 const copySelectionMock = vi.fn(async () => undefined)
 const clearSearchMock = vi.fn(() => undefined)
@@ -20,6 +22,14 @@ vi.mock('@/features/terminal/model/use-terminal-session', () => ({
 
 vi.mock('@/features/terminal/model/use-terminal-preferences', () => ({
   useTerminalPreferences: vi.fn(),
+}))
+
+vi.mock('@/shared/model/app', () => ({
+  openAiSidebar: vi.fn(),
+}))
+
+vi.mock('@/shared/model/ai-handoff', () => ({
+  queueAiPromptHandoff: vi.fn(),
 }))
 
 vi.mock('@/shared/ui/components/terminal-surface', async () => {
@@ -181,6 +191,9 @@ describe('TerminalWidget', () => {
     expect(pasteFromClipboardMock).toHaveBeenCalledTimes(1)
     expect(interruptSessionMock).toHaveBeenCalledTimes(1)
     expect(restartSessionMock).toHaveBeenCalledTimes(1)
+    expect(
+      screen.getByRole('button', { name: 'Explain and fix the latest terminal issue for Workspace shell' }),
+    ).toBeEnabled()
 
     fireEvent.click(screen.getByRole('button', { name: 'Close terminal search' }))
 
@@ -257,5 +270,83 @@ describe('TerminalWidget', () => {
 
     expect(clearSearchMock).toHaveBeenCalled()
     expect(screen.getByLabelText('Terminal search results')).toHaveTextContent('Type query')
+  })
+
+  it('hands terminal error context to the AI sidebar from the explain and fix button', () => {
+    vi.mocked(useTerminalSession).mockReturnValue({
+      runtimeWidgetId: 'term-pve',
+      sessionKey: 'term-pve:1',
+      cwd: '/srv',
+      shellLabel: 'zsh',
+      connectionKind: 'ssh',
+      sessionState: 'failed',
+      canSendInput: true,
+      canInterrupt: false,
+      isLoading: false,
+      isInterrupting: false,
+      isRestarting: false,
+      error: 'df: cannot read table of mounted file systems',
+      statusDetail: 'Remote shell reported a command failure.',
+      outputChunks: [
+        {
+          data: 'df: cannot read table of mounted file systems\n',
+          seq: 7,
+          timestamp: '2026-04-26T11:20:00Z',
+        },
+      ],
+      runtimeState: null,
+      interruptSession: vi.fn(),
+      sendInputChunk: vi.fn(),
+      restartSession: vi.fn(),
+    } as ReturnType<typeof useTerminalSession>)
+    vi.mocked(useTerminalPreferences).mockReturnValue({
+      errorMessage: null,
+      decreaseFontSize: vi.fn(),
+      decreaseLineHeight: vi.fn(),
+      cursorBlink: true,
+      cursorStyle: 'block',
+      fontSize: 13,
+      increaseFontSize: vi.fn(),
+      increaseLineHeight: vi.fn(),
+      increaseScrollback: vi.fn(),
+      isLoading: false,
+      isSaving: false,
+      lineHeight: 1.25,
+      refresh: vi.fn(async () => undefined),
+      resetScrollback: vi.fn(),
+      resetFontSize: vi.fn(),
+      resetLineHeight: vi.fn(),
+      resetCursorBlink: vi.fn(),
+      resetCursorStyle: vi.fn(),
+      resetThemeMode: vi.fn(),
+      scrollback: 5000,
+      themeMode: 'adaptive',
+      decreaseScrollback: vi.fn(),
+      updateCursorBlink: vi.fn(),
+      updateFontSize: vi.fn(),
+      updateLineHeight: vi.fn(),
+      updateCursorStyle: vi.fn(),
+      updateThemeMode: vi.fn(),
+    })
+
+    render(<TerminalWidget hostId="terminal" runtimeWidgetId="term-pve" title="PVE host" />)
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Explain and fix the latest terminal issue for PVE host' }),
+    )
+
+    expect(queueAiPromptHandoff).toHaveBeenCalledWith({
+      context_widget_ids: ['term-pve'],
+      prompt: expect.stringContaining(
+        'Проверь и помоги объяснить и исправить последнюю ошибку в этом терминале.',
+      ),
+      submit: true,
+    })
+    expect(queueAiPromptHandoff).toHaveBeenCalledWith({
+      context_widget_ids: ['term-pve'],
+      prompt: expect.stringContaining('df: cannot read table of mounted file systems'),
+      submit: true,
+    })
+    expect(openAiSidebar).toHaveBeenCalledTimes(1)
   })
 })
