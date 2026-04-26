@@ -1,9 +1,11 @@
 package conversation
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -42,6 +44,19 @@ type openAICompatibleChatResponse struct {
 		Message struct {
 			Content openAICompatibleContent `json:"content"`
 		} `json:"message"`
+	} `json:"choices"`
+	Error *struct {
+		Message string `json:"message"`
+		Type    string `json:"type"`
+		Code    string `json:"code"`
+	} `json:"error,omitempty"`
+}
+
+type openAICompatibleChatStreamResponse struct {
+	Choices []struct {
+		Delta struct {
+			Content openAICompatibleContent `json:"content"`
+		} `json:"delta"`
 	} `json:"choices"`
 	Error *struct {
 		Message string `json:"message"`
@@ -152,7 +167,7 @@ func (p *openAICompatibleProvider) Info() ProviderInfo {
 		Kind:      "openai-compatible",
 		BaseURL:   p.baseURL,
 		Model:     p.model,
-		Streaming: false,
+		Streaming: true,
 	}
 }
 
@@ -168,7 +183,7 @@ func (p *openAICompatibleProvider) CompleteStream(
 	request CompletionRequest,
 	onTextDelta func(string) error,
 ) (CompletionResult, ProviderInfo, error) {
-	return p.complete(ctx, request, onTextDelta)
+	return p.completeStream(ctx, request, onTextDelta)
 }
 
 func (p *openAICompatibleProvider) complete(
@@ -202,6 +217,38 @@ func (p *openAICompatibleProvider) complete(
 	}
 	return CompletionResult{
 		Content: content,
+		Model:   info.Model,
+	}, info, nil
+}
+
+func (p *openAICompatibleProvider) completeStream(
+	ctx context.Context,
+	request CompletionRequest,
+	onTextDelta func(string) error,
+) (CompletionResult, ProviderInfo, error) {
+	info := p.Info()
+	if model := strings.TrimSpace(request.Model); model != "" {
+		info.Model = model
+	}
+	if err := validateCompletionRequest(request); err != nil {
+		return CompletionResult{}, info, err
+	}
+	if strings.TrimSpace(p.baseURL) == "" {
+		return CompletionResult{}, info, fmt.Errorf("openai-compatible base_url is required")
+	}
+	if strings.TrimSpace(info.Model) == "" {
+		return CompletionResult{}, info, fmt.Errorf("openai-compatible model is required")
+	}
+	if onTextDelta == nil {
+		return p.complete(ctx, request, nil)
+	}
+
+	content, err := p.runStream(ctx, request, info.Model, onTextDelta)
+	if err != nil {
+		return CompletionResult{}, info, err
+	}
+	return CompletionResult{
+		Content: strings.TrimSpace(content),
 		Model:   info.Model,
 	}, info, nil
 }
@@ -269,6 +316,135 @@ func (p *openAICompatibleProvider) run(
 		return "", fmt.Errorf("openai-compatible response did not include choices")
 	}
 	return string(completion.Choices[0].Message.Content), nil
+}
+
+func (p *openAICompatibleProvider) runStream(
+	ctx context.Context,
+	request CompletionRequest,
+	model string,
+	onTextDelta func(string) error,
+) (string, error) {
+	runCtx := ctx
+	cancel := func() {}
+	if _, ok := ctx.Deadline(); !ok {
+		runCtx, cancel = context.WithTimeout(ctx, defaultOpenAICompatibleCompletionTimeout)
+	}
+	defer cancel()
+
+	messageRecords := make([]openAICompatibleMessageRecord, 0, len(request.Messages)+1)
+	messageRecords = append(messageRecords, openAICompatibleMessageRecord{
+		Role:    string(RoleSystem),
+		Content: strings.TrimSpace(request.SystemPrompt),
+	})
+	for _, message := range request.Messages {
+		messageRecords = append(messageRecords, openAICompatibleMessageRecord{
+			Role:    string(message.Role),
+			Content: message.Content,
+		})
+	}
+
+	payload := openAICompatibleChatRequest{
+		Model:    strings.TrimSpace(model),
+		Messages: messageRecords,
+		Stream:   true,
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return "", err
+	}
+
+	httpRequest, err := http.NewRequestWithContext(
+		runCtx,
+		http.MethodPost,
+		openAICompatibleEndpoint(p.baseURL, "/chat/completions"),
+		strings.NewReader(string(body)),
+	)
+	if err != nil {
+		return "", err
+	}
+	httpRequest.Header.Set("Accept", "text/event-stream")
+	httpRequest.Header.Set("Content-Type", "application/json")
+
+	response, err := p.client.Do(httpRequest)
+	if err != nil {
+		return "", err
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		var completion openAICompatibleChatResponse
+		if err := json.NewDecoder(response.Body).Decode(&completion); err != nil {
+			return "", err
+		}
+		return "", openAICompatibleResponseError(response.StatusCode, completion.Error)
+	}
+	return consumeOpenAICompatibleChatStream(response.Body, onTextDelta)
+}
+
+func consumeOpenAICompatibleChatStream(body io.Reader, onTextDelta func(string) error) (string, error) {
+	scanner := bufio.NewScanner(body)
+	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+
+	var dataLines []string
+	var content strings.Builder
+	sawDataFrame := false
+	flush := func() error {
+		if len(dataLines) == 0 {
+			return nil
+		}
+		rawEvent := strings.TrimSpace(strings.Join(dataLines, "\n"))
+		dataLines = nil
+		if rawEvent == "" || rawEvent == "[DONE]" {
+			return nil
+		}
+
+		var event openAICompatibleChatStreamResponse
+		if err := json.Unmarshal([]byte(rawEvent), &event); err != nil {
+			return err
+		}
+		if event.Error != nil {
+			return openAICompatibleResponseError(http.StatusOK, event.Error)
+		}
+		for _, choice := range event.Choices {
+			delta := string(choice.Delta.Content)
+			if delta == "" {
+				continue
+			}
+			content.WriteString(delta)
+			if err := onTextDelta(delta); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	for scanner.Scan() {
+		line := strings.TrimRight(scanner.Text(), "\r")
+		if line == "" {
+			if err := flush(); err != nil {
+				return "", err
+			}
+			continue
+		}
+		if strings.HasPrefix(line, ":") {
+			continue
+		}
+		if data, ok := strings.CutPrefix(line, "data:"); ok {
+			sawDataFrame = true
+			dataLines = append(dataLines, strings.TrimSpace(data))
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return "", err
+	}
+	if !sawDataFrame {
+		return "", fmt.Errorf("openai-compatible stream did not include data frames")
+	}
+	if err := flush(); err != nil {
+		return "", err
+	}
+	return content.String(), nil
 }
 
 func openAICompatibleResponseError(

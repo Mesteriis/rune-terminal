@@ -54,8 +54,12 @@ Positive:
 Negative:
 
 - provider breadth grows again, so docs and validation must stay disciplined
-- `openai-compatible` is still buffered completion, not token-level streaming
 - this slice does not solve API-key management, proxy routing, or provider-native tool execution
+
+Update `2026-04-26`: `openai-compatible` now supports token/text-delta
+streaming for OpenAI-compatible chat-completions SSE responses. This does not
+add API-key management, proxy routing, reasoning-delta streaming or
+provider-native tool execution.
 
 ## Alternatives considered
 

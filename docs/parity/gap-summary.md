@@ -28,4 +28,4 @@ Source of truth: [parity-matrix.md](./parity-matrix.md)
 - Multi-session terminal block (`terminal`) — `MISSING`
 - Terminal advanced affordances/search/sidebar (`UX`) — `MISSING`
 - Plugin ecosystem/discovery (`plugins`) — `MISSING`
-- Streaming AI responses (`UX`) — `MISSING`
+- Streaming AI response breadth (`UX`) — `PARTIAL`

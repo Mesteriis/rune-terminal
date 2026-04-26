@@ -413,7 +413,7 @@ Confirmable boundaries:
 - Operator, settings, and audit navigation are now secondary header-menu controls rather than part of the primary composer surface.
 - The AI transcript now renders runtime tool activity with explicit tool names, operation summaries, affected widgets/paths, and approval-use markers so the feed behaves more like a working AI/tool conversation surface instead of a generic log.
 - The AI composer now exposes TideTerm-like control affordances: an attach button, prompt suggestion chips, and a send action.
-- Streaming assistant output is not implemented yet. The current provider path waits for a complete response and then appends a complete or error assistant message to the transcript.
+- Streaming assistant output is active through `POST /api/v1/agent/conversation/messages/stream`; OpenAI-compatible HTTP sources now forward provider SSE `delta.content` chunks as text deltas, while Codex CLI and Claude Code CLI still emit buffered output as one final text delta.
 - Shell settings and audit now use more TideTerm-like utility placement: they stay secondary to the terminal and AI panel, but they are reachable from the right-side dock through dedicated utility menus instead of only raw operator sections.
 - Runtime bootstrap failures now show launch-path recovery hints in the shell (rebuild core binary, use `npm run tauri:dev`, verify dependencies).
 - Widget/app discoverability now uses a closest-compatible launcher flyout in the dock instead of a full TideTerm app catalog. It is intentionally limited to shell entry points and current widgets until a broader launcher/app domain exists.

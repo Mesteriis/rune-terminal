@@ -18,6 +18,7 @@
   - frontend AI/provider settings surfaces
   - runtime-backed AI composer submit-shortcut preference (`Enter` vs `Ctrl/Cmd+Enter`) through `GET/PUT /api/v1/settings/agent`
   - narrow OpenAI-compatible HTTP source discovery/completion path
+  - OpenAI-compatible HTTP source token/delta streaming over provider SSE
   - AI toolbar provider/model selection over the backend provider catalog
   - AI composer request-context toolbar trigger with explicit widget multiselect
   - persisted request-context selection per conversation in `runtime.db`
@@ -170,14 +171,18 @@
 - `python3 -m py_compile scripts/validate_workspace_navigation.py scripts/validate_operator_workflow.py`
 - `python3 scripts/validate_operator_workflow.py`
 - `python3 scripts/validate_workspace_navigation.py`
+- `./scripts/go.sh test ./core/conversation -run 'TestOpenAICompatibleProviderComplete|TestOpenAICompatibleProviderCompleteStreamEmitsDeltas|TestServiceSubmitStreamEmitsStructuredEvents' -count=1`
+- `./scripts/go.sh test ./core/conversation ./core/app ./core/transport/httpapi -run 'TestOpenAICompatibleProvider|TestStreamConversation|TestSubmitConversationPromptAppliesSelectedModelOverrideForOpenAICompatibleProvider|TestStreamConversationMessageEmitsStructuredEventSequence' -count=1`
+- `./scripts/go.sh test ./core/conversation ./core/app ./core/transport/httpapi -count=1`
+- `npm --prefix frontend run test -- src/features/agent/api/client.test.ts src/widgets/ai/ai-panel-widget.test.tsx`
 
 ## Known limitations
 
 - conversation management is still intentionally narrow: create + switch + active-thread rename + archive + restore + delete plus one shared navigator. Server-backed scope/query filtering and archive-management flows are now live, but multi-panel conversation views are still not implemented in this slice.
 - request-context persistence is now conversation-scoped and stale-widget repair is explicit, but there are still no named context presets or grouped context modes.
-- CLI providers currently expose buffered chat completion through the existing SSE route; token-by-token provider streaming is not implemented.
+- CLI providers currently expose buffered chat completion through the existing SSE route; token-by-token provider streaming is implemented only for the OpenAI-compatible HTTP source.
 - CLI-native tool calls are not yet mediated through `core/toolruntime`, policy approval, or audit events.
-- The OpenAI-compatible HTTP source path is also buffered and non-streaming in this slice.
+- The OpenAI-compatible HTTP source streams text deltas only; reasoning deltas and provider-native tool-call stream events remain out of scope.
 - No current visible profile, role, or mode selector exists in the AI sidebar, so those backend selection routes remain unwired to user controls.
 - `/run` currently surfaces approval-required toolruntime responses as a chat-side error/status message; there is no dedicated approval-confirmation UI for this path yet.
 - On this machine the local `claude` binary is installed and authenticated, and the verified browser path includes a successful Claude completion on a fresh conversation.
