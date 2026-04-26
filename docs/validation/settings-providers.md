@@ -6,8 +6,8 @@
 - State: `VERIFIED`
 - Scope:
   - backend-owned AI provider catalog and active-provider resolution
-  - backend-owned provider gateway telemetry and recent-run history
-  - explicit provider probe route and operator-visible probe result surface
+  - backend-owned provider gateway operational snapshot, recent-run history, and persisted probe state
+  - explicit provider probe route that refreshes the same operational snapshot instead of creating a second UI truth
   - narrow provider runtime for `codex`, `claude`, and `openai-compatible`
   - frontend settings provider client/draft helpers and TypeScript surface
   - browser-level Playwright validation for the provider/settings surfaces plus AI-toolbar provider/model switching under the split local dev path
@@ -70,23 +70,30 @@
 - The editor exposes:
   - command + model fields for CLI providers
   - base URL + model fields for the OpenAI-compatible provider
-- Backend CLI command availability is surfaced through `status_state`, `status_message`, and `resolved_binary`.
-- The same settings shell now also consumes `GET /api/v1/agent/providers/gateway`:
+- The provider catalog is now configuration-only:
+  - CLI provider views expose command/model/chat-model configuration
+  - runtime readiness is no longer derived from `GET /api/v1/agent/providers`
+- The settings shell now consumes `GET /api/v1/agent/providers/gateway` as the single operational source:
+  - per-provider route readiness (`route_ready`, `route_status_state`, `route_status_message`)
+  - resolved CLI binary when the backend probe found one
+  - OpenAI-compatible route source/model echo from the backend probe snapshot
+  - route checked-at / probe latency
   - per-provider recent run totals
   - health status derived from backend run truth
   - average and last latency
   - recent activity rows with request mode, model, duration, and last error
 - Provider settings now also expose an explicit `Probe provider route` action:
   - `POST /api/v1/agent/providers/{providerID}/probe`
-  - CLI providers return explicit binary/auth readiness from the backend-owned provider view
+  - CLI providers return explicit binary/auth readiness from the backend-owned probe path
   - OpenAI-compatible providers probe `/v1/models`, return discovered models, and fail explicitly when the configured model is not present
-  - probe latency and checked-at time are shown in the same settings surface
+  - the probe writes back into the same backend-owned gateway snapshot, so the editor and shell summaries read one source of truth
 - Gateway telemetry load no longer fails silently in the settings shell:
   - if `/api/v1/agent/providers/gateway` fails, the UI shows an explicit gateway telemetry error instead of quietly pretending the telemetry surface has no data
-- CLI auth state is also surfaced through the same provider view payload:
-  - `ready` when the binary is present and authenticated
-  - `auth-required` when the binary is present but local login is missing
-  - `missing` when the binary cannot be resolved
+- CLI/OpenAI probe states are now surfaced only through the gateway snapshot:
+  - `ready` when the route is usable
+  - `auth-required` when the CLI is present but local login is missing
+  - `missing` when the CLI binary cannot be resolved
+  - `unchecked` before any explicit operator probe has been run
 - The frontend provider client now normalizes nullable backend arrays at the API boundary:
   - `chat_models: null -> []`
   - discovery `models: null -> []`

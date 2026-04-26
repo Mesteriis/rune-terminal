@@ -14,8 +14,8 @@
   - backend-backed search/filter inside the AI conversation navigator through explicit `query` / `scope` list params
   - keyboard navigation inside the searchable AI conversation navigator through `aria-activedescendant` plus `Enter` selection
   - backend-owned agent provider catalog
-  - backend-owned provider gateway telemetry over the active conversation/provider route: recent run history, health status, and latency summaries persisted in `runtime.db`
-  - explicit provider probe contract over the same provider route, including CLI readiness and OpenAI-compatible source reachability/model availability checks
+  - backend-owned provider gateway operational snapshot over the active conversation/provider route: recent run history, route status, and latency summaries persisted in `runtime.db`
+  - explicit provider probe contract over the same provider route, including CLI readiness and OpenAI-compatible source reachability/model availability checks, with probe results written back into that same gateway snapshot
   - active conversation provider resolution
   - frontend AI/provider settings surfaces
   - runtime-backed AI composer submit-shortcut preference (`Enter` vs `Ctrl/Cmd+Enter`) through `GET/PUT /api/v1/settings/agent`
@@ -95,12 +95,13 @@
   - recent provider run history persisted in `runtime.db`
   - per-provider health summary derived from backend run truth
   - latency signals (`average_duration_ms`, `last_duration_ms`)
+  - route probe truth (`route_status_state`, `route_status_message`, `resolved_binary`, `route_checked_at`, `route_latency_ms`) as the single runtime-readiness source for the UI
   - last-status / last-error visibility for operator diagnosis without reopening a standalone proxy stack
   - gateway telemetry failures are now surfaced explicitly in the settings shell instead of being swallowed as an empty telemetry view
   - provider settings also expose `POST /api/v1/agent/providers/{providerID}/probe` for explicit operator health checks:
-  - CLI probes reuse backend-owned binary/auth readiness state
+  - CLI probes resolve backend-owned binary/auth readiness directly from the runtime probe path
   - OpenAI-compatible probes verify source reachability plus configured-model availability
-  - the shell shows probe status, detail, latency, and checked-at time on the active provider editor
+  - the probe response updates the same gateway snapshot, so provider settings and AI-related shell sections no longer read a second catalog-derived readiness surface
 - Unsupported legacy provider records are filtered during agent-state normalization. If filtering leaves no providers, the store recreates the default local CLI providers.
 - The provider catalog route returns `supported_kinds: ["codex", "claude", "openai-compatible"]`.
   - The AI composer toolbar now consumes that backend-owned catalog directly:
