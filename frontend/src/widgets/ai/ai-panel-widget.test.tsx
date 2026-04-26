@@ -1867,6 +1867,254 @@ describe('AiPanelWidget backend conversation path', () => {
     })
   })
 
+  it('confirms and retries approval-required /run execution through toolruntime', async () => {
+    registerTerminalPanelBinding({
+      hostId: 'terminal',
+      preset: 'workspace',
+      runtimeWidgetId: 'term-side',
+    })
+    setActiveWidgetHostId('terminal')
+
+    const toolBodies: Array<Record<string, unknown>> = []
+    const fetchMock = vi.fn()
+    fetchMock.mockImplementation(async (input, init) => {
+      const url = String(input)
+
+      if (url.endsWith('/api/v1/bootstrap')) {
+        return {
+          ok: true,
+          json: async () => ({
+            home_dir: '/Users/avm',
+            repo_root: '/Users/avm/projects/runa-terminal',
+          }),
+        }
+      }
+
+      if (url.endsWith('/api/v1/agent/conversation')) {
+        return createConversationFetchResponse({
+          title: 'Run approval flow',
+          provider: {
+            kind: 'codex',
+            base_url: 'http://codex',
+            model: 'stub-model',
+            streaming: false,
+          },
+        })
+      }
+
+      if (url.endsWith('/api/v1/agent/providers')) {
+        return createProviderCatalogFetchResponse()
+      }
+
+      if (url.includes('/api/v1/agent/conversations?scope=recent')) {
+        return createConversationListFetchResponse('conv_1', [
+          {
+            id: 'conv_1',
+            title: 'Run approval flow',
+            created_at: '2026-04-21T09:59:00Z',
+            updated_at: '2026-04-21T10:00:02Z',
+            message_count: 3,
+          },
+        ])
+      }
+
+      if (url.endsWith('/api/v1/terminal/term-side')) {
+        return {
+          ok: true,
+          json: async () => ({
+            state: {
+              widget_id: 'term-side',
+              session_id: 'term-side',
+              shell: '/bin/zsh',
+              connection_id: 'local',
+              connection_kind: 'local',
+              pid: 100,
+              status: 'running',
+              started_at: '2026-04-21T10:00:00Z',
+              can_send_input: true,
+              can_interrupt: true,
+            },
+            chunks: [],
+            next_seq: 7,
+          }),
+        }
+      }
+
+      if (url.endsWith('/api/v1/tools/execute')) {
+        const body = JSON.parse(String(init?.body)) as Record<string, unknown>
+        toolBodies.push(body)
+
+        if (body.tool_name === 'safety.confirm') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              status: 'ok',
+              output: {
+                approval_id: 'approval_run_1',
+                approval_token: 'approval-token-1',
+                expires_at: '2026-04-21T10:01:00Z',
+              },
+            }),
+          }
+        }
+
+        if (body.tool_name === 'term.send_input' && body.approval_token === 'approval-token-1') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              status: 'ok',
+              output: {
+                append_newline: true,
+                bytes_sent: 15,
+                widget_id: 'term-side',
+              },
+            }),
+          }
+        }
+
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            status: 'requires_confirmation',
+            error_code: 'approval_required',
+            pending_approval: {
+              approval_tier: 'dangerous',
+              created_at: '2026-04-21T10:00:00Z',
+              expires_at: '2026-04-21T10:01:00Z',
+              id: 'approval_run_1',
+              summary: 'send input to term-side: echo needs-approval',
+              tool_name: 'term.send_input',
+            },
+          }),
+        }
+      }
+
+      if (url.endsWith('/api/v1/terminal/term-side?from=7')) {
+        return {
+          ok: true,
+          json: async () => ({
+            state: {
+              widget_id: 'term-side',
+              session_id: 'term-side',
+              shell: '/bin/zsh',
+              connection_id: 'local',
+              connection_kind: 'local',
+              pid: 100,
+              status: 'running',
+              started_at: '2026-04-21T10:00:00Z',
+              can_send_input: true,
+              can_interrupt: true,
+            },
+            chunks: [
+              {
+                seq: 7,
+                data: 'needs-approval\n',
+                timestamp: '2026-04-21T10:00:01Z',
+              },
+            ],
+            next_seq: 8,
+          }),
+        }
+      }
+
+      if (url.endsWith('/api/v1/agent/terminal-commands/explain')) {
+        return {
+          ok: true,
+          json: async () => ({
+            conversation: {
+              id: 'conv_1',
+              title: 'Run approval flow',
+              messages: [
+                {
+                  id: 'msg_user',
+                  role: 'user',
+                  content: '/run echo needs-approval',
+                  status: 'complete',
+                  created_at: '2026-04-21T10:00:00Z',
+                },
+                {
+                  id: 'msg_explain',
+                  role: 'assistant',
+                  content: 'Approved and ran `echo needs-approval`.',
+                  status: 'complete',
+                  provider: 'codex',
+                  model: 'stub-model',
+                  created_at: '2026-04-21T10:00:02Z',
+                },
+              ],
+              provider: {
+                kind: 'codex',
+                base_url: 'http://codex',
+                model: 'stub-model',
+                streaming: false,
+              },
+              created_at: '2026-04-21T09:59:00Z',
+              updated_at: '2026-04-21T10:00:02Z',
+            },
+            provider_error: '',
+            output_excerpt: 'needs-approval',
+          }),
+        }
+      }
+
+      throw new Error(`Unexpected fetch request: ${url}`)
+    })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<AiPanelWidget hostId="ai-shell-panel" />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Backend conversation is empty.')).toBeInTheDocument()
+    })
+
+    fireEvent.change(screen.getByPlaceholderText('Text Area'), {
+      target: { value: '/run echo needs-approval' },
+    })
+    fireEvent.click(screen.getByLabelText('Send prompt'))
+
+    await waitFor(() => {
+      expect(screen.getByText('Approval required before execution.')).toBeInTheDocument()
+    })
+    expect(screen.queryByText(/Confirmation required before \/run can continue/)).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Approve' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Approved and ran `echo needs-approval`.')).toBeInTheDocument()
+    })
+
+    expect(toolBodies.map((body) => body.tool_name)).toEqual([
+      'term.send_input',
+      'safety.confirm',
+      'term.send_input',
+    ])
+    expect(toolBodies[1]).toMatchObject({
+      input: {
+        approval_id: 'approval_run_1',
+      },
+      tool_name: 'safety.confirm',
+    })
+    expect(toolBodies[2]).toMatchObject({
+      approval_token: 'approval-token-1',
+      input: {
+        append_newline: true,
+        text: 'echo needs-approval',
+        widget_id: 'term-side',
+      },
+      tool_name: 'term.send_input',
+    })
+    expect(
+      fetchMock.mock.calls.some((call) =>
+        String(call[0]).includes('/api/v1/agent/conversation/messages/stream'),
+      ),
+    ).toBe(false)
+  })
+
   it('updates detail visibility immediately when the chat mode changes', () => {
     const { rerender } = render(
       <AiPanelWidget hostId="ai-shell-panel" mode="chat" state={aiPanelWidgetMockState} />,

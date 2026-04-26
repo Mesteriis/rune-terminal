@@ -117,6 +117,7 @@
 - The frontend resolves the active terminal target from the current Dockview terminal panel registry, then:
   - reads the target terminal snapshot with `GET /api/v1/terminal/{widgetID}`
   - sends input through `POST /api/v1/tools/execute` using `term.send_input`
+  - if toolruntime returns `requires_confirmation`, renders the existing approval UI, calls `safety.confirm`, and retries the original `term.send_input` with the returned one-time `approval_token`
   - waits briefly for post-command terminal output
   - appends the backend-owned execution transcript/explanation chain through `POST /api/v1/agent/terminal-commands/explain`
 - `widget_context_enabled` remains valid for conversation/explain routes, but is intentionally omitted from `POST /api/v1/tools/execute` because that transport contract does not accept it.
@@ -187,6 +188,7 @@
 - `npm --prefix frontend run test -- src/widgets/ai/ai-composer-widget.test.tsx src/widgets/ai/ai-panel-widget.test.tsx`
 - `npm --prefix frontend run test -- src/widgets/files/files-panel-widget.test.tsx src/widgets/ai/ai-composer-widget.test.tsx src/widgets/ai/ai-chat-message-widget.test.tsx src/widgets/ai/ai-panel-widget.test.tsx`
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestCreateAttachmentReference|TestSubmitConversationPromptIncludesAttachmentContextInProviderRequest|TestSubmitConversationMessagePersistsAttachmentReferences|TestSubmitConversationMessageRejectsMissingAttachmentReference' -count=1`
+- `npm --prefix frontend run test -- src/widgets/ai/ai-panel-widget.test.tsx -t "confirms and retries approval-required /run execution through toolruntime"`
 - `npm run build:frontend`
 - `npm run lint:frontend`
 
@@ -200,7 +202,7 @@
 - CLI-native tool calls are not yet mediated through `core/toolruntime`, policy approval, or audit events.
 - The OpenAI-compatible HTTP source streams text deltas only; reasoning deltas and provider-native tool-call stream events remain out of scope.
 - Profile, role, and mode controls are now visible in the AI composer toolbar, but they remain global backend selection controls rather than per-conversation named presets.
-- `/run` currently surfaces approval-required toolruntime responses as a chat-side error/status message; there is no dedicated approval-confirmation UI for this path yet.
+- `/run` approval retry state is still frontend-session-local; it is not persisted as a durable backend job if the panel is torn down before approval.
 - On this machine the local `claude` binary is installed and authenticated, and the verified browser path includes a successful Claude completion on a fresh conversation.
 - The composer shortcut preference is now runtime-backed inside the local desktop/browser runtime, but it still is not a broader roaming user-profile setting shared across multiple runtimes or machines.
 

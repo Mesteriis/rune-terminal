@@ -391,7 +391,7 @@ Confirmable boundaries:
 - If command execution succeeds but explanation fails, the shell now reports that explicitly and falls back to the captured terminal output summary instead of claiming a clean explain success.
 - Approval remains in force for AI command execution:
   - if the active policy profile escalates `term.send_input` to `dangerous`, `/run` returns an approval requirement
-  - the active compat panel now keeps the pending `/run` request in an explicit in-memory retry context and rehydrates it when the panel remounts in the same frontend session
+  - the active compat panel now keeps the pending `/run` request in an explicit in-memory retry context while the panel remains mounted
   - confirm uses the existing `safety.confirm` tool contract and retries the original `term.send_input` request with the returned one-time `approval_token`
   - the backend now enforces that the approved retry matches the original execution intent instead of trusting `tool_name` alone
   - the backend rejects `/run` tool execution if the explicit target session does not match the destination widget session (`local` vs `remote`)

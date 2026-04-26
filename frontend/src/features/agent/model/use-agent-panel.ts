@@ -27,6 +27,7 @@ import {
   type AgentConversationSnapshot,
   type AgentConversationSummary,
   type AgentConversationStreamConnection,
+  type AgentToolExecuteResponse,
   updateAgentConversationContext,
 } from '@/features/agent/api/client'
 import {
@@ -44,6 +45,7 @@ import {
   createPlanMessage,
   createPendingInteractionFlow,
   failAuditEntries,
+  type PendingRunApproval,
   type PendingInteractionFlow,
   updateApprovalMessageStatus,
   updateQuestionnaireMessageAnswer,
@@ -265,6 +267,19 @@ function providerViewToConversationProvider(
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message.trim() ? error.message : fallback
+}
+
+function getApprovalToken(response: AgentToolExecuteResponse) {
+  const output = response.output
+
+  if (output && typeof output === 'object') {
+    const token = (output as { approval_token?: unknown }).approval_token
+    if (typeof token === 'string' && token.trim() !== '') {
+      return token
+    }
+  }
+
+  throw new Error('Approval confirmation did not return an approval token.')
 }
 
 function selectPreferredChatModel(
@@ -1525,23 +1540,61 @@ export function useAgentPanel(hostId: string, enabled = true) {
         target_connection_id: targetConnectionId,
         target_session: targetSession,
       }
+      const executionInput = {
+        append_newline: true,
+        text: command,
+        widget_id: targetTerminal.runtimeWidgetId,
+      }
 
       const executionResponse = await executeAgentTool({
         context: executionContext,
-        input: {
-          append_newline: true,
-          text: command,
-          widget_id: targetTerminal.runtimeWidgetId,
-        },
+        input: executionInput,
         tool_name: 'term.send_input',
       })
 
       if (executionResponse.status === 'requires_confirmation') {
-        throw new Error(
-          executionResponse.pending_approval?.summary
-            ? `Confirmation required before /run can continue: ${executionResponse.pending_approval.summary}`
-            : 'Confirmation required before /run can continue.',
+        const pendingApproval = executionResponse.pending_approval
+        if (!pendingApproval?.id) {
+          throw new Error('Confirmation required before /run can continue, but no approval id was returned.')
+        }
+
+        const flowSequence = flowCounterRef.current
+        flowCounterRef.current += 1
+        const flowID = `agent-run-${hostId}-${flowSequence}`
+        const summary = pendingApproval.summary?.trim() || `Run ${command}`
+        const tools = [
+          {
+            name: 'term.send_input',
+            description: summary,
+          },
+        ]
+        const planMessage = createPlanMessage(flowID, prompt, tools, nextLocalSortKey)
+        const approvalMessage = createApprovalMessage(flowID, nextLocalSortKey)
+        const runApproval: PendingRunApproval = {
+          approvalID: pendingApproval.id,
+          baselineNextSeq: baselineSnapshot.next_seq,
+          command,
+          prompt,
+          repoRoot,
+          targetConnectionID: targetConnectionId,
+          targetSession,
+          targetWidgetID: targetTerminal.runtimeWidgetId,
+        }
+        const nextFlow: PendingInteractionFlow = {
+          approvalMessageID: approvalMessage.id,
+          auditProgressed: false,
+          flowID,
+          prompt,
+          runApproval,
+          tools,
+        }
+
+        pendingFlowRef.current = nextFlow
+        setPendingFlow(nextFlow)
+        setInteractionMessages((currentMessages) =>
+          sortMessagesBySortKey([...currentMessages, planMessage, approvalMessage]),
         )
+        return true
       }
 
       if (executionResponse.status !== 'ok') {
@@ -1578,9 +1631,65 @@ export function useAgentPanel(hostId: string, enabled = true) {
       activeWidgetHostId,
       applyConversationSnapshot,
       createConversationContext,
+      hostId,
+      nextLocalSortKey,
       refreshConversationList,
       terminalPanelBindings,
     ],
+  )
+
+  const runApprovedTerminalPrompt = useCallback(
+    async (runApproval: PendingRunApproval, approvalToken: string) => {
+      const executionResponse = await executeAgentTool({
+        approval_token: approvalToken,
+        context: {
+          action_source: 'frontend.ai.sidebar.run',
+          active_widget_id: runApproval.targetWidgetID,
+          repo_root: runApproval.repoRoot,
+          target_connection_id: runApproval.targetConnectionID,
+          target_session: runApproval.targetSession,
+        },
+        input: {
+          append_newline: true,
+          text: runApproval.command,
+          widget_id: runApproval.targetWidgetID,
+        },
+        tool_name: 'term.send_input',
+      })
+
+      if (executionResponse.status === 'requires_confirmation') {
+        throw new Error('Confirmed /run execution still requires approval.')
+      }
+
+      if (executionResponse.status !== 'ok') {
+        throw new Error(executionResponse.error?.trim() || 'Unable to execute approved /run command.')
+      }
+
+      await waitForTerminalOutput(runApproval.targetWidgetID, runApproval.baselineNextSeq)
+
+      const explainResponse = await explainTerminalCommand({
+        command: runApproval.command,
+        context: createConversationContext({
+          actionSource: 'frontend.ai.sidebar.run',
+          activeWidgetID: runApproval.targetWidgetID,
+          includeActiveWidgetInSelection: true,
+          repoRoot: runApproval.repoRoot,
+          targetConnectionID: runApproval.targetConnectionID,
+          targetSession: runApproval.targetSession,
+        }),
+        from_seq: runApproval.baselineNextSeq,
+        prompt: runApproval.prompt ?? `/run ${runApproval.command}`,
+        widget_id: runApproval.targetWidgetID,
+      })
+
+      applyConversationSnapshot(explainResponse.conversation)
+      await refreshConversationList()
+
+      if (explainResponse.provider_error?.trim()) {
+        setSubmitError(explainResponse.provider_error.trim())
+      }
+    },
+    [applyConversationSnapshot, createConversationContext, refreshConversationList],
   )
 
   const runBackendPrompt = useCallback(
@@ -1953,6 +2062,76 @@ export function useAgentPanel(hostId: string, enabled = true) {
 
       const approvedMessage = updateApprovalMessageStatus(message, 'approved', nextLocalSortKey)
       const auditMessage = createAuditMessage(activeFlow.flowID, activeFlow.tools, nextLocalSortKey)
+
+      if (activeFlow.runApproval) {
+        const runApproval = activeFlow.runApproval
+        const nextFlow: PendingInteractionFlow = {
+          ...activeFlow,
+          approvalMessageID: message.id,
+          auditMessageID: auditMessage.id,
+          auditProgressed: false,
+        }
+        pendingFlowRef.current = nextFlow
+        setPendingFlow(nextFlow)
+        setInteractionMessages((currentMessages) =>
+          sortMessagesBySortKey([
+            ...currentMessages.filter((currentMessage) => currentMessage.id !== message.id),
+            approvedMessage,
+            auditMessage,
+          ]),
+        )
+        setIsSubmitting(true)
+        setIsResponseCancellable(false)
+        setSubmitError(null)
+        blockAiWidget(hostId)
+
+        try {
+          const confirmationResponse = await executeAgentTool({
+            context: {
+              action_source: 'frontend.ai.sidebar.run.confirm',
+              active_widget_id: runApproval.targetWidgetID,
+              repo_root: runApproval.repoRoot,
+              target_connection_id: runApproval.targetConnectionID,
+              target_session: runApproval.targetSession,
+            },
+            input: {
+              approval_id: runApproval.approvalID,
+            },
+            tool_name: 'safety.confirm',
+          })
+
+          if (confirmationResponse.status !== 'ok') {
+            throw new Error(confirmationResponse.error?.trim() || 'Unable to confirm /run approval.')
+          }
+
+          await runApprovedTerminalPrompt(runApproval, getApprovalToken(confirmationResponse))
+          updateAuditMessageEntries(auditMessage.id, (currentMessage) =>
+            currentMessage.type === 'audit'
+              ? {
+                  ...currentMessage,
+                  entries: completeAuditEntries(currentMessage.entries),
+                }
+              : currentMessage,
+          )
+        } catch (error) {
+          updateAuditMessageEntries(auditMessage.id, (currentMessage) =>
+            currentMessage.type === 'audit'
+              ? {
+                  ...currentMessage,
+                  entries: failAuditEntries(currentMessage.entries),
+                }
+              : currentMessage,
+          )
+          setSubmitError(getErrorMessage(error, 'Unable to run the approved terminal command.'))
+        } finally {
+          clearPendingInteractionFlow()
+          unblockAiWidget(hostId)
+          setIsSubmitting(false)
+          setIsResponseCancellable(false)
+        }
+        return
+      }
+
       const nextFlow: PendingInteractionFlow = {
         ...activeFlow,
         approvalMessageID: message.id,
@@ -1975,7 +2154,15 @@ export function useAgentPanel(hostId: string, enabled = true) {
         model: selectedModel || undefined,
       })
     },
-    [clearPendingInteractionFlow, nextLocalSortKey, runBackendPrompt, selectedModel],
+    [
+      clearPendingInteractionFlow,
+      hostId,
+      nextLocalSortKey,
+      runApprovedTerminalPrompt,
+      runBackendPrompt,
+      selectedModel,
+      updateAuditMessageEntries,
+    ],
   )
 
   const panelState = useMemo(() => {

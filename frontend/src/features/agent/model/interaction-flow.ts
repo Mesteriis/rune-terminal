@@ -19,7 +19,19 @@ export type PendingInteractionFlow = {
   flowID: string
   prompt: string
   questionnaireMessageID?: string
+  runApproval?: PendingRunApproval
   tools: PlanTool[]
+}
+
+export type PendingRunApproval = {
+  approvalID: string
+  baselineNextSeq: number
+  command: string
+  prompt: string
+  repoRoot: string
+  targetConnectionID: string
+  targetSession: string
+  targetWidgetID: string
 }
 
 export type LocalSortKeyGenerator = () => number
