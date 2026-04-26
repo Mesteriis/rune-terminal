@@ -38,6 +38,7 @@ type Runtime struct {
 	Policy                      *policy.Store
 	Audit                       *audit.Log
 	Plugins                     *plugins.Runtime
+	PluginCatalog               *PluginCatalogStore
 	MCP                         *plugins.MCPRuntime
 	Registry                    *toolruntime.Registry
 	Executor                    *toolruntime.Executor
@@ -62,6 +63,10 @@ func NewRuntime(repoRoot string, stateDir string) (*Runtime, error) {
 		return nil, err
 	}
 	connectionStore, err := connections.NewService(paths.ConnectionsFile)
+	if err != nil {
+		return nil, err
+	}
+	pluginCatalog, err := NewPluginCatalogStore(paths.PluginCatalogFile)
 	if err != nil {
 		return nil, err
 	}
@@ -105,6 +110,7 @@ func NewRuntime(repoRoot string, stateDir string) (*Runtime, error) {
 		Terminals:                   terminal.NewService(terminal.DefaultLauncher()),
 		Connections:                 connectionStore,
 		Agent:                       agentStore,
+		PluginCatalog:               pluginCatalog,
 		Conversation:                conversationStore,
 		Execution:                   executionStore,
 		DB:                          dbConn,
@@ -143,6 +149,9 @@ func NewRuntime(repoRoot string, stateDir string) (*Runtime, error) {
 		return nil, err
 	}
 	if err := runtime.registerTools(); err != nil {
+		return nil, err
+	}
+	if err := runtime.syncInstalledPlugins(); err != nil {
 		return nil, err
 	}
 	if err := runtime.registerMCPServers(); err != nil {

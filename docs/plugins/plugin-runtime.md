@@ -52,12 +52,15 @@ This is the canonical plugin entrypoint for runtime boundary and protocol behavi
 
 ## Release-scope limits
 
-- No plugin discovery/install ecosystem in this phase.
-- No plugin marketplace trust model in this phase.
-- The Python reference plugin is a protocol fixture, not a discovery/catalog
-  feature.
+- No online plugin marketplace trust model in this phase.
+- Plugin installation is intentionally narrow: backend-owned local catalog
+  records plus explicit install sources (`git` repository URL or `zip`
+  archive URL), not broad discovery.
+- The Python reference plugin remains a protocol fixture; it does not imply
+  marketplace-style distribution.
 - No container/chroot/seccomp/AppArmor-style plugin sandbox in this phase.
-- Plugin runtime remains narrow and execution-path focused.
+- Plugin runtime remains execution-path focused even as operator install UX
+  broadens.
 
 ## Deep links
 

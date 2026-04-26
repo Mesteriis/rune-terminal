@@ -4,6 +4,8 @@ import "path/filepath"
 
 type Paths struct {
 	StateDir             string
+	PluginInstallRoot    string
+	PluginCatalogFile    string
 	DBFile               string
 	PolicyFile           string
 	AuditFile            string
@@ -19,6 +21,8 @@ type Paths struct {
 func Resolve(stateDir string) Paths {
 	return Paths{
 		StateDir:             stateDir,
+		PluginInstallRoot:    filepath.Join(stateDir, "plugins"),
+		PluginCatalogFile:    filepath.Join(stateDir, "plugins-catalog.json"),
 		DBFile:               filepath.Join(stateDir, "runtime.db"),
 		PolicyFile:           filepath.Join(stateDir, "policy.json"),
 		AuditFile:            filepath.Join(stateDir, "audit.jsonl"),

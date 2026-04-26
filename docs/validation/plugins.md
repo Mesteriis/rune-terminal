@@ -12,6 +12,9 @@
   - explicit plugin process environment boundary
   - plugin failure taxonomy behavior
   - approval/audit invariants during plugin execution
+  - backend-owned local plugin catalog lifecycle
+  - install/update/delete/enable/disable flows for `git` and `zip` sources
+  - actor-aware plugin catalog metadata shape for future rights enforcement
 
 ## Commands/tests used
 
@@ -34,6 +37,11 @@ Permission boundary slice (`2026-04-26`):
 - `./scripts/go.sh test ./cmd/rterm-core ./core/app ./plugins/example -count=1`
 - `git diff --check`
 
+Local catalog/install slice (`2026-04-26`):
+
+- `./scripts/go.sh test ./core/app ./core/transport/httpapi ./core/toolruntime -count=1`
+- `git diff --check`
+
 Earlier runtime/API evidence retained for the broader plugin boundary:
 
 - `go test ./...`
@@ -49,7 +57,12 @@ Earlier runtime/API evidence retained for the broader plugin boundary:
 
 ## Known limitations
 
-- Plugin ecosystem/discovery/install workflows remain out of scope.
+- Plugin install sources are intentionally narrow in this phase:
+  `git` repository URLs and `zip` archives only.
+- The backend catalog already persists install metadata plus current-user
+  actor fields and a future-facing access-policy shape, but those access
+  fields are not enforced yet.
+- There is still no online plugin marketplace or trust discovery surface.
 - The Python reference plugin is validated as a local protocol fixture; it is
   not exposed as plugin install/discovery UX.
 - Plugin execution is not an OS sandbox; local plugin binaries still run with

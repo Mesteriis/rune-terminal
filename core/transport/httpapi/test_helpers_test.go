@@ -13,6 +13,7 @@ import (
 	"github.com/Mesteriis/rune-terminal/core/agent"
 	"github.com/Mesteriis/rune-terminal/core/app"
 	"github.com/Mesteriis/rune-terminal/core/audit"
+	"github.com/Mesteriis/rune-terminal/core/config"
 	"github.com/Mesteriis/rune-terminal/core/connections"
 	"github.com/Mesteriis/rune-terminal/core/conversation"
 	"github.com/Mesteriis/rune-terminal/core/db"
@@ -39,6 +40,7 @@ func newTestHandlerWithConversationProvider(t *testing.T, provider conversation.
 	t.Helper()
 
 	tempDir := t.TempDir()
+	paths := config.Resolve(tempDir)
 	policyStore, err := policy.NewStore(filepath.Join(tempDir, "policy.json"), "/workspace/repo")
 	if err != nil {
 		t.Fatalf("NewStore error: %v", err)
@@ -55,6 +57,10 @@ func newTestHandlerWithConversationProvider(t *testing.T, provider conversation.
 	if err != nil {
 		t.Fatalf("NewService error: %v", err)
 	}
+	pluginCatalogStore, err := app.NewPluginCatalogStore(filepath.Join(tempDir, "plugins-catalog.json"))
+	if err != nil {
+		t.Fatalf("NewPluginCatalogStore error: %v", err)
+	}
 	conversationStore, err := conversation.NewService(filepath.Join(tempDir, "conversation.json"), provider)
 	if err != nil {
 		t.Fatalf("NewService error: %v", err)
@@ -70,17 +76,19 @@ func newTestHandlerWithConversationProvider(t *testing.T, provider conversation.
 		}
 	}
 	runtime := &app.Runtime{
-		RepoRoot:     "/workspace/repo",
-		HomeDir:      "/home/testuser",
-		Workspace:    workspace.NewService(workspace.BootstrapDefault()),
-		Terminals:    terminal.NewService(terminal.DefaultLauncher()),
-		Connections:  connectionStore,
-		Agent:        agentStore,
-		Conversation: conversationStore,
-		Execution:    executionStore,
-		Policy:       policyStore,
-		Audit:        auditLog,
-		Registry:     registry,
+		RepoRoot:      "/workspace/repo",
+		HomeDir:       "/home/testuser",
+		Paths:         paths,
+		Workspace:     workspace.NewService(workspace.BootstrapDefault()),
+		Terminals:     terminal.NewService(terminal.DefaultLauncher()),
+		Connections:   connectionStore,
+		PluginCatalog: pluginCatalogStore,
+		Agent:         agentStore,
+		Conversation:  conversationStore,
+		Execution:     executionStore,
+		Policy:        policyStore,
+		Audit:         auditLog,
+		Registry:      registry,
 	}
 	dbConn, err := db.Open(context.Background(), filepath.Join(tempDir, "runtime.sqlite"))
 	if err != nil {

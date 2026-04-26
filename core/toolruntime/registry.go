@@ -35,6 +35,17 @@ func (r *Registry) Get(name string) (Definition, bool) {
 	return tool, ok
 }
 
+func (r *Registry) Unregister(name string) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if _, ok := r.tools[name]; !ok {
+		return false
+	}
+	delete(r.tools, name)
+	return true
+}
+
 func (r *Registry) List() []ToolInfo {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
