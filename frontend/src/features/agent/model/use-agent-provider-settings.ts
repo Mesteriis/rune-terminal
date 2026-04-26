@@ -6,6 +6,7 @@ import {
   discoverAgentProviderModels,
   fetchAgentProviderCatalog,
   fetchAgentProviderGatewaySnapshot,
+  prewarmAgentProvider,
   probeAgentProvider,
   setActiveAgentProvider,
   updateAgentProvider,
@@ -120,6 +121,7 @@ export function useAgentProviderSettings() {
   const [modelErrorMessage, setModelErrorMessage] = useState<string | null>(null)
   const [probeErrorMessage, setProbeErrorMessage] = useState<string | null>(null)
   const [isProbing, setIsProbing] = useState(false)
+  const [isPreparing, setIsPreparing] = useState(false)
 
   const reloadGateway = useCallback(async () => {
     try {
@@ -491,6 +493,25 @@ export function useAgentProviderSettings() {
     }
   }, [reloadGateway, selectedProviderID])
 
+  const prewarmSelectedProvider = useCallback(async () => {
+    if (!selectedProviderID) {
+      return
+    }
+
+    setIsPreparing(true)
+    setProbeErrorMessage(null)
+
+    try {
+      const result = await prewarmAgentProvider(selectedProviderID)
+      await reloadGateway()
+      setStatusMessage(`Prepared ${result.display_name || result.provider_kind} route.`)
+    } catch (error: unknown) {
+      setProbeErrorMessage(getErrorMessage(error))
+    } finally {
+      setIsPreparing(false)
+    }
+  }, [reloadGateway, selectedProviderID])
+
   return {
     availableModels,
     catalog,
@@ -500,6 +521,7 @@ export function useAgentProviderSettings() {
     gatewayErrorMessage,
     isLoading,
     isLoadingModels,
+    isPreparing,
     isProbing,
     isSaving,
     modelErrorMessage,
@@ -511,6 +533,7 @@ export function useAgentProviderSettings() {
     activateSelectedProvider,
     refreshAvailableModels,
     probeSelectedProvider,
+    prewarmSelectedProvider,
     reloadCatalog,
     removeSelectedProvider,
     resetDraft,

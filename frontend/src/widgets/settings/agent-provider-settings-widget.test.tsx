@@ -67,9 +67,11 @@ vi.mock('@/features/agent/model/use-agent-provider-settings', () => ({
           failed_runs: 1,
           cancelled_runs: 0,
           average_duration_ms: 420,
+          average_first_response_latency_ms: 110,
           last_duration_ms: 380,
+          last_first_response_latency_ms: 84,
           last_status: 'failed',
-          last_error_code: 'provider_error',
+          last_error_code: 'timeout',
           last_error_message: 'upstream timeout',
           last_started_at: '2026-04-26T10:19:00Z',
           last_completed_at: '2026-04-26T10:19:00.380Z',
@@ -85,9 +87,10 @@ vi.mock('@/features/agent/model/use-agent-provider-settings', () => ({
           model: 'gpt-5.4',
           conversation_id: 'conv-1',
           status: 'failed',
-          error_code: 'provider_error',
+          error_code: 'timeout',
           error_message: 'upstream timeout',
           duration_ms: 380,
+          first_response_latency_ms: 84,
           started_at: '2026-04-26T10:19:00Z',
           completed_at: '2026-04-26T10:19:00.380Z',
         },
@@ -96,6 +99,7 @@ vi.mock('@/features/agent/model/use-agent-provider-settings', () => ({
     gatewayErrorMessage: 'gateway route unavailable',
     isLoading: false,
     isLoadingModels: false,
+    isPreparing: false,
     isProbing: false,
     isSaving: false,
     modelErrorMessage: null,
@@ -118,6 +122,7 @@ vi.mock('@/features/agent/model/use-agent-provider-settings', () => ({
     setDraft: vi.fn(),
     statusMessage: null,
     activateSelectedProvider: vi.fn(),
+    prewarmSelectedProvider: vi.fn(),
     probeSelectedProvider: vi.fn(),
     refreshAvailableModels: vi.fn(),
     removeSelectedProvider: vi.fn(),
@@ -134,11 +139,12 @@ describe('AgentProviderSettingsWidget', () => {
 
     expect(screen.getByText('Gateway signals')).toBeVisible()
     expect(screen.getByText('Recent provider activity')).toBeVisible()
-    expect(screen.getByText('Last error: upstream timeout')).toBeVisible()
+    expect(screen.getByText('Last error (Timed out): upstream timeout')).toBeVisible()
     expect(screen.getByText(/Gateway telemetry is unavailable:/)).toBeVisible()
     expect(screen.getByRole('button', { name: 'Probe provider route' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Retry route prepare' })).toBeVisible()
     expect(screen.getAllByText('Codex CLI route is reachable.')).toHaveLength(2)
     expect(screen.getByText(/Codex CLI · Failing/)).toBeVisible()
-    expect(screen.getByText(/stream · gpt-5.4 · 380ms/)).toBeVisible()
+    expect(screen.getByText(/stream · gpt-5.4 · 380ms · first 84ms/)).toBeVisible()
   })
 })

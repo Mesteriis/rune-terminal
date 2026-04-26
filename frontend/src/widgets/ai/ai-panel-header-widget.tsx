@@ -82,6 +82,7 @@ export type AiPanelHeaderWidgetProps = {
   activeProviderRoute?: {
     displayName: string
     model?: string
+    lastErrorCode?: string
     routeReady: boolean
     routeStatusState?: string
     routeStatusMessage?: string
@@ -107,10 +108,11 @@ export type AiPanelHeaderWidgetProps = {
   onCreateConversation?: () => void
   onArchiveConversation?: (conversationID: string) => Promise<void> | void
   onDeleteConversation?: (conversationID: string) => Promise<void> | void
-  onPrewarmProviderRoute?: () => Promise<void> | void
+  onProviderRouteAction?: () => Promise<void> | void
   onRenameConversation?: (conversationID: string, title: string) => Promise<void> | void
   onRestoreConversation?: (conversationID: string) => Promise<void> | void
   onModeChange: (mode: ChatMode) => void
+  providerRouteActionLabel?: string | null
   providerRouteError?: string | null
   title: string
 }
@@ -245,10 +247,11 @@ export function AiPanelHeaderWidget({
   onCreateConversation,
   onArchiveConversation,
   onDeleteConversation,
-  onPrewarmProviderRoute,
+  onProviderRouteAction,
   onRenameConversation,
   onRestoreConversation,
   onModeChange,
+  providerRouteActionLabel = null,
   providerRouteError = null,
   title,
 }: AiPanelHeaderWidgetProps) {
@@ -683,12 +686,10 @@ export function AiPanelHeaderWidget({
                 </Text>
               </Box>
               <Button
-                aria-label={
-                  activeProviderRoute.routePrepared ? 'Re-prepare provider route' : 'Prepare provider route'
-                }
-                disabled={isProviderRouteBusy || onPrewarmProviderRoute == null}
+                aria-label={providerRouteActionLabel?.trim() || 'Route action'}
+                disabled={isProviderRouteBusy || onProviderRouteAction == null}
                 onClick={() => {
-                  void onPrewarmProviderRoute?.()
+                  void onProviderRouteAction?.()
                 }}
                 runaComponent="ai-panel-header-route-action"
                 style={aiShellRouteActionStyle}
@@ -698,7 +699,8 @@ export function AiPanelHeaderWidget({
                 ) : (
                   <Check aria-hidden="true" size={12} />
                 )}
-                {activeProviderRoute.routePrepared ? 'Refresh' : 'Prepare'}
+                {providerRouteActionLabel?.trim() ||
+                  (activeProviderRoute.routePrepared ? 'Refresh' : 'Prepare')}
               </Button>
             </Box>
           ) : null}

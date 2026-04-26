@@ -5,6 +5,10 @@ import type {
   AgentProviderGatewayRun,
   AgentProviderKind,
 } from '@/features/agent/api/provider-client'
+import {
+  formatProviderGatewayErrorCode,
+  getProviderGatewayRecoveryAction,
+} from '@/features/agent/model/provider-gateway-actions'
 import type { AgentProviderDraft } from '@/features/agent/model/provider-settings-draft'
 import { useAgentProviderSettings } from '@/features/agent/model/use-agent-provider-settings'
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
@@ -214,6 +218,7 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
     gatewayErrorMessage,
     isLoading,
     isLoadingModels,
+    isPreparing,
     isProbing,
     isSaving,
     modelErrorMessage,
@@ -223,6 +228,7 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
     setDraft,
     statusMessage,
     activateSelectedProvider,
+    prewarmSelectedProvider,
     probeSelectedProvider,
     refreshAvailableModels,
     removeSelectedProvider,
@@ -240,6 +246,7 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
   const sidebarStyle = embedded ? providerSettingsEmbeddedSidebarStyle : providerSettingsSidebarStyle
   const editorStyle = embedded ? providerSettingsEmbeddedEditorStyle : providerSettingsEditorStyle
   const selectedGatewayProvider = routeStatusForProvider(selectedProviderID, gateway?.providers ?? null)
+  const selectedGatewayRecoveryAction = getProviderGatewayRecoveryAction(selectedGatewayProvider)
   const recentGatewayRuns = gateway?.recent_runs ?? []
 
   return (
@@ -433,6 +440,12 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                         </Text>
                       </ClearBox>
                       <ClearBox style={providerSettingsFieldStyle}>
+                        <Label>First response</Label>
+                        <Text style={providerSettingsStatusMessageStyle}>
+                          {formatDuration(selectedGatewayProvider?.last_first_response_latency_ms)}
+                        </Text>
+                      </ClearBox>
+                      <ClearBox style={providerSettingsFieldStyle}>
                         <Label>Route checked</Label>
                         <Text style={providerSettingsStatusMessageStyle}>
                           {formatRunTimestamp(selectedGatewayProvider?.route_checked_at)}
@@ -452,7 +465,16 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                     ) : null}
                     {selectedGatewayProvider?.last_error_message ? (
                       <Text style={providerSettingsErrorMessageStyle}>
-                        Last error: {selectedGatewayProvider.last_error_message}
+                        Last error
+                        {formatProviderGatewayErrorCode(selectedGatewayProvider.last_error_code)
+                          ? ` (${formatProviderGatewayErrorCode(selectedGatewayProvider.last_error_code)})`
+                          : ''}
+                        : {selectedGatewayProvider.last_error_message}
+                      </Text>
+                    ) : null}
+                    {selectedGatewayProvider?.route_prepare_message ? (
+                      <Text style={providerSettingsStatusMessageStyle}>
+                        {selectedGatewayProvider.route_prepare_message}
                       </Text>
                     ) : null}
                     {selectedGatewayProvider?.route_status_message ? (
@@ -467,6 +489,20 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                       >
                         {isProbing ? 'Probing…' : 'Probe provider route'}
                       </Button>
+                      {selectedGatewayRecoveryAction?.kind === 'prepare' ? (
+                        <Button
+                          disabled={isSaving || isPreparing || draft.mode !== 'existing'}
+                          onClick={() => void prewarmSelectedProvider()}
+                        >
+                          {isPreparing ? 'Preparing…' : selectedGatewayRecoveryAction.label}
+                        </Button>
+                      ) : null}
+                      {selectedGatewayRecoveryAction?.kind === 'probe' &&
+                      selectedGatewayRecoveryAction.label !== 'Probe route' ? (
+                        <Text style={providerSettingsStatusMessageStyle}>
+                          Suggested recovery: {selectedGatewayRecoveryAction.label}
+                        </Text>
+                      ) : null}
                     </ClearBox>
                     {probeErrorMessage ? (
                       <Text style={providerSettingsErrorMessageStyle}>{probeErrorMessage}</Text>
@@ -687,7 +723,9 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                             </Text>
                             <Text style={providerSettingsStatusMessageStyle}>
                               {run.request_mode} · {run.model || 'default model'} ·{' '}
-                              {formatDuration(run.duration_ms)} · {formatRunTimestamp(run.completed_at)}
+                              {formatDuration(run.duration_ms)} · first{' '}
+                              {formatDuration(run.first_response_latency_ms)} ·{' '}
+                              {formatRunTimestamp(run.completed_at)}
                             </Text>
                             {run.error_message ? (
                               <Text style={providerSettingsErrorMessageStyle}>{run.error_message}</Text>

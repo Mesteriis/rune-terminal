@@ -5,7 +5,7 @@ import { AiPanelHeaderWidget } from '@/widgets/ai/ai-panel-header-widget'
 
 describe('AiPanelHeaderWidget', () => {
   it('renders active provider route telemetry and routes prepare actions through the header controls', () => {
-    const onPrewarmProviderRoute = vi.fn()
+    const onProviderRouteAction = vi.fn()
 
     render(
       <AiPanelHeaderWidget
@@ -24,7 +24,8 @@ describe('AiPanelHeaderWidget', () => {
         }}
         mode="chat"
         onModeChange={() => {}}
-        onPrewarmProviderRoute={onPrewarmProviderRoute}
+        onProviderRouteAction={onProviderRouteAction}
+        providerRouteActionLabel="Retry route prepare"
         title="AI Rune"
       />,
     )
@@ -32,9 +33,9 @@ describe('AiPanelHeaderWidget', () => {
     expect(screen.getByText('Codex CLI · Prepared')).toBeVisible()
     expect(screen.getByText('Codex CLI route verified and ready for on-demand launch.')).toBeVisible()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Re-prepare provider route' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Retry route prepare' }))
 
-    expect(onPrewarmProviderRoute).toHaveBeenCalledTimes(1)
+    expect(onProviderRouteAction).toHaveBeenCalledTimes(1)
   })
 
   it('renders conversations and routes select/create actions through the header controls', () => {

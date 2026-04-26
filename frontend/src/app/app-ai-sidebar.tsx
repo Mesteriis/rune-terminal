@@ -4,6 +4,7 @@ import { useUnit } from 'effector-react'
 import { useEffect, useRef, useState, type RefObject } from 'react'
 
 import { ensureAiTerminalVisibility } from '@/app/ensure-ai-terminal-visibility'
+import { getProviderGatewayRecoveryAction } from '@/features/agent/model/provider-gateway-actions'
 import { useAgentPanel } from '@/features/agent/model/use-agent-panel'
 import { $queuedAiPromptHandoff, consumeAiPromptHandoff } from '@/shared/model/ai-handoff'
 import type { ChatMode } from '@/features/agent/model/types'
@@ -74,6 +75,7 @@ export function AppAiSidebar({ dockviewApiRef, isOpen, contentAreaRef }: AppAiSi
     $queuedAiPromptHandoff,
     consumeAiPromptHandoff,
   ])
+  const activeProviderRouteAction = getProviderGatewayRecoveryAction(agentPanel.activeProviderGateway)
 
   useEffect(() => {
     if (!isOpen) {
@@ -220,6 +222,7 @@ export function AppAiSidebar({ dockviewApiRef, isOpen, contentAreaRef }: AppAiSi
                         agentPanel.activeProviderGateway
                           ? {
                               displayName: agentPanel.activeProviderGateway.display_name,
+                              lastErrorCode: agentPanel.activeProviderGateway.last_error_code,
                               model: agentPanel.activeProviderGateway.model,
                               routeReady: agentPanel.activeProviderGateway.route_ready,
                               routeStatusState: agentPanel.activeProviderGateway.route_status_state,
@@ -245,7 +248,9 @@ export function AppAiSidebar({ dockviewApiRef, isOpen, contentAreaRef }: AppAiSi
                         agentPanel.isInteractionPending
                       }
                       isProviderRouteBusy={
-                        agentPanel.isProviderGatewayPending || agentPanel.isProviderRoutePreparing
+                        agentPanel.isProviderGatewayPending ||
+                        agentPanel.isProviderRoutePreparing ||
+                        agentPanel.isProviderRouteProbing
                       }
                       onConversationScopeChange={agentPanel.setConversationScope}
                       onConversationSearchQueryChange={agentPanel.setConversationSearchQuery}
@@ -260,7 +265,11 @@ export function AppAiSidebar({ dockviewApiRef, isOpen, contentAreaRef }: AppAiSi
                         agentPanel.archiveConversation(conversationID)
                       }
                       onDeleteConversation={(conversationID) => agentPanel.deleteConversation(conversationID)}
-                      onPrewarmProviderRoute={() => agentPanel.prewarmActiveProviderRoute()}
+                      onProviderRouteAction={() =>
+                        activeProviderRouteAction?.kind === 'probe'
+                          ? agentPanel.probeActiveProviderRoute()
+                          : agentPanel.prewarmActiveProviderRoute()
+                      }
                       onRenameConversation={(conversationID, title) =>
                         agentPanel.renameConversation(conversationID, title)
                       }
@@ -268,6 +277,7 @@ export function AppAiSidebar({ dockviewApiRef, isOpen, contentAreaRef }: AppAiSi
                         agentPanel.restoreConversation(conversationID)
                       }
                       onModeChange={setChatMode}
+                      providerRouteActionLabel={activeProviderRouteAction?.label ?? null}
                       providerRouteError={agentPanel.providerGatewayError}
                       title="AI Rune"
                     />

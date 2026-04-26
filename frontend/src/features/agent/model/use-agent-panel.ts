@@ -37,6 +37,7 @@ import {
   fetchAgentProviderCatalog,
   fetchAgentProviderGatewaySnapshot,
   prewarmAgentProvider,
+  probeAgentProvider,
   setActiveAgentProvider as activateAgentProviderInCatalog,
   type AgentProviderCatalog,
   type AgentProviderGatewayProvider,
@@ -524,6 +525,7 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
   const [isResponseCancellable, setIsResponseCancellable] = useState(false)
   const [isAttachmentLibraryPending, setIsAttachmentLibraryPending] = useState(false)
   const [isProviderGatewayPending, setIsProviderGatewayPending] = useState(false)
+  const [isProviderRouteProbing, setIsProviderRouteProbing] = useState(false)
   const [isProviderRoutePreparing, setIsProviderRoutePreparing] = useState(false)
   const [recentAttachmentReferences, setRecentAttachmentReferences] = useState<AgentAttachmentReference[]>([])
   const [providerGatewayError, setProviderGatewayError] = useState<string | null>(null)
@@ -710,6 +712,7 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
     setIsResponseCancellable(false)
     setIsAttachmentLibraryPending(false)
     setIsProviderGatewayPending(true)
+    setIsProviderRouteProbing(false)
     setIsProviderRoutePreparing(false)
     setRecentAttachmentReferences([])
     setProviderGatewayError(null)
@@ -1029,6 +1032,29 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
     }
   }, [
     isProviderRoutePreparing,
+    providerCatalog?.active_provider_id,
+    refreshProviderGatewaySnapshot,
+    selectedProviderID,
+  ])
+
+  const probeActiveProviderRoute = useCallback(async () => {
+    const providerID = (selectedProviderID || providerCatalog?.active_provider_id || '').trim()
+    if (!providerID || isProviderRouteProbing) {
+      return
+    }
+
+    setProviderGatewayError(null)
+    setIsProviderRouteProbing(true)
+    try {
+      await probeAgentProvider(providerID)
+      await refreshProviderGatewaySnapshot({ suppressError: true })
+    } catch (error) {
+      setProviderGatewayError(getErrorMessage(error, 'Unable to probe the active provider route.'))
+    } finally {
+      setIsProviderRouteProbing(false)
+    }
+  }, [
+    isProviderRouteProbing,
     providerCatalog?.active_provider_id,
     refreshProviderGatewaySnapshot,
     selectedProviderID,
@@ -2680,6 +2706,7 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
     recentAttachmentReferences,
     isAttachmentLibraryPending,
     isProviderGatewayPending,
+    isProviderRouteProbing,
     isProviderRoutePreparing,
     refreshAttachmentLibrary,
     refreshProviderGatewaySnapshot,
@@ -2692,6 +2719,7 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
     selectedProfileID: agentCatalog?.active.profile.id ?? '',
     selectedRoleID: agentCatalog?.active.role.id ?? '',
     selectedModeID: agentCatalog?.active.mode.id ?? '',
+    probeActiveProviderRoute,
     selectMode,
     selectProfile,
     selectProvider,
