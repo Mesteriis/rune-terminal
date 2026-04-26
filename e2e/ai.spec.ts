@@ -136,7 +136,7 @@ test('settings modal exposes AI provider, model, limits, terminal, and commander
     }),
   ).toBeVisible()
 
-  await page.getByRole('button', { name: 'Лимиты Готовность и будущие quota surfaces.' }).click()
+  await page.getByRole('button', { name: 'Лимиты Готовность route и будущие quota surfaces.' }).click()
   await expect(page.getByText('AI / Лимиты')).toBeVisible()
 
   await page.getByRole('button', { name: 'Terminal Настройки терминального runtime.' }).click()
@@ -145,7 +145,7 @@ test('settings modal exposes AI provider, model, limits, terminal, and commander
   await page.getByRole('button', { name: 'Commander Настройки file-manager surface.' }).click()
   await expect(page.getByText('Commander preferences')).toBeVisible()
 
-  await page.getByRole('button', { name: 'Основные' }).click()
+  await page.getByRole('button', { name: /^Основные / }).click()
   await expect(page.getByText('Desktop watcher mode')).toBeVisible()
   await expect(page.getByText('Split browser dev loop', { exact: true })).toBeVisible()
 })

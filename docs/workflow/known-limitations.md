@@ -96,6 +96,11 @@ capability.
 - CLI provider execution is chat-focused and does not yet integrate provider-native tool calls with `core/toolruntime` approval/audit; the shared conversation SSE route now streams CLI text/reasoning/tool-call parts plus HTTP text deltas, but OpenAI-compatible provider-native reasoning/tool-call detail remains intentionally narrower
 - the AI composer now exposes a request-scoped `Cancel response` control for active chat streams, but there is still no separate durable backend job cancellation queue for already-detached provider work
 - the shell-wide settings modal now exposes a structured `General / AI / Terminal / Remote / MCP / Commander` navigation; `General` includes the real desktop `watcher_mode` lifecycle control plus runtime bootstrap context, the AI section now includes CLI + OpenAI-compatible provider management and provider-backed model discovery, `Remote` lists saved SSH profiles and triggers the narrow `.ssh/config` import route, `MCP` now also exposes a bounded onboarding catalog plus draft probe before explicit register/start over `/api/v1/mcp/*`, the composer toolbar exposes live provider/model, profile/role/mode, and widget-context selection, and terminal font size, line height, theme mode, scrollback, plus cursor behavior are now backed by the runtime DB through `GET/PUT /api/v1/settings/terminal`
+- the active shell now also has a runtime-backed language switch over
+  `GET/PUT /api/v1/settings/locale` with `ru`, `en`, `zh-CN`, and `es`,
+  but this is still a narrow localization slice: the settings shell frame
+  and `General` runtime copy are translated while deeper subsections and
+  broader widget surfaces are not yet fully localized
 - the AI composer keyboard-submit preference is now configurable through the runtime-backed `GET/PUT /api/v1/settings/agent` contract and persists in `runtime.db`, but broader operator-profile sync/roaming beyond the local runtime is still intentionally incomplete
 - plugin access-policy metadata is now persisted in the local catalog
   (`owner_username`, `visibility`, `allowed_users`) together with

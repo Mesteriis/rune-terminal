@@ -1,9 +1,14 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { useAppLocale } from '@/features/i18n/model/locale-provider'
 import { useRuntimeSettings } from '@/features/runtime/model/use-runtime-settings'
 import { useWindowTitleSettings } from '@/features/runtime/model/use-window-title-settings'
 import { RuntimeSettingsSection } from './runtime-settings-section'
+
+vi.mock('@/features/i18n/model/locale-provider', () => ({
+  useAppLocale: vi.fn(),
+}))
 
 vi.mock('@/features/runtime/model/use-runtime-settings', () => ({
   useRuntimeSettings: vi.fn(),
@@ -19,6 +24,15 @@ describe('RuntimeSettingsSection', () => {
   })
 
   it('renders runtime lifecycle and window title controls', () => {
+    vi.mocked(useAppLocale).mockReturnValue({
+      errorMessage: null,
+      isLoading: false,
+      isSaving: false,
+      locale: 'en',
+      refresh: vi.fn(),
+      setLocale: vi.fn(),
+      supportedLocales: ['en', 'ru', 'zh-CN', 'es'],
+    })
     vi.mocked(useRuntimeSettings).mockReturnValue({
       canPersistWatcherMode: true,
       errorMessage: null,
@@ -50,6 +64,7 @@ describe('RuntimeSettingsSection', () => {
 
     render(<RuntimeSettingsSection />)
 
+    expect(screen.getByText('Language')).toBeInTheDocument()
     expect(screen.getByText('Window title')).toBeInTheDocument()
     expect(screen.getByDisplayValue('Ops Shell')).toBeInTheDocument()
     expect(screen.getByText('Auto preview: Workspace-2')).toBeInTheDocument()
@@ -59,6 +74,16 @@ describe('RuntimeSettingsSection', () => {
 
   it('saves and resets custom title through the runtime-backed hook', async () => {
     const updateSettings = vi.fn().mockResolvedValue(undefined)
+    const setLocale = vi.fn().mockResolvedValue(undefined)
+    vi.mocked(useAppLocale).mockReturnValue({
+      errorMessage: null,
+      isLoading: false,
+      isSaving: false,
+      locale: 'en',
+      refresh: vi.fn(),
+      setLocale,
+      supportedLocales: ['en', 'ru', 'zh-CN', 'es'],
+    })
     vi.mocked(useRuntimeSettings).mockReturnValue({
       canPersistWatcherMode: true,
       errorMessage: null,
@@ -81,6 +106,12 @@ describe('RuntimeSettingsSection', () => {
     })
 
     render(<RuntimeSettingsSection />)
+
+    fireEvent.click(screen.getByLabelText('Русский'))
+
+    await waitFor(() => {
+      expect(setLocale).toHaveBeenCalledWith('ru')
+    })
 
     fireEvent.change(screen.getByRole('textbox', { name: 'Custom window title' }), {
       target: { value: 'Prod Window' },

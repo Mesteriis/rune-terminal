@@ -18,6 +18,7 @@ import (
 	"github.com/Mesteriis/rune-terminal/core/conversation"
 	"github.com/Mesteriis/rune-terminal/core/db"
 	"github.com/Mesteriis/rune-terminal/core/execution"
+	"github.com/Mesteriis/rune-terminal/core/locale"
 	"github.com/Mesteriis/rune-terminal/core/plugins"
 	"github.com/Mesteriis/rune-terminal/core/policy"
 	"github.com/Mesteriis/rune-terminal/core/providergateway"
@@ -96,6 +97,10 @@ func newTestHandlerWithConversationProvider(t *testing.T, provider conversation.
 	if err != nil {
 		t.Fatalf("db.Open error: %v", err)
 	}
+	localePreferences, err := locale.NewStore(context.Background(), dbConn)
+	if err != nil {
+		t.Fatalf("locale.NewStore error: %v", err)
+	}
 	terminalPreferences, err := terminal.NewPreferencesStore(context.Background(), dbConn)
 	if err != nil {
 		t.Fatalf("NewPreferencesStore error: %v", err)
@@ -114,6 +119,7 @@ func newTestHandlerWithConversationProvider(t *testing.T, provider conversation.
 	}
 	taskStore := tasks.NewStore(dbConn)
 	runtime.DB = dbConn
+	runtime.LocalePreferences = localePreferences
 	runtime.TerminalPreferences = terminalPreferences
 	runtime.WindowTitlePreferences = windowTitlePreferences
 	runtime.AgentComposerPreferences = agentComposerPreferences

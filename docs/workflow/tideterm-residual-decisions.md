@@ -1,26 +1,31 @@
 # TideTerm Residual Decisions
 
-Date: `2026-04-26`
+Date: `2026-04-27`
 
 This note records how the remaining TideTerm-specific residual surfaces
 map to the active `rterm` product boundary.
 
 ## Language switching
 
-Decision: `Not carried forward`
+Decision: `Implemented narrowly`
 
 Reason:
 
-- the active frontend rewrite is not currently organized around a real
-  localization program
-- the old TideTerm language-switch surface lives in legacy UI residue, not
-  in the active `frontend/src/` shell
-- reintroducing it now would add surface area without a current runtime or
-  product requirement behind it
+- a runtime-backed language preference makes sense on the active shell
+  path even though the repository still does not claim a broad i18n
+  program
+- the old TideTerm toggle should not be copied as a legacy-only browser
+  preference detached from runtime truth
 
-Reopen trigger:
+Delivered shape:
 
-- a first-class localization requirement for the active frontend
+- backend-owned locale settings contract at `GET/PUT /api/v1/settings/locale`
+- explicit supported locales `ru`, `en`, `zh-CN`, and `es`
+- immediate shell-language switching on the active `General` settings path
+- active settings shell framing plus general/runtime copy read from that
+  one persisted locale preference
+- no claim yet that every active widget or settings subsection is fully
+  translated
 
 ## Window title rules
 

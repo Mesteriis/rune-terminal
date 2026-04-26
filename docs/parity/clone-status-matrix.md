@@ -1,6 +1,6 @@
 # TideTerm Clone Status Matrix
 
-Date: `2026-04-26`
+Date: `2026-04-27`
 
 This document is a grouped migration snapshot for the historically
 tracked TideTerm feature inventory. It is not a release gate and does
@@ -33,9 +33,9 @@ Summary by grouped slices:
 
 - `Exceeds original`: `4`
 - `Transferred`: `14`
-- `Partially transferred`: `0`
+- `Partially transferred`: `1`
 - `Planned`: `0`
-- `Not carried forward`: `3`
+- `Not carried forward`: `2`
 
 ## Matrix
 
@@ -60,7 +60,7 @@ Summary by grouped slices:
 | Online plugin marketplace | `Not carried forward` | The current plugin trust model is explicit local-code execution with runtime checks, not a sandboxed marketplace surface. | ADR 0030 explicitly declines a broad online marketplace in this phase. |
 | Shell chrome and terminal advanced affordances | `Transferred` | The shell is now compact and Tide-recognizable, settings/terminal/right-rail/modal chrome has been tightened and browser-validated, terminal search is live with count/no-match state, one terminal widget can now host multiple backend-owned sessions with visible create/switch controls, a filterable grouped-session browser with per-session close/focus actions, and remote settings can open/resume SSH-backed tmux shells into the active workspace. | Remaining remote tmux/session breadth is tracked in `Advanced remote breadth`, not in shell/terminal chrome parity. |
 | Window title rules | `Transferred` | The active shell now exposes a narrow runtime-backed window-title rule surface: backend settings persist `auto/custom` mode plus explicit custom title state, `General` settings can pin or reset that state, and the live shell updates `document.title` from the active workspace in auto mode or from the operator-defined custom title in custom mode. | This intentionally stops short of reviving the old compat-only title manager; the modern active path keeps the scope to auto-follow plus explicit rename only. |
-| Language switch surface | `Not carried forward` | The old TideTerm language toggle lives in legacy UI residue and is not part of the active frontend rewrite. | It reopens only if the active product takes on a real localization program. |
+| Language switch surface | `Partially transferred` | The active `General` settings path now exposes a runtime-backed language preference with immediate switching across `ru`, `en`, `zh-CN`, and `es`, and the active settings shell framing plus general/runtime copy follow that single persisted locale instead of browser-local state. | This is still a narrow localization slice, not a whole-app translation program: deeper settings subsections and broader widget surfaces remain partly untranslated on the active frontend path. |
 | WaveProxy | `Not carried forward` | The active extension path is explicit CLI providers, one narrow OpenAI-compatible HTTP source, MCP, and plugins. | [tideterm-residual-decisions.md](../workflow/tideterm-residual-decisions.md) explicitly retires TideTerm-style WaveProxy semantics from the current clone scope. |
 
 ## Notes on interpretation

@@ -3,6 +3,7 @@ import { type ReactNode, useEffect, useMemo, useState } from 'react'
 
 import { getActiveDockviewApi } from '@/app/dockview-api-registry'
 import type { AgentProviderGatewayProvider, AgentProviderView } from '@/features/agent/api/provider-client'
+import { useAppLocale } from '@/features/i18n/model/locale-provider'
 import { useAgentProviderSettings } from '@/features/agent/model/use-agent-provider-settings'
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { ClearBox } from '@/shared/ui/components'
@@ -36,25 +37,11 @@ import {
   settingsShellSidebarSectionSpacingStyle,
   settingsShellSidebarStyle,
 } from '@/widgets/settings/settings-shell-widget.styles'
-
-type SettingsSectionID =
-  | 'general'
-  | 'ai-apps'
-  | 'ai-models'
-  | 'ai-composer'
-  | 'ai-limits'
-  | 'mcp'
-  | 'plugins'
-  | 'remote'
-  | 'terminal'
-  | 'commander'
-type SettingsSectionMeta = {
-  navTitle: string
-  navDescription: string
-  shellTitle: string
-  shellDescription: string
-  groupLabel: string
-}
+import {
+  settingsShellCopy,
+  type SettingsSectionID,
+  type SettingsSectionMeta,
+} from '@/widgets/settings/settings-shell-copy'
 
 const providerKindLabels: Record<AgentProviderView['kind'], string> = {
   codex: 'Codex CLI',
@@ -62,86 +49,10 @@ const providerKindLabels: Record<AgentProviderView['kind'], string> = {
   'openai-compatible': 'OpenAI-Compatible HTTP',
 }
 
-const settingsSectionMeta: Record<SettingsSectionID, SettingsSectionMeta> = {
-  general: {
-    navTitle: 'Основные',
-    navDescription: 'Runtime mode и shell bootstrap context.',
-    shellTitle: 'Основные',
-    shellDescription: 'Desktop runtime lifecycle, close-window semantics и текущий shell bootstrap context.',
-    groupLabel: 'General',
-  },
-  'ai-apps': {
-    navTitle: 'AI провайдеры',
-    navDescription: 'CLI и HTTP providers для AI runtime.',
-    shellTitle: 'AI / Провайдеры',
-    shellDescription:
-      'Управление CLI и OpenAI-compatible HTTP провайдерами, их доступностью в рантайме и параметрами подключения без выхода из общего settings shell.',
-    groupLabel: 'AI',
-  },
-  'ai-models': {
-    navTitle: 'Модели',
-    navDescription: 'Список моделей, доступных в чате.',
-    shellTitle: 'AI / Модели',
-    shellDescription:
-      'Каталог моделей, которые backend вернул для активных CLI-провайдеров, и их экспозиция в основном AI чате.',
-    groupLabel: 'AI',
-  },
-  'ai-composer': {
-    navTitle: 'Composer',
-    navDescription: 'Поведение Enter / Shift+Enter в чате.',
-    shellTitle: 'AI / Composer',
-    shellDescription:
-      'Runtime-backed keyboard behavior for the AI composer: send/newline shortcut selection stored in the shared settings contract.',
-    groupLabel: 'AI',
-  },
-  'ai-limits': {
-    navTitle: 'Лимиты',
-    navDescription: 'Готовность и будущие quota surfaces.',
-    shellTitle: 'AI / Лимиты',
-    shellDescription:
-      'Текущий readiness surface провайдеров. Полноценные quota и rate-limit контракты будут добавлены отдельным backend шагом.',
-    groupLabel: 'AI',
-  },
-  terminal: {
-    navTitle: 'Terminal',
-    navDescription: 'Настройки терминального runtime.',
-    shellTitle: 'Terminal',
-    shellDescription:
-      'Отдельная точка входа для terminal runtime и будущих терминальных preferences, без смешения с общими или AI настройками.',
-    groupLabel: 'Runtime',
-  },
-  remote: {
-    navTitle: 'Remote',
-    navDescription: 'SSH profiles and config import.',
-    shellTitle: 'Remote',
-    shellDescription:
-      'Backend-owned SSH profiles, narrow ~/.ssh/config import, and explicit limits around advanced remote topology.',
-    groupLabel: 'Runtime',
-  },
-  mcp: {
-    navTitle: 'MCP',
-    navDescription: 'External server registration and lifecycle.',
-    shellTitle: 'MCP',
-    shellDescription:
-      'Register remote MCP endpoints and control lifecycle state through the backend-owned MCP runtime without adding implicit AI context injection.',
-    groupLabel: 'Runtime',
-  },
-  plugins: {
-    navTitle: 'Plugins',
-    navDescription: 'Local catalog and install lifecycle.',
-    shellTitle: 'Plugins',
-    shellDescription:
-      'Backend-owned local plugin catalog with explicit git/zip install sources, runtime-safe activation checks, and future-facing access metadata.',
-    groupLabel: 'Runtime',
-  },
-  commander: {
-    navTitle: 'Commander',
-    navDescription: 'Настройки file-manager surface.',
-    shellTitle: 'Commander',
-    shellDescription:
-      'Навигационный surface для file-manager и dual-pane поведения. Здесь будут появляться commander-specific опции по мере выведения их из widget-local state.',
-    groupLabel: 'Workspace',
-  },
+function buildSettingsSectionMeta(
+  copy: (typeof settingsShellCopy)[keyof typeof settingsShellCopy],
+): Record<SettingsSectionID, SettingsSectionMeta> {
+  return copy.sections
 }
 
 function navButtonStateStyle(isActive: boolean) {
@@ -210,81 +121,82 @@ function findGatewayProvider(
   return gatewayProviders?.find((provider) => provider.provider_id === providerID) ?? null
 }
 
-function formatProviderRouteState(state?: string) {
+function formatProviderRouteState(
+  state: string | undefined,
+  copy: (typeof settingsShellCopy)[keyof typeof settingsShellCopy],
+) {
   switch (state) {
     case 'ready':
-      return 'Ready'
+      return copy.providerRouteStates.ready
     case 'auth-required':
-      return 'Login required'
+      return copy.providerRouteStates.authRequired
     case 'disabled':
-      return 'Disabled'
+      return copy.providerRouteStates.disabled
     case 'unchecked':
-      return 'Unchecked'
+      return copy.providerRouteStates.unchecked
     case 'unreachable':
-      return 'Unreachable'
+      return copy.providerRouteStates.unreachable
     case 'model-unavailable':
-      return 'Model unavailable'
+      return copy.providerRouteStates.modelUnavailable
     default:
-      return 'Needs attention'
+      return copy.providerRouteStates.needsAttention
   }
 }
 
 function describeProviderConnection(
   provider: AgentProviderView,
   gatewayProvider: AgentProviderGatewayProvider | null,
+  copy: (typeof settingsShellCopy)[keyof typeof settingsShellCopy],
 ) {
   if (gatewayProvider?.route_status_message?.trim()) {
     return gatewayProvider.route_status_message
   }
 
   if (provider.kind === 'codex') {
-    return 'Codex CLI route has not been probed yet.'
+    return copy.aiModels.routeNotProbedCodex
   }
 
   if (provider.kind === 'claude') {
-    return 'Claude Code CLI route has not been probed yet.'
+    return copy.aiModels.routeNotProbedClaude
   }
 
   if (provider.kind === 'openai-compatible') {
     return (
-      gatewayProvider?.base_url ??
-      provider.openai_compatible?.base_url ??
-      'OpenAI-compatible source URL is not configured.'
+      gatewayProvider?.base_url ?? provider.openai_compatible?.base_url ?? copy.aiModels.routeNotConfigured
     )
   }
 
-  return 'Unknown provider connection state.'
+  return copy.aiModels.routeUnknown
 }
 
 function describeProviderLimitState(
   provider: AgentProviderView,
   gatewayProvider: AgentProviderGatewayProvider | null,
+  copy: (typeof settingsShellCopy)[keyof typeof settingsShellCopy],
 ) {
   if (!provider.enabled) {
-    return 'Disabled provider; chat will not route requests here.'
+    return copy.aiLimits.routeDisabled
   }
 
   if (provider.active) {
-    return 'Active provider for the current chat runtime.'
+    return copy.aiLimits.routeActive
   }
 
   if (gatewayProvider?.route_status_state === 'ready') {
-    return 'Backend-owned route is ready for chat traffic.'
+    return copy.aiLimits.routeReady
   }
   if (gatewayProvider?.route_status_state === 'auth-required') {
-    return 'Needs a local CLI login before the route can be used.'
+    return copy.aiLimits.routeAuthRequired
   }
   if (gatewayProvider?.route_status_state === 'unchecked') {
-    return 'Route has not been probed yet.'
+    return copy.aiLimits.routeUnchecked
   }
 
   if (provider.kind === 'openai-compatible') {
-    return provider.enabled
-      ? 'HTTP source is configured. Use model refresh to validate the remote catalog.'
-      : 'Disabled HTTP source; chat will not route requests here.'
+    return provider.enabled ? copy.aiLimits.routeConfiguredHttp : copy.aiLimits.routeDisabledHttp
   }
 
-  return 'Unknown provider readiness.'
+  return copy.aiLimits.routeUnknown
 }
 
 function SectionCard({
@@ -312,6 +224,8 @@ function GeneralSection() {
 }
 
 function AiModelsSection() {
+  const { locale } = useAppLocale()
+  const copy = settingsShellCopy[locale]
   const {
     availableModels,
     catalog,
@@ -356,17 +270,11 @@ function AiModelsSection() {
   )
 
   return (
-    <SectionCard
-      description="Переключай провайдера, чтобы увидеть auto-discovered catalog, который доступен для выбора в чате."
-      title="Доступные модели"
-    >
+    <SectionCard description={copy.aiModels.sectionDescription} title={copy.aiModels.availableModelsTitle}>
       {isLoading ? (
-        <Text style={settingsShellMutedTextStyle}>Загружаю каталог провайдеров…</Text>
+        <Text style={settingsShellMutedTextStyle}>{copy.aiModels.loadingProviders}</Text>
       ) : directProviders.length === 0 ? (
-        <Text style={settingsShellMutedTextStyle}>
-          Прямых AI-провайдеров пока нет. Сначала добавь CLI или HTTP source в разделе `Установленные
-          приложения`.
-        </Text>
+        <Text style={settingsShellMutedTextStyle}>{copy.aiModels.noProviders}</Text>
       ) : (
         <>
           <ClearBox style={settingsShellCardsGridStyle}>
@@ -388,6 +296,7 @@ function AiModelsSection() {
                     {describeProviderConnection(
                       provider,
                       findGatewayProvider(provider.id, gateway?.providers ?? null),
+                      copy,
                     )}
                   </Text>
                 </Button>
@@ -402,17 +311,15 @@ function AiModelsSection() {
                   {activeProvider.display_name || providerKindLabels[activeProvider.kind]}
                 </Text>
                 <Text style={settingsShellMutedTextStyle}>
-                  {activeProvider.active
-                    ? 'Сейчас активен в runtime.'
-                    : 'Доступен для активации в provider catalog.'}
+                  {activeProvider.active ? copy.aiModels.providerActive : copy.aiModels.providerAvailable}
                 </Text>
               </ClearBox>
               <ClearBox style={{ display: 'flex', gap: 'var(--gap-xs)', flexWrap: 'wrap' as const }}>
                 <Button disabled={isLoadingModels} onClick={() => void refreshAvailableModels()}>
-                  {isLoadingModels ? 'Loading…' : 'Refresh models'}
+                  {isLoadingModels ? copy.aiModels.loadingShort : copy.aiModels.refreshModels}
                 </Button>
                 <ClearBox style={settingsShellBadgeStyle}>
-                  {availableModels.length} model{availableModels.length === 1 ? '' : 's'}
+                  {copy.aiModels.countModels(availableModels.length)}
                 </ClearBox>
               </ClearBox>
               {errorMessage ? (
@@ -423,9 +330,7 @@ function AiModelsSection() {
               ) : null}
               {statusMessage ? <Text style={settingsShellMutedTextStyle}>{statusMessage}</Text> : null}
               {!errorMessage && !modelErrorMessage && visibleModels.length === 0 ? (
-                <Text style={settingsShellMutedTextStyle}>
-                  Для этого провайдера backend пока не вернул модели.
-                </Text>
+                <Text style={settingsShellMutedTextStyle}>{copy.aiModels.noDiscoveredModels}</Text>
               ) : null}
               {visibleModels.length > 0 ? (
                 <ClearBox style={settingsShellListStyle}>
@@ -439,16 +344,16 @@ function AiModelsSection() {
                           <Text style={{ fontWeight: 600 }}>{model}</Text>
                           <Text style={settingsShellMutedTextStyle}>
                             {isDefaultModel
-                              ? 'Базовая модель провайдера. Всегда доступна в основном AI интерфейсе.'
-                              : 'Включай, чтобы модель появилась в dropdown главного AI чата.'}
+                              ? copy.aiModels.defaultModelDescription
+                              : copy.aiModels.enabledModelDescription}
                           </Text>
                         </ClearBox>
                         <ClearBox style={{ display: 'flex', alignItems: 'center', gap: 'var(--gap-sm)' }}>
                           {isDefaultModel ? (
-                            <ClearBox style={settingsShellBadgeStyle}>default</ClearBox>
+                            <ClearBox style={settingsShellBadgeStyle}>{copy.aiModels.defaultBadge}</ClearBox>
                           ) : null}
                           <Checkbox
-                            aria-label={`Expose ${model} in the main AI model selector`}
+                            aria-label={copy.aiModels.exposeModelAriaLabel(model)}
                             checked={isEnabledInChat}
                             disabled={isSaving || isLoadingModels || isDefaultModel}
                             onChange={(event) => {
@@ -478,17 +383,16 @@ function AiModelsSection() {
 }
 
 function AiLimitsSection() {
+  const { locale } = useAppLocale()
+  const copy = settingsShellCopy[locale]
   const { catalog, gateway, isLoading } = useAgentProviderSettings()
 
   return (
-    <SectionCard
-      description="Сейчас здесь выводится только готовность каналов для чата. Реальные лимиты появятся после backend-owned quota surface."
-      title="Статус провайдеров"
-    >
+    <SectionCard description={copy.aiLimits.description} title={copy.aiLimits.title}>
       {isLoading ? (
-        <Text style={settingsShellMutedTextStyle}>Загружаю provider catalog…</Text>
+        <Text style={settingsShellMutedTextStyle}>{copy.aiLimits.loading}</Text>
       ) : !catalog?.providers.length ? (
-        <Text style={settingsShellMutedTextStyle}>Провайдеров пока нет.</Text>
+        <Text style={settingsShellMutedTextStyle}>{copy.aiLimits.noProviders}</Text>
       ) : (
         <ClearBox style={settingsShellListStyle}>
           {catalog.providers.map((provider) => (
@@ -501,14 +405,16 @@ function AiLimitsSection() {
                   {describeProviderLimitState(
                     provider,
                     findGatewayProvider(provider.id, gateway?.providers ?? null),
+                    copy,
                   )}
                 </Text>
               </ClearBox>
               <ClearBox style={settingsShellBadgeStyle}>
                 {provider.active
-                  ? 'active'
+                  ? copy.aiLimits.activeBadge
                   : formatProviderRouteState(
                       findGatewayProvider(provider.id, gateway?.providers ?? null)?.route_status_state,
+                      copy,
                     ).toLowerCase()}
               </ClearBox>
             </ClearBox>
@@ -532,19 +438,16 @@ function MCPSection() {
 }
 
 function CommanderSection() {
+  const { locale } = useAppLocale()
+  const copy = settingsShellCopy[locale]
   return (
-    <SectionCard
-      description="Этот раздел подготовлен для commander-specific options, когда они будут выведены из widget-local state."
-      title="Состояние раздела"
-    >
+    <SectionCard description={copy.commander.description} title={copy.commander.title}>
       <ClearBox style={settingsShellListRowStyle}>
         <ClearBox style={settingsShellContentHeaderStyle}>
-          <Text style={{ fontWeight: 600 }}>Commander preferences</Text>
-          <Text style={settingsShellMutedTextStyle}>
-            Отдельный конфигурационный surface для commander ещё не подключён.
-          </Text>
+          <Text style={{ fontWeight: 600 }}>{copy.commander.preferencesTitle}</Text>
+          <Text style={settingsShellMutedTextStyle}>{copy.commander.notConnected}</Text>
         </ClearBox>
-        <ClearBox style={settingsShellBadgeStyle}>Planned</ClearBox>
+        <ClearBox style={settingsShellBadgeStyle}>{copy.commander.planned}</ClearBox>
       </ClearBox>
     </SectionCard>
   )
@@ -582,6 +485,9 @@ function renderSection(sectionID: SettingsSectionID) {
 }
 
 export function SettingsShellWidget() {
+  const { locale } = useAppLocale()
+  const copy = settingsShellCopy[locale]
+  const settingsSectionMeta = useMemo(() => buildSettingsSectionMeta(copy), [copy])
   const [activeSectionID, setActiveSectionID] = useState<SettingsSectionID>('ai-apps')
   const [isAiExpanded, setIsAiExpanded] = useState(true)
 
@@ -609,11 +515,9 @@ export function SettingsShellWidget() {
       <ClearBox runaComponent="settings-shell-root" style={settingsShellRootStyle}>
         <ClearBox runaComponent="settings-shell-sidebar" style={settingsShellSidebarStyle}>
           <ClearBox style={settingsShellSidebarHeaderStyle}>
-            <Text style={settingsShellEyebrowStyle}>Rune Terminal</Text>
-            <Text style={{ fontWeight: 600 }}>Settings</Text>
-            <Text style={settingsShellMutedTextStyle}>
-              Общий навигатор по shell, AI runtime, terminal, remote, MCP и commander surface.
-            </Text>
+            <Text style={settingsShellEyebrowStyle}>{copy.sidebar.product}</Text>
+            <Text style={{ fontWeight: 600 }}>{copy.sidebar.settings}</Text>
+            <Text style={settingsShellMutedTextStyle}>{copy.sidebar.description}</Text>
           </ClearBox>
           <ClearBox style={settingsShellSidebarSectionStyle}>
             <Button
@@ -636,8 +540,8 @@ export function SettingsShellWidget() {
             >
               <ClearBox style={settingsShellParentNavStyle}>
                 <ClearBox style={settingsShellContentHeaderStyle}>
-                  <Text style={{ fontWeight: 600 }}>AI</Text>
-                  <Text style={settingsShellMutedTextStyle}>Провайдеры, модели и лимиты чата.</Text>
+                  <Text style={{ fontWeight: 600 }}>{copy.aiParent.title}</Text>
+                  <Text style={settingsShellMutedTextStyle}>{copy.aiParent.description}</Text>
                 </ClearBox>
                 {isAiExpanded ? (
                   <ChevronDown size={16} strokeWidth={1.8} />

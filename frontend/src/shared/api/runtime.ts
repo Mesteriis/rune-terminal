@@ -10,12 +10,19 @@ export type RuntimeContext = {
 
 export type RuntimeWatcherMode = 'ephemeral' | 'persistent'
 export type WindowTitleMode = 'auto' | 'custom'
+export type AppLocale = 'en' | 'ru' | 'zh-CN' | 'es'
 export type WindowTitleSettings = {
   auto_title: string
   settings: {
     custom_title: string
     mode: WindowTitleMode
   }
+}
+export type LocaleSettings = {
+  settings: {
+    locale: AppLocale
+  }
+  supported_locales: AppLocale[]
 }
 
 type RuntimeInfoPayload = {
@@ -40,6 +47,12 @@ type WindowTitleSettingsPayload = {
     mode?: string
   }
 }
+type LocaleSettingsPayload = {
+  settings?: {
+    locale?: string
+  }
+  supported_locales?: string[]
+}
 
 type APIErrorEnvelope = {
   error?: {
@@ -59,6 +72,8 @@ type BootstrapPayload = {
 type TauriInternals = {
   invoke?: <T = unknown>(command: string, args?: Record<string, unknown>) => Promise<T>
 }
+
+const defaultSupportedLocales: AppLocale[] = ['ru', 'en', 'zh-CN', 'es']
 
 declare global {
   interface Window {
@@ -267,6 +282,44 @@ function normalizeWindowTitleSettings(payload: WindowTitleSettingsPayload): Wind
   }
 }
 
+function normalizeAppLocale(locale: unknown): AppLocale {
+  if (typeof locale !== 'string') {
+    return 'ru'
+  }
+
+  switch (locale.trim().toLowerCase()) {
+    case 'en':
+      return 'en'
+    case 'ru':
+      return 'ru'
+    case 'zh':
+    case 'zh-cn':
+    case 'cn':
+      return 'zh-CN'
+    case 'es':
+      return 'es'
+    default:
+      return 'ru'
+  }
+}
+
+function normalizeLocaleSettings(payload: LocaleSettingsPayload): LocaleSettings {
+  const supportedLocales = Array.isArray(payload.supported_locales)
+    ? payload.supported_locales.map(normalizeAppLocale)
+    : defaultSupportedLocales
+
+  const uniqueSupportedLocales = supportedLocales.filter(
+    (locale, index) => supportedLocales.indexOf(locale) === index,
+  )
+
+  return {
+    settings: {
+      locale: normalizeAppLocale(payload.settings?.locale),
+    },
+    supported_locales: uniqueSupportedLocales.length > 0 ? uniqueSupportedLocales : defaultSupportedLocales,
+  }
+}
+
 export async function requestWindowTitleSettings() {
   const runtimeContext = await resolveRuntimeContext()
   const payload = await requestRuntimeJSON<WindowTitleSettingsPayload>(
@@ -290,6 +343,23 @@ export async function updateWindowTitleSettings(input: { custom_title?: string; 
     },
   )
   return normalizeWindowTitleSettings(payload)
+}
+
+export async function requestLocaleSettings() {
+  const runtimeContext = await resolveRuntimeContext()
+  const payload = await requestRuntimeJSON<LocaleSettingsPayload>(runtimeContext, '/api/v1/settings/locale')
+  return normalizeLocaleSettings(payload)
+}
+
+export async function updateLocaleSettings(input: { locale: AppLocale }) {
+  const runtimeContext = await resolveRuntimeContext()
+  const payload = await requestRuntimeJSON<LocaleSettingsPayload>(runtimeContext, '/api/v1/settings/locale', {
+    body: JSON.stringify({
+      locale: input.locale,
+    }),
+    method: 'PUT',
+  })
+  return normalizeLocaleSettings(payload)
 }
 
 export async function setRuntimeWatcherMode(mode: RuntimeWatcherMode) {

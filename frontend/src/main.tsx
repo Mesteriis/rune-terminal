@@ -7,6 +7,7 @@ import { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
 
 import { App } from '@/app/App'
+import { LocaleSettingsProvider } from '@/features/i18n/model/locale-provider'
 
 const rootElement = document.getElementById('root')
 
@@ -16,6 +17,8 @@ if (!rootElement) {
 
 ReactDOM.createRoot(rootElement).render(
   <StrictMode>
-    <App />
+    <LocaleSettingsProvider>
+      <App />
+    </LocaleSettingsProvider>
   </StrictMode>,
 )

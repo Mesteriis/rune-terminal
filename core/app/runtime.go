@@ -13,6 +13,7 @@ import (
 	"github.com/Mesteriis/rune-terminal/core/conversation"
 	"github.com/Mesteriis/rune-terminal/core/db"
 	"github.com/Mesteriis/rune-terminal/core/execution"
+	"github.com/Mesteriis/rune-terminal/core/locale"
 	"github.com/Mesteriis/rune-terminal/core/plugins"
 	"github.com/Mesteriis/rune-terminal/core/policy"
 	"github.com/Mesteriis/rune-terminal/core/providergateway"
@@ -33,6 +34,7 @@ type Runtime struct {
 	Terminals                   *terminal.Service
 	TerminalPreferences         *terminal.PreferencesStore
 	WindowTitlePreferences      *windowtitle.Store
+	LocalePreferences           *locale.Store
 	AgentComposerPreferences    *agent.ComposerPreferencesStore
 	Connections                 *connections.Service
 	Agent                       *agent.Store
@@ -138,6 +140,11 @@ func NewRuntime(repoRoot string, stateDir string) (*Runtime, error) {
 		return nil, err
 	}
 	runtime.WindowTitlePreferences = windowTitlePreferences
+	localePreferences, err := locale.NewStore(context.Background(), dbConn)
+	if err != nil {
+		return nil, err
+	}
+	runtime.LocalePreferences = localePreferences
 	agentComposerPreferences, err := agent.NewComposerPreferencesStore(context.Background(), dbConn)
 	if err != nil {
 		return nil, err

@@ -1,14 +1,17 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
+  type AppLocale,
   closeRuntimeWindow,
   formatRuntimePathForDisplay,
   minimizeRuntimeWindow,
+  requestLocaleSettings,
   requestWindowTitleSettings,
   resetRuntimeContextCacheForTests,
   resolveRuntimeContext,
   resolveRuntimePathInput,
   toggleRuntimeFullscreen,
+  updateLocaleSettings,
   updateWindowTitleSettings,
 } from '@/shared/api/runtime'
 
@@ -191,5 +194,129 @@ describe('window title settings runtime api', () => {
         method: 'PUT',
       }),
     )
+  })
+})
+
+describe('locale settings runtime api', () => {
+  afterEach(() => {
+    resetRuntimeContextCacheForTests()
+    vi.restoreAllMocks()
+    vi.unstubAllEnvs()
+  })
+
+  it('loads locale settings from the backend runtime contract', async () => {
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          color_term: 'truecolor',
+          default_shell: '/bin/zsh',
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+          term: 'xterm-256color',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          settings: {
+            locale: 'cn',
+          },
+          supported_locales: ['ru', 'en', 'cn', 'es'],
+        }),
+      })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(requestLocaleSettings()).resolves.toEqual({
+      settings: {
+        locale: 'zh-CN' satisfies AppLocale,
+      },
+      supported_locales: ['ru', 'en', 'zh-CN', 'es'],
+    })
+  })
+
+  it('updates locale settings through the backend runtime contract', async () => {
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          color_term: 'truecolor',
+          default_shell: '/bin/zsh',
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+          term: 'xterm-256color',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          settings: {
+            locale: 'es',
+          },
+          supported_locales: ['ru', 'en', 'zh-CN', 'es'],
+        }),
+      })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      updateLocaleSettings({
+        locale: 'es',
+      }),
+    ).resolves.toEqual({
+      settings: {
+        locale: 'es',
+      },
+      supported_locales: ['ru', 'en', 'zh-CN', 'es'],
+    })
+
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      'http://127.0.0.1:8090/api/v1/settings/locale',
+      expect.objectContaining({
+        body: JSON.stringify({
+          locale: 'es',
+        }),
+        method: 'PUT',
+      }),
+    )
+  })
+
+  it('preserves english locale in the normalized runtime contract', async () => {
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          color_term: 'truecolor',
+          default_shell: '/bin/zsh',
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+          term: 'xterm-256color',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          settings: {
+            locale: 'en',
+          },
+          supported_locales: ['ru', 'en', 'es'],
+        }),
+      })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(requestLocaleSettings()).resolves.toEqual({
+      settings: {
+        locale: 'en' satisfies AppLocale,
+      },
+      supported_locales: ['ru', 'en', 'es'],
+    })
   })
 })

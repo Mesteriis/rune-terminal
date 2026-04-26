@@ -2,9 +2,15 @@
 
 ## Last verified state
 
-- Date: `2026-04-26`
+- Date: `2026-04-27`
 - State: `VERIFIED`
 - Scope:
+  - the active shell now also exposes a runtime-backed language
+    preference: `General` settings load and persist locale over
+    `GET/PUT /api/v1/settings/locale`, `document.documentElement.lang`
+    follows the active locale, and the settings shell framing plus
+    general/runtime copy switch immediately across `ru`, `en`, `zh-CN`,
+    and `es`
   - backend widget-kind catalog contract now exists at
     `GET /api/v1/workspace/widget-kinds`, with `terminal` and `files`
     exposed as available backend-owned kinds, `commander` exposed as
@@ -78,6 +84,10 @@
       window-title persistence: saving a custom title updates the live
       shell title immediately, and `Reset to auto` returns the shell title
       to the active workspace-driven form
+    - `Settings -> General` now also has a clean browser path for
+      immediate four-locale shell switching on the active settings path,
+      so the runtime-backed locale setting is verified end-to-end across
+      `ru`, `en`, `zh-CN`, and `es`
     - a fresh `npm run tauri:dev` smoke still builds and launches the desktop entrypoint after the runtime-settings slice, so the new `watcher_mode` plumbing does not break desktop startup
     - desktop startup now also self-heals stale watcher attachments recorded in `~/.rterm/runtime.json`: if a previously UI-owned watcher is still bound to `127.0.0.1:7788` but no longer matches the newly attached/spawned core, startup explicitly shuts that stale watcher down before spawning the next one, instead of panicking on `unexpected worker identity`
     - if desktop startup spawns a fresh core and watcher recovery/spawn then fails, the just-spawned core is now stopped before setup returns the error, so startup no longer leaks a brand-new backend process on the failure path
@@ -244,6 +254,9 @@
 - `npm run test:ui -- --reporter=line e2e/shell-workspace.spec.ts --grep "general settings persist custom window title and reset back to auto"`
 - `npm --prefix frontend run lint:active`
 - `npm --prefix frontend run build`
+- `./scripts/go.sh test ./core/locale ./core/app ./core/transport/httpapi -run 'TestStoreDefaultsToEnglishLocale|TestStoreNormalizesSupportedLocales|TestLocaleSettingsEndpointsListAndUpdate|TestWindowTitleSettingsEndpointsListAndUpdate' -count=1`
+- `npm --prefix frontend run test -- src/shared/api/runtime.test.ts src/widgets/settings/runtime-settings-section.test.tsx --reporter=verbose`
+- `npm run test:ui -- --reporter=line e2e/shell-workspace.spec.ts --grep "general settings switch shell language immediately across four locales"`
 - `(cd frontend && npm exec prettier -- --write src/shared/api/workspace.ts src/shared/api/workspace.test.ts src/widgets/files/files-panel-widget.tsx src/widgets/files/files-panel-widget.test.tsx src/widgets/files/files-panel-widget.styles.ts src/widgets/panel/dockview-panel-widget.tsx src/widgets/shell/right-action-rail-widget.tsx src/widgets/shell/right-action-rail-widget.test.tsx)`
 - `npm --prefix frontend run test -- src/shared/api/workspace.test.ts`
 - `npm --prefix frontend run test -- src/widgets/files/files-panel-widget.test.tsx`

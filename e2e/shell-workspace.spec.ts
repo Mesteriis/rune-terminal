@@ -663,6 +663,35 @@ test('general settings persist custom window title and reset back to auto', asyn
   await expect(page).toHaveTitle('Workspace-2 · RunaTerminal')
 })
 
+test('general settings switch shell language immediately across four locales', async ({ page }) => {
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  await page.getByRole('button', { name: 'Open settings panel' }).click()
+  await page.getByRole('button', { name: /^Основные / }).click()
+
+  await expect(page.getByText('Жизненный цикл runtime', { exact: true })).toBeVisible()
+
+  await page.getByLabel('English').click()
+  await expect(page.getByText('Runtime lifecycle', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: /^General / })).toBeVisible()
+
+  await page.getByLabel('Русский').click()
+  await expect(page.getByText('Жизненный цикл runtime', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: /^Основные / })).toBeVisible()
+
+  await page.getByLabel('中文（简体）').click()
+  await expect(page.getByText('运行时生命周期', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: /^常规 / })).toBeVisible()
+
+  await page.getByLabel('Español').click()
+  await expect(page.getByText('Ciclo de vida del runtime', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: /^General / })).toBeVisible()
+
+  await page.getByLabel('Русский').click()
+  await expect(page.getByText('Жизненный цикл runtime', { exact: true })).toBeVisible()
+})
+
 test('remote settings persist tmux resume launch policy', async ({ page }) => {
   await clearBrowserState(page)
   await page.goto('/')
