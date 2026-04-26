@@ -202,6 +202,69 @@ export async function mkdirViaApi(request: APIRequestContext, path: string) {
   expect(response.ok()).toBeTruthy()
 }
 
+export async function saveRemoteProfileViaApi(
+  request: APIRequestContext,
+  profile: {
+    host: string
+    id?: string
+    identity_file?: string
+    name?: string
+    port?: number
+    user?: string
+  },
+) {
+  const response = await request.post(`${backendUrl}/api/v1/remote/profiles`, {
+    data: profile,
+    headers: authHeaders(),
+  })
+
+  if (!response.ok()) {
+    throw new Error(`Failed to save remote profile seed: ${response.status()} ${await response.text()}`)
+  }
+
+  return response.json() as Promise<{
+    profile: {
+      id: string
+      name: string
+      host: string
+    }
+    profiles: Array<{
+      id: string
+      name: string
+      host: string
+    }>
+  }>
+}
+
+export async function registerRemoteMCPServerViaApi(
+  request: APIRequestContext,
+  server: {
+    endpoint: string
+    headers?: Record<string, string>
+    id: string
+  },
+) {
+  const response = await request.post(`${backendUrl}/api/v1/mcp/servers`, {
+    data: {
+      ...server,
+      type: 'remote',
+    },
+    headers: authHeaders(),
+  })
+
+  if (!response.ok()) {
+    throw new Error(`Failed to register MCP server seed: ${response.status()} ${await response.text()}`)
+  }
+
+  return response.json() as Promise<{
+    server: {
+      id: string
+      endpoint?: string
+      type: 'remote'
+    }
+  }>
+}
+
 export async function copyViaApi(request: APIRequestContext, sourcePath: string, targetPath: string) {
   const response = await request.post(`${backendUrl}/api/v1/fs/copy`, {
     data: {

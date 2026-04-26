@@ -224,7 +224,8 @@ test('terminal input from the shell writes to the live backend session', async (
   await clearBrowserState(page)
   await page.goto('/')
 
-  const marker = `terminal-e2e-${Date.now()}`
+  const inputMarker = `terminput${Date.now()}`
+  const searchMarker = `termsearch${Date.now()}`
   const terminalInput = page.getByRole('textbox', { name: 'Terminal input' }).last()
   const searchToggle = page.getByRole('button', { name: 'Toggle terminal search' }).last()
 
@@ -253,7 +254,7 @@ test('terminal input from the shell writes to the live backend session', async (
 
   await terminalInput.click()
   await expect(terminalInput).toBeFocused()
-  await page.keyboard.type(`printf '${marker}\\n'`)
+  await page.keyboard.type(`printf '${inputMarker}\\n'`)
   await page.keyboard.press('Enter')
 
   await expect
@@ -268,13 +269,53 @@ test('terminal input from the shell writes to the live backend session', async (
           mainSnapshot.next_seq > mainBaseline.next_seq ||
           sideSnapshot.next_seq > sideBaseline.next_seq ||
           [mainSnapshot, sideSnapshot].some((snapshot) =>
-            snapshot.chunks.some((chunk) => chunk.data.includes(marker)),
+            snapshot.chunks.some((chunk) => chunk.data.includes(inputMarker)),
           )
         )
       },
       { timeout: 30_000 },
     )
     .toBe(true)
+
+  await Promise.all([
+    sendTerminalInputViaApi(request, 'term-main', `printf '${searchMarker}\\n'`, true),
+    sendTerminalInputViaApi(request, 'term-side', `printf '${searchMarker}\\n'`, true),
+  ])
+
+  await expect
+    .poll(
+      async () => {
+        const [mainSnapshot, sideSnapshot] = await Promise.all([
+          fetchTerminalSnapshot(request, 'term-main'),
+          fetchTerminalSnapshot(request, 'term-side'),
+        ])
+
+        return (
+          mainSnapshot.chunks.some((chunk) => chunk.data.includes(searchMarker)) &&
+          sideSnapshot.chunks.some((chunk) => chunk.data.includes(searchMarker))
+        )
+      },
+      { timeout: 30_000 },
+    )
+    .toBe(true)
+
+  await searchToggle.click()
+  const searchInput = page.getByRole('textbox', { name: 'Search terminal output' }).last()
+  const findNextButton = page.getByRole('button', { name: 'Find next match' }).last()
+  const findPreviousButton = page.getByRole('button', { name: 'Find previous match' }).last()
+
+  await expect(findNextButton).toBeDisabled()
+  await expect(findPreviousButton).toBeDisabled()
+
+  await searchInput.fill(searchMarker)
+  await expect(findNextButton).toBeEnabled()
+  await expect(findPreviousButton).toBeEnabled()
+
+  await searchInput.fill('')
+  await expect(findNextButton).toBeDisabled()
+  await expect(findPreviousButton).toBeDisabled()
+
+  await page.getByRole('button', { name: 'Close terminal search' }).last().click()
 
   await page.getByRole('button', { name: 'Clear terminal viewport' }).last().click()
   await page.getByRole('button', { name: 'Jump to latest terminal output' }).last().click()

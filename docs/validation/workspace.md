@@ -52,7 +52,14 @@
     - the right utility rail popover now follows the same compact shell density as the topbar strip, with tighter menu rows and status text instead of a looser generic popover treatment
     - modal overlays now also use a tighter shell framing rhythm so body/widget modal spacing matches the compact shell chrome instead of reading like a separate larger overlay system
     - the settings shell now renders as a denser navigator/editor surface with a narrower sidebar, tighter content framing, lighter badges, and a more compact section rhythm, while preserving the existing `General / AI / Terminal / Commander` structure
+    - browser e2e now also locks the compact shell density itself on the active path:
+      workspace tabs and add-workspace controls keep the reduced `22px`
+      minimum height, and the utility creation menu keeps the narrower
+      `208px` shell-aligned framing instead of drifting back to a looser
+      popover size
     - the `General` section now reads real runtime bootstrap metadata and exposes the desktop `watcher_mode` lifecycle setting; in the split browser dev loop this control degrades to a visible read-only fallback instead of pretending browser mode can persist desktop settings
+    - `Settings -> Remote` now has browser coverage for the filterable saved-profile inventory, including the visible-count summary and explicit no-match empty state
+    - `Settings -> MCP` now has matching browser coverage for the filterable registered-server inventory, including the same visible-count summary and explicit no-match empty state
     - a fresh `npm run tauri:dev` smoke still builds and launches the desktop entrypoint after the runtime-settings slice, so the new `watcher_mode` plumbing does not break desktop startup
     - desktop startup now also self-heals stale watcher attachments recorded in `~/.rterm/runtime.json`: if a previously UI-owned watcher is still bound to `127.0.0.1:7788` but no longer matches the newly attached/spawned core, startup explicitly shuts that stale watcher down before spawning the next one, instead of panicking on `unexpected worker identity`
     - if desktop startup spawns a fresh core and watcher recovery/spawn then fails, the just-spawned core is now stopped before setup returns the error, so startup no longer leaks a brand-new backend process on the failure path
@@ -203,6 +210,7 @@
 - `npm --prefix frontend run test -- src/features/files/api/client.test.ts src/widgets/files/files-panel-widget.test.tsx`
 - `npm --prefix frontend run build`
 - `npm run test:ui -- --reporter=line e2e/shell-workspace.spec.ts`
+- `npm run test:ui -- --reporter=line e2e/shell-workspace.spec.ts e2e/terminal.spec.ts`
 - `npm run validate`
 - `npm run validate:desktop-runtime`
 - `gofmt -w core/app/workspace_actions.go core/app/tool_errors.go core/transport/httpapi/api.go core/transport/httpapi/handlers_workspace.go core/transport/httpapi/handlers_workspace_test.go core/workspace/widget_catalog.go core/workspace/widget_catalog_test.go`

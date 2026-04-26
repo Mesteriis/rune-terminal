@@ -1,6 +1,12 @@
 import { expect, test } from '@playwright/test'
 
-import { clearBrowserState, fetchBootstrap, fetchWorkspaceSnapshot } from './runtime'
+import {
+  clearBrowserState,
+  fetchBootstrap,
+  fetchWorkspaceSnapshot,
+  registerRemoteMCPServerViaApi,
+  saveRemoteProfileViaApi,
+} from './runtime'
 
 test('shell workspace tabs, utility actions, widget creation, and settings modal work end to end', async ({
   page,
@@ -8,6 +14,31 @@ test('shell workspace tabs, utility actions, widget creation, and settings modal
 }) => {
   await clearBrowserState(page)
   await page.goto('/')
+
+  const seedStamp = Date.now()
+  const remotePrimaryToken = `phase1remotefocus${seedStamp}`
+  const remoteSecondaryToken = `phase1remoteother${seedStamp}`
+  const mcpPrimaryToken = `phase1mcpfocus${seedStamp}`
+  const mcpSecondaryToken = `phase1mcpother${seedStamp}`
+
+  await saveRemoteProfileViaApi(request, {
+    host: `${remotePrimaryToken}.example.test`,
+    name: `Remote ${remotePrimaryToken}`,
+    user: 'deploy',
+  })
+  await saveRemoteProfileViaApi(request, {
+    host: `${remoteSecondaryToken}.example.test`,
+    name: `Remote ${remoteSecondaryToken}`,
+    user: 'ops',
+  })
+  await registerRemoteMCPServerViaApi(request, {
+    endpoint: `https://${mcpPrimaryToken}.example.test/mcp`,
+    id: `mcp.${mcpPrimaryToken}`,
+  })
+  await registerRemoteMCPServerViaApi(request, {
+    endpoint: `https://${mcpSecondaryToken}.example.test/mcp`,
+    id: `mcp.${mcpSecondaryToken}`,
+  })
 
   const bootstrap = await fetchBootstrap(request)
   const repoRootTitle = bootstrap.repo_root.split('/').filter(Boolean).pop() ?? bootstrap.repo_root
@@ -38,8 +69,8 @@ test('shell workspace tabs, utility actions, widget creation, and settings modal
 
   await expect(workspaceOneTab).toBeVisible()
   await expect(workspaceTwoTab).toHaveAttribute('aria-selected', 'true')
-  await expect(workspaceTwoTab).toHaveCSS('min-height', '24px')
-  await expect(addWorkspaceButton).toHaveCSS('min-height', '24px')
+  await expect(workspaceTwoTab).toHaveCSS('min-height', '22px')
+  await expect(addWorkspaceButton).toHaveCSS('min-height', '22px')
   await expect(page.getByRole('button', { name: 'Close tool' })).toHaveCount(1)
 
   await addWorkspaceButton.click()
@@ -61,6 +92,7 @@ test('shell workspace tabs, utility actions, widget creation, and settings modal
     .toBe(baselineBackendTabCount + 1)
 
   await openUtilityPanelButton.click()
+  await expect(page.getByRole('menu', { name: 'Create widget menu' })).toHaveCSS('width', '208px')
   await expect(page.getByRole('menuitem', { name: 'Create Terminal widget' })).toBeEnabled()
   await expect(page.getByRole('menuitem', { name: 'Create Files widget' })).toBeEnabled()
   await expect(
@@ -169,6 +201,27 @@ test('shell workspace tabs, utility actions, widget creation, and settings modal
   await expect(page.getByRole('button', { name: 'Установленные приложения' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Terminal Настройки терминального runtime.' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Commander Настройки file-manager surface.' })).toBeVisible()
+
+  await page.getByRole('button', { name: /^Remote / }).click()
+  const remoteFilter = page.getByRole('textbox', { name: 'Filter remote profiles' })
+  await expect(remoteFilter).toBeVisible()
+  await remoteFilter.fill(remotePrimaryToken)
+  await expect(page.getByText(`Remote ${remotePrimaryToken}`)).toBeVisible()
+  await expect(page.getByText(`Remote ${remoteSecondaryToken}`)).toHaveCount(0)
+  await expect(page.getByText('1 visible')).toBeVisible()
+  await remoteFilter.fill('missing-remote-filter')
+  await expect(page.getByText('No SSH profiles match current filter.')).toBeVisible()
+
+  await page.getByRole('button', { name: /^MCP / }).click()
+  const mcpFilter = page.getByRole('textbox', { name: 'Filter MCP servers' })
+  await expect(mcpFilter).toBeVisible()
+  await mcpFilter.fill(mcpPrimaryToken)
+  await expect(page.getByText(`mcp.${mcpPrimaryToken}`)).toBeVisible()
+  await expect(page.getByText(`mcp.${mcpSecondaryToken}`)).toHaveCount(0)
+  await expect(page.getByText('1 visible')).toBeVisible()
+  await mcpFilter.fill('missing-mcp-filter')
+  await expect(page.getByText('No MCP servers match current filter.')).toBeVisible()
+
   await page.getByRole('button', { name: 'Close Settings' }).click()
   await expect(page.getByText('Settings', { exact: true })).toHaveCount(0)
 

@@ -59,6 +59,10 @@
     - focus enters the xterm textarea exposed as `Terminal input`
     - typed input is forwarded to `POST /api/v1/terminal/{widgetID}/input`
     - echoed output is observable again through backend terminal snapshots
+    - the same live shell path now also verifies the terminal search row affordance:
+      toolbar search can open and close on the active runtime-backed widget,
+      next/previous controls stay disabled without a query, and those controls
+      become enabled when a query is typed into the live search field
 
 ## Backend contracts used
 
@@ -146,6 +150,7 @@
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts`
 - `npm run test:ui -- --reporter=line e2e/shell-workspace.spec.ts`
 - `npm run test:ui -- --reporter=line e2e/terminal.spec.ts`
+- `npm run test:ui -- --reporter=line e2e/shell-workspace.spec.ts e2e/terminal.spec.ts`
 - `npm run test:ui -- --reporter=line --grep "reset all runtime-owned defaults" e2e/terminal.spec.ts`
 - `npm run tauri:dev`
 
@@ -161,6 +166,7 @@
 - Visible restart and interrupt controls now exist in the terminal header chrome, and terminal font size, line height, theme mode, scrollback, plus cursor behavior are now configurable through a backend-owned runtime settings contract.
 - Terminal toolbar `clear` and `jump-to-latest` actions are intentionally local xterm viewport controls. They do not mutate backend snapshot history and were validated as non-breaking live affordances rather than as persisted runtime state.
 - Browser validation for terminal input now runs through Playwright on the split local dev path. The suite is intentionally serialized (`workers: 1`) because terminal/runtime state is shared across the same backend instance.
+- Browser validation for the terminal search row currently asserts the live shell affordance contract (`open`, `query`, enable/disable state, `close`) on the runtime-backed widget; lower-level hotkey/result-count semantics stay covered by widget/unit tests because browser-level delivery of function-key aliases is platform-sensitive.
 - A fresh `npm run tauri:dev` desktop smoke was run for this slice and the spawned `rterm-desktop` / core listener processes were cleaned up after verification.
 - Browser validation now also covers runtime-owned terminal theme mode, scrollback, plus cursor behavior persistence through the `Settings -> Terminal` shell path and confirms that `theme_mode`, `scrollback`, `cursor_style`, and `cursor_blink` survive reload through the backend contract.
 - Browser validation now also covers the one-shot reset path for the runtime-owned terminal settings shell and confirms that font size, line height, theme mode, scrollback, and cursor behavior all return to the backend defaults through the shared settings contract.
