@@ -157,7 +157,9 @@ export function AiPanelWidget({ controller, hostId, mode = 'chat', state }: AiPa
                 : false
             }
             isWidgetContextEnabled={state == null ? agentPanel.isWidgetContextEnabled : undefined}
+            isSubmitting={state == null ? agentPanel.isSubmitting && agentPanel.isResponseCancellable : false}
             missingContextWidgetCount={state == null ? agentPanel.missingContextWidgetCount : undefined}
+            onCancelSubmit={state == null ? agentPanel.cancelActiveSubmission : undefined}
             onContextOptionsOpen={state == null ? agentPanel.handleContextOptionsOpen : undefined}
             onContextOnlyUseCurrentWidget={
               state == null ? () => void agentPanel.useCurrentContextWidget('replace') : undefined

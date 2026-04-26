@@ -30,6 +30,7 @@
   - AI composer denser request-context dropdown summary block and widget option rows
   - AI assistant message meta row and details panel chrome refinement
   - stream-error handling in the AI panel now preserves partial assistant output instead of immediately overwriting it with a post-stream conversation resync
+  - active conversation stream cancellation from the composer: the UI aborts the in-flight fetch stream, clears busy state, and keeps partial assistant output visible as an operator-cancelled error message
   - frontend `/run ...` routing from the AI sidebar into the active terminal widget through backend tool execution plus terminal-command explanation
   - browser-level Playwright coverage for the AI sidebar over the split local dev path:
     - settings navigation for provider/model/limits/terminal/commander sections
@@ -175,12 +176,15 @@
 - `./scripts/go.sh test ./core/conversation ./core/app ./core/transport/httpapi -run 'TestOpenAICompatibleProvider|TestStreamConversation|TestSubmitConversationPromptAppliesSelectedModelOverrideForOpenAICompatibleProvider|TestStreamConversationMessageEmitsStructuredEventSequence' -count=1`
 - `./scripts/go.sh test ./core/conversation ./core/app ./core/transport/httpapi -count=1`
 - `npm --prefix frontend run test -- src/features/agent/api/client.test.ts src/widgets/ai/ai-panel-widget.test.tsx`
+- `npm --prefix frontend run test -- src/widgets/ai/ai-composer-widget.test.tsx src/widgets/ai/ai-panel-widget.test.tsx`
+- `npm run lint:frontend`
 
 ## Known limitations
 
 - conversation management is still intentionally narrow: create + switch + active-thread rename + archive + restore + delete plus one shared navigator. Server-backed scope/query filtering and archive-management flows are now live, but multi-panel conversation views are still not implemented in this slice.
 - request-context persistence is now conversation-scoped and stale-widget repair is explicit, but there are still no named context presets or grouped context modes.
 - CLI providers currently expose buffered chat completion through the existing SSE route; token-by-token provider streaming is implemented only for the OpenAI-compatible HTTP source.
+- Composer cancellation aborts the browser fetch stream and clears frontend busy state; it does not claim a durable backend-side job cancellation queue beyond normal request-context cancellation.
 - CLI-native tool calls are not yet mediated through `core/toolruntime`, policy approval, or audit events.
 - The OpenAI-compatible HTTP source streams text deltas only; reasoning deltas and provider-native tool-call stream events remain out of scope.
 - No current visible profile, role, or mode selector exists in the AI sidebar, so those backend selection routes remain unwired to user controls.

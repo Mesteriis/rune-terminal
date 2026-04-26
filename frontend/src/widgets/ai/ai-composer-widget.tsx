@@ -66,8 +66,10 @@ export type AiComposerWidgetProps = {
   value?: string
   onModelChange?: (value: string) => void
   onValueChange?: (value: string) => void
+  onCancelSubmit?: () => void
   onSubmit?: () => void
   disabled?: boolean
+  isSubmitting?: boolean
   submitDisabled?: boolean
   contextWidgetOptions?: AiContextWidgetOption[]
   activeContextWidgetID?: string
@@ -92,8 +94,10 @@ export function AiComposerWidget({
   availableModels = [],
   availableProviders = [],
   disabled = false,
+  isSubmitting = false,
   onModelChange,
   onProviderChange,
+  onCancelSubmit,
   onSubmit,
   onValueChange,
   placeholder,
@@ -502,17 +506,30 @@ export function AiComposerWidget({
               <List size={12} strokeWidth={2} />
               {isWidgetContextEnabled ? `${selectedContextCount || 0} ctx` : 'ctx off'}
             </Badge>
-            <IconButton
-              aria-label="Send prompt"
-              disabled={submitDisabled}
-              onClick={() => {
-                onSubmit?.()
-              }}
-              runaComponent="ai-composer-send"
-              style={aiComposerActionStyle}
-            >
-              <SendHorizontal size={18} strokeWidth={1.8} />
-            </IconButton>
+            {isSubmitting && onCancelSubmit ? (
+              <IconButton
+                aria-label="Cancel response"
+                onClick={() => {
+                  onCancelSubmit()
+                }}
+                runaComponent="ai-composer-cancel"
+                style={aiComposerActionStyle}
+              >
+                <X size={18} strokeWidth={1.8} />
+              </IconButton>
+            ) : (
+              <IconButton
+                aria-label="Send prompt"
+                disabled={submitDisabled}
+                onClick={() => {
+                  onSubmit?.()
+                }}
+                runaComponent="ai-composer-send"
+                style={aiComposerActionStyle}
+              >
+                <SendHorizontal size={18} strokeWidth={1.8} />
+              </IconButton>
+            )}
           </Box>
         </Surface>
       </Box>

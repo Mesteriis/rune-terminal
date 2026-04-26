@@ -422,11 +422,14 @@ export function useAgentPanel(hostId: string, enabled = true) {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isResponseCancellable, setIsResponseCancellable] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [isConversationPending, setIsConversationPending] = useState(false)
   const activeConversationIDRef = useRef('')
   const messagesRef = useRef<AgentConversationMessage[] | null>(null)
   const activeStreamRef = useRef<AgentConversationStreamConnection | null>(null)
+  const activeSubmissionAbortRef = useRef<AbortController | null>(null)
+  const activeAuditMessageIDRef = useRef<string | null>(null)
   const optimisticMessageCounterRef = useRef(0)
   const flowCounterRef = useRef(0)
   const localSortCounterRef = useRef(0)
@@ -526,11 +529,15 @@ export function useAgentPanel(hostId: string, enabled = true) {
   useEffect(() => {
     return () => {
       submissionNonceRef.current += 1
+      activeSubmissionAbortRef.current?.abort()
       activeStreamRef.current?.close()
       activeStreamRef.current = null
+      activeSubmissionAbortRef.current = null
+      activeAuditMessageIDRef.current = null
       pendingFlowRef.current = null
       hasLoadedContextWidgetsRef.current = false
       hasCustomizedContextWidgetSelectionRef.current = false
+      setIsResponseCancellable(false)
       unblockAiWidget(hostId)
     }
   }, [hostId])
@@ -544,8 +551,11 @@ export function useAgentPanel(hostId: string, enabled = true) {
     const panelStateEpoch = beginPanelStateEpoch()
 
     submissionNonceRef.current += 1
+    activeSubmissionAbortRef.current?.abort()
     activeStreamRef.current?.close()
     activeStreamRef.current = null
+    activeSubmissionAbortRef.current = null
+    activeAuditMessageIDRef.current = null
     pendingFlowRef.current = null
     unblockAiWidget(hostId)
     setMessages(null)
@@ -572,6 +582,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
     setLoadError(null)
     setSubmitError(null)
     setIsSubmitting(false)
+    setIsResponseCancellable(false)
     setIsConversationPending(false)
     activeConversationIDRef.current = ''
     messagesRef.current = null
@@ -613,11 +624,15 @@ export function useAgentPanel(hostId: string, enabled = true) {
     return () => {
       cancelled = true
       submissionNonceRef.current += 1
+      activeSubmissionAbortRef.current?.abort()
       activeStreamRef.current?.close()
       activeStreamRef.current = null
+      activeSubmissionAbortRef.current = null
+      activeAuditMessageIDRef.current = null
       pendingFlowRef.current = null
       hasLoadedContextWidgetsRef.current = false
       hasCustomizedContextWidgetSelectionRef.current = false
+      setIsResponseCancellable(false)
       unblockAiWidget(hostId)
     }
   }, [applyConversationSnapshot, beginPanelStateEpoch, enabled, hostId])
@@ -747,8 +762,11 @@ export function useAgentPanel(hostId: string, enabled = true) {
       }
 
       submissionNonceRef.current += 1
+      activeSubmissionAbortRef.current?.abort()
       activeStreamRef.current?.close()
       activeStreamRef.current = null
+      activeSubmissionAbortRef.current = null
+      activeAuditMessageIDRef.current = null
       const panelStateEpoch = beginPanelStateEpoch()
       setIsConversationPending(true)
 
@@ -783,8 +801,11 @@ export function useAgentPanel(hostId: string, enabled = true) {
     }
 
     submissionNonceRef.current += 1
+    activeSubmissionAbortRef.current?.abort()
     activeStreamRef.current?.close()
     activeStreamRef.current = null
+    activeSubmissionAbortRef.current = null
+    activeAuditMessageIDRef.current = null
     const panelStateEpoch = beginPanelStateEpoch()
     setIsConversationPending(true)
 
@@ -841,8 +862,11 @@ export function useAgentPanel(hostId: string, enabled = true) {
       }
 
       submissionNonceRef.current += 1
+      activeSubmissionAbortRef.current?.abort()
       activeStreamRef.current?.close()
       activeStreamRef.current = null
+      activeSubmissionAbortRef.current = null
+      activeAuditMessageIDRef.current = null
       const panelStateEpoch = beginPanelStateEpoch()
       setIsConversationPending(true)
 
@@ -888,8 +912,11 @@ export function useAgentPanel(hostId: string, enabled = true) {
       }
 
       submissionNonceRef.current += 1
+      activeSubmissionAbortRef.current?.abort()
       activeStreamRef.current?.close()
       activeStreamRef.current = null
+      activeSubmissionAbortRef.current = null
+      activeAuditMessageIDRef.current = null
       const panelStateEpoch = beginPanelStateEpoch()
       setIsConversationPending(true)
 
@@ -935,8 +962,11 @@ export function useAgentPanel(hostId: string, enabled = true) {
       }
 
       submissionNonceRef.current += 1
+      activeSubmissionAbortRef.current?.abort()
       activeStreamRef.current?.close()
       activeStreamRef.current = null
+      activeSubmissionAbortRef.current = null
+      activeAuditMessageIDRef.current = null
       const panelStateEpoch = beginPanelStateEpoch()
       setIsConversationPending(true)
 
@@ -1445,19 +1475,24 @@ export function useAgentPanel(hostId: string, enabled = true) {
   )
 
   const runBackendPrompt = useCallback(
-    async (prompt: string, options?: { auditMessageID?: string; model?: string }) => {
+    async (prompt: string, options?: { auditMessageID?: string; cancellable?: boolean; model?: string }) => {
       const submissionNonce = submissionNonceRef.current + 1
       submissionNonceRef.current = submissionNonce
       const isActiveSubmission = () => submissionNonceRef.current === submissionNonce
+      const isCancellable = options?.cancellable !== false
 
       setIsSubmitting(true)
+      setIsResponseCancellable(isCancellable)
       setLoadError(null)
       setSubmitError(null)
       blockAiWidget(hostId)
 
+      const submissionAbortController = new AbortController()
       let auditProgressed = false
       let streamErrored = false
       let connection: AgentConversationStreamConnection | null = null
+      activeSubmissionAbortRef.current = submissionAbortController
+      activeAuditMessageIDRef.current = options?.auditMessageID ?? null
 
       try {
         const runtimeContext = await resolveRuntimeContext()
@@ -1527,8 +1562,13 @@ export function useAgentPanel(hostId: string, enabled = true) {
                 }
               }
             },
+            signal: submissionAbortController.signal,
           },
         )
+        if (!isActiveSubmission()) {
+          connection.close()
+          return
+        }
         activeStreamRef.current = connection
         await connection.done
 
@@ -1567,9 +1607,16 @@ export function useAgentPanel(hostId: string, enabled = true) {
           if (activeStreamRef.current === connection) {
             activeStreamRef.current = null
           }
+          if (activeSubmissionAbortRef.current === submissionAbortController) {
+            activeSubmissionAbortRef.current = null
+          }
+          if (activeAuditMessageIDRef.current === (options?.auditMessageID ?? null)) {
+            activeAuditMessageIDRef.current = null
+          }
 
           unblockAiWidget(hostId)
           setIsSubmitting(false)
+          setIsResponseCancellable(false)
         }
       }
     },
@@ -1607,7 +1654,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
     setDraft('')
 
     if (getRunCommand(prompt) !== null) {
-      await runBackendPrompt(prompt)
+      await runBackendPrompt(prompt, { cancellable: false })
       return
     }
 
@@ -1631,6 +1678,59 @@ export function useAgentPanel(hostId: string, enabled = true) {
     runBackendPrompt,
     selectedModel,
   ])
+
+  const cancelActiveSubmission = useCallback(() => {
+    if (!isSubmitting && !activeStreamRef.current && !activeSubmissionAbortRef.current) {
+      return
+    }
+
+    const cancellationMessage = 'Response cancelled by operator.'
+    const nextSubmissionNonce = submissionNonceRef.current + 1
+    const auditMessageID = activeAuditMessageIDRef.current
+
+    submissionNonceRef.current = nextSubmissionNonce
+    activeSubmissionAbortRef.current?.abort()
+    activeStreamRef.current?.close()
+    activeStreamRef.current = null
+    activeSubmissionAbortRef.current = null
+    activeAuditMessageIDRef.current = null
+
+    if (auditMessageID) {
+      updateAuditMessageEntries(auditMessageID, (currentMessage) =>
+        currentMessage.type === 'audit'
+          ? {
+              ...currentMessage,
+              entries: failAuditEntries(currentMessage.entries),
+            }
+          : currentMessage,
+      )
+    }
+
+    setMessages((currentMessages) => {
+      const messagesBeforeCancel = currentMessages ?? []
+      const hadStreamingMessage = messagesBeforeCancel.some((message) => message.status === 'streaming')
+      const finalizedMessages = finalizeAgentConversationStreamingMessages(
+        messagesBeforeCancel,
+        cancellationMessage,
+      )
+
+      if (hadStreamingMessage) {
+        return finalizedMessages
+      }
+
+      return appendAgentConversationMessage(finalizedMessages, {
+        id: `agent-local-cancelled-${hostId}-${nextSubmissionNonce}`,
+        role: 'assistant',
+        content: cancellationMessage,
+        status: 'error',
+        created_at: new Date().toISOString(),
+      })
+    })
+    setSubmitError(null)
+    setIsSubmitting(false)
+    setIsResponseCancellable(false)
+    unblockAiWidget(hostId)
+  }, [hostId, isSubmitting, updateAuditMessageEntries])
 
   const cancelPendingPlan = useCallback(
     (message: ApprovalMessage) => {
@@ -1771,6 +1871,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
     answerQuestionnaire,
     approvePendingPlan,
     availableProviders,
+    cancelActiveSubmission,
     contextWidgetLoadError,
     contextWidgetOptions,
     cancelPendingPlan,
@@ -1789,6 +1890,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
     isInteractionPending: pendingFlow != null,
     isConversationListPending,
     isConversationPending,
+    isResponseCancellable,
     isSubmitting,
     isWidgetContextEnabled,
     panelState,

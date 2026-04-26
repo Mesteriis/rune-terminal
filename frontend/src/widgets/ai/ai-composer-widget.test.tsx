@@ -94,6 +94,29 @@ describe('AiComposerWidget', () => {
     expect(onSubmit).not.toHaveBeenCalled()
   })
 
+  it('shows an explicit cancel action while a response is submitting', () => {
+    const onCancelSubmit = vi.fn()
+    const onSubmit = vi.fn()
+
+    render(
+      <AiComposerWidget
+        activeTool="Chat"
+        isSubmitting
+        onCancelSubmit={onCancelSubmit}
+        onSubmit={onSubmit}
+        placeholder="Text Area"
+        toolbarLabel="TOOL BAR"
+        value="test"
+      />,
+    )
+
+    expect(screen.queryByRole('button', { name: 'Send prompt' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel response' }))
+
+    expect(onCancelSubmit).toHaveBeenCalledTimes(1)
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
   it('shows context summary in the toolbar and exposes quick actions for the active widget', () => {
     const onContextUseCurrentWidget = vi.fn()
     const onContextOnlyUseCurrentWidget = vi.fn()

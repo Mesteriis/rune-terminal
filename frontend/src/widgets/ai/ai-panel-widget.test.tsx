@@ -565,6 +565,105 @@ describe('AiPanelWidget backend conversation path', () => {
     })
   })
 
+  it('lets the operator cancel an active backend response stream', async () => {
+    const streamResponse = createDeferredStreamResponse()
+    const fetchMock = vi.fn()
+    let streamSignal: AbortSignal | null = null
+
+    fetchMock.mockImplementation(async (input, init) => {
+      const url = String(input)
+
+      if (url.endsWith('/api/v1/bootstrap')) {
+        return {
+          ok: true,
+          json: async () => ({
+            home_dir: '/Users/avm',
+            repo_root: '/Users/avm/projects/runa-terminal',
+          }),
+        }
+      }
+
+      if (url.endsWith('/api/v1/agent/conversation')) {
+        return createConversationFetchResponse({
+          title: 'Cancelable stream',
+          provider: {
+            kind: 'stub',
+            base_url: 'http://stub',
+            model: 'stub-model',
+            streaming: true,
+          },
+        })
+      }
+
+      if (url.endsWith('/api/v1/agent/providers')) {
+        return createProviderCatalogFetchResponse()
+      }
+
+      if (url.includes('/api/v1/agent/conversations?scope=recent')) {
+        return createConversationListFetchResponse('conv_1', [
+          {
+            id: 'conv_1',
+            title: 'Cancelable stream',
+            created_at: '2026-04-21T09:59:00Z',
+            updated_at: '2026-04-21T10:00:00Z',
+            message_count: 0,
+          },
+        ])
+      }
+
+      if (url.endsWith('/api/v1/agent/conversation/messages/stream')) {
+        streamSignal = init?.signal instanceof AbortSignal ? init.signal : null
+        return {
+          ok: true,
+          body: streamResponse.body,
+        }
+      }
+
+      throw new Error(`Unexpected fetch request: ${url}`)
+    })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<AiPanelWidget hostId="ai-shell-panel" />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Backend conversation is empty.')).toBeInTheDocument()
+    })
+
+    fireEvent.change(screen.getByPlaceholderText('Text Area'), {
+      target: { value: 'Cancel this response' },
+    })
+    fireEvent.click(screen.getByLabelText('Send prompt'))
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Cancel response' })).toBeInTheDocument()
+      expect(streamSignal).not.toBeNull()
+    })
+
+    await act(async () => {
+      streamResponse.push(
+        'event: message-start\ndata: {"type":"message-start","message_id":"msg_2","message":{"id":"msg_2","role":"assistant","content":"","status":"streaming","provider":"stub","model":"stub-model","created_at":"2026-04-21T10:00:05Z"}}\n\n',
+      )
+      streamResponse.push(
+        'event: text-delta\ndata: {"type":"text-delta","message_id":"msg_2","delta":"Partial reply"}\n\n',
+      )
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Partial reply')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel response' }))
+
+    expect(streamSignal?.aborted).toBe(true)
+    await waitFor(() => {
+      expect(screen.queryByLabelText('Widget ai-shell-panel is busy')).not.toBeInTheDocument()
+      expect(screen.getByText('stub-model · error')).toBeInTheDocument()
+    })
+    expect(screen.queryByRole('button', { name: 'Cancel response' })).not.toBeInTheDocument()
+  })
+
   it('allows selecting multiple workspace widgets for the AI request context', async () => {
     registerTerminalPanelBinding({
       hostId: 'terminal',
