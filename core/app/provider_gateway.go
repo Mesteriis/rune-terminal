@@ -3,6 +3,8 @@ package app
 import (
 	"context"
 	"errors"
+	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -12,9 +14,18 @@ import (
 )
 
 const (
-	providerGatewayRecentRunsLimit = 20
-	providerRunErrorCodeGeneric    = "provider_error"
+	providerGatewayRecentRunsLimit       = 20
+	providerRunErrorCodeGeneric          = "provider_error"
+	providerRunErrorCodeMissingBinary    = "missing_binary"
+	providerRunErrorCodeAuthRequired     = "auth_required"
+	providerRunErrorCodeUnreachable      = "unreachable"
+	providerRunErrorCodeModelUnavailable = "model_unavailable"
+	providerRunErrorCodeInvalidConfig    = "invalid_config"
+	providerRunErrorCodeTimeout          = "timeout"
+	providerRunErrorCodeUpstreamRejected = "upstream_rejected"
 )
+
+var openAICompatibleStatusCodePattern = regexp.MustCompile(`openai-compatible request failed \((\d{3})\)`)
 
 type ProviderGatewayProviderView struct {
 	ProviderID                    string     `json:"provider_id"`
@@ -238,7 +249,7 @@ func (r *Runtime) recordConversationProviderRun(
 		return
 	}
 
-	status, errorCode, errorMessage := classifyProviderRunOutcome(result, callErr)
+	status, errorCode, errorMessage := classifyProviderRunOutcome(binding, result, callErr)
 	_, _ = r.ProviderGateway.RecordRun(ctx, providergateway.RunRecord{
 		ProviderID:             binding.Record.ID,
 		ProviderKind:           string(binding.Record.Kind),
@@ -256,12 +267,17 @@ func (r *Runtime) recordConversationProviderRun(
 	})
 }
 
-func classifyProviderRunOutcome(result conversation.SubmitResult, callErr error) (string, string, string) {
+func classifyProviderRunOutcome(
+	binding resolvedConversationProvider,
+	result conversation.SubmitResult,
+	callErr error,
+) (string, string, string) {
 	if callErr != nil {
 		if errors.Is(callErr, conversation.ErrConversationStreamCancelled) || errors.Is(callErr, context.Canceled) {
 			return providergateway.RunStatusCancelled, "stream_cancelled", conversation.ErrConversationStreamCancelled.Error()
 		}
-		return providergateway.RunStatusFailed, providerRunErrorCodeGeneric, strings.TrimSpace(callErr.Error())
+		errorMessage := strings.TrimSpace(callErr.Error())
+		return providergateway.RunStatusFailed, classifyProviderRunErrorCode(binding, errorMessage, callErr), errorMessage
 	}
 
 	providerError := strings.TrimSpace(result.ProviderError)
@@ -271,5 +287,87 @@ func classifyProviderRunOutcome(result conversation.SubmitResult, callErr error)
 	if providerError == conversation.ErrConversationStreamCancelled.Error() {
 		return providergateway.RunStatusCancelled, "stream_cancelled", providerError
 	}
-	return providergateway.RunStatusFailed, providerRunErrorCodeGeneric, providerError
+	return providergateway.RunStatusFailed, classifyProviderRunErrorCode(binding, providerError, nil), providerError
+}
+
+func classifyProviderRunErrorCode(
+	binding resolvedConversationProvider,
+	errorMessage string,
+	callErr error,
+) string {
+	normalizedMessage := strings.ToLower(strings.TrimSpace(errorMessage))
+
+	switch {
+	case errors.Is(callErr, context.DeadlineExceeded), strings.Contains(normalizedMessage, "deadline exceeded"), strings.Contains(normalizedMessage, "timeout"):
+		return providerRunErrorCodeTimeout
+	case strings.Contains(normalizedMessage, "command is required"),
+		strings.Contains(normalizedMessage, "command is not available on path"),
+		strings.Contains(normalizedMessage, "executable file not found"):
+		return providerRunErrorCodeMissingBinary
+	case strings.Contains(normalizedMessage, "not logged in"),
+		strings.Contains(normalizedMessage, "login required"),
+		strings.Contains(normalizedMessage, "authentication required"):
+		return providerRunErrorCodeAuthRequired
+	case strings.Contains(normalizedMessage, "base_url is required"),
+		strings.Contains(normalizedMessage, "model is required"),
+		strings.Contains(normalizedMessage, "settings are required"),
+		strings.Contains(normalizedMessage, "invalid config"):
+		return providerRunErrorCodeInvalidConfig
+	case strings.Contains(normalizedMessage, "configured model"),
+		strings.Contains(normalizedMessage, "model unavailable"),
+		strings.Contains(normalizedMessage, "model not found"),
+		strings.Contains(normalizedMessage, "does not exist"):
+		return providerRunErrorCodeModelUnavailable
+	case strings.Contains(normalizedMessage, "connection refused"),
+		strings.Contains(normalizedMessage, "no such host"),
+		strings.Contains(normalizedMessage, "network is unreachable"),
+		strings.Contains(normalizedMessage, "dial tcp"),
+		strings.Contains(normalizedMessage, "connection reset by peer"):
+		return providerRunErrorCodeUnreachable
+	}
+
+	if statusCode, ok := parseOpenAICompatibleFailureStatusCode(normalizedMessage); ok {
+		switch statusCode {
+		case http.StatusNotFound:
+			if binding.Record != nil && binding.Record.Kind == agent.ProviderKindOpenAICompatible {
+				return providerRunErrorCodeModelUnavailable
+			}
+		case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusTooManyRequests:
+			return providerRunErrorCodeUpstreamRejected
+		}
+		if statusCode >= 400 {
+			return providerRunErrorCodeUpstreamRejected
+		}
+	}
+
+	return providerRunErrorCodeGeneric
+}
+
+func parseOpenAICompatibleFailureStatusCode(errorMessage string) (int, bool) {
+	matches := openAICompatibleStatusCodePattern.FindStringSubmatch(errorMessage)
+	if len(matches) != 2 {
+		return 0, false
+	}
+	switch matches[1] {
+	case "400":
+		return http.StatusBadRequest, true
+	case "401":
+		return http.StatusUnauthorized, true
+	case "403":
+		return http.StatusForbidden, true
+	case "404":
+		return http.StatusNotFound, true
+	case "429":
+		return http.StatusTooManyRequests, true
+	case "500":
+		return http.StatusInternalServerError, true
+	case "502":
+		return http.StatusBadGateway, true
+	case "503":
+		return http.StatusServiceUnavailable, true
+	case "504":
+		return http.StatusGatewayTimeout, true
+	default:
+		return 0, false
+	}
 }

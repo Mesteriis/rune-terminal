@@ -96,6 +96,18 @@
   - CLI routes are marked `prepared` only after the backend verifies the binary/auth path for on-demand launch
   - OpenAI-compatible routes are marked `prepared` only after the backend successfully primes `/v1/models`
   - prewarm writes back into the same gateway row as probe/readiness data instead of creating a frontend-only warm cache
+- Gateway run failures now carry richer backend-owned error codes instead of collapsing everything into `provider_error`:
+  - `missing_binary`
+  - `auth_required`
+  - `timeout`
+  - `unreachable`
+  - `model_unavailable`
+  - `invalid_config`
+  - `upstream_rejected`
+- The settings shell now uses those codes only as presentation hints over the same gateway snapshot:
+  - renders the error class next to the last recorded error
+  - shows first-response latency in both gateway summary and recent-activity rows
+  - surfaces a context-appropriate recovery action (`Probe` vs `Prepare`) instead of a single blind retry button
 - Gateway telemetry load no longer fails silently in the settings shell:
   - if `/api/v1/agent/providers/gateway` fails, the UI shows an explicit gateway telemetry error instead of quietly pretending the telemetry surface has no data
 - CLI/OpenAI probe states are now surfaced only through the gateway snapshot:
