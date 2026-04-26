@@ -56,6 +56,25 @@ describe('PreviewPanelWidget', () => {
     expect(screen.getByText('Hex preview · 1.0 KB · truncated')).toBeInTheDocument()
   })
 
+  it('renders CSV text previews as bounded tables', async () => {
+    vi.mocked(readPreviewFile).mockResolvedValue({
+      content: 'name,count\nalpha,1\nbeta,2',
+      path: '/repo/data.csv',
+      previewBytes: 25,
+      previewKind: 'text',
+      sizeBytes: 25,
+      truncated: false,
+    })
+
+    render(<PreviewPanelWidget path="/repo/data.csv" title="data.csv" />)
+
+    await expect(screen.findByRole('columnheader', { name: 'name' })).resolves.toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'count' })).toBeInTheDocument()
+    expect(screen.getByRole('cell', { name: 'alpha' })).toBeInTheDocument()
+    expect(screen.getByRole('cell', { name: '2' })).toBeInTheDocument()
+    expect(screen.getByText('CSV table preview · 25 B')).toBeInTheDocument()
+  })
+
   it('refreshes the current preview on demand', async () => {
     vi.mocked(readPreviewFile)
       .mockResolvedValueOnce({

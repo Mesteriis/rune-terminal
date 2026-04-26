@@ -70,8 +70,9 @@ This is the canonical workspace entrypoint for tab/widget/layout behavior.
 - The backend preview widget path now exists as a workspace-owned file handoff:
   `POST /api/v1/workspace/widgets/open-preview` validates an existing file and
   splits a `preview` widget into the target tab. The frontend preview panel
-  renders bounded text/hex previews through `GET /api/v1/fs/read`, exposes an
-  explicit file-open and containing-folder handoff through
+  renders bounded text/hex previews through `GET /api/v1/fs/read`, upgrades
+  `.csv` / `.tsv` text previews into bounded tables, exposes an explicit
+  file-open and containing-folder handoff through
   `POST /api/v1/fs/open`, and can copy the previewed path to the browser
   clipboard.
 

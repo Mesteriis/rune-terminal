@@ -20,8 +20,13 @@ import {
   previewPanelRefreshButtonStyle,
   previewPanelRootStyle,
   previewPanelStateStyle,
+  previewPanelTableCellStyle,
+  previewPanelTableHeaderCellStyle,
+  previewPanelTableStyle,
+  previewPanelTableWrapStyle,
   previewPanelTitleStyle,
 } from './preview-panel-widget.styles'
+import { createPreviewTable } from './preview-table'
 
 export type PreviewPanelWidgetProps = {
   path: string
@@ -237,13 +242,21 @@ export function PreviewPanelWidget({ path, title }: PreviewPanelWidgetProps) {
     }
   }
 
+  const containingFolderPath = getRuntimePathParent(path)
+  const previewTable =
+    state.status === 'ready' && state.snapshot.previewKind === 'text'
+      ? createPreviewTable(path, state.snapshot.content)
+      : null
   const previewSummary =
     state.status === 'ready'
-      ? `${getPreviewKindLabel(state.snapshot)} · ${formatBytes(state.snapshot.sizeBytes)}${
-          state.snapshot.truncated ? ' · truncated' : ''
-        }`
+      ? `${previewTable ? `${previewTable.delimiterLabel} table preview` : getPreviewKindLabel(state.snapshot)} · ${formatBytes(
+          state.snapshot.sizeBytes,
+        )}${state.snapshot.truncated ? ' · truncated' : ''}`
       : null
-  const containingFolderPath = getRuntimePathParent(path)
+  const previewTableLimitLabel =
+    previewTable?.truncatedColumns || previewTable?.truncatedRows
+      ? `Table preview is bounded to ${previewTable.rows.length} rows and ${previewTable.columns.length} columns.`
+      : null
 
   return (
     <Box runaComponent="preview-panel-root" style={previewPanelRootStyle}>
@@ -322,7 +335,43 @@ export function PreviewPanelWidget({ path, title }: PreviewPanelWidgetProps) {
             </Text>
           ) : null}
           {state.status === 'ready' ? (
-            state.snapshot.content ? (
+            previewTable ? (
+              <>
+                <Box runaComponent="preview-panel-table-wrap" style={previewPanelTableWrapStyle}>
+                  <table data-runa-component="preview-panel-table" style={previewPanelTableStyle}>
+                    <thead>
+                      <tr>
+                        {previewTable.columns.map((column, columnIndex) => (
+                          <th
+                            key={`${column}-${columnIndex}`}
+                            scope="col"
+                            style={previewPanelTableHeaderCellStyle}
+                          >
+                            {column}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {previewTable.rows.map((row, rowIndex) => (
+                        <tr key={rowIndex}>
+                          {row.map((cell, columnIndex) => (
+                            <td key={`${rowIndex}-${columnIndex}`} style={previewPanelTableCellStyle}>
+                              {cell}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </Box>
+                {previewTableLimitLabel ? (
+                  <Text runaComponent="preview-panel-table-limit" style={previewPanelStateStyle}>
+                    {previewTableLimitLabel}
+                  </Text>
+                ) : null}
+              </>
+            ) : state.snapshot.content ? (
               <pre data-runa-component="preview-panel-content" style={previewPanelCodeStyle}>
                 {state.snapshot.content}
               </pre>

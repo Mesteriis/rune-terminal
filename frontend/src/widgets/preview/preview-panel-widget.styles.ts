@@ -94,3 +94,36 @@ export const previewPanelCodeStyle: CSSProperties = {
   whiteSpace: 'pre-wrap',
   wordBreak: 'break-word',
 }
+
+export const previewPanelTableWrapStyle: CSSProperties = {
+  overflow: 'auto',
+  border: '1px solid var(--color-border-subtle)',
+  borderRadius: 'var(--radius-sm)',
+}
+
+export const previewPanelTableStyle: CSSProperties = {
+  width: '100%',
+  borderCollapse: 'collapse',
+  color: 'var(--color-text-secondary)',
+  fontSize: 'var(--font-size-sm)',
+  lineHeight: 'var(--line-height-sm)',
+}
+
+export const previewPanelTableHeaderCellStyle: CSSProperties = {
+  padding: 'var(--space-xs) var(--space-sm)',
+  borderBottom: '1px solid var(--color-border-subtle)',
+  background: 'var(--color-surface-glass-soft)',
+  color: 'var(--color-text-primary)',
+  fontWeight: 700,
+  textAlign: 'left',
+  whiteSpace: 'nowrap',
+}
+
+export const previewPanelTableCellStyle: CSSProperties = {
+  maxWidth: '220px',
+  padding: 'var(--space-xs) var(--space-sm)',
+  borderBottom: '1px solid var(--color-border-subtle)',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+}
