@@ -24,6 +24,17 @@ type SaveRemoteProfileInput struct {
 	IdentityFile string `json:"identity_file,omitempty"`
 }
 
+type SSHConfigImportSkipped struct {
+	Host   string `json:"host,omitempty"`
+	Reason string `json:"reason"`
+}
+
+type SSHConfigImportResult struct {
+	Imported []RemoteProfile          `json:"imported"`
+	Skipped  []SSHConfigImportSkipped `json:"skipped,omitempty"`
+	Profiles []RemoteProfile          `json:"profiles"`
+}
+
 func (input SaveRemoteProfileInput) toSaveSSHInput() SaveSSHInput {
 	return SaveSSHInput{
 		ID:           input.ID,

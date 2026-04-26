@@ -2,6 +2,8 @@ package app
 
 import (
 	"context"
+	"path/filepath"
+	"strings"
 
 	"github.com/Mesteriis/rune-terminal/core/connections"
 )
@@ -32,4 +34,12 @@ func (r *Runtime) SaveRemoteProfile(input connections.SaveRemoteProfileInput) (c
 
 func (r *Runtime) DeleteRemoteProfile(profileID string) ([]connections.RemoteProfile, error) {
 	return r.Connections.DeleteRemoteProfile(profileID)
+}
+
+func (r *Runtime) ImportRemoteProfilesFromSSHConfig(path string) (connections.SSHConfigImportResult, error) {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		path = filepath.Join(r.HomeDir, ".ssh", "config")
+	}
+	return r.Connections.ImportSSHConfig(path)
 }

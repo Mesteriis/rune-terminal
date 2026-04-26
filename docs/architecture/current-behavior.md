@@ -411,5 +411,5 @@ Confirmable boundaries:
 - The new launcher section is likewise a closest-compatible equivalent: it mirrors TideTerm’s searchable discovery feel, but it currently catalogs shell surfaces and known widgets rather than a full local app registry.
 - The settings surface is still a closest-compatible equivalent, not exact parity with TideTerm’s broader waveconfig/help universe.
 - The remote foundation is now real but intentionally narrow: SSH uses the local system `ssh` binary instead of TideTerm's older remote controller stack.
-- SSH profile management currently supports only direct saved host/user/port/identity-file fields. It does not import `~/.ssh/config`, negotiate richer auth flows, or provide long-lived remote status tracking.
+- SSH profile management currently supports direct saved host/user/port/identity-file fields plus a narrow one-way `~/.ssh/config` import route for `Host`, `HostName`, `User`, `Port`, and `IdentityFile`. It does not negotiate richer auth flows, expand proxy topologies, or provide long-lived remote status tracking.
 - A real SSH happy path is now validated against one reachable host, but that does not mean the runtime has a persistent remote controller or full TideTerm remote parity.

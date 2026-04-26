@@ -35,7 +35,9 @@ This is the canonical remote entrypoint for local-vs-SSH runtime behavior.
 ## Current remote limits
 
 - No persistent live remote controller object yet.
-- No `~/.ssh/config` import on the active path.
+- Narrow one-way `~/.ssh/config` import is available through
+  `POST /api/v1/remote/profiles/import-ssh-config`; it supports direct
+  `Host`, `HostName`, `User`, `Port`, and `IdentityFile` profile fields only.
 - No advanced auth/proxy-jump/agent workflows implemented yet.
 
 ## Deep links

@@ -61,8 +61,7 @@ capability.
 - full TideTerm / Wave Terminal feature parity
 - broad builder / proxy / preview-zoo surfaces
 - broad settings universe
-- `.ssh/config` import and advanced SSH auth / topology (proxy jump,
-  richer auth negotiation)
+- advanced SSH auth / topology (proxy jump, richer auth negotiation)
 - managed attachment storage / import and rich attachment preview UX
 - fine-grained token streaming for CLI-backed chat
   (the backend conversation stream currently emits the completed CLI

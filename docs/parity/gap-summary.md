@@ -24,7 +24,6 @@ Source of truth: [parity-matrix.md](./parity-matrix.md)
 
 ## Optional
 
-- `.ssh/config` import (`remote`) — `MISSING`
 - Advanced SSH auth/topology (`remote`) — `MISSING`
 - Multi-session terminal block (`terminal`) — `MISSING`
 - Terminal advanced affordances/search/sidebar (`UX`) — `MISSING`

@@ -163,9 +163,20 @@ func (s *Service) SaveSSH(input SaveSSHInput) (Connection, Snapshot, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	normalized, err := normalizeSSHInput(input)
+	connection, err := s.saveSSHLocked(input)
 	if err != nil {
 		return Connection{}, Snapshot{}, err
+	}
+	if err := s.persistLocked(); err != nil {
+		return Connection{}, Snapshot{}, err
+	}
+	return connection, s.snapshotLocked(), nil
+}
+
+func (s *Service) saveSSHLocked(input SaveSSHInput) (Connection, error) {
+	normalized, err := normalizeSSHInput(input)
+	if err != nil {
+		return Connection{}, err
 	}
 
 	index := -1
@@ -188,14 +199,11 @@ func (s *Service) SaveSSH(input SaveSSHInput) (Connection, Snapshot, error) {
 	connection := normalized.toConnection()
 	result := s.checker.Check(context.Background(), connection)
 	s.applyCheckResultLocked(normalized.ID, result)
-	if err := s.persistLocked(); err != nil {
-		return Connection{}, Snapshot{}, err
-	}
 	connection, err = s.resolveLocked(normalized.ID)
 	if err != nil {
-		return Connection{}, Snapshot{}, err
+		return Connection{}, err
 	}
-	return connection, s.snapshotLocked(), nil
+	return connection, nil
 }
 
 func (s *Service) Check(ctx context.Context, id string) (Connection, Snapshot, error) {

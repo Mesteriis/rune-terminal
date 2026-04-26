@@ -29,6 +29,22 @@ func (api *API) handleSaveRemoteProfile(w http.ResponseWriter, r *http.Request) 
 	})
 }
 
+func (api *API) handleImportRemoteProfilesFromSSHConfig(w http.ResponseWriter, r *http.Request) {
+	var payload struct {
+		Path string `json:"path,omitempty"`
+	}
+	if err := decodeJSON(r, &payload); err != nil {
+		writeBadRequest(w, "invalid_request", err)
+		return
+	}
+	result, err := api.runtime.ImportRemoteProfilesFromSSHConfig(payload.Path)
+	if err != nil {
+		writeConnectionError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
 func (api *API) handleDeleteRemoteProfile(w http.ResponseWriter, r *http.Request) {
 	profiles, err := api.runtime.DeleteRemoteProfile(r.PathValue("profileID"))
 	if err != nil {

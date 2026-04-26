@@ -1,20 +1,16 @@
 # Remote SSH Config Import Scope
 
-Date: `2026-04-16`
+Date: `2026-04-26`
 
-## Decision for this batch
+## Implemented scope
 
-No `~/.ssh/config` import is implemented in this batch.
+The runtime now exposes a narrow one-way import path:
 
-Reason:
+- `POST /api/v1/remote/profiles/import-ssh-config`
+- request body: `{ "path": "/absolute/path/to/config" }`
+- if `path` is omitted, the runtime reads `<home_dir>/.ssh/config`
 
-- the batch goal is saved profile usability with explicit backend-owned contracts
-- adding parser behavior now would increase ambiguity around unsupported directives
-- current profile create/list/delete/session flow is complete without config parsing
-
-## Narrow import scope if enabled later
-
-If enabled in a future narrow slice, supported directives should be limited to:
+Supported directives are intentionally limited:
 
 - `Host`
 - `HostName`
@@ -22,14 +18,17 @@ If enabled in a future narrow slice, supported directives should be limited to:
 - `Port`
 - `IdentityFile`
 
-Mapping should be one-way into explicit saved profiles, with no secret persistence.
+Imported hosts become explicit saved remote profiles. Re-running the import is
+idempotent by `Host` alias: an existing profile with the same name is updated
+instead of duplicated.
 
 ## Intentionally unsupported
 
 - `Match`
 - `Include`
+- wildcard / negated host expansion beyond reporting skipped hosts
 - `ProxyJump` / proxy chaining
 - control socket / multiplexing directives
 - agent/keychain integration
 - password/passphrase handling
-- wildcard expansion semantics beyond trivial host aliases
+- two-way synchronization back into the user's SSH config

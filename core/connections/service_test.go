@@ -3,6 +3,7 @@ package connections
 import (
 	"context"
 	"errors"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -296,5 +297,103 @@ func TestRemoteProfilesCanBeSavedListedAndDeleted(t *testing.T) {
 	profiles = reloaded.ListRemoteProfiles()
 	if len(profiles) != 0 {
 		t.Fatalf("expected no remote profiles after reload, got %d", len(profiles))
+	}
+}
+
+func TestImportSSHConfigCreatesProfilesAndSkipsUnsupportedHosts(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	configPath := filepath.Join(tempDir, "ssh_config")
+	identityPath := filepath.Join(tempDir, "id_prod")
+	if err := os.WriteFile(identityPath, []byte("key"), 0o600); err != nil {
+		t.Fatalf("write identity: %v", err)
+	}
+	if err := os.WriteFile(configPath, []byte(`
+Host prod prod-short
+  HostName=prod.example.com
+  User deploy
+  Port 2222
+  IdentityFile `+identityPath+`
+
+Host *.internal
+  User ignored
+
+Match host special
+  User ignored
+`), 0o600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	svc, err := NewServiceWithChecker(filepath.Join(tempDir, "connections.json"), stubChecker{
+		results: map[string]CheckResult{},
+	})
+	if err != nil {
+		t.Fatalf("new service: %v", err)
+	}
+
+	result, err := svc.ImportSSHConfig(configPath)
+	if err != nil {
+		t.Fatalf("import ssh config: %v", err)
+	}
+	if len(result.Imported) != 2 {
+		t.Fatalf("expected two imported profiles, got %#v", result.Imported)
+	}
+	if result.Imported[0].Name != "prod" || result.Imported[0].Host != "prod.example.com" {
+		t.Fatalf("unexpected imported profile: %#v", result.Imported[0])
+	}
+	if result.Imported[0].User != "deploy" || result.Imported[0].Port != 2222 {
+		t.Fatalf("expected user/port from config, got %#v", result.Imported[0])
+	}
+	if result.Imported[0].IdentityFile != identityPath {
+		t.Fatalf("expected identity file %q, got %q", identityPath, result.Imported[0].IdentityFile)
+	}
+	if len(result.Skipped) != 1 || result.Skipped[0].Host != "*.internal" {
+		t.Fatalf("expected wildcard host to be skipped, got %#v", result.Skipped)
+	}
+}
+
+func TestImportSSHConfigIsIdempotentByHostAlias(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	configPath := filepath.Join(tempDir, "ssh_config")
+	if err := os.WriteFile(configPath, []byte(`
+Host prod
+  HostName prod.example.com
+  User deploy
+`), 0o600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	svc, err := NewServiceWithChecker(filepath.Join(tempDir, "connections.json"), stubChecker{
+		results: map[string]CheckResult{},
+	})
+	if err != nil {
+		t.Fatalf("new service: %v", err)
+	}
+
+	first, err := svc.ImportSSHConfig(configPath)
+	if err != nil {
+		t.Fatalf("first import: %v", err)
+	}
+	if err := os.WriteFile(configPath, []byte(`
+Host prod
+  HostName prod.internal
+  User ops
+`), 0o600); err != nil {
+		t.Fatalf("rewrite config: %v", err)
+	}
+	second, err := svc.ImportSSHConfig(configPath)
+	if err != nil {
+		t.Fatalf("second import: %v", err)
+	}
+
+	if len(second.Profiles) != 1 {
+		t.Fatalf("expected idempotent import to keep one profile, got %#v", second.Profiles)
+	}
+	if first.Imported[0].ID != second.Imported[0].ID {
+		t.Fatalf("expected repeated import to update same profile id, got %q then %q", first.Imported[0].ID, second.Imported[0].ID)
+	}
+	if second.Imported[0].Host != "prod.internal" || second.Imported[0].User != "ops" {
+		t.Fatalf("expected imported profile to be updated, got %#v", second.Imported[0])
 	}
 }

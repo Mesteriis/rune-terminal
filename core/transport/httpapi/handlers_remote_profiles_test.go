@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/Mesteriis/rune-terminal/core/connections"
@@ -87,6 +89,47 @@ func TestRemoteProfilesDeleteReturnsNotFoundForMissingProfile(t *testing.T) {
 
 	if recorder.Code != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d", recorder.Code)
+	}
+}
+
+func TestRemoteProfilesImportSSHConfig(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	configPath := filepath.Join(tempDir, "config")
+	if err := os.WriteFile(configPath, []byte(`
+Host prod
+  HostName prod.example.com
+  User deploy
+`), 0o600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	handler, _ := newTestHandler(t)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(
+		recorder,
+		authedJSONRequest(t, http.MethodPost, "/api/v1/remote/profiles/import-ssh-config", map[string]any{
+			"path": configPath,
+		}),
+	)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d (%s)", recorder.Code, recorder.Body.String())
+	}
+
+	var result connections.SSHConfigImportResult
+	if err := json.Unmarshal(recorder.Body.Bytes(), &result); err != nil {
+		t.Fatalf("unmarshal import result: %v", err)
+	}
+	if len(result.Imported) != 1 {
+		t.Fatalf("expected one imported profile, got %#v", result.Imported)
+	}
+	if result.Imported[0].Name != "prod" || result.Imported[0].Host != "prod.example.com" {
+		t.Fatalf("unexpected imported profile: %#v", result.Imported[0])
+	}
+	if len(result.Profiles) != 1 {
+		t.Fatalf("expected profiles list to include imported profile, got %#v", result.Profiles)
 	}
 }
 
