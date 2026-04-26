@@ -26,7 +26,11 @@ Phase status:
 - `Phase 5` is complete: grouped terminal sessions, grouped-session
   browser controls, tmux-backed remote open/resume flows, and the
   settings-shell tmux manager are now landed on the active path.
-- `Phase 6` is now the next implementation phase.
+- `Phase 6` is complete: the active files/preview path now preserves
+  remote connection scope over the backend fs contract, and workspace
+  preview handoff no longer collapses remote paths into local-only
+  validation.
+- `Phase 7` is now the next implementation phase.
 - Later phases remain implementation work.
 
 ## Success condition
@@ -240,6 +244,9 @@ Validation:
 
 ### Phase 6. Introduce the remote files domain
 
+Status:
+completed on `2026-04-26`
+
 Purpose:
 bring remote file workflows back through the current workspace/files
 architecture instead of through TideTerm residue.
@@ -254,14 +261,16 @@ Covers:
 Exit criteria:
 
 - `Remote fileshare surfaces` can move to `Transferred`
-- remote files no longer rely on local-only compatibility shortcuts
-- files/preview/editor widgets share one connection-aware path model
+- remote files no longer rely on local-only compatibility shortcuts on the
+  active files/preview path
+- the backend fs contract now preserves explicit connection scope for
+  remote list/read/file/write/open flows
 
 Validation:
 
 - targeted Go tests for remote file service
-- frontend files/preview/editor tests
-- Playwright e2e for browse, preview, edit, and handoff from terminal
+- frontend files/preview widget tests
+- Playwright attempt for browse/preview on the SSH-backed files path
 
 ### Phase 7. Expand MCP onboarding breadth
 
@@ -355,17 +364,14 @@ Validation:
 
 ## Recommended implementation order
 
-1. `Phase 2`
-2. `Phase 3`
-3. `Phase 5`
-4. `Phase 6`
-5. `Phase 7`
-6. `Phase 8`
-7. `Phase 9`
+1. `Phase 7`
+2. `Phase 8`
+3. `Phase 9`
 
-This order keeps the program coherent:
+This order keeps the remaining program coherent:
 
-- AI transport/storage first among the remaining implementation phases
-- SSH foundation before broader remote breadth
-- remote breadth before remote files
-- MCP/plugin onboarding after the core shell and remote model stabilize
+- MCP onboarding breadth first, because it is the last still-partial
+  active-path runtime slice
+- plugin catalog/install UX after the shell/remote/files foundations are
+  already stable
+- residual title-surface cleanup last, because it is intentionally narrow

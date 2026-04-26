@@ -24,6 +24,9 @@
     status visibility
   - filterable saved-profile inventory inside the active settings shell
   - remote session/tab binding and local-vs-remote guardrails
+  - SSH-backed files and preview widgets now preserve `connection_id`
+    across directory list, bounded preview, file read/write, and
+    host-opener fs requests on the backend contract
   - missing-profile restore error semantics
   - audit target-session truth for remote runs
 
@@ -37,6 +40,7 @@
   - `./scripts/go.sh test ./core/connections -count=1`
   - `./scripts/go.sh test ./core/connections ./core/terminal ./core/app ./core/transport/httpapi -run 'TestBuildCommandAddsTmuxResumeCommandForSSHProfiles|TestRemoteProfilesCanBeSavedListedAndDeleted|TestRemoteProfilesNormalizeTmuxLaunchPolicy|TestCreateRemoteTerminalTabFromProfileCarriesTmuxLaunchPolicy|TestRemoteProfilesEndpointsListSaveAndDelete' -count=1`
   - `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestCreateRemoteTerminalTabFromProfileUsesTmuxSessionOverrideForReuse|TestRemoteProfilesCreateSessionReturnsNotFoundForMissingProfile' -count=1`
+  - `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestListFSForConnectionParsesRemoteDirectoryEntries|TestReadFSPreviewForConnectionFormatsRemoteBinaryPreview|TestWriteFSFileForConnectionSendsRemoteContentOverSSH|TestOpenPreviewInNewBlockAllowsRemotePathWithoutLocalStat|TestListFSRoutesRemoteConnectionAwareRequestsThroughSSH|TestReadFSPreviewRoutesRemoteConnectionAwareRequestsThroughSSH' -count=1`
   - `./scripts/go.sh test ./core/app ./core/transport/httpapi -count=1`
   - `./scripts/go.sh test ./core/transport/httpapi ./core/app -run 'TestConnectionsEndpointsListSelectAndSave|TestRemoteProfilesEndpointsListSaveAndDelete|TestObserveConnectionLaunchMarksLaunch(Failed|Succeeded)' -count=1`
   - `npm --prefix frontend run test -- src/features/remote/api/client.test.ts src/widgets/settings/remote-profiles-settings-section.test.tsx --reporter=verbose`
@@ -44,8 +48,10 @@
   - `npm --prefix frontend run test -- src/widgets/settings/remote-profiles-settings-section.test.tsx --reporter=verbose`
   - `frontend/node_modules/.bin/vitest run src/widgets/settings/remote-profiles-settings-section.test.tsx --reporter=verbose`
   - `npm --prefix frontend run test -- src/widgets/settings/remote-profiles-settings-section.test.tsx --reporter=verbose`
+  - `npm --prefix frontend run test -- src/features/files/api/client.test.ts src/features/preview/api/client.test.ts src/widgets/files/files-panel-widget.test.tsx src/widgets/preview/preview-panel-widget.test.tsx --reporter=verbose`
   - `npm --prefix frontend run lint:active`
   - `npm --prefix frontend run build`
+  - `npm run test:ui -- --reporter=line e2e/shell-workspace.spec.ts --grep "SSH-backed files and preview widgets keep connection-scoped fs requests"` (attempted; the remote files scenario progressed but Playwright hung after the test body began, so this path is not claimed as a clean browser pass yet)
   - `npm run test:ui -- --reporter=line e2e/shell-workspace.spec.ts --grep "remote settings surface normalized preflight failures and default-target state"`
   - `npm run test:ui -- --reporter=line e2e/shell-workspace.spec.ts --grep "remote settings persist tmux resume launch policy"` (attempted; Playwright hung in teardown after the test body ran, so this path is not claimed as a clean pass yet)
   - `npm run test:ui -- --reporter=line e2e/shell-workspace.spec.ts --grep "remote settings browse tmux sessions and load one into the profile editor"` (attempted; Playwright hung in teardown after the test body ran, so this path is not claimed as a clean pass yet)
@@ -74,6 +80,9 @@
   into the active workspace, but there is still no separate shell-wide
   remote session sidebar or detached-session controller outside the saved
   profile domain.
+- The active remote files domain now covers connection-aware browse and
+  preview flows plus a backend-owned write contract, but there is still no
+  dedicated editor widget or broader remote file-management shell surface.
 
 ## Evidence
 

@@ -63,8 +63,6 @@ capability.
 - broad builder / proxy / preview-zoo surfaces
 - broad settings universe
 - advanced SSH auth / topology (proxy jump, richer auth negotiation)
-- full remote files domain (connection-scoped browse/preview/edit) before
-  ADR 0029 lands
 - managed attachment browser/history closure is still narrower than the rest
   of the AI flow; the active path has backend-stored recent references plus
   transcript reuse, but not a broader gallery-style surface yet
@@ -78,6 +76,10 @@ capability.
   remote controller
 - connection lifecycle is explicit but narrow (`saved profile` vs
   `last check` vs `last launch`)
+- remote files and preview widgets now preserve SSH connection scope over
+  the backend fs contract, but there is still no dedicated editor widget
+  or broader remote file-management shell surface beyond the backend-owned
+  write contract
 - terminal parity is practical and one widget can now host grouped backend
   sessions, but the richer multi-session/sidebar browsing model is not
   there yet; the current search and terminal-settings flows are still
