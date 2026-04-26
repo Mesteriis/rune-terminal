@@ -32,8 +32,8 @@ This is the canonical MCP entrypoint for runtime lifecycle and usage rules.
 
 ## Release-scope limits
 
-- Current setup remains narrow and does not claim broad external MCP onboarding parity.
-- No generalized discovery/catalog UX or broad provider matrix in this phase.
+- Current setup remains curated and does not claim a broad MCP marketplace or generalized provider matrix.
+- Template-driven onboarding and draft probe are in scope; implicit registration, implicit invoke, and broad discovery are not.
 
 ## Deep links
 

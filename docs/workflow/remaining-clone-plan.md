@@ -30,7 +30,9 @@ Phase status:
   remote connection scope over the backend fs contract, and workspace
   preview handoff no longer collapses remote paths into local-only
   validation.
-- `Phase 7` is now the next implementation phase.
+- `Phase 7` is complete: backend-owned MCP onboarding catalog/probe
+  helpers plus template-driven settings flows are now landed on the
+  active path.
 - Later phases remain implementation work.
 
 ## Success condition
@@ -274,6 +276,9 @@ Validation:
 
 ### Phase 7. Expand MCP onboarding breadth
 
+Status:
+completed on `2026-04-26`
+
 Purpose:
 finish the last MCP gap without changing the explicit-invoke philosophy.
 
@@ -364,14 +369,12 @@ Validation:
 
 ## Recommended implementation order
 
-1. `Phase 7`
-2. `Phase 8`
-3. `Phase 9`
+1. `Phase 8`
+2. `Phase 9`
 
 This order keeps the remaining program coherent:
 
-- MCP onboarding breadth first, because it is the last still-partial
-  active-path runtime slice
-- plugin catalog/install UX after the shell/remote/files foundations are
-  already stable
+- plugin catalog/install UX next, because MCP/remote/files breadth is now
+  closed and local plugin management is the last substantive product
+  surface still planned
 - residual title-surface cleanup last, because it is intentionally narrow

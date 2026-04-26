@@ -3,7 +3,7 @@
 ## Last verified state
 
 - Date: `2026-04-26`
-- State: `PARTIAL` overall (`VERIFIED` for lifecycle/invoke/normalization paths and active settings registration/lifecycle UI, broad onboarding/discovery still limited)
+- State: `VERIFIED` overall for the active bounded MCP scope (explicit lifecycle/invoke/normalization plus template-driven onboarding; no marketplace-style discovery claimed)
 - Scope:
   - explicit lifecycle controls
   - active `frontend/src` settings onboarding section
@@ -38,7 +38,7 @@
 ## Known limitations
 
 - External provider onboarding remains narrower than desired: settings supports explicit remote endpoint registration, inspection, edit, and removal, but there is no broad discovery/catalog/import workflow.
-- Active settings now drives the bounded template catalog and draft probe end to end, but this still remains a curated onboarding surface rather than a broad MCP marketplace/discovery product.
+- Active settings now drives the bounded template catalog and draft probe end to end; this remains a curated onboarding surface rather than a broad MCP marketplace/discovery product.
 - Explicit-only handoff is intentional: invoke does not auto-append agent conversation context.
 
 ## Evidence

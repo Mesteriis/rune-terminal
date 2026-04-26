@@ -32,8 +32,8 @@ Status legend:
 Summary by grouped slices:
 
 - `Exceeds original`: `4`
-- `Transferred`: `11`
-- `Partially transferred`: `1`
+- `Transferred`: `12`
+- `Partially transferred`: `0`
 - `Planned`: `2`
 - `Not carried forward`: `3`
 
@@ -54,7 +54,7 @@ Summary by grouped slices:
 | Advanced remote breadth: session groups, tmux resume, richer SSH topology, `wsh` replacement | `Transferred` | The terminal runtime now supports grouped sessions inside one widget with explicit active-session switching plus a filterable grouped-session browser, saved SSH profiles can opt into tmux-backed resume through the same backend-owned SSH launch path, and the `Remote` settings shell now exposes a tmux manager for discovery, named-session open/load flows, and direct resume into the active workspace. Historical `wsh`-style helper behavior is intentionally replaced here by explicit runtime-backed workspace/terminal actions rather than by reviving a separate helper stack. | WSL remains explicitly optional by ADR 0028 and only reopens if platform scope broadens beyond the current non-Windows-first product phase. |
 | Remote fileshare surfaces | `Transferred` | The active shell now opens SSH-scoped files and preview widgets through a connection-aware backend fs contract, and preview handoff no longer forces a local-only stat check before mounting a remote path. Remote list/read/file/write/open flows all accept explicit `connection_id` over the active API path. | There is still no dedicated editor widget on the active shell, but the remote fileshare surfaces themselves are no longer local-only. |
 | MCP lifecycle, invoke, and normalized outputs | `Exceeds original` | Active settings can list/register/get/edit/delete/start/stop/restart/enable/disable MCP servers; invoke is explicit; downstream data is bounded through `mcp.normalized.v1`. | This already goes beyond the original manager surface because `rterm` keeps lifecycle strict, output bounded, and AI handoff explicit instead of implicit. |
-| External MCP onboarding breadth | `Partially transferred` | Real remote MCP endpoint registration with optional headers is live in settings and validated end-to-end. | Broad discovery, catalog, and import workflows for third-party MCP providers are still intentionally narrow. |
+| External MCP onboarding breadth | `Transferred` | The active settings shell now exposes a bounded onboarding catalog, template-driven endpoint/auth prefills, draft probe before register, and explicit remote MCP registration/lifecycle over the same backend contract. | The curated catalog intentionally stays narrower than a marketplace-style discovery surface, but onboarding no longer depends on low-level raw field entry alone. |
 | Plugin runtime boundary | `Exceeds original` | Side-process plugin runtime, manifest handshake, exposed-tool checks, capability allow-lists, normalized failure taxonomy, and core-owned policy/audit invariants are all live, with Go and Python reference plugins validated. | The core/plugin boundary is already stricter than the old baseline and is no longer frontend-coupled. |
 | Plugin catalog and install UX | `Planned` | Local reference plugins are supported and validated, and ADR 0030 now defines the next step as backend-owned local catalog/import/install flows rather than hard-coded references forever. | Catalog/import/install management moves to Phase `8`. |
 | Online plugin marketplace | `Not carried forward` | The current plugin trust model is explicit local-code execution with runtime checks, not a sandboxed marketplace surface. | ADR 0030 explicitly declines a broad online marketplace in this phase. |
