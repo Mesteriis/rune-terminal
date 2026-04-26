@@ -37,8 +37,8 @@
 | Area                                | State  | Notes                                                      |
 | ----------------------------------- | ------ | ---------------------------------------------------------- |
 | HTTP API (`core/transport/httpapi`) | `NOW`  | 50+ routes on Go 1.22 mux                                  |
-| SSE terminal stream                 | `NOW`  | query-token MVP (ADR 0018)                                 |
-| Auth token lifecycle                | `NEXT` | move SSE off query token onto header when frontend rewires |
+| SSE terminal stream                 | `NOW`  | active frontend uses fetch streaming with bearer auth; query-token fallback remains constrained by ADR 0018 |
+| Auth token lifecycle                | `NOW`  | terminal stream header auth is active on the frontend path |
 | Tauri command surface               | `HOLD` | minimal on purpose (`runtime_info` only)                   |
 
 ### 3. Frontend (React + Effector)
@@ -51,11 +51,11 @@ from any previous fork are historical inspiration only.
 | Layered architecture (tokens → primitives → components → widgets) | `NOW`   | see `frontend/docs/ui-architecture.md`                                                                                                                                                                                      |
 | Primitives library                                                | `NOW`   | stable, contract documented                                                                                                                                                                                                 |
 | Commander widget                                                  | `NOW`   | backend-backed read/write path is live; remaining parity work is about removing leftover frontend-owned seams rather than introducing the first HTTP wiring                                                                 |
-| Terminal widget                                                   | `NEXT`  | xterm surface mounted; needs to consume SSE from the real core                                                                                                                                                              |
+| Terminal widget                                                   | `NOW`   | xterm surface consumes backend snapshots plus real terminal SSE                                                                                                                                                             |
 | AI panel widget                                                   | `NEXT`  | chrome exists; shell settings modal now hosts CLI + narrow HTTP provider management, and the main AI panel now exposes provider/model selection plus widget-context selection while deeper runtime/tooling UX still remains |
 | Dockview workspace shell                                          | `NOW`   | layout + localStorage persistence                                                                                                                                                                                           |
 | Other widgets                                                     | `NOW`   | added continuously during the rewrite                                                                                                                                                                                       |
-| Linter (ESLint / Biome)                                           | `NEXT`  | currently only `tsc --noEmit`                                                                                                                                                                                               |
+| Linter (ESLint / Biome)                                           | `NOW`   | ESLint + `tsc --noEmit` gate the active frontend; Biome is not in use                                                                                                                                                       |
 | Storybook / primitive viewer                                      | `LATER` | helpful once primitives settle                                                                                                                                                                                              |
 
 ### 4. Desktop shell (Tauri)

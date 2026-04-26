@@ -53,8 +53,9 @@ capability.
   path-handoff `preview` widgets are now backend-owned and rendered as bounded
   text/hex file previews with a small CSV/TSV table renderer. `editor` and
   `web` remain planned
-- the frontend has no ESLint / Biome yet — `lint:active` and `lint:all`
-  both delegate to `tsc --noEmit`
+- frontend linting now has an active ESLint gate for `frontend/src` and
+  `frontend/vite.config.ts`, followed by `tsc --noEmit`; Biome is not part of
+  the current toolchain
 
 ## Intentionally incomplete for now
 
@@ -101,8 +102,9 @@ capability.
 - Tauri shell now has an explicit local-runtime CSP instead of `csp: null`,
   but this slice only validates config/build checks and does not claim a fresh
   interactive desktop launch smoke
-- SSE terminal stream accepts the auth token via query parameter
-  (ADR 0018 MVP tradeoff); migration to header-based auth is planned
+- the active terminal SSE frontend path uses bearer-header auth; query-token
+  auth remains available only as the constrained ADR 0018 fallback for
+  consumers that cannot send headers
 
 ## Current stance
 
