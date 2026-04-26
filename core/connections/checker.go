@@ -53,14 +53,14 @@ func (defaultChecker) Check(ctx context.Context, connection Connection) CheckRes
 		if err != nil {
 			return CheckResult{
 				Status:    CheckStatusFailed,
-				Error:     "identity file is not accessible",
+				Error:     normalizeIdentityFileCheckError(connection.SSH.IdentityFile, err),
 				CheckedAt: now,
 			}
 		}
-		if info.IsDir() {
+		if detail := classifyIdentityFile(connection.SSH.IdentityFile, info); detail != "" {
 			return CheckResult{
 				Status:    CheckStatusFailed,
-				Error:     "identity file must be a file, not a directory",
+				Error:     detail,
 				CheckedAt: now,
 			}
 		}

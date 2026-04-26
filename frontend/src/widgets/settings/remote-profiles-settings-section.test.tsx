@@ -60,6 +60,7 @@ describe('RemoteProfilesSettingsSection', () => {
     expect(screen.getByText('deploy@prod.example.com:2222')).toBeInTheDocument()
     expect(screen.getByText('default')).toBeInTheDocument()
     expect(screen.getByText('passed')).toBeInTheDocument()
+    expect(screen.getByText('Last preflight passed.')).toBeInTheDocument()
     expect(screen.getByText('1 saved')).toBeInTheDocument()
     expect(screen.getByText('1 default')).toBeInTheDocument()
   })
@@ -447,5 +448,74 @@ describe('RemoteProfilesSettingsSection', () => {
       expect(screen.getByText('Default connection: Prod.')).toBeInTheDocument()
       expect(screen.getByText('default')).toBeInTheDocument()
     })
+  })
+
+  it('shows launch failure details and launch status badges for saved profiles', async () => {
+    vi.mocked(fetchRemoteProfiles).mockResolvedValue([
+      {
+        host: 'prod.example.com',
+        id: 'conn-prod',
+        name: 'Prod',
+        user: 'deploy',
+      },
+    ])
+    vi.mocked(fetchRemoteConnectionsSnapshot).mockResolvedValue({
+      active_connection_id: 'local',
+      connections: [
+        {
+          active: false,
+          id: 'conn-prod',
+          kind: 'ssh',
+          name: 'Prod',
+          runtime: {
+            check_status: 'passed',
+            launch_error: 'SSH authentication failed. Check the username, key, agent, or passphrase setup.',
+            launch_status: 'failed',
+          },
+          usability: 'attention',
+        },
+      ],
+    })
+
+    render(<RemoteProfilesSettingsSection />)
+
+    await expect(screen.findByText('Prod')).resolves.toBeInTheDocument()
+    expect(
+      screen.getByText('SSH authentication failed. Check the username, key, agent, or passphrase setup.'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('launch:failed')).toBeInTheDocument()
+  })
+
+  it('shows launch success status after a shell was opened successfully', async () => {
+    vi.mocked(fetchRemoteProfiles).mockResolvedValue([
+      {
+        host: 'prod.example.com',
+        id: 'conn-prod',
+        name: 'Prod',
+        user: 'deploy',
+      },
+    ])
+    vi.mocked(fetchRemoteConnectionsSnapshot).mockResolvedValue({
+      active_connection_id: 'local',
+      connections: [
+        {
+          active: false,
+          id: 'conn-prod',
+          kind: 'ssh',
+          name: 'Prod',
+          runtime: {
+            check_status: 'passed',
+            launch_status: 'succeeded',
+          },
+          usability: 'available',
+        },
+      ],
+    })
+
+    render(<RemoteProfilesSettingsSection />)
+
+    await expect(screen.findByText('Prod')).resolves.toBeInTheDocument()
+    expect(screen.getByText('Last shell launch succeeded.')).toBeInTheDocument()
+    expect(screen.getByText('launch:succeeded')).toBeInTheDocument()
   })
 })

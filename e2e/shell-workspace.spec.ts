@@ -231,3 +231,77 @@ test('shell workspace tabs, utility actions, widget creation, and settings modal
     .poll(async () => (await fetchWorkspaceSnapshot(request)).tabs.length)
     .toBe(baselineBackendTabCount)
 })
+
+test('remote settings surface normalized preflight failures and default-target state', async ({
+  page,
+  request,
+}) => {
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  const seedStamp = Date.now()
+  const remoteToken = `phase4-remote-${seedStamp}`
+  const saved = await saveRemoteProfileViaApi(request, {
+    host: `${remoteToken}.example.test`,
+    identity_file: '~/.ssh/id_prod.pub',
+    name: `Remote ${remoteToken}`,
+    user: 'deploy',
+  })
+
+  await page.route(`**/api/v1/connections/${saved.profile.id}/check`, async (route) => {
+    await route.fulfill({
+      body: JSON.stringify({
+        connection: {
+          active: false,
+          id: saved.profile.id,
+          kind: 'ssh',
+          name: saved.profile.name,
+          runtime: {
+            check_error: 'Identity file points to a public key. Use the private key file instead.',
+            check_status: 'failed',
+            launch_status: 'idle',
+          },
+          usability: 'attention',
+        },
+        connections: {
+          active_connection_id: 'local',
+          connections: [
+            {
+              active: false,
+              id: saved.profile.id,
+              kind: 'ssh',
+              name: saved.profile.name,
+              runtime: {
+                check_error: 'Identity file points to a public key. Use the private key file instead.',
+                check_status: 'failed',
+                launch_status: 'idle',
+              },
+              usability: 'attention',
+            },
+          ],
+        },
+      }),
+      contentType: 'application/json',
+      status: 200,
+    })
+  })
+
+  await page.getByRole('button', { name: 'Open settings panel' }).click()
+  await page.getByRole('button', { name: /^Remote / }).click()
+
+  const remoteFilter = page.getByRole('textbox', { name: 'Filter remote profiles' })
+  await remoteFilter.fill(remoteToken)
+  await expect(page.getByText(`Remote ${remoteToken}`)).toBeVisible()
+
+  await page.getByRole('button', { name: 'Check' }).click()
+  await expect(page.getByText(`Remote ${remoteToken}: preflight failed.`)).toBeVisible()
+  await expect(
+    page.getByText('Identity file points to a public key. Use the private key file instead.'),
+  ).toBeVisible()
+  await expect(page.getByText('attention')).toBeVisible()
+  await expect(page.getByText('failed', { exact: true })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Set default' }).click()
+  await expect(page.getByText(`Default connection: Remote ${remoteToken}.`)).toBeVisible()
+  await expect(page.getByText('default', { exact: true })).toBeVisible()
+})

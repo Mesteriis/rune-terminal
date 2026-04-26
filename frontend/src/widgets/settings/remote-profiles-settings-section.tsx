@@ -55,6 +55,9 @@ function summarizeConnectionStatus(connection: RemoteConnectionView | undefined)
   if (connection.runtime.launch_status === 'failed') {
     return connection.runtime.launch_error || 'Last launch failed.'
   }
+  if (connection.runtime.launch_status === 'succeeded') {
+    return 'Last shell launch succeeded.'
+  }
   if (connection.runtime.check_status === 'passed') {
     return 'Last preflight passed.'
   }
@@ -298,7 +301,8 @@ export function RemoteProfilesSettingsSection() {
         <Text style={{ fontWeight: 600 }}>Remote profiles</Text>
         <Text style={settingsShellMutedTextStyle}>
           Saved SSH targets are backend-owned. You can keep a narrow saved profile inventory here and
-          separately import direct host/user/port/identity entries from `~/.ssh/config`.
+          separately import concrete aliases from `~/.ssh/config`, including `Include`, wildcard-host
+          defaults, and `Match host/originalhost` overrides.
         </Text>
       </ClearBox>
 
@@ -447,6 +451,11 @@ export function RemoteProfilesSettingsSection() {
                   ) : null}
                   {connection ? (
                     <ClearBox style={settingsShellBadgeStyle}>{connection.runtime.check_status}</ClearBox>
+                  ) : null}
+                  {connection && connection.runtime.launch_status !== 'idle' ? (
+                    <ClearBox style={settingsShellBadgeStyle}>
+                      launch:{connection.runtime.launch_status}
+                    </ClearBox>
                   ) : null}
                   <Button
                     disabled={isBusy || isSavingProfile}

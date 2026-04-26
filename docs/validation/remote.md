@@ -8,8 +8,13 @@
   - saved profile create/list/select/check/open-shell flows
   - one-way SSH config import with `Include`, wildcard-host default
     application, and `Match host/originalhost` support for concrete aliases
+  - normalized SSH preflight and launch diagnostics for missing keys,
+    public-key misuse, passphrase/auth failures, timeout, host-key, and
+    host-reachability failures
+  - stale launch-state reset when saved profile target/auth fields change
   - settings-shell remote profile create/edit/delete/list/import entrypoint
-  - settings-shell remote preflight/default-target controls
+  - settings-shell remote preflight/default-target controls plus launch
+    status visibility
   - filterable saved-profile inventory inside the active settings shell
   - remote session/tab binding and local-vs-remote guardrails
   - missing-profile restore error semantics
@@ -23,10 +28,13 @@
   - `go test ./core/transport/httpapi -run TestWriteTerminalErrorMapsConnectionNotFoundToNotFound`
   - `./scripts/go.sh test ./core/connections ./core/transport/httpapi -run 'TestImportSSHConfig|TestRemoteProfilesImportSSHConfig|TestRemoteProfilesEndpointsListSaveAndDelete' -count=1`
   - `./scripts/go.sh test ./core/connections -count=1`
+  - `./scripts/go.sh test ./core/transport/httpapi ./core/app -run 'TestConnectionsEndpointsListSelectAndSave|TestRemoteProfilesEndpointsListSaveAndDelete|TestObserveConnectionLaunchMarksLaunch(Failed|Succeeded)' -count=1`
   - `npm --prefix frontend run test -- src/features/remote/api/client.test.ts src/widgets/settings/remote-profiles-settings-section.test.tsx`
   - `frontend/node_modules/.bin/vitest run src/widgets/settings/remote-profiles-settings-section.test.tsx --reporter=verbose`
+  - `npm --prefix frontend run test -- src/widgets/settings/remote-profiles-settings-section.test.tsx --reporter=verbose`
   - `npm --prefix frontend run lint:active`
   - `npm --prefix frontend run build`
+  - `npm run test:ui -- --reporter=line e2e/shell-workspace.spec.ts --grep "remote settings surface normalized preflight failures and default-target state"`
 - External reachability/auth probe example:
   - `ssh -o BatchMode=yes -o ConnectTimeout=5 -p 22 192.168.1.2 exit`
 - Runtime/API checks in validation runs:
@@ -43,7 +51,7 @@
 - SSH config import remains intentionally narrower than a full SSH manager:
   no `ProxyJump`, broader `Match` criteria, keychain/passphrase workflows,
   or two-way synchronization back to SSH config files.
-- Advanced SSH auth/topology flows and long-lived remote-controller semantics are out of current scope.
+- Advanced SSH auth/topology flows and long-lived remote-controller semantics remain out of current scope and move to `Phase 5`.
 
 ## Evidence
 

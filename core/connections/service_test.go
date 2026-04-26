@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 )
@@ -178,6 +179,9 @@ func TestCheckAndLaunchLifecycleIsRecorded(t *testing.T) {
 	if connection.Runtime.LaunchStatus != LaunchStatusFailed {
 		t.Fatalf("expected failed launch status, got %q", connection.Runtime.LaunchStatus)
 	}
+	if connection.Runtime.LaunchError != "ssh exited with code 255" {
+		t.Fatalf("expected normalized launch error to preserve unknown failure text, got %q", connection.Runtime.LaunchError)
+	}
 	if connection.Usability != UsabilityAttention {
 		t.Fatalf("expected attention usability after launch failure, got %q", connection.Usability)
 	}
@@ -236,6 +240,114 @@ func TestLaunchSuccessDoesNotErasePreflightAttention(t *testing.T) {
 	}
 	if connection.Usability != UsabilityAttention {
 		t.Fatalf("expected usability to stay attention when preflight is still failing, got %q", connection.Usability)
+	}
+}
+
+func TestSaveSSHEditResetsStaleLaunchStateWhenProfileMaterialChanges(t *testing.T) {
+	t.Parallel()
+
+	connectionID := "conn-edit-reset"
+	svc, err := NewServiceWithChecker(filepath.Join(t.TempDir(), "connections.json"), stubChecker{
+		results: map[string]CheckResult{
+			connectionID: {
+				Status:    CheckStatusPassed,
+				CheckedAt: time.Unix(410, 0).UTC(),
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("new service: %v", err)
+	}
+
+	if _, _, err := svc.SaveSSH(SaveSSHInput{
+		ID:   connectionID,
+		Name: "Prod",
+		Host: "prod.example.com",
+		User: "deploy",
+	}); err != nil {
+		t.Fatalf("save ssh: %v", err)
+	}
+	if _, _, err := svc.ReportLaunchResult(connectionID, errors.New("connection refused")); err != nil {
+		t.Fatalf("report launch failure: %v", err)
+	}
+
+	connection, _, err := svc.SaveSSH(SaveSSHInput{
+		ID:   connectionID,
+		Name: "Prod",
+		Host: "prod-v2.example.com",
+		User: "deploy",
+	})
+	if err != nil {
+		t.Fatalf("save updated ssh: %v", err)
+	}
+
+	if connection.Runtime.LaunchStatus != LaunchStatusIdle {
+		t.Fatalf("expected stale launch state to reset to idle, got %q", connection.Runtime.LaunchStatus)
+	}
+	if connection.Runtime.LaunchError != "" {
+		t.Fatalf("expected stale launch error to clear after material edit, got %q", connection.Runtime.LaunchError)
+	}
+	if connection.Runtime.LastLaunchedAt != nil {
+		t.Fatalf("expected last launch timestamp to clear after material edit, got %v", connection.Runtime.LastLaunchedAt)
+	}
+}
+
+func TestReportLaunchResultNormalizesCommonSSHFailures(t *testing.T) {
+	t.Parallel()
+
+	connectionID := "conn-launch-errors"
+	svc, err := NewServiceWithChecker(filepath.Join(t.TempDir(), "connections.json"), stubChecker{
+		results: map[string]CheckResult{},
+	})
+	if err != nil {
+		t.Fatalf("new service: %v", err)
+	}
+
+	if _, _, err := svc.SaveSSH(SaveSSHInput{
+		ID:   connectionID,
+		Name: "Prod",
+		Host: "prod.example.com",
+	}); err != nil {
+		t.Fatalf("save ssh: %v", err)
+	}
+
+	testCases := []struct {
+		name    string
+		input   string
+		wantErr string
+	}{
+		{
+			name:    "auth failure",
+			input:   "failed to open shell on Prod: terminal launch exited before becoming usable (exit code 255): Permission denied (publickey).",
+			wantErr: "SSH authentication failed. Check the username, key, agent, or passphrase setup.",
+		},
+		{
+			name:    "host key failure",
+			input:   "terminal launch exited before becoming usable (exit code 255): Host key verification failed.",
+			wantErr: "SSH host key verification failed. Confirm the host fingerprint or refresh the known_hosts entry.",
+		},
+		{
+			name:    "timeout",
+			input:   "terminal launch exited before becoming usable (exit code 255): Connection timed out",
+			wantErr: "SSH connection timed out before the shell became usable.",
+		},
+		{
+			name:    "passphrase",
+			input:   "terminal launch exited before becoming usable (exit code 255): Enter passphrase for key '/Users/avm/.ssh/id_prod':",
+			wantErr: "SSH key access requires an unlocked passphrase or agent.",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			connection, _, err := svc.ReportLaunchResult(connectionID, errors.New(tc.input))
+			if err != nil {
+				t.Fatalf("report launch failure: %v", err)
+			}
+			if connection.Runtime.LaunchError != tc.wantErr {
+				t.Fatalf("expected normalized launch error %q, got %q", tc.wantErr, connection.Runtime.LaunchError)
+			}
+		})
 	}
 }
 
@@ -350,6 +462,20 @@ Match host special
 	}
 	if len(result.Skipped) != 1 || result.Skipped[0].Host != "*.internal" {
 		t.Fatalf("expected wildcard host to be skipped, got %#v", result.Skipped)
+	}
+}
+
+func TestImportSSHConfigTransferredStatusStringsStayHumanReadable(t *testing.T) {
+	t.Parallel()
+
+	if got := normalizeLaunchError(errors.New("terminal launch exited before becoming usable (exit code 255): Name or service not known")); got != "SSH could not resolve the remote hostname." {
+		t.Fatalf("expected hostname failure normalization, got %q", got)
+	}
+	if got := normalizeLaunchError(errors.New("terminal launch exited before becoming usable (exit code 255): No route to host")); got != "SSH could not reach the remote host." {
+		t.Fatalf("expected route failure normalization, got %q", got)
+	}
+	if !strings.HasPrefix(normalizeIdentityFileCheckError("/tmp/missing-key", os.ErrNotExist), "Identity file not found:") {
+		t.Fatalf("expected missing identity prefix")
 	}
 }
 

@@ -1,7 +1,7 @@
 # Remote Model
 
-Date: `2026-04-17`
-Phase: stability hardening
+Date: `2026-04-26`
+Phase: daily-driver SSH closure
 
 ## What this document is
 
@@ -25,6 +25,11 @@ This is the canonical remote entrypoint for local-vs-SSH runtime behavior.
   - preflight status (`runtime.check_status`)
   - launch status (`runtime.launch_status`)
   - shell-facing usability summary
+- Preflight and launch failures are normalized into operator-facing SSH
+  diagnostics instead of leaking raw PTY/setup noise directly into the
+  settings shell.
+- Editing a saved profile's target/auth fields resets stale launch state
+  before the next explicit shell launch.
 
 ## Contract boundaries
 

@@ -184,6 +184,9 @@ func (s *Service) saveSSHLocked(input SaveSSHInput) (Connection, error) {
 		if conn.ID == normalized.ID {
 			index = i
 			normalized.Runtime = conn.Runtime
+			if hasMaterialSSHProfileChange(conn, normalized) {
+				resetLaunchRuntimeState(&normalized.Runtime)
+			}
 			break
 		}
 	}
@@ -312,7 +315,7 @@ func (s *Service) applyLaunchResultLocked(id string, launchErr error) {
 	saved.Runtime.LastLaunchedAt = &now
 	if launchErr != nil {
 		saved.Runtime.LaunchStatus = LaunchStatusFailed
-		saved.Runtime.LaunchError = strings.TrimSpace(launchErr.Error())
+		saved.Runtime.LaunchError = normalizeLaunchError(launchErr)
 		return
 	}
 	saved.Runtime.LaunchStatus = LaunchStatusSucceeded

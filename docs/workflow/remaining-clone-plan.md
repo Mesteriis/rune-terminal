@@ -20,7 +20,10 @@ Phase status:
   route.
 - `Phase 3` is complete: attachment references now persist in `runtime.db`
   and are reusable from both transcript history and the composer shelf.
-- `Phase 4` is the next implementation phase.
+- `Phase 4` is complete: SSH profile lifecycle, `.ssh/config` breadth, and
+  operator-facing preflight/launch diagnostics are landed on the active
+  remote path.
+- `Phase 5` is the next implementation phase.
 - Later phases remain implementation work.
 
 ## Success condition
@@ -170,6 +173,9 @@ Validation:
 - Playwright e2e for attach, remove, resubmit, and historical reuse
 
 ### Phase 4. Broaden the SSH daily-driver path
+
+Status:
+completed on `2026-04-26`
 
 Purpose:
 finish the remaining narrow SSH gaps before adding new remote kinds.
@@ -345,12 +351,11 @@ Validation:
 
 1. `Phase 2`
 2. `Phase 3`
-3. `Phase 4`
-4. `Phase 5`
-5. `Phase 6`
-6. `Phase 7`
-7. `Phase 8`
-8. `Phase 9`
+3. `Phase 5`
+4. `Phase 6`
+5. `Phase 7`
+6. `Phase 8`
+7. `Phase 9`
 
 This order keeps the program coherent:
 
