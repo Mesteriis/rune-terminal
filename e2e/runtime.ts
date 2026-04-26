@@ -220,6 +220,27 @@ export async function focusWorkspaceWidgetViaApi(request: APIRequestContext, wid
   expect(response.ok()).toBeTruthy()
 }
 
+export async function openDirectoryWorkspaceWidgetViaApi(
+  request: APIRequestContext,
+  input: {
+    connectionId?: string
+    path: string
+    targetWidgetId: string
+  },
+) {
+  const response = await request.post(`${backendUrl}/api/v1/workspace/widgets/open-directory`, {
+    data: {
+      connection_id: input.connectionId,
+      path: input.path,
+      target_widget_id: input.targetWidgetId,
+    },
+    headers: authHeaders(),
+  })
+
+  expect(response.ok()).toBeTruthy()
+  return response.json() as Promise<{ tab_id: string; widget_id: string }>
+}
+
 export async function mkdirViaApi(request: APIRequestContext, path: string) {
   const response = await request.post(`${backendUrl}/api/v1/fs/mkdir`, {
     data: { path },
@@ -594,10 +615,7 @@ export async function setActiveAgentProvider(request: APIRequestContext, provide
   expect(response.ok()).toBeTruthy()
 }
 
-export async function createAgentProvider(
-  request: APIRequestContext,
-  payload: Record<string, unknown>,
-) {
+export async function createAgentProvider(request: APIRequestContext, payload: Record<string, unknown>) {
   const response = await request.post(`${backendUrl}/api/v1/agent/providers`, {
     data: payload,
     headers: authHeaders(),
@@ -615,10 +633,13 @@ export async function updateAgentProvider(
   providerID: string,
   payload: Record<string, unknown>,
 ) {
-  const response = await request.patch(`${backendUrl}/api/v1/agent/providers/${encodeURIComponent(providerID)}`, {
-    data: payload,
-    headers: authHeaders(),
-  })
+  const response = await request.patch(
+    `${backendUrl}/api/v1/agent/providers/${encodeURIComponent(providerID)}`,
+    {
+      data: payload,
+      headers: authHeaders(),
+    },
+  )
 
   expect(response.ok()).toBeTruthy()
   return response.json() as Promise<{

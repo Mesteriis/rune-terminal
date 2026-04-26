@@ -188,7 +188,11 @@ export function FilesPanelWidget({
       status: 'loading',
     })
 
-    listFilesDirectory(currentPath)
+    const directoryRequest = connectionId
+      ? listFilesDirectory(currentPath, { connectionId })
+      : listFilesDirectory(currentPath)
+
+    directoryRequest
       .then((snapshot) => {
         if (isCancelled) {
           return
@@ -215,7 +219,7 @@ export function FilesPanelWidget({
     return () => {
       isCancelled = true
     }
-  }, [currentPath, refreshNonce])
+  }, [connectionId, currentPath, refreshNonce])
 
   const handleOpenParent = () => {
     const parentPath = getRuntimePathParent(currentPath)
@@ -249,7 +253,9 @@ export function FilesPanelWidget({
     })
 
     try {
-      await openFilesPathExternally(currentPath)
+      await (connectionId
+        ? openFilesPathExternally(currentPath, { connectionId })
+        : openFilesPathExternally(currentPath))
       setOpenState({
         entryName: currentPath,
         message: 'Open request sent for current directory',
@@ -281,7 +287,10 @@ export function FilesPanelWidget({
     })
 
     try {
-      await openFilesPathExternally(joinRuntimePath(currentPath, entry.name))
+      const targetPath = joinRuntimePath(currentPath, entry.name)
+      await (connectionId
+        ? openFilesPathExternally(targetPath, { connectionId })
+        : openFilesPathExternally(targetPath))
       setOpenState({
         entryName: entry.name,
         message: `Open request sent for ${entry.name}`,
@@ -304,7 +313,9 @@ export function FilesPanelWidget({
     })
 
     try {
-      await openFilesPathExternally(currentPath)
+      await (connectionId
+        ? openFilesPathExternally(currentPath, { connectionId })
+        : openFilesPathExternally(currentPath))
       setOpenState({
         entryName: entry.name,
         message: `Open request sent for containing folder of ${entry.name}`,

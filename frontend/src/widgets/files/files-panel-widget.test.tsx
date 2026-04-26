@@ -91,6 +91,21 @@ describe('FilesPanelWidget', () => {
     })
   })
 
+  it('uses connection-aware directory reads for SSH-backed files widgets', async () => {
+    vi.mocked(listFilesDirectory).mockResolvedValue({
+      entries: [],
+      path: '/remote/project',
+    })
+
+    render(<FilesPanelWidget connectionId="conn-ssh" path="/remote/project" title="project" />)
+
+    await waitFor(() => {
+      expect(listFilesDirectory).toHaveBeenCalledWith('/remote/project', {
+        connectionId: 'conn-ssh',
+      })
+    })
+  })
+
   it('renders backend listing errors inline', async () => {
     vi.mocked(listFilesDirectory).mockRejectedValue(new Error('policy denied'))
 
@@ -647,6 +662,28 @@ describe('FilesPanelWidget', () => {
     await waitFor(() => {
       expect(openFilesPathExternally).toHaveBeenCalledWith('/repo')
       expect(screen.getByText('Open request sent for current directory')).toBeInTheDocument()
+    })
+  })
+
+  it('uses connection-aware external-open requests for SSH-backed files widgets', async () => {
+    vi.mocked(listFilesDirectory).mockResolvedValue({
+      entries: [],
+      path: '/remote/project',
+    })
+    vi.mocked(openFilesPathExternally).mockResolvedValue({
+      path: '/remote/project',
+    })
+
+    render(<FilesPanelWidget connectionId="conn-ssh" path="/remote/project" title="project" />)
+
+    await expect(screen.findByText('Directory is empty')).resolves.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open current directory externally' }))
+
+    await waitFor(() => {
+      expect(openFilesPathExternally).toHaveBeenCalledWith('/remote/project', {
+        connectionId: 'conn-ssh',
+      })
     })
   })
 

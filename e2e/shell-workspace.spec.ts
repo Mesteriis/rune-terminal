@@ -4,6 +4,7 @@ import {
   clearBrowserState,
   fetchBootstrap,
   fetchWorkspaceSnapshot,
+  openDirectoryWorkspaceWidgetViaApi,
   registerRemoteMCPServerViaApi,
   saveRemoteProfileViaApi,
 } from './runtime'
@@ -567,9 +568,7 @@ test('remote settings resume discovered tmux session opens that session in the w
 
   await expect(page.getByText(`Opened Remote ${remoteToken} on tmux session prod-jobs.`)).toBeVisible()
   await expect(
-    page
-      .locator('[data-runa-component="terminal-status-header-title"]')
-      .filter({ hasText: 'prod-jobs' }),
+    page.locator('[data-runa-component="terminal-status-header-title"]').filter({ hasText: 'prod-jobs' }),
   ).toBeVisible()
 })
 
@@ -638,13 +637,135 @@ test('remote settings tmux manager opens a typed named session in the workspace'
 
   await savedProfileRow.getByRole('button', { name: 'Browse tmux' }).click()
   await expect(page.getByText('2 discovered · 1 attached · 1 detached')).toBeVisible()
-  await page.getByRole('textbox', { name: `Named tmux session for Remote ${remoteToken}` }).fill('prod-nightly')
+  await page
+    .getByRole('textbox', { name: `Named tmux session for Remote ${remoteToken}` })
+    .fill('prod-nightly')
   await page.getByRole('button', { name: 'Open named session' }).click()
 
   await expect(page.getByText(`Opened Remote ${remoteToken} on tmux session prod-nightly.`)).toBeVisible()
   await expect(
-    page
-      .locator('[data-runa-component="terminal-status-header-title"]')
-      .filter({ hasText: 'prod-nightly' }),
+    page.locator('[data-runa-component="terminal-status-header-title"]').filter({ hasText: 'prod-nightly' }),
   ).toBeVisible()
+})
+
+test('SSH-backed files and preview widgets keep connection-scoped fs requests', async ({ page, request }) => {
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  const seedStamp = Date.now()
+  const remoteToken = `phase6-files-${seedStamp}`
+  const saved = await saveRemoteProfileViaApi(request, {
+    host: `${remoteToken}.example.test`,
+    name: `Remote ${remoteToken}`,
+    user: 'deploy',
+  })
+  const widgetId = 'term-remote-files'
+  const tabId = 'tab-remote-files'
+
+  await mockRemoteTerminalSurface(page, {
+    connectionId: saved.profile.id,
+    connectionName: `Remote ${remoteToken}`,
+    widgetId,
+    workingDir: '/remote/project',
+  })
+  await page.route(`**/api/v1/remote/profiles/${saved.profile.id}/session`, async (route) => {
+    await route.fulfill({
+      body: JSON.stringify({
+        connection_id: saved.profile.id,
+        profile_id: saved.profile.id,
+        reused: false,
+        session_id: widgetId,
+        tab_id: tabId,
+        widget_id: widgetId,
+      }),
+      contentType: 'application/json',
+      status: 200,
+    })
+  })
+
+  let seenListConnectionID = ''
+  let seenReadConnectionID = ''
+
+  await page.route('**/api/v1/fs/list?*', async (route) => {
+    const requestURL = new URL(route.request().url())
+
+    if (requestURL.searchParams.get('connection_id') !== saved.profile.id) {
+      await route.fallback()
+      return
+    }
+
+    seenListConnectionID = requestURL.searchParams.get('connection_id') ?? ''
+    await route.fulfill({
+      body: JSON.stringify({
+        directories: [{ modified_time: 1_776_800_000, name: 'src', type: 'directory' }],
+        files: [{ modified_time: 1_776_800_060, name: 'README.md', size: 2048, type: 'file' }],
+        path: '/remote/project',
+      }),
+      contentType: 'application/json',
+      status: 200,
+    })
+  })
+
+  await page.route('**/api/v1/fs/read?*', async (route) => {
+    const requestURL = new URL(route.request().url())
+
+    if (requestURL.searchParams.get('connection_id') !== saved.profile.id) {
+      await route.fallback()
+      return
+    }
+
+    seenReadConnectionID = requestURL.searchParams.get('connection_id') ?? ''
+    await route.fulfill({
+      body: JSON.stringify({
+        path: '/remote/project/README.md',
+        preview: '# Remote README',
+        preview_available: true,
+        preview_bytes: 15,
+        preview_kind: 'text',
+        size_bytes: 15,
+        truncated: false,
+      }),
+      contentType: 'application/json',
+      status: 200,
+    })
+  })
+
+  await page.getByRole('button', { name: 'Open settings panel' }).click()
+  await page.getByRole('button', { name: /^Remote / }).click()
+  await page.getByRole('textbox', { name: 'Filter remote profiles' }).fill(remoteToken)
+
+  const savedProfileRow = page.locator('[data-runa-component="clear-box"]').filter({
+    has: page.getByText(`Remote ${remoteToken}`),
+  })
+
+  await savedProfileRow.getByRole('button', { name: 'Open shell' }).click()
+  await expect(page.getByText(`Opened remote shell for Remote ${remoteToken}.`)).toBeVisible()
+  await expect(
+    page.locator('[data-runa-component="terminal-status-header-title"]').filter({
+      hasText: `Remote ${remoteToken}`,
+    }),
+  ).toBeVisible()
+
+  await openDirectoryWorkspaceWidgetViaApi(request, {
+    connectionId: saved.profile.id,
+    path: '/remote/project',
+    targetWidgetId: widgetId,
+  })
+
+  await page.reload()
+  await expect(
+    page.locator('[data-runa-component="terminal-status-header-title"]').filter({
+      hasText: `Remote ${remoteToken}`,
+    }),
+  ).toBeVisible()
+
+  const filesPanelPath = page.locator('span[id*="files-panel-path"]')
+  await expect(filesPanelPath).toHaveText('/remote/project')
+  await expect(page.getByText('README.md', { exact: true })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Preview file README.md' }).click()
+  await expect(page.locator('span[id*="preview-panel-path"]')).toHaveText('/remote/project/README.md')
+  await expect(page.getByText('# Remote README')).toBeVisible()
+  await expect.poll(() => seenListConnectionID).toBe(saved.profile.id)
+  await expect.poll(() => seenReadConnectionID).toBe(saved.profile.id)
 })

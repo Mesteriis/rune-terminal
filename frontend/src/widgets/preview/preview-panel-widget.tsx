@@ -29,6 +29,7 @@ import {
 import { createPreviewTable } from './preview-table'
 
 export type PreviewPanelWidgetProps = {
+  connectionId?: string
   path: string
   title: string
 }
@@ -70,7 +71,7 @@ function getPreviewKindLabel(snapshot: PreviewFileSnapshot) {
   return snapshot.previewKind === 'hex' ? 'Hex preview' : 'Text preview'
 }
 
-export function PreviewPanelWidget({ path, title }: PreviewPanelWidgetProps) {
+export function PreviewPanelWidget({ connectionId, path, title }: PreviewPanelWidgetProps) {
   const [refreshNonce, setRefreshNonce] = useState(0)
   const externalOpenRequestIdRef = useRef(0)
   const pathCopyRequestIdRef = useRef(0)
@@ -97,7 +98,11 @@ export function PreviewPanelWidget({ path, title }: PreviewPanelWidgetProps) {
       status: 'loading',
     })
 
-    readPreviewFile(path, { maxBytes: 65_536 })
+    const previewRequest = connectionId
+      ? readPreviewFile(path, { connectionId, maxBytes: 65_536 })
+      : readPreviewFile(path, { maxBytes: 65_536 })
+
+    previewRequest
       .then((snapshot) => {
         if (isCancelled) {
           return
@@ -124,7 +129,7 @@ export function PreviewPanelWidget({ path, title }: PreviewPanelWidgetProps) {
     return () => {
       isCancelled = true
     }
-  }, [path, refreshNonce])
+  }, [connectionId, path, refreshNonce])
 
   useEffect(() => {
     externalOpenRequestIdRef.current += 1
@@ -149,7 +154,9 @@ export function PreviewPanelWidget({ path, title }: PreviewPanelWidgetProps) {
     })
 
     try {
-      await openPreviewPathExternally(path)
+      await (connectionId
+        ? openPreviewPathExternally(path, { connectionId })
+        : openPreviewPathExternally(path))
       if (externalOpenRequestIdRef.current !== requestId) {
         return
       }
@@ -190,7 +197,9 @@ export function PreviewPanelWidget({ path, title }: PreviewPanelWidgetProps) {
     })
 
     try {
-      await openPreviewPathExternally(containingFolderPath)
+      await (connectionId
+        ? openPreviewPathExternally(containingFolderPath, { connectionId })
+        : openPreviewPathExternally(containingFolderPath))
       if (externalOpenRequestIdRef.current !== requestId) {
         return
       }

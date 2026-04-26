@@ -11,6 +11,11 @@ export type PreviewFileSnapshot = {
   truncated: boolean
 }
 
+type PreviewRequestOptions = {
+  connectionId?: string
+  maxBytes?: number
+}
+
 type FSReadPayload = {
   path: string
   preview: string
@@ -84,13 +89,16 @@ async function postRuntimeJSON<T>(path: string, body: Record<string, unknown>): 
 
 export async function readPreviewFile(
   path: string,
-  options?: { maxBytes?: number },
+  options?: PreviewRequestOptions,
 ): Promise<PreviewFileSnapshot> {
   const runtimeContext = await resolveRuntimeContext()
   const params = new URLSearchParams({ path })
 
   if (options?.maxBytes) {
     params.set('max_bytes', String(options.maxBytes))
+  }
+  if (options?.connectionId?.trim()) {
+    params.set('connection_id', options.connectionId.trim())
   }
 
   const payload = await fetchRuntimeJSON<FSReadPayload>(
@@ -108,8 +116,9 @@ export async function readPreviewFile(
   }
 }
 
-export async function openPreviewPathExternally(path: string) {
+export async function openPreviewPathExternally(path: string, options?: PreviewRequestOptions) {
   return postRuntimeJSON<FSOpenPayload>('/api/v1/fs/open', {
+    connection_id: options?.connectionId?.trim() || undefined,
     path,
   })
 }

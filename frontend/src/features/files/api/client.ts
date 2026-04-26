@@ -16,6 +16,10 @@ export type FilesDirectorySnapshot = {
   path: string
 }
 
+type FilesRequestOptions = {
+  connectionId?: string
+}
+
 type FSNode = {
   modified_time?: number
   name: string
@@ -131,11 +135,20 @@ async function postRuntimeJSON<T>(path: string, body: Record<string, unknown>): 
   })
 }
 
-export async function listFilesDirectory(path: string): Promise<FilesDirectorySnapshot> {
+export async function listFilesDirectory(
+  path: string,
+  options?: FilesRequestOptions,
+): Promise<FilesDirectorySnapshot> {
   const runtimeContext = await resolveRuntimeContext()
+  const params = new URLSearchParams({ path })
+
+  if (options?.connectionId?.trim()) {
+    params.set('connection_id', options.connectionId.trim())
+  }
+
   const payload = await fetchRuntimeJSON<FSListPayload>(
     runtimeContext,
-    `/api/v1/fs/list?path=${encodeURIComponent(path)}`,
+    `/api/v1/fs/list?${params.toString()}`,
   )
 
   return {
@@ -146,8 +159,9 @@ export async function listFilesDirectory(path: string): Promise<FilesDirectorySn
   }
 }
 
-export async function openFilesPathExternally(path: string) {
+export async function openFilesPathExternally(path: string, options?: FilesRequestOptions) {
   return postRuntimeJSON<FSOpenPayload>('/api/v1/fs/open', {
+    connection_id: options?.connectionId?.trim() || undefined,
     path,
   })
 }

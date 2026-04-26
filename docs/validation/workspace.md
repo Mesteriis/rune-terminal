@@ -52,6 +52,10 @@
       requests
     - files widget file rows dispatch backend external-open requests
     - files widget file rows can open backend-owned preview widgets
+    - SSH-backed files and preview widgets now preserve `connection_id`
+      when loading directory listings, preview content, and host-opener
+      requests, so remote files panels no longer silently fall back to the
+      local-only fs transport
     - settings modal open/close from shell chrome
     - the right utility rail popover now follows the same compact shell density as the topbar strip, with tighter menu rows and status text instead of a looser generic popover treatment
     - modal overlays now also use a tighter shell framing rhythm so body/widget modal spacing matches the compact shell chrome instead of reading like a separate larger overlay system
@@ -222,6 +226,8 @@
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestOpenPreviewInNewBlockAllowsRemotePathWithoutLocalStat|TestListFSRoutesRemoteConnectionAwareRequestsThroughSSH|TestReadFSPreviewRoutesRemoteConnectionAwareRequestsThroughSSH' -count=1`
 - `(cd frontend && npm exec prettier -- --write src/features/preview/api/client.ts src/features/preview/api/client.test.ts src/widgets/preview/index.ts src/widgets/preview/preview-panel.ts src/widgets/preview/preview-panel.test.ts src/widgets/preview/preview-panel-widget.tsx src/widgets/preview/preview-panel-widget.test.tsx src/widgets/preview/preview-panel-widget.styles.ts src/widgets/index.ts src/widgets/panel/dockview-panel-widget.tsx src/widgets/terminal/terminal-dockview-header-actions-widget.tsx src/widgets/terminal/terminal-dockview-header-actions-widget.test.tsx)`
 - `npm --prefix frontend run test -- src/features/preview/api/client.test.ts src/widgets/preview/preview-panel.test.ts src/widgets/preview/preview-panel-widget.test.tsx src/widgets/terminal/terminal-dockview-header-actions-widget.test.tsx`
+- `npm --prefix frontend run test -- src/features/files/api/client.test.ts src/features/preview/api/client.test.ts src/widgets/files/files-panel-widget.test.tsx src/widgets/preview/preview-panel-widget.test.tsx --reporter=verbose`
+- `npm run test:ui -- --reporter=line e2e/shell-workspace.spec.ts --grep "SSH-backed files and preview widgets keep connection-scoped fs requests"` (attempted; test body progressed but Playwright hung after starting the remote files scenario, so this path is not claimed as a clean browser pass yet)
 - `npm --prefix frontend run lint:active`
 - `npm --prefix frontend run build`
 - `(cd frontend && npm exec prettier -- --write src/shared/api/workspace.ts src/shared/api/workspace.test.ts src/widgets/files/files-panel-widget.tsx src/widgets/files/files-panel-widget.test.tsx src/widgets/files/files-panel-widget.styles.ts src/widgets/panel/dockview-panel-widget.tsx src/widgets/shell/right-action-rail-widget.tsx src/widgets/shell/right-action-rail-widget.test.tsx)`

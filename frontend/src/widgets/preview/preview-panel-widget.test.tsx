@@ -40,6 +40,26 @@ describe('PreviewPanelWidget', () => {
     })
   })
 
+  it('uses connection-aware preview reads for SSH-backed preview widgets', async () => {
+    vi.mocked(readPreviewFile).mockResolvedValue({
+      content: '# Remote',
+      path: '/remote/README.md',
+      previewBytes: 8,
+      previewKind: 'text',
+      sizeBytes: 8,
+      truncated: false,
+    })
+
+    render(<PreviewPanelWidget connectionId="conn-ssh" path="/remote/README.md" title="README.md" />)
+
+    await waitFor(() => {
+      expect(readPreviewFile).toHaveBeenCalledWith('/remote/README.md', {
+        connectionId: 'conn-ssh',
+        maxBytes: 65_536,
+      })
+    })
+  })
+
   it('renders hex previews and truncated state metadata', async () => {
     vi.mocked(readPreviewFile).mockResolvedValue({
       content: '00000000  00 01 02 03                                      |....|',
@@ -128,6 +148,32 @@ describe('PreviewPanelWidget', () => {
     await waitFor(() => {
       expect(openPreviewPathExternally).toHaveBeenCalledWith('/repo/README.md')
       expect(screen.getByText('Preview file open request sent to the system opener.')).toBeInTheDocument()
+    })
+  })
+
+  it('uses connection-aware external-open requests for SSH-backed preview widgets', async () => {
+    vi.mocked(readPreviewFile).mockResolvedValue({
+      content: '# Remote',
+      path: '/remote/README.md',
+      previewBytes: 8,
+      previewKind: 'text',
+      sizeBytes: 8,
+      truncated: false,
+    })
+    vi.mocked(openPreviewPathExternally).mockResolvedValue({
+      path: '/remote/README.md',
+    })
+
+    render(<PreviewPanelWidget connectionId="conn-ssh" path="/remote/README.md" title="README.md" />)
+
+    await expect(screen.findByText('# Remote')).resolves.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open preview file externally' }))
+
+    await waitFor(() => {
+      expect(openPreviewPathExternally).toHaveBeenCalledWith('/remote/README.md', {
+        connectionId: 'conn-ssh',
+      })
     })
   })
 
