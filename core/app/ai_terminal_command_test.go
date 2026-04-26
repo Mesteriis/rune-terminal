@@ -394,6 +394,38 @@ func TestPlanTerminalCommandReturnsRunnableCommandForExplicitTarget(t *testing.T
 	}
 }
 
+func TestPlanTerminalCommandRejectsInvalidProviderPlan(t *testing.T) {
+	t.Parallel()
+
+	runtime := newExplainCommandTestRuntime(t, "Filesystem\n")
+	provider := &recordingConversationProvider{
+		result: conversation.CompletionResult{
+			Content: "not-json",
+		},
+	}
+	runtime.ConversationProviderFactory = func(agent.ProviderRecord) (conversation.Provider, error) {
+		return provider, nil
+	}
+
+	_, err := runtime.PlanTerminalCommand(context.Background(), PlanTerminalCommandRequest{
+		Prompt:   "Посмотри свободное место на pve",
+		WidgetID: "term_boot",
+	}, ConversationContext{
+		WorkspaceID:          "ws-default",
+		RepoRoot:             "/repo",
+		ActiveWidgetID:       "term_boot",
+		TargetSession:        "local",
+		TargetConnectionID:   "local",
+		WidgetContextEnabled: true,
+	})
+	if err == nil {
+		t.Fatal("expected invalid terminal plan error")
+	}
+	if !errors.Is(err, ErrTerminalCommandPlanInvalid) {
+		t.Fatalf("expected ErrTerminalCommandPlanInvalid, got %v", err)
+	}
+}
+
 func TestExplainTerminalCommandRejectsExecutionBlockIdentityMismatch(t *testing.T) {
 	t.Parallel()
 

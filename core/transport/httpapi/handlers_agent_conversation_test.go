@@ -1267,6 +1267,38 @@ func TestPlanTerminalCommandReturnsRunnableCommand(t *testing.T) {
 	}
 }
 
+func TestPlanTerminalCommandReturnsBadGatewayForInvalidProviderPlan(t *testing.T) {
+	t.Parallel()
+
+	handler, runtime := newExplainCommandHandler(t)
+	runtime.ConversationProviderFactory = func(agent.ProviderRecord) (conversation.Provider, error) {
+		return scriptedHandlerConversationProvider{
+			content: "not-json",
+		}, nil
+	}
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPost, "/api/v1/agent/terminal-commands/plan", map[string]any{
+		"prompt":    "Посмотри свободное место на pve",
+		"widget_id": "term_boot",
+		"context": map[string]any{
+			"workspace_id":           "ws-default",
+			"repo_root":              "/workspace/repo",
+			"active_widget_id":       "term_boot",
+			"target_session":         "local",
+			"target_connection_id":   "local",
+			"widget_context_enabled": true,
+		},
+	}))
+
+	if recorder.Code != http.StatusBadGateway {
+		t.Fatalf("expected 502, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+	if !strings.Contains(recorder.Body.String(), "terminal_command_plan_invalid") {
+		t.Fatalf("expected terminal_command_plan_invalid error body, got %s", recorder.Body.String())
+	}
+}
+
 func TestExplainTerminalCommandIgnoresFrontendApprovalUsedPayload(t *testing.T) {
 	t.Parallel()
 

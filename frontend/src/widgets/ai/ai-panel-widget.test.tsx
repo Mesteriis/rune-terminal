@@ -2388,6 +2388,159 @@ describe('AiPanelWidget backend conversation path', () => {
     ).toBe(false)
   })
 
+  it('surfaces terminal planner failures after approval instead of falling back to chat streaming', async () => {
+    registerTerminalPanelBinding({
+      hostId: 'terminal',
+      preset: 'workspace',
+      runtimeWidgetId: 'term-local',
+    })
+    setActiveWidgetHostId('terminal')
+
+    const fetchMock = vi.fn()
+    fetchMock.mockImplementation(async (input) => {
+      const url = String(input)
+
+      if (url.endsWith('/api/v1/bootstrap')) {
+        return {
+          ok: true,
+          json: async () => ({
+            home_dir: '/Users/avm',
+            repo_root: '/Users/avm/projects/runa-terminal',
+          }),
+        }
+      }
+
+      if (url.endsWith('/api/v1/agent/conversation')) {
+        return createConversationFetchResponse({
+          title: 'Terminal plan error flow',
+          context_preferences: {
+            widget_context_enabled: true,
+            widget_ids: ['term-pve'],
+          },
+          provider: {
+            kind: 'codex',
+            base_url: 'http://codex',
+            model: 'stub-model',
+            streaming: false,
+          },
+        })
+      }
+
+      if (url.endsWith('/api/v1/agent/providers')) {
+        return createProviderCatalogFetchResponse()
+      }
+
+      if (url.endsWith('/api/v1/workspace')) {
+        return {
+          ok: true,
+          json: async () => ({
+            id: 'ws_1',
+            name: 'Workspace',
+            active_widget_id: 'preview-1',
+            widgets: [
+              {
+                id: 'preview-1',
+                kind: 'preview',
+                title: 'Preview',
+              },
+              {
+                id: 'term-pve',
+                kind: 'terminal',
+                title: 'PVE host',
+                connection_id: 'conn-pve',
+              },
+              {
+                id: 'term-local',
+                kind: 'terminal',
+                title: 'Local shell',
+                connection_id: 'local',
+              },
+            ],
+          }),
+        }
+      }
+
+      if (url.includes('/api/v1/agent/conversations?scope=recent')) {
+        return createConversationListFetchResponse('conv_1', [
+          {
+            id: 'conv_1',
+            title: 'Terminal plan error flow',
+            created_at: '2026-04-21T09:59:00Z',
+            updated_at: '2026-04-21T10:00:02Z',
+            message_count: 0,
+          },
+        ])
+      }
+
+      if (url.endsWith('/api/v1/terminal/term-pve')) {
+        return {
+          ok: true,
+          json: async () => ({
+            state: {
+              widget_id: 'term-pve',
+              session_id: 'term-pve',
+              shell: '/bin/zsh',
+              connection_id: 'conn-pve',
+              connection_kind: 'ssh',
+              pid: 200,
+              status: 'running',
+              started_at: '2026-04-21T10:00:00Z',
+              can_send_input: true,
+              can_interrupt: true,
+            },
+            chunks: [],
+            next_seq: 13,
+          }),
+        }
+      }
+
+      if (url.endsWith('/api/v1/agent/terminal-commands/plan')) {
+        return {
+          ok: false,
+          status: 502,
+          json: async () => ({
+            error: {
+              code: 'terminal_command_plan_invalid',
+              message: 'terminal command plan is invalid: provider did not return valid JSON',
+            },
+          }),
+        }
+      }
+
+      throw new Error(`Unexpected fetch request: ${url}`)
+    })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<AiPanelWidget hostId="ai-shell-panel" />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Backend conversation is empty.')).toBeInTheDocument()
+    })
+
+    fireEvent.change(screen.getByPlaceholderText('Text Area'), {
+      target: { value: 'Посмотри свободное место на pve' },
+    })
+    fireEvent.click(screen.getByLabelText('Send prompt'))
+
+    expect(screen.getByRole('button', { name: 'Approve' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Approve' }))
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('terminal command plan is invalid: provider did not return valid JSON'),
+      ).toBeInTheDocument()
+    })
+
+    expect(
+      fetchMock.mock.calls.some((call) =>
+        String(call[0]).includes('/api/v1/agent/conversation/messages/stream'),
+      ),
+    ).toBe(false)
+    expect(fetchMock.mock.calls.some((call) => String(call[0]).includes('/api/v1/tools/execute'))).toBe(false)
+  })
+
   it('confirms and retries approval-required /run execution through toolruntime', async () => {
     registerTerminalPanelBinding({
       hostId: 'terminal',

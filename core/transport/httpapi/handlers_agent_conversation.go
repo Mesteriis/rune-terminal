@@ -373,6 +373,8 @@ func (api *API) handlePlanTerminalCommand(w http.ResponseWriter, r *http.Request
 			writeError(w, http.StatusBadRequest, "execution_target_required", err.Error())
 		case errors.Is(err, app.ErrExecutionTargetMismatch):
 			writeError(w, http.StatusBadRequest, "execution_target_mismatch", err.Error())
+		case errors.Is(err, app.ErrTerminalCommandPlanInvalid):
+			writeError(w, http.StatusBadGateway, "terminal_command_plan_invalid", err.Error())
 		default:
 			writeConversationError(w, err)
 		}

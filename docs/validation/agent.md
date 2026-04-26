@@ -127,6 +127,7 @@
   - after approval the frontend requests a single-command plan from `POST /api/v1/agent/terminal-commands/plan`
   - the returned command is executed through `term.send_input` against the same explicit terminal target and then explained through the existing `/explain` route
   - this still is not broad provider-native tool-calling; it is a constrained terminal-command planning path over the existing runtime/tool contract
+  - if the provider returns an invalid terminal plan payload, the route now fails fast with `502 terminal_command_plan_invalid`, and the UI surfaces that planner error instead of silently falling back to chat streaming
 - `widget_context_enabled` remains valid for conversation/explain routes, but is intentionally omitted from `POST /api/v1/tools/execute` because that transport contract does not accept it.
 - Plain conversation requests now also support explicit `widget_ids` in the conversation context. The composer dropdown resolves widget options from `GET /api/v1/workspace`, and the backend context/audit path now uses that explicit widget list instead of only `active_widget_id`.
 - The selected request context is now also persisted per conversation through `PUT /api/v1/agent/conversations/{conversationID}/context`, so switching conversations restores both the enabled/disabled state and the explicit widget selection for that thread.
@@ -199,6 +200,7 @@
 - `npm --prefix frontend run test -- src/widgets/ai/ai-panel-widget.test.tsx -t "routes /run prompts into terminal execution instead of provider chat streaming|prefers the terminal widget selected in AI context for /run execution|confirms and retries approval-required /run execution through toolruntime"`
 - `npm --prefix frontend run test -- src/features/agent/model/interaction-flow.test.ts src/widgets/ai/ai-panel-widget.test.tsx`
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestPlanTerminalCommandReturnsRunnableCommandForExplicitTarget|TestPlanTerminalCommandReturnsRunnableCommand' -count=1`
+- `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestPlanTerminalCommandRejectsInvalidProviderPlan|TestPlanTerminalCommandReturnsBadGatewayForInvalidProviderPlan' -count=1`
 - `npm run build:frontend`
 - `npm run lint:frontend`
 
