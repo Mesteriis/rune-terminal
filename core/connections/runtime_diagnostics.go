@@ -43,6 +43,8 @@ func normalizeLaunchError(err error) string {
 	}
 	lower := strings.ToLower(raw)
 	switch {
+	case strings.Contains(lower, "tmux") && strings.Contains(lower, "not found"):
+		return "Remote host does not have tmux installed for this profile's resume mode."
 	case strings.Contains(lower, "host key verification failed"):
 		return "SSH host key verification failed. Confirm the host fingerprint or refresh the known_hosts entry."
 	case strings.Contains(lower, "permission denied"):
@@ -79,7 +81,9 @@ func hasMaterialSSHProfileChange(current savedSSH, next savedSSH) bool {
 	return current.Host != next.Host ||
 		current.User != next.User ||
 		current.Port != next.Port ||
-		current.IdentityFile != next.IdentityFile
+		current.IdentityFile != next.IdentityFile ||
+		current.LaunchMode != next.LaunchMode ||
+		current.TmuxSession != next.TmuxSession
 }
 
 func resetLaunchRuntimeState(runtime *persistedRuntimeState) {

@@ -35,6 +35,8 @@ type savedSSH struct {
 	User         string                `json:"user,omitempty"`
 	Port         int                   `json:"port,omitempty"`
 	IdentityFile string                `json:"identity_file,omitempty"`
+	LaunchMode   string                `json:"launch_mode,omitempty"`
+	TmuxSession  string                `json:"tmux_session,omitempty"`
 	Runtime      persistedRuntimeState `json:"runtime,omitempty"`
 }
 
@@ -111,6 +113,8 @@ func (s *Service) SaveRemoteProfile(input SaveRemoteProfileInput) (RemoteProfile
 		User:         connection.SSH.User,
 		Port:         connection.SSH.Port,
 		IdentityFile: connection.SSH.IdentityFile,
+		LaunchMode:   connection.SSH.LaunchMode,
+		TmuxSession:  connection.SSH.TmuxSession,
 		Description:  describeRemoteProfile(connection.SSH.User, connection.SSH.Host),
 	}
 	return profile, s.ListRemoteProfiles(), nil
@@ -384,6 +388,10 @@ func normalizeSSHInput(input SaveSSHInput) (savedSSH, error) {
 	if id == "" {
 		id = ids.New("conn")
 	}
+	launchMode, tmuxSession, err := normalizeRemoteLaunchPolicy(input.LaunchMode, input.TmuxSession, name, host, id)
+	if err != nil {
+		return savedSSH{}, err
+	}
 	return savedSSH{
 		ID:           id,
 		Name:         name,
@@ -391,6 +399,8 @@ func normalizeSSHInput(input SaveSSHInput) (savedSSH, error) {
 		User:         strings.TrimSpace(input.User),
 		Port:         input.Port,
 		IdentityFile: normalizeIdentityFile(input.IdentityFile),
+		LaunchMode:   launchMode,
+		TmuxSession:  tmuxSession,
 		Runtime: persistedRuntimeState{
 			CheckStatus:  CheckStatusUnchecked,
 			LaunchStatus: LaunchStatusIdle,
@@ -430,6 +440,8 @@ func (s savedSSH) toConnection() Connection {
 			User:         s.User,
 			Port:         s.Port,
 			IdentityFile: s.IdentityFile,
+			LaunchMode:   s.LaunchMode,
+			TmuxSession:  s.TmuxSession,
 		},
 	}
 }

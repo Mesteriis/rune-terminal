@@ -175,6 +175,8 @@ func (r *Runtime) connectionForWidget(connectionID string) (terminal.ConnectionS
 			User:         connection.SSH.User,
 			Port:         connection.SSH.Port,
 			IdentityFile: connection.SSH.IdentityFile,
+			LaunchMode:   connection.SSH.LaunchMode,
+			TmuxSession:  connection.SSH.TmuxSession,
 		}
 	}
 	return spec, nil

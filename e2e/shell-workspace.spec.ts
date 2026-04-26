@@ -305,3 +305,32 @@ test('remote settings surface normalized preflight failures and default-target s
   await expect(page.getByText(`Default connection: Remote ${remoteToken}.`)).toBeVisible()
   await expect(page.getByText('default', { exact: true })).toBeVisible()
 })
+
+test('remote settings persist tmux resume launch policy', async ({ page }) => {
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  const seedStamp = Date.now()
+  const remoteToken = `phase5-tmux-${seedStamp}`
+
+  await page.getByRole('button', { name: 'Open settings panel' }).click()
+  await page.getByRole('button', { name: /^Remote / }).click()
+
+  await page.getByRole('textbox', { name: 'Remote profile name' }).fill(`Remote ${remoteToken}`)
+  await page.getByRole('textbox', { name: 'Remote profile host' }).fill(`${remoteToken}.example.test`)
+  await page.getByRole('textbox', { name: 'Remote profile user' }).fill('deploy')
+  await page.getByRole('checkbox', { name: 'Resume remote shell through tmux' }).click()
+  await page.getByRole('textbox', { name: 'Remote profile tmux session' }).fill('prod-main')
+  await page.getByRole('button', { name: 'Save remote profile' }).click()
+
+  await expect(page.getByText(`Saved Remote ${remoteToken}.`)).toBeVisible()
+  await expect(page.getByText('tmux resume: prod-main')).toBeVisible()
+  await expect(page.getByText('tmux', { exact: true })).toBeVisible()
+
+  const savedProfileRow = page.locator('[data-runa-component="clear-box"]').filter({
+    has: page.getByText(`Remote ${remoteToken}`),
+  })
+  await savedProfileRow.getByRole('button', { name: 'Edit' }).click()
+  await expect(page.getByRole('checkbox', { name: 'Resume remote shell through tmux' })).toBeChecked()
+  await expect(page.getByRole('textbox', { name: 'Remote profile tmux session' })).toHaveValue('prod-main')
+})

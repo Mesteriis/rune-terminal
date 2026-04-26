@@ -70,6 +70,8 @@ type SSHConfig struct {
 	User         string
 	Port         int
 	IdentityFile string
+	LaunchMode   string
+	TmuxSession  string
 }
 
 type InputResult struct {

@@ -5,8 +5,10 @@ export type RemoteProfile = {
   host: string
   id: string
   identity_file?: string
+  launch_mode?: 'shell' | 'tmux'
   name: string
   port?: number
+  tmux_session?: string
   user?: string
 }
 
@@ -25,8 +27,10 @@ export type SaveRemoteProfilePayload = {
   host: string
   id?: string
   identity_file?: string
+  launch_mode?: 'shell' | 'tmux'
   name?: string
   port?: number
+  tmux_session?: string
   user?: string
 }
 
@@ -120,8 +124,10 @@ export async function saveRemoteProfile(payload: SaveRemoteProfilePayload) {
         host: payload.host.trim(),
         id: payload.id?.trim() || undefined,
         identity_file: payload.identity_file?.trim() || undefined,
+        launch_mode: payload.launch_mode?.trim() || undefined,
         name: payload.name?.trim() || undefined,
         port: payload.port,
+        tmux_session: payload.tmux_session?.trim() || undefined,
         user: payload.user?.trim() || undefined,
       }),
       method: 'POST',

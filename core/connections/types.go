@@ -45,6 +45,8 @@ type SSHConfig struct {
 	User         string `json:"user,omitempty"`
 	Port         int    `json:"port,omitempty"`
 	IdentityFile string `json:"identity_file,omitempty"`
+	LaunchMode   string `json:"launch_mode,omitempty"`
+	TmuxSession  string `json:"tmux_session,omitempty"`
 }
 
 type RuntimeState struct {
@@ -81,6 +83,8 @@ type SaveSSHInput struct {
 	User         string `json:"user,omitempty"`
 	Port         int    `json:"port,omitempty"`
 	IdentityFile string `json:"identity_file,omitempty"`
+	LaunchMode   string `json:"launch_mode,omitempty"`
+	TmuxSession  string `json:"tmux_session,omitempty"`
 }
 
 type CheckResult struct {

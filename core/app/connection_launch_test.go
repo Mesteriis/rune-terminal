@@ -41,14 +41,22 @@ func (p *launchTestProcess) Close() error {
 }
 
 type launchTestLauncher struct {
-	process terminal.Process
+	lastOpts *terminal.LaunchOptions
+	process  terminal.Process
 }
 
-func (l launchTestLauncher) Launch(context.Context, terminal.LaunchOptions) (terminal.Process, error) {
+func (l launchTestLauncher) Launch(_ context.Context, opts terminal.LaunchOptions) (terminal.Process, error) {
+	if l.lastOpts != nil {
+		*l.lastOpts = opts
+	}
 	return l.process, nil
 }
 
 func newLaunchRuntime(t *testing.T, process terminal.Process) *Runtime {
+	return newLaunchRuntimeWithCapture(t, process, nil)
+}
+
+func newLaunchRuntimeWithCapture(t *testing.T, process terminal.Process, lastOpts *terminal.LaunchOptions) *Runtime {
 	t.Helper()
 
 	connectionStore, err := connections.NewServiceWithChecker(filepath.Join(t.TempDir(), "connections.json"), launchTestChecker{})
@@ -59,7 +67,7 @@ func newLaunchRuntime(t *testing.T, process terminal.Process) *Runtime {
 	return &Runtime{
 		RepoRoot:    t.TempDir(),
 		Workspace:   workspace.NewService(workspace.BootstrapDefault()),
-		Terminals:   terminal.NewService(launchTestLauncher{process: process}),
+		Terminals:   terminal.NewService(launchTestLauncher{lastOpts: lastOpts, process: process}),
 		Connections: connectionStore,
 	}
 }

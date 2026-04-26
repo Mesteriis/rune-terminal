@@ -6,6 +6,8 @@
 - State: `PARTIALLY VERIFIED` (core workflow hardening verified; external auth breadth remains limited)
 - Scope:
   - saved profile create/list/select/check/open-shell flows
+  - saved profile tmux launch policy (`shell` vs `tmux`) and persisted
+    tmux session naming for resume-oriented SSH launches
   - one-way SSH config import with `Include`, wildcard-host default
     application, and `Match host/originalhost` support for concrete aliases
   - normalized SSH preflight and launch diagnostics for missing keys,
@@ -28,13 +30,15 @@
   - `go test ./core/transport/httpapi -run TestWriteTerminalErrorMapsConnectionNotFoundToNotFound`
   - `./scripts/go.sh test ./core/connections ./core/transport/httpapi -run 'TestImportSSHConfig|TestRemoteProfilesImportSSHConfig|TestRemoteProfilesEndpointsListSaveAndDelete' -count=1`
   - `./scripts/go.sh test ./core/connections -count=1`
+  - `./scripts/go.sh test ./core/connections ./core/terminal ./core/app ./core/transport/httpapi -run 'TestBuildCommandAddsTmuxResumeCommandForSSHProfiles|TestRemoteProfilesCanBeSavedListedAndDeleted|TestRemoteProfilesNormalizeTmuxLaunchPolicy|TestCreateRemoteTerminalTabFromProfileCarriesTmuxLaunchPolicy|TestRemoteProfilesEndpointsListSaveAndDelete' -count=1`
   - `./scripts/go.sh test ./core/transport/httpapi ./core/app -run 'TestConnectionsEndpointsListSelectAndSave|TestRemoteProfilesEndpointsListSaveAndDelete|TestObserveConnectionLaunchMarksLaunch(Failed|Succeeded)' -count=1`
-  - `npm --prefix frontend run test -- src/features/remote/api/client.test.ts src/widgets/settings/remote-profiles-settings-section.test.tsx`
+  - `npm --prefix frontend run test -- src/features/remote/api/client.test.ts src/widgets/settings/remote-profiles-settings-section.test.tsx --reporter=verbose`
   - `frontend/node_modules/.bin/vitest run src/widgets/settings/remote-profiles-settings-section.test.tsx --reporter=verbose`
   - `npm --prefix frontend run test -- src/widgets/settings/remote-profiles-settings-section.test.tsx --reporter=verbose`
   - `npm --prefix frontend run lint:active`
   - `npm --prefix frontend run build`
   - `npm run test:ui -- --reporter=line e2e/shell-workspace.spec.ts --grep "remote settings surface normalized preflight failures and default-target state"`
+  - `npm run test:ui -- --reporter=line e2e/shell-workspace.spec.ts --grep "remote settings persist tmux resume launch policy"` (attempted; Playwright hung in teardown after the test body ran, so this path is not claimed as a clean pass yet)
 - External reachability/auth probe example:
   - `ssh -o BatchMode=yes -o ConnectTimeout=5 -p 22 192.168.1.2 exit`
 - Runtime/API checks in validation runs:
@@ -52,6 +56,9 @@
   no `ProxyJump`, broader `Match` criteria, keychain/passphrase workflows,
   or two-way synchronization back to SSH config files.
 - Advanced SSH auth/topology flows and long-lived remote-controller semantics remain out of current scope and move to `Phase 5`.
+- tmux resume currently means "profile-owned attach-or-create on launch".
+  There is still no separate tmux session catalog, named-session browser,
+  or detached-session manager UI on top of that backend path.
 
 ## Evidence
 

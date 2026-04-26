@@ -336,6 +336,11 @@ func TestReportLaunchResultNormalizesCommonSSHFailures(t *testing.T) {
 			input:   "terminal launch exited before becoming usable (exit code 255): Enter passphrase for key '/Users/avm/.ssh/id_prod':",
 			wantErr: "SSH key access requires an unlocked passphrase or agent.",
 		},
+		{
+			name:    "tmux missing",
+			input:   "terminal launch exited before becoming usable (exit code 127): sh: tmux: command not found",
+			wantErr: "Remote host does not have tmux installed for this profile's resume mode.",
+		},
 	}
 
 	for _, tc := range testCases {
@@ -368,6 +373,8 @@ func TestRemoteProfilesCanBeSavedListedAndDeleted(t *testing.T) {
 		User:         "deploy",
 		Port:         2222,
 		IdentityFile: "~/.ssh/id_prod",
+		LaunchMode:   LaunchModeTmux,
+		TmuxSession:  "prod-main",
 	})
 	if err != nil {
 		t.Fatalf("save remote profile: %v", err)
@@ -380,6 +387,12 @@ func TestRemoteProfilesCanBeSavedListedAndDeleted(t *testing.T) {
 	}
 	if profiles[0].Host != "prod.example.com" {
 		t.Fatalf("expected host to be persisted, got %q", profiles[0].Host)
+	}
+	if profiles[0].LaunchMode != LaunchModeTmux {
+		t.Fatalf("expected tmux launch mode to be persisted, got %q", profiles[0].LaunchMode)
+	}
+	if profiles[0].TmuxSession != "prod-main" {
+		t.Fatalf("expected tmux session to be persisted, got %q", profiles[0].TmuxSession)
 	}
 
 	if _, err := svc.Select(saved.ID); err != nil {
@@ -410,6 +423,44 @@ func TestRemoteProfilesCanBeSavedListedAndDeleted(t *testing.T) {
 	profiles = reloaded.ListRemoteProfiles()
 	if len(profiles) != 0 {
 		t.Fatalf("expected no remote profiles after reload, got %d", len(profiles))
+	}
+}
+
+func TestRemoteProfilesNormalizeTmuxLaunchPolicy(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(t.TempDir(), "connections.json")
+	svc, err := NewServiceWithChecker(path, stubChecker{
+		results: map[string]CheckResult{},
+	})
+	if err != nil {
+		t.Fatalf("new service: %v", err)
+	}
+
+	saved, _, err := svc.SaveRemoteProfile(SaveRemoteProfileInput{
+		Name:       "Prod Primary",
+		Host:       "prod.example.com",
+		LaunchMode: LaunchModeTmux,
+	})
+	if err != nil {
+		t.Fatalf("save remote profile: %v", err)
+	}
+	if saved.LaunchMode != LaunchModeTmux {
+		t.Fatalf("expected tmux launch mode, got %q", saved.LaunchMode)
+	}
+	if saved.TmuxSession != "Prod-Primary" {
+		t.Fatalf("expected derived tmux session name, got %q", saved.TmuxSession)
+	}
+
+	connection, err := svc.Resolve(saved.ID)
+	if err != nil {
+		t.Fatalf("resolve connection: %v", err)
+	}
+	if connection.SSH == nil || connection.SSH.LaunchMode != LaunchModeTmux {
+		t.Fatalf("expected connection ssh launch mode to be tmux, got %#v", connection.SSH)
+	}
+	if connection.SSH.TmuxSession == "" {
+		t.Fatalf("expected derived tmux session on resolved connection")
 	}
 }
 

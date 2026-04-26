@@ -93,8 +93,10 @@ function profileMatchesFilter(
 const defaultProfileDraft = {
   host: '',
   identityFile: '',
+  launchMode: 'shell' as 'shell' | 'tmux',
   name: '',
   port: '',
+  tmuxSession: '',
   user: '',
 }
 
@@ -109,6 +111,8 @@ export function RemoteProfilesSettingsSection() {
   const [userDraft, setUserDraft] = useState(defaultProfileDraft.user)
   const [portDraft, setPortDraft] = useState(defaultProfileDraft.port)
   const [identityFileDraft, setIdentityFileDraft] = useState(defaultProfileDraft.identityFile)
+  const [launchModeDraft, setLaunchModeDraft] = useState<'shell' | 'tmux'>(defaultProfileDraft.launchMode)
+  const [tmuxSessionDraft, setTmuxSessionDraft] = useState(defaultProfileDraft.tmuxSession)
   const [pathDraft, setPathDraft] = useState('')
   const [filterDraft, setFilterDraft] = useState('')
   const [isLoading, setIsLoading] = useState(true)
@@ -142,6 +146,8 @@ export function RemoteProfilesSettingsSection() {
     setUserDraft(defaultProfileDraft.user)
     setPortDraft(defaultProfileDraft.port)
     setIdentityFileDraft(defaultProfileDraft.identityFile)
+    setLaunchModeDraft(defaultProfileDraft.launchMode)
+    setTmuxSessionDraft(defaultProfileDraft.tmuxSession)
   }
 
   async function loadProfilesAndConnections(options: { isCancelled?: () => boolean } = {}) {
@@ -216,8 +222,10 @@ export function RemoteProfilesSettingsSection() {
         host: hostDraft,
         id: editingProfileID ?? undefined,
         identity_file: identityFileDraft,
+        launch_mode: launchModeDraft,
         name: nameDraft,
         port: normalizedPort === '' ? undefined : Number(normalizedPort),
+        tmux_session: launchModeDraft === 'tmux' ? tmuxSessionDraft : undefined,
         user: userDraft,
       })
       setProfiles(result.profiles)
@@ -238,6 +246,8 @@ export function RemoteProfilesSettingsSection() {
     setUserDraft(profile.user ?? '')
     setPortDraft(profile.port ? String(profile.port) : '')
     setIdentityFileDraft(profile.identity_file ?? '')
+    setLaunchModeDraft(profile.launch_mode === 'tmux' ? 'tmux' : 'shell')
+    setTmuxSessionDraft(profile.tmux_session ?? '')
     setErrorMessage(null)
     setStatusMessage(null)
   }
@@ -348,6 +358,34 @@ export function RemoteProfilesSettingsSection() {
         />
       </ClearBox>
       <ClearBox style={{ display: 'flex', gap: 'var(--gap-sm)', flexWrap: 'wrap' as const }}>
+        <label
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 'var(--gap-xs)',
+            color: 'var(--color-text-primary, #f5f7ff)',
+          }}
+        >
+          <input
+            aria-label="Resume remote shell through tmux"
+            checked={launchModeDraft === 'tmux'}
+            onChange={(event) => setLaunchModeDraft(event.target.checked ? 'tmux' : 'shell')}
+            type="checkbox"
+          />
+          Resume remote shell through tmux
+        </label>
+        {launchModeDraft === 'tmux' ? (
+          <Input
+            aria-label="Remote profile tmux session"
+            onChange={(event) => setTmuxSessionDraft(event.target.value)}
+            placeholder="prod-main"
+            style={{ minWidth: '14rem' }}
+            value={tmuxSessionDraft}
+          />
+        ) : null}
+      </ClearBox>
+
+      <ClearBox style={{ display: 'flex', gap: 'var(--gap-sm)', flexWrap: 'wrap' as const }}>
         <Button
           aria-label={isEditing ? 'Save remote profile changes' : 'Save remote profile'}
           disabled={!canSaveProfile || isSavingProfile || busyProfileID !== null}
@@ -432,6 +470,11 @@ export function RemoteProfilesSettingsSection() {
                   {profile.identity_file ? (
                     <Text style={settingsShellMutedTextStyle}>{profile.identity_file}</Text>
                   ) : null}
+                  {profile.launch_mode === 'tmux' ? (
+                    <Text style={settingsShellMutedTextStyle}>
+                      tmux resume: {profile.tmux_session || 'derived automatically'}
+                    </Text>
+                  ) : null}
                   {connectionStatus ? (
                     <Text style={settingsShellMutedTextStyle}>{connectionStatus}</Text>
                   ) : null}
@@ -445,6 +488,9 @@ export function RemoteProfilesSettingsSection() {
                   }}
                 >
                   <ClearBox style={settingsShellBadgeStyle}>SSH</ClearBox>
+                  {profile.launch_mode === 'tmux' ? (
+                    <ClearBox style={settingsShellBadgeStyle}>tmux</ClearBox>
+                  ) : null}
                   {isDefault ? <ClearBox style={settingsShellBadgeStyle}>default</ClearBox> : null}
                   {connection ? (
                     <ClearBox style={settingsShellBadgeStyle}>{connection.usability}</ClearBox>

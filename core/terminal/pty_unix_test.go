@@ -44,6 +44,37 @@ func TestBuildCommandAddsSSHDefaults(t *testing.T) {
 	}
 }
 
+func TestBuildCommandAddsTmuxResumeCommandForSSHProfiles(t *testing.T) {
+	t.Parallel()
+
+	cmd, err := buildCommand(context.Background(), LaunchOptions{
+		WidgetID: "term-ssh",
+		Connection: ConnectionSpec{
+			Kind: "ssh",
+			SSH: &SSHConfig{
+				Host:        "example.com",
+				User:        "deploy",
+				LaunchMode:  "tmux",
+				TmuxSession: "prod-main",
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("buildCommand error: %v", err)
+	}
+
+	args := strings.Join(cmd.Args, " ")
+	for _, expected := range []string{
+		"deploy@example.com",
+		"sh -lc",
+		"exec tmux new-session -A -s 'prod-main'",
+	} {
+		if !strings.Contains(args, expected) {
+			t.Fatalf("expected args to contain %q, got %q", expected, args)
+		}
+	}
+}
+
 func TestBuildCommandFailsWhenSSHBinaryMissing(t *testing.T) {
 	t.Parallel()
 

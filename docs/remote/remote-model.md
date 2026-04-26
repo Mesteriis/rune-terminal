@@ -20,6 +20,13 @@ This is the canonical remote entrypoint for local-vs-SSH runtime behavior.
 
 - Local and SSH both use the same terminal session model and PTY output pipeline.
 - SSH sessions launch system `ssh` inside the terminal PTY using saved profile fields.
+- Saved SSH profiles can now choose a narrow launch policy:
+  - plain shell (`launch_mode = "shell"`)
+  - tmux-backed resume (`launch_mode = "tmux"`) with a persisted
+    `tmux_session` name
+- tmux-backed profiles resume through the same SSH launch path by opening
+  `tmux new-session -A -s <session>` on the remote host; this adds resume
+  semantics without introducing a separate remote controller object.
 - Connection lifecycle is explicit:
   - profile state
   - preflight status (`runtime.check_status`)
@@ -40,6 +47,8 @@ This is the canonical remote entrypoint for local-vs-SSH runtime behavior.
 ## Current remote limits
 
 - No persistent live remote controller object yet.
+- No separate tmux session catalog/manager UI yet; the current scope is a
+  profile-owned resume policy, not a broader remote session browser.
 - Narrow one-way `~/.ssh/config` import is available through
   `POST /api/v1/remote/profiles/import-ssh-config`; it supports direct
   `Host`, `HostName`, `User`, `Port`, and `IdentityFile` profile fields,

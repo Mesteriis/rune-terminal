@@ -235,8 +235,10 @@ export async function saveRemoteProfileViaApi(
     host: string
     id?: string
     identity_file?: string
+    launch_mode?: 'shell' | 'tmux'
     name?: string
     port?: number
+    tmux_session?: string
     user?: string
   },
 ) {

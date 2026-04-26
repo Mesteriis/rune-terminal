@@ -11,6 +11,8 @@ type RemoteProfile struct {
 	User         string `json:"user,omitempty"`
 	Port         int    `json:"port,omitempty"`
 	IdentityFile string `json:"identity_file,omitempty"`
+	LaunchMode   string `json:"launch_mode,omitempty"`
+	TmuxSession  string `json:"tmux_session,omitempty"`
 	Description  string `json:"description,omitempty"`
 }
 
@@ -22,6 +24,8 @@ type SaveRemoteProfileInput struct {
 	User         string `json:"user,omitempty"`
 	Port         int    `json:"port,omitempty"`
 	IdentityFile string `json:"identity_file,omitempty"`
+	LaunchMode   string `json:"launch_mode,omitempty"`
+	TmuxSession  string `json:"tmux_session,omitempty"`
 }
 
 type SSHConfigImportSkipped struct {
@@ -43,6 +47,8 @@ func (input SaveRemoteProfileInput) toSaveSSHInput() SaveSSHInput {
 		User:         input.User,
 		Port:         input.Port,
 		IdentityFile: input.IdentityFile,
+		LaunchMode:   input.LaunchMode,
+		TmuxSession:  input.TmuxSession,
 	}
 }
 
@@ -54,6 +60,8 @@ func (s savedSSH) toRemoteProfile() RemoteProfile {
 		User:         s.User,
 		Port:         s.Port,
 		IdentityFile: s.IdentityFile,
+		LaunchMode:   s.LaunchMode,
+		TmuxSession:  s.TmuxSession,
 		Description:  describeRemoteProfile(s.User, s.Host),
 	}
 }

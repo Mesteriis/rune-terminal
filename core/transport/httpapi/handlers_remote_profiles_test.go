@@ -34,10 +34,12 @@ func TestRemoteProfilesEndpointsListSaveAndDelete(t *testing.T) {
 
 	saveRecorder := httptest.NewRecorder()
 	handler.ServeHTTP(saveRecorder, authedJSONRequest(t, http.MethodPost, "/api/v1/remote/profiles", map[string]any{
-		"name": "Prod",
-		"host": "prod.example.com",
-		"user": "deploy",
-		"port": 2222,
+		"name":         "Prod",
+		"host":         "prod.example.com",
+		"user":         "deploy",
+		"port":         2222,
+		"launch_mode":  "tmux",
+		"tmux_session": "prod-main",
 	}))
 	if saveRecorder.Code != http.StatusOK {
 		t.Fatalf("expected 200 save, got %d", saveRecorder.Code)
@@ -55,6 +57,9 @@ func TestRemoteProfilesEndpointsListSaveAndDelete(t *testing.T) {
 	}
 	if len(saved.Profiles) != 1 {
 		t.Fatalf("expected one profile after save, got %d", len(saved.Profiles))
+	}
+	if saved.Profile.LaunchMode != "tmux" || saved.Profile.TmuxSession != "prod-main" {
+		t.Fatalf("expected tmux launch policy in saved profile, got %#v", saved.Profile)
 	}
 
 	deleteRecorder := httptest.NewRecorder()

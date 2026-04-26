@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Mesteriis/rune-terminal/core/connections"
+	"github.com/Mesteriis/rune-terminal/core/terminal"
 )
 
 func TestCreateRemoteTerminalTabRejectsLocalConnectionTarget(t *testing.T) {
@@ -251,6 +252,44 @@ func TestCreateRemoteTerminalTabFromProfileReusesRunningSession(t *testing.T) {
 	snapshot := runtime.Workspace.Snapshot()
 	if got := len(snapshot.Tabs); got != 3 {
 		t.Fatalf("expected no duplicate tab creation during reuse, got %d tabs", got)
+	}
+}
+
+func TestCreateRemoteTerminalTabFromProfileCarriesTmuxLaunchPolicy(t *testing.T) {
+	t.Parallel()
+
+	process := &launchTestProcess{
+		pid:      107,
+		outputCh: make(chan []byte, 1),
+		waitCh:   make(chan struct{}),
+		exitCode: 0,
+	}
+	process.outputCh <- []byte("remote@fixture:~$ ")
+	var launched terminal.LaunchOptions
+	runtime := newLaunchRuntimeWithCapture(t, process, &launched)
+
+	profile, _, err := runtime.Connections.SaveRemoteProfile(connections.SaveRemoteProfileInput{
+		Name:        "Prod Shell",
+		Host:        "prod.example.com",
+		User:        "deploy",
+		LaunchMode:  connections.LaunchModeTmux,
+		TmuxSession: "prod-main",
+	})
+	if err != nil {
+		t.Fatalf("save remote profile: %v", err)
+	}
+
+	if _, err := runtime.CreateRemoteTerminalTabFromProfile(context.Background(), "Prod Shell", profile.ID); err != nil {
+		t.Fatalf("CreateRemoteTerminalTabFromProfile error: %v", err)
+	}
+	if launched.Connection.SSH == nil {
+		t.Fatalf("expected ssh launch config to be present")
+	}
+	if launched.Connection.SSH.LaunchMode != connections.LaunchModeTmux {
+		t.Fatalf("expected tmux launch mode, got %#v", launched.Connection.SSH)
+	}
+	if launched.Connection.SSH.TmuxSession != "prod-main" {
+		t.Fatalf("expected tmux session %q, got %#v", "prod-main", launched.Connection.SSH)
 	}
 }
 

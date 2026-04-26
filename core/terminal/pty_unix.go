@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/creack/pty/v2"
@@ -120,7 +121,21 @@ func buildSSHCommandArgs(config *SSHConfig) (string, []string, error) {
 		target = config.User + "@" + target
 	}
 	args = append(args, target)
+	if strings.EqualFold(strings.TrimSpace(config.LaunchMode), "tmux") {
+		sessionName := strings.TrimSpace(config.TmuxSession)
+		if sessionName == "" {
+			return "", nil, errors.New("ssh tmux launch requires a session name")
+		}
+		args = append(args, "sh", "-lc", "exec tmux new-session -A -s "+quoteShellArg(sessionName))
+	}
 	return sshPath, args, nil
+}
+
+func quoteShellArg(value string) string {
+	if value == "" {
+		return "''"
+	}
+	return "'" + strings.ReplaceAll(value, "'", `'\''`) + "'"
 }
 
 func (p *ptyProcess) readLoop() {

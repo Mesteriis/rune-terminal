@@ -169,8 +169,10 @@ describe('RemoteProfilesSettingsSection', () => {
         host: 'prod.example.com',
         id: 'conn-prod',
         identity_file: '~/.ssh/id_prod',
+        launch_mode: 'tmux',
         name: 'Prod',
         port: 2222,
+        tmux_session: 'prod-main',
         user: 'deploy',
       },
       profiles: [
@@ -178,8 +180,10 @@ describe('RemoteProfilesSettingsSection', () => {
           host: 'prod.example.com',
           id: 'conn-prod',
           identity_file: '~/.ssh/id_prod',
+          launch_mode: 'tmux',
           name: 'Prod',
           port: 2222,
+          tmux_session: 'prod-main',
           user: 'deploy',
         },
       ],
@@ -204,6 +208,10 @@ describe('RemoteProfilesSettingsSection', () => {
     fireEvent.change(screen.getByRole('textbox', { name: 'Remote profile identity file' }), {
       target: { value: '~/.ssh/id_prod' },
     })
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Resume remote shell through tmux' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Remote profile tmux session' }), {
+      target: { value: 'prod-main' },
+    })
     fireEvent.click(screen.getByRole('button', { name: 'Save remote profile' }))
 
     await waitFor(() => {
@@ -211,12 +219,16 @@ describe('RemoteProfilesSettingsSection', () => {
         host: 'prod.example.com',
         id: undefined,
         identity_file: '~/.ssh/id_prod',
+        launch_mode: 'tmux',
         name: 'Prod',
         port: 2222,
+        tmux_session: 'prod-main',
         user: 'deploy',
       })
       expect(screen.getByText('Saved Prod.')).toBeInTheDocument()
       expect(screen.getByText('deploy@prod.example.com:2222')).toBeInTheDocument()
+      expect(screen.getByText('tmux')).toBeInTheDocument()
+      expect(screen.getByText('tmux resume: prod-main')).toBeInTheDocument()
     })
   })
 
@@ -226,8 +238,10 @@ describe('RemoteProfilesSettingsSection', () => {
         host: 'prod.example.com',
         id: 'conn-prod',
         identity_file: '~/.ssh/id_prod',
+        launch_mode: 'tmux',
         name: 'Prod',
         port: 2222,
+        tmux_session: 'prod-main',
         user: 'deploy',
       },
     ])
@@ -240,8 +254,10 @@ describe('RemoteProfilesSettingsSection', () => {
         host: 'prod-v2.example.com',
         id: 'conn-prod',
         identity_file: '~/.ssh/id_prod_v2',
+        launch_mode: 'tmux',
         name: 'Prod 2',
         port: 2200,
+        tmux_session: 'prod-blue',
         user: 'deploy',
       },
       profiles: [
@@ -249,8 +265,10 @@ describe('RemoteProfilesSettingsSection', () => {
           host: 'prod-v2.example.com',
           id: 'conn-prod',
           identity_file: '~/.ssh/id_prod_v2',
+          launch_mode: 'tmux',
           name: 'Prod 2',
           port: 2200,
+          tmux_session: 'prod-blue',
           user: 'deploy',
         },
       ],
@@ -263,6 +281,8 @@ describe('RemoteProfilesSettingsSection', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
     expect(screen.getByRole('textbox', { name: 'Remote profile name' })).toHaveValue('Prod')
     expect(screen.getByRole('textbox', { name: 'Remote profile host' })).toHaveValue('prod.example.com')
+    expect(screen.getByRole('checkbox', { name: 'Resume remote shell through tmux' })).toBeChecked()
+    expect(screen.getByRole('textbox', { name: 'Remote profile tmux session' })).toHaveValue('prod-main')
 
     fireEvent.change(screen.getByRole('textbox', { name: 'Remote profile name' }), {
       target: { value: 'Prod 2' },
@@ -276,6 +296,9 @@ describe('RemoteProfilesSettingsSection', () => {
     fireEvent.change(screen.getByRole('textbox', { name: 'Remote profile identity file' }), {
       target: { value: '~/.ssh/id_prod_v2' },
     })
+    fireEvent.change(screen.getByRole('textbox', { name: 'Remote profile tmux session' }), {
+      target: { value: 'prod-blue' },
+    })
     fireEvent.click(screen.getByRole('button', { name: 'Save remote profile changes' }))
 
     await waitFor(() => {
@@ -283,12 +306,15 @@ describe('RemoteProfilesSettingsSection', () => {
         host: 'prod-v2.example.com',
         id: 'conn-prod',
         identity_file: '~/.ssh/id_prod_v2',
+        launch_mode: 'tmux',
         name: 'Prod 2',
         port: 2200,
+        tmux_session: 'prod-blue',
         user: 'deploy',
       })
       expect(screen.getByText('Saved Prod 2.')).toBeInTheDocument()
       expect(screen.getByText('deploy@prod-v2.example.com:2200')).toBeInTheDocument()
+      expect(screen.getByText('tmux resume: prod-blue')).toBeInTheDocument()
     })
   })
 
@@ -517,5 +543,58 @@ describe('RemoteProfilesSettingsSection', () => {
     await expect(screen.findByText('Prod')).resolves.toBeInTheDocument()
     expect(screen.getByText('Last shell launch succeeded.')).toBeInTheDocument()
     expect(screen.getByText('launch:succeeded')).toBeInTheDocument()
+  })
+
+  it('derives tmux session names on save when tmux resume is enabled without an explicit name', async () => {
+    vi.mocked(fetchRemoteProfiles).mockResolvedValue([])
+    vi.mocked(fetchRemoteConnectionsSnapshot).mockResolvedValue({
+      active_connection_id: 'local',
+      connections: [],
+    })
+    vi.mocked(saveRemoteProfile).mockResolvedValue({
+      profile: {
+        host: 'prod.example.com',
+        id: 'conn-prod',
+        launch_mode: 'tmux',
+        name: 'Prod Primary',
+        tmux_session: 'Prod-Primary',
+      },
+      profiles: [
+        {
+          host: 'prod.example.com',
+          id: 'conn-prod',
+          launch_mode: 'tmux',
+          name: 'Prod Primary',
+          tmux_session: 'Prod-Primary',
+        },
+      ],
+    })
+
+    render(<RemoteProfilesSettingsSection />)
+
+    await expect(screen.findByText('No saved SSH profiles yet.')).resolves.toBeInTheDocument()
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Remote profile name' }), {
+      target: { value: 'Prod Primary' },
+    })
+    fireEvent.change(screen.getByRole('textbox', { name: 'Remote profile host' }), {
+      target: { value: 'prod.example.com' },
+    })
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Resume remote shell through tmux' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save remote profile' }))
+
+    await waitFor(() => {
+      expect(saveRemoteProfile).toHaveBeenCalledWith({
+        host: 'prod.example.com',
+        id: undefined,
+        identity_file: '',
+        launch_mode: 'tmux',
+        name: 'Prod Primary',
+        port: undefined,
+        tmux_session: '',
+        user: '',
+      })
+      expect(screen.getByText('tmux resume: Prod-Primary')).toBeInTheDocument()
+    })
   })
 })
