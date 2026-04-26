@@ -1,17 +1,23 @@
 package app
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/Mesteriis/rune-terminal/core/audit"
+	"github.com/Mesteriis/rune-terminal/core/db"
 )
 
 func TestCreateAttachmentReferenceAppendsAuditEventWithProvenance(t *testing.T) {
 	t.Parallel()
 
 	tempDir := t.TempDir()
+	dbConn, err := db.Open(context.Background(), filepath.Join(tempDir, "runtime.db"))
+	if err != nil {
+		t.Fatalf("db open: %v", err)
+	}
 	auditLog, err := audit.NewLog(filepath.Join(tempDir, "audit.jsonl"))
 	if err != nil {
 		t.Fatalf("audit log: %v", err)
@@ -21,7 +27,7 @@ func TestCreateAttachmentReferenceAppendsAuditEventWithProvenance(t *testing.T) 
 		t.Fatalf("write attachment file: %v", err)
 	}
 
-	runtime := &Runtime{Audit: auditLog}
+	runtime := &Runtime{Audit: auditLog, DB: dbConn}
 	if _, err := runtime.CreateAttachmentReference(CreateAttachmentReferenceRequest{
 		Path:         filePath,
 		WorkspaceID:  "ws-default",
@@ -45,5 +51,27 @@ func TestCreateAttachmentReferenceAppendsAuditEventWithProvenance(t *testing.T) 
 	}
 	if len(events[0].AffectedPaths) != 1 || events[0].AffectedPaths[0] != filePath {
 		t.Fatalf("expected affected path audit field, got %#v", events[0])
+	}
+
+	attachments, err := runtime.ListAttachmentReferences(context.Background(), 12)
+	if err != nil {
+		t.Fatalf("list attachment references: %v", err)
+	}
+	if len(attachments) != 1 {
+		t.Fatalf("expected 1 stored attachment, got %#v", attachments)
+	}
+	if attachments[0].Path != filePath {
+		t.Fatalf("expected stored attachment path %q, got %#v", filePath, attachments[0])
+	}
+
+	if err := runtime.DeleteAttachmentReference(context.Background(), attachments[0].ID); err != nil {
+		t.Fatalf("delete attachment reference: %v", err)
+	}
+	attachments, err = runtime.ListAttachmentReferences(context.Background(), 12)
+	if err != nil {
+		t.Fatalf("list attachment references after delete: %v", err)
+	}
+	if len(attachments) != 0 {
+		t.Fatalf("expected no stored attachments after delete, got %#v", attachments)
 	}
 }

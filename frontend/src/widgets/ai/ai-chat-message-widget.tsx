@@ -4,6 +4,7 @@ import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { Box } from '@/shared/ui/primitives'
 
 import type {
+  AiComposerAttachmentReference,
   ApprovalMessage,
   ChatMessageView,
   ChatMode,
@@ -29,6 +30,7 @@ export type AiChatMessageWidgetProps = {
   onApprovalApprove?: (message: ApprovalMessage) => void
   onApprovalCancel?: (message: ApprovalMessage) => void
   onQuestionnaireAnswer?: (message: QuestionnaireMessage, answer: string) => void
+  onReuseAttachment?: (attachment: AiComposerAttachmentReference) => void
 }
 
 export function AiChatMessageWidget({
@@ -38,9 +40,17 @@ export function AiChatMessageWidget({
   onApprovalApprove,
   onApprovalCancel,
   onQuestionnaireAnswer,
+  onReuseAttachment,
 }: AiChatMessageWidgetProps) {
   if (message.type === 'chat') {
-    return <ChatTextMessageWidget isGroupedWithNext={isGroupedWithNext} message={message} mode={mode} />
+    return (
+      <ChatTextMessageWidget
+        isGroupedWithNext={isGroupedWithNext}
+        message={message}
+        mode={mode}
+        onReuseAttachment={onReuseAttachment}
+      />
+    )
   }
 
   let content: ReactNode

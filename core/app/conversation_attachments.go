@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"mime"
 	"os"
@@ -65,6 +66,15 @@ func (r *Runtime) CreateAttachmentReference(
 		Success:       true,
 		AffectedPaths: []string{normalizedPath},
 	})
+
+	if err := r.storeAttachmentReference(
+		context.Background(),
+		reference,
+		request.WorkspaceID,
+		request.ActionSource,
+	); err != nil {
+		return conversation.AttachmentReference{}, err
+	}
 
 	return reference, nil
 }

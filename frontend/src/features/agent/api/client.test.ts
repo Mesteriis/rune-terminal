@@ -6,10 +6,12 @@ import {
   archiveAgentConversation,
   createAgentAttachmentReference,
   createAgentConversation,
+  deleteAgentAttachmentReference,
   deleteAgentConversation,
   executeAgentTool,
   explainTerminalCommand,
   fetchAgentCatalog,
+  fetchAgentAttachmentReferences,
   fetchAgentConversation,
   fetchAgentConversations,
   renameAgentConversation,
@@ -848,6 +850,64 @@ describe('agent api client', () => {
       path: '/tmp/notes.txt',
       workspace_id: 'ws-default',
       action_source: 'frontend.ai.sidebar',
+    })
+  })
+
+  it('lists and deletes stored attachment references through the backend contract', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          attachments: [
+            {
+              id: 'att_1',
+              name: 'notes.txt',
+              path: '/tmp/notes.txt',
+              mime_type: 'text/plain',
+              size: 5,
+              modified_time: 1713279000,
+            },
+          ],
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          deleted: true,
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(fetchAgentAttachmentReferences()).resolves.toEqual([
+      {
+        id: 'att_1',
+        name: 'notes.txt',
+        path: '/tmp/notes.txt',
+        mime_type: 'text/plain',
+        size: 5,
+        modified_time: 1713279000,
+      },
+    ])
+    await expect(deleteAgentAttachmentReference('att_1')).resolves.toBeUndefined()
+
+    expect(fetchMock.mock.calls[1]?.[0]).toBe(
+      'http://127.0.0.1:8090/api/v1/agent/conversation/attachments/references',
+    )
+    expect(fetchMock.mock.calls[2]?.[0]).toBe(
+      'http://127.0.0.1:8090/api/v1/agent/conversation/attachments/references/att_1',
+    )
+    expect(fetchMock.mock.calls[2]?.[1]).toMatchObject({
+      method: 'DELETE',
     })
   })
 

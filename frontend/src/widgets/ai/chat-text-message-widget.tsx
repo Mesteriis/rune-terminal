@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { Box, Button, Text } from '@/shared/ui/primitives'
 
-import type { ChatMode, ChatTextMessage } from '@/features/agent/model/types'
+import type { AiComposerAttachmentReference, ChatMode, ChatTextMessage } from '@/features/agent/model/types'
 import {
   aiChatMessageAssistantGroupStyle,
   aiChatMessageAssistantRowStyle,
@@ -33,12 +33,14 @@ export type ChatTextMessageWidgetProps = {
   isGroupedWithNext?: boolean
   message: ChatTextMessage
   mode: ChatMode
+  onReuseAttachment?: (attachment: AiComposerAttachmentReference) => void
 }
 
 export function ChatTextMessageWidget({
   isGroupedWithNext = false,
   message,
   mode,
+  onReuseAttachment,
 }: ChatTextMessageWidgetProps) {
   const isUser = message.role === 'user'
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
@@ -107,15 +109,20 @@ export function ChatTextMessageWidget({
               style={aiComposerContextStripRowStyle}
             >
               {attachments.map((attachment) => (
-                <Box
+                <Button
+                  aria-label={`Use attachment ${attachment.name}`}
                   key={attachment.id}
+                  onClick={() => onReuseAttachment?.(attachment)}
                   runaComponent={`ai-chat-message-${message.id}-attachment`}
-                  style={aiToolbarChipStyle}
+                  style={{
+                    ...aiToolbarChipStyle,
+                    cursor: onReuseAttachment ? 'pointer' : 'default',
+                  }}
                 >
                   <Text runaComponent={`ai-chat-message-${message.id}-attachment-name`}>
                     {attachment.name}
                   </Text>
-                </Box>
+                </Button>
               ))}
             </Box>
           ) : null}

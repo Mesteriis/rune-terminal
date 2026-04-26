@@ -1058,6 +1058,80 @@ func TestCreateAttachmentReferenceReturnsMetadata(t *testing.T) {
 	}
 }
 
+func TestListAndDeleteAttachmentReferences(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+	tempFile := filepath.Join(t.TempDir(), "notes.txt")
+	if err := os.WriteFile(tempFile, []byte("hello"), 0o600); err != nil {
+		t.Fatalf("write temp file: %v", err)
+	}
+
+	createRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(createRecorder, authedJSONRequest(t, http.MethodPost, "/api/v1/agent/conversation/attachments/references", map[string]any{
+		"path": tempFile,
+	}))
+	if createRecorder.Code != http.StatusOK {
+		t.Fatalf("expected create 200, got %d body=%s", createRecorder.Code, createRecorder.Body.String())
+	}
+
+	var createPayload struct {
+		Attachment struct {
+			ID string `json:"id"`
+		} `json:"attachment"`
+	}
+	if err := json.Unmarshal(createRecorder.Body.Bytes(), &createPayload); err != nil {
+		t.Fatalf("unmarshal create payload: %v", err)
+	}
+	if createPayload.Attachment.ID == "" {
+		t.Fatal("expected attachment id")
+	}
+
+	listRecorder := httptest.NewRecorder()
+	listRequest := httptest.NewRequest(http.MethodGet, "/api/v1/agent/conversation/attachments/references", nil)
+	listRequest.Header.Set("Authorization", "Bearer "+testAuthToken)
+	handler.ServeHTTP(listRecorder, listRequest)
+	if listRecorder.Code != http.StatusOK {
+		t.Fatalf("expected list 200, got %d body=%s", listRecorder.Code, listRecorder.Body.String())
+	}
+
+	var listPayload struct {
+		Attachments []conversation.AttachmentReference `json:"attachments"`
+	}
+	if err := json.Unmarshal(listRecorder.Body.Bytes(), &listPayload); err != nil {
+		t.Fatalf("unmarshal list payload: %v", err)
+	}
+	if len(listPayload.Attachments) != 1 {
+		t.Fatalf("expected one stored attachment, got %#v", listPayload.Attachments)
+	}
+
+	deleteRecorder := httptest.NewRecorder()
+	deleteRequest := httptest.NewRequest(
+		http.MethodDelete,
+		"/api/v1/agent/conversation/attachments/references/"+createPayload.Attachment.ID,
+		nil,
+	)
+	deleteRequest.Header.Set("Authorization", "Bearer "+testAuthToken)
+	handler.ServeHTTP(deleteRecorder, deleteRequest)
+	if deleteRecorder.Code != http.StatusOK {
+		t.Fatalf("expected delete 200, got %d body=%s", deleteRecorder.Code, deleteRecorder.Body.String())
+	}
+
+	listAfterDeleteRecorder := httptest.NewRecorder()
+	listAfterDeleteRequest := httptest.NewRequest(http.MethodGet, "/api/v1/agent/conversation/attachments/references", nil)
+	listAfterDeleteRequest.Header.Set("Authorization", "Bearer "+testAuthToken)
+	handler.ServeHTTP(listAfterDeleteRecorder, listAfterDeleteRequest)
+	if listAfterDeleteRecorder.Code != http.StatusOK {
+		t.Fatalf("expected list-after-delete 200, got %d body=%s", listAfterDeleteRecorder.Code, listAfterDeleteRecorder.Body.String())
+	}
+	if err := json.Unmarshal(listAfterDeleteRecorder.Body.Bytes(), &listPayload); err != nil {
+		t.Fatalf("unmarshal list-after-delete payload: %v", err)
+	}
+	if len(listPayload.Attachments) != 0 {
+		t.Fatalf("expected no stored attachments after delete, got %#v", listPayload.Attachments)
+	}
+}
+
 type conversationStreamEnvelope struct {
 	Event string
 	Data  conversation.StreamEvent

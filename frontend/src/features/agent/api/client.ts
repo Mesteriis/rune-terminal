@@ -291,6 +291,10 @@ type AgentAttachmentReferenceResponse = {
   attachment: AgentAttachmentReference
 }
 
+type AgentAttachmentReferenceListResponse = {
+  attachments: AgentAttachmentReference[]
+}
+
 type APIErrorEnvelope = {
   error?: {
     code?: string
@@ -765,6 +769,23 @@ export async function createAgentAttachmentReference(input: {
     input,
   )
   return payload.attachment
+}
+
+export async function fetchAgentAttachmentReferences() {
+  const payload = await requestRuntimeJSON<AgentAttachmentReferenceListResponse>(
+    '/api/v1/agent/conversation/attachments/references',
+  )
+  return Array.isArray(payload.attachments) ? payload.attachments : []
+}
+
+export async function deleteAgentAttachmentReference(attachmentID: string) {
+  await fetchRuntimeJSON(
+    await resolveRuntimeContext(),
+    `/api/v1/agent/conversation/attachments/references/${encodeURIComponent(attachmentID)}`,
+    {
+      method: 'DELETE',
+    },
+  )
 }
 
 export async function executeAgentTool(input: {

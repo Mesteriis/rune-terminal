@@ -5,8 +5,10 @@ import {
   archiveAgentConversation,
   activateAgentConversation,
   createAgentConversation,
+  deleteAgentAttachmentReference,
   deleteAgentConversation,
   executeAgentTool,
+  fetchAgentAttachmentReferences,
   explainTerminalCommand,
   fetchAgentCatalog,
   fetchAgentConversations,
@@ -77,6 +79,7 @@ import { fetchWorkspaceSnapshot, type WorkspaceWidgetSnapshot } from '@/shared/a
 import {
   $queuedAiAttachmentReferences,
   clearQueuedAiAttachmentReferences,
+  queueAiAttachmentReference,
   removeQueuedAiAttachmentReference,
 } from '@/shared/model/ai-attachments'
 import { blockAiWidget, unblockAiWidget } from '@/shared/model/ai-blocked-widgets'
@@ -473,12 +476,14 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
     activeWidgetHostId,
     terminalPanelBindings,
     queuedAttachmentReferences,
+    onQueueAiAttachmentReference,
     onRemoveQueuedAttachmentReference,
     onClearQueuedAttachmentReferences,
   ] = useUnit([
     $activeWidgetHostId,
     $terminalPanelBindings,
     $queuedAiAttachmentReferences,
+    queueAiAttachmentReference,
     removeQueuedAiAttachmentReference,
     clearQueuedAiAttachmentReferences,
   ])
@@ -512,6 +517,8 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
   const [draft, setDraft] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isResponseCancellable, setIsResponseCancellable] = useState(false)
+  const [isAttachmentLibraryPending, setIsAttachmentLibraryPending] = useState(false)
+  const [recentAttachmentReferences, setRecentAttachmentReferences] = useState<AgentAttachmentReference[]>([])
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [isConversationPending, setIsConversationPending] = useState(false)
   const activeConversationIDRef = useRef('')
@@ -675,6 +682,8 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
     setSubmitError(null)
     setIsSubmitting(false)
     setIsResponseCancellable(false)
+    setIsAttachmentLibraryPending(false)
+    setRecentAttachmentReferences([])
     setIsConversationPending(false)
     activeConversationIDRef.current = ''
     messagesRef.current = null
@@ -686,12 +695,13 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
       fetchAgentConversation(),
       fetchAgentProviderCatalog(),
       fetchAgentCatalog(),
+      fetchAgentAttachmentReferences(),
     ]).then((results) => {
       if (cancelled || panelStateEpochRef.current !== panelStateEpoch) {
         return
       }
 
-      const [conversationResult, providerCatalogResult, agentCatalogResult] = results
+      const [conversationResult, providerCatalogResult, agentCatalogResult, attachmentLibraryResult] = results
 
       if (conversationResult.status === 'rejected') {
         setLoadError(
@@ -719,6 +729,10 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
 
       if (agentCatalogResult.status === 'fulfilled') {
         setAgentCatalog(agentCatalogResult.value)
+      }
+
+      if (attachmentLibraryResult.status === 'fulfilled') {
+        setRecentAttachmentReferences(attachmentLibraryResult.value)
       }
     })
 
@@ -807,6 +821,31 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
   const clearPendingInteractionFlow = useCallback(() => {
     pendingFlowRef.current = null
     setPendingFlow(null)
+  }, [])
+
+  const refreshAttachmentLibrary = useCallback(async () => {
+    setIsAttachmentLibraryPending(true)
+    try {
+      const attachments = await fetchAgentAttachmentReferences()
+      setRecentAttachmentReferences(attachments)
+      return attachments
+    } finally {
+      setIsAttachmentLibraryPending(false)
+    }
+  }, [])
+
+  const reuseStoredAttachmentReference = useCallback(
+    (attachment: AgentAttachmentReference) => {
+      onQueueAiAttachmentReference(attachment)
+    },
+    [onQueueAiAttachmentReference],
+  )
+
+  const deleteStoredAttachmentReference = useCallback(async (attachmentID: string) => {
+    await deleteAgentAttachmentReference(attachmentID)
+    setRecentAttachmentReferences((currentAttachments) =>
+      currentAttachments.filter((attachment) => attachment.id !== attachmentID),
+    )
   }, [])
 
   const resetConversationInteractionState = useCallback(() => {
@@ -2554,6 +2593,11 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
     isWidgetContextEnabled,
     panelState,
     queuedAttachmentReferences,
+    recentAttachmentReferences,
+    isAttachmentLibraryPending,
+    refreshAttachmentLibrary,
+    reuseStoredAttachmentReference,
+    deleteStoredAttachmentReference,
     removeQueuedAttachmentReference: onRemoveQueuedAttachmentReference,
     selectedContextWidgetIDs: effectiveContextWidgetIDs,
     selectedModel,

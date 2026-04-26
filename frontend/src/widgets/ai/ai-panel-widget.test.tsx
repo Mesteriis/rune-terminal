@@ -964,6 +964,107 @@ describe('AiPanelWidget backend conversation path', () => {
     })
   })
 
+  it('loads recent attachment references and supports reuse plus delete from the composer', async () => {
+    const fetchMock = vi.fn()
+
+    fetchMock.mockImplementation(async (input) => {
+      const url = String(input)
+
+      if (url.endsWith('/api/v1/bootstrap')) {
+        return {
+          ok: true,
+          json: async () => ({
+            home_dir: '/Users/avm',
+            repo_root: '/Users/avm/projects/runa-terminal',
+          }),
+        }
+      }
+
+      if (url.endsWith('/api/v1/agent/conversation')) {
+        return createConversationFetchResponse({
+          title: 'Attachment library',
+          provider: {
+            kind: 'stub',
+            base_url: 'http://stub',
+            model: 'stub-model',
+            streaming: true,
+          },
+        })
+      }
+
+      if (url.endsWith('/api/v1/agent/providers')) {
+        return createProviderCatalogFetchResponse()
+      }
+
+      if (url.includes('/api/v1/agent/conversations?scope=recent')) {
+        return createConversationListFetchResponse('conv_1', [
+          {
+            id: 'conv_1',
+            title: 'Attachment library',
+            created_at: '2026-04-21T09:59:00Z',
+            updated_at: '2026-04-21T10:00:00Z',
+            message_count: 0,
+          },
+        ])
+      }
+
+      if (url.endsWith('/api/v1/agent/conversation/attachments/references')) {
+        return {
+          ok: true,
+          json: async () => ({
+            attachments: [
+              {
+                id: 'att-notes',
+                name: 'notes.txt',
+                path: '/repo/notes.txt',
+                mime_type: 'text/plain',
+                size: 512,
+                modified_time: 1_776_800_061,
+              },
+            ],
+          }),
+        }
+      }
+
+      if (url.endsWith('/api/v1/agent/conversation/attachments/references/att-notes')) {
+        return {
+          ok: true,
+          json: async () => ({
+            deleted: true,
+          }),
+        }
+      }
+
+      throw new Error(`Unexpected fetch request: ${url}`)
+    })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<AiPanelWidget hostId="ai-shell-panel" />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Recent attachments')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Reuse attachment notes.txt' })).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reuse attachment notes.txt' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Remove attachment notes.txt' })).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete stored attachment notes.txt' }))
+
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some((call) =>
+          String(call[0]).includes('/api/v1/agent/conversation/attachments/references/att-notes'),
+        ),
+      ).toBe(true)
+    })
+  })
+
   it('allows selecting multiple workspace widgets for the AI request context', async () => {
     registerTerminalPanelBinding({
       hostId: 'terminal',

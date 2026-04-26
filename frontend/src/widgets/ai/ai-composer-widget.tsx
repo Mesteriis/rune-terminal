@@ -65,6 +65,7 @@ export type AiComposerWidgetProps = {
   availableRoles?: AiAgentSelectionOption[]
   availableModes?: AiAgentSelectionOption[]
   attachments?: AiComposerAttachmentReference[]
+  recentAttachments?: AiComposerAttachmentReference[]
   placeholder: string
   selectedProviderID?: string
   selectedModel?: string
@@ -80,9 +81,12 @@ export type AiComposerWidgetProps = {
   onValueChange?: (value: string) => void
   onCancelSubmit?: () => void
   onRemoveAttachment?: (attachmentID: string) => void
+  onReuseRecentAttachment?: (attachment: AiComposerAttachmentReference) => void
+  onDeleteStoredAttachment?: (attachmentID: string) => void
   onSubmit?: () => void
   disabled?: boolean
   isSubmitting?: boolean
+  isAttachmentLibraryPending?: boolean
   submitDisabled?: boolean
   contextWidgetOptions?: AiContextWidgetOption[]
   activeContextWidgetID?: string
@@ -110,8 +114,10 @@ export function AiComposerWidget({
   availableProviders = [],
   availableRoles = [],
   attachments = [],
+  recentAttachments = [],
   disabled = false,
   isSubmitting = false,
+  isAttachmentLibraryPending = false,
   onModelChange,
   onModeChange,
   onProfileChange,
@@ -119,6 +125,8 @@ export function AiComposerWidget({
   onRoleChange,
   onCancelSubmit,
   onRemoveAttachment,
+  onReuseRecentAttachment,
+  onDeleteStoredAttachment,
   onSubmit,
   onValueChange,
   placeholder,
@@ -170,6 +178,7 @@ export function AiComposerWidget({
       : (availableModes[0]?.value ?? '')
   const selectedContextCount = selectedContextWidgetIDs.length
   const hasAttachments = attachments.length > 0
+  const hasRecentAttachments = recentAttachments.length > 0
   const selectedContextOptions = selectedContextWidgetIDs
     .map((widgetID) => contextWidgetOptions.find((option) => option.value === widgetID) ?? null)
     .filter((option): option is AiContextWidgetOption => option != null)
@@ -454,6 +463,55 @@ export function AiComposerWidget({
                   <Text style={aiComposerContextStripValueStyle}>{attachment.name}</Text>
                   <X size={12} strokeWidth={1.8} />
                 </Button>
+              ))}
+            </Box>
+          </Box>
+        ) : null}
+        {hasRecentAttachments ? (
+          <Box runaComponent="ai-composer-recent-attachment-strip" style={aiComposerContextStripStyle}>
+            <Text
+              runaComponent="ai-composer-recent-attachment-strip-label"
+              style={aiComposerContextStripLabelStyle}
+            >
+              {isAttachmentLibraryPending ? 'Recent attachments · loading' : 'Recent attachments'}
+            </Text>
+            <Box
+              runaComponent="ai-composer-recent-attachment-strip-row"
+              style={aiComposerContextStripRowStyle}
+            >
+              {recentAttachments.map((attachment) => (
+                <Box
+                  key={attachment.id}
+                  runaComponent="ai-composer-recent-attachment-chip"
+                  style={{
+                    ...aiToolbarChipStyle,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                  }}
+                >
+                  <Button
+                    aria-label={`Reuse attachment ${attachment.name}`}
+                    onClick={() => onReuseRecentAttachment?.(attachment)}
+                    runaComponent="ai-composer-recent-attachment-reuse"
+                    style={{
+                      border: 'none',
+                      background: 'transparent',
+                      color: 'inherit',
+                      padding: 0,
+                    }}
+                  >
+                    {attachment.name}
+                  </Button>
+                  <IconButton
+                    aria-label={`Delete stored attachment ${attachment.name}`}
+                    onClick={() => onDeleteStoredAttachment?.(attachment.id)}
+                    runaComponent="ai-composer-recent-attachment-delete"
+                    size="sm"
+                  >
+                    <X size={10} />
+                  </IconButton>
+                </Box>
               ))}
             </Box>
           </Box>

@@ -146,6 +146,44 @@ describe('AiComposerWidget', () => {
     expect(onRemoveAttachment).toHaveBeenCalledWith('att-readme')
   })
 
+  it('shows recent attachment chips and lets the operator reuse or delete them', () => {
+    const onDeleteStoredAttachment = vi.fn()
+    const onReuseRecentAttachment = vi.fn()
+
+    render(
+      <AiComposerWidget
+        activeTool="Chat"
+        onDeleteStoredAttachment={onDeleteStoredAttachment}
+        onReuseRecentAttachment={onReuseRecentAttachment}
+        placeholder="Text Area"
+        recentAttachments={[
+          {
+            id: 'att-notes',
+            name: 'notes.txt',
+            path: '/repo/notes.txt',
+            mime_type: 'text/plain',
+            size: 512,
+            modified_time: 1_776_800_061,
+          },
+        ]}
+        toolbarLabel="TOOL BAR"
+        value="test"
+      />,
+    )
+
+    expect(screen.getByText('Recent attachments')).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Reuse attachment notes.txt' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Delete stored attachment notes.txt' }))
+
+    expect(onReuseRecentAttachment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'att-notes',
+        name: 'notes.txt',
+      }),
+    )
+    expect(onDeleteStoredAttachment).toHaveBeenCalledWith('att-notes')
+  })
+
   it('shows context summary in the toolbar and exposes quick actions for the active widget', () => {
     const onContextUseCurrentWidget = vi.fn()
     const onContextOnlyUseCurrentWidget = vi.fn()

@@ -351,6 +351,27 @@ func (api *API) handleCreateAttachmentReference(w http.ResponseWriter, r *http.R
 	})
 }
 
+func (api *API) handleListAttachmentReferences(w http.ResponseWriter, r *http.Request) {
+	attachments, err := api.runtime.ListAttachmentReferences(r.Context(), 12)
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"attachments": attachments,
+	})
+}
+
+func (api *API) handleDeleteAttachmentReference(w http.ResponseWriter, r *http.Request) {
+	if err := api.runtime.DeleteAttachmentReference(r.Context(), r.PathValue("attachmentID")); err != nil {
+		writeAttachmentError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"deleted": true,
+	})
+}
+
 func (api *API) handleExplainTerminalCommand(w http.ResponseWriter, r *http.Request) {
 	var payload terminalCommandExplanationPayload
 	if err := decodeJSON(r, &payload); err != nil {

@@ -136,6 +136,7 @@ export function AiPanelWidget({ controller, hostId, mode = 'chat', state }: AiPa
                     onApprovalApprove={state == null ? agentPanel.approvePendingPlan : undefined}
                     onApprovalCancel={state == null ? agentPanel.cancelPendingPlan : undefined}
                     onQuestionnaireAnswer={state == null ? agentPanel.answerQuestionnaire : undefined}
+                    onReuseAttachment={state == null ? agentPanel.reuseStoredAttachmentReference : undefined}
                   />
                 )
               })}
@@ -162,6 +163,7 @@ export function AiPanelWidget({ controller, hostId, mode = 'chat', state }: AiPa
             }
             isWidgetContextEnabled={state == null ? agentPanel.isWidgetContextEnabled : undefined}
             isSubmitting={state == null ? agentPanel.isSubmitting && agentPanel.isResponseCancellable : false}
+            isAttachmentLibraryPending={state == null ? agentPanel.isAttachmentLibraryPending : false}
             missingContextWidgetCount={state == null ? agentPanel.missingContextWidgetCount : undefined}
             onCancelSubmit={state == null ? agentPanel.cancelActiveSubmission : undefined}
             onContextOptionsOpen={state == null ? agentPanel.handleContextOptionsOpen : undefined}
@@ -182,6 +184,12 @@ export function AiPanelWidget({ controller, hostId, mode = 'chat', state }: AiPa
             onModeChange={state == null ? agentPanel.selectMode : undefined}
             onProfileChange={state == null ? agentPanel.selectProfile : undefined}
             onProviderChange={state == null ? agentPanel.selectProvider : undefined}
+            onDeleteStoredAttachment={
+              state == null
+                ? (attachmentID) => void agentPanel.deleteStoredAttachmentReference(attachmentID)
+                : undefined
+            }
+            onReuseRecentAttachment={state == null ? agentPanel.reuseStoredAttachmentReference : undefined}
             onRoleChange={state == null ? agentPanel.selectRole : undefined}
             onRemoveAttachment={state == null ? agentPanel.removeQueuedAttachmentReference : undefined}
             onSelectedContextWidgetIDsChange={
@@ -191,6 +199,7 @@ export function AiPanelWidget({ controller, hostId, mode = 'chat', state }: AiPa
             onValueChange={state == null ? agentPanel.setDraft : undefined}
             onWidgetContextEnabledChange={state == null ? agentPanel.setIsWidgetContextEnabled : undefined}
             placeholder={panelState.composerPlaceholder}
+            recentAttachments={state == null ? agentPanel.recentAttachmentReferences : undefined}
             selectedContextWidgetIDs={state == null ? agentPanel.selectedContextWidgetIDs : undefined}
             selectedModeID={state == null ? agentPanel.selectedModeID : undefined}
             selectedModel={state == null ? agentPanel.selectedModel : undefined}

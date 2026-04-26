@@ -1,7 +1,7 @@
 import { useState } from 'react'
 
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { AiChatMessageWidget } from '@/widgets/ai/ai-chat-message-widget'
 import type { ApprovalMessage, QuestionnaireMessage } from '@/features/agent/model/types'
@@ -183,6 +183,42 @@ describe('AiChatMessageWidget', () => {
 
     expect(screen.getByText('Summarize this file.')).toBeInTheDocument()
     expect(screen.getByLabelText('Attachments for user message')).toHaveTextContent('README.md')
+  })
+
+  it('reuses transcript attachment chips when a handler is provided', () => {
+    const onReuseAttachment = vi.fn()
+
+    render(
+      <AiChatMessageWidget
+        message={{
+          id: 'chat-with-reusable-attachment',
+          type: 'chat',
+          role: 'assistant',
+          content: 'Reuse this file.',
+          attachments: [
+            {
+              id: 'att-notes',
+              name: 'notes.txt',
+              path: '/repo/notes.txt',
+              mime_type: 'text/plain',
+              size: 512,
+              modified_time: 1_776_800_061,
+            },
+          ],
+        }}
+        mode="chat"
+        onReuseAttachment={onReuseAttachment}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use attachment notes.txt' }))
+
+    expect(onReuseAttachment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'att-notes',
+        name: 'notes.txt',
+      }),
+    )
   })
 
   it('submits questionnaire option and custom input answers', () => {
