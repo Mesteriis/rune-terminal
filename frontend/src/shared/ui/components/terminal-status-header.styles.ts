@@ -7,7 +7,7 @@ export const terminalStatusHeaderRootStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
-  gap: 'var(--gap-md)',
+  gap: '0.7rem',
   minHeight: 'var(--size-terminal-status)',
 }
 
@@ -21,7 +21,7 @@ export const terminalStatusHeaderClusterStyle: React.CSSProperties = {
   ...resetBoxStyle,
   display: 'flex',
   alignItems: 'center',
-  gap: 'var(--gap-sm)',
+  gap: '0.55rem',
   minWidth: 0,
 }
 
@@ -30,7 +30,7 @@ export const terminalStatusHeaderTextStackStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   justifyContent: 'center',
-  gap: '2px',
+  gap: '1px',
   minWidth: 0,
 }
 
@@ -44,7 +44,7 @@ export const terminalStatusHeaderMetaWrapStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'flex-end',
-  gap: 'var(--gap-sm)',
+  gap: '0.45rem',
   flexWrap: 'wrap',
   minWidth: 0,
 }
@@ -57,8 +57,8 @@ export const terminalStatusHeaderCompactMetaWrapStyle: React.CSSProperties = {
 }
 
 export const terminalStatusHeaderTitleTextStyle: React.CSSProperties = {
-  fontSize: 'var(--font-size-md)',
-  lineHeight: 'var(--line-height-md)',
+  fontSize: '0.94rem',
+  lineHeight: '1.2',
   fontWeight: 600,
   color: 'var(--runa-terminal-text-strong, var(--color-text-primary))',
   whiteSpace: 'nowrap',
@@ -67,8 +67,8 @@ export const terminalStatusHeaderTitleTextStyle: React.CSSProperties = {
 }
 
 export const terminalStatusHeaderSecondaryTextStyle: React.CSSProperties = {
-  fontSize: 'var(--font-size-sm)',
-  lineHeight: 'var(--line-height-sm)',
+  fontSize: '0.78rem',
+  lineHeight: '1.2',
   color: 'var(--runa-terminal-text-muted, var(--color-text-muted))',
   whiteSpace: 'nowrap',
   overflow: 'hidden',
@@ -76,8 +76,8 @@ export const terminalStatusHeaderSecondaryTextStyle: React.CSSProperties = {
 }
 
 export const terminalStatusHeaderMetaTextStyle: React.CSSProperties = {
-  fontSize: 'var(--font-size-sm)',
-  lineHeight: 'var(--line-height-sm)',
+  fontSize: '0.76rem',
+  lineHeight: '1.15',
   color: 'var(--runa-terminal-text-secondary, var(--color-text-secondary))',
   whiteSpace: 'nowrap',
   overflow: 'hidden',
@@ -85,5 +85,8 @@ export const terminalStatusHeaderMetaTextStyle: React.CSSProperties = {
 }
 
 export const terminalStatusHeaderMetaItemStyle: React.CSSProperties = {
-  minHeight: '24px',
+  minHeight: '22px',
+  padding: '0 7px',
+  background:
+    'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 66%, transparent)',
 }

@@ -5,7 +5,7 @@ export const terminalWidgetRootStyle: React.CSSProperties = {
   flex: 1,
   minHeight: 0,
   flexDirection: 'column',
-  gap: 'var(--gap-sm)',
+  gap: '0.45rem',
   padding: 0,
   border: 'none',
   borderRadius: 0,
@@ -29,16 +29,16 @@ export const terminalWidgetChromeStyle: React.CSSProperties = {
 export const terminalWidgetHeaderRowStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
-  gap: 'var(--gap-xs)',
-  padding: '0.8rem 0.9rem 0.65rem',
+  gap: '0.3rem',
+  padding: '0.68rem 0.78rem 0.52rem',
   borderBottom: '1px solid var(--runa-terminal-surface-border, var(--color-border-subtle))',
 }
 
 export const terminalWidgetToolbarRowStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
-  gap: 'var(--gap-xs)',
-  padding: '0.5rem 0.9rem 0.65rem',
+  gap: '0.3rem',
+  padding: '0.42rem 0.78rem 0.54rem',
 }
 
 export const terminalWidgetSurfaceWrapStyle: React.CSSProperties = {
@@ -55,14 +55,15 @@ export const terminalWidgetHeaderActionsStyle: React.CSSProperties = {
 }
 
 export const terminalWidgetHeaderActionButtonStyle: React.CSSProperties = {
-  width: '28px',
-  minWidth: '28px',
-  minHeight: '28px',
-  height: '28px',
+  width: '26px',
+  minWidth: '26px',
+  minHeight: '26px',
+  height: '26px',
   padding: 0,
   border: '1px solid var(--runa-terminal-surface-border, var(--color-border-subtle))',
   borderRadius: 'var(--radius-sm)',
-  background: 'var(--color-canvas-elevated)',
+  background:
+    'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 72%, transparent)',
   boxShadow: 'none',
   backdropFilter: 'none',
   WebkitBackdropFilter: 'none',

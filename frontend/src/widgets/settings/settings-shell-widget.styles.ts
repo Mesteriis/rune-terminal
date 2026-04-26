@@ -1,13 +1,13 @@
 export const settingsShellRootStyle = {
   display: 'grid',
-  gridTemplateColumns: 'minmax(14rem, 17.5rem) minmax(0, 1fr)',
+  gridTemplateColumns: 'minmax(13.4rem, 16.2rem) minmax(0, 1fr)',
   gap: '0',
   flex: 1,
   minHeight: 0,
   border: '1px solid var(--color-border-subtle)',
   borderRadius: 'var(--radius-lg)',
   overflow: 'hidden',
-  background: 'color-mix(in srgb, var(--color-surface-glass-soft) 74%, transparent)',
+  background: 'color-mix(in srgb, var(--color-surface-glass-soft) 78%, transparent)',
 }
 
 export const settingsShellSidebarStyle = {
@@ -16,22 +16,22 @@ export const settingsShellSidebarStyle = {
   gap: '0',
   borderRight: '1px solid var(--color-border-subtle)',
   minHeight: 0,
-  background: 'color-mix(in srgb, var(--color-surface-glass-strong) 58%, transparent)',
+  background: 'color-mix(in srgb, var(--color-surface-glass-strong) 62%, transparent)',
 }
 
 export const settingsShellSidebarHeaderStyle = {
   display: 'flex',
   flexDirection: 'column' as const,
-  gap: '0.35rem',
-  padding: '1rem 1rem 0.9rem 1rem',
+  gap: '0.28rem',
+  padding: '0.9rem 0.9rem 0.8rem 0.9rem',
   borderBottom: '1px solid var(--color-border-subtle)',
 }
 
 export const settingsShellSidebarSectionStyle = {
   display: 'flex',
   flexDirection: 'column' as const,
-  gap: '0.2rem',
-  padding: '0.65rem',
+  gap: '0.16rem',
+  padding: '0.55rem',
 }
 
 export const settingsShellSidebarSectionSpacingStyle = {
@@ -43,8 +43,8 @@ export const settingsShellNavButtonStyle = {
   display: 'flex',
   flexDirection: 'column' as const,
   alignItems: 'flex-start',
-  gap: '0.15rem',
-  padding: '0.75rem 0.85rem',
+  gap: '0.12rem',
+  padding: '0.62rem 0.72rem',
   textAlign: 'left' as const,
   justifyContent: 'flex-start',
   background: 'transparent',
@@ -67,10 +67,10 @@ export const settingsShellParentNavStyle = {
 export const settingsShellNestedNavStyle = {
   display: 'flex',
   flexDirection: 'column' as const,
-  gap: '0.2rem',
-  marginLeft: '0.45rem',
-  paddingLeft: '0.65rem',
-  paddingTop: '0.15rem',
+  gap: '0.16rem',
+  marginLeft: '0.35rem',
+  paddingLeft: '0.55rem',
+  paddingTop: '0.08rem',
   borderLeft: '1px solid var(--color-border-subtle)',
 }
 
@@ -91,25 +91,25 @@ export const settingsShellContentPanelStyle = {
   display: 'flex',
   flexDirection: 'column' as const,
   minHeight: 0,
-  margin: '0.9rem',
+  margin: '0.75rem',
   border: '1px solid var(--color-border-subtle)',
   borderRadius: 'var(--radius-md)',
   overflow: 'hidden',
-  background: 'color-mix(in srgb, var(--color-surface-glass-strong) 52%, transparent)',
+  background: 'color-mix(in srgb, var(--color-surface-glass-strong) 56%, transparent)',
 }
 
 export const settingsShellShellHeaderStyle = {
   display: 'flex',
   flexDirection: 'column' as const,
-  gap: '0.4rem',
-  padding: '1rem 1.15rem',
+  gap: '0.32rem',
+  padding: '0.85rem 1rem',
   borderBottom: '1px solid var(--color-border-subtle)',
-  background: 'color-mix(in srgb, var(--color-surface-glass-soft) 55%, transparent)',
+  background: 'color-mix(in srgb, var(--color-surface-glass-soft) 60%, transparent)',
 }
 
 export const settingsShellEyebrowStyle = {
-  fontSize: '0.74rem',
-  letterSpacing: '0.06em',
+  fontSize: '0.7rem',
+  letterSpacing: '0.08em',
   textTransform: 'uppercase' as const,
   color: 'var(--color-text-tertiary, var(--color-text-secondary))',
 }
@@ -117,52 +117,55 @@ export const settingsShellEyebrowStyle = {
 export const settingsShellContentScrollStyle = {
   display: 'flex',
   flexDirection: 'column' as const,
-  gap: '1.1rem',
+  gap: '0.95rem',
   minHeight: 0,
-  padding: '1rem 1.15rem 1.2rem 1.15rem',
+  padding: '0.85rem 1rem 1rem 1rem',
 }
 
 export const settingsShellSectionCardStyle = {
   display: 'flex',
   flexDirection: 'column' as const,
-  gap: 'var(--gap-sm)',
-  padding: '0.95rem 0 0 0',
+  gap: '0.65rem',
+  padding: '0.78rem 0 0 0',
   borderTop: '1px solid var(--color-border-subtle)',
 }
 
 export const settingsShellCardsGridStyle = {
   display: 'grid',
   gridTemplateColumns: 'repeat(auto-fit, minmax(16rem, 1fr))',
-  gap: 'var(--gap-sm)',
+  gap: '0.7rem',
 }
 
 export const settingsShellListStyle = {
   display: 'flex',
   flexDirection: 'column' as const,
-  gap: 'var(--gap-sm)',
+  gap: '0.65rem',
 }
 
 export const settingsShellListRowStyle = {
   display: 'flex',
   alignItems: 'flex-start',
   justifyContent: 'space-between',
-  gap: 'var(--gap-sm)',
+  gap: '0.7rem',
   flexWrap: 'wrap' as const,
-  padding: '0.75rem 0.9rem',
+  padding: '0.66rem 0.78rem',
   border: '1px solid var(--color-border-subtle)',
   borderRadius: 'var(--radius-sm)',
-  background: 'color-mix(in srgb, var(--color-surface-glass-soft) 48%, transparent)',
+  background: 'color-mix(in srgb, var(--color-surface-glass-soft) 54%, transparent)',
 }
 
 export const settingsShellBadgeStyle = {
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
-  padding: '0.16rem 0.5rem',
+  minHeight: '20px',
+  padding: '0.08rem 0.42rem',
+  border: '1px solid color-mix(in srgb, var(--color-border-subtle) 84%, transparent)',
   borderRadius: '999px',
-  background: 'var(--color-surface-glass-strong)',
-  color: 'var(--color-text-secondary)',
-  fontSize: '0.78rem',
+  background: 'color-mix(in srgb, var(--color-surface-glass-strong) 66%, transparent)',
+  color: 'var(--color-text-muted, var(--color-text-secondary))',
+  fontSize: '0.74rem',
+  lineHeight: 1,
 }
 
 export const settingsShellMutedTextStyle = {
