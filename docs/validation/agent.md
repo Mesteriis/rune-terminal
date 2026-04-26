@@ -52,6 +52,7 @@
     - keyboard navigation through filtered conversation results in the AI conversation navigator
     - live Claude provider routing with explicit `auth-required` handling when the local CLI is installed but not logged in
     - `/run printf ...` sending input into the selected terminal session without falling back to plain provider chat
+    - persisted SSH-backed `/run` context restore: a conversation saved against the remote widget still sends `term.send_input` with the preserved remote connection/session target instead of falling back to the active local shell
     - approved natural-language terminal execution routing into the explicitly selected AI context widget even when another terminal widget remains active in the workspace
     - approved natural-language terminal execution preserving `target_connection_id` / `target_session` for an explicitly selected SSH-backed context widget while a local terminal stays active
     - persisted SSH-backed AI context restore after reopen: a conversation saved against the remote widget still executes against that remote target instead of falling back to the active local shell
@@ -211,6 +212,7 @@
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts --grep "selected context widget instead of the active terminal"`
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts --grep "keeps remote host semantics when the selected context widget is SSH-backed"`
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts --grep "restores persisted remote context before approved terminal execution after reopen"`
+- `npm run test:ui -- --reporter=line e2e/ai.spec.ts --grep "preserves persisted remote host semantics from the selected context widget"`
 - `npm run build:frontend`
 - `npm run lint:frontend`
 
