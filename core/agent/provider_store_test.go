@@ -49,7 +49,7 @@ func TestStorePersistsProvidersAndActiveProvider(t *testing.T) {
 	}
 }
 
-func TestProvidersCatalogIncludesCLIStatus(t *testing.T) {
+func TestProvidersCatalogKeepsProviderConfigWithoutRuntimeStatus(t *testing.T) {
 	t.Parallel()
 
 	store, err := NewStore(filepath.Join(t.TempDir(), "agent.json"))
@@ -79,11 +79,11 @@ func TestProvidersCatalogIncludesCLIStatus(t *testing.T) {
 	if codexView == nil || codexView.Codex == nil {
 		t.Fatalf("expected codex provider view, got %#v", catalog.Providers)
 	}
-	if codexView.Codex.StatusState != "missing" {
-		t.Fatalf("unexpected codex provider view: %#v", codexView.Codex)
-	}
 	if !slices.Equal(codexView.Codex.ChatModels, []string{"gpt-5.4", "gpt-5-codex"}) {
 		t.Fatalf("unexpected chat models: %#v", codexView.Codex.ChatModels)
+	}
+	if codexView.Codex.Command != "definitely-missing-rterm-codex" {
+		t.Fatalf("expected config-only provider view, got %#v", codexView.Codex)
 	}
 }
 

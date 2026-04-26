@@ -437,6 +437,86 @@ func TestProbeProviderReturnsReachableOpenAICompatibleStatus(t *testing.T) {
 	}
 }
 
+func TestProviderGatewaySnapshotIncludesLatestProbeState(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/models" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[{"id":"gpt-5.4"}]}`))
+	}))
+	defer server.Close()
+
+	handler, agentStore := newTestHandler(t)
+	createdProvider, _, err := agentStore.CreateProvider(agent.CreateProviderInput{
+		Kind:        agent.ProviderKindOpenAICompatible,
+		DisplayName: "LAN Source",
+		Enabled:     boolPtr(true),
+		OpenAICompatible: &agent.CreateOpenAICompatibleProviderInput{
+			BaseURL: server.URL,
+			Model:   "gpt-5.4",
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateProvider error: %v", err)
+	}
+
+	probeRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(
+		probeRecorder,
+		authedJSONRequest(
+			t,
+			http.MethodPost,
+			"/api/v1/agent/providers/"+createdProvider.ID+"/probe",
+			nil,
+		),
+	)
+	if probeRecorder.Code != http.StatusOK {
+		t.Fatalf("probe expected 200, got %d body=%s", probeRecorder.Code, probeRecorder.Body.String())
+	}
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodGet, "/api/v1/agent/providers/gateway", nil))
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+
+	var payload struct {
+		Providers []struct {
+			ProviderID         string `json:"provider_id"`
+			RouteReady         bool   `json:"route_ready"`
+			RouteStatusState   string `json:"route_status_state"`
+			RouteStatusMessage string `json:"route_status_message"`
+			BaseURL            string `json:"base_url"`
+			Model              string `json:"model"`
+		} `json:"providers"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
+	}
+
+	for _, provider := range payload.Providers {
+		if provider.ProviderID != createdProvider.ID {
+			continue
+		}
+		if !provider.RouteReady || provider.RouteStatusState != "ready" {
+			t.Fatalf("expected ready route state in gateway snapshot, got %#v", provider)
+		}
+		if provider.BaseURL != server.URL || provider.Model != "gpt-5.4" {
+			t.Fatalf("unexpected gateway probe payload: %#v", provider)
+		}
+		if provider.RouteStatusMessage == "" {
+			t.Fatalf("expected route status message in gateway snapshot, got %#v", provider)
+		}
+		return
+	}
+
+	t.Fatalf("expected provider %q in gateway snapshot: %#v", createdProvider.ID, payload.Providers)
+}
+
 type gatewayCodexProvider struct{}
 
 func (gatewayCodexProvider) Info() conversation.ProviderInfo {

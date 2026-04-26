@@ -55,6 +55,20 @@ type ProviderStats struct {
 	LastCompletedAt     *time.Time `json:"last_completed_at,omitempty"`
 }
 
+type ProbeRecord struct {
+	ProviderID     string    `json:"provider_id"`
+	ProviderKind   string    `json:"provider_kind"`
+	DisplayName    string    `json:"display_name"`
+	Ready          bool      `json:"ready"`
+	StatusState    string    `json:"status_state"`
+	StatusMessage  string    `json:"status_message"`
+	ResolvedBinary string    `json:"resolved_binary,omitempty"`
+	BaseURL        string    `json:"base_url,omitempty"`
+	Model          string    `json:"model,omitempty"`
+	ProbeLatencyMS int64     `json:"probe_latency_ms"`
+	CheckedAt      time.Time `json:"checked_at"`
+}
+
 type Store struct {
 	db *sql.DB
 }
@@ -204,6 +218,88 @@ func (s *Store) ListProviderStats(ctx context.Context) ([]ProviderStats, error) 
 	return stats, nil
 }
 
+func (s *Store) RecordProbe(ctx context.Context, probe ProbeRecord) (ProbeRecord, error) {
+	normalized := normalizeProbeRecord(probe)
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO provider_gateway_probes (
+			provider_id,
+			provider_kind,
+			display_name,
+			ready,
+			status_state,
+			status_message,
+			resolved_binary,
+			base_url,
+			model,
+			probe_latency_ms,
+			checked_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(provider_id) DO UPDATE SET
+			provider_kind = excluded.provider_kind,
+			display_name = excluded.display_name,
+			ready = excluded.ready,
+			status_state = excluded.status_state,
+			status_message = excluded.status_message,
+			resolved_binary = excluded.resolved_binary,
+			base_url = excluded.base_url,
+			model = excluded.model,
+			probe_latency_ms = excluded.probe_latency_ms,
+			checked_at = excluded.checked_at
+	`,
+		normalized.ProviderID,
+		normalized.ProviderKind,
+		normalized.DisplayName,
+		normalized.Ready,
+		normalized.StatusState,
+		normalized.StatusMessage,
+		normalized.ResolvedBinary,
+		normalized.BaseURL,
+		normalized.Model,
+		normalized.ProbeLatencyMS,
+		normalized.CheckedAt.Format(time.RFC3339Nano),
+	)
+	if err != nil {
+		return ProbeRecord{}, fmt.Errorf("record provider gateway probe: %w", err)
+	}
+	return normalized, nil
+}
+
+func (s *Store) ListLatestProbes(ctx context.Context) ([]ProbeRecord, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT
+			provider_id,
+			provider_kind,
+			display_name,
+			ready,
+			status_state,
+			status_message,
+			resolved_binary,
+			base_url,
+			model,
+			probe_latency_ms,
+			checked_at
+		FROM provider_gateway_probes
+		ORDER BY checked_at DESC, provider_id
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("list provider gateway probes: %w", err)
+	}
+	defer rows.Close()
+
+	probes := make([]ProbeRecord, 0)
+	for rows.Next() {
+		probe, err := scanProbeRecord(rows)
+		if err != nil {
+			return nil, err
+		}
+		probes = append(probes, probe)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate provider gateway probes: %w", err)
+	}
+	return probes, nil
+}
+
 func normalizeRunRecord(run RunRecord) RunRecord {
 	if strings.TrimSpace(run.ID) == "" {
 		run.ID = ids.New("provider-run")
@@ -244,6 +340,24 @@ func normalizeRecentRunsLimit(limit int) int {
 		return maxRecentRunsLimit
 	}
 	return limit
+}
+
+func normalizeProbeRecord(probe ProbeRecord) ProbeRecord {
+	probe.ProviderID = strings.TrimSpace(probe.ProviderID)
+	probe.ProviderKind = strings.TrimSpace(probe.ProviderKind)
+	probe.DisplayName = strings.TrimSpace(probe.DisplayName)
+	probe.StatusState = strings.TrimSpace(probe.StatusState)
+	probe.StatusMessage = strings.TrimSpace(probe.StatusMessage)
+	probe.ResolvedBinary = strings.TrimSpace(probe.ResolvedBinary)
+	probe.BaseURL = strings.TrimSpace(probe.BaseURL)
+	probe.Model = strings.TrimSpace(probe.Model)
+	if probe.ProbeLatencyMS < 0 {
+		probe.ProbeLatencyMS = 0
+	}
+	if probe.CheckedAt.IsZero() {
+		probe.CheckedAt = time.Now().UTC()
+	}
+	return probe
 }
 
 func normalizeRequestMode(mode string) string {
@@ -354,4 +468,32 @@ func scanProviderStats(scanner interface {
 		stats.LastDurationMS = 0
 	}
 	return stats, nil
+}
+
+func scanProbeRecord(scanner interface {
+	Scan(dest ...any) error
+}) (ProbeRecord, error) {
+	var probe ProbeRecord
+	var checkedAt string
+	if err := scanner.Scan(
+		&probe.ProviderID,
+		&probe.ProviderKind,
+		&probe.DisplayName,
+		&probe.Ready,
+		&probe.StatusState,
+		&probe.StatusMessage,
+		&probe.ResolvedBinary,
+		&probe.BaseURL,
+		&probe.Model,
+		&probe.ProbeLatencyMS,
+		&checkedAt,
+	); err != nil {
+		return ProbeRecord{}, fmt.Errorf("scan provider gateway probe: %w", err)
+	}
+	parsedCheckedAt, err := time.Parse(time.RFC3339Nano, checkedAt)
+	if err != nil {
+		return ProbeRecord{}, fmt.Errorf("parse provider gateway probe checked_at: %w", err)
+	}
+	probe.CheckedAt = parsedCheckedAt
+	return normalizeProbeRecord(probe), nil
 }

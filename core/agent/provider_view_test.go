@@ -2,7 +2,7 @@ package agent
 
 import "testing"
 
-func TestProviderViewMarksClaudeAuthRequired(t *testing.T) {
+func TestProbeCLIProviderMarksClaudeAuthRequired(t *testing.T) {
 	t.Parallel()
 
 	previousResolveProviderCLICommand := resolveProviderCLICommand
@@ -19,23 +19,25 @@ func TestProviderViewMarksClaudeAuthRequired(t *testing.T) {
 		return "auth-required", "Claude Code CLI is installed but not logged in.", true
 	}
 
-	view := claudeProviderSettingsViewFromSettings(&ClaudeProviderSettings{
-		Command: "claude",
-		Model:   "sonnet",
+	probe, err := ProbeCLIProvider(ProviderRecord{
+		Kind: ProviderKindClaude,
+		Claude: &ClaudeProviderSettings{
+			Command: "claude",
+			Model:   "sonnet",
+		},
 	})
-
-	if view == nil {
-		t.Fatal("expected claude provider view")
+	if err != nil {
+		t.Fatalf("ProbeCLIProvider error: %v", err)
 	}
-	if view.StatusState != "auth-required" {
-		t.Fatalf("expected auth-required status, got %#v", view)
+	if probe.StatusState != "auth-required" {
+		t.Fatalf("expected auth-required status, got %#v", probe)
 	}
-	if view.ResolvedBinary != "/usr/local/bin/claude" {
-		t.Fatalf("unexpected resolved binary: %#v", view)
+	if probe.ResolvedBinary != "/usr/local/bin/claude" {
+		t.Fatalf("unexpected resolved binary: %#v", probe)
 	}
 }
 
-func TestProviderViewMarksCodexReadyWhenAuthenticated(t *testing.T) {
+func TestProbeCLIProviderMarksCodexReadyWhenAuthenticated(t *testing.T) {
 	t.Parallel()
 
 	previousResolveProviderCLICommand := resolveProviderCLICommand
@@ -52,18 +54,20 @@ func TestProviderViewMarksCodexReadyWhenAuthenticated(t *testing.T) {
 		return "ready", "Codex CLI is authenticated.", true
 	}
 
-	view := codexProviderSettingsViewFromSettings(&CodexProviderSettings{
-		Command: "codex",
-		Model:   defaultCodexModel,
+	probe, err := ProbeCLIProvider(ProviderRecord{
+		Kind: ProviderKindCodex,
+		Codex: &CodexProviderSettings{
+			Command: "codex",
+			Model:   defaultCodexModel,
+		},
 	})
-
-	if view == nil {
-		t.Fatal("expected codex provider view")
+	if err != nil {
+		t.Fatalf("ProbeCLIProvider error: %v", err)
 	}
-	if view.StatusState != "ready" {
-		t.Fatalf("expected ready status, got %#v", view)
+	if probe.StatusState != "ready" {
+		t.Fatalf("expected ready status, got %#v", probe)
 	}
-	if view.Model != defaultCodexModel {
-		t.Fatalf("unexpected model: %#v", view)
+	if probe.StatusMessage != "Codex CLI is authenticated." {
+		t.Fatalf("unexpected probe result: %#v", probe)
 	}
 }

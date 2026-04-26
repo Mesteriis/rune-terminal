@@ -148,3 +148,64 @@ func TestStoreListsProviderStats(t *testing.T) {
 		t.Fatalf("expected codex avg 200ms, got %#v", stats[1])
 	}
 }
+
+func TestStoreRecordsAndListsLatestProbes(t *testing.T) {
+	t.Parallel()
+
+	dbConn, err := coredb.Open(context.Background(), filepath.Join(t.TempDir(), "runtime.db"))
+	if err != nil {
+		t.Fatalf("coredb.Open error: %v", err)
+	}
+
+	store, err := NewStore(context.Background(), dbConn)
+	if err != nil {
+		t.Fatalf("NewStore error: %v", err)
+	}
+
+	firstCheckedAt := time.Date(2026, 4, 26, 12, 0, 0, 0, time.UTC)
+	secondCheckedAt := firstCheckedAt.Add(3 * time.Minute)
+
+	if _, err := store.RecordProbe(context.Background(), ProbeRecord{
+		ProviderID:     "codex-cli",
+		ProviderKind:   "codex",
+		DisplayName:    "Codex CLI",
+		Ready:          false,
+		StatusState:    "auth-required",
+		StatusMessage:  "Codex CLI is installed but not logged in.",
+		ResolvedBinary: "/usr/local/bin/codex",
+		Model:          "gpt-5.4",
+		ProbeLatencyMS: 120,
+		CheckedAt:      firstCheckedAt,
+	}); err != nil {
+		t.Fatalf("RecordProbe first error: %v", err)
+	}
+
+	if _, err := store.RecordProbe(context.Background(), ProbeRecord{
+		ProviderID:     "codex-cli",
+		ProviderKind:   "codex",
+		DisplayName:    "Codex CLI",
+		Ready:          true,
+		StatusState:    "ready",
+		StatusMessage:  "Codex CLI is authenticated.",
+		ResolvedBinary: "/opt/homebrew/bin/codex",
+		Model:          "gpt-5.4",
+		ProbeLatencyMS: 80,
+		CheckedAt:      secondCheckedAt,
+	}); err != nil {
+		t.Fatalf("RecordProbe second error: %v", err)
+	}
+
+	probes, err := store.ListLatestProbes(context.Background())
+	if err != nil {
+		t.Fatalf("ListLatestProbes error: %v", err)
+	}
+	if len(probes) != 1 {
+		t.Fatalf("expected 1 probe row, got %d", len(probes))
+	}
+	if !probes[0].Ready || probes[0].StatusState != "ready" {
+		t.Fatalf("expected latest ready probe, got %#v", probes[0])
+	}
+	if probes[0].ResolvedBinary != "/opt/homebrew/bin/codex" || probes[0].ProbeLatencyMS != 80 {
+		t.Fatalf("unexpected latest probe payload: %#v", probes[0])
+	}
+}

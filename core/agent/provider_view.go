@@ -89,40 +89,22 @@ func codexProviderSettingsViewFromSettings(settings *CodexProviderSettings) *Cod
 	if settings == nil {
 		return nil
 	}
-	view := &CodexProviderSettingsView{
+	return &CodexProviderSettingsView{
 		Command:    firstNonEmpty(settings.Command, defaultCodexCommand),
 		Model:      settings.Model,
 		ChatModels: append([]string(nil), settings.ChatModels...),
 	}
-	populateCLIStatus(
-		view.Command,
-		"Codex CLI",
-		inspectCodexCLIAuthStatus,
-		&view.StatusState,
-		&view.StatusMessage,
-		&view.ResolvedBinary,
-	)
-	return view
 }
 
 func claudeProviderSettingsViewFromSettings(settings *ClaudeProviderSettings) *ClaudeProviderSettingsView {
 	if settings == nil {
 		return nil
 	}
-	view := &ClaudeProviderSettingsView{
+	return &ClaudeProviderSettingsView{
 		Command:    firstNonEmpty(settings.Command, defaultClaudeCommand),
 		Model:      settings.Model,
 		ChatModels: append([]string(nil), settings.ChatModels...),
 	}
-	populateCLIStatus(
-		view.Command,
-		"Claude Code CLI",
-		inspectClaudeCLIAuthStatus,
-		&view.StatusState,
-		&view.StatusMessage,
-		&view.ResolvedBinary,
-	)
-	return view
 }
 
 func openAICompatibleProviderSettingsViewFromSettings(

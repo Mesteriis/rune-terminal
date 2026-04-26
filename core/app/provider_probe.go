@@ -8,6 +8,7 @@ import (
 
 	"github.com/Mesteriis/rune-terminal/core/agent"
 	"github.com/Mesteriis/rune-terminal/core/conversation"
+	"github.com/Mesteriis/rune-terminal/core/providergateway"
 )
 
 const (
@@ -17,6 +18,7 @@ const (
 	providerProbeStatusAuthRequired     = "auth-required"
 	providerProbeStatusUnreachable      = "unreachable"
 	providerProbeStatusModelUnavailable = "model-unavailable"
+	providerProbeStatusUnchecked        = "unchecked"
 )
 
 type ProviderProbeResult struct {
@@ -58,20 +60,25 @@ func (r *Runtime) ProbeProvider(ctx context.Context, providerID string) (Provide
 
 	switch record.Kind {
 	case agent.ProviderKindCodex, agent.ProviderKindClaude:
-		return r.probeCLIProvider(record, startedAt)
+		result, err := r.probeCLIProvider(record, startedAt)
+		if err != nil {
+			return ProviderProbeResult{}, err
+		}
+		r.recordProviderProbe(ctx, result)
+		return result, nil
 	case agent.ProviderKindOpenAICompatible:
-		return r.probeOpenAICompatibleProvider(ctx, record, startedAt)
+		result, err := r.probeOpenAICompatibleProvider(ctx, record, startedAt)
+		if err != nil {
+			return ProviderProbeResult{}, err
+		}
+		r.recordProviderProbe(ctx, result)
+		return result, nil
 	default:
 		return ProviderProbeResult{}, fmt.Errorf("%w: %s", agent.ErrProviderKindUnsupported, record.Kind)
 	}
 }
 
 func (r *Runtime) probeCLIProvider(record agent.ProviderRecord, startedAt time.Time) (ProviderProbeResult, error) {
-	view := findProviderViewByID(r.ProviderCatalog(), record.ID)
-	if view == nil {
-		return ProviderProbeResult{}, fmt.Errorf("%w: %s", agent.ErrProviderNotFound, record.ID)
-	}
-
 	result := ProviderProbeResult{
 		ProviderID:   record.ID,
 		ProviderKind: string(record.Kind),
@@ -79,21 +86,13 @@ func (r *Runtime) probeCLIProvider(record agent.ProviderRecord, startedAt time.T
 		Model:        providerRecordModel(record),
 		CheckedAt:    startedAt,
 	}
-
-	switch record.Kind {
-	case agent.ProviderKindCodex:
-		if view.Codex != nil {
-			result.StatusState = strings.TrimSpace(view.Codex.StatusState)
-			result.StatusMessage = strings.TrimSpace(view.Codex.StatusMessage)
-			result.ResolvedBinary = strings.TrimSpace(view.Codex.ResolvedBinary)
-		}
-	case agent.ProviderKindClaude:
-		if view.Claude != nil {
-			result.StatusState = strings.TrimSpace(view.Claude.StatusState)
-			result.StatusMessage = strings.TrimSpace(view.Claude.StatusMessage)
-			result.ResolvedBinary = strings.TrimSpace(view.Claude.ResolvedBinary)
-		}
+	cliProbe, err := agent.ProbeCLIProvider(record)
+	if err != nil {
+		return ProviderProbeResult{}, err
 	}
+	result.StatusState = strings.TrimSpace(cliProbe.StatusState)
+	result.StatusMessage = strings.TrimSpace(cliProbe.StatusMessage)
+	result.ResolvedBinary = strings.TrimSpace(cliProbe.ResolvedBinary)
 	if result.StatusState == "" {
 		result.StatusState = providerProbeStatusMissing
 	}
@@ -146,6 +145,25 @@ func (r *Runtime) probeOpenAICompatibleProvider(
 	return result, nil
 }
 
+func (r *Runtime) recordProviderProbe(ctx context.Context, result ProviderProbeResult) {
+	if r.ProviderGateway == nil {
+		return
+	}
+	_, _ = r.ProviderGateway.RecordProbe(ctx, providergateway.ProbeRecord{
+		ProviderID:     strings.TrimSpace(result.ProviderID),
+		ProviderKind:   strings.TrimSpace(result.ProviderKind),
+		DisplayName:    strings.TrimSpace(result.DisplayName),
+		Ready:          result.Ready,
+		StatusState:    strings.TrimSpace(result.StatusState),
+		StatusMessage:  strings.TrimSpace(result.StatusMessage),
+		ResolvedBinary: strings.TrimSpace(result.ResolvedBinary),
+		BaseURL:        strings.TrimSpace(result.BaseURL),
+		Model:          strings.TrimSpace(result.Model),
+		ProbeLatencyMS: result.LatencyMS,
+		CheckedAt:      result.CheckedAt.UTC(),
+	})
+}
+
 func providerRecordModel(record agent.ProviderRecord) string {
 	switch record.Kind {
 	case agent.ProviderKindCodex:
@@ -162,15 +180,6 @@ func providerRecordModel(record agent.ProviderRecord) string {
 		}
 	}
 	return ""
-}
-
-func findProviderViewByID(catalog agent.ProviderCatalog, providerID string) *agent.ProviderView {
-	for index := range catalog.Providers {
-		if catalog.Providers[index].ID == providerID {
-			return &catalog.Providers[index]
-		}
-	}
-	return nil
 }
 
 func containsTrimmedString(items []string, needle string) bool {

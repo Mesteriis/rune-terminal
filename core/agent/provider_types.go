@@ -41,21 +41,15 @@ type ProviderRecord struct {
 }
 
 type CodexProviderSettingsView struct {
-	Command        string   `json:"command,omitempty"`
-	Model          string   `json:"model"`
-	ChatModels     []string `json:"chat_models,omitempty"`
-	StatusState    string   `json:"status_state"`
-	StatusMessage  string   `json:"status_message,omitempty"`
-	ResolvedBinary string   `json:"resolved_binary,omitempty"`
+	Command    string   `json:"command,omitempty"`
+	Model      string   `json:"model"`
+	ChatModels []string `json:"chat_models,omitempty"`
 }
 
 type ClaudeProviderSettingsView struct {
-	Command        string   `json:"command,omitempty"`
-	Model          string   `json:"model"`
-	ChatModels     []string `json:"chat_models,omitempty"`
-	StatusState    string   `json:"status_state"`
-	StatusMessage  string   `json:"status_message,omitempty"`
-	ResolvedBinary string   `json:"resolved_binary,omitempty"`
+	Command    string   `json:"command,omitempty"`
+	Model      string   `json:"model"`
+	ChatModels []string `json:"chat_models,omitempty"`
 }
 
 type OpenAICompatibleProviderSettingsView struct {
