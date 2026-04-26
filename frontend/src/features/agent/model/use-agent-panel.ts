@@ -1546,6 +1546,28 @@ export function useAgentPanel(hostId: string, enabled = true) {
     [deriveFallbackContextWidgetIDs, effectiveContextWidgetIDs, isWidgetContextEnabled],
   )
 
+  const createToolExecutionContext = useCallback(
+    (input: {
+      actionSource: string
+      activeWidgetID?: string
+      repoRoot: string
+      targetConnectionID?: string
+      targetSession?: string
+      includeActiveWidgetInSelection?: boolean
+    }) => {
+      const conversationContext = createConversationContext(input)
+
+      return {
+        action_source: conversationContext.action_source,
+        active_widget_id: conversationContext.active_widget_id,
+        repo_root: conversationContext.repo_root,
+        target_connection_id: conversationContext.target_connection_id,
+        target_session: conversationContext.target_session,
+      }
+    },
+    [createConversationContext],
+  )
+
   const hasTerminalExecutionContext =
     Object.keys(terminalPanelBindings).length > 0 || storedContextWidgetIDs.length > 0
 
@@ -1789,7 +1811,15 @@ export function useAgentPanel(hostId: string, enabled = true) {
   const runApprovedExecutionPlan = useCallback(
     async (prompt: string, repoRoot: string, model?: string) => {
       const resolvedTarget = await resolveTerminalExecutionTarget()
-      const executionContext = createConversationContext({
+      const planningContext = createConversationContext({
+        actionSource: 'frontend.ai.sidebar.execute',
+        activeWidgetID: resolvedTarget.targetWidgetID,
+        includeActiveWidgetInSelection: true,
+        repoRoot,
+        targetConnectionID: resolvedTarget.targetConnectionID,
+        targetSession: resolvedTarget.targetSession,
+      })
+      const executionContext = createToolExecutionContext({
         actionSource: 'frontend.ai.sidebar.execute',
         activeWidgetID: resolvedTarget.targetWidgetID,
         includeActiveWidgetInSelection: true,
@@ -1802,7 +1832,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
         widget_id: resolvedTarget.targetWidgetID,
       }
       const plannedCommand = await planTerminalCommand({
-        context: executionContext,
+        context: planningContext,
         model,
         prompt,
         widget_id: resolvedTarget.targetWidgetID,
@@ -1864,7 +1894,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
 
       const explainResponse = await explainTerminalCommand({
         command,
-        context: executionContext,
+        context: planningContext,
         from_seq: resolvedTarget.baselineNextSeq,
         prompt,
         widget_id: resolvedTarget.targetWidgetID,
@@ -1880,6 +1910,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
     [
       applyConversationSnapshot,
       createConversationContext,
+      createToolExecutionContext,
       refreshConversationList,
       resolveTerminalExecutionTarget,
     ],

@@ -193,6 +193,17 @@ export async function fetchWorkspaceSnapshot(request: APIRequestContext) {
   )
 }
 
+export async function focusWorkspaceWidgetViaApi(request: APIRequestContext, widgetID: string) {
+  const response = await request.post(`${backendUrl}/api/v1/workspace/focus-widget`, {
+    data: {
+      widget_id: widgetID,
+    },
+    headers: authHeaders(),
+  })
+
+  expect(response.ok()).toBeTruthy()
+}
+
 export async function mkdirViaApi(request: APIRequestContext, path: string) {
   const response = await request.post(`${backendUrl}/api/v1/fs/mkdir`, {
     data: { path },

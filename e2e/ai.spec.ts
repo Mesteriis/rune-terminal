@@ -9,7 +9,9 @@ import {
   fetchAgentConversations,
   fetchAgentConversation,
   fetchAgentProviderCatalog,
+  focusWorkspaceWidgetViaApi,
   fetchTerminalSnapshot,
+  fetchWorkspaceSnapshot,
   renameAgentConversation as renameConversationViaApi,
   setActiveAgentProvider,
   updateAgentSettingsViaApi,
@@ -1100,5 +1102,165 @@ test('AI sidebar /run sends input into the active terminal instead of falling ba
   expect(streamRequests).toEqual([])
   expect(toolRequests.length).toBeGreaterThan(0)
   expect(explainRequests.length).toBeGreaterThan(0)
+  expect(pageErrors).toEqual([])
+})
+
+test('AI sidebar executes approved terminal prompts in the selected context widget instead of the active terminal', async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(180_000)
+
+  const conversation = await createConversationViaApi(request)
+  await activateAgentConversation(request, conversation.id)
+  await focusWorkspaceWidgetViaApi(request, 'term-side')
+
+  const prompt = 'Посмотри свободное место на pve'
+  const marker = `ai-context-terminal-${Date.now()}`
+  const plannedCommand = `printf '${marker}\\n'`
+  const streamRequests: string[] = []
+  const toolRequests: string[] = []
+  const pageErrors: string[] = []
+  let capturedPlanBody: Record<string, unknown> | null = null
+  let capturedExplainBody: Record<string, unknown> | null = null
+
+  page.on('request', (requestEvent) => {
+    const requestUrl = requestEvent.url()
+
+    if (requestUrl.endsWith('/api/v1/agent/conversation/messages/stream')) {
+      streamRequests.push(requestUrl)
+    }
+    if (requestUrl.endsWith('/api/v1/tools/execute')) {
+      toolRequests.push(requestUrl)
+    }
+  })
+  page.on('pageerror', (error) => {
+    pageErrors.push(error.message)
+  })
+
+  await page.route('**/api/v1/agent/terminal-commands/plan', async (route) => {
+    capturedPlanBody = route.request().postDataJSON() as Record<string, unknown>
+
+    await route.fulfill({
+      contentType: 'application/json',
+      json: {
+        command: plannedCommand,
+        summary: 'Check disk space in the selected shell context.',
+      },
+      status: 200,
+    })
+  })
+
+  await page.route('**/api/v1/agent/terminal-commands/explain', async (route) => {
+    capturedExplainBody = route.request().postDataJSON() as Record<string, unknown>
+    const activeConversation = await fetchAgentConversation(request)
+    const assistantMessage = {
+      content: `Executed \`${plannedCommand}\`.`,
+      created_at: new Date().toISOString(),
+      id: `msg-terminal-context-${Date.now()}`,
+      model: 'stub-model',
+      provider: 'stub',
+      role: 'assistant',
+      status: 'complete',
+    }
+
+    await route.fulfill({
+      contentType: 'application/json',
+      json: {
+        conversation: {
+          ...activeConversation,
+          messages: [...activeConversation.messages, assistantMessage],
+        },
+        output_excerpt: marker,
+      },
+      status: 200,
+    })
+  })
+
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  await expect
+    .poll(async () => {
+      const [mainSnapshot, sideSnapshot] = await Promise.all([
+        fetchTerminalSnapshot(request, 'term-main'),
+        fetchTerminalSnapshot(request, 'term-side'),
+      ])
+
+      return (
+        mainSnapshot.state.can_send_input === true &&
+        mainSnapshot.state.status === 'running' &&
+        sideSnapshot.state.can_send_input === true &&
+        sideSnapshot.state.status === 'running'
+      )
+    })
+    .toBe(true)
+
+  const baselineMainSnapshot = await fetchTerminalSnapshot(request, 'term-main')
+  const baselineSideSnapshot = await fetchTerminalSnapshot(request, 'term-side')
+  await expect
+    .poll(async () => {
+      const workspace = await fetchWorkspaceSnapshot(request)
+      return workspace.active_widget_id
+    })
+    .toBe('term-side')
+
+  await page.getByRole('button', { name: 'Toggle AI panel' }).click()
+  await expect(page.getByText('AI Rune Assistant')).toBeVisible()
+  await page.getByRole('button', { name: 'Composer options' }).click()
+  await expect(page.getByRole('dialog', { name: 'Context widgets' })).toBeVisible()
+  await page.getByRole('button', { name: 'All widgets' }).click()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('button', { name: 'Remove Ops Shell from request context' })).toBeVisible()
+  await page.getByRole('button', { name: 'Remove Ops Shell from request context' }).click()
+  await expect(page.getByRole('button', { name: 'Composer options' })).toContainText('Main Shell')
+  await expect(page.getByRole('button', { name: 'Remove Main Shell from request context' })).toBeVisible()
+
+  const composer = page.getByPlaceholder('Text Area')
+  await composer.fill(prompt)
+  await page.getByRole('button', { name: 'Send prompt' }).click()
+  await expect(page.getByRole('button', { name: 'Approve' })).toBeVisible()
+  await page.getByRole('button', { name: 'Approve' }).click({ force: true })
+
+  await expect
+    .poll(
+      async () => {
+        const snapshot = await fetchTerminalSnapshot(request, 'term-main')
+
+        return (
+          snapshot.next_seq > baselineMainSnapshot.next_seq &&
+          snapshot.chunks.some((chunk) => chunk.data.includes(marker))
+        )
+      },
+      { timeout: 30_000 },
+    )
+    .toBe(true)
+
+  const sideSnapshotAfter = await fetchTerminalSnapshot(request, 'term-side')
+
+  expect(sideSnapshotAfter.next_seq).toBe(baselineSideSnapshot.next_seq)
+  expect(sideSnapshotAfter.chunks.some((chunk) => chunk.data.includes(marker))).toBe(false)
+  expect(capturedPlanBody).toMatchObject({
+    prompt,
+    widget_id: 'term-main',
+    context: {
+      action_source: 'frontend.ai.sidebar.execute',
+      active_widget_id: 'term-main',
+      widget_context_enabled: true,
+      widget_ids: ['term-main'],
+    },
+  })
+  expect(capturedExplainBody).toMatchObject({
+    prompt,
+    widget_id: 'term-main',
+    context: {
+      action_source: 'frontend.ai.sidebar.execute',
+      active_widget_id: 'term-main',
+      widget_context_enabled: true,
+      widget_ids: ['term-main'],
+    },
+  })
+  expect(streamRequests).toEqual([])
+  expect(toolRequests.length).toBeGreaterThan(0)
   expect(pageErrors).toEqual([])
 })

@@ -52,6 +52,7 @@
     - keyboard navigation through filtered conversation results in the AI conversation navigator
     - live Claude provider routing with explicit `auth-required` handling when the local CLI is installed but not logged in
     - `/run printf ...` sending input into the selected terminal session without falling back to plain provider chat
+    - approved natural-language terminal execution routing into the explicitly selected AI context widget even when another terminal widget remains active in the workspace
 
 ## Current provider contract
 
@@ -126,6 +127,7 @@
   - the plan/approve UI remains frontend-owned
   - after approval the frontend requests a single-command plan from `POST /api/v1/agent/terminal-commands/plan`
   - the returned command is executed through `term.send_input` against the same explicit terminal target and then explained through the existing `/explain` route
+  - the `term.send_input` / `safety.confirm` toolruntime requests intentionally omit `widget_context_enabled` and `widget_ids`; those remain conversation/explain-only context fields and are no longer sent to `/api/v1/tools/execute`
   - this still is not broad provider-native tool-calling; it is a constrained terminal-command planning path over the existing runtime/tool contract
   - if the provider returns an invalid terminal plan payload, the route now fails fast with `502 terminal_command_plan_invalid`, and the UI surfaces that planner error instead of silently falling back to chat streaming
 - `widget_context_enabled` remains valid for conversation/explain routes, but is intentionally omitted from `POST /api/v1/tools/execute` because that transport contract does not accept it.
@@ -201,6 +203,8 @@
 - `npm --prefix frontend run test -- src/features/agent/model/interaction-flow.test.ts src/widgets/ai/ai-panel-widget.test.tsx`
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestPlanTerminalCommandReturnsRunnableCommandForExplicitTarget|TestPlanTerminalCommandReturnsRunnableCommand' -count=1`
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestPlanTerminalCommandRejectsInvalidProviderPlan|TestPlanTerminalCommandReturnsBadGatewayForInvalidProviderPlan' -count=1`
+- `node_modules/.bin/vitest run src/widgets/ai/ai-panel-widget.test.tsx --reporter=verbose`
+- `npm run test:ui -- --reporter=line e2e/ai.spec.ts --grep "selected context widget instead of the active terminal"`
 - `npm run build:frontend`
 - `npm run lint:frontend`
 

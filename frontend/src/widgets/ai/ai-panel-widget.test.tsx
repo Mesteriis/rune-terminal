@@ -2239,8 +2239,6 @@ describe('AiPanelWidget backend conversation path', () => {
             repo_root: '/Users/avm/projects/runa-terminal',
             target_connection_id: 'conn-pve',
             target_session: 'remote',
-            widget_ids: ['term-pve'],
-            widget_context_enabled: true,
           },
           input: {
             append_newline: true,
