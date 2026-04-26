@@ -6,6 +6,7 @@ import { useTerminalSession } from '@/features/terminal/model/use-terminal-sessi
 import { TerminalWidget } from '@/widgets/terminal/terminal-widget'
 
 const copySelectionMock = vi.fn(async () => undefined)
+const clearSearchMock = vi.fn(() => undefined)
 const clearViewportMock = vi.fn(() => undefined)
 const findNextMock = vi.fn((_query: string) => true)
 const findPreviousMock = vi.fn((_query: string) => true)
@@ -39,6 +40,7 @@ vi.mock('@/shared/ui/components/terminal-surface', async () => {
       },
       ref: React.ForwardedRef<{
         copySelection: () => Promise<void>
+        clearSearch: () => void
         findNext: (query: string) => boolean
         findPrevious: (query: string) => boolean
         focus: () => void
@@ -50,6 +52,7 @@ vi.mock('@/shared/ui/components/terminal-surface', async () => {
       }, [props])
 
       React.useImperativeHandle(ref, () => ({
+        clearSearch: clearSearchMock,
         clearViewport: clearViewportMock,
         copySelection: copySelectionMock,
         findNext: findNextMock,
@@ -182,5 +185,77 @@ describe('TerminalWidget', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close terminal search' }))
 
     expect(focusMock).toHaveBeenCalledTimes(1)
+    expect(clearSearchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('surfaces no-match search state and clears stale decorations on empty query', () => {
+    findNextMock.mockReturnValueOnce(false)
+
+    vi.mocked(useTerminalSession).mockReturnValue({
+      runtimeWidgetId: 'term-side',
+      sessionKey: 'term-side:1',
+      cwd: '/repo',
+      shellLabel: 'zsh',
+      connectionKind: 'local',
+      sessionState: 'running',
+      canSendInput: true,
+      canInterrupt: true,
+      isLoading: false,
+      isInterrupting: false,
+      isRestarting: false,
+      error: null,
+      statusDetail: 'Attached to local shell.',
+      outputChunks: [],
+      runtimeState: null,
+      interruptSession: vi.fn(),
+      sendInputChunk: vi.fn(),
+      restartSession: vi.fn(),
+    } as ReturnType<typeof useTerminalSession>)
+    vi.mocked(useTerminalPreferences).mockReturnValue({
+      errorMessage: null,
+      decreaseFontSize: vi.fn(),
+      decreaseLineHeight: vi.fn(),
+      cursorBlink: true,
+      cursorStyle: 'block',
+      fontSize: 13,
+      increaseFontSize: vi.fn(),
+      increaseLineHeight: vi.fn(),
+      increaseScrollback: vi.fn(),
+      isLoading: false,
+      isSaving: false,
+      lineHeight: 1.25,
+      refresh: vi.fn(async () => undefined),
+      resetScrollback: vi.fn(),
+      resetFontSize: vi.fn(),
+      resetLineHeight: vi.fn(),
+      resetCursorBlink: vi.fn(),
+      resetCursorStyle: vi.fn(),
+      resetThemeMode: vi.fn(),
+      scrollback: 5000,
+      themeMode: 'adaptive',
+      decreaseScrollback: vi.fn(),
+      updateCursorBlink: vi.fn(),
+      updateFontSize: vi.fn(),
+      updateLineHeight: vi.fn(),
+      updateCursorStyle: vi.fn(),
+      updateThemeMode: vi.fn(),
+    })
+
+    render(<TerminalWidget hostId="terminal" runtimeWidgetId="term-side" title="Workspace shell" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Toggle terminal search' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search terminal output' }), {
+      target: { value: 'missing' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Find next match' }))
+
+    expect(screen.getByLabelText('Terminal search results')).toHaveTextContent('No matches')
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search terminal output' }), {
+      target: { value: '' },
+    })
+
+    expect(clearSearchMock).toHaveBeenCalled()
+    expect(screen.getByLabelText('Terminal search results')).toHaveTextContent('Type query')
   })
 })

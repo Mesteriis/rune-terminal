@@ -70,6 +70,15 @@ export const terminalToolbarSearchInputStyle: React.CSSProperties = {
   caretColor: 'var(--runa-terminal-status-running, var(--color-accent-emerald-strong))',
 }
 
+export const terminalToolbarSearchStatusStyle: React.CSSProperties = {
+  color: 'var(--runa-terminal-text-muted, var(--color-text-muted))',
+  fontSize: 'var(--font-size-sm)',
+  lineHeight: 'var(--line-height-sm)',
+  minWidth: '4.6rem',
+  textAlign: 'right',
+  whiteSpace: 'nowrap',
+}
+
 export const terminalToolbarIconButtonStyle: React.CSSProperties = {
   minWidth: '24px',
   width: '24px',

@@ -81,4 +81,46 @@ describe('TerminalToolbar', () => {
     expect(onSearchPrevious).toHaveBeenCalledTimes(1)
     expect(onCloseSearch).toHaveBeenCalledTimes(1)
   })
+
+  it('renders terminal search result status from xterm search events', () => {
+    const { rerender } = render(
+      <TerminalToolbar
+        isSearchOpen
+        onClear={() => undefined}
+        onCloseSearch={() => undefined}
+        onCopy={() => undefined}
+        onJumpToLatest={() => undefined}
+        onPaste={() => undefined}
+        onSearchNext={() => undefined}
+        onSearchPrevious={() => undefined}
+        onSearchQueryChange={() => undefined}
+        onToggleSearch={() => undefined}
+        rendererMode="default"
+        searchQuery="needle"
+        searchResult={{ resultCount: 4, resultIndex: 1 }}
+      />,
+    )
+
+    expect(screen.getByLabelText('Terminal search results')).toHaveTextContent('2/4')
+
+    rerender(
+      <TerminalToolbar
+        isSearchOpen
+        onClear={() => undefined}
+        onCloseSearch={() => undefined}
+        onCopy={() => undefined}
+        onJumpToLatest={() => undefined}
+        onPaste={() => undefined}
+        onSearchNext={() => undefined}
+        onSearchPrevious={() => undefined}
+        onSearchQueryChange={() => undefined}
+        onToggleSearch={() => undefined}
+        rendererMode="default"
+        searchQuery="missing"
+        searchResult={{ resultCount: 0, resultIndex: -1 }}
+      />,
+    )
+
+    expect(screen.getByLabelText('Terminal search results')).toHaveTextContent('No matches')
+  })
 })

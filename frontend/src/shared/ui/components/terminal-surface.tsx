@@ -12,12 +12,18 @@ import type { TerminalSessionState } from '@/shared/ui/components/terminal-statu
 
 export type TerminalSurfaceHandle = {
   clearViewport: () => void
+  clearSearch: () => void
   copySelection: () => Promise<void>
   findNext: (query: string) => boolean
   findPrevious: (query: string) => boolean
   focus: () => void
   jumpToLatest: () => void
   pasteFromClipboard: () => Promise<void>
+}
+
+export type TerminalSearchResult = {
+  resultCount: number
+  resultIndex: number
 }
 
 export type TerminalSurfaceProps = {
@@ -33,6 +39,7 @@ export type TerminalSurfaceProps = {
   onInput?: (data: string) => void
   onRendererModeChange?: (mode: 'default' | 'webgl') => void
   onRequestSearch?: () => void
+  onSearchResultsChange?: (result: TerminalSearchResult) => void
   scrollback?: number
   themeClassTarget?: HTMLElement | null
   themeMode?: 'adaptive' | 'contrast'
@@ -221,6 +228,7 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
       onInput,
       onRendererModeChange,
       onRequestSearch,
+      onSearchResultsChange,
       scrollback = 5000,
       themeClassTarget = null,
       themeMode = 'adaptive',
@@ -236,6 +244,7 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
     const lastRenderedStatusMessageRef = useRef<string | null>(null)
     const statusMessageRef = useRef(statusMessage)
     const onInputRef = useRef(onInput)
+    const onSearchResultsChangeRef = useRef(onSearchResultsChange)
 
     useEffect(() => {
       statusMessageRef.current = statusMessage
@@ -244,6 +253,10 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
     useEffect(() => {
       onInputRef.current = onInput
     }, [onInput])
+
+    useEffect(() => {
+      onSearchResultsChangeRef.current = onSearchResultsChange
+    }, [onSearchResultsChange])
 
     useImperativeHandle(
       ref,
@@ -259,6 +272,9 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
           term.clear()
           lastWrittenChunkSeqRef.current = latestChunkSeq
           lastRenderedStatusMessageRef.current = statusMessageRef.current?.trim() || null
+        },
+        clearSearch: () => {
+          searchAddonRef.current?.clearDecorations()
         },
         copySelection: async () => {
           const term = termRef.current
@@ -387,6 +403,12 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
 
         onInputRef.current(data)
       })
+      const searchResultsDisposable = searchAddon.onDidChangeResults((result) => {
+        onSearchResultsChangeRef.current?.({
+          resultCount: result.resultCount,
+          resultIndex: result.resultIndex,
+        })
+      })
 
       const resizeObserver =
         typeof ResizeObserver === 'undefined'
@@ -429,6 +451,7 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
         resizeObserver?.disconnect()
         groupClassObserver?.disconnect()
         dataDisposable.dispose()
+        searchResultsDisposable.dispose()
         webglAddon?.dispose()
         fitAddonRef.current = null
         searchAddonRef.current = null

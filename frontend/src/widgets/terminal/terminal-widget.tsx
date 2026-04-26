@@ -6,7 +6,11 @@ import { useTerminalSession } from '@/features/terminal/model/use-terminal-sessi
 import { ClearBox, IconButton } from '@/shared/ui/components'
 import { RunaDomScopeProvider, useRunaDomAutoTagging } from '@/shared/ui/dom-id'
 import { TerminalStatusHeader } from '@/shared/ui/components/terminal-status-header'
-import { TerminalSurface, type TerminalSurfaceHandle } from '@/shared/ui/components/terminal-surface'
+import {
+  TerminalSurface,
+  type TerminalSearchResult,
+  type TerminalSurfaceHandle,
+} from '@/shared/ui/components/terminal-surface'
 import { TerminalToolbar } from '@/shared/ui/components/terminal-toolbar'
 import {
   terminalWidgetChromeStyle,
@@ -37,6 +41,7 @@ export function TerminalWidget({
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [rendererMode, setRendererMode] = useState<'default' | 'webgl'>('default')
   const [searchQuery, setSearchQuery] = useState('')
+  const [searchResult, setSearchResult] = useState<TerminalSearchResult | null>(null)
   const terminalSession = useTerminalSession({
     runtimeWidgetId,
     title,
@@ -55,16 +60,32 @@ export function TerminalWidget({
   }, [])
   const handleSearchNext = useCallback(() => {
     if (searchQuery.trim() === '') {
+      setSearchResult(null)
       return
     }
-    terminalSurfaceRef.current?.findNext(searchQuery)
+    const didFindMatch = terminalSurfaceRef.current?.findNext(searchQuery) ?? false
+    if (!didFindMatch) {
+      setSearchResult({ resultCount: 0, resultIndex: -1 })
+    }
   }, [searchQuery])
   const handleSearchPrevious = useCallback(() => {
     if (searchQuery.trim() === '') {
+      setSearchResult(null)
       return
     }
-    terminalSurfaceRef.current?.findPrevious(searchQuery)
+    const didFindMatch = terminalSurfaceRef.current?.findPrevious(searchQuery) ?? false
+    if (!didFindMatch) {
+      setSearchResult({ resultCount: 0, resultIndex: -1 })
+    }
   }, [searchQuery])
+  const handleSearchQueryChange = useCallback((value: string) => {
+    setSearchQuery(value)
+    setSearchResult(null)
+
+    if (value.trim() === '') {
+      terminalSurfaceRef.current?.clearSearch()
+    }
+  }, [])
   const handleOpenSearch = useCallback(() => {
     setIsSearchOpen(true)
   }, [])
@@ -73,6 +94,8 @@ export function TerminalWidget({
   }, [])
   const handleCloseSearch = useCallback(() => {
     setIsSearchOpen(false)
+    setSearchResult(null)
+    terminalSurfaceRef.current?.clearSearch()
     terminalSurfaceRef.current?.focus()
   }, [])
   const handleRestart = useCallback(() => {
@@ -182,10 +205,11 @@ export function TerminalWidget({
               onPaste={() => void handlePaste()}
               onSearchNext={handleSearchNext}
               onSearchPrevious={handleSearchPrevious}
-              onSearchQueryChange={setSearchQuery}
+              onSearchQueryChange={handleSearchQueryChange}
               onToggleSearch={handleToggleSearch}
               rendererMode={rendererMode}
               searchQuery={searchQuery}
+              searchResult={searchResult}
             />
           </ClearBox>
         </ClearBox>
@@ -199,6 +223,7 @@ export function TerminalWidget({
             onInput={terminalSession.canSendInput ? terminalSession.sendInputChunk : undefined}
             onRendererModeChange={setRendererMode}
             onRequestSearch={handleOpenSearch}
+            onSearchResultsChange={setSearchResult}
             outputChunks={terminalSession.outputChunks}
             ref={terminalSurfaceRef}
             scrollback={scrollback}

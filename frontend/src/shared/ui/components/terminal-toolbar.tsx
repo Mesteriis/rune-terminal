@@ -20,17 +20,20 @@ import {
   terminalToolbarRendererBadgeStyle,
   terminalToolbarRootStyle,
   terminalToolbarSearchInputStyle,
+  terminalToolbarSearchStatusStyle,
   terminalToolbarSectionStyle,
   terminalToolbarSearchWrapStyle,
   terminalToolbarTrailingClusterStyle,
 } from '@/shared/ui/components/terminal-toolbar.styles'
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { Box, Button, Input, Text } from '@/shared/ui/primitives'
+import type { TerminalSearchResult } from '@/shared/ui/components/terminal-surface'
 
 export type TerminalToolbarProps = {
   isSearchOpen: boolean
   rendererMode: 'default' | 'webgl'
   searchQuery: string
+  searchResult?: TerminalSearchResult | null
   onClear: () => void
   onCloseSearch: () => void
   onCopy: () => void
@@ -46,6 +49,7 @@ export function TerminalToolbar({
   isSearchOpen,
   rendererMode,
   searchQuery,
+  searchResult = null,
   onClear,
   onCloseSearch,
   onCopy,
@@ -57,6 +61,15 @@ export function TerminalToolbar({
   onToggleSearch,
 }: TerminalToolbarProps) {
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const trimmedSearchQuery = searchQuery.trim()
+  const searchStatusText =
+    trimmedSearchQuery === ''
+      ? 'Type query'
+      : !searchResult
+        ? 'Press Enter'
+        : searchResult.resultCount <= 0
+          ? 'No matches'
+          : `${Math.max(searchResult.resultIndex + 1, 1)}/${searchResult.resultCount}`
 
   useEffect(() => {
     if (isSearchOpen) {
@@ -160,6 +173,14 @@ export function TerminalToolbar({
                 runaComponent="terminal-toolbar-search-divider"
                 style={terminalToolbarDividerStyle}
               />
+              <Text
+                aria-label="Terminal search results"
+                aria-live="polite"
+                runaComponent="terminal-toolbar-search-status"
+                style={terminalToolbarSearchStatusStyle}
+              >
+                {searchStatusText}
+              </Text>
               <Button
                 aria-label="Find previous match"
                 onClick={onSearchPrevious}
