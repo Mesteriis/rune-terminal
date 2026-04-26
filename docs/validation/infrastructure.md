@@ -6,6 +6,7 @@
 - State: `PARTIAL` for CI wiring
 - Scope:
   - GitHub Actions workflow definition under `.github/workflows/ci.yml`
+  - Tauri desktop CSP configuration under `apps/desktop/src-tauri/tauri.conf.json`
   - frontend lint/test/build commands used by CI
   - Go test/build commands used by CI
   - Go `coverage.out` artifact generation in CI
@@ -18,6 +19,7 @@
 - `npm run lint:frontend`
 - `npm run test:frontend`
 - `npm run build:frontend`
+- `python3 -m json.tool apps/desktop/src-tauri/tauri.conf.json >/dev/null`
 - `./scripts/go.sh test ./cmd/... ./core/... ./internal/... -coverprofile=/tmp/rterm-go-coverage.out`
 - `./scripts/go.sh build ./cmd/... ./core/... ./internal/...`
 - `npm run tauri:check`
@@ -29,6 +31,7 @@
 - GitHub-hosted workflow execution cannot be observed until the branch is pushed.
 - The secret scan job uses the hosted `gitleaks/gitleaks-action@v2` action; local execution of that hosted action is not claimed here.
 - Native-window automation remains outside the CI workflow.
+- The CSP slice is validated by config parse/build checks only; it does not claim a fresh interactive `npm run tauri:dev` smoke.
 - `npm run tauri:check` passes locally but still emits the existing Rust
   dead-code warning for `reject_foreign_watcher_listener`.
 

@@ -234,6 +234,11 @@ It is intentionally operational, not narrative.
   - loopback browser origins (`localhost`, `127.0.0.1`, `::1`) are allowed for the dev/browser path
   - Tauri runtime origins (`tauri://localhost`, `http://tauri.localhost`, `https://tauri.localhost`) are allowed for the desktop path
   - other origins do not receive cross-origin access
+- Tauri desktop config now sets an explicit CSP instead of `csp: null`:
+  - script execution is limited to `self`
+  - style execution allows `self` plus `unsafe-inline` for the current React inline-style surface
+  - image/font sources are local-first with `asset:`, `http://asset.localhost`, `data:` and `blob:` allowances where the current asset path needs them
+  - network connections are limited to `self`, Tauri IPC, and loopback HTTP/WebSocket endpoints for the local core and dev server
 
 ## Approval lifecycle contract
 

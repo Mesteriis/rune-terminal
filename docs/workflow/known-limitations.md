@@ -98,8 +98,9 @@ capability.
 - `.github/workflows/ci.yml` now defines frontend, Go, desktop-check and
   secret-scan jobs, but the hosted GitHub Actions run is not verified until
   the branch is pushed
-- Tauri shell ships with `csp: null`; this must be tightened before any
-  public release
+- Tauri shell now has an explicit local-runtime CSP instead of `csp: null`,
+  but this slice only validates config/build checks and does not claim a fresh
+  interactive desktop launch smoke
 - SSE terminal stream accepts the auth token via query parameter
   (ADR 0018 MVP tradeoff); migration to header-based auth is planned
 

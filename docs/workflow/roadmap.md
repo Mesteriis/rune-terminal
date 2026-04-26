@@ -64,7 +64,7 @@ from any previous fork are historical inspiration only.
 | ---------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Sidecar spawn + ready file   | `NOW`  | `apps/desktop/src-tauri/src/main.rs`                                                                                                               |
 | Auth token via env           | `NOW`  | `RTERM_AUTH_TOKEN`, 40-char alphanumeric                                                                                                           |
-| CSP hardening                | `NEXT` | `csp: null` must be replaced before any public release                                                                                             |
+| CSP hardening                | `NOW`  | Tauri config uses an explicit local-runtime CSP instead of `csp: null`                                                                             |
 | Graceful shutdown of sidecar | `NOW`  | explicit handling is live and the shutdown policy path now has targeted Rust coverage; broader desktop crash recovery stays in the hardening track |
 
 ### 5. Plugins
