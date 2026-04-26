@@ -63,6 +63,9 @@ progress) is preserved at
 | `docs/architecture/adr/0025-narrow-openai-compatible-source-reintroduction.md` | Narrow OpenAI-compatible source reintroduction |
 | `docs/architecture/adr/0026-conversation-threads-and-provider-session-persistence.md` | Conversation threads and provider session persistence |
 | `docs/architecture/adr/0027-plugin-process-permission-boundary.md` | Plugin process permission boundary |
+| `docs/architecture/adr/0028-remote-breadth-v2.md` | Remote breadth v2 |
+| `docs/architecture/adr/0029-remote-files-domain.md` | Remote files domain |
+| `docs/architecture/adr/0030-plugin-distribution-boundary.md` | Plugin distribution boundary |
 
 ## Execution
 
@@ -110,6 +113,7 @@ progress) is preserved at
 | `docs/workflow/roadmap.md` | Current roadmap (short, pre-release) |
 | `docs/workflow/known-limitations.md` | Known limitations, honest gap list |
 | `docs/workflow/remaining-clone-plan.md` | Ordered implementation plan for remaining TideTerm-derived gaps |
+| `docs/workflow/tideterm-residual-decisions.md` | Product decisions for remaining TideTerm-specific residual surfaces |
 | `docs/workflow/operator-workflow.md` | Operator-facing workflow |
 | `docs/workflow/agent-modes.md` | Agent modes |
 | `docs/workflow/system-prompts.md` | System prompt profiles |

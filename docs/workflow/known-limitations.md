@@ -63,11 +63,14 @@ capability.
 - broad builder / proxy / preview-zoo surfaces
 - broad settings universe
 - advanced SSH auth / topology (proxy jump, richer auth negotiation)
+- full remote files domain (connection-scoped browse/preview/edit) before
+  ADR 0029 lands
 - managed attachment storage / import and rich attachment preview UX; current active path is queued local file references from Files -> AI composer plus transcript chips
 - fine-grained token streaming for CLI-backed chat
   (the backend conversation stream currently emits the completed CLI
   response as one SSE text delta)
-- plugin marketplace / discovery UX
+- broad online plugin marketplace / discovery UX; ADR 0030 keeps only a
+  narrower local catalog/import direction in scope
 - Windows-first support
 
 ## Partial / rough today
@@ -82,6 +85,8 @@ capability.
 - AI command flow supports explicit command grammar only (`/run` and
   `run:`), not broad natural-language execution
 - backend AI routing is intentionally narrow, not broad: the active provider kinds are local Codex CLI, local Claude Code CLI, and one explicit OpenAI-compatible HTTP source kind; `ollama`, proxy routing, and broader API-key/provider universes are not active runtime paths
+- TideTerm-style WaveProxy is not part of the active product direction;
+  see `docs/workflow/tideterm-residual-decisions.md`
 - backend AI conversations are now persisted as explicit DB-backed threads with per-conversation CLI session continuity and persisted per-conversation request-context selection (`widget_context_enabled` plus explicit `widget_ids`), and the shell navigator now supports server-backed scope/query filtering plus active-thread rename/archive/restore/delete while preserving the current archive-management filter state across row actions; conversation management is still intentionally narrow in one important way: there is still no multi-panel conversation UX
 - CLI provider execution is chat-focused and does not yet integrate provider-native tool calls with `core/toolruntime` approval/audit; Codex CLI and Claude Code CLI still emit buffered chat output through the SSE route, while the OpenAI-compatible HTTP source now streams text deltas from provider SSE but does not stream reasoning/tool-call deltas
 - the AI composer now exposes a request-scoped `Cancel response` control for active chat streams, but there is still no separate durable backend job cancellation queue for already-detached provider work

@@ -2,10 +2,17 @@
 
 Date: `2026-04-26`
 
-This plan covers the remaining `Partially transferred` and `Blocked`
-slices from [../parity/clone-status-matrix.md](../parity/clone-status-matrix.md).
+This plan covers the remaining `Partially transferred`, `Planned`, and
+decision-driven residual slices from
+[../parity/clone-status-matrix.md](../parity/clone-status-matrix.md).
 Its purpose is to remove ad-hoc "blocked forever" tracking and replace it
 with an ordered implementation program.
+
+Phase status:
+
+- `Phase 0` is now recorded through ADR 0028, ADR 0029, ADR 0030, and
+  [tideterm-residual-decisions.md](./tideterm-residual-decisions.md).
+- Later phases remain implementation work.
 
 ## Success condition
 
@@ -307,12 +314,15 @@ Validation:
 | Settings/help/trust/secret-shield utility shell | `1` | `Transferred` |
 | Remote SSH profile lifecycle | `4` | `Transferred` |
 | `.ssh/config` import | `4` | `Transferred` |
-| Advanced remote breadth | `0`, `5` | `Transferred` or `Not carried forward` per Phase 0 decision |
-| Remote fileshare surfaces | `0`, `6` | `Transferred` or `Not carried forward` per Phase 0 decision |
+| Advanced remote breadth | `5` | `Transferred` with WSL still optional unless platform scope changes |
+| Remote fileshare surfaces | `6` | `Transferred` |
 | External MCP onboarding breadth | `7` | `Transferred` |
-| Plugin discovery and marketplace UX | `0`, `8` | `Transferred` or narrower `catalog-only` replacement if chosen in Phase 0 |
+| Plugin catalog and install UX | `8` | `Transferred` |
+| Online plugin marketplace | `0` | `Not carried forward` by ADR 0030 |
 | Shell chrome and terminal advanced affordances | `1`, `5` | `Transferred` |
-| Tide-specific misc surfaces | `0`, `9` | explicit `Implemented` or `Not carried forward` |
+| Window title rules | `9` | `Implemented` as a narrow runtime-backed surface or explicitly retired |
+| Language switch surface | `0` | `Not carried forward` unless localization becomes a first-class product requirement |
+| WaveProxy | `0` | `Not carried forward` unless a new transport/infrastructure ADR reopens it |
 
 ## Recommended implementation order
 

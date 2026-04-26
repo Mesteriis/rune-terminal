@@ -29,7 +29,7 @@
 | Tool runtime        | `NOW`   | approval state machine, audit hooks                                                                               |
 | AI provider backend | `NOW`   | backend-owned provider catalog with Codex CLI, Claude Code CLI, and one narrow OpenAI-compatible HTTP source kind |
 | Plugin runtime      | `NOW`   | `rterm.plugin.v1`; manifest tool exposure plus capability allow-list validation                                   |
-| Remote / SSH        | `LATER` | ADR 0019, narrow daily-driver path only                                                                           |
+| Remote / SSH        | `LATER` | ADR 0019 is the active base; ADR 0028 records later remote breadth v2 on top of the current backend-owned model |
 | MCP integration     | `NOW`   | explicit registration/lifecycle/invoke runtime is active; broad discovery remains deferred                         |
 
 ### 2. Transport (Go ↔ Tauri ↔ Frontend)
@@ -77,6 +77,7 @@ from any previous fork are historical inspiration only.
 | Non-Go reference (Python/Node)      | `NOW`   | `plugins/python_reference/plugin.py` proves language-neutrality through the existing runtime |
 | Capability declaration in handshake | `NOW`   | plugin-requested resources are checked against the bound allow-list |
 | Sandbox / permission model doc      | `NOW`   | ADR 0027 + SECURITY note; no OS sandbox claimed |
+| Local catalog / install UX          | `LATER` | ADR 0030 accepts local catalog/import flows; broad online marketplace remains out of scope |
 
 ### 6. Infrastructure
 
@@ -95,7 +96,7 @@ from any previous fork are historical inspiration only.
 - standalone TideTerm-style proxy server UI/runtime and internal AI proxy routing
 - advanced SSH auth / topology beyond the narrow `.ssh/config` import path
 - Windows-first support
-- plugin marketplace / discovery UX
+- broad online plugin marketplace / discovery UX
 
 ## How to update this roadmap
 

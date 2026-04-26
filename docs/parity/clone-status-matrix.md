@@ -21,19 +21,21 @@ Status legend:
 - `Transferred` — user-visible behavior is present on the active `rterm` path.
 - `Partially transferred` — the core path exists, but breadth, UX density,
   or supporting subflows are still narrower than TideTerm.
-- `Blocked` — not just "not done": this area currently needs a new
-  runtime/domain slice, or is explicitly outside the active product
-  boundary.
+- `Planned` — a repository-local decision now exists and the remaining work
+  is queued as an implementation phase instead of a vague blocker.
 - `Exceeds original` — the TideTerm baseline is covered, and the current
   `rterm` path is already stricter or more capable in ways that matter to
   runtime correctness.
+- `Not carried forward` — the old TideTerm surface was reviewed and is not
+  part of the active `rterm` product direction.
 
 Summary by grouped slices:
 
 - `Exceeds original`: `4`
 - `Transferred`: `3`
 - `Partially transferred`: `7`
-- `Blocked`: `4`
+- `Planned`: `4`
+- `Not carried forward`: `3`
 
 ## Matrix
 
@@ -49,20 +51,22 @@ Summary by grouped slices:
 | Settings, help, trust, and secret-shield utility shell | `Partially transferred` | Active settings now expose overview plus real `AI / Terminal / Remote / MCP / Commander` sections, trusted tools, secret shielding, and help entry points. | The shell is still lighter than TideTerm in overlay density, framing, and whole-surface polish. |
 | Remote SSH profile lifecycle | `Partially transferred` | `rterm` supports saved profile create/edit/delete/list, preflight check, default-target selection, and open-shell actions from the active settings shell. | Daily-driver breadth is improved, but the slice is still intentionally narrower than TideTerm's broader remote controller surface. |
 | `.ssh/config` import | `Partially transferred` | There is a narrow one-way import for direct `Host` / `HostName` / `User` / `Port` / `IdentityFile` profile fields. | `Match`, `Include`, wildcard expansion, proxy chaining, keychain/passphrase workflows, and reverse sync are still absent. |
-| Advanced remote breadth: tmux resume, WSL, richer auth/topology, `wsh` helper stack | `Blocked` | The active remote model is intentionally `local + ssh` with explicit profile launch semantics. | TideTerm's tmux manager, WSL path, richer auth/proxy topology, and `wsh` helper/CLI stack need a different remote domain/runtime breadth that is outside the current product boundary. |
-| Remote fileshare surfaces | `Blocked` | The active shell can preserve remote path/context when opening files blocks from terminal context, but it does not implement TideTerm-style remote fileshare widgets. | TideTerm's remote file browsing and preview/edit stack is not present in the new core and would require a dedicated remote-files domain slice. |
+| Advanced remote breadth: session groups, tmux resume, richer SSH topology, `wsh` replacement | `Planned` | The current remote foundation stays `local + ssh`, with saved profiles and explicit session launch semantics. ADR 0028 records remote breadth v2 as a later extension of that same backend-owned model. | Multi-session terminal groups, tmux resume/session management, and richer auth/topology move to Phases `4-5`; WSL is explicitly optional and only reopens with broader platform scope. |
+| Remote fileshare surfaces | `Planned` | The active shell can preserve remote path/context when opening files blocks from terminal state, but the files/preview/edit path remains local-first today. ADR 0029 records a dedicated remote files domain instead of reviving TideTerm fileshare residue. | Connection-aware list/read/stat/write contracts plus remote files widgets move to Phase `6`. |
 | MCP lifecycle, invoke, and normalized outputs | `Exceeds original` | Active settings can list/register/get/edit/delete/start/stop/restart/enable/disable MCP servers; invoke is explicit; downstream data is bounded through `mcp.normalized.v1`. | This already goes beyond the original manager surface because `rterm` keeps lifecycle strict, output bounded, and AI handoff explicit instead of implicit. |
 | External MCP onboarding breadth | `Partially transferred` | Real remote MCP endpoint registration with optional headers is live in settings and validated end-to-end. | Broad discovery, catalog, and import workflows for third-party MCP providers are still intentionally narrow. |
 | Plugin runtime boundary | `Exceeds original` | Side-process plugin runtime, manifest handshake, exposed-tool checks, capability allow-lists, normalized failure taxonomy, and core-owned policy/audit invariants are all live, with Go and Python reference plugins validated. | The core/plugin boundary is already stricter than the old baseline and is no longer frontend-coupled. |
-| Plugin discovery and marketplace UX | `Blocked` | Local reference plugins are supported and validated. | Broader install/discover/manage marketplace behavior is still explicitly out of scope for this phase. |
+| Plugin catalog and install UX | `Planned` | Local reference plugins are supported and validated, and ADR 0030 now defines the next step as backend-owned local catalog/import/install flows rather than hard-coded references forever. | Catalog/import/install management moves to Phase `8`. |
+| Online plugin marketplace | `Not carried forward` | The current plugin trust model is explicit local-code execution with runtime checks, not a sandboxed marketplace surface. | ADR 0030 explicitly declines a broad online marketplace in this phase. |
 | Shell chrome and terminal advanced affordances | `Partially transferred` | The shell is now compact and Tide-recognizable, terminal search is live with count/no-match state, and pane/header chrome has been tightened. | Remaining gaps are visual density, status-badge weight, whole-window composition, and the missing multi-session terminal sidebar. |
-| Tide-specific misc surfaces: language switch, window title manager, WaveProxy | `Blocked` | These old TideTerm surfaces are not part of the active `rterm` product path. | They either rely on legacy UI residue or on product directions that the current roadmap explicitly does not reopen. |
+| Window title rules | `Planned` | A narrow runtime-backed title surface still fits the active shell, but the old compat-only title manager is not the implementation path. | [tideterm-residual-decisions.md](../workflow/tideterm-residual-decisions.md) keeps this in scope for a later narrow slice (`Phase 9`). |
+| Language switch surface | `Not carried forward` | The old TideTerm language toggle lives in legacy UI residue and is not part of the active frontend rewrite. | It reopens only if the active product takes on a real localization program. |
+| WaveProxy | `Not carried forward` | The active extension path is explicit CLI providers, one narrow OpenAI-compatible HTTP source, MCP, and plugins. | [tideterm-residual-decisions.md](../workflow/tideterm-residual-decisions.md) explicitly retires TideTerm-style WaveProxy semantics from the current clone scope. |
 
 ## Notes on interpretation
 
-- `Blocked` here does not mean "impossible". It means "not reachable by
-  continuing the current narrow slices without opening a new product/domain
-  decision".
+- The old vague `Blocked` bucket has been replaced with either `Planned`
+  or `Not carried forward`.
 - Several slices marked `Partially transferred` already have stronger core
   correctness than TideTerm, but still remain visually or functionally
   narrower in breadth.
