@@ -14,6 +14,7 @@
   - backend-backed search/filter inside the AI conversation navigator through explicit `query` / `scope` list params
   - keyboard navigation inside the searchable AI conversation navigator through `aria-activedescendant` plus `Enter` selection
   - backend-owned agent provider catalog
+  - backend-owned provider gateway telemetry over the active conversation/provider route: recent run history, health status, and latency summaries persisted in `runtime.db`
   - active conversation provider resolution
   - frontend AI/provider settings surfaces
   - runtime-backed AI composer submit-shortcut preference (`Enter` vs `Ctrl/Cmd+Enter`) through `GET/PUT /api/v1/settings/agent`
@@ -51,6 +52,7 @@
     - settings navigation for the dedicated `AI / Composer` section
     - live Codex CLI chat request/response through the real backend conversation route
     - mocked Codex CLI streaming provider wired through the real backend conversation route, including CLI session continuity plus streamed assistant completion
+    - provider settings gateway telemetry after a mocked Codex run, including visible health/latency state plus recent provider activity rows
     - explicit widget-context selection in the composer and `widget_ids` propagation into the stream request body
     - persisted per-conversation widget-context restore across conversation activation and reload
     - explicit stale-widget repair flow that rewrites persisted `widget_ids` to the still-valid workspace subset
@@ -88,6 +90,11 @@
   - `claude`: local Claude Code CLI through `claude -p`
   - `openai-compatible`: operator-supplied HTTP source using `/v1/models` and `/v1/chat/completions`
 - The active runtime still does not include `ollama`, the earlier internal AI proxy draft, or a broad provider/API-key universe.
+- The active provider settings shell now also exposes a backend-owned provider gateway surface through `GET /api/v1/agent/providers/gateway`:
+  - recent provider run history persisted in `runtime.db`
+  - per-provider health summary derived from backend run truth
+  - latency signals (`average_duration_ms`, `last_duration_ms`)
+  - last-status / last-error visibility for operator diagnosis without reopening a standalone proxy stack
 - Unsupported legacy provider records are filtered during agent-state normalization. If filtering leaves no providers, the store recreates the default local CLI providers.
 - The provider catalog route returns `supported_kinds: ["codex", "claude", "openai-compatible"]`.
   - The AI composer toolbar now consumes that backend-owned catalog directly:
@@ -180,6 +187,7 @@
 - `./scripts/go.sh test ./core/agent ./core/app ./core/conversation ./core/transport/httpapi`
 - `npm --prefix frontend run test -- src/features/agent/api/client.test.ts src/widgets/ai/ai-panel-header-widget.test.tsx src/widgets/ai/ai-panel-widget.test.tsx`
 - `npm --prefix frontend run test -- src/features/agent/api/client.test.ts src/features/agent/api/provider-client.test.ts src/features/agent/model/provider-settings-draft.test.ts src/widgets/ai/ai-panel-widget.test.tsx`
+- `npm --prefix frontend run test -- src/features/agent/api/provider-client.test.ts src/widgets/settings/agent-provider-settings-widget.test.tsx --reporter=verbose`
 - `npm --prefix frontend run test -- src/shared/api/workspace.test.ts src/features/agent/api/client.test.ts src/widgets/ai/ai-panel-widget.test.tsx`
 - `npm --prefix frontend run test -- src/features/agent/api/client.test.ts src/widgets/ai/ai-panel-header-widget.test.tsx src/widgets/ai/ai-panel-widget.test.tsx`
 - `npm --prefix frontend run test -- src/features/agent/model/use-ai-composer-preferences.test.tsx src/widgets/ai/ai-composer-widget.test.tsx src/widgets/ai/ai-panel-widget.test.tsx`
@@ -189,6 +197,8 @@
 - `npm --prefix frontend run lint:active`
 - `npm run test:ui -- --reporter=line`
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts`
+- `npm run test:ui -- --reporter=line e2e/ai.spec.ts --grep "AI provider settings show gateway telemetry after a mocked Codex run"`
+- `./scripts/go.sh test ./core/providergateway ./core/app ./core/transport/httpapi -run 'TestStore|TestProviderGatewaySnapshotReturnsRecentRunsAndStats' -count=1`
 - `./scripts/go.sh test ./core/agent ./core/app ./core/transport/httpapi`
 - `npm --prefix frontend run test -- src/shared/api/agent-settings.test.ts src/features/agent/model/use-ai-composer-preferences.test.tsx src/widgets/ai/ai-composer-widget.test.tsx`
 - `npm --prefix frontend run lint:active`

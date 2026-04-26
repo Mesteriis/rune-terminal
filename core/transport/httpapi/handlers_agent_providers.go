@@ -88,6 +88,15 @@ func (api *API) handleProviderCatalog(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, api.runtime.ProviderCatalog())
 }
 
+func (api *API) handleProviderGatewaySnapshot(w http.ResponseWriter, r *http.Request) {
+	snapshot, err := api.runtime.ProviderGatewaySnapshot(r.Context())
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, snapshot)
+}
+
 func (api *API) handleCreateProvider(w http.ResponseWriter, r *http.Request) {
 	var payload createProviderPayload
 	if err := decodeJSON(r, &payload); err != nil {

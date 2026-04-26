@@ -52,11 +52,11 @@ func (r *Runtime) PlanTerminalCommand(
 		return PlanTerminalCommandResult{}, err
 	}
 
-	provider, normalizedModel, err := r.resolveConversationProviderForModel(request.Model)
+	binding, err := r.resolveConversationProviderBindingForModel(request.Model)
 	if err != nil {
 		return PlanTerminalCommandResult{}, err
 	}
-	if provider == nil {
+	if binding.Provider == nil {
 		return PlanTerminalCommandResult{}, fmt.Errorf("conversation provider is not available")
 	}
 
@@ -66,9 +66,9 @@ func (r *Runtime) PlanTerminalCommand(
 	}
 
 	systemPrompt := strings.TrimSpace(selection.EffectivePrompt() + "\n\n" + buildConversationContextBlock(r, conversationContext))
-	completion, _, err := provider.Complete(ctx, conversation.CompletionRequest{
+	completion, _, err := binding.Provider.Complete(ctx, conversation.CompletionRequest{
 		SystemPrompt: systemPrompt,
-		Model:        normalizedModel,
+		Model:        binding.Model,
 		Messages: []conversation.ChatMessage{
 			{
 				Role: conversation.RoleUser,

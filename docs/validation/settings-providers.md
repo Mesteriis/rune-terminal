@@ -2,10 +2,11 @@
 
 ## Last verified state
 
-- Date: `2026-04-24`
+- Date: `2026-04-26`
 - State: `VERIFIED`
 - Scope:
   - backend-owned AI provider catalog and active-provider resolution
+  - backend-owned provider gateway telemetry and recent-run history
   - narrow provider runtime for `codex`, `claude`, and `openai-compatible`
   - frontend settings provider client/draft helpers and TypeScript surface
   - browser-level Playwright validation for the provider/settings surfaces plus AI-toolbar provider/model switching under the split local dev path
@@ -15,8 +16,11 @@
 - `go test ./core/agent ./core/conversation ./core/app ./core/transport/httpapi`
 - `go test ./core/...`
 - `npm --prefix frontend run test -- src/features/agent/api/provider-client.test.ts src/features/agent/model/provider-settings-draft.test.ts src/widgets/ai/ai-panel-widget.test.tsx`
+- `npm --prefix frontend run test -- src/features/agent/api/provider-client.test.ts src/widgets/settings/agent-provider-settings-widget.test.tsx --reporter=verbose`
 - `npm --prefix frontend run lint:active`
 - `npm run test:ui -- --reporter=line`
+- `npm run test:ui -- --reporter=line e2e/ai.spec.ts --grep "AI provider settings show gateway telemetry after a mocked Codex run"`
+- `./scripts/go.sh test ./core/providergateway ./core/app ./core/transport/httpapi -run 'TestStore|TestProviderGatewaySnapshotReturnsRecentRunsAndStats' -count=1`
 - `python3 -m py_compile scripts/validate_workspace_navigation.py scripts/validate_operator_workflow.py`
 - `python3 scripts/validate_operator_workflow.py`
 - `python3 scripts/validate_workspace_navigation.py`
@@ -65,6 +69,11 @@
   - command + model fields for CLI providers
   - base URL + model fields for the OpenAI-compatible provider
 - Backend CLI command availability is surfaced through `status_state`, `status_message`, and `resolved_binary`.
+- The same settings shell now also consumes `GET /api/v1/agent/providers/gateway`:
+  - per-provider recent run totals
+  - health status derived from backend run truth
+  - average and last latency
+  - recent activity rows with request mode, model, duration, and last error
 - CLI auth state is also surfaced through the same provider view payload:
   - `ready` when the binary is present and authenticated
   - `auth-required` when the binary is present but local login is missing
@@ -93,4 +102,5 @@
   - successful live Codex chat on the product default model
   - successful live OpenAI-compatible HTTP chat through the toolbar-selected LAN source
   - Claude provider routing plus the `auth-required` UI path when the local CLI is installed but not logged in
+  - provider settings gateway telemetry after a mocked Codex run
 - Browser validation was rerun through the split local dev path, and a fresh `npm run tauri:dev` desktop smoke was also run in this pass.

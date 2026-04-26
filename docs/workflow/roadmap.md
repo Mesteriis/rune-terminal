@@ -27,7 +27,7 @@
 | Terminal service    | `NOW`   | pty sessions, SSE stream, buffered chunks                                                                         |
 | Policy pipeline     | `NOW`   | five stages (ADR 0015); tests per stage needed                                                                    |
 | Tool runtime        | `NOW`   | approval state machine, audit hooks                                                                               |
-| AI provider backend | `NOW`   | backend-owned provider catalog with Codex CLI, Claude Code CLI, and one narrow OpenAI-compatible HTTP source kind |
+| AI provider backend | `NOW`   | backend-owned provider catalog with Codex CLI, Claude Code CLI, and one narrow OpenAI-compatible HTTP source kind; recent provider-run gateway telemetry is now persisted and surfaced in settings |
 | Plugin runtime      | `NOW`   | `rterm.plugin.v1`; manifest tool exposure plus capability allow-list validation                                   |
 | Remote / SSH        | `LATER` | ADR 0019 is the active base; ADR 0028 records later remote breadth v2 on top of the current backend-owned model |
 | MCP integration     | `NOW`   | explicit registration/lifecycle/invoke runtime is active; bounded template/probe onboarding is live; broad marketplace-style discovery remains deferred |

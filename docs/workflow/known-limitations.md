@@ -89,7 +89,7 @@ capability.
 - AI command flow now supports explicit `/run` grammar plus approved
   terminal-context command planning for narrow natural-language terminal
   requests, but it is still not broad provider-native tool execution
-- backend AI routing is intentionally narrow, not broad: the active provider kinds are local Codex CLI, local Claude Code CLI, and one explicit OpenAI-compatible HTTP source kind; `ollama`, proxy routing, and broader API-key/provider universes are not active runtime paths
+- backend AI routing is intentionally narrow, not broad: the active provider kinds are local Codex CLI, local Claude Code CLI, and one explicit OpenAI-compatible HTTP source kind; the new provider-gateway telemetry surface now records recent run history, health, and latency, but `ollama`, broad proxy routing, and wider API-key/provider universes are still not active runtime paths
 - TideTerm-style WaveProxy is not part of the active product direction;
   see `docs/workflow/tideterm-residual-decisions.md`
 - backend AI conversations are now persisted as explicit DB-backed threads with per-conversation CLI session continuity and persisted per-conversation request-context selection (`widget_context_enabled` plus explicit `widget_ids`), and the shell navigator now supports server-backed scope/query filtering plus active-thread rename/archive/restore/delete while preserving the current archive-management filter state across row actions; conversation management is still intentionally narrow in one important way: there is still no multi-panel conversation UX

@@ -15,6 +15,7 @@ import (
 	"github.com/Mesteriis/rune-terminal/core/execution"
 	"github.com/Mesteriis/rune-terminal/core/plugins"
 	"github.com/Mesteriis/rune-terminal/core/policy"
+	"github.com/Mesteriis/rune-terminal/core/providergateway"
 	"github.com/Mesteriis/rune-terminal/core/tasks"
 	"github.com/Mesteriis/rune-terminal/core/terminal"
 	"github.com/Mesteriis/rune-terminal/core/toolruntime"
@@ -36,6 +37,7 @@ type Runtime struct {
 	Connections                 *connections.Service
 	Agent                       *agent.Store
 	Conversation                *conversation.Service
+	ProviderGateway             *providergateway.Store
 	Execution                   *execution.Service
 	Policy                      *policy.Store
 	Audit                       *audit.Log
@@ -141,6 +143,11 @@ func NewRuntime(repoRoot string, stateDir string) (*Runtime, error) {
 		return nil, err
 	}
 	runtime.AgentComposerPreferences = agentComposerPreferences
+	providerGateway, err := providergateway.NewStore(context.Background(), dbConn)
+	if err != nil {
+		return nil, err
+	}
+	runtime.ProviderGateway = providerGateway
 	runtime.MCP = plugins.NewMCPRuntime(nil, nil, newExternalMCPInvoker(runtime.Plugins, repoRoot))
 	runtime.Executor = toolruntime.NewExecutor(
 		runtime.Registry,

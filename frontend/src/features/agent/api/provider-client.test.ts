@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   discoverAgentProviderModels,
   fetchAgentProviderCatalog,
+  fetchAgentProviderGatewaySnapshot,
   updateAgentProvider,
 } from '@/features/agent/api/provider-client'
 import { resetRuntimeContextCacheForTests } from '@/shared/api/runtime'
@@ -74,6 +75,98 @@ describe('agent provider client', () => {
       supported_kinds: ['codex', 'claude', 'openai-compatible'],
     })
     expect(fetchMock.mock.calls[1]?.[0]).toBe('http://127.0.0.1:8090/api/v1/agent/providers')
+  })
+
+  it('loads provider gateway telemetry from the backend contract', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          generated_at: '2026-04-26T10:20:00Z',
+          providers: [
+            {
+              provider_id: 'codex-cli',
+              provider_kind: 'codex',
+              display_name: 'Codex CLI',
+              enabled: true,
+              active: true,
+              total_runs: 4,
+              succeeded_runs: 3,
+              failed_runs: 1,
+              cancelled_runs: 0,
+              average_duration_ms: 420,
+              last_duration_ms: 380,
+              last_status: 'succeeded',
+              last_started_at: '2026-04-26T10:19:00Z',
+              last_completed_at: '2026-04-26T10:19:00.380Z',
+            },
+          ],
+          recent_runs: [
+            {
+              id: 'provider-run-1',
+              provider_id: 'codex-cli',
+              provider_kind: 'codex',
+              provider_display_name: 'Codex CLI',
+              request_mode: 'stream',
+              model: 'gpt-5.4',
+              conversation_id: 'conv-1',
+              status: 'succeeded',
+              duration_ms: 380,
+              started_at: '2026-04-26T10:19:00Z',
+              completed_at: '2026-04-26T10:19:00.380Z',
+            },
+          ],
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(fetchAgentProviderGatewaySnapshot()).resolves.toEqual({
+      generated_at: '2026-04-26T10:20:00Z',
+      providers: [
+        {
+          provider_id: 'codex-cli',
+          provider_kind: 'codex',
+          display_name: 'Codex CLI',
+          enabled: true,
+          active: true,
+          total_runs: 4,
+          succeeded_runs: 3,
+          failed_runs: 1,
+          cancelled_runs: 0,
+          average_duration_ms: 420,
+          last_duration_ms: 380,
+          last_status: 'succeeded',
+          last_started_at: '2026-04-26T10:19:00Z',
+          last_completed_at: '2026-04-26T10:19:00.380Z',
+        },
+      ],
+      recent_runs: [
+        {
+          id: 'provider-run-1',
+          provider_id: 'codex-cli',
+          provider_kind: 'codex',
+          provider_display_name: 'Codex CLI',
+          request_mode: 'stream',
+          model: 'gpt-5.4',
+          conversation_id: 'conv-1',
+          status: 'succeeded',
+          duration_ms: 380,
+          started_at: '2026-04-26T10:19:00Z',
+          completed_at: '2026-04-26T10:19:00.380Z',
+        },
+      ],
+    })
+    expect(fetchMock.mock.calls[1]?.[0]).toBe('http://127.0.0.1:8090/api/v1/agent/providers/gateway')
   })
 
   it('normalizes openai-compatible providers from the backend catalog', async () => {

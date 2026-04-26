@@ -66,6 +66,7 @@ progress) is preserved at
 | `docs/architecture/adr/0028-remote-breadth-v2.md` | Remote breadth v2 |
 | `docs/architecture/adr/0029-remote-files-domain.md` | Remote files domain |
 | `docs/architecture/adr/0030-plugin-distribution-boundary.md` | Plugin distribution boundary |
+| `docs/architecture/adr/0031-provider-gateway-surface.md` | Provider gateway surface |
 
 ## Execution
 

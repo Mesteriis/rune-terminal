@@ -1,11 +1,14 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"slices"
 	"testing"
+
+	"github.com/Mesteriis/rune-terminal/core/conversation"
 )
 
 func TestProviderCatalogReturnsBootstrapCLIProviders(t *testing.T) {
@@ -290,6 +293,106 @@ func TestDiscoverProviderModelsReturnsClaudeCodeModelsForStoredProvider(t *testi
 	if !slices.Equal(payload.Models, []string{"opus", "sonnet"}) {
 		t.Fatalf("unexpected models: %#v", payload.Models)
 	}
+}
+
+func TestProviderGatewaySnapshotReturnsRecentRunsAndStats(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandlerWithConversationProvider(t, gatewayCodexProvider{}, testAuthToken)
+
+	submitRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(submitRecorder, authedJSONRequest(t, http.MethodPost, "/api/v1/agent/conversation/messages", map[string]any{
+		"prompt": "hello gateway",
+		"context": map[string]any{
+			"workspace_id": "ws-default",
+		},
+	}))
+	if submitRecorder.Code != http.StatusOK {
+		t.Fatalf("submit expected 200, got %d body=%s", submitRecorder.Code, submitRecorder.Body.String())
+	}
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodGet, "/api/v1/agent/providers/gateway", nil))
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+
+	var payload struct {
+		Providers []struct {
+			ProviderID    string `json:"provider_id"`
+			ProviderKind  string `json:"provider_kind"`
+			TotalRuns     int    `json:"total_runs"`
+			SucceededRuns int    `json:"succeeded_runs"`
+			LastStatus    string `json:"last_status"`
+		} `json:"providers"`
+		RecentRuns []struct {
+			ProviderID string `json:"provider_id"`
+			Status     string `json:"status"`
+			Model      string `json:"model"`
+		} `json:"recent_runs"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
+	}
+	if len(payload.RecentRuns) == 0 {
+		t.Fatalf("expected at least one recent run, got %#v", payload)
+	}
+	if payload.RecentRuns[0].ProviderID != "codex-cli" || payload.RecentRuns[0].Status != "succeeded" {
+		t.Fatalf("unexpected recent run payload: %#v", payload.RecentRuns[0])
+	}
+	if payload.RecentRuns[0].Model != "gpt-5.4" {
+		t.Fatalf("expected recorded model, got %#v", payload.RecentRuns[0])
+	}
+
+	var codexProvider struct {
+		ProviderID    string `json:"provider_id"`
+		ProviderKind  string `json:"provider_kind"`
+		TotalRuns     int    `json:"total_runs"`
+		SucceededRuns int    `json:"succeeded_runs"`
+		LastStatus    string `json:"last_status"`
+	}
+	for _, provider := range payload.Providers {
+		if provider.ProviderID == "codex-cli" {
+			codexProvider = provider
+			break
+		}
+	}
+	if codexProvider.ProviderID == "" {
+		t.Fatalf("expected codex provider stats in payload: %#v", payload.Providers)
+	}
+	if codexProvider.ProviderKind != "codex" || codexProvider.TotalRuns != 1 || codexProvider.SucceededRuns != 1 || codexProvider.LastStatus != "succeeded" {
+		t.Fatalf("unexpected codex provider stats: %#v", codexProvider)
+	}
+}
+
+type gatewayCodexProvider struct{}
+
+func (gatewayCodexProvider) Info() conversation.ProviderInfo {
+	return conversation.ProviderInfo{
+		Kind:      "codex",
+		Model:     "gpt-5.4",
+		Streaming: true,
+	}
+}
+
+func (gatewayCodexProvider) Complete(context.Context, conversation.CompletionRequest) (conversation.CompletionResult, conversation.ProviderInfo, error) {
+	info := gatewayCodexProvider{}.Info()
+	return conversation.CompletionResult{
+		Content: "gateway ok",
+		Model:   info.Model,
+	}, info, nil
+}
+
+func (gatewayCodexProvider) CompleteStream(
+	context.Context,
+	conversation.CompletionRequest,
+	func(string) error,
+) (conversation.CompletionResult, conversation.ProviderInfo, error) {
+	info := gatewayCodexProvider{}.Info()
+	return conversation.CompletionResult{
+		Content: "gateway ok",
+		Model:   info.Model,
+	}, info, nil
 }
 
 func TestCreateProviderPersistsOpenAICompatibleConfig(t *testing.T) {

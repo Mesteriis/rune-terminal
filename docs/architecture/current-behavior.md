@@ -410,6 +410,10 @@ Confirmable boundaries:
   - Codex CLI through `codex exec`
   - Claude Code CLI through `claude -p`
   - operator-supplied OpenAI-compatible HTTP sources through `GET /v1/models` and `POST /v1/chat/completions`
+- The active provider path now also has a backend-owned gateway telemetry surface instead of a revived standalone proxy stack:
+  - provider runs are persisted in `runtime.db`
+  - `GET /api/v1/agent/providers/gateway` exposes recent provider activity plus per-provider health/latency summaries
+  - `AI > Установленные приложения` projects those recent runs and signals directly in the settings shell
 - Conversation persistence remains full-transcript, but provider requests are bounded to a recent tail before being sent to the active provider.
 - The current provider request budget is deterministic and backend-owned:
   - `RTERM_CONVERSATION_MAX_MESSAGES` default `24`

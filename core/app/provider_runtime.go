@@ -64,6 +64,38 @@ func (r *Runtime) resolveConversationProvider() (conversation.Provider, error) {
 	return r.ConversationProviderFactory(record)
 }
 
+func (r *Runtime) resolveConversationProviderBindingForModel(
+	selectedModel string,
+) (resolvedConversationProvider, error) {
+	model := strings.TrimSpace(selectedModel)
+	if r.ConversationProviderFactory == nil {
+		return resolvedConversationProvider{
+			Model: model,
+		}, nil
+	}
+
+	record, err := r.activeConversationProviderRecord()
+	if err != nil {
+		return resolvedConversationProvider{}, err
+	}
+	record, model, err = applyConversationModelOverride(record, model)
+	if err != nil {
+		return resolvedConversationProvider{}, err
+	}
+	provider, err := r.ConversationProviderFactory(record)
+	if err != nil {
+		return resolvedConversationProvider{}, err
+	}
+	if model == "" && provider != nil {
+		model = strings.TrimSpace(provider.Info().Model)
+	}
+	return resolvedConversationProvider{
+		Provider: provider,
+		Record:   &record,
+		Model:    model,
+	}, nil
+}
+
 func providerChatModels(record agent.ProviderRecord) []string {
 	switch record.Kind {
 	case agent.ProviderKindCodex:

@@ -262,6 +262,33 @@ test('AI sidebar streams a mocked Codex CLI provider through the backend convers
   await expect(page.getByText('CLI token stream OK', { exact: true })).toBeVisible()
 })
 
+test('AI provider settings show gateway telemetry after a mocked Codex run', async ({ page, request }) => {
+  test.setTimeout(60_000)
+
+  const providerID = await ensureMockCodexStreamProvider(request)
+
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  await page.getByRole('button', { name: 'Toggle AI panel' }).click()
+  await expect(page.getByText('AI Rune Assistant')).toBeVisible()
+
+  const providerSelect = page.getByRole('combobox', { name: 'AI provider' })
+  await expect(providerSelect).toHaveValue(providerID)
+
+  const composer = page.getByPlaceholder('Text Area')
+  await composer.fill('Reply with the mocked CLI stream token for gateway telemetry.')
+  await page.getByRole('button', { name: 'Send prompt' }).click()
+  await expect(page.getByText('CLI token stream OK', { exact: true })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Open settings panel' }).click()
+  await expect(page.getByText('Configured providers')).toBeVisible()
+  await expect(page.getByText('Gateway signals')).toBeVisible()
+  await expect(page.getByText('Recent provider activity')).toBeVisible()
+  await expect(page.getByText('Healthy', { exact: true })).toBeVisible()
+  await expect(page.getByText(/stream · gpt-5.4/)).toBeVisible()
+})
+
 test('AI sidebar reuses stored attachment references from the recent library', async ({
   page,
   request,

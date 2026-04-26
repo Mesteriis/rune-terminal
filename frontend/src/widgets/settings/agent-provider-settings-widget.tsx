@@ -1,6 +1,10 @@
 import { useId } from 'react'
 
-import type { AgentProviderKind } from '@/features/agent/api/provider-client'
+import type {
+  AgentProviderGatewayProvider,
+  AgentProviderGatewayRun,
+  AgentProviderKind,
+} from '@/features/agent/api/provider-client'
 import type { AgentProviderDraft } from '@/features/agent/model/provider-settings-draft'
 import { useAgentProviderSettings } from '@/features/agent/model/use-agent-provider-settings'
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
@@ -148,12 +152,47 @@ function formatCLIStatus(state?: string) {
   }
 }
 
+function formatGatewayStatus(status?: string) {
+  switch (status) {
+    case 'succeeded':
+      return 'Healthy'
+    case 'failed':
+      return 'Failing'
+    case 'cancelled':
+      return 'Cancelled'
+    default:
+      return 'No runs yet'
+  }
+}
+
+function formatDuration(durationMS?: number) {
+  if (!durationMS || durationMS <= 0) {
+    return 'n/a'
+  }
+  if (durationMS >= 1000) {
+    return `${(durationMS / 1000).toFixed(durationMS >= 10_000 ? 0 : 1)}s`
+  }
+  return `${durationMS}ms`
+}
+
+function formatRunTimestamp(value?: string) {
+  if (!value) {
+    return 'n/a'
+  }
+  const timestamp = new Date(value)
+  if (Number.isNaN(timestamp.getTime())) {
+    return 'n/a'
+  }
+  return timestamp.toLocaleString()
+}
+
 export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: boolean }) {
   const {
     availableModels,
     catalog,
     draft,
     errorMessage,
+    gateway,
     isLoading,
     isLoadingModels,
     isSaving,
@@ -178,6 +217,9 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
   const bodyStyle = embedded ? providerSettingsEmbeddedBodyStyle : providerSettingsBodyStyle
   const sidebarStyle = embedded ? providerSettingsEmbeddedSidebarStyle : providerSettingsSidebarStyle
   const editorStyle = embedded ? providerSettingsEmbeddedEditorStyle : providerSettingsEditorStyle
+  const selectedGatewayProvider =
+    gateway?.providers.find((provider) => provider.provider_id === selectedProviderID) ?? null
+  const recentGatewayRuns = gateway?.recent_runs ?? []
 
   return (
     <RunaDomScopeProvider component="agent-provider-settings-widget">
@@ -255,6 +297,19 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                         {provider.openai_compatible?.model} · {provider.openai_compatible?.base_url}
                       </Text>
                     ) : null}
+                    {gateway?.providers.find((entry) => entry.provider_id === provider.id)?.total_runs ? (
+                      <Text style={providerSettingsStatusMessageStyle}>
+                        {(() => {
+                          const gatewayEntry = gateway.providers.find(
+                            (entry) => entry.provider_id === provider.id,
+                          )
+                          if (!gatewayEntry) {
+                            return ''
+                          }
+                          return `${formatGatewayStatus(gatewayEntry.last_status)} · ${gatewayEntry.succeeded_runs}/${gatewayEntry.total_runs} ok · avg ${formatDuration(gatewayEntry.average_duration_ms)}`
+                        })()}
+                      </Text>
+                    ) : null}
                   </Button>
                 )
               })}
@@ -326,6 +381,48 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                         </Text>
                       </ClearBox>
                     </ClearBox>
+                  </ClearBox>
+
+                  <ClearBox style={providerSettingsSectionStyle}>
+                    <ClearBox style={providerSettingsSectionHeaderStyle}>
+                      <Text style={{ fontWeight: 600 }}>Gateway signals</Text>
+                      <Text style={providerSettingsStatusMessageStyle}>
+                        Backend-owned recent run history and health signals for the active provider route.
+                      </Text>
+                    </ClearBox>
+                    <ClearBox style={providerSettingsGridStyle}>
+                      <ClearBox style={providerSettingsFieldStyle}>
+                        <Label>Current status</Label>
+                        <Text style={providerSettingsStatusMessageStyle}>
+                          {formatGatewayStatus(selectedGatewayProvider?.last_status)}
+                        </Text>
+                      </ClearBox>
+                      <ClearBox style={providerSettingsFieldStyle}>
+                        <Label>Average latency</Label>
+                        <Text style={providerSettingsStatusMessageStyle}>
+                          {formatDuration(selectedGatewayProvider?.average_duration_ms)}
+                        </Text>
+                      </ClearBox>
+                      <ClearBox style={providerSettingsFieldStyle}>
+                        <Label>Last run</Label>
+                        <Text style={providerSettingsStatusMessageStyle}>
+                          {formatRunTimestamp(selectedGatewayProvider?.last_completed_at)}
+                        </Text>
+                      </ClearBox>
+                      <ClearBox style={providerSettingsFieldStyle}>
+                        <Label>Run totals</Label>
+                        <Text style={providerSettingsStatusMessageStyle}>
+                          {selectedGatewayProvider
+                            ? `${selectedGatewayProvider.succeeded_runs} ok · ${selectedGatewayProvider.failed_runs} fail · ${selectedGatewayProvider.cancelled_runs} cancelled`
+                            : 'No runs recorded yet.'}
+                        </Text>
+                      </ClearBox>
+                    </ClearBox>
+                    {selectedGatewayProvider?.last_error_message ? (
+                      <Text style={providerSettingsErrorMessageStyle}>
+                        Last error: {selectedGatewayProvider.last_error_message}
+                      </Text>
+                    ) : null}
                   </ClearBox>
 
                   {draft.kind === 'codex' ? (
@@ -513,6 +610,48 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                       </ClearBox>
                     </ClearBox>
                   ) : null}
+
+                  <ClearBox style={providerSettingsSectionStyle}>
+                    <ClearBox style={providerSettingsSectionHeaderStyle}>
+                      <Text style={{ fontWeight: 600 }}>Recent provider activity</Text>
+                      <Text style={providerSettingsStatusMessageStyle}>
+                        Latest backend-recorded chat runs across the current provider gateway.
+                      </Text>
+                    </ClearBox>
+                    <ClearBox style={{ display: 'grid', gap: 'var(--gap-xs)' }}>
+                      {recentGatewayRuns.length ? (
+                        recentGatewayRuns.map((run: AgentProviderGatewayRun) => (
+                          <ClearBox
+                            key={run.id}
+                            style={{
+                              border: '1px solid var(--color-border-subtle)',
+                              borderRadius: 'var(--radius-md)',
+                              padding: 'var(--space-sm)',
+                              background: 'var(--color-surface-glass-soft)',
+                              display: 'grid',
+                              gap: '0.2rem',
+                            }}
+                          >
+                            <Text style={{ fontWeight: 600 }}>
+                              {run.provider_display_name || run.provider_id} ·{' '}
+                              {formatGatewayStatus(run.status)}
+                            </Text>
+                            <Text style={providerSettingsStatusMessageStyle}>
+                              {run.request_mode} · {run.model || 'default model'} ·{' '}
+                              {formatDuration(run.duration_ms)} · {formatRunTimestamp(run.completed_at)}
+                            </Text>
+                            {run.error_message ? (
+                              <Text style={providerSettingsErrorMessageStyle}>{run.error_message}</Text>
+                            ) : null}
+                          </ClearBox>
+                        ))
+                      ) : (
+                        <Text style={providerSettingsStatusMessageStyle}>
+                          No provider activity has been recorded yet.
+                        </Text>
+                      )}
+                    </ClearBox>
+                  </ClearBox>
                 </ScrollArea>
 
                 <ClearBox style={providerSettingsActionsBarStyle}>

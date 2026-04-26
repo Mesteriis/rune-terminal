@@ -20,6 +20,7 @@ import (
 	"github.com/Mesteriis/rune-terminal/core/execution"
 	"github.com/Mesteriis/rune-terminal/core/plugins"
 	"github.com/Mesteriis/rune-terminal/core/policy"
+	"github.com/Mesteriis/rune-terminal/core/providergateway"
 	"github.com/Mesteriis/rune-terminal/core/tasks"
 	"github.com/Mesteriis/rune-terminal/core/terminal"
 	"github.com/Mesteriis/rune-terminal/core/toolruntime"
@@ -107,11 +108,16 @@ func newTestHandlerWithConversationProvider(t *testing.T, provider conversation.
 	if err != nil {
 		t.Fatalf("NewComposerPreferencesStore error: %v", err)
 	}
+	providerGateway, err := providergateway.NewStore(context.Background(), dbConn)
+	if err != nil {
+		t.Fatalf("providergateway.NewStore error: %v", err)
+	}
 	taskStore := tasks.NewStore(dbConn)
 	runtime.DB = dbConn
 	runtime.TerminalPreferences = terminalPreferences
 	runtime.WindowTitlePreferences = windowTitlePreferences
 	runtime.AgentComposerPreferences = agentComposerPreferences
+	runtime.ProviderGateway = providerGateway
 	runtime.TaskStore = taskStore
 	runtime.TaskService = tasks.NewService(taskStore)
 	runtime.MCP = plugins.NewMCPRuntimeWithOptions(nil, &testProcessSpawner{}, nil, plugins.MCPRuntimeOptions{
@@ -124,6 +130,9 @@ func newTestHandlerWithConversationProvider(t *testing.T, provider conversation.
 		},
 	})
 	runtime.Executor = toolruntime.NewExecutor(runtime.Registry, runtime.Policy, runtime.Audit)
+	runtime.ConversationProviderFactory = func(agent.ProviderRecord) (conversation.Provider, error) {
+		return provider, nil
+	}
 	return NewHandler(runtime, authToken), agentStore
 }
 

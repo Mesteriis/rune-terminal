@@ -5,9 +5,11 @@ import {
   deleteAgentProvider,
   discoverAgentProviderModels,
   fetchAgentProviderCatalog,
+  fetchAgentProviderGatewaySnapshot,
   setActiveAgentProvider,
   updateAgentProvider,
   type AgentProviderCatalog,
+  type AgentProviderGatewaySnapshot,
   type AgentProviderKind,
   type AgentProviderView,
 } from '@/features/agent/api/provider-client'
@@ -104,6 +106,7 @@ function buildChatModelsUpdatePayload(provider: AgentProviderView, chatModels: s
 
 export function useAgentProviderSettings() {
   const [catalog, setCatalog] = useState<AgentProviderCatalog | null>(null)
+  const [gateway, setGateway] = useState<AgentProviderGatewaySnapshot | null>(null)
   const [draft, setDraft] = useState<AgentProviderDraft | null>(null)
   const [selectedProviderID, setSelectedProviderID] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -133,6 +136,12 @@ export function useAgentProviderSettings() {
       try {
         const nextCatalog = await fetchAgentProviderCatalog()
         selectProviderFromCatalog(nextCatalog, preferredProviderID)
+
+        try {
+          setGateway(await fetchAgentProviderGatewaySnapshot())
+        } catch {
+          setGateway(null)
+        }
       } catch (error: unknown) {
         setErrorMessage(getErrorMessage(error))
       } finally {
@@ -448,6 +457,7 @@ export function useAgentProviderSettings() {
     catalog,
     draft,
     errorMessage,
+    gateway,
     isLoading,
     isLoadingModels,
     isSaving,

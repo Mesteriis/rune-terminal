@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/Mesteriis/rune-terminal/core/audit"
 	"github.com/Mesteriis/rune-terminal/core/conversation"
 	"github.com/Mesteriis/rune-terminal/core/policy"
+	"github.com/Mesteriis/rune-terminal/core/providergateway"
 	"github.com/Mesteriis/rune-terminal/core/workspace"
 )
 
@@ -180,15 +182,15 @@ func (r *Runtime) SubmitConversationPrompt(
 	conversationContext ConversationContext,
 	attachments []conversation.AttachmentReference,
 ) (conversation.SubmitResult, error) {
-	provider, normalizedModel, err := r.resolveConversationProviderForModel(selectedModel)
+	binding, err := r.resolveConversationProviderBindingForModel(selectedModel)
 	if err != nil {
 		return conversation.SubmitResult{}, err
 	}
-	submitRequest, profile, err := r.prepareConversationSubmit(prompt, normalizedModel, conversationContext, attachments)
+	submitRequest, profile, err := r.prepareConversationSubmit(prompt, binding.Model, conversationContext, attachments)
 	if err != nil {
 		return conversation.SubmitResult{}, err
 	}
-	if provider == nil {
+	if binding.Provider == nil {
 		result, err := r.Conversation.Submit(ctx, submitRequest)
 		if err != nil {
 			return conversation.SubmitResult{}, err
@@ -196,7 +198,9 @@ func (r *Runtime) SubmitConversationPrompt(
 		r.appendConversationAudit(prompt, conversationContext, profile, result.ProviderError)
 		return result, nil
 	}
-	result, err := r.Conversation.SubmitWithProvider(ctx, provider, submitRequest)
+	startedAt := time.Now().UTC()
+	result, err := r.Conversation.SubmitWithProvider(ctx, binding.Provider, submitRequest)
+	r.recordConversationProviderRun(ctx, binding, providergateway.RunModeSync, startedAt, result, err)
 	if err != nil {
 		return conversation.SubmitResult{}, err
 	}
@@ -212,15 +216,15 @@ func (r *Runtime) StreamConversationPrompt(
 	attachments []conversation.AttachmentReference,
 	emit func(conversation.StreamEvent) error,
 ) (conversation.SubmitResult, error) {
-	provider, normalizedModel, err := r.resolveConversationProviderForModel(selectedModel)
+	binding, err := r.resolveConversationProviderBindingForModel(selectedModel)
 	if err != nil {
 		return conversation.SubmitResult{}, err
 	}
-	submitRequest, profile, err := r.prepareConversationSubmit(prompt, normalizedModel, conversationContext, attachments)
+	submitRequest, profile, err := r.prepareConversationSubmit(prompt, binding.Model, conversationContext, attachments)
 	if err != nil {
 		return conversation.SubmitResult{}, err
 	}
-	if provider == nil {
+	if binding.Provider == nil {
 		result, err := r.Conversation.SubmitStream(ctx, submitRequest, emit)
 		if err != nil {
 			return conversation.SubmitResult{}, err
@@ -228,7 +232,9 @@ func (r *Runtime) StreamConversationPrompt(
 		r.appendConversationAudit(prompt, conversationContext, profile, result.ProviderError)
 		return result, nil
 	}
-	result, err := r.Conversation.SubmitStreamWithProvider(ctx, provider, submitRequest, emit)
+	startedAt := time.Now().UTC()
+	result, err := r.Conversation.SubmitStreamWithProvider(ctx, binding.Provider, submitRequest, emit)
+	r.recordConversationProviderRun(ctx, binding, providergateway.RunModeStream, startedAt, result, err)
 	if err != nil {
 		return conversation.SubmitResult{}, err
 	}
@@ -266,27 +272,6 @@ func (r *Runtime) prepareConversationSubmit(
 		Model:          strings.TrimSpace(selectedModel),
 		Attachments:    attachments,
 	}, selection.EffectivePolicyProfile(), nil
-}
-
-func (r *Runtime) resolveConversationProviderForModel(selectedModel string) (conversation.Provider, string, error) {
-	model := strings.TrimSpace(selectedModel)
-	if r.ConversationProviderFactory == nil {
-		return nil, model, nil
-	}
-
-	record, err := r.activeConversationProviderRecord()
-	if err != nil {
-		return nil, "", err
-	}
-	record, model, err = applyConversationModelOverride(record, model)
-	if err != nil {
-		return nil, "", err
-	}
-	provider, err := r.ConversationProviderFactory(record)
-	if err != nil {
-		return nil, "", err
-	}
-	return provider, model, nil
 }
 
 func (r *Runtime) appendConversationAudit(

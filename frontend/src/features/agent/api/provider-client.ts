@@ -44,6 +44,47 @@ export type AgentProviderCatalog = {
   supported_kinds: AgentProviderKind[]
 }
 
+export type AgentProviderGatewayProvider = {
+  provider_id: string
+  provider_kind: AgentProviderKind | string
+  display_name: string
+  enabled: boolean
+  active: boolean
+  total_runs: number
+  succeeded_runs: number
+  failed_runs: number
+  cancelled_runs: number
+  average_duration_ms: number
+  last_duration_ms: number
+  last_status?: 'succeeded' | 'failed' | 'cancelled' | string
+  last_error_code?: string
+  last_error_message?: string
+  last_started_at?: string
+  last_completed_at?: string
+}
+
+export type AgentProviderGatewayRun = {
+  id: string
+  provider_id: string
+  provider_kind: AgentProviderKind | string
+  provider_display_name: string
+  request_mode: 'sync' | 'stream' | string
+  model?: string
+  conversation_id?: string
+  status: 'succeeded' | 'failed' | 'cancelled' | string
+  error_code?: string
+  error_message?: string
+  duration_ms: number
+  started_at: string
+  completed_at: string
+}
+
+export type AgentProviderGatewaySnapshot = {
+  generated_at: string
+  providers: AgentProviderGatewayProvider[]
+  recent_runs: AgentProviderGatewayRun[]
+}
+
 export type AgentProviderModelCatalog = {
   models: string[]
 }
@@ -209,6 +250,16 @@ function normalizeProviderCatalog(catalog: AgentProviderCatalog): AgentProviderC
   }
 }
 
+function normalizeProviderGatewaySnapshot(
+  snapshot: AgentProviderGatewaySnapshot,
+): AgentProviderGatewaySnapshot {
+  return {
+    generated_at: snapshot.generated_at,
+    providers: Array.isArray(snapshot.providers) ? snapshot.providers : [],
+    recent_runs: Array.isArray(snapshot.recent_runs) ? snapshot.recent_runs : [],
+  }
+}
+
 function normalizeProviderMutationResponse(response: ProviderMutationResponse): ProviderMutationResponse {
   return {
     ...response,
@@ -226,6 +277,12 @@ function normalizeModelCatalog(catalog: AgentProviderModelCatalog): AgentProvide
 export async function fetchAgentProviderCatalog() {
   return normalizeProviderCatalog(
     await requestProviderRuntimeJSON<AgentProviderCatalog>('/api/v1/agent/providers'),
+  )
+}
+
+export async function fetchAgentProviderGatewaySnapshot() {
+  return normalizeProviderGatewaySnapshot(
+    await requestProviderRuntimeJSON<AgentProviderGatewaySnapshot>('/api/v1/agent/providers/gateway'),
   )
 }
 
