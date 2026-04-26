@@ -75,10 +75,14 @@ describe('TerminalToolbar', () => {
 
     fireEvent.keyDown(searchInput, { key: 'Enter', code: 'Enter' })
     fireEvent.keyDown(searchInput, { key: 'Enter', code: 'Enter', shiftKey: true })
+    fireEvent.keyDown(searchInput, { key: 'F3', code: 'F3' })
+    fireEvent.keyDown(searchInput, { key: 'F3', code: 'F3', shiftKey: true })
+    fireEvent.keyDown(searchInput, { key: 'g', code: 'KeyG', ctrlKey: true })
+    fireEvent.keyDown(searchInput, { key: 'g', code: 'KeyG', ctrlKey: true, shiftKey: true })
     fireEvent.keyDown(searchInput, { key: 'Escape', code: 'Escape' })
 
-    expect(onSearchNext).toHaveBeenCalledTimes(1)
-    expect(onSearchPrevious).toHaveBeenCalledTimes(1)
+    expect(onSearchNext).toHaveBeenCalledTimes(3)
+    expect(onSearchPrevious).toHaveBeenCalledTimes(3)
     expect(onCloseSearch).toHaveBeenCalledTimes(1)
   })
 
@@ -122,5 +126,28 @@ describe('TerminalToolbar', () => {
     )
 
     expect(screen.getByLabelText('Terminal search results')).toHaveTextContent('No matches')
+  })
+
+  it('disables directional search controls until a query exists', () => {
+    render(
+      <TerminalToolbar
+        isSearchOpen
+        onClear={() => undefined}
+        onCloseSearch={() => undefined}
+        onCopy={() => undefined}
+        onJumpToLatest={() => undefined}
+        onPaste={() => undefined}
+        onSearchNext={() => undefined}
+        onSearchPrevious={() => undefined}
+        onSearchQueryChange={() => undefined}
+        onToggleSearch={() => undefined}
+        rendererMode="default"
+        searchQuery=""
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Find previous match' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Find next match' })).toBeDisabled()
+    expect(screen.getByLabelText('Terminal search results')).toHaveTextContent('Type query')
   })
 })

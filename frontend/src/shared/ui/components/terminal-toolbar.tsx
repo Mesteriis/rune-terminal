@@ -62,14 +62,14 @@ export function TerminalToolbar({
 }: TerminalToolbarProps) {
   const searchInputRef = useRef<HTMLInputElement>(null)
   const trimmedSearchQuery = searchQuery.trim()
-  const searchStatusText =
-    trimmedSearchQuery === ''
-      ? 'Type query'
-      : !searchResult
-        ? 'Press Enter'
-        : searchResult.resultCount <= 0
-          ? 'No matches'
-          : `${Math.max(searchResult.resultIndex + 1, 1)}/${searchResult.resultCount}`
+  const hasSearchQuery = trimmedSearchQuery !== ''
+  const searchStatusText = !hasSearchQuery
+    ? 'Type query'
+    : !searchResult
+      ? 'Enter / F3'
+      : searchResult.resultCount <= 0
+        ? 'No matches'
+        : `${Math.max(searchResult.resultIndex + 1, 1)}/${searchResult.resultCount}`
 
   useEffect(() => {
     if (isSearchOpen) {
@@ -82,21 +82,35 @@ export function TerminalToolbar({
       return
     }
 
+    const isModifierPressed = event.ctrlKey || event.metaKey
+
     if (event.key === 'Escape') {
       event.preventDefault()
       onCloseSearch()
       return
     }
 
-    if (event.key !== 'Enter' || event.altKey || event.ctrlKey || event.metaKey) {
+    const isPreviousHotkey =
+      (event.key === 'Enter' && event.shiftKey && !event.altKey && !isModifierPressed) ||
+      (event.key === 'F3' && event.shiftKey && !event.altKey && !isModifierPressed) ||
+      (event.key.toLowerCase() === 'g' && event.shiftKey && isModifierPressed && !event.altKey)
+
+    if (isPreviousHotkey) {
+      event.preventDefault()
+      onSearchPrevious()
+      return
+    }
+
+    const isNextHotkey =
+      (event.key === 'Enter' && !event.shiftKey && !event.altKey && !isModifierPressed) ||
+      (event.key === 'F3' && !event.shiftKey && !event.altKey && !isModifierPressed) ||
+      (event.key.toLowerCase() === 'g' && !event.shiftKey && isModifierPressed && !event.altKey)
+
+    if (!isNextHotkey) {
       return
     }
 
     event.preventDefault()
-    if (event.shiftKey) {
-      onSearchPrevious()
-      return
-    }
     onSearchNext()
   }
 
@@ -183,17 +197,21 @@ export function TerminalToolbar({
               </Text>
               <Button
                 aria-label="Find previous match"
+                disabled={!hasSearchQuery}
                 onClick={onSearchPrevious}
                 runaComponent="terminal-toolbar-search-previous"
                 style={terminalToolbarIconButtonStyle}
+                title="Previous match (Shift+Enter / Shift+F3 / Shift+Ctrl+G)"
               >
                 <ChevronUp size={14} strokeWidth={1.8} />
               </Button>
               <Button
                 aria-label="Find next match"
+                disabled={!hasSearchQuery}
                 onClick={onSearchNext}
                 runaComponent="terminal-toolbar-search-next"
                 style={terminalToolbarIconButtonStyle}
+                title="Next match (Enter / F3 / Ctrl+G)"
               >
                 <ChevronDown size={14} strokeWidth={1.8} />
               </Button>

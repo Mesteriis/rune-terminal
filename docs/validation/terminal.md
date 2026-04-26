@@ -38,8 +38,9 @@
     - the terminal header action slot now exposes a visible restart control backed by `POST /api/v1/terminal/{widgetID}/restart`
     - terminal restart rehydrates the widget-local session state and re-subscribes the SSE output stream instead of leaving the body bound to the pre-restart snapshot
     - Ctrl/Cmd+F inside the terminal still opens search through the xterm key handler, but the same search row is now also reachable through visible toolbar controls
-    - the terminal search row supports keyboard navigation: `Enter` finds next, `Shift+Enter` finds previous, and `Escape` closes search
+    - the terminal search row supports keyboard navigation: `Enter`, `F3`, and `Ctrl/Cmd+G` find next; `Shift+Enter`, `Shift+F3`, and `Shift+Ctrl/Cmd+G` find previous; `Escape` closes search
     - the search row now subscribes to xterm search-result events and renders visible match status (`N/M`, `No matches`, or empty-query guidance) while clearing xterm search decorations when the query is emptied or the row closes
+    - directional search controls stay disabled until a non-empty query exists, which keeps the visible search row honest about when navigation is actionable
   - the shell settings modal now exposes a backend-owned `Terminal` settings slice instead of a placeholder:
     - current terminal font size is visible in `Settings -> Terminal`
     - current terminal line height is visible in `Settings -> Terminal`
@@ -132,6 +133,8 @@
 - `npm --prefix frontend run test -- src/shared/ui/components/terminal-toolbar.test.tsx src/shared/ui/components/accessibility-contracts.test.tsx src/widgets/terminal/terminal-widget.test.tsx`
 - `npm --prefix frontend run test -- src/shared/ui/components/terminal-toolbar.test.tsx src/widgets/terminal/terminal-widget.test.tsx src/shared/ui/components/accessibility-contracts.test.tsx`
 - `npm --prefix frontend run test -- src/shared/ui/components/terminal-toolbar.test.tsx src/widgets/terminal/terminal-widget.test.tsx`
+- `frontend/node_modules/.bin/vitest run src/shared/ui/components/terminal-toolbar.test.tsx --reporter=verbose`
+- `frontend/node_modules/.bin/vitest run src/widgets/terminal/terminal-widget.test.tsx --reporter=verbose`
 - `npm run lint:frontend`
 - `npm --prefix frontend run test -- src/shared/api/terminal-settings.test.ts src/features/terminal/model/use-terminal-preferences.test.tsx src/widgets/settings/terminal-settings-section.test.tsx src/widgets/terminal/terminal-widget.test.tsx`
 - `npm --prefix frontend run test -- src/widgets/terminal/terminal-dockview-tab-widget.test.tsx src/widgets/terminal/terminal-dockview-header-actions-widget.test.tsx`
