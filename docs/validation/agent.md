@@ -53,6 +53,7 @@
     - live Claude provider routing with explicit `auth-required` handling when the local CLI is installed but not logged in
     - `/run printf ...` sending input into the selected terminal session without falling back to plain provider chat
     - approved natural-language terminal execution routing into the explicitly selected AI context widget even when another terminal widget remains active in the workspace
+    - approved natural-language terminal execution preserving `target_connection_id` / `target_session` for an explicitly selected SSH-backed context widget while a local terminal stays active
 
 ## Current provider contract
 
@@ -205,6 +206,7 @@
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestPlanTerminalCommandRejectsInvalidProviderPlan|TestPlanTerminalCommandReturnsBadGatewayForInvalidProviderPlan' -count=1`
 - `node_modules/.bin/vitest run src/widgets/ai/ai-panel-widget.test.tsx --reporter=verbose`
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts --grep "selected context widget instead of the active terminal"`
+- `npm run test:ui -- --reporter=line e2e/ai.spec.ts --grep "keeps remote host semantics when the selected context widget is SSH-backed"`
 - `npm run build:frontend`
 - `npm run lint:frontend`
 

@@ -1264,3 +1264,238 @@ test('AI sidebar executes approved terminal prompts in the selected context widg
   expect(toolRequests.length).toBeGreaterThan(0)
   expect(pageErrors).toEqual([])
 })
+
+test('AI sidebar keeps remote host semantics when the selected context widget is SSH-backed', async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(180_000)
+
+  const conversation = await createConversationViaApi(request)
+  await activateAgentConversation(request, conversation.id)
+  await focusWorkspaceWidgetViaApi(request, 'term-side')
+
+  const prompt = 'Посмотри свободное место на pve'
+  const streamRequests: string[] = []
+  const pageErrors: string[] = []
+  let capturedPlanBody: Record<string, unknown> | null = null
+  let capturedToolBody: Record<string, unknown> | null = null
+  let capturedExplainBody: Record<string, unknown> | null = null
+
+  page.on('request', (requestEvent) => {
+    if (requestEvent.url().endsWith('/api/v1/agent/conversation/messages/stream')) {
+      streamRequests.push(requestEvent.url())
+    }
+  })
+  page.on('pageerror', (error) => {
+    pageErrors.push(error.message)
+  })
+
+  await page.route('**/api/v1/workspace', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      json: {
+        id: 'ws-local',
+        name: 'Workspace',
+        active_widget_id: 'term-side',
+        widgets: [
+          {
+            id: 'term-side',
+            kind: 'terminal',
+            title: 'Local shell',
+            connection_id: 'local',
+          },
+          {
+            id: 'term-pve',
+            kind: 'terminal',
+            title: 'PVE host',
+            connection_id: 'conn-pve',
+          },
+        ],
+      },
+      status: 200,
+    })
+  })
+
+  await page.route('**/api/v1/terminal/term-pve', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      json: {
+        state: {
+          widget_id: 'term-pve',
+          session_id: 'term-pve',
+          shell: '/bin/zsh',
+          connection_id: 'conn-pve',
+          connection_kind: 'ssh',
+          pid: 200,
+          status: 'running',
+          started_at: '2026-04-21T10:00:00Z',
+          can_send_input: true,
+          can_interrupt: true,
+        },
+        chunks: [],
+        next_seq: 13,
+      },
+      status: 200,
+    })
+  })
+
+  await page.route('**/api/v1/terminal/term-pve?from=13', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      json: {
+        state: {
+          widget_id: 'term-pve',
+          session_id: 'term-pve',
+          shell: '/bin/zsh',
+          connection_id: 'conn-pve',
+          connection_kind: 'ssh',
+          pid: 200,
+          status: 'running',
+          started_at: '2026-04-21T10:00:00Z',
+          can_send_input: true,
+          can_interrupt: true,
+        },
+        chunks: [
+          {
+            seq: 13,
+            data: 'Filesystem  Size Used Avail Use% Mounted on\n',
+            timestamp: '2026-04-21T10:00:01Z',
+          },
+        ],
+        next_seq: 14,
+      },
+      status: 200,
+    })
+  })
+
+  await page.route('**/api/v1/agent/terminal-commands/plan', async (route) => {
+    capturedPlanBody = route.request().postDataJSON() as Record<string, unknown>
+
+    await route.fulfill({
+      contentType: 'application/json',
+      json: {
+        command: 'df -h',
+        summary: 'Check free disk space on the selected remote host.',
+      },
+      status: 200,
+    })
+  })
+
+  await page.route('**/api/v1/tools/execute', async (route) => {
+    capturedToolBody = route.request().postDataJSON() as Record<string, unknown>
+
+    await route.fulfill({
+      contentType: 'application/json',
+      json: {
+        status: 'ok',
+        output: {
+          append_newline: true,
+          bytes_sent: 5,
+          widget_id: 'term-pve',
+        },
+      },
+      status: 200,
+    })
+  })
+
+  await page.route('**/api/v1/agent/terminal-commands/explain', async (route) => {
+    capturedExplainBody = route.request().postDataJSON() as Record<string, unknown>
+    const activeConversation = await fetchAgentConversation(request)
+
+    await route.fulfill({
+      contentType: 'application/json',
+      json: {
+        conversation: {
+          ...activeConversation,
+          messages: [
+            ...activeConversation.messages,
+            {
+              id: `msg-remote-terminal-${Date.now()}`,
+              role: 'assistant',
+              content: 'Executed `df -h` on the selected PVE terminal.',
+              status: 'complete',
+              provider: 'stub',
+              model: 'stub-model',
+              created_at: new Date().toISOString(),
+            },
+          ],
+        },
+        output_excerpt: 'Filesystem  Size Used Avail Use% Mounted on',
+      },
+      status: 200,
+    })
+  })
+
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  await page.getByRole('button', { name: 'Toggle AI panel' }).click()
+  await expect(page.getByText('AI Rune Assistant')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Composer options' }).click()
+  await expect(page.getByRole('dialog', { name: 'Context widgets' })).toBeVisible()
+  await page.getByRole('button', { name: 'All widgets' }).click()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('button', { name: 'Remove Local shell from request context' })).toBeVisible()
+  await page.getByRole('button', { name: 'Remove Local shell from request context' }).click()
+  await expect(page.getByRole('button', { name: 'Composer options' })).toContainText('PVE host')
+  await expect(page.getByRole('button', { name: 'Remove PVE host from request context' })).toBeVisible()
+
+  const composer = page.getByPlaceholder('Text Area')
+  await composer.fill(prompt)
+  await page.getByRole('button', { name: 'Send prompt' }).click()
+  await expect(page.getByRole('button', { name: 'Approve' })).toBeVisible()
+  await page.getByRole('button', { name: 'Approve' }).click({ force: true })
+
+  await expect
+    .poll(() => capturedPlanBody, { timeout: 30_000 })
+    .toMatchObject({
+      prompt,
+      widget_id: 'term-pve',
+      context: {
+        action_source: 'frontend.ai.sidebar.execute',
+        active_widget_id: 'term-pve',
+        target_connection_id: 'conn-pve',
+        target_session: 'remote',
+        widget_context_enabled: true,
+        widget_ids: ['term-pve'],
+      },
+    })
+
+  await expect
+    .poll(() => capturedToolBody, { timeout: 30_000 })
+    .toMatchObject({
+      tool_name: 'term.send_input',
+      input: {
+        append_newline: true,
+        text: 'df -h',
+        widget_id: 'term-pve',
+      },
+      context: {
+        action_source: 'frontend.ai.sidebar.execute',
+        active_widget_id: 'term-pve',
+        target_connection_id: 'conn-pve',
+        target_session: 'remote',
+      },
+    })
+
+  await expect
+    .poll(() => capturedExplainBody, { timeout: 30_000 })
+    .toMatchObject({
+      command: 'df -h',
+      prompt,
+      widget_id: 'term-pve',
+      context: {
+        action_source: 'frontend.ai.sidebar.execute',
+        active_widget_id: 'term-pve',
+        target_connection_id: 'conn-pve',
+        target_session: 'remote',
+        widget_context_enabled: true,
+        widget_ids: ['term-pve'],
+      },
+    })
+
+  expect(streamRequests).toEqual([])
+  expect(pageErrors).toEqual([])
+})
