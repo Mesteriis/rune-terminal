@@ -18,9 +18,9 @@ Phase status:
 - `Phase 2` is complete: backend-owned stream cancellation plus shared
   CLI/HTTP streaming semantics are now landed on the active conversation
   route.
-- `Phase 3` remains in progress: storage/reuse is landed, and browser-level
-  recent-library closure is the remaining validation/doc step.
-- `Phase 4` is the next implementation phase after that closure.
+- `Phase 3` is complete: attachment references now persist in `runtime.db`
+  and are reusable from both transcript history and the composer shelf.
+- `Phase 4` is the next implementation phase.
 - Later phases remain implementation work.
 
 ## Success condition
@@ -142,6 +142,9 @@ Validation:
 - Playwright AI e2e with at least one CLI provider and one HTTP provider
 
 ### Phase 3. Add attachment storage and reuse
+
+Status:
+completed on `2026-04-26`
 
 Purpose:
 finish the attachment story on top of the already working Files -> AI

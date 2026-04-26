@@ -36,6 +36,7 @@
   - stored attachment references can now be reused from the composer `Recent attachments` shelf and deleted from that same backend-owned library
   - transcript attachment chips sourced from backend conversation message attachment metadata
   - transcript attachment chips can now be re-queued directly back into the composer as reusable attachment references
+  - browser-level recent-attachment reuse coverage from the AI composer shelf
   - explicit stale-widget repair notice plus `Save cleaned context` action for persisted conversation context that no longer matches the current workspace
   - stale-widget mismatch is now visible in the closed composer body as well, not only after opening the context dropdown
   - AI composer two-row toolbar grouping with explicit `Source / Model / Context` field labels
@@ -67,6 +68,7 @@
     - approved natural-language terminal execution preserving `target_connection_id` / `target_session` for an explicitly selected SSH-backed context widget while a local terminal stays active
     - persisted SSH-backed AI context restore after reopen: a conversation saved against the remote widget still executes against that remote target instead of falling back to the active local shell
     - approved natural-language terminal execution on an SSH-backed context also survives `requires_confirmation`: one browser-side `Approve` drives `term.send_input -> safety.confirm -> retry` without losing the preserved remote target
+    - recent attachment library reuse/delete from the composer shelf
 
 ## Current provider contract
 
@@ -235,6 +237,7 @@
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi -count=1`
 - `npm --prefix frontend run test -- src/features/agent/api/client.test.ts src/features/agent/model/panel-state.test.ts --reporter=verbose`
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts --grep "mocked Codex CLI provider"`
+- `npm run test:ui -- --reporter=line e2e/ai.spec.ts --grep "recent library"`
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts --grep "keeps remote host semantics when the selected context widget is SSH-backed"`
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts --grep "restores persisted remote context before approved terminal execution after reopen"`
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts --grep "preserves persisted remote host semantics from the selected context widget"`

@@ -80,6 +80,15 @@ export type AgentConversationMessage = {
   status: 'complete' | 'error' | 'streaming'
 }
 
+export type AgentAttachmentReference = {
+  id: string
+  name: string
+  path: string
+  mime_type: string
+  size: number
+  modified_time: number
+}
+
 export type AgentConversationSnapshot = {
   id: string
   title: string
@@ -351,6 +360,25 @@ export async function updateAgentSettingsViaApi(
   })
 
   expect(response.ok()).toBeTruthy()
+}
+
+export async function createAttachmentReferenceViaApi(
+  request: APIRequestContext,
+  payload: {
+    path: string
+    workspace_id: string
+    action_source: string
+  },
+) {
+  const response = await request.post(`${backendUrl}/api/v1/agent/conversation/attachments/references`, {
+    data: payload,
+    headers: authHeaders(),
+  })
+
+  expect(response.ok()).toBeTruthy()
+
+  const body = (await response.json()) as { attachment: AgentAttachmentReference }
+  return body.attachment
 }
 
 export async function sendTerminalInputViaApi(

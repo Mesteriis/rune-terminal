@@ -7,6 +7,7 @@ import {
   activateAgentConversation,
   archiveAgentConversation,
   clearBrowserState,
+  createAttachmentReferenceViaApi,
   createAgentConversation as createConversationViaApi,
   createAgentProvider,
   fetchAgentConversations,
@@ -259,6 +260,34 @@ test('AI sidebar streams a mocked Codex CLI provider through the backend convers
     })
 
   await expect(page.getByText('CLI token stream OK', { exact: true })).toBeVisible()
+})
+
+test('AI sidebar reuses stored attachment references from the recent library', async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(30_000)
+
+  const attachmentPath = path.join(process.cwd(), 'docs', 'parity', 'clone-status-matrix.md')
+  await createAttachmentReferenceViaApi(request, {
+    path: attachmentPath,
+    workspace_id: 'ws-default',
+    action_source: 'playwright.ai.attachments',
+  })
+
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  await page.getByRole('button', { name: 'Toggle AI panel' }).click()
+  await expect(page.getByText('AI Rune Assistant')).toBeVisible()
+  await expect(page.getByText('Recent attachments')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Reuse attachment clone-status-matrix.md' })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Reuse attachment clone-status-matrix.md' }).click()
+  await expect(page.getByRole('button', { name: 'Remove attachment clone-status-matrix.md' })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Delete stored attachment clone-status-matrix.md' }).click()
+  await expect(page.getByRole('button', { name: 'Reuse attachment clone-status-matrix.md' })).toHaveCount(0)
 })
 
 test('AI sidebar creates and switches backend conversations instead of keeping one flat transcript', async ({
