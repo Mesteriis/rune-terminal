@@ -15,6 +15,7 @@
   - keyboard navigation inside the searchable AI conversation navigator through `aria-activedescendant` plus `Enter` selection
   - backend-owned agent provider catalog
   - backend-owned provider gateway telemetry over the active conversation/provider route: recent run history, health status, and latency summaries persisted in `runtime.db`
+  - explicit provider probe contract over the same provider route, including CLI readiness and OpenAI-compatible source reachability/model availability checks
   - active conversation provider resolution
   - frontend AI/provider settings surfaces
   - runtime-backed AI composer submit-shortcut preference (`Enter` vs `Ctrl/Cmd+Enter`) through `GET/PUT /api/v1/settings/agent`
@@ -90,11 +91,16 @@
   - `claude`: local Claude Code CLI through `claude -p`
   - `openai-compatible`: operator-supplied HTTP source using `/v1/models` and `/v1/chat/completions`
 - The active runtime still does not include `ollama`, the earlier internal AI proxy draft, or a broad provider/API-key universe.
-- The active provider settings shell now also exposes a backend-owned provider gateway surface through `GET /api/v1/agent/providers/gateway`:
+  - The active provider settings shell now also exposes a backend-owned provider gateway surface through `GET /api/v1/agent/providers/gateway`:
   - recent provider run history persisted in `runtime.db`
   - per-provider health summary derived from backend run truth
   - latency signals (`average_duration_ms`, `last_duration_ms`)
   - last-status / last-error visibility for operator diagnosis without reopening a standalone proxy stack
+  - gateway telemetry failures are now surfaced explicitly in the settings shell instead of being swallowed as an empty telemetry view
+  - provider settings also expose `POST /api/v1/agent/providers/{providerID}/probe` for explicit operator health checks:
+  - CLI probes reuse backend-owned binary/auth readiness state
+  - OpenAI-compatible probes verify source reachability plus configured-model availability
+  - the shell shows probe status, detail, latency, and checked-at time on the active provider editor
 - Unsupported legacy provider records are filtered during agent-state normalization. If filtering leaves no providers, the store recreates the default local CLI providers.
 - The provider catalog route returns `supported_kinds: ["codex", "claude", "openai-compatible"]`.
   - The AI composer toolbar now consumes that backend-owned catalog directly:

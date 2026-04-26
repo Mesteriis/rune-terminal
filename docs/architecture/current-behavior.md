@@ -414,6 +414,10 @@ Confirmable boundaries:
   - provider runs are persisted in `runtime.db`
   - `GET /api/v1/agent/providers/gateway` exposes recent provider activity plus per-provider health/latency summaries
   - `AI > Установленные приложения` projects those recent runs and signals directly in the settings shell
+  - `POST /api/v1/agent/providers/{providerID}/probe` now provides an explicit operator health check for one provider:
+    - CLI providers expose backend-owned binary/auth readiness
+    - OpenAI-compatible providers check source reachability and configured-model availability through `/v1/models`
+  - if gateway telemetry load fails, the settings shell now shows an explicit telemetry error instead of silently collapsing to an empty state
 - Conversation persistence remains full-transcript, but provider requests are bounded to a recent tail before being sent to the active provider.
 - The current provider request budget is deterministic and backend-owned:
   - `RTERM_CONVERSATION_MAX_MESSAGES` default `24`

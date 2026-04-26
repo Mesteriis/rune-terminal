@@ -7,6 +7,7 @@
 - Scope:
   - backend-owned AI provider catalog and active-provider resolution
   - backend-owned provider gateway telemetry and recent-run history
+  - explicit provider probe route and operator-visible probe result surface
   - narrow provider runtime for `codex`, `claude`, and `openai-compatible`
   - frontend settings provider client/draft helpers and TypeScript surface
   - browser-level Playwright validation for the provider/settings surfaces plus AI-toolbar provider/model switching under the split local dev path
@@ -21,6 +22,7 @@
 - `npm run test:ui -- --reporter=line`
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts --grep "AI provider settings show gateway telemetry after a mocked Codex run"`
 - `./scripts/go.sh test ./core/providergateway ./core/app ./core/transport/httpapi -run 'TestStore|TestProviderGatewaySnapshotReturnsRecentRunsAndStats' -count=1`
+- `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestProbeProviderReturnsReachableOpenAICompatibleStatus|TestProviderGatewaySnapshotReturnsRecentRunsAndStats' -count=1`
 - `python3 -m py_compile scripts/validate_workspace_navigation.py scripts/validate_operator_workflow.py`
 - `python3 scripts/validate_operator_workflow.py`
 - `python3 scripts/validate_workspace_navigation.py`
@@ -74,6 +76,13 @@
   - health status derived from backend run truth
   - average and last latency
   - recent activity rows with request mode, model, duration, and last error
+- Provider settings now also expose an explicit `Probe provider route` action:
+  - `POST /api/v1/agent/providers/{providerID}/probe`
+  - CLI providers return explicit binary/auth readiness from the backend-owned provider view
+  - OpenAI-compatible providers probe `/v1/models`, return discovered models, and fail explicitly when the configured model is not present
+  - probe latency and checked-at time are shown in the same settings surface
+- Gateway telemetry load no longer fails silently in the settings shell:
+  - if `/api/v1/agent/providers/gateway` fails, the UI shows an explicit gateway telemetry error instead of quietly pretending the telemetry surface has no data
 - CLI auth state is also surfaced through the same provider view payload:
   - `ready` when the binary is present and authenticated
   - `auth-required` when the binary is present but local login is missing
@@ -102,5 +111,5 @@
   - successful live Codex chat on the product default model
   - successful live OpenAI-compatible HTTP chat through the toolbar-selected LAN source
   - Claude provider routing plus the `auth-required` UI path when the local CLI is installed but not logged in
-  - provider settings gateway telemetry after a mocked Codex run
+  - provider settings gateway telemetry plus explicit probe action after a mocked Codex run
 - Browser validation was rerun through the split local dev path, and a fresh `npm run tauri:dev` desktop smoke was also run in this pass.
