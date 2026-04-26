@@ -21,6 +21,15 @@ export type SSHConfigImportResult = {
   skipped?: SSHConfigImportSkipped[]
 }
 
+export type SaveRemoteProfilePayload = {
+  host: string
+  id?: string
+  identity_file?: string
+  name?: string
+  port?: number
+  user?: string
+}
+
 type APIErrorEnvelope = {
   error?: {
     code?: string
@@ -77,6 +86,38 @@ export async function fetchRemoteProfiles() {
   )
 
   return Array.isArray(payload.profiles) ? payload.profiles : []
+}
+
+export async function saveRemoteProfile(payload: SaveRemoteProfilePayload) {
+  const runtimeContext = await resolveRuntimeContext()
+
+  return requestRemoteJSON<{ profile: RemoteProfile; profiles: RemoteProfile[] }>(
+    runtimeContext,
+    '/api/v1/remote/profiles',
+    {
+      body: JSON.stringify({
+        host: payload.host.trim(),
+        id: payload.id?.trim() || undefined,
+        identity_file: payload.identity_file?.trim() || undefined,
+        name: payload.name?.trim() || undefined,
+        port: payload.port,
+        user: payload.user?.trim() || undefined,
+      }),
+      method: 'POST',
+    },
+  )
+}
+
+export async function deleteRemoteProfile(profileID: string) {
+  const runtimeContext = await resolveRuntimeContext()
+
+  return requestRemoteJSON<{ profiles?: RemoteProfile[] }>(
+    runtimeContext,
+    `/api/v1/remote/profiles/${encodeURIComponent(profileID)}`,
+    {
+      method: 'DELETE',
+    },
+  )
 }
 
 export async function importSSHConfigProfiles(path?: string) {
