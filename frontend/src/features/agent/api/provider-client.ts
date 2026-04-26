@@ -85,6 +85,21 @@ export type AgentProviderGatewaySnapshot = {
   recent_runs: AgentProviderGatewayRun[]
 }
 
+export type AgentProviderProbeResult = {
+  provider_id: string
+  provider_kind: AgentProviderKind | string
+  display_name: string
+  ready: boolean
+  status_state: string
+  status_message: string
+  resolved_binary?: string
+  base_url?: string
+  model?: string
+  discovered_models?: string[]
+  latency_ms: number
+  checked_at: string
+}
+
 export type AgentProviderModelCatalog = {
   models: string[]
 }
@@ -283,6 +298,15 @@ export async function fetchAgentProviderCatalog() {
 export async function fetchAgentProviderGatewaySnapshot() {
   return normalizeProviderGatewaySnapshot(
     await requestProviderRuntimeJSON<AgentProviderGatewaySnapshot>('/api/v1/agent/providers/gateway'),
+  )
+}
+
+export async function probeAgentProvider(providerID: string) {
+  return await requestProviderRuntimeJSON<AgentProviderProbeResult>(
+    `/api/v1/agent/providers/${encodeURIComponent(providerID)}/probe`,
+    {
+      method: 'POST',
+    },
   )
 }
 

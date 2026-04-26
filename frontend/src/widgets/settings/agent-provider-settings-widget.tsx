@@ -193,15 +193,20 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
     draft,
     errorMessage,
     gateway,
+    gatewayErrorMessage,
     isLoading,
     isLoadingModels,
+    isProbing,
     isSaving,
     modelErrorMessage,
+    probeErrorMessage,
+    probeResult,
     selectedProvider,
     selectedProviderID,
     setDraft,
     statusMessage,
     activateSelectedProvider,
+    probeSelectedProvider,
     refreshAvailableModels,
     removeSelectedProvider,
     resetDraft,
@@ -418,10 +423,52 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                         </Text>
                       </ClearBox>
                     </ClearBox>
+                    {gatewayErrorMessage ? (
+                      <Text style={providerSettingsErrorMessageStyle}>
+                        Gateway telemetry is unavailable: {gatewayErrorMessage}
+                      </Text>
+                    ) : null}
                     {selectedGatewayProvider?.last_error_message ? (
                       <Text style={providerSettingsErrorMessageStyle}>
                         Last error: {selectedGatewayProvider.last_error_message}
                       </Text>
+                    ) : null}
+                    <ClearBox style={providerSettingsActionsGroupStyle}>
+                      <Button
+                        disabled={isSaving || isProbing || draft.mode !== 'existing'}
+                        onClick={() => void probeSelectedProvider()}
+                      >
+                        {isProbing ? 'Probing…' : 'Probe provider route'}
+                      </Button>
+                    </ClearBox>
+                    {probeErrorMessage ? (
+                      <Text style={providerSettingsErrorMessageStyle}>{probeErrorMessage}</Text>
+                    ) : null}
+                    {probeResult ? (
+                      <ClearBox style={providerSettingsGridStyle}>
+                        <ClearBox style={providerSettingsFieldStyle}>
+                          <Label>Probe status</Label>
+                          <Text style={providerSettingsStatusMessageStyle}>
+                            {probeResult.ready ? 'Ready' : 'Needs attention'}
+                          </Text>
+                        </ClearBox>
+                        <ClearBox style={providerSettingsFieldStyle}>
+                          <Label>Probe detail</Label>
+                          <Text style={providerSettingsStatusMessageStyle}>{probeResult.status_message}</Text>
+                        </ClearBox>
+                        <ClearBox style={providerSettingsFieldStyle}>
+                          <Label>Probe latency</Label>
+                          <Text style={providerSettingsStatusMessageStyle}>
+                            {formatDuration(probeResult.latency_ms)}
+                          </Text>
+                        </ClearBox>
+                        <ClearBox style={providerSettingsFieldStyle}>
+                          <Label>Checked at</Label>
+                          <Text style={providerSettingsStatusMessageStyle}>
+                            {formatRunTimestamp(probeResult.checked_at)}
+                          </Text>
+                        </ClearBox>
+                      </ClearBox>
                     ) : null}
                   </ClearBox>
 

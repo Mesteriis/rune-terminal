@@ -97,6 +97,20 @@ func (api *API) handleProviderGatewaySnapshot(w http.ResponseWriter, r *http.Req
 	writeJSON(w, http.StatusOK, snapshot)
 }
 
+func (api *API) handleProbeProvider(w http.ResponseWriter, r *http.Request) {
+	providerID := r.PathValue("providerID")
+	if providerID == "" {
+		writeError(w, http.StatusBadRequest, "missing_provider_id", "provider id is required")
+		return
+	}
+	result, err := api.runtime.ProbeProvider(r.Context(), providerID)
+	if err != nil {
+		writeProviderConfigError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
 func (api *API) handleCreateProvider(w http.ResponseWriter, r *http.Request) {
 	var payload createProviderPayload
 	if err := decodeJSON(r, &payload); err != nil {

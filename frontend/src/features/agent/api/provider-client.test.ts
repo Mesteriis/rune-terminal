@@ -4,6 +4,7 @@ import {
   discoverAgentProviderModels,
   fetchAgentProviderCatalog,
   fetchAgentProviderGatewaySnapshot,
+  probeAgentProvider,
   updateAgentProvider,
 } from '@/features/agent/api/provider-client'
 import { resetRuntimeContextCacheForTests } from '@/shared/api/runtime'
@@ -167,6 +168,55 @@ describe('agent provider client', () => {
       ],
     })
     expect(fetchMock.mock.calls[1]?.[0]).toBe('http://127.0.0.1:8090/api/v1/agent/providers/gateway')
+  })
+
+  it('probes one provider through the backend contract', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          provider_id: 'provider-1',
+          provider_kind: 'openai-compatible',
+          display_name: 'LAN Source',
+          ready: true,
+          status_state: 'ready',
+          status_message: 'Source is reachable with 2 discovered model(s).',
+          base_url: 'http://127.0.0.1:8317',
+          model: 'gpt-5.4',
+          discovered_models: ['gpt-5.4', 'gpt-5.4-mini'],
+          latency_ms: 52,
+          checked_at: '2026-04-26T11:00:00Z',
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(probeAgentProvider('provider-1')).resolves.toEqual({
+      provider_id: 'provider-1',
+      provider_kind: 'openai-compatible',
+      display_name: 'LAN Source',
+      ready: true,
+      status_state: 'ready',
+      status_message: 'Source is reachable with 2 discovered model(s).',
+      base_url: 'http://127.0.0.1:8317',
+      model: 'gpt-5.4',
+      discovered_models: ['gpt-5.4', 'gpt-5.4-mini'],
+      latency_ms: 52,
+      checked_at: '2026-04-26T11:00:00Z',
+    })
+    expect(fetchMock.mock.calls[1]?.[0]).toBe('http://127.0.0.1:8090/api/v1/agent/providers/provider-1/probe')
+    expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({
+      method: 'POST',
+    })
   })
 
   it('normalizes openai-compatible providers from the backend catalog', async () => {

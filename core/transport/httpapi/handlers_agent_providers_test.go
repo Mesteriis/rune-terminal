@@ -7,7 +7,9 @@ import (
 	"net/http/httptest"
 	"slices"
 	"testing"
+	"time"
 
+	"github.com/Mesteriis/rune-terminal/core/agent"
 	"github.com/Mesteriis/rune-terminal/core/conversation"
 )
 
@@ -365,6 +367,76 @@ func TestProviderGatewaySnapshotReturnsRecentRunsAndStats(t *testing.T) {
 	}
 }
 
+func TestProbeProviderReturnsReachableOpenAICompatibleStatus(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/models" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[{"id":"gpt-5.4"},{"id":"gpt-5.4-mini"}]}`))
+	}))
+	defer server.Close()
+
+	handler, agentStore := newTestHandler(t)
+	createdProvider, _, err := agentStore.CreateProvider(agent.CreateProviderInput{
+		Kind:        agent.ProviderKindOpenAICompatible,
+		DisplayName: "LAN Source",
+		Enabled:     boolPtr(true),
+		OpenAICompatible: &agent.CreateOpenAICompatibleProviderInput{
+			BaseURL: server.URL,
+			Model:   "gpt-5.4",
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateProvider error: %v", err)
+	}
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(
+		recorder,
+		authedJSONRequest(
+			t,
+			http.MethodPost,
+			"/api/v1/agent/providers/"+createdProvider.ID+"/probe",
+			nil,
+		),
+	)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+
+	var payload struct {
+		ProviderID       string   `json:"provider_id"`
+		ProviderKind     string   `json:"provider_kind"`
+		Ready            bool     `json:"ready"`
+		StatusState      string   `json:"status_state"`
+		StatusMessage    string   `json:"status_message"`
+		BaseURL          string   `json:"base_url"`
+		Model            string   `json:"model"`
+		DiscoveredModels []string `json:"discovered_models"`
+		CheckedAt        string   `json:"checked_at"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
+	}
+	if payload.ProviderID != createdProvider.ID || payload.ProviderKind != "openai-compatible" {
+		t.Fatalf("unexpected provider probe payload: %#v", payload)
+	}
+	if !payload.Ready || payload.StatusState != "ready" {
+		t.Fatalf("expected ready probe result, got %#v", payload)
+	}
+	if payload.BaseURL != server.URL || payload.Model != "gpt-5.4" || !slices.Equal(payload.DiscoveredModels, []string{"gpt-5.4", "gpt-5.4-mini"}) {
+		t.Fatalf("unexpected provider probe payload: %#v", payload)
+	}
+	if _, err := time.Parse(time.RFC3339Nano, payload.CheckedAt); err != nil {
+		t.Fatalf("expected RFC3339 checked_at, got %q", payload.CheckedAt)
+	}
+}
+
 type gatewayCodexProvider struct{}
 
 func (gatewayCodexProvider) Info() conversation.ProviderInfo {
@@ -393,6 +465,10 @@ func (gatewayCodexProvider) CompleteStream(
 		Content: "gateway ok",
 		Model:   info.Model,
 	}, info, nil
+}
+
+func boolPtr(value bool) *bool {
+	return &value
 }
 
 func TestCreateProviderPersistsOpenAICompatibleConfig(t *testing.T) {

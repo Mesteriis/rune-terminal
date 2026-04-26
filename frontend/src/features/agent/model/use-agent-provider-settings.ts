@@ -6,9 +6,11 @@ import {
   discoverAgentProviderModels,
   fetchAgentProviderCatalog,
   fetchAgentProviderGatewaySnapshot,
+  probeAgentProvider,
   setActiveAgentProvider,
   updateAgentProvider,
   type AgentProviderCatalog,
+  type AgentProviderProbeResult,
   type AgentProviderGatewaySnapshot,
   type AgentProviderKind,
   type AgentProviderView,
@@ -107,6 +109,7 @@ function buildChatModelsUpdatePayload(provider: AgentProviderView, chatModels: s
 export function useAgentProviderSettings() {
   const [catalog, setCatalog] = useState<AgentProviderCatalog | null>(null)
   const [gateway, setGateway] = useState<AgentProviderGatewaySnapshot | null>(null)
+  const [gatewayErrorMessage, setGatewayErrorMessage] = useState<string | null>(null)
   const [draft, setDraft] = useState<AgentProviderDraft | null>(null)
   const [selectedProviderID, setSelectedProviderID] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -116,6 +119,20 @@ export function useAgentProviderSettings() {
   const [availableModels, setAvailableModels] = useState<string[]>([])
   const [isLoadingModels, setIsLoadingModels] = useState(false)
   const [modelErrorMessage, setModelErrorMessage] = useState<string | null>(null)
+  const [probeResult, setProbeResult] = useState<AgentProviderProbeResult | null>(null)
+  const [probeErrorMessage, setProbeErrorMessage] = useState<string | null>(null)
+  const [isProbing, setIsProbing] = useState(false)
+
+  const reloadGateway = useCallback(async () => {
+    try {
+      const nextGateway = await fetchAgentProviderGatewaySnapshot()
+      setGateway(nextGateway)
+      setGatewayErrorMessage(null)
+    } catch (error: unknown) {
+      setGateway(null)
+      setGatewayErrorMessage(getErrorMessage(error))
+    }
+  }, [])
 
   const selectProviderFromCatalog = useCallback(
     (nextCatalog: AgentProviderCatalog, providerID?: string | null) => {
@@ -124,6 +141,8 @@ export function useAgentProviderSettings() {
       setCatalog(nextCatalog)
       setSelectedProviderID(provider?.id ?? null)
       setDraft(provider ? createProviderDraftFromView(provider) : null)
+      setProbeResult(null)
+      setProbeErrorMessage(null)
     },
     [],
   )
@@ -136,19 +155,14 @@ export function useAgentProviderSettings() {
       try {
         const nextCatalog = await fetchAgentProviderCatalog()
         selectProviderFromCatalog(nextCatalog, preferredProviderID)
-
-        try {
-          setGateway(await fetchAgentProviderGatewaySnapshot())
-        } catch {
-          setGateway(null)
-        }
+        await reloadGateway()
       } catch (error: unknown) {
         setErrorMessage(getErrorMessage(error))
       } finally {
         setIsLoading(false)
       }
     },
-    [selectProviderFromCatalog],
+    [reloadGateway, selectProviderFromCatalog],
   )
 
   useEffect(() => {
@@ -321,6 +335,8 @@ export function useAgentProviderSettings() {
       setDraft(createProviderDraftFromView(provider))
       setErrorMessage(null)
       setStatusMessage(null)
+      setProbeResult(null)
+      setProbeErrorMessage(null)
     },
     [catalog],
   )
@@ -330,6 +346,8 @@ export function useAgentProviderSettings() {
     setDraft(createEmptyProviderDraft(kind))
     setErrorMessage(null)
     setStatusMessage(null)
+    setProbeResult(null)
+    setProbeErrorMessage(null)
   }, [])
 
   const resetDraft = useCallback(() => {
@@ -341,6 +359,8 @@ export function useAgentProviderSettings() {
       setDraft(createEmptyProviderDraft(draft.kind))
       setErrorMessage(null)
       setStatusMessage(null)
+      setProbeResult(null)
+      setProbeErrorMessage(null)
       return
     }
 
@@ -357,6 +377,8 @@ export function useAgentProviderSettings() {
     setDraft(createProviderDraftFromView(provider))
     setErrorMessage(null)
     setStatusMessage(null)
+    setProbeResult(null)
+    setProbeErrorMessage(null)
   }, [catalog, draft])
 
   const saveDraft = useCallback(async () => {
@@ -372,10 +394,12 @@ export function useAgentProviderSettings() {
       if (draft.mode === 'new') {
         const response = await createAgentProvider(buildCreateProviderPayload(draft))
         selectProviderFromCatalog(response.providers, response.provider.id)
+        await reloadGateway()
         setStatusMessage(`Created ${response.provider.display_name || response.provider.kind} provider.`)
       } else {
         const response = await updateAgentProvider(draft.id ?? '', buildUpdateProviderPayload(draft))
         selectProviderFromCatalog(response.providers, response.provider.id)
+        await reloadGateway()
         setStatusMessage(`Saved ${response.provider.display_name || response.provider.kind} provider.`)
       }
     } catch (error: unknown) {
@@ -383,7 +407,7 @@ export function useAgentProviderSettings() {
     } finally {
       setIsSaving(false)
     }
-  }, [draft, selectProviderFromCatalog])
+  }, [draft, reloadGateway, selectProviderFromCatalog])
 
   const activateSelectedProvider = useCallback(async () => {
     if (!selectedProviderID) {
@@ -397,6 +421,7 @@ export function useAgentProviderSettings() {
     try {
       const nextCatalog = await setActiveAgentProvider(selectedProviderID)
       selectProviderFromCatalog(nextCatalog, selectedProviderID)
+      await reloadGateway()
       const provider = nextCatalog.providers.find((candidate) => candidate.id === selectedProviderID)
       setStatusMessage(`Activated ${provider?.display_name || provider?.kind || 'provider'}.`)
     } catch (error: unknown) {
@@ -404,7 +429,7 @@ export function useAgentProviderSettings() {
     } finally {
       setIsSaving(false)
     }
-  }, [selectProviderFromCatalog, selectedProviderID])
+  }, [reloadGateway, selectProviderFromCatalog, selectedProviderID])
 
   const removeSelectedProvider = useCallback(async () => {
     if (!draft || draft.mode !== 'existing' || !draft.id) {
@@ -420,13 +445,14 @@ export function useAgentProviderSettings() {
       const nextProvider = getPreferredProvider(nextCatalog)
 
       selectProviderFromCatalog(nextCatalog, nextProvider?.id ?? null)
+      await reloadGateway()
       setStatusMessage(`Deleted ${draft.displayName || draft.kind} provider.`)
     } catch (error: unknown) {
       setErrorMessage(getErrorMessage(error))
     } finally {
       setIsSaving(false)
     }
-  }, [draft, selectProviderFromCatalog])
+  }, [draft, reloadGateway, selectProviderFromCatalog])
 
   const updateProviderChatModels = useCallback(
     async (provider: AgentProviderView, chatModels: string[]) => {
@@ -440,6 +466,7 @@ export function useAgentProviderSettings() {
           buildChatModelsUpdatePayload(provider, uniqueModels(chatModels)),
         )
         selectProviderFromCatalog(response.providers, response.provider.id)
+        await reloadGateway()
         setStatusMessage(
           `Updated chat model availability for ${response.provider.display_name || response.provider.kind}.`,
         )
@@ -449,8 +476,28 @@ export function useAgentProviderSettings() {
         setIsSaving(false)
       }
     },
-    [selectProviderFromCatalog],
+    [reloadGateway, selectProviderFromCatalog],
   )
+
+  const probeSelectedProvider = useCallback(async () => {
+    if (!selectedProviderID) {
+      return
+    }
+
+    setIsProbing(true)
+    setProbeErrorMessage(null)
+    setProbeResult(null)
+
+    try {
+      const result = await probeAgentProvider(selectedProviderID)
+      setProbeResult(result)
+      setStatusMessage(`Probed ${result.display_name || result.provider_kind} provider.`)
+    } catch (error: unknown) {
+      setProbeErrorMessage(getErrorMessage(error))
+    } finally {
+      setIsProbing(false)
+    }
+  }, [selectedProviderID])
 
   return {
     availableModels,
@@ -458,16 +505,21 @@ export function useAgentProviderSettings() {
     draft,
     errorMessage,
     gateway,
+    gatewayErrorMessage,
     isLoading,
     isLoadingModels,
+    isProbing,
     isSaving,
     modelErrorMessage,
+    probeErrorMessage,
+    probeResult,
     selectedProvider,
     selectedProviderID,
     setDraft,
     statusMessage,
     activateSelectedProvider,
     refreshAvailableModels,
+    probeSelectedProvider,
     reloadCatalog,
     removeSelectedProvider,
     resetDraft,

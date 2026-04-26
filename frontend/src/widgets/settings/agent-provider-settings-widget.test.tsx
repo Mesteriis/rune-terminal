@@ -89,10 +89,25 @@ vi.mock('@/features/agent/model/use-agent-provider-settings', () => ({
         },
       ],
     },
+    gatewayErrorMessage: 'gateway route unavailable',
     isLoading: false,
     isLoadingModels: false,
+    isProbing: false,
     isSaving: false,
     modelErrorMessage: null,
+    probeErrorMessage: null,
+    probeResult: {
+      provider_id: 'codex-cli',
+      provider_kind: 'codex',
+      display_name: 'Codex CLI',
+      ready: true,
+      status_state: 'ready',
+      status_message: 'Codex CLI route is reachable.',
+      resolved_binary: '/usr/local/bin/codex',
+      model: 'gpt-5.4',
+      latency_ms: 48,
+      checked_at: '2026-04-26T10:21:00Z',
+    },
     selectedProvider: {
       id: 'codex-cli',
       kind: 'codex',
@@ -114,6 +129,7 @@ vi.mock('@/features/agent/model/use-agent-provider-settings', () => ({
     setDraft: vi.fn(),
     statusMessage: null,
     activateSelectedProvider: vi.fn(),
+    probeSelectedProvider: vi.fn(),
     refreshAvailableModels: vi.fn(),
     removeSelectedProvider: vi.fn(),
     resetDraft: vi.fn(),
@@ -130,6 +146,9 @@ describe('AgentProviderSettingsWidget', () => {
     expect(screen.getByText('Gateway signals')).toBeVisible()
     expect(screen.getByText('Recent provider activity')).toBeVisible()
     expect(screen.getByText('Last error: upstream timeout')).toBeVisible()
+    expect(screen.getByText(/Gateway telemetry is unavailable:/)).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Probe provider route' })).toBeVisible()
+    expect(screen.getByText('Codex CLI route is reachable.')).toBeVisible()
     expect(screen.getByText(/Codex CLI · Failing/)).toBeVisible()
     expect(screen.getByText(/stream · gpt-5.4 · 380ms/)).toBeVisible()
   })
