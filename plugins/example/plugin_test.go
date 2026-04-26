@@ -45,6 +45,9 @@ func TestRunHandlesHandshakeAndRequest(t *testing.T) {
 	if handshake.Manifest.PluginID != "example.side_process" {
 		t.Fatalf("unexpected plugin manifest: %#v", handshake.Manifest)
 	}
+	if len(handshake.Manifest.Capabilities) != 1 || handshake.Manifest.Capabilities[0] != "tool.execute" {
+		t.Fatalf("unexpected plugin capabilities: %#v", handshake.Manifest.Capabilities)
+	}
 
 	var response pluginruntime.PluginResponse
 	if err := readTestLine(reader, &response); err != nil {

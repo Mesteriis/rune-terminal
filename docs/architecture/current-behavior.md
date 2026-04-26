@@ -143,8 +143,8 @@ It is intentionally operational, not narrative.
 - Shell-primary tab actions now use direct workspace management endpoints instead of `POST /api/v1/tools/execute`.
 - Operator and debug surfaces can still call the workspace tools through the tool runtime, where policy and audit remain visible.
 - The tool catalog now includes one plugin-backed sample tool (`plugin.example_echo`) executed through a side-process protocol while preserving core-owned approval and audit flow.
-- Plugin handshake now carries an explicit manifest contract (`plugin_id`, `plugin_version`, `protocol_version`, `exposed_tools`) and core rejects runtime execution if the requested tool is not declared in `exposed_tools`.
-- Plugin runtime failures are normalized by core into explicit taxonomy (`launch_failed`, `handshake_failed`, `timeout`, `crashed`, `malformed_response`, `tool_not_exposed`, `protocol_version_mismatch`) and surfaced through tool execution with runtime error code `plugin_failure`.
+- Plugin handshake now carries an explicit manifest contract (`plugin_id`, `plugin_version`, `protocol_version`, `exposed_tools`, `capabilities` when the core-bound plugin spec grants capabilities); core rejects runtime execution if the requested tool is not declared in `exposed_tools`, if a plugin omits required capability declarations, or if it requests capabilities outside the binding allow-list.
+- Plugin runtime failures are normalized by core into explicit taxonomy (`launch_failed`, `handshake_failed`, `timeout`, `crashed`, `malformed_response`, `tool_not_exposed`, `protocol_version_mismatch`, `capability_not_declared`, `capability_not_allowed`) and surfaced through tool execution with runtime error code `plugin_failure`.
 - MCP servers are now modeled as managed runtime processes with explicit lifecycle states (`stopped`, `starting`, `active`, `idle`, `stopped_auto`) tracked by an in-memory runtime registry.
 - MCP server registration now has an explicit API entrypoint:
   - `POST /api/v1/mcp/servers` with minimal payload (`id`, `type`, `endpoint`, optional `headers`)

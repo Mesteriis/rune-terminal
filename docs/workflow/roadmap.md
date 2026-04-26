@@ -28,7 +28,7 @@
 | Policy pipeline     | `NOW`   | five stages (ADR 0015); tests per stage needed                                                                    |
 | Tool runtime        | `NOW`   | approval state machine, audit hooks                                                                               |
 | AI provider backend | `NOW`   | backend-owned provider catalog with Codex CLI, Claude Code CLI, and one narrow OpenAI-compatible HTTP source kind |
-| Plugin runtime      | `NEXT`  | `rterm.plugin.v1`; capability declaration needs fleshing out                                                      |
+| Plugin runtime      | `NOW`   | `rterm.plugin.v1`; manifest tool exposure plus capability allow-list validation                                   |
 | Remote / SSH        | `LATER` | ADR 0019, narrow daily-driver path only                                                                           |
 | MCP integration     | `LATER` | scaffolding exists; end-to-end wiring deferred                                                                    |
 
@@ -74,7 +74,7 @@ from any previous fork are historical inspiration only.
 | JSON-line stdio protocol            | `NOW`   | `core/plugins/protocol.go`           |
 | Go reference plugin                 | `NOW`   | `plugins/example/plugin.go`          |
 | Non-Go reference (Python/Node)      | `LATER` | proves language-neutrality           |
-| Capability declaration in handshake | `NEXT`  | plugin requests resources explicitly |
+| Capability declaration in handshake | `NOW`   | plugin-requested resources are checked against the bound allow-list |
 | Sandbox / permission model doc      | `NEXT`  | ADR + SECURITY note                  |
 
 ### 6. Infrastructure

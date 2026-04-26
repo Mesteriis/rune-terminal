@@ -73,6 +73,12 @@ It is not a frontend contract.
   - `tool_name`
   - `input`
   - `context`
+- Before that invocation envelope is sent, the plugin handshake must explicitly
+  declare the capabilities/resources it requests in `manifest.capabilities`
+  whenever the core-bound plugin spec grants capabilities.
+- Core validates that requested capability set against the plugin binding's
+  allow-list. A plugin cannot gain authority by declaring a new capability in
+  the manifest.
 - `context` must carry the execution identity that the current runtime already treats as explicit:
   - `workspace_id`
   - `widget_id`

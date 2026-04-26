@@ -541,6 +541,140 @@ func TestInvokeReturnsToolNotExposedFailureCode(t *testing.T) {
 	}
 }
 
+func TestInvokeAcceptsManifestCapabilitiesWithinSpecAllowList(t *testing.T) {
+	t.Parallel()
+
+	runtime := NewRuntime(scriptedSpawner{
+		script: func(stdin io.Reader, stdout io.Writer) error {
+			reader := bufio.NewReader(stdin)
+			var handshakeReq PluginHandshakeRequest
+			if err := scriptReadJSONLine(reader, &handshakeReq); err != nil {
+				return err
+			}
+			if err := scriptWriteJSONLine(stdout, PluginHandshakeResponse{
+				Type: MessageTypeHandshake,
+				Manifest: PluginManifest{
+					PluginID:        "example-plugin",
+					PluginVersion:   "1.0.0",
+					ProtocolVersion: ProtocolVersionV1,
+					ExposedTools:    []string{"plugin.example"},
+					Capabilities:    []string{"tool.execute"},
+				},
+			}); err != nil {
+				return err
+			}
+
+			var executeReq PluginRequest
+			if err := scriptReadJSONLine(reader, &executeReq); err != nil {
+				return err
+			}
+			return scriptWriteJSONLine(stdout, PluginResponse{
+				Type:      MessageTypeResponse,
+				RequestID: executeReq.RequestID,
+				Status:    PluginResponseStatusOK,
+				Output:    json.RawMessage(`{"echo":"ok"}`),
+			})
+		},
+	}, time.Second)
+
+	result, err := runtime.Invoke(context.Background(), PluginSpec{
+		Name: "example-plugin",
+		Process: ProcessConfig{
+			Command: "scripted",
+		},
+		Capabilities: []string{"tool.execute"},
+	}, InvokeRequest{
+		ToolName: "plugin.example",
+	})
+	if err != nil {
+		t.Fatalf("Invoke error: %v", err)
+	}
+	if len(result.Manifest.Capabilities) != 1 || result.Manifest.Capabilities[0] != "tool.execute" {
+		t.Fatalf("unexpected manifest capabilities: %#v", result.Manifest.Capabilities)
+	}
+}
+
+func TestInvokeRequiresManifestCapabilitiesWhenSpecAllowsCapabilities(t *testing.T) {
+	t.Parallel()
+
+	runtime := NewRuntime(scriptedSpawner{
+		script: func(stdin io.Reader, stdout io.Writer) error {
+			reader := bufio.NewReader(stdin)
+			var handshakeReq PluginHandshakeRequest
+			if err := scriptReadJSONLine(reader, &handshakeReq); err != nil {
+				return err
+			}
+			return scriptWriteJSONLine(stdout, PluginHandshakeResponse{
+				Type: MessageTypeHandshake,
+				Manifest: PluginManifest{
+					PluginID:        "example-plugin",
+					PluginVersion:   "1.0.0",
+					ProtocolVersion: ProtocolVersionV1,
+					ExposedTools:    []string{"plugin.example"},
+				},
+			})
+		},
+	}, time.Second)
+
+	_, err := runtime.Invoke(context.Background(), PluginSpec{
+		Name: "example-plugin",
+		Process: ProcessConfig{
+			Command: "scripted",
+		},
+		Capabilities: []string{"tool.execute"},
+	}, InvokeRequest{
+		ToolName: "plugin.example",
+	})
+	failure, ok := AsFailure(err)
+	if !ok {
+		t.Fatalf("expected FailureError, got %T (%v)", err, err)
+	}
+	if failure.Code != FailureCodeCapabilityNotDeclared {
+		t.Fatalf("expected capability_not_declared, got %s", failure.Code)
+	}
+}
+
+func TestInvokeRejectsManifestCapabilitiesOutsideSpecAllowList(t *testing.T) {
+	t.Parallel()
+
+	runtime := NewRuntime(scriptedSpawner{
+		script: func(stdin io.Reader, stdout io.Writer) error {
+			reader := bufio.NewReader(stdin)
+			var handshakeReq PluginHandshakeRequest
+			if err := scriptReadJSONLine(reader, &handshakeReq); err != nil {
+				return err
+			}
+			return scriptWriteJSONLine(stdout, PluginHandshakeResponse{
+				Type: MessageTypeHandshake,
+				Manifest: PluginManifest{
+					PluginID:        "example-plugin",
+					PluginVersion:   "1.0.0",
+					ProtocolVersion: ProtocolVersionV1,
+					ExposedTools:    []string{"plugin.example"},
+					Capabilities:    []string{"tool.execute", "fs.write"},
+				},
+			})
+		},
+	}, time.Second)
+
+	_, err := runtime.Invoke(context.Background(), PluginSpec{
+		Name: "example-plugin",
+		Process: ProcessConfig{
+			Command: "scripted",
+		},
+		Capabilities: []string{"tool.execute"},
+	}, InvokeRequest{
+		ToolName: "plugin.example",
+	})
+	failure, ok := AsFailure(err)
+	if !ok {
+		t.Fatalf("expected FailureError, got %T (%v)", err, err)
+	}
+	if failure.Code != FailureCodeCapabilityNotAllowed {
+		t.Fatalf("expected capability_not_allowed, got %s", failure.Code)
+	}
+}
+
 type scriptedSpawner struct {
 	script func(stdin io.Reader, stdout io.Writer) error
 }

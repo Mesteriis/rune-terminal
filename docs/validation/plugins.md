@@ -2,15 +2,24 @@
 
 ## Last verified state
 
-- Date: `2026-04-16`
+- Date: `2026-04-26`
 - State: `VERIFIED` for runtime/protocol hardening
 - Scope:
   - side-process plugin execution path
   - manifest handshake + exposed-tool validation
+  - manifest capability declaration allow-list validation
   - plugin failure taxonomy behavior
   - approval/audit invariants during plugin execution
 
 ## Commands/tests used
+
+Capability declaration slice (`2026-04-26`):
+
+- `./scripts/go.sh test ./core/plugins ./plugins/example -run 'TestInvokeAcceptsManifestCapabilitiesWithinSpecAllowList|TestInvokeRequiresManifestCapabilitiesWhenSpecAllowsCapabilities|TestInvokeRejectsManifestCapabilitiesOutsideSpecAllowList|TestRunHandlesHandshakeAndRequest' -count=1`
+- `./scripts/go.sh test ./core/plugins ./plugins/example ./core/toolruntime ./core/app -count=1`
+- `git diff --check`
+
+Earlier runtime/API evidence retained for the broader plugin boundary:
 
 - `go test ./...`
 - Targeted taxonomy tests:

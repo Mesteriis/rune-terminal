@@ -20,6 +20,8 @@ const (
 	FailureCodeMalformedResponse       FailureCode = "malformed_response"
 	FailureCodeToolNotExposed          FailureCode = "tool_not_exposed"
 	FailureCodeProtocolVersionMismatch FailureCode = "protocol_version_mismatch"
+	FailureCodeCapabilityNotDeclared   FailureCode = "capability_not_declared"
+	FailureCodeCapabilityNotAllowed    FailureCode = "capability_not_allowed"
 )
 
 type FailureError struct {

@@ -25,8 +25,13 @@ Date: `2026-04-16`
     - `plugin_version`
     - `protocol_version`
     - `exposed_tools`
-  - optional manifest field:
+  - capability declaration:
     - `capabilities`
+      - required when the core-bound `PluginSpec` grants plugin capabilities
+      - each value is a capability/resource the plugin explicitly requests
+      - every requested value must exist in the core-owned allow-list for that
+        plugin binding
+      - empty, whitespace-padded and duplicate values are rejected
 - Execute request: `PluginRequest`
 - Execute response: `PluginResponse`
 - Error payload: `PluginError`
@@ -54,8 +59,15 @@ Core classifies plugin-runtime failures with explicit codes:
 - `malformed_response`
 - `tool_not_exposed`
 - `protocol_version_mismatch`
+- `capability_not_declared`
+- `capability_not_allowed`
 
 Additional contract checks tied to this taxonomy:
 
 - handshake `manifest.protocol_version` must match requested protocol
 - requested runtime tool must exist in `manifest.exposed_tools`
+- if `PluginSpec.Capabilities` is non-empty, handshake `manifest.capabilities`
+  must explicitly declare the plugin's requested capabilities
+- handshake `manifest.capabilities` must be a subset of the core-owned
+  `PluginSpec.Capabilities` allow-list; the plugin never self-grants power by
+  naming a capability

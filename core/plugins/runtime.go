@@ -147,6 +147,9 @@ func validateInvocation(spec PluginSpec, request InvokeRequest) error {
 	if strings.TrimSpace(request.ToolName) == "" {
 		return fmt.Errorf("%w: tool name is required", ErrInvalidPluginSpec)
 	}
+	if err := validateSpecCapabilities(spec.Capabilities); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -298,7 +301,76 @@ func validateHandshakeResponse(
 			ErrMalformedPluginOutput,
 		)
 	}
+	if err := validateManifestCapabilities(manifest, spec); err != nil {
+		return err
+	}
 	return nil
+}
+
+func validateSpecCapabilities(capabilities []string) error {
+	seen := make(map[string]struct{}, len(capabilities))
+	for _, capability := range capabilities {
+		if !isCanonicalCapability(capability) {
+			return fmt.Errorf("%w: plugin capability names must be non-empty canonical strings", ErrInvalidPluginSpec)
+		}
+		if _, exists := seen[capability]; exists {
+			return fmt.Errorf("%w: plugin capability %q is duplicated", ErrInvalidPluginSpec, capability)
+		}
+		seen[capability] = struct{}{}
+	}
+	return nil
+}
+
+func validateManifestCapabilities(manifest PluginManifest, spec PluginSpec) error {
+	allowed := make(map[string]struct{}, len(spec.Capabilities))
+	for _, capability := range spec.Capabilities {
+		allowed[capability] = struct{}{}
+	}
+	if len(manifest.Capabilities) == 0 {
+		if len(allowed) > 0 {
+			return newFailure(
+				FailureCodeCapabilityNotDeclared,
+				manifest.PluginID,
+				"plugin manifest must explicitly declare requested capabilities",
+				ErrMalformedPluginOutput,
+			)
+		}
+		return nil
+	}
+
+	seen := make(map[string]struct{}, len(manifest.Capabilities))
+	for _, capability := range manifest.Capabilities {
+		if !isCanonicalCapability(capability) {
+			return newFailure(
+				FailureCodeCapabilityNotDeclared,
+				manifest.PluginID,
+				"plugin manifest includes an invalid capability declaration",
+				ErrMalformedPluginOutput,
+			)
+		}
+		if _, exists := seen[capability]; exists {
+			return newFailure(
+				FailureCodeCapabilityNotDeclared,
+				manifest.PluginID,
+				"plugin manifest includes a duplicate capability declaration",
+				ErrMalformedPluginOutput,
+			)
+		}
+		seen[capability] = struct{}{}
+		if _, ok := allowed[capability]; !ok {
+			return newFailure(
+				FailureCodeCapabilityNotAllowed,
+				manifest.PluginID,
+				fmt.Sprintf("plugin requested capability %q outside the core-bound allow-list", capability),
+				ErrMalformedPluginOutput,
+			)
+		}
+	}
+	return nil
+}
+
+func isCanonicalCapability(capability string) bool {
+	return capability != "" && strings.TrimSpace(capability) == capability
 }
 
 func validatePluginResponse(response PluginResponse, expectedRequestID string, pluginID string) error {

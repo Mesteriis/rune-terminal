@@ -16,7 +16,12 @@ This is the canonical plugin entrypoint for runtime boundary and protocol behavi
 
 ## Protocol contract
 
-- One handshake exchange validates manifest (`plugin_id`, `plugin_version`, `protocol_version`, `exposed_tools`).
+- One handshake exchange validates manifest (`plugin_id`, `plugin_version`,
+  `protocol_version`, `exposed_tools`, explicit `capabilities` when the
+  core-bound plugin spec grants capabilities).
+- Plugin `capabilities` are a request declaration, not authority: core rejects
+  missing declarations, malformed declarations and any requested capability
+  outside the plugin binding's allow-list.
 - Execute requests/responses are line-delimited JSON messages.
 - Core classifies failures with explicit taxonomy:
   - `launch_failed`
@@ -26,6 +31,8 @@ This is the canonical plugin entrypoint for runtime boundary and protocol behavi
   - `malformed_response`
   - `tool_not_exposed`
   - `protocol_version_mismatch`
+  - `capability_not_declared`
+  - `capability_not_allowed`
 
 ## Policy and audit boundaries
 
