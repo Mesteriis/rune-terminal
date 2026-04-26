@@ -49,6 +49,12 @@
     - the terminal search row supports keyboard navigation: `Enter`, `F3`, and `Ctrl/Cmd+G` find next; `Shift+Enter`, `Shift+F3`, and `Shift+Ctrl/Cmd+G` find previous; `Escape` closes search
     - the search row now subscribes to xterm search-result events and renders visible match status (`N/M`, `No matches`, or empty-query guidance) while clearing xterm search decorations when the query is emptied or the row closes
     - directional search controls stay disabled until a non-empty query exists, which keeps the visible search row honest about when navigation is actionable
+    - one runtime-backed terminal widget can now host multiple backend-owned sessions:
+      `GET /api/v1/terminal/{widgetID}` returns `active_session_id` plus grouped `sessions[]`,
+      `POST /api/v1/terminal/{widgetID}/sessions` creates a sibling session and makes it active,
+      `PUT /api/v1/terminal/{widgetID}/sessions/active` switches the active session explicitly,
+      and the widget renders a compact session rail once more than one session exists
+    - grouped-session switching rehydrates the widget snapshot and reconnects the SSE stream against the newly active backend session instead of leaving the UI attached to stale output
   - the shell settings modal now exposes a backend-owned `Terminal` settings slice instead of a placeholder:
     - current terminal font size is visible in `Settings -> Terminal`
     - current terminal line height is visible in `Settings -> Terminal`
@@ -70,6 +76,10 @@
       toolbar search can open and close on the active runtime-backed widget,
       next/previous controls stay disabled without a query, and those controls
       become enabled when a query is typed into the live search field
+    - the same terminal Playwright suite now also verifies grouped-session behavior:
+      `New session` creates a sibling backend session under the same widget id,
+      the compact session rail appears once more than one session exists,
+      and focusing a rail entry switches `active_session_id` back on the backend contract
     - the terminal `Explain & fix` control can hand off a real shell failure into the AI sidebar, auto-apply that terminal as the conversation context, and land the operator directly in the local `Plan / Approve` flow
     - that same handoff now reads `issue_summary`, `status_detail`, and `output_excerpt` from the backend diagnostics route instead of assembling the prompt from raw frontend chunk state
     - when no terminal panel is open, the AI `/run ...` path creates a fresh visible workspace terminal and routes the command there instead of failing with a hidden/no-target execution
@@ -77,6 +87,10 @@
 ## Backend contracts used
 
 - `GET /api/v1/terminal/{widgetID}`
+- `POST /api/v1/terminal/{widgetID}/sessions`
+  - creates another runtime-backed session inside the same terminal widget group
+- `PUT /api/v1/terminal/{widgetID}/sessions/active`
+  - explicitly switches the active runtime session inside the same widget group
 - `GET /api/v1/terminal/{widgetID}/diagnostics`
   - used by the visible `Explain & fix` action to fetch backend-owned issue/output summaries for AI handoff
 - `GET /api/v1/terminal/{widgetID}/stream`
@@ -128,8 +142,10 @@
 - `core/db/migrations/0009_terminal_line_height.sql`
 - `core/terminal/preferences.go`
 - `core/terminal/preferences_test.go`
+- `core/app/terminal_session_actions.go`
 - `core/app/terminal_settings.go`
 - `core/transport/httpapi/handlers_terminal_settings.go`
+- `core/transport/httpapi/handlers_terminal_test.go`
 - `core/transport/httpapi/handlers_terminal_settings_test.go`
 
 ## Demo/static paths removed from the main path
@@ -169,6 +185,9 @@
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts --grep "creates a visible terminal in the active workspace when none is open"`
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts --grep "terminal explain and fix button opens the AI sidebar with terminal context"`
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestTerminalDiagnostics|TestTerminalSnapshot|TestBootstrapSessionsKeepsRemoteWidgetAsDisconnectedWhenConnectionMissing' -count=1`
+- `./scripts/go.sh test ./core/terminal ./core/app ./core/transport/httpapi -run 'TestTerminalServiceCreatesAndSwitchesGroupedSessionsPerWidget|TestCreateAndFocusTerminalSiblingSessionKeepsOneWidgetIdentity|TestTerminalSessionEndpointsCreateAndFocusGroupedSessions|TestRestartTerminalSessionReplacesExistingProcess' -count=1`
+- `npm --prefix frontend run test -- src/features/terminal/api/client.test.ts src/features/terminal/model/use-terminal-session.test.tsx src/widgets/terminal/terminal-widget.test.tsx --reporter=verbose`
+- `npm run test:ui -- --reporter=line e2e/terminal.spec.ts --grep "grouped backend sessions through the session rail"`
 - `npm run tauri:dev`
 
 ## Browser evidence added for this slice
@@ -177,6 +196,10 @@
   - additional terminal tabs are created through the visible group `+` action
   - the compact overflow trigger becomes visible under a narrower viewport
   - opening the overflow trigger shows the Dockview overflow container with the hidden tabs list
+- the terminal Playwright suite now also validates grouped-session runtime behavior:
+  - `New session` creates a sibling backend session under the same widget id
+  - the compact session rail becomes visible once more than one session exists
+  - selecting a rail entry switches `active_session_id` back on the backend snapshot contract
 
 ## Known limitations
 
@@ -185,6 +208,7 @@
 - Terminal toolbar `clear` and `jump-to-latest` actions are intentionally local xterm viewport controls. They do not mutate backend snapshot history and were validated as non-breaking live affordances rather than as persisted runtime state.
 - Browser validation for terminal input now runs through Playwright on the split local dev path. The suite is intentionally serialized (`workers: 1`) because terminal/runtime state is shared across the same backend instance.
 - Browser validation for the terminal search row currently asserts the live shell affordance contract (`open`, `query`, enable/disable state, `close`) on the runtime-backed widget; lower-level hotkey/result-count semantics stay covered by widget/unit tests because browser-level delivery of function-key aliases is platform-sensitive.
+- Grouped sessions currently stay inside one terminal widget with a compact rail. There is still no richer sidebar/session browser, named session management UI, or tmux-resume surface on top of this runtime foundation yet.
 - A fresh `npm run tauri:dev` desktop smoke was run for this slice and the spawned `rterm-desktop` / core listener processes were cleaned up after verification.
 - Browser validation now also covers runtime-owned terminal theme mode, scrollback, plus cursor behavior persistence through the `Settings -> Terminal` shell path and confirms that `theme_mode`, `scrollback`, `cursor_style`, and `cursor_blink` survive reload through the backend contract.
 - Browser validation now also covers the one-shot reset path for the runtime-owned terminal settings shell and confirms that font size, line height, theme mode, scrollback, and cursor behavior all return to the backend defaults through the shared settings contract.

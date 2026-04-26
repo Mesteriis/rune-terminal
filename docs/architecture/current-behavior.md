@@ -337,7 +337,7 @@ Confirmable boundaries:
   - legacy no-preload browser compat bootstrap remains explicit in `wave.ts`
   - legacy runtime base fallbacks (`WAVE_SERVER_WEB_ENDPOINT` / `window.location.origin`) are disabled by default and require explicit opt-in `VITE_RTERM_ENABLE_LEGACY_RUNTIME_FALLBACK=1`
   - legacy Electron net fetch fallback is opt-in only via `RTERM_ENABLE_LEGACY_ELECTRON_NET=1`
-- The terminal shell is now much closer to TideTerm's compact term surface and has an in-panel search row backed by the xterm search addon, including live match count / no-match feedback and decoration cleanup on close; it still lacks TideTerm's multi-session sidebar.
+- The terminal shell is now much closer to TideTerm's compact term surface, has an in-panel search row backed by the xterm search addon, and can host multiple backend-owned sessions inside one widget with explicit active-session switching; it still lacks TideTerm's richer multi-session sidebar/tmux-style browsing surface.
 - The AI panel now uses a TideTerm-shaped header with widget context toggle and overflow menu, and it now has a real backend-owned conversation path in addition to the existing runtime, audit, and policy surfaces.
 - Prompt profile, role preset, and work mode controls are now visible in the AI composer toolbar and write through the existing backend-owned `/api/v1/agent/selection/*` routes.
 - The AI panel welcome card now exposes runtime-backed quick actions for terminal inspection, tab listing, and audit navigation as the current closest-compatible equivalent to deeper TideTerm AI flows.

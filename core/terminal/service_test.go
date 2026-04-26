@@ -2,6 +2,7 @@ package terminal
 
 import (
 	"context"
+	"errors"
 	"os"
 	"sync"
 	"testing"
@@ -58,12 +59,28 @@ func (l fakeLauncher) Launch(context.Context, LaunchOptions) (Process, error) {
 	return l.process, nil
 }
 
+type queueProcessLauncher struct {
+	mu        sync.Mutex
+	processes []Process
+}
+
+func (l *queueProcessLauncher) Launch(context.Context, LaunchOptions) (Process, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if len(l.processes) == 0 {
+		return nil, errors.New("no process configured")
+	}
+	process := l.processes[0]
+	l.processes = l.processes[1:]
+	return process, nil
+}
+
 type contextBoundProcess struct {
 	ctx      context.Context
 	outputCh chan []byte
 }
 
-func (p *contextBoundProcess) PID() int { return 84 }
+func (p *contextBoundProcess) PID() int                       { return 84 }
 func (p *contextBoundProcess) Write(data []byte) (int, error) { return len(data), nil }
 func (p *contextBoundProcess) Output() <-chan []byte          { return p.outputCh }
 func (p *contextBoundProcess) Wait() (int, error) {
@@ -338,5 +355,87 @@ func TestTerminalSessionIgnoresCallerCancellationAfterStart(t *testing.T) {
 
 	if err := service.CloseSession("term-main"); err != nil {
 		t.Fatalf("CloseSession error: %v", err)
+	}
+}
+
+func TestTerminalServiceCreatesAndSwitchesGroupedSessionsPerWidget(t *testing.T) {
+	t.Parallel()
+
+	processA := &fakeProcess{
+		outputCh: make(chan []byte, 4),
+		waitCh:   make(chan struct{}),
+	}
+	processB := &fakeProcess{
+		outputCh: make(chan []byte, 4),
+		waitCh:   make(chan struct{}),
+	}
+	service := NewService(&queueProcessLauncher{
+		processes: []Process{processA, processB},
+	})
+	defer service.Close()
+
+	if _, err := service.StartSession(context.Background(), LaunchOptions{
+		WidgetID: "term-main",
+		Shell:    "/bin/sh",
+	}); err != nil {
+		t.Fatalf("StartSession error: %v", err)
+	}
+	processA.outputCh <- []byte("session-a\n")
+
+	stateB, err := service.CreateSession(context.Background(), LaunchOptions{
+		WidgetID:  "term-main",
+		SessionID: "sess-2",
+		Shell:     "/bin/sh",
+	})
+	if err != nil {
+		t.Fatalf("CreateSession error: %v", err)
+	}
+	if stateB.SessionID != "sess-2" {
+		t.Fatalf("expected session id sess-2, got %q", stateB.SessionID)
+	}
+	processB.outputCh <- []byte("session-b\n")
+	time.Sleep(20 * time.Millisecond)
+
+	snapshot, err := service.Snapshot("term-main", 0)
+	if err != nil {
+		t.Fatalf("Snapshot error: %v", err)
+	}
+	if snapshot.ActiveSessionID != "sess-2" {
+		t.Fatalf("expected active session sess-2, got %q", snapshot.ActiveSessionID)
+	}
+	if snapshot.State.SessionID != "sess-2" {
+		t.Fatalf("expected active snapshot state for sess-2, got %q", snapshot.State.SessionID)
+	}
+	if got := len(snapshot.Sessions); got != 2 {
+		t.Fatalf("expected 2 grouped sessions, got %d", got)
+	}
+	if len(snapshot.Chunks) != 1 || snapshot.Chunks[0].Data != "session-b\n" {
+		t.Fatalf("expected active session chunks from session-b, got %#v", snapshot.Chunks)
+	}
+
+	if _, err := service.SetActiveSession("term-main", "term-main"); err != nil {
+		t.Fatalf("SetActiveSession error: %v", err)
+	}
+	if _, err := service.SendInput("term-main", "pwd", true); err != nil {
+		t.Fatalf("SendInput error: %v", err)
+	}
+	processA.mu.Lock()
+	defer processA.mu.Unlock()
+	if len(processA.writes) != 1 || string(processA.writes[0]) != "pwd\n" {
+		t.Fatalf("expected switched input to reach session A, got %#v", processA.writes)
+	}
+
+	switchedSnapshot, err := service.Snapshot("term-main", 0)
+	if err != nil {
+		t.Fatalf("Snapshot after switch error: %v", err)
+	}
+	if switchedSnapshot.ActiveSessionID != "term-main" {
+		t.Fatalf("expected active session term-main after switch, got %q", switchedSnapshot.ActiveSessionID)
+	}
+	if switchedSnapshot.State.SessionID != "term-main" {
+		t.Fatalf("expected snapshot state for term-main after switch, got %q", switchedSnapshot.State.SessionID)
+	}
+	if len(switchedSnapshot.Chunks) != 1 || switchedSnapshot.Chunks[0].Data != "session-a\n" {
+		t.Fatalf("expected switched snapshot chunks from session-a, got %#v", switchedSnapshot.Chunks)
 	}
 }

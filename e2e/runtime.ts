@@ -48,6 +48,13 @@ export type TerminalSnapshot = {
     widget_id: string
     status: string
   }
+  active_session_id?: string
+  sessions?: Array<{
+    session_id: string
+    status: string
+    started_at: string
+    working_dir?: string
+  }>
   chunks: Array<{
     data: string
     seq: number
@@ -316,6 +323,29 @@ export async function readFileViaApi(request: APIRequestContext, path: string) {
 export async function fetchTerminalSnapshot(request: APIRequestContext, widgetID: string) {
   return expectJSONResponse<TerminalSnapshot>(
     request.get(`${backendUrl}/api/v1/terminal/${encodeURIComponent(widgetID)}`, {
+      headers: authHeaders(),
+    }),
+  )
+}
+
+export async function createTerminalSessionViaApi(request: APIRequestContext, widgetID: string) {
+  return expectJSONResponse<TerminalSnapshot>(
+    request.post(`${backendUrl}/api/v1/terminal/${encodeURIComponent(widgetID)}/sessions`, {
+      headers: authHeaders(),
+    }),
+  )
+}
+
+export async function focusTerminalSessionViaApi(
+  request: APIRequestContext,
+  widgetID: string,
+  sessionID: string,
+) {
+  return expectJSONResponse<TerminalSnapshot>(
+    request.put(`${backendUrl}/api/v1/terminal/${encodeURIComponent(widgetID)}/sessions/active`, {
+      data: {
+        session_id: sessionID,
+      },
       headers: authHeaders(),
     }),
   )

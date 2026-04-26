@@ -21,6 +21,7 @@ import (
 	"github.com/Mesteriis/rune-terminal/core/policy"
 	"github.com/Mesteriis/rune-terminal/core/terminal"
 	"github.com/Mesteriis/rune-terminal/core/toolruntime"
+	"github.com/Mesteriis/rune-terminal/core/workspace"
 )
 
 func TestTerminalSnapshotReturnsBufferedChunks(t *testing.T) {
@@ -359,6 +360,22 @@ func (l *httpTestLauncher) Launch(context.Context, terminal.LaunchOptions) (term
 	return l.process, nil
 }
 
+type httpQueueLauncher struct {
+	mu        sync.Mutex
+	processes []terminal.Process
+}
+
+func (l *httpQueueLauncher) Launch(context.Context, terminal.LaunchOptions) (terminal.Process, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if len(l.processes) == 0 {
+		return nil, fmt.Errorf("no process configured")
+	}
+	process := l.processes[0]
+	l.processes = l.processes[1:]
+	return process, nil
+}
+
 type httpTestProcess struct {
 	closeOnce sync.Once
 	outputCh  chan []byte
@@ -450,5 +467,102 @@ func TestTerminalInterruptSignalsProcessAndReturnsCurrentState(t *testing.T) {
 	}
 	if payload.State.Status != terminal.StatusRunning {
 		t.Fatalf("expected running status, got %q", payload.State.Status)
+	}
+}
+
+func TestTerminalSessionEndpointsCreateAndFocusGroupedSessions(t *testing.T) {
+	t.Parallel()
+
+	processA := &httpTestProcess{
+		outputCh: make(chan []byte, 1),
+		waitCh:   make(chan struct{}),
+	}
+	processB := &httpTestProcess{
+		outputCh: make(chan []byte, 1),
+		waitCh:   make(chan struct{}),
+	}
+	launcher := &httpQueueLauncher{
+		processes: []terminal.Process{processA, processB},
+	}
+
+	tempDir := t.TempDir()
+	policyStore, err := policy.NewStore(filepath.Join(tempDir, "policy.json"), "/workspace/repo")
+	if err != nil {
+		t.Fatalf("NewStore error: %v", err)
+	}
+	auditLog, err := audit.NewLog(filepath.Join(tempDir, "audit.jsonl"))
+	if err != nil {
+		t.Fatalf("NewLog error: %v", err)
+	}
+	agentStore, err := agent.NewStore(filepath.Join(tempDir, "agent.json"))
+	if err != nil {
+		t.Fatalf("NewStore error: %v", err)
+	}
+	registry := toolruntime.NewRegistry()
+	runtime := &app.Runtime{
+		RepoRoot:  "/workspace/repo",
+		Workspace: workspace.NewService(workspace.BootstrapDefault()),
+		Terminals: terminal.NewService(launcher),
+		Agent:     agentStore,
+		Policy:    policyStore,
+		Audit:     auditLog,
+		Registry:  registry,
+		Connections: func() *connections.Service {
+			store, storeErr := connections.NewService(filepath.Join(tempDir, "connections.json"))
+			if storeErr != nil {
+				t.Fatalf("connections store: %v", storeErr)
+			}
+			return store
+		}(),
+	}
+	runtime.Executor = toolruntime.NewExecutor(runtime.Registry, runtime.Policy, runtime.Audit)
+
+	if _, err := runtime.Terminals.StartSession(context.Background(), terminal.LaunchOptions{
+		WidgetID:   "term-main",
+		WorkingDir: runtime.RepoRoot,
+		Connection: terminal.ConnectionSpec{ID: "local", Name: "Local Machine", Kind: "local"},
+	}); err != nil {
+		t.Fatalf("StartSession error: %v", err)
+	}
+	processA.outputCh <- []byte("session-a\n")
+
+	handler := NewHandler(runtime, testAuthToken)
+
+	createRecorder := httptest.NewRecorder()
+	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/terminal/term-main/sessions", nil)
+	createReq.Header.Set("Authorization", "Bearer "+testAuthToken)
+	handler.ServeHTTP(createRecorder, createReq)
+
+	if createRecorder.Code != http.StatusOK {
+		t.Fatalf("expected 200 create, got %d (%s)", createRecorder.Code, createRecorder.Body.String())
+	}
+
+	var created terminal.Snapshot
+	if err := json.Unmarshal(createRecorder.Body.Bytes(), &created); err != nil {
+		t.Fatalf("Unmarshal create snapshot error: %v", err)
+	}
+	if created.ActiveSessionID == "" || created.ActiveSessionID == "term-main" {
+		t.Fatalf("expected new active sibling session, got %q", created.ActiveSessionID)
+	}
+	if len(created.Sessions) != 2 {
+		t.Fatalf("expected 2 grouped sessions after create, got %d", len(created.Sessions))
+	}
+
+	focusRecorder := httptest.NewRecorder()
+	focusReq := authedJSONRequest(t, http.MethodPut, "/api/v1/terminal/term-main/sessions/active", map[string]any{
+		"session_id": "term-main",
+	})
+	handler.ServeHTTP(focusRecorder, focusReq)
+
+	if focusRecorder.Code != http.StatusOK {
+		t.Fatalf("expected 200 focus, got %d (%s)", focusRecorder.Code, focusRecorder.Body.String())
+	}
+
+	var focused terminal.Snapshot
+	if err := json.Unmarshal(focusRecorder.Body.Bytes(), &focused); err != nil {
+		t.Fatalf("Unmarshal focus snapshot error: %v", err)
+	}
+	if focused.ActiveSessionID != "term-main" {
+		t.Fatalf("expected active session term-main, got %q", focused.ActiveSessionID)
 	}
 }

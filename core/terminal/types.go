@@ -42,13 +42,16 @@ type OutputChunk struct {
 }
 
 type Snapshot struct {
-	State   State         `json:"state"`
-	Chunks  []OutputChunk `json:"chunks"`
-	NextSeq uint64        `json:"next_seq"`
+	State           State         `json:"state"`
+	Chunks          []OutputChunk `json:"chunks"`
+	NextSeq         uint64        `json:"next_seq"`
+	ActiveSessionID string        `json:"active_session_id,omitempty"`
+	Sessions        []State       `json:"sessions,omitempty"`
 }
 
 type LaunchOptions struct {
 	WidgetID   string
+	SessionID  string
 	Shell      string
 	WorkingDir string
 	Connection ConnectionSpec

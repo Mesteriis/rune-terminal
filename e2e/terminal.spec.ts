@@ -554,6 +554,50 @@ test('terminal interrupt action signals the live backend session without breakin
     .toBe(true)
 })
 
+test('terminal widget creates and switches grouped backend sessions through the session rail', async ({
+  page,
+  request,
+}) => {
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  await expect
+    .poll(async () => {
+      const snapshot = await fetchTerminalSnapshot(request, 'term-side')
+      return snapshot.state.can_send_input === true && snapshot.state.status === 'running'
+    })
+    .toBe(true)
+
+  const baselineSnapshot = await fetchTerminalSnapshot(request, 'term-side')
+  await expect(baselineSnapshot.active_session_id ?? baselineSnapshot.state.session_id).toBe('term-side')
+
+  await page
+    .getByRole('button', { name: 'Create another terminal session for Workspace shell' })
+    .last()
+    .click()
+
+  await expect
+    .poll(async () => {
+      const snapshot = await fetchTerminalSnapshot(request, 'term-side')
+      return snapshot.sessions && snapshot.sessions.length > 1 ? snapshot.active_session_id : null
+    })
+    .not.toBeNull()
+
+  const snapshotAfterCreate = await fetchTerminalSnapshot(request, 'term-side')
+  const createdSessionID = snapshotAfterCreate.active_session_id
+  expect(createdSessionID).toBeTruthy()
+  expect(createdSessionID).not.toBe('term-side')
+
+  await expect(page.getByRole('button', { name: 'Focus terminal session 1 for Workspace shell' }).last()).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Focus terminal session 2 for Workspace shell' }).last()).toBeVisible()
+
+  await page.getByRole('button', { name: 'Focus terminal session 1 for Workspace shell' }).last().click()
+
+  await expect
+    .poll(async () => (await fetchTerminalSnapshot(request, 'term-side')).active_session_id)
+    .toBe('term-side')
+})
+
 test('terminal tab overflow uses the compact overflow trigger and dropdown path', async ({ page }) => {
   await clearBrowserState(page)
   await page.setViewportSize({ width: 900, height: 900 })

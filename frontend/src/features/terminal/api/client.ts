@@ -31,6 +31,8 @@ export type TerminalSnapshot = {
   state: TerminalRuntimeState
   chunks: TerminalOutputChunk[]
   next_seq: number
+  active_session_id?: string
+  sessions?: TerminalRuntimeState[]
 }
 
 export type TerminalInputResult = {
@@ -96,9 +98,14 @@ function normalizeTerminalChunks(chunks: unknown): TerminalOutputChunk[] {
   return Array.isArray(chunks) ? chunks : []
 }
 
+function normalizeTerminalSessions(sessions: unknown): TerminalRuntimeState[] {
+  return Array.isArray(sessions) ? (sessions as TerminalRuntimeState[]) : []
+}
+
 function normalizeTerminalSnapshot(snapshot: TerminalSnapshot): TerminalSnapshot {
   return {
     ...snapshot,
+    sessions: normalizeTerminalSessions(snapshot.sessions),
     chunks: normalizeTerminalChunks(snapshot.chunks),
   }
 }
@@ -266,6 +273,26 @@ function attachAbortSignal(signal: AbortSignal | undefined, controller: AbortCon
 
 export async function fetchTerminalSnapshot(widgetID: string, from?: number) {
   const snapshot = await requestRuntimeJSON<TerminalSnapshot>(buildTerminalPath(widgetID, '', from))
+  return normalizeTerminalSnapshot(snapshot)
+}
+
+export async function createTerminalSession(widgetID: string) {
+  const snapshot = await requestRuntimeJSON<TerminalSnapshot>(buildTerminalPath(widgetID, '/sessions'), {
+    method: 'POST',
+  })
+  return normalizeTerminalSnapshot(snapshot)
+}
+
+export async function setActiveTerminalSession(widgetID: string, sessionID: string) {
+  const snapshot = await requestRuntimeJSON<TerminalSnapshot>(
+    buildTerminalPath(widgetID, '/sessions/active'),
+    {
+      body: JSON.stringify({
+        session_id: sessionID,
+      }),
+      method: 'PUT',
+    },
+  )
   return normalizeTerminalSnapshot(snapshot)
 }
 

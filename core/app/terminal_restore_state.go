@@ -94,6 +94,9 @@ func disconnectedStatusDetail(err error) string {
 func (r *Runtime) setRestoredTerminalState(state terminal.State) {
 	r.restoredMu.Lock()
 	defer r.restoredMu.Unlock()
+	if r.restored == nil {
+		r.restored = make(map[string]terminal.State)
+	}
 	r.restored[state.WidgetID] = state
 }
 

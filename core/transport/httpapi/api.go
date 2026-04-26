@@ -118,6 +118,8 @@ func NewHandler(runtime *app.Runtime, authToken string) http.Handler {
 	mux.HandleFunc("POST /api/v1/tools/execute", api.handleExecuteTool)
 	mux.HandleFunc("GET /api/v1/terminal/{widgetID}", api.handleTerminalSnapshot)
 	mux.HandleFunc("GET /api/v1/terminal/{widgetID}/diagnostics", api.handleTerminalDiagnostics)
+	mux.HandleFunc("POST /api/v1/terminal/{widgetID}/sessions", api.handleCreateTerminalSession)
+	mux.HandleFunc("PUT /api/v1/terminal/{widgetID}/sessions/active", api.handleSetActiveTerminalSession)
 	mux.HandleFunc("POST /api/v1/terminal/{widgetID}/input", api.handleTerminalInput)
 	mux.HandleFunc("POST /api/v1/terminal/{widgetID}/interrupt", api.handleTerminalInterrupt)
 	mux.HandleFunc("POST /api/v1/terminal/{widgetID}/restart", api.handleTerminalRestart)

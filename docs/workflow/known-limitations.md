@@ -78,9 +78,11 @@ capability.
   remote controller
 - connection lifecycle is explicit but narrow (`saved profile` vs
   `last check` vs `last launch`)
-- terminal parity is practical but the advanced multi-session/sidebar
-  browsing model is not there yet; the current search and terminal-settings
-  flows are intentionally scoped to the active single-session widget
+- terminal parity is practical and one widget can now host grouped backend
+  sessions, but the richer multi-session/sidebar browsing model is not
+  there yet; the current search and terminal-settings flows are still
+  intentionally scoped to the active terminal widget rather than a fuller
+  session browser
 - AI command flow now supports explicit `/run` grammar plus approved
   terminal-context command planning for narrow natural-language terminal
   requests, but it is still not broad provider-native tool execution

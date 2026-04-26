@@ -371,4 +371,131 @@ describe('TerminalWidget', () => {
       expect(openAiSidebar).toHaveBeenCalledTimes(1)
     })
   })
+
+  it('shows a grouped session rail and switches sessions through the terminal hook', async () => {
+    const createSessionMock = vi.fn(async () => undefined)
+    const focusSessionMock = vi.fn(async () => undefined)
+
+    vi.mocked(useTerminalSession).mockReturnValue({
+      runtimeWidgetId: 'term-main',
+      sessionKey: 'term-main:1',
+      activeSessionId: 'sess-2',
+      cwd: '/repo',
+      shellLabel: 'zsh',
+      connectionKind: 'local',
+      sessionState: 'running',
+      sessions: [
+        {
+          sessionId: 'term-main',
+          shellLabel: 'zsh',
+          connectionKind: 'local',
+          sessionState: 'running',
+          statusDetail: null,
+          cwd: '/repo',
+          isActive: false,
+          runtimeState: {
+            widget_id: 'term-main',
+            session_id: 'term-main',
+            shell: '/bin/zsh',
+            status: 'running',
+            pid: 101,
+            started_at: '2026-04-26T12:00:00Z',
+            can_send_input: true,
+            can_interrupt: true,
+            working_dir: '/repo',
+          },
+        },
+        {
+          sessionId: 'sess-2',
+          shellLabel: 'zsh',
+          connectionKind: 'local',
+          sessionState: 'running',
+          statusDetail: null,
+          cwd: '/repo',
+          isActive: true,
+          runtimeState: {
+            widget_id: 'term-main',
+            session_id: 'sess-2',
+            shell: '/bin/zsh',
+            status: 'running',
+            pid: 202,
+            started_at: '2026-04-26T12:05:00Z',
+            can_send_input: true,
+            can_interrupt: true,
+            working_dir: '/repo',
+          },
+        },
+      ],
+      canSendInput: true,
+      canInterrupt: true,
+      isCreatingSession: false,
+      isLoading: false,
+      isInterrupting: false,
+      isRestarting: false,
+      error: null,
+      statusDetail: 'Attached to local shell.',
+      outputChunks: [],
+      runtimeState: {
+        widget_id: 'term-main',
+        session_id: 'sess-2',
+        shell: '/bin/zsh',
+        status: 'running',
+        pid: 202,
+        started_at: '2026-04-26T12:05:00Z',
+        can_send_input: true,
+        can_interrupt: true,
+        working_dir: '/repo',
+      },
+      createSession: createSessionMock,
+      focusSession: focusSessionMock,
+      interruptSession: vi.fn(),
+      sendInputChunk: vi.fn(),
+      restartSession: vi.fn(),
+    } as ReturnType<typeof useTerminalSession>)
+    vi.mocked(useTerminalPreferences).mockReturnValue({
+      errorMessage: null,
+      decreaseFontSize: vi.fn(),
+      decreaseLineHeight: vi.fn(),
+      cursorBlink: true,
+      cursorStyle: 'block',
+      fontSize: 13,
+      increaseFontSize: vi.fn(),
+      increaseLineHeight: vi.fn(),
+      increaseScrollback: vi.fn(),
+      isLoading: false,
+      isSaving: false,
+      lineHeight: 1.25,
+      refresh: vi.fn(async () => undefined),
+      resetScrollback: vi.fn(),
+      resetFontSize: vi.fn(),
+      resetLineHeight: vi.fn(),
+      resetCursorBlink: vi.fn(),
+      resetCursorStyle: vi.fn(),
+      resetThemeMode: vi.fn(),
+      scrollback: 5000,
+      themeMode: 'adaptive',
+      decreaseScrollback: vi.fn(),
+      updateCursorBlink: vi.fn(),
+      updateFontSize: vi.fn(),
+      updateLineHeight: vi.fn(),
+      updateCursorStyle: vi.fn(),
+      updateThemeMode: vi.fn(),
+    })
+
+    render(<TerminalWidget hostId="terminal" runtimeWidgetId="term-main" title="Main terminal" />)
+
+    expect(
+      screen.getByRole('button', { name: 'Create another terminal session for Main terminal' }),
+    ).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Focus terminal session 1 for Main terminal' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Focus terminal session 2 for Main terminal' })).toBeDisabled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create another terminal session for Main terminal' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Focus terminal session 1 for Main terminal' }))
+
+    await waitFor(() => {
+      expect(createSessionMock).toHaveBeenCalledTimes(1)
+      expect(focusSessionMock).toHaveBeenCalledWith('term-main')
+    })
+  })
 })

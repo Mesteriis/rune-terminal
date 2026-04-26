@@ -4,12 +4,14 @@ import {
   closeTerminalTab,
   connectTerminalStream,
   createSplitTerminalWidget,
+  createTerminalSession,
   createTerminalTab,
   fetchTerminalDiagnostics,
   fetchTerminalSnapshot,
   interruptTerminal,
   restartTerminal,
   sendTerminalInput,
+  setActiveTerminalSession,
   TerminalAPIError,
 } from '@/features/terminal/api/client'
 import { resetRuntimeContextCacheForTests } from '@/shared/api/runtime'
@@ -48,6 +50,7 @@ describe('terminal api client', () => {
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({
+          active_session_id: 'term-main',
           state: {
             widget_id: 'term-main',
             session_id: 'term-main',
@@ -70,6 +73,22 @@ describe('terminal api client', () => {
             },
           ],
           next_seq: 4,
+          sessions: [
+            {
+              widget_id: 'term-main',
+              session_id: 'term-main',
+              shell: '/bin/zsh',
+              status: 'running',
+              pid: 4242,
+              started_at: '2026-04-21T08:00:00Z',
+              can_send_input: true,
+              can_interrupt: true,
+              working_dir: '/Users/avm/projects/runa-terminal',
+              connection_id: 'local',
+              connection_name: 'Local Machine',
+              connection_kind: 'local',
+            },
+          ],
         }),
       })
     vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
@@ -99,6 +118,23 @@ describe('terminal api client', () => {
         },
       ],
       next_seq: 4,
+      active_session_id: 'term-main',
+      sessions: [
+        {
+          widget_id: 'term-main',
+          session_id: 'term-main',
+          shell: '/bin/zsh',
+          status: 'running',
+          pid: 4242,
+          started_at: '2026-04-21T08:00:00Z',
+          can_send_input: true,
+          can_interrupt: true,
+          working_dir: '/Users/avm/projects/runa-terminal',
+          connection_id: 'local',
+          connection_name: 'Local Machine',
+          connection_kind: 'local',
+        },
+      ],
     })
     expect(fetchMock.mock.calls[1]?.[0]).toBe('http://127.0.0.1:8090/api/v1/terminal/term-main?from=3')
   })
@@ -155,6 +191,7 @@ describe('terminal api client', () => {
       },
       chunks: [],
       next_seq: 1,
+      sessions: [],
     })
   })
 
@@ -298,6 +335,115 @@ describe('terminal api client', () => {
     expect(fetchMock.mock.calls[3]?.[0]).toBe('http://127.0.0.1:8090/api/v1/terminal/term-main/interrupt')
     expect(fetchMock.mock.calls[3]?.[1]).toMatchObject({
       method: 'POST',
+    })
+  })
+
+  it('creates and focuses terminal sessions through the backend contract', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          active_session_id: 'sess-2',
+          state: {
+            widget_id: 'term-main',
+            session_id: 'sess-2',
+            shell: '/bin/zsh',
+            status: 'running',
+            pid: 5252,
+            started_at: '2026-04-21T08:02:00Z',
+            can_send_input: true,
+            can_interrupt: true,
+            connection_id: 'local',
+            connection_name: 'Local Machine',
+            connection_kind: 'local',
+          },
+          chunks: [],
+          next_seq: 1,
+          sessions: [
+            {
+              widget_id: 'term-main',
+              session_id: 'term-main',
+              shell: '/bin/zsh',
+              status: 'running',
+              pid: 4242,
+              started_at: '2026-04-21T08:00:00Z',
+              can_send_input: true,
+              can_interrupt: true,
+              connection_id: 'local',
+              connection_name: 'Local Machine',
+              connection_kind: 'local',
+            },
+            {
+              widget_id: 'term-main',
+              session_id: 'sess-2',
+              shell: '/bin/zsh',
+              status: 'running',
+              pid: 5252,
+              started_at: '2026-04-21T08:02:00Z',
+              can_send_input: true,
+              can_interrupt: true,
+              connection_id: 'local',
+              connection_name: 'Local Machine',
+              connection_kind: 'local',
+            },
+          ],
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          active_session_id: 'term-main',
+          state: {
+            widget_id: 'term-main',
+            session_id: 'term-main',
+            shell: '/bin/zsh',
+            status: 'running',
+            pid: 4242,
+            started_at: '2026-04-21T08:00:00Z',
+            can_send_input: true,
+            can_interrupt: true,
+            connection_id: 'local',
+            connection_name: 'Local Machine',
+            connection_kind: 'local',
+          },
+          chunks: [],
+          next_seq: 1,
+          sessions: [],
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(createTerminalSession('term-main')).resolves.toMatchObject({
+      active_session_id: 'sess-2',
+      state: {
+        session_id: 'sess-2',
+      },
+    })
+    await expect(setActiveTerminalSession('term-main', 'term-main')).resolves.toMatchObject({
+      active_session_id: 'term-main',
+      state: {
+        session_id: 'term-main',
+      },
+    })
+
+    expect(fetchMock.mock.calls[1]?.[0]).toBe('http://127.0.0.1:8090/api/v1/terminal/term-main/sessions')
+    expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({ method: 'POST' })
+    expect(fetchMock.mock.calls[2]?.[0]).toBe(
+      'http://127.0.0.1:8090/api/v1/terminal/term-main/sessions/active',
+    )
+    expect(fetchMock.mock.calls[2]?.[1]).toMatchObject({ method: 'PUT' })
+    expect(JSON.parse(String(fetchMock.mock.calls[2]?.[1]?.body))).toEqual({
+      session_id: 'term-main',
     })
   })
 

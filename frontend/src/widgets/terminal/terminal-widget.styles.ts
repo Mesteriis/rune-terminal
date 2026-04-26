@@ -41,6 +41,45 @@ export const terminalWidgetToolbarRowStyle: React.CSSProperties = {
   padding: '0.42rem 0.78rem 0.54rem',
 }
 
+export const terminalWidgetSessionRailStyle: React.CSSProperties = {
+  display: 'flex',
+  gap: '0.32rem',
+  flexWrap: 'wrap',
+  padding: '0 0.78rem 0.52rem',
+  borderBottom: '1px solid var(--runa-terminal-surface-border, var(--color-border-subtle))',
+}
+
+export const terminalWidgetSessionButtonStyle: React.CSSProperties = {
+  minHeight: '30px',
+  padding: '0.34rem 0.54rem',
+  border: '1px solid var(--runa-terminal-surface-border, var(--color-border-subtle))',
+  borderRadius: 'var(--radius-sm)',
+  background:
+    'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 64%, transparent)',
+  color: 'var(--runa-terminal-text-secondary, var(--color-text-secondary))',
+  display: 'inline-flex',
+  flexDirection: 'column',
+  alignItems: 'flex-start',
+  gap: '0.08rem',
+  boxShadow: 'none',
+  backdropFilter: 'none',
+  WebkitBackdropFilter: 'none',
+  textAlign: 'left',
+}
+
+export const terminalWidgetSessionButtonActiveStyle: React.CSSProperties = {
+  borderColor: 'var(--color-accent-border, var(--color-accent-text))',
+  color: 'var(--color-accent-text)',
+  background:
+    'color-mix(in srgb, var(--color-accent-bg, var(--color-surface-glass-soft)) 34%, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 66%)',
+}
+
+export const terminalWidgetSessionMetaStyle: React.CSSProperties = {
+  fontSize: '0.68rem',
+  lineHeight: 1.2,
+  opacity: 0.78,
+}
+
 export const terminalWidgetSurfaceWrapStyle: React.CSSProperties = {
   flex: 1,
   minHeight: 0,

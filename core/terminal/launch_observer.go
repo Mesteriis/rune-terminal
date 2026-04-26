@@ -11,10 +11,14 @@ const outputSettleWindow = 250 * time.Millisecond
 
 func (s *Service) ObserveLaunch(ctx context.Context, widgetID string, timeout time.Duration) (State, error) {
 	s.mu.RLock()
-	sess, ok := s.sessions[widgetID]
+	group, ok := s.groups[widgetID]
 	s.mu.RUnlock()
 	if !ok {
 		return State{}, fmt.Errorf("%w: %s", ErrWidgetNotFound, widgetID)
+	}
+	sess, err := activeGroupSessionLocked(group)
+	if err != nil {
+		return State{}, err
 	}
 
 	deadline := time.Now().Add(timeout)

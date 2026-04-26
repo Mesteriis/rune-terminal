@@ -1,4 +1,4 @@
-import { LoaderCircle, RotateCcw, Sparkles, Square } from 'lucide-react'
+import { LoaderCircle, Plus, RotateCcw, Sparkles, Square } from 'lucide-react'
 import { useCallback, useState, useRef } from 'react'
 
 import { fetchTerminalDiagnostics } from '@/features/terminal/api/client'
@@ -23,6 +23,10 @@ import {
   terminalWidgetHeaderActionsStyle,
   terminalWidgetHeaderRowStyle,
   terminalWidgetRootStyle,
+  terminalWidgetSessionButtonActiveStyle,
+  terminalWidgetSessionButtonStyle,
+  terminalWidgetSessionMetaStyle,
+  terminalWidgetSessionRailStyle,
   terminalWidgetSurfaceWrapStyle,
   terminalWidgetToolbarRowStyle,
 } from '@/widgets/terminal/terminal-widget.styles'
@@ -52,6 +56,7 @@ export function TerminalWidget({
     runtimeWidgetId,
     title,
   })
+  const groupedSessions = terminalSession.sessions ?? []
   const handleCopy = useCallback(async () => {
     await terminalSurfaceRef.current?.copySelection()
   }, [])
@@ -159,8 +164,14 @@ export function TerminalWidget({
   }, [runtimeWidgetId, terminalSession.connectionKind, terminalSession.shellLabel, title])
   const isRestartDisabled =
     terminalSession.isLoading || terminalSession.isInterrupting || terminalSession.isRestarting
+  const isCreateSessionDisabled =
+    terminalSession.isLoading ||
+    terminalSession.isCreatingSession ||
+    terminalSession.isInterrupting ||
+    terminalSession.isRestarting
   const isInterruptDisabled =
     terminalSession.isLoading ||
+    terminalSession.isCreatingSession ||
     terminalSession.isInterrupting ||
     terminalSession.isRestarting ||
     !terminalSession.canInterrupt
@@ -184,6 +195,27 @@ export function TerminalWidget({
                   runaComponent="terminal-widget-header-actions"
                   style={terminalWidgetHeaderActionsStyle}
                 >
+                  <Button
+                    aria-label={`Create another terminal session for ${title}`}
+                    disabled={isCreateSessionDisabled}
+                    onClick={() => {
+                      void terminalSession.createSession()
+                    }}
+                    runaComponent="terminal-widget-create-session"
+                    style={{
+                      ...terminalWidgetAiActionButtonStyle,
+                      ...(isCreateSessionDisabled
+                        ? {
+                            cursor: 'default',
+                            opacity: 0.58,
+                          }
+                        : null),
+                    }}
+                    title="Create a new backend-owned session inside this terminal widget"
+                  >
+                    <Plus size={13} strokeWidth={1.8} />
+                    {terminalSession.isCreatingSession ? 'Creating…' : 'New session'}
+                  </Button>
                   <Button
                     aria-label={`Explain and fix the latest terminal issue for ${title}`}
                     disabled={isExplainAndFixDisabled}
@@ -274,6 +306,36 @@ export function TerminalWidget({
               title={title}
             />
           </ClearBox>
+          {groupedSessions.length > 1 ? (
+            <ClearBox runaComponent="terminal-widget-session-rail" style={terminalWidgetSessionRailStyle}>
+              {groupedSessions.map((session, index) => (
+                <Button
+                  aria-label={`Focus terminal session ${index + 1} for ${title}`}
+                  disabled={session.isActive || terminalSession.isLoading || terminalSession.isRestarting}
+                  key={session.sessionId}
+                  onClick={() => {
+                    void terminalSession.focusSession(session.sessionId)
+                  }}
+                  runaComponent="terminal-widget-session-button"
+                  style={{
+                    ...terminalWidgetSessionButtonStyle,
+                    ...(session.isActive ? terminalWidgetSessionButtonActiveStyle : null),
+                    ...(session.isActive || terminalSession.isLoading || terminalSession.isRestarting
+                      ? {
+                          cursor: session.isActive ? 'default' : 'progress',
+                        }
+                      : null),
+                  }}
+                  title={session.cwd}
+                >
+                  <span>{`Session ${index + 1}`}</span>
+                  <span style={terminalWidgetSessionMetaStyle}>
+                    {session.sessionState === 'running' ? session.shellLabel : session.sessionState}
+                  </span>
+                </Button>
+              ))}
+            </ClearBox>
+          ) : null}
           <ClearBox runaComponent="terminal-widget-toolbar-row" style={terminalWidgetToolbarRowStyle}>
             <TerminalToolbar
               isSearchOpen={isSearchOpen}

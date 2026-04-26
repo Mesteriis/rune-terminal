@@ -121,3 +121,62 @@ func TestRestartTerminalSessionReturnsNotFoundForUnknownWidget(t *testing.T) {
 		t.Fatalf("expected terminal.ErrWidgetNotFound, got %v", err)
 	}
 }
+
+func TestCreateAndFocusTerminalSiblingSessionKeepsOneWidgetIdentity(t *testing.T) {
+	t.Parallel()
+
+	processA := &launchTestProcess{
+		pid:      300,
+		outputCh: make(chan []byte, 1),
+		waitCh:   make(chan struct{}),
+		exitCode: 0,
+	}
+	processB := &launchTestProcess{
+		pid:      400,
+		outputCh: make(chan []byte, 1),
+		waitCh:   make(chan struct{}),
+		exitCode: 0,
+	}
+	launcher := &queueLaunchOptions{
+		processes: []terminal.Process{processA, processB},
+	}
+	runtime := newRestartRuntime(t, launcher)
+
+	connection, err := runtime.connectionForWidget("local")
+	if err != nil {
+		t.Fatalf("connectionForWidget error: %v", err)
+	}
+	if _, err := runtime.Terminals.StartSession(context.Background(), terminal.LaunchOptions{
+		WidgetID:   "term-main",
+		WorkingDir: runtime.RepoRoot,
+		Connection: connection,
+	}); err != nil {
+		t.Fatalf("StartSession error: %v", err)
+	}
+	processA.outputCh <- []byte("session-a\n")
+
+	snapshot, err := runtime.CreateTerminalSiblingSession(context.Background(), "term-main")
+	if err != nil {
+		t.Fatalf("CreateTerminalSiblingSession error: %v", err)
+	}
+	if snapshot.State.WidgetID != "term-main" {
+		t.Fatalf("expected snapshot widget term-main, got %q", snapshot.State.WidgetID)
+	}
+	if snapshot.ActiveSessionID == "" || snapshot.ActiveSessionID == "term-main" {
+		t.Fatalf("expected new active sibling session id, got %q", snapshot.ActiveSessionID)
+	}
+	if got := len(snapshot.Sessions); got != 2 {
+		t.Fatalf("expected 2 grouped sessions, got %d", got)
+	}
+
+	focusedSnapshot, err := runtime.FocusTerminalSession("term-main", "term-main")
+	if err != nil {
+		t.Fatalf("FocusTerminalSession error: %v", err)
+	}
+	if focusedSnapshot.ActiveSessionID != "term-main" {
+		t.Fatalf("expected active session term-main after focus, got %q", focusedSnapshot.ActiveSessionID)
+	}
+	if focusedSnapshot.State.SessionID != "term-main" {
+		t.Fatalf("expected active state term-main after focus, got %q", focusedSnapshot.State.SessionID)
+	}
+}

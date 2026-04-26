@@ -86,7 +86,7 @@ func TestUnsubscribeIsSafeDuringConcurrentDelivery(t *testing.T) {
 	defer service.Close()
 
 	service.mu.RLock()
-	sess := service.sessions["term-main"]
+	group := service.groups["term-main"]
 	service.mu.RUnlock()
 
 	for i := range 128 {
@@ -96,7 +96,7 @@ func TestUnsubscribeIsSafeDuringConcurrentDelivery(t *testing.T) {
 		}
 
 		service.mu.Lock()
-		snapshot := service.snapshotSubscribersLocked(sess)
+		snapshot := service.snapshotSubscribersLocked(group)
 		service.mu.Unlock()
 
 		var wg sync.WaitGroup

@@ -15,15 +15,29 @@ export type TerminalSessionSeed = {
   title: string
 }
 
+export type TerminalSessionListEntry = {
+  sessionId: string
+  shellLabel: string
+  connectionKind: TerminalDisplayConnectionKind
+  sessionState: TerminalDisplaySessionState
+  statusDetail: string | null
+  cwd: string
+  isActive: boolean
+  runtimeState: TerminalRuntimeState
+}
+
 export type TerminalSessionView = {
   runtimeWidgetId: string
   sessionKey: string
+  activeSessionId: string | null
   cwd: string
   shellLabel: string
   connectionKind: TerminalDisplayConnectionKind
   sessionState: TerminalDisplaySessionState
+  sessions: TerminalSessionListEntry[]
   canSendInput: boolean
   canInterrupt: boolean
+  isCreatingSession: boolean
   isLoading: boolean
   isInterrupting: boolean
   isRestarting: boolean
@@ -31,6 +45,8 @@ export type TerminalSessionView = {
   statusDetail: string | null
   outputChunks: TerminalOutputChunk[]
   runtimeState: TerminalRuntimeState | null
+  createSession: () => Promise<void>
+  focusSession: (sessionID: string) => Promise<void>
   sendInputChunk: (text: string) => Promise<void>
   interruptSession: () => Promise<void>
   restartSession: () => Promise<void>
