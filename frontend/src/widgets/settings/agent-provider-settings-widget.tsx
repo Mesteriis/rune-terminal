@@ -1,4 +1,4 @@
-import { useId } from 'react'
+import { useId, useMemo, useState } from 'react'
 
 import type {
   AgentProviderGatewayProvider,
@@ -208,6 +208,25 @@ function routeStatusForProvider(
   return gateway.find((provider) => provider.provider_id === providerID) ?? null
 }
 
+function runMatchesHistoryQuery(run: AgentProviderGatewayRun, query: string) {
+  const normalizedQuery = query.trim().toLowerCase()
+  if (!normalizedQuery) {
+    return true
+  }
+  return [
+    run.provider_display_name,
+    run.provider_id,
+    run.model,
+    run.error_message,
+    run.error_code,
+    run.conversation_id,
+    run.request_mode,
+    run.status,
+  ]
+    .filter(Boolean)
+    .some((value) => value?.toLowerCase().includes(normalizedQuery))
+}
+
 export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: boolean }) {
   const {
     availableModels,
@@ -248,6 +267,25 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
   const selectedGatewayProvider = routeStatusForProvider(selectedProviderID, gateway?.providers ?? null)
   const selectedGatewayRecoveryAction = getProviderGatewayRecoveryAction(selectedGatewayProvider)
   const recentGatewayRuns = gateway?.recent_runs ?? []
+  const [historyQuery, setHistoryQuery] = useState('')
+  const [historyStatus, setHistoryStatus] = useState<'all' | 'failed' | 'succeeded' | 'cancelled'>('all')
+  const [historyScope, setHistoryScope] = useState<'selected' | 'all'>('selected')
+  const filteredRecentGatewayRuns = useMemo(() => {
+    return recentGatewayRuns.filter((run) => {
+      if (historyScope === 'selected' && selectedProviderID && run.provider_id !== selectedProviderID) {
+        return false
+      }
+      if (historyStatus !== 'all' && run.status !== historyStatus) {
+        return false
+      }
+      return runMatchesHistoryQuery(run, historyQuery)
+    })
+  }, [historyQuery, historyScope, historyStatus, recentGatewayRuns, selectedProviderID])
+  const [selectedHistoryRunID, setSelectedHistoryRunID] = useState('')
+  const selectedHistoryRun =
+    filteredRecentGatewayRuns.find((run) => run.id === selectedHistoryRunID) ??
+    filteredRecentGatewayRuns[0] ??
+    null
 
   return (
     <RunaDomScopeProvider component="agent-provider-settings-widget">
@@ -703,18 +741,66 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                         Latest backend-recorded chat runs across the current provider gateway.
                       </Text>
                     </ClearBox>
+                    <ClearBox style={providerSettingsGridStyle}>
+                      <TextInputField
+                        hint="Filter by provider, model, request mode, error, or conversation id."
+                        label="History search"
+                        onChange={setHistoryQuery}
+                        placeholder="Search recent runs"
+                        value={historyQuery}
+                      />
+                      <ClearBox style={providerSettingsFieldStyle}>
+                        <Label htmlFor="provider-history-status-filter">Status filter</Label>
+                        <Select
+                          id="provider-history-status-filter"
+                          onChange={(event) =>
+                            setHistoryStatus(
+                              event.currentTarget.value as 'all' | 'failed' | 'succeeded' | 'cancelled',
+                            )
+                          }
+                          value={historyStatus}
+                        >
+                          <option value="all">All statuses</option>
+                          <option value="failed">Failed only</option>
+                          <option value="succeeded">Succeeded only</option>
+                          <option value="cancelled">Cancelled only</option>
+                        </Select>
+                      </ClearBox>
+                      <ClearBox style={providerSettingsFieldStyle}>
+                        <Label htmlFor="provider-history-scope-filter">Provider scope</Label>
+                        <Select
+                          id="provider-history-scope-filter"
+                          onChange={(event) =>
+                            setHistoryScope(event.currentTarget.value as 'selected' | 'all')
+                          }
+                          value={historyScope}
+                        >
+                          <option value="selected">Selected provider</option>
+                          <option value="all">All providers</option>
+                        </Select>
+                      </ClearBox>
+                    </ClearBox>
                     <ClearBox style={{ display: 'grid', gap: 'var(--gap-xs)' }}>
-                      {recentGatewayRuns.length ? (
-                        recentGatewayRuns.map((run: AgentProviderGatewayRun) => (
+                      {filteredRecentGatewayRuns.length ? (
+                        filteredRecentGatewayRuns.map((run: AgentProviderGatewayRun) => (
                           <ClearBox
+                            aria-pressed={selectedHistoryRun?.id === run.id}
                             key={run.id}
+                            onClick={() => setSelectedHistoryRunID(run.id)}
                             style={{
-                              border: '1px solid var(--color-border-subtle)',
+                              border:
+                                selectedHistoryRun?.id === run.id
+                                  ? '1px solid var(--color-accent-emerald-strong)'
+                                  : '1px solid var(--color-border-subtle)',
                               borderRadius: 'var(--radius-md)',
                               padding: 'var(--space-sm)',
-                              background: 'var(--color-surface-glass-soft)',
+                              background:
+                                selectedHistoryRun?.id === run.id
+                                  ? 'var(--color-surface-glass-strong)'
+                                  : 'var(--color-surface-glass-soft)',
                               display: 'grid',
                               gap: '0.2rem',
+                              cursor: 'pointer',
                             }}
                           >
                             <Text style={{ fontWeight: 600 }}>
@@ -734,10 +820,96 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                         ))
                       ) : (
                         <Text style={providerSettingsStatusMessageStyle}>
-                          No provider activity has been recorded yet.
+                          No provider activity matches the current filters.
                         </Text>
                       )}
                     </ClearBox>
+                    {selectedHistoryRun ? (
+                      <ClearBox
+                        style={{
+                          border: '1px solid var(--color-border-subtle)',
+                          borderRadius: 'var(--radius-md)',
+                          padding: 'var(--space-md)',
+                          background: 'var(--color-surface-glass-soft)',
+                          display: 'grid',
+                          gap: 'var(--gap-sm)',
+                        }}
+                      >
+                        <ClearBox style={providerSettingsSectionHeaderStyle}>
+                          <Text style={{ fontWeight: 600 }}>Run diagnostics</Text>
+                          <Text style={providerSettingsStatusMessageStyle}>
+                            Detailed operator view for the selected persisted provider run.
+                          </Text>
+                        </ClearBox>
+                        <ClearBox style={providerSettingsGridStyle}>
+                          <ClearBox style={providerSettingsFieldStyle}>
+                            <Label>Provider</Label>
+                            <Text style={providerSettingsStatusMessageStyle}>
+                              {selectedHistoryRun.provider_display_name || selectedHistoryRun.provider_id}
+                            </Text>
+                          </ClearBox>
+                          <ClearBox style={providerSettingsFieldStyle}>
+                            <Label>Status</Label>
+                            <Text style={providerSettingsStatusMessageStyle}>
+                              {formatGatewayStatus(selectedHistoryRun.status)}
+                            </Text>
+                          </ClearBox>
+                          <ClearBox style={providerSettingsFieldStyle}>
+                            <Label>Error class</Label>
+                            <Text style={providerSettingsStatusMessageStyle}>
+                              {formatProviderGatewayErrorCode(selectedHistoryRun.error_code) || 'n/a'}
+                            </Text>
+                          </ClearBox>
+                          <ClearBox style={providerSettingsFieldStyle}>
+                            <Label>Conversation</Label>
+                            <Text style={providerSettingsStatusMessageStyle}>
+                              {selectedHistoryRun.conversation_id || 'n/a'}
+                            </Text>
+                          </ClearBox>
+                          <ClearBox style={providerSettingsFieldStyle}>
+                            <Label>Request mode</Label>
+                            <Text style={providerSettingsStatusMessageStyle}>
+                              {selectedHistoryRun.request_mode}
+                            </Text>
+                          </ClearBox>
+                          <ClearBox style={providerSettingsFieldStyle}>
+                            <Label>Model</Label>
+                            <Text style={providerSettingsStatusMessageStyle}>
+                              {selectedHistoryRun.model || 'default model'}
+                            </Text>
+                          </ClearBox>
+                          <ClearBox style={providerSettingsFieldStyle}>
+                            <Label>First response</Label>
+                            <Text style={providerSettingsStatusMessageStyle}>
+                              {formatDuration(selectedHistoryRun.first_response_latency_ms)}
+                            </Text>
+                          </ClearBox>
+                          <ClearBox style={providerSettingsFieldStyle}>
+                            <Label>Total duration</Label>
+                            <Text style={providerSettingsStatusMessageStyle}>
+                              {formatDuration(selectedHistoryRun.duration_ms)}
+                            </Text>
+                          </ClearBox>
+                          <ClearBox style={providerSettingsFieldStyle}>
+                            <Label>Started</Label>
+                            <Text style={providerSettingsStatusMessageStyle}>
+                              {formatRunTimestamp(selectedHistoryRun.started_at)}
+                            </Text>
+                          </ClearBox>
+                          <ClearBox style={providerSettingsFieldStyle}>
+                            <Label>Completed</Label>
+                            <Text style={providerSettingsStatusMessageStyle}>
+                              {formatRunTimestamp(selectedHistoryRun.completed_at)}
+                            </Text>
+                          </ClearBox>
+                        </ClearBox>
+                        {selectedHistoryRun.error_message ? (
+                          <Text style={providerSettingsErrorMessageStyle}>
+                            {selectedHistoryRun.error_message}
+                          </Text>
+                        ) : null}
+                      </ClearBox>
+                    ) : null}
                   </ClearBox>
                 </ScrollArea>
 

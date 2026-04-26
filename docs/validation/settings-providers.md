@@ -108,6 +108,11 @@
   - renders the error class next to the last recorded error
   - shows first-response latency in both gateway summary and recent-activity rows
   - surfaces a context-appropriate recovery action (`Probe` vs `Prepare`) instead of a single blind retry button
+- The provider settings surface now also provides an operator history view over persisted gateway runs:
+  - local search over provider/model/request-mode/error/conversation id
+  - status filter (`all/failed/succeeded/cancelled`)
+  - scope filter (`selected provider` vs `all providers`)
+  - run diagnostics drill-down for the currently selected persisted run, including timing, error class, conversation id, and request mode
 - Gateway telemetry load no longer fails silently in the settings shell:
   - if `/api/v1/agent/providers/gateway` fails, the UI shows an explicit gateway telemetry error instead of quietly pretending the telemetry surface has no data
 - CLI/OpenAI probe states are now surfaced only through the gateway snapshot:

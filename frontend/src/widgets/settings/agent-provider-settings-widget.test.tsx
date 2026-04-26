@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { AgentProviderSettingsWidget } from '@/widgets/settings/agent-provider-settings-widget'
@@ -94,6 +94,22 @@ vi.mock('@/features/agent/model/use-agent-provider-settings', () => ({
           started_at: '2026-04-26T10:19:00Z',
           completed_at: '2026-04-26T10:19:00.380Z',
         },
+        {
+          id: 'provider-run-2',
+          provider_id: 'claude-cli',
+          provider_kind: 'claude',
+          provider_display_name: 'Claude Code CLI',
+          request_mode: 'sync',
+          model: 'sonnet',
+          conversation_id: 'conv-2',
+          status: 'succeeded',
+          error_code: '',
+          error_message: '',
+          duration_ms: 240,
+          first_response_latency_ms: 56,
+          started_at: '2026-04-26T10:18:00Z',
+          completed_at: '2026-04-26T10:18:00.240Z',
+        },
       ],
     },
     gatewayErrorMessage: 'gateway route unavailable',
@@ -146,5 +162,19 @@ describe('AgentProviderSettingsWidget', () => {
     expect(screen.getAllByText('Codex CLI route is reachable.')).toHaveLength(2)
     expect(screen.getByText(/Codex CLI · Failing/)).toBeVisible()
     expect(screen.getByText(/stream · gpt-5.4 · 380ms · first 84ms/)).toBeVisible()
+    expect(screen.getByText('Run diagnostics')).toBeVisible()
+    expect(screen.getByText('Timed out')).toBeVisible()
+
+    fireEvent.change(screen.getByLabelText('Provider scope'), {
+      target: { value: 'all' },
+    })
+    fireEvent.change(screen.getByLabelText('History search'), {
+      target: { value: 'claude' },
+    })
+
+    expect(screen.getByText(/Claude Code CLI · Healthy/)).toBeVisible()
+    fireEvent.click(screen.getByText(/Claude Code CLI · Healthy/))
+    expect(screen.getByText('Claude Code CLI')).toBeVisible()
+    expect(screen.getByText('56ms')).toBeVisible()
   })
 })
