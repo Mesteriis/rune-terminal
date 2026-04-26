@@ -21,6 +21,10 @@ type FSReadPayload = {
   truncated: boolean
 }
 
+type FSOpenPayload = {
+  path: string
+}
+
 type APIErrorEnvelope = {
   error?: {
     code?: string
@@ -40,10 +44,13 @@ export class PreviewAPIError extends Error {
   }
 }
 
-async function fetchRuntimeJSON<T>(runtimeContext: RuntimeContext, path: string) {
+async function fetchRuntimeJSON<T>(runtimeContext: RuntimeContext, path: string, init?: RequestInit) {
   const response = await fetch(`${runtimeContext.baseUrl}${path}`, {
+    ...init,
     headers: {
       Authorization: `Bearer ${runtimeContext.authToken}`,
+      ...(init?.body ? { 'Content-Type': 'application/json' } : null),
+      ...init?.headers,
     },
   })
 
@@ -64,6 +71,15 @@ async function fetchRuntimeJSON<T>(runtimeContext: RuntimeContext, path: string)
   }
 
   return (await response.json()) as T
+}
+
+async function postRuntimeJSON<T>(path: string, body: Record<string, unknown>): Promise<T> {
+  const runtimeContext = await resolveRuntimeContext()
+
+  return fetchRuntimeJSON<T>(runtimeContext, path, {
+    body: JSON.stringify(body),
+    method: 'POST',
+  })
 }
 
 export async function readPreviewFile(
@@ -90,4 +106,10 @@ export async function readPreviewFile(
     sizeBytes: payload.size_bytes,
     truncated: payload.truncated,
   }
+}
+
+export async function openPreviewPathExternally(path: string) {
+  return postRuntimeJSON<FSOpenPayload>('/api/v1/fs/open', {
+    path,
+  })
 }

@@ -1,10 +1,11 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { readPreviewFile } from '@/features/preview/api/client'
+import { openPreviewPathExternally, readPreviewFile } from '@/features/preview/api/client'
 import { PreviewPanelWidget } from './preview-panel-widget'
 
 vi.mock('@/features/preview/api/client', () => ({
+  openPreviewPathExternally: vi.fn(),
   readPreviewFile: vi.fn(),
 }))
 
@@ -78,6 +79,53 @@ describe('PreviewPanelWidget', () => {
     await waitFor(() => {
       expect(readPreviewFile).toHaveBeenCalledTimes(2)
       expect(screen.getByText('after')).toBeInTheDocument()
+    })
+  })
+
+  it('opens the preview file through the backend external opener', async () => {
+    vi.mocked(readPreviewFile).mockResolvedValue({
+      content: '# Readme',
+      path: '/repo/README.md',
+      previewBytes: 8,
+      previewKind: 'text',
+      sizeBytes: 8,
+      truncated: false,
+    })
+    vi.mocked(openPreviewPathExternally).mockResolvedValue({
+      path: '/repo/README.md',
+    })
+
+    render(<PreviewPanelWidget path="/repo/README.md" title="README.md" />)
+
+    await expect(screen.findByText('# Readme')).resolves.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open preview file externally' }))
+
+    await waitFor(() => {
+      expect(openPreviewPathExternally).toHaveBeenCalledWith('/repo/README.md')
+      expect(screen.getByText('Preview file open request sent to the system opener.')).toBeInTheDocument()
+    })
+  })
+
+  it('renders external-open errors inline', async () => {
+    vi.mocked(readPreviewFile).mockResolvedValue({
+      content: '# Readme',
+      path: '/repo/README.md',
+      previewBytes: 8,
+      previewKind: 'text',
+      sizeBytes: 8,
+      truncated: false,
+    })
+    vi.mocked(openPreviewPathExternally).mockRejectedValue(new Error('opener denied'))
+
+    render(<PreviewPanelWidget path="/repo/README.md" title="README.md" />)
+
+    await expect(screen.findByText('# Readme')).resolves.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open preview file externally' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('opener denied')).toBeInTheDocument()
     })
   })
 

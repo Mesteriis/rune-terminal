@@ -33,7 +33,8 @@ It is intentionally operational, not narrative.
   `POST /api/v1/workspace/widgets/open-preview` when the caller supplies an
   existing file path. The frontend renders preview panel params through
   `PreviewPanelWidget`, which reads bounded text or hex content from
-  `GET /api/v1/fs/read`.
+  `GET /api/v1/fs/read` and can explicitly hand the previewed file to the
+  system opener through `POST /api/v1/fs/open`.
 - Backend-owned non-terminal widgets can be closed through
   `DELETE /api/v1/workspace/widgets/{widgetID}`. The files panel close action
   uses that route before removing the Dockview panel, so the workspace

@@ -1,11 +1,17 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
-import { readPreviewFile, type PreviewFileSnapshot } from '@/features/preview/api/client'
+import {
+  openPreviewPathExternally,
+  readPreviewFile,
+  type PreviewFileSnapshot,
+} from '@/features/preview/api/client'
 import { Box, Button, ScrollArea, Text } from '@/shared/ui/primitives'
 import {
   previewPanelBodyInnerStyle,
   previewPanelBodyStyle,
   previewPanelCodeStyle,
+  previewPanelHandoffStatusStyle,
+  previewPanelHeaderActionsStyle,
   previewPanelHeaderMetaStyle,
   previewPanelHeaderStyle,
   previewPanelMetaStyle,
@@ -24,6 +30,12 @@ type PreviewPanelLoadState =
   | { status: 'loading'; snapshot: null; errorMessage: null }
   | { status: 'ready'; snapshot: PreviewFileSnapshot; errorMessage: null }
   | { status: 'error'; snapshot: null; errorMessage: string }
+
+type PreviewPanelExternalOpenState =
+  | { status: 'idle'; message: null }
+  | { status: 'pending'; message: null }
+  | { status: 'success'; message: string }
+  | { status: 'error'; message: string }
 
 function formatBytes(size?: number) {
   if (size == null) {
@@ -47,6 +59,11 @@ function getPreviewKindLabel(snapshot: PreviewFileSnapshot) {
 
 export function PreviewPanelWidget({ path, title }: PreviewPanelWidgetProps) {
   const [refreshNonce, setRefreshNonce] = useState(0)
+  const externalOpenRequestIdRef = useRef(0)
+  const [externalOpenState, setExternalOpenState] = useState<PreviewPanelExternalOpenState>({
+    message: null,
+    status: 'idle',
+  })
   const [state, setState] = useState<PreviewPanelLoadState>({
     errorMessage: null,
     snapshot: null,
@@ -91,6 +108,45 @@ export function PreviewPanelWidget({ path, title }: PreviewPanelWidgetProps) {
     }
   }, [path, refreshNonce])
 
+  useEffect(() => {
+    externalOpenRequestIdRef.current += 1
+    setExternalOpenState({
+      message: null,
+      status: 'idle',
+    })
+  }, [path])
+
+  async function handleOpenExternally() {
+    const requestId = externalOpenRequestIdRef.current + 1
+    externalOpenRequestIdRef.current = requestId
+
+    setExternalOpenState({
+      message: null,
+      status: 'pending',
+    })
+
+    try {
+      await openPreviewPathExternally(path)
+      if (externalOpenRequestIdRef.current !== requestId) {
+        return
+      }
+
+      setExternalOpenState({
+        message: 'Preview file open request sent to the system opener.',
+        status: 'success',
+      })
+    } catch (error) {
+      if (externalOpenRequestIdRef.current !== requestId) {
+        return
+      }
+
+      setExternalOpenState({
+        message: error instanceof Error ? error.message : 'Unable to open preview file externally',
+        status: 'error',
+      })
+    }
+  }
+
   const previewSummary =
     state.status === 'ready'
       ? `${getPreviewKindLabel(state.snapshot)} · ${formatBytes(state.snapshot.sizeBytes)}${
@@ -113,15 +169,31 @@ export function PreviewPanelWidget({ path, title }: PreviewPanelWidgetProps) {
               {previewSummary}
             </Text>
           ) : null}
+          {externalOpenState.message ? (
+            <Text runaComponent="preview-panel-handoff-status" style={previewPanelHandoffStatusStyle}>
+              {externalOpenState.message}
+            </Text>
+          ) : null}
         </Box>
-        <Button
-          aria-label="Refresh preview"
-          onClick={() => setRefreshNonce((value) => value + 1)}
-          runaComponent="preview-panel-refresh"
-          style={previewPanelRefreshButtonStyle}
-        >
-          Refresh
-        </Button>
+        <Box runaComponent="preview-panel-actions" style={previewPanelHeaderActionsStyle}>
+          <Button
+            aria-label="Open preview file externally"
+            disabled={externalOpenState.status === 'pending'}
+            onClick={() => void handleOpenExternally()}
+            runaComponent="preview-panel-open-external"
+            style={previewPanelRefreshButtonStyle}
+          >
+            {externalOpenState.status === 'pending' ? 'Opening...' : 'Open file'}
+          </Button>
+          <Button
+            aria-label="Refresh preview"
+            onClick={() => setRefreshNonce((value) => value + 1)}
+            runaComponent="preview-panel-refresh"
+            style={previewPanelRefreshButtonStyle}
+          >
+            Refresh
+          </Button>
+        </Box>
       </Box>
       <ScrollArea runaComponent="preview-panel-body" style={previewPanelBodyStyle}>
         <Box runaComponent="preview-panel-body-inner" style={previewPanelBodyInnerStyle}>

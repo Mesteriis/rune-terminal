@@ -31,6 +31,13 @@ export const previewPanelHeaderMetaStyle: CSSProperties = {
   boxShadow: 'none',
 }
 
+export const previewPanelHeaderActionsStyle: CSSProperties = {
+  display: 'flex',
+  flex: '0 0 auto',
+  alignItems: 'center',
+  gap: 'var(--gap-xs)',
+}
+
 export const previewPanelTitleStyle: CSSProperties = {
   color: 'var(--color-text-primary)',
   fontSize: 'var(--font-size-md)',
@@ -45,12 +52,17 @@ export const previewPanelMetaStyle: CSSProperties = {
 }
 
 export const previewPanelRefreshButtonStyle: CSSProperties = {
-  flex: '0 0 auto',
   minHeight: '24px',
   minWidth: 'auto',
   padding: '2px var(--space-sm)',
   color: 'var(--color-text-secondary)',
   fontSize: 'var(--font-size-sm)',
+  lineHeight: 'var(--line-height-sm)',
+}
+
+export const previewPanelHandoffStatusStyle: CSSProperties = {
+  color: 'var(--color-text-muted)',
+  fontSize: 'var(--font-size-xs)',
   lineHeight: 'var(--line-height-sm)',
 }
 
