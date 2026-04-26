@@ -5,6 +5,7 @@ import {
   readPreviewFile,
   type PreviewFileSnapshot,
 } from '@/features/preview/api/client'
+import { getRuntimePathParent } from '@/shared/api/runtime'
 import { writeTextToClipboard } from '@/shared/model/clipboard'
 import { Box, Button, ScrollArea, Text } from '@/shared/ui/primitives'
 import {
@@ -164,6 +165,47 @@ export function PreviewPanelWidget({ path, title }: PreviewPanelWidgetProps) {
     }
   }
 
+  async function handleOpenContainingFolder() {
+    const containingFolderPath = getRuntimePathParent(path)
+
+    if (!containingFolderPath) {
+      setExternalOpenState({
+        message: 'Containing folder is unavailable',
+        status: 'error',
+      })
+      return
+    }
+
+    const requestId = externalOpenRequestIdRef.current + 1
+    externalOpenRequestIdRef.current = requestId
+
+    setExternalOpenState({
+      message: null,
+      status: 'pending',
+    })
+
+    try {
+      await openPreviewPathExternally(containingFolderPath)
+      if (externalOpenRequestIdRef.current !== requestId) {
+        return
+      }
+
+      setExternalOpenState({
+        message: 'Preview containing folder open request sent to the system opener.',
+        status: 'success',
+      })
+    } catch (error) {
+      if (externalOpenRequestIdRef.current !== requestId) {
+        return
+      }
+
+      setExternalOpenState({
+        message: error instanceof Error ? error.message : 'Unable to open preview containing folder',
+        status: 'error',
+      })
+    }
+  }
+
   async function handleCopyPath() {
     const requestId = pathCopyRequestIdRef.current + 1
     pathCopyRequestIdRef.current = requestId
@@ -201,6 +243,7 @@ export function PreviewPanelWidget({ path, title }: PreviewPanelWidgetProps) {
           state.snapshot.truncated ? ' · truncated' : ''
         }`
       : null
+  const containingFolderPath = getRuntimePathParent(path)
 
   return (
     <Box runaComponent="preview-panel-root" style={previewPanelRootStyle}>
@@ -237,6 +280,15 @@ export function PreviewPanelWidget({ path, title }: PreviewPanelWidgetProps) {
             style={previewPanelRefreshButtonStyle}
           >
             {externalOpenState.status === 'pending' ? 'Opening...' : 'Open file'}
+          </Button>
+          <Button
+            aria-label="Open preview containing folder externally"
+            disabled={externalOpenState.status === 'pending' || !containingFolderPath}
+            onClick={() => void handleOpenContainingFolder()}
+            runaComponent="preview-panel-open-containing-folder"
+            style={previewPanelRefreshButtonStyle}
+          >
+            Folder
           </Button>
           <Button
             aria-label="Copy preview file path"

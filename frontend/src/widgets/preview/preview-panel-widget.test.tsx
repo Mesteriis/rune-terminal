@@ -112,6 +112,33 @@ describe('PreviewPanelWidget', () => {
     })
   })
 
+  it('opens the preview containing folder through the backend external opener', async () => {
+    vi.mocked(readPreviewFile).mockResolvedValue({
+      content: '# Readme',
+      path: '/repo/README.md',
+      previewBytes: 8,
+      previewKind: 'text',
+      sizeBytes: 8,
+      truncated: false,
+    })
+    vi.mocked(openPreviewPathExternally).mockResolvedValue({
+      path: '/repo',
+    })
+
+    render(<PreviewPanelWidget path="/repo/README.md" title="README.md" />)
+
+    await expect(screen.findByText('# Readme')).resolves.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open preview containing folder externally' }))
+
+    await waitFor(() => {
+      expect(openPreviewPathExternally).toHaveBeenCalledWith('/repo')
+      expect(
+        screen.getByText('Preview containing folder open request sent to the system opener.'),
+      ).toBeInTheDocument()
+    })
+  })
+
   it('copies the preview file path to the browser clipboard', async () => {
     vi.mocked(readPreviewFile).mockResolvedValue({
       content: '# Readme',

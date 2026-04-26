@@ -283,6 +283,30 @@ export function FilesPanelWidget({
     }
   }
 
+  const handleOpenContainingFolder = async (entry: FilesDirectoryEntry) => {
+    setOpenState({
+      entryName: entry.name,
+      message: `Opening containing folder for ${entry.name}`,
+      status: 'pending',
+    })
+
+    try {
+      await openFilesPathExternally(currentPath)
+      setOpenState({
+        entryName: entry.name,
+        message: `Open request sent for containing folder of ${entry.name}`,
+        status: 'success',
+      })
+    } catch (error: unknown) {
+      setOpenState({
+        entryName: entry.name,
+        message:
+          error instanceof Error ? error.message : `Unable to open containing folder for ${entry.name}`,
+        status: 'error',
+      })
+    }
+  }
+
   const handlePreviewEntry = async (entry: FilesDirectoryEntry) => {
     if (!widgetId) {
       setOpenState({
@@ -644,6 +668,16 @@ export function FilesPanelWidget({
                         style={filesPanelRowActionButtonStyle}
                       >
                         Open
+                      </Button>
+                      <Button
+                        aria-label={`Open containing folder for file ${entry.name}`}
+                        onClick={() => {
+                          void handleOpenContainingFolder(entry)
+                        }}
+                        runaComponent="files-panel-row-open-folder"
+                        style={filesPanelRowActionButtonStyle}
+                      >
+                        Folder
                       </Button>
                       <Button
                         aria-label={`Copy path for file ${entry.name}`}

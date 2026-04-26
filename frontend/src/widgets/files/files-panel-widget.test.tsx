@@ -359,6 +359,40 @@ describe('FilesPanelWidget', () => {
     })
   })
 
+  it('opens a file row containing folder through the runtime external opener route', async () => {
+    vi.mocked(listFilesDirectory).mockResolvedValue({
+      entries: [
+        {
+          hidden: false,
+          id: '/repo::README.md',
+          kind: 'file',
+          modified: '2026-04-25 20:01',
+          modifiedTime: 1_776_800_060,
+          name: 'README.md',
+          sizeBytes: 2048,
+          sizeLabel: '2.0 KB',
+        },
+      ],
+      path: '/repo',
+    })
+    vi.mocked(openFilesPathExternally).mockResolvedValue({
+      path: '/repo',
+    })
+
+    render(<FilesPanelWidget path="/repo" title="repo" />)
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Open containing folder for file README.md',
+      }),
+    )
+
+    await waitFor(() => {
+      expect(openFilesPathExternally).toHaveBeenCalledWith('/repo')
+      expect(screen.getByText('Open request sent for containing folder of README.md')).toBeInTheDocument()
+    })
+  })
+
   it('copies file row paths to the browser clipboard', async () => {
     vi.mocked(listFilesDirectory).mockResolvedValue({
       entries: [
