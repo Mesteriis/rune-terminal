@@ -12,6 +12,10 @@ Phase status:
 
 - `Phase 0` is now recorded through ADR 0028, ADR 0029, ADR 0030, and
   [tideterm-residual-decisions.md](./tideterm-residual-decisions.md).
+- `Phase 1` is complete: the active shell/settings/terminal compact pass,
+  linked browser coverage, and validation-doc closure are landed on the
+  active `frontend/src` path.
+- `Phase 2` is the next implementation phase.
 - Later phases remain implementation work.
 
 ## Success condition
@@ -71,6 +75,9 @@ Validation:
 - doc-only review
 
 ### Phase 1. Finish active-path UX parity
+
+Status:
+completed on `2026-04-26`
 
 Purpose:
 close the current active-shell partials that do not require new domains.
@@ -311,7 +318,6 @@ Validation:
 | --- | --- | --- |
 | Streaming AI responses and cancellation | `2` | `Transferred` |
 | File attachments into AI | `3` | `Transferred` |
-| Settings/help/trust/secret-shield utility shell | `1` | `Transferred` |
 | Remote SSH profile lifecycle | `4` | `Transferred` |
 | `.ssh/config` import | `4` | `Transferred` |
 | Advanced remote breadth | `5` | `Transferred` with WSL still optional unless platform scope changes |
@@ -319,28 +325,25 @@ Validation:
 | External MCP onboarding breadth | `7` | `Transferred` |
 | Plugin catalog and install UX | `8` | `Transferred` |
 | Online plugin marketplace | `0` | `Not carried forward` by ADR 0030 |
-| Shell chrome and terminal advanced affordances | `1`, `5` | `Transferred` |
+| Shell chrome and terminal advanced affordances | `5` | `Transferred` |
 | Window title rules | `9` | `Implemented` as a narrow runtime-backed surface or explicitly retired |
 | Language switch surface | `0` | `Not carried forward` unless localization becomes a first-class product requirement |
 | WaveProxy | `0` | `Not carried forward` unless a new transport/infrastructure ADR reopens it |
 
 ## Recommended implementation order
 
-1. `Phase 0`
-2. `Phase 1`
-3. `Phase 2`
-4. `Phase 3`
-5. `Phase 4`
-6. `Phase 5`
-7. `Phase 6`
-8. `Phase 7`
-9. `Phase 8`
-10. `Phase 9`
+1. `Phase 2`
+2. `Phase 3`
+3. `Phase 4`
+4. `Phase 5`
+5. `Phase 6`
+6. `Phase 7`
+7. `Phase 8`
+8. `Phase 9`
 
 This order keeps the program coherent:
 
-- active-path polish first
-- AI transport/storage second
+- AI transport/storage first among the remaining implementation phases
 - SSH foundation before broader remote breadth
 - remote breadth before remote files
 - MCP/plugin onboarding after the core shell and remote model stabilize

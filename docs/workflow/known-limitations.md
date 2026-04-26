@@ -79,9 +79,9 @@ capability.
   remote controller
 - connection lifecycle is explicit but narrow (`saved profile` vs
   `last check` vs `last launch`)
-- terminal parity is practical but advanced surfaces (multi-session
-  sidebar, persisted theme/scrollback/cursor settings,
-  deeper search/find flows) are not there yet
+- terminal parity is practical but the advanced multi-session/sidebar
+  browsing model is not there yet; the current search and terminal-settings
+  flows are intentionally scoped to the active single-session widget
 - AI command flow supports explicit command grammar only (`/run` and
   `run:`), not broad natural-language execution
 - backend AI routing is intentionally narrow, not broad: the active provider kinds are local Codex CLI, local Claude Code CLI, and one explicit OpenAI-compatible HTTP source kind; `ollama`, proxy routing, and broader API-key/provider universes are not active runtime paths
