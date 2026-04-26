@@ -48,6 +48,7 @@ archives superseded documents under `history/`.
 
 - Roadmap: [workflow/roadmap.md](./workflow/roadmap.md)
 - Known limitations: [workflow/known-limitations.md](./workflow/known-limitations.md)
+- Remaining clone plan: [workflow/remaining-clone-plan.md](./workflow/remaining-clone-plan.md)
 - Operator workflow: [workflow/operator-workflow.md](./workflow/operator-workflow.md)
 - Agent modes: [workflow/agent-modes.md](./workflow/agent-modes.md)
 - System prompts: [workflow/system-prompts.md](./workflow/system-prompts.md)

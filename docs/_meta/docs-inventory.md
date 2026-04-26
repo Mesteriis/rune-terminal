@@ -109,6 +109,7 @@ progress) is preserved at
 | --- | --- |
 | `docs/workflow/roadmap.md` | Current roadmap (short, pre-release) |
 | `docs/workflow/known-limitations.md` | Known limitations, honest gap list |
+| `docs/workflow/remaining-clone-plan.md` | Ordered implementation plan for remaining TideTerm-derived gaps |
 | `docs/workflow/operator-workflow.md` | Operator-facing workflow |
 | `docs/workflow/agent-modes.md` | Agent modes |
 | `docs/workflow/system-prompts.md` | System prompt profiles |
