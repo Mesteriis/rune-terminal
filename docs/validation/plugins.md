@@ -8,11 +8,18 @@
   - side-process plugin execution path
   - manifest handshake + exposed-tool validation
   - manifest capability declaration allow-list validation
+  - Go and Python reference plugin protocol compatibility
   - explicit plugin process environment boundary
   - plugin failure taxonomy behavior
   - approval/audit invariants during plugin execution
 
 ## Commands/tests used
+
+Non-Go reference plugin slice (`2026-04-26`):
+
+- `./scripts/go.sh test ./core/plugins -run TestOSProcessSpawnerInvokesPythonReferencePlugin -count=1`
+- `./scripts/go.sh test ./core/plugins ./plugins/example -count=1`
+- `git diff --check`
 
 Capability declaration slice (`2026-04-26`):
 
@@ -43,6 +50,8 @@ Earlier runtime/API evidence retained for the broader plugin boundary:
 ## Known limitations
 
 - Plugin ecosystem/discovery/install workflows remain out of scope.
+- The Python reference plugin is validated as a local protocol fixture; it is
+  not exposed as plugin install/discovery UX.
 - Plugin execution is not an OS sandbox; local plugin binaries still run with
   current-user OS permissions. The current hardening only removes ambient
   parent-environment inheritance and documents the boundary.

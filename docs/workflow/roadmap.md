@@ -74,7 +74,7 @@ from any previous fork are historical inspiration only.
 | ----------------------------------- | ------- | ------------------------------------ |
 | JSON-line stdio protocol            | `NOW`   | `core/plugins/protocol.go`           |
 | Go reference plugin                 | `NOW`   | `plugins/example/plugin.go`          |
-| Non-Go reference (Python/Node)      | `LATER` | proves language-neutrality           |
+| Non-Go reference (Python/Node)      | `NOW`   | `plugins/python_reference/plugin.py` proves language-neutrality through the existing runtime |
 | Capability declaration in handshake | `NOW`   | plugin-requested resources are checked against the bound allow-list |
 | Sandbox / permission model doc      | `NOW`   | ADR 0027 + SECURITY note; no OS sandbox claimed |
 

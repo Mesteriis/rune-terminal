@@ -1,6 +1,6 @@
 # Plugin Runtime
 
-Date: `2026-04-17`
+Date: `2026-04-26`
 Phase: stability hardening
 
 ## What this document is
@@ -13,6 +13,9 @@ This is the canonical plugin entrypoint for runtime boundary and protocol behavi
 - Core-plugin communication is explicit JSON protocol over stdio.
 - Frontend never talks directly to plugins.
 - Plugins extend tool execution capability without bypassing core policy/audit.
+- The repository keeps a Go reference plugin (`plugins/example`) and a
+  Python reference plugin (`plugins/python_reference`) to validate that the
+  protocol is process/language-neutral.
 
 ## Protocol contract
 
@@ -51,6 +54,8 @@ This is the canonical plugin entrypoint for runtime boundary and protocol behavi
 
 - No plugin discovery/install ecosystem in this phase.
 - No plugin marketplace trust model in this phase.
+- The Python reference plugin is a protocol fixture, not a discovery/catalog
+  feature.
 - No container/chroot/seccomp/AppArmor-style plugin sandbox in this phase.
 - Plugin runtime remains narrow and execution-path focused.
 

@@ -27,5 +27,5 @@ Source of truth: [parity-matrix.md](./parity-matrix.md)
 - Advanced SSH auth/topology (`remote`) — `MISSING`
 - Multi-session terminal block (`terminal`) — `MISSING`
 - Terminal advanced affordances/search/sidebar (`UX`) — `MISSING`
-- Plugin ecosystem/discovery (`plugins`) — `MISSING`
+- Plugin ecosystem/discovery (`plugins`) — `MISSING` (local Go/Python reference plugins exist; install/discovery UX remains out of scope)
 - Streaming AI response breadth (`UX`) — `PARTIAL` (OpenAI-compatible text deltas plus frontend cancel are live; CLI token/reasoning/tool-call streaming remains absent)
