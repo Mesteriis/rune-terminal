@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import {
+  clearAgentProviderRouteState,
   createAgentProvider,
   deleteAgentProvider,
   discoverAgentProviderModels,
@@ -111,6 +112,7 @@ type ProviderHistoryStatusFilter = 'all' | 'failed' | 'succeeded' | 'cancelled'
 type ProviderHistoryScopeFilter = 'selected' | 'all'
 
 const providerGatewayHistoryLimit = 20
+export const providerGatewayHistoryPageOptions = [10, 20, 50] as const
 
 export function useAgentProviderSettings() {
   const [catalog, setCatalog] = useState<AgentProviderCatalog | null>(null)
@@ -133,6 +135,10 @@ export function useAgentProviderSettings() {
   const [historyQuery, setHistoryQuery] = useState('')
   const [historyStatus, setHistoryStatus] = useState<ProviderHistoryStatusFilter>('all')
   const [historyScope, setHistoryScope] = useState<ProviderHistoryScopeFilter>('selected')
+  const [historyLimit, setHistoryLimit] = useState<number>(providerGatewayHistoryLimit)
+  const [historyOffset, setHistoryOffset] = useState(0)
+  const [historyTotal, setHistoryTotal] = useState(0)
+  const [historyHasMore, setHistoryHasMore] = useState(false)
   const [isHistoryLoading, setIsHistoryLoading] = useState(false)
 
   const reloadGateway = useCallback(async () => {
@@ -168,17 +174,26 @@ export function useAgentProviderSettings() {
         providerID: historyScope === 'selected' ? (selectedProviderID ?? undefined) : undefined,
         status: historyStatus === 'all' ? undefined : historyStatus,
         query: historyQuery,
-        limit: providerGatewayHistoryLimit,
+        offset: historyOffset,
+        limit: historyLimit,
       })
-      setHistoryRuns(nextHistorySnapshot.recent_runs)
+      setHistoryRuns((currentRuns) =>
+        historyOffset > 0
+          ? [...currentRuns, ...nextHistorySnapshot.recent_runs]
+          : nextHistorySnapshot.recent_runs,
+      )
+      setHistoryTotal(nextHistorySnapshot.recent_runs_total)
+      setHistoryHasMore(nextHistorySnapshot.recent_runs_has_more)
       setHistoryErrorMessage(null)
     } catch (error: unknown) {
       setHistoryRuns([])
+      setHistoryTotal(0)
+      setHistoryHasMore(false)
       setHistoryErrorMessage(getErrorMessage(error))
     } finally {
       setIsHistoryLoading(false)
     }
-  }, [catalog, historyQuery, historyScope, historyStatus, selectedProviderID])
+  }, [catalog, historyLimit, historyOffset, historyQuery, historyScope, historyStatus, selectedProviderID])
 
   const selectProviderFromCatalog = useCallback(
     (nextCatalog: AgentProviderCatalog, providerID?: string | null) => {
@@ -215,6 +230,10 @@ export function useAgentProviderSettings() {
   }, [reloadCatalog])
 
   useEffect(() => {
+    setHistoryOffset(0)
+  }, [historyQuery, historyScope, historyStatus, historyLimit, selectedProviderID])
+
+  useEffect(() => {
     const timeoutID = window.setTimeout(
       () => {
         void reloadHistory()
@@ -223,7 +242,7 @@ export function useAgentProviderSettings() {
     )
 
     return () => window.clearTimeout(timeoutID)
-  }, [historyQuery, reloadHistory])
+  }, [historyQuery, reloadHistory, historyOffset, historyLimit])
 
   const selectedProvider = useMemo(() => {
     if (!catalog || !selectedProviderID) {
@@ -574,6 +593,33 @@ export function useAgentProviderSettings() {
     }
   }, [reloadGateway, reloadHistory, selectedProviderID])
 
+  const clearSelectedProviderRouteState = useCallback(async () => {
+    if (!selectedProviderID) {
+      return
+    }
+
+    setIsPreparing(true)
+    setProbeErrorMessage(null)
+
+    try {
+      await clearAgentProviderRouteState(selectedProviderID)
+      await reloadGateway()
+      await reloadHistory()
+      setStatusMessage('Cleared stored route state for the selected provider.')
+    } catch (error: unknown) {
+      setProbeErrorMessage(getErrorMessage(error))
+    } finally {
+      setIsPreparing(false)
+    }
+  }, [reloadGateway, reloadHistory, selectedProviderID])
+
+  const loadMoreHistory = useCallback(() => {
+    if (!historyHasMore || isHistoryLoading) {
+      return
+    }
+    setHistoryOffset((currentOffset) => currentOffset + historyLimit)
+  }, [historyHasMore, historyLimit, isHistoryLoading])
+
   return {
     availableModels,
     catalog,
@@ -581,11 +627,15 @@ export function useAgentProviderSettings() {
     errorMessage,
     gateway,
     gatewayErrorMessage,
+    historyHasMore,
     historyErrorMessage,
+    historyLimit,
+    historyOffset,
     historyQuery,
     historyRuns,
     historyScope,
     historyStatus,
+    historyTotal,
     isHistoryLoading,
     isLoading,
     isLoadingModels,
@@ -597,11 +647,15 @@ export function useAgentProviderSettings() {
     selectedProvider,
     selectedProviderID,
     setDraft,
+    setHistoryLimit,
     setHistoryQuery,
     setHistoryScope,
     setHistoryStatus,
     statusMessage,
     activateSelectedProvider,
+    clearSelectedProviderRouteState,
+    loadMoreHistory,
+    providerGatewayHistoryPageOptions,
     refreshAvailableModels,
     probeSelectedProvider,
     prewarmSelectedProvider,

@@ -171,6 +171,7 @@ func NewRuntime(repoRoot string, stateDir string) (*Runtime, error) {
 	if err := runtime.registerMCPServers(); err != nil {
 		return nil, err
 	}
+	runtime.bootstrapProviderRoutes(context.Background())
 	return runtime, nil
 }
 

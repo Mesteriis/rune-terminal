@@ -15,8 +15,12 @@ const defaultClaudeModel = "sonnet"
 const defaultClaudeCommand = "claude"
 
 func (s *Store) ProvidersCatalog() ProviderCatalog {
+	return s.ProvidersCatalogWithActor(ProviderActor{})
+}
+
+func (s *Store) ProvidersCatalogWithActor(actor ProviderActor) ProviderCatalog {
 	snapshot := s.Snapshot()
-	return providerCatalogFromState(snapshot)
+	return providerCatalogFromStateWithActor(snapshot, actor)
 }
 
 func (s *Store) ActiveProvider() (ProviderRecord, error) {
@@ -31,10 +35,17 @@ func (s *Store) ActiveProvider() (ProviderRecord, error) {
 }
 
 func (s *Store) CreateProvider(input CreateProviderInput) (ProviderView, ProviderCatalog, error) {
+	return s.CreateProviderWithActor(input, ProviderActor{})
+}
+
+func (s *Store) CreateProviderWithActor(input CreateProviderInput, actor ProviderActor) (ProviderView, ProviderCatalog, error) {
 	record, err := buildProviderRecord(input)
 	if err != nil {
 		return ProviderView{}, ProviderCatalog{}, err
 	}
+	record.CreatedBy = normalizeProviderActor(actor)
+	record.UpdatedBy = normalizeProviderActor(actor)
+	record.Access = normalizeProviderAccess(record.Access, record.CreatedBy)
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -44,10 +55,14 @@ func (s *Store) CreateProvider(input CreateProviderInput) (ProviderView, Provide
 	if err := s.saveLocked(); err != nil {
 		return ProviderView{}, ProviderCatalog{}, err
 	}
-	return providerViewFromRecord(record, s.data.ActiveProviderID), providerCatalogFromState(s.data), nil
+	return providerViewFromRecord(record, s.data.ActiveProviderID), providerCatalogFromStateWithActor(s.data, actor), nil
 }
 
 func (s *Store) UpdateProvider(id string, input UpdateProviderInput) (ProviderView, ProviderCatalog, error) {
+	return s.UpdateProviderWithActor(id, input, ProviderActor{})
+}
+
+func (s *Store) UpdateProviderWithActor(id string, input UpdateProviderInput, actor ProviderActor) (ProviderView, ProviderCatalog, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -59,6 +74,7 @@ func (s *Store) UpdateProvider(id string, input UpdateProviderInput) (ProviderVi
 	if err != nil {
 		return ProviderView{}, ProviderCatalog{}, err
 	}
+	updated.UpdatedBy = normalizeProviderActor(actor)
 	if s.data.ActiveProviderID == updated.ID && !updated.Enabled {
 		return ProviderView{}, ProviderCatalog{}, fmt.Errorf("%w: %s", ErrProviderDisabled, updated.ID)
 	}
@@ -68,10 +84,14 @@ func (s *Store) UpdateProvider(id string, input UpdateProviderInput) (ProviderVi
 	if err := s.saveLocked(); err != nil {
 		return ProviderView{}, ProviderCatalog{}, err
 	}
-	return providerViewFromRecord(updated, s.data.ActiveProviderID), providerCatalogFromState(s.data), nil
+	return providerViewFromRecord(updated, s.data.ActiveProviderID), providerCatalogFromStateWithActor(s.data, actor), nil
 }
 
 func (s *Store) SetActiveProvider(id string) error {
+	return s.SetActiveProviderWithActor(id, ProviderActor{})
+}
+
+func (s *Store) SetActiveProviderWithActor(id string, actor ProviderActor) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -84,10 +104,21 @@ func (s *Store) SetActiveProvider(id string) error {
 	}
 	s.data.ActiveProviderID = id
 	s.data.UpdatedAt = time.Now().UTC()
+	index := s.providerIndexLocked(id)
+	if index >= 0 {
+		provider := cloneProviderRecord(s.data.Providers[index])
+		provider.UpdatedBy = normalizeProviderActor(actor)
+		provider.UpdatedAt = time.Now().UTC()
+		s.data.Providers[index] = provider
+	}
 	return s.saveLocked()
 }
 
 func (s *Store) DeleteProvider(id string) (ProviderCatalog, error) {
+	return s.DeleteProviderWithActor(id, ProviderActor{})
+}
+
+func (s *Store) DeleteProviderWithActor(id string, actor ProviderActor) (ProviderCatalog, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -103,7 +134,7 @@ func (s *Store) DeleteProvider(id string) (ProviderCatalog, error) {
 	if err := s.saveLocked(); err != nil {
 		return ProviderCatalog{}, err
 	}
-	return providerCatalogFromState(s.data), nil
+	return providerCatalogFromStateWithActor(s.data, actor), nil
 }
 
 func buildProviderRecord(input CreateProviderInput) (ProviderRecord, error) {
@@ -118,12 +149,16 @@ func buildProviderRecord(input CreateProviderInput) (ProviderRecord, error) {
 		Kind:        kind,
 		DisplayName: defaultProviderDisplayName(kind, input.DisplayName),
 		Enabled:     true,
+		Access:      normalizeProviderAccess(input.Access, ProviderActor{}),
+		RoutePolicy: normalizeProviderRoutePolicy(derefProviderRoutePolicy(input.RoutePolicy)),
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
 	if input.Enabled != nil {
 		record.Enabled = *input.Enabled
 	}
+	record.CreatedBy = normalizeProviderActor(ProviderActor{})
+	record.UpdatedBy = normalizeProviderActor(ProviderActor{})
 
 	switch kind {
 	case ProviderKindCodex:
@@ -179,6 +214,12 @@ func applyProviderUpdate(record ProviderRecord, input UpdateProviderInput) (Prov
 	}
 	if input.Enabled != nil {
 		updated.Enabled = *input.Enabled
+	}
+	if input.Access != nil {
+		updated.Access = normalizeProviderAccess(*input.Access, updated.CreatedBy)
+	}
+	if input.RoutePolicy != nil {
+		updated.RoutePolicy = normalizeProviderRoutePolicy(*input.RoutePolicy)
 	}
 
 	switch updated.Kind {
@@ -268,6 +309,8 @@ func applyProviderUpdate(record ProviderRecord, input UpdateProviderInput) (Prov
 	}
 
 	updated.UpdatedAt = time.Now().UTC()
+	updated.Access = normalizeProviderAccess(updated.Access, updated.CreatedBy)
+	updated.RoutePolicy = normalizeProviderRoutePolicy(updated.RoutePolicy)
 	if err := validateProviderRecord(updated); err != nil {
 		return ProviderRecord{}, err
 	}
@@ -284,6 +327,8 @@ func validateProviderRecord(record ProviderRecord) error {
 	if strings.TrimSpace(record.DisplayName) == "" {
 		return fmt.Errorf("%w: display name is required", ErrProviderInvalidConfig)
 	}
+	record.Access = normalizeProviderAccess(record.Access, record.CreatedBy)
+	record.RoutePolicy = normalizeProviderRoutePolicy(record.RoutePolicy)
 	switch record.Kind {
 	case ProviderKindCodex:
 		if record.Codex == nil || record.Claude != nil || record.OpenAICompatible != nil {
@@ -319,6 +364,13 @@ func validateProviderRecord(record ProviderRecord) error {
 		return fmt.Errorf("%w: %s", ErrProviderKindUnsupported, record.Kind)
 	}
 	return nil
+}
+
+func derefProviderRoutePolicy(policy *ProviderRoutePolicy) ProviderRoutePolicy {
+	if policy == nil {
+		return ProviderRoutePolicy{}
+	}
+	return *policy
 }
 
 func isSupportedProviderKind(kind ProviderKind) bool {

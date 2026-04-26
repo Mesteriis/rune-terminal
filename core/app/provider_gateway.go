@@ -46,6 +46,10 @@ type ProviderGatewayProviderView struct {
 	RoutePrepareMessage           string     `json:"route_prepare_message,omitempty"`
 	RoutePreparedAt               *time.Time `json:"route_prepared_at,omitempty"`
 	RoutePrepareLatencyMS         int64      `json:"route_prepare_latency_ms"`
+	RoutePrepareExpiresAt         *time.Time `json:"route_prepare_expires_at,omitempty"`
+	RoutePrepareStale             bool       `json:"route_prepare_stale"`
+	RoutePrewarmPolicy            string     `json:"route_prewarm_policy,omitempty"`
+	RouteWarmTTLSeconds           int        `json:"route_warm_ttl_seconds"`
 	TotalRuns                     int        `json:"total_runs"`
 	SucceededRuns                 int        `json:"succeeded_runs"`
 	FailedRuns                    int        `json:"failed_runs"`
@@ -62,15 +66,20 @@ type ProviderGatewayProviderView struct {
 }
 
 type ProviderGatewaySnapshot struct {
-	GeneratedAt time.Time                     `json:"generated_at"`
-	Providers   []ProviderGatewayProviderView `json:"providers"`
-	RecentRuns  []providergateway.RunRecord   `json:"recent_runs"`
+	GeneratedAt       time.Time                     `json:"generated_at"`
+	Providers         []ProviderGatewayProviderView `json:"providers"`
+	RecentRuns        []providergateway.RunRecord   `json:"recent_runs"`
+	RecentRunsTotal   int                           `json:"recent_runs_total"`
+	RecentRunsOffset  int                           `json:"recent_runs_offset"`
+	RecentRunsLimit   int                           `json:"recent_runs_limit"`
+	RecentRunsHasMore bool                          `json:"recent_runs_has_more"`
 }
 
 type ProviderGatewaySnapshotOptions struct {
 	ProviderID string
 	Status     string
 	Query      string
+	Offset     int
 	Limit      int
 }
 
@@ -87,16 +96,21 @@ func (r *Runtime) ProviderGatewaySnapshot(
 	catalog := r.ProviderCatalog()
 	if r.ProviderGateway == nil {
 		return ProviderGatewaySnapshot{
-			GeneratedAt: time.Now().UTC(),
-			Providers:   buildGatewayProviderViews(catalog, nil, nil),
-			RecentRuns:  []providergateway.RunRecord{},
+			GeneratedAt:       time.Now().UTC(),
+			Providers:         buildGatewayProviderViews(catalog, nil, nil),
+			RecentRuns:        []providergateway.RunRecord{},
+			RecentRunsTotal:   0,
+			RecentRunsOffset:  0,
+			RecentRunsLimit:   providerGatewayRecentRunsLimit,
+			RecentRunsHasMore: false,
 		}, nil
 	}
 
-	recentRuns, err := r.ProviderGateway.ListRecentRunsFiltered(ctx, providergateway.RecentRunsFilter{
+	recentRunsPage, err := r.ProviderGateway.ListRecentRunsPage(ctx, providergateway.RecentRunsFilter{
 		ProviderID: strings.TrimSpace(options.ProviderID),
 		Status:     strings.TrimSpace(options.Status),
 		Query:      strings.TrimSpace(options.Query),
+		Offset:     options.Offset,
 		Limit: func() int {
 			if options.Limit > 0 {
 				return options.Limit
@@ -116,9 +130,13 @@ func (r *Runtime) ProviderGatewaySnapshot(
 		return ProviderGatewaySnapshot{}, err
 	}
 	return ProviderGatewaySnapshot{
-		GeneratedAt: time.Now().UTC(),
-		Providers:   buildGatewayProviderViews(catalog, stats, probes),
-		RecentRuns:  recentRuns,
+		GeneratedAt:       time.Now().UTC(),
+		Providers:         buildGatewayProviderViews(catalog, stats, probes),
+		RecentRuns:        recentRunsPage.Items,
+		RecentRunsTotal:   recentRunsPage.Total,
+		RecentRunsOffset:  recentRunsPage.Offset,
+		RecentRunsLimit:   recentRunsPage.Limit,
+		RecentRunsHasMore: recentRunsPage.HasMore,
 	}, nil
 }
 
@@ -150,6 +168,10 @@ func buildGatewayProviderViews(
 			Model:            providerConfigModel(provider),
 			BaseURL:          providerConfigBaseURL(provider),
 			RouteStatusState: providerProbeStatusUnchecked,
+			RoutePrewarmPolicy: string(
+				agent.NormalizeProviderRoutePolicy(provider.RoutePolicy).PrewarmPolicy,
+			),
+			RouteWarmTTLSeconds: agent.NormalizeProviderRoutePolicy(provider.RoutePolicy).WarmTTLSeconds,
 		}
 		if providerStats, ok := statsByProviderID[provider.ID]; ok {
 			applyProviderGatewayStats(&view, providerStats)
@@ -166,6 +188,7 @@ func buildGatewayProviderViews(
 		if view.DisplayName == "" {
 			view.DisplayName = provider.ID
 		}
+		applyProviderGatewayRoutePolicy(&view)
 		views = append(views, view)
 	}
 
@@ -174,10 +197,14 @@ func buildGatewayProviderViews(
 			continue
 		}
 		view := ProviderGatewayProviderView{
-			ProviderID:       providerStats.ProviderID,
-			ProviderKind:     providerStats.ProviderKind,
-			DisplayName:      providerStats.ProviderDisplayName,
-			RouteStatusState: providerProbeStatusUnchecked,
+			ProviderID:         providerStats.ProviderID,
+			ProviderKind:       providerStats.ProviderKind,
+			DisplayName:        providerStats.ProviderDisplayName,
+			RouteStatusState:   providerProbeStatusUnchecked,
+			RoutePrewarmPolicy: string(agent.ProviderPrewarmPolicyManual),
+			RouteWarmTTLSeconds: agent.NormalizeProviderRoutePolicy(
+				agent.ProviderRoutePolicy{},
+			).WarmTTLSeconds,
 		}
 		applyProviderGatewayStats(&view, providerStats)
 		if probe, ok := probesByProviderID[providerStats.ProviderID]; ok {
@@ -186,6 +213,7 @@ func buildGatewayProviderViews(
 		if view.DisplayName == "" {
 			view.DisplayName = providerStats.ProviderID
 		}
+		applyProviderGatewayRoutePolicy(&view)
 		views = append(views, view)
 	}
 
@@ -230,6 +258,30 @@ func applyProviderGatewayProbe(view *ProviderGatewayProviderView, probe provider
 		preparedAt := probe.PreparedAt.UTC()
 		view.RoutePreparedAt = &preparedAt
 	}
+	applyProviderGatewayRoutePolicy(view)
+}
+
+func applyProviderGatewayRoutePolicy(view *ProviderGatewayProviderView) {
+	if view.RouteWarmTTLSeconds <= 0 {
+		view.RouteWarmTTLSeconds = agent.NormalizeProviderRoutePolicy(agent.ProviderRoutePolicy{}).WarmTTLSeconds
+	}
+	if strings.TrimSpace(view.RoutePrewarmPolicy) == "" {
+		view.RoutePrewarmPolicy = string(agent.ProviderPrewarmPolicyManual)
+	}
+	if view.RoutePreparedAt == nil || view.RouteWarmTTLSeconds <= 0 {
+		view.RoutePrepareExpiresAt = nil
+		view.RoutePrepareStale = false
+		return
+	}
+	expiresAt := view.RoutePreparedAt.Add(time.Duration(view.RouteWarmTTLSeconds) * time.Second)
+	view.RoutePrepareExpiresAt = &expiresAt
+	view.RoutePrepareStale = time.Now().UTC().After(expiresAt)
+	if view.RoutePrepareStale && view.RoutePrepared {
+		view.RoutePrepareState = "stale"
+		if strings.TrimSpace(view.RoutePrepareMessage) == "" {
+			view.RoutePrepareMessage = "Prepared route exceeded its warm TTL and should be refreshed."
+		}
+	}
 }
 
 func providerConfigModel(provider agent.ProviderView) string {
@@ -270,21 +322,63 @@ func (r *Runtime) recordConversationProviderRun(
 	}
 
 	status, errorCode, errorMessage := classifyProviderRunOutcome(binding, result, callErr)
+	lastProbe := providergateway.ProbeRecord{}
+	if probe, probeErr := r.ProviderGateway.GetLatestProbe(ctx, binding.Record.ID); probeErr == nil {
+		lastProbe = probe
+	}
+	actor := r.currentProviderActor()
 	_, _ = r.ProviderGateway.RecordRun(ctx, providergateway.RunRecord{
 		ProviderID:             binding.Record.ID,
 		ProviderKind:           string(binding.Record.Kind),
 		ProviderDisplayName:    binding.Record.DisplayName,
+		ActorUsername:          actor.Username,
+		ActorHomeDir:           actor.HomeDir,
 		RequestMode:            requestMode,
 		Model:                  strings.TrimSpace(binding.Model),
 		ConversationID:         strings.TrimSpace(result.Snapshot.ID),
 		Status:                 status,
 		ErrorCode:              errorCode,
 		ErrorMessage:           errorMessage,
+		RouteReady:             lastProbe.Ready,
+		RouteStatusState:       lastProbe.StatusState,
+		RouteStatusMessage:     lastProbe.StatusMessage,
+		RoutePrepared:          lastProbe.Prepared,
+		RoutePrepareState:      lastProbe.PrepareState,
+		RoutePrepareMessage:    lastProbe.PrepareMessage,
+		ResolvedBinary:         firstNonEmpty(lastProbe.ResolvedBinary, providerRecordCommand(binding.Record)),
+		BaseURL:                firstNonEmpty(lastProbe.BaseURL, providerRecordBaseURL(binding.Record)),
 		DurationMS:             time.Since(startedAt).Milliseconds(),
 		FirstResponseLatencyMS: result.FirstResponseLatencyMS,
 		StartedAt:              startedAt.UTC(),
 		CompletedAt:            time.Now().UTC(),
 	})
+}
+
+func providerRecordCommand(record *agent.ProviderRecord) string {
+	if record == nil {
+		return ""
+	}
+	switch record.Kind {
+	case agent.ProviderKindCodex:
+		if record.Codex != nil {
+			return strings.TrimSpace(record.Codex.Command)
+		}
+	case agent.ProviderKindClaude:
+		if record.Claude != nil {
+			return strings.TrimSpace(record.Claude.Command)
+		}
+	}
+	return ""
+}
+
+func providerRecordBaseURL(record *agent.ProviderRecord) string {
+	if record == nil {
+		return ""
+	}
+	if record.Kind == agent.ProviderKindOpenAICompatible && record.OpenAICompatible != nil {
+		return strings.TrimSpace(record.OpenAICompatible.BaseURL)
+	}
+	return ""
 }
 
 func classifyProviderRunOutcome(

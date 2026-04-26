@@ -13,6 +13,8 @@ type createProviderPayload struct {
 	Kind             string                               `json:"kind"`
 	DisplayName      string                               `json:"display_name"`
 	Enabled          *bool                                `json:"enabled,omitempty"`
+	Access           *providerAccessPayload               `json:"access,omitempty"`
+	RoutePolicy      *providerRoutePolicyPayload          `json:"route_policy,omitempty"`
 	Codex            *createCodexConfigPayload            `json:"codex,omitempty"`
 	Claude           *createClaudeConfigPayload           `json:"claude,omitempty"`
 	OpenAICompatible *createOpenAICompatibleConfigPayload `json:"openai_compatible,omitempty"`
@@ -29,9 +31,22 @@ type providerModelsPayload struct {
 type updateProviderPayload struct {
 	DisplayName      *string                              `json:"display_name,omitempty"`
 	Enabled          *bool                                `json:"enabled,omitempty"`
+	Access           *providerAccessPayload               `json:"access,omitempty"`
+	RoutePolicy      *providerRoutePolicyPayload          `json:"route_policy,omitempty"`
 	Codex            *updateCodexConfigPayload            `json:"codex,omitempty"`
 	Claude           *updateClaudeConfigPayload           `json:"claude,omitempty"`
 	OpenAICompatible *updateOpenAICompatibleConfigPayload `json:"openai_compatible,omitempty"`
+}
+
+type providerAccessPayload struct {
+	OwnerUsername string   `json:"owner_username,omitempty"`
+	Visibility    string   `json:"visibility,omitempty"`
+	AllowedUsers  []string `json:"allowed_users,omitempty"`
+}
+
+type providerRoutePolicyPayload struct {
+	PrewarmPolicy  string `json:"prewarm_policy,omitempty"`
+	WarmTTLSeconds int    `json:"warm_ttl_seconds,omitempty"`
 }
 
 type providerModelsCodexPayload struct {
@@ -91,6 +106,7 @@ func (api *API) handleProviderCatalog(w http.ResponseWriter, r *http.Request) {
 
 func (api *API) handleProviderGatewaySnapshot(w http.ResponseWriter, r *http.Request) {
 	limit := 0
+	offset := 0
 	if rawLimit := r.URL.Query().Get("limit"); rawLimit != "" {
 		parsedLimit, err := strconv.Atoi(rawLimit)
 		if err != nil {
@@ -99,11 +115,20 @@ func (api *API) handleProviderGatewaySnapshot(w http.ResponseWriter, r *http.Req
 		}
 		limit = parsedLimit
 	}
+	if rawOffset := r.URL.Query().Get("offset"); rawOffset != "" {
+		parsedOffset, err := strconv.Atoi(rawOffset)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid_provider_gateway_offset", "offset must be an integer")
+			return
+		}
+		offset = parsedOffset
+	}
 
 	snapshot, err := api.runtime.ProviderGatewaySnapshot(r.Context(), app.ProviderGatewaySnapshotOptions{
 		ProviderID: r.URL.Query().Get("provider_id"),
 		Status:     r.URL.Query().Get("status"),
 		Query:      r.URL.Query().Get("query"),
+		Offset:     offset,
 		Limit:      limit,
 	})
 	if err != nil {
@@ -141,6 +166,22 @@ func (api *API) handlePrewarmProvider(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, result)
 }
 
+func (api *API) handleClearProviderRouteState(w http.ResponseWriter, r *http.Request) {
+	providerID := r.PathValue("providerID")
+	if providerID == "" {
+		writeError(w, http.StatusBadRequest, "missing_provider_id", "provider id is required")
+		return
+	}
+	if err := api.runtime.ClearProviderRouteState(r.Context(), providerID); err != nil {
+		writeProviderConfigError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"provider_id": providerID,
+		"cleared":     true,
+	})
+}
+
 func (api *API) handleCreateProvider(w http.ResponseWriter, r *http.Request) {
 	var payload createProviderPayload
 	if err := decodeJSON(r, &payload); err != nil {
@@ -151,6 +192,8 @@ func (api *API) handleCreateProvider(w http.ResponseWriter, r *http.Request) {
 		Kind:             agent.ProviderKind(payload.Kind),
 		DisplayName:      payload.DisplayName,
 		Enabled:          payload.Enabled,
+		Access:           mapProviderAccessPolicy(payload.Access),
+		RoutePolicy:      mapProviderRoutePolicy(payload.RoutePolicy),
 		Codex:            mapCreateCodexProviderInput(payload.Codex),
 		Claude:           mapCreateClaudeProviderInput(payload.Claude),
 		OpenAICompatible: mapCreateOpenAICompatibleProviderInput(payload.OpenAICompatible),
@@ -198,6 +241,8 @@ func (api *API) handleUpdateProvider(w http.ResponseWriter, r *http.Request) {
 	provider, catalog, err := api.runtime.UpdateProvider(providerID, agent.UpdateProviderInput{
 		DisplayName:      payload.DisplayName,
 		Enabled:          payload.Enabled,
+		Access:           mapOptionalProviderAccessPolicy(payload.Access),
+		RoutePolicy:      mapOptionalProviderRoutePolicy(payload.RoutePolicy),
 		Codex:            mapUpdateCodexProviderInput(payload.Codex),
 		Claude:           mapUpdateClaudeProviderInput(payload.Claude),
 		OpenAICompatible: mapUpdateOpenAICompatibleProviderInput(payload.OpenAICompatible),
@@ -262,6 +307,39 @@ func mapProviderModelsCodexSettings(payload *providerModelsCodexPayload) *agent.
 		Command: payload.Command,
 		Model:   payload.Model,
 	}
+}
+
+func mapProviderAccessPolicy(payload *providerAccessPayload) agent.ProviderAccessPolicy {
+	if payload == nil {
+		return agent.ProviderAccessPolicy{}
+	}
+	return agent.ProviderAccessPolicy{
+		OwnerUsername: payload.OwnerUsername,
+		Visibility:    payload.Visibility,
+		AllowedUsers:  payload.AllowedUsers,
+	}
+}
+
+func mapOptionalProviderAccessPolicy(payload *providerAccessPayload) *agent.ProviderAccessPolicy {
+	if payload == nil {
+		return nil
+	}
+	policy := mapProviderAccessPolicy(payload)
+	return &policy
+}
+
+func mapProviderRoutePolicy(payload *providerRoutePolicyPayload) *agent.ProviderRoutePolicy {
+	if payload == nil {
+		return nil
+	}
+	return &agent.ProviderRoutePolicy{
+		PrewarmPolicy:  agent.ProviderPrewarmPolicy(payload.PrewarmPolicy),
+		WarmTTLSeconds: payload.WarmTTLSeconds,
+	}
+}
+
+func mapOptionalProviderRoutePolicy(payload *providerRoutePolicyPayload) *agent.ProviderRoutePolicy {
+	return mapProviderRoutePolicy(payload)
 }
 
 func mapProviderModelsClaudeSettings(payload *providerModelsClaudePayload) *agent.ClaudeProviderSettings {

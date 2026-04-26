@@ -654,13 +654,13 @@ func TestSubmitConversationMessagePassesSelectedModelToProvider(t *testing.T) {
 
 	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPost, "/api/v1/agent/conversation/messages", map[string]any{
 		"prompt": "hello there",
-		"model":  "gpt-5-mini",
+		"model":  "gpt-5.4",
 	}))
 
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d body=%s", recorder.Code, recorder.Body.String())
 	}
-	if provider.request.Model != "gpt-5-mini" {
+	if provider.request.Model != "gpt-5.4" {
 		t.Fatalf("expected selected model in provider request, got %#v", provider.request)
 	}
 }

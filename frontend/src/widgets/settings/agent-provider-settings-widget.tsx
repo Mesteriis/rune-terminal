@@ -216,11 +216,15 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
     errorMessage,
     gateway,
     gatewayErrorMessage,
+    historyHasMore,
     historyErrorMessage,
+    historyLimit,
+    historyOffset,
     historyQuery,
     historyRuns,
     historyScope,
     historyStatus,
+    historyTotal,
     isHistoryLoading,
     isLoading,
     isLoadingModels,
@@ -232,11 +236,15 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
     selectedProvider,
     selectedProviderID,
     setDraft,
+    setHistoryLimit,
     setHistoryQuery,
     setHistoryScope,
     setHistoryStatus,
     statusMessage,
     activateSelectedProvider,
+    clearSelectedProviderRouteState,
+    loadMoreHistory,
+    providerGatewayHistoryPageOptions,
     prewarmSelectedProvider,
     probeSelectedProvider,
     refreshAvailableModels,
@@ -428,6 +436,57 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                         </Text>
                       </ClearBox>
                     </ClearBox>
+                    <ClearBox style={providerSettingsGridStyle}>
+                      <TextInputField
+                        hint="Future-ready ownership metadata for provider governance."
+                        label="Owner username"
+                        onChange={(value) =>
+                          updateDraftField(setDraft, (currentDraft) => ({
+                            ...currentDraft,
+                            ownerUsername: value,
+                          }))
+                        }
+                        placeholder={catalog?.current_actor.username || 'owner'}
+                        value={draft.ownerUsername}
+                      />
+                      <ClearBox style={providerSettingsFieldStyle}>
+                        <Label htmlFor="provider-visibility-select">Provider visibility</Label>
+                        <Select
+                          id="provider-visibility-select"
+                          onChange={(event) =>
+                            updateDraftField(setDraft, (currentDraft) => ({
+                              ...currentDraft,
+                              visibility: event.currentTarget.value,
+                            }))
+                          }
+                          value={draft.visibility}
+                        >
+                          <option value="private">Private</option>
+                          <option value="shared">Shared</option>
+                        </Select>
+                        <Text style={providerSettingsStatusMessageStyle}>
+                          Current actor: {catalog?.current_actor.username || 'unknown'}
+                        </Text>
+                      </ClearBox>
+                      <TextInputField
+                        hint="Comma-separated usernames for future shared-provider access control."
+                        label="Allowed users"
+                        onChange={(value) =>
+                          updateDraftField(setDraft, (currentDraft) => ({
+                            ...currentDraft,
+                            allowedUsers: value,
+                          }))
+                        }
+                        placeholder="alice, bob"
+                        value={draft.allowedUsers}
+                      />
+                    </ClearBox>
+                    {selectedProvider ? (
+                      <Text style={providerSettingsStatusMessageStyle}>
+                        Created by {selectedProvider.created_by.username || 'unknown'} · updated by{' '}
+                        {selectedProvider.updated_by.username || 'unknown'}
+                      </Text>
+                    ) : null}
                   </ClearBox>
 
                   <ClearBox style={providerSettingsSectionStyle}>
@@ -468,6 +527,13 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                           {formatDuration(selectedGatewayProvider?.route_latency_ms)}
                         </Text>
                       </ClearBox>
+                      <ClearBox style={providerSettingsFieldStyle}>
+                        <Label>Warm policy</Label>
+                        <Text style={providerSettingsStatusMessageStyle}>
+                          {selectedGatewayProvider?.route_prewarm_policy || draft.prewarmPolicy} · ttl{' '}
+                          {selectedGatewayProvider?.route_warm_ttl_seconds || draft.warmTTLSeconds}s
+                        </Text>
+                      </ClearBox>
                     </ClearBox>
                     {gatewayErrorMessage ? (
                       <Text style={providerSettingsErrorMessageStyle}>
@@ -486,6 +552,18 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                     {selectedGatewayProvider?.route_prepare_message ? (
                       <Text style={providerSettingsStatusMessageStyle}>
                         {selectedGatewayProvider.route_prepare_message}
+                      </Text>
+                    ) : null}
+                    {selectedGatewayProvider?.route_prepare_expires_at ? (
+                      <Text
+                        style={
+                          selectedGatewayProvider.route_prepare_stale
+                            ? providerSettingsErrorMessageStyle
+                            : providerSettingsStatusMessageStyle
+                        }
+                      >
+                        Warm window ends{' '}
+                        {formatRunTimestamp(selectedGatewayProvider.route_prepare_expires_at)}
                       </Text>
                     ) : null}
                     {selectedGatewayProvider?.route_status_message ? (
@@ -508,6 +586,12 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                           {isPreparing ? 'Preparing…' : selectedGatewayRecoveryAction.label}
                         </Button>
                       ) : null}
+                      <Button
+                        disabled={isSaving || isPreparing || draft.mode !== 'existing'}
+                        onClick={() => void clearSelectedProviderRouteState()}
+                      >
+                        Clear route state
+                      </Button>
                       {selectedGatewayRecoveryAction?.kind === 'probe' &&
                       selectedGatewayRecoveryAction.label !== 'Probe route' ? (
                         <Text style={providerSettingsStatusMessageStyle}>
@@ -518,6 +602,49 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                     {probeErrorMessage ? (
                       <Text style={providerSettingsErrorMessageStyle}>{probeErrorMessage}</Text>
                     ) : null}
+                  </ClearBox>
+
+                  <ClearBox style={providerSettingsSectionStyle}>
+                    <ClearBox style={providerSettingsSectionHeaderStyle}>
+                      <Text style={{ fontWeight: 600 }}>Route policy</Text>
+                      <Text style={providerSettingsStatusMessageStyle}>
+                        Backend-owned prewarm behavior and warm TTL for the selected provider route.
+                      </Text>
+                    </ClearBox>
+                    <ClearBox style={providerSettingsGridStyle}>
+                      <ClearBox style={providerSettingsFieldStyle}>
+                        <Label htmlFor="provider-prewarm-policy">Prewarm policy</Label>
+                        <Select
+                          id="provider-prewarm-policy"
+                          onChange={(event) =>
+                            updateDraftField(setDraft, (currentDraft) => ({
+                              ...currentDraft,
+                              prewarmPolicy: event.currentTarget.value as
+                                | 'manual'
+                                | 'on_activate'
+                                | 'on_startup',
+                            }))
+                          }
+                          value={draft.prewarmPolicy}
+                        >
+                          <option value="manual">Manual only</option>
+                          <option value="on_activate">Prepare on activate</option>
+                          <option value="on_startup">Prepare on app start</option>
+                        </Select>
+                      </ClearBox>
+                      <TextInputField
+                        hint="How long a prepared route is treated as warm before the shell marks it stale."
+                        label="Warm TTL (seconds)"
+                        onChange={(value) =>
+                          updateDraftField(setDraft, (currentDraft) => ({
+                            ...currentDraft,
+                            warmTTLSeconds: Math.max(0, Number.parseInt(value || '0', 10) || 0),
+                          }))
+                        }
+                        type="number"
+                        value={String(draft.warmTTLSeconds)}
+                      />
+                    </ClearBox>
                   </ClearBox>
 
                   {draft.kind === 'codex' ? (
@@ -752,6 +879,26 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                           <option value="all">All providers</option>
                         </Select>
                       </ClearBox>
+                      <ClearBox style={providerSettingsFieldStyle}>
+                        <Label htmlFor="provider-history-limit-filter">History window</Label>
+                        <Select
+                          id="provider-history-limit-filter"
+                          onChange={(event) =>
+                            setHistoryLimit(Number.parseInt(event.currentTarget.value, 10))
+                          }
+                          value={String(historyLimit)}
+                        >
+                          {providerGatewayHistoryPageOptions.map((limit) => (
+                            <option key={limit} value={String(limit)}>
+                              {limit} runs
+                            </option>
+                          ))}
+                        </Select>
+                        <Text style={providerSettingsStatusMessageStyle}>
+                          Showing {historyRuns.length} of {historyTotal} persisted runs
+                          {historyOffset > 0 ? ` from offset ${historyOffset}` : ''}.
+                        </Text>
+                      </ClearBox>
                     </ClearBox>
                     {historyErrorMessage ? (
                       <Text style={providerSettingsErrorMessageStyle}>
@@ -804,6 +951,11 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                         </Text>
                       )}
                     </ClearBox>
+                    {historyHasMore ? (
+                      <Button disabled={isHistoryLoading} onClick={loadMoreHistory}>
+                        {isHistoryLoading ? 'Loading…' : 'Load more history'}
+                      </Button>
+                    ) : null}
                     {selectedHistoryRun ? (
                       <ClearBox
                         style={{
@@ -853,15 +1005,34 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                             </Text>
                           </ClearBox>
                           <ClearBox style={providerSettingsFieldStyle}>
+                            <Label>Actor</Label>
+                            <Text style={providerSettingsStatusMessageStyle}>
+                              {selectedHistoryRun.actor_username || 'unknown'}
+                            </Text>
+                          </ClearBox>
+                          <ClearBox style={providerSettingsFieldStyle}>
                             <Label>Model</Label>
                             <Text style={providerSettingsStatusMessageStyle}>
                               {selectedHistoryRun.model || 'default model'}
                             </Text>
                           </ClearBox>
                           <ClearBox style={providerSettingsFieldStyle}>
+                            <Label>Resolved route</Label>
+                            <Text style={providerSettingsStatusMessageStyle}>
+                              {selectedHistoryRun.resolved_binary || selectedHistoryRun.base_url || 'n/a'}
+                            </Text>
+                          </ClearBox>
+                          <ClearBox style={providerSettingsFieldStyle}>
                             <Label>First response</Label>
                             <Text style={providerSettingsStatusMessageStyle}>
                               {formatDuration(selectedHistoryRun.first_response_latency_ms)}
+                            </Text>
+                          </ClearBox>
+                          <ClearBox style={providerSettingsFieldStyle}>
+                            <Label>Route state</Label>
+                            <Text style={providerSettingsStatusMessageStyle}>
+                              {selectedHistoryRun.route_status_state || 'unchecked'} ·{' '}
+                              {selectedHistoryRun.route_prepare_state || 'unprepared'}
                             </Text>
                           </ClearBox>
                           <ClearBox style={providerSettingsFieldStyle}>
@@ -886,6 +1057,16 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                         {selectedHistoryRun.error_message ? (
                           <Text style={providerSettingsErrorMessageStyle}>
                             {selectedHistoryRun.error_message}
+                          </Text>
+                        ) : null}
+                        {selectedHistoryRun.route_status_message ? (
+                          <Text style={providerSettingsStatusMessageStyle}>
+                            {selectedHistoryRun.route_status_message}
+                          </Text>
+                        ) : null}
+                        {selectedHistoryRun.route_prepare_message ? (
+                          <Text style={providerSettingsStatusMessageStyle}>
+                            {selectedHistoryRun.route_prepare_message}
                           </Text>
                         ) : null}
                       </ClearBox>

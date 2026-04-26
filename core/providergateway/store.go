@@ -3,6 +3,7 @@ package providergateway
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -27,12 +28,22 @@ type RunRecord struct {
 	ProviderID             string    `json:"provider_id"`
 	ProviderKind           string    `json:"provider_kind"`
 	ProviderDisplayName    string    `json:"provider_display_name"`
+	ActorUsername          string    `json:"actor_username,omitempty"`
+	ActorHomeDir           string    `json:"actor_home_dir,omitempty"`
 	RequestMode            string    `json:"request_mode"`
 	Model                  string    `json:"model,omitempty"`
 	ConversationID         string    `json:"conversation_id,omitempty"`
 	Status                 string    `json:"status"`
 	ErrorCode              string    `json:"error_code,omitempty"`
 	ErrorMessage           string    `json:"error_message,omitempty"`
+	RouteReady             bool      `json:"route_ready"`
+	RouteStatusState       string    `json:"route_status_state,omitempty"`
+	RouteStatusMessage     string    `json:"route_status_message,omitempty"`
+	RoutePrepared          bool      `json:"route_prepared"`
+	RoutePrepareState      string    `json:"route_prepare_state,omitempty"`
+	RoutePrepareMessage    string    `json:"route_prepare_message,omitempty"`
+	ResolvedBinary         string    `json:"resolved_binary,omitempty"`
+	BaseURL                string    `json:"base_url,omitempty"`
 	DurationMS             int64     `json:"duration_ms"`
 	FirstResponseLatencyMS int64     `json:"first_response_latency_ms"`
 	StartedAt              time.Time `json:"started_at"`
@@ -85,7 +96,16 @@ type RecentRunsFilter struct {
 	ProviderID string
 	Status     string
 	Query      string
+	Offset     int
 	Limit      int
+}
+
+type RecentRunsPage struct {
+	Items   []RunRecord
+	Total   int
+	Offset  int
+	Limit   int
+	HasMore bool
 }
 
 func NewStore(ctx context.Context, db *sql.DB) (*Store, error) {
@@ -103,28 +123,48 @@ func (s *Store) RecordRun(ctx context.Context, run RunRecord) (RunRecord, error)
 			provider_id,
 			provider_kind,
 			provider_display_name,
+			actor_username,
+			actor_home_dir,
 			request_mode,
 			model,
 			conversation_id,
 			status,
 			error_code,
 			error_message,
+			route_ready,
+			route_status_state,
+			route_status_message,
+			route_prepared,
+			route_prepare_state,
+			route_prepare_message,
+			resolved_binary,
+			base_url,
 			duration_ms,
 			first_response_latency_ms,
 			started_at,
 			completed_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`,
 		normalized.ID,
 		normalized.ProviderID,
 		normalized.ProviderKind,
 		normalized.ProviderDisplayName,
+		normalized.ActorUsername,
+		normalized.ActorHomeDir,
 		normalized.RequestMode,
 		normalized.Model,
 		normalized.ConversationID,
 		normalized.Status,
 		normalized.ErrorCode,
 		normalized.ErrorMessage,
+		normalized.RouteReady,
+		normalized.RouteStatusState,
+		normalized.RouteStatusMessage,
+		normalized.RoutePrepared,
+		normalized.RoutePrepareState,
+		normalized.RoutePrepareMessage,
+		normalized.ResolvedBinary,
+		normalized.BaseURL,
 		normalized.DurationMS,
 		normalized.FirstResponseLatencyMS,
 		normalized.StartedAt.Format(time.RFC3339Nano),
@@ -140,12 +180,52 @@ func (s *Store) ListRecentRuns(ctx context.Context, limit int) ([]RunRecord, err
 	return s.ListRecentRunsFiltered(ctx, RecentRunsFilter{Limit: limit})
 }
 
-func (s *Store) ListRecentRunsFiltered(ctx context.Context, filter RecentRunsFilter) ([]RunRecord, error) {
+func (s *Store) ListRecentRunsPage(ctx context.Context, filter RecentRunsFilter) (RecentRunsPage, error) {
 	normalizedLimit := normalizeRecentRunsLimit(filter.Limit)
+	normalizedOffset := normalizeRecentRunsOffset(filter.Offset)
 	normalizedStatus := normalizeRunStatusFilter(filter.Status)
 	normalizedProviderID := strings.TrimSpace(filter.ProviderID)
 	normalizedQuery := strings.ToLower(strings.TrimSpace(filter.Query))
 
+	whereSQL, args := buildRecentRunsFilter(normalizedProviderID, normalizedStatus, normalizedQuery)
+
+	countQuery := "SELECT COUNT(*) FROM provider_gateway_runs"
+	if whereSQL != "" {
+		countQuery += " WHERE " + whereSQL
+	}
+	var total int
+	if err := s.db.QueryRowContext(ctx, countQuery, args...).Scan(&total); err != nil {
+		return RecentRunsPage{}, fmt.Errorf("count provider gateway runs: %w", err)
+	}
+
+	items, err := s.listRecentRunsWindow(ctx, whereSQL, args, normalizedOffset, normalizedLimit)
+	if err != nil {
+		return RecentRunsPage{}, err
+	}
+	return RecentRunsPage{
+		Items:   items,
+		Total:   total,
+		Offset:  normalizedOffset,
+		Limit:   normalizedLimit,
+		HasMore: normalizedOffset+len(items) < total,
+	}, nil
+}
+
+func (s *Store) ListRecentRunsFiltered(ctx context.Context, filter RecentRunsFilter) ([]RunRecord, error) {
+	page, err := s.ListRecentRunsPage(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	return page.Items, nil
+}
+
+func (s *Store) listRecentRunsWindow(
+	ctx context.Context,
+	whereSQL string,
+	args []any,
+	offset int,
+	limit int,
+) ([]RunRecord, error) {
 	query := strings.Builder{}
 	query.WriteString(`
 		SELECT
@@ -153,12 +233,22 @@ func (s *Store) ListRecentRunsFiltered(ctx context.Context, filter RecentRunsFil
 			provider_id,
 			provider_kind,
 			provider_display_name,
+			actor_username,
+			actor_home_dir,
 			request_mode,
 			model,
 			conversation_id,
 			status,
 			error_code,
 			error_message,
+			route_ready,
+			route_status_state,
+			route_status_message,
+			route_prepared,
+			route_prepare_state,
+			route_prepare_message,
+			resolved_binary,
+			base_url,
 			duration_ms,
 			first_response_latency_ms,
 			started_at,
@@ -166,49 +256,23 @@ func (s *Store) ListRecentRunsFiltered(ctx context.Context, filter RecentRunsFil
 		FROM provider_gateway_runs
 	`)
 
-	whereClauses := make([]string, 0, 3)
-	args := make([]any, 0, 4)
-	if normalizedProviderID != "" {
-		whereClauses = append(whereClauses, "provider_id = ?")
-		args = append(args, normalizedProviderID)
-	}
-	if normalizedStatus != "" {
-		whereClauses = append(whereClauses, "status = ?")
-		args = append(args, normalizedStatus)
-	}
-	if normalizedQuery != "" {
-		whereClauses = append(whereClauses, `(
-			LOWER(provider_id) LIKE ?
-			OR LOWER(provider_display_name) LIKE ?
-			OR LOWER(model) LIKE ?
-			OR LOWER(conversation_id) LIKE ?
-			OR LOWER(status) LIKE ?
-			OR LOWER(error_code) LIKE ?
-			OR LOWER(error_message) LIKE ?
-			OR LOWER(request_mode) LIKE ?
-		)`)
-		searchTerm := "%" + normalizedQuery + "%"
-		for range 8 {
-			args = append(args, searchTerm)
-		}
-	}
-	if len(whereClauses) > 0 {
+	if whereSQL != "" {
 		query.WriteString(" WHERE ")
-		query.WriteString(strings.Join(whereClauses, " AND "))
+		query.WriteString(whereSQL)
 	}
 	query.WriteString(`
 		ORDER BY started_at DESC, id DESC
-		LIMIT ?
+		LIMIT ? OFFSET ?
 	`)
-	args = append(args, normalizedLimit)
+	queryArgs := append(append([]any(nil), args...), limit, offset)
 
-	rows, err := s.db.QueryContext(ctx, query.String(), args...)
+	rows, err := s.db.QueryContext(ctx, query.String(), queryArgs...)
 	if err != nil {
 		return nil, fmt.Errorf("list provider gateway runs: %w", err)
 	}
 	defer rows.Close()
 
-	runs := make([]RunRecord, 0, normalizedLimit)
+	runs := make([]RunRecord, 0, limit)
 	for rows.Next() {
 		run, err := scanRunRecord(rows)
 		if err != nil {
@@ -220,6 +284,40 @@ func (s *Store) ListRecentRunsFiltered(ctx context.Context, filter RecentRunsFil
 		return nil, fmt.Errorf("iterate provider gateway runs: %w", err)
 	}
 	return runs, nil
+}
+
+func buildRecentRunsFilter(providerID string, status string, query string) (string, []any) {
+	whereClauses := make([]string, 0, 3)
+	args := make([]any, 0, 12)
+	if providerID != "" {
+		whereClauses = append(whereClauses, "provider_id = ?")
+		args = append(args, providerID)
+	}
+	if status != "" {
+		whereClauses = append(whereClauses, "status = ?")
+		args = append(args, status)
+	}
+	if query != "" {
+		whereClauses = append(whereClauses, `(
+			LOWER(provider_id) LIKE ?
+			OR LOWER(provider_display_name) LIKE ?
+			OR LOWER(model) LIKE ?
+			OR LOWER(conversation_id) LIKE ?
+			OR LOWER(status) LIKE ?
+			OR LOWER(error_code) LIKE ?
+			OR LOWER(error_message) LIKE ?
+			OR LOWER(request_mode) LIKE ?
+			OR LOWER(actor_username) LIKE ?
+			OR LOWER(route_status_state) LIKE ?
+			OR LOWER(route_prepare_state) LIKE ?
+			OR LOWER(base_url) LIKE ?
+		)`)
+		searchTerm := "%" + query + "%"
+		for range 12 {
+			args = append(args, searchTerm)
+		}
+	}
+	return strings.Join(whereClauses, " AND "), args
 }
 
 func (s *Store) ListProviderStats(ctx context.Context) ([]ProviderStats, error) {
@@ -431,6 +529,45 @@ func (s *Store) ListLatestProbes(ctx context.Context) ([]ProbeRecord, error) {
 	return probes, nil
 }
 
+func (s *Store) GetLatestProbe(ctx context.Context, providerID string) (ProbeRecord, error) {
+	row := s.db.QueryRowContext(ctx, `
+		SELECT
+			provider_id,
+			provider_kind,
+			display_name,
+			ready,
+			status_state,
+			status_message,
+			resolved_binary,
+			base_url,
+			model,
+			probe_latency_ms,
+			checked_at,
+			prepared,
+			prepare_state,
+			prepare_message,
+			prepare_latency_ms,
+			prepared_at
+		FROM provider_gateway_probes
+		WHERE provider_id = ?
+	`, strings.TrimSpace(providerID))
+	probe, err := scanProbeRecord(row)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ProbeRecord{}, sql.ErrNoRows
+		}
+		return ProbeRecord{}, err
+	}
+	return probe, nil
+}
+
+func (s *Store) ClearProbe(ctx context.Context, providerID string) error {
+	if _, err := s.db.ExecContext(ctx, `DELETE FROM provider_gateway_probes WHERE provider_id = ?`, strings.TrimSpace(providerID)); err != nil {
+		return fmt.Errorf("clear provider gateway probe: %w", err)
+	}
+	return nil
+}
+
 func normalizeRunRecord(run RunRecord) RunRecord {
 	if strings.TrimSpace(run.ID) == "" {
 		run.ID = ids.New("provider-run")
@@ -438,12 +575,20 @@ func normalizeRunRecord(run RunRecord) RunRecord {
 	run.ProviderID = strings.TrimSpace(run.ProviderID)
 	run.ProviderKind = strings.TrimSpace(run.ProviderKind)
 	run.ProviderDisplayName = strings.TrimSpace(run.ProviderDisplayName)
+	run.ActorUsername = strings.TrimSpace(run.ActorUsername)
+	run.ActorHomeDir = strings.TrimSpace(run.ActorHomeDir)
 	run.RequestMode = normalizeRequestMode(run.RequestMode)
 	run.Model = strings.TrimSpace(run.Model)
 	run.ConversationID = strings.TrimSpace(run.ConversationID)
 	run.Status = normalizeRunStatus(run.Status)
 	run.ErrorCode = strings.TrimSpace(run.ErrorCode)
 	run.ErrorMessage = strings.TrimSpace(run.ErrorMessage)
+	run.RouteStatusState = strings.TrimSpace(run.RouteStatusState)
+	run.RouteStatusMessage = strings.TrimSpace(run.RouteStatusMessage)
+	run.RoutePrepareState = strings.TrimSpace(run.RoutePrepareState)
+	run.RoutePrepareMessage = strings.TrimSpace(run.RoutePrepareMessage)
+	run.ResolvedBinary = strings.TrimSpace(run.ResolvedBinary)
+	run.BaseURL = strings.TrimSpace(run.BaseURL)
 	if run.DurationMS < 0 {
 		run.DurationMS = 0
 	}
@@ -474,6 +619,13 @@ func normalizeRecentRunsLimit(limit int) int {
 		return maxRecentRunsLimit
 	}
 	return limit
+}
+
+func normalizeRecentRunsOffset(offset int) int {
+	if offset < 0 {
+		return 0
+	}
+	return offset
 }
 
 func normalizeProbeRecord(probe ProbeRecord) ProbeRecord {
@@ -547,12 +699,22 @@ func scanRunRecord(scanner interface {
 		&run.ProviderID,
 		&run.ProviderKind,
 		&run.ProviderDisplayName,
+		&run.ActorUsername,
+		&run.ActorHomeDir,
 		&run.RequestMode,
 		&run.Model,
 		&run.ConversationID,
 		&run.Status,
 		&run.ErrorCode,
 		&run.ErrorMessage,
+		&run.RouteReady,
+		&run.RouteStatusState,
+		&run.RouteStatusMessage,
+		&run.RoutePrepared,
+		&run.RoutePrepareState,
+		&run.RoutePrepareMessage,
+		&run.ResolvedBinary,
+		&run.BaseURL,
 		&run.DurationMS,
 		&run.FirstResponseLatencyMS,
 		&startedAt,

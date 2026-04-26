@@ -34,6 +34,11 @@ export type AgentProviderDraft = {
   kind: AgentProviderKind
   displayName: string
   enabled: boolean
+  ownerUsername: string
+  visibility: string
+  allowedUsers: string
+  prewarmPolicy: 'manual' | 'on_activate' | 'on_startup'
+  warmTTLSeconds: number
   codex: {
     command: string
     model: string
@@ -54,6 +59,11 @@ export function createEmptyProviderDraft(kind: AgentProviderKind): AgentProvider
     kind,
     displayName: '',
     enabled: true,
+    ownerUsername: '',
+    visibility: 'private',
+    allowedUsers: '',
+    prewarmPolicy: 'manual',
+    warmTTLSeconds: 900,
     codex: {
       command: DEFAULT_CODEX_COMMAND,
       model: DEFAULT_CODEX_MODEL,
@@ -76,6 +86,11 @@ export function createProviderDraftFromView(provider: AgentProviderView): AgentP
     kind: provider.kind,
     displayName: provider.display_name,
     enabled: provider.enabled,
+    ownerUsername: provider.access.owner_username,
+    visibility: provider.access.visibility ?? 'private',
+    allowedUsers: (provider.access.allowed_users ?? []).join(', '),
+    prewarmPolicy: provider.route_policy.prewarm_policy ?? 'manual',
+    warmTTLSeconds: provider.route_policy.warm_ttl_seconds ?? 900,
     codex: {
       command: provider.codex?.command ?? DEFAULT_CODEX_COMMAND,
       model: provider.codex?.model ?? DEFAULT_CODEX_MODEL,
@@ -96,6 +111,18 @@ export function buildCreateProviderPayload(draft: AgentProviderDraft): CreateAge
     kind: draft.kind,
     display_name: normalizeText(draft.displayName),
     enabled: draft.enabled,
+    access: {
+      owner_username: normalizeText(draft.ownerUsername),
+      visibility: normalizeText(draft.visibility),
+      allowed_users: draft.allowedUsers
+        .split(',')
+        .map((entry) => entry.trim())
+        .filter(Boolean),
+    },
+    route_policy: {
+      prewarm_policy: draft.prewarmPolicy,
+      warm_ttl_seconds: Math.max(0, Math.trunc(draft.warmTTLSeconds || 0)),
+    },
   }
 
   switch (draft.kind) {
@@ -130,6 +157,18 @@ export function buildUpdateProviderPayload(draft: AgentProviderDraft): UpdateAge
   const payload: UpdateAgentProviderPayload = {
     display_name: normalizeText(draft.displayName),
     enabled: draft.enabled,
+    access: {
+      owner_username: normalizeText(draft.ownerUsername),
+      visibility: normalizeText(draft.visibility),
+      allowed_users: draft.allowedUsers
+        .split(',')
+        .map((entry) => entry.trim())
+        .filter(Boolean),
+    },
+    route_policy: {
+      prewarm_policy: draft.prewarmPolicy,
+      warm_ttl_seconds: Math.max(0, Math.trunc(draft.warmTTLSeconds || 0)),
+    },
   }
 
   switch (draft.kind) {

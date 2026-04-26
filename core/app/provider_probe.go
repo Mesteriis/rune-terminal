@@ -172,6 +172,17 @@ func (r *Runtime) PrewarmProvider(ctx context.Context, providerID string) (Provi
 	return result, nil
 }
 
+func (r *Runtime) ClearProviderRouteState(ctx context.Context, providerID string) error {
+	if r.ProviderGateway == nil {
+		return nil
+	}
+	providerID = strings.TrimSpace(providerID)
+	if providerID == "" {
+		return fmt.Errorf("%w: provider id is required", agent.ErrProviderInvalidConfig)
+	}
+	return r.ProviderGateway.ClearProbe(ctx, providerID)
+}
+
 func (r *Runtime) probeCLIProvider(record agent.ProviderRecord, startedAt time.Time) (ProviderProbeResult, error) {
 	result := ProviderProbeResult{
 		ProviderID:   record.ID,

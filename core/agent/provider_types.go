@@ -10,6 +10,30 @@ const (
 	ProviderKindOpenAICompatible ProviderKind = "openai-compatible"
 )
 
+type ProviderPrewarmPolicy string
+
+const (
+	ProviderPrewarmPolicyManual     ProviderPrewarmPolicy = "manual"
+	ProviderPrewarmPolicyOnActivate ProviderPrewarmPolicy = "on_activate"
+	ProviderPrewarmPolicyOnStartup  ProviderPrewarmPolicy = "on_startup"
+)
+
+type ProviderActor struct {
+	Username string `json:"username"`
+	HomeDir  string `json:"home_dir,omitempty"`
+}
+
+type ProviderAccessPolicy struct {
+	OwnerUsername string   `json:"owner_username"`
+	Visibility    string   `json:"visibility,omitempty"`
+	AllowedUsers  []string `json:"allowed_users,omitempty"`
+}
+
+type ProviderRoutePolicy struct {
+	PrewarmPolicy  ProviderPrewarmPolicy `json:"prewarm_policy,omitempty"`
+	WarmTTLSeconds int                   `json:"warm_ttl_seconds,omitempty"`
+}
+
 type CodexProviderSettings struct {
 	Command    string   `json:"command,omitempty"`
 	Model      string   `json:"model"`
@@ -33,6 +57,10 @@ type ProviderRecord struct {
 	Kind             ProviderKind                      `json:"kind"`
 	DisplayName      string                            `json:"display_name"`
 	Enabled          bool                              `json:"enabled"`
+	Access           ProviderAccessPolicy              `json:"access,omitempty"`
+	CreatedBy        ProviderActor                     `json:"created_by"`
+	UpdatedBy        ProviderActor                     `json:"updated_by"`
+	RoutePolicy      ProviderRoutePolicy               `json:"route_policy,omitempty"`
 	Codex            *CodexProviderSettings            `json:"codex,omitempty"`
 	Claude           *ClaudeProviderSettings           `json:"claude,omitempty"`
 	OpenAICompatible *OpenAICompatibleProviderSettings `json:"openai_compatible,omitempty"`
@@ -64,6 +92,10 @@ type ProviderView struct {
 	DisplayName      string                                `json:"display_name"`
 	Enabled          bool                                  `json:"enabled"`
 	Active           bool                                  `json:"active"`
+	Access           ProviderAccessPolicy                  `json:"access,omitempty"`
+	CreatedBy        ProviderActor                         `json:"created_by"`
+	UpdatedBy        ProviderActor                         `json:"updated_by"`
+	RoutePolicy      ProviderRoutePolicy                   `json:"route_policy,omitempty"`
 	Codex            *CodexProviderSettingsView            `json:"codex,omitempty"`
 	Claude           *ClaudeProviderSettingsView           `json:"claude,omitempty"`
 	OpenAICompatible *OpenAICompatibleProviderSettingsView `json:"openai_compatible,omitempty"`
@@ -72,6 +104,7 @@ type ProviderView struct {
 }
 
 type ProviderCatalog struct {
+	CurrentActor     ProviderActor   `json:"current_actor"`
 	Providers        []ProviderView `json:"providers"`
 	ActiveProviderID string         `json:"active_provider_id"`
 	SupportedKinds   []ProviderKind `json:"supported_kinds"`
@@ -81,6 +114,8 @@ type CreateProviderInput struct {
 	Kind             ProviderKind
 	DisplayName      string
 	Enabled          *bool
+	Access           ProviderAccessPolicy
+	RoutePolicy      *ProviderRoutePolicy
 	Codex            *CreateCodexProviderInput
 	Claude           *CreateClaudeProviderInput
 	OpenAICompatible *CreateOpenAICompatibleProviderInput
@@ -89,6 +124,8 @@ type CreateProviderInput struct {
 type UpdateProviderInput struct {
 	DisplayName      *string
 	Enabled          *bool
+	Access           *ProviderAccessPolicy
+	RoutePolicy      *ProviderRoutePolicy
 	Codex            *UpdateCodexProviderInput
 	Claude           *UpdateClaudeProviderInput
 	OpenAICompatible *UpdateOpenAICompatibleProviderInput

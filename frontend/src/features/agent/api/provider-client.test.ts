@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
+  clearAgentProviderRouteState,
   discoverAgentProviderModels,
   fetchAgentProviderCatalog,
   fetchAgentProviderGatewaySnapshot,
@@ -30,6 +31,10 @@ describe('agent provider client', () => {
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({
+          current_actor: {
+            username: 'avm',
+            home_dir: '/Users/avm',
+          },
           providers: [
             {
               id: 'codex-cli',
@@ -41,6 +46,23 @@ describe('agent provider client', () => {
                 command: 'codex',
                 model: 'gpt-5.4',
                 chat_models: ['gpt-5.4'],
+              },
+              access: {
+                owner_username: 'avm',
+                visibility: 'private',
+                allowed_users: [],
+              },
+              created_by: {
+                username: 'avm',
+                home_dir: '/Users/avm',
+              },
+              updated_by: {
+                username: 'avm',
+                home_dir: '/Users/avm',
+              },
+              route_policy: {
+                prewarm_policy: 'manual',
+                warm_ttl_seconds: 900,
               },
               created_at: '2026-04-21T10:00:00Z',
               updated_at: '2026-04-21T10:00:00Z',
@@ -55,6 +77,10 @@ describe('agent provider client', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     await expect(fetchAgentProviderCatalog()).resolves.toEqual({
+      current_actor: {
+        username: 'avm',
+        home_dir: '/Users/avm',
+      },
       providers: [
         {
           id: 'codex-cli',
@@ -66,6 +92,23 @@ describe('agent provider client', () => {
             command: 'codex',
             model: 'gpt-5.4',
             chat_models: ['gpt-5.4'],
+          },
+          access: {
+            owner_username: 'avm',
+            visibility: 'private',
+            allowed_users: [],
+          },
+          created_by: {
+            username: 'avm',
+            home_dir: '/Users/avm',
+          },
+          updated_by: {
+            username: 'avm',
+            home_dir: '/Users/avm',
+          },
+          route_policy: {
+            prewarm_policy: 'manual',
+            warm_ttl_seconds: 900,
           },
           created_at: '2026-04-21T10:00:00Z',
           updated_at: '2026-04-21T10:00:00Z',
@@ -110,6 +153,10 @@ describe('agent provider client', () => {
               route_prepare_message: 'Codex CLI route verified and ready for on-demand launch.',
               route_prepared_at: '2026-04-26T10:18:35Z',
               route_prepare_latency_ms: 45,
+              route_prepare_expires_at: '2026-04-26T10:33:35Z',
+              route_prepare_stale: false,
+              route_prewarm_policy: 'manual',
+              route_warm_ttl_seconds: 900,
               total_runs: 4,
               succeeded_runs: 3,
               failed_runs: 1,
@@ -129,16 +176,30 @@ describe('agent provider client', () => {
               provider_id: 'codex-cli',
               provider_kind: 'codex',
               provider_display_name: 'Codex CLI',
+              actor_username: 'avm',
+              actor_home_dir: '/Users/avm',
               request_mode: 'stream',
               model: 'gpt-5.4',
               conversation_id: 'conv-1',
               status: 'succeeded',
+              route_ready: true,
+              route_status_state: 'ready',
+              route_status_message: 'Codex CLI is authenticated.',
+              route_prepared: true,
+              route_prepare_state: 'prepared',
+              route_prepare_message: 'Codex CLI route verified and ready for on-demand launch.',
+              resolved_binary: '/usr/local/bin/codex',
+              base_url: '',
               duration_ms: 380,
               first_response_latency_ms: 84,
               started_at: '2026-04-26T10:19:00Z',
               completed_at: '2026-04-26T10:19:00.380Z',
             },
           ],
+          recent_runs_total: 1,
+          recent_runs_offset: 0,
+          recent_runs_limit: 20,
+          recent_runs_has_more: false,
         }),
       })
     vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
@@ -166,6 +227,10 @@ describe('agent provider client', () => {
           route_prepare_message: 'Codex CLI route verified and ready for on-demand launch.',
           route_prepared_at: '2026-04-26T10:18:35Z',
           route_prepare_latency_ms: 45,
+          route_prepare_expires_at: '2026-04-26T10:33:35Z',
+          route_prepare_stale: false,
+          route_prewarm_policy: 'manual',
+          route_warm_ttl_seconds: 900,
           total_runs: 4,
           succeeded_runs: 3,
           failed_runs: 1,
@@ -185,16 +250,30 @@ describe('agent provider client', () => {
           provider_id: 'codex-cli',
           provider_kind: 'codex',
           provider_display_name: 'Codex CLI',
+          actor_username: 'avm',
+          actor_home_dir: '/Users/avm',
           request_mode: 'stream',
           model: 'gpt-5.4',
           conversation_id: 'conv-1',
           status: 'succeeded',
+          route_ready: true,
+          route_status_state: 'ready',
+          route_status_message: 'Codex CLI is authenticated.',
+          route_prepared: true,
+          route_prepare_state: 'prepared',
+          route_prepare_message: 'Codex CLI route verified and ready for on-demand launch.',
+          resolved_binary: '/usr/local/bin/codex',
+          base_url: '',
           duration_ms: 380,
           first_response_latency_ms: 84,
           started_at: '2026-04-26T10:19:00Z',
           completed_at: '2026-04-26T10:19:00.380Z',
         },
       ],
+      recent_runs_total: 1,
+      recent_runs_offset: 0,
+      recent_runs_limit: 20,
+      recent_runs_has_more: false,
     })
     expect(fetchMock.mock.calls[1]?.[0]).toBe('http://127.0.0.1:8090/api/v1/agent/providers/gateway')
   })
@@ -215,6 +294,10 @@ describe('agent provider client', () => {
           generated_at: '2026-04-26T10:20:00Z',
           providers: [],
           recent_runs: [],
+          recent_runs_total: 0,
+          recent_runs_offset: 0,
+          recent_runs_limit: 5,
+          recent_runs_has_more: false,
         }),
       })
     vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
@@ -232,6 +315,10 @@ describe('agent provider client', () => {
       generated_at: '2026-04-26T10:20:00Z',
       providers: [],
       recent_runs: [],
+      recent_runs_total: 0,
+      recent_runs_offset: 0,
+      recent_runs_limit: 5,
+      recent_runs_has_more: false,
     })
     expect(fetchMock.mock.calls[1]?.[0]).toBe(
       'http://127.0.0.1:8090/api/v1/agent/providers/gateway?provider_id=codex-cli&status=failed&query=timeout&limit=5',
@@ -285,6 +372,36 @@ describe('agent provider client', () => {
     expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({
       method: 'POST',
     })
+  })
+
+  it('clears one provider route state through the backend contract', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          provider_id: 'provider-1',
+          cleared: true,
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(clearAgentProviderRouteState('provider-1')).resolves.toEqual({
+      provider_id: 'provider-1',
+      cleared: true,
+    })
+    expect(fetchMock.mock.calls[1]?.[0]).toBe(
+      'http://127.0.0.1:8090/api/v1/agent/providers/provider-1/route-state/clear',
+    )
   })
 
   it('prewarms one provider through the backend contract', async () => {
@@ -380,6 +497,10 @@ describe('agent provider client', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     await expect(fetchAgentProviderCatalog()).resolves.toEqual({
+      current_actor: {
+        username: 'unknown',
+        home_dir: undefined,
+      },
       providers: [
         {
           id: 'http-source',
@@ -387,6 +508,23 @@ describe('agent provider client', () => {
           display_name: 'LAN Source',
           enabled: true,
           active: false,
+          access: {
+            owner_username: 'unknown',
+            visibility: undefined,
+            allowed_users: [],
+          },
+          created_by: {
+            username: 'unknown',
+            home_dir: undefined,
+          },
+          updated_by: {
+            username: 'unknown',
+            home_dir: undefined,
+          },
+          route_policy: {
+            prewarm_policy: 'manual',
+            warm_ttl_seconds: 900,
+          },
           openai_compatible: {
             base_url: 'http://192.168.1.8:8317',
             model: 'gpt-5.4',
@@ -439,6 +577,10 @@ describe('agent provider client', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     await expect(fetchAgentProviderCatalog()).resolves.toEqual({
+      current_actor: {
+        username: 'unknown',
+        home_dir: undefined,
+      },
       providers: [
         {
           id: 'claude-code-cli',
@@ -446,6 +588,23 @@ describe('agent provider client', () => {
           display_name: 'Claude Code CLI',
           enabled: true,
           active: true,
+          access: {
+            owner_username: 'unknown',
+            visibility: undefined,
+            allowed_users: [],
+          },
+          created_by: {
+            username: 'unknown',
+            home_dir: undefined,
+          },
+          updated_by: {
+            username: 'unknown',
+            home_dir: undefined,
+          },
+          route_policy: {
+            prewarm_policy: 'manual',
+            warm_ttl_seconds: 900,
+          },
           claude: {
             command: 'claude',
             model: 'sonnet',

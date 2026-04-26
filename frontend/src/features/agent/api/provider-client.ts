@@ -2,6 +2,23 @@ import { AgentAPIError } from '@/features/agent/api/client'
 import { resolveRuntimeContext, type RuntimeContext } from '@/shared/api/runtime'
 
 export type AgentProviderKind = 'codex' | 'claude' | 'openai-compatible'
+export type AgentProviderPrewarmPolicy = 'manual' | 'on_activate' | 'on_startup'
+
+export type AgentProviderActor = {
+  username: string
+  home_dir?: string
+}
+
+export type AgentProviderAccessPolicy = {
+  owner_username: string
+  visibility?: string
+  allowed_users?: string[]
+}
+
+export type AgentProviderRoutePolicy = {
+  prewarm_policy?: AgentProviderPrewarmPolicy
+  warm_ttl_seconds?: number
+}
 
 export type AgentCodexProviderSettingsView = {
   command?: string
@@ -21,6 +38,10 @@ export type AgentProviderView = {
   display_name: string
   enabled: boolean
   active: boolean
+  access: AgentProviderAccessPolicy
+  created_by: AgentProviderActor
+  updated_by: AgentProviderActor
+  route_policy: AgentProviderRoutePolicy
   codex?: AgentCodexProviderSettingsView
   claude?: AgentClaudeProviderSettingsView
   openai_compatible?: {
@@ -33,6 +54,7 @@ export type AgentProviderView = {
 }
 
 export type AgentProviderCatalog = {
+  current_actor: AgentProviderActor
   providers: AgentProviderView[]
   active_provider_id: string
   supported_kinds: AgentProviderKind[]
@@ -57,6 +79,10 @@ export type AgentProviderGatewayProvider = {
   route_prepare_message?: string
   route_prepared_at?: string
   route_prepare_latency_ms: number
+  route_prepare_expires_at?: string
+  route_prepare_stale: boolean
+  route_prewarm_policy?: string
+  route_warm_ttl_seconds: number
   total_runs: number
   succeeded_runs: number
   failed_runs: number
@@ -77,12 +103,22 @@ export type AgentProviderGatewayRun = {
   provider_id: string
   provider_kind: AgentProviderKind | string
   provider_display_name: string
+  actor_username?: string
+  actor_home_dir?: string
   request_mode: 'sync' | 'stream' | string
   model?: string
   conversation_id?: string
   status: 'succeeded' | 'failed' | 'cancelled' | string
   error_code?: string
   error_message?: string
+  route_ready: boolean
+  route_status_state?: string
+  route_status_message?: string
+  route_prepared: boolean
+  route_prepare_state?: string
+  route_prepare_message?: string
+  resolved_binary?: string
+  base_url?: string
   duration_ms: number
   first_response_latency_ms: number
   started_at: string
@@ -93,12 +129,17 @@ export type AgentProviderGatewaySnapshot = {
   generated_at: string
   providers: AgentProviderGatewayProvider[]
   recent_runs: AgentProviderGatewayRun[]
+  recent_runs_total: number
+  recent_runs_offset: number
+  recent_runs_limit: number
+  recent_runs_has_more: boolean
 }
 
 export type AgentProviderGatewaySnapshotQuery = {
   providerID?: string
   status?: 'failed' | 'succeeded' | 'cancelled'
   query?: string
+  offset?: number
   limit?: number
 }
 
@@ -159,6 +200,12 @@ export type CreateAgentProviderPayload = {
   kind: AgentProviderKind
   display_name: string
   enabled?: boolean
+  access?: {
+    owner_username?: string
+    visibility?: string
+    allowed_users?: string[]
+  }
+  route_policy?: AgentProviderRoutePolicy
   codex?: {
     command?: string
     model?: string
@@ -179,6 +226,12 @@ export type CreateAgentProviderPayload = {
 export type UpdateAgentProviderPayload = {
   display_name?: string
   enabled?: boolean
+  access?: {
+    owner_username?: string
+    visibility?: string
+    allowed_users?: string[]
+  }
+  route_policy?: AgentProviderRoutePolicy
   codex?: {
     command?: string
     model?: string
@@ -246,10 +299,51 @@ function normalizeChatModels(models: unknown) {
   return Array.isArray(models) ? models.filter((model): model is string => typeof model === 'string') : []
 }
 
+function normalizeActor(actor: AgentProviderActor | undefined): AgentProviderActor {
+  return {
+    username: actor?.username?.trim() || 'unknown',
+    home_dir: actor?.home_dir?.trim() || undefined,
+  }
+}
+
+function normalizeAccessPolicy(
+  access: AgentProviderAccessPolicy | undefined,
+  owner: AgentProviderActor,
+): AgentProviderAccessPolicy {
+  return {
+    owner_username: access?.owner_username?.trim() || owner.username,
+    visibility: access?.visibility?.trim() || undefined,
+    allowed_users: Array.isArray(access?.allowed_users)
+      ? access.allowed_users.map((entry) => entry.trim()).filter(Boolean)
+      : [],
+  }
+}
+
+function normalizeRoutePolicy(policy: AgentProviderRoutePolicy | undefined): AgentProviderRoutePolicy {
+  const prewarmPolicy = policy?.prewarm_policy?.trim()
+  return {
+    prewarm_policy:
+      prewarmPolicy === 'on_activate' || prewarmPolicy === 'on_startup' ? prewarmPolicy : 'manual',
+    warm_ttl_seconds:
+      typeof policy?.warm_ttl_seconds === 'number' && Number.isFinite(policy.warm_ttl_seconds)
+        ? Math.max(0, Math.trunc(policy.warm_ttl_seconds))
+        : 900,
+  }
+}
+
 function normalizeProviderView(provider: AgentProviderView): AgentProviderView {
+  const createdBy = normalizeActor(provider.created_by)
+  const updatedBy = normalizeActor(provider.updated_by)
+  const base = {
+    ...provider,
+    access: normalizeAccessPolicy(provider.access, createdBy),
+    created_by: createdBy,
+    updated_by: updatedBy,
+    route_policy: normalizeRoutePolicy(provider.route_policy),
+  }
   if (provider.kind === 'codex') {
     return {
-      ...provider,
+      ...base,
       codex: provider.codex
         ? {
             ...provider.codex,
@@ -261,7 +355,7 @@ function normalizeProviderView(provider: AgentProviderView): AgentProviderView {
 
   if (provider.kind === 'claude') {
     return {
-      ...provider,
+      ...base,
       claude: provider.claude
         ? {
             ...provider.claude,
@@ -273,7 +367,7 @@ function normalizeProviderView(provider: AgentProviderView): AgentProviderView {
 
   if (provider.kind === 'openai-compatible') {
     return {
-      ...provider,
+      ...base,
       openai_compatible: provider.openai_compatible
         ? {
             ...provider.openai_compatible,
@@ -283,12 +377,13 @@ function normalizeProviderView(provider: AgentProviderView): AgentProviderView {
     }
   }
 
-  return provider
+  return base
 }
 
 function normalizeProviderCatalog(catalog: AgentProviderCatalog): AgentProviderCatalog {
   return {
     ...catalog,
+    current_actor: normalizeActor(catalog.current_actor),
     providers: Array.isArray(catalog.providers) ? catalog.providers.map(normalizeProviderView) : [],
     supported_kinds: Array.isArray(catalog.supported_kinds)
       ? catalog.supported_kinds.filter(
@@ -306,6 +401,19 @@ function normalizeProviderGatewaySnapshot(
     generated_at: snapshot.generated_at,
     providers: Array.isArray(snapshot.providers) ? snapshot.providers : [],
     recent_runs: Array.isArray(snapshot.recent_runs) ? snapshot.recent_runs : [],
+    recent_runs_total:
+      typeof snapshot.recent_runs_total === 'number' && Number.isFinite(snapshot.recent_runs_total)
+        ? snapshot.recent_runs_total
+        : 0,
+    recent_runs_offset:
+      typeof snapshot.recent_runs_offset === 'number' && Number.isFinite(snapshot.recent_runs_offset)
+        ? snapshot.recent_runs_offset
+        : 0,
+    recent_runs_limit:
+      typeof snapshot.recent_runs_limit === 'number' && Number.isFinite(snapshot.recent_runs_limit)
+        ? snapshot.recent_runs_limit
+        : 0,
+    recent_runs_has_more: Boolean(snapshot.recent_runs_has_more),
   }
 }
 
@@ -340,6 +448,9 @@ export async function fetchAgentProviderGatewaySnapshot(query?: AgentProviderGat
   if (query?.query?.trim()) {
     searchParams.set('query', query.query.trim())
   }
+  if (typeof query?.offset === 'number' && Number.isFinite(query.offset) && query.offset > 0) {
+    searchParams.set('offset', String(Math.trunc(query.offset)))
+  }
   if (typeof query?.limit === 'number' && Number.isFinite(query.limit) && query.limit > 0) {
     searchParams.set('limit', String(Math.trunc(query.limit)))
   }
@@ -363,6 +474,15 @@ export async function probeAgentProvider(providerID: string) {
 export async function prewarmAgentProvider(providerID: string) {
   return await requestProviderRuntimeJSON<AgentProviderPrewarmResult>(
     `/api/v1/agent/providers/${encodeURIComponent(providerID)}/prewarm`,
+    {
+      method: 'POST',
+    },
+  )
+}
+
+export async function clearAgentProviderRouteState(providerID: string) {
+  return await requestProviderRuntimeJSON<{ provider_id: string; cleared: boolean }>(
+    `/api/v1/agent/providers/${encodeURIComponent(providerID)}/route-state/clear`,
     {
       method: 'POST',
     },

@@ -109,11 +109,26 @@
   - shows first-response latency in both gateway summary and recent-activity rows
   - surfaces a context-appropriate recovery action (`Probe` vs `Prepare`) instead of a single blind retry button
 - The provider settings surface now also provides an operator history view over persisted gateway runs through the same gateway route:
-  - `GET /api/v1/agent/providers/gateway?provider_id=&status=&query=&limit=`
+  - `GET /api/v1/agent/providers/gateway?provider_id=&status=&query=&offset=&limit=`
   - search over provider/model/request-mode/error/conversation id is backend-filtered, not frontend-only projection
   - status filter (`all/failed/succeeded/cancelled`)
   - scope filter (`selected provider` vs `all providers`)
+  - backend paging (`offset` + `limit`) with `Load more history`, `recent_runs_total`, and `recent_runs_has_more`
   - run diagnostics drill-down for the currently selected persisted run, including timing, error class, conversation id, and request mode
+- Provider records now also persist future-ready ownership and route policy metadata through the same backend catalog:
+  - `current_actor`
+  - `created_by` / `updated_by`
+  - `access.owner_username` / `visibility` / `allowed_users`
+  - `route_policy.prewarm_policy` / `route_policy.warm_ttl_seconds`
+- Runtime route policy is now consumed from that same provider record instead of a second warm-cache model:
+  - `manual` keeps provider warming operator-driven
+  - `on_activate` prewarms immediately when the provider becomes active
+  - `on_startup` prewarms the active route during runtime bootstrap
+  - the gateway snapshot exposes `route_prepare_expires_at` and `route_prepare_stale` so the UI can detect stale warm state without guessing
+- Provider settings now expose an explicit `Clear route state` action:
+  - `POST /api/v1/agent/providers/{providerID}/route-state/clear`
+  - removes persisted probe/readiness state for the selected route
+  - the next settings/AI shell refresh reads the reset state from the same gateway snapshot
 - Gateway telemetry load no longer fails silently in the settings shell:
   - if `/api/v1/agent/providers/gateway` fails, the UI shows an explicit gateway telemetry error instead of quietly pretending the telemetry surface has no data
 - CLI/OpenAI probe states are now surfaced only through the gateway snapshot:
@@ -146,4 +161,5 @@
   - successful live OpenAI-compatible HTTP chat through the toolbar-selected LAN source
   - Claude provider routing plus the `auth-required` UI path when the local CLI is installed but not logged in
   - provider settings gateway telemetry plus explicit probe action after a mocked Codex run
-- Browser validation was rerun through the split local dev path, and a fresh `npm run tauri:dev` desktop smoke was also run in this pass.
+  - Browser validation was rerun through the split local dev path, and a fresh `npm run tauri:dev` desktop smoke was also run in this pass.
+- This validation pass added backend/unit/build coverage for the deeper gateway history, ownership metadata, route policy, and route-clear flow, but did not add a new browser pass specifically for those controls.

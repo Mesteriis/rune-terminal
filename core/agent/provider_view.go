@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"os/exec"
+	"slices"
 	"strings"
 	"time"
 )
@@ -14,12 +15,19 @@ var resolveProviderCLICommand = exec.LookPath
 var inspectCodexCLIAuthStatus = defaultInspectCodexCLIAuthStatus
 var inspectClaudeCLIAuthStatus = defaultInspectClaudeCLIAuthStatus
 
+const defaultProviderWarmTTLSeconds = 900
+
 func providerCatalogFromState(state State) ProviderCatalog {
+	return providerCatalogFromStateWithActor(state, ProviderActor{})
+}
+
+func providerCatalogFromStateWithActor(state State, actor ProviderActor) ProviderCatalog {
 	views := make([]ProviderView, 0, len(state.Providers))
 	for _, provider := range state.Providers {
 		views = append(views, providerViewFromRecord(provider, state.ActiveProviderID))
 	}
 	return ProviderCatalog{
+		CurrentActor:     normalizeProviderActor(actor),
 		Providers:        views,
 		ActiveProviderID: state.ActiveProviderID,
 		SupportedKinds:   SupportedProviderKinds(),
@@ -33,6 +41,10 @@ func providerViewFromRecord(record ProviderRecord, activeProviderID string) Prov
 		DisplayName: record.DisplayName,
 		Enabled:     record.Enabled,
 		Active:      record.ID == activeProviderID,
+		Access:      normalizeProviderAccess(record.Access, record.CreatedBy),
+		CreatedBy:   normalizeProviderActor(record.CreatedBy),
+		UpdatedBy:   normalizeProviderActor(record.UpdatedBy),
+		RoutePolicy: normalizeProviderRoutePolicy(record.RoutePolicy),
 		CreatedAt:   record.CreatedAt,
 		UpdatedAt:   record.UpdatedAt,
 	}
@@ -71,6 +83,10 @@ func cloneProviderRecord(record ProviderRecord) ProviderRecord {
 			ChatModels: append([]string(nil), record.OpenAICompatible.ChatModels...),
 		}
 	}
+	cloned.Access = normalizeProviderAccess(record.Access, record.CreatedBy)
+	cloned.CreatedBy = normalizeProviderActor(record.CreatedBy)
+	cloned.UpdatedBy = normalizeProviderActor(record.UpdatedBy)
+	cloned.RoutePolicy = normalizeProviderRoutePolicy(record.RoutePolicy)
 	return cloned
 }
 
@@ -118,6 +134,55 @@ func openAICompatibleProviderSettingsViewFromSettings(
 		Model:      settings.Model,
 		ChatModels: append([]string(nil), settings.ChatModels...),
 	}
+}
+
+func normalizeProviderActor(actor ProviderActor) ProviderActor {
+	return ProviderActor{
+		Username: strings.TrimSpace(actor.Username),
+		HomeDir:  strings.TrimSpace(actor.HomeDir),
+	}
+}
+
+func normalizeProviderAccess(access ProviderAccessPolicy, owner ProviderActor) ProviderAccessPolicy {
+	normalizedOwner := strings.TrimSpace(access.OwnerUsername)
+	if normalizedOwner == "" {
+		normalizedOwner = strings.TrimSpace(owner.Username)
+	}
+	normalized := ProviderAccessPolicy{
+		OwnerUsername: normalizedOwner,
+		Visibility:    strings.TrimSpace(access.Visibility),
+		AllowedUsers:  make([]string, 0, len(access.AllowedUsers)),
+	}
+	seen := make(map[string]struct{}, len(access.AllowedUsers))
+	for _, raw := range access.AllowedUsers {
+		user := strings.TrimSpace(raw)
+		if user == "" {
+			continue
+		}
+		if _, ok := seen[user]; ok {
+			continue
+		}
+		seen[user] = struct{}{}
+		normalized.AllowedUsers = append(normalized.AllowedUsers, user)
+	}
+	slices.Sort(normalized.AllowedUsers)
+	return normalized
+}
+
+func normalizeProviderRoutePolicy(policy ProviderRoutePolicy) ProviderRoutePolicy {
+	switch policy.PrewarmPolicy {
+	case ProviderPrewarmPolicyOnActivate, ProviderPrewarmPolicyOnStartup:
+	default:
+		policy.PrewarmPolicy = ProviderPrewarmPolicyManual
+	}
+	if policy.WarmTTLSeconds <= 0 {
+		policy.WarmTTLSeconds = defaultProviderWarmTTLSeconds
+	}
+	return policy
+}
+
+func NormalizeProviderRoutePolicy(policy ProviderRoutePolicy) ProviderRoutePolicy {
+	return normalizeProviderRoutePolicy(policy)
 }
 
 func populateCLIStatus(

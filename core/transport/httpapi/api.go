@@ -113,6 +113,7 @@ func NewHandler(runtime *app.Runtime, authToken string) http.Handler {
 	mux.HandleFunc("POST /api/v1/agent/providers/models", api.handleDiscoverProviderModels)
 	mux.HandleFunc("POST /api/v1/agent/providers/{providerID}/probe", api.handleProbeProvider)
 	mux.HandleFunc("POST /api/v1/agent/providers/{providerID}/prewarm", api.handlePrewarmProvider)
+	mux.HandleFunc("POST /api/v1/agent/providers/{providerID}/route-state/clear", api.handleClearProviderRouteState)
 	mux.HandleFunc("PATCH /api/v1/agent/providers/{providerID}", api.handleUpdateProvider)
 	mux.HandleFunc("PUT /api/v1/agent/providers/active", api.handleSetActiveProvider)
 	mux.HandleFunc("DELETE /api/v1/agent/providers/{providerID}", api.handleDeleteProvider)
