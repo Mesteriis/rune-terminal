@@ -17,8 +17,8 @@ It is intentionally operational, not narrative.
   - `editor` and `web` are explicitly marked `planned`
 - The rewritten Dockview shell consumes that catalog for default panel
   seeding and right-rail widget discoverability. The right rail only creates
-  catalog-creatable runtime widgets; frontend-local and planned kinds are
-  shown as disabled instead of being silently hardcoded as creatable.
+  catalog-creatable runtime widgets; frontend-local, path-required, and planned
+  kinds are shown as disabled instead of being silently hardcoded as creatable.
 - The right rail can now open the backend-owned `files` widget through the
   existing `POST /api/v1/workspace/widgets/open-directory` path-handoff
   route, using the runtime `repo_root` as the initial directory. The frontend
@@ -26,7 +26,9 @@ It is intentionally operational, not narrative.
   `GET /api/v1/fs/list`, with refresh, local kind/name/size/modified sorting,
   visible/total entry count, hidden-file toggle, direct path jump, filename
   filtering, child-directory open, parent navigation, current-directory
-  external handoff, and file-row handoff through `POST /api/v1/fs/open`.
+  external handoff, file-row external handoff through `POST /api/v1/fs/open`,
+  and file-row preview handoff through
+  `POST /api/v1/workspace/widgets/open-preview`.
 - The backend can now create a runtime-owned standalone `preview` widget via
   `POST /api/v1/workspace/widgets/open-preview` when the caller supplies an
   existing file path. The frontend renders preview panel params through

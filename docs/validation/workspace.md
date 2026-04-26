@@ -15,9 +15,10 @@
     and the rewritten Dockview workspace shell now consumes the loaded
     catalog for startup seeding plus right-rail widget discoverability
   - browser e2e coverage now verifies the active right-rail catalog behavior:
-    `terminal` and `files` remain enabled and runtime-created, while
-    `commander` and planned widget kinds are visible but disabled according
-    to catalog status constraints
+    `terminal` and `files` remain enabled and runtime-created, path-required
+    `preview` remains disabled in the generic menu, and `commander` plus
+    planned widget kinds are visible but disabled according to catalog status
+    constraints
   - backend workspace coverage now also verifies the path-handoff `preview`
     widget route and catalog entry
   - frontend preview-widget coverage verifies preview panel params, bounded
@@ -45,6 +46,7 @@
     - files widget current-directory button dispatches backend external-open
       requests
     - files widget file rows dispatch backend external-open requests
+    - files widget file rows can open backend-owned preview widgets
     - settings modal open/close from shell chrome
     - the settings shell now renders as a tighter navigator/editor surface with a dedicated sidebar header and one framed content pane for the active section, while preserving the existing `General / AI / Terminal / Commander` structure
     - the `General` section now reads real runtime bootstrap metadata and exposes the desktop `watcher_mode` lifecycle setting; in the split browser dev loop this control degrades to a visible read-only fallback instead of pretending browser mode can persist desktop settings
@@ -206,6 +208,13 @@
 - `npm --prefix frontend run test -- src/features/preview/api/client.test.ts src/widgets/preview/preview-panel.test.ts src/widgets/preview/preview-panel-widget.test.tsx src/widgets/terminal/terminal-dockview-header-actions-widget.test.tsx`
 - `npm --prefix frontend run lint:active`
 - `npm --prefix frontend run build`
+- `(cd frontend && npm exec prettier -- --write src/shared/api/workspace.ts src/shared/api/workspace.test.ts src/widgets/files/files-panel-widget.tsx src/widgets/files/files-panel-widget.test.tsx src/widgets/files/files-panel-widget.styles.ts src/widgets/panel/dockview-panel-widget.tsx src/widgets/shell/right-action-rail-widget.tsx src/widgets/shell/right-action-rail-widget.test.tsx)`
+- `npm --prefix frontend run test -- src/shared/api/workspace.test.ts`
+- `npm --prefix frontend run test -- src/widgets/files/files-panel-widget.test.tsx`
+- `npm --prefix frontend run test -- src/widgets/shell/right-action-rail-widget.test.tsx`
+- `npm --prefix frontend run lint:active`
+- `npm --prefix frontend run build`
+- `npm run test:ui -- --reporter=line e2e/shell-workspace.spec.ts`
 - `npm run test:ui -- --reporter=line`
 - `npm install motion@^12.38.0`
 - `node tmp/ai-layout-smoke.mjs`
@@ -279,6 +288,11 @@
 - The refreshed AI panel body is still a static shell surface. It does not claim prompt execution, chat state, message history, streaming, or settings behavior behind the new header/action controls.
 - Browser validation was run headlessly against the Vite dev server, not through full `npm run tauri:dev`.
 - The Playwright suite for this stateful shell path now runs with `workers: 1` because the browser specs share one backend/frontend runtime and mutate the same workspace/session state.
+- During the preview-handoff slice, the combined Vitest command for
+  `workspace.test.ts`, `files-panel-widget.test.tsx`, and
+  `right-action-rail-widget.test.tsx` was stopped after it produced no output
+  beyond startup; the same three files were then run individually and all
+  passed. No aggregate-suite green claim is attached to that attempted command.
 - The shell icon swap was validated by type-check, build, and source inspection. A separate visual localhost smoke for the icon glyphs was attempted but is not claimed from this environment.
 - This radius-and-gap rebalance was validated by source inspection plus type-check/build. Fresh live geometry for the new `6px` values is not claimed in this entry.
 - The modal slice was validated by type-check/build and source-level host wiring. An attempted localhost Playwright smoke did not complete cleanly in this environment, so body/widget overlay runtime is not claimed as browser-verified here.
@@ -297,16 +311,21 @@
   adapter over `GET /api/v1/fs/read`, preview panel params, text/hex/truncated
   render states, refresh, inline error rendering, Dockview panel rendering, and
   backend-owned close routing for preview panels.
+- Targeted preview handoff validation covers `openPreviewWorkspaceWidget()`,
+  the Files widget per-file `Preview` action, Dockview insertion of the returned
+  backend preview widget, and the right-rail disabled reason for path-required
+  preview creation.
 - Targeted frontend catalog-consumption validation covers the widget catalog
   model helpers, Dockview startup seeding decisions, and the right-rail menu
   behavior that enables catalog-creatable terminal/files widgets while
-  showing frontend-local and planned kinds as disabled.
+  showing frontend-local, path-required, and planned kinds as disabled.
 - Targeted files-widget validation covers the frontend open-directory
   workspace API client, the dedicated files directory-list client, files panel
   params, files panel rendering, right-rail repo-root path handoff, and basic
   refresh, local sorting, entry count projection, hidden-file toggling, direct
-  path jump, file external-open handoff, current-directory external-open
-  handoff, filename filtering, and child/parent directory navigation.
+  path jump, file external-open handoff, file preview-widget handoff,
+  current-directory external-open handoff, filename filtering, and child/parent
+  directory navigation.
 - Targeted close-widget validation covers `core/workspace.CloseWidget`,
   `DELETE /api/v1/workspace/widgets/{widgetID}`, the frontend
   `closeWorkspaceWidget()` client, and the Dockview header close path for
@@ -315,11 +334,13 @@
   `e2e/shell-workspace.spec.ts`: `Create Terminal widget` remains enabled and
   still increases the backend tab count, `Create Files widget` opens the
   runtime `repo_root` directory panel and increases backend widget count,
+  path-required `Preview` is disabled in the right rail as `Needs file path`,
   dotfiles are hidden by default and visible after `Show hidden files`, files
   direct path input can jump to `repo_root/frontend` and parent back to
   `repo_root`, files filtering narrows the visible rows to `package.json`,
   refresh reloads the current root path, local sort can switch to
   `Modified DESC`, the entry count reports a filtered `... of ...` state,
+  previewing `package.json` creates and renders a backend-owned preview panel,
   current-directory and file-row open dispatch the expected `/api/v1/fs/open`
   payloads for `repo_root` and `repo_root/package.json`, files navigation opens
   `repo_root/frontend` and returns to `repo_root`, closing that files panel

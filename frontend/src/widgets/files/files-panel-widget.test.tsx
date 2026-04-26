@@ -2,11 +2,16 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { listFilesDirectory, openFilesPathExternally } from '@/features/files/api/client'
+import { openPreviewWorkspaceWidget } from '@/shared/api/workspace'
 import { FilesPanelWidget } from './files-panel-widget'
 
 vi.mock('@/features/files/api/client', () => ({
   listFilesDirectory: vi.fn(),
   openFilesPathExternally: vi.fn(),
+}))
+
+vi.mock('@/shared/api/workspace', () => ({
+  openPreviewWorkspaceWidget: vi.fn(),
 }))
 
 afterEach(() => {
@@ -346,6 +351,56 @@ describe('FilesPanelWidget', () => {
     await waitFor(() => {
       expect(openFilesPathExternally).toHaveBeenCalledWith('/repo/README.md')
       expect(screen.getByText('Open request sent for README.md')).toBeInTheDocument()
+    })
+  })
+
+  it('opens preview widgets for file rows through the workspace handoff route', async () => {
+    vi.mocked(listFilesDirectory).mockResolvedValue({
+      entries: [
+        {
+          hidden: false,
+          id: '/repo::README.md',
+          kind: 'file',
+          modified: '2026-04-25 20:01',
+          modifiedTime: 1_776_800_060,
+          name: 'README.md',
+          sizeBytes: 2048,
+          sizeLabel: '2.0 KB',
+        },
+      ],
+      path: '/repo',
+    })
+    vi.mocked(openPreviewWorkspaceWidget).mockResolvedValue({
+      tab_id: 'tab-main',
+      widget_id: 'preview-1',
+    })
+    const onOpenPreview = vi.fn()
+
+    render(
+      <FilesPanelWidget
+        connectionId="local"
+        onOpenPreview={onOpenPreview}
+        path="/repo"
+        title="repo"
+        widgetId="files-1"
+      />,
+    )
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Preview file README.md' }))
+
+    await waitFor(() => {
+      expect(openPreviewWorkspaceWidget).toHaveBeenCalledWith({
+        connectionId: 'local',
+        path: '/repo/README.md',
+        targetWidgetId: 'files-1',
+      })
+      expect(onOpenPreview).toHaveBeenCalledWith({
+        connectionId: 'local',
+        path: '/repo/README.md',
+        title: 'README.md',
+        widgetId: 'preview-1',
+      })
+      expect(screen.getByText('Preview widget opened for README.md')).toBeInTheDocument()
     })
   })
 

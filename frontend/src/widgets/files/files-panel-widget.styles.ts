@@ -94,7 +94,7 @@ export const filesPanelListInnerStyle: CSSProperties = {
 
 export const filesPanelListHeaderStyle: CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: '56px minmax(0, 1fr) 88px 132px',
+  gridTemplateColumns: '56px minmax(0, 1fr) 88px 132px 136px',
   gap: 'var(--gap-sm)',
   alignItems: 'center',
   padding: '0 var(--space-sm) var(--space-xs)',
@@ -128,7 +128,7 @@ export const filesPanelSortButtonEndAlignedStyle: CSSProperties = {
 export function resolveFilesPanelRowStyle(isDirectory: boolean, isInteractive = isDirectory): CSSProperties {
   return {
     display: 'grid',
-    gridTemplateColumns: '56px minmax(0, 1fr) 88px 132px',
+    gridTemplateColumns: '56px minmax(0, 1fr) 88px 132px 136px',
     gap: 'var(--gap-sm)',
     alignItems: 'center',
     padding: '5px var(--space-sm)',
@@ -138,6 +138,28 @@ export function resolveFilesPanelRowStyle(isDirectory: boolean, isInteractive = 
     fontSize: 'var(--font-size-sm)',
     lineHeight: 'var(--line-height-sm)',
   }
+}
+
+export const filesPanelRowActionsStyle: CSSProperties = {
+  display: 'flex',
+  justifyContent: 'flex-end',
+  gap: 'var(--gap-xs)',
+  padding: 0,
+  border: 'none',
+  borderRadius: 0,
+  background: 'transparent',
+  boxShadow: 'none',
+  backdropFilter: 'none',
+  WebkitBackdropFilter: 'none',
+}
+
+export const filesPanelRowActionButtonStyle: CSSProperties = {
+  minHeight: '22px',
+  minWidth: 'auto',
+  padding: '1px var(--space-xs)',
+  color: 'var(--color-text-secondary)',
+  fontSize: 'var(--font-size-xs)',
+  lineHeight: 'var(--line-height-sm)',
 }
 
 export const filesPanelRowNameStyle: CSSProperties = {

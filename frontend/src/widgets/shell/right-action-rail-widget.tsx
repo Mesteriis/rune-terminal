@@ -68,6 +68,10 @@ function getUnavailableWidgetReason(kind: string, widgetCatalog: WorkspaceWidget
     return 'Frontend-local'
   }
 
+  if (entry.status === 'available' && entry.supports_path && !entry.can_create) {
+    return 'Needs file path'
+  }
+
   return 'Unavailable'
 }
 

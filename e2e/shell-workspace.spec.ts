@@ -66,7 +66,9 @@ test('shell workspace tabs, utility actions, widget creation, and settings modal
   await expect(
     page.getByRole('menuitem', { name: 'Commander widget unavailable: Frontend-local' }),
   ).toBeDisabled()
-  await expect(page.getByRole('menuitem', { name: 'Preview widget unavailable: Planned' })).toBeDisabled()
+  await expect(
+    page.getByRole('menuitem', { name: 'Preview widget unavailable: Needs file path' }),
+  ).toBeDisabled()
   await expect(page.getByRole('menuitem', { name: 'Editor widget unavailable: Planned' })).toBeDisabled()
   await expect(
     page.getByRole('menuitem', { name: 'Web Placeholder widget unavailable: Planned' }),
@@ -92,6 +94,19 @@ test('shell workspace tabs, utility actions, widget creation, and settings modal
   await expect(page.getByRole('button', { name: 'Open directory frontend' })).toHaveCount(0)
   await expect(page.getByText('package.json', { exact: true })).toBeVisible()
   await expect(filesPanelEntryCount).toContainText('of')
+  await page.getByRole('button', { name: 'Preview file package.json' }).click()
+  await expect(page.locator('span[id*="preview-panel-path"]')).toHaveText(
+    `${bootstrap.repo_root}/package.json`,
+  )
+  await expect(page.getByText(/Text preview/)).toBeVisible()
+  await expect
+    .poll(async () => (await fetchWorkspaceSnapshot(request)).widgets.length)
+    .toBe(baselineBackendWidgetCount + 3)
+  await page.getByRole('button', { name: 'Close package.json' }).click()
+  await expect(page.getByRole('button', { name: 'Close package.json' })).toHaveCount(0)
+  await expect
+    .poll(async () => (await fetchWorkspaceSnapshot(request)).widgets.length)
+    .toBe(baselineBackendWidgetCount + 2)
   await page.getByRole('button', { name: 'Clear files filter' }).click()
   await page.getByRole('button', { name: 'Refresh directory' }).click()
   await expect(filesPanelPath).toHaveText(bootstrap.repo_root)

@@ -20,7 +20,7 @@ import {
 import { resolveTerminalPanelParams } from '@/widgets/terminal/terminal-panel'
 import { TerminalWidget } from '@/widgets/terminal/terminal-widget'
 import { WidgetBusyOverlayWidget } from '@/widgets/panel/widget-busy-overlay-widget'
-import { PreviewPanelWidget, resolvePreviewPanelParams } from '@/widgets/preview'
+import { createPreviewPanelParams, PreviewPanelWidget, resolvePreviewPanelParams } from '@/widgets/preview'
 
 function isCommanderDemoPanel(panelId: string) {
   return panelId === 'tool' || panelId.startsWith('tool-')
@@ -95,7 +95,24 @@ export function DockviewPanelWidget(props: IDockviewPanelProps) {
               title={terminalModel.title}
             />
           ) : filesModel ? (
-            <FilesPanelWidget path={filesModel.path} title={filesModel.title} />
+            <FilesPanelWidget
+              connectionId={filesModel.connectionId}
+              onOpenPreview={(preview) => {
+                props.containerApi.addPanel({
+                  id: preview.widgetId,
+                  title: preview.title,
+                  component: 'default',
+                  params: createPreviewPanelParams(preview),
+                  position: {
+                    direction: 'right',
+                    referencePanel: props.api.id,
+                  },
+                })
+              }}
+              path={filesModel.path}
+              title={filesModel.title}
+              widgetId={filesModel.widgetId}
+            />
           ) : previewModel ? (
             <PreviewPanelWidget path={previewModel.path} title={previewModel.title} />
           ) : isCommanderPanel ? (

@@ -62,9 +62,9 @@ function createWidgetCatalog(): WorkspaceWidgetCatalogState {
       {
         kind: 'preview',
         label: 'Preview',
-        description: 'Future preview',
-        status: 'planned',
-        runtime_owned: false,
+        description: 'Backend preview handoff',
+        status: 'available',
+        runtime_owned: true,
         can_create: false,
         supports_connections: false,
         supports_path: true,
@@ -110,7 +110,9 @@ describe('RightActionRailWidget', () => {
     expect(
       screen.getByRole('menuitem', { name: 'Commander widget unavailable: Frontend-local' }),
     ).toBeDisabled()
-    expect(screen.getByRole('menuitem', { name: 'Preview widget unavailable: Planned' })).toBeDisabled()
+    expect(
+      screen.getByRole('menuitem', { name: 'Preview widget unavailable: Needs file path' }),
+    ).toBeDisabled()
   })
 
   it('creates catalog-creatable files widgets through an explicit repo-root path handoff', async () => {

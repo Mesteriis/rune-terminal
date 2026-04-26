@@ -7,6 +7,7 @@ import {
   type FilesDirectorySnapshot,
 } from '@/features/files/api/client'
 import { getRuntimePathParent, joinRuntimePath } from '@/shared/api/runtime'
+import { openPreviewWorkspaceWidget } from '@/shared/api/workspace'
 import { Box, Button, Input, ScrollArea, Text } from '@/shared/ui/primitives'
 import {
   filesPanelControlsStyle,
@@ -20,6 +21,8 @@ import {
   filesPanelPathInputStyle,
   filesPanelPathStyle,
   filesPanelRootStyle,
+  filesPanelRowActionButtonStyle,
+  filesPanelRowActionsStyle,
   filesPanelRowNameStyle,
   filesPanelSortButtonActiveStyle,
   filesPanelSortButtonEndAlignedStyle,
@@ -30,8 +33,11 @@ import {
 } from './files-panel-widget.styles'
 
 export type FilesPanelWidgetProps = {
+  connectionId?: string
+  onOpenPreview?: (preview: { connectionId?: string; path: string; title: string; widgetId: string }) => void
   path: string
   title: string
+  widgetId?: string
 }
 
 type FilesPanelLoadState =
@@ -118,7 +124,13 @@ function sortFilesPanelEntries(entries: FilesDirectoryEntry[], sort: FilesPanelS
   return sortedEntries
 }
 
-export function FilesPanelWidget({ path, title }: FilesPanelWidgetProps) {
+export function FilesPanelWidget({
+  connectionId,
+  onOpenPreview,
+  path,
+  title,
+  widgetId,
+}: FilesPanelWidgetProps) {
   const [currentPath, setCurrentPath] = useState(path)
   const [pathDraft, setPathDraft] = useState(path)
   const [filterValue, setFilterValue] = useState('')
@@ -244,6 +256,10 @@ export function FilesPanelWidget({ path, title }: FilesPanelWidgetProps) {
       return
     }
 
+    await handleOpenFileExternally(entry)
+  }
+
+  const handleOpenFileExternally = async (entry: FilesDirectoryEntry) => {
     setOpenState({
       entryName: entry.name,
       message: null,
@@ -261,6 +277,51 @@ export function FilesPanelWidget({ path, title }: FilesPanelWidgetProps) {
       setOpenState({
         entryName: entry.name,
         message: error instanceof Error ? error.message : `Unable to open ${entry.name}`,
+        status: 'error',
+      })
+    }
+  }
+
+  const handlePreviewEntry = async (entry: FilesDirectoryEntry) => {
+    if (!widgetId) {
+      setOpenState({
+        entryName: entry.name,
+        message: 'Preview target widget is unavailable',
+        status: 'error',
+      })
+      return
+    }
+
+    const previewPath = joinRuntimePath(currentPath, entry.name)
+
+    setOpenState({
+      entryName: entry.name,
+      message: null,
+      status: 'pending',
+    })
+
+    try {
+      const result = await openPreviewWorkspaceWidget({
+        connectionId,
+        path: previewPath,
+        targetWidgetId: widgetId,
+      })
+
+      onOpenPreview?.({
+        connectionId,
+        path: previewPath,
+        title: entry.name,
+        widgetId: result.widget_id,
+      })
+      setOpenState({
+        entryName: entry.name,
+        message: `Preview widget opened for ${entry.name}`,
+        status: 'success',
+      })
+    } catch (error: unknown) {
+      setOpenState({
+        entryName: entry.name,
+        message: error instanceof Error ? error.message : `Unable to preview ${entry.name}`,
         status: 'error',
       })
     }
@@ -462,6 +523,9 @@ export function FilesPanelWidget({ path, title }: FilesPanelWidgetProps) {
             >
               {renderSortLabel('Modified', 'modified', sort)}
             </Button>
+            <Text runaComponent="files-panel-column-actions" style={filesPanelSortButtonEndAlignedStyle}>
+              Actions
+            </Text>
           </Box>
           {state.status === 'loading' ? (
             <Text runaComponent="files-panel-loading" style={filesPanelStateStyle}>
@@ -501,18 +565,22 @@ export function FilesPanelWidget({ path, title }: FilesPanelWidgetProps) {
           {state.status === 'ready'
             ? sortedEntries.map((entry) => (
                 <Box
-                  aria-label={
-                    entry.kind === 'directory' ? `Open directory ${entry.name}` : `Open file ${entry.name}`
-                  }
+                  aria-label={entry.kind === 'directory' ? `Open directory ${entry.name}` : undefined}
                   key={entry.id}
-                  onClick={() => {
-                    void handleOpenEntry(entry)
-                  }}
-                  onKeyDown={(event) => handleEntryKeyDown(event, entry)}
-                  role="button"
+                  onClick={
+                    entry.kind === 'directory'
+                      ? () => {
+                          void handleOpenEntry(entry)
+                        }
+                      : undefined
+                  }
+                  onKeyDown={
+                    entry.kind === 'directory' ? (event) => handleEntryKeyDown(event, entry) : undefined
+                  }
+                  role={entry.kind === 'directory' ? 'button' : undefined}
                   runaComponent="files-panel-row"
-                  style={resolveFilesPanelRowStyle(entry.kind === 'directory', true)}
-                  tabIndex={0}
+                  style={resolveFilesPanelRowStyle(entry.kind === 'directory')}
+                  tabIndex={entry.kind === 'directory' ? 0 : undefined}
                 >
                   <Text runaComponent="files-panel-row-kind">{getEntryKindLabel(entry)}</Text>
                   <Text runaComponent="files-panel-row-name" style={filesPanelRowNameStyle}>
@@ -520,6 +588,38 @@ export function FilesPanelWidget({ path, title }: FilesPanelWidgetProps) {
                   </Text>
                   <Text runaComponent="files-panel-row-size">{entry.sizeLabel}</Text>
                   <Text runaComponent="files-panel-row-modified">{entry.modified}</Text>
+                  {entry.kind === 'file' ? (
+                    <Box runaComponent="files-panel-row-actions" style={filesPanelRowActionsStyle}>
+                      <Button
+                        aria-label={`Preview file ${entry.name}`}
+                        disabled={!widgetId}
+                        onClick={() => {
+                          void handlePreviewEntry(entry)
+                        }}
+                        runaComponent="files-panel-row-preview"
+                        style={filesPanelRowActionButtonStyle}
+                      >
+                        Preview
+                      </Button>
+                      <Button
+                        aria-label={`Open file ${entry.name}`}
+                        onClick={() => {
+                          void handleOpenFileExternally(entry)
+                        }}
+                        runaComponent="files-panel-row-open"
+                        style={filesPanelRowActionButtonStyle}
+                      >
+                        Open
+                      </Button>
+                    </Box>
+                  ) : (
+                    <Text
+                      runaComponent="files-panel-row-actions-empty"
+                      style={filesPanelSortButtonEndAlignedStyle}
+                    >
+                      Folder
+                    </Text>
+                  )}
                 </Box>
               ))
             : null}

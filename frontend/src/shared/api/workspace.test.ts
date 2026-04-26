@@ -7,6 +7,7 @@ import {
   fetchWorkspaceSnapshot,
   fetchWorkspaceWidgetKindCatalog,
   openDirectoryWorkspaceWidget,
+  openPreviewWorkspaceWidget,
 } from '@/shared/api/workspace'
 
 describe('fetchWorkspaceSnapshot', () => {
@@ -310,6 +311,56 @@ describe('openDirectoryWorkspaceWidget', () => {
         status: 404,
       }),
     )
+  })
+})
+
+describe('openPreviewWorkspaceWidget', () => {
+  afterEach(() => {
+    resetRuntimeContextCacheForTests()
+    vi.restoreAllMocks()
+    vi.unstubAllEnvs()
+  })
+
+  it('opens a preview widget through the backend workspace file path-handoff route', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          tab_id: 'tab-main',
+          widget_id: 'preview-1',
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      openPreviewWorkspaceWidget({
+        connectionId: 'local',
+        path: '/Users/avm/projects/runa-terminal/package.json',
+        targetWidgetId: 'files-1',
+      }),
+    ).resolves.toEqual({
+      tab_id: 'tab-main',
+      widget_id: 'preview-1',
+    })
+    expect(fetchMock.mock.calls[1]?.[0]).toBe('http://127.0.0.1:8090/api/v1/workspace/widgets/open-preview')
+    expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({
+      body: JSON.stringify({
+        connection_id: 'local',
+        path: '/Users/avm/projects/runa-terminal/package.json',
+        target_widget_id: 'files-1',
+      }),
+      method: 'POST',
+    })
   })
 })
 
