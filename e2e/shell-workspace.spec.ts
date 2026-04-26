@@ -572,3 +572,79 @@ test('remote settings resume discovered tmux session opens that session in the w
       .filter({ hasText: 'prod-jobs' }),
   ).toBeVisible()
 })
+
+test('remote settings tmux manager opens a typed named session in the workspace', async ({
+  page,
+  request,
+}) => {
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  const seedStamp = Date.now()
+  const remoteToken = `phase5-manager-shell-${seedStamp}`
+  const saved = await saveRemoteProfileViaApi(request, {
+    host: `${remoteToken}.example.test`,
+    launch_mode: 'tmux',
+    name: `Remote ${remoteToken}`,
+    tmux_session: 'prod-main',
+    user: 'deploy',
+  })
+
+  const widgetId = 'term-remote-manager-shell'
+  const tabId = 'tab-remote-manager-shell'
+  await mockRemoteTerminalSurface(page, {
+    connectionId: saved.profile.id,
+    connectionName: `Remote ${remoteToken}`,
+    widgetId,
+    workingDir: `/tmux/${remoteToken}/prod-nightly`,
+  })
+  await page.route(`**/api/v1/remote/profiles/${saved.profile.id}/tmux-sessions`, async (route) => {
+    await route.fulfill({
+      body: JSON.stringify({
+        sessions: [
+          { attached: true, name: 'prod-main', window_count: 2 },
+          { attached: false, name: 'prod-jobs', window_count: 1 },
+        ],
+      }),
+      contentType: 'application/json',
+      status: 200,
+    })
+  })
+  await page.route(`**/api/v1/remote/profiles/${saved.profile.id}/session`, async (route) => {
+    const payload = route.request().postDataJSON() as { tmux_session?: string } | null
+
+    await route.fulfill({
+      body: JSON.stringify({
+        connection_id: saved.profile.id,
+        profile_id: saved.profile.id,
+        remote_session_name: payload?.tmux_session ?? 'prod-nightly',
+        reused: false,
+        session_id: widgetId,
+        tab_id: tabId,
+        widget_id: widgetId,
+      }),
+      contentType: 'application/json',
+      status: 200,
+    })
+  })
+
+  await page.getByRole('button', { name: 'Open settings panel' }).click()
+  await page.getByRole('button', { name: /^Remote / }).click()
+  await page.getByRole('textbox', { name: 'Filter remote profiles' }).fill(remoteToken)
+
+  const savedProfileRow = page.locator('[data-runa-component="clear-box"]').filter({
+    has: page.getByText(`Remote ${remoteToken}`),
+  })
+
+  await savedProfileRow.getByRole('button', { name: 'Browse tmux' }).click()
+  await expect(page.getByText('2 discovered · 1 attached · 1 detached')).toBeVisible()
+  await page.getByRole('textbox', { name: `Named tmux session for Remote ${remoteToken}` }).fill('prod-nightly')
+  await page.getByRole('button', { name: 'Open named session' }).click()
+
+  await expect(page.getByText(`Opened Remote ${remoteToken} on tmux session prod-nightly.`)).toBeVisible()
+  await expect(
+    page
+      .locator('[data-runa-component="terminal-status-header-title"]')
+      .filter({ hasText: 'prod-nightly' }),
+  ).toBeVisible()
+})

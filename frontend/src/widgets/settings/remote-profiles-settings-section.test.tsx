@@ -618,6 +618,7 @@ describe('RemoteProfilesSettingsSection', () => {
 
     await waitFor(() => {
       expect(fetchRemoteProfileTmuxSessions).toHaveBeenCalledWith('conn-prod')
+      expect(screen.getByText('2 discovered · 1 attached · 1 detached')).toBeInTheDocument()
       expect(screen.getByText('prod-main · attached · 2 windows')).toBeInTheDocument()
       expect(screen.getByText('prod-jobs · detached · 1 windows')).toBeInTheDocument()
     })
@@ -628,6 +629,100 @@ describe('RemoteProfilesSettingsSection', () => {
       expect(screen.getByRole('checkbox', { name: 'Resume remote shell through tmux' })).toBeChecked()
       expect(screen.getByRole('textbox', { name: 'Remote profile tmux session' })).toHaveValue('prod-jobs')
       expect(screen.getByText('Loaded tmux session prod-jobs into profile editor.')).toBeInTheDocument()
+    })
+  })
+
+  it('opens a typed tmux session from the tmux manager surface', async () => {
+    vi.mocked(fetchRemoteProfiles).mockResolvedValue([
+      {
+        host: 'prod.example.com',
+        id: 'conn-prod',
+        launch_mode: 'tmux',
+        name: 'Prod',
+        tmux_session: 'prod-main',
+        user: 'deploy',
+      },
+    ])
+    vi.mocked(fetchRemoteConnectionsSnapshot).mockResolvedValue({
+      active_connection_id: 'local',
+      connections: [],
+    })
+    vi.mocked(fetchRemoteProfileTmuxSessions).mockResolvedValue([
+      { attached: true, name: 'prod-main', window_count: 2 },
+      { attached: false, name: 'prod-jobs', window_count: 1 },
+    ])
+    vi.mocked(openRemoteProfileSession).mockResolvedValue({
+      connection_id: 'conn-prod',
+      profile_id: 'conn-prod',
+      remote_session_name: 'prod-nightly',
+      reused: false,
+      session_id: 'term-remote',
+      tab_id: 'tab-remote',
+      widget_id: 'term-remote',
+    })
+
+    render(<RemoteProfilesSettingsSection />)
+
+    await expect(screen.findByText('Prod')).resolves.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Browse tmux' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('textbox', { name: 'Named tmux session for Prod' })).toHaveValue('prod-main')
+    })
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Named tmux session for Prod' }), {
+      target: { value: 'prod-nightly' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Open named session' }))
+
+    await waitFor(() => {
+      expect(openRemoteProfileSession).toHaveBeenCalledWith(null, {
+        profileId: 'conn-prod',
+        title: 'Prod',
+        tmuxSession: 'prod-nightly',
+      })
+      expect(screen.getByText('Opened Prod on tmux session prod-nightly.')).toBeInTheDocument()
+    })
+  })
+
+  it('filters discovered tmux sessions inside the tmux manager surface', async () => {
+    vi.mocked(fetchRemoteProfiles).mockResolvedValue([
+      {
+        host: 'prod.example.com',
+        id: 'conn-prod',
+        launch_mode: 'tmux',
+        name: 'Prod',
+        tmux_session: 'prod-main',
+        user: 'deploy',
+      },
+    ])
+    vi.mocked(fetchRemoteConnectionsSnapshot).mockResolvedValue({
+      active_connection_id: 'local',
+      connections: [],
+    })
+    vi.mocked(fetchRemoteProfileTmuxSessions).mockResolvedValue([
+      { attached: true, name: 'prod-main', window_count: 2 },
+      { attached: false, name: 'prod-jobs', window_count: 1 },
+    ])
+
+    render(<RemoteProfilesSettingsSection />)
+
+    await expect(screen.findByText('Prod')).resolves.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Browse tmux' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('prod-main · attached · 2 windows')).toBeInTheDocument()
+    })
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Filter tmux sessions for Prod' }), {
+      target: { value: 'jobs' },
+    })
+
+    await waitFor(() => {
+      expect(screen.queryByText('prod-main · attached · 2 windows')).not.toBeInTheDocument()
+      expect(screen.getByText('prod-jobs · detached · 1 windows')).toBeInTheDocument()
     })
   })
 

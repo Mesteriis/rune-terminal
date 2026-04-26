@@ -96,6 +96,19 @@ function profileMatchesFilter(
   return fields.some((field) => field.toLowerCase().includes(filter))
 }
 
+function tmuxSessionMatchesFilter(session: RemoteTmuxSession, rawFilter: string) {
+  const filter = rawFilter.trim().toLowerCase()
+  if (!filter) {
+    return true
+  }
+
+  return [
+    session.name,
+    session.attached ? 'attached' : 'detached',
+    typeof session.window_count === 'number' ? String(session.window_count) : '',
+  ].some((field) => field.toLowerCase().includes(filter))
+}
+
 const defaultProfileDraft = {
   host: '',
   identityFile: '',
@@ -127,6 +140,8 @@ export function RemoteProfilesSettingsSection({ dockviewApi = null }: { dockview
   const [busyProfileID, setBusyProfileID] = useState<string | null>(null)
   const [editingProfileID, setEditingProfileID] = useState<string | null>(null)
   const [tmuxSessionsByProfile, setTmuxSessionsByProfile] = useState<Record<string, RemoteTmuxSession[]>>({})
+  const [tmuxSessionDraftsByProfile, setTmuxSessionDraftsByProfile] = useState<Record<string, string>>({})
+  const [tmuxSessionFiltersByProfile, setTmuxSessionFiltersByProfile] = useState<Record<string, string>>({})
   const [tmuxLoadingProfileID, setTmuxLoadingProfileID] = useState<string | null>(null)
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -174,6 +189,8 @@ export function RemoteProfilesSettingsSection({ dockviewApi = null }: { dockview
       setProfiles(nextProfiles)
       setConnectionsSnapshot(nextConnectionsSnapshot)
       setTmuxSessionsByProfile({})
+      setTmuxSessionDraftsByProfile({})
+      setTmuxSessionFiltersByProfile({})
     } catch (error) {
       if (options.isCancelled?.()) {
         return
@@ -325,6 +342,16 @@ export function RemoteProfilesSettingsSection({ dockviewApi = null }: { dockview
         ...current,
         [profileID]: sessions,
       }))
+      setTmuxSessionDraftsByProfile((current) => {
+        if (typeof current[profileID] === 'string') {
+          return current
+        }
+        const profile = profiles.find((item) => item.id === profileID)
+        return {
+          ...current,
+          [profileID]: profile?.tmux_session ?? '',
+        }
+      })
       setStatusMessage(
         sessions.length > 0
           ? `Loaded ${sessions.length} tmux sessions.`
@@ -341,7 +368,47 @@ export function RemoteProfilesSettingsSection({ dockviewApi = null }: { dockview
     handleStartEdit(profile)
     setLaunchModeDraft('tmux')
     setTmuxSessionDraft(sessionName)
+    setTmuxSessionDraftsByProfile((current) => ({
+      ...current,
+      [profile.id]: sessionName,
+    }))
     setStatusMessage(`Loaded tmux session ${sessionName} into profile editor.`)
+  }
+
+  function handleTmuxSessionDraftChange(profileID: string, value: string) {
+    setTmuxSessionDraftsByProfile((current) => ({
+      ...current,
+      [profileID]: value,
+    }))
+  }
+
+  function handleTmuxSessionFilterChange(profileID: string, value: string) {
+    setTmuxSessionFiltersByProfile((current) => ({
+      ...current,
+      [profileID]: value,
+    }))
+  }
+
+  async function handleOpenNamedTmuxSession(profile: RemoteProfile) {
+    const sessionName = (tmuxSessionDraftsByProfile[profile.id] ?? profile.tmux_session ?? '').trim()
+    if (sessionName === '') {
+      setErrorMessage('Choose or type a tmux session name before opening it.')
+      setStatusMessage(null)
+      return
+    }
+
+    await handleOpenProfileShell(profile, sessionName)
+  }
+
+  function handleLoadNamedTmuxSession(profile: RemoteProfile) {
+    const sessionName = (tmuxSessionDraftsByProfile[profile.id] ?? profile.tmux_session ?? '').trim()
+    if (sessionName === '') {
+      setErrorMessage('Choose or type a tmux session name before loading it into the profile editor.')
+      setStatusMessage(null)
+      return
+    }
+
+    handleUseTmuxSession(profile, sessionName)
   }
 
   async function handleOpenProfileShell(profile: RemoteProfile, tmuxSession?: string) {
@@ -532,6 +599,14 @@ export function RemoteProfilesSettingsSection({ dockviewApi = null }: { dockview
             const isDefault = connectionsSnapshot.active_connection_id === profile.id
             const isBusy = busyProfileID === profile.id
             const connectionStatus = summarizeConnectionStatus(connection)
+            const tmuxSessions = tmuxSessionsByProfile[profile.id] ?? []
+            const tmuxSessionFilter = tmuxSessionFiltersByProfile[profile.id] ?? ''
+            const visibleTmuxSessions = tmuxSessions.filter((session) =>
+              tmuxSessionMatchesFilter(session, tmuxSessionFilter),
+            )
+            const tmuxSessionDraft = tmuxSessionDraftsByProfile[profile.id] ?? profile.tmux_session ?? ''
+            const attachedTmuxSessions = tmuxSessions.filter((session) => session.attached).length
+            const detachedTmuxSessions = tmuxSessions.length - attachedTmuxSessions
 
             return (
               <ClearBox key={profile.id} style={settingsShellListRowStyle}>
@@ -597,7 +672,11 @@ export function RemoteProfilesSettingsSection({ dockviewApi = null }: { dockview
                       disabled={isBusy || isSavingProfile || tmuxLoadingProfileID === profile.id}
                       onClick={() => void handleBrowseTmuxSessions(profile.id)}
                     >
-                      {tmuxLoadingProfileID === profile.id ? 'Loading tmux…' : 'Browse tmux'}
+                      {tmuxLoadingProfileID === profile.id
+                        ? 'Loading tmux…'
+                        : tmuxSessionsByProfile[profile.id]
+                          ? 'Refresh tmux'
+                          : 'Browse tmux'}
                     </Button>
                   ) : null}
                   <Button disabled={isBusy || isSavingProfile} onClick={() => handleStartEdit(profile)}>
@@ -618,36 +697,95 @@ export function RemoteProfilesSettingsSection({ dockviewApi = null }: { dockview
                       width: '100%',
                     }}
                   >
-                    {(tmuxSessionsByProfile[profile.id] ?? []).map((session) => (
+                    {tmuxSessionsByProfile[profile.id] ? (
                       <ClearBox
-                        key={session.name}
                         style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          gap: 'var(--gap-sm)',
-                          flexWrap: 'wrap' as const,
+                          display: 'grid',
+                          gap: 'var(--gap-xs)',
+                          width: '100%',
+                          padding: '0.65rem',
+                          border: '1px solid var(--color-border-subtle)',
+                          borderRadius: 'var(--radius-sm)',
+                          background: 'color-mix(in srgb, var(--color-surface-glass-soft) 72%, transparent)',
                         }}
                       >
+                        <Text style={{ fontWeight: 600 }}>tmux manager</Text>
                         <Text style={settingsShellMutedTextStyle}>
-                          {session.name}
-                          {session.attached ? ' · attached' : ' · detached'}
-                          {session.window_count ? ` · ${session.window_count} windows` : ''}
+                          {tmuxSessions.length > 0
+                            ? `${tmuxSessions.length} discovered · ${attachedTmuxSessions} attached · ${detachedTmuxSessions} detached`
+                            : 'No discovered tmux sessions yet. You can still type a named session below.'}
                         </Text>
-                        <Button
-                          disabled={isSavingProfile || busyProfileID !== null}
-                          onClick={() => void handleOpenProfileShell(profile, session.name)}
+                        <ClearBox
+                          style={{
+                            display: 'grid',
+                            gap: 'var(--gap-xs)',
+                            gridTemplateColumns: 'minmax(0, 1fr) auto auto',
+                            alignItems: 'center',
+                          }}
                         >
-                          Resume session
-                        </Button>
-                        <Button
-                          disabled={isSavingProfile || busyProfileID !== null}
-                          onClick={() => handleUseTmuxSession(profile, session.name)}
-                        >
-                          Use session
-                        </Button>
+                          <Input
+                            aria-label={`Named tmux session for ${profile.name}`}
+                            onChange={(event) => handleTmuxSessionDraftChange(profile.id, event.target.value)}
+                            placeholder="prod-main"
+                            value={tmuxSessionDraft}
+                          />
+                          <Button
+                            disabled={isSavingProfile || busyProfileID !== null}
+                            onClick={() => void handleOpenNamedTmuxSession(profile)}
+                          >
+                            Open named session
+                          </Button>
+                          <Button
+                            disabled={isSavingProfile || busyProfileID !== null}
+                            onClick={() => handleLoadNamedTmuxSession(profile)}
+                          >
+                            Load named session
+                          </Button>
+                        </ClearBox>
+                        <Input
+                          aria-label={`Filter tmux sessions for ${profile.name}`}
+                          onChange={(event) => handleTmuxSessionFilterChange(profile.id, event.target.value)}
+                          placeholder="Filter discovered tmux sessions"
+                          value={tmuxSessionFilter}
+                        />
+                        {visibleTmuxSessions.length > 0 ? (
+                          visibleTmuxSessions.map((session) => (
+                            <ClearBox
+                              key={session.name}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: 'var(--gap-sm)',
+                                flexWrap: 'wrap' as const,
+                              }}
+                            >
+                              <Text style={settingsShellMutedTextStyle}>
+                                {session.name}
+                                {session.attached ? ' · attached' : ' · detached'}
+                                {session.window_count ? ` · ${session.window_count} windows` : ''}
+                              </Text>
+                              <Button
+                                disabled={isSavingProfile || busyProfileID !== null}
+                                onClick={() => void handleOpenProfileShell(profile, session.name)}
+                              >
+                                Resume session
+                              </Button>
+                              <Button
+                                disabled={isSavingProfile || busyProfileID !== null}
+                                onClick={() => handleUseTmuxSession(profile, session.name)}
+                              >
+                                Use session
+                              </Button>
+                            </ClearBox>
+                          ))
+                        ) : (
+                          <Text style={settingsShellMutedTextStyle}>
+                            No discovered tmux sessions match the current filter.
+                          </Text>
+                        )}
                       </ClearBox>
-                    ))}
+                    ) : null}
                   </ClearBox>
                 ) : null}
               </ClearBox>

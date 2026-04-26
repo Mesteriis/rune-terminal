@@ -23,9 +23,10 @@ Phase status:
 - `Phase 4` is complete: SSH profile lifecycle, `.ssh/config` breadth, and
   operator-facing preflight/launch diagnostics are landed on the active
   remote path.
-- `Phase 5` is active: grouped terminal sessions plus tmux-backed
-  remote open/resume flows are landed, while broader remote topology
-  work remains.
+- `Phase 5` is complete: grouped terminal sessions, grouped-session
+  browser controls, tmux-backed remote open/resume flows, and the
+  settings-shell tmux manager are now landed on the active path.
+- `Phase 6` is now the next implementation phase.
 - Later phases remain implementation work.
 
 ## Success condition
@@ -206,6 +207,9 @@ Validation:
 - isolated real-SSH smoke against a controlled local target
 
 ### Phase 5. Add terminal session groups and remote breadth v2
+
+Status:
+completed on `2026-04-26`
 
 Purpose:
 extend the terminal/remote model so TideTerm-style advanced remote use

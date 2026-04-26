@@ -10,6 +10,9 @@
     tmux session naming for resume-oriented SSH launches
   - profile-scoped tmux session discovery in settings plus loading a
     discovered session back into the profile editor
+  - settings-shell tmux manager affordances:
+    named-session open/load flows, discovered-session filtering, and
+    direct resume into the active workspace
   - one-way SSH config import with `Include`, wildcard-host default
     application, and `Match host/originalhost` support for concrete aliases
   - normalized SSH preflight and launch diagnostics for missing keys,
@@ -38,6 +41,7 @@
   - `./scripts/go.sh test ./core/transport/httpapi ./core/app -run 'TestConnectionsEndpointsListSelectAndSave|TestRemoteProfilesEndpointsListSaveAndDelete|TestObserveConnectionLaunchMarksLaunch(Failed|Succeeded)' -count=1`
   - `npm --prefix frontend run test -- src/features/remote/api/client.test.ts src/widgets/settings/remote-profiles-settings-section.test.tsx --reporter=verbose`
   - `npm --prefix frontend run test -- src/features/remote/api/client.test.ts src/widgets/settings/remote-profiles-settings-section.test.tsx src/app/open-remote-profile-session.test.ts --reporter=verbose`
+  - `npm --prefix frontend run test -- src/widgets/settings/remote-profiles-settings-section.test.tsx --reporter=verbose`
   - `frontend/node_modules/.bin/vitest run src/widgets/settings/remote-profiles-settings-section.test.tsx --reporter=verbose`
   - `npm --prefix frontend run test -- src/widgets/settings/remote-profiles-settings-section.test.tsx --reporter=verbose`
   - `npm --prefix frontend run lint:active`
@@ -46,6 +50,7 @@
   - `npm run test:ui -- --reporter=line e2e/shell-workspace.spec.ts --grep "remote settings persist tmux resume launch policy"` (attempted; Playwright hung in teardown after the test body ran, so this path is not claimed as a clean pass yet)
   - `npm run test:ui -- --reporter=line e2e/shell-workspace.spec.ts --grep "remote settings browse tmux sessions and load one into the profile editor"` (attempted; Playwright hung in teardown after the test body ran, so this path is not claimed as a clean pass yet)
   - `npm run test:ui -- --reporter=line e2e/shell-workspace.spec.ts --grep "remote settings open shell creates a visible terminal panel in the active workspace|remote settings resume discovered tmux session opens that session in the workspace"` (attempted; Playwright hung after starting the test body, so these paths are not claimed as clean passes yet)
+  - `npm run test:ui -- --reporter=line e2e/shell-workspace.spec.ts --grep "remote settings tmux manager opens a typed named session in the workspace"` (attempted; Playwright hung after starting the test body, so this path is not claimed as a clean pass yet)
 - External reachability/auth probe example:
   - `ssh -o BatchMode=yes -o ConnectTimeout=5 -p 22 192.168.1.2 exit`
 - Runtime/API checks in validation runs:
@@ -62,12 +67,13 @@
 - SSH config import remains intentionally narrower than a full SSH manager:
   no `ProxyJump`, broader `Match` criteria, keychain/passphrase workflows,
   or two-way synchronization back to SSH config files.
-- Advanced SSH auth/topology flows and long-lived remote-controller semantics remain out of current scope and move to `Phase 5`.
+- Advanced SSH auth/topology flows and long-lived remote-controller semantics remain out of current scope even after `Phase 5`; they only reopen if a later product phase broadens the SSH domain again.
 - tmux resume currently means "profile-owned attach-or-create on launch".
-  There is now a narrow profile-scoped session discovery list in settings
-  plus direct open/resume actions into the active workspace, but there is
-  still no separate tmux session catalog, broader named-session browser,
-  or detached-session manager UI on top of that backend path.
+  There is now a settings-shell tmux manager with profile-scoped discovery,
+  named-session open/load flows, filtering, and direct open/resume actions
+  into the active workspace, but there is still no separate shell-wide
+  remote session sidebar or detached-session controller outside the saved
+  profile domain.
 
 ## Evidence
 
