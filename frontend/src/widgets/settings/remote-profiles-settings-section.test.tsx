@@ -2,18 +2,24 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
+  checkRemoteProfileConnection,
   deleteRemoteProfile,
+  fetchRemoteConnectionsSnapshot,
   fetchRemoteProfiles,
   importSSHConfigProfiles,
   saveRemoteProfile,
+  selectRemoteProfileConnection,
 } from '@/features/remote/api/client'
 import { RemoteProfilesSettingsSection } from './remote-profiles-settings-section'
 
 vi.mock('@/features/remote/api/client', () => ({
+  checkRemoteProfileConnection: vi.fn(),
   deleteRemoteProfile: vi.fn(),
+  fetchRemoteConnectionsSnapshot: vi.fn(),
   fetchRemoteProfiles: vi.fn(),
   importSSHConfigProfiles: vi.fn(),
   saveRemoteProfile: vi.fn(),
+  selectRemoteProfileConnection: vi.fn(),
 }))
 
 afterEach(() => {
@@ -31,15 +37,37 @@ describe('RemoteProfilesSettingsSection', () => {
         user: 'deploy',
       },
     ])
+    vi.mocked(fetchRemoteConnectionsSnapshot).mockResolvedValue({
+      active_connection_id: 'conn-prod',
+      connections: [
+        {
+          active: true,
+          id: 'conn-prod',
+          kind: 'ssh',
+          name: 'prod',
+          runtime: {
+            check_status: 'passed',
+            launch_status: 'idle',
+          },
+          usability: 'available',
+        },
+      ],
+    })
 
     render(<RemoteProfilesSettingsSection />)
 
     await expect(screen.findByText('prod')).resolves.toBeInTheDocument()
     expect(screen.getByText('deploy@prod.example.com:2222')).toBeInTheDocument()
+    expect(screen.getByText('default')).toBeInTheDocument()
+    expect(screen.getByText('passed')).toBeInTheDocument()
   })
 
   it('imports ssh config profiles and refreshes the visible list', async () => {
     vi.mocked(fetchRemoteProfiles).mockResolvedValue([])
+    vi.mocked(fetchRemoteConnectionsSnapshot).mockResolvedValue({
+      active_connection_id: 'local',
+      connections: [],
+    })
     vi.mocked(importSSHConfigProfiles).mockResolvedValue({
       imported: [{ host: 'prod.example.com', id: 'conn-prod', name: 'prod' }],
       profiles: [{ host: 'prod.example.com', id: 'conn-prod', name: 'prod' }],
@@ -65,6 +93,10 @@ describe('RemoteProfilesSettingsSection', () => {
 
   it('saves a new remote profile and refreshes the visible list', async () => {
     vi.mocked(fetchRemoteProfiles).mockResolvedValue([])
+    vi.mocked(fetchRemoteConnectionsSnapshot).mockResolvedValue({
+      active_connection_id: 'local',
+      connections: [],
+    })
     vi.mocked(saveRemoteProfile).mockResolvedValue({
       profile: {
         host: 'prod.example.com',
@@ -132,6 +164,10 @@ describe('RemoteProfilesSettingsSection', () => {
         user: 'deploy',
       },
     ])
+    vi.mocked(fetchRemoteConnectionsSnapshot).mockResolvedValue({
+      active_connection_id: 'local',
+      connections: [],
+    })
     vi.mocked(saveRemoteProfile).mockResolvedValue({
       profile: {
         host: 'prod-v2.example.com',
@@ -199,6 +235,10 @@ describe('RemoteProfilesSettingsSection', () => {
         user: 'deploy',
       },
     ])
+    vi.mocked(fetchRemoteConnectionsSnapshot).mockResolvedValue({
+      active_connection_id: 'local',
+      connections: [],
+    })
     vi.mocked(deleteRemoteProfile).mockResolvedValue({ profiles: [] })
 
     render(<RemoteProfilesSettingsSection />)
@@ -216,6 +256,10 @@ describe('RemoteProfilesSettingsSection', () => {
 
   it('renders import errors inline', async () => {
     vi.mocked(fetchRemoteProfiles).mockResolvedValue([])
+    vi.mocked(fetchRemoteConnectionsSnapshot).mockResolvedValue({
+      active_connection_id: 'local',
+      connections: [],
+    })
     vi.mocked(importSSHConfigProfiles).mockRejectedValue(new Error('ssh config not found'))
 
     render(<RemoteProfilesSettingsSection />)
@@ -225,5 +269,117 @@ describe('RemoteProfilesSettingsSection', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Import SSH config' }))
 
     await expect(screen.findByText('ssh config not found')).resolves.toBeInTheDocument()
+  })
+
+  it('runs preflight checks for saved remote profiles', async () => {
+    vi.mocked(fetchRemoteProfiles).mockResolvedValue([
+      {
+        host: 'prod.example.com',
+        id: 'conn-prod',
+        name: 'Prod',
+        user: 'deploy',
+      },
+    ])
+    vi.mocked(fetchRemoteConnectionsSnapshot).mockResolvedValue({
+      active_connection_id: 'local',
+      connections: [
+        {
+          active: false,
+          id: 'conn-prod',
+          kind: 'ssh',
+          name: 'Prod',
+          runtime: {
+            check_status: 'unchecked',
+            launch_status: 'idle',
+          },
+          usability: 'unknown',
+        },
+      ],
+    })
+    vi.mocked(checkRemoteProfileConnection).mockResolvedValue({
+      connection: {
+        active: false,
+        id: 'conn-prod',
+        kind: 'ssh',
+        name: 'Prod',
+        runtime: {
+          check_status: 'passed',
+          launch_status: 'idle',
+        },
+        usability: 'available',
+      },
+      connections: {
+        active_connection_id: 'local',
+        connections: [
+          {
+            active: false,
+            id: 'conn-prod',
+            kind: 'ssh',
+            name: 'Prod',
+            runtime: {
+              check_status: 'passed',
+              launch_status: 'idle',
+            },
+            usability: 'available',
+          },
+        ],
+      },
+    })
+
+    render(<RemoteProfilesSettingsSection />)
+
+    await expect(screen.findByText('Prod')).resolves.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Check' }))
+
+    await waitFor(() => {
+      expect(checkRemoteProfileConnection).toHaveBeenCalledWith('conn-prod')
+      expect(screen.getByText('Prod: preflight passed.')).toBeInTheDocument()
+      expect(screen.getByText('available')).toBeInTheDocument()
+      expect(screen.getByText('Last preflight passed.')).toBeInTheDocument()
+    })
+  })
+
+  it('marks a saved profile as the default connection', async () => {
+    vi.mocked(fetchRemoteProfiles).mockResolvedValue([
+      {
+        host: 'prod.example.com',
+        id: 'conn-prod',
+        name: 'Prod',
+        user: 'deploy',
+      },
+    ])
+    vi.mocked(fetchRemoteConnectionsSnapshot).mockResolvedValue({
+      active_connection_id: 'local',
+      connections: [],
+    })
+    vi.mocked(selectRemoteProfileConnection).mockResolvedValue({
+      active_connection_id: 'conn-prod',
+      connections: [
+        {
+          active: true,
+          id: 'conn-prod',
+          kind: 'ssh',
+          name: 'Prod',
+          runtime: {
+            check_status: 'unchecked',
+            launch_status: 'idle',
+          },
+          usability: 'unknown',
+        },
+      ],
+    })
+
+    render(<RemoteProfilesSettingsSection />)
+
+    await expect(screen.findByText('Prod')).resolves.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Set default' }))
+
+    await waitFor(() => {
+      expect(selectRemoteProfileConnection).toHaveBeenCalledWith('conn-prod')
+      expect(screen.getByText('Default connection: Prod.')).toBeInTheDocument()
+      expect(screen.getByText('default')).toBeInTheDocument()
+    })
   })
 })

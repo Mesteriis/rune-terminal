@@ -30,6 +30,27 @@ export type SaveRemoteProfilePayload = {
   user?: string
 }
 
+export type RemoteConnectionRuntime = {
+  check_status: 'unchecked' | 'passed' | 'failed'
+  check_error?: string
+  launch_status: 'idle' | 'succeeded' | 'failed'
+  launch_error?: string
+}
+
+export type RemoteConnectionView = {
+  active: boolean
+  id: string
+  kind: 'local' | 'ssh'
+  name: string
+  runtime: RemoteConnectionRuntime
+  usability: 'available' | 'attention' | 'unknown'
+}
+
+export type RemoteConnectionsSnapshot = {
+  active_connection_id: string
+  connections: RemoteConnectionView[]
+}
+
 type APIErrorEnvelope = {
   error?: {
     code?: string
@@ -118,6 +139,33 @@ export async function deleteRemoteProfile(profileID: string) {
       method: 'DELETE',
     },
   )
+}
+
+export async function fetchRemoteConnectionsSnapshot() {
+  const runtimeContext = await resolveRuntimeContext()
+
+  return requestRemoteJSON<RemoteConnectionsSnapshot>(runtimeContext, '/api/v1/connections')
+}
+
+export async function checkRemoteProfileConnection(profileID: string) {
+  const runtimeContext = await resolveRuntimeContext()
+
+  return requestRemoteJSON<{ connection: RemoteConnectionView; connections: RemoteConnectionsSnapshot }>(
+    runtimeContext,
+    `/api/v1/connections/${encodeURIComponent(profileID)}/check`,
+    {
+      method: 'POST',
+    },
+  )
+}
+
+export async function selectRemoteProfileConnection(profileID: string) {
+  const runtimeContext = await resolveRuntimeContext()
+
+  return requestRemoteJSON<RemoteConnectionsSnapshot>(runtimeContext, '/api/v1/connections/active', {
+    body: JSON.stringify({ connection_id: profileID.trim() }),
+    method: 'PUT',
+  })
 }
 
 export async function importSSHConfigProfiles(path?: string) {

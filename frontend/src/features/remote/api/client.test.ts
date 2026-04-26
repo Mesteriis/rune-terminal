@@ -2,11 +2,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { resetRuntimeContextCacheForTests } from '@/shared/api/runtime'
 import {
+  checkRemoteProfileConnection,
   deleteRemoteProfile,
+  fetchRemoteConnectionsSnapshot,
   fetchRemoteProfiles,
   importSSHConfigProfiles,
   RemoteAPIError,
   saveRemoteProfile,
+  selectRemoteProfileConnection,
 } from './client'
 
 afterEach(() => {
@@ -192,6 +195,154 @@ describe('remote api client', () => {
         Authorization: 'Bearer runtime-token',
       },
       method: 'DELETE',
+    })
+  })
+
+  it('loads connection snapshot through the runtime transport', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/repo',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          active_connection_id: 'conn-prod',
+          connections: [
+            {
+              active: true,
+              id: 'conn-prod',
+              kind: 'ssh',
+              name: 'Prod',
+              runtime: {
+                check_status: 'passed',
+                launch_status: 'idle',
+              },
+              usability: 'available',
+            },
+          ],
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(fetchRemoteConnectionsSnapshot()).resolves.toEqual({
+      active_connection_id: 'conn-prod',
+      connections: [
+        {
+          active: true,
+          id: 'conn-prod',
+          kind: 'ssh',
+          name: 'Prod',
+          runtime: {
+            check_status: 'passed',
+            launch_status: 'idle',
+          },
+          usability: 'available',
+        },
+      ],
+    })
+    expect(fetchMock.mock.calls[1]?.[0]).toBe('http://127.0.0.1:8090/api/v1/connections')
+  })
+
+  it('checks a remote profile connection through the runtime transport', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/repo',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          connection: {
+            active: false,
+            id: 'conn-prod',
+            kind: 'ssh',
+            name: 'Prod',
+            runtime: {
+              check_status: 'passed',
+              launch_status: 'idle',
+            },
+            usability: 'available',
+          },
+          connections: {
+            active_connection_id: 'local',
+            connections: [],
+          },
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(checkRemoteProfileConnection('conn-prod')).resolves.toEqual({
+      connection: {
+        active: false,
+        id: 'conn-prod',
+        kind: 'ssh',
+        name: 'Prod',
+        runtime: {
+          check_status: 'passed',
+          launch_status: 'idle',
+        },
+        usability: 'available',
+      },
+      connections: {
+        active_connection_id: 'local',
+        connections: [],
+      },
+    })
+    expect(fetchMock.mock.calls[1]?.[0]).toBe('http://127.0.0.1:8090/api/v1/connections/conn-prod/check')
+    expect(fetchMock.mock.calls[1]?.[1]).toEqual({
+      headers: {
+        Authorization: 'Bearer runtime-token',
+      },
+      method: 'POST',
+    })
+  })
+
+  it('selects a remote profile as the default connection through the runtime transport', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/repo',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          active_connection_id: 'conn-prod',
+          connections: [],
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(selectRemoteProfileConnection('conn-prod')).resolves.toEqual({
+      active_connection_id: 'conn-prod',
+      connections: [],
+    })
+    expect(fetchMock.mock.calls[1]?.[0]).toBe('http://127.0.0.1:8090/api/v1/connections/active')
+    expect(fetchMock.mock.calls[1]?.[1]).toEqual({
+      body: JSON.stringify({ connection_id: 'conn-prod' }),
+      headers: {
+        Authorization: 'Bearer runtime-token',
+        'Content-Type': 'application/json',
+      },
+      method: 'PUT',
     })
   })
 

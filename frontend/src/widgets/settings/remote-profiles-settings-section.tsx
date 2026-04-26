@@ -1,10 +1,15 @@
 import { useEffect, useState } from 'react'
 
 import {
+  checkRemoteProfileConnection,
   deleteRemoteProfile,
+  fetchRemoteConnectionsSnapshot,
   fetchRemoteProfiles,
   importSSHConfigProfiles,
+  selectRemoteProfileConnection,
   saveRemoteProfile,
+  type RemoteConnectionsSnapshot,
+  type RemoteConnectionView,
   type RemoteProfile,
   type SSHConfigImportResult,
 } from '@/features/remote/api/client'
@@ -39,6 +44,24 @@ function summarizeImport(result: SSHConfigImportResult) {
   return `Imported ${importedCount} ${importedLabel}.`
 }
 
+function summarizeConnectionStatus(connection: RemoteConnectionView | undefined) {
+  if (!connection) {
+    return null
+  }
+
+  if (connection.runtime.check_status === 'failed') {
+    return connection.runtime.check_error || 'Last preflight failed.'
+  }
+  if (connection.runtime.launch_status === 'failed') {
+    return connection.runtime.launch_error || 'Last launch failed.'
+  }
+  if (connection.runtime.check_status === 'passed') {
+    return 'Last preflight passed.'
+  }
+
+  return 'Not checked yet.'
+}
+
 const defaultProfileDraft = {
   host: '',
   identityFile: '',
@@ -49,6 +72,10 @@ const defaultProfileDraft = {
 
 export function RemoteProfilesSettingsSection() {
   const [profiles, setProfiles] = useState<RemoteProfile[]>([])
+  const [connectionsSnapshot, setConnectionsSnapshot] = useState<RemoteConnectionsSnapshot>({
+    active_connection_id: 'local',
+    connections: [],
+  })
   const [nameDraft, setNameDraft] = useState(defaultProfileDraft.name)
   const [hostDraft, setHostDraft] = useState(defaultProfileDraft.host)
   const [userDraft, setUserDraft] = useState(defaultProfileDraft.user)
@@ -74,32 +101,38 @@ export function RemoteProfilesSettingsSection() {
     setIdentityFileDraft(defaultProfileDraft.identityFile)
   }
 
-  useEffect(() => {
-    let cancelled = false
-
+  async function loadProfilesAndConnections(options: { isCancelled?: () => boolean } = {}) {
     setIsLoading(true)
     setErrorMessage(null)
 
-    fetchRemoteProfiles()
-      .then((nextProfiles) => {
-        if (cancelled) {
-          return
-        }
+    try {
+      const [nextProfiles, nextConnectionsSnapshot] = await Promise.all([
+        fetchRemoteProfiles(),
+        fetchRemoteConnectionsSnapshot(),
+      ])
+      if (options.isCancelled?.()) {
+        return
+      }
 
-        setProfiles(nextProfiles)
-      })
-      .catch((error: unknown) => {
-        if (cancelled) {
-          return
-        }
+      setProfiles(nextProfiles)
+      setConnectionsSnapshot(nextConnectionsSnapshot)
+    } catch (error) {
+      if (options.isCancelled?.()) {
+        return
+      }
 
-        setErrorMessage(error instanceof Error ? error.message : 'Unable to load remote profiles')
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setIsLoading(false)
-        }
-      })
+      setErrorMessage(error instanceof Error ? error.message : 'Unable to load remote profiles')
+    } finally {
+      if (!options.isCancelled?.()) {
+        setIsLoading(false)
+      }
+    }
+  }
+
+  useEffect(() => {
+    let cancelled = false
+
+    void loadProfilesAndConnections({ isCancelled: () => cancelled })
 
     return () => {
       cancelled = true
@@ -114,6 +147,7 @@ export function RemoteProfilesSettingsSection() {
     try {
       const result = await importSSHConfigProfiles(pathDraft)
       setProfiles(result.profiles)
+      setConnectionsSnapshot(await fetchRemoteConnectionsSnapshot())
       setStatusMessage(summarizeImport(result))
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Unable to import SSH config')
@@ -144,7 +178,8 @@ export function RemoteProfilesSettingsSection() {
         user: userDraft,
       })
       setProfiles(result.profiles)
-      setStatusMessage(isEditing ? `Saved ${result.profile.name}.` : `Saved ${result.profile.name}.`)
+      setConnectionsSnapshot(await fetchRemoteConnectionsSnapshot())
+      setStatusMessage(`Saved ${result.profile.name}.`)
       resetProfileForm()
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Unable to save remote profile')
@@ -172,12 +207,46 @@ export function RemoteProfilesSettingsSection() {
     try {
       const result = await deleteRemoteProfile(profileID)
       setProfiles(Array.isArray(result.profiles) ? result.profiles : [])
+      setConnectionsSnapshot(await fetchRemoteConnectionsSnapshot())
       if (editingProfileID === profileID) {
         resetProfileForm()
       }
       setStatusMessage('Deleted SSH profile.')
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Unable to delete remote profile')
+    } finally {
+      setBusyProfileID(null)
+    }
+  }
+
+  async function handleCheckProfile(profileID: string) {
+    setBusyProfileID(profileID)
+    setErrorMessage(null)
+    setStatusMessage(null)
+
+    try {
+      const result = await checkRemoteProfileConnection(profileID)
+      setConnectionsSnapshot(result.connections)
+      setStatusMessage(`${result.connection.name}: preflight ${result.connection.runtime.check_status}.`)
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Unable to check remote profile')
+    } finally {
+      setBusyProfileID(null)
+    }
+  }
+
+  async function handleSetDefaultProfile(profileID: string) {
+    setBusyProfileID(profileID)
+    setErrorMessage(null)
+    setStatusMessage(null)
+
+    try {
+      const nextConnectionsSnapshot = await selectRemoteProfileConnection(profileID)
+      setConnectionsSnapshot(nextConnectionsSnapshot)
+      const selectedProfile = profiles.find((profile) => profile.id === profileID)
+      setStatusMessage(`Default connection: ${selectedProfile?.name ?? profileID}.`)
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Unable to set default connection')
     } finally {
       setBusyProfileID(null)
     }
@@ -260,6 +329,13 @@ export function RemoteProfilesSettingsSection() {
         <Button aria-label="Import SSH config" disabled={isImporting} onClick={() => void handleImport()}>
           {isImporting ? 'Importing…' : 'Import SSH config'}
         </Button>
+        <Button
+          aria-label="Refresh remote profiles"
+          disabled={isLoading}
+          onClick={() => void loadProfilesAndConnections()}
+        >
+          {isLoading ? 'Refreshing…' : 'Refresh'}
+        </Button>
       </ClearBox>
 
       {statusMessage ? <Text style={settingsShellMutedTextStyle}>{statusMessage}</Text> : null}
@@ -273,39 +349,65 @@ export function RemoteProfilesSettingsSection() {
         <Text style={settingsShellMutedTextStyle}>No saved SSH profiles yet.</Text>
       ) : (
         <ClearBox style={settingsShellListStyle}>
-          {profiles.map((profile) => (
-            <ClearBox key={profile.id} style={settingsShellListRowStyle}>
-              <ClearBox style={settingsShellContentHeaderStyle}>
-                <Text style={{ fontWeight: 600 }}>{profile.name}</Text>
-                <Text style={settingsShellMutedTextStyle}>{describeProfile(profile)}</Text>
-                {profile.identity_file ? (
-                  <Text style={settingsShellMutedTextStyle}>{profile.identity_file}</Text>
-                ) : null}
-              </ClearBox>
-              <ClearBox
-                style={{
-                  display: 'flex',
-                  gap: 'var(--gap-xs)',
-                  alignItems: 'center',
-                  flexWrap: 'wrap' as const,
-                }}
-              >
-                <ClearBox style={settingsShellBadgeStyle}>SSH</ClearBox>
-                <Button
-                  disabled={busyProfileID === profile.id || isSavingProfile}
-                  onClick={() => handleStartEdit(profile)}
+          {profiles.map((profile) => {
+            const connection = connectionsSnapshot.connections.find((item) => item.id === profile.id)
+            const isDefault = connectionsSnapshot.active_connection_id === profile.id
+            const isBusy = busyProfileID === profile.id
+            const connectionStatus = summarizeConnectionStatus(connection)
+
+            return (
+              <ClearBox key={profile.id} style={settingsShellListRowStyle}>
+                <ClearBox style={settingsShellContentHeaderStyle}>
+                  <Text style={{ fontWeight: 600 }}>{profile.name}</Text>
+                  <Text style={settingsShellMutedTextStyle}>{describeProfile(profile)}</Text>
+                  {profile.identity_file ? (
+                    <Text style={settingsShellMutedTextStyle}>{profile.identity_file}</Text>
+                  ) : null}
+                  {connectionStatus ? (
+                    <Text style={settingsShellMutedTextStyle}>{connectionStatus}</Text>
+                  ) : null}
+                </ClearBox>
+                <ClearBox
+                  style={{
+                    display: 'flex',
+                    gap: 'var(--gap-xs)',
+                    alignItems: 'center',
+                    flexWrap: 'wrap' as const,
+                  }}
                 >
-                  Edit
-                </Button>
-                <Button
-                  disabled={busyProfileID === profile.id || isSavingProfile}
-                  onClick={() => void handleDeleteProfile(profile.id)}
-                >
-                  Delete
-                </Button>
+                  <ClearBox style={settingsShellBadgeStyle}>SSH</ClearBox>
+                  {isDefault ? <ClearBox style={settingsShellBadgeStyle}>default</ClearBox> : null}
+                  {connection ? (
+                    <ClearBox style={settingsShellBadgeStyle}>{connection.usability}</ClearBox>
+                  ) : null}
+                  {connection ? (
+                    <ClearBox style={settingsShellBadgeStyle}>{connection.runtime.check_status}</ClearBox>
+                  ) : null}
+                  <Button
+                    disabled={isBusy || isSavingProfile}
+                    onClick={() => void handleSetDefaultProfile(profile.id)}
+                  >
+                    Set default
+                  </Button>
+                  <Button
+                    disabled={isBusy || isSavingProfile}
+                    onClick={() => void handleCheckProfile(profile.id)}
+                  >
+                    Check
+                  </Button>
+                  <Button disabled={isBusy || isSavingProfile} onClick={() => handleStartEdit(profile)}>
+                    Edit
+                  </Button>
+                  <Button
+                    disabled={isBusy || isSavingProfile}
+                    onClick={() => void handleDeleteProfile(profile.id)}
+                  >
+                    Delete
+                  </Button>
+                </ClearBox>
               </ClearBox>
-            </ClearBox>
-          ))}
+            )
+          })}
         </ClearBox>
       )}
     </ClearBox>

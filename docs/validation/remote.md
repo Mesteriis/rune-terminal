@@ -8,6 +8,7 @@
   - saved profile create/list/select/check/open-shell flows
   - narrow one-way SSH config import for direct host profile fields
   - settings-shell remote profile create/edit/delete/list/import entrypoint
+  - settings-shell remote preflight/default-target controls
   - remote session/tab binding and local-vs-remote guardrails
   - missing-profile restore error semantics
   - audit target-session truth for remote runs
