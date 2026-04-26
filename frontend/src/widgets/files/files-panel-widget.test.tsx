@@ -1,11 +1,18 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { createAgentAttachmentReference } from '@/features/agent/api/client'
 import { listFilesDirectory, openFilesPathExternally } from '@/features/files/api/client'
 import { createSplitTerminalWidget } from '@/features/terminal/api/client'
 import { openPreviewWorkspaceWidget } from '@/shared/api/workspace'
+import { openAiSidebar } from '@/shared/model/app'
+import { queueAiAttachmentReference } from '@/shared/model/ai-attachments'
 import { writeTextToClipboard } from '@/shared/model/clipboard'
 import { FilesPanelWidget } from './files-panel-widget'
+
+vi.mock('@/features/agent/api/client', () => ({
+  createAgentAttachmentReference: vi.fn(),
+}))
 
 vi.mock('@/features/files/api/client', () => ({
   listFilesDirectory: vi.fn(),
@@ -18,6 +25,14 @@ vi.mock('@/features/terminal/api/client', () => ({
 
 vi.mock('@/shared/api/workspace', () => ({
   openPreviewWorkspaceWidget: vi.fn(),
+}))
+
+vi.mock('@/shared/model/app', () => ({
+  openAiSidebar: vi.fn(),
+}))
+
+vi.mock('@/shared/model/ai-attachments', () => ({
+  queueAiAttachmentReference: vi.fn(),
 }))
 
 vi.mock('@/shared/model/clipboard', () => ({
@@ -473,6 +488,53 @@ describe('FilesPanelWidget', () => {
         widgetId: 'preview-1',
       })
       expect(screen.getByText('Preview widget opened for README.md')).toBeInTheDocument()
+    })
+  })
+
+  it('creates an AI attachment reference for file rows and opens the AI sidebar', async () => {
+    vi.mocked(listFilesDirectory).mockResolvedValue({
+      entries: [
+        {
+          hidden: false,
+          id: '/repo::README.md',
+          kind: 'file',
+          modified: '2026-04-25 20:01',
+          modifiedTime: 1_776_800_060,
+          name: 'README.md',
+          sizeBytes: 2048,
+          sizeLabel: '2.0 KB',
+        },
+      ],
+      path: '/repo',
+    })
+    vi.mocked(createAgentAttachmentReference).mockResolvedValue({
+      id: 'att-readme',
+      name: 'README.md',
+      path: '/repo/README.md',
+      mime_type: 'text/markdown',
+      size: 2048,
+      modified_time: 1_776_800_060,
+    })
+
+    render(<FilesPanelWidget path="/repo" title="repo" />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Attach file README.md to AI' }))
+
+    await waitFor(() => {
+      expect(createAgentAttachmentReference).toHaveBeenCalledWith({
+        action_source: 'frontend.files.attach_to_ai',
+        path: '/repo/README.md',
+      })
+      expect(queueAiAttachmentReference).toHaveBeenCalledWith({
+        id: 'att-readme',
+        name: 'README.md',
+        path: '/repo/README.md',
+        mime_type: 'text/markdown',
+        size: 2048,
+        modified_time: 1_776_800_060,
+      })
+      expect(openAiSidebar).toHaveBeenCalledTimes(1)
+      expect(screen.getByText('Attached README.md to AI composer')).toBeInTheDocument()
     })
   })
 

@@ -24,6 +24,8 @@ import {
   aiChatMessageRowStyle,
   aiChatMessageUserGroupStyle,
   aiChatMessageUserRowStyle,
+  aiComposerContextStripRowStyle,
+  aiToolbarChipStyle,
 } from '@/widgets/ai/ai-panel-widget.styles'
 import { MessageBubble } from '@/widgets/ai/message-bubble'
 
@@ -40,6 +42,7 @@ export function ChatTextMessageWidget({
 }: ChatTextMessageWidgetProps) {
   const isUser = message.role === 'user'
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
+  const attachments = message.attachments ?? []
   const metaLine = !isUser
     ? [message.meta?.model ?? message.meta?.provider, message.meta?.status].filter(Boolean).join(' · ')
     : ''
@@ -97,6 +100,25 @@ export function ChatTextMessageWidget({
             role={message.role}
             scopeId={message.id}
           />
+          {attachments.length > 0 ? (
+            <Box
+              aria-label={`Attachments for ${message.role} message`}
+              runaComponent={`ai-chat-message-${message.id}-attachments`}
+              style={aiComposerContextStripRowStyle}
+            >
+              {attachments.map((attachment) => (
+                <Box
+                  key={attachment.id}
+                  runaComponent={`ai-chat-message-${message.id}-attachment`}
+                  style={aiToolbarChipStyle}
+                >
+                  <Text runaComponent={`ai-chat-message-${message.id}-attachment-name`}>
+                    {attachment.name}
+                  </Text>
+                </Box>
+              ))}
+            </Box>
+          ) : null}
           {showMetaBar ? (
             <Box runaComponent={`ai-chat-message-${message.id}-meta-bar`} style={aiChatMessageMetaBarStyle}>
               {metaLine ? (

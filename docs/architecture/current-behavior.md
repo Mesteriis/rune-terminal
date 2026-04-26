@@ -338,12 +338,11 @@ Confirmable boundaries:
   - backend-owned conversation messages persisted by the Go runtime
   - runtime-backed quick actions, approval decisions, and posture updates kept in the frontend activity feed
 - The active compat AI panel now supports local attachment references:
-  - attach flow creates backend-issued references from local filesystem paths
+  - the active files panel exposes an explicit per-file `AI` action that creates backend-issued references from local filesystem paths, queues them in the shell composer, and opens the AI sidebar
+  - queued attachment references render as removable chips in the AI composer and are sent with the next non-`/run` chat request
   - conversation messages persist attachment reference metadata (`id`, `name`, `path`, `mime_type`, `size`, `modified_time`)
   - reload restores attachment references from backend conversation snapshot truth
-  - user-visible chips now label attachment references explicitly as `local ref`
-  - stale local references are rendered as `missing` in the composer after backend rejection (`attachment_not_found`)
-  - non-text/binary references rendered from backend truth are marked `metadata only` in transcript chips
+  - user-visible transcript chips show attachment names from backend truth
   - submit-time message handling revalidates references; missing/invalid paths are rejected explicitly instead of being accepted as normal input
   - conversation provider requests now include bounded attachment context when attachments are present (metadata plus bounded text excerpt for supported text-like files)
   - attachment context limits are backend-owned and deterministic: max file size `256 KiB`, max read `32 KiB`, max excerpt `8000` chars, max context items `4`
@@ -397,7 +396,7 @@ Confirmable boundaries:
   - the backend rejects `/run` tool execution if the explicit target session does not match the destination widget session (`local` vs `remote`)
   - the resulting explanation call derives `approval_used` from the matching `term.send_input` audit truth; the backend no longer trusts a frontend-supplied explain flag
   - audit events for both `term.send_input` and `agent.terminal_command` now include explicit session target fields (`target_session`, `target_connection_id`)
-  - a full frontend reload still loses pending retry context because this slice does not add persistence
+  - queued-but-unsent composer attachments are shell-local state and are not persisted as managed app storage
 - Capability-removing modes such as `secure` can still forbid `/run` entirely. In that case the AI command path is denied rather than approval-gated.
 - The AI panel footer now includes a TideTerm-shaped composer. It still maps a small set of explicit runtime-backed intents such as terminal inspection, tab listing, widget listing, active-tab lookup, and terminal interrupt to the tool/runtime path, but all other free-text prompts now go through the real backend conversation route.
 - The conversation backend currently resolves active providers from backend-owned agent config and supports:

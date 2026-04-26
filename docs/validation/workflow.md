@@ -2,10 +2,11 @@
 
 ## Last verified state
 
-- Date: `2026-04-21`
+- Date: `2026-04-26`
 - State: `VERIFIED`
 - Scope:
   - operator cross-surface handoffs (Files/AI/`/run`/Tools/Audit/MCP)
+  - active files-panel to AI attachment handoff through backend attachment references and the composer queue
   - quick-actions explicit action flow
   - workflow identity/provenance checks
   - repo release-gate command truth
@@ -25,7 +26,9 @@
 - Workflow identity targeted tests:
   - `./scripts/go.sh test ./core/transport/httpapi -run 'TestExplainTerminalCommandUsesExplicitCommandAuditEventIDPayload'`
   - `./scripts/go.sh test ./core/app -run 'TestCreateAttachmentReferenceAppendsAuditEventWithProvenance|TestExplainTerminalCommandUsesExplicitCommandAuditEventID'`
-  - `./scripts/go.sh test ./core/transport/httpapi -run 'TestInvokeMCPAppendsAuditWithExplicitProvenance|TestExecuteToolAcceptsSessionTargetFieldsAtTransportBoundary'`
+- `./scripts/go.sh test ./core/transport/httpapi -run 'TestInvokeMCPAppendsAuditWithExplicitProvenance|TestExecuteToolAcceptsSessionTargetFieldsAtTransportBoundary'`
+- `npm --prefix frontend run test -- src/widgets/files/files-panel-widget.test.tsx src/widgets/ai/ai-composer-widget.test.tsx src/widgets/ai/ai-chat-message-widget.test.tsx src/widgets/ai/ai-panel-widget.test.tsx`
+- `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestCreateAttachmentReference|TestSubmitConversationPromptIncludesAttachmentContextInProviderRequest|TestSubmitConversationMessagePersistsAttachmentReferences|TestSubmitConversationMessageRejectsMissingAttachmentReference' -count=1`
 
 ## Known limitations
 

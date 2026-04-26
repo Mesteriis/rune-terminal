@@ -13,6 +13,7 @@ import {
   renameAgentConversation,
   restoreAgentConversation,
   streamAgentConversationMessage,
+  type AgentAttachmentReference,
   type AgentConversationListCounts,
   type AgentConversationListScope,
   type AgentConversationMessage,
@@ -64,6 +65,11 @@ import { $terminalPanelBindings, resolveTerminalPanelBinding } from '@/features/
 import { fetchTerminalSnapshot } from '@/features/terminal/api/client'
 import { resolveRuntimeContext } from '@/shared/api/runtime'
 import { fetchWorkspaceSnapshot, type WorkspaceWidgetSnapshot } from '@/shared/api/workspace'
+import {
+  $queuedAiAttachmentReferences,
+  clearQueuedAiAttachmentReferences,
+  removeQueuedAiAttachmentReference,
+} from '@/shared/model/ai-attachments'
 import { blockAiWidget, unblockAiWidget } from '@/shared/model/ai-blocked-widgets'
 import { $activeWidgetHostId } from '@/shared/model/widget-focus'
 
@@ -101,11 +107,13 @@ function createOptimisticUserConversationMessage(
   hostId: string,
   sequence: number,
   prompt: string,
+  attachments: AgentAttachmentReference[] = [],
 ): AgentConversationMessage {
   return {
     id: `agent-local-user-${hostId}-${sequence}`,
     role: 'user',
     content: prompt,
+    attachments,
     status: 'complete',
     created_at: new Date().toISOString(),
   }
@@ -393,7 +401,19 @@ function upsertConversationSummary(
 }
 
 export function useAgentPanel(hostId: string, enabled = true) {
-  const [activeWidgetHostId, terminalPanelBindings] = useUnit([$activeWidgetHostId, $terminalPanelBindings])
+  const [
+    activeWidgetHostId,
+    terminalPanelBindings,
+    queuedAttachmentReferences,
+    onRemoveQueuedAttachmentReference,
+    onClearQueuedAttachmentReferences,
+  ] = useUnit([
+    $activeWidgetHostId,
+    $terminalPanelBindings,
+    $queuedAiAttachmentReferences,
+    removeQueuedAiAttachmentReference,
+    clearQueuedAiAttachmentReferences,
+  ])
   const [messages, setMessages] = useState<AgentConversationMessage[] | null>(null)
   const [interactionMessages, setInteractionMessages] = useState<ChatMessageView[]>([])
   const [pendingFlow, setPendingFlow] = useState<PendingInteractionFlow | null>(null)
@@ -1475,7 +1495,15 @@ export function useAgentPanel(hostId: string, enabled = true) {
   )
 
   const runBackendPrompt = useCallback(
-    async (prompt: string, options?: { auditMessageID?: string; cancellable?: boolean; model?: string }) => {
+    async (
+      prompt: string,
+      options?: {
+        attachments?: AgentAttachmentReference[]
+        auditMessageID?: string
+        cancellable?: boolean
+        model?: string
+      },
+    ) => {
       const submissionNonce = submissionNonceRef.current + 1
       submissionNonceRef.current = submissionNonce
       const isActiveSubmission = () => submissionNonceRef.current === submissionNonce
@@ -1504,6 +1532,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
         connection = await streamAgentConversationMessage(
           {
             prompt,
+            attachments: options?.attachments,
             model: options?.model,
             context: createConversationContext({
               actionSource: 'frontend.ai.sidebar',
@@ -1635,11 +1664,15 @@ export function useAgentPanel(hostId: string, enabled = true) {
     if (!enabled || isSubmitting || isConversationPending || pendingFlowRef.current || prompt === '') {
       return
     }
+    const isRunPrompt = getRunCommand(prompt) !== null
+    const attachmentsForPrompt = isRunPrompt ? [] : [...queuedAttachmentReferences]
+    const promptAttachments = attachmentsForPrompt.length > 0 ? attachmentsForPrompt : undefined
 
     const optimisticUserMessage = createOptimisticUserConversationMessage(
       hostId,
       optimisticMessageCounterRef.current,
       prompt,
+      attachmentsForPrompt,
     )
     optimisticMessageCounterRef.current += 1
     const flowSequence = flowCounterRef.current
@@ -1652,22 +1685,32 @@ export function useAgentPanel(hostId: string, enabled = true) {
       appendAgentConversationMessage(currentMessages ?? [], optimisticUserMessage),
     )
     setDraft('')
+    if (!isRunPrompt) {
+      onClearQueuedAttachmentReferences()
+    }
 
-    if (getRunCommand(prompt) !== null) {
+    if (isRunPrompt) {
       await runBackendPrompt(prompt, { cancellable: false })
       return
     }
 
     if (interactionFlow.flow == null) {
-      await runBackendPrompt(prompt, { model: selectedModel || undefined })
+      await runBackendPrompt(prompt, {
+        attachments: promptAttachments,
+        model: selectedModel || undefined,
+      })
       return
     }
 
+    const nextPendingFlow = {
+      ...interactionFlow.flow,
+      attachments: promptAttachments,
+    }
     setInteractionMessages((currentMessages) =>
       sortMessagesBySortKey([...currentMessages, ...interactionFlow.messages]),
     )
-    pendingFlowRef.current = interactionFlow.flow
-    setPendingFlow(interactionFlow.flow)
+    pendingFlowRef.current = nextPendingFlow
+    setPendingFlow(nextPendingFlow)
   }, [
     draft,
     enabled,
@@ -1675,6 +1718,8 @@ export function useAgentPanel(hostId: string, enabled = true) {
     isConversationPending,
     isSubmitting,
     nextLocalSortKey,
+    onClearQueuedAttachmentReferences,
+    queuedAttachmentReferences,
     runBackendPrompt,
     selectedModel,
   ])
@@ -1771,7 +1816,10 @@ export function useAgentPanel(hostId: string, enabled = true) {
           ]),
         )
         clearPendingInteractionFlow()
-        await runBackendPrompt(activeFlow.prompt, { model: selectedModel || undefined })
+        await runBackendPrompt(activeFlow.prompt, {
+          attachments: activeFlow.attachments,
+          model: selectedModel || undefined,
+        })
         return
       }
 
@@ -1796,6 +1844,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
       const nextFlow: PendingInteractionFlow = {
         ...activeFlow,
         approvalMessageID: approvalMessage.id,
+        attachments: activeFlow.attachments,
         questionnaireMessageID: undefined,
         tools: classification.tools,
       }
@@ -1832,6 +1881,7 @@ export function useAgentPanel(hostId: string, enabled = true) {
       )
       clearPendingInteractionFlow()
       await runBackendPrompt(activeFlow.prompt, {
+        attachments: activeFlow.attachments,
         auditMessageID: auditMessage.id,
         model: selectedModel || undefined,
       })
@@ -1894,6 +1944,8 @@ export function useAgentPanel(hostId: string, enabled = true) {
     isSubmitting,
     isWidgetContextEnabled,
     panelState,
+    queuedAttachmentReferences,
+    removeQueuedAttachmentReference: onRemoveQueuedAttachmentReference,
     selectedContextWidgetIDs: effectiveContextWidgetIDs,
     selectedModel,
     selectedProviderID,

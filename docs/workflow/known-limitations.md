@@ -63,7 +63,7 @@ capability.
 - broad builder / proxy / preview-zoo surfaces
 - broad settings universe
 - advanced SSH auth / topology (proxy jump, richer auth negotiation)
-- managed attachment storage / import and rich attachment preview UX
+- managed attachment storage / import and rich attachment preview UX; current active path is queued local file references from Files -> AI composer plus transcript chips
 - fine-grained token streaming for CLI-backed chat
   (the backend conversation stream currently emits the completed CLI
   response as one SSE text delta)

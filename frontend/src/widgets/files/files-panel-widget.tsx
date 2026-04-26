@@ -6,9 +6,12 @@ import {
   type FilesDirectoryEntry,
   type FilesDirectorySnapshot,
 } from '@/features/files/api/client'
+import { createAgentAttachmentReference } from '@/features/agent/api/client'
 import { createSplitTerminalWidget } from '@/features/terminal/api/client'
 import { getRuntimePathParent, joinRuntimePath } from '@/shared/api/runtime'
 import { openPreviewWorkspaceWidget } from '@/shared/api/workspace'
+import { openAiSidebar } from '@/shared/model/app'
+import { queueAiAttachmentReference } from '@/shared/model/ai-attachments'
 import { writeTextToClipboard } from '@/shared/model/clipboard'
 import { Box, Button, Input, ScrollArea, Text } from '@/shared/ui/primitives'
 import {
@@ -380,6 +383,36 @@ export function FilesPanelWidget({
       setOpenState({
         entryName: label,
         message: error instanceof Error ? error.message : `Unable to copy path for ${label}`,
+        status: 'error',
+      })
+    }
+  }
+
+  const handleAttachToAi = async (entry: FilesDirectoryEntry) => {
+    const targetPath = joinRuntimePath(currentPath, entry.name)
+
+    setOpenState({
+      entryName: entry.name,
+      message: `Attaching ${entry.name} to AI`,
+      status: 'pending',
+    })
+
+    try {
+      const attachment = await createAgentAttachmentReference({
+        action_source: 'frontend.files.attach_to_ai',
+        path: targetPath,
+      })
+      queueAiAttachmentReference(attachment)
+      openAiSidebar()
+      setOpenState({
+        entryName: entry.name,
+        message: `Attached ${entry.name} to AI composer`,
+        status: 'success',
+      })
+    } catch (error: unknown) {
+      setOpenState({
+        entryName: entry.name,
+        message: error instanceof Error ? error.message : `Unable to attach ${entry.name} to AI`,
         status: 'error',
       })
     }
@@ -765,6 +798,16 @@ export function FilesPanelWidget({
                         style={filesPanelRowActionButtonStyle}
                       >
                         Copy
+                      </Button>
+                      <Button
+                        aria-label={`Attach file ${entry.name} to AI`}
+                        onClick={() => {
+                          void handleAttachToAi(entry)
+                        }}
+                        runaComponent="files-panel-row-attach-ai"
+                        style={filesPanelRowActionButtonStyle}
+                      >
+                        AI
                       </Button>
                     </Box>
                   ) : (

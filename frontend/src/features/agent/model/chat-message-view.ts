@@ -130,6 +130,7 @@ export function mapConversationMessageToChatMessageView(
       type: 'chat',
       role: 'user',
       content: getMessageContent(message),
+      attachments: message.attachments,
       sortKey: createConversationMessageSortKey(message.created_at, fallbackIndex),
     }
   }
@@ -139,6 +140,7 @@ export function mapConversationMessageToChatMessageView(
     type: 'chat',
     role: 'assistant',
     content: getMessageContent(message),
+    attachments: message.attachments,
     meta: buildAssistantMeta(message, prompt),
     sortKey: createConversationMessageSortKey(message.created_at, fallbackIndex),
   }

@@ -24,6 +24,9 @@
   - persisted request-context selection per conversation in `runtime.db`
   - AI composer context quick actions (`Use current`, `Only current`, `All widgets`, `Use default`) over the existing workspace/widget context contract
   - AI composer visible selected-context strip with direct remove actions for chosen widgets
+  - AI composer queued attachment strip with direct remove actions for file references handed off from the files panel
+  - files-panel `Attach file ... to AI` handoff through `POST /api/v1/agent/conversation/attachments/references`, shell attachment queue, and stream request `attachments`
+  - transcript attachment chips sourced from backend conversation message attachment metadata
   - explicit stale-widget repair notice plus `Save cleaned context` action for persisted conversation context that no longer matches the current workspace
   - stale-widget mismatch is now visible in the closed composer body as well, not only after opening the context dropdown
   - AI composer two-row toolbar grouping with explicit `Source / Model / Context` field labels
@@ -177,12 +180,16 @@
 - `./scripts/go.sh test ./core/conversation ./core/app ./core/transport/httpapi -count=1`
 - `npm --prefix frontend run test -- src/features/agent/api/client.test.ts src/widgets/ai/ai-panel-widget.test.tsx`
 - `npm --prefix frontend run test -- src/widgets/ai/ai-composer-widget.test.tsx src/widgets/ai/ai-panel-widget.test.tsx`
+- `npm --prefix frontend run test -- src/widgets/files/files-panel-widget.test.tsx src/widgets/ai/ai-composer-widget.test.tsx src/widgets/ai/ai-chat-message-widget.test.tsx src/widgets/ai/ai-panel-widget.test.tsx`
+- `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestCreateAttachmentReference|TestSubmitConversationPromptIncludesAttachmentContextInProviderRequest|TestSubmitConversationMessagePersistsAttachmentReferences|TestSubmitConversationMessageRejectsMissingAttachmentReference' -count=1`
+- `npm run build:frontend`
 - `npm run lint:frontend`
 
 ## Known limitations
 
 - conversation management is still intentionally narrow: create + switch + active-thread rename + archive + restore + delete plus one shared navigator. Server-backed scope/query filtering and archive-management flows are now live, but multi-panel conversation views are still not implemented in this slice.
 - request-context persistence is now conversation-scoped and stale-widget repair is explicit, but there are still no named context presets or grouped context modes.
+- queued attachment references are shell-local until submit; the app still does not import files into managed storage or provide a gallery/library of historical attachments.
 - CLI providers currently expose buffered chat completion through the existing SSE route; token-by-token provider streaming is implemented only for the OpenAI-compatible HTTP source.
 - Composer cancellation aborts the browser fetch stream and clears frontend busy state; it does not claim a durable backend-side job cancellation queue beyond normal request-context cancellation.
 - CLI-native tool calls are not yet mediated through `core/toolruntime`, policy approval, or audit events.

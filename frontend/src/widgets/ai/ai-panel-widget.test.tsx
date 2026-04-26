@@ -6,6 +6,7 @@ import {
   resetTerminalPanelBindingsForTests,
 } from '@/features/terminal/model/panel-registry'
 import { resetRuntimeContextCacheForTests } from '@/shared/api/runtime'
+import { clearQueuedAiAttachmentReferences, queueAiAttachmentReference } from '@/shared/model/ai-attachments'
 import { clearActiveWidgetHostId, setActiveWidgetHostId } from '@/shared/model/widget-focus'
 import { AiPanelWidget } from '@/widgets/ai/ai-panel-widget'
 import { aiPanelWidgetMockState } from '@/widgets/ai/ai-panel-widget.mock'
@@ -163,6 +164,7 @@ function createConversationListFetchResponse(
 describe('AiPanelWidget backend conversation path', () => {
   afterEach(() => {
     resetRuntimeContextCacheForTests()
+    clearQueuedAiAttachmentReferences()
     resetTerminalPanelBindingsForTests()
     clearActiveWidgetHostId()
     vi.restoreAllMocks()
@@ -662,6 +664,114 @@ describe('AiPanelWidget backend conversation path', () => {
       expect(screen.getByText('stub-model · error')).toBeInTheDocument()
     })
     expect(screen.queryByRole('button', { name: 'Cancel response' })).not.toBeInTheDocument()
+  })
+
+  it('sends queued AI attachment references with the next chat prompt', async () => {
+    const streamResponse = createDeferredStreamResponse()
+    const fetchMock = vi.fn()
+
+    queueAiAttachmentReference({
+      id: 'att-readme',
+      name: 'README.md',
+      path: '/repo/README.md',
+      mime_type: 'text/markdown',
+      size: 2048,
+      modified_time: 1_776_800_060,
+    })
+
+    fetchMock.mockImplementation(async (input) => {
+      const url = String(input)
+
+      if (url.endsWith('/api/v1/bootstrap')) {
+        return {
+          ok: true,
+          json: async () => ({
+            home_dir: '/Users/avm',
+            repo_root: '/Users/avm/projects/runa-terminal',
+          }),
+        }
+      }
+
+      if (url.endsWith('/api/v1/agent/conversation')) {
+        return createConversationFetchResponse({
+          title: 'Attachment stream',
+          provider: {
+            kind: 'stub',
+            base_url: 'http://stub',
+            model: 'stub-model',
+            streaming: true,
+          },
+        })
+      }
+
+      if (url.endsWith('/api/v1/agent/providers')) {
+        return createProviderCatalogFetchResponse()
+      }
+
+      if (url.includes('/api/v1/agent/conversations?scope=recent')) {
+        return createConversationListFetchResponse('conv_1', [
+          {
+            id: 'conv_1',
+            title: 'Attachment stream',
+            created_at: '2026-04-21T09:59:00Z',
+            updated_at: '2026-04-21T10:00:00Z',
+            message_count: 0,
+          },
+        ])
+      }
+
+      if (url.endsWith('/api/v1/agent/conversation/messages/stream')) {
+        return {
+          ok: true,
+          body: streamResponse.body,
+        }
+      }
+
+      throw new Error(`Unexpected fetch request: ${url}`)
+    })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<AiPanelWidget hostId="ai-shell-panel" />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Backend conversation is empty.')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Remove attachment README.md' })).toBeInTheDocument()
+    })
+
+    fireEvent.change(screen.getByPlaceholderText('Text Area'), {
+      target: { value: 'Summarize attached note' },
+    })
+    fireEvent.click(screen.getByLabelText('Send prompt'))
+
+    const streamCall = await waitFor(() => {
+      const match = fetchMock.mock.calls.find((call) =>
+        String(call[0]).includes('/api/v1/agent/conversation/messages/stream'),
+      )
+      expect(match).toBeDefined()
+      return match
+    })
+
+    expect(JSON.parse(String(streamCall?.[1]?.body))).toMatchObject({
+      prompt: 'Summarize attached note',
+      attachments: [
+        {
+          id: 'att-readme',
+          name: 'README.md',
+          path: '/repo/README.md',
+          mime_type: 'text/markdown',
+          size: 2048,
+          modified_time: 1_776_800_060,
+        },
+      ],
+    })
+    expect(screen.getByLabelText('Attachments for user message')).toHaveTextContent('README.md')
+    expect(screen.queryByRole('button', { name: 'Remove attachment README.md' })).not.toBeInTheDocument()
+
+    await act(async () => {
+      streamResponse.close()
+    })
   })
 
   it('allows selecting multiple workspace widgets for the AI request context', async () => {

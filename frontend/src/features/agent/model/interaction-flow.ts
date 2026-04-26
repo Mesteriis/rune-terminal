@@ -1,3 +1,4 @@
+import type { AgentAttachmentReference } from '@/features/agent/api/client'
 import type {
   ApprovalMessage,
   ApprovalState,
@@ -12,6 +13,7 @@ import type {
 
 export type PendingInteractionFlow = {
   approvalMessageID?: string
+  attachments?: AgentAttachmentReference[]
   auditMessageID?: string
   auditProgressed: boolean
   flowID: string

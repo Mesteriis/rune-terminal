@@ -117,6 +117,35 @@ describe('AiComposerWidget', () => {
     expect(onSubmit).not.toHaveBeenCalled()
   })
 
+  it('shows queued attachment chips and lets the operator remove them before submit', () => {
+    const onRemoveAttachment = vi.fn()
+
+    render(
+      <AiComposerWidget
+        activeTool="Chat"
+        attachments={[
+          {
+            id: 'att-readme',
+            name: 'README.md',
+            path: '/repo/README.md',
+            mime_type: 'text/markdown',
+            size: 2048,
+            modified_time: 1_776_800_060,
+          },
+        ]}
+        onRemoveAttachment={onRemoveAttachment}
+        placeholder="Text Area"
+        toolbarLabel="TOOL BAR"
+        value="test"
+      />,
+    )
+
+    expect(screen.getByText('Attachments')).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Remove attachment README.md' }))
+
+    expect(onRemoveAttachment).toHaveBeenCalledWith('att-readme')
+  })
+
   it('shows context summary in the toolbar and exposes quick actions for the active widget', () => {
     const onContextUseCurrentWidget = vi.fn()
     const onContextOnlyUseCurrentWidget = vi.fn()

@@ -3,6 +3,7 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
 import { ChevronDown, List, SendHorizontal, X } from 'lucide-react'
 
 import type {
+  AiComposerAttachmentReference,
   AiContextWidgetOption,
   AiProviderOption,
   AiComposerSubmitMode,
@@ -59,6 +60,7 @@ export type AiComposerWidgetProps = {
   activeTool: string
   availableModels?: string[]
   availableProviders?: AiProviderOption[]
+  attachments?: AiComposerAttachmentReference[]
   placeholder: string
   selectedProviderID?: string
   selectedModel?: string
@@ -67,6 +69,7 @@ export type AiComposerWidgetProps = {
   onModelChange?: (value: string) => void
   onValueChange?: (value: string) => void
   onCancelSubmit?: () => void
+  onRemoveAttachment?: (attachmentID: string) => void
   onSubmit?: () => void
   disabled?: boolean
   isSubmitting?: boolean
@@ -93,11 +96,13 @@ export function AiComposerWidget({
   activeTool,
   availableModels = [],
   availableProviders = [],
+  attachments = [],
   disabled = false,
   isSubmitting = false,
   onModelChange,
   onProviderChange,
   onCancelSubmit,
+  onRemoveAttachment,
   onSubmit,
   onValueChange,
   placeholder,
@@ -133,6 +138,7 @@ export function AiComposerWidget({
       ? selectedProviderID
       : (availableProviders[0]?.value ?? '')
   const selectedContextCount = selectedContextWidgetIDs.length
+  const hasAttachments = attachments.length > 0
   const selectedContextOptions = selectedContextWidgetIDs
     .map((widgetID) => contextWidgetOptions.find((option) => option.value === widgetID) ?? null)
     .filter((option): option is AiContextWidgetOption => option != null)
@@ -339,6 +345,28 @@ export function AiComposerWidget({
                   </Text>
                 </Box>
               ) : null}
+            </Box>
+          </Box>
+        ) : null}
+        {hasAttachments ? (
+          <Box runaComponent="ai-composer-attachment-strip" style={aiComposerContextStripStyle}>
+            <Text runaComponent="ai-composer-attachment-strip-label" style={aiComposerContextStripLabelStyle}>
+              Attachments
+            </Text>
+            <Box runaComponent="ai-composer-attachment-strip-row" style={aiComposerContextStripRowStyle}>
+              {attachments.map((attachment) => (
+                <Button
+                  key={attachment.id}
+                  aria-label={`Remove attachment ${attachment.name}`}
+                  disabled={disabled}
+                  onClick={() => onRemoveAttachment?.(attachment.id)}
+                  runaComponent="ai-composer-attachment-strip-chip"
+                  style={aiComposerContextStripRemoveStyle}
+                >
+                  <Text style={aiComposerContextStripValueStyle}>{attachment.name}</Text>
+                  <X size={12} strokeWidth={1.8} />
+                </Button>
+              ))}
             </Box>
           </Box>
         ) : null}

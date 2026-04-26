@@ -143,6 +143,7 @@ export function AiPanelWidget({ controller, hostId, mode = 'chat', state }: AiPa
           </ScrollArea>
           <AiComposerWidget
             activeTool={panelState.activeTool}
+            attachments={state == null ? agentPanel.queuedAttachmentReferences : undefined}
             availableModels={state == null ? agentPanel.availableModels : undefined}
             availableProviders={state == null ? agentPanel.availableProviders : undefined}
             activeContextWidgetID={state == null ? agentPanel.activeContextWidgetID : undefined}
@@ -176,6 +177,7 @@ export function AiPanelWidget({ controller, hostId, mode = 'chat', state }: AiPa
             onContextUseAllWidgets={state == null ? () => void agentPanel.useAllContextWidgets() : undefined}
             onModelChange={state == null ? agentPanel.setSelectedModel : undefined}
             onProviderChange={state == null ? agentPanel.selectProvider : undefined}
+            onRemoveAttachment={state == null ? agentPanel.removeQueuedAttachmentReference : undefined}
             onSelectedContextWidgetIDsChange={
               state == null ? agentPanel.setSelectedContextWidgetIDs : undefined
             }

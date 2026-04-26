@@ -158,6 +158,33 @@ describe('AiChatMessageWidget', () => {
     expect(screen.getByRole('button', { name: 'Hide details' })).toBeInTheDocument()
   })
 
+  it('renders attachment chips for chat messages', () => {
+    render(
+      <AiChatMessageWidget
+        message={{
+          id: 'chat-with-attachment',
+          type: 'chat',
+          role: 'user',
+          content: 'Summarize this file.',
+          attachments: [
+            {
+              id: 'att-readme',
+              name: 'README.md',
+              path: '/repo/README.md',
+              mime_type: 'text/markdown',
+              size: 2048,
+              modified_time: 1_776_800_060,
+            },
+          ],
+        }}
+        mode="chat"
+      />,
+    )
+
+    expect(screen.getByText('Summarize this file.')).toBeInTheDocument()
+    expect(screen.getByLabelText('Attachments for user message')).toHaveTextContent('README.md')
+  })
+
   it('submits questionnaire option and custom input answers', () => {
     function QuestionnaireHarness() {
       const [message, setMessage] = useState<QuestionnaireMessage>({

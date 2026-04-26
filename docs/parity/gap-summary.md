@@ -20,7 +20,7 @@ Source of truth: [parity-matrix.md](./parity-matrix.md)
 - MCP external onboarding (`MCP`): settings can register remote endpoints and run lifecycle controls, but broad discovery/catalog setup remains `PARTIAL`.
 - Settings surface breadth (`panels`): intentionally reduced scope vs TideTerm.
 - Last-tab closure behavior (`workspace/layout`): currently guarded.
-- Attachment UX breadth (`UX`): basic references exist, broader management UX remains partial.
+- Attachment UX breadth (`UX`): files-to-AI queued references and removable composer chips exist, but managed storage/gallery UX remains partial.
 
 ## Optional
 

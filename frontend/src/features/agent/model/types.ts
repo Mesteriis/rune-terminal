@@ -13,11 +13,21 @@ export type MessageMeta = {
 
 export type ChatMessageSortKey = number
 
+export type AiComposerAttachmentReference = {
+  id: string
+  name: string
+  path: string
+  mime_type: string
+  size: number
+  modified_time: number
+}
+
 export type ChatTextMessage = {
   id: string
   type: 'chat'
   role: 'user' | 'assistant'
   content: string
+  attachments?: AiComposerAttachmentReference[]
   meta?: MessageMeta
   sortKey?: ChatMessageSortKey
 }
