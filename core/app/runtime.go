@@ -18,6 +18,7 @@ import (
 	"github.com/Mesteriis/rune-terminal/core/tasks"
 	"github.com/Mesteriis/rune-terminal/core/terminal"
 	"github.com/Mesteriis/rune-terminal/core/toolruntime"
+	"github.com/Mesteriis/rune-terminal/core/windowtitle"
 	"github.com/Mesteriis/rune-terminal/core/workspace"
 )
 
@@ -30,6 +31,7 @@ type Runtime struct {
 	WorkspaceCatalog            *workspace.CatalogStore
 	Terminals                   *terminal.Service
 	TerminalPreferences         *terminal.PreferencesStore
+	WindowTitlePreferences      *windowtitle.Store
 	AgentComposerPreferences    *agent.ComposerPreferencesStore
 	Connections                 *connections.Service
 	Agent                       *agent.Store
@@ -129,6 +131,11 @@ func NewRuntime(repoRoot string, stateDir string) (*Runtime, error) {
 		return nil, err
 	}
 	runtime.TerminalPreferences = terminalPreferences
+	windowTitlePreferences, err := windowtitle.NewStore(context.Background(), dbConn)
+	if err != nil {
+		return nil, err
+	}
+	runtime.WindowTitlePreferences = windowTitlePreferences
 	agentComposerPreferences, err := agent.NewComposerPreferencesStore(context.Background(), dbConn)
 	if err != nil {
 		return nil, err

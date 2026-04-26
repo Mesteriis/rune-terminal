@@ -23,6 +23,7 @@ import (
 	"github.com/Mesteriis/rune-terminal/core/tasks"
 	"github.com/Mesteriis/rune-terminal/core/terminal"
 	"github.com/Mesteriis/rune-terminal/core/toolruntime"
+	"github.com/Mesteriis/rune-terminal/core/windowtitle"
 	"github.com/Mesteriis/rune-terminal/core/workspace"
 )
 
@@ -98,6 +99,10 @@ func newTestHandlerWithConversationProvider(t *testing.T, provider conversation.
 	if err != nil {
 		t.Fatalf("NewPreferencesStore error: %v", err)
 	}
+	windowTitlePreferences, err := windowtitle.NewStore(context.Background(), dbConn)
+	if err != nil {
+		t.Fatalf("windowtitle.NewStore error: %v", err)
+	}
 	agentComposerPreferences, err := agent.NewComposerPreferencesStore(context.Background(), dbConn)
 	if err != nil {
 		t.Fatalf("NewComposerPreferencesStore error: %v", err)
@@ -105,6 +110,7 @@ func newTestHandlerWithConversationProvider(t *testing.T, provider conversation.
 	taskStore := tasks.NewStore(dbConn)
 	runtime.DB = dbConn
 	runtime.TerminalPreferences = terminalPreferences
+	runtime.WindowTitlePreferences = windowTitlePreferences
 	runtime.AgentComposerPreferences = agentComposerPreferences
 	runtime.TaskStore = taskStore
 	runtime.TaskService = tasks.NewService(taskStore)

@@ -32,7 +32,9 @@ import {
   workspaceCatalogStatusStyle,
   workspaceStyle,
 } from './app-shell.styles'
+import { useWindowTitleSync } from './use-window-title-sync'
 import { useDockviewWorkspace } from './use-dockview-workspace'
+import { useWindowTitleSettings } from '@/features/runtime/model/use-window-title-settings'
 
 const DOCKVIEW_GROUP_GAP = 6
 
@@ -55,6 +57,7 @@ const tabComponents = {
 export function App() {
   const [isAiSidebarOpen, onToggleAiSidebar] = useUnit([$isAiSidebarOpen, toggleAiSidebar])
   const widgetCatalog = useWorkspaceWidgetCatalog()
+  const windowTitleSettings = useWindowTitleSettings()
   const contentAreaRef = useRef<HTMLDivElement | null>(null)
   const {
     activeWorkspaceId,
@@ -66,6 +69,14 @@ export function App() {
     handleSelectWorkspace,
   } = useDockviewWorkspace({ widgetCatalogEntries: widgetCatalog.entries })
   const appRootRef = useRunaDomAutoTagging('app-root')
+
+  useWindowTitleSync({
+    activeWorkspaceId,
+    autoTitle: windowTitleSettings.autoTitle,
+    customTitle: windowTitleSettings.customTitle,
+    mode: windowTitleSettings.mode,
+    workspaceTabs,
+  })
 
   async function handleCloseWindow() {
     try {

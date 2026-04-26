@@ -4,10 +4,12 @@ import {
   closeRuntimeWindow,
   formatRuntimePathForDisplay,
   minimizeRuntimeWindow,
+  requestWindowTitleSettings,
   resetRuntimeContextCacheForTests,
   resolveRuntimeContext,
   resolveRuntimePathInput,
   toggleRuntimeFullscreen,
+  updateWindowTitleSettings,
 } from '@/shared/api/runtime'
 
 describe('runtime path helpers', () => {
@@ -93,5 +95,101 @@ describe('resolveRuntimeContext', () => {
       repoRoot: '/Users/avm/projects/runa-terminal',
       term: 'xterm-256color',
     })
+  })
+})
+
+describe('window title settings runtime api', () => {
+  afterEach(() => {
+    resetRuntimeContextCacheForTests()
+    vi.restoreAllMocks()
+    vi.unstubAllEnvs()
+  })
+
+  it('loads window title settings from the backend runtime contract', async () => {
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          color_term: 'truecolor',
+          default_shell: '/bin/zsh',
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+          term: 'xterm-256color',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          auto_title: 'Workspace-2',
+          settings: {
+            custom_title: '',
+            mode: 'auto',
+          },
+        }),
+      })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(requestWindowTitleSettings()).resolves.toEqual({
+      auto_title: 'Workspace-2',
+      settings: {
+        custom_title: '',
+        mode: 'auto',
+      },
+    })
+  })
+
+  it('updates window title settings through the backend runtime contract', async () => {
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          color_term: 'truecolor',
+          default_shell: '/bin/zsh',
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+          term: 'xterm-256color',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          auto_title: 'Workspace-2',
+          settings: {
+            custom_title: 'Ops Shell',
+            mode: 'custom',
+          },
+        }),
+      })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      updateWindowTitleSettings({
+        custom_title: 'Ops Shell',
+        mode: 'custom',
+      }),
+    ).resolves.toEqual({
+      auto_title: 'Workspace-2',
+      settings: {
+        custom_title: 'Ops Shell',
+        mode: 'custom',
+      },
+    })
+
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      'http://127.0.0.1:8090/api/v1/settings/window-title',
+      expect.objectContaining({
+        body: JSON.stringify({
+          custom_title: 'Ops Shell',
+          mode: 'custom',
+        }),
+        method: 'PUT',
+      }),
+    )
   })
 })

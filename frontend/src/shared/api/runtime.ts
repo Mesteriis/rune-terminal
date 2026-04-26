@@ -9,6 +9,14 @@ export type RuntimeContext = {
 }
 
 export type RuntimeWatcherMode = 'ephemeral' | 'persistent'
+export type WindowTitleMode = 'auto' | 'custom'
+export type WindowTitleSettings = {
+  auto_title: string
+  settings: {
+    custom_title: string
+    mode: WindowTitleMode
+  }
+}
 
 type RuntimeInfoPayload = {
   auth_token?: string
@@ -23,6 +31,21 @@ type RuntimeShutdownPayload = {
   can_close: boolean
   active_tasks: number
   watcher_mode: string
+}
+
+type WindowTitleSettingsPayload = {
+  auto_title?: string
+  settings?: {
+    custom_title?: string
+    mode?: string
+  }
+}
+
+type APIErrorEnvelope = {
+  error?: {
+    code?: string
+    message?: string
+  }
 }
 
 type BootstrapPayload = {
@@ -165,6 +188,31 @@ async function resolveRuntimeTransport() {
   throw new Error('Unable to resolve runtime transport')
 }
 
+async function requestRuntimeJSON<T>(runtimeContext: RuntimeContext, path: string, init?: RequestInit) {
+  const response = await fetch(`${runtimeContext.baseUrl}${path}`, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${runtimeContext.authToken}`,
+      ...(init?.body ? { 'Content-Type': 'application/json' } : null),
+      ...init?.headers,
+    },
+  })
+
+  if (!response.ok) {
+    let errorPayload: APIErrorEnvelope | null = null
+
+    try {
+      errorPayload = (await response.json()) as APIErrorEnvelope
+    } catch {
+      errorPayload = null
+    }
+
+    throw new Error(errorPayload?.error?.message ?? `Runtime request failed (${response.status})`)
+  }
+
+  return (await response.json()) as T
+}
+
 async function loadRuntimeContext(): Promise<RuntimeContext> {
   const transport = await resolveRuntimeTransport()
   const response = await fetch(`${transport.baseUrl}/api/v1/bootstrap`, {
@@ -203,6 +251,45 @@ export async function requestRuntimeSettings() {
   }
 
   return invoke<RuntimeSettingsPayload>('runtime_settings')
+}
+
+function normalizeWindowTitleMode(mode: unknown): WindowTitleMode {
+  return mode === 'custom' ? 'custom' : 'auto'
+}
+
+function normalizeWindowTitleSettings(payload: WindowTitleSettingsPayload): WindowTitleSettings {
+  return {
+    auto_title: payload.auto_title?.trim() || '',
+    settings: {
+      custom_title: payload.settings?.custom_title?.trim() || '',
+      mode: normalizeWindowTitleMode(payload.settings?.mode),
+    },
+  }
+}
+
+export async function requestWindowTitleSettings() {
+  const runtimeContext = await resolveRuntimeContext()
+  const payload = await requestRuntimeJSON<WindowTitleSettingsPayload>(
+    runtimeContext,
+    '/api/v1/settings/window-title',
+  )
+  return normalizeWindowTitleSettings(payload)
+}
+
+export async function updateWindowTitleSettings(input: { custom_title?: string; mode?: WindowTitleMode }) {
+  const runtimeContext = await resolveRuntimeContext()
+  const payload = await requestRuntimeJSON<WindowTitleSettingsPayload>(
+    runtimeContext,
+    '/api/v1/settings/window-title',
+    {
+      body: JSON.stringify({
+        custom_title: input.custom_title,
+        mode: input.mode,
+      }),
+      method: 'PUT',
+    },
+  )
+  return normalizeWindowTitleSettings(payload)
 }
 
 export async function setRuntimeWatcherMode(mode: RuntimeWatcherMode) {

@@ -16,6 +16,12 @@ func (api *API) handleHealth(w http.ResponseWriter, r *http.Request) {
 }
 
 func (api *API) handleBootstrap(w http.ResponseWriter, r *http.Request) {
+	windowTitle, err := api.runtime.ComposedWindowTitle(r.Context())
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+
 	writeJSON(w, http.StatusOK, map[string]any{
 		"product_name":  "RunaTerminal",
 		"workspace":     api.runtime.Workspace.Snapshot(),
@@ -26,6 +32,7 @@ func (api *API) handleBootstrap(w http.ResponseWriter, r *http.Request) {
 		"default_shell": terminal.DefaultShell(),
 		"term":          os.Getenv("TERM"),
 		"color_term":    os.Getenv("COLORTERM"),
+		"window_title":  windowTitle,
 	})
 }
 

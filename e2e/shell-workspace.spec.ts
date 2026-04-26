@@ -644,6 +644,25 @@ test('plugin settings install, filter, enable, update, and remove local catalog 
   await expect(page.getByText(`Zip Plugin ${seedStamp}`, { exact: true })).toHaveCount(0)
 })
 
+test('general settings persist custom window title and reset back to auto', async ({ page }) => {
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  await expect(page).toHaveTitle('Workspace-2 · RunaTerminal')
+
+  await page.getByRole('button', { name: 'Open settings panel' }).click()
+  await page.getByRole('button', { name: /^Основные / }).click()
+
+  await page.getByLabel('Custom title').click()
+  await page.getByRole('textbox', { name: 'Custom window title' }).fill('Ops Window')
+  await page.getByRole('button', { name: 'Save custom title' }).click()
+
+  await expect(page).toHaveTitle('Ops Window')
+
+  await page.getByRole('button', { name: 'Reset to auto' }).click()
+  await expect(page).toHaveTitle('Workspace-2 · RunaTerminal')
+})
+
 test('remote settings persist tmux resume launch policy', async ({ page }) => {
   await clearBrowserState(page)
   await page.goto('/')
