@@ -49,6 +49,58 @@ export const terminalWidgetSessionRailStyle: React.CSSProperties = {
   borderBottom: '1px solid var(--runa-terminal-surface-border, var(--color-border-subtle))',
 }
 
+export const terminalWidgetCommandStripStyle: React.CSSProperties = {
+  display: 'grid',
+  gap: '0.34rem',
+  padding: '0 0.78rem 0.58rem',
+  borderBottom: '1px solid var(--runa-terminal-surface-border, var(--color-border-subtle))',
+}
+
+export const terminalWidgetCommandStripHeaderStyle: React.CSSProperties = {
+  display: 'flex',
+  gap: '0.4rem',
+  flexWrap: 'wrap',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+}
+
+export const terminalWidgetCommandStripMetaStyle: React.CSSProperties = {
+  display: 'flex',
+  gap: '0.32rem',
+  flexWrap: 'wrap',
+  alignItems: 'center',
+  color: 'var(--runa-terminal-text-secondary, var(--color-text-secondary))',
+  fontSize: '0.72rem',
+}
+
+export const terminalWidgetCommandValueStyle: React.CSSProperties = {
+  margin: 0,
+  padding: '0.52rem 0.62rem',
+  border: '1px solid var(--runa-terminal-surface-border, var(--color-border-subtle))',
+  borderRadius: 'var(--radius-sm)',
+  background:
+    'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 78%, transparent)',
+  color: 'var(--color-text-primary)',
+  fontSize: '0.76rem',
+  lineHeight: 1.4,
+  overflowX: 'auto',
+  whiteSpace: 'pre-wrap',
+  wordBreak: 'break-word',
+}
+
+export const terminalWidgetCommandExcerptStyle: React.CSSProperties = {
+  color: 'var(--runa-terminal-text-secondary, var(--color-text-secondary))',
+  fontSize: '0.74rem',
+  lineHeight: 1.45,
+}
+
+export const terminalWidgetCommandActionsStyle: React.CSSProperties = {
+  display: 'flex',
+  gap: '0.32rem',
+  flexWrap: 'wrap',
+  alignItems: 'center',
+}
+
 export const terminalWidgetSessionBrowserStyle: React.CSSProperties = {
   display: 'grid',
   gap: '0.42rem',

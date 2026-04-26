@@ -216,6 +216,92 @@ func TestTerminalDiagnosticsReturnsNormalizedIssueAndOutput(t *testing.T) {
 	}
 }
 
+func TestTerminalLatestCommandReturnsRecordedCommandAndOutput(t *testing.T) {
+	t.Parallel()
+
+	process := &httpTestProcess{
+		outputCh: make(chan []byte, 2),
+		waitCh:   make(chan struct{}),
+	}
+	launcher := &httpTestLauncher{process: process}
+
+	tempDir := t.TempDir()
+	policyStore, err := policy.NewStore(filepath.Join(tempDir, "policy.json"), "/workspace/repo")
+	if err != nil {
+		t.Fatalf("NewStore error: %v", err)
+	}
+	auditLog, err := audit.NewLog(filepath.Join(tempDir, "audit.jsonl"))
+	if err != nil {
+		t.Fatalf("NewLog error: %v", err)
+	}
+	agentStore, err := agent.NewStore(filepath.Join(tempDir, "agent.json"))
+	if err != nil {
+		t.Fatalf("NewStore error: %v", err)
+	}
+	registry := toolruntime.NewRegistry()
+	runtime := &app.Runtime{
+		RepoRoot:  "/workspace/repo",
+		Terminals: terminal.NewService(launcher),
+		Agent:     agentStore,
+		Policy:    policyStore,
+		Audit:     auditLog,
+		Registry:  registry,
+	}
+	runtime.Executor = toolruntime.NewExecutor(runtime.Registry, runtime.Policy, runtime.Audit)
+
+	if _, err := runtime.Terminals.StartSession(context.Background(), terminal.LaunchOptions{
+		WidgetID:   "widget-1",
+		Shell:      "/bin/zsh",
+		WorkingDir: "/workspace/repo",
+	}); err != nil {
+		t.Fatalf("StartSession error: %v", err)
+	}
+	if _, err := runtime.Terminals.SendInput("widget-1", "pwd", true); err != nil {
+		t.Fatalf("SendInput error: %v", err)
+	}
+
+	process.outputCh <- []byte("pwd\n")
+	process.outputCh <- []byte("/workspace/repo\n")
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		snapshot, err := runtime.Terminals.Snapshot("widget-1", 0)
+		if err != nil {
+			t.Fatalf("Snapshot error: %v", err)
+		}
+		if len(snapshot.Chunks) >= 2 {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("timed out waiting for buffered chunks, got %d", len(snapshot.Chunks))
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	handler := NewHandler(runtime, testAuthToken)
+	recorder := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/terminal/widget-1/commands/latest", nil)
+	req.Header.Set("Authorization", "Bearer "+testAuthToken)
+	handler.ServeHTTP(recorder, req)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d (%s)", recorder.Code, recorder.Body.String())
+	}
+
+	var response app.TerminalLatestCommandResult
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatalf("Unmarshal error: %v", err)
+	}
+	if response.Command != "pwd" {
+		t.Fatalf("expected pwd command, got %#v", response)
+	}
+	if response.FromSeq != 1 {
+		t.Fatalf("expected command baseline seq 1, got %#v", response)
+	}
+	if !strings.Contains(response.OutputExcerpt, "/workspace/repo") {
+		t.Fatalf("expected normalized command output excerpt, got %#v", response)
+	}
+}
+
 func TestTerminalSessionCatalogReturnsWorkspaceAndGroupedSessionMetadata(t *testing.T) {
 	t.Parallel()
 

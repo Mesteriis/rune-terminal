@@ -49,6 +49,16 @@ func (api *API) handleTerminalDiagnostics(w http.ResponseWriter, r *http.Request
 	writeJSON(w, http.StatusOK, diagnostics)
 }
 
+func (api *API) handleTerminalLatestCommand(w http.ResponseWriter, r *http.Request) {
+	command, err := api.runtime.TerminalLatestCommand(r.PathValue("widgetID"))
+	if err != nil {
+		writeTerminalError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, command)
+}
+
 func (api *API) handleTerminalSessionCatalog(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, api.runtime.TerminalSessionCatalog())
 }
@@ -162,6 +172,8 @@ func writeTerminalError(w http.ResponseWriter, err error) {
 		writeNotFound(w, "widget_not_found", err.Error())
 	case errors.Is(err, terminal.ErrSessionNotFound):
 		writeNotFound(w, "session_not_found", err.Error())
+	case errors.Is(err, terminal.ErrCommandNotFound):
+		writeNotFound(w, "terminal_command_not_found", err.Error())
 	case errors.Is(err, connections.ErrConnectionNotFound):
 		writeNotFound(w, "connection_not_found", err.Error())
 	case errors.Is(err, terminal.ErrCannotSendInput),

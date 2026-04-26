@@ -32,6 +32,7 @@ type TerminalSessionStaticView = Omit<
 >
 
 type TerminalSessionRecordState = {
+  commandInputVersion: number
   error: string | null
   isCreatingSession: boolean
   isRecoveringStream: boolean
@@ -60,6 +61,7 @@ function createTerminalSessionRecord(widgetId: string): TerminalSessionRecord {
     loadPromise: null,
     retainers: 0,
     state: {
+      commandInputVersion: 0,
       error: null,
       isCreatingSession: false,
       isRecoveringStream: false,
@@ -184,6 +186,7 @@ function buildTerminalSessionView(
     sessionKey: runtimeState
       ? `${runtimeState.session_id}:${runtimeState.started_at}`
       : `${seed.runtimeWidgetId}:pending`,
+    commandInputVersion: state.commandInputVersion ?? 0,
     activeSessionId: state.snapshot?.active_session_id ?? runtimeState?.session_id ?? null,
     cwd: getTerminalWorkingLabel(seed, runtimeState),
     shellLabel: formatShellLabel(runtimeState?.shell, runtimeState?.connection_kind),
@@ -452,6 +455,7 @@ async function ensureTerminalSession(record: TerminalSessionRecord) {
       }
 
       record.state = {
+        commandInputVersion: record.state.commandInputVersion ?? 0,
         error: null,
         isCreatingSession: false,
         isRecoveringStream: false,
@@ -554,12 +558,29 @@ export function useTerminalSession(seed: TerminalSessionSeed) {
 
         const record = terminalSessionRecords.get(seed.runtimeWidgetId)
 
-        if (!record || record.state.snapshot === null || record.state.error === null) {
+        if (!record) {
+          return
+        }
+
+        const shouldRefreshCommand = text.includes('\r') || text.includes('\n')
+        const nextCommandInputVersion = shouldRefreshCommand
+          ? (record.state.commandInputVersion ?? 0) + 1
+          : (record.state.commandInputVersion ?? 0)
+
+        if (record.state.snapshot === null || record.state.error === null) {
+          if (shouldRefreshCommand) {
+            record.state = {
+              ...record.state,
+              commandInputVersion: nextCommandInputVersion,
+            }
+            notifyTerminalSessionRecord(record)
+          }
           return
         }
 
         record.state = {
           ...record.state,
+          commandInputVersion: nextCommandInputVersion,
           error: null,
         }
         notifyTerminalSessionRecord(record)

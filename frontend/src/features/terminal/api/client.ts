@@ -51,6 +51,22 @@ export type TerminalDiagnostics = {
   output_excerpt?: string
 }
 
+export type TerminalLatestCommand = {
+  widget_id: string
+  session_id: string
+  command: string
+  from_seq: number
+  submitted_at: string
+  output_excerpt?: string
+  status: TerminalRuntimeStatus
+  status_detail?: string
+  exit_code?: number
+  command_audit_event_id?: string
+  execution_block_id?: string
+  explain_state?: string
+  explain_summary?: string
+}
+
 export type TerminalSessionCatalogEntry = {
   workspace_id: string
   workspace_name: string
@@ -338,6 +354,10 @@ export async function closeTerminalSession(widgetID: string, sessionID: string) 
 
 export async function fetchTerminalDiagnostics(widgetID: string) {
   return requestRuntimeJSON<TerminalDiagnostics>(buildTerminalPath(widgetID, '/diagnostics'))
+}
+
+export async function fetchTerminalLatestCommand(widgetID: string) {
+  return requestRuntimeJSON<TerminalLatestCommand>(buildTerminalPath(widgetID, '/commands/latest'))
 }
 
 export async function fetchTerminalSessionCatalog() {

@@ -84,10 +84,11 @@ capability.
   write contract
 - terminal parity is practical and one widget can now host grouped backend
   sessions with visible create/switch/filter/focus/close controls,
-  explicit recovery actions, stream auto-reattach, and a shell utility-panel
-  navigator for cross-widget session focus, but there is still no dedicated
-  persistent session sidebar or richer tmux/session-manager shell beyond
-  those active runtime paths
+  explicit recovery actions, stream auto-reattach, a shell utility-panel
+  navigator for cross-widget session focus, and a backend-owned latest-command
+  strip with explicit explain/rerun affordances, but there is still no
+  dedicated persistent session sidebar or richer tmux/session-manager shell
+  beyond those active runtime paths
 - AI command flow now supports explicit `/run` grammar plus approved
   terminal-context command planning for narrow natural-language terminal
   requests, but it is still not broad provider-native tool execution

@@ -143,6 +143,36 @@ func TestTerminalServiceSnapshotAndInput(t *testing.T) {
 	}
 }
 
+func TestTerminalServiceTracksLatestSubmittedCommandFromRawInput(t *testing.T) {
+	t.Parallel()
+
+	process := &fakeProcess{
+		outputCh: make(chan []byte, 4),
+		waitCh:   make(chan struct{}),
+	}
+	service := NewService(fakeLauncher{process: process})
+	if _, err := service.StartSession(context.Background(), LaunchOptions{WidgetID: "term-main", Shell: "/bin/sh"}); err != nil {
+		t.Fatalf("StartSession error: %v", err)
+	}
+
+	for _, chunk := range []string{"p", "w", "x", "\b", "d", "\r"} {
+		if _, err := service.SendInput("term-main", chunk, false); err != nil {
+			t.Fatalf("SendInput(%q) error: %v", chunk, err)
+		}
+	}
+
+	command, err := service.LatestCommand("term-main")
+	if err != nil {
+		t.Fatalf("LatestCommand error: %v", err)
+	}
+	if command.Command != "pwd" {
+		t.Fatalf("expected pwd command, got %#v", command)
+	}
+	if command.FromSeq != 1 {
+		t.Fatalf("expected baseline seq 1, got %#v", command)
+	}
+}
+
 func TestSnapshotReturnsEmptyChunkSliceForFreshSession(t *testing.T) {
 	t.Parallel()
 

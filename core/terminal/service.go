@@ -12,13 +12,16 @@ import (
 )
 
 const maxBufferedChunks = 512
+const maxBufferedCommands = 32
 
 type session struct {
-	state   State
-	process Process
-	chunks  []OutputChunk
-	exited  chan struct{}
-	cancel  context.CancelFunc
+	state       State
+	process     Process
+	chunks      []OutputChunk
+	commands    []CommandRecord
+	inputBuffer string
+	exited      chan struct{}
+	cancel      context.CancelFunc
 }
 
 type sessionGroup struct {
@@ -256,6 +259,58 @@ func resolveSessionID(opts LaunchOptions) string {
 	return opts.WidgetID
 }
 
+func nextSeqLocked(sess *session) uint64 {
+	if len(sess.chunks) == 0 {
+		return 1
+	}
+	return sess.chunks[len(sess.chunks)-1].Seq + 1
+}
+
+func trimLastInputRune(value string) string {
+	runes := []rune(value)
+	if len(runes) == 0 {
+		return ""
+	}
+	return string(runes[:len(runes)-1])
+}
+
+func appendCommandRecordLocked(sess *session, fromSeq uint64, command string) {
+	command = strings.TrimSpace(command)
+	if command == "" {
+		return
+	}
+
+	sess.commands = append(sess.commands, CommandRecord{
+		Command:     command,
+		FromSeq:     fromSeq,
+		SubmittedAt: time.Now().UTC(),
+	})
+	if len(sess.commands) > maxBufferedCommands {
+		sess.commands = slices.Clone(sess.commands[len(sess.commands)-maxBufferedCommands:])
+	}
+}
+
+func trackSubmittedCommandsLocked(sess *session, text string, appendNewline bool, baselineSeq uint64) {
+	if appendNewline {
+		text += "\n"
+	}
+
+	for _, r := range text {
+		switch r {
+		case '\b', 0x7f:
+			sess.inputBuffer = trimLastInputRune(sess.inputBuffer)
+		case '\r', '\n':
+			appendCommandRecordLocked(sess, baselineSeq, sess.inputBuffer)
+			sess.inputBuffer = ""
+		default:
+			if r < 0x20 && r != '\t' {
+				continue
+			}
+			sess.inputBuffer += string(r)
+		}
+	}
+}
+
 func sessionStartKey(widgetID string, sessionID string) string {
 	return widgetID + ":" + sessionID
 }
@@ -291,25 +346,40 @@ func (s *Service) GetState(widgetID string) (State, error) {
 func (s *Service) SendInput(widgetID string, text string, appendNewline bool) (InputResult, error) {
 	s.mu.RLock()
 	group, ok := s.groups[widgetID]
-	s.mu.RUnlock()
 	if !ok {
+		s.mu.RUnlock()
 		return InputResult{}, fmt.Errorf("%w: %s", ErrWidgetNotFound, widgetID)
 	}
 	sess, err := activeGroupSessionLocked(group)
 	if err != nil {
+		s.mu.RUnlock()
 		return InputResult{}, err
 	}
 	if !sess.state.CanSendInput {
+		s.mu.RUnlock()
 		return InputResult{}, fmt.Errorf("%w: %s", ErrCannotSendInput, widgetID)
 	}
+	sessionID := sess.state.SessionID
+	baselineSeq := nextSeqLocked(sess)
+	s.mu.RUnlock()
 
+	input := text
 	if appendNewline {
-		text += "\n"
+		input += "\n"
 	}
-	n, err := sess.process.Write([]byte(text))
+	n, err := sess.process.Write([]byte(input))
 	if err != nil {
 		return InputResult{}, err
 	}
+
+	s.mu.Lock()
+	if currentGroup, ok := s.groups[widgetID]; ok {
+		if currentSession, ok := currentGroup.sessions[sessionID]; ok {
+			trackSubmittedCommandsLocked(currentSession, text, appendNewline, baselineSeq)
+		}
+	}
+	s.mu.Unlock()
+
 	return InputResult{
 		WidgetID:      widgetID,
 		BytesSent:     n,
@@ -623,15 +693,30 @@ func snapshotFromSessionLocked(sess *session, from uint64) Snapshot {
 			chunks = append(chunks, chunk)
 		}
 	}
-	nextSeq := uint64(1)
-	if len(sess.chunks) > 0 {
-		nextSeq = sess.chunks[len(sess.chunks)-1].Seq + 1
-	}
 	return Snapshot{
 		State:   sess.state,
 		Chunks:  slices.Clone(chunks),
-		NextSeq: nextSeq,
+		NextSeq: nextSeqLocked(sess),
 	}
+}
+
+func (s *Service) LatestCommand(widgetID string) (CommandRecord, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	group, ok := s.groups[widgetID]
+	if !ok {
+		return CommandRecord{}, fmt.Errorf("%w: %s", ErrWidgetNotFound, widgetID)
+	}
+	sess, err := activeGroupSessionLocked(group)
+	if err != nil {
+		return CommandRecord{}, err
+	}
+	if len(sess.commands) == 0 {
+		return CommandRecord{}, fmt.Errorf("%w: %s", ErrCommandNotFound, widgetID)
+	}
+
+	return sess.commands[len(sess.commands)-1], nil
 }
 
 func snapshotFromGroupLocked(group *sessionGroup, from uint64) (Snapshot, error) {

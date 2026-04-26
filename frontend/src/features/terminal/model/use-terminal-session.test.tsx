@@ -164,6 +164,7 @@ describe('useTerminalSession', () => {
     })
 
     expect(sendTerminalInput).toHaveBeenCalledWith('term-main', 'pwd\r', false)
+    expect(result.current.commandInputVersion).toBe(1)
   })
 
   it('appends live stream output when the initial snapshot carries null chunks', async () => {

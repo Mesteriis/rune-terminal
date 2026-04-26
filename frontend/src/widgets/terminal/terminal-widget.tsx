@@ -1,14 +1,20 @@
 import { LoaderCircle, Plus, RotateCcw, Sparkles, Square } from 'lucide-react'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import { fetchTerminalDiagnostics } from '@/features/terminal/api/client'
+import {
+  fetchTerminalDiagnostics,
+  fetchTerminalLatestCommand,
+  sendTerminalInput,
+  TerminalAPIError,
+  type TerminalLatestCommand,
+} from '@/features/terminal/api/client'
 import { useTerminalPreferences } from '@/features/terminal/model/use-terminal-preferences'
 import { useTerminalSession } from '@/features/terminal/model/use-terminal-session'
 import { openAiSidebar } from '@/shared/model/app'
 import { queueAiPromptHandoff } from '@/shared/model/ai-handoff'
 import { ClearBox, IconButton } from '@/shared/ui/components'
 import { RunaDomScopeProvider, useRunaDomAutoTagging } from '@/shared/ui/dom-id'
-import { Button } from '@/shared/ui/primitives'
+import { Button, Text } from '@/shared/ui/primitives'
 import { TerminalStatusHeader } from '@/shared/ui/components/terminal-status-header'
 import {
   TerminalSurface,
@@ -19,6 +25,12 @@ import { TerminalToolbar } from '@/shared/ui/components/terminal-toolbar'
 import {
   terminalWidgetChromeStyle,
   terminalWidgetAiActionButtonStyle,
+  terminalWidgetCommandActionsStyle,
+  terminalWidgetCommandExcerptStyle,
+  terminalWidgetCommandStripHeaderStyle,
+  terminalWidgetCommandStripMetaStyle,
+  terminalWidgetCommandStripStyle,
+  terminalWidgetCommandValueStyle,
   terminalWidgetHeaderActionButtonStyle,
   terminalWidgetHeaderActionsStyle,
   terminalWidgetHeaderRowStyle,
@@ -55,7 +67,12 @@ export function TerminalWidget({
   const terminalSurfaceRef = useRef<TerminalSurfaceHandle | null>(null)
   const { cursorBlink, cursorStyle, fontSize, lineHeight, scrollback, themeMode } = useTerminalPreferences()
   const [isExplainAndFixPending, setIsExplainAndFixPending] = useState(false)
+  const [isExplainLatestCommandPending, setIsExplainLatestCommandPending] = useState(false)
+  const [isLatestCommandLoading, setIsLatestCommandLoading] = useState(false)
+  const [isRerunLatestCommandPending, setIsRerunLatestCommandPending] = useState(false)
   const [isSessionBrowserOpen, setIsSessionBrowserOpen] = useState(false)
+  const [latestCommand, setLatestCommand] = useState<TerminalLatestCommand | null>(null)
+  const [latestCommandError, setLatestCommandError] = useState<string | null>(null)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [rendererMode, setRendererMode] = useState<'default' | 'webgl'>('default')
   const [sessionFilterQuery, setSessionFilterQuery] = useState('')
@@ -66,6 +83,42 @@ export function TerminalWidget({
     title,
   })
   const groupedSessions = terminalSession.sessions ?? []
+  const latestOutputSeq = terminalSession.outputChunks[terminalSession.outputChunks.length - 1]?.seq ?? 0
+  const refreshLatestCommand = useCallback(async () => {
+    setIsLatestCommandLoading(true)
+
+    try {
+      const latestCommandResult = await fetchTerminalLatestCommand(runtimeWidgetId)
+      setLatestCommand(latestCommandResult)
+      setLatestCommandError(null)
+    } catch (error) {
+      if (error instanceof TerminalAPIError && error.code === 'terminal_command_not_found') {
+        setLatestCommand(null)
+        setLatestCommandError(null)
+        return
+      }
+
+      setLatestCommand(null)
+      setLatestCommandError(
+        error instanceof Error && error.message.trim()
+          ? error.message
+          : 'Unable to load the latest terminal command.',
+      )
+    } finally {
+      setIsLatestCommandLoading(false)
+    }
+  }, [runtimeWidgetId])
+
+  useEffect(() => {
+    const refreshDelay = terminalSession.commandInputVersion > 0 ? 40 : 180
+    const refreshTimer = window.setTimeout(() => {
+      void refreshLatestCommand()
+    }, refreshDelay)
+
+    return () => {
+      window.clearTimeout(refreshTimer)
+    }
+  }, [latestOutputSeq, refreshLatestCommand, terminalSession.commandInputVersion, terminalSession.sessionKey])
   const visibleGroupedSessions = useMemo(() => {
     const filter = sessionFilterQuery.trim().toLowerCase()
 
@@ -190,6 +243,65 @@ export function TerminalWidget({
       setIsExplainAndFixPending(false)
     }
   }, [runtimeWidgetId, terminalSession.connectionKind, terminalSession.shellLabel, title])
+  const handleExplainLatestCommand = useCallback(async () => {
+    if (!latestCommand) {
+      return
+    }
+
+    setIsExplainLatestCommandPending(true)
+    try {
+      const promptSections = [
+        'Объясни результат последней terminal command и предложи следующий практический шаг.',
+        `Terminal: ${title}`,
+        `Connection: ${terminalSession.connectionKind === 'ssh' ? 'SSH' : 'Local'}`,
+        `Shell: ${terminalSession.shellLabel}`,
+        `Command:\n\`\`\`sh\n${latestCommand.command}\n\`\`\``,
+      ]
+
+      if (latestCommand.status_detail?.trim()) {
+        promptSections.push(`Runtime status: ${latestCommand.status_detail.trim()}`)
+      }
+      if (latestCommand.output_excerpt?.trim()) {
+        promptSections.push(`Observed output:\n\`\`\`text\n${latestCommand.output_excerpt.trim()}\n\`\`\``)
+      }
+      if (latestCommand.explain_summary?.trim()) {
+        promptSections.push(`Previous explain summary: ${latestCommand.explain_summary.trim()}`)
+      }
+
+      promptSections.push(
+        'Если для исправления нужны команды, сначала спланируй их и выполняй только в этом терминале после approval.',
+      )
+
+      queueAiPromptHandoff({
+        context_widget_ids: [runtimeWidgetId],
+        prompt: promptSections.join('\n\n'),
+        submit: true,
+      })
+      openAiSidebar()
+    } finally {
+      setIsExplainLatestCommandPending(false)
+    }
+  }, [latestCommand, runtimeWidgetId, terminalSession.connectionKind, terminalSession.shellLabel, title])
+  const handleRerunLatestCommand = useCallback(async () => {
+    if (!latestCommand) {
+      return
+    }
+
+    setIsRerunLatestCommandPending(true)
+    setLatestCommandError(null)
+    try {
+      await sendTerminalInput(runtimeWidgetId, latestCommand.command, true)
+      await refreshLatestCommand()
+    } catch (error) {
+      setLatestCommandError(
+        error instanceof Error && error.message.trim()
+          ? error.message
+          : 'Unable to rerun the latest terminal command.',
+      )
+    } finally {
+      setIsRerunLatestCommandPending(false)
+    }
+  }, [latestCommand, refreshLatestCommand, runtimeWidgetId])
   const isRestartDisabled =
     terminalSession.isLoading || terminalSession.isInterrupting || terminalSession.isRestarting
   const isCreateSessionDisabled =
@@ -227,6 +339,11 @@ export function TerminalWidget({
   const RestartIcon = terminalSession.isRestarting ? LoaderCircle : RotateCcw
   const InterruptIcon = terminalSession.isInterrupting ? LoaderCircle : Square
   const isExplainAndFixDisabled = !canExplainAndFix || isExplainAndFixPending
+  const isLatestCommandActionDisabled =
+    latestCommand === null ||
+    terminalSession.isLoading ||
+    terminalSession.isInterrupting ||
+    terminalSession.isRestarting
   const isSessionMutationDisabled =
     terminalSession.isLoading ||
     terminalSession.isCreatingSession ||
@@ -413,6 +530,75 @@ export function TerminalWidget({
               title={title}
             />
           </ClearBox>
+          {latestCommand !== null || isLatestCommandLoading || latestCommandError ? (
+            <ClearBox runaComponent="terminal-widget-command-strip" style={terminalWidgetCommandStripStyle}>
+              <ClearBox
+                runaComponent="terminal-widget-command-strip-header"
+                style={terminalWidgetCommandStripHeaderStyle}
+              >
+                <Text>Latest command</Text>
+                <ClearBox style={terminalWidgetCommandStripMetaStyle}>
+                  {latestCommand ? (
+                    <>
+                      <span>{latestCommand.status}</span>
+                      {latestCommand.execution_block_id ? <span>AI-linked</span> : <span>Terminal</span>}
+                    </>
+                  ) : null}
+                  {isLatestCommandLoading ? <span>Refreshing…</span> : null}
+                </ClearBox>
+              </ClearBox>
+              {latestCommand ? (
+                <>
+                  <pre style={terminalWidgetCommandValueStyle}>{latestCommand.command}</pre>
+                  {latestCommand.output_excerpt?.trim() ? (
+                    <Text style={terminalWidgetCommandExcerptStyle}>
+                      {latestCommand.output_excerpt.trim()}
+                    </Text>
+                  ) : null}
+                  {latestCommand.explain_summary?.trim() ? (
+                    <Text style={terminalWidgetCommandExcerptStyle}>
+                      {`Last explain: ${latestCommand.explain_summary.trim()}`}
+                    </Text>
+                  ) : null}
+                  <ClearBox
+                    runaComponent="terminal-widget-command-actions"
+                    style={terminalWidgetCommandActionsStyle}
+                  >
+                    <Button
+                      aria-label={`Explain the latest command for ${title}`}
+                      disabled={isLatestCommandActionDisabled || isExplainLatestCommandPending}
+                      onClick={() => {
+                        void handleExplainLatestCommand()
+                      }}
+                      runaComponent="terminal-widget-explain-command"
+                      style={terminalWidgetAiActionButtonStyle}
+                    >
+                      <Sparkles size={13} strokeWidth={1.8} />
+                      {isExplainLatestCommandPending ? 'Explaining…' : 'Explain command'}
+                    </Button>
+                    <Button
+                      aria-label={`Re-run the latest command for ${title}`}
+                      disabled={isLatestCommandActionDisabled || isRerunLatestCommandPending}
+                      onClick={() => {
+                        void handleRerunLatestCommand()
+                      }}
+                      runaComponent="terminal-widget-rerun-command"
+                      style={terminalWidgetAiActionButtonStyle}
+                    >
+                      <RotateCcw size={13} strokeWidth={1.8} />
+                      {isRerunLatestCommandPending ? 'Running…' : 'Re-run'}
+                    </Button>
+                  </ClearBox>
+                </>
+              ) : latestCommandError ? (
+                <Text style={terminalWidgetCommandExcerptStyle}>{latestCommandError}</Text>
+              ) : (
+                <Text style={terminalWidgetCommandExcerptStyle}>
+                  No submitted command has been observed in this terminal session yet.
+                </Text>
+              )}
+            </ClearBox>
+          ) : null}
           {groupedSessions.length > 1 ? (
             <ClearBox runaComponent="terminal-widget-session-rail" style={terminalWidgetSessionRailStyle}>
               {groupedSessions.map((session, index) => (

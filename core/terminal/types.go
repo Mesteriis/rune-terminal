@@ -43,6 +43,12 @@ type OutputChunk struct {
 	Timestamp time.Time `json:"timestamp"`
 }
 
+type CommandRecord struct {
+	Command     string    `json:"command"`
+	FromSeq     uint64    `json:"from_seq"`
+	SubmittedAt time.Time `json:"submitted_at"`
+}
+
 type Snapshot struct {
 	State           State         `json:"state"`
 	Chunks          []OutputChunk `json:"chunks"`

@@ -32,6 +32,7 @@ export type TerminalSessionListEntry = {
 export type TerminalSessionView = {
   runtimeWidgetId: string
   sessionKey: string
+  commandInputVersion: number
   activeSessionId: string | null
   cwd: string
   shellLabel: string

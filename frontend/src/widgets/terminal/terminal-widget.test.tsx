@@ -1,7 +1,12 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { fetchTerminalDiagnostics } from '@/features/terminal/api/client'
+import {
+  fetchTerminalDiagnostics,
+  fetchTerminalLatestCommand,
+  sendTerminalInput,
+  TerminalAPIError,
+} from '@/features/terminal/api/client'
 import { useTerminalPreferences } from '@/features/terminal/model/use-terminal-preferences'
 import { useTerminalSession } from '@/features/terminal/model/use-terminal-session'
 import { queueAiPromptHandoff } from '@/shared/model/ai-handoff'
@@ -25,9 +30,16 @@ vi.mock('@/features/terminal/model/use-terminal-preferences', () => ({
   useTerminalPreferences: vi.fn(),
 }))
 
-vi.mock('@/features/terminal/api/client', () => ({
-  fetchTerminalDiagnostics: vi.fn(),
-}))
+vi.mock('@/features/terminal/api/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/features/terminal/api/client')>()
+
+  return {
+    ...actual,
+    fetchTerminalDiagnostics: vi.fn(),
+    fetchTerminalLatestCommand: vi.fn(),
+    sendTerminalInput: vi.fn(),
+  }
+})
 
 vi.mock('@/shared/model/app', () => ({
   openAiSidebar: vi.fn(),
@@ -90,6 +102,12 @@ vi.mock('@/shared/ui/components/terminal-surface', async () => {
 })
 
 describe('TerminalWidget', () => {
+  beforeEach(() => {
+    vi.mocked(fetchTerminalLatestCommand).mockRejectedValue(
+      new TerminalAPIError(404, 'terminal_command_not_found', 'terminal command not found'),
+    )
+  })
+
   afterEach(() => {
     vi.clearAllMocks()
   })
@@ -366,6 +384,186 @@ describe('TerminalWidget', () => {
       expect(queueAiPromptHandoff).toHaveBeenCalledWith({
         context_widget_ids: ['term-pve'],
         prompt: expect.stringContaining('df: cannot read table of mounted file systems'),
+        submit: true,
+      })
+      expect(openAiSidebar).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  it('renders the latest terminal command strip and reruns that command', async () => {
+    vi.mocked(useTerminalSession).mockReturnValue({
+      runtimeWidgetId: 'term-side',
+      sessionKey: 'term-side:1',
+      commandInputVersion: 0,
+      cwd: '/repo',
+      shellLabel: 'zsh',
+      connectionKind: 'local',
+      sessionState: 'running',
+      canSendInput: true,
+      canInterrupt: true,
+      isLoading: false,
+      isInterrupting: false,
+      isRestarting: false,
+      error: null,
+      statusDetail: 'Attached to local shell.',
+      outputChunks: [
+        {
+          data: '/repo\n',
+          seq: 12,
+          timestamp: '2026-04-27T10:00:10Z',
+        },
+      ],
+      runtimeState: null,
+      interruptSession: vi.fn(),
+      sendInputChunk: vi.fn(),
+      restartSession: vi.fn(),
+    } as ReturnType<typeof useTerminalSession>)
+    vi.mocked(useTerminalPreferences).mockReturnValue({
+      errorMessage: null,
+      decreaseFontSize: vi.fn(),
+      decreaseLineHeight: vi.fn(),
+      cursorBlink: true,
+      cursorStyle: 'block',
+      fontSize: 13,
+      increaseFontSize: vi.fn(),
+      increaseLineHeight: vi.fn(),
+      increaseScrollback: vi.fn(),
+      isLoading: false,
+      isSaving: false,
+      lineHeight: 1.25,
+      refresh: vi.fn(async () => undefined),
+      resetScrollback: vi.fn(),
+      resetFontSize: vi.fn(),
+      resetLineHeight: vi.fn(),
+      resetCursorBlink: vi.fn(),
+      resetCursorStyle: vi.fn(),
+      resetThemeMode: vi.fn(),
+      scrollback: 5000,
+      themeMode: 'adaptive',
+      decreaseScrollback: vi.fn(),
+      updateCursorBlink: vi.fn(),
+      updateFontSize: vi.fn(),
+      updateLineHeight: vi.fn(),
+      updateCursorStyle: vi.fn(),
+      updateThemeMode: vi.fn(),
+    })
+    vi.mocked(fetchTerminalLatestCommand).mockResolvedValue({
+      widget_id: 'term-side',
+      session_id: 'term-side',
+      command: 'pwd',
+      from_seq: 11,
+      submitted_at: '2026-04-27T10:00:00Z',
+      output_excerpt: '/repo',
+      status: 'running',
+      explain_summary: 'The command prints the current working directory.',
+    })
+    vi.mocked(sendTerminalInput).mockResolvedValue({
+      widget_id: 'term-side',
+      bytes_sent: 4,
+      append_newline: true,
+    })
+
+    render(<TerminalWidget hostId="terminal" runtimeWidgetId="term-side" title="Workspace shell" />)
+
+    await waitFor(() => {
+      expect(fetchTerminalLatestCommand).toHaveBeenCalledWith('term-side')
+      expect(screen.getByText('Latest command')).toBeInTheDocument()
+      expect(screen.getByText('pwd')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Re-run the latest command for Workspace shell' }))
+
+    await waitFor(() => {
+      expect(sendTerminalInput).toHaveBeenCalledWith('term-side', 'pwd', true)
+    })
+  })
+
+  it('hands the latest terminal command to the AI sidebar from the command-aware explain action', async () => {
+    vi.mocked(useTerminalSession).mockReturnValue({
+      runtimeWidgetId: 'term-pve',
+      sessionKey: 'term-pve:1',
+      commandInputVersion: 0,
+      cwd: '/srv',
+      shellLabel: 'ssh',
+      connectionKind: 'ssh',
+      sessionState: 'failed',
+      canSendInput: true,
+      canInterrupt: false,
+      isLoading: false,
+      isInterrupting: false,
+      isRestarting: false,
+      error: 'df: cannot read table of mounted file systems',
+      statusDetail: 'Remote shell reported a command failure.',
+      outputChunks: [
+        {
+          data: 'df: cannot read table of mounted file systems\n',
+          seq: 9,
+          timestamp: '2026-04-27T11:20:00Z',
+        },
+      ],
+      runtimeState: null,
+      interruptSession: vi.fn(),
+      sendInputChunk: vi.fn(),
+      restartSession: vi.fn(),
+    } as ReturnType<typeof useTerminalSession>)
+    vi.mocked(useTerminalPreferences).mockReturnValue({
+      errorMessage: null,
+      decreaseFontSize: vi.fn(),
+      decreaseLineHeight: vi.fn(),
+      cursorBlink: true,
+      cursorStyle: 'block',
+      fontSize: 13,
+      increaseFontSize: vi.fn(),
+      increaseLineHeight: vi.fn(),
+      increaseScrollback: vi.fn(),
+      isLoading: false,
+      isSaving: false,
+      lineHeight: 1.25,
+      refresh: vi.fn(async () => undefined),
+      resetScrollback: vi.fn(),
+      resetFontSize: vi.fn(),
+      resetLineHeight: vi.fn(),
+      resetCursorBlink: vi.fn(),
+      resetCursorStyle: vi.fn(),
+      resetThemeMode: vi.fn(),
+      scrollback: 5000,
+      themeMode: 'adaptive',
+      decreaseScrollback: vi.fn(),
+      updateCursorBlink: vi.fn(),
+      updateFontSize: vi.fn(),
+      updateLineHeight: vi.fn(),
+      updateCursorStyle: vi.fn(),
+      updateThemeMode: vi.fn(),
+    })
+    vi.mocked(fetchTerminalLatestCommand).mockResolvedValue({
+      widget_id: 'term-pve',
+      session_id: 'term-pve',
+      command: 'df -h',
+      from_seq: 7,
+      submitted_at: '2026-04-27T11:19:50Z',
+      output_excerpt: 'df: cannot read table of mounted file systems',
+      status: 'failed',
+      status_detail: 'Remote shell reported a command failure.',
+      explain_summary: 'The command failed because the mount table is unreadable.',
+    })
+
+    render(<TerminalWidget hostId="terminal" runtimeWidgetId="term-pve" title="PVE host" />)
+
+    await waitFor(() => {
+      expect(screen.getByText('df -h')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Explain the latest command for PVE host' }))
+
+    await waitFor(() => {
+      expect(queueAiPromptHandoff).toHaveBeenCalledWith({
+        context_widget_ids: ['term-pve'],
+        prompt: expect.stringContaining('Объясни результат последней terminal command'),
+        submit: true,
+      })
+      expect(queueAiPromptHandoff).toHaveBeenCalledWith({
+        context_widget_ids: ['term-pve'],
+        prompt: expect.stringContaining('df -h'),
         submit: true,
       })
       expect(openAiSidebar).toHaveBeenCalledTimes(1)

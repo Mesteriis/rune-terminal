@@ -8,6 +8,7 @@ import {
   createTerminalSession,
   createTerminalTab,
   fetchTerminalDiagnostics,
+  fetchTerminalLatestCommand,
   fetchTerminalSnapshot,
   interruptTerminal,
   restartTerminal,
@@ -229,6 +230,55 @@ describe('terminal api client', () => {
     })
 
     expect(fetchMock.mock.calls[1]?.[0]).toBe('http://127.0.0.1:8090/api/v1/terminal/term-pve/diagnostics')
+  })
+
+  it('loads the latest backend-owned terminal command for explain/rerun affordances', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          widget_id: 'term-pve',
+          session_id: 'term-pve',
+          command: 'df -h',
+          from_seq: 11,
+          submitted_at: '2026-04-27T10:00:00Z',
+          output_excerpt: 'Filesystem  Size Used Avail Use% Mounted on',
+          status: 'running',
+          status_detail: 'Remote shell reported a command failure.',
+          execution_block_id: 'execblk_1',
+          explain_state: 'available',
+          explain_summary: 'The remote host returned mount information.',
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(fetchTerminalLatestCommand('term-pve')).resolves.toEqual({
+      widget_id: 'term-pve',
+      session_id: 'term-pve',
+      command: 'df -h',
+      from_seq: 11,
+      submitted_at: '2026-04-27T10:00:00Z',
+      output_excerpt: 'Filesystem  Size Used Avail Use% Mounted on',
+      status: 'running',
+      status_detail: 'Remote shell reported a command failure.',
+      execution_block_id: 'execblk_1',
+      explain_state: 'available',
+      explain_summary: 'The remote host returned mount information.',
+    })
+
+    expect(fetchMock.mock.calls[1]?.[0]).toBe(
+      'http://127.0.0.1:8090/api/v1/terminal/term-pve/commands/latest',
+    )
   })
 
   it('closes a grouped terminal session through the runtime transport', async () => {

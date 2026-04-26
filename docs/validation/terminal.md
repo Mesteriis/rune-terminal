@@ -44,6 +44,11 @@
       fetches backend-owned terminal diagnostics for that widget,
       preloads a terminal-aware prompt with the normalized issue/output summary,
       and auto-submits it so the operator can immediately review the plan/approval flow
+    - the terminal surface now also exposes a backend-owned latest-command strip:
+      raw terminal input is tracked into the active backend session as a latest submitted command,
+      `GET /api/v1/terminal/{widgetID}/commands/latest` resolves that command back into output/explain metadata,
+      the widget shows the latest command plus observed output/explain summary,
+      and the operator can explicitly `Explain command` or `Re-run` that exact command from the terminal itself
     - the same header action slot now also exposes explicit recovery actions for broken terminal state:
       local failed/disconnected shells surface `Restart shell`,
       SSH failed/disconnected shells surface `Reconnect shell`,
@@ -109,6 +114,8 @@
   - returns the shell-wide terminal session catalog, including grouped sessions, workspace/tab metadata, and active/focus flags
 - `GET /api/v1/terminal/{widgetID}/diagnostics`
   - used by the visible `Explain & fix` action to fetch backend-owned issue/output summaries for AI handoff
+- `GET /api/v1/terminal/{widgetID}/commands/latest`
+  - resolves the active session's latest submitted command plus output/explain metadata for explicit `Explain command` / `Re-run` affordances
 - `GET /api/v1/terminal/{widgetID}/stream`
 - `POST /api/v1/terminal/{widgetID}/input`
 - `POST /api/v1/terminal/{widgetID}/restart`
@@ -161,6 +168,7 @@
 - `core/terminal/preferences.go`
 - `core/terminal/preferences_test.go`
 - `core/app/terminal_session_catalog.go`
+- `core/app/terminal_latest_command.go`
 - `core/app/terminal_session_actions.go`
 - `core/app/terminal_settings.go`
 - `core/transport/httpapi/handlers_terminal_settings.go`
@@ -189,6 +197,7 @@
 - `frontend/node_modules/.bin/vitest run src/widgets/terminal/terminal-widget.test.tsx --reporter=verbose`
 - `frontend/node_modules/.bin/vitest run src/widgets/terminal/terminal-widget.test.tsx src/app/app-ai-sidebar.test.tsx --reporter=verbose`
 - `npm --prefix frontend run test -- src/features/terminal/api/client.test.ts src/widgets/terminal/terminal-widget.test.tsx src/app/app-ai-sidebar.test.tsx --reporter=verbose`
+- `npm --prefix frontend run test -- src/features/terminal/api/client.test.ts src/features/terminal/model/use-terminal-session.test.tsx src/widgets/terminal/terminal-widget.test.tsx --reporter=verbose`
 - `npm run lint:frontend`
 - `npm --prefix frontend run test -- src/shared/api/terminal-settings.test.ts src/features/terminal/model/use-terminal-preferences.test.tsx src/widgets/settings/terminal-settings-section.test.tsx src/widgets/terminal/terminal-widget.test.tsx`
 - `npm --prefix frontend run test -- src/widgets/terminal/terminal-dockview-tab-widget.test.tsx src/widgets/terminal/terminal-dockview-header-actions-widget.test.tsx`
@@ -238,6 +247,7 @@
 - Terminal toolbar `clear` and `jump-to-latest` actions are intentionally local xterm viewport controls. They do not mutate backend snapshot history and were validated as non-breaking live affordances rather than as persisted runtime state.
 - Browser validation for terminal input now runs through Playwright on the split local dev path. The suite is intentionally serialized (`workers: 1`) because terminal/runtime state is shared across the same backend instance.
 - Browser validation for the terminal search row currently asserts the live shell affordance contract (`open`, `query`, enable/disable state, `close`) on the runtime-backed widget; lower-level hotkey/result-count semantics stay covered by widget/unit tests because browser-level delivery of function-key aliases is platform-sensitive.
+- The command-aware latest-command strip is validated on the backend/client/widget path in this slice, but this entry does not claim a fresh browser e2e for that strip yet; the isolated Playwright attempt did not surface the strip deterministically on shell bootstrap, so only the deterministic Go/Vitest evidence is claimed here.
 - Grouped sessions now have both a widget-local browser and a shell-wide utility-panel navigator, but there is still no dedicated persistent session sidebar or tmux-specific session manager on top of this runtime foundation yet.
 - A fresh `npm run tauri:dev` desktop smoke was run for this slice and the spawned `rterm-desktop` / core listener processes were cleaned up after verification.
 - Browser validation now also covers runtime-owned terminal theme mode, scrollback, plus cursor behavior persistence through the `Settings -> Terminal` shell path and confirms that `theme_mode`, `scrollback`, `cursor_style`, and `cursor_blink` survive reload through the backend contract.
@@ -252,6 +262,7 @@
 - `core/terminal/types.go`
 - `core/app/terminal_restore_state.go`
 - `core/app/terminal_session_catalog.go`
+- `core/app/terminal_latest_command.go`
 - `core/app/terminal_settings.go`
 - `frontend/src/features/terminal/api/client.ts`
 - `frontend/src/shared/api/terminal-settings.ts`
