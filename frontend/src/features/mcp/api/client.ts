@@ -20,12 +20,24 @@ export type RegisterRemoteMCPServerPayload = {
   headers?: Record<string, string>
 }
 
+export type MCPServerDetails = MCPServerView & {
+  headers: Record<string, string>
+}
+
 type MCPServerListResponse = {
   servers?: MCPServerView[]
 }
 
 type MCPServerMutationResponse = {
   server: MCPServerView
+}
+
+type MCPServerDetailsResponse = {
+  server: MCPServerDetails
+}
+
+type MCPServerDeletionResponse = {
+  server_id?: string
 }
 
 type APIErrorEnvelope = {
@@ -89,6 +101,27 @@ function normalizeMCPServer(server: MCPServerView): MCPServerView {
   }
 }
 
+function normalizeMCPHeaders(headers: Record<string, string> | undefined) {
+  const normalized: Record<string, string> = {}
+
+  for (const [key, value] of Object.entries(headers ?? {})) {
+    const headerName = key.trim()
+    if (!headerName) {
+      continue
+    }
+    normalized[headerName] = value
+  }
+
+  return normalized
+}
+
+function normalizeMCPServerDetails(server: MCPServerDetails): MCPServerDetails {
+  return {
+    ...normalizeMCPServer(server),
+    headers: normalizeMCPHeaders(server.headers),
+  }
+}
+
 export async function fetchMCPServers() {
   const runtimeContext = await resolveRuntimeContext()
   const payload = await requestMCPJSON<MCPServerListResponse>(runtimeContext, '/api/v1/mcp/servers')
@@ -109,6 +142,48 @@ export async function registerRemoteMCPServer(payload: RegisterRemoteMCPServerPa
   })
 
   return normalizeMCPServer(response.server)
+}
+
+export async function fetchMCPServerDetails(serverID: string) {
+  const runtimeContext = await resolveRuntimeContext()
+  const response = await requestMCPJSON<MCPServerDetailsResponse>(
+    runtimeContext,
+    `/api/v1/mcp/servers/${encodeURIComponent(serverID)}`,
+  )
+
+  return normalizeMCPServerDetails(response.server)
+}
+
+export async function updateRemoteMCPServer(serverID: string, payload: RegisterRemoteMCPServerPayload) {
+  const runtimeContext = await resolveRuntimeContext()
+  const response = await requestMCPJSON<MCPServerMutationResponse>(
+    runtimeContext,
+    `/api/v1/mcp/servers/${encodeURIComponent(serverID)}`,
+    {
+      body: JSON.stringify({
+        endpoint: payload.endpoint.trim(),
+        headers: payload.headers ?? {},
+        id: payload.id.trim(),
+        type: 'remote',
+      }),
+      method: 'PUT',
+    },
+  )
+
+  return normalizeMCPServer(response.server)
+}
+
+export async function deleteMCPServer(serverID: string) {
+  const runtimeContext = await resolveRuntimeContext()
+  const response = await requestMCPJSON<MCPServerDeletionResponse>(
+    runtimeContext,
+    `/api/v1/mcp/servers/${encodeURIComponent(serverID)}`,
+    {
+      method: 'DELETE',
+    },
+  )
+
+  return response.server_id?.trim() || serverID.trim()
 }
 
 export async function controlMCPServer(serverID: string, action: MCPServerControlAction) {

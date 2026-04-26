@@ -157,9 +157,11 @@ It is intentionally operational, not narrative.
 - MCP servers are now modeled as managed runtime processes with explicit lifecycle states (`stopped`, `starting`, `active`, `idle`, `stopped_auto`) tracked by an in-memory runtime registry.
 - MCP server registration now has an explicit API entrypoint:
   - `POST /api/v1/mcp/servers` with minimal payload (`id`, `type`, `endpoint`, optional `headers`)
+  - `GET /api/v1/mcp/servers/{id}` returns the saved remote spec detail, including persisted headers, for explicit operator editing
+  - `PUT /api/v1/mcp/servers/{id}` and `DELETE /api/v1/mcp/servers/{id}` update or remove explicitly registered remote servers
   - the current implementation supports `type: "remote"` registration only
   - registration does not auto-start the server; newly added entries appear as `stopped`
-- The active settings shell exposes an `MCP` section that lists registered servers, registers remote endpoints with optional headers, refreshes state, and runs explicit `start` / `stop` / `restart` / `enable` / `disable` actions over the same backend API.
+- The active settings shell exposes an `MCP` section that lists registered servers, registers remote endpoints with optional headers, loads saved remote details for editing, can delete explicitly registered remote servers, refreshes state, and runs explicit `start` / `stop` / `restart` / `enable` / `disable` actions over the same backend API.
 - MCP runtime activation is controlled only through explicit API actions (`start`, `stop`, `restart`, `enable`, `disable`) or explicit on-demand invoke requests; core startup does not auto-load or auto-spawn MCP servers.
 - MCP idle servers are auto-stopped after runtime-owned timeout checks, and in-flight MCP invocations are protected from stop/restart interruption.
 - MCP invoke responses do not enter agent context automatically.

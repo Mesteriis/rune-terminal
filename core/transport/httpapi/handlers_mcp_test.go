@@ -119,6 +119,117 @@ func TestRegisterMCPServerDuplicate(t *testing.T) {
 	}
 }
 
+func TestGetAndUpdateMCPServer(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+
+	registerRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(registerRecorder, authedJSONRequest(t, http.MethodPost, "/api/v1/mcp/servers", map[string]any{
+		"id":       "mcp.context7",
+		"type":     "remote",
+		"endpoint": "https://mcp.context7.com/mcp",
+		"headers": map[string]any{
+			"Authorization": "Bearer old",
+		},
+	}))
+	if registerRecorder.Code != http.StatusCreated {
+		t.Fatalf("expected register=201, got %d (%s)", registerRecorder.Code, registerRecorder.Body.String())
+	}
+
+	getRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(getRecorder, authedJSONRequest(t, http.MethodGet, "/api/v1/mcp/servers/mcp.context7", nil))
+	if getRecorder.Code != http.StatusOK {
+		t.Fatalf("expected get=200, got %d (%s)", getRecorder.Code, getRecorder.Body.String())
+	}
+
+	var getResponse struct {
+		Server struct {
+			ID      string            `json:"id"`
+			Headers map[string]string `json:"headers"`
+		} `json:"server"`
+	}
+	if err := json.Unmarshal(getRecorder.Body.Bytes(), &getResponse); err != nil {
+		t.Fatalf("Unmarshal get response error: %v", err)
+	}
+	if getResponse.Server.ID != "mcp.context7" || getResponse.Server.Headers["Authorization"] != "Bearer old" {
+		t.Fatalf("unexpected get response: %#v", getResponse.Server)
+	}
+
+	updateRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(updateRecorder, authedJSONRequest(t, http.MethodPut, "/api/v1/mcp/servers/mcp.context7", map[string]any{
+		"id":       "mcp.context7",
+		"type":     "remote",
+		"endpoint": "https://mcp.context7.com/v2",
+		"headers": map[string]any{
+			"Authorization": "Bearer new",
+		},
+	}))
+	if updateRecorder.Code != http.StatusOK {
+		t.Fatalf("expected update=200, got %d (%s)", updateRecorder.Code, updateRecorder.Body.String())
+	}
+
+	var updateResponse struct {
+		Server plugins.MCPServerSnapshot `json:"server"`
+	}
+	if err := json.Unmarshal(updateRecorder.Body.Bytes(), &updateResponse); err != nil {
+		t.Fatalf("Unmarshal update response error: %v", err)
+	}
+	if updateResponse.Server.Endpoint != "https://mcp.context7.com/v2" {
+		t.Fatalf("unexpected updated snapshot: %#v", updateResponse.Server)
+	}
+}
+
+func TestDeleteMCPServer(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+
+	registerRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(registerRecorder, authedJSONRequest(t, http.MethodPost, "/api/v1/mcp/servers", map[string]any{
+		"id":       "mcp.context7",
+		"type":     "remote",
+		"endpoint": "https://mcp.context7.com/mcp",
+	}))
+	if registerRecorder.Code != http.StatusCreated {
+		t.Fatalf("expected register=201, got %d (%s)", registerRecorder.Code, registerRecorder.Body.String())
+	}
+
+	deleteRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(deleteRecorder, authedJSONRequest(t, http.MethodDelete, "/api/v1/mcp/servers/mcp.context7", nil))
+	if deleteRecorder.Code != http.StatusOK {
+		t.Fatalf("expected delete=200, got %d (%s)", deleteRecorder.Code, deleteRecorder.Body.String())
+	}
+
+	getRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(getRecorder, authedJSONRequest(t, http.MethodGet, "/api/v1/mcp/servers/mcp.context7", nil))
+	if getRecorder.Code != http.StatusNotFound {
+		t.Fatalf("expected get-after-delete=404, got %d (%s)", getRecorder.Code, getRecorder.Body.String())
+	}
+}
+
+func TestUpdateAndDeleteMCPServerRejectProcessServers(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+
+	updateRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(updateRecorder, authedJSONRequest(t, http.MethodPut, "/api/v1/mcp/servers/mcp.test", map[string]any{
+		"id":       "mcp.test",
+		"type":     "remote",
+		"endpoint": "https://mcp.context7.com/mcp",
+	}))
+	if updateRecorder.Code != http.StatusBadRequest {
+		t.Fatalf("expected process update=400, got %d (%s)", updateRecorder.Code, updateRecorder.Body.String())
+	}
+
+	deleteRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(deleteRecorder, authedJSONRequest(t, http.MethodDelete, "/api/v1/mcp/servers/mcp.test", nil))
+	if deleteRecorder.Code != http.StatusBadRequest {
+		t.Fatalf("expected process delete=400, got %d (%s)", deleteRecorder.Code, deleteRecorder.Body.String())
+	}
+}
+
 func TestMCPServerControlEndpoints(t *testing.T) {
 	t.Parallel()
 

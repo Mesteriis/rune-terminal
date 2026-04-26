@@ -2,10 +2,13 @@ import { useEffect, useState } from 'react'
 
 import {
   controlMCPServer,
+  deleteMCPServer,
+  fetchMCPServerDetails,
   fetchMCPServers,
   registerRemoteMCPServer,
   type MCPServerControlAction,
   type MCPServerView,
+  updateRemoteMCPServer,
 } from '@/features/mcp/api/client'
 import { ClearBox } from '@/shared/ui/components'
 import { Button, Input, Text, TextArea } from '@/shared/ui/primitives'
@@ -80,18 +83,37 @@ function parseHeadersDraft(draft: string) {
   return headers
 }
 
+function formatHeadersDraft(headers: Record<string, string>) {
+  return Object.entries(headers)
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([name, value]) => `${name}: ${value}`)
+    .join('\n')
+}
+
+const defaultServerID = 'mcp.context7'
+const defaultEndpoint = 'https://mcp.context7.com/mcp'
+
 export function MCPSettingsSection() {
   const [servers, setServers] = useState<MCPServerView[]>([])
-  const [idDraft, setIdDraft] = useState('mcp.context7')
-  const [endpointDraft, setEndpointDraft] = useState('https://mcp.context7.com/mcp')
+  const [idDraft, setIdDraft] = useState(defaultServerID)
+  const [endpointDraft, setEndpointDraft] = useState(defaultEndpoint)
   const [headersDraft, setHeadersDraft] = useState('')
   const [isLoading, setIsLoading] = useState(true)
-  const [isRegistering, setIsRegistering] = useState(false)
+  const [isSubmittingForm, setIsSubmittingForm] = useState(false)
   const [busyServerID, setBusyServerID] = useState<string | null>(null)
+  const [editingServerID, setEditingServerID] = useState<string | null>(null)
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const hasServers = servers.length > 0
-  const canRegister = idDraft.trim().length > 0 && endpointDraft.trim().length > 0
+  const isEditing = editingServerID !== null
+  const canSubmit = idDraft.trim().length > 0 && endpointDraft.trim().length > 0
+
+  function resetForm() {
+    setEditingServerID(null)
+    setIdDraft(defaultServerID)
+    setEndpointDraft(defaultEndpoint)
+    setHeadersDraft('')
+  }
 
   async function loadServers(options: { isCancelled?: () => boolean } = {}) {
     setIsLoading(true)
@@ -123,24 +145,33 @@ export function MCPSettingsSection() {
     }
   }, [])
 
-  async function handleRegister() {
-    setIsRegistering(true)
+  async function handleSubmit() {
+    setIsSubmittingForm(true)
     setErrorMessage(null)
     setStatusMessage(null)
 
     try {
       const headers = parseHeadersDraft(headersDraft)
-      const server = await registerRemoteMCPServer({
-        endpoint: endpointDraft,
-        headers,
-        id: idDraft,
-      })
+      const server = isEditing
+        ? await updateRemoteMCPServer(editingServerID, {
+            endpoint: endpointDraft,
+            headers,
+            id: idDraft,
+          })
+        : await registerRemoteMCPServer({
+            endpoint: endpointDraft,
+            headers,
+            id: idDraft,
+          })
       setServers((currentServers) => upsertServer(currentServers, server))
-      setStatusMessage(`Registered ${server.id}. Start it explicitly before invoke.`)
+      setStatusMessage(
+        isEditing ? `Saved ${server.id}.` : `Registered ${server.id}. Start it explicitly before invoke.`,
+      )
+      resetForm()
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Unable to register MCP server')
+      setErrorMessage(error instanceof Error ? error.message : 'Unable to save MCP server')
     } finally {
-      setIsRegistering(false)
+      setIsSubmittingForm(false)
     }
   }
 
@@ -160,19 +191,57 @@ export function MCPSettingsSection() {
     }
   }
 
+  async function handleStartEdit(serverID: string) {
+    setBusyServerID(serverID)
+    setErrorMessage(null)
+    setStatusMessage(null)
+
+    try {
+      const server = await fetchMCPServerDetails(serverID)
+      setEditingServerID(server.id)
+      setIdDraft(server.id)
+      setEndpointDraft(server.endpoint ?? '')
+      setHeadersDraft(formatHeadersDraft(server.headers))
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Unable to load MCP server details')
+    } finally {
+      setBusyServerID(null)
+    }
+  }
+
+  async function handleDelete(serverID: string) {
+    setBusyServerID(serverID)
+    setErrorMessage(null)
+    setStatusMessage(null)
+
+    try {
+      const deletedServerID = await deleteMCPServer(serverID)
+      setServers((currentServers) => currentServers.filter((server) => server.id !== deletedServerID))
+      if (editingServerID === deletedServerID) {
+        resetForm()
+      }
+      setStatusMessage(`Deleted ${deletedServerID}.`)
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Unable to delete MCP server')
+    } finally {
+      setBusyServerID(null)
+    }
+  }
+
   return (
     <ClearBox style={settingsShellSectionCardStyle}>
       <ClearBox style={settingsShellContentHeaderStyle}>
         <Text style={{ fontWeight: 600 }}>MCP servers</Text>
         <Text style={settingsShellMutedTextStyle}>
-          External MCP onboarding is explicit: register a remote endpoint, then start/stop/enable it manually.
-          Invoke and AI handoff remain separate operator actions outside this settings slice.
+          External MCP onboarding is explicit: register or edit a remote endpoint, then start/stop/enable it
+          manually. Invoke and AI handoff remain separate operator actions outside this settings slice.
         </Text>
       </ClearBox>
 
       <ClearBox style={{ display: 'grid', gap: 'var(--gap-sm)', gridTemplateColumns: '1fr 1.4fr' }}>
         <Input
           aria-label="MCP server id"
+          disabled={isEditing}
           onChange={(event) => setIdDraft(event.target.value)}
           placeholder="mcp.context7"
           value={idDraft}
@@ -197,12 +266,23 @@ export function MCPSettingsSection() {
 
       <ClearBox style={{ display: 'flex', gap: 'var(--gap-sm)', flexWrap: 'wrap' as const }}>
         <Button
-          aria-label="Register remote MCP server"
-          disabled={!canRegister || isRegistering}
-          onClick={() => void handleRegister()}
+          aria-label={isEditing ? 'Save MCP server changes' : 'Register remote MCP server'}
+          disabled={!canSubmit || isSubmittingForm || busyServerID !== null}
+          onClick={() => void handleSubmit()}
         >
-          {isRegistering ? 'Registering…' : 'Register remote MCP'}
+          {isSubmittingForm
+            ? isEditing
+              ? 'Saving…'
+              : 'Registering…'
+            : isEditing
+              ? 'Save changes'
+              : 'Register remote MCP'}
         </Button>
+        {isEditing ? (
+          <Button disabled={isSubmittingForm} onClick={() => resetForm()}>
+            Cancel edit
+          </Button>
+        ) : null}
         <Button aria-label="Refresh MCP servers" disabled={isLoading} onClick={() => void loadServers()}>
           {isLoading ? 'Refreshing…' : 'Refresh'}
         </Button>
@@ -234,6 +314,22 @@ export function MCPSettingsSection() {
                   </ClearBox>
                 </ClearBox>
                 <ClearBox style={{ display: 'flex', gap: 'var(--gap-xs)', flexWrap: 'wrap' as const }}>
+                  {server.type === 'remote' ? (
+                    <Button
+                      disabled={isBusy || isSubmittingForm}
+                      onClick={() => void handleStartEdit(server.id)}
+                    >
+                      Edit
+                    </Button>
+                  ) : null}
+                  {server.type === 'remote' ? (
+                    <Button
+                      disabled={isBusy || isSubmittingForm}
+                      onClick={() => void handleDelete(server.id)}
+                    >
+                      Delete
+                    </Button>
+                  ) : null}
                   <Button
                     disabled={isBusy || !server.enabled}
                     onClick={() => void handleControl(server.id, 'start')}

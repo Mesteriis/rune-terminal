@@ -1,13 +1,23 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { controlMCPServer, fetchMCPServers, registerRemoteMCPServer } from '@/features/mcp/api/client'
+import {
+  controlMCPServer,
+  deleteMCPServer,
+  fetchMCPServerDetails,
+  fetchMCPServers,
+  registerRemoteMCPServer,
+  updateRemoteMCPServer,
+} from '@/features/mcp/api/client'
 import { MCPSettingsSection } from './mcp-settings-section'
 
 vi.mock('@/features/mcp/api/client', () => ({
   controlMCPServer: vi.fn(),
+  deleteMCPServer: vi.fn(),
+  fetchMCPServerDetails: vi.fn(),
   fetchMCPServers: vi.fn(),
   registerRemoteMCPServer: vi.fn(),
+  updateRemoteMCPServer: vi.fn(),
 }))
 
 afterEach(() => {
@@ -122,6 +132,93 @@ describe('MCPSettingsSection', () => {
       expect(screen.getByText('mcp.context7: start complete.')).toBeInTheDocument()
       expect(screen.getByText('idle')).toBeInTheDocument()
       expect(screen.getByText('active')).toBeInTheDocument()
+    })
+  })
+
+  it('loads remote MCP details into edit mode and saves changes', async () => {
+    vi.mocked(fetchMCPServers).mockResolvedValue([
+      {
+        active: false,
+        enabled: true,
+        endpoint: 'https://mcp.context7.com/mcp',
+        id: 'mcp.context7',
+        state: 'stopped',
+        type: 'remote',
+      },
+    ])
+    vi.mocked(fetchMCPServerDetails).mockResolvedValue({
+      active: false,
+      enabled: true,
+      endpoint: 'https://mcp.context7.com/mcp',
+      headers: { Authorization: 'Bearer old-token' },
+      id: 'mcp.context7',
+      state: 'stopped',
+      type: 'remote',
+    })
+    vi.mocked(updateRemoteMCPServer).mockResolvedValue({
+      active: false,
+      enabled: true,
+      endpoint: 'https://mcp.context7.com/v2',
+      id: 'mcp.context7',
+      state: 'stopped',
+      type: 'remote',
+    })
+
+    render(<MCPSettingsSection />)
+
+    await expect(screen.findByText('mcp.context7')).resolves.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
+
+    await waitFor(() => {
+      expect(fetchMCPServerDetails).toHaveBeenCalledWith('mcp.context7')
+      expect(screen.getByRole('textbox', { name: 'MCP request headers' })).toHaveValue(
+        'Authorization: Bearer old-token',
+      )
+    })
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'MCP endpoint URL' }), {
+      target: { value: 'https://mcp.context7.com/v2' },
+    })
+    fireEvent.change(screen.getByRole('textbox', { name: 'MCP request headers' }), {
+      target: { value: 'Authorization: Bearer new-token' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Save MCP server changes' }))
+
+    await waitFor(() => {
+      expect(updateRemoteMCPServer).toHaveBeenCalledWith('mcp.context7', {
+        endpoint: 'https://mcp.context7.com/v2',
+        headers: { Authorization: 'Bearer new-token' },
+        id: 'mcp.context7',
+      })
+      expect(screen.getByText('Saved mcp.context7.')).toBeInTheDocument()
+      expect(screen.getByText('https://mcp.context7.com/v2')).toBeInTheDocument()
+    })
+  })
+
+  it('deletes remote MCP servers from the visible list', async () => {
+    vi.mocked(fetchMCPServers).mockResolvedValue([
+      {
+        active: false,
+        enabled: true,
+        endpoint: 'https://mcp.context7.com/mcp',
+        id: 'mcp.context7',
+        state: 'stopped',
+        type: 'remote',
+      },
+    ])
+    vi.mocked(deleteMCPServer).mockResolvedValue('mcp.context7')
+
+    render(<MCPSettingsSection />)
+
+    await expect(screen.findByText('mcp.context7')).resolves.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+
+    await waitFor(() => {
+      expect(deleteMCPServer).toHaveBeenCalledWith('mcp.context7')
+      expect(screen.getByText('Deleted mcp.context7.')).toBeInTheDocument()
+      expect(screen.getByText('No MCP servers registered yet.')).toBeInTheDocument()
     })
   })
 })

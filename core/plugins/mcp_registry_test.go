@@ -172,3 +172,92 @@ func TestMCPRegistryRegisterRemoteServer(t *testing.T) {
 		t.Fatalf("expected copied headers, got %#v", spec.Remote.Headers)
 	}
 }
+
+func TestMCPRegistryUpdateRemoteServerPreservesLifecycleFields(t *testing.T) {
+	t.Parallel()
+
+	registry := NewMCPRegistry()
+	if err := registry.Register(MCPServerSpec{
+		ID:   "mcp.context7",
+		Type: MCPServerTypeRemote,
+		Remote: &MCPRemoteConfig{
+			Endpoint: "https://mcp.context7.com/mcp",
+			Headers: map[string]string{
+				"Authorization": "Bearer old",
+			},
+		},
+	}); err != nil {
+		t.Fatalf("Register(remote) error: %v", err)
+	}
+
+	usedAt := time.Date(2026, 4, 26, 10, 0, 0, 0, time.UTC)
+	if err := registry.SetState("mcp.context7", MCPStateIdle); err != nil {
+		t.Fatalf("SetState error: %v", err)
+	}
+	if err := registry.SetActive("mcp.context7", true); err != nil {
+		t.Fatalf("SetActive error: %v", err)
+	}
+	if err := registry.Touch("mcp.context7", usedAt); err != nil {
+		t.Fatalf("Touch error: %v", err)
+	}
+	if err := registry.SetEnabled("mcp.context7", false); err != nil {
+		t.Fatalf("SetEnabled error: %v", err)
+	}
+
+	if err := registry.Update(MCPServerSpec{
+		ID:   "mcp.context7",
+		Type: MCPServerTypeRemote,
+		Remote: &MCPRemoteConfig{
+			Endpoint: "https://mcp.context7.com/v2",
+			Headers: map[string]string{
+				"Authorization": "Bearer new",
+			},
+		},
+	}); err != nil {
+		t.Fatalf("Update(remote) error: %v", err)
+	}
+
+	snapshot, err := registry.Get("mcp.context7")
+	if err != nil {
+		t.Fatalf("Get error: %v", err)
+	}
+	if snapshot.Endpoint != "https://mcp.context7.com/v2" {
+		t.Fatalf("unexpected updated endpoint: %#v", snapshot)
+	}
+	if snapshot.State != MCPStateIdle || !snapshot.Active || snapshot.Enabled {
+		t.Fatalf("expected lifecycle fields preserved, got %#v", snapshot)
+	}
+	if !snapshot.LastUsed.Equal(usedAt) {
+		t.Fatalf("expected last_used preserved, got %s", snapshot.LastUsed)
+	}
+
+	spec, err := registry.Spec("mcp.context7")
+	if err != nil {
+		t.Fatalf("Spec error: %v", err)
+	}
+	if spec.Remote == nil || spec.Remote.Headers["Authorization"] != "Bearer new" {
+		t.Fatalf("unexpected updated headers: %#v", spec.Remote)
+	}
+}
+
+func TestMCPRegistryDeleteRemovesServer(t *testing.T) {
+	t.Parallel()
+
+	registry := NewMCPRegistry()
+	if err := registry.Register(MCPServerSpec{
+		ID:   "mcp.context7",
+		Type: MCPServerTypeRemote,
+		Remote: &MCPRemoteConfig{
+			Endpoint: "https://mcp.context7.com/mcp",
+		},
+	}); err != nil {
+		t.Fatalf("Register(remote) error: %v", err)
+	}
+
+	if err := registry.Delete("mcp.context7"); err != nil {
+		t.Fatalf("Delete error: %v", err)
+	}
+	if _, err := registry.Get("mcp.context7"); !errors.Is(err, ErrMCPServerNotFound) {
+		t.Fatalf("expected not found after delete, got %v", err)
+	}
+}

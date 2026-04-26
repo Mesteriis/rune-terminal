@@ -19,14 +19,17 @@
 - `npm run build:frontend`
 - Runtime/API checks:
   - `GET /api/v1/mcp/servers`
+  - `GET /api/v1/mcp/servers/{id}`
   - `POST /api/v1/mcp/servers`
+  - `PUT /api/v1/mcp/servers/{id}`
+  - `DELETE /api/v1/mcp/servers/{id}`
   - `POST /api/v1/mcp/servers/{id}/start|stop|restart|enable|disable`
   - `POST /api/v1/mcp/invoke`
   - `GET /api/v1/agent/conversation` (before/after explicit invoke)
 
 ## Known limitations
 
-- External provider onboarding remains narrower than desired: settings supports explicit remote endpoint registration, but there is no broad discovery/catalog/import workflow.
+- External provider onboarding remains narrower than desired: settings supports explicit remote endpoint registration, inspection, edit, and removal, but there is no broad discovery/catalog/import workflow.
 - No broad MCP discovery/catalog UX in this phase.
 - Explicit-only handoff is intentional: invoke does not auto-append agent conversation context.
 

@@ -72,16 +72,66 @@ func NewMCPRegistry() *MCPRegistry {
 }
 
 func (r *MCPRegistry) Register(spec MCPServerSpec) error {
+	normalized, err := normalizeMCPServerSpec(spec)
+	if err != nil {
+		return err
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if _, exists := r.servers[normalized.ID]; exists {
+		return ErrMCPServerRegistered
+	}
+	r.servers[normalized.ID] = &mcpRegistryEntry{
+		spec:    normalized,
+		state:   MCPStateStopped,
+		active:  false,
+		enabled: true,
+	}
+	return nil
+}
+
+func (r *MCPRegistry) Update(spec MCPServerSpec) error {
+	normalized, err := normalizeMCPServerSpec(spec)
+	if err != nil {
+		return err
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	entry, exists := r.servers[normalized.ID]
+	if !exists {
+		return ErrMCPServerNotFound
+	}
+	entry.spec = normalized
+	return nil
+}
+
+func (r *MCPRegistry) Delete(id string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	serverID := strings.TrimSpace(id)
+	if _, exists := r.servers[serverID]; !exists {
+		return ErrMCPServerNotFound
+	}
+	delete(r.servers, serverID)
+	return nil
+}
+
+func normalizeMCPServerSpec(spec MCPServerSpec) (MCPServerSpec, error) {
 	id := strings.TrimSpace(spec.ID)
 	if id == "" {
-		return ErrInvalidPluginSpec
+		return MCPServerSpec{}, ErrInvalidPluginSpec
 	}
 	serverType := spec.Type
 	if serverType == "" {
 		serverType = MCPServerTypeProcess
 	}
 	if serverType != MCPServerTypeProcess && serverType != MCPServerTypeRemote {
-		return ErrInvalidPluginSpec
+		return MCPServerSpec{}, ErrInvalidPluginSpec
 	}
 
 	normalized := MCPServerSpec{
@@ -91,12 +141,12 @@ func (r *MCPRegistry) Register(spec MCPServerSpec) error {
 	switch serverType {
 	case MCPServerTypeProcess:
 		if strings.TrimSpace(spec.Process.Command) == "" {
-			return ErrInvalidPluginSpec
+			return MCPServerSpec{}, ErrInvalidPluginSpec
 		}
 		normalized.Process = spec.Process
 	case MCPServerTypeRemote:
 		if spec.Remote == nil || strings.TrimSpace(spec.Remote.Endpoint) == "" {
-			return ErrInvalidPluginSpec
+			return MCPServerSpec{}, ErrInvalidPluginSpec
 		}
 		remoteHeaders := make(map[string]string, len(spec.Remote.Headers))
 		for key, value := range spec.Remote.Headers {
@@ -107,20 +157,7 @@ func (r *MCPRegistry) Register(spec MCPServerSpec) error {
 			Headers:  remoteHeaders,
 		}
 	}
-
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	if _, exists := r.servers[id]; exists {
-		return ErrMCPServerRegistered
-	}
-	r.servers[id] = &mcpRegistryEntry{
-		spec:    normalized,
-		state:   MCPStateStopped,
-		active:  false,
-		enabled: true,
-	}
-	return nil
+	return normalized, nil
 }
 
 func (r *MCPRegistry) List() []MCPServerSnapshot {

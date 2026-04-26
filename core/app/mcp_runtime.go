@@ -19,6 +19,20 @@ type MCPRegistrationRequest struct {
 	Headers  map[string]string
 }
 
+func (r *Runtime) GetMCPServer(serverID string) (plugins.MCPServerSnapshot, error) {
+	if r.MCP == nil {
+		return plugins.MCPServerSnapshot{}, ErrMCPRuntimeNotConfigured
+	}
+	return r.MCP.Registry().Get(serverID)
+}
+
+func (r *Runtime) GetMCPServerSpec(serverID string) (plugins.MCPServerSpec, error) {
+	if r.MCP == nil {
+		return plugins.MCPServerSpec{}, ErrMCPRuntimeNotConfigured
+	}
+	return r.MCP.Registry().Spec(serverID)
+}
+
 func (r *Runtime) registerMCPServers() error {
 	if r.MCP == nil {
 		return nil
@@ -82,6 +96,97 @@ func (r *Runtime) RegisterMCPServer(request MCPRegistrationRequest) (plugins.MCP
 		return plugins.MCPServerSnapshot{}, err
 	}
 	return r.MCP.Registry().Get(spec.ID)
+}
+
+func (r *Runtime) UpdateMCPServer(serverID string, request MCPRegistrationRequest) (plugins.MCPServerSnapshot, error) {
+	if r.MCP == nil {
+		return plugins.MCPServerSnapshot{}, ErrMCPRuntimeNotConfigured
+	}
+
+	id := strings.TrimSpace(serverID)
+	if id == "" {
+		return plugins.MCPServerSnapshot{}, fmt.Errorf("%w: id is required", plugins.ErrInvalidPluginSpec)
+	}
+	requestID := strings.TrimSpace(request.ID)
+	if requestID != "" && requestID != id {
+		return plugins.MCPServerSnapshot{}, fmt.Errorf("%w: id does not match target server", plugins.ErrInvalidPluginSpec)
+	}
+
+	existingSpec, err := r.MCP.Registry().Spec(id)
+	if err != nil {
+		return plugins.MCPServerSnapshot{}, err
+	}
+	if existingSpec.Type != plugins.MCPServerTypeRemote {
+		return plugins.MCPServerSnapshot{}, fmt.Errorf("%w: only remote mcp servers can be updated", plugins.ErrInvalidPluginSpec)
+	}
+	server, err := r.MCP.Registry().Get(id)
+	if err != nil {
+		return plugins.MCPServerSnapshot{}, err
+	}
+	if server.Active {
+		if err := r.MCP.Stop(id, false); err != nil {
+			return plugins.MCPServerSnapshot{}, err
+		}
+	}
+
+	endpoint := strings.TrimSpace(request.Endpoint)
+	if strings.TrimSpace(request.Type) != string(plugins.MCPServerTypeRemote) {
+		return plugins.MCPServerSnapshot{}, fmt.Errorf("%w: unsupported mcp registration type", plugins.ErrInvalidPluginSpec)
+	}
+	if endpoint == "" {
+		return plugins.MCPServerSnapshot{}, fmt.Errorf("%w: endpoint is required", plugins.ErrInvalidPluginSpec)
+	}
+
+	headers := make(map[string]string, len(request.Headers))
+	for key, value := range request.Headers {
+		headers[key] = value
+	}
+
+	if err := r.MCP.Registry().Update(plugins.MCPServerSpec{
+		ID:   id,
+		Type: plugins.MCPServerTypeRemote,
+		Remote: &plugins.MCPRemoteConfig{
+			Endpoint: endpoint,
+			Headers:  headers,
+		},
+	}); err != nil {
+		return plugins.MCPServerSnapshot{}, err
+	}
+	if err := r.persistMCPRegistry(); err != nil {
+		return plugins.MCPServerSnapshot{}, err
+	}
+	return r.MCP.Registry().Get(id)
+}
+
+func (r *Runtime) DeleteMCPServer(serverID string) error {
+	if r.MCP == nil {
+		return ErrMCPRuntimeNotConfigured
+	}
+
+	id := strings.TrimSpace(serverID)
+	if id == "" {
+		return fmt.Errorf("%w: id is required", plugins.ErrInvalidPluginSpec)
+	}
+	spec, err := r.MCP.Registry().Spec(id)
+	if err != nil {
+		return err
+	}
+	if spec.Type != plugins.MCPServerTypeRemote {
+		return fmt.Errorf("%w: only remote mcp servers can be deleted", plugins.ErrInvalidPluginSpec)
+	}
+	server, err := r.MCP.Registry().Get(id)
+	if err != nil {
+		return err
+	}
+	if server.Active {
+		if err := r.MCP.Stop(id, false); err != nil {
+			return err
+		}
+	}
+	if err := r.MCP.Registry().Delete(id); err != nil {
+		return err
+	}
+	return r.persistMCPRegistry()
 }
 
 func (r *Runtime) ListMCPServers() []plugins.MCPServerSnapshot {
