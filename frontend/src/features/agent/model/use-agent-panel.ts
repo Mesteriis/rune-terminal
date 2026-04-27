@@ -34,17 +34,12 @@ import {
   updateAgentConversationContext,
 } from '@/features/agent/api/client'
 import {
-  clearAgentProviderRouteState,
   fetchAgentProviderCatalog,
   fetchAgentProviderGatewaySnapshot,
-  prewarmAgentProvider,
-  probeAgentProvider,
-  setActiveAgentProvider as activateAgentProviderInCatalog,
   type AgentProviderCatalog,
   type AgentProviderGatewayProvider,
   type AgentProviderGatewayRun,
   type AgentProviderGatewaySnapshot,
-  type AgentProviderView,
 } from '@/features/agent/api/provider-client'
 import {
   advanceAuditEntries,
@@ -84,9 +79,17 @@ import {
   directProviderChatModels,
   directProviderDefaultModel,
   providerOptionsFromCatalog,
-  providerViewToConversationProvider,
   selectPreferredChatModel,
 } from '@/features/agent/model/agent-panel-provider'
+import {
+  clearActiveProviderRouteStateForPanel,
+  prewarmActiveProviderRouteForPanel,
+  probeActiveProviderRouteForPanel,
+  refreshActiveProviderHistoryForPanel,
+  refreshProviderGatewaySnapshotForPanel,
+  resolveActiveProviderGateway,
+  selectProviderForPanel,
+} from '@/features/agent/model/agent-panel-provider-runtime'
 import {
   createOptimisticUserConversationMessage,
   sortMessagesBySortKey,
@@ -230,57 +233,25 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
   )
 
   const refreshProviderGatewaySnapshot = useCallback(async (options?: { suppressError?: boolean }) => {
-    setIsProviderGatewayPending(true)
-    try {
-      const snapshot = await fetchAgentProviderGatewaySnapshot()
-      setProviderGateway(snapshot)
-      setProviderGatewayError(null)
-      return snapshot
-    } catch (error) {
-      if (!options?.suppressError) {
-        setProviderGatewayError(getErrorMessage(error, 'Unable to load provider gateway telemetry.'))
-      }
-      return null
-    } finally {
-      setIsProviderGatewayPending(false)
-    }
+    return refreshProviderGatewaySnapshotForPanel({
+      setIsProviderGatewayPending,
+      setProviderGateway,
+      setProviderGatewayError,
+      suppressError: options?.suppressError,
+    })
   }, [])
 
   const refreshActiveProviderHistory = useCallback(
     async (options?: { providerID?: string; suppressError?: boolean }) => {
-      const providerID = (options?.providerID ?? activeProviderID).trim()
-
-      if (!providerID) {
-        setActiveProviderHistoryRuns([])
-        setActiveProviderHistoryTotal(0)
-        setActiveProviderHistoryError(null)
-        setIsActiveProviderHistoryPending(false)
-        return []
-      }
-
-      setIsActiveProviderHistoryPending(true)
-
-      try {
-        const snapshot = await fetchAgentProviderGatewaySnapshot({
-          providerID,
-          limit: 3,
-        })
-        setActiveProviderHistoryRuns(snapshot.recent_runs)
-        setActiveProviderHistoryTotal(snapshot.recent_runs_total)
-        setActiveProviderHistoryError(null)
-        return snapshot.recent_runs
-      } catch (error) {
-        setActiveProviderHistoryRuns([])
-        setActiveProviderHistoryTotal(0)
-        if (!options?.suppressError) {
-          setActiveProviderHistoryError(
-            getErrorMessage(error, 'Unable to load the recent route activity for the active provider.'),
-          )
-        }
-        return []
-      } finally {
-        setIsActiveProviderHistoryPending(false)
-      }
+      return refreshActiveProviderHistoryForPanel({
+        activeProviderID,
+        providerID: options?.providerID,
+        setActiveProviderHistoryError,
+        setActiveProviderHistoryRuns,
+        setActiveProviderHistoryTotal,
+        setIsActiveProviderHistoryPending,
+        suppressError: options?.suppressError,
+      })
     },
     [activeProviderID],
   )
@@ -700,97 +671,64 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
 
   const selectProvider = useCallback(
     async (providerID: string) => {
-      const nextProviderID = providerID.trim()
-      if (!nextProviderID || nextProviderID === selectedProviderID) {
-        return
-      }
-
-      const panelStateEpoch = beginPanelStateEpoch()
-
-      try {
-        setLoadError(null)
-        setSubmitError(null)
-
-        const nextCatalog = await activateAgentProviderInCatalog(nextProviderID)
-        if (panelStateEpochRef.current !== panelStateEpoch) {
-          return
-        }
-        const nextProvider =
-          nextCatalog.providers.find((candidate) => candidate.id === nextCatalog.active_provider_id) ?? null
-        const nextModels = directProviderChatModels(nextProvider)
-
-        setProviderCatalog(nextCatalog)
-        setSelectedProviderID(nextProvider?.id ?? nextProviderID)
-        setAvailableModels(nextModels)
-        setSelectedModel(selectPreferredChatModel('', directProviderDefaultModel(nextProvider), nextModels))
-        setProvider((currentProvider) => providerViewToConversationProvider(nextProvider, currentProvider))
-        await refreshProviderGatewaySnapshot({ suppressError: true })
-      } catch (error) {
-        setSubmitError(getErrorMessage(error, 'Unable to switch the active AI provider.'))
-      }
+      await selectProviderForPanel({
+        beginPanelStateEpoch,
+        getPanelStateEpoch: () => panelStateEpochRef.current,
+        provider,
+        providerID,
+        refreshProviderGatewaySnapshot,
+        selectedProviderID,
+        setAvailableModels,
+        setLoadError,
+        setProvider,
+        setProviderCatalog,
+        setSelectedModel,
+        setSelectedProviderID,
+        setSubmitError,
+      })
     },
-    [beginPanelStateEpoch, refreshProviderGatewaySnapshot, selectedProviderID],
+    [beginPanelStateEpoch, provider, refreshProviderGatewaySnapshot, selectedProviderID],
   )
 
   const activeProviderGateway = useMemo<AgentProviderGatewayProvider | null>(() => {
-    if (!providerGateway) {
-      return null
-    }
-    if (!activeProviderID) {
-      return providerGateway.providers.find((candidate) => candidate.active) ?? null
-    }
-    return providerGateway.providers.find((candidate) => candidate.provider_id === activeProviderID) ?? null
+    return resolveActiveProviderGateway(providerGateway, activeProviderID)
   }, [activeProviderID, providerGateway])
 
   const prewarmActiveProviderRoute = useCallback(async () => {
-    const providerID = activeProviderID
-    if (!providerID || isProviderRoutePreparing) {
-      return
-    }
-
-    setProviderGatewayError(null)
-    setIsProviderRoutePreparing(true)
-    try {
-      await prewarmAgentProvider(providerID)
-      await refreshProviderGatewaySnapshot({ suppressError: true })
-    } catch (error) {
-      setProviderGatewayError(getErrorMessage(error, 'Unable to prepare the active provider route.'))
-    } finally {
-      setIsProviderRoutePreparing(false)
-    }
+    await prewarmActiveProviderRouteForPanel({
+      activeProviderID,
+      isProviderRoutePreparing,
+      isProviderRouteProbing,
+      refreshProviderGatewaySnapshot,
+      setIsProviderRoutePreparing,
+      setIsProviderRouteProbing,
+      setProviderGatewayError,
+    })
   }, [activeProviderID, isProviderRoutePreparing, refreshProviderGatewaySnapshot])
 
   const probeActiveProviderRoute = useCallback(async () => {
-    const providerID = activeProviderID
-    if (!providerID || isProviderRouteProbing) {
-      return
-    }
-
-    setProviderGatewayError(null)
-    setIsProviderRouteProbing(true)
-    try {
-      await probeAgentProvider(providerID)
-      await refreshProviderGatewaySnapshot({ suppressError: true })
-    } catch (error) {
-      setProviderGatewayError(getErrorMessage(error, 'Unable to probe the active provider route.'))
-    } finally {
-      setIsProviderRouteProbing(false)
-    }
+    await probeActiveProviderRouteForPanel({
+      activeProviderID,
+      isProviderRoutePreparing,
+      isProviderRouteProbing,
+      refreshProviderGatewaySnapshot,
+      setIsProviderRoutePreparing,
+      setIsProviderRouteProbing,
+      setProviderGatewayError,
+    })
   }, [activeProviderID, isProviderRouteProbing, refreshProviderGatewaySnapshot])
 
   const clearActiveProviderRouteState = useCallback(async () => {
-    const providerID = activeProviderID
-    if (!providerID || isProviderGatewayPending || isProviderRoutePreparing || isProviderRouteProbing) {
-      return
-    }
-
-    setProviderGatewayError(null)
-    try {
-      await clearAgentProviderRouteState(providerID)
-      await refreshProviderGatewaySnapshot({ suppressError: true })
-    } catch (error) {
-      setProviderGatewayError(getErrorMessage(error, 'Unable to clear the active provider route state.'))
-    }
+    await clearActiveProviderRouteStateForPanel({
+      activeProviderID,
+      isProviderGatewayPending,
+      isProviderRoutePreparing,
+      isProviderRouteProbing,
+      refreshProviderGatewaySnapshot,
+      setIsProviderRoutePreparing,
+      setIsProviderRouteProbing,
+      setProviderGatewayError,
+    })
   }, [
     activeProviderID,
     isProviderGatewayPending,
