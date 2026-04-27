@@ -45,6 +45,7 @@ func (s *approvalStore) Create(toolName string, summary string, tier policy.Appr
 	defer s.mu.Unlock()
 
 	now := time.Now().UTC()
+	s.cleanupExpiredLocked(now)
 	approval := PendingApproval{
 		ID:           ids.New("approval"),
 		ToolName:     toolName,
@@ -64,6 +65,7 @@ func (s *approvalStore) Confirm(id string) (ApprovalGrant, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	s.cleanupExpiredLocked(time.Now().UTC())
 	record, ok := s.pending[id]
 	if !ok {
 		return ApprovalGrant{}, fmt.Errorf("%w: %s", ErrPendingApprovalNotFound, id)
@@ -90,6 +92,7 @@ func (s *approvalStore) Verify(token string, intentKey string) approvalVerificat
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	s.cleanupExpiredLocked(time.Now().UTC())
 	if token == "" {
 		return approvalVerificationMissing
 	}
@@ -107,4 +110,17 @@ func (s *approvalStore) Verify(token string, intentKey string) approvalVerificat
 	}
 	delete(s.grants, token)
 	return approvalVerificationGranted
+}
+
+func (s *approvalStore) cleanupExpiredLocked(now time.Time) {
+	for id, record := range s.pending {
+		if now.After(record.approval.ExpiresAt) {
+			delete(s.pending, id)
+		}
+	}
+	for token, record := range s.grants {
+		if now.After(record.grant.ExpiresAt) {
+			delete(s.grants, token)
+		}
+	}
 }

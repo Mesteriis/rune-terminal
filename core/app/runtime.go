@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/Mesteriis/rune-terminal/core/agent"
 	"github.com/Mesteriis/rune-terminal/core/audit"
@@ -56,7 +57,12 @@ type Runtime struct {
 	restored                    map[string]terminal.State
 }
 
+const runtimeStartupTimeout = 10 * time.Second
+
 func NewRuntime(repoRoot string, stateDir string) (*Runtime, error) {
+	startupCtx, cancel := context.WithTimeout(context.Background(), runtimeStartupTimeout)
+	defer cancel()
+
 	paths := config.Resolve(stateDir)
 	homeDir, _ := os.UserHomeDir()
 
@@ -84,7 +90,7 @@ func NewRuntime(repoRoot string, stateDir string) (*Runtime, error) {
 	if err != nil {
 		return nil, err
 	}
-	dbConn, err := db.Open(context.Background(), paths.DBFile)
+	dbConn, err := db.Open(startupCtx, paths.DBFile)
 	if err != nil {
 		return nil, err
 	}
@@ -105,14 +111,15 @@ func NewRuntime(repoRoot string, stateDir string) (*Runtime, error) {
 	if err != nil {
 		return nil, err
 	}
-	activeWorkspaceSnapshot := workspace.NewCatalogStore(workspaceCatalog).ActiveSnapshot()
+	catalogStore := workspace.NewCatalogStore(workspaceCatalog)
+	activeWorkspaceSnapshot := catalogStore.ActiveSnapshot()
 
 	runtime := &Runtime{
 		RepoRoot:                    repoRoot,
 		HomeDir:                     homeDir,
 		Paths:                       paths,
 		Workspace:                   workspace.NewService(activeWorkspaceSnapshot),
-		WorkspaceCatalog:            workspace.NewCatalogStore(workspaceCatalog),
+		WorkspaceCatalog:            catalogStore,
 		Terminals:                   terminal.NewService(terminal.DefaultLauncher()),
 		Connections:                 connectionStore,
 		Agent:                       agentStore,
@@ -130,27 +137,27 @@ func NewRuntime(repoRoot string, stateDir string) (*Runtime, error) {
 		conversationStreams:         newConversationStreamRegistry(),
 		restored:                    make(map[string]terminal.State),
 	}
-	terminalPreferences, err := terminal.NewPreferencesStore(context.Background(), dbConn)
+	terminalPreferences, err := terminal.NewPreferencesStore(startupCtx, dbConn)
 	if err != nil {
 		return nil, err
 	}
 	runtime.TerminalPreferences = terminalPreferences
-	windowTitlePreferences, err := windowtitle.NewStore(context.Background(), dbConn)
+	windowTitlePreferences, err := windowtitle.NewStore(startupCtx, dbConn)
 	if err != nil {
 		return nil, err
 	}
 	runtime.WindowTitlePreferences = windowTitlePreferences
-	localePreferences, err := locale.NewStore(context.Background(), dbConn)
+	localePreferences, err := locale.NewStore(startupCtx, dbConn)
 	if err != nil {
 		return nil, err
 	}
 	runtime.LocalePreferences = localePreferences
-	agentComposerPreferences, err := agent.NewComposerPreferencesStore(context.Background(), dbConn)
+	agentComposerPreferences, err := agent.NewComposerPreferencesStore(startupCtx, dbConn)
 	if err != nil {
 		return nil, err
 	}
 	runtime.AgentComposerPreferences = agentComposerPreferences
-	providerGateway, err := providergateway.NewStore(context.Background(), dbConn)
+	providerGateway, err := providergateway.NewStore(startupCtx, dbConn)
 	if err != nil {
 		return nil, err
 	}
@@ -166,9 +173,7 @@ func NewRuntime(repoRoot string, stateDir string) (*Runtime, error) {
 		return nil, err
 	}
 
-	if err := runtime.bootstrapSessions(context.Background()); err != nil {
-		return nil, err
-	}
+	runtime.bootstrapSessions(startupCtx)
 	if err := runtime.registerTools(); err != nil {
 		return nil, err
 	}
@@ -178,13 +183,12 @@ func NewRuntime(repoRoot string, stateDir string) (*Runtime, error) {
 	if err := runtime.registerMCPServers(); err != nil {
 		return nil, err
 	}
-	runtime.bootstrapProviderRoutes(context.Background())
+	runtime.bootstrapProviderRoutes(startupCtx)
 	return runtime, nil
 }
 
-func (r *Runtime) bootstrapSessions(ctx context.Context) error {
+func (r *Runtime) bootstrapSessions(ctx context.Context) {
 	r.ensureWorkspaceSessions(ctx, r.Workspace.Snapshot(), true)
-	return nil
 }
 
 func (r *Runtime) connectionForWidget(connectionID string) (terminal.ConnectionSpec, error) {

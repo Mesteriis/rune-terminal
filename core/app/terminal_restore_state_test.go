@@ -92,9 +92,7 @@ func TestBootstrapSessionsKeepsRemoteWidgetAsDisconnectedWhenConnectionMissing(t
 		restored:    make(map[string]terminal.State),
 	}
 
-	if err := runtime.bootstrapSessions(context.Background()); err != nil {
-		t.Fatalf("bootstrapSessions error: %v", err)
-	}
+	runtime.bootstrapSessions(context.Background())
 	localState, err := runtime.Terminals.GetState("term-main")
 	if err != nil {
 		t.Fatalf("local state error: %v", err)

@@ -11,6 +11,8 @@
   - Go test/build commands used by CI
   - HTTP transport safety guards for CORS/auth/body decoding
   - `cmd/rterm-core` JSON response helpers on write/error paths
+  - startup runtime initialization under bounded timeout and single catalog-store ownership
+  - approval-grant TTL cleanup and fail-closed random ID generation
   - Go `coverage.out` artifact generation in CI
   - desktop `cargo check` command used by CI
   - gitleaks secret-scan job wiring
@@ -25,6 +27,7 @@
 - `./scripts/go.sh test ./cmd/... ./core/... ./internal/... -coverprofile=/tmp/rterm-go-coverage.out`
 - `./scripts/go.sh build ./cmd/... ./core/... ./internal/...`
 - `./scripts/go.sh test ./core/transport/httpapi ./cmd/rterm-core -run 'TestCORSRejectsDisallowedOriginSimpleRequest|TestCORSRejectsDisallowedOriginPreflight|TestCORSAllowsPatchAndDeleteMethods|TestDecodeJSONRejectsOversizedBodies|TestWriteJSONErrorEscapesPayload|TestWriteJSONResponseDoesNotPanicOnWriterError|TestWriteJSONResponseWritesValidPayload|TestWriteFileAtomicOverwritesReadyPayload' -count=1`
+- `./scripts/go.sh test ./internal/ids ./core/toolruntime ./core/app -run 'TestNewPanicsWhenEntropyUnavailable|TestTokenPanicsWhenEntropyUnavailable|TestApprovalStoreCreateCleansExpiredGrants|TestApprovalStoreConfirmCleansExpiredPendingRecords|TestExecutorConfirmationFlow|TestExecutorApprovalGrantIsSingleUse|TestBootstrapSessionsKeepsRemoteWidgetAsDisconnectedWhenConnectionMissing' -count=1`
 - `npm run tauri:check`
 - `ruby -e "require 'yaml'; YAML.load_file('.github/workflows/ci.yml'); puts 'workflow yaml parses'"`
 - `git diff --check`
