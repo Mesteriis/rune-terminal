@@ -159,7 +159,8 @@ type invokeExchangeResult struct {
 }
 
 func (r *Runtime) exchangeProtocol(process Process, spec PluginSpec, request InvokeRequest) (InvokeResult, error) {
-	reader := bufio.NewReader(process.Stdout())
+	stdout := process.Stdout()
+	reader := bufio.NewReader(stdout)
 	writer := process.Stdin()
 	defer writer.Close()
 
@@ -181,7 +182,7 @@ func (r *Runtime) exchangeProtocol(process Process, spec PluginSpec, request Inv
 	}
 
 	var handshake PluginHandshakeResponse
-	if err := readJSONLineWithTimeout(reader, &handshake, r.handshakeTimeout(spec)); err != nil {
+	if err := readJSONLineWithTimeout(reader, stdout, &handshake, r.handshakeTimeout(spec)); err != nil {
 		if errors.Is(err, ErrPluginTimeout) {
 			return InvokeResult{}, newFailure(
 				FailureCodeTimeout,
@@ -441,7 +442,7 @@ func readJSONLine(reader *bufio.Reader, target any) error {
 	return nil
 }
 
-func readJSONLineWithTimeout(reader *bufio.Reader, target any, timeout time.Duration) error {
+func readJSONLineWithTimeout(reader *bufio.Reader, closer io.Closer, target any, timeout time.Duration) error {
 	if timeout <= 0 {
 		return readJSONLine(reader, target)
 	}
@@ -457,6 +458,10 @@ func readJSONLineWithTimeout(reader *bufio.Reader, target any, timeout time.Dura
 	case err := <-resultCh:
 		return err
 	case <-timer.C:
+		if closer != nil {
+			_ = closer.Close()
+		}
+		<-resultCh
 		return fmt.Errorf("%w: timed out waiting for plugin protocol message", ErrPluginTimeout)
 	}
 }

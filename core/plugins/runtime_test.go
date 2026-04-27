@@ -325,6 +325,28 @@ func TestInvokeFailsWhenHandshakeExceedsTimeout(t *testing.T) {
 	}
 }
 
+func TestReadJSONLineWithTimeoutClosesReaderOnTimeout(t *testing.T) {
+	t.Parallel()
+
+	reader, writer := io.Pipe()
+	defer writer.Close()
+
+	resultCh := make(chan error, 1)
+	go func() {
+		var payload PluginHandshakeResponse
+		resultCh <- readJSONLineWithTimeout(bufio.NewReader(reader), reader, &payload, 20*time.Millisecond)
+	}()
+
+	select {
+	case err := <-resultCh:
+		if !errors.Is(err, ErrPluginTimeout) {
+			t.Fatalf("expected timeout error, got %v", err)
+		}
+	case <-time.After(200 * time.Millisecond):
+		t.Fatal("timed out waiting for readJSONLineWithTimeout to return")
+	}
+}
+
 func TestInvokeFailsWhenPluginCrashesDuringExecutionAfterHandshake(t *testing.T) {
 	t.Parallel()
 
