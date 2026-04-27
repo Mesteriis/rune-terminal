@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"crypto/subtle"
 	"net/http"
 	"net/url"
 	"strings"
@@ -12,10 +13,8 @@ func (api *API) withCORS(next http.Handler) http.Handler {
 		addVaryHeader(w, "Origin")
 		if origin != "" {
 			if !isAllowedOrigin(origin) {
-				if r.Method == http.MethodOptions {
-					writeForbidden(w, "origin_not_allowed", "origin not allowed")
-					return
-				}
+				writeForbidden(w, "origin_not_allowed", "origin not allowed")
+				return
 			} else {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
 				w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
@@ -45,7 +44,7 @@ func (api *API) withAuth(next http.Handler) http.Handler {
 		if token == "" && allowsQueryToken(r.URL.Path) {
 			token = r.URL.Query().Get("token")
 		}
-		if token != api.authToken {
+		if subtle.ConstantTimeCompare([]byte(token), []byte(api.authToken)) != 1 {
 			w.Header().Set("WWW-Authenticate", "Bearer")
 			writeUnauthorized(w)
 			return

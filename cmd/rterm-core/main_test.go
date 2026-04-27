@@ -1,6 +1,9 @@
 package main
 
 import (
+	"errors"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -33,5 +36,49 @@ func TestWriteFileAtomicOverwritesReadyPayload(t *testing.T) {
 	}
 	if got := info.Mode().Perm(); got != 0o600 {
 		t.Fatalf("expected mode 0600, got %#o", got)
+	}
+}
+
+func TestWriteJSONErrorEscapesPayload(t *testing.T) {
+	recorder := httptest.NewRecorder()
+
+	writeJSONError(recorder, errors.New("bad \"json\"\nvalue"))
+
+	expected := "{\"error\":\"bad \\\"json\\\"\\nvalue\"}"
+	if got := recorder.Body.String(); got != expected {
+		t.Fatalf("expected %q, got %q", expected, got)
+	}
+}
+
+func TestWriteJSONResponseDoesNotPanicOnWriterError(t *testing.T) {
+	writer := errorResponseWriter{header: make(map[string][]string)}
+
+	writeJSONResponse(writer, map[string]string{"ok": "true"})
+}
+
+type errorResponseWriter struct {
+	header http.Header
+}
+
+func (w errorResponseWriter) Header() http.Header {
+	return w.header
+}
+
+func (w errorResponseWriter) Write(payload []byte) (int, error) {
+	return 0, errors.New("write failed")
+}
+
+func (w errorResponseWriter) WriteHeader(statusCode int) {}
+
+func TestWriteJSONResponseWritesValidPayload(t *testing.T) {
+	recorder := httptest.NewRecorder()
+
+	writeJSONResponse(recorder, map[string]string{"ok": "true"})
+
+	if got := recorder.Body.String(); got != "{\"ok\":\"true\"}" {
+		t.Fatalf("unexpected response body: %q", got)
+	}
+	if contentType := recorder.Header().Get("Content-Type"); contentType != "application/json" {
+		t.Fatalf("unexpected content type: %q", contentType)
 	}
 }

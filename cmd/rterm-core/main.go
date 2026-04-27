@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -737,11 +738,18 @@ func writeJSONResponse(writer http.ResponseWriter, payload any) {
 	writer.Header().Set("Content-Type", "application/json")
 	_, err = writer.Write(payloadBytes)
 	if err != nil {
-		panic(err)
+		log.Printf("rterm-core: write JSON response: %v", err)
 	}
 }
 
 func writeJSONError(writer http.ResponseWriter, err error) {
 	writer.Header().Set("Content-Type", "application/json")
-	_, _ = writer.Write([]byte(`{"error":"` + err.Error() + `"}`))
+	payload, marshalErr := json.Marshal(map[string]string{"error": err.Error()})
+	if marshalErr != nil {
+		log.Printf("rterm-core: marshal JSON error response: %v", marshalErr)
+		return
+	}
+	if _, writeErr := writer.Write(payload); writeErr != nil {
+		log.Printf("rterm-core: write JSON error response: %v", writeErr)
+	}
 }

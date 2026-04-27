@@ -85,6 +85,29 @@ func TestCORSRejectsDisallowedOriginPreflight(t *testing.T) {
 	}
 }
 
+func TestCORSRejectsDisallowedOriginSimpleRequest(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/health", nil)
+	request.Header.Set("Origin", "https://evil.example")
+
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d", recorder.Code)
+	}
+
+	var response errorEnvelope
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatalf("Unmarshal error: %v", err)
+	}
+	if response.Error.Code != "origin_not_allowed" {
+		t.Fatalf("unexpected response: %#v", response)
+	}
+}
+
 func TestProtectedRoutesRejectMissingServerAuthConfiguration(t *testing.T) {
 	t.Parallel()
 

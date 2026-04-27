@@ -7,8 +7,10 @@ import (
 	"net/http"
 )
 
+const maxJSONBodyBytes int64 = 1 << 20
+
 func decodeJSON(r *http.Request, target any) error {
-	decoder := json.NewDecoder(r.Body)
+	decoder := json.NewDecoder(io.LimitReader(r.Body, maxJSONBodyBytes+1))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(target); err != nil {
 		return err
