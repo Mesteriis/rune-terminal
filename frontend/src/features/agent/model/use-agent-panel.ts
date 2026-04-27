@@ -24,7 +24,6 @@ import {
   type AgentConversationSummary,
   type AgentConversationStreamConnection,
   type AgentToolExecuteResponse,
-  updateAgentConversationContext,
 } from '@/features/agent/api/client'
 import {
   fetchAgentProviderCatalog,
@@ -53,11 +52,21 @@ import {
   filterContextWidgetSelection,
   formatContextWidgetLabel,
   isCustomizedContextPreference,
-  mapContextWidgetOptions,
   resolveContextTerminalWidget,
   summaryFromConversationSnapshot,
   upsertConversationSummary,
 } from '@/features/agent/model/agent-panel-context'
+import {
+  ensureCurrentConversationSnapshotLoadedForPanel,
+  loadContextWidgetsForPanel,
+  persistCleanedContextWidgetSelectionForPanel,
+  persistConversationContextPreferencesForPanel,
+} from '@/features/agent/model/agent-panel-context-runtime'
+import {
+  bootstrapAgentPanel,
+  resetAgentPanelBootstrapState,
+  resetAgentPanelRuntime,
+} from '@/features/agent/model/agent-panel-bootstrap'
 import {
   archiveConversationForPanel,
   createConversationForPanel,
@@ -78,8 +87,6 @@ import {
   finalizeAgentConversationStreamingMessages,
 } from '@/features/agent/model/panel-state'
 import {
-  directProviderChatModels,
-  directProviderDefaultModel,
   providerOptionsFromCatalog,
   selectPreferredChatModel,
 } from '@/features/agent/model/agent-panel-provider'
@@ -118,7 +125,7 @@ import type {
 } from '@/features/agent/model/types'
 import { $terminalPanelBindings, resolveTerminalPanelBinding } from '@/features/terminal/model/panel-registry'
 import { resolveRuntimeContext } from '@/shared/api/runtime'
-import { fetchWorkspaceSnapshot, type WorkspaceWidgetSnapshot } from '@/shared/api/workspace'
+import type { WorkspaceWidgetSnapshot } from '@/shared/api/workspace'
 import {
   $queuedAiAttachmentReferences,
   clearQueuedAiAttachmentReferences,
@@ -344,16 +351,26 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
     return () => {
       submissionNonceRef.current += 1
       activeSubmissionAbortRef.current?.abort()
-      activeStreamRef.current?.close()
-      activeStreamRef.current = null
-      activeSubmissionAbortRef.current = null
-      activeAuditMessageIDRef.current = null
-      pendingFlowRef.current = null
-      hasLoadedContextWidgetsRef.current = false
-      hasCustomizedContextWidgetSelectionRef.current = false
-      workspaceWidgetsRef.current = []
-      setIsResponseCancellable(false)
-      unblockAiWidget(hostId)
+      resetAgentPanelRuntime({
+        clearActiveAuditMessageID: () => {
+          activeAuditMessageIDRef.current = null
+        },
+        clearPendingFlowRef: () => {
+          pendingFlowRef.current = null
+        },
+        closeActiveStream: () => {
+          activeStreamRef.current?.close()
+          activeStreamRef.current = null
+          activeSubmissionAbortRef.current = null
+        },
+        resetContextRuntime: () => {
+          hasLoadedContextWidgetsRef.current = false
+          hasCustomizedContextWidgetSelectionRef.current = false
+          workspaceWidgetsRef.current = []
+        },
+        setIsResponseCancellable,
+        unblockAiWidget: () => unblockAiWidget(hostId),
+      })
     }
   }, [hostId])
 
@@ -367,115 +384,89 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
 
     submissionNonceRef.current += 1
     activeSubmissionAbortRef.current?.abort()
-    activeStreamRef.current?.close()
-    activeStreamRef.current = null
-    activeSubmissionAbortRef.current = null
-    activeAuditMessageIDRef.current = null
-    pendingFlowRef.current = null
-    unblockAiWidget(hostId)
-    setMessages(null)
-    setInteractionMessages([])
-    setPendingFlow(null)
-    setProvider(null)
-    setProviderCatalog(null)
-    setProviderGateway(null)
-    setActiveProviderHistoryRuns([])
-    setActiveProviderHistoryTotal(0)
-    setActiveProviderHistoryError(null)
-    setAgentCatalog(null)
-    setActiveConversationSummary(null)
-    setConversations([])
-    setConversationCounts(defaultConversationListCounts)
-    setIsConversationListPending(true)
+    resetAgentPanelRuntime({
+      clearActiveAuditMessageID: () => {
+        activeAuditMessageIDRef.current = null
+      },
+      clearPendingFlowRef: () => {
+        pendingFlowRef.current = null
+      },
+      closeActiveStream: () => {
+        activeStreamRef.current?.close()
+        activeStreamRef.current = null
+        activeSubmissionAbortRef.current = null
+      },
+      resetContextRuntime: () => {
+        hasLoadedContextWidgetsRef.current = false
+        hasCustomizedContextWidgetSelectionRef.current = false
+        workspaceWidgetsRef.current = []
+      },
+      setIsResponseCancellable,
+      unblockAiWidget: () => unblockAiWidget(hostId),
+    })
+    resetAgentPanelBootstrapState({
+      defaultConversationListCounts,
+      setActiveConversationID,
+      setActiveConversationSummary: () => setActiveConversationSummary(null),
+      setActiveProviderHistoryError,
+      setActiveProviderHistoryRuns: () => setActiveProviderHistoryRuns([]),
+      setActiveProviderHistoryTotal,
+      setAgentCatalog,
+      setAvailableModels,
+      setContextWidgetLoadError,
+      setContextWidgetOptions: () => setContextWidgetOptions([]),
+      setConversationCounts,
+      setConversationScope,
+      setConversations: () => setConversations([]),
+      setDraft,
+      setInteractionMessages: () => setInteractionMessages([]),
+      setIsActiveProviderHistoryPending,
+      setIsAttachmentLibraryPending,
+      setIsConversationListPending,
+      setIsConversationPending,
+      setIsProviderGatewayPending,
+      setIsProviderRoutePreparing,
+      setIsProviderRouteProbing,
+      setIsSubmitting,
+      setIsWidgetContextEnabled,
+      setLoadError,
+      setMessages,
+      setMissingContextWidgetCount,
+      setPendingFlow,
+      setProvider,
+      setProviderCatalog,
+      setProviderGateway,
+      setProviderGatewayError,
+      setRecentAttachmentReferences,
+      setSelectedModel,
+      setSelectedProviderID,
+      setStoredContextWidgetIDs,
+      setSubmitError,
+      setWorkspaceActiveWidgetID,
+    })
     setConversationSearchQuery('')
-    setConversationScope('recent')
-    setActiveConversationID('')
-    setSelectedProviderID('')
-    setAvailableModels([])
-    setSelectedModel('')
-    setIsWidgetContextEnabled(true)
-    setContextWidgetOptions([])
-    setStoredContextWidgetIDs([])
-    setMissingContextWidgetCount(0)
-    setWorkspaceActiveWidgetID('')
-    setContextWidgetLoadError(null)
-    setLoadError(null)
-    setSubmitError(null)
-    setIsSubmitting(false)
-    setIsResponseCancellable(false)
-    setIsAttachmentLibraryPending(false)
-    setIsProviderGatewayPending(true)
-    setIsActiveProviderHistoryPending(false)
-    setIsProviderRouteProbing(false)
-    setIsProviderRoutePreparing(false)
-    setRecentAttachmentReferences([])
-    setProviderGatewayError(null)
-    setIsConversationPending(false)
     activeConversationIDRef.current = ''
     messagesRef.current = null
-    hasLoadedContextWidgetsRef.current = false
-    hasCustomizedContextWidgetSelectionRef.current = false
-    workspaceWidgetsRef.current = []
-
-    void Promise.allSettled([
-      fetchAgentConversation(),
-      fetchAgentProviderCatalog(),
-      fetchAgentProviderGatewaySnapshot(),
-      fetchAgentCatalog(),
-      fetchAgentAttachmentReferences(),
-    ]).then((results) => {
-      if (cancelled || panelStateEpochRef.current !== panelStateEpoch) {
-        return
-      }
-
-      const [
-        conversationResult,
-        providerCatalogResult,
-        providerGatewayResult,
-        agentCatalogResult,
-        attachmentLibraryResult,
-      ] = results
-
-      if (conversationResult.status === 'rejected') {
-        setLoadError(
-          getErrorMessage(conversationResult.reason, `Unable to load backend conversation for ${hostId}.`),
-        )
-      } else {
-        applyConversationSnapshot(conversationResult.value)
-      }
-
-      if (providerCatalogResult.status === 'fulfilled') {
-        setProviderCatalog(providerCatalogResult.value)
-        const activeProvider =
-          providerCatalogResult.value.providers.find(
-            (candidate) => candidate.id === providerCatalogResult.value.active_provider_id,
-          ) ?? null
-        const chatModels = directProviderChatModels(activeProvider)
-        const providerModel =
-          directProviderDefaultModel(activeProvider) ||
-          (conversationResult.status === 'fulfilled' ? conversationResult.value.provider.model : undefined)
-
-        setSelectedProviderID(activeProvider?.id ?? '')
-        setAvailableModels(chatModels)
-        setSelectedModel((currentModel) => selectPreferredChatModel(currentModel, providerModel, chatModels))
-      }
-
-      if (providerGatewayResult.status === 'fulfilled') {
-        setProviderGateway(providerGatewayResult.value)
-        setProviderGatewayError(null)
-      } else {
-        setProviderGatewayError(
-          getErrorMessage(providerGatewayResult.reason, 'Unable to load provider gateway telemetry.'),
-        )
-      }
-      setIsProviderGatewayPending(false)
-
-      if (agentCatalogResult.status === 'fulfilled') {
-        setAgentCatalog(agentCatalogResult.value)
-      }
-
-      if (attachmentLibraryResult.status === 'fulfilled') {
-        setRecentAttachmentReferences(attachmentLibraryResult.value)
+    void bootstrapAgentPanel({
+      applyConversationSnapshot,
+      getPanelStateEpoch: () => panelStateEpochRef.current,
+      hostId,
+      panelStateEpoch,
+      setAgentCatalog,
+      setAvailableModels,
+      setLoadError,
+      setProviderCatalog,
+      setProviderGateway,
+      setProviderGatewayError,
+      setRecentAttachmentReferences,
+      setSelectedModel,
+      setSelectedProviderID,
+      setSkipped: () => {
+        cancelled = true
+      },
+    }).finally(() => {
+      if (!cancelled && panelStateEpochRef.current === panelStateEpoch) {
+        setIsProviderGatewayPending(false)
       }
     })
 
@@ -483,16 +474,26 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
       cancelled = true
       submissionNonceRef.current += 1
       activeSubmissionAbortRef.current?.abort()
-      activeStreamRef.current?.close()
-      activeStreamRef.current = null
-      activeSubmissionAbortRef.current = null
-      activeAuditMessageIDRef.current = null
-      pendingFlowRef.current = null
-      hasLoadedContextWidgetsRef.current = false
-      hasCustomizedContextWidgetSelectionRef.current = false
-      workspaceWidgetsRef.current = []
-      setIsResponseCancellable(false)
-      unblockAiWidget(hostId)
+      resetAgentPanelRuntime({
+        clearActiveAuditMessageID: () => {
+          activeAuditMessageIDRef.current = null
+        },
+        clearPendingFlowRef: () => {
+          pendingFlowRef.current = null
+        },
+        closeActiveStream: () => {
+          activeStreamRef.current?.close()
+          activeStreamRef.current = null
+          activeSubmissionAbortRef.current = null
+        },
+        resetContextRuntime: () => {
+          hasLoadedContextWidgetsRef.current = false
+          hasCustomizedContextWidgetSelectionRef.current = false
+          workspaceWidgetsRef.current = []
+        },
+        setIsResponseCancellable,
+        unblockAiWidget: () => unblockAiWidget(hostId),
+      })
     }
   }, [applyConversationSnapshot, beginPanelStateEpoch, enabled, hostId])
 
@@ -981,60 +982,41 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
   }, [contextWidgetOptions, missingContextWidgetCount, storedContextWidgetIDs])
 
   const ensureCurrentConversationSnapshotLoaded = useCallback(async () => {
-    if (activeConversationIDRef.current.trim() && messagesRef.current != null) {
-      return
-    }
-
-    const snapshot = await fetchAgentConversation()
-    applyConversationSnapshot(snapshot)
-    await refreshConversationList()
+    await ensureCurrentConversationSnapshotLoadedForPanel({
+      activeConversationID: activeConversationIDRef.current,
+      applyConversationSnapshot,
+      hasMessagesLoaded: messagesRef.current != null,
+      refreshConversationList: () => refreshConversationList(),
+    })
   }, [applyConversationSnapshot, refreshConversationList])
 
   const persistConversationContextPreferences = useCallback(
     async (preferences: AgentConversationContextPreferences) => {
-      let conversationID = activeConversationIDRef.current.trim()
-
-      if (!conversationID) {
-        const currentSnapshot = await fetchAgentConversation()
-        applyConversationSnapshot(currentSnapshot)
-        conversationID = currentSnapshot.id.trim()
-      }
-
-      if (!conversationID) {
-        return
-      }
-
-      const snapshot = await updateAgentConversationContext(conversationID, preferences)
-      applyConversationSnapshot(snapshot)
-      await refreshConversationList()
+      await persistConversationContextPreferencesForPanel({
+        activeConversationID: activeConversationIDRef.current,
+        applyConversationSnapshot,
+        preferences,
+        refreshConversationList: () => refreshConversationList(),
+      })
     },
     [applyConversationSnapshot, refreshConversationList],
   )
 
   const persistCleanedContextWidgetSelection = useCallback(
     async (options: AiContextWidgetOption[]) => {
-      if (!hasCustomizedContextWidgetSelectionRef.current) {
-        return false
-      }
-
-      const normalizedSelection = deduplicateWidgetIDs(storedContextWidgetIDsRef.current)
-      if (normalizedSelection.length === 0) {
-        return false
-      }
-
-      const cleanedWidgetIDs = filterContextWidgetSelection(normalizedSelection, options)
-      if (cleanedWidgetIDs.length === normalizedSelection.length) {
-        return false
-      }
-
-      storedContextWidgetIDsRef.current = cleanedWidgetIDs
-      setStoredContextWidgetIDs(cleanedWidgetIDs)
-      setMissingContextWidgetCount(0)
-      await persistConversationContextPreferences({
-        widget_context_enabled: isWidgetContextEnabledRef.current,
-        widget_ids: cleanedWidgetIDs,
+      const persisted = await persistCleanedContextWidgetSelectionForPanel({
+        hasCustomizedContextWidgetSelection: hasCustomizedContextWidgetSelectionRef.current,
+        isWidgetContextEnabled: isWidgetContextEnabledRef.current,
+        options,
+        persistConversationContextPreferences,
+        setMissingContextWidgetCount,
+        setStoredContextWidgetIDs: (widgetIDs) => {
+          storedContextWidgetIDsRef.current = widgetIDs
+          setStoredContextWidgetIDs(widgetIDs)
+        },
+        storedContextWidgetIDs: storedContextWidgetIDsRef.current,
       })
-      return true
+      return persisted
     },
     [persistConversationContextPreferences],
   )
@@ -1061,47 +1043,29 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
     options: AiContextWidgetOption[]
     widgets: WorkspaceWidgetSnapshot[]
   }> => {
-    if (!enabled) {
-      return {
-        activeWidgetID: '',
-        options: [] as AiContextWidgetOption[],
-        widgets: [] as WorkspaceWidgetSnapshot[],
-      }
-    }
-    if (hasLoadedContextWidgetsRef.current) {
-      return {
-        activeWidgetID: workspaceActiveWidgetIDRef.current,
-        options: contextWidgetOptionsRef.current,
-        widgets: workspaceWidgetsRef.current,
-      }
-    }
-
-    const workspaceSnapshot = await fetchWorkspaceSnapshot()
-    const nextContextWidgetOptions = mapContextWidgetOptions(workspaceSnapshot.widgets)
-    const nextWorkspaceActiveWidgetID = workspaceSnapshot.active_widget_id?.trim() ?? ''
-
-    hasLoadedContextWidgetsRef.current = true
-    contextWidgetOptionsRef.current = nextContextWidgetOptions
-    workspaceActiveWidgetIDRef.current = nextWorkspaceActiveWidgetID
-    workspaceWidgetsRef.current = workspaceSnapshot.widgets
-    setWorkspaceActiveWidgetID(nextWorkspaceActiveWidgetID)
-    setContextWidgetOptions(nextContextWidgetOptions)
-    setContextWidgetLoadError(null)
-    setMissingContextWidgetCount((currentMissingCount) => {
-      if (hasCustomizedContextWidgetSelectionRef.current) {
-        const normalizedSelection = deduplicateWidgetIDs(storedContextWidgetIDsRef.current)
-        const filteredSelection = filterContextWidgetSelection(normalizedSelection, nextContextWidgetOptions)
-        return Math.max(0, normalizedSelection.length - filteredSelection.length)
-      }
-
-      return currentMissingCount > 0 ? 0 : currentMissingCount
+    const snapshot = await loadContextWidgetsForPanel({
+      contextWidgetOptions: contextWidgetOptionsRef.current,
+      enabled,
+      hasCustomizedContextWidgetSelection: hasCustomizedContextWidgetSelectionRef.current,
+      hasLoadedContextWidgets: hasLoadedContextWidgetsRef.current,
+      setContextWidgetLoadError,
+      setContextWidgetOptions: (options) => {
+        contextWidgetOptionsRef.current = options
+        setContextWidgetOptions(options)
+      },
+      setMissingContextWidgetCount,
+      setWorkspaceActiveWidgetID: (widgetID) => {
+        workspaceActiveWidgetIDRef.current = widgetID
+        setWorkspaceActiveWidgetID(widgetID)
+      },
+      storedContextWidgetIDs: storedContextWidgetIDsRef.current,
+      workspaceActiveWidgetID: workspaceActiveWidgetIDRef.current,
+      workspaceWidgets: workspaceWidgetsRef.current,
     })
 
-    return {
-      activeWidgetID: nextWorkspaceActiveWidgetID,
-      options: nextContextWidgetOptions,
-      widgets: workspaceSnapshot.widgets,
-    }
+    hasLoadedContextWidgetsRef.current = true
+    workspaceWidgetsRef.current = snapshot.widgets
+    return snapshot
   }, [enabled])
 
   useEffect(() => {
