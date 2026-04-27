@@ -93,6 +93,14 @@ import {
   updateInteractionMessage,
   upsertInteractionMessage,
 } from '@/features/agent/model/chat-message-utils'
+import {
+  agentSelectionOptionsFromItems,
+  getApprovalToken,
+  getErrorMessage,
+  getRunCommand,
+  targetSessionForConnectionKind,
+  waitForTerminalOutput,
+} from '@/features/agent/model/agent-panel-terminal'
 import type {
   AiAgentSelectionOption,
   AiPanelWidgetState,
@@ -104,7 +112,6 @@ import type {
   QuestionnaireMessage,
 } from '@/features/agent/model/types'
 import { $terminalPanelBindings, resolveTerminalPanelBinding } from '@/features/terminal/model/panel-registry'
-import { fetchTerminalSnapshot } from '@/features/terminal/api/client'
 import { resolveRuntimeContext } from '@/shared/api/runtime'
 import { fetchWorkspaceSnapshot, type WorkspaceWidgetSnapshot } from '@/shared/api/workspace'
 import {
@@ -115,11 +122,6 @@ import {
 } from '@/shared/model/ai-attachments'
 import { blockAiWidget, unblockAiWidget } from '@/shared/model/ai-blocked-widgets'
 import { $activeWidgetHostId } from '@/shared/model/widget-focus'
-
-const runCommandPattern = /^\/run(?:\s+([\s\S]*))?$/
-const runOutputInitialPollIntervalMs = 100
-const runOutputMaxPollIntervalMs = 500
-const runOutputWaitTimeoutMs = 1500
 
 type TerminalExecutionTarget = {
   baselineNextSeq: number
@@ -135,88 +137,6 @@ type UseAgentPanelOptions = {
   }) => Promise<{
     widgetId: string
   } | null>
-}
-
-function getRunCommand(prompt: string) {
-  const match = prompt.match(runCommandPattern)
-
-  if (!match) {
-    return null
-  }
-
-  return match[1]?.trim() ?? ''
-}
-
-function targetSessionForConnectionKind(connectionKind: string | undefined) {
-  return connectionKind === 'ssh' ? 'remote' : 'local'
-}
-
-function delayWithAbort(delayMs: number, signal?: AbortSignal) {
-  if (!signal) {
-    return new Promise<void>((resolve) => {
-      window.setTimeout(resolve, delayMs)
-    })
-  }
-
-  if (signal.aborted) {
-    return Promise.reject(signal.reason ?? new DOMException('Aborted', 'AbortError'))
-  }
-
-  return new Promise<void>((resolve, reject) => {
-    const timer = window.setTimeout(() => {
-      signal.removeEventListener('abort', onAbort)
-      resolve()
-    }, delayMs)
-
-    const onAbort = () => {
-      window.clearTimeout(timer)
-      signal.removeEventListener('abort', onAbort)
-      reject(signal.reason ?? new DOMException('Aborted', 'AbortError'))
-    }
-
-    signal.addEventListener('abort', onAbort, { once: true })
-  })
-}
-
-async function waitForTerminalOutput(widgetId: string, fromSeq: number, signal?: AbortSignal) {
-  const deadline = Date.now() + runOutputWaitTimeoutMs
-  let nextDelayMs = runOutputInitialPollIntervalMs
-  let latestSnapshot = await fetchTerminalSnapshot(widgetId, fromSeq, signal)
-
-  while (latestSnapshot.next_seq <= fromSeq && latestSnapshot.chunks.length === 0 && Date.now() < deadline) {
-    await delayWithAbort(nextDelayMs, signal)
-    latestSnapshot = await fetchTerminalSnapshot(widgetId, fromSeq, signal)
-    nextDelayMs = Math.min(runOutputMaxPollIntervalMs, Math.round(nextDelayMs * 1.6))
-  }
-
-  return latestSnapshot
-}
-
-function agentSelectionOptionsFromItems(
-  items: Array<{ id: string; name: string; description: string }>,
-): AiAgentSelectionOption[] {
-  return items.map((item) => ({
-    value: item.id,
-    label: item.name,
-    description: item.description,
-  }))
-}
-
-function getErrorMessage(error: unknown, fallback: string) {
-  return error instanceof Error && error.message.trim() ? error.message : fallback
-}
-
-function getApprovalToken(response: AgentToolExecuteResponse) {
-  const output = response.output
-
-  if (output && typeof output === 'object') {
-    const token = (output as { approval_token?: unknown }).approval_token
-    if (typeof token === 'string' && token.trim() !== '') {
-      return token
-    }
-  }
-
-  throw new Error('Approval confirmation did not return an approval token.')
 }
 
 const defaultConversationListCounts: AgentConversationListCounts = {
