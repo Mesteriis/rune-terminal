@@ -63,6 +63,7 @@ import {
   cancelActiveSubmissionForPanel,
   runBackendPromptForPanel,
 } from '@/features/agent/model/agent-panel-streaming'
+import { usePendingInteractionFlowState } from '@/features/agent/model/use-pending-interaction-flow-state'
 import {
   bootstrapAgentPanel,
   resetAgentPanelBootstrapState,
@@ -164,7 +165,13 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
   ])
   const [messages, setMessages] = useState<AgentConversationMessage[] | null>(null)
   const [interactionMessages, setInteractionMessages] = useState<ChatMessageView[]>([])
-  const [pendingFlow, setPendingFlow] = useState<PendingInteractionFlow | null>(null)
+  const {
+    clearPendingInteractionFlow,
+    getPendingInteractionFlow,
+    pendingFlow,
+    pendingFlowRef,
+    setPendingInteractionFlow,
+  } = usePendingInteractionFlowState()
   const [provider, setProvider] = useState<AgentConversationProvider | null>(null)
   const [providerCatalog, setProviderCatalog] = useState<AgentProviderCatalog | null>(null)
   const [providerGateway, setProviderGateway] = useState<AgentProviderGatewaySnapshot | null>(null)
@@ -213,7 +220,6 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
   const optimisticMessageCounterRef = useRef(0)
   const flowCounterRef = useRef(0)
   const localSortCounterRef = useRef(0)
-  const pendingFlowRef = useRef<PendingInteractionFlow | null>(null)
   const submissionNonceRef = useRef(0)
   const panelStateEpochRef = useRef(0)
   const conversationListRequestNonceRef = useRef(0)
@@ -317,10 +323,6 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
   }, [messages])
 
   useEffect(() => {
-    pendingFlowRef.current = pendingFlow
-  }, [pendingFlow])
-
-  useEffect(() => {
     contextWidgetOptionsRef.current = contextWidgetOptions
   }, [contextWidgetOptions])
 
@@ -344,9 +346,7 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
         clearActiveAuditMessageID: () => {
           activeAuditMessageIDRef.current = null
         },
-        clearPendingFlowRef: () => {
-          pendingFlowRef.current = null
-        },
+        clearPendingFlowRef: clearPendingInteractionFlow,
         closeActiveStream: () => {
           activeStreamRef.current?.close()
           activeStreamRef.current = null
@@ -361,7 +361,7 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
         unblockAiWidget: () => unblockAiWidget(hostId),
       })
     }
-  }, [hostId])
+  }, [clearPendingInteractionFlow, hostId])
 
   useEffect(() => {
     if (!enabled) {
@@ -377,9 +377,7 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
       clearActiveAuditMessageID: () => {
         activeAuditMessageIDRef.current = null
       },
-      clearPendingFlowRef: () => {
-        pendingFlowRef.current = null
-      },
+      clearPendingFlowRef: clearPendingInteractionFlow,
       closeActiveStream: () => {
         activeStreamRef.current?.close()
         activeStreamRef.current = null
@@ -421,7 +419,7 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
       setLoadError,
       setMessages,
       setMissingContextWidgetCount,
-      setPendingFlow,
+      setPendingFlow: setPendingInteractionFlow,
       setProvider,
       setProviderCatalog,
       setProviderGateway,
@@ -467,9 +465,7 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
         clearActiveAuditMessageID: () => {
           activeAuditMessageIDRef.current = null
         },
-        clearPendingFlowRef: () => {
-          pendingFlowRef.current = null
-        },
+        clearPendingFlowRef: clearPendingInteractionFlow,
         closeActiveStream: () => {
           activeStreamRef.current?.close()
           activeStreamRef.current = null
@@ -484,7 +480,14 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
         unblockAiWidget: () => unblockAiWidget(hostId),
       })
     }
-  }, [applyConversationSnapshot, beginPanelStateEpoch, enabled, hostId])
+  }, [
+    applyConversationSnapshot,
+    beginPanelStateEpoch,
+    clearPendingInteractionFlow,
+    enabled,
+    hostId,
+    setPendingInteractionFlow,
+  ])
 
   useEffect(() => {
     if (!enabled) {
@@ -547,11 +550,6 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
     )
   }, [availableModels, provider?.model])
 
-  const clearPendingInteractionFlow = useCallback(() => {
-    pendingFlowRef.current = null
-    setPendingFlow(null)
-  }, [])
-
   const refreshAttachmentLibrary = useCallback(async () => {
     setIsAttachmentLibraryPending(true)
     try {
@@ -578,11 +576,10 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
   }, [])
 
   const resetConversationInteractionState = useCallback(() => {
-    pendingFlowRef.current = null
-    setPendingFlow(null)
+    clearPendingInteractionFlow()
     setInteractionMessages([])
     setSubmitError(null)
-  }, [])
+  }, [clearPendingInteractionFlow])
 
   const resetConversationSubmissionState = useCallback(() => {
     resetConversationSubmissionRuntime({
@@ -1319,10 +1316,8 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
         repoRoot,
         resolveTerminalExecutionTarget,
         setInteractionMessages,
-        setPendingFlow,
-        setPendingFlowRef: (flow) => {
-          pendingFlowRef.current = flow
-        },
+        setPendingFlow: setPendingInteractionFlow,
+        setPendingFlowRef: setPendingInteractionFlow,
         setSubmitError,
       })
     },
@@ -1333,6 +1328,7 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
       nextLocalSortKey,
       refreshConversationList,
       resolveTerminalExecutionTarget,
+      setPendingInteractionFlow,
     ],
   )
 
@@ -1443,7 +1439,7 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
   const submitDraft = useCallback(async () => {
     const prompt = draft.trim()
 
-    if (!enabled || isSubmitting || isConversationPending || pendingFlowRef.current || prompt === '') {
+    if (!enabled || isSubmitting || isConversationPending || getPendingInteractionFlow() || prompt === '') {
       return
     }
     const isRunPrompt = getRunCommand(prompt) !== null
@@ -1500,11 +1496,11 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
     setInteractionMessages((currentMessages) =>
       sortMessagesBySortKey([...currentMessages, ...interactionFlow.messages]),
     )
-    pendingFlowRef.current = nextPendingFlow
-    setPendingFlow(nextPendingFlow)
+    setPendingInteractionFlow(nextPendingFlow)
   }, [
     draft,
     enabled,
+    getPendingInteractionFlow,
     hostId,
     isConversationPending,
     isSubmitting,
@@ -1513,6 +1509,7 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
     queuedAttachmentReferences,
     runBackendPrompt,
     selectedModel,
+    setPendingInteractionFlow,
     hasTerminalExecutionContext,
   ])
 
@@ -1547,7 +1544,7 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
 
   const cancelPendingPlan = useCallback(
     (message: ApprovalMessage) => {
-      const activeFlow = pendingFlowRef.current
+      const activeFlow = getPendingInteractionFlow()
 
       if (!activeFlow || activeFlow.flowID !== message.planId) {
         return
@@ -1562,7 +1559,7 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
       )
       clearPendingInteractionFlow()
     },
-    [clearPendingInteractionFlow, nextLocalSortKey],
+    [clearPendingInteractionFlow, getPendingInteractionFlow, nextLocalSortKey],
   )
 
   const answerQuestionnaire = useCallback(
@@ -1570,25 +1567,25 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
       await answerQuestionnaireForPanel({
         answer,
         clearPendingInteractionFlow,
-        getPendingFlow: () => pendingFlowRef.current,
+        getPendingFlow: getPendingInteractionFlow,
         hasTerminalExecutionContext,
         message,
         nextLocalSortKey,
         runBackendPrompt,
         selectedModel,
         setInteractionMessages,
-        setPendingFlow,
-        setPendingFlowRef: (flow) => {
-          pendingFlowRef.current = flow
-        },
+        setPendingFlow: setPendingInteractionFlow,
+        setPendingFlowRef: setPendingInteractionFlow,
       })
     },
     [
       clearPendingInteractionFlow,
+      getPendingInteractionFlow,
       hasTerminalExecutionContext,
       nextLocalSortKey,
       runBackendPrompt,
       selectedModel,
+      setPendingInteractionFlow,
     ],
   )
 
@@ -1597,7 +1594,7 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
       await approvePendingPlanForPanel({
         blockAiWidget: () => blockAiWidget(hostId),
         clearPendingInteractionFlow,
-        getPendingFlow: () => pendingFlowRef.current,
+        getPendingFlow: getPendingInteractionFlow,
         hostId,
         message,
         nextLocalSortKey,
@@ -1608,10 +1605,8 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
         setInteractionMessages,
         setIsResponseCancellable,
         setIsSubmitting,
-        setPendingFlow,
-        setPendingFlowRef: (flow) => {
-          pendingFlowRef.current = flow
-        },
+        setPendingFlow: setPendingInteractionFlow,
+        setPendingFlowRef: setPendingInteractionFlow,
         setSubmitError,
         unblockAiWidget: () => unblockAiWidget(hostId),
         updateAuditMessageEntries,
@@ -1619,12 +1614,14 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
     },
     [
       clearPendingInteractionFlow,
+      getPendingInteractionFlow,
       hostId,
       nextLocalSortKey,
       runApprovedExecutionPlan,
       runApprovedTerminalPrompt,
       runBackendPrompt,
       selectedModel,
+      setPendingInteractionFlow,
       updateAuditMessageEntries,
     ],
   )
