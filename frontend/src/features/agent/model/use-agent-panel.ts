@@ -42,7 +42,6 @@ import {
   filterContextWidgetSelection,
   formatContextWidgetLabel,
   isCustomizedContextPreference,
-  resolveContextTerminalWidget,
   summaryFromConversationSnapshot,
   upsertConversationSummary,
 } from '@/features/agent/model/agent-panel-context'
@@ -52,6 +51,7 @@ import {
   persistCleanedContextWidgetSelectionForPanel,
   persistConversationContextPreferencesForPanel,
 } from '@/features/agent/model/agent-panel-context-runtime'
+import { useAgentPanelContextSelection } from '@/features/agent/model/use-agent-panel-context-selection'
 import {
   resolveTerminalExecutionTargetForPanel,
   runApprovedExecutionPlanForPanel,
@@ -918,55 +918,6 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
     [],
   )
 
-  const deriveFallbackContextWidgetIDs = useCallback(
-    (nextWorkspaceActiveWidgetID?: string) => {
-      const terminalBinding = resolveTerminalPanelBinding(terminalPanelBindings, activeWidgetHostId)
-      return deduplicateWidgetIDs([
-        terminalBinding?.runtimeWidgetId ?? '',
-        nextWorkspaceActiveWidgetID ?? workspaceActiveWidgetID,
-      ])
-    },
-    [activeWidgetHostId, terminalPanelBindings, workspaceActiveWidgetID],
-  )
-
-  const resolveCurrentContextWidgetID = useCallback(
-    (options: AiContextWidgetOption[], nextWorkspaceActiveWidgetID?: string) => {
-      const availableWidgetIDs = new Set(options.map((option) => option.value))
-      return (
-        deriveFallbackContextWidgetIDs(nextWorkspaceActiveWidgetID).find((widgetID) =>
-          availableWidgetIDs.has(widgetID),
-        ) ?? ''
-      )
-    },
-    [deriveFallbackContextWidgetIDs],
-  )
-
-  const effectiveContextWidgetIDs = useMemo(() => {
-    const filteredSelection =
-      contextWidgetOptions.length > 0
-        ? filterContextWidgetSelection(storedContextWidgetIDs, contextWidgetOptions)
-        : deduplicateWidgetIDs(storedContextWidgetIDs)
-
-    if (filteredSelection.length > 0) {
-      return filteredSelection
-    }
-
-    return deriveFallbackContextWidgetIDs()
-  }, [contextWidgetOptions, deriveFallbackContextWidgetIDs, storedContextWidgetIDs])
-
-  const resolvedMissingContextWidgetCount = useMemo(() => {
-    if (contextWidgetOptions.length === 0) {
-      return missingContextWidgetCount
-    }
-
-    const normalizedSelection = deduplicateWidgetIDs(storedContextWidgetIDs)
-    return Math.max(
-      0,
-      normalizedSelection.length -
-        filterContextWidgetSelection(normalizedSelection, contextWidgetOptions).length,
-    )
-  }, [contextWidgetOptions, missingContextWidgetCount, storedContextWidgetIDs])
-
   const ensureCurrentConversationSnapshotLoaded = useCallback(async () => {
     await ensureCurrentConversationSnapshotLoadedForPanel({
       activeConversationID: activeConversationIDRef.current,
@@ -1007,22 +958,36 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
     [persistConversationContextPreferences],
   )
 
-  const updateSelectedContextWidgetIDs = useCallback(
-    (widgetIDs: string[]) => {
-      const normalizedWidgetIDs = deduplicateWidgetIDs(widgetIDs)
-      hasCustomizedContextWidgetSelectionRef.current = true
-      setStoredContextWidgetIDs(normalizedWidgetIDs)
-      setIsWidgetContextEnabled(true)
-      setMissingContextWidgetCount(0)
-      void persistConversationContextPreferences({
-        widget_context_enabled: true,
-        widget_ids: normalizedWidgetIDs,
-      }).catch((error) => {
-        setSubmitError(getErrorMessage(error, 'Unable to update the conversation context.'))
-      })
+  const {
+    activeContextWidgetID,
+    activeContextWidgetOption,
+    createConversationContext,
+    createToolExecutionContext,
+    deriveFallbackContextWidgetIDs,
+    effectiveContextWidgetIDs,
+    repairMissingContextWidgets,
+    resolveCurrentContextWidgetID,
+    resolvedMissingContextWidgetCount,
+    updateSelectedContextWidgetIDs,
+    updateWidgetContextEnabled,
+  } = useAgentPanelContextSelection({
+    activeWidgetHostId,
+    contextWidgetOptions,
+    getErrorMessage,
+    isWidgetContextEnabled,
+    missingContextWidgetCount,
+    persistConversationContextPreferences,
+    setHasCustomizedContextWidgetSelection: (value) => {
+      hasCustomizedContextWidgetSelectionRef.current = value
     },
-    [persistConversationContextPreferences],
-  )
+    setIsWidgetContextEnabled,
+    setMissingContextWidgetCount,
+    setStoredContextWidgetIDs,
+    setSubmitError,
+    storedContextWidgetIDs,
+    terminalPanelBindings,
+    workspaceActiveWidgetID,
+  })
 
   const loadContextWidgets = useCallback(async (): Promise<{
     activeWidgetID: string
@@ -1174,103 +1139,6 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
       setContextWidgetLoadError(errorMessage)
     }
   }, [loadContextWidgets, persistConversationContextPreferences])
-
-  const activeContextWidgetID = useMemo(
-    () => resolveCurrentContextWidgetID(contextWidgetOptions),
-    [contextWidgetOptions, resolveCurrentContextWidgetID],
-  )
-
-  const activeContextWidgetOption = useMemo(() => {
-    if (!activeContextWidgetID) {
-      return null
-    }
-
-    return contextWidgetOptions.find((option) => option.value === activeContextWidgetID) ?? null
-  }, [activeContextWidgetID, contextWidgetOptions])
-
-  const updateWidgetContextEnabled = useCallback(
-    (nextValue: boolean) => {
-      setIsWidgetContextEnabled(nextValue)
-      setMissingContextWidgetCount(0)
-      hasCustomizedContextWidgetSelectionRef.current =
-        !nextValue || deduplicateWidgetIDs(effectiveContextWidgetIDs).length > 0
-      void persistConversationContextPreferences({
-        widget_context_enabled: nextValue,
-        widget_ids: deduplicateWidgetIDs(effectiveContextWidgetIDs),
-      }).catch((error) => {
-        setSubmitError(getErrorMessage(error, 'Unable to update the conversation context.'))
-      })
-    },
-    [effectiveContextWidgetIDs, persistConversationContextPreferences],
-  )
-
-  const repairMissingContextWidgets = useCallback(() => {
-    const nextWidgetIDs = deduplicateWidgetIDs(effectiveContextWidgetIDs)
-    hasCustomizedContextWidgetSelectionRef.current = nextWidgetIDs.length > 0 || !isWidgetContextEnabled
-    setStoredContextWidgetIDs(nextWidgetIDs)
-    setMissingContextWidgetCount(0)
-    void persistConversationContextPreferences({
-      widget_context_enabled: isWidgetContextEnabled,
-      widget_ids: nextWidgetIDs,
-    }).catch((error) => {
-      setSubmitError(getErrorMessage(error, 'Unable to save the cleaned conversation context.'))
-    })
-  }, [effectiveContextWidgetIDs, isWidgetContextEnabled, persistConversationContextPreferences])
-
-  const createConversationContext = useCallback(
-    (input: {
-      actionSource: string
-      activeWidgetID?: string
-      repoRoot: string
-      targetConnectionID?: string
-      targetSession?: string
-      includeActiveWidgetInSelection?: boolean
-    }) => {
-      const selectedWidgetIDs = isWidgetContextEnabled ? effectiveContextWidgetIDs : []
-      const activeWidgetID =
-        input.activeWidgetID?.trim() || selectedWidgetIDs[0] || deriveFallbackContextWidgetIDs()[0] || ''
-      const contextWidgetIDs = isWidgetContextEnabled
-        ? deduplicateWidgetIDs(
-            input.includeActiveWidgetInSelection && activeWidgetID
-              ? [activeWidgetID, ...selectedWidgetIDs]
-              : selectedWidgetIDs,
-          )
-        : []
-
-      return {
-        action_source: input.actionSource,
-        active_widget_id: activeWidgetID,
-        repo_root: input.repoRoot,
-        target_connection_id: input.targetConnectionID,
-        target_session: input.targetSession,
-        widget_context_enabled: isWidgetContextEnabled,
-        ...(contextWidgetIDs.length > 0 ? { widget_ids: contextWidgetIDs } : {}),
-      }
-    },
-    [deriveFallbackContextWidgetIDs, effectiveContextWidgetIDs, isWidgetContextEnabled],
-  )
-
-  const createToolExecutionContext = useCallback(
-    (input: {
-      actionSource: string
-      activeWidgetID?: string
-      repoRoot: string
-      targetConnectionID?: string
-      targetSession?: string
-      includeActiveWidgetInSelection?: boolean
-    }) => {
-      const conversationContext = createConversationContext(input)
-
-      return {
-        action_source: conversationContext.action_source,
-        active_widget_id: conversationContext.active_widget_id,
-        repo_root: conversationContext.repo_root,
-        target_connection_id: conversationContext.target_connection_id,
-        target_session: conversationContext.target_session,
-      }
-    },
-    [createConversationContext],
-  )
 
   const hasTerminalExecutionContext =
     Object.keys(terminalPanelBindings).length > 0 || storedContextWidgetIDs.length > 0
