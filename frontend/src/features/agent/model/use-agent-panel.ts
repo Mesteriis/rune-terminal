@@ -5,10 +5,8 @@ import {
   deleteAgentAttachmentReference,
   executeAgentTool,
   fetchAgentAttachmentReferences,
-  explainTerminalCommand,
   fetchAgentCatalog,
   fetchAgentConversation,
-  planTerminalCommand,
   setAgentMode,
   setAgentProfile,
   setAgentRole,
@@ -63,6 +61,13 @@ import {
   persistConversationContextPreferencesForPanel,
 } from '@/features/agent/model/agent-panel-context-runtime'
 import {
+  resolveTerminalExecutionTargetForPanel,
+  runApprovedExecutionPlanForPanel,
+  runApprovedTerminalPromptForPanel,
+  runTerminalPromptForPanel,
+  type TerminalExecutionTarget,
+} from '@/features/agent/model/agent-panel-execution'
+import {
   bootstrapAgentPanel,
   resetAgentPanelBootstrapState,
   resetAgentPanelRuntime,
@@ -110,8 +115,6 @@ import {
   getApprovalToken,
   getErrorMessage,
   getRunCommand,
-  targetSessionForConnectionKind,
-  waitForTerminalOutput,
 } from '@/features/agent/model/agent-panel-terminal'
 import type {
   AiAgentSelectionOption,
@@ -123,7 +126,7 @@ import type {
   ChatMessageView,
   QuestionnaireMessage,
 } from '@/features/agent/model/types'
-import { $terminalPanelBindings, resolveTerminalPanelBinding } from '@/features/terminal/model/panel-registry'
+import { $terminalPanelBindings } from '@/features/terminal/model/panel-registry'
 import { resolveRuntimeContext } from '@/shared/api/runtime'
 import type { WorkspaceWidgetSnapshot } from '@/shared/api/workspace'
 import {
@@ -134,13 +137,6 @@ import {
 } from '@/shared/model/ai-attachments'
 import { blockAiWidget, unblockAiWidget } from '@/shared/model/ai-blocked-widgets'
 import { $activeWidgetHostId } from '@/shared/model/widget-focus'
-
-type TerminalExecutionTarget = {
-  baselineNextSeq: number
-  targetConnectionID: string
-  targetSession: string
-  targetWidgetID: string
-}
 
 type UseAgentPanelOptions = {
   ensureVisibleTerminalTarget?: (input: {
@@ -1290,81 +1286,19 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
     Object.keys(terminalPanelBindings).length > 0 || storedContextWidgetIDs.length > 0
 
   const resolveTerminalExecutionTarget = useCallback(async (): Promise<TerminalExecutionTarget> => {
-    const shouldResolveFromContext =
-      isWidgetContextEnabled &&
-      (storedContextWidgetIDsRef.current.length > 0 || hasLoadedContextWidgetsRef.current)
-    let contextTerminal: WorkspaceWidgetSnapshot | null = null
-
-    if (shouldResolveFromContext) {
-      const contextSnapshot = hasLoadedContextWidgetsRef.current
-        ? {
-            activeWidgetID: workspaceActiveWidgetIDRef.current,
-            options: contextWidgetOptionsRef.current,
-            widgets: workspaceWidgetsRef.current,
-          }
-        : await loadContextWidgets()
-      const activeContextTerminalID = resolveCurrentContextWidgetID(
-        contextSnapshot.options,
-        contextSnapshot.activeWidgetID,
-      )
-      const selectedContextWidgetIDs =
-        contextSnapshot.options.length > 0
-          ? filterContextWidgetSelection(storedContextWidgetIDsRef.current, contextSnapshot.options)
-          : deduplicateWidgetIDs(storedContextWidgetIDsRef.current)
-      const contextTerminalCandidates =
-        selectedContextWidgetIDs.length > 0
-          ? deduplicateWidgetIDs([
-              ...selectedContextWidgetIDs,
-              ...(selectedContextWidgetIDs.includes(activeContextTerminalID)
-                ? [activeContextTerminalID]
-                : []),
-            ])
-          : [activeContextTerminalID]
-      contextTerminal = resolveContextTerminalWidget(contextSnapshot.widgets, contextTerminalCandidates)
-    }
-
-    const fallbackTerminal = resolveTerminalPanelBinding(terminalPanelBindings, activeWidgetHostId)
-    const hasVisibleContextTerminal =
-      contextTerminal != null &&
-      Object.values(terminalPanelBindings).some((binding) => binding.runtimeWidgetId === contextTerminal?.id)
-    const requestedWidgetTitle =
-      contextTerminal?.title?.trim() ||
-      (fallbackTerminal?.preset === 'main' ? 'Main terminal' : 'Workspace shell')
-    let targetWidgetID = contextTerminal?.id ?? fallbackTerminal?.runtimeWidgetId ?? ''
-    const needsVisibleTerminalTarget =
-      !targetWidgetID || (contextTerminal != null && !hasVisibleContextTerminal)
-
-    if (options.ensureVisibleTerminalTarget && needsVisibleTerminalTarget) {
-      const ensuredTarget = await options.ensureVisibleTerminalTarget({
-        requestedWidgetId: targetWidgetID || undefined,
-        requestedWidgetTitle,
-      })
-      const ensuredWidgetID = ensuredTarget?.widgetId?.trim() ?? ''
-
-      if (ensuredWidgetID !== '') {
-        targetWidgetID = ensuredWidgetID
-      }
-    }
-
-    if (!targetWidgetID) {
-      throw new Error('No terminal widget is available for execution.')
-    }
-
-    const baselineSnapshot = await fetchTerminalSnapshot(targetWidgetID)
-    const targetSession = targetSessionForConnectionKind(baselineSnapshot.state.connection_kind)
-    const targetConnectionID =
-      baselineSnapshot.state.connection_id?.trim() || (targetSession === 'local' ? 'local' : '')
-
-    if (!targetConnectionID) {
-      throw new Error(`Terminal ${targetWidgetID} has no active connection id.`)
-    }
-
-    return {
-      baselineNextSeq: baselineSnapshot.next_seq,
-      targetConnectionID,
-      targetSession,
-      targetWidgetID,
-    }
+    return resolveTerminalExecutionTargetForPanel({
+      activeWidgetHostId,
+      contextWidgetOptions: contextWidgetOptionsRef.current,
+      ensureVisibleTerminalTarget: options.ensureVisibleTerminalTarget,
+      hasLoadedContextWidgets: hasLoadedContextWidgetsRef.current,
+      isWidgetContextEnabled,
+      loadContextWidgets,
+      resolveCurrentContextWidgetID,
+      storedContextWidgetIDs: storedContextWidgetIDsRef.current,
+      terminalPanelBindings,
+      workspaceActiveWidgetID: workspaceActiveWidgetIDRef.current,
+      workspaceWidgets: workspaceWidgetsRef.current,
+    })
   }, [
     activeWidgetHostId,
     isWidgetContextEnabled,
@@ -1376,118 +1310,30 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
 
   const runTerminalPrompt = useCallback(
     async (prompt: string, repoRoot: string) => {
-      const command = getRunCommand(prompt)
-
-      if (command == null) {
-        return false
-      }
-
-      if (command === '') {
-        throw new Error('Usage: /run <command>')
-      }
-
-      const resolvedTarget = await resolveTerminalExecutionTarget()
-
-      const executionContext = {
-        action_source: 'frontend.ai.sidebar.run',
-        active_widget_id: resolvedTarget.targetWidgetID,
-        repo_root: repoRoot,
-        target_connection_id: resolvedTarget.targetConnectionID,
-        target_session: resolvedTarget.targetSession,
-      }
-      const executionInput = {
-        append_newline: true,
-        text: command,
-        widget_id: resolvedTarget.targetWidgetID,
-      }
-
-      const executionResponse = await executeAgentTool({
-        context: executionContext,
-        input: executionInput,
-        tool_name: 'term.send_input',
-      })
-
-      if (executionResponse.status === 'requires_confirmation') {
-        const pendingApproval = executionResponse.pending_approval
-        if (!pendingApproval?.id) {
-          throw new Error('Confirmation required before /run can continue, but no approval id was returned.')
-        }
-
-        const flowSequence = flowCounterRef.current
-        flowCounterRef.current += 1
-        const flowID = `agent-run-${hostId}-${flowSequence}`
-        const summary = pendingApproval.summary?.trim() || `Run ${command}`
-        const tools = [
-          {
-            name: 'term.send_input',
-            description: summary,
-          },
-        ]
-        const planMessage = createPlanMessage(flowID, prompt, tools, nextLocalSortKey)
-        const approvalMessage = createApprovalMessage(flowID, nextLocalSortKey)
-        const runApproval: PendingRunApproval = {
-          approvalID: pendingApproval.id,
-          baselineNextSeq: resolvedTarget.baselineNextSeq,
-          command,
-          prompt,
-          repoRoot,
-          targetConnectionID: resolvedTarget.targetConnectionID,
-          targetSession: resolvedTarget.targetSession,
-          targetWidgetID: resolvedTarget.targetWidgetID,
-        }
-        const nextFlow: PendingInteractionFlow = {
-          approvalMessageID: approvalMessage.id,
-          auditProgressed: false,
-          flowID,
-          prompt,
-          runApproval,
-          tools,
-        }
-
-        pendingFlowRef.current = nextFlow
-        setPendingFlow(nextFlow)
-        setInteractionMessages((currentMessages) =>
-          sortMessagesBySortKey([...currentMessages, planMessage, approvalMessage]),
-        )
-        return true
-      }
-
-      if (executionResponse.status !== 'ok') {
-        throw new Error(executionResponse.error?.trim() || 'Unable to execute /run command.')
-      }
-
-      await waitForTerminalOutput(
-        resolvedTarget.targetWidgetID,
-        resolvedTarget.baselineNextSeq,
-        activeSubmissionAbortRef.current?.signal,
-      )
-
-      const explainResponse = await explainTerminalCommand({
-        command,
-        context: createConversationContext({
-          actionSource: executionContext.action_source,
-          activeWidgetID: resolvedTarget.targetWidgetID,
-          includeActiveWidgetInSelection: true,
-          repoRoot: repoRoot,
-          targetConnectionID: resolvedTarget.targetConnectionID,
-          targetSession: resolvedTarget.targetSession,
-        }),
-        from_seq: resolvedTarget.baselineNextSeq,
+      return runTerminalPromptForPanel({
+        activeSubmissionSignal: activeSubmissionAbortRef.current?.signal,
+        applyConversationSnapshot,
+        createConversationContext,
+        hostId,
+        nextFlowSequence: () => {
+          const flowSequence = flowCounterRef.current
+          flowCounterRef.current += 1
+          return flowSequence
+        },
+        nextLocalSortKey,
         prompt,
-        widget_id: resolvedTarget.targetWidgetID,
+        refreshConversationList: () => refreshConversationList(),
+        repoRoot,
+        resolveTerminalExecutionTarget,
+        setInteractionMessages,
+        setPendingFlow,
+        setPendingFlowRef: (flow) => {
+          pendingFlowRef.current = flow
+        },
+        setSubmitError,
       })
-
-      applyConversationSnapshot(explainResponse.conversation)
-      await refreshConversationList()
-
-      if (explainResponse.provider_error?.trim()) {
-        setSubmitError(explainResponse.provider_error.trim())
-      }
-
-      return true
     },
     [
-      activeWidgetHostId,
       applyConversationSnapshot,
       createConversationContext,
       hostId,
@@ -1499,164 +1345,35 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
 
   const runApprovedTerminalPrompt = useCallback(
     async (runApproval: PendingRunApproval, approvalToken: string) => {
-      const executionResponse = await executeAgentTool({
-        approval_token: approvalToken,
-        context: {
-          action_source: 'frontend.ai.sidebar.run',
-          active_widget_id: runApproval.targetWidgetID,
-          repo_root: runApproval.repoRoot,
-          target_connection_id: runApproval.targetConnectionID,
-          target_session: runApproval.targetSession,
+      await runApprovedTerminalPromptForPanel(
+        {
+          activeSubmissionSignal: activeSubmissionAbortRef.current?.signal,
+          applyConversationSnapshot,
+          createConversationContext,
+          refreshConversationList: () => refreshConversationList(),
+          runApproval,
+          setSubmitError,
         },
-        input: {
-          append_newline: true,
-          text: runApproval.command,
-          widget_id: runApproval.targetWidgetID,
-        },
-        tool_name: 'term.send_input',
-      })
-
-      if (executionResponse.status === 'requires_confirmation') {
-        throw new Error('Confirmed /run execution still requires approval.')
-      }
-
-      if (executionResponse.status !== 'ok') {
-        throw new Error(executionResponse.error?.trim() || 'Unable to execute approved /run command.')
-      }
-
-      await waitForTerminalOutput(
-        runApproval.targetWidgetID,
-        runApproval.baselineNextSeq,
-        activeSubmissionAbortRef.current?.signal,
+        approvalToken,
       )
-
-      const explainResponse = await explainTerminalCommand({
-        command: runApproval.command,
-        context: createConversationContext({
-          actionSource: 'frontend.ai.sidebar.run',
-          activeWidgetID: runApproval.targetWidgetID,
-          includeActiveWidgetInSelection: true,
-          repoRoot: runApproval.repoRoot,
-          targetConnectionID: runApproval.targetConnectionID,
-          targetSession: runApproval.targetSession,
-        }),
-        from_seq: runApproval.baselineNextSeq,
-        prompt: runApproval.prompt ?? `/run ${runApproval.command}`,
-        widget_id: runApproval.targetWidgetID,
-      })
-
-      applyConversationSnapshot(explainResponse.conversation)
-      await refreshConversationList()
-
-      if (explainResponse.provider_error?.trim()) {
-        setSubmitError(explainResponse.provider_error.trim())
-      }
     },
     [applyConversationSnapshot, createConversationContext, refreshConversationList],
   )
 
   const runApprovedExecutionPlan = useCallback(
     async (prompt: string, repoRoot: string, model?: string) => {
-      const resolvedTarget = await resolveTerminalExecutionTarget()
-      const planningContext = createConversationContext({
-        actionSource: 'frontend.ai.sidebar.execute',
-        activeWidgetID: resolvedTarget.targetWidgetID,
-        includeActiveWidgetInSelection: true,
-        repoRoot,
-        targetConnectionID: resolvedTarget.targetConnectionID,
-        targetSession: resolvedTarget.targetSession,
-      })
-      const executionContext = createToolExecutionContext({
-        actionSource: 'frontend.ai.sidebar.execute',
-        activeWidgetID: resolvedTarget.targetWidgetID,
-        includeActiveWidgetInSelection: true,
-        repoRoot,
-        targetConnectionID: resolvedTarget.targetConnectionID,
-        targetSession: resolvedTarget.targetSession,
-      })
-      const executionInput = {
-        append_newline: true,
-        widget_id: resolvedTarget.targetWidgetID,
-      }
-      const plannedCommand = await planTerminalCommand({
-        context: planningContext,
+      await runApprovedExecutionPlanForPanel({
+        activeSubmissionSignal: activeSubmissionAbortRef.current?.signal,
+        applyConversationSnapshot,
+        createConversationContext,
+        createToolExecutionContext,
         model,
         prompt,
-        widget_id: resolvedTarget.targetWidgetID,
+        refreshConversationList: () => refreshConversationList(),
+        repoRoot,
+        resolveTerminalExecutionTarget,
+        setSubmitError,
       })
-      const command = plannedCommand.command.trim()
-
-      if (!command) {
-        throw new Error('Terminal command planning did not return a runnable command.')
-      }
-
-      let executionResponse = await executeAgentTool({
-        context: executionContext,
-        input: {
-          ...executionInput,
-          text: command,
-        },
-        tool_name: 'term.send_input',
-      })
-
-      if (executionResponse.status === 'requires_confirmation') {
-        const pendingApproval = executionResponse.pending_approval
-        if (!pendingApproval?.id) {
-          throw new Error('Approval confirmation did not return a terminal execution approval id.')
-        }
-
-        const confirmationResponse = await executeAgentTool({
-          context: {
-            ...executionContext,
-            action_source: 'frontend.ai.sidebar.execute.confirm',
-          },
-          input: {
-            approval_id: pendingApproval.id,
-          },
-          tool_name: 'safety.confirm',
-        })
-
-        if (confirmationResponse.status !== 'ok') {
-          throw new Error(
-            confirmationResponse.error?.trim() || 'Unable to confirm the planned terminal execution.',
-          )
-        }
-
-        executionResponse = await executeAgentTool({
-          approval_token: getApprovalToken(confirmationResponse),
-          context: executionContext,
-          input: {
-            ...executionInput,
-            text: command,
-          },
-          tool_name: 'term.send_input',
-        })
-      }
-
-      if (executionResponse.status !== 'ok') {
-        throw new Error(executionResponse.error?.trim() || 'Unable to execute the approved terminal plan.')
-      }
-
-      await waitForTerminalOutput(
-        resolvedTarget.targetWidgetID,
-        resolvedTarget.baselineNextSeq,
-        activeSubmissionAbortRef.current?.signal,
-      )
-
-      const explainResponse = await explainTerminalCommand({
-        command,
-        context: planningContext,
-        from_seq: resolvedTarget.baselineNextSeq,
-        prompt,
-        widget_id: resolvedTarget.targetWidgetID,
-      })
-
-      applyConversationSnapshot(explainResponse.conversation)
-      await refreshConversationList()
-
-      if (explainResponse.provider_error?.trim()) {
-        setSubmitError(explainResponse.provider_error.trim())
-      }
     },
     [
       applyConversationSnapshot,
