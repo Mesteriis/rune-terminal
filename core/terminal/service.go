@@ -361,13 +361,14 @@ func (s *Service) SendInput(widgetID string, text string, appendNewline bool) (I
 	}
 	sessionID := sess.state.SessionID
 	baselineSeq := nextSeqLocked(sess)
+	process := sess.process
 	s.mu.RUnlock()
 
 	input := text
 	if appendNewline {
 		input += "\n"
 	}
-	n, err := sess.process.Write([]byte(input))
+	n, err := process.Write([]byte(input))
 	if err != nil {
 		return InputResult{}, err
 	}
@@ -389,8 +390,9 @@ func (s *Service) SendInput(widgetID string, text string, appendNewline bool) (I
 
 func (s *Service) Interrupt(widgetID string) error {
 	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	group, ok := s.groups[widgetID]
-	s.mu.RUnlock()
 	if !ok {
 		return fmt.Errorf("%w: %s", ErrWidgetNotFound, widgetID)
 	}

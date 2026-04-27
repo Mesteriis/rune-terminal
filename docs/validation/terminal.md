@@ -214,6 +214,7 @@
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts --grep "terminal explain and fix button opens the AI sidebar with terminal context"`
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestTerminalDiagnostics|TestTerminalSnapshot|TestBootstrapSessionsKeepsRemoteWidgetAsDisconnectedWhenConnectionMissing' -count=1`
 - `./scripts/go.sh test ./core/terminal ./core/app ./core/transport/httpapi -run 'TestTerminalServiceCreatesAndSwitchesGroupedSessionsPerWidget|TestCreateAndFocusTerminalSiblingSessionKeepsOneWidgetIdentity|TestTerminalSessionEndpointsCreateAndFocusGroupedSessions|TestRestartTerminalSessionReplacesExistingProcess' -count=1`
+- `./scripts/go.sh test ./core/terminal -run 'TestSnapshotAndSubscribeCoversBufferedAndLiveOutput|TestSubscriberStaysOpenAfterProcessExit|TestStartSessionCoalescesConcurrentLaunches' -count=1`
 - `npm --prefix frontend run test -- src/features/terminal/api/client.test.ts src/features/terminal/model/use-terminal-session.test.tsx src/widgets/terminal/terminal-widget.test.tsx --reporter=verbose`
 - `npm --prefix frontend run test -- src/features/terminal/model/use-terminal-session.test.tsx src/widgets/terminal/terminal-widget.test.tsx src/shared/ui/components/terminal-status-header.test.tsx --reporter=verbose`
 - `npm run test:ui -- --reporter=line e2e/terminal.spec.ts --grep "grouped backend sessions through the session rail"`
