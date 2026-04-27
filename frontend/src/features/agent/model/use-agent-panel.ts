@@ -2,20 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useUnit } from 'effector-react'
 
 import {
-  archiveAgentConversation,
-  activateAgentConversation,
-  createAgentConversation,
   deleteAgentAttachmentReference,
-  deleteAgentConversation,
   executeAgentTool,
   fetchAgentAttachmentReferences,
   explainTerminalCommand,
   fetchAgentCatalog,
-  fetchAgentConversations,
   fetchAgentConversation,
   planTerminalCommand,
-  renameAgentConversation,
-  restoreAgentConversation,
   setAgentMode,
   setAgentProfile,
   setAgentRole,
@@ -62,10 +55,19 @@ import {
   isCustomizedContextPreference,
   mapContextWidgetOptions,
   resolveContextTerminalWidget,
-  sortConversationSummaries,
   summaryFromConversationSnapshot,
   upsertConversationSummary,
 } from '@/features/agent/model/agent-panel-context'
+import {
+  archiveConversationForPanel,
+  createConversationForPanel,
+  deleteConversationForPanel,
+  refreshConversationListForPanel,
+  renameConversationForPanel,
+  resetConversationSubmissionRuntime,
+  restoreConversationForPanel,
+  switchConversationForPanel,
+} from '@/features/agent/model/agent-panel-conversations'
 import {
   appendAgentConversationMessage,
   appendAgentPanelStatusMessage,
@@ -509,32 +511,20 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
         scope?: AgentConversationListScope
       } = {},
     ) => {
-      const requestNonce = conversationListRequestNonceRef.current + 1
-      conversationListRequestNonceRef.current = requestNonce
-      setIsConversationListPending(true)
-      const nextQuery = overrides.query ?? conversationSearchQuery
-      const nextScope = overrides.scope ?? conversationScope
-      try {
-        const conversationList = await fetchAgentConversations({
-          query: nextQuery,
-          scope: nextScope,
-        })
-
-        if (conversationListRequestNonceRef.current !== requestNonce) {
-          return null
-        }
-
-        setConversations(sortConversationSummaries(conversationList.conversations))
-        setConversationCounts(conversationList.counts)
-        setActiveConversationID(
-          (currentConversationID) => conversationList.active_conversation_id || currentConversationID || '',
-        )
-        return conversationList
-      } finally {
-        if (conversationListRequestNonceRef.current === requestNonce) {
-          setIsConversationListPending(false)
-        }
-      }
+      return refreshConversationListForPanel({
+        query: overrides.query ?? conversationSearchQuery,
+        scope: overrides.scope ?? conversationScope,
+        nextRequestNonce: () => {
+          const requestNonce = conversationListRequestNonceRef.current + 1
+          conversationListRequestNonceRef.current = requestNonce
+          return requestNonce
+        },
+        getRequestNonce: () => conversationListRequestNonceRef.current,
+        setActiveConversationID,
+        setConversationCounts,
+        setConversations,
+        setIsConversationListPending,
+      })
     },
     [conversationScope, conversationSearchQuery],
   )
@@ -602,6 +592,23 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
     setPendingFlow(null)
     setInteractionMessages([])
     setSubmitError(null)
+  }, [])
+
+  const resetConversationSubmissionState = useCallback(() => {
+    resetConversationSubmissionRuntime({
+      abortActiveSubmission: () => activeSubmissionAbortRef.current?.abort(),
+      bumpSubmissionNonce: () => {
+        submissionNonceRef.current += 1
+      },
+      clearActiveAuditMessageID: () => {
+        activeAuditMessageIDRef.current = null
+      },
+      closeActiveStream: () => {
+        activeStreamRef.current?.close()
+        activeStreamRef.current = null
+        activeSubmissionAbortRef.current = null
+      },
+    })
   }, [])
 
   const availableProviders = useMemo(() => providerOptionsFromCatalog(providerCatalog), [providerCatalog])
@@ -739,38 +746,20 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
 
   const switchConversation = useCallback(
     async (conversationID: string) => {
-      const nextConversationID = conversationID.trim()
-      if (
-        !nextConversationID ||
-        nextConversationID === activeConversationID ||
-        isSubmitting ||
-        isConversationPending
-      ) {
-        return
-      }
-
-      submissionNonceRef.current += 1
-      activeSubmissionAbortRef.current?.abort()
-      activeStreamRef.current?.close()
-      activeStreamRef.current = null
-      activeSubmissionAbortRef.current = null
-      activeAuditMessageIDRef.current = null
-      const panelStateEpoch = beginPanelStateEpoch()
-      setIsConversationPending(true)
-
-      try {
-        const snapshot = await activateAgentConversation(nextConversationID)
-        if (panelStateEpochRef.current !== panelStateEpoch) {
-          return
-        }
-        applyConversationSnapshot(snapshot)
-        resetConversationInteractionState()
-        await refreshConversationList()
-      } catch (error) {
-        setSubmitError(getErrorMessage(error, 'Unable to switch the active conversation.'))
-      } finally {
-        setIsConversationPending(false)
-      }
+      await switchConversationForPanel({
+        activeConversationID,
+        applyConversationSnapshot,
+        beginPanelStateEpoch,
+        conversationID,
+        getPanelStateEpoch: () => panelStateEpochRef.current,
+        isConversationPending,
+        isSubmitting,
+        resetConversationInteractionState,
+        resetConversationSubmissionRuntime: resetConversationSubmissionState,
+        refreshConversationList: () => refreshConversationList(),
+        setIsConversationPending,
+        setSubmitError,
+      })
     },
     [
       activeConversationID,
@@ -779,106 +768,70 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
       isConversationPending,
       isSubmitting,
       refreshConversationList,
+      resetConversationSubmissionState,
       resetConversationInteractionState,
     ],
   )
 
   const createConversation = useCallback(async () => {
-    if (isSubmitting || isConversationPending) {
-      return
-    }
-
-    submissionNonceRef.current += 1
-    activeSubmissionAbortRef.current?.abort()
-    activeStreamRef.current?.close()
-    activeStreamRef.current = null
-    activeSubmissionAbortRef.current = null
-    activeAuditMessageIDRef.current = null
-    const panelStateEpoch = beginPanelStateEpoch()
-    setIsConversationPending(true)
-
-    try {
-      const snapshot = await createAgentConversation()
-      if (panelStateEpochRef.current !== panelStateEpoch) {
-        return
-      }
-      applyConversationSnapshot(snapshot)
-      resetConversationInteractionState()
-      await refreshConversationList()
-    } catch (error) {
-      setSubmitError(getErrorMessage(error, 'Unable to create a new conversation.'))
-    } finally {
-      setIsConversationPending(false)
-    }
+    await createConversationForPanel({
+      applyConversationSnapshot,
+      beginPanelStateEpoch,
+      getPanelStateEpoch: () => panelStateEpochRef.current,
+      isConversationPending,
+      isSubmitting,
+      resetConversationInteractionState,
+      resetConversationSubmissionRuntime: resetConversationSubmissionState,
+      refreshConversationList: () => refreshConversationList(),
+      setIsConversationPending,
+      setSubmitError,
+    })
   }, [
     applyConversationSnapshot,
     beginPanelStateEpoch,
     isConversationPending,
     isSubmitting,
     refreshConversationList,
+    resetConversationSubmissionState,
     resetConversationInteractionState,
   ])
 
   const renameConversation = useCallback(
     async (conversationID: string, title: string) => {
-      const nextConversationID = conversationID.trim()
-      if (!nextConversationID || isSubmitting || isConversationPending) {
-        return
-      }
-
-      setIsConversationPending(true)
-      try {
-        const snapshot = await renameAgentConversation(nextConversationID, title)
-        applyConversationSnapshot(snapshot)
-        void refreshConversationList().catch((error) => {
-          setSubmitError(getErrorMessage(error, 'Unable to refresh the conversation list.'))
-        })
-      } catch (error) {
-        setSubmitError(getErrorMessage(error, 'Unable to rename the conversation.'))
-      } finally {
-        setIsConversationPending(false)
-      }
+      await renameConversationForPanel({
+        applyConversationSnapshot,
+        conversationID,
+        isConversationPending,
+        isSubmitting,
+        refreshConversationList: () => refreshConversationList(),
+        setIsConversationPending,
+        setSubmitError,
+        title,
+      })
     },
     [applyConversationSnapshot, isConversationPending, isSubmitting, refreshConversationList],
   )
 
   const deleteConversation = useCallback(
     async (conversationID: string) => {
-      const nextConversationID = conversationID.trim()
-      if (!nextConversationID || isSubmitting || isConversationPending) {
-        return
-      }
-
-      submissionNonceRef.current += 1
-      activeSubmissionAbortRef.current?.abort()
-      activeStreamRef.current?.close()
-      activeStreamRef.current = null
-      activeSubmissionAbortRef.current = null
-      activeAuditMessageIDRef.current = null
-      const panelStateEpoch = beginPanelStateEpoch()
-      setIsConversationPending(true)
-
-      try {
-        const snapshot = await deleteAgentConversation(nextConversationID)
-        const conversationList = await fetchAgentConversations({
-          query: conversationSearchQuery,
-          scope: conversationScope,
-        })
-        if (panelStateEpochRef.current !== panelStateEpoch) {
-          return
-        }
-        if (activeConversationID === nextConversationID) {
-          applyConversationSnapshot(snapshot)
-          resetConversationInteractionState()
-        }
-        setConversations(sortConversationSummaries(conversationList.conversations))
-        setConversationCounts(conversationList.counts)
-        setActiveConversationID(conversationList.active_conversation_id || snapshot.id)
-      } catch (error) {
-        setSubmitError(getErrorMessage(error, 'Unable to delete the conversation.'))
-      } finally {
-        setIsConversationPending(false)
-      }
+      await deleteConversationForPanel({
+        activeConversationID,
+        applyConversationSnapshot,
+        beginPanelStateEpoch,
+        conversationID,
+        getPanelStateEpoch: () => panelStateEpochRef.current,
+        isConversationPending,
+        isSubmitting,
+        query: conversationSearchQuery,
+        resetConversationInteractionState,
+        resetConversationSubmissionRuntime: resetConversationSubmissionState,
+        scope: conversationScope,
+        setActiveConversationID,
+        setConversationCounts,
+        setConversations,
+        setIsConversationPending,
+        setSubmitError,
+      })
     },
     [
       applyConversationSnapshot,
@@ -888,47 +841,31 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
       conversationSearchQuery,
       isConversationPending,
       isSubmitting,
+      resetConversationSubmissionState,
       resetConversationInteractionState,
     ],
   )
 
   const archiveConversation = useCallback(
     async (conversationID: string) => {
-      const nextConversationID = conversationID.trim()
-      if (!nextConversationID || isSubmitting || isConversationPending) {
-        return
-      }
-
-      submissionNonceRef.current += 1
-      activeSubmissionAbortRef.current?.abort()
-      activeStreamRef.current?.close()
-      activeStreamRef.current = null
-      activeSubmissionAbortRef.current = null
-      activeAuditMessageIDRef.current = null
-      const panelStateEpoch = beginPanelStateEpoch()
-      setIsConversationPending(true)
-
-      try {
-        const snapshot = await archiveAgentConversation(nextConversationID)
-        const conversationList = await fetchAgentConversations({
-          query: conversationSearchQuery,
-          scope: conversationScope,
-        })
-        if (panelStateEpochRef.current !== panelStateEpoch) {
-          return
-        }
-        if (activeConversationID === nextConversationID) {
-          applyConversationSnapshot(snapshot)
-          resetConversationInteractionState()
-        }
-        setConversations(sortConversationSummaries(conversationList.conversations))
-        setConversationCounts(conversationList.counts)
-        setActiveConversationID(conversationList.active_conversation_id || snapshot.id)
-      } catch (error) {
-        setSubmitError(getErrorMessage(error, 'Unable to archive the conversation.'))
-      } finally {
-        setIsConversationPending(false)
-      }
+      await archiveConversationForPanel({
+        activeConversationID,
+        applyConversationSnapshot,
+        beginPanelStateEpoch,
+        conversationID,
+        getPanelStateEpoch: () => panelStateEpochRef.current,
+        isConversationPending,
+        isSubmitting,
+        query: conversationSearchQuery,
+        resetConversationInteractionState,
+        resetConversationSubmissionRuntime: resetConversationSubmissionState,
+        scope: conversationScope,
+        setActiveConversationID,
+        setConversationCounts,
+        setConversations,
+        setIsConversationPending,
+        setSubmitError,
+      })
     },
     [
       applyConversationSnapshot,
@@ -938,47 +875,31 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
       conversationSearchQuery,
       isConversationPending,
       isSubmitting,
+      resetConversationSubmissionState,
       resetConversationInteractionState,
     ],
   )
 
   const restoreConversation = useCallback(
     async (conversationID: string) => {
-      const nextConversationID = conversationID.trim()
-      if (!nextConversationID || isSubmitting || isConversationPending) {
-        return
-      }
-
-      submissionNonceRef.current += 1
-      activeSubmissionAbortRef.current?.abort()
-      activeStreamRef.current?.close()
-      activeStreamRef.current = null
-      activeSubmissionAbortRef.current = null
-      activeAuditMessageIDRef.current = null
-      const panelStateEpoch = beginPanelStateEpoch()
-      setIsConversationPending(true)
-
-      try {
-        const snapshot = await restoreAgentConversation(nextConversationID)
-        const conversationList = await fetchAgentConversations({
-          query: conversationSearchQuery,
-          scope: conversationScope,
-        })
-        if (panelStateEpochRef.current !== panelStateEpoch) {
-          return
-        }
-        if (activeConversationID === nextConversationID) {
-          applyConversationSnapshot(snapshot)
-          resetConversationInteractionState()
-        }
-        setConversations(sortConversationSummaries(conversationList.conversations))
-        setConversationCounts(conversationList.counts)
-        setActiveConversationID(conversationList.active_conversation_id || snapshot.id)
-      } catch (error) {
-        setSubmitError(getErrorMessage(error, 'Unable to restore the conversation.'))
-      } finally {
-        setIsConversationPending(false)
-      }
+      await restoreConversationForPanel({
+        activeConversationID,
+        applyConversationSnapshot,
+        beginPanelStateEpoch,
+        conversationID,
+        getPanelStateEpoch: () => panelStateEpochRef.current,
+        isConversationPending,
+        isSubmitting,
+        query: conversationSearchQuery,
+        resetConversationInteractionState,
+        resetConversationSubmissionRuntime: resetConversationSubmissionState,
+        scope: conversationScope,
+        setActiveConversationID,
+        setConversationCounts,
+        setConversations,
+        setIsConversationPending,
+        setSubmitError,
+      })
     },
     [
       applyConversationSnapshot,
@@ -988,6 +909,7 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
       conversationSearchQuery,
       isConversationPending,
       isSubmitting,
+      resetConversationSubmissionState,
       resetConversationInteractionState,
     ],
   )
