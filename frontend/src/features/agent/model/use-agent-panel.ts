@@ -28,17 +28,15 @@ import {
   type AgentProviderGatewaySnapshot,
 } from '@/features/agent/api/provider-client'
 import {
-  classifyMessageIntent,
-  createApprovalMessage,
-  createAuditMessage,
-  createPlanMessage,
   createPendingInteractionFlow,
-  failAuditEntries,
   type PendingRunApproval,
   type PendingInteractionFlow,
   updateApprovalMessageStatus,
-  updateQuestionnaireMessageAnswer,
 } from '@/features/agent/model/interaction-flow'
+import {
+  answerQuestionnaireForPanel,
+  approvePendingPlanForPanel,
+} from '@/features/agent/model/agent-panel-approval'
 import {
   deduplicateWidgetIDs,
   filterContextWidgetSelection,
@@ -108,7 +106,6 @@ import {
 } from '@/features/agent/model/chat-message-utils'
 import {
   agentSelectionOptionsFromItems,
-  getApprovalToken,
   getErrorMessage,
   getRunCommand,
 } from '@/features/agent/model/agent-panel-terminal'
@@ -1570,59 +1567,21 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
 
   const answerQuestionnaire = useCallback(
     async (message: QuestionnaireMessage, answer: string) => {
-      const activeFlow = pendingFlowRef.current
-
-      if (!activeFlow || activeFlow.questionnaireMessageID !== message.id) {
-        return
-      }
-
-      const answeredMessage = updateQuestionnaireMessageAnswer(message, answer, nextLocalSortKey)
-      const classification = classifyMessageIntent(activeFlow.prompt, answer, {
-        hasTerminalContext: hasTerminalExecutionContext,
-      })
-
-      if (classification.intent === 'chat') {
-        setInteractionMessages((currentMessages) =>
-          sortMessagesBySortKey([
-            ...currentMessages.filter((currentMessage) => currentMessage.id !== message.id),
-            answeredMessage,
-          ]),
-        )
-        clearPendingInteractionFlow()
-        await runBackendPrompt(activeFlow.prompt, {
-          attachments: activeFlow.attachments,
-          model: selectedModel || undefined,
-        })
-        return
-      }
-
-      const planMessage = createPlanMessage(
-        activeFlow.flowID,
-        activeFlow.prompt,
-        classification.tools,
-        nextLocalSortKey,
+      await answerQuestionnaireForPanel({
         answer,
-      )
-      const approvalMessage = createApprovalMessage(activeFlow.flowID, nextLocalSortKey)
-
-      setInteractionMessages((currentMessages) =>
-        sortMessagesBySortKey([
-          ...currentMessages.filter((currentMessage) => currentMessage.id !== message.id),
-          answeredMessage,
-          planMessage,
-          approvalMessage,
-        ]),
-      )
-
-      const nextFlow: PendingInteractionFlow = {
-        ...activeFlow,
-        approvalMessageID: approvalMessage.id,
-        attachments: activeFlow.attachments,
-        questionnaireMessageID: undefined,
-        tools: classification.tools,
-      }
-      pendingFlowRef.current = nextFlow
-      setPendingFlow(nextFlow)
+        clearPendingInteractionFlow,
+        getPendingFlow: () => pendingFlowRef.current,
+        hasTerminalExecutionContext,
+        message,
+        nextLocalSortKey,
+        runBackendPrompt,
+        selectedModel,
+        setInteractionMessages,
+        setPendingFlow,
+        setPendingFlowRef: (flow) => {
+          pendingFlowRef.current = flow
+        },
+      })
     },
     [
       clearPendingInteractionFlow,
@@ -1635,161 +1594,27 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
 
   const approvePendingPlan = useCallback(
     async (message: ApprovalMessage) => {
-      const activeFlow = pendingFlowRef.current
-
-      if (!activeFlow || activeFlow.flowID !== message.planId) {
-        return
-      }
-
-      const approvedMessage = updateApprovalMessageStatus(message, 'approved', nextLocalSortKey)
-      const auditMessage = createAuditMessage(activeFlow.flowID, activeFlow.tools, nextLocalSortKey)
-
-      if (activeFlow.runApproval) {
-        const runApproval = activeFlow.runApproval
-        const nextFlow: PendingInteractionFlow = {
-          ...activeFlow,
-          approvalMessageID: message.id,
-          auditMessageID: auditMessage.id,
-          auditProgressed: false,
-        }
-        pendingFlowRef.current = nextFlow
-        setPendingFlow(nextFlow)
-        setInteractionMessages((currentMessages) =>
-          sortMessagesBySortKey([
-            ...currentMessages.filter((currentMessage) => currentMessage.id !== message.id),
-            approvedMessage,
-            auditMessage,
-          ]),
-        )
-        setIsSubmitting(true)
-        setIsResponseCancellable(false)
-        setSubmitError(null)
-        blockAiWidget(hostId)
-
-        try {
-          const confirmationResponse = await executeAgentTool({
-            context: {
-              action_source: 'frontend.ai.sidebar.run.confirm',
-              active_widget_id: runApproval.targetWidgetID,
-              repo_root: runApproval.repoRoot,
-              target_connection_id: runApproval.targetConnectionID,
-              target_session: runApproval.targetSession,
-            },
-            input: {
-              approval_id: runApproval.approvalID,
-            },
-            tool_name: 'safety.confirm',
-          })
-
-          if (confirmationResponse.status !== 'ok') {
-            throw new Error(confirmationResponse.error?.trim() || 'Unable to confirm /run approval.')
-          }
-
-          await runApprovedTerminalPrompt(runApproval, getApprovalToken(confirmationResponse))
-          updateAuditMessageEntries(auditMessage.id, (currentMessage) =>
-            currentMessage.type === 'audit'
-              ? {
-                  ...currentMessage,
-                  entries: completeAuditEntries(currentMessage.entries),
-                }
-              : currentMessage,
-          )
-        } catch (error) {
-          updateAuditMessageEntries(auditMessage.id, (currentMessage) =>
-            currentMessage.type === 'audit'
-              ? {
-                  ...currentMessage,
-                  entries: failAuditEntries(currentMessage.entries),
-                }
-              : currentMessage,
-          )
-          setSubmitError(getErrorMessage(error, 'Unable to run the approved terminal command.'))
-        } finally {
-          clearPendingInteractionFlow()
-          unblockAiWidget(hostId)
-          setIsSubmitting(false)
-          setIsResponseCancellable(false)
-        }
-        return
-      }
-
-      const executesInTerminal = activeFlow.tools.some((tool) => tool.name === 'execute_terminal')
-
-      if (executesInTerminal) {
-        const nextFlow: PendingInteractionFlow = {
-          ...activeFlow,
-          approvalMessageID: message.id,
-          auditMessageID: auditMessage.id,
-          auditProgressed: false,
-        }
-        pendingFlowRef.current = nextFlow
-        setPendingFlow(nextFlow)
-        setInteractionMessages((currentMessages) =>
-          sortMessagesBySortKey([
-            ...currentMessages.filter((currentMessage) => currentMessage.id !== message.id),
-            approvedMessage,
-            auditMessage,
-          ]),
-        )
-        setIsSubmitting(true)
-        setIsResponseCancellable(false)
-        setSubmitError(null)
-        blockAiWidget(hostId)
-
-        try {
-          const runtimeContext = await resolveRuntimeContext()
-          await runApprovedExecutionPlan(
-            activeFlow.prompt,
-            runtimeContext.repoRoot,
-            selectedModel || undefined,
-          )
-          updateAuditMessageEntries(auditMessage.id, (currentMessage) =>
-            currentMessage.type === 'audit'
-              ? {
-                  ...currentMessage,
-                  entries: completeAuditEntries(currentMessage.entries),
-                }
-              : currentMessage,
-          )
-        } catch (error) {
-          updateAuditMessageEntries(auditMessage.id, (currentMessage) =>
-            currentMessage.type === 'audit'
-              ? {
-                  ...currentMessage,
-                  entries: failAuditEntries(currentMessage.entries),
-                }
-              : currentMessage,
-          )
-          setSubmitError(getErrorMessage(error, 'Unable to run the approved terminal plan.'))
-        } finally {
-          clearPendingInteractionFlow()
-          unblockAiWidget(hostId)
-          setIsSubmitting(false)
-          setIsResponseCancellable(false)
-        }
-        return
-      }
-
-      const nextFlow: PendingInteractionFlow = {
-        ...activeFlow,
-        approvalMessageID: message.id,
-        auditMessageID: auditMessage.id,
-        auditProgressed: false,
-      }
-      pendingFlowRef.current = nextFlow
-      setPendingFlow(nextFlow)
-      setInteractionMessages((currentMessages) =>
-        sortMessagesBySortKey([
-          ...currentMessages.filter((currentMessage) => currentMessage.id !== message.id),
-          approvedMessage,
-          auditMessage,
-        ]),
-      )
-      clearPendingInteractionFlow()
-      await runBackendPrompt(activeFlow.prompt, {
-        attachments: activeFlow.attachments,
-        auditMessageID: auditMessage.id,
-        model: selectedModel || undefined,
+      await approvePendingPlanForPanel({
+        blockAiWidget: () => blockAiWidget(hostId),
+        clearPendingInteractionFlow,
+        getPendingFlow: () => pendingFlowRef.current,
+        hostId,
+        message,
+        nextLocalSortKey,
+        runApprovedExecutionPlan,
+        runApprovedTerminalPrompt,
+        runBackendPrompt,
+        selectedModel,
+        setInteractionMessages,
+        setIsResponseCancellable,
+        setIsSubmitting,
+        setPendingFlow,
+        setPendingFlowRef: (flow) => {
+          pendingFlowRef.current = flow
+        },
+        setSubmitError,
+        unblockAiWidget: () => unblockAiWidget(hostId),
+        updateAuditMessageEntries,
       })
     },
     [
