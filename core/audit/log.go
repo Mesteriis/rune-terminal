@@ -96,13 +96,19 @@ func (l *Log) List(limit int) ([]Event, error) {
 		if err := json.Unmarshal(scanner.Bytes(), &event); err != nil {
 			continue
 		}
+		if limit > 0 {
+			if len(events) < limit {
+				events = append(events, event)
+				continue
+			}
+			copy(events, events[1:])
+			events[len(events)-1] = event
+			continue
+		}
 		events = append(events, event)
 	}
 	if err := scanner.Err(); err != nil {
 		return nil, err
-	}
-	if limit > 0 && len(events) > limit {
-		events = events[len(events)-limit:]
 	}
 	return events, nil
 }

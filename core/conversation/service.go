@@ -71,7 +71,13 @@ func NewServiceWithDB(dbConn *sql.DB, legacyPath string, provider Provider) (*Se
 }
 
 func (s *Service) Snapshot() Snapshot {
-	return s.SnapshotWithProviderInfo(s.provider.Info())
+	s.mu.RLock()
+	provider := s.provider
+	s.mu.RUnlock()
+	if provider == nil {
+		return s.SnapshotWithProviderInfo(ProviderInfo{})
+	}
+	return s.SnapshotWithProviderInfo(provider.Info())
 }
 
 func (s *Service) SnapshotWithProviderInfo(info ProviderInfo) Snapshot {

@@ -169,7 +169,11 @@ func setActiveConversationTx(ctx context.Context, tx *sql.Tx, conversationID str
 }
 
 func insertConversationTx(ctx context.Context, tx *sql.Tx, record conversationRecord) error {
-	_, err := tx.ExecContext(ctx, `
+	contextWidgetIDsJSON, err := marshalJSONString(record.ContextPreferences.WidgetIDs)
+	if err != nil {
+		return err
+	}
+	_, err = tx.ExecContext(ctx, `
 		INSERT INTO conversations
 			(id, title, provider_session_kind, provider_session_id, widget_context_enabled, context_widget_ids_json, created_at, updated_at, archived_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -179,7 +183,7 @@ func insertConversationTx(ctx context.Context, tx *sql.Tx, record conversationRe
 		record.Session.ProviderKind,
 		record.Session.ID,
 		boolToSQLite(record.ContextPreferences.WidgetContextEnabled),
-		mustJSONString(record.ContextPreferences.WidgetIDs),
+		contextWidgetIDsJSON,
 		formatDBTime(record.CreatedAt),
 		formatDBTime(record.UpdatedAt),
 		formatOptionalDBTime(record.ArchivedAt),
@@ -188,7 +192,11 @@ func insertConversationTx(ctx context.Context, tx *sql.Tx, record conversationRe
 }
 
 func updateConversationTx(ctx context.Context, tx *sql.Tx, record conversationRecord) error {
-	_, err := tx.ExecContext(ctx, `
+	contextWidgetIDsJSON, err := marshalJSONString(record.ContextPreferences.WidgetIDs)
+	if err != nil {
+		return err
+	}
+	_, err = tx.ExecContext(ctx, `
 		UPDATE conversations
 		SET title = ?, provider_session_kind = ?, provider_session_id = ?, widget_context_enabled = ?, context_widget_ids_json = ?, updated_at = ?, archived_at = ?
 		WHERE id = ?
@@ -197,7 +205,7 @@ func updateConversationTx(ctx context.Context, tx *sql.Tx, record conversationRe
 		record.Session.ProviderKind,
 		record.Session.ID,
 		boolToSQLite(record.ContextPreferences.WidgetContextEnabled),
-		mustJSONString(record.ContextPreferences.WidgetIDs),
+		contextWidgetIDsJSON,
 		formatDBTime(record.UpdatedAt),
 		formatOptionalDBTime(record.ArchivedAt),
 		record.ID,
@@ -346,9 +354,6 @@ func loadConversationMessagesTx(ctx context.Context, tx *sql.Tx, conversationID 
 			if err := json.Unmarshal([]byte(attachmentsJSON), &message.Attachments); err != nil {
 				return nil, err
 			}
-		}
-		if message.Attachments == nil {
-			message.Attachments = nil
 		}
 		createdAt, err := parseDBTime(createdAtRaw)
 		if err != nil {
@@ -598,13 +603,13 @@ func boolToSQLite(value bool) int {
 	return 0
 }
 
-func mustJSONString(values []string) string {
+func marshalJSONString(values []string) (string, error) {
 	if len(values) == 0 {
-		return "[]"
+		return "[]", nil
 	}
 	payload, err := json.Marshal(values)
 	if err != nil {
-		panic(err)
+		return "", err
 	}
-	return string(payload)
+	return string(payload), nil
 }

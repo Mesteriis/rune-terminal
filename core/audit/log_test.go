@@ -50,3 +50,28 @@ func TestListReturnsEmptySliceWhenLogDoesNotExist(t *testing.T) {
 		t.Fatalf("expected empty slice, got %d events", len(events))
 	}
 }
+
+func TestLogListLimitKeepsOnlyTailWindow(t *testing.T) {
+	t.Parallel()
+
+	log, err := NewLog(filepath.Join(t.TempDir(), "audit.jsonl"))
+	if err != nil {
+		t.Fatalf("NewLog error: %v", err)
+	}
+	for _, toolName := range []string{"one", "two", "three"} {
+		if err := log.Append(Event{ToolName: toolName, Success: true}); err != nil {
+			t.Fatalf("Append error: %v", err)
+		}
+	}
+
+	events, err := log.List(2)
+	if err != nil {
+		t.Fatalf("List error: %v", err)
+	}
+	if len(events) != 2 {
+		t.Fatalf("expected 2 events, got %d", len(events))
+	}
+	if events[0].ToolName != "two" || events[1].ToolName != "three" {
+		t.Fatalf("expected tail window [two three], got %#v", events)
+	}
+}
