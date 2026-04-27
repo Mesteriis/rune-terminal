@@ -90,7 +90,7 @@ export function PreviewPanelWidget({ connectionId, path, title }: PreviewPanelWi
   })
 
   useEffect(() => {
-    let isCancelled = false
+    const abortController = new AbortController()
 
     setState({
       errorMessage: null,
@@ -99,12 +99,12 @@ export function PreviewPanelWidget({ connectionId, path, title }: PreviewPanelWi
     })
 
     const previewRequest = connectionId
-      ? readPreviewFile(path, { connectionId, maxBytes: 65_536 })
-      : readPreviewFile(path, { maxBytes: 65_536 })
+      ? readPreviewFile(path, { connectionId, maxBytes: 65_536, signal: abortController.signal })
+      : readPreviewFile(path, { maxBytes: 65_536, signal: abortController.signal })
 
     previewRequest
       .then((snapshot) => {
-        if (isCancelled) {
+        if (abortController.signal.aborted) {
           return
         }
 
@@ -115,7 +115,7 @@ export function PreviewPanelWidget({ connectionId, path, title }: PreviewPanelWi
         })
       })
       .catch((error: unknown) => {
-        if (isCancelled) {
+        if (abortController.signal.aborted) {
           return
         }
 
@@ -127,7 +127,7 @@ export function PreviewPanelWidget({ connectionId, path, title }: PreviewPanelWi
       })
 
     return () => {
-      isCancelled = true
+      abortController.abort()
     }
   }, [connectionId, path, refreshNonce])
 

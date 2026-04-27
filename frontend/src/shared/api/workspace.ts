@@ -73,12 +73,13 @@ export class WorkspaceAPIError extends Error {
   }
 }
 
-export async function fetchWorkspaceSnapshot() {
+export async function fetchWorkspaceSnapshot(signal?: AbortSignal) {
   const runtimeContext = await resolveRuntimeContext()
   const response = await fetch(`${runtimeContext.baseUrl}/api/v1/workspace`, {
     headers: {
       Authorization: `Bearer ${runtimeContext.authToken}`,
     },
+    signal,
   })
 
   if (!response.ok) {
@@ -132,12 +133,13 @@ export async function focusWorkspaceWidget(widgetId: string) {
   return (await response.json()) as { workspace: WorkspaceSnapshot }
 }
 
-export async function fetchWorkspaceWidgetKindCatalog() {
+export async function fetchWorkspaceWidgetKindCatalog(signal?: AbortSignal) {
   const runtimeContext = await resolveRuntimeContext()
   const response = await fetch(`${runtimeContext.baseUrl}/api/v1/workspace/widget-kinds`, {
     headers: {
       Authorization: `Bearer ${runtimeContext.authToken}`,
     },
+    signal,
   })
 
   if (!response.ok) {

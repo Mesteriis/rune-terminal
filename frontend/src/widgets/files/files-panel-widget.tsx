@@ -180,7 +180,7 @@ export function FilesPanelWidget({
   }, [currentPath])
 
   useEffect(() => {
-    let isCancelled = false
+    const abortController = new AbortController()
 
     setState({
       errorMessage: null,
@@ -189,12 +189,12 @@ export function FilesPanelWidget({
     })
 
     const directoryRequest = connectionId
-      ? listFilesDirectory(currentPath, { connectionId })
-      : listFilesDirectory(currentPath)
+      ? listFilesDirectory(currentPath, { connectionId, signal: abortController.signal })
+      : listFilesDirectory(currentPath, { signal: abortController.signal })
 
     directoryRequest
       .then((snapshot) => {
-        if (isCancelled) {
+        if (abortController.signal.aborted) {
           return
         }
 
@@ -205,7 +205,7 @@ export function FilesPanelWidget({
         })
       })
       .catch((error: unknown) => {
-        if (isCancelled) {
+        if (abortController.signal.aborted) {
           return
         }
 
@@ -217,7 +217,7 @@ export function FilesPanelWidget({
       })
 
     return () => {
-      isCancelled = true
+      abortController.abort()
     }
   }, [connectionId, currentPath, refreshNonce])
 

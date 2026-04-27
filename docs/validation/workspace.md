@@ -31,6 +31,11 @@
     `preview` remains disabled in the generic menu, and `commander` plus
     planned widget kinds are visible but disabled according to catalog status
     constraints
+  - workspace/files/preview frontend data loads now use abortable fetch paths
+    instead of fire-and-forget request races:
+    widget-kind catalog requests, files directory loads, and preview reads
+    all cancel the superseded in-flight request when the widget unmounts or
+    its target path changes
   - backend workspace coverage now also verifies the path-handoff `preview`
     widget route and catalog entry
   - backend workspace path handoff now also accepts SSH-scoped preview

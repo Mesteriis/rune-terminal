@@ -83,7 +83,10 @@ describe('FilesPanelWidget', () => {
     expect(screen.getByText('Loading directory')).toBeInTheDocument()
 
     await waitFor(() => {
-      expect(listFilesDirectory).toHaveBeenCalledWith('/repo')
+      expect(listFilesDirectory).toHaveBeenCalledWith(
+        '/repo',
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      )
       expect(screen.getByText('src')).toBeInTheDocument()
       expect(screen.getByText('README.md')).toBeInTheDocument()
       expect(screen.getByText('2.0 KB')).toBeInTheDocument()
@@ -100,9 +103,13 @@ describe('FilesPanelWidget', () => {
     render(<FilesPanelWidget connectionId="conn-ssh" path="/remote/project" title="project" />)
 
     await waitFor(() => {
-      expect(listFilesDirectory).toHaveBeenCalledWith('/remote/project', {
-        connectionId: 'conn-ssh',
-      })
+      expect(listFilesDirectory).toHaveBeenCalledWith(
+        '/remote/project',
+        expect.objectContaining({
+          connectionId: 'conn-ssh',
+          signal: expect.any(AbortSignal),
+        }),
+      )
     })
   })
 
@@ -156,7 +163,9 @@ describe('FilesPanelWidget', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Open directory src' }))
 
     await waitFor(() => {
-      expect(listFilesDirectory).toHaveBeenCalledWith('/repo/src')
+      expect(vi.mocked(listFilesDirectory).mock.calls).toEqual(
+        expect.arrayContaining([['/repo/src', expect.objectContaining({ signal: expect.any(AbortSignal) })]]),
+      )
       expect(screen.getByText('/repo/src')).toBeInTheDocument()
       expect(screen.getByText('index.ts')).toBeInTheDocument()
     })
@@ -164,7 +173,9 @@ describe('FilesPanelWidget', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open parent directory' }))
 
     await waitFor(() => {
-      expect(listFilesDirectory).toHaveBeenCalledWith('/repo')
+      expect(vi.mocked(listFilesDirectory).mock.calls).toEqual(
+        expect.arrayContaining([['/repo', expect.objectContaining({ signal: expect.any(AbortSignal) })]]),
+      )
       expect(screen.getByText('/repo')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Open directory src' })).toBeInTheDocument()
     })
@@ -217,7 +228,11 @@ describe('FilesPanelWidget', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open files path' }))
 
     await waitFor(() => {
-      expect(listFilesDirectory).toHaveBeenCalledWith('/repo/frontend')
+      expect(vi.mocked(listFilesDirectory).mock.calls).toEqual(
+        expect.arrayContaining([
+          ['/repo/frontend', expect.objectContaining({ signal: expect.any(AbortSignal) })],
+        ]),
+      )
       expect(screen.getByText('/repo/frontend')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Open directory src' })).toBeInTheDocument()
     })

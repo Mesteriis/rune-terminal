@@ -15,6 +15,7 @@
   - approval-grant TTL cleanup and fail-closed random ID generation
   - conversation/workspace persistence safety for JSON marshalling, snapshot writes, and bounded audit-tail reads
   - plugin protocol handshake timeout now force-closes blocked stdout reads before returning timeout
+  - root/tooling package alignment now keeps the repo and active frontend on the same TypeScript major line
   - Go `coverage.out` artifact generation in CI
   - desktop `cargo check` command used by CI
   - gitleaks secret-scan job wiring
@@ -32,6 +33,7 @@
 - `./scripts/go.sh test ./internal/ids ./core/toolruntime ./core/app -run 'TestNewPanicsWhenEntropyUnavailable|TestTokenPanicsWhenEntropyUnavailable|TestApprovalStoreCreateCleansExpiredGrants|TestApprovalStoreConfirmCleansExpiredPendingRecords|TestExecutorConfirmationFlow|TestExecutorApprovalGrantIsSingleUse|TestBootstrapSessionsKeepsRemoteWidgetAsDisconnectedWhenConnectionMissing' -count=1`
 - `./scripts/go.sh test ./core/conversation ./core/workspace ./core/audit -run 'TestLogAppendAndList|TestLogListLimitKeepsOnlyTailWindow|TestListReturnsEmptySliceWhenLogDoesNotExist|TestSaveAndLoadSnapshotRoundTrip|TestLoadSnapshotDefaultsWhenFileMissing|TestRenameConversation|TestDeleteConversation' -count=1`
 - `./scripts/go.sh test ./core/plugins -run 'TestInvokeFailsWhenHandshakeExceedsTimeout|TestReadJSONLineWithTimeoutClosesReaderOnTimeout' -count=1`
+- `npm install --package-lock-only --ignore-scripts`
 - `npm run tauri:check`
 - `ruby -e "require 'yaml'; YAML.load_file('.github/workflows/ci.yml'); puts 'workflow yaml parses'"`
 - `git diff --check`

@@ -197,6 +197,40 @@ describe('terminal api client', () => {
     })
   })
 
+  it('rejects invalid terminal snapshots from the backend contract', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          state: {
+            widget_id: 'term-bad',
+            session_id: 'term-bad',
+            shell: '/bin/zsh',
+            status: 'running',
+            pid: 'not-a-number',
+            started_at: '2026-04-24T08:00:00Z',
+            can_send_input: true,
+            can_interrupt: true,
+          },
+          chunks: [],
+          next_seq: 1,
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(fetchTerminalSnapshot('term-bad')).rejects.toThrow('Invalid terminal snapshot payload.')
+  })
+
   it('loads backend-owned terminal diagnostics for explain and fix flows', async () => {
     const fetchMock = vi.fn()
     fetchMock
@@ -719,6 +753,33 @@ describe('terminal api client', () => {
       { seq: 4, data: 'pwd\n' },
       { seq: 5, data: '/Users/avm/projects/runa-terminal\n' },
     ])
+  })
+
+  it('rejects invalid terminal stream chunks', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        body: createStreamResponse([
+          'event: output\ndata: {"seq":"bad","data":"pwd\\n","timestamp":"2026-04-21T08:03:00Z"}\n\n',
+        ]),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    const connection = await connectTerminalStream('term-main', {
+      onOutput: vi.fn(),
+    })
+
+    await expect(connection.done).rejects.toThrow('Invalid terminal output chunk payload.')
   })
 
   it('surfaces backend error envelopes as terminal api errors', async () => {

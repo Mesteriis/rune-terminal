@@ -93,7 +93,8 @@ import { blockAiWidget, unblockAiWidget } from '@/shared/model/ai-blocked-widget
 import { $activeWidgetHostId } from '@/shared/model/widget-focus'
 
 const runCommandPattern = /^\/run(?:\s+([\s\S]*))?$/
-const runOutputPollIntervalMs = 100
+const runOutputInitialPollIntervalMs = 100
+const runOutputMaxPollIntervalMs = 500
 const runOutputWaitTimeoutMs = 1500
 
 type TerminalExecutionTarget = {
@@ -126,13 +127,42 @@ function targetSessionForConnectionKind(connectionKind: string | undefined) {
   return connectionKind === 'ssh' ? 'remote' : 'local'
 }
 
-async function waitForTerminalOutput(widgetId: string, fromSeq: number) {
+function delayWithAbort(delayMs: number, signal?: AbortSignal) {
+  if (!signal) {
+    return new Promise<void>((resolve) => {
+      window.setTimeout(resolve, delayMs)
+    })
+  }
+
+  if (signal.aborted) {
+    return Promise.reject(signal.reason ?? new DOMException('Aborted', 'AbortError'))
+  }
+
+  return new Promise<void>((resolve, reject) => {
+    const timer = window.setTimeout(() => {
+      signal.removeEventListener('abort', onAbort)
+      resolve()
+    }, delayMs)
+
+    const onAbort = () => {
+      window.clearTimeout(timer)
+      signal.removeEventListener('abort', onAbort)
+      reject(signal.reason ?? new DOMException('Aborted', 'AbortError'))
+    }
+
+    signal.addEventListener('abort', onAbort, { once: true })
+  })
+}
+
+async function waitForTerminalOutput(widgetId: string, fromSeq: number, signal?: AbortSignal) {
   const deadline = Date.now() + runOutputWaitTimeoutMs
-  let latestSnapshot = await fetchTerminalSnapshot(widgetId, fromSeq)
+  let nextDelayMs = runOutputInitialPollIntervalMs
+  let latestSnapshot = await fetchTerminalSnapshot(widgetId, fromSeq, signal)
 
   while (latestSnapshot.next_seq <= fromSeq && latestSnapshot.chunks.length === 0 && Date.now() < deadline) {
-    await new Promise((resolve) => window.setTimeout(resolve, runOutputPollIntervalMs))
-    latestSnapshot = await fetchTerminalSnapshot(widgetId, fromSeq)
+    await delayWithAbort(nextDelayMs, signal)
+    latestSnapshot = await fetchTerminalSnapshot(widgetId, fromSeq, signal)
+    nextDelayMs = Math.min(runOutputMaxPollIntervalMs, Math.round(nextDelayMs * 1.6))
   }
 
   return latestSnapshot
@@ -1965,7 +1995,11 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
         throw new Error(executionResponse.error?.trim() || 'Unable to execute /run command.')
       }
 
-      await waitForTerminalOutput(resolvedTarget.targetWidgetID, resolvedTarget.baselineNextSeq)
+      await waitForTerminalOutput(
+        resolvedTarget.targetWidgetID,
+        resolvedTarget.baselineNextSeq,
+        activeSubmissionAbortRef.current?.signal,
+      )
 
       const explainResponse = await explainTerminalCommand({
         command,
@@ -2029,7 +2063,11 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
         throw new Error(executionResponse.error?.trim() || 'Unable to execute approved /run command.')
       }
 
-      await waitForTerminalOutput(runApproval.targetWidgetID, runApproval.baselineNextSeq)
+      await waitForTerminalOutput(
+        runApproval.targetWidgetID,
+        runApproval.baselineNextSeq,
+        activeSubmissionAbortRef.current?.signal,
+      )
 
       const explainResponse = await explainTerminalCommand({
         command: runApproval.command,
@@ -2138,7 +2176,11 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
         throw new Error(executionResponse.error?.trim() || 'Unable to execute the approved terminal plan.')
       }
 
-      await waitForTerminalOutput(resolvedTarget.targetWidgetID, resolvedTarget.baselineNextSeq)
+      await waitForTerminalOutput(
+        resolvedTarget.targetWidgetID,
+        resolvedTarget.baselineNextSeq,
+        activeSubmissionAbortRef.current?.signal,
+      )
 
       const explainResponse = await explainTerminalCommand({
         command,

@@ -42,11 +42,11 @@ export function useWorkspaceWidgetCatalog(): WorkspaceWidgetCatalogState {
   })
 
   useEffect(() => {
-    let isCancelled = false
+    const abortController = new AbortController()
 
-    fetchWorkspaceWidgetKindCatalog()
+    fetchWorkspaceWidgetKindCatalog(abortController.signal)
       .then((entries) => {
-        if (isCancelled) {
+        if (abortController.signal.aborted) {
           return
         }
 
@@ -56,7 +56,7 @@ export function useWorkspaceWidgetCatalog(): WorkspaceWidgetCatalogState {
         })
       })
       .catch((error: unknown) => {
-        if (isCancelled) {
+        if (abortController.signal.aborted) {
           return
         }
 
@@ -68,7 +68,7 @@ export function useWorkspaceWidgetCatalog(): WorkspaceWidgetCatalogState {
       })
 
     return () => {
-      isCancelled = true
+      abortController.abort()
     }
   }, [])
 

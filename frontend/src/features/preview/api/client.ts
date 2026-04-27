@@ -14,6 +14,7 @@ export type PreviewFileSnapshot = {
 type PreviewRequestOptions = {
   connectionId?: string
   maxBytes?: number
+  signal?: AbortSignal
 }
 
 type FSReadPayload = {
@@ -104,6 +105,9 @@ export async function readPreviewFile(
   const payload = await fetchRuntimeJSON<FSReadPayload>(
     runtimeContext,
     `/api/v1/fs/read?${params.toString()}`,
+    {
+      signal: options?.signal,
+    },
   )
 
   return {

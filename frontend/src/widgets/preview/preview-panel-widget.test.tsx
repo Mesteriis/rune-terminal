@@ -34,7 +34,10 @@ describe('PreviewPanelWidget', () => {
     expect(screen.getByText('Loading preview')).toBeInTheDocument()
 
     await waitFor(() => {
-      expect(readPreviewFile).toHaveBeenCalledWith('/repo/README.md', { maxBytes: 65_536 })
+      expect(readPreviewFile).toHaveBeenCalledWith(
+        '/repo/README.md',
+        expect.objectContaining({ maxBytes: 65_536 }),
+      )
       expect(screen.getByText('# Readme')).toBeInTheDocument()
       expect(screen.getByText('Text preview · 8 B')).toBeInTheDocument()
     })
@@ -53,10 +56,13 @@ describe('PreviewPanelWidget', () => {
     render(<PreviewPanelWidget connectionId="conn-ssh" path="/remote/README.md" title="README.md" />)
 
     await waitFor(() => {
-      expect(readPreviewFile).toHaveBeenCalledWith('/remote/README.md', {
-        connectionId: 'conn-ssh',
-        maxBytes: 65_536,
-      })
+      expect(readPreviewFile).toHaveBeenCalledWith(
+        '/remote/README.md',
+        expect.objectContaining({
+          connectionId: 'conn-ssh',
+          maxBytes: 65_536,
+        }),
+      )
     })
   })
 

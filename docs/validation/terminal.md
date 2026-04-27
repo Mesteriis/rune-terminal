@@ -10,6 +10,11 @@
     - `terminal-header -> term-main`
     - `terminal -> term-side`
   - the frontend terminal read path now hydrates from `GET /api/v1/terminal/{widgetID}` and follows live output through `GET /api/v1/terminal/{widgetID}/stream`
+  - the frontend terminal API client now validates runtime snapshot,
+    diagnostics, latest-command, session-catalog, interrupt/restart, and
+    stream-chunk payloads before handing them to the widget layer, so malformed
+    backend JSON fails fast as an explicit client error instead of becoming
+    a later `undefined` access inside the UI
   - the visible xterm input path now sends raw terminal input through `POST /api/v1/terminal/{widgetID}/input`
   - utility-menu `Create terminal widget` and terminal-header `+` actions now allocate a fresh backend terminal session first and then mount the new Dockview panel against the returned runtime `widget_id`, instead of reusing the frontend panel id as a fake terminal id
   - closing those extra terminal panels now also releases the backend-created workspace tab through its runtime `tab_id`, so panel close no longer leaks backend terminal sessions
@@ -197,6 +202,7 @@
 - `frontend/node_modules/.bin/vitest run src/widgets/terminal/terminal-widget.test.tsx --reporter=verbose`
 - `frontend/node_modules/.bin/vitest run src/widgets/terminal/terminal-widget.test.tsx src/app/app-ai-sidebar.test.tsx --reporter=verbose`
 - `npm --prefix frontend run test -- src/features/terminal/api/client.test.ts src/widgets/terminal/terminal-widget.test.tsx src/app/app-ai-sidebar.test.tsx --reporter=verbose`
+- `npm --prefix frontend run test -- src/features/terminal/api/client.test.ts src/features/workspace/model/widget-catalog.test.ts src/widgets/preview/preview-panel-widget.test.tsx src/widgets/files/files-panel-widget.test.tsx --reporter=verbose`
 - `npm --prefix frontend run test -- src/features/terminal/api/client.test.ts src/features/terminal/model/use-terminal-session.test.tsx src/widgets/terminal/terminal-widget.test.tsx --reporter=verbose`
 - `npm run lint:frontend`
 - `npm --prefix frontend run test -- src/shared/api/terminal-settings.test.ts src/features/terminal/model/use-terminal-preferences.test.tsx src/widgets/settings/terminal-settings-section.test.tsx src/widgets/terminal/terminal-widget.test.tsx`

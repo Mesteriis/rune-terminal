@@ -1,4 +1,5 @@
 import { resolveRuntimeContext, type RuntimeContext } from '@/shared/api/runtime'
+import { z } from 'zod'
 
 export type TerminalRuntimeStatus = 'starting' | 'running' | 'exited' | 'failed' | 'disconnected' | string
 
@@ -140,19 +141,162 @@ type TerminalStreamOptions = {
   signal?: AbortSignal
 }
 
+const terminalRuntimeStateSchema = z
+  .object({
+    widget_id: z.string(),
+    session_id: z.string(),
+    shell: z.string(),
+    restored: z.boolean().optional(),
+    status_detail: z.string().optional(),
+    connection_id: z.string().optional(),
+    connection_name: z.string().optional(),
+    connection_kind: z.string().optional(),
+    remote_launch_mode: z.string().optional(),
+    remote_session_name: z.string().optional(),
+    pid: z.number(),
+    status: z.string(),
+    started_at: z.string(),
+    last_output_at: z.string().optional(),
+    exit_code: z.number().optional(),
+    can_send_input: z.boolean(),
+    can_interrupt: z.boolean(),
+    working_dir: z.string().optional(),
+  })
+  .passthrough()
+
+const terminalOutputChunkSchema = z
+  .object({
+    seq: z.number(),
+    data: z.string(),
+    timestamp: z.string(),
+  })
+  .passthrough()
+
+const terminalSnapshotSchema = z
+  .object({
+    state: terminalRuntimeStateSchema,
+    chunks: z.array(terminalOutputChunkSchema).nullable().optional(),
+    next_seq: z.number(),
+    active_session_id: z.string().optional(),
+    sessions: z.array(terminalRuntimeStateSchema).optional(),
+  })
+  .passthrough()
+
+const terminalDiagnosticsSchema = z
+  .object({
+    widget_id: z.string(),
+    session_state: z.string(),
+    status_detail: z.string().optional(),
+    issue_summary: z.string().optional(),
+    output_excerpt: z.string().optional(),
+  })
+  .passthrough()
+
+const terminalLatestCommandSchema = z
+  .object({
+    widget_id: z.string(),
+    session_id: z.string(),
+    command: z.string(),
+    from_seq: z.number(),
+    submitted_at: z.string(),
+    output_excerpt: z.string().optional(),
+    status: z.string(),
+    status_detail: z.string().optional(),
+    exit_code: z.number().optional(),
+    command_audit_event_id: z.string().optional(),
+    execution_block_id: z.string().optional(),
+    explain_state: z.string().optional(),
+    explain_summary: z.string().optional(),
+  })
+  .passthrough()
+
+const terminalSessionCatalogEntrySchema = z
+  .object({
+    workspace_id: z.string(),
+    workspace_name: z.string(),
+    tab_id: z.string().optional(),
+    tab_title: z.string().optional(),
+    widget_id: z.string(),
+    widget_title: z.string(),
+    session_id: z.string(),
+    connection_id: z.string().optional(),
+    connection_kind: z.string().optional(),
+    connection_name: z.string().optional(),
+    remote_launch_mode: z.string().optional(),
+    remote_session_name: z.string().optional(),
+    shell: z.string(),
+    status: z.string(),
+    status_detail: z.string().optional(),
+    working_dir: z.string().optional(),
+    is_active_workspace: z.boolean(),
+    is_active_tab: z.boolean(),
+    is_active_widget: z.boolean(),
+    is_active_session: z.boolean(),
+  })
+  .passthrough()
+
+const terminalSessionCatalogSchema = z
+  .object({
+    active_workspace_id: z.string().optional(),
+    sessions: z.array(terminalSessionCatalogEntrySchema).optional(),
+  })
+  .passthrough()
+
+const terminalInputResultSchema = z
+  .object({
+    widget_id: z.string(),
+    bytes_sent: z.number(),
+    append_newline: z.boolean(),
+  })
+  .passthrough()
+
+const terminalStateEnvelopeSchema = z
+  .object({
+    state: terminalRuntimeStateSchema,
+  })
+  .passthrough()
+
+function parseWithSchema<T>(schema: z.ZodSchema<T>, payload: unknown, message: string): T {
+  const result = schema.safeParse(payload)
+
+  if (!result.success) {
+    throw new Error(message)
+  }
+
+  return result.data
+}
+
 function normalizeTerminalChunks(chunks: unknown): TerminalOutputChunk[] {
-  return Array.isArray(chunks) ? chunks : []
+  if (!Array.isArray(chunks)) {
+    return []
+  }
+
+  return chunks.map((chunk, index) =>
+    parseWithSchema(terminalOutputChunkSchema, chunk, `Invalid terminal output chunk at index ${index}.`),
+  )
 }
 
 function normalizeTerminalSessions(sessions: unknown): TerminalRuntimeState[] {
-  return Array.isArray(sessions) ? (sessions as TerminalRuntimeState[]) : []
+  if (!Array.isArray(sessions)) {
+    return []
+  }
+
+  return sessions.map((session, index) =>
+    parseWithSchema(terminalRuntimeStateSchema, session, `Invalid terminal session state at index ${index}.`),
+  )
 }
 
-function normalizeTerminalSnapshot(snapshot: TerminalSnapshot): TerminalSnapshot {
+function normalizeTerminalSnapshot(snapshot: unknown): TerminalSnapshot {
+  const parsedSnapshot = parseWithSchema(
+    terminalSnapshotSchema,
+    snapshot,
+    'Invalid terminal snapshot payload.',
+  )
+
   return {
-    ...snapshot,
-    sessions: normalizeTerminalSessions(snapshot.sessions),
-    chunks: normalizeTerminalChunks(snapshot.chunks),
+    ...parsedSnapshot,
+    sessions: normalizeTerminalSessions(parsedSnapshot.sessions),
+    chunks: normalizeTerminalChunks(parsedSnapshot.chunks),
   }
 }
 
@@ -247,6 +391,10 @@ function parseEventBlock(block: string) {
   }
 }
 
+function parseTerminalOutputChunk(raw: string) {
+  return parseWithSchema(terminalOutputChunkSchema, JSON.parse(raw), 'Invalid terminal output chunk payload.')
+}
+
 async function consumeTerminalStream(
   body: ReadableStream<Uint8Array>,
   onOutput: (chunk: TerminalOutputChunk) => void,
@@ -265,7 +413,7 @@ async function consumeTerminalStream(
       const parsedEvent = parseEventBlock(eventBlock)
 
       if (parsedEvent?.event === 'output') {
-        onOutput(JSON.parse(parsedEvent.data) as TerminalOutputChunk)
+        onOutput(parseTerminalOutputChunk(parsedEvent.data))
       }
 
       boundaryIndex = normalizedBuffer.indexOf('\n\n')
@@ -277,7 +425,7 @@ async function consumeTerminalStream(
       const parsedEvent = parseEventBlock(normalizedBuffer)
 
       if (parsedEvent?.event === 'output') {
-        onOutput(JSON.parse(parsedEvent.data) as TerminalOutputChunk)
+        onOutput(parseTerminalOutputChunk(parsedEvent.data))
       }
     }
   }
@@ -317,8 +465,10 @@ function attachAbortSignal(signal: AbortSignal | undefined, controller: AbortCon
   }
 }
 
-export async function fetchTerminalSnapshot(widgetID: string, from?: number) {
-  const snapshot = await requestRuntimeJSON<TerminalSnapshot>(buildTerminalPath(widgetID, '', from))
+export async function fetchTerminalSnapshot(widgetID: string, from?: number, signal?: AbortSignal) {
+  const snapshot = await requestRuntimeJSON<TerminalSnapshot>(buildTerminalPath(widgetID, '', from), {
+    signal,
+  })
   return normalizeTerminalSnapshot(snapshot)
 }
 
@@ -353,15 +503,27 @@ export async function closeTerminalSession(widgetID: string, sessionID: string) 
 }
 
 export async function fetchTerminalDiagnostics(widgetID: string) {
-  return requestRuntimeJSON<TerminalDiagnostics>(buildTerminalPath(widgetID, '/diagnostics'))
+  return parseWithSchema(
+    terminalDiagnosticsSchema,
+    await requestRuntimeJSON<TerminalDiagnostics>(buildTerminalPath(widgetID, '/diagnostics')),
+    'Invalid terminal diagnostics payload.',
+  )
 }
 
 export async function fetchTerminalLatestCommand(widgetID: string) {
-  return requestRuntimeJSON<TerminalLatestCommand>(buildTerminalPath(widgetID, '/commands/latest'))
+  return parseWithSchema(
+    terminalLatestCommandSchema,
+    await requestRuntimeJSON<TerminalLatestCommand>(buildTerminalPath(widgetID, '/commands/latest')),
+    'Invalid terminal latest-command payload.',
+  )
 }
 
 export async function fetchTerminalSessionCatalog() {
-  const payload = await requestRuntimeJSON<TerminalSessionCatalog>('/api/v1/terminal/sessions')
+  const payload = parseWithSchema(
+    terminalSessionCatalogSchema,
+    await requestRuntimeJSON<TerminalSessionCatalog>('/api/v1/terminal/sessions'),
+    'Invalid terminal session catalog payload.',
+  )
 
   return {
     active_workspace_id: payload.active_workspace_id,
@@ -410,29 +572,38 @@ export async function closeTerminalTab(tabID: string) {
 }
 
 export async function sendTerminalInput(widgetID: string, text: string, appendNewline: boolean) {
-  return requestRuntimeJSON<TerminalInputResult>(buildTerminalPath(widgetID, '/input'), {
-    body: JSON.stringify({
-      text,
-      append_newline: appendNewline,
+  return parseWithSchema(
+    terminalInputResultSchema,
+    await requestRuntimeJSON<TerminalInputResult>(buildTerminalPath(widgetID, '/input'), {
+      body: JSON.stringify({
+        text,
+        append_newline: appendNewline,
+      }),
+      method: 'POST',
     }),
-    method: 'POST',
-  })
+    'Invalid terminal input result payload.',
+  )
 }
 
 export async function restartTerminal(widgetID: string) {
-  const payload = await requestRuntimeJSON<TerminalRestartResponse>(buildTerminalPath(widgetID, '/restart'), {
-    method: 'POST',
-  })
+  const payload = parseWithSchema(
+    terminalStateEnvelopeSchema,
+    await requestRuntimeJSON<TerminalRestartResponse>(buildTerminalPath(widgetID, '/restart'), {
+      method: 'POST',
+    }),
+    'Invalid terminal restart payload.',
+  )
 
   return payload.state
 }
 
 export async function interruptTerminal(widgetID: string) {
-  const payload = await requestRuntimeJSON<TerminalInterruptResponse>(
-    buildTerminalPath(widgetID, '/interrupt'),
-    {
+  const payload = parseWithSchema(
+    terminalStateEnvelopeSchema,
+    await requestRuntimeJSON<TerminalInterruptResponse>(buildTerminalPath(widgetID, '/interrupt'), {
       method: 'POST',
-    },
+    }),
+    'Invalid terminal interrupt payload.',
   )
 
   return payload.state

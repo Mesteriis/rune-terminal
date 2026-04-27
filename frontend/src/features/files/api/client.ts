@@ -18,6 +18,7 @@ export type FilesDirectorySnapshot = {
 
 type FilesRequestOptions = {
   connectionId?: string
+  signal?: AbortSignal
 }
 
 type FSNode = {
@@ -149,6 +150,9 @@ export async function listFilesDirectory(
   const payload = await fetchRuntimeJSON<FSListPayload>(
     runtimeContext,
     `/api/v1/fs/list?${params.toString()}`,
+    {
+      signal: options?.signal,
+    },
   )
 
   return {
