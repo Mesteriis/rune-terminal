@@ -61,6 +61,17 @@ import {
   updateQuestionnaireMessageAnswer,
 } from '@/features/agent/model/interaction-flow'
 import {
+  deduplicateWidgetIDs,
+  filterContextWidgetSelection,
+  formatContextWidgetLabel,
+  isCustomizedContextPreference,
+  mapContextWidgetOptions,
+  resolveContextTerminalWidget,
+  sortConversationSummaries,
+  summaryFromConversationSnapshot,
+  upsertConversationSummary,
+} from '@/features/agent/model/agent-panel-context'
+import {
   appendAgentConversationMessage,
   appendAgentPanelStatusMessage,
   applyAgentConversationStreamEvent,
@@ -69,6 +80,19 @@ import {
   createAgentPanelStateFromMessages,
   finalizeAgentConversationStreamingMessages,
 } from '@/features/agent/model/panel-state'
+import {
+  directProviderChatModels,
+  directProviderDefaultModel,
+  providerOptionsFromCatalog,
+  providerViewToConversationProvider,
+  selectPreferredChatModel,
+} from '@/features/agent/model/agent-panel-provider'
+import {
+  createOptimisticUserConversationMessage,
+  sortMessagesBySortKey,
+  updateInteractionMessage,
+  upsertInteractionMessage,
+} from '@/features/agent/model/chat-message-utils'
 import type {
   AiAgentSelectionOption,
   AiPanelWidgetState,
@@ -168,115 +192,6 @@ async function waitForTerminalOutput(widgetId: string, fromSeq: number, signal?:
   return latestSnapshot
 }
 
-function createOptimisticUserConversationMessage(
-  hostId: string,
-  sequence: number,
-  prompt: string,
-  attachments: AgentAttachmentReference[] = [],
-): AgentConversationMessage {
-  return {
-    id: `agent-local-user-${hostId}-${sequence}`,
-    role: 'user',
-    content: prompt,
-    attachments,
-    status: 'complete',
-    created_at: new Date().toISOString(),
-  }
-}
-
-function sortMessagesBySortKey(messages: ChatMessageView[]) {
-  return [...messages].sort((left, right) => (left.sortKey ?? 0) - (right.sortKey ?? 0))
-}
-
-function upsertInteractionMessage(currentMessages: ChatMessageView[], nextMessage: ChatMessageView) {
-  const messageIndex = currentMessages.findIndex((message) => message.id === nextMessage.id)
-
-  if (messageIndex < 0) {
-    return sortMessagesBySortKey([...currentMessages, nextMessage])
-  }
-
-  const nextMessages = [...currentMessages]
-  nextMessages[messageIndex] = nextMessage
-  return sortMessagesBySortKey(nextMessages)
-}
-
-function updateInteractionMessage(
-  currentMessages: ChatMessageView[],
-  messageID: string,
-  update: (message: ChatMessageView) => ChatMessageView,
-) {
-  const messageIndex = currentMessages.findIndex((message) => message.id === messageID)
-
-  if (messageIndex < 0) {
-    return currentMessages
-  }
-
-  const nextMessages = [...currentMessages]
-  nextMessages[messageIndex] = update(nextMessages[messageIndex])
-  return sortMessagesBySortKey(nextMessages)
-}
-
-function directProviderChatModels(provider: AgentProviderView | null | undefined) {
-  if (!provider) {
-    return []
-  }
-  if (provider.kind === 'codex') {
-    return provider.codex?.chat_models ?? []
-  }
-  if (provider.kind === 'claude') {
-    return provider.claude?.chat_models ?? []
-  }
-  if (provider.kind === 'openai-compatible') {
-    return provider.openai_compatible?.chat_models ?? []
-  }
-  return []
-}
-
-function directProviderDefaultModel(provider: AgentProviderView | null | undefined) {
-  if (!provider) {
-    return ''
-  }
-  if (provider.kind === 'codex') {
-    return provider.codex?.model?.trim() ?? ''
-  }
-  if (provider.kind === 'claude') {
-    return provider.claude?.model?.trim() ?? ''
-  }
-  if (provider.kind === 'openai-compatible') {
-    return provider.openai_compatible?.model?.trim() ?? ''
-  }
-  return ''
-}
-
-function providerOptionLabel(provider: AgentProviderView) {
-  if (provider.display_name.trim()) {
-    return provider.display_name.trim()
-  }
-  if (provider.kind === 'codex') {
-    return 'Codex CLI'
-  }
-  if (provider.kind === 'claude') {
-    return 'Claude Code CLI'
-  }
-  if (provider.kind === 'openai-compatible') {
-    return 'OpenAI-Compatible HTTP'
-  }
-  return provider.id
-}
-
-function providerOptionsFromCatalog(catalog: AgentProviderCatalog | null): AiProviderOption[] {
-  if (!catalog) {
-    return []
-  }
-
-  return catalog.providers
-    .filter((provider) => provider.enabled)
-    .map((provider) => ({
-      value: provider.id,
-      label: providerOptionLabel(provider),
-    }))
-}
-
 function agentSelectionOptionsFromItems(
   items: Array<{ id: string; name: string; description: string }>,
 ): AiAgentSelectionOption[] {
@@ -285,41 +200,6 @@ function agentSelectionOptionsFromItems(
     label: item.name,
     description: item.description,
   }))
-}
-
-function providerViewToConversationProvider(
-  provider: AgentProviderView | null | undefined,
-  currentProvider: AgentConversationProvider | null,
-): AgentConversationProvider | null {
-  if (!provider) {
-    return currentProvider
-  }
-
-  if (provider.kind === 'codex') {
-    return {
-      kind: provider.kind,
-      base_url: provider.codex?.command ?? currentProvider?.base_url ?? '',
-      model: provider.codex?.model ?? currentProvider?.model,
-      streaming: false,
-    }
-  }
-  if (provider.kind === 'claude') {
-    return {
-      kind: provider.kind,
-      base_url: provider.claude?.command ?? currentProvider?.base_url ?? '',
-      model: provider.claude?.model ?? currentProvider?.model,
-      streaming: false,
-    }
-  }
-  if (provider.kind === 'openai-compatible') {
-    return {
-      kind: provider.kind,
-      base_url: provider.openai_compatible?.base_url ?? currentProvider?.base_url ?? '',
-      model: provider.openai_compatible?.model ?? currentProvider?.model,
-      streaming: false,
-    }
-  }
-  return currentProvider
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -339,173 +219,10 @@ function getApprovalToken(response: AgentToolExecuteResponse) {
   throw new Error('Approval confirmation did not return an approval token.')
 }
 
-function selectPreferredChatModel(
-  currentModel: string,
-  providerModel: string | undefined,
-  availableModels: string[],
-) {
-  const selectedModel = currentModel.trim()
-  if (selectedModel && availableModels.includes(selectedModel)) {
-    return selectedModel
-  }
-
-  const activeProviderModel = providerModel?.trim() ?? ''
-  if (activeProviderModel && availableModels.includes(activeProviderModel)) {
-    return activeProviderModel
-  }
-
-  return availableModels[0] ?? ''
-}
-
-function deduplicateWidgetIDs(widgetIDs: string[]) {
-  return widgetIDs.reduce<string[]>((accumulator, widgetID) => {
-    const trimmedWidgetID = widgetID.trim()
-
-    if (!trimmedWidgetID || accumulator.includes(trimmedWidgetID)) {
-      return accumulator
-    }
-
-    return [...accumulator, trimmedWidgetID]
-  }, [])
-}
-
-function formatContextWidgetLabel(widget: WorkspaceWidgetSnapshot) {
-  const title = widget.title?.trim() || widget.id
-  const meta = [widget.kind]
-
-  if (widget.connection_id?.trim()) {
-    meta.push(widget.connection_id.trim())
-  }
-  if (widget.path?.trim()) {
-    meta.push(widget.path.trim())
-  }
-
-  return title === widget.id
-    ? `${title} · ${meta.join(' · ')}`
-    : `${title} (${widget.id}) · ${meta.join(' · ')}`
-}
-
-function formatContextWidgetGroup(widgetKind: string) {
-  switch (widgetKind.trim().toLowerCase()) {
-    case 'terminal':
-      return 'Terminal widgets'
-    case 'commander':
-      return 'Commander widgets'
-    case 'ai':
-      return 'AI widgets'
-    default: {
-      const normalizedKind = widgetKind.trim()
-      if (normalizedKind === '') {
-        return 'Other widgets'
-      }
-      return `${normalizedKind.charAt(0).toUpperCase()}${normalizedKind.slice(1)} widgets`
-    }
-  }
-}
-
-function mapContextWidgetOptions(widgets: WorkspaceWidgetSnapshot[]): AiContextWidgetOption[] {
-  return widgets.map((widget) => {
-    const title = widget.title?.trim() || widget.id
-    const metaParts = [widget.kind]
-
-    if (widget.id !== title) {
-      metaParts.unshift(widget.id)
-    }
-    if (widget.connection_id?.trim()) {
-      metaParts.push(widget.connection_id.trim())
-    }
-    if (widget.path?.trim()) {
-      metaParts.push(widget.path.trim())
-    }
-
-    return {
-      group: formatContextWidgetGroup(widget.kind),
-      value: widget.id,
-      label: formatContextWidgetLabel(widget),
-      title,
-      meta: metaParts.join(' · '),
-    }
-  })
-}
-
-function filterContextWidgetSelection(selectedWidgetIDs: string[], widgetOptions: AiContextWidgetOption[]) {
-  const availableWidgetIDs = new Set(widgetOptions.map((option) => option.value))
-  return deduplicateWidgetIDs(selectedWidgetIDs).filter((widgetID) => availableWidgetIDs.has(widgetID))
-}
-
-function isTerminalWorkspaceWidget(widget: WorkspaceWidgetSnapshot) {
-  return widget.kind.trim().toLowerCase() === 'terminal'
-}
-
-function resolveContextTerminalWidget(
-  widgets: WorkspaceWidgetSnapshot[],
-  candidateWidgetIDs: string[],
-): WorkspaceWidgetSnapshot | null {
-  const widgetsByID = new Map(widgets.map((widget) => [widget.id, widget]))
-
-  for (const widgetID of deduplicateWidgetIDs(candidateWidgetIDs)) {
-    const widget = widgetsByID.get(widgetID)
-    if (widget && isTerminalWorkspaceWidget(widget)) {
-      return widget
-    }
-  }
-
-  return null
-}
-
-function summaryFromConversationSnapshot(snapshot: AgentConversationSnapshot): AgentConversationSummary {
-  return {
-    archived_at: snapshot.archived_at,
-    id: snapshot.id,
-    title: snapshot.title,
-    created_at: snapshot.created_at,
-    updated_at: snapshot.updated_at,
-    message_count: snapshot.messages.length,
-  }
-}
-
-function isCustomizedContextPreference(preferences: AgentConversationContextPreferences) {
-  return !preferences.widget_context_enabled || (preferences.widget_ids?.length ?? 0) > 0
-}
-
-function sortConversationSummaries(conversations: AgentConversationSummary[]) {
-  return [...conversations].sort((left, right) => {
-    const leftArchivedAt = left.archived_at?.trim() ?? ''
-    const rightArchivedAt = right.archived_at?.trim() ?? ''
-
-    if (!leftArchivedAt && rightArchivedAt) {
-      return -1
-    }
-
-    if (leftArchivedAt && !rightArchivedAt) {
-      return 1
-    }
-
-    const leftSortKey = leftArchivedAt || left.updated_at
-    const rightSortKey = rightArchivedAt || right.updated_at
-    const updatedAtDelta = new Date(rightSortKey).getTime() - new Date(leftSortKey).getTime()
-
-    if (updatedAtDelta !== 0) {
-      return updatedAtDelta
-    }
-
-    return right.id.localeCompare(left.id)
-  })
-}
-
 const defaultConversationListCounts: AgentConversationListCounts = {
   recent: 0,
   archived: 0,
   all: 0,
-}
-
-function upsertConversationSummary(
-  conversations: AgentConversationSummary[],
-  nextConversation: AgentConversationSummary,
-) {
-  const nextConversations = conversations.filter((conversation) => conversation.id !== nextConversation.id)
-  nextConversations.push(nextConversation)
-  return sortConversationSummaries(nextConversations)
 }
 
 export function useAgentPanel(hostId: string, enabled = true, options: UseAgentPanelOptions = {}) {
