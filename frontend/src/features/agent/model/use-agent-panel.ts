@@ -3,14 +3,11 @@ import { useUnit } from 'effector-react'
 
 import {
   deleteAgentAttachmentReference,
-  executeAgentTool,
   fetchAgentAttachmentReferences,
   fetchAgentCatalog,
-  fetchAgentConversation,
   setAgentMode,
   setAgentProfile,
   setAgentRole,
-  streamAgentConversationMessage,
   type AgentCatalog,
   type AgentAttachmentReference,
   type AgentConversationListCounts,
@@ -20,7 +17,6 @@ import {
   type AgentConversationProvider,
   type AgentConversationSnapshot,
   type AgentConversationSummary,
-  type AgentConversationStreamConnection,
   type AgentToolExecuteResponse,
 } from '@/features/agent/api/client'
 import {
@@ -32,9 +28,7 @@ import {
   type AgentProviderGatewaySnapshot,
 } from '@/features/agent/api/provider-client'
 import {
-  advanceAuditEntries,
   classifyMessageIntent,
-  completeAuditEntries,
   createApprovalMessage,
   createAuditMessage,
   createPlanMessage,
@@ -68,6 +62,10 @@ import {
   type TerminalExecutionTarget,
 } from '@/features/agent/model/agent-panel-execution'
 import {
+  cancelActiveSubmissionForPanel,
+  runBackendPromptForPanel,
+} from '@/features/agent/model/agent-panel-streaming'
+import {
   bootstrapAgentPanel,
   resetAgentPanelBootstrapState,
   resetAgentPanelRuntime,
@@ -85,11 +83,9 @@ import {
 import {
   appendAgentConversationMessage,
   appendAgentPanelStatusMessage,
-  applyAgentConversationStreamEvent,
   createAgentPanelErrorState,
   createAgentPanelLoadingState,
   createAgentPanelStateFromMessages,
-  finalizeAgentConversationStreamingMessages,
 } from '@/features/agent/model/panel-state'
 import {
   providerOptionsFromCatalog,
@@ -1394,155 +1390,52 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
         model?: string
       },
     ) => {
-      const submissionNonce = submissionNonceRef.current + 1
-      submissionNonceRef.current = submissionNonce
-      const isActiveSubmission = () => submissionNonceRef.current === submissionNonce
-      const isCancellable = options?.cancellable !== false
-
-      setIsSubmitting(true)
-      setIsResponseCancellable(isCancellable)
-      setLoadError(null)
-      setSubmitError(null)
-      blockAiWidget(hostId)
-
-      const submissionAbortController = new AbortController()
-      let auditProgressed = false
-      let streamErrored = false
-      let connection: AgentConversationStreamConnection | null = null
-      activeSubmissionAbortRef.current = submissionAbortController
-      activeAuditMessageIDRef.current = options?.auditMessageID ?? null
-
-      try {
-        const runtimeContext = await resolveRuntimeContext()
-
-        if (await runTerminalPrompt(prompt, runtimeContext.repoRoot)) {
-          return
-        }
-
-        connection = await streamAgentConversationMessage(
-          {
-            prompt,
-            attachments: options?.attachments,
-            model: options?.model,
-            context: createConversationContext({
-              actionSource: 'frontend.ai.sidebar',
-              repoRoot: runtimeContext.repoRoot,
-            }),
-          },
-          {
-            onEvent: (event) => {
-              if (!isActiveSubmission()) {
-                return
-              }
-
-              setMessages((currentMessages) =>
-                applyAgentConversationStreamEvent(currentMessages ?? [], event),
-              )
-
-              if (event.type === 'text-delta' && options?.auditMessageID && !auditProgressed) {
-                updateAuditMessageEntries(options.auditMessageID, (currentMessage) =>
-                  currentMessage.type === 'audit'
-                    ? {
-                        ...currentMessage,
-                        entries: advanceAuditEntries(currentMessage.entries),
-                      }
-                    : currentMessage,
-                )
-                auditProgressed = true
-              }
-
-              if (event.type === 'message-complete') {
-                if (options?.auditMessageID) {
-                  updateAuditMessageEntries(options.auditMessageID, (currentMessage) =>
-                    currentMessage.type === 'audit'
-                      ? {
-                          ...currentMessage,
-                          entries: completeAuditEntries(currentMessage.entries),
-                        }
-                      : currentMessage,
-                  )
-                }
-              } else if (event.type === 'error') {
-                streamErrored = true
-
-                if (options?.auditMessageID) {
-                  updateAuditMessageEntries(options.auditMessageID, (currentMessage) =>
-                    currentMessage.type === 'audit'
-                      ? {
-                          ...currentMessage,
-                          entries: failAuditEntries(currentMessage.entries),
-                        }
-                      : currentMessage,
-                  )
-                }
-
-                if (!event.message && event.error?.trim()) {
-                  setSubmitError(event.error.trim())
-                }
-              }
-            },
-            signal: submissionAbortController.signal,
-          },
-        )
-        if (!isActiveSubmission()) {
-          connection.close()
-          return
-        }
-        activeStreamRef.current = connection
-        await connection.done
-
-        if (isActiveSubmission() && !streamErrored) {
-          const [snapshot] = await Promise.all([fetchAgentConversation(), refreshConversationList()])
-          applyConversationSnapshot(snapshot)
-        }
-      } catch (error: unknown) {
-        if (!isActiveSubmission()) {
-          return
-        }
-
-        const errorMessage =
-          error instanceof Error && error.message.trim()
-            ? error.message
-            : `Unable to send backend conversation message for ${hostId}.`
-
-        setMessages((currentMessages) =>
-          finalizeAgentConversationStreamingMessages(currentMessages ?? [], errorMessage),
-        )
-
-        if (options?.auditMessageID) {
-          updateAuditMessageEntries(options.auditMessageID, (currentMessage) =>
-            currentMessage.type === 'audit'
-              ? {
-                  ...currentMessage,
-                  entries: failAuditEntries(currentMessage.entries),
-                }
-              : currentMessage,
-          )
-        }
-
-        setSubmitError(errorMessage)
-      } finally {
-        if (isActiveSubmission()) {
-          if (activeStreamRef.current === connection) {
-            activeStreamRef.current = null
-          }
-          if (activeSubmissionAbortRef.current === submissionAbortController) {
-            activeSubmissionAbortRef.current = null
-          }
-          if (activeAuditMessageIDRef.current === (options?.auditMessageID ?? null)) {
-            activeAuditMessageIDRef.current = null
-          }
-
+      await runBackendPromptForPanel({
+        applyConversationSnapshot,
+        blockAiWidget: () => blockAiWidget(hostId),
+        createConversationContext: ({ actionSource, repoRoot }) =>
+          createConversationContext({
+            actionSource,
+            repoRoot,
+          }),
+        getActiveAuditMessageID: () => activeAuditMessageIDRef.current,
+        getHostId: () => hostId,
+        getSubmissionNonce: () => submissionNonceRef.current,
+        model: options?.model,
+        nextSubmissionNonce: () => {
+          submissionNonceRef.current += 1
+          return submissionNonceRef.current
+        },
+        options,
+        prompt,
+        refreshConversationList: () => refreshConversationList(),
+        refreshProviderGatewaySnapshot: () => {
           void refreshProviderGatewaySnapshot({ suppressError: true })
-          unblockAiWidget(hostId)
-          setIsSubmitting(false)
-          setIsResponseCancellable(false)
-        }
-      }
+        },
+        resolveRuntimeContext,
+        runTerminalPrompt,
+        setActiveAuditMessageID: (id) => {
+          activeAuditMessageIDRef.current = id
+        },
+        setActiveStream: (connection) => {
+          activeStreamRef.current = connection
+        },
+        setActiveSubmissionAbort: (controller) => {
+          activeSubmissionAbortRef.current = controller
+        },
+        setIsResponseCancellable,
+        setIsSubmitting,
+        setLoadError,
+        setMessages,
+        setSubmitError,
+        unblockAiWidget: () => unblockAiWidget(hostId),
+        updateAuditMessageEntries,
+      })
     },
     [
       applyConversationSnapshot,
       hostId,
+      createConversationContext,
       refreshProviderGatewaySnapshot,
       refreshConversationList,
       runTerminalPrompt,
@@ -1627,56 +1520,32 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
   ])
 
   const cancelActiveSubmission = useCallback(() => {
-    if (!isSubmitting && !activeStreamRef.current && !activeSubmissionAbortRef.current) {
-      return
-    }
-
-    const cancellationMessage = 'Response cancelled by operator.'
-    const nextSubmissionNonce = submissionNonceRef.current + 1
-    const auditMessageID = activeAuditMessageIDRef.current
-
-    submissionNonceRef.current = nextSubmissionNonce
-    activeSubmissionAbortRef.current = null
-    const activeStream = activeStreamRef.current
-    activeStreamRef.current = null
-    activeAuditMessageIDRef.current = null
-    void activeStream?.cancel()
-
-    if (auditMessageID) {
-      updateAuditMessageEntries(auditMessageID, (currentMessage) =>
-        currentMessage.type === 'audit'
-          ? {
-              ...currentMessage,
-              entries: failAuditEntries(currentMessage.entries),
-            }
-          : currentMessage,
-      )
-    }
-
-    setMessages((currentMessages) => {
-      const messagesBeforeCancel = currentMessages ?? []
-      const hadStreamingMessage = messagesBeforeCancel.some((message) => message.status === 'streaming')
-      const finalizedMessages = finalizeAgentConversationStreamingMessages(
-        messagesBeforeCancel,
-        cancellationMessage,
-      )
-
-      if (hadStreamingMessage) {
-        return finalizedMessages
-      }
-
-      return appendAgentConversationMessage(finalizedMessages, {
-        id: `agent-local-cancelled-${hostId}-${nextSubmissionNonce}`,
-        role: 'assistant',
-        content: cancellationMessage,
-        status: 'error',
-        created_at: new Date().toISOString(),
-      })
+    cancelActiveSubmissionForPanel({
+      activeAuditMessageID: activeAuditMessageIDRef.current,
+      activeStream: activeStreamRef.current,
+      hasActiveAbortController: activeSubmissionAbortRef.current != null,
+      hostId,
+      isSubmitting,
+      nextSubmissionNonce: () => {
+        submissionNonceRef.current += 1
+        return submissionNonceRef.current
+      },
+      setActiveAuditMessageID: (id) => {
+        activeAuditMessageIDRef.current = id
+      },
+      setActiveStream: (connection) => {
+        activeStreamRef.current = connection
+      },
+      setActiveSubmissionAbort: (controller) => {
+        activeSubmissionAbortRef.current = controller
+      },
+      setIsResponseCancellable,
+      setIsSubmitting,
+      setMessages,
+      setSubmitError,
+      unblockAiWidget: () => unblockAiWidget(hostId),
+      updateAuditMessageEntries,
     })
-    setSubmitError(null)
-    setIsSubmitting(false)
-    setIsResponseCancellable(false)
-    unblockAiWidget(hostId)
   }, [hostId, isSubmitting, updateAuditMessageEntries])
 
   const cancelPendingPlan = useCallback(
