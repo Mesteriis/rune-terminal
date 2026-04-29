@@ -146,9 +146,11 @@ func (api *API) handleProbeProvider(w http.ResponseWriter, r *http.Request) {
 	}
 	result, err := api.runtime.ProbeProvider(r.Context(), providerID)
 	if err != nil {
+		api.appendProviderAudit("providers.probe", "probe", providerID, "", err)
 		writeProviderConfigError(w, err)
 		return
 	}
+	api.appendProviderAudit("providers.probe", "probe", result.ProviderID, result.ProviderKind, nil)
 	writeJSON(w, http.StatusOK, result)
 }
 
@@ -160,9 +162,11 @@ func (api *API) handlePrewarmProvider(w http.ResponseWriter, r *http.Request) {
 	}
 	result, err := api.runtime.PrewarmProvider(r.Context(), providerID)
 	if err != nil {
+		api.appendProviderAudit("providers.prewarm", "prewarm", providerID, "", err)
 		writeProviderConfigError(w, err)
 		return
 	}
+	api.appendProviderAudit("providers.prewarm", "prewarm", result.ProviderID, result.ProviderKind, nil)
 	writeJSON(w, http.StatusOK, result)
 }
 
@@ -173,9 +177,11 @@ func (api *API) handleClearProviderRouteState(w http.ResponseWriter, r *http.Req
 		return
 	}
 	if err := api.runtime.ClearProviderRouteState(r.Context(), providerID); err != nil {
+		api.appendProviderAudit("providers.clear_route_state", "clear_route_state", providerID, "", err)
 		writeProviderConfigError(w, err)
 		return
 	}
+	api.appendProviderAudit("providers.clear_route_state", "clear_route_state", providerID, "", nil)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"provider_id": providerID,
 		"cleared":     true,
@@ -199,9 +205,11 @@ func (api *API) handleCreateProvider(w http.ResponseWriter, r *http.Request) {
 		OpenAICompatible: mapCreateOpenAICompatibleProviderInput(payload.OpenAICompatible),
 	})
 	if err != nil {
+		api.appendProviderAudit("providers.create", "create", "", payload.Kind, err)
 		writeProviderConfigError(w, err)
 		return
 	}
+	api.appendProviderAudit("providers.create", "create", provider.ID, string(provider.Kind), nil)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"provider":  provider,
 		"providers": catalog,
@@ -248,9 +256,11 @@ func (api *API) handleUpdateProvider(w http.ResponseWriter, r *http.Request) {
 		OpenAICompatible: mapUpdateOpenAICompatibleProviderInput(payload.OpenAICompatible),
 	})
 	if err != nil {
+		api.appendProviderAudit("providers.update", "update", providerID, "", err)
 		writeProviderConfigError(w, err)
 		return
 	}
+	api.appendProviderAudit("providers.update", "update", provider.ID, string(provider.Kind), nil)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"provider":  provider,
 		"providers": catalog,
@@ -279,9 +289,11 @@ func (api *API) handleSetActiveProvider(w http.ResponseWriter, r *http.Request) 
 	}
 	catalog, err := api.runtime.SetActiveProvider(payload.ID)
 	if err != nil {
+		api.appendProviderAudit("providers.set_active", "set_active", payload.ID, "", err)
 		writeProviderConfigError(w, err)
 		return
 	}
+	api.appendProviderAudit("providers.set_active", "set_active", payload.ID, "", nil)
 	writeJSON(w, http.StatusOK, catalog)
 }
 
@@ -293,10 +305,33 @@ func (api *API) handleDeleteProvider(w http.ResponseWriter, r *http.Request) {
 	}
 	catalog, err := api.runtime.DeleteProvider(providerID)
 	if err != nil {
+		api.appendProviderAudit("providers.delete", "delete", providerID, "", err)
 		writeProviderConfigError(w, err)
 		return
 	}
+	api.appendProviderAudit("providers.delete", "delete", providerID, "", nil)
 	writeJSON(w, http.StatusOK, catalog)
+}
+
+func (api *API) appendProviderAudit(
+	toolName string,
+	action string,
+	providerID string,
+	providerKind string,
+	err error,
+) {
+	if api == nil || api.runtime == nil {
+		return
+	}
+	api.runtime.AppendProviderAudit(app.ProviderAuditInput{
+		ToolName:     toolName,
+		Action:       action,
+		ProviderID:   providerID,
+		ProviderKind: providerKind,
+		ActionSource: "http.providers",
+		Success:      err == nil,
+		Error:        err,
+	})
 }
 
 func mapProviderModelsCodexSettings(payload *providerModelsCodexPayload) *agent.CodexProviderSettings {

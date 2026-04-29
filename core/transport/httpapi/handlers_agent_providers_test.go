@@ -225,6 +225,124 @@ func TestDeleteProviderRejectsActiveProvider(t *testing.T) {
 	}
 }
 
+func TestProviderManagementRoutesAppendAuditEvents(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+
+	firstCreate := providerRequest(t, handler, http.MethodPost, "/api/v1/agent/providers", map[string]any{
+		"kind":         "claude",
+		"display_name": "Claude Audit",
+		"claude": map[string]any{
+			"command": "claude",
+			"model":   "sonnet",
+		},
+	}, http.StatusOK)
+	firstProviderID := decodeProviderIDFromMutation(t, firstCreate)
+
+	providerRequest(t, handler, http.MethodPatch, "/api/v1/agent/providers/"+firstProviderID, map[string]any{
+		"display_name": "Claude Audit Updated",
+	}, http.StatusOK)
+
+	secondCreate := providerRequest(t, handler, http.MethodPost, "/api/v1/agent/providers", map[string]any{
+		"kind":         "codex",
+		"display_name": "Codex Delete Candidate",
+		"codex": map[string]any{
+			"command": "codex",
+			"model":   "gpt-5.4",
+		},
+	}, http.StatusOK)
+	secondProviderID := decodeProviderIDFromMutation(t, secondCreate)
+
+	providerRequest(t, handler, http.MethodPut, "/api/v1/agent/providers/active", map[string]any{
+		"id": firstProviderID,
+	}, http.StatusOK)
+	providerRequest(t, handler, http.MethodDelete, "/api/v1/agent/providers/"+secondProviderID, nil, http.StatusOK)
+
+	auditRecorder := providerRequest(t, handler, http.MethodGet, "/api/v1/audit?limit=10", nil, http.StatusOK)
+	events := decodeProviderAuditEvents(t, auditRecorder)
+	expectedTools := []string{
+		"providers.create",
+		"providers.update",
+		"providers.create",
+		"providers.set_active",
+		"providers.delete",
+	}
+	if len(events) != len(expectedTools) {
+		t.Fatalf("expected provider audit events %#v, got %#v", expectedTools, events)
+	}
+	for index, expectedTool := range expectedTools {
+		event := events[index]
+		if event.ToolName != expectedTool || event.ActionSource != "http.providers" || !event.Success || event.Error != "" {
+			t.Fatalf("unexpected provider audit event %d: %#v", index, event)
+		}
+	}
+}
+
+func TestProviderManagementRoutesAppendFailureAuditEvent(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+	providerRequest(t, handler, http.MethodPost, "/api/v1/agent/providers", map[string]any{
+		"kind": "ollama",
+	}, http.StatusBadRequest)
+
+	auditRecorder := providerRequest(t, handler, http.MethodGet, "/api/v1/audit?limit=10", nil, http.StatusOK)
+	events := decodeProviderAuditEvents(t, auditRecorder)
+	if len(events) != 1 {
+		t.Fatalf("expected one provider failure audit event, got %#v", events)
+	}
+	event := events[0]
+	if event.ToolName != "providers.create" || event.ActionSource != "http.providers" || event.Success || event.Error == "" {
+		t.Fatalf("unexpected provider failure audit event: %#v", event)
+	}
+}
+
+func TestProviderRouteStateRoutesAppendAuditEvents(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/models" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[{"id":"gpt-5.4"}]}`))
+	}))
+	defer server.Close()
+
+	handler, agentStore := newTestHandler(t)
+	createdProvider, _, err := agentStore.CreateProvider(agent.CreateProviderInput{
+		Kind:        agent.ProviderKindOpenAICompatible,
+		DisplayName: "LAN Source",
+		Enabled:     boolPtr(true),
+		OpenAICompatible: &agent.CreateOpenAICompatibleProviderInput{
+			BaseURL: server.URL,
+			Model:   "gpt-5.4",
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateProvider error: %v", err)
+	}
+
+	providerRequest(t, handler, http.MethodPost, "/api/v1/agent/providers/"+createdProvider.ID+"/probe", nil, http.StatusOK)
+	providerRequest(t, handler, http.MethodPost, "/api/v1/agent/providers/"+createdProvider.ID+"/prewarm", nil, http.StatusOK)
+	providerRequest(t, handler, http.MethodPost, "/api/v1/agent/providers/"+createdProvider.ID+"/route-state/clear", nil, http.StatusOK)
+
+	auditRecorder := providerRequest(t, handler, http.MethodGet, "/api/v1/audit?limit=10", nil, http.StatusOK)
+	events := decodeProviderAuditEvents(t, auditRecorder)
+	expectedTools := []string{"providers.probe", "providers.prewarm", "providers.clear_route_state"}
+	if len(events) != len(expectedTools) {
+		t.Fatalf("expected route-state provider audit events %#v, got %#v", expectedTools, events)
+	}
+	for index, expectedTool := range expectedTools {
+		event := events[index]
+		if event.ToolName != expectedTool || event.ActionSource != "http.providers" || !event.Success || event.Error != "" {
+			t.Fatalf("unexpected provider route-state audit event %d: %#v", index, event)
+		}
+	}
+}
+
 func TestDiscoverProviderModelsReturnsCodexCLIModelsForDraft(t *testing.T) {
 	t.Parallel()
 
@@ -787,4 +905,59 @@ func TestDiscoverProviderModelsReturnsOpenAICompatibleModelsForDraft(t *testing.
 	if !slices.Equal(payload.Models, []string{"gemini-3-pro-high", "gpt-5.4"}) {
 		t.Fatalf("unexpected models: %#v", payload.Models)
 	}
+}
+
+func providerRequest(
+	t *testing.T,
+	handler http.Handler,
+	method string,
+	path string,
+	payload any,
+	expectedStatus int,
+) *httptest.ResponseRecorder {
+	t.Helper()
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, authedJSONRequest(t, method, path, payload))
+	if recorder.Code != expectedStatus {
+		t.Fatalf("expected %d for %s %s, got %d body=%s", expectedStatus, method, path, recorder.Code, recorder.Body.String())
+	}
+	return recorder
+}
+
+func decodeProviderIDFromMutation(t *testing.T, recorder *httptest.ResponseRecorder) string {
+	t.Helper()
+
+	var payload struct {
+		Provider struct {
+			ID string `json:"id"`
+		} `json:"provider"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal provider mutation: %v", err)
+	}
+	if payload.Provider.ID == "" {
+		t.Fatalf("expected provider id in mutation response: %s", recorder.Body.String())
+	}
+	return payload.Provider.ID
+}
+
+type providerAuditEvent struct {
+	ToolName     string `json:"tool_name"`
+	ActionSource string `json:"action_source"`
+	Summary      string `json:"summary"`
+	Success      bool   `json:"success"`
+	Error        string `json:"error"`
+}
+
+func decodeProviderAuditEvents(t *testing.T, recorder *httptest.ResponseRecorder) []providerAuditEvent {
+	t.Helper()
+
+	var auditResponse struct {
+		Events []providerAuditEvent `json:"events"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &auditResponse); err != nil {
+		t.Fatalf("unmarshal audit response: %v", err)
+	}
+	return auditResponse.Events
 }
