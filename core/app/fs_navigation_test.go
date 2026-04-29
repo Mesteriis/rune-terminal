@@ -28,6 +28,33 @@ func TestReadFSPreviewRejectsSymlinkOutsideWorkspace(t *testing.T) {
 	}
 }
 
+func TestReadFSPreviewReturnsCanonicalPathForSymlinkInsideWorkspace(t *testing.T) {
+	t.Parallel()
+
+	repoRoot := t.TempDir()
+	targetPath := filepath.Join(repoRoot, "target.txt")
+	if err := os.WriteFile(targetPath, []byte("inside"), 0o600); err != nil {
+		t.Fatalf("write target file: %v", err)
+	}
+	linkPath := filepath.Join(repoRoot, "linked-target.txt")
+	if err := os.Symlink(targetPath, linkPath); err != nil {
+		t.Fatalf("create symlink: %v", err)
+	}
+
+	runtime := &Runtime{RepoRoot: repoRoot}
+	result, err := runtime.ReadFSPreview(linkPath, 8192)
+	if err != nil {
+		t.Fatalf("ReadFSPreview returned error: %v", err)
+	}
+	expectedPath, err := filepath.EvalSymlinks(targetPath)
+	if err != nil {
+		t.Fatalf("eval target path: %v", err)
+	}
+	if result.Path != expectedPath {
+		t.Fatalf("expected canonical result path %q, got %q", expectedPath, result.Path)
+	}
+}
+
 func TestListFSRejectsSymlinkDirectoryOutsideWorkspace(t *testing.T) {
 	t.Parallel()
 
@@ -45,6 +72,37 @@ func TestListFSRejectsSymlinkDirectoryOutsideWorkspace(t *testing.T) {
 	_, err := runtime.ListFS(linkPath, "")
 	if !errors.Is(err, ErrFSPathOutsideWorkspace) {
 		t.Fatalf("expected ErrFSPathOutsideWorkspace, got %v", err)
+	}
+}
+
+func TestMkdirFSReturnsCanonicalPathForSymlinkParentInsideWorkspace(t *testing.T) {
+	t.Parallel()
+
+	repoRoot := t.TempDir()
+	targetDir := filepath.Join(repoRoot, "target-dir")
+	if err := os.Mkdir(targetDir, 0o755); err != nil {
+		t.Fatalf("create target dir: %v", err)
+	}
+	linkPath := filepath.Join(repoRoot, "linked-dir-inside")
+	if err := os.Symlink(targetDir, linkPath); err != nil {
+		t.Fatalf("create symlink: %v", err)
+	}
+
+	runtime := &Runtime{RepoRoot: repoRoot}
+	result, err := runtime.MkdirFS(filepath.Join(linkPath, "created-inside"))
+	if err != nil {
+		t.Fatalf("MkdirFS returned error: %v", err)
+	}
+	expectedDir, err := filepath.EvalSymlinks(targetDir)
+	if err != nil {
+		t.Fatalf("eval target dir: %v", err)
+	}
+	expectedPath := filepath.Join(expectedDir, "created-inside")
+	if result.Path != expectedPath {
+		t.Fatalf("expected canonical result path %q, got %q", expectedPath, result.Path)
+	}
+	if _, err := os.Stat(expectedPath); err != nil {
+		t.Fatalf("expected directory at canonical target: %v", err)
 	}
 }
 
