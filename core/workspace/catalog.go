@@ -90,6 +90,12 @@ func (s *CatalogStore) Snapshot() Catalog {
 	return cloneCatalog(s.catalog)
 }
 
+func (s *CatalogStore) Replace(catalog Catalog) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.catalog = normalizeCatalog(catalog, BootstrapDefault())
+}
+
 func (s *CatalogStore) ActiveSnapshot() Snapshot {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

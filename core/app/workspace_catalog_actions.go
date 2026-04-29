@@ -23,12 +23,14 @@ func (r *Runtime) SwitchWorkspace(workspaceID string) (workspace.Snapshot, error
 	if r.WorkspaceCatalog == nil {
 		return workspace.Snapshot{}, workspace.ErrWorkspaceNotFound
 	}
+	previousCatalog := r.WorkspaceCatalog.Snapshot()
+	previousWorkspace := r.Workspace.Snapshot()
 	snapshot, err := r.WorkspaceCatalog.SwitchActive(workspaceID)
 	if err != nil {
 		return workspace.Snapshot{}, err
 	}
 	r.Workspace.ReplaceSnapshot(snapshot)
-	if err := r.persistWorkspaceSnapshot(snapshot); err != nil {
+	if err := r.persistWorkspaceSnapshotWithRollback(snapshot, previousWorkspace, previousCatalog); err != nil {
 		return workspace.Snapshot{}, err
 	}
 	r.ensureWorkspaceSessions(context.Background(), snapshot, true)
@@ -44,12 +46,14 @@ func (r *Runtime) CreateWorkspace(ctx context.Context) (workspace.Snapshot, erro
 		return workspace.Snapshot{}, err
 	}
 	snapshot := newWorkspaceSnapshot(ids.New("ws"), ids.New("tab"), ids.New("term"), activeConnection.ID)
+	previousCatalog := r.WorkspaceCatalog.Snapshot()
+	previousWorkspace := r.Workspace.Snapshot()
 	r.WorkspaceCatalog.Upsert(snapshot)
 	if _, err := r.WorkspaceCatalog.SwitchActive(snapshot.ID); err != nil {
 		return workspace.Snapshot{}, err
 	}
 	r.Workspace.ReplaceSnapshot(snapshot)
-	if err := r.persistWorkspaceSnapshot(snapshot); err != nil {
+	if err := r.persistWorkspaceSnapshotWithRollback(snapshot, previousWorkspace, previousCatalog); err != nil {
 		return workspace.Snapshot{}, err
 	}
 	r.ensureWorkspaceSessions(ctx, snapshot, false)
@@ -70,6 +74,8 @@ func (r *Runtime) UpdateWorkspaceMetadata(
 	if !ok {
 		return workspace.Snapshot{}, fmt.Errorf("%w: %s", workspace.ErrWorkspaceNotFound, workspaceID)
 	}
+	previousCatalog := r.WorkspaceCatalog.Snapshot()
+	previousWorkspace := r.Workspace.Snapshot()
 
 	if trimmed := strings.TrimSpace(name); trimmed != "" {
 		snapshot.Name = trimmed
@@ -91,7 +97,7 @@ func (r *Runtime) UpdateWorkspaceMetadata(
 	if r.WorkspaceCatalog.ActiveSnapshot().ID == snapshot.ID {
 		r.Workspace.ReplaceSnapshot(snapshot)
 	}
-	if err := r.persistWorkspaceSnapshot(r.WorkspaceCatalog.ActiveSnapshot()); err != nil {
+	if err := r.persistWorkspaceSnapshotWithRollback(r.WorkspaceCatalog.ActiveSnapshot(), previousWorkspace, previousCatalog); err != nil {
 		return workspace.Snapshot{}, err
 	}
 	return snapshot, nil
@@ -105,13 +111,8 @@ func (r *Runtime) DeleteWorkspace(workspaceID string) (workspace.Snapshot, error
 	if !ok {
 		return workspace.Snapshot{}, fmt.Errorf("%w: %s", workspace.ErrWorkspaceNotFound, workspaceID)
 	}
-	for _, widget := range snapshot.Widgets {
-		if widget.Kind != workspace.WidgetKindTerminal {
-			continue
-		}
-		_ = r.Terminals.CloseSession(widget.ID)
-		r.clearRestoredTerminalState(widget.ID)
-	}
+	previousCatalog := r.WorkspaceCatalog.Snapshot()
+	previousWorkspace := r.Workspace.Snapshot()
 	catalog, err := r.WorkspaceCatalog.Delete(workspaceID)
 	if err != nil {
 		return workspace.Snapshot{}, err
@@ -121,8 +122,15 @@ func (r *Runtime) DeleteWorkspace(workspaceID string) (workspace.Snapshot, error
 		return workspace.Snapshot{}, fmt.Errorf("%w: no active workspace available", workspace.ErrWorkspaceNotFound)
 	}
 	r.Workspace.ReplaceSnapshot(activeSnapshot)
-	if err := r.persistWorkspaceSnapshot(activeSnapshot); err != nil {
+	if err := r.persistWorkspaceSnapshotWithRollback(activeSnapshot, previousWorkspace, previousCatalog); err != nil {
 		return workspace.Snapshot{}, err
+	}
+	for _, widget := range snapshot.Widgets {
+		if widget.Kind != workspace.WidgetKindTerminal {
+			continue
+		}
+		_ = r.Terminals.CloseSession(widget.ID)
+		r.clearRestoredTerminalState(widget.ID)
 	}
 	r.ensureWorkspaceSessions(context.Background(), activeSnapshot, true)
 	return activeSnapshot, nil

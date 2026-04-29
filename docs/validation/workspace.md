@@ -2,7 +2,7 @@
 
 ## Last verified state
 
-- Date: `2026-04-29`
+- Date: `2026-04-30`
 - State: `VERIFIED`
 - Scope:
     - backend-owned settings preference mutations (`agent`, `terminal`,
@@ -67,6 +67,9 @@
       exposed as available backend-owned kinds, `commander` exposed as
       `frontend-local`, and `preview` / `editor` / `web` exposed as
       planned kinds instead of being overclaimed as active runtime surfaces
+    - workspace catalog management actions now restore in-memory active
+      workspace/catalog state when catalog persistence fails, and delete
+      closes terminal sessions only after the workspace removal is persisted
     - the frontend shared workspace API now has a typed
       `fetchWorkspaceWidgetKindCatalog()` client for that backend contract,
       and the rewritten Dockview workspace shell now consumes the loaded
@@ -742,6 +745,7 @@ light` remains the system fallback, and `@media print` flattens shell
 - A fresh focused validation pass for the local filesystem boundary slice on `2026-04-29` confirmed public HTTP list/read routes ignore the old `allow_outside_workspace=1` query escape, and the local runtime rejects symlinked files or parent directories that resolve outside `RepoRoot` before list/read/write/mkdir can follow them. A follow-up pass in the same slice confirmed symlinks that resolve inside `RepoRoot` return and use the canonical target path while ordinary non-symlink requests keep their existing lexical response paths. The same pass reconfirmed `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'Test(ReadFSPreview|ListFS|MkdirFS|WriteFSFile|OpenFSExternal|CopyFS|MoveFS|DeleteFS|RenameFS|CreateAttachmentReference)' -count=1`, `./scripts/go.sh test ./core/app ./core/transport/httpapi -count=1`, and the broader `./scripts/go.sh test ./cmd/... ./core/... ./internal/...` plus `./scripts/go.sh build ./cmd/... ./core/... ./internal/...` checks all pass.
 - A follow-up focused validation pass for the local filesystem mutation slice on `2026-04-29` confirmed source paths for delete/rename/move/copy use non-following entry semantics after the canonical FS navigation hardening: deleting an in-workspace symlink removes the link entry without deleting the target, and rename/move/copy preserve the selected link entry identity instead of resolving to the target basename/content. The same pass reconfirmed `./scripts/go.sh test ./core/app -run 'Test(DeleteFSRemovesSymlinkEntryWithoutDeletingTarget|RenameFSRenamesSymlinkEntryWithoutRenamingTarget|MoveFSMovesSymlinkEntryWithoutMovingTarget|CopyFSCopiesSymlinkEntryWithoutCopyingTargetContent|ReadFSPreviewReturnsCanonicalPathForSymlinkInsideWorkspace|MkdirFSReturnsCanonicalPathForSymlinkParentInsideWorkspace|ReadFSPreviewRejectsSymlinkOutsideWorkspace|ListFSRejectsSymlinkDirectoryOutsideWorkspace|WriteFSFileRejectsSymlinkOutsideWorkspace|MkdirFSRejectsSymlinkParentOutsideWorkspace)' -count=1`, `./scripts/go.sh test ./core/app ./core/transport/httpapi -count=1`, `npm run validate`, and `npm run validate:desktop-runtime` all pass.
 - A focused validation pass for the inline file-edit budget slice on `2026-04-29` confirmed `GET/PUT /api/v1/fs/file` no longer reads or writes unbounded text buffers: local and SSH-backed `F4` paths reject files/content over 1 MiB with `fs_file_too_large`, remote reads check size before `base64 < "$path"`, and commander maps the HTTP `413` into an operator-readable error. The same pass reconfirmed `./scripts/go.sh test ./core/app -run 'Test.*FS.*' -count=1`, `./scripts/go.sh test ./core/transport/httpapi -run 'Test.*FS.*' -count=1`, and `npm --prefix frontend run test -- src/features/commander/model/view-model.test.ts` all pass.
+- A focused validation pass for the workspace catalog persistence slice on `2026-04-30` confirmed `SwitchWorkspace`, `CreateWorkspace`, `UpdateWorkspaceMetadata`, and `DeleteWorkspace` no longer leave runtime-only active workspace/catalog state behind when the catalog file cannot be written. Delete now delays terminal session close/restore cleanup until after the workspace removal is persisted. The same pass reconfirmed `./scripts/go.sh test ./core/app -run 'Test(Switch|Create|UpdateWorkspaceMetadata|Delete)Workspace.*PersistFails' -count=1`, `./scripts/go.sh test ./core/workspace ./core/app ./core/transport/httpapi -run 'Test.*Workspace|Test.*Layout|Test.*Tab|Test.*Widget|TestCreateSplitTerminal|TestCreateRemoteTerminal|TestRemoteTerminalSession|TestBootstrapReturnsRuntimePathContext' -count=1`, and `git diff --check` all pass.
 
 ### Task runtime limitations
 

@@ -24,3 +24,24 @@ func (r *Runtime) persistWorkspaceSnapshot(snapshot workspace.Snapshot) error {
 func (r *Runtime) persistWorkspace() error {
 	return r.persistWorkspaceSnapshot(r.Workspace.Snapshot())
 }
+
+func (r *Runtime) restoreWorkspaceMemory(snapshot workspace.Snapshot, catalog workspace.Catalog) {
+	if r.Workspace != nil {
+		r.Workspace.ReplaceSnapshot(snapshot)
+	}
+	if r.WorkspaceCatalog != nil {
+		r.WorkspaceCatalog.Replace(catalog)
+	}
+}
+
+func (r *Runtime) persistWorkspaceSnapshotWithRollback(
+	snapshot workspace.Snapshot,
+	previousSnapshot workspace.Snapshot,
+	previousCatalog workspace.Catalog,
+) error {
+	if err := r.persistWorkspaceSnapshot(snapshot); err != nil {
+		r.restoreWorkspaceMemory(previousSnapshot, previousCatalog)
+		return err
+	}
+	return nil
+}
