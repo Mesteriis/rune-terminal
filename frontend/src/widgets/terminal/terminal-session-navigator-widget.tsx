@@ -25,8 +25,8 @@ const navigatorHeaderStyle = {
 } as const
 
 const navigatorFilterStyle = {
-  background: 'rgba(10, 18, 25, 0.82)',
-  border: '1px solid rgba(120, 152, 170, 0.24)',
+  background: 'color-mix(in srgb, var(--color-surface-glass-strong) 82%, transparent)',
+  border: '1px solid var(--color-border-strong)',
   borderRadius: '0.65rem',
   color: 'var(--color-text-primary)',
   font: 'inherit',
@@ -43,8 +43,8 @@ const navigatorListStyle = {
 } as const
 
 const navigatorCardStyle = {
-  background: 'rgba(14, 22, 30, 0.88)',
-  border: '1px solid rgba(120, 152, 170, 0.18)',
+  background: 'color-mix(in srgb, var(--color-surface-glass-soft) 88%, transparent)',
+  border: '1px solid var(--color-border-subtle)',
   borderRadius: '0.8rem',
   display: 'grid',
   gap: '0.35rem',
@@ -65,8 +65,8 @@ const navigatorMetaRowStyle = {
 } as const
 
 const navigatorMetaBadgeStyle = {
-  background: 'rgba(120, 152, 170, 0.12)',
-  border: '1px solid rgba(120, 152, 170, 0.18)',
+  background: 'color-mix(in srgb, var(--color-surface-cold-tea) 52%, transparent)',
+  border: '1px solid var(--color-border-subtle)',
   borderRadius: '999px',
   color: 'var(--color-text-secondary)',
   fontSize: '0.72rem',
@@ -230,9 +230,7 @@ export function TerminalSessionNavigatorWidget({ dockviewApiRef }: TerminalSessi
         style={navigatorFilterStyle}
         value={filterQuery}
       />
-      {errorMessage ? (
-        <Text style={{ color: 'var(--color-danger-text, #ff8e8e)' }}>{errorMessage}</Text>
-      ) : null}
+      {errorMessage ? <Text style={{ color: 'var(--color-danger-text)' }}>{errorMessage}</Text> : null}
       <Box runaComponent="terminal-session-navigator-list" style={navigatorListStyle}>
         {visibleEntries.map((entry) => {
           const recoveryLabel = resolveRecoveryLabel(entry)

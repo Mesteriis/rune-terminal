@@ -24,7 +24,7 @@ export const commanderPaneHeaderStyle: CSSProperties = {
   minHeight: '32px',
   padding: '0 var(--space-sm)',
   borderRadius: 'var(--radius-sm) var(--radius-sm) 0 0',
-  background: 'rgba(13, 21, 19, 0.96)',
+  background: 'var(--runa-commander-pane-header-bg)',
 }
 
 export const commanderPaneHeaderActiveStyle: CSSProperties = {
@@ -77,8 +77,8 @@ export const commanderPathSuggestionsStyle: CSSProperties = {
   overflow: 'hidden',
   border: '1px solid var(--runa-commander-highlight-border)',
   borderRadius: 'var(--radius-xs)',
-  background: 'rgba(7, 14, 13, 0.98)',
-  boxShadow: '0 10px 24px rgba(0, 0, 0, 0.28)',
+  background: 'var(--runa-commander-popover-bg)',
+  boxShadow: 'var(--runa-commander-popover-shadow)',
   backdropFilter: 'blur(8px)',
   WebkitBackdropFilter: 'blur(8px)',
 }
@@ -141,7 +141,7 @@ export const commanderPathInputStyle: CSSProperties = {
   minHeight: '24px',
   padding: '0 var(--space-xs)',
   borderRadius: 'var(--radius-xs)',
-  background: 'rgba(8, 15, 14, 0.92)',
+  background: 'var(--runa-commander-input-bg)',
   border: '1px solid var(--runa-commander-highlight-border)',
   boxShadow: 'inset 0 0 0 1px var(--runa-commander-highlight-ring)',
   color: 'var(--runa-commander-text-strong)',
@@ -158,15 +158,15 @@ export const commanderPaneMetaStyle: CSSProperties = {
 }
 
 export const commanderPaneStatusBadgeStyle: CSSProperties = {
-  borderColor: 'rgba(100, 138, 128, 0.24)',
-  background: 'rgba(26, 48, 43, 0.18)',
+  borderColor: 'var(--runa-commander-status-border)',
+  background: 'var(--runa-commander-status-bg)',
   color: 'var(--runa-commander-text-secondary)',
 }
 
 export const commanderPaneErrorBadgeStyle: CSSProperties = {
-  borderColor: 'rgba(190, 116, 102, 0.38)',
-  background: 'rgba(82, 38, 30, 0.18)',
-  color: 'rgb(226, 185, 176)',
+  borderColor: 'var(--runa-commander-error-border)',
+  background: 'var(--runa-commander-error-bg)',
+  color: 'var(--runa-commander-error-text)',
 }
 
 export const commanderListHeaderStyle: CSSProperties = {
@@ -176,7 +176,7 @@ export const commanderListHeaderStyle: CSSProperties = {
   alignItems: 'center',
   minHeight: '24px',
   padding: '0 var(--space-sm)',
-  background: 'rgba(9, 16, 15, 0.96)',
+  background: 'var(--runa-commander-list-header-bg)',
   color: 'var(--runa-commander-text-muted)',
   fontSize: 'var(--font-size-sm)',
   lineHeight: 'var(--line-height-sm)',
@@ -248,7 +248,7 @@ export const commanderScrollAreaStyle: CSSProperties = {
   flex: 1,
   minHeight: 0,
   padding: 0,
-  background: 'rgba(5, 11, 10, 0.96)',
+  background: 'var(--runa-commander-scroll-bg)',
 }
 
 export const commanderRowsStyle: CSSProperties = {
@@ -267,7 +267,7 @@ export const commanderStatusRowStyle: CSSProperties = {
   alignItems: 'center',
   minHeight: '32px',
   padding: '0 var(--space-sm)',
-  borderBottom: '1px solid rgba(100, 138, 128, 0.12)',
+  borderBottom: '1px solid var(--runa-commander-row-divider)',
   color: 'var(--runa-commander-text-muted)',
   fontFamily: 'var(--font-family-mono)',
   fontSize: 'var(--font-size-sm)',
@@ -275,8 +275,8 @@ export const commanderStatusRowStyle: CSSProperties = {
 }
 
 export const commanderStatusRowErrorStyle: CSSProperties = {
-  color: 'rgb(226, 185, 176)',
-  borderBottomColor: 'rgba(190, 116, 102, 0.18)',
+  color: 'var(--runa-commander-error-text)',
+  borderBottomColor: 'var(--runa-commander-error-border)',
 }
 
 export const commanderRowStyle: CSSProperties = {
@@ -365,7 +365,7 @@ export const commanderTypeBadgeStyle: CSSProperties = {
   padding: '0 var(--space-xs)',
   borderRadius: 'var(--radius-xs)',
   borderColor: 'var(--runa-commander-surface-border)',
-  background: 'rgba(255, 255, 255, 0.02)',
+  background: 'var(--runa-commander-type-bg)',
   color: 'var(--runa-commander-text-muted)',
   fontSize: '11px',
   lineHeight: '14px',
@@ -379,7 +379,7 @@ export const commanderPaneFooterStyle: CSSProperties = {
   gap: 'var(--gap-sm)',
   minHeight: '28px',
   padding: '0 var(--space-sm)',
-  background: 'rgba(13, 21, 19, 0.98)',
+  background: 'var(--runa-commander-footer-bg)',
   borderRadius: '0 0 var(--radius-sm) var(--radius-sm)',
 }
 

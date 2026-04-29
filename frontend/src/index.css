@@ -24,8 +24,16 @@ body {
     radial-gradient(circle at 18% 58%, var(--color-canvas-glow-tertiary) 0, transparent 26%),
     radial-gradient(circle at 52% 44%, var(--color-canvas-glow-secondary) 0, transparent 28%),
     radial-gradient(circle at 70% 74%, var(--color-canvas-glow-quaternary) 0, transparent 24%),
-    radial-gradient(circle at 84% 88%, color-mix(in srgb, var(--color-canvas-glow-primary) 91%, var(--color-accent-emerald-strong) 9%) 0, transparent 26%),
-    radial-gradient(circle at 96% 96%, color-mix(in srgb, var(--color-canvas-glow-secondary) 90%, var(--color-accent-cold-tea) 10%) 0, transparent 18%),
+    radial-gradient(
+      circle at 84% 88%,
+      color-mix(in srgb, var(--color-canvas-glow-primary) 91%, var(--color-accent-emerald-strong) 9%) 0,
+      transparent 26%
+    ),
+    radial-gradient(
+      circle at 96% 96%,
+      color-mix(in srgb, var(--color-canvas-glow-secondary) 90%, var(--color-accent-cold-tea) 10%) 0,
+      transparent 18%
+    ),
     radial-gradient(circle at 36% 92%, var(--color-canvas-glow-quinary) 0, transparent 20%),
     linear-gradient(180deg, #0d1d1a 0%, #091715 38%, var(--color-canvas) 68%, #081412 100%);
   color: var(--color-text-primary);
@@ -162,6 +170,20 @@ body {
   --runa-commander-highlight-badge-border: var(--color-border-strong);
   --runa-commander-highlight-badge-bg: rgba(45, 143, 118, 0.12);
   --runa-commander-highlight-text: var(--color-text-primary);
+  --runa-commander-pane-header-bg: color-mix(in srgb, var(--color-canvas-elevated) 88%, transparent);
+  --runa-commander-popover-bg: color-mix(in srgb, var(--color-canvas) 94%, transparent);
+  --runa-commander-popover-shadow: var(--shadow-menu-popover);
+  --runa-commander-input-bg: color-mix(in srgb, var(--color-canvas) 82%, transparent);
+  --runa-commander-status-border: color-mix(in srgb, var(--color-border-strong) 72%, transparent);
+  --runa-commander-status-bg: color-mix(in srgb, var(--color-surface-emerald) 38%, transparent);
+  --runa-commander-error-border: color-mix(in srgb, var(--color-danger-text) 42%, transparent);
+  --runa-commander-error-bg: color-mix(in srgb, var(--color-danger-text) 14%, transparent);
+  --runa-commander-error-text: var(--color-danger-text);
+  --runa-commander-list-header-bg: color-mix(in srgb, var(--color-canvas) 90%, transparent);
+  --runa-commander-scroll-bg: color-mix(in srgb, var(--color-canvas) 94%, transparent);
+  --runa-commander-row-divider: color-mix(in srgb, var(--color-border-subtle) 72%, transparent);
+  --runa-commander-type-bg: color-mix(in srgb, var(--color-text-primary) 4%, transparent);
+  --runa-commander-footer-bg: color-mix(in srgb, var(--color-canvas-elevated) 92%, transparent);
   --runa-commander-text-strong: var(--color-text-primary);
   --runa-commander-text-secondary: var(--color-text-secondary);
   --runa-commander-text-muted: var(--color-text-muted);
@@ -181,6 +203,20 @@ body {
   --runa-commander-highlight-badge-border: rgba(145, 168, 161, 0.28);
   --runa-commander-highlight-badge-bg: rgba(145, 168, 161, 0.1);
   --runa-commander-highlight-text: var(--color-text-secondary);
+  --runa-commander-pane-header-bg: color-mix(in srgb, var(--color-canvas-elevated) 88%, transparent);
+  --runa-commander-popover-bg: color-mix(in srgb, var(--color-canvas) 94%, transparent);
+  --runa-commander-popover-shadow: var(--shadow-menu-popover);
+  --runa-commander-input-bg: color-mix(in srgb, var(--color-canvas) 82%, transparent);
+  --runa-commander-status-border: rgba(145, 168, 161, 0.22);
+  --runa-commander-status-bg: rgba(145, 168, 161, 0.08);
+  --runa-commander-error-border: color-mix(in srgb, var(--color-danger-text) 36%, transparent);
+  --runa-commander-error-bg: color-mix(in srgb, var(--color-danger-text) 12%, transparent);
+  --runa-commander-error-text: var(--color-danger-text);
+  --runa-commander-list-header-bg: color-mix(in srgb, var(--color-canvas) 90%, transparent);
+  --runa-commander-scroll-bg: color-mix(in srgb, var(--color-canvas) 94%, transparent);
+  --runa-commander-row-divider: rgba(145, 168, 161, 0.1);
+  --runa-commander-type-bg: rgba(145, 168, 161, 0.06);
+  --runa-commander-footer-bg: color-mix(in srgb, var(--color-canvas-elevated) 92%, transparent);
   --runa-commander-text-strong: #c2d3ce;
   --runa-commander-text-secondary: #a6b7b2;
   --runa-commander-text-muted: #8d9f9a;
@@ -289,8 +325,11 @@ body {
   padding: 2px 8px;
   border: 1px solid var(--runa-terminal-surface-border, var(--color-border-subtle));
   border-radius: var(--radius-sm);
-  background:
-    color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 78%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 78%,
+    transparent
+  );
   color: var(--runa-terminal-text-secondary, var(--color-text-secondary));
   box-shadow: none;
   backdrop-filter: none;
@@ -310,8 +349,7 @@ body {
 }
 
 .runa-dockview-theme .dv-tabs-overflow-dropdown-default:hover {
-  background:
-    color-mix(in srgb, var(--color-surface-cold-tea) 58%, var(--color-surface-glass-soft) 42%);
+  background: color-mix(in srgb, var(--color-surface-cold-tea) 58%, var(--color-surface-glass-soft) 42%);
 }
 
 .runa-dockview-theme .dv-tabs-overflow-container {
@@ -345,8 +383,7 @@ body {
 }
 
 .runa-dockview-theme .dv-tabs-overflow-container .dv-tab:hover {
-  background:
-    color-mix(in srgb, var(--color-surface-cold-tea) 58%, var(--color-surface-glass-soft) 42%);
+  background: color-mix(in srgb, var(--color-surface-cold-tea) 58%, var(--color-surface-glass-soft) 42%);
 }
 
 [data-runa-shell-widget-frame] {
@@ -433,19 +470,95 @@ body {
 }
 
 [data-runa-terminal-host] .xterm.xterm .xterm-scrollable-element > .scrollbar > .slider {
-  background: color-mix(in srgb, var(--runa-terminal-text-strong, var(--color-text-primary)) 18%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--runa-terminal-text-strong, var(--color-text-primary)) 18%,
+    transparent
+  );
 }
 
 [data-runa-terminal-host] .xterm.xterm .xterm-scrollable-element > .scrollbar > .slider:hover {
-  background: color-mix(in srgb, var(--runa-terminal-text-strong, var(--color-text-primary)) 34%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--runa-terminal-text-strong, var(--color-text-primary)) 34%,
+    transparent
+  );
 }
 
 [data-runa-terminal-host] .xterm.xterm .xterm-scrollable-element > .scrollbar > .slider.active {
-  background: color-mix(in srgb, var(--runa-terminal-status-running, var(--color-accent-emerald-strong)) 54%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--runa-terminal-status-running, var(--color-accent-emerald-strong)) 54%,
+    transparent
+  );
+}
+
+:root[data-runa-resolved-theme='light'] body {
+  background:
+    radial-gradient(circle at 10% 14%, var(--color-canvas-glow-primary) 0, transparent 24%),
+    radial-gradient(circle at 32% 8%, var(--color-canvas-glow-quinary) 0, transparent 18%),
+    radial-gradient(circle at 78% 12%, var(--color-canvas-glow-secondary) 0, transparent 22%),
+    radial-gradient(circle at 92% 20%, var(--color-canvas-glow-quaternary) 0, transparent 20%),
+    radial-gradient(circle at 18% 58%, var(--color-canvas-glow-tertiary) 0, transparent 26%),
+    radial-gradient(circle at 52% 44%, var(--color-canvas-glow-secondary) 0, transparent 28%),
+    radial-gradient(circle at 70% 74%, var(--color-canvas-glow-quaternary) 0, transparent 24%),
+    radial-gradient(
+      circle at 84% 88%,
+      color-mix(in srgb, var(--color-canvas-glow-primary) 88%, var(--color-accent-emerald-strong) 12%) 0,
+      transparent 26%
+    ),
+    radial-gradient(
+      circle at 96% 96%,
+      color-mix(in srgb, var(--color-canvas-glow-secondary) 88%, var(--color-accent-cold-tea) 12%) 0,
+      transparent 18%
+    ),
+    radial-gradient(circle at 36% 92%, var(--color-canvas-glow-quinary) 0, transparent 20%),
+    linear-gradient(180deg, #f8fcfa 0%, #eef5f2 38%, var(--color-canvas) 68%, #e3eeea 100%);
+  color: var(--color-text-primary);
+}
+
+:root[data-runa-resolved-theme='light']
+  .dv-groupview[data-runa-widget-focus-state='inactive']
+  [data-runa-widget-tone-root],
+:root[data-runa-resolved-theme='light']
+  .dv-groupview.dv-inactive-group:not([data-runa-widget-focus-state])
+  [data-runa-widget-tone-root] {
+  --runa-widget-accent-primary: rgba(70, 104, 95, 0.84);
+  --runa-widget-accent-secondary: rgba(87, 119, 111, 0.8);
+  --runa-widget-accent-muted: rgba(87, 119, 111, 0.74);
+  --runa-widget-text-strong: #2b3e39;
+  --runa-widget-text-secondary: #49615b;
+  --runa-widget-text-muted: #647973;
+  --runa-widget-surface-border: rgba(67, 102, 93, 0.18);
+  --runa-widget-surface-bg: rgba(243, 248, 246, 0.96);
+  --runa-widget-selection-background: rgba(45, 143, 118, 0.12);
+}
+
+:root[data-runa-resolved-theme='light']
+  .dv-groupview[data-runa-widget-focus-state='inactive']
+  [data-runa-commander-root],
+:root[data-runa-resolved-theme='light']
+  .dv-groupview.dv-inactive-group:not([data-runa-widget-focus-state])
+  [data-runa-commander-root] {
+  --runa-commander-highlight-border: rgba(87, 119, 111, 0.3);
+  --runa-commander-highlight-ring: rgba(87, 119, 111, 0.12);
+  --runa-commander-highlight-fill: rgba(87, 119, 111, 0.1);
+  --runa-commander-highlight-fill-strong: rgba(246, 250, 249, 0.96);
+  --runa-commander-highlight-badge-border: rgba(87, 119, 111, 0.22);
+  --runa-commander-highlight-badge-bg: rgba(87, 119, 111, 0.1);
+  --runa-commander-highlight-text: #355049;
+  --runa-commander-text-strong: #2b3e39;
+  --runa-commander-text-secondary: #49615b;
+  --runa-commander-text-muted: #647973;
+  --runa-commander-surface-border: rgba(67, 102, 93, 0.18);
+  --runa-commander-selection-fill: rgba(87, 119, 111, 0.08);
+  --runa-commander-key-color: rgba(70, 104, 95, 0.82);
+  --runa-commander-folder-icon-color: rgba(70, 104, 95, 0.76);
+  --runa-commander-file-icon-color: rgba(87, 119, 111, 0.76);
 }
 
 @media (prefers-color-scheme: light) {
-  body {
+  :root:not([data-runa-resolved-theme]) body {
     background:
       radial-gradient(circle at 10% 14%, var(--color-canvas-glow-primary) 0, transparent 24%),
       radial-gradient(circle at 32% 8%, var(--color-canvas-glow-quinary) 0, transparent 18%),
@@ -454,15 +567,27 @@ body {
       radial-gradient(circle at 18% 58%, var(--color-canvas-glow-tertiary) 0, transparent 26%),
       radial-gradient(circle at 52% 44%, var(--color-canvas-glow-secondary) 0, transparent 28%),
       radial-gradient(circle at 70% 74%, var(--color-canvas-glow-quaternary) 0, transparent 24%),
-      radial-gradient(circle at 84% 88%, color-mix(in srgb, var(--color-canvas-glow-primary) 88%, var(--color-accent-emerald-strong) 12%) 0, transparent 26%),
-      radial-gradient(circle at 96% 96%, color-mix(in srgb, var(--color-canvas-glow-secondary) 88%, var(--color-accent-cold-tea) 12%) 0, transparent 18%),
+      radial-gradient(
+        circle at 84% 88%,
+        color-mix(in srgb, var(--color-canvas-glow-primary) 88%, var(--color-accent-emerald-strong) 12%) 0,
+        transparent 26%
+      ),
+      radial-gradient(
+        circle at 96% 96%,
+        color-mix(in srgb, var(--color-canvas-glow-secondary) 88%, var(--color-accent-cold-tea) 12%) 0,
+        transparent 18%
+      ),
       radial-gradient(circle at 36% 92%, var(--color-canvas-glow-quinary) 0, transparent 20%),
       linear-gradient(180deg, #f8fcfa 0%, #eef5f2 38%, var(--color-canvas) 68%, #e3eeea 100%);
     color: var(--color-text-primary);
   }
 
-  .dv-groupview[data-runa-widget-focus-state='inactive'] [data-runa-widget-tone-root],
-  .dv-groupview.dv-inactive-group:not([data-runa-widget-focus-state]) [data-runa-widget-tone-root] {
+  :root:not([data-runa-resolved-theme])
+    .dv-groupview[data-runa-widget-focus-state='inactive']
+    [data-runa-widget-tone-root],
+  :root:not([data-runa-resolved-theme])
+    .dv-groupview.dv-inactive-group:not([data-runa-widget-focus-state])
+    [data-runa-widget-tone-root] {
     --runa-widget-accent-primary: rgba(70, 104, 95, 0.84);
     --runa-widget-accent-secondary: rgba(87, 119, 111, 0.8);
     --runa-widget-accent-muted: rgba(87, 119, 111, 0.74);
@@ -474,8 +599,12 @@ body {
     --runa-widget-selection-background: rgba(45, 143, 118, 0.12);
   }
 
-  .dv-groupview[data-runa-widget-focus-state='inactive'] [data-runa-commander-root],
-  .dv-groupview.dv-inactive-group:not([data-runa-widget-focus-state]) [data-runa-commander-root] {
+  :root:not([data-runa-resolved-theme])
+    .dv-groupview[data-runa-widget-focus-state='inactive']
+    [data-runa-commander-root],
+  :root:not([data-runa-resolved-theme])
+    .dv-groupview.dv-inactive-group:not([data-runa-widget-focus-state])
+    [data-runa-commander-root] {
     --runa-commander-highlight-border: rgba(87, 119, 111, 0.3);
     --runa-commander-highlight-ring: rgba(87, 119, 111, 0.12);
     --runa-commander-highlight-fill: rgba(87, 119, 111, 0.1);

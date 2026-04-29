@@ -1,8 +1,13 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { useAppLocale } from '@/features/i18n/model/locale-provider'
 import { useTerminalPreferences } from '@/features/terminal/model/use-terminal-preferences'
 import { TerminalSettingsSection } from '@/widgets/settings/terminal-settings-section'
+
+vi.mock('@/features/i18n/model/locale-provider', () => ({
+  useAppLocale: vi.fn(),
+}))
 
 vi.mock('@/features/terminal/model/use-terminal-preferences', async () => {
   return {
@@ -27,10 +32,20 @@ describe('TerminalSettingsSection', () => {
     vi.clearAllMocks()
   })
 
-  it('renders the current runtime-owned terminal typography controls', () => {
-    const resetAllDefaults = vi.fn(async () => undefined)
+  function mockLocale(locale: 'en' | 'ru' | 'zh-CN' | 'es' = 'en') {
+    vi.mocked(useAppLocale).mockReturnValue({
+      errorMessage: null,
+      isLoading: false,
+      isSaving: false,
+      locale,
+      refresh: vi.fn(),
+      setLocale: vi.fn(),
+      supportedLocales: ['en', 'ru', 'zh-CN', 'es'],
+    })
+  }
 
-    vi.mocked(useTerminalPreferences).mockReturnValue({
+  function mockTerminalPreferences(overrides: Partial<ReturnType<typeof useTerminalPreferences>> = {}) {
+    const preferences: ReturnType<typeof useTerminalPreferences> = {
       decreaseFontSize: vi.fn(async () => undefined),
       decreaseLineHeight: vi.fn(async () => undefined),
       cursorBlink: true,
@@ -44,7 +59,7 @@ describe('TerminalSettingsSection', () => {
       isSaving: false,
       lineHeight: 1.25,
       refresh: vi.fn(async () => undefined),
-      resetAllDefaults,
+      resetAllDefaults: vi.fn(async () => undefined),
       resetScrollback: vi.fn(async () => undefined),
       resetFontSize: vi.fn(async () => undefined),
       resetLineHeight: vi.fn(async () => undefined),
@@ -59,7 +74,16 @@ describe('TerminalSettingsSection', () => {
       updateLineHeight: vi.fn(async () => undefined),
       updateCursorStyle: vi.fn(async () => undefined),
       updateThemeMode: vi.fn(async () => undefined),
-    })
+      ...overrides,
+    }
+
+    vi.mocked(useTerminalPreferences).mockReturnValue(preferences)
+    return preferences
+  }
+
+  it('renders the current runtime-owned terminal typography controls', () => {
+    mockLocale('en')
+    mockTerminalPreferences()
 
     render(<TerminalSettingsSection />)
 
@@ -85,38 +109,25 @@ describe('TerminalSettingsSection', () => {
     expect(screen.getByText(/runtime-owned terminal defaults/i)).toBeVisible()
   })
 
+  it('renders terminal settings copy from the active app locale', () => {
+    mockLocale('ru')
+    mockTerminalPreferences()
+
+    render(<TerminalSettingsSection />)
+
+    expect(screen.getByText('Настройки терминала по умолчанию')).toBeVisible()
+    expect(screen.getByText('Текущий размер шрифта терминала')).toBeVisible()
+    expect(screen.getByRole('combobox', { name: 'Режим темы терминала' })).toHaveValue('adaptive')
+    expect(screen.getByRole('checkbox', { name: 'Включить мигание курсора терминала' })).toBeChecked()
+    expect(screen.queryByText('Terminal runtime defaults')).not.toBeInTheDocument()
+  })
+
   it('enables the one-shot reset button when terminal settings drift from defaults', () => {
     const resetAllDefaults = vi.fn(async () => undefined)
-
-    vi.mocked(useTerminalPreferences).mockReturnValue({
-      decreaseFontSize: vi.fn(async () => undefined),
-      decreaseLineHeight: vi.fn(async () => undefined),
-      cursorBlink: true,
-      cursorStyle: 'block',
-      errorMessage: null,
+    mockLocale('en')
+    mockTerminalPreferences({
       fontSize: 14,
-      increaseFontSize: vi.fn(async () => undefined),
-      increaseLineHeight: vi.fn(async () => undefined),
-      increaseScrollback: vi.fn(async () => undefined),
-      isLoading: false,
-      isSaving: false,
-      lineHeight: 1.25,
-      refresh: vi.fn(async () => undefined),
       resetAllDefaults,
-      resetScrollback: vi.fn(async () => undefined),
-      resetFontSize: vi.fn(async () => undefined),
-      resetLineHeight: vi.fn(async () => undefined),
-      resetCursorBlink: vi.fn(async () => undefined),
-      resetCursorStyle: vi.fn(async () => undefined),
-      resetThemeMode: vi.fn(async () => undefined),
-      scrollback: 5000,
-      themeMode: 'adaptive',
-      decreaseScrollback: vi.fn(async () => undefined),
-      updateCursorBlink: vi.fn(async () => undefined),
-      updateFontSize: vi.fn(async () => undefined),
-      updateLineHeight: vi.fn(async () => undefined),
-      updateCursorStyle: vi.fn(async () => undefined),
-      updateThemeMode: vi.fn(async () => undefined),
     })
 
     render(<TerminalSettingsSection />)

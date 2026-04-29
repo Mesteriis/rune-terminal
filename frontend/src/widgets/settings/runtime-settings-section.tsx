@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useAppLocale } from '@/features/i18n/model/locale-provider'
 import { useRuntimeSettings } from '@/features/runtime/model/use-runtime-settings'
 import { useWindowTitleSettings } from '@/features/runtime/model/use-window-title-settings'
+import { useAppTheme, type AppThemePreference } from '@/features/theme/model/theme-provider'
 import { RadioGroup, ClearBox } from '@/shared/ui/components'
 import { Button, Input, Text } from '@/shared/ui/primitives'
 import type { AppLocale } from '@/shared/api/runtime'
@@ -40,7 +41,19 @@ type RuntimeSettingsCopy = {
   runtimeSectionTitle: string
   saveCustomTitle: string
   shellLanguage: string
+  shellTheme: string
   splitBrowserLoop: string
+  themeChangesHint: string
+  themeDarkDescription: string
+  themeDarkLabel: string
+  themeLightDescription: string
+  themeLightLabel: string
+  themeResolvedDark: string
+  themeResolvedLight: string
+  themeSectionDescription: string
+  themeSectionTitle: string
+  themeSystemDescription: string
+  themeSystemLabel: string
   transport: string
   unavailable: string
   windowTitleAutoDescription: string
@@ -103,7 +116,20 @@ const runtimeSettingsCopy: Record<AppLocale, RuntimeSettingsCopy> = {
     runtimeSectionTitle: 'Current runtime',
     saveCustomTitle: 'Save custom title',
     shellLanguage: 'Shell language',
+    shellTheme: 'Shell theme',
     splitBrowserLoop: 'Split browser dev loop',
+    themeChangesHint: 'Theme changes update the document root tokens immediately.',
+    themeDarkDescription: 'Force the dark shell token set regardless of OS preference.',
+    themeDarkLabel: 'Dark',
+    themeLightDescription: 'Force the light shell token set regardless of OS preference.',
+    themeLightLabel: 'Light',
+    themeResolvedDark: 'Resolved: dark',
+    themeResolvedLight: 'Resolved: light',
+    themeSectionDescription:
+      'Shell appearance is now an app-owned theme preference projected through document root tokens.',
+    themeSectionTitle: 'Theme',
+    themeSystemDescription: 'Follow the operating system color scheme.',
+    themeSystemLabel: 'System',
     transport: 'Transport',
     unavailable: 'Unavailable',
     windowTitleAutoDescription: 'Auto title follows the active workspace title on the current shell path.',
@@ -163,7 +189,20 @@ const runtimeSettingsCopy: Record<AppLocale, RuntimeSettingsCopy> = {
     runtimeSectionTitle: 'Текущий runtime',
     saveCustomTitle: 'Сохранить заголовок',
     shellLanguage: 'Язык shell',
+    shellTheme: 'Тема shell',
     splitBrowserLoop: 'Split browser dev loop',
+    themeChangesHint: 'Смена темы сразу обновляет token set на корне документа.',
+    themeDarkDescription: 'Принудительно использовать тёмный набор shell tokens независимо от ОС.',
+    themeDarkLabel: 'Тёмная',
+    themeLightDescription: 'Принудительно использовать светлый набор shell tokens независимо от ОС.',
+    themeLightLabel: 'Светлая',
+    themeResolvedDark: 'Применено: тёмная',
+    themeResolvedLight: 'Применено: светлая',
+    themeSectionDescription:
+      'Оформление shell теперь идёт через app-owned theme preference и корневые document tokens.',
+    themeSectionTitle: 'Тема',
+    themeSystemDescription: 'Следовать системной цветовой схеме.',
+    themeSystemLabel: 'Системная',
     transport: 'Транспорт',
     unavailable: 'Недоступно',
     windowTitleAutoDescription: 'Auto title следует за заголовком активного workspace на текущем shell path.',
@@ -222,7 +261,19 @@ const runtimeSettingsCopy: Record<AppLocale, RuntimeSettingsCopy> = {
     runtimeSectionTitle: '当前运行时',
     saveCustomTitle: '保存自定义标题',
     shellLanguage: 'Shell 语言',
+    shellTheme: 'Shell 主题',
     splitBrowserLoop: '拆分浏览器开发循环',
+    themeChangesHint: '主题变更会立即更新文档根节点上的 token 集。',
+    themeDarkDescription: '无论系统偏好如何，都强制使用深色 shell tokens。',
+    themeDarkLabel: '深色',
+    themeLightDescription: '无论系统偏好如何，都强制使用浅色 shell tokens。',
+    themeLightLabel: '浅色',
+    themeResolvedDark: '已解析：深色',
+    themeResolvedLight: '已解析：浅色',
+    themeSectionDescription: 'Shell 外观现在由 app-owned theme preference 控制，并投射到文档根 tokens。',
+    themeSectionTitle: '主题',
+    themeSystemDescription: '跟随操作系统配色方案。',
+    themeSystemLabel: '系统',
     transport: '传输',
     unavailable: '不可用',
     windowTitleAutoDescription: '自动标题会跟随当前 shell path 上的活动 workspace 标题。',
@@ -278,7 +329,20 @@ const runtimeSettingsCopy: Record<AppLocale, RuntimeSettingsCopy> = {
     runtimeSectionTitle: 'Runtime actual',
     saveCustomTitle: 'Guardar título personalizado',
     shellLanguage: 'Idioma del shell',
+    shellTheme: 'Tema del shell',
     splitBrowserLoop: 'Bucle de desarrollo en navegador',
+    themeChangesHint: 'Los cambios de tema actualizan de inmediato los tokens del documento raíz.',
+    themeDarkDescription: 'Fuerza los tokens oscuros del shell sin depender del sistema operativo.',
+    themeDarkLabel: 'Oscuro',
+    themeLightDescription: 'Fuerza los tokens claros del shell sin depender del sistema operativo.',
+    themeLightLabel: 'Claro',
+    themeResolvedDark: 'Resuelto: oscuro',
+    themeResolvedLight: 'Resuelto: claro',
+    themeSectionDescription:
+      'La apariencia del shell ahora usa una preferencia de tema propia de la app proyectada en tokens raíz.',
+    themeSectionTitle: 'Tema',
+    themeSystemDescription: 'Seguir el esquema de color del sistema operativo.',
+    themeSystemLabel: 'Sistema',
     transport: 'Transporte',
     unavailable: 'No disponible',
     windowTitleAutoDescription:
@@ -371,8 +435,30 @@ export function RuntimeSettingsSection() {
     refresh: refreshWindowTitle,
     updateSettings: updateWindowTitleSettings,
   } = useWindowTitleSettings()
+  const { resolvedTheme, setThemePreference, themePreference } = useAppTheme()
   const [customTitleDraft, setCustomTitleDraft] = useState('')
   const copy = runtimeSettingsCopy[locale]
+
+  const themeOptions = useMemo(
+    () => [
+      {
+        value: 'system',
+        label: copy.themeSystemLabel,
+        description: copy.themeSystemDescription,
+      },
+      {
+        value: 'light',
+        label: copy.themeLightLabel,
+        description: copy.themeLightDescription,
+      },
+      {
+        value: 'dark',
+        label: copy.themeDarkLabel,
+        description: copy.themeDarkDescription,
+      },
+    ],
+    [copy],
+  )
 
   const languageOptions = useMemo(
     () =>
@@ -421,6 +507,28 @@ export function RuntimeSettingsSection() {
         />
 
         <Text style={settingsShellMutedTextStyle}>{copy.languageChangesHint}</Text>
+      </SectionCard>
+
+      <SectionCard description={copy.themeSectionDescription} title={copy.themeSectionTitle}>
+        <ClearBox style={settingsShellListStyle}>
+          <ClearBox style={settingsShellListRowStyle}>
+            <ClearBox style={settingsShellContentHeaderStyle}>
+              <Text style={{ fontWeight: 600 }}>{copy.shellTheme}</Text>
+              <Text style={settingsShellMutedTextStyle}>{copy.themeChangesHint}</Text>
+            </ClearBox>
+            <ClearBox style={settingsShellBadgeStyle}>
+              {resolvedTheme === 'light' ? copy.themeResolvedLight : copy.themeResolvedDark}
+            </ClearBox>
+          </ClearBox>
+        </ClearBox>
+
+        <RadioGroup
+          label={copy.shellTheme}
+          name="runtime-shell-theme"
+          onChange={(value) => setThemePreference(value as AppThemePreference)}
+          options={themeOptions}
+          value={themePreference}
+        />
       </SectionCard>
 
       <SectionCard description={copy.runtimeLifecycleDescription} title={copy.runtimeLifecycleTitle}>

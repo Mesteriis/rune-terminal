@@ -1,6 +1,8 @@
 import { Minus, Plus, RotateCcw } from 'lucide-react'
 import type { ReactNode } from 'react'
 
+import { useAppLocale } from '@/features/i18n/model/locale-provider'
+import { resolveLocalizedCopy } from '@/features/i18n/model/localized-copy'
 import {
   DEFAULT_TERMINAL_CURSOR_BLINK,
   DEFAULT_TERMINAL_CURSOR_STYLE,
@@ -26,6 +28,7 @@ import {
   settingsShellMutedTextStyle,
   settingsShellSectionCardStyle,
 } from '@/widgets/settings/settings-shell-widget.styles'
+import { terminalSettingsCopy } from '@/widgets/settings/terminal-settings-section-copy'
 
 function SectionCard({
   title,
@@ -49,6 +52,7 @@ function SectionCard({
 
 export function TerminalSettingsSection() {
   const cursorBlinkInputId = 'terminal-cursor-blink'
+  const { locale } = useAppLocale()
   const {
     decreaseFontSize,
     decreaseLineHeight,
@@ -76,6 +80,7 @@ export function TerminalSettingsSection() {
     updateCursorStyle,
     updateThemeMode,
   } = useTerminalPreferences()
+  const copy = resolveLocalizedCopy(terminalSettingsCopy, locale)
   const canDecreaseFontSize = fontSize > MIN_TERMINAL_FONT_SIZE
   const canIncreaseFontSize = fontSize < MAX_TERMINAL_FONT_SIZE
   const canDecreaseLineHeight = lineHeight > MIN_TERMINAL_LINE_HEIGHT
@@ -91,21 +96,15 @@ export function TerminalSettingsSection() {
     cursorBlink === DEFAULT_TERMINAL_CURSOR_BLINK
 
   return (
-    <SectionCard
-      description="Это runtime-owned terminal defaults. Они хранятся в backend state и применяются ко всем живым terminal widgets в текущем shell."
-      title="Terminal runtime defaults"
-    >
+    <SectionCard description={copy.sectionDescription} title={copy.sectionTitle}>
       <ClearBox style={settingsShellListStyle}>
         <ClearBox style={settingsShellListRowStyle}>
           <ClearBox style={settingsShellContentHeaderStyle}>
-            <Text style={{ fontWeight: 600 }}>Reset terminal defaults</Text>
-            <Text style={settingsShellMutedTextStyle}>
-              One-shot restore of the runtime-owned terminal baseline for typography, palette, scrollback, and
-              cursor behavior.
-            </Text>
+            <Text style={{ fontWeight: 600 }}>{copy.resetTitle}</Text>
+            <Text style={settingsShellMutedTextStyle}>{copy.resetDescription}</Text>
           </ClearBox>
           <Button
-            aria-label="Reset all terminal defaults"
+            aria-label={copy.resetAllDefaultsAria}
             disabled={isLoading || isSaving || isAtTerminalDefaults}
             onClick={() => void resetAllDefaults()}
           >
@@ -114,38 +113,39 @@ export function TerminalSettingsSection() {
         </ClearBox>
         <ClearBox style={settingsShellListRowStyle}>
           <ClearBox style={settingsShellContentHeaderStyle}>
-            <Text style={{ fontWeight: 600 }}>Current terminal font size</Text>
-            <Text style={settingsShellMutedTextStyle}>
-              Изменение применяется сразу ко всем terminal widgets и сохраняется в runtime state.
-            </Text>
+            <Text style={{ fontWeight: 600 }}>{copy.currentFontTitle}</Text>
+            <Text style={settingsShellMutedTextStyle}>{copy.currentFontDescription}</Text>
           </ClearBox>
-          <ClearBox style={settingsShellBadgeStyle}>{isLoading ? 'Loading…' : `${fontSize}px`}</ClearBox>
+          <ClearBox style={settingsShellBadgeStyle}>{isLoading ? copy.loading : `${fontSize}px`}</ClearBox>
         </ClearBox>
         <ClearBox style={settingsShellListRowStyle}>
           <ClearBox style={settingsShellContentHeaderStyle}>
-            <Text style={{ fontWeight: 600 }}>Adjust size</Text>
+            <Text style={{ fontWeight: 600 }}>{copy.adjustSizeTitle}</Text>
             <Text style={settingsShellMutedTextStyle}>
-              Диапазон {MIN_TERMINAL_FONT_SIZE}px–{MAX_TERMINAL_FONT_SIZE}px, default{' '}
-              {DEFAULT_TERMINAL_FONT_SIZE}px.
+              {copy.adjustSizeDescription(
+                MIN_TERMINAL_FONT_SIZE,
+                MAX_TERMINAL_FONT_SIZE,
+                DEFAULT_TERMINAL_FONT_SIZE,
+              )}
             </Text>
           </ClearBox>
           <ClearBox style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--gap-xs)' }}>
             <Button
-              aria-label="Decrease terminal font size"
+              aria-label={copy.decreaseFontSizeAria}
               disabled={isLoading || isSaving || !canDecreaseFontSize}
               onClick={() => void decreaseFontSize()}
             >
               <Minus size={14} strokeWidth={1.8} />
             </Button>
             <Button
-              aria-label="Reset terminal font size"
+              aria-label={copy.resetFontSizeAria}
               disabled={isLoading || isSaving || fontSize === DEFAULT_TERMINAL_FONT_SIZE}
               onClick={() => void resetFontSize()}
             >
               <RotateCcw size={14} strokeWidth={1.8} />
             </Button>
             <Button
-              aria-label="Increase terminal font size"
+              aria-label={copy.increaseFontSizeAria}
               disabled={isLoading || isSaving || !canIncreaseFontSize}
               onClick={() => void increaseFontSize()}
             >
@@ -155,24 +155,21 @@ export function TerminalSettingsSection() {
         </ClearBox>
         <ClearBox style={settingsShellListRowStyle}>
           <ClearBox style={settingsShellContentHeaderStyle}>
-            <Text style={{ fontWeight: 600 }}>Terminal theme mode</Text>
-            <Text style={settingsShellMutedTextStyle}>
-              `adaptive` следует текущему shell chrome, а `contrast` принудительно включает более контрастную
-              terminal palette.
-            </Text>
+            <Text style={{ fontWeight: 600 }}>{copy.themeModeTitle}</Text>
+            <Text style={settingsShellMutedTextStyle}>{copy.themeModeDescription}</Text>
           </ClearBox>
           <ClearBox style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--gap-xs)' }}>
             <Select
-              aria-label="Terminal theme mode"
+              aria-label={copy.terminalThemeModeAria}
               disabled={isLoading || isSaving}
               onChange={(event) => void updateThemeMode(event.currentTarget.value as 'adaptive' | 'contrast')}
               value={themeMode}
             >
-              <option value="adaptive">Adaptive</option>
-              <option value="contrast">Contrast</option>
+              <option value="adaptive">{copy.themeModeAdaptive}</option>
+              <option value="contrast">{copy.themeModeContrast}</option>
             </Select>
             <Button
-              aria-label="Reset terminal theme mode"
+              aria-label={copy.resetThemeModeAria}
               disabled={isLoading || isSaving || themeMode === DEFAULT_TERMINAL_THEME_MODE}
               onClick={() => void resetThemeMode()}
             >
@@ -182,40 +179,41 @@ export function TerminalSettingsSection() {
         </ClearBox>
         <ClearBox style={settingsShellListRowStyle}>
           <ClearBox style={settingsShellContentHeaderStyle}>
-            <Text style={{ fontWeight: 600 }}>Current scrollback</Text>
-            <Text style={settingsShellMutedTextStyle}>
-              Scrollback ограничивает объём буфера в xterm и теперь тоже идёт через runtime-owned contract.
-            </Text>
+            <Text style={{ fontWeight: 600 }}>{copy.currentScrollbackTitle}</Text>
+            <Text style={settingsShellMutedTextStyle}>{copy.currentScrollbackDescription}</Text>
           </ClearBox>
           <ClearBox style={settingsShellBadgeStyle}>
-            {isLoading ? 'Loading…' : `${scrollback} lines`}
+            {isLoading ? copy.loading : `${scrollback} lines`}
           </ClearBox>
         </ClearBox>
         <ClearBox style={settingsShellListRowStyle}>
           <ClearBox style={settingsShellContentHeaderStyle}>
-            <Text style={{ fontWeight: 600 }}>Adjust scrollback</Text>
+            <Text style={{ fontWeight: 600 }}>{copy.adjustScrollbackTitle}</Text>
             <Text style={settingsShellMutedTextStyle}>
-              Диапазон {MIN_TERMINAL_SCROLLBACK}–{MAX_TERMINAL_SCROLLBACK} lines, default{' '}
-              {DEFAULT_TERMINAL_SCROLLBACK}.
+              {copy.adjustScrollbackDescription(
+                MIN_TERMINAL_SCROLLBACK,
+                MAX_TERMINAL_SCROLLBACK,
+                DEFAULT_TERMINAL_SCROLLBACK,
+              )}
             </Text>
           </ClearBox>
           <ClearBox style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--gap-xs)' }}>
             <Button
-              aria-label="Decrease terminal scrollback"
+              aria-label={copy.decreaseScrollbackAria}
               disabled={isLoading || isSaving || !canDecreaseScrollback}
               onClick={() => void decreaseScrollback()}
             >
               <Minus size={14} strokeWidth={1.8} />
             </Button>
             <Button
-              aria-label="Reset terminal scrollback"
+              aria-label={copy.resetScrollbackAria}
               disabled={isLoading || isSaving || scrollback === DEFAULT_TERMINAL_SCROLLBACK}
               onClick={() => void resetScrollback()}
             >
               <RotateCcw size={14} strokeWidth={1.8} />
             </Button>
             <Button
-              aria-label="Increase terminal scrollback"
+              aria-label={copy.increaseScrollbackAria}
               disabled={isLoading || isSaving || !canIncreaseScrollback}
               onClick={() => void increaseScrollback()}
             >
@@ -225,26 +223,24 @@ export function TerminalSettingsSection() {
         </ClearBox>
         <ClearBox style={settingsShellListRowStyle}>
           <ClearBox style={settingsShellContentHeaderStyle}>
-            <Text style={{ fontWeight: 600 }}>Terminal cursor style</Text>
-            <Text style={settingsShellMutedTextStyle}>
-              Cursor shape теперь задаётся через backend-owned contract и применяется к живым xterm sessions.
-            </Text>
+            <Text style={{ fontWeight: 600 }}>{copy.cursorStyleTitle}</Text>
+            <Text style={settingsShellMutedTextStyle}>{copy.cursorStyleDescription}</Text>
           </ClearBox>
           <ClearBox style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--gap-xs)' }}>
             <Select
-              aria-label="Terminal cursor style"
+              aria-label={copy.terminalCursorStyleAria}
               disabled={isLoading || isSaving}
               onChange={(event) =>
                 void updateCursorStyle(event.currentTarget.value as 'block' | 'bar' | 'underline')
               }
               value={cursorStyle}
             >
-              <option value="block">Block</option>
-              <option value="bar">Bar</option>
-              <option value="underline">Underline</option>
+              <option value="block">{copy.cursorStyleBlock}</option>
+              <option value="bar">{copy.cursorStyleBar}</option>
+              <option value="underline">{copy.cursorStyleUnderline}</option>
             </Select>
             <Button
-              aria-label="Reset terminal cursor style"
+              aria-label={copy.resetCursorStyleAria}
               disabled={isLoading || isSaving || cursorStyle === DEFAULT_TERMINAL_CURSOR_STYLE}
               onClick={() => void resetCursorStyle()}
             >
@@ -254,11 +250,8 @@ export function TerminalSettingsSection() {
         </ClearBox>
         <ClearBox style={settingsShellListRowStyle}>
           <ClearBox style={settingsShellContentHeaderStyle}>
-            <Text style={{ fontWeight: 600 }}>Blinking cursor</Text>
-            <Text style={settingsShellMutedTextStyle}>
-              Blink preference хранится в runtime, но xterm всё равно отключает blink для exited и failed
-              sessions.
-            </Text>
+            <Text style={{ fontWeight: 600 }}>{copy.cursorBlinkTitle}</Text>
+            <Text style={settingsShellMutedTextStyle}>{copy.cursorBlinkDescription}</Text>
           </ClearBox>
           <ClearBox style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--gap-sm)' }}>
             <Label
@@ -269,13 +262,13 @@ export function TerminalSettingsSection() {
                 checked={cursorBlink}
                 id={cursorBlinkInputId}
                 disabled={isLoading || isSaving}
-                aria-label="Enable terminal cursor blink"
+                aria-label={copy.enableCursorBlinkAria}
                 onChange={(event) => void updateCursorBlink(event.currentTarget.checked)}
               />
-              <Text>{cursorBlink ? 'Enabled' : 'Disabled'}</Text>
+              <Text>{cursorBlink ? copy.cursorBlinkEnabled : copy.cursorBlinkDisabled}</Text>
             </Label>
             <Button
-              aria-label="Reset terminal cursor blink"
+              aria-label={copy.resetCursorBlinkAria}
               disabled={isLoading || isSaving || cursorBlink === DEFAULT_TERMINAL_CURSOR_BLINK}
               onClick={() => void resetCursorBlink()}
             >
@@ -285,41 +278,41 @@ export function TerminalSettingsSection() {
         </ClearBox>
         <ClearBox style={settingsShellListRowStyle}>
           <ClearBox style={settingsShellContentHeaderStyle}>
-            <Text style={{ fontWeight: 600 }}>Current line height</Text>
-            <Text style={settingsShellMutedTextStyle}>
-              Line height управляет вертикальной плотностью xterm и тоже применяется сразу ко всем живым
-              terminal widgets.
-            </Text>
+            <Text style={{ fontWeight: 600 }}>{copy.currentLineHeightTitle}</Text>
+            <Text style={settingsShellMutedTextStyle}>{copy.currentLineHeightDescription}</Text>
           </ClearBox>
           <ClearBox style={settingsShellBadgeStyle}>
-            {isLoading ? 'Loading…' : `${lineHeight.toFixed(2)}x`}
+            {isLoading ? copy.loading : `${lineHeight.toFixed(2)}x`}
           </ClearBox>
         </ClearBox>
         <ClearBox style={settingsShellListRowStyle}>
           <ClearBox style={settingsShellContentHeaderStyle}>
-            <Text style={{ fontWeight: 600 }}>Adjust line height</Text>
+            <Text style={{ fontWeight: 600 }}>{copy.adjustLineHeightTitle}</Text>
             <Text style={settingsShellMutedTextStyle}>
-              Диапазон {MIN_TERMINAL_LINE_HEIGHT.toFixed(2)}x–{MAX_TERMINAL_LINE_HEIGHT.toFixed(2)}x, default{' '}
-              {DEFAULT_TERMINAL_LINE_HEIGHT.toFixed(2)}x.
+              {copy.adjustLineHeightDescription(
+                MIN_TERMINAL_LINE_HEIGHT,
+                MAX_TERMINAL_LINE_HEIGHT,
+                DEFAULT_TERMINAL_LINE_HEIGHT,
+              )}
             </Text>
           </ClearBox>
           <ClearBox style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--gap-xs)' }}>
             <Button
-              aria-label="Decrease terminal line height"
+              aria-label={copy.decreaseLineHeightAria}
               disabled={isLoading || isSaving || !canDecreaseLineHeight}
               onClick={() => void decreaseLineHeight()}
             >
               <Minus size={14} strokeWidth={1.8} />
             </Button>
             <Button
-              aria-label="Reset terminal line height"
+              aria-label={copy.resetLineHeightAria}
               disabled={isLoading || isSaving || lineHeight === DEFAULT_TERMINAL_LINE_HEIGHT}
               onClick={() => void resetLineHeight()}
             >
               <RotateCcw size={14} strokeWidth={1.8} />
             </Button>
             <Button
-              aria-label="Increase terminal line height"
+              aria-label={copy.increaseLineHeightAria}
               disabled={isLoading || isSaving || !canIncreaseLineHeight}
               onClick={() => void increaseLineHeight()}
             >
@@ -328,9 +321,7 @@ export function TerminalSettingsSection() {
           </ClearBox>
         </ClearBox>
       </ClearBox>
-      <Text style={settingsShellMutedTextStyle}>
-        {errorMessage ?? 'These terminal settings are now backed by the shared runtime contract.'}
-      </Text>
+      <Text style={settingsShellMutedTextStyle}>{errorMessage ?? copy.defaultStateDescription}</Text>
     </SectionCard>
   )
 }
