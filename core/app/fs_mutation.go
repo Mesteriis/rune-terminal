@@ -97,7 +97,7 @@ func (r *Runtime) CopyFSEntries(entries []FSCopyEntry, overwrite bool) (FSPathsR
 	targetPathSet := make(map[string]struct{}, len(entries))
 
 	for _, entry := range entries {
-		sourcePath, err := r.resolveFSExistingPath(entry.SourcePath)
+		sourcePath, err := r.resolveFSExistingEntryPath(entry.SourcePath)
 		if err != nil {
 			return FSPathsResult{}, err
 		}
@@ -194,7 +194,7 @@ func (r *Runtime) RenameFS(entries []FSRenameEntry, overwrite bool) (FSPathsResu
 	sourcePathSet := make(map[string]struct{}, len(entries))
 
 	for _, entry := range entries {
-		sourcePath, err := r.resolveFSExistingPath(entry.Path)
+		sourcePath, err := r.resolveFSExistingEntryPath(entry.Path)
 		if err != nil {
 			return FSPathsResult{}, err
 		}
@@ -224,7 +224,7 @@ func (r *Runtime) RenameFS(entries []FSRenameEntry, overwrite bool) (FSPathsResu
 		if entry.sourcePath == entry.targetPath {
 			continue
 		}
-		if _, err := os.Stat(entry.targetPath); err == nil {
+		if _, err := os.Lstat(entry.targetPath); err == nil {
 			if _, isSourcePath := sourcePathSet[entry.targetPath]; !isSourcePath && !overwrite {
 				return FSPathsResult{}, ErrFSPathExists
 			}
@@ -304,6 +304,20 @@ func (r *Runtime) resolveFSExistingPath(path string) (string, error) {
 	return resolvedPath, nil
 }
 
+func (r *Runtime) resolveFSExistingEntryPath(path string) (string, error) {
+	resolvedPath, err := r.resolveFSEntryPath(path)
+	if err != nil {
+		return "", err
+	}
+	if _, err := os.Lstat(resolvedPath); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return "", ErrFSPathNotFound
+		}
+		return "", err
+	}
+	return resolvedPath, nil
+}
+
 func (r *Runtime) resolveFSPaths(paths []string) ([]string, error) {
 	if len(paths) == 0 {
 		return nil, ErrInvalidFSPath
@@ -311,7 +325,7 @@ func (r *Runtime) resolveFSPaths(paths []string) ([]string, error) {
 
 	normalizedPaths := make([]string, 0, len(paths))
 	for _, path := range paths {
-		normalizedPath, err := r.resolveFSExistingPath(path)
+		normalizedPath, err := r.resolveFSExistingEntryPath(path)
 		if err != nil {
 			return nil, err
 		}
@@ -394,7 +408,7 @@ func copyFSResolvedPaths(sourcePaths []string, targetPaths []string, overwrite b
 
 func validateFSOverwriteTargets(targetPaths []string, overwrite bool) error {
 	for _, targetPath := range targetPaths {
-		if _, err := os.Stat(targetPath); err == nil {
+		if _, err := os.Lstat(targetPath); err == nil {
 			if !overwrite {
 				return ErrFSPathExists
 			}
@@ -411,7 +425,7 @@ func validateFSTargetPath(sourcePath string, targetPath string) error {
 		return ErrInvalidFSTarget
 	}
 
-	sourceInfo, err := os.Stat(sourcePath)
+	sourceInfo, err := os.Lstat(sourcePath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return ErrFSPathNotFound
@@ -428,7 +442,7 @@ func validateFSTargetPath(sourcePath string, targetPath string) error {
 }
 
 func removeFSPath(path string) error {
-	if _, err := os.Stat(path); err != nil {
+	if _, err := os.Lstat(path); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil
 		}

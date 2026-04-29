@@ -15,10 +15,14 @@
       `allow_outside_workspace=1` query escape; authenticated HTTP callers
       stay inside the runtime workspace root for active local filesystem reads
     - local filesystem navigation now evaluates workspace containment against
-      canonical symlink targets before local operations, preserves ordinary
-      lexical response paths, and switches symlink-routed requests to the
-      canonical in-workspace target path before list/read/write/mkdir can
-      follow the original symlink
+      canonical symlink targets before list/read/write/mkdir can follow a
+      symlinked path, preserves ordinary lexical response paths, and switches
+      symlink-routed read/navigation requests to the canonical in-workspace
+      target path
+    - local filesystem mutation now uses a non-following entry-path resolver
+      for source paths: delete/rename/move/copy operate on the selected
+      directory entry itself, so an in-workspace symlink entry is removed,
+      renamed, moved, or copied as the link instead of mutating its target
     - `Settings -> Terminal` now participates in that same typed locale
       boundary: visible terminal settings copy comes from
       `terminal-settings-section-copy.ts` for `ru`, `en`, `zh-CN`, and
@@ -679,6 +683,7 @@ light` remains the system fallback, and `@media print` flattens shell
 - A fresh focused validation pass for the preview CSV/TSV table slice on `2026-04-26` confirmed `.csv`, `.tsv`, and `.tab` text previews now render as bounded tables in the backend-owned preview widget while non-table text and hex previews keep the existing rendering path. The same pass reconfirmed `npm --prefix frontend run test -- src/widgets/preview/preview-table.test.ts src/widgets/preview/preview-panel-widget.test.tsx`, `npm --prefix frontend run lint:active`, and `npm --prefix frontend run build` all pass. This slice intentionally uses a small dependency-free parser and does not claim full spreadsheet behavior, formulas, or large-file virtualization.
 - A fresh focused validation pass for the shell topbar desktop-window controls slice on `2026-04-26` confirmed the visible close/minimize/fullscreen controls no longer leave minimize/fullscreen inert: frontend unit coverage verifies the shell callbacks and Tauri invoke names, while the desktop Rust command surface now exposes `minimize_window` and `toggle_fullscreen_window` beside the existing guarded close path. The same pass reconfirmed `npm --prefix frontend run test -- src/widgets/shell/shell-topbar-widget.test.tsx src/shared/api/runtime.test.ts src/shared/ui/components/accessibility-contracts.test.tsx`, `npm run lint:frontend`, `npm run build:frontend`, `npm run tauri:check`, and `git diff --check` all pass. This slice does not claim a fresh interactive desktop click smoke.
 - A fresh focused validation pass for the local filesystem boundary slice on `2026-04-29` confirmed public HTTP list/read routes ignore the old `allow_outside_workspace=1` query escape, and the local runtime rejects symlinked files or parent directories that resolve outside `RepoRoot` before list/read/write/mkdir can follow them. A follow-up pass in the same slice confirmed symlinks that resolve inside `RepoRoot` return and use the canonical target path while ordinary non-symlink requests keep their existing lexical response paths. The same pass reconfirmed `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'Test(ReadFSPreview|ListFS|MkdirFS|WriteFSFile|OpenFSExternal|CopyFS|MoveFS|DeleteFS|RenameFS|CreateAttachmentReference)' -count=1`, `./scripts/go.sh test ./core/app ./core/transport/httpapi -count=1`, and the broader `./scripts/go.sh test ./cmd/... ./core/... ./internal/...` plus `./scripts/go.sh build ./cmd/... ./core/... ./internal/...` checks all pass.
+- A follow-up focused validation pass for the local filesystem mutation slice on `2026-04-29` confirmed source paths for delete/rename/move/copy use non-following entry semantics after the canonical FS navigation hardening: deleting an in-workspace symlink removes the link entry without deleting the target, and rename/move/copy preserve the selected link entry identity instead of resolving to the target basename/content. The same pass reconfirmed `./scripts/go.sh test ./core/app -run 'Test(DeleteFSRemovesSymlinkEntryWithoutDeletingTarget|RenameFSRenamesSymlinkEntryWithoutRenamingTarget|MoveFSMovesSymlinkEntryWithoutMovingTarget|CopyFSCopiesSymlinkEntryWithoutCopyingTargetContent|ReadFSPreviewReturnsCanonicalPathForSymlinkInsideWorkspace|MkdirFSReturnsCanonicalPathForSymlinkParentInsideWorkspace|ReadFSPreviewRejectsSymlinkOutsideWorkspace|ListFSRejectsSymlinkDirectoryOutsideWorkspace|WriteFSFileRejectsSymlinkOutsideWorkspace|MkdirFSRejectsSymlinkParentOutsideWorkspace)' -count=1`, `./scripts/go.sh test ./core/app ./core/transport/httpapi -count=1`, `npm run validate`, and `npm run validate:desktop-runtime` all pass.
 
 ### Task runtime limitations
 
