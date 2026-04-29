@@ -2,7 +2,7 @@
 
 ## Last verified state
 
-- Date: `2026-04-29`
+- Date: `2026-04-30`
 - State: `VERIFIED` overall for the active bounded MCP scope (explicit lifecycle/invoke/normalization plus template-driven onboarding; no marketplace-style discovery claimed)
 - Scope:
   - explicit lifecycle controls
@@ -18,6 +18,9 @@
   - remote MCP detail responses redact sensitive persisted headers, while
     updates preserve existing secret values when the redaction placeholder is
     submitted unchanged
+  - remote MCP register/update/delete/enable mutations restore the live
+    registry state when registry-file persistence fails, so failed lifecycle
+    writes cannot leave runtime-only MCP capabilities behind
   - template-driven onboarding helpers inside active settings
   - explicit invoke path
   - output normalization/bounding behavior
@@ -29,6 +32,8 @@
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestMCPLifecycleAuditSummaryRedactsEndpointSecrets|TestMCPProbeAppendsAuditEventWithoutSecretHeadersOrQuery' -count=1`
 - `./scripts/go.sh test ./core/transport/httpapi -run 'TestGetMCPServerRedactsSensitiveHeaders|TestGetAndUpdateMCPServer' -count=1`
 - `./scripts/go.sh test ./core/app -run TestUpdateMCPServerPreservesRedactedSensitiveHeaders -count=1`
+- `./scripts/go.sh test ./core/app -run 'Test(Register|Update|Delete|Set)MCPServer.*PersistFails' -count=1`
+- `./scripts/go.sh test ./core/app -run 'TestMCPRegistryPersistence|TestUpdateMCPServerPreservesRedactedSensitiveHeaders|Test.*MCPServer.*PersistFails|TestMCPLifecycleAuditSummaryRedactsEndpointSecrets|TestMCPProbeAppendsAuditEventWithoutSecretHeadersOrQuery' -count=1`
 - `./scripts/go.sh test ./core/app ./core/plugins ./core/transport/httpapi -run 'Test.*MCP' -count=1`
 - `./scripts/go.sh test ./core/plugins ./core/app ./core/transport/httpapi -count=1`
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestNormalizeRemoteMCPRegistrationRequest|TestProbeRemoteMCPServerReportsReadyWithToolCount|TestListMCPCatalogReturnsTemplates|TestProbeMCPServerRejectsInvalidDraft' -count=1`

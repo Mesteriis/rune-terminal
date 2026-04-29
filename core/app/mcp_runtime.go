@@ -99,6 +99,7 @@ func (r *Runtime) RegisterMCPServer(request MCPRegistrationRequest) (server plug
 		return plugins.MCPServerSnapshot{}, err
 	}
 	if err := r.persistMCPRegistry(); err != nil {
+		_ = r.MCP.Registry().Delete(spec.ID)
 		return plugins.MCPServerSnapshot{}, err
 	}
 	server, err = r.MCP.Registry().Get(spec.ID)
@@ -148,6 +149,7 @@ func (r *Runtime) UpdateMCPServer(
 	if err != nil {
 		return plugins.MCPServerSnapshot{}, err
 	}
+	previousServer := server
 	if server.Active {
 		if err := r.MCP.Stop(id, false); err != nil {
 			return plugins.MCPServerSnapshot{}, err
@@ -167,9 +169,11 @@ func (r *Runtime) UpdateMCPServer(
 			Headers:  headers,
 		},
 	}); err != nil {
+		restoreMCPServerRegistryState(r.MCP.Registry(), existingSpec, previousServer)
 		return plugins.MCPServerSnapshot{}, err
 	}
 	if err := r.persistMCPRegistry(); err != nil {
+		restoreMCPServerRegistryState(r.MCP.Registry(), existingSpec, previousServer)
 		return plugins.MCPServerSnapshot{}, err
 	}
 	server, err = r.MCP.Registry().Get(id)
@@ -217,9 +221,14 @@ func (r *Runtime) DeleteMCPServer(serverID string) (err error) {
 		}
 	}
 	if err := r.MCP.Registry().Delete(id); err != nil {
+		restoreMCPServerRegistryState(r.MCP.Registry(), spec, server)
 		return err
 	}
-	return r.persistMCPRegistry()
+	if err := r.persistMCPRegistry(); err != nil {
+		restoreMCPServerRegistryState(r.MCP.Registry(), spec, server)
+		return err
+	}
+	return nil
 }
 
 func (r *Runtime) ListMCPServers() []plugins.MCPServerSnapshot {
@@ -335,10 +344,15 @@ func (r *Runtime) SetMCPServerEnabled(
 	if r.MCP == nil {
 		return plugins.MCPServerSnapshot{}, ErrMCPRuntimeNotConfigured
 	}
+	previousServer, err := r.MCP.Registry().Get(serverID)
+	if err != nil {
+		return plugins.MCPServerSnapshot{}, err
+	}
 	if err := r.MCP.SetEnabled(serverID, enabled); err != nil {
 		return plugins.MCPServerSnapshot{}, err
 	}
 	if err := r.persistMCPRegistry(); err != nil {
+		restoreMCPServerSnapshot(r.MCP.Registry(), previousServer)
 		return plugins.MCPServerSnapshot{}, err
 	}
 	server, err = r.MCP.Registry().Get(serverID)
@@ -368,4 +382,28 @@ func (r *Runtime) InvokeMCP(ctx context.Context, request plugins.MCPInvokeReques
 		return plugins.MCPInvokeResult{}, err
 	}
 	return result, nil
+}
+
+func restoreMCPServerRegistryState(registry *plugins.MCPRegistry, spec plugins.MCPServerSpec, snapshot plugins.MCPServerSnapshot) {
+	if registry == nil || strings.TrimSpace(spec.ID) == "" {
+		return
+	}
+	if _, err := registry.Get(spec.ID); errors.Is(err, plugins.ErrMCPServerNotFound) {
+		_ = registry.Register(spec)
+	} else {
+		_ = registry.Update(spec)
+	}
+	restoreMCPServerSnapshot(registry, snapshot)
+}
+
+func restoreMCPServerSnapshot(registry *plugins.MCPRegistry, snapshot plugins.MCPServerSnapshot) {
+	if registry == nil || strings.TrimSpace(snapshot.ID) == "" {
+		return
+	}
+	_ = registry.SetEnabled(snapshot.ID, snapshot.Enabled)
+	_ = registry.SetState(snapshot.ID, snapshot.State)
+	_ = registry.SetActive(snapshot.ID, snapshot.Active)
+	if !snapshot.LastUsed.IsZero() {
+		_ = registry.Touch(snapshot.ID, snapshot.LastUsed)
+	}
 }

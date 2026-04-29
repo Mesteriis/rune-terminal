@@ -1,11 +1,24 @@
 package app
 
 import (
+	"errors"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/Mesteriis/rune-terminal/core/config"
 	"github.com/Mesteriis/rune-terminal/core/plugins"
 )
+
+func breakMCPRegistryPersistencePath(t *testing.T, runtime *Runtime) {
+	t.Helper()
+
+	blockerPath := filepath.Join(t.TempDir(), "not-a-dir")
+	if err := os.WriteFile(blockerPath, []byte("block"), 0o600); err != nil {
+		t.Fatalf("write persistence blocker: %v", err)
+	}
+	runtime.Paths.MCPRegistryFile = filepath.Join(blockerPath, "mcp-registry.json")
+}
 
 func TestMCPRegistryPersistenceRestoresRemoteServersAsStopped(t *testing.T) {
 	t.Parallel()
@@ -72,6 +85,32 @@ func TestMCPRegistryPersistenceRestoresRemoteServersAsStopped(t *testing.T) {
 	}
 }
 
+func TestRegisterMCPServerDoesNotMutateRegistryWhenPersistFails(t *testing.T) {
+	t.Parallel()
+
+	paths := config.Resolve(t.TempDir())
+	runtimeA := &Runtime{
+		Paths: paths,
+		MCP:   plugins.NewMCPRuntime(nil, nil, nil),
+	}
+	defer runtimeA.MCP.Close()
+
+	if err := runtimeA.registerMCPServers(); err != nil {
+		t.Fatalf("registerMCPServers(runtimeA) error: %v", err)
+	}
+	breakMCPRegistryPersistencePath(t, runtimeA)
+	if _, err := runtimeA.RegisterMCPServer(MCPRegistrationRequest{
+		ID:       "mcp.context7",
+		Type:     "remote",
+		Endpoint: "https://mcp.context7.com/mcp",
+	}); err == nil {
+		t.Fatalf("expected register persist failure")
+	}
+	if _, err := runtimeA.GetMCPServer("mcp.context7"); !errors.Is(err, plugins.ErrMCPServerNotFound) {
+		t.Fatalf("expected failed register to keep server absent, got %v", err)
+	}
+}
+
 func TestMCPRegistryPersistenceReflectsUpdatedRemoteServers(t *testing.T) {
 	t.Parallel()
 
@@ -126,6 +165,53 @@ func TestMCPRegistryPersistenceReflectsUpdatedRemoteServers(t *testing.T) {
 	}
 	if spec.Remote.Headers["Authorization"] != "Bearer new" {
 		t.Fatalf("unexpected restored headers: %#v", spec.Remote.Headers)
+	}
+}
+
+func TestUpdateMCPServerDoesNotMutateRegistryWhenPersistFails(t *testing.T) {
+	t.Parallel()
+
+	paths := config.Resolve(t.TempDir())
+	runtimeA := &Runtime{
+		Paths: paths,
+		MCP:   plugins.NewMCPRuntime(nil, nil, nil),
+	}
+	defer runtimeA.MCP.Close()
+
+	if err := runtimeA.registerMCPServers(); err != nil {
+		t.Fatalf("registerMCPServers(runtimeA) error: %v", err)
+	}
+	if _, err := runtimeA.RegisterMCPServer(MCPRegistrationRequest{
+		ID:       "mcp.context7",
+		Type:     "remote",
+		Endpoint: "https://mcp.context7.com/mcp",
+		Headers: map[string]string{
+			"Authorization": "Bearer old",
+		},
+	}); err != nil {
+		t.Fatalf("RegisterMCPServer error: %v", err)
+	}
+
+	breakMCPRegistryPersistencePath(t, runtimeA)
+	if _, err := runtimeA.UpdateMCPServer("mcp.context7", MCPRegistrationRequest{
+		ID:       "mcp.context7",
+		Type:     "remote",
+		Endpoint: "https://mcp.context7.com/v2",
+		Headers: map[string]string{
+			"Authorization": "Bearer new",
+		},
+	}); err == nil {
+		t.Fatalf("expected update persist failure")
+	}
+	spec, err := runtimeA.GetMCPServerSpec("mcp.context7")
+	if err != nil {
+		t.Fatalf("GetMCPServerSpec error: %v", err)
+	}
+	if spec.Remote == nil || spec.Remote.Endpoint != "https://mcp.context7.com/mcp" {
+		t.Fatalf("expected failed update to keep previous remote spec, got %#v", spec.Remote)
+	}
+	if spec.Remote.Headers["Authorization"] != "Bearer old" {
+		t.Fatalf("expected failed update to keep previous headers, got %#v", spec.Remote.Headers)
 	}
 }
 
@@ -222,5 +308,69 @@ func TestMCPRegistryPersistenceReflectsDeletedRemoteServers(t *testing.T) {
 
 	if _, err := runtimeB.GetMCPServer("mcp.context7"); err == nil {
 		t.Fatalf("expected deleted remote server to stay absent")
+	}
+}
+
+func TestDeleteMCPServerDoesNotMutateRegistryWhenPersistFails(t *testing.T) {
+	t.Parallel()
+
+	paths := config.Resolve(t.TempDir())
+	runtimeA := &Runtime{
+		Paths: paths,
+		MCP:   plugins.NewMCPRuntime(nil, nil, nil),
+	}
+	defer runtimeA.MCP.Close()
+
+	if err := runtimeA.registerMCPServers(); err != nil {
+		t.Fatalf("registerMCPServers(runtimeA) error: %v", err)
+	}
+	if _, err := runtimeA.RegisterMCPServer(MCPRegistrationRequest{
+		ID:       "mcp.context7",
+		Type:     "remote",
+		Endpoint: "https://mcp.context7.com/mcp",
+	}); err != nil {
+		t.Fatalf("RegisterMCPServer error: %v", err)
+	}
+
+	breakMCPRegistryPersistencePath(t, runtimeA)
+	if err := runtimeA.DeleteMCPServer("mcp.context7"); err == nil {
+		t.Fatalf("expected delete persist failure")
+	}
+	if _, err := runtimeA.GetMCPServer("mcp.context7"); err != nil {
+		t.Fatalf("expected failed delete to keep server visible, got %v", err)
+	}
+}
+
+func TestSetMCPServerEnabledDoesNotMutateRegistryWhenPersistFails(t *testing.T) {
+	t.Parallel()
+
+	paths := config.Resolve(t.TempDir())
+	runtimeA := &Runtime{
+		Paths: paths,
+		MCP:   plugins.NewMCPRuntime(nil, nil, nil),
+	}
+	defer runtimeA.MCP.Close()
+
+	if err := runtimeA.registerMCPServers(); err != nil {
+		t.Fatalf("registerMCPServers(runtimeA) error: %v", err)
+	}
+	if _, err := runtimeA.RegisterMCPServer(MCPRegistrationRequest{
+		ID:       "mcp.context7",
+		Type:     "remote",
+		Endpoint: "https://mcp.context7.com/mcp",
+	}); err != nil {
+		t.Fatalf("RegisterMCPServer error: %v", err)
+	}
+
+	breakMCPRegistryPersistencePath(t, runtimeA)
+	if _, err := runtimeA.SetMCPServerEnabled("mcp.context7", false); err == nil {
+		t.Fatalf("expected enable persist failure")
+	}
+	server, err := runtimeA.GetMCPServer("mcp.context7")
+	if err != nil {
+		t.Fatalf("GetMCPServer error: %v", err)
+	}
+	if !server.Enabled {
+		t.Fatalf("expected failed disable to keep server enabled, got %#v", server)
 	}
 }
