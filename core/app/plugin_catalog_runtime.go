@@ -650,7 +650,7 @@ func clonePluginRepository(ctx context.Context, stageRoot string, source PluginI
 	if ref := strings.TrimSpace(source.Ref); ref != "" {
 		args = append(args, "--branch", ref)
 	}
-	args = append(args, repoURL, target)
+	args = append(args, "--", repoURL, target)
 	cmd := exec.CommandContext(ctx, "git", args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {

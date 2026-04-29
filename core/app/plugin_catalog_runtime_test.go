@@ -121,6 +121,38 @@ func TestInstallPluginFromZipSupportsDisableEnableAndDelete(t *testing.T) {
 	}
 }
 
+func TestClonePluginRepositoryTerminatesOptionsBeforeSourceURL(t *testing.T) {
+	binDir := t.TempDir()
+	argsPath := filepath.Join(t.TempDir(), "git-args.txt")
+	gitPath := filepath.Join(binDir, "git")
+	if err := os.WriteFile(gitPath, []byte("#!/bin/sh\nprintf '%s\\n' \"$@\" > \"$GIT_ARGS_FILE\"\n"), 0o755); err != nil {
+		t.Fatalf("WriteFile(fake git) error: %v", err)
+	}
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	t.Setenv("GIT_ARGS_FILE", argsPath)
+
+	stageRoot := t.TempDir()
+	_, err := clonePluginRepository(context.Background(), stageRoot, PluginInstallSource{
+		Kind: PluginInstallSourceGit,
+		URL:  "--upload-pack=malicious",
+	})
+	if err != nil {
+		t.Fatalf("clonePluginRepository error: %v", err)
+	}
+
+	payload, err := os.ReadFile(argsPath)
+	if err != nil {
+		t.Fatalf("ReadFile(fake git args) error: %v", err)
+	}
+	args := strings.Split(strings.TrimSpace(string(payload)), "\n")
+	if len(args) < 5 {
+		t.Fatalf("unexpected git args: %#v", args)
+	}
+	if args[len(args)-3] != "--" || args[len(args)-2] != "--upload-pack=malicious" {
+		t.Fatalf("expected -- before source URL, got %#v", args)
+	}
+}
+
 func TestUpdateInstalledPluginRefreshesManifestVersion(t *testing.T) {
 	t.Parallel()
 

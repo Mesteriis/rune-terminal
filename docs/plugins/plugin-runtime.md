@@ -59,7 +59,9 @@ This is the canonical plugin entrypoint for runtime boundary and protocol behavi
 - No online plugin marketplace trust model in this phase.
 - Plugin installation is intentionally narrow: backend-owned local catalog
   records plus explicit install sources (`git` repository URL or `zip`
-  archive URL), not broad discovery.
+  archive URL), not broad discovery. Git source URLs are passed to `git clone`
+  after an option terminator so user-controlled source strings cannot be
+  interpreted as additional git flags.
 - Zip installation is bounded before manifest validation: archive downloads
   have a compressed-size cap for both remote downloads and `file://` sources,
   extracted payloads have total byte and entry count budgets, and entries must

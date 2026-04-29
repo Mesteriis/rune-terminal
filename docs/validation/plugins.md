@@ -15,6 +15,8 @@
   - backend-owned local plugin catalog lifecycle
   - install/update/delete/enable/disable flows for `git` and `zip` sources
   - actor-aware plugin catalog metadata shape for future rights enforcement
+  - git source URLs are passed after a `git clone` option terminator instead of
+    being allowed to parse as extra git flags
   - plugin catalog lifecycle mutations now append core-owned audit events for
     install/update/enable/disable/delete success and failure paths
   - zip install extraction now enforces compressed-size caps for remote and
@@ -34,6 +36,7 @@ Catalog lifecycle hardening slice (`2026-04-29`):
 
 - `./scripts/go.sh test ./core/app -run 'TestPluginLifecycleAppendsAuditEvents|TestInstallPluginAppendsFailureAuditEvent|TestInstallPluginRejectsZipArchiveOverExpandedSizeLimit|TestInstallPluginRejectsZipArchiveEntryOutsideRootPrefix|TestDeleteInstalledPluginKeepsCatalogWhenInstallRootRemovalFails' -count=1`
 - `./scripts/go.sh test ./core/app -run 'TestInstallPluginRejectsBundleSymlinkEntries|TestInstallPluginRejectsGitBundleOverCopiedSizeLimit|TestInstallPluginRejectsFileZipOverDownloadedSizeLimit' -count=1`
+- `./scripts/go.sh test ./core/app -run 'TestClonePluginRepositoryTerminatesOptionsBeforeSourceURL' -count=1`
 - `./scripts/go.sh test ./core/app -run 'Test(DeleteFSRemovesSymlinkEntryWithoutDeletingTarget|RenameFSRenamesSymlinkEntryWithoutRenamingTarget|MoveFSMovesSymlinkEntryWithoutMovingTarget|CopyFSCopiesSymlinkEntryWithoutCopyingTargetContent|ReadFSPreviewReturnsCanonicalPathForSymlinkInsideWorkspace|MkdirFSReturnsCanonicalPathForSymlinkParentInsideWorkspace|ReadFSPreviewRejectsSymlinkOutsideWorkspace|ListFSRejectsSymlinkDirectoryOutsideWorkspace|WriteFSFileRejectsSymlinkOutsideWorkspace|MkdirFSRejectsSymlinkParentOutsideWorkspace|Plugin)' -count=1`
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi -count=1`
 
