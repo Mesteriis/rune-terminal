@@ -152,6 +152,11 @@ func (r *Runtime) resolveFSPath(path string, allowOutsideWorkspace bool) (string
 	if err != nil {
 		return "", ErrInvalidFSPath
 	}
+	rootCanonical, err := filepath.EvalSymlinks(rootAbs)
+	if err != nil {
+		return "", ErrInvalidFSPath
+	}
+	rootCanonical = filepath.Clean(rootCanonical)
 
 	targetPath := strings.TrimSpace(path)
 	if targetPath == "" {
@@ -168,16 +173,89 @@ func (r *Runtime) resolveFSPath(path string, allowOutsideWorkspace bool) (string
 	if allowOutsideWorkspace {
 		return targetAbs, nil
 	}
-
-	relativeToRoot, err := filepath.Rel(rootAbs, targetAbs)
-	if err != nil {
-		return "", ErrInvalidFSPath
-	}
-	if relativeToRoot == ".." || strings.HasPrefix(relativeToRoot, ".."+string(os.PathSeparator)) {
-		return "", ErrFSPathOutsideWorkspace
+	if err := ensureFSPathWithinWorkspace(rootAbs, rootCanonical, targetAbs); err != nil {
+		return "", err
 	}
 
 	return targetAbs, nil
+}
+
+func ensureFSPathWithinWorkspace(rootAbs string, rootCanonical string, targetAbs string) error {
+	relativeToRoot, err := filepath.Rel(rootAbs, targetAbs)
+	if err != nil {
+		return ErrInvalidFSPath
+	}
+	if relativeToRoot == ".." || strings.HasPrefix(relativeToRoot, ".."+string(os.PathSeparator)) || filepath.IsAbs(relativeToRoot) {
+		return ErrFSPathOutsideWorkspace
+	}
+
+	if relativeToRoot == "." {
+		return nil
+	}
+
+	components := strings.Split(relativeToRoot, string(os.PathSeparator))
+	currentLexical := rootAbs
+	currentCanonical := rootCanonical
+	for index, component := range components {
+		if component == "" || component == "." {
+			continue
+		}
+		currentLexical = filepath.Join(currentLexical, component)
+		nextCanonical := filepath.Join(currentCanonical, component)
+
+		info, err := os.Lstat(currentLexical)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				candidate := nextCanonical
+				if index+1 < len(components) {
+					candidate = filepath.Join(append([]string{nextCanonical}, components[index+1:]...)...)
+				}
+				if !fsPathWithinRoot(candidate, rootCanonical) {
+					return ErrFSPathOutsideWorkspace
+				}
+				return nil
+			}
+			return err
+		}
+
+		if info.Mode()&os.ModeSymlink == 0 {
+			currentCanonical = nextCanonical
+			continue
+		}
+
+		resolved, err := filepath.EvalSymlinks(currentLexical)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				return ErrFSPathNotFound
+			}
+			return err
+		}
+		resolvedAbs, err := filepath.Abs(filepath.Clean(resolved))
+		if err != nil {
+			return ErrInvalidFSPath
+		}
+		if !fsPathWithinRoot(resolvedAbs, rootCanonical) {
+			return ErrFSPathOutsideWorkspace
+		}
+		currentLexical = resolvedAbs
+		currentCanonical = resolvedAbs
+	}
+
+	if !fsPathWithinRoot(currentCanonical, rootCanonical) {
+		return ErrFSPathOutsideWorkspace
+	}
+	return nil
+}
+
+func fsPathWithinRoot(path string, root string) bool {
+	relativeToRoot, err := filepath.Rel(root, filepath.Clean(path))
+	if err != nil {
+		return false
+	}
+	return relativeToRoot == "." ||
+		(relativeToRoot != ".." &&
+			!strings.HasPrefix(relativeToRoot, ".."+string(os.PathSeparator)) &&
+			!filepath.IsAbs(relativeToRoot))
 }
 
 func (r *Runtime) ReadFSPreview(path string, maxBytes int) (FSReadResult, error) {

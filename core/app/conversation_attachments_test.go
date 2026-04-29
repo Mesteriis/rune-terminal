@@ -83,6 +83,47 @@ func TestCreateAttachmentReferenceAppendsAuditEventWithProvenance(t *testing.T) 
 	}
 }
 
+func TestCreateAttachmentReferenceDoesNotAuditSuccessWhenStoreFails(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	dbConn, err := db.Open(context.Background(), filepath.Join(tempDir, "runtime.db"))
+	if err != nil {
+		t.Fatalf("db open: %v", err)
+	}
+	if err := dbConn.Close(); err != nil {
+		t.Fatalf("db close: %v", err)
+	}
+	auditLog, err := audit.NewLog(filepath.Join(tempDir, "audit.jsonl"))
+	if err != nil {
+		t.Fatalf("audit log: %v", err)
+	}
+	filePath := filepath.Join(tempDir, "notes.txt")
+	if err := os.WriteFile(filePath, []byte("notes"), 0o600); err != nil {
+		t.Fatalf("write attachment file: %v", err)
+	}
+
+	runtime := &Runtime{Audit: auditLog, DB: dbConn}
+	_, err = runtime.CreateAttachmentReference(CreateAttachmentReferenceRequest{
+		Path:         filePath,
+		WorkspaceID:  "ws-default",
+		ActionSource: "test.files.attach_to_ai",
+	})
+	if err == nil {
+		t.Fatalf("expected store failure")
+	}
+
+	events, err := runtime.Audit.List(10)
+	if err != nil {
+		t.Fatalf("audit list: %v", err)
+	}
+	for _, event := range events {
+		if event.ToolName == "agent.attachment_reference" && event.Success {
+			t.Fatalf("store failure must not append success audit event: %#v", event)
+		}
+	}
+}
+
 func TestCreateAttachmentReferenceRejectsPathsOutsideAllowedRoots(t *testing.T) {
 	t.Parallel()
 

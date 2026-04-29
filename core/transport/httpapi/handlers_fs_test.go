@@ -176,7 +176,7 @@ func TestListFSRejectsAbsolutePathOutsideWorkspace(t *testing.T) {
 	}
 }
 
-func TestListFSAllowsAbsolutePathOutsideWorkspaceWithExplicitFlag(t *testing.T) {
+func TestListFSRejectsAbsolutePathOutsideWorkspaceWithExplicitFlag(t *testing.T) {
 	t.Parallel()
 
 	repoRoot := t.TempDir()
@@ -197,24 +197,8 @@ func TestListFSAllowsAbsolutePathOutsideWorkspaceWithExplicitFlag(t *testing.T) 
 		),
 	)
 
-	if recorder.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d body=%s", recorder.Code, recorder.Body.String())
-	}
-
-	var payload struct {
-		Path  string `json:"path"`
-		Files []struct {
-			Name string `json:"name"`
-		} `json:"files"`
-	}
-	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
-		t.Fatalf("unmarshal response: %v", err)
-	}
-	if payload.Path != filepath.Clean(outsideRoot) {
-		t.Fatalf("unexpected path %q", payload.Path)
-	}
-	if len(payload.Files) != 1 || payload.Files[0].Name != "notes.txt" {
-		t.Fatalf("unexpected files payload: %#v", payload.Files)
+	if recorder.Code != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d body=%s", recorder.Code, recorder.Body.String())
 	}
 }
 
@@ -969,7 +953,7 @@ func TestReadFSPreviewRejectsPathOutsideWorkspace(t *testing.T) {
 	}
 }
 
-func TestReadFSPreviewAllowsPathOutsideWorkspaceWithExplicitFlag(t *testing.T) {
+func TestReadFSPreviewRejectsPathOutsideWorkspaceWithExplicitFlag(t *testing.T) {
 	t.Parallel()
 
 	repoRoot := t.TempDir()
@@ -991,21 +975,7 @@ func TestReadFSPreviewAllowsPathOutsideWorkspaceWithExplicitFlag(t *testing.T) {
 		),
 	)
 
-	if recorder.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d body=%s", recorder.Code, recorder.Body.String())
-	}
-
-	var payload struct {
-		Path    string `json:"path"`
-		Preview string `json:"preview"`
-	}
-	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
-		t.Fatalf("unmarshal response: %v", err)
-	}
-	if payload.Path != filepath.Clean(filePath) {
-		t.Fatalf("unexpected path %q", payload.Path)
-	}
-	if payload.Preview != "outside workspace" {
-		t.Fatalf("unexpected preview %q", payload.Preview)
+	if recorder.Code != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d body=%s", recorder.Code, recorder.Body.String())
 	}
 }

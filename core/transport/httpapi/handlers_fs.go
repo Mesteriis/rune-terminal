@@ -64,8 +64,7 @@ func (api *API) handleListFS(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Query().Get("path")
 	query := r.URL.Query().Get("query")
 	connectionID := r.URL.Query().Get("connection_id")
-	allowOutsideWorkspace := r.URL.Query().Get("allow_outside_workspace") == "1"
-	result, err := api.runtime.ListFSForConnection(r.Context(), path, query, connectionID, allowOutsideWorkspace)
+	result, err := api.runtime.ListFSForConnection(r.Context(), path, query, connectionID, false)
 	if err != nil {
 		writeFSError(w, err)
 		return
@@ -77,7 +76,6 @@ func (api *API) handleReadFS(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Query().Get("path")
 	connectionID := r.URL.Query().Get("connection_id")
 	maxBytes := parseInt(r.URL.Query().Get("max_bytes"), defaultFSPreviewBytes)
-	allowOutsideWorkspace := r.URL.Query().Get("allow_outside_workspace") == "1"
 	if maxBytes <= 0 {
 		maxBytes = defaultFSPreviewBytes
 	}
@@ -89,7 +87,7 @@ func (api *API) handleReadFS(w http.ResponseWriter, r *http.Request) {
 		path,
 		maxBytes,
 		connectionID,
-		allowOutsideWorkspace,
+		false,
 	)
 	if err != nil {
 		writeFSError(w, err)

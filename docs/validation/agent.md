@@ -40,6 +40,9 @@
   - files-panel `Attach file ... to AI` handoff through `POST /api/v1/agent/conversation/attachments/references`, shell attachment queue, and stream request `attachments`
   - AI attachment ingestion now evaluates the same runtime policy allowed-root and ignore-rule configuration before provider prompt assembly; metadata-only/redacted matches keep content out of prompts, and outside-root or denied attachments fail instead of being read through a raw HTTP attachment payload
   - AI attachment policy evaluation now canonicalizes filesystem paths before policy/read, uses the backend runtime repo root for repo-scoped ignore rules instead of trusting HTTP payload context, and writes failure audit events for policy-denied attachment submit/reference attempts
+  - attachment reference creation now appends the success audit event only
+    after the DB reference record is persisted, so a store failure cannot leave
+    audit history claiming that a reference was successfully created
   - stored attachment references can now be reused from the composer `Recent attachments` shelf and deleted from that same backend-owned library
   - transcript attachment chips sourced from backend conversation message attachment metadata
   - transcript attachment chips can now be re-queued directly back into the composer as reusable attachment references
@@ -211,6 +214,7 @@
 - `./scripts/go.sh test ./core/conversation ./core/transport/httpapi ./core/app`
 - `go test ./core/...`
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi`
+- `./scripts/go.sh test ./core/app -run 'TestCreateAttachmentReferenceDoesNotAuditSuccessWhenStoreFails' -count=1`
 - `./scripts/go.sh test ./core/agent ./core/app ./core/conversation ./core/transport/httpapi`
 - `npm --prefix frontend run test -- src/features/agent/api/client.test.ts src/widgets/ai/ai-panel-header-widget.test.tsx src/widgets/ai/ai-panel-widget.test.tsx`
 - `npm --prefix frontend run test -- src/features/agent/api/client.test.ts src/features/agent/api/provider-client.test.ts src/features/agent/model/provider-settings-draft.test.ts src/widgets/ai/ai-panel-widget.test.tsx`

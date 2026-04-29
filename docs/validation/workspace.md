@@ -11,6 +11,13 @@
       follows the active locale, and the settings shell framing plus
       general/runtime copy switch immediately across `ru`, `en`, `zh-CN`,
       and `es`
+    - local files transport list/read routes no longer honor the public
+      `allow_outside_workspace=1` query escape; authenticated HTTP callers
+      stay inside the runtime workspace root for active local filesystem reads
+    - local filesystem navigation now evaluates workspace containment against
+      canonical symlink targets before list/read/write/mkdir operations, so a
+      symlinked file or parent directory inside the repo cannot redirect an
+      active files/commander operation outside `RepoRoot`
     - `Settings -> Terminal` now participates in that same typed locale
       boundary: visible terminal settings copy comes from
       `terminal-settings-section-copy.ts` for `ru`, `en`, `zh-CN`, and
@@ -670,6 +677,7 @@ light` remains the system fallback, and `@media print` flattens shell
 - A fresh focused validation pass for the files terminal-handoff slice on `2026-04-26` confirmed `POST /api/v1/workspace/widgets/split` now accepts an explicit `working_dir` for split terminal creation, and the files widget can open a terminal at the current directory or a file row's containing directory while adding the returned runtime terminal widget to Dockview. The same pass reconfirmed `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestCreateSplitTerminalWidgetUsesRequestedWorkingDir|TestWorkspaceCreateSplitTerminalWidgetRejectsInvalidDirection' -count=1`, `npm --prefix frontend run test -- src/features/terminal/api/client.test.ts src/widgets/files/files-panel-widget.test.tsx`, `npm --prefix frontend run lint:active`, and `npm --prefix frontend run build` all pass. This slice validates the backend launch option and frontend request/add-panel path; it does not claim remote SSH cwd semantics, because the current SSH launcher still starts the remote login shell without applying `working_dir`.
 - A fresh focused validation pass for the preview CSV/TSV table slice on `2026-04-26` confirmed `.csv`, `.tsv`, and `.tab` text previews now render as bounded tables in the backend-owned preview widget while non-table text and hex previews keep the existing rendering path. The same pass reconfirmed `npm --prefix frontend run test -- src/widgets/preview/preview-table.test.ts src/widgets/preview/preview-panel-widget.test.tsx`, `npm --prefix frontend run lint:active`, and `npm --prefix frontend run build` all pass. This slice intentionally uses a small dependency-free parser and does not claim full spreadsheet behavior, formulas, or large-file virtualization.
 - A fresh focused validation pass for the shell topbar desktop-window controls slice on `2026-04-26` confirmed the visible close/minimize/fullscreen controls no longer leave minimize/fullscreen inert: frontend unit coverage verifies the shell callbacks and Tauri invoke names, while the desktop Rust command surface now exposes `minimize_window` and `toggle_fullscreen_window` beside the existing guarded close path. The same pass reconfirmed `npm --prefix frontend run test -- src/widgets/shell/shell-topbar-widget.test.tsx src/shared/api/runtime.test.ts src/shared/ui/components/accessibility-contracts.test.tsx`, `npm run lint:frontend`, `npm run build:frontend`, `npm run tauri:check`, and `git diff --check` all pass. This slice does not claim a fresh interactive desktop click smoke.
+- A fresh focused validation pass for the local filesystem boundary slice on `2026-04-29` confirmed public HTTP list/read routes ignore the old `allow_outside_workspace=1` query escape, and the local runtime rejects symlinked files or parent directories that resolve outside `RepoRoot` before list/read/write/mkdir can follow them. The same pass reconfirmed `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'Test(ReadFSPreview|ListFS|MkdirFS|WriteFSFile|OpenFSExternal|CopyFS|MoveFS|DeleteFS|RenameFS|CreateAttachmentReference)' -count=1`, `./scripts/go.sh test ./core/app ./core/transport/httpapi -count=1`, and the broader `./scripts/go.sh test ./cmd/... ./core/... ./internal/...` plus `./scripts/go.sh build ./cmd/... ./core/... ./internal/...` checks all pass.
 
 ### Task runtime limitations
 

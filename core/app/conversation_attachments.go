@@ -58,15 +58,6 @@ func (r *Runtime) CreateAttachmentReference(
 		ModifiedTime: info.ModTime().UTC().Unix(),
 	}
 
-	_ = r.Audit.Append(audit.Event{
-		ToolName:      "agent.attachment_reference",
-		Summary:       fmt.Sprintf("create attachment reference: %s", trimSummary(name)),
-		WorkspaceID:   strings.TrimSpace(request.WorkspaceID),
-		ActionSource:  strings.TrimSpace(request.ActionSource),
-		Success:       true,
-		AffectedPaths: []string{normalizedPath},
-	})
-
 	if err := r.storeAttachmentReference(
 		context.Background(),
 		reference,
@@ -75,6 +66,15 @@ func (r *Runtime) CreateAttachmentReference(
 	); err != nil {
 		return conversation.AttachmentReference{}, err
 	}
+
+	_ = r.Audit.Append(audit.Event{
+		ToolName:      "agent.attachment_reference",
+		Summary:       fmt.Sprintf("create attachment reference: %s", trimSummary(name)),
+		WorkspaceID:   strings.TrimSpace(request.WorkspaceID),
+		ActionSource:  strings.TrimSpace(request.ActionSource),
+		Success:       true,
+		AffectedPaths: []string{normalizedPath},
+	})
 
 	return reference, nil
 }

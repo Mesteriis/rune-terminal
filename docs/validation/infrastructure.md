@@ -12,6 +12,8 @@
   - frontend active-path import guard now enforces shared UI upward-import boundaries and widget-to-app boundaries
   - Go test/build commands used by CI
   - HTTP transport safety guards for CORS/auth/body decoding
+  - HTTP filesystem list/read handlers no longer expose the old public
+    `allow_outside_workspace=1` escape hatch
   - `cmd/rterm-core` JSON response helpers on write/error paths
   - startup runtime initialization under bounded timeout and single catalog-store ownership
   - approval-grant TTL cleanup and fail-closed random ID generation
@@ -32,6 +34,7 @@
 - `./scripts/go.sh test ./cmd/... ./core/... ./internal/... -coverprofile=/tmp/rterm-go-coverage.out`
 - `./scripts/go.sh build ./cmd/... ./core/... ./internal/...`
 - `./scripts/go.sh test ./core/transport/httpapi ./cmd/rterm-core -run 'TestCORSRejectsDisallowedOriginSimpleRequest|TestCORSRejectsDisallowedOriginPreflight|TestCORSAllowsPatchAndDeleteMethods|TestDecodeJSONRejectsOversizedBodies|TestWriteJSONErrorEscapesPayload|TestWriteJSONResponseDoesNotPanicOnWriterError|TestWriteJSONResponseWritesValidPayload|TestWriteFileAtomicOverwritesReadyPayload' -count=1`
+- `./scripts/go.sh test ./core/transport/httpapi -run 'Test(ListFSRejectsAbsolutePathOutsideWorkspaceWithExplicitFlag|ReadFSPreviewRejectsPathOutsideWorkspaceWithExplicitFlag)' -count=1`
 - `./scripts/go.sh test ./internal/ids ./core/toolruntime ./core/app -run 'TestNewPanicsWhenEntropyUnavailable|TestTokenPanicsWhenEntropyUnavailable|TestApprovalStoreCreateCleansExpiredGrants|TestApprovalStoreConfirmCleansExpiredPendingRecords|TestExecutorConfirmationFlow|TestExecutorApprovalGrantIsSingleUse|TestBootstrapSessionsKeepsRemoteWidgetAsDisconnectedWhenConnectionMissing' -count=1`
 - `./scripts/go.sh test ./core/conversation ./core/workspace ./core/audit -run 'TestLogAppendAndList|TestLogListLimitKeepsOnlyTailWindow|TestListReturnsEmptySliceWhenLogDoesNotExist|TestSaveAndLoadSnapshotRoundTrip|TestLoadSnapshotDefaultsWhenFileMissing|TestRenameConversation|TestDeleteConversation' -count=1`
 - `./scripts/go.sh test ./core/plugins -run 'TestInvokeFailsWhenHandshakeExceedsTimeout|TestReadJSONLineWithTimeoutClosesReaderOnTimeout' -count=1`
