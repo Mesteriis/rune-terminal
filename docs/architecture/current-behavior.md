@@ -210,6 +210,8 @@ It is intentionally operational, not narrative.
 - Selecting an active connection does not imply that the target has passed preflight checks or that any remote session is live.
 - Widgets keep their own `connection_id`, so tabs and sessions remain explicitly bound after creation.
 - Connection selection and profile creation are exposed through dedicated management routes and mirrored in the shell connections panel.
+- Direct HTTP connection mutations (`save_ssh`, active selection, preflight check) append core-owned audit events with `target_connection_id`, success/failure, and normalized error text.
+- Direct HTTP remote profile mutations (`save`, `delete`, `import-ssh-config`) append core-owned audit events; SSH config import also records the imported config path in `affected_paths`.
 - Each connection snapshot now includes:
   - `status`: catalog-level profile state such as `ready` or `configured`
   - `runtime.check_status`: last preflight result (`unchecked`, `passed`, `failed`)

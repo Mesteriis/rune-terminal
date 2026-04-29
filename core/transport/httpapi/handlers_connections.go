@@ -15,9 +15,25 @@ func (api *API) handleCheckConnection(w http.ResponseWriter, r *http.Request) {
 	connectionID := r.PathValue("connectionID")
 	connection, snapshot, err := api.runtime.CheckConnection(r.Context(), connectionID)
 	if err != nil {
+		api.appendConnectionAudit(
+			"connections.check",
+			"Check connection",
+			"http.connections",
+			connectionID,
+			nil,
+			err,
+		)
 		writeConnectionError(w, err)
 		return
 	}
+	api.appendConnectionAudit(
+		"connections.check",
+		"Check connection",
+		"http.connections",
+		connection.ID,
+		nil,
+		nil,
+	)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"connection":  connection,
 		"connections": snapshot,
@@ -34,9 +50,25 @@ func (api *API) handleSelectConnection(w http.ResponseWriter, r *http.Request) {
 	}
 	snapshot, err := api.runtime.SelectActiveConnection(payload.ConnectionID)
 	if err != nil {
+		api.appendConnectionAudit(
+			"connections.select",
+			"Select active connection",
+			"http.connections",
+			payload.ConnectionID,
+			nil,
+			err,
+		)
 		writeConnectionError(w, err)
 		return
 	}
+	api.appendConnectionAudit(
+		"connections.select",
+		"Select active connection",
+		"http.connections",
+		payload.ConnectionID,
+		nil,
+		nil,
+	)
 	writeJSON(w, http.StatusOK, snapshot)
 }
 
@@ -48,12 +80,50 @@ func (api *API) handleSaveSSHConnection(w http.ResponseWriter, r *http.Request) 
 	}
 	connection, snapshot, err := api.runtime.SaveSSHConnection(payload)
 	if err != nil {
+		api.appendConnectionAudit(
+			"connections.save_ssh",
+			"Save SSH connection",
+			"http.connections",
+			payload.ID,
+			nil,
+			err,
+		)
 		writeConnectionError(w, err)
 		return
 	}
+	api.appendConnectionAudit(
+		"connections.save_ssh",
+		"Save SSH connection",
+		"http.connections",
+		connection.ID,
+		nil,
+		nil,
+	)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"connection":  connection,
 		"connections": snapshot,
+	})
+}
+
+func (api *API) appendConnectionAudit(
+	toolName string,
+	summary string,
+	actionSource string,
+	connectionID string,
+	affectedPaths []string,
+	err error,
+) {
+	if api == nil || api.runtime == nil {
+		return
+	}
+	api.runtime.AppendConnectionAudit(app.ConnectionAuditInput{
+		ToolName:           toolName,
+		Summary:            summary,
+		ActionSource:       actionSource,
+		TargetConnectionID: connectionID,
+		AffectedPaths:      affectedPaths,
+		Success:            err == nil,
+		Error:              err,
 	})
 }
 

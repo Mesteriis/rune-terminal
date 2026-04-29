@@ -107,6 +107,38 @@ func TestRemoteProfilesEndpointsListSaveAndDelete(t *testing.T) {
 	if len(deleted.Profiles) != 0 {
 		t.Fatalf("expected empty profile list after delete, got %d", len(deleted.Profiles))
 	}
+
+	auditRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(auditRecorder, authedJSONRequest(t, http.MethodGet, "/api/v1/audit?limit=10", nil))
+	if auditRecorder.Code != http.StatusOK {
+		t.Fatalf("expected audit 200, got %d", auditRecorder.Code)
+	}
+
+	var auditResponse struct {
+		Events []struct {
+			ToolName           string `json:"tool_name"`
+			ActionSource       string `json:"action_source"`
+			TargetConnectionID string `json:"target_connection_id"`
+			Success            bool   `json:"success"`
+			Error              string `json:"error"`
+		} `json:"events"`
+	}
+	if err := json.Unmarshal(auditRecorder.Body.Bytes(), &auditResponse); err != nil {
+		t.Fatalf("unmarshal audit response: %v", err)
+	}
+	expectedTools := []string{"remote_profiles.save", "remote_profiles.delete"}
+	if len(auditResponse.Events) != len(expectedTools) {
+		t.Fatalf("expected remote profile audit events %#v, got %#v", expectedTools, auditResponse.Events)
+	}
+	for index, expectedTool := range expectedTools {
+		event := auditResponse.Events[index]
+		if event.ToolName != expectedTool || event.ActionSource != "http.remote_profiles" || !event.Success || event.Error != "" {
+			t.Fatalf("unexpected remote profile audit event %d: %#v", index, event)
+		}
+		if event.TargetConnectionID != saved.Profile.ID {
+			t.Fatalf("expected target connection %q, got %#v", saved.Profile.ID, event)
+		}
+	}
 }
 
 func TestRemoteProfilesDeleteReturnsNotFoundForMissingProfile(t *testing.T) {
@@ -121,6 +153,32 @@ func TestRemoteProfilesDeleteReturnsNotFoundForMissingProfile(t *testing.T) {
 
 	if recorder.Code != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d", recorder.Code)
+	}
+
+	auditRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(auditRecorder, authedJSONRequest(t, http.MethodGet, "/api/v1/audit?limit=10", nil))
+	if auditRecorder.Code != http.StatusOK {
+		t.Fatalf("expected audit 200, got %d", auditRecorder.Code)
+	}
+	var auditResponse struct {
+		Events []struct {
+			ToolName           string `json:"tool_name"`
+			ActionSource       string `json:"action_source"`
+			TargetConnectionID string `json:"target_connection_id"`
+			Success            bool   `json:"success"`
+			Error              string `json:"error"`
+		} `json:"events"`
+	}
+	if err := json.Unmarshal(auditRecorder.Body.Bytes(), &auditResponse); err != nil {
+		t.Fatalf("unmarshal audit response: %v", err)
+	}
+	if len(auditResponse.Events) != 1 {
+		t.Fatalf("expected one failure audit event, got %#v", auditResponse.Events)
+	}
+	event := auditResponse.Events[0]
+	if event.ToolName != "remote_profiles.delete" || event.ActionSource != "http.remote_profiles" ||
+		event.TargetConnectionID != "missing-profile" || event.Success || event.Error == "" {
+		t.Fatalf("unexpected remote profile delete failure audit event: %#v", event)
 	}
 }
 
@@ -162,6 +220,35 @@ Host prod
 	}
 	if len(result.Profiles) != 1 {
 		t.Fatalf("expected profiles list to include imported profile, got %#v", result.Profiles)
+	}
+
+	auditRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(auditRecorder, authedJSONRequest(t, http.MethodGet, "/api/v1/audit?limit=10", nil))
+	if auditRecorder.Code != http.StatusOK {
+		t.Fatalf("expected audit 200, got %d", auditRecorder.Code)
+	}
+	var auditResponse struct {
+		Events []struct {
+			ToolName      string   `json:"tool_name"`
+			ActionSource  string   `json:"action_source"`
+			AffectedPaths []string `json:"affected_paths"`
+			Success       bool     `json:"success"`
+			Error         string   `json:"error"`
+		} `json:"events"`
+	}
+	if err := json.Unmarshal(auditRecorder.Body.Bytes(), &auditResponse); err != nil {
+		t.Fatalf("unmarshal audit response: %v", err)
+	}
+	if len(auditResponse.Events) != 1 {
+		t.Fatalf("expected one import audit event, got %#v", auditResponse.Events)
+	}
+	event := auditResponse.Events[0]
+	if event.ToolName != "remote_profiles.import_ssh_config" || event.ActionSource != "http.remote_profiles" ||
+		!event.Success || event.Error != "" {
+		t.Fatalf("unexpected import audit event: %#v", event)
+	}
+	if len(event.AffectedPaths) != 1 || event.AffectedPaths[0] != configPath {
+		t.Fatalf("expected imported config path %q in audit, got %#v", configPath, event)
 	}
 }
 

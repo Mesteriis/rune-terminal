@@ -2,7 +2,7 @@
 
 ## Last verified state
 
-- Date: `2026-04-26`
+- Date: `2026-04-29`
 - State: `PARTIALLY VERIFIED` (core workflow hardening verified; external auth breadth remains limited)
 - Scope:
   - saved profile create/list/select/check/open-shell flows
@@ -20,6 +20,11 @@
     host-reachability failures
   - stale launch-state reset when saved profile target/auth fields change
   - settings-shell remote profile create/edit/delete/list/import entrypoint
+  - HTTP connection mutations now append core-owned audit events for
+    save/select/check success and failure paths
+  - HTTP remote profile mutations now append core-owned audit events for
+    save/delete/import success and failure paths, with SSH config import
+    recording the imported config path
   - settings-shell remote preflight/default-target controls plus launch
     status visibility
   - filterable saved-profile inventory inside the active settings shell
@@ -43,6 +48,8 @@
   - `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestListFSForConnectionParsesRemoteDirectoryEntries|TestReadFSPreviewForConnectionFormatsRemoteBinaryPreview|TestWriteFSFileForConnectionSendsRemoteContentOverSSH|TestOpenPreviewInNewBlockAllowsRemotePathWithoutLocalStat|TestListFSRoutesRemoteConnectionAwareRequestsThroughSSH|TestReadFSPreviewRoutesRemoteConnectionAwareRequestsThroughSSH' -count=1`
   - `./scripts/go.sh test ./core/app ./core/transport/httpapi -count=1`
   - `./scripts/go.sh test ./core/transport/httpapi ./core/app -run 'TestConnectionsEndpointsListSelectAndSave|TestRemoteProfilesEndpointsListSaveAndDelete|TestObserveConnectionLaunchMarksLaunch(Failed|Succeeded)' -count=1`
+  - `./scripts/go.sh test ./core/transport/httpapi -run 'TestConnectionsEndpointsListSelectAndSave|TestConnectionsSelectReturnsNotFound' -count=1`
+  - `./scripts/go.sh test ./core/transport/httpapi -run 'TestRemoteProfilesEndpointsListSaveAndDelete|TestRemoteProfilesDeleteReturnsNotFoundForMissingProfile|TestRemoteProfilesImportSSHConfig' -count=1`
   - `npm --prefix frontend run test -- src/features/remote/api/client.test.ts src/widgets/settings/remote-profiles-settings-section.test.tsx --reporter=verbose`
   - `npm --prefix frontend run test -- src/features/remote/api/client.test.ts src/widgets/settings/remote-profiles-settings-section.test.tsx src/widgets/terminal/open-remote-profile-session.test.ts --reporter=verbose`
   - `npm --prefix frontend run test -- src/widgets/settings/remote-profiles-settings-section.test.tsx --reporter=verbose`

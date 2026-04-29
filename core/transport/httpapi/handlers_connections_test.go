@@ -84,6 +84,38 @@ func TestConnectionsEndpointsListSelectAndSave(t *testing.T) {
 	if checked.Connection.ID != saved.Connection.ID {
 		t.Fatalf("expected checked connection %q, got %q", saved.Connection.ID, checked.Connection.ID)
 	}
+
+	auditRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(auditRecorder, authedJSONRequest(t, http.MethodGet, "/api/v1/audit?limit=10", nil))
+	if auditRecorder.Code != http.StatusOK {
+		t.Fatalf("expected audit 200, got %d", auditRecorder.Code)
+	}
+
+	var auditResponse struct {
+		Events []struct {
+			ToolName           string `json:"tool_name"`
+			ActionSource       string `json:"action_source"`
+			TargetConnectionID string `json:"target_connection_id"`
+			Success            bool   `json:"success"`
+			Error              string `json:"error"`
+		} `json:"events"`
+	}
+	if err := json.Unmarshal(auditRecorder.Body.Bytes(), &auditResponse); err != nil {
+		t.Fatalf("unmarshal audit response: %v", err)
+	}
+	expectedTools := []string{"connections.save_ssh", "connections.select", "connections.check"}
+	if len(auditResponse.Events) != len(expectedTools) {
+		t.Fatalf("expected connection audit events %#v, got %#v", expectedTools, auditResponse.Events)
+	}
+	for index, expectedTool := range expectedTools {
+		event := auditResponse.Events[index]
+		if event.ToolName != expectedTool || event.ActionSource != "http.connections" || !event.Success || event.Error != "" {
+			t.Fatalf("unexpected connection audit event %d: %#v", index, event)
+		}
+		if event.TargetConnectionID != saved.Connection.ID {
+			t.Fatalf("expected target connection %q, got %#v", saved.Connection.ID, event)
+		}
+	}
 }
 
 func TestConnectionsSelectReturnsNotFound(t *testing.T) {
@@ -98,5 +130,31 @@ func TestConnectionsSelectReturnsNotFound(t *testing.T) {
 
 	if recorder.Code != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d", recorder.Code)
+	}
+
+	auditRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(auditRecorder, authedJSONRequest(t, http.MethodGet, "/api/v1/audit?limit=10", nil))
+	if auditRecorder.Code != http.StatusOK {
+		t.Fatalf("expected audit 200, got %d", auditRecorder.Code)
+	}
+	var auditResponse struct {
+		Events []struct {
+			ToolName           string `json:"tool_name"`
+			ActionSource       string `json:"action_source"`
+			TargetConnectionID string `json:"target_connection_id"`
+			Success            bool   `json:"success"`
+			Error              string `json:"error"`
+		} `json:"events"`
+	}
+	if err := json.Unmarshal(auditRecorder.Body.Bytes(), &auditResponse); err != nil {
+		t.Fatalf("unmarshal audit response: %v", err)
+	}
+	if len(auditResponse.Events) != 1 {
+		t.Fatalf("expected one failure audit event, got %#v", auditResponse.Events)
+	}
+	event := auditResponse.Events[0]
+	if event.ToolName != "connections.select" || event.ActionSource != "http.connections" ||
+		event.TargetConnectionID != "missing" || event.Success || event.Error == "" {
+		t.Fatalf("unexpected select failure audit event: %#v", event)
 	}
 }
