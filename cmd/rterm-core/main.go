@@ -112,6 +112,7 @@ type watcherRuntime struct {
 	pollInterval  time.Duration
 	workers       int
 	authToken     string
+	taskToken     string
 	taskHandlers  map[string]handlerFunc
 
 	jobs        chan watcherTask
@@ -408,6 +409,10 @@ func newWatcherRuntime(backendURL, workerID, shutdownToken string, workers int, 
 	if authToken == "" {
 		authToken = os.Getenv("RTERM_AUTH_TOKEN")
 	}
+	taskToken := os.Getenv("RTERM_BACKEND_TASK_CONTROL_TOKEN")
+	if taskToken == "" {
+		taskToken = os.Getenv("RTERM_TASK_CONTROL_TOKEN")
+	}
 	return &watcherRuntime{
 		client:        &http.Client{Timeout: 5 * time.Second},
 		backendURL:    strings.TrimRight(backendURL, "/"),
@@ -416,6 +421,7 @@ func newWatcherRuntime(backendURL, workerID, shutdownToken string, workers int, 
 		pollInterval:  pollInterval,
 		workers:       workers,
 		authToken:     strings.TrimSpace(authToken),
+		taskToken:     strings.TrimSpace(taskToken),
 		taskHandlers:  make(map[string]handlerFunc),
 		jobs:          make(chan watcherTask, workers*4),
 		pending:       make(map[string]watcherTask),
@@ -670,6 +676,9 @@ func (runtime *watcherRuntime) requestJSON(ctx context.Context, method string, p
 	}
 	if runtime.authToken != "" {
 		request.Header.Set("Authorization", "Bearer "+runtime.authToken)
+	}
+	if runtime.taskToken != "" {
+		request.Header.Set(httpapi.TaskControlTokenHeader, runtime.taskToken)
 	}
 
 	response, err := runtime.client.Do(request)

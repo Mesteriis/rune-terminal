@@ -90,6 +90,11 @@ Runtime ownership in public v1 is explicit:
 - watcher polls and executes claimed tasks, but never owns the database
 - SQLite remains core-owned
 - watcher does not run migrations
+- task creation, claim, and finalization routes are control-plane mutations:
+  they require the local core bearer token plus the separate task-control token
+  provisioned to owned watcher processes. Read-only task status routes remain
+  available to the desktop shell through the normal core bearer token for
+  shutdown checks.
 
 Ownership-based watcher control is part of v1:
 

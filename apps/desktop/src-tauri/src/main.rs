@@ -52,6 +52,7 @@ struct RuntimeProcessRecord {
     url: String,
     started_by_ui: bool,
     auth_token: Option<String>,
+    task_control_token: Option<String>,
     worker_id: Option<String>,
     shutdown_token: Option<String>,
 }
@@ -113,6 +114,8 @@ struct SettingsFile {
     watcher_mode: WatcherMode,
     #[serde(default)]
     core_auth_token: Option<String>,
+    #[serde(default)]
+    task_control_token: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -129,6 +132,8 @@ struct RuntimeFileCore {
     url: String,
     started_by_ui: bool,
     auth_token: Option<String>,
+    #[serde(default)]
+    task_control_token: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -437,6 +442,12 @@ fn start_or_attach_runtime(app: &AppHandle, state: &RuntimeState) -> Result<(), 
             .clone()
             .or(record.auth_token)
             .unwrap_or_else(random_token);
+        let task_control_token = settings
+            .task_control_token
+            .clone()
+            .or(record.task_control_token)
+            .unwrap_or_else(random_token);
+        settings.task_control_token = Some(task_control_token);
         RuntimeProcess {
             child: None,
             pid: record.pid,
@@ -448,7 +459,9 @@ fn start_or_attach_runtime(app: &AppHandle, state: &RuntimeState) -> Result<(), 
         }
     } else {
         let token = settings.core_auth_token.clone().unwrap_or_else(random_token);
-        spawn_core(&context, &token)?
+        let task_control_token = settings.task_control_token.clone().unwrap_or_else(random_token);
+        settings.task_control_token = Some(task_control_token.clone());
+        spawn_core(&context, &token, &task_control_token)?
     };
 
     if core.pid == 0 {
@@ -493,7 +506,12 @@ fn start_or_attach_runtime(app: &AppHandle, state: &RuntimeState) -> Result<(), 
             }
             return Err(err);
         }
-        match spawn_watcher(&context, &core.url, core.auth_token.as_deref()) {
+        match spawn_watcher(
+            &context,
+            &core.url,
+            core.auth_token.as_deref(),
+            settings.task_control_token.as_deref(),
+        ) {
             Ok(watcher) => watcher,
             Err(err) => {
                 if spawned_core_for_this_launch {
@@ -510,7 +528,11 @@ fn start_or_attach_runtime(app: &AppHandle, state: &RuntimeState) -> Result<(), 
         settings,
     };
 
-    write_runtime_file(&runtime.core, runtime.watcher.as_ref())?;
+    write_runtime_file(
+        &runtime.core,
+        runtime.watcher.as_ref(),
+        runtime.settings.task_control_token.as_deref(),
+    )?;
     save_settings(&runtime.settings)?;
     *state.inner.lock().map_err(|err| RuntimeError::Path(err.to_string()))? = Some(runtime);
 
@@ -664,7 +686,11 @@ where
     Ok(None)
 }
 
-fn spawn_core(context: &StartContext, token: &str) -> Result<RuntimeProcess, RuntimeError> {
+fn spawn_core(
+    context: &StartContext,
+    token: &str,
+    task_control_token: &str,
+) -> Result<RuntimeProcess, RuntimeError> {
     let ready_file = context.state_dir.join("runtime-ready.json");
     let _ = fs::remove_file(&ready_file);
 
@@ -679,6 +705,7 @@ fn spawn_core(context: &StartContext, token: &str) -> Result<RuntimeProcess, Run
         .arg("--ready-file")
         .arg(&ready_file)
         .env("RTERM_AUTH_TOKEN", token)
+        .env("RTERM_TASK_CONTROL_TOKEN", task_control_token)
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .spawn()
@@ -703,6 +730,7 @@ fn spawn_watcher(
     context: &StartContext,
     core_url: &str,
     backend_auth_token: Option<&str>,
+    task_control_token: Option<&str>,
 ) -> Result<RuntimeProcess, RuntimeError> {
     let worker_id = format!("watcher_{}", random_token_n(12));
     let shutdown_token = random_token_n(32);
@@ -717,6 +745,9 @@ fn spawn_watcher(
         .stderr(Stdio::inherit());
     if let Some(token) = backend_auth_token {
         command.env("RTERM_BACKEND_AUTH_TOKEN", token);
+    }
+    if let Some(token) = task_control_token {
+        command.env("RTERM_BACKEND_TASK_CONTROL_TOKEN", token);
     }
     let child = command
         .spawn()
@@ -935,6 +966,7 @@ where
             url: watcher_base_url.to_string(),
             started_by_ui,
             auth_token: None,
+            task_control_token: None,
             worker_id: Some(worker_id),
             shutdown_token,
         },
@@ -964,6 +996,7 @@ where
         url: core_base_url.to_string(),
         started_by_ui: true,
         auth_token,
+        task_control_token: None,
         worker_id: None,
         shutdown_token: None,
     })
@@ -1047,6 +1080,7 @@ fn validate_core_entry(entry: RuntimeFileCore) -> Option<RuntimeProcessRecord> {
         url: entry.url,
         started_by_ui: entry.started_by_ui,
         auth_token: entry.auth_token,
+        task_control_token: entry.task_control_token,
         worker_id: None,
         shutdown_token: None,
     })
@@ -1104,6 +1138,7 @@ fn validate_watcher_entry_for_core(
         url: entry.url.clone(),
         started_by_ui: entry.started_by_ui,
         auth_token: None,
+        task_control_token: None,
         worker_id: entry.worker_id.clone(),
         shutdown_token: entry.shutdown_token.clone(),
     })
@@ -1115,7 +1150,11 @@ struct RuntimeAttachment {
     watcher: Option<RuntimeProcessRecord>,
 }
 
-fn write_runtime_file(core: &RuntimeProcess, watcher: Option<&RuntimeProcess>) -> Result<(), RuntimeError> {
+fn write_runtime_file(
+    core: &RuntimeProcess,
+    watcher: Option<&RuntimeProcess>,
+    task_control_token: Option<&str>,
+) -> Result<(), RuntimeError> {
     let Some(path) = runtime_file_path() else {
         return Err(RuntimeError::Path("missing home directory".into()));
     };
@@ -1126,6 +1165,7 @@ fn write_runtime_file(core: &RuntimeProcess, watcher: Option<&RuntimeProcess>) -
             url: core.url.clone(),
             started_by_ui: core.started_by_ui,
             auth_token: core.auth_token.clone(),
+            task_control_token: task_control_token.map(str::to_string),
         }),
         watcher: watcher.and_then(|process| {
             let pid = process.pid;
@@ -1600,6 +1640,7 @@ mod tests {
             url: "http://127.0.0.1:7788".into(),
             started_by_ui: true,
             auth_token: None,
+            task_control_token: None,
             worker_id: Some("watcher_valid".into()),
             shutdown_token: Some("token".into()),
         };
@@ -1627,6 +1668,7 @@ mod tests {
             url: "http://127.0.0.1:7788".into(),
             started_by_ui: true,
             auth_token: None,
+            task_control_token: None,
             worker_id: Some("watcher_stale".into()),
             shutdown_token: Some("token".into()),
         };
@@ -1654,6 +1696,7 @@ mod tests {
             url: "http://127.0.0.1:7788".into(),
             started_by_ui: true,
             auth_token: None,
+            task_control_token: None,
             worker_id: Some("watcher_stale".into()),
             shutdown_token: Some("token".into()),
         };
@@ -1909,6 +1952,7 @@ mod tests {
                     url: "http://127.0.0.1:40100".into(),
                     started_by_ui: true,
                     auth_token: Some("token".into()),
+                    task_control_token: Some("task-token".into()),
                 }),
                 watcher: None,
             },
@@ -1930,6 +1974,7 @@ mod tests {
                     url: "http://127.0.0.1:40100".into(),
                     started_by_ui: true,
                     auth_token: Some("token".into()),
+                    task_control_token: Some("task-token".into()),
                 }),
                 watcher: Some(RuntimeFileWatcher {
                     pid: 42,
@@ -1945,6 +1990,7 @@ mod tests {
                     url: core.url,
                     started_by_ui: core.started_by_ui,
                     auth_token: core.auth_token,
+                    task_control_token: core.task_control_token,
                     worker_id: None,
                     shutdown_token: None,
                 })
@@ -2094,6 +2140,7 @@ mod tests {
             settings: SettingsFile {
                 watcher_mode: WatcherMode::Ephemeral,
                 core_auth_token: Some("token".into()),
+                task_control_token: Some("task-token".into()),
             },
         });
 
@@ -2122,6 +2169,7 @@ mod tests {
             settings: SettingsFile {
                 watcher_mode: WatcherMode::Persistent,
                 core_auth_token: Some("token".into()),
+                task_control_token: Some("task-token".into()),
             },
         });
 
@@ -2167,6 +2215,7 @@ mod tests {
             settings: SettingsFile {
                 watcher_mode: WatcherMode::Persistent,
                 core_auth_token: Some("token".into()),
+                task_control_token: Some("task-token".into()),
             },
         });
 
@@ -2203,6 +2252,7 @@ mod tests {
             settings: SettingsFile {
                 watcher_mode: WatcherMode::Ephemeral,
                 core_auth_token: Some("token".into()),
+                task_control_token: Some("task-token".into()),
             },
         });
 
@@ -2250,6 +2300,7 @@ mod tests {
             settings: SettingsFile {
                 watcher_mode: WatcherMode::Ephemeral,
                 core_auth_token: Some("token".into()),
+                task_control_token: Some("task-token".into()),
             },
         });
 
@@ -2291,6 +2342,7 @@ mod tests {
             settings: SettingsFile {
                 watcher_mode: WatcherMode::Ephemeral,
                 core_auth_token: None,
+                task_control_token: Some("task-token".into()),
             },
         });
 

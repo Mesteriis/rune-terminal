@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -52,6 +53,7 @@ type Runtime struct {
 	ConversationProviderFactory ConversationProviderFactory
 	TaskStore                   *tasks.Store
 	TaskService                 *tasks.Service
+	TaskControlToken            string
 	conversationStreams         conversationStreamRegistry
 	restoredMu                  sync.RWMutex
 	restored                    map[string]terminal.State
@@ -129,6 +131,7 @@ func NewRuntime(repoRoot string, stateDir string) (*Runtime, error) {
 		DB:                          dbConn,
 		TaskStore:                   taskStore,
 		TaskService:                 tasks.NewService(taskStore),
+		TaskControlToken:            strings.TrimSpace(os.Getenv("RTERM_TASK_CONTROL_TOKEN")),
 		Policy:                      policyStore,
 		Audit:                       auditLog,
 		Plugins:                     plugins.NewRuntime(nil, 0),

@@ -688,13 +688,14 @@ light` remains the system fallback, and `@media print` flattens shell
     - `last_error_at`
     - `next_retry_at`
 - Task lifecycle transitions are persisted in `task_events`, including retry visibility transitions (`running -> pending` with `retry_scheduled`, `running -> failed` with `retry_exhausted`).
-- `core` task API is wired under `/api/v1/tasks/*` (`create`, `claim`, `done`, `fail`, `active`, `stats`); watcher never accesses SQLite directly.
+- `core` task API is wired under `/api/v1/tasks/*` (`create`, `claim`, `done`, `fail`, `active`, `stats`); watcher never accesses SQLite directly. Mutating task control routes (`create`, `claim`, `done`, `fail`) now require the normal core bearer token plus `X-Rterm-Task-Token`; desktop provisions a separate `task_control_token` to owned core/watcher processes.
 - Task create API supports optional retry policy (`max_retries`, `retry_backoff_seconds`); defaults preserve legacy behavior (no retries unless explicitly configured).
 - Retry scheduling is decided only in core state transitions: on failure with remaining attempts, task is moved back to `pending`, ownership is cleared, `retry_count` increments, and `next_retry_at` is set with bounded exponential backoff (`1..3600s` cap). Exhausted attempts finalize as `failed`.
 - Task claim readiness uses effective ready time `COALESCE(next_retry_at, run_at)`, so retry backoff delay is enforced through the same persisted claim pipeline.
 - Desktop watcher spawn is explicit and identity-bound:
     - `rterm-core watcher --backend=<core_url> --listen=127.0.0.1:7788 --worker-id=<worker_id> --shutdown-token=<shutdown_token>`
     - watcher metadata is persisted in `~/.rterm/runtime.json` and validated through `/health` + `/watcher/state`; state discovery returns worker/backend identity but does not return the shutdown token.
+    - watcher task API calls include the desktop-provisioned task-control token via `X-Rterm-Task-Token`; this token is separate from the frontend-visible core bearer token.
 - Desktop ephemeral shutdown uses active-task guard (`GET /api/v1/tasks/active` with Bearer auth), then requests watcher shutdown via `POST /watcher/shutdown?worker_id=...` plus `X-Rterm-Watcher-Token`, waits for watcher `/health` disappearance as terminal confirmation, and only then proceeds to core stop.
 - Watcher shutdown endpoint validates ownership proof and now returns success only after terminal watcher state is reached:
     - polling stop signal delivered
@@ -706,6 +707,10 @@ light` remains the system fallback, and `@media print` flattens shell
 - Verified in this branch via local commands:
     - `go test ./core/... ./cmd/rterm-core/... -count=1`
     - `cargo check -q --manifest-path apps/desktop/src-tauri/Cargo.toml`
+    - `go test ./core/transport/httpapi -run 'TestTaskMutationRoutes' -count=1`
+    - `go test ./cmd/rterm-core -run 'TestWatcherTaskRequestsIncludeTaskControlToken' -count=1`
+- During this validation pass, one first full Go run hit the existing `TestCancelConversationStreamCancelsActiveProviderRun` SSE ordering instability; rerunning that focused test with `-count=3` passed, and the subsequent full `go test ./core/... ./cmd/rterm-core/... -count=1` pass was green.
+- `cargo fmt --manifest-path apps/desktop/src-tauri/Cargo.toml --check` was not available in this local toolchain because `cargo-fmt` / `rustfmt` is not installed.
 - Targeted retry/backoff tests are present in:
     - `core/db/migrator_retry_test.go` (fresh/existing migration safety for retry schema)
     - `core/tasks/retry_test.go` (retry scheduling, backoff claim gating, eventual success, exhaustion, shutdown-path consistency)

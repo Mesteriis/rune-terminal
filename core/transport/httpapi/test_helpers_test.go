@@ -7,7 +7,9 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/Mesteriis/rune-terminal/core/agent"
@@ -93,19 +95,20 @@ func newTestHandlerWithConversationProviderAndRepoRoot(
 		}
 	}
 	runtime := &app.Runtime{
-		RepoRoot:      repoRoot,
-		HomeDir:       "/home/testuser",
-		Paths:         paths,
-		Workspace:     workspace.NewService(workspace.BootstrapDefault()),
-		Terminals:     terminal.NewService(terminal.DefaultLauncher()),
-		Connections:   connectionStore,
-		PluginCatalog: pluginCatalogStore,
-		Agent:         agentStore,
-		Conversation:  conversationStore,
-		Execution:     executionStore,
-		Policy:        policyStore,
-		Audit:         auditLog,
-		Registry:      registry,
+		RepoRoot:         repoRoot,
+		HomeDir:          "/home/testuser",
+		Paths:            paths,
+		Workspace:        workspace.NewService(workspace.BootstrapDefault()),
+		Terminals:        terminal.NewService(terminal.DefaultLauncher()),
+		Connections:      connectionStore,
+		PluginCatalog:    pluginCatalogStore,
+		Agent:            agentStore,
+		Conversation:     conversationStore,
+		Execution:        executionStore,
+		Policy:           policyStore,
+		Audit:            auditLog,
+		Registry:         registry,
+		TaskControlToken: strings.TrimSpace(os.Getenv("RTERM_TASK_CONTROL_TOKEN")),
 	}
 	dbConn, err := db.Open(context.Background(), filepath.Join(tempDir, "runtime.sqlite"))
 	if err != nil {

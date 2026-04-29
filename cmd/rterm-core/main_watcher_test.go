@@ -200,3 +200,29 @@ func TestWatcherStopsTaskAPICallsAfterTerminalShutdown(t *testing.T) {
 		t.Fatalf("unexpected task api calls after terminal shutdown: before=%d after=%d", afterShutdown, claimCalls.Load())
 	}
 }
+
+func TestWatcherTaskRequestsIncludeTaskControlToken(t *testing.T) {
+	t.Setenv("RTERM_TASK_CONTROL_TOKEN", "task-control-token")
+
+	var sawTaskToken atomic.Bool
+	backend := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/api/v1/tasks/claim" {
+			writer.WriteHeader(http.StatusNotFound)
+			return
+		}
+		if request.Header.Get("X-Rterm-Task-Token") == "task-control-token" {
+			sawTaskToken.Store(true)
+		}
+		writer.WriteHeader(http.StatusOK)
+		_, _ = writer.Write([]byte(`{"tasks":[],"count":0}`))
+	}))
+	defer backend.Close()
+
+	runtime := newWatcherRuntime(backend.URL, "watcher_test", "shutdown-token", 1, 10*time.Millisecond)
+	if _, err := runtime.claimTasks(context.Background(), 1); err != nil {
+		t.Fatalf("claim tasks: %v", err)
+	}
+	if !sawTaskToken.Load() {
+		t.Fatal("watcher task request did not include task control token")
+	}
+}

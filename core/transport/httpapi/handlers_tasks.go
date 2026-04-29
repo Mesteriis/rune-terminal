@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"crypto/subtle"
 	"errors"
 	"net/http"
 	"strings"
@@ -8,9 +9,14 @@ import (
 	"github.com/Mesteriis/rune-terminal/core/tasks"
 )
 
+const TaskControlTokenHeader = "X-Rterm-Task-Token"
+
 func (api *API) handleCreateTask(w http.ResponseWriter, r *http.Request) {
 	if api.runtime.TaskService == nil {
 		writeInternalError(w, errors.New("task service is not available"))
+		return
+	}
+	if !api.requireTaskControlToken(w, r) {
 		return
 	}
 
@@ -31,6 +37,9 @@ func (api *API) handleCreateTask(w http.ResponseWriter, r *http.Request) {
 func (api *API) handleClaimTask(w http.ResponseWriter, r *http.Request) {
 	if api.runtime.TaskService == nil {
 		writeInternalError(w, errors.New("task service is not available"))
+		return
+	}
+	if !api.requireTaskControlToken(w, r) {
 		return
 	}
 
@@ -56,6 +65,9 @@ func (api *API) handleClaimTask(w http.ResponseWriter, r *http.Request) {
 func (api *API) handleMarkTaskDone(w http.ResponseWriter, r *http.Request) {
 	if api.runtime.TaskService == nil {
 		writeInternalError(w, errors.New("task service is not available"))
+		return
+	}
+	if !api.requireTaskControlToken(w, r) {
 		return
 	}
 
@@ -88,6 +100,9 @@ func (api *API) handleMarkTaskDone(w http.ResponseWriter, r *http.Request) {
 func (api *API) handleMarkTaskFail(w http.ResponseWriter, r *http.Request) {
 	if api.runtime.TaskService == nil {
 		writeInternalError(w, errors.New("task service is not available"))
+		return
+	}
+	if !api.requireTaskControlToken(w, r) {
 		return
 	}
 
@@ -157,6 +172,20 @@ func (api *API) handleTaskStats(w http.ResponseWriter, r *http.Request) {
 		Failed:  stats.Failed,
 	}
 	writeJSON(w, http.StatusOK, payload)
+}
+
+func (api *API) requireTaskControlToken(w http.ResponseWriter, r *http.Request) bool {
+	expected := strings.TrimSpace(api.runtime.TaskControlToken)
+	if expected == "" {
+		writeServiceUnavailable(w, "task_control_auth_not_configured", "task control token not configured")
+		return false
+	}
+	actual := strings.TrimSpace(r.Header.Get(TaskControlTokenHeader))
+	if subtle.ConstantTimeCompare([]byte(actual), []byte(expected)) != 1 {
+		writeUnauthorized(w)
+		return false
+	}
+	return true
 }
 
 func writeTaskServiceError(w http.ResponseWriter, err error) {
