@@ -154,12 +154,17 @@ func (r *Runtime) UpdateMCPServer(
 		}
 	}
 
+	headers := cloneMCPHeaders(normalizedRequest.Headers)
+	if existingSpec.Remote != nil {
+		headers = mergeMCPHeadersPreservingRedactedSecrets(existingSpec.Remote.Headers, normalizedRequest.Headers)
+	}
+
 	if err := r.MCP.Registry().Update(plugins.MCPServerSpec{
 		ID:   id,
 		Type: plugins.MCPServerTypeRemote,
 		Remote: &plugins.MCPRemoteConfig{
 			Endpoint: normalizedRequest.Endpoint,
-			Headers:  cloneMCPHeaders(normalizedRequest.Headers),
+			Headers:  headers,
 		},
 	}); err != nil {
 		return plugins.MCPServerSnapshot{}, err

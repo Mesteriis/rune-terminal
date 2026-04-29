@@ -20,6 +20,7 @@ const (
 	MCPTemplateAuthNone        MCPTemplateAuthKind = "none"
 	MCPTemplateAuthBearerToken MCPTemplateAuthKind = "bearer_token"
 	MCPTemplateAuthHeaderValue MCPTemplateAuthKind = "header_value"
+	MCPRedactedSecretValue                         = "********"
 )
 
 type MCPTemplateAuth struct {
@@ -125,6 +126,68 @@ func cloneMCPHeaders(headers map[string]string) map[string]string {
 		cloned[key] = value
 	}
 	return cloned
+}
+
+func MCPHeaderValueIsRedactedSecret(value string) bool {
+	return strings.TrimSpace(value) == MCPRedactedSecretValue
+}
+
+func MCPHeaderNameIsSensitive(name string) bool {
+	normalizedName := strings.ToLower(strings.TrimSpace(name))
+	if normalizedName == "" {
+		return false
+	}
+	if normalizedName == "authorization" || normalizedName == "proxy-authorization" {
+		return true
+	}
+	if strings.Contains(normalizedName, "token") || strings.Contains(normalizedName, "secret") {
+		return true
+	}
+
+	compactName := strings.NewReplacer("-", "", "_", "", " ", "").Replace(normalizedName)
+	return strings.Contains(compactName, "apikey")
+}
+
+func RedactMCPHeadersForDisplay(headers map[string]string) map[string]string {
+	if len(headers) == 0 {
+		return nil
+	}
+
+	redacted := make(map[string]string, len(headers))
+	for key, value := range headers {
+		if MCPHeaderNameIsSensitive(key) && value != "" {
+			redacted[key] = MCPRedactedSecretValue
+			continue
+		}
+		redacted[key] = value
+	}
+	return redacted
+}
+
+func mergeMCPHeadersPreservingRedactedSecrets(existing map[string]string, next map[string]string) map[string]string {
+	merged := cloneMCPHeaders(next)
+	if len(existing) == 0 || len(merged) == 0 {
+		return merged
+	}
+
+	for key, value := range merged {
+		if !MCPHeaderNameIsSensitive(key) || !MCPHeaderValueIsRedactedSecret(value) {
+			continue
+		}
+		if existingValue, ok := findMCPHeaderValue(existing, key); ok {
+			merged[key] = existingValue
+		}
+	}
+	return merged
+}
+
+func findMCPHeaderValue(headers map[string]string, targetName string) (string, bool) {
+	for key, value := range headers {
+		if strings.EqualFold(strings.TrimSpace(key), strings.TrimSpace(targetName)) {
+			return value, true
+		}
+	}
+	return "", false
 }
 
 func normalizeRemoteMCPDraft(endpoint string, headers map[string]string) (string, map[string]string, error) {

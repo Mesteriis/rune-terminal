@@ -12,6 +12,9 @@
   - active `frontend/src` settings onboarding section
   - filterable MCP server inventory inside the active settings shell
   - backend-owned MCP onboarding catalog and draft probe contract
+  - remote MCP detail responses redact sensitive persisted headers, while
+    updates preserve existing secret values when the redaction placeholder is
+    submitted unchanged
   - template-driven onboarding helpers inside active settings
   - explicit invoke path
   - output normalization/bounding behavior
@@ -20,6 +23,8 @@
 ## Commands/tests used
 
 - `./scripts/go.sh test ./core/transport/httpapi -run 'TestMCPServerLifecycleAppendsAuditEvents|TestMCPServerLifecycleAppendsFailureAuditEvent' -count=1`
+- `./scripts/go.sh test ./core/transport/httpapi -run 'TestGetMCPServerRedactsSensitiveHeaders|TestGetAndUpdateMCPServer' -count=1`
+- `./scripts/go.sh test ./core/app -run TestUpdateMCPServerPreservesRedactedSensitiveHeaders -count=1`
 - `./scripts/go.sh test ./core/app ./core/plugins ./core/transport/httpapi -run 'Test.*MCP' -count=1`
 - `./scripts/go.sh test ./core/plugins ./core/app ./core/transport/httpapi -count=1`
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestNormalizeRemoteMCPRegistrationRequest|TestProbeRemoteMCPServerReportsReadyWithToolCount|TestListMCPCatalogReturnsTemplates|TestProbeMCPServerRejectsInvalidDraft' -count=1`

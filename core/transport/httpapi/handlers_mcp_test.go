@@ -152,7 +152,7 @@ func TestGetAndUpdateMCPServer(t *testing.T) {
 	if err := json.Unmarshal(getRecorder.Body.Bytes(), &getResponse); err != nil {
 		t.Fatalf("Unmarshal get response error: %v", err)
 	}
-	if getResponse.Server.ID != "mcp.context7" || getResponse.Server.Headers["Authorization"] != "Bearer old" {
+	if getResponse.Server.ID != "mcp.context7" || getResponse.Server.Headers["Authorization"] != "********" {
 		t.Fatalf("unexpected get response: %#v", getResponse.Server)
 	}
 
@@ -177,6 +177,52 @@ func TestGetAndUpdateMCPServer(t *testing.T) {
 	}
 	if updateResponse.Server.Endpoint != "https://mcp.context7.com/v2" {
 		t.Fatalf("unexpected updated snapshot: %#v", updateResponse.Server)
+	}
+}
+
+func TestGetMCPServerRedactsSensitiveHeaders(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+
+	registerRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(registerRecorder, authedJSONRequest(t, http.MethodPost, "/api/v1/mcp/servers", map[string]any{
+		"id":       "mcp.context7",
+		"type":     "remote",
+		"endpoint": "https://mcp.context7.com/mcp",
+		"headers": map[string]any{
+			"Authorization":      "Bearer secret-token",
+			"X-Context7-API-Key": "context7-secret",
+			"X-Trace-ID":         "trace-safe",
+		},
+	}))
+	if registerRecorder.Code != http.StatusCreated {
+		t.Fatalf("expected register=201, got %d (%s)", registerRecorder.Code, registerRecorder.Body.String())
+	}
+
+	getRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(getRecorder, authedJSONRequest(t, http.MethodGet, "/api/v1/mcp/servers/mcp.context7", nil))
+	if getRecorder.Code != http.StatusOK {
+		t.Fatalf("expected get=200, got %d (%s)", getRecorder.Code, getRecorder.Body.String())
+	}
+
+	var response struct {
+		Server struct {
+			Headers map[string]string `json:"headers"`
+		} `json:"server"`
+	}
+	if err := json.Unmarshal(getRecorder.Body.Bytes(), &response); err != nil {
+		t.Fatalf("Unmarshal get response error: %v", err)
+	}
+
+	if response.Server.Headers["Authorization"] != "********" {
+		t.Fatalf("expected authorization to be redacted, got %#v", response.Server.Headers)
+	}
+	if response.Server.Headers["X-Context7-API-Key"] != "********" {
+		t.Fatalf("expected api key to be redacted, got %#v", response.Server.Headers)
+	}
+	if response.Server.Headers["X-Trace-ID"] != "trace-safe" {
+		t.Fatalf("expected non-sensitive header to remain editable, got %#v", response.Server.Headers)
 	}
 }
 

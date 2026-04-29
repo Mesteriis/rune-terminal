@@ -31,10 +31,7 @@ type mcpServerDetailsResponse struct {
 func encodeMCPServerDetails(snapshot plugins.MCPServerSnapshot, spec plugins.MCPServerSpec) mcpServerDetailsResponse {
 	headers := map[string]string(nil)
 	if spec.Remote != nil && len(spec.Remote.Headers) > 0 {
-		headers = make(map[string]string, len(spec.Remote.Headers))
-		for key, value := range spec.Remote.Headers {
-			headers[key] = value
-		}
+		headers = app.RedactMCPHeadersForDisplay(spec.Remote.Headers)
 	}
 	return mcpServerDetailsResponse{
 		ID:       snapshot.ID,

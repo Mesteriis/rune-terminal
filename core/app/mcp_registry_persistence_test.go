@@ -129,6 +129,62 @@ func TestMCPRegistryPersistenceReflectsUpdatedRemoteServers(t *testing.T) {
 	}
 }
 
+func TestUpdateMCPServerPreservesRedactedSensitiveHeaders(t *testing.T) {
+	t.Parallel()
+
+	paths := config.Resolve(t.TempDir())
+
+	runtimeA := &Runtime{
+		Paths: paths,
+		MCP:   plugins.NewMCPRuntime(nil, nil, nil),
+	}
+	defer runtimeA.MCP.Close()
+
+	if err := runtimeA.registerMCPServers(); err != nil {
+		t.Fatalf("registerMCPServers(runtimeA) error: %v", err)
+	}
+	if _, err := runtimeA.RegisterMCPServer(MCPRegistrationRequest{
+		ID:       "mcp.context7",
+		Type:     "remote",
+		Endpoint: "https://mcp.context7.com/mcp",
+		Headers: map[string]string{
+			"Authorization": "Bearer old",
+			"X-API-Key":     "api-key-old",
+		},
+	}); err != nil {
+		t.Fatalf("RegisterMCPServer error: %v", err)
+	}
+	if _, err := runtimeA.UpdateMCPServer("mcp.context7", MCPRegistrationRequest{
+		ID:       "mcp.context7",
+		Type:     "remote",
+		Endpoint: "https://mcp.context7.com/v2",
+		Headers: map[string]string{
+			"Authorization": "********",
+			"X-API-Key":     "********",
+			"X-Trace-ID":    "trace-safe",
+		},
+	}); err != nil {
+		t.Fatalf("UpdateMCPServer error: %v", err)
+	}
+
+	spec, err := runtimeA.GetMCPServerSpec("mcp.context7")
+	if err != nil {
+		t.Fatalf("GetMCPServerSpec error: %v", err)
+	}
+	if spec.Remote == nil || spec.Remote.Endpoint != "https://mcp.context7.com/v2" {
+		t.Fatalf("unexpected remote spec: %#v", spec.Remote)
+	}
+	if spec.Remote.Headers["Authorization"] != "Bearer old" {
+		t.Fatalf("expected redacted authorization to preserve existing secret, got %#v", spec.Remote.Headers)
+	}
+	if spec.Remote.Headers["X-API-Key"] != "api-key-old" {
+		t.Fatalf("expected redacted api key to preserve existing secret, got %#v", spec.Remote.Headers)
+	}
+	if spec.Remote.Headers["X-Trace-ID"] != "trace-safe" {
+		t.Fatalf("expected non-sensitive header to be updated, got %#v", spec.Remote.Headers)
+	}
+}
+
 func TestMCPRegistryPersistenceReflectsDeletedRemoteServers(t *testing.T) {
 	t.Parallel()
 

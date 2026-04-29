@@ -256,7 +256,7 @@ describe('mcp client', () => {
     expect(fetchMock.mock.calls[1]?.[1]?.method).toBe('POST')
   })
 
-  it('loads MCP server details with persisted headers', async () => {
+  it('loads MCP server details with redacted persisted headers', async () => {
     const fetchMock = vi.fn()
     fetchMock
       .mockResolvedValueOnce({
@@ -274,7 +274,7 @@ describe('mcp client', () => {
             enabled: true,
             endpoint: 'https://mcp.context7.com/mcp',
             headers: {
-              Authorization: 'Bearer test-token',
+              Authorization: '********',
             },
             id: 'mcp.context7',
             state: 'stopped',
@@ -291,7 +291,7 @@ describe('mcp client', () => {
       enabled: true,
       endpoint: 'https://mcp.context7.com/mcp',
       headers: {
-        Authorization: 'Bearer test-token',
+        Authorization: '********',
       },
       id: 'mcp.context7',
       state: 'stopped',

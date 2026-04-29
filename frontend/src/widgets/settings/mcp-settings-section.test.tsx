@@ -235,7 +235,7 @@ describe('MCPSettingsSection', () => {
       active: false,
       enabled: true,
       endpoint: 'https://mcp.context7.com/mcp',
-      headers: { Authorization: 'Bearer old-token' },
+      headers: { Authorization: '********' },
       id: 'mcp.context7',
       state: 'stopped',
       type: 'remote',
@@ -258,7 +258,7 @@ describe('MCPSettingsSection', () => {
     await waitFor(() => {
       expect(fetchMCPServerDetails).toHaveBeenCalledWith('mcp.context7')
       expect(screen.getByRole('textbox', { name: 'MCP request headers' })).toHaveValue(
-        'Authorization: Bearer old-token',
+        'Authorization: ********',
       )
     })
 

@@ -157,8 +157,9 @@ It is intentionally operational, not narrative.
 - MCP servers are now modeled as managed runtime processes with explicit lifecycle states (`stopped`, `starting`, `active`, `idle`, `stopped_auto`) tracked by an in-memory runtime registry.
 - MCP server registration now has an explicit API entrypoint:
   - `POST /api/v1/mcp/servers` with minimal payload (`id`, `type`, `endpoint`, optional `headers`)
-  - `GET /api/v1/mcp/servers/{id}` returns the saved remote spec detail, including persisted headers, for explicit operator editing
+  - `GET /api/v1/mcp/servers/{id}` returns the saved remote spec detail for explicit operator editing, with secret-shaped headers (`Authorization`, API-key/token/secret names) redacted to an editable placeholder
   - `PUT /api/v1/mcp/servers/{id}` and `DELETE /api/v1/mcp/servers/{id}` update or remove explicitly registered remote servers
+  - `PUT /api/v1/mcp/servers/{id}` preserves an existing sensitive header when the redaction placeholder is posted back unchanged, so editing endpoint metadata does not overwrite stored secrets with the placeholder
   - the current implementation supports `type: "remote"` registration only
   - registration does not auto-start the server; newly added entries appear as `stopped`
 - The active settings shell exposes an `MCP` section that lists registered servers, registers remote endpoints with optional headers, loads saved remote details for editing, can delete explicitly registered remote servers, refreshes state, and runs explicit `start` / `stop` / `restart` / `enable` / `disable` actions over the same backend API.
