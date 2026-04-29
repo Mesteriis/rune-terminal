@@ -341,10 +341,12 @@ func (api *API) handleStreamConversationMessage(w http.ResponseWriter, r *http.R
 func (api *API) handleCancelConversationStream(w http.ResponseWriter, r *http.Request) {
 	streamID := strings.TrimSpace(r.PathValue("streamID"))
 	if streamID == "" {
+		api.appendConversationStreamCancelAudit(streamID, app.ErrConversationStreamNotFound)
 		writeNotFound(w, "conversation_stream_not_found", app.ErrConversationStreamNotFound.Error())
 		return
 	}
 	if err := api.runtime.CancelConversationStream(streamID); err != nil {
+		api.appendConversationStreamCancelAudit(streamID, err)
 		if errors.Is(err, app.ErrConversationStreamNotFound) {
 			writeNotFound(w, "conversation_stream_not_found", err.Error())
 			return
@@ -352,9 +354,22 @@ func (api *API) handleCancelConversationStream(w http.ResponseWriter, r *http.Re
 		writeInternalError(w, err)
 		return
 	}
+	api.appendConversationStreamCancelAudit(streamID, nil)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"cancelled": true,
 		"stream_id": streamID,
+	})
+}
+
+func (api *API) appendConversationStreamCancelAudit(streamID string, err error) {
+	if api == nil || api.runtime == nil {
+		return
+	}
+	api.runtime.AppendConversationLifecycleAudit(app.ConversationLifecycleAuditInput{
+		Action:  "cancel_stream",
+		Summary: "stream_id=" + strings.TrimSpace(streamID),
+		Success: err == nil,
+		Error:   err,
 	})
 }
 

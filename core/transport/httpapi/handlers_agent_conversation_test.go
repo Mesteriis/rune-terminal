@@ -1113,6 +1113,77 @@ func TestCancelConversationStreamCancelsActiveProviderRun(t *testing.T) {
 	}
 }
 
+func TestConversationStreamCancelRouteAppendsAuditEvents(t *testing.T) {
+	t.Parallel()
+
+	auditLog, err := audit.NewLog(filepath.Join(t.TempDir(), "audit.jsonl"))
+	if err != nil {
+		t.Fatalf("audit log: %v", err)
+	}
+	runtime := &app.Runtime{Audit: auditLog}
+	streamCtx, cancelStream := context.WithCancelCause(context.Background())
+	defer cancelStream(nil)
+	runtime.RegisterConversationStream("stream-test", cancelStream)
+	handler := NewHandler(runtime, testAuthToken)
+
+	conversationRequest(
+		t,
+		handler,
+		http.MethodPost,
+		"/api/v1/agent/conversation/streams/stream-test/cancel",
+		nil,
+		http.StatusOK,
+	)
+	if cause := context.Cause(streamCtx); !errors.Is(cause, conversation.ErrConversationStreamCancelled) {
+		t.Fatalf("expected stream cancellation cause, got %v", cause)
+	}
+
+	events := decodeConversationLifecycleAuditEvents(t, handler, 10)
+	if len(events) != 1 {
+		t.Fatalf("expected one stream cancel audit event, got %#v", events)
+	}
+	event := events[0]
+	if event.ToolName != "agent.conversation.cancel_stream" || event.ActionSource != "http.agent.conversation" ||
+		!event.Success || event.Error != "" {
+		t.Fatalf("unexpected stream cancel audit event: %#v", event)
+	}
+	if !strings.Contains(event.Summary, "stream_id=stream-test") {
+		t.Fatalf("expected stream id in audit summary, got %#v", event)
+	}
+}
+
+func TestConversationStreamCancelRouteAppendsFailureAuditEvents(t *testing.T) {
+	t.Parallel()
+
+	auditLog, err := audit.NewLog(filepath.Join(t.TempDir(), "audit.jsonl"))
+	if err != nil {
+		t.Fatalf("audit log: %v", err)
+	}
+	handler := NewHandler(&app.Runtime{Audit: auditLog}, testAuthToken)
+
+	conversationRequest(
+		t,
+		handler,
+		http.MethodPost,
+		"/api/v1/agent/conversation/streams/missing/cancel",
+		nil,
+		http.StatusNotFound,
+	)
+
+	events := decodeConversationLifecycleAuditEvents(t, handler, 10)
+	if len(events) != 1 {
+		t.Fatalf("expected one stream cancel failure audit event, got %#v", events)
+	}
+	event := events[0]
+	if event.ToolName != "agent.conversation.cancel_stream" || event.ActionSource != "http.agent.conversation" ||
+		event.Success || event.Error == "" {
+		t.Fatalf("unexpected stream cancel failure audit event: %#v", event)
+	}
+	if !strings.Contains(event.Summary, "stream_id=missing") {
+		t.Fatalf("expected missing stream id in audit summary, got %#v", event)
+	}
+}
+
 func TestSubmitConversationMessageRejectsMissingAttachmentReference(t *testing.T) {
 	t.Parallel()
 

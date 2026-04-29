@@ -57,6 +57,8 @@
   - stream-error handling in the AI panel now preserves partial assistant output instead of immediately overwriting it with a post-stream conversation resync
   - active conversation stream cancellation from the composer: the UI aborts the in-flight fetch stream, clears busy state, and keeps partial assistant output visible as an operator-cancelled error message
   - active conversation streams now carry a backend-owned `stream_id` plus explicit `POST /api/v1/agent/conversation/streams/{streamID}/cancel` path for live provider cancellation instead of fetch abort alone
+  - conversation stream cancellation now appends core-owned success/failure
+    audit events with the stream id
   - frontend `/run ...` routing from the AI sidebar into the selected terminal widget context through backend tool execution plus terminal-command explanation
   - browser-level Playwright coverage for the AI sidebar over the split local dev path:
     - settings navigation for provider/model/limits/terminal/commander sections
@@ -263,6 +265,7 @@
 - `python3 scripts/validate_workspace_navigation.py`
 - `./scripts/go.sh test ./core/conversation -run 'TestOpenAICompatibleProviderComplete|TestOpenAICompatibleProviderCompleteStreamEmitsDeltas|TestServiceSubmitStreamEmitsStructuredEvents' -count=1`
 - `./scripts/go.sh test ./core/conversation ./core/app ./core/transport/httpapi -run 'TestOpenAICompatibleProvider|TestStreamConversation|TestSubmitConversationPromptAppliesSelectedModelOverrideForOpenAICompatibleProvider|TestStreamConversationMessageEmitsStructuredEventSequence' -count=1`
+- `./scripts/go.sh test ./core/transport/httpapi -run 'TestConversationStreamCancelRouteAppends.*AuditEvents|TestCancelConversationStreamCancelsActiveProviderRun' -count=1`
 - `./scripts/go.sh test ./core/conversation ./core/app ./core/transport/httpapi -count=1`
 - `npm --prefix frontend run test -- src/features/agent/api/client.test.ts src/widgets/ai/ai-panel-widget.test.tsx`
 - `npm --prefix frontend run test -- src/widgets/ai/ai-composer-widget.test.tsx src/widgets/ai/ai-panel-widget.test.tsx`
