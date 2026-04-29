@@ -348,6 +348,9 @@ Confirmable boundaries:
 - The terminal shell is now much closer to TideTerm's compact term surface, has an in-panel search row backed by the xterm search addon, and can host multiple backend-owned sessions inside one widget with explicit active-session switching, filterable grouped-session browsing, and per-session close/focus actions from the active terminal surface itself.
 - The AI panel now uses a TideTerm-shaped header with widget context toggle and overflow menu, and it now has a real backend-owned conversation path in addition to the existing runtime, audit, and policy surfaces.
 - Prompt profile, role preset, and work mode controls are now visible in the AI composer toolbar and write through the existing backend-owned `/api/v1/agent/selection/*` routes.
+- Agent selection mutations append core-owned audit events with
+  `action_source=http.agent.selection`, the selected profile/role/mode target,
+  and the resulting effective prompt profile, role, mode, and security posture.
 - The AI panel welcome card now exposes runtime-backed quick actions for terminal inspection, tab listing, and audit navigation as the current closest-compatible equivalent to deeper TideTerm AI flows.
 - The AI panel now keeps a merged transcript:
   - backend-owned conversation messages persisted by the Go runtime

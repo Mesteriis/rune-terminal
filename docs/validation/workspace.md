@@ -5,6 +5,9 @@
 - Date: `2026-04-29`
 - State: `VERIFIED`
 - Scope:
+    - agent prompt profile / role / mode selection routes now append
+      core-owned audit events for success and not-found failures, including
+      the attempted selection target plus the effective policy posture fields
     - HTTP workspace management mutations now append core-owned audit events
       for success and failure paths across workspace, tab, layout, and widget
       control-plane routes; direct PTY input remains the interactive terminal
@@ -261,6 +264,7 @@ light` remains the system fallback, and `@media print` flattens shell
 ## Commands/tests used
 
 - `./scripts/go.sh test ./core/transport/httpapi -run 'TestWorkspaceMutationHandlersAppend.*AuditEvents|TestWorkspaceFocusTabBypassesRestrictiveMode|TestWorkspaceCloseTabBypassesToolPolicyPath|TestWorkspaceOpenDirectoryInNewBlockCreatesFilesWidget|TestWorkspaceMoveWidgetBySplitRejectsInvalidDirection' -count=1`
+- `./scripts/go.sh test ./core/transport/httpapi -run 'TestAgentSelectionEndpoints' -count=1`
 - `./scripts/go.sh test ./core/transport/httpapi -run 'TestWorkspace' -count=1`
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi -count=1`
 - `./scripts/go.sh test ./...`
