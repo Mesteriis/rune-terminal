@@ -175,12 +175,16 @@ func (s *PluginCatalogStore) Create(record InstalledPluginRecord, actor PluginAc
 	record.Tools = cloneInstalledPluginTools(record.Tools)
 	record.Capabilities = normalizeCapabilities(record.Capabilities)
 	record.RuntimeError = strings.TrimSpace(record.RuntimeError)
-	s.data.Plugins = append(s.data.Plugins, cloneInstalledPluginRecord(record))
-	slices.SortFunc(s.data.Plugins, compareInstalledPluginRecords)
-	s.data.UpdatedAt = now
-	if err := s.saveLocked(); err != nil {
+
+	nextData := pluginCatalogState{
+		Plugins:   append(cloneInstalledPluginRecords(s.data.Plugins), cloneInstalledPluginRecord(record)),
+		UpdatedAt: now,
+	}
+	slices.SortFunc(nextData.Plugins, compareInstalledPluginRecords)
+	if err := s.saveStateLocked(nextData); err != nil {
 		return InstalledPluginRecord{}, PluginCatalog{}, err
 	}
+	s.data = nextData
 	return cloneInstalledPluginRecord(record), PluginCatalog{
 		CurrentActor: normalizePluginActor(actor),
 		Plugins:      cloneInstalledPluginRecords(s.data.Plugins),
@@ -207,12 +211,17 @@ func (s *PluginCatalogStore) Replace(record InstalledPluginRecord, actor PluginA
 	record.Tools = cloneInstalledPluginTools(record.Tools)
 	record.Capabilities = normalizeCapabilities(record.Capabilities)
 	record.RuntimeError = strings.TrimSpace(record.RuntimeError)
-	s.data.Plugins[index] = cloneInstalledPluginRecord(record)
-	slices.SortFunc(s.data.Plugins, compareInstalledPluginRecords)
-	s.data.UpdatedAt = now
-	if err := s.saveLocked(); err != nil {
+
+	nextData := pluginCatalogState{
+		Plugins:   cloneInstalledPluginRecords(s.data.Plugins),
+		UpdatedAt: now,
+	}
+	nextData.Plugins[index] = cloneInstalledPluginRecord(record)
+	slices.SortFunc(nextData.Plugins, compareInstalledPluginRecords)
+	if err := s.saveStateLocked(nextData); err != nil {
 		return InstalledPluginRecord{}, PluginCatalog{}, err
 	}
+	s.data = nextData
 	return cloneInstalledPluginRecord(record), PluginCatalog{
 		CurrentActor: normalizePluginActor(actor),
 		Plugins:      cloneInstalledPluginRecords(s.data.Plugins),
@@ -228,11 +237,15 @@ func (s *PluginCatalogStore) Delete(id string, actor PluginActor) (InstalledPlug
 		return InstalledPluginRecord{}, PluginCatalog{}, fmt.Errorf("%w: %s", ErrPluginNotFound, strings.TrimSpace(id))
 	}
 	removed := cloneInstalledPluginRecord(s.data.Plugins[index])
-	s.data.Plugins = append(s.data.Plugins[:index], s.data.Plugins[index+1:]...)
-	s.data.UpdatedAt = time.Now().UTC()
-	if err := s.saveLocked(); err != nil {
+	nextData := pluginCatalogState{
+		Plugins:   cloneInstalledPluginRecords(s.data.Plugins),
+		UpdatedAt: time.Now().UTC(),
+	}
+	nextData.Plugins = append(nextData.Plugins[:index], nextData.Plugins[index+1:]...)
+	if err := s.saveStateLocked(nextData); err != nil {
 		return InstalledPluginRecord{}, PluginCatalog{}, err
 	}
+	s.data = nextData
 	return removed, PluginCatalog{
 		CurrentActor: normalizePluginActor(actor),
 		Plugins:      cloneInstalledPluginRecords(s.data.Plugins),
@@ -240,7 +253,11 @@ func (s *PluginCatalogStore) Delete(id string, actor PluginActor) (InstalledPlug
 }
 
 func (s *PluginCatalogStore) saveLocked() error {
-	payload, err := json.MarshalIndent(s.data, "", "  ")
+	return s.saveStateLocked(s.data)
+}
+
+func (s *PluginCatalogStore) saveStateLocked(data pluginCatalogState) error {
+	payload, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		return err
 	}
