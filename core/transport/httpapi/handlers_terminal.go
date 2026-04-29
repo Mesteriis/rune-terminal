@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"strings"
 	"time"
 
+	"github.com/Mesteriis/rune-terminal/core/app"
 	"github.com/Mesteriis/rune-terminal/core/connections"
 	"github.com/Mesteriis/rune-terminal/core/terminal"
 )
@@ -64,15 +66,26 @@ func (api *API) handleTerminalSessionCatalog(w http.ResponseWriter, _ *http.Requ
 }
 
 func (api *API) handleCreateTerminalSession(w http.ResponseWriter, r *http.Request) {
-	snapshot, err := api.runtime.CreateTerminalSiblingSession(r.Context(), r.PathValue("widgetID"))
+	widgetID := r.PathValue("widgetID")
+	snapshot, err := api.runtime.CreateTerminalSiblingSession(r.Context(), widgetID)
 	if err != nil {
+		api.appendTerminalControlAudit("terminal.session.create", "", widgetID, "", "", err)
 		writeTerminalError(w, err)
 		return
 	}
+	api.appendTerminalControlAudit(
+		"terminal.session.create",
+		"",
+		widgetID,
+		snapshot.ActiveSessionID,
+		snapshot.State.ConnectionID,
+		nil,
+	)
 	writeJSON(w, http.StatusOK, snapshot)
 }
 
 func (api *API) handleSetActiveTerminalSession(w http.ResponseWriter, r *http.Request) {
+	widgetID := r.PathValue("widgetID")
 	var payload struct {
 		SessionID string `json:"session_id"`
 	}
@@ -80,46 +93,104 @@ func (api *API) handleSetActiveTerminalSession(w http.ResponseWriter, r *http.Re
 		writeBadRequest(w, "invalid_request", err)
 		return
 	}
-	snapshot, err := api.runtime.FocusTerminalSession(r.PathValue("widgetID"), payload.SessionID)
+	snapshot, err := api.runtime.FocusTerminalSession(widgetID, payload.SessionID)
 	if err != nil {
+		api.appendTerminalControlAudit("terminal.session.focus", "", widgetID, payload.SessionID, "", err)
 		writeTerminalError(w, err)
 		return
 	}
+	api.appendTerminalControlAudit(
+		"terminal.session.focus",
+		"",
+		widgetID,
+		payload.SessionID,
+		snapshot.State.ConnectionID,
+		nil,
+	)
 	writeJSON(w, http.StatusOK, snapshot)
 }
 
 func (api *API) handleCloseTerminalSession(w http.ResponseWriter, r *http.Request) {
-	snapshot, err := api.runtime.CloseTerminalSession(r.PathValue("widgetID"), r.PathValue("sessionID"))
+	widgetID := r.PathValue("widgetID")
+	sessionID := r.PathValue("sessionID")
+	connectionID := api.terminalAuditConnectionID(widgetID)
+	snapshot, err := api.runtime.CloseTerminalSession(widgetID, sessionID)
 	if err != nil {
+		api.appendTerminalControlAudit("terminal.session.close", "", widgetID, sessionID, connectionID, err)
 		writeTerminalError(w, err)
 		return
 	}
+	api.appendTerminalControlAudit("terminal.session.close", "", widgetID, sessionID, connectionID, nil)
 	writeJSON(w, http.StatusOK, snapshot)
 }
 
 func (api *API) handleTerminalInterrupt(w http.ResponseWriter, r *http.Request) {
 	widgetID := r.PathValue("widgetID")
+	connectionID := api.terminalAuditConnectionID(widgetID)
 	if err := api.runtime.Terminals.Interrupt(widgetID); err != nil {
+		api.appendTerminalControlAudit("terminal.interrupt", "", widgetID, "", connectionID, err)
 		writeTerminalError(w, err)
 		return
 	}
 
 	snapshot, err := api.runtime.TerminalSnapshot(widgetID, math.MaxUint64)
 	if err != nil {
+		api.appendTerminalControlAudit("terminal.interrupt", "", widgetID, "", connectionID, err)
 		writeTerminalError(w, err)
 		return
 	}
 
+	api.appendTerminalControlAudit("terminal.interrupt", "", widgetID, snapshot.ActiveSessionID, snapshot.State.ConnectionID, nil)
 	writeJSON(w, http.StatusOK, map[string]any{"state": snapshot.State})
 }
 
 func (api *API) handleTerminalRestart(w http.ResponseWriter, r *http.Request) {
-	state, err := api.runtime.RestartTerminalSession(r.Context(), r.PathValue("widgetID"))
+	widgetID := r.PathValue("widgetID")
+	connectionID := api.terminalAuditConnectionID(widgetID)
+	state, err := api.runtime.RestartTerminalSession(r.Context(), widgetID)
 	if err != nil {
+		api.appendTerminalControlAudit("terminal.restart", "", widgetID, "", connectionID, err)
 		writeTerminalError(w, err)
 		return
 	}
+	api.appendTerminalControlAudit("terminal.restart", "", widgetID, state.SessionID, state.ConnectionID, nil)
 	writeJSON(w, http.StatusOK, map[string]any{"state": state})
+}
+
+func (api *API) appendTerminalControlAudit(
+	toolName string,
+	summary string,
+	widgetID string,
+	sessionID string,
+	connectionID string,
+	err error,
+) {
+	if api == nil || api.runtime == nil {
+		return
+	}
+	if strings.TrimSpace(connectionID) == "" {
+		connectionID = api.terminalAuditConnectionID(widgetID)
+	}
+	api.runtime.AppendTerminalAudit(app.TerminalAuditInput{
+		ToolName:           toolName,
+		Summary:            summary,
+		WidgetID:           widgetID,
+		TargetSession:      sessionID,
+		TargetConnectionID: connectionID,
+		Success:            err == nil,
+		Error:              err,
+	})
+}
+
+func (api *API) terminalAuditConnectionID(widgetID string) string {
+	if api == nil || api.runtime == nil {
+		return ""
+	}
+	snapshot, err := api.runtime.TerminalSnapshot(widgetID, math.MaxUint64)
+	if err != nil {
+		return ""
+	}
+	return snapshot.State.ConnectionID
 }
 
 func (api *API) handleTerminalStream(w http.ResponseWriter, r *http.Request) {

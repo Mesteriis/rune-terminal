@@ -850,3 +850,171 @@ func TestTerminalSessionEndpointClosesGroupedSession(t *testing.T) {
 		t.Fatalf("expected active session term-main after close, got %q", closed.ActiveSessionID)
 	}
 }
+
+func TestTerminalControlHandlersAppendAuditEvents(t *testing.T) {
+	t.Parallel()
+
+	auditLog, handler := newTerminalAuditHandler(t)
+
+	createRecorder := httptest.NewRecorder()
+	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/terminal/term-main/sessions", nil)
+	createReq.Header.Set("Authorization", "Bearer "+testAuthToken)
+	handler.ServeHTTP(createRecorder, createReq)
+	if createRecorder.Code != http.StatusOK {
+		t.Fatalf("expected 200 create, got %d (%s)", createRecorder.Code, createRecorder.Body.String())
+	}
+	var created terminal.Snapshot
+	if err := json.Unmarshal(createRecorder.Body.Bytes(), &created); err != nil {
+		t.Fatalf("unmarshal created snapshot: %v", err)
+	}
+	if created.ActiveSessionID == "" || created.ActiveSessionID == "term-main" {
+		t.Fatalf("expected sibling active session, got %q", created.ActiveSessionID)
+	}
+
+	focusRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(focusRecorder, authedJSONRequest(t, http.MethodPut, "/api/v1/terminal/term-main/sessions/active", map[string]any{
+		"session_id": "term-main",
+	}))
+	if focusRecorder.Code != http.StatusOK {
+		t.Fatalf("expected 200 focus, got %d (%s)", focusRecorder.Code, focusRecorder.Body.String())
+	}
+
+	interruptRecorder := httptest.NewRecorder()
+	interruptReq := httptest.NewRequest(http.MethodPost, "/api/v1/terminal/term-main/interrupt", nil)
+	interruptReq.Header.Set("Authorization", "Bearer "+testAuthToken)
+	handler.ServeHTTP(interruptRecorder, interruptReq)
+	if interruptRecorder.Code != http.StatusOK {
+		t.Fatalf("expected 200 interrupt, got %d (%s)", interruptRecorder.Code, interruptRecorder.Body.String())
+	}
+
+	closeRecorder := httptest.NewRecorder()
+	closeReq := httptest.NewRequest(http.MethodDelete, "/api/v1/terminal/term-main/sessions/"+created.ActiveSessionID, nil)
+	closeReq.Header.Set("Authorization", "Bearer "+testAuthToken)
+	handler.ServeHTTP(closeRecorder, closeReq)
+	if closeRecorder.Code != http.StatusOK {
+		t.Fatalf("expected 200 close, got %d (%s)", closeRecorder.Code, closeRecorder.Body.String())
+	}
+
+	events, err := auditLog.List(10)
+	if err != nil {
+		t.Fatalf("audit list: %v", err)
+	}
+	expectedTools := []string{
+		"terminal.session.create",
+		"terminal.session.focus",
+		"terminal.interrupt",
+		"terminal.session.close",
+	}
+	if len(events) != len(expectedTools) {
+		t.Fatalf("expected %d terminal audit events, got %#v", len(expectedTools), events)
+	}
+	for index, expectedTool := range expectedTools {
+		event := events[index]
+		if event.ToolName != expectedTool || event.ActionSource != "http.terminal" || !event.Success || event.Error != "" {
+			t.Fatalf("unexpected terminal audit event %d: %#v", index, event)
+		}
+		if !terminalAuditContains(event.AffectedWidgets, "term-main") {
+			t.Fatalf("expected term-main affected widget in event %d: %#v", index, event)
+		}
+		if event.TargetConnectionID != "local" {
+			t.Fatalf("expected local connection in event %d: %#v", index, event)
+		}
+	}
+	if events[0].TargetSession == "" || events[0].TargetSession == "term-main" {
+		t.Fatalf("expected created session id in audit event, got %#v", events[0])
+	}
+	if events[1].TargetSession != "term-main" {
+		t.Fatalf("expected focused session id in audit event, got %#v", events[1])
+	}
+	if events[3].TargetSession != created.ActiveSessionID {
+		t.Fatalf("expected closed session id in audit event, got %#v", events[3])
+	}
+}
+
+func TestTerminalControlHandlersAppendFailureAuditEvents(t *testing.T) {
+	t.Parallel()
+
+	auditLog, handler := newTerminalAuditHandler(t)
+
+	closeRecorder := httptest.NewRecorder()
+	closeReq := httptest.NewRequest(http.MethodDelete, "/api/v1/terminal/term-main/sessions/term-main", nil)
+	closeReq.Header.Set("Authorization", "Bearer "+testAuthToken)
+	handler.ServeHTTP(closeRecorder, closeReq)
+	if closeRecorder.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 close last session, got %d (%s)", closeRecorder.Code, closeRecorder.Body.String())
+	}
+
+	events, err := auditLog.List(10)
+	if err != nil {
+		t.Fatalf("audit list: %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("expected one terminal failure audit event, got %#v", events)
+	}
+	event := events[0]
+	if event.ToolName != "terminal.session.close" || event.ActionSource != "http.terminal" ||
+		event.Success || event.Error == "" {
+		t.Fatalf("unexpected terminal failure audit event: %#v", event)
+	}
+	if event.TargetSession != "term-main" || !terminalAuditContains(event.AffectedWidgets, "term-main") {
+		t.Fatalf("expected failed terminal target in audit event, got %#v", event)
+	}
+}
+
+func newTerminalAuditHandler(t *testing.T) (*audit.Log, http.Handler) {
+	t.Helper()
+
+	tempDir := t.TempDir()
+	auditLog, err := audit.NewLog(filepath.Join(tempDir, "audit.jsonl"))
+	if err != nil {
+		t.Fatalf("NewLog error: %v", err)
+	}
+	policyStore, err := policy.NewStore(filepath.Join(tempDir, "policy.json"), "/workspace/repo")
+	if err != nil {
+		t.Fatalf("NewStore error: %v", err)
+	}
+	agentStore, err := agent.NewStore(filepath.Join(tempDir, "agent.json"))
+	if err != nil {
+		t.Fatalf("NewStore error: %v", err)
+	}
+	connectionStore, err := connections.NewService(filepath.Join(tempDir, "connections.json"))
+	if err != nil {
+		t.Fatalf("connections store: %v", err)
+	}
+	launcher := &httpQueueLauncher{
+		processes: []terminal.Process{
+			&httpTestProcess{outputCh: make(chan []byte, 1), waitCh: make(chan struct{})},
+			&httpTestProcess{outputCh: make(chan []byte, 1), waitCh: make(chan struct{})},
+			&httpTestProcess{outputCh: make(chan []byte, 1), waitCh: make(chan struct{})},
+		},
+	}
+	registry := toolruntime.NewRegistry()
+	runtime := &app.Runtime{
+		RepoRoot:    "/workspace/repo",
+		Workspace:   workspace.NewService(workspace.BootstrapDefault()),
+		Terminals:   terminal.NewService(launcher),
+		Connections: connectionStore,
+		Agent:       agentStore,
+		Policy:      policyStore,
+		Audit:       auditLog,
+		Registry:    registry,
+	}
+	runtime.Executor = toolruntime.NewExecutor(runtime.Registry, runtime.Policy, runtime.Audit)
+	if _, err := runtime.Terminals.StartSession(context.Background(), terminal.LaunchOptions{
+		WidgetID:   "term-main",
+		WorkingDir: runtime.RepoRoot,
+		Connection: terminal.ConnectionSpec{ID: "local", Name: "Local Machine", Kind: "local"},
+	}); err != nil {
+		t.Fatalf("StartSession error: %v", err)
+	}
+	return auditLog, NewHandler(runtime, testAuthToken)
+}
+
+func terminalAuditContains(values []string, expected string) bool {
+	for _, value := range values {
+		if value == expected {
+			return true
+		}
+	}
+	return false
+}

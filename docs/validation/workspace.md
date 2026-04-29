@@ -5,6 +5,10 @@
 - Date: `2026-04-29`
 - State: `VERIFIED`
 - Scope:
+    - low-frequency terminal control-plane routes now append core-owned audit
+      events for session create/focus/close, interrupt, and restart success /
+      failure paths with widget, session, and connection identity; direct PTY
+      input remains the live interactive stream path in this slice
     - AI conversation lifecycle routes now append core-owned audit events for
       create/rename/context/archive/restore/activate/delete success paths and
       not-found failures; context preference updates record the selected widget
@@ -270,6 +274,7 @@ light` remains the system fallback, and `@media print` flattens shell
 - `./scripts/go.sh test ./core/transport/httpapi -run 'TestWorkspaceMutationHandlersAppend.*AuditEvents|TestWorkspaceFocusTabBypassesRestrictiveMode|TestWorkspaceCloseTabBypassesToolPolicyPath|TestWorkspaceOpenDirectoryInNewBlockCreatesFilesWidget|TestWorkspaceMoveWidgetBySplitRejectsInvalidDirection' -count=1`
 - `./scripts/go.sh test ./core/transport/httpapi -run 'TestAgentSelectionEndpoints' -count=1`
 - `./scripts/go.sh test ./core/transport/httpapi -run 'TestConversationLifecycleRoutesAppend.*AuditEvents|TestConversationListCreateAndActivateRoutesRoundTrip|TestConversationRenameRouteUpdatesConversationTitle|TestConversationDeleteRouteDeletesActiveConversationAndReturnsReplacement|TestConversationArchiveAndRestoreRoutesRoundTrip|TestConversationContextRoutePersistsWidgetSelection' -count=1`
+- `./scripts/go.sh test ./core/transport/httpapi -run 'TestTerminalControlHandlersAppend.*AuditEvents|TestTerminalInterruptSignalsProcessAndReturnsCurrentState|TestTerminalSessionEndpointsCreateAndFocusGroupedSessions|TestTerminalSessionEndpointClosesGroupedSession' -count=1`
 - `./scripts/go.sh test ./core/transport/httpapi -run 'TestWorkspace' -count=1`
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi -count=1`
 - `./scripts/go.sh test ./...`

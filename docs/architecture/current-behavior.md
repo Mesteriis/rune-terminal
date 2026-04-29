@@ -201,6 +201,12 @@ It is intentionally operational, not narrative.
   - `Ctrl+Shift+C` copies the terminal selection when a selection exists
   - `Ctrl+Shift+V` pastes clipboard content into the active PTY input path
   - `Ctrl+V` also pastes when `app:ctrlvpaste` is enabled; default remains Windows-only
+- Low-frequency terminal control-plane routes (`sessions` create/focus/close,
+  interrupt, restart) append core-owned audit events with
+  `action_source=http.terminal`, affected widget, target session, target
+  connection, and success/failure. Direct PTY input remains the live
+  interactive stream path; AI command execution still uses the audited
+  `term.send_input` tool route.
 - On startup, the runtime eagerly boots sessions for terminal widgets in the default workspace.
 - When a process exits, terminal state moves to `exited` or `failed`, input/interrupt are disabled, and active stream subscribers are closed.
 
