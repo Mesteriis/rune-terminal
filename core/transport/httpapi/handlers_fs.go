@@ -124,9 +124,11 @@ func (api *API) handleWriteFSFile(w http.ResponseWriter, r *http.Request) {
 		request.ConnectionID,
 	)
 	if err != nil {
+		api.appendFSMutationAudit("fs.write_file", "Write filesystem file", request.ConnectionID, []string{request.Path}, err)
 		writeFSError(w, err)
 		return
 	}
+	api.appendFSMutationAudit("fs.write_file", "Write filesystem file", request.ConnectionID, []string{result.Path}, nil)
 
 	writeJSON(w, http.StatusOK, result)
 }
@@ -156,9 +158,11 @@ func (api *API) handleMkdirFS(w http.ResponseWriter, r *http.Request) {
 
 	result, err := api.runtime.MkdirFS(request.Path)
 	if err != nil {
+		api.appendFSMutationAudit("fs.mkdir", "Create filesystem directory", "", []string{request.Path}, err)
 		writeFSError(w, err)
 		return
 	}
+	api.appendFSMutationAudit("fs.mkdir", "Create filesystem directory", "", []string{result.Path}, nil)
 
 	writeJSON(w, http.StatusCreated, result)
 }
@@ -187,9 +191,11 @@ func (api *API) handleCopyFS(w http.ResponseWriter, r *http.Request) {
 		result, err = api.runtime.CopyFS(request.SourcePaths, request.TargetPath, request.Overwrite)
 	}
 	if err != nil {
+		api.appendFSMutationAudit("fs.copy", "Copy filesystem entries", "", copyFSAuditPaths(request, app.FSPathsResult{}), err)
 		writeFSError(w, err)
 		return
 	}
+	api.appendFSMutationAudit("fs.copy", "Copy filesystem entries", "", copyFSAuditPaths(request, result), nil)
 
 	writeJSON(w, http.StatusOK, result)
 }
@@ -203,9 +209,11 @@ func (api *API) handleMoveFS(w http.ResponseWriter, r *http.Request) {
 
 	result, err := api.runtime.MoveFS(request.SourcePaths, request.TargetPath, request.Overwrite)
 	if err != nil {
+		api.appendFSMutationAudit("fs.move", "Move filesystem entries", "", mutateFSAuditPaths(request, app.FSPathsResult{}), err)
 		writeFSError(w, err)
 		return
 	}
+	api.appendFSMutationAudit("fs.move", "Move filesystem entries", "", mutateFSAuditPaths(request, result), nil)
 
 	writeJSON(w, http.StatusOK, result)
 }
@@ -219,9 +227,11 @@ func (api *API) handleDeleteFS(w http.ResponseWriter, r *http.Request) {
 
 	result, err := api.runtime.DeleteFS(request.Paths)
 	if err != nil {
+		api.appendFSMutationAudit("fs.delete", "Delete filesystem entries", "", request.Paths, err)
 		writeFSError(w, err)
 		return
 	}
+	api.appendFSMutationAudit("fs.delete", "Delete filesystem entries", "", result.Paths, nil)
 
 	writeJSON(w, http.StatusOK, result)
 }
@@ -243,11 +253,66 @@ func (api *API) handleRenameFS(w http.ResponseWriter, r *http.Request) {
 
 	result, err := api.runtime.RenameFS(entries, request.Overwrite)
 	if err != nil {
+		api.appendFSMutationAudit("fs.rename", "Rename filesystem entries", "", renameFSAuditPaths(request, app.FSPathsResult{}), err)
 		writeFSError(w, err)
 		return
 	}
+	api.appendFSMutationAudit("fs.rename", "Rename filesystem entries", "", renameFSAuditPaths(request, result), nil)
 
 	writeJSON(w, http.StatusOK, result)
+}
+
+func (api *API) appendFSMutationAudit(
+	toolName string,
+	summary string,
+	connectionID string,
+	paths []string,
+	err error,
+) {
+	if api == nil || api.runtime == nil {
+		return
+	}
+	api.runtime.AppendFSAudit(app.FSAuditInput{
+		ToolName:           toolName,
+		Summary:            summary,
+		ActionSource:       "http.fs",
+		TargetConnectionID: connectionID,
+		AffectedPaths:      paths,
+		Success:            err == nil,
+		Error:              err,
+	})
+}
+
+func copyFSAuditPaths(request copyFSRequest, result app.FSPathsResult) []string {
+	paths := make([]string, 0, len(request.Entries)*2+len(request.SourcePaths)+len(result.Paths)+1)
+	for _, entry := range request.Entries {
+		paths = append(paths, entry.SourcePath, entry.TargetPath)
+	}
+	paths = append(paths, request.SourcePaths...)
+	if request.TargetPath != "" {
+		paths = append(paths, request.TargetPath)
+	}
+	paths = append(paths, result.Paths...)
+	return paths
+}
+
+func mutateFSAuditPaths(request mutateFSRequest, result app.FSPathsResult) []string {
+	paths := make([]string, 0, len(request.SourcePaths)+len(result.Paths)+1)
+	paths = append(paths, request.SourcePaths...)
+	if request.TargetPath != "" {
+		paths = append(paths, request.TargetPath)
+	}
+	paths = append(paths, result.Paths...)
+	return paths
+}
+
+func renameFSAuditPaths(request renameFSRequest, result app.FSPathsResult) []string {
+	paths := make([]string, 0, len(request.Entries)+len(result.Paths))
+	for _, entry := range request.Entries {
+		paths = append(paths, entry.Path)
+	}
+	paths = append(paths, result.Paths...)
+	return paths
 }
 
 func writeFSError(w http.ResponseWriter, err error) {

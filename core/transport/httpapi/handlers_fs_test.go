@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/Mesteriis/rune-terminal/core/app"
+	"github.com/Mesteriis/rune-terminal/core/audit"
 	"github.com/Mesteriis/rune-terminal/core/connections"
 )
 
@@ -978,4 +979,152 @@ func TestReadFSPreviewRejectsPathOutsideWorkspaceWithExplicitFlag(t *testing.T) 
 	if recorder.Code != http.StatusForbidden {
 		t.Fatalf("expected 403, got %d body=%s", recorder.Code, recorder.Body.String())
 	}
+}
+
+func TestFSMutationHandlersAppendAuditEvents(t *testing.T) {
+	t.Parallel()
+
+	repoRoot := t.TempDir()
+	auditLog, handler := newFSAuditHandler(t, repoRoot)
+	sourcePath := filepath.Join(repoRoot, "copy-src.txt")
+	movePath := filepath.Join(repoRoot, "move-src.txt")
+	deletePath := filepath.Join(repoRoot, "delete-me.txt")
+	renamePath := filepath.Join(repoRoot, "rename-me.txt")
+	targetDir := filepath.Join(repoRoot, "target")
+	for path, content := range map[string]string{
+		sourcePath: "copy me",
+		movePath:   "move me",
+		deletePath: "delete me",
+		renamePath: "rename me",
+	} {
+		if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+			t.Fatalf("write %s: %v", path, err)
+		}
+	}
+	if err := os.Mkdir(targetDir, 0o755); err != nil {
+		t.Fatalf("mkdir target: %v", err)
+	}
+
+	fsMutationRequest(t, handler, http.MethodPut, "/api/v1/fs/file", map[string]string{
+		"path":    sourcePath,
+		"content": "after",
+	}, http.StatusOK)
+	fsMutationRequest(t, handler, http.MethodPost, "/api/v1/fs/mkdir", map[string]string{
+		"path": filepath.Join(repoRoot, "created"),
+	}, http.StatusCreated)
+	fsMutationRequest(t, handler, http.MethodPost, "/api/v1/fs/copy", map[string]any{
+		"source_paths": []string{sourcePath},
+		"target_path":  targetDir,
+	}, http.StatusOK)
+	fsMutationRequest(t, handler, http.MethodPost, "/api/v1/fs/move", map[string]any{
+		"source_paths": []string{movePath},
+		"target_path":  targetDir,
+	}, http.StatusOK)
+	fsMutationRequest(t, handler, http.MethodPost, "/api/v1/fs/delete", map[string]any{
+		"paths": []string{deletePath},
+	}, http.StatusOK)
+	fsMutationRequest(t, handler, http.MethodPost, "/api/v1/fs/rename", map[string]any{
+		"entries": []map[string]string{{
+			"path":      renamePath,
+			"next_name": "renamed.txt",
+		}},
+	}, http.StatusOK)
+
+	events, err := auditLog.List(20)
+	if err != nil {
+		t.Fatalf("audit list: %v", err)
+	}
+	expectedTools := []string{
+		"fs.write_file",
+		"fs.mkdir",
+		"fs.copy",
+		"fs.move",
+		"fs.delete",
+		"fs.rename",
+	}
+	if len(events) != len(expectedTools) {
+		t.Fatalf("expected %d audit events, got %d (%#v)", len(expectedTools), len(events), events)
+	}
+	for index, expectedTool := range expectedTools {
+		event := events[index]
+		if event.ToolName != expectedTool || !event.Success || event.Error != "" {
+			t.Fatalf("unexpected audit event %d: %#v", index, event)
+		}
+		if event.ActionSource != "http.fs" {
+			t.Fatalf("expected http.fs action source, got %#v", event)
+		}
+		if len(event.AffectedPaths) == 0 {
+			t.Fatalf("expected affected paths for %s, got %#v", expectedTool, event)
+		}
+	}
+}
+
+func TestFSMutationHandlersAppendFailureAuditEvents(t *testing.T) {
+	t.Parallel()
+
+	repoRoot := t.TempDir()
+	outsideRoot := t.TempDir()
+	auditLog, handler := newFSAuditHandler(t, repoRoot)
+
+	recorder := fsMutationRequest(t, handler, http.MethodPost, "/api/v1/fs/delete", map[string]any{
+		"paths": []string{outsideRoot},
+	}, http.StatusForbidden)
+
+	var payload struct {
+		Error struct {
+			Code string `json:"code"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	if payload.Error.Code != "fs_path_outside_workspace" {
+		t.Fatalf("unexpected error code %q", payload.Error.Code)
+	}
+
+	events, err := auditLog.List(10)
+	if err != nil {
+		t.Fatalf("audit list: %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("expected one audit event, got %#v", events)
+	}
+	event := events[0]
+	if event.ToolName != "fs.delete" || event.Success || event.Error == "" {
+		t.Fatalf("unexpected failure audit event: %#v", event)
+	}
+	if len(event.AffectedPaths) != 1 || event.AffectedPaths[0] != filepath.Clean(outsideRoot) {
+		t.Fatalf("expected denied path in audit, got %#v", event.AffectedPaths)
+	}
+}
+
+func newFSAuditHandler(t *testing.T, repoRoot string) (*audit.Log, http.Handler) {
+	t.Helper()
+
+	auditLog, err := audit.NewLog(filepath.Join(t.TempDir(), "audit.jsonl"))
+	if err != nil {
+		t.Fatalf("NewLog error: %v", err)
+	}
+	return auditLog, NewHandler(&app.Runtime{
+		RepoRoot: repoRoot,
+		Audit:    auditLog,
+	}, testAuthToken)
+}
+
+func fsMutationRequest(
+	t *testing.T,
+	handler http.Handler,
+	method string,
+	path string,
+	payload any,
+	expectedStatus int,
+) *httptest.ResponseRecorder {
+	t.Helper()
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, authedJSONRequest(t, method, path, payload))
+	if recorder.Code != expectedStatus {
+		t.Fatalf("expected %d, got %d body=%s", expectedStatus, recorder.Code, recorder.Body.String())
+	}
+	return recorder
 }
