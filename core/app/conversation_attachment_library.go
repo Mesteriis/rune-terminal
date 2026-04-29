@@ -2,10 +2,13 @@ package app
 
 import (
 	"context"
+	"database/sql"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
+	"github.com/Mesteriis/rune-terminal/core/audit"
 	"github.com/Mesteriis/rune-terminal/core/conversation"
 )
 
@@ -95,13 +98,34 @@ func (r *Runtime) ListAttachmentReferences(ctx context.Context, limit int) ([]co
 }
 
 func (r *Runtime) DeleteAttachmentReference(ctx context.Context, attachmentID string) error {
+	return r.deleteAttachmentReference(ctx, attachmentID)
+}
+
+func (r *Runtime) deleteAttachmentReference(ctx context.Context, attachmentID string) (err error) {
+	attachmentID = strings.TrimSpace(attachmentID)
+	var (
+		workspaceID   string
+		actionSource  string
+		affectedPaths []string
+	)
+	defer func() {
+		r.appendDeleteAttachmentReferenceAudit(attachmentID, workspaceID, actionSource, affectedPaths, err)
+	}()
+
 	if r.DB == nil {
 		return conversation.ErrAttachmentNotFound
 	}
-	attachmentID = strings.TrimSpace(attachmentID)
 	if attachmentID == "" {
 		return conversation.ErrAttachmentNotFound
 	}
+
+	storedReference, err := r.loadAttachmentReferenceForDelete(ctx, attachmentID)
+	if err != nil {
+		return err
+	}
+	workspaceID = storedReference.workspaceID
+	actionSource = storedReference.actionSource
+	affectedPaths = []string{storedReference.attachment.Path}
 
 	result, err := r.DB.ExecContext(
 		ctx,
@@ -119,4 +143,67 @@ func (r *Runtime) DeleteAttachmentReference(ctx context.Context, attachmentID st
 		return conversation.ErrAttachmentNotFound
 	}
 	return nil
+}
+
+type storedAttachmentReference struct {
+	attachment   conversation.AttachmentReference
+	workspaceID  string
+	actionSource string
+}
+
+func (r *Runtime) loadAttachmentReferenceForDelete(
+	ctx context.Context,
+	attachmentID string,
+) (storedAttachmentReference, error) {
+	var stored storedAttachmentReference
+	err := r.DB.QueryRowContext(
+		ctx,
+		`
+		SELECT id, name, path, mime_type, size, modified_time, workspace_id, action_source
+		FROM agent_attachment_references
+		WHERE id = ?
+		`,
+		attachmentID,
+	).Scan(
+		&stored.attachment.ID,
+		&stored.attachment.Name,
+		&stored.attachment.Path,
+		&stored.attachment.MimeType,
+		&stored.attachment.Size,
+		&stored.attachment.ModifiedTime,
+		&stored.workspaceID,
+		&stored.actionSource,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return storedAttachmentReference{}, conversation.ErrAttachmentNotFound
+		}
+		return storedAttachmentReference{}, err
+	}
+	return stored, nil
+}
+
+func (r *Runtime) appendDeleteAttachmentReferenceAudit(
+	attachmentID string,
+	workspaceID string,
+	actionSource string,
+	affectedPaths []string,
+	err error,
+) {
+	if r == nil || r.Audit == nil {
+		return
+	}
+	summaryID := trimSummary(strings.TrimSpace(attachmentID))
+	if summaryID == "" {
+		summaryID = "unknown"
+	}
+	_ = r.Audit.Append(audit.Event{
+		ToolName:      "agent.attachment_reference.delete",
+		Summary:       fmt.Sprintf("delete attachment reference: %s", summaryID),
+		WorkspaceID:   strings.TrimSpace(workspaceID),
+		ActionSource:  firstNonEmpty(strings.TrimSpace(actionSource), "http.agent.conversation"),
+		Success:       err == nil,
+		Error:         errorString(err),
+		AffectedPaths: normalizeFSAuditPaths(affectedPaths),
+	})
 }

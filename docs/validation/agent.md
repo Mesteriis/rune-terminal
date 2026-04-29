@@ -43,6 +43,8 @@
   - attachment reference creation now appends the success audit event only
     after the DB reference record is persisted, so a store failure cannot leave
     audit history claiming that a reference was successfully created
+  - stored attachment reference deletion now appends success/failure audit
+    events with stored provenance and affected path when available
   - stored attachment references can now be reused from the composer `Recent attachments` shelf and deleted from that same backend-owned library
   - transcript attachment chips sourced from backend conversation message attachment metadata
   - transcript attachment chips can now be re-queued directly back into the composer as reusable attachment references
@@ -215,6 +217,7 @@
 - `go test ./core/...`
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi`
 - `./scripts/go.sh test ./core/app -run 'TestCreateAttachmentReferenceDoesNotAuditSuccessWhenStoreFails' -count=1`
+- `./scripts/go.sh test ./core/app -run 'TestDeleteAttachmentReferenceAppends.*AuditEvent' -count=1`
 - `./scripts/go.sh test ./core/agent ./core/app ./core/conversation ./core/transport/httpapi`
 - `npm --prefix frontend run test -- src/features/agent/api/client.test.ts src/widgets/ai/ai-panel-header-widget.test.tsx src/widgets/ai/ai-panel-widget.test.tsx`
 - `npm --prefix frontend run test -- src/features/agent/api/client.test.ts src/features/agent/api/provider-client.test.ts src/features/agent/model/provider-settings-draft.test.ts src/widgets/ai/ai-panel-widget.test.tsx`

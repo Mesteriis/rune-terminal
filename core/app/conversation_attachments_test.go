@@ -124,6 +124,86 @@ func TestCreateAttachmentReferenceDoesNotAuditSuccessWhenStoreFails(t *testing.T
 	}
 }
 
+func TestDeleteAttachmentReferenceAppendsAuditEventWithProvenance(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	dbConn, err := db.Open(context.Background(), filepath.Join(tempDir, "runtime.db"))
+	if err != nil {
+		t.Fatalf("db open: %v", err)
+	}
+	auditLog, err := audit.NewLog(filepath.Join(tempDir, "audit.jsonl"))
+	if err != nil {
+		t.Fatalf("audit log: %v", err)
+	}
+	filePath := filepath.Join(tempDir, "notes.txt")
+	if err := os.WriteFile(filePath, []byte("notes"), 0o600); err != nil {
+		t.Fatalf("write attachment file: %v", err)
+	}
+
+	runtime := &Runtime{Audit: auditLog, DB: dbConn}
+	attachment, err := runtime.CreateAttachmentReference(CreateAttachmentReferenceRequest{
+		Path:         filePath,
+		WorkspaceID:  "ws-default",
+		ActionSource: "test.files.attach_to_ai",
+	})
+	if err != nil {
+		t.Fatalf("create attachment reference: %v", err)
+	}
+	if err := runtime.DeleteAttachmentReference(context.Background(), attachment.ID); err != nil {
+		t.Fatalf("delete attachment reference: %v", err)
+	}
+
+	events, err := runtime.Audit.List(10)
+	if err != nil {
+		t.Fatalf("audit list: %v", err)
+	}
+	if len(events) != 2 {
+		t.Fatalf("expected create and delete audit events, got %#v", events)
+	}
+	deleteEvent := events[1]
+	if deleteEvent.ToolName != "agent.attachment_reference.delete" || !deleteEvent.Success || deleteEvent.Error != "" {
+		t.Fatalf("unexpected delete audit event: %#v", deleteEvent)
+	}
+	if deleteEvent.WorkspaceID != "ws-default" || deleteEvent.ActionSource != "test.files.attach_to_ai" {
+		t.Fatalf("expected stored provenance on delete audit event, got %#v", deleteEvent)
+	}
+	if len(deleteEvent.AffectedPaths) != 1 || deleteEvent.AffectedPaths[0] != events[0].AffectedPaths[0] {
+		t.Fatalf("expected deleted attachment path in audit event, got %#v", deleteEvent)
+	}
+}
+
+func TestDeleteAttachmentReferenceAppendsFailureAuditEvent(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	dbConn, err := db.Open(context.Background(), filepath.Join(tempDir, "runtime.db"))
+	if err != nil {
+		t.Fatalf("db open: %v", err)
+	}
+	auditLog, err := audit.NewLog(filepath.Join(tempDir, "audit.jsonl"))
+	if err != nil {
+		t.Fatalf("audit log: %v", err)
+	}
+
+	runtime := &Runtime{Audit: auditLog, DB: dbConn}
+	err = runtime.DeleteAttachmentReference(context.Background(), "missing")
+	if !errors.Is(err, conversation.ErrAttachmentNotFound) {
+		t.Fatalf("expected ErrAttachmentNotFound, got %v", err)
+	}
+
+	events, err := runtime.Audit.List(10)
+	if err != nil {
+		t.Fatalf("audit list: %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("expected one failure audit event, got %#v", events)
+	}
+	if events[0].ToolName != "agent.attachment_reference.delete" || events[0].Success || events[0].Error == "" {
+		t.Fatalf("unexpected delete failure audit event: %#v", events[0])
+	}
+}
+
 func TestCreateAttachmentReferenceRejectsPathsOutsideAllowedRoots(t *testing.T) {
 	t.Parallel()
 

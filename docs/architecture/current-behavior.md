@@ -385,6 +385,9 @@ Confirmable boundaries:
   - attachment paths are canonicalized before policy evaluation and reads, so symlinks are judged by their resolved target rather than by the lexical path supplied by the frontend
   - attachment policy uses the backend runtime repo root for repo-scoped rules; `context.repo_root` in conversation requests is display/context metadata, not policy authority
   - policy-denied attachment submit/reference attempts are written to audit with the denied path and policy error
+  - stored attachment-reference deletion also appends a core-owned audit event
+    with stored workspace/action source and affected path when the record
+    exists, and a failure event when the reference is missing
   - conversation provider requests now include bounded attachment context when attachments are present (metadata plus bounded text excerpt for supported text-like files)
   - attachment context limits are backend-owned and deterministic: max file size `256 KiB`, max read `32 KiB`, max excerpt `8000` chars, max context items `4`
   - files are not imported into managed app storage; references can become stale if files move or are deleted
