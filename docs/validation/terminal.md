@@ -2,7 +2,7 @@
 
 ## Last verified state
 
-- Date: `2026-04-27`
+- Date: `2026-04-29`
 - State: `VERIFIED`
 - Scope:
   - the active `frontend/src` terminal surface now uses the backend terminal runtime as its source of truth for the seeded shell panels
@@ -77,6 +77,12 @@
       can filter by workspace/host/cwd/status,
       can focus a chosen grouped session back into its widget,
       and can surface the same recovery affordance labels (`Restart shell`, `Reconnect shell`, `Resume session`) from the shell-wide entry point instead of only inside the terminal widget
+    - active terminal widget chrome now consumes the same shell locale path as
+      settings: `TerminalWidget` resolves visible action/session/search copy
+      through `terminal-widget-copy.ts` and passes typed toolbar copy into
+      `TerminalToolbar`. The current widget copy has explicit `ru` / `en`
+      text and falls back to English for `zh-CN` / `es` until those
+      translations are supplied.
   - the shell settings modal now exposes a backend-owned `Terminal` settings slice instead of a placeholder:
     - current terminal font size is visible in `Settings -> Terminal`
     - current terminal line height is visible in `Settings -> Terminal`
@@ -151,6 +157,7 @@
 - `frontend/src/features/terminal/model/use-terminal-session.test.tsx`
 - `frontend/src/widgets/terminal/terminal-panel.ts`
 - `frontend/src/widgets/terminal/terminal-widget.tsx`
+- `frontend/src/widgets/terminal/terminal-widget-copy.ts`
 - `frontend/src/widgets/terminal/terminal-widget.styles.ts`
 - `frontend/src/widgets/terminal/terminal-widget.test.tsx`
 - `frontend/src/widgets/terminal/terminal-session-navigator-widget.tsx`
@@ -223,6 +230,8 @@
 - `./scripts/go.sh test ./core/terminal -run 'TestSnapshotAndSubscribeCoversBufferedAndLiveOutput|TestSubscriberStaysOpenAfterProcessExit|TestStartSessionCoalescesConcurrentLaunches' -count=1`
 - `npm --prefix frontend run test -- src/features/terminal/api/client.test.ts src/features/terminal/model/use-terminal-session.test.tsx src/widgets/terminal/terminal-widget.test.tsx --reporter=verbose`
 - `npm --prefix frontend run test -- src/features/terminal/model/use-terminal-session.test.tsx src/widgets/terminal/terminal-widget.test.tsx src/shared/ui/components/terminal-status-header.test.tsx --reporter=verbose`
+- `npm --prefix frontend run test -- src/widgets/terminal/terminal-widget.test.tsx -t "renders terminal controls through the active locale copy" --reporter=verbose`
+- `npm run validate:desktop-runtime`
 - `npm run test:ui -- --reporter=line e2e/terminal.spec.ts --grep "grouped backend sessions through the session rail"`
 - `npm run test:ui -- --reporter=line e2e/terminal.spec.ts --grep "terminal widget browser filters and closes grouped backend sessions"`
 - `npm run test:ui -- --reporter=line e2e/terminal.spec.ts --grep "shell-wide terminal session navigator focuses grouped sessions from the utility panel"`

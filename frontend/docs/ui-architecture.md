@@ -31,6 +31,7 @@ Current isolated style modules:
 
 - `CommanderWidget` local dense-surface styles are split across `src/widgets/commander/commander-*.styles.ts`, with `commander-widget.styles.ts` acting as the public barrel for widget callers
 - `CommanderPane` chrome colors now resolve through scoped `--runa-commander-*` variables instead of local RGB literals, keeping active/inactive and light/dark theme overrides in the shell token layer
+- Commander pending-operation, warning, preview-row, inactive-badge, and batch-rename status colors also resolve through scoped `--runa-commander-*` variables; style-module tests guard those active surfaces from reintroducing raw RGB/hex literals
 - `ShellTopbarWidget`, `RightActionRailWidget`, and `ModalHostWidget` now keep their shell/panel chrome constants in adjacent `*.styles.ts` files instead of mixing presentational objects into the widget files
 
 ### Primitives
@@ -88,6 +89,7 @@ Current reusable controls:
 - `RadioGroup` exposes a named `radiogroup` contract through an explicit label id
 - `TerminalToolbar` moves focus into the search field explicitly when the search row opens
 - `TerminalToolbar` keeps search ergonomics ahead of decorative status chrome: when terminal search opens, the search row takes over the trailing utility area and the renderer badge is intentionally hidden until search closes
+- `TerminalToolbar` accepts a typed copy contract from widget callers, with an internal English fallback for isolated component use; active terminal panels pass locale-resolved copy from the widget layer
 - `TerminalStatusHeader` now has direct component coverage for default terminal meta rendering and compact `primaryText` mode without meta badges
 - `TerminalStatusHeader` also supports the expanded body-header density used by `TerminalWidget`: stacked primary/secondary text for the live terminal identity, while compact Dockview tabs stay on the single-line variant
 
@@ -191,6 +193,7 @@ its visible shell blocks as raw HTML inside `App.tsx`.
 - Commander keyboard handling now routes through focused pure handlers in `keyboard-handlers.ts`: file-dialog blocking, `Alt+Left/Right` history, ctrl-modifier shortcuts, pending-operation flows, numpad selection shortcuts, shift-range navigation, main navigation, and typeahead matching all have direct unit coverage, while `keyboard.ts` is now just the thin hook-level orchestration entrypoint.
 - Commander pane wiring now also goes through `commander-pane-controller.ts`: `CommanderWidget` builds pane-scoped controller objects once, and `CommanderPane` consumes a single controller prop instead of a drilled mix of pane view state, sort state, path-edit state, and pane interaction callbacks.
 - `TerminalWidget` renders the terminal-specific body composition for terminal panels and now owns the in-panel terminal chrome composition: live `TerminalStatusHeader`, interrupt/restart action slots, `TerminalToolbar`, and the xterm-backed `TerminalSurface`; the toolbar remains a local surface affordance layer for copy/paste/search/clear/jump actions instead of inventing a second backend contract for viewport-only behavior.
+- `TerminalWidget` reads `useAppLocale()` and resolves visible action/session/search copy through `terminal-widget-copy.ts`, so active terminal chrome participates in the shell localization contract instead of hard-coding labels in the widget body.
 - `TerminalDockviewTabWidget` renders terminal-specific Dockview tab chrome for terminal panels and now uses the same compact action density as the body toolbar instead of the older elevated close-button treatment.
 - `TerminalDockviewHeaderActionsWidget` keeps terminal-group `add/close` controls inside the same compact grouped action language as the terminal toolbar, so Dockview header actions and in-panel actions read as one system.
 - `TerminalDockviewHeaderActionsWidget` now also splits its host-level wrap by panel type: terminal groups keep the slightly lowered action wrap that lines up with the terminal header chrome, while non-terminal groups reuse the same compact close-control language without inheriting that extra top offset.

@@ -1,6 +1,7 @@
 import { LoaderCircle, Plus, RotateCcw, Sparkles, Square } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
+import { useAppLocale } from '@/features/i18n/model/locale-provider'
 import {
   fetchTerminalDiagnostics,
   fetchTerminalLatestCommand,
@@ -12,6 +13,7 @@ import { useTerminalPreferences } from '@/features/terminal/model/use-terminal-p
 import { useTerminalSession } from '@/features/terminal/model/use-terminal-session'
 import { openAiSidebar } from '@/shared/model/app'
 import { queueAiPromptHandoff } from '@/shared/model/ai-handoff'
+import { resolveLocalizedCopy } from '@/features/i18n/model/localized-copy'
 import { ClearBox, IconButton } from '@/shared/ui/components'
 import { RunaDomScopeProvider, useRunaDomAutoTagging } from '@/shared/ui/dom-id'
 import { Button, Text } from '@/shared/ui/primitives'
@@ -49,6 +51,7 @@ import {
   terminalWidgetSurfaceWrapStyle,
   terminalWidgetToolbarRowStyle,
 } from '@/widgets/terminal/terminal-widget.styles'
+import { terminalWidgetCopy } from '@/widgets/terminal/terminal-widget-copy'
 
 export type TerminalWidgetProps = {
   hostId: string
@@ -65,6 +68,8 @@ export function TerminalWidget({
 }: TerminalWidgetProps) {
   const terminalRootRef = useRunaDomAutoTagging('terminal-widget-root')
   const terminalSurfaceRef = useRef<TerminalSurfaceHandle | null>(null)
+  const { locale } = useAppLocale()
+  const copy = resolveLocalizedCopy(terminalWidgetCopy, locale)
   const { cursorBlink, cursorStyle, fontSize, lineHeight, scrollback, themeMode } = useTerminalPreferences()
   const [isExplainAndFixPending, setIsExplainAndFixPending] = useState(false)
   const [isExplainLatestCommandPending, setIsExplainLatestCommandPending] = useState(false)
@@ -100,14 +105,12 @@ export function TerminalWidget({
 
       setLatestCommand(null)
       setLatestCommandError(
-        error instanceof Error && error.message.trim()
-          ? error.message
-          : 'Unable to load the latest terminal command.',
+        error instanceof Error && error.message.trim() ? error.message : copy.latestCommandLoadError,
       )
     } finally {
       setIsLatestCommandLoading(false)
     }
-  }, [runtimeWidgetId])
+  }, [copy.latestCommandLoadError, runtimeWidgetId])
 
   useEffect(() => {
     const refreshDelay = terminalSession.commandInputVersion > 0 ? 40 : 180
@@ -294,14 +297,12 @@ export function TerminalWidget({
       await refreshLatestCommand()
     } catch (error) {
       setLatestCommandError(
-        error instanceof Error && error.message.trim()
-          ? error.message
-          : 'Unable to rerun the latest terminal command.',
+        error instanceof Error && error.message.trim() ? error.message : copy.rerunLatestCommandError,
       )
     } finally {
       setIsRerunLatestCommandPending(false)
     }
-  }, [latestCommand, refreshLatestCommand, runtimeWidgetId])
+  }, [copy.rerunLatestCommandError, latestCommand, refreshLatestCommand, runtimeWidgetId])
   const isRestartDisabled =
     terminalSession.isLoading || terminalSession.isInterrupting || terminalSession.isRestarting
   const isCreateSessionDisabled =
@@ -328,14 +329,14 @@ export function TerminalWidget({
     terminalSession.isInterrupting ||
     terminalSession.isRestarting
   const recoverButtonLabel = terminalSession.isRecoveringStream
-    ? 'Reconnect stream'
+    ? copy.reconnectStream
     : terminalSession.connectionKind === 'ssh' &&
         terminalSession.runtimeState?.remote_launch_mode === 'tmux' &&
         terminalSession.sessionState !== 'running'
-      ? 'Resume session'
+      ? copy.resumeSession
       : terminalSession.connectionKind === 'ssh' && terminalSession.sessionState !== 'running'
-        ? 'Reconnect shell'
-        : 'Restart shell'
+        ? copy.reconnectShell
+        : copy.restartShell
   const RestartIcon = terminalSession.isRestarting ? LoaderCircle : RotateCcw
   const InterruptIcon = terminalSession.isInterrupting ? LoaderCircle : Square
   const isExplainAndFixDisabled = !canExplainAndFix || isExplainAndFixPending
@@ -367,7 +368,7 @@ export function TerminalWidget({
                   style={terminalWidgetHeaderActionsStyle}
                 >
                   <Button
-                    aria-label={`Create another terminal session for ${title}`}
+                    aria-label={copy.createSessionAria(title)}
                     disabled={isCreateSessionDisabled}
                     onClick={() => {
                       void terminalSession.createSession()
@@ -382,14 +383,14 @@ export function TerminalWidget({
                           }
                         : null),
                     }}
-                    title="Create a new backend-owned session inside this terminal widget"
+                    title={copy.createSessionTitle}
                   >
                     <Plus size={13} strokeWidth={1.8} />
-                    {terminalSession.isCreatingSession ? 'Creating…' : 'New session'}
+                    {terminalSession.isCreatingSession ? copy.creatingSession : copy.newSession}
                   </Button>
                   {canRecoverTerminal ? (
                     <Button
-                      aria-label={`Recover terminal session for ${title}`}
+                      aria-label={copy.recoverSessionAria(title)}
                       disabled={isRecoverDisabled}
                       onClick={() => {
                         void terminalSession.recoverSession()
@@ -406,10 +407,10 @@ export function TerminalWidget({
                       }}
                       title={
                         terminalSession.isRecoveringStream
-                          ? 'Reconnect the live terminal output stream without restarting the shell'
+                          ? copy.recoverStreamTitle
                           : terminalSession.connectionKind === 'ssh'
-                            ? 'Recover the current SSH-backed shell against the same terminal target'
-                            : 'Recover the current local shell session'
+                            ? copy.recoverSSHTitle
+                            : copy.recoverLocalTitle
                       }
                     >
                       <RotateCcw
@@ -426,7 +427,7 @@ export function TerminalWidget({
                   ) : null}
                   {groupedSessions.length > 1 ? (
                     <Button
-                      aria-label={`Browse grouped terminal sessions for ${title}`}
+                      aria-label={copy.browseSessionsAria(title)}
                       onClick={() => {
                         setIsSessionBrowserOpen((currentValue) => !currentValue)
                         if (isSessionBrowserOpen) {
@@ -435,13 +436,13 @@ export function TerminalWidget({
                       }}
                       runaComponent="terminal-widget-browse-sessions"
                       style={terminalWidgetAiActionButtonStyle}
-                      title="Inspect, filter, focus, or close grouped sessions in this terminal widget"
+                      title={copy.browseSessionsTitle}
                     >
-                      {isSessionBrowserOpen ? 'Hide sessions' : 'Browse sessions'}
+                      {isSessionBrowserOpen ? copy.hideSessions : copy.browseSessions}
                     </Button>
                   ) : null}
                   <Button
-                    aria-label={`Explain and fix the latest terminal issue for ${title}`}
+                    aria-label={copy.explainAndFixAria(title)}
                     disabled={isExplainAndFixDisabled}
                     onClick={() => {
                       void handleExplainAndFix()
@@ -456,17 +457,13 @@ export function TerminalWidget({
                           }
                         : null),
                     }}
-                    title={
-                      canExplainAndFix
-                        ? 'Open AI and explain/fix the latest visible terminal issue'
-                        : 'No terminal issue or output is available yet'
-                    }
+                    title={canExplainAndFix ? copy.explainAndFixTitle : copy.explainAndFixUnavailableTitle}
                   >
                     <Sparkles size={13} strokeWidth={1.8} />
-                    {isExplainAndFixPending ? 'Loading…' : 'Explain & fix'}
+                    {isExplainAndFixPending ? copy.explainAndFixLoading : copy.explainAndFix}
                   </Button>
                   <IconButton
-                    aria-label={`Interrupt terminal for ${title}`}
+                    aria-label={copy.interruptAria(title)}
                     disabled={isInterruptDisabled}
                     onClick={handleInterrupt}
                     runaComponent="terminal-widget-interrupt"
@@ -480,7 +477,7 @@ export function TerminalWidget({
                           }
                         : null),
                     }}
-                    title={terminalSession.isInterrupting ? 'Interrupting terminal…' : 'Interrupt terminal'}
+                    title={terminalSession.isInterrupting ? copy.interruptingTitle : copy.interruptTitle}
                   >
                     <InterruptIcon
                       size={12}
@@ -493,7 +490,7 @@ export function TerminalWidget({
                     />
                   </IconButton>
                   <IconButton
-                    aria-label={`Restart terminal for ${title}`}
+                    aria-label={copy.restartAria(title)}
                     disabled={isRestartDisabled}
                     onClick={handleRestart}
                     runaComponent="terminal-widget-restart"
@@ -507,7 +504,7 @@ export function TerminalWidget({
                           }
                         : null),
                     }}
-                    title={terminalSession.isRestarting ? 'Restarting terminal…' : 'Restart terminal'}
+                    title={terminalSession.isRestarting ? copy.restartingTitle : copy.restartTitle}
                   >
                     <RestartIcon
                       size={14}
@@ -536,15 +533,19 @@ export function TerminalWidget({
                 runaComponent="terminal-widget-command-strip-header"
                 style={terminalWidgetCommandStripHeaderStyle}
               >
-                <Text>Latest command</Text>
+                <Text>{copy.latestCommand}</Text>
                 <ClearBox style={terminalWidgetCommandStripMetaStyle}>
                   {latestCommand ? (
                     <>
                       <span>{latestCommand.status}</span>
-                      {latestCommand.execution_block_id ? <span>AI-linked</span> : <span>Terminal</span>}
+                      {latestCommand.execution_block_id ? (
+                        <span>{copy.aiLinked}</span>
+                      ) : (
+                        <span>{copy.terminalSource}</span>
+                      )}
                     </>
                   ) : null}
-                  {isLatestCommandLoading ? <span>Refreshing…</span> : null}
+                  {isLatestCommandLoading ? <span>{copy.refreshing}</span> : null}
                 </ClearBox>
               </ClearBox>
               {latestCommand ? (
@@ -557,7 +558,7 @@ export function TerminalWidget({
                   ) : null}
                   {latestCommand.explain_summary?.trim() ? (
                     <Text style={terminalWidgetCommandExcerptStyle}>
-                      {`Last explain: ${latestCommand.explain_summary.trim()}`}
+                      {copy.lastExplain(latestCommand.explain_summary.trim())}
                     </Text>
                   ) : null}
                   <ClearBox
@@ -565,7 +566,7 @@ export function TerminalWidget({
                     style={terminalWidgetCommandActionsStyle}
                   >
                     <Button
-                      aria-label={`Explain the latest command for ${title}`}
+                      aria-label={copy.explainCommandAria(title)}
                       disabled={isLatestCommandActionDisabled || isExplainLatestCommandPending}
                       onClick={() => {
                         void handleExplainLatestCommand()
@@ -574,10 +575,10 @@ export function TerminalWidget({
                       style={terminalWidgetAiActionButtonStyle}
                     >
                       <Sparkles size={13} strokeWidth={1.8} />
-                      {isExplainLatestCommandPending ? 'Explaining…' : 'Explain command'}
+                      {isExplainLatestCommandPending ? copy.explainingCommand : copy.explainCommand}
                     </Button>
                     <Button
-                      aria-label={`Re-run the latest command for ${title}`}
+                      aria-label={copy.rerunCommandAria(title)}
                       disabled={isLatestCommandActionDisabled || isRerunLatestCommandPending}
                       onClick={() => {
                         void handleRerunLatestCommand()
@@ -586,16 +587,14 @@ export function TerminalWidget({
                       style={terminalWidgetAiActionButtonStyle}
                     >
                       <RotateCcw size={13} strokeWidth={1.8} />
-                      {isRerunLatestCommandPending ? 'Running…' : 'Re-run'}
+                      {isRerunLatestCommandPending ? copy.runningCommand : copy.rerun}
                     </Button>
                   </ClearBox>
                 </>
               ) : latestCommandError ? (
                 <Text style={terminalWidgetCommandExcerptStyle}>{latestCommandError}</Text>
               ) : (
-                <Text style={terminalWidgetCommandExcerptStyle}>
-                  No submitted command has been observed in this terminal session yet.
-                </Text>
+                <Text style={terminalWidgetCommandExcerptStyle}>{copy.noCommandObserved}</Text>
               )}
             </ClearBox>
           ) : null}
@@ -603,7 +602,7 @@ export function TerminalWidget({
             <ClearBox runaComponent="terminal-widget-session-rail" style={terminalWidgetSessionRailStyle}>
               {groupedSessions.map((session, index) => (
                 <Button
-                  aria-label={`Focus terminal session ${index + 1} for ${title}`}
+                  aria-label={copy.focusSessionAria(index + 1, title)}
                   disabled={session.isActive || terminalSession.isLoading || terminalSession.isRestarting}
                   key={session.sessionId}
                   onClick={() => {
@@ -621,7 +620,7 @@ export function TerminalWidget({
                   }}
                   title={session.cwd}
                 >
-                  <span>{`Session ${index + 1}`}</span>
+                  <span>{copy.sessionLabel(index + 1)}</span>
                   <span style={terminalWidgetSessionMetaStyle}>
                     {session.sessionState === 'running' ? session.shellLabel : session.sessionState}
                   </span>
@@ -635,9 +634,9 @@ export function TerminalWidget({
               style={terminalWidgetSessionBrowserStyle}
             >
               <input
-                aria-label="Filter grouped terminal sessions"
+                aria-label={copy.filterSessionsAria}
                 onChange={(event) => setSessionFilterQuery(event.target.value)}
-                placeholder="Filter sessions by cwd, shell, or tmux target"
+                placeholder={copy.filterSessionsPlaceholder}
                 style={terminalWidgetSessionBrowserFilterStyle}
                 value={sessionFilterQuery}
               />
@@ -652,16 +651,20 @@ export function TerminalWidget({
                     style={terminalWidgetSessionCardStyle}
                   >
                     <ClearBox style={terminalWidgetSessionCardHeaderStyle}>
-                      <strong>{`Session ${groupedSessions.findIndex((item) => item.sessionId === session.sessionId) + 1}`}</strong>
+                      <strong>
+                        {copy.sessionLabel(
+                          groupedSessions.findIndex((item) => item.sessionId === session.sessionId) + 1,
+                        )}
+                      </strong>
                       <span style={terminalWidgetSessionMetaStyle}>
-                        {session.isActive ? 'active' : session.sessionState}
+                        {session.isActive ? copy.activeSession : session.sessionState}
                       </span>
                     </ClearBox>
                     <span>{session.cwd}</span>
                     <ClearBox style={terminalWidgetSessionCardMetaRowStyle}>
                       <span style={terminalWidgetSessionMetaStyle}>{session.shellLabel}</span>
                       <span style={terminalWidgetSessionMetaStyle}>
-                        {session.connectionKind === 'ssh' ? 'SSH' : 'Local'}
+                        {session.connectionKind === 'ssh' ? copy.connectionSSH : copy.connectionLocal}
                       </span>
                       {session.connectionName ? (
                         <span style={terminalWidgetSessionMetaStyle}>{session.connectionName}</span>
@@ -674,36 +677,35 @@ export function TerminalWidget({
                     </ClearBox>
                     <ClearBox style={terminalWidgetSessionCardActionsStyle}>
                       <Button
-                        aria-label={`Focus terminal session ${index + 1} from browser for ${title}`}
+                        aria-label={copy.focusSessionFromBrowserAria(index + 1, title)}
                         disabled={session.isActive || isSessionMutationDisabled}
                         onClick={() => {
                           void terminalSession.focusSession(session.sessionId)
                         }}
                       >
-                        Focus
+                        {copy.focusSession}
                       </Button>
                       <Button
-                        aria-label={`Close terminal session ${index + 1} for ${title}`}
+                        aria-label={copy.closeSessionAria(index + 1, title)}
                         disabled={groupedSessions.length <= 1 || isSessionMutationDisabled}
                         onClick={() => {
                           void terminalSession.closeSession(session.sessionId)
                         }}
                       >
-                        Close
+                        {copy.closeSession}
                       </Button>
                     </ClearBox>
                   </ClearBox>
                 ))}
                 {visibleGroupedSessions.length === 0 ? (
-                  <span style={terminalWidgetSessionMetaStyle}>
-                    No grouped sessions match the current filter.
-                  </span>
+                  <span style={terminalWidgetSessionMetaStyle}>{copy.noSessionsMatch}</span>
                 ) : null}
               </ClearBox>
             </ClearBox>
           ) : null}
           <ClearBox runaComponent="terminal-widget-toolbar-row" style={terminalWidgetToolbarRowStyle}>
             <TerminalToolbar
+              copy={copy.toolbar}
               isSearchOpen={isSearchOpen}
               onClear={handleClear}
               onCloseSearch={handleCloseSearch}

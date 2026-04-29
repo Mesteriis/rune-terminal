@@ -30,6 +30,7 @@ import { Box, Button, Input, Text } from '@/shared/ui/primitives'
 import type { TerminalSearchResult } from '@/shared/ui/components/terminal-surface'
 
 export type TerminalToolbarProps = {
+  copy?: TerminalToolbarCopy
   isSearchOpen: boolean
   rendererMode: 'default' | 'webgl'
   searchQuery: string
@@ -45,7 +46,50 @@ export type TerminalToolbarProps = {
   onToggleSearch: () => void
 }
 
+export type TerminalToolbarCopy = {
+  clearViewportAria: string
+  closeSearchAria: string
+  copySelectionAria: string
+  findNextAria: string
+  findNextTitle: string
+  findPreviousAria: string
+  findPreviousTitle: string
+  jumpToLatestAria: string
+  noMatches: string
+  pasteFromClipboardAria: string
+  rendererDefault: string
+  rendererWebgl: string
+  searchInputAria: string
+  searchInputPlaceholder: string
+  searchResultsAria: string
+  searchShortcutHint: string
+  toggleSearchAria: string
+  typeQuery: string
+}
+
+const defaultTerminalToolbarCopy: TerminalToolbarCopy = {
+  clearViewportAria: 'Clear terminal viewport',
+  closeSearchAria: 'Close terminal search',
+  copySelectionAria: 'Copy selection',
+  findNextAria: 'Find next match',
+  findNextTitle: 'Next match (Enter / F3 / Ctrl+G)',
+  findPreviousAria: 'Find previous match',
+  findPreviousTitle: 'Previous match (Shift+Enter / Shift+F3 / Shift+Ctrl+G)',
+  jumpToLatestAria: 'Jump to latest terminal output',
+  noMatches: 'No matches',
+  pasteFromClipboardAria: 'Paste from clipboard',
+  rendererDefault: 'Default',
+  rendererWebgl: 'WebGL',
+  searchInputAria: 'Search terminal output',
+  searchInputPlaceholder: 'Search output',
+  searchResultsAria: 'Terminal search results',
+  searchShortcutHint: 'Enter / F3',
+  toggleSearchAria: 'Toggle terminal search',
+  typeQuery: 'Type query',
+}
+
 export function TerminalToolbar({
+  copy = defaultTerminalToolbarCopy,
   isSearchOpen,
   rendererMode,
   searchQuery,
@@ -64,11 +108,11 @@ export function TerminalToolbar({
   const trimmedSearchQuery = searchQuery.trim()
   const hasSearchQuery = trimmedSearchQuery !== ''
   const searchStatusText = !hasSearchQuery
-    ? 'Type query'
+    ? copy.typeQuery
     : !searchResult
-      ? 'Enter / F3'
+      ? copy.searchShortcutHint
       : searchResult.resultCount <= 0
-        ? 'No matches'
+        ? copy.noMatches
         : `${Math.max(searchResult.resultIndex + 1, 1)}/${searchResult.resultCount}`
 
   useEffect(() => {
@@ -120,7 +164,7 @@ export function TerminalToolbar({
         <Box runaComponent="terminal-toolbar-action-cluster" style={terminalToolbarClusterStyle}>
           <Box runaComponent="terminal-toolbar-edit-section" style={terminalToolbarSectionStyle}>
             <Button
-              aria-label="Copy selection"
+              aria-label={copy.copySelectionAria}
               onClick={onCopy}
               runaComponent="terminal-toolbar-copy"
               style={terminalToolbarIconButtonStyle}
@@ -128,7 +172,7 @@ export function TerminalToolbar({
               <Copy size={14} strokeWidth={1.8} />
             </Button>
             <Button
-              aria-label="Paste from clipboard"
+              aria-label={copy.pasteFromClipboardAria}
               onClick={onPaste}
               runaComponent="terminal-toolbar-paste"
               style={terminalToolbarIconButtonStyle}
@@ -139,7 +183,7 @@ export function TerminalToolbar({
           <Box runaComponent="terminal-toolbar-view-section" style={terminalToolbarSectionStyle}>
             <Button
               aria-expanded={isSearchOpen}
-              aria-label="Toggle terminal search"
+              aria-label={copy.toggleSearchAria}
               onClick={onToggleSearch}
               runaComponent="terminal-toolbar-toggle-search"
               style={terminalToolbarIconButtonStyle}
@@ -152,7 +196,7 @@ export function TerminalToolbar({
               style={terminalToolbarDividerStyle}
             />
             <Button
-              aria-label="Clear terminal viewport"
+              aria-label={copy.clearViewportAria}
               onClick={onClear}
               runaComponent="terminal-toolbar-clear"
               style={terminalToolbarIconButtonStyle}
@@ -160,7 +204,7 @@ export function TerminalToolbar({
               <Eraser size={14} strokeWidth={1.8} />
             </Button>
             <Button
-              aria-label="Jump to latest terminal output"
+              aria-label={copy.jumpToLatestAria}
               onClick={onJumpToLatest}
               runaComponent="terminal-toolbar-jump-latest"
               style={terminalToolbarIconButtonStyle}
@@ -173,10 +217,10 @@ export function TerminalToolbar({
           {isSearchOpen ? (
             <Box runaComponent="terminal-toolbar-search-wrap" style={terminalToolbarSearchWrapStyle}>
               <Input
-                aria-label="Search terminal output"
+                aria-label={copy.searchInputAria}
                 onChange={(event) => onSearchQueryChange(event.currentTarget.value)}
                 onKeyDown={handleSearchInputKeyDown}
-                placeholder="Search output"
+                placeholder={copy.searchInputPlaceholder}
                 ref={searchInputRef}
                 runaComponent="terminal-toolbar-search-input"
                 style={terminalToolbarSearchInputStyle}
@@ -188,7 +232,7 @@ export function TerminalToolbar({
                 style={terminalToolbarDividerStyle}
               />
               <Text
-                aria-label="Terminal search results"
+                aria-label={copy.searchResultsAria}
                 aria-live="polite"
                 runaComponent="terminal-toolbar-search-status"
                 style={terminalToolbarSearchStatusStyle}
@@ -196,27 +240,27 @@ export function TerminalToolbar({
                 {searchStatusText}
               </Text>
               <Button
-                aria-label="Find previous match"
+                aria-label={copy.findPreviousAria}
                 disabled={!hasSearchQuery}
                 onClick={onSearchPrevious}
                 runaComponent="terminal-toolbar-search-previous"
                 style={terminalToolbarIconButtonStyle}
-                title="Previous match (Shift+Enter / Shift+F3 / Shift+Ctrl+G)"
+                title={copy.findPreviousTitle}
               >
                 <ChevronUp size={14} strokeWidth={1.8} />
               </Button>
               <Button
-                aria-label="Find next match"
+                aria-label={copy.findNextAria}
                 disabled={!hasSearchQuery}
                 onClick={onSearchNext}
                 runaComponent="terminal-toolbar-search-next"
                 style={terminalToolbarIconButtonStyle}
-                title="Next match (Enter / F3 / Ctrl+G)"
+                title={copy.findNextTitle}
               >
                 <ChevronDown size={14} strokeWidth={1.8} />
               </Button>
               <Button
-                aria-label="Close terminal search"
+                aria-label={copy.closeSearchAria}
                 onClick={onCloseSearch}
                 runaComponent="terminal-toolbar-close-search"
                 style={terminalToolbarIconButtonStyle}
@@ -235,7 +279,7 @@ export function TerminalToolbar({
                 runaComponent="terminal-toolbar-renderer-badge-text"
                 style={terminalToolbarBadgeTextStyle}
               >
-                {rendererMode === 'webgl' ? 'WebGL' : 'Default'}
+                {rendererMode === 'webgl' ? copy.rendererWebgl : copy.rendererDefault}
               </Text>
             </Box>
           )}

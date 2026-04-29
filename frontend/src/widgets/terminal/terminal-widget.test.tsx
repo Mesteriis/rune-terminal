@@ -7,6 +7,7 @@ import {
   sendTerminalInput,
   TerminalAPIError,
 } from '@/features/terminal/api/client'
+import { useAppLocale } from '@/features/i18n/model/locale-provider'
 import { useTerminalPreferences } from '@/features/terminal/model/use-terminal-preferences'
 import { useTerminalSession } from '@/features/terminal/model/use-terminal-session'
 import { queueAiPromptHandoff } from '@/shared/model/ai-handoff'
@@ -28,6 +29,10 @@ vi.mock('@/features/terminal/model/use-terminal-session', () => ({
 
 vi.mock('@/features/terminal/model/use-terminal-preferences', () => ({
   useTerminalPreferences: vi.fn(),
+}))
+
+vi.mock('@/features/i18n/model/locale-provider', () => ({
+  useAppLocale: vi.fn(),
 }))
 
 vi.mock('@/features/terminal/api/client', async (importOriginal) => {
@@ -103,6 +108,15 @@ vi.mock('@/shared/ui/components/terminal-surface', async () => {
 
 describe('TerminalWidget', () => {
   beforeEach(() => {
+    vi.mocked(useAppLocale).mockReturnValue({
+      errorMessage: null,
+      isLoading: false,
+      isSaving: false,
+      locale: 'en',
+      refresh: vi.fn(async () => undefined),
+      setLocale: vi.fn(async () => undefined),
+      supportedLocales: ['ru', 'en', 'zh-CN', 'es'],
+    })
     vi.mocked(fetchTerminalLatestCommand).mockRejectedValue(
       new TerminalAPIError(404, 'terminal_command_not_found', 'terminal command not found'),
     )
@@ -229,6 +243,79 @@ describe('TerminalWidget', () => {
 
     expect(focusMock).toHaveBeenCalledTimes(1)
     expect(clearSearchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders terminal controls through the active locale copy', () => {
+    vi.mocked(useAppLocale).mockReturnValue({
+      errorMessage: null,
+      isLoading: false,
+      isSaving: false,
+      locale: 'ru',
+      refresh: vi.fn(async () => undefined),
+      setLocale: vi.fn(async () => undefined),
+      supportedLocales: ['ru', 'en', 'zh-CN', 'es'],
+    })
+    vi.mocked(useTerminalSession).mockReturnValue({
+      runtimeWidgetId: 'term-side',
+      sessionKey: 'term-side:1',
+      cwd: '/repo',
+      shellLabel: 'zsh',
+      connectionKind: 'local',
+      sessionState: 'running',
+      canSendInput: true,
+      canInterrupt: true,
+      isLoading: false,
+      isInterrupting: false,
+      isRestarting: false,
+      error: null,
+      statusDetail: 'Attached to local shell.',
+      outputChunks: [],
+      runtimeState: null,
+      interruptSession: vi.fn(),
+      sendInputChunk: vi.fn(),
+      restartSession: vi.fn(),
+    } as ReturnType<typeof useTerminalSession>)
+    vi.mocked(useTerminalPreferences).mockReturnValue({
+      errorMessage: null,
+      decreaseFontSize: vi.fn(),
+      decreaseLineHeight: vi.fn(),
+      cursorBlink: true,
+      cursorStyle: 'block',
+      fontSize: 13,
+      increaseFontSize: vi.fn(),
+      increaseLineHeight: vi.fn(),
+      increaseScrollback: vi.fn(),
+      isLoading: false,
+      isSaving: false,
+      lineHeight: 1.25,
+      refresh: vi.fn(async () => undefined),
+      resetScrollback: vi.fn(),
+      resetFontSize: vi.fn(),
+      resetLineHeight: vi.fn(),
+      resetCursorBlink: vi.fn(),
+      resetCursorStyle: vi.fn(),
+      resetThemeMode: vi.fn(),
+      scrollback: 5000,
+      themeMode: 'adaptive',
+      decreaseScrollback: vi.fn(),
+      updateCursorBlink: vi.fn(),
+      updateFontSize: vi.fn(),
+      updateLineHeight: vi.fn(),
+      updateCursorStyle: vi.fn(),
+      updateThemeMode: vi.fn(),
+    })
+
+    render(<TerminalWidget hostId="terminal" runtimeWidgetId="term-side" title="Рабочий терминал" />)
+
+    expect(
+      screen.getByRole('button', { name: 'Создать ещё одну сессию терминала для Рабочий терминал' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Новая сессия')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Переключить поиск в терминале' }))
+
+    expect(screen.getByRole('textbox', { name: 'Поиск в выводе терминала' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Результаты поиска в терминале')).toHaveTextContent('Введите запрос')
   })
 
   it('surfaces no-match search state and clears stale decorations on empty query', () => {

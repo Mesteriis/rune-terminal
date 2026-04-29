@@ -17,7 +17,7 @@ export const commanderHintCellStyle: CSSProperties = {
   padding: '0 var(--space-sm)',
   border: '1px solid var(--runa-commander-surface-border)',
   borderRadius: 'var(--radius-xs)',
-  background: 'rgba(9, 16, 15, 0.98)',
+  background: 'var(--runa-commander-control-bg)',
 }
 
 export const commanderHintActionStyle: CSSProperties = {
@@ -73,9 +73,9 @@ export const commanderPendingMessageStyle: CSSProperties = {
 
 export const commanderPendingWarningStyle: CSSProperties = {
   ...commanderPendingMessageStyle,
-  borderColor: 'rgba(212, 180, 104, 0.42)',
-  background: 'rgba(86, 67, 26, 0.22)',
-  color: 'rgb(228, 211, 164)',
+  borderColor: 'var(--runa-commander-warning-border)',
+  background: 'var(--runa-commander-warning-bg)',
+  color: 'var(--runa-commander-warning-text)',
 }
 
 export const commanderPendingActionStyle: CSSProperties = {
@@ -89,7 +89,7 @@ export const commanderPendingInputStyle: CSSProperties = {
   minHeight: '28px',
   padding: '0 var(--space-sm)',
   borderColor: 'var(--runa-commander-highlight-border)',
-  background: 'rgba(9, 16, 15, 0.98)',
+  background: 'var(--runa-commander-control-bg)',
   color: 'var(--runa-commander-highlight-text)',
   fontFamily: 'var(--font-family-mono)',
   fontSize: 'var(--font-size-sm)',
@@ -137,14 +137,14 @@ export const commanderPendingPreviewRowStyle: CSSProperties = {
   alignItems: 'center',
   minHeight: '22px',
   padding: '0 var(--space-sm)',
-  border: '1px solid rgba(100, 138, 128, 0.14)',
+  border: '1px solid var(--runa-commander-preview-row-border)',
   borderRadius: 'var(--radius-xs)',
-  background: 'rgba(9, 16, 15, 0.82)',
+  background: 'var(--runa-commander-preview-row-bg)',
 }
 
 export const commanderPendingPreviewConflictRowStyle: CSSProperties = {
-  borderColor: 'rgba(212, 180, 104, 0.32)',
-  background: 'rgba(68, 54, 24, 0.2)',
+  borderColor: 'var(--runa-commander-preview-conflict-border)',
+  background: 'var(--runa-commander-preview-conflict-bg)',
 }
 
 export const commanderPendingPreviewArrowStyle: CSSProperties = {
@@ -200,8 +200,8 @@ export const commanderPendingRenamePresetStyle: CSSProperties = {
   minHeight: '22px',
   padding: '0 var(--space-xs)',
   borderRadius: 'var(--radius-xs)',
-  border: '1px solid rgba(100, 138, 128, 0.18)',
-  background: 'rgba(9, 16, 15, 0.82)',
+  border: '1px solid var(--runa-commander-rename-preset-border)',
+  background: 'var(--runa-commander-rename-preset-bg)',
   color: 'var(--runa-commander-text-secondary)',
   fontFamily: 'var(--font-family-mono)',
   fontSize: '11px',

@@ -61,7 +61,7 @@ export const commanderPaneStateBadgeStyle: CSSProperties = {
 export const commanderInactivePaneStateBadgeStyle: CSSProperties = {
   ...commanderPaneStateBadgeStyle,
   borderColor: 'var(--runa-commander-surface-border)',
-  background: 'rgba(145, 168, 161, 0.08)',
+  background: 'var(--runa-commander-inactive-badge-bg)',
   color: 'var(--runa-commander-text-muted)',
 }
 
@@ -365,27 +365,27 @@ export function getRenamePreviewStatusStyle(status: CommanderRenamePreviewStatus
   switch (status) {
     case 'duplicate':
       return {
-        borderColor: 'rgba(212, 180, 104, 0.42)',
-        background: 'rgba(86, 67, 26, 0.22)',
-        color: 'rgb(228, 211, 164)',
+        borderColor: 'var(--runa-commander-status-duplicate-border)',
+        background: 'var(--runa-commander-status-duplicate-bg)',
+        color: 'var(--runa-commander-status-duplicate-text)',
       }
     case 'conflict':
       return {
-        borderColor: 'rgba(196, 154, 102, 0.38)',
-        background: 'rgba(82, 58, 24, 0.18)',
-        color: 'rgb(222, 196, 150)',
+        borderColor: 'var(--runa-commander-status-conflict-border)',
+        background: 'var(--runa-commander-status-conflict-bg)',
+        color: 'var(--runa-commander-status-conflict-text)',
       }
     case 'invalid':
       return {
-        borderColor: 'rgba(190, 116, 102, 0.38)',
-        background: 'rgba(82, 33, 28, 0.18)',
-        color: 'rgb(226, 178, 169)',
+        borderColor: 'var(--runa-commander-status-invalid-border)',
+        background: 'var(--runa-commander-status-invalid-bg)',
+        color: 'var(--runa-commander-status-invalid-text)',
       }
     default:
       return {
-        borderColor: 'rgba(96, 161, 139, 0.28)',
-        background: 'rgba(21, 54, 46, 0.16)',
-        color: 'var(--runa-commander-highlight-text)',
+        borderColor: 'var(--runa-commander-status-ok-border)',
+        background: 'var(--runa-commander-status-ok-bg)',
+        color: 'var(--runa-commander-status-ok-text)',
       }
   }
 }
