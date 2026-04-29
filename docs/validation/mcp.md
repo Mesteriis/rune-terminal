@@ -9,6 +9,9 @@
   - lifecycle controls now append core-owned audit events for
     register/update/start/stop/restart/enable/disable/delete success and
     failure paths
+  - draft probe now also appends a core-owned `mcp.probe` audit event, and MCP
+    lifecycle/probe audit summaries redact URL userinfo, query strings, and
+    fragments instead of recording endpoint-embedded secrets
   - active `frontend/src` settings onboarding section
   - filterable MCP server inventory inside the active settings shell
   - backend-owned MCP onboarding catalog and draft probe contract
@@ -23,6 +26,7 @@
 ## Commands/tests used
 
 - `./scripts/go.sh test ./core/transport/httpapi -run 'TestMCPServerLifecycleAppendsAuditEvents|TestMCPServerLifecycleAppendsFailureAuditEvent' -count=1`
+- `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestMCPLifecycleAuditSummaryRedactsEndpointSecrets|TestMCPProbeAppendsAuditEventWithoutSecretHeadersOrQuery' -count=1`
 - `./scripts/go.sh test ./core/transport/httpapi -run 'TestGetMCPServerRedactsSensitiveHeaders|TestGetAndUpdateMCPServer' -count=1`
 - `./scripts/go.sh test ./core/app -run TestUpdateMCPServerPreservesRedactedSensitiveHeaders -count=1`
 - `./scripts/go.sh test ./core/app ./core/plugins ./core/transport/httpapi -run 'Test.*MCP' -count=1`

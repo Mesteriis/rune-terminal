@@ -259,12 +259,25 @@ func (r *Runtime) MCPTemplateCatalog() []MCPTemplate {
 	return catalog
 }
 
-func (r *Runtime) ProbeRemoteMCPServer(ctx context.Context, request MCPProbeRequest) (MCPProbeResult, error) {
+func (r *Runtime) ProbeRemoteMCPServer(ctx context.Context, request MCPProbeRequest) (result MCPProbeResult, err error) {
+	auditEndpoint := strings.TrimSpace(request.Endpoint)
+	defer func() {
+		r.appendMCPLifecycleAudit(mcpLifecycleAuditInput{
+			Action:   "probe",
+			Endpoint: auditEndpoint,
+			Status:   string(result.Status),
+			Success:  err == nil,
+			Error:    err,
+		})
+	}()
+
 	endpoint, headers, err := normalizeRemoteMCPDraft(request.Endpoint, request.Headers)
 	if err != nil {
 		return MCPProbeResult{}, err
 	}
-	return probeRemoteMCPServer(ctx, &http.Client{Timeout: 10 * time.Second}, endpoint, headers)
+	auditEndpoint = endpoint
+	result, err = probeRemoteMCPServer(ctx, &http.Client{Timeout: 10 * time.Second}, endpoint, headers)
+	return result, err
 }
 
 type mcpProbeEnvelope struct {

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/Mesteriis/rune-terminal/core/plugins"
@@ -491,6 +492,62 @@ func TestMCPServerLifecycleAppendsFailureAuditEvent(t *testing.T) {
 	event := auditResponse.Events[0]
 	if event.ToolName != "mcp.update" || event.ActionSource != "mcp.lifecycle" || event.Success || event.Error == "" {
 		t.Fatalf("unexpected failure audit event: %#v", event)
+	}
+}
+
+func TestMCPProbeAppendsAuditEventWithoutSecretHeadersOrQuery(t *testing.T) {
+	t.Parallel()
+
+	callCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		switch callCount {
+		case 1:
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"jsonrpc":"2.0","id":"probe-init","result":{"protocolVersion":"2024-11-05","serverInfo":{"name":"Probe","version":"1.0.0"}}}`))
+		case 2:
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"jsonrpc":"2.0","id":"probe-tools","result":{"tools":[{"name":"docs.search"}]}}`))
+		default:
+			t.Fatalf("unexpected probe request")
+		}
+	}))
+	defer server.Close()
+
+	handler, _ := newTestHandler(t)
+	mcpRequest(t, handler, http.MethodPost, "/api/v1/mcp/probe", map[string]any{
+		"endpoint": server.URL + "/mcp?token=secret",
+		"headers": map[string]string{
+			"Authorization": "Bearer secret",
+		},
+	}, http.StatusOK)
+
+	auditRecorder := mcpRequest(t, handler, http.MethodGet, "/api/v1/audit?limit=10", nil, http.StatusOK)
+	var auditResponse struct {
+		Events []struct {
+			ToolName     string `json:"tool_name"`
+			Summary      string `json:"summary"`
+			ActionSource string `json:"action_source"`
+			Success      bool   `json:"success"`
+			Error        string `json:"error"`
+		} `json:"events"`
+	}
+	if err := json.Unmarshal(auditRecorder.Body.Bytes(), &auditResponse); err != nil {
+		t.Fatalf("unmarshal audit response: %v", err)
+	}
+	if len(auditResponse.Events) != 1 {
+		t.Fatalf("expected one probe audit event, got %#v", auditResponse.Events)
+	}
+	event := auditResponse.Events[0]
+	if event.ToolName != "mcp.probe" || event.ActionSource != "mcp.lifecycle" ||
+		!event.Success || event.Error != "" {
+		t.Fatalf("unexpected probe audit event: %#v", event)
+	}
+	if !strings.Contains(event.Summary, "status=ready") {
+		t.Fatalf("expected probe status in audit summary, got %#v", event)
+	}
+	if strings.Contains(event.Summary, "secret") || strings.Contains(event.Summary, "Authorization") {
+		t.Fatalf("expected audit summary to redact query/header secrets, got %#v", event)
 	}
 }
 

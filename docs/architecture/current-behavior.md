@@ -172,6 +172,9 @@ It is intentionally operational, not narrative.
   - the current implementation supports `type: "remote"` registration only
   - registration does not auto-start the server; newly added entries appear as `stopped`
 - The active settings shell exposes an `MCP` section that lists registered servers, registers remote endpoints with optional headers, loads saved remote details for editing, can delete explicitly registered remote servers, refreshes state, and runs explicit `start` / `stop` / `restart` / `enable` / `disable` actions over the same backend API.
+- MCP lifecycle and draft-probe operations append core-owned audit events with
+  `action_source=mcp.lifecycle`; audit summaries include endpoint identity only
+  after removing URL userinfo, query strings, and fragments.
 - MCP runtime activation is controlled only through explicit API actions (`start`, `stop`, `restart`, `enable`, `disable`) or explicit on-demand invoke requests; core startup does not auto-load or auto-spawn MCP servers.
 - MCP idle servers are auto-stopped after runtime-owned timeout checks, and in-flight MCP invocations are protected from stop/restart interruption.
 - MCP invoke responses do not enter agent context automatically.
