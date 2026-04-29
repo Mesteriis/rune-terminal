@@ -6,7 +6,6 @@ import { WebglAddon } from '@xterm/addon-webgl'
 import { Terminal } from '@xterm/xterm'
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
 
-import type { TerminalOutputChunk } from '@/features/terminal/api/client'
 import { TerminalViewport } from '@/shared/ui/primitives'
 import type { TerminalSessionState } from '@/shared/ui/components/terminal-status-header'
 
@@ -26,13 +25,19 @@ export type TerminalSearchResult = {
   resultIndex: number
 }
 
+export type TerminalSurfaceOutputChunk = {
+  data: string
+  seq: number
+  timestamp?: string
+}
+
 export type TerminalSurfaceProps = {
   cursorBlink?: boolean
   cursorStyle?: 'block' | 'bar' | 'underline'
   fontSize?: number
   lineHeight?: number
   hostId: string
-  outputChunks: TerminalOutputChunk[]
+  outputChunks: TerminalSurfaceOutputChunk[]
   sessionKey: string
   sessionState: TerminalSessionState
   statusMessage?: string | null

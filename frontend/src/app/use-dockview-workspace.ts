@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { type DockviewApi, type DockviewReadyEvent } from 'dockview-react'
 
 import { type WorkspaceWidgetKindCatalogEntry } from '@/shared/api/workspace'
-import { setActiveDockviewApi } from './dockview-api-registry'
+import { setActiveDockviewApi } from '@/shared/model/dockview-api-registry'
 import { addDockviewWorkspace, selectDockviewWorkspace } from './dockview-workspace.actions'
 import { dockviewWorkspaceClient, type DockviewWorkspaceClient } from './dockview-workspace.client'
 import {

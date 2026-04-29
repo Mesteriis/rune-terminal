@@ -9,6 +9,7 @@
   - Tauri desktop CSP configuration under `apps/desktop/src-tauri/tauri.conf.json`
   - frontend lint/test/build commands used by CI
   - frontend active lint now invokes the same project-reference TypeScript graph as the production build (`tsc -b`)
+  - frontend active-path import guard now enforces shared UI upward-import boundaries and widget-to-app boundaries
   - Go test/build commands used by CI
   - HTTP transport safety guards for CORS/auth/body decoding
   - `cmd/rterm-core` JSON response helpers on write/error paths

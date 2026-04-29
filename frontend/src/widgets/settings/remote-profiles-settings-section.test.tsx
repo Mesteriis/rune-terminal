@@ -1,7 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { openRemoteProfileSession } from '@/app/open-remote-profile-session'
 import {
   checkRemoteProfileConnection,
   deleteRemoteProfile,
@@ -12,9 +11,10 @@ import {
   saveRemoteProfile,
   selectRemoteProfileConnection,
 } from '@/features/remote/api/client'
+import { openRemoteProfileSession } from '@/widgets/terminal/open-remote-profile-session'
 import { RemoteProfilesSettingsSection } from './remote-profiles-settings-section'
 
-vi.mock('@/app/open-remote-profile-session', () => ({
+vi.mock('@/widgets/terminal/open-remote-profile-session', () => ({
   openRemoteProfileSession: vi.fn(),
 }))
 

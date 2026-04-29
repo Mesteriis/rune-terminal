@@ -1,7 +1,6 @@
 import type { DockviewApi } from 'dockview-react'
 import { useEffect, useMemo, useState } from 'react'
 
-import { openRemoteProfileSession } from '@/app/open-remote-profile-session'
 import {
   checkRemoteProfileConnection,
   deleteRemoteProfile,
@@ -27,6 +26,7 @@ import {
   settingsShellMutedTextStyle,
   settingsShellSectionCardStyle,
 } from '@/widgets/settings/settings-shell-widget.styles'
+import { openRemoteProfileSession } from '@/widgets/terminal/open-remote-profile-session'
 
 function describeProfile(profile: RemoteProfile) {
   const userPrefix = profile.user ? `${profile.user}@` : ''

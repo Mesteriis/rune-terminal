@@ -1,21 +1,38 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Active-path API import guard.
+# Active frontend layer import guard.
 #
-# Original intent: prevent widgets/pages from importing the low-level HTTP
-# client or compat facade directly, so ownership stayed inside a dedicated
-# store/facade layer. The original targets (frontend/app/tab, frontend/app/
-# workspace, frontend/app/view/term) no longer exist — the frontend is being
-# rewritten under frontend/src/.
+# This is intentionally narrow while the frontend rewrite is still in motion:
+# - shared UI may not import higher layers
+# - widgets may not import the app orchestration layer
 #
-# Until the rewritten frontend introduces a real HTTP client boundary,
-# there is nothing to guard. This script intentionally short-circuits as a
-# pass so that it remains wired into `make validate` without emitting false
-# positives or scanning code paths that do not exist.
-#
-# When the new frontend wires up a real client (e.g. under
-# frontend/src/shared/api/) the guard should be rewritten to forbid direct
-# imports of that client outside an allowlist of boundary files.
+# Widget-to-feature imports still exist in the active rewrite and are not
+# checked here until those adapters are split behind a narrower boundary.
 
-echo "Active UI API import guard: no active targets yet (frontend rewrite in progress)."
+violations=0
+
+check_imports() {
+  local label="$1"
+  local root="$2"
+  local pattern="$3"
+
+  if rg --glob '!**/*.test.*' --glob '!**/*.spec.*' -n "$pattern" "$root"; then
+    echo "Layer violation: ${label}" >&2
+    violations=1
+  fi
+}
+
+check_imports "shared UI must not import app/features/widgets/layouts" \
+  frontend/src/shared/ui \
+  "@/((app|features|widgets|layouts)/)"
+
+check_imports "widgets must not import app orchestration" \
+  frontend/src/widgets \
+  "@/app/"
+
+if [[ "$violations" -ne 0 ]]; then
+  exit 1
+fi
+
+echo "Active UI layer import guard passed."

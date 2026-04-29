@@ -27,7 +27,7 @@ vi.mock('@/shared/api/workspace', () => ({
   openDirectoryWorkspaceWidget: vi.fn(),
 }))
 
-vi.mock('@/app/ensure-ai-terminal-visibility', () => ({
+vi.mock('@/widgets/terminal/ensure-terminal-visibility', () => ({
   ensureAiTerminalVisibility: vi.fn(async () => ({ widgetId: 'term-main' })),
 }))
 

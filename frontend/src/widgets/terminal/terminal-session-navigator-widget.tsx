@@ -10,7 +10,7 @@ import {
 } from '@/features/terminal/api/client'
 import { focusWorkspaceWidget } from '@/shared/api/workspace'
 import { Box, Button, Text } from '@/shared/ui/primitives'
-import { ensureAiTerminalVisibility } from '@/app/ensure-ai-terminal-visibility'
+import { ensureAiTerminalVisibility } from '@/widgets/terminal/ensure-terminal-visibility'
 
 const navigatorRootStyle = {
   display: 'grid',

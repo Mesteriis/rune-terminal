@@ -1,10 +1,10 @@
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { type ReactNode, useEffect, useMemo, useState } from 'react'
 
-import { getActiveDockviewApi } from '@/app/dockview-api-registry'
 import type { AgentProviderGatewayProvider, AgentProviderView } from '@/features/agent/api/provider-client'
 import { useAppLocale } from '@/features/i18n/model/locale-provider'
 import { useAgentProviderSettings } from '@/features/agent/model/use-agent-provider-settings'
+import { getActiveDockviewApi } from '@/shared/model/dockview-api-registry'
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { ClearBox } from '@/shared/ui/components'
 import { Button, Checkbox, ScrollArea, Text } from '@/shared/ui/primitives'

@@ -116,6 +116,16 @@ The dependency direction is one-way:
 Higher layers can depend on lower layers.
 Lower layers must not depend on higher layers.
 
+`scripts/check-active-path-api-imports.sh` enforces the active rewrite's narrow
+layer guard:
+
+- `src/shared/ui/**` must not import `app`, `features`, `widgets`, or `layouts`
+- `src/widgets/**` must not import `app`
+
+Widget-to-feature imports still exist in the active tree as explicit transport
+and model adapters. Splitting those behind narrower widget-facing contracts is
+tracked as future frontend cleanup rather than being folded into this guard.
+
 ## Allowed Imports
 
 - `styles -> tokens`
@@ -234,8 +244,8 @@ The frontend now uses a shared DOM identity contract from
 - Every repo-owned frontend element should resolve to a readable DOM `id`.
 - The canonical semantic locator is `data-runa-node`.
 - The identity format is:
-  - `<layout>-<widget>-<component>-<short-uid>` for `id`
-  - `<layout>-<widget>-<component>` for `data-runa-node`
+    - `<layout>-<widget>-<component>-<short-uid>` for `id`
+    - `<layout>-<widget>-<component>` for `data-runa-node`
 - Scope is inherited through `RunaDomScopeProvider`.
 - Native primitives generate ids automatically and expose a minimal semantic
   contract by default: `id` plus `data-runa-node`.
@@ -258,6 +268,7 @@ Lookup helpers exported from `src/shared/ui/dom-id.tsx`:
 ### Commands
 
 - `npm --prefix frontend run lint:active`
+- `npm run check:active-path-api`
 - `npm run lint:frontend`
 - `npm run format:frontend:check`
 - `npm --prefix frontend run test`
@@ -280,6 +291,7 @@ Lookup helpers exported from `src/shared/ui/dom-id.tsx`:
 - Primitives contain native elements only and use CSS variable styles.
 - The new form-control components added in this slice import primitives only.
 - Widgets import shared components/primitives and may consume local style modules without reaching into app orchestration.
+- The active layer import guard now fails on shared-UI upward imports and widget-to-app imports; `TerminalSurface` carries its own surface-local output chunk shape, Dockview API access lives in `shared/model/dockview-api-registry.ts`, and terminal panel visibility/open helpers live under `src/widgets/terminal/`.
 - `input-field.tsx` contains no raw HTML.
 - `demo-widget.tsx` composes `InputField`, `Box`, `Text`, and `Button`.
 - Barrel imports are active in `components` and `widgets`.

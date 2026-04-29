@@ -3,7 +3,6 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useUnit } from 'effector-react'
 import { useEffect, useRef, useState, type RefObject } from 'react'
 
-import { ensureAiTerminalVisibility } from '@/app/ensure-ai-terminal-visibility'
 import {
   formatProviderGatewayErrorCode,
   getProviderGatewayRecoveryAction,
@@ -14,6 +13,7 @@ import type { ChatMode } from '@/features/agent/model/types'
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { Box, Button, Surface, Text } from '@/shared/ui/primitives'
 import { AiPanelHeaderWidget, AiPanelWidget } from '@/widgets'
+import { ensureAiTerminalVisibility } from '@/widgets/terminal/ensure-terminal-visibility'
 
 import {
   aiPanelBodyStyle,
