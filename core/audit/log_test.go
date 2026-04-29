@@ -2,6 +2,7 @@ package audit
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -73,5 +74,32 @@ func TestLogListLimitKeepsOnlyTailWindow(t *testing.T) {
 	}
 	if events[0].ToolName != "two" || events[1].ToolName != "three" {
 		t.Fatalf("expected tail window [two three], got %#v", events)
+	}
+}
+
+func TestLogListHandlesLargeAuditEvents(t *testing.T) {
+	t.Parallel()
+
+	log, err := NewLog(filepath.Join(t.TempDir(), "audit.jsonl"))
+	if err != nil {
+		t.Fatalf("NewLog error: %v", err)
+	}
+	largeSummary := strings.Repeat("x", 128*1024)
+	if err := log.Append(Event{ToolName: "fs.write_file", Summary: largeSummary, Success: true}); err != nil {
+		t.Fatalf("Append large event error: %v", err)
+	}
+	if err := log.Append(Event{ToolName: "workspace.focus_widget", Success: true}); err != nil {
+		t.Fatalf("Append tail event error: %v", err)
+	}
+
+	events, err := log.List(10)
+	if err != nil {
+		t.Fatalf("List error: %v", err)
+	}
+	if len(events) != 2 {
+		t.Fatalf("expected 2 events, got %d", len(events))
+	}
+	if events[0].ToolName != "fs.write_file" || events[0].Summary != largeSummary {
+		t.Fatalf("large event was not preserved: %#v", events[0])
 	}
 }

@@ -2,7 +2,7 @@
 
 ## Last verified state
 
-- Date: `2026-04-29`
+- Date: `2026-04-30`
 - State: `PARTIAL` for CI wiring
 - Scope:
   - GitHub Actions workflow definition under `.github/workflows/ci.yml`
@@ -17,7 +17,7 @@
   - `cmd/rterm-core` JSON response helpers on write/error paths
   - startup runtime initialization under bounded timeout and single catalog-store ownership
   - approval-grant TTL cleanup and fail-closed random ID generation
-  - conversation/workspace persistence safety for JSON marshalling, snapshot writes, and bounded audit-tail reads
+  - conversation/workspace persistence safety for JSON marshalling, snapshot writes, and bounded audit-tail reads, including large audit events
   - plugin protocol handshake timeout now force-closes blocked stdout reads before returning timeout
   - root/tooling package alignment now keeps the repo and active frontend on the same TypeScript major line
   - Go `coverage.out` artifact generation in CI
@@ -36,7 +36,7 @@
 - `./scripts/go.sh test ./core/transport/httpapi ./cmd/rterm-core -run 'TestCORSRejectsDisallowedOriginSimpleRequest|TestCORSRejectsDisallowedOriginPreflight|TestCORSAllowsPatchAndDeleteMethods|TestDecodeJSONRejectsOversizedBodies|TestWriteJSONErrorEscapesPayload|TestWriteJSONResponseDoesNotPanicOnWriterError|TestWriteJSONResponseWritesValidPayload|TestWriteFileAtomicOverwritesReadyPayload' -count=1`
 - `./scripts/go.sh test ./core/transport/httpapi -run 'Test(ListFSRejectsAbsolutePathOutsideWorkspaceWithExplicitFlag|ReadFSPreviewRejectsPathOutsideWorkspaceWithExplicitFlag)' -count=1`
 - `./scripts/go.sh test ./internal/ids ./core/toolruntime ./core/app -run 'TestNewPanicsWhenEntropyUnavailable|TestTokenPanicsWhenEntropyUnavailable|TestApprovalStoreCreateCleansExpiredGrants|TestApprovalStoreConfirmCleansExpiredPendingRecords|TestExecutorConfirmationFlow|TestExecutorApprovalGrantIsSingleUse|TestBootstrapSessionsKeepsRemoteWidgetAsDisconnectedWhenConnectionMissing' -count=1`
-- `./scripts/go.sh test ./core/conversation ./core/workspace ./core/audit -run 'TestLogAppendAndList|TestLogListLimitKeepsOnlyTailWindow|TestListReturnsEmptySliceWhenLogDoesNotExist|TestSaveAndLoadSnapshotRoundTrip|TestLoadSnapshotDefaultsWhenFileMissing|TestRenameConversation|TestDeleteConversation' -count=1`
+- `./scripts/go.sh test ./core/conversation ./core/workspace ./core/audit -run 'TestLogAppendAndList|TestLogListLimitKeepsOnlyTailWindow|TestLogListHandlesLargeAuditEvents|TestListReturnsEmptySliceWhenLogDoesNotExist|TestSaveAndLoadSnapshotRoundTrip|TestLoadSnapshotDefaultsWhenFileMissing|TestRenameConversation|TestDeleteConversation' -count=1`
 - `./scripts/go.sh test ./core/plugins -run 'TestInvokeFailsWhenHandshakeExceedsTimeout|TestReadJSONLineWithTimeoutClosesReaderOnTimeout' -count=1`
 - `npm install --package-lock-only --ignore-scripts`
 - `npm run tauri:check`

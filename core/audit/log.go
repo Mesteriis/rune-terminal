@@ -12,6 +12,8 @@ import (
 	"github.com/Mesteriis/rune-terminal/internal/ids"
 )
 
+const maxAuditLineBytes = 1024 * 1024
+
 type Event struct {
 	ID                    string    `json:"id"`
 	ToolName              string    `json:"tool_name"`
@@ -90,6 +92,7 @@ func (l *Log) List(limit int) ([]Event, error) {
 	defer fd.Close()
 
 	scanner := bufio.NewScanner(fd)
+	scanner.Buffer(make([]byte, 64*1024), maxAuditLineBytes)
 	events := make([]Event, 0)
 	for scanner.Scan() {
 		var event Event
