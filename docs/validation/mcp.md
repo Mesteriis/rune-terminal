@@ -2,10 +2,13 @@
 
 ## Last verified state
 
-- Date: `2026-04-26`
+- Date: `2026-04-29`
 - State: `VERIFIED` overall for the active bounded MCP scope (explicit lifecycle/invoke/normalization plus template-driven onboarding; no marketplace-style discovery claimed)
 - Scope:
   - explicit lifecycle controls
+  - lifecycle controls now append core-owned audit events for
+    register/update/start/stop/restart/enable/disable/delete success and
+    failure paths
   - active `frontend/src` settings onboarding section
   - filterable MCP server inventory inside the active settings shell
   - backend-owned MCP onboarding catalog and draft probe contract
@@ -16,6 +19,8 @@
 
 ## Commands/tests used
 
+- `./scripts/go.sh test ./core/transport/httpapi -run 'TestMCPServerLifecycleAppendsAuditEvents|TestMCPServerLifecycleAppendsFailureAuditEvent' -count=1`
+- `./scripts/go.sh test ./core/app ./core/plugins ./core/transport/httpapi -run 'Test.*MCP' -count=1`
 - `./scripts/go.sh test ./core/plugins ./core/app ./core/transport/httpapi -count=1`
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestNormalizeRemoteMCPRegistrationRequest|TestProbeRemoteMCPServerReportsReadyWithToolCount|TestListMCPCatalogReturnsTemplates|TestProbeMCPServerRejectsInvalidDraft' -count=1`
 - `npm --prefix frontend run test -- src/features/mcp/api/client.test.ts src/widgets/settings/mcp-settings-section.test.tsx`

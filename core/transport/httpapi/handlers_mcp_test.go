@@ -359,6 +359,113 @@ func TestInvokeMCPAppendsAuditWithExplicitProvenance(t *testing.T) {
 	}
 }
 
+func TestMCPServerLifecycleAppendsAuditEvents(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+	mcpRequest(t, handler, http.MethodPost, "/api/v1/mcp/servers", map[string]any{
+		"id":       "mcp.audit",
+		"type":     "remote",
+		"endpoint": "https://mcp.example.test/mcp",
+	}, http.StatusCreated)
+	mcpRequest(t, handler, http.MethodPut, "/api/v1/mcp/servers/mcp.audit", map[string]any{
+		"id":       "mcp.audit",
+		"type":     "remote",
+		"endpoint": "https://mcp.example.test/v2",
+	}, http.StatusOK)
+	mcpRequest(t, handler, http.MethodPost, "/api/v1/mcp/servers/mcp.test/start", nil, http.StatusOK)
+	mcpRequest(t, handler, http.MethodPost, "/api/v1/mcp/servers/mcp.test/stop", nil, http.StatusOK)
+	mcpRequest(t, handler, http.MethodPost, "/api/v1/mcp/servers/mcp.test/restart", nil, http.StatusOK)
+	mcpRequest(t, handler, http.MethodPost, "/api/v1/mcp/servers/mcp.test/disable", nil, http.StatusOK)
+	mcpRequest(t, handler, http.MethodPost, "/api/v1/mcp/servers/mcp.test/enable", nil, http.StatusOK)
+	mcpRequest(t, handler, http.MethodDelete, "/api/v1/mcp/servers/mcp.audit", nil, http.StatusOK)
+
+	auditRecorder := mcpRequest(t, handler, http.MethodGet, "/api/v1/audit?limit=20", nil, http.StatusOK)
+	var auditResponse struct {
+		Events []struct {
+			ToolName     string `json:"tool_name"`
+			ActionSource string `json:"action_source"`
+			Success      bool   `json:"success"`
+			Error        string `json:"error"`
+		} `json:"events"`
+	}
+	if err := json.Unmarshal(auditRecorder.Body.Bytes(), &auditResponse); err != nil {
+		t.Fatalf("unmarshal audit response: %v", err)
+	}
+
+	expectedTools := []string{
+		"mcp.register",
+		"mcp.update",
+		"mcp.start",
+		"mcp.stop",
+		"mcp.restart",
+		"mcp.disable",
+		"mcp.enable",
+		"mcp.delete",
+	}
+	if len(auditResponse.Events) != len(expectedTools) {
+		t.Fatalf("expected %d lifecycle audit events, got %#v", len(expectedTools), auditResponse.Events)
+	}
+	for index, expectedTool := range expectedTools {
+		event := auditResponse.Events[index]
+		if event.ToolName != expectedTool || !event.Success || event.Error != "" {
+			t.Fatalf("unexpected lifecycle audit event %d: %#v", index, event)
+		}
+		if event.ActionSource != "mcp.lifecycle" {
+			t.Fatalf("expected mcp.lifecycle action source, got %#v", event)
+		}
+	}
+}
+
+func TestMCPServerLifecycleAppendsFailureAuditEvent(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+	mcpRequest(t, handler, http.MethodPut, "/api/v1/mcp/servers/mcp.test", map[string]any{
+		"id":       "mcp.test",
+		"type":     "remote",
+		"endpoint": "https://mcp.example.test/mcp",
+	}, http.StatusBadRequest)
+
+	auditRecorder := mcpRequest(t, handler, http.MethodGet, "/api/v1/audit?limit=10", nil, http.StatusOK)
+	var auditResponse struct {
+		Events []struct {
+			ToolName     string `json:"tool_name"`
+			ActionSource string `json:"action_source"`
+			Success      bool   `json:"success"`
+			Error        string `json:"error"`
+		} `json:"events"`
+	}
+	if err := json.Unmarshal(auditRecorder.Body.Bytes(), &auditResponse); err != nil {
+		t.Fatalf("unmarshal audit response: %v", err)
+	}
+	if len(auditResponse.Events) != 1 {
+		t.Fatalf("expected one lifecycle audit event, got %#v", auditResponse.Events)
+	}
+	event := auditResponse.Events[0]
+	if event.ToolName != "mcp.update" || event.ActionSource != "mcp.lifecycle" || event.Success || event.Error == "" {
+		t.Fatalf("unexpected failure audit event: %#v", event)
+	}
+}
+
+func mcpRequest(
+	t *testing.T,
+	handler http.Handler,
+	method string,
+	path string,
+	payload any,
+	expectedStatus int,
+) *httptest.ResponseRecorder {
+	t.Helper()
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, authedJSONRequest(t, method, path, payload))
+	if recorder.Code != expectedStatus {
+		t.Fatalf("expected %d for %s %s, got %d (%s)", expectedStatus, method, path, recorder.Code, recorder.Body.String())
+	}
+	return recorder
+}
+
 func TestInvokeMCPRejectsMissingWorkspaceTarget(t *testing.T) {
 	t.Parallel()
 

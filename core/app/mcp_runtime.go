@@ -59,7 +59,23 @@ func (r *Runtime) registerMCPServers() error {
 	return r.persistMCPRegistry()
 }
 
-func (r *Runtime) RegisterMCPServer(request MCPRegistrationRequest) (plugins.MCPServerSnapshot, error) {
+func (r *Runtime) RegisterMCPServer(request MCPRegistrationRequest) (server plugins.MCPServerSnapshot, err error) {
+	auditServerID := strings.TrimSpace(request.ID)
+	auditEndpoint := strings.TrimSpace(request.Endpoint)
+	defer func() {
+		if server.ID != "" {
+			auditServerID = server.ID
+			auditEndpoint = server.Endpoint
+		}
+		r.appendMCPLifecycleAudit(mcpLifecycleAuditInput{
+			Action:   "register",
+			ServerID: auditServerID,
+			Endpoint: auditEndpoint,
+			Success:  err == nil,
+			Error:    err,
+		})
+	}()
+
 	if r.MCP == nil {
 		return plugins.MCPServerSnapshot{}, ErrMCPRuntimeNotConfigured
 	}
@@ -67,6 +83,8 @@ func (r *Runtime) RegisterMCPServer(request MCPRegistrationRequest) (plugins.MCP
 	if err != nil {
 		return plugins.MCPServerSnapshot{}, err
 	}
+	auditServerID = normalizedRequest.ID
+	auditEndpoint = normalizedRequest.Endpoint
 
 	spec := plugins.MCPServerSpec{
 		ID:   normalizedRequest.ID,
@@ -83,10 +101,30 @@ func (r *Runtime) RegisterMCPServer(request MCPRegistrationRequest) (plugins.MCP
 	if err := r.persistMCPRegistry(); err != nil {
 		return plugins.MCPServerSnapshot{}, err
 	}
-	return r.MCP.Registry().Get(spec.ID)
+	server, err = r.MCP.Registry().Get(spec.ID)
+	return server, err
 }
 
-func (r *Runtime) UpdateMCPServer(serverID string, request MCPRegistrationRequest) (plugins.MCPServerSnapshot, error) {
+func (r *Runtime) UpdateMCPServer(
+	serverID string,
+	request MCPRegistrationRequest,
+) (server plugins.MCPServerSnapshot, err error) {
+	auditServerID := strings.TrimSpace(firstNonEmpty(request.ID, serverID))
+	auditEndpoint := strings.TrimSpace(request.Endpoint)
+	defer func() {
+		if server.ID != "" {
+			auditServerID = server.ID
+			auditEndpoint = server.Endpoint
+		}
+		r.appendMCPLifecycleAudit(mcpLifecycleAuditInput{
+			Action:   "update",
+			ServerID: auditServerID,
+			Endpoint: auditEndpoint,
+			Success:  err == nil,
+			Error:    err,
+		})
+	}()
+
 	if r.MCP == nil {
 		return plugins.MCPServerSnapshot{}, ErrMCPRuntimeNotConfigured
 	}
@@ -95,6 +133,8 @@ func (r *Runtime) UpdateMCPServer(serverID string, request MCPRegistrationReques
 	if err != nil {
 		return plugins.MCPServerSnapshot{}, err
 	}
+	auditServerID = normalizedRequest.ID
+	auditEndpoint = normalizedRequest.Endpoint
 
 	id := normalizedRequest.ID
 	existingSpec, err := r.MCP.Registry().Spec(id)
@@ -104,7 +144,7 @@ func (r *Runtime) UpdateMCPServer(serverID string, request MCPRegistrationReques
 	if existingSpec.Type != plugins.MCPServerTypeRemote {
 		return plugins.MCPServerSnapshot{}, fmt.Errorf("%w: only remote mcp servers can be updated", plugins.ErrInvalidPluginSpec)
 	}
-	server, err := r.MCP.Registry().Get(id)
+	server, err = r.MCP.Registry().Get(id)
 	if err != nil {
 		return plugins.MCPServerSnapshot{}, err
 	}
@@ -127,10 +167,23 @@ func (r *Runtime) UpdateMCPServer(serverID string, request MCPRegistrationReques
 	if err := r.persistMCPRegistry(); err != nil {
 		return plugins.MCPServerSnapshot{}, err
 	}
-	return r.MCP.Registry().Get(id)
+	server, err = r.MCP.Registry().Get(id)
+	return server, err
 }
 
-func (r *Runtime) DeleteMCPServer(serverID string) error {
+func (r *Runtime) DeleteMCPServer(serverID string) (err error) {
+	auditServerID := strings.TrimSpace(serverID)
+	auditEndpoint := ""
+	defer func() {
+		r.appendMCPLifecycleAudit(mcpLifecycleAuditInput{
+			Action:   "delete",
+			ServerID: auditServerID,
+			Endpoint: auditEndpoint,
+			Success:  err == nil,
+			Error:    err,
+		})
+	}()
+
 	if r.MCP == nil {
 		return ErrMCPRuntimeNotConfigured
 	}
@@ -142,6 +195,9 @@ func (r *Runtime) DeleteMCPServer(serverID string) error {
 	spec, err := r.MCP.Registry().Spec(id)
 	if err != nil {
 		return err
+	}
+	if spec.Remote != nil {
+		auditEndpoint = spec.Remote.Endpoint
 	}
 	if spec.Type != plugins.MCPServerTypeRemote {
 		return fmt.Errorf("%w: only remote mcp servers can be deleted", plugins.ErrInvalidPluginSpec)
@@ -168,37 +224,109 @@ func (r *Runtime) ListMCPServers() []plugins.MCPServerSnapshot {
 	return r.MCP.Registry().List()
 }
 
-func (r *Runtime) StartMCPServer(ctx context.Context, serverID string) (plugins.MCPServerSnapshot, error) {
+func (r *Runtime) StartMCPServer(
+	ctx context.Context,
+	serverID string,
+) (server plugins.MCPServerSnapshot, err error) {
+	auditServerID := strings.TrimSpace(serverID)
+	defer func() {
+		if server.ID != "" {
+			auditServerID = server.ID
+		}
+		r.appendMCPLifecycleAudit(mcpLifecycleAuditInput{
+			Action:   "start",
+			ServerID: auditServerID,
+			Endpoint: server.Endpoint,
+			Success:  err == nil,
+			Error:    err,
+		})
+	}()
+
 	if r.MCP == nil {
 		return plugins.MCPServerSnapshot{}, ErrMCPRuntimeNotConfigured
 	}
 	if err := r.MCP.Start(ctx, serverID); err != nil {
 		return plugins.MCPServerSnapshot{}, err
 	}
-	return r.MCP.Registry().Get(serverID)
+	server, err = r.MCP.Registry().Get(serverID)
+	return server, err
 }
 
-func (r *Runtime) StopMCPServer(serverID string) (plugins.MCPServerSnapshot, error) {
+func (r *Runtime) StopMCPServer(serverID string) (server plugins.MCPServerSnapshot, err error) {
+	auditServerID := strings.TrimSpace(serverID)
+	defer func() {
+		if server.ID != "" {
+			auditServerID = server.ID
+		}
+		r.appendMCPLifecycleAudit(mcpLifecycleAuditInput{
+			Action:   "stop",
+			ServerID: auditServerID,
+			Endpoint: server.Endpoint,
+			Success:  err == nil,
+			Error:    err,
+		})
+	}()
+
 	if r.MCP == nil {
 		return plugins.MCPServerSnapshot{}, ErrMCPRuntimeNotConfigured
 	}
 	if err := r.MCP.Stop(serverID, false); err != nil {
 		return plugins.MCPServerSnapshot{}, err
 	}
-	return r.MCP.Registry().Get(serverID)
+	server, err = r.MCP.Registry().Get(serverID)
+	return server, err
 }
 
-func (r *Runtime) RestartMCPServer(ctx context.Context, serverID string) (plugins.MCPServerSnapshot, error) {
+func (r *Runtime) RestartMCPServer(
+	ctx context.Context,
+	serverID string,
+) (server plugins.MCPServerSnapshot, err error) {
+	auditServerID := strings.TrimSpace(serverID)
+	defer func() {
+		if server.ID != "" {
+			auditServerID = server.ID
+		}
+		r.appendMCPLifecycleAudit(mcpLifecycleAuditInput{
+			Action:   "restart",
+			ServerID: auditServerID,
+			Endpoint: server.Endpoint,
+			Success:  err == nil,
+			Error:    err,
+		})
+	}()
+
 	if r.MCP == nil {
 		return plugins.MCPServerSnapshot{}, ErrMCPRuntimeNotConfigured
 	}
 	if err := r.MCP.Restart(ctx, serverID); err != nil {
 		return plugins.MCPServerSnapshot{}, err
 	}
-	return r.MCP.Registry().Get(serverID)
+	server, err = r.MCP.Registry().Get(serverID)
+	return server, err
 }
 
-func (r *Runtime) SetMCPServerEnabled(serverID string, enabled bool) (plugins.MCPServerSnapshot, error) {
+func (r *Runtime) SetMCPServerEnabled(
+	serverID string,
+	enabled bool,
+) (server plugins.MCPServerSnapshot, err error) {
+	action := "disable"
+	if enabled {
+		action = "enable"
+	}
+	auditServerID := strings.TrimSpace(serverID)
+	defer func() {
+		if server.ID != "" {
+			auditServerID = server.ID
+		}
+		r.appendMCPLifecycleAudit(mcpLifecycleAuditInput{
+			Action:   action,
+			ServerID: auditServerID,
+			Endpoint: server.Endpoint,
+			Success:  err == nil,
+			Error:    err,
+		})
+	}()
+
 	if r.MCP == nil {
 		return plugins.MCPServerSnapshot{}, ErrMCPRuntimeNotConfigured
 	}
@@ -208,7 +336,8 @@ func (r *Runtime) SetMCPServerEnabled(serverID string, enabled bool) (plugins.MC
 	if err := r.persistMCPRegistry(); err != nil {
 		return plugins.MCPServerSnapshot{}, err
 	}
-	return r.MCP.Registry().Get(serverID)
+	server, err = r.MCP.Registry().Get(serverID)
+	return server, err
 }
 
 func (r *Runtime) InvokeMCP(ctx context.Context, request plugins.MCPInvokeRequest) (plugins.MCPInvokeResult, error) {
