@@ -8,7 +8,7 @@ export const commanderFileDialogOverlayStyle: CSSProperties = {
   alignItems: 'center',
   justifyContent: 'center',
   padding: '3% 5%',
-  background: 'rgba(4, 10, 9, 0.56)',
+  background: 'var(--runa-commander-dialog-overlay-bg)',
   backdropFilter: 'blur(8px)',
   WebkitBackdropFilter: 'blur(8px)',
 }
@@ -24,8 +24,8 @@ export const commanderFileDialogStyle: CSSProperties = {
   padding: 'var(--space-md)',
   border: '1px solid var(--runa-commander-highlight-border)',
   borderRadius: 'var(--radius-sm)',
-  background: 'rgba(8, 15, 14, 0.96)',
-  boxShadow: '0 18px 44px rgba(0, 0, 0, 0.34)',
+  background: 'var(--runa-commander-dialog-bg)',
+  boxShadow: 'var(--runa-commander-dialog-shadow)',
 }
 
 export const commanderFileDialogHeaderStyle: CSSProperties = {
@@ -91,7 +91,7 @@ export const commanderFileDialogTextAreaStyle: CSSProperties = {
   padding: 'var(--space-sm)',
   border: '1px solid var(--runa-commander-surface-border)',
   borderRadius: 'var(--radius-xs)',
-  background: 'rgba(5, 11, 10, 0.98)',
+  background: 'var(--runa-commander-dialog-field-bg)',
   color: 'var(--runa-commander-text-strong)',
   fontFamily: 'var(--font-family-mono)',
   fontSize: 'var(--font-size-sm)',
@@ -112,7 +112,7 @@ export const commanderFileDialogBlockedBodyStyle: CSSProperties = {
   padding: 'var(--space-lg)',
   border: '1px solid var(--runa-commander-surface-border)',
   borderRadius: 'var(--radius-xs)',
-  background: 'rgba(5, 11, 10, 0.98)',
+  background: 'var(--runa-commander-dialog-blocked-bg)',
 }
 
 export const commanderFileDialogBlockedTitleStyle: CSSProperties = {

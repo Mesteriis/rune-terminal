@@ -175,6 +175,11 @@ body {
   --runa-commander-popover-shadow: var(--shadow-menu-popover);
   --runa-commander-input-bg: color-mix(in srgb, var(--color-canvas) 82%, transparent);
   --runa-commander-control-bg: color-mix(in srgb, var(--color-canvas) 96%, transparent);
+  --runa-commander-dialog-overlay-bg: color-mix(in srgb, var(--color-canvas) 56%, transparent);
+  --runa-commander-dialog-bg: color-mix(in srgb, var(--color-canvas) 96%, transparent);
+  --runa-commander-dialog-field-bg: color-mix(in srgb, var(--color-canvas) 98%, transparent);
+  --runa-commander-dialog-blocked-bg: var(--runa-commander-dialog-field-bg);
+  --runa-commander-dialog-shadow: var(--shadow-glass-panel);
   --runa-commander-status-border: color-mix(in srgb, var(--color-border-strong) 72%, transparent);
   --runa-commander-status-bg: color-mix(in srgb, var(--color-surface-emerald) 38%, transparent);
   --runa-commander-error-border: color-mix(in srgb, var(--color-danger-text) 42%, transparent);
@@ -231,6 +236,11 @@ body {
   --runa-commander-popover-shadow: var(--shadow-menu-popover);
   --runa-commander-input-bg: color-mix(in srgb, var(--color-canvas) 82%, transparent);
   --runa-commander-control-bg: color-mix(in srgb, var(--color-canvas) 96%, transparent);
+  --runa-commander-dialog-overlay-bg: color-mix(in srgb, var(--color-canvas) 56%, transparent);
+  --runa-commander-dialog-bg: color-mix(in srgb, var(--color-canvas) 96%, transparent);
+  --runa-commander-dialog-field-bg: color-mix(in srgb, var(--color-canvas) 98%, transparent);
+  --runa-commander-dialog-blocked-bg: var(--runa-commander-dialog-field-bg);
+  --runa-commander-dialog-shadow: var(--shadow-glass-panel);
   --runa-commander-status-border: rgba(145, 168, 161, 0.22);
   --runa-commander-status-bg: rgba(145, 168, 161, 0.08);
   --runa-commander-error-border: color-mix(in srgb, var(--color-danger-text) 36%, transparent);

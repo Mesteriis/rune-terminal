@@ -80,9 +80,9 @@
     - active terminal widget chrome now consumes the same shell locale path as
       settings: `TerminalWidget` resolves visible action/session/search copy
       through `terminal-widget-copy.ts` and passes typed toolbar copy into
-      `TerminalToolbar`. The current widget copy has explicit `ru` / `en`
-      text and falls back to English for `zh-CN` / `es` until those
-      translations are supplied.
+      `TerminalToolbar`. The current widget copy has explicit `ru`, `en`,
+      `zh-CN`, and `es` text, so every advertised shell locale has terminal
+      widget chrome instead of falling back to English.
   - the shell settings modal now exposes a backend-owned `Terminal` settings slice instead of a placeholder:
     - current terminal font size is visible in `Settings -> Terminal`
     - current terminal line height is visible in `Settings -> Terminal`
@@ -231,6 +231,7 @@
 - `npm --prefix frontend run test -- src/features/terminal/api/client.test.ts src/features/terminal/model/use-terminal-session.test.tsx src/widgets/terminal/terminal-widget.test.tsx --reporter=verbose`
 - `npm --prefix frontend run test -- src/features/terminal/model/use-terminal-session.test.tsx src/widgets/terminal/terminal-widget.test.tsx src/shared/ui/components/terminal-status-header.test.tsx --reporter=verbose`
 - `npm --prefix frontend run test -- src/widgets/terminal/terminal-widget.test.tsx -t "renders terminal controls through the active locale copy" --reporter=verbose`
+- `npm --prefix frontend run test -- src/widgets/terminal/terminal-widget-copy.test.ts --reporter=verbose`
 - `npm run validate:desktop-runtime`
 - `npm run test:ui -- --reporter=line e2e/terminal.spec.ts --grep "grouped backend sessions through the session rail"`
 - `npm run test:ui -- --reporter=line e2e/terminal.spec.ts --grep "terminal widget browser filters and closes grouped backend sessions"`
