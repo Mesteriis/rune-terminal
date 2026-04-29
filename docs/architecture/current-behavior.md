@@ -355,6 +355,10 @@ Confirmable boundaries:
 - The AI panel now keeps a merged transcript:
   - backend-owned conversation messages persisted by the Go runtime
   - runtime-backed quick actions, approval decisions, and posture updates kept in the frontend activity feed
+- Conversation lifecycle mutations (`create`, `rename`, `update_context`,
+  `archive`, `restore`, `activate`, `delete`) append core-owned audit events
+  with `action_source=http.agent.conversation`; context preference updates also
+  record the affected widget IDs.
 - The active compat AI panel now supports local attachment references:
   - the active files panel exposes an explicit per-file `AI` action that creates backend-issued references from local filesystem paths, queues them in the shell composer, and opens the AI sidebar
   - queued attachment references render as removable chips in the AI composer and are sent with the next non-`/run` chat request

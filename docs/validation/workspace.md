@@ -5,6 +5,10 @@
 - Date: `2026-04-29`
 - State: `VERIFIED`
 - Scope:
+    - AI conversation lifecycle routes now append core-owned audit events for
+      create/rename/context/archive/restore/activate/delete success paths and
+      not-found failures; context preference updates record the selected widget
+      IDs that can later feed AI context
     - agent prompt profile / role / mode selection routes now append
       core-owned audit events for success and not-found failures, including
       the attempted selection target plus the effective policy posture fields
@@ -265,6 +269,7 @@ light` remains the system fallback, and `@media print` flattens shell
 
 - `./scripts/go.sh test ./core/transport/httpapi -run 'TestWorkspaceMutationHandlersAppend.*AuditEvents|TestWorkspaceFocusTabBypassesRestrictiveMode|TestWorkspaceCloseTabBypassesToolPolicyPath|TestWorkspaceOpenDirectoryInNewBlockCreatesFilesWidget|TestWorkspaceMoveWidgetBySplitRejectsInvalidDirection' -count=1`
 - `./scripts/go.sh test ./core/transport/httpapi -run 'TestAgentSelectionEndpoints' -count=1`
+- `./scripts/go.sh test ./core/transport/httpapi -run 'TestConversationLifecycleRoutesAppend.*AuditEvents|TestConversationListCreateAndActivateRoutesRoundTrip|TestConversationRenameRouteUpdatesConversationTitle|TestConversationDeleteRouteDeletesActiveConversationAndReturnsReplacement|TestConversationArchiveAndRestoreRoutesRoundTrip|TestConversationContextRoutePersistsWidgetSelection' -count=1`
 - `./scripts/go.sh test ./core/transport/httpapi -run 'TestWorkspace' -count=1`
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi -count=1`
 - `./scripts/go.sh test ./...`

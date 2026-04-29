@@ -88,9 +88,11 @@ func (api *API) handleConversationList(w http.ResponseWriter, r *http.Request) {
 func (api *API) handleCreateConversation(w http.ResponseWriter, r *http.Request) {
 	snapshot, err := api.runtime.CreateConversation(r.Context())
 	if err != nil {
+		api.appendConversationLifecycleAudit("create", "", nil, err)
 		writeInternalError(w, err)
 		return
 	}
+	api.appendConversationLifecycleAudit("create", snapshot.ID, nil, nil)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"conversation": snapshot,
 	})
@@ -111,10 +113,12 @@ func (api *API) handleRenameConversation(w http.ResponseWriter, r *http.Request)
 
 	snapshot, err := api.runtime.RenameConversation(r.Context(), conversationID, payload.Title)
 	if err != nil {
+		api.appendConversationLifecycleAudit("rename", conversationID, nil, err)
 		writeConversationError(w, err)
 		return
 	}
 
+	api.appendConversationLifecycleAudit("rename", snapshot.ID, nil, nil)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"conversation": snapshot,
 	})
@@ -129,10 +133,12 @@ func (api *API) handleDeleteConversation(w http.ResponseWriter, r *http.Request)
 
 	snapshot, err := api.runtime.DeleteConversation(r.Context(), conversationID)
 	if err != nil {
+		api.appendConversationLifecycleAudit("delete", conversationID, nil, err)
 		writeConversationError(w, err)
 		return
 	}
 
+	api.appendConversationLifecycleAudit("delete", conversationID, nil, nil)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"conversation": snapshot,
 	})
@@ -147,10 +153,12 @@ func (api *API) handleArchiveConversation(w http.ResponseWriter, r *http.Request
 
 	snapshot, err := api.runtime.ArchiveConversation(r.Context(), conversationID)
 	if err != nil {
+		api.appendConversationLifecycleAudit("archive", conversationID, nil, err)
 		writeConversationError(w, err)
 		return
 	}
 
+	api.appendConversationLifecycleAudit("archive", conversationID, nil, nil)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"conversation": snapshot,
 	})
@@ -165,10 +173,12 @@ func (api *API) handleRestoreConversation(w http.ResponseWriter, r *http.Request
 
 	snapshot, err := api.runtime.RestoreConversation(r.Context(), conversationID)
 	if err != nil {
+		api.appendConversationLifecycleAudit("restore", conversationID, nil, err)
 		writeConversationError(w, err)
 		return
 	}
 
+	api.appendConversationLifecycleAudit("restore", snapshot.ID, nil, nil)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"conversation": snapshot,
 	})
@@ -196,10 +206,12 @@ func (api *API) handleUpdateConversationContext(w http.ResponseWriter, r *http.R
 		},
 	)
 	if err != nil {
+		api.appendConversationLifecycleAudit("update_context", conversationID, payload.WidgetIDs, err)
 		writeConversationError(w, err)
 		return
 	}
 
+	api.appendConversationLifecycleAudit("update_context", snapshot.ID, payload.WidgetIDs, nil)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"conversation": snapshot,
 	})
@@ -219,11 +231,26 @@ func (api *API) handleActivateConversation(w http.ResponseWriter, r *http.Reques
 	}
 	snapshot, err := api.runtime.ActivateConversation(r.Context(), conversationID)
 	if err != nil {
+		api.appendConversationLifecycleAudit("activate", conversationID, nil, err)
 		writeConversationError(w, err)
 		return
 	}
+	api.appendConversationLifecycleAudit("activate", snapshot.ID, nil, nil)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"conversation": snapshot,
+	})
+}
+
+func (api *API) appendConversationLifecycleAudit(action string, conversationID string, widgets []string, err error) {
+	if api == nil || api.runtime == nil {
+		return
+	}
+	api.runtime.AppendConversationLifecycleAudit(app.ConversationLifecycleAuditInput{
+		Action:          action,
+		ConversationID:  conversationID,
+		AffectedWidgets: widgets,
+		Success:         err == nil,
+		Error:           err,
 	})
 }
 

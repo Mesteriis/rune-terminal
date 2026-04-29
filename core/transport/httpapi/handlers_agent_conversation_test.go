@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -476,6 +477,147 @@ func TestConversationArchiveAndRestoreRoutesRoundTrip(t *testing.T) {
 	if restored.Conversation.ID != archiveTarget.Conversation.ID || restored.Conversation.ArchivedAt != nil {
 		t.Fatalf("expected restored unarchived conversation, got %#v", restored)
 	}
+}
+
+func TestConversationLifecycleRoutesAppendAuditEvents(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+
+	createRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(createRecorder, authedJSONRequest(t, http.MethodPost, "/api/v1/agent/conversations", nil))
+	if createRecorder.Code != http.StatusOK {
+		t.Fatalf("expected create 200, got %d (%s)", createRecorder.Code, createRecorder.Body.String())
+	}
+	var created struct {
+		Conversation struct {
+			ID string `json:"id"`
+		} `json:"conversation"`
+	}
+	if err := json.Unmarshal(createRecorder.Body.Bytes(), &created); err != nil {
+		t.Fatalf("unmarshal create response: %v", err)
+	}
+	if created.Conversation.ID == "" {
+		t.Fatalf("expected created conversation id")
+	}
+
+	conversationRequest(t, handler, http.MethodPatch, "/api/v1/agent/conversations/"+created.Conversation.ID, map[string]string{
+		"title": "Lifecycle audit",
+	}, http.StatusOK)
+	conversationRequest(t, handler, http.MethodPut, "/api/v1/agent/conversations/"+created.Conversation.ID+"/context", map[string]any{
+		"widget_context_enabled": true,
+		"widget_ids":             []string{"term-main", "commander"},
+	}, http.StatusOK)
+	conversationRequest(t, handler, http.MethodPut, "/api/v1/agent/conversations/"+created.Conversation.ID+"/archive", nil, http.StatusOK)
+	conversationRequest(t, handler, http.MethodPut, "/api/v1/agent/conversations/"+created.Conversation.ID+"/restore", nil, http.StatusOK)
+	conversationRequest(t, handler, http.MethodPut, "/api/v1/agent/conversations/"+created.Conversation.ID+"/activate", nil, http.StatusOK)
+	conversationRequest(t, handler, http.MethodDelete, "/api/v1/agent/conversations/"+created.Conversation.ID, nil, http.StatusOK)
+
+	events := decodeConversationLifecycleAuditEvents(t, handler, 20)
+	expectedTools := []string{
+		"agent.conversation.create",
+		"agent.conversation.rename",
+		"agent.conversation.update_context",
+		"agent.conversation.archive",
+		"agent.conversation.restore",
+		"agent.conversation.activate",
+		"agent.conversation.delete",
+	}
+	if len(events) != len(expectedTools) {
+		t.Fatalf("expected %d conversation lifecycle audit events, got %#v", len(expectedTools), events)
+	}
+	for index, expectedTool := range expectedTools {
+		event := events[index]
+		if event.ToolName != expectedTool || event.ActionSource != "http.agent.conversation" || !event.Success || event.Error != "" {
+			t.Fatalf("unexpected lifecycle audit event %d: %#v", index, event)
+		}
+		if !strings.Contains(event.Summary, "conversation_id="+created.Conversation.ID) {
+			t.Fatalf("expected conversation id in lifecycle audit event %d: %#v", index, event)
+		}
+	}
+	if !conversationAuditContains(events[2].AffectedWidgets, "term-main") ||
+		!conversationAuditContains(events[2].AffectedWidgets, "commander") {
+		t.Fatalf("expected context widgets in update-context audit event, got %#v", events[2])
+	}
+}
+
+func TestConversationLifecycleRoutesAppendFailureAuditEvents(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+
+	recorder := conversationRequest(t, handler, http.MethodPatch, "/api/v1/agent/conversations/missing", map[string]string{
+		"title": "Missing",
+	}, http.StatusNotFound)
+	if recorder.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d (%s)", recorder.Code, recorder.Body.String())
+	}
+
+	events := decodeConversationLifecycleAuditEvents(t, handler, 10)
+	if len(events) != 1 {
+		t.Fatalf("expected one conversation lifecycle failure audit event, got %#v", events)
+	}
+	event := events[0]
+	if event.ToolName != "agent.conversation.rename" || event.ActionSource != "http.agent.conversation" ||
+		event.Success || event.Error == "" {
+		t.Fatalf("unexpected lifecycle failure audit event: %#v", event)
+	}
+	if event.Summary != "action=rename conversation_id=missing" {
+		t.Fatalf("expected failed conversation id in audit summary, got %#v", event)
+	}
+}
+
+type conversationLifecycleAuditEvent struct {
+	ToolName        string   `json:"tool_name"`
+	Summary         string   `json:"summary"`
+	ActionSource    string   `json:"action_source"`
+	AffectedWidgets []string `json:"affected_widgets"`
+	Success         bool     `json:"success"`
+	Error           string   `json:"error"`
+}
+
+func conversationRequest(
+	t *testing.T,
+	handler http.Handler,
+	method string,
+	path string,
+	payload any,
+	expectedStatus int,
+) *httptest.ResponseRecorder {
+	t.Helper()
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, authedJSONRequest(t, method, path, payload))
+	if recorder.Code != expectedStatus {
+		t.Fatalf("expected %d for %s %s, got %d (%s)", expectedStatus, method, path, recorder.Code, recorder.Body.String())
+	}
+	return recorder
+}
+
+func decodeConversationLifecycleAuditEvents(t *testing.T, handler http.Handler, limit int) []conversationLifecycleAuditEvent {
+	t.Helper()
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodGet, fmt.Sprintf("/api/v1/audit?limit=%d", limit), nil))
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected audit 200, got %d (%s)", recorder.Code, recorder.Body.String())
+	}
+	var response struct {
+		Events []conversationLifecycleAuditEvent `json:"events"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatalf("unmarshal audit response: %v", err)
+	}
+	return response.Events
+}
+
+func conversationAuditContains(values []string, expected string) bool {
+	for _, value := range values {
+		if value == expected {
+			return true
+		}
+	}
+	return false
 }
 
 func renameAgentConversationInRuntimeTest(
