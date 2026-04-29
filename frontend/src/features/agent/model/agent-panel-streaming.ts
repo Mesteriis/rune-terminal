@@ -17,6 +17,7 @@ import {
   applyAgentConversationStreamEvent,
   finalizeAgentConversationStreamingMessages,
 } from '@/features/agent/model/panel-state'
+import type { ChatMessageView } from '@/features/agent/model/types'
 
 type StreamingDeps = {
   advanceAuditEntries: typeof advanceAuditEntries
@@ -82,7 +83,7 @@ type RunBackendPromptInput = {
   unblockAiWidget: () => void
   updateAuditMessageEntries: (
     auditMessageID: string,
-    update: (message: { type: string; entries: unknown[] }) => unknown,
+    update: (message: ChatMessageView) => ChatMessageView,
   ) => void
 }
 
@@ -252,7 +253,7 @@ type CancelActiveSubmissionInput = {
   unblockAiWidget: () => void
   updateAuditMessageEntries: (
     auditMessageID: string,
-    update: (message: { type: string; entries: unknown[] }) => unknown,
+    update: (message: ChatMessageView) => ChatMessageView,
   ) => void
 }
 

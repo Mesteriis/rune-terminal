@@ -1,4 +1,4 @@
-import { executeAgentTool } from '@/features/agent/api/client'
+import { executeAgentTool, type AgentAttachmentReference } from '@/features/agent/api/client'
 import {
   classifyMessageIntent,
   completeAuditEntries,
@@ -16,6 +16,7 @@ import { getApprovalToken, getErrorMessage } from '@/features/agent/model/agent-
 import { resolveRuntimeContext } from '@/shared/api/runtime'
 import type {
   ApprovalMessage,
+  AuditEntry,
   ChatMessageSortKey,
   ChatMessageView,
   QuestionnaireMessage,
@@ -63,7 +64,7 @@ type AnswerQuestionnaireInput = {
   runBackendPrompt: (
     prompt: string,
     options?: {
-      attachments?: unknown[]
+      attachments?: AgentAttachmentReference[]
       auditMessageID?: string
       cancellable?: boolean
       model?: string
@@ -150,7 +151,7 @@ type ApprovePendingPlanInput = {
   runBackendPrompt: (
     prompt: string,
     options?: {
-      attachments?: unknown[]
+      attachments?: AgentAttachmentReference[]
       auditMessageID?: string
       cancellable?: boolean
       model?: string
@@ -166,7 +167,7 @@ type ApprovePendingPlanInput = {
   unblockAiWidget: () => void
   updateAuditMessageEntries: (
     auditMessageID: string,
-    update: (message: { type: string; entries: unknown[] }) => unknown,
+    update: (message: ChatMessageView) => ChatMessageView,
   ) => void
 }
 
@@ -187,7 +188,7 @@ function createApprovedAuditFlow(
 function applyAuditResult(
   auditMessageID: string,
   updateAuditMessageEntries: ApprovePendingPlanInput['updateAuditMessageEntries'],
-  updateEntries: (entries: unknown[]) => unknown[],
+  updateEntries: (entries: AuditEntry[]) => AuditEntry[],
 ) {
   updateAuditMessageEntries(auditMessageID, (currentMessage) =>
     currentMessage.type === 'audit'

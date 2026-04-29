@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint:active": "tsc --noEmit",
-    "lint:all": "tsc --noEmit",
+    "lint:active": "tsc -b",
+    "lint:all": "tsc -b",
     "test": "vitest run",
     "test:watch": "vitest"
   },

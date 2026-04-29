@@ -2,12 +2,13 @@
 
 ## Last verified state
 
-- Date: `2026-04-26`
+- Date: `2026-04-29`
 - State: `PARTIAL` for CI wiring
 - Scope:
   - GitHub Actions workflow definition under `.github/workflows/ci.yml`
   - Tauri desktop CSP configuration under `apps/desktop/src-tauri/tauri.conf.json`
   - frontend lint/test/build commands used by CI
+  - frontend active lint now invokes the same project-reference TypeScript graph as the production build (`tsc -b`)
   - Go test/build commands used by CI
   - HTTP transport safety guards for CORS/auth/body decoding
   - `cmd/rterm-core` JSON response helpers on write/error paths
@@ -24,8 +25,8 @@
 
 - `npm run check:active-path-api`
 - `npm run lint:frontend`
-- `npm run test:frontend`
 - `npm run build:frontend`
+- `npm run test:frontend`
 - `python3 -m json.tool apps/desktop/src-tauri/tauri.conf.json >/dev/null`
 - `./scripts/go.sh test ./cmd/... ./core/... ./internal/... -coverprofile=/tmp/rterm-go-coverage.out`
 - `./scripts/go.sh build ./cmd/... ./core/... ./internal/...`

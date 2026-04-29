@@ -80,17 +80,27 @@ export function createEmptyProviderDraft(kind: AgentProviderKind): AgentProvider
 }
 
 export function createProviderDraftFromView(provider: AgentProviderView): AgentProviderDraft {
+  const access = provider.access ?? {
+    owner_username: provider.created_by?.username ?? '',
+    visibility: 'private',
+    allowed_users: [],
+  }
+  const routePolicy = provider.route_policy ?? {
+    prewarm_policy: 'manual',
+    warm_ttl_seconds: 900,
+  }
+
   return {
     mode: 'existing',
     id: provider.id,
     kind: provider.kind,
     displayName: provider.display_name,
     enabled: provider.enabled,
-    ownerUsername: provider.access.owner_username,
-    visibility: provider.access.visibility ?? 'private',
-    allowedUsers: (provider.access.allowed_users ?? []).join(', '),
-    prewarmPolicy: provider.route_policy.prewarm_policy ?? 'manual',
-    warmTTLSeconds: provider.route_policy.warm_ttl_seconds ?? 900,
+    ownerUsername: access.owner_username,
+    visibility: access.visibility ?? 'private',
+    allowedUsers: (access.allowed_users ?? []).join(', '),
+    prewarmPolicy: routePolicy.prewarm_policy ?? 'manual',
+    warmTTLSeconds: routePolicy.warm_ttl_seconds ?? 900,
     codex: {
       command: provider.codex?.command ?? DEFAULT_CODEX_COMMAND,
       model: provider.codex?.model ?? DEFAULT_CODEX_MODEL,

@@ -9,11 +9,13 @@ export type TerminalPanelBinding = {
   runtimeWidgetId: string
 }
 
+export type TerminalPanelBindings = Record<string, TerminalPanelBinding>
+
 export const registerTerminalPanelBinding = createEvent<TerminalPanelBinding>()
 export const unregisterTerminalPanelBinding = createEvent<{ hostId: string }>()
 export const resetTerminalPanelBindingsForTests = createEvent()
 
-export const $terminalPanelBindings = createStore<Record<string, TerminalPanelBinding>>({})
+export const $terminalPanelBindings = createStore<TerminalPanelBindings>({})
   .on(registerTerminalPanelBinding, (bindings, binding) => ({
     ...bindings,
     [binding.hostId]: binding,
@@ -29,10 +31,7 @@ export const $terminalPanelBindings = createStore<Record<string, TerminalPanelBi
   })
   .reset(resetTerminalPanelBindingsForTests)
 
-export function resolveTerminalPanelBinding(
-  bindings: Record<string, TerminalPanelBinding>,
-  activeHostId: string | null,
-) {
+export function resolveTerminalPanelBinding(bindings: TerminalPanelBindings, activeHostId: string | null) {
   if (activeHostId && bindings[activeHostId]) {
     return bindings[activeHostId]
   }

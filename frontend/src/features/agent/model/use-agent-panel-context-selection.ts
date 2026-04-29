@@ -3,9 +3,9 @@ import { useCallback, useMemo } from 'react'
 import {
   deduplicateWidgetIDs,
   filterContextWidgetSelection,
-  type AiContextWidgetOption,
 } from '@/features/agent/model/agent-panel-context'
 import { getErrorMessage } from '@/features/agent/model/agent-panel-terminal'
+import type { AiContextWidgetOption } from '@/features/agent/model/types'
 import {
   resolveTerminalPanelBinding,
   type TerminalPanelBindings,

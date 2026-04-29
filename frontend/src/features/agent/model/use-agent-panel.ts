@@ -16,6 +16,7 @@ import {
   type AgentConversationContextPreferences,
   type AgentConversationProvider,
   type AgentConversationSnapshot,
+  type AgentConversationStreamConnection,
   type AgentConversationSummary,
   type AgentToolExecuteResponse,
 } from '@/features/agent/api/client'
@@ -164,6 +165,7 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
     clearQueuedAiAttachmentReferences,
   ])
   const [messages, setMessages] = useState<AgentConversationMessage[] | null>(null)
+  const activeWidgetHostIdForPanel = activeWidgetHostId ?? hostId
   const [interactionMessages, setInteractionMessages] = useState<ChatMessageView[]>([])
   const {
     clearPendingInteractionFlow,
@@ -971,7 +973,7 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
     updateSelectedContextWidgetIDs,
     updateWidgetContextEnabled,
   } = useAgentPanelContextSelection({
-    activeWidgetHostId,
+    activeWidgetHostId: activeWidgetHostIdForPanel,
     contextWidgetOptions,
     getErrorMessage,
     isWidgetContextEnabled,
@@ -1145,7 +1147,7 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
 
   const resolveTerminalExecutionTarget = useCallback(async (): Promise<TerminalExecutionTarget> => {
     return resolveTerminalExecutionTargetForPanel({
-      activeWidgetHostId,
+      activeWidgetHostId: activeWidgetHostIdForPanel,
       contextWidgetOptions: contextWidgetOptionsRef.current,
       ensureVisibleTerminalTarget: options.ensureVisibleTerminalTarget,
       hasLoadedContextWidgets: hasLoadedContextWidgetsRef.current,
@@ -1158,7 +1160,7 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
       workspaceWidgets: workspaceWidgetsRef.current,
     })
   }, [
-    activeWidgetHostId,
+    activeWidgetHostIdForPanel,
     isWidgetContextEnabled,
     loadContextWidgets,
     options,

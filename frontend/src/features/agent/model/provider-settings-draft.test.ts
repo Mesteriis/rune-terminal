@@ -18,6 +18,15 @@ describe('provider settings draft helpers', () => {
       kind: 'codex',
       display_name: 'Codex CLI',
       enabled: true,
+      access: {
+        owner_username: '',
+        visibility: 'private',
+        allowed_users: [],
+      },
+      route_policy: {
+        prewarm_policy: 'manual',
+        warm_ttl_seconds: 900,
+      },
       codex: {
         command: 'codex',
         model: 'gpt-5.4',
@@ -35,6 +44,15 @@ describe('provider settings draft helpers', () => {
       kind: 'claude',
       display_name: 'Claude Code CLI',
       enabled: true,
+      access: {
+        owner_username: '',
+        visibility: 'private',
+        allowed_users: [],
+      },
+      route_policy: {
+        prewarm_policy: 'manual',
+        warm_ttl_seconds: 900,
+      },
       claude: {
         command: 'claude',
         model: 'sonnet',
@@ -63,6 +81,15 @@ describe('provider settings draft helpers', () => {
     expect(buildUpdateProviderPayload(draft)).toEqual({
       display_name: 'Claude Code CLI',
       enabled: true,
+      access: {
+        owner_username: '',
+        visibility: 'private',
+        allowed_users: [],
+      },
+      route_policy: {
+        prewarm_policy: 'manual',
+        warm_ttl_seconds: 900,
+      },
       claude: {
         command: 'claude',
         model: 'sonnet',

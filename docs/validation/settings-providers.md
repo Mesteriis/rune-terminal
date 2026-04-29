@@ -2,7 +2,7 @@
 
 ## Last verified state
 
-- Date: `2026-04-26`
+- Date: `2026-04-29`
 - State: `VERIFIED`
 - Scope:
   - backend-owned AI provider catalog and active-provider resolution
@@ -10,6 +10,7 @@
   - explicit provider probe/prewarm routes that refresh the same operational snapshot instead of creating a second UI truth
   - narrow provider runtime for `codex`, `claude`, and `openai-compatible`
   - frontend settings provider client/draft helpers and TypeScript surface
+  - provider draft helpers serialize the ownership/route-policy metadata defaults and tolerate stale/raw provider views that predate those fields
   - browser-level Playwright validation for the provider/settings surfaces plus AI-toolbar provider/model switching under the split local dev path
 
 ## Commands/tests used
@@ -18,6 +19,7 @@
 - `go test ./core/...`
 - `npm --prefix frontend run test -- src/features/agent/api/provider-client.test.ts src/features/agent/model/provider-settings-draft.test.ts src/widgets/ai/ai-panel-widget.test.tsx`
 - `npm --prefix frontend run test -- src/features/agent/api/provider-client.test.ts src/widgets/settings/agent-provider-settings-widget.test.tsx --reporter=verbose`
+- `npm --prefix frontend run test -- provider-settings-draft.test.ts agent-panel-streaming.test.ts agent-panel-approval.test.ts agent-panel-execution.test.ts use-agent-panel-context-selection.test.tsx`
 - `npm --prefix frontend run lint:active`
 - `npm run test:ui -- --reporter=line`
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts --grep "AI provider settings show gateway telemetry after a mocked Codex run"`
@@ -27,7 +29,7 @@
 - `python3 -m py_compile scripts/validate_workspace_navigation.py scripts/validate_operator_workflow.py`
 - `python3 scripts/validate_operator_workflow.py`
 - `python3 scripts/validate_workspace_navigation.py`
-- `npm --prefix frontend run typecheck` was attempted, but this repo has no `typecheck` npm script; `lint:active` is the current `tsc --noEmit` entrypoint.
+- `npm --prefix frontend run typecheck` was attempted in an earlier pass, but this repo has no `typecheck` npm script; `lint:active` is the current project-reference TypeScript entrypoint.
 
 ## Current provider contract
 
