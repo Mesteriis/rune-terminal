@@ -23,6 +23,10 @@
       for source paths: delete/rename/move/copy operate on the selected
       directory entry itself, so an in-workspace symlink entry is removed,
       renamed, moved, or copied as the link instead of mutating its target
+    - HTTP filesystem mutation handlers now append core-owned audit events
+      for both successful and denied `write`, `mkdir`, `copy`, `move`,
+      `delete`, and `rename` attempts, including affected paths and policy /
+      boundary errors before returning the HTTP response
     - `Settings -> Terminal` now participates in that same typed locale
       boundary: visible terminal settings copy comes from
       `terminal-settings-section-copy.ts` for `ru`, `en`, `zh-CN`, and
@@ -143,6 +147,11 @@
         - commander widget persistence now writes only runtime pane/widget state into `runa-terminal:commander-widgets:v1`; older persisted `client.directories` payloads are still accepted on read so existing localStorage survives the cleanup without losing widget restore state
         - browser validation now also proves that the active commander persistence contract stays narrow in practice: after navigating a pane to a backend path, the persisted `runa-terminal:commander-widgets:v1` snapshot records the pane path but omits `entries` / `directoryEntries`, so reload no longer depends on a frontend-owned directory snapshot being stored in `localStorage`
         - the unused frontend `fake-client.ts` and `commander-widget.mock*` files are now removed from the active tree entirely, so commander parity work no longer carries a dead second transport model beside the backend-owned path
+        - commander model orchestration is narrowed again: pure view-state
+          projection lives in `features/commander/model/view-model.ts`, and
+          F3/F4 file-dialog read/edit/save/open-external IO lives in
+          `features/commander/model/file-dialog-controller.ts` instead of
+          growing the central `useCommanderWidget` closure further
     - the shared token layer now owns responsive shell/layout chrome sizing and a complete named z-index scale, so shell frame padding, topbar offsets, workspace tab minimums, modal width, Dockview header height, and rail/header dimensions adapt through breakpoint-aware tokens instead of widget-local constants
     - the shell environment layer now also owns app theme attributes plus
       dark/light and print media contracts, so explicit `light` / `dark`
@@ -247,6 +256,12 @@ light` remains the system fallback, and `@media print` flattens shell
 
 ## Commands/tests used
 
+- `./scripts/go.sh test ./core/transport/httpapi -run 'TestFSMutationHandlersAppendAuditEvents|TestFSMutationHandlersAppendFailureAuditEvents' -count=1`
+- `./scripts/go.sh test ./core/app -run 'Test(DeleteFSRemovesSymlinkEntryWithoutDeletingTarget|RenameFSRenamesSymlinkEntryWithoutRenamingTarget|MoveFSMovesSymlinkEntryWithoutMovingTarget|CopyFSCopiesSymlinkEntryWithoutCopyingTargetContent|ReadFSPreviewReturnsCanonicalPathForSymlinkInsideWorkspace|MkdirFSReturnsCanonicalPathForSymlinkParentInsideWorkspace|ReadFSPreviewRejectsSymlinkOutsideWorkspace|ListFSRejectsSymlinkDirectoryOutsideWorkspace|WriteFSFileRejectsSymlinkOutsideWorkspace|MkdirFSRejectsSymlinkParentOutsideWorkspace|Plugin)' -count=1`
+- `./scripts/go.sh test ./core/transport/httpapi -run 'TestFS|TestListFS|TestReadFS|TestWriteFS|TestMkdirFS|TestCopyFS|TestMoveFS|TestDeleteFS|TestRenameFS' -count=1`
+- `./scripts/go.sh test ./core/app ./core/transport/httpapi -count=1`
+- `npm --prefix frontend run lint:active`
+- `npm --prefix frontend run test -- src/features/commander/model/hooks.test.tsx src/features/commander/model/store-operations.test.ts src/widgets/commander/commander-pane-controller.test.ts --reporter=verbose`
 - `gofmt -w core/workspace/types.go core/workspace/widget_catalog.go core/workspace/widget_catalog_test.go core/transport/httpapi/api.go core/transport/httpapi/handlers_workspace.go core/transport/httpapi/handlers_workspace_test.go`
 - `(cd frontend && npm exec prettier -- --write src/shared/api/workspace.ts src/shared/api/workspace.test.ts)`
 - `./scripts/go.sh test ./core/workspace ./core/transport/httpapi`

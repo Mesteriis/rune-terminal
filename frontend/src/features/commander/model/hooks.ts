@@ -2,26 +2,31 @@ import { useUnit } from 'effector-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import {
-  CommanderAPIError,
   copyCommanderEntries,
   copyCommanderEntriesToPaths,
   deleteCommanderEntries,
   listCommanderDirectory,
   mkdirCommanderDirectory,
   moveCommanderEntries,
-  openCommanderFileExternally,
-  readCommanderFile,
-  readCommanderFilePreview,
   renameCommanderEntries,
   toCommanderEntryPath,
-  writeCommanderFile,
 } from '@/features/commander/api/client'
+import { useCommanderFileDialogController } from '@/features/commander/model/file-dialog-controller'
 import { createCommanderWidgetRuntimeState } from '@/features/commander/model/pane-state'
 import { readPersistedCommanderWidget } from '@/features/commander/model/persistence'
 import {
   getCurrentPendingConflictName,
   removePendingTransferEntry,
 } from '@/features/commander/model/store-operations'
+import {
+  getRuntimePaneState,
+  hasSinglePathSegment,
+  isCloneCopyOperation,
+  resolveDefaultPanePaths,
+  toEntryIdsFromPaths,
+  toLoadErrorMessage,
+  toWidgetViewState,
+} from '@/features/commander/model/view-model'
 import {
   $commanderWidgets,
   cancelCommanderPendingOperation,
@@ -62,184 +67,19 @@ import {
   toggleCommanderShowHidden,
 } from '@/features/commander/model/store'
 import type {
-  CommanderFileSnapshot,
-  CommanderFileDialogState,
   CommanderPendingOperation,
   CommanderPaneId,
   CommanderPaneRuntimeState,
-  CommanderPaneViewState,
   CommanderSortMode,
   CommanderTransferPendingOperation,
   CommanderViewMode,
-  CommanderWidgetRuntimeState,
-  CommanderWidgetViewState,
 } from '@/features/commander/model/types'
 import {
-  formatRuntimePathForDisplay,
   getRuntimePathParent,
   resolveRuntimeContext,
   resolveRuntimePathInput,
   type RuntimeContext,
 } from '@/shared/api/runtime'
-
-function formatSelectedSize(totalBytes: number) {
-  if (totalBytes <= 0) {
-    return '0 B'
-  }
-
-  if (totalBytes < 1024) {
-    return `${totalBytes} B`
-  }
-
-  if (totalBytes < 1024 * 1024) {
-    return `${(totalBytes / 1024).toFixed(1)} KB`
-  }
-
-  return `${(totalBytes / (1024 * 1024)).toFixed(1)} MB`
-}
-
-function getCommanderSelectedSize(entries: CommanderPaneRuntimeState['entries'], selectedIds: string[]) {
-  const totalBytes = entries
-    .filter((entry) => selectedIds.includes(entry.id))
-    .reduce((currentTotal, entry) => currentTotal + (entry.sizeBytes ?? 0), 0)
-
-  return formatSelectedSize(totalBytes)
-}
-
-function toPaneViewState(
-  widgetState: CommanderWidgetRuntimeState,
-  paneState: CommanderPaneRuntimeState,
-  runtimeContext: RuntimeContext | null,
-): CommanderPaneViewState {
-  return {
-    id: paneState.id,
-    path: paneState.path,
-    displayPath: runtimeContext
-      ? formatRuntimePathForDisplay(paneState.path, runtimeContext)
-      : paneState.path,
-    filterQuery: paneState.filterQuery,
-    canGoBack: paneState.historyBack.length > 0,
-    canGoForward: paneState.historyForward.length > 0,
-    isLoading: paneState.isLoading,
-    errorMessage: paneState.errorMessage,
-    counters: {
-      items: paneState.entries.length,
-      selectedItems: paneState.selectedIds.length,
-      selectedSize: getCommanderSelectedSize(paneState.entries, paneState.selectedIds),
-    },
-    rows: paneState.entries.map((entry) => ({
-      id: entry.id,
-      name: entry.name,
-      ext: entry.ext,
-      kind: entry.kind,
-      size: entry.sizeLabel,
-      modified: entry.modified,
-      hidden: entry.hidden,
-      selected: paneState.selectedIds.includes(entry.id),
-      focused: widgetState.activePane === paneState.id && paneState.cursorEntryId === entry.id,
-      gitStatus: entry.gitStatus,
-      executable: entry.executable,
-      symlinkTarget: entry.symlinkTarget,
-    })),
-  }
-}
-
-function toWidgetViewState(
-  widgetState: CommanderWidgetRuntimeState,
-  runtimeContext: RuntimeContext | null,
-): CommanderWidgetViewState {
-  return {
-    mode: 'commander',
-    viewMode: widgetState.viewMode,
-    activePane: widgetState.activePane,
-    showHidden: widgetState.showHidden,
-    syncCwd: false,
-    sortMode: widgetState.sortMode,
-    sortDirection: widgetState.sortDirection,
-    dirsFirst: widgetState.dirsFirst,
-    footerHints: widgetState.footerHints,
-    pendingOperation: widgetState.pendingOperation,
-    fileDialog: widgetState.fileDialog,
-    leftPane: toPaneViewState(widgetState, widgetState.leftPane, runtimeContext),
-    rightPane: toPaneViewState(widgetState, widgetState.rightPane, runtimeContext),
-  }
-}
-
-function toLoadErrorMessage(error: unknown) {
-  if (error instanceof CommanderAPIError) {
-    switch (error.code) {
-      case 'fs_path_exists':
-        return 'Path already exists'
-      case 'fs_path_outside_workspace':
-        return 'Path is outside the workspace root'
-      case 'fs_path_not_found':
-        return 'Path not found'
-      case 'invalid_fs_path':
-        return 'Invalid path'
-      case 'invalid_fs_name':
-        return 'Invalid entry name'
-      case 'invalid_fs_target':
-        return 'Invalid target path'
-      case 'invalid_fs_directory':
-        return 'Target path is not a directory'
-      case 'invalid_fs_text':
-        return 'File is not UTF-8 text'
-      default:
-        break
-    }
-  }
-
-  if (error instanceof Error && error.message.trim()) {
-    return error.message
-  }
-
-  return 'Unable to load commander data'
-}
-
-function hasSinglePathSegment(inputValue: string) {
-  const trimmedValue = inputValue.trim()
-
-  if (!trimmedValue || trimmedValue === '.' || trimmedValue === '..') {
-    return false
-  }
-
-  return !/[\\/]/.test(trimmedValue)
-}
-
-function resolveDefaultPanePaths(runtimeContext: RuntimeContext, runtimeState: CommanderWidgetRuntimeState) {
-  const leftPath = runtimeState.leftPane.path || runtimeContext.repoRoot
-  const rightPath = runtimeState.rightPane.path || runtimeContext.repoRoot
-
-  return { leftPath, rightPath }
-}
-
-function getRuntimePaneState(runtimeState: CommanderWidgetRuntimeState, paneId: CommanderPaneId) {
-  return paneId === 'left' ? runtimeState.leftPane : runtimeState.rightPane
-}
-
-function isCloneCopyOperation(
-  pendingOperation: CommanderTransferPendingOperation,
-): pendingOperation is CommanderTransferPendingOperation & {
-  inputValue: string
-  kind: 'copy'
-  transferMode: 'clone'
-} {
-  return pendingOperation.kind === 'copy' && pendingOperation.transferMode === 'clone'
-}
-
-function toEntryIdFromPath(path: string) {
-  const normalizedPath = path.replace(/\\/g, '/').replace(/\/+$/g, '') || '/'
-  const parentPath = getRuntimePathParent(normalizedPath) ?? '/'
-  const entryName = normalizedPath.split('/').pop() ?? normalizedPath
-
-  return `${parentPath}::${entryName}`
-}
-
-function toEntryIdsFromPaths(directoryPath: string, paths: string[]) {
-  return paths
-    .filter((path) => (getRuntimePathParent(path) ?? '/') === directoryPath)
-    .map((path) => toEntryIdFromPath(path))
-}
 
 /** Returns the widget-scoped commander view model plus the smallest action surface needed by the widget shell. */
 export function useCommanderWidget(widgetId: string) {
@@ -332,7 +172,6 @@ export function useCommanderWidget(widgetId: string) {
     left: 0,
     right: 0,
   })
-  const fileRequestIdRef = useRef(0)
   const mutationRequestInFlightRef = useRef(false)
   const hasLoadedInitialBackendStateRef = useRef(false)
 
@@ -563,118 +402,21 @@ export function useCommanderWidget(widgetId: string) {
     [onSetCommanderPaneLoadError, widgetId],
   )
 
-  const openFileDialogForEntry = useCallback(
-    async (paneId: CommanderPaneId, entryId: string, mode: 'view' | 'edit') => {
-      const paneState = paneId === 'left' ? runtimeState.leftPane : runtimeState.rightPane
-      const entry = paneState.entries.find((candidateEntry) => candidateEntry.id === entryId)
-      const entryPath = entry ? toCommanderEntryPath(paneState.path, entry.name) : null
-
-      if (!entry || entry.kind !== 'file' || !entryPath) {
-        return
-      }
-
-      fileRequestIdRef.current += 1
-      const requestId = fileRequestIdRef.current
-
-      try {
-        const fileSnapshot =
-          mode === 'edit' ? await readCommanderFile(entryPath) : await readCommanderFilePreview(entryPath)
-
-        if (fileRequestIdRef.current !== requestId) {
-          return
-        }
-
-        if (mode === 'view' && !fileSnapshot.previewAvailable) {
-          onSetCommanderFileDialog({
-            widgetId,
-            fileDialog: {
-              paneId,
-              path: paneState.path,
-              entryId,
-              entryName: entry.name,
-              mode: 'blocked',
-              content: '',
-              draftValue: '',
-              blockedTitle: 'Preview unavailable for this file',
-              blockedReason: 'File is binary or not UTF-8 text. Open it with an external tool.',
-              blockedHint: 'Binary preview unavailable',
-            } satisfies CommanderFileDialogState,
-          })
-          return
-        }
-
-        onSetCommanderFileDialog({
-          widgetId,
-          fileDialog: {
-            paneId,
-            path: fileSnapshot.path,
-            entryId: fileSnapshot.entryId,
-            entryName: fileSnapshot.entryName,
-            mode,
-            content: fileSnapshot.content,
-            draftValue: fileSnapshot.content,
-            previewKind: fileSnapshot.previewKind,
-            previewBytes: fileSnapshot.previewBytes,
-            sizeBytes: fileSnapshot.sizeBytes,
-            truncated: fileSnapshot.truncated,
-          } satisfies CommanderFileDialogState,
-        })
-      } catch (error) {
-        if (mode === 'edit' && error instanceof CommanderAPIError && error.code === 'invalid_fs_text') {
-          let binarySnapshot: CommanderFileSnapshot | null = null
-
-          try {
-            binarySnapshot = await readCommanderFilePreview(entryPath)
-          } catch {
-            binarySnapshot = null
-          }
-
-          if (fileRequestIdRef.current !== requestId) {
-            return
-          }
-
-          onSetCommanderFileDialog({
-            widgetId,
-            fileDialog: {
-              paneId,
-              path: paneState.path,
-              entryId,
-              entryName: entry.name,
-              mode: 'blocked',
-              content: '',
-              draftValue: '',
-              blockedReason: 'File is not UTF-8 text. Use F3 for preview or open it with an external tool.',
-              previewKind: binarySnapshot?.previewKind,
-              previewBytes: binarySnapshot?.previewBytes,
-              sizeBytes: binarySnapshot?.sizeBytes,
-              truncated: binarySnapshot?.truncated,
-            } satisfies CommanderFileDialogState,
-          })
-          return
-        }
-
-        onSetCommanderPaneLoadError({
-          widgetId,
-          paneId,
-          errorMessage: toLoadErrorMessage(error),
-        })
-      }
-    },
-    [
-      onSetCommanderFileDialog,
-      onSetCommanderPaneLoadError,
-      runtimeState.leftPane,
-      runtimeState.rightPane,
-      widgetId,
-    ],
-  )
-
-  const openFilePreviewForEntry = useCallback(
-    async (paneId: CommanderPaneId, entryId: string) => {
-      await openFileDialogForEntry(paneId, entryId, 'view')
-    },
-    [openFileDialogForEntry],
-  )
+  const {
+    openFileDialogEntryExternallyAsync,
+    openFileDialogFolderExternallyAsync,
+    openFileEditor,
+    openFilePreview,
+    openFilePreviewForEntry,
+    saveFileDialogAsync,
+  } = useCommanderFileDialogController({
+    loadPaneDirectory,
+    mutationRequestInFlightRef,
+    onSetCommanderFileDialog,
+    onSetCommanderPaneLoadError,
+    runtimeState,
+    widgetId,
+  })
 
   const openPaneEntry = useCallback(
     (paneId: CommanderPaneId, entryId: string) => {
@@ -756,121 +498,6 @@ export function useCommanderWidget(widgetId: string) {
     },
     [loadPaneDirectory, runtimeState.leftPane, runtimeState.rightPane],
   )
-
-  const openFilePreview = useCallback(
-    async (paneId: CommanderPaneId) => {
-      const paneState = paneId === 'left' ? runtimeState.leftPane : runtimeState.rightPane
-      const entryId = paneState.cursorEntryId
-
-      if (!entryId) {
-        return
-      }
-
-      await openFilePreviewForEntry(paneId, entryId)
-    },
-    [openFilePreviewForEntry, runtimeState.leftPane, runtimeState.rightPane],
-  )
-
-  const openFileEditor = useCallback(
-    async (paneId: CommanderPaneId) => {
-      const paneState = paneId === 'left' ? runtimeState.leftPane : runtimeState.rightPane
-      const entryId = paneState.cursorEntryId
-
-      if (!entryId) {
-        return
-      }
-
-      await openFileDialogForEntry(paneId, entryId, 'edit')
-    },
-    [openFileDialogForEntry, runtimeState.leftPane, runtimeState.rightPane],
-  )
-
-  const saveFileDialogAsync = useCallback(async () => {
-    const fileDialog = runtimeState.fileDialog
-
-    if (!fileDialog || fileDialog.mode !== 'edit' || mutationRequestInFlightRef.current) {
-      return
-    }
-
-    try {
-      mutationRequestInFlightRef.current = true
-      const savedSnapshot = await writeCommanderFile(
-        toCommanderEntryPath(fileDialog.path, fileDialog.entryName),
-        fileDialog.draftValue,
-      )
-
-      onSetCommanderFileDialog({
-        widgetId,
-        fileDialog: {
-          ...fileDialog,
-          content: savedSnapshot.content,
-          draftValue: savedSnapshot.content,
-          entryId: savedSnapshot.entryId,
-          entryName: savedSnapshot.entryName,
-          path: savedSnapshot.path,
-        },
-      })
-
-      await loadPaneDirectory(fileDialog.paneId, savedSnapshot.path, 'replace', {
-        cursorEntryId: savedSnapshot.entryId,
-        selectedIds: [savedSnapshot.entryId],
-        selectionAnchorEntryId: savedSnapshot.entryId,
-      })
-    } catch (error) {
-      onSetCommanderPaneLoadError({
-        widgetId,
-        paneId: fileDialog.paneId,
-        path: fileDialog.path,
-        errorMessage: toLoadErrorMessage(error),
-      })
-    } finally {
-      mutationRequestInFlightRef.current = false
-    }
-  }, [
-    loadPaneDirectory,
-    onSetCommanderFileDialog,
-    onSetCommanderPaneLoadError,
-    runtimeState.fileDialog,
-    widgetId,
-  ])
-
-  const openFileDialogEntryExternallyAsync = useCallback(async () => {
-    const fileDialog = runtimeState.fileDialog
-
-    if (!fileDialog) {
-      return
-    }
-
-    try {
-      await openCommanderFileExternally(toCommanderEntryPath(fileDialog.path, fileDialog.entryName))
-    } catch (error) {
-      onSetCommanderPaneLoadError({
-        widgetId,
-        paneId: fileDialog.paneId,
-        path: fileDialog.path,
-        errorMessage: toLoadErrorMessage(error),
-      })
-    }
-  }, [onSetCommanderPaneLoadError, runtimeState.fileDialog, widgetId])
-
-  const openFileDialogFolderExternallyAsync = useCallback(async () => {
-    const fileDialog = runtimeState.fileDialog
-
-    if (!fileDialog) {
-      return
-    }
-
-    try {
-      await openCommanderFileExternally(fileDialog.path)
-    } catch (error) {
-      onSetCommanderPaneLoadError({
-        widgetId,
-        paneId: fileDialog.paneId,
-        path: fileDialog.path,
-        errorMessage: toLoadErrorMessage(error),
-      })
-    }
-  }, [onSetCommanderPaneLoadError, runtimeState.fileDialog, widgetId])
 
   const resolvePendingTransferConflictAsync = useCallback(
     async (resolution: 'overwrite-current' | 'skip-current' | 'overwrite-all' | 'skip-all') => {
