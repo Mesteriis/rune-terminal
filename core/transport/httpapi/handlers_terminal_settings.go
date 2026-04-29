@@ -34,18 +34,22 @@ func (api *API) handleUpdateTerminalSettings(w http.ResponseWriter, r *http.Requ
 		writeBadRequest(w, "invalid_request", err)
 		return
 	}
+	fields := terminalSettingsPayloadFields(payload)
 	if payload.FontSize == nil &&
 		payload.LineHeight == nil &&
 		payload.ThemeMode == nil &&
 		payload.Scrollback == nil &&
 		payload.CursorStyle == nil &&
 		payload.CursorBlink == nil {
-		writeBadRequest(w, "invalid_request", errors.New("font_size, line_height, theme_mode, scrollback, cursor_style, or cursor_blink is required"))
+		err := errors.New("font_size, line_height, theme_mode, scrollback, cursor_style, or cursor_blink is required")
+		api.appendSettingsAudit("terminal", fields, false, err)
+		writeBadRequest(w, "invalid_request", err)
 		return
 	}
 
 	current, err := api.runtime.TerminalSettings(r.Context())
 	if err != nil {
+		api.appendSettingsAudit("terminal", fields, false, err)
 		writeInternalError(w, err)
 		return
 	}
@@ -72,11 +76,36 @@ func (api *API) handleUpdateTerminalSettings(w http.ResponseWriter, r *http.Requ
 
 	settings, err := api.runtime.UpdateTerminalSettings(r.Context(), terminal.Preferences(next))
 	if err != nil {
+		api.appendSettingsAudit("terminal", fields, false, err)
 		writeInternalError(w, err)
 		return
 	}
+	api.appendSettingsAudit("terminal", fields, true, nil)
 
 	writeJSON(w, http.StatusOK, map[string]any{
 		"settings": settings,
 	})
+}
+
+func terminalSettingsPayloadFields(payload updateTerminalSettingsPayload) []string {
+	fields := make([]string, 0, 6)
+	if payload.FontSize != nil {
+		fields = append(fields, "font_size")
+	}
+	if payload.LineHeight != nil {
+		fields = append(fields, "line_height")
+	}
+	if payload.ThemeMode != nil {
+		fields = append(fields, "theme_mode")
+	}
+	if payload.Scrollback != nil {
+		fields = append(fields, "scrollback")
+	}
+	if payload.CursorStyle != nil {
+		fields = append(fields, "cursor_style")
+	}
+	if payload.CursorBlink != nil {
+		fields = append(fields, "cursor_blink")
+	}
+	return fields
 }

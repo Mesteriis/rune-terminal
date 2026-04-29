@@ -5,6 +5,11 @@
 - Date: `2026-04-29`
 - State: `VERIFIED`
 - Scope:
+    - backend-owned settings preference mutations (`agent`, `terminal`,
+      `window-title`, `locale`) now append core-owned audit events for success
+      and validation/runtime failure paths with `action_source=http.settings`
+      and changed field names; raw setting values are not written into the
+      audit summary
     - low-frequency terminal control-plane routes now append core-owned audit
       events for session create/focus/close, interrupt, and restart success /
       failure paths with widget, session, and connection identity; direct PTY
@@ -275,6 +280,7 @@ light` remains the system fallback, and `@media print` flattens shell
 - `./scripts/go.sh test ./core/transport/httpapi -run 'TestAgentSelectionEndpoints' -count=1`
 - `./scripts/go.sh test ./core/transport/httpapi -run 'TestConversationLifecycleRoutesAppend.*AuditEvents|TestConversationListCreateAndActivateRoutesRoundTrip|TestConversationRenameRouteUpdatesConversationTitle|TestConversationDeleteRouteDeletesActiveConversationAndReturnsReplacement|TestConversationArchiveAndRestoreRoutesRoundTrip|TestConversationContextRoutePersistsWidgetSelection' -count=1`
 - `./scripts/go.sh test ./core/transport/httpapi -run 'TestTerminalControlHandlersAppend.*AuditEvents|TestTerminalInterruptSignalsProcessAndReturnsCurrentState|TestTerminalSessionEndpointsCreateAndFocusGroupedSessions|TestTerminalSessionEndpointClosesGroupedSession' -count=1`
+- `./scripts/go.sh test ./core/transport/httpapi -run 'TestSettingsMutationHandlersAppend.*AuditEvents' -count=1`
 - `./scripts/go.sh test ./core/transport/httpapi -run 'TestWorkspace' -count=1`
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi -count=1`
 - `./scripts/go.sh test ./...`

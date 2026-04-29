@@ -60,6 +60,10 @@ It is intentionally operational, not narrative.
   - dragging is limited to the header chrome and clamped to the desktop window bounds
   - its frame, sections, and navigation now use the same restrained overlay token set instead of mixed ad hoc panel colors
   - the `AI / Composer` slice now persists its send/newline shortcut through the backend-owned `GET/PUT /api/v1/settings/agent` contract instead of browser-local UI storage
+- Direct HTTP settings mutations append core-owned audit events with
+  `action_source=http.settings`, the settings area, changed field names, and
+  success or failure text. The events intentionally do not record raw setting
+  values such as custom window titles.
 - The visible shell typography/icon path for the active compat UI now uses:
   - `Inter` for body/header UI text
   - `Hack` for terminal-adjacent fixed-width text

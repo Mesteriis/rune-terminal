@@ -30,8 +30,11 @@ func (api *API) handleUpdateLocaleSettings(w http.ResponseWriter, r *http.Reques
 		writeBadRequest(w, "invalid_request", err)
 		return
 	}
+	fields := localeSettingsPayloadFields(payload)
 	if payload.Locale == nil {
-		writeBadRequest(w, "invalid_request", errors.New("locale is required"))
+		err := errors.New("locale is required")
+		api.appendSettingsAudit("locale", fields, false, err)
+		writeBadRequest(w, "invalid_request", err)
 		return
 	}
 
@@ -39,12 +42,21 @@ func (api *API) handleUpdateLocaleSettings(w http.ResponseWriter, r *http.Reques
 		Locale: *payload.Locale,
 	})
 	if err != nil {
+		api.appendSettingsAudit("locale", fields, false, err)
 		writeInternalError(w, err)
 		return
 	}
+	api.appendSettingsAudit("locale", fields, true, nil)
 
 	writeJSON(w, http.StatusOK, map[string]any{
 		"settings":          settings,
 		"supported_locales": locale.SupportedLocales(),
 	})
+}
+
+func localeSettingsPayloadFields(payload updateLocaleSettingsPayload) []string {
+	if payload.Locale == nil {
+		return nil
+	}
+	return []string{"locale"}
 }
