@@ -2,13 +2,16 @@
 
 ## Last verified state
 
-- Date: `2026-04-17`
+- Date: `2026-04-30`
 - State: `VERIFIED` (targeted + headed + local/remote guardrail coverage present)
 - Scope:
   - explicit `/run` execution path
   - approved terminal-context natural-language execution path
   - approval confirm/retry intent binding
   - execution block identity/provenance
+  - execution block append/replace/shutdown-fail mutations keep in-memory
+    state unchanged when persistence fails, so failed writes cannot create
+    runtime-only execution history
   - explain/audit linkage
   - explicit local vs remote target identity
   - plugin/MCP negative-path guardrails
@@ -16,6 +19,9 @@
 ## Commands/tests used
 
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi ./core/execution -count=1`
+- `./scripts/go.sh test ./core/execution -run 'TestServiceAppendDoesNotChangeMemoryWhenPersistFails|TestServiceReplaceDoesNotChangeMemoryWhenPersistFails|TestServiceMarkActiveFailedDoesNotChangeMemoryWhenPersistFails' -count=1`
+- `./scripts/go.sh test ./core/execution -count=1`
+- `./scripts/go.sh test ./core/app ./core/toolruntime ./core/transport/httpapi ./core/execution -run 'Test.*Execution|Test.*Run|Test.*TerminalCommand|Test.*Tool|Test.*Approval|Test.*Blocks|TestService' -count=1`
 - `./scripts/go.sh test ./core/app ./core/toolruntime ./core/transport/httpapi -count=1`
 - `npm --prefix frontend run lint:active`
 - `npm --prefix frontend run build`

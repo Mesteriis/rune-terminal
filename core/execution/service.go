@@ -56,11 +56,13 @@ func (s *Service) Append(block Block) (Block, error) {
 	}
 	block.UpdatedAt = now
 
-	s.state.Blocks = append(s.state.Blocks, block)
-	s.state.UpdatedAt = now
-	if err := s.persistLocked(); err != nil {
+	nextState := clonePersistedState(s.state)
+	nextState.Blocks = append(nextState.Blocks, block)
+	nextState.UpdatedAt = now
+	if err := s.persistStateLocked(nextState); err != nil {
 		return Block{}, err
 	}
+	s.state = nextState
 	return block, nil
 }
 
@@ -114,14 +116,16 @@ func (s *Service) Replace(block Block) (Block, bool, error) {
 	}
 
 	now := time.Now().UTC()
-	block.CreatedAt = s.state.Blocks[index].CreatedAt
+	nextState := clonePersistedState(s.state)
+	block.CreatedAt = nextState.Blocks[index].CreatedAt
 	block.UpdatedAt = now
 
-	s.state.Blocks[index] = block
-	s.state.UpdatedAt = now
-	if err := s.persistLocked(); err != nil {
+	nextState.Blocks[index] = block
+	nextState.UpdatedAt = now
+	if err := s.persistStateLocked(nextState); err != nil {
 		return Block{}, false, err
 	}
+	s.state = nextState
 	return block, true, nil
 }
 
@@ -148,9 +152,10 @@ func (s *Service) MarkActiveFailed(reason string) (int, error) {
 		failedBy = "shutdown"
 	}
 
+	nextState := clonePersistedState(s.state)
 	changed := 0
-	for i := range s.state.Blocks {
-		block := &s.state.Blocks[i]
+	for i := range nextState.Blocks {
+		block := &nextState.Blocks[i]
 		if !isActiveState(block.Result.State) {
 			continue
 		}
@@ -162,10 +167,11 @@ func (s *Service) MarkActiveFailed(reason string) (int, error) {
 	if changed == 0 {
 		return 0, nil
 	}
-	s.state.UpdatedAt = time.Now().UTC()
-	if err := s.persistLocked(); err != nil {
+	nextState.UpdatedAt = time.Now().UTC()
+	if err := s.persistStateLocked(nextState); err != nil {
 		return 0, err
 	}
+	s.state = nextState
 	return changed, nil
 }
 
@@ -207,9 +213,20 @@ func (s *Service) persist() error {
 }
 
 func (s *Service) persistLocked() error {
-	payload, err := json.MarshalIndent(s.state, "", "  ")
+	return s.persistStateLocked(s.state)
+}
+
+func (s *Service) persistStateLocked(state persistedState) error {
+	payload, err := json.MarshalIndent(state, "", "  ")
 	if err != nil {
 		return err
 	}
 	return os.WriteFile(s.path, append(payload, '\n'), 0o600)
+}
+
+func clonePersistedState(state persistedState) persistedState {
+	return persistedState{
+		Blocks:    append([]Block(nil), state.Blocks...),
+		UpdatedAt: state.UpdatedAt,
+	}
 }
