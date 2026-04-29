@@ -106,3 +106,25 @@ func TestProbeRemoteMCPServerReportsAuthRequired(t *testing.T) {
 		t.Fatalf("expected reachable auth-required result, got %#v", result)
 	}
 }
+
+func TestProbeRemoteMCPServerReportsInvalidResponseWhenInitializeResultMissing(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"jsonrpc":"2.0","id":"probe-init"}`))
+	}))
+	defer server.Close()
+
+	result, err := probeRemoteMCPServer(context.Background(), server.Client(), server.URL, nil)
+	if err != nil {
+		t.Fatalf("probeRemoteMCPServer error: %v", err)
+	}
+
+	if result.Status != MCPProbeStatusInvalidResponse {
+		t.Fatalf("expected invalid-response probe result, got %#v", result)
+	}
+	if !result.Reachable || result.HTTPStatus != http.StatusOK {
+		t.Fatalf("expected reachable invalid-response result, got %#v", result)
+	}
+}

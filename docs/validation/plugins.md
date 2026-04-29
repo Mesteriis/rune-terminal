@@ -2,7 +2,7 @@
 
 ## Last verified state
 
-- Date: `2026-04-29`
+- Date: `2026-04-30`
 - State: `VERIFIED` for runtime/protocol hardening
 - Scope:
   - side-process plugin execution path
@@ -29,8 +29,13 @@
     returning
   - plugin delete removes the install root before removing the catalog record,
     so filesystem-removal failures leave the plugin visible and retryable
+  - remote MCP probe handles malformed initialize responses without panicking
 
 ## Commands/tests used
+
+MCP probe hardening slice (`2026-04-30`):
+
+- `./scripts/go.sh test ./core/app -run 'TestProbeRemoteMCPServerReportsInvalidResponseWhenInitializeResultMissing|TestProbeRemoteMCPServerReportsReadyWithToolCount|TestProbeRemoteMCPServerReportsAuthRequired' -count=1`
 
 Catalog lifecycle hardening slice (`2026-04-29`):
 

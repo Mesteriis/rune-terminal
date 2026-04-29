@@ -351,6 +351,14 @@ func probeRemoteMCPServer(
 			Reachable:  true,
 		}, nil
 	}
+	if initializeEnvelope.Result == nil {
+		return MCPProbeResult{
+			Status:     MCPProbeStatusInvalidResponse,
+			HTTPStatus: initializeStatus,
+			Message:    "Endpoint replied, but initialize response did not include a result.",
+			Reachable:  true,
+		}, nil
+	}
 
 	toolCount := 0
 	toolsBody, toolsStatus, err := doRemoteMCPProbeRequest(ctx, client, endpoint, headers, mcpRPCRequest{
