@@ -61,7 +61,20 @@ type healthPayload struct {
 type watcherState struct {
 	BackendURL    string `json:"backend_url"`
 	WorkerID      string `json:"worker_id"`
-	ShutdownToken string `json:"shutdown_token"`
+	ShutdownToken string `json:"shutdown_token,omitempty"`
+}
+
+const watcherShutdownTokenHeader = "X-Rterm-Watcher-Token"
+
+func watcherStatePayload(backendURL, workerID string) watcherState {
+	return watcherState{
+		BackendURL: backendURL,
+		WorkerID:   workerID,
+	}
+}
+
+func watcherShutdownToken(request *http.Request) string {
+	return strings.TrimSpace(request.Header.Get(watcherShutdownTokenHeader))
 }
 
 type handlerFunc func(context.Context, []byte) error
@@ -284,11 +297,7 @@ func runWatcher(args []string) error {
 	}
 
 	mux.HandleFunc("GET /watcher/state", func(writer http.ResponseWriter, _ *http.Request) {
-		writeJSONResponse(writer, watcherState{
-			BackendURL:    *backendURL,
-			WorkerID:      *workerID,
-			ShutdownToken: *shutdownToken,
-		})
+		writeJSONResponse(writer, watcherStatePayload(*backendURL, *workerID))
 	})
 	mux.HandleFunc("POST /watcher/shutdown", func(writer http.ResponseWriter, request *http.Request) {
 		if request.Method != http.MethodPost {
@@ -299,7 +308,7 @@ func runWatcher(args []string) error {
 			writer.WriteHeader(http.StatusUnauthorized)
 			return
 		}
-		if request.URL.Query().Get("token") != *shutdownToken {
+		if watcherShutdownToken(request) != *shutdownToken {
 			writer.WriteHeader(http.StatusUnauthorized)
 			return
 		}

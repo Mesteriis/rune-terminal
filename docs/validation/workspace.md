@@ -2,7 +2,7 @@
 
 ## Last verified state
 
-- Date: `2026-04-27`
+- Date: `2026-04-29`
 - State: `VERIFIED`
 - Scope:
   - the active shell now also exposes a runtime-backed language
@@ -100,6 +100,8 @@
     - desktop startup now also distinguishes a fixed watcher port conflict caused by a non-`rterm` listener: if `127.0.0.1:7788` is occupied but does not answer as a live `rterm` watcher, setup fails early with an explicit `non-rterm service` conflict instead of falling through to a later spawn/bind error
     - desktop shutdown now also handles the narrow forced-exit case that was still rough before: a `SIGTERM` delivered to `rterm-desktop` triggers the same ephemeral-runtime cleanup path as a normal app exit, so the desktop-owned backend and watcher are torn down before the process leaves
     - desktop runtime metadata writes (`~/.rterm/runtime.json` and `~/.rterm/settings.json`) now go through an atomic temp-file rename path instead of direct `fs::write`, so startup no longer depends on partially written runtime/settings JSON surviving process interruption cleanly
+    - desktop runtime metadata writes now also make the runtime metadata directory private on Unix (`0700`) and write replacement metadata files with private file permissions (`0600`), so core auth tokens and watcher shutdown tokens are not left under default umask-derived modes
+    - watcher state discovery no longer returns the shutdown token; the desktop reuses the token it already owns from spawn/runtime metadata and sends shutdown proof through `X-Rterm-Watcher-Token` instead of embedding it in the shutdown URL
     - desktop shutdown policy now also has direct Rust coverage for the Tauri command path itself: `request_shutdown_runtime()` is exercised for `missing runtime`, `persistent`, `ephemeral blocked by active tasks`, `forced ephemeral close`, and `missing auth token`, while a fresh `npm run tauri:dev` smoke still reaches live desktop startup and the smoke-owned runtime delta is terminated cleanly afterward
     - desktop runtime lifecycle now also has an isolated scripted smoke path: `npm run validate:desktop-runtime` launches `npm run tauri:dev` under a temporary `HOME`, waits for `.rterm/runtime.json` plus live core/watcher health, sends `SIGTERM` to the resolved live `rterm-desktop` parent of the spawned core/watcher pair, and verifies watcher/core exit plus runtime metadata cleanup without touching the user's real `~/.rterm`
     - Rust coverage now also exercises the narrower fixed-port conflict split directly: `cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml` includes a case where the watcher health probe fails but `127.0.0.1:7788` is still occupied, and the desktop layer now returns an explicit `non-rterm service` conflict instead of treating that state like an empty port
@@ -246,6 +248,11 @@
 - `npm run test:ui -- --reporter=line e2e/shell-workspace.spec.ts e2e/terminal.spec.ts`
 - `npm run validate`
 - `npm run validate:desktop-runtime`
+- `./scripts/go.sh test ./cmd/rterm-core -run 'TestWatcherStatePayloadOmitsShutdownToken|TestWatcherShutdownTokenIgnoresQueryToken' -count=1`
+- `./scripts/go.sh test ./cmd/rterm-core -count=1`
+- `cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml write_file_atomically_uses_private_permissions -- --nocapture`
+- `cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml`
+- `npm run tauri:check`
 - `gofmt -w core/app/workspace_actions.go core/app/tool_errors.go core/transport/httpapi/api.go core/transport/httpapi/handlers_workspace.go core/transport/httpapi/handlers_workspace_test.go core/workspace/widget_catalog.go core/workspace/widget_catalog_test.go`
 - `./scripts/go.sh test ./core/app ./core/workspace ./core/transport/httpapi -run 'TestWidgetKindCatalog|TestWorkspaceWidgetKindsCatalog|TestWorkspaceOpenPreviewInNewBlock' -count=1`
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestOpenPreviewInNewBlockAllowsRemotePathWithoutLocalStat|TestListFSRoutesRemoteConnectionAwareRequestsThroughSSH|TestReadFSPreviewRoutesRemoteConnectionAwareRequestsThroughSSH' -count=1`
@@ -602,8 +609,8 @@
 - Task claim readiness uses effective ready time `COALESCE(next_retry_at, run_at)`, so retry backoff delay is enforced through the same persisted claim pipeline.
 - Desktop watcher spawn is explicit and identity-bound:
   - `rterm-core watcher --backend=<core_url> --listen=127.0.0.1:7788 --worker-id=<worker_id> --shutdown-token=<shutdown_token>`
-  - watcher metadata is persisted in `~/.rterm/runtime.json` and validated through `/health` + `/watcher/state`.
-- Desktop ephemeral shutdown uses active-task guard (`GET /api/v1/tasks/active` with Bearer auth), then requests watcher shutdown via `POST /watcher/shutdown?token=...&worker_id=...`, waits for watcher `/health` disappearance as terminal confirmation, and only then proceeds to core stop.
+  - watcher metadata is persisted in `~/.rterm/runtime.json` and validated through `/health` + `/watcher/state`; state discovery returns worker/backend identity but does not return the shutdown token.
+- Desktop ephemeral shutdown uses active-task guard (`GET /api/v1/tasks/active` with Bearer auth), then requests watcher shutdown via `POST /watcher/shutdown?worker_id=...` plus `X-Rterm-Watcher-Token`, waits for watcher `/health` disappearance as terminal confirmation, and only then proceeds to core stop.
 - Watcher shutdown endpoint validates ownership proof and now returns success only after terminal watcher state is reached:
   - polling stop signal delivered
   - graceful task finalization complete

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -9,6 +10,34 @@ import (
 	"testing"
 	"time"
 )
+
+func TestWatcherStatePayloadOmitsShutdownToken(t *testing.T) {
+	t.Parallel()
+
+	payload := watcherStatePayload("http://127.0.0.1:40100", "watcher_test")
+	encoded, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatalf("marshal watcher state: %v", err)
+	}
+
+	if strings.Contains(string(encoded), "shutdown_token") {
+		t.Fatalf("watcher state leaked shutdown token: %s", encoded)
+	}
+}
+
+func TestWatcherShutdownTokenIgnoresQueryToken(t *testing.T) {
+	t.Parallel()
+
+	request := httptest.NewRequest(http.MethodPost, "/watcher/shutdown?token=leaked", nil)
+	if token := watcherShutdownToken(request); token != "" {
+		t.Fatalf("expected query token to be ignored, got %q", token)
+	}
+
+	request.Header.Set(watcherShutdownTokenHeader, "secret")
+	if token := watcherShutdownToken(request); token != "secret" {
+		t.Fatalf("expected header token, got %q", token)
+	}
+}
 
 func TestWatcherGracefulShutdownWaitsForWorkerDrain(t *testing.T) {
 	t.Parallel()

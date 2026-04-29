@@ -3,8 +3,11 @@ use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::fmt::{self, Display};
-use std::fs;
+use std::fs::{self, OpenOptions};
+use std::io::Write;
 use std::net::TcpListener;
+#[cfg(unix)]
+use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -162,6 +165,7 @@ struct WatcherStatePayload {
 }
 
 const WATCHER_LISTEN_ADDR: &str = "127.0.0.1:7788";
+const WATCHER_SHUTDOWN_TOKEN_HEADER: &str = "X-Rterm-Watcher-Token";
 
 #[derive(Debug, Error)]
 enum RuntimeError {
@@ -572,12 +576,10 @@ fn request_graceful_watcher_shutdown(watcher: &mut RuntimeProcess) -> Result<(),
         .expect("worker id required for controlled watcher");
 
     let client = create_http_client();
-    let endpoint = format!(
-        "{}/watcher/shutdown?token={}&worker_id={}",
-        watcher.url, token, worker_id
-    );
+    let endpoint = format!("{}/watcher/shutdown?worker_id={}", watcher.url, worker_id);
     let response = client
         .post(endpoint)
+        .header(WATCHER_SHUTDOWN_TOKEN_HEADER, token)
         .send()
         .and_then(|value| value.error_for_status());
 
@@ -763,13 +765,15 @@ fn spawn_watcher(
             wait_for_service_down,
         ));
     }
-    if state.shutdown_token.as_deref() != Some(&shutdown_token) {
-        return Err(finalize_spawned_watcher_startup_failure(
-            &mut watcher,
-            RuntimeError::RuntimePayload("watcher state returned unexpected shutdown token".into()),
-            stop_process,
-            wait_for_service_down,
-        ));
+    if let Some(returned_shutdown_token) = state.shutdown_token.as_deref() {
+        if returned_shutdown_token != shutdown_token {
+            return Err(finalize_spawned_watcher_startup_failure(
+                &mut watcher,
+                RuntimeError::RuntimePayload("watcher state returned unexpected shutdown token".into()),
+                stop_process,
+                wait_for_service_down,
+            ));
+        }
     }
 
     Ok(watcher)
@@ -922,16 +926,17 @@ where
     let state_url = format!("{}/watcher/state", watcher_base_url);
     let state = state_lookup(&state_url).ok()?;
     let worker_id = state.worker_id?;
-    let shutdown_token = state.shutdown_token?;
+    let shutdown_token = state.shutdown_token;
+    let started_by_ui = shutdown_token.is_some();
 
     Some(LiveWatcherRecord {
         process: RuntimeProcessRecord {
             pid: health.pid,
             url: watcher_base_url.to_string(),
-            started_by_ui: true,
+            started_by_ui,
             auth_token: None,
             worker_id: Some(worker_id),
-            shutdown_token: Some(shutdown_token),
+            shutdown_token,
         },
         backend_url: state.backend_url,
     })
@@ -1082,8 +1087,10 @@ fn validate_watcher_entry_for_core(
     if state.worker_id.as_deref() != entry.worker_id.as_deref() {
         return None;
     }
-    if state.shutdown_token.as_deref() != entry.shutdown_token.as_deref() {
-        return None;
+    if let Some(returned_shutdown_token) = state.shutdown_token.as_deref() {
+        if Some(returned_shutdown_token) != entry.shutdown_token.as_deref() {
+            return None;
+        }
     }
 
     if let Some(expected_core_url) = expected_core_url {
@@ -1222,7 +1229,7 @@ fn write_file_atomically(path: &Path, contents: &str) -> Result<(), RuntimeError
             path.display()
         )));
     };
-    fs::create_dir_all(parent).map_err(|err| RuntimeError::Path(err.to_string()))?;
+    create_private_directory(parent)?;
 
     let file_name = path
         .file_name()
@@ -1230,14 +1237,67 @@ fn write_file_atomically(path: &Path, contents: &str) -> Result<(), RuntimeError
         .unwrap_or("runtime-file");
     let temp_path = parent.join(format!(".{}.tmp-{}", file_name, random_token_n(8)));
 
-    fs::write(&temp_path, contents).map_err(|err| RuntimeError::Path(err.to_string()))?;
+    write_private_file(&temp_path, contents)?;
     match fs::rename(&temp_path, path) {
-        Ok(()) => Ok(()),
+        Ok(()) => {
+            set_private_file_permissions(path)?;
+            Ok(())
+        }
         Err(err) => {
             let _ = fs::remove_file(&temp_path);
             Err(RuntimeError::Path(err.to_string()))
         }
     }
+}
+
+fn create_private_directory(path: &Path) -> Result<(), RuntimeError> {
+    fs::create_dir_all(path).map_err(|err| RuntimeError::Path(err.to_string()))?;
+    set_private_directory_permissions(path)
+}
+
+#[cfg(unix)]
+fn set_private_directory_permissions(path: &Path) -> Result<(), RuntimeError> {
+    fs::set_permissions(path, fs::Permissions::from_mode(0o700))
+        .map_err(|err| RuntimeError::Path(err.to_string()))
+}
+
+#[cfg(not(unix))]
+fn set_private_directory_permissions(_path: &Path) -> Result<(), RuntimeError> {
+    Ok(())
+}
+
+#[cfg(unix)]
+fn write_private_file(path: &Path, contents: &str) -> Result<(), RuntimeError> {
+    let mut file = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o600)
+        .open(path)
+        .map_err(|err| RuntimeError::Path(err.to_string()))?;
+    file.write_all(contents.as_bytes())
+        .map_err(|err| RuntimeError::Path(err.to_string()))
+}
+
+#[cfg(not(unix))]
+fn write_private_file(path: &Path, contents: &str) -> Result<(), RuntimeError> {
+    let mut file = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(path)
+        .map_err(|err| RuntimeError::Path(err.to_string()))?;
+    file.write_all(contents.as_bytes())
+        .map_err(|err| RuntimeError::Path(err.to_string()))
+}
+
+#[cfg(unix)]
+fn set_private_file_permissions(path: &Path) -> Result<(), RuntimeError> {
+    fs::set_permissions(path, fs::Permissions::from_mode(0o600))
+        .map_err(|err| RuntimeError::Path(err.to_string()))
+}
+
+#[cfg(not(unix))]
+fn set_private_file_permissions(_path: &Path) -> Result<(), RuntimeError> {
+    Ok(())
 }
 
 fn query_active_tasks(core_base_url: &str, auth_token: &str) -> Result<usize, RuntimeError> {
@@ -1506,6 +1566,33 @@ mod tests {
         );
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn write_file_atomically_uses_private_permissions() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let temp_dir = tempfile::tempdir().expect("temp dir");
+        let runtime_dir = temp_dir.path().join("nested");
+        let path = runtime_dir.join("runtime.json");
+
+        write_file_atomically(&path, r#"{"auth_token":"secret"}"#)
+            .expect("atomic write should create private runtime metadata");
+
+        let dir_mode = fs::metadata(&runtime_dir)
+            .expect("runtime dir metadata")
+            .permissions()
+            .mode()
+            & 0o777;
+        let file_mode = fs::metadata(&path)
+            .expect("runtime file metadata")
+            .permissions()
+            .mode()
+            & 0o777;
+
+        assert_eq!(dir_mode, 0o700);
+        assert_eq!(file_mode, 0o600);
+    }
+
     #[test]
     fn recover_or_drop_watcher_record_reuses_valid_record_without_cleanup() {
         let record = RuntimeProcessRecord {
@@ -1601,7 +1688,7 @@ mod tests {
                 Ok(WatcherStatePayload {
                     backend_url: "http://127.0.0.1:40100".into(),
                     worker_id: Some("watcher_live".into()),
-                    shutdown_token: Some("shutdown".into()),
+                    shutdown_token: None,
                 })
             },
         )
@@ -1609,9 +1696,9 @@ mod tests {
 
         assert_eq!(record.pid, 4243);
         assert_eq!(record.url, "http://127.0.0.1:7788");
-        assert!(record.started_by_ui);
+        assert!(!record.started_by_ui);
         assert_eq!(record.worker_id.as_deref(), Some("watcher_live"));
-        assert_eq!(record.shutdown_token.as_deref(), Some("shutdown"));
+        assert!(record.shutdown_token.is_none());
     }
 
     #[test]
@@ -1656,15 +1743,16 @@ mod tests {
                 Ok(WatcherStatePayload {
                     backend_url: "http://127.0.0.1:40100".into(),
                     worker_id: Some("watcher_live".into()),
-                    shutdown_token: Some("shutdown".into()),
+                    shutdown_token: None,
                 })
             },
         )
         .expect("live watcher should be discovered");
 
         assert_eq!(live_watcher.process.pid, 7788);
+        assert!(!live_watcher.process.started_by_ui);
         assert_eq!(live_watcher.process.worker_id.as_deref(), Some("watcher_live"));
-        assert_eq!(live_watcher.process.shutdown_token.as_deref(), Some("shutdown"));
+        assert!(live_watcher.process.shutdown_token.is_none());
         assert_eq!(live_watcher.backend_url, "http://127.0.0.1:40100");
     }
 
