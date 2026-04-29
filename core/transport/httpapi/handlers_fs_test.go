@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	goruntime "runtime"
 	"strings"
 	"testing"
 
@@ -1096,6 +1097,64 @@ func TestFSMutationHandlersAppendFailureAuditEvents(t *testing.T) {
 	if len(event.AffectedPaths) != 1 || event.AffectedPaths[0] != filepath.Clean(outsideRoot) {
 		t.Fatalf("expected denied path in audit, got %#v", event.AffectedPaths)
 	}
+}
+
+func TestFSOpenExternalHandlerAppendsAuditEvents(t *testing.T) {
+	if goruntime.GOOS == "windows" {
+		t.Skip("fake opener command is not implemented for windows")
+	}
+
+	repoRoot := t.TempDir()
+	auditLog, handler := newFSAuditHandler(t, repoRoot)
+	installFakeFSOpener(t)
+
+	targetPath := filepath.Join(repoRoot, "open-me.txt")
+	if err := os.WriteFile(targetPath, []byte("open me"), 0o600); err != nil {
+		t.Fatalf("write target: %v", err)
+	}
+	missingPath := filepath.Join(repoRoot, "missing.txt")
+
+	fsMutationRequest(t, handler, http.MethodPost, "/api/v1/fs/open", map[string]string{
+		"path": targetPath,
+	}, http.StatusOK)
+	fsMutationRequest(t, handler, http.MethodPost, "/api/v1/fs/open", map[string]string{
+		"path": missingPath,
+	}, http.StatusNotFound)
+
+	events, err := auditLog.List(10)
+	if err != nil {
+		t.Fatalf("audit list: %v", err)
+	}
+	if len(events) != 2 {
+		t.Fatalf("expected two open audit events, got %#v", events)
+	}
+	if events[0].ToolName != "fs.open_external" || !events[0].Success || events[0].Error != "" ||
+		events[0].ActionSource != "http.fs" {
+		t.Fatalf("unexpected success audit event: %#v", events[0])
+	}
+	if len(events[0].AffectedPaths) != 1 || events[0].AffectedPaths[0] != filepath.Clean(targetPath) {
+		t.Fatalf("expected opened path in success audit, got %#v", events[0])
+	}
+	if events[1].ToolName != "fs.open_external" || events[1].Success || events[1].Error == "" ||
+		events[1].ActionSource != "http.fs" {
+		t.Fatalf("unexpected failure audit event: %#v", events[1])
+	}
+	if len(events[1].AffectedPaths) != 1 || events[1].AffectedPaths[0] != filepath.Clean(missingPath) {
+		t.Fatalf("expected attempted path in failure audit, got %#v", events[1])
+	}
+}
+
+func installFakeFSOpener(t *testing.T) {
+	t.Helper()
+
+	binDir := t.TempDir()
+	for _, name := range []string{"open", "xdg-open"} {
+		path := filepath.Join(binDir, name)
+		if err := os.WriteFile(path, []byte("#!/bin/sh\nexit 0\n"), 0o700); err != nil {
+			t.Fatalf("write fake opener %s: %v", name, err)
+		}
+	}
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 }
 
 func newFSAuditHandler(t *testing.T, repoRoot string) (*audit.Log, http.Handler) {

@@ -142,9 +142,11 @@ func (api *API) handleOpenFSExternal(w http.ResponseWriter, r *http.Request) {
 
 	result, err := api.runtime.OpenFSExternalForConnection(r.Context(), request.Path, request.ConnectionID)
 	if err != nil {
+		api.appendFSMutationAudit("fs.open_external", "Open filesystem path externally", request.ConnectionID, []string{request.Path}, err)
 		writeFSError(w, err)
 		return
 	}
+	api.appendFSMutationAudit("fs.open_external", "Open filesystem path externally", request.ConnectionID, []string{result.Path}, nil)
 
 	writeJSON(w, http.StatusOK, result)
 }

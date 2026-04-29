@@ -103,6 +103,9 @@ It is intentionally operational, not narrative.
   - `Use Selected Path In AI Prompt`
   - `Use Selected Path In /run Prompt`
   - both actions are explicit operator clicks and do not auto-send or auto-execute
+- Filesystem external-open handoffs (`POST /api/v1/fs/open`) append
+  core-owned audit events with `action_source=http.fs`, affected path,
+  connection identity when present, and success/failure text.
 - Files panel entries are also draggable into matching terminal widgets, where the terminal inserts the path into input without auto-running it.
 - Terminal context menus now expose `Open Current Directory in New Block` on the active compat path when shell cwd metadata is known.
 - Opening the current directory from a compat terminal creates a backend-owned `files` widget split to the right of the source terminal:
