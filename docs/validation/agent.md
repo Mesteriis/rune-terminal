@@ -187,6 +187,7 @@
   - the returned command is executed through `term.send_input` against the same explicit terminal target and then explained through the existing `/explain` route
   - if that planned execution hits `requires_confirmation`, the frontend reuses the same `safety.confirm` plus retry path against the same selected terminal target, including SSH-backed remote contexts
   - the `term.send_input` / `safety.confirm` toolruntime requests intentionally omit `widget_context_enabled` and `widget_ids`; those remain conversation/explain-only context fields and are no longer sent to `/api/v1/tools/execute`
+  - toolruntime policy evaluation now uses the core runtime `RepoRoot` for repo-scoped ignore/trusted rules, so `/api/v1/tools/execute` cannot disable repo-scoped policy by sending a bogus `context.repo_root`
   - this still is not broad provider-native tool-calling; it is a constrained terminal-command planning path over the existing runtime/tool contract
   - if the provider returns an invalid terminal plan payload, the route now fails fast with `502 terminal_command_plan_invalid`, and the UI surfaces that planner error instead of silently falling back to chat streaming
 - `widget_context_enabled` remains valid for conversation/explain routes, but is intentionally omitted from `POST /api/v1/tools/execute` because that transport contract does not accept it.
@@ -218,6 +219,7 @@
 - `./scripts/go.sh test ./core/conversation ./core/transport/httpapi ./core/app`
 - `go test ./core/...`
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi`
+- `./scripts/go.sh test ./core/app -run 'TestExecuteToolUsesRuntimeRepoRootForRepoScopedPolicy' -count=1`
 - `./scripts/go.sh test ./core/app -run 'TestCreateAttachmentReferenceDoesNotAuditSuccessWhenStoreFails' -count=1`
 - `./scripts/go.sh test ./core/app -run 'TestDeleteAttachmentReferenceAppends.*AuditEvent' -count=1`
 - `./scripts/go.sh test ./core/agent ./core/app ./core/conversation ./core/transport/httpapi`

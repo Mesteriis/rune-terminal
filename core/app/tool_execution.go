@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"strings"
 
 	"github.com/Mesteriis/rune-terminal/core/policy"
 	"github.com/Mesteriis/rune-terminal/core/toolruntime"
@@ -15,5 +16,8 @@ func (r *Runtime) toolPolicyProfile() policy.EvaluationProfile {
 }
 
 func (r *Runtime) ExecuteTool(ctx context.Context, request toolruntime.ExecuteRequest) toolruntime.ExecuteResponse {
+	if repoRoot := strings.TrimSpace(r.RepoRoot); repoRoot != "" {
+		request.Context.RepoRoot = repoRoot
+	}
 	return r.Executor.Execute(ctx, request, r.toolPolicyProfile())
 }
