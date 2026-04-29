@@ -48,7 +48,15 @@ func (s *Store) CreateTask(
 		MaxRetries:          maxRetries,
 		RetryBackoffSeconds: retryBackoffSeconds,
 	}
-	if _, err := s.db.ExecContext(ctx,
+	tx, err := s.db.BeginTx(ctx, &sql.TxOptions{})
+	if err != nil {
+		return Task{}, err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	if _, err := tx.ExecContext(ctx,
 		`INSERT INTO tasks
 			(id, type, payload, status, run_at, created_at, retry_count, max_retries, retry_backoff_seconds)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -64,7 +72,10 @@ func (s *Store) CreateTask(
 	); err != nil {
 		return Task{}, err
 	}
-	if err := s.logEvent(ctx, "", task.ID, "", task.Status, "created"); err != nil {
+	if err := s.logEventTx(ctx, tx, "", task.ID, "", task.Status, "created"); err != nil {
+		return Task{}, err
+	}
+	if err := tx.Commit(); err != nil {
 		return Task{}, err
 	}
 	return task, nil
@@ -176,7 +187,15 @@ func (s *Store) markFinal(ctx context.Context, id, workerID, nextStatus, message
 		errorMessage = ""
 	}
 	nowStr := now.Format(time.RFC3339Nano)
-	if _, err := s.db.ExecContext(ctx,
+	tx, err := s.db.BeginTx(ctx, &sql.TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	result, err := tx.ExecContext(ctx,
 		`UPDATE tasks
 			SET status = ?, finished_at = ?, error = ?, last_error_at = ?, next_retry_at = ?
 			WHERE id = ? AND status = ? AND locked_by = ?`,
@@ -188,14 +207,25 @@ func (s *Store) markFinal(ctx context.Context, id, workerID, nextStatus, message
 		id,
 		TaskStatusRunning,
 		workerID,
-	); err != nil {
+	)
+	if err != nil {
 		return err
+	}
+	affected, err := checkUpdateAffectedRows(result, id)
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return ErrInvalidStatus
 	}
 	eventMessage := errorMessage
 	if nextStatus == TaskStatusFailed && task.MaxRetries > 0 && task.RetryCount >= task.MaxRetries {
 		eventMessage = "retry_exhausted: " + errorMessage
 	}
-	return s.logEvent(ctx, task.Status, id, workerID, nextStatus, strings.TrimSpace(eventMessage))
+	if err := s.logEventTx(ctx, tx, task.Status, id, workerID, nextStatus, strings.TrimSpace(eventMessage)); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func checkUpdateAffectedRows(result sql.Result, id string) (int64, error) {
@@ -430,7 +460,15 @@ func (s *Store) scheduleRetry(ctx context.Context, task Task, workerID, reason s
 		delaySeconds,
 		strings.TrimSpace(reason),
 	)
-	result, err := s.db.ExecContext(ctx, `
+	tx, err := s.db.BeginTx(ctx, &sql.TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	result, err := tx.ExecContext(ctx, `
 		UPDATE tasks
 		SET status = ?, retry_count = ?, next_retry_at = ?, last_error_at = ?, error = ?, locked_by = NULL, locked_at = NULL, started_at = NULL, finished_at = NULL
 		WHERE id = ? AND status = ? AND locked_by = ?
@@ -454,7 +492,10 @@ func (s *Store) scheduleRetry(ctx context.Context, task Task, workerID, reason s
 	if affected == 0 {
 		return ErrInvalidStatus
 	}
-	return s.logEvent(ctx, TaskStatusRunning, task.ID, workerID, TaskStatusPending, retryMessage)
+	if err := s.logEventTx(ctx, tx, TaskStatusRunning, task.ID, workerID, TaskStatusPending, retryMessage); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func boundedRetryBackoffSeconds(baseSeconds, retryCount int) int {

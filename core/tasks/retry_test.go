@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -51,6 +52,23 @@ func TestCreateTaskRetryPolicyPersists(t *testing.T) {
 	}
 	if persisted.MaxRetries != maxRetries || persisted.RetryBackoffSeconds != backoff {
 		t.Fatalf("unexpected persisted retry policy: %#v", persisted)
+	}
+}
+
+func TestCreateTaskRollsBackWhenEventInsertFails(t *testing.T) {
+	t.Parallel()
+
+	store := newTaskTestStore(t)
+	if _, err := store.db.ExecContext(context.Background(), `DROP TABLE task_events`); err != nil {
+		t.Fatalf("drop task_events failed: %v", err)
+	}
+
+	_, err := store.CreateTask(context.Background(), "task_create_no_event", "example.sleep", `{}`, time.Now().UTC(), 0, 0)
+	if err == nil {
+		t.Fatalf("expected create task event insert failure")
+	}
+	if _, err := store.GetTask(context.Background(), "task_create_no_event"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expected failed create to roll back task row, got %v", err)
 	}
 }
 
@@ -216,6 +234,62 @@ func TestRetryExhaustionAndVisibility(t *testing.T) {
 	}
 	if !containsMessagePrefix(events, "retry_exhausted:") {
 		t.Fatalf("expected retry_exhausted event, got %v", events)
+	}
+}
+
+func TestMarkFinalRollsBackWhenEventInsertFails(t *testing.T) {
+	t.Parallel()
+
+	store := newTaskTestStore(t)
+	now := time.Now().UTC()
+	task, err := store.CreateTask(context.Background(), "task_final_no_event", "example.sleep", `{}`, now, 0, 0)
+	if err != nil {
+		t.Fatalf("create task failed: %v", err)
+	}
+	if _, err := store.ClaimReadyTasks(context.Background(), "watcher_a", 1, now.Add(time.Millisecond)); err != nil {
+		t.Fatalf("claim failed: %v", err)
+	}
+	if _, err := store.db.ExecContext(context.Background(), `DROP TABLE task_events`); err != nil {
+		t.Fatalf("drop task_events failed: %v", err)
+	}
+
+	if err := store.MarkTaskDone(context.Background(), task.ID, "watcher_a"); err == nil {
+		t.Fatalf("expected mark done event insert failure")
+	}
+	after, err := store.GetTask(context.Background(), task.ID)
+	if err != nil {
+		t.Fatalf("get task failed: %v", err)
+	}
+	if after.Status != TaskStatusRunning || after.FinishedAt != nil {
+		t.Fatalf("expected failed final mark to keep running task, got %#v", after)
+	}
+}
+
+func TestScheduleRetryRollsBackWhenEventInsertFails(t *testing.T) {
+	t.Parallel()
+
+	store := newTaskTestStore(t)
+	now := time.Now().UTC()
+	task, err := store.CreateTask(context.Background(), "task_retry_no_event", "example.sleep", `{}`, now, 2, 1)
+	if err != nil {
+		t.Fatalf("create task failed: %v", err)
+	}
+	if _, err := store.ClaimReadyTasks(context.Background(), "watcher_a", 1, now.Add(time.Millisecond)); err != nil {
+		t.Fatalf("claim failed: %v", err)
+	}
+	if _, err := store.db.ExecContext(context.Background(), `DROP TABLE task_events`); err != nil {
+		t.Fatalf("drop task_events failed: %v", err)
+	}
+
+	if err := store.MarkTaskFailed(context.Background(), task.ID, "watcher_a", "boom"); err == nil {
+		t.Fatalf("expected retry event insert failure")
+	}
+	after, err := store.GetTask(context.Background(), task.ID)
+	if err != nil {
+		t.Fatalf("get task failed: %v", err)
+	}
+	if after.Status != TaskStatusRunning || after.RetryCount != 0 || after.NextRetryAt != nil {
+		t.Fatalf("expected failed retry scheduling to keep running task, got %#v", after)
 	}
 }
 
