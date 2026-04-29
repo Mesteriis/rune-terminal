@@ -727,14 +727,23 @@ func pluginArchiveEntryPath(target string, name string) (string, error) {
 }
 
 func copyPluginArchiveEntry(output io.Writer, input io.Reader, extractedBytes *int64) error {
-	remaining := pluginArchiveMaxExtractedBytes - *extractedBytes
+	return copyPluginPayloadWithBudget(output, input, extractedBytes, "zip archive expands beyond limit")
+}
+
+func copyPluginPayloadWithBudget(
+	output io.Writer,
+	input io.Reader,
+	copiedBytes *int64,
+	limitMessage string,
+) error {
+	remaining := pluginArchiveMaxExtractedBytes - *copiedBytes
 	if remaining < 0 {
-		return fmt.Errorf("%w: zip archive expands beyond limit", plugins.ErrInvalidPluginSpec)
+		return fmt.Errorf("%w: %s", plugins.ErrInvalidPluginSpec, limitMessage)
 	}
 	written, err := io.Copy(output, io.LimitReader(input, remaining+1))
-	*extractedBytes += written
-	if *extractedBytes > pluginArchiveMaxExtractedBytes {
-		return fmt.Errorf("%w: zip archive expands beyond limit", plugins.ErrInvalidPluginSpec)
+	*copiedBytes += written
+	if *copiedBytes > pluginArchiveMaxExtractedBytes {
+		return fmt.Errorf("%w: %s", plugins.ErrInvalidPluginSpec, limitMessage)
 	}
 	return err
 }
@@ -788,18 +797,30 @@ func downloadPluginArchive(ctx context.Context, stageRoot string, archiveURL str
 }
 
 func copyDirectory(sourceRoot string, targetRoot string) error {
+	var copiedBytes int64
+	entryCount := 0
 	return filepath.WalkDir(sourceRoot, func(path string, entry os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
+		}
+		entryCount++
+		if entryCount > pluginArchiveMaxExtractedFileCount {
+			return fmt.Errorf("%w: plugin bundle contains too many entries", plugins.ErrInvalidPluginSpec)
 		}
 		relative, err := filepath.Rel(sourceRoot, path)
 		if err != nil {
 			return err
 		}
 		targetPath := filepath.Join(targetRoot, relative)
+		if entry.Type()&os.ModeSymlink != 0 {
+			return fmt.Errorf("%w: plugin bundle contains symlink entry", plugins.ErrInvalidPluginSpec)
+		}
 		info, err := entry.Info()
 		if err != nil {
 			return err
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("%w: plugin bundle contains symlink entry", plugins.ErrInvalidPluginSpec)
 		}
 		if entry.IsDir() {
 			return os.MkdirAll(targetPath, info.Mode())
@@ -816,7 +837,12 @@ func copyDirectory(sourceRoot string, targetRoot string) error {
 		if err != nil {
 			return err
 		}
-		if _, err := io.Copy(output, input); err != nil {
+		if err := copyPluginPayloadWithBudget(
+			output,
+			input,
+			&copiedBytes,
+			"plugin bundle expands beyond limit",
+		); err != nil {
 			_ = output.Close()
 			return err
 		}

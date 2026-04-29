@@ -64,6 +64,10 @@ This is the canonical plugin entrypoint for runtime boundary and protocol behavi
   have a compressed-size cap, extracted payloads have total byte and entry
   count budgets, and entries must remain under the extraction root by
   root-relative path checks.
+- The staged bundle copy into the install root rejects symlink entries and
+  applies the same total byte / entry-count budget, so `git` sources cannot
+  smuggle external filesystem contents into an installed plugin through a
+  symlink or unbounded repository payload.
 - Plugin delete removes the install root before removing the catalog record;
   if filesystem removal fails, the record remains visible for retry instead of
   orphaning files outside the catalog.

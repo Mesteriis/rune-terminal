@@ -346,6 +346,75 @@ func TestInstallPluginRejectsZipArchiveEntryOutsideRootPrefix(t *testing.T) {
 	}
 }
 
+func TestInstallPluginRejectsBundleSymlinkEntries(t *testing.T) {
+	t.Parallel()
+
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git is required for plugin git install tests")
+	}
+	outsideRoot := t.TempDir()
+	outsidePath := filepath.Join(outsideRoot, "outside-secret.txt")
+	if err := os.WriteFile(outsidePath, []byte("outside secret"), 0o600); err != nil {
+		t.Fatalf("WriteFile(outside) error: %v", err)
+	}
+	repoRoot := t.TempDir()
+	writeInstallablePluginBundle(t, repoRoot, "example.symlinkbundle", "1.0.0")
+	if err := os.Symlink(outsidePath, filepath.Join(repoRoot, "outside-link.txt")); err != nil {
+		t.Skipf("symlink unsupported: %v", err)
+	}
+	runGit(t, repoRoot, "init")
+	runGit(t, repoRoot, "config", "user.email", "test@example.com")
+	runGit(t, repoRoot, "config", "user.name", "Test User")
+	runGit(t, repoRoot, "add", ".")
+	runGit(t, repoRoot, "commit", "-m", "add plugin bundle with symlink")
+
+	runtime := newPluginCatalogTestRuntime(t)
+	_, _, err := runtime.InstallPlugin(context.Background(), InstallPluginInput{
+		Source: PluginInstallSource{
+			Kind: PluginInstallSourceGit,
+			URL:  "file://" + repoRoot,
+		},
+	})
+	if err == nil {
+		t.Fatalf("expected plugin bundle with symlink to fail")
+	}
+	if !errors.Is(err, plugins.ErrInvalidPluginSpec) {
+		t.Fatalf("expected invalid plugin spec error, got %v", err)
+	}
+}
+
+func TestInstallPluginRejectsGitBundleOverCopiedSizeLimit(t *testing.T) {
+	t.Parallel()
+
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git is required for plugin git install tests")
+	}
+	repoRoot := t.TempDir()
+	writeInstallablePluginBundle(t, repoRoot, "example.largebundle", "1.0.0")
+	if err := os.WriteFile(filepath.Join(repoRoot, "large.bin"), oversizedZipPayload(t), 0o600); err != nil {
+		t.Fatalf("WriteFile(large.bin) error: %v", err)
+	}
+	runGit(t, repoRoot, "init")
+	runGit(t, repoRoot, "config", "user.email", "test@example.com")
+	runGit(t, repoRoot, "config", "user.name", "Test User")
+	runGit(t, repoRoot, "add", ".")
+	runGit(t, repoRoot, "commit", "-m", "add oversized plugin bundle")
+
+	runtime := newPluginCatalogTestRuntime(t)
+	_, _, err := runtime.InstallPlugin(context.Background(), InstallPluginInput{
+		Source: PluginInstallSource{
+			Kind: PluginInstallSourceGit,
+			URL:  "file://" + repoRoot,
+		},
+	})
+	if err == nil {
+		t.Fatalf("expected oversized plugin bundle install to fail")
+	}
+	if !errors.Is(err, plugins.ErrInvalidPluginSpec) {
+		t.Fatalf("expected invalid plugin spec error, got %v", err)
+	}
+}
+
 func TestDeleteInstalledPluginKeepsCatalogWhenInstallRootRemovalFails(t *testing.T) {
 	t.Parallel()
 
