@@ -2,7 +2,7 @@
 
 ## Last verified state
 
-- Date: `2026-04-29`
+- Date: `2026-04-30`
 - State: `VERIFIED`
 - Scope:
   - DB-backed AI conversations with explicit create/switch/rename/archive/restore/delete lifecycle
@@ -40,6 +40,9 @@
   - files-panel `Attach file ... to AI` handoff through `POST /api/v1/agent/conversation/attachments/references`, shell attachment queue, and stream request `attachments`
   - AI attachment ingestion now evaluates the same runtime policy allowed-root and ignore-rule configuration before provider prompt assembly; metadata-only/redacted matches keep content out of prompts, and outside-root or denied attachments fail instead of being read through a raw HTTP attachment payload
   - AI attachment policy evaluation now canonicalizes filesystem paths before policy/read, uses the backend runtime repo root for repo-scoped ignore rules instead of trusting HTTP payload context, and writes failure audit events for policy-denied attachment submit/reference attempts
+  - policy trusted/ignore rule mutations now keep the active in-memory policy
+    unchanged when persistence fails, so failed policy writes cannot silently
+    change runtime authorization state
   - attachment reference creation now appends the success audit event only
     after the DB reference record is persisted, so a store failure cannot leave
     audit history claiming that a reference was successfully created
@@ -220,6 +223,7 @@
 - `go test ./core/...`
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi`
 - `./scripts/go.sh test ./core/app -run 'TestExecuteToolUsesRuntimeRepoRootForRepoScopedPolicy' -count=1`
+- `./scripts/go.sh test ./core/policy -run 'Test(Trusted|Ignore)RuleMutationsDoNotChangeMemoryWhenPersistFails|TestTrustedRuleLifecycle|TestIgnoreRuleLifecycle|TestDefaultIgnoreRulesUseStricterSecretModes' -count=1`
 - `./scripts/go.sh test ./core/app -run 'TestCreateAttachmentReferenceDoesNotAuditSuccessWhenStoreFails' -count=1`
 - `./scripts/go.sh test ./core/app -run 'TestDeleteAttachmentReferenceAppends.*AuditEvent' -count=1`
 - `./scripts/go.sh test ./core/agent ./core/app ./core/conversation ./core/transport/httpapi`

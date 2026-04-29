@@ -75,7 +75,11 @@ func (s *Store) load(repoRoot string) error {
 }
 
 func (s *Store) saveLocked() error {
-	payload, err := json.MarshalIndent(s.cfg, "", "  ")
+	return s.saveConfigLocked(s.cfg)
+}
+
+func (s *Store) saveConfigLocked(cfg Config) error {
+	payload, err := json.MarshalIndent(cfg, "", "  ")
 	if err != nil {
 		return err
 	}
@@ -104,8 +108,13 @@ func (s *Store) AddTrustedRule(rule TrustedRule) (TrustedRule, error) {
 	if err := validateTrustedRule(rule); err != nil {
 		return TrustedRule{}, fmt.Errorf("%w: %v", ErrInvalidTrustedRule, err)
 	}
-	s.cfg.TrustedRules = append(s.cfg.TrustedRules, rule)
-	return rule, s.saveLocked()
+	nextCfg := cloneConfig(s.cfg)
+	nextCfg.TrustedRules = append(nextCfg.TrustedRules, rule)
+	if err := s.saveConfigLocked(nextCfg); err != nil {
+		return TrustedRule{}, err
+	}
+	s.cfg = nextCfg
+	return rule, nil
 }
 
 func (s *Store) ListTrustedRules() []TrustedRule {
@@ -130,8 +139,13 @@ func (s *Store) RemoveTrustedRule(id string) (bool, error) {
 	if !removed {
 		return false, nil
 	}
-	s.cfg.TrustedRules = next
-	return true, s.saveLocked()
+	nextCfg := cloneConfig(s.cfg)
+	nextCfg.TrustedRules = next
+	if err := s.saveConfigLocked(nextCfg); err != nil {
+		return false, err
+	}
+	s.cfg = nextCfg
+	return true, nil
 }
 
 func (s *Store) AddIgnoreRule(rule IgnoreRule) (IgnoreRule, error) {
@@ -150,8 +164,13 @@ func (s *Store) AddIgnoreRule(rule IgnoreRule) (IgnoreRule, error) {
 	if err := validateIgnoreRule(rule); err != nil {
 		return IgnoreRule{}, fmt.Errorf("%w: %v", ErrInvalidIgnoreRule, err)
 	}
-	s.cfg.IgnoreRules = append(s.cfg.IgnoreRules, rule)
-	return rule, s.saveLocked()
+	nextCfg := cloneConfig(s.cfg)
+	nextCfg.IgnoreRules = append(nextCfg.IgnoreRules, rule)
+	if err := s.saveConfigLocked(nextCfg); err != nil {
+		return IgnoreRule{}, err
+	}
+	s.cfg = nextCfg
+	return rule, nil
 }
 
 func (s *Store) ListIgnoreRules() []IgnoreRule {
@@ -176,8 +195,13 @@ func (s *Store) RemoveIgnoreRule(id string) (bool, error) {
 	if !removed {
 		return false, nil
 	}
-	s.cfg.IgnoreRules = next
-	return true, s.saveLocked()
+	nextCfg := cloneConfig(s.cfg)
+	nextCfg.IgnoreRules = next
+	if err := s.saveConfigLocked(nextCfg); err != nil {
+		return false, err
+	}
+	s.cfg = nextCfg
+	return true, nil
 }
 
 func cloneConfig(cfg Config) Config {

@@ -70,6 +70,52 @@ func TestTrustedRuleLifecycle(t *testing.T) {
 	}
 }
 
+func TestTrustedRuleMutationsDoNotChangeMemoryWhenPersistFails(t *testing.T) {
+	t.Parallel()
+
+	store, err := NewStore(filepath.Join(t.TempDir(), "policy.json"), "/workspace/repo")
+	if err != nil {
+		t.Fatalf("NewStore error: %v", err)
+	}
+	store.path = filepath.Join(t.TempDir(), "missing-parent", "policy.json")
+
+	_, err = store.AddTrustedRule(TrustedRule{
+		Scope:       ScopeRepo,
+		ScopeRef:    "/workspace/repo",
+		SubjectType: SubjectTool,
+		MatcherType: MatcherExact,
+		Matcher:     "term.send_input",
+		Enabled:     true,
+	})
+	if err == nil {
+		t.Fatalf("expected trusted rule persist failure")
+	}
+	if rules := store.ListTrustedRules(); len(rules) != 0 {
+		t.Fatalf("expected failed trusted add to leave rules unchanged, got %#v", rules)
+	}
+
+	store.path = filepath.Join(t.TempDir(), "policy.json")
+	rule, err := store.AddTrustedRule(TrustedRule{
+		Scope:       ScopeRepo,
+		ScopeRef:    "/workspace/repo",
+		SubjectType: SubjectTool,
+		MatcherType: MatcherExact,
+		Matcher:     "term.send_input",
+		Enabled:     true,
+	})
+	if err != nil {
+		t.Fatalf("AddTrustedRule error: %v", err)
+	}
+	store.path = filepath.Join(t.TempDir(), "missing-parent", "policy.json")
+
+	if _, err := store.RemoveTrustedRule(rule.ID); err == nil {
+		t.Fatalf("expected trusted remove persist failure after matching rule")
+	}
+	if rules := store.ListTrustedRules(); len(rules) != 1 || rules[0].ID != rule.ID {
+		t.Fatalf("expected failed trusted remove to keep rule, got %#v", rules)
+	}
+}
+
 func TestIgnoreRuleLifecycle(t *testing.T) {
 	t.Parallel()
 
@@ -100,5 +146,52 @@ func TestIgnoreRuleLifecycle(t *testing.T) {
 	}
 	if !removed {
 		t.Fatalf("expected ignore rule removal")
+	}
+}
+
+func TestIgnoreRuleMutationsDoNotChangeMemoryWhenPersistFails(t *testing.T) {
+	t.Parallel()
+
+	store, err := NewStore(filepath.Join(t.TempDir(), "policy.json"), "/workspace/repo")
+	if err != nil {
+		t.Fatalf("NewStore error: %v", err)
+	}
+	initialIgnoreRuleCount := len(store.ListIgnoreRules())
+	store.path = filepath.Join(t.TempDir(), "missing-parent", "policy.json")
+
+	_, err = store.AddIgnoreRule(IgnoreRule{
+		Scope:       ScopeRepo,
+		ScopeRef:    "/workspace/repo",
+		MatcherType: MatcherGlob,
+		Pattern:     "tmp-secret-*",
+		Mode:        IgnoreModeMetadataOnly,
+		Enabled:     true,
+	})
+	if err == nil {
+		t.Fatalf("expected ignore rule persist failure")
+	}
+	if rules := store.ListIgnoreRules(); len(rules) != initialIgnoreRuleCount {
+		t.Fatalf("expected failed ignore add to leave rules unchanged, got %d want %d", len(rules), initialIgnoreRuleCount)
+	}
+
+	store.path = filepath.Join(t.TempDir(), "policy.json")
+	rule, err := store.AddIgnoreRule(IgnoreRule{
+		Scope:       ScopeRepo,
+		ScopeRef:    "/workspace/repo",
+		MatcherType: MatcherGlob,
+		Pattern:     "tmp-secret-*",
+		Mode:        IgnoreModeMetadataOnly,
+		Enabled:     true,
+	})
+	if err != nil {
+		t.Fatalf("AddIgnoreRule error: %v", err)
+	}
+	store.path = filepath.Join(t.TempDir(), "missing-parent", "policy.json")
+
+	if _, err := store.RemoveIgnoreRule(rule.ID); err == nil {
+		t.Fatalf("expected ignore remove persist failure after matching rule")
+	}
+	if rules := store.ListIgnoreRules(); len(rules) != initialIgnoreRuleCount+1 {
+		t.Fatalf("expected failed ignore remove to keep rule, got %d want %d", len(rules), initialIgnoreRuleCount+1)
 	}
 }
