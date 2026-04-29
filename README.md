@@ -186,6 +186,8 @@ Default local addresses:
 - backend API: `http://127.0.0.1:8090`
 - auth token shared by both targets: `runa-local-dev-token`
   (historical default, safe to override)
+- backend-only task control token: `runa-local-dev-task-token`
+  (used by task worker control routes; not exposed to the frontend)
 
 You can override those defaults via `make` variables when needed:
 
@@ -194,6 +196,10 @@ make LOCAL_BACKEND_PORT=8091 LOCAL_AUTH_TOKEN=my-dev-token run-backend-watch
 make LOCAL_BACKEND_URL=http://127.0.0.1:8091 LOCAL_AUTH_TOKEN=my-dev-token run-frontend
 make LOCAL_BACKEND_PORT=8091 LOCAL_AUTH_TOKEN=my-dev-token dev
 ```
+
+If you need to override task-worker control separately, set
+`LOCAL_TASK_CONTROL_TOKEN=...` on `make run-backend`, `make run-backend-watch`,
+or `make dev`.
 
 The first `make dev` / `make run-backend-watch` run bootstraps a local
 copy of `air-verse/air` into `tmp/tools/air` so it does not depend on a

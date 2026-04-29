@@ -39,6 +39,7 @@ env \
   LOCAL_BACKEND_LISTEN="${LOCAL_BACKEND_LISTEN:-127.0.0.1:8090}" \
   LOCAL_BACKEND_URL="${LOCAL_BACKEND_URL:-http://127.0.0.1:8090}" \
   LOCAL_AUTH_TOKEN="${LOCAL_AUTH_TOKEN:-runa-local-dev-token}" \
+  LOCAL_TASK_CONTROL_TOKEN="${LOCAL_TASK_CONTROL_TOKEN:-runa-local-dev-task-token}" \
   "${ROOT_DIR}/scripts/run-backend-watch.sh" &
 BACKEND_PID=$!
 

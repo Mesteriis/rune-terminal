@@ -22,6 +22,10 @@
 - `make dev LOCAL_BACKEND_PORT=8092 LOCAL_BACKEND_LISTEN=127.0.0.1:8092 LOCAL_BACKEND_URL=http://127.0.0.1:8092 LOCAL_FRONTEND_PORT=4193`
 - `curl -sf http://127.0.0.1:8092/healthz`
 - `curl -sf http://127.0.0.1:4193`
+- `bash -n scripts/dev.sh scripts/run-backend-watch.sh`
+- `make -n run-backend`
+- `make -n run-backend-watch`
+- `make -n run-frontend`
 - temporary no-op change + revert in `cmd/rterm-core/main.go` to confirm `air` rebuild/restart on watched Go source changes
 - Workflow identity targeted tests:
   - `./scripts/go.sh test ./core/transport/httpapi -run 'TestExplainTerminalCommandUsesExplicitCommandAuditEventIDPayload'`
@@ -37,6 +41,9 @@
 - Full-frontend lint debt is tracked separately and not part of active-path release gate.
 - The first split browser run that uses `make dev` or `make run-backend-watch` bootstraps `air-verse/air` into `tmp/tools/air`.
 - The split browser path still depends on a shared `LOCAL_AUTH_TOKEN` / backend URL pair when targets are launched separately.
+- The split backend path now also provisions a backend-only
+  `LOCAL_TASK_CONTROL_TOKEN` into `RTERM_TASK_CONTROL_TOKEN`; this is required
+  for task worker mutation routes and is intentionally not passed to Vite.
 - This validation pass used alternate local ports (`8092` backend, `4193` frontend) because `5173` was already occupied on the validating machine.
 
 ## Evidence

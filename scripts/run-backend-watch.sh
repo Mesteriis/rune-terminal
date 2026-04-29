@@ -29,4 +29,5 @@ echo "Starting standalone Go core with air at ${LOCAL_BACKEND_URL:-http://127.0.
 
 exec env \
   RTERM_AUTH_TOKEN="${LOCAL_AUTH_TOKEN:-runa-local-dev-token}" \
+  RTERM_TASK_CONTROL_TOKEN="${LOCAL_TASK_CONTROL_TOKEN:-runa-local-dev-task-token}" \
   "${AIR_BIN}" -c "${AIR_CONFIG}"
