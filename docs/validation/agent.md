@@ -2,7 +2,7 @@
 
 ## Last verified state
 
-- Date: `2026-04-26`
+- Date: `2026-04-29`
 - State: `VERIFIED`
 - Scope:
   - DB-backed AI conversations with explicit create/switch/rename/archive/restore/delete lifecycle
@@ -38,6 +38,7 @@
   - that terminal-origin explain/fix handoff now reads backend-owned `issue_summary`, `status_detail`, and `output_excerpt` from `GET /api/v1/terminal/{widgetID}/diagnostics` instead of assembling the prompt purely from frontend chunk state
   - browser-level terminal-origin AI handoff coverage: a real shell failure can now jump straight into the AI sidebar and land in the local `Plan / Approve` flow with the failing terminal pinned as conversation context
   - files-panel `Attach file ... to AI` handoff through `POST /api/v1/agent/conversation/attachments/references`, shell attachment queue, and stream request `attachments`
+  - AI attachment ingestion now evaluates the same runtime policy allowed-root and ignore-rule configuration before provider prompt assembly; metadata-only/redacted matches keep content out of prompts, and outside-root or denied attachments fail instead of being read through a raw HTTP attachment payload
   - stored attachment references can now be reused from the composer `Recent attachments` shelf and deleted from that same backend-owned library
   - transcript attachment chips sourced from backend conversation message attachment metadata
   - transcript attachment chips can now be re-queued directly back into the composer as reusable attachment references
@@ -218,6 +219,9 @@
 - `npm --prefix frontend run test -- src/features/agent/model/use-ai-composer-preferences.test.tsx src/widgets/ai/ai-composer-widget.test.tsx src/widgets/ai/ai-panel-widget.test.tsx`
 - `npm --prefix frontend run test -- src/shared/api/agent-settings.test.ts src/features/agent/model/use-ai-composer-preferences.test.tsx src/widgets/ai/ai-composer-widget.test.tsx`
 - `npm --prefix frontend run test -- src/widgets/ai/ai-composer-widget.test.tsx src/widgets/ai/ai-panel-widget.test.tsx src/shared/ui/components/accessibility-contracts.test.tsx`
+- `./scripts/go.sh test ./core/app -run 'TestSubmitConversationPromptDoesNotReadMetadataOnlyAttachmentContent|TestSubmitConversationPromptRejectsAttachmentOutsideAllowedRoots|TestCreateAttachmentReferenceRejectsPathsOutsideAllowedRoots' -count=1`
+- `./scripts/go.sh test ./core/transport/httpapi -run 'TestSubmitConversationMessagePersistsAttachmentReferences|TestSubmitConversationMessageRejectsMissingAttachmentReference|TestCreateAttachmentReferenceReturnsMetadata' -count=1`
+- `./scripts/go.sh test ./core/app ./core/transport/httpapi ./core/policy ./core/conversation -count=1`
 - `npm --prefix frontend run test -- src/widgets/ai/ai-chat-message-widget.test.tsx src/widgets/ai/ai-panel-widget.test.tsx`
 - `npm --prefix frontend run lint:active`
 - `npm run test:ui -- --reporter=line`

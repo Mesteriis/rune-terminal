@@ -10,6 +10,7 @@ import (
 
 	"github.com/Mesteriis/rune-terminal/core/audit"
 	"github.com/Mesteriis/rune-terminal/core/conversation"
+	"github.com/Mesteriis/rune-terminal/core/policy"
 	"github.com/Mesteriis/rune-terminal/internal/ids"
 )
 
@@ -41,6 +42,9 @@ func (r *Runtime) CreateAttachmentReference(
 	}
 	if info.IsDir() {
 		return conversation.AttachmentReference{}, conversation.ErrAttachmentNotFile
+	}
+	if err := r.ensureAttachmentReferenceAllowed(normalizedPath, request.WorkspaceID); err != nil {
+		return conversation.AttachmentReference{}, err
 	}
 
 	name := filepath.Base(normalizedPath)
@@ -77,4 +81,18 @@ func (r *Runtime) CreateAttachmentReference(
 	}
 
 	return reference, nil
+}
+
+func (r *Runtime) ensureAttachmentReferenceAllowed(path string, workspaceID string) error {
+	_, err := evaluateAttachmentPolicy(r.attachmentPolicyGuard(
+		ConversationContext{
+			WorkspaceID: strings.TrimSpace(workspaceID),
+			RepoRoot:    r.RepoRoot,
+		},
+		policy.EvaluationProfile{},
+	), path)
+	if err != nil {
+		return err
+	}
+	return nil
 }

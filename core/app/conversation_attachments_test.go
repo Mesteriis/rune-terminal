@@ -2,12 +2,15 @@ package app
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/Mesteriis/rune-terminal/core/audit"
+	"github.com/Mesteriis/rune-terminal/core/conversation"
 	"github.com/Mesteriis/rune-terminal/core/db"
+	"github.com/Mesteriis/rune-terminal/core/policy"
 )
 
 func TestCreateAttachmentReferenceAppendsAuditEventWithProvenance(t *testing.T) {
@@ -73,5 +76,32 @@ func TestCreateAttachmentReferenceAppendsAuditEventWithProvenance(t *testing.T) 
 	}
 	if len(attachments) != 0 {
 		t.Fatalf("expected no stored attachments after delete, got %#v", attachments)
+	}
+}
+
+func TestCreateAttachmentReferenceRejectsPathsOutsideAllowedRoots(t *testing.T) {
+	t.Parallel()
+
+	repoRoot := t.TempDir()
+	tempDir := t.TempDir()
+	filePath := filepath.Join(tempDir, "outside.txt")
+	if err := os.WriteFile(filePath, []byte("outside"), 0o600); err != nil {
+		t.Fatalf("write attachment file: %v", err)
+	}
+	policyStore, err := policy.NewStore(filepath.Join(tempDir, "policy.json"), repoRoot)
+	if err != nil {
+		t.Fatalf("policy store: %v", err)
+	}
+
+	runtime := &Runtime{
+		RepoRoot: repoRoot,
+		Policy:   policyStore,
+	}
+	_, err = runtime.CreateAttachmentReference(CreateAttachmentReferenceRequest{
+		Path:        filePath,
+		WorkspaceID: "ws-default",
+	})
+	if !errors.Is(err, conversation.ErrAttachmentPolicyDenied) {
+		t.Fatalf("expected ErrAttachmentPolicyDenied, got %v", err)
 	}
 }

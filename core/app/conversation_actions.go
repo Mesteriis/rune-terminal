@@ -248,16 +248,21 @@ func (r *Runtime) prepareConversationSubmit(
 	conversationContext ConversationContext,
 	attachments []conversation.AttachmentReference,
 ) (conversation.SubmitRequest, policy.EvaluationProfile, error) {
-	resolvedAttachments, err := resolveConversationAttachments(attachments)
-	if err != nil {
-		return conversation.SubmitRequest{}, policy.EvaluationProfile{}, err
-	}
-	providerPrompt := buildPromptWithAttachmentContext(prompt, resolvedAttachments)
-
 	selection, err := r.Agent.Selection()
 	if err != nil {
 		return conversation.SubmitRequest{}, policy.EvaluationProfile{}, err
 	}
+	profile := selection.EffectivePolicyProfile()
+
+	resolvedAttachments, err := resolveConversationAttachmentsWithPolicy(
+		attachments,
+		defaultAttachmentResolverLimits(),
+		r.attachmentPolicyGuard(conversationContext, profile),
+	)
+	if err != nil {
+		return conversation.SubmitRequest{}, policy.EvaluationProfile{}, err
+	}
+	providerPrompt := buildPromptWithAttachmentContext(prompt, resolvedAttachments)
 
 	systemPrompt := strings.TrimSpace(selection.EffectivePrompt())
 	contextBlock := buildConversationContextBlock(r, conversationContext)
@@ -271,7 +276,36 @@ func (r *Runtime) prepareConversationSubmit(
 		ProviderPrompt: providerPrompt,
 		Model:          strings.TrimSpace(selectedModel),
 		Attachments:    attachments,
-	}, selection.EffectivePolicyProfile(), nil
+	}, profile, nil
+}
+
+func (r *Runtime) attachmentPolicyGuard(
+	conversationContext ConversationContext,
+	profile policy.EvaluationProfile,
+) *attachmentPolicyGuard {
+	if r == nil || r.Policy == nil {
+		return nil
+	}
+
+	repoRoot := strings.TrimSpace(conversationContext.RepoRoot)
+	if repoRoot == "" {
+		repoRoot = strings.TrimSpace(r.RepoRoot)
+	}
+
+	return &attachmentPolicyGuard{
+		Config: r.Policy.Snapshot(),
+		Context: policy.Context{
+			ToolName:             "agent.conversation.attachment",
+			Summary:              "include conversation attachment",
+			WorkspaceID:          strings.TrimSpace(conversationContext.WorkspaceID),
+			RepoRoot:             repoRoot,
+			RequiredCapabilities: []string{"workspace:read"},
+			ApprovalTier:         policy.ApprovalTierSafe,
+			RequiresAllowedRoots: true,
+			ChecksIgnoreRules:    true,
+			EvaluationProfile:    profile,
+		},
+	}
 }
 
 func (r *Runtime) appendConversationAudit(

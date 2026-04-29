@@ -457,6 +457,8 @@ func writeConversationError(w http.ResponseWriter, err error) {
 		writeNotFound(w, "attachment_not_found", err.Error())
 	case errors.Is(err, conversation.ErrAttachmentNotFile):
 		writeError(w, http.StatusBadRequest, "invalid_attachment_reference", err.Error())
+	case errors.Is(err, conversation.ErrAttachmentPolicyDenied):
+		writeError(w, http.StatusForbidden, "attachment_policy_denied", err.Error())
 	case errors.Is(err, conversation.ErrConversationNotFound):
 		writeNotFound(w, "conversation_not_found", err.Error())
 	default:
@@ -472,6 +474,8 @@ func writeAttachmentError(w http.ResponseWriter, err error) {
 		writeNotFound(w, "attachment_not_found", err.Error())
 	case errors.Is(err, conversation.ErrAttachmentNotFile):
 		writeError(w, http.StatusBadRequest, "invalid_attachment_reference", err.Error())
+	case errors.Is(err, conversation.ErrAttachmentPolicyDenied):
+		writeError(w, http.StatusForbidden, "attachment_policy_denied", err.Error())
 	default:
 		writeInternalError(w, err)
 	}

@@ -696,8 +696,9 @@ func TestSubmitConversationMessagePassesExplicitWidgetContextToProvider(t *testi
 func TestSubmitConversationMessagePersistsAttachmentReferences(t *testing.T) {
 	t.Parallel()
 
-	handler, _ := newTestHandler(t)
-	tempFile := filepath.Join(t.TempDir(), "notes.txt")
+	repoRoot := t.TempDir()
+	handler, _ := newTestHandlerWithRepoRoot(t, repoRoot)
+	tempFile := filepath.Join(repoRoot, "notes.txt")
 	if err := os.WriteFile(tempFile, []byte("notes"), 0o600); err != nil {
 		t.Fatalf("write temp file: %v", err)
 	}
@@ -1013,8 +1014,9 @@ func TestSubmitConversationMessageRejectsMissingAttachmentReference(t *testing.T
 func TestCreateAttachmentReferenceReturnsMetadata(t *testing.T) {
 	t.Parallel()
 
-	handler, _ := newTestHandler(t)
-	tempFile := filepath.Join(t.TempDir(), "notes.txt")
+	repoRoot := t.TempDir()
+	handler, _ := newTestHandlerWithRepoRoot(t, repoRoot)
+	tempFile := filepath.Join(repoRoot, "notes.txt")
 	if err := os.WriteFile(tempFile, []byte("hello"), 0o600); err != nil {
 		t.Fatalf("write temp file: %v", err)
 	}
@@ -1061,8 +1063,9 @@ func TestCreateAttachmentReferenceReturnsMetadata(t *testing.T) {
 func TestListAndDeleteAttachmentReferences(t *testing.T) {
 	t.Parallel()
 
-	handler, _ := newTestHandler(t)
-	tempFile := filepath.Join(t.TempDir(), "notes.txt")
+	repoRoot := t.TempDir()
+	handler, _ := newTestHandlerWithRepoRoot(t, repoRoot)
+	tempFile := filepath.Join(repoRoot, "notes.txt")
 	if err := os.WriteFile(tempFile, []byte("hello"), 0o600); err != nil {
 		t.Fatalf("write temp file: %v", err)
 	}

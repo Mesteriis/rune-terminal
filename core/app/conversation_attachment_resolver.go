@@ -10,6 +10,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/Mesteriis/rune-terminal/core/conversation"
+	"github.com/Mesteriis/rune-terminal/core/policy"
 )
 
 const (
@@ -35,6 +36,11 @@ type attachmentResolverLimits struct {
 	MaxChars     int
 }
 
+type attachmentPolicyGuard struct {
+	Config  policy.Config
+	Context policy.Context
+}
+
 func defaultAttachmentResolverLimits() attachmentResolverLimits {
 	return attachmentResolverLimits{
 		MaxFileBytes: defaultAttachmentMaxFileBytes,
@@ -50,6 +56,14 @@ func resolveConversationAttachments(attachments []conversation.AttachmentReferen
 func resolveConversationAttachmentsWithLimits(
 	attachments []conversation.AttachmentReference,
 	limits attachmentResolverLimits,
+) ([]resolvedAttachment, error) {
+	return resolveConversationAttachmentsWithPolicy(attachments, limits, nil)
+}
+
+func resolveConversationAttachmentsWithPolicy(
+	attachments []conversation.AttachmentReference,
+	limits attachmentResolverLimits,
+	guard *attachmentPolicyGuard,
 ) ([]resolvedAttachment, error) {
 	if len(attachments) == 0 {
 		return nil, nil
@@ -82,6 +96,17 @@ func resolveConversationAttachmentsWithLimits(
 		resolvedAttachment.DetectedMime = attachmentMimeType(path, attachment.MimeType)
 		resolvedAttachment.Reference.MimeType = resolvedAttachment.DetectedMime
 
+		policySkipReason, err := evaluateAttachmentPolicy(guard, path)
+		if err != nil {
+			return nil, err
+		}
+		if policySkipReason != "" {
+			resolvedAttachment.Skipped = true
+			resolvedAttachment.SkipReason = policySkipReason
+			resolved = append(resolved, resolvedAttachment)
+			continue
+		}
+
 		if info.Size() > limits.MaxFileBytes {
 			resolvedAttachment.Skipped = true
 			resolvedAttachment.SkipReason = "file_too_large"
@@ -105,6 +130,28 @@ func resolveConversationAttachmentsWithLimits(
 		resolved = append(resolved, resolvedAttachment)
 	}
 	return resolved, nil
+}
+
+func evaluateAttachmentPolicy(guard *attachmentPolicyGuard, path string) (string, error) {
+	if guard == nil {
+		return "", nil
+	}
+
+	policyContext := guard.Context
+	policyContext.AffectedPaths = []string{path}
+	decision := policy.Evaluate(guard.Config, policyContext)
+	if !decision.Allowed || decision.RequiresConfirmation {
+		return "", fmt.Errorf("%w: %s (%s)", conversation.ErrAttachmentPolicyDenied, path, decision.Reason)
+	}
+
+	switch decision.IgnoreMode {
+	case policy.IgnoreModeMetadataOnly:
+		return "policy_metadata_only", nil
+	case policy.IgnoreModeRedact:
+		return "policy_redacted", nil
+	default:
+		return "", nil
+	}
 }
 
 func statAttachmentPath(rawPath string) (string, os.FileInfo, error) {

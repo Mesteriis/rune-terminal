@@ -40,11 +40,25 @@ func newTestHandlerWithToken(t *testing.T, authToken string, definitions ...tool
 }
 
 func newTestHandlerWithConversationProvider(t *testing.T, provider conversation.Provider, authToken string, definitions ...toolruntime.Definition) (http.Handler, *agent.Store) {
+	return newTestHandlerWithConversationProviderAndRepoRoot(t, provider, authToken, "/workspace/repo", definitions...)
+}
+
+func newTestHandlerWithRepoRoot(t *testing.T, repoRoot string, definitions ...toolruntime.Definition) (http.Handler, *agent.Store) {
+	return newTestHandlerWithConversationProviderAndRepoRoot(t, testConversationProvider{}, testAuthToken, repoRoot, definitions...)
+}
+
+func newTestHandlerWithConversationProviderAndRepoRoot(
+	t *testing.T,
+	provider conversation.Provider,
+	authToken string,
+	repoRoot string,
+	definitions ...toolruntime.Definition,
+) (http.Handler, *agent.Store) {
 	t.Helper()
 
 	tempDir := t.TempDir()
 	paths := config.Resolve(tempDir)
-	policyStore, err := policy.NewStore(filepath.Join(tempDir, "policy.json"), "/workspace/repo")
+	policyStore, err := policy.NewStore(filepath.Join(tempDir, "policy.json"), repoRoot)
 	if err != nil {
 		t.Fatalf("NewStore error: %v", err)
 	}
@@ -79,7 +93,7 @@ func newTestHandlerWithConversationProvider(t *testing.T, provider conversation.
 		}
 	}
 	runtime := &app.Runtime{
-		RepoRoot:      "/workspace/repo",
+		RepoRoot:      repoRoot,
 		HomeDir:       "/home/testuser",
 		Paths:         paths,
 		Workspace:     workspace.NewService(workspace.BootstrapDefault()),

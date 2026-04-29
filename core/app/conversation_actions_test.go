@@ -179,7 +179,11 @@ func TestSubmitConversationPromptIncludesAttachmentContextInProviderRequest(t *t
 	t.Parallel()
 
 	tempDir := t.TempDir()
-	attachmentPath := filepath.Join(tempDir, "notes.txt")
+	repoRoot := filepath.Join(tempDir, "repo")
+	if err := os.MkdirAll(repoRoot, 0o755); err != nil {
+		t.Fatalf("create repo root: %v", err)
+	}
+	attachmentPath := filepath.Join(repoRoot, "notes.txt")
 	if err := os.WriteFile(attachmentPath, []byte("attachment content line"), 0o600); err != nil {
 		t.Fatalf("write attachment: %v", err)
 	}
@@ -192,7 +196,7 @@ func TestSubmitConversationPromptIncludesAttachmentContextInProviderRequest(t *t
 	if err != nil {
 		t.Fatalf("audit log: %v", err)
 	}
-	policyStore, err := policy.NewStore(filepath.Join(tempDir, "policy.json"), "/repo")
+	policyStore, err := policy.NewStore(filepath.Join(tempDir, "policy.json"), repoRoot)
 	if err != nil {
 		t.Fatalf("policy store: %v", err)
 	}
@@ -208,7 +212,7 @@ func TestSubmitConversationPromptIncludesAttachmentContextInProviderRequest(t *t
 	}
 
 	runtime := &Runtime{
-		RepoRoot:     "/repo",
+		RepoRoot:     repoRoot,
 		Workspace:    workspace.NewService(workspace.BootstrapDefault()),
 		Terminals:    terminal.NewService(terminal.DefaultLauncher()),
 		Connections:  connectionStore,
@@ -220,7 +224,7 @@ func TestSubmitConversationPromptIncludesAttachmentContextInProviderRequest(t *t
 
 	result, err := runtime.SubmitConversationPrompt(context.Background(), "summarize attachment", "", ConversationContext{
 		WorkspaceID: "ws-default",
-		RepoRoot:    "/repo",
+		RepoRoot:    repoRoot,
 	}, []conversation.AttachmentReference{
 		{
 			ID:       "att_test",
@@ -248,6 +252,129 @@ func TestSubmitConversationPromptIncludesAttachmentContextInProviderRequest(t *t
 	}
 	if len(result.Snapshot.Messages) == 0 || result.Snapshot.Messages[0].Content != "summarize attachment" {
 		t.Fatalf("expected persisted user prompt without synthetic attachment block, got %#v", result.Snapshot.Messages)
+	}
+}
+
+func TestSubmitConversationPromptDoesNotReadMetadataOnlyAttachmentContent(t *testing.T) {
+	t.Parallel()
+
+	repoRoot := t.TempDir()
+	attachmentPath := filepath.Join(repoRoot, ".env")
+	if err := os.WriteFile(attachmentPath, []byte("SECRET_TOKEN=do-not-leak"), 0o600); err != nil {
+		t.Fatalf("write attachment: %v", err)
+	}
+	tempDir := t.TempDir()
+	agentStore, err := agent.NewStore(filepath.Join(tempDir, "agent.json"))
+	if err != nil {
+		t.Fatalf("agent store: %v", err)
+	}
+	auditLog, err := audit.NewLog(filepath.Join(tempDir, "audit.jsonl"))
+	if err != nil {
+		t.Fatalf("audit log: %v", err)
+	}
+	policyStore, err := policy.NewStore(filepath.Join(tempDir, "policy.json"), repoRoot)
+	if err != nil {
+		t.Fatalf("policy store: %v", err)
+	}
+	connectionStore, err := connections.NewService(filepath.Join(tempDir, "connections.json"))
+	if err != nil {
+		t.Fatalf("connections: %v", err)
+	}
+	provider := &recordingConversationProvider{}
+	conversationStore, err := conversation.NewService(filepath.Join(tempDir, "conversation.json"), provider)
+	if err != nil {
+		t.Fatalf("conversation service: %v", err)
+	}
+
+	runtime := &Runtime{
+		RepoRoot:     repoRoot,
+		Workspace:    workspace.NewService(workspace.BootstrapDefault()),
+		Terminals:    terminal.NewService(terminal.DefaultLauncher()),
+		Connections:  connectionStore,
+		Agent:        agentStore,
+		Conversation: conversationStore,
+		Policy:       policyStore,
+		Audit:        auditLog,
+	}
+
+	_, err = runtime.SubmitConversationPrompt(context.Background(), "summarize attachment", "", ConversationContext{
+		WorkspaceID: "ws-default",
+		RepoRoot:    repoRoot,
+	}, []conversation.AttachmentReference{
+		{
+			ID:       "att_env",
+			Name:     ".env",
+			Path:     attachmentPath,
+			MimeType: "text/plain",
+		},
+	})
+	if err != nil {
+		t.Fatalf("submit prompt: %v", err)
+	}
+
+	lastMessage := provider.request.Messages[len(provider.request.Messages)-1]
+	if strings.Contains(lastMessage.Content, "SECRET_TOKEN=do-not-leak") {
+		t.Fatalf("metadata-only attachment content leaked into provider prompt: %q", lastMessage.Content)
+	}
+	if !strings.Contains(lastMessage.Content, "skipped (policy_metadata_only)") {
+		t.Fatalf("expected metadata-only skip marker, got %q", lastMessage.Content)
+	}
+}
+
+func TestSubmitConversationPromptRejectsAttachmentOutsideAllowedRoots(t *testing.T) {
+	t.Parallel()
+
+	repoRoot := t.TempDir()
+	tempDir := t.TempDir()
+	attachmentPath := filepath.Join(tempDir, "outside.txt")
+	if err := os.WriteFile(attachmentPath, []byte("outside repo"), 0o600); err != nil {
+		t.Fatalf("write attachment: %v", err)
+	}
+	agentStore, err := agent.NewStore(filepath.Join(tempDir, "agent.json"))
+	if err != nil {
+		t.Fatalf("agent store: %v", err)
+	}
+	auditLog, err := audit.NewLog(filepath.Join(tempDir, "audit.jsonl"))
+	if err != nil {
+		t.Fatalf("audit log: %v", err)
+	}
+	policyStore, err := policy.NewStore(filepath.Join(tempDir, "policy.json"), repoRoot)
+	if err != nil {
+		t.Fatalf("policy store: %v", err)
+	}
+	connectionStore, err := connections.NewService(filepath.Join(tempDir, "connections.json"))
+	if err != nil {
+		t.Fatalf("connections: %v", err)
+	}
+	conversationStore, err := conversation.NewService(filepath.Join(tempDir, "conversation.json"), &recordingConversationProvider{})
+	if err != nil {
+		t.Fatalf("conversation service: %v", err)
+	}
+
+	runtime := &Runtime{
+		RepoRoot:     repoRoot,
+		Workspace:    workspace.NewService(workspace.BootstrapDefault()),
+		Terminals:    terminal.NewService(terminal.DefaultLauncher()),
+		Connections:  connectionStore,
+		Agent:        agentStore,
+		Conversation: conversationStore,
+		Policy:       policyStore,
+		Audit:        auditLog,
+	}
+
+	_, err = runtime.SubmitConversationPrompt(context.Background(), "summarize attachment", "", ConversationContext{
+		WorkspaceID: "ws-default",
+		RepoRoot:    repoRoot,
+	}, []conversation.AttachmentReference{
+		{
+			ID:       "att_outside",
+			Name:     "outside.txt",
+			Path:     attachmentPath,
+			MimeType: "text/plain",
+		},
+	})
+	if !errors.Is(err, conversation.ErrAttachmentPolicyDenied) {
+		t.Fatalf("expected ErrAttachmentPolicyDenied, got %v", err)
 	}
 }
 
