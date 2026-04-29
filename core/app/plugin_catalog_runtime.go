@@ -414,12 +414,19 @@ func (r *Runtime) prepareInstalledPlugin(
 	if err != nil {
 		return InstalledPluginRecord{}, "", err
 	}
+	cleanupStagedRoot := true
+	defer func() {
+		if cleanupStagedRoot {
+			_ = os.RemoveAll(stagedRoot)
+		}
+	}()
 	if err := copyDirectory(pluginRoot, stagedRoot); err != nil {
 		return InstalledPluginRecord{}, "", err
 	}
 
 	record.InstallRoot = stagedRoot
 	record.Process = resolveInstalledPluginProcess(stagedRoot, manifest.Process)
+	cleanupStagedRoot = false
 	return record, stagedRoot, nil
 }
 
@@ -754,7 +761,18 @@ func downloadPluginArchive(ctx context.Context, stageRoot string, archiveURL str
 		if err != nil {
 			return "", func() {}, fmt.Errorf("%w: invalid file url", plugins.ErrInvalidPluginSpec)
 		}
-		return filepath.Clean(parsed.Path), func() {}, nil
+		archivePath := filepath.Clean(parsed.Path)
+		info, err := os.Stat(archivePath)
+		if err != nil {
+			return "", func() {}, err
+		}
+		if info.IsDir() {
+			return "", func() {}, fmt.Errorf("%w: zip source is a directory", plugins.ErrInvalidPluginSpec)
+		}
+		if info.Size() > pluginArchiveMaxDownloadedBytes {
+			return "", func() {}, fmt.Errorf("%w: zip archive download is too large", plugins.ErrInvalidPluginSpec)
+		}
+		return archivePath, func() {}, nil
 	}
 	parsed, err := url.Parse(archiveURL)
 	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
@@ -832,9 +850,9 @@ func copyDirectory(sourceRoot string, targetRoot string) error {
 		if err != nil {
 			return err
 		}
-		defer input.Close()
 		output, err := os.OpenFile(targetPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, info.Mode())
 		if err != nil {
+			_ = input.Close()
 			return err
 		}
 		if err := copyPluginPayloadWithBudget(
@@ -843,6 +861,11 @@ func copyDirectory(sourceRoot string, targetRoot string) error {
 			&copiedBytes,
 			"plugin bundle expands beyond limit",
 		); err != nil {
+			_ = output.Close()
+			_ = input.Close()
+			return err
+		}
+		if err := input.Close(); err != nil {
 			_ = output.Close()
 			return err
 		}

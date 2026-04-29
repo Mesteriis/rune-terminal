@@ -17,12 +17,14 @@
   - actor-aware plugin catalog metadata shape for future rights enforcement
   - plugin catalog lifecycle mutations now append core-owned audit events for
     install/update/enable/disable/delete success and failure paths
-  - zip install extraction now enforces expanded-byte and entry-count budgets,
-    and archive entry containment is checked with root-relative path semantics
-    instead of raw string prefixes
+  - zip install extraction now enforces compressed-size caps for remote and
+    `file://` sources plus expanded-byte and entry-count budgets, and archive
+    entry containment is checked with root-relative path semantics instead of
+    raw string prefixes
   - staged plugin bundle promotion now rejects symlink entries and enforces the
     same total copied-byte / entry-count budget before writing into the install
-    root
+    root; failed staged copies remove their `.staging-*` directory before
+    returning
   - plugin delete removes the install root before removing the catalog record,
     so filesystem-removal failures leave the plugin visible and retryable
 
@@ -31,7 +33,7 @@
 Catalog lifecycle hardening slice (`2026-04-29`):
 
 - `./scripts/go.sh test ./core/app -run 'TestPluginLifecycleAppendsAuditEvents|TestInstallPluginAppendsFailureAuditEvent|TestInstallPluginRejectsZipArchiveOverExpandedSizeLimit|TestInstallPluginRejectsZipArchiveEntryOutsideRootPrefix|TestDeleteInstalledPluginKeepsCatalogWhenInstallRootRemovalFails' -count=1`
-- `./scripts/go.sh test ./core/app -run 'TestInstallPluginRejectsBundleSymlinkEntries|TestInstallPluginRejectsGitBundleOverCopiedSizeLimit' -count=1`
+- `./scripts/go.sh test ./core/app -run 'TestInstallPluginRejectsBundleSymlinkEntries|TestInstallPluginRejectsGitBundleOverCopiedSizeLimit|TestInstallPluginRejectsFileZipOverDownloadedSizeLimit' -count=1`
 - `./scripts/go.sh test ./core/app -run 'Test(DeleteFSRemovesSymlinkEntryWithoutDeletingTarget|RenameFSRenamesSymlinkEntryWithoutRenamingTarget|MoveFSMovesSymlinkEntryWithoutMovingTarget|CopyFSCopiesSymlinkEntryWithoutCopyingTargetContent|ReadFSPreviewReturnsCanonicalPathForSymlinkInsideWorkspace|MkdirFSReturnsCanonicalPathForSymlinkParentInsideWorkspace|ReadFSPreviewRejectsSymlinkOutsideWorkspace|ListFSRejectsSymlinkDirectoryOutsideWorkspace|WriteFSFileRejectsSymlinkOutsideWorkspace|MkdirFSRejectsSymlinkParentOutsideWorkspace|Plugin)' -count=1`
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi -count=1`
 

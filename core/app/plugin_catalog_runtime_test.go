@@ -381,6 +381,7 @@ func TestInstallPluginRejectsBundleSymlinkEntries(t *testing.T) {
 	if !errors.Is(err, plugins.ErrInvalidPluginSpec) {
 		t.Fatalf("expected invalid plugin spec error, got %v", err)
 	}
+	assertNoPluginStagingDirs(t, runtime)
 }
 
 func TestInstallPluginRejectsGitBundleOverCopiedSizeLimit(t *testing.T) {
@@ -412,6 +413,39 @@ func TestInstallPluginRejectsGitBundleOverCopiedSizeLimit(t *testing.T) {
 	}
 	if !errors.Is(err, plugins.ErrInvalidPluginSpec) {
 		t.Fatalf("expected invalid plugin spec error, got %v", err)
+	}
+}
+
+func TestInstallPluginRejectsFileZipOverDownloadedSizeLimit(t *testing.T) {
+	t.Parallel()
+
+	archivePath := filepath.Join(t.TempDir(), "oversized.zip")
+	file, err := os.OpenFile(archivePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
+	if err != nil {
+		t.Fatalf("OpenFile(oversized zip) error: %v", err)
+	}
+	if err := file.Truncate(pluginArchiveMaxDownloadedBytes + 1); err != nil {
+		t.Fatalf("Truncate(oversized zip) error: %v", err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatalf("Close(oversized zip) error: %v", err)
+	}
+	runtime := newPluginCatalogTestRuntime(t)
+
+	_, _, err = runtime.InstallPlugin(context.Background(), InstallPluginInput{
+		Source: PluginInstallSource{
+			Kind: PluginInstallSourceZip,
+			URL:  "file://" + archivePath,
+		},
+	})
+	if err == nil {
+		t.Fatalf("expected oversized file zip install to fail")
+	}
+	if !errors.Is(err, plugins.ErrInvalidPluginSpec) {
+		t.Fatalf("expected invalid plugin spec error, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "zip archive download is too large") {
+		t.Fatalf("expected compressed-size error, got %v", err)
 	}
 }
 
@@ -447,6 +481,23 @@ func TestDeleteInstalledPluginKeepsCatalogWhenInstallRootRemovalFails(t *testing
 	}
 	if len(snapshot.Plugins) != 1 || snapshot.Plugins[0].ID != record.ID {
 		t.Fatalf("expected failed delete to keep catalog record, got %#v", snapshot.Plugins)
+	}
+}
+
+func assertNoPluginStagingDirs(t *testing.T, runtime *Runtime) {
+	t.Helper()
+
+	entries, err := os.ReadDir(runtime.Paths.PluginInstallRoot)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return
+		}
+		t.Fatalf("ReadDir(plugin install root) error: %v", err)
+	}
+	for _, entry := range entries {
+		if strings.Contains(entry.Name(), ".staging-") {
+			t.Fatalf("expected failed plugin install to remove staging dir, found %s", entry.Name())
+		}
 	}
 }
 
