@@ -2,6 +2,7 @@ import { LoaderCircle, Plus, RotateCcw, Sparkles, Square } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { useAppLocale } from '@/features/i18n/model/locale-provider'
+import { useAppTheme } from '@/features/theme/model/theme-provider'
 import {
   fetchTerminalDiagnostics,
   fetchTerminalLatestCommand,
@@ -69,6 +70,7 @@ export function TerminalWidget({
   const terminalRootRef = useRunaDomAutoTagging('terminal-widget-root')
   const terminalSurfaceRef = useRef<TerminalSurfaceHandle | null>(null)
   const { locale } = useAppLocale()
+  const { resolvedTheme } = useAppTheme()
   const copy = resolveLocalizedCopy(terminalWidgetCopy, locale)
   const { cursorBlink, cursorStyle, fontSize, lineHeight, scrollback, themeMode } = useTerminalPreferences()
   const [isExplainAndFixPending, setIsExplainAndFixPending] = useState(false)
@@ -213,7 +215,8 @@ export function TerminalWidget({
     try {
       const diagnostics = await fetchTerminalDiagnostics(runtimeWidgetId)
       const promptSections = [
-        'Проверь и помоги объяснить и исправить последнюю ошибку в этом терминале.',
+        copy.explainAndFixPromptIntro,
+        copy.responseLanguageInstruction,
         `Terminal: ${title}`,
         `Connection: ${terminalSession.connectionKind === 'ssh' ? 'SSH' : 'Local'}`,
         `Shell: ${terminalSession.shellLabel}`,
@@ -232,9 +235,7 @@ export function TerminalWidget({
         promptSections.push(`Recent terminal output:\n\`\`\`text\n${diagnosticsOutputExcerpt}\n\`\`\``)
       }
 
-      promptSections.push(
-        'Если для исправления нужны команды, сначала спланируй их и выполняй только в этом терминале после approval.',
-      )
+      promptSections.push(copy.terminalCommandApprovalInstruction)
 
       queueAiPromptHandoff({
         context_widget_ids: [runtimeWidgetId],
@@ -245,7 +246,15 @@ export function TerminalWidget({
     } finally {
       setIsExplainAndFixPending(false)
     }
-  }, [runtimeWidgetId, terminalSession.connectionKind, terminalSession.shellLabel, title])
+  }, [
+    copy.explainAndFixPromptIntro,
+    copy.responseLanguageInstruction,
+    copy.terminalCommandApprovalInstruction,
+    runtimeWidgetId,
+    terminalSession.connectionKind,
+    terminalSession.shellLabel,
+    title,
+  ])
   const handleExplainLatestCommand = useCallback(async () => {
     if (!latestCommand) {
       return
@@ -254,7 +263,8 @@ export function TerminalWidget({
     setIsExplainLatestCommandPending(true)
     try {
       const promptSections = [
-        'Объясни результат последней terminal command и предложи следующий практический шаг.',
+        copy.explainLatestCommandPromptIntro,
+        copy.responseLanguageInstruction,
         `Terminal: ${title}`,
         `Connection: ${terminalSession.connectionKind === 'ssh' ? 'SSH' : 'Local'}`,
         `Shell: ${terminalSession.shellLabel}`,
@@ -271,9 +281,7 @@ export function TerminalWidget({
         promptSections.push(`Previous explain summary: ${latestCommand.explain_summary.trim()}`)
       }
 
-      promptSections.push(
-        'Если для исправления нужны команды, сначала спланируй их и выполняй только в этом терминале после approval.',
-      )
+      promptSections.push(copy.terminalCommandApprovalInstruction)
 
       queueAiPromptHandoff({
         context_widget_ids: [runtimeWidgetId],
@@ -284,7 +292,16 @@ export function TerminalWidget({
     } finally {
       setIsExplainLatestCommandPending(false)
     }
-  }, [latestCommand, runtimeWidgetId, terminalSession.connectionKind, terminalSession.shellLabel, title])
+  }, [
+    copy.explainLatestCommandPromptIntro,
+    copy.responseLanguageInstruction,
+    copy.terminalCommandApprovalInstruction,
+    latestCommand,
+    runtimeWidgetId,
+    terminalSession.connectionKind,
+    terminalSession.shellLabel,
+    title,
+  ])
   const handleRerunLatestCommand = useCallback(async () => {
     if (!latestCommand) {
       return
@@ -740,6 +757,7 @@ export function TerminalWidget({
             sessionState={terminalSession.sessionState}
             statusMessage={terminalSession.statusDetail}
             themeClassTarget={themeClassTarget}
+            themeSignal={resolvedTheme}
             themeMode={themeMode}
           />
         </ClearBox>

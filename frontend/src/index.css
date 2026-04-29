@@ -89,6 +89,9 @@ body {
   --dv-floating-box-shadow: none;
   --dv-sash-color: transparent;
   --dv-active-sash-color: transparent;
+  --runa-dockview-overflow-bg: color-mix(in srgb, var(--color-canvas) 96%, transparent);
+  --runa-dockview-overflow-ring: color-mix(in srgb, var(--color-border-strong) 42%, transparent);
+  --runa-dockview-overflow-shadow: var(--shadow-menu-popover);
 }
 
 .dv-groupview {
@@ -416,10 +419,10 @@ body {
   overflow: auto;
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-sm);
-  background: rgba(8, 19, 17, 0.96);
+  background: var(--runa-dockview-overflow-bg);
   box-shadow:
-    0 24px 54px rgba(1, 7, 6, 0.52),
-    0 0 0 1px rgba(130, 188, 170, 0.12);
+    var(--runa-dockview-overflow-shadow),
+    0 0 0 1px var(--runa-dockview-overflow-ring);
   backdrop-filter: var(--blur-glass-md);
   -webkit-backdrop-filter: var(--blur-glass-md);
 }

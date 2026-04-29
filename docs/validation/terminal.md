@@ -79,10 +79,19 @@
       and can surface the same recovery affordance labels (`Restart shell`, `Reconnect shell`, `Resume session`) from the shell-wide entry point instead of only inside the terminal widget
     - active terminal widget chrome now consumes the same shell locale path as
       settings: `TerminalWidget` resolves visible action/session/search copy
-      through `terminal-widget-copy.ts` and passes typed toolbar copy into
+      and terminal AI handoff prompt templates through
+      `terminal-widget-copy.ts`, then passes typed toolbar copy into
       `TerminalToolbar`. The current widget copy has explicit `ru`, `en`,
       `zh-CN`, and `es` text, so every advertised shell locale has terminal
-      widget chrome instead of falling back to English.
+      widget chrome and terminal-originated AI instructions instead of falling
+      back to English or hard-coded Russian.
+    - `TerminalWidget` now passes the resolved app theme into
+      `TerminalSurface`, so live xterm instances re-apply their palette when
+      `AppThemeProvider` changes `data-runa-resolved-theme` without requiring
+      the terminal panel to be recreated.
+    - Dockview overflow popup chrome now uses shell-owned semantic tokens in
+      `src/index.css`, including `--runa-dockview-overflow-*`, so compressed
+      terminal tabs do not leave a dark overflow island in light/custom themes.
   - the shell settings modal now exposes a backend-owned `Terminal` settings slice instead of a placeholder:
     - current terminal font size is visible in `Settings -> Terminal`
     - current terminal line height is visible in `Settings -> Terminal`
@@ -211,7 +220,12 @@
 - `npm --prefix frontend run test -- src/features/terminal/api/client.test.ts src/widgets/terminal/terminal-widget.test.tsx src/app/app-ai-sidebar.test.tsx --reporter=verbose`
 - `npm --prefix frontend run test -- src/features/terminal/api/client.test.ts src/features/workspace/model/widget-catalog.test.ts src/widgets/preview/preview-panel-widget.test.tsx src/widgets/files/files-panel-widget.test.tsx --reporter=verbose`
 - `npm --prefix frontend run test -- src/features/terminal/api/client.test.ts src/features/terminal/model/use-terminal-session.test.tsx src/widgets/terminal/terminal-widget.test.tsx --reporter=verbose`
+- `npm --prefix frontend run test -- src/widgets/terminal/terminal-widget.test.tsx src/widgets/terminal/terminal-widget-copy.test.ts src/app/dockview-overflow-theme.test.ts --reporter=verbose`
+- `npm --prefix frontend run test -- src/widgets/terminal/terminal-widget.test.tsx src/widgets/terminal/terminal-widget-copy.test.ts src/shared/ui/components/terminal-toolbar.test.tsx src/app/dockview-overflow-theme.test.ts src/features/theme/model/theme-provider.test.tsx --reporter=verbose`
 - `npm run lint:frontend`
+- `npm --prefix frontend run lint:active`
+- `npm run validate`
+- `npm run validate:desktop-runtime`
 - `npm --prefix frontend run test -- src/shared/api/terminal-settings.test.ts src/features/terminal/model/use-terminal-preferences.test.tsx src/widgets/settings/terminal-settings-section.test.tsx src/widgets/terminal/terminal-widget.test.tsx`
 - `npm --prefix frontend run test -- src/widgets/terminal/terminal-dockview-tab-widget.test.tsx src/widgets/terminal/terminal-dockview-header-actions-widget.test.tsx`
 - `npm --prefix frontend run test -- src/features/agent/api/client.test.ts src/widgets/ai/ai-panel-widget.test.tsx`

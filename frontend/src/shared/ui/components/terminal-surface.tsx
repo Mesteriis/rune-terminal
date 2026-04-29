@@ -47,6 +47,7 @@ export type TerminalSurfaceProps = {
   onSearchResultsChange?: (result: TerminalSearchResult) => void
   scrollback?: number
   themeClassTarget?: HTMLElement | null
+  themeSignal?: string
   themeMode?: 'adaptive' | 'contrast'
 }
 
@@ -236,6 +237,7 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
       onSearchResultsChange,
       scrollback = 5000,
       themeClassTarget = null,
+      themeSignal,
       themeMode = 'adaptive',
     },
     ref,
@@ -526,7 +528,7 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
       }
 
       applyTerminalTheme(term, viewportRef.current, themeMode)
-    }, [themeMode, themeClassTarget])
+    }, [themeMode, themeClassTarget, themeSignal])
 
     useEffect(() => {
       const term = termRef.current

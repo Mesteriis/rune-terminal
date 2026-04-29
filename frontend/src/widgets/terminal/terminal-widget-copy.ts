@@ -17,8 +17,10 @@ export type TerminalWidgetCopy = {
   explainAndFix: string
   explainAndFixAria: (title: string) => string
   explainAndFixLoading: string
+  explainAndFixPromptIntro: string
   explainAndFixTitle: string
   explainAndFixUnavailableTitle: string
+  explainLatestCommandPromptIntro: string
   explainCommand: string
   explainCommandAria: (title: string) => string
   explainingCommand: string
@@ -51,10 +53,12 @@ export type TerminalWidgetCopy = {
   restartShell: string
   restartTitle: string
   restartingTitle: string
+  responseLanguageInstruction: string
   resumeSession: string
   runningCommand: string
   sessionLabel: (index: number) => string
   terminalSource: string
+  terminalCommandApprovalInstruction: string
   toolbar: TerminalToolbarCopy
 }
 
@@ -74,8 +78,11 @@ const terminalWidgetCopyEn: TerminalWidgetCopy = {
   explainAndFix: 'Explain & fix',
   explainAndFixAria: (title) => `Explain and fix the latest terminal issue for ${title}`,
   explainAndFixLoading: 'Loading...',
+  explainAndFixPromptIntro: 'Review and help explain and fix the latest error in this terminal.',
   explainAndFixTitle: 'Open AI and explain/fix the latest visible terminal issue',
   explainAndFixUnavailableTitle: 'No terminal issue or output is available yet',
+  explainLatestCommandPromptIntro:
+    'Explain the result of the latest terminal command and suggest the next practical step.',
   explainCommand: 'Explain command',
   explainCommandAria: (title) => `Explain the latest command for ${title}`,
   explainingCommand: 'Explaining...',
@@ -108,10 +115,13 @@ const terminalWidgetCopyEn: TerminalWidgetCopy = {
   restartShell: 'Restart shell',
   restartTitle: 'Restart terminal',
   restartingTitle: 'Restarting terminal...',
+  responseLanguageInstruction: 'Respond in English.',
   resumeSession: 'Resume session',
   runningCommand: 'Running...',
   sessionLabel: (index) => `Session ${index}`,
   terminalSource: 'Terminal',
+  terminalCommandApprovalInstruction:
+    'If fixing requires commands, plan them first and run them only in this terminal after approval.',
   toolbar: {
     clearViewportAria: 'Clear terminal viewport',
     closeSearchAria: 'Close terminal search',
@@ -150,8 +160,11 @@ const terminalWidgetCopyRu: TerminalWidgetCopy = {
   explainAndFix: 'Объяснить',
   explainAndFixAria: (title) => `Объяснить и исправить последнюю проблему терминала для ${title}`,
   explainAndFixLoading: 'Загрузка...',
+  explainAndFixPromptIntro: 'Проверь и помоги объяснить и исправить последнюю ошибку в этом терминале.',
   explainAndFixTitle: 'Открыть AI и разобрать последнюю видимую проблему терминала',
   explainAndFixUnavailableTitle: 'В терминале пока нет проблемы или вывода',
+  explainLatestCommandPromptIntro:
+    'Объясни результат последней terminal command и предложи следующий практический шаг.',
   explainCommand: 'Объяснить команду',
   explainCommandAria: (title) => `Объяснить последнюю команду для ${title}`,
   explainingCommand: 'Объяснение...',
@@ -185,10 +198,13 @@ const terminalWidgetCopyRu: TerminalWidgetCopy = {
   restartShell: 'Перезапустить shell',
   restartTitle: 'Перезапустить терминал',
   restartingTitle: 'Перезапуск терминала...',
+  responseLanguageInstruction: 'Отвечай на русском.',
   resumeSession: 'Возобновить сессию',
   runningCommand: 'Запуск...',
   sessionLabel: (index) => `Сессия ${index}`,
   terminalSource: 'Терминал',
+  terminalCommandApprovalInstruction:
+    'Если для исправления нужны команды, сначала спланируй их и выполняй только в этом терминале после approval.',
   toolbar: {
     clearViewportAria: 'Очистить область терминала',
     closeSearchAria: 'Закрыть поиск в терминале',
@@ -227,8 +243,11 @@ const terminalWidgetCopyEs: TerminalWidgetCopy = {
   explainAndFix: 'Explicar',
   explainAndFixAria: (title) => `Explicar y corregir el último problema del terminal para ${title}`,
   explainAndFixLoading: 'Cargando...',
+  explainAndFixPromptIntro: 'Revisa y ayuda a explicar y corregir el último error en este terminal.',
   explainAndFixTitle: 'Abrir IA y explicar/corregir el último problema visible del terminal',
   explainAndFixUnavailableTitle: 'Todavía no hay problemas ni salida disponible en el terminal',
+  explainLatestCommandPromptIntro:
+    'Explica el resultado del último comando del terminal y sugiere el siguiente paso práctico.',
   explainCommand: 'Explicar comando',
   explainCommandAria: (title) => `Explicar el último comando para ${title}`,
   explainingCommand: 'Explicando...',
@@ -262,10 +281,13 @@ const terminalWidgetCopyEs: TerminalWidgetCopy = {
   restartShell: 'Reiniciar shell',
   restartTitle: 'Reiniciar terminal',
   restartingTitle: 'Reiniciando terminal...',
+  responseLanguageInstruction: 'Responde en español.',
   resumeSession: 'Reanudar sesión',
   runningCommand: 'Ejecutando...',
   sessionLabel: (index) => `Sesión ${index}`,
   terminalSource: 'Terminal',
+  terminalCommandApprovalInstruction:
+    'Si la corrección requiere comandos, planéalos primero y ejecútalos solo en este terminal después de la aprobación.',
   toolbar: {
     clearViewportAria: 'Limpiar área del terminal',
     closeSearchAria: 'Cerrar búsqueda en terminal',
@@ -304,8 +326,10 @@ const terminalWidgetCopyZhCN: TerminalWidgetCopy = {
   explainAndFix: '解释',
   explainAndFixAria: (title) => `解释并修复 ${title} 的最新终端问题`,
   explainAndFixLoading: '正在加载...',
+  explainAndFixPromptIntro: '检查并帮助解释和修复此终端中的最新错误。',
   explainAndFixTitle: '打开 AI 并解释/修复最新可见终端问题',
   explainAndFixUnavailableTitle: '终端尚无可用问题或输出',
+  explainLatestCommandPromptIntro: '解释最新终端命令的结果，并建议下一个实际步骤。',
   explainCommand: '解释命令',
   explainCommandAria: (title) => `解释 ${title} 的最新命令`,
   explainingCommand: '正在解释...',
@@ -338,10 +362,12 @@ const terminalWidgetCopyZhCN: TerminalWidgetCopy = {
   restartShell: '重启 shell',
   restartTitle: '重启终端',
   restartingTitle: '正在重启终端...',
+  responseLanguageInstruction: '请用简体中文回答。',
   resumeSession: '恢复会话',
   runningCommand: '正在运行...',
   sessionLabel: (index) => `会话 ${index}`,
   terminalSource: '终端',
+  terminalCommandApprovalInstruction: '如果修复需要命令，请先规划，并在获得批准后只在此终端中执行。',
   toolbar: {
     clearViewportAria: '清空终端视图',
     closeSearchAria: '关闭终端搜索',

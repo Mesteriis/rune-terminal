@@ -8,6 +8,7 @@ import {
   TerminalAPIError,
 } from '@/features/terminal/api/client'
 import { useAppLocale } from '@/features/i18n/model/locale-provider'
+import { useAppTheme } from '@/features/theme/model/theme-provider'
 import { useTerminalPreferences } from '@/features/terminal/model/use-terminal-preferences'
 import { useTerminalSession } from '@/features/terminal/model/use-terminal-session'
 import { queueAiPromptHandoff } from '@/shared/model/ai-handoff'
@@ -33,6 +34,10 @@ vi.mock('@/features/terminal/model/use-terminal-preferences', () => ({
 
 vi.mock('@/features/i18n/model/locale-provider', () => ({
   useAppLocale: vi.fn(),
+}))
+
+vi.mock('@/features/theme/model/theme-provider', () => ({
+  useAppTheme: vi.fn(),
 }))
 
 vi.mock('@/features/terminal/api/client', async (importOriginal) => {
@@ -68,6 +73,7 @@ vi.mock('@/shared/ui/components/terminal-surface', async () => {
         onRequestSearch?: () => void
         scrollback?: number
         statusMessage?: string | null
+        themeSignal?: string
         themeMode?: 'adaptive' | 'contrast'
       },
       ref: React.ForwardedRef<{
@@ -98,8 +104,8 @@ vi.mock('@/shared/ui/components/terminal-surface', async () => {
         <div data-testid="terminal-surface-mock">
           {props.statusMessage ?? 'terminal-ready'} · font:{props.fontSize ?? 13} · line:
           {props.lineHeight ?? 1.25} · theme:{props.themeMode ?? 'adaptive'} · scrollback:
-          {props.scrollback ?? 5000} · cursor:{props.cursorStyle ?? 'block'} · blink:
-          {String(props.cursorBlink ?? true)}
+          {props.scrollback ?? 5000} · theme-signal:{props.themeSignal ?? 'none'} · cursor:
+          {props.cursorStyle ?? 'block'} · blink:{String(props.cursorBlink ?? true)}
         </div>
       )
     }),
@@ -116,6 +122,11 @@ describe('TerminalWidget', () => {
       refresh: vi.fn(async () => undefined),
       setLocale: vi.fn(async () => undefined),
       supportedLocales: ['ru', 'en', 'zh-CN', 'es'],
+    })
+    vi.mocked(useAppTheme).mockReturnValue({
+      resolvedTheme: 'dark',
+      setThemePreference: vi.fn(),
+      themePreference: 'system',
     })
     vi.mocked(fetchTerminalLatestCommand).mockRejectedValue(
       new TerminalAPIError(404, 'terminal_command_not_found', 'terminal command not found'),
@@ -194,7 +205,7 @@ describe('TerminalWidget', () => {
     expect(screen.getByText('zsh')).toBeInTheDocument()
     expect(screen.getByText('Running')).toBeInTheDocument()
     expect(screen.getByTestId('terminal-surface-mock')).toHaveTextContent(
-      'Attached to local shell. · font:15 · line:1.4 · theme:contrast · scrollback:7000 · cursor:bar · blink:false',
+      'Attached to local shell. · font:15 · line:1.4 · theme:contrast · scrollback:7000 · theme-signal:dark · cursor:bar · blink:false',
     )
 
     await waitFor(() => {
@@ -463,9 +474,7 @@ describe('TerminalWidget', () => {
       expect(fetchTerminalDiagnostics).toHaveBeenCalledWith('term-pve')
       expect(queueAiPromptHandoff).toHaveBeenCalledWith({
         context_widget_ids: ['term-pve'],
-        prompt: expect.stringContaining(
-          'Проверь и помоги объяснить и исправить последнюю ошибку в этом терминале.',
-        ),
+        prompt: expect.stringContaining('Review and help explain and fix the latest error in this terminal.'),
         submit: true,
       })
       expect(queueAiPromptHandoff).toHaveBeenCalledWith({
@@ -645,7 +654,9 @@ describe('TerminalWidget', () => {
     await waitFor(() => {
       expect(queueAiPromptHandoff).toHaveBeenCalledWith({
         context_widget_ids: ['term-pve'],
-        prompt: expect.stringContaining('Объясни результат последней terminal command'),
+        prompt: expect.stringContaining(
+          'Explain the result of the latest terminal command and suggest the next practical step.',
+        ),
         submit: true,
       })
       expect(queueAiPromptHandoff).toHaveBeenCalledWith({
