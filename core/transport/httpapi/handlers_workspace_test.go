@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	"github.com/Mesteriis/rune-terminal/core/app"
@@ -73,6 +74,107 @@ func TestWorkspaceFocusTabBypassesRestrictiveMode(t *testing.T) {
 	}
 	if response.Workspace.ActiveTabID != "tab-ops" {
 		t.Fatalf("unexpected active tab: %#v", response)
+	}
+}
+
+func TestWorkspaceMutationHandlersAppendAuditEvents(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+
+	focusRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(focusRecorder, authedJSONRequest(t, http.MethodPost, "/api/v1/workspace/focus-tab", map[string]any{
+		"tab_id": "tab-ops",
+	}))
+	if focusRecorder.Code != http.StatusOK {
+		t.Fatalf("focus tab expected 200, got %d (%s)", focusRecorder.Code, focusRecorder.Body.String())
+	}
+
+	openRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(openRecorder, authedJSONRequest(t, http.MethodPost, "/api/v1/workspace/widgets/open-directory", map[string]any{
+		"target_widget_id": "term-side",
+		"path":             "/workspace/repo/docs",
+		"connection_id":    "local",
+	}))
+	if openRecorder.Code != http.StatusOK {
+		t.Fatalf("open directory expected 200, got %d (%s)", openRecorder.Code, openRecorder.Body.String())
+	}
+	var openResponse struct {
+		WidgetID string `json:"widget_id"`
+	}
+	if err := json.Unmarshal(openRecorder.Body.Bytes(), &openResponse); err != nil {
+		t.Fatalf("unmarshal open response: %v", err)
+	}
+	if openResponse.WidgetID == "" {
+		t.Fatalf("expected created widget id")
+	}
+
+	closeRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(closeRecorder, authedJSONRequest(t, http.MethodDelete, "/api/v1/workspace/widgets/"+openResponse.WidgetID, nil))
+	if closeRecorder.Code != http.StatusOK {
+		t.Fatalf("close widget expected 200, got %d (%s)", closeRecorder.Code, closeRecorder.Body.String())
+	}
+
+	events := decodeWorkspaceAuditEvents(t, handler, 10)
+	expectedTools := []string{
+		"workspace.focus_tab",
+		"workspace.open_directory",
+		"workspace.close_widget",
+	}
+	if len(events) != len(expectedTools) {
+		t.Fatalf("expected %d workspace audit events, got %#v", len(expectedTools), events)
+	}
+	for index, expectedTool := range expectedTools {
+		event := events[index]
+		if event.ToolName != expectedTool || event.ActionSource != "http.workspace" || !event.Success || event.Error != "" {
+			t.Fatalf("unexpected workspace audit event %d: %#v", index, event)
+		}
+	}
+	if events[0].Summary != "tab_id=tab-ops" {
+		t.Fatalf("expected focused tab summary in audit event, got %#v", events[0])
+	}
+	if !workspaceAuditContains(events[0].AffectedWidgets, "term-side") {
+		t.Fatalf("expected active widget in focus-tab audit event, got %#v", events[0])
+	}
+	if events[1].TargetConnectionID != "local" {
+		t.Fatalf("expected local connection id in open-directory audit event, got %#v", events[1])
+	}
+	if !workspaceAuditContains(events[1].AffectedPaths, "/workspace/repo/docs") ||
+		!workspaceAuditContains(events[1].AffectedWidgets, openResponse.WidgetID) {
+		t.Fatalf("expected opened path and widget in audit event, got %#v", events[1])
+	}
+	if !workspaceAuditContains(events[2].AffectedWidgets, openResponse.WidgetID) {
+		t.Fatalf("expected closed widget in audit event, got %#v", events[2])
+	}
+}
+
+func TestWorkspaceMutationHandlersAppendFailureAuditEvents(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodPost, "/api/v1/workspace/widgets/move-split", map[string]any{
+		"tab_id":           "tab-main",
+		"widget_id":        "term-main",
+		"target_widget_id": "term-side",
+		"direction":        "diagonal",
+	}))
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("move split expected 400, got %d (%s)", recorder.Code, recorder.Body.String())
+	}
+
+	events := decodeWorkspaceAuditEvents(t, handler, 10)
+	if len(events) != 1 {
+		t.Fatalf("expected one workspace failure audit event, got %#v", events)
+	}
+	event := events[0]
+	if event.ToolName != "workspace.move_widget_split" || event.ActionSource != "http.workspace" ||
+		event.Success || event.Error == "" {
+		t.Fatalf("unexpected workspace failure audit event: %#v", event)
+	}
+	if !workspaceAuditContains(event.AffectedWidgets, "term-main") || !workspaceAuditContains(event.AffectedWidgets, "term-side") {
+		t.Fatalf("expected source and target widgets in failure audit event, got %#v", event)
 	}
 }
 
@@ -593,4 +695,41 @@ func TestWorkspaceLayoutSwitchKeepsActiveTabAndWidget(t *testing.T) {
 	if response.Workspace.ActiveWidgetID != "term-side" {
 		t.Fatalf("expected active widget term-side after layout switch, got %q", response.Workspace.ActiveWidgetID)
 	}
+}
+
+type workspaceAuditEvent struct {
+	ToolName           string   `json:"tool_name"`
+	Summary            string   `json:"summary"`
+	ActionSource       string   `json:"action_source"`
+	TargetConnectionID string   `json:"target_connection_id"`
+	AffectedPaths      []string `json:"affected_paths"`
+	AffectedWidgets    []string `json:"affected_widgets"`
+	Success            bool     `json:"success"`
+	Error              string   `json:"error"`
+}
+
+func decodeWorkspaceAuditEvents(t *testing.T, handler http.Handler, limit int) []workspaceAuditEvent {
+	t.Helper()
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, authedJSONRequest(t, http.MethodGet, "/api/v1/audit?limit="+strconv.Itoa(limit), nil))
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected audit 200, got %d (%s)", recorder.Code, recorder.Body.String())
+	}
+	var response struct {
+		Events []workspaceAuditEvent `json:"events"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatalf("unmarshal audit response: %v", err)
+	}
+	return response.Events
+}
+
+func workspaceAuditContains(values []string, expected string) bool {
+	for _, value := range values {
+		if value == expected {
+			return true
+		}
+	}
+	return false
 }

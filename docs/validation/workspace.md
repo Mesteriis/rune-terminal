@@ -5,6 +5,10 @@
 - Date: `2026-04-29`
 - State: `VERIFIED`
 - Scope:
+    - HTTP workspace management mutations now append core-owned audit events
+      for success and failure paths across workspace, tab, layout, and widget
+      control-plane routes; direct PTY input remains the interactive terminal
+      stream path and was not policy-gated in this slice
     - the active shell now also exposes a runtime-backed language
       preference: `General` settings load and persist locale over
       `GET/PUT /api/v1/settings/locale`, `document.documentElement.lang`
@@ -256,6 +260,11 @@ light` remains the system fallback, and `@media print` flattens shell
 
 ## Commands/tests used
 
+- `./scripts/go.sh test ./core/transport/httpapi -run 'TestWorkspaceMutationHandlersAppend.*AuditEvents|TestWorkspaceFocusTabBypassesRestrictiveMode|TestWorkspaceCloseTabBypassesToolPolicyPath|TestWorkspaceOpenDirectoryInNewBlockCreatesFilesWidget|TestWorkspaceMoveWidgetBySplitRejectsInvalidDirection' -count=1`
+- `./scripts/go.sh test ./core/transport/httpapi -run 'TestWorkspace' -count=1`
+- `./scripts/go.sh test ./core/app ./core/transport/httpapi -count=1`
+- `./scripts/go.sh test ./...`
+- `git diff --check`
 - `./scripts/go.sh test ./core/transport/httpapi -run 'TestFSMutationHandlersAppendAuditEvents|TestFSMutationHandlersAppendFailureAuditEvents' -count=1`
 - `./scripts/go.sh test ./core/app -run 'Test(DeleteFSRemovesSymlinkEntryWithoutDeletingTarget|RenameFSRenamesSymlinkEntryWithoutRenamingTarget|MoveFSMovesSymlinkEntryWithoutMovingTarget|CopyFSCopiesSymlinkEntryWithoutCopyingTargetContent|ReadFSPreviewReturnsCanonicalPathForSymlinkInsideWorkspace|MkdirFSReturnsCanonicalPathForSymlinkParentInsideWorkspace|ReadFSPreviewRejectsSymlinkOutsideWorkspace|ListFSRejectsSymlinkDirectoryOutsideWorkspace|WriteFSFileRejectsSymlinkOutsideWorkspace|MkdirFSRejectsSymlinkParentOutsideWorkspace|Plugin)' -count=1`
 - `./scripts/go.sh test ./core/transport/httpapi -run 'TestFS|TestListFS|TestReadFS|TestWriteFS|TestMkdirFS|TestCopyFS|TestMoveFS|TestDeleteFS|TestRenameFS' -count=1`

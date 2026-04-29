@@ -145,6 +145,11 @@ It is intentionally operational, not narrative.
 - Cross-group drag between pinned and regular tabs is rejected in the current implementation.
 - Tabs expose a context menu with pin/unpin, rename, and close actions.
 - Shell-primary tab actions now use direct workspace management endpoints instead of `POST /api/v1/tools/execute`.
+- Direct HTTP workspace management mutations append core-owned audit events with
+  `action_source=http.workspace`, workspace identity, affected paths / widget
+  identities where applicable, and success or failure text. The
+  direct routes remain the shell control plane; operator/debug surfaces can
+  still use the workspace tools through the policy/audit tool runtime path.
 - Operator and debug surfaces can still call the workspace tools through the tool runtime, where policy and audit remain visible.
 - The tool catalog now includes one plugin-backed sample tool (`plugin.example_echo`) executed through a side-process protocol while preserving core-owned approval and audit flow.
 - A separate Python reference plugin lives under `plugins/python_reference/` and is validated through the same `OSProcessSpawner` path to prove the stdio protocol is language-neutral; it is not registered as product plugin discovery or as a default app catalog tool.
