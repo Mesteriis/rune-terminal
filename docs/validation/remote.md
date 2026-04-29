@@ -2,7 +2,7 @@
 
 ## Last verified state
 
-- Date: `2026-04-29`
+- Date: `2026-04-30`
 - State: `PARTIALLY VERIFIED` (core workflow hardening verified; external auth breadth remains limited)
 - Scope:
   - saved profile create/list/select/check/open-shell flows
@@ -19,6 +19,9 @@
     public-key misuse, passphrase/auth failures, timeout, host-key, and
     host-reachability failures
   - stale launch-state reset when saved profile target/auth fields change
+  - connection profile/select/delete/check/launch/import mutations now keep
+    in-memory state unchanged when persistence fails, so failed writes cannot
+    silently change active remote routing or runtime diagnostics
   - settings-shell remote profile create/edit/delete/list/import entrypoint
   - HTTP connection mutations now append core-owned audit events for
     save/select/check success and failure paths
@@ -43,6 +46,9 @@
   - `go test ./core/transport/httpapi -run TestWriteTerminalErrorMapsConnectionNotFoundToNotFound`
   - `./scripts/go.sh test ./core/connections ./core/transport/httpapi -run 'TestImportSSHConfig|TestRemoteProfilesImportSSHConfig|TestRemoteProfilesEndpointsListSaveAndDelete' -count=1`
   - `./scripts/go.sh test ./core/connections -count=1`
+  - `./scripts/go.sh test ./core/connections -run 'TestConnectionMutationsDoNotChangeMemoryWhenPersistFails|TestConnectionRuntimeDoesNotChangeMemoryWhenPersistFails|TestImportSSHConfigDoesNotChangeMemoryWhenPersistFails' -count=1`
+  - `./scripts/go.sh test ./core/connections -run 'TestSaveSSHConnectionPersistsAndCanBeSelected|TestSaveSSHConnectionMarksAttentionWhenPreflightFails|TestCheckAndLaunchLifecycleIsRecorded|TestLaunchSuccessDoesNotErasePreflightAttention|TestSaveSSHEditResetsStaleLaunchStateWhenProfileMaterialChanges|TestRemoteProfilesCanBeSavedListedAndDeleted|TestImportSSHConfig' -count=1`
+  - `./scripts/go.sh test ./core/connections ./core/app ./core/transport/httpapi -run 'Test.*Connection|Test.*RemoteProfile|TestImportSSHConfig|Test.*FS|Test.*Terminal' -count=1`
   - `./scripts/go.sh test ./core/connections ./core/terminal ./core/app ./core/transport/httpapi -run 'TestBuildCommandAddsTmuxResumeCommandForSSHProfiles|TestRemoteProfilesCanBeSavedListedAndDeleted|TestRemoteProfilesNormalizeTmuxLaunchPolicy|TestCreateRemoteTerminalTabFromProfileCarriesTmuxLaunchPolicy|TestRemoteProfilesEndpointsListSaveAndDelete' -count=1`
   - `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestCreateRemoteTerminalTabFromProfileUsesTmuxSessionOverrideForReuse|TestRemoteProfilesCreateSessionReturnsNotFoundForMissingProfile' -count=1`
   - `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestListFSForConnectionParsesRemoteDirectoryEntries|TestReadFSPreviewForConnectionFormatsRemoteBinaryPreview|TestWriteFSFileForConnectionSendsRemoteContentOverSSH|TestOpenPreviewInNewBlockAllowsRemotePathWithoutLocalStat|TestListFSRoutesRemoteConnectionAwareRequestsThroughSSH|TestReadFSPreviewRoutesRemoteConnectionAwareRequestsThroughSSH' -count=1`

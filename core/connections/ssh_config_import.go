@@ -71,17 +71,18 @@ func (s *Service) ImportSSHConfig(path string) (SSHConfigImportResult, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	nextState := clonePersistedState(s.state)
 	imported := make([]RemoteProfile, 0, len(candidates))
 	for _, candidate := range candidates {
 		input := SaveSSHInput{
-			ID:           s.findSSHIDByNameLocked(candidate.Alias),
+			ID:           findSSHIDByNameInState(nextState, candidate.Alias),
 			Name:         candidate.Alias,
 			Host:         candidate.Host,
 			User:         candidate.User,
 			Port:         candidate.Port,
 			IdentityFile: candidate.IdentityFile,
 		}
-		connection, err := s.saveSSHLocked(input)
+		connection, err := s.saveSSHInState(&nextState, input)
 		if err != nil {
 			skipped = append(skipped, SSHConfigImportSkipped{
 				Host:   candidate.Alias,
@@ -104,9 +105,10 @@ func (s *Service) ImportSSHConfig(path string) (SSHConfigImportResult, error) {
 	}
 
 	if len(imported) > 0 {
-		if err := s.persistLocked(); err != nil {
+		if err := s.persistStateLocked(nextState); err != nil {
 			return SSHConfigImportResult{}, err
 		}
+		s.state = nextState
 	}
 
 	return SSHConfigImportResult{
@@ -116,9 +118,9 @@ func (s *Service) ImportSSHConfig(path string) (SSHConfigImportResult, error) {
 	}, nil
 }
 
-func (s *Service) findSSHIDByNameLocked(name string) string {
+func findSSHIDByNameInState(state persistedState, name string) string {
 	name = strings.TrimSpace(name)
-	for _, connection := range s.state.SSHConnections {
+	for _, connection := range state.SSHConnections {
 		if connection.Name == name {
 			return connection.ID
 		}

@@ -78,10 +78,12 @@ func NewServiceWithCheckerAndTmuxProbe(path string, checker Checker, tmuxProbe T
 		svc.state.ActiveConnectionID = localConnection().ID
 	}
 	if _, err := svc.resolveSavedSSHLocked(svc.state.ActiveConnectionID); err != nil && svc.state.ActiveConnectionID != localConnection().ID {
-		svc.state.ActiveConnectionID = localConnection().ID
-		if err := svc.persistLocked(); err != nil {
+		nextState := clonePersistedState(svc.state)
+		nextState.ActiveConnectionID = localConnection().ID
+		if err := svc.persistStateLocked(nextState); err != nil {
 			return nil, err
 		}
+		svc.state = nextState
 	}
 	return svc, nil
 }
@@ -148,13 +150,15 @@ func (s *Service) DeleteRemoteProfile(id string) ([]RemoteProfile, error) {
 	if index == -1 {
 		return nil, fmt.Errorf("%w: %s", ErrConnectionNotFound, id)
 	}
-	s.state.SSHConnections = append(s.state.SSHConnections[:index], s.state.SSHConnections[index+1:]...)
-	if s.state.ActiveConnectionID == id {
-		s.state.ActiveConnectionID = localConnection().ID
+	nextState := clonePersistedState(s.state)
+	nextState.SSHConnections = append(nextState.SSHConnections[:index], nextState.SSHConnections[index+1:]...)
+	if nextState.ActiveConnectionID == id {
+		nextState.ActiveConnectionID = localConnection().ID
 	}
-	if err := s.persistLocked(); err != nil {
+	if err := s.persistStateLocked(nextState); err != nil {
 		return nil, err
 	}
+	s.state = nextState
 	return s.listRemoteProfilesLocked(), nil
 }
 
@@ -179,10 +183,12 @@ func (s *Service) Select(id string) (Snapshot, error) {
 	if _, err := s.resolveLocked(id); err != nil {
 		return Snapshot{}, err
 	}
-	s.state.ActiveConnectionID = id
-	if err := s.persistLocked(); err != nil {
+	nextState := clonePersistedState(s.state)
+	nextState.ActiveConnectionID = id
+	if err := s.persistStateLocked(nextState); err != nil {
 		return Snapshot{}, err
 	}
+	s.state = nextState
 	return s.snapshotLocked(), nil
 }
 
@@ -190,24 +196,26 @@ func (s *Service) SaveSSH(input SaveSSHInput) (Connection, Snapshot, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	connection, err := s.saveSSHLocked(input)
+	nextState := clonePersistedState(s.state)
+	connection, err := s.saveSSHInState(&nextState, input)
 	if err != nil {
 		return Connection{}, Snapshot{}, err
 	}
-	if err := s.persistLocked(); err != nil {
+	if err := s.persistStateLocked(nextState); err != nil {
 		return Connection{}, Snapshot{}, err
 	}
+	s.state = nextState
 	return connection, s.snapshotLocked(), nil
 }
 
-func (s *Service) saveSSHLocked(input SaveSSHInput) (Connection, error) {
+func (s *Service) saveSSHInState(state *persistedState, input SaveSSHInput) (Connection, error) {
 	normalized, err := normalizeSSHInput(input)
 	if err != nil {
 		return Connection{}, err
 	}
 
 	index := -1
-	for i, conn := range s.state.SSHConnections {
+	for i, conn := range state.SSHConnections {
 		if conn.ID == normalized.ID {
 			index = i
 			normalized.Runtime = conn.Runtime
@@ -218,18 +226,18 @@ func (s *Service) saveSSHLocked(input SaveSSHInput) (Connection, error) {
 		}
 	}
 	if index >= 0 {
-		s.state.SSHConnections[index] = normalized
+		state.SSHConnections[index] = normalized
 	} else {
-		s.state.SSHConnections = append(s.state.SSHConnections, normalized)
+		state.SSHConnections = append(state.SSHConnections, normalized)
 	}
-	if s.state.ActiveConnectionID == "" {
-		s.state.ActiveConnectionID = normalized.ID
+	if state.ActiveConnectionID == "" {
+		state.ActiveConnectionID = normalized.ID
 	}
 
 	connection := normalized.toConnection()
 	result := s.checker.Check(context.Background(), connection)
-	s.applyCheckResultLocked(normalized.ID, result)
-	connection, err = s.resolveLocked(normalized.ID)
+	applyCheckResultToState(state, normalized.ID, result)
+	connection, err = resolveFromState(*state, normalized.ID)
 	if err != nil {
 		return Connection{}, err
 	}
@@ -245,10 +253,12 @@ func (s *Service) Check(ctx context.Context, id string) (Connection, Snapshot, e
 		return Connection{}, Snapshot{}, err
 	}
 	result := s.checker.Check(ctx, connection)
-	s.applyCheckResultLocked(id, result)
-	if err := s.persistLocked(); err != nil {
+	nextState := clonePersistedState(s.state)
+	applyCheckResultToState(&nextState, id, result)
+	if err := s.persistStateLocked(nextState); err != nil {
 		return Connection{}, Snapshot{}, err
 	}
+	s.state = nextState
 	connection, err = s.resolveLocked(id)
 	if err != nil {
 		return Connection{}, Snapshot{}, err
@@ -263,10 +273,12 @@ func (s *Service) ReportLaunchResult(id string, err error) (Connection, Snapshot
 	if _, err := s.resolveLocked(id); err != nil {
 		return Connection{}, Snapshot{}, err
 	}
-	s.applyLaunchResultLocked(id, err)
-	if err := s.persistLocked(); err != nil {
+	nextState := clonePersistedState(s.state)
+	applyLaunchResultToState(&nextState, id, err)
+	if err := s.persistStateLocked(nextState); err != nil {
 		return Connection{}, Snapshot{}, err
 	}
+	s.state = nextState
 	connection, resolveErr := s.resolveLocked(id)
 	if resolveErr != nil {
 		return Connection{}, Snapshot{}, resolveErr
@@ -275,29 +287,41 @@ func (s *Service) ReportLaunchResult(id string, err error) (Connection, Snapshot
 }
 
 func (s *Service) snapshotLocked() Snapshot {
+	return snapshotFromState(s.state)
+}
+
+func snapshotFromState(state persistedState) Snapshot {
 	connections := []Connection{localConnection()}
-	for _, saved := range s.state.SSHConnections {
+	for _, saved := range state.SSHConnections {
 		connections = append(connections, saved.toConnection())
 	}
 	for i := range connections {
-		connections[i].Active = connections[i].ID == s.state.ActiveConnectionID
+		connections[i].Active = connections[i].ID == state.ActiveConnectionID
 	}
 	return Snapshot{
 		Connections:        slices.Clone(connections),
-		ActiveConnectionID: s.state.ActiveConnectionID,
+		ActiveConnectionID: state.ActiveConnectionID,
 	}
 }
 
 func (s *Service) listRemoteProfilesLocked() []RemoteProfile {
-	profiles := make([]RemoteProfile, 0, len(s.state.SSHConnections))
-	for _, saved := range s.state.SSHConnections {
+	return listRemoteProfilesFromState(s.state)
+}
+
+func listRemoteProfilesFromState(state persistedState) []RemoteProfile {
+	profiles := make([]RemoteProfile, 0, len(state.SSHConnections))
+	for _, saved := range state.SSHConnections {
 		profiles = append(profiles, saved.toRemoteProfile())
 	}
 	return profiles
 }
 
 func (s *Service) resolveLocked(id string) (Connection, error) {
-	for _, connection := range s.snapshotLocked().Connections {
+	return resolveFromState(s.state, id)
+}
+
+func resolveFromState(state persistedState, id string) (Connection, error) {
+	for _, connection := range snapshotFromState(state).Connections {
 		if connection.ID == id {
 			return connection, nil
 		}
@@ -306,19 +330,23 @@ func (s *Service) resolveLocked(id string) (Connection, error) {
 }
 
 func (s *Service) resolveSavedSSHLocked(id string) (*savedSSH, error) {
-	for i := range s.state.SSHConnections {
-		if s.state.SSHConnections[i].ID == id {
-			return &s.state.SSHConnections[i], nil
+	return resolveSavedSSHInState(&s.state, id)
+}
+
+func resolveSavedSSHInState(state *persistedState, id string) (*savedSSH, error) {
+	for i := range state.SSHConnections {
+		if state.SSHConnections[i].ID == id {
+			return &state.SSHConnections[i], nil
 		}
 	}
 	return nil, fmt.Errorf("%w: %s", ErrConnectionNotFound, id)
 }
 
-func (s *Service) applyCheckResultLocked(id string, result CheckResult) {
+func applyCheckResultToState(state *persistedState, id string, result CheckResult) {
 	if id == localConnection().ID {
 		return
 	}
-	saved, err := s.resolveSavedSSHLocked(id)
+	saved, err := resolveSavedSSHInState(state, id)
 	if err != nil {
 		return
 	}
@@ -330,12 +358,12 @@ func (s *Service) applyCheckResultLocked(id string, result CheckResult) {
 	}
 }
 
-func (s *Service) applyLaunchResultLocked(id string, launchErr error) {
+func applyLaunchResultToState(state *persistedState, id string, launchErr error) {
 	now := time.Now().UTC()
 	if id == localConnection().ID {
 		return
 	}
-	saved, err := s.resolveSavedSSHLocked(id)
+	saved, err := resolveSavedSSHInState(state, id)
 	if err != nil {
 		return
 	}
@@ -369,14 +397,25 @@ func (s *Service) load() error {
 }
 
 func (s *Service) persistLocked() error {
+	return s.persistStateLocked(s.state)
+}
+
+func (s *Service) persistStateLocked(state persistedState) error {
 	if err := os.MkdirAll(filepath.Dir(s.path), 0o755); err != nil {
 		return err
 	}
-	payload, err := json.MarshalIndent(s.state, "", "  ")
+	payload, err := json.MarshalIndent(state, "", "  ")
 	if err != nil {
 		return err
 	}
 	return os.WriteFile(s.path, payload, 0o600)
+}
+
+func clonePersistedState(state persistedState) persistedState {
+	return persistedState{
+		ActiveConnectionID: state.ActiveConnectionID,
+		SSHConnections:     slices.Clone(state.SSHConnections),
+	}
 }
 
 func localConnection() Connection {

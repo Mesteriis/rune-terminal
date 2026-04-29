@@ -40,6 +40,16 @@ func (s stubTmuxProbe) ListSessions(_ context.Context, connection Connection) ([
 	return []TmuxSession{}, nil
 }
 
+func breakConnectionServicePersistPath(t *testing.T, svc *Service) {
+	t.Helper()
+
+	blockerPath := filepath.Join(t.TempDir(), "not-a-dir")
+	if err := os.WriteFile(blockerPath, []byte("block"), 0o600); err != nil {
+		t.Fatalf("write persistence blocker: %v", err)
+	}
+	svc.path = filepath.Join(blockerPath, "connections.json")
+}
+
 func TestNewServiceBootstrapsLocalConnection(t *testing.T) {
 	t.Parallel()
 
@@ -116,6 +126,152 @@ func TestSaveSSHConnectionPersistsAndCanBeSelected(t *testing.T) {
 	}
 	if active.Runtime.CheckStatus != CheckStatusPassed {
 		t.Fatalf("expected persisted check status, got %q", active.Runtime.CheckStatus)
+	}
+}
+
+func TestConnectionMutationsDoNotChangeMemoryWhenPersistFails(t *testing.T) {
+	t.Parallel()
+
+	connectionID := "conn-durable"
+	svc, err := NewServiceWithChecker(filepath.Join(t.TempDir(), "connections.json"), stubChecker{
+		results: map[string]CheckResult{
+			connectionID: {
+				Status:    CheckStatusPassed,
+				CheckedAt: time.Unix(500, 0).UTC(),
+			},
+			"conn-new": {
+				Status:    CheckStatusPassed,
+				CheckedAt: time.Unix(501, 0).UTC(),
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("new service: %v", err)
+	}
+	if _, _, err := svc.SaveSSH(SaveSSHInput{
+		ID:   connectionID,
+		Name: "Durable",
+		Host: "durable.example.com",
+	}); err != nil {
+		t.Fatalf("save durable ssh: %v", err)
+	}
+
+	originalPath := svc.path
+	breakConnectionServicePersistPath(t, svc)
+	if _, _, err := svc.SaveSSH(SaveSSHInput{
+		ID:   "conn-new",
+		Name: "New",
+		Host: "new.example.com",
+	}); err == nil {
+		t.Fatalf("expected save ssh persist failure")
+	}
+	if _, err := svc.Resolve("conn-new"); err == nil {
+		t.Fatalf("expected failed save ssh to keep new connection out of memory")
+	}
+
+	svc.path = originalPath
+	if _, err := svc.Select(connectionID); err != nil {
+		t.Fatalf("select durable ssh: %v", err)
+	}
+	breakConnectionServicePersistPath(t, svc)
+	if _, err := svc.Select("local"); err == nil {
+		t.Fatalf("expected select persist failure")
+	}
+	if snapshot := svc.Snapshot(); snapshot.ActiveConnectionID != connectionID {
+		t.Fatalf("expected failed select to keep active connection %q, got %q", connectionID, snapshot.ActiveConnectionID)
+	}
+
+	if _, err := svc.DeleteRemoteProfile(connectionID); err == nil {
+		t.Fatalf("expected delete persist failure")
+	}
+	if _, err := svc.Resolve(connectionID); err != nil {
+		t.Fatalf("expected failed delete to keep connection visible, got %v", err)
+	}
+	if snapshot := svc.Snapshot(); snapshot.ActiveConnectionID != connectionID {
+		t.Fatalf("expected failed delete to keep active connection %q, got %q", connectionID, snapshot.ActiveConnectionID)
+	}
+}
+
+func TestConnectionRuntimeDoesNotChangeMemoryWhenPersistFails(t *testing.T) {
+	t.Parallel()
+
+	connectionID := "conn-runtime"
+	svc, err := NewServiceWithChecker(filepath.Join(t.TempDir(), "connections.json"), stubChecker{
+		results: map[string]CheckResult{
+			connectionID: {
+				Status:    CheckStatusPassed,
+				CheckedAt: time.Unix(600, 0).UTC(),
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("new service: %v", err)
+	}
+	if _, _, err := svc.SaveSSH(SaveSSHInput{
+		ID:   connectionID,
+		Name: "Runtime",
+		Host: "runtime.example.com",
+	}); err != nil {
+		t.Fatalf("save ssh: %v", err)
+	}
+
+	svc.checker = stubChecker{
+		results: map[string]CheckResult{
+			connectionID: {
+				Status:    CheckStatusFailed,
+				Error:     "boom",
+				CheckedAt: time.Unix(601, 0).UTC(),
+			},
+		},
+	}
+	breakConnectionServicePersistPath(t, svc)
+	if _, _, err := svc.Check(context.Background(), connectionID); err == nil {
+		t.Fatalf("expected check persist failure")
+	}
+	connection, err := svc.Resolve(connectionID)
+	if err != nil {
+		t.Fatalf("resolve connection: %v", err)
+	}
+	if connection.Runtime.CheckStatus != CheckStatusPassed || connection.Runtime.CheckError != "" {
+		t.Fatalf("expected failed check persist to keep previous runtime, got %#v", connection.Runtime)
+	}
+
+	if _, _, err := svc.ReportLaunchResult(connectionID, errors.New("ssh failed")); err == nil {
+		t.Fatalf("expected launch-result persist failure")
+	}
+	connection, err = svc.Resolve(connectionID)
+	if err != nil {
+		t.Fatalf("resolve connection after launch result: %v", err)
+	}
+	if connection.Runtime.LaunchStatus != LaunchStatusIdle || connection.Runtime.LaunchError != "" {
+		t.Fatalf("expected failed launch-result persist to keep previous runtime, got %#v", connection.Runtime)
+	}
+}
+
+func TestImportSSHConfigDoesNotChangeMemoryWhenPersistFails(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	configPath := filepath.Join(tempDir, "ssh_config")
+	if err := os.WriteFile(configPath, []byte(`
+Host imported
+  HostName imported.example.com
+`), 0o600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	svc, err := NewServiceWithChecker(filepath.Join(tempDir, "connections.json"), stubChecker{
+		results: map[string]CheckResult{},
+	})
+	if err != nil {
+		t.Fatalf("new service: %v", err)
+	}
+
+	breakConnectionServicePersistPath(t, svc)
+	if _, err := svc.ImportSSHConfig(configPath); err == nil {
+		t.Fatalf("expected import persist failure")
+	}
+	if profiles := svc.ListRemoteProfiles(); len(profiles) != 0 {
+		t.Fatalf("expected failed import to keep profiles unchanged, got %#v", profiles)
 	}
 }
 
