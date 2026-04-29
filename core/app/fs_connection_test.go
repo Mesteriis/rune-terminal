@@ -3,6 +3,8 @@ package app
 import (
 	"context"
 	"encoding/base64"
+	"errors"
+	"fmt"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -134,6 +136,69 @@ func TestWriteFSFileForConnectionSendsRemoteContentOverSSH(t *testing.T) {
 	}
 	if result.Path != "/remote/notes.txt" || result.Content != "after" {
 		t.Fatalf("unexpected write result %#v", result)
+	}
+}
+
+func TestReadFSFileForConnectionRejectsRemoteOversizedFile(t *testing.T) {
+	runtime := newRemoteFSTestRuntime(t)
+
+	previousRunner := runRemoteFSCommand
+	runRemoteFSCommand = func(
+		ctx context.Context,
+		connection connections.Connection,
+		remoteArgs []string,
+		stdin []byte,
+	) (remoteFSExecResult, error) {
+		if !strings.Contains(strings.Join(remoteArgs, " "), "__RTERR__too_large") {
+			t.Fatalf("remote read script does not guard oversized content: %#v", remoteArgs)
+		}
+		return remoteFSExecResult{
+			Stdout: []byte("__RTERR__too_large\n"),
+		}, fmt.Errorf("exit status 6")
+	}
+	defer func() {
+		runRemoteFSCommand = previousRunner
+	}()
+
+	_, err := runtime.ReadFSFileForConnection(
+		context.Background(),
+		"/remote/large.txt",
+		"conn-ssh",
+	)
+	if !errors.Is(err, ErrFSPathTooLarge) {
+		t.Fatalf("expected ErrFSPathTooLarge, got %v", err)
+	}
+}
+
+func TestWriteFSFileForConnectionRejectsOversizedContentBeforeRemoteIO(t *testing.T) {
+	runtime := newRemoteFSTestRuntime(t)
+
+	previousRunner := runRemoteFSCommand
+	callCount := 0
+	runRemoteFSCommand = func(
+		ctx context.Context,
+		connection connections.Connection,
+		remoteArgs []string,
+		stdin []byte,
+	) (remoteFSExecResult, error) {
+		callCount++
+		return remoteFSExecResult{}, nil
+	}
+	defer func() {
+		runRemoteFSCommand = previousRunner
+	}()
+
+	_, err := runtime.WriteFSFileForConnection(
+		context.Background(),
+		"/remote/notes.txt",
+		strings.Repeat("a", 1024*1024+1),
+		"conn-ssh",
+	)
+	if !errors.Is(err, ErrFSPathTooLarge) {
+		t.Fatalf("expected ErrFSPathTooLarge, got %v", err)
+	}
+	if callCount != 0 {
+		t.Fatalf("oversized content should be rejected before remote IO, got %d calls", callCount)
 	}
 }
 

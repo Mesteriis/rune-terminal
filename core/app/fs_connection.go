@@ -277,9 +277,13 @@ func (r *Runtime) readRemoteFSFile(
 			"path=%s\n"+
 			"if [ ! -e \"$path\" ]; then printf '__RTERR__not_found\\n'; exit 4; fi\n"+
 			"if [ -d \"$path\" ]; then printf '__RTERR__not_file\\n'; exit 5; fi\n"+
-			"printf '__RTMETA__0\\n'\n"+
+			"size=$(wc -c < \"$path\" | tr -d '[:space:]')\n"+
+			"case \"$size\" in ''|*[!0-9]*) size=0 ;; esac\n"+
+			"if [ \"$size\" -gt %d ]; then printf '__RTERR__too_large\\n'; exit 6; fi\n"+
+			"printf '__RTMETA__%%s\\n' \"$size\"\n"+
 			"base64 < \"$path\"\n",
 		quoteRemoteShellArg(remotePath),
+		maxFSFileContentBytes,
 	)
 	result, err := runRemoteFSCommand(ctx, connection, []string{"sh", "-lc", script}, nil)
 	if err != nil {
@@ -304,6 +308,10 @@ func (r *Runtime) writeRemoteFSFile(
 	path string,
 	content string,
 ) (FSFileResult, error) {
+	if len([]byte(content)) > maxFSFileContentBytes {
+		return FSFileResult{}, ErrFSPathTooLarge
+	}
+
 	if _, err := r.readRemoteFSFile(ctx, connection, path); err != nil {
 		return FSFileResult{}, err
 	}
@@ -372,6 +380,8 @@ func normalizeRemoteFSError(result remoteFSExecResult, err error) error {
 		return ErrFSPathNotDirectory
 	case strings.Contains(combined, "__RTERR__not_file"):
 		return ErrFSPathNotFile
+	case strings.Contains(combined, "__RTERR__too_large"):
+		return ErrFSPathTooLarge
 	default:
 		return errors.New(strings.TrimSpace(combined))
 	}

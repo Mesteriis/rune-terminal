@@ -331,6 +331,8 @@ func writeFSError(w http.ResponseWriter, err error) {
 		writeBadRequest(w, "invalid_fs_directory", err)
 	case errors.Is(err, app.ErrFSPathNotText):
 		writeBadRequest(w, "invalid_fs_text", err)
+	case errors.Is(err, app.ErrFSPathTooLarge):
+		writeError(w, http.StatusRequestEntityTooLarge, "fs_file_too_large", err.Error())
 	case errors.Is(err, app.ErrFSPathOutsideWorkspace):
 		writeForbidden(w, "fs_path_outside_workspace", err.Error())
 	case errors.Is(err, app.ErrFSPathNotFound):

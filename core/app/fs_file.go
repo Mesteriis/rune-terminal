@@ -2,11 +2,17 @@ package app
 
 import (
 	"errors"
+	"io"
 	"os"
 	"unicode/utf8"
 )
 
-var ErrFSPathNotText = errors.New("fs path is not a text file")
+const maxFSFileContentBytes = 1024 * 1024
+
+var (
+	ErrFSPathNotText  = errors.New("fs path is not a text file")
+	ErrFSPathTooLarge = errors.New("fs file is too large")
+)
 
 type FSFileResult struct {
 	Path    string `json:"path"`
@@ -29,6 +35,9 @@ func (r *Runtime) ReadFSFile(path string) (FSFileResult, error) {
 	if info.IsDir() {
 		return FSFileResult{}, ErrFSPathNotFile
 	}
+	if info.Size() > maxFSFileContentBytes {
+		return FSFileResult{}, ErrFSPathTooLarge
+	}
 
 	content, err := readFSTextContent(targetPath)
 	if err != nil {
@@ -42,6 +51,10 @@ func (r *Runtime) ReadFSFile(path string) (FSFileResult, error) {
 }
 
 func (r *Runtime) WriteFSFile(path string, content string) (FSFileResult, error) {
+	if len([]byte(content)) > maxFSFileContentBytes {
+		return FSFileResult{}, ErrFSPathTooLarge
+	}
+
 	targetPath, err := r.resolveFSExistingPath(path)
 	if err != nil {
 		return FSFileResult{}, err
@@ -73,12 +86,21 @@ func (r *Runtime) WriteFSFile(path string, content string) (FSFileResult, error)
 }
 
 func readFSTextContent(path string) (string, error) {
-	payload, err := os.ReadFile(path)
+	file, err := os.Open(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return "", ErrFSPathNotFound
 		}
 		return "", err
+	}
+	defer file.Close()
+
+	payload, err := io.ReadAll(io.LimitReader(file, maxFSFileContentBytes+1))
+	if err != nil {
+		return "", err
+	}
+	if len(payload) > maxFSFileContentBytes {
+		return "", ErrFSPathTooLarge
 	}
 
 	if hasNULByte(payload) || !utf8.Valid(payload) {

@@ -24,11 +24,11 @@ capability.
   (`/api/v1/bootstrap`, `/api/v1/fs/list`, `/api/v1/fs/read`,
   `/api/v1/fs/file`, `/api/v1/fs/mkdir`, `/api/v1/fs/copy`,
   `/api/v1/fs/move`, `/api/v1/fs/delete`, `/api/v1/fs/rename`,
-  `/api/v1/fs/open`), and the
-  active backend path now covers `F2/F3/F4/F5/F6/F7/F8`, including the
-  same-pane clone path for both explicit single-entry targets and
-  template-driven multi-entry batch clones, backend `F4` save for UTF-8
-  text files, bounded hex `F3` preview for non-text/binary files, and an
+  `/api/v1/fs/open`), and the active backend path now covers
+  `F2/F3/F4/F5/F6/F7/F8`, including the same-pane clone path for both
+  explicit single-entry targets and template-driven multi-entry batch
+  clones, backend `F4` save for UTF-8 text files up to the 1 MiB
+  inline-edit budget, bounded hex `F3` preview for non-text/binary files, and an
   explicit blocked-dialog path when `F4` targets a non-text/binary file;
   commander quick filter now also reloads through backend
   `GET /api/v1/fs/list?query=...` instead of filtering only the

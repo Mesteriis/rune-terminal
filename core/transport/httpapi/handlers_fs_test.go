@@ -871,6 +871,39 @@ func TestReadFSFileRejectsBinaryContent(t *testing.T) {
 	}
 }
 
+func TestReadFSFileRejectsOversizedTextContent(t *testing.T) {
+	t.Parallel()
+
+	repoRoot := t.TempDir()
+	filePath := filepath.Join(repoRoot, "large.txt")
+	if err := os.WriteFile(filePath, []byte(strings.Repeat("a", 1024*1024+1)), 0o600); err != nil {
+		t.Fatalf("write large file: %v", err)
+	}
+	handler := NewHandler(&app.Runtime{RepoRoot: repoRoot}, testAuthToken)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(
+		recorder,
+		authedJSONRequest(t, http.MethodGet, "/api/v1/fs/file?path="+url.QueryEscape(filePath), nil),
+	)
+
+	if recorder.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("expected 413, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+
+	var payload struct {
+		Error struct {
+			Code string `json:"code"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	if payload.Error.Code != "fs_file_too_large" {
+		t.Fatalf("unexpected error code %q", payload.Error.Code)
+	}
+}
+
 func TestWriteFSFilePersistsTextContent(t *testing.T) {
 	t.Parallel()
 

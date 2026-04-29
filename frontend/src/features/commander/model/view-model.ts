@@ -111,6 +111,8 @@ export function toLoadErrorMessage(error: unknown) {
         return 'Target path is not a directory'
       case 'invalid_fs_text':
         return 'File is not UTF-8 text'
+      case 'fs_file_too_large':
+        return 'File is too large for inline editing'
       default:
         break
     }
