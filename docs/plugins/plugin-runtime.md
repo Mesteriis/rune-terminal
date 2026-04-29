@@ -1,6 +1,6 @@
 # Plugin Runtime
 
-Date: `2026-04-26`
+Date: `2026-04-29`
 Phase: stability hardening
 
 ## What this document is
@@ -42,6 +42,10 @@ This is the canonical plugin entrypoint for runtime boundary and protocol behavi
 - Approval checks happen in core before plugin invocation.
 - Plugins do not mint/validate approval tokens.
 - Audit entries remain core-owned for both success and failure.
+- Local catalog lifecycle changes are also audit-owned by core: install,
+  update, enable, disable, and delete append `plugin.*` audit events for both
+  success and failure paths, with the actor, source, resulting status, and
+  install root represented in the event summary/path fields.
 - Plugin output is normalized into tool-runtime response shape by core.
 - Plugin process environment is explicit: `ProcessConfig.Env` is the only
   environment passed to the child process, so parent process environment
@@ -56,6 +60,13 @@ This is the canonical plugin entrypoint for runtime boundary and protocol behavi
 - Plugin installation is intentionally narrow: backend-owned local catalog
   records plus explicit install sources (`git` repository URL or `zip`
   archive URL), not broad discovery.
+- Zip installation is bounded before manifest validation: archive downloads
+  have a compressed-size cap, extracted payloads have total byte and entry
+  count budgets, and entries must remain under the extraction root by
+  root-relative path checks.
+- Plugin delete removes the install root before removing the catalog record;
+  if filesystem removal fails, the record remains visible for retry instead of
+  orphaning files outside the catalog.
 - The Python reference plugin remains a protocol fixture; it does not imply
   marketplace-style distribution.
 - No container/chroot/seccomp/AppArmor-style plugin sandbox in this phase.

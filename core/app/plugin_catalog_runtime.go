@@ -23,7 +23,12 @@ import (
 	"github.com/Mesteriis/rune-terminal/core/toolruntime"
 )
 
-const installablePluginManifestFile = "rterm-plugin.json"
+const (
+	installablePluginManifestFile      = "rterm-plugin.json"
+	pluginArchiveMaxDownloadedBytes    = 32 << 20
+	pluginArchiveMaxExtractedBytes     = 32 << 20
+	pluginArchiveMaxExtractedFileCount = 4096
+)
 
 type InstallPluginInput struct {
 	Source   PluginInstallSource `json:"source"`
@@ -88,16 +93,35 @@ func (r *Runtime) ListInstalledPlugins() (PluginCatalog, error) {
 	return r.PluginCatalog.Snapshot(r.currentPluginActor()), nil
 }
 
-func (r *Runtime) InstallPlugin(ctx context.Context, input InstallPluginInput) (InstalledPluginRecord, PluginCatalog, error) {
+func (r *Runtime) InstallPlugin(
+	ctx context.Context,
+	input InstallPluginInput,
+) (created InstalledPluginRecord, catalog PluginCatalog, err error) {
+	actor := r.currentPluginActor()
+	auditRecord := InstalledPluginRecord{Source: input.Source}
+	defer func() {
+		if created.ID != "" {
+			auditRecord = created
+		}
+		r.appendPluginCatalogAudit(pluginCatalogAuditInput{
+			Action:  "install",
+			Record:  auditRecord,
+			Source:  input.Source,
+			Actor:   actor,
+			Success: err == nil,
+			Error:   err,
+		})
+	}()
+
 	if r.PluginCatalog == nil {
 		return InstalledPluginRecord{}, PluginCatalog{}, ErrPluginCatalogNotConfigured
 	}
 
-	actor := r.currentPluginActor()
 	record, installRoot, err := r.prepareInstalledPlugin(ctx, input, "")
 	if err != nil {
 		return InstalledPluginRecord{}, PluginCatalog{}, err
 	}
+	auditRecord = record
 	cleanupOnFailure := true
 	defer func() {
 		if cleanupOnFailure {
@@ -109,6 +133,7 @@ func (r *Runtime) InstallPlugin(ctx context.Context, input InstallPluginInput) (
 	if err != nil {
 		return InstalledPluginRecord{}, PluginCatalog{}, err
 	}
+	auditRecord = record
 
 	if err := r.registerInstalledPlugin(record); err != nil {
 		return InstalledPluginRecord{}, PluginCatalog{}, err
@@ -117,7 +142,7 @@ func (r *Runtime) InstallPlugin(ctx context.Context, input InstallPluginInput) (
 	record.Enabled = true
 	record.RuntimeStatus = PluginRuntimeStatusReady
 	record.RuntimeError = ""
-	created, catalog, err := r.PluginCatalog.Create(record, actor)
+	created, catalog, err = r.PluginCatalog.Create(record, actor)
 	if err != nil {
 		r.unregisterInstalledPlugin(record)
 		return InstalledPluginRecord{}, PluginCatalog{}, err
@@ -126,16 +151,39 @@ func (r *Runtime) InstallPlugin(ctx context.Context, input InstallPluginInput) (
 	return created, catalog, nil
 }
 
-func (r *Runtime) SetPluginEnabled(id string, enabled bool) (InstalledPluginRecord, PluginCatalog, error) {
+func (r *Runtime) SetPluginEnabled(
+	id string,
+	enabled bool,
+) (updated InstalledPluginRecord, catalog PluginCatalog, err error) {
+	actor := r.currentPluginActor()
+	action := "disable"
+	if enabled {
+		action = "enable"
+	}
+	auditRecord := InstalledPluginRecord{ID: strings.TrimSpace(id)}
+	defer func() {
+		if updated.ID != "" {
+			auditRecord = updated
+		}
+		r.appendPluginCatalogAudit(pluginCatalogAuditInput{
+			Action:  action,
+			Record:  auditRecord,
+			Source:  auditRecord.Source,
+			Actor:   actor,
+			Success: err == nil,
+			Error:   err,
+		})
+	}()
+
 	if r.PluginCatalog == nil {
 		return InstalledPluginRecord{}, PluginCatalog{}, ErrPluginCatalogNotConfigured
 	}
 
-	actor := r.currentPluginActor()
 	record, err := r.PluginCatalog.Get(id)
 	if err != nil {
 		return InstalledPluginRecord{}, PluginCatalog{}, err
 	}
+	auditRecord = record
 
 	if enabled {
 		if err := r.registerInstalledPlugin(record); err != nil {
@@ -144,7 +192,7 @@ func (r *Runtime) SetPluginEnabled(id string, enabled bool) (InstalledPluginReco
 		record.Enabled = true
 		record.RuntimeStatus = PluginRuntimeStatusReady
 		record.RuntimeError = ""
-		updated, catalog, err := r.PluginCatalog.Replace(record, actor)
+		updated, catalog, err = r.PluginCatalog.Replace(record, actor)
 		if err != nil {
 			r.unregisterInstalledPlugin(record)
 			return InstalledPluginRecord{}, PluginCatalog{}, err
@@ -153,13 +201,37 @@ func (r *Runtime) SetPluginEnabled(id string, enabled bool) (InstalledPluginReco
 	}
 
 	r.unregisterInstalledPlugin(record)
+	previous := record
 	record.Enabled = false
 	record.RuntimeStatus = PluginRuntimeStatusDisabled
 	record.RuntimeError = ""
-	return r.PluginCatalog.Replace(record, actor)
+	updated, catalog, err = r.PluginCatalog.Replace(record, actor)
+	if err != nil && previous.Enabled {
+		_ = r.registerInstalledPlugin(previous)
+	}
+	return updated, catalog, err
 }
 
-func (r *Runtime) UpdateInstalledPlugin(ctx context.Context, id string) (InstalledPluginRecord, PluginCatalog, error) {
+func (r *Runtime) UpdateInstalledPlugin(
+	ctx context.Context,
+	id string,
+) (updated InstalledPluginRecord, catalog PluginCatalog, err error) {
+	actor := r.currentPluginActor()
+	auditRecord := InstalledPluginRecord{ID: strings.TrimSpace(id)}
+	defer func() {
+		if updated.ID != "" {
+			auditRecord = updated
+		}
+		r.appendPluginCatalogAudit(pluginCatalogAuditInput{
+			Action:  "update",
+			Record:  auditRecord,
+			Source:  auditRecord.Source,
+			Actor:   actor,
+			Success: err == nil,
+			Error:   err,
+		})
+	}()
+
 	if r.PluginCatalog == nil {
 		return InstalledPluginRecord{}, PluginCatalog{}, ErrPluginCatalogNotConfigured
 	}
@@ -168,6 +240,7 @@ func (r *Runtime) UpdateInstalledPlugin(ctx context.Context, id string) (Install
 	if err != nil {
 		return InstalledPluginRecord{}, PluginCatalog{}, err
 	}
+	auditRecord = existing
 	input := InstallPluginInput{
 		Source:   existing.Source,
 		Metadata: existing.Metadata,
@@ -206,8 +279,7 @@ func (r *Runtime) UpdateInstalledPlugin(ctx context.Context, id string) (Install
 		nextRecord.RuntimeError = ""
 	}
 
-	actor := r.currentPluginActor()
-	updated, catalog, err := r.PluginCatalog.Replace(nextRecord, actor)
+	updated, catalog, err = r.PluginCatalog.Replace(nextRecord, actor)
 	if err != nil {
 		if nextRecord.Enabled {
 			r.unregisterInstalledPlugin(nextRecord)
@@ -225,7 +297,23 @@ func (r *Runtime) UpdateInstalledPlugin(ctx context.Context, id string) (Install
 	return updated, catalog, nil
 }
 
-func (r *Runtime) DeleteInstalledPlugin(id string) (InstalledPluginRecord, PluginCatalog, error) {
+func (r *Runtime) DeleteInstalledPlugin(id string) (removed InstalledPluginRecord, catalog PluginCatalog, err error) {
+	actor := r.currentPluginActor()
+	auditRecord := InstalledPluginRecord{ID: strings.TrimSpace(id)}
+	defer func() {
+		if removed.ID != "" {
+			auditRecord = removed
+		}
+		r.appendPluginCatalogAudit(pluginCatalogAuditInput{
+			Action:  "delete",
+			Record:  auditRecord,
+			Source:  auditRecord.Source,
+			Actor:   actor,
+			Success: err == nil,
+			Error:   err,
+		})
+	}()
+
 	if r.PluginCatalog == nil {
 		return InstalledPluginRecord{}, PluginCatalog{}, ErrPluginCatalogNotConfigured
 	}
@@ -234,15 +322,19 @@ func (r *Runtime) DeleteInstalledPlugin(id string) (InstalledPluginRecord, Plugi
 	if err != nil {
 		return InstalledPluginRecord{}, PluginCatalog{}, err
 	}
+	auditRecord = record
 	r.unregisterInstalledPlugin(record)
-	removed, catalog, err := r.PluginCatalog.Delete(id, r.currentPluginActor())
-	if err != nil {
-		return InstalledPluginRecord{}, PluginCatalog{}, err
-	}
 	if strings.TrimSpace(record.InstallRoot) != "" {
 		if err := os.RemoveAll(record.InstallRoot); err != nil {
+			if record.Enabled {
+				_ = r.registerInstalledPlugin(record)
+			}
 			return InstalledPluginRecord{}, PluginCatalog{}, err
 		}
+	}
+	removed, catalog, err = r.PluginCatalog.Delete(id, actor)
+	if err != nil {
+		return InstalledPluginRecord{}, PluginCatalog{}, err
 	}
 	return removed, catalog, nil
 }
@@ -581,10 +673,16 @@ func extractPluginArchive(ctx context.Context, stageRoot string, source PluginIn
 	if err := os.MkdirAll(target, 0o755); err != nil {
 		return "", err
 	}
+	var extractedBytes int64
+	entryCount := 0
 	for _, file := range reader.File {
-		entryPath := filepath.Clean(filepath.Join(target, file.Name))
-		if !strings.HasPrefix(entryPath, target) {
-			return "", fmt.Errorf("%w: zip archive contains an invalid path", plugins.ErrInvalidPluginSpec)
+		entryCount++
+		if entryCount > pluginArchiveMaxExtractedFileCount {
+			return "", fmt.Errorf("%w: zip archive contains too many entries", plugins.ErrInvalidPluginSpec)
+		}
+		entryPath, err := pluginArchiveEntryPath(target, file.Name)
+		if err != nil {
+			return "", err
 		}
 		if file.FileInfo().IsDir() {
 			if err := os.MkdirAll(entryPath, file.Mode()); err != nil {
@@ -604,7 +702,7 @@ func extractPluginArchive(ctx context.Context, stageRoot string, source PluginIn
 			_ = input.Close()
 			return "", err
 		}
-		if _, err := io.Copy(output, input); err != nil {
+		if err := copyPluginArchiveEntry(output, input, &extractedBytes); err != nil {
 			_ = output.Close()
 			_ = input.Close()
 			return "", err
@@ -613,6 +711,32 @@ func extractPluginArchive(ctx context.Context, stageRoot string, source PluginIn
 		_ = input.Close()
 	}
 	return target, nil
+}
+
+func pluginArchiveEntryPath(target string, name string) (string, error) {
+	target = filepath.Clean(target)
+	entryName := strings.TrimSpace(name)
+	if entryName == "" {
+		return "", fmt.Errorf("%w: zip archive contains an invalid path", plugins.ErrInvalidPluginSpec)
+	}
+	entryPath := filepath.Clean(filepath.Join(target, entryName))
+	if !fsPathWithinRoot(entryPath, target) {
+		return "", fmt.Errorf("%w: zip archive contains an invalid path", plugins.ErrInvalidPluginSpec)
+	}
+	return entryPath, nil
+}
+
+func copyPluginArchiveEntry(output io.Writer, input io.Reader, extractedBytes *int64) error {
+	remaining := pluginArchiveMaxExtractedBytes - *extractedBytes
+	if remaining < 0 {
+		return fmt.Errorf("%w: zip archive expands beyond limit", plugins.ErrInvalidPluginSpec)
+	}
+	written, err := io.Copy(output, io.LimitReader(input, remaining+1))
+	*extractedBytes += written
+	if *extractedBytes > pluginArchiveMaxExtractedBytes {
+		return fmt.Errorf("%w: zip archive expands beyond limit", plugins.ErrInvalidPluginSpec)
+	}
+	return err
 }
 
 func downloadPluginArchive(ctx context.Context, stageRoot string, archiveURL string) (string, func(), error) {
@@ -646,9 +770,14 @@ func downloadPluginArchive(ctx context.Context, stageRoot string, archiveURL str
 	if err != nil {
 		return "", func() {}, err
 	}
-	if _, err := io.Copy(output, io.LimitReader(response.Body, 32<<20)); err != nil {
+	written, err := io.Copy(output, io.LimitReader(response.Body, pluginArchiveMaxDownloadedBytes+1))
+	if err != nil {
 		_ = output.Close()
 		return "", func() {}, err
+	}
+	if written > pluginArchiveMaxDownloadedBytes {
+		_ = output.Close()
+		return "", func() {}, fmt.Errorf("%w: zip archive download is too large", plugins.ErrInvalidPluginSpec)
 	}
 	if err := output.Close(); err != nil {
 		return "", func() {}, err

@@ -2,8 +2,10 @@ package app
 
 import (
 	"archive/zip"
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -11,7 +13,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Mesteriis/rune-terminal/core/audit"
 	"github.com/Mesteriis/rune-terminal/core/config"
+	"github.com/Mesteriis/rune-terminal/core/plugins"
 	"github.com/Mesteriis/rune-terminal/core/policy"
 	"github.com/Mesteriis/rune-terminal/core/toolruntime"
 )
@@ -212,6 +216,171 @@ func TestUpdateInstalledPluginRestoresPreviousBundleWhenReplacementConflicts(t *
 	}
 }
 
+func TestPluginLifecycleAppendsAuditEvents(t *testing.T) {
+	t.Parallel()
+
+	repoRoot, repoURL := createInstallablePluginGitRepoWithRoot(t, "example.auditbundle", "1.0.0")
+	runtime := newPluginCatalogTestRuntime(t)
+	auditLog := attachPluginAuditLog(t, runtime)
+
+	record, _, err := runtime.InstallPlugin(context.Background(), InstallPluginInput{
+		Source: PluginInstallSource{
+			Kind: PluginInstallSourceGit,
+			URL:  repoURL,
+		},
+	})
+	if err != nil {
+		t.Fatalf("InstallPlugin error: %v", err)
+	}
+
+	writeInstallablePluginBundle(t, repoRoot, "example.auditbundle", "2.0.0")
+	runGit(t, repoRoot, "add", ".")
+	runGit(t, repoRoot, "commit", "-m", "update plugin bundle")
+	if _, _, err := runtime.UpdateInstalledPlugin(context.Background(), record.ID); err != nil {
+		t.Fatalf("UpdateInstalledPlugin error: %v", err)
+	}
+	if _, _, err := runtime.SetPluginEnabled(record.ID, false); err != nil {
+		t.Fatalf("SetPluginEnabled(false) error: %v", err)
+	}
+	if _, _, err := runtime.SetPluginEnabled(record.ID, true); err != nil {
+		t.Fatalf("SetPluginEnabled(true) error: %v", err)
+	}
+	if _, _, err := runtime.DeleteInstalledPlugin(record.ID); err != nil {
+		t.Fatalf("DeleteInstalledPlugin error: %v", err)
+	}
+
+	events, err := auditLog.List(10)
+	if err != nil {
+		t.Fatalf("audit list: %v", err)
+	}
+	expectedTools := []string{
+		"plugin.install",
+		"plugin.update",
+		"plugin.disable",
+		"plugin.enable",
+		"plugin.delete",
+	}
+	if len(events) != len(expectedTools) {
+		t.Fatalf("expected %d audit events, got %d (%#v)", len(expectedTools), len(events), events)
+	}
+	for index, expectedTool := range expectedTools {
+		event := events[index]
+		if event.ToolName != expectedTool || !event.Success || event.Error != "" {
+			t.Fatalf("unexpected audit event %d: %#v", index, event)
+		}
+		if event.ActionSource != "plugin.catalog" {
+			t.Fatalf("expected plugin.catalog action source, got %#v", event)
+		}
+		if len(event.AffectedPaths) == 0 {
+			t.Fatalf("expected affected path for %s, got %#v", expectedTool, event)
+		}
+	}
+}
+
+func TestInstallPluginAppendsFailureAuditEvent(t *testing.T) {
+	t.Parallel()
+
+	runtime := newPluginCatalogTestRuntime(t)
+	auditLog := attachPluginAuditLog(t, runtime)
+
+	_, _, err := runtime.InstallPlugin(context.Background(), InstallPluginInput{
+		Source: PluginInstallSource{
+			Kind: PluginInstallSourceZip,
+			URL:  "file://" + filepath.Join(t.TempDir(), "missing.zip"),
+		},
+	})
+	if err == nil {
+		t.Fatalf("expected missing archive install to fail")
+	}
+
+	events, listErr := auditLog.List(10)
+	if listErr != nil {
+		t.Fatalf("audit list: %v", listErr)
+	}
+	if len(events) != 1 {
+		t.Fatalf("expected one failure audit event, got %#v", events)
+	}
+	event := events[0]
+	if event.ToolName != "plugin.install" || event.Success || event.Error == "" {
+		t.Fatalf("unexpected failure audit event: %#v", event)
+	}
+}
+
+func TestInstallPluginRejectsZipArchiveOverExpandedSizeLimit(t *testing.T) {
+	t.Parallel()
+
+	archiveURL := createOversizedPluginZipArchive(t)
+	runtime := newPluginCatalogTestRuntime(t)
+
+	_, _, err := runtime.InstallPlugin(context.Background(), InstallPluginInput{
+		Source: PluginInstallSource{
+			Kind: PluginInstallSourceZip,
+			URL:  archiveURL,
+		},
+	})
+	if err == nil {
+		t.Fatalf("expected oversized zip archive install to fail")
+	}
+	if !errors.Is(err, plugins.ErrInvalidPluginSpec) {
+		t.Fatalf("expected invalid plugin spec error, got %v", err)
+	}
+}
+
+func TestInstallPluginRejectsZipArchiveEntryOutsideRootPrefix(t *testing.T) {
+	t.Parallel()
+
+	archiveURL := createPluginZipArchiveWithEntry(t, "../zip-evil/escape.txt", []byte("outside"))
+	runtime := newPluginCatalogTestRuntime(t)
+
+	_, _, err := runtime.InstallPlugin(context.Background(), InstallPluginInput{
+		Source: PluginInstallSource{
+			Kind: PluginInstallSourceZip,
+			URL:  archiveURL,
+		},
+	})
+	if err == nil {
+		t.Fatalf("expected zip archive with escaping entry to fail")
+	}
+	if !errors.Is(err, plugins.ErrInvalidPluginSpec) {
+		t.Fatalf("expected invalid plugin spec error, got %v", err)
+	}
+}
+
+func TestDeleteInstalledPluginKeepsCatalogWhenInstallRootRemovalFails(t *testing.T) {
+	t.Parallel()
+
+	runtime := newPluginCatalogTestRuntime(t)
+	actor := runtime.currentPluginActor()
+	record := InstalledPluginRecord{
+		ID:              "example.deletefail",
+		DisplayName:     "Delete Fail",
+		PluginVersion:   "1.0.0",
+		ProtocolVersion: plugins.ProtocolVersionV1,
+		Process: plugins.ProcessConfig{
+			Command: "sh",
+		},
+		Tools:         []InstalledPluginTool{},
+		RuntimeStatus: PluginRuntimeStatusDisabled,
+		InstallRoot:   "invalid\x00path",
+	}
+	if _, _, err := runtime.PluginCatalog.Create(record, actor); err != nil {
+		t.Fatalf("Create plugin record error: %v", err)
+	}
+
+	_, _, err := runtime.DeleteInstalledPlugin(record.ID)
+	if err == nil {
+		t.Fatalf("expected delete to fail")
+	}
+
+	snapshot, snapshotErr := runtime.ListInstalledPlugins()
+	if snapshotErr != nil {
+		t.Fatalf("ListInstalledPlugins error: %v", snapshotErr)
+	}
+	if len(snapshot.Plugins) != 1 || snapshot.Plugins[0].ID != record.ID {
+		t.Fatalf("expected failed delete to keep catalog record, got %#v", snapshot.Plugins)
+	}
+}
+
 func newPluginCatalogTestRuntime(t *testing.T) *Runtime {
 	t.Helper()
 
@@ -227,6 +396,17 @@ func newPluginCatalogTestRuntime(t *testing.T) *Runtime {
 		PluginCatalog: store,
 		Registry:      toolruntime.NewRegistry(),
 	}
+}
+
+func attachPluginAuditLog(t *testing.T, runtime *Runtime) *audit.Log {
+	t.Helper()
+
+	auditLog, err := audit.NewLog(filepath.Join(t.TempDir(), "audit.jsonl"))
+	if err != nil {
+		t.Fatalf("NewLog error: %v", err)
+	}
+	runtime.Audit = auditLog
+	return auditLog
 }
 
 func createInstallablePluginGitRepo(t *testing.T, pluginID string, version string) string {
@@ -304,6 +484,90 @@ func createInstallablePluginZipArchive(t *testing.T, pluginID string, version st
 		t.Fatalf("file.Close error: %v", err)
 	}
 	return "file://" + archivePath
+}
+
+func createOversizedPluginZipArchive(t *testing.T) string {
+	t.Helper()
+
+	return createPluginZipArchiveWithEntry(t, "bundle/large.bin", oversizedZipPayload(t))
+}
+
+func oversizedZipPayload(t *testing.T) []byte {
+	t.Helper()
+
+	chunk := bytes.Repeat([]byte("x"), 1024*1024)
+	payload := make([]byte, 0, 40*1024*1024)
+	for index := 0; index < 40; index++ {
+		payload = append(payload, chunk...)
+	}
+	return payload
+}
+
+func createPluginZipArchiveWithEntry(t *testing.T, name string, payload []byte) string {
+	t.Helper()
+
+	root := t.TempDir()
+	bundleRoot := filepath.Join(root, "bundle")
+	writeInstallablePluginBundle(t, bundleRoot, "example.zipguard", "1.0.0")
+
+	archivePath := filepath.Join(root, "plugin.zip")
+	file, err := os.OpenFile(archivePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
+	if err != nil {
+		t.Fatalf("OpenFile(zip) error: %v", err)
+	}
+	archive := zip.NewWriter(file)
+	addDirectoryToZip(t, archive, root, bundleRoot)
+	writer, err := archive.Create(filepath.ToSlash(name))
+	if err != nil {
+		t.Fatalf("Create(extra zip entry) error: %v", err)
+	}
+	if _, err := writer.Write(payload); err != nil {
+		t.Fatalf("Write(extra zip entry) error: %v", err)
+	}
+	if err := archive.Close(); err != nil {
+		t.Fatalf("zip.Close error: %v", err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatalf("file.Close error: %v", err)
+	}
+	return "file://" + archivePath
+}
+
+func addDirectoryToZip(t *testing.T, archive *zip.Writer, archiveRoot string, sourceRoot string) {
+	t.Helper()
+
+	err := filepath.Walk(sourceRoot, func(path string, info os.FileInfo, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		relative, err := filepath.Rel(archiveRoot, path)
+		if err != nil {
+			return err
+		}
+		header, err := zip.FileInfoHeader(info)
+		if err != nil {
+			return err
+		}
+		header.Name = filepath.ToSlash(relative)
+		if info.IsDir() {
+			header.Name += "/"
+			_, err = archive.CreateHeader(header)
+			return err
+		}
+		writer, err := archive.CreateHeader(header)
+		if err != nil {
+			return err
+		}
+		input, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		_, err = writer.Write(input)
+		return err
+	})
+	if err != nil {
+		t.Fatalf("Walk(zip) error: %v", err)
+	}
 }
 
 func writeInstallablePluginBundle(t *testing.T, root string, pluginID string, version string) {
