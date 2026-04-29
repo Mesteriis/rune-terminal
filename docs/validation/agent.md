@@ -15,6 +15,9 @@
   - keyboard navigation inside the searchable AI conversation navigator through `aria-activedescendant` plus `Enter` selection
   - backend-owned agent provider catalog
   - backend-owned provider gateway operational snapshot over the active conversation/provider route: recent run history, route status, and latency summaries persisted in `runtime.db`
+  - agent selection and provider-catalog mutations now keep in-memory state
+    unchanged when persistence fails, so failed settings writes cannot silently
+    change active profile / role / mode / provider routing
   - explicit provider probe contract over the same provider route, including CLI readiness and OpenAI-compatible source reachability/model availability checks, with probe results written back into that same gateway snapshot
   - explicit provider prewarm contract over the same provider route, with persisted route-prepare state and first-response latency telemetry from the real conversation runtime path
   - AI shell header consumption of that same provider gateway snapshot for the active route, including explicit route-prepare actions without reintroducing a second frontend-owned provider-runtime truth
@@ -223,6 +226,7 @@
 - `go test ./core/...`
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi`
 - `./scripts/go.sh test ./core/app -run 'TestExecuteToolUsesRuntimeRepoRootForRepoScopedPolicy' -count=1`
+- `./scripts/go.sh test ./core/agent -run 'TestAgentSelectionDoesNotMutateMemoryWhenPersistFails|TestProviderCatalogDoesNotMutateMemoryWhenPersistFails|TestStorePersistsProvidersAndActiveProvider|TestProvidersCatalogKeepsProviderConfigWithoutRuntimeStatus|TestStorePersistsOpenAICompatibleProvider' -count=1`
 - `./scripts/go.sh test ./core/policy -run 'Test(Trusted|Ignore)RuleMutationsDoNotChangeMemoryWhenPersistFails|TestTrustedRuleLifecycle|TestIgnoreRuleLifecycle|TestDefaultIgnoreRulesUseStricterSecretModes' -count=1`
 - `./scripts/go.sh test ./core/app -run 'TestCreateAttachmentReferenceDoesNotAuditSuccessWhenStoreFails' -count=1`
 - `./scripts/go.sh test ./core/app -run 'TestDeleteAttachmentReferenceAppends.*AuditEvent' -count=1`

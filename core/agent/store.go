@@ -93,9 +93,14 @@ func (s *Store) SetActiveProfile(id string) error {
 	if _, ok := findByID(s.data.Profiles, id); !ok {
 		return fmt.Errorf("%w: %s", ErrPromptProfileNotFound, id)
 	}
-	s.data.ActiveProfileID = id
-	s.data.UpdatedAt = time.Now().UTC()
-	return s.saveLocked()
+	nextData := cloneState(s.data)
+	nextData.ActiveProfileID = id
+	nextData.UpdatedAt = time.Now().UTC()
+	if err := s.saveStateLocked(nextData); err != nil {
+		return err
+	}
+	s.data = nextData
+	return nil
 }
 
 func (s *Store) SetActiveRole(id string) error {
@@ -104,9 +109,14 @@ func (s *Store) SetActiveRole(id string) error {
 	if _, ok := findByID(s.data.Roles, id); !ok {
 		return fmt.Errorf("%w: %s", ErrRolePresetNotFound, id)
 	}
-	s.data.ActiveRoleID = id
-	s.data.UpdatedAt = time.Now().UTC()
-	return s.saveLocked()
+	nextData := cloneState(s.data)
+	nextData.ActiveRoleID = id
+	nextData.UpdatedAt = time.Now().UTC()
+	if err := s.saveStateLocked(nextData); err != nil {
+		return err
+	}
+	s.data = nextData
+	return nil
 }
 
 func (s *Store) SetActiveMode(id string) error {
@@ -115,13 +125,22 @@ func (s *Store) SetActiveMode(id string) error {
 	if _, ok := findByID(s.data.Modes, id); !ok {
 		return fmt.Errorf("%w: %s", ErrWorkModeNotFound, id)
 	}
-	s.data.ActiveModeID = id
-	s.data.UpdatedAt = time.Now().UTC()
-	return s.saveLocked()
+	nextData := cloneState(s.data)
+	nextData.ActiveModeID = id
+	nextData.UpdatedAt = time.Now().UTC()
+	if err := s.saveStateLocked(nextData); err != nil {
+		return err
+	}
+	s.data = nextData
+	return nil
 }
 
 func (s *Store) saveLocked() error {
-	payload, err := json.MarshalIndent(s.data, "", "  ")
+	return s.saveStateLocked(s.data)
+}
+
+func (s *Store) saveStateLocked(data State) error {
+	payload, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		return err
 	}

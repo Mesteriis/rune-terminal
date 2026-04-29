@@ -50,11 +50,13 @@ func (s *Store) CreateProviderWithActor(input CreateProviderInput, actor Provide
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.data.Providers = append(s.data.Providers, record)
-	s.data.UpdatedAt = time.Now().UTC()
-	if err := s.saveLocked(); err != nil {
+	nextData := cloneState(s.data)
+	nextData.Providers = append(nextData.Providers, record)
+	nextData.UpdatedAt = time.Now().UTC()
+	if err := s.saveStateLocked(nextData); err != nil {
 		return ProviderView{}, ProviderCatalog{}, err
 	}
+	s.data = nextData
 	return providerViewFromRecord(record, s.data.ActiveProviderID), providerCatalogFromStateWithActor(s.data, actor), nil
 }
 
@@ -79,11 +81,13 @@ func (s *Store) UpdateProviderWithActor(id string, input UpdateProviderInput, ac
 		return ProviderView{}, ProviderCatalog{}, fmt.Errorf("%w: %s", ErrProviderDisabled, updated.ID)
 	}
 
-	s.data.Providers[index] = updated
-	s.data.UpdatedAt = time.Now().UTC()
-	if err := s.saveLocked(); err != nil {
+	nextData := cloneState(s.data)
+	nextData.Providers[index] = updated
+	nextData.UpdatedAt = time.Now().UTC()
+	if err := s.saveStateLocked(nextData); err != nil {
 		return ProviderView{}, ProviderCatalog{}, err
 	}
+	s.data = nextData
 	return providerViewFromRecord(updated, s.data.ActiveProviderID), providerCatalogFromStateWithActor(s.data, actor), nil
 }
 
@@ -102,16 +106,21 @@ func (s *Store) SetActiveProviderWithActor(id string, actor ProviderActor) error
 	if !provider.Enabled {
 		return fmt.Errorf("%w: %s", ErrProviderDisabled, id)
 	}
-	s.data.ActiveProviderID = id
-	s.data.UpdatedAt = time.Now().UTC()
+	nextData := cloneState(s.data)
+	nextData.ActiveProviderID = id
+	nextData.UpdatedAt = time.Now().UTC()
 	index := s.providerIndexLocked(id)
 	if index >= 0 {
-		provider := cloneProviderRecord(s.data.Providers[index])
+		provider := cloneProviderRecord(nextData.Providers[index])
 		provider.UpdatedBy = normalizeProviderActor(actor)
 		provider.UpdatedAt = time.Now().UTC()
-		s.data.Providers[index] = provider
+		nextData.Providers[index] = provider
 	}
-	return s.saveLocked()
+	if err := s.saveStateLocked(nextData); err != nil {
+		return err
+	}
+	s.data = nextData
+	return nil
 }
 
 func (s *Store) DeleteProvider(id string) (ProviderCatalog, error) {
@@ -129,11 +138,13 @@ func (s *Store) DeleteProviderWithActor(id string, actor ProviderActor) (Provide
 	if s.data.ActiveProviderID == id {
 		return ProviderCatalog{}, fmt.Errorf("%w: %s", ErrProviderDeleteActive, id)
 	}
-	s.data.Providers = append(s.data.Providers[:index], s.data.Providers[index+1:]...)
-	s.data.UpdatedAt = time.Now().UTC()
-	if err := s.saveLocked(); err != nil {
+	nextData := cloneState(s.data)
+	nextData.Providers = append(nextData.Providers[:index], nextData.Providers[index+1:]...)
+	nextData.UpdatedAt = time.Now().UTC()
+	if err := s.saveStateLocked(nextData); err != nil {
 		return ProviderCatalog{}, err
 	}
+	s.data = nextData
 	return providerCatalogFromStateWithActor(s.data, actor), nil
 }
 

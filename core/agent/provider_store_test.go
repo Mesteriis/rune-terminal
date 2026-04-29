@@ -49,6 +49,100 @@ func TestStorePersistsProvidersAndActiveProvider(t *testing.T) {
 	}
 }
 
+func TestAgentSelectionDoesNotMutateMemoryWhenPersistFails(t *testing.T) {
+	t.Parallel()
+
+	store := newAgentStoreForPersistenceFailureTest(t)
+
+	assertSelectionUnchanged := func(label string, mutate func() error) {
+		t.Helper()
+		before := store.Snapshot()
+		store.path = filepath.Join(t.TempDir(), "missing-parent", "agent.json")
+		if err := mutate(); err == nil {
+			t.Fatalf("expected %s persist failure", label)
+		}
+		after := store.Snapshot()
+		if after.ActiveProfileID != before.ActiveProfileID ||
+			after.ActiveRoleID != before.ActiveRoleID ||
+			after.ActiveModeID != before.ActiveModeID ||
+			after.ActiveProviderID != before.ActiveProviderID {
+			t.Fatalf("expected failed %s to keep active selection, before=%#v after=%#v", label, before, after)
+		}
+		store.path = filepath.Join(t.TempDir(), "agent.json")
+		if err := store.saveLocked(); err != nil {
+			t.Fatalf("restore store path after %s: %v", label, err)
+		}
+	}
+
+	assertSelectionUnchanged("profile update", func() error {
+		return store.SetActiveProfile("hardened")
+	})
+	assertSelectionUnchanged("role update", func() error {
+		return store.SetActiveRole("reviewer")
+	})
+	assertSelectionUnchanged("mode update", func() error {
+		return store.SetActiveMode("review")
+	})
+	assertSelectionUnchanged("provider update", func() error {
+		return store.SetActiveProvider("claude-code-cli")
+	})
+}
+
+func TestProviderCatalogDoesNotMutateMemoryWhenPersistFails(t *testing.T) {
+	t.Parallel()
+
+	store := newAgentStoreForPersistenceFailureTest(t)
+	initialProviderCount := len(store.ProvidersCatalog().Providers)
+	store.path = filepath.Join(t.TempDir(), "missing-parent", "agent.json")
+
+	if _, _, err := store.CreateProvider(CreateProviderInput{
+		Kind:        ProviderKindClaude,
+		DisplayName: "Claude Broken Persist",
+		Claude: &CreateClaudeProviderInput{
+			Command: "claude",
+			Model:   "opus",
+		},
+	}); err == nil {
+		t.Fatalf("expected provider create persist failure")
+	}
+	if providers := store.ProvidersCatalog().Providers; len(providers) != initialProviderCount {
+		t.Fatalf("expected failed provider create to keep provider count %d, got %#v", initialProviderCount, providers)
+	}
+
+	store.path = filepath.Join(t.TempDir(), "agent.json")
+	created, _, err := store.CreateProvider(CreateProviderInput{
+		Kind:        ProviderKindClaude,
+		DisplayName: "Claude Durable",
+		Claude: &CreateClaudeProviderInput{
+			Command: "claude",
+			Model:   "opus",
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateProvider error: %v", err)
+	}
+
+	store.path = filepath.Join(t.TempDir(), "missing-parent", "agent.json")
+	nextName := "Updated Broken Persist"
+	if _, _, err := store.UpdateProvider(created.ID, UpdateProviderInput{DisplayName: &nextName}); err == nil {
+		t.Fatalf("expected provider update persist failure")
+	}
+	unchanged, err := store.Provider(created.ID)
+	if err != nil {
+		t.Fatalf("Provider error: %v", err)
+	}
+	if unchanged.DisplayName == nextName {
+		t.Fatalf("expected failed provider update to keep previous record, got %#v", unchanged)
+	}
+
+	if _, err := store.DeleteProvider(created.ID); err == nil {
+		t.Fatalf("expected provider delete persist failure")
+	}
+	if _, err := store.Provider(created.ID); err != nil {
+		t.Fatalf("expected failed provider delete to keep provider visible, got %v", err)
+	}
+}
+
 func TestProvidersCatalogKeepsProviderConfigWithoutRuntimeStatus(t *testing.T) {
 	t.Parallel()
 
@@ -85,6 +179,16 @@ func TestProvidersCatalogKeepsProviderConfigWithoutRuntimeStatus(t *testing.T) {
 	if codexView.Codex.Command != "definitely-missing-rterm-codex" {
 		t.Fatalf("expected config-only provider view, got %#v", codexView.Codex)
 	}
+}
+
+func newAgentStoreForPersistenceFailureTest(t *testing.T) *Store {
+	t.Helper()
+
+	store, err := NewStore(filepath.Join(t.TempDir(), "agent.json"))
+	if err != nil {
+		t.Fatalf("NewStore error: %v", err)
+	}
+	return store
 }
 
 func TestNewStoreMigratesLegacyStateWithoutProviders(t *testing.T) {
