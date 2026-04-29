@@ -1049,7 +1049,11 @@ func TestCreateAttachmentReferenceReturnsMetadata(t *testing.T) {
 	if payload.Attachment.Name != "notes.txt" {
 		t.Fatalf("unexpected attachment name: %q", payload.Attachment.Name)
 	}
-	if payload.Attachment.Path != filepath.Clean(tempFile) {
+	expectedPath, err := filepath.EvalSymlinks(tempFile)
+	if err != nil {
+		t.Fatalf("eval attachment path: %v", err)
+	}
+	if payload.Attachment.Path != expectedPath {
 		t.Fatalf("unexpected attachment path: %q", payload.Attachment.Path)
 	}
 	if payload.Attachment.Size != 5 {

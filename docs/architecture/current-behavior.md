@@ -351,6 +351,9 @@ Confirmable boundaries:
   - reload restores attachment references from backend conversation snapshot truth
   - user-visible transcript chips show attachment names from backend truth
   - submit-time message handling revalidates references; missing/invalid paths are rejected explicitly instead of being accepted as normal input
+  - attachment paths are canonicalized before policy evaluation and reads, so symlinks are judged by their resolved target rather than by the lexical path supplied by the frontend
+  - attachment policy uses the backend runtime repo root for repo-scoped rules; `context.repo_root` in conversation requests is display/context metadata, not policy authority
+  - policy-denied attachment submit/reference attempts are written to audit with the denied path and policy error
   - conversation provider requests now include bounded attachment context when attachments are present (metadata plus bounded text excerpt for supported text-like files)
   - attachment context limits are backend-owned and deterministic: max file size `256 KiB`, max read `32 KiB`, max excerpt `8000` chars, max context items `4`
   - files are not imported into managed app storage; references can become stale if files move or are deleted

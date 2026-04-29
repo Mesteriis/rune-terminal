@@ -52,7 +52,11 @@ func TestCreateAttachmentReferenceAppendsAuditEventWithProvenance(t *testing.T) 
 	if events[0].WorkspaceID != "ws-default" || events[0].ActionSource != "test.files.attach_to_ai" {
 		t.Fatalf("expected explicit provenance fields, got %#v", events[0])
 	}
-	if len(events[0].AffectedPaths) != 1 || events[0].AffectedPaths[0] != filePath {
+	expectedFilePath, err := filepath.EvalSymlinks(filePath)
+	if err != nil {
+		t.Fatalf("eval attachment path: %v", err)
+	}
+	if len(events[0].AffectedPaths) != 1 || events[0].AffectedPaths[0] != expectedFilePath {
 		t.Fatalf("expected affected path audit field, got %#v", events[0])
 	}
 
@@ -63,8 +67,8 @@ func TestCreateAttachmentReferenceAppendsAuditEventWithProvenance(t *testing.T) 
 	if len(attachments) != 1 {
 		t.Fatalf("expected 1 stored attachment, got %#v", attachments)
 	}
-	if attachments[0].Path != filePath {
-		t.Fatalf("expected stored attachment path %q, got %#v", filePath, attachments[0])
+	if attachments[0].Path != expectedFilePath {
+		t.Fatalf("expected stored attachment path %q, got %#v", expectedFilePath, attachments[0])
 	}
 
 	if err := runtime.DeleteAttachmentReference(context.Background(), attachments[0].ID); err != nil {
@@ -92,13 +96,76 @@ func TestCreateAttachmentReferenceRejectsPathsOutsideAllowedRoots(t *testing.T) 
 	if err != nil {
 		t.Fatalf("policy store: %v", err)
 	}
+	auditLog, err := audit.NewLog(filepath.Join(tempDir, "audit.jsonl"))
+	if err != nil {
+		t.Fatalf("audit log: %v", err)
+	}
 
 	runtime := &Runtime{
 		RepoRoot: repoRoot,
 		Policy:   policyStore,
+		Audit:    auditLog,
 	}
 	_, err = runtime.CreateAttachmentReference(CreateAttachmentReferenceRequest{
-		Path:        filePath,
+		Path:         filePath,
+		WorkspaceID:  "ws-default",
+		ActionSource: "test.files.attach_to_ai",
+	})
+	if !errors.Is(err, conversation.ErrAttachmentPolicyDenied) {
+		t.Fatalf("expected ErrAttachmentPolicyDenied, got %v", err)
+	}
+
+	events, err := runtime.Audit.List(10)
+	if err != nil {
+		t.Fatalf("audit list: %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("expected one denial audit event, got %#v", events)
+	}
+	if events[0].ToolName != "agent.attachment_reference" || events[0].Success {
+		t.Fatalf("unexpected denial audit event: %#v", events[0])
+	}
+	if events[0].WorkspaceID != "ws-default" || events[0].ActionSource != "test.files.attach_to_ai" {
+		t.Fatalf("expected provenance on denial audit event, got %#v", events[0])
+	}
+	expectedDeniedPath, err := filepath.EvalSymlinks(filePath)
+	if err != nil {
+		t.Fatalf("eval denied path: %v", err)
+	}
+	if len(events[0].AffectedPaths) != 1 || events[0].AffectedPaths[0] != expectedDeniedPath {
+		t.Fatalf("expected denied path in audit event, got %#v", events[0].AffectedPaths)
+	}
+}
+
+func TestCreateAttachmentReferenceRejectsSymlinkOutsideAllowedRoots(t *testing.T) {
+	t.Parallel()
+
+	repoRoot := t.TempDir()
+	tempDir := t.TempDir()
+	outsidePath := filepath.Join(tempDir, "outside.txt")
+	if err := os.WriteFile(outsidePath, []byte("outside"), 0o600); err != nil {
+		t.Fatalf("write outside file: %v", err)
+	}
+	linkPath := filepath.Join(repoRoot, "linked-outside.txt")
+	if err := os.Symlink(outsidePath, linkPath); err != nil {
+		t.Fatalf("create symlink: %v", err)
+	}
+	policyStore, err := policy.NewStore(filepath.Join(tempDir, "policy.json"), repoRoot)
+	if err != nil {
+		t.Fatalf("policy store: %v", err)
+	}
+	auditLog, err := audit.NewLog(filepath.Join(tempDir, "audit.jsonl"))
+	if err != nil {
+		t.Fatalf("audit log: %v", err)
+	}
+
+	runtime := &Runtime{
+		RepoRoot: repoRoot,
+		Policy:   policyStore,
+		Audit:    auditLog,
+	}
+	_, err = runtime.CreateAttachmentReference(CreateAttachmentReferenceRequest{
+		Path:        linkPath,
 		WorkspaceID: "ws-default",
 	})
 	if !errors.Is(err, conversation.ErrAttachmentPolicyDenied) {

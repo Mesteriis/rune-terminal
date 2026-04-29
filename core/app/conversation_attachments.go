@@ -2,9 +2,9 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"mime"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -23,27 +23,23 @@ type CreateAttachmentReferenceRequest struct {
 func (r *Runtime) CreateAttachmentReference(
 	request CreateAttachmentReferenceRequest,
 ) (conversation.AttachmentReference, error) {
-	rawPath := strings.TrimSpace(request.Path)
-	if rawPath == "" {
-		return conversation.AttachmentReference{}, conversation.ErrInvalidAttachmentPath
-	}
-
-	normalizedPath := filepath.Clean(rawPath)
-	if normalizedPath == "." || !filepath.IsAbs(normalizedPath) {
-		return conversation.AttachmentReference{}, conversation.ErrInvalidAttachmentPath
-	}
-
-	info, err := os.Stat(normalizedPath)
+	normalizedPath, info, err := statAttachmentPath(request.Path)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return conversation.AttachmentReference{}, conversation.ErrAttachmentNotFound
-		}
 		return conversation.AttachmentReference{}, err
 	}
-	if info.IsDir() {
-		return conversation.AttachmentReference{}, conversation.ErrAttachmentNotFile
-	}
 	if err := r.ensureAttachmentReferenceAllowed(normalizedPath, request.WorkspaceID); err != nil {
+		if errors.Is(err, conversation.ErrAttachmentPolicyDenied) {
+			r.appendAttachmentPolicyDeniedAudit(attachmentPolicyDeniedAudit{
+				ToolName: "agent.attachment_reference",
+				Summary:  fmt.Sprintf("create attachment reference: %s", trimSummary(filepath.Base(normalizedPath))),
+				Context: ConversationContext{
+					WorkspaceID:  strings.TrimSpace(request.WorkspaceID),
+					ActionSource: strings.TrimSpace(request.ActionSource),
+				},
+				Error:         err,
+				AffectedPaths: []string{normalizedPath},
+			})
+		}
 		return conversation.AttachmentReference{}, err
 	}
 

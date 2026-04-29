@@ -321,6 +321,81 @@ func TestSubmitConversationPromptDoesNotReadMetadataOnlyAttachmentContent(t *tes
 	}
 }
 
+func TestSubmitConversationPromptUsesRuntimeRepoRootForRepoScopedAttachmentRules(t *testing.T) {
+	t.Parallel()
+
+	repoRoot := t.TempDir()
+	attachmentPath := filepath.Join(repoRoot, "repo-secret.txt")
+	if err := os.WriteFile(attachmentPath, []byte("REPO_SECRET=do-not-leak"), 0o600); err != nil {
+		t.Fatalf("write attachment: %v", err)
+	}
+	tempDir := t.TempDir()
+	agentStore, err := agent.NewStore(filepath.Join(tempDir, "agent.json"))
+	if err != nil {
+		t.Fatalf("agent store: %v", err)
+	}
+	auditLog, err := audit.NewLog(filepath.Join(tempDir, "audit.jsonl"))
+	if err != nil {
+		t.Fatalf("audit log: %v", err)
+	}
+	policyStore, err := policy.NewStore(filepath.Join(tempDir, "policy.json"), repoRoot)
+	if err != nil {
+		t.Fatalf("policy store: %v", err)
+	}
+	if _, err := policyStore.AddIgnoreRule(policy.IgnoreRule{
+		Scope:       policy.ScopeRepo,
+		ScopeRef:    repoRoot,
+		MatcherType: policy.MatcherGlob,
+		Pattern:     "repo-secret.txt",
+		Mode:        policy.IgnoreModeMetadataOnly,
+	}); err != nil {
+		t.Fatalf("add repo-scoped ignore rule: %v", err)
+	}
+	connectionStore, err := connections.NewService(filepath.Join(tempDir, "connections.json"))
+	if err != nil {
+		t.Fatalf("connections: %v", err)
+	}
+	provider := &recordingConversationProvider{}
+	conversationStore, err := conversation.NewService(filepath.Join(tempDir, "conversation.json"), provider)
+	if err != nil {
+		t.Fatalf("conversation service: %v", err)
+	}
+
+	runtime := &Runtime{
+		RepoRoot:     repoRoot,
+		Workspace:    workspace.NewService(workspace.BootstrapDefault()),
+		Terminals:    terminal.NewService(terminal.DefaultLauncher()),
+		Connections:  connectionStore,
+		Agent:        agentStore,
+		Conversation: conversationStore,
+		Policy:       policyStore,
+		Audit:        auditLog,
+	}
+
+	_, err = runtime.SubmitConversationPrompt(context.Background(), "summarize attachment", "", ConversationContext{
+		WorkspaceID: "ws-default",
+		RepoRoot:    filepath.Join(t.TempDir(), "attacker-controlled-root"),
+	}, []conversation.AttachmentReference{
+		{
+			ID:       "att_repo_secret",
+			Name:     "repo-secret.txt",
+			Path:     attachmentPath,
+			MimeType: "text/plain",
+		},
+	})
+	if err != nil {
+		t.Fatalf("submit prompt: %v", err)
+	}
+
+	lastMessage := provider.request.Messages[len(provider.request.Messages)-1]
+	if strings.Contains(lastMessage.Content, "REPO_SECRET=do-not-leak") {
+		t.Fatalf("repo-scoped metadata-only attachment content leaked into provider prompt: %q", lastMessage.Content)
+	}
+	if !strings.Contains(lastMessage.Content, "skipped (policy_metadata_only)") {
+		t.Fatalf("expected repo-scoped metadata-only skip marker, got %q", lastMessage.Content)
+	}
+}
+
 func TestSubmitConversationPromptRejectsAttachmentOutsideAllowedRoots(t *testing.T) {
 	t.Parallel()
 
@@ -370,6 +445,88 @@ func TestSubmitConversationPromptRejectsAttachmentOutsideAllowedRoots(t *testing
 			ID:       "att_outside",
 			Name:     "outside.txt",
 			Path:     attachmentPath,
+			MimeType: "text/plain",
+		},
+	})
+	if !errors.Is(err, conversation.ErrAttachmentPolicyDenied) {
+		t.Fatalf("expected ErrAttachmentPolicyDenied, got %v", err)
+	}
+
+	events, listErr := runtime.Audit.List(10)
+	if listErr != nil {
+		t.Fatalf("audit list: %v", listErr)
+	}
+	if len(events) != 1 {
+		t.Fatalf("expected one denial audit event, got %#v", events)
+	}
+	if events[0].ToolName != "agent.conversation.attachment" || events[0].Success {
+		t.Fatalf("unexpected denial audit event: %#v", events[0])
+	}
+	if !strings.Contains(events[0].Error, conversation.ErrAttachmentPolicyDenied.Error()) {
+		t.Fatalf("expected denial error in audit event, got %#v", events[0])
+	}
+	expectedDeniedPath, err := filepath.EvalSymlinks(attachmentPath)
+	if err != nil {
+		t.Fatalf("eval denied path: %v", err)
+	}
+	if len(events[0].AffectedPaths) != 1 || events[0].AffectedPaths[0] != expectedDeniedPath {
+		t.Fatalf("expected denied path in audit event, got %#v", events[0].AffectedPaths)
+	}
+}
+
+func TestSubmitConversationPromptRejectsSymlinkAttachmentOutsideAllowedRoots(t *testing.T) {
+	t.Parallel()
+
+	repoRoot := t.TempDir()
+	tempDir := t.TempDir()
+	outsidePath := filepath.Join(tempDir, "outside-secret.txt")
+	if err := os.WriteFile(outsidePath, []byte("SYMLINK_SECRET=do-not-leak"), 0o600); err != nil {
+		t.Fatalf("write outside attachment: %v", err)
+	}
+	linkPath := filepath.Join(repoRoot, "linked-secret.txt")
+	if err := os.Symlink(outsidePath, linkPath); err != nil {
+		t.Fatalf("create symlink: %v", err)
+	}
+	agentStore, err := agent.NewStore(filepath.Join(tempDir, "agent.json"))
+	if err != nil {
+		t.Fatalf("agent store: %v", err)
+	}
+	auditLog, err := audit.NewLog(filepath.Join(tempDir, "audit.jsonl"))
+	if err != nil {
+		t.Fatalf("audit log: %v", err)
+	}
+	policyStore, err := policy.NewStore(filepath.Join(tempDir, "policy.json"), repoRoot)
+	if err != nil {
+		t.Fatalf("policy store: %v", err)
+	}
+	connectionStore, err := connections.NewService(filepath.Join(tempDir, "connections.json"))
+	if err != nil {
+		t.Fatalf("connections: %v", err)
+	}
+	conversationStore, err := conversation.NewService(filepath.Join(tempDir, "conversation.json"), &recordingConversationProvider{})
+	if err != nil {
+		t.Fatalf("conversation service: %v", err)
+	}
+
+	runtime := &Runtime{
+		RepoRoot:     repoRoot,
+		Workspace:    workspace.NewService(workspace.BootstrapDefault()),
+		Terminals:    terminal.NewService(terminal.DefaultLauncher()),
+		Connections:  connectionStore,
+		Agent:        agentStore,
+		Conversation: conversationStore,
+		Policy:       policyStore,
+		Audit:        auditLog,
+	}
+
+	_, err = runtime.SubmitConversationPrompt(context.Background(), "summarize attachment", "", ConversationContext{
+		WorkspaceID: "ws-default",
+		RepoRoot:    repoRoot,
+	}, []conversation.AttachmentReference{
+		{
+			ID:       "att_symlink",
+			Name:     "linked-secret.txt",
+			Path:     linkPath,
 			MimeType: "text/plain",
 		},
 	})

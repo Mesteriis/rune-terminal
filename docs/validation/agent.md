@@ -39,6 +39,7 @@
   - browser-level terminal-origin AI handoff coverage: a real shell failure can now jump straight into the AI sidebar and land in the local `Plan / Approve` flow with the failing terminal pinned as conversation context
   - files-panel `Attach file ... to AI` handoff through `POST /api/v1/agent/conversation/attachments/references`, shell attachment queue, and stream request `attachments`
   - AI attachment ingestion now evaluates the same runtime policy allowed-root and ignore-rule configuration before provider prompt assembly; metadata-only/redacted matches keep content out of prompts, and outside-root or denied attachments fail instead of being read through a raw HTTP attachment payload
+  - AI attachment policy evaluation now canonicalizes filesystem paths before policy/read, uses the backend runtime repo root for repo-scoped ignore rules instead of trusting HTTP payload context, and writes failure audit events for policy-denied attachment submit/reference attempts
   - stored attachment references can now be reused from the composer `Recent attachments` shelf and deleted from that same backend-owned library
   - transcript attachment chips sourced from backend conversation message attachment metadata
   - transcript attachment chips can now be re-queued directly back into the composer as reusable attachment references
@@ -219,7 +220,7 @@
 - `npm --prefix frontend run test -- src/features/agent/model/use-ai-composer-preferences.test.tsx src/widgets/ai/ai-composer-widget.test.tsx src/widgets/ai/ai-panel-widget.test.tsx`
 - `npm --prefix frontend run test -- src/shared/api/agent-settings.test.ts src/features/agent/model/use-ai-composer-preferences.test.tsx src/widgets/ai/ai-composer-widget.test.tsx`
 - `npm --prefix frontend run test -- src/widgets/ai/ai-composer-widget.test.tsx src/widgets/ai/ai-panel-widget.test.tsx src/shared/ui/components/accessibility-contracts.test.tsx`
-- `./scripts/go.sh test ./core/app -run 'TestSubmitConversationPromptDoesNotReadMetadataOnlyAttachmentContent|TestSubmitConversationPromptRejectsAttachmentOutsideAllowedRoots|TestCreateAttachmentReferenceRejectsPathsOutsideAllowedRoots' -count=1`
+- `./scripts/go.sh test ./core/app -run 'TestSubmitConversationPromptDoesNotReadMetadataOnlyAttachmentContent|TestSubmitConversationPromptUsesRuntimeRepoRootForRepoScopedAttachmentRules|TestSubmitConversationPromptRejectsAttachmentOutsideAllowedRoots|TestSubmitConversationPromptRejectsSymlinkAttachmentOutsideAllowedRoots|TestCreateAttachmentReferenceRejectsPathsOutsideAllowedRoots|TestCreateAttachmentReferenceRejectsSymlinkOutsideAllowedRoots' -count=1`
 - `./scripts/go.sh test ./core/transport/httpapi -run 'TestSubmitConversationMessagePersistsAttachmentReferences|TestSubmitConversationMessageRejectsMissingAttachmentReference|TestCreateAttachmentReferenceReturnsMetadata' -count=1`
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi ./core/policy ./core/conversation -count=1`
 - `npm --prefix frontend run test -- src/widgets/ai/ai-chat-message-widget.test.tsx src/widgets/ai/ai-panel-widget.test.tsx`

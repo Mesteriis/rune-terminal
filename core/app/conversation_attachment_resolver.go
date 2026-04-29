@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"mime"
@@ -39,6 +40,25 @@ type attachmentResolverLimits struct {
 type attachmentPolicyGuard struct {
 	Config  policy.Config
 	Context policy.Context
+}
+
+type attachmentPolicyDeniedError struct {
+	Path         string
+	Reason       string
+	IgnoreRuleID string
+	IgnoreMode   policy.IgnoreMode
+}
+
+func (e *attachmentPolicyDeniedError) Error() string {
+	reason := strings.TrimSpace(e.Reason)
+	if reason == "" {
+		reason = "policy_denied"
+	}
+	return fmt.Sprintf("%s: %s (%s)", conversation.ErrAttachmentPolicyDenied, e.Path, reason)
+}
+
+func (e *attachmentPolicyDeniedError) Unwrap() error {
+	return conversation.ErrAttachmentPolicyDenied
 }
 
 func defaultAttachmentResolverLimits() attachmentResolverLimits {
@@ -141,7 +161,12 @@ func evaluateAttachmentPolicy(guard *attachmentPolicyGuard, path string) (string
 	policyContext.AffectedPaths = []string{path}
 	decision := policy.Evaluate(guard.Config, policyContext)
 	if !decision.Allowed || decision.RequiresConfirmation {
-		return "", fmt.Errorf("%w: %s (%s)", conversation.ErrAttachmentPolicyDenied, path, decision.Reason)
+		return "", &attachmentPolicyDeniedError{
+			Path:         path,
+			Reason:       decision.Reason,
+			IgnoreRuleID: decision.MatchedIgnoreRuleID,
+			IgnoreMode:   decision.IgnoreMode,
+		}
 	}
 
 	switch decision.IgnoreMode {
@@ -163,17 +188,28 @@ func statAttachmentPath(rawPath string) (string, os.FileInfo, error) {
 	if normalizedPath == "." || !filepath.IsAbs(normalizedPath) {
 		return "", nil, conversation.ErrInvalidAttachmentPath
 	}
-	info, err := os.Stat(normalizedPath)
+	canonicalPath, err := filepath.EvalSymlinks(normalizedPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return "", nil, fmt.Errorf("%w: %s", conversation.ErrAttachmentNotFound, normalizedPath)
 		}
 		return "", nil, err
 	}
-	if info.IsDir() {
-		return "", nil, fmt.Errorf("%w: %s", conversation.ErrAttachmentNotFile, normalizedPath)
+	canonicalPath = filepath.Clean(canonicalPath)
+	if canonicalPath == "." || !filepath.IsAbs(canonicalPath) {
+		return "", nil, conversation.ErrInvalidAttachmentPath
 	}
-	return normalizedPath, info, nil
+	info, err := os.Stat(canonicalPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", nil, fmt.Errorf("%w: %s", conversation.ErrAttachmentNotFound, canonicalPath)
+		}
+		return "", nil, err
+	}
+	if info.IsDir() {
+		return "", nil, fmt.Errorf("%w: %s", conversation.ErrAttachmentNotFile, canonicalPath)
+	}
+	return canonicalPath, info, nil
 }
 
 func readAttachmentText(path string, maxReadBytes int64, maxChars int) (string, bool, error) {
@@ -321,4 +357,57 @@ func firstNonEmptyValue(values ...string) string {
 		}
 	}
 	return ""
+}
+
+func attachmentReferencePaths(attachments []conversation.AttachmentReference) []string {
+	if len(attachments) == 0 {
+		return nil
+	}
+	paths := make([]string, 0, len(attachments))
+	for _, attachment := range attachments {
+		path := strings.TrimSpace(attachment.Path)
+		if path == "" {
+			continue
+		}
+		paths = append(paths, filepath.Clean(path))
+	}
+	return paths
+}
+
+func canonicalizeAttachmentPolicyConfig(config policy.Config) policy.Config {
+	for index, root := range config.AllowedRoots {
+		config.AllowedRoots[index] = canonicalizeExistingPath(root)
+	}
+	for index, rule := range config.IgnoreRules {
+		if rule.Scope == policy.ScopeRepo {
+			config.IgnoreRules[index].ScopeRef = canonicalizeExistingPath(rule.ScopeRef)
+		}
+	}
+	for index, rule := range config.TrustedRules {
+		if rule.Scope == policy.ScopeRepo {
+			config.TrustedRules[index].ScopeRef = canonicalizeExistingPath(rule.ScopeRef)
+		}
+	}
+	return config
+}
+
+func canonicalizeExistingPath(path string) string {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return ""
+	}
+	cleaned := filepath.Clean(path)
+	canonical, err := filepath.EvalSymlinks(cleaned)
+	if err != nil {
+		return cleaned
+	}
+	return filepath.Clean(canonical)
+}
+
+func attachmentPolicyDeniedDetails(err error) (attachmentPolicyDeniedError, bool) {
+	var policyErr *attachmentPolicyDeniedError
+	if errors.As(err, &policyErr) && policyErr != nil {
+		return *policyErr, true
+	}
+	return attachmentPolicyDeniedError{}, false
 }

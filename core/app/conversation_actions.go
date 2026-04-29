@@ -260,6 +260,15 @@ func (r *Runtime) prepareConversationSubmit(
 		r.attachmentPolicyGuard(conversationContext, profile),
 	)
 	if err != nil {
+		r.appendAttachmentPolicyDeniedAudit(attachmentPolicyDeniedAudit{
+			ToolName:      "agent.conversation.attachment",
+			Summary:       "include conversation attachment",
+			Prompt:        prompt,
+			Context:       conversationContext,
+			Profile:       profile,
+			Error:         err,
+			AffectedPaths: attachmentReferencePaths(attachments),
+		})
 		return conversation.SubmitRequest{}, policy.EvaluationProfile{}, err
 	}
 	providerPrompt := buildPromptWithAttachmentContext(prompt, resolvedAttachments)
@@ -287,13 +296,15 @@ func (r *Runtime) attachmentPolicyGuard(
 		return nil
 	}
 
-	repoRoot := strings.TrimSpace(conversationContext.RepoRoot)
+	repoRoot := strings.TrimSpace(r.RepoRoot)
 	if repoRoot == "" {
-		repoRoot = strings.TrimSpace(r.RepoRoot)
+		repoRoot = strings.TrimSpace(conversationContext.RepoRoot)
 	}
+	repoRoot = canonicalizeExistingPath(repoRoot)
+	config := canonicalizeAttachmentPolicyConfig(r.Policy.Snapshot())
 
 	return &attachmentPolicyGuard{
-		Config: r.Policy.Snapshot(),
+		Config: config,
 		Context: policy.Context{
 			ToolName:             "agent.conversation.attachment",
 			Summary:              "include conversation attachment",
@@ -326,6 +337,52 @@ func (r *Runtime) appendConversationAudit(
 		Error:           providerError,
 		ActionSource:    conversationContext.ActionSource,
 		AffectedWidgets: affectedWidgets(conversationContext),
+	})
+}
+
+type attachmentPolicyDeniedAudit struct {
+	ToolName      string
+	Summary       string
+	Prompt        string
+	Context       ConversationContext
+	Profile       policy.EvaluationProfile
+	Error         error
+	AffectedPaths []string
+}
+
+func (r *Runtime) appendAttachmentPolicyDeniedAudit(input attachmentPolicyDeniedAudit) {
+	if r == nil || r.Audit == nil || !errors.Is(input.Error, conversation.ErrAttachmentPolicyDenied) {
+		return
+	}
+
+	details, ok := attachmentPolicyDeniedDetails(input.Error)
+	affectedPaths := append([]string(nil), input.AffectedPaths...)
+	if ok && strings.TrimSpace(details.Path) != "" {
+		affectedPaths = []string{strings.TrimSpace(details.Path)}
+	}
+
+	summary := strings.TrimSpace(input.Summary)
+	if summary == "" {
+		summary = summarizeConversationPrompt(input.Prompt)
+	}
+
+	_ = r.Audit.Append(audit.Event{
+		ToolName:           strings.TrimSpace(input.ToolName),
+		Summary:            summary,
+		WorkspaceID:        strings.TrimSpace(input.Context.WorkspaceID),
+		PromptProfileID:    input.Profile.PromptProfileID,
+		RoleID:             input.Profile.RoleID,
+		ModeID:             input.Profile.ModeID,
+		SecurityPosture:    input.Profile.SecurityPosture,
+		IgnoreRuleID:       details.IgnoreRuleID,
+		IgnoreMode:         string(details.IgnoreMode),
+		Success:            false,
+		Error:              input.Error.Error(),
+		ActionSource:       strings.TrimSpace(input.Context.ActionSource),
+		TargetSession:      strings.TrimSpace(input.Context.TargetSession),
+		TargetConnectionID: strings.TrimSpace(input.Context.TargetConnectionID),
+		AffectedPaths:      affectedPaths,
+		AffectedWidgets:    affectedWidgets(input.Context),
 	})
 }
 
