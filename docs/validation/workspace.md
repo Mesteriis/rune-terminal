@@ -5,218 +5,233 @@
 - Date: `2026-04-29`
 - State: `VERIFIED`
 - Scope:
-  - the active shell now also exposes a runtime-backed language
-    preference: `General` settings load and persist locale over
-    `GET/PUT /api/v1/settings/locale`, `document.documentElement.lang`
-    follows the active locale, and the settings shell framing plus
-    general/runtime copy switch immediately across `ru`, `en`, `zh-CN`,
-    and `es`
-  - backend widget-kind catalog contract now exists at
-    `GET /api/v1/workspace/widget-kinds`, with `terminal` and `files`
-    exposed as available backend-owned kinds, `commander` exposed as
-    `frontend-local`, and `preview` / `editor` / `web` exposed as
-    planned kinds instead of being overclaimed as active runtime surfaces
-  - the frontend shared workspace API now has a typed
-    `fetchWorkspaceWidgetKindCatalog()` client for that backend contract,
-    and the rewritten Dockview workspace shell now consumes the loaded
-    catalog for startup seeding plus right-rail widget discoverability
-  - the active shell now also has a narrow runtime-backed window-title
-    rule surface: backend settings persist `auto/custom` title mode plus
-    explicit custom title state, `General` settings can pin or reset that
-    state, and live `document.title` sync follows the current workspace
-    title in `auto` mode or the explicit operator-defined custom title in
-    `custom` mode
-  - browser e2e coverage now verifies the active right-rail catalog behavior:
-    `terminal` and `files` remain enabled and runtime-created, path-required
-    `preview` remains disabled in the generic menu, and `commander` plus
-    planned widget kinds are visible but disabled according to catalog status
-    constraints
-  - workspace/files/preview frontend data loads now use abortable fetch paths
-    instead of fire-and-forget request races:
-    widget-kind catalog requests, files directory loads, and preview reads
-    all cancel the superseded in-flight request when the widget unmounts or
-    its target path changes
-  - backend workspace coverage now also verifies the path-handoff `preview`
-    widget route and catalog entry
-  - backend workspace path handoff now also accepts SSH-scoped preview
-    targets without forcing a local `os.Stat` check first, so a remote
-    terminal can open a preview widget for its own path identity instead
-    of failing against the local filesystem
-  - frontend preview-widget coverage verifies preview panel params, bounded
-    text/hex rendering, refresh, inline errors, and backend-owned close
-    semantics
-  - serialized Playwright coverage now exercises the active shell/user paths over the split local dev runtime:
-    - workspace tab switching and workspace creation
-    - the shell topbar now renders workspace tabs and the add-workspace affordance as one tighter grouped strip, with denser active/inactive tab rhythm so workspace switching and creation read as a single compact control cluster instead of separate header controls
-    - the shell topbar close/minimize/fullscreen controls now route through explicit desktop window callbacks; close keeps the existing shutdown guard, while minimize/fullscreen call Tauri commands and degrade to no-ops in split-browser mode
-    - commander Dockview tabs now follow the same compact workspace-strip language instead of a badge-only placeholder: each commander tab shows a compact `commander` pill, a readable `tool/tool N` title, and a per-tab close action only when the commander group actually has multiple tabs
-    - right-rail utility menu actions for new workspace, terminal widget,
-      and files widget,
-      with non-creatable widget kinds disabled from backend catalog truth
-    - closing a backend-owned files widget from the Dockview header removes
-      the backend widget record and collapses the runtime workspace layout
-    - files widget directory navigation for opening a child directory and
-      returning to the parent path
-    - files widget filename filtering with an explicit clear action
-    - files widget refresh action reloads the current directory path
-    - files widget local sorting can switch to modified-time ordering
-    - files widget visible/total entry count updates with filtering and
-      hidden-file toggling
-    - files widget hidden-file toggle hides dotfiles by default and can reveal
-      them
-    - files widget direct path input can jump to a backend path
-    - files widget current-directory button dispatches backend external-open
-      requests
-    - files widget file rows dispatch backend external-open requests
-    - files widget file rows can open backend-owned preview widgets
-    - SSH-backed files and preview widgets now preserve `connection_id`
-      when loading directory listings, preview content, and host-opener
-      requests, so remote files panels no longer silently fall back to the
-      local-only fs transport
-    - settings modal open/close from shell chrome
-    - the right utility rail popover now follows the same compact shell density as the topbar strip, with tighter menu rows and status text instead of a looser generic popover treatment
-    - modal overlays now also use a tighter shell framing rhythm so body/widget modal spacing matches the compact shell chrome instead of reading like a separate larger overlay system
-    - the settings shell now renders as a denser navigator/editor surface with a narrower sidebar, tighter content framing, lighter badges, and a more compact section rhythm, while preserving the existing `General / AI / Terminal / Commander` structure
-    - browser e2e now also locks the compact shell density itself on the active path:
-      workspace tabs and add-workspace controls keep the reduced `22px`
-      minimum height, and the utility creation menu keeps the narrower
-      `208px` shell-aligned framing instead of drifting back to a looser
-      popover size
-    - the `General` section now reads real runtime bootstrap metadata and exposes the desktop `watcher_mode` lifecycle setting; in the split browser dev loop this control degrades to a visible read-only fallback instead of pretending browser mode can persist desktop settings
-    - `Settings -> Remote` now has browser coverage for the filterable saved-profile inventory, including the visible-count summary and explicit no-match empty state
-    - `Settings -> MCP` now has matching browser coverage for the filterable registered-server inventory, including the same visible-count summary and explicit no-match empty state
-    - `Settings -> General` now also has browser coverage for custom
-      window-title persistence: saving a custom title updates the live
-      shell title immediately, and `Reset to auto` returns the shell title
-      to the active workspace-driven form
-    - `Settings -> General` now also has a clean browser path for
-      immediate four-locale shell switching on the active settings path,
-      so the runtime-backed locale setting is verified end-to-end across
-      `ru`, `en`, `zh-CN`, and `es`
-    - a fresh `npm run tauri:dev` smoke still builds and launches the desktop entrypoint after the runtime-settings slice, so the new `watcher_mode` plumbing does not break desktop startup
-    - desktop startup now also self-heals stale watcher attachments recorded in `~/.rterm/runtime.json`: if a previously UI-owned watcher is still bound to `127.0.0.1:7788` but no longer matches the newly attached/spawned core, startup explicitly shuts that stale watcher down before spawning the next one, instead of panicking on `unexpected worker identity`
-    - if desktop startup spawns a fresh core and watcher recovery/spawn then fails, the just-spawned core is now stopped before setup returns the error, so startup no longer leaks a brand-new backend process on the failure path
-    - if desktop startup spawns a fresh watcher and later rejects it during watcher-state validation, the just-spawned watcher is now explicitly stopped and waited down before setup returns the original startup error, so watcher startup failures no longer leave a stray `rterm-core watcher` bound to `127.0.0.1:7788`
-    - desktop startup now also distinguishes a fixed watcher port conflict caused by a non-`rterm` listener: if `127.0.0.1:7788` is occupied but does not answer as a live `rterm` watcher, setup fails early with an explicit `non-rterm service` conflict instead of falling through to a later spawn/bind error
-    - desktop shutdown now also handles the narrow forced-exit case that was still rough before: a `SIGTERM` delivered to `rterm-desktop` triggers the same ephemeral-runtime cleanup path as a normal app exit, so the desktop-owned backend and watcher are torn down before the process leaves
-    - desktop runtime metadata writes (`~/.rterm/runtime.json` and `~/.rterm/settings.json`) now go through an atomic temp-file rename path instead of direct `fs::write`, so startup no longer depends on partially written runtime/settings JSON surviving process interruption cleanly
-    - desktop runtime metadata writes now also make the runtime metadata directory private on Unix (`0700`) and write replacement metadata files with private file permissions (`0600`), so core auth tokens and watcher shutdown tokens are not left under default umask-derived modes
-    - watcher state discovery no longer returns the shutdown token; the desktop reuses the token it already owns from spawn/runtime metadata and sends shutdown proof through `X-Rterm-Watcher-Token` instead of embedding it in the shutdown URL
-    - desktop shutdown policy now also has direct Rust coverage for the Tauri command path itself: `request_shutdown_runtime()` is exercised for `missing runtime`, `persistent`, `ephemeral blocked by active tasks`, `forced ephemeral close`, and `missing auth token`, while a fresh `npm run tauri:dev` smoke still reaches live desktop startup and the smoke-owned runtime delta is terminated cleanly afterward
-    - desktop runtime lifecycle now also has an isolated scripted smoke path: `npm run validate:desktop-runtime` launches `npm run tauri:dev` under a temporary `HOME`, waits for `.rterm/runtime.json` plus live core/watcher health, sends `SIGTERM` to the resolved live `rterm-desktop` parent of the spawned core/watcher pair, and verifies watcher/core exit plus runtime metadata cleanup without touching the user's real `~/.rterm`
-    - Rust coverage now also exercises the narrower fixed-port conflict split directly: `cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml` includes a case where the watcher health probe fails but `127.0.0.1:7788` is still occupied, and the desktop layer now returns an explicit `non-rterm service` conflict instead of treating that state like an empty port
-    - desktop attach recovery now also handles the narrower live-runtime drift where `~/.rterm/runtime.json` lost only the core record while the fixed watcher on `127.0.0.1:7788` is still alive and already points at the same backend: startup reconstructs the missing core attachment from watcher state plus live `/api/v1/health` instead of spawning a duplicate backend beside the already-running runtime
-    - terminal Dockview header `+` actions for the seeded main/workspace terminal groups
-    - extra terminal panels now request a fresh backend terminal session before mounting, so shell creation paths no longer fail with `terminal widget not found: terminal`
-    - closing those extra terminal panels now also restores the backend workspace tab count, so the UI no longer leaks hidden runtime tabs/sessions on close
-    - commander read/navigation/preview and backend write flows (`F7`, `F5`, `F2`, `F6`, `F8`, single + batch same-pane clone, `F4` save)
-    - commander header now also exposes a bounded backend-owned shell context toggle, so operators can inspect `default shell`, `TERM`, `COLORTERM`, and `workspace root` from the active runtime without introducing a broad frontend env-dump contract
-    - non-text commander `F3` now opens a bounded hex preview instead of collapsing into a placeholder-unavailable shell, while non-text commander `F4` still opens an explicit blocked dialog instead of collapsing into a pane-level `File is not UTF-8 text` error only
-    - commander inline path edit autocomplete now also suggests directories from the currently loaded backend pane listing, so `Ctrl+L` plus partial child-path input can resolve visible repo folders without relying only on pane history
-    - commander quick filter now routes through the backend `GET /api/v1/fs/list?query=...` path instead of only filtering already-projected pane rows in the frontend store, and a fresh focused browser smoke covers `Ctrl+F` filter apply plus `Ctrl+Backspace` clear on the active pane
-    - the backend-backed commander runtime state no longer imports its defaults from `commander-widget.mock`; shell defaults now live in a model-owned module, so mock scaffolding is isolated to the fake-client boundary instead of leaking into the active runtime path
-    - the commander widget-store confirm path now only handles local pending flows (`select/unselect/filter/search`); backend mutation kinds (`copy/move/delete/mkdir/rename`) no longer keep dead fake-client mutation branches in the reducer path because the live async hook/API path already owns them
-    - the commander store also drops no-op reducers for backend-owned async actions (`view/edit/open/path/history/save`), so those flows no longer pretend to have synchronous reducer ownership when the real work lives entirely in hooks plus backend HTTP
-    - commander widget persistence now writes only runtime pane/widget state into `runa-terminal:commander-widgets:v1`; older persisted `client.directories` payloads are still accepted on read so existing localStorage survives the cleanup without losing widget restore state
-    - browser validation now also proves that the active commander persistence contract stays narrow in practice: after navigating a pane to a backend path, the persisted `runa-terminal:commander-widgets:v1` snapshot records the pane path but omits `entries` / `directoryEntries`, so reload no longer depends on a frontend-owned directory snapshot being stored in `localStorage`
-    - the unused frontend `fake-client.ts` and `commander-widget.mock*` files are now removed from the active tree entirely, so commander parity work no longer carries a dead second transport model beside the backend-owned path
-  - the shared token layer now owns responsive shell/layout chrome sizing and a complete named z-index scale, so shell frame padding, topbar offsets, workspace tab minimums, modal width, Dockview header height, and rail/header dimensions adapt through breakpoint-aware tokens instead of widget-local constants
-  - the shell environment layer now also owns dark/light and print media contracts, so `prefers-color-scheme: light` remaps shared surface/text tokens and `@media print` flattens shell chrome for printable output without glow, blur, or resize affordances
-  - the shared DOM identity layer now defaults repo-owned primitives and auto-tagged subtrees to a minimal contract (`id` + `data-runa-node`), while verbose `data-runa-layout/widget/component` metadata is available only through an explicit `RunaDomScopeProvider metadata="verbose"` opt-in
-  - the shared component layer now also uses local style modules where style debt starts to accumulate; `Tabs` is the first component moved off inline layout/style constants, and it now has direct RTL coverage for tab switching plus vertical orientation semantics
-  - `TerminalToolbar` now follows that same component-layer style-module rule, so the toolbar/search/badge style surface lives in `terminal-toolbar.styles.ts` while the existing accessibility test contract keeps covering search focus behavior
-  - `TerminalStatusHeader` now follows the same component-layer style-module rule, so title/meta layout chrome lives in `terminal-status-header.styles.ts`, and the component now has direct RTL coverage for default meta rendering plus compact `primaryText` mode with hidden metadata
-  - the primitive forward-ref baseline is now explicit as well: every active primitive forward-ref export also sets a concrete `.displayName`, so React DevTools and test diagnostics no longer depend on inferred function names alone
-  - the frontend React runtime and types now target the latest stable React line in this repo: `react@19.2.5`, `react-dom@19.2.5`, `@types/react@19.2.14`, and `@types/react-dom@19.2.3`
-  - shared frontend accessibility baselines now keep browser zoom enabled, expose labelled ARIA contracts for `SearchableMultiSelect` and `RadioGroup`, move `TerminalToolbar` search focus explicitly on open, and add `prefers-reduced-motion` plus `prefers-contrast: more` CSS fallbacks
-  - terminal panels now render a frontend-only terminal widget made from `TerminalViewport`, `TerminalStatusHeader`, `TerminalSurface`, and `TerminalWidget`, with xterm mounted locally and no backend session wiring in this slice
-  - the renderer-only terminal slice now also mounts the first xterm addon set: `fit`, `search`, `web-links`, `clipboard`, and `webgl` with a safe fallback to the default renderer
-  - terminal status chrome now lives in Dockview single-tab headers through a custom `terminal-tab` renderer, so `TerminalWidget` owns only the terminal body while `TerminalStatusHeader` renders inside `dv-scrollable`
+    - the active shell now also exposes a runtime-backed language
+      preference: `General` settings load and persist locale over
+      `GET/PUT /api/v1/settings/locale`, `document.documentElement.lang`
+      follows the active locale, and the settings shell framing plus
+      general/runtime copy switch immediately across `ru`, `en`, `zh-CN`,
+      and `es`
+    - `Settings -> Terminal` now participates in that same typed locale
+      boundary: visible terminal settings copy comes from
+      `terminal-settings-section-copy.ts` for `ru`, `en`, `zh-CN`, and
+      `es`, while terminal preference persistence remains in the existing
+      backend-owned terminal settings contract
+    - `Settings -> General` now also exposes an app-owned shell theme
+      preference (`system`, `light`, `dark`); `AppThemeProvider` persists
+      it in local browser storage and projects `data-runa-theme` plus
+      `data-runa-resolved-theme` onto `document.documentElement` so the
+      shared token layer can resolve explicit theme choices instead of
+      relying only on `prefers-color-scheme`
+    - backend widget-kind catalog contract now exists at
+      `GET /api/v1/workspace/widget-kinds`, with `terminal` and `files`
+      exposed as available backend-owned kinds, `commander` exposed as
+      `frontend-local`, and `preview` / `editor` / `web` exposed as
+      planned kinds instead of being overclaimed as active runtime surfaces
+    - the frontend shared workspace API now has a typed
+      `fetchWorkspaceWidgetKindCatalog()` client for that backend contract,
+      and the rewritten Dockview workspace shell now consumes the loaded
+      catalog for startup seeding plus right-rail widget discoverability
+    - the active shell now also has a narrow runtime-backed window-title
+      rule surface: backend settings persist `auto/custom` title mode plus
+      explicit custom title state, `General` settings can pin or reset that
+      state, and live `document.title` sync follows the current workspace
+      title in `auto` mode or the explicit operator-defined custom title in
+      `custom` mode
+    - browser e2e coverage now verifies the active right-rail catalog behavior:
+      `terminal` and `files` remain enabled and runtime-created, path-required
+      `preview` remains disabled in the generic menu, and `commander` plus
+      planned widget kinds are visible but disabled according to catalog status
+      constraints
+    - workspace/files/preview frontend data loads now use abortable fetch paths
+      instead of fire-and-forget request races:
+      widget-kind catalog requests, files directory loads, and preview reads
+      all cancel the superseded in-flight request when the widget unmounts or
+      its target path changes
+    - backend workspace coverage now also verifies the path-handoff `preview`
+      widget route and catalog entry
+    - backend workspace path handoff now also accepts SSH-scoped preview
+      targets without forcing a local `os.Stat` check first, so a remote
+      terminal can open a preview widget for its own path identity instead
+      of failing against the local filesystem
+    - frontend preview-widget coverage verifies preview panel params, bounded
+      text/hex rendering, refresh, inline errors, and backend-owned close
+      semantics
+    - serialized Playwright coverage now exercises the active shell/user paths over the split local dev runtime:
+        - workspace tab switching and workspace creation
+        - the shell topbar now renders workspace tabs and the add-workspace affordance as one tighter grouped strip, with denser active/inactive tab rhythm so workspace switching and creation read as a single compact control cluster instead of separate header controls
+        - the shell topbar close/minimize/fullscreen controls now route through explicit desktop window callbacks; close keeps the existing shutdown guard, while minimize/fullscreen call Tauri commands and degrade to no-ops in split-browser mode
+        - commander Dockview tabs now follow the same compact workspace-strip language instead of a badge-only placeholder: each commander tab shows a compact `commander` pill, a readable `tool/tool N` title, and a per-tab close action only when the commander group actually has multiple tabs
+        - right-rail utility menu actions for new workspace, terminal widget,
+          and files widget,
+          with non-creatable widget kinds disabled from backend catalog truth
+        - closing a backend-owned files widget from the Dockview header removes
+          the backend widget record and collapses the runtime workspace layout
+        - files widget directory navigation for opening a child directory and
+          returning to the parent path
+        - files widget filename filtering with an explicit clear action
+        - files widget refresh action reloads the current directory path
+        - files widget local sorting can switch to modified-time ordering
+        - files widget visible/total entry count updates with filtering and
+          hidden-file toggling
+        - files widget hidden-file toggle hides dotfiles by default and can reveal
+          them
+        - files widget direct path input can jump to a backend path
+        - files widget current-directory button dispatches backend external-open
+          requests
+        - files widget file rows dispatch backend external-open requests
+        - files widget file rows can open backend-owned preview widgets
+        - SSH-backed files and preview widgets now preserve `connection_id`
+          when loading directory listings, preview content, and host-opener
+          requests, so remote files panels no longer silently fall back to the
+          local-only fs transport
+        - settings modal open/close from shell chrome
+        - the right utility rail popover now follows the same compact shell density as the topbar strip, with tighter menu rows and status text instead of a looser generic popover treatment
+        - modal overlays now also use a tighter shell framing rhythm so body/widget modal spacing matches the compact shell chrome instead of reading like a separate larger overlay system
+        - the settings shell now renders as a denser navigator/editor surface with a narrower sidebar, tighter content framing, lighter badges, and a more compact section rhythm, while preserving the existing `General / AI / Terminal / Commander` structure
+        - browser e2e now also locks the compact shell density itself on the active path:
+          workspace tabs and add-workspace controls keep the reduced `22px`
+          minimum height, and the utility creation menu keeps the narrower
+          `208px` shell-aligned framing instead of drifting back to a looser
+          popover size
+        - the `General` section now reads real runtime bootstrap metadata and exposes the desktop `watcher_mode` lifecycle setting; in the split browser dev loop this control degrades to a visible read-only fallback instead of pretending browser mode can persist desktop settings
+        - `Settings -> Remote` now has browser coverage for the filterable saved-profile inventory, including the visible-count summary and explicit no-match empty state
+        - `Settings -> MCP` now has matching browser coverage for the filterable registered-server inventory, including the same visible-count summary and explicit no-match empty state
+        - `Settings -> General` now also has browser coverage for custom
+          window-title persistence: saving a custom title updates the live
+          shell title immediately, and `Reset to auto` returns the shell title
+          to the active workspace-driven form
+        - `Settings -> General` now also has a clean browser path for
+          immediate four-locale shell switching on the active settings path,
+          so the runtime-backed locale setting is verified end-to-end across
+          `ru`, `en`, `zh-CN`, and `es`
+        - a fresh `npm run tauri:dev` smoke still builds and launches the desktop entrypoint after the runtime-settings slice, so the new `watcher_mode` plumbing does not break desktop startup
+        - desktop startup now also self-heals stale watcher attachments recorded in `~/.rterm/runtime.json`: if a previously UI-owned watcher is still bound to `127.0.0.1:7788` but no longer matches the newly attached/spawned core, startup explicitly shuts that stale watcher down before spawning the next one, instead of panicking on `unexpected worker identity`
+        - if desktop startup spawns a fresh core and watcher recovery/spawn then fails, the just-spawned core is now stopped before setup returns the error, so startup no longer leaks a brand-new backend process on the failure path
+        - if desktop startup spawns a fresh watcher and later rejects it during watcher-state validation, the just-spawned watcher is now explicitly stopped and waited down before setup returns the original startup error, so watcher startup failures no longer leave a stray `rterm-core watcher` bound to `127.0.0.1:7788`
+        - desktop startup now also distinguishes a fixed watcher port conflict caused by a non-`rterm` listener: if `127.0.0.1:7788` is occupied but does not answer as a live `rterm` watcher, setup fails early with an explicit `non-rterm service` conflict instead of falling through to a later spawn/bind error
+        - desktop shutdown now also handles the narrow forced-exit case that was still rough before: a `SIGTERM` delivered to `rterm-desktop` triggers the same ephemeral-runtime cleanup path as a normal app exit, so the desktop-owned backend and watcher are torn down before the process leaves
+        - desktop runtime metadata writes (`~/.rterm/runtime.json` and `~/.rterm/settings.json`) now go through an atomic temp-file rename path instead of direct `fs::write`, so startup no longer depends on partially written runtime/settings JSON surviving process interruption cleanly
+        - desktop runtime metadata writes now also make the runtime metadata directory private on Unix (`0700`) and write replacement metadata files with private file permissions (`0600`), so core auth tokens and watcher shutdown tokens are not left under default umask-derived modes
+        - watcher state discovery no longer returns the shutdown token; the desktop reuses the token it already owns from spawn/runtime metadata and sends shutdown proof through `X-Rterm-Watcher-Token` instead of embedding it in the shutdown URL
+        - desktop shutdown policy now also has direct Rust coverage for the Tauri command path itself: `request_shutdown_runtime()` is exercised for `missing runtime`, `persistent`, `ephemeral blocked by active tasks`, `forced ephemeral close`, and `missing auth token`, while a fresh `npm run tauri:dev` smoke still reaches live desktop startup and the smoke-owned runtime delta is terminated cleanly afterward
+        - desktop runtime lifecycle now also has an isolated scripted smoke path: `npm run validate:desktop-runtime` launches `npm run tauri:dev` under a temporary `HOME`, waits for `.rterm/runtime.json` plus live core/watcher health, sends `SIGTERM` to the resolved live `rterm-desktop` parent of the spawned core/watcher pair, and verifies watcher/core exit plus runtime metadata cleanup without touching the user's real `~/.rterm`
+        - Rust coverage now also exercises the narrower fixed-port conflict split directly: `cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml` includes a case where the watcher health probe fails but `127.0.0.1:7788` is still occupied, and the desktop layer now returns an explicit `non-rterm service` conflict instead of treating that state like an empty port
+        - desktop attach recovery now also handles the narrower live-runtime drift where `~/.rterm/runtime.json` lost only the core record while the fixed watcher on `127.0.0.1:7788` is still alive and already points at the same backend: startup reconstructs the missing core attachment from watcher state plus live `/api/v1/health` instead of spawning a duplicate backend beside the already-running runtime
+        - terminal Dockview header `+` actions for the seeded main/workspace terminal groups
+        - extra terminal panels now request a fresh backend terminal session before mounting, so shell creation paths no longer fail with `terminal widget not found: terminal`
+        - closing those extra terminal panels now also restores the backend workspace tab count, so the UI no longer leaks hidden runtime tabs/sessions on close
+        - commander read/navigation/preview and backend write flows (`F7`, `F5`, `F2`, `F6`, `F8`, single + batch same-pane clone, `F4` save)
+        - commander header now also exposes a bounded backend-owned shell context toggle, so operators can inspect `default shell`, `TERM`, `COLORTERM`, and `workspace root` from the active runtime without introducing a broad frontend env-dump contract
+        - non-text commander `F3` now opens a bounded hex preview instead of collapsing into a placeholder-unavailable shell, while non-text commander `F4` still opens an explicit blocked dialog instead of collapsing into a pane-level `File is not UTF-8 text` error only
+        - commander inline path edit autocomplete now also suggests directories from the currently loaded backend pane listing, so `Ctrl+L` plus partial child-path input can resolve visible repo folders without relying only on pane history
+        - commander quick filter now routes through the backend `GET /api/v1/fs/list?query=...` path instead of only filtering already-projected pane rows in the frontend store, and a fresh focused browser smoke covers `Ctrl+F` filter apply plus `Ctrl+Backspace` clear on the active pane
+        - the backend-backed commander runtime state no longer imports its defaults from `commander-widget.mock`; shell defaults now live in a model-owned module, so mock scaffolding is isolated to the fake-client boundary instead of leaking into the active runtime path
+        - the commander widget-store confirm path now only handles local pending flows (`select/unselect/filter/search`); backend mutation kinds (`copy/move/delete/mkdir/rename`) no longer keep dead fake-client mutation branches in the reducer path because the live async hook/API path already owns them
+        - the commander store also drops no-op reducers for backend-owned async actions (`view/edit/open/path/history/save`), so those flows no longer pretend to have synchronous reducer ownership when the real work lives entirely in hooks plus backend HTTP
+        - commander widget persistence now writes only runtime pane/widget state into `runa-terminal:commander-widgets:v1`; older persisted `client.directories` payloads are still accepted on read so existing localStorage survives the cleanup without losing widget restore state
+        - browser validation now also proves that the active commander persistence contract stays narrow in practice: after navigating a pane to a backend path, the persisted `runa-terminal:commander-widgets:v1` snapshot records the pane path but omits `entries` / `directoryEntries`, so reload no longer depends on a frontend-owned directory snapshot being stored in `localStorage`
+        - the unused frontend `fake-client.ts` and `commander-widget.mock*` files are now removed from the active tree entirely, so commander parity work no longer carries a dead second transport model beside the backend-owned path
+    - the shared token layer now owns responsive shell/layout chrome sizing and a complete named z-index scale, so shell frame padding, topbar offsets, workspace tab minimums, modal width, Dockview header height, and rail/header dimensions adapt through breakpoint-aware tokens instead of widget-local constants
+    - the shell environment layer now also owns app theme attributes plus
+      dark/light and print media contracts, so explicit `light` / `dark`
+      choices remap shared surface/text tokens, `prefers-color-scheme:
+light` remains the system fallback, and `@media print` flattens shell
+      chrome for printable output without glow, blur, or resize affordances
+    - the shared DOM identity layer now defaults repo-owned primitives and auto-tagged subtrees to a minimal contract (`id` + `data-runa-node`), while verbose `data-runa-layout/widget/component` metadata is available only through an explicit `RunaDomScopeProvider metadata="verbose"` opt-in
+    - the shared component layer now also uses local style modules where style debt starts to accumulate; `Tabs` is the first component moved off inline layout/style constants, and it now has direct RTL coverage for tab switching plus vertical orientation semantics
+    - `TerminalToolbar` now follows that same component-layer style-module rule, so the toolbar/search/badge style surface lives in `terminal-toolbar.styles.ts` while the existing accessibility test contract keeps covering search focus behavior
+    - `TerminalStatusHeader` now follows the same component-layer style-module rule, so title/meta layout chrome lives in `terminal-status-header.styles.ts`, and the component now has direct RTL coverage for default meta rendering plus compact `primaryText` mode with hidden metadata
+    - the primitive forward-ref baseline is now explicit as well: every active primitive forward-ref export also sets a concrete `.displayName`, so React DevTools and test diagnostics no longer depend on inferred function names alone
+    - the frontend React runtime and types now target the latest stable React line in this repo: `react@19.2.5`, `react-dom@19.2.5`, `@types/react@19.2.14`, and `@types/react-dom@19.2.3`
+    - shared frontend accessibility baselines now keep browser zoom enabled, expose labelled ARIA contracts for `SearchableMultiSelect` and `RadioGroup`, move `TerminalToolbar` search focus explicitly on open, and add `prefers-reduced-motion` plus `prefers-contrast: more` CSS fallbacks
+    - terminal panels now render a frontend-only terminal widget made from `TerminalViewport`, `TerminalStatusHeader`, `TerminalSurface`, and `TerminalWidget`, with xterm mounted locally and no backend session wiring in this slice
+    - the renderer-only terminal slice now also mounts the first xterm addon set: `fit`, `search`, `web-links`, `clipboard`, and `webgl` with a safe fallback to the default renderer
+    - terminal status chrome now lives in Dockview single-tab headers through a custom `terminal-tab` renderer, so `TerminalWidget` owns only the terminal body while `TerminalStatusHeader` renders inside `dv-scrollable`
 - terminal tabs now show a shortened compact `cwd` label as the primary visible label; only the active terminal tab exposes minimal connection/session pills, while the full `cwd` stays available through the title tooltip and the single `+` button for creating another terminal tab still lives once per terminal Dockview header in the top-right actions area
 - terminal tabs are now visually separated from one another with a subtle divider, and each terminal tab shows its own close button when the group contains more than one terminal tab
-  - the `tool` panel now mounts a frontend-only Total Commander-style dual-pane surface through the widget-local `CommanderPanelWidget -> CommanderWidget` path, driven by a widget-scoped commander store plus a local fake filesystem client
-  - the commander demo adds only four generic primitives for dense tool surfaces: `Badge`, `ScrollArea`, `Separator`, and `Surface`
-  - the commander surface now supports per-widget pane state, click navigation, keyboard navigation, hidden-file toggling, cursor movement, local selection semantics, and frontend-only `copy/move/delete/mkdir` mutations inside the same widget without introducing backend calls or real filesystem access
-  - commander write operations now pass through a frontend-only pending confirmation bar, so `copy/move/delete/mkdir` requests wait for explicit `Enter` confirmation or `Escape` cancellation before the fake client mutates local widget state
-  - commander panes now keep independent back/forward history stacks inside the same widget, with active-pane navigation available through header buttons and `Alt+Left` / `Alt+Right`
-  - commander pending operations now also include `F2` rename with an inline text input plus overwrite confirmation messaging for `copy/move/rename`, still scoped to the local fake client and a single widget instance
-  - commander transfer conflicts now also expose explicit frontend-only resolution actions in the pending bar: `Overwrite`, `Skip`, `Overwrite all`, and `Skip all` for `copy/move` collisions inside the same widget
-  - commander runtime state and fake filesystem state now also persist per `widgetId` in `localStorage`, so hard reload restores pane paths, history stacks, cursor/selection, view toggles, and fake-client mutations for each commander widget
-  - commander selection semantics now also keep a stable pane-local anchor, so `Shift+Arrow`, `Shift+PageUp/PageDown`, `Shift+Home/End`, and `Shift+click` extend ranges inside the active pane while `Ctrl+PageUp` still navigates to the parent directory without backend involvement
-  - commander keyboard handling now also supports type-to-jump by filename prefix inside the active pane, and focused file rows now render their active state with an inset ring instead of a row border so cursor travel no longer leaves pale row outlines behind
-  - commander rename now also supports frontend-only batch templates: `Shift+F6` opens mass rename, `Ctrl+PgDn` opens the focused entry from the keyboard, template tokens (`[N]`, `[E]`, `[F]`, `[C]`, `[C:n]`) generate live previews, and duplicate target names block confirmation before the fake client mutates the pane
-  - commander batch rename now also exposes a richer preview tool surface in the same pending bar: preset templates, summary badges, a scrollable `Current / Next / Status` table, case modifiers (`[N:l]`, `[N:u]`, `[E:l]`, `[F:u]`), and extended counters like `[C:10:3]` and `[C:10:3:2]`
-  - commander selection helpers now also support classic fake-client mask flows: `Num +` opens select-by-mask, `Num -` opens unselect-by-mask, `Num *` inverts the active pane selection immediately, and the pending bar previews match counts plus sample entry names for `*`, `?`, and `;`-separated masks
-  - commander panes now also support pane-local quick filtering through the same pending-input surface: `Ctrl+F` opens a filter flow, `Ctrl+Backspace` clears the active pane filter, filtering uses the same `*`, `?`, and `;` mask grammar, and pane headers render a `FILTER <mask>` badge while the filter is active
-  - commander panes now also support inline path editing on the fake client: `Ctrl+L` or clicking the active pane path opens an inline header input, `Enter` navigates that pane to the requested path, and `Escape` cancels without affecting the opposite pane
-  - commander inline path editing now also supports a widget-local autocomplete/history dropdown on the fake client: the path input suggests known directories and pane history, `ArrowUp` / `ArrowDown` step through suggestions, and `Tab` accepts the highlighted suggestion without leaving the inline edit flow
-  - commander sorting now also lives in the pane list headers: clicking `T`, `Name`, `Size`, or `Modified` in either pane switches the widget-local sort mode for both panes, and the fake client now supports explicit `size` ordering instead of only `name`, `ext`, and `modified`
-  - commander panes now also support richer quick search on the fake client: `Ctrl+S` opens a transient search input for the active pane, search runs against currently visible rows with case-insensitive substring matching, and `Enter` jumps the cursor to the first match without mutating pane filter state
-  - commander quick search now also supports hit stepping inside the same pending flow: `ArrowUp` / `ArrowDown` cycle through matches, the pending summary shows the current hit position, and `Enter` confirms the current hit instead of always resolving the first result
-  - commander files now also support frontend-only `F3/F4` flows on the fake client: `F3` opens a read-only viewer modal for the focused file, `F4` opens an editable modal backed by the same fake filesystem, `Ctrl+S` persists the edited content, and the saved text participates in the existing commander `localStorage` persistence model
-  - commander file dialogs now also expose richer editor-shell UX without a heavyweight editor dependency: the footer shows live `Ln/Col` cursor position plus character count, and dirty edit buffers intercept `Esc`/close attempts with an explicit discard prompt instead of silently dropping changes
-  - commander file dialogs now also use a roomier workspace layout: about `5%` free space remains on the left/right edges, about `3%` on the top/bottom, and the dialog surface fills the rest instead of staying as a narrow centered card
-  - commander widget orchestration is now split into focused widget-layer files: `commander-widget.tsx` keeps root focus, keyboard wiring, and path-edit state, while dedicated files own the header row, pane renderer, pending bar, shared helpers, and file dialog chrome
-  - commander store helpers are now split by responsibility into `store-navigation.ts`, `store-selection.ts`, `store-operations.ts`, and `store-persistence.ts`; the build-blocking commander type mismatch around filtered pane entries is resolved under `tsc -b`; and the persistence attachment path now keeps its debounce/init state instance-local instead of reusing module-level mutable variables
-  - commander style modules are now also split by surface area: pane/list styles live in `commander-pane.styles.ts`, pending-bar styles live in `commander-pending-bar.styles.ts`, file-dialog styles live in `commander-file-dialog.styles.ts`, shell/header styles live in `commander-shell.styles.ts`, and `commander-widget.styles.ts` now stays as a thin public barrel
-  - app shell orchestration is now split out of `App.tsx`: `app-ai-sidebar.tsx` owns the shell-managed AI panel width/resize flow, `use-dockview-workspace.ts` now focuses on workspace lifecycle plus orchestration, `use-dockview-workspace-effects.ts` owns the resize/persist/cleanup effect wiring, `dockview-workspace.persistence.ts` owns the persisted workspace schema/defaults, `dockview-workspace.client.ts` owns the pluggable snapshot client contract plus the current `localStorage` adapter, `dockview-workspace.bootstrap.ts` owns the default Dockview panel seed, `dockview-workspace.runtime.ts` owns Dockview layout-sync plus debounced persistence-controller bookkeeping, `dockview-workspace.ready.ts` owns the `existing bootstrap / restore snapshot / clear persisted empty / seed default` decision tree for `DockviewReadyEvent`, `dockview-workspace.snapshots.ts` owns Dockview snapshot capture/apply/tab-update helpers, `dockview-workspace.actions.ts` owns the workspace `select/add` coordinator flow, and `app-shell.styles.ts` keeps the shell style constants so `App.tsx` stays as composition and widget wiring
-  - shell/panel chrome widgets now also keep presentational constants in adjacent style modules: `shell-topbar-widget.styles.ts`, `right-action-rail-widget.styles.ts`, and `modal-host-widget.styles.ts` now own those surfaces instead of mixing the style objects into the widget files
-  - the active shell/AI chrome color slice now also resolves through shared tokens: shell active workspace tabs, Dockview tab chrome, AI header chrome, and AI approval/accent badges now read `var(--...)` tokens from `shared/ui/tokens/index.css` instead of local RGBA literals in the consuming style modules
-  - the active primitive layer now also exposes a consistent native-ref contract: `Button`, `Badge`, `Text`, `Label`, `Checkbox`, `Radio`, `Select`, and `Separator` now follow the same `forwardRef` pattern already used by `Box`, `Input`, `TextArea`, `ScrollArea`, `Surface`, `Image`, and `TerminalViewport`
-  - form-like shared primitives now also resolve their semantic DOM component names through one internal helper, so `Input`, `TextArea`, `Button`, `Checkbox`, `Radio`, and `Select` keep the same fallback order without repeating the same `aria-label/name/placeholder` branching inline in each file
-  - shared components in the current DRY slice now also reuse one component-local `resetBoxStyle` helper, so `DialogPopup`, `Notify`, `SwitcherGroup`, `RadioGroup`, `SwitcherControl`, `RadioControl`, and `TerminalToolbar` no longer repeat the same transparent Box reset object inline
-  - frontend test coverage is now bootstrapped through `Vitest + React Testing Library`: `frontend/src/features/commander/model/persistence.test.ts` covers commander persistence normalization/serialization, `frontend/src/features/commander/model/store-persistence.test.ts` covers the commander store persistence watcher path, `frontend/src/shared/ui/components/dialog-popup.test.tsx` covers the shared dialog shell, and the root `npm run validate` chain now includes `test:frontend`
-  - frontend lint/format tooling now exists at repo root: `eslint.config.mjs` runs ESLint against the active frontend tree, `.prettierrc.json` and `.prettierignore` define the formatter contract, `husky` installs a repo-local `pre-commit` hook, and `lint-staged` formats/lints staged frontend files without forcing a repo-wide rewrite in the same step
-  - commander persistence normalization now also accepts legacy persisted panes where `cursorEntryId` or `selectionAnchorEntryId` are omitted, defaulting them back to `null` / cursor fallback during read instead of dropping the whole widget snapshot
-  - commander symlink rows now render their target inline in the main name field as `name [LINK] -> target`, while the size column stays empty for symlinks so link destinations do not spill into the metadata columns
-  - Dockview-backed widget bodies now drive their own visual active/inactive state through a local `widget-focus` store plus `data-runa-widget-focus-state` on the surrounding group container, so body interaction no longer depends on calling `props.api.setActive()`
-  - when the commander demo widget sits in an inactive Dockview group, its own accent colors now switch to a muted grey palette instead of keeping the active emerald highlights
-  - non-AI widgets now also expose a shared inactive-tone palette, and the terminal widget consumes it so its status header, toolbar accents, viewport chrome, and xterm renderer theme mute when the Dockview group loses focus
-  - the active Dockview widget group now receives a slightly brighter border plus a small lifted-card effect, making the currently focused widget visually clearer without changing layout geometry
-  - widget bodies now expose a local busy-state mechanism that overlays the panel content without changing Dockview group geometry
-  - the busy overlay now uses an invisible centered square AI marker container with no glass card behind it, plus a `tsParticles` node-edge field with linked particles moving freely across the widget body and bouncing from the boundaries
-  - the centered busy marker now stays inside the panel/widget layer as a primitive/component composition, replacing the old inline raw SVG/`foreignObject` markup with a panel-local `WidgetBusyMarker`
-  - the busy overlay blocks panel-body interaction while it is active, but the Dockview header remains outside that body overlay
-  - each panel now exposes a local `Block widget` / `Release busy state` demo control, and the busy overlay itself exposes a release button in the upper-right corner
-  - the app shell now applies `body` padding `6px`, and the root shell respects that outer frame on all four sides
-  - top shell header is `40px` tall, lives only in the left main shell column, and currently renders icon-based window controls, the `AI` toggle, and the tab strip
-  - the top shell header no longer applies an extra left inset before the first action button
-  - the workspace tab strip in the top shell header now starts with a fixed `2rem` left offset after the action controls
-  - the top shell `AI` toggle now uses the same icon-button chrome as the other topbar actions instead of the temporary flattened icon-only treatment
-  - a right-side action rail is present as a separate full-height column, is `40px` wide, and its lower action now uses a settings icon
-  - the shell now includes a modal foundation with a body-scoped host and widget-scoped hosts mounted over individual Dockview groups
-  - the body-scoped settings dialog now uses a fixed wide variant sized to `90vw x 95vh`, leaving `5vw` free on each side and `2.5vh` free above and below
-  - the shared UI layer now includes `DialogPopup` and `Notify` components as reusable popup and notification surfaces
-  - modal overlays now blur background content instead of only darkening it
-  - the settings dialog header now uses an icon close control instead of a text `Close` button
-  - the widget area now keeps tighter shell-chrome spacing: `6px` below the top header and `6px` before the right action rail
-  - Dockview widget groups now keep tighter internal spacing: `6px` between rows and `6px` between columns
-  - Dockview group header and body now render as a single glass surface instead of a separate boxed body layer
-  - Dockview now uses a custom `theme` override to neutralize vendor color backgrounds instead of relying on the library's built-in color themes
-  - the shared UI layer now exposes a tokenized dark-glass surface system with dark emerald and cold-tea accents, semantic spacing/padding scales, blur/shadow tokens, and reduced shell radii
-  - the shell canvas now uses a brighter layered gradient background with multiple restrained light spots behind the widget field, so empty workspace zones keep visible soft tonal variation instead of a flat `color-canvas` fill
-  - Dockview fills the remaining main viewport beside the full-height right rail and boots three base panels from `onReady`
-  - single-tab widget headers render as narrow title headers instead of tab-strip selectors
-  - single-tab Dockview headers now use a `48px` height, doubling the previous `24px` terminal/header chrome
-  - single-tab widget drag can start from the full header area, not only the title text
-  - the top `AI` button now mounts a shell-managed left panel instead of creating a special Dockview group
-  - the AI panel width is now resized through a dedicated shell sash, while the workspace remains pure Dockview on the right
-  - the AI panel outer chrome is now shell-rendered but styled to match Dockview widget surfaces
-  - the shell-managed AI panel now animates open and close through Motion's React renderer with a tweened width transition, so the Dockview workspace compresses and expands as the left panel grows or collapses
-  - the shell-managed AI resize sash is now fully transparent with no visible divider line; only the cursor changes to `col-resize` on hover/active
-  - the shell-managed AI panel now renders a dense built-in layout instead of the old placeholder sections: `AI Rune Assistant` header, two stacked prompt tiles, a thin `TOOL BAR` row with `Chat`, and a bottom composer with textarea plus right-side icon actions
-  - this AI layout remains frontend-only and static in this slice: no backend chat execution, no prompt transport, and no runtime agent wiring were added
-  - the AI body root at `data-runa-modal-anchor=\"ai-shell-panel\"` now has zero padding, and the AI header has been rebuilt as a single instrument-like bar instead of two disconnected boxes
-  - the AI header now uses a square logo slot plus a single-line `AI Rune Assistant` title, with the old secondary `Assistant` eyebrow removed
-  - the AI shell frame now keeps a small visible gap between the polished header bar and the stacked prompt cards
-  - the AI header logo now comes from a reusable shared `Avatar` component backed by `frontend/assets/img/logo.png` instead of the old generic sparkles icon
-  - the local frontend image assets used for the icon/logo set are now normalized to a transparent `256x256` canvas without cropping, so they stay centered and do not introduce a visible padding background
-  - the AI prompt stack now renders as a dense scrollable column of collapsed cards instead of fixed equal-height tiles
-  - each AI prompt card now exposes three icon actions in the upper-right corner: copy prompt, rollback, and copy summary
-  - each AI prompt card now expands locally on click to reveal `Prompt`, `Reasoning`, and `Summary` sections, while collapsed state stays clamped to a short preview
-  - rollback remains static-only in this slice: it switches between the current and rollback mock snapshots inside the card and does not call backend AI/history services
-  - the prompt-card header chrome is now flattened: the three icon actions no longer render their own button plates, and the title cluster no longer inherits boxed `Box` styling
-  - Dockview widget body actions are working again: root-level panel activation now ignores interactive body controls, while terminal surfaces activate their Dockview panel first and then return focus to `xterm`
+    - the `tool` panel now mounts a frontend-only Total Commander-style dual-pane surface through the widget-local `CommanderPanelWidget -> CommanderWidget` path, driven by a widget-scoped commander store plus a local fake filesystem client
+    - the commander demo adds only four generic primitives for dense tool surfaces: `Badge`, `ScrollArea`, `Separator`, and `Surface`
+    - the commander surface now supports per-widget pane state, click navigation, keyboard navigation, hidden-file toggling, cursor movement, local selection semantics, and frontend-only `copy/move/delete/mkdir` mutations inside the same widget without introducing backend calls or real filesystem access
+    - commander write operations now pass through a frontend-only pending confirmation bar, so `copy/move/delete/mkdir` requests wait for explicit `Enter` confirmation or `Escape` cancellation before the fake client mutates local widget state
+    - commander panes now keep independent back/forward history stacks inside the same widget, with active-pane navigation available through header buttons and `Alt+Left` / `Alt+Right`
+    - commander pending operations now also include `F2` rename with an inline text input plus overwrite confirmation messaging for `copy/move/rename`, still scoped to the local fake client and a single widget instance
+    - commander transfer conflicts now also expose explicit frontend-only resolution actions in the pending bar: `Overwrite`, `Skip`, `Overwrite all`, and `Skip all` for `copy/move` collisions inside the same widget
+    - commander runtime state and fake filesystem state now also persist per `widgetId` in `localStorage`, so hard reload restores pane paths, history stacks, cursor/selection, view toggles, and fake-client mutations for each commander widget
+    - commander selection semantics now also keep a stable pane-local anchor, so `Shift+Arrow`, `Shift+PageUp/PageDown`, `Shift+Home/End`, and `Shift+click` extend ranges inside the active pane while `Ctrl+PageUp` still navigates to the parent directory without backend involvement
+    - commander keyboard handling now also supports type-to-jump by filename prefix inside the active pane, and focused file rows now render their active state with an inset ring instead of a row border so cursor travel no longer leaves pale row outlines behind
+    - commander rename now also supports frontend-only batch templates: `Shift+F6` opens mass rename, `Ctrl+PgDn` opens the focused entry from the keyboard, template tokens (`[N]`, `[E]`, `[F]`, `[C]`, `[C:n]`) generate live previews, and duplicate target names block confirmation before the fake client mutates the pane
+    - commander batch rename now also exposes a richer preview tool surface in the same pending bar: preset templates, summary badges, a scrollable `Current / Next / Status` table, case modifiers (`[N:l]`, `[N:u]`, `[E:l]`, `[F:u]`), and extended counters like `[C:10:3]` and `[C:10:3:2]`
+    - commander selection helpers now also support classic fake-client mask flows: `Num +` opens select-by-mask, `Num -` opens unselect-by-mask, `Num *` inverts the active pane selection immediately, and the pending bar previews match counts plus sample entry names for `*`, `?`, and `;`-separated masks
+    - commander panes now also support pane-local quick filtering through the same pending-input surface: `Ctrl+F` opens a filter flow, `Ctrl+Backspace` clears the active pane filter, filtering uses the same `*`, `?`, and `;` mask grammar, and pane headers render a `FILTER <mask>` badge while the filter is active
+    - commander panes now also support inline path editing on the fake client: `Ctrl+L` or clicking the active pane path opens an inline header input, `Enter` navigates that pane to the requested path, and `Escape` cancels without affecting the opposite pane
+    - commander inline path editing now also supports a widget-local autocomplete/history dropdown on the fake client: the path input suggests known directories and pane history, `ArrowUp` / `ArrowDown` step through suggestions, and `Tab` accepts the highlighted suggestion without leaving the inline edit flow
+    - commander sorting now also lives in the pane list headers: clicking `T`, `Name`, `Size`, or `Modified` in either pane switches the widget-local sort mode for both panes, and the fake client now supports explicit `size` ordering instead of only `name`, `ext`, and `modified`
+    - commander panes now also support richer quick search on the fake client: `Ctrl+S` opens a transient search input for the active pane, search runs against currently visible rows with case-insensitive substring matching, and `Enter` jumps the cursor to the first match without mutating pane filter state
+    - commander quick search now also supports hit stepping inside the same pending flow: `ArrowUp` / `ArrowDown` cycle through matches, the pending summary shows the current hit position, and `Enter` confirms the current hit instead of always resolving the first result
+    - commander files now also support frontend-only `F3/F4` flows on the fake client: `F3` opens a read-only viewer modal for the focused file, `F4` opens an editable modal backed by the same fake filesystem, `Ctrl+S` persists the edited content, and the saved text participates in the existing commander `localStorage` persistence model
+    - commander file dialogs now also expose richer editor-shell UX without a heavyweight editor dependency: the footer shows live `Ln/Col` cursor position plus character count, and dirty edit buffers intercept `Esc`/close attempts with an explicit discard prompt instead of silently dropping changes
+    - commander file dialogs now also use a roomier workspace layout: about `5%` free space remains on the left/right edges, about `3%` on the top/bottom, and the dialog surface fills the rest instead of staying as a narrow centered card
+    - commander widget orchestration is now split into focused widget-layer files: `commander-widget.tsx` keeps root focus, keyboard wiring, and path-edit state, while dedicated files own the header row, pane renderer, pending bar, shared helpers, and file dialog chrome
+    - commander store helpers are now split by responsibility into `store-navigation.ts`, `store-selection.ts`, `store-operations.ts`, and `store-persistence.ts`; the build-blocking commander type mismatch around filtered pane entries is resolved under `tsc -b`; and the persistence attachment path now keeps its debounce/init state instance-local instead of reusing module-level mutable variables
+    - commander style modules are now also split by surface area: pane/list styles live in `commander-pane.styles.ts`, pending-bar styles live in `commander-pending-bar.styles.ts`, file-dialog styles live in `commander-file-dialog.styles.ts`, shell/header styles live in `commander-shell.styles.ts`, and `commander-widget.styles.ts` now stays as a thin public barrel
+    - app shell orchestration is now split out of `App.tsx`: `app-ai-sidebar.tsx` owns the shell-managed AI panel width/resize flow, `use-dockview-workspace.ts` now focuses on workspace lifecycle plus orchestration, `use-dockview-workspace-effects.ts` owns the resize/persist/cleanup effect wiring, `dockview-workspace.persistence.ts` owns the persisted workspace schema/defaults, `dockview-workspace.client.ts` owns the pluggable snapshot client contract plus the current `localStorage` adapter, `dockview-workspace.bootstrap.ts` owns the default Dockview panel seed, `dockview-workspace.runtime.ts` owns Dockview layout-sync plus debounced persistence-controller bookkeeping, `dockview-workspace.ready.ts` owns the `existing bootstrap / restore snapshot / clear persisted empty / seed default` decision tree for `DockviewReadyEvent`, `dockview-workspace.snapshots.ts` owns Dockview snapshot capture/apply/tab-update helpers, `dockview-workspace.actions.ts` owns the workspace `select/add` coordinator flow, and `app-shell.styles.ts` keeps the shell style constants so `App.tsx` stays as composition and widget wiring
+    - shell/panel chrome widgets now also keep presentational constants in adjacent style modules: `shell-topbar-widget.styles.ts`, `right-action-rail-widget.styles.ts`, and `modal-host-widget.styles.ts` now own those surfaces instead of mixing the style objects into the widget files
+    - the active shell/AI chrome color slice now also resolves through shared tokens: shell active workspace tabs, Dockview tab chrome, AI header chrome, and AI approval/accent badges now read `var(--...)` tokens from `shared/ui/tokens/index.css` instead of local RGBA literals in the consuming style modules
+    - the active primitive layer now also exposes a consistent native-ref contract: `Button`, `Badge`, `Text`, `Label`, `Checkbox`, `Radio`, `Select`, and `Separator` now follow the same `forwardRef` pattern already used by `Box`, `Input`, `TextArea`, `ScrollArea`, `Surface`, `Image`, and `TerminalViewport`
+    - form-like shared primitives now also resolve their semantic DOM component names through one internal helper, so `Input`, `TextArea`, `Button`, `Checkbox`, `Radio`, and `Select` keep the same fallback order without repeating the same `aria-label/name/placeholder` branching inline in each file
+    - shared components in the current DRY slice now also reuse one component-local `resetBoxStyle` helper, so `DialogPopup`, `Notify`, `SwitcherGroup`, `RadioGroup`, `SwitcherControl`, `RadioControl`, and `TerminalToolbar` no longer repeat the same transparent Box reset object inline
+    - frontend test coverage is now bootstrapped through `Vitest + React Testing Library`: `frontend/src/features/commander/model/persistence.test.ts` covers commander persistence normalization/serialization, `frontend/src/features/commander/model/store-persistence.test.ts` covers the commander store persistence watcher path, `frontend/src/shared/ui/components/dialog-popup.test.tsx` covers the shared dialog shell, and the root `npm run validate` chain now includes `test:frontend`
+    - frontend lint/format tooling now exists at repo root: `eslint.config.mjs` runs ESLint against the active frontend tree, `.prettierrc.json` and `.prettierignore` define the formatter contract, `husky` installs a repo-local `pre-commit` hook, and `lint-staged` formats/lints staged frontend files without forcing a repo-wide rewrite in the same step
+    - commander persistence normalization now also accepts legacy persisted panes where `cursorEntryId` or `selectionAnchorEntryId` are omitted, defaulting them back to `null` / cursor fallback during read instead of dropping the whole widget snapshot
+    - commander symlink rows now render their target inline in the main name field as `name [LINK] -> target`, while the size column stays empty for symlinks so link destinations do not spill into the metadata columns
+    - Dockview-backed widget bodies now drive their own visual active/inactive state through a local `widget-focus` store plus `data-runa-widget-focus-state` on the surrounding group container, so body interaction no longer depends on calling `props.api.setActive()`
+    - when the commander demo widget sits in an inactive Dockview group, its own accent colors now switch to a muted grey palette instead of keeping the active emerald highlights
+    - non-AI widgets now also expose a shared inactive-tone palette, and the terminal widget consumes it so its status header, toolbar accents, viewport chrome, and xterm renderer theme mute when the Dockview group loses focus
+    - the active Dockview widget group now receives a slightly brighter border plus a small lifted-card effect, making the currently focused widget visually clearer without changing layout geometry
+    - widget bodies now expose a local busy-state mechanism that overlays the panel content without changing Dockview group geometry
+    - the busy overlay now uses an invisible centered square AI marker container with no glass card behind it, plus a `tsParticles` node-edge field with linked particles moving freely across the widget body and bouncing from the boundaries
+    - the centered busy marker now stays inside the panel/widget layer as a primitive/component composition, replacing the old inline raw SVG/`foreignObject` markup with a panel-local `WidgetBusyMarker`
+    - the busy overlay blocks panel-body interaction while it is active, but the Dockview header remains outside that body overlay
+    - each panel now exposes a local `Block widget` / `Release busy state` demo control, and the busy overlay itself exposes a release button in the upper-right corner
+    - the app shell now applies `body` padding `6px`, and the root shell respects that outer frame on all four sides
+    - top shell header is `40px` tall, lives only in the left main shell column, and currently renders icon-based window controls, the `AI` toggle, and the tab strip
+    - the top shell header no longer applies an extra left inset before the first action button
+    - the workspace tab strip in the top shell header now starts with a fixed `2rem` left offset after the action controls
+    - the top shell `AI` toggle now uses the same icon-button chrome as the other topbar actions instead of the temporary flattened icon-only treatment
+    - a right-side action rail is present as a separate full-height column, is `40px` wide, and its lower action now uses a settings icon
+    - the shell now includes a modal foundation with a body-scoped host and widget-scoped hosts mounted over individual Dockview groups
+    - the body-scoped settings dialog now uses a fixed wide variant sized to `90vw x 95vh`, leaving `5vw` free on each side and `2.5vh` free above and below
+    - the shared UI layer now includes `DialogPopup` and `Notify` components as reusable popup and notification surfaces
+    - modal overlays now blur background content instead of only darkening it
+    - the settings dialog header now uses an icon close control instead of a text `Close` button
+    - the widget area now keeps tighter shell-chrome spacing: `6px` below the top header and `6px` before the right action rail
+    - Dockview widget groups now keep tighter internal spacing: `6px` between rows and `6px` between columns
+    - Dockview group header and body now render as a single glass surface instead of a separate boxed body layer
+    - Dockview now uses a custom `theme` override to neutralize vendor color backgrounds instead of relying on the library's built-in color themes
+    - the shared UI layer now exposes a tokenized dark-glass surface system with dark emerald and cold-tea accents, semantic spacing/padding scales, blur/shadow tokens, and reduced shell radii
+    - the shell canvas now uses a brighter layered gradient background with multiple restrained light spots behind the widget field, so empty workspace zones keep visible soft tonal variation instead of a flat `color-canvas` fill
+    - Dockview fills the remaining main viewport beside the full-height right rail and boots three base panels from `onReady`
+    - single-tab widget headers render as narrow title headers instead of tab-strip selectors
+    - single-tab Dockview headers now use a `48px` height, doubling the previous `24px` terminal/header chrome
+    - single-tab widget drag can start from the full header area, not only the title text
+    - the top `AI` button now mounts a shell-managed left panel instead of creating a special Dockview group
+    - the AI panel width is now resized through a dedicated shell sash, while the workspace remains pure Dockview on the right
+    - the AI panel outer chrome is now shell-rendered but styled to match Dockview widget surfaces
+    - the shell-managed AI panel now animates open and close through Motion's React renderer with a tweened width transition, so the Dockview workspace compresses and expands as the left panel grows or collapses
+    - the shell-managed AI resize sash is now fully transparent with no visible divider line; only the cursor changes to `col-resize` on hover/active
+    - the shell-managed AI panel now renders a dense built-in layout instead of the old placeholder sections: `AI Rune Assistant` header, two stacked prompt tiles, a thin `TOOL BAR` row with `Chat`, and a bottom composer with textarea plus right-side icon actions
+    - this AI layout remains frontend-only and static in this slice: no backend chat execution, no prompt transport, and no runtime agent wiring were added
+    - the AI body root at `data-runa-modal-anchor=\"ai-shell-panel\"` now has zero padding, and the AI header has been rebuilt as a single instrument-like bar instead of two disconnected boxes
+    - the AI header now uses a square logo slot plus a single-line `AI Rune Assistant` title, with the old secondary `Assistant` eyebrow removed
+    - the AI shell frame now keeps a small visible gap between the polished header bar and the stacked prompt cards
+    - the AI header logo now comes from a reusable shared `Avatar` component backed by `frontend/assets/img/logo.png` instead of the old generic sparkles icon
+    - the local frontend image assets used for the icon/logo set are now normalized to a transparent `256x256` canvas without cropping, so they stay centered and do not introduce a visible padding background
+    - the AI prompt stack now renders as a dense scrollable column of collapsed cards instead of fixed equal-height tiles
+    - each AI prompt card now exposes three icon actions in the upper-right corner: copy prompt, rollback, and copy summary
+    - each AI prompt card now expands locally on click to reveal `Prompt`, `Reasoning`, and `Summary` sections, while collapsed state stays clamped to a short preview
+    - rollback remains static-only in this slice: it switches between the current and rollback mock snapshots inside the card and does not call backend AI/history services
+    - the prompt-card header chrome is now flattened: the three icon actions no longer render their own button plates, and the title cluster no longer inherits boxed `Box` styling
+    - Dockview widget body actions are working again: root-level panel activation now ignores interactive body controls, while terminal surfaces activate their Dockview panel first and then return focus to `xterm`
 
 ## Commands/tests used
 
@@ -269,6 +284,15 @@
 - `./scripts/go.sh test ./core/locale ./core/app ./core/transport/httpapi -run 'TestStoreDefaultsToEnglishLocale|TestStoreNormalizesSupportedLocales|TestLocaleSettingsEndpointsListAndUpdate|TestWindowTitleSettingsEndpointsListAndUpdate' -count=1`
 - `npm --prefix frontend run test -- src/shared/api/runtime.test.ts src/widgets/settings/runtime-settings-section.test.tsx --reporter=verbose`
 - `npm run test:ui -- --reporter=line e2e/shell-workspace.spec.ts --grep "general settings switch shell language immediately across four locales"`
+- `npm --prefix frontend run test -- src/widgets/settings/terminal-settings-section.test.tsx`
+- `npm --prefix frontend run test -- src/widgets/settings/runtime-settings-section.test.tsx`
+- `npm --prefix frontend run test -- src/features/theme/model/theme-provider.test.tsx`
+- `npm --prefix frontend run test -- src/widgets/commander/commander-pane.styles.test.ts`
+- `npm run check:active-path-api`
+- `npm run lint:frontend`
+- `npm run build:frontend`
+- `npm run test:frontend`
+- `npm run validate`
 - `(cd frontend && npm exec prettier -- --write src/shared/api/workspace.ts src/shared/api/workspace.test.ts src/widgets/files/files-panel-widget.tsx src/widgets/files/files-panel-widget.test.tsx src/widgets/files/files-panel-widget.styles.ts src/widgets/panel/dockview-panel-widget.tsx src/widgets/shell/right-action-rail-widget.tsx src/widgets/shell/right-action-rail-widget.test.tsx)`
 - `npm --prefix frontend run test -- src/shared/api/workspace.test.ts`
 - `npm --prefix frontend run test -- src/widgets/files/files-panel-widget.test.tsx`
@@ -597,44 +621,44 @@
 - `core` runtime now exposes `GET /api/v1/health` and keeps DB ownership in-process.
 - SQLite opens through `core/db/open.go` with runtime pragmas (`WAL`, `synchronous=NORMAL`, `busy_timeout=5000`) and runs embedded SQL migrations from `core/db/migrations/*.sql` before API readiness.
 - Task runtime schema is versioned by migrations (`tasks`, `task_events`) and now includes persisted retry metadata on `tasks`:
-  - `retry_count`
-  - `max_retries`
-  - `retry_backoff_seconds`
-  - `last_error_at`
-  - `next_retry_at`
+    - `retry_count`
+    - `max_retries`
+    - `retry_backoff_seconds`
+    - `last_error_at`
+    - `next_retry_at`
 - Task lifecycle transitions are persisted in `task_events`, including retry visibility transitions (`running -> pending` with `retry_scheduled`, `running -> failed` with `retry_exhausted`).
 - `core` task API is wired under `/api/v1/tasks/*` (`create`, `claim`, `done`, `fail`, `active`, `stats`); watcher never accesses SQLite directly.
 - Task create API supports optional retry policy (`max_retries`, `retry_backoff_seconds`); defaults preserve legacy behavior (no retries unless explicitly configured).
 - Retry scheduling is decided only in core state transitions: on failure with remaining attempts, task is moved back to `pending`, ownership is cleared, `retry_count` increments, and `next_retry_at` is set with bounded exponential backoff (`1..3600s` cap). Exhausted attempts finalize as `failed`.
 - Task claim readiness uses effective ready time `COALESCE(next_retry_at, run_at)`, so retry backoff delay is enforced through the same persisted claim pipeline.
 - Desktop watcher spawn is explicit and identity-bound:
-  - `rterm-core watcher --backend=<core_url> --listen=127.0.0.1:7788 --worker-id=<worker_id> --shutdown-token=<shutdown_token>`
-  - watcher metadata is persisted in `~/.rterm/runtime.json` and validated through `/health` + `/watcher/state`; state discovery returns worker/backend identity but does not return the shutdown token.
+    - `rterm-core watcher --backend=<core_url> --listen=127.0.0.1:7788 --worker-id=<worker_id> --shutdown-token=<shutdown_token>`
+    - watcher metadata is persisted in `~/.rterm/runtime.json` and validated through `/health` + `/watcher/state`; state discovery returns worker/backend identity but does not return the shutdown token.
 - Desktop ephemeral shutdown uses active-task guard (`GET /api/v1/tasks/active` with Bearer auth), then requests watcher shutdown via `POST /watcher/shutdown?worker_id=...` plus `X-Rterm-Watcher-Token`, waits for watcher `/health` disappearance as terminal confirmation, and only then proceeds to core stop.
 - Watcher shutdown endpoint validates ownership proof and now returns success only after terminal watcher state is reached:
-  - polling stop signal delivered
-  - graceful task finalization complete
-  - task queue closed
-  - worker pool drained
-  - task/health loop goroutines stopped
-  - server shutdown trigger prepared
+    - polling stop signal delivered
+    - graceful task finalization complete
+    - task queue closed
+    - worker pool drained
+    - task/health loop goroutines stopped
+    - server shutdown trigger prepared
 - Verified in this branch via local commands:
-  - `go test ./core/... ./cmd/rterm-core/... -count=1`
-  - `cargo check -q --manifest-path apps/desktop/src-tauri/Cargo.toml`
+    - `go test ./core/... ./cmd/rterm-core/... -count=1`
+    - `cargo check -q --manifest-path apps/desktop/src-tauri/Cargo.toml`
 - Targeted retry/backoff tests are present in:
-  - `core/db/migrator_retry_test.go` (fresh/existing migration safety for retry schema)
-  - `core/tasks/retry_test.go` (retry scheduling, backoff claim gating, eventual success, exhaustion, shutdown-path consistency)
+    - `core/db/migrator_retry_test.go` (fresh/existing migration safety for retry schema)
+    - `core/tasks/retry_test.go` (retry scheduling, backoff claim gating, eventual success, exhaustion, shutdown-path consistency)
 - Targeted shutdown-order tests are now present in `cmd/rterm-core/main_watcher_test.go` and cover:
-  - shutdown wait for worker-drain before return
-  - long-running task timeout path finalizing to failed
-  - no additional task API claim calls after terminal shutdown
+    - shutdown wait for worker-drain before return
+    - long-running task timeout path finalizing to failed
+    - no additional task API claim calls after terminal shutdown
 - Runtime smoke scenarios still unverified in this sandbox:
-  - first launch spawn + runtime file write
-  - second launch attach without duplicate core/watcher
-  - persistent detach and relaunch attach
-  - no-duplicate invariant across repeated relaunch cycles
+    - first launch spawn + runtime file write
+    - second launch attach without duplicate core/watcher
+    - persistent detach and relaunch attach
+    - no-duplicate invariant across repeated relaunch cycles
 
-  These remain deferred to a local network-capable run due sandbox bind restrictions.
+    These remain deferred to a local network-capable run due sandbox bind restrictions.
 
 - A fresh focused validation pass for the commander external-open slice on `2026-04-25` confirmed the Go core now exposes a typed `POST /api/v1/fs/open` route that resolves the requested path through the same workspace-bound FS contract before dispatching to the host OS opener (`open` on macOS, `xdg-open` on Linux, `start` on Windows). The commander blocked/hex file dialog now surfaces an explicit `Open externally` action wired through the real backend client instead of a dead placeholder instruction, and the frontend dialog keeps inline pending/error state for opener failures. The same pass reconfirmed `./scripts/go.sh test ./core/app -run 'TestOpenFSExternal' -count=1`, `./scripts/go.sh test ./core/transport/httpapi -run 'TestOpenFSExternal' -count=1`, `npm --prefix frontend run test -- src/features/commander/api/client.test.ts src/widgets/commander/commander-file-dialog.test.tsx`, and `npm --prefix frontend run lint:active` all pass. This slice does not claim a fresh browser-level validation of the actual OS opener side effect, and a broader `e2e/commander-readonly.spec.ts` rerun in this environment still hit an unrelated pre-existing timeout in the binary-preview row-click path, so no new Playwright claim is attached to this step.
 - A fresh focused validation pass for the commander external-open handoff-confirmation slice on `2026-04-25` confirmed the commander blocked dialog no longer auto-closes after a successful backend `/api/v1/fs/open` request: the dialog now keeps a visible inline success message so the operator can see that the host-opener handoff was dispatched, while the browser test path uses a routed `/api/v1/fs/open` response instead of pretending it can verify the native OS opener itself. The same pass reconfirmed `npm --prefix frontend run test -- src/widgets/commander/commander-file-dialog.test.tsx`, `npm --prefix frontend run lint:active`, and `npm run test:ui -- --reporter=line e2e/commander-readonly.spec.ts` all pass end to end against the split local runtime.

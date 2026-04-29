@@ -48,6 +48,7 @@ Initial translation boundary in this phase:
 
 - settings-shell navigation and section framing
 - `General` / runtime settings content
+- `Terminal` settings content through a typed locale copy module
 - shell-level localization plumbing required to make the setting live
 
 Explicitly out of scope in this phase:

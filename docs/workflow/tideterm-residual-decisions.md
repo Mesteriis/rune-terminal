@@ -24,6 +24,8 @@ Delivered shape:
 - immediate shell-language switching on the active `General` settings path
 - active settings shell framing plus general/runtime copy read from that
   one persisted locale preference
+- terminal settings copy now uses the same typed locale boundary for the
+  active `Terminal` settings path
 - no claim yet that every active widget or settings subsection is fully
   translated
 
