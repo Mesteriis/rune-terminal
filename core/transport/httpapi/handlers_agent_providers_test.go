@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -340,6 +341,53 @@ func TestProviderRouteStateRoutesAppendAuditEvents(t *testing.T) {
 		if event.ToolName != expectedTool || event.ActionSource != "http.providers" || !event.Success || event.Error != "" {
 			t.Fatalf("unexpected provider route-state audit event %d: %#v", index, event)
 		}
+	}
+}
+
+func TestProviderModelDiscoveryAppendsAuditEvents(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+	providerRequest(t, handler, http.MethodPost, "/api/v1/agent/providers/models", map[string]any{
+		"kind": "codex",
+		"codex": map[string]any{
+			"model": "gpt-5.4",
+		},
+	}, http.StatusOK)
+
+	auditRecorder := providerRequest(t, handler, http.MethodGet, "/api/v1/audit?limit=10", nil, http.StatusOK)
+	events := decodeProviderAuditEvents(t, auditRecorder)
+	if len(events) != 1 {
+		t.Fatalf("expected one provider discovery audit event, got %#v", events)
+	}
+	event := events[0]
+	if event.ToolName != "providers.discover_models" || event.ActionSource != "http.providers" ||
+		!event.Success || event.Error != "" {
+		t.Fatalf("unexpected provider discovery audit event: %#v", event)
+	}
+	if !strings.Contains(event.Summary, "provider_kind=codex") || !strings.Contains(event.Summary, "model_count=2") {
+		t.Fatalf("expected kind/count summary in discovery audit event, got %#v", event)
+	}
+	if strings.Contains(event.Summary, "gpt-5.4") {
+		t.Fatalf("expected discovery audit summary to avoid raw model values, got %#v", event)
+	}
+}
+
+func TestProviderModelDiscoveryAppendsFailureAuditEvent(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newTestHandler(t)
+	providerRequest(t, handler, http.MethodPost, "/api/v1/agent/providers/models", map[string]any{}, http.StatusBadRequest)
+
+	auditRecorder := providerRequest(t, handler, http.MethodGet, "/api/v1/audit?limit=10", nil, http.StatusOK)
+	events := decodeProviderAuditEvents(t, auditRecorder)
+	if len(events) != 1 {
+		t.Fatalf("expected one provider discovery failure audit event, got %#v", events)
+	}
+	event := events[0]
+	if event.ToolName != "providers.discover_models" || event.ActionSource != "http.providers" ||
+		event.Success || event.Error == "" {
+		t.Fatalf("unexpected provider discovery failure audit event: %#v", event)
 	}
 }
 

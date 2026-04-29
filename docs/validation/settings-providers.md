@@ -10,6 +10,9 @@
   - explicit provider probe/prewarm routes that refresh the same operational snapshot instead of creating a second UI truth
   - provider catalog and gateway-state HTTP mutations now append core-owned
     audit events for success and failure paths
+  - provider model discovery now also appends core-owned audit events for
+    success and validation/runtime failure paths while keeping raw model names
+    and draft source URLs out of the audit summary
   - narrow provider runtime for `codex`, `claude`, and `openai-compatible`
   - frontend settings provider client/draft helpers and TypeScript surface
   - provider draft helpers serialize the ownership/route-policy metadata defaults and tolerate stale/raw provider views that predate those fields
@@ -29,6 +32,7 @@
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestProbeProviderReturnsReachableOpenAICompatibleStatus|TestProviderGatewaySnapshotReturnsRecentRunsAndStats' -count=1`
 - `./scripts/go.sh test ./core/providergateway ./core/conversation ./core/app ./core/transport/httpapi -run 'TestStore|TestProviderGatewaySnapshotReturnsRecentRunsAndStats|TestProbeProviderReturnsReachableOpenAICompatibleStatus|TestProviderGatewaySnapshotIncludesLatestProbeState|TestPrewarmProviderReturnsPreparedRouteState|TestOpenAICompatibleProviderComplete|TestOpenAICompatibleProviderCompleteStreamEmitsDeltas|TestServiceSubmitStreamEmitsStructuredEvents' -count=1`
 - `./scripts/go.sh test ./core/transport/httpapi -run 'TestProviderManagementRoutesAppendAuditEvents|TestProviderManagementRoutesAppendFailureAuditEvent|TestProviderRouteStateRoutesAppendAuditEvents' -count=1`
+- `./scripts/go.sh test ./core/transport/httpapi -run 'TestProviderModelDiscoveryAppends.*AuditEvent' -count=1`
 - `python3 -m py_compile scripts/validate_workspace_navigation.py scripts/validate_operator_workflow.py`
 - `python3 scripts/validate_operator_workflow.py`
 - `python3 scripts/validate_workspace_navigation.py`

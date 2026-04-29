@@ -452,6 +452,7 @@ Confirmable boundaries:
     - OpenAI-compatible providers check source reachability and configured-model availability through `/v1/models`
     - probe results are written back into the same gateway snapshot instead of creating a second frontend-owned status store
   - direct HTTP provider catalog and gateway-state mutations (`create`, `update`, `set_active`, `delete`, `probe`, `prewarm`, `clear_route_state`) append core-owned audit events with success/failure and provider identity in the summary
+  - provider model discovery (`POST /api/v1/agent/providers/models`) also appends a core-owned audit event, but records only provider identity/kind and discovered model count rather than raw model names or draft source URLs
   - if gateway telemetry load fails, the settings shell now shows an explicit telemetry error instead of silently collapsing to an empty state
 - Conversation persistence remains full-transcript, but provider requests are bounded to a recent tail before being sent to the active provider.
 - The current provider request budget is deterministic and backend-owned:

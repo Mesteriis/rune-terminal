@@ -24,27 +24,45 @@ type ProviderModelsCatalog struct {
 func (r *Runtime) DiscoverProviderModels(
 	ctx context.Context,
 	input DiscoverProviderModelsInput,
-) (ProviderModelsCatalog, error) {
+) (catalog ProviderModelsCatalog, err error) {
+	auditProviderID := strings.TrimSpace(input.ProviderID)
+	auditProviderKind := strings.TrimSpace(string(input.Kind))
+	modelCount := -1
+	defer func() {
+		r.AppendProviderAudit(ProviderAuditInput{
+			ToolName:     "providers.discover_models",
+			Action:       "discover_models",
+			ProviderID:   auditProviderID,
+			ProviderKind: auditProviderKind,
+			Summary:      providerModelDiscoveryAuditSummary(auditProviderID, auditProviderKind, modelCount),
+			ActionSource: "http.providers",
+			Success:      err == nil,
+			Error:        err,
+		})
+	}()
+
 	record, err := r.resolveProviderModelDiscoveryInput(input)
 	if err != nil {
 		return ProviderModelsCatalog{}, err
 	}
+	auditProviderID = strings.TrimSpace(record.ID)
+	auditProviderKind = strings.TrimSpace(string(record.Kind))
 
 	switch record.Kind {
 	case agent.ProviderKindCodex:
 		models := conversation.ListCodexCLIModels(record.Codex.Model, record.Codex.ChatModels)
-		return ProviderModelsCatalog{Models: models}, nil
+		catalog = ProviderModelsCatalog{Models: models}
 	case agent.ProviderKindClaude:
 		models := conversation.ListClaudeCodeModels(record.Claude.Model, record.Claude.ChatModels)
-		return ProviderModelsCatalog{Models: models}, nil
+		catalog = ProviderModelsCatalog{Models: models}
 	case agent.ProviderKindOpenAICompatible:
 		models, err := conversation.DiscoverOpenAICompatibleModels(ctx, record.OpenAICompatible.BaseURL)
 		if err != nil {
 			return ProviderModelsCatalog{}, err
 		}
-		return ProviderModelsCatalog{
+		catalog = ProviderModelsCatalog{
 			Models: compactModelIDs(append([]string{record.OpenAICompatible.Model}, models...)),
-		}, nil
+		}
 	default:
 		return ProviderModelsCatalog{}, fmt.Errorf(
 			"%w: model discovery is unavailable for provider kind %s",
@@ -52,6 +70,22 @@ func (r *Runtime) DiscoverProviderModels(
 			record.Kind,
 		)
 	}
+	modelCount = len(catalog.Models)
+	return catalog, nil
+}
+
+func providerModelDiscoveryAuditSummary(providerID string, providerKind string, modelCount int) string {
+	parts := []string{"action=discover_models"}
+	if providerID := strings.TrimSpace(providerID); providerID != "" {
+		parts = append(parts, "provider_id="+providerID)
+	}
+	if providerKind := strings.TrimSpace(providerKind); providerKind != "" {
+		parts = append(parts, "provider_kind="+providerKind)
+	}
+	if modelCount >= 0 {
+		parts = append(parts, fmt.Sprintf("model_count=%d", modelCount))
+	}
+	return strings.Join(parts, " ")
 }
 
 func (r *Runtime) resolveProviderModelDiscoveryInput(input DiscoverProviderModelsInput) (agent.ProviderRecord, error) {

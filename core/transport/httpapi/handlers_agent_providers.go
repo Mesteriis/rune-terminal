@@ -223,7 +223,9 @@ func (api *API) handleDiscoverProviderModels(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	if payload.ProviderID == "" && payload.Kind == "" {
-		writeError(w, http.StatusBadRequest, "missing_provider_discovery_target", "provider_id or kind is required")
+		err := errors.New("provider_id or kind is required")
+		api.appendProviderAudit("providers.discover_models", "discover_models", payload.ProviderID, payload.Kind, err)
+		writeError(w, http.StatusBadRequest, "missing_provider_discovery_target", err.Error())
 		return
 	}
 
