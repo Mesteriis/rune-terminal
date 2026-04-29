@@ -437,17 +437,7 @@ fn start_or_attach_runtime(app: &AppHandle, state: &RuntimeState) -> Result<(), 
     let recovered_core = recovered_runtime.as_ref().map(|runtime| runtime.core.clone());
 
     let mut core = if let Some(record) = attachment.core.or(recovered_core) {
-        let token = settings
-            .core_auth_token
-            .clone()
-            .or(record.auth_token)
-            .unwrap_or_else(random_token);
-        let task_control_token = settings
-            .task_control_token
-            .clone()
-            .or(record.task_control_token)
-            .unwrap_or_else(random_token);
-        settings.task_control_token = Some(task_control_token);
+        let token = resolve_existing_core_credentials(&mut settings, record.clone())?;
         RuntimeProcess {
             child: None,
             pid: record.pid,
@@ -537,6 +527,24 @@ fn start_or_attach_runtime(app: &AppHandle, state: &RuntimeState) -> Result<(), 
     *state.inner.lock().map_err(|err| RuntimeError::Path(err.to_string()))? = Some(runtime);
 
     Ok(())
+}
+
+fn resolve_existing_core_credentials(
+    settings: &mut SettingsFile,
+    record: RuntimeProcessRecord,
+) -> Result<String, RuntimeError> {
+    let auth_token = settings.core_auth_token.clone();
+    let auth_token = record
+        .auth_token
+        .or(auth_token)
+        .ok_or_else(|| RuntimeError::Http("core auth token is not available".into()))?;
+    settings.core_auth_token = Some(auth_token.clone());
+
+    let settings_task_control_token = settings.task_control_token.clone();
+    settings.task_control_token = record
+        .task_control_token
+        .or(settings_task_control_token);
+    Ok(auth_token)
 }
 
 fn shutdown_runtime(runtime: &mut RuntimeRuntime) -> Result<(), RuntimeError> {
@@ -1539,6 +1547,7 @@ mod tests {
         load_settings_from_path,
         read_runtime_attachment_from_path, recover_or_drop_watcher_record,
         recover_running_runtime_from_watcher,
+        resolve_existing_core_credentials,
         request_shutdown_runtime,
         reject_foreign_watcher_listener, reject_foreign_watcher_listener_with_probe,
         sanitize_runtime_attachment, wait_for_ready_file,
@@ -1820,6 +1829,93 @@ mod tests {
         assert_eq!(core.url, "http://127.0.0.1:40100");
         assert_eq!(core.auth_token.as_deref(), Some("token"));
         assert!(core.started_by_ui);
+    }
+
+    #[test]
+    fn resolve_existing_core_credentials_uses_persisted_task_token() {
+        let mut settings = SettingsFile::default();
+        let record = RuntimeProcessRecord {
+            pid: 40100,
+            url: "http://127.0.0.1:40100".into(),
+            started_by_ui: true,
+            auth_token: Some("core-token".into()),
+            task_control_token: Some("task-token".into()),
+            worker_id: None,
+            shutdown_token: None,
+        };
+
+        let auth_token =
+            resolve_existing_core_credentials(&mut settings, record).expect("credentials");
+
+        assert_eq!(auth_token, "core-token");
+        assert_eq!(settings.core_auth_token.as_deref(), Some("core-token"));
+        assert_eq!(settings.task_control_token.as_deref(), Some("task-token"));
+    }
+
+    #[test]
+    fn resolve_existing_core_credentials_prefers_runtime_record_tokens() {
+        let mut settings = SettingsFile {
+            watcher_mode: WatcherMode::Ephemeral,
+            core_auth_token: Some("stale-core-token".into()),
+            task_control_token: Some("stale-task-token".into()),
+        };
+        let record = RuntimeProcessRecord {
+            pid: 40100,
+            url: "http://127.0.0.1:40100".into(),
+            started_by_ui: true,
+            auth_token: Some("core-token".into()),
+            task_control_token: Some("task-token".into()),
+            worker_id: None,
+            shutdown_token: None,
+        };
+
+        let auth_token =
+            resolve_existing_core_credentials(&mut settings, record).expect("credentials");
+
+        assert_eq!(auth_token, "core-token");
+        assert_eq!(settings.core_auth_token.as_deref(), Some("core-token"));
+        assert_eq!(settings.task_control_token.as_deref(), Some("task-token"));
+    }
+
+    #[test]
+    fn resolve_existing_core_credentials_does_not_invent_task_token() {
+        let mut settings = SettingsFile::default();
+        let record = RuntimeProcessRecord {
+            pid: 40100,
+            url: "http://127.0.0.1:40100".into(),
+            started_by_ui: true,
+            auth_token: Some("core-token".into()),
+            task_control_token: None,
+            worker_id: None,
+            shutdown_token: None,
+        };
+
+        let auth_token =
+            resolve_existing_core_credentials(&mut settings, record).expect("credentials");
+
+        assert_eq!(auth_token, "core-token");
+        assert!(settings.task_control_token.is_none());
+    }
+
+    #[test]
+    fn resolve_existing_core_credentials_requires_known_auth_token() {
+        let mut settings = SettingsFile::default();
+        let record = RuntimeProcessRecord {
+            pid: 40100,
+            url: "http://127.0.0.1:40100".into(),
+            started_by_ui: true,
+            auth_token: None,
+            task_control_token: Some("task-token".into()),
+            worker_id: None,
+            shutdown_token: None,
+        };
+
+        let err = resolve_existing_core_credentials(&mut settings, record)
+            .expect_err("existing core attach should not guess auth token");
+
+        assert!(
+            matches!(err, RuntimeError::Http(message) if message == "core auth token is not available")
+        );
     }
 
     #[test]

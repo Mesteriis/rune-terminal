@@ -696,6 +696,7 @@ light` remains the system fallback, and `@media print` flattens shell
     - `rterm-core watcher --backend=<core_url> --listen=127.0.0.1:7788 --worker-id=<worker_id> --shutdown-token=<shutdown_token>`
     - watcher metadata is persisted in `~/.rterm/runtime.json` and validated through `/health` + `/watcher/state`; state discovery returns worker/backend identity but does not return the shutdown token.
     - watcher task API calls include the desktop-provisioned task-control token via `X-Rterm-Task-Token`; this token is separate from the frontend-visible core bearer token.
+- Desktop attach/recovery no longer invents auth or task-control tokens for an already-running core. Existing core credentials must come from the persisted settings/runtime record; missing auth now fails attach instead of silently generating an unusable bearer, and missing task-control token remains absent instead of creating a watcher-only token the core cannot validate.
 - Desktop ephemeral shutdown uses active-task guard (`GET /api/v1/tasks/active` with Bearer auth), then requests watcher shutdown via `POST /watcher/shutdown?worker_id=...` plus `X-Rterm-Watcher-Token`, waits for watcher `/health` disappearance as terminal confirmation, and only then proceeds to core stop.
 - Watcher shutdown endpoint validates ownership proof and now returns success only after terminal watcher state is reached:
     - polling stop signal delivered
@@ -707,9 +708,11 @@ light` remains the system fallback, and `@media print` flattens shell
 - Verified in this branch via local commands:
     - `go test ./core/... ./cmd/rterm-core/... -count=1`
     - `cargo check -q --manifest-path apps/desktop/src-tauri/Cargo.toml`
+    - `cargo test -q --manifest-path apps/desktop/src-tauri/Cargo.toml resolve_existing_core_credentials`
     - `go test ./core/transport/httpapi -run 'TestTaskMutationRoutes' -count=1`
     - `go test ./cmd/rterm-core -run 'TestWatcherTaskRequestsIncludeTaskControlToken' -count=1`
 - During this validation pass, one first full Go run hit the existing `TestCancelConversationStreamCancelsActiveProviderRun` SSE ordering instability; rerunning that focused test with `-count=3` passed, and the subsequent full `go test ./core/... ./cmd/rterm-core/... -count=1` pass was green.
+- `cargo check -q --manifest-path apps/desktop/src-tauri/Cargo.toml` currently passes with an existing `dead_code` warning for `reject_foreign_watcher_listener`; this helper is outside the attach-token change and was not cleaned up in this slice.
 - `cargo fmt --manifest-path apps/desktop/src-tauri/Cargo.toml --check` was not available in this local toolchain because `cargo-fmt` / `rustfmt` is not installed.
 - Targeted retry/backoff tests are present in:
     - `core/db/migrator_retry_test.go` (fresh/existing migration safety for retry schema)
