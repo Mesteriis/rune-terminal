@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/Mesteriis/rune-terminal/core/audit"
@@ -59,7 +60,7 @@ func pluginCatalogAuditSummary(
 		parts = append(parts, "source_kind="+kind)
 	}
 	if url := strings.TrimSpace(source.URL); url != "" {
-		parts = append(parts, "source_url="+url)
+		parts = append(parts, "source_url="+redactPluginAuditSourceURL(url))
 	}
 	if ref := strings.TrimSpace(source.Ref); ref != "" {
 		parts = append(parts, "source_ref="+ref)
@@ -68,6 +69,22 @@ func pluginCatalogAuditSummary(
 		parts = append(parts, "actor="+username)
 	}
 	return strings.Join(parts, " ")
+}
+
+func redactPluginAuditSourceURL(rawSourceURL string) string {
+	sourceURL := strings.TrimSpace(rawSourceURL)
+	if sourceURL == "" {
+		return ""
+	}
+	parsedSourceURL, err := url.Parse(sourceURL)
+	if err != nil {
+		return "<invalid>"
+	}
+	parsedSourceURL.User = nil
+	parsedSourceURL.RawQuery = ""
+	parsedSourceURL.ForceQuery = false
+	parsedSourceURL.Fragment = ""
+	return parsedSourceURL.String()
 }
 
 func (kind PluginInstallSourceKind) String() string {

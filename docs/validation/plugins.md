@@ -19,6 +19,9 @@
     being allowed to parse as extra git flags
   - plugin catalog lifecycle mutations now append core-owned audit events for
     install/update/enable/disable/delete success and failure paths
+  - plugin catalog audit summaries redact URL userinfo, query strings, and
+    fragments from source URLs before writing lifecycle events, while keeping
+    the persisted source metadata available for update/install behavior
   - zip install extraction now enforces compressed-size caps for remote and
     `file://` sources plus expanded-byte and entry-count budgets, and archive
     entry containment is checked with root-relative path semantics instead of
@@ -46,6 +49,7 @@ Plugin catalog persistence rollback slice (`2026-04-30`):
 
 - `./scripts/go.sh test ./core/app -run 'TestPluginCatalog(Create|Replace|Delete)DoesNotMutateMemoryWhenPersistFails' -count=1`
 - `./scripts/go.sh test ./core/app -run 'TestDeleteInstalledPlugin(RestoresRootAndRegistrationWhenCatalogDeleteFails|KeepsCatalogWhenInstallRootRemovalFails)' -count=1`
+- `./scripts/go.sh test ./core/app -run 'TestPluginCatalogAuditSummaryRedactsSourceURLSecrets|TestPluginLifecycleAppendsAuditEvents|TestInstallPluginAppendsFailureAuditEvent' -count=1`
 - `./scripts/go.sh test ./core/app -run 'Test.*Plugin' -count=1`
 - `./scripts/go.sh test ./core/app ./core/plugins ./core/transport/httpapi -run 'Test.*Plugin|Test.*Catalog|Test.*Install' -count=1`
 

@@ -309,6 +309,36 @@ func TestPluginLifecycleAppendsAuditEvents(t *testing.T) {
 	}
 }
 
+func TestPluginCatalogAuditSummaryRedactsSourceURLSecrets(t *testing.T) {
+	t.Parallel()
+
+	summary := pluginCatalogAuditSummary(
+		"install",
+		InstalledPluginRecord{
+			ID:            "plugin.audit",
+			RuntimeStatus: PluginRuntimeStatusReady,
+		},
+		PluginInstallSource{
+			Kind: PluginInstallSourceGit,
+			URL:  "https://user:source-token@example.com/org/repo.git?token=source-token#source-token",
+			Ref:  "main",
+		},
+		PluginActor{Username: "tester"},
+	)
+
+	for _, forbidden := range []string{"source-token", "token=", "user:"} {
+		if strings.Contains(summary, forbidden) {
+			t.Fatalf("expected source url secret %q to be redacted from %q", forbidden, summary)
+		}
+	}
+	if !strings.Contains(summary, "source_url=https://example.com/org/repo.git") {
+		t.Fatalf("expected sanitized source url in summary, got %q", summary)
+	}
+	if !strings.Contains(summary, "source_ref=main") {
+		t.Fatalf("expected source ref to remain in summary, got %q", summary)
+	}
+}
+
 func TestInstallPluginAppendsFailureAuditEvent(t *testing.T) {
 	t.Parallel()
 
