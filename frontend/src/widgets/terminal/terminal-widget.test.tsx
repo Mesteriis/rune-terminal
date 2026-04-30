@@ -672,9 +672,13 @@ describe('TerminalWidget', () => {
 
     await waitFor(() => {
       expect(fetchTerminalLatestCommand).toHaveBeenCalledWith('term-side')
-      expect(screen.getByText('Latest command')).toBeInTheDocument()
-      expect(screen.getByText('pwd')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Show latest command for Workspace shell' })).toBeVisible()
     })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show latest command for Workspace shell' }))
+
+    expect(screen.getAllByText('Latest command').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText('pwd')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Re-run the latest command for Workspace shell' }))
 
@@ -753,6 +757,12 @@ describe('TerminalWidget', () => {
     })
 
     render(<TerminalWidget hostId="terminal" runtimeWidgetId="term-pve" title="PVE host" />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Show latest command for PVE host' })).toBeVisible()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show latest command for PVE host' }))
 
     await waitFor(() => {
       expect(screen.getByText('df -h')).toBeInTheDocument()

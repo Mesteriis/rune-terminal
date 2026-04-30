@@ -418,10 +418,10 @@ describe('AiComposerWidget', () => {
       gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
     })
     expect(surface?.getAttribute('style') ?? '').toContain('display: flex;')
-    expect(surface?.getAttribute('style') ?? '').toContain('min-height: 180px;')
+    expect(surface?.getAttribute('style') ?? '').toContain('min-height: 140px;')
     expect(surface?.getAttribute('style') ?? '').toContain('background: var(--color-canvas-elevated);')
-    expect(textarea.getAttribute('style') ?? '').toContain('font-size: 18px;')
-    expect(textarea.getAttribute('style') ?? '').toContain('line-height: 26px;')
+    expect(textarea.getAttribute('style') ?? '').toContain('font-size: 15px;')
+    expect(textarea.getAttribute('style') ?? '').toContain('line-height: 22px;')
     expect(screen.getByRole('button', { name: 'Agent tuning' })).toHaveTextContent('balanced · developer')
     expect(screen.getByRole('button', { name: 'Composer options' })).toHaveTextContent('Main Shell')
   })

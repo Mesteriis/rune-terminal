@@ -61,6 +61,7 @@
   - stale-widget mismatch is now visible in the closed composer body as well, not only after opening the context dropdown
   - AI shell corrective pass:
     - provider-route telemetry plus `chat/dev/debug` mode switching are back in the shell-visible header for fast access
+    - provider-route diagnostics are no longer rendered as a separate card inside the chat body; detailed gateway diagnostics remain in settings-side operator surfaces while the shell keeps only compact header status/action chrome
     - the conversation/history dropdown is conversation-first again instead of doubling as route/mode chrome
     - the collapsed AI work-panel summary now shows route/thread/mode context instead of a mostly decorative placeholder
     - AI header popovers now layer above the panel body through visible frame/content overflow plus a higher header z-tier, while the body itself remains clipped
@@ -140,11 +141,10 @@
   - `Probe` when the route is unchecked, missing, auth-blocked, unreachable, or model-mismatched
   - `Prepare` when the route is ready but not warmed or when the last run failed on a transient route-level condition like timeout/upstream rejection
   - provider settings also expose a filterable persisted run history plus run diagnostics drill-down over that same gateway snapshot, instead of requiring a separate proxy/history subsystem
-  - the AI shell now also renders a compact operator panel from that same backend gateway truth:
-  - active-route status, policy, warm TTL, and warm-expiry visibility
-  - explicit `Probe/Prepare` recovery action chosen from the gateway snapshot
-  - explicit `Clear route state` reset action over the backend route-state contract
-  - provider-scoped recent persisted run history with inline diagnostics for the active route, without introducing a second chat-local runtime model
+  - detailed gateway diagnostics stay out of the chat body:
+  - the AI shell header keeps the compact active-route status and explicit `Probe/Prepare` action chosen from that same gateway snapshot
+  - settings-side provider surfaces remain the place for route-state reset and provider-scoped recent persisted run diagnostics
+  - no second chat-local provider-runtime model is introduced
 - Unsupported legacy provider records are filtered during agent-state normalization. If filtering leaves no providers, the store recreates the default local CLI providers.
 - The provider catalog route returns `supported_kinds: ["codex", "claude", "openai-compatible"]`.
   - The AI composer toolbar now consumes that backend-owned catalog directly:

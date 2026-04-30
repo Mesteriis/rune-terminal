@@ -259,7 +259,7 @@ describe('AppAiSidebar', () => {
     expect(screen.queryByTestId('ai-panel-widget-mock')).not.toBeInTheDocument()
   })
 
-  it('renders compact provider route controls and recent run diagnostics from gateway runtime truth after expanding', async () => {
+  it('keeps provider route diagnostics out of the expanded chat body', () => {
     agentPanelMock.activeProviderGateway = {
       provider_id: 'codex-cli',
       provider_kind: 'codex',
@@ -337,20 +337,12 @@ describe('AppAiSidebar', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Expand AI panel' }))
 
-    expect(screen.getByText('Active route')).toBeVisible()
-    expect(screen.getByText('Codex CLI · ready')).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Prepare route' })).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Clear route state' })).toBeVisible()
-    expect(screen.getByText('Showing 2 of 4')).toBeVisible()
-    expect(screen.getByText('Timed out waiting for first response.')).toBeVisible()
-    expect(screen.getByText('Actor: avm')).toBeVisible()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Prepare route' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Clear route state' }))
-
-    await waitFor(() => {
-      expect(agentPanelMock.prewarmActiveProviderRoute).toHaveBeenCalledTimes(1)
-      expect(agentPanelMock.clearActiveProviderRouteState).toHaveBeenCalledTimes(1)
-    })
+    expect(screen.getByTestId('ai-panel-header-mock')).toBeVisible()
+    expect(screen.getByTestId('ai-panel-widget-mock')).toBeVisible()
+    expect(screen.queryByText('Active route')).not.toBeInTheDocument()
+    expect(screen.queryByText('Recent route activity')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Clear route state' })).not.toBeInTheDocument()
+    expect(agentPanelMock.prewarmActiveProviderRoute).not.toHaveBeenCalled()
+    expect(agentPanelMock.clearActiveProviderRouteState).not.toHaveBeenCalled()
   })
 })

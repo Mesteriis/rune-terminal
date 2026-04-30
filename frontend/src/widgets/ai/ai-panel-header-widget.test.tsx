@@ -70,7 +70,7 @@ describe('AiPanelHeaderWidget', () => {
       />,
     )
 
-    expect(screen.getByText('AI Rune Assistant')).toBeVisible()
+    expect(screen.getByText('AI Rune')).toBeVisible()
     expect(screen.getByText('Codex CLI · Prepared')).toBeVisible()
     expect(screen.getByRole('button', { name: 'chat' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'dev' })).toBeVisible()

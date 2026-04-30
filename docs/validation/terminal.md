@@ -55,7 +55,7 @@
     - the terminal surface now also exposes a backend-owned latest-command strip:
       raw terminal input is tracked into the active backend session as a latest submitted command,
       `GET /api/v1/terminal/{widgetID}/commands/latest` resolves that command back into output/explain metadata,
-      the widget shows the latest command plus observed output/explain summary,
+      the widget exposes the latest command through an explicit header disclosure instead of keeping the full command/output strip open all the time,
       and the operator can explicitly `Explain command` or `Re-run` that exact command from the terminal itself
     - the same header action slot now also exposes explicit recovery actions for broken terminal state:
       local failed/disconnected shells surface `Restart shell`,

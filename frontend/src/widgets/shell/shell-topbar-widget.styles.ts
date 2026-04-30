@@ -8,12 +8,12 @@ export const topbarStyle: CSSProperties = {
   gap: '0.22rem',
   padding: '0 var(--padding-shell-inline) 0 0',
   border: 'none',
-  borderBottom: '1px solid var(--color-border-subtle)',
-  background: 'var(--color-surface-shell-header-gradient)',
+  borderBottom: 'none',
+  background: 'transparent',
   borderRadius: 0,
   boxShadow: 'none',
-  backdropFilter: 'var(--blur-glass-sm)',
-  WebkitBackdropFilter: 'var(--blur-glass-sm)',
+  backdropFilter: 'none',
+  WebkitBackdropFilter: 'none',
 }
 
 export const workspaceStripShellStyle: CSSProperties = {
@@ -107,10 +107,10 @@ export const workspaceTabButtonStyle: CSSProperties = {
 
 export const activeWorkspaceTabStyle: CSSProperties = {
   ...workspaceTabStyle,
-  background: 'var(--color-accent-shell-tab-active)',
+  background: 'color-mix(in srgb, var(--color-surface-glass-soft) 72%, var(--color-accent-emerald-soft) 28%)',
   color: 'var(--color-text-primary)',
-  border: '1px solid var(--color-accent-shell-tab-active-border)',
-  boxShadow: 'var(--shadow-shell-tab-active)',
+  border: '1px solid color-mix(in srgb, var(--color-accent-emerald-strong) 50%, var(--color-border-strong))',
+  boxShadow: 'none',
 }
 
 export const workspaceTabLabelStyle: CSSProperties = {

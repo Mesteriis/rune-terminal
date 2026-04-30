@@ -40,10 +40,11 @@ export const aiPanelContentColumnStyle: CSSProperties = {
 }
 
 export const aiShellHeaderStyle: CSSProperties = {
-  minHeight: '48px',
+  minHeight: '78px',
   display: 'flex',
+  flexDirection: 'column',
   alignItems: 'stretch',
-  justifyContent: 'space-between',
+  justifyContent: 'flex-start',
   gap: 0,
   width: '100%',
   minWidth: 0,
@@ -58,8 +59,9 @@ export const aiShellHeaderTitleLaneStyle: CSSProperties = {
   minWidth: 0,
   display: 'flex',
   alignItems: 'center',
-  gap: 'var(--space-md)',
-  padding: '0 var(--space-md)',
+  gap: 'var(--space-sm)',
+  minHeight: '44px',
+  padding: '0 var(--space-sm)',
 }
 
 export const aiShellHeaderLogoSlotStyle: CSSProperties = {
@@ -76,7 +78,7 @@ export const aiShellHeaderLogoSlotStyle: CSSProperties = {
 
 export const aiShellTitleClusterStyle: CSSProperties = {
   ...aiPlainBlockStyle,
-  flex: '0 0 auto',
+  flex: '1 1 auto',
   minWidth: 0,
   display: 'flex',
   justifyContent: 'flex-start',
@@ -90,11 +92,36 @@ export const aiShellTitleTextStyle: CSSProperties = {
   lineHeight: '24px',
   letterSpacing: '0.02em',
   whiteSpace: 'nowrap',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+}
+
+export const aiShellHeaderUtilityLaneStyle: CSSProperties = {
+  ...aiPlainBlockStyle,
+  display: 'flex',
+  alignItems: 'center',
+  gap: 'var(--space-xs)',
+  minWidth: 0,
+  minHeight: '34px',
+  padding: '0 var(--space-sm) var(--space-xs)',
+}
+
+export const aiShellHeaderCollapseActionStyle: CSSProperties = {
+  ['--runa-ui-bg' as string]: 'color-mix(in srgb, var(--color-surface-shell-header-action) 74%, transparent)',
+  ['--runa-ui-border' as string]: 'color-mix(in srgb, var(--color-border-subtle) 90%, transparent)',
+  ['--runa-ui-color' as string]: 'var(--color-text-primary)',
+  flex: '0 0 auto',
+  width: '32px',
+  minWidth: '32px',
+  minHeight: '32px',
+  padding: 0,
+  borderRadius: '8px',
+  boxShadow: 'none',
 }
 
 export const aiShellRouteClusterStyle: CSSProperties = {
   ...aiPlainBlockStyle,
-  flex: '0 1 320px',
+  flex: '1 1 0',
   minWidth: 0,
   display: 'flex',
   alignItems: 'center',
@@ -140,6 +167,7 @@ export const aiShellRouteActionStyle: CSSProperties = {
   ['--runa-ui-color' as string]: 'var(--color-text-primary)',
   minWidth: 'unset',
   minHeight: '26px',
+  flex: '0 0 auto',
   padding: '0 8px',
   borderRadius: '8px',
   fontFamily: 'var(--font-family-mono)',
@@ -149,7 +177,7 @@ export const aiShellRouteActionStyle: CSSProperties = {
 
 export const aiHeaderConversationGroupStyle: CSSProperties = {
   ...aiPlainBlockStyle,
-  flex: 1,
+  flex: '0 1 190px',
   minWidth: 0,
   display: 'flex',
   alignItems: 'center',
@@ -159,6 +187,7 @@ export const aiHeaderConversationGroupStyle: CSSProperties = {
 }
 
 export const aiHeaderConversationLabelStyle: CSSProperties = {
+  display: 'none',
   color: 'var(--color-text-muted)',
   fontFamily: 'var(--font-family-mono)',
   fontSize: '10px',
@@ -173,7 +202,7 @@ export const aiHeaderConversationTriggerStyle: CSSProperties = {
   ['--runa-ui-border' as string]: 'color-mix(in srgb, var(--color-border-subtle) 92%, transparent)',
   ['--runa-ui-color' as string]: 'var(--color-text-primary)',
   minWidth: 'unset',
-  width: 'min(320px, 100%)',
+  width: '100%',
   minHeight: '32px',
   display: 'inline-flex',
   alignItems: 'center',
@@ -537,13 +566,13 @@ export const aiHeaderModeGroupStyle: CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   gap: 'var(--space-xs)',
-  flexWrap: 'wrap',
+  flexWrap: 'nowrap',
 }
 
 export const aiHeaderModeButtonStyle: CSSProperties = {
   minWidth: 'unset',
   minHeight: '28px',
-  padding: '0 var(--space-sm)',
+  padding: '0 8px',
   borderColor: 'color-mix(in srgb, var(--color-border-strong) 58%, transparent)',
   borderRadius: '999px',
   background: 'color-mix(in srgb, var(--color-surface-shell-header-action) 82%, transparent)',
@@ -901,9 +930,9 @@ export const aiToolbarStyle: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'stretch',
-  gap: 'var(--space-xs)',
-  minHeight: '28px',
-  padding: '0 var(--space-sm)',
+  gap: '4px',
+  minHeight: 0,
+  padding: '0 6px',
   background: 'transparent',
 }
 
@@ -929,7 +958,7 @@ export const aiToolbarControlsStyle: CSSProperties = {
   display: 'grid',
   gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
   alignItems: 'stretch',
-  gap: '6px',
+  gap: '4px',
   minWidth: 0,
   width: '100%',
 }
@@ -940,11 +969,11 @@ export const aiToolbarFieldStackStyle: CSSProperties = {
   gap: 'var(--space-xs)',
   minWidth: 0,
   width: '100%',
-  minHeight: '34px',
-  padding: '0 var(--space-sm)',
-  border: '1px solid var(--color-border-subtle)',
-  borderRadius: 'var(--radius-sm)',
-  background: 'color-mix(in srgb, var(--color-surface-glass-strong) 82%, transparent)',
+  minHeight: '30px',
+  padding: '0 7px',
+  border: '1px solid color-mix(in srgb, var(--color-border-subtle) 70%, transparent)',
+  borderRadius: '8px',
+  background: 'color-mix(in srgb, var(--color-surface-glass-soft) 58%, transparent)',
 }
 
 export const aiToolbarFieldInlineStyle: CSSProperties = {
@@ -1006,14 +1035,14 @@ export const aiToolbarModelSelectStyle: CSSProperties = {
   ['--runa-ui-color' as string]: 'var(--color-text-primary)',
   width: '100%',
   minWidth: 0,
-  minHeight: '34px',
+  minHeight: '30px',
   paddingTop: 0,
   paddingBottom: 0,
   paddingLeft: 0,
   paddingRight: '22px',
   fontFamily: 'var(--font-family-mono)',
-  fontSize: '12px',
-  lineHeight: '16px',
+  fontSize: '11px',
+  lineHeight: '14px',
   boxShadow: 'none',
 }
 
@@ -1023,14 +1052,14 @@ export const aiToolbarProviderSelectStyle: CSSProperties = {
   ['--runa-ui-color' as string]: 'var(--color-text-primary)',
   width: '100%',
   minWidth: 0,
-  minHeight: '34px',
+  minHeight: '30px',
   paddingTop: 0,
   paddingBottom: 0,
   paddingLeft: 0,
   paddingRight: '22px',
   fontFamily: 'var(--font-family-mono)',
-  fontSize: '12px',
-  lineHeight: '16px',
+  fontSize: '11px',
+  lineHeight: '14px',
   boxShadow: 'none',
 }
 
@@ -1038,7 +1067,7 @@ export const aiToolbarContextTriggerStyle: CSSProperties = {
   ['--runa-ui-bg' as string]: 'transparent',
   ['--runa-ui-border' as string]: 'transparent',
   ['--runa-ui-color' as string]: 'var(--color-text-secondary)',
-  minHeight: '34px',
+  minHeight: '30px',
   minWidth: 0,
   width: '100%',
   justifyContent: 'space-between',
@@ -1071,8 +1100,8 @@ export const aiToolbarContextTriggerTitleStyle: CSSProperties = {
 export const aiToolbarContextTriggerMetaStyle: CSSProperties = {
   color: 'inherit',
   fontFamily: 'var(--font-family-mono)',
-  fontSize: '12px',
-  lineHeight: '16px',
+  fontSize: '11px',
+  lineHeight: '14px',
   minWidth: 0,
   maxWidth: '100%',
   overflow: 'hidden',
@@ -1199,10 +1228,10 @@ export const aiComposerContextStripValueStyle: CSSProperties = {
 export const aiComposerSurfaceStyle: CSSProperties = {
   position: 'relative',
   minWidth: 0,
-  minHeight: '180px',
+  minHeight: '140px',
   display: 'flex',
-  gap: 'var(--gap-sm)',
-  padding: 'var(--space-sm)',
+  gap: '8px',
+  padding: '8px',
   background: 'var(--color-canvas-elevated)',
   borderColor: 'var(--color-border-subtle)',
 }
@@ -1216,11 +1245,11 @@ export const aiComposerTextAreaStyle: CSSProperties = {
   border: 'none',
   background: 'transparent',
   boxShadow: 'none',
-  padding: 'var(--space-md)',
+  padding: '10px 8px',
   color: 'var(--color-text-primary)',
   fontFamily: 'var(--font-family-mono)',
-  fontSize: '18px',
-  lineHeight: '26px',
+  fontSize: '15px',
+  lineHeight: '22px',
 }
 
 export const aiComposerActionRailStyle: CSSProperties = {

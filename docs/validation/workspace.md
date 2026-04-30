@@ -132,6 +132,7 @@
         - workspace tab overflow rename/delete actions and the add-after-delete
           id allocation path
         - the shell topbar now renders workspace tabs and the add-workspace affordance as one tighter grouped strip, with denser active/inactive tab rhythm so workspace switching and creation read as a single compact control cluster instead of separate header controls
+        - the shell topbar no longer paints a separate dark underlay behind workspace tabs, and the active workspace tab uses a flat selected state instead of the striped/gradient button treatment
         - the shell now follows the commander-weighted workbench hierarchy more closely: quieter topbar chrome, stronger active terminal surface, and an AI sidebar that reopens as a collapsed work panel instead of a permanently expanded left column
         - the shell topbar close/minimize/fullscreen controls now route through explicit desktop window callbacks; close keeps the existing shutdown guard, while minimize/fullscreen call Tauri commands and degrade to no-ops in split-browser mode
         - commander Dockview tabs now follow the same compact workspace-strip language instead of a badge-only placeholder: each commander tab shows a compact `commander` pill, a readable `tool/tool N` title, and a per-tab close action only when the commander group actually has multiple tabs

@@ -221,6 +221,7 @@ export function AiComposerWidget({
     activeContextWidgetID != null && selectedContextWidgetIDs.includes(activeContextWidgetID)
   const showCurrentContextStrip =
     isWidgetContextEnabled && selectedContextCount === 0 && activeContextWidgetOption != null
+  const hasContextStripItems = selectedContextOptions.length > 0 || showCurrentContextStrip
   const allContextWidgetIDs = contextWidgetOptions.map((option) => option.value)
   const areAllWidgetsSelected =
     contextWidgetOptions.length > 0 &&
@@ -531,7 +532,7 @@ export function AiComposerWidget({
             </ClearBox>
           </ClearBox>
         </ClearBox>
-        {isWidgetContextEnabled && (selectedContextCount > 0 || showCurrentContextStrip) ? (
+        {isWidgetContextEnabled && hasContextStripItems ? (
           <Box runaComponent="ai-composer-context-strip" style={aiComposerContextStripStyle}>
             <Text runaComponent="ai-composer-context-strip-label" style={aiComposerContextStripLabelStyle}>
               Request context

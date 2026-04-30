@@ -78,6 +78,7 @@ export function TerminalWidget({
   const [isLatestCommandLoading, setIsLatestCommandLoading] = useState(false)
   const [isRerunLatestCommandPending, setIsRerunLatestCommandPending] = useState(false)
   const [isSessionBrowserOpen, setIsSessionBrowserOpen] = useState(false)
+  const [isLatestCommandStripOpen, setIsLatestCommandStripOpen] = useState(false)
   const [latestCommand, setLatestCommand] = useState<TerminalLatestCommand | null>(null)
   const [latestCommandError, setLatestCommandError] = useState<string | null>(null)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
@@ -91,6 +92,8 @@ export function TerminalWidget({
   })
   const groupedSessions = terminalSession.sessions ?? []
   const latestOutputSeq = terminalSession.outputChunks[terminalSession.outputChunks.length - 1]?.seq ?? 0
+  const hasLatestCommandPreview =
+    latestCommand !== null || isLatestCommandLoading || latestCommandError != null
   const refreshLatestCommand = useCallback(async () => {
     setIsLatestCommandLoading(true)
 
@@ -124,6 +127,11 @@ export function TerminalWidget({
       window.clearTimeout(refreshTimer)
     }
   }, [latestOutputSeq, refreshLatestCommand, terminalSession.commandInputVersion, terminalSession.sessionKey])
+  useEffect(() => {
+    if (!hasLatestCommandPreview) {
+      setIsLatestCommandStripOpen(false)
+    }
+  }, [hasLatestCommandPreview])
   const visibleGroupedSessions = useMemo(() => {
     const filter = sessionFilterQuery.trim().toLowerCase()
 
@@ -458,6 +466,20 @@ export function TerminalWidget({
                       {isSessionBrowserOpen ? copy.hideSessions : copy.browseSessions}
                     </Button>
                   ) : null}
+                  {hasLatestCommandPreview ? (
+                    <Button
+                      aria-expanded={isLatestCommandStripOpen}
+                      aria-label={`${isLatestCommandStripOpen ? 'Hide' : 'Show'} latest command for ${title}`}
+                      onClick={() => {
+                        setIsLatestCommandStripOpen((currentValue) => !currentValue)
+                      }}
+                      runaComponent="terminal-widget-toggle-command-strip"
+                      style={terminalWidgetAiActionButtonStyle}
+                      title={copy.latestCommand}
+                    >
+                      {copy.latestCommand}
+                    </Button>
+                  ) : null}
                   <Button
                     aria-label={copy.explainAndFixAria(title)}
                     disabled={isExplainAndFixDisabled}
@@ -544,7 +566,7 @@ export function TerminalWidget({
               title={title}
             />
           </ClearBox>
-          {latestCommand !== null || isLatestCommandLoading || latestCommandError ? (
+          {hasLatestCommandPreview && isLatestCommandStripOpen ? (
             <ClearBox runaComponent="terminal-widget-command-strip" style={terminalWidgetCommandStripStyle}>
               <ClearBox
                 runaComponent="terminal-widget-command-strip-header"
