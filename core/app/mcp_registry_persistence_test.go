@@ -1,9 +1,12 @@
 package app
 
 import (
+	"context"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/Mesteriis/rune-terminal/core/config"
@@ -373,4 +376,139 @@ func TestSetMCPServerEnabledDoesNotMutateRegistryWhenPersistFails(t *testing.T) 
 	if !server.Enabled {
 		t.Fatalf("expected failed disable to keep server enabled, got %#v", server)
 	}
+}
+
+func TestMCPProcessServerEnabledStatePersists(t *testing.T) {
+	t.Parallel()
+
+	paths := config.Resolve(t.TempDir())
+	runtimeA := &Runtime{
+		Paths: paths,
+		MCP:   plugins.NewMCPRuntime(nil, nil, nil),
+	}
+	defer runtimeA.MCP.Close()
+
+	if err := runtimeA.registerMCPServers(); err != nil {
+		t.Fatalf("registerMCPServers(runtimeA) error: %v", err)
+	}
+	if _, err := runtimeA.SetMCPServerEnabled("mcp.example", false); err != nil {
+		t.Fatalf("SetMCPServerEnabled error: %v", err)
+	}
+
+	runtimeB := &Runtime{
+		Paths: paths,
+		MCP:   plugins.NewMCPRuntime(nil, nil, nil),
+	}
+	defer runtimeB.MCP.Close()
+
+	if err := runtimeB.registerMCPServers(); err != nil {
+		t.Fatalf("registerMCPServers(runtimeB) error: %v", err)
+	}
+	server, err := runtimeB.GetMCPServer("mcp.example")
+	if err != nil {
+		t.Fatalf("GetMCPServer error: %v", err)
+	}
+	if server.Enabled {
+		t.Fatalf("expected persisted process server disable to survive reload, got %#v", server)
+	}
+}
+
+func TestSetMCPProcessServerEnabledRestartsActiveProcessWhenPersistFails(t *testing.T) {
+	t.Parallel()
+
+	spawner := &mcpPersistenceSpawner{}
+	runtimeA := &Runtime{
+		Paths: config.Resolve(t.TempDir()),
+		MCP:   plugins.NewMCPRuntime(nil, spawner, nil),
+	}
+	t.Cleanup(func() {
+		_ = runtimeA.MCP.Stop("mcp.example", false)
+		runtimeA.MCP.Close()
+	})
+
+	if err := runtimeA.registerMCPServers(); err != nil {
+		t.Fatalf("registerMCPServers(runtimeA) error: %v", err)
+	}
+	if _, err := runtimeA.StartMCPServer(context.Background(), "mcp.example"); err != nil {
+		t.Fatalf("StartMCPServer error: %v", err)
+	}
+	breakMCPRegistryPersistencePath(t, runtimeA)
+	if _, err := runtimeA.SetMCPServerEnabled("mcp.example", false); err == nil {
+		t.Fatalf("expected disable persist failure")
+	}
+
+	server, err := runtimeA.GetMCPServer("mcp.example")
+	if err != nil {
+		t.Fatalf("GetMCPServer error: %v", err)
+	}
+	if !server.Enabled || !server.Active || server.State != plugins.MCPStateIdle {
+		t.Fatalf("expected failed disable to restore enabled active idle server, got %#v", server)
+	}
+	if spawner.Spawns() < 2 {
+		t.Fatalf("expected failed disable to restart the active process, got %d spawns", spawner.Spawns())
+	}
+	if _, err := runtimeA.MCP.Invoke(context.Background(), plugins.MCPInvokeRequest{
+		ServerID: "mcp.example",
+	}); err != nil {
+		t.Fatalf("expected restored active process to remain invokable, got %v", err)
+	}
+}
+
+type mcpPersistenceSpawner struct {
+	mu     sync.Mutex
+	spawns int
+}
+
+func (s *mcpPersistenceSpawner) Spawn(context.Context, plugins.ProcessConfig) (plugins.Process, error) {
+	s.mu.Lock()
+	s.spawns++
+	s.mu.Unlock()
+
+	inReader, inWriter := io.Pipe()
+	outReader, outWriter := io.Pipe()
+	return &mcpPersistenceProcess{
+		stdinReader:  inReader,
+		stdinWriter:  inWriter,
+		stdoutReader: outReader,
+		stdoutWriter: outWriter,
+		done:         make(chan error, 1),
+	}, nil
+}
+
+func (s *mcpPersistenceSpawner) Spawns() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.spawns
+}
+
+type mcpPersistenceProcess struct {
+	stdinReader  *io.PipeReader
+	stdinWriter  *io.PipeWriter
+	stdoutReader *io.PipeReader
+	stdoutWriter *io.PipeWriter
+	done         chan error
+	once         sync.Once
+}
+
+func (p *mcpPersistenceProcess) Stdin() io.WriteCloser {
+	return p.stdinWriter
+}
+
+func (p *mcpPersistenceProcess) Stdout() io.ReadCloser {
+	return p.stdoutReader
+}
+
+func (p *mcpPersistenceProcess) Wait() error {
+	return <-p.done
+}
+
+func (p *mcpPersistenceProcess) Kill() error {
+	p.once.Do(func() {
+		_ = p.stdinReader.Close()
+		_ = p.stdinWriter.Close()
+		_ = p.stdoutReader.Close()
+		_ = p.stdoutWriter.Close()
+		p.done <- nil
+	})
+	return nil
 }

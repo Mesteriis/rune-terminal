@@ -179,6 +179,9 @@ It is intentionally operational, not narrative.
   `action_source=mcp.lifecycle`; audit summaries include endpoint identity only
   after removing URL userinfo, query strings, and fragments.
 - MCP runtime activation is controlled only through explicit API actions (`start`, `stop`, `restart`, `enable`, `disable`) or explicit on-demand invoke requests; core startup does not auto-load or auto-spawn MCP servers.
+- The built-in process MCP server remains registered at startup, but its
+  explicit enabled/disabled operator override is persisted and reapplied
+  without auto-spawning the process.
 - MCP idle servers are auto-stopped after runtime-owned timeout checks, and in-flight MCP invocations are protected from stop/restart interruption.
 - MCP invoke responses do not enter agent context automatically.
 - MCP invoke output is normalized to a fixed internal schema (`mcp.normalized.v1`) before leaving backend runtime paths.

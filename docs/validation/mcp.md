@@ -21,6 +21,9 @@
   - remote MCP register/update/delete/enable mutations restore the live
     registry state when registry-file persistence fails, so failed lifecycle
     writes cannot leave runtime-only MCP capabilities behind
+  - built-in process MCP enabled overrides persist through the same registry
+    file, and failed disable persistence restores the active process when the
+    server was running before the attempt
   - template-driven onboarding helpers inside active settings
   - explicit invoke path
   - output normalization/bounding behavior
@@ -33,6 +36,7 @@
 - `./scripts/go.sh test ./core/transport/httpapi -run 'TestGetMCPServerRedactsSensitiveHeaders|TestGetAndUpdateMCPServer' -count=1`
 - `./scripts/go.sh test ./core/app -run TestUpdateMCPServerPreservesRedactedSensitiveHeaders -count=1`
 - `./scripts/go.sh test ./core/app -run 'Test(Register|Update|Delete|Set)MCPServer.*PersistFails' -count=1`
+- `./scripts/go.sh test ./core/app -run 'TestMCPProcessServerEnabledStatePersists|TestSetMCPProcessServerEnabledRestartsActiveProcessWhenPersistFails' -count=1`
 - `./scripts/go.sh test ./core/app -run 'TestMCPRegistryPersistence|TestUpdateMCPServerPreservesRedactedSensitiveHeaders|Test.*MCPServer.*PersistFails|TestMCPLifecycleAuditSummaryRedactsEndpointSecrets|TestMCPProbeAppendsAuditEventWithoutSecretHeadersOrQuery' -count=1`
 - `./scripts/go.sh test ./core/app ./core/plugins ./core/transport/httpapi -run 'Test.*MCP' -count=1`
 - `./scripts/go.sh test ./core/plugins ./core/app ./core/transport/httpapi -count=1`

@@ -353,6 +353,11 @@ func (r *Runtime) SetMCPServerEnabled(
 	}
 	if err := r.persistMCPRegistry(); err != nil {
 		restoreMCPServerSnapshot(r.MCP.Registry(), previousServer)
+		if previousServer.Enabled && previousServer.Active {
+			if restartErr := r.MCP.Start(context.Background(), previousServer.ID); restartErr != nil {
+				return plugins.MCPServerSnapshot{}, errors.Join(err, restartErr)
+			}
+		}
 		return plugins.MCPServerSnapshot{}, err
 	}
 	server, err = r.MCP.Registry().Get(serverID)
