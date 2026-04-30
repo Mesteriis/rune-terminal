@@ -329,6 +329,68 @@ describe('TerminalWidget', () => {
     expect(screen.getByLabelText('Результаты поиска в терминале')).toHaveTextContent('Введите запрос')
   })
 
+  it('keeps status badges separate from terminal action buttons', () => {
+    vi.mocked(useTerminalSession).mockReturnValue({
+      runtimeWidgetId: 'term-side',
+      sessionKey: 'term-side:1',
+      cwd: '/repo',
+      shellLabel: 'zsh',
+      connectionKind: 'local',
+      sessionState: 'running',
+      canSendInput: true,
+      canInterrupt: true,
+      isLoading: false,
+      isInterrupting: false,
+      isRestarting: false,
+      error: null,
+      statusDetail: 'Attached to local shell.',
+      outputChunks: [],
+      runtimeState: null,
+      interruptSession: vi.fn(),
+      sendInputChunk: vi.fn(),
+      restartSession: vi.fn(),
+    } as ReturnType<typeof useTerminalSession>)
+    vi.mocked(useTerminalPreferences).mockReturnValue({
+      errorMessage: null,
+      decreaseFontSize: vi.fn(),
+      decreaseLineHeight: vi.fn(),
+      cursorBlink: true,
+      cursorStyle: 'block',
+      fontSize: 13,
+      increaseFontSize: vi.fn(),
+      increaseLineHeight: vi.fn(),
+      increaseScrollback: vi.fn(),
+      isLoading: false,
+      isSaving: false,
+      lineHeight: 1.25,
+      refresh: vi.fn(async () => undefined),
+      resetScrollback: vi.fn(),
+      resetFontSize: vi.fn(),
+      resetLineHeight: vi.fn(),
+      resetCursorBlink: vi.fn(),
+      resetCursorStyle: vi.fn(),
+      resetThemeMode: vi.fn(),
+      scrollback: 5000,
+      themeMode: 'adaptive',
+      decreaseScrollback: vi.fn(),
+      updateCursorBlink: vi.fn(),
+      updateFontSize: vi.fn(),
+      updateLineHeight: vi.fn(),
+      updateCursorStyle: vi.fn(),
+      updateThemeMode: vi.fn(),
+    })
+
+    render(<TerminalWidget hostId="terminal" runtimeWidgetId="term-side" title="Workspace shell" />)
+
+    expect(screen.getByText('Local')).toBeVisible()
+    expect(screen.getByText('Running')).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: 'Create another terminal session for Workspace shell' }),
+    ).toBeVisible()
+    expect(screen.getByText('Local').closest('button')).toBeNull()
+    expect(screen.getByText('Running').closest('button')).toBeNull()
+  })
+
   it('surfaces no-match search state and clears stale decorations on empty query', () => {
     findNextMock.mockReturnValueOnce(false)
 
