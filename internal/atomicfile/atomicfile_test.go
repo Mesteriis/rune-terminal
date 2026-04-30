@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -88,6 +89,29 @@ func TestWriteReaderKeepsExistingTargetOnCopyError(t *testing.T) {
 	}
 	if len(entries) != 1 || entries[0].Name() != "state.json" {
 		t.Fatalf("expected failed temp file cleanup, got %#v", entries)
+	}
+}
+
+func TestWriteReaderNoReplaceKeepsExistingTarget(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "state.json")
+	if err := os.WriteFile(path, []byte("old"), 0o600); err != nil {
+		t.Fatalf("WriteFile old error: %v", err)
+	}
+
+	err := WriteReaderNoReplace(path, strings.NewReader("new"), 0o600)
+	if !errors.Is(err, os.ErrExist) {
+		t.Fatalf("expected os.ErrExist, got %v", err)
+	}
+
+	payload, readErr := os.ReadFile(path)
+	if readErr != nil {
+		t.Fatalf("ReadFile error: %v", readErr)
+	}
+	if string(payload) != "old" {
+		t.Fatalf("expected existing payload to remain, got %q", string(payload))
 	}
 }
 

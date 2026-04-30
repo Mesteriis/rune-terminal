@@ -53,7 +53,9 @@
       path
     - local file copy streams now use the same temp-file replacement path,
       so copy and cross-device move fallbacks do not publish target file
-      content before the stream, flush, and close path succeeds
+      content before the stream, flush, and close path succeeds; copy
+      publication now also fails with `ErrFSPathExists` if a target appears
+      between preflight validation and final publish
     - filesystem external-open handoffs now append core-owned audit events for
       success and failure paths with affected path and optional connection
       identity; the validation uses a fake opener binary and does not launch

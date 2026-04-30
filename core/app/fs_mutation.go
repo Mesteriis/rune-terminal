@@ -466,11 +466,20 @@ func copyFSPath(sourcePath string, targetPath string) error {
 		if err != nil {
 			return err
 		}
-		return os.Symlink(linkTarget, targetPath)
+		if err := os.Symlink(linkTarget, targetPath); err != nil {
+			if errors.Is(err, os.ErrExist) {
+				return ErrFSPathExists
+			}
+			return err
+		}
+		return nil
 	}
 
 	if sourceInfo.IsDir() {
-		if err := os.MkdirAll(targetPath, sourceInfo.Mode().Perm()); err != nil {
+		if err := os.Mkdir(targetPath, sourceInfo.Mode().Perm()); err != nil {
+			if errors.Is(err, os.ErrExist) {
+				return ErrFSPathExists
+			}
 			return err
 		}
 		entries, err := os.ReadDir(sourcePath)
@@ -498,7 +507,13 @@ func copyFSFile(sourcePath string, targetPath string, mode fs.FileMode) error {
 	}
 	defer sourceFile.Close()
 
-	return atomicfile.WriteReader(targetPath, sourceFile, mode)
+	if err := atomicfile.WriteReaderNoReplace(targetPath, sourceFile, mode); err != nil {
+		if errors.Is(err, os.ErrExist) {
+			return ErrFSPathExists
+		}
+		return err
+	}
+	return nil
 }
 
 func moveFSPath(sourcePath string, targetPath string) error {
