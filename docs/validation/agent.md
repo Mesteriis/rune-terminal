@@ -59,7 +59,11 @@
   - browser-level recent-attachment reuse coverage from the AI composer shelf
   - explicit stale-widget repair notice plus `Save cleaned context` action for persisted conversation context that no longer matches the current workspace
   - stale-widget mismatch is now visible in the closed composer body as well, not only after opening the context dropdown
-  - AI shell header reduced to `title + active thread`, with provider-route telemetry plus panel-mode switching moved into the conversation/history dropdown
+  - AI shell corrective pass:
+    - provider-route telemetry plus `chat/dev/debug` mode switching are back in the shell-visible header for fast access
+    - the conversation/history dropdown is conversation-first again instead of doubling as route/mode chrome
+    - the collapsed AI work-panel summary now shows route/thread/mode context instead of a mostly decorative placeholder
+    - AI header popovers now layer above the panel body through visible frame/content overflow plus a higher header z-tier, while the body itself remains clipped
   - AI composer single-row icon-led selector toolbar without the previous nested meta row / inner frame treatment
   - AI composer denser request-context dropdown summary block and widget option rows
   - AI assistant message meta row and details panel chrome refinement
@@ -86,8 +90,8 @@
   - shell-visible conversation menu for `Recent / Archived / All` thread grouping, `New` creation, active-thread rename, archive, restore, and delete
   - visible `Active thread` summary block inside the conversation navigator before search/scope controls
   - keyboard navigation through filtered conversation results in the AI conversation navigator
-  - expanded AI panel now reads as an operator notebook: route summary plus mode switching live inside the navigator surface, and the composer keeps the compact two-column drafting grid
-  - empty AI state still keeps panel mode controls reachable through the conversation navigator, so moving mode switching off the always-visible header does not strand `chat/dev/debug`
+  - expanded AI panel keeps the compact two-column drafting grid without the notebook-style shell restyle introduced in the previous pass
+  - empty AI state still keeps panel mode controls reachable from the visible shell header, so `chat/dev/debug` do not depend on opening the conversation navigator
   - live Claude provider routing with explicit `auth-required` handling when the local CLI is installed but not logged in
     - `/run printf ...` sending input into the selected terminal session without falling back to plain provider chat
     - persisted SSH-backed `/run` context restore: a conversation saved against the remote widget still sends `term.send_input` with the preserved remote connection/session target instead of falling back to the active local shell

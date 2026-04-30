@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { AiPanelHeaderWidget } from '@/widgets/ai/ai-panel-header-widget'
 
 describe('AiPanelHeaderWidget', () => {
-  it('renders active provider route telemetry and routes prepare actions through the header controls', () => {
+  it('renders active provider route telemetry and routes prepare actions through the shell header controls', () => {
     const onProviderRouteAction = vi.fn()
 
     render(
@@ -30,17 +30,16 @@ describe('AiPanelHeaderWidget', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Conversation menu' }))
-
     expect(screen.getByText('Codex CLI · Prepared')).toBeVisible()
     expect(screen.getByText('Codex CLI route verified and ready for on-demand launch.')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Retry route prepare' })).toBeVisible()
 
     fireEvent.click(screen.getByRole('button', { name: 'Retry route prepare' }))
 
     expect(onProviderRouteAction).toHaveBeenCalledTimes(1)
   })
 
-  it('keeps the expanded header compact and exposes operator tooling inside the navigator dialog', () => {
+  it('keeps route and mode controls in shell chrome while the navigator stays conversation-focused', () => {
     render(
       <AiPanelHeaderWidget
         activeConversation={{
@@ -65,25 +64,25 @@ describe('AiPanelHeaderWidget', () => {
           lastFirstResponseLatencyMS: 84,
         }}
         conversations={[]}
-        isDebugModeEnabled
         mode="dev"
         onModeChange={() => {}}
         title="AI Rune"
       />,
     )
 
-    expect(screen.getByText('AI Rune')).toBeVisible()
-    expect(screen.queryByText('AI Rune Assistant')).not.toBeInTheDocument()
-    expect(screen.queryByText('Codex CLI · Prepared')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'dev' })).not.toBeInTheDocument()
+    expect(screen.getByText('AI Rune Assistant')).toBeVisible()
+    expect(screen.getByText('Codex CLI · Prepared')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'chat' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'dev' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'debug' })).toBeVisible()
 
     fireEvent.click(screen.getByRole('button', { name: 'Conversation menu' }))
 
     const navigator = screen.getByRole('dialog', { name: 'Conversation navigator' })
-    expect(within(navigator).getByText('Codex CLI · Prepared')).toBeVisible()
-    expect(within(navigator).getByRole('button', { name: 'chat' })).toBeVisible()
-    expect(within(navigator).getByRole('button', { name: 'dev' })).toBeVisible()
-    expect(within(navigator).getByRole('button', { name: 'debug' })).toBeVisible()
+    expect(within(navigator).queryByText('Codex CLI · Prepared')).not.toBeInTheDocument()
+    expect(within(navigator).queryByRole('button', { name: 'chat' })).not.toBeInTheDocument()
+    expect(within(navigator).queryByRole('button', { name: 'dev' })).not.toBeInTheDocument()
+    expect(within(navigator).queryByRole('button', { name: 'debug' })).not.toBeInTheDocument()
   })
 
   it('renders conversations and routes select/create actions through the header controls', () => {
@@ -737,18 +736,19 @@ describe('AiPanelHeaderWidget', () => {
     expect(screen.getByRole('button', { name: 'Conversation menu' })).toBeEnabled()
   })
 
-  it('keeps mode controls reachable from the conversation navigator on an empty state', () => {
+  it('keeps mode controls reachable from the shell header on an empty state', () => {
     render(<AiPanelHeaderWidget conversations={[]} mode="chat" onModeChange={() => {}} title="AI Rune" />)
 
     const trigger = screen.getByRole('button', { name: 'Conversation menu' })
 
     expect(trigger).toBeEnabled()
-    fireEvent.click(trigger)
-
-    expect(screen.getByRole('dialog', { name: 'Conversation navigator' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'chat' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'dev' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'debug' })).toBeVisible()
+
+    fireEvent.click(trigger)
+
+    expect(screen.getByRole('dialog', { name: 'Conversation navigator' })).toBeVisible()
   })
 
   it('opens the conversation navigator from the trigger with keyboard controls', async () => {

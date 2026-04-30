@@ -360,7 +360,7 @@ describe('AiComposerWidget', () => {
     expect(onSelectedContextWidgetIDsChange).toHaveBeenCalledWith(['term-main'])
   })
 
-  it('keeps the expanded composer in a compact notebook layout with a two-column control grid', () => {
+  it('keeps the expanded composer compact with a two-column control grid', () => {
     const { container } = render(
       <AiComposerWidget
         activeContextWidgetID="term-main"
@@ -419,9 +419,9 @@ describe('AiComposerWidget', () => {
     })
     expect(surface?.getAttribute('style') ?? '').toContain('display: flex;')
     expect(surface?.getAttribute('style') ?? '').toContain('min-height: 180px;')
-    expect(surface?.getAttribute('style') ?? '').toContain('border-radius: 14px;')
-    expect(textarea.getAttribute('style') ?? '').toContain('font-size: 16px;')
-    expect(textarea.getAttribute('style') ?? '').toContain('line-height: 24px;')
+    expect(surface?.getAttribute('style') ?? '').toContain('background: var(--color-canvas-elevated);')
+    expect(textarea.getAttribute('style') ?? '').toContain('font-size: 18px;')
+    expect(textarea.getAttribute('style') ?? '').toContain('line-height: 26px;')
     expect(screen.getByRole('button', { name: 'Agent tuning' })).toHaveTextContent('balanced · developer')
     expect(screen.getByRole('button', { name: 'Composer options' })).toHaveTextContent('Main Shell')
   })

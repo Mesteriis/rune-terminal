@@ -25,7 +25,7 @@ import {
 } from './app-shell.styles'
 
 const AI_PANEL_DEFAULT_RATIO = 0.3
-const AI_PANEL_COLLAPSED_WIDTH = 112
+const AI_PANEL_COLLAPSED_WIDTH = 136
 const AI_PANEL_MIN_WIDTH = 320
 const AI_PANEL_RESIZE_HANDLE_WIDTH = 6
 const AI_PANEL_ANIMATION_SECONDS = 0.84
@@ -123,6 +123,7 @@ type AiCollapsedSummaryProps = {
   activeConversationTitle: string
   conversationCountLabel: string
   disclosureRegionId: string
+  modeLabel: string
   onExpand: () => void
   providerLabel: string
   routeLabel: string
@@ -132,6 +133,7 @@ function AiCollapsedSummary({
   activeConversationTitle,
   conversationCountLabel,
   disclosureRegionId,
+  modeLabel,
   onExpand,
   providerLabel,
   routeLabel,
@@ -148,7 +150,7 @@ function AiCollapsedSummary({
         justifyContent: 'space-between',
         gap: '0.7rem',
         padding: '0.7rem 0.5rem 0.8rem',
-        background: 'var(--color-surface-glass-soft)',
+        background: 'color-mix(in srgb, var(--color-surface-shell-header-action) 58%, transparent)',
         borderColor: 'var(--color-border-subtle)',
       }}
     >
@@ -209,6 +211,13 @@ function AiCollapsedSummary({
           style={{ fontWeight: 600, fontSize: '0.79rem', color: 'var(--color-text)' }}
         >
           {activeConversationTitle}
+        </Text>
+        <Text
+          runaComponent="ai-shell-panel-collapsed-mode"
+          title={modeLabel}
+          style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}
+        >
+          Mode · {modeLabel}
         </Text>
         <Text
           runaComponent="ai-shell-panel-collapsed-conversation-meta"
@@ -411,6 +420,7 @@ export function AppAiSidebar({ dockviewApiRef, isOpen, contentAreaRef }: AppAiSi
   const activeConversationCount = agentPanel.activeConversationSummary?.message_count ?? 0
   const conversationCountLabel =
     activeConversationCount > 0 ? `${activeConversationCount} msgs` : 'No messages yet'
+  const modeLabel = chatMode.trim() || 'chat'
   const activeAiPanelWidth = isAiPanelExpanded ? aiPanelWidth : AI_PANEL_COLLAPSED_WIDTH
   const activeResizeHandleWidth = isAiPanelExpanded ? AI_PANEL_RESIZE_HANDLE_WIDTH : 0
   const aiShellWidth = activeAiPanelWidth + activeResizeHandleWidth
@@ -555,6 +565,7 @@ export function AppAiSidebar({ dockviewApiRef, isOpen, contentAreaRef }: AppAiSi
                         activeConversationTitle={activeConversationTitle}
                         conversationCountLabel={conversationCountLabel}
                         disclosureRegionId={AI_SHELL_PANEL_DISCLOSURE_REGION_ID}
+                        modeLabel={modeLabel}
                         onExpand={handleToggleAiPanel}
                         providerLabel={providerLabel}
                         routeLabel={routeLabel}

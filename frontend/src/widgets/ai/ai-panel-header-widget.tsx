@@ -36,6 +36,7 @@ import {
   aiHeaderConversationDropdownWrapStyle,
   aiHeaderConversationEmptyStateStyle,
   aiHeaderConversationGroupStyle,
+  aiHeaderConversationLabelStyle,
   aiHeaderConversationMenuListStyle,
   aiHeaderConversationMenuMetaStyle,
   aiHeaderConversationMenuOptionActiveStyle,
@@ -662,14 +663,54 @@ export function AiPanelHeaderWidget({
           </Box>
           <Box runaComponent="ai-panel-header-title-cluster" style={aiShellTitleClusterStyle}>
             <Text runaComponent="ai-panel-header-title" style={aiShellTitleTextStyle}>
-              {title}
+              {title} Assistant
             </Text>
           </Box>
+          {activeProviderRoute ? (
+            <Box runaComponent="ai-panel-header-route-cluster" style={aiShellRouteClusterStyle}>
+              <Box runaComponent="ai-panel-header-route-summary" style={aiShellRouteSummaryStyle}>
+                <Text
+                  runaComponent="ai-panel-header-route-title"
+                  style={aiShellRouteTitleStyle}
+                  title={activeProviderRouteMessage || activeProviderRoute.displayName}
+                >
+                  {activeProviderRoute.displayName} · {activeProviderRouteStateLabel}
+                </Text>
+                <Text
+                  runaComponent="ai-panel-header-route-meta"
+                  style={aiShellRouteMetaStyle}
+                  title={activeProviderRouteMessage || activeProviderRouteMeta}
+                >
+                  {activeProviderRouteMessage || activeProviderRouteMeta || 'No route telemetry yet'}
+                </Text>
+              </Box>
+              <Button
+                aria-label={providerRouteActionLabel?.trim() || 'Route action'}
+                disabled={isProviderRouteBusy || onProviderRouteAction == null}
+                onClick={() => {
+                  void onProviderRouteAction?.()
+                }}
+                runaComponent="ai-panel-header-route-action"
+                style={aiShellRouteActionStyle}
+              >
+                {isProviderRouteBusy ? (
+                  <LoaderCircle aria-hidden="true" size={12} />
+                ) : (
+                  <Check aria-hidden="true" size={12} />
+                )}
+                {providerRouteActionLabel?.trim() ||
+                  (activeProviderRoute.routePrepared ? 'Refresh' : 'Prepare')}
+              </Button>
+            </Box>
+          ) : null}
           <Box
             ref={conversationMenuWrapRef}
             runaComponent="ai-panel-header-conversation-group"
             style={aiHeaderConversationGroupStyle}
           >
+            <Text runaComponent="ai-panel-header-conversation-label" style={aiHeaderConversationLabelStyle}>
+              Conversation
+            </Text>
             <Button
               aria-expanded={isConversationMenuOpen}
               aria-haspopup="dialog"
@@ -883,65 +924,6 @@ export function AiPanelHeaderWidget({
                         style={aiHeaderConversationSearchInputStyle}
                         value={conversationSearchQuery}
                       />
-                      {activeProviderRoute ? (
-                        <Box
-                          aria-label="Provider route summary"
-                          runaComponent="ai-panel-header-route-cluster"
-                          style={aiShellRouteClusterStyle}
-                        >
-                          <Box runaComponent="ai-panel-header-route-summary" style={aiShellRouteSummaryStyle}>
-                            <Text
-                              runaComponent="ai-panel-header-route-title"
-                              style={aiShellRouteTitleStyle}
-                              title={activeProviderRouteMessage || activeProviderRoute.displayName}
-                            >
-                              {activeProviderRoute.displayName} · {activeProviderRouteStateLabel}
-                            </Text>
-                            <Text
-                              runaComponent="ai-panel-header-route-meta"
-                              style={aiShellRouteMetaStyle}
-                              title={activeProviderRouteMessage || activeProviderRouteMeta}
-                            >
-                              {activeProviderRouteMessage ||
-                                activeProviderRouteMeta ||
-                                'No route telemetry yet'}
-                            </Text>
-                          </Box>
-                          <Button
-                            aria-label={providerRouteActionLabel?.trim() || 'Route action'}
-                            disabled={isProviderRouteBusy || onProviderRouteAction == null}
-                            onClick={() => {
-                              void onProviderRouteAction?.()
-                            }}
-                            runaComponent="ai-panel-header-route-action"
-                            style={aiShellRouteActionStyle}
-                          >
-                            {isProviderRouteBusy ? (
-                              <LoaderCircle aria-hidden="true" size={12} />
-                            ) : (
-                              <Check aria-hidden="true" size={12} />
-                            )}
-                            {providerRouteActionLabel?.trim() ||
-                              (activeProviderRoute.routePrepared ? 'Refresh' : 'Prepare')}
-                          </Button>
-                        </Box>
-                      ) : null}
-                      <Box runaComponent="ai-panel-header-mode-group" style={aiHeaderModeGroupStyle}>
-                        {CHAT_MODES.map((chatMode) => (
-                          <Button
-                            aria-pressed={mode === chatMode}
-                            key={chatMode}
-                            onClick={() => onModeChange(chatMode)}
-                            runaComponent={`ai-panel-header-mode-${chatMode}`}
-                            style={{
-                              ...aiHeaderModeButtonStyle,
-                              ...(mode === chatMode ? aiHeaderModeButtonActiveStyle : null),
-                            }}
-                          >
-                            {chatMode}
-                          </Button>
-                        ))}
-                      </Box>
                     </Box>
                   </Box>
                   {isDeleteConversationConfirmOpen && pendingDeleteConversation ? (
@@ -1262,6 +1244,22 @@ export function AiPanelHeaderWidget({
               </Box>
             ) : null}
           </Box>
+        </Box>
+        <Box runaComponent="ai-panel-header-mode-group" style={aiHeaderModeGroupStyle}>
+          {CHAT_MODES.map((chatMode) => (
+            <Button
+              aria-pressed={mode === chatMode}
+              key={chatMode}
+              onClick={() => onModeChange(chatMode)}
+              runaComponent={`ai-panel-header-mode-${chatMode}`}
+              style={{
+                ...aiHeaderModeButtonStyle,
+                ...(mode === chatMode ? aiHeaderModeButtonActiveStyle : null),
+              }}
+            >
+              {chatMode}
+            </Button>
+          ))}
         </Box>
       </Surface>
     </RunaDomScopeProvider>

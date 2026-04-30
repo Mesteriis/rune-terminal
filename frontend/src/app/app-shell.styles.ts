@@ -60,7 +60,7 @@ export const aiPanelShellContentStyle = {
   minWidth: 0,
   minHeight: 0,
   display: 'flex',
-  overflow: 'hidden' as const,
+  overflow: 'visible' as const,
   padding: 0,
   border: 'none',
   borderRadius: 0,
@@ -77,7 +77,7 @@ export const aiPanelFrameStyle = {
   display: 'flex',
   flexDirection: 'column' as const,
   gap: '0.45rem',
-  overflow: 'hidden' as const,
+  overflow: 'visible' as const,
   padding: 0,
   border: 'none',
   borderRadius: 0,
@@ -89,7 +89,7 @@ export const aiPanelFrameStyle = {
 
 export const aiPanelHeaderStyle = {
   position: 'relative' as const,
-  zIndex: 'var(--z-floating)',
+  zIndex: 'var(--z-modal-widget)',
   flex: '0 0 auto',
   height: 'auto',
   minHeight: '44px',
@@ -106,6 +106,8 @@ export const aiPanelHeaderStyle = {
 }
 
 export const aiPanelBodyStyle = {
+  position: 'relative' as const,
+  zIndex: 'var(--z-base)',
   flex: 1,
   minWidth: 0,
   minHeight: 0,
