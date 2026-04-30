@@ -246,6 +246,7 @@ func resolveFSPathWithinWorkspace(rootAbs string, rootCanonical string, targetAb
 		if component == "" || component == "." {
 			continue
 		}
+		isFinalComponent := index == len(components)-1
 		currentLexical = filepath.Join(currentLexical, component)
 		nextCanonical := filepath.Join(currentCanonical, component)
 
@@ -268,6 +269,9 @@ func resolveFSPathWithinWorkspace(rootAbs string, rootCanonical string, targetAb
 		}
 
 		if info.Mode()&os.ModeSymlink == 0 {
+			if !isFinalComponent && !info.IsDir() {
+				return "", ErrFSPathNotDirectory
+			}
 			currentCanonical = nextCanonical
 			continue
 		}
@@ -358,6 +362,9 @@ func (r *Runtime) resolveFSEntryPath(path string) (string, error) {
 			return "", err
 		}
 		if info.Mode()&os.ModeSymlink == 0 {
+			if !isFinalComponent && !info.IsDir() {
+				return "", ErrFSPathNotDirectory
+			}
 			if !isFinalComponent {
 				currentCanonical = nextCanonical
 			}

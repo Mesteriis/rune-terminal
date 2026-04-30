@@ -91,6 +91,22 @@ func TestListFSRejectsFilePathAsDirectory(t *testing.T) {
 	}
 }
 
+func TestFSPathResolutionRejectsFileParentAsDirectory(t *testing.T) {
+	t.Parallel()
+
+	repoRoot := t.TempDir()
+	filePath := filepath.Join(repoRoot, "README.md")
+	if err := os.WriteFile(filePath, []byte("not a directory"), 0o600); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+
+	runtime := &Runtime{RepoRoot: repoRoot}
+	_, err := runtime.MkdirFS(filepath.Join(filePath, "child"))
+	if !errors.Is(err, ErrFSPathNotDirectory) {
+		t.Fatalf("expected ErrFSPathNotDirectory, got %v", err)
+	}
+}
+
 func TestMkdirFSReturnsCanonicalPathForSymlinkParentInsideWorkspace(t *testing.T) {
 	t.Parallel()
 
