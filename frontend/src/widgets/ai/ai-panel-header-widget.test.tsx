@@ -737,6 +737,20 @@ describe('AiPanelHeaderWidget', () => {
     expect(screen.getByRole('button', { name: 'Conversation menu' })).toBeEnabled()
   })
 
+  it('keeps mode controls reachable from the conversation navigator on an empty state', () => {
+    render(<AiPanelHeaderWidget conversations={[]} mode="chat" onModeChange={() => {}} title="AI Rune" />)
+
+    const trigger = screen.getByRole('button', { name: 'Conversation menu' })
+
+    expect(trigger).toBeEnabled()
+    fireEvent.click(trigger)
+
+    expect(screen.getByRole('dialog', { name: 'Conversation navigator' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'chat' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'dev' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'debug' })).toBeVisible()
+  })
+
   it('opens the conversation navigator from the trigger with keyboard controls', async () => {
     render(
       <AiPanelHeaderWidget

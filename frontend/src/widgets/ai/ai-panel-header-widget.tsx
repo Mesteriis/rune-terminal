@@ -284,8 +284,6 @@ export function AiPanelHeaderWidget({
       null,
     [activeConversationOverride, conversations, selectedConversationID],
   )
-  const canOpenConversationMenu =
-    hasConversationOptions || activeConversation != null || activeProviderRoute != null
   const activeConversationTitle = activeConversation
     ? formatConversationTitle(activeConversation)
     : 'Loading conversations'
@@ -676,7 +674,7 @@ export function AiPanelHeaderWidget({
               aria-expanded={isConversationMenuOpen}
               aria-haspopup="dialog"
               aria-label="Conversation menu"
-              disabled={isConversationBusy || !canOpenConversationMenu}
+              disabled={isConversationBusy}
               onClick={() => setIsConversationMenuOpen((currentValue) => !currentValue)}
               onKeyDown={handleConversationTriggerKeyDown}
               runaComponent="ai-panel-header-conversation-trigger"
