@@ -47,6 +47,7 @@
 - `npm run tauri:check`
 - `ruby -e "require 'yaml'; YAML.load_file('.github/workflows/ci.yml'); puts 'workflow yaml parses'"`
 - `git diff --check`
+- `./scripts/go.sh test ./core/app -count=1`
 
 ## Known limitations
 

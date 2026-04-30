@@ -46,6 +46,10 @@
 The frontend is being **rewritten**, not migrated. Reference baselines
 from any previous fork are historical inspiration only.
 
+Warp is also tracked as a contemporary product reference for terminal
+interaction and remote agent-management workflows. Treat it as input for
+specific product questions, not as a parity target.
+
 | Area                                                              | State   | Notes                                                                                                                                                                                                                       |
 | ----------------------------------------------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Layered architecture (tokens → primitives → components → widgets) | `NOW`   | see `frontend/docs/ui-architecture.md`                                                                                                                                                                                      |

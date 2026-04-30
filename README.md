@@ -42,6 +42,14 @@ Relevant historical repositories:
 - Wave Terminal: `https://github.com/wavetermdev/waveterm`
 - TideTerm: `https://github.com/sanshao85/tideterm`
 
+Additional contemporary reference:
+
+- Warp: `https://www.warp.dev/`
+
+Warp is a product reference for selected terminal interaction patterns and
+remote agent-management workflows. It is not a lineage source and should not
+turn the project back into a parity exercise.
+
 `rune-terminal` is not a denial of either project. It is a deliberate
 next step: keep the good ideas, drop the architectural habits that were
 becoming too expensive to evolve.

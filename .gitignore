@@ -12,7 +12,10 @@ state/
 *.tsbuildinfo
 
 tideterm/
+tiberterm/
+warp/
 .playwright-mcp
+.codex/
 *.png
 test-results/
 *.log
@@ -36,4 +39,3 @@ test-results/
 *.backup
 .husky/
 .aiassistant/
-tiberterm/
