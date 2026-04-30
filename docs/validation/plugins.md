@@ -27,8 +27,10 @@
     same total copied-byte / entry-count budget before writing into the install
     root; failed staged copies remove their `.staging-*` directory before
     returning
-  - plugin delete removes the install root before removing the catalog record,
-    so filesystem-removal failures leave the plugin visible and retryable
+  - plugin delete stages the install root out of the active path before
+    removing the catalog record; filesystem-removal failures leave the plugin
+    visible and retryable, and catalog-delete persistence failures restore the
+    install root plus tool registration
   - plugin catalog create/replace/delete keeps the in-memory catalog unchanged
     when persistence fails, so failed lifecycle requests do not drift runtime
     truth away from durable state
@@ -43,6 +45,9 @@ MCP probe hardening slice (`2026-04-30`):
 Plugin catalog persistence rollback slice (`2026-04-30`):
 
 - `./scripts/go.sh test ./core/app -run 'TestPluginCatalog(Create|Replace|Delete)DoesNotMutateMemoryWhenPersistFails' -count=1`
+- `./scripts/go.sh test ./core/app -run 'TestDeleteInstalledPlugin(RestoresRootAndRegistrationWhenCatalogDeleteFails|KeepsCatalogWhenInstallRootRemovalFails)' -count=1`
+- `./scripts/go.sh test ./core/app -run 'Test.*Plugin' -count=1`
+- `./scripts/go.sh test ./core/app ./core/plugins ./core/transport/httpapi -run 'Test.*Plugin|Test.*Catalog|Test.*Install' -count=1`
 
 Catalog lifecycle hardening slice (`2026-04-29`):
 

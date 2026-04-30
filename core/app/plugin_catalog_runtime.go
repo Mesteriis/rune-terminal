@@ -324,17 +324,25 @@ func (r *Runtime) DeleteInstalledPlugin(id string) (removed InstalledPluginRecor
 	}
 	auditRecord = record
 	r.unregisterInstalledPlugin(record)
-	if strings.TrimSpace(record.InstallRoot) != "" {
-		if err := os.RemoveAll(record.InstallRoot); err != nil {
-			if record.Enabled {
-				_ = r.registerInstalledPlugin(record)
-			}
-			return InstalledPluginRecord{}, PluginCatalog{}, err
+	removalRoot, err := stageInstalledPluginRootRemoval(record)
+	if err != nil {
+		if record.Enabled {
+			_ = r.registerInstalledPlugin(record)
 		}
+		return InstalledPluginRecord{}, PluginCatalog{}, err
 	}
 	removed, catalog, err = r.PluginCatalog.Delete(id, actor)
 	if err != nil {
+		if restoreErr := restoreStagedInstalledPluginRoot(record.InstallRoot, removalRoot); restoreErr != nil {
+			err = errors.Join(err, restoreErr)
+		}
+		if record.Enabled {
+			_ = r.registerInstalledPlugin(record)
+		}
 		return InstalledPluginRecord{}, PluginCatalog{}, err
+	}
+	if strings.TrimSpace(removalRoot) != "" {
+		_ = os.RemoveAll(removalRoot)
 	}
 	return removed, catalog, nil
 }
@@ -934,6 +942,45 @@ func (r *Runtime) restoreInstalledPluginRoot(
 		return nil
 	}
 	return os.Rename(backupRoot, finalRoot)
+}
+
+func stageInstalledPluginRootRemoval(record InstalledPluginRecord) (string, error) {
+	installRoot := strings.TrimSpace(record.InstallRoot)
+	if installRoot == "" {
+		return "", nil
+	}
+	if _, err := os.Stat(installRoot); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return "", nil
+		}
+		return "", err
+	}
+	parent := filepath.Dir(installRoot)
+	candidate, err := os.MkdirTemp(parent, filepath.Base(installRoot)+".delete-*")
+	if err != nil {
+		return "", err
+	}
+	if err := os.Remove(candidate); err != nil {
+		return "", err
+	}
+	if err := os.Rename(installRoot, candidate); err != nil {
+		return "", err
+	}
+	return candidate, nil
+}
+
+func restoreStagedInstalledPluginRoot(installRoot string, removalRoot string) error {
+	installRoot = strings.TrimSpace(installRoot)
+	removalRoot = strings.TrimSpace(removalRoot)
+	if installRoot == "" || removalRoot == "" {
+		return nil
+	}
+	if _, err := os.Stat(installRoot); err == nil {
+		return fmt.Errorf("%w: install root already exists during restore", plugins.ErrProcessSpawnFailed)
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	return os.Rename(removalRoot, installRoot)
 }
 
 func relocateInstalledPluginRecord(record InstalledPluginRecord, fromRoot string, toRoot string) InstalledPluginRecord {

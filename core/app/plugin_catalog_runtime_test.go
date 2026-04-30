@@ -516,6 +516,56 @@ func TestDeleteInstalledPluginKeepsCatalogWhenInstallRootRemovalFails(t *testing
 	}
 }
 
+func TestDeleteInstalledPluginRestoresRootAndRegistrationWhenCatalogDeleteFails(t *testing.T) {
+	t.Parallel()
+
+	runtime := newPluginCatalogTestRuntime(t)
+	installRoot := filepath.Join(runtime.Paths.PluginInstallRoot, "example.deletecatalogfail")
+	if err := os.MkdirAll(installRoot, 0o755); err != nil {
+		t.Fatalf("MkdirAll(installRoot) error: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(installRoot, "plugin.sh"), []byte("#!/bin/sh\nexit 0\n"), 0o700); err != nil {
+		t.Fatalf("WriteFile(plugin script) error: %v", err)
+	}
+
+	record := pluginCatalogStoreRecord("example.deletecatalogfail")
+	record.InstallRoot = installRoot
+	record.Process = plugins.ProcessConfig{Command: filepath.Join(installRoot, "plugin.sh"), Dir: installRoot}
+	record.Enabled = true
+	record.RuntimeStatus = PluginRuntimeStatusReady
+	created, _, err := runtime.PluginCatalog.Create(record, runtime.currentPluginActor())
+	if err != nil {
+		t.Fatalf("Create plugin record error: %v", err)
+	}
+	if err := runtime.registerInstalledPlugin(created); err != nil {
+		t.Fatalf("registerInstalledPlugin error: %v", err)
+	}
+	toolName := created.Tools[0].Name
+
+	runtime.PluginCatalog.path = filepath.Join(t.TempDir(), "missing-parent", "plugins.json")
+	if _, _, err := runtime.DeleteInstalledPlugin(created.ID); err == nil {
+		t.Fatalf("expected delete catalog persist failure")
+	}
+	if _, err := os.Stat(installRoot); err != nil {
+		t.Fatalf("expected failed delete to restore install root, got %v", err)
+	}
+	if _, err := runtime.PluginCatalog.Get(created.ID); err != nil {
+		t.Fatalf("expected failed delete to keep catalog record, got %v", err)
+	}
+	if !pluginToolRegistered(runtime, toolName) {
+		t.Fatalf("expected failed delete to restore registered tool %q", toolName)
+	}
+}
+
+func pluginToolRegistered(runtime *Runtime, toolName string) bool {
+	for _, tool := range runtime.Registry.List() {
+		if tool.Name == toolName {
+			return true
+		}
+	}
+	return false
+}
+
 func assertNoPluginStagingDirs(t *testing.T, runtime *Runtime) {
 	t.Helper()
 

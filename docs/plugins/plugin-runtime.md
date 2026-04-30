@@ -71,9 +71,10 @@ This is the canonical plugin entrypoint for runtime boundary and protocol behavi
   smuggle external filesystem contents into an installed plugin through a
   symlink or unbounded repository payload. Failed staged copies remove their
   `.staging-*` directory before returning.
-- Plugin delete removes the install root before removing the catalog record;
-  if filesystem removal fails, the record remains visible for retry instead of
-  orphaning files outside the catalog.
+- Plugin delete stages the install root out of the active path before removing
+  the catalog record; if filesystem removal fails, the record remains visible
+  for retry, and if catalog persistence fails after staging, the install root
+  plus tool registration are restored.
 - The Python reference plugin remains a protocol fixture; it does not imply
   marketplace-style distribution.
 - No container/chroot/seccomp/AppArmor-style plugin sandbox in this phase.
