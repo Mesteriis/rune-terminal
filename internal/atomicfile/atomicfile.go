@@ -1,6 +1,7 @@
 package atomicfile
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 )
@@ -8,6 +9,22 @@ import (
 // WriteFile replaces path through a same-directory temp file and rename so
 // callers never expose a partially written destination file.
 func WriteFile(path string, data []byte, perm os.FileMode) error {
+	return write(path, perm, func(tempFile *os.File) error {
+		_, err := tempFile.Write(data)
+		return err
+	})
+}
+
+// WriteReader streams reader into a same-directory temp file before replacing
+// path, preserving atomic replacement behavior without buffering in memory.
+func WriteReader(path string, reader io.Reader, perm os.FileMode) error {
+	return write(path, perm, func(tempFile *os.File) error {
+		_, err := io.Copy(tempFile, reader)
+		return err
+	})
+}
+
+func write(path string, perm os.FileMode, writePayload func(*os.File) error) error {
 	dir := filepath.Dir(path)
 	tempFile, err := os.CreateTemp(dir, "."+filepath.Base(path)+".tmp-*")
 	if err != nil {
@@ -21,7 +38,7 @@ func WriteFile(path string, data []byte, perm os.FileMode) error {
 		}
 	}()
 
-	if _, err := tempFile.Write(data); err != nil {
+	if err := writePayload(tempFile); err != nil {
 		_ = tempFile.Close()
 		return err
 	}

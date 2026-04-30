@@ -2,13 +2,14 @@ package app
 
 import (
 	"errors"
-	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/Mesteriis/rune-terminal/internal/atomicfile"
 )
 
 var (
@@ -497,17 +498,7 @@ func copyFSFile(sourcePath string, targetPath string, mode fs.FileMode) error {
 	}
 	defer sourceFile.Close()
 
-	targetFile, err := os.OpenFile(targetPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, mode)
-	if err != nil {
-		return err
-	}
-	defer targetFile.Close()
-
-	if _, err := io.Copy(targetFile, sourceFile); err != nil {
-		return err
-	}
-
-	return nil
+	return atomicfile.WriteReader(targetPath, sourceFile, mode)
 }
 
 func moveFSPath(sourcePath string, targetPath string) error {

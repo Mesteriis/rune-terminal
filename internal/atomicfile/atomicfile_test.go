@@ -1,6 +1,7 @@
 package atomicfile
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -57,4 +58,42 @@ func TestWriteFileRemovesTemporaryFile(t *testing.T) {
 	if len(entries) != 1 || entries[0].Name() != "state.json" {
 		t.Fatalf("expected only final file, got %#v", entries)
 	}
+}
+
+func TestWriteReaderKeepsExistingTargetOnCopyError(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "state.json")
+	if err := os.WriteFile(path, []byte("old"), 0o600); err != nil {
+		t.Fatalf("WriteFile old error: %v", err)
+	}
+
+	err := WriteReader(path, failingReader{}, 0o600)
+	if err == nil {
+		t.Fatalf("expected WriteReader error")
+	}
+
+	payload, readErr := os.ReadFile(path)
+	if readErr != nil {
+		t.Fatalf("ReadFile error: %v", readErr)
+	}
+	if string(payload) != "old" {
+		t.Fatalf("expected existing payload to remain, got %q", string(payload))
+	}
+
+	entries, readDirErr := os.ReadDir(dir)
+	if readDirErr != nil {
+		t.Fatalf("ReadDir error: %v", readDirErr)
+	}
+	if len(entries) != 1 || entries[0].Name() != "state.json" {
+		t.Fatalf("expected failed temp file cleanup, got %#v", entries)
+	}
+}
+
+type failingReader struct{}
+
+func (failingReader) Read(payload []byte) (int, error) {
+	copy(payload, "partial")
+	return len("partial"), errors.New("copy failed")
 }

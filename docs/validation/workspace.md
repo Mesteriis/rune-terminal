@@ -51,6 +51,9 @@
       temp-file replacement writer, so `PUT /api/v1/fs/file` no longer
       writes edited file content through a direct truncating `os.WriteFile`
       path
+    - local file copy streams now use the same temp-file replacement path,
+      so copy and cross-device move fallbacks do not publish target file
+      content before the stream, flush, and close path succeeds
     - filesystem external-open handoffs now append core-owned audit events for
       success and failure paths with affected path and optional connection
       identity; the validation uses a fake opener binary and does not launch
