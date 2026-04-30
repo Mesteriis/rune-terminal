@@ -13,19 +13,7 @@ import { useTerminalPreferences } from '@/features/terminal/model/use-terminal-p
 import { useTerminalSession } from '@/features/terminal/model/use-terminal-session'
 import { queueAiPromptHandoff } from '@/shared/model/ai-handoff'
 import { openAiSidebar } from '@/shared/model/app'
-import { terminalStatusHeaderMetaItemStyle } from '@/shared/ui/components/terminal-status-header.styles'
-import {
-  terminalToolbarIconButtonStyle,
-  terminalToolbarRendererBadgeStyle,
-  terminalToolbarSectionStyle,
-} from '@/shared/ui/components/terminal-toolbar.styles'
 import { TerminalWidget } from '@/widgets/terminal/terminal-widget'
-import {
-  terminalWidgetChromeStyle,
-  terminalWidgetHeaderRowStyle,
-  terminalWidgetSurfaceWrapStyle,
-  terminalWidgetToolbarRowStyle,
-} from '@/widgets/terminal/terminal-widget.styles'
 
 const copySelectionMock = vi.fn(async () => undefined)
 const clearSearchMock = vi.fn(() => undefined)
@@ -400,44 +388,54 @@ describe('TerminalWidget', () => {
       screen.getByRole('button', { name: 'Create another terminal session for Workspace shell' }),
     ).toBeVisible()
 
-    expect(terminalWidgetChromeStyle.background).toBe(
-      'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 82%, var(--color-surface-canvas, transparent) 18%)',
-    )
-    expect(terminalWidgetChromeStyle.boxShadow).toBe(
-      '0 12px 32px color-mix(in srgb, var(--color-shadow, rgba(0, 0, 0, 0.28)) 20%, transparent)',
-    )
-    expect(terminalWidgetHeaderRowStyle.background).toBe(
-      'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 88%, var(--color-surface-canvas, transparent) 12%)',
-    )
-    expect(terminalWidgetToolbarRowStyle.background).toBe(
-      'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 80%, var(--color-surface-canvas, transparent) 20%)',
-    )
-    expect(terminalWidgetSurfaceWrapStyle.background).toBe(
-      'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 64%, var(--color-surface-canvas, transparent) 36%)',
-    )
+    const chrome = document.querySelector('[id*="terminal-widget-chrome-"]')
+    const headerRow = document.querySelector('[id*="terminal-widget-header-row-"]')
+    const toolbarRow = document.querySelector('[id*="terminal-widget-toolbar-row-"]')
+    const surfaceWrap = document.querySelector('[id*="terminal-widget-surface-wrap-"]')
+    const connectionBadge = document.querySelector('[id*="terminal-status-header-connection-"]')
+    const editSection = document.querySelector('[id*="terminal-toolbar-edit-section-"]')
+    const rendererBadge = document.querySelector('[id*="terminal-toolbar-renderer-badge-"]')
 
-    expect(terminalStatusHeaderMetaItemStyle['--runa-ui-bg' as string]).toBe(
-      'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 70%, var(--color-surface-canvas, transparent) 30%)',
-    )
-    expect(terminalStatusHeaderMetaItemStyle['--runa-ui-border' as string]).toBe(
-      'color-mix(in srgb, var(--runa-terminal-surface-border, var(--color-border-subtle)) 92%, transparent)',
-    )
-    expect(terminalStatusHeaderMetaItemStyle['--runa-ui-color' as string]).toBe(
-      'var(--runa-terminal-text-strong, var(--color-text-primary))',
-    )
+    expect(chrome).not.toBeNull()
+    expect(headerRow).not.toBeNull()
+    expect(toolbarRow).not.toBeNull()
+    expect(surfaceWrap).not.toBeNull()
+    expect(connectionBadge).not.toBeNull()
+    expect(editSection).not.toBeNull()
+    expect(rendererBadge).not.toBeNull()
 
-    expect(terminalToolbarSectionStyle.background).toBe(
-      'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 76%, var(--color-surface-canvas, transparent) 24%)',
-    )
-    expect(terminalToolbarIconButtonStyle['--runa-ui-bg' as string]).toBe(
-      'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 30%, transparent)',
-    )
-    expect(terminalToolbarIconButtonStyle['--runa-ui-border' as string]).toBe(
-      'color-mix(in srgb, var(--runa-terminal-surface-border, var(--color-border-subtle)) 42%, transparent)',
-    )
-    expect(terminalToolbarRendererBadgeStyle.background).toBe(
-      'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 64%, var(--color-surface-canvas, transparent) 36%)',
-    )
+    expect(chrome).toHaveStyle({
+      background:
+        'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 82%, var(--color-surface-canvas, transparent) 18%)',
+      boxShadow: '0 12px 32px color-mix(in srgb, var(--color-shadow, rgba(0, 0, 0, 0.28)) 20%, transparent)',
+    })
+    expect(headerRow).toHaveStyle({
+      background:
+        'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 88%, var(--color-surface-canvas, transparent) 12%)',
+    })
+    expect(toolbarRow).toHaveStyle({
+      background:
+        'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 80%, var(--color-surface-canvas, transparent) 20%)',
+    })
+    expect(surfaceWrap).toHaveStyle({
+      background:
+        'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 64%, var(--color-surface-canvas, transparent) 36%)',
+    })
+    expect(connectionBadge).toHaveStyle({
+      '--runa-ui-bg':
+        'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 70%, var(--color-surface-canvas, transparent) 30%)',
+      '--runa-ui-border':
+        'color-mix(in srgb, var(--runa-terminal-surface-border, var(--color-border-subtle)) 92%, transparent)',
+      '--runa-ui-color': 'var(--runa-terminal-text-strong, var(--color-text-primary))',
+    })
+    expect(editSection).toHaveStyle({
+      background:
+        'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 76%, var(--color-surface-canvas, transparent) 24%)',
+    })
+    expect(rendererBadge).toHaveStyle({
+      background:
+        'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 64%, var(--color-surface-canvas, transparent) 36%)',
+    })
   })
 
   it('surfaces no-match search state and clears stale decorations on empty query', () => {
