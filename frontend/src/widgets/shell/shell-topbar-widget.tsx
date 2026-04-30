@@ -182,7 +182,6 @@ export function ShellTopbarWidget({
 
               return (
                 <ClearBox
-                  className="runa-ui-tab"
                   data-selected={activeWorkspaceId === workspace.id}
                   key={workspace.id}
                   runaComponent={`shell-topbar-workspace-tab-${workspace.id}`}
@@ -190,6 +189,8 @@ export function ShellTopbarWidget({
                 >
                   <Button
                     aria-selected={activeWorkspaceId === workspace.id}
+                    className="runa-ui-tab"
+                    data-selected={activeWorkspaceId === workspace.id}
                     onClick={() => onSelectWorkspace(workspace.id)}
                     role="tab"
                     runaComponent={`shell-topbar-workspace-tab-button-${workspace.id}`}

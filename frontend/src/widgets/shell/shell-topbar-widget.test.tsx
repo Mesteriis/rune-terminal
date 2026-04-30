@@ -50,6 +50,14 @@ describe('ShellTopbarWidget', () => {
     expect(screen.getByRole('button', { name: 'Add workspace' })).toBeInTheDocument()
   })
 
+  it('marks only the active workspace tab as selected', () => {
+    renderShellTopbar()
+
+    expect(screen.getByRole('tab', { name: 'Workspace-2' })).toHaveAttribute('data-selected', 'true')
+    expect(screen.getByRole('tab', { name: 'Workspace-1' })).toHaveAttribute('data-selected', 'false')
+    expect(screen.getByRole('tab', { name: 'Workspace-3' })).toHaveAttribute('data-selected', 'false')
+  })
+
   it('routes workspace selection and add-workspace actions through callbacks', () => {
     const { onAddWorkspace, onSelectWorkspace } = renderShellTopbar()
 
