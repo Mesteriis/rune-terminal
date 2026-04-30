@@ -78,14 +78,17 @@
     - explicit widget-context selection in the composer and `widget_ids` propagation into the stream request body
     - persisted per-conversation widget-context restore across conversation activation and reload
     - explicit stale-widget repair flow that rewrites persisted `widget_ids` to the still-valid workspace subset
-    - visible stale-context repair notice before opening the composer context dropdown when persisted widget ids no longer match the current workspace
-    - immediate `Only current` context selection after opening the composer context menu without losing the current workspace widget to frontend state races
-    - settings-driven keyboard submit behavior: `Enter` newline plus `Ctrl/Cmd+Enter` submit
-    - conversation persistence across AI panel reload/reopen with backend conversation switching
-    - shell-visible conversation menu for `Recent / Archived / All` thread grouping, `New` creation, active-thread rename, archive, restore, and delete
-    - visible `Active thread` summary block inside the conversation navigator before search/scope controls
-    - keyboard navigation through filtered conversation results in the AI conversation navigator
-    - live Claude provider routing with explicit `auth-required` handling when the local CLI is installed but not logged in
+  - visible stale-context repair notice before opening the composer context dropdown when persisted widget ids no longer match the current workspace
+  - immediate `Only current` context selection after opening the composer context menu without losing the current workspace widget to frontend state races
+  - settings-driven keyboard submit behavior: `Enter` newline plus `Ctrl/Cmd+Enter` submit
+  - conversation persistence across AI panel reload/reopen with backend conversation switching
+  - shell-managed AI panel now reopens in a collapsed summary state by default, with local expand/collapse disclosure semantics that do not change backend conversation state
+  - shell-visible conversation menu for `Recent / Archived / All` thread grouping, `New` creation, active-thread rename, archive, restore, and delete
+  - visible `Active thread` summary block inside the conversation navigator before search/scope controls
+  - keyboard navigation through filtered conversation results in the AI conversation navigator
+  - expanded AI panel now reads as an operator notebook: route summary plus mode switching live inside the navigator surface, and the composer keeps the compact two-column drafting grid
+  - empty AI state still keeps panel mode controls reachable through the conversation navigator, so moving mode switching off the always-visible header does not strand `chat/dev/debug`
+  - live Claude provider routing with explicit `auth-required` handling when the local CLI is installed but not logged in
     - `/run printf ...` sending input into the selected terminal session without falling back to plain provider chat
     - persisted SSH-backed `/run` context restore: a conversation saved against the remote widget still sends `term.send_input` with the preserved remote connection/session target instead of falling back to the active local shell
     - approved natural-language terminal execution routing into the explicitly selected AI context widget even when another terminal widget remains active in the workspace
