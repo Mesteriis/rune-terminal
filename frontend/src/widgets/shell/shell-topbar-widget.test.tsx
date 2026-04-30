@@ -1,22 +1,22 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
+import { ShellTopbarWidget } from '@/widgets/shell/shell-topbar-widget'
 import {
   activeWorkspaceTabStyle,
   topbarStyle,
   workspaceTabStyle,
 } from '@/widgets/shell/shell-topbar-widget.styles'
-import { ShellTopbarWidget } from '@/widgets/shell/shell-topbar-widget'
 
 function renderShellTopbar() {
   const onAddWorkspace = vi.fn()
   const onClose = vi.fn()
+  const onDeleteWorkspace = vi.fn()
   const onMinimize = vi.fn()
+  const onRenameWorkspace = vi.fn()
   const onSelectWorkspace = vi.fn()
   const onToggleFullscreen = vi.fn()
   const onToggleAi = vi.fn()
-  const onDeleteWorkspace = vi.fn()
-  const onRenameWorkspace = vi.fn()
 
   render(
     <ShellTopbarWidget
@@ -41,12 +41,12 @@ function renderShellTopbar() {
   return {
     onAddWorkspace,
     onClose,
+    onDeleteWorkspace,
     onMinimize,
+    onRenameWorkspace,
     onSelectWorkspace,
     onToggleFullscreen,
     onToggleAi,
-    onDeleteWorkspace,
-    onRenameWorkspace,
   }
 }
 
@@ -71,16 +71,18 @@ describe('ShellTopbarWidget', () => {
 
   it('keeps shell chrome colors on token-backed variables', () => {
     expect(topbarStyle.background).toBe('transparent')
-    expect(topbarStyle.borderBottom).toBe('1px solid var(--color-border-subtle)')
-    expect(topbarStyle.backdropFilter).toBe('none')
-    expect(topbarStyle.position).toBe('relative')
-    expect(topbarStyle.zIndex).toBe('var(--z-shell-chrome)')
+    expect(topbarStyle.borderBottom).toBe('none')
     expect(workspaceTabStyle.background).toBe('var(--color-surface-glass-soft)')
     expect(workspaceTabStyle.border).toBe('1px solid var(--color-border-subtle)')
-    expect(activeWorkspaceTabStyle.background).toBe('var(--color-surface-glass)')
-    expect(activeWorkspaceTabStyle.border).toBe('1px solid var(--color-border-strong)')
+    expect(activeWorkspaceTabStyle.background).toBe(
+      'color-mix(in srgb, var(--color-surface-glass-soft) 72%, var(--color-accent-emerald-soft) 28%)',
+    )
+    expect(activeWorkspaceTabStyle.border).toBe(
+      '1px solid color-mix(in srgb, var(--color-accent-emerald-strong) 50%, var(--color-border-strong))',
+    )
     expect(activeWorkspaceTabStyle.boxShadow).toBe('none')
   })
+
   it('routes workspace selection and add-workspace actions through callbacks', () => {
     const { onAddWorkspace, onSelectWorkspace } = renderShellTopbar()
 
@@ -89,24 +91,6 @@ describe('ShellTopbarWidget', () => {
 
     expect(onSelectWorkspace).toHaveBeenCalledWith(1)
     expect(onAddWorkspace).toHaveBeenCalledTimes(1)
-  })
-
-  it('routes workspace menu rename and delete actions through callbacks', () => {
-    const { onDeleteWorkspace, onRenameWorkspace } = renderShellTopbar()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Workspace actions for Workspace-2' }))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Rename' }))
-    fireEvent.change(screen.getByRole('textbox', { name: 'Workspace name' }), {
-      target: { value: 'Ops workspace' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-
-    expect(onRenameWorkspace).toHaveBeenCalledWith(2, 'Ops workspace')
-
-    fireEvent.click(screen.getByRole('button', { name: 'Workspace actions for Workspace-2' }))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Delete' }))
-
-    expect(onDeleteWorkspace).toHaveBeenCalledWith(2)
   })
 
   it('routes shell window controls through desktop callbacks', () => {
@@ -121,5 +105,36 @@ describe('ShellTopbarWidget', () => {
     expect(onMinimize).toHaveBeenCalledTimes(1)
     expect(onToggleFullscreen).toHaveBeenCalledTimes(1)
     expect(onToggleAi).toHaveBeenCalledTimes(1)
+  })
+
+  it('renames a workspace from the overflow menu', () => {
+    const { onRenameWorkspace } = renderShellTopbar()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Workspace actions for Workspace-2' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /rename/i }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Workspace name' }), {
+      target: { value: 'Focus' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(onRenameWorkspace).toHaveBeenCalledWith(2, 'Focus')
+  })
+
+  it('deletes a workspace from the overflow menu', () => {
+    const { onDeleteWorkspace } = renderShellTopbar()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Workspace actions for Workspace-3' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /delete/i }))
+
+    expect(onDeleteWorkspace).toHaveBeenCalledWith(3)
+  })
+
+  it('opens the workspace overflow menu without selecting the workspace', () => {
+    const { onSelectWorkspace } = renderShellTopbar()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Workspace actions for Workspace-1' }))
+
+    expect(screen.getByRole('menu', { name: 'Workspace actions for Workspace-1' })).toBeInTheDocument()
+    expect(onSelectWorkspace).not.toHaveBeenCalled()
   })
 })

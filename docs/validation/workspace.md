@@ -101,6 +101,13 @@
       state, and live `document.title` sync follows the current workspace
       title in `auto` mode or the explicit operator-defined custom title in
       `custom` mode
+    - the rewritten Dockview shell topbar now supports per-workspace rename
+      and delete actions behind a tab-local `...` overflow menu; rename
+      trims the requested title before persisting to local workspace state,
+      delete is blocked for the final remaining workspace, deleting the
+      active workspace restores the nearest surviving snapshot, and newly
+      created workspaces now use `max(id) + 1` so add-after-delete does not
+      reuse tab ids
     - browser e2e coverage now verifies the active right-rail catalog behavior:
       `terminal` and `files` remain enabled and runtime-created, path-required
       `preview` remains disabled in the generic menu, and `commander` plus
@@ -122,7 +129,11 @@
       semantics
     - serialized Playwright coverage now exercises the active shell/user paths over the split local dev runtime:
         - workspace tab switching and workspace creation
+        - workspace tab overflow rename/delete actions and the add-after-delete
+          id allocation path
         - the shell topbar now renders workspace tabs and the add-workspace affordance as one tighter grouped strip, with denser active/inactive tab rhythm so workspace switching and creation read as a single compact control cluster instead of separate header controls
+        - the shell topbar no longer paints a separate dark underlay behind workspace tabs, and the active workspace tab uses a flat selected state instead of the striped/gradient button treatment
+        - the shell now follows the commander-weighted workbench hierarchy more closely: quieter topbar chrome, stronger active terminal surface, and an AI sidebar that reopens as a collapsed work panel instead of a permanently expanded left column
         - the shell topbar close/minimize/fullscreen controls now route through explicit desktop window callbacks; close keeps the existing shutdown guard, while minimize/fullscreen call Tauri commands and degrade to no-ops in split-browser mode
         - commander Dockview tabs now follow the same compact workspace-strip language instead of a badge-only placeholder: each commander tab shows a compact `commander` pill, a readable `tool/tool N` title, and a per-tab close action only when the commander group actually has multiple tabs
         - right-rail utility menu actions for new workspace, terminal widget,
@@ -152,6 +163,7 @@
         - the right utility rail popover now follows the same compact shell density as the topbar strip, with tighter menu rows and status text instead of a looser generic popover treatment
         - modal overlays now also use a tighter shell framing rhythm so body/widget modal spacing matches the compact shell chrome instead of reading like a separate larger overlay system
         - the settings shell now renders as a denser navigator/editor surface with a narrower sidebar, tighter content framing, lighter badges, and a more compact section rhythm, while preserving the existing `General / AI / Terminal / Commander` structure
+        - the expanded AI sidebar now reads as an operator notebook rather than a chat hero surface: the visible header is reduced to a compact thread strip, route/mode controls live in the history navigator, and the composer keeps a compact two-column drafting grid
         - browser e2e now also locks the compact shell density itself on the active path:
           workspace tabs and add-workspace controls keep the reduced `22px`
           minimum height, and the utility creation menu keeps the narrower
@@ -207,6 +219,7 @@
 light` remains the system fallback, and `@media print` flattens shell
       chrome for printable output without glow, blur, or resize affordances
     - the shared DOM identity layer now defaults repo-owned primitives and auto-tagged subtrees to a minimal contract (`id` + `data-runa-node`), while verbose `data-runa-layout/widget/component` metadata is available only through an explicit `RunaDomScopeProvider metadata="verbose"` opt-in
+    - the split local app was reloaded again on `http://127.0.0.1:5173/` after the commander-weighted workbench pass; this validation confirms live shell load/title recovery only and does not claim a fresh pixel-perfect browser visual diff
     - the shared component layer now also uses local style modules where style debt starts to accumulate; `Tabs` is the first component moved off inline layout/style constants, and it now has direct RTL coverage for tab switching plus vertical orientation semantics
     - `TerminalToolbar` now follows that same component-layer style-module rule, so the toolbar/search/badge style surface lives in `terminal-toolbar.styles.ts` while the existing accessibility test contract keeps covering search focus behavior
     - `TerminalStatusHeader` now follows the same component-layer style-module rule, so title/meta layout chrome lives in `terminal-status-header.styles.ts`, and the component now has direct RTL coverage for default meta rendering plus compact `primaryText` mode with hidden metadata
@@ -776,7 +789,6 @@ light` remains the system fallback, and `@media print` flattens shell
 - A focused validation pass for the workspace action persistence slice on `2026-04-30` confirmed focus, rename, pin, layout update, terminal-tab create, directory block open, close tab, and close widget roll back active workspace/catalog memory when catalog persistence fails. Close-tab now also keeps the terminal session alive on failed persistence and only closes terminal sessions after the workspace mutation is durably persisted. The same pass reconfirmed `./scripts/go.sh test ./core/app -run 'TestWorkspace(Control|AddWidget|Close)ActionsDoNotChangeMemoryWhenPersistFails|TestCloseTabKeepsTerminalSessionWhenPersistFails' -count=1`, `./scripts/go.sh test ./core/workspace ./core/app ./core/transport/httpapi -run 'Test.*Workspace|Test.*Layout|Test.*Tab|Test.*Widget|TestCreateSplitTerminal|TestCreateRemoteTerminal|TestRemoteTerminalSession|TestBootstrapReturnsRuntimePathContext' -count=1`, `./scripts/go.sh test ./core/app -count=1`, and `git diff --check` all pass.
 - A focused UI-only validation pass for the shell main-screen chrome slice on `2026-04-30` confirmed workspace tabs, terminal header actions, terminal toolbar buttons, status badges, route buttons, and the shell send action now share one compact interaction language with clearer hover/active/focus-visible states and less nested-border noise, while preserving the existing Dockview workspace/runtime behavior. The same pass reconfirmed `npm run lint:frontend`, `npm run build:frontend`, and `npm exec vitest run src/widgets/shell/shell-topbar-widget.test.tsx src/widgets/ai/ai-composer-widget.test.tsx src/widgets/ai/ai-panel-header-widget.test.tsx src/shared/ui/components/accessibility-contracts.test.tsx src/widgets/terminal/terminal-widget.test.tsx` all pass, and a split-runtime browser smoke on `http://127.0.0.1:5173/` verified active-tab clarity, dropdown visibility, route-button continuity, terminal header/toolbar affordances, and the absence of horizontal overflow in the AI composer
 - A follow-up workbench validation pass on `2026-04-30` confirmed the shell-managed AI sidebar now reopens in a collapsed summary state, expands locally into the operator-notebook presentation, and still leaves panel modes reachable from an empty-state conversation navigator after the mode switcher moved off the always-visible header. The same pass reconfirmed `npm run lint:frontend`, `npm run build:frontend`, `npm run check:active-path-api`, and `npm exec vitest run src/widgets/shell/shell-topbar-widget.test.tsx src/shared/ui/components/accessibility-contracts.test.tsx src/widgets/terminal/terminal-widget.test.tsx src/app/app-ai-sidebar.test.tsx src/widgets/ai/ai-panel-header-widget.test.tsx src/widgets/ai/ai-composer-widget.test.tsx` all pass; the browser smoke for this step is limited to a live reload/title check at `http://127.0.0.1:5173/`, not a new visual diff capture.
-- A focused regression validation pass for the shell workspace overflow menu on `2026-04-30` confirmed `Save` / `Delete` are wired through `App -> useDockviewWorkspace -> dockview-workspace.actions` and the topbar stacking context keeps the open menu above Dockview headers. The same pass reconfirmed `npm --prefix frontend run test -- shell-topbar-widget.test.tsx dockview-workspace.actions.test.ts --run` passes. `npm --prefix frontend run lint:active` was attempted in this worktree and is currently blocked by an existing terminal-tab typing issue in `src/widgets/terminal/terminal-dockview-tab-widget.tsx` (`flexWrap` inferred as `string`), so this slice does not claim a full frontend build/lint pass here. A focused in-app browser smoke against the running `http://localhost:5173/` app created `Workspace-4`, used the overflow menu `Save` action to rename it to `Temp workspace`, then used `Delete` to remove that temporary workspace and observed `Workspace-3` become active.
 
 ### Task runtime limitations
 

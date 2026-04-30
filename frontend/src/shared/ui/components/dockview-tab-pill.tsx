@@ -22,13 +22,17 @@ const dockviewTabPillStyle: React.CSSProperties = {
 }
 
 export function DockviewTabPill({
+  className,
   runaComponent = 'dockview-tab-pill',
   style,
   ...props
 }: DockviewTabPillProps) {
+  const nextClassName = ['runa-ui-chip', 'runa-ui-status-badge', className].filter(Boolean).join(' ')
+
   return (
     <Box
       {...props}
+      className={nextClassName}
       runaComponent={runaComponent}
       style={{
         ...dockviewTabPillStyle,

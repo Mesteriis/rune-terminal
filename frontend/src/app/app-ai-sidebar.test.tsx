@@ -94,9 +94,24 @@ vi.mock('@/widgets', () => ({
   AiPanelWidget: () => <div data-testid="ai-panel-widget-mock">body</div>,
 }))
 
+function renderAppAiSidebar(isOpen = true) {
+  return render(
+    <AppAiSidebar
+      contentAreaRef={{ current: document.createElement('div') }}
+      dockviewApiRef={{ current: null }}
+      isOpen={isOpen}
+    />,
+  )
+}
+
 describe('AppAiSidebar', () => {
   afterEach(() => {
     clearAiPromptHandoff()
+    agentPanelMock.activeConversationSummary = null
+    agentPanelMock.activeProviderGateway = null
+    agentPanelMock.activeProviderHistoryError = null
+    agentPanelMock.activeProviderHistoryRuns = []
+    agentPanelMock.activeProviderHistoryTotal = 0
     agentPanelMock.draft = ''
     agentPanelMock.isConversationPending = false
     agentPanelMock.isInteractionPending = false
@@ -111,13 +126,7 @@ describe('AppAiSidebar', () => {
       submit: false,
     })
 
-    render(
-      <AppAiSidebar
-        contentAreaRef={{ current: document.createElement('div') }}
-        dockviewApiRef={{ current: null }}
-        isOpen
-      />,
-    )
+    renderAppAiSidebar()
 
     await waitFor(() => {
       expect(agentPanelMock.setSelectedContextWidgetIDs).toHaveBeenCalledWith(['term-pve'])
@@ -135,7 +144,102 @@ describe('AppAiSidebar', () => {
     })
     agentPanelMock.draft = 'Проверь и исправь ошибку на pve'
 
-    render(
+    renderAppAiSidebar()
+
+    await waitFor(() => {
+      expect(agentPanelMock.submitDraft).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  it('starts with the AI shell in collapsed work-panel mode', () => {
+    agentPanelMock.activeConversationSummary = {
+      id: 'conv-1',
+      title: 'Operator notes',
+      created_at: '2026-04-30T10:00:00Z',
+      updated_at: '2026-04-30T10:05:00Z',
+      message_count: 13,
+    }
+    agentPanelMock.activeProviderGateway = {
+      provider_id: 'codex-cli',
+      provider_kind: 'codex',
+      display_name: 'Codex CLI',
+      enabled: true,
+      active: true,
+      route_ready: true,
+      route_status_state: 'ready',
+      route_status_message: 'Codex CLI route is authenticated.',
+      route_prepared: false,
+      route_prepare_state: 'ready',
+      route_prepare_message: '',
+      route_prepare_expires_at: '2026-04-26T10:30:00Z',
+      route_prepare_stale: false,
+      route_prewarm_policy: 'on_activate',
+      route_warm_ttl_seconds: 900,
+      route_latency_ms: 48,
+      route_prepare_latency_ms: 71,
+      total_runs: 4,
+      succeeded_runs: 3,
+      failed_runs: 1,
+      cancelled_runs: 0,
+      average_duration_ms: 1200,
+      average_first_response_latency_ms: 320,
+      last_duration_ms: 980,
+      last_first_response_latency_ms: 240,
+    }
+
+    renderAppAiSidebar()
+
+    const expandButton = screen.getByRole('button', { name: 'Expand AI panel' })
+    expect(expandButton).toBeVisible()
+    expect(expandButton).toHaveAttribute('aria-expanded', 'false')
+    expect(expandButton).toHaveAttribute('aria-controls', 'ai-shell-panel-disclosure-region')
+    expect(screen.getByRole('region', { name: 'AI work panel' })).toBeVisible()
+    expect(screen.queryByTestId('ai-panel-header-mock')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('ai-panel-widget-mock')).not.toBeInTheDocument()
+    expect(screen.queryByText('Recent route activity')).not.toBeInTheDocument()
+    expect(screen.getByText('Operator notes')).toBeVisible()
+  })
+
+  it('expands and collapses the AI shell without changing global visibility semantics', async () => {
+    renderAppAiSidebar()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Expand AI panel' }))
+
+    const collapseButton = await screen.findByRole('button', { name: 'Collapse AI panel' })
+    expect(collapseButton).toBeVisible()
+    expect(collapseButton).toHaveAttribute('aria-expanded', 'true')
+    expect(collapseButton).toHaveAttribute('aria-controls', 'ai-shell-panel-disclosure-region')
+    expect(screen.getByTestId('ai-panel-header-mock')).toBeVisible()
+    expect(screen.getByTestId('ai-panel-widget-mock')).toBeVisible()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse AI panel' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Expand AI panel' })).toBeVisible()
+    })
+    expect(screen.queryByTestId('ai-panel-widget-mock')).not.toBeInTheDocument()
+  })
+
+  it('reopens in collapsed mode after being globally closed from an expanded state', async () => {
+    const view = renderAppAiSidebar()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Expand AI panel' }))
+
+    expect(await screen.findByRole('button', { name: 'Collapse AI panel' })).toBeVisible()
+    expect(screen.getByTestId('ai-panel-header-mock')).toBeVisible()
+    expect(screen.getByTestId('ai-panel-widget-mock')).toBeVisible()
+
+    view.rerender(
+      <AppAiSidebar
+        contentAreaRef={{ current: document.createElement('div') }}
+        dockviewApiRef={{ current: null }}
+        isOpen={false}
+      />,
+    )
+
+    expect(screen.queryByRole('button', { name: 'Collapse AI panel' })).not.toBeInTheDocument()
+
+    view.rerender(
       <AppAiSidebar
         contentAreaRef={{ current: document.createElement('div') }}
         dockviewApiRef={{ current: null }}
@@ -143,12 +247,19 @@ describe('AppAiSidebar', () => {
       />,
     )
 
-    await waitFor(() => {
-      expect(agentPanelMock.submitDraft).toHaveBeenCalledTimes(1)
-    })
+    expect(screen.getByRole('button', { name: 'Expand AI panel' })).toBeVisible()
+    expect(screen.queryByTestId('ai-panel-header-mock')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('ai-panel-widget-mock')).not.toBeInTheDocument()
   })
 
-  it('renders compact provider route controls and recent run diagnostics from gateway runtime truth', async () => {
+  it('keeps the AI shell hidden when the global sidebar state is closed', () => {
+    renderAppAiSidebar(false)
+
+    expect(screen.queryByRole('button', { name: 'Expand AI panel' })).not.toBeInTheDocument()
+    expect(screen.queryByTestId('ai-panel-widget-mock')).not.toBeInTheDocument()
+  })
+
+  it('keeps provider route diagnostics out of the expanded chat body', () => {
     agentPanelMock.activeProviderGateway = {
       provider_id: 'codex-cli',
       provider_kind: 'codex',
@@ -222,28 +333,16 @@ describe('AppAiSidebar', () => {
       },
     ]
 
-    render(
-      <AppAiSidebar
-        contentAreaRef={{ current: document.createElement('div') }}
-        dockviewApiRef={{ current: null }}
-        isOpen
-      />,
-    )
+    renderAppAiSidebar()
 
-    expect(screen.getByText('Active route')).toBeVisible()
-    expect(screen.getByText('Codex CLI · ready')).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Prepare route' })).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Clear route state' })).toBeVisible()
-    expect(screen.getByText('Showing 2 of 4')).toBeVisible()
-    expect(screen.getByText('Timed out waiting for first response.')).toBeVisible()
-    expect(screen.getByText('Actor: avm')).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Expand AI panel' }))
 
-    fireEvent.click(screen.getByRole('button', { name: 'Prepare route' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Clear route state' }))
-
-    await waitFor(() => {
-      expect(agentPanelMock.prewarmActiveProviderRoute).toHaveBeenCalledTimes(1)
-      expect(agentPanelMock.clearActiveProviderRouteState).toHaveBeenCalledTimes(1)
-    })
+    expect(screen.getByTestId('ai-panel-header-mock')).toBeVisible()
+    expect(screen.getByTestId('ai-panel-widget-mock')).toBeVisible()
+    expect(screen.queryByText('Active route')).not.toBeInTheDocument()
+    expect(screen.queryByText('Recent route activity')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Clear route state' })).not.toBeInTheDocument()
+    expect(agentPanelMock.prewarmActiveProviderRoute).not.toHaveBeenCalled()
+    expect(agentPanelMock.clearActiveProviderRouteState).not.toHaveBeenCalled()
   })
 })

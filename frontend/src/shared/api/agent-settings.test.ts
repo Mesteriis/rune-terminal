@@ -39,6 +39,7 @@ describe('agent settings api', () => {
           json: async () => ({
             settings: {
               composer_submit_mode: 'mod-enter-sends',
+              debug_mode_enabled: true,
             },
           }),
         }),
@@ -46,6 +47,7 @@ describe('agent settings api', () => {
 
     await expect(requestAgentSettings()).resolves.toEqual({
       composer_submit_mode: 'mod-enter-sends',
+      debug_mode_enabled: true,
     })
   })
 
@@ -66,6 +68,7 @@ describe('agent settings api', () => {
         json: async () => ({
           settings: {
             composer_submit_mode: 'enter-sends',
+            debug_mode_enabled: true,
           },
         }),
       })
@@ -74,9 +77,11 @@ describe('agent settings api', () => {
     await expect(
       updateAgentSettings({
         composer_submit_mode: 'bogus' as never,
+        debug_mode_enabled: true,
       }),
     ).resolves.toEqual({
       composer_submit_mode: 'enter-sends',
+      debug_mode_enabled: true,
     })
 
     expect(fetchMock).toHaveBeenLastCalledWith(
@@ -84,6 +89,7 @@ describe('agent settings api', () => {
       expect.objectContaining({
         body: JSON.stringify({
           composer_submit_mode: 'enter-sends',
+          debug_mode_enabled: true,
         }),
         method: 'PUT',
       }),

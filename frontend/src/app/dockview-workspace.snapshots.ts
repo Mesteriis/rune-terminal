@@ -35,7 +35,8 @@ export function writeDockviewWorkspaceSnapshot(
 
 /** Creates the next sequential workspace tab entry for the shell topbar. */
 export function createDockviewWorkspaceTab(workspaceTabs: WorkspaceLayoutTab[]): WorkspaceLayoutTab {
-  const nextWorkspaceId = Math.max(0, ...workspaceTabs.map((workspace) => workspace.id)) + 1
+  const nextWorkspaceId =
+    workspaceTabs.reduce((maxWorkspaceId, workspace) => Math.max(maxWorkspaceId, workspace.id), 0) + 1
 
   return {
     id: nextWorkspaceId,

@@ -13,24 +13,35 @@ const badgeStyle: React.CSSProperties = {
   justifyContent: 'center',
   minHeight: '20px',
   padding: '0 var(--space-sm)',
-  border: '1px solid var(--color-border-strong)',
+  border: '1px solid var(--runa-ui-border, var(--color-border-strong))',
   borderRadius: 'var(--radius-xs)',
-  background: 'var(--color-canvas-elevated)',
-  color: 'var(--color-text-secondary)',
+  background: 'var(--runa-ui-bg, var(--color-canvas-elevated))',
+  color: 'var(--runa-ui-color, var(--color-text-secondary))',
   fontSize: 'var(--font-size-sm)',
   lineHeight: 'var(--line-height-sm)',
   whiteSpace: 'nowrap',
+  boxShadow: 'var(--runa-ui-shadow, none)',
 }
 
 export const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(function Badge(
-  { id, runaComponent, style, ...props },
+  { className, id, runaComponent, style, ...props },
   ref,
 ) {
   const scope = useRunaDomScope()
   const identity = useRunaDomIdentity(runaComponent ?? `${scope.component}-badge`, id)
   const domAttributes = useRunaDomAttributes(identity)
 
-  return <span {...props} {...domAttributes} ref={ref} style={{ ...badgeStyle, ...style }} />
+  const nextClassName = ['runa-ui-chip', 'runa-ui-status-badge', className].filter(Boolean).join(' ')
+
+  return (
+    <span
+      {...props}
+      {...domAttributes}
+      className={nextClassName}
+      ref={ref}
+      style={{ ...badgeStyle, ...style }}
+    />
+  )
 })
 
 Badge.displayName = 'Badge'

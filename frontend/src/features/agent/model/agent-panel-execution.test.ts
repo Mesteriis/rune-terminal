@@ -1,12 +1,31 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import {
+  isTerminalInputBlockedByPolicy,
   resolveTerminalExecutionTargetForPanel,
   runApprovedExecutionPlanForPanel,
   runTerminalPromptForPanel,
 } from '@/features/agent/model/agent-panel-execution'
 
 describe('agent panel execution helpers', () => {
+  it('detects policy profiles that remove terminal input', () => {
+    expect(
+      isTerminalInputBlockedByPolicy({
+        capability_overlay: {
+          removals: ['terminal:input'],
+        },
+      }),
+    ).toBe(true)
+
+    expect(
+      isTerminalInputBlockedByPolicy({
+        capability_overlay: {
+          removals: ['policy:write'],
+        },
+      }),
+    ).toBe(false)
+  })
+
   it('resolves the execution target from selected context widgets', async () => {
     await expect(
       resolveTerminalExecutionTargetForPanel(
@@ -208,5 +227,73 @@ describe('agent panel execution helpers', () => {
     expect(applyConversationSnapshot).toHaveBeenCalledWith({ id: 'conv-1' })
     expect(refreshConversationList).toHaveBeenCalledOnce()
     expect(setSubmitError).not.toHaveBeenCalled()
+  })
+
+  it('reports terminal input policy denial with an actionable message', async () => {
+    const executeAgentTool = vi.fn().mockResolvedValue({
+      error: 'capability_denied',
+      error_code: 'policy_denied',
+      operation: {
+        required_capabilities: ['terminal:input'],
+      },
+      status: 'error',
+      tool: {
+        metadata: {
+          capabilities: ['terminal:input'],
+        },
+      },
+    })
+    const explainTerminalCommand = vi.fn()
+
+    await expect(
+      runApprovedExecutionPlanForPanel(
+        {
+          applyConversationSnapshot: vi.fn(),
+          createConversationContext: vi.fn().mockReturnValue({
+            action_source: 'frontend.ai.sidebar.execute',
+            active_widget_id: 'term-main',
+            repo_root: '/repo',
+            widget_context_enabled: true,
+          }),
+          createToolExecutionContext: vi.fn().mockReturnValue({
+            action_source: 'frontend.ai.sidebar.execute',
+            active_widget_id: 'term-main',
+            repo_root: '/repo',
+          }),
+          prompt: 'check disk usage',
+          refreshConversationList: vi.fn(),
+          repoRoot: '/repo',
+          resolveTerminalExecutionTarget: vi.fn().mockResolvedValue({
+            baselineNextSeq: 5,
+            targetConnectionID: 'local',
+            targetSession: 'local',
+            targetWidgetID: 'term-main',
+          }),
+          setSubmitError: vi.fn(),
+        },
+        {
+          createApprovalMessage: vi.fn(),
+          createPlanMessage: vi.fn(),
+          deduplicateWidgetIDs: vi.fn(),
+          executeAgentTool,
+          explainTerminalCommand,
+          fetchTerminalSnapshot: vi.fn(),
+          filterContextWidgetSelection: vi.fn(),
+          getApprovalToken: vi.fn(),
+          getRunCommand: vi.fn(),
+          planTerminalCommand: vi.fn().mockResolvedValue({
+            command: 'df -h',
+          }),
+          resolveContextTerminalWidget: vi.fn(),
+          resolveTerminalPanelBinding: vi.fn(),
+          sortMessagesBySortKey: vi.fn(),
+          targetSessionForConnectionKind: vi.fn(),
+          waitForTerminalOutput: vi.fn(),
+        },
+      ),
+    ).rejects.toThrow('terminal:input')
+
+    expect(executeAgentTool).toHaveBeenCalledOnce()
+    expect(explainTerminalCommand).not.toHaveBeenCalled()
   })
 })

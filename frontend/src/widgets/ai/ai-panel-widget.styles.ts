@@ -40,10 +40,11 @@ export const aiPanelContentColumnStyle: CSSProperties = {
 }
 
 export const aiShellHeaderStyle: CSSProperties = {
-  minHeight: '48px',
+  minHeight: '78px',
   display: 'flex',
+  flexDirection: 'column',
   alignItems: 'stretch',
-  justifyContent: 'space-between',
+  justifyContent: 'flex-start',
   gap: 0,
   width: '100%',
   minWidth: 0,
@@ -58,8 +59,9 @@ export const aiShellHeaderTitleLaneStyle: CSSProperties = {
   minWidth: 0,
   display: 'flex',
   alignItems: 'center',
-  gap: 'var(--space-md)',
-  padding: '0 var(--space-md)',
+  gap: 'var(--space-sm)',
+  minHeight: '44px',
+  padding: '0 var(--space-sm)',
 }
 
 export const aiShellHeaderLogoSlotStyle: CSSProperties = {
@@ -76,7 +78,7 @@ export const aiShellHeaderLogoSlotStyle: CSSProperties = {
 
 export const aiShellTitleClusterStyle: CSSProperties = {
   ...aiPlainBlockStyle,
-  flex: '0 0 auto',
+  flex: '1 1 auto',
   minWidth: 0,
   display: 'flex',
   justifyContent: 'flex-start',
@@ -90,19 +92,44 @@ export const aiShellTitleTextStyle: CSSProperties = {
   lineHeight: '24px',
   letterSpacing: '0.02em',
   whiteSpace: 'nowrap',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+}
+
+export const aiShellHeaderUtilityLaneStyle: CSSProperties = {
+  ...aiPlainBlockStyle,
+  display: 'flex',
+  alignItems: 'center',
+  gap: 'var(--space-xs)',
+  minWidth: 0,
+  minHeight: '34px',
+  padding: '0 var(--space-sm) var(--space-xs)',
+}
+
+export const aiShellHeaderCollapseActionStyle: CSSProperties = {
+  ['--runa-ui-bg' as string]: 'color-mix(in srgb, var(--color-surface-shell-header-action) 74%, transparent)',
+  ['--runa-ui-border' as string]: 'color-mix(in srgb, var(--color-border-subtle) 90%, transparent)',
+  ['--runa-ui-color' as string]: 'var(--color-text-primary)',
+  flex: '0 0 auto',
+  width: '32px',
+  minWidth: '32px',
+  minHeight: '32px',
+  padding: 0,
+  borderRadius: '8px',
+  boxShadow: 'none',
 }
 
 export const aiShellRouteClusterStyle: CSSProperties = {
   ...aiPlainBlockStyle,
-  flex: '0 1 320px',
+  flex: '1 1 0',
   minWidth: 0,
   display: 'flex',
   alignItems: 'center',
   gap: 'var(--space-xs)',
   padding: '6px 8px',
   borderRadius: '10px',
-  border: '1px solid color-mix(in srgb, var(--color-border-strong) 52%, transparent)',
-  background: 'color-mix(in srgb, var(--color-surface-shell-header-action) 76%, transparent)',
+  border: '1px solid color-mix(in srgb, var(--color-border-subtle) 92%, transparent)',
+  background: 'color-mix(in srgb, var(--color-surface-shell-header-action) 58%, transparent)',
 }
 
 export const aiShellRouteSummaryStyle: CSSProperties = {
@@ -135,13 +162,14 @@ export const aiShellRouteMetaStyle: CSSProperties = {
 }
 
 export const aiShellRouteActionStyle: CSSProperties = {
+  ['--runa-ui-bg' as string]: 'color-mix(in srgb, var(--color-canvas-elevated) 94%, transparent)',
+  ['--runa-ui-border' as string]: 'color-mix(in srgb, var(--color-border-subtle) 92%, transparent)',
+  ['--runa-ui-color' as string]: 'var(--color-text-primary)',
   minWidth: 'unset',
   minHeight: '26px',
+  flex: '0 0 auto',
   padding: '0 8px',
   borderRadius: '8px',
-  background: 'color-mix(in srgb, var(--color-surface-elevated) 90%, transparent)',
-  borderColor: 'color-mix(in srgb, var(--color-border-strong) 56%, transparent)',
-  color: 'var(--color-text-primary)',
   fontFamily: 'var(--font-family-mono)',
   fontSize: '10px',
   lineHeight: '12px',
@@ -149,7 +177,7 @@ export const aiShellRouteActionStyle: CSSProperties = {
 
 export const aiHeaderConversationGroupStyle: CSSProperties = {
   ...aiPlainBlockStyle,
-  flex: 1,
+  flex: '0 1 190px',
   minWidth: 0,
   display: 'flex',
   alignItems: 'center',
@@ -159,6 +187,7 @@ export const aiHeaderConversationGroupStyle: CSSProperties = {
 }
 
 export const aiHeaderConversationLabelStyle: CSSProperties = {
+  display: 'none',
   color: 'var(--color-text-muted)',
   fontFamily: 'var(--font-family-mono)',
   fontSize: '10px',
@@ -169,8 +198,11 @@ export const aiHeaderConversationLabelStyle: CSSProperties = {
 }
 
 export const aiHeaderConversationTriggerStyle: CSSProperties = {
+  ['--runa-ui-bg' as string]: 'color-mix(in srgb, var(--color-surface-shell-header-action) 82%, transparent)',
+  ['--runa-ui-border' as string]: 'color-mix(in srgb, var(--color-border-subtle) 92%, transparent)',
+  ['--runa-ui-color' as string]: 'var(--color-text-primary)',
   minWidth: 'unset',
-  width: 'min(320px, 100%)',
+  width: '100%',
   minHeight: '32px',
   display: 'inline-flex',
   alignItems: 'center',
@@ -178,9 +210,6 @@ export const aiHeaderConversationTriggerStyle: CSSProperties = {
   gap: 'var(--space-sm)',
   padding: '0 var(--space-sm)',
   borderRadius: '10px',
-  background: 'color-mix(in srgb, var(--color-surface-shell-header-action) 82%, transparent)',
-  borderColor: 'color-mix(in srgb, var(--color-border-strong) 58%, transparent)',
-  color: 'var(--color-text-primary)',
   boxShadow: 'none',
   backdropFilter: 'none',
   WebkitBackdropFilter: 'none',
@@ -346,13 +375,13 @@ export const aiHeaderConversationScopeStripStyle: CSSProperties = {
 }
 
 export const aiHeaderConversationScopeButtonStyle: CSSProperties = {
+  ['--runa-ui-bg' as string]: 'color-mix(in srgb, var(--color-surface-shell-header-action) 74%, transparent)',
+  ['--runa-ui-border' as string]: 'color-mix(in srgb, var(--color-border-subtle) 92%, transparent)',
+  ['--runa-ui-color' as string]: 'var(--color-text-secondary)',
   minHeight: '28px',
   padding: '0 10px',
   borderRadius: '999px',
-  background: 'color-mix(in srgb, var(--color-surface-shell-header-action) 74%, transparent)',
-  borderColor: 'color-mix(in srgb, var(--color-border-strong) 56%, transparent)',
   boxShadow: 'none',
-  color: 'var(--color-text-secondary)',
   fontFamily: 'var(--font-family-mono)',
   fontSize: '10px',
   lineHeight: '14px',
@@ -361,10 +390,11 @@ export const aiHeaderConversationScopeButtonStyle: CSSProperties = {
 }
 
 export const aiHeaderConversationScopeButtonActiveStyle: CSSProperties = {
-  background:
+  ['--runa-ui-bg' as string]:
     'color-mix(in srgb, var(--color-accent-emerald-soft) 26%, var(--color-surface-shell-header-action))',
-  borderColor: 'color-mix(in srgb, var(--color-accent-emerald-soft) 42%, var(--color-border-strong))',
-  color: 'var(--color-text-primary)',
+  ['--runa-ui-border' as string]:
+    'color-mix(in srgb, var(--color-accent-emerald-soft) 42%, var(--color-border-strong))',
+  ['--runa-ui-color' as string]: 'var(--color-text-primary)',
 }
 
 export const aiHeaderConversationSearchInputStyle: CSSProperties = {
@@ -413,29 +443,31 @@ export const aiHeaderConversationMenuSectionTitleStyle: CSSProperties = {
 }
 
 export const aiHeaderConversationMenuOptionStyle: CSSProperties = {
+  ['--runa-ui-bg' as string]: 'color-mix(in srgb, var(--color-surface-shell-header-action) 74%, transparent)',
+  ['--runa-ui-border' as string]: 'color-mix(in srgb, var(--color-border-subtle) 92%, transparent)',
+  ['--runa-ui-color' as string]: 'var(--color-text-primary)',
   minWidth: 'unset',
   width: '100%',
   minHeight: '48px',
   justifyContent: 'flex-start',
   padding: 'var(--space-sm)',
   borderRadius: '12px',
-  borderColor: 'color-mix(in srgb, var(--color-border-strong) 58%, transparent)',
-  background: 'color-mix(in srgb, var(--color-surface-shell-header-action) 74%, transparent)',
-  color: 'var(--color-text-primary)',
   boxShadow: 'none',
   textAlign: 'left',
 }
 
 export const aiHeaderConversationMenuOptionActiveStyle: CSSProperties = {
-  background:
+  ['--runa-ui-bg' as string]:
     'color-mix(in srgb, var(--color-accent-emerald-soft) 26%, var(--color-surface-shell-header-action))',
-  borderColor: 'color-mix(in srgb, var(--color-accent-emerald-soft) 42%, var(--color-border-strong))',
+  ['--runa-ui-border' as string]:
+    'color-mix(in srgb, var(--color-accent-emerald-soft) 42%, var(--color-border-strong))',
 }
 
 export const aiHeaderConversationMenuOptionHighlightedStyle: CSSProperties = {
-  background:
+  ['--runa-ui-bg' as string]:
     'color-mix(in srgb, var(--color-accent-emerald-soft) 14%, var(--color-surface-shell-header-action))',
-  borderColor: 'color-mix(in srgb, var(--color-accent-emerald-soft) 28%, var(--color-border-strong))',
+  ['--runa-ui-border' as string]:
+    'color-mix(in srgb, var(--color-accent-emerald-soft) 28%, var(--color-border-strong))',
 }
 
 export const aiHeaderConversationMenuOptionLeadingStyle: CSSProperties = {
@@ -470,25 +502,25 @@ export const aiHeaderConversationMenuRowActionsStyle: CSSProperties = {
 }
 
 export const aiHeaderConversationMenuRowActionStyle: CSSProperties = {
+  ['--runa-ui-bg' as string]: 'color-mix(in srgb, var(--color-surface-shell-header-action) 66%, transparent)',
+  ['--runa-ui-border' as string]: 'color-mix(in srgb, var(--color-border-subtle) 92%, transparent)',
+  ['--runa-ui-color' as string]: 'var(--color-text-primary)',
   minWidth: '32px',
   width: '32px',
   minHeight: '48px',
   padding: '0',
   borderRadius: '10px',
-  background: 'color-mix(in srgb, var(--color-surface-shell-header-action) 66%, transparent)',
-  borderColor: 'color-mix(in srgb, var(--color-border-strong) 58%, transparent)',
-  color: 'var(--color-text-primary)',
   boxShadow: 'none',
 }
 
 export const aiHeaderConversationActionStyle: CSSProperties = {
+  ['--runa-ui-bg' as string]:
+    'color-mix(in srgb, var(--color-accent-emerald-soft) 34%, var(--color-surface-shell-header-action))',
+  ['--runa-ui-border' as string]: 'color-mix(in srgb, var(--color-border-subtle) 96%, transparent)',
+  ['--runa-ui-color' as string]: 'var(--color-text-primary)',
   minHeight: '32px',
   padding: '0 var(--space-sm)',
   borderRadius: '10px',
-  background:
-    'color-mix(in srgb, var(--color-accent-emerald-soft) 34%, var(--color-surface-shell-header-action))',
-  borderColor: 'color-mix(in srgb, var(--color-border-strong) 62%, transparent)',
-  color: 'var(--color-text-primary)',
   boxShadow: 'none',
   fontFamily: 'var(--font-family-mono)',
   fontSize: '11px',
@@ -532,19 +564,18 @@ export const aiHeaderModeGroupStyle: CSSProperties = {
   ...aiPlainBlockStyle,
   flex: '0 0 auto',
   display: 'flex',
-  alignItems: 'stretch',
-  gap: 0,
-  borderLeft: '1px solid var(--color-border-strong)',
+  alignItems: 'center',
+  gap: 'var(--space-xs)',
+  flexWrap: 'nowrap',
 }
 
 export const aiHeaderModeButtonStyle: CSSProperties = {
-  minWidth: '64px',
-  minHeight: '48px',
-  padding: '0 var(--space-sm)',
-  border: 'none',
-  borderRadius: 0,
-  borderLeft: '1px solid color-mix(in srgb, var(--color-border-strong) 68%, transparent)',
-  background: 'var(--color-surface-shell-header-action)',
+  minWidth: 'unset',
+  minHeight: '28px',
+  padding: '0 8px',
+  borderColor: 'color-mix(in srgb, var(--color-border-strong) 58%, transparent)',
+  borderRadius: '999px',
+  background: 'color-mix(in srgb, var(--color-surface-shell-header-action) 82%, transparent)',
   color: 'var(--color-text-muted)',
   boxShadow: 'none',
   backdropFilter: 'none',
@@ -676,13 +707,13 @@ export const aiChatMessageMetaBadgeStyle: CSSProperties = {
 }
 
 export const aiChatMessageDetailsToggleStyle: CSSProperties = {
+  ['--runa-ui-bg' as string]: 'color-mix(in srgb, var(--color-canvas-elevated) 62%, transparent)',
+  ['--runa-ui-border' as string]: 'color-mix(in srgb, var(--color-border-subtle) 92%, transparent)',
+  ['--runa-ui-color' as string]: 'var(--color-text-secondary)',
   minWidth: 'unset',
   minHeight: '24px',
   padding: '0 var(--space-sm)',
-  border: '1px solid color-mix(in srgb, var(--color-border-strong) 58%, transparent)',
   borderRadius: '999px',
-  background: 'color-mix(in srgb, var(--color-canvas-elevated) 62%, transparent)',
-  color: 'var(--color-text-secondary)',
   boxShadow: 'none',
   fontFamily: 'var(--font-family-mono)',
   fontSize: '11px',
@@ -899,10 +930,10 @@ export const aiToolbarStyle: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'stretch',
-  gap: 'var(--space-xs)',
-  minHeight: '28px',
-  padding: 'var(--space-xs) var(--space-md)',
-  background: 'var(--color-canvas-elevated)',
+  gap: '4px',
+  minHeight: 0,
+  padding: '0 6px',
+  background: 'transparent',
 }
 
 export const aiToolbarMetaRowStyle: CSSProperties = {
@@ -914,31 +945,50 @@ export const aiToolbarMetaRowStyle: CSSProperties = {
 }
 
 export const aiToolbarControlStripStyle: CSSProperties = {
-  display: 'flex',
-  alignItems: 'stretch',
-  justifyContent: 'space-between',
-  gap: 'var(--space-sm)',
+  display: 'block',
+  gap: 'var(--space-xs)',
   minWidth: 0,
-  padding: 'var(--space-xs)',
-  border: '1px solid var(--color-border-strong)',
-  borderRadius: 'var(--radius-sm)',
-  background: 'color-mix(in srgb, var(--color-surface-glass-soft) 78%, transparent)',
+  padding: 0,
+  border: 'none',
+  borderRadius: 0,
+  background: 'transparent',
 }
 
 export const aiToolbarControlsStyle: CSSProperties = {
-  display: 'flex',
+  display: 'grid',
+  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
   alignItems: 'stretch',
-  gap: 'var(--space-sm)',
+  gap: '4px',
   minWidth: 0,
-  flexWrap: 'wrap',
-  flex: 1,
+  width: '100%',
 }
 
 export const aiToolbarFieldStackStyle: CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '2px',
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 'var(--space-xs)',
   minWidth: 0,
+  width: '100%',
+  minHeight: '30px',
+  padding: '0 7px',
+  border: '1px solid color-mix(in srgb, var(--color-border-subtle) 70%, transparent)',
+  borderRadius: '8px',
+  background: 'color-mix(in srgb, var(--color-surface-glass-soft) 58%, transparent)',
+}
+
+export const aiToolbarFieldInlineStyle: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 'var(--space-xs)',
+  minWidth: 0,
+}
+
+export const aiToolbarFieldIconStyle: CSSProperties = {
+  color: 'var(--color-text-muted)',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  flex: '0 0 auto',
 }
 
 export const aiToolbarFieldLabelStyle: CSSProperties = {
@@ -967,62 +1017,75 @@ export const aiToolbarLabelStyle: CSSProperties = {
 }
 
 export const aiToolbarChipStyle: CSSProperties = {
+  ['--runa-ui-bg' as string]:
+    'color-mix(in srgb, var(--color-accent-emerald-soft) 62%, var(--color-surface-glass-soft))',
+  ['--runa-ui-border' as string]:
+    'color-mix(in srgb, var(--color-border-strong) 70%, var(--color-accent-emerald-strong) 30%)',
+  ['--runa-ui-color' as string]: 'var(--color-text-primary)',
   minHeight: '22px',
   minWidth: 'auto',
   padding: '0 var(--space-sm)',
   borderRadius: 'var(--radius-xs)',
-  borderColor: 'var(--color-border-strong)',
-  background: 'var(--color-accent-emerald-soft)',
-  color: 'var(--color-text-primary)',
   boxShadow: 'none',
 }
 
 export const aiToolbarModelSelectStyle: CSSProperties = {
-  width: 'min(16rem, 42vw)',
-  minWidth: '9rem',
-  paddingTop: '0.32rem',
-  paddingBottom: '0.32rem',
+  ['--runa-ui-bg' as string]: 'transparent',
+  ['--runa-ui-border' as string]: 'transparent',
+  ['--runa-ui-color' as string]: 'var(--color-text-primary)',
+  width: '100%',
+  minWidth: 0,
+  minHeight: '30px',
+  paddingTop: 0,
+  paddingBottom: 0,
+  paddingLeft: 0,
+  paddingRight: '22px',
   fontFamily: 'var(--font-family-mono)',
-  fontSize: '12px',
-  lineHeight: '16px',
-  background: 'var(--color-surface-glass-strong)',
+  fontSize: '11px',
+  lineHeight: '14px',
+  boxShadow: 'none',
 }
 
 export const aiToolbarProviderSelectStyle: CSSProperties = {
-  width: 'min(14rem, 34vw)',
-  minWidth: '9rem',
-  paddingTop: '0.32rem',
-  paddingBottom: '0.32rem',
+  ['--runa-ui-bg' as string]: 'transparent',
+  ['--runa-ui-border' as string]: 'transparent',
+  ['--runa-ui-color' as string]: 'var(--color-text-primary)',
+  width: '100%',
+  minWidth: 0,
+  minHeight: '30px',
+  paddingTop: 0,
+  paddingBottom: 0,
+  paddingLeft: 0,
+  paddingRight: '22px',
   fontFamily: 'var(--font-family-mono)',
-  fontSize: '12px',
-  lineHeight: '16px',
-  background: 'var(--color-surface-glass-strong)',
+  fontSize: '11px',
+  lineHeight: '14px',
+  boxShadow: 'none',
 }
 
 export const aiToolbarContextTriggerStyle: CSSProperties = {
+  ['--runa-ui-bg' as string]: 'transparent',
+  ['--runa-ui-border' as string]: 'transparent',
+  ['--runa-ui-color' as string]: 'var(--color-text-secondary)',
   minHeight: '30px',
-  minWidth: '11rem',
+  minWidth: 0,
+  width: '100%',
   justifyContent: 'space-between',
-  gap: 'var(--gap-sm)',
-  padding: '0 var(--space-sm)',
+  gap: '6px',
+  padding: 0,
   borderRadius: 'var(--radius-sm)',
-  borderColor: 'var(--color-border-strong)',
-  background: 'var(--color-surface-glass-strong)',
-  color: 'var(--color-text-secondary)',
   boxShadow: 'none',
 }
 
 export const aiToolbarContextTriggerActiveStyle: CSSProperties = {
-  background: 'color-mix(in srgb, var(--color-accent-emerald-soft) 16%, var(--color-surface-glass-soft))',
-  color: 'var(--color-text-primary)',
+  ['--runa-ui-color' as string]: 'var(--color-text-primary)',
 }
 
 export const aiToolbarContextTriggerLabelClusterStyle: CSSProperties = {
   display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'flex-start',
+  alignItems: 'center',
   minWidth: 0,
-  gap: '2px',
+  gap: 'var(--space-xs)',
 }
 
 export const aiToolbarContextTriggerTitleStyle: CSSProperties = {
@@ -1035,14 +1098,70 @@ export const aiToolbarContextTriggerTitleStyle: CSSProperties = {
 }
 
 export const aiToolbarContextTriggerMetaStyle: CSSProperties = {
-  color: 'var(--color-text-secondary)',
+  color: 'inherit',
   fontFamily: 'var(--font-family-mono)',
-  fontSize: '12px',
-  lineHeight: '16px',
-  maxWidth: '11rem',
+  fontSize: '11px',
+  lineHeight: '14px',
+  minWidth: 0,
+  maxWidth: '100%',
   overflow: 'hidden',
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
+}
+
+export const aiToolbarTuneTriggerStyle: CSSProperties = {
+  ...aiToolbarContextTriggerStyle,
+}
+
+export const aiToolbarTuneTriggerMetaStyle: CSSProperties = {
+  ...aiToolbarContextTriggerMetaStyle,
+}
+
+export const aiComposerSecondaryMenuWrapStyle: CSSProperties = {
+  position: 'absolute',
+  right: 0,
+  bottom: 'calc(100% + var(--space-xs))',
+  zIndex: 'var(--z-modal-widget)',
+  width: 'min(20rem, calc(100vw - 48px))',
+}
+
+export const aiComposerSecondaryMenuStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 'var(--space-sm)',
+  padding: 'var(--space-sm)',
+  borderRadius: '14px',
+  background: 'color-mix(in srgb, var(--color-surface-shell-header) 90%, var(--color-canvas-elevated))',
+  borderColor: 'var(--color-border-strong)',
+  boxShadow: 'var(--shadow-glass-panel)',
+  backdropFilter: 'var(--blur-glass-md)',
+  WebkitBackdropFilter: 'var(--blur-glass-md)',
+}
+
+export const aiComposerSecondaryMenuHeaderStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '2px',
+}
+
+export const aiComposerSecondaryMenuTitleStyle: CSSProperties = {
+  color: 'var(--color-text-primary)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '12px',
+  lineHeight: '16px',
+}
+
+export const aiComposerSecondaryMenuMetaStyle: CSSProperties = {
+  color: 'var(--color-text-muted)',
+  fontFamily: 'var(--font-family-mono)',
+  fontSize: '11px',
+  lineHeight: '15px',
+}
+
+export const aiComposerSecondaryMenuControlStackStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 'var(--space-sm)',
 }
 
 export const aiComposerContextStripStyle: CSSProperties = {
@@ -1050,7 +1169,7 @@ export const aiComposerContextStripStyle: CSSProperties = {
   flexDirection: 'column',
   gap: 'var(--space-xs)',
   minWidth: 0,
-  padding: '0 var(--space-xs)',
+  padding: 0,
 }
 
 export const aiComposerContextStripLabelStyle: CSSProperties = {
@@ -1070,6 +1189,10 @@ export const aiComposerContextStripRowStyle: CSSProperties = {
 }
 
 export const aiComposerContextStripRemoveStyle: CSSProperties = {
+  ['--runa-ui-bg' as string]:
+    'color-mix(in srgb, var(--color-accent-emerald-soft) 18%, var(--color-surface-glass-soft))',
+  ['--runa-ui-border' as string]: 'var(--color-border-subtle)',
+  ['--runa-ui-color' as string]: 'var(--color-text-primary)',
   minHeight: '24px',
   minWidth: 'auto',
   display: 'inline-flex',
@@ -1077,20 +1200,18 @@ export const aiComposerContextStripRemoveStyle: CSSProperties = {
   gap: '6px',
   padding: '0 var(--space-sm)',
   borderRadius: 'var(--radius-sm)',
-  borderColor: 'var(--color-border-strong)',
-  background: 'color-mix(in srgb, var(--color-accent-emerald-soft) 18%, var(--color-surface-glass-soft))',
-  color: 'var(--color-text-primary)',
   boxShadow: 'none',
 }
 
 export const aiComposerContextStripCurrentStyle: CSSProperties = {
+  ['--runa-ui-bg' as string]: 'color-mix(in srgb, var(--color-surface-glass-soft) 78%, transparent)',
+  ['--runa-ui-border' as string]: 'var(--color-border-subtle)',
+  ['--runa-ui-color' as string]: 'var(--color-text-secondary)',
   minHeight: '24px',
   display: 'inline-flex',
   alignItems: 'center',
   padding: '0 var(--space-sm)',
-  border: '1px solid var(--color-border-strong)',
   borderRadius: 'var(--radius-sm)',
-  background: 'color-mix(in srgb, var(--color-surface-glass-soft) 78%, transparent)',
 }
 
 export const aiComposerContextStripValueStyle: CSSProperties = {
@@ -1107,12 +1228,12 @@ export const aiComposerContextStripValueStyle: CSSProperties = {
 export const aiComposerSurfaceStyle: CSSProperties = {
   position: 'relative',
   minWidth: 0,
-  minHeight: '180px',
+  minHeight: '140px',
   display: 'flex',
-  gap: 'var(--gap-sm)',
-  padding: 'var(--space-sm)',
+  gap: '8px',
+  padding: '8px',
   background: 'var(--color-canvas-elevated)',
-  borderColor: 'var(--color-border-strong)',
+  borderColor: 'var(--color-border-subtle)',
 }
 
 export const aiComposerTextAreaStyle: CSSProperties = {
@@ -1124,11 +1245,11 @@ export const aiComposerTextAreaStyle: CSSProperties = {
   border: 'none',
   background: 'transparent',
   boxShadow: 'none',
-  padding: 'var(--space-md)',
+  padding: '10px 8px',
   color: 'var(--color-text-primary)',
   fontFamily: 'var(--font-family-mono)',
-  fontSize: '18px',
-  lineHeight: '26px',
+  fontSize: '15px',
+  lineHeight: '22px',
 }
 
 export const aiComposerActionRailStyle: CSSProperties = {
@@ -1144,16 +1265,19 @@ export const aiComposerActionRailStyle: CSSProperties = {
 }
 
 export const aiComposerActionStyle: CSSProperties = {
+  ['--runa-ui-bg' as string]: 'var(--color-surface-glass-strong)',
+  ['--runa-ui-border' as string]: 'var(--color-border-subtle)',
+  ['--runa-ui-color' as string]: 'var(--color-text-secondary)',
   borderRadius: 'var(--radius-sm)',
-  borderColor: 'var(--color-border-strong)',
-  background: 'var(--color-surface-glass-strong)',
-  color: 'var(--color-text-secondary)',
   boxShadow: 'none',
 }
 
 export const aiComposerActionActiveStyle: CSSProperties = {
-  background: 'color-mix(in srgb, var(--color-accent-emerald-soft) 28%, var(--color-surface-glass-strong))',
-  color: 'var(--color-text-primary)',
+  ['--runa-ui-bg' as string]:
+    'color-mix(in srgb, var(--color-accent-emerald-soft) 28%, var(--color-surface-glass-strong))',
+  ['--runa-ui-border' as string]:
+    'color-mix(in srgb, var(--color-accent-emerald-strong) 56%, var(--color-border-strong))',
+  ['--runa-ui-color' as string]: 'var(--color-text-primary)',
 }
 
 export const aiComposerContextMenuWrapStyle: CSSProperties = {
@@ -1194,7 +1318,7 @@ export const aiComposerContextSummaryListStyle: CSSProperties = {
   flexDirection: 'column',
   gap: '6px',
   padding: 'var(--space-sm)',
-  border: '1px solid var(--color-border-strong)',
+  border: '1px solid var(--color-border-subtle)',
   borderRadius: 'var(--radius-sm)',
   background: 'color-mix(in srgb, var(--color-surface-glass-soft) 82%, transparent)',
 }
@@ -1258,11 +1382,11 @@ export const aiComposerContextQuickActionsStyle: CSSProperties = {
 }
 
 export const aiComposerContextQuickActionStyle: CSSProperties = {
+  ['--runa-ui-bg' as string]: 'var(--color-surface-glass-strong)',
+  ['--runa-ui-border' as string]: 'var(--color-border-subtle)',
+  ['--runa-ui-color' as string]: 'var(--color-text-primary)',
   minHeight: '28px',
   padding: '0 var(--space-sm)',
-  borderColor: 'var(--color-border-strong)',
-  background: 'var(--color-surface-glass-strong)',
-  color: 'var(--color-text-primary)',
   boxShadow: 'none',
 }
 

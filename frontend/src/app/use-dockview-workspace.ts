@@ -134,7 +134,7 @@ export function useDockviewWorkspace({
 
   const handleRenameWorkspace = (workspaceId: number, title: string) => {
     renameDockviewWorkspace({
-      nextTitle: title,
+      title,
       updateWorkspaceTabs,
       workspaceId,
     })

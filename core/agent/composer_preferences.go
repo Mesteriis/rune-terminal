@@ -10,13 +10,15 @@ import (
 )
 
 const (
-	DefaultComposerSubmitMode   = "enter-sends"
-	ModEnterComposerSubmitMode  = "mod-enter-sends"
+	DefaultComposerSubmitMode    = "enter-sends"
+	ModEnterComposerSubmitMode   = "mod-enter-sends"
+	DefaultDebugModeEnabled      = false
 	defaultComposerSettingsScope = "default"
 )
 
 type ComposerPreferences struct {
-	SubmitMode string `json:"composer_submit_mode"`
+	SubmitMode       string `json:"composer_submit_mode"`
+	DebugModeEnabled bool   `json:"debug_mode_enabled"`
 }
 
 type ComposerPreferencesStore struct {
@@ -41,18 +43,22 @@ func (s *ComposerPreferencesStore) Snapshot(ctx context.Context) (ComposerPrefer
 		return ComposerPreferences{}, err
 	}
 
-	var submitMode string
+	var (
+		submitMode       string
+		debugModeEnabled bool
+	)
 	err := s.db.QueryRowContext(ctx, `
-		SELECT composer_submit_mode
+		SELECT composer_submit_mode, debug_mode_enabled
 		FROM agent_settings
 		WHERE scope = ?
-	`, defaultComposerSettingsScope).Scan(&submitMode)
+	`, defaultComposerSettingsScope).Scan(&submitMode, &debugModeEnabled)
 	if err != nil {
 		return ComposerPreferences{}, fmt.Errorf("load agent composer settings: %w", err)
 	}
 
 	return ComposerPreferences{
-		SubmitMode: clampComposerSubmitMode(submitMode),
+		SubmitMode:       clampComposerSubmitMode(submitMode),
+		DebugModeEnabled: debugModeEnabled,
 	}, nil
 }
 
@@ -62,15 +68,17 @@ func (s *ComposerPreferencesStore) Update(ctx context.Context, next ComposerPref
 	}
 
 	normalized := ComposerPreferences{
-		SubmitMode: clampComposerSubmitMode(next.SubmitMode),
+		SubmitMode:       clampComposerSubmitMode(next.SubmitMode),
+		DebugModeEnabled: next.DebugModeEnabled,
 	}
 
 	_, err := s.db.ExecContext(ctx, `
 		UPDATE agent_settings
-		SET composer_submit_mode = ?, updated_at = ?
+		SET composer_submit_mode = ?, debug_mode_enabled = ?, updated_at = ?
 		WHERE scope = ?
 	`,
 		normalized.SubmitMode,
+		normalized.DebugModeEnabled,
 		time.Now().UTC().Format(time.RFC3339Nano),
 		defaultComposerSettingsScope,
 	)
@@ -95,11 +103,12 @@ func (s *ComposerPreferencesStore) ensureDefaultRow(ctx context.Context) error {
 	}
 
 	_, err := s.db.ExecContext(ctx, `
-		INSERT INTO agent_settings (scope, composer_submit_mode, updated_at)
-		VALUES (?, ?, ?)
+		INSERT INTO agent_settings (scope, composer_submit_mode, debug_mode_enabled, updated_at)
+		VALUES (?, ?, ?, ?)
 	`,
 		defaultComposerSettingsScope,
 		DefaultComposerSubmitMode,
+		DefaultDebugModeEnabled,
 		time.Now().UTC().Format(time.RFC3339Nano),
 	)
 	if err != nil && !isUniqueConstraintError(err) {

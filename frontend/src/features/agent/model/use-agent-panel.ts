@@ -54,10 +54,12 @@ import {
 } from '@/features/agent/model/agent-panel-context-runtime'
 import { useAgentPanelContextSelection } from '@/features/agent/model/use-agent-panel-context-selection'
 import {
+  isTerminalInputBlockedByPolicy,
   resolveTerminalExecutionTargetForPanel,
   runApprovedExecutionPlanForPanel,
   runApprovedTerminalPromptForPanel,
   runTerminalPromptForPanel,
+  terminalInputPolicyBlockedMessage,
   type TerminalExecutionTarget,
 } from '@/features/agent/model/agent-panel-execution'
 import {
@@ -237,6 +239,7 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
     () => (selectedProviderID || providerCatalog?.active_provider_id || '').trim(),
     [providerCatalog?.active_provider_id, selectedProviderID],
   )
+  const isTerminalInputBlocked = isTerminalInputBlockedByPolicy(agentCatalog?.active.effective_policy_profile)
 
   const refreshProviderGatewaySnapshot = useCallback(async (options?: { suppressError?: boolean }) => {
     return refreshProviderGatewaySnapshotForPanel({
@@ -1347,7 +1350,20 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
     }
 
     if (isRunPrompt) {
+      if (isTerminalInputBlocked) {
+        setSubmitError(terminalInputPolicyBlockedMessage)
+        return
+      }
+
       await runBackendPrompt(prompt, { cancellable: false })
+      return
+    }
+
+    if (
+      isTerminalInputBlocked &&
+      interactionFlow.classification.tools.some((tool) => tool.name === 'execute_terminal')
+    ) {
+      setSubmitError(terminalInputPolicyBlockedMessage)
       return
     }
 
@@ -1381,6 +1397,7 @@ export function useAgentPanel(hostId: string, enabled = true, options: UseAgentP
     selectedModel,
     setPendingInteractionFlow,
     hasTerminalExecutionContext,
+    isTerminalInputBlocked,
   ])
 
   const cancelActiveSubmission = useCallback(() => {

@@ -88,7 +88,9 @@ describe('frontend accessibility contracts', () => {
         isAiOpen={false}
         onAddWorkspace={() => undefined}
         onClose={() => undefined}
+        onDeleteWorkspace={() => undefined}
         onMinimize={() => undefined}
+        onRenameWorkspace={() => undefined}
         onSelectWorkspace={() => undefined}
         onToggleFullscreen={() => undefined}
         onToggleAi={() => undefined}

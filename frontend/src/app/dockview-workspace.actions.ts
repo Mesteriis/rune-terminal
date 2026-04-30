@@ -56,30 +56,37 @@ export function addDockviewWorkspace({
 }
 
 type RenameDockviewWorkspaceOptions = {
-  nextTitle: string
+  title: string
   updateWorkspaceTabs: (updater: (tabs: WorkspaceLayoutTab[]) => WorkspaceLayoutTab[]) => void
   workspaceId: number
 }
 
-/** Renames a workspace tab without letting blank titles replace the current label. */
+/** Replaces one workspace title after trimming and validating the requested label. */
 export function renameDockviewWorkspace({
-  nextTitle,
+  title,
   updateWorkspaceTabs,
   workspaceId,
 }: RenameDockviewWorkspaceOptions) {
-  const trimmedTitle = nextTitle.trim()
+  const nextTitle = title.trim()
 
-  if (!trimmedTitle) {
+  if (!nextTitle) {
     return false
   }
 
+  let renamed = false
+
   updateWorkspaceTabs((tabs) =>
-    tabs.map((workspace) =>
-      workspace.id === workspaceId ? { ...workspace, title: trimmedTitle } : workspace,
-    ),
+    tabs.map((workspace) => {
+      if (workspace.id !== workspaceId || workspace.title === nextTitle) {
+        return workspace
+      }
+
+      renamed = true
+      return { ...workspace, title: nextTitle }
+    }),
   )
 
-  return true
+  return renamed
 }
 
 type DeleteDockviewWorkspaceOptions = {
@@ -92,17 +99,7 @@ type DeleteDockviewWorkspaceOptions = {
   workspaceTabs: WorkspaceLayoutTab[]
 }
 
-function resolveWorkspaceAfterDelete(workspaceTabs: WorkspaceLayoutTab[], workspaceId: number) {
-  const deletedWorkspaceIndex = workspaceTabs.findIndex((workspace) => workspace.id === workspaceId)
-
-  if (deletedWorkspaceIndex < 0) {
-    return null
-  }
-
-  return workspaceTabs[deletedWorkspaceIndex - 1] ?? workspaceTabs[deletedWorkspaceIndex + 1] ?? null
-}
-
-/** Removes a workspace tab while keeping at least one restorable workspace alive. */
+/** Removes one workspace tab and restores an adjacent snapshot if the active workspace was deleted. */
 export function deleteDockviewWorkspace({
   activeWorkspaceId,
   persistCurrentWorkspaceSnapshot,
@@ -112,20 +109,33 @@ export function deleteDockviewWorkspace({
   workspaceId,
   workspaceTabs,
 }: DeleteDockviewWorkspaceOptions) {
-  if (workspaceTabs.length <= 1 || !workspaceTabs.some((workspace) => workspace.id === workspaceId)) {
+  if (workspaceTabs.length <= 1) {
     return false
   }
 
-  const nextActiveWorkspace =
-    workspaceId === activeWorkspaceId ? resolveWorkspaceAfterDelete(workspaceTabs, workspaceId) : null
+  const workspaceIndex = workspaceTabs.findIndex((workspace) => workspace.id === workspaceId)
+
+  if (workspaceIndex < 0) {
+    return false
+  }
+
+  const nextTabs = workspaceTabs.filter((workspace) => workspace.id !== workspaceId)
 
   persistCurrentWorkspaceSnapshot()
-  updateWorkspaceTabs((tabs) => tabs.filter((workspace) => workspace.id !== workspaceId))
+  updateWorkspaceTabs(() => nextTabs)
 
-  if (nextActiveWorkspace) {
-    setActiveWorkspaceId(nextActiveWorkspace.id)
-    restoreWorkspaceSnapshot(nextActiveWorkspace.id)
+  if (activeWorkspaceId !== workspaceId) {
+    return true
   }
+
+  const fallbackWorkspace = nextTabs[workspaceIndex] ?? nextTabs[workspaceIndex - 1] ?? nextTabs[0]
+
+  if (!fallbackWorkspace) {
+    return false
+  }
+
+  setActiveWorkspaceId(fallbackWorkspace.id)
+  restoreWorkspaceSnapshot(fallbackWorkspace.id)
 
   return true
 }

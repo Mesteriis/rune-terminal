@@ -21,9 +21,9 @@ func TestSettingsMutationHandlersAppendAuditEvents(t *testing.T) {
 		{
 			name:    "agent",
 			path:    "/api/v1/settings/agent",
-			payload: map[string]any{"composer_submit_mode": "mod-enter-sends"},
+			payload: map[string]any{"composer_submit_mode": "mod-enter-sends", "debug_mode_enabled": true},
 			tool:    "settings.agent.update",
-			summary: "fields=composer_submit_mode",
+			summary: "fields=composer_submit_mode,debug_mode_enabled",
 		},
 		{
 			name:    "terminal",

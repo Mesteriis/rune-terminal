@@ -9,9 +9,10 @@ export type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {
 
 const inputStyle: React.CSSProperties = {
   boxSizing: 'border-box',
-  background: 'var(--color-surface-glass-soft)',
-  color: 'var(--color-text)',
-  border: '1px solid var(--color-border-strong)',
+  minWidth: 0,
+  background: 'var(--runa-ui-bg, var(--color-surface-glass-soft))',
+  color: 'var(--runa-ui-color, var(--color-text))',
+  border: '1px solid var(--runa-ui-border, var(--color-border-strong))',
   borderRadius: 'var(--radius-sm)',
   padding: 'var(--padding-control-y) var(--padding-control-x)',
   fontSize: 'var(--font-size-md)',
@@ -19,10 +20,11 @@ const inputStyle: React.CSSProperties = {
   caretColor: 'var(--color-accent-emerald-strong)',
   backdropFilter: 'var(--blur-glass-sm)',
   WebkitBackdropFilter: 'var(--blur-glass-sm)',
+  boxShadow: 'var(--runa-ui-shadow, none)',
 }
 
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(function Input(
-  { id, runaComponent, style, ...props },
+  { className, id, runaComponent, style, ...props },
   ref,
 ) {
   const scope = useRunaDomScope()
@@ -35,7 +37,17 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(function Inp
   const identity = useRunaDomIdentity(semanticComponent, id)
   const domAttributes = useRunaDomAttributes(identity)
 
-  return <input {...props} {...domAttributes} ref={ref} style={{ ...inputStyle, ...style }} />
+  const nextClassName = ['runa-ui-control', 'runa-ui-input', className].filter(Boolean).join(' ')
+
+  return (
+    <input
+      {...props}
+      {...domAttributes}
+      className={nextClassName}
+      ref={ref}
+      style={{ ...inputStyle, ...style }}
+    />
+  )
 })
 
 Input.displayName = 'Input'

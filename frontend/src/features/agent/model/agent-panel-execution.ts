@@ -3,6 +3,7 @@ import {
   explainTerminalCommand,
   planTerminalCommand,
   type AgentConversationSnapshot,
+  type AgentToolExecuteResponse,
 } from '@/features/agent/api/client'
 import {
   deduplicateWidgetIDs,
@@ -71,6 +72,46 @@ const defaultDeps: ExecutionDeps = {
   sortMessagesBySortKey,
   targetSessionForConnectionKind,
   waitForTerminalOutput,
+}
+
+export const terminalInputPolicyBlockedMessage =
+  'Команда заблокирована политикой: выбранная комбинация AI profile/role/mode отключает terminal:input. Для запуска выберите режим Implement, Debug, Ops или Incident и роль без read-only ограничения, затем повторите approve.'
+
+export function isTerminalInputBlockedByPolicy(
+  profile?: {
+    capability_overlay?: {
+      removals?: string[]
+    }
+  } | null,
+) {
+  return profile?.capability_overlay?.removals?.includes('terminal:input') ?? false
+}
+
+function isTerminalInputPolicyDenied(response: AgentToolExecuteResponse) {
+  if (response.status !== 'error' || response.error_code !== 'policy_denied') {
+    return false
+  }
+
+  const requiredCapabilities = response.operation?.required_capabilities ?? []
+  const toolCapabilities = response.tool?.metadata.capabilities ?? []
+
+  return (
+    response.error?.trim() === 'capability_denied' &&
+    (requiredCapabilities.includes('terminal:input') || toolCapabilities.includes('terminal:input'))
+  )
+}
+
+function getTerminalExecutionResponseError(response: AgentToolExecuteResponse, fallback: string) {
+  if (isTerminalInputPolicyDenied(response)) {
+    return terminalInputPolicyBlockedMessage
+  }
+
+  if (response.error_code === 'policy_denied') {
+    const reason = response.error?.trim() || 'policy_denied'
+    return `Команда заблокирована политикой: ${reason}.`
+  }
+
+  return response.error?.trim() || fallback
 }
 
 type ResolveTerminalExecutionTargetInput = {
@@ -287,7 +328,7 @@ export async function runTerminalPromptForPanel(
   }
 
   if (executionResponse.status !== 'ok') {
-    throw new Error(executionResponse.error?.trim() || 'Unable to execute /run command.')
+    throw new Error(getTerminalExecutionResponseError(executionResponse, 'Unable to execute /run command.'))
   }
 
   await deps.waitForTerminalOutput(
@@ -357,7 +398,9 @@ export async function runApprovedTerminalPromptForPanel(
   }
 
   if (executionResponse.status !== 'ok') {
-    throw new Error(executionResponse.error?.trim() || 'Unable to execute approved /run command.')
+    throw new Error(
+      getTerminalExecutionResponseError(executionResponse, 'Unable to execute approved /run command.'),
+    )
   }
 
   await deps.waitForTerminalOutput(
@@ -494,7 +537,9 @@ export async function runApprovedExecutionPlanForPanel(
   }
 
   if (executionResponse.status !== 'ok') {
-    throw new Error(executionResponse.error?.trim() || 'Unable to execute the approved terminal plan.')
+    throw new Error(
+      getTerminalExecutionResponseError(executionResponse, 'Unable to execute the approved terminal plan.'),
+    )
   }
 
   await deps.waitForTerminalOutput(

@@ -25,6 +25,7 @@
   - active conversation provider resolution
   - frontend AI/provider settings surfaces
   - runtime-backed AI composer submit-shortcut preference (`Enter` vs `Ctrl/Cmd+Enter`) through `GET/PUT /api/v1/settings/agent`
+  - runtime-backed `debug_mode_enabled` flag through that same `GET/PUT /api/v1/settings/agent` contract
   - structured Codex CLI streaming over `codex exec --json` with text, reasoning, and command-execution stream parts on the shared conversation SSE route
   - structured Claude Code streaming over `claude -p --output-format stream-json --verbose --include-partial-messages`
   - narrow OpenAI-compatible HTTP source discovery/completion path
@@ -58,7 +59,13 @@
   - browser-level recent-attachment reuse coverage from the AI composer shelf
   - explicit stale-widget repair notice plus `Save cleaned context` action for persisted conversation context that no longer matches the current workspace
   - stale-widget mismatch is now visible in the closed composer body as well, not only after opening the context dropdown
-  - AI composer two-row toolbar grouping with explicit `Source / Model / Context` field labels
+  - AI shell corrective pass:
+    - provider-route telemetry plus `chat/dev/debug` mode switching are back in the shell-visible header for fast access
+    - provider-route diagnostics are no longer rendered as a separate card inside the chat body; detailed gateway diagnostics remain in settings-side operator surfaces while the shell keeps only compact header status/action chrome
+    - the conversation/history dropdown is conversation-first again instead of doubling as route/mode chrome
+    - the collapsed AI work-panel summary now shows route/thread/mode context instead of a mostly decorative placeholder
+    - AI header popovers now layer above the panel body through visible frame/content overflow plus a higher header z-tier, while the body itself remains clipped
+  - AI composer single-row icon-led selector toolbar without the previous nested meta row / inner frame treatment
   - AI composer denser request-context dropdown summary block and widget option rows
   - AI assistant message meta row and details panel chrome refinement
   - stream-error handling in the AI panel now preserves partial assistant output instead of immediately overwriting it with a post-stream conversation resync
@@ -76,14 +83,17 @@
     - explicit widget-context selection in the composer and `widget_ids` propagation into the stream request body
     - persisted per-conversation widget-context restore across conversation activation and reload
     - explicit stale-widget repair flow that rewrites persisted `widget_ids` to the still-valid workspace subset
-    - visible stale-context repair notice before opening the composer context dropdown when persisted widget ids no longer match the current workspace
-    - immediate `Only current` context selection after opening the composer context menu without losing the current workspace widget to frontend state races
-    - settings-driven keyboard submit behavior: `Enter` newline plus `Ctrl/Cmd+Enter` submit
-    - conversation persistence across AI panel reload/reopen with backend conversation switching
-    - shell-visible conversation menu for `Recent / Archived / All` thread grouping, `New` creation, active-thread rename, archive, restore, and delete
-    - visible `Active thread` summary block inside the conversation navigator before search/scope controls
-    - keyboard navigation through filtered conversation results in the AI conversation navigator
-    - live Claude provider routing with explicit `auth-required` handling when the local CLI is installed but not logged in
+  - visible stale-context repair notice before opening the composer context dropdown when persisted widget ids no longer match the current workspace
+  - immediate `Only current` context selection after opening the composer context menu without losing the current workspace widget to frontend state races
+  - settings-driven keyboard submit behavior: `Enter` newline plus `Ctrl/Cmd+Enter` submit
+  - conversation persistence across AI panel reload/reopen with backend conversation switching
+  - shell-managed AI panel now reopens in a collapsed summary state by default, with local expand/collapse disclosure semantics that do not change backend conversation state
+  - shell-visible conversation menu for `Recent / Archived / All` thread grouping, `New` creation, active-thread rename, archive, restore, and delete
+  - visible `Active thread` summary block inside the conversation navigator before search/scope controls
+  - keyboard navigation through filtered conversation results in the AI conversation navigator
+  - expanded AI panel keeps the compact two-column drafting grid without the notebook-style shell restyle introduced in the previous pass
+  - empty AI state still keeps panel mode controls reachable from the visible shell header, so `chat/dev/debug` do not depend on opening the conversation navigator
+  - live Claude provider routing with explicit `auth-required` handling when the local CLI is installed but not logged in
     - `/run printf ...` sending input into the selected terminal session without falling back to plain provider chat
     - persisted SSH-backed `/run` context restore: a conversation saved against the remote widget still sends `term.send_input` with the preserved remote connection/session target instead of falling back to the active local shell
     - approved natural-language terminal execution routing into the explicitly selected AI context widget even when another terminal widget remains active in the workspace
@@ -131,11 +141,10 @@
   - `Probe` when the route is unchecked, missing, auth-blocked, unreachable, or model-mismatched
   - `Prepare` when the route is ready but not warmed or when the last run failed on a transient route-level condition like timeout/upstream rejection
   - provider settings also expose a filterable persisted run history plus run diagnostics drill-down over that same gateway snapshot, instead of requiring a separate proxy/history subsystem
-  - the AI shell now also renders a compact operator panel from that same backend gateway truth:
-  - active-route status, policy, warm TTL, and warm-expiry visibility
-  - explicit `Probe/Prepare` recovery action chosen from the gateway snapshot
-  - explicit `Clear route state` reset action over the backend route-state contract
-  - provider-scoped recent persisted run history with inline diagnostics for the active route, without introducing a second chat-local runtime model
+  - detailed gateway diagnostics stay out of the chat body:
+  - the AI shell header keeps the compact active-route status and explicit `Probe/Prepare` action chosen from that same gateway snapshot
+  - settings-side provider surfaces remain the place for route-state reset and provider-scoped recent persisted run diagnostics
+  - no second chat-local provider-runtime model is introduced
 - Unsupported legacy provider records are filtered during agent-state normalization. If filtering leaves no providers, the store recreates the default local CLI providers.
 - The provider catalog route returns `supported_kinds: ["codex", "claude", "openai-compatible"]`.
   - The AI composer toolbar now consumes that backend-owned catalog directly:
@@ -222,6 +231,8 @@
 
 ## Commands/tests used
 
+- `go test ./core/transport/httpapi ./core/app ./core/agent`
+- `npm exec vitest run src/widgets/ai/ai-composer-widget.test.tsx src/widgets/ai/ai-panel-header-widget.test.tsx src/widgets/settings/runtime-settings-section.test.tsx src/app/app-ai-sidebar.test.tsx src/features/agent/model/use-ai-composer-preferences.test.tsx src/shared/api/agent-settings.test.ts`
 - `go test ./core/agent ./core/conversation ./core/app ./core/transport/httpapi`
 - `./scripts/go.sh test ./core/conversation ./core/transport/httpapi ./core/app`
 - `go test ./core/...`
@@ -308,6 +319,7 @@
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts --grep "terminal explain and fix button opens the AI sidebar with terminal context"`
 - `npm run build:frontend`
 - `npm run lint:frontend`
+- A focused UI-only validation pass for the main-screen control-density slice on `2026-04-30` confirmed the AI composer now uses compact two-column controls without sidebar clipping, shared hover/pressed/focus-visible states across buttons/selects/chips, a quieter request-context chip strip, and lower nested-border noise around the route/composer surfaces while keeping the existing runtime request contract unchanged. The same pass reconfirmed `npm run lint:frontend`, `npm run build:frontend`, and `npm exec vitest run src/widgets/shell/shell-topbar-widget.test.tsx src/widgets/ai/ai-composer-widget.test.tsx src/widgets/ai/ai-panel-header-widget.test.tsx src/shared/ui/components/accessibility-contracts.test.tsx src/widgets/terminal/terminal-widget.test.tsx` all pass, and a split-runtime browser smoke on `http://127.0.0.1:5173/` verified the compact composer layout, dropdown open paths, request-context chip rendering, route actions, and visible `Show details` / send-button chrome without changing backend AI behavior
 
 ## Known limitations
 

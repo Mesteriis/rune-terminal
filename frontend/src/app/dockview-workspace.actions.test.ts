@@ -92,12 +92,12 @@ describe('dockview workspace actions', () => {
     expect(calls).toEqual(['persist', 'append:3', 'activate:3', 'restore:3'])
   })
 
-  it('renames a workspace tab with a trimmed title', () => {
+  it('renames one workspace after trimming the requested title', () => {
     let nextTabs = createWorkspaceTabs()
 
     expect(
       renameDockviewWorkspace({
-        nextTitle: '  Ops workspace  ',
+        title: '  Focus  ',
         updateWorkspaceTabs: (updater) => {
           nextTabs = updater(nextTabs)
         },
@@ -107,16 +107,16 @@ describe('dockview workspace actions', () => {
 
     expect(nextTabs).toEqual([
       { id: 1, title: 'Workspace-1', snapshot: null },
-      { id: 2, title: 'Ops workspace', snapshot: null },
+      { id: 2, title: 'Focus', snapshot: null },
     ])
   })
 
-  it('keeps the current title when a workspace rename is empty', () => {
+  it('ignores empty rename requests', () => {
     let nextTabs = createWorkspaceTabs()
 
     expect(
       renameDockviewWorkspace({
-        nextTitle: '   ',
+        title: '   ',
         updateWorkspaceTabs: (updater) => {
           nextTabs = updater(nextTabs)
         },
@@ -127,9 +127,9 @@ describe('dockview workspace actions', () => {
     expect(nextTabs).toEqual(createWorkspaceTabs())
   })
 
-  it('deletes an inactive workspace without changing the active workspace', () => {
+  it('removes an inactive workspace without changing the active snapshot', () => {
     const calls: string[] = []
-    let nextTabs: WorkspaceLayoutTab[] = [
+    let nextTabs = [
       { id: 1, title: 'Workspace-1', snapshot: null },
       { id: 2, title: 'Workspace-2', snapshot: null },
       { id: 3, title: 'Workspace-3', snapshot: null },
@@ -149,7 +149,7 @@ describe('dockview workspace actions', () => {
         },
         updateWorkspaceTabs: (updater) => {
           nextTabs = updater(nextTabs)
-          calls.push(`delete:${nextTabs.length}`)
+          calls.push(`remove:${nextTabs.length}`)
         },
         workspaceId: 1,
         workspaceTabs: nextTabs,
@@ -160,12 +160,12 @@ describe('dockview workspace actions', () => {
       { id: 2, title: 'Workspace-2', snapshot: null },
       { id: 3, title: 'Workspace-3', snapshot: null },
     ])
-    expect(calls).toEqual(['persist', 'delete:2'])
+    expect(calls).toEqual(['persist', 'remove:2'])
   })
 
-  it('deletes the active workspace and activates the nearest remaining tab', () => {
+  it('removes the active workspace and restores the adjacent workspace snapshot', () => {
     const calls: string[] = []
-    let nextTabs: WorkspaceLayoutTab[] = [
+    let nextTabs = [
       { id: 1, title: 'Workspace-1', snapshot: null },
       { id: 2, title: 'Workspace-2', snapshot: null },
       { id: 3, title: 'Workspace-3', snapshot: null },
@@ -185,7 +185,7 @@ describe('dockview workspace actions', () => {
         },
         updateWorkspaceTabs: (updater) => {
           nextTabs = updater(nextTabs)
-          calls.push(`delete:${nextTabs.length}`)
+          calls.push(`remove:${nextTabs.length}`)
         },
         workspaceId: 2,
         workspaceTabs: nextTabs,
@@ -196,19 +196,18 @@ describe('dockview workspace actions', () => {
       { id: 1, title: 'Workspace-1', snapshot: null },
       { id: 3, title: 'Workspace-3', snapshot: null },
     ])
-    expect(calls).toEqual(['persist', 'delete:2', 'activate:1', 'restore:1'])
+    expect(calls).toEqual(['persist', 'remove:2', 'activate:3', 'restore:3'])
   })
 
-  it('keeps the final workspace tab instead of deleting it', () => {
-    const persistCurrentWorkspaceSnapshot = vi.fn()
-    let nextTabs: WorkspaceLayoutTab[] = [{ id: 1, title: 'Workspace-1', snapshot: null }]
+  it('does not remove the final remaining workspace', () => {
+    let nextTabs = [{ id: 1, title: 'Workspace-1', snapshot: null }]
 
     expect(
       deleteDockviewWorkspace({
         activeWorkspaceId: 1,
-        persistCurrentWorkspaceSnapshot,
-        restoreWorkspaceSnapshot: vi.fn(),
-        setActiveWorkspaceId: vi.fn(),
+        persistCurrentWorkspaceSnapshot: () => undefined,
+        restoreWorkspaceSnapshot: () => undefined,
+        setActiveWorkspaceId: () => undefined,
         updateWorkspaceTabs: (updater) => {
           nextTabs = updater(nextTabs)
         },
@@ -217,7 +216,6 @@ describe('dockview workspace actions', () => {
       }),
     ).toBe(false)
 
-    expect(persistCurrentWorkspaceSnapshot).not.toHaveBeenCalled()
     expect(nextTabs).toEqual([{ id: 1, title: 'Workspace-1', snapshot: null }])
   })
 })

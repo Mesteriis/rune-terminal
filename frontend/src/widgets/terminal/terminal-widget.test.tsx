@@ -329,6 +329,115 @@ describe('TerminalWidget', () => {
     expect(screen.getByLabelText('Результаты поиска в терминале')).toHaveTextContent('Введите запрос')
   })
 
+  it('keeps the strengthened terminal hierarchy style contract on chrome and toolbar surfaces', () => {
+    vi.mocked(useTerminalSession).mockReturnValue({
+      runtimeWidgetId: 'term-side',
+      sessionKey: 'term-side:1',
+      cwd: '/repo',
+      shellLabel: 'zsh',
+      connectionKind: 'local',
+      sessionState: 'running',
+      canSendInput: true,
+      canInterrupt: true,
+      isLoading: false,
+      isInterrupting: false,
+      isRestarting: false,
+      error: null,
+      statusDetail: 'Attached to local shell.',
+      outputChunks: [],
+      runtimeState: null,
+      interruptSession: vi.fn(),
+      sendInputChunk: vi.fn(),
+      restartSession: vi.fn(),
+    } as ReturnType<typeof useTerminalSession>)
+    vi.mocked(useTerminalPreferences).mockReturnValue({
+      errorMessage: null,
+      decreaseFontSize: vi.fn(),
+      decreaseLineHeight: vi.fn(),
+      cursorBlink: true,
+      cursorStyle: 'block',
+      fontSize: 13,
+      increaseFontSize: vi.fn(),
+      increaseLineHeight: vi.fn(),
+      increaseScrollback: vi.fn(),
+      isLoading: false,
+      isSaving: false,
+      lineHeight: 1.25,
+      refresh: vi.fn(async () => undefined),
+      resetScrollback: vi.fn(),
+      resetFontSize: vi.fn(),
+      resetLineHeight: vi.fn(),
+      resetCursorBlink: vi.fn(),
+      resetCursorStyle: vi.fn(),
+      resetThemeMode: vi.fn(),
+      scrollback: 5000,
+      themeMode: 'adaptive',
+      decreaseScrollback: vi.fn(),
+      updateCursorBlink: vi.fn(),
+      updateFontSize: vi.fn(),
+      updateLineHeight: vi.fn(),
+      updateCursorStyle: vi.fn(),
+      updateThemeMode: vi.fn(),
+    })
+
+    render(<TerminalWidget hostId="terminal" runtimeWidgetId="term-side" title="Workspace shell" />)
+
+    expect(screen.getByText('Local')).toBeVisible()
+    expect(screen.getByText('Running')).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: 'Create another terminal session for Workspace shell' }),
+    ).toBeVisible()
+
+    const chrome = document.querySelector('[id*="terminal-widget-chrome-"]')
+    const headerRow = document.querySelector('[id*="terminal-widget-header-row-"]')
+    const toolbarRow = document.querySelector('[id*="terminal-widget-toolbar-row-"]')
+    const surfaceWrap = document.querySelector('[id*="terminal-widget-surface-wrap-"]')
+    const connectionBadge = document.querySelector('[id*="terminal-status-header-connection-"]')
+    const editSection = document.querySelector('[id*="terminal-toolbar-edit-section-"]')
+    const rendererBadge = document.querySelector('[id*="terminal-toolbar-renderer-badge-"]')
+
+    expect(chrome).not.toBeNull()
+    expect(headerRow).not.toBeNull()
+    expect(toolbarRow).not.toBeNull()
+    expect(surfaceWrap).not.toBeNull()
+    expect(connectionBadge).not.toBeNull()
+    expect(editSection).not.toBeNull()
+    expect(rendererBadge).not.toBeNull()
+
+    expect(chrome).toHaveStyle({
+      background:
+        'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 82%, var(--color-surface-canvas, transparent) 18%)',
+      boxShadow: '0 12px 32px color-mix(in srgb, var(--color-shadow, rgba(0, 0, 0, 0.28)) 20%, transparent)',
+    })
+    expect(headerRow).toHaveStyle({
+      background:
+        'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 88%, var(--color-surface-canvas, transparent) 12%)',
+    })
+    expect(toolbarRow).toHaveStyle({
+      background:
+        'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 80%, var(--color-surface-canvas, transparent) 20%)',
+    })
+    expect(surfaceWrap).toHaveStyle({
+      background:
+        'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 64%, var(--color-surface-canvas, transparent) 36%)',
+    })
+    expect(connectionBadge).toHaveStyle({
+      '--runa-ui-bg':
+        'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 70%, var(--color-surface-canvas, transparent) 30%)',
+      '--runa-ui-border':
+        'color-mix(in srgb, var(--runa-terminal-surface-border, var(--color-border-subtle)) 92%, transparent)',
+      '--runa-ui-color': 'var(--runa-terminal-text-strong, var(--color-text-primary))',
+    })
+    expect(editSection).toHaveStyle({
+      background:
+        'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 76%, var(--color-surface-canvas, transparent) 24%)',
+    })
+    expect(rendererBadge).toHaveStyle({
+      background:
+        'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 64%, var(--color-surface-canvas, transparent) 36%)',
+    })
+  })
+
   it('surfaces no-match search state and clears stale decorations on empty query', () => {
     findNextMock.mockReturnValueOnce(false)
 
@@ -563,9 +672,13 @@ describe('TerminalWidget', () => {
 
     await waitFor(() => {
       expect(fetchTerminalLatestCommand).toHaveBeenCalledWith('term-side')
-      expect(screen.getByText('Latest command')).toBeInTheDocument()
-      expect(screen.getByText('pwd')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Show latest command for Workspace shell' })).toBeVisible()
     })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show latest command for Workspace shell' }))
+
+    expect(screen.getAllByText('Latest command').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText('pwd')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Re-run the latest command for Workspace shell' }))
 
@@ -644,6 +757,12 @@ describe('TerminalWidget', () => {
     })
 
     render(<TerminalWidget hostId="terminal" runtimeWidgetId="term-pve" title="PVE host" />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Show latest command for PVE host' })).toBeVisible()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show latest command for PVE host' }))
 
     await waitFor(() => {
       expect(screen.getByText('df -h')).toBeInTheDocument()

@@ -42,6 +42,7 @@ describe('useAiComposerPreferences', () => {
   it('hydrates submit mode from the runtime-backed settings contract', async () => {
     vi.mocked(requestAgentSettings).mockResolvedValue({
       composer_submit_mode: 'mod-enter-sends',
+      debug_mode_enabled: true,
     })
 
     const { result } = renderHook(() => useAiComposerPreferences())
@@ -51,14 +52,17 @@ describe('useAiComposerPreferences', () => {
     })
 
     expect(result.current.submitMode).toBe('mod-enter-sends')
+    expect(result.current.debugModeEnabled).toBe(true)
   })
 
   it('persists submit mode changes through the runtime-backed settings contract', async () => {
     vi.mocked(requestAgentSettings).mockResolvedValue({
       composer_submit_mode: 'enter-sends',
+      debug_mode_enabled: false,
     })
     vi.mocked(updateAgentSettings).mockResolvedValue({
       composer_submit_mode: 'mod-enter-sends',
+      debug_mode_enabled: false,
     })
 
     const { result } = renderHook(() => useAiComposerPreferences())
@@ -75,6 +79,36 @@ describe('useAiComposerPreferences', () => {
       expect(result.current.submitMode).toBe('mod-enter-sends')
       expect(updateAgentSettings).toHaveBeenCalledWith({
         composer_submit_mode: 'mod-enter-sends',
+        debug_mode_enabled: false,
+      })
+    })
+  })
+
+  it('persists debug mode changes through the runtime-backed settings contract', async () => {
+    vi.mocked(requestAgentSettings).mockResolvedValue({
+      composer_submit_mode: 'enter-sends',
+      debug_mode_enabled: false,
+    })
+    vi.mocked(updateAgentSettings).mockResolvedValue({
+      composer_submit_mode: 'enter-sends',
+      debug_mode_enabled: true,
+    })
+
+    const { result } = renderHook(() => useAiComposerPreferences())
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    act(() => {
+      result.current.updateDebugModeEnabled(true)
+    })
+
+    await waitFor(() => {
+      expect(result.current.debugModeEnabled).toBe(true)
+      expect(updateAgentSettings).toHaveBeenCalledWith({
+        composer_submit_mode: 'enter-sends',
+        debug_mode_enabled: true,
       })
     })
   })

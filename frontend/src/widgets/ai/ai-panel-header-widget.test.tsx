@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { AiPanelHeaderWidget } from '@/widgets/ai/ai-panel-header-widget'
 
 describe('AiPanelHeaderWidget', () => {
-  it('renders active provider route telemetry and routes prepare actions through the header controls', () => {
+  it('renders active provider route telemetry and routes prepare actions through the shell header controls', () => {
     const onProviderRouteAction = vi.fn()
 
     render(
@@ -32,10 +32,57 @@ describe('AiPanelHeaderWidget', () => {
 
     expect(screen.getByText('Codex CLI · Prepared')).toBeVisible()
     expect(screen.getByText('Codex CLI route verified and ready for on-demand launch.')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Retry route prepare' })).toBeVisible()
 
     fireEvent.click(screen.getByRole('button', { name: 'Retry route prepare' }))
 
     expect(onProviderRouteAction).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps route and mode controls in shell chrome while the navigator stays conversation-focused', () => {
+    render(
+      <AiPanelHeaderWidget
+        activeConversation={{
+          id: 'conv_2',
+          title: 'Current thread',
+          created_at: '2026-04-24T10:00:00Z',
+          updated_at: '2026-04-24T10:01:00Z',
+          message_count: 1,
+        }}
+        activeConversationID="conv_2"
+        activeProviderRoute={{
+          displayName: 'Codex CLI',
+          model: 'gpt-5.4',
+          routeReady: true,
+          routeStatusState: 'ready',
+          routeStatusMessage: 'Codex CLI route is authenticated.',
+          routePrepared: true,
+          routePrepareState: 'prepared',
+          routePrepareMessage: 'Codex CLI route verified and ready for on-demand launch.',
+          routeLatencyMS: 48,
+          routePrepareLatencyMS: 52,
+          lastFirstResponseLatencyMS: 84,
+        }}
+        conversations={[]}
+        mode="dev"
+        onModeChange={() => {}}
+        title="AI Rune"
+      />,
+    )
+
+    expect(screen.getByText('AI Rune')).toBeVisible()
+    expect(screen.getByText('Codex CLI · Prepared')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'chat' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'dev' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'debug' })).toBeVisible()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Conversation menu' }))
+
+    const navigator = screen.getByRole('dialog', { name: 'Conversation navigator' })
+    expect(within(navigator).queryByText('Codex CLI · Prepared')).not.toBeInTheDocument()
+    expect(within(navigator).queryByRole('button', { name: 'chat' })).not.toBeInTheDocument()
+    expect(within(navigator).queryByRole('button', { name: 'dev' })).not.toBeInTheDocument()
+    expect(within(navigator).queryByRole('button', { name: 'debug' })).not.toBeInTheDocument()
   })
 
   it('renders conversations and routes select/create actions through the header controls', () => {
@@ -687,6 +734,21 @@ describe('AiPanelHeaderWidget', () => {
     )
 
     expect(screen.getByRole('button', { name: 'Conversation menu' })).toBeEnabled()
+  })
+
+  it('keeps mode controls reachable from the shell header on an empty state', () => {
+    render(<AiPanelHeaderWidget conversations={[]} mode="chat" onModeChange={() => {}} title="AI Rune" />)
+
+    const trigger = screen.getByRole('button', { name: 'Conversation menu' })
+
+    expect(trigger).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'chat' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'dev' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'debug' })).toBeVisible()
+
+    fireEvent.click(trigger)
+
+    expect(screen.getByRole('dialog', { name: 'Conversation navigator' })).toBeVisible()
   })
 
   it('opens the conversation navigator from the trigger with keyboard controls', async () => {

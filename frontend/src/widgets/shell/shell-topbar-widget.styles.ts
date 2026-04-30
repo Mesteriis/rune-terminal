@@ -1,8 +1,6 @@
 import type { CSSProperties } from 'react'
 
 export const topbarStyle: CSSProperties = {
-  position: 'relative',
-  zIndex: 'var(--z-shell-chrome)',
   height: 'var(--size-shell-header)',
   flex: '0 0 var(--size-shell-header)',
   display: 'flex',
@@ -10,7 +8,7 @@ export const topbarStyle: CSSProperties = {
   gap: '0.22rem',
   padding: '0 var(--padding-shell-inline) 0 0',
   border: 'none',
-  borderBottom: '1px solid var(--color-border-subtle)',
+  borderBottom: 'none',
   background: 'transparent',
   borderRadius: 0,
   boxShadow: 'none',
@@ -109,9 +107,9 @@ export const workspaceTabButtonStyle: CSSProperties = {
 
 export const activeWorkspaceTabStyle: CSSProperties = {
   ...workspaceTabStyle,
-  background: 'var(--color-surface-glass)',
+  background: 'color-mix(in srgb, var(--color-surface-glass-soft) 72%, var(--color-accent-emerald-soft) 28%)',
   color: 'var(--color-text-primary)',
-  border: '1px solid var(--color-border-strong)',
+  border: '1px solid color-mix(in srgb, var(--color-accent-emerald-strong) 50%, var(--color-border-strong))',
   boxShadow: 'none',
 }
 
