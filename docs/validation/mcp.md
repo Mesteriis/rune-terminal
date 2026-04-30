@@ -26,6 +26,9 @@
     server was running before the attempt
   - template-driven onboarding helpers inside active settings
   - explicit invoke path
+  - MCP invoke audit append is nil-safe for minimal test/runtime
+    construction while normal configured runtimes still append `mcp.invoke`
+    events
   - output normalization/bounding behavior
   - explicit MCP-to-AI handoff behavior (no auto-injection)
 
@@ -40,6 +43,7 @@
 - `./scripts/go.sh test ./core/app -run 'TestMCPRegistryPersistence|TestUpdateMCPServerPreservesRedactedSensitiveHeaders|Test.*MCPServer.*PersistFails|TestMCPLifecycleAuditSummaryRedactsEndpointSecrets|TestMCPProbeAppendsAuditEventWithoutSecretHeadersOrQuery' -count=1`
 - `./scripts/go.sh test ./core/app ./core/plugins ./core/transport/httpapi -run 'Test.*MCP' -count=1`
 - `./scripts/go.sh test ./core/plugins ./core/app ./core/transport/httpapi -count=1`
+- `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestInvokeMCP|TestMCP.*Audit|TestMCPServerLifecycleAppendsAudit' -count=1`
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestNormalizeRemoteMCPRegistrationRequest|TestProbeRemoteMCPServerReportsReadyWithToolCount|TestListMCPCatalogReturnsTemplates|TestProbeMCPServerRejectsInvalidDraft' -count=1`
 - `npm --prefix frontend run test -- src/features/mcp/api/client.test.ts src/widgets/settings/mcp-settings-section.test.tsx`
 - `frontend/node_modules/.bin/vitest run src/widgets/settings/mcp-settings-section.test.tsx --reporter=verbose`

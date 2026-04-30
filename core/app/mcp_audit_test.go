@@ -1,8 +1,11 @@
 package app
 
 import (
+	"context"
 	"strings"
 	"testing"
+
+	"github.com/Mesteriis/rune-terminal/core/plugins"
 )
 
 func TestMCPLifecycleAuditSummaryRedactsEndpointSecrets(t *testing.T) {
@@ -19,5 +22,25 @@ func TestMCPLifecycleAuditSummaryRedactsEndpointSecrets(t *testing.T) {
 	}
 	if !strings.Contains(summary, "endpoint=https://mcp.example.test/mcp") {
 		t.Fatalf("expected sanitized endpoint in audit summary, got %q", summary)
+	}
+}
+
+func TestInvokeMCPDoesNotRequireAuditLog(t *testing.T) {
+	t.Parallel()
+
+	runtime := &Runtime{
+		MCP: plugins.NewMCPRuntime(nil, &mcpPersistenceSpawner{}, nil),
+	}
+	defer runtime.MCP.Close()
+
+	if err := runtime.registerMCPServers(); err != nil {
+		t.Fatalf("registerMCPServers error: %v", err)
+	}
+	if _, err := runtime.InvokeMCP(context.Background(), plugins.MCPInvokeRequest{
+		ServerID:           "mcp.example",
+		AllowOnDemandStart: true,
+		WorkspaceID:        "ws-default",
+	}); err != nil {
+		t.Fatalf("InvokeMCP error: %v", err)
 	}
 }

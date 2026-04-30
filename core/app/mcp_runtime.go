@@ -382,7 +382,9 @@ func (r *Runtime) InvokeMCP(ctx context.Context, request plugins.MCPInvokeReques
 	if err != nil {
 		auditEvent.Error = err.Error()
 	}
-	_ = r.Audit.Append(auditEvent)
+	if r.Audit != nil {
+		_ = r.Audit.Append(auditEvent)
+	}
 	if err != nil {
 		return plugins.MCPInvokeResult{}, err
 	}
