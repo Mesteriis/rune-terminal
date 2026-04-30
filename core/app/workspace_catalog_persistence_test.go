@@ -15,7 +15,7 @@ func newWorkspaceCatalogRuntimeForPersistFailure(t *testing.T) *Runtime {
 	t.Helper()
 
 	snapshot := workspace.BootstrapDefault()
-	return &Runtime{
+	runtime := &Runtime{
 		RepoRoot:         t.TempDir(),
 		Paths:            config.Resolve(t.TempDir()),
 		Workspace:        workspace.NewService(snapshot),
@@ -23,6 +23,8 @@ func newWorkspaceCatalogRuntimeForPersistFailure(t *testing.T) *Runtime {
 		Connections:      mustNewConnectionsService(t),
 		Terminals:        terminal.NewService(interruptFakeLauncher{process: &interruptFakeProcess{outputCh: make(chan []byte, 1), waitCh: make(chan struct{})}}),
 	}
+	t.Cleanup(runtime.Terminals.Close)
+	return runtime
 }
 
 func breakWorkspaceCatalogPersistencePath(t *testing.T, runtime *Runtime) {
@@ -124,5 +126,188 @@ func TestDeleteWorkspaceDoesNotChangeMemoryWhenPersistFails(t *testing.T) {
 	}
 	if after := runtime.Workspace.Snapshot(); after.ID != beforeWorkspace.ID {
 		t.Fatalf("expected failed delete to keep active workspace %q, got %q", beforeWorkspace.ID, after.ID)
+	}
+}
+
+func TestWorkspaceControlActionsDoNotChangeMemoryWhenPersistFails(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name   string
+		mutate func(*Runtime) error
+		assert func(*testing.T, workspace.Snapshot)
+	}{
+		{
+			name: "focus widget",
+			mutate: func(runtime *Runtime) error {
+				_, err := runtime.FocusWidget("term-side")
+				return err
+			},
+			assert: func(t *testing.T, snapshot workspace.Snapshot) {
+				t.Helper()
+				if snapshot.ActiveWidgetID != "term-main" || snapshot.ActiveTabID != "tab-main" {
+					t.Fatalf("expected failed focus to keep active term-main/tab-main, got %#v", snapshot)
+				}
+			},
+		},
+		{
+			name: "rename tab",
+			mutate: func(runtime *Runtime) error {
+				_, err := runtime.RenameTab("tab-main", "Changed")
+				return err
+			},
+			assert: func(t *testing.T, snapshot workspace.Snapshot) {
+				t.Helper()
+				if snapshot.Tabs[0].Title != "Main Shell" {
+					t.Fatalf("expected failed rename to keep title, got %#v", snapshot.Tabs[0])
+				}
+			},
+		},
+		{
+			name: "pin tab",
+			mutate: func(runtime *Runtime) error {
+				_, err := runtime.SetTabPinned("tab-main", true)
+				return err
+			},
+			assert: func(t *testing.T, snapshot workspace.Snapshot) {
+				t.Helper()
+				if snapshot.Tabs[0].Pinned {
+					t.Fatalf("expected failed pin to keep tab unpinned, got %#v", snapshot.Tabs[0])
+				}
+			},
+		},
+		{
+			name: "update layout",
+			mutate: func(runtime *Runtime) error {
+				_, err := runtime.UpdateLayout(workspace.Layout{
+					ID:   "layout-focus-ai",
+					Mode: workspace.LayoutModeFocus,
+					Surfaces: []workspace.LayoutSurface{
+						{ID: workspace.LayoutSurfaceTerminal, Region: workspace.LayoutRegionMain},
+						{ID: workspace.LayoutSurfaceAI, Region: workspace.LayoutRegionSidebar},
+					},
+					ActiveSurfaceID: workspace.LayoutSurfaceAI,
+				})
+				return err
+			},
+			assert: func(t *testing.T, snapshot workspace.Snapshot) {
+				t.Helper()
+				if snapshot.Layout.ID != "layout-default" || snapshot.Layout.Mode != workspace.LayoutModeSplit {
+					t.Fatalf("expected failed layout update to keep default layout, got %#v", snapshot.Layout)
+				}
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			runtime := newWorkspaceCatalogRuntimeForPersistFailure(t)
+			breakWorkspaceCatalogPersistencePath(t, runtime)
+			if err := tc.mutate(runtime); err == nil {
+				t.Fatalf("expected %s persist failure", tc.name)
+			}
+			tc.assert(t, runtime.Workspace.Snapshot())
+		})
+	}
+}
+
+func TestWorkspaceAddWidgetActionsDoNotChangeMemoryWhenPersistFails(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name   string
+		mutate func(*Runtime) error
+	}{
+		{
+			name: "create terminal tab",
+			mutate: func(runtime *Runtime) error {
+				_, err := runtime.CreateTerminalTab(context.Background(), "Scratch")
+				return err
+			},
+		},
+		{
+			name: "open directory block",
+			mutate: func(runtime *Runtime) error {
+				_, err := runtime.OpenDirectoryInNewBlock(runtime.RepoRoot, "term-main", "local")
+				return err
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			runtime := newWorkspaceCatalogRuntimeForPersistFailure(t)
+			before := runtime.Workspace.Snapshot()
+			breakWorkspaceCatalogPersistencePath(t, runtime)
+			if err := tc.mutate(runtime); err == nil {
+				t.Fatalf("expected %s persist failure", tc.name)
+			}
+			after := runtime.Workspace.Snapshot()
+			if len(after.Tabs) != len(before.Tabs) || len(after.Widgets) != len(before.Widgets) || after.ActiveWidgetID != before.ActiveWidgetID {
+				t.Fatalf("expected failed %s to keep workspace unchanged, before=%#v after=%#v", tc.name, before, after)
+			}
+		})
+	}
+}
+
+func TestWorkspaceCloseActionsDoNotChangeMemoryWhenPersistFails(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name   string
+		mutate func(*Runtime) error
+	}{
+		{
+			name: "close tab",
+			mutate: func(runtime *Runtime) error {
+				_, err := runtime.CloseTab("tab-ops")
+				return err
+			},
+		},
+		{
+			name: "close widget",
+			mutate: func(runtime *Runtime) error {
+				_, err := runtime.CloseWidget("term-side")
+				return err
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			runtime := newWorkspaceCatalogRuntimeForPersistFailure(t)
+			before := runtime.Workspace.Snapshot()
+			breakWorkspaceCatalogPersistencePath(t, runtime)
+			if err := tc.mutate(runtime); err == nil {
+				t.Fatalf("expected %s persist failure", tc.name)
+			}
+			after := runtime.Workspace.Snapshot()
+			if len(after.Tabs) != len(before.Tabs) || len(after.Widgets) != len(before.Widgets) {
+				t.Fatalf("expected failed %s to keep workspace unchanged, before=%#v after=%#v", tc.name, before, after)
+			}
+		})
+	}
+}
+
+func TestCloseTabKeepsTerminalSessionWhenPersistFails(t *testing.T) {
+	t.Parallel()
+
+	runtime := newWorkspaceCatalogRuntimeForPersistFailure(t)
+	if _, err := runtime.Terminals.StartSession(context.Background(), terminal.LaunchOptions{
+		WidgetID: "term-side",
+		Shell:    "/bin/sh",
+	}); err != nil {
+		t.Fatalf("StartSession error: %v", err)
+	}
+
+	breakWorkspaceCatalogPersistencePath(t, runtime)
+	if _, err := runtime.CloseTab("tab-ops"); err == nil {
+		t.Fatalf("expected close tab persist failure")
+	}
+	if _, err := runtime.Terminals.GetState("term-side"); err != nil {
+		t.Fatalf("expected failed close tab to keep terminal session, got %v", err)
 	}
 }

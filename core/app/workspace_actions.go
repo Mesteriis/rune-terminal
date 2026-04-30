@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -55,84 +54,92 @@ type CloseWidgetResult struct {
 }
 
 func (r *Runtime) FocusWidget(widgetID string) (workspace.Snapshot, error) {
+	previousSnapshot, previousCatalog := r.snapshotWorkspaceMemory()
 	if _, err := r.Workspace.FocusWidget(widgetID); err != nil {
 		return workspace.Snapshot{}, err
 	}
 	snapshot := r.Workspace.Snapshot()
-	if err := r.persistWorkspaceSnapshot(snapshot); err != nil {
+	if err := r.persistWorkspaceSnapshotWithRollback(snapshot, previousSnapshot, previousCatalog); err != nil {
 		return workspace.Snapshot{}, err
 	}
 	return snapshot, nil
 }
 
 func (r *Runtime) FocusTab(tabID string) (workspace.Snapshot, error) {
+	previousSnapshot, previousCatalog := r.snapshotWorkspaceMemory()
 	if _, err := r.Workspace.FocusTab(tabID); err != nil {
 		return workspace.Snapshot{}, err
 	}
 	snapshot := r.Workspace.Snapshot()
-	if err := r.persistWorkspaceSnapshot(snapshot); err != nil {
+	if err := r.persistWorkspaceSnapshotWithRollback(snapshot, previousSnapshot, previousCatalog); err != nil {
 		return workspace.Snapshot{}, err
 	}
 	return snapshot, nil
 }
 
 func (r *Runtime) RenameTab(tabID string, title string) (WorkspaceTabResult, error) {
+	previousSnapshot, previousCatalog := r.snapshotWorkspaceMemory()
 	tab, err := r.Workspace.RenameTab(tabID, title)
 	if err != nil {
 		return WorkspaceTabResult{}, err
 	}
 	snapshot := r.Workspace.Snapshot()
-	if err := r.persistWorkspaceSnapshot(snapshot); err != nil {
+	if err := r.persistWorkspaceSnapshotWithRollback(snapshot, previousSnapshot, previousCatalog); err != nil {
 		return WorkspaceTabResult{}, err
 	}
 	return WorkspaceTabResult{Tab: tab, Workspace: snapshot}, nil
 }
 
 func (r *Runtime) SetTabPinned(tabID string, pinned bool) (WorkspaceTabResult, error) {
+	previousSnapshot, previousCatalog := r.snapshotWorkspaceMemory()
 	tab, err := r.Workspace.SetTabPinned(tabID, pinned)
 	if err != nil {
 		return WorkspaceTabResult{}, err
 	}
 	snapshot := r.Workspace.Snapshot()
-	if err := r.persistWorkspaceSnapshot(snapshot); err != nil {
+	if err := r.persistWorkspaceSnapshotWithRollback(snapshot, previousSnapshot, previousCatalog); err != nil {
 		return WorkspaceTabResult{}, err
 	}
 	return WorkspaceTabResult{Tab: tab, Workspace: snapshot}, nil
 }
 
 func (r *Runtime) MoveTab(tabID string, beforeTabID string) (workspace.Snapshot, error) {
+	previousSnapshot, previousCatalog := r.snapshotWorkspaceMemory()
 	snapshot, err := r.Workspace.MoveTab(tabID, beforeTabID)
 	if err != nil {
 		return workspace.Snapshot{}, err
 	}
-	if err := r.persistWorkspaceSnapshot(snapshot); err != nil {
+	if err := r.persistWorkspaceSnapshotWithRollback(snapshot, previousSnapshot, previousCatalog); err != nil {
 		return workspace.Snapshot{}, err
 	}
 	return snapshot, nil
 }
 
 func (r *Runtime) UpdateLayout(layout workspace.Layout) (workspace.Snapshot, error) {
+	previousSnapshot, previousCatalog := r.snapshotWorkspaceMemory()
 	snapshot := r.Workspace.UpdateLayout(layout)
-	if err := r.persistWorkspaceSnapshot(snapshot); err != nil {
+	if err := r.persistWorkspaceSnapshotWithRollback(snapshot, previousSnapshot, previousCatalog); err != nil {
 		return workspace.Snapshot{}, err
 	}
 	return snapshot, nil
 }
 
 func (r *Runtime) SaveLayout(layoutID string) (workspace.Snapshot, error) {
+	previousSnapshot, previousCatalog := r.snapshotWorkspaceMemory()
 	snapshot := r.Workspace.SaveLayout(layoutID)
-	if err := r.persistWorkspaceSnapshot(snapshot); err != nil {
+	if err := r.persistWorkspaceSnapshotWithRollback(snapshot, previousSnapshot, previousCatalog); err != nil {
 		return workspace.Snapshot{}, err
 	}
 	return snapshot, nil
 }
 
 func (r *Runtime) SwitchLayout(layoutID string) (workspace.Snapshot, error) {
+	previousSnapshot, previousCatalog := r.snapshotWorkspaceMemory()
 	snapshot, err := r.Workspace.SwitchLayout(layoutID)
 	if err != nil {
 		return workspace.Snapshot{}, err
 	}
-	if err := r.persistWorkspaceSnapshot(snapshot); err != nil {
+	if err := r.persistWorkspaceSnapshotWithRollback(snapshot, previousSnapshot, previousCatalog); err != nil {
 		return workspace.Snapshot{}, err
 	}
 	return snapshot, nil
@@ -228,6 +235,7 @@ func (r *Runtime) CreateSplitTerminalWidget(
 	}
 	_, _, _ = r.Connections.ReportLaunchResult(connectionID, nil)
 
+	previousSnapshot, previousCatalog := r.snapshotWorkspaceMemory()
 	nextSnapshot, err := r.Workspace.SplitTabWithWidget(
 		tabID,
 		targetWidgetID,
@@ -245,7 +253,7 @@ func (r *Runtime) CreateSplitTerminalWidget(
 		_ = r.Terminals.CloseSession(widgetID)
 		return CreateTerminalTabResult{}, err
 	}
-	if err := r.persistWorkspaceSnapshot(nextSnapshot); err != nil {
+	if err := r.persistWorkspaceSnapshotWithRollback(nextSnapshot, previousSnapshot, previousCatalog); err != nil {
 		_ = r.Terminals.CloseSession(widgetID)
 		return CreateTerminalTabResult{}, err
 	}
@@ -300,6 +308,7 @@ func (r *Runtime) OpenDirectoryInNewBlock(path string, targetWidgetID string, co
 	}
 
 	widgetID := ids.New("files")
+	previousSnapshot, previousCatalog := r.snapshotWorkspaceMemory()
 	nextSnapshot, err := r.Workspace.SplitTabWithWidget(
 		targetTab.ID,
 		targetWidgetID,
@@ -316,7 +325,7 @@ func (r *Runtime) OpenDirectoryInNewBlock(path string, targetWidgetID string, co
 	if err != nil {
 		return CreateTerminalTabResult{}, err
 	}
-	if err := r.persistWorkspaceSnapshot(nextSnapshot); err != nil {
+	if err := r.persistWorkspaceSnapshotWithRollback(nextSnapshot, previousSnapshot, previousCatalog); err != nil {
 		return CreateTerminalTabResult{}, err
 	}
 	return CreateTerminalTabResult{
@@ -388,6 +397,7 @@ func (r *Runtime) OpenPreviewInNewBlock(path string, targetWidgetID string, conn
 	}
 
 	widgetID := ids.New("preview")
+	previousSnapshot, previousCatalog := r.snapshotWorkspaceMemory()
 	nextSnapshot, err := r.Workspace.SplitTabWithWidget(
 		targetTab.ID,
 		targetWidgetID,
@@ -404,7 +414,7 @@ func (r *Runtime) OpenPreviewInNewBlock(path string, targetWidgetID string, conn
 	if err != nil {
 		return CreateTerminalTabResult{}, err
 	}
-	if err := r.persistWorkspaceSnapshot(nextSnapshot); err != nil {
+	if err := r.persistWorkspaceSnapshotWithRollback(nextSnapshot, previousSnapshot, previousCatalog); err != nil {
 		return CreateTerminalTabResult{}, err
 	}
 	return CreateTerminalTabResult{
@@ -424,11 +434,12 @@ func (r *Runtime) MoveWidgetBySplit(
 	if tabID == "" {
 		tabID = r.Workspace.Snapshot().ActiveTabID
 	}
+	previousSnapshot, previousCatalog := r.snapshotWorkspaceMemory()
 	nextSnapshot, err := r.Workspace.MoveWidgetBySplit(tabID, widgetID, targetWidgetID, direction)
 	if err != nil {
 		return workspace.Snapshot{}, err
 	}
-	if err := r.persistWorkspaceSnapshot(nextSnapshot); err != nil {
+	if err := r.persistWorkspaceSnapshotWithRollback(nextSnapshot, previousSnapshot, previousCatalog); err != nil {
 		return workspace.Snapshot{}, err
 	}
 	return nextSnapshot, nil
@@ -495,6 +506,7 @@ func (r *Runtime) CreateRemoteTerminalTabWithProfile(
 	}
 	_, _, _ = r.Connections.ReportLaunchResult(profileID, nil)
 
+	previousSnapshot, previousCatalog := r.snapshotWorkspaceMemory()
 	nextSnapshot := r.Workspace.AddTerminalTab(
 		workspace.Tab{
 			ID:        tabID,
@@ -510,7 +522,7 @@ func (r *Runtime) CreateRemoteTerminalTabWithProfile(
 			ConnectionID: profileID,
 		},
 	)
-	if err := r.persistWorkspaceSnapshot(nextSnapshot); err != nil {
+	if err := r.persistWorkspaceSnapshotWithRollback(nextSnapshot, previousSnapshot, previousCatalog); err != nil {
 		_ = r.Terminals.CloseSession(widgetID)
 		return CreateTerminalTabResult{}, terminal.State{}, err
 	}
@@ -633,6 +645,7 @@ func (r *Runtime) CreateTerminalTabWithConnection(ctx context.Context, title str
 		return CreateTerminalTabResult{}, err
 	}
 	_, _, _ = r.Connections.ReportLaunchResult(connectionID, nil)
+	previousSnapshot, previousCatalog := r.snapshotWorkspaceMemory()
 	snapshot := r.Workspace.AddTerminalTab(
 		workspace.Tab{
 			ID:          tabID,
@@ -649,9 +662,8 @@ func (r *Runtime) CreateTerminalTabWithConnection(ctx context.Context, title str
 			ConnectionID: connectionID,
 		},
 	)
-	if err := r.persistWorkspaceSnapshot(snapshot); err != nil {
+	if err := r.persistWorkspaceSnapshotWithRollback(snapshot, previousSnapshot, previousCatalog); err != nil {
 		_ = r.Terminals.CloseSession(widgetID)
-		_, _ = r.Workspace.CloseTab(tabID)
 		return CreateTerminalTabResult{}, err
 	}
 	return CreateTerminalTabResult{
@@ -675,18 +687,19 @@ func (r *Runtime) CloseTab(tabID string) (CloseTabResult, error) {
 	if !found {
 		return CloseTabResult{}, fmt.Errorf("%w: %s", workspace.ErrTabNotFound, tabID)
 	}
-	for _, widgetID := range tab.WidgetIDs {
-		if err := r.Terminals.CloseSession(widgetID); err != nil && !errors.Is(err, terminal.ErrWidgetNotFound) {
-			return CloseTabResult{}, err
-		}
-		r.clearRestoredTerminalState(widgetID)
-	}
+	previousSnapshot, previousCatalog := r.snapshotWorkspaceMemory()
 	nextSnapshot, err := r.Workspace.CloseTab(tabID)
 	if err != nil {
 		return CloseTabResult{}, err
 	}
-	if err := r.persistWorkspaceSnapshot(nextSnapshot); err != nil {
+	if err := r.persistWorkspaceSnapshotWithRollback(nextSnapshot, previousSnapshot, previousCatalog); err != nil {
 		return CloseTabResult{}, err
+	}
+	for _, widgetID := range tab.WidgetIDs {
+		if r.Terminals != nil {
+			_ = r.Terminals.CloseSession(widgetID)
+		}
+		r.clearRestoredTerminalState(widgetID)
 	}
 	return CloseTabResult{
 		ClosedTabID: tabID,
@@ -709,19 +722,19 @@ func (r *Runtime) CloseWidget(widgetID string) (CloseWidgetResult, error) {
 		return CloseWidgetResult{}, fmt.Errorf("%w: %s", workspace.ErrWidgetNotFound, widgetID)
 	}
 
-	if widget.Kind == workspace.WidgetKindTerminal {
-		if err := r.Terminals.CloseSession(widgetID); err != nil && !errors.Is(err, terminal.ErrWidgetNotFound) {
-			return CloseWidgetResult{}, err
-		}
-		r.clearRestoredTerminalState(widgetID)
-	}
-
+	previousSnapshot, previousCatalog := r.snapshotWorkspaceMemory()
 	nextSnapshot, err := r.Workspace.CloseWidget(widgetID)
 	if err != nil {
 		return CloseWidgetResult{}, err
 	}
-	if err := r.persistWorkspaceSnapshot(nextSnapshot); err != nil {
+	if err := r.persistWorkspaceSnapshotWithRollback(nextSnapshot, previousSnapshot, previousCatalog); err != nil {
 		return CloseWidgetResult{}, err
+	}
+	if widget.Kind == workspace.WidgetKindTerminal {
+		if r.Terminals != nil {
+			_ = r.Terminals.CloseSession(widgetID)
+		}
+		r.clearRestoredTerminalState(widgetID)
 	}
 	return CloseWidgetResult{
 		ClosedWidgetID: widgetID,

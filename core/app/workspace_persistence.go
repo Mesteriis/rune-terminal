@@ -25,6 +25,18 @@ func (r *Runtime) persistWorkspace() error {
 	return r.persistWorkspaceSnapshot(r.Workspace.Snapshot())
 }
 
+func (r *Runtime) snapshotWorkspaceMemory() (workspace.Snapshot, workspace.Catalog) {
+	var snapshot workspace.Snapshot
+	if r.Workspace != nil {
+		snapshot = r.Workspace.Snapshot()
+	}
+	var catalog workspace.Catalog
+	if r.WorkspaceCatalog != nil {
+		catalog = r.WorkspaceCatalog.Snapshot()
+	}
+	return snapshot, catalog
+}
+
 func (r *Runtime) restoreWorkspaceMemory(snapshot workspace.Snapshot, catalog workspace.Catalog) {
 	if r.Workspace != nil {
 		r.Workspace.ReplaceSnapshot(snapshot)
