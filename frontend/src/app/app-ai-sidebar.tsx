@@ -1,7 +1,7 @@
 import type { DockviewApi } from 'dockview-react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useUnit } from 'effector-react'
-import { useEffect, useRef, useState, type RefObject } from 'react'
+import { startTransition, useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 
 import {
   formatProviderGatewayErrorCode,
@@ -25,11 +25,13 @@ import {
 } from './app-shell.styles'
 
 const AI_PANEL_DEFAULT_RATIO = 0.3
+const AI_PANEL_COLLAPSED_WIDTH = 112
 const AI_PANEL_MIN_WIDTH = 320
 const AI_PANEL_RESIZE_HANDLE_WIDTH = 6
 const AI_PANEL_ANIMATION_SECONDS = 0.84
 const AI_PANEL_ANIMATION_EASE = [0.22, 0.61, 0.36, 1] as const
 const AI_SHELL_PANEL_HOST_ID = 'ai-shell-panel'
+const AI_SHELL_PANEL_DISCLOSURE_REGION_ID = 'ai-shell-panel-disclosure-region'
 const WORKSPACE_MIN_WIDTH = 420
 const AI_PROVIDER_HISTORY_LIMIT = 3
 
@@ -117,9 +119,113 @@ function formatProviderPrewarmPolicy(policy?: string) {
   }
 }
 
+type AiCollapsedSummaryProps = {
+  activeConversationTitle: string
+  conversationCountLabel: string
+  disclosureRegionId: string
+  onExpand: () => void
+  providerLabel: string
+  routeLabel: string
+}
+
+function AiCollapsedSummary({
+  activeConversationTitle,
+  conversationCountLabel,
+  disclosureRegionId,
+  onExpand,
+  providerLabel,
+  routeLabel,
+}: AiCollapsedSummaryProps) {
+  return (
+    <Surface
+      runaComponent="ai-shell-panel-collapsed-summary"
+      style={{
+        flex: 1,
+        minWidth: 0,
+        minHeight: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        gap: '0.7rem',
+        padding: '0.7rem 0.5rem 0.8rem',
+        background: 'var(--color-surface-glass-soft)',
+        borderColor: 'var(--color-border-subtle)',
+      }}
+    >
+      <Box style={{ display: 'flex', flexDirection: 'column', gap: '0.7rem', minWidth: 0 }}>
+        <Button
+          aria-label="Expand AI panel"
+          aria-controls={disclosureRegionId}
+          aria-expanded="false"
+          onClick={onExpand}
+          runaComponent="ai-shell-panel-expand-button"
+          style={{ minHeight: '32px', width: '100%', paddingInline: '0.5rem' }}
+        >
+          Expand
+        </Button>
+        <Box style={{ display: 'flex', flexDirection: 'column', gap: '0.22rem', minWidth: 0 }}>
+          <Text
+            runaComponent="ai-shell-panel-collapsed-title"
+            style={{
+              fontSize: '0.67rem',
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              color: 'var(--color-text-dim)',
+            }}
+          >
+            AI work panel
+          </Text>
+          <Text
+            runaComponent="ai-shell-panel-collapsed-route"
+            title={providerLabel}
+            style={{ fontWeight: 600, fontSize: '0.8rem', color: 'var(--color-text)' }}
+          >
+            {providerLabel}
+          </Text>
+          <Text
+            runaComponent="ai-shell-panel-collapsed-route-state"
+            title={routeLabel}
+            style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)' }}
+          >
+            {routeLabel}
+          </Text>
+        </Box>
+      </Box>
+      <Box style={{ display: 'flex', flexDirection: 'column', gap: '0.22rem', minWidth: 0 }}>
+        <Text
+          runaComponent="ai-shell-panel-collapsed-conversation-label"
+          style={{
+            fontSize: '0.67rem',
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            color: 'var(--color-text-dim)',
+          }}
+        >
+          Active thread
+        </Text>
+        <Text
+          runaComponent="ai-shell-panel-collapsed-conversation-title"
+          title={activeConversationTitle}
+          style={{ fontWeight: 600, fontSize: '0.79rem', color: 'var(--color-text)' }}
+        >
+          {activeConversationTitle}
+        </Text>
+        <Text
+          runaComponent="ai-shell-panel-collapsed-conversation-meta"
+          title={conversationCountLabel}
+          style={{ fontSize: '0.73rem', color: 'var(--color-text-muted)' }}
+        >
+          {conversationCountLabel}
+        </Text>
+      </Box>
+    </Surface>
+  )
+}
+
 /** Renders the shell-managed AI sidebar, including resize behavior and open/close animation. */
 export function AppAiSidebar({ dockviewApiRef, isOpen, contentAreaRef }: AppAiSidebarProps) {
   const [aiPanelWidth, setAiPanelWidth] = useState(getDefaultAiPanelWidth())
+  const [isAiPanelExpanded, setIsAiPanelExpanded] = useState(false)
   const [chatMode, setChatMode] = useState<ChatMode>('chat')
   const [isAiPanelResizing, setIsAiPanelResizing] = useState(false)
   const [pendingAutoSubmitRequestID, setPendingAutoSubmitRequestID] = useState<number | null>(null)
@@ -138,6 +244,16 @@ export function AppAiSidebar({ dockviewApiRef, isOpen, contentAreaRef }: AppAiSi
   ])
   const activeProviderRouteAction = getProviderGatewayRecoveryAction(agentPanel.activeProviderGateway)
   const [selectedHistoryRunID, setSelectedHistoryRunID] = useState('')
+
+  useEffect(() => {
+    aiResizeStartRef.current = null
+    setIsAiPanelResizing(false)
+    if (!isOpen) {
+      startTransition(() => {
+        setIsAiPanelExpanded(false)
+      })
+    }
+  }, [isOpen])
 
   useEffect(() => {
     if (!isOpen) {
@@ -164,7 +280,7 @@ export function AppAiSidebar({ dockviewApiRef, isOpen, contentAreaRef }: AppAiSi
   }, [contentAreaRef, isOpen])
 
   useEffect(() => {
-    if (!isAiPanelResizing) {
+    if (!isAiPanelExpanded || !isAiPanelResizing) {
       return
     }
 
@@ -277,7 +393,27 @@ export function AppAiSidebar({ dockviewApiRef, isOpen, contentAreaRef }: AppAiSi
     formatRouteTimestamp(selectedHistoryRun?.started_at),
   ].filter(Boolean)
 
-  const aiShellWidth = aiPanelWidth + AI_PANEL_RESIZE_HANDLE_WIDTH
+  const handleToggleAiPanel = useCallback(() => {
+    aiResizeStartRef.current = null
+    setIsAiPanelResizing(false)
+    startTransition(() => {
+      setIsAiPanelExpanded((current) => !current)
+    })
+  }, [])
+
+  const providerLabel = agentPanel.activeProviderGateway?.display_name?.trim() || 'No route'
+  const routeLabel =
+    agentPanel.providerGatewayError?.trim() ||
+    agentPanel.activeProviderGateway?.route_prepare_state?.trim() ||
+    agentPanel.activeProviderGateway?.route_status_state?.trim() ||
+    'Unchecked'
+  const activeConversationTitle = agentPanel.activeConversationSummary?.title?.trim() || 'New conversation'
+  const activeConversationCount = agentPanel.activeConversationSummary?.message_count ?? 0
+  const conversationCountLabel =
+    activeConversationCount > 0 ? `${activeConversationCount} msgs` : 'No messages yet'
+  const activeAiPanelWidth = isAiPanelExpanded ? aiPanelWidth : AI_PANEL_COLLAPSED_WIDTH
+  const activeResizeHandleWidth = isAiPanelExpanded ? AI_PANEL_RESIZE_HANDLE_WIDTH : 0
+  const aiShellWidth = activeAiPanelWidth + activeResizeHandleWidth
   const aiWidthTransition =
     isAiPanelResizing || prefersReducedMotion
       ? { duration: 0 }
@@ -301,89 +437,134 @@ export function AppAiSidebar({ dockviewApiRef, isOpen, contentAreaRef }: AppAiSi
             <Box runaComponent="ai-shell-panel-content" style={aiPanelShellContentStyle}>
               <Box
                 runaComponent="ai-shell-panel-frame-wrap"
-                style={{ ...aiPanelFrameStyle, flex: `0 0 ${aiPanelWidth}px`, width: `${aiPanelWidth}px` }}
+                style={{
+                  ...aiPanelFrameStyle,
+                  flex: `0 0 ${activeAiPanelWidth}px`,
+                  width: `${activeAiPanelWidth}px`,
+                }}
               >
                 <Box
                   data-runa-shell-widget-frame=""
                   data-runa-shell-widget-kind="ai"
+                  id={AI_SHELL_PANEL_DISCLOSURE_REGION_ID}
+                  role="region"
+                  aria-label="AI work panel"
                   runaComponent="ai-shell-panel-frame"
                   style={aiPanelFrameStyle}
                 >
                   <Box
                     data-runa-shell-widget-header=""
                     runaComponent="ai-shell-panel-header"
-                    style={aiPanelHeaderStyle}
+                    style={{
+                      ...aiPanelHeaderStyle,
+                      gap: '0.4rem',
+                      alignItems: 'stretch',
+                    }}
                   >
-                    <AiPanelHeaderWidget
-                      activeConversation={agentPanel.activeConversationSummary}
-                      activeConversationID={agentPanel.activeConversationID}
-                      activeProviderRoute={
-                        agentPanel.activeProviderGateway
-                          ? {
-                              displayName: agentPanel.activeProviderGateway.display_name,
-                              lastErrorCode: agentPanel.activeProviderGateway.last_error_code,
-                              model: agentPanel.activeProviderGateway.model,
-                              routeReady: agentPanel.activeProviderGateway.route_ready,
-                              routeStatusState: agentPanel.activeProviderGateway.route_status_state,
-                              routeStatusMessage: agentPanel.activeProviderGateway.route_status_message,
-                              routePrepared: agentPanel.activeProviderGateway.route_prepared,
-                              routePrepareState: agentPanel.activeProviderGateway.route_prepare_state,
-                              routePrepareMessage: agentPanel.activeProviderGateway.route_prepare_message,
-                              routeLatencyMS: agentPanel.activeProviderGateway.route_latency_ms,
-                              routePrepareLatencyMS:
-                                agentPanel.activeProviderGateway.route_prepare_latency_ms,
-                              lastFirstResponseLatencyMS:
-                                agentPanel.activeProviderGateway.last_first_response_latency_ms,
+                    {isAiPanelExpanded ? (
+                      <>
+                        <Button
+                          aria-label="Collapse AI panel"
+                          aria-controls={AI_SHELL_PANEL_DISCLOSURE_REGION_ID}
+                          aria-expanded="true"
+                          onClick={handleToggleAiPanel}
+                          runaComponent="ai-shell-panel-collapse-button"
+                          style={{
+                            flex: '0 0 auto',
+                            minHeight: '44px',
+                            paddingInline: '0.72rem',
+                            alignSelf: 'stretch',
+                          }}
+                        >
+                          Collapse
+                        </Button>
+                        <Box style={{ flex: 1, minWidth: 0 }}>
+                          <AiPanelHeaderWidget
+                            activeConversation={agentPanel.activeConversationSummary}
+                            activeConversationID={agentPanel.activeConversationID}
+                            activeProviderRoute={
+                              agentPanel.activeProviderGateway
+                                ? {
+                                    displayName: agentPanel.activeProviderGateway.display_name,
+                                    lastErrorCode: agentPanel.activeProviderGateway.last_error_code,
+                                    model: agentPanel.activeProviderGateway.model,
+                                    routeReady: agentPanel.activeProviderGateway.route_ready,
+                                    routeStatusState: agentPanel.activeProviderGateway.route_status_state,
+                                    routeStatusMessage: agentPanel.activeProviderGateway.route_status_message,
+                                    routePrepared: agentPanel.activeProviderGateway.route_prepared,
+                                    routePrepareState: agentPanel.activeProviderGateway.route_prepare_state,
+                                    routePrepareMessage:
+                                      agentPanel.activeProviderGateway.route_prepare_message,
+                                    routeLatencyMS: agentPanel.activeProviderGateway.route_latency_ms,
+                                    routePrepareLatencyMS:
+                                      agentPanel.activeProviderGateway.route_prepare_latency_ms,
+                                    lastFirstResponseLatencyMS:
+                                      agentPanel.activeProviderGateway.last_first_response_latency_ms,
+                                  }
+                                : null
                             }
-                          : null
-                      }
-                      conversationCounts={agentPanel.conversationCounts}
-                      conversationScope={agentPanel.conversationScope}
-                      conversationSearchQuery={agentPanel.conversationSearchQuery}
-                      conversations={agentPanel.conversations}
-                      isConversationBusy={
-                        agentPanel.isConversationPending ||
-                        agentPanel.isSubmitting ||
-                        agentPanel.isInteractionPending
-                      }
-                      isProviderRouteBusy={
-                        agentPanel.isProviderGatewayPending ||
-                        agentPanel.isProviderRoutePreparing ||
-                        agentPanel.isProviderRouteProbing
-                      }
-                      onConversationScopeChange={agentPanel.setConversationScope}
-                      onConversationSearchQueryChange={agentPanel.setConversationSearchQuery}
-                      mode={chatMode}
-                      onConversationSelect={(conversationID) => {
-                        void agentPanel.switchConversation(conversationID)
-                      }}
-                      onCreateConversation={() => {
-                        void agentPanel.createConversation()
-                      }}
-                      onArchiveConversation={(conversationID) =>
-                        agentPanel.archiveConversation(conversationID)
-                      }
-                      onDeleteConversation={(conversationID) => agentPanel.deleteConversation(conversationID)}
-                      onProviderRouteAction={() =>
-                        activeProviderRouteAction?.kind === 'probe'
-                          ? agentPanel.probeActiveProviderRoute()
-                          : agentPanel.prewarmActiveProviderRoute()
-                      }
-                      onRenameConversation={(conversationID, title) =>
-                        agentPanel.renameConversation(conversationID, title)
-                      }
-                      onRestoreConversation={(conversationID) =>
-                        agentPanel.restoreConversation(conversationID)
-                      }
-                      onModeChange={setChatMode}
-                      providerRouteActionLabel={activeProviderRouteAction?.label ?? null}
-                      providerRouteError={agentPanel.providerGatewayError}
-                      title="AI Rune"
-                    />
+                            conversationCounts={agentPanel.conversationCounts}
+                            conversationScope={agentPanel.conversationScope}
+                            conversationSearchQuery={agentPanel.conversationSearchQuery}
+                            conversations={agentPanel.conversations}
+                            isConversationBusy={
+                              agentPanel.isConversationPending ||
+                              agentPanel.isSubmitting ||
+                              agentPanel.isInteractionPending
+                            }
+                            isProviderRouteBusy={
+                              agentPanel.isProviderGatewayPending ||
+                              agentPanel.isProviderRoutePreparing ||
+                              agentPanel.isProviderRouteProbing
+                            }
+                            onConversationScopeChange={agentPanel.setConversationScope}
+                            onConversationSearchQueryChange={agentPanel.setConversationSearchQuery}
+                            mode={chatMode}
+                            onConversationSelect={(conversationID) => {
+                              void agentPanel.switchConversation(conversationID)
+                            }}
+                            onCreateConversation={() => {
+                              void agentPanel.createConversation()
+                            }}
+                            onArchiveConversation={(conversationID) =>
+                              agentPanel.archiveConversation(conversationID)
+                            }
+                            onDeleteConversation={(conversationID) =>
+                              agentPanel.deleteConversation(conversationID)
+                            }
+                            onProviderRouteAction={() =>
+                              activeProviderRouteAction?.kind === 'probe'
+                                ? agentPanel.probeActiveProviderRoute()
+                                : agentPanel.prewarmActiveProviderRoute()
+                            }
+                            onRenameConversation={(conversationID, title) =>
+                              agentPanel.renameConversation(conversationID, title)
+                            }
+                            onRestoreConversation={(conversationID) =>
+                              agentPanel.restoreConversation(conversationID)
+                            }
+                            onModeChange={setChatMode}
+                            providerRouteActionLabel={activeProviderRouteAction?.label ?? null}
+                            providerRouteError={agentPanel.providerGatewayError}
+                            title="AI Rune"
+                          />
+                        </Box>
+                      </>
+                    ) : (
+                      <AiCollapsedSummary
+                        activeConversationTitle={activeConversationTitle}
+                        conversationCountLabel={conversationCountLabel}
+                        disclosureRegionId={AI_SHELL_PANEL_DISCLOSURE_REGION_ID}
+                        onExpand={handleToggleAiPanel}
+                        providerLabel={providerLabel}
+                        routeLabel={routeLabel}
+                      />
+                    )}
                   </Box>
-                  {agentPanel.activeProviderGateway ||
-                  agentPanel.providerGatewayError ||
-                  agentPanel.activeProviderHistoryError ? (
+                  {isAiPanelExpanded &&
+                  (agentPanel.activeProviderGateway ||
+                    agentPanel.providerGatewayError ||
+                    agentPanel.activeProviderHistoryError) ? (
                     <Surface
                       runaComponent="ai-shell-provider-operator-panel"
                       style={{
@@ -669,25 +850,33 @@ export function AppAiSidebar({ dockviewApiRef, isOpen, contentAreaRef }: AppAiSi
                       </Box>
                     </Surface>
                   ) : null}
-                  <Box runaComponent="ai-shell-panel-body" style={aiPanelBodyStyle}>
-                    <AiPanelWidget controller={agentPanel} hostId={AI_SHELL_PANEL_HOST_ID} mode={chatMode} />
-                  </Box>
+                  {isAiPanelExpanded ? (
+                    <Box runaComponent="ai-shell-panel-body" style={aiPanelBodyStyle}>
+                      <AiPanelWidget
+                        controller={agentPanel}
+                        hostId={AI_SHELL_PANEL_HOST_ID}
+                        mode={chatMode}
+                      />
+                    </Box>
+                  ) : null}
                 </Box>
               </Box>
-              <Box
-                aria-hidden="true"
-                data-runa-shell-sash=""
-                onPointerDown={(event) => {
-                  aiResizeStartRef.current = {
-                    startWidth: aiPanelWidth,
-                    startX: event.clientX,
-                  }
-                  setIsAiPanelResizing(true)
-                  event.preventDefault()
-                }}
-                runaComponent="ai-shell-panel-sash"
-                style={aiResizeHandleStyle}
-              />
+              {isAiPanelExpanded ? (
+                <Box
+                  aria-hidden="true"
+                  data-runa-shell-sash=""
+                  onPointerDown={(event) => {
+                    aiResizeStartRef.current = {
+                      startWidth: aiPanelWidth,
+                      startX: event.clientX,
+                    }
+                    setIsAiPanelResizing(true)
+                    event.preventDefault()
+                  }}
+                  runaComponent="ai-shell-panel-sash"
+                  style={aiResizeHandleStyle}
+                />
+              ) : null}
             </Box>
           </RunaDomScopeProvider>
         </motion.div>
