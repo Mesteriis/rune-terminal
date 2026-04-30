@@ -120,6 +120,9 @@ It is intentionally operational, not narrative.
   - center drop is explicit swap semantics (`center`)
   - empty direction is rejected (no hidden default for move path)
 - Tab window layout metadata is persisted/restored as part of workspace snapshot truth.
+- Workspace snapshot/catalog persistence uses the same core-owned atomic
+  temp-file replacement path as the other JSON sidecar runtime stores, so
+  replacement writes do not expose a partially written state file.
 - Workspace snapshot now carries explicit layout composition truth:
   - active layout (`layout`)
   - saved layout presets (`layouts`)

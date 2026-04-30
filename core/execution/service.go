@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Mesteriis/rune-terminal/internal/atomicfile"
 	"github.com/Mesteriis/rune-terminal/internal/ids"
 )
 
@@ -221,7 +222,7 @@ func (s *Service) persistStateLocked(state persistedState) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(s.path, append(payload, '\n'), 0o600)
+	return atomicfile.WriteFile(s.path, append(payload, '\n'), 0o600)
 }
 
 func clonePersistedState(state persistedState) persistedState {

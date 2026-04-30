@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Mesteriis/rune-terminal/core/policy"
+	"github.com/Mesteriis/rune-terminal/internal/atomicfile"
 )
 
 type Store struct {
@@ -144,7 +145,7 @@ func (s *Store) saveStateLocked(data State) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(s.path, payload, 0o600)
+	return atomicfile.WriteFile(s.path, payload, 0o600)
 }
 
 func selectionFromState(state State) (Selection, error) {

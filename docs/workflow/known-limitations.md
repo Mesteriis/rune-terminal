@@ -111,6 +111,11 @@ capability.
   this phase only reserves the model/runtime shape for later rights work
 - desktop runtime startup, shutdown, and single-instance attach path are now hardened: `npm run tauri:dev` recovers stale watcher attachments, can now also reuse a still-running watcher on `127.0.0.1:7788` when runtime metadata lost either the watcher record or the core record but the live watcher still targets the same core, refuses startup with an explicit conflict error when that fixed watcher port is already serving a different backend or is simply occupied by a non-`rterm` service, startup failures no longer leak a freshly spawned backend or a freshly spawned watcher that later fails identity/state validation, sending `SIGTERM` to `rterm-desktop` now tears down the desktop-owned backend and watcher before exit, and a second desktop launch now reuses the existing window instead of spawning a second desktop-owned core/watcher pair; broader desktop runtime hardening (richer crash recovery, port-policy cleanup) is still intentionally incomplete
 - desktop runtime metadata writes are now also durable against torn-file startup races: the desktop shell writes both `~/.rterm/runtime.json` and `~/.rterm/settings.json` through an atomic temp-file rename path with private Unix permissions for the metadata directory/file, and startup now also quarantines malformed runtime/settings payloads beside the live files instead of silently reusing defaults while discarding the broken bytes; broader crash-recovery policy is still intentionally incomplete
+- core-owned JSON sidecar state writes now use same-directory temp-file
+  replacement for the remaining non-SQL runtime catalogs (`workspace`,
+  `policy`, `agent`, `connections`, `execution`, `mcp`, `plugins`), but
+  malformed JSON quarantine/recovery is still only implemented for desktop
+  runtime metadata; broader core state repair remains intentionally incomplete
 - desktop startup now also clears malformed or dead attachment metadata out of `~/.rterm/runtime.json` instead of only ignoring it in memory, so repeated launches no longer keep retrying against the same broken persisted desktop attachment records
 - native-window automation coverage is still limited; validation now
   includes an isolated desktop runtime smoke (`npm run validate:desktop-runtime`)

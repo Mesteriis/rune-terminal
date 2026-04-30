@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/Mesteriis/rune-terminal/internal/atomicfile"
 )
 
 const catalogSchemaVersion = 1
@@ -77,7 +79,7 @@ func SaveCatalog(path string, catalog Catalog) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, payload, 0o600)
+	return atomicfile.WriteFile(path, payload, 0o600)
 }
 
 func NewCatalogStore(catalog Catalog) *CatalogStore {

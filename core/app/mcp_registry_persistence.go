@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/Mesteriis/rune-terminal/core/plugins"
+	"github.com/Mesteriis/rune-terminal/internal/atomicfile"
 )
 
 const mcpRegistryVersion = 1
@@ -166,5 +167,5 @@ func saveMCPRegistryFile(path string, servers []persistedMCPServer) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, payload, 0o600)
+	return atomicfile.WriteFile(path, payload, 0o600)
 }

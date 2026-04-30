@@ -18,6 +18,10 @@
   - startup runtime initialization under bounded timeout and single catalog-store ownership
   - approval-grant TTL cleanup and fail-closed random ID generation
   - conversation/workspace persistence safety for JSON marshalling, snapshot writes, and bounded audit-tail reads, including large audit events
+  - core-owned JSON state writes now use a shared same-directory temp-file
+    replacement path for workspace snapshot/catalog, policy, agent/provider
+    settings, remote connections, execution blocks, MCP registry, and plugin
+    catalog state instead of direct `os.WriteFile`
   - plugin protocol handshake timeout now force-closes blocked stdout reads before returning timeout
   - root/tooling package alignment now keeps the repo and active frontend on the same TypeScript major line
   - Go `coverage.out` artifact generation in CI
@@ -37,6 +41,7 @@
 - `./scripts/go.sh test ./core/transport/httpapi -run 'Test(ListFSRejectsAbsolutePathOutsideWorkspaceWithExplicitFlag|ReadFSPreviewRejectsPathOutsideWorkspaceWithExplicitFlag)' -count=1`
 - `./scripts/go.sh test ./internal/ids ./core/toolruntime ./core/app -run 'TestNewPanicsWhenEntropyUnavailable|TestTokenPanicsWhenEntropyUnavailable|TestApprovalStoreCreateCleansExpiredGrants|TestApprovalStoreConfirmCleansExpiredPendingRecords|TestExecutorConfirmationFlow|TestExecutorApprovalGrantIsSingleUse|TestBootstrapSessionsKeepsRemoteWidgetAsDisconnectedWhenConnectionMissing' -count=1`
 - `./scripts/go.sh test ./core/conversation ./core/workspace ./core/audit -run 'TestLogAppendAndList|TestLogListLimitKeepsOnlyTailWindow|TestLogListHandlesLargeAuditEvents|TestListReturnsEmptySliceWhenLogDoesNotExist|TestSaveAndLoadSnapshotRoundTrip|TestLoadSnapshotDefaultsWhenFileMissing|TestRenameConversation|TestDeleteConversation' -count=1`
+- `./scripts/go.sh test ./internal/atomicfile ./core/workspace ./core/policy ./core/agent ./core/connections ./core/execution ./core/app -count=1`
 - `./scripts/go.sh test ./core/plugins -run 'TestInvokeFailsWhenHandshakeExceedsTimeout|TestReadJSONLineWithTimeoutClosesReaderOnTimeout' -count=1`
 - `npm install --package-lock-only --ignore-scripts`
 - `npm run tauri:check`

@@ -42,6 +42,29 @@ func TestSaveAndLoadSnapshotRoundTrip(t *testing.T) {
 	}
 }
 
+func TestSaveAndLoadCatalogRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(t.TempDir(), "state", "workspace-catalog.json")
+	catalog := BootstrapCatalog(BootstrapDefault())
+	next := BootstrapDefault()
+	next.ID = "ws-secondary"
+	next.Name = "Secondary"
+	catalog.Workspaces = append(catalog.Workspaces, next)
+	catalog.ActiveWorkspaceID = next.ID
+
+	if err := SaveCatalog(path, catalog); err != nil {
+		t.Fatalf("SaveCatalog error: %v", err)
+	}
+	loaded, err := LoadCatalog(path, BootstrapDefault())
+	if err != nil {
+		t.Fatalf("LoadCatalog error: %v", err)
+	}
+	if !reflect.DeepEqual(loaded, catalog) {
+		t.Fatalf("expected round-trip catalog, got %#v", loaded)
+	}
+}
+
 func TestSaveAndLoadSnapshotPreservesEmptyWorkspace(t *testing.T) {
 	t.Parallel()
 

@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+
+	"github.com/Mesteriis/rune-terminal/internal/atomicfile"
 )
 
 const snapshotSchemaVersion = 2
@@ -52,29 +54,7 @@ func SaveSnapshot(path string, snapshot Snapshot) error {
 	if err != nil {
 		return err
 	}
-	return writeSnapshotAtomic(path, payload, 0o600)
-}
-
-func writeSnapshotAtomic(path string, payload []byte, mode os.FileMode) error {
-	tempFile, err := os.CreateTemp(filepath.Dir(path), filepath.Base(path)+".tmp-*")
-	if err != nil {
-		return err
-	}
-	tempPath := tempFile.Name()
-	defer os.Remove(tempPath)
-
-	if _, err := tempFile.Write(payload); err != nil {
-		_ = tempFile.Close()
-		return err
-	}
-	if err := tempFile.Chmod(mode); err != nil {
-		_ = tempFile.Close()
-		return err
-	}
-	if err := tempFile.Close(); err != nil {
-		return err
-	}
-	return os.Rename(tempPath, path)
+	return atomicfile.WriteFile(path, payload, 0o600)
 }
 
 func normalizeSnapshot(candidate Snapshot, fallback Snapshot) Snapshot {

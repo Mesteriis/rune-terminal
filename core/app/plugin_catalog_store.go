@@ -14,6 +14,7 @@ import (
 	"github.com/Mesteriis/rune-terminal/core/plugins"
 	"github.com/Mesteriis/rune-terminal/core/policy"
 	"github.com/Mesteriis/rune-terminal/core/toolruntime"
+	"github.com/Mesteriis/rune-terminal/internal/atomicfile"
 )
 
 var (
@@ -261,7 +262,7 @@ func (s *PluginCatalogStore) saveStateLocked(data pluginCatalogState) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(s.path, payload, 0o600)
+	return atomicfile.WriteFile(s.path, payload, 0o600)
 }
 
 func normalizePluginActor(actor PluginActor) PluginActor {

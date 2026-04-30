@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Mesteriis/rune-terminal/internal/atomicfile"
 	"github.com/Mesteriis/rune-terminal/internal/ids"
 )
 
@@ -83,7 +84,7 @@ func (s *Store) saveConfigLocked(cfg Config) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(s.path, payload, 0o600)
+	return atomicfile.WriteFile(s.path, payload, 0o600)
 }
 
 func (s *Store) Snapshot() Config {
