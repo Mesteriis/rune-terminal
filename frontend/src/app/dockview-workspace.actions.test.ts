@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { addDockviewWorkspace, selectDockviewWorkspace } from './dockview-workspace.actions'
+import {
+  addDockviewWorkspace,
+  deleteDockviewWorkspace,
+  renameDockviewWorkspace,
+  selectDockviewWorkspace,
+} from './dockview-workspace.actions'
 import { type WorkspaceLayoutTab } from './dockview-workspace.persistence'
 
 function createWorkspaceTabs(): WorkspaceLayoutTab[] {
@@ -85,5 +90,125 @@ describe('dockview workspace actions', () => {
       { id: 3, title: 'Workspace-3', snapshot: null },
     ])
     expect(calls).toEqual(['persist', 'append:3', 'activate:3', 'restore:3'])
+  })
+
+  it('renames one workspace after trimming the requested title', () => {
+    let nextTabs = createWorkspaceTabs()
+
+    expect(
+      renameDockviewWorkspace({
+        title: '  Focus  ',
+        updateWorkspaceTabs: (updater) => {
+          nextTabs = updater(nextTabs)
+        },
+        workspaceId: 2,
+      }),
+    ).toBe(true)
+
+    expect(nextTabs).toEqual([
+      { id: 1, title: 'Workspace-1', snapshot: null },
+      { id: 2, title: 'Focus', snapshot: null },
+    ])
+  })
+
+  it('ignores empty rename requests', () => {
+    let nextTabs = createWorkspaceTabs()
+
+    expect(
+      renameDockviewWorkspace({
+        title: '   ',
+        updateWorkspaceTabs: (updater) => {
+          nextTabs = updater(nextTabs)
+        },
+        workspaceId: 2,
+      }),
+    ).toBe(false)
+
+    expect(nextTabs).toEqual(createWorkspaceTabs())
+  })
+
+  it('removes an inactive workspace without changing the active snapshot', () => {
+    const calls: string[] = []
+    let nextTabs = [
+      { id: 1, title: 'Workspace-1', snapshot: null },
+      { id: 2, title: 'Workspace-2', snapshot: null },
+      { id: 3, title: 'Workspace-3', snapshot: null },
+    ]
+
+    expect(
+      deleteDockviewWorkspace({
+        activeWorkspaceId: 2,
+        restoreWorkspaceSnapshot: (workspaceId) => {
+          calls.push(`restore:${workspaceId}`)
+        },
+        setActiveWorkspaceId: (workspaceId) => {
+          calls.push(`activate:${workspaceId}`)
+        },
+        updateWorkspaceTabs: (updater) => {
+          nextTabs = updater(nextTabs)
+          calls.push(`remove:${nextTabs.length}`)
+        },
+        workspaceId: 1,
+        workspaceTabs: nextTabs,
+      }),
+    ).toBe(true)
+
+    expect(nextTabs).toEqual([
+      { id: 2, title: 'Workspace-2', snapshot: null },
+      { id: 3, title: 'Workspace-3', snapshot: null },
+    ])
+    expect(calls).toEqual(['remove:2'])
+  })
+
+  it('removes the active workspace and restores the adjacent workspace snapshot', () => {
+    const calls: string[] = []
+    let nextTabs = [
+      { id: 1, title: 'Workspace-1', snapshot: null },
+      { id: 2, title: 'Workspace-2', snapshot: null },
+      { id: 3, title: 'Workspace-3', snapshot: null },
+    ]
+
+    expect(
+      deleteDockviewWorkspace({
+        activeWorkspaceId: 2,
+        restoreWorkspaceSnapshot: (workspaceId) => {
+          calls.push(`restore:${workspaceId}`)
+        },
+        setActiveWorkspaceId: (workspaceId) => {
+          calls.push(`activate:${workspaceId}`)
+        },
+        updateWorkspaceTabs: (updater) => {
+          nextTabs = updater(nextTabs)
+          calls.push(`remove:${nextTabs.length}`)
+        },
+        workspaceId: 2,
+        workspaceTabs: nextTabs,
+      }),
+    ).toBe(true)
+
+    expect(nextTabs).toEqual([
+      { id: 1, title: 'Workspace-1', snapshot: null },
+      { id: 3, title: 'Workspace-3', snapshot: null },
+    ])
+    expect(calls).toEqual(['remove:2', 'activate:3', 'restore:3'])
+  })
+
+  it('does not remove the final remaining workspace', () => {
+    let nextTabs = [{ id: 1, title: 'Workspace-1', snapshot: null }]
+
+    expect(
+      deleteDockviewWorkspace({
+        activeWorkspaceId: 1,
+        restoreWorkspaceSnapshot: () => undefined,
+        setActiveWorkspaceId: () => undefined,
+        updateWorkspaceTabs: (updater) => {
+          nextTabs = updater(nextTabs)
+        },
+        workspaceId: 1,
+        workspaceTabs: nextTabs,
+      }),
+    ).toBe(false)
+
+    expect(nextTabs).toEqual([{ id: 1, title: 'Workspace-1', snapshot: null }])
   })
 })

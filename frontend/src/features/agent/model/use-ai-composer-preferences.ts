@@ -13,6 +13,7 @@ let loadPromise: Promise<void> | null = null
 
 type AiComposerPreferencesState = {
   submitMode: AiComposerSubmitMode
+  debugModeEnabled: boolean
   isLoading: boolean
   isSaving: boolean
   errorMessage: string | null
@@ -20,6 +21,7 @@ type AiComposerPreferencesState = {
 
 let aiComposerPreferencesState: AiComposerPreferencesState = {
   submitMode: DEFAULT_AGENT_COMPOSER_SUBMIT_MODE,
+  debugModeEnabled: false,
   isLoading: true,
   isSaving: false,
   errorMessage: null,
@@ -54,6 +56,7 @@ async function refreshAiComposerPreferences() {
     aiComposerPreferencesState = {
       ...aiComposerPreferencesState,
       submitMode: settings.composer_submit_mode,
+      debugModeEnabled: settings.debug_mode_enabled,
     }
   } catch (error) {
     aiComposerPreferencesState = {
@@ -105,10 +108,44 @@ export async function setAiComposerSubmitMode(mode: AiComposerSubmitMode) {
 
     const settings = await updateAgentSettings({
       composer_submit_mode: nextMode,
+      debug_mode_enabled: aiComposerPreferencesState.debugModeEnabled,
     })
     aiComposerPreferencesState = {
       ...aiComposerPreferencesState,
       submitMode: settings.composer_submit_mode,
+      debugModeEnabled: settings.debug_mode_enabled,
+    }
+  } catch (error) {
+    aiComposerPreferencesState = {
+      ...aiComposerPreferencesState,
+      errorMessage: formatAiComposerPreferencesError(error),
+    }
+  } finally {
+    aiComposerPreferencesState = {
+      ...aiComposerPreferencesState,
+      isSaving: false,
+    }
+    emitAiComposerPreferenceChange()
+  }
+}
+
+export async function setAiDebugModeEnabled(enabled: boolean) {
+  try {
+    aiComposerPreferencesState = {
+      ...aiComposerPreferencesState,
+      errorMessage: null,
+      isSaving: true,
+    }
+    emitAiComposerPreferenceChange()
+
+    const settings = await updateAgentSettings({
+      composer_submit_mode: aiComposerPreferencesState.submitMode,
+      debug_mode_enabled: enabled,
+    })
+    aiComposerPreferencesState = {
+      ...aiComposerPreferencesState,
+      submitMode: settings.composer_submit_mode,
+      debugModeEnabled: settings.debug_mode_enabled,
     }
   } catch (error) {
     aiComposerPreferencesState = {
@@ -128,6 +165,7 @@ export function resetAiComposerPreferencesForTests() {
   loadPromise = null
   aiComposerPreferencesState = {
     submitMode: DEFAULT_AGENT_COMPOSER_SUBMIT_MODE,
+    debugModeEnabled: false,
     isLoading: true,
     isSaving: false,
     errorMessage: null,
@@ -146,11 +184,17 @@ export function useAiComposerPreferences() {
     void setAiComposerSubmitMode(mode)
   }, [])
 
+  const updateDebugModeEnabled = useCallback((enabled: boolean) => {
+    void setAiDebugModeEnabled(enabled)
+  }, [])
+
   return {
     submitMode: state.submitMode,
+    debugModeEnabled: state.debugModeEnabled,
     isLoading: state.isLoading,
     isSaving: state.isSaving,
     errorMessage: state.errorMessage,
     updateSubmitMode,
+    updateDebugModeEnabled,
   }
 }

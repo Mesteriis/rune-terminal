@@ -1,11 +1,16 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { useAiComposerPreferences } from '@/features/agent/model/use-ai-composer-preferences'
 import { useAppLocale } from '@/features/i18n/model/locale-provider'
 import { useRuntimeSettings } from '@/features/runtime/model/use-runtime-settings'
 import { useWindowTitleSettings } from '@/features/runtime/model/use-window-title-settings'
 import { useAppTheme } from '@/features/theme/model/theme-provider'
 import { RuntimeSettingsSection } from './runtime-settings-section'
+
+vi.mock('@/features/agent/model/use-ai-composer-preferences', () => ({
+  useAiComposerPreferences: vi.fn(),
+}))
 
 vi.mock('@/features/i18n/model/locale-provider', () => ({
   useAppLocale: vi.fn(),
@@ -36,8 +41,21 @@ describe('RuntimeSettingsSection', () => {
     })
   }
 
+  function mockAgentSettings() {
+    vi.mocked(useAiComposerPreferences).mockReturnValue({
+      debugModeEnabled: false,
+      errorMessage: null,
+      isLoading: false,
+      isSaving: false,
+      submitMode: 'enter-sends',
+      updateDebugModeEnabled: vi.fn(),
+      updateSubmitMode: vi.fn(),
+    })
+  }
+
   it('renders runtime lifecycle and window title controls', () => {
     mockTheme()
+    mockAgentSettings()
     vi.mocked(useAppLocale).mockReturnValue({
       errorMessage: null,
       isLoading: false,
@@ -91,6 +109,7 @@ describe('RuntimeSettingsSection', () => {
     const updateSettings = vi.fn().mockResolvedValue(undefined)
     const setLocale = vi.fn().mockResolvedValue(undefined)
     mockTheme()
+    mockAgentSettings()
     vi.mocked(useAppLocale).mockReturnValue({
       errorMessage: null,
       isLoading: false,
@@ -152,6 +171,7 @@ describe('RuntimeSettingsSection', () => {
 
   it('updates the shell theme preference through the app theme contract', async () => {
     const setThemePreference = vi.fn()
+    mockAgentSettings()
     vi.mocked(useAppTheme).mockReturnValue({
       resolvedTheme: 'dark',
       setThemePreference,

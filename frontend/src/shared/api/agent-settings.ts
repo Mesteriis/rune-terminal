@@ -2,6 +2,7 @@ import { resolveRuntimeContext } from '@/shared/api/runtime'
 
 export type AgentSettings = {
   composer_submit_mode: AgentComposerSubmitMode
+  debug_mode_enabled: boolean
 }
 
 export type AgentComposerSubmitMode = 'enter-sends' | 'mod-enter-sends'
@@ -9,6 +10,7 @@ export type AgentComposerSubmitMode = 'enter-sends' | 'mod-enter-sends'
 type AgentSettingsPayload = {
   settings?: {
     composer_submit_mode?: string | null
+    debug_mode_enabled?: boolean | null
   } | null
 }
 
@@ -21,6 +23,7 @@ export function clampAgentComposerSubmitMode(value: string | null | undefined): 
 function normalizeAgentSettings(payload: AgentSettingsPayload) {
   return {
     composer_submit_mode: clampAgentComposerSubmitMode(payload.settings?.composer_submit_mode),
+    debug_mode_enabled: payload.settings?.debug_mode_enabled === true,
   } satisfies AgentSettings
 }
 
@@ -45,6 +48,7 @@ export async function updateAgentSettings(settings: AgentSettings) {
   const response = await fetch(`${runtimeContext.baseUrl}/api/v1/settings/agent`, {
     body: JSON.stringify({
       composer_submit_mode: clampAgentComposerSubmitMode(settings.composer_submit_mode),
+      debug_mode_enabled: settings.debug_mode_enabled,
     }),
     headers: {
       Authorization: `Bearer ${runtimeContext.authToken}`,

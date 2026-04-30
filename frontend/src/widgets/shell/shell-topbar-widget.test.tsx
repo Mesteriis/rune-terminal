@@ -11,7 +11,9 @@ import {
 function renderShellTopbar() {
   const onAddWorkspace = vi.fn()
   const onClose = vi.fn()
+  const onDeleteWorkspace = vi.fn()
   const onMinimize = vi.fn()
+  const onRenameWorkspace = vi.fn()
   const onSelectWorkspace = vi.fn()
   const onToggleFullscreen = vi.fn()
   const onToggleAi = vi.fn()
@@ -22,7 +24,9 @@ function renderShellTopbar() {
       isAiOpen={false}
       onAddWorkspace={onAddWorkspace}
       onClose={onClose}
+      onDeleteWorkspace={onDeleteWorkspace}
       onMinimize={onMinimize}
+      onRenameWorkspace={onRenameWorkspace}
       onSelectWorkspace={onSelectWorkspace}
       onToggleFullscreen={onToggleFullscreen}
       onToggleAi={onToggleAi}
@@ -37,7 +41,9 @@ function renderShellTopbar() {
   return {
     onAddWorkspace,
     onClose,
+    onDeleteWorkspace,
     onMinimize,
+    onRenameWorkspace,
     onSelectWorkspace,
     onToggleFullscreen,
     onToggleAi,
@@ -95,5 +101,36 @@ describe('ShellTopbarWidget', () => {
     expect(onMinimize).toHaveBeenCalledTimes(1)
     expect(onToggleFullscreen).toHaveBeenCalledTimes(1)
     expect(onToggleAi).toHaveBeenCalledTimes(1)
+  })
+
+  it('renames a workspace from the overflow menu', () => {
+    const { onRenameWorkspace } = renderShellTopbar()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Workspace actions for Workspace-2' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /rename/i }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Workspace name' }), {
+      target: { value: 'Focus' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(onRenameWorkspace).toHaveBeenCalledWith(2, 'Focus')
+  })
+
+  it('deletes a workspace from the overflow menu', () => {
+    const { onDeleteWorkspace } = renderShellTopbar()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Workspace actions for Workspace-3' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /delete/i }))
+
+    expect(onDeleteWorkspace).toHaveBeenCalledWith(3)
+  })
+
+  it('opens the workspace overflow menu without selecting the workspace', () => {
+    const { onSelectWorkspace } = renderShellTopbar()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Workspace actions for Workspace-1' }))
+
+    expect(screen.getByRole('menu', { name: 'Workspace actions for Workspace-1' })).toBeInTheDocument()
+    expect(onSelectWorkspace).not.toHaveBeenCalled()
   })
 })

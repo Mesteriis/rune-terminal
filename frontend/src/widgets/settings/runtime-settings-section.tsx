@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 
+import { useAiComposerPreferences } from '@/features/agent/model/use-ai-composer-preferences'
 import { useAppLocale } from '@/features/i18n/model/locale-provider'
 import { useRuntimeSettings } from '@/features/runtime/model/use-runtime-settings'
 import { useWindowTitleSettings } from '@/features/runtime/model/use-window-title-settings'
@@ -19,6 +20,14 @@ import {
 type RuntimeSettingsCopy = {
   autoPreview: string
   browserBadge: string
+  debugModeCurrentState: string
+  debugModeHint: string
+  debugModeOptionDisabledLabel: string
+  debugModeOptionEnabledLabel: string
+  debugModeSectionDescription: string
+  debugModeSectionTitle: string
+  debugModeStatusDisabled: string
+  debugModeStatusEnabled: string
   currentRule: string
   currentRuntime: string
   currentShellTransport: string
@@ -89,6 +98,15 @@ const runtimeSettingsCopy: Record<AppLocale, RuntimeSettingsCopy> = {
   en: {
     autoPreview: 'Auto preview',
     browserBadge: 'Browser',
+    debugModeCurrentState: 'Current AI debug state',
+    debugModeHint:
+      'When disabled, the AI panel hides the debug view entirely. When enabled, the debug mode stays available in the history dropdown.',
+    debugModeOptionDisabledLabel: 'Debug hidden',
+    debugModeOptionEnabledLabel: 'Debug enabled',
+    debugModeSectionDescription: 'General settings own whether the AI shell exposes its debug panel mode.',
+    debugModeSectionTitle: 'AI debug mode',
+    debugModeStatusDisabled: 'Disabled',
+    debugModeStatusEnabled: 'Enabled',
     desktopBadge: 'Desktop',
     currentRule: 'Current rule',
     currentRuntime: 'Current runtime',
@@ -162,6 +180,16 @@ const runtimeSettingsCopy: Record<AppLocale, RuntimeSettingsCopy> = {
   ru: {
     autoPreview: 'Auto preview',
     browserBadge: 'Браузер',
+    debugModeCurrentState: 'Текущее состояние AI debug',
+    debugModeHint:
+      'Когда режим выключен, AI panel полностью скрывает debug view. Когда включен, пункт debug снова доступен в history dropdown.',
+    debugModeOptionDisabledLabel: 'Скрыт',
+    debugModeOptionEnabledLabel: 'Включён',
+    debugModeSectionDescription:
+      'Общие настройки управляют тем, показывает ли AI shell свой debug panel mode.',
+    debugModeSectionTitle: 'AI debug mode',
+    debugModeStatusDisabled: 'Выключен',
+    debugModeStatusEnabled: 'Включён',
     desktopBadge: 'Desktop',
     currentRule: 'Текущее правило',
     currentRuntime: 'Текущий рантайм',
@@ -235,6 +263,14 @@ const runtimeSettingsCopy: Record<AppLocale, RuntimeSettingsCopy> = {
   'zh-CN': {
     autoPreview: '自动预览',
     browserBadge: '浏览器',
+    debugModeCurrentState: '当前 AI 调试状态',
+    debugModeHint: '关闭后，AI 面板会完全隐藏 debug 视图。开启后，history 下拉菜单中会重新出现 debug 模式。',
+    debugModeOptionDisabledLabel: '隐藏 debug',
+    debugModeOptionEnabledLabel: '启用 debug',
+    debugModeSectionDescription: '通用设置负责决定 AI shell 是否暴露 debug 面板模式。',
+    debugModeSectionTitle: 'AI debug 模式',
+    debugModeStatusDisabled: '已关闭',
+    debugModeStatusEnabled: '已开启',
     desktopBadge: '桌面',
     currentRule: '当前规则',
     currentRuntime: '当前运行时',
@@ -301,6 +337,16 @@ const runtimeSettingsCopy: Record<AppLocale, RuntimeSettingsCopy> = {
   es: {
     autoPreview: 'Vista previa auto',
     browserBadge: 'Navegador',
+    debugModeCurrentState: 'Estado actual del debug AI',
+    debugModeHint:
+      'Cuando está desactivado, el panel AI oculta por completo la vista debug. Cuando está activado, el modo debug vuelve a estar disponible en el history dropdown.',
+    debugModeOptionDisabledLabel: 'Debug oculto',
+    debugModeOptionEnabledLabel: 'Debug habilitado',
+    debugModeSectionDescription:
+      'La configuración general decide si el shell de AI expone su modo de panel debug.',
+    debugModeSectionTitle: 'Modo debug AI',
+    debugModeStatusDisabled: 'Desactivado',
+    debugModeStatusEnabled: 'Activado',
     desktopBadge: 'Escritorio',
     currentRule: 'Regla actual',
     currentRuntime: 'Runtime actual',
@@ -406,6 +452,13 @@ function shutdownBehaviorText(mode: 'ephemeral' | 'persistent', copy: RuntimeSet
 }
 
 export function RuntimeSettingsSection() {
+  const {
+    debugModeEnabled,
+    errorMessage: agentSettingsError,
+    isLoading: isAgentSettingsLoading,
+    isSaving: isAgentSettingsSaving,
+    updateDebugModeEnabled,
+  } = useAiComposerPreferences()
   const {
     canPersistWatcherMode,
     errorMessage,
@@ -529,6 +582,46 @@ export function RuntimeSettingsSection() {
           options={themeOptions}
           value={themePreference}
         />
+      </SectionCard>
+
+      <SectionCard description={copy.debugModeSectionDescription} title={copy.debugModeSectionTitle}>
+        <ClearBox style={settingsShellListStyle}>
+          <ClearBox style={settingsShellListRowStyle}>
+            <ClearBox style={settingsShellContentHeaderStyle}>
+              <Text style={{ fontWeight: 600 }}>{copy.debugModeCurrentState}</Text>
+              <Text style={settingsShellMutedTextStyle}>{copy.debugModeHint}</Text>
+            </ClearBox>
+            <ClearBox style={settingsShellBadgeStyle}>
+              {isAgentSettingsLoading
+                ? copy.loading
+                : debugModeEnabled
+                  ? copy.debugModeStatusEnabled
+                  : copy.debugModeStatusDisabled}
+            </ClearBox>
+          </ClearBox>
+        </ClearBox>
+
+        <RadioGroup
+          disabled={isAgentSettingsLoading || isAgentSettingsSaving}
+          label={copy.debugModeSectionTitle}
+          name="runtime-ai-debug-mode"
+          onChange={(value) => void updateDebugModeEnabled(value === 'enabled')}
+          options={[
+            {
+              value: 'disabled',
+              label: copy.debugModeOptionDisabledLabel,
+              description: copy.debugModeHint,
+            },
+            {
+              value: 'enabled',
+              label: copy.debugModeOptionEnabledLabel,
+              description: copy.debugModeHint,
+            },
+          ]}
+          value={debugModeEnabled ? 'enabled' : 'disabled'}
+        />
+
+        {agentSettingsError ? <Text style={settingsShellMutedTextStyle}>{agentSettingsError}</Text> : null}
       </SectionCard>
 
       <SectionCard description={copy.runtimeLifecycleDescription} title={copy.runtimeLifecycleTitle}>
