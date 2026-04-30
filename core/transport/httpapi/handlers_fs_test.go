@@ -204,6 +204,68 @@ func TestListFSRejectsAbsolutePathOutsideWorkspaceWithExplicitFlag(t *testing.T)
 	}
 }
 
+func TestListFSAllowsOutsideWorkspaceOnlyThroughWidgetScope(t *testing.T) {
+	t.Parallel()
+
+	repoRoot := t.TempDir()
+	outsideRoot := t.TempDir()
+	otherOutsideRoot := t.TempDir()
+	if err := os.WriteFile(filepath.Join(outsideRoot, "notes.txt"), []byte("hello"), 0o600); err != nil {
+		t.Fatalf("write outside file: %v", err)
+	}
+	handler, _ := newTestHandlerWithRepoRoot(t, repoRoot)
+
+	openRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(
+		openRecorder,
+		authedJSONRequest(t, http.MethodPost, "/api/v1/workspace/widgets/open-directory", map[string]any{
+			"target_widget_id": "term-main",
+			"path":             outsideRoot,
+			"connection_id":    "local",
+		}),
+	)
+	if openRecorder.Code != http.StatusOK {
+		t.Fatalf("expected open-directory 200, got %d body=%s", openRecorder.Code, openRecorder.Body.String())
+	}
+	var openResponse struct {
+		WidgetID string `json:"widget_id"`
+	}
+	if err := json.Unmarshal(openRecorder.Body.Bytes(), &openResponse); err != nil {
+		t.Fatalf("unmarshal open response: %v", err)
+	}
+	if openResponse.WidgetID == "" {
+		t.Fatalf("expected widget id in open response: %s", openRecorder.Body.String())
+	}
+
+	listRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(
+		listRecorder,
+		authedJSONRequest(
+			t,
+			http.MethodGet,
+			"/api/v1/fs/list?path="+url.QueryEscape(outsideRoot)+"&widget_id="+url.QueryEscape(openResponse.WidgetID),
+			nil,
+		),
+	)
+	if listRecorder.Code != http.StatusOK {
+		t.Fatalf("expected scoped list 200, got %d body=%s", listRecorder.Code, listRecorder.Body.String())
+	}
+
+	escapeRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(
+		escapeRecorder,
+		authedJSONRequest(
+			t,
+			http.MethodGet,
+			"/api/v1/fs/list?path="+url.QueryEscape(otherOutsideRoot)+"&widget_id="+url.QueryEscape(openResponse.WidgetID),
+			nil,
+		),
+	)
+	if escapeRecorder.Code != http.StatusForbidden {
+		t.Fatalf("expected scoped escape 403, got %d body=%s", escapeRecorder.Code, escapeRecorder.Body.String())
+	}
+}
+
 func TestMkdirFSCreatesDirectoryAndReturnsCreatedPath(t *testing.T) {
 	t.Parallel()
 

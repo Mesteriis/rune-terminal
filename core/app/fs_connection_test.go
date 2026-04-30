@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -228,6 +229,133 @@ func TestOpenPreviewInNewBlockAllowsRemotePathWithoutLocalStat(t *testing.T) {
 	}
 	if !widgetFound {
 		t.Fatalf("expected preview widget %q in workspace snapshot", result.WidgetID)
+	}
+}
+
+func TestListFSForWidgetAllowsStoredOutsideLocalDirectoryScope(t *testing.T) {
+	t.Parallel()
+
+	repoRoot := t.TempDir()
+	outsideRoot := t.TempDir()
+	if err := os.Mkdir(filepath.Join(outsideRoot, "docs"), 0o755); err != nil {
+		t.Fatalf("mkdir outside docs: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(outsideRoot, "README.md"), []byte("outside"), 0o600); err != nil {
+		t.Fatalf("write outside file: %v", err)
+	}
+
+	runtime := &Runtime{
+		RepoRoot:  repoRoot,
+		Workspace: workspace.NewService(workspace.BootstrapDefault()),
+	}
+	created, err := runtime.OpenDirectoryInNewBlock(outsideRoot, "term-main", "local")
+	if err != nil {
+		t.Fatalf("OpenDirectoryInNewBlock returned error: %v", err)
+	}
+
+	result, err := runtime.ListFSForWidget(context.Background(), outsideRoot, "", "local", created.WidgetID)
+	if err != nil {
+		t.Fatalf("ListFSForWidget returned error: %v", err)
+	}
+	if result.Path != filepath.Clean(outsideRoot) {
+		t.Fatalf("expected outside widget root path %q, got %q", filepath.Clean(outsideRoot), result.Path)
+	}
+	if len(result.Directories) != 1 || result.Directories[0].Name != "docs" {
+		t.Fatalf("unexpected directories: %#v", result.Directories)
+	}
+	if len(result.Files) != 1 || result.Files[0].Name != "README.md" {
+		t.Fatalf("unexpected files: %#v", result.Files)
+	}
+}
+
+func TestListFSForWidgetDoesNotBecomeGlobalOutsideWorkspaceEscape(t *testing.T) {
+	t.Parallel()
+
+	repoRoot := t.TempDir()
+	outsideRoot := t.TempDir()
+	otherOutsideRoot := t.TempDir()
+	runtime := &Runtime{
+		RepoRoot:  repoRoot,
+		Workspace: workspace.NewService(workspace.BootstrapDefault()),
+	}
+	created, err := runtime.OpenDirectoryInNewBlock(outsideRoot, "term-main", "local")
+	if err != nil {
+		t.Fatalf("OpenDirectoryInNewBlock returned error: %v", err)
+	}
+
+	_, err = runtime.ListFSForWidget(context.Background(), otherOutsideRoot, "", "local", created.WidgetID)
+	if !errors.Is(err, ErrFSPathOutsideWorkspace) {
+		t.Fatalf("expected outside workspace error for path outside widget root, got %v", err)
+	}
+}
+
+func TestListFSForWidgetRejectsSymlinkEscapeFromStoredOutsideRoot(t *testing.T) {
+	t.Parallel()
+
+	repoRoot := t.TempDir()
+	outsideRoot := t.TempDir()
+	otherOutsideRoot := t.TempDir()
+	if err := os.WriteFile(filepath.Join(otherOutsideRoot, "secret.txt"), []byte("secret"), 0o600); err != nil {
+		t.Fatalf("write outside secret: %v", err)
+	}
+	linkPath := filepath.Join(outsideRoot, "linked-outside")
+	if err := os.Symlink(otherOutsideRoot, linkPath); err != nil {
+		t.Fatalf("create symlink: %v", err)
+	}
+	runtime := &Runtime{
+		RepoRoot:  repoRoot,
+		Workspace: workspace.NewService(workspace.BootstrapDefault()),
+	}
+	created, err := runtime.OpenDirectoryInNewBlock(outsideRoot, "term-main", "local")
+	if err != nil {
+		t.Fatalf("OpenDirectoryInNewBlock returned error: %v", err)
+	}
+
+	_, err = runtime.ListFSForWidget(context.Background(), linkPath, "", "local", created.WidgetID)
+	if !errors.Is(err, ErrFSPathOutsideWorkspace) {
+		t.Fatalf("expected symlink outside workspace error, got %v", err)
+	}
+}
+
+func TestOpenPreviewInNewBlockAllowsPathUnderOutsideFilesWidget(t *testing.T) {
+	t.Parallel()
+
+	repoRoot := t.TempDir()
+	outsideRoot := t.TempDir()
+	previewPath := filepath.Join(outsideRoot, "README.md")
+	if err := os.WriteFile(previewPath, []byte("outside preview"), 0o600); err != nil {
+		t.Fatalf("write outside preview: %v", err)
+	}
+
+	runtime := &Runtime{
+		RepoRoot:  repoRoot,
+		Workspace: workspace.NewService(workspace.BootstrapDefault()),
+	}
+	filesWidget, err := runtime.OpenDirectoryInNewBlock(outsideRoot, "term-main", "local")
+	if err != nil {
+		t.Fatalf("OpenDirectoryInNewBlock returned error: %v", err)
+	}
+
+	previewWidget, err := runtime.OpenPreviewInNewBlock(previewPath, filesWidget.WidgetID, "local")
+	if err != nil {
+		t.Fatalf("OpenPreviewInNewBlock returned error: %v", err)
+	}
+
+	preview, err := runtime.ReadFSPreviewForWidget(context.Background(), previewPath, 64, "local", previewWidget.WidgetID)
+	if err != nil {
+		t.Fatalf("ReadFSPreviewForWidget returned error: %v", err)
+	}
+	if preview.Path != filepath.Clean(previewPath) || preview.Preview != "outside preview" {
+		t.Fatalf("unexpected preview result: %#v", preview)
+	}
+
+	siblingPath := filepath.Join(outsideRoot, "sibling.txt")
+	if err := os.WriteFile(siblingPath, []byte("sibling"), 0o600); err != nil {
+		t.Fatalf("write sibling preview: %v", err)
+	}
+	_, err = runtime.ReadFSPreviewForWidget(context.Background(), siblingPath, 64, "local", previewWidget.WidgetID)
+	if !errors.Is(err, ErrFSPathOutsideWorkspace) {
+		t.Fatalf("expected preview widget to reject sibling reads, got %v", err)
 	}
 }
 

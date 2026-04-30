@@ -66,6 +66,29 @@ describe('PreviewPanelWidget', () => {
     })
   })
 
+  it('passes widget scope to backend preview reads', async () => {
+    vi.mocked(readPreviewFile).mockResolvedValue({
+      content: '# Outside',
+      path: '/tmp/session/README.md',
+      previewBytes: 9,
+      previewKind: 'text',
+      sizeBytes: 9,
+      truncated: false,
+    })
+
+    render(<PreviewPanelWidget path="/tmp/session/README.md" title="README.md" widgetId="preview-1" />)
+
+    await waitFor(() => {
+      expect(readPreviewFile).toHaveBeenCalledWith(
+        '/tmp/session/README.md',
+        expect.objectContaining({
+          maxBytes: 65_536,
+          widgetId: 'preview-1',
+        }),
+      )
+    })
+  })
+
   it('renders hex previews and truncated state metadata', async () => {
     vi.mocked(readPreviewFile).mockResolvedValue({
       content: '00000000  00 01 02 03                                      |....|',
@@ -152,7 +175,7 @@ describe('PreviewPanelWidget', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open preview file externally' }))
 
     await waitFor(() => {
-      expect(openPreviewPathExternally).toHaveBeenCalledWith('/repo/README.md')
+      expect(openPreviewPathExternally).toHaveBeenCalledWith('/repo/README.md', expect.objectContaining({}))
       expect(screen.getByText('Preview file open request sent to the system opener.')).toBeInTheDocument()
     })
   })
@@ -177,9 +200,12 @@ describe('PreviewPanelWidget', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open preview file externally' }))
 
     await waitFor(() => {
-      expect(openPreviewPathExternally).toHaveBeenCalledWith('/remote/README.md', {
-        connectionId: 'conn-ssh',
-      })
+      expect(openPreviewPathExternally).toHaveBeenCalledWith(
+        '/remote/README.md',
+        expect.objectContaining({
+          connectionId: 'conn-ssh',
+        }),
+      )
     })
   })
 
@@ -203,7 +229,7 @@ describe('PreviewPanelWidget', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open preview containing folder externally' }))
 
     await waitFor(() => {
-      expect(openPreviewPathExternally).toHaveBeenCalledWith('/repo')
+      expect(openPreviewPathExternally).toHaveBeenCalledWith('/repo', expect.objectContaining({}))
       expect(
         screen.getByText('Preview containing folder open request sent to the system opener.'),
       ).toBeInTheDocument()

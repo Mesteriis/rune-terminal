@@ -34,6 +34,11 @@
     - local files transport list/read routes no longer honor the public
       `allow_outside_workspace=1` query escape; authenticated HTTP callers
       stay inside the runtime workspace root for active local filesystem reads
+    - local files/preview routes now accept a backend-issued `widget_id` scope
+      for files widgets opened from terminal path handoffs: outside-workspace
+      local browsing is limited to that widget's stored root, preview widgets
+      are limited to their selected file, and ordinary calls without that
+      widget scope remain repo-root bounded
     - local filesystem navigation now evaluates workspace containment against
       canonical symlink targets before list/read/write/mkdir can follow a
       symlinked path, preserves ordinary lexical response paths, and switches
@@ -354,6 +359,7 @@ light` remains the system fallback, and `@media print` flattens shell
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestOpenPreviewInNewBlockAllowsRemotePathWithoutLocalStat|TestListFSRoutesRemoteConnectionAwareRequestsThroughSSH|TestReadFSPreviewRoutesRemoteConnectionAwareRequestsThroughSSH' -count=1`
 - `(cd frontend && npm exec prettier -- --write src/features/preview/api/client.ts src/features/preview/api/client.test.ts src/widgets/preview/index.ts src/widgets/preview/preview-panel.ts src/widgets/preview/preview-panel.test.ts src/widgets/preview/preview-panel-widget.tsx src/widgets/preview/preview-panel-widget.test.tsx src/widgets/preview/preview-panel-widget.styles.ts src/widgets/index.ts src/widgets/panel/dockview-panel-widget.tsx src/widgets/terminal/terminal-dockview-header-actions-widget.tsx src/widgets/terminal/terminal-dockview-header-actions-widget.test.tsx)`
 - `npm --prefix frontend run test -- src/features/preview/api/client.test.ts src/widgets/preview/preview-panel.test.ts src/widgets/preview/preview-panel-widget.test.tsx src/widgets/terminal/terminal-dockview-header-actions-widget.test.tsx`
+- `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'Test(ListFSForWidget|OpenPreviewInNewBlockAllowsPathUnderOutsideFilesWidget|ListFSAllowsOutsideWorkspaceOnlyThroughWidgetScope|ListFSRejectsAbsolutePathOutsideWorkspaceWithExplicitFlag|ReadFSPreviewRejectsPathOutsideWorkspace)' -count=1`
 - `npm --prefix frontend run test -- src/features/files/api/client.test.ts src/features/preview/api/client.test.ts src/widgets/files/files-panel-widget.test.tsx src/widgets/preview/preview-panel-widget.test.tsx --reporter=verbose`
 - `npm run test:ui -- --reporter=line e2e/shell-workspace.spec.ts --grep "SSH-backed files and preview widgets keep connection-scoped fs requests"` (attempted; test body progressed but Playwright hung after starting the remote files scenario, so this path is not claimed as a clean browser pass yet)
 - `gofmt -w core/windowtitle/settings.go core/windowtitle/settings_test.go core/app/runtime.go core/app/window_title_settings.go core/transport/httpapi/api.go core/transport/httpapi/handlers_system.go core/transport/httpapi/handlers_window_title_settings.go core/transport/httpapi/handlers_window_title_settings_test.go core/transport/httpapi/test_helpers_test.go`

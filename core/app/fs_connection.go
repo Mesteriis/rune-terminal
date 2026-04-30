@@ -14,6 +14,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/Mesteriis/rune-terminal/core/connections"
+	"github.com/Mesteriis/rune-terminal/core/workspace"
 )
 
 type remoteFSExecResult struct {
@@ -43,6 +44,26 @@ func (r *Runtime) ListFSForConnection(
 	return r.listRemoteFS(ctx, connection, path, query)
 }
 
+func (r *Runtime) ListFSForWidget(
+	ctx context.Context,
+	path string,
+	query string,
+	connectionID string,
+	widgetID string,
+) (FSListResult, error) {
+	connection, err := r.resolveFSConnection(connectionID)
+	if err != nil {
+		return FSListResult{}, err
+	}
+	if connection.Kind == connections.KindSSH {
+		return r.listRemoteFS(ctx, connection, path, query)
+	}
+	if root, ok := r.localFSWidgetRoot(widgetID, connectionID, workspace.WidgetKindFiles); ok {
+		return r.listFSWithinRoot(path, query, root)
+	}
+	return r.ListFS(path, query)
+}
+
 func (r *Runtime) ReadFSPreviewForConnection(
 	ctx context.Context,
 	path string,
@@ -61,6 +82,33 @@ func (r *Runtime) ReadFSPreviewForConnection(
 		return r.ReadFSPreview(path, maxBytes)
 	}
 	return r.readRemoteFSPreview(ctx, connection, path, maxBytes)
+}
+
+func (r *Runtime) ReadFSPreviewForWidget(
+	ctx context.Context,
+	path string,
+	maxBytes int,
+	connectionID string,
+	widgetID string,
+) (FSReadResult, error) {
+	connection, err := r.resolveFSConnection(connectionID)
+	if err != nil {
+		return FSReadResult{}, err
+	}
+	if connection.Kind == connections.KindSSH {
+		return r.readRemoteFSPreview(ctx, connection, path, maxBytes)
+	}
+	if root, ok := r.localFSWidgetRoot(widgetID, connectionID, workspace.WidgetKindFiles); ok {
+		return r.readFSPreviewWithinRoot(path, maxBytes, root)
+	}
+	if previewPath, ok := r.localFSPreviewWidgetPath(widgetID, connectionID); ok {
+		targetPath, err := resolveLocalFSPreviewWidgetPath(previewPath, path)
+		if err != nil {
+			return FSReadResult{}, err
+		}
+		return readFSPreviewResolved(targetPath, maxBytes)
+	}
+	return r.ReadFSPreview(path, maxBytes)
 }
 
 func (r *Runtime) ReadFSFileForConnection(
@@ -109,6 +157,42 @@ func (r *Runtime) OpenFSExternalForConnection(
 	return FSOpenResult{}, fmt.Errorf("%w: remote external open is unavailable", ErrFSExternalOpenUnsupported)
 }
 
+func (r *Runtime) OpenFSExternalForWidget(
+	ctx context.Context,
+	path string,
+	connectionID string,
+	widgetID string,
+) (FSOpenResult, error) {
+	connection, err := r.resolveFSConnection(connectionID)
+	if err != nil {
+		return FSOpenResult{}, err
+	}
+	if connection.Kind == connections.KindSSH {
+		return FSOpenResult{}, fmt.Errorf("%w: remote external open is unavailable", ErrFSExternalOpenUnsupported)
+	}
+	if root, ok := r.localFSWidgetRoot(widgetID, connectionID, workspace.WidgetKindFiles); ok {
+		targetPath, err := resolveFSPathInRoot(root, path)
+		if err != nil {
+			return FSOpenResult{}, err
+		}
+		if err := openFSExternal(targetPath); err != nil {
+			return FSOpenResult{}, err
+		}
+		return FSOpenResult{Path: targetPath}, nil
+	}
+	if previewPath, ok := r.localFSPreviewWidgetPath(widgetID, connectionID); ok {
+		targetPath, err := resolveLocalFSPreviewWidgetOpenPath(previewPath, path)
+		if err != nil {
+			return FSOpenResult{}, err
+		}
+		if err := openFSExternal(targetPath); err != nil {
+			return FSOpenResult{}, err
+		}
+		return FSOpenResult{Path: targetPath}, nil
+	}
+	return r.OpenFSExternal(path)
+}
+
 func (r *Runtime) resolveFSConnection(connectionID string) (connections.Connection, error) {
 	connectionID = strings.TrimSpace(connectionID)
 	if connectionID == "" || connectionID == string(connections.KindLocal) {
@@ -122,6 +206,117 @@ func (r *Runtime) resolveFSConnection(connectionID string) (connections.Connecti
 		return connections.Connection{}, fmt.Errorf("%w: %s", connections.ErrConnectionNotFound, connectionID)
 	}
 	return r.Connections.Resolve(connectionID)
+}
+
+func (r *Runtime) localFSWidgetRoot(
+	widgetID string,
+	connectionID string,
+	allowedKinds ...workspace.WidgetKind,
+) (string, bool) {
+	widgetID = strings.TrimSpace(widgetID)
+	if widgetID == "" || r == nil || r.Workspace == nil {
+		return "", false
+	}
+	requestedConnectionID := normalizeLocalFSConnectionID(connectionID)
+	if !isLocalFSConnectionID(requestedConnectionID) {
+		return "", false
+	}
+	allowedKindSet := make(map[workspace.WidgetKind]struct{}, len(allowedKinds))
+	for _, kind := range allowedKinds {
+		allowedKindSet[kind] = struct{}{}
+	}
+	for _, widget := range r.Workspace.Snapshot().Widgets {
+		if widget.ID != widgetID {
+			continue
+		}
+		if _, ok := allowedKindSet[widget.Kind]; !ok {
+			return "", false
+		}
+		if !isLocalFSConnectionID(normalizeLocalFSConnectionID(widget.ConnectionID)) {
+			return "", false
+		}
+		root := strings.TrimSpace(widget.Path)
+		if root == "" {
+			return "", false
+		}
+		return root, true
+	}
+	return "", false
+}
+
+func (r *Runtime) localFSPreviewWidgetPath(widgetID string, connectionID string) (string, bool) {
+	widgetID = strings.TrimSpace(widgetID)
+	if widgetID == "" || r == nil || r.Workspace == nil {
+		return "", false
+	}
+	requestedConnectionID := normalizeLocalFSConnectionID(connectionID)
+	if !isLocalFSConnectionID(requestedConnectionID) {
+		return "", false
+	}
+	for _, widget := range r.Workspace.Snapshot().Widgets {
+		if widget.ID != widgetID {
+			continue
+		}
+		if widget.Kind != workspace.WidgetKindPreview {
+			return "", false
+		}
+		if !isLocalFSConnectionID(normalizeLocalFSConnectionID(widget.ConnectionID)) {
+			return "", false
+		}
+		path := strings.TrimSpace(widget.Path)
+		if path == "" {
+			return "", false
+		}
+		return path, true
+	}
+	return "", false
+}
+
+func resolveLocalFSPreviewWidgetPath(previewPath string, requestedPath string) (string, error) {
+	previewDir := filepath.Dir(previewPath)
+	resolvedPreviewPath, err := resolveFSPathInRoot(previewDir, previewPath)
+	if err != nil {
+		return "", err
+	}
+	targetPath, err := resolveFSPathInRoot(previewDir, requestedPath)
+	if err != nil {
+		return "", err
+	}
+	if targetPath != resolvedPreviewPath {
+		return "", ErrFSPathOutsideWorkspace
+	}
+	return targetPath, nil
+}
+
+func resolveLocalFSPreviewWidgetOpenPath(previewPath string, requestedPath string) (string, error) {
+	previewDir := filepath.Dir(previewPath)
+	resolvedPreviewPath, err := resolveFSPathInRoot(previewDir, previewPath)
+	if err != nil {
+		return "", err
+	}
+	targetPath, err := resolveFSPathInRoot(previewDir, requestedPath)
+	if err != nil {
+		return "", err
+	}
+	if targetPath != resolvedPreviewPath && targetPath != filepath.Clean(previewDir) {
+		return "", ErrFSPathOutsideWorkspace
+	}
+	return targetPath, nil
+}
+
+func normalizeLocalFSConnectionID(connectionID string) string {
+	connectionID = strings.TrimSpace(connectionID)
+	if connectionID == "" {
+		return string(connections.KindLocal)
+	}
+	return connectionID
+}
+
+func isLocalFSConnectionID(connectionID string) bool {
+	connectionID = strings.TrimSpace(connectionID)
+	return connectionID == "" ||
+		connectionID == string(connections.KindLocal) ||
+		strings.HasPrefix(connectionID, string(connections.KindLocal)+":")
 }
 
 func (r *Runtime) listRemoteFS(

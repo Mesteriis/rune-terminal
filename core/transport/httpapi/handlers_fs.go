@@ -58,13 +58,15 @@ type writeFSRequest struct {
 type openFSRequest struct {
 	ConnectionID string `json:"connection_id,omitempty"`
 	Path         string `json:"path"`
+	WidgetID     string `json:"widget_id,omitempty"`
 }
 
 func (api *API) handleListFS(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Query().Get("path")
 	query := r.URL.Query().Get("query")
 	connectionID := r.URL.Query().Get("connection_id")
-	result, err := api.runtime.ListFSForConnection(r.Context(), path, query, connectionID, false)
+	widgetID := r.URL.Query().Get("widget_id")
+	result, err := api.runtime.ListFSForWidget(r.Context(), path, query, connectionID, widgetID)
 	if err != nil {
 		writeFSError(w, err)
 		return
@@ -82,12 +84,12 @@ func (api *API) handleReadFS(w http.ResponseWriter, r *http.Request) {
 	if maxBytes > maxFSPreviewBytes {
 		maxBytes = maxFSPreviewBytes
 	}
-	result, err := api.runtime.ReadFSPreviewForConnection(
+	result, err := api.runtime.ReadFSPreviewForWidget(
 		r.Context(),
 		path,
 		maxBytes,
 		connectionID,
-		false,
+		r.URL.Query().Get("widget_id"),
 	)
 	if err != nil {
 		writeFSError(w, err)
@@ -140,7 +142,7 @@ func (api *API) handleOpenFSExternal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := api.runtime.OpenFSExternalForConnection(r.Context(), request.Path, request.ConnectionID)
+	result, err := api.runtime.OpenFSExternalForWidget(r.Context(), request.Path, request.ConnectionID, request.WidgetID)
 	if err != nil {
 		api.appendFSMutationAudit("fs.open_external", "Open filesystem path externally", request.ConnectionID, []string{request.Path}, err)
 		writeFSError(w, err)

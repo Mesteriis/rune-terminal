@@ -32,6 +32,7 @@ export type PreviewPanelWidgetProps = {
   connectionId?: string
   path: string
   title: string
+  widgetId?: string
 }
 
 type PreviewPanelLoadState =
@@ -71,7 +72,7 @@ function getPreviewKindLabel(snapshot: PreviewFileSnapshot) {
   return snapshot.previewKind === 'hex' ? 'Hex preview' : 'Text preview'
 }
 
-export function PreviewPanelWidget({ connectionId, path, title }: PreviewPanelWidgetProps) {
+export function PreviewPanelWidget({ connectionId, path, title, widgetId }: PreviewPanelWidgetProps) {
   const [refreshNonce, setRefreshNonce] = useState(0)
   const externalOpenRequestIdRef = useRef(0)
   const pathCopyRequestIdRef = useRef(0)
@@ -98,9 +99,12 @@ export function PreviewPanelWidget({ connectionId, path, title }: PreviewPanelWi
       status: 'loading',
     })
 
-    const previewRequest = connectionId
-      ? readPreviewFile(path, { connectionId, maxBytes: 65_536, signal: abortController.signal })
-      : readPreviewFile(path, { maxBytes: 65_536, signal: abortController.signal })
+    const previewRequest = readPreviewFile(path, {
+      connectionId,
+      maxBytes: 65_536,
+      signal: abortController.signal,
+      widgetId,
+    })
 
     previewRequest
       .then((snapshot) => {
@@ -129,7 +133,7 @@ export function PreviewPanelWidget({ connectionId, path, title }: PreviewPanelWi
     return () => {
       abortController.abort()
     }
-  }, [connectionId, path, refreshNonce])
+  }, [connectionId, path, refreshNonce, widgetId])
 
   useEffect(() => {
     externalOpenRequestIdRef.current += 1
@@ -154,9 +158,7 @@ export function PreviewPanelWidget({ connectionId, path, title }: PreviewPanelWi
     })
 
     try {
-      await (connectionId
-        ? openPreviewPathExternally(path, { connectionId })
-        : openPreviewPathExternally(path))
+      await openPreviewPathExternally(path, { connectionId, widgetId })
       if (externalOpenRequestIdRef.current !== requestId) {
         return
       }
@@ -197,9 +199,7 @@ export function PreviewPanelWidget({ connectionId, path, title }: PreviewPanelWi
     })
 
     try {
-      await (connectionId
-        ? openPreviewPathExternally(containingFolderPath, { connectionId })
-        : openPreviewPathExternally(containingFolderPath))
+      await openPreviewPathExternally(containingFolderPath, { connectionId, widgetId })
       if (externalOpenRequestIdRef.current !== requestId) {
         return
       }

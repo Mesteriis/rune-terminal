@@ -15,6 +15,7 @@ type PreviewRequestOptions = {
   connectionId?: string
   maxBytes?: number
   signal?: AbortSignal
+  widgetId?: string
 }
 
 type FSReadPayload = {
@@ -101,6 +102,9 @@ export async function readPreviewFile(
   if (options?.connectionId?.trim()) {
     params.set('connection_id', options.connectionId.trim())
   }
+  if (options?.widgetId?.trim()) {
+    params.set('widget_id', options.widgetId.trim())
+  }
 
   const payload = await fetchRuntimeJSON<FSReadPayload>(
     runtimeContext,
@@ -124,5 +128,6 @@ export async function openPreviewPathExternally(path: string, options?: PreviewR
   return postRuntimeJSON<FSOpenPayload>('/api/v1/fs/open', {
     connection_id: options?.connectionId?.trim() || undefined,
     path,
+    widget_id: options?.widgetId?.trim() || undefined,
   })
 }

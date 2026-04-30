@@ -131,6 +131,7 @@ export function DockviewPanelWidget(props: IDockviewPanelProps) {
               connectionId={previewModel.connectionId}
               path={previewModel.path}
               title={previewModel.title}
+              widgetId={previewModel.widgetId}
             />
           ) : isCommanderPanel ? (
             <CommanderPanelWidget />

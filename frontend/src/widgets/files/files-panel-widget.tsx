@@ -188,9 +188,11 @@ export function FilesPanelWidget({
       status: 'loading',
     })
 
-    const directoryRequest = connectionId
-      ? listFilesDirectory(currentPath, { connectionId, signal: abortController.signal })
-      : listFilesDirectory(currentPath, { signal: abortController.signal })
+    const directoryRequest = listFilesDirectory(currentPath, {
+      connectionId,
+      signal: abortController.signal,
+      widgetId,
+    })
 
     directoryRequest
       .then((snapshot) => {
@@ -253,9 +255,7 @@ export function FilesPanelWidget({
     })
 
     try {
-      await (connectionId
-        ? openFilesPathExternally(currentPath, { connectionId })
-        : openFilesPathExternally(currentPath))
+      await openFilesPathExternally(currentPath, { connectionId, widgetId })
       setOpenState({
         entryName: currentPath,
         message: 'Open request sent for current directory',
@@ -288,9 +288,7 @@ export function FilesPanelWidget({
 
     try {
       const targetPath = joinRuntimePath(currentPath, entry.name)
-      await (connectionId
-        ? openFilesPathExternally(targetPath, { connectionId })
-        : openFilesPathExternally(targetPath))
+      await openFilesPathExternally(targetPath, { connectionId, widgetId })
       setOpenState({
         entryName: entry.name,
         message: `Open request sent for ${entry.name}`,
@@ -313,9 +311,7 @@ export function FilesPanelWidget({
     })
 
     try {
-      await (connectionId
-        ? openFilesPathExternally(currentPath, { connectionId })
-        : openFilesPathExternally(currentPath))
+      await openFilesPathExternally(currentPath, { connectionId, widgetId })
       setOpenState({
         entryName: entry.name,
         message: `Open request sent for containing folder of ${entry.name}`,

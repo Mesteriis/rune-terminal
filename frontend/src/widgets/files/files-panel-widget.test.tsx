@@ -113,6 +113,25 @@ describe('FilesPanelWidget', () => {
     })
   })
 
+  it('passes widget scope to backend directory reads', async () => {
+    vi.mocked(listFilesDirectory).mockResolvedValue({
+      entries: [],
+      path: '/tmp/session',
+    })
+
+    render(<FilesPanelWidget path="/tmp/session" title="session" widgetId="files-1" />)
+
+    await waitFor(() => {
+      expect(listFilesDirectory).toHaveBeenCalledWith(
+        '/tmp/session',
+        expect.objectContaining({
+          signal: expect.any(AbortSignal),
+          widgetId: 'files-1',
+        }),
+      )
+    })
+  })
+
   it('renders backend listing errors inline', async () => {
     vi.mocked(listFilesDirectory).mockRejectedValue(new Error('policy denied'))
 
@@ -404,7 +423,7 @@ describe('FilesPanelWidget', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Open file README.md' }))
 
     await waitFor(() => {
-      expect(openFilesPathExternally).toHaveBeenCalledWith('/repo/README.md')
+      expect(openFilesPathExternally).toHaveBeenCalledWith('/repo/README.md', expect.objectContaining({}))
       expect(screen.getByText('Open request sent for README.md')).toBeInTheDocument()
     })
   })
@@ -438,7 +457,7 @@ describe('FilesPanelWidget', () => {
     )
 
     await waitFor(() => {
-      expect(openFilesPathExternally).toHaveBeenCalledWith('/repo')
+      expect(openFilesPathExternally).toHaveBeenCalledWith('/repo', expect.objectContaining({}))
       expect(screen.getByText('Open request sent for containing folder of README.md')).toBeInTheDocument()
     })
   })
@@ -675,7 +694,7 @@ describe('FilesPanelWidget', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open current directory externally' }))
 
     await waitFor(() => {
-      expect(openFilesPathExternally).toHaveBeenCalledWith('/repo')
+      expect(openFilesPathExternally).toHaveBeenCalledWith('/repo', expect.objectContaining({}))
       expect(screen.getByText('Open request sent for current directory')).toBeInTheDocument()
     })
   })
@@ -696,9 +715,12 @@ describe('FilesPanelWidget', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open current directory externally' }))
 
     await waitFor(() => {
-      expect(openFilesPathExternally).toHaveBeenCalledWith('/remote/project', {
-        connectionId: 'conn-ssh',
-      })
+      expect(openFilesPathExternally).toHaveBeenCalledWith(
+        '/remote/project',
+        expect.objectContaining({
+          connectionId: 'conn-ssh',
+        }),
+      )
     })
   })
 

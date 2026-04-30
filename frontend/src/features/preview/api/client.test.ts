@@ -123,6 +123,47 @@ describe('readPreviewFile', () => {
       'http://127.0.0.1:8090/api/v1/fs/read?path=%2Fremote%2FREADME.md&max_bytes=4096&connection_id=conn-ssh',
     )
   })
+
+  it('includes widget scope for backend-owned preview requests', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/repo',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          path: '/tmp/session/README.md',
+          preview: '# Outside',
+          preview_available: true,
+          preview_bytes: 9,
+          preview_kind: 'text',
+          size_bytes: 9,
+          truncated: false,
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      readPreviewFile('/tmp/session/README.md', { maxBytes: 4096, widgetId: 'preview-1' }),
+    ).resolves.toEqual({
+      content: '# Outside',
+      path: '/tmp/session/README.md',
+      previewBytes: 9,
+      previewKind: 'text',
+      sizeBytes: 9,
+      truncated: false,
+    })
+    expect(fetchMock.mock.calls[1]?.[0]).toBe(
+      'http://127.0.0.1:8090/api/v1/fs/read?path=%2Ftmp%2Fsession%2FREADME.md&max_bytes=4096&widget_id=preview-1',
+    )
+  })
 })
 
 describe('openPreviewPathExternally', () => {
@@ -187,6 +228,41 @@ describe('openPreviewPathExternally', () => {
     })
     expect(fetchMock.mock.calls[1]?.[1]).toEqual({
       body: JSON.stringify({ connection_id: 'conn-ssh', path: '/remote/README.md' }),
+      headers: {
+        Authorization: 'Bearer runtime-token',
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+    })
+  })
+
+  it('includes widget scope when opening backend-owned preview paths externally', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/repo',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          path: '/tmp/session/README.md',
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      openPreviewPathExternally('/tmp/session/README.md', { widgetId: 'preview-1' }),
+    ).resolves.toEqual({
+      path: '/tmp/session/README.md',
+    })
+    expect(fetchMock.mock.calls[1]?.[1]).toEqual({
+      body: JSON.stringify({ path: '/tmp/session/README.md', widget_id: 'preview-1' }),
       headers: {
         Authorization: 'Bearer runtime-token',
         'Content-Type': 'application/json',

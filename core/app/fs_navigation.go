@@ -56,7 +56,18 @@ func (r *Runtime) listFS(path string, query string, allowOutsideWorkspace bool) 
 	if err != nil {
 		return FSListResult{}, err
 	}
+	return listFSResolved(normalizedPath, query)
+}
 
+func (r *Runtime) listFSWithinRoot(path string, query string, root string) (FSListResult, error) {
+	normalizedPath, err := resolveFSPathInRoot(root, path)
+	if err != nil {
+		return FSListResult{}, err
+	}
+	return listFSResolved(normalizedPath, query)
+}
+
+func listFSResolved(normalizedPath string, query string) (FSListResult, error) {
 	entries, err := os.ReadDir(normalizedPath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -148,6 +159,32 @@ func (r *Runtime) resolveFSPath(path string, allowOutsideWorkspace bool) (string
 	if root == "" {
 		return "", ErrInvalidFSPath
 	}
+	if allowOutsideWorkspace {
+		rootAbs, err := filepath.Abs(filepath.Clean(root))
+		if err != nil {
+			return "", ErrInvalidFSPath
+		}
+		targetPath := strings.TrimSpace(path)
+		if targetPath == "" {
+			targetPath = rootAbs
+		}
+		if !filepath.IsAbs(targetPath) {
+			targetPath = filepath.Join(rootAbs, targetPath)
+		}
+		targetAbs, err := filepath.Abs(filepath.Clean(targetPath))
+		if err != nil || targetAbs == "." || targetAbs == "" {
+			return "", ErrInvalidFSPath
+		}
+		return targetAbs, nil
+	}
+	return resolveFSPathInRoot(root, path)
+}
+
+func resolveFSPathInRoot(root string, path string) (string, error) {
+	root = strings.TrimSpace(root)
+	if root == "" {
+		return "", ErrInvalidFSPath
+	}
 	rootAbs, err := filepath.Abs(filepath.Clean(root))
 	if err != nil {
 		return "", ErrInvalidFSPath
@@ -170,14 +207,10 @@ func (r *Runtime) resolveFSPath(path string, allowOutsideWorkspace bool) (string
 	if err != nil || targetAbs == "." || targetAbs == "" {
 		return "", ErrInvalidFSPath
 	}
-	if allowOutsideWorkspace {
-		return targetAbs, nil
-	}
 	resolvedPath, err := resolveFSPathWithinWorkspace(rootAbs, rootCanonical, targetAbs)
 	if err != nil {
 		return "", err
 	}
-
 	return resolvedPath, nil
 }
 
@@ -372,7 +405,18 @@ func (r *Runtime) readFSPreview(path string, maxBytes int, allowOutsideWorkspace
 	if err != nil {
 		return FSReadResult{}, err
 	}
+	return readFSPreviewResolved(targetPath, maxBytes)
+}
 
+func (r *Runtime) readFSPreviewWithinRoot(path string, maxBytes int, root string) (FSReadResult, error) {
+	targetPath, err := resolveFSPathInRoot(root, path)
+	if err != nil {
+		return FSReadResult{}, err
+	}
+	return readFSPreviewResolved(targetPath, maxBytes)
+}
+
+func readFSPreviewResolved(targetPath string, maxBytes int) (FSReadResult, error) {
 	info, err := os.Stat(targetPath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {

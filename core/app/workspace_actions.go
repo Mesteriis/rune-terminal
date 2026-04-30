@@ -377,6 +377,18 @@ func (r *Runtime) OpenPreviewInNewBlock(path string, targetWidgetID string, conn
 	cleanPath := path
 	if connection.Kind == connections.KindSSH {
 		cleanPath = normalizeRemoteFSPath(path, ".")
+	} else if root, ok := r.localFSWidgetRoot(targetWidgetID, connectionID, workspace.WidgetKindFiles); ok {
+		cleanPath, err = resolveFSPathInRoot(root, path)
+		if err != nil {
+			return CreateTerminalTabResult{}, err
+		}
+		info, err := os.Stat(cleanPath)
+		if err != nil {
+			return CreateTerminalTabResult{}, err
+		}
+		if info.IsDir() {
+			return CreateTerminalTabResult{}, ErrFSPathNotFile
+		}
 	} else {
 		cleanPath, err = r.resolveFSExistingPath(path)
 		if err != nil {

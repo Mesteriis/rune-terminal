@@ -125,6 +125,37 @@ describe('listFilesDirectory', () => {
     )
   })
 
+  it('includes widget scope for backend-owned outside-root directory requests', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/repo',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          directories: [],
+          files: [],
+          path: '/tmp/session',
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(listFilesDirectory('/tmp/session', { widgetId: 'files-1' })).resolves.toEqual({
+      entries: [],
+      path: '/tmp/session',
+    })
+    expect(fetchMock.mock.calls[1]?.[0]).toBe(
+      'http://127.0.0.1:8090/api/v1/fs/list?path=%2Ftmp%2Fsession&widget_id=files-1',
+    )
+  })
+
   it('opens a path through the runtime external opener route', async () => {
     const fetchMock = vi.fn()
     fetchMock
@@ -186,6 +217,41 @@ describe('listFilesDirectory', () => {
     })
     expect(fetchMock.mock.calls[1]?.[1]).toEqual({
       body: JSON.stringify({ connection_id: 'conn-ssh', path: '/remote/project/README.md' }),
+      headers: {
+        Authorization: 'Bearer runtime-token',
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+    })
+  })
+
+  it('includes widget scope when opening backend-owned file paths externally', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/repo',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          path: '/tmp/session/README.md',
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(openFilesPathExternally('/tmp/session/README.md', { widgetId: 'files-1' })).resolves.toEqual(
+      {
+        path: '/tmp/session/README.md',
+      },
+    )
+    expect(fetchMock.mock.calls[1]?.[1]).toEqual({
+      body: JSON.stringify({ path: '/tmp/session/README.md', widget_id: 'files-1' }),
       headers: {
         Authorization: 'Bearer runtime-token',
         'Content-Type': 'application/json',

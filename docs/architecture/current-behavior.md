@@ -109,7 +109,8 @@ It is intentionally operational, not narrative.
 - Files panel entries are also draggable into matching terminal widgets, where the terminal inserts the path into input without auto-running it.
 - Terminal context menus now expose `Open Current Directory in New Block` on the active compat path when shell cwd metadata is known.
 - Opening the current directory from a compat terminal creates a backend-owned `files` widget split to the right of the source terminal:
-  - local targets browse the selected directory path directly, including paths outside the workspace root
+  - local targets can browse the selected directory path directly, including paths outside the workspace root, but only through the backend-issued `files` widget id and only within that widget's stored root
+  - local preview widgets created from such files widgets carry the same widget-scoped boundary for their selected file; they do not reopen a general outside-workspace FS escape
   - remote targets preserve the connection ID and path in the new block, but the active compat files view remains read-only metadata for remote directories
   - the action does not execute shell commands implicitly
 - Widgets can now be bound to a specific connection ID.
