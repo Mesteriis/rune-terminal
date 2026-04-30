@@ -119,6 +119,7 @@ func (api *API) handleListRemoteProfileTmuxSessions(w http.ResponseWriter, r *ht
 }
 
 func (api *API) handleCreateRemoteSessionFromProfile(w http.ResponseWriter, r *http.Request) {
+	profileID := r.PathValue("profileID")
 	var payload struct {
 		Title       string `json:"title,omitempty"`
 		TmuxSession string `json:"tmux_session,omitempty"`
@@ -130,13 +131,39 @@ func (api *API) handleCreateRemoteSessionFromProfile(w http.ResponseWriter, r *h
 	result, err := api.runtime.CreateRemoteTerminalTabFromProfile(
 		r.Context(),
 		payload.Title,
-		r.PathValue("profileID"),
+		profileID,
 		payload.TmuxSession,
 	)
+	summary := workspaceAuditSummary(
+		workspaceAuditKV("profile_id", profileID),
+		workspaceAuditKV("tmux_session", payload.TmuxSession),
+	)
 	if err != nil {
+		api.appendWorkspaceMutationAudit(
+			"workspace.create_remote_terminal_tab",
+			summary,
+			"",
+			profileID,
+			nil,
+			nil,
+			err,
+		)
 		writeWorkspaceError(w, err)
 		return
 	}
+	successSummary := workspaceAuditSummary(summary, workspaceAuditKV("tab_id", result.TabID))
+	if result.Reused {
+		successSummary = workspaceAuditSummary(successSummary, "reused=true")
+	}
+	api.appendWorkspaceMutationAudit(
+		"workspace.create_remote_terminal_tab",
+		successSummary,
+		result.Workspace.ID,
+		result.ConnectionID,
+		nil,
+		[]string{result.WidgetID},
+		nil,
+	)
 	writeJSON(w, http.StatusOK, result)
 }
 

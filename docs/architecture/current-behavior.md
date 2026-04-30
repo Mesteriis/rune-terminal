@@ -235,7 +235,7 @@ It is intentionally operational, not narrative.
 - Widgets keep their own `connection_id`, so tabs and sessions remain explicitly bound after creation.
 - Connection selection and profile creation are exposed through dedicated management routes and mirrored in the shell connections panel.
 - Direct HTTP connection mutations (`save_ssh`, active selection, preflight check) append core-owned audit events with `target_connection_id`, success/failure, and normalized error text.
-- Direct HTTP remote profile mutations (`save`, `delete`, `import-ssh-config`) append core-owned audit events; SSH config import also records the imported config path in `affected_paths`.
+- Direct HTTP remote profile mutations (`save`, `delete`, `import-ssh-config`) append core-owned audit events; SSH config import also records the imported config path in `affected_paths`. Profile-backed remote session open is a workspace mutation and appends workspace audit events with target connection/widget identity.
 - Each connection snapshot now includes:
   - `status`: catalog-level profile state such as `ready` or `configured`
   - `runtime.check_status`: last preflight result (`unchecked`, `passed`, `failed`)

@@ -28,6 +28,9 @@
   - HTTP remote profile mutations now append core-owned audit events for
     save/delete/import success and failure paths, with SSH config import
     recording the imported config path
+  - profile-backed remote session open now appends workspace mutation audit
+    events for success and failure paths, including the target connection and
+    created/focused widget identity
   - settings-shell remote preflight/default-target controls plus launch
     status visibility
   - filterable saved-profile inventory inside the active settings shell
@@ -51,6 +54,8 @@
   - `./scripts/go.sh test ./core/connections ./core/app ./core/transport/httpapi -run 'Test.*Connection|Test.*RemoteProfile|TestImportSSHConfig|Test.*FS|Test.*Terminal' -count=1`
   - `./scripts/go.sh test ./core/connections ./core/terminal ./core/app ./core/transport/httpapi -run 'TestBuildCommandAddsTmuxResumeCommandForSSHProfiles|TestRemoteProfilesCanBeSavedListedAndDeleted|TestRemoteProfilesNormalizeTmuxLaunchPolicy|TestCreateRemoteTerminalTabFromProfileCarriesTmuxLaunchPolicy|TestRemoteProfilesEndpointsListSaveAndDelete' -count=1`
   - `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestCreateRemoteTerminalTabFromProfileUsesTmuxSessionOverrideForReuse|TestRemoteProfilesCreateSessionReturnsNotFoundForMissingProfile' -count=1`
+  - `./scripts/go.sh test ./core/transport/httpapi -run 'TestRemoteProfilesCreateSession(AppendsWorkspaceAuditEvent|ReturnsNotFoundForMissingProfile)' -count=1`
+  - `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'Test.*RemoteProfile|TestCreateRemoteTerminalTab|TestWorkspace.*Audit|TestRemoteProfilesCreateSession' -count=1`
   - `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestListFSForConnectionParsesRemoteDirectoryEntries|TestReadFSPreviewForConnectionFormatsRemoteBinaryPreview|TestWriteFSFileForConnectionSendsRemoteContentOverSSH|TestOpenPreviewInNewBlockAllowsRemotePathWithoutLocalStat|TestListFSRoutesRemoteConnectionAwareRequestsThroughSSH|TestReadFSPreviewRoutesRemoteConnectionAwareRequestsThroughSSH' -count=1`
   - `./scripts/go.sh test ./core/app ./core/transport/httpapi -count=1`
   - `./scripts/go.sh test ./core/transport/httpapi ./core/app -run 'TestConnectionsEndpointsListSelectAndSave|TestRemoteProfilesEndpointsListSaveAndDelete|TestObserveConnectionLaunchMarksLaunch(Failed|Succeeded)' -count=1`

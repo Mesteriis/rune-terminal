@@ -267,6 +267,111 @@ func TestRemoteProfilesCreateSessionReturnsNotFoundForMissingProfile(t *testing.
 	if recorder.Code != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d (%s)", recorder.Code, recorder.Body.String())
 	}
+
+	auditRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(auditRecorder, authedJSONRequest(t, http.MethodGet, "/api/v1/audit?limit=10", nil))
+	if auditRecorder.Code != http.StatusOK {
+		t.Fatalf("expected audit=200, got %d (%s)", auditRecorder.Code, auditRecorder.Body.String())
+	}
+	var auditResponse struct {
+		Events []struct {
+			ToolName           string `json:"tool_name"`
+			ActionSource       string `json:"action_source"`
+			TargetConnectionID string `json:"target_connection_id"`
+			Success            bool   `json:"success"`
+			Error              string `json:"error"`
+		} `json:"events"`
+	}
+	if err := json.Unmarshal(auditRecorder.Body.Bytes(), &auditResponse); err != nil {
+		t.Fatalf("unmarshal audit response: %v", err)
+	}
+	if len(auditResponse.Events) != 1 {
+		t.Fatalf("expected one failure audit event, got %#v", auditResponse.Events)
+	}
+	event := auditResponse.Events[0]
+	if event.ToolName != "workspace.create_remote_terminal_tab" || event.ActionSource != "http.workspace" ||
+		event.TargetConnectionID != "missing-profile" || event.Success || event.Error == "" {
+		t.Fatalf("unexpected remote profile session failure audit event: %#v", event)
+	}
+}
+
+func TestRemoteProfilesCreateSessionAppendsWorkspaceAuditEvent(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	auditLog, err := audit.NewLog(filepath.Join(tempDir, "audit.jsonl"))
+	if err != nil {
+		t.Fatalf("NewLog error: %v", err)
+	}
+	connectionStore, err := connections.NewServiceWithChecker(filepath.Join(tempDir, "connections.json"), tmuxProfilesChecker{})
+	if err != nil {
+		t.Fatalf("NewServiceWithChecker error: %v", err)
+	}
+	if _, _, err := connectionStore.SaveRemoteProfile(connections.SaveRemoteProfileInput{
+		ID:   "conn-prod",
+		Name: "Prod",
+		Host: "prod.example.com",
+	}); err != nil {
+		t.Fatalf("SaveRemoteProfile error: %v", err)
+	}
+	process := &handlerTestProcess{
+		outputCh: make(chan []byte, 1),
+		waitCh:   make(chan struct{}),
+	}
+	process.outputCh <- []byte("remote-ready\n")
+	terminalService := terminal.NewService(handlerTestLauncher{process: process})
+	t.Cleanup(terminalService.Close)
+	runtime := &app.Runtime{
+		RepoRoot:    "/workspace/repo",
+		Workspace:   workspace.NewService(workspace.BootstrapDefault()),
+		Terminals:   terminalService,
+		Connections: connectionStore,
+		Audit:       auditLog,
+	}
+	handler := NewHandler(runtime, testAuthToken)
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(
+		recorder,
+		authedJSONRequest(t, http.MethodPost, "/api/v1/remote/profiles/conn-prod/session", map[string]any{
+			"title": "Remote From Profile",
+		}),
+	)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d (%s)", recorder.Code, recorder.Body.String())
+	}
+	var createResponse app.CreateRemoteSessionResult
+	if err := json.Unmarshal(recorder.Body.Bytes(), &createResponse); err != nil {
+		t.Fatalf("unmarshal create response: %v", err)
+	}
+
+	auditRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(auditRecorder, authedJSONRequest(t, http.MethodGet, "/api/v1/audit?limit=10", nil))
+	if auditRecorder.Code != http.StatusOK {
+		t.Fatalf("expected audit=200, got %d (%s)", auditRecorder.Code, auditRecorder.Body.String())
+	}
+	var auditResponse struct {
+		Events []struct {
+			ToolName           string   `json:"tool_name"`
+			ActionSource       string   `json:"action_source"`
+			TargetConnectionID string   `json:"target_connection_id"`
+			AffectedWidgets    []string `json:"affected_widgets"`
+			Success            bool     `json:"success"`
+			Error              string   `json:"error"`
+		} `json:"events"`
+	}
+	if err := json.Unmarshal(auditRecorder.Body.Bytes(), &auditResponse); err != nil {
+		t.Fatalf("unmarshal audit response: %v", err)
+	}
+	if len(auditResponse.Events) != 1 {
+		t.Fatalf("expected one success audit event, got %#v", auditResponse.Events)
+	}
+	event := auditResponse.Events[0]
+	if event.ToolName != "workspace.create_remote_terminal_tab" || event.ActionSource != "http.workspace" ||
+		event.TargetConnectionID != "conn-prod" || !event.Success || event.Error != "" ||
+		!workspaceAuditContains(event.AffectedWidgets, createResponse.WidgetID) {
+		t.Fatalf("unexpected remote profile session audit event: %#v", event)
+	}
 }
 
 func TestRemoteProfilesTmuxSessionsEndpointListsSessions(t *testing.T) {
