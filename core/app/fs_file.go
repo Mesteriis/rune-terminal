@@ -5,6 +5,8 @@ import (
 	"io"
 	"os"
 	"unicode/utf8"
+
+	"github.com/Mesteriis/rune-terminal/internal/atomicfile"
 )
 
 const maxFSFileContentBytes = 1024 * 1024
@@ -75,7 +77,7 @@ func (r *Runtime) WriteFSFile(path string, content string) (FSFileResult, error)
 		return FSFileResult{}, err
 	}
 
-	if err := os.WriteFile(targetPath, []byte(content), info.Mode().Perm()); err != nil {
+	if err := atomicfile.WriteFile(targetPath, []byte(content), info.Mode().Perm()); err != nil {
 		return FSFileResult{}, err
 	}
 

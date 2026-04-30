@@ -47,6 +47,10 @@
       for both successful and denied `write`, `mkdir`, `copy`, `move`,
       `delete`, and `rename` attempts, including affected paths and policy /
       boundary errors before returning the HTTP response
+    - local bounded text file saves now use the shared same-directory
+      temp-file replacement writer, so `PUT /api/v1/fs/file` no longer
+      writes edited file content through a direct truncating `os.WriteFile`
+      path
     - filesystem external-open handoffs now append core-owned audit events for
       success and failure paths with affected path and optional connection
       identity; the validation uses a fake opener binary and does not launch
@@ -302,6 +306,7 @@ light` remains the system fallback, and `@media print` flattens shell
 - `./scripts/go.sh test ./core/transport/httpapi -run 'TestFSMutationHandlersAppendAuditEvents|TestFSMutationHandlersAppendFailureAuditEvents' -count=1`
 - `./scripts/go.sh test ./core/transport/httpapi -run 'TestFSOpenExternalHandlerAppendsAuditEvents' -count=1`
 - `./scripts/go.sh test ./core/app -run 'Test(DeleteFSRemovesSymlinkEntryWithoutDeletingTarget|RenameFSRenamesSymlinkEntryWithoutRenamingTarget|MoveFSMovesSymlinkEntryWithoutMovingTarget|CopyFSCopiesSymlinkEntryWithoutCopyingTargetContent|ReadFSPreviewReturnsCanonicalPathForSymlinkInsideWorkspace|MkdirFSReturnsCanonicalPathForSymlinkParentInsideWorkspace|ReadFSPreviewRejectsSymlinkOutsideWorkspace|ListFSRejectsSymlinkDirectoryOutsideWorkspace|WriteFSFileRejectsSymlinkOutsideWorkspace|MkdirFSRejectsSymlinkParentOutsideWorkspace|Plugin)' -count=1`
+- `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestWriteFSFile|TestReadFSFile|TestReadFSPreview|TestListFS|TestMkdirFS|TestCopyFS|TestMoveFS|TestDeleteFS|TestRenameFS' -count=1`
 - `./scripts/go.sh test ./core/transport/httpapi -run 'TestFS|TestListFS|TestReadFS|TestWriteFS|TestMkdirFS|TestCopyFS|TestMoveFS|TestDeleteFS|TestRenameFS' -count=1`
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi -count=1`
 - `npm --prefix frontend run lint:active`
