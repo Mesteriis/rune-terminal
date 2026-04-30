@@ -2,10 +2,13 @@
 
 ## Last verified state
 
-- Date: `2026-04-29`
+- Date: `2026-04-30`
 - State: `VERIFIED`
 - Scope:
   - the active `frontend/src` terminal surface now uses the backend terminal runtime as its source of truth for the seeded shell panels
+  - backend terminal PTY tests now keep the missing-SSH resolver override out
+    of the package's parallel test set, so the SSH command-construction tests
+    no longer race a package-global test double
   - seeded Dockview terminal panels now map to backend widget IDs instead of renderer-only demo metadata:
     - `terminal-header -> term-main`
     - `terminal -> term-side`
@@ -242,6 +245,8 @@
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestTerminalDiagnostics|TestTerminalSnapshot|TestBootstrapSessionsKeepsRemoteWidgetAsDisconnectedWhenConnectionMissing' -count=1`
 - `./scripts/go.sh test ./core/terminal ./core/app ./core/transport/httpapi -run 'TestTerminalServiceCreatesAndSwitchesGroupedSessionsPerWidget|TestCreateAndFocusTerminalSiblingSessionKeepsOneWidgetIdentity|TestTerminalSessionEndpointsCreateAndFocusGroupedSessions|TestRestartTerminalSessionReplacesExistingProcess' -count=1`
 - `./scripts/go.sh test ./core/terminal -run 'TestSnapshotAndSubscribeCoversBufferedAndLiveOutput|TestSubscriberStaysOpenAfterProcessExit|TestStartSessionCoalescesConcurrentLaunches' -count=1`
+- `./scripts/go.sh test ./core/terminal -count=20`
+- `./scripts/go.sh test ./cmd/... ./core/... ./internal/... -count=1`
 - `npm --prefix frontend run test -- src/features/terminal/api/client.test.ts src/features/terminal/model/use-terminal-session.test.tsx src/widgets/terminal/terminal-widget.test.tsx --reporter=verbose`
 - `npm --prefix frontend run test -- src/features/terminal/model/use-terminal-session.test.tsx src/widgets/terminal/terminal-widget.test.tsx src/shared/ui/components/terminal-status-header.test.tsx --reporter=verbose`
 - `npm --prefix frontend run test -- src/widgets/terminal/terminal-widget.test.tsx -t "renders terminal controls through the active locale copy" --reporter=verbose`

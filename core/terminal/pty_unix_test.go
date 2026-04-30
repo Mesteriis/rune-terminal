@@ -76,8 +76,6 @@ func TestBuildCommandAddsTmuxResumeCommandForSSHProfiles(t *testing.T) {
 }
 
 func TestBuildCommandFailsWhenSSHBinaryMissing(t *testing.T) {
-	t.Parallel()
-
 	originalResolve := resolveExecutable
 	resolveExecutable = func(string) (string, error) {
 		return "", errors.New("not found")
