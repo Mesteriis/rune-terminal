@@ -329,9 +329,9 @@ export function AiComposerWidget({
         runaComponent="ai-composer-root"
         style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap-sm)' }}
       >
-        <ClearBox runaComponent="ai-composer-toolbar" style={aiToolbarStyle}>
+        <ClearBox data-runa-ai-composer-toolbar="" runaComponent="ai-composer-toolbar" style={aiToolbarStyle}>
           <ClearBox runaComponent="ai-composer-toolbar-control-strip" style={aiToolbarControlStripStyle}>
-            <ClearBox style={aiToolbarControlsStyle}>
+            <ClearBox data-runa-ai-composer-control-grid="" style={aiToolbarControlsStyle}>
               {availableProviders.length > 0 ? (
                 <ClearBox runaComponent="ai-composer-provider-stack" style={aiToolbarFieldStackStyle}>
                   <ClearBox style={aiToolbarFieldInlineStyle}>
@@ -661,7 +661,11 @@ export function AiComposerWidget({
             </Box>
           </Box>
         ) : null}
-        <Surface runaComponent="ai-composer-surface" style={aiComposerSurfaceStyle}>
+        <Surface
+          data-runa-ai-composer-surface=""
+          runaComponent="ai-composer-surface"
+          style={aiComposerSurfaceStyle}
+        >
           {isContextMenuOpen ? (
             <Box
               id={contextMenuId}

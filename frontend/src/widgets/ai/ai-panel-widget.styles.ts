@@ -16,12 +16,13 @@ export const aiPanelRootStyle: CSSProperties = {
   position: 'relative',
   display: 'flex',
   flexDirection: 'column',
-  gap: 'var(--gap-sm)',
+  gap: '6px',
   padding: 0,
   overflow: 'hidden',
   border: 'none',
   borderRadius: 0,
-  background: 'transparent',
+  background:
+    'linear-gradient(180deg, color-mix(in srgb, var(--color-canvas) 88%, var(--color-canvas-elevated)) 0%, color-mix(in srgb, var(--color-canvas) 96%, black) 100%)',
   boxShadow: 'none',
 }
 
@@ -31,7 +32,7 @@ export const aiPanelContentColumnStyle: CSSProperties = {
   minHeight: 0,
   display: 'flex',
   flexDirection: 'column',
-  gap: 'var(--gap-sm)',
+  gap: '6px',
   padding: 0,
   border: 'none',
   borderRadius: 0,
@@ -40,7 +41,7 @@ export const aiPanelContentColumnStyle: CSSProperties = {
 }
 
 export const aiShellHeaderStyle: CSSProperties = {
-  minHeight: '48px',
+  minHeight: '44px',
   display: 'flex',
   alignItems: 'stretch',
   justifyContent: 'space-between',
@@ -48,8 +49,9 @@ export const aiShellHeaderStyle: CSSProperties = {
   width: '100%',
   minWidth: 0,
   padding: 0,
-  background: 'var(--color-surface-shell-header-gradient)',
-  borderColor: 'var(--color-border-strong)',
+  background:
+    'linear-gradient(180deg, color-mix(in srgb, var(--color-surface-shell-header) 90%, var(--color-canvas-elevated)) 0%, color-mix(in srgb, var(--color-surface-shell-header-action) 82%, transparent) 100%)',
+  borderColor: 'color-mix(in srgb, var(--color-border-strong) 62%, transparent)',
 }
 
 export const aiShellHeaderTitleLaneStyle: CSSProperties = {
@@ -58,7 +60,7 @@ export const aiShellHeaderTitleLaneStyle: CSSProperties = {
   minWidth: 0,
   display: 'flex',
   alignItems: 'center',
-  gap: 'var(--space-md)',
+  gap: 'var(--space-sm)',
   padding: '0 var(--space-md)',
 }
 
@@ -86,23 +88,25 @@ export const aiShellTitleClusterStyle: CSSProperties = {
 export const aiShellTitleTextStyle: CSSProperties = {
   color: 'var(--color-text-primary)',
   fontFamily: 'var(--font-family-mono)',
-  fontSize: '18px',
-  lineHeight: '24px',
-  letterSpacing: '0.02em',
+  fontSize: '15px',
+  lineHeight: '20px',
+  letterSpacing: '0.04em',
   whiteSpace: 'nowrap',
+  textTransform: 'uppercase',
 }
 
 export const aiShellRouteClusterStyle: CSSProperties = {
   ...aiPlainBlockStyle,
-  flex: '0 1 320px',
+  flex: '0 1 100%',
   minWidth: 0,
   display: 'flex',
-  alignItems: 'center',
-  gap: 'var(--space-xs)',
-  padding: '6px 8px',
-  borderRadius: '10px',
-  border: '1px solid color-mix(in srgb, var(--color-border-subtle) 92%, transparent)',
-  background: 'color-mix(in srgb, var(--color-surface-shell-header-action) 58%, transparent)',
+  alignItems: 'flex-start',
+  gap: 'var(--space-sm)',
+  padding: '8px 10px',
+  borderRadius: '12px',
+  border: '1px solid color-mix(in srgb, var(--color-border-strong) 38%, transparent)',
+  background:
+    'linear-gradient(180deg, color-mix(in srgb, var(--color-canvas-elevated) 84%, transparent) 0%, color-mix(in srgb, var(--color-canvas) 80%, var(--color-canvas-elevated)) 100%)',
 }
 
 export const aiShellRouteSummaryStyle: CSSProperties = {
@@ -117,8 +121,10 @@ export const aiShellRouteSummaryStyle: CSSProperties = {
 export const aiShellRouteTitleStyle: CSSProperties = {
   color: 'var(--color-text-primary)',
   fontFamily: 'var(--font-family-mono)',
-  fontSize: '11px',
+  fontSize: '10px',
   lineHeight: '14px',
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase',
   whiteSpace: 'nowrap',
   overflow: 'hidden',
   textOverflow: 'ellipsis',
@@ -127,11 +133,8 @@ export const aiShellRouteTitleStyle: CSSProperties = {
 export const aiShellRouteMetaStyle: CSSProperties = {
   color: 'var(--color-text-muted)',
   fontFamily: 'var(--font-family-mono)',
-  fontSize: '10px',
-  lineHeight: '13px',
-  whiteSpace: 'nowrap',
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
+  fontSize: '11px',
+  lineHeight: '15px',
 }
 
 export const aiShellRouteActionStyle: CSSProperties = {
@@ -169,18 +172,18 @@ export const aiHeaderConversationLabelStyle: CSSProperties = {
 }
 
 export const aiHeaderConversationTriggerStyle: CSSProperties = {
-  ['--runa-ui-bg' as string]: 'color-mix(in srgb, var(--color-surface-shell-header-action) 82%, transparent)',
-  ['--runa-ui-border' as string]: 'color-mix(in srgb, var(--color-border-subtle) 92%, transparent)',
+  ['--runa-ui-bg' as string]: 'color-mix(in srgb, var(--color-canvas-elevated) 88%, transparent)',
+  ['--runa-ui-border' as string]: 'color-mix(in srgb, var(--color-border-strong) 48%, transparent)',
   ['--runa-ui-color' as string]: 'var(--color-text-primary)',
   minWidth: 'unset',
   width: 'min(320px, 100%)',
-  minHeight: '32px',
+  minHeight: '34px',
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'space-between',
   gap: 'var(--space-sm)',
-  padding: '0 var(--space-sm)',
-  borderRadius: '10px',
+  padding: '6px var(--space-sm)',
+  borderRadius: '12px',
   boxShadow: 'none',
   backdropFilter: 'none',
   WebkitBackdropFilter: 'none',
@@ -243,8 +246,9 @@ export const aiHeaderConversationDropdownStyle: CSSProperties = {
   gap: 'var(--space-sm)',
   padding: 'var(--space-sm)',
   borderRadius: '14px',
-  background: 'color-mix(in srgb, var(--color-surface-shell-header) 90%, var(--color-canvas-elevated))',
-  borderColor: 'var(--color-border-strong)',
+  background:
+    'linear-gradient(180deg, color-mix(in srgb, var(--color-canvas-elevated) 92%, var(--color-surface-shell-header)) 0%, color-mix(in srgb, var(--color-canvas) 84%, var(--color-canvas-elevated)) 100%)',
+  borderColor: 'color-mix(in srgb, var(--color-border-strong) 72%, transparent)',
   boxShadow: 'var(--shadow-glass-panel)',
   backdropFilter: 'var(--blur-glass-md)',
   WebkitBackdropFilter: 'var(--blur-glass-md)',
@@ -305,10 +309,11 @@ export const aiHeaderConversationCurrentBlockStyle: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: '6px',
-  padding: 'var(--space-sm)',
+  padding: '10px',
   borderRadius: '12px',
-  border: '1px solid color-mix(in srgb, var(--color-border-strong) 58%, transparent)',
-  background: 'color-mix(in srgb, var(--color-surface-shell-header-action) 68%, transparent)',
+  border: '1px solid color-mix(in srgb, var(--color-border-strong) 42%, transparent)',
+  background:
+    'linear-gradient(180deg, color-mix(in srgb, var(--color-canvas) 76%, var(--color-canvas-elevated)) 0%, color-mix(in srgb, var(--color-canvas-elevated) 58%, transparent) 100%)',
 }
 
 export const aiHeaderConversationCurrentHeaderStyle: CSSProperties = {
@@ -538,24 +543,26 @@ export const aiHeaderModeGroupStyle: CSSProperties = {
   alignItems: 'center',
   gap: 'var(--space-xs)',
   flexWrap: 'wrap',
+  justifyContent: 'flex-start',
+  paddingTop: '2px',
 }
 
 export const aiHeaderModeButtonStyle: CSSProperties = {
   minWidth: 'unset',
-  minHeight: '28px',
+  minHeight: '26px',
   padding: '0 var(--space-sm)',
   borderColor: 'color-mix(in srgb, var(--color-border-strong) 58%, transparent)',
   borderRadius: '999px',
-  background: 'color-mix(in srgb, var(--color-surface-shell-header-action) 82%, transparent)',
+  background: 'color-mix(in srgb, var(--color-canvas-elevated) 82%, transparent)',
   color: 'var(--color-text-muted)',
   boxShadow: 'none',
   backdropFilter: 'none',
   WebkitBackdropFilter: 'none',
   fontFamily: 'var(--font-family-mono)',
-  fontSize: '11px',
-  lineHeight: '16px',
+  fontSize: '10px',
+  lineHeight: '14px',
   textTransform: 'uppercase',
-  letterSpacing: '0.05em',
+  letterSpacing: '0.08em',
 }
 
 export const aiHeaderModeButtonActiveStyle: CSSProperties = {
@@ -570,6 +577,10 @@ export const aiMessageViewportStyle: CSSProperties = {
   minHeight: 0,
   overflowY: 'auto',
   overscrollBehavior: 'contain',
+  background:
+    'linear-gradient(180deg, color-mix(in srgb, var(--color-canvas) 82%, var(--color-canvas-elevated)) 0%, color-mix(in srgb, var(--color-canvas) 90%, black) 100%)',
+  borderRadius: '14px',
+  border: '1px solid color-mix(in srgb, var(--color-border-subtle) 78%, transparent)',
 }
 
 export const aiChatStreamStyle: CSSProperties = {
@@ -578,7 +589,7 @@ export const aiChatStreamStyle: CSSProperties = {
   minHeight: '100%',
   display: 'flex',
   flexDirection: 'column',
-  padding: 'var(--space-sm) var(--space-md) 0',
+  padding: 'var(--space-sm) var(--space-md) var(--space-xs)',
   scrollPaddingBottom: 'var(--space-md)',
 }
 
@@ -586,7 +597,7 @@ export const aiChatMessageRowStyle: CSSProperties = {
   ...aiPlainBlockStyle,
   width: '100%',
   display: 'flex',
-  paddingBottom: 'var(--space-lg)',
+  paddingBottom: '12px',
 }
 
 export const aiChatMessageGroupedRowStyle: CSSProperties = {
@@ -597,7 +608,7 @@ export const aiChatMessageGroupStyle: CSSProperties = {
   ...aiPlainBlockStyle,
   minWidth: 0,
   width: '100%',
-  maxWidth: '600px',
+  maxWidth: '100%',
   display: 'flex',
   flexDirection: 'column',
   gap: 'var(--space-xs)',
@@ -625,25 +636,27 @@ export const aiMessageBubbleStyle: CSSProperties = {
   maxWidth: '100%',
   display: 'flex',
   flexDirection: 'column',
-  padding: 'var(--space-md) var(--space-lg)',
-  borderRadius: '16px',
+  padding: 'var(--space-sm) var(--space-md)',
+  borderRadius: '12px',
+  border: '1px solid color-mix(in srgb, var(--color-border-subtle) 78%, transparent)',
 }
 
 export const aiMessageBubbleUserStyle: CSSProperties = {
-  background: 'color-mix(in srgb, var(--color-accent-emerald-soft) 28%, var(--color-canvas-elevated))',
-  borderColor: 'transparent',
+  background:
+    'linear-gradient(180deg, color-mix(in srgb, var(--color-accent-emerald-soft) 22%, var(--color-canvas-elevated)) 0%, color-mix(in srgb, var(--color-accent-emerald-soft) 14%, var(--color-canvas)) 100%)',
+  borderColor: 'color-mix(in srgb, var(--color-accent-emerald-strong) 20%, var(--color-border-subtle))',
 }
 
 export const aiMessageBubbleAssistantStyle: CSSProperties = {
-  background: 'color-mix(in srgb, var(--color-canvas-elevated) 68%, transparent)',
-  borderColor: 'transparent',
+  background:
+    'linear-gradient(180deg, color-mix(in srgb, var(--color-canvas-elevated) 90%, transparent) 0%, color-mix(in srgb, var(--color-canvas) 86%, var(--color-canvas-elevated)) 100%)',
 }
 
 export const aiMessageBubbleContentStyle: CSSProperties = {
   color: 'var(--color-text-primary)',
   fontFamily: 'var(--font-family-mono)',
-  fontSize: '15px',
-  lineHeight: '24px',
+  fontSize: '14px',
+  lineHeight: '22px',
   whiteSpace: 'pre-wrap',
   wordBreak: 'break-word',
 }
@@ -901,9 +914,9 @@ export const aiToolbarStyle: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'stretch',
-  gap: 'var(--space-xs)',
+  gap: '6px',
   minHeight: '28px',
-  padding: '0 var(--space-sm)',
+  padding: '0 var(--space-xs) 2px',
   background: 'transparent',
 }
 
@@ -942,9 +955,10 @@ export const aiToolbarFieldStackStyle: CSSProperties = {
   width: '100%',
   minHeight: '34px',
   padding: '0 var(--space-sm)',
-  border: '1px solid var(--color-border-subtle)',
-  borderRadius: 'var(--radius-sm)',
-  background: 'color-mix(in srgb, var(--color-surface-glass-strong) 82%, transparent)',
+  border: '1px solid color-mix(in srgb, var(--color-border-subtle) 78%, transparent)',
+  borderRadius: '12px',
+  background:
+    'linear-gradient(180deg, color-mix(in srgb, var(--color-canvas-elevated) 88%, transparent) 0%, color-mix(in srgb, var(--color-canvas) 72%, var(--color-canvas-elevated)) 100%)',
 }
 
 export const aiToolbarFieldInlineStyle: CSSProperties = {
@@ -1102,8 +1116,9 @@ export const aiComposerSecondaryMenuStyle: CSSProperties = {
   gap: 'var(--space-sm)',
   padding: 'var(--space-sm)',
   borderRadius: '14px',
-  background: 'color-mix(in srgb, var(--color-surface-shell-header) 90%, var(--color-canvas-elevated))',
-  borderColor: 'var(--color-border-strong)',
+  background:
+    'linear-gradient(180deg, color-mix(in srgb, var(--color-surface-shell-header) 88%, var(--color-canvas-elevated)) 0%, color-mix(in srgb, var(--color-canvas) 84%, var(--color-canvas-elevated)) 100%)',
+  borderColor: 'color-mix(in srgb, var(--color-border-strong) 72%, transparent)',
   boxShadow: 'var(--shadow-glass-panel)',
   backdropFilter: 'var(--blur-glass-md)',
   WebkitBackdropFilter: 'var(--blur-glass-md)',
@@ -1203,8 +1218,10 @@ export const aiComposerSurfaceStyle: CSSProperties = {
   display: 'flex',
   gap: 'var(--gap-sm)',
   padding: 'var(--space-sm)',
-  background: 'var(--color-canvas-elevated)',
-  borderColor: 'var(--color-border-subtle)',
+  borderRadius: '14px',
+  background:
+    'linear-gradient(180deg, color-mix(in srgb, var(--color-canvas-elevated) 90%, var(--color-canvas)) 0%, color-mix(in srgb, var(--color-canvas) 92%, black) 100%)',
+  borderColor: 'color-mix(in srgb, var(--color-border-subtle) 78%, transparent)',
 }
 
 export const aiComposerTextAreaStyle: CSSProperties = {
@@ -1216,17 +1233,18 @@ export const aiComposerTextAreaStyle: CSSProperties = {
   border: 'none',
   background: 'transparent',
   boxShadow: 'none',
-  padding: 'var(--space-md)',
+  padding: '12px 14px',
   color: 'var(--color-text-primary)',
   fontFamily: 'var(--font-family-mono)',
-  fontSize: '18px',
-  lineHeight: '26px',
+  fontSize: '16px',
+  lineHeight: '24px',
 }
 
 export const aiComposerActionRailStyle: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   justifyContent: 'space-between',
+  alignItems: 'flex-end',
   gap: 'var(--gap-sm)',
   padding: 0,
   border: 'none',

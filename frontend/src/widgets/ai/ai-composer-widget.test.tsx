@@ -237,10 +237,8 @@ describe('AiComposerWidget', () => {
       />,
     )
 
-    expect(screen.getByText('Source')).toBeVisible()
-    expect(screen.getByText('Model')).toBeVisible()
-    expect(screen.getAllByText('Context')[0]).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Composer options' })).toHaveTextContent('Context')
+    expect(screen.getByRole('combobox', { name: 'AI provider' })).toHaveValue('lan-http')
+    expect(screen.getByRole('combobox', { name: 'AI model' })).toHaveValue('gpt-5.4')
     expect(screen.getByRole('button', { name: 'Composer options' })).toHaveTextContent('Ops Shell')
 
     fireEvent.click(screen.getByRole('button', { name: 'Composer options' }))
@@ -296,6 +294,9 @@ describe('AiComposerWidget', () => {
       />,
     )
 
+    fireEvent.click(screen.getByRole('button', { name: 'Agent tuning' }))
+
+    expect(screen.getByRole('dialog', { name: 'Agent tuning' })).toBeVisible()
     expect(screen.getByRole('combobox', { name: 'Agent profile' })).toHaveValue('default')
     expect(screen.getByRole('combobox', { name: 'Agent role' })).toHaveValue('developer')
     expect(screen.getByRole('combobox', { name: 'Agent mode' })).toHaveValue('execute')
@@ -357,6 +358,72 @@ describe('AiComposerWidget', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remove Ops Shell from request context' }))
 
     expect(onSelectedContextWidgetIDsChange).toHaveBeenCalledWith(['term-main'])
+  })
+
+  it('keeps the expanded composer in a compact notebook layout with a two-column control grid', () => {
+    const { container } = render(
+      <AiComposerWidget
+        activeContextWidgetID="term-main"
+        activeContextWidgetOption={{
+          value: 'term-main',
+          label: 'Main Shell (term-main) · terminal · local',
+          title: 'Main Shell',
+          meta: 'term-main · terminal · local',
+        }}
+        activeTool="Chat"
+        availableModels={['gpt-5.4']}
+        availableModes={[
+          { value: 'implement', label: 'Implement' },
+          { value: 'review', label: 'Review' },
+        ]}
+        availableProfiles={[
+          { value: 'balanced', label: 'Balanced' },
+          { value: 'hardened', label: 'Hardened' },
+        ]}
+        availableProviders={[{ value: 'codex-cli', label: 'Codex CLI' }]}
+        availableRoles={[
+          { value: 'developer', label: 'Developer' },
+          { value: 'reviewer', label: 'Reviewer' },
+        ]}
+        contextWidgetOptions={[
+          {
+            value: 'term-main',
+            label: 'Main Shell (term-main) · terminal · local',
+            title: 'Main Shell',
+            meta: 'term-main · terminal · local',
+          },
+        ]}
+        placeholder="Text Area"
+        selectedContextWidgetIDs={['term-main']}
+        selectedModeID="implement"
+        selectedModel="gpt-5.4"
+        selectedProfileID="balanced"
+        selectedProviderID="codex-cli"
+        selectedRoleID="developer"
+        toolbarLabel="TOOL BAR"
+        value="draft"
+      />,
+    )
+
+    const toolbar = container.querySelector('[data-runa-ai-composer-toolbar]')
+    const controlGrid = container.querySelector('[data-runa-ai-composer-control-grid]')
+    const surface = container.querySelector('[data-runa-ai-composer-surface]')
+    const textarea = screen.getByPlaceholderText('Text Area')
+
+    expect(toolbar).not.toBeNull()
+    expect(controlGrid).not.toBeNull()
+    expect(surface).not.toBeNull()
+    expect(controlGrid).toHaveStyle({
+      display: 'grid',
+      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    })
+    expect(surface?.getAttribute('style') ?? '').toContain('display: flex;')
+    expect(surface?.getAttribute('style') ?? '').toContain('min-height: 180px;')
+    expect(surface?.getAttribute('style') ?? '').toContain('border-radius: 14px;')
+    expect(textarea.getAttribute('style') ?? '').toContain('font-size: 16px;')
+    expect(textarea.getAttribute('style') ?? '').toContain('line-height: 24px;')
+    expect(screen.getByRole('button', { name: 'Agent tuning' })).toHaveTextContent('balanced · developer')
+    expect(screen.getByRole('button', { name: 'Composer options' })).toHaveTextContent('Main Shell')
   })
 
   it('shows a repair notice when saved context widgets are missing and persists the cleaned selection', () => {

@@ -30,12 +30,60 @@ describe('AiPanelHeaderWidget', () => {
       />,
     )
 
+    fireEvent.click(screen.getByRole('button', { name: 'Conversation menu' }))
+
     expect(screen.getByText('Codex CLI · Prepared')).toBeVisible()
     expect(screen.getByText('Codex CLI route verified and ready for on-demand launch.')).toBeVisible()
 
     fireEvent.click(screen.getByRole('button', { name: 'Retry route prepare' }))
 
     expect(onProviderRouteAction).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps the expanded header compact and exposes operator tooling inside the navigator dialog', () => {
+    render(
+      <AiPanelHeaderWidget
+        activeConversation={{
+          id: 'conv_2',
+          title: 'Current thread',
+          created_at: '2026-04-24T10:00:00Z',
+          updated_at: '2026-04-24T10:01:00Z',
+          message_count: 1,
+        }}
+        activeConversationID="conv_2"
+        activeProviderRoute={{
+          displayName: 'Codex CLI',
+          model: 'gpt-5.4',
+          routeReady: true,
+          routeStatusState: 'ready',
+          routeStatusMessage: 'Codex CLI route is authenticated.',
+          routePrepared: true,
+          routePrepareState: 'prepared',
+          routePrepareMessage: 'Codex CLI route verified and ready for on-demand launch.',
+          routeLatencyMS: 48,
+          routePrepareLatencyMS: 52,
+          lastFirstResponseLatencyMS: 84,
+        }}
+        conversations={[]}
+        isDebugModeEnabled
+        mode="dev"
+        onModeChange={() => {}}
+        title="AI Rune"
+      />,
+    )
+
+    expect(screen.getByText('AI Rune')).toBeVisible()
+    expect(screen.queryByText('AI Rune Assistant')).not.toBeInTheDocument()
+    expect(screen.queryByText('Codex CLI · Prepared')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'dev' })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Conversation menu' }))
+
+    const navigator = screen.getByRole('dialog', { name: 'Conversation navigator' })
+    expect(within(navigator).getByText('Codex CLI · Prepared')).toBeVisible()
+    expect(within(navigator).getByRole('button', { name: 'chat' })).toBeVisible()
+    expect(within(navigator).getByRole('button', { name: 'dev' })).toBeVisible()
+    expect(within(navigator).getByRole('button', { name: 'debug' })).toBeVisible()
   })
 
   it('renders conversations and routes select/create actions through the header controls', () => {
