@@ -5,6 +5,17 @@ import { useTerminalSession } from '@/features/terminal/model/use-terminal-sessi
 import { createTerminalPanelParams } from '@/widgets/terminal/terminal-panel'
 import { TerminalDockviewTabWidget } from '@/widgets/terminal/terminal-dockview-tab-widget'
 
+vi.mock('@/features/i18n/model/locale-provider', () => ({
+  useAppLocale: () => ({
+    errorMessage: null,
+    isLoading: false,
+    isSaving: false,
+    locale: 'en',
+    refresh: vi.fn(async () => undefined),
+    setLocale: vi.fn(async () => undefined),
+  }),
+}))
+
 vi.mock('@/features/terminal/model/use-terminal-session', () => ({
   useTerminalSession: vi.fn(),
 }))

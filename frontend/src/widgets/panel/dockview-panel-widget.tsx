@@ -28,6 +28,7 @@ function isCommanderDemoPanel(panelId: string) {
 
 export function DockviewPanelWidget(props: IDockviewPanelProps) {
   const [panelGroupElement, setPanelGroupElement] = useState<HTMLElement | null>(null)
+  const [panelCount, setPanelCount] = useState(props.api.group.panels.length)
   const [activeWidgetHostId, onSetActiveWidgetHostId] = useUnit([$activeWidgetHostId, setActiveWidgetHostId])
   const terminalModel = props.api.id.startsWith('terminal')
     ? resolveTerminalPanelParams(props.api.id, props.params)
@@ -76,6 +77,22 @@ export function DockviewPanelWidget(props: IDockviewPanelProps) {
     }
   }, [props.api.id, terminalModel])
 
+  useEffect(() => {
+    const syncPanelCount = () => {
+      setPanelCount(props.api.group.panels.length)
+    }
+
+    syncPanelCount()
+
+    const activePanelChangeDisposable = props.api.group.api.onDidActivePanelChange(syncPanelCount)
+    const groupChangeDisposable = props.api.onDidGroupChange(syncPanelCount)
+
+    return () => {
+      activePanelChangeDisposable.dispose()
+      groupChangeDisposable.dispose()
+    }
+  }, [props.api])
+
   return (
     <RunaDomScopeProvider component="dockview-panel-widget" widget={props.api.id}>
       <Box
@@ -90,6 +107,7 @@ export function DockviewPanelWidget(props: IDockviewPanelProps) {
           {terminalModel ? (
             <TerminalWidget
               hostId={props.api.id}
+              preferDockviewHeaderChrome={panelCount === 1}
               runtimeWidgetId={terminalModel.widgetId}
               themeClassTarget={panelGroupElement}
               title={terminalModel.title}
