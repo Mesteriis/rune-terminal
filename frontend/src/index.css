@@ -48,6 +48,147 @@ body {
   overflow: hidden;
 }
 
+.runa-ui-control,
+.runa-ui-chip,
+.runa-ui-tab {
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease,
+    box-shadow 120ms ease,
+    transform 80ms ease;
+}
+
+.runa-ui-control,
+.runa-ui-chip {
+  --runa-ui-hover-bg: color-mix(in srgb, var(--runa-ui-bg, var(--color-surface-glass-strong)) 76%, var(--color-surface-cold-tea) 24%);
+  --runa-ui-hover-border: color-mix(in srgb, var(--runa-ui-border, var(--color-border-strong)) 70%, var(--color-accent-emerald-strong) 30%);
+  --runa-ui-hover-color: var(--runa-ui-color, var(--color-text-primary));
+  --runa-ui-hover-shadow: 0 0 0 1px color-mix(in srgb, var(--color-accent-emerald-strong) 16%, transparent);
+  --runa-ui-active-bg: color-mix(in srgb, var(--runa-ui-bg, var(--color-surface-glass-strong)) 70%, var(--color-accent-emerald-soft) 30%);
+  --runa-ui-active-border: color-mix(in srgb, var(--runa-ui-border, var(--color-border-strong)) 58%, var(--color-accent-emerald-strong) 42%);
+  --runa-ui-active-color: var(--runa-ui-hover-color);
+  --runa-ui-focus-ring: color-mix(in srgb, var(--color-accent-emerald-strong) 64%, transparent);
+}
+
+.runa-ui-control:hover:not(:disabled):not([aria-disabled='true']) {
+  background: var(--runa-ui-hover-bg) !important;
+  border-color: var(--runa-ui-hover-border) !important;
+  color: var(--runa-ui-hover-color) !important;
+  box-shadow: var(--runa-ui-hover-shadow) !important;
+}
+
+.runa-ui-control[aria-expanded='true']:not(:disabled),
+.runa-ui-control[aria-pressed='true']:not(:disabled),
+.runa-ui-control[aria-selected='true']:not(:disabled) {
+  background: var(--runa-ui-active-bg) !important;
+  border-color: var(--runa-ui-active-border) !important;
+  color: var(--runa-ui-active-color) !important;
+  box-shadow: var(--runa-ui-hover-shadow) !important;
+}
+
+.runa-ui-button:active:not(:disabled):not([aria-disabled='true']) {
+  transform: translateY(1px);
+}
+
+.runa-ui-icon-button:active:not(:disabled):not([aria-disabled='true']) {
+  transform: scale(0.97);
+}
+
+.runa-ui-control:focus-visible,
+.runa-ui-tab:focus-within {
+  outline: 2px solid var(--runa-ui-focus-ring);
+  outline-offset: 2px;
+}
+
+.runa-ui-control:disabled,
+.runa-ui-control[aria-disabled='true'] {
+  opacity: 0.46;
+  cursor: default;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.runa-ui-control:disabled:hover,
+.runa-ui-control[aria-disabled='true']:hover {
+  background: var(--runa-ui-bg, var(--color-surface-glass-strong)) !important;
+  border-color: var(--runa-ui-border, var(--color-border-strong)) !important;
+  color: var(--runa-ui-color, var(--color-text-primary)) !important;
+}
+
+.runa-ui-select {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.runa-ui-select option {
+  color: var(--color-text-primary);
+  background: var(--color-canvas-elevated);
+}
+
+.runa-ui-input::placeholder,
+.runa-ui-textarea::placeholder {
+  color: var(--color-text-muted);
+}
+
+.runa-ui-chip {
+  background: var(--runa-ui-bg, color-mix(in srgb, var(--color-surface-glass-soft) 80%, transparent));
+  border-color: var(--runa-ui-border, var(--color-border-subtle));
+  color: var(--runa-ui-color, var(--color-text-secondary));
+  box-shadow: var(--runa-ui-shadow, none);
+}
+
+.runa-ui-status-badge {
+  cursor: default;
+}
+
+.runa-ui-tab {
+  --runa-ui-tab-bg: transparent;
+  --runa-ui-tab-border: transparent;
+  --runa-ui-tab-color: var(--color-text-secondary);
+  background: var(--runa-ui-tab-bg) !important;
+  border-color: var(--runa-ui-tab-border) !important;
+  color: var(--runa-ui-tab-color) !important;
+  box-shadow: none !important;
+}
+
+.runa-ui-tab:hover {
+  --runa-ui-tab-bg: color-mix(in srgb, var(--color-surface-cold-tea) 60%, transparent);
+  --runa-ui-tab-border: color-mix(in srgb, var(--color-border-strong) 62%, transparent);
+  --runa-ui-tab-color: var(--color-text-primary);
+}
+
+.runa-ui-tab[data-selected='true'] {
+  --runa-ui-tab-bg: color-mix(in srgb, var(--color-accent-shell-tab-active) 88%, var(--color-surface-cold-tea) 12%);
+  --runa-ui-tab-border: var(--color-accent-shell-tab-active-border);
+  --runa-ui-tab-color: var(--color-text-primary);
+  box-shadow: 0 0 0 1px var(--color-accent-shell-tab-active-ring) !important;
+}
+
+.runa-ui-button-primary {
+  --runa-ui-bg: color-mix(in srgb, var(--color-accent-emerald-strong) 22%, var(--color-surface-glass-strong));
+  --runa-ui-border: color-mix(in srgb, var(--color-accent-emerald-strong) 52%, var(--color-border-strong));
+  --runa-ui-color: var(--color-text-primary);
+  --runa-ui-hover-bg: color-mix(in srgb, var(--color-accent-emerald-strong) 30%, var(--color-surface-glass-strong));
+  --runa-ui-active-bg: color-mix(in srgb, var(--color-accent-emerald-strong) 38%, var(--color-surface-glass-strong));
+}
+
+.runa-ui-button-quiet-danger {
+  --runa-ui-hover-bg: color-mix(in srgb, var(--color-danger-text) 16%, var(--runa-ui-bg, var(--color-surface-glass-strong)));
+  --runa-ui-hover-border: color-mix(in srgb, var(--color-danger-text) 54%, var(--runa-ui-border, var(--color-border-strong)));
+  --runa-ui-hover-color: color-mix(in srgb, var(--color-danger-text) 88%, var(--color-text-primary));
+  --runa-ui-active-bg: color-mix(in srgb, var(--color-danger-text) 22%, var(--runa-ui-bg, var(--color-surface-glass-strong)));
+  --runa-ui-active-border: color-mix(in srgb, var(--color-danger-text) 62%, var(--runa-ui-border, var(--color-border-strong)));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .runa-ui-control,
+  .runa-ui-chip,
+  .runa-ui-tab {
+    transition: none;
+  }
+}
+
 @keyframes runa-busy-icon-breathe {
   0%,
   100% {

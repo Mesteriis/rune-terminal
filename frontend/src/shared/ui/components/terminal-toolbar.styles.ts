@@ -27,10 +27,11 @@ export const terminalToolbarSectionStyle: React.CSSProperties = {
   gap: 'var(--gap-xs)',
   minHeight: '28px',
   padding: '2px',
-  border: '1px solid var(--runa-terminal-surface-border, var(--color-border-subtle))',
+  border:
+    '1px solid color-mix(in srgb, var(--runa-terminal-surface-border, var(--color-border-subtle)) 88%, transparent)',
   borderRadius: 'var(--radius-sm)',
   background:
-    'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 78%, transparent)',
+    'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 66%, transparent)',
 }
 
 export const terminalToolbarDividerStyle: React.CSSProperties = {
@@ -80,15 +81,15 @@ export const terminalToolbarSearchStatusStyle: React.CSSProperties = {
 }
 
 export const terminalToolbarIconButtonStyle: React.CSSProperties = {
+  ['--runa-ui-bg' as string]: 'transparent',
+  ['--runa-ui-border' as string]: 'transparent',
+  ['--runa-ui-color' as string]: 'var(--runa-terminal-text-secondary, var(--color-text-secondary))',
   minWidth: '24px',
   width: '24px',
   minHeight: '24px',
   height: '24px',
   padding: 0,
-  borderColor: 'transparent',
-  background: 'transparent',
   boxShadow: 'none',
-  color: 'var(--runa-terminal-text-secondary, var(--color-text-secondary))',
 }
 
 export const terminalToolbarRendererBadgeStyle: React.CSSProperties = {

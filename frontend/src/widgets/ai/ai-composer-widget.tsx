@@ -1,16 +1,28 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
 
-import { ChevronDown, List, SendHorizontal, X } from 'lucide-react'
+import {
+  Bot,
+  ChevronDown,
+  Cpu,
+  List,
+  PanelsTopLeft,
+  SendHorizontal,
+  Shield,
+  SlidersHorizontal,
+  UserRound,
+  Wrench,
+  X,
+} from 'lucide-react'
 
 import type {
   AiAgentSelectionOption,
   AiComposerAttachmentReference,
+  AiComposerSubmitMode,
   AiContextWidgetOption,
   AiProviderOption,
-  AiComposerSubmitMode,
 } from '@/features/agent/model/types'
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
-import { IconButton, SearchableMultiSelect, SwitcherControl } from '@/shared/ui/components'
+import { ClearBox, IconButton, SearchableMultiSelect, SwitcherControl } from '@/shared/ui/components'
 import { Badge, Box, Button, Select, Surface, Text, TextArea } from '@/shared/ui/primitives'
 
 import {
@@ -36,6 +48,12 @@ import {
   aiComposerContextMenuStyle,
   aiComposerContextMenuTitleStyle,
   aiComposerContextMenuWrapStyle,
+  aiComposerSecondaryMenuControlStackStyle,
+  aiComposerSecondaryMenuHeaderStyle,
+  aiComposerSecondaryMenuMetaStyle,
+  aiComposerSecondaryMenuStyle,
+  aiComposerSecondaryMenuTitleStyle,
+  aiComposerSecondaryMenuWrapStyle,
   aiComposerSurfaceStyle,
   aiComposerTextAreaStyle,
   aiToolbarChipStyle,
@@ -45,15 +63,14 @@ import {
   aiToolbarContextTriggerLabelClusterStyle,
   aiToolbarContextTriggerMetaStyle,
   aiToolbarContextTriggerStyle,
-  aiToolbarContextTriggerTitleStyle,
-  aiToolbarFieldLabelStyle,
+  aiToolbarFieldIconStyle,
+  aiToolbarFieldInlineStyle,
   aiToolbarFieldStackStyle,
-  aiToolbarLabelStyle,
-  aiToolbarMetaRowStyle,
   aiToolbarModelSelectStyle,
   aiToolbarProviderSelectStyle,
-  aiToolbarStatusClusterStyle,
   aiToolbarStyle,
+  aiToolbarTuneTriggerMetaStyle,
+  aiToolbarTuneTriggerStyle,
 } from '@/widgets/ai/ai-panel-widget.styles'
 
 export type AiComposerWidgetProps = {
@@ -107,7 +124,6 @@ export type AiComposerWidgetProps = {
 }
 
 export function AiComposerWidget({
-  activeTool,
   availableModels = [],
   availableModes = [],
   availableProfiles = [],
@@ -152,12 +168,14 @@ export function AiComposerWidget({
   selectedContextWidgetIDs = [],
   submitMode = 'enter-sends',
   submitDisabled = false,
-  toolbarLabel,
   value,
 }: AiComposerWidgetProps) {
   const [isContextMenuOpen, setIsContextMenuOpen] = useState(false)
+  const [isTuneMenuOpen, setIsTuneMenuOpen] = useState(false)
   const contextMenuId = useId()
+  const tuneMenuId = useId()
   const contextMenuWrapRef = useRef<HTMLDivElement | null>(null)
+  const tuneMenuWrapRef = useRef<HTMLDivElement | null>(null)
   const modelValue =
     selectedModel && availableModels.includes(selectedModel) ? selectedModel : (availableModels[0] ?? '')
   const providerValue =
@@ -216,19 +234,25 @@ export function AiComposerWidget({
   }
 
   useEffect(() => {
-    if (!isContextMenuOpen) {
+    if (!isContextMenuOpen && !isTuneMenuOpen) {
       return
     }
 
     const handlePointerDown = (event: PointerEvent) => {
-      if (!contextMenuWrapRef.current?.contains(event.target as Node)) {
+      const targetNode = event.target as Node
+      const isInsideContextMenu = contextMenuWrapRef.current?.contains(targetNode) ?? false
+      const isInsideTuneMenu = tuneMenuWrapRef.current?.contains(targetNode) ?? false
+
+      if (!isInsideContextMenu && !isInsideTuneMenu) {
         setIsContextMenuOpen(false)
+        setIsTuneMenuOpen(false)
       }
     }
 
     const handleKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.key === 'Escape') {
         setIsContextMenuOpen(false)
+        setIsTuneMenuOpen(false)
       }
     }
 
@@ -239,13 +263,24 @@ export function AiComposerWidget({
       window.removeEventListener('pointerdown', handlePointerDown)
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [isContextMenuOpen])
+  }, [isContextMenuOpen, isTuneMenuOpen])
 
   const handleToggleContextMenu = () => {
     setIsContextMenuOpen((currentValue) => {
       const nextValue = !currentValue
       if (nextValue) {
+        setIsTuneMenuOpen(false)
         onContextOptionsOpen?.()
+      }
+      return nextValue
+    })
+  }
+
+  const handleToggleTuneMenu = () => {
+    setIsTuneMenuOpen((currentValue) => {
+      const nextValue = !currentValue
+      if (nextValue) {
+        setIsContextMenuOpen(false)
       }
       return nextValue
     })
@@ -274,34 +309,44 @@ export function AiComposerWidget({
     }
   }
 
+  const toolbarIconProps = {
+    size: 14,
+    strokeWidth: 1.8,
+  }
+  const selectedProviderLabel =
+    availableProviders.find((provider) => provider.value === providerValue)?.label ?? providerValue
+  const selectedProfileLabel =
+    availableProfiles.find((profile) => profile.value === profileValue)?.label ?? profileValue
+  const selectedRoleLabel = availableRoles.find((role) => role.value === roleValue)?.label ?? roleValue
+  const selectedModeLabel = availableModes.find((mode) => mode.value === modeValue)?.label ?? modeValue
+  const tuneSummary = [profileValue, roleValue, modeValue]
+    .filter((segment) => segment.trim() !== '')
+    .join(' · ')
+
   return (
     <RunaDomScopeProvider component="ai-composer-widget">
-      <Box
+      <ClearBox
         runaComponent="ai-composer-root"
         style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap-sm)' }}
       >
-        <Surface runaComponent="ai-composer-toolbar" style={aiToolbarStyle}>
-          <Box runaComponent="ai-composer-toolbar-meta-row" style={aiToolbarMetaRowStyle}>
-            <Text runaComponent="ai-composer-toolbar-label" style={aiToolbarLabelStyle}>
-              {toolbarLabel}
-            </Text>
-            <Box runaComponent="ai-composer-toolbar-status-cluster" style={aiToolbarStatusClusterStyle}>
-              <Badge runaComponent="ai-composer-toolbar-chip" style={aiToolbarChipStyle}>
-                {activeTool}
-              </Badge>
-            </Box>
-          </Box>
-          <Box runaComponent="ai-composer-toolbar-control-strip" style={aiToolbarControlStripStyle}>
-            <Box style={aiToolbarControlsStyle}>
+        <ClearBox runaComponent="ai-composer-toolbar" style={aiToolbarStyle}>
+          <ClearBox runaComponent="ai-composer-toolbar-control-strip" style={aiToolbarControlStripStyle}>
+            <ClearBox style={aiToolbarControlsStyle}>
               {availableProviders.length > 0 ? (
-                <Box runaComponent="ai-composer-provider-stack" style={aiToolbarFieldStackStyle}>
-                  <Text style={aiToolbarFieldLabelStyle}>Source</Text>
+                <ClearBox runaComponent="ai-composer-provider-stack" style={aiToolbarFieldStackStyle}>
+                  <ClearBox style={aiToolbarFieldInlineStyle}>
+                    <Box aria-hidden="true" style={aiToolbarFieldIconStyle}>
+                      <Bot {...toolbarIconProps} />
+                    </Box>
+                  </ClearBox>
                   <Select
                     aria-label="AI provider"
+                    className="runa-ui-select"
                     disabled={disabled}
                     onChange={(event) => onProviderChange?.(event.currentTarget.value)}
                     runaComponent="ai-composer-provider-select"
                     style={aiToolbarProviderSelectStyle}
+                    title={selectedProviderLabel}
                     value={providerValue}
                   >
                     {availableProviders.map((provider) => (
@@ -310,17 +355,21 @@ export function AiComposerWidget({
                       </option>
                     ))}
                   </Select>
-                </Box>
+                </ClearBox>
               ) : null}
               {availableModels.length > 0 ? (
-                <Box runaComponent="ai-composer-model-stack" style={aiToolbarFieldStackStyle}>
-                  <Text style={aiToolbarFieldLabelStyle}>Model</Text>
+                <ClearBox runaComponent="ai-composer-model-stack" style={aiToolbarFieldStackStyle}>
+                  <Box aria-hidden="true" style={aiToolbarFieldIconStyle}>
+                    <Cpu {...toolbarIconProps} />
+                  </Box>
                   <Select
                     aria-label="AI model"
+                    className="runa-ui-select"
                     disabled={disabled}
                     onChange={(event) => onModelChange?.(event.currentTarget.value)}
                     runaComponent="ai-composer-model-select"
                     style={aiToolbarModelSelectStyle}
+                    title={modelValue}
                     value={modelValue}
                   >
                     {availableModels.map((model) => (
@@ -329,71 +378,136 @@ export function AiComposerWidget({
                       </option>
                     ))}
                   </Select>
-                </Box>
+                </ClearBox>
               ) : null}
-              {availableProfiles.length > 0 ? (
-                <Box runaComponent="ai-composer-profile-stack" style={aiToolbarFieldStackStyle}>
-                  <Text style={aiToolbarFieldLabelStyle}>Profile</Text>
-                  <Select
-                    aria-label="Agent profile"
+              {availableProfiles.length > 0 || availableRoles.length > 0 || availableModes.length > 0 ? (
+                <ClearBox
+                  ref={tuneMenuWrapRef}
+                  runaComponent="ai-composer-tune-stack"
+                  style={{ ...aiToolbarFieldStackStyle, position: 'relative' }}
+                >
+                  <Button
+                    aria-controls={isTuneMenuOpen ? tuneMenuId : undefined}
+                    aria-expanded={isTuneMenuOpen}
+                    aria-label="Agent tuning"
+                    className="runa-ui-select"
                     disabled={disabled}
-                    onChange={(event) => onProfileChange?.(event.currentTarget.value)}
-                    runaComponent="ai-composer-profile-select"
-                    style={aiToolbarProviderSelectStyle}
-                    value={profileValue}
+                    onClick={handleToggleTuneMenu}
+                    runaComponent="ai-composer-tune-trigger"
+                    style={aiToolbarTuneTriggerStyle}
+                    title={tuneSummary || 'Tune'}
                   >
-                    {availableProfiles.map((profile) => (
-                      <option key={profile.value} value={profile.value}>
-                        {profile.label}
-                      </option>
-                    ))}
-                  </Select>
-                </Box>
+                    <Box style={aiToolbarContextTriggerLabelClusterStyle}>
+                      <Box aria-hidden="true" style={aiToolbarFieldIconStyle}>
+                        <SlidersHorizontal {...toolbarIconProps} />
+                      </Box>
+                      <Text style={aiToolbarTuneTriggerMetaStyle}>{tuneSummary || 'Tune'}</Text>
+                    </Box>
+                    <ChevronDown size={14} strokeWidth={1.8} />
+                  </Button>
+                  {isTuneMenuOpen ? (
+                    <Box
+                      id={tuneMenuId}
+                      runaComponent="ai-composer-tune-menu-wrap"
+                      style={aiComposerSecondaryMenuWrapStyle}
+                    >
+                      <Surface
+                        role="dialog"
+                        aria-label="Agent tuning"
+                        runaComponent="ai-composer-tune-menu"
+                        style={aiComposerSecondaryMenuStyle}
+                      >
+                        <Box style={aiComposerSecondaryMenuHeaderStyle}>
+                          <Text style={aiComposerSecondaryMenuTitleStyle}>Agent tuning</Text>
+                          <Text style={aiComposerSecondaryMenuMetaStyle}>
+                            Profile, role, and mode stay available without consuming the whole toolbar row.
+                          </Text>
+                        </Box>
+                        <Box style={aiComposerSecondaryMenuControlStackStyle}>
+                          {availableProfiles.length > 0 ? (
+                            <ClearBox
+                              runaComponent="ai-composer-profile-stack"
+                              style={aiToolbarFieldStackStyle}
+                            >
+                              <Box aria-hidden="true" style={aiToolbarFieldIconStyle}>
+                                <Shield {...toolbarIconProps} />
+                              </Box>
+                              <Select
+                                aria-label="Agent profile"
+                                className="runa-ui-select"
+                                disabled={disabled}
+                                onChange={(event) => onProfileChange?.(event.currentTarget.value)}
+                                runaComponent="ai-composer-profile-select"
+                                style={aiToolbarProviderSelectStyle}
+                                title={selectedProfileLabel}
+                                value={profileValue}
+                              >
+                                {availableProfiles.map((profile) => (
+                                  <option key={profile.value} value={profile.value}>
+                                    {profile.label}
+                                  </option>
+                                ))}
+                              </Select>
+                            </ClearBox>
+                          ) : null}
+                          {availableRoles.length > 0 ? (
+                            <ClearBox runaComponent="ai-composer-role-stack" style={aiToolbarFieldStackStyle}>
+                              <Box aria-hidden="true" style={aiToolbarFieldIconStyle}>
+                                <UserRound {...toolbarIconProps} />
+                              </Box>
+                              <Select
+                                aria-label="Agent role"
+                                className="runa-ui-select"
+                                disabled={disabled}
+                                onChange={(event) => onRoleChange?.(event.currentTarget.value)}
+                                runaComponent="ai-composer-role-select"
+                                style={aiToolbarProviderSelectStyle}
+                                title={selectedRoleLabel}
+                                value={roleValue}
+                              >
+                                {availableRoles.map((role) => (
+                                  <option key={role.value} value={role.value}>
+                                    {role.label}
+                                  </option>
+                                ))}
+                              </Select>
+                            </ClearBox>
+                          ) : null}
+                          {availableModes.length > 0 ? (
+                            <ClearBox runaComponent="ai-composer-mode-stack" style={aiToolbarFieldStackStyle}>
+                              <Box aria-hidden="true" style={aiToolbarFieldIconStyle}>
+                                <Wrench {...toolbarIconProps} />
+                              </Box>
+                              <Select
+                                aria-label="Agent mode"
+                                className="runa-ui-select"
+                                disabled={disabled}
+                                onChange={(event) => onModeChange?.(event.currentTarget.value)}
+                                runaComponent="ai-composer-mode-select"
+                                style={aiToolbarProviderSelectStyle}
+                                title={selectedModeLabel}
+                                value={modeValue}
+                              >
+                                {availableModes.map((mode) => (
+                                  <option key={mode.value} value={mode.value}>
+                                    {mode.label}
+                                  </option>
+                                ))}
+                              </Select>
+                            </ClearBox>
+                          ) : null}
+                        </Box>
+                      </Surface>
+                    </Box>
+                  ) : null}
+                </ClearBox>
               ) : null}
-              {availableRoles.length > 0 ? (
-                <Box runaComponent="ai-composer-role-stack" style={aiToolbarFieldStackStyle}>
-                  <Text style={aiToolbarFieldLabelStyle}>Role</Text>
-                  <Select
-                    aria-label="Agent role"
-                    disabled={disabled}
-                    onChange={(event) => onRoleChange?.(event.currentTarget.value)}
-                    runaComponent="ai-composer-role-select"
-                    style={aiToolbarProviderSelectStyle}
-                    value={roleValue}
-                  >
-                    {availableRoles.map((role) => (
-                      <option key={role.value} value={role.value}>
-                        {role.label}
-                      </option>
-                    ))}
-                  </Select>
-                </Box>
-              ) : null}
-              {availableModes.length > 0 ? (
-                <Box runaComponent="ai-composer-mode-stack" style={aiToolbarFieldStackStyle}>
-                  <Text style={aiToolbarFieldLabelStyle}>Mode</Text>
-                  <Select
-                    aria-label="Agent mode"
-                    disabled={disabled}
-                    onChange={(event) => onModeChange?.(event.currentTarget.value)}
-                    runaComponent="ai-composer-mode-select"
-                    style={aiToolbarProviderSelectStyle}
-                    value={modeValue}
-                  >
-                    {availableModes.map((mode) => (
-                      <option key={mode.value} value={mode.value}>
-                        {mode.label}
-                      </option>
-                    ))}
-                  </Select>
-                </Box>
-              ) : null}
-              <Box runaComponent="ai-composer-context-stack" style={aiToolbarFieldStackStyle}>
-                <Text style={aiToolbarFieldLabelStyle}>Context</Text>
+              <ClearBox runaComponent="ai-composer-context-stack" style={aiToolbarFieldStackStyle}>
                 <Button
                   aria-controls={isContextMenuOpen ? contextMenuId : undefined}
                   aria-expanded={isContextMenuOpen}
                   aria-label="Composer options"
+                  className="runa-ui-select"
                   disabled={disabled}
                   onClick={handleToggleContextMenu}
                   runaComponent="ai-composer-context-trigger"
@@ -403,17 +517,20 @@ export function AiComposerWidget({
                       ? aiToolbarContextTriggerActiveStyle
                       : {}),
                   }}
+                  title={contextSummaryPrimary}
                 >
                   <Box style={aiToolbarContextTriggerLabelClusterStyle}>
-                    <Text style={aiToolbarContextTriggerTitleStyle}>Context</Text>
+                    <Box aria-hidden="true" style={aiToolbarFieldIconStyle}>
+                      <PanelsTopLeft {...toolbarIconProps} />
+                    </Box>
                     <Text style={aiToolbarContextTriggerMetaStyle}>{contextSummaryPrimary}</Text>
                   </Box>
                   <ChevronDown size={14} strokeWidth={1.8} />
                 </Button>
-              </Box>
-            </Box>
-          </Box>
-        </Surface>
+              </ClearBox>
+            </ClearBox>
+          </ClearBox>
+        </ClearBox>
         {isWidgetContextEnabled && (selectedContextCount > 0 || showCurrentContextStrip) ? (
           <Box runaComponent="ai-composer-context-strip" style={aiComposerContextStripStyle}>
             <Text runaComponent="ai-composer-context-strip-label" style={aiComposerContextStripLabelStyle}>
@@ -424,6 +541,7 @@ export function AiComposerWidget({
                 <Button
                   key={option.value}
                   aria-label={`Remove ${option.title ?? option.label} from request context`}
+                  className="runa-ui-chip runa-ui-button-quiet-danger"
                   onClick={() => handleRemoveContextWidget(option.value)}
                   runaComponent="ai-composer-context-strip-chip"
                   style={aiComposerContextStripRemoveStyle}
@@ -435,6 +553,7 @@ export function AiComposerWidget({
               {showCurrentContextStrip ? (
                 <Box
                   runaComponent="ai-composer-context-strip-current"
+                  className="runa-ui-chip"
                   style={aiComposerContextStripCurrentStyle}
                 >
                   <Text style={aiComposerContextStripValueStyle}>
@@ -455,6 +574,7 @@ export function AiComposerWidget({
                 <Button
                   key={attachment.id}
                   aria-label={`Remove attachment ${attachment.name}`}
+                  className="runa-ui-chip runa-ui-button-quiet-danger"
                   disabled={disabled}
                   onClick={() => onRemoveAttachment?.(attachment.id)}
                   runaComponent="ai-composer-attachment-strip-chip"
@@ -483,6 +603,7 @@ export function AiComposerWidget({
                 <Box
                   key={attachment.id}
                   runaComponent="ai-composer-recent-attachment-chip"
+                  className="runa-ui-chip"
                   style={{
                     ...aiToolbarChipStyle,
                     display: 'inline-flex',
@@ -492,6 +613,7 @@ export function AiComposerWidget({
                 >
                   <Button
                     aria-label={`Reuse attachment ${attachment.name}`}
+                    className="runa-ui-chip"
                     onClick={() => onReuseRecentAttachment?.(attachment)}
                     runaComponent="ai-composer-recent-attachment-reuse"
                     style={{
@@ -505,6 +627,7 @@ export function AiComposerWidget({
                   </Button>
                   <IconButton
                     aria-label={`Delete stored attachment ${attachment.name}`}
+                    className="runa-ui-button-quiet-danger"
                     onClick={() => onDeleteStoredAttachment?.(attachment.id)}
                     runaComponent="ai-composer-recent-attachment-delete"
                     size="sm"
@@ -530,6 +653,7 @@ export function AiComposerWidget({
               <Button
                 disabled={disabled}
                 onClick={() => onRepairMissingContextWidgets?.()}
+                className="runa-ui-select"
                 style={aiComposerContextQuickActionStyle}
               >
                 Save cleaned context
@@ -588,6 +712,7 @@ export function AiComposerWidget({
                       <Button
                         disabled={disabled}
                         onClick={() => onRepairMissingContextWidgets?.()}
+                        className="runa-ui-select"
                         style={aiComposerContextQuickActionStyle}
                       >
                         Save cleaned context
@@ -598,6 +723,7 @@ export function AiComposerWidget({
                 <Box style={aiComposerContextQuickActionsStyle}>
                   <Button
                     disabled={disabled || !activeContextWidgetOption || isCurrentContextWidgetSelected}
+                    className="runa-ui-select"
                     onClick={() => onContextUseCurrentWidget?.()}
                     style={aiComposerContextQuickActionStyle}
                   >
@@ -605,6 +731,7 @@ export function AiComposerWidget({
                   </Button>
                   <Button
                     disabled={disabled || !activeContextWidgetOption}
+                    className="runa-ui-select"
                     onClick={() => onContextOnlyUseCurrentWidget?.()}
                     style={aiComposerContextQuickActionStyle}
                   >
@@ -612,6 +739,7 @@ export function AiComposerWidget({
                   </Button>
                   <Button
                     disabled={disabled || contextWidgetOptions.length === 0 || areAllWidgetsSelected}
+                    className="runa-ui-select"
                     onClick={() => onContextUseAllWidgets?.()}
                     style={aiComposerContextQuickActionStyle}
                   >
@@ -619,6 +747,7 @@ export function AiComposerWidget({
                   </Button>
                   <Button
                     disabled={disabled || (!isWidgetContextEnabled && selectedContextCount === 0)}
+                    className="runa-ui-select"
                     onClick={() => onContextUseDefault?.()}
                     style={aiComposerContextQuickActionStyle}
                   >
@@ -650,6 +779,7 @@ export function AiComposerWidget({
             </Box>
           ) : null}
           <TextArea
+            className="runa-ui-textarea"
             disabled={disabled}
             onChange={(event) => {
               onValueChange?.(event.currentTarget.value)
@@ -683,6 +813,7 @@ export function AiComposerWidget({
             {isSubmitting && onCancelSubmit ? (
               <IconButton
                 aria-label="Cancel response"
+                className="runa-ui-button-quiet-danger"
                 onClick={() => {
                   onCancelSubmit()
                 }}
@@ -694,6 +825,7 @@ export function AiComposerWidget({
             ) : (
               <IconButton
                 aria-label="Send prompt"
+                className={submitDisabled ? undefined : 'runa-ui-button-primary'}
                 disabled={submitDisabled}
                 onClick={() => {
                   onSubmit?.()
@@ -706,7 +838,7 @@ export function AiComposerWidget({
             )}
           </Box>
         </Surface>
-      </Box>
+      </ClearBox>
     </RunaDomScopeProvider>
   )
 }

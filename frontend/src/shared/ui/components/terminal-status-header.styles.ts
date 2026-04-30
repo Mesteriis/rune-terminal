@@ -85,8 +85,11 @@ export const terminalStatusHeaderMetaTextStyle: React.CSSProperties = {
 }
 
 export const terminalStatusHeaderMetaItemStyle: React.CSSProperties = {
+  ['--runa-ui-bg' as string]:
+    'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 58%, transparent)',
+  ['--runa-ui-border' as string]:
+    'color-mix(in srgb, var(--runa-terminal-surface-border, var(--color-border-subtle)) 84%, transparent)',
+  ['--runa-ui-color' as string]: 'var(--runa-terminal-text-secondary, var(--color-text-secondary))',
   minHeight: '22px',
   padding: '0 7px',
-  background:
-    'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 66%, transparent)',
 }

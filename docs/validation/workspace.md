@@ -101,6 +101,13 @@
       state, and live `document.title` sync follows the current workspace
       title in `auto` mode or the explicit operator-defined custom title in
       `custom` mode
+    - the rewritten Dockview shell topbar now supports per-workspace rename
+      and delete actions behind a tab-local `...` overflow menu; rename
+      trims the requested title before persisting to local workspace state,
+      delete is blocked for the final remaining workspace, deleting the
+      active workspace restores the nearest surviving snapshot, and newly
+      created workspaces now use `max(id) + 1` so add-after-delete does not
+      reuse tab ids
     - browser e2e coverage now verifies the active right-rail catalog behavior:
       `terminal` and `files` remain enabled and runtime-created, path-required
       `preview` remains disabled in the generic menu, and `commander` plus
@@ -122,6 +129,8 @@
       semantics
     - serialized Playwright coverage now exercises the active shell/user paths over the split local dev runtime:
         - workspace tab switching and workspace creation
+        - workspace tab overflow rename/delete actions and the add-after-delete
+          id allocation path
         - the shell topbar now renders workspace tabs and the add-workspace affordance as one tighter grouped strip, with denser active/inactive tab rhythm so workspace switching and creation read as a single compact control cluster instead of separate header controls
         - the shell topbar close/minimize/fullscreen controls now route through explicit desktop window callbacks; close keeps the existing shutdown guard, while minimize/fullscreen call Tauri commands and degrade to no-ops in split-browser mode
         - commander Dockview tabs now follow the same compact workspace-strip language instead of a badge-only placeholder: each commander tab shows a compact `commander` pill, a readable `tool/tool N` title, and a per-tab close action only when the commander group actually has multiple tabs
@@ -774,6 +783,7 @@ light` remains the system fallback, and `@media print` flattens shell
 - A focused validation pass for the workspace catalog persistence slice on `2026-04-30` confirmed `SwitchWorkspace`, `CreateWorkspace`, `UpdateWorkspaceMetadata`, and `DeleteWorkspace` no longer leave runtime-only active workspace/catalog state behind when the catalog file cannot be written. Delete now delays terminal session close/restore cleanup until after the workspace removal is persisted. The same pass reconfirmed `./scripts/go.sh test ./core/app -run 'Test(Switch|Create|UpdateWorkspaceMetadata|Delete)Workspace.*PersistFails' -count=1`, `./scripts/go.sh test ./core/workspace ./core/app ./core/transport/httpapi -run 'Test.*Workspace|Test.*Layout|Test.*Tab|Test.*Widget|TestCreateSplitTerminal|TestCreateRemoteTerminal|TestRemoteTerminalSession|TestBootstrapReturnsRuntimePathContext' -count=1`, and `git diff --check` all pass.
 - A focused validation pass for the task lifecycle transaction slice on `2026-04-30` confirmed task create, final done/failed, and retry scheduling roll back the task row/status change when the paired `task_events` insert fails. The same pass reconfirmed `./scripts/go.sh test ./core/tasks -run 'Test(CreateTask|MarkFinal|ScheduleRetry)RollsBackWhenEventInsertFails' -count=1`, `./scripts/go.sh test ./core/tasks -count=1`, `./scripts/go.sh test ./core/tasks ./core/transport/httpapi ./cmd/rterm-core -run 'Test.*Task|Test.*Watcher|Test.*Shutdown|Test.*Retry' -count=1`, and `git diff --check` all pass.
 - A focused validation pass for the workspace action persistence slice on `2026-04-30` confirmed focus, rename, pin, layout update, terminal-tab create, directory block open, close tab, and close widget roll back active workspace/catalog memory when catalog persistence fails. Close-tab now also keeps the terminal session alive on failed persistence and only closes terminal sessions after the workspace mutation is durably persisted. The same pass reconfirmed `./scripts/go.sh test ./core/app -run 'TestWorkspace(Control|AddWidget|Close)ActionsDoNotChangeMemoryWhenPersistFails|TestCloseTabKeepsTerminalSessionWhenPersistFails' -count=1`, `./scripts/go.sh test ./core/workspace ./core/app ./core/transport/httpapi -run 'Test.*Workspace|Test.*Layout|Test.*Tab|Test.*Widget|TestCreateSplitTerminal|TestCreateRemoteTerminal|TestRemoteTerminalSession|TestBootstrapReturnsRuntimePathContext' -count=1`, `./scripts/go.sh test ./core/app -count=1`, and `git diff --check` all pass.
+- A focused UI-only validation pass for the shell main-screen chrome slice on `2026-04-30` confirmed workspace tabs, terminal header actions, terminal toolbar buttons, status badges, route buttons, and the shell send action now share one compact interaction language with clearer hover/active/focus-visible states and less nested-border noise, while preserving the existing Dockview workspace/runtime behavior. The same pass reconfirmed `npm run lint:frontend`, `npm run build:frontend`, and `npm exec vitest run src/widgets/shell/shell-topbar-widget.test.tsx src/widgets/ai/ai-composer-widget.test.tsx src/widgets/ai/ai-panel-header-widget.test.tsx src/shared/ui/components/accessibility-contracts.test.tsx src/widgets/terminal/terminal-widget.test.tsx` all pass, and a split-runtime browser smoke on `http://127.0.0.1:5173/` verified active-tab clarity, dropdown visibility, route-button continuity, terminal header/toolbar affordances, and the absence of horizontal overflow in the AI composer
 
 ### Task runtime limitations
 

@@ -12,9 +12,9 @@ const textAreaStyle: React.CSSProperties = {
   width: '100%',
   minHeight: '120px',
   resize: 'vertical',
-  background: 'var(--color-surface-glass-soft)',
-  color: 'var(--color-text)',
-  border: '1px solid var(--color-border-strong)',
+  background: 'var(--runa-ui-bg, var(--color-surface-glass-soft))',
+  color: 'var(--runa-ui-color, var(--color-text))',
+  border: '1px solid var(--runa-ui-border, var(--color-border-strong))',
   borderRadius: 'var(--radius-sm)',
   padding: 'var(--padding-control-y) var(--padding-control-x)',
   fontSize: 'var(--font-size-md)',
@@ -22,10 +22,11 @@ const textAreaStyle: React.CSSProperties = {
   caretColor: 'var(--color-accent-emerald-strong)',
   backdropFilter: 'var(--blur-glass-sm)',
   WebkitBackdropFilter: 'var(--blur-glass-sm)',
+  boxShadow: 'var(--runa-ui-shadow, none)',
 }
 
 export const TextArea = React.forwardRef<HTMLTextAreaElement, TextAreaProps>(function TextArea(
-  { id, runaComponent, style, ...props },
+  { className, id, runaComponent, style, ...props },
   ref,
 ) {
   const scope = useRunaDomScope()
@@ -38,7 +39,17 @@ export const TextArea = React.forwardRef<HTMLTextAreaElement, TextAreaProps>(fun
   const identity = useRunaDomIdentity(semanticComponent, id)
   const domAttributes = useRunaDomAttributes(identity)
 
-  return <textarea {...props} {...domAttributes} ref={ref} style={{ ...textAreaStyle, ...style }} />
+  const nextClassName = ['runa-ui-control', 'runa-ui-textarea', className].filter(Boolean).join(' ')
+
+  return (
+    <textarea
+      {...props}
+      {...domAttributes}
+      className={nextClassName}
+      ref={ref}
+      style={{ ...textAreaStyle, ...style }}
+    />
+  )
 })
 
 TextArea.displayName = 'TextArea'

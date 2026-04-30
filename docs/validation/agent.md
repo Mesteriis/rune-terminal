@@ -25,6 +25,7 @@
   - active conversation provider resolution
   - frontend AI/provider settings surfaces
   - runtime-backed AI composer submit-shortcut preference (`Enter` vs `Ctrl/Cmd+Enter`) through `GET/PUT /api/v1/settings/agent`
+  - runtime-backed `debug_mode_enabled` flag through that same `GET/PUT /api/v1/settings/agent` contract
   - structured Codex CLI streaming over `codex exec --json` with text, reasoning, and command-execution stream parts on the shared conversation SSE route
   - structured Claude Code streaming over `claude -p --output-format stream-json --verbose --include-partial-messages`
   - narrow OpenAI-compatible HTTP source discovery/completion path
@@ -58,7 +59,8 @@
   - browser-level recent-attachment reuse coverage from the AI composer shelf
   - explicit stale-widget repair notice plus `Save cleaned context` action for persisted conversation context that no longer matches the current workspace
   - stale-widget mismatch is now visible in the closed composer body as well, not only after opening the context dropdown
-  - AI composer two-row toolbar grouping with explicit `Source / Model / Context` field labels
+  - AI shell header reduced to `title + active thread`, with provider-route telemetry plus panel-mode switching moved into the conversation/history dropdown
+  - AI composer single-row icon-led selector toolbar without the previous nested meta row / inner frame treatment
   - AI composer denser request-context dropdown summary block and widget option rows
   - AI assistant message meta row and details panel chrome refinement
   - stream-error handling in the AI panel now preserves partial assistant output instead of immediately overwriting it with a post-stream conversation resync
@@ -222,6 +224,8 @@
 
 ## Commands/tests used
 
+- `go test ./core/transport/httpapi ./core/app ./core/agent`
+- `npm exec vitest run src/widgets/ai/ai-composer-widget.test.tsx src/widgets/ai/ai-panel-header-widget.test.tsx src/widgets/settings/runtime-settings-section.test.tsx src/app/app-ai-sidebar.test.tsx src/features/agent/model/use-ai-composer-preferences.test.tsx src/shared/api/agent-settings.test.ts`
 - `go test ./core/agent ./core/conversation ./core/app ./core/transport/httpapi`
 - `./scripts/go.sh test ./core/conversation ./core/transport/httpapi ./core/app`
 - `go test ./core/...`
@@ -308,6 +312,7 @@
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts --grep "terminal explain and fix button opens the AI sidebar with terminal context"`
 - `npm run build:frontend`
 - `npm run lint:frontend`
+- A focused UI-only validation pass for the main-screen control-density slice on `2026-04-30` confirmed the AI composer now uses compact two-column controls without sidebar clipping, shared hover/pressed/focus-visible states across buttons/selects/chips, a quieter request-context chip strip, and lower nested-border noise around the route/composer surfaces while keeping the existing runtime request contract unchanged. The same pass reconfirmed `npm run lint:frontend`, `npm run build:frontend`, and `npm exec vitest run src/widgets/shell/shell-topbar-widget.test.tsx src/widgets/ai/ai-composer-widget.test.tsx src/widgets/ai/ai-panel-header-widget.test.tsx src/shared/ui/components/accessibility-contracts.test.tsx src/widgets/terminal/terminal-widget.test.tsx` all pass, and a split-runtime browser smoke on `http://127.0.0.1:5173/` verified the compact composer layout, dropdown open paths, request-context chip rendering, route actions, and visible `Show details` / send-button chrome without changing backend AI behavior
 
 ## Known limitations
 

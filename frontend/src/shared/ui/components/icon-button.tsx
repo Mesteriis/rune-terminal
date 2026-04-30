@@ -23,14 +23,13 @@ const sizeStyleMap = {
   },
 } satisfies Record<'sm' | 'md', React.CSSProperties>
 
-export function IconButton({
-  size = 'md',
-  style,
-  ...props
-}: IconButtonProps) {
+export function IconButton({ className, size = 'md', style, ...props }: IconButtonProps) {
+  const nextClassName = ['runa-ui-icon-button', className].filter(Boolean).join(' ')
+
   return (
     <Button
       {...props}
+      className={nextClassName}
       style={{
         ...sizeStyleMap[size],
         ...style,

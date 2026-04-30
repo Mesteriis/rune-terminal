@@ -86,6 +86,7 @@ Current reusable controls:
 - `TerminalStatusHeader`
 - `TerminalSurface`
 - `TerminalToolbar`
+- Primitive-backed interactive controls now also share one lightweight shell interaction contract through `src/index.css` utility classes (`runa-ui-control`, `runa-ui-button`, `runa-ui-icon-button`, `runa-ui-select`, `runa-ui-chip`, `runa-ui-tab`, `runa-ui-status-badge`), so hover/pressed/focus-visible/disabled state treatment stays aligned across buttons, selects, chips, tabs, and compact shell badges without introducing a second design-system layer
 - `SearchableMultiSelect` exposes a labelled `listbox` / `option` contract with `aria-selected` instead of toggle-button semantics
 - `RadioGroup` exposes a named `radiogroup` contract through an explicit label id
 - `TerminalToolbar` moves focus into the search field explicitly when the search row opens
@@ -159,6 +160,7 @@ its visible shell blocks as raw HTML inside `App.tsx`.
 
 - `App.tsx` owns Dockview wiring and UI state only.
 - `ShellTopbarWidget` renders the top header block and now keeps workspace tabs plus the add-workspace affordance inside one compact grouped strip, instead of splitting the tab row and the create action into separate shell controls.
+- `ShellTopbarWidget` workspace tabs now also own a narrow per-tab overflow menu for rename/delete actions, while workspace identity and snapshot switching still stay in the app-level Dockview workspace controller instead of leaking persistence logic into the widget layer.
 - `RightActionRailWidget` renders the full-height right rail.
 - `WidgetBusyOverlayWidget` renders a widget-body busy state overlay with a centered AI marker and a `tsParticles` node-edge field.
 - `CommanderWidget` renders the Total Commander-style dual-pane surface from a per-widget commander model.
@@ -225,6 +227,8 @@ its visible shell blocks as raw HTML inside `App.tsx`.
 - `AiPanelHeaderWidget` now also owns the shell-visible conversation navigator chrome: active-thread summary trigger, scoped `Open / Archived / All` conversation views, server-backed scope/query filtering, `New` action, inline active-thread rename, and archive/restore/delete UX over the backend conversation list/create/activate/rename/archive/restore/delete contract; the navigator preserves the current scope/query state across close/reopen and row actions so archived-thread management does not collapse back to `recent` after each mutation.
 - `AiPanelHeaderWidget` also keeps the active conversation pinned inside that navigator as a separate summary block above scope/search controls, so filtered list operations do not obscure which backend thread is currently live.
 - `AiPanelHeaderWidget` also owns keyboard navigation inside that searchable conversation navigator: focus stays on the search field, the highlighted row is projected through `aria-activedescendant`, and `ArrowUp/ArrowDown/Home/End` plus `Enter` operate over the currently rendered filtered thread order instead of moving physical focus through option buttons.
+- `AiPanelHeaderWidget` now collapses provider-route telemetry and panel-mode switching into that same history dropdown, leaving the shell-visible header itself to a narrow `title + active thread` strip instead of exposing a second always-visible route/mode chrome lane.
+- `RuntimeSettingsSection` now also owns the runtime-backed `AI debug mode` gate in `General`; the header only exposes the `debug` panel mode when `shared/api/agent-settings.ts` reports `debug_mode_enabled`.
 - `AiPromptCardWidget` renders the prompt tiles inside the AI panel.
 - `AiComposerWidget` renders the AI toolbar plus textarea composer block and owns the visible provider/model selectors, prompt profile / role / mode selectors, and inline request-context dropdown for widget selection; backend provider/agent/workspace discovery plus `widget_ids` request assembly remain in `features/agent/model/use-agent-panel.ts`, not in the widget layer.
 - `useAgentPanel(...)` now also treats request-context selection as conversation-owned runtime state: widget-context enablement plus explicit widget ids are loaded from the backend conversation snapshot and persisted back through the conversation transport instead of being ephemeral widget-local state.
@@ -234,7 +238,7 @@ its visible shell blocks as raw HTML inside `App.tsx`.
 - `useAgentPanel(...)` now also keeps workspace-widget discovery behind stable refs when the composer context menu opens, so quick actions like `Only current` can persist the current workspace widget even when the operator acts before the dropdown finishes reconciling React state.
 - `useAgentPanel(...)` now keeps raw persisted conversation `widget_ids` separate from the filtered effective request selection, so stale workspace references can be surfaced and repaired in the UI without leaking missing widget ids into live request assembly.
 - `useAgentPanel(...)` now also eagerly resolves workspace widgets when a conversation already has persisted `widget_ids`, so stale-context repair is visible in the closed composer body instead of only after opening the context dropdown.
-- `AiComposerWidget` now groups toolbar chrome into a meta row plus a denser control strip with explicit `Source`, `Model`, and `Context` labels, keeping the selectors readable without extending the provider/runtime contract.
+- `AiComposerWidget` now flattens its selector chrome into a single compact toolbar row: provider/model/profile/role/mode use icon-led inline controls, the old meta row is gone, and the toolbar itself renders through `ClearBox`/unstyled layout wrappers so the composer no longer draws a redundant nested frame around the selector strip.
 - `AiComposerWidget` now also renders its request-context dropdown with a denser grouped summary block, while `SearchableMultiSelect` provides tighter widget option rows and clearer selection-state chips for that dropdown without changing the underlying context-selection contract.
 - `SearchableMultiSelect` now also groups AI request-context widget options by widget kind as a presentation-only refinement over the existing backend-loaded workspace widget list; this does not introduce a second widget-context transport model.
 - `AiComposerWidget` now also mirrors the stale-widget repair notice into the closed composer body, so a persisted context mismatch is actionable before the operator reopens the dropdown.

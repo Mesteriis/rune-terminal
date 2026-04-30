@@ -20,10 +20,11 @@ export const terminalWidgetChromeStyle: React.CSSProperties = {
   flexDirection: 'column',
   gap: 0,
   padding: 0,
-  border: '1px solid var(--runa-terminal-surface-border, var(--color-border-subtle))',
+  border:
+    '1px solid color-mix(in srgb, var(--runa-terminal-surface-border, var(--color-border-subtle)) 90%, transparent)',
   borderRadius: 'var(--radius-sm)',
   background:
-    'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 72%, transparent)',
+    'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 68%, transparent)',
 }
 
 export const terminalWidgetHeaderRowStyle: React.CSSProperties = {
@@ -31,7 +32,8 @@ export const terminalWidgetHeaderRowStyle: React.CSSProperties = {
   flexDirection: 'column',
   gap: '0.3rem',
   padding: '0.68rem 0.78rem 0.52rem',
-  borderBottom: '1px solid var(--runa-terminal-surface-border, var(--color-border-subtle))',
+  borderBottom:
+    '1px solid color-mix(in srgb, var(--runa-terminal-surface-border, var(--color-border-subtle)) 64%, transparent)',
 }
 
 export const terminalWidgetToolbarRowStyle: React.CSSProperties = {
@@ -46,14 +48,16 @@ export const terminalWidgetSessionRailStyle: React.CSSProperties = {
   gap: '0.32rem',
   flexWrap: 'wrap',
   padding: '0 0.78rem 0.52rem',
-  borderBottom: '1px solid var(--runa-terminal-surface-border, var(--color-border-subtle))',
+  borderBottom:
+    '1px solid color-mix(in srgb, var(--runa-terminal-surface-border, var(--color-border-subtle)) 56%, transparent)',
 }
 
 export const terminalWidgetCommandStripStyle: React.CSSProperties = {
   display: 'grid',
   gap: '0.34rem',
   padding: '0 0.78rem 0.58rem',
-  borderBottom: '1px solid var(--runa-terminal-surface-border, var(--color-border-subtle))',
+  borderBottom:
+    '1px solid color-mix(in srgb, var(--runa-terminal-surface-border, var(--color-border-subtle)) 56%, transparent)',
 }
 
 export const terminalWidgetCommandStripHeaderStyle: React.CSSProperties = {
@@ -76,10 +80,11 @@ export const terminalWidgetCommandStripMetaStyle: React.CSSProperties = {
 export const terminalWidgetCommandValueStyle: React.CSSProperties = {
   margin: 0,
   padding: '0.52rem 0.62rem',
-  border: '1px solid var(--runa-terminal-surface-border, var(--color-border-subtle))',
+  border:
+    '1px solid color-mix(in srgb, var(--runa-terminal-surface-border, var(--color-border-subtle)) 72%, transparent)',
   borderRadius: 'var(--radius-sm)',
   background:
-    'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 78%, transparent)',
+    'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 66%, transparent)',
   color: 'var(--color-text-primary)',
   fontSize: '0.76rem',
   lineHeight: 1.4,
@@ -156,13 +161,14 @@ export const terminalWidgetSessionCardActionsStyle: React.CSSProperties = {
 }
 
 export const terminalWidgetSessionButtonStyle: React.CSSProperties = {
+  ['--runa-ui-bg' as string]:
+    'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 60%, transparent)',
+  ['--runa-ui-border' as string]:
+    'color-mix(in srgb, var(--runa-terminal-surface-border, var(--color-border-subtle)) 82%, transparent)',
+  ['--runa-ui-color' as string]: 'var(--runa-terminal-text-secondary, var(--color-text-secondary))',
   minHeight: '30px',
   padding: '0.34rem 0.54rem',
-  border: '1px solid var(--runa-terminal-surface-border, var(--color-border-subtle))',
   borderRadius: 'var(--radius-sm)',
-  background:
-    'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 64%, transparent)',
-  color: 'var(--runa-terminal-text-secondary, var(--color-text-secondary))',
   display: 'inline-flex',
   flexDirection: 'column',
   alignItems: 'flex-start',
@@ -174,10 +180,10 @@ export const terminalWidgetSessionButtonStyle: React.CSSProperties = {
 }
 
 export const terminalWidgetSessionButtonActiveStyle: React.CSSProperties = {
-  borderColor: 'var(--color-accent-border, var(--color-accent-text))',
-  color: 'var(--color-accent-text)',
-  background:
+  ['--runa-ui-bg' as string]:
     'color-mix(in srgb, var(--color-accent-bg, var(--color-surface-glass-soft)) 34%, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 66%)',
+  ['--runa-ui-border' as string]: 'var(--color-accent-border, var(--color-accent-text))',
+  ['--runa-ui-color' as string]: 'var(--color-accent-text)',
 }
 
 export const terminalWidgetSessionMetaStyle: React.CSSProperties = {
@@ -200,30 +206,32 @@ export const terminalWidgetHeaderActionsStyle: React.CSSProperties = {
 }
 
 export const terminalWidgetHeaderActionButtonStyle: React.CSSProperties = {
+  ['--runa-ui-bg' as string]:
+    'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 62%, transparent)',
+  ['--runa-ui-border' as string]:
+    'color-mix(in srgb, var(--runa-terminal-surface-border, var(--color-border-subtle)) 82%, transparent)',
+  ['--runa-ui-color' as string]: 'var(--runa-terminal-text-muted, var(--color-text-muted))',
   width: '26px',
   minWidth: '26px',
   minHeight: '26px',
   height: '26px',
   padding: 0,
-  border: '1px solid var(--runa-terminal-surface-border, var(--color-border-subtle))',
   borderRadius: 'var(--radius-sm)',
-  background:
-    'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 72%, transparent)',
   boxShadow: 'none',
   backdropFilter: 'none',
   WebkitBackdropFilter: 'none',
   flex: '0 0 auto',
-  color: 'var(--runa-terminal-text-muted, var(--color-text-muted))',
 }
 
 export const terminalWidgetAiActionButtonStyle: React.CSSProperties = {
+  ['--runa-ui-bg' as string]:
+    'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 60%, transparent)',
+  ['--runa-ui-border' as string]:
+    'color-mix(in srgb, var(--runa-terminal-surface-border, var(--color-border-subtle)) 82%, transparent)',
+  ['--runa-ui-color' as string]: 'var(--runa-terminal-text-secondary, var(--color-text-secondary))',
   minHeight: '26px',
   padding: '0 0.62rem',
-  border: '1px solid var(--runa-terminal-surface-border, var(--color-border-subtle))',
   borderRadius: 'var(--radius-sm)',
-  background:
-    'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 68%, transparent)',
-  color: 'var(--runa-terminal-text-secondary, var(--color-text-secondary))',
   fontSize: '0.76rem',
   lineHeight: 1,
   fontWeight: 600,
