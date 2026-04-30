@@ -2,6 +2,11 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { ShellTopbarWidget } from '@/widgets/shell/shell-topbar-widget'
+import {
+  activeWorkspaceTabStyle,
+  topbarStyle,
+  workspaceTabStyle,
+} from '@/widgets/shell/shell-topbar-widget.styles'
 
 function renderShellTopbar() {
   const onAddWorkspace = vi.fn()
@@ -56,6 +61,16 @@ describe('ShellTopbarWidget', () => {
     expect(screen.getByRole('tab', { name: 'Workspace-2' })).toHaveAttribute('data-selected', 'true')
     expect(screen.getByRole('tab', { name: 'Workspace-1' })).toHaveAttribute('data-selected', 'false')
     expect(screen.getByRole('tab', { name: 'Workspace-3' })).toHaveAttribute('data-selected', 'false')
+  })
+
+  it('keeps shell chrome colors on token-backed variables', () => {
+    expect(topbarStyle.background).toBe('var(--color-surface-shell-header-gradient)')
+    expect(topbarStyle.borderBottom).toBe('1px solid var(--color-border-subtle)')
+    expect(workspaceTabStyle.background).toBe('var(--color-surface-glass-soft)')
+    expect(workspaceTabStyle.border).toBe('1px solid var(--color-border-subtle)')
+    expect(activeWorkspaceTabStyle.background).toBe('var(--color-accent-shell-tab-active)')
+    expect(activeWorkspaceTabStyle.border).toBe('1px solid var(--color-accent-shell-tab-active-border)')
+    expect(activeWorkspaceTabStyle.boxShadow).toBe('var(--shadow-shell-tab-active)')
   })
 
   it('routes workspace selection and add-workspace actions through callbacks', () => {

@@ -8,8 +8,8 @@ export const topbarStyle: CSSProperties = {
   gap: '0.22rem',
   padding: '0 var(--padding-shell-inline) 0 0',
   border: 'none',
-  borderBottom: '1px solid rgba(120, 150, 136, 0.12)',
-  background: 'linear-gradient(180deg, rgba(12, 29, 25, 0.82), rgba(10, 24, 22, 0.68))',
+  borderBottom: '1px solid var(--color-border-subtle)',
+  background: 'var(--color-surface-shell-header-gradient)',
   borderRadius: 0,
   boxShadow: 'none',
   backdropFilter: 'var(--blur-glass-sm)',
@@ -77,9 +77,9 @@ export const workspaceTabStyle: CSSProperties = {
   minWidth: 'var(--size-workspace-tab-min)',
   minHeight: '30px',
   padding: '0 6px 0 9px',
-  border: '1px solid rgba(122, 148, 136, 0.14)',
+  border: '1px solid var(--color-border-subtle)',
   borderRadius: 'var(--radius-sm)',
-  background: 'rgba(17, 34, 30, 0.44)',
+  background: 'var(--color-surface-glass-soft)',
   boxShadow: 'none',
   backdropFilter: 'none',
   WebkitBackdropFilter: 'none',
@@ -107,10 +107,10 @@ export const workspaceTabButtonStyle: CSSProperties = {
 
 export const activeWorkspaceTabStyle: CSSProperties = {
   ...workspaceTabStyle,
-  background: 'rgba(33, 55, 49, 0.88)',
+  background: 'var(--color-accent-shell-tab-active)',
   color: 'var(--color-text-primary)',
-  border: '1px solid rgba(154, 186, 169, 0.22)',
-  boxShadow: 'inset 0 0 0 1px rgba(211, 231, 219, 0.04)',
+  border: '1px solid var(--color-accent-shell-tab-active-border)',
+  boxShadow: 'var(--shadow-shell-tab-active)',
 }
 
 export const workspaceTabLabelStyle: CSSProperties = {
