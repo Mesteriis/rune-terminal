@@ -1,8 +1,10 @@
 package app
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -80,6 +82,47 @@ func TestRenameFSRenamesSymlinkEntryWithoutRenamingTarget(t *testing.T) {
 	}
 	if _, err := os.Stat(targetPath); err != nil {
 		t.Fatalf("target file should remain in place: %v", err)
+	}
+}
+
+func TestRenameFSRejectsDuplicateSourceBeforeMutation(t *testing.T) {
+	t.Parallel()
+
+	repoRoot := t.TempDir()
+	sourcePath := filepath.Join(repoRoot, "source.txt")
+	if err := os.WriteFile(sourcePath, []byte("keep me"), 0o600); err != nil {
+		t.Fatalf("write source file: %v", err)
+	}
+
+	runtime := &Runtime{RepoRoot: repoRoot}
+	_, err := runtime.RenameFS([]FSRenameEntry{
+		{Path: sourcePath, NextName: "one.txt"},
+		{Path: sourcePath, NextName: "two.txt"},
+	}, false)
+	if !errors.Is(err, ErrInvalidFSTarget) {
+		t.Fatalf("expected ErrInvalidFSTarget, got %v", err)
+	}
+
+	payload, err := os.ReadFile(sourcePath)
+	if err != nil {
+		t.Fatalf("source file should remain at original path: %v", err)
+	}
+	if string(payload) != "keep me" {
+		t.Fatalf("source file content changed: %q", string(payload))
+	}
+	for _, targetName := range []string{"one.txt", "two.txt"} {
+		if _, err := os.Lstat(filepath.Join(repoRoot, targetName)); !os.IsNotExist(err) {
+			t.Fatalf("target %s should not exist, stat err=%v", targetName, err)
+		}
+	}
+	entries, err := os.ReadDir(repoRoot)
+	if err != nil {
+		t.Fatalf("read repo root: %v", err)
+	}
+	for _, entry := range entries {
+		if strings.Contains(entry.Name(), ".rterm-rename-") {
+			t.Fatalf("rename left staging entry %q", entry.Name())
+		}
 	}
 }
 

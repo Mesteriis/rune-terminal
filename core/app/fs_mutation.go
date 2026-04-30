@@ -37,6 +37,12 @@ type FSRenameEntry struct {
 	NextName string `json:"next_name"`
 }
 
+type stagedRename struct {
+	sourcePath string
+	tempPath   string
+	targetPath string
+}
+
 func (r *Runtime) MkdirFS(path string) (FSMkdirResult, error) {
 	targetInput := strings.TrimSpace(path)
 	if targetInput == "" {
@@ -199,6 +205,9 @@ func (r *Runtime) RenameFS(entries []FSRenameEntry, overwrite bool) (FSPathsResu
 		if err != nil {
 			return FSPathsResult{}, err
 		}
+		if _, exists := sourcePathSet[sourcePath]; exists {
+			return FSPathsResult{}, ErrInvalidFSTarget
+		}
 		nextName, err := normalizeFSName(entry.NextName)
 		if err != nil {
 			return FSPathsResult{}, err
@@ -234,11 +243,6 @@ func (r *Runtime) RenameFS(entries []FSRenameEntry, overwrite bool) (FSPathsResu
 		}
 	}
 
-	type stagedRename struct {
-		tempPath   string
-		targetPath string
-	}
-
 	stagedRenames := make([]stagedRename, 0, len(plannedRenames))
 	for index, entry := range plannedRenames {
 		if entry.sourcePath == entry.targetPath {
@@ -249,9 +253,11 @@ func (r *Runtime) RenameFS(entries []FSRenameEntry, overwrite bool) (FSPathsResu
 			generateTempFSName(filepath.Base(entry.sourcePath), index),
 		)
 		if err := moveFSPath(entry.sourcePath, tempPath); err != nil {
+			rollbackStagedFSRenames(stagedRenames)
 			return FSPathsResult{}, err
 		}
 		stagedRenames = append(stagedRenames, stagedRename{
+			sourcePath: entry.sourcePath,
 			tempPath:   tempPath,
 			targetPath: entry.targetPath,
 		})
@@ -274,6 +280,19 @@ func (r *Runtime) RenameFS(entries []FSRenameEntry, overwrite bool) (FSPathsResu
 	}
 
 	return FSPathsResult{Paths: resultPaths}, nil
+}
+
+func rollbackStagedFSRenames(stagedRenames []stagedRename) {
+	for index := len(stagedRenames) - 1; index >= 0; index-- {
+		stagedRename := stagedRenames[index]
+		if _, err := os.Lstat(stagedRename.tempPath); err != nil {
+			continue
+		}
+		if _, err := os.Lstat(stagedRename.sourcePath); err == nil {
+			continue
+		}
+		_ = moveFSPath(stagedRename.tempPath, stagedRename.sourcePath)
+	}
 }
 
 func (r *Runtime) resolveFSDirectory(path string) (string, error) {
