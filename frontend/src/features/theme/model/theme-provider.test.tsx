@@ -90,6 +90,7 @@ describe('AppThemeProvider', () => {
 
   it('keeps system theme in sync with prefers-color-scheme changes', async () => {
     const media = installMatchMedia(false)
+    localStorage.setItem('rterm.app-theme', 'system')
 
     render(
       <AppThemeProvider>

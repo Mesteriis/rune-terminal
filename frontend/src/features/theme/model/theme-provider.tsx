@@ -19,13 +19,13 @@ function normalizeThemePreference(value: unknown): AppThemePreference {
 
 function getStoredThemePreference() {
   if (typeof window === 'undefined') {
-    return 'system'
+    return 'dark'
   }
 
   try {
-    return normalizeThemePreference(window.localStorage.getItem(THEME_STORAGE_KEY))
+    return normalizeThemePreference(window.localStorage.getItem(THEME_STORAGE_KEY) ?? 'dark')
   } catch {
-    return 'system'
+    return 'dark'
   }
 }
 
