@@ -408,6 +408,27 @@ func TestInstallPluginRejectsZipArchiveEntryOutsideRootPrefix(t *testing.T) {
 	}
 }
 
+func TestInstallPluginRejectsZipArchiveSymlinkEntries(t *testing.T) {
+	t.Parallel()
+
+	archiveURL := createPluginZipArchiveWithSymlinkEntry(t)
+	runtime := newPluginCatalogTestRuntime(t)
+
+	_, _, err := runtime.InstallPlugin(context.Background(), InstallPluginInput{
+		Source: PluginInstallSource{
+			Kind: PluginInstallSourceZip,
+			URL:  archiveURL,
+		},
+	})
+	if err == nil {
+		t.Fatalf("expected zip archive with symlink entry to fail")
+	}
+	if !errors.Is(err, plugins.ErrInvalidPluginSpec) {
+		t.Fatalf("expected invalid plugin spec error, got %v", err)
+	}
+	assertNoPluginStagingDirs(t, runtime)
+}
+
 func TestInstallPluginRejectsBundleSymlinkEntries(t *testing.T) {
 	t.Parallel()
 
@@ -755,6 +776,41 @@ func createPluginZipArchiveWithEntry(t *testing.T, name string, payload []byte) 
 	}
 	if _, err := writer.Write(payload); err != nil {
 		t.Fatalf("Write(extra zip entry) error: %v", err)
+	}
+	if err := archive.Close(); err != nil {
+		t.Fatalf("zip.Close error: %v", err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatalf("file.Close error: %v", err)
+	}
+	return "file://" + archivePath
+}
+
+func createPluginZipArchiveWithSymlinkEntry(t *testing.T) string {
+	t.Helper()
+
+	root := t.TempDir()
+	bundleRoot := filepath.Join(root, "bundle")
+	writeInstallablePluginBundle(t, bundleRoot, "example.zipsymlink", "1.0.0")
+
+	archivePath := filepath.Join(root, "plugin.zip")
+	file, err := os.OpenFile(archivePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
+	if err != nil {
+		t.Fatalf("OpenFile(zip) error: %v", err)
+	}
+	archive := zip.NewWriter(file)
+	addDirectoryToZip(t, archive, root, bundleRoot)
+	header := &zip.FileHeader{
+		Name:   "bundle/outside-link.txt",
+		Method: zip.Store,
+	}
+	header.SetMode(os.ModeSymlink | 0o777)
+	writer, err := archive.CreateHeader(header)
+	if err != nil {
+		t.Fatalf("CreateHeader(symlink) error: %v", err)
+	}
+	if _, err := writer.Write([]byte("/tmp/outside-secret.txt")); err != nil {
+		t.Fatalf("Write(symlink) error: %v", err)
 	}
 	if err := archive.Close(); err != nil {
 		t.Fatalf("zip.Close error: %v", err)

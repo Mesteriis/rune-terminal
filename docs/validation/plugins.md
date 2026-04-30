@@ -26,7 +26,9 @@
     `file://` sources plus expanded-byte and entry-count budgets, and archive
     entry containment is checked with root-relative path semantics instead of
     raw string prefixes; extracted entry writes now also propagate close/flush
-    errors before a staged plugin can be promoted
+    errors before a staged plugin can be promoted; ZIP symlink entries are
+    rejected explicitly instead of being silently reinterpreted as regular
+    files
   - staged plugin bundle promotion now rejects symlink entries and enforces the
     same total copied-byte / entry-count budget before writing into the install
     root; failed staged copies remove their `.staging-*` directory before
@@ -53,6 +55,12 @@ Plugin catalog persistence rollback slice (`2026-04-30`):
 - `./scripts/go.sh test ./core/app -run 'TestPluginCatalogAuditSummaryRedactsSourceURLSecrets|TestPluginLifecycleAppendsAuditEvents|TestInstallPluginAppendsFailureAuditEvent' -count=1`
 - `./scripts/go.sh test ./core/app -run 'Test.*Plugin' -count=1`
 - `./scripts/go.sh test ./core/app ./core/plugins ./core/transport/httpapi -run 'Test.*Plugin|Test.*Catalog|Test.*Install' -count=1`
+
+ZIP symlink hardening slice (`2026-04-30`):
+
+- `./scripts/go.sh test ./core/app -run 'TestInstallPluginRejectsZipArchiveSymlinkEntries|TestInstallPluginRejectsZipArchiveEntryOutsideRootPrefix|TestInstallPluginRejectsBundleSymlinkEntries' -count=1`
+- `./scripts/go.sh test ./core/app -run 'Test.*Plugin' -count=1`
+- `git diff --check`
 
 Catalog lifecycle hardening slice (`2026-04-29`):
 

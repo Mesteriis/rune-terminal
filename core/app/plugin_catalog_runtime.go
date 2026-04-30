@@ -699,6 +699,9 @@ func extractPluginArchive(ctx context.Context, stageRoot string, source PluginIn
 		if err != nil {
 			return "", err
 		}
+		if file.Mode()&os.ModeSymlink != 0 {
+			return "", fmt.Errorf("%w: zip archive contains symlink entry", plugins.ErrInvalidPluginSpec)
+		}
 		if file.FileInfo().IsDir() {
 			if err := os.MkdirAll(entryPath, file.Mode()); err != nil {
 				return "", err
