@@ -1,6 +1,8 @@
 import type { CSSProperties } from 'react'
 
 export const topbarStyle: CSSProperties = {
+  position: 'relative',
+  zIndex: 'var(--z-shell-chrome)',
   height: 'var(--size-shell-header)',
   flex: '0 0 var(--size-shell-header)',
   display: 'flex',

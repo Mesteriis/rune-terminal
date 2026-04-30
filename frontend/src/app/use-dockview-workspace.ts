@@ -3,7 +3,12 @@ import { type DockviewApi, type DockviewReadyEvent } from 'dockview-react'
 
 import { type WorkspaceWidgetKindCatalogEntry } from '@/shared/api/workspace'
 import { setActiveDockviewApi } from '@/shared/model/dockview-api-registry'
-import { addDockviewWorkspace, selectDockviewWorkspace } from './dockview-workspace.actions'
+import {
+  addDockviewWorkspace,
+  deleteDockviewWorkspace,
+  renameDockviewWorkspace,
+  selectDockviewWorkspace,
+} from './dockview-workspace.actions'
 import { dockviewWorkspaceClient, type DockviewWorkspaceClient } from './dockview-workspace.client'
 import {
   createDefaultWorkspaceTabs,
@@ -127,6 +132,26 @@ export function useDockviewWorkspace({
     })
   }
 
+  const handleRenameWorkspace = (workspaceId: number, title: string) => {
+    renameDockviewWorkspace({
+      nextTitle: title,
+      updateWorkspaceTabs,
+      workspaceId,
+    })
+  }
+
+  const handleDeleteWorkspace = (workspaceId: number) => {
+    deleteDockviewWorkspace({
+      activeWorkspaceId: activeWorkspaceIdRef.current,
+      persistCurrentWorkspaceSnapshot,
+      restoreWorkspaceSnapshot,
+      setActiveWorkspaceId: activateWorkspace,
+      updateWorkspaceTabs,
+      workspaceId,
+      workspaceTabs: workspaceTabsRef.current,
+    })
+  }
+
   const handleDockviewReady = (event: DockviewReadyEvent) => {
     const api = event.api
     dockviewApiRef.current = api
@@ -165,7 +190,9 @@ export function useDockviewWorkspace({
     dockviewApiRef,
     dockviewContainerRef,
     handleAddWorkspace,
+    handleDeleteWorkspace,
     handleDockviewReady,
+    handleRenameWorkspace,
     handleSelectWorkspace,
   }
 }

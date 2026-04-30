@@ -65,7 +65,9 @@ export function App() {
     dockviewApiRef,
     dockviewContainerRef,
     handleAddWorkspace,
+    handleDeleteWorkspace,
     handleDockviewReady,
+    handleRenameWorkspace,
     handleSelectWorkspace,
   } = useDockviewWorkspace({ widgetCatalogEntries: widgetCatalog.entries })
   const appRootRef = useRunaDomAutoTagging('app-root')
@@ -129,6 +131,8 @@ export function App() {
             onClose={handleCloseWindow}
             onMinimize={handleMinimizeWindow}
             onAddWorkspace={handleAddWorkspace}
+            onDeleteWorkspace={handleDeleteWorkspace}
+            onRenameWorkspace={handleRenameWorkspace}
             onSelectWorkspace={handleSelectWorkspace}
             onToggleFullscreen={handleToggleFullscreen}
             onToggleAi={onToggleAiSidebar}
