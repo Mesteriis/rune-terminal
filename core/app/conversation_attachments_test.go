@@ -124,6 +124,31 @@ func TestCreateAttachmentReferenceDoesNotAuditSuccessWhenStoreFails(t *testing.T
 	}
 }
 
+func TestCreateAttachmentReferenceDoesNotRequireAuditLog(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	filePath := filepath.Join(tempDir, "notes.txt")
+	if err := os.WriteFile(filePath, []byte("notes"), 0o600); err != nil {
+		t.Fatalf("write attachment file: %v", err)
+	}
+
+	runtime := &Runtime{}
+	reference, err := runtime.CreateAttachmentReference(CreateAttachmentReferenceRequest{
+		Path: filePath,
+	})
+	if err != nil {
+		t.Fatalf("create attachment reference: %v", err)
+	}
+	expectedFilePath, err := filepath.EvalSymlinks(filePath)
+	if err != nil {
+		t.Fatalf("eval attachment path: %v", err)
+	}
+	if reference.Path != expectedFilePath {
+		t.Fatalf("expected attachment path %q, got %#v", expectedFilePath, reference)
+	}
+}
+
 func TestDeleteAttachmentReferenceAppendsAuditEventWithProvenance(t *testing.T) {
 	t.Parallel()
 

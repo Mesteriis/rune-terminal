@@ -157,6 +157,37 @@ func TestExplainTerminalCommandAppendsAssistantSummary(t *testing.T) {
 	}
 }
 
+func TestExplainTerminalCommandDoesNotRequireAuditLog(t *testing.T) {
+	t.Parallel()
+
+	runtime := newExplainCommandTestRuntime(t, "explain without audit\n")
+	runtime.Audit = nil
+
+	result, err := runtime.ExplainTerminalCommand(context.Background(), ExplainTerminalCommandRequest{
+		Prompt:   "/run echo explain without audit",
+		Command:  "echo explain without audit",
+		WidgetID: "term_boot",
+		FromSeq:  0,
+	}, ConversationContext{
+		WorkspaceID:          "ws-default",
+		RepoRoot:             "/repo",
+		ActiveWidgetID:       "term_boot",
+		TargetSession:        "local",
+		TargetConnectionID:   "local",
+		ActionSource:         "test.terminal.explain",
+		WidgetContextEnabled: true,
+	})
+	if err != nil {
+		t.Fatalf("explain terminal command: %v", err)
+	}
+	if result.ExplainAuditEventID != "" {
+		t.Fatalf("expected no explain audit event id without audit log, got %q", result.ExplainAuditEventID)
+	}
+	if result.ExecutionBlockID == "" {
+		t.Fatal("expected execution block id")
+	}
+}
+
 func TestExplainTerminalCommandDerivesApprovalUsedFromMatchingToolAudit(t *testing.T) {
 	t.Parallel()
 

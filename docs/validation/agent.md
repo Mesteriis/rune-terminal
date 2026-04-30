@@ -39,6 +39,7 @@
   - backend-stored recent attachment reference library with list/delete flows in the composer
   - terminal-origin AI handoff: a terminal widget can now open the AI sidebar with a preloaded terminal-aware prompt, explicit `widget_ids` context, and immediate submit for explain/fix flows over the same conversation/runtime contract
   - that terminal-origin explain/fix handoff now reads backend-owned `issue_summary`, `status_detail`, and `output_excerpt` from `GET /api/v1/terminal/{widgetID}/diagnostics` instead of assembling the prompt purely from frontend chunk state
+  - attachment reference creation, conversation audit append, and terminal-command explain helpers now tolerate minimal runtimes without an audit log; terminal-command explain results only return an audit event id when that event was actually appended
   - browser-level terminal-origin AI handoff coverage: a real shell failure can now jump straight into the AI sidebar and land in the local `Plan / Approve` flow with the failing terminal pinned as conversation context
   - files-panel `Attach file ... to AI` handoff through `POST /api/v1/agent/conversation/attachments/references`, shell attachment queue, and stream request `attachments`
   - AI attachment ingestion now evaluates the same runtime policy allowed-root and ignore-rule configuration before provider prompt assembly; metadata-only/redacted matches keep content out of prompts, and outside-root or denied attachments fail instead of being read through a raw HTTP attachment payload
@@ -292,6 +293,7 @@
 - `node_modules/.bin/vitest run src/widgets/ai/ai-panel-widget.test.tsx --reporter=verbose`
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts --grep "selected context widget instead of the active terminal"`
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestTerminalDiagnostics|TestTerminalSnapshot|TestBootstrapSessionsKeepsRemoteWidgetAsDisconnectedWhenConnectionMissing' -count=1`
+- `./scripts/go.sh test ./core/app -run 'Test(CreateAttachmentReferenceDoesNotRequireAuditLog|AppendConversationAuditDoesNotRequireAuditLog|ExplainTerminalCommandDoesNotRequireAuditLog|CreateAttachmentReferenceAppendsAuditEventWithProvenance|ExplainTerminalCommandAppendsAssistantSummary)' -count=1`
 - `./scripts/go.sh test ./core/conversation ./core/app ./core/transport/httpapi -run 'TestStreamConversationMessageEmitsStructuredEventSequence|TestStreamConversationMessageEmitsErrorEventOnFailure|TestCancelConversationStreamCancelsActiveProviderRun' -count=1`
 - `./scripts/go.sh test ./core/conversation -count=1`
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi -count=1`

@@ -325,6 +325,9 @@ func (r *Runtime) appendConversationAudit(
 	profile policy.EvaluationProfile,
 	providerError string,
 ) {
+	if r == nil || r.Audit == nil {
+		return
+	}
 	_ = r.Audit.Append(audit.Event{
 		ToolName:        "agent.conversation",
 		Summary:         summarizeConversationPrompt(prompt),

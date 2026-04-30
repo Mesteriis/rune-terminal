@@ -149,25 +149,28 @@ func (r *Runtime) ExplainTerminalCommand(
 	if targetConnectionID == "" && targetSession == "local" {
 		targetConnectionID = "local"
 	}
-	explainAuditEventID := ids.New("audit")
-	if appendErr := r.Audit.Append(audit.Event{
-		ID:                 explainAuditEventID,
-		ToolName:           "agent.terminal_command",
-		Summary:            fmt.Sprintf("explain terminal command: %s", trimSummary(command)),
-		WorkspaceID:        conversationContext.WorkspaceID,
-		PromptProfileID:    profile.PromptProfileID,
-		RoleID:             profile.RoleID,
-		ModeID:             profile.ModeID,
-		SecurityPosture:    profile.SecurityPosture,
-		AffectedWidgets:    affectedWidgets(conversationContext),
-		ApprovalUsed:       approvalUsed,
-		ActionSource:       conversationContext.ActionSource,
-		TargetSession:      targetSession,
-		TargetConnectionID: targetConnectionID,
-		Success:            !providerFailed,
-		Error:              result.ProviderError,
-	}); appendErr != nil {
-		return ExplainTerminalCommandResult{}, appendErr
+	explainAuditEventID := ""
+	if r.Audit != nil {
+		explainAuditEventID = ids.New("audit")
+		if appendErr := r.Audit.Append(audit.Event{
+			ID:                 explainAuditEventID,
+			ToolName:           "agent.terminal_command",
+			Summary:            fmt.Sprintf("explain terminal command: %s", trimSummary(command)),
+			WorkspaceID:        conversationContext.WorkspaceID,
+			PromptProfileID:    profile.PromptProfileID,
+			RoleID:             profile.RoleID,
+			ModeID:             profile.ModeID,
+			SecurityPosture:    profile.SecurityPosture,
+			AffectedWidgets:    affectedWidgets(conversationContext),
+			ApprovalUsed:       approvalUsed,
+			ActionSource:       conversationContext.ActionSource,
+			TargetSession:      targetSession,
+			TargetConnectionID: targetConnectionID,
+			Success:            !providerFailed,
+			Error:              result.ProviderError,
+		}); appendErr != nil {
+			return ExplainTerminalCommandResult{}, appendErr
+		}
 	}
 
 	executionBlockID := ""
@@ -302,6 +305,9 @@ func (r *Runtime) resolveExplainCommandAudit(
 	commandAuditEventID string,
 	workspaceID string,
 ) explainCommandAuditMatch {
+	if r == nil || r.Audit == nil {
+		return explainCommandAuditMatch{}
+	}
 	events, err := r.Audit.List(explainAuditScanLimit)
 	if err != nil {
 		return explainCommandAuditMatch{}

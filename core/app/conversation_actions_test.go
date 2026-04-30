@@ -101,6 +101,18 @@ func TestSubmitConversationPromptUsesSelectionPromptAndContext(t *testing.T) {
 	}
 }
 
+func TestAppendConversationAuditDoesNotRequireAuditLog(t *testing.T) {
+	t.Parallel()
+
+	runtime := &Runtime{}
+	runtime.appendConversationAudit(
+		"hello",
+		ConversationContext{WorkspaceID: "ws-default", ActiveWidgetID: "term-main"},
+		policy.EvaluationProfile{PromptProfileID: "default", RoleID: "developer", ModeID: "implement"},
+		"",
+	)
+}
+
 func TestSubmitConversationPromptUsesExplicitContextWidgetIDs(t *testing.T) {
 	t.Parallel()
 
