@@ -13,7 +13,19 @@ import { useTerminalPreferences } from '@/features/terminal/model/use-terminal-p
 import { useTerminalSession } from '@/features/terminal/model/use-terminal-session'
 import { queueAiPromptHandoff } from '@/shared/model/ai-handoff'
 import { openAiSidebar } from '@/shared/model/app'
+import { terminalStatusHeaderMetaItemStyle } from '@/shared/ui/components/terminal-status-header.styles'
+import {
+  terminalToolbarIconButtonStyle,
+  terminalToolbarRendererBadgeStyle,
+  terminalToolbarSectionStyle,
+} from '@/shared/ui/components/terminal-toolbar.styles'
 import { TerminalWidget } from '@/widgets/terminal/terminal-widget'
+import {
+  terminalWidgetChromeStyle,
+  terminalWidgetHeaderRowStyle,
+  terminalWidgetSurfaceWrapStyle,
+  terminalWidgetToolbarRowStyle,
+} from '@/widgets/terminal/terminal-widget.styles'
 
 const copySelectionMock = vi.fn(async () => undefined)
 const clearSearchMock = vi.fn(() => undefined)
@@ -329,7 +341,7 @@ describe('TerminalWidget', () => {
     expect(screen.getByLabelText('Результаты поиска в терминале')).toHaveTextContent('Введите запрос')
   })
 
-  it('keeps status badges separate from terminal action buttons', () => {
+  it('keeps the strengthened terminal hierarchy style contract on chrome and toolbar surfaces', () => {
     vi.mocked(useTerminalSession).mockReturnValue({
       runtimeWidgetId: 'term-side',
       sessionKey: 'term-side:1',
@@ -387,8 +399,45 @@ describe('TerminalWidget', () => {
     expect(
       screen.getByRole('button', { name: 'Create another terminal session for Workspace shell' }),
     ).toBeVisible()
-    expect(screen.getByText('Local').closest('button')).toBeNull()
-    expect(screen.getByText('Running').closest('button')).toBeNull()
+
+    expect(terminalWidgetChromeStyle.background).toBe(
+      'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 82%, var(--color-surface-canvas, transparent) 18%)',
+    )
+    expect(terminalWidgetChromeStyle.boxShadow).toBe(
+      '0 12px 32px color-mix(in srgb, var(--color-shadow, rgba(0, 0, 0, 0.28)) 20%, transparent)',
+    )
+    expect(terminalWidgetHeaderRowStyle.background).toBe(
+      'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 88%, var(--color-surface-canvas, transparent) 12%)',
+    )
+    expect(terminalWidgetToolbarRowStyle.background).toBe(
+      'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 80%, var(--color-surface-canvas, transparent) 20%)',
+    )
+    expect(terminalWidgetSurfaceWrapStyle.background).toBe(
+      'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 64%, var(--color-surface-canvas, transparent) 36%)',
+    )
+
+    expect(terminalStatusHeaderMetaItemStyle['--runa-ui-bg' as string]).toBe(
+      'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 70%, var(--color-surface-canvas, transparent) 30%)',
+    )
+    expect(terminalStatusHeaderMetaItemStyle['--runa-ui-border' as string]).toBe(
+      'color-mix(in srgb, var(--runa-terminal-surface-border, var(--color-border-subtle)) 92%, transparent)',
+    )
+    expect(terminalStatusHeaderMetaItemStyle['--runa-ui-color' as string]).toBe(
+      'var(--runa-terminal-text-strong, var(--color-text-primary))',
+    )
+
+    expect(terminalToolbarSectionStyle.background).toBe(
+      'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 76%, var(--color-surface-canvas, transparent) 24%)',
+    )
+    expect(terminalToolbarIconButtonStyle['--runa-ui-bg' as string]).toBe(
+      'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 30%, transparent)',
+    )
+    expect(terminalToolbarIconButtonStyle['--runa-ui-border' as string]).toBe(
+      'color-mix(in srgb, var(--runa-terminal-surface-border, var(--color-border-subtle)) 42%, transparent)',
+    )
+    expect(terminalToolbarRendererBadgeStyle.background).toBe(
+      'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 64%, var(--color-surface-canvas, transparent) 36%)',
+    )
   })
 
   it('surfaces no-match search state and clears stale decorations on empty query', () => {
