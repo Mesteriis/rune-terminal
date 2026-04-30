@@ -68,6 +68,17 @@ func (r *Runtime) listFSWithinRoot(path string, query string, root string) (FSLi
 }
 
 func listFSResolved(normalizedPath string, query string) (FSListResult, error) {
+	info, err := os.Stat(normalizedPath)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return FSListResult{}, ErrFSPathNotFound
+		}
+		return FSListResult{}, err
+	}
+	if !info.IsDir() {
+		return FSListResult{}, ErrFSPathNotDirectory
+	}
+
 	entries, err := os.ReadDir(normalizedPath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
