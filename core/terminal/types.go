@@ -66,6 +66,12 @@ type LaunchOptions struct {
 	Restored   bool
 }
 
+type ShellOption struct {
+	Path    string `json:"path"`
+	Name    string `json:"name"`
+	Default bool   `json:"default,omitempty"`
+}
+
 type ConnectionSpec struct {
 	ID   string
 	Name string

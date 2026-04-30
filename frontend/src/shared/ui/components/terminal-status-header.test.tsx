@@ -1,5 +1,5 @@
-import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
 
 import { TerminalStatusHeader } from '@/shared/ui/components/terminal-status-header'
 
@@ -79,5 +79,56 @@ describe('TerminalStatusHeader', () => {
     expect(screen.getByText('Running')).toBeInTheDocument()
     expect(screen.queryByText('zsh')).not.toBeInTheDocument()
     expect(screen.getByText('app')).toHaveAttribute('title', '~/workspace/app')
+  })
+
+  it('keeps compact status pills and action controls on the same surface group', () => {
+    render(
+      <TerminalStatusHeader
+        actionSlot={<button type="button">Action</button>}
+        compact
+        connectionKind="local"
+        cwd="~/workspace/app"
+        primaryText="term_1"
+        sessionState="running"
+        shellLabel="zsh"
+        title="Workspace shell"
+      />,
+    )
+
+    expect(screen.getByText('Action')).toBeInTheDocument()
+    expect(screen.getByText('Local')).toBeInTheDocument()
+    expect(screen.getByText('Running')).toBeInTheDocument()
+    expect(screen.queryByText('zsh')).toBeInTheDocument()
+  })
+
+  it('opens local shell options and selects a shell from the header badge', () => {
+    const onOpenShellMenu = vi.fn()
+    const onSelectShell = vi.fn()
+
+    render(
+      <TerminalStatusHeader
+        activeShell="/bin/zsh"
+        connectionKind="local"
+        cwd="~/workspace/app"
+        onOpenShellMenu={onOpenShellMenu}
+        onSelectShell={onSelectShell}
+        sessionState="running"
+        shellLabel="zsh"
+        shellOptions={[
+          { path: '/bin/zsh', name: 'zsh', default: true },
+          { path: '/bin/bash', name: 'bash' },
+        ]}
+        title="Workspace shell"
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'zsh' }))
+
+    expect(onOpenShellMenu).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('menu')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('menuitem', { name: /bash/ }))
+
+    expect(onSelectShell).toHaveBeenCalledWith('/bin/bash')
   })
 })

@@ -1,10 +1,22 @@
 import type * as React from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 
-import { Activity, CircleSlash, Command, Laptop2, LoaderCircle, Server, SquareTerminal } from 'lucide-react'
+import {
+  Activity,
+  Check,
+  CircleSlash,
+  Command,
+  Laptop2,
+  LoaderCircle,
+  Server,
+  SquareTerminal,
+} from 'lucide-react'
 
 import {
   terminalStatusHeaderClusterStyle,
   terminalStatusHeaderCompactClusterStyle,
+  terminalStatusHeaderActionGroupStyle,
+  terminalStatusHeaderMetaGroupStyle,
   terminalStatusHeaderCompactMetaWrapStyle,
   terminalStatusHeaderCompactRootStyle,
   terminalStatusHeaderMetaItemStyle,
@@ -12,6 +24,13 @@ import {
   terminalStatusHeaderMetaWrapStyle,
   terminalStatusHeaderRootStyle,
   terminalStatusHeaderSecondaryTextStyle,
+  terminalStatusHeaderShellMenuItemActiveStyle,
+  terminalStatusHeaderShellMenuItemNameStyle,
+  terminalStatusHeaderShellMenuItemPathStyle,
+  terminalStatusHeaderShellMenuItemStyle,
+  terminalStatusHeaderShellMenuStyle,
+  terminalStatusHeaderShellMenuWrapStyle,
+  terminalStatusHeaderShellTriggerStyle,
   terminalStatusHeaderTextStackStyle,
   terminalStatusHeaderTitleTextStyle,
 } from '@/shared/ui/components/terminal-status-header.styles'
@@ -22,17 +41,30 @@ import { DockviewTabPill } from '@/shared/ui/components/dockview-tab-pill'
 export type TerminalConnectionKind = 'local' | 'ssh'
 export type TerminalSessionState = 'running' | 'idle' | 'starting' | 'exited' | 'failed' | 'disconnected'
 
+export type TerminalStatusShellOption = {
+  path: string
+  name: string
+  default?: boolean
+}
+
 export type TerminalStatusHeaderProps = {
   title: string
   cwd: string
   shellLabel: string
   connectionKind: TerminalConnectionKind
   sessionState: TerminalSessionState
+  activeShell?: string | null
   compact?: boolean
   compactMetaMode?: 'full' | 'minimal'
   actionSlot?: React.ReactNode
+  isShellMenuDisabled?: boolean
+  isShellMenuLoading?: boolean
+  isShellSwitching?: boolean
+  onOpenShellMenu?: () => Promise<void> | void
+  onSelectShell?: (shellPath: string) => Promise<void> | void
   primaryText?: string
   secondaryText?: string
+  shellOptions?: TerminalStatusShellOption[]
   showMeta?: boolean
 }
 
@@ -119,21 +151,174 @@ export function TerminalStatusHeader({
   shellLabel,
   connectionKind,
   sessionState,
+  activeShell,
   compact = false,
   compactMetaMode = 'full',
   actionSlot,
+  isShellMenuDisabled = false,
+  isShellMenuLoading = false,
+  isShellSwitching = false,
+  onOpenShellMenu,
+  onSelectShell,
   primaryText,
   secondaryText,
+  shellOptions = [],
   showMeta = true,
 }: TerminalStatusHeaderProps) {
   const connectionMeta = getConnectionMeta(connectionKind)
   const sessionMeta = getSessionMeta(sessionState)
+  const [isShellMenuOpen, setIsShellMenuOpen] = useState(false)
+  const shellMenuRootRef = useRef<HTMLDivElement | null>(null)
+  const shellMenuID = useId()
   const iconSize = 14
   const titleIconSize = compact ? 18 : 16
   const displayText = primaryText ?? (compact ? cwd : title)
   const titleTooltip = compact && cwd.trim() !== '' ? cwd : displayText
   const shouldRenderSecondaryText =
     !compact && typeof secondaryText === 'string' && secondaryText.trim() !== ''
+  const canUseShellMenu = connectionKind === 'local' && typeof onSelectShell === 'function'
+  const isShellTriggerDisabled = isShellMenuDisabled || isShellSwitching
+
+  useEffect(() => {
+    if (!isShellMenuOpen) {
+      return
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const root = shellMenuRootRef.current
+      if (root && event.target instanceof Node && !root.contains(event.target)) {
+        setIsShellMenuOpen(false)
+      }
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsShellMenuOpen(false)
+      }
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isShellMenuOpen])
+
+  const handleShellTriggerClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault()
+    event.stopPropagation()
+
+    if (isShellTriggerDisabled) {
+      return
+    }
+
+    setIsShellMenuOpen((current) => {
+      const next = !current
+      if (next) {
+        void onOpenShellMenu?.()
+      }
+      return next
+    })
+  }
+
+  const handleShellSelect = (shellPath: string) => (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault()
+    event.stopPropagation()
+    setIsShellMenuOpen(false)
+    void onSelectShell?.(shellPath)
+  }
+
+  const shellMeta = canUseShellMenu ? (
+    <Box
+      ref={shellMenuRootRef}
+      runaComponent="terminal-status-header-shell-menu-wrap"
+      style={terminalStatusHeaderShellMenuWrapStyle}
+    >
+      <button
+        aria-controls={isShellMenuOpen ? shellMenuID : undefined}
+        aria-expanded={isShellMenuOpen}
+        aria-haspopup="menu"
+        disabled={isShellTriggerDisabled}
+        onClick={handleShellTriggerClick}
+        onPointerDown={(event) => event.stopPropagation()}
+        style={terminalStatusHeaderShellTriggerStyle}
+        title="Switch shell"
+        type="button"
+      >
+        {isShellMenuLoading || isShellSwitching ? (
+          <LoaderCircle
+            color="var(--runa-terminal-icon-muted, var(--color-text-secondary))"
+            size={iconSize}
+            strokeWidth={1.8}
+            style={{ animation: 'runa-terminal-spin 1.2s linear infinite' }}
+          />
+        ) : (
+          <Command
+            color="var(--runa-terminal-icon-muted, var(--color-text-secondary))"
+            size={iconSize}
+            strokeWidth={1.8}
+          />
+        )}
+        <Text runaComponent="terminal-status-header-shell-text" style={terminalStatusHeaderMetaTextStyle}>
+          {shellLabel}
+        </Text>
+      </button>
+      {isShellMenuOpen ? (
+        <Box
+          id={shellMenuID}
+          onPointerDown={(event) => event.stopPropagation()}
+          role="menu"
+          runaComponent="terminal-status-header-shell-menu"
+          style={terminalStatusHeaderShellMenuStyle}
+        >
+          {shellOptions.map((shell) => {
+            const isActiveShell = shell.path === activeShell
+            return (
+              <button
+                key={shell.path}
+                disabled={isShellSwitching}
+                onClick={handleShellSelect(shell.path)}
+                role="menuitem"
+                style={{
+                  ...terminalStatusHeaderShellMenuItemStyle,
+                  ...(isActiveShell ? terminalStatusHeaderShellMenuItemActiveStyle : {}),
+                }}
+                title={shell.path}
+                type="button"
+              >
+                {isActiveShell ? (
+                  <Check
+                    color="var(--runa-terminal-status-running, var(--color-accent-emerald-strong))"
+                    size={13}
+                    strokeWidth={2}
+                  />
+                ) : (
+                  <span aria-hidden="true" />
+                )}
+                <span style={{ minWidth: 0 }}>
+                  <span style={terminalStatusHeaderShellMenuItemNameStyle}>{shell.name}</span>
+                  <span style={terminalStatusHeaderShellMenuItemPathStyle}>{shell.path}</span>
+                </span>
+              </button>
+            )
+          })}
+        </Box>
+      ) : null}
+    </Box>
+  ) : (
+    <MetaItem compact={compact} runaComponent="terminal-status-header-shell">
+      <Command
+        color="var(--runa-terminal-icon-muted, var(--color-text-secondary))"
+        size={iconSize}
+        strokeWidth={1.8}
+      />
+      <Text runaComponent="terminal-status-header-shell-text" style={terminalStatusHeaderMetaTextStyle}>
+        {shellLabel}
+      </Text>
+    </MetaItem>
+  )
 
   return (
     <RunaDomScopeProvider component="terminal-status-header">
@@ -182,55 +367,58 @@ export function TerminalStatusHeader({
             runaComponent="terminal-status-header-meta-wrap"
             style={compact ? terminalStatusHeaderCompactMetaWrapStyle : terminalStatusHeaderMetaWrapStyle}
           >
-            {showMeta ? (
-              <>
-                <MetaItem compact={compact} runaComponent="terminal-status-header-connection">
-                  <connectionMeta.Icon
-                    color="var(--runa-terminal-icon-muted, var(--color-text-secondary))"
-                    size={iconSize}
-                    strokeWidth={1.8}
-                  />
-                  <Text
-                    runaComponent="terminal-status-header-connection-text"
-                    style={terminalStatusHeaderMetaTextStyle}
-                  >
-                    {connectionMeta.label}
-                  </Text>
-                </MetaItem>
-                <MetaItem compact={compact} runaComponent="terminal-status-header-session">
-                  <sessionMeta.Icon
-                    color={sessionMeta.color}
-                    size={iconSize}
-                    strokeWidth={1.8}
-                    style={
-                      sessionMeta.spin ? { animation: 'runa-terminal-spin 1.2s linear infinite' } : undefined
-                    }
-                  />
-                  <Text
-                    runaComponent="terminal-status-header-session-text"
-                    style={terminalStatusHeaderMetaTextStyle}
-                  >
-                    {sessionMeta.label}
-                  </Text>
-                </MetaItem>
-                {!(compact && compactMetaMode === 'minimal') ? (
-                  <MetaItem compact={compact} runaComponent="terminal-status-header-shell">
-                    <Command
-                      color="var(--runa-terminal-icon-muted, var(--color-text-secondary))"
-                      size={iconSize}
-                      strokeWidth={1.8}
-                    />
-                    <Text
-                      runaComponent="terminal-status-header-shell-text"
-                      style={terminalStatusHeaderMetaTextStyle}
-                    >
-                      {shellLabel}
-                    </Text>
-                  </MetaItem>
+            {showMeta || (compact && actionSlot) ? (
+              <Box
+                runaComponent="terminal-status-header-meta-group"
+                style={terminalStatusHeaderMetaGroupStyle}
+              >
+                {showMeta ? (
+                  <>
+                    <MetaItem compact={compact} runaComponent="terminal-status-header-connection">
+                      <connectionMeta.Icon
+                        color="var(--runa-terminal-icon-muted, var(--color-text-secondary))"
+                        size={iconSize}
+                        strokeWidth={1.8}
+                      />
+                      <Text
+                        runaComponent="terminal-status-header-connection-text"
+                        style={terminalStatusHeaderMetaTextStyle}
+                      >
+                        {connectionMeta.label}
+                      </Text>
+                    </MetaItem>
+                    <MetaItem compact={compact} runaComponent="terminal-status-header-session">
+                      <sessionMeta.Icon
+                        color={sessionMeta.color}
+                        size={iconSize}
+                        strokeWidth={1.8}
+                        style={
+                          sessionMeta.spin
+                            ? { animation: 'runa-terminal-spin 1.2s linear infinite' }
+                            : undefined
+                        }
+                      />
+                      <Text
+                        runaComponent="terminal-status-header-session-text"
+                        style={terminalStatusHeaderMetaTextStyle}
+                      >
+                        {sessionMeta.label}
+                      </Text>
+                    </MetaItem>
+                    {!(compact && compactMetaMode === 'minimal') ? shellMeta : null}
+                  </>
                 ) : null}
-              </>
+                {compact && actionSlot ? actionSlot : null}
+              </Box>
             ) : null}
-            {actionSlot}
+            {actionSlot && !compact ? (
+              <Box
+                runaComponent="terminal-status-header-action-group"
+                style={terminalStatusHeaderActionGroupStyle}
+              >
+                {actionSlot}
+              </Box>
+            ) : null}
           </Box>
         ) : null}
       </Box>

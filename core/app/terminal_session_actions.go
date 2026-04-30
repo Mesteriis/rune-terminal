@@ -11,7 +11,15 @@ import (
 	"github.com/Mesteriis/rune-terminal/internal/ids"
 )
 
-func (r *Runtime) RestartTerminalSession(ctx context.Context, widgetID string) (terminal.State, error) {
+type TerminalRestartOptions struct {
+	Shell string
+}
+
+func (r *Runtime) TerminalShells() []terminal.ShellOption {
+	return terminal.AvailableShells()
+}
+
+func (r *Runtime) RestartTerminalSession(ctx context.Context, widgetID string, opts TerminalRestartOptions) (terminal.State, error) {
 	widget, err := r.findWorkspaceWidget(widgetID)
 	if err != nil {
 		return terminal.State{}, err
@@ -28,9 +36,36 @@ func (r *Runtime) RestartTerminalSession(ctx context.Context, widgetID string) (
 	}
 
 	activeSessionID := widget.ID
-	if activeState, stateErr := r.Terminals.GetState(widgetID); stateErr == nil && strings.TrimSpace(activeState.SessionID) != "" {
+	var activeState terminal.State
+	if state, stateErr := r.Terminals.GetState(widgetID); stateErr == nil {
+		activeState = state
+	}
+	if strings.TrimSpace(activeState.SessionID) != "" {
 		activeSessionID = activeState.SessionID
 	}
+	workingDir := r.RepoRoot
+	shell := strings.TrimSpace(activeState.Shell)
+	if connection.Kind == "local" || connection.Kind == "" {
+		if strings.TrimSpace(activeState.WorkingDir) != "" {
+			workingDir = activeState.WorkingDir
+		}
+		if shell == "" {
+			shell = terminal.DefaultShell()
+		}
+	} else {
+		workingDir = ""
+	}
+	requestedShell := strings.TrimSpace(opts.Shell)
+	if requestedShell != "" {
+		if connection.Kind != "local" && connection.Kind != "" {
+			return terminal.State{}, terminal.ErrUnsupportedShellSwitch
+		}
+		if !terminal.IsAvailableLocalShell(requestedShell) {
+			return terminal.State{}, fmt.Errorf("%w: %s", terminal.ErrShellNotAvailable, requestedShell)
+		}
+		shell = requestedShell
+	}
+
 	if err := r.Terminals.CloseWidgetSession(widgetID, activeSessionID); err != nil &&
 		!errors.Is(err, terminal.ErrWidgetNotFound) &&
 		!errors.Is(err, terminal.ErrSessionNotFound) {
@@ -39,7 +74,8 @@ func (r *Runtime) RestartTerminalSession(ctx context.Context, widgetID string) (
 	launchOptions := terminal.LaunchOptions{
 		WidgetID:   widget.ID,
 		SessionID:  activeSessionID,
-		WorkingDir: r.RepoRoot,
+		Shell:      shell,
+		WorkingDir: workingDir,
 		Connection: connection,
 	}
 	var state terminal.State

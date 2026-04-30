@@ -85,7 +85,7 @@ func TestRestartTerminalSessionReplacesExistingProcess(t *testing.T) {
 		t.Fatalf("StartSession error: %v", err)
 	}
 
-	state, err := runtime.RestartTerminalSession(context.Background(), "term-main")
+	state, err := runtime.RestartTerminalSession(context.Background(), "term-main", TerminalRestartOptions{})
 	if err != nil {
 		t.Fatalf("RestartTerminalSession error: %v", err)
 	}
@@ -112,11 +112,63 @@ func TestRestartTerminalSessionReplacesExistingProcess(t *testing.T) {
 	}
 }
 
+func TestRestartTerminalSessionCanSwitchLocalShell(t *testing.T) {
+	t.Parallel()
+
+	processA := &launchTestProcess{
+		pid:      100,
+		outputCh: make(chan []byte),
+		waitCh:   make(chan struct{}),
+		exitCode: 0,
+	}
+	processB := &launchTestProcess{
+		pid:      200,
+		outputCh: make(chan []byte),
+		waitCh:   make(chan struct{}),
+		exitCode: 0,
+	}
+	launcher := &queueLaunchOptions{
+		processes: []terminal.Process{processA, processB},
+	}
+	runtime := newRestartRuntime(t, launcher)
+
+	connection, err := runtime.connectionForWidget("local")
+	if err != nil {
+		t.Fatalf("connectionForWidget error: %v", err)
+	}
+	if _, err := runtime.Terminals.StartSession(context.Background(), terminal.LaunchOptions{
+		WidgetID:   "term-main",
+		Shell:      terminal.DefaultShell(),
+		WorkingDir: runtime.RepoRoot,
+		Connection: connection,
+	}); err != nil {
+		t.Fatalf("StartSession error: %v", err)
+	}
+
+	state, err := runtime.RestartTerminalSession(context.Background(), "term-main", TerminalRestartOptions{
+		Shell: "/bin/sh",
+	})
+	if err != nil {
+		t.Fatalf("RestartTerminalSession error: %v", err)
+	}
+	if state.Shell != "/bin/sh" {
+		t.Fatalf("expected restarted shell /bin/sh, got %q", state.Shell)
+	}
+
+	options := launcher.launchedOptions()
+	if len(options) != 2 {
+		t.Fatalf("expected 2 launch calls, got %d", len(options))
+	}
+	if options[1].Shell != "/bin/sh" {
+		t.Fatalf("expected launch shell /bin/sh, got %q", options[1].Shell)
+	}
+}
+
 func TestRestartTerminalSessionReturnsNotFoundForUnknownWidget(t *testing.T) {
 	t.Parallel()
 
 	runtime := newRestartRuntime(t, &queueLaunchOptions{})
-	_, err := runtime.RestartTerminalSession(context.Background(), "missing-widget")
+	_, err := runtime.RestartTerminalSession(context.Background(), "missing-widget", TerminalRestartOptions{})
 	if !errors.Is(err, terminal.ErrWidgetNotFound) {
 		t.Fatalf("expected terminal.ErrWidgetNotFound, got %v", err)
 	}

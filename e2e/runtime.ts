@@ -63,6 +63,12 @@ export type TerminalSnapshot = {
   next_seq: number
 }
 
+export type TerminalShellOption = {
+  path: string
+  name: string
+  default?: boolean
+}
+
 export type TerminalSettings = {
   cursor_blink: boolean
   cursor_style: 'block' | 'bar' | 'underline'
@@ -349,6 +355,16 @@ export async function fetchTerminalSnapshot(request: APIRequestContext, widgetID
       headers: authHeaders(),
     }),
   )
+}
+
+export async function fetchTerminalShells(request: APIRequestContext) {
+  const payload = await expectJSONResponse<{ shells?: TerminalShellOption[] }>(
+    request.get(`${backendUrl}/api/v1/terminal/shells`, {
+      headers: authHeaders(),
+    }),
+  )
+
+  return payload.shells ?? []
 }
 
 export async function createTerminalSessionViaApi(request: APIRequestContext, widgetID: string) {

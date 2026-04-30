@@ -3,6 +3,7 @@ package httpapi
 import (
 	"errors"
 	"fmt"
+	"io"
 	"math"
 	"net/http"
 	"strings"
@@ -63,6 +64,12 @@ func (api *API) handleTerminalLatestCommand(w http.ResponseWriter, r *http.Reque
 
 func (api *API) handleTerminalSessionCatalog(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, api.runtime.TerminalSessionCatalog())
+}
+
+func (api *API) handleTerminalShells(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{
+		"shells": api.runtime.TerminalShells(),
+	})
 }
 
 func (api *API) handleCreateTerminalSession(w http.ResponseWriter, r *http.Request) {
@@ -147,7 +154,18 @@ func (api *API) handleTerminalInterrupt(w http.ResponseWriter, r *http.Request) 
 func (api *API) handleTerminalRestart(w http.ResponseWriter, r *http.Request) {
 	widgetID := r.PathValue("widgetID")
 	connectionID := api.terminalAuditConnectionID(widgetID)
-	state, err := api.runtime.RestartTerminalSession(r.Context(), widgetID)
+	var payload struct {
+		Shell string `json:"shell,omitempty"`
+	}
+	if r.Body != nil && r.ContentLength != 0 {
+		if err := decodeJSON(r, &payload); err != nil && !errors.Is(err, io.EOF) {
+			writeBadRequest(w, "invalid_request", err)
+			return
+		}
+	}
+	state, err := api.runtime.RestartTerminalSession(r.Context(), widgetID, app.TerminalRestartOptions{
+		Shell: payload.Shell,
+	})
 	if err != nil {
 		api.appendTerminalControlAudit("terminal.restart", "", widgetID, "", connectionID, err)
 		writeTerminalError(w, err)
@@ -249,7 +267,9 @@ func writeTerminalError(w http.ResponseWriter, err error) {
 		writeNotFound(w, "connection_not_found", err.Error())
 	case errors.Is(err, terminal.ErrCannotSendInput),
 		errors.Is(err, terminal.ErrCannotInterrupt),
-		errors.Is(err, terminal.ErrCannotCloseLastSession):
+		errors.Is(err, terminal.ErrCannotCloseLastSession),
+		errors.Is(err, terminal.ErrShellNotAvailable),
+		errors.Is(err, terminal.ErrUnsupportedShellSwitch):
 		writeBadRequest(w, "invalid_terminal_state", err)
 	default:
 		writeInternalError(w, err)

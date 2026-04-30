@@ -553,17 +553,61 @@ func (l *httpTestLauncher) Launch(context.Context, terminal.LaunchOptions) (term
 type httpQueueLauncher struct {
 	mu        sync.Mutex
 	processes []terminal.Process
+	options   []terminal.LaunchOptions
 }
 
-func (l *httpQueueLauncher) Launch(context.Context, terminal.LaunchOptions) (terminal.Process, error) {
+func (l *httpQueueLauncher) Launch(_ context.Context, opts terminal.LaunchOptions) (terminal.Process, error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	l.options = append(l.options, opts)
 	if len(l.processes) == 0 {
 		return nil, fmt.Errorf("no process configured")
 	}
 	process := l.processes[0]
 	l.processes = l.processes[1:]
 	return process, nil
+}
+
+func (l *httpQueueLauncher) launchedOptions() []terminal.LaunchOptions {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	out := make([]terminal.LaunchOptions, len(l.options))
+	copy(out, l.options)
+	return out
+}
+
+func newHTTPTerminalActionRuntime(t *testing.T, launcher terminal.Launcher) *app.Runtime {
+	t.Helper()
+	tempDir := t.TempDir()
+	policyStore, err := policy.NewStore(filepath.Join(tempDir, "policy.json"), "/workspace/repo")
+	if err != nil {
+		t.Fatalf("NewStore error: %v", err)
+	}
+	auditLog, err := audit.NewLog(filepath.Join(tempDir, "audit.jsonl"))
+	if err != nil {
+		t.Fatalf("NewLog error: %v", err)
+	}
+	agentStore, err := agent.NewStore(filepath.Join(tempDir, "agent.json"))
+	if err != nil {
+		t.Fatalf("NewStore error: %v", err)
+	}
+	connectionStore, err := connections.NewService(filepath.Join(tempDir, "connections.json"))
+	if err != nil {
+		t.Fatalf("connections store: %v", err)
+	}
+	registry := toolruntime.NewRegistry()
+	runtime := &app.Runtime{
+		RepoRoot:    "/workspace/repo",
+		Workspace:   workspace.NewService(workspace.BootstrapDefault()),
+		Terminals:   terminal.NewService(launcher),
+		Connections: connectionStore,
+		Agent:       agentStore,
+		Policy:      policyStore,
+		Audit:       auditLog,
+		Registry:    registry,
+	}
+	runtime.Executor = toolruntime.NewExecutor(runtime.Registry, runtime.Policy, runtime.Audit)
+	return runtime
 }
 
 type httpTestProcess struct {
@@ -657,6 +701,87 @@ func TestTerminalInterruptSignalsProcessAndReturnsCurrentState(t *testing.T) {
 	}
 	if payload.State.Status != terminal.StatusRunning {
 		t.Fatalf("expected running status, got %q", payload.State.Status)
+	}
+}
+
+func TestTerminalShellsEndpointReturnsLocalShells(t *testing.T) {
+	t.Parallel()
+
+	handler := NewHandler(newHTTPTerminalActionRuntime(t, &httpQueueLauncher{}), testAuthToken)
+	recorder := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/terminal/shells", nil)
+	req.Header.Set("Authorization", "Bearer "+testAuthToken)
+	handler.ServeHTTP(recorder, req)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d (%s)", recorder.Code, recorder.Body.String())
+	}
+
+	var payload struct {
+		Shells []terminal.ShellOption `json:"shells"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("Unmarshal error: %v", err)
+	}
+	if len(payload.Shells) == 0 {
+		t.Fatal("expected at least one local shell")
+	}
+	if payload.Shells[0].Path == "" || payload.Shells[0].Name == "" {
+		t.Fatalf("expected shell path and name, got %#v", payload.Shells[0])
+	}
+}
+
+func TestTerminalRestartEndpointSwitchesLocalShell(t *testing.T) {
+	t.Parallel()
+
+	processA := &httpTestProcess{
+		outputCh: make(chan []byte, 1),
+		waitCh:   make(chan struct{}),
+	}
+	processB := &httpTestProcess{
+		outputCh: make(chan []byte, 1),
+		waitCh:   make(chan struct{}),
+	}
+	launcher := &httpQueueLauncher{
+		processes: []terminal.Process{processA, processB},
+	}
+	runtime := newHTTPTerminalActionRuntime(t, launcher)
+	if _, err := runtime.Terminals.StartSession(context.Background(), terminal.LaunchOptions{
+		WidgetID:   "term-main",
+		Shell:      terminal.DefaultShell(),
+		WorkingDir: runtime.RepoRoot,
+		Connection: terminal.ConnectionSpec{ID: "local", Name: "Local Machine", Kind: "local"},
+	}); err != nil {
+		t.Fatalf("StartSession error: %v", err)
+	}
+
+	handler := NewHandler(runtime, testAuthToken)
+	recorder := httptest.NewRecorder()
+	req := authedJSONRequest(t, http.MethodPost, "/api/v1/terminal/term-main/restart", map[string]any{
+		"shell": "/bin/sh",
+	})
+	handler.ServeHTTP(recorder, req)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d (%s)", recorder.Code, recorder.Body.String())
+	}
+
+	var payload struct {
+		State terminal.State `json:"state"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("Unmarshal error: %v", err)
+	}
+	if payload.State.Shell != "/bin/sh" {
+		t.Fatalf("expected restarted shell /bin/sh, got %q", payload.State.Shell)
+	}
+
+	options := launcher.launchedOptions()
+	if len(options) != 2 {
+		t.Fatalf("expected 2 launch calls, got %d", len(options))
+	}
+	if options[1].Shell != "/bin/sh" {
+		t.Fatalf("expected launch shell /bin/sh, got %q", options[1].Shell)
 	}
 }
 

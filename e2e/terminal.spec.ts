@@ -3,10 +3,16 @@ import { expect, test } from '@playwright/test'
 import {
   clearBrowserState,
   fetchTerminalSettings,
+  fetchTerminalShells,
   fetchTerminalSnapshot,
   sendTerminalInputViaApi,
   updateTerminalSettingsViaApi,
 } from './runtime'
+
+function basename(path: string) {
+  const segments = path.split(/[\\/]/).filter(Boolean)
+  return segments[segments.length - 1] ?? path
+}
 
 test('terminal settings persist font-size changes through the shell settings UI', async ({
   page,
@@ -501,6 +507,55 @@ test('terminal restart action restarts the live backend session and keeps input 
       { timeout: 30_000 },
     )
     .toBe(true)
+})
+
+test('terminal shell badge lists local shells and switches the active shell', async ({ page, request }) => {
+  await clearBrowserState(page)
+  await page.goto('/')
+
+  await expect
+    .poll(async () => {
+      const snapshot = await fetchTerminalSnapshot(request, 'term-side')
+      return snapshot.state.can_send_input === true && snapshot.state.status === 'running'
+    })
+    .toBe(true)
+
+  const shells = await fetchTerminalShells(request)
+  const baselineSnapshot = await fetchTerminalSnapshot(request, 'term-side')
+  const baselineShell = baselineSnapshot.state.shell ?? ''
+  const targetShell =
+    shells.find((shell) => shell.path === '/bin/sh' && shell.path !== baselineShell) ??
+    shells.find((shell) => shell.path !== baselineShell)
+
+  if (!targetShell) {
+    test.skip(true, 'requires at least two discovered local shells')
+    return
+  }
+
+  const shellButton = page.getByRole('button', { name: basename(baselineShell) }).last()
+  await shellButton.click()
+
+  await expect(page.getByRole('menu')).toBeVisible()
+  const targetShellItem = page.locator(`button[role="menuitem"][title="${targetShell.path}"]`)
+  await expect(targetShellItem).toBeVisible()
+
+  const restartResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/terminal/term-side/restart') &&
+      response.request().method() === 'POST',
+  )
+  await targetShellItem.click()
+  await restartResponse
+
+  await expect
+    .poll(
+      async () => {
+        const snapshot = await fetchTerminalSnapshot(request, 'term-side')
+        return snapshot.state.shell
+      },
+      { timeout: 30_000 },
+    )
+    .toBe(targetShell.path)
 })
 
 test('terminal interrupt action signals the live backend session without breaking the stream', async ({

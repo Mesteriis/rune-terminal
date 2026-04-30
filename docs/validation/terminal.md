@@ -28,12 +28,18 @@
     - command execution goes through `POST /api/v1/tools/execute` with `term.send_input`
     - assistant-side execution summaries are appended through `POST /api/v1/agent/terminal-commands/explain`
   - backend restart support is available in the terminal API client through `POST /api/v1/terminal/{widgetID}/restart`, but it is not wired to the UI because no visible restart control exists on the current terminal surface
-  - the terminal header/tab chrome now reads backend-owned session metadata for:
+    - the terminal header/tab chrome now reads backend-owned session metadata for:
     - `working_dir`
     - `shell`
     - `connection_kind`
     - `status`
     - disconnected / failed states
+  - local terminal shell selection is backend-owned:
+    `GET /api/v1/terminal/shells` lists executable shells discovered from the host,
+    the terminal `shell` status pill opens that list for local sessions,
+    and selecting an item restarts the active backend session through
+    `POST /api/v1/terminal/{widgetID}/restart` with a validated `shell`
+    override instead of launching arbitrary frontend-owned commands.
   - the terminal body now exposes a reference-like chrome layer on top of the same runtime contract:
     - `TerminalStatusHeader` is rendered inside the panel body and uses live `cwd`, `connection_kind`, `status`, and `shell`
     - the body header now renders that identity as an expanded stacked view (`cwd` primary, terminal title secondary), while the Dockview tab header stays compact; both surfaces therefore read from the same session metadata but at different density levels
@@ -244,17 +250,22 @@
 - `npm run test:ui -- --reporter=line e2e/ai.spec.ts --grep "terminal explain and fix button opens the AI sidebar with terminal context"`
 - `./scripts/go.sh test ./core/app ./core/transport/httpapi -run 'TestTerminalDiagnostics|TestTerminalSnapshot|TestBootstrapSessionsKeepsRemoteWidgetAsDisconnectedWhenConnectionMissing' -count=1`
 - `./scripts/go.sh test ./core/terminal ./core/app ./core/transport/httpapi -run 'TestTerminalServiceCreatesAndSwitchesGroupedSessionsPerWidget|TestCreateAndFocusTerminalSiblingSessionKeepsOneWidgetIdentity|TestTerminalSessionEndpointsCreateAndFocusGroupedSessions|TestRestartTerminalSessionReplacesExistingProcess' -count=1`
+- `./scripts/go.sh test ./core/terminal ./core/app ./core/transport/httpapi -run 'TestRestartTerminalSession|TestTerminalShellsEndpoint|TestTerminalRestartEndpoint' -count=1`
+- `./scripts/go.sh test ./core/terminal ./core/app ./core/transport/httpapi -count=1`
 - `./scripts/go.sh test ./core/terminal -run 'TestSnapshotAndSubscribeCoversBufferedAndLiveOutput|TestSubscriberStaysOpenAfterProcessExit|TestStartSessionCoalescesConcurrentLaunches' -count=1`
 - `./scripts/go.sh test ./core/terminal -count=20`
 - `./scripts/go.sh test ./cmd/... ./core/... ./internal/... -count=1`
 - `npm --prefix frontend run test -- src/features/terminal/api/client.test.ts src/features/terminal/model/use-terminal-session.test.tsx src/widgets/terminal/terminal-widget.test.tsx --reporter=verbose`
 - `npm --prefix frontend run test -- src/features/terminal/model/use-terminal-session.test.tsx src/widgets/terminal/terminal-widget.test.tsx src/shared/ui/components/terminal-status-header.test.tsx --reporter=verbose`
+- `npm --prefix frontend run test -- --run src/features/terminal/api/client.test.ts src/features/terminal/model/use-terminal-session.test.tsx src/shared/ui/components/terminal-status-header.test.tsx`
+- `npm --prefix frontend run lint:active`
 - `npm --prefix frontend run test -- src/widgets/terminal/terminal-widget.test.tsx -t "renders terminal controls through the active locale copy" --reporter=verbose`
 - `npm --prefix frontend run test -- src/widgets/terminal/terminal-widget-copy.test.ts --reporter=verbose`
 - `npm run validate:desktop-runtime`
 - `npm run test:ui -- --reporter=line e2e/terminal.spec.ts --grep "grouped backend sessions through the session rail"`
 - `npm run test:ui -- --reporter=line e2e/terminal.spec.ts --grep "terminal widget browser filters and closes grouped backend sessions"`
 - `npm run test:ui -- --reporter=line e2e/terminal.spec.ts --grep "shell-wide terminal session navigator focuses grouped sessions from the utility panel"`
+- `npm run test:ui -- --reporter=line e2e/terminal.spec.ts --grep "terminal shell badge"`
 - `npm run tauri:dev`
 
 ## Browser evidence added for this slice
@@ -274,6 +285,10 @@
   - after creating a grouped sibling session, the operator can open `Terminal sessions`
   - filtering by session id narrows the shell-wide catalog
   - `Open` from that catalog switches the backend `active_session_id` back to the selected grouped session
+- the same terminal Playwright suite now also validates local shell switching:
+  - the shell status pill opens the backend-discovered local shell list
+  - selecting a discovered shell posts the restart request for the active widget
+  - the backend snapshot reports the selected shell after the restart completes
 
 ## Known limitations
 

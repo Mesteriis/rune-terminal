@@ -9,4 +9,6 @@ var (
 	ErrCannotSendInput        = errors.New("terminal cannot accept input")
 	ErrCannotInterrupt        = errors.New("terminal cannot be interrupted")
 	ErrCannotCloseLastSession = errors.New("terminal cannot close the last session in a widget")
+	ErrShellNotAvailable      = errors.New("terminal shell is not available")
+	ErrUnsupportedShellSwitch = errors.New("terminal shell switching is only available for local sessions")
 )

@@ -96,6 +96,12 @@ export type TerminalSessionCatalog = {
   sessions: TerminalSessionCatalogEntry[]
 }
 
+export type TerminalShellOption = {
+  path: string
+  name: string
+  default?: boolean
+}
+
 export type CreateTerminalTabResult = {
   tab_id: string
   widget_id: string
@@ -121,6 +127,14 @@ export type TerminalStreamConnection = {
 
 type TerminalRestartResponse = {
   state: TerminalRuntimeState
+}
+
+type TerminalRestartOptions = {
+  shell?: string
+}
+
+type TerminalShellsResponse = {
+  shells?: TerminalShellOption[]
 }
 
 type TerminalInterruptResponse = {
@@ -239,6 +253,20 @@ const terminalSessionCatalogSchema = z
   .object({
     active_workspace_id: z.string().optional(),
     sessions: z.array(terminalSessionCatalogEntrySchema).optional(),
+  })
+  .passthrough()
+
+const terminalShellOptionSchema = z
+  .object({
+    path: z.string(),
+    name: z.string(),
+    default: z.boolean().optional(),
+  })
+  .passthrough()
+
+const terminalShellsResponseSchema = z
+  .object({
+    shells: z.array(terminalShellOptionSchema).optional(),
   })
   .passthrough()
 
@@ -531,6 +559,16 @@ export async function fetchTerminalSessionCatalog() {
   } satisfies TerminalSessionCatalog
 }
 
+export async function fetchTerminalShells() {
+  const payload = parseWithSchema(
+    terminalShellsResponseSchema,
+    await requestRuntimeJSON<TerminalShellsResponse>('/api/v1/terminal/shells'),
+    'Invalid terminal shells payload.',
+  )
+
+  return Array.isArray(payload.shells) ? payload.shells : []
+}
+
 export async function createTerminalTab(title?: string) {
   return requestRuntimeJSON<CreateTerminalTabResult>('/api/v1/workspace/tabs', {
     body: JSON.stringify(
@@ -585,12 +623,26 @@ export async function sendTerminalInput(widgetID: string, text: string, appendNe
   )
 }
 
-export async function restartTerminal(widgetID: string) {
+export async function restartTerminal(widgetID: string, options?: TerminalRestartOptions) {
+  const body =
+    options?.shell && options.shell.trim() !== ''
+      ? JSON.stringify({
+          shell: options.shell,
+        })
+      : undefined
   const payload = parseWithSchema(
     terminalStateEnvelopeSchema,
-    await requestRuntimeJSON<TerminalRestartResponse>(buildTerminalPath(widgetID, '/restart'), {
-      method: 'POST',
-    }),
+    await requestRuntimeJSON<TerminalRestartResponse>(
+      buildTerminalPath(widgetID, '/restart'),
+      body
+        ? {
+            body,
+            method: 'POST',
+          }
+        : {
+            method: 'POST',
+          },
+    ),
     'Invalid terminal restart payload.',
   )
 

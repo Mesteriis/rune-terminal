@@ -1,16 +1,6 @@
 import { useEffect, useRef, type KeyboardEvent } from 'react'
 
-import {
-  ChevronDown,
-  ChevronUp,
-  ClipboardPaste,
-  Copy,
-  Cpu,
-  Eraser,
-  Search,
-  X,
-  ChevronsDown,
-} from 'lucide-react'
+import { ChevronDown, ChevronUp, ClipboardPaste, Copy, Eraser, Search, X, ChevronsDown } from 'lucide-react'
 
 import {
   terminalToolbarBadgeTextStyle,
@@ -32,9 +22,9 @@ import type { TerminalSearchResult } from '@/shared/ui/components/terminal-surfa
 export type TerminalToolbarProps = {
   copy?: TerminalToolbarCopy
   isSearchOpen: boolean
-  rendererMode: 'default' | 'webgl'
   searchQuery: string
   searchResult?: TerminalSearchResult | null
+  showRendererBadge?: boolean
   onClear: () => void
   onCloseSearch: () => void
   onCopy: () => void
@@ -91,9 +81,9 @@ const defaultTerminalToolbarCopy: TerminalToolbarCopy = {
 export function TerminalToolbar({
   copy = defaultTerminalToolbarCopy,
   isSearchOpen,
-  rendererMode,
   searchQuery,
   searchResult = null,
+  showRendererBadge = false,
   onClear,
   onCloseSearch,
   onCopy,
@@ -268,21 +258,16 @@ export function TerminalToolbar({
                 <X size={14} strokeWidth={1.8} />
               </Button>
             </Box>
-          ) : (
+          ) : showRendererBadge ? (
             <Box runaComponent="terminal-toolbar-renderer-badge" style={terminalToolbarRendererBadgeStyle}>
-              <Cpu
-                color="var(--runa-terminal-text-muted, var(--color-text-muted))"
-                size={14}
-                strokeWidth={1.8}
-              />
               <Text
                 runaComponent="terminal-toolbar-renderer-badge-text"
                 style={terminalToolbarBadgeTextStyle}
               >
-                {rendererMode === 'webgl' ? copy.rendererWebgl : copy.rendererDefault}
+                {copy.rendererWebgl}
               </Text>
             </Box>
-          )}
+          ) : null}
         </Box>
       </Box>
     </RunaDomScopeProvider>

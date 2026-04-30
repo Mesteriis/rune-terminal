@@ -5,6 +5,7 @@ import {
   closeTerminalSession,
   connectTerminalStream,
   createTerminalSession,
+  fetchTerminalShells,
   fetchTerminalSnapshot,
   interruptTerminal,
   restartTerminal,
@@ -26,6 +27,7 @@ vi.mock('@/features/terminal/api/client', async () => {
     connectTerminalStream: vi.fn(),
     closeTerminalSession: vi.fn(),
     createTerminalSession: vi.fn(),
+    fetchTerminalShells: vi.fn(),
     fetchTerminalSnapshot: vi.fn(),
     interruptTerminal: vi.fn(),
     restartTerminal: vi.fn(),
@@ -311,6 +313,104 @@ describe('useTerminalSession', () => {
         from: 1,
       }),
     )
+  })
+
+  it('loads local shells and switches the active terminal shell through restart', async () => {
+    const initialStreamClose = vi.fn()
+    const switchedStreamClose = vi.fn()
+
+    vi.mocked(fetchTerminalSnapshot)
+      .mockResolvedValueOnce({
+        state: {
+          widget_id: 'term-main',
+          session_id: 'term-main',
+          shell: '/bin/zsh',
+          status: 'running',
+          pid: 4242,
+          started_at: '2026-04-24T09:00:00Z',
+          can_send_input: true,
+          can_interrupt: true,
+          working_dir: '/repo',
+          connection_id: 'local',
+          connection_name: 'Local Machine',
+          connection_kind: 'local',
+        },
+        chunks: [],
+        next_seq: 1,
+      })
+      .mockResolvedValueOnce({
+        state: {
+          widget_id: 'term-main',
+          session_id: 'term-main',
+          shell: '/bin/bash',
+          status: 'running',
+          pid: 5252,
+          started_at: '2026-04-24T09:05:00Z',
+          can_send_input: true,
+          can_interrupt: true,
+          working_dir: '/repo',
+          connection_id: 'local',
+          connection_name: 'Local Machine',
+          connection_kind: 'local',
+        },
+        chunks: [],
+        next_seq: 1,
+      })
+
+    vi.mocked(connectTerminalStream)
+      .mockResolvedValueOnce({
+        close: initialStreamClose,
+        done: Promise.resolve(),
+      })
+      .mockResolvedValueOnce({
+        close: switchedStreamClose,
+        done: Promise.resolve(),
+      })
+    vi.mocked(fetchTerminalShells).mockResolvedValue([
+      { path: '/bin/zsh', name: 'zsh', default: true },
+      { path: '/bin/bash', name: 'bash' },
+    ])
+    vi.mocked(restartTerminal).mockResolvedValue({
+      widget_id: 'term-main',
+      session_id: 'term-main',
+      shell: '/bin/bash',
+      status: 'running',
+      pid: 5252,
+      started_at: '2026-04-24T09:05:00Z',
+      can_send_input: true,
+      can_interrupt: true,
+      connection_id: 'local',
+      connection_name: 'Local Machine',
+      connection_kind: 'local',
+    })
+
+    const { result } = renderHook(() =>
+      useTerminalSession({
+        runtimeWidgetId: 'term-main',
+        title: 'Main terminal',
+      }),
+    )
+
+    await waitFor(() => {
+      expect(result.current.shellLabel).toBe('zsh')
+    })
+
+    await act(async () => {
+      await result.current.loadShellOptions()
+    })
+
+    expect(fetchTerminalShells).toHaveBeenCalledTimes(1)
+    expect(result.current.shellOptions).toHaveLength(2)
+
+    await act(async () => {
+      await result.current.switchShell('/bin/bash')
+    })
+
+    expect(restartTerminal).toHaveBeenCalledWith('term-main', { shell: '/bin/bash' })
+    expect(initialStreamClose).toHaveBeenCalledTimes(1)
+    await waitFor(() => {
+      expect(result.current.shellLabel).toBe('bash')
+    })
   })
 
   it('interrupts the terminal session without replacing the active stream', async () => {

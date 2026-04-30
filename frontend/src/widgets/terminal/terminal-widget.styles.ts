@@ -27,6 +27,8 @@ export const terminalWidgetChromeStyle: React.CSSProperties = {
 }
 
 export const terminalWidgetHeaderRowStyle: React.CSSProperties = {
+  position: 'relative',
+  zIndex: 3,
   display: 'flex',
   flexDirection: 'column',
   gap: '0.3rem',
@@ -187,6 +189,8 @@ export const terminalWidgetSessionMetaStyle: React.CSSProperties = {
 }
 
 export const terminalWidgetSurfaceWrapStyle: React.CSSProperties = {
+  position: 'relative',
+  zIndex: 1,
   flex: 1,
   minHeight: 0,
   display: 'flex',

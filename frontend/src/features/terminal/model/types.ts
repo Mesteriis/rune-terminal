@@ -1,4 +1,8 @@
-import type { TerminalOutputChunk, TerminalRuntimeState } from '@/features/terminal/api/client'
+import type {
+  TerminalOutputChunk,
+  TerminalRuntimeState,
+  TerminalShellOption,
+} from '@/features/terminal/api/client'
 
 export type TerminalDisplayConnectionKind = 'local' | 'ssh'
 
@@ -45,16 +49,21 @@ export type TerminalSessionView = {
   isRecoveringStream: boolean
   isLoading: boolean
   isInterrupting: boolean
+  isLoadingShells: boolean
   isRestarting: boolean
+  isSwitchingShell: boolean
   error: string | null
   statusDetail: string | null
   outputChunks: TerminalOutputChunk[]
   runtimeState: TerminalRuntimeState | null
+  shellOptions: TerminalShellOption[]
   createSession: () => Promise<void>
   focusSession: (sessionID: string) => Promise<void>
   closeSession: (sessionID: string) => Promise<void>
+  loadShellOptions: () => Promise<void>
   recoverSession: () => Promise<void>
   sendInputChunk: (text: string) => Promise<void>
   interruptSession: () => Promise<void>
   restartSession: () => Promise<void>
+  switchShell: (shellPath: string) => Promise<void>
 }

@@ -4,12 +4,14 @@ import {
   closeTerminalSession,
   connectTerminalStream,
   createTerminalSession,
+  fetchTerminalShells,
   fetchTerminalSnapshot,
   interruptTerminal,
   restartTerminal,
   sendTerminalInput,
   setActiveTerminalSession,
   type TerminalOutputChunk,
+  type TerminalShellOption,
   type TerminalSnapshot,
 } from '@/features/terminal/api/client'
 import type {
@@ -26,9 +28,11 @@ type TerminalSessionStaticView = Omit<
   | 'createSession'
   | 'focusSession'
   | 'interruptSession'
+  | 'loadShellOptions'
   | 'recoverSession'
   | 'restartSession'
   | 'sendInputChunk'
+  | 'switchShell'
 >
 
 type TerminalSessionRecordState = {
@@ -38,8 +42,12 @@ type TerminalSessionRecordState = {
   isRecoveringStream: boolean
   isInterrupting: boolean
   isLoading: boolean
+  isLoadingShells: boolean
   isRestarting: boolean
+  isSwitchingShell: boolean
   snapshot: TerminalSnapshot | null
+  shellOptions: TerminalShellOption[]
+  shellOptionsLoaded: boolean
   streamRetryCount: number
 }
 
@@ -67,8 +75,12 @@ function createTerminalSessionRecord(widgetId: string): TerminalSessionRecord {
       isRecoveringStream: false,
       isInterrupting: false,
       isLoading: false,
+      isLoadingShells: false,
       isRestarting: false,
+      isSwitchingShell: false,
       snapshot: null,
+      shellOptions: [],
+      shellOptionsLoaded: false,
       streamRetryCount: 0,
     },
     streamClose: null,
@@ -199,13 +211,16 @@ function buildTerminalSessionView(
     isRecoveringStream: state.isRecoveringStream,
     isLoading: state.isLoading,
     isInterrupting: state.isInterrupting,
+    isLoadingShells: state.isLoadingShells,
     isRestarting: state.isRestarting,
+    isSwitchingShell: state.isSwitchingShell,
     error,
     statusDetail: state.isRecoveringStream
       ? 'Reconnecting live terminal stream…'
       : (error ?? runtimeState?.status_detail?.trim() ?? null),
     outputChunks: state.snapshot?.chunks ?? [],
     runtimeState,
+    shellOptions: state.shellOptions,
   }
 }
 
@@ -461,8 +476,12 @@ async function ensureTerminalSession(record: TerminalSessionRecord) {
         isRecoveringStream: false,
         isInterrupting: false,
         isLoading: false,
+        isLoadingShells: record.state.isLoadingShells,
         isRestarting: false,
+        isSwitchingShell: false,
         snapshot,
+        shellOptions: record.state.shellOptions,
+        shellOptionsLoaded: record.state.shellOptionsLoaded,
         streamRetryCount: 0,
       }
       notifyTerminalSessionRecord(record)
@@ -643,6 +662,110 @@ export function useTerminalSession(seed: TerminalSessionSeed) {
       notifyTerminalSessionRecord(record)
     }
   }, [seed.runtimeWidgetId])
+
+  const loadShellOptions = useCallback(async () => {
+    const record = getTerminalSessionRecord(seed.runtimeWidgetId)
+    const connectionKind = mapConnectionKind(record.state.snapshot?.state.connection_kind)
+
+    if (connectionKind !== 'local' || record.state.shellOptionsLoaded || record.state.isLoadingShells) {
+      return
+    }
+
+    record.state = {
+      ...record.state,
+      error: null,
+      isLoadingShells: true,
+    }
+    notifyTerminalSessionRecord(record)
+
+    try {
+      const shellOptions = await fetchTerminalShells()
+      if (!isActiveTerminalSessionRecord(record)) {
+        return
+      }
+      record.state = {
+        ...record.state,
+        error: null,
+        isLoadingShells: false,
+        shellOptions,
+        shellOptionsLoaded: true,
+      }
+      notifyTerminalSessionRecord(record)
+    } catch (error) {
+      if (!isActiveTerminalSessionRecord(record)) {
+        return
+      }
+      record.state = {
+        ...record.state,
+        error: toTerminalErrorMessage(error, 'Unable to load local shells.'),
+        isLoadingShells: false,
+      }
+      notifyTerminalSessionRecord(record)
+    }
+  }, [seed.runtimeWidgetId])
+
+  const switchShell = useCallback(
+    async (shellPath: string) => {
+      const record = getTerminalSessionRecord(seed.runtimeWidgetId)
+      const requestedShell = shellPath.trim()
+      const currentShell = record.state.snapshot?.state.shell?.trim() ?? ''
+      const connectionKind = mapConnectionKind(record.state.snapshot?.state.connection_kind)
+
+      if (
+        requestedShell === '' ||
+        requestedShell === currentShell ||
+        connectionKind !== 'local' ||
+        record.state.isCreatingSession ||
+        record.state.isInterrupting ||
+        record.state.isRestarting ||
+        record.state.isSwitchingShell
+      ) {
+        return
+      }
+
+      record.state = {
+        ...record.state,
+        error: null,
+        isCreatingSession: false,
+        isInterrupting: false,
+        isRestarting: true,
+        isSwitchingShell: true,
+      }
+      notifyTerminalSessionRecord(record)
+
+      try {
+        await restartTerminal(seed.runtimeWidgetId, { shell: requestedShell })
+        await reloadTerminalSessionRecord(record)
+        if (!isActiveTerminalSessionRecord(record)) {
+          return
+        }
+        record.state = {
+          ...record.state,
+          isInterrupting: false,
+          isRestarting: false,
+          isSwitchingShell: false,
+        }
+        notifyTerminalSessionRecord(record)
+      } catch (error) {
+        if (!isActiveTerminalSessionRecord(record)) {
+          return
+        }
+        record.state = {
+          ...record.state,
+          error: toTerminalErrorMessage(
+            error,
+            `Unable to switch terminal shell for ${seed.runtimeWidgetId}.`,
+          ),
+          isCreatingSession: false,
+          isInterrupting: false,
+          isRestarting: false,
+          isSwitchingShell: false,
+        }
+        notifyTerminalSessionRecord(record)
+      }
+    },
+    [seed.runtimeWidgetId],
+  )
 
   const recoverSession = useCallback(async () => {
     const record = getTerminalSessionRecord(seed.runtimeWidgetId)
@@ -863,9 +986,11 @@ export function useTerminalSession(seed: TerminalSessionSeed) {
     createSession: createSessionForWidget,
     focusSession,
     interruptSession,
+    loadShellOptions,
     recoverSession,
     sendInputChunk,
     restartSession,
+    switchShell,
   }
 }
 

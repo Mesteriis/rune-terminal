@@ -9,6 +9,7 @@ import {
   createTerminalTab,
   fetchTerminalDiagnostics,
   fetchTerminalLatestCommand,
+  fetchTerminalShells,
   fetchTerminalSnapshot,
   interruptTerminal,
   restartTerminal,
@@ -488,6 +489,65 @@ describe('terminal api client', () => {
     expect(fetchMock.mock.calls[3]?.[0]).toBe('http://127.0.0.1:8090/api/v1/terminal/term-main/interrupt')
     expect(fetchMock.mock.calls[3]?.[1]).toMatchObject({
       method: 'POST',
+    })
+  })
+
+  it('loads local shell options and can send a shell override during restart', async () => {
+    const fetchMock = vi.fn()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          home_dir: '/Users/avm',
+          repo_root: '/Users/avm/projects/runa-terminal',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          shells: [
+            { path: '/bin/zsh', name: 'zsh', default: true },
+            { path: '/bin/bash', name: 'bash' },
+          ],
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          state: {
+            widget_id: 'term-main',
+            session_id: 'term-main',
+            shell: '/bin/bash',
+            status: 'running',
+            pid: 5252,
+            started_at: '2026-04-21T08:02:00Z',
+            can_send_input: true,
+            can_interrupt: true,
+            connection_id: 'local',
+            connection_name: 'Local Machine',
+            connection_kind: 'local',
+          },
+        }),
+      })
+    vi.stubEnv('VITE_RTERM_API_BASE', 'http://127.0.0.1:8090')
+    vi.stubEnv('VITE_RTERM_AUTH_TOKEN', 'runtime-token')
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(fetchTerminalShells()).resolves.toEqual([
+      { path: '/bin/zsh', name: 'zsh', default: true },
+      { path: '/bin/bash', name: 'bash' },
+    ])
+    await expect(restartTerminal('term-main', { shell: '/bin/bash' })).resolves.toMatchObject({
+      shell: '/bin/bash',
+    })
+
+    expect(fetchMock.mock.calls[1]?.[0]).toBe('http://127.0.0.1:8090/api/v1/terminal/shells')
+    expect(fetchMock.mock.calls[2]?.[0]).toBe('http://127.0.0.1:8090/api/v1/terminal/term-main/restart')
+    expect(fetchMock.mock.calls[2]?.[1]).toMatchObject({
+      method: 'POST',
+    })
+    expect(JSON.parse(String(fetchMock.mock.calls[2]?.[1]?.body))).toEqual({
+      shell: '/bin/bash',
     })
   })
 
