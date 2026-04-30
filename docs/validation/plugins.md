@@ -25,7 +25,8 @@
   - zip install extraction now enforces compressed-size caps for remote and
     `file://` sources plus expanded-byte and entry-count budgets, and archive
     entry containment is checked with root-relative path semantics instead of
-    raw string prefixes
+    raw string prefixes; extracted entry writes now also propagate close/flush
+    errors before a staged plugin can be promoted
   - staged plugin bundle promotion now rejects symlink entries and enforces the
     same total copied-byte / entry-count budget before writing into the install
     root; failed staged copies remove their `.staging-*` directory before

@@ -717,13 +717,18 @@ func extractPluginArchive(ctx context.Context, stageRoot string, source PluginIn
 			_ = input.Close()
 			return "", err
 		}
-		if err := copyPluginArchiveEntry(output, input, &extractedBytes); err != nil {
-			_ = output.Close()
-			_ = input.Close()
-			return "", err
+		copyErr := copyPluginArchiveEntry(output, input, &extractedBytes)
+		outputErr := output.Close()
+		inputErr := input.Close()
+		if copyErr != nil {
+			return "", copyErr
 		}
-		_ = output.Close()
-		_ = input.Close()
+		if outputErr != nil {
+			return "", outputErr
+		}
+		if inputErr != nil {
+			return "", inputErr
+		}
 	}
 	return target, nil
 }
