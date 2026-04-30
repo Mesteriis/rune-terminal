@@ -1,12 +1,31 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import {
+  isTerminalInputBlockedByPolicy,
   resolveTerminalExecutionTargetForPanel,
   runApprovedExecutionPlanForPanel,
   runTerminalPromptForPanel,
 } from '@/features/agent/model/agent-panel-execution'
 
 describe('agent panel execution helpers', () => {
+  it('detects policy profiles that remove terminal input', () => {
+    expect(
+      isTerminalInputBlockedByPolicy({
+        capability_overlay: {
+          removals: ['terminal:input'],
+        },
+      }),
+    ).toBe(true)
+
+    expect(
+      isTerminalInputBlockedByPolicy({
+        capability_overlay: {
+          removals: ['policy:write'],
+        },
+      }),
+    ).toBe(false)
+  })
+
   it('resolves the execution target from selected context widgets', async () => {
     await expect(
       resolveTerminalExecutionTargetForPanel(

@@ -74,8 +74,18 @@ const defaultDeps: ExecutionDeps = {
   waitForTerminalOutput,
 }
 
-const terminalInputPolicyBlockedMessage =
+export const terminalInputPolicyBlockedMessage =
   'Команда заблокирована политикой: выбранная комбинация AI profile/role/mode отключает terminal:input. Для запуска выберите режим Implement, Debug, Ops или Incident и роль без read-only ограничения, затем повторите approve.'
+
+export function isTerminalInputBlockedByPolicy(
+  profile?: {
+    capability_overlay?: {
+      removals?: string[]
+    }
+  } | null,
+) {
+  return profile?.capability_overlay?.removals?.includes('terminal:input') ?? false
+}
 
 function isTerminalInputPolicyDenied(response: AgentToolExecuteResponse) {
   if (response.status !== 'error' || response.error_code !== 'policy_denied') {
