@@ -16,6 +16,8 @@ import {
   type RemoteTmuxSession,
   type SSHConfigImportResult,
 } from '@/features/remote/api/client'
+import { useAppLocale } from '@/features/i18n/model/locale-provider'
+import type { AppLocale } from '@/shared/api/runtime'
 import { ClearBox } from '@/shared/ui/components'
 import { Button, Input, Text } from '@/shared/ui/primitives'
 import {
@@ -28,6 +30,464 @@ import {
 } from '@/widgets/settings/settings-shell-widget.styles'
 import { openRemoteProfileSession } from '@/widgets/terminal/open-remote-profile-session'
 
+type RemoteProfilesCopy = {
+  browseTmux: string
+  cancelEdit: string
+  check: string
+  defaultBadge: string
+  defaultConnection: (name: string) => string
+  defaultCount: (count: number) => string
+  deletedProfile: string
+  delete: string
+  description: string
+  derivedAutomatically: string
+  detached: string
+  edit: string
+  errorCheck: string
+  errorDelete: string
+  errorImport: string
+  errorLoad: string
+  errorLoadTmux: string
+  errorOpenShell: string
+  errorPort: string
+  errorSave: string
+  errorSetDefault: string
+  filterAria: string
+  filterPlaceholder: string
+  filterTmuxAria: (profileName: string) => string
+  focusedShell: (profileName: string) => string
+  hostAria: string
+  identityFileAria: string
+  importButton: string
+  importing: string
+  importPathAria: string
+  importPathPlaceholder: string
+  importSummary: (importedCount: number, skippedCount: number) => string
+  launchPrefix: string
+  loadNamedSession: string
+  loadedTmuxEditor: (sessionName: string) => string
+  loadedTmuxSessions: (count: number) => string
+  loadingProfiles: string
+  loadingTmux: string
+  nameAria: string
+  namedTmuxSessionAria: (profileName: string) => string
+  noFilterMatches: string
+  noProfiles: string
+  noTmuxFilterMatches: string
+  noTmuxSessions: string
+  noTmuxSessionsYet: string
+  openNamedSession: string
+  openShell: string
+  openedShell: (profileName: string) => string
+  openedTmuxShell: (profileName: string, sessionName: string) => string
+  portAria: string
+  preflightPassed: string
+  preflightStatus: (profileName: string, status: string) => string
+  refresh: string
+  refreshing: string
+  refreshTmux: string
+  remoteName: string
+  resumedShell: (profileName: string) => string
+  resumedTmuxShell: (profileName: string, sessionName: string) => string
+  resumeSession: string
+  saveChanges: string
+  saveProfile: string
+  saveProfileAria: string
+  saveProfileChangesAria: string
+  savedCount: (count: number) => string
+  savedProfile: (profileName: string) => string
+  saving: string
+  setDefault: string
+  shellLaunchSucceeded: string
+  title: string
+  tmuxAttached: string
+  tmuxDetached: string
+  tmuxFilterPlaceholder: string
+  tmuxManager: string
+  tmuxRequiredLoad: string
+  tmuxRequiredOpen: string
+  tmuxResume: string
+  tmuxSessionAria: string
+  tmuxSummary: (total: number, attached: number, detached: number) => string
+  unknownCheckFailed: string
+  unknownLaunchFailed: string
+  useSession: string
+  userAria: string
+  visibleCount: (count: number) => string
+  windowCount: (count: number) => string
+}
+
+const remoteProfilesCopy: Record<AppLocale, RemoteProfilesCopy> = {
+  en: {
+    browseTmux: 'Browse tmux',
+    cancelEdit: 'Cancel edit',
+    check: 'Check',
+    defaultBadge: 'default',
+    defaultConnection: (name) => `Default connection: ${name}.`,
+    defaultCount: (count) => `${count} default`,
+    deletedProfile: 'Deleted SSH profile.',
+    delete: 'Delete',
+    description:
+      'Saved SSH targets are backend-owned. Keep a narrow profile inventory here and import concrete aliases from `~/.ssh/config`, including `Include`, wildcard-host defaults, and `Match host/originalhost` overrides.',
+    derivedAutomatically: 'derived automatically',
+    detached: 'detached',
+    edit: 'Edit',
+    errorCheck: 'Unable to check remote profile',
+    errorDelete: 'Unable to delete remote profile',
+    errorImport: 'Unable to import SSH config',
+    errorLoad: 'Unable to load remote profiles',
+    errorLoadTmux: 'Unable to load tmux sessions',
+    errorOpenShell: 'Unable to open remote shell',
+    errorPort: 'Port must be a positive integer.',
+    errorSave: 'Unable to save remote profile',
+    errorSetDefault: 'Unable to set default connection',
+    filterAria: 'Filter remote profiles',
+    filterPlaceholder: 'Filter saved SSH profiles',
+    filterTmuxAria: (profileName) => `Filter tmux sessions for ${profileName}`,
+    focusedShell: (profileName) => `Focused running remote shell for ${profileName}.`,
+    hostAria: 'Remote profile host',
+    identityFileAria: 'Remote profile identity file',
+    importButton: 'Import SSH config',
+    importing: 'Importing…',
+    importPathAria: 'SSH config path',
+    importPathPlaceholder: 'Default: ~/.ssh/config',
+    importSummary: (importedCount, skippedCount) =>
+      skippedCount > 0
+        ? `Imported ${importedCount} ${importedCount === 1 ? 'profile' : 'profiles'}; ${skippedCount} ${
+            skippedCount === 1 ? 'host skipped' : 'hosts skipped'
+          }.`
+        : `Imported ${importedCount} ${importedCount === 1 ? 'profile' : 'profiles'}.`,
+    launchPrefix: 'launch:',
+    loadNamedSession: 'Load named session',
+    loadedTmuxEditor: (sessionName) => `Loaded tmux session ${sessionName} into profile editor.`,
+    loadedTmuxSessions: (count) => `Loaded ${count} tmux sessions.`,
+    loadingProfiles: 'Loading remote profiles…',
+    loadingTmux: 'Loading tmux…',
+    nameAria: 'Remote profile name',
+    namedTmuxSessionAria: (profileName) => `Named tmux session for ${profileName}`,
+    noFilterMatches: 'No SSH profiles match current filter.',
+    noProfiles: 'No saved SSH profiles yet.',
+    noTmuxFilterMatches: 'No discovered tmux sessions match the current filter.',
+    noTmuxSessions: 'No tmux sessions reported by remote host.',
+    noTmuxSessionsYet: 'No discovered tmux sessions yet. You can still type a named session below.',
+    openNamedSession: 'Open named session',
+    openShell: 'Open shell',
+    openedShell: (profileName) => `Opened remote shell for ${profileName}.`,
+    openedTmuxShell: (profileName, sessionName) => `Opened ${profileName} on tmux session ${sessionName}.`,
+    portAria: 'Remote profile port',
+    preflightPassed: 'Last preflight passed.',
+    preflightStatus: (profileName, status) => `${profileName}: preflight ${status}.`,
+    refresh: 'Refresh',
+    refreshing: 'Refreshing…',
+    refreshTmux: 'Refresh tmux',
+    remoteName: 'Remote profile tmux session',
+    resumedShell: (profileName) => `Resumed running remote shell for ${profileName}.`,
+    resumedTmuxShell: (profileName, sessionName) => `Resumed ${profileName} on tmux session ${sessionName}.`,
+    resumeSession: 'Resume session',
+    saveChanges: 'Save changes',
+    saveProfile: 'Save profile',
+    saveProfileAria: 'Save remote profile',
+    saveProfileChangesAria: 'Save remote profile changes',
+    savedCount: (count) => `${count} saved`,
+    savedProfile: (profileName) => `Saved ${profileName}.`,
+    saving: 'Saving…',
+    setDefault: 'Set default',
+    shellLaunchSucceeded: 'Last shell launch succeeded.',
+    title: 'Remote profiles',
+    tmuxAttached: 'attached',
+    tmuxDetached: 'detached',
+    tmuxFilterPlaceholder: 'Filter discovered tmux sessions',
+    tmuxManager: 'tmux manager',
+    tmuxRequiredLoad: 'Choose or type a tmux session name before loading it into the profile editor.',
+    tmuxRequiredOpen: 'Choose or type a tmux session name before opening it.',
+    tmuxResume: 'tmux resume:',
+    tmuxSessionAria: 'Resume remote shell through tmux',
+    tmuxSummary: (total, attached, detached) =>
+      `${total} discovered · ${attached} attached · ${detached} detached`,
+    unknownCheckFailed: 'Last preflight failed.',
+    unknownLaunchFailed: 'Last launch failed.',
+    useSession: 'Use session',
+    userAria: 'Remote profile user',
+    visibleCount: (count) => `${count} visible`,
+    windowCount: (count) => `${count} window${count === 1 ? '' : 's'}`,
+  },
+  ru: {
+    browseTmux: 'Просмотреть tmux',
+    cancelEdit: 'Отменить редактирование',
+    check: 'Проверить',
+    defaultBadge: 'по умолчанию',
+    defaultConnection: (name) => `Соединение по умолчанию: ${name}.`,
+    defaultCount: (count) => `${count} по умолчанию`,
+    deletedProfile: 'SSH-профиль удален.',
+    delete: 'Удалить',
+    description:
+      'Сохраненные SSH-цели принадлежат backend. Здесь хранится узкий список профилей и импортируются конкретные алиасы из `~/.ssh/config`, включая `Include`, wildcard defaults и `Match host/originalhost` overrides.',
+    derivedAutomatically: 'выводится автоматически',
+    detached: 'detached',
+    edit: 'Изменить',
+    errorCheck: 'Не удалось проверить remote profile',
+    errorDelete: 'Не удалось удалить remote profile',
+    errorImport: 'Не удалось импортировать SSH config',
+    errorLoad: 'Не удалось загрузить remote profiles',
+    errorLoadTmux: 'Не удалось загрузить tmux sessions',
+    errorOpenShell: 'Не удалось открыть remote shell',
+    errorPort: 'Порт должен быть положительным целым числом.',
+    errorSave: 'Не удалось сохранить remote profile',
+    errorSetDefault: 'Не удалось назначить соединение по умолчанию',
+    filterAria: 'Фильтр remote profiles',
+    filterPlaceholder: 'Фильтр сохраненных SSH-профилей',
+    filterTmuxAria: (profileName) => `Фильтр tmux sessions для ${profileName}`,
+    focusedShell: (profileName) => `Сфокусирован запущенный remote shell для ${profileName}.`,
+    hostAria: 'Хост remote profile',
+    identityFileAria: 'Identity file remote profile',
+    importButton: 'Импорт SSH config',
+    importing: 'Импорт…',
+    importPathAria: 'Путь SSH config',
+    importPathPlaceholder: 'По умолчанию: ~/.ssh/config',
+    importSummary: (importedCount, skippedCount) =>
+      skippedCount > 0
+        ? `Импортировано ${importedCount}; пропущено хостов: ${skippedCount}.`
+        : `Импортировано ${importedCount}.`,
+    launchPrefix: 'launch:',
+    loadNamedSession: 'Загрузить session',
+    loadedTmuxEditor: (sessionName) => `tmux session ${sessionName} загружена в редактор профиля.`,
+    loadedTmuxSessions: (count) => `Загружено tmux sessions: ${count}.`,
+    loadingProfiles: 'Загрузка remote profiles…',
+    loadingTmux: 'Загрузка tmux…',
+    nameAria: 'Название remote profile',
+    namedTmuxSessionAria: (profileName) => `Именованная tmux session для ${profileName}`,
+    noFilterMatches: 'Нет SSH-профилей по текущему фильтру.',
+    noProfiles: 'Сохраненных SSH-профилей пока нет.',
+    noTmuxFilterMatches: 'Нет tmux sessions по текущему фильтру.',
+    noTmuxSessions: 'Remote host не сообщил tmux sessions.',
+    noTmuxSessionsYet: 'Обнаруженных tmux sessions пока нет. Можно вручную ввести имя ниже.',
+    openNamedSession: 'Открыть session',
+    openShell: 'Открыть shell',
+    openedShell: (profileName) => `Открыт remote shell для ${profileName}.`,
+    openedTmuxShell: (profileName, sessionName) => `${profileName} открыт в tmux session ${sessionName}.`,
+    portAria: 'Порт remote profile',
+    preflightPassed: 'Последний preflight успешен.',
+    preflightStatus: (profileName, status) => `${profileName}: preflight ${status}.`,
+    refresh: 'Обновить',
+    refreshing: 'Обновление…',
+    refreshTmux: 'Обновить tmux',
+    remoteName: 'tmux session remote profile',
+    resumedShell: (profileName) => `Возобновлен remote shell для ${profileName}.`,
+    resumedTmuxShell: (profileName, sessionName) =>
+      `${profileName} возобновлен в tmux session ${sessionName}.`,
+    resumeSession: 'Возобновить session',
+    saveChanges: 'Сохранить изменения',
+    saveProfile: 'Сохранить профиль',
+    saveProfileAria: 'Сохранить remote profile',
+    saveProfileChangesAria: 'Сохранить изменения remote profile',
+    savedCount: (count) => `${count} сохранено`,
+    savedProfile: (profileName) => `Сохранен ${profileName}.`,
+    saving: 'Сохранение…',
+    setDefault: 'По умолчанию',
+    shellLaunchSucceeded: 'Последний запуск shell успешен.',
+    title: 'Remote profiles',
+    tmuxAttached: 'attached',
+    tmuxDetached: 'detached',
+    tmuxFilterPlaceholder: 'Фильтр обнаруженных tmux sessions',
+    tmuxManager: 'tmux manager',
+    tmuxRequiredLoad: 'Выберите или введите имя tmux session перед загрузкой в редактор профиля.',
+    tmuxRequiredOpen: 'Выберите или введите имя tmux session перед открытием.',
+    tmuxResume: 'tmux resume:',
+    tmuxSessionAria: 'Возобновлять remote shell через tmux',
+    tmuxSummary: (total, attached, detached) =>
+      `${total} обнаружено · ${attached} attached · ${detached} detached`,
+    unknownCheckFailed: 'Последний preflight завершился ошибкой.',
+    unknownLaunchFailed: 'Последний запуск завершился ошибкой.',
+    useSession: 'Использовать session',
+    userAria: 'Пользователь remote profile',
+    visibleCount: (count) => `${count} видно`,
+    windowCount: (count) => `${count} окон`,
+  },
+  'zh-CN': {
+    browseTmux: '浏览 tmux',
+    cancelEdit: '取消编辑',
+    check: '检查',
+    defaultBadge: '默认',
+    defaultConnection: (name) => `默认连接：${name}。`,
+    defaultCount: (count) => `默认 ${count}`,
+    deletedProfile: '已删除 SSH 配置。',
+    delete: '删除',
+    description:
+      '已保存的 SSH 目标由后端拥有。这里保留精简的配置清单，并可从 `~/.ssh/config` 导入具体别名，包括 `Include`、通配主机默认值和 `Match host/originalhost` 覆盖。',
+    derivedAutomatically: '自动推导',
+    detached: '已分离',
+    edit: '编辑',
+    errorCheck: '无法检查远程配置',
+    errorDelete: '无法删除远程配置',
+    errorImport: '无法导入 SSH 配置',
+    errorLoad: '无法加载远程配置',
+    errorLoadTmux: '无法加载 tmux 会话',
+    errorOpenShell: '无法打开远程 shell',
+    errorPort: '端口必须是正整数。',
+    errorSave: '无法保存远程配置',
+    errorSetDefault: '无法设置默认连接',
+    filterAria: '筛选远程配置',
+    filterPlaceholder: '筛选已保存的 SSH 配置',
+    filterTmuxAria: (profileName) => `筛选 ${profileName} 的 tmux 会话`,
+    focusedShell: (profileName) => `已聚焦 ${profileName} 的运行中远程 shell。`,
+    hostAria: '远程配置主机',
+    identityFileAria: '远程配置 identity file',
+    importButton: '导入 SSH 配置',
+    importing: '导入中…',
+    importPathAria: 'SSH 配置路径',
+    importPathPlaceholder: '默认：~/.ssh/config',
+    importSummary: (importedCount, skippedCount) =>
+      skippedCount > 0
+        ? `已导入 ${importedCount} 个；跳过 ${skippedCount} 个主机。`
+        : `已导入 ${importedCount} 个。`,
+    launchPrefix: '启动：',
+    loadNamedSession: '加载命名会话',
+    loadedTmuxEditor: (sessionName) => `已将 tmux 会话 ${sessionName} 加载到配置编辑器。`,
+    loadedTmuxSessions: (count) => `已加载 ${count} 个 tmux 会话。`,
+    loadingProfiles: '正在加载远程配置…',
+    loadingTmux: '正在加载 tmux…',
+    nameAria: '远程配置名称',
+    namedTmuxSessionAria: (profileName) => `${profileName} 的命名 tmux 会话`,
+    noFilterMatches: '没有 SSH 配置匹配当前筛选条件。',
+    noProfiles: '尚未保存 SSH 配置。',
+    noTmuxFilterMatches: '没有 tmux 会话匹配当前筛选条件。',
+    noTmuxSessions: '远程主机未报告 tmux 会话。',
+    noTmuxSessionsYet: '尚未发现 tmux 会话。仍可在下方输入命名会话。',
+    openNamedSession: '打开命名会话',
+    openShell: '打开 shell',
+    openedShell: (profileName) => `已为 ${profileName} 打开远程 shell。`,
+    openedTmuxShell: (profileName, sessionName) => `已在 tmux 会话 ${sessionName} 中打开 ${profileName}。`,
+    portAria: '远程配置端口',
+    preflightPassed: '上次 preflight 通过。',
+    preflightStatus: (profileName, status) => `${profileName}: preflight ${status}.`,
+    refresh: '刷新',
+    refreshing: '刷新中…',
+    refreshTmux: '刷新 tmux',
+    remoteName: '远程配置 tmux 会话',
+    resumedShell: (profileName) => `已恢复 ${profileName} 的远程 shell。`,
+    resumedTmuxShell: (profileName, sessionName) => `已在 tmux 会话 ${sessionName} 中恢复 ${profileName}。`,
+    resumeSession: '恢复会话',
+    saveChanges: '保存更改',
+    saveProfile: '保存配置',
+    saveProfileAria: '保存远程配置',
+    saveProfileChangesAria: '保存远程配置更改',
+    savedCount: (count) => `已保存 ${count}`,
+    savedProfile: (profileName) => `已保存 ${profileName}。`,
+    saving: '保存中…',
+    setDefault: '设为默认',
+    shellLaunchSucceeded: '上次 shell 启动成功。',
+    title: '远程配置',
+    tmuxAttached: '已附加',
+    tmuxDetached: '已分离',
+    tmuxFilterPlaceholder: '筛选发现的 tmux 会话',
+    tmuxManager: 'tmux 管理器',
+    tmuxRequiredLoad: '加载到配置编辑器前，请选择或输入 tmux 会话名。',
+    tmuxRequiredOpen: '打开前，请选择或输入 tmux 会话名。',
+    tmuxResume: 'tmux 恢复：',
+    tmuxSessionAria: '通过 tmux 恢复远程 shell',
+    tmuxSummary: (total, attached, detached) => `发现 ${total} 个 · 已附加 ${attached} · 已分离 ${detached}`,
+    unknownCheckFailed: '上次 preflight 失败。',
+    unknownLaunchFailed: '上次启动失败。',
+    useSession: '使用会话',
+    userAria: '远程配置用户',
+    visibleCount: (count) => `可见 ${count}`,
+    windowCount: (count) => `${count} 个窗口`,
+  },
+  es: {
+    browseTmux: 'Explorar tmux',
+    cancelEdit: 'Cancelar edicion',
+    check: 'Comprobar',
+    defaultBadge: 'predeterminado',
+    defaultConnection: (name) => `Conexion predeterminada: ${name}.`,
+    defaultCount: (count) => `${count} predeterminados`,
+    deletedProfile: 'Perfil SSH eliminado.',
+    delete: 'Eliminar',
+    description:
+      'Los destinos SSH guardados pertenecen al backend. Mantén aqui un inventario reducido de perfiles e importa alias concretos desde `~/.ssh/config`, incluidos `Include`, defaults wildcard-host y overrides `Match host/originalhost`.',
+    derivedAutomatically: 'derivado automaticamente',
+    detached: 'desconectada',
+    edit: 'Editar',
+    errorCheck: 'No se pudo comprobar el perfil remoto',
+    errorDelete: 'No se pudo eliminar el perfil remoto',
+    errorImport: 'No se pudo importar SSH config',
+    errorLoad: 'No se pudieron cargar los perfiles remotos',
+    errorLoadTmux: 'No se pudieron cargar las sesiones tmux',
+    errorOpenShell: 'No se pudo abrir el shell remoto',
+    errorPort: 'El puerto debe ser un entero positivo.',
+    errorSave: 'No se pudo guardar el perfil remoto',
+    errorSetDefault: 'No se pudo definir la conexion predeterminada',
+    filterAria: 'Filtrar perfiles remotos',
+    filterPlaceholder: 'Filtrar perfiles SSH guardados',
+    filterTmuxAria: (profileName) => `Filtrar sesiones tmux para ${profileName}`,
+    focusedShell: (profileName) => `Shell remoto en ejecucion enfocado para ${profileName}.`,
+    hostAria: 'Host del perfil remoto',
+    identityFileAria: 'Identity file del perfil remoto',
+    importButton: 'Importar SSH config',
+    importing: 'Importando…',
+    importPathAria: 'Ruta de SSH config',
+    importPathPlaceholder: 'Predeterminado: ~/.ssh/config',
+    importSummary: (importedCount, skippedCount) =>
+      skippedCount > 0
+        ? `Importados ${importedCount}; hosts omitidos: ${skippedCount}.`
+        : `Importados ${importedCount}.`,
+    launchPrefix: 'launch:',
+    loadNamedSession: 'Cargar sesion nombrada',
+    loadedTmuxEditor: (sessionName) => `Sesion tmux ${sessionName} cargada en el editor de perfil.`,
+    loadedTmuxSessions: (count) => `${count} sesiones tmux cargadas.`,
+    loadingProfiles: 'Cargando perfiles remotos…',
+    loadingTmux: 'Cargando tmux…',
+    nameAria: 'Nombre del perfil remoto',
+    namedTmuxSessionAria: (profileName) => `Sesion tmux nombrada para ${profileName}`,
+    noFilterMatches: 'Ningun perfil SSH coincide con el filtro actual.',
+    noProfiles: 'Todavia no hay perfiles SSH guardados.',
+    noTmuxFilterMatches: 'Ninguna sesion tmux descubierta coincide con el filtro actual.',
+    noTmuxSessions: 'El host remoto no reporto sesiones tmux.',
+    noTmuxSessionsYet:
+      'Todavia no hay sesiones tmux descubiertas. Puedes escribir una sesion nombrada abajo.',
+    openNamedSession: 'Abrir sesion nombrada',
+    openShell: 'Abrir shell',
+    openedShell: (profileName) => `Shell remoto abierto para ${profileName}.`,
+    openedTmuxShell: (profileName, sessionName) => `${profileName} abierto en la sesion tmux ${sessionName}.`,
+    portAria: 'Puerto del perfil remoto',
+    preflightPassed: 'Ultimo preflight correcto.',
+    preflightStatus: (profileName, status) => `${profileName}: preflight ${status}.`,
+    refresh: 'Actualizar',
+    refreshing: 'Actualizando…',
+    refreshTmux: 'Actualizar tmux',
+    remoteName: 'Sesion tmux del perfil remoto',
+    resumedShell: (profileName) => `Shell remoto reanudado para ${profileName}.`,
+    resumedTmuxShell: (profileName, sessionName) =>
+      `${profileName} reanudado en la sesion tmux ${sessionName}.`,
+    resumeSession: 'Reanudar sesion',
+    saveChanges: 'Guardar cambios',
+    saveProfile: 'Guardar perfil',
+    saveProfileAria: 'Guardar perfil remoto',
+    saveProfileChangesAria: 'Guardar cambios del perfil remoto',
+    savedCount: (count) => `${count} guardados`,
+    savedProfile: (profileName) => `${profileName} guardado.`,
+    saving: 'Guardando…',
+    setDefault: 'Predeterminado',
+    shellLaunchSucceeded: 'Ultimo lanzamiento de shell correcto.',
+    title: 'Perfiles remotos',
+    tmuxAttached: 'conectada',
+    tmuxDetached: 'desconectada',
+    tmuxFilterPlaceholder: 'Filtrar sesiones tmux descubiertas',
+    tmuxManager: 'gestor tmux',
+    tmuxRequiredLoad: 'Elige o escribe un nombre de sesion tmux antes de cargarla en el editor.',
+    tmuxRequiredOpen: 'Elige o escribe un nombre de sesion tmux antes de abrirla.',
+    tmuxResume: 'tmux resume:',
+    tmuxSessionAria: 'Reanudar shell remoto mediante tmux',
+    tmuxSummary: (total, attached, detached) =>
+      `${total} descubiertas · ${attached} conectadas · ${detached} desconectadas`,
+    unknownCheckFailed: 'Ultimo preflight fallido.',
+    unknownLaunchFailed: 'Ultimo lanzamiento fallido.',
+    useSession: 'Usar sesion',
+    userAria: 'Usuario del perfil remoto',
+    visibleCount: (count) => `${count} visibles`,
+    windowCount: (count) => `${count} ventana${count === 1 ? '' : 's'}`,
+  },
+}
+
 function describeProfile(profile: RemoteProfile) {
   const userPrefix = profile.user ? `${profile.user}@` : ''
   const portSuffix = profile.port ? `:${profile.port}` : ''
@@ -35,38 +495,29 @@ function describeProfile(profile: RemoteProfile) {
   return `${userPrefix}${profile.host}${portSuffix}`
 }
 
-function summarizeImport(result: SSHConfigImportResult) {
-  const importedCount = result.imported.length
-  const skippedCount = result.skipped?.length ?? 0
-  const importedLabel = importedCount === 1 ? 'profile' : 'profiles'
-  const skippedLabel = skippedCount === 1 ? 'host skipped' : 'hosts skipped'
-
-  if (skippedCount > 0) {
-    return `Imported ${importedCount} ${importedLabel}; ${skippedCount} ${skippedLabel}.`
-  }
-
-  return `Imported ${importedCount} ${importedLabel}.`
+function summarizeImport(result: SSHConfigImportResult, copy: RemoteProfilesCopy) {
+  return copy.importSummary(result.imported.length, result.skipped?.length ?? 0)
 }
 
-function summarizeConnectionStatus(connection: RemoteConnectionView | undefined) {
+function summarizeConnectionStatus(connection: RemoteConnectionView | undefined, copy: RemoteProfilesCopy) {
   if (!connection) {
     return null
   }
 
   if (connection.runtime.check_status === 'failed') {
-    return connection.runtime.check_error || 'Last preflight failed.'
+    return connection.runtime.check_error || copy.unknownCheckFailed
   }
   if (connection.runtime.launch_status === 'failed') {
-    return connection.runtime.launch_error || 'Last launch failed.'
+    return connection.runtime.launch_error || copy.unknownLaunchFailed
   }
   if (connection.runtime.launch_status === 'succeeded') {
-    return 'Last shell launch succeeded.'
+    return copy.shellLaunchSucceeded
   }
   if (connection.runtime.check_status === 'passed') {
-    return 'Last preflight passed.'
+    return copy.preflightPassed
   }
 
-  return 'Not checked yet.'
+  return null
 }
 
 function profileMatchesFilter(
@@ -120,6 +571,8 @@ const defaultProfileDraft = {
 }
 
 export function RemoteProfilesSettingsSection({ dockviewApi = null }: { dockviewApi?: DockviewApi | null }) {
+  const { locale } = useAppLocale()
+  const copy = remoteProfilesCopy[locale]
   const [profiles, setProfiles] = useState<RemoteProfile[]>([])
   const [connectionsSnapshot, setConnectionsSnapshot] = useState<RemoteConnectionsSnapshot>({
     active_connection_id: 'local',
@@ -196,7 +649,7 @@ export function RemoteProfilesSettingsSection({ dockviewApi = null }: { dockview
         return
       }
 
-      setErrorMessage(error instanceof Error ? error.message : 'Unable to load remote profiles')
+      setErrorMessage(error instanceof Error ? error.message : copy.errorLoad)
     } finally {
       if (!options.isCancelled?.()) {
         setIsLoading(false)
@@ -223,9 +676,9 @@ export function RemoteProfilesSettingsSection({ dockviewApi = null }: { dockview
       const result = await importSSHConfigProfiles(pathDraft)
       setProfiles(result.profiles)
       setConnectionsSnapshot(await fetchRemoteConnectionsSnapshot())
-      setStatusMessage(summarizeImport(result))
+      setStatusMessage(summarizeImport(result, copy))
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Unable to import SSH config')
+      setErrorMessage(error instanceof Error ? error.message : copy.errorImport)
     } finally {
       setIsImporting(false)
     }
@@ -238,7 +691,7 @@ export function RemoteProfilesSettingsSection({ dockviewApi = null }: { dockview
 
     const normalizedPort = portDraft.trim()
     if (normalizedPort !== '' && (!/^\d+$/.test(normalizedPort) || Number(normalizedPort) <= 0)) {
-      setErrorMessage('Port must be a positive integer.')
+      setErrorMessage(copy.errorPort)
       setIsSavingProfile(false)
       return
     }
@@ -256,10 +709,10 @@ export function RemoteProfilesSettingsSection({ dockviewApi = null }: { dockview
       })
       setProfiles(result.profiles)
       setConnectionsSnapshot(await fetchRemoteConnectionsSnapshot())
-      setStatusMessage(`Saved ${result.profile.name}.`)
+      setStatusMessage(copy.savedProfile(result.profile.name))
       resetProfileForm()
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Unable to save remote profile')
+      setErrorMessage(error instanceof Error ? error.message : copy.errorSave)
     } finally {
       setIsSavingProfile(false)
     }
@@ -290,9 +743,9 @@ export function RemoteProfilesSettingsSection({ dockviewApi = null }: { dockview
       if (editingProfileID === profileID) {
         resetProfileForm()
       }
-      setStatusMessage('Deleted SSH profile.')
+      setStatusMessage(copy.deletedProfile)
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Unable to delete remote profile')
+      setErrorMessage(error instanceof Error ? error.message : copy.errorDelete)
     } finally {
       setBusyProfileID(null)
     }
@@ -306,9 +759,9 @@ export function RemoteProfilesSettingsSection({ dockviewApi = null }: { dockview
     try {
       const result = await checkRemoteProfileConnection(profileID)
       setConnectionsSnapshot(result.connections)
-      setStatusMessage(`${result.connection.name}: preflight ${result.connection.runtime.check_status}.`)
+      setStatusMessage(copy.preflightStatus(result.connection.name, result.connection.runtime.check_status))
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Unable to check remote profile')
+      setErrorMessage(error instanceof Error ? error.message : copy.errorCheck)
     } finally {
       setBusyProfileID(null)
     }
@@ -323,9 +776,9 @@ export function RemoteProfilesSettingsSection({ dockviewApi = null }: { dockview
       const nextConnectionsSnapshot = await selectRemoteProfileConnection(profileID)
       setConnectionsSnapshot(nextConnectionsSnapshot)
       const selectedProfile = profiles.find((profile) => profile.id === profileID)
-      setStatusMessage(`Default connection: ${selectedProfile?.name ?? profileID}.`)
+      setStatusMessage(copy.defaultConnection(selectedProfile?.name ?? profileID))
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Unable to set default connection')
+      setErrorMessage(error instanceof Error ? error.message : copy.errorSetDefault)
     } finally {
       setBusyProfileID(null)
     }
@@ -352,13 +805,9 @@ export function RemoteProfilesSettingsSection({ dockviewApi = null }: { dockview
           [profileID]: profile?.tmux_session ?? '',
         }
       })
-      setStatusMessage(
-        sessions.length > 0
-          ? `Loaded ${sessions.length} tmux sessions.`
-          : 'No tmux sessions reported by remote host.',
-      )
+      setStatusMessage(sessions.length > 0 ? copy.loadedTmuxSessions(sessions.length) : copy.noTmuxSessions)
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Unable to load tmux sessions')
+      setErrorMessage(error instanceof Error ? error.message : copy.errorLoadTmux)
     } finally {
       setTmuxLoadingProfileID(null)
     }
@@ -372,7 +821,7 @@ export function RemoteProfilesSettingsSection({ dockviewApi = null }: { dockview
       ...current,
       [profile.id]: sessionName,
     }))
-    setStatusMessage(`Loaded tmux session ${sessionName} into profile editor.`)
+    setStatusMessage(copy.loadedTmuxEditor(sessionName))
   }
 
   function handleTmuxSessionDraftChange(profileID: string, value: string) {
@@ -392,7 +841,7 @@ export function RemoteProfilesSettingsSection({ dockviewApi = null }: { dockview
   async function handleOpenNamedTmuxSession(profile: RemoteProfile) {
     const sessionName = (tmuxSessionDraftsByProfile[profile.id] ?? profile.tmux_session ?? '').trim()
     if (sessionName === '') {
-      setErrorMessage('Choose or type a tmux session name before opening it.')
+      setErrorMessage(copy.tmuxRequiredOpen)
       setStatusMessage(null)
       return
     }
@@ -403,7 +852,7 @@ export function RemoteProfilesSettingsSection({ dockviewApi = null }: { dockview
   function handleLoadNamedTmuxSession(profile: RemoteProfile) {
     const sessionName = (tmuxSessionDraftsByProfile[profile.id] ?? profile.tmux_session ?? '').trim()
     if (sessionName === '') {
-      setErrorMessage('Choose or type a tmux session name before loading it into the profile editor.')
+      setErrorMessage(copy.tmuxRequiredLoad)
       setStatusMessage(null)
       return
     }
@@ -426,18 +875,16 @@ export function RemoteProfilesSettingsSection({ dockviewApi = null }: { dockview
       if (result.reused) {
         setStatusMessage(
           targetSession
-            ? `Resumed ${profile.name} on tmux session ${targetSession}.`
-            : `Focused running remote shell for ${profile.name}.`,
+            ? copy.resumedTmuxShell(profile.name, targetSession)
+            : copy.focusedShell(profile.name),
         )
       } else {
         setStatusMessage(
-          targetSession
-            ? `Opened ${profile.name} on tmux session ${targetSession}.`
-            : `Opened remote shell for ${profile.name}.`,
+          targetSession ? copy.openedTmuxShell(profile.name, targetSession) : copy.openedShell(profile.name),
         )
       }
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Unable to open remote shell')
+      setErrorMessage(error instanceof Error ? error.message : copy.errorOpenShell)
     } finally {
       setBusyProfileID(null)
     }
@@ -446,23 +893,19 @@ export function RemoteProfilesSettingsSection({ dockviewApi = null }: { dockview
   return (
     <ClearBox style={settingsShellSectionCardStyle}>
       <ClearBox style={settingsShellContentHeaderStyle}>
-        <Text style={{ fontWeight: 600 }}>Remote profiles</Text>
-        <Text style={settingsShellMutedTextStyle}>
-          Saved SSH targets are backend-owned. You can keep a narrow saved profile inventory here and
-          separately import concrete aliases from `~/.ssh/config`, including `Include`, wildcard-host
-          defaults, and `Match host/originalhost` overrides.
-        </Text>
+        <Text style={{ fontWeight: 600 }}>{copy.title}</Text>
+        <Text style={settingsShellMutedTextStyle}>{copy.description}</Text>
       </ClearBox>
 
       <ClearBox style={{ display: 'grid', gap: 'var(--gap-sm)', gridTemplateColumns: '1fr 1.2fr' }}>
         <Input
-          aria-label="Remote profile name"
+          aria-label={copy.nameAria}
           onChange={(event) => setNameDraft(event.target.value)}
           placeholder="prod"
           value={nameDraft}
         />
         <Input
-          aria-label="Remote profile host"
+          aria-label={copy.hostAria}
           onChange={(event) => setHostDraft(event.target.value)}
           placeholder="prod.example.com"
           value={hostDraft}
@@ -476,20 +919,20 @@ export function RemoteProfilesSettingsSection({ dockviewApi = null }: { dockview
         }}
       >
         <Input
-          aria-label="Remote profile user"
+          aria-label={copy.userAria}
           onChange={(event) => setUserDraft(event.target.value)}
           placeholder="deploy"
           value={userDraft}
         />
         <Input
-          aria-label="Remote profile port"
+          aria-label={copy.portAria}
           inputMode="numeric"
           onChange={(event) => setPortDraft(event.target.value)}
           placeholder="22"
           value={portDraft}
         />
         <Input
-          aria-label="Remote profile identity file"
+          aria-label={copy.identityFileAria}
           onChange={(event) => setIdentityFileDraft(event.target.value)}
           placeholder="~/.ssh/id_prod"
           value={identityFileDraft}
@@ -505,16 +948,16 @@ export function RemoteProfilesSettingsSection({ dockviewApi = null }: { dockview
           }}
         >
           <input
-            aria-label="Resume remote shell through tmux"
+            aria-label={copy.tmuxSessionAria}
             checked={launchModeDraft === 'tmux'}
             onChange={(event) => setLaunchModeDraft(event.target.checked ? 'tmux' : 'shell')}
             type="checkbox"
           />
-          Resume remote shell through tmux
+          {copy.tmuxSessionAria}
         </label>
         {launchModeDraft === 'tmux' ? (
           <Input
-            aria-label="Remote profile tmux session"
+            aria-label={copy.remoteName}
             onChange={(event) => setTmuxSessionDraft(event.target.value)}
             placeholder="prod-main"
             style={{ minWidth: '14rem' }}
@@ -525,36 +968,36 @@ export function RemoteProfilesSettingsSection({ dockviewApi = null }: { dockview
 
       <ClearBox style={{ display: 'flex', gap: 'var(--gap-sm)', flexWrap: 'wrap' as const }}>
         <Button
-          aria-label={isEditing ? 'Save remote profile changes' : 'Save remote profile'}
+          aria-label={isEditing ? copy.saveProfileChangesAria : copy.saveProfileAria}
           disabled={!canSaveProfile || isSavingProfile || busyProfileID !== null}
           onClick={() => void handleSaveProfile()}
         >
-          {isSavingProfile ? 'Saving…' : isEditing ? 'Save changes' : 'Save profile'}
+          {isSavingProfile ? copy.saving : isEditing ? copy.saveChanges : copy.saveProfile}
         </Button>
         {isEditing ? (
           <Button disabled={isSavingProfile} onClick={() => resetProfileForm()}>
-            Cancel edit
+            {copy.cancelEdit}
           </Button>
         ) : null}
       </ClearBox>
 
       <ClearBox style={{ display: 'flex', gap: 'var(--gap-sm)', flexWrap: 'wrap' as const }}>
         <Input
-          aria-label="SSH config path"
+          aria-label={copy.importPathAria}
           onChange={(event) => setPathDraft(event.target.value)}
-          placeholder="Default: ~/.ssh/config"
+          placeholder={copy.importPathPlaceholder}
           style={{ minWidth: '18rem' }}
           value={pathDraft}
         />
-        <Button aria-label="Import SSH config" disabled={isImporting} onClick={() => void handleImport()}>
-          {isImporting ? 'Importing…' : 'Import SSH config'}
+        <Button aria-label={copy.importButton} disabled={isImporting} onClick={() => void handleImport()}>
+          {isImporting ? copy.importing : copy.importButton}
         </Button>
         <Button
-          aria-label="Refresh remote profiles"
+          aria-label={copy.refresh}
           disabled={isLoading}
           onClick={() => void loadProfilesAndConnections()}
         >
-          {isLoading ? 'Refreshing…' : 'Refresh'}
+          {isLoading ? copy.refreshing : copy.refresh}
         </Button>
       </ClearBox>
       <ClearBox
@@ -566,18 +1009,18 @@ export function RemoteProfilesSettingsSection({ dockviewApi = null }: { dockview
         }}
       >
         <Input
-          aria-label="Filter remote profiles"
+          aria-label={copy.filterAria}
           onChange={(event) => setFilterDraft(event.target.value)}
-          placeholder="Filter saved SSH profiles"
+          placeholder={copy.filterPlaceholder}
           style={{ minWidth: '16rem', flex: '1 1 16rem' }}
           value={filterDraft}
         />
         <ClearBox style={{ display: 'flex', gap: 'var(--gap-xs)', flexWrap: 'wrap' as const }}>
-          <ClearBox style={settingsShellBadgeStyle}>{profiles.length} saved</ClearBox>
+          <ClearBox style={settingsShellBadgeStyle}>{copy.savedCount(profiles.length)}</ClearBox>
           {filterDraft.trim() !== '' ? (
-            <ClearBox style={settingsShellBadgeStyle}>{visibleProfiles.length} visible</ClearBox>
+            <ClearBox style={settingsShellBadgeStyle}>{copy.visibleCount(visibleProfiles.length)}</ClearBox>
           ) : null}
-          <ClearBox style={settingsShellBadgeStyle}>{defaultProfilesCount} default</ClearBox>
+          <ClearBox style={settingsShellBadgeStyle}>{copy.defaultCount(defaultProfilesCount)}</ClearBox>
         </ClearBox>
       </ClearBox>
 
@@ -587,18 +1030,18 @@ export function RemoteProfilesSettingsSection({ dockviewApi = null }: { dockview
       ) : null}
 
       {isLoading ? (
-        <Text style={settingsShellMutedTextStyle}>Loading remote profiles…</Text>
+        <Text style={settingsShellMutedTextStyle}>{copy.loadingProfiles}</Text>
       ) : profiles.length === 0 ? (
-        <Text style={settingsShellMutedTextStyle}>No saved SSH profiles yet.</Text>
+        <Text style={settingsShellMutedTextStyle}>{copy.noProfiles}</Text>
       ) : visibleProfiles.length === 0 ? (
-        <Text style={settingsShellMutedTextStyle}>No SSH profiles match current filter.</Text>
+        <Text style={settingsShellMutedTextStyle}>{copy.noFilterMatches}</Text>
       ) : (
         <ClearBox style={settingsShellListStyle}>
           {visibleProfiles.map((profile) => {
             const connection = connectionsSnapshot.connections.find((item) => item.id === profile.id)
             const isDefault = connectionsSnapshot.active_connection_id === profile.id
             const isBusy = busyProfileID === profile.id
-            const connectionStatus = summarizeConnectionStatus(connection)
+            const connectionStatus = summarizeConnectionStatus(connection, copy)
             const tmuxSessions = tmuxSessionsByProfile[profile.id] ?? []
             const tmuxSessionFilter = tmuxSessionFiltersByProfile[profile.id] ?? ''
             const visibleTmuxSessions = tmuxSessions.filter((session) =>
@@ -618,7 +1061,7 @@ export function RemoteProfilesSettingsSection({ dockviewApi = null }: { dockview
                   ) : null}
                   {profile.launch_mode === 'tmux' ? (
                     <Text style={settingsShellMutedTextStyle}>
-                      tmux resume: {profile.tmux_session || 'derived automatically'}
+                      {copy.tmuxResume} {profile.tmux_session || copy.derivedAutomatically}
                     </Text>
                   ) : null}
                   {connectionStatus ? (
@@ -637,7 +1080,9 @@ export function RemoteProfilesSettingsSection({ dockviewApi = null }: { dockview
                   {profile.launch_mode === 'tmux' ? (
                     <ClearBox style={settingsShellBadgeStyle}>tmux</ClearBox>
                   ) : null}
-                  {isDefault ? <ClearBox style={settingsShellBadgeStyle}>default</ClearBox> : null}
+                  {isDefault ? (
+                    <ClearBox style={settingsShellBadgeStyle}>{copy.defaultBadge}</ClearBox>
+                  ) : null}
                   {connection ? (
                     <ClearBox style={settingsShellBadgeStyle}>{connection.usability}</ClearBox>
                   ) : null}
@@ -646,26 +1091,27 @@ export function RemoteProfilesSettingsSection({ dockviewApi = null }: { dockview
                   ) : null}
                   {connection && connection.runtime.launch_status !== 'idle' ? (
                     <ClearBox style={settingsShellBadgeStyle}>
-                      launch:{connection.runtime.launch_status}
+                      {copy.launchPrefix}
+                      {connection.runtime.launch_status}
                     </ClearBox>
                   ) : null}
                   <Button
                     disabled={isBusy || isSavingProfile}
                     onClick={() => void handleSetDefaultProfile(profile.id)}
                   >
-                    Set default
+                    {copy.setDefault}
                   </Button>
                   <Button
                     disabled={isBusy || isSavingProfile}
                     onClick={() => void handleCheckProfile(profile.id)}
                   >
-                    Check
+                    {copy.check}
                   </Button>
                   <Button
                     disabled={isBusy || isSavingProfile}
                     onClick={() => void handleOpenProfileShell(profile)}
                   >
-                    Open shell
+                    {copy.openShell}
                   </Button>
                   {profile.launch_mode === 'tmux' ? (
                     <Button
@@ -673,20 +1119,20 @@ export function RemoteProfilesSettingsSection({ dockviewApi = null }: { dockview
                       onClick={() => void handleBrowseTmuxSessions(profile.id)}
                     >
                       {tmuxLoadingProfileID === profile.id
-                        ? 'Loading tmux…'
+                        ? copy.loadingTmux
                         : tmuxSessionsByProfile[profile.id]
-                          ? 'Refresh tmux'
-                          : 'Browse tmux'}
+                          ? copy.refreshTmux
+                          : copy.browseTmux}
                     </Button>
                   ) : null}
                   <Button disabled={isBusy || isSavingProfile} onClick={() => handleStartEdit(profile)}>
-                    Edit
+                    {copy.edit}
                   </Button>
                   <Button
                     disabled={isBusy || isSavingProfile}
                     onClick={() => void handleDeleteProfile(profile.id)}
                   >
-                    Delete
+                    {copy.delete}
                   </Button>
                 </ClearBox>
                 {profile.launch_mode === 'tmux' ? (
@@ -709,11 +1155,15 @@ export function RemoteProfilesSettingsSection({ dockviewApi = null }: { dockview
                           background: 'color-mix(in srgb, var(--color-surface-glass-soft) 72%, transparent)',
                         }}
                       >
-                        <Text style={{ fontWeight: 600 }}>tmux manager</Text>
+                        <Text style={{ fontWeight: 600 }}>{copy.tmuxManager}</Text>
                         <Text style={settingsShellMutedTextStyle}>
                           {tmuxSessions.length > 0
-                            ? `${tmuxSessions.length} discovered · ${attachedTmuxSessions} attached · ${detachedTmuxSessions} detached`
-                            : 'No discovered tmux sessions yet. You can still type a named session below.'}
+                            ? copy.tmuxSummary(
+                                tmuxSessions.length,
+                                attachedTmuxSessions,
+                                detachedTmuxSessions,
+                              )
+                            : copy.noTmuxSessionsYet}
                         </Text>
                         <ClearBox
                           style={{
@@ -724,7 +1174,7 @@ export function RemoteProfilesSettingsSection({ dockviewApi = null }: { dockview
                           }}
                         >
                           <Input
-                            aria-label={`Named tmux session for ${profile.name}`}
+                            aria-label={copy.namedTmuxSessionAria(profile.name)}
                             onChange={(event) => handleTmuxSessionDraftChange(profile.id, event.target.value)}
                             placeholder="prod-main"
                             value={tmuxSessionDraft}
@@ -733,19 +1183,19 @@ export function RemoteProfilesSettingsSection({ dockviewApi = null }: { dockview
                             disabled={isSavingProfile || busyProfileID !== null}
                             onClick={() => void handleOpenNamedTmuxSession(profile)}
                           >
-                            Open named session
+                            {copy.openNamedSession}
                           </Button>
                           <Button
                             disabled={isSavingProfile || busyProfileID !== null}
                             onClick={() => handleLoadNamedTmuxSession(profile)}
                           >
-                            Load named session
+                            {copy.loadNamedSession}
                           </Button>
                         </ClearBox>
                         <Input
-                          aria-label={`Filter tmux sessions for ${profile.name}`}
+                          aria-label={copy.filterTmuxAria(profile.name)}
                           onChange={(event) => handleTmuxSessionFilterChange(profile.id, event.target.value)}
-                          placeholder="Filter discovered tmux sessions"
+                          placeholder={copy.tmuxFilterPlaceholder}
                           value={tmuxSessionFilter}
                         />
                         {visibleTmuxSessions.length > 0 ? (
@@ -762,27 +1212,25 @@ export function RemoteProfilesSettingsSection({ dockviewApi = null }: { dockview
                             >
                               <Text style={settingsShellMutedTextStyle}>
                                 {session.name}
-                                {session.attached ? ' · attached' : ' · detached'}
-                                {session.window_count ? ` · ${session.window_count} windows` : ''}
+                                {session.attached ? ` · ${copy.tmuxAttached}` : ` · ${copy.tmuxDetached}`}
+                                {session.window_count ? ` · ${copy.windowCount(session.window_count)}` : ''}
                               </Text>
                               <Button
                                 disabled={isSavingProfile || busyProfileID !== null}
                                 onClick={() => void handleOpenProfileShell(profile, session.name)}
                               >
-                                Resume session
+                                {copy.resumeSession}
                               </Button>
                               <Button
                                 disabled={isSavingProfile || busyProfileID !== null}
                                 onClick={() => handleUseTmuxSession(profile, session.name)}
                               >
-                                Use session
+                                {copy.useSession}
                               </Button>
                             </ClearBox>
                           ))
                         ) : (
-                          <Text style={settingsShellMutedTextStyle}>
-                            No discovered tmux sessions match the current filter.
-                          </Text>
+                          <Text style={settingsShellMutedTextStyle}>{copy.noTmuxFilterMatches}</Text>
                         )}
                       </ClearBox>
                     ) : null}

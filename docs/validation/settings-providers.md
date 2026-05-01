@@ -160,6 +160,7 @@
   - model combobox
   - switching provider updates visible model choices to that provider's `chat_models`
 - `AI > Composer` settings now read the shortcut labels, descriptions, and runtime badges from the app locale table for `en`, `ru`, `zh-CN`, and `es`; this is presentation-only and keeps the same runtime-backed composer preference contract.
+- The runtime settings subsections for Plugins, Remote profiles, and MCP now read their visible form/list/status chrome from locale tables for `en`, `ru`, `zh-CN`, and `es`. The validation pass for this settings slice ran `npm --prefix frontend run lint:active`; backend-provided endpoint names, template descriptions, raw server status values, and error payloads remain data and are not translated in the client.
 - The OpenAI-compatible browser validation in this pass used the live LAN source:
   - `base_url: http://192.168.1.8:8317`
   - verified model discovery from `/v1/models`
