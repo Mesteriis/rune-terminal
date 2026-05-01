@@ -316,6 +316,30 @@ describe('AiComposerWidget', () => {
     expect(onModeChange).toHaveBeenCalledWith('review')
   })
 
+  it('localizes built-in agent mode labels without changing selected ids', () => {
+    render(
+      <AiComposerWidget
+        activeTool="Chat"
+        availableModes={[
+          { value: 'implement', label: 'Implement' },
+          { value: 'review', label: 'Review' },
+        ]}
+        locale="ru"
+        placeholder="Text Area"
+        selectedModeID="implement"
+        toolbarLabel="TOOL BAR"
+        value=""
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Agent tuning' }))
+
+    const modeSelect = screen.getByRole('combobox', { name: 'Agent mode' })
+    expect(modeSelect).toHaveValue('implement')
+    expect(screen.getByRole('option', { name: 'Реализация' })).toHaveValue('implement')
+    expect(screen.getByRole('option', { name: 'Ревью' })).toHaveValue('review')
+  })
+
   it('shows selected context chips and lets the operator remove a widget without reopening the dropdown', () => {
     const onSelectedContextWidgetIDsChange = vi.fn()
 

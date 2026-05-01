@@ -89,6 +89,18 @@ vi.mock('@/features/agent/model/use-agent-panel', () => ({
   useAgentPanel: vi.fn(() => agentPanelMock),
 }))
 
+vi.mock('@/features/i18n/model/locale-provider', () => ({
+  useAppLocale: () => ({
+    errorMessage: null,
+    isLoading: false,
+    isSaving: false,
+    locale: 'en',
+    refresh: vi.fn(async () => undefined),
+    setLocale: vi.fn(async () => undefined),
+    supportedLocales: ['en', 'ru', 'zh-CN', 'es'],
+  }),
+}))
+
 vi.mock('@/widgets', () => ({
   AiPanelHeaderWidget: () => <div data-testid="ai-panel-header-mock">header</div>,
   AiPanelWidget: () => <div data-testid="ai-panel-widget-mock">body</div>,

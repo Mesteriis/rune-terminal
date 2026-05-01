@@ -85,6 +85,14 @@ describe('AiPanelHeaderWidget', () => {
     expect(within(navigator).queryByRole('button', { name: 'debug' })).not.toBeInTheDocument()
   })
 
+  it('renders AI shell modes through the active locale copy', () => {
+    render(<AiPanelHeaderWidget locale="ru" mode="debug" onModeChange={() => {}} title="AI Rune" />)
+
+    expect(screen.getByRole('button', { name: 'чат' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'разработка' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'отладка' })).toBeVisible()
+  })
+
   it('renders conversations and routes select/create actions through the header controls', () => {
     const onConversationSelect = vi.fn()
     const onCreateConversation = vi.fn()

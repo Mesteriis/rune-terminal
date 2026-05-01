@@ -20,6 +20,7 @@ import type {
   AgentConversationSummary,
 } from '@/features/agent/api/client'
 import type { ChatMode } from '@/features/agent/model/types'
+import type { AppLocale } from '@/shared/api/runtime'
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { Avatar } from '@/shared/ui/components'
 import { Box, Button, Input, Surface, Text } from '@/shared/ui/primitives'
@@ -78,6 +79,7 @@ import {
   aiShellTitleClusterStyle,
   aiShellTitleTextStyle,
 } from '@/widgets/ai/ai-panel-widget.styles'
+import { formatAiChatModeLabel } from '@/widgets/ai/ai-widget-copy'
 
 export type AiPanelHeaderWidgetProps = {
   activeProviderRoute?: {
@@ -102,6 +104,7 @@ export type AiPanelHeaderWidgetProps = {
   conversations?: AgentConversationSummary[]
   isConversationBusy?: boolean
   isProviderRouteBusy?: boolean
+  locale?: AppLocale
   mode: ChatMode
   onConversationScopeChange?: (scope: AgentConversationListScope) => void
   onConversationSearchQueryChange?: (value: string) => void
@@ -241,6 +244,7 @@ export function AiPanelHeaderWidget({
   conversations = [],
   isConversationBusy = false,
   isProviderRouteBusy = false,
+  locale = 'en',
   mode,
   onConversationScopeChange,
   onConversationSearchQueryChange,
@@ -1251,6 +1255,7 @@ export function AiPanelHeaderWidget({
             {CHAT_MODES.map((chatMode) => (
               <Button
                 aria-pressed={mode === chatMode}
+                aria-label={formatAiChatModeLabel(chatMode, locale)}
                 key={chatMode}
                 onClick={() => onModeChange(chatMode)}
                 runaComponent={`ai-panel-header-mode-${chatMode}`}
@@ -1259,7 +1264,7 @@ export function AiPanelHeaderWidget({
                   ...(mode === chatMode ? aiHeaderModeButtonActiveStyle : null),
                 }}
               >
-                {chatMode}
+                {formatAiChatModeLabel(chatMode, locale)}
               </Button>
             ))}
           </Box>

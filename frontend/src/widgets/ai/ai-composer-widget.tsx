@@ -21,6 +21,7 @@ import type {
   AiContextWidgetOption,
   AiProviderOption,
 } from '@/features/agent/model/types'
+import type { AppLocale } from '@/shared/api/runtime'
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { ClearBox, IconButton, SearchableMultiSelect, SwitcherControl } from '@/shared/ui/components'
 import { Badge, Box, Button, Select, Surface, Text, TextArea } from '@/shared/ui/primitives'
@@ -72,6 +73,7 @@ import {
   aiToolbarTuneTriggerMetaStyle,
   aiToolbarTuneTriggerStyle,
 } from '@/widgets/ai/ai-panel-widget.styles'
+import { localizeAiAgentModeOption } from '@/widgets/ai/ai-widget-copy'
 
 export type AiComposerWidgetProps = {
   toolbarLabel: string
@@ -110,6 +112,7 @@ export type AiComposerWidgetProps = {
   activeContextWidgetOption?: AiContextWidgetOption | null
   selectedContextWidgetIDs?: string[]
   isWidgetContextEnabled?: boolean
+  locale?: AppLocale
   contextWidgetLoadError?: string | null
   missingContextWidgetCount?: number
   onContextOptionsOpen?: () => void
@@ -156,6 +159,7 @@ export function AiComposerWidget({
   contextWidgetLoadError = null,
   contextWidgetOptions = [],
   isWidgetContextEnabled = true,
+  locale = 'en',
   missingContextWidgetCount = 0,
   onContextOptionsOpen,
   onContextUseCurrentWidget,
@@ -194,6 +198,7 @@ export function AiComposerWidget({
     selectedModeID && availableModes.some((mode) => mode.value === selectedModeID)
       ? selectedModeID
       : (availableModes[0]?.value ?? '')
+  const localizedModes = availableModes.map((mode) => localizeAiAgentModeOption(mode, locale))
   const selectedContextCount = selectedContextWidgetIDs.length
   const hasAttachments = attachments.length > 0
   const hasRecentAttachments = recentAttachments.length > 0
@@ -319,7 +324,7 @@ export function AiComposerWidget({
   const selectedProfileLabel =
     availableProfiles.find((profile) => profile.value === profileValue)?.label ?? profileValue
   const selectedRoleLabel = availableRoles.find((role) => role.value === roleValue)?.label ?? roleValue
-  const selectedModeLabel = availableModes.find((mode) => mode.value === modeValue)?.label ?? modeValue
+  const selectedModeLabel = localizedModes.find((mode) => mode.value === modeValue)?.label ?? modeValue
   const tuneSummary = [profileValue, roleValue, modeValue]
     .filter((segment) => segment.trim() !== '')
     .join(' · ')
@@ -489,7 +494,7 @@ export function AiComposerWidget({
                                 title={selectedModeLabel}
                                 value={modeValue}
                               >
-                                {availableModes.map((mode) => (
+                                {localizedModes.map((mode) => (
                                   <option key={mode.value} value={mode.value}>
                                     {mode.label}
                                   </option>

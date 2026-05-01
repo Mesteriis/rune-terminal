@@ -3,6 +3,7 @@ import { useCallback, useLayoutEffect, useRef, useState, type UIEvent } from 're
 import { useAgentPanel, type AgentPanelController } from '@/features/agent/model/use-agent-panel'
 import { useAiComposerPreferences } from '@/features/agent/model/use-ai-composer-preferences'
 import type { AiPanelWidgetState, ChatMode } from '@/features/agent/model/types'
+import type { AppLocale } from '@/shared/api/runtime'
 import { RunaDomScopeProvider, useRunaDomAutoTagging } from '@/shared/ui/dom-id'
 import { Box, ScrollArea } from '@/shared/ui/primitives'
 
@@ -20,6 +21,7 @@ import {
 export type AiPanelWidgetProps = {
   controller?: AgentPanelController
   hostId: string
+  locale?: AppLocale
   mode?: ChatMode
   state?: AiPanelWidgetState
 }
@@ -45,7 +47,13 @@ function readAiMessageViewportMetrics(viewport: HTMLDivElement): AiMessageViewpo
   }
 }
 
-export function AiPanelWidget({ controller, hostId, mode = 'chat', state }: AiPanelWidgetProps) {
+export function AiPanelWidget({
+  controller,
+  hostId,
+  locale = 'en',
+  mode = 'chat',
+  state,
+}: AiPanelWidgetProps) {
   const internalAgentPanel = useAgentPanel(hostId, state == null && controller == null)
   const agentPanel = controller ?? internalAgentPanel
   const { submitMode } = useAiComposerPreferences()
@@ -164,6 +172,7 @@ export function AiPanelWidget({ controller, hostId, mode = 'chat', state }: AiPa
             isWidgetContextEnabled={state == null ? agentPanel.isWidgetContextEnabled : undefined}
             isSubmitting={state == null ? agentPanel.isSubmitting && agentPanel.isResponseCancellable : false}
             isAttachmentLibraryPending={state == null ? agentPanel.isAttachmentLibraryPending : false}
+            locale={locale}
             missingContextWidgetCount={state == null ? agentPanel.missingContextWidgetCount : undefined}
             onCancelSubmit={state == null ? agentPanel.cancelActiveSubmission : undefined}
             onContextOptionsOpen={state == null ? agentPanel.handleContextOptionsOpen : undefined}

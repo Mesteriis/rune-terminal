@@ -6,11 +6,13 @@ import { startTransition, useCallback, useEffect, useRef, useState, type RefObje
 
 import { getProviderGatewayRecoveryAction } from '@/features/agent/model/provider-gateway-actions'
 import { useAgentPanel } from '@/features/agent/model/use-agent-panel'
+import { useAppLocale } from '@/features/i18n/model/locale-provider'
 import { $queuedAiPromptHandoff, consumeAiPromptHandoff } from '@/shared/model/ai-handoff'
 import type { ChatMode } from '@/features/agent/model/types'
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { Box, Button, Surface, Text } from '@/shared/ui/primitives'
 import { AiPanelHeaderWidget, AiPanelWidget } from '@/widgets'
+import { formatAiChatModeLabel, getAiWidgetCopy } from '@/widgets/ai/ai-widget-copy'
 import { ensureAiTerminalVisibility } from '@/widgets/terminal/ensure-terminal-visibility'
 
 import {
@@ -62,6 +64,7 @@ function clampAiPanelWidth(requestedWidth: number, contentAreaElement: HTMLDivEl
 type AiCollapsedSummaryProps = {
   activeConversationTitle: string
   conversationCountLabel: string
+  copy: ReturnType<typeof getAiWidgetCopy>['collapsed']
   disclosureRegionId: string
   modeLabel: string
   onExpand: () => void
@@ -72,6 +75,7 @@ type AiCollapsedSummaryProps = {
 function AiCollapsedSummary({
   activeConversationTitle,
   conversationCountLabel,
+  copy,
   disclosureRegionId,
   modeLabel,
   onExpand,
@@ -96,7 +100,7 @@ function AiCollapsedSummary({
     >
       <Box style={{ display: 'flex', flexDirection: 'column', gap: '0.7rem', minWidth: 0 }}>
         <Button
-          aria-label="Expand AI panel"
+          aria-label={copy.expandAriaLabel}
           aria-controls={disclosureRegionId}
           aria-expanded="false"
           onClick={onExpand}
@@ -104,7 +108,7 @@ function AiCollapsedSummary({
           style={{ minHeight: '32px', width: '100%', paddingInline: '0.5rem' }}
         >
           <ChevronRight aria-hidden="true" size={14} strokeWidth={1.9} />
-          Open
+          {copy.open}
         </Button>
         <Box style={{ display: 'flex', flexDirection: 'column', gap: '0.22rem', minWidth: 0 }}>
           <Text
@@ -116,7 +120,7 @@ function AiCollapsedSummary({
               color: 'var(--color-text-dim)',
             }}
           >
-            AI work panel
+            {copy.title}
           </Text>
           <Text
             runaComponent="ai-shell-panel-collapsed-route"
@@ -144,7 +148,7 @@ function AiCollapsedSummary({
             color: 'var(--color-text-dim)',
           }}
         >
-          Active thread
+          {copy.activeThread}
         </Text>
         <Text
           runaComponent="ai-shell-panel-collapsed-conversation-title"
@@ -158,7 +162,7 @@ function AiCollapsedSummary({
           title={modeLabel}
           style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}
         >
-          Mode · {modeLabel}
+          {copy.modePrefix} · {modeLabel}
         </Text>
         <Text
           runaComponent="ai-shell-panel-collapsed-conversation-meta"
@@ -174,6 +178,8 @@ function AiCollapsedSummary({
 
 /** Renders the shell-managed AI sidebar, including resize behavior and open/close animation. */
 export function AppAiSidebar({ dockviewApiRef, isOpen, contentAreaRef }: AppAiSidebarProps) {
+  const { locale } = useAppLocale()
+  const aiCopy = getAiWidgetCopy(locale)
   const [aiPanelWidth, setAiPanelWidth] = useState(getDefaultAiPanelWidth())
   const [isAiPanelExpanded, setIsAiPanelExpanded] = useState(false)
   const [chatMode, setChatMode] = useState<ChatMode>('chat')
@@ -322,8 +328,8 @@ export function AppAiSidebar({ dockviewApiRef, isOpen, contentAreaRef }: AppAiSi
   const activeConversationTitle = agentPanel.activeConversationSummary?.title?.trim() || 'New conversation'
   const activeConversationCount = agentPanel.activeConversationSummary?.message_count ?? 0
   const conversationCountLabel =
-    activeConversationCount > 0 ? `${activeConversationCount} msgs` : 'No messages yet'
-  const modeLabel = chatMode.trim() || 'chat'
+    activeConversationCount > 0 ? `${activeConversationCount} msgs` : aiCopy.collapsed.noMessagesYet
+  const modeLabel = formatAiChatModeLabel(chatMode, locale)
   const activeAiPanelWidth = isAiPanelExpanded ? aiPanelWidth : AI_PANEL_COLLAPSED_WIDTH
   const activeResizeHandleWidth = isAiPanelExpanded ? AI_PANEL_RESIZE_HANDLE_WIDTH : 0
   const aiShellWidth = activeAiPanelWidth + activeResizeHandleWidth
@@ -361,7 +367,7 @@ export function AppAiSidebar({ dockviewApiRef, isOpen, contentAreaRef }: AppAiSi
                   data-runa-shell-widget-kind="ai"
                   id={AI_SHELL_PANEL_DISCLOSURE_REGION_ID}
                   role="region"
-                  aria-label="AI work panel"
+                  aria-label={aiCopy.collapsed.panelAriaLabel}
                   runaComponent="ai-shell-panel-frame"
                   style={aiPanelFrameStyle}
                 >
@@ -434,6 +440,7 @@ export function AppAiSidebar({ dockviewApiRef, isOpen, contentAreaRef }: AppAiSi
                               agentPanel.isProviderRoutePreparing ||
                               agentPanel.isProviderRouteProbing
                             }
+                            locale={locale}
                             onConversationScopeChange={agentPanel.setConversationScope}
                             onConversationSearchQueryChange={agentPanel.setConversationSearchQuery}
                             mode={chatMode}
@@ -471,6 +478,7 @@ export function AppAiSidebar({ dockviewApiRef, isOpen, contentAreaRef }: AppAiSi
                       <AiCollapsedSummary
                         activeConversationTitle={activeConversationTitle}
                         conversationCountLabel={conversationCountLabel}
+                        copy={aiCopy.collapsed}
                         disclosureRegionId={AI_SHELL_PANEL_DISCLOSURE_REGION_ID}
                         modeLabel={modeLabel}
                         onExpand={handleToggleAiPanel}
@@ -484,6 +492,7 @@ export function AppAiSidebar({ dockviewApiRef, isOpen, contentAreaRef }: AppAiSi
                       <AiPanelWidget
                         controller={agentPanel}
                         hostId={AI_SHELL_PANEL_HOST_ID}
+                        locale={locale}
                         mode={chatMode}
                       />
                     </Box>

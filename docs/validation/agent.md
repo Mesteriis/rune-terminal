@@ -2,7 +2,7 @@
 
 ## Last verified state
 
-- Date: `2026-04-30`
+- Date: `2026-05-01`
 - State: `VERIFIED`
 - Scope:
   - DB-backed AI conversations with explicit create/switch/rename/archive/restore/delete lifecycle
@@ -101,6 +101,7 @@
     - persisted SSH-backed AI context restore after reopen: a conversation saved against the remote widget still executes against that remote target instead of falling back to the active local shell
     - approved natural-language terminal execution on an SSH-backed context also survives `requires_confirmation`: one browser-side `Approve` drives `term.send_input -> safety.confirm -> retry` without losing the preserved remote target
     - recent attachment library reuse/delete from the composer shelf
+  - Russian locale coverage for shell-visible AI mode labels (`chat/dev/debug`), collapsed AI panel mode summary, and built-in backend agent work-mode labels in the composer dropdown while preserving the backend mode ids
 
 ## Current provider contract
 
@@ -231,6 +232,8 @@
 
 ## Commands/tests used
 
+- `npm --prefix frontend run test -- src/widgets/settings/runtime-settings-section.test.tsx src/widgets/settings/terminal-settings-section.test.tsx src/app/app-ai-sidebar.test.tsx src/widgets/ai/ai-composer-widget.test.tsx src/widgets/ai/ai-panel-header-widget.test.tsx`
+- `npm --prefix frontend run lint:active`
 - `go test ./core/transport/httpapi ./core/app ./core/agent`
 - `npm exec vitest run src/widgets/ai/ai-composer-widget.test.tsx src/widgets/ai/ai-panel-header-widget.test.tsx src/widgets/settings/runtime-settings-section.test.tsx src/app/app-ai-sidebar.test.tsx src/features/agent/model/use-ai-composer-preferences.test.tsx src/shared/api/agent-settings.test.ts`
 - `go test ./core/agent ./core/conversation ./core/app ./core/transport/httpapi`

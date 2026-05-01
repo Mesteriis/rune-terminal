@@ -2,7 +2,7 @@
 
 ## Last verified state
 
-- Date: `2026-04-29`
+- Date: `2026-05-01`
 - State: `VERIFIED`
 - Scope:
   - backend-owned AI provider catalog and active-provider resolution
@@ -15,11 +15,14 @@
     and draft source URLs out of the audit summary
   - narrow provider runtime for `codex`, `claude`, and `openai-compatible`
   - frontend settings provider client/draft helpers and TypeScript surface
+  - Russian locale copy for the settings shell navigation and AI/provider/model/limits submenu labels, preserving the existing frontend typed copy boundary
   - provider draft helpers serialize the ownership/route-policy metadata defaults and tolerate stale/raw provider views that predate those fields
   - browser-level Playwright validation for the provider/settings surfaces plus AI-toolbar provider/model switching under the split local dev path
 
 ## Commands/tests used
 
+- `npm --prefix frontend run test -- src/widgets/settings/runtime-settings-section.test.tsx src/widgets/settings/terminal-settings-section.test.tsx src/app/app-ai-sidebar.test.tsx src/widgets/ai/ai-composer-widget.test.tsx src/widgets/ai/ai-panel-header-widget.test.tsx`
+- `npm --prefix frontend run lint:active`
 - `go test ./core/agent ./core/conversation ./core/app ./core/transport/httpapi`
 - `go test ./core/...`
 - `npm --prefix frontend run test -- src/features/agent/api/provider-client.test.ts src/features/agent/model/provider-settings-draft.test.ts src/widgets/ai/ai-panel-widget.test.tsx`
